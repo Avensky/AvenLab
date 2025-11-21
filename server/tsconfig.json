@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist",
+    // Module System
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ES2020",
+    // Type System
+    "strict": true,
+    "skipLibCheck": true,
+    "types": [
+      "node"
+    ],
+    // Output
+    "sourceMap": true,
+    "declaration": true,
+    "declarationMap": true
+  },
+  "exclude": [
+    "vite.config.ts"
+  ]
+}
