@@ -5,6 +5,8 @@ import { Server } from "socket.io";
 import { loadRapier } from "./rapier.js";
 import { PhysicsWorld } from "./physics.js";
 import http from "http";
+import cors from "cors";
+
 
 export async function startServer() {
 
@@ -14,7 +16,10 @@ export async function startServer() {
     physics.createTestBox({ x: 0, y: 5, z: 0 });
 
     const app = express();
+    app.use(cors());
+
     const httpServer = http.createServer(app);
+
     const io = new Server(httpServer, {
         cors: {
             origin: "*"

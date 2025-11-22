@@ -2,6 +2,7 @@ import express from 'express';
 import { Server } from 'socket.io';
 import { randomUUID } from 'crypto';
 import http from 'http';
+import cors from 'cors';
 (async ()=>{
     const __vite__initWasm = async (opts = {}, url)=>{
         let result;
@@ -8216,6 +8217,7 @@ import http from 'http';
             z: 0
         });
         const app = express();
+        app.use(cors());
         const httpServer = http.createServer(app);
         const io = new Server(httpServer, {
             cors: {
