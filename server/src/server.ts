@@ -1,10 +1,13 @@
 // server/src/server.ts
+
 import express from "express";
-import http from "http";
+import { Server } from "socket.io";
 import { loadRapier } from "./rapier.js";
 import { PhysicsWorld } from "./physics.js";
+import http from "http";
 
 export async function startServer() {
+
     const RAPIER = await loadRapier();
     const physics = new PhysicsWorld(RAPIER);
 
@@ -12,13 +15,28 @@ export async function startServer() {
 
     const app = express();
     const httpServer = http.createServer(app);
+    const io = new Server(httpServer, {
+        cors: {
+            origin: "*"
+        }
+    });
 
+    // routes
     app.get("/snapshot", (_req, res) => {
         res.json(physics.getSnapshot());
     });
 
+    // fps / frequency
     setInterval(() => physics.step(1 / 60), 1000 / 60);
 
+    // socket up
+    io.on("connection", (socket) => {
+        console.log("Client connected:", socket.id);
+
+        socket.emit("hello", { msg: "welcome" });
+    });
+
+    // server up
     httpServer.listen(4000, () =>
         console.log("Server running at http://localhost:4000")
     );
