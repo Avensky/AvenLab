@@ -5,7 +5,14 @@ export function ModeSwitcher() {
     const setMode = useSnapshotStore((s) => s.setMode);
 
     return (
-        <div style={{ position: "absolute", top: 20, left: 20, zIndex: 10 }}>
+        <div style={{
+            position: "absolute",
+            top: "1rem",
+            left: "1rem",
+            zIndex: 20,
+            display: "flex",
+            gap: "8px",
+        }}>
             <button onClick={() => setMode("glb")} disabled={mode === "glb"}>
                 GLB
             </button>

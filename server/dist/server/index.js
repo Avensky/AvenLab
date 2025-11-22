@@ -1,6 +1,7 @@
 import express from 'express';
 import { Server } from 'socket.io';
 import { randomUUID } from 'crypto';
+import fs from 'fs/promises';
 import http from 'http';
 import cors from 'cors';
 (async ()=>{
@@ -8156,6 +8157,16 @@ import cors from 'cors';
     async function loadRapier() {
         return RAPIER;
     }
+    async function addCityHeightfieldCollider(RAPIER, world) {
+        const raw = await fs.readFile("data/city-heightfield.json", "utf8");
+        const data = JSON.parse(raw);
+        const heights = Float32Array.from(data.heights);
+        const colliderDesc = RAPIER.ColliderDesc.heightfield(data.ny, data.nx, heights, {
+            x: data.width,
+            y: data.depth
+        });
+        world.createCollider(colliderDesc);
+    }
     class PhysicsWorld {
         constructor(RAPIER){
             this.bodies = [];
@@ -8165,8 +8176,54 @@ import cors from 'cors';
                 y: -9.81,
                 z: 0
             });
-            const ground = this.RAPIER.ColliderDesc.cuboid(50, 0.5, 50).setTranslation(0, -0.5, 0);
-            this.world.createCollider(ground);
+            addCityHeightfieldCollider(this.RAPIER, this.world).then(()=>console.log("City heightfield collider added")).catch(console.error);
+        }
+        createPlayerBody(position = {
+            x: 0,
+            y: 2,
+            z: 0
+        }) {
+            const id = randomUUID();
+            const rbDesc = this.RAPIER.RigidBodyDesc.dynamic().setTranslation(position.x, position.y, position.z).setLinearDamping(0.4).setAngularDamping(0.8);
+            const body = this.world.createRigidBody(rbDesc);
+            const col = this.RAPIER.ColliderDesc.cuboid(0.5, 0.5, 1);
+            this.world.createCollider(col, body);
+            this.bodies.push({
+                id,
+                body
+            });
+            return id;
+        }
+        destroyBody(id) {
+            const idx = this.bodies.findIndex((b)=>b.id === id);
+            if (idx === -1) return;
+            const entry = this.bodies[idx];
+            this.world.removeRigidBody(entry.body);
+            this.bodies.splice(idx, 1);
+        }
+        applyInput(bodyId, input, dt) {
+            const entry = this.bodies.find((b)=>b.id === bodyId);
+            if (!entry) return;
+            const body = entry.body;
+            const forwardForce = 50;
+            const steerSpeed = 2;
+            const throttle = input.throttle;
+            if (throttle !== 0) {
+                const impulse = {
+                    x: 0,
+                    y: 0,
+                    z: -throttle * forwardForce * dt
+                };
+                body.applyImpulse(impulse, true);
+            }
+            const steer = input.steer;
+            if (steer !== 0) {
+                body.applyTorqueImpulse({
+                    x: 0,
+                    y: steer * steerSpeed * dt,
+                    z: 0
+                }, true);
+            }
         }
         createTestBox(pos = {
             x: 0,
@@ -8188,27 +8245,35 @@ import cors from 'cors';
             this.world.timestep = dt;
             this.world.step();
         }
-        getSnapshot() {
+        getSnapshot(tick) {
+            const bodies = this.bodies.map(({ id, body })=>{
+                const t = body.translation();
+                const r = body.rotation();
+                return {
+                    id,
+                    x: t.x,
+                    y: t.y,
+                    z: t.z,
+                    qx: r.x,
+                    qy: r.y,
+                    qz: r.z,
+                    qw: r.w
+                };
+            });
             return {
+                tick,
                 timestamp: Date.now(),
-                bodies: this.bodies.map(({ id, body })=>{
-                    const t = body.translation();
-                    const r = body.rotation();
-                    return {
-                        id,
-                        x: t.x,
-                        y: t.y,
-                        z: t.z,
-                        qx: r.x,
-                        qy: r.y,
-                        qz: r.z,
-                        qw: r.w
-                    };
-                })
+                bodies
             };
         }
     }
+    async function initPhysics() {
+        const RAPIER = await loadRapier();
+        new PhysicsWorld(RAPIER);
+    }
+    const players = new Map();
     async function startServer() {
+        await initPhysics();
         const RAPIER = await loadRapier();
         const physics = new PhysicsWorld(RAPIER);
         physics.createTestBox({
@@ -8224,14 +8289,73 @@ import cors from 'cors';
                 origin: "*"
             }
         });
-        app.get("/snapshot", (_req, res)=>{
-            res.json(physics.getSnapshot());
-        });
-        setInterval(()=>physics.step(1 / 60), 1e3 / 60);
+        let tick = 0;
+        const tickRate = 60;
+        const snapshotRate = 60;
+        const dt = 1 / tickRate;
+        let accumulator = 0;
+        let lastTime = Date.now();
+        setInterval(()=>{
+            const now = Date.now();
+            const elapsed = (now - lastTime) / 1e3;
+            lastTime = now;
+            accumulator += elapsed;
+            while(accumulator >= dt){
+                for (const p of players.values()){
+                    physics.applyInput(p.bodyId, p.input, dt);
+                }
+                physics.step(dt);
+                tick++;
+                accumulator -= dt;
+            }
+            const worldSnapshot = physics.getSnapshot(tick);
+            for (const p of players.values()){
+                const payload = {
+                    world: worldSnapshot,
+                    yourBodyId: p.bodyId,
+                    lastProcessedInputSeq: p.lastInputSeq
+                };
+                io.to(p.socketId).emit("snapshot", payload);
+            }
+        }, 1e3 / snapshotRate);
         io.on("connection", (socket)=>{
             console.log("Client connected:", socket.id);
             socket.emit("hello", {
                 msg: "welcome"
+            });
+            console.log("Client connected:", socket.id);
+            const spawnX = (Math.random() - 0.5) * 10;
+            const spawnZ = (Math.random() - 0.5) * 10;
+            const bodyId = physics.createPlayerBody({
+                x: spawnX,
+                y: 2,
+                z: spawnZ
+            });
+            players.set(socket.id, {
+                socketId: socket.id,
+                bodyId,
+                input: {
+                    throttle: 0,
+                    steer: 0
+                },
+                lastInputSeq: 0
+            });
+            socket.on("input", (msg)=>{
+                const p = players.get(socket.id);
+                if (!p) return;
+                p.input = {
+                    throttle: msg.throttle,
+                    steer: msg.steer
+                };
+                p.lastInputSeq = msg.seq;
+            });
+            socket.on("disconnect", ()=>{
+                console.log("Client disconnected:", socket.id);
+                const p = players.get(socket.id);
+                if (p) {
+                    physics.destroyBody(p.bodyId);
+                    players.delete(socket.id);
+                }
             });
         });
         httpServer.listen(4e3, ()=>console.log("Server running at http://localhost:4000"));
