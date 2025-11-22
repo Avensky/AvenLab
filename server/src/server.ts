@@ -27,12 +27,19 @@ export async function startServer() {
     });
 
     // routes
-    app.get("/snapshot", (_req, res) => {
-        res.json(physics.getSnapshot());
-    });
+    // app.get("/snapshot", (_req, res) => {
+    //     res.json(physics.getSnapshot());
+    // });
 
-    // fps / frequency
-    setInterval(() => physics.step(1 / 60), 1000 / 60);
+    // Broadcast snapshots at 20–60 Hz
+    const frequency = 60; // Hz
+    setInterval(() => {
+        const snapshot = physics.getSnapshot();
+
+        io.emit("snapshot", snapshot);
+    }, 1000 / frequency);
+
+    // setInterval(() => physics.step(1 / 60), 1000 / 60);
 
     // socket up
     io.on("connection", (socket) => {
