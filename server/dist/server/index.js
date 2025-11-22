@@ -1,6 +1,7 @@
 import express from 'express';
-import http from 'http';
+import { Server } from 'socket.io';
 import { randomUUID } from 'crypto';
+import http from 'http';
 (async ()=>{
     const __vite__initWasm = async (opts = {}, url)=>{
         let result;
@@ -8216,10 +8217,21 @@ import { randomUUID } from 'crypto';
         });
         const app = express();
         const httpServer = http.createServer(app);
+        const io = new Server(httpServer, {
+            cors: {
+                origin: "*"
+            }
+        });
         app.get("/snapshot", (_req, res)=>{
             res.json(physics.getSnapshot());
         });
         setInterval(()=>physics.step(1 / 60), 1e3 / 60);
+        io.on("connection", (socket)=>{
+            console.log("Client connected:", socket.id);
+            socket.emit("hello", {
+                msg: "welcome"
+            });
+        });
         httpServer.listen(4e3, ()=>console.log("Server running at http://localhost:4000"));
     }
     startServer();
