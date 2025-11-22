@@ -2,12 +2,14 @@ import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Grid } from "@react-three/drei";
 import { WorldRenderer } from "./components/WorldRenderer";
 import { ModeSwitcher } from "./components/ModeSwitcher";
-import { useSnapshot } from "./hooks/useSnapshot";
+import { useSnapshots } from "./hooks/useSnapshots";
 import { socket } from "./net/socket";
 import { useEffect } from "react";
+import { usePlayerInput } from "./hooks/usePlayerInput";
 
 export default function App() {
-  useSnapshot();
+  useSnapshots();
+  usePlayerInput();
 
   // connect socket
   useEffect(() => {
