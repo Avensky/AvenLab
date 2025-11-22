@@ -1,3 +1,4 @@
+// src/types/snapshot.ts
 export interface BodySnapshot {
     id: string;
     x: number;
@@ -9,7 +10,14 @@ export interface BodySnapshot {
     qw: number;
 }
 
-export interface ServerSnapshot {
+export interface ServerWorldSnapshot {
+    tick: number;
     timestamp: number;
     bodies: BodySnapshot[];
+}
+
+export interface SnapshotMessage {
+    world: ServerWorldSnapshot;
+    yourBodyId: string;
+    lastProcessedInputSeq: number;
 }
