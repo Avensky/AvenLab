@@ -1,15 +1,16 @@
 // server/src/physics.ts
 
-import type { Rapier } from "./types.js"; // we’ll define this later
+import type { Rapier } from "./types.js";
 import { loadRapier } from "./rapier.js";
 
 import { randomUUID } from "crypto";
 import { PlayerInput } from "./types.js";
 
-interface BodyEntry {
-    id: string;
-    body: any;
-}
+// interface BodyEntry {
+//     id: string;
+//     body: any;
+// }
+import { addCityHeightfieldCollider } from "./physicsCity.js";
 
 export class PhysicsWorld {
     public world: any;
@@ -25,11 +26,15 @@ export class PhysicsWorld {
             z: 0
         });
 
-        const ground = this.RAPIER.ColliderDesc
-            .cuboid(50, 0.5, 50)
-            .setTranslation(0, -0.5, 0);
+        // const ground = this.RAPIER.ColliderDesc
+        //     .cuboid(50, 0.5, 50)
+        //     .setTranslation(0, -0.5, 0);
+        // this.world.createCollider(ground);
 
-        this.world.createCollider(ground);
+        // heightfield
+        addCityHeightfieldCollider(this.RAPIER, this.world)
+            .then(() => console.log("City heightfield collider added"))
+            .catch(console.error);
     }
 
 

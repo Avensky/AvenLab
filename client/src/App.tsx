@@ -1,12 +1,17 @@
-import { Canvas } from "@react-three/fiber";
-import { OrbitControls, Grid } from "@react-three/drei";
+import { OrbitControls, Grid, useGLTF } from "@react-three/drei";
 import { WorldRenderer } from "./components/WorldRenderer";
 import { ModeSwitcher } from "./components/ModeSwitcher";
 import { useSnapshots } from "./hooks/useSnapshots";
 import { socket } from "./net/socket";
 import { useEffect } from "react";
 import { usePlayerInput } from "./hooks/usePlayerInput";
-
+import { FullscreenCanvas } from "./layout/FullscreenCanvas";
+import { CityScene } from "./scenes/CityScene";
+import { HeightfieldGeneratorPanel } from "./tools/HeightfieldGeneratorPanel";
+import { CityHeightfield } from "./scenes/CityHeightfield";
+import { CityBuildingColliders } from "./scenes/CityBuildingColliders";
+import heightfieldJSON from '../../server/data/city-heightfield.json'
+import { useSnapshotStore } from "./store/snapshotStore";
 export default function App() {
   useSnapshots();
   usePlayerInput();
@@ -29,19 +34,28 @@ export default function App() {
 
   // useSnapshot();
 
+  const mode = useSnapshotStore(s => s.mode);
+  const { scene } = useGLTF("/models/city.glb");
+
+
+
   return (
     <>
       <ModeSwitcher />
+      <HeightfieldGeneratorPanel />
 
-      <Canvas camera={{ position: [6, 6, 6], fov: 50 }}>
+      <FullscreenCanvas>
         <ambientLight intensity={0.5} />
-        <directionalLight position={[4, 6, 3]} intensity={1} />
+        <directionalLight intensity={1} position={[5, 5, 5]} />
+        {/* <Grid infiniteGrid args={[10, 10]} /> */}
 
-        <Grid infiniteGrid args={[10, 10]} />
+        {mode === "glb" && <CityScene />}
+        {mode === "geometry" && <CityHeightfield data={heightfieldJSON} />}
+        {mode === "collider" && <CityBuildingColliders glb={scene} />}
 
         <WorldRenderer />
         <OrbitControls />
-      </Canvas>
+      </FullscreenCanvas>
     </>
   );
 }
