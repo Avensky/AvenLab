@@ -7,6 +7,8 @@ import { socket } from "./net/socket";
 import { useEffect } from "react";
 
 export default function App() {
+  useSnapshot();
+
   // connect socket
   useEffect(() => {
     socket.on("connect", () => {
@@ -23,7 +25,7 @@ export default function App() {
     };
   }, []);
 
-  useSnapshot();
+  // useSnapshot();
 
   return (
     <>
