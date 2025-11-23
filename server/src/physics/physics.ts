@@ -1,16 +1,19 @@
 // server/src/physics.ts
 
-import type { Rapier } from "./types.js";
-import { loadRapier } from "./rapier.js";
+import type { Rapier } from "../types.js";
+import { loadRapier } from "../rapier.js";
 
 import { randomUUID } from "crypto";
-import { PlayerInput } from "./types.js";
+import { PlayerInput } from "../types.js";
+import { loadBuildingColliders } from "./environment/loadBuildingColliders.js";
+import { loadHeightfield } from "./environment/loadHeightfield.js";
+
+// import { addCityHeightfieldCollider } from "./physicsCity.js";
 
 // interface BodyEntry {
 //     id: string;
 //     body: any;
 // }
-import { addCityHeightfieldCollider } from "./physicsCity.js";
 
 export class PhysicsWorld {
     public world: any;
@@ -32,9 +35,19 @@ export class PhysicsWorld {
         // this.world.createCollider(ground);
 
         // heightfield
-        addCityHeightfieldCollider(this.RAPIER, this.world)
-            .then(() => console.log("City heightfield collider added"))
-            .catch(console.error);
+        // await addCityHeightfieldCollider(this.RAPIER, this.world);
+
+        // addCityHeightfieldCollider(this.RAPIER, this.world)
+        //     .then(() => console.log("City heightfield collider added"))
+        //     .catch(console.error);
+
+        (async () => {
+            // Load terrain first (ground)
+            // await loadHeightfield(RAPIER, this.world);
+
+            // Then load building box colliders
+            // await loadBuildingColliders(RAPIER, this.world);
+        })();
     }
 
 

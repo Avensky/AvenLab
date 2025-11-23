@@ -1,58 +1,86 @@
 // src/store/snapshotStore.ts
 import { create } from "zustand";
-import type { BodySnapshot } from "../types/snapshot";
-import type { PendingInput } from "../types/playerInput";
+// import type { PendingInput } from "../types/playerInput";
 
 export type RenderMode = "glb" | "geometry" | "collider";
 
-export interface PredictedSelfState {
+// export interface PredictedSelfState {
+//     x: number;
+//     y: number;
+//     z: number;
+//     yaw: number; // we’ll derive quaternion from yaw
+// }
+export interface PlayerSnapshot {
+    id: string;
+    kind: string;
     x: number;
     y: number;
     z: number;
-    yaw: number; // we’ll derive quaternion from yaw
+}
+
+export interface PhysicsSnapshot {
+    tick: number;
+    players: PlayerSnapshot[];
 }
 
 interface SnapshotState {
-    bodies: BodySnapshot[];
+    connected: boolean;
+    setConnected: (v: boolean) => void;
+
+    snapshot: PhysicsSnapshot | null;
+    setSnapshot: (snap: PhysicsSnapshot) => void;
+
     mode: RenderMode;
-
-    selfId: string | null;
-    predictedSelf: PredictedSelfState | null;
-
-    pendingInputs: PendingInput[];
-
-    setBodies: (bodies: BodySnapshot[]) => void;
     setMode: (mode: RenderMode) => void;
 
-    setSelfId: (id: string) => void;
-    setPredictedSelf: (state: PredictedSelfState | null) => void;
+    playerId: string | null;
+    setPlayerId: (id: string) => void;
 
-    addPendingInput: (pi: PendingInput) => void;
-    ackInputsUpTo: (seq: number) => void;
+    lastTick: number;
+
+
+    // bodies: BodySnapshot[];
+    // predictedSelf: PredictedSelfState | null;
+    // pendingInputs: PendingInput[];
+    // setBodies: (bodies: BodySnapshot[]) => void;
+
+    // setPredictedSelf: (state: PredictedSelfState | null) => void;
+
+    // addPendingInput: (pi: PendingInput) => void;
+    // ackInputsUpTo: (seq: number) => void;
+
 }
 
 export const useSnapshotStore = create<SnapshotState>((set, get) => ({
-    bodies: [],
+    connected: false,
+    playerId: null,
+    snapshot: null,
+    lastTick: 0,
+
+    setConnected: (v) => set({ connected: v }),
+    setPlayerId: (id) => set({ playerId: id }),
+    setSnapshot: (snap) =>
+        set({
+            snapshot: snap,
+            lastTick: snap.tick,
+        }),
+
     mode: "glb",
-
-    selfId: null,
-    predictedSelf: null,
-
-    pendingInputs: [],
-
-    setBodies: (bodies) => set({ bodies }),
     setMode: (mode) => set({ mode }),
 
-    setSelfId: (id) => set({ selfId: id }),
+    // bodies: [],
+    // predictedSelf: null,
+    // pendingInputs: [],
+    // setBodies: (bodies) => set({ bodies }),
 
-    setPredictedSelf: (state) => set({ predictedSelf: state }),
+    // setPredictedSelf: (state) => set({ predictedSelf: state }),
 
-    addPendingInput: (pi) =>
-        set((s) => ({ pendingInputs: [...s.pendingInputs, pi] })),
+    // addPendingInput: (pi) =>
+    // set((s) => ({ pendingInputs: [...s.pendingInputs, pi] })),
 
     // drop all inputs with seq <= ackSeq
-    ackInputsUpTo: (ackSeq) =>
-        set((s) => ({
-            pendingInputs: s.pendingInputs.filter((pi) => pi.seq > ackSeq)
-        }))
+    // ackInputsUpTo: (ackSeq) =>
+    //     set((s) => ({
+    //         pendingInputs: s.pendingInputs.filter((pi) => pi.seq > ackSeq)
+    // }))
 }));
