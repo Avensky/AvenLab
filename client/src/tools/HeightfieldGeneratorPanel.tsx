@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useGLTF } from "@react-three/drei";
 import {
     Box3,
@@ -8,6 +8,10 @@ import {
     Matrix3,
     type Intersection,
 } from "three";
+import type {
+    HeightfieldV4In,
+    HeightfieldV4Out,
+} from "../workers/heightfieldWorker";
 
 type HeightfieldData = {
     nx: number;
@@ -17,6 +21,7 @@ type HeightfieldData = {
     minHeight: number;
     maxHeight: number;
     heights: number[];
+    lodLevels?: HeightfieldV4Out["lodLevels"];
 };
 
 function sampleHeightAt(
@@ -30,20 +35,14 @@ function sampleHeightAt(
         upDotThreshold?: number;
     }
 ): number {
-    const groundThreshold = options?.groundThreshold ?? 4; // max height above "terrain" for valid samples
-    const upDotThreshold = options?.upDotThreshold ?? 0.5; // reject surfaces where |normal.y| < this (walls)
+    const groundThreshold = options?.groundThreshold ?? 4;
+    const upDotThreshold = options?.upDotThreshold ?? 0.5;
 
     const maxY = bbox.max.y;
     const down = new Vector3(0, -1, 0);
     const normalMatrix = new Matrix3();
 
-    const offsets = [
-        [0, 0],
-        [0.3, 0],
-        [-0.3, 0],
-        [0, 0.3],
-        [0, -0.3],
-    ];
+    const offsets = [[0, 0]];
 
     let bestY: number | null = null;
 
@@ -60,11 +59,12 @@ function sampleHeightAt(
 
             if (!hit.face || !hit.object) continue;
 
-            // Compute world-space normal
             normalMatrix.getNormalMatrix(hit.object.matrixWorld);
-            const worldNormal = hit.face.normal.clone().applyMatrix3(normalMatrix).normalize();
+            const worldNormal = hit.face.normal
+                .clone()
+                .applyMatrix3(normalMatrix)
+                .normalize();
 
-            // Ignore steep/vertical surfaces (walls, building sides)
             if (Math.abs(worldNormal.y) < upDotThreshold) {
                 continue;
             }
@@ -72,7 +72,6 @@ function sampleHeightAt(
             const y = point.y;
             const aboveGround = y - bbox.min.y;
 
-            // Reject roofs/ledges that are much higher than "terrain"
             if (aboveGround > groundThreshold) {
                 continue;
             }
@@ -86,11 +85,16 @@ function sampleHeightAt(
     return bestY ?? bbox.min.y;
 }
 
-async function generateHeightfieldV3(
+/**
+ * v4 base sampling (same raycasting as v3, but only does the first pass)
+ */
+
+async function sampleHeightfieldBase(
     scene: Object3D,
     nx = 128,
-    ny = 128
-): Promise<HeightfieldData> {
+    ny = 128,
+    onProgress?: (p: number) => void
+) {
     const bbox = new Box3().setFromObject(scene);
     const width = bbox.max.x - bbox.min.x;
     const depth = bbox.max.z - bbox.min.z;
@@ -102,7 +106,6 @@ async function generateHeightfieldV3(
 
     const heights: number[] = new Array(nx * ny).fill(bbox.min.y);
 
-    // --------- Initial sampling with building avoidance + normal filtering ----------
     for (let iy = 0; iy < ny; iy++) {
         const z = minZ + (iy / (ny - 1)) * depth;
 
@@ -115,91 +118,25 @@ async function generateHeightfieldV3(
 
             heights[iy * nx + ix] = height;
         }
-    }
 
-    // --------- Hole filling pass ----------
-    const fillPasses = 2;
-    for (let pass = 0; pass < fillPasses; pass++) {
-        for (let iy = 0; iy < ny; iy++) {
-            for (let ix = 0; ix < nx; ix++) {
-                const i = iy * nx + ix;
-                if (heights[i] !== bbox.min.y) continue;
-
-                const neighbors: number[] = [];
-                if (ix > 0) neighbors.push(heights[i - 1]);
-                if (ix < nx - 1) neighbors.push(heights[i + 1]);
-                if (iy > 0) neighbors.push(heights[i - nx]);
-                if (iy < ny - 1) neighbors.push(heights[i + nx]);
-
-                const valid = neighbors.filter((v) => v !== bbox.min.y);
-                if (valid.length > 0) {
-                    heights[i] = valid.reduce((a, b) => a + b, 0) / valid.length;
-                }
-            }
+        // Let the browser breathe every few rows
+        if (iy % 4 === 0) {
+            await new Promise((r) => setTimeout(r, 0));
         }
-    }
-
-    // --------- Edge detection + clamping ----------
-    // If a cell is much higher than its neighbors, treat as a building edge and clamp.
-    const edgeHeightThreshold = 2.5;
-
-    for (let iy = 1; iy < ny - 1; iy++) {
-        for (let ix = 1; ix < nx - 1; ix++) {
-            const i = iy * nx + ix;
-            const h = heights[i];
-
-            const left = heights[i - 1];
-            const right = heights[i + 1];
-            const up = heights[i - nx];
-            const down = heights[i + nx];
-
-            const minNeighbor = Math.min(left, right, up, down);
-            const maxNeighbor = Math.max(left, right, up, down);
-
-            const isSpikeUp = h - minNeighbor > edgeHeightThreshold;
-            const isSpikeDown = maxNeighbor - h > edgeHeightThreshold;
-
-            // Clamp big spikes to local average of neighbors
-            if (isSpikeUp || isSpikeDown) {
-                const avg =
-                    (left + right + up + down) / 4;
-                heights[i] = avg;
-            }
-        }
-    }
-
-    // --------- Optional smoothing ----------
-    const smoothingPasses = 1; // increase for softer terrain
-    for (let pass = 0; pass < smoothingPasses; pass++) {
-        const copy = heights.slice();
-
-        for (let iy = 1; iy < ny - 1; iy++) {
-            for (let ix = 1; ix < nx - 1; ix++) {
-                const i = iy * nx + ix;
-                const h = copy[i];
-
-                const left = copy[i - 1];
-                const right = copy[i + 1];
-                const up = copy[i - nx];
-                const down = copy[i + nx];
-
-                heights[i] = (h + left + right + up + down) / 5;
-            }
-        }
+        onProgress?.(iy / (ny - 1));
     }
 
     return {
+        bbox,
         nx,
         ny,
         width,
         depth,
-        minHeight: Math.min(...heights),
-        maxHeight: Math.max(...heights),
         heights,
     };
 }
 
-function downloadJSON(data: HeightfieldData, filename = "city-heightfield-v3.json") {
+function downloadJSON(data: HeightfieldData, filename = "city-heightfield-v4.json") {
     const blob = new Blob([JSON.stringify(data, null, 2)], {
         type: "application/json",
     });
@@ -216,16 +153,84 @@ export function HeightfieldGeneratorPanel() {
     const [status, setStatus] = useState<null | string>(null);
     const [nx, setNx] = useState(128);
     const [ny, setNy] = useState(128);
+    const [progress, setProgress] = useState(0);
+
+    const workerRef = useRef<Worker | null>(null);
+
+    useEffect(() => {
+        const worker = new Worker(
+            new URL("../workers/heightfieldWorker.ts", import.meta.url),
+            { type: "module" }
+        );
+        workerRef.current = worker;
+
+        return () => {
+            worker.terminate();
+            workerRef.current = null;
+        };
+    }, []);
 
     const handleGenerate = async () => {
         try {
-            setStatus("Generating heightfield v3…");
-            const data = await generateHeightfieldV3(scene, nx, ny);
-            downloadJSON(data);
-            setStatus(`Done! Exported ${nx}×${ny} heightfield.`);
+            setStatus("Sampling v4 (raycast)…");
+            setProgress(0);
+
+            // 1) base sampling on main thread
+            const base = await sampleHeightfieldBase(scene, nx, ny, (p) =>
+                setProgress(p)
+            );
+
+            if (!workerRef.current) {
+                setStatus("Worker not ready.");
+                return;
+            }
+
+            setStatus("Processing in worker (v4)…");
+
+            // 2) send heights to worker for v4 post-processing + LOD
+            const payload: HeightfieldV4In = {
+                nx,
+                ny,
+                minY: base.bbox.min.y,
+                heights: base.heights,
+            };
+
+            const result: HeightfieldV4Out = await new Promise((resolve, reject) => {
+                const worker = workerRef.current!;
+                const handleMessage = (ev: MessageEvent) => {
+                    const { cmd, payload } = ev.data;
+                    if (cmd === "done") {
+                        worker.removeEventListener("message", handleMessage);
+                        resolve(payload as HeightfieldV4Out);
+                    }
+                };
+                worker.addEventListener("message", handleMessage);
+                worker.postMessage({ cmd: "processHeightfield", payload });
+
+                // Optional: simple timeout
+                setTimeout(() => {
+                    worker.removeEventListener("message", handleMessage);
+                    reject(new Error("Worker timeout"));
+                }, 60_000);
+            });
+
+            const data: HeightfieldData = {
+                nx,
+                ny,
+                width: base.width,
+                depth: base.depth,
+                minHeight: result.minHeight,
+                maxHeight: result.maxHeight,
+                heights: result.heights,
+                lodLevels: result.lodLevels, // optional, backend can ignore for now
+            };
+
+            downloadJSON(data, "city-heightfield-v4.json");
+            setStatus(`Done! Exported v4 ${nx}×${ny} heightfield.`);
+            setProgress(1);
         } catch (err) {
             console.error(err);
-            setStatus("Error generating heightfield. Check console.");
+            setStatus("Error generating v4 heightfield. Check console.");
         }
     };
 
@@ -236,15 +241,26 @@ export function HeightfieldGeneratorPanel() {
                 bottom: "1rem",
                 left: "1rem",
                 padding: "0.75rem 1rem",
-                background: "rgba(0,0,0,0.7)",
+                background: "rgba(0,0,0,0.75)",
                 color: "white",
                 fontSize: "0.8rem",
                 borderRadius: "0.5rem",
                 zIndex: 30,
             }}
         >
-            <div style={{ marginBottom: "0.5rem" }}>Heightfield Generator v3</div>
-            <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.5rem" }}>
+            <div style={{ marginBottom: "0.25rem", fontWeight: 600 }}>
+                Heightfield Generator v4
+            </div>
+            <div style={{ fontSize: "0.7rem", marginBottom: "0.5rem" }}>
+                Raycast + worker (LOD “octree”)
+            </div>
+            <div
+                style={{
+                    display: "flex",
+                    gap: "0.5rem",
+                    marginBottom: "0.5rem",
+                }}
+            >
                 <label>
                     nx:
                     <input
@@ -268,8 +284,29 @@ export function HeightfieldGeneratorPanel() {
                     />
                 </label>
             </div>
-            <button onClick={handleGenerate}>Generate Heightfield v3</button>
+            <button onClick={handleGenerate}>Generate Heightfield v4</button>
             {status && <div style={{ marginTop: "0.5rem" }}>{status}</div>}
+            {progress > 0 && progress < 1 && (
+                <div
+                    style={{
+                        marginTop: "0.5rem",
+                        height: "4px",
+                        width: "100%",
+                        background: "rgba(255,255,255,0.2)",
+                        borderRadius: "999px",
+                        overflow: "hidden",
+                    }}
+                >
+                    <div
+                        style={{
+                            width: `${Math.round(progress * 100)}%`,
+                            height: "100%",
+                            background: "#4ade80",
+                            transition: "width 0.1s linear",
+                        }}
+                    />
+                </div>
+            )}
         </div>
     );
 }
