@@ -1,6 +1,8 @@
 import { useSnapshotStore } from "../store/snapshotStore";
 
 let socket: WebSocket | null = null;
+let reconnectTimer: any = null;
+let heartbeatTimer: any = null;
 
 export function connectRustServer() {
     if (socket) return socket;
@@ -8,43 +10,64 @@ export function connectRustServer() {
     // Zustand's built-in setter
     const set = useSnapshotStore.setState;
 
-    socket = new WebSocket("ws://localhost:9001");
+    function connect() {
 
-    socket.onopen = () => {
-        console.log("Connected to Rust physics server");
-        set({ connected: true });
-    };
+        socket = new WebSocket("ws://localhost:9001");
 
-    socket.onclose = () => {
-        set({ connected: false });
-    };
+        socket.onopen = () => {
+            console.log("Connected to Rust physics server");
+            set({ connected: true });
 
-    socket.onerror = () => {
-        set({ connected: false });
-    };
+            // Heartbeat every 5 seconds
+            heartbeatTimer = setInterval(() => {
+                if (socket?.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({ type: "ping" }));
+                }
+            }, 5000);
+        };
 
-    socket.onmessage = (event) => {
-        try {
-            const data = JSON.parse(event.data);
+        socket.onclose = () => {
+            set({ connected: false });
+        };
 
-            // --- Welcome message ---
-            if (data.type === "welcome") {
-                set({ playerId: data.playerId });
-                return;
+        socket.onerror = () => {
+            set({ connected: false });
+
+            // Clean timers
+            clearInterval(heartbeatTimer);
+
+            // Attempt reconnect in 1–3 seconds (random to avoid thundering herd)
+            reconnectTimer = setTimeout(() => connect(), 1000 + Math.random() * 2000);
+
+        };
+
+        socket.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+
+                // --- hearbeat ---
+                if (data.type === "pong") return;
+
+                // --- Welcome message ---
+                if (data.type === "welcome") {
+                    set({ playerId: data.playerId });
+                    return;
+                }
+
+                // --- Snapshot ---
+                if (data.players && typeof data.tick === "number") {
+                    set({
+                        snapshot: data,
+                        lastTick: data.tick,
+                    });
+                }
+
+            } catch (err) {
+                console.warn("Failed to parse physics message", err);
             }
+        };
+    }
 
-            // --- Snapshot ---
-            if (data.players && typeof data.tick === "number") {
-                set({
-                    snapshot: data,
-                    lastTick: data.tick,
-                });
-            }
-
-        } catch (err) {
-            console.warn("Failed to parse physics message", err);
-        }
-    };
-
+    if (!socket) connect();
     return socket;
 }
