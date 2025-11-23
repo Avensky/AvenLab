@@ -59,6 +59,12 @@ pub async fn start_websocket_server(state: Arc<Mutex<SharedGameState>>) {
 
         let (mut write, mut read) = ws_stream.split();
 
+        // Heartbeat
+        if msg.contains("\"type\":\"ping\"") {
+            write.send(Message::Text("{\"type\":\"pong\"}".into())).await?;
+            continue;
+        }
+
         // READ LOOP: handle client input
         let state_for_read = state.clone();
         tokio::spawn(async move {
@@ -98,6 +104,8 @@ pub async fn start_websocket_server(state: Arc<Mutex<SharedGameState>>) {
         // WRITE LOOP: snapshots and messages to client
         tokio::spawn(async move {
             while let Some(msg) = rx.recv().await {
+
+                
                 let _ = write.send(Message::Text(msg)).await;
             }
         });
