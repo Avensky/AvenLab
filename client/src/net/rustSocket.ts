@@ -1,3 +1,4 @@
+// /src/net/rustSocket.ts
 import { useSnapshotStore } from "../store/snapshotStore";
 
 let socket: WebSocket | null = null;
@@ -17,7 +18,6 @@ export function connectRustServer() {
         socket.onopen = () => {
             console.log("Connected to Rust physics server");
             set({ connected: true });
-
             // Heartbeat every 5 seconds
             heartbeatTimer = setInterval(() => {
                 if (socket?.readyState === WebSocket.OPEN) {
@@ -42,29 +42,58 @@ export function connectRustServer() {
         };
 
         socket.onmessage = (event) => {
+            let data: any;
             try {
-                const data = JSON.parse(event.data);
-
-                // --- hearbeat ---
-                if (data.type === "pong") return;
-
-                // --- Welcome message ---
-                if (data.type === "welcome") {
-                    set({ playerId: data.playerId });
-                    return;
-                }
-
-                // --- Snapshot ---
-                if (data.players && typeof data.tick === "number") {
-                    set({
-                        snapshot: data,
-                        lastTick: data.tick,
-                    });
-                }
-
-            } catch (err) {
-                console.warn("Failed to parse physics message", err);
+                data = JSON.parse(event.data);
+            } catch {
+                console.warn("Bad JSON from server:", event.data);
+                return;
             }
+            console.log('data', data);
+
+            // Pong heartbeat
+            if (data.type === "pong") return;
+
+            // Receive player ID
+            if (data.type === "welcome") {
+                set({ playerId: data.player_id });
+                console.log("Registered player:", data.player_id);
+                return;
+            }
+
+            // Snapshot
+            if (data.players && typeof data.tick === "number") {
+                set({
+                    snapshot: data,
+                    lastTick: data.tick,
+                });
+                return;
+            }
+
+            console.warn("Unknown message:", data);
+
+            // try {
+            //     const data = JSON.parse(event.data);
+
+            //     // --- hearbeat ---
+            //     if (data.type === "pong") return;
+
+            //     // --- Welcome message ---
+            //     if (data.type === "welcome") {
+            //         set({ playerId: data.playerId });
+            //         return;
+            //     }
+
+            //     // --- Snapshot ---
+            //     if (data.players && typeof data.tick === "number") {
+            //         set({
+            //             snapshot: data,
+            //             lastTick: data.tick,
+            //         });
+            //     }
+            // } catch (err) {
+            //     console.warn("Failed to parse physics message", err);
+            // }
         };
     }
 
