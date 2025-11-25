@@ -38,17 +38,16 @@ interface SnapshotState {
 
     lastTick: number;
 
+    getMe: () => PlayerSnapshot | null;
+    getOthers: () => PlayerSnapshot[];
 
     // bodies: BodySnapshot[];
     // predictedSelf: PredictedSelfState | null;
     // pendingInputs: PendingInput[];
     // setBodies: (bodies: BodySnapshot[]) => void;
-
     // setPredictedSelf: (state: PredictedSelfState | null) => void;
-
     // addPendingInput: (pi: PendingInput) => void;
     // ackInputsUpTo: (seq: number) => void;
-
 }
 
 export const useSnapshotStore = create<SnapshotState>((set, get) => ({
@@ -59,25 +58,34 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
 
     setConnected: (v) => set({ connected: v }),
     setPlayerId: (id) => set({ playerId: id }),
-    setSnapshot: (snap) =>
-        set({
-            snapshot: snap,
-            lastTick: snap.tick,
-        }),
+    setSnapshot: snap => set({ snapshot: snap }),
 
     mode: "glb",
     setMode: (mode) => set({ mode }),
+
+
+    getMe() {
+        const snap = get().snapshot;
+        const id = get().playerId;
+        if (!snap || !id) return null;
+        return snap.players.find(p => p.id === id) || null;
+    },
+
+    getOthers() {
+        const snap = get().snapshot;
+        const id = get().playerId;
+        if (!snap) return [];
+        return snap.players.filter(p => p.id !== id);
+    }
+
 
     // bodies: [],
     // predictedSelf: null,
     // pendingInputs: [],
     // setBodies: (bodies) => set({ bodies }),
-
     // setPredictedSelf: (state) => set({ predictedSelf: state }),
-
     // addPendingInput: (pi) =>
     // set((s) => ({ pendingInputs: [...s.pendingInputs, pi] })),
-
     // drop all inputs with seq <= ackSeq
     // ackInputsUpTo: (ackSeq) =>
     //     set((s) => ({
