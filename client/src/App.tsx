@@ -14,6 +14,7 @@ import { BuildingColliderExporter } from "./tools/BuildingColliderExporter";
 import { NetworkVehicleScene } from "./scenes/NetworkVehicleScene";
 import { connectRustServer } from "./net/rustSocket";
 import { useEffect } from "react";
+import { NetworkWorld } from "./scenes/NetworkWorld";
 
 export default function App() {
   // useSnapshots();
@@ -53,11 +54,8 @@ export default function App() {
         <ambientLight intensity={0.5} />
         <directionalLight intensity={1} position={[5, 5, 5]} />
         {/* <Grid infiniteGrid args={[10, 10]} /> */}
-
-        <NetworkVehicleScene
-          snapshot={snapshot} playerId={playerId}
-
-        />
+        <NetworkVehicleScene />   {/* YOU */}
+        <NetworkWorld />          {/* OTHER PLAYERS */}
 
         {mode === "glb" && <CityScene />}
         {/* {mode === "glb" && <CityScene />} */}
