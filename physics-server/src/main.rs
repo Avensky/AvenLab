@@ -5,6 +5,7 @@ mod state;
 use crate::physics::PhysicsWorld;
 use crate::net::start_websocket_server;
 use crate::state::{SharedGameState, EntityType};
+
 use rapier3d::prelude::RigidBodyHandle;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -18,12 +19,10 @@ async fn main() {
     let physics = Arc::new(Mutex::new(PhysicsWorld::new()));
 
     // Start WebSocket server
-    {
-        let state_clone = state.clone();
-        tokio::spawn(async move {
-            start_websocket_server(state_clone).await;
-        });
-    }
+    tokio::spawn(start_websocket_server(
+        Arc::clone(&state),
+        Arc::clone(&physics),
+    ));
 
     // Fixed timestep: ~60 Hz
     let mut ticker = interval(Duration::from_millis(16));
@@ -39,7 +38,11 @@ async fn main() {
             if entity.body_handle == RigidBodyHandle::invalid() {
                 entity.body_handle = match entity.kind {
                     EntityType::Vehicle => phys.create_vehicle_body(),
-                    EntityType::Drone => phys.create_drone_body(),
+                    EntityType::Drone
+                    | EntityType::Helicopter
+                    | EntityType::Jet
+                    | EntityType::Boat
+                    | EntityType::Ship => phys.create_drone_body(), // placeholder for non-cars
                 };
                 println!("Created {:?} body for entity {}", entity.kind, entity.id);
             }
@@ -50,7 +53,11 @@ async fn main() {
                     EntityType::Vehicle => {
                         phys.apply_vehicle_input(entity.body_handle, axes.throttle, axes.steer);
                     }
-                    EntityType::Drone => {
+                    EntityType::Drone
+                    | EntityType::Helicopter
+                    | EntityType::Jet
+                    | EntityType::Boat
+                    | EntityType::Ship => {
                         phys.apply_drone_input(
                             entity.body_handle,
                             axes.throttle,
@@ -65,7 +72,7 @@ async fn main() {
         }
 
         // Step physics
-        phys.step();
+        phys.step(1.0 / 60.0);
 
         // Advance tick + broadcast snapshot
         game.tick += 1;
