@@ -36,6 +36,10 @@ interface SnapshotState {
     playerId: string | null;
     setPlayerId: (id: string) => void;
 
+    team: "Red" | "Blue" | null;
+    roomId: number | null;
+    spawn: [number, number, number] | null;
+
     lastTick: number;
 
     getMe: () => PlayerSnapshot | null;
@@ -59,6 +63,11 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
     setConnected: (v) => set({ connected: v }),
     setPlayerId: (id) => set({ playerId: id }),
     setSnapshot: snap => set({ snapshot: snap }),
+
+
+    team: null,
+    roomId: null,
+    spawn: null,
 
     mode: "glb",
     setMode: (mode) => set({ mode }),

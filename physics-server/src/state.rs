@@ -1,28 +1,15 @@
-// src/state.rs
-
-use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
-use tokio::sync::mpsc::UnboundedSender;
-use rapier3d::prelude::{RigidBodyHandle, RigidBodySet};
-use uuid::Uuid;
-// use crate::state::ClientTx;
 
+use rapier3d::prelude::*;
+// use serde::Serialize;
+use serde_json::json;
 
-pub type ClientTx = UnboundedSender<String>;
+use crate::spawn::{PlayerSpawnInfo, SpawnManager, Team};
 
-
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum EntityType {
-    Vehicle,
-    Drone,
-    Helicopter,
-    Jet,
-    Boat,
-    Ship,
-}
-
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+/// =======================
+/// Player Input (from net)
+/// =======================
+#[derive(Debug, Clone)]
 pub struct Axes {
     pub throttle: f32,
     pub steer: f32,
@@ -32,116 +19,239 @@ pub struct Axes {
     pub roll: f32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct EntityInput {
-    pub tick: u64,
     pub axes: Axes,
 }
 
-pub struct Entity {
+/// =========================
+/// Entity Type (server-side)
+/// =========================
+#[derive(Debug, Clone)]
+pub enum EntityType {
+    Vehicle,
+    Drone,
+    Helicopter,
+    Jet,
+    Boat,
+    Ship,
+}
+
+impl EntityType {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            EntityType::Vehicle => "vehicle",
+            EntityType::Drone => "drone",
+            EntityType::Helicopter => "helicopter",
+            EntityType::Jet => "jet",
+            EntityType::Boat => "boat",
+            EntityType::Ship => "ship",
+        }
+    }
+}
+
+/// =========================
+/// Entity State (Per-Player)
+/// =========================
+#[derive(Debug, Clone)]
+pub struct EntityState {
     pub id: String,
     pub kind: EntityType,
+    pub room_id: usize,
+    pub team: Team,
     pub body_handle: RigidBodyHandle,
     pub last_input: Option<EntityInput>,
 }
 
-#[derive(Serialize)]
-pub struct PlayerSnapshot {
-    pub id: String,
-    pub kind: EntityType,
-    pub x: f32,
-    pub y: f32,
-    pub z: f32,
-}
 
-#[derive(Serialize)]
-pub struct Snapshot {
-    pub tick: u64,
-    pub players: Vec<PlayerSnapshot>,
-}
 
+
+/// ================================
+/// Shared Game State
+/// ================================
 pub struct SharedGameState {
     pub tick: u64,
-    pub clients: Vec<ClientTx>,
-    pub entities: HashMap<String, Entity>,
+
+    /// All active entities keyed by player_id
+    pub entities: HashMap<String, EntityState>,
+
+    /// Spawn manager (rooms / teams / positions)
+    pub spawns: crate::spawn::SpawnManager,
+
+    /// All connected WebSocket clients for this process
+    pub clients: Vec<tokio::sync::mpsc::UnboundedSender<String>>,
 }
 
 impl SharedGameState {
-
-    pub fn register_client(&mut self, tx: ClientTx) {
-        self.clients.push(tx);
-    }
-
-
     pub fn new() -> Self {
         Self {
             tick: 0,
-            clients: Vec::new(),
             entities: HashMap::new(),
+            spawns: SpawnManager::new(10),
+            clients: Vec::new(),
         }
     }
 
+    /// Register a new client sender so we can push snapshots to it.
+    pub fn register_client(&mut self, tx: tokio::sync::mpsc::UnboundedSender<String>) {
+        self.clients.push(tx);
+    }
+
+    /// Create an entity entry. net.rs calls this right after it decides
+    /// which EntityType this connection will be (Vehicle / Drone / etc).
+    pub fn add_entity(&mut self, id: &str, kind: EntityType) {
+        let ent = EntityState {
+            id: id.to_string(),
+            kind,
+            room_id: 0, // overwritten later
+            team: Team::Red, // overwritten later
+            body_handle: RigidBodyHandle::invalid(),
+            last_input: None,
+        };
+        self.entities.insert(id.to_string(), ent);
+    }
+
+    /// Apply spawn info from the SpawnManager (room, team, position).
+    /// We only store room/team here; the actual physics position was
+    /// used when creating the Rapier body in physics.
+    pub fn apply_spawn_info(&mut self, spawn: &PlayerSpawnInfo) {
+        if let Some(ent) = self.entities.get_mut(&spawn.player_id) {
+            ent.room_id = spawn.room_id;
+            ent.team = spawn.team;
+        } else {
+            println!(
+                "⚠ apply_spawn_info called for unknown player_id={}",
+                spawn.player_id
+            );
+        }
+    }
+
+    /// Attach Rapier body handle once physics has created the rigid body.
     pub fn attach_body(&mut self, id: &str, handle: RigidBodyHandle) {
-        if let Some(entity) = self.entities.get_mut(id) {
-            entity.body_handle = handle;
+        if let Some(ent) = self.entities.get_mut(id) {
+            ent.body_handle = handle;
+            println!(
+                "✅ Attached body {:?} to entity {} (team: {:?}, room: {})",
+                handle, ent.id, ent.team, ent.room_id
+            );
+        } else {
+            println!("⚠ attach_body called for unknown entity id={}", id);
         }
     }
 
 
-    /// Create a new entity (vehicle / drone / jet / boat / etc.)
-    pub fn add_entity(&mut self, kind: EntityType) -> String {
-        let id = Uuid::new_v4().to_string();
-        self.entities.insert(
-            id.clone(),
-            Entity {
-                id: id.clone(),
-                kind,
-                body_handle: RigidBodyHandle::invalid(),
-                last_input: None,
-            },
-        );
-        id
-    }
-
-    pub fn update_input(&mut self, id: &str, axes: Axes, tick: u64) {
-        if let Some(entity) = self.entities.get_mut(id) {
-            entity.last_input = Some(EntityInput { tick, axes });
+    /// Store the latest input from a player. Physics loop will read this
+    /// every tick in main.rs and apply forces.
+    pub fn update_input(&mut self, id: &str, axes: Axes) {
+        if let Some(ent) = self.entities.get_mut(id) {
+            ent.last_input = Some(EntityInput { axes });
         }
     }
 
+    /// Remove an entity when the player disconnects.
     pub fn remove_entity(&mut self, id: &str) {
         self.entities.remove(id);
     }
 
-    /// Build and send a snapshot of all entities to all clients.
-    pub fn broadcast_snapshot(&self, bodies: &RigidBodySet) {
-        let mut players = Vec::with_capacity(self.entities.len());
+    /// Build a snapshot and broadcast it to all connected clients.
+    ///
+    /// Wire format (what the frontend sees):
+    /// {
+    ///   "type": "snapshot",
+    ///   "data": {
+    ///     "tick": 123,
+    ///     "players": [
+    ///       {
+    ///         "id": "player-uuid",
+    ///         "kind": "vehicle",
+    ///         "room_id": 0,
+    ///         "team": "red",
+    ///         "x": 0.0, "y": 4.0, "z": 0.0
+    ///       },
+    ///       ...
+    ///     ]
+    ///   }
+    /// }
 
-        for entity in self.entities.values() {
-            if let Some(body) = bodies.get(entity.body_handle) {
+    pub fn broadcast_snapshot(&mut self, bodies: &RigidBodySet) {
+        // If no clients, do nothing (saves work when menu/server idle)
+        if self.clients.is_empty() {
+            return;
+        }
+        println!("📤 Broadcasting snapshot for tick {}", self.tick);
+        println!(
+            "   clients: {}, entities: {}",
+            self.clients.len(),
+            self.entities.len()
+        );
+        
+                // Build the players array for this snapshot
+        let mut players_json = Vec::new();
+
+        for ent in self.entities.values() {
+            // Skip entities that don’t yet have a physics body
+            if ent.body_handle == RigidBodyHandle::invalid() {
+                println!(
+                    "   ↪ entity {} has invalid body_handle, skipping",
+                    ent.id
+                );
+                continue;
+            }
+
+            // Look up the Rapier body
+            if let Some(body) = bodies.get(ent.body_handle) {
                 let pos = body.translation();
-                players.push(PlayerSnapshot {
-                    id: entity.id.clone(),
-                    kind: entity.kind,
-                    x: pos.x,
-                    y: pos.y,
-                    z: pos.z,
-                });
+                println!(
+                    "   ↪ entity {} @ ({:.2}, {:.2}, {:.2})",
+                    ent.id, pos.x, pos.y, pos.z
+                );
+
+                players_json.push(json!({
+                    "id": ent.id,
+                    "kind": ent.kind.as_str(),
+                    "room_id": ent.room_id,
+                    "team": ent.team.as_str(),
+                    "x": pos.x,
+                    "y": pos.y,
+                    "z": pos.z,
+                }));
+            } else {
+                println!(
+                    "   ⚠ body not found in RigidBodySet for entity {} handle {:?}",
+                    ent.id, ent.body_handle
+                );
             }
         }
 
-        if players.is_empty() {
-            return;
-        }
+        // Build final payload with a top-level "type"
+        let payload = json!({
+            "type": "snapshot",
+            "data": {
+                "tick": self.tick,
+                "players": players_json,
+            }
+        });
 
-        let json = serde_json::to_string(&Snapshot {
-            tick: self.tick,
-            players,
-        })
-        .unwrap();
+        let json = payload.to_string();
+        println!("   Snapshot payload: {}", json);
 
-        for tx in &self.clients {
-            let _ = tx.send(json.clone());
+        // Send to all registered clients
+        for (i, tx) in self.clients.iter().enumerate() {
+            match tx.send(json.clone()) {
+                Ok(_) => {
+                    println!(
+                        "   ✅ sent snapshot for tick {} to client #{}",
+                        self.tick, i
+                    );
+                }
+                Err(e) => {
+                    println!(
+                        "   ❌ failed to send snapshot to client #{}: {}",
+                        i, e
+                    );
+                }
+            }
         }
     }
 }
+
