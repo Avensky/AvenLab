@@ -56,13 +56,19 @@ export function connectRustServer() {
 
             // Receive player ID
             if (data.type === "welcome") {
-                set({ playerId: data.player_id });
-                console.log("Registered player:", data.player_id);
+                // console.log("Welcome data:", data);
+                set({
+                    playerId: data.player_id,
+                    team: data.team,
+                    roomId: data.room_id,
+                    spawn: data.spawn,
+                });
+                // console.log("Welcome:", data.player_id);
                 return;
             }
 
             // Snapshot
-            if (data.players && typeof data.tick === "number") {
+            if (data.type === "snapshot" && data.players && typeof data.tick === "number") {
                 set({
                     snapshot: data,
                     lastTick: data.tick,

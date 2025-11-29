@@ -1,8 +1,9 @@
 use std::sync::Arc;
-use futures::{StreamExt, SinkExt};
+use uuid::Uuid;
 use tokio::net::TcpListener;
+use tokio::sync::{Mutex, mpsc}; 
+use futures::{StreamExt, SinkExt};
 use tokio_tungstenite::{accept_async, tungstenite::Message};
-use tokio::sync::{Mutex, mpsc};
 
 use crate::state::{SharedGameState, Axes, EntityType};
 use crate::physics::PhysicsWorld;
@@ -44,104 +45,100 @@ pub async fn start_websocket_server(
 
     println!("🌐 WebSocket listening on ws://localhost:9001");
 
-    loop {
-        let (raw, _) = listener.accept().await.unwrap();
+    while let Ok((raw_stream, _addr)) = listener.accept().await {
+
+        // let (raw_stream, _) = listener.accept().await.unwrap();
         let state_clone = Arc::clone(&state);
         let physics_clone = Arc::clone(&physics);
 
         tokio::spawn(async move {
-            let ws = accept_async(raw).await.unwrap();
-            let (mut write, mut read) = ws.split();
 
-            // -------------------------------
-            // 1) Create outgoing message channel
-            // -------------------------------
+            let ws_stream = accept_async(raw_stream).await.unwrap();
+            let (write, mut read) = ws_stream.split();
+
+            // Create channel for sending snapshots TO THIS CLIENT
             let (tx, mut rx) = mpsc::unbounded_channel::<String>();
+            let tx_for_game = tx.clone();     // clone kept by game
+            let tx_for_ping = tx.clone();     // clone kept locally for ping replies
+            let tx_for_writer = tx.clone();   // used for snapshot writer task
+            
+            // Spawn writer task that owns the write half
+            tokio::spawn(async move {
+                let mut ws_write = write;
+                while let Some(msg) = rx.recv().await {
+                    if ws_write.send(Message::Text(msg)).await.is_err() {
+                        break; // client disconnected
+                    }
+                }
+            });
 
+            // ---------- 1) Register client for snapshots ----------
             {
                 let mut game = state_clone.lock().await;
                 game.register_client(tx.clone());
             }
+            
+            // ---------- 2) Create player_id ----------
+            let player_id = Uuid::new_v4().to_string();
 
-            // -------------------------------
-            // 2) Spawn send-loop task
-            // -------------------------------
-            tokio::spawn(async move {
-                while let Some(msg) = rx.recv().await {
-                    let _ = write.send(Message::Text(msg)).await;
-                }
-            });
-
-            // -------------------------------
-            // 3) Create entity + physics body
-            // -------------------------------
-            let player_id = {
+            // ---------- 3) Ask SpawnManager for spawn info ----------
+            let spawn_info = {
                 let mut game = state_clone.lock().await;
-                let id = game.add_entity(EntityType::Vehicle);
+                game.spawns.allocate_spawn(player_id.clone())
+            };
+            let room_id = spawn_info.room_id;
+            let team = spawn_info.team;
 
+            // ---------- 4) Add entity in game state ----------
+            {
+                let mut game = state_clone.lock().await;
+                game.add_entity(&player_id, EntityType::Vehicle);
+                game.apply_spawn_info(&spawn_info);
+            }
+
+            // ---------- 5) Create Rapier body in physics ----------
+            let body_handle = {
                 let mut phys = physics_clone.lock().await;
-                let body = phys.create_vehicle_body();
-                game.attach_body(&id, body);
-
-                id
+                phys.create_vehicle_body_at(spawn_info.position)
             };
 
-            println!("🟢 Player connected: {}", player_id);
+            // ---------- 6) Attach body handle back to game state ----------
+            {
+                let mut game = state_clone.lock().await;
+                game.attach_body(&player_id, body_handle);
+            }
 
-            // Send welcome through the outgoing TX channel
-            let welcome = format!(
-                r#"{{"type":"welcome","player_id":"{}"}}"#,
-                player_id
-            );
+            // ---------- 7) Send welcome message ----------
+            let welcome = serde_json::json!({
+                "type": "welcome",
+                "player_id": player_id,
+                "room_id": room_id,
+                "team": team.as_str()
+            })
+            .to_string();
+
             let _ = tx.send(welcome);
 
-            // -------------------------------
-            // 4) Main receive loop
-            // -------------------------------
-            while let Some(msg) = read.next().await {
-                let msg = match msg {
-                    Ok(m) => m,
-                    Err(_) => break,
-                };
+            // ---------- 8) Read loop: pings + input ----------
+            while let Some(Ok(msg)) = read.next().await {
+                if let Message::Text(text) = msg {
+                    if text == "ping" {
+                        let _ = tx.send("{\"type\":\"pong\"}".to_string());
+                        continue;
+                    }
 
-                if !msg.is_text() {
-                    continue;
-                }
-                let text = match msg.to_text() {
-                    Ok(t) => t,
-                    Err(_) => continue,
-                };
-
-                if text.contains("\"type\":\"ping\"") {
-                    let _ = tx.send("{\"type\":\"pong\"}".into());
-                    continue;
-                }
-
-                let parsed = match ClientMessage::from_json(text) {
-                    Some(v) => v,
-                    None => continue,
-                };
-
-                if parsed.msg_type == "input" {
-                    let axes = Axes {
-                        throttle: parsed.throttle,
-                        steer: parsed.steer,
-                        ascend: parsed.ascend,
-                        yaw: parsed.yaw,
-                        pitch: parsed.pitch,
-                        roll: parsed.roll,
-                    };
-
-                    let tick = state_clone.lock().await.tick;
-
-                    let mut game = state_clone.lock().await;
-                    game.update_input(&player_id, axes, tick);
+                    // handle input JSON here, e.g. update_input(...)
                 }
             }
 
+            // ---------- 9) Cleanup on disconnect ----------
+            {
+                let mut game = state_clone.lock().await;
+                game.remove_entity(&player_id);
+                // (optional) also remove from clients if you track per-player
+            }
+
             println!("🔴 Player disconnected: {}", player_id);
-            let mut game = state_clone.lock().await;
-            game.remove_entity(&player_id);
         });
     }
 }

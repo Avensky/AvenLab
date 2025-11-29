@@ -2,6 +2,7 @@
 
 use rapier3d::prelude::*;
 use std::collections::HashMap;
+// use crate::spawn::MAX_PLAYERS_PER_ROOM;
 
 /// Configuration for a single suspension / wheel.
 #[derive(Clone, Debug)]
@@ -44,6 +45,68 @@ pub struct PhysicsWorld {
 }
 
 impl PhysicsWorld {
+
+    pub fn set_body_position(&mut self, handle: RigidBodyHandle, pos: [f32; 3]) {
+    if let Some(body) = self.bodies.get_mut(handle) {
+        body.set_translation(vector![pos[0], pos[1], pos[2]], true);
+    }
+}
+
+
+    /// Spawn a vehicle body (GTA-style car placeholder).
+    pub fn create_vehicle_body(&mut self) -> RigidBodyHandle {
+        let rb = RigidBodyBuilder::dynamic()
+            // .translation(spawn)
+            .linear_damping(4.0)
+            .angular_damping(4.0)
+            .build();
+
+        let handle = self.bodies.insert(rb);
+
+        // Mark it as a car with suspension.
+        self.register_simple_car(handle);
+
+        // Box-shaped car body.
+        let collider = ColliderBuilder::cuboid(0.9, 0.5, 2.0).build();
+        self.colliders
+            .insert_with_parent(collider, handle, &mut self.bodies);
+
+        handle
+    }
+
+    pub fn create_vehicle_body_at(&mut self, position: [f32; 3]) -> RigidBodyHandle {
+        let rb = RigidBodyBuilder::dynamic()
+            .translation(vector![position[0], position[1], position[2]])
+            .linear_damping(4.0)
+            .angular_damping(4.0)
+            .build();
+
+        let handle = self.bodies.insert(rb);
+
+        let collider = ColliderBuilder::cuboid(0.9, 0.5, 2.0).build();
+        self.colliders.insert_with_parent(collider, handle, &mut self.bodies);
+
+        handle
+    }
+
+    /// Spawn a drone/jet body (placeholder for air/sea craft).
+    pub fn create_drone_body(&mut self) -> RigidBodyHandle {
+        let rb = RigidBodyBuilder::dynamic()
+            // .translation(spawn)
+            .linear_damping(1.5)
+            .angular_damping(1.5)
+            .build();
+
+        let handle = self.bodies.insert(rb);
+
+        // Sphere as drone placeholder.
+        let collider = ColliderBuilder::ball(0.5).build();
+        self.colliders
+            .insert_with_parent(collider, handle, &mut self.bodies);
+
+        handle
+    }
+
     pub fn new() -> Self {
         let gravity = vector![0.0, -9.81, 0.0];
 
@@ -51,11 +114,16 @@ impl PhysicsWorld {
         let mut colliders = ColliderSet::new();
 
         // Simple ground plane.
-        let ground = ColliderBuilder::cuboid(200.0, 1.0, 200.0)
-            .translation(vector![0.0, -1.0, 0.0])
-            .build();
 
-        colliders.insert(ground);
+        // let ground = ColliderBuilder::cuboid(200.0, 1.0, 200.0)
+        //     .translation(vector![0.0, -1.0, 0.0])
+        //     .build();
+
+        // colliders.insert(ground);
+
+        // --- Terrain instead of small ground box ---
+        PhysicsWorld::build_heightfield_terrain(&mut colliders);
+
 
         Self {
             gravity,
@@ -71,6 +139,52 @@ impl PhysicsWorld {
             query_pipeline: QueryPipeline::new(),
             suspension: VehicleSuspension::default(),
         }
+    }
+
+    fn build_heightfield_terrain(colliders: &mut ColliderSet) {
+        // Grid dimensions
+        let nx: usize = 64;
+        let nz: usize = 64;
+        let width: f32 = 200.0;
+        let depth: f32 = 200.0;
+
+        let dx = width / (nx as f32 - 1.0);
+        let dz = depth / (nz as f32 - 1.0);
+
+        // Vertices
+        let mut vertices: Vec<Point<Real>> = Vec::with_capacity(nx * nz);
+
+        for iz in 0..nz {
+            let z = -depth * 0.5 + iz as f32 * dz;
+            for ix in 0..nx {
+                let x = -width * 0.5 + ix as f32 * dx;
+
+                // You can make this a real heightmap later:
+                // let y = (x * 0.02).sin() * 1.5 + (z * 0.02).cos() * 1.0;
+                let y = 0.0; // flat for now, but still a big terrain
+
+                vertices.push(point![x, y, z]);
+            }
+        }
+
+        // Triangle indices
+        let mut indices: Vec<[u32; 3]> = Vec::with_capacity((nx - 1) * (nz - 1) * 2);
+
+        for iz in 0..(nz - 1) {
+            for ix in 0..(nx - 1) {
+                let i0 = (iz * nx + ix) as u32;
+                let i1 = (iz * nx + ix + 1) as u32;
+                let i2 = ((iz + 1) * nx + ix) as u32;
+                let i3 = ((iz + 1) * nx + ix + 1) as u32;
+
+                // Two triangles per quad
+                indices.push([i0, i2, i1]);
+                indices.push([i1, i2, i3]);
+            }
+        }
+
+        let terrain = ColliderBuilder::trimesh(vertices, indices).build();
+        colliders.insert(terrain);
     }
 
     /// GTA-style car placeholder with 4 suspension raycasts.
@@ -224,46 +338,45 @@ impl PhysicsWorld {
             &mut events,
             &hooks,
         );
+
+        // 3) TEMP: clamp all bodies above the ground plane at y = 0.0
+        for (_, body) in self.bodies.iter_mut() {
+            let mut pos = *body.translation();
+            if pos.y < 0.0 {
+                pos.y = 0.0;
+                body.set_translation(pos, true);
+
+                let mut vel = *body.linvel();
+                if vel.y < 0.0 {
+                    vel.y = 0.0;
+                    body.set_linvel(vel, true);
+                }
+            }
+        }
     }
 
-    /// Spawn a vehicle body (GTA-style car placeholder).
-    pub fn create_vehicle_body(&mut self) -> RigidBodyHandle {
-        let rb = RigidBodyBuilder::dynamic()
-            .translation(vector![0.0, 3.0, 0.0])
-            .linear_damping(4.0)
-            .angular_damping(4.0)
-            .build();
+    // ------------------- DRONES --------------------
 
-        let handle = self.bodies.insert(rb);
+    // pub fn create_drone_body_at(&mut self, pos: Vector<Real>) -> RigidBodyHandle {
 
-        // Mark it as a car with suspension.
-        self.register_simple_car(handle);
+    //     let rb = RigidBodyBuilder::dynamic()
+    //         .translation(pos)
+    //         .linear_damping(1.5)
+    //         .angular_damping(1.5)
+    //         .build();
 
-        // Box-shaped car body.
-        let collider = ColliderBuilder::cuboid(0.9, 0.5, 2.0).build();
-        self.colliders
-            .insert_with_parent(collider, handle, &mut self.bodies);
+    //     let handle = self.bodies.insert(rb);
 
-        handle
-    }
+    //     let collider = ColliderBuilder::ball(0.5).build();
+    //     self.colliders
+    //         .insert_with_parent(collider, handle, &mut self.bodies);
 
-    /// Spawn a drone/jet body (placeholder for air/sea craft).
-    pub fn create_drone_body(&mut self) -> RigidBodyHandle {
-        let rb = RigidBodyBuilder::dynamic()
-            .translation(vector![0.0, 5.0, 0.0])
-            .linear_damping(1.5)
-            .angular_damping(1.5)
-            .build();
+    //     handle
+    // }
 
-        let handle = self.bodies.insert(rb);
-
-        // Sphere as drone placeholder.
-        let collider = ColliderBuilder::ball(0.5).build();
-        self.colliders
-            .insert_with_parent(collider, handle, &mut self.bodies);
-
-        handle
-    }
+    // pub fn create_drone_body(&mut self) -> RigidBodyHandle {
+    //     self.create_drone_body_at(vector![0.0, 5.0, 0.0])
+    // }
 
     /// Arcade vehicle physics (GTA-style).
     pub fn apply_vehicle_input(
