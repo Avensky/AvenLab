@@ -23,11 +23,10 @@ export default function App() {
   // useSnapshot();
   const mode = useSnapshotStore(s => s.mode);
   const { scene } = useGLTF("/models/city.glb");
-  const snapshot = useSnapshotStore((s) => s.snapshot);
+  const tick = useSnapshotStore((s) => s.tick);
+  // console.log('snapshot tick in App:', tick);
   const connected = useSnapshotStore((s) => s.connected);
   const playerId = useSnapshotStore((s) => s.playerId);
-  // const tick = useSnapshotStore((s) => s.lastTick);
-
   useEffect(() => {
     connectRustServer();
   }, []);
@@ -48,7 +47,7 @@ export default function App() {
       }}>
         <button>Physics: {connected ? "connected" : "disconnected"}</button>
         <button>Player: {playerId ?? "…connecting"}</button>
-        <button>Tick: {snapshot?.tick ?? 0}</button>
+        <button>Tick: {tick ?? 0}</button>
       </div>
       <FullscreenCanvas>
         <ambientLight intensity={0.5} />

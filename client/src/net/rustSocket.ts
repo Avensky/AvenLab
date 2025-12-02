@@ -49,57 +49,32 @@ export function connectRustServer() {
                 console.warn("Bad JSON from server:", event.data);
                 return;
             }
-            console.log('data', data);
 
             // Pong heartbeat
             if (data.type === "pong") return;
 
             // Receive player ID
             if (data.type === "welcome") {
-                // console.log("Welcome data:", data);
                 set({
                     playerId: data.player_id,
                     team: data.team,
-                    roomId: data.room_id,
+                    room_id: data.room_id,
                     spawn: data.spawn,
                 });
-                // console.log("Welcome:", data.player_id);
                 return;
             }
 
             // Snapshot
-            if (data.type === "snapshot" && data.players && typeof data.tick === "number") {
+            if (data.type === "snapshot") {
+                const { tick, players } = data.data;
+                // console.log('data', data.data);
                 set({
-                    snapshot: data,
-                    lastTick: data.tick,
+                    snapshot: players,
+                    tick: tick,
                 });
                 return;
             }
-
-            console.warn("Unknown message:", data);
-
-            // try {
-            //     const data = JSON.parse(event.data);
-
-            //     // --- hearbeat ---
-            //     if (data.type === "pong") return;
-
-            //     // --- Welcome message ---
-            //     if (data.type === "welcome") {
-            //         set({ playerId: data.playerId });
-            //         return;
-            //     }
-
-            //     // --- Snapshot ---
-            //     if (data.players && typeof data.tick === "number") {
-            //         set({
-            //             snapshot: data,
-            //             lastTick: data.tick,
-            //         });
-            //     }
-            // } catch (err) {
-            //     console.warn("Failed to parse physics message", err);
-            // }
+            console.warn("Unknown message type:", data.type);
         };
     }
 
