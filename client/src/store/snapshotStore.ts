@@ -13,6 +13,8 @@ export type RenderMode = "glb" | "geometry" | "collider";
 export interface PlayerSnapshot {
     id: string;
     kind: string;
+    room_id: number;
+    team: "red" | "blue";
     x: number;
     y: number;
     z: number;
@@ -37,10 +39,15 @@ interface SnapshotState {
     setPlayerId: (id: string) => void;
 
     team: "Red" | "Blue" | null;
-    roomId: number | null;
+    kind: string | null;
+    room_id: number | null;
     spawn: [number, number, number] | null;
+    x: number | null;
+    y: number | null;
+    z: number | null;
 
-    lastTick: number;
+    tick: number | null;
+    // lastTick: number | null;
 
     getMe: () => PlayerSnapshot | null;
     getOthers: () => PlayerSnapshot[];
@@ -58,7 +65,8 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
     connected: false,
     playerId: null,
     snapshot: null,
-    lastTick: 0,
+    tick: 0,
+    // lastTick: 0,
 
     setConnected: (v) => set({ connected: v }),
     setPlayerId: (id) => set({ playerId: id }),
@@ -66,8 +74,12 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
 
 
     team: null,
-    roomId: null,
+    kind: null,
+    room_id: null,
     spawn: null,
+    x: null,
+    y: null,
+    z: null,
 
     mode: "glb",
     setMode: (mode) => set({ mode }),
