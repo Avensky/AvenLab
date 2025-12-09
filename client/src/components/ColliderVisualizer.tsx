@@ -1,10 +1,14 @@
 import { type JSX } from "react";
 
-export function ColliderVisualizer(props: JSX.IntrinsicElements["mesh"]) {
+type ColliderVisualizerProps = JSX.IntrinsicElements["mesh"] & {
+    color?: string;
+};
+
+export function ColliderVisualizer({ color = "orange", ...props }: ColliderVisualizerProps) {
     return (
         <mesh {...props}>
             <boxGeometry args={[1, 1, 1]} />
-            <meshBasicMaterial color="cyan" wireframe />
+            <meshBasicMaterial color={color} wireframe />
         </mesh>
     );
 }

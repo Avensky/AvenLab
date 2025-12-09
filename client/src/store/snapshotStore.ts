@@ -15,6 +15,7 @@ export interface PlayerSnapshot {
     kind: string;
     room_id: number;
     team: "red" | "blue";
+    yaw?: number;
     x: number;
     y: number;
     z: number;
@@ -68,6 +69,7 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
     tick: 0,
     // lastTick: 0,
 
+
     setConnected: (v) => set({ connected: v }),
     setPlayerId: (id) => set({ playerId: id }),
     setSnapshot: snap => set({ snapshot: snap }),
@@ -81,22 +83,27 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
     y: null,
     z: null,
 
-    mode: "glb",
+    mode: "geometry",
     setMode: (mode) => set({ mode }),
 
 
     getMe() {
         const snap = get().snapshot;
         const id = get().playerId;
-        if (!snap || !id) return null;
+        // console.log("getMe snapshot:", snap, " playerId:", id);
+        if (!snap || !id || !snap.players) return null;
         return snap.players.find(p => p.id === id) || null;
+        // if (!snap || !id) return null;
+        // return snap.players.find(p => p.id === id) || null;
     },
 
     getOthers() {
         const snap = get().snapshot;
         const id = get().playerId;
-        if (!snap) return [];
+        if (!snap || !snap.players) return [];
         return snap.players.filter(p => p.id !== id);
+        // if (!snap) return [];
+        // return snap.players.filter(p => p.id !== id);
     }
 
 

@@ -10,6 +10,7 @@ export function connectRustServer() {
 
     // Zustand's built-in setter
     const set = useSnapshotStore.setState;
+    const setSnapshot = useSnapshotStore.getState().setSnapshot;
 
     function connect() {
 
@@ -55,6 +56,7 @@ export function connectRustServer() {
 
             // Receive player ID
             if (data.type === "welcome") {
+                // console.log("Received data.player_id:", data.player_id);
                 set({
                     playerId: data.player_id,
                     team: data.team,
@@ -68,8 +70,9 @@ export function connectRustServer() {
             if (data.type === "snapshot") {
                 const { tick, players } = data.data;
                 // console.log('data', data.data);
-                set({
-                    snapshot: players,
+
+                setSnapshot({
+                    players: Array.isArray(players) ? players : [],
                     tick: tick,
                 });
                 return;

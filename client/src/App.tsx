@@ -23,7 +23,7 @@ export default function App() {
   // useSnapshot();
   const mode = useSnapshotStore(s => s.mode);
   const { scene } = useGLTF("/models/city.glb");
-  const tick = useSnapshotStore((s) => s.tick);
+  const tick = useSnapshotStore((s) => s.snapshot?.tick);
   // console.log('snapshot tick in App:', tick);
   const connected = useSnapshotStore((s) => s.connected);
   const playerId = useSnapshotStore((s) => s.playerId);
@@ -34,8 +34,8 @@ export default function App() {
   return (
     <>
       <ModeSwitcher />
-      <HeightfieldGeneratorPanel />
-      <BuildingColliderExporter />
+      {/* <HeightfieldGeneratorPanel /> */}
+      {/* <BuildingColliderExporter /> */}
       <div style={{
         position: "absolute",
         top: "1rem",
@@ -50,14 +50,13 @@ export default function App() {
         <button>Tick: {tick ?? 0}</button>
       </div>
       <FullscreenCanvas>
-        <ambientLight intensity={0.5} />
-        <directionalLight intensity={1} position={[5, 5, 5]} />
+        {/* <ambientLight intensity={0.5} /> */}
+        {/* <directionalLight intensity={1} position={[5, 5, 5]} /> */}
         {/* <Grid infiniteGrid args={[10, 10]} /> */}
         <NetworkVehicleScene />   {/* YOU */}
         <NetworkWorld />          {/* OTHER PLAYERS */}
 
         {mode === "glb" && <CityScene />}
-        {/* {mode === "glb" && <CityScene />} */}
         {mode === "geometry" && <CityHeightfield data={heightfieldJSON} />}
         {mode === "collider" && <CityBuildingColliders glb={scene} />}
 
