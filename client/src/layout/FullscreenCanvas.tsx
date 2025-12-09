@@ -26,10 +26,10 @@ export function FullscreenCanvas({ children }: { children: ReactNode }) {
                 <OrbitControls />
 
                 {/* Ground */}
-                <mesh rotation={[-Math.PI / 2, 0, 0]}>
+                {/* <mesh rotation={[-Math.PI / 2, 0, 0]}>
                     <planeGeometry args={[200, 200, 1, 1]} />
                     <meshStandardMaterial color="#222" />
-                </mesh>
+                </mesh> */}
 
                 {children}
             </Canvas>

@@ -1,3 +1,6 @@
+import { ColliderVisualizer } from "../components/ColliderVisualizer";
+import { GeometryVisualizer } from "../components/GeometryVisualizer";
+import { GLBVisualizer } from "../components/GLBVisualizer";
 import { useSnapshotStore } from "../store/snapshotStore";
 // import { useEffect, useRef } from "react";
 // import { Group } from "three";
@@ -7,15 +10,7 @@ export function NetworkWorld() {
     const playerId = useSnapshotStore(s => s.playerId);
     const snapshot = useSnapshotStore(s => s.snapshot);
     const others = snapshot?.players?.filter(p => p.id !== playerId) ?? [];
-
-    // useEffect(() => {
-    //     // Keep refs dictionary in sync
-    //     others.map(player => {
-    //         if (!refs.current[player.id]) {
-    //             refs.current[player.id] = new Group();
-    //         }
-    //     });
-    // }, [others]);
+    const mode = useSnapshotStore((s) => s.mode);
 
     return (
         <>
@@ -28,10 +23,13 @@ export function NetworkWorld() {
                     // }}
                     position={[player.x, player.y, player.z]}
                 >
-                    <mesh>
+                    {/* <mesh>
                         <boxGeometry args={[1, 1, 2]} />
                         <meshStandardMaterial color={"cyan"} />
-                    </mesh>
+                    </mesh> */}
+                    {mode === "glb" && <GLBVisualizer type={"car"} />}
+                    {mode === "geometry" && <GeometryVisualizer color="cyan" />}
+                    {mode === "collider" && <ColliderVisualizer color="cyan" />}
                 </group>
             ))}
         </>
