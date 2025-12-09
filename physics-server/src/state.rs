@@ -28,6 +28,7 @@ pub struct EntityInput {
 /// Entity Type (server-side)
 /// =========================
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub enum EntityType {
     Vehicle,
     Drone,
@@ -142,11 +143,11 @@ impl SharedGameState {
 
     /// Store the latest input from a player. Physics loop will read this
     /// every tick in main.rs and apply forces.
-    pub fn update_input(&mut self, id: &str, axes: Axes) {
-        if let Some(ent) = self.entities.get_mut(id) {
-            ent.last_input = Some(EntityInput { axes });
-        }
-    }
+    // pub fn update_input(&mut self, id: &str, axes: Axes) {
+    //     if let Some(ent) = self.entities.get_mut(id) {
+    //         ent.last_input = Some(EntityInput { axes });
+    //     }
+    // }
 
     /// Remove an entity when the player disconnects.
     pub fn remove_entity(&mut self, id: &str) {
@@ -178,12 +179,12 @@ impl SharedGameState {
         if self.clients.is_empty() {
             return;
         }
-        println!("📤 Broadcasting snapshot for tick {}", self.tick);
-        println!(
-            "   clients: {}, entities: {}",
-            self.clients.len(),
-            self.entities.len()
-        );
+        // println!("📤 Broadcasting snapshot for tick {}", self.tick);
+        // println!(
+        //     "   clients: {}, entities: {}",
+        //     self.clients.len(),
+        //     self.entities.len()
+        // );
         
                 // Build the players array for this snapshot
         let mut players_json = Vec::new();
@@ -201,10 +202,10 @@ impl SharedGameState {
             // Look up the Rapier body
             if let Some(body) = bodies.get(ent.body_handle) {
                 let pos = body.translation();
-                println!(
-                    "   ↪ entity {} @ ({:.2}, {:.2}, {:.2})",
-                    ent.id, pos.x, pos.y, pos.z
-                );
+                // println!(
+                //     "   ↪ entity {} @ ({:.2}, {:.2}, {:.2})",
+                //     ent.id, pos.x, pos.y, pos.z
+                // );
 
                 players_json.push(json!({
                     "id": ent.id,
@@ -233,16 +234,16 @@ impl SharedGameState {
         });
 
         let json = payload.to_string();
-        println!("   Snapshot payload: {}", json);
+        // println!("   Snapshot payload: {}", json);
 
         // Send to all registered clients
         for (i, tx) in self.clients.iter().enumerate() {
             match tx.send(json.clone()) {
                 Ok(_) => {
-                    println!(
-                        "   ✅ sent snapshot for tick {} to client #{}",
-                        self.tick, i
-                    );
+                    // println!(
+                    //     "   ✅ sent snapshot for tick {} to client #{}",
+                    //     self.tick, i
+                    // );
                 }
                 Err(e) => {
                     println!(
