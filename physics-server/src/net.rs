@@ -5,7 +5,7 @@ use tokio::sync::{Mutex, mpsc};
 use futures::{StreamExt, SinkExt};
 use tokio_tungstenite::{accept_async, tungstenite::Message};
 
-use crate::state::{SharedGameState, Axes, EntityType};
+use crate::state::{SharedGameState, EntityType};
 use crate::physics::PhysicsWorld;
 
 #[derive(Debug)]
@@ -58,9 +58,9 @@ pub async fn start_websocket_server(
 
             // Create channel for sending snapshots TO THIS CLIENT
             let (tx, mut rx) = mpsc::unbounded_channel::<String>();
-            let tx_for_game = tx.clone();     // clone kept by game
-            let tx_for_ping = tx.clone();     // clone kept locally for ping replies
-            let tx_for_writer = tx.clone();   // used for snapshot writer task
+            // let tx_for_game = tx.clone();     // clone kept by game
+            // let tx_for_ping = tx.clone();     // clone kept locally for ping replies
+            // let tx_for_writer = tx.clone();   // used for snapshot writer task
             
             // Spawn writer task that owns the write half
             tokio::spawn(async move {
@@ -99,7 +99,9 @@ pub async fn start_websocket_server(
             // ---------- 5) Create Rapier body in physics ----------
             let body_handle = {
                 let mut phys = physics_clone.lock().await;
-                phys.create_vehicle_body_at(spawn_info.position)
+                // phys.create_vehicle_body_at(spawn_info.position)
+                phys.spawn_vehicle_for_player(player_id.clone(), spawn_info.position);
+                phys.vehicles[&player_id].body
             };
 
             // ---------- 6) Attach body handle back to game state ----------
@@ -128,6 +130,23 @@ pub async fn start_websocket_server(
                     }
 
                     // handle input JSON here, e.g. update_input(...)
+                    // ---------- INPUT HANDLING ----------
+                    if let Some(cmsg) = ClientMessage::from_json(&text) {
+                        if cmsg.msg_type == "input" {
+                            let mut phys = physics_clone.lock().await;
+
+                            phys.apply_player_input(
+                                &player_id,
+                                cmsg.throttle,
+                                cmsg.steer,
+                                cmsg.ascend,
+                                cmsg.pitch,
+                                cmsg.yaw,
+                                cmsg.roll,
+                            );
+                        }
+                    }
+
                 }
             }
 

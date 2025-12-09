@@ -84,3 +84,4 @@ export function connectRustServer() {
     if (!socket) connect();
     return socket;
 }
+export { socket };

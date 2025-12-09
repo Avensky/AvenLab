@@ -65,7 +65,16 @@ async fn main() {
                     // Vehicle: throttle + steering
                     EntityType::Vehicle => {
                         // Vehicle: throttle + steering
-                        phys.apply_vehicle_input(entity.body_handle, axes.throttle, axes.steer);
+                        phys.apply_player_input(
+                            &entity.id,
+                            axes.throttle,
+                            axes.steer,
+                            axes.ascend,
+                            axes.pitch,
+                            axes.yaw,
+                            axes.roll,
+                        );
+
                     }
                     // Air/sea vehicles: full 6DOF controls
                     EntityType::Drone
@@ -73,12 +82,13 @@ async fn main() {
                     | EntityType::Jet
                     | EntityType::Boat
                     | EntityType::Ship => {
-                        phys.apply_drone_input(
-                            entity.body_handle,
+                        phys.apply_player_input(
+                            &entity.id,
                             axes.throttle,
+                            axes.steer,
                             axes.ascend,
-                            axes.yaw,
                             axes.pitch,
+                            axes.yaw,
                             axes.roll,
                         );
                     }

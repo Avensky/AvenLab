@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { BufferAttribute, BufferGeometry } from "three";
+import { BufferAttribute, BufferGeometry, DoubleSide } from "three";
 import type { JSX } from "react";
 
 
@@ -62,8 +62,23 @@ export function CityHeightfield({ data, ...props }: HFProps) {
     }, [data]);
 
     return (
-        <mesh {...props} geometry={geometry}>
-            <meshStandardMaterial color="green" wireframe={false} />
-        </mesh>
+        <group rotation={[0, 0, 0]}>
+            <mesh {...props} geometry={geometry}>
+                <meshStandardMaterial
+                    color="#3bbf4a"
+                    side={DoubleSide}
+                    wireframe={false}
+                />
+            </mesh>
+            {/* Optional debugging wireframe */}
+            <mesh geometry={geometry}>
+                <meshBasicMaterial
+                    color="black"
+                    wireframe
+                    transparent
+                    opacity={0.3}
+                />
+            </mesh>
+        </group>
     );
 }

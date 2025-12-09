@@ -2,15 +2,15 @@ import { OrbitControls, useGLTF } from "@react-three/drei";
 // import { WorldRenderer } from "./components/WorldRenderer";
 import { ModeSwitcher } from "./components/ModeSwitcher";
 // import { useSnapshots } from "./hooks/useSnapshots";
-// import { usePlayerInput } from "./hooks/usePlayerInput";
+import { usePlayerInput } from "./hooks/usePlayerInput";
 import { FullscreenCanvas } from "./layout/FullscreenCanvas";
 import { CityScene } from "./scenes/CityScene";
-import { HeightfieldGeneratorPanel } from "./tools/HeightfieldGeneratorPanel";
+// import { HeightfieldGeneratorPanel } from "./tools/HeightfieldGeneratorPanel";
 import { CityHeightfield } from "./scenes/CityHeightfield";
 import { CityBuildingColliders } from "./scenes/CityBuildingColliders";
 import heightfieldJSON from '../../server/data/city-heightfield-v4.json'
 import { useSnapshotStore } from "./store/snapshotStore";
-import { BuildingColliderExporter } from "./tools/BuildingColliderExporter";
+// import { BuildingColliderExporter } from "./tools/BuildingColliderExporter";
 import { NetworkVehicleScene } from "./scenes/NetworkVehicleScene";
 import { connectRustServer } from "./net/rustSocket";
 import { useEffect } from "react";
@@ -18,13 +18,12 @@ import { NetworkWorld } from "./scenes/NetworkWorld";
 
 export default function App() {
   // useSnapshots();
-  // usePlayerInput();
+  usePlayerInput();
 
   // useSnapshot();
   const mode = useSnapshotStore(s => s.mode);
   const { scene } = useGLTF("/models/city.glb");
   const tick = useSnapshotStore((s) => s.snapshot?.tick);
-  // console.log('snapshot tick in App:', tick);
   const connected = useSnapshotStore((s) => s.connected);
   const playerId = useSnapshotStore((s) => s.playerId);
   useEffect(() => {
@@ -50,8 +49,8 @@ export default function App() {
         <button>Tick: {tick ?? 0}</button>
       </div>
       <FullscreenCanvas>
-        {/* <ambientLight intensity={0.5} /> */}
-        {/* <directionalLight intensity={1} position={[5, 5, 5]} /> */}
+        <ambientLight intensity={0.5} />
+        <directionalLight intensity={1} position={[5, 5, 5]} />
         {/* <Grid infiniteGrid args={[10, 10]} /> */}
         <NetworkVehicleScene />   {/* YOU */}
         <NetworkWorld />          {/* OTHER PLAYERS */}

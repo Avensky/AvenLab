@@ -1,0 +1,13 @@
+{
+  "name": "avenlab-dev",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm:dev:*\"",
+    "dev:client": "npm --prefix client run dev",
+    "dev:rust": "cd physics-server && cargo watch -x run"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "wait-on": "^9.0.3"
+  }
+}
