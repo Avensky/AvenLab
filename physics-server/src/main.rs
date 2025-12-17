@@ -11,7 +11,7 @@ use crate::state::{SharedGameState, EntityType}; // shared world state
 
 use std::sync::Arc; // multiple threads own the same object
 use tokio::sync::Mutex; // only 1 thread at a time can mutate the object
-use tokio::time::{interval, Duration};
+// use tokio::time::{interval, Duration};
 
 #[tokio::main]
 async fn main() {
@@ -37,10 +37,14 @@ async fn main() {
     // -------------------------------------------------
     // 4) Fixed timestep physics loop (~60 Hz)
     // -------------------------------------------------
-    let mut ticker = interval(Duration::from_millis(16));
+    // let mut ticker = interval(Duration::from_millis(16));
+    
+    let mut interval = tokio::time::interval(std::time::Duration::from_millis(16));
 
     loop {
-        ticker.tick().await;
+        // ticker.tick().await;
+
+        interval.tick().await;
 
         // Lock physics & game state
         let mut phys = physics.lock().await;

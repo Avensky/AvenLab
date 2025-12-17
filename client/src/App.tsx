@@ -15,6 +15,7 @@ import { NetworkVehicleScene } from "./scenes/NetworkVehicleScene";
 import { connectRustServer } from "./net/rustSocket";
 import { useEffect } from "react";
 import { NetworkWorld } from "./scenes/NetworkWorld";
+import { DebugOverlay } from "./ui/DebugOverlay";
 
 export default function App() {
   // useSnapshots();
@@ -35,20 +36,10 @@ export default function App() {
       <ModeSwitcher />
       {/* <HeightfieldGeneratorPanel /> */}
       {/* <BuildingColliderExporter /> */}
-      <div style={{
-        position: "absolute",
-        top: "1rem",
-        right: "1rem",
-        zIndex: 20,
-        display: "flex",
-        flexDirection: "column",
-        gap: "8px",
-      }}>
-        <button>Physics: {connected ? "connected" : "disconnected"}</button>
-        <button>Player: {playerId ?? "…connecting"}</button>
-        <button>Tick: {tick ?? 0}</button>
-      </div>
+      <DebugOverlay />
       <FullscreenCanvas>
+        {/* overlays */}
+
         <ambientLight intensity={0.5} />
         <directionalLight intensity={1} position={[5, 5, 5]} />
         {/* <Grid infiniteGrid args={[10, 10]} /> */}
