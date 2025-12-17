@@ -121,6 +121,8 @@ pub async fn start_websocket_server(
 
             let _ = tx.send(welcome);
 
+            
+
             // ---------- 8) Read loop: pings + input ----------
             while let Some(Ok(msg)) = read.next().await {
                 if let Message::Text(text) = msg {
@@ -129,12 +131,14 @@ pub async fn start_websocket_server(
                         continue;
                     }
 
-                    // handle input JSON here, e.g. update_input(...)
-                    // ---------- INPUT HANDLING ----------
+                    // Parse JSON into ClientMessage
                     if let Some(cmsg) = ClientMessage::from_json(&text) {
                         if cmsg.msg_type == "input" {
-                            let mut phys = physics_clone.lock().await;
+                            // Debug: see inputs arriving
+                            // println!("Input from {}: throttle={} steer={}", player_id, cmsg.throttle, cmsg.steer);
 
+                            // Apply directly to physics vehicle
+                            let mut phys = physics_clone.lock().await;
                             phys.apply_player_input(
                                 &player_id,
                                 cmsg.throttle,
@@ -145,9 +149,11 @@ pub async fn start_websocket_server(
                                 cmsg.roll,
                             );
                         }
+                    } else {
+                        eprintln!("⚠️ Bad JSON from client: {}", text);
                     }
-
                 }
+
             }
 
             // ---------- 9) Cleanup on disconnect ----------
