@@ -7,6 +7,8 @@ use tokio_tungstenite::{accept_async, tungstenite::Message};
 
 use crate::state::{SharedGameState, EntityType};
 use crate::physics::PhysicsWorld;
+// use serde::Serialize;
+// use crate::physics::DebugOverlay;
 
 #[derive(Debug)]
 struct ClientMessage {
@@ -34,6 +36,7 @@ impl ClientMessage {
         })
     }
 }
+
 
 pub async fn start_websocket_server(
     state: Arc<Mutex<SharedGameState>>,
@@ -87,6 +90,7 @@ pub async fn start_websocket_server(
                 game.spawns.allocate_spawn(player_id.clone())
             };
             let room_id = spawn_info.room_id;
+            let room_id_u32: u32 = room_id.try_into().unwrap_or(u32::MAX);
             let team = spawn_info.team;
 
             // ---------- 4) Add entity in game state ----------
@@ -111,13 +115,18 @@ pub async fn start_websocket_server(
             }
 
             // ---------- 7) Send welcome message ----------
+            // let welcome = ServerMessage::Welcome {
+            //     player_id: player_id.clone(),
+            //     room_id_u32,
+            //     team: team.as_str().to_string(),
+            // };
+
             let welcome = serde_json::json!({
                 "type": "welcome",
                 "player_id": player_id,
-                "room_id": room_id,
+                "room_id": room_id_u32,
                 "team": team.as_str()
-            })
-            .to_string();
+            }).to_string();
 
             let _ = tx.send(welcome);
 

@@ -16,6 +16,8 @@ import { connectRustServer } from "./net/rustSocket";
 import { useEffect } from "react";
 import { NetworkWorld } from "./scenes/NetworkWorld";
 import { DebugOverlay } from "./ui/DebugOverlay";
+import { DebugVisualizer } from "./components/DebugVisualizer";
+import { GroundPlane } from "./scenes/GroundPlane";
 
 export default function App() {
   // useSnapshots();
@@ -43,12 +45,18 @@ export default function App() {
         <ambientLight intensity={0.5} />
         <directionalLight intensity={1} position={[5, 5, 5]} />
         {/* <Grid infiniteGrid args={[10, 10]} /> */}
+
         <NetworkVehicleScene />   {/* YOU */}
         <NetworkWorld />          {/* OTHER PLAYERS */}
 
-        {mode === "glb" && <CityScene />}
-        {mode === "geometry" && <CityHeightfield data={heightfieldJSON} />}
-        {mode === "collider" && <CityBuildingColliders glb={scene} />}
+        <DebugVisualizer />
+
+
+        {/* {mode === "glb" && <CityScene />} */}
+        {/* {mode === "geometry" && <CityHeightfield data={heightfieldJSON} />} */}
+        {/* {mode === "collider" && <CityBuildingColliders glb={scene} />} */}
+
+        <GroundPlane />
 
         {/* <WorldRenderer /> */}
         <OrbitControls />

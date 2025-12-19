@@ -26,6 +26,28 @@ export interface PhysicsSnapshot {
     players: PlayerSnapshot[];
 }
 
+export interface DebugRay {
+    origin: [number, number, number];
+    direction: [number, number, number];
+    length: number;
+    hit?: [number, number, number];
+    color: [number, number, number];
+}
+
+export interface DebugWheel {
+    center: [number, number, number];
+    radius: number;
+    grounded: boolean;
+    compression: number;
+    normal_force: number;
+}
+
+export interface DebugOverlay {
+    rays: DebugRay[];
+    wheels: DebugWheel[];
+    chassis_right: [number, number, number];
+}
+
 interface SnapshotState {
     connected: boolean;
     setConnected: (v: boolean) => void;
@@ -53,6 +75,9 @@ interface SnapshotState {
     getMe: () => PlayerSnapshot | null;
     getOthers: () => PlayerSnapshot[];
 
+    debug: DebugOverlay | null;
+    setDebugOverlay: (dbg: DebugOverlay) => void;
+
     // bodies: BodySnapshot[];
     // predictedSelf: PredictedSelfState | null;
     // pendingInputs: PendingInput[];
@@ -61,6 +86,7 @@ interface SnapshotState {
     // addPendingInput: (pi: PendingInput) => void;
     // ackInputsUpTo: (seq: number) => void;
 }
+
 
 export const useSnapshotStore = create<SnapshotState>((set, get) => ({
     connected: false,
@@ -104,8 +130,10 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
         return snap.players.filter(p => p.id !== id);
         // if (!snap) return [];
         // return snap.players.filter(p => p.id !== id);
-    }
+    },
 
+    debug: null,
+    setDebugOverlay: (dbg) => set({ debug: dbg }),
 
     // bodies: [],
     // predictedSelf: null,

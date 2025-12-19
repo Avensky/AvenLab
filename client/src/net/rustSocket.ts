@@ -77,6 +77,16 @@ export function connectRustServer() {
                 });
                 return;
             }
+
+            // Debug overlay (raycasts, wheels, springs)
+            if (data.type === "debug") {
+                // Defensive checks
+                if (!data.data) return;
+                // console.log("[DEBUG OVERLAY]", data.data);
+                useSnapshotStore.getState().setDebugOverlay(data.data);
+                return;
+            }
+
             console.warn("Unknown message type:", data.type);
         };
     }
