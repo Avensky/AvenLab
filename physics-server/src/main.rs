@@ -4,6 +4,7 @@ mod net;    // player join / disconnect, team/room assignment
 mod state;  // world state
 mod spawn;  // spawn logic
 
+
 use rapier3d::prelude::RigidBodyHandle;
 use crate::net::start_websocket_server;
 use crate::physics::PhysicsWorld;
@@ -115,5 +116,17 @@ async fn main() {
         // 8) Broadcast snapshots to all connected players
         // -----------------------------------------------------
         game.broadcast_snapshot(&phys.bodies);
+
+        // -----------------------------------------------------
+        // 9) Broadcast debug overlay (raycasts, wheels, springs)
+        // -----------------------------------------------------
+        let overlay = phys.debug_snapshot();
+        game.broadcast_debug_overlay(&overlay);
+
+        // -----------------------------------------------------
+        // 10) Clear debug overlay for next frame
+        // -----------------------------------------------------
+        phys.clear_debug_overlay();
+
     }
 }

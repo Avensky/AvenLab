@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use rapier3d::prelude::*;
 // use serde::Serialize;
 use serde_json::json;
-
+use crate::physics::DebugOverlay;
 use crate::spawn::{PlayerSpawnInfo, SpawnManager, Team};
 
 /// =======================
@@ -81,6 +81,7 @@ pub struct SharedGameState {
 
     /// All connected WebSocket clients for this process
     pub clients: Vec<tokio::sync::mpsc::UnboundedSender<String>>,
+    
 }
 
 impl SharedGameState {
@@ -154,25 +155,27 @@ impl SharedGameState {
         self.entities.remove(id);
     }
 
-    /// Build a snapshot and broadcast it to all connected clients.
-    ///
-    /// Wire format (what the frontend sees):
-    /// {
-    ///   "type": "snapshot",
-    ///   "data": {
-    ///     "tick": 123,
-    ///     "players": [
-    ///       {
-    ///         "id": "player-uuid",
-    ///         "kind": "vehicle",
-    ///         "room_id": 0,
-    ///         "team": "red",
-    ///         "x": 0.0, "y": 4.0, "z": 0.0
-    ///       },
-    ///       ...
-    ///     ]
-    ///   }
-    /// }
+
+    pub fn broadcast_debug_overlay(&mut self, overlay: &DebugOverlay) {
+        if self.clients.is_empty() {
+            return;
+        }
+
+        let payload = json!({
+            "type": "debug",
+            "data": overlay
+        });
+
+        let msg = payload.to_string();
+
+        // for tx in self.clients.iter() {
+        //     let _ = tx.send(msg.clone());
+        // }
+        
+        for tx in &self.clients {
+            let _ = tx.send(msg.clone());
+        }
+    }
 
     pub fn broadcast_snapshot(&mut self, bodies: &RigidBodySet) {
         // If no clients, do nothing (saves work when menu/server idle)
@@ -246,10 +249,10 @@ impl SharedGameState {
                     // );
                 }
                 Err(e) => {
-                    println!(
-                        "   ❌ failed to send snapshot to client #{}: {}",
-                        i, e
-                    );
+                    // println!(
+                    //     "   ❌ failed to send snapshot to client #{}: {}",
+                    //     i, e
+                    // );
                 }
             }
         }
