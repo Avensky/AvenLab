@@ -13,6 +13,7 @@ use crate::spawn::{PlayerSpawnInfo, SpawnManager, Team};
 pub struct Axes {
     pub throttle: f32,
     pub steer: f32,
+    pub brake: f32,
     pub ascend: f32,
     pub yaw: f32,
     pub pitch: f32,
@@ -240,7 +241,7 @@ impl SharedGameState {
         // println!("   Snapshot payload: {}", json);
 
         // Send to all registered clients
-        for (i, tx) in self.clients.iter().enumerate() {
+        for (_i, tx) in self.clients.iter().enumerate() {
             match tx.send(json.clone()) {
                 Ok(_) => {
                     // println!(
@@ -248,7 +249,7 @@ impl SharedGameState {
                     //     self.tick, i
                     // );
                 }
-                Err(e) => {
+                Err(_e) => {
                     // println!(
                     //     "   ❌ failed to send snapshot to client #{}: {}",
                     //     i, e

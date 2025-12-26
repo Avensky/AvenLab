@@ -33,6 +33,12 @@ export interface DebugRay {
     hit?: [number, number, number];
     color: [number, number, number];
 }
+export interface DebugSlipRay {
+    origin: [number, number, number];
+    direction: [number, number, number];
+    magnitude: number;
+    color: [number, number, number];
+}
 
 export interface DebugWheel {
     center: [number, number, number];
@@ -40,10 +46,15 @@ export interface DebugWheel {
     grounded: boolean;
     compression: number;
     normal_force: number;
+    lateral_force: [number, number, number];
+    lateral_magnitude: number;
 }
 
 export interface DebugOverlay {
-    rays: DebugRay[];
+    suspension_rays: DebugRay[];
+    slip_vectors: DebugSlipRay[];
+    load_bars: DebugRay[];
+    arb_links: DebugRay[];
     wheels: DebugWheel[];
     chassis_right: [number, number, number];
 }
