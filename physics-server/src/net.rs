@@ -15,6 +15,7 @@ struct ClientMessage {
     msg_type: String,
     throttle: f32,
     steer: f32,
+    brake: f32,
     ascend: f32,
     pitch: f32,
     yaw: f32,
@@ -33,6 +34,8 @@ impl ClientMessage {
             pitch: v.get("pitch").and_then(|x| x.as_f64()).unwrap_or(0.0) as f32,
             yaw: v.get("yaw").and_then(|x| x.as_f64()).unwrap_or(0.0) as f32,
             roll: v.get("roll").and_then(|x| x.as_f64()).unwrap_or(0.0) as f32,
+            brake: v.get("brake").and_then(|x| x.as_f64()).unwrap_or(0.0) as f32,
+
         })
     }
 }
@@ -152,6 +155,7 @@ pub async fn start_websocket_server(
                                 &player_id,
                                 cmsg.throttle,
                                 cmsg.steer,
+                                cmsg.brake,
                                 cmsg.ascend,
                                 cmsg.pitch,
                                 cmsg.yaw,

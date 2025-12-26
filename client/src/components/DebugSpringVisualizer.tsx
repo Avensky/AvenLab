@@ -8,7 +8,7 @@ interface Spring {
     ratio: number;
 }
 
-export function DebugSpringVisualizer({ springs }: { springs: Spring[] }) {
+export function DebugSpringVisualizer({ springs, opacity1 = 0.9, opacity2 = 0.3 }: { springs: Spring[], opacity1?: number, opacity2?: number }) {
 
     return (
         <>
@@ -18,6 +18,8 @@ export function DebugSpringVisualizer({ springs }: { springs: Spring[] }) {
                     end={s.end}
                     restEnd={s.restEnd}
                     ratio={s.ratio}
+                    opacity1={opacity1}
+                    opacity2={opacity2}
                 />
             </group>)}
         </>
@@ -38,11 +40,15 @@ function SpringHelix({
     end,
     restEnd,
     ratio,
+    opacity1 = 1.0,
+    opacity2 = 0.3,
 }: {
     start: [number, number, number];
     end: [number, number, number];
     restEnd: [number, number, number];
     ratio: number;
+    opacity1: number;
+    opacity2: number;
 }) {
     const { realGeom, ghostGeom, position, quaternion } = useMemo(() => {
         const a = new THREE.Vector3(...start);
@@ -124,6 +130,10 @@ function SpringHelix({
                         color={springColor(ratio)}
                         emissive={springColor(ratio)}
                         emissiveIntensity={0.35}
+                        depthTest={false}
+                        depthWrite={false}
+                        transparent
+                        opacity={opacity1}
                     />
                 </mesh>
             )}
@@ -136,7 +146,8 @@ function SpringHelix({
                         emissive="#9ad7ff"
                         emissiveIntensity={0.15}
                         transparent
-                        opacity={0.3}
+                        opacity={opacity2}
+                        depthTest={false}
                         depthWrite={false}
                     />
                 </mesh>

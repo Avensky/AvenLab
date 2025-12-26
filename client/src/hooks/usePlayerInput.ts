@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { socket, connectRustServer } from "../net/rustSocket";
 
 export function usePlayerInput() {
-    const inputRef = useRef({ throttle: 0, steer: 0 });
+    const inputRef = useRef({ throttle: 0, steer: 0, brake: 0 });
 
     useEffect(() => {
         connectRustServer();
@@ -13,6 +13,7 @@ export function usePlayerInput() {
             if (e.code === "KeyS") i.throttle = -1;
             if (e.code === "KeyA") i.steer = -1;
             if (e.code === "KeyD") i.steer = 1;
+            if (e.code === "Space") i.brake = 1;
         };
 
         const handleKeyUp = (e: KeyboardEvent) => {
@@ -21,6 +22,8 @@ export function usePlayerInput() {
             if (e.code === "KeyS" && i.throttle < 0) i.throttle = 0;
             if (e.code === "KeyA" && i.steer < 0) i.steer = 0;
             if (e.code === "KeyD" && i.steer > 0) i.steer = 0;
+
+            if (e.code === "Space") i.brake = 0;
         };
 
         window.addEventListener("keydown", handleKeyDown);
@@ -33,10 +36,11 @@ export function usePlayerInput() {
                 type: "input",
                 throttle: inputRef.current.throttle,
                 steer: inputRef.current.steer,
+                brake: inputRef.current.brake,
                 ascend: 0,
                 pitch: 0,
                 yaw: 0,
-                roll: 0
+                roll: 0,
             }));
         }, 1000 / 30);
 

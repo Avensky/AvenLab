@@ -26,7 +26,15 @@ function rayColor(r: number, airborne: boolean) {
 }
 
 
-export function DebugRayVisualizer({ rays }: { rays: DebugRay[] }) {
+export function DebugRayVisualizer({
+    rays,
+    thickness = 0.02,
+    opacity = 1.0,
+}: {
+    rays: DebugRay[];
+    thickness?: number;
+    opacity?: number;
+}) {
 
     return (
         <>
@@ -34,35 +42,46 @@ export function DebugRayVisualizer({ rays }: { rays: DebugRay[] }) {
                 const origin = new THREE.Vector3(...ray.origin);
                 const dir = new THREE.Vector3(...ray.direction);
                 const end = origin.clone().add(dir.multiplyScalar(ray.length));
+
                 const color = rayColor(ray.ratio, ray.airborne);
+                const thick = thickness ?? 0.035; // 🌟 WORLD-UNIT THICKNESS
 
                 return (
                     <group key={i}>
-                        {/* 1️⃣ Full ray (measurement / reference) */}
+                        {/* 1️⃣ Full ray (reference / measurement) */}
                         <Line
                             points={[origin.toArray(), end.toArray()]}
-                            color="#666"
-                            lineWidth={1}
+                            color="#555"
+                            lineWidth={0.01}
                             dashed
+                            dashSize={0.05}
+                            gapSize={0.04}
+                            depthTest={false}
+                            depthWrite={false}
+
                         />
 
-                        {/* 2️⃣ Active segment (origin → hit) */}
+                        {/* 2️⃣ Active segment (force / contact) */}
                         {ray.hit && (
                             <Line
                                 points={[ray.origin, ray.hit]}
                                 color={color}
-                                lineWidth={2}
+                                lineWidth={thick}
+                                depthTest={false}
+                                depthWrite={false}
                             />
                         )}
 
                         {/* 3️⃣ Hit point marker */}
                         {ray.hit && (
                             <mesh position={ray.hit} renderOrder={10}>
-                                <sphereGeometry args={[0.045, 10, 10]} />
+                                <sphereGeometry args={[thick * 0.6, 12, 12]} />
                                 <meshStandardMaterial
                                     color={color}
                                     emissive={color}
-                                    emissiveIntensity={0.35}
+                                    emissiveIntensity={0.9}
+                                    depthTest={false}
+                                    depthWrite={false}
                                 />
                             </mesh>
                         )}
