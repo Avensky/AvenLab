@@ -1,8 +1,9 @@
 // main.rs — Clean Enterprise Architecture
-mod physics;// physics world and body creation
-mod net;    // player join / disconnect, team/room assignment
-mod state;  // world state
-mod spawn;  // spawn logic
+mod aven_tire;  // tire + suspension solver
+mod physics;    // physics world and body creation
+mod net;        // player join / disconnect, team/room assignment
+mod state;      // world state
+mod spawn;      // spawn logic
 
 
 use rapier3d::prelude::RigidBodyHandle;
