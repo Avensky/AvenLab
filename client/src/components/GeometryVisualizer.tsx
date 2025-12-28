@@ -1,14 +1,44 @@
-import { type JSX } from "react";
+// src/components/GeomeryVisualizer.tsx
 
-type GeometryVisualizerProps = JSX.IntrinsicElements["mesh"] & {
-    color?: string;
-};
+import type { DebugChassis } from "../store/snapshotStore";
+import * as THREE from "three";
+import { ColliderVisualizer } from "./ColliderVisualizer";
+import { GLBVisualizer } from "./GLBVisualizer";
 
-export function GeometryVisualizer({ color = "orange", ...props }: GeometryVisualizerProps) {
-    return (
-        <mesh {...props}>
-            <boxGeometry args={[1, 1, 1]} />
-            <meshStandardMaterial color={color} />
-        </mesh>
-    );
+export function GeometryVisualizer({
+    chassis,
+    mode,
+}: {
+    chassis?: DebugChassis;
+    mode: string;
+}) {
+
+    if (!chassis) return null;
+
+    const [hx, hy, hz] = chassis.half_extents;
+
+    // const scale = new THREE.Vector3(
+    //     hx * 2,
+    //     hy * 2,
+    //     hz * 2
+    // );
+
+    if (mode === "geometry") {
+        return (
+            <mesh scale={[hx * 2, hy * 2, hz * 2]}>
+                <boxGeometry args={[1, 1, 1]} />
+                <meshStandardMaterial color="#444" />
+            </mesh>
+        );
+    }
+
+    if (mode === "collider") {
+        return <ColliderVisualizer scale={[hx * 2, hy * 2, hz * 2]} />;
+    }
+
+    if (mode === "glb") {
+        return <GLBVisualizer scale={[hx * 2, hy * 2, hz * 2]} />;
+    }
+
+    return null;
 }

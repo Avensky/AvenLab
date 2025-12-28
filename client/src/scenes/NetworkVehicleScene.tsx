@@ -1,4 +1,6 @@
-import { useSnapshotStore } from "../store/snapshotStore";
+// src/components/NetworkVehicleScene.tsx
+
+import { useSnapshotStore, type PlayerSnapshot } from "../store/snapshotStore";
 import { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
@@ -37,27 +39,63 @@ function VehicleInstance({
     p,
     mode,
 }: {
-    p: any;
+    p: PlayerSnapshot;
     mode: string;
 }) {
     const ref = useRef<THREE.Group>(null);
+    const debug = useSnapshotStore(s => s.debug);
 
     useFrame(() => {
+        // if (!ref.current || !p.debug?.chassis) return;
         if (!ref.current) return;
 
-        // update stable transform
+
+        // position
+
+        // authoritative physics transform
         ref.current.position.set(p.x, p.y, p.z);
 
-        if (p.yaw !== undefined) {
+        // rotation (physics-authoritative)
+        if (p.rot && p.rot.length === 4) {
+            ref.current.quaternion.set(
+                p.rot[0],
+                p.rot[1],
+                p.rot[2],
+                p.rot[3]
+            );
+        } else if (p.yaw !== undefined) {
             ref.current.rotation.set(0, p.yaw, 0);
         }
     });
 
     return (
         <group ref={ref}>
-            {mode === "glb" && <GLBVisualizer />}
-            {mode === "geometry" && <GeometryVisualizer />}
-            {mode === "collider" && <ColliderVisualizer />}
+            {mode === "geometry" && (
+                <GeometryVisualizer
+                    chassis={debug?.chassis}
+                    mode={mode}
+                />
+            )}
+
+            {mode === "collider" && (
+                <ColliderVisualizer
+                    scale={
+                        debug?.chassis
+                            ? debug.chassis.half_extents.map(v => v * 2) as [number, number, number]
+                            : undefined
+                    }
+                />
+            )}
+
+            {mode === "glb" && (
+                <GLBVisualizer
+                    scale={
+                        debug?.chassis
+                            ? debug.chassis.half_extents.map(v => v * 2) as [number, number, number]
+                            : undefined
+                    }
+                />
+            )}
         </group>
     );
 }

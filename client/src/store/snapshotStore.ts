@@ -10,15 +10,27 @@ export type RenderMode = "glb" | "geometry" | "collider";
 //     z: number;
 //     yaw: number; // we’ll derive quaternion from yaw
 // }
+
+export interface DebugChassis {
+    position: [number, number, number];
+    rotation: [number, number, number, number]; // x,y,z,w
+    half_extents: [number, number, number];     // hx,hy,hz
+}
+
 export interface PlayerSnapshot {
     id: string;
     kind: string;
     room_id: number;
     team: "red" | "blue";
-    yaw?: number;
     x: number;
     y: number;
     z: number;
+
+    // full orientation (world-space)
+    rot: [number, number, number, number]; // quaternion [x,y,z,w]
+
+    // OPTIONAL convenience (UI only, never authoritative)
+    yaw?: number;
 }
 
 export interface PhysicsSnapshot {
@@ -51,6 +63,8 @@ export interface DebugWheel {
 }
 
 export interface DebugOverlay {
+    chassis?: DebugChassis;
+
     suspension_rays: DebugRay[];
     slip_vectors: DebugSlipRay[];
     load_bars: DebugRay[];
