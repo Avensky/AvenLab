@@ -1,6 +1,6 @@
 //! Core shared types for `aven_tire` (engine-agnostic).
 // aven_tire/types.rs
-
+use std::fmt;
 pub type Vec3 = [f32; 3];
 use rapier3d::prelude::Real;
 
@@ -26,11 +26,20 @@ pub fn v_cross(a: Vec3, b: Vec3) -> Vec3 {
     ]
 }
 
+#[inline]
+fn norm(v: [f32;3]) -> f32 { (v[0]*v[0] + v[1]*v[1] + v[2]*v[2]).sqrt() }
+
+#[inline]
+fn normalize(v: [f32;3]) -> [f32;3] {
+    let l = norm(v).max(1e-6);
+    [v[0]/l, v[1]/l, v[2]/l]
+}
+
 // ============================================
 // Wheel identification
 // ============================================
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum WheelId { FL, FR, RL, RR }
 
 impl WheelId {
@@ -43,6 +52,14 @@ impl WheelId {
             _ => WheelId::FL,
         }
     }
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            WheelId::FL => "FL",
+            WheelId::FR => "FR",
+            WheelId::RL => "RL",
+            WheelId::RR => "RR",
+        }
+    }
 
     pub fn is_front(&self) -> bool {
         matches!(self, WheelId::FL | WheelId::FR)
@@ -50,6 +67,18 @@ impl WheelId {
 
     pub fn is_rear(&self) -> bool {
         matches!(self, WheelId::RL | WheelId::RR)
+    }
+}
+
+impl fmt::Display for WheelId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            WheelId::FL => "FL",
+            WheelId::FR => "FR",
+            WheelId::RL => "RL",
+            WheelId::RR => "RR",
+        };
+        write!(f, "{s}")
     }
 }
 
@@ -75,10 +104,10 @@ pub struct SolveContext {
     pub base_front_bias: f32,   // 0.0–1.0
     pub bias_gain: f32,         // per total brake force
 
+    pub wheelbase: f32,
     pub mu_base: f32,
     // pub load_sensitivity: f32,
 
-    // pub wheelbase: f32,
     // pub track_width: f32,
     // pub ackermann: f32,
 
@@ -117,10 +146,12 @@ pub struct ContactPatch {
 
     pub normal_force: f32, // N
     pub mu_lat: f32,
+    pub mu_long: f32,
     pub roll_factor: f32,  // 0..1
 
     pub drive: bool,
-
+    pub brake: f32,
+    pub steer_angle: f32,
     pub compression_ratio: Real, // 0..1
 }
 

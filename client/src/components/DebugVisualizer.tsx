@@ -1,4 +1,5 @@
-import { useSnapshotStore } from "../store/snapshotStore";
+import { useFrame } from "@react-three/fiber";
+import { useSnapshotStore } from "../store/store";
 import { DebugAntiRollBarVisualizer } from "./DebugAntiRollBarVisualizer";
 import { DebugLateralForceVisualizer } from "./DebugLateralForceVisualizer";
 import { DebugLoadBarVisualizer } from "./DebugLoadBarVisualizer";
@@ -8,10 +9,10 @@ import { DebugSlipAngleVisualizer } from "./DebugSlipAngleVisualizer";
 import { DebugSpringVisualizer } from "./DebugSpringVisualizer";
 import { DebugWheelVisualizer } from "./DebugWheelVisualizer";
 import * as THREE from "three";
-
-
+import { useRef } from "react";
 
 export function DebugVisualizer() {
+    const ref = useRef<THREE.Group>(null);
     const debug = useSnapshotStore(s => s.debug);
 
     if (!debug) return null;
@@ -79,6 +80,25 @@ export function DebugVisualizer() {
         color: b.color,
     }));
 
+    const me = useSnapshotStore.getState().getMe();
+    if (!me) return null;
+
+    useFrame(() => {
+        if (!ref.current || !me) return;
+
+        ref.current.position.set(me.x, me.y, me.z);
+
+        if (me.rot?.length === 4) {
+            ref.current.quaternion.set(
+                me.rot[0],
+                me.rot[1],
+                me.rot[2],
+                me.rot[3]
+            );
+        } else if (me.yaw !== undefined) {
+            ref.current.rotation.set(0, me.yaw, 0);
+        }
+    });
 
     return (
         <>
@@ -86,7 +106,11 @@ export function DebugVisualizer() {
             <DebugLoadBarVisualizer bars={loadBars} radius={0.07} />
             {/* <DebugRayVisualizer rays={suspensionRays} /> */}
             <DebugSlipAngleVisualizer slips={debug.slip_vectors} />
-            <DebugWheelVisualizer wheels={debug.wheels} chassis_right={debug.chassis_right} />
+            <DebugWheelVisualizer
+                wheels={debug.wheels}
+                vehiclePosition={[me.x, me.y, me.z]}
+                vehicleQuaternion={me.rot}
+            />
             <DebugSpringVisualizer springs={springs} opacity1={0.8} opacity2={0.3} />
             <DebugNormalForceVisualizer wheels={debug.wheels} />
             <DebugLateralForceVisualizer wheels={debug.wheels} />

@@ -1,12 +1,36 @@
-// src/physics.rs
+// src/physic.rs
+// ================================================================================
+// ================================================================================
+// We are implementing a hybrid impulse-based tire model, best described as:
+// Raycast suspension + brush tire model + impulse-domain friction ellipse
+// Specifically:
+// 1) Suspension
+// - Raycast wheels
+// - Linear spring + damper
+// - Normal force computed explicitly
+// - Applied as impulses (F * dt)
+//
+// 2) Tire forces
+// - Longitudinal: force-based model → impulse (engine + brake + ABS/TCS)
+// - Lateral: brush-lite model (slip velocity → force → impulse)
+// - Combined slip: friction ellipse in impulse space
+// - Yaw: produced by applying lateral impulse at contact point
+//
+// This is very close to:
+// - rFactor / early iRacing
+// - Project Cars 1
+// - Cannon.js RaycastVehicle (but more advanced)
+// ===============================================================================
+// ===============================================================================
 
+// src/physics.rs
 use rapier3d::prelude::*;
 use rapier3d::prelude::{InteractionGroups, Group};
-use crate::physics::nalgebra::UnitQuaternion;
-use crate::aven_tire::{ContactPatch, ControlInput, SolveContext, WheelId, solve_step};
 use std::collections::HashMap;
 use serde::Serialize;
-
+use crate::suspension_contact::{SuspensionContact, build_suspension_contact};
+use crate::aven_tire::anti_roll::{ apply_arb_load_transfer};
+use crate::aven_tire::{ContactPatch, ControlInput, SolveContext, WheelId, solve_step};
 const GROUP_GROUND: Group  = Group::from_bits_truncate(0b0001);
 const GROUP_CHASSIS: Group = Group::from_bits_truncate(0b0010);
 
@@ -37,9 +61,12 @@ pub struct DebugWheel {
     pub grounded: bool,
     pub compression: f32,
     pub normal_force: f32,
+    pub steer: f32,
+    pub steering: bool,
+    pub drive: bool,
 
-    pub lateral_force: [f32; 3],                // for debug visualization
-    pub lateral_magnitude: f32,                 // for debug visualization
+    // pub lateral_force: [f32; 3],                // for debug visualization
+    // pub lateral_magnitude: f32,                 // for debug visualization
 }
 
 #[derive(Clone, Serialize)]
@@ -134,7 +161,7 @@ pub struct DebugChassis {
 
 pub const GT86: VehicleConfig = VehicleConfig {
     mass: 1350.0,             // kg
-    engine_force: 3200.0,     // N
+    engine_force: 6000.0,     // N
     brake_force: 8000.0,      // N
     max_speed: 55.0,          // m/s
     linear_damping: 0.08,     // coasting comes back
@@ -152,7 +179,7 @@ pub const GT86: VehicleConfig = VehicleConfig {
     arb_rear: 12_000.0,       // N/m
     
     load_sensitivity: 0.15,   // k spring load sensitivity
-    mu_base: 0.9,             // base friction coefficient
+    mu_base: 0.85,             // base friction coefficient
 
     // NEW: assists (toggles + thresholds)
     abs_enabled: true,
@@ -195,7 +222,6 @@ pub const TANK: VehicleConfig = VehicleConfig {
 #[inline] fn v3(v: Vector<Real>) -> [f32; 3] { [v.x, v.y, v.z] }
 #[inline] fn p3(p: Point<Real>)  -> [f32; 3] { [p.x, p.y, p.z] }
 
-
 pub struct PhysicsWorld {
     pub gravity: Vector<Real>, // gravity vector
     pub pipeline: PhysicsPipeline, // physics pipeline
@@ -213,82 +239,6 @@ pub struct PhysicsWorld {
     pub vehicles: HashMap<String, Vehicle>, // playerId → vehicle   
     pub body_to_player: HashMap<RigidBodyHandle, String>, // body handle → playerId
     pub debug_overlay: DebugOverlay,// for debug visualization
-
-}
-// --------------------------------------------------
-// ackermann steering angles (stateless)
-// -------------------------------------------------
-fn ackermann_angles(base: f32, wheelbase: f32, track: f32) -> (f32, f32) {
-    // base is "bicycle model" steer angle at vehicle centerline
-    // returns (left, right) in radians
-
-    let eps = 1e-4;
-    if base.abs() < eps {
-        return (0.0, 0.0);
-    }
-
-    let sign = base.signum();
-    let a = base.abs();
-
-    // turning radius of the centerline bicycle model
-    let r = wheelbase / a.tan();
-
-    // inside/outside radii for front wheels
-    let r_in  = (r - track * 0.5).max(0.01);
-    let r_out = (r + track * 0.5).max(0.01);
-
-    let left  = (wheelbase / r_in).atan() * sign;
-    let right = (wheelbase / r_out).atan() * sign;
-
-    // If turning left (base>0), left is inside; if right turn, right is inside
-    if sign > 0.0 { (left, right) } else { (right, left) }
-}
-
-// --------------------------------------------------
-// Anti-roll bars (derived, stateless)
-// --------------------------------------------------
-fn compute_arb_impulses(
-    handle: RigidBodyHandle,
-    left_id: &str,
-    right_id: &str,
-    stiffness: f32,
-    axle_compression: &HashMap<String, f32>,
-    axle_hit_point: &HashMap<String, Point<Real>>,
-    dt: f32,
-) -> Vec<(RigidBodyHandle, Vector<Real>, Option<Point<Real>>)> {
-
-    let mut out: Vec<(RigidBodyHandle, Vector<Real>, Option<Point<Real>>)> = Vec::new();
-
-    let (Some(&cl), Some(&cr)) = (
-        axle_compression.get(left_id),
-        axle_compression.get(right_id),
-    ) else {
-        return out;
-    };
-
-    let (Some(&pl), Some(&pr)) = (
-        axle_hit_point.get(left_id),
-        axle_hit_point.get(right_id),
-    ) else {
-        return out;
-    };
-
-    let delta = cl - cr;
-
-    // if delta.abs() < 0.005 {
-    //     return;
-    // }
-    if delta.abs() < 1e-4 {
-        return out;
-    }
-
-    let force = stiffness * delta;
-    let impulse = vector![0.0, 1.0, 0.0] * (force * dt);
-
-    out.push((handle, -impulse, Some(pl)));
-    out.push((handle,  impulse, Some(pr)));
-
-    out
 }
 
 impl PhysicsWorld {
@@ -436,7 +386,7 @@ impl PhysicsWorld {
         self.colliders.insert_with_parent(collider, handle, &mut self.bodies); // attach to body
         self.body_to_player.insert(handle, id.clone()); // map body to player ID  
         self.register_car(handle); // setup wheels
-
+        
         self.vehicles.insert(
             id.clone(),
             Vehicle {
@@ -486,22 +436,7 @@ impl PhysicsWorld {
     //          "heights": heights
     //      })
     //  }    
-
-    // fn derive_suspension(&mut self,
-    //     vehicle_mass: f32,                                      // kg
-    //     wheels: usize,                                          // number of wheels
-    //     frequency_hz: f32,                                      // Cannon ≈ 4.0–6.0
-    // ) -> (f32, f32) {
-
-    //     let mass_per_wheel = vehicle_mass / wheels as f32;      // kg per wheel
-    //     let omega = 2.0 * std::f32::consts::PI * frequency_hz;  // natural frequency (rad/s)
-    //     let k = mass_per_wheel * omega * omega;                 // N/m - spring constant
-    //     let c_crit = 2.0 * mass_per_wheel * omega;              // N*s/m - critical damping
-    //     let c = c_crit * 0.80;                                   // 80% critical
-        
-    //     (k, c)                                                  // spring constant, damper constant
-    // }
-
+    
     fn suspension_from_sag(&mut self, vehicle_mass: f32, wheels: usize, sag_m: f32, zeta: f32) -> (f32, f32) {
         let m = vehicle_mass / wheels as f32;
         let g = 9.81_f32;
@@ -512,6 +447,8 @@ impl PhysicsWorld {
         let c = 2.0 * zeta * (k * m).sqrt();
         (k, c)
     }
+
+    
 
     /// GTA-style car placeholder with 4 suspension raycasts.
     pub fn register_car(&mut self, body: RigidBodyHandle) {
@@ -535,382 +472,246 @@ impl PhysicsWorld {
 
 
     fn apply_suspension(&mut self, dt: Real) {
- 
         self.query_pipeline.update(&self.colliders);
  
         for (&handle, wheels) in self.wheels.iter_mut() {
-
-            // let Some(body) = self.bodies.get_mut(handle) else { continue };
-            let Some(body) = self.bodies.get_mut(handle) else { continue };
-            let Some(body_ro) = self.bodies.get(handle) else { continue };
-
-            let player_id = match self.body_to_player.get(&handle) {
-                Some(id) => id, None => continue,
-            };
-
-            let vehicle = match self.vehicles.get(player_id) {
-                Some(v) => v, None => continue,
-            };
+            let Some(body) = self.bodies.get(handle) else { continue };
+            let Some(player_id) = self.body_to_player.get(&handle) else { continue };
+            let Some(vehicle) = self.vehicles.get(player_id) else { continue };
 
 
-            let iso = body_ro.position();
-
+            // ====================================================================================
+            // Debug: chassis
+            // ====================================================================================
+            let pos = body.position();
             self.debug_overlay.chassis = Some(DebugChassis {
-                position: iso.translation.vector.into(),
+                position: pos.translation.vector.into(),
                 rotation: [
-                    iso.rotation.i,
-                    iso.rotation.j,
-                    iso.rotation.k,
-                    iso.rotation.w,
+                    pos.rotation.i,
+                    pos.rotation.j,
+                    pos.rotation.k,
+                    pos.rotation.w,
                 ],
                 half_extents: vehicle.config.chassis_half_extents,
             });
             
-
-            let throttle = vehicle.throttle as Real;
-            let brake = vehicle.brake as Real;
-            
             // collect impulses here, apply later
             let mut impulses: Vec<(RigidBodyHandle, Vector<Real>, Option<Point<Real>>)> = Vec::new();
-            let mut contacts: Vec<ContactPatch> = Vec::new(); // for tire solver
-
-            // ============================================================
-            // Suspension raycast + forces
-            // ============================================================
             
-            // ✅ Per-vehicle (per chassis) data for ARB + debug
-            let mut axle_compression: HashMap<String, f32> = HashMap::new();
-            let mut axle_hit_point: HashMap<String, Point<Real>> = HashMap::new();
-            // let mut axle_normal_force: HashMap<String, f32> = HashMap::new();
+            // =====================================================================================
+            // PHASE 1 — SENSE (raycast + raw suspension)
+            // =====================================================================================
 
-            let pos = body_ro.position();
-            let rot = pos.rotation;
-            let linvel = *body_ro.linvel();
-            let angvel = *body_ro.angvel();
-            let body_mass = body_ro.mass() as f32;
-            let com_local = *body_ro.center_of_mass();
-            let com = pos * com_local;
+            // vehicle physics
+            let body_mass = body.mass() as f32;
+            let wheels_count = wheels.len() as f32;
+            let fz_ref = (body_mass * 9.81) / wheels_count;
+            // let pos = body.position();
 
+            // tire data for solver
+            let mut contacts: Vec<ContactPatch> = Vec::new();
+            let mut suspension_contacts: Vec<(WheelId, SuspensionContact)> = Vec::new();
 
-            let filter = QueryFilter::default().exclude_rigid_body(handle);
-            let wheels_count = wheels.len() as Real;
-            let fz_ref = (body_mass * 9.81) / wheels_count; // static per-wheel load
+            // Per-vehicle (per chassis) data for ARB
+            let mut axle_compression: HashMap<WheelId, f32> = HashMap::new();
+            let mut axle_hit_point: HashMap<WheelId, Point<Real>> = HashMap::new();
+            let mut axle_normal_force: HashMap<WheelId, f32> = HashMap::new();
 
-            // ----------------------------------------------------------------------------
-            // 1) Raycast + suspension
-            // ----------------------------------------------------------------------------
+            // ======================================================================================
+            // 1) Wheels Loop
+            // ======================================================================================            
             for wheel in wheels.iter_mut() {
-                let max_dist = wheel.rest_length + wheel.max_length + wheel.radius;
-                // let origin = pos * (wheel.offset + vector![0.0, wheel.radius, 0.0]);
+
+                // shared params
                 let origin = pos * (wheel.offset + vector![0.0, wheel.radius + 0.02, 0.0]);
-
-                let ground_n: Vector<Real>  = vector![0.0, 1.0, 0.0];
-                let dir: Vector<Real> = vector![0.0, -1.0, 0.0];
-                let ray = Ray::new(origin, dir);
-
-                // --- DEBUG STATE (always valid) ---
+                let dir = vector![0.0, -1.0, 0.0];
+                let ground_n = vector![0.0, 1.0, 0.0];
+                let max_dist = wheel.rest_length + wheel.max_length + wheel.radius;
+                
+                // Defaults for debug (airborne)
                 let mut grounded = false;
                 let mut compression = 0.0;
                 let mut normal_force = 0.0;
-                let mut hit_point_opt: Option<Point<Real>> = None;
-                let mut lateral_force = [0.0; 3];
-                let mut lateral_magnitude = 0.0;
-                
-                
-                if let Some((_hit, toi)) = self.query_pipeline.cast_ray(
+                // let mut hit_point = None;
+                let mut hit_point: Option<Point<Real>> = None;
+
+                // “wheel center” when airborne: origin is above the wheel center by (radius + 0.02)
+                let mut wheel_center = origin - vector![0.0, wheel.radius + 0.02, 0.0];
+
+                if let Some(contact) = build_suspension_contact(
+                    wheel,
+                    vehicle,
+                    body,
+                    &self.query_pipeline,
                     &self.bodies,
                     &self.colliders,
-                    &ray,
-                    max_dist,
-                    true,
-                    filter,
-                ){
+                    handle,
+                    fz_ref,
+                    dt as f32,
+                ) {
+                    grounded = true;
+                    compression = contact.compression;
+                    normal_force = contact.normal_force;
 
-                    if toi > wheel.radius {
-                        let hit_point = origin + dir * toi;
-                        // let apply_point = hit_point + ground_n * (wheel.radius * 0.25);
-                        let suspension_length = toi - wheel.radius;
-                        let raw_compression = wheel.rest_length - suspension_length;
-                        compression = raw_compression.clamp(0.0, wheel.max_length);
-                        let compression_ratio = (compression / wheel.max_length).clamp(0.0, 1.0);
+                    hit_point = Some(contact.hit_point);
+                    
+                    // grounded wheel center = ground contact + normal * radius
+                    wheel_center = contact.hit_point + contact.ground_normal * wheel.radius;
+                    
+                    let wheel_id = WheelId::from_debug(&wheel.debug_id);
 
-                        // Limits
-                        // let mut max_long = 1.0;
+                    // ARB debug / physics
+                    axle_compression.insert(wheel_id, compression);
+                    axle_hit_point.insert(wheel_id, contact.hit_point);
+                    axle_normal_force.insert(wheel_id, normal_force);
 
-                        if compression > 0.0{
-                            grounded = true;                    // grounded!
-                            hit_point_opt = Some(hit_point);
-
-                            // ✅ Store per-wheel contact info for ARB (keys are owned Strings)
-                            axle_compression.insert(wheel.debug_id.clone(), compression);
-                            axle_hit_point.insert(wheel.debug_id.clone(), hit_point);
-
-                            // --- point velocity ---
-                            let r = hit_point.coords - com.coords;              // r = p - com
-                            let point_vel = linvel + angvel.cross(&r);          // v = v + ω × r
-                            let mut suspension_vel = point_vel.dot(&ground_n);  // v_n = v · n
-                            
-                            
-                            // Deadzone to kill micro jitter
-                            if suspension_vel.abs() < 0.05 { suspension_vel = 0.0; } // 0.05 m/s deadzone
-
-                            // Kill rebound bounce (one-way damper)
-                            if suspension_vel > 0.0 {
-                                suspension_vel *= 0.15;
-                            }
-
-
-                            let spring_force = wheel.stiffness * compression;       // F_s = k * x
-                            let damper_force = (-wheel.damping * suspension_vel)    // F_d = -c * v_n
-                            .clamp(-spring_force * 0.6, spring_force * 0.6);    // clamped to 80% of spring force
-                            
-                            // Total normal force
-                            normal_force = (spring_force + damper_force).max(0.0);  // F_n = F_s + F_d
-                            normal_force = normal_force.min(25_000.0);              // max force
-                            
-                            // ----------------------------------------------------
-                            // LOAD-SENSITIVE FRICTION (μ decreases with load)
-                            // ----------------------------------------------------
-                            // let mu_base = vehicle.config.sideways_grip as Real; // sideways friction coefficient
-                            let mu0 = vehicle.config.mu_base as Real;           // base friction coefficient
-                            let k   = vehicle.config.load_sensitivity as Real;  // load sensitivity factor
-                            
-                            let load_ratio = (normal_force / fz_ref).max(0.2); // normalized load
-                            
-                            // μ_eff = μ0 * (Fz/Fz_ref)^(-k)
-                            let mu_lat = (mu0 * load_ratio.powf(-k)).clamp(mu0 * 0.6, mu0 * 1.1);
-
-                            // Limits (impulse capacity this frame)
-                            // max_long = (normal_force * dt * 0.8).max(1e-6);
-                            
-                            // ----------------------------------------------------
-                            // ANTI-SQUAT / PITCH COMPENSATION (optional)
-                            // ----------------------------------------------------
-                            if suspension_vel.abs() > 1.5 {normal_force *= 0.7;} // high-speed damping (failsafe): Detect hop & damp it
-
-                            // Failsafe: keep minimal support force to avoid tunneling
-                            if grounded && normal_force < 200.0 {
-                                normal_force = 200.0;
-                            }
-
-                            // axle_normal_force.insert(wheel.debug_id.clone(), normal_force);
-
-                            if !(linvel.magnitude() < 0.05 && normal_force < 200.0) {
-                                let normal_impulse = ground_n * (normal_force * dt);
-                                impulses.push((handle, normal_impulse, Some(hit_point)));
-                            }
-
-                            if normal_force < 50.0 {
-                                continue; // no cornering force if wheel barely touching
-                            }
-                            
-                            // ----------------------------------------------------
-                            // STEERING: yaw-based (minimal, stable)
-                            // ----------------------------------------------------
-                            let base = vehicle.steer_angle; // already speed limited
-                            let (ack_l, ack_r) = ackermann_angles(base, vehicle.config.wheelbase, vehicle.config.track_width);
-
-                            // blend
-                            let (fl, fr) = (
-                                (1.0 - vehicle.config.ackermann) * base + vehicle.config.ackermann * ack_l,
-                                (1.0 - vehicle.config.ackermann) * base + vehicle.config.ackermann * ack_r,
-                            );
-
-                            let wheel_angle = match wheel.debug_id.as_str() {
-                                "FL" => fl,
-                                "FR" => fr,
-                                _ => 0.0,
-                            };
-
-                            let steer_rot = UnitQuaternion::from_axis_angle(&Vector::y_axis(), wheel_angle);
-
-                            // Steered forward direction in world space
-                            let chassis_forward_world = rot * vector![0.0, 0.0, -1.0];
-
-                            let chassis_forward = steer_rot * chassis_forward_world;
-                            
-                            // ----------------------------------------------------
-                            // LATERAL (CORNERING) IMPULSE
-                            // ----------------------------------------------------
-                            
-                            // Project onto ground plane
-                            let wheel_forward = {
-                                let v = chassis_forward - ground_n * chassis_forward.dot(&ground_n);
-                                if v.magnitude() > 1e-6 { 
-                                    v.normalize() 
-                                } else {
-                                    vector![0.0, 0.0, -1.0] 
-                                }
+                    suspension_contacts.push((wheel_id, contact.clone()));
+                    
+                    // let nf = axle_normal_force.get(&wheel_id).copied().unwrap_or(0.0);
+                    // // suspension impulse
+                    // let jn = contact.ground_normal * (nf * dt);
+                    // impulses.push((handle, jn, Some(contact.hit_point)));
+                    
+                    // tire contact
+                    contacts.push(ContactPatch {
+                        wheel: wheel_id,
+                        grounded,
+                        hit_point: p3(contact.hit_point),
+                        apply_point: p3(contact.apply_point),
+                        forward: v3(contact.forward),
+                        side: v3(contact.side),
+                        v_long: contact.v_long,
+                        v_lat: contact.v_lat,
+                        normal_force,
+                        mu_lat: contact.mu_lat,
+                        mu_long: contact.mu_long,
+                        roll_factor: contact.roll_factor,
+                        drive: wheel.drive,
+                        brake: vehicle.brake,
+                        steer_angle: vehicle.steer_angle,
+                        compression_ratio: contact.compression_ratio,
+                    });
+                    // ===============================================================================
+                    // debug hooks can read from `contact`
+                    // ===============================================================================
+                    if contact.forward.magnitude() > 1e-4 {
+                        let slip_mag = contact.v_lat.abs();
+                        
+                        if slip_mag > 0.01 {
+                            let slip_dir = if contact.v_lat >= 0.0 {
+                                contact.side
+                            } else {
+                                -contact.side
                             };
                             
-                            let v_long = point_vel.dot(&wheel_forward);
+                            let slip_len = (slip_mag * 0.25).clamp(0.02, 0.6);
                             
-                            // ----------------------------------------------------
-                            // Combined slip placeholders (must exist even if lateral = 0)
-                            // ----------------------------------------------------
-            
-                            let mut apply_point = hit_point + ground_n * (wheel.radius * 0.25);
-                            let steer_intensity: Real = vehicle.steer.abs().clamp(0.0, 1.0); // 0.0 .. 1.0
-                            let vertical_coupling = 1.0 - steer_intensity * 0.65; // reduces roll effect when steering hard
-                            let roll_factor = 0.30 * vertical_coupling; //x for tire roll torque
-                            let wheel_side: Vector<Real> = wheel_forward.cross(&ground_n); // right hand rule
-                            // let wheel_side: Vector<Real> = wheel_forward.cross(&ground_n);
-
-                            let lateral_speed = point_vel.dot(&wheel_side); // slip velocity at contact point
-
-                            if wheel_forward.magnitude() > 1e-4 {
-                                // ------------------------------------------
-                                // DEBUG SLIP-ANGLE VECTOR Ray
-                                // This does not affect physics. It only shows what already exists.
-                                // ------------------------------------------
-                                let slip_mag = lateral_speed.abs();
-
-                                if slip_mag > 0.01 {
-                                    let slip_dir = if lateral_speed >= 0.0 {
-                                        wheel_side
-                                    } else {
-                                        -wheel_side
-                                    };
-
-                                    // Visual scale (purely debug)
-                                    let slip_len = (slip_mag * 0.25).clamp(0.02, 0.6);
-
-                                    // Color by axle
-                                    let color = match wheel.debug_id.as_str() {
-                                        "FL" | "RL" => [0.2, 0.8, 1.0], // left = blue
-                                        "FR" | "RR" => [1.0, 0.4, 0.2], // right = red
-                                        _ => [1.0, 1.0, 1.0],
-                                    };
-
-                                    self.debug_overlay.slip_vectors.push(DebugSlipRay {
-                                        origin: hit_point.into(),
-                                        direction: slip_dir.into(),
-                                        magnitude: slip_len,
-                                        color,
-                                    });
-                                }
-
-
-                                // Deadzone to prevent jitter
-                                // if lateral_speed.abs() > 0.02 {
-                                    
-
-                                //     // further reduce lateral force when near stop and braking
-                                //     if speed < 0.5 && brake > 0.3 {
-                                //         // kill lateral completely near stop
-                                //         let scrub = ((5.0 - speed) / 5.0).clamp(0.0, 1.0);
-                                //         desired_lat_impulse += -lateral_speed * body.mass() * 0.25 * scrub;
-                                //     }
-
-                                //     desired_lat_impulse = desired_lat_impulse.clamp(-max_lat_impulse, max_lat_impulse); // final clamp
-                                //     lat_impulse_vec = wheel_side * desired_lat_impulse; // lateral impulse vector
-                                //     lat_impulse_mag = lat_impulse_vec.magnitude(); // Store for combined slip calculation later
-
-                                //     // for debug
-                                //     lateral_force = [
-                                //         wheel_side.x * (desired_lat_impulse / dt),
-                                //         wheel_side.y * (desired_lat_impulse / dt),
-                                //         wheel_side.z * (desired_lat_impulse / dt),
-                                //     ];
-                                //     lateral_magnitude = (desired_lat_impulse / dt).abs(); // N
-                                //     apply_point = hit_point + ground_n * (wheel.radius * 0.25); // slightly above ground
-                                    
-                                // } // if lateral_speed.abs() > 0.02
-
-                            } // if wheel_forward.magnitude() > 1e-4
-
-
-                            contacts.push(ContactPatch {
-                                wheel: WheelId::from_debug(&wheel.debug_id),
-                                grounded: true,
-
-                                hit_point: p3(hit_point),
-                                apply_point: p3(apply_point),
-
-                                forward: v3(wheel_forward),
-                                side: v3(wheel_side),
-
-                                v_long: v_long as f32,
-                                v_lat: lateral_speed as f32,
-
-                                normal_force: normal_force as f32,
-                                mu_lat: mu_lat as f32,
-                                roll_factor: roll_factor as f32,
-
-                                drive: wheel.drive,
-                                compression_ratio,
+                            let color = match contact.wheel_id.as_str() {
+                                "FL" | "RL" => [0.2, 0.6, 1.0],
+                                "FR" | "RR" => [1.0, 0.4, 0.2],
+                                _ => [1.0, 1.0, 1.0],
+                            };
+                            
+                            self.debug_overlay.slip_vectors.push(DebugSlipRay {
+                                origin: contact.hit_point.into(),
+                                direction: slip_dir.into(),
+                                magnitude: slip_len,
+                                color,
                             });
-
-                        } // if compression > 0.0 grounded
-
-                    } // if ray hit
-
-                } // raycast
-
-
+                        }
+                    }
+                }
+                
                 // ----------------------------------------------------------
-                // DEBUG RAY (suspension ray)
+                // DEBUG: suspension ray (ALWAYS push)
                 // ----------------------------------------------------------
-                 self.debug_overlay.suspension_rays.push(DebugRay {
+                // self.debug_overlay.suspension_rays.push(DebugRay {
+                //     origin: origin.into(),
+                //     direction: dir.into(),
+                //     length: max_dist,
+                //     hit: hit_point_opt.map(|p| p.into()),
+                //     color: if grounded { [0.0, 1.0, 0.0] } else { [1.0, 0.0, 0.0] },
+                // });
+                self.debug_overlay.suspension_rays.push(DebugRay {
                     origin: origin.into(),
                     direction: dir.into(),
                     length: max_dist,
-                    hit: hit_point_opt.map(|p| p.into()),
-                    // color: [0.0, 1.0, 0.0],
-                    color: if grounded {
-                        [0.0, 1.0, 0.0]          // solid green
-                    } else if hit_point_opt.is_some() {
-                        [0.6, 0.6, 0.6]          // faded (recent contact)
-                    } else {
-                        [1.0, 0.0, 0.0]          // fully airborne
-                    },
+                    hit: hit_point.map(|p| p.into()),
+                    color: if grounded { [0.0, 1.0, 0.0] } else { [1.0, 0.0, 0.0] },
                 });
 
                 // ----------------------------------------------------------
-                // DEBUG LOAD TRANSFER BAR (vertical)
+                // DEBUG: wheel numeric (ALWAYS push)
                 // ----------------------------------------------------------
-
-                // Scale: tune this constant to taste (bigger = shorter bars).
-                // let load_scale = 6000.0_f32;
-                // let load_scale = 6000.0_f32;
-                let norm = (normal_force / 12000.0).clamp(0.0, 1.0);
-                let bar_len = norm.powf(0.5) * 1.25; // visual exaggeration
-
-                // Use hit point when grounded, else wheel center
-                let bar_origin = hit_point_opt.unwrap_or(origin) + ground_n * 0.03;
-                // let load_ratio = (normal_force / 12000.0).clamp(0.0, 1.0);
-                let color =  match wheel.debug_id.as_str() {
-                    "FL" | "RL" => [0.2, 0.6, 1.0], // left = blue
-                    "FR" | "RR" => [1.0, 0.4, 0.2], // right = red
-                    _ => [1.0, 1.0, 1.0],
-                };
-                self.debug_overlay.load_bars.push(DebugRay {
-                    origin: bar_origin.into(),
-                    direction: ground_n.into(),
-                    // direction: [0.0, 1.0, 0.0], // ALWAYS UP
-                    length: bar_len,
-                    hit: Some((bar_origin + ground_n * bar_len).into()),
-                    color: color,
-                });
-                // ----------------------------------------------------
-                // DEBUG WHEEL (per-wheel numeric data)
-                // ----------------------------------------------------
                 self.debug_overlay.wheels.push(DebugWheel {
                     id: wheel.debug_id.clone(),
-                    center: (origin - ground_n * wheel.radius).into(),
-                    radius: wheel.radius,
+                    center: wheel_center.into(),
+                    radius: wheel.radius as f32,
                     grounded,
                     compression,
                     normal_force,
-                    lateral_force,
-                    lateral_magnitude,                
+                    steer: vehicle.steer,
+                    steering: wheel.steer,
+                    drive: wheel.drive,
                 });
 
-            } // for each wheel
+                // ----------------------------------------------------------
+                // DEBUG: load bar (optional but super helpful)
+                // ----------------------------------------------------------
+                let norm = (normal_force / 12000.0).clamp(0.0, 1.0);
+                let bar_len = norm.sqrt() * 1.25;
 
-            // ---------------------------
-            // 2) Tire solve (ONCE)
-            // ---------------------------
+                let bar_origin = wheel_center + ground_n * 0.03;
+                let color = match wheel.debug_id.as_str() {
+                    "FL" | "RL" => [0.2, 0.6, 1.0],
+                    "FR" | "RR" => [1.0, 0.4, 0.2],
+                    _ => [1.0, 1.0, 1.0],
+                };
+
+                self.debug_overlay.load_bars.push(DebugRay {
+                    origin: bar_origin.into(),
+                    direction: ground_n.into(),
+                    length: bar_len,
+                    hit: Some((bar_origin + ground_n * bar_len).into()),
+                    color,
+                });
+
+                let wheel_id = WheelId::from_debug(&wheel.debug_id);
+
+            } // end wheels iteration
+
+
+            // ======================================================================================
+            // PHASE 2 — REDISTRIBUTE (anti-roll bars)
+            // ======================================================================================
+            apply_arb_load_transfer(
+                WheelId::FL, WheelId::FR,
+                &mut axle_normal_force,
+                &axle_compression,
+                vehicle.config.arb_front,
+                fz_ref,
+            );
+
+            apply_arb_load_transfer(
+                WheelId::RL, WheelId::RR,
+                &mut axle_normal_force,
+                &axle_compression,
+                vehicle.config.arb_rear,
+                fz_ref,
+            );
+
+            // ======================================================================================
+            // PHASE 3 — ACT (impulses)
+            // ======================================================================================
+
+            // --- Suspension impulses ---
+            for (wheel_id, contact) in suspension_contacts.iter_mut() {
+                if let Some(nf) = axle_normal_force.get(wheel_id) {
+                    contact.normal_force = *nf;
+                }
+            }
+
+            // --- Tire Impulses ----
             let ctx = SolveContext {
                 dt: dt as f32,
                 mass: body_mass,
@@ -923,22 +724,25 @@ impl PhysicsWorld {
                 driven_wheels: 2.0,        // RL+RR for your current setup
                 base_front_bias: 0.66,
                 bias_gain: 0.25,
+                wheelbase: vehicle.config.wheelbase,
                 mu_base: vehicle.config.mu_base,
             };
 
             let control = ControlInput {
-                throttle: throttle as f32,
-                brake: brake as f32,
+                throttle: vehicle.throttle as f32,
+                brake: vehicle.brake as f32,
                 steer: vehicle.steer as f32,
             };
 
             let tire_impulses = solve_step(&ctx, &control, &contacts);
             for imp in tire_impulses {
-                let j: Vector<Real> = imp.impulse.into(); // if impulse is [f32;3]
+                let mut j: Vector<Real> = imp.impulse.into(); // if impulse is [f32;3]
+
                 let p: Option<Point<Real>> = imp.at_point.map(Point::from);
                 impulses.push((handle, j, p));
-            }
+            } 
 
+            // --- Apply impulses ---
             for (handle, impulse, point) in impulses {
                 if let Some(body) = self.bodies.get_mut(handle) {
                     match point {
@@ -947,131 +751,11 @@ impl PhysicsWorld {
                     }
                 }
             }
-
-            // --------------------------------------------------
-            // ANTI-ROLL DEBUG + IMPULSES (front + rear)
-            // --------------------------------------------------
-
-            // Assumption: all wheels share same radius (true for GT86/TANK)
-            let wheel_radius = wheels
-                .first()
-                .map(|w| w.radius)
-                .unwrap_or(0.35);
-
-            let mut arb_debug = |left: &str, right: &str, k: f32, color_pos: [f32; 3], color_neg: [f32; 3]| {
-                let (Some(&cl), Some(&cr)) = (
-                    axle_compression.get(left),
-                    axle_compression.get(right),
-                ) else {
-                    return;
-                };
-
-            
-                let grounded_l = axle_compression.get(left).unwrap_or(&0.0) > &0.0;
-                let grounded_r = axle_compression.get(right).unwrap_or(&0.0) > &0.0;
-                if !(grounded_l && grounded_r) {
-                    return;
-                }
-
-                let (Some(&pl), Some(&pr)) = (
-                    axle_hit_point.get(left),
-                    axle_hit_point.get(right),
-                ) else {
-                    return;
-                };
-
-                // Wheel-center positions for ARB DEBUG ONLY
-                let wheel_center_l = pl + vector![0.0, wheel_radius + 0.05, 0.0];
-                let wheel_center_r = pr + vector![0.0, wheel_radius + 0.05, 0.0];
-                
-                let delta = cl - cr;
-                if delta.abs() < 1e-4 {
-                    return;
-                }
-                
-                let force = k * delta;
-                
-                let color = if force >= 0.0 { color_pos } else { color_neg };
-
-                // --------------------------------------------------
-                // DEBUG: axle link (shows roll direction)
-                // --------------------------------------------------
-                let axis = wheel_center_r - wheel_center_l;
-                let dist = axis.magnitude();
-                if dist > 1e-4 {
-                    let dir = axis / dist;
-
-                    self.debug_overlay.arb_links.push(DebugRay {
-                        origin: wheel_center_l.into(),
-                        direction: dir.into(),
-                        length: dist,
-                        hit: Some(wheel_center_r.into()),
-                        color,
-                    });
-                }
-
-                // --------------------------------------------------
-                // DEBUG: vertical ARB forces at wheels
-                // --------------------------------------------------
-                let arb_scale = 20_000.0_f32;
-                let arb_len_raw = delta.abs() * k / arb_scale;
-                let arb_len = arb_len_raw.clamp(0.08, 0.8); // 👈 minimum 8 cm
-                
-                // let arb_len = (delta.abs() * k / arb_scale).clamp(0.0, 0.8);
-
-                let up = vector![0.0, 1.0, 0.0];
-
-                let left_dir = if force >= 0.0 { -up } else { up };
-                let right_dir = if force >= 0.0 { up } else { -up };
-
-                let lateral_offset = vector![0.06, 0.0, 0.0]; // tune per side
-
-                let arb_origin_l = wheel_center_l + up * 0.05 - lateral_offset;
-                let arb_origin_r = wheel_center_r + up * 0.05 + lateral_offset;
-
-                self.debug_overlay.arb_links.push(DebugRay {
-                    origin: wheel_center_l.into(),
-                    direction: left_dir.into(),
-                    length: arb_len,
-                    hit: Some((arb_origin_l + left_dir * arb_len).into()),
-                    color: color_pos,
-                });
-
-                self.debug_overlay.arb_links.push(DebugRay {
-                    origin: wheel_center_r.into(),
-                    direction: right_dir.into(),
-                    length: arb_len,
-                    hit: Some((arb_origin_r + right_dir * arb_len).into()),
-                    color: color_pos,
-                });
-
-                // --------------------------------------------------
-                // PHYSICS: ARB impulses
-                // --------------------------------------------------
-                // impulses.extend(
-                //     compute_arb_impulses(
-                //         handle,
-                //         left,
-                //         right,
-                //         k,
-                //         &axle_compression,
-                //         &axle_hit_point,
-                //         dt,
-                //     )
-                // );
-            };
-
-
-            // Front axle: FL/FR
-            arb_debug("FL", "FR", vehicle.config.arb_front, [0.7, 0.2, 1.0], [0.2, 0.8, 1.0]);
-
-            // Rear axle: RL/RR
-            arb_debug("RL", "RR", vehicle.config.arb_rear, [0.7, 0.2, 1.0], [0.2, 0.8, 1.0]);
         
-        }
+        } // per player
         
-    }
-
+    } // end
+    
     /// Apply vehicle controls (throttle + steering) to each vehicle.
     fn apply_vehicle_controls(&mut self, dt: Real) {
         for v in self.vehicles.values_mut() {
@@ -1123,9 +807,14 @@ impl PhysicsWorld {
                 // Angular damping (kills roll/yaw oscillations)
                 // ----------------------------------------------
                 let angvel = *body.angvel();
+                // println!(
+                //     "ω = {:.3?}",
+                //     body.angvel()
+                // );
                 let ang_damp_per_sec = 2.0; // tune
                 let factor = (-ang_damp_per_sec * dt).exp();
                 let speed = body.linvel().magnitude();
+                
                 if speed < 1.0 {
                     let yaw_damp = 6.0; // strong
                     let factor = (-yaw_damp * dt).exp();

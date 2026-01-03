@@ -4,11 +4,8 @@ use tokio::net::TcpListener;
 use tokio::sync::{Mutex, mpsc}; 
 use futures::{StreamExt, SinkExt};
 use tokio_tungstenite::{accept_async, tungstenite::Message};
-
 use crate::state::{SharedGameState, EntityType};
 use crate::physics::PhysicsWorld;
-// use serde::Serialize;
-// use crate::physics::DebugOverlay;
 
 #[derive(Debug)]
 struct ClientMessage {

@@ -1,5 +1,5 @@
 // /src/net/rustSocket.ts
-import { useSnapshotStore } from "../store/snapshotStore";
+import { useSnapshotStore } from "../store/store";
 
 let socket: WebSocket | null = null;
 let reconnectTimer: any = null;

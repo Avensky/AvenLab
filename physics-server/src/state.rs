@@ -210,6 +210,7 @@ impl SharedGameState {
                 //     "   ↪ entity {} @ ({:.2}, {:.2}, {:.2})",
                 //     ent.id, pos.x, pos.y, pos.z
                 // );
+                let rot = body.rotation();
 
                 players_json.push(json!({
                     "id": ent.id,
@@ -219,6 +220,8 @@ impl SharedGameState {
                     "x": pos.x,
                     "y": pos.y,
                     "z": pos.z,
+                    // FULL authoritative orientation
+                    "rot": [rot.i, rot.j, rot.k, rot.w],
                 }));
             } else {
                 println!(
@@ -241,7 +244,7 @@ impl SharedGameState {
         // println!("   Snapshot payload: {}", json);
 
         // Send to all registered clients
-        for (_i, tx) in self.clients.iter().enumerate() {
+        for (i, tx) in self.clients.iter().enumerate() {
             match tx.send(json.clone()) {
                 Ok(_) => {
                     // println!(
@@ -249,11 +252,11 @@ impl SharedGameState {
                     //     self.tick, i
                     // );
                 }
-                Err(_e) => {
-                    // println!(
-                    //     "   ❌ failed to send snapshot to client #{}: {}",
-                    //     i, e
-                    // );
+                Err(e) => {
+                    println!(
+                        "   ❌ failed to send snapshot to client #{}: {}",
+                        i, e
+                    );
                 }
             }
         }

@@ -1,4 +1,4 @@
-import { useSnapshotStore } from "../store/snapshotStore";
+import { useSnapshotStore } from "../store/store";
 import { useFrame } from "@react-three/fiber";
 import { useState } from "react";
 
@@ -27,7 +27,8 @@ export function DebugOverlay() {
             borderRadius: "8px",
             pointerEvents: "none",
             whiteSpace: "pre",
-            zIndex: 9999
+            zIndex: 9999,
+            width: "25%",
         }}>
             <b>AvenLab Debug HUD</b>
             {"\n"}Connected: {String(connected)}

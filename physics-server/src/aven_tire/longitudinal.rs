@@ -1,3 +1,43 @@
+// ====================================================================
+// LONGITUDINAL TIRE MODEL (Impulse-Based)
+// --------------------------------------------------------------------
+// This model computes longitudinal tire impulses from:
+//
+// 1) Engine force (drive wheels only)
+// 2) Brake force (all wheels, brake-biased)
+// 3) ABS / TCS limiting (relative demand vs capacity)
+//
+// Forces are converted to impulses via J = F * dt.
+//
+// IMPORTANT:
+// - This model does NOT simulate wheel angular velocity.
+// - Slip ratio is approximated implicitly via impulse demand.
+// - Stability depends on the combined-slip ellipse in solve_step().
+//
+// This model assumes:
+// - Raycast suspension provides correct normal_force
+// - Lateral forces are handled independently (brush model)
+// ====================================================================
+
+// ====================================================================
+// PHYSICS PIPELINE OVERVIEW
+// --------------------------------------------------------------------
+// 1) Raycast suspension computes normal forces per wheel
+// 2) ContactPatch is built per grounded wheel
+//    - world-space forward/side directions
+//    - slip velocities
+//    - friction coefficients
+// 3) Tire solver (aven_tire::solve_step) computes impulses
+//    - longitudinal + lateral + yaw
+// 4) Impulses are applied to the chassis rigid body
+//
+// IMPORTANT:
+// - The chassis collider has friction = 0.0
+// - ALL tire friction is simulated manually
+// - Rapier is only responsible for rigid-body integration
+// ====================================================================
+
+
 // src/aven_tire/longitudinal.rs
 // use rapier3d::prelude::Real;
 use crate::aven_tire::types::{
@@ -41,13 +81,19 @@ pub fn solve_longitudinal(
     // -------------------------
     // ENGINE FORCE - (per driven wheel)
     // -------------------------
+    let load_frac = (patch.normal_force / (ctx.mass * 9.81 / ctx.driven_wheels)).clamp(0.5, 1.6);
+
     let engine_force = if patch.drive {
-        (ctx.engine_force / ctx.driven_wheels.max(1.0)) * ctrl.throttle
-    } else { 0.0 };
+        (ctx.engine_force / ctx.driven_wheels.max(1.0))
+            * ctrl.throttle
+            * load_frac
+    } else {
+        0.0
+    };
 
     let mut engine_impulse =
         v_scale(patch.forward, engine_force.clamp(-max_traction, max_traction) * dt);
-
+   
     // -------------------------
     // BRAKE 
     // -------------------------
@@ -98,6 +144,9 @@ pub fn solve_longitudinal(
         let s = (ctx.abs_limit / brake_nx).clamp(0.0, 1.0);
         brake_impulse = v_scale(brake_impulse, s);
     }
+
+    // let relax = (-ctx.dt * patch.v_long.abs() / 2.0).exp();
+    // brake_impulse = v_scale(brake_impulse, relax);
 
     // ------------------------------------------------
     // COMBINE ENGINE + BRAKE
