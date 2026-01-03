@@ -1,29 +1,27 @@
-// src/aven_tire/solve.rs
+// ==============================================================================
+// solve.rs — TIRE SOLVER (IMPULSE-DOMAIN FRICTION + YAW + ALIGNING TORQUE)
+// ==============================================================================
+// ------------------------------------------------------------------------------
+// This module combines:
+// - Longitudinal impulses (engine + brake) from longitudinal.rs
+// - Lateral impulses from brush_lite.rs
+// - A combined-slip friction ellipse in impulse space
+// - A split of lateral impulse into:
+//     (a) at-contact component -> yaw moment
+//     (b) at-COM component     -> lateral translation
+// - Optional aligning torque (Mz) via pneumatic trail approximation:
 //
-// ====================================================================
-// TIRE FORCE SOLVER (Impulse Domain)
-// --------------------------------------------------------------------
-// Physics model:
-// - Impulse-domain tire forces
-// - Computes Longitudinal impulses (engine + brake)
-// - Computes Lateral impulses via brush tire (slip velocity → impulse)
-// - Applies a Combined-slip friction ellipse
-// - Splits lateral impulse into:
-//     * COM component (pure lateral acceleration)
-//     * at-point component (yaw moment)
+//     Fy ≈ (J_lat / dt) projected onto wheel side
+//     trail(|α|) = trail0 * exp(-|α|/alpha_falloff)
+//     Mz = -Fy * trail
+//     torque impulse = Mz * dt around up axis
 //
-// This solver MUST NOT:
-// - Directly modify velocity alignment
-// - Enforce steering geometry (already handled upstream)
-// - Apply artificial forces unrelated to tire slip
-//
-// If steering feels weak, the problem is almost always:
-// - Incorrect wheel_side direction
-// - Lateral impulse scaling
-// - Yaw leverage point (point_frac)
-//
-// Steering MUST already be encoded in ContactPatch.forward / side.
-// ====================================================================
+// Outputs a list of Impulse actions consumed by physics.rs, which applies:
+// - apply_impulse() at COM
+// - apply_impulse_at_point() at contact point
+// - apply_torque_impulse() for aligning torque
+// ==============================================================================
+
 
 use crate::aven_tire::types::{
     ContactPatch, ControlInput, Impulse, SolveContext,
@@ -31,6 +29,26 @@ use crate::aven_tire::types::{
 };
 use crate::aven_tire::longitudinal::solve_longitudinal;
 use crate::aven_tire::brush_lite::{solve_brush_lite, BrushLiteConfig};
+
+#[derive(Clone, Copy, Debug)]
+pub struct AligningTorqueConfig {
+    pub trail0: f32,        // meters (0.04–0.12 typical)
+    pub alpha_falloff: f32, // radians (0.2–0.5)
+    pub min_speed: f32,     // m/s
+    pub max_mz: f32,        // clamp moment (N*m)
+}
+
+impl Default for AligningTorqueConfig {
+    fn default() -> Self {
+        Self {
+            trail0: 0.08,
+            alpha_falloff: 0.35,
+            min_speed: 0.5,
+            max_mz: 4500.0,
+        }
+    }
+}
+
 
 pub fn solve_step(
     ctx: &SolveContext,
@@ -80,7 +98,11 @@ pub fn solve_step(
         // Combined slip ellipse (impulse domain)
         // --------------------------------------------------
         let max_long = (c.normal_force * ctx.dt * 0.8).max(1e-6);
-        let max_lat  = (c.mu_lat * c.normal_force * ctx.dt).max(1e-6);
+        let speed = (c.v_long * c.v_long + c.v_lat * c.v_lat).sqrt();
+        let lat_boost = (1.0 + 0.6 * (speed / 20.0)).clamp(1.0, 1.8);
+
+        let max_lat = c.mu_lat * c.normal_force * ctx.dt * lat_boost;
+        // let max_lat  = (c.mu_lat * c.normal_force * ctx.dt).max(1e-6);
 
         let nx = v_mag(long.impulse) / max_long;
         let ny = v_mag(lat) / max_lat;
@@ -107,24 +129,58 @@ pub fn solve_step(
             });
         }
 
+        // =======================================================================================
         // Lateral → split COM + contact point (yaw moment)
-        let point_frac = 0.75; // yaw-dominant
-        let com_frac   = 0.25;
+        // More yaw at low speed, less at high speed.
+        // =======================================================================================
+        let speed = (c.v_long * c.v_long + c.v_lat * c.v_lat).sqrt();
 
-        let lat_point = v_scale(lat_i, point_frac);
-        let lat_com   = v_scale(lat_i, com_frac);
+        // 0 m/s => 0.70 yaw, 20 m/s => 0.20 yaw
+        let yaw_frac = (0.70 - 0.50 * (speed / 20.0).clamp(0.0, 1.0)).clamp(0.15, 0.75);
 
-        if v_mag(lat_point) > 1e-6 {
+        // Front wheels contribute more yaw than rear (helps turning-in)
+        let yaw_frac = if c.wheel.is_front() { yaw_frac } else { yaw_frac * 0.35 };
+
+
+        
+        // ==========================================================================================
+        // Aligning Torque 
+        // ==========================================================================================
+        let align_cfg = AligningTorqueConfig::default();
+        
+        
+        // Only meaningful if we have lateral and enough speed
+        if speed > align_cfg.min_speed && v_mag(lat_i) > 1e-6 {
+            // Slip angle approximation (radians)
+            // α = atan2(v_lat, |v_long|), stable near zero
+            let alpha = c.v_lat.atan2(c.v_long.abs().max(0.5));
+            
+            // Pneumatic trail falls off with |α|
+            let trail = align_cfg.trail0 * (-alpha.abs() / align_cfg.alpha_falloff.max(1e-3)).exp();
+            
+            // Offset contact point ALONG forward axis
+            let align_offset = v_scale(c.forward, trail);
+            
+            // Shift lateral impulse application point
+            let align_point = [
+                c.hit_point[0] + align_offset[0],
+                c.hit_point[1],
+                c.hit_point[2] + align_offset[2],
+                ];
+                
+            // reduce yaw when aligning torque is active
+            let yaw_reduction = 1.0 - (trail / align_cfg.trail0).clamp(0.0, 0.6);
+            let yaw_frac = yaw_frac * yaw_reduction;
+    
+            let com_frac   = 1.0 - yaw_frac;
+    
+            let lat_point = v_scale(lat_i, yaw_frac);
+            let lat_com   = v_scale(lat_i, com_frac);
+            
+            // Apply SAME lateral impulse, different point
             impulses.push(Impulse {
                 impulse: lat_point,
-                at_point: Some(c.hit_point),
-            });
-        }
-
-        if v_mag(lat_com) > 1e-6 {
-            impulses.push(Impulse {
-                impulse: lat_com,
-                at_point: None,
+                at_point: Some(align_point),
             });
         }
     }

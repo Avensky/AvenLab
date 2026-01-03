@@ -1,22 +1,30 @@
-// src/aven_tire/steering.rs
-//
-// ====================================================================
-// STEERING GEOMETRY MODULE
-// --------------------------------------------------------------------
+// ==============================================================================
+// steering.rs — ACKERMANN STEERING GEOMETRY (FRONT AXLE)
+// ==============================================================================
 // Responsibilities:
 // - Convert driver steering intent into wheel orientations
 // - Apply Ackermann steering geometry
 // - Apply speed-sensitive steering limits
 // - Output per-wheel forward & side directions (unit vectors)
+// ------------------------------------------------------------------------------
+// Given:
+// - wheelbase, track_width
+// - max_steer_angle
+// - ackermann blend (0..1)
+// - driver steer input (or steer angle)
 //
-// This module MUST NOT:
-// - Apply forces or impulses
-// - Modify velocities
-// - Perform tire slip or friction logic
+// solve_steering(...):
+// - Produces left/right wheel steering angles (fl, fr) that approximate
+//   ackermann geometry.
+// - Uses a blend between parallel steer (both wheels equal) and full ackermann.
 //
-// Steering defines GEOMETRY.
-// Tires define FORCES.
-// ====================================================================
+// steer_vector(rot, angle):
+// - Rotates chassis forward vector around world-up by a steering angle.
+// - IMPORTANT: sign convention must match your input mapping (left vs right).
+//
+// Output angles are used by kinematics::wheel_basis_world() to build the wheel
+// forward/side basis for slip computation.
+// ==============================================================================
 
 // use rapier3d::prelude::*;
 use rapier3d::na::{UnitQuaternion, Vector3};
