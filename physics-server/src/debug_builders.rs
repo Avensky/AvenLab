@@ -1,4 +1,19 @@
-// src/debug_builders
+// ==============================================================================
+// debug_builders.rs — DEBUG OVERLAY PRIMITIVES (SERVER -> CLIENT)
+// ------------------------------------------------------------------------------
+// Defines serializable debug primitives:
+// - DebugRay: suspension raycasts, load bars, etc.
+// - DebugWheel: per-wheel numeric state (grounded, compression, normal force)
+// - DebugSlipRay: visualizes lateral slip direction/magnitude
+//
+// Helpers:
+// - build_wheel_ray(): standardizes wheel ray origin/max distance computation
+// - push_wheel_debug(): pushes DebugWheel snapshots into DebugOverlay
+//
+// This file is purely visualization scaffolding and should not contain physics
+// side effects.
+// ==============================================================================
+
 
 use rapier3d::prelude::*;
 use serde::Serialize;

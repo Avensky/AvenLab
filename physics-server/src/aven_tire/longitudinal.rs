@@ -1,41 +1,25 @@
-// ====================================================================
-// LONGITUDINAL TIRE MODEL (Impulse-Based)
-// --------------------------------------------------------------------
-// This model computes longitudinal tire impulses from:
-//
+// ==============================================================================
+// longitudinal.rs — LONGITUDINAL (ENGINE + BRAKE) TIRE MODEL (Impulse-Based)
+// ==============================================================================
+// This model assumes:
+// - Raycast suspension provides correct normal_force
+// - Lateral forces are handled independently (brush model)
+// ------------------------------------------------------------------------------
+// Computes the longitudinal impulse demand per wheel using:
 // 1) Engine force (drive wheels only)
 // 2) Brake force (all wheels, brake-biased)
 // 3) ABS / TCS limiting (relative demand vs capacity)
 //
-// Forces are converted to impulses via J = F * dt.
-//
-// IMPORTANT:
-// - This model does NOT simulate wheel angular velocity.
-// - Slip ratio is approximated implicitly via impulse demand.
+// Important properties:
+// - No wheel angular velocity state is tracked.
+// - "Slip ratio" is approximated implicitly via impulse demand and clamping.
 // - Stability depends on the combined-slip ellipse in solve_step().
+// - Capacity is proportional to normal force (Fz) and dt.
 //
-// This model assumes:
-// - Raycast suspension provides correct normal_force
-// - Lateral forces are handled independently (brush model)
-// ====================================================================
-
-// ====================================================================
-// PHYSICS PIPELINE OVERVIEW
-// --------------------------------------------------------------------
-// 1) Raycast suspension computes normal forces per wheel
-// 2) ContactPatch is built per grounded wheel
-//    - world-space forward/side directions
-//    - slip velocities
-//    - friction coefficients
-// 3) Tire solver (aven_tire::solve_step) computes impulses
-//    - longitudinal + lateral + yaw
-// 4) Impulses are applied to the chassis rigid body
-//
-// IMPORTANT:
-// - The chassis collider has friction = 0.0
-// - ALL tire friction is simulated manually
-// - Rapier is only responsible for rigid-body integration
-// ====================================================================
+// Output:
+// - LongitudinalResult { impulse, nx }
+// where nx is used in solve.rs for the combined-slip ellipse.
+// ===============================================================================
 
 
 // src/aven_tire/longitudinal.rs
@@ -145,8 +129,9 @@ pub fn solve_longitudinal(
         brake_impulse = v_scale(brake_impulse, s);
     }
 
-    // let relax = (-ctx.dt * patch.v_long.abs() / 2.0).exp();
-    // brake_impulse = v_scale(brake_impulse, relax);
+    // Brake impulse relaxation
+    let relax = (-ctx.dt * patch.v_long.abs() / 1.5).exp();
+    brake_impulse = v_scale(brake_impulse, relax);
 
     // ------------------------------------------------
     // COMBINE ENGINE + BRAKE

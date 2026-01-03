@@ -156,8 +156,11 @@ pub struct ContactPatch {
 }
 
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Impulse {
+    /// Linear impulse in world space (N*s).
     pub impulse: Vec3,
+
+    /// Optional application point (world). If None => apply at COM.
     pub at_point: Option<Vec3>,
 }

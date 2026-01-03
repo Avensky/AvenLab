@@ -1,4 +1,28 @@
-// src/suspension_contact
+// ==============================================================================
+// suspension_contact.rs — RAYCAST SUSPENSION + CONTACT PATCH KINEMATICS
+// ------------------------------------------------------------------------------
+// This module performs per-wheel raycasts against the scene and produces a
+// SuspensionContact that includes:
+// - geometry: hit_point, ground_normal, application point
+// - suspension state: compression, compression_ratio, suspension velocity,
+//   raw normal force from spring+damper
+// - kinematics: point velocity at the contact (linvel + ω×r)
+// - wheel basis (forward/side) including steering/ackermann
+// - slip components (v_long, v_lat) used by the tire solver
+//
+// Main entry:
+// - build_suspension_contact(...)
+//     Casts a ray from wheel mount downward, computes compression, computes
+//     suspension force via compute_suspension_force(), then builds the wheel
+//     basis via steering::solve_steering() and kinematics::wheel_basis_world(),
+//     and finally computes slip components via kinematics::slip_components().
+//
+// Notes:
+// - This file does NOT apply impulses. It only measures/constructs contact data.
+// - Ground normal is currently assumed flat-up; for slopes, read normal from
+//   Ray intersection data and propagate it through basis + forces.
+// ==============================================================================
+
 use rapier3d::prelude::*;
 use rapier3d::prelude::vector;
 
@@ -58,7 +82,7 @@ pub(crate) fn compute_suspension_force(
     let v = if suspension_vel.abs() < 0.05 { 0.0 } else { suspension_vel };
 
     // One-way damper (kills rebound)
-    let v = if v > 0.0 { v * 0.15 } else { v };
+    let v = if v > 0.0 { v * 0.4 } else { v };
 
     let spring = k * compression;
     let damper = (-c * v).clamp(-spring * 0.6, spring * 0.6);

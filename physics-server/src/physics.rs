@@ -1,27 +1,43 @@
-// src/physic.rs
-// ================================================================================
-// ================================================================================
+// ==============================================================================
+// physics.rs — WORLD STEP + VEHICLE FORCE PIPELINE (RAPIER INTEGRATION)
+// ==============================================================================
 // We are implementing a hybrid impulse-based tire model, best described as:
 // Raycast suspension + brush tire model + impulse-domain friction ellipse
-// Specifically:
-// 1) Suspension
-// - Raycast wheels
-// - Linear spring + damper
-// - Normal force computed explicitly
-// - Applied as impulses (F * dt)
+// ------------------------------------------------------------------------------
+// This file owns the server-side rigid-body simulation loop and integrates a
+// custom raycast-vehicle model into Rapier.
 //
-// 2) Tire forces
-// - Longitudinal: force-based model → impulse (engine + brake + ABS/TCS)
-// - Lateral: brush-lite model (slip velocity → force → impulse)
-// - Combined slip: friction ellipse in impulse space
-// - Yaw: produced by applying lateral impulse at contact point
+// Design goals:
+// - Chassis collider has friction = 0.0 (no ground friction from Rapier contacts).
+// - All tire forces are computed manually (impulse domain) and applied to the
+//   chassis as impulses (and optional torque impulses).
+// - Suspension is raycast-based: spring + damper -> normal force -> impulse.
+// - Tires use a lightweight brush lateral model + longitudinal engine/brake
+//   model, combined via a friction ellipse in *impulse space*.
 //
-// This is very close to:
-// - rFactor / early iRacing
-// - Project Cars 1
-// - Cannon.js RaycastVehicle (but more advanced)
-// ===============================================================================
-// ===============================================================================
+// Step pipeline (high-level):
+// 1) apply_vehicle_controls(dt)
+//    - Converts player inputs into intent (steer smoothing / rate-limiting).
+//    - Does NOT apply physics forces.
+// 2) apply_suspension(dt)
+//    - Phase 1 (Sense): raycast each wheel, compute compression, point velocity,
+//      slip components, raw normal force, and build ContactPatch.
+//    - Phase 2 (Redistribute): apply anti-roll bar load transfer (per axle),
+//      updating per-wheel normal forces.
+//    - Phase 3 (Act): apply suspension impulses (Jn = n * Fz * dt), then call
+//      aven_tire::solve_step() to compute tire impulses (long + lat + yaw +
+//      optional aligning `), then apply all impulses to the chassis.
+// 3) apply_velocity_damping(dt)
+//    - Extra numerical damping to reduce low-speed creep and oscillations.
+// 4) pipeline.step(...)
+//    - Rapier integrates the final velocities/poses.
+// ------------------------------------------------------------------------------
+// Key dependencies:
+// - suspension_contact::build_suspension_contact()
+// - anti_roll::apply_arb_load_transfer()
+// - aven_tire::solve_step()
+// ==============================================================================
+// ==============================================================================
 
 // src/physics.rs
 use rapier3d::prelude::*;
@@ -161,7 +177,7 @@ pub struct DebugChassis {
 
 pub const GT86: VehicleConfig = VehicleConfig {
     mass: 1350.0,             // kg
-    engine_force: 6000.0,     // N
+    engine_force: 9000.0,     // N
     brake_force: 8000.0,      // N
     max_speed: 55.0,          // m/s
     linear_damping: 0.08,     // coasting comes back
@@ -506,7 +522,6 @@ impl PhysicsWorld {
             let body_mass = body.mass() as f32;
             let wheels_count = wheels.len() as f32;
             let fz_ref = (body_mass * 9.81) / wheels_count;
-            // let pos = body.position();
 
             // tire data for solver
             let mut contacts: Vec<ContactPatch> = Vec::new();
@@ -566,11 +581,6 @@ impl PhysicsWorld {
                     axle_normal_force.insert(wheel_id, normal_force);
 
                     suspension_contacts.push((wheel_id, contact.clone()));
-                    
-                    // let nf = axle_normal_force.get(&wheel_id).copied().unwrap_or(0.0);
-                    // // suspension impulse
-                    // let jn = contact.ground_normal * (nf * dt);
-                    // impulses.push((handle, jn, Some(contact.hit_point)));
                     
                     // tire contact
                     contacts.push(ContactPatch {
@@ -736,9 +746,10 @@ impl PhysicsWorld {
 
             let tire_impulses = solve_step(&ctx, &control, &contacts);
             for imp in tire_impulses {
+                
                 let mut j: Vector<Real> = imp.impulse.into(); // if impulse is [f32;3]
-
                 let p: Option<Point<Real>> = imp.at_point.map(Point::from);
+                
                 impulses.push((handle, j, p));
             } 
 

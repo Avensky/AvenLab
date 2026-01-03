@@ -1,4 +1,22 @@
-// src/aven_tire/anti_roll.rs
+// ==============================================================================
+// anti_roll.rs — ANTI-ROLL BAR (ARB) LOAD TRANSFER (IMPULSE-DOMAIN SUPPORT)
+// ------------------------------------------------------------------------------
+// Anti-roll bars do NOT create net vertical force; they redistribute load across
+// left/right wheels on the same axle based on suspension compression difference.
+//
+// apply_arb_load_transfer(left, right, ...):
+// - Reads compression(left/right)
+// - Computes delta = cl - cr
+// - Computes a transfer amount proportional to delta (arb_stiffness * delta)
+// - Clamps transfer to avoid negative loads / exceeding reference load
+// - Updates axle_normal_force map for left/right
+//
+// Output of this module is consumed by physics.rs Phase 3:
+// - Updated normal forces drive:
+//   (a) suspension impulses Jn = n * Fz * dt
+//   (b) tire limits (mu*Fz) inside the tire solver
+// ==============================================================================
+
 
 use rapier3d::prelude::*;
 use std::collections::HashMap;

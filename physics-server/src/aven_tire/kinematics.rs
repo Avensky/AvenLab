@@ -1,4 +1,24 @@
-// src/aven_tire/kinematics.rs
+// ==============================================================================
+// kinematics.rs — WHEEL BASIS + SLIP DECOMPOSITION (WORLD SPACE)
+// ------------------------------------------------------------------------------
+// This module converts chassis orientation + steering angles into a per-wheel
+// orthonormal basis:
+// - forward: wheel rolling direction (world)
+// - side: lateral direction (world), right-handed with world up
+//
+// wheel_basis_world(...):
+// - Starts with chassis forward vector (rotation * [0,0,1])
+// - Applies per-wheel steering rotation for front wheels (ackermann angles)
+// - Builds side = up × forward, then normalizes
+//
+// slip_components(point_vel, forward, side):
+// - Projects point velocity onto forward/side to yield:
+//     v_long = dot(v, forward)
+//     v_lat  = dot(v, side)
+//
+// These values feed the tire solver (brush + longitudinal).
+// ==============================================================================
+
 use rapier3d::na::UnitQuaternion;
 use rapier3d::prelude::{Point, Real, Vector};
 
