@@ -4,6 +4,8 @@ mod physics;    // physics world and body creation
 mod net;        // player join / disconnect, team/room assignment
 mod state;      // world state
 mod spawn;      // spawn logic
+mod suspension_contact;
+mod debug_builders;
 
 
 use rapier3d::prelude::RigidBodyHandle;

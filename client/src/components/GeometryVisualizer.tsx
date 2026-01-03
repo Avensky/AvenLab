@@ -1,16 +1,20 @@
 // src/components/GeomeryVisualizer.tsx
+// chassis
 
-import type { DebugChassis } from "../store/snapshotStore";
-import * as THREE from "three";
+import type { DebugChassis } from "../store/store";
 import { ColliderVisualizer } from "./ColliderVisualizer";
 import { GLBVisualizer } from "./GLBVisualizer";
 
 export function GeometryVisualizer({
     chassis,
     mode,
+    color,
+    opacity,
 }: {
     chassis?: DebugChassis;
     mode: string;
+    color: string;
+    opacity: number;
 }) {
 
     if (!chassis) return null;
@@ -27,7 +31,11 @@ export function GeometryVisualizer({
         return (
             <mesh scale={[hx * 2, hy * 2, hz * 2]}>
                 <boxGeometry args={[1, 1, 1]} />
-                <meshStandardMaterial color="#444" />
+                <meshStandardMaterial
+                    color={color}
+                    transparent
+                    opacity={opacity}
+                />
             </mesh>
         );
     }

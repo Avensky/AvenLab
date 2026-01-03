@@ -1,9 +1,9 @@
 // src/hooks/useLiveSnapshots.ts
 import { useEffect } from "react";
 import { socket } from "../net/socket";
-import { useSnapshotStore } from "../store/snapshotStore";
+import { useSnapshotStore } from "../store/store";
 import type { SnapshotMessage } from "../types/snapshot";
-import type { PredictedSelfState } from "../store/snapshotStore";
+import type { PredictedSelfState } from "../store/store";
 import type { PendingInput } from "../types/playerInput";
 
 function integrateKinematic(

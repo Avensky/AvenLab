@@ -1,4 +1,4 @@
-import { useSnapshotStore } from "../store/snapshotStore";
+import { useSnapshotStore } from "../store/store";
 
 export function ModeSwitcher() {
     const mode = useSnapshotStore((s) => s.mode);

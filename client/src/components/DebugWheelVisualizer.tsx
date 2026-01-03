@@ -1,89 +1,113 @@
-import { useMemo } from "react";
+// src/components/DebugWheelVisualizer.tsx
+
+import { useMemo, useRef } from "react";
 import * as THREE from "three";
-import { Quaternion, Vector3 } from "three";
-
-const X_AXIS = new Vector3(1, 0, 0);
-
-function quatFromRightVector(right: [number, number, number]) {
-    const v = new Vector3(...right).normalize();
-    const q = new Quaternion();
-    q.setFromUnitVectors(X_AXIS, v);
-    return q;
-}
-
-/**
- * Returns a quaternion that rotates local +Y to match `dir`
- */
-export function quatFromYAxis(dir: THREE.Vector3) {
-    const yAxis = new THREE.Vector3(0, 1, 0);
-    const target = dir.clone().normalize();
-
-    const q = new THREE.Quaternion();
-    q.setFromUnitVectors(yAxis, target);
-
-    return q;
-}
-
-type DebugWheel = {
-    center: [number, number, number];
-    radius: number;
-    grounded: boolean;
-    compression: number;
-    normal_force: number;
-};
+import { useSnapshotStore, type DebugWheel } from "../store/store";
+import { useFrame } from "@react-three/fiber";
 
 export function DebugWheelVisualizer({
     wheels,
-    chassis_right
+    vehiclePosition,
+    vehicleQuaternion,
 }: {
     wheels: DebugWheel[];
-    chassis_right: [number, number, number];
+    vehiclePosition: [number, number, number];
+    vehicleQuaternion: [number, number, number, number];
 }) {
-    const materialGrounded = useMemo(
-        () => new THREE.MeshStandardMaterial({ color: "lime" }),
+
+
+    const steerGroups = useRef<THREE.Group[]>([]);
+    const wheelMeshes = useRef<THREE.Mesh[]>([]);
+
+    const materialGround = useMemo(
+        () => new THREE.MeshStandardMaterial({ color: "lime", wireframe: true }),
         []
     );
-
     const materialAir = useMemo(
-        () => new THREE.MeshStandardMaterial({ color: "red" }),
+        () => new THREE.MeshStandardMaterial({ color: "red", wireframe: true }),
         []
     );
 
-    const wheelQuat = quatFromRightVector(chassis_right);
+    const vehiclePos = new THREE.Vector3(...vehiclePosition);
+    const vehicleQuat = new THREE.Quaternion(
+        vehicleQuaternion[0],
+        vehicleQuaternion[1],
+        vehicleQuaternion[2],
+        vehicleQuaternion[3]
+    );
+    const invVehicleQuat = vehicleQuat.clone().invert();
 
-    const right = new THREE.Vector3(...chassis_right);
-    const quat = quatFromYAxis(right);
+
+    useFrame((_, dt) => {
+        const input = useSnapshotStore.getState().input;
+
+        const MAX_STEER = Math.PI / 6;
+        const steerAngle = -(input?.steer ?? 0) * MAX_STEER;
+
+        const throttle = input?.throttle ?? 0;
+        const brake = input?.brake ?? 0;
+        // const handbrake = input?.handbrake ?? 0; // add later if not yet present
+
+        steerGroups.current.forEach((g) => {
+            if (!g) return;
+            g.rotation.y = THREE.MathUtils.lerp(g.rotation.y, steerAngle, 0.25);
+        });
+
+        wheelMeshes.current.forEach((m, i) => {
+            if (!m) return;
+
+            const wheel = wheels[i];
+            const isRear = wheel.drive === true;
+
+            // --- DRIVETRAIN (RWD) ---
+            if (isRear && throttle !== 0) {
+                m.rotation.x += throttle * dt * 12;
+            }
+
+            // --- SERVICE BRAKE (ALL WHEELS) ---
+            if (brake > 0) {
+                m.rotation.x *= THREE.MathUtils.lerp(1, 0.85, brake);
+            }
+
+            // --- HANDBRAKE (REAR ONLY, HARD LOCK) ---
+            // if (handbrake > 0 && isRear) {
+            //     m.rotation.x *= 0.2;
+            // }
+        });
+    });
+
 
     return (
         <>
             {wheels.map((w, i) => {
-                const mat = w.grounded ? materialGrounded : materialAir;
+                // const axis = new THREE.AxesHelper(0.5);
+                // wheel.add(axis);
+                // const mat = w.grounded ? materialGround : materialAir;
 
+                // const role: "front" | "rear" = i < 2 ? "front" : "rear";
+                const isFront = w.steering === true;
+
+                const world = new THREE.Vector3(...w.center);
+                const local = world.sub(vehiclePos).applyQuaternion(invVehicleQuat);
                 return (
-                    <mesh
+                    <group
                         key={i}
-                        position={w.center as [number, number, number]}
-                        quaternion={quat}
-                        renderOrder={5}
+                        position={local.toArray() as [number, number, number]}
+                        ref={(el) => {
+                            if (isFront) steerGroups.current[i] = el!;
+                        }}
                     >
-                        <cylinderGeometry
-                            args={[
-                                w.radius,
-                                w.radius,
-                                w.radius * 0.6, // wheel width
-                                20,
-                            ]}
-                        />
-                        <meshStandardMaterial
-                            color="blue"
-                            metalness={0.3}
-                            roughness={0.6}
-                            wireframe
-                            // transparent
-                            // opacity={0.35}
-                            depthWrite={false}
-                        />
-                    </mesh>
+                        <mesh
+                            ref={(el) => (wheelMeshes.current[i] = el!)}
+                            material={w.grounded ? materialGround : materialAir}
+                            rotation={[0, 0, Math.PI / 2]}
+                        >
+                            <cylinderGeometry
+                                args={[w.radius, w.radius, w.radius * 0.6, 20]}
+                            />
+                            <axesHelper args={[w.radius * 1.5]} />
+                        </mesh>
+                    </group>
                 );
             })}
         </>

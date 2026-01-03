@@ -1,53 +1,53 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
+import { useSnapshotStore } from "../store/store";
 import { socket, connectRustServer } from "../net/rustSocket";
 
 export function usePlayerInput() {
-    const inputRef = useRef({ throttle: 0, steer: 0, brake: 0 });
+    const setInput = useSnapshotStore((s) => s.setInput);
+    connectRustServer();
 
     useEffect(() => {
-        connectRustServer();
+        const interval = setInterval(() => {
+            const input = useSnapshotStore.getState().input;
+            if (!socket || socket.readyState !== WebSocket.OPEN) return;
+            socket.send(JSON.stringify({ ...input }));
+            // console.log('input', input)
+
+        }, 1000 / 30);
+
+        return () => clearInterval(interval);
+    }, []);
+
+    useEffect(() => {
 
         const handleKeyDown = (e: KeyboardEvent) => {
-            const i = inputRef.current;
-            if (e.code === "KeyW") i.throttle = 1;
-            if (e.code === "KeyS") i.throttle = -1;
-            if (e.code === "KeyA") i.steer = -1;
-            if (e.code === "KeyD") i.steer = 1;
-            if (e.code === "Space") i.brake = 1;
+            if (e.code === "KeyW") setInput({ throttle: 1 });
+            if (e.code === "KeyS") setInput({ throttle: -1 });
+            if (e.code === "KeyA") setInput({ steer: -1 });
+            if (e.code === "KeyD") setInput({ steer: 1 });
+            if (e.code === "Space") setInput({ brake: 1 });
         };
 
         const handleKeyUp = (e: KeyboardEvent) => {
-            const i = inputRef.current;
-            if (e.code === "KeyW" && i.throttle > 0) i.throttle = 0;
-            if (e.code === "KeyS" && i.throttle < 0) i.throttle = 0;
-            if (e.code === "KeyA" && i.steer < 0) i.steer = 0;
-            if (e.code === "KeyD" && i.steer > 0) i.steer = 0;
 
-            if (e.code === "Space") i.brake = 0;
-        };
+            // const i = inputRef.current;
+
+            const input = useSnapshotStore.getState().input;
+
+            if (e.code === "KeyW" && input.throttle > 0) setInput({ throttle: 0 });
+            if (e.code === "KeyS" && input.throttle < 0) setInput({ throttle: 0 });
+            if (e.code === "KeyA" && input.steer < 0) setInput({ steer: 0 });
+            if (e.code === "KeyD" && input.steer > 0) setInput({ steer: 0 });
+            if (e.code === "Space") setInput({ brake: 0 });
+        }
+
 
         window.addEventListener("keydown", handleKeyDown);
         window.addEventListener("keyup", handleKeyUp);
 
-        const loop = setInterval(() => {
-            if (!socket || socket.readyState !== WebSocket.OPEN) return;
-
-            socket.send(JSON.stringify({
-                type: "input",
-                throttle: inputRef.current.throttle,
-                steer: inputRef.current.steer,
-                brake: inputRef.current.brake,
-                ascend: 0,
-                pitch: 0,
-                yaw: 0,
-                roll: 0,
-            }));
-        }, 1000 / 30);
-
         return () => {
             window.removeEventListener("keydown", handleKeyDown);
             window.removeEventListener("keyup", handleKeyUp);
-            clearInterval(loop);
         };
     }, []);
 }
