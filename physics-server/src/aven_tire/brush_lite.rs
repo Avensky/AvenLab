@@ -22,6 +22,10 @@
 // This file does NOT apply impulses; solve.rs combines it with longitudinal and
 // applies a friction ellipse + yaw split.
 // ==============================================================================
+// Cardinal Rules 
+// ==============================================================================
+// - Braking must oppose vehicle motion, not wheel heading.
+// ==============================================================================
 
 use rapier3d::prelude::Real;
 use crate::aven_tire::types::{ContactPatch, ControlInput, SolveContext, Vec3, v_scale};
@@ -131,7 +135,7 @@ pub fn solve_brush_lite(
 
     // --- Lateral impulse proportional to slip ---
     // NOTE: NOT cancelling velocity, just resisting it
-    let cornering_stiffness = 16.0 * ctx.mass;
+    let cornering_stiffness = 6.0 * ctx.mass;
     // let mut lateral_impulse = -v_lat * cornering_stiffness * dt;
 
 
@@ -175,6 +179,10 @@ pub fn solve_brush_lite(
     // if ctrl.brake > 0.4 && speed > 10.0 {
     //     desired_lat_impulse *= 0.6;
     // }
+
+    if ctrl.brake > 0.3 {
+        lateral_impulse *= 0.6;
+    }
 
     v_scale(patch.side, lateral_impulse)
 

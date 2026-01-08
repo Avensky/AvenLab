@@ -162,6 +162,8 @@ pub struct ContactPatch {
     pub brake: f32,
     pub steer_angle: f32,
     pub compression_ratio: Real, // 0..1
+
+    pub vel_world: Vec3,
 }
 
 #[derive(Clone, Copy, Debug)]
