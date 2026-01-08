@@ -89,7 +89,11 @@ pub fn solve_step(
         if !c.grounded || c.normal_force < 50.0 { continue; }
         
         // let brake_share = if c.wheel.is_front() { front_per_wheel } else { rear_per_wheel };
-        let brake_share = 0.5;
+        let brake_share = if c.wheel.is_front() {
+            0.6 * 0.5 // 60% front axle, split across two wheels
+        } else {
+            0.4 * 0.5 // 40% rear axle
+        };
 
         // Longitudinal impulse (engine + brake)
         let long = solve_longitudinal(ctx, ctrl, c, brake_share);
@@ -101,7 +105,7 @@ pub fn solve_step(
         // Combined friction slip ellipse (impulse domain)
         // --------------------------------------------------
         // let max_long = (c.normal_force * ctx.dt * 0.8).max(1e-6);
-        let max_long = (c.mu_long * c.normal_force * ctx.dt).max(1e-6);
+        // let max_long = (c.mu_long * c.normal_force * ctx.dt).max(1e-6);
         // let speed = (c.v_long * c.v_long + c.v_lat * c.v_lat).sqrt();
         // let speed = (c.v_long * c.v_long + c.v_lat_relaxed * c.v_lat_relaxed).sqrt();
 
@@ -111,7 +115,8 @@ pub fn solve_step(
         // let max_lat = c.mu_lat * c.normal_force * ctx.dt * lat_boost;
         let max_lat  = (c.mu_lat * c.normal_force * ctx.dt).max(1e-6);
 
-        let nx = v_mag(long.impulse) / max_long;
+        // let nx = v_mag(long.impulse) / max_long;
+        let nx = long.nx;
         let ny = v_mag(lat) / max_lat;
 
         let ellipse = nx * nx + ny * ny;
@@ -122,32 +127,38 @@ pub fn solve_step(
             1.0
         };
 
+        // --------------------------------------------------
+        // LONGITUDINAL → COM (NO yaw from braking)
+        // --------------------------------------------------
         let long_i = v_scale(long.impulse, scale);
-
-        // impulses.push(Impulse {
-        //     impulse: long_i,
-        //     at_point: Some(c.apply_point),
-        // });
-       
-        // Apply roll coupling reduction
-        let lat_i  = v_scale(lat, scale * c.roll_factor);
-
-        // impulses.push(Impulse {
-        //     impulse: lat_i,
-        //     at_point: Some(c.apply_point),
-        // });
-        
-        // 🚨 APPLY BOTH AT CONTACT → yaw comes for free
-        let impulse_total = [
-            long_i[0] + lat_i[0],
-            long_i[1] + lat_i[1],
-            long_i[2] + lat_i[2],
-        ];
-
         impulses.push(Impulse {
-            impulse: impulse_total,
+            impulse: long_i,
+            at_point: None, // ← COM
+            // at_point: Some(c.apply_point),
+        });
+
+
+        // --------------------------------------------------
+        // LATERAL → CONTACT (yaw comes from tire geometry)
+        // Apply roll coupling reduction
+        // --------------------------------------------------
+        let lat_i  = v_scale(lat, scale * c.roll_factor);
+        impulses.push(Impulse {
+            impulse: lat_i,
             at_point: Some(c.apply_point),
         });
+        
+        // 🚨 APPLY BOTH AT CONTACT → yaw comes for free
+        // let impulse_total = [
+        //     long_i[0] + lat_i[0],
+        //     long_i[1] + lat_i[1],
+        //     long_i[2] + lat_i[2],
+        // ];
+
+        // impulses.push(Impulse {
+        //     impulse: impulse_total,
+        //     at_point: Some(c.apply_point),
+        // });
 
         // if c.wheel.is_front() && v_mag(lat_i) > 1e-3 {
         //     println!(

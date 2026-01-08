@@ -44,7 +44,7 @@
 use rapier3d::prelude::{Real, RigidBodySet};
 use rapier3d::prelude::Vector;
 use rapier3d::na::UnitQuaternion;
-use crate::aven_tire::types::{Vec3, v_norm, v_cross};
+use crate::aven_tire::types::{Vec3};
 use crate::vehicle::Vehicle;
 use std::collections::hash_map::{Values, ValuesMut};
 

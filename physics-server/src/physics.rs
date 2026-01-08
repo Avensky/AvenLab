@@ -650,6 +650,7 @@ impl PhysicsWorld {
                         brake: vehicle.brake,
                         steer_angle: vehicle.steer_angle,
                         compression_ratio: contact.compression_ratio,
+                        vel_world: v3(contact.point_vel),
                     });
                     // ===============================================================================
                     // debug hooks can read from `contact`
@@ -786,16 +787,21 @@ impl PhysicsWorld {
             // PHASE 3A — ACT: apply suspension normal impulses  ✅ ONCE PER WHEEL
             // ======================================================================================
             for (wheel_id, contact) in suspension_contacts.iter() {
-                let nf = axle_normal_force.get(wheel_id).copied().unwrap_or(contact.normal_force);
+                let axel_normal = axle_normal_force.get(wheel_id).copied().unwrap_or(contact.normal_force);
                 // let jn = contact.ground_normal * (nf as Real * dt); // N*s
 
-                let max_jn = fz_ref * 1.5 * dt; // ≈ 1.5g per wheel
-                let jn_mag = (nf * dt).clamp(0.0, max_jn);
-                let jn = contact.ground_normal * (jn_mag as Real); // N*s
+                let max_normal_impulse = fz_ref * 1.5 * dt; // ≈ 1.5g per wheel
+                let normal_impulse_mag = (axel_normal * dt).clamp(0.0, max_normal_impulse);
+                let normal_impulse = contact.ground_normal * (normal_impulse_mag as Real); // N*s
+
+
+                // =====================
+                // Suspension Impulses
+                // =====================
 
                 impulses.push(BodyImpulse::Linear {
                     handle,
-                    impulse: jn,
+                    impulse: normal_impulse,
                     at_point: Some(contact.apply_point),
                 });
             }
@@ -909,6 +915,9 @@ impl PhysicsWorld {
                 let tire_impulse: Vector<Real> = imp.impulse.into(); // if impulse is [f32;3]
                 let at_point: Option<Point<Real>> = imp.at_point.map(Point::from);
                 
+                // =====================
+                // - this moves vehicle
+                // =====================
                 impulses.push(BodyImpulse::Linear { handle, impulse:tire_impulse, at_point })
             } 
 

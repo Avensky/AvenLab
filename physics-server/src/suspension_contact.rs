@@ -260,7 +260,6 @@ pub fn build_suspension_contact(
         compression_ratio,
         suspension_vel,
         normal_force,
-        point_vel,
         mu_lat,
         mu_long: mu0,
         forward,
@@ -270,5 +269,6 @@ pub fn build_suspension_contact(
         v_lat_relaxed: wheel.v_lat_relaxed,
         grounded: true,
         roll_factor: roll_factor as f32,
+        point_vel: point_vel,
     })
 }
