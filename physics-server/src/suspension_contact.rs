@@ -26,8 +26,9 @@
 use rapier3d::prelude::*;
 use rapier3d::prelude::vector;
 
-use crate::physics::{Wheel, Vehicle};
-use crate::aven_tire::steering::{solve_steering, SteeringConfig};
+use crate::physics::Wheel;
+use crate::vehicle::Vehicle;
+use crate::aven_tire::steering::SteeringState;
 use crate::aven_tire::kinematics::{wheel_basis_world, slip_components};
 use crate::aven_tire::WheelId;
 
@@ -66,10 +67,44 @@ pub struct SuspensionContact {
     // slip
     pub v_long: f32,
     pub v_lat: f32,
+    pub v_lat_relaxed: f32,
 
     // misc
     pub grounded: bool,
     pub roll_factor: f32,
+}
+
+// ==========================================================
+// This guarantees:
+// - forward ⟂ normal
+// - side ⟂ normal
+// ==========================================================
+#[inline]
+fn planar_wheel_basis(
+    forward_world: Vector<Real>,
+    ground_normal: Vector<Real>,
+) -> (Vector<Real>, Vector<Real>) {
+    // Project forward onto contact plane
+    let fwd_dot_n = forward_world.dot(&ground_normal);
+    let mut forward = forward_world - ground_normal * fwd_dot_n;
+
+    let fwd_len = forward.norm();
+    if fwd_len < 1e-6 {
+        forward = Vector::z();
+    } else {
+        forward /= fwd_len;
+    }
+
+    // Side is guaranteed planar
+    let mut side = ground_normal.cross(&forward);
+    let side_len = side.norm();
+    if side_len < 1e-6 {
+        side = Vector::x();
+    } else {
+        side /= side_len;
+    }
+
+    (forward, side)
 }
 
 pub(crate) fn compute_suspension_force(
@@ -82,7 +117,9 @@ pub(crate) fn compute_suspension_force(
     let v = if suspension_vel.abs() < 0.05 { 0.0 } else { suspension_vel };
 
     // One-way damper (kills rebound)
-    let v = if v > 0.0 { v * 0.4 } else { v };
+    // let v = if v > 0.0 { v * 0.4 } else { v };
+    let v = if v > 0.0 { v * 1.5 } else { v * 0.8 };
+
 
     let spring = k * compression;
     let damper = (-c * v).clamp(-spring * 0.6, spring * 0.6);
@@ -94,6 +131,7 @@ pub(crate) fn compute_suspension_force(
 pub fn build_suspension_contact(
     wheel: &Wheel,
     vehicle: &Vehicle,
+    steering: &SteeringState,
     body_ro: &RigidBody,
     query: &QueryPipeline,
     bodies: &RigidBodySet,
@@ -153,33 +191,65 @@ pub fn build_suspension_contact(
         wheel.damping as f32,
     );
 
+    let max_nf = fz_ref * 2.2; // allow some load transfer, but not insanity
+    let normal_force = normal_force.min(max_nf);
+
     // load-sensitive friction
     let mu0 = vehicle.config.mu_base;
     let k = vehicle.config.load_sensitivity;
     let load_ratio = (normal_force / fz_ref).max(0.2);
     let mu_lat = (mu0 * load_ratio.powf(-k)).clamp(mu0 * 0.6, mu0 * 1.1);
 
-    // steering basis
-    let cfg = SteeringConfig {
-        wheelbase: vehicle.config.wheelbase,
-        track_width: vehicle.config.track_width,
-        max_steer_angle: vehicle.config.max_steer_angle,
-        ackermann: vehicle.config.ackermann,
-    };
 
-    let speed = linvel.magnitude();
-    // let steer_angle = vehicle.steer_angle / cfg.max_steer_angle;
-    let steer_angle = vehicle.steer_angle;
-    let (fl, fr) = solve_steering(&cfg, &rot, steer_angle, speed);
+    let (raw_forward, _) =
+        wheel_basis_world(&wheel.debug_id, &rot, &steering.fl, &steering.fr);
 
+    // Build planar basis using contact normal
     let (forward, side) =
-        wheel_basis_world(&wheel.debug_id, &rot, &fl, &fr);
+        planar_wheel_basis(raw_forward, ground_n);
+
+    // println!(
+    //     "[BASIS {}] fwd.y={:+.3} side.y={:+.3} n.y={:+.3}",
+    //     wheel.debug_id,
+    //     forward.y,
+    //     side.y,
+    //     ground_n.y,
+    // );
 
     let (v_long, v_lat) =
         slip_components(point_vel, forward, side);
 
     let steer_intensity = vehicle.steer.abs().clamp(0.0, 1.0);
     let roll_factor = 0.30 * (1.0 - steer_intensity * 0.65);
+
+    
+    
+    // if wheel.debug_id == "FL" || wheel.debug_id == "FR" {
+    //     println!(
+    //         "[SLIP RELAX {}] v_lat={:+.3} v_lat_relaxed={:+.3} k={:.3}",
+    //         wheel.debug_id,
+    //         v_lat,
+    //         wheel.v_lat_relaxed,
+    //         k
+    //     );
+    // }
+    
+    // let handed = forward.cross(&side).dot(&ground_n);
+    // println!("[HAND {}] handed={:+.3}", wheel.debug_id, handed);
+    
+    // if wheel.debug_id == "FL" || wheel.debug_id == "FR" {
+    //     println!(
+    //         "[STEERDBG {}] steer={:+.2} ang={:+.3} v_long={:+.2} v_lat={:+.2} side=({:+.2},{:+.2},{:+.2}) fwd=({:+.2},{:+.2},{:+.2})",
+    //         wheel.debug_id,
+    //         vehicle.steer,
+    //         vehicle.steer_angle,
+    //         v_long,
+    //         v_lat,
+    //         side.x, side.y, side.z,
+    //         forward.x, forward.y, forward.z
+    //     );
+    // }
+
 
     Some(SuspensionContact {
         wheel_id: wheel.debug_id.clone(),
@@ -197,7 +267,8 @@ pub fn build_suspension_contact(
         side,
         v_long: v_long as f32,
         v_lat: v_lat as f32,
+        v_lat_relaxed: wheel.v_lat_relaxed,
         grounded: true,
-        roll_factor,
+        roll_factor: roll_factor as f32,
     })
 }

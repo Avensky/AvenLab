@@ -23,10 +23,7 @@
 // ==============================================================================
 
 
-use crate::aven_tire::types::{
-    ContactPatch, ControlInput, Impulse, SolveContext,
-    v_mag, v_scale,
-};
+use crate::aven_tire::types::{ ContactPatch, ControlInput, Impulse, SolveContext, v_mag, v_scale,};
 use crate::aven_tire::longitudinal::solve_longitudinal;
 use crate::aven_tire::brush_lite::{solve_brush_lite, BrushLiteConfig};
 
@@ -41,7 +38,7 @@ pub struct AligningTorqueConfig {
 impl Default for AligningTorqueConfig {
     fn default() -> Self {
         Self {
-            trail0: 0.08,
+            trail0: 0.10,
             alpha_falloff: 0.35,
             min_speed: 0.5,
             max_mz: 4500.0,
@@ -50,43 +47,49 @@ impl Default for AligningTorqueConfig {
 }
 
 
+pub struct TireForces {
+    pub impulses: Vec<Impulse>,
+    // pub rack_torque: f32, // N·m (about steering axis)
+}
+
 pub fn solve_step(
     ctx: &SolveContext,
     ctrl: &ControlInput,
     contacts: &[ContactPatch],
-) -> Vec<Impulse> {
+) -> TireForces {
 
     let mut impulses = Vec::new();
+    // let mut rack_torque_sum: f32 = 0.0;
+
     let brush_cfg = BrushLiteConfig::default();
+    // let align_cfg = AligningTorqueConfig::default();
 
     // --------------------------------------------------
     // Brake bias (pure load-based, no heuristics)
     // --------------------------------------------------
-    let mut fz_front = 0.0;
-    let mut fz_rear  = 0.0;
+    // let mut fz_front = 0.0;
+    // let mut fz_rear  = 0.0;
 
-    for c in contacts.iter().filter(|c| c.grounded) {
-        if c.wheel.is_front() { fz_front += c.normal_force; }
-        else { fz_rear += c.normal_force; }
-    }
+    // for c in contacts.iter().filter(|c| c.grounded) {
+    //     if c.wheel.is_front() { fz_front += c.normal_force; }
+    //     else { fz_rear += c.normal_force; }
+    // }
 
-    let fz_total = (fz_front + fz_rear).max(1e-6);
-    let front_bias = (fz_front / fz_total).clamp(0.55, 0.85);
-    let rear_bias  = 1.0 - front_bias;
+    // let fz_total = (fz_front + fz_rear).max(1e-6);
+    // let front_bias = (fz_front / fz_total).clamp(0.55, 0.85);
+    // let rear_bias  = 1.0 - front_bias;
 
-    let front_per_wheel = front_bias * 0.5;
-    let rear_per_wheel  = rear_bias  * 0.5;
+    // let front_per_wheel = front_bias * 0.5;
+    // let rear_per_wheel  = rear_bias  * 0.5;
 
     // --------------------------------------------------
     // Per-wheel tire solve
     // --------------------------------------------------
     for c in contacts.iter() {
-        if !c.grounded || c.normal_force < 50.0 {
-            continue;
-        }
-
-        let brake_share =
-            if c.wheel.is_front() { front_per_wheel } else { rear_per_wheel };
+        if !c.grounded || c.normal_force < 50.0 { continue; }
+        
+        // let brake_share = if c.wheel.is_front() { front_per_wheel } else { rear_per_wheel };
+        let brake_share = 0.5;
 
         // Longitudinal impulse (engine + brake)
         let long = solve_longitudinal(ctx, ctrl, c, brake_share);
@@ -95,19 +98,24 @@ pub fn solve_step(
         let lat  = solve_brush_lite(&brush_cfg, ctx, ctrl, c);
 
         // --------------------------------------------------
-        // Combined slip ellipse (impulse domain)
+        // Combined friction slip ellipse (impulse domain)
         // --------------------------------------------------
-        let max_long = (c.normal_force * ctx.dt * 0.8).max(1e-6);
-        let speed = (c.v_long * c.v_long + c.v_lat * c.v_lat).sqrt();
-        let lat_boost = (1.0 + 0.6 * (speed / 20.0)).clamp(1.0, 1.8);
+        // let max_long = (c.normal_force * ctx.dt * 0.8).max(1e-6);
+        let max_long = (c.mu_long * c.normal_force * ctx.dt).max(1e-6);
+        // let speed = (c.v_long * c.v_long + c.v_lat * c.v_lat).sqrt();
+        // let speed = (c.v_long * c.v_long + c.v_lat_relaxed * c.v_lat_relaxed).sqrt();
 
-        let max_lat = c.mu_lat * c.normal_force * ctx.dt * lat_boost;
-        // let max_lat  = (c.mu_lat * c.normal_force * ctx.dt).max(1e-6);
+
+        // let lat_boost = (1.0 + 0.6 * (speed / 20.0)).clamp(1.0, 1.8);
+
+        // let max_lat = c.mu_lat * c.normal_force * ctx.dt * lat_boost;
+        let max_lat  = (c.mu_lat * c.normal_force * ctx.dt).max(1e-6);
 
         let nx = v_mag(long.impulse) / max_long;
         let ny = v_mag(lat) / max_lat;
 
         let ellipse = nx * nx + ny * ny;
+        
         let scale = if ellipse > 1.0 {
             1.0 / ellipse.sqrt()
         } else {
@@ -115,75 +123,110 @@ pub fn solve_step(
         };
 
         let long_i = v_scale(long.impulse, scale);
-        let lat_i  = v_scale(lat, scale);
 
-        // --------------------------------------------------
-        // Apply impulses
-        // --------------------------------------------------
+        // impulses.push(Impulse {
+        //     impulse: long_i,
+        //     at_point: Some(c.apply_point),
+        // });
+       
+        // Apply roll coupling reduction
+        let lat_i  = v_scale(lat, scale * c.roll_factor);
 
-        // Longitudinal → COM
-        if v_mag(long_i) > 1e-6 {
-            impulses.push(Impulse {
-                impulse: long_i,
-                at_point: None,
-            });
-        }
-
-        // =======================================================================================
-        // Lateral → split COM + contact point (yaw moment)
-        // More yaw at low speed, less at high speed.
-        // =======================================================================================
-        let speed = (c.v_long * c.v_long + c.v_lat * c.v_lat).sqrt();
-
-        // 0 m/s => 0.70 yaw, 20 m/s => 0.20 yaw
-        let yaw_frac = (0.70 - 0.50 * (speed / 20.0).clamp(0.0, 1.0)).clamp(0.15, 0.75);
-
-        // Front wheels contribute more yaw than rear (helps turning-in)
-        let yaw_frac = if c.wheel.is_front() { yaw_frac } else { yaw_frac * 0.35 };
-
-
+        // impulses.push(Impulse {
+        //     impulse: lat_i,
+        //     at_point: Some(c.apply_point),
+        // });
         
+        // 🚨 APPLY BOTH AT CONTACT → yaw comes for free
+        let impulse_total = [
+            long_i[0] + lat_i[0],
+            long_i[1] + lat_i[1],
+            long_i[2] + lat_i[2],
+        ];
+
+        impulses.push(Impulse {
+            impulse: impulse_total,
+            at_point: Some(c.apply_point),
+        });
+
+        // if c.wheel.is_front() && v_mag(lat_i) > 1e-3 {
+        //     println!(
+        //         "[LAT SOLVE STEP {}] |J|={:.2} v_lat={:+.2}",
+        //         c.wheel,
+        //         v_mag(lat_i),
+        //         c.v_lat
+        //     );
+        // }
+        // =====================================================================
+        // - Apply impulses at contact point 
+        // =====================================================================
+
+        // let j_total = [
+        //     long_i[0] + lat_i[0],
+        //     long_i[1] + lat_i[1],
+        //     long_i[2] + lat_i[2],
+        // ];
+
+        // if v_mag(j_total) > 1e-6 {
+        //     impulses.push(Impulse {
+        //         impulse: j_total,
+        //         at_point: Some(c.apply_point), // or c.hit_point if you prefer
+        //     });
+        // }
+
         // ==========================================================================================
-        // Aligning Torque 
+        // - Aligning Torque → Steering Rack ONLY (front wheels only) 
         // ==========================================================================================
-        let align_cfg = AligningTorqueConfig::default();
-        
-        
-        // Only meaningful if we have lateral and enough speed
-        if speed > align_cfg.min_speed && v_mag(lat_i) > 1e-6 {
-            // Slip angle approximation (radians)
-            // α = atan2(v_lat, |v_long|), stable near zero
-            let alpha = c.v_lat.atan2(c.v_long.abs().max(0.5));
-            
-            // Pneumatic trail falls off with |α|
-            let trail = align_cfg.trail0 * (-alpha.abs() / align_cfg.alpha_falloff.max(1e-3)).exp();
-            
-            // Offset contact point ALONG forward axis
-            let align_offset = v_scale(c.forward, trail);
-            
-            // Shift lateral impulse application point
-            let align_point = [
-                c.hit_point[0] + align_offset[0],
-                c.hit_point[1],
-                c.hit_point[2] + align_offset[2],
-                ];
-                
-            // reduce yaw when aligning torque is active
-            let yaw_reduction = 1.0 - (trail / align_cfg.trail0).clamp(0.0, 0.6);
-            let yaw_frac = yaw_frac * yaw_reduction;
+        // let speed = (c.v_long * c.v_long + c.v_lat * c.v_lat).sqrt();
+        // if c.wheel.is_front() && speed > align_cfg.min_speed && v_mag(lat_i) > 1e-6 {
+        //     // let alpha = c.v_lat.atan2(c.v_long.abs().max(0.5));
+        //     let alpha = c.v_lat_relaxed.atan2(c.v_long.abs().max(0.5));
+
+
+        //     let trail = align_cfg.trail0
+        //         * (-alpha.abs() / align_cfg.alpha_falloff.max(1e-3)).exp();
+
+        //     // Fy ≈ |lateral impulse| / dt
+        //     // let fy = v_mag(lat_i) / ctx.dt.max(1e-6);
+
+        //     // Fy sign = projection of lat impulse onto wheel side, / dt
+        //     let mut fy = (lat_i[0]*c.side[0] + lat_i[1]*c.side[1] + lat_i[2]*c.side[2])
+        //         / ctx.dt.max(1e-6);
+
+        //     // fy = fy.clamp(-c.v_lat * 500.0, c.mu_lat);
+
+        //     // Mz = Fy * trail
+        //     let mz = (-fy * trail).clamp(-align_cfg.max_mz, align_cfg.max_mz);
+
+        //     // AFTER computing fy and mz
+        //     println!(
+        //         "[SAT {:?}] v_lat={:+.2} Fy={:+.1} trail={:.3} Mz={:+.2}",
+        //         c.wheel,
+        //         c.v_lat,
+        //         fy,
+        //         trail,
+        //         mz
+        //     );
     
-            let com_frac   = 1.0 - yaw_frac;
-    
-            let lat_point = v_scale(lat_i, yaw_frac);
-            let lat_com   = v_scale(lat_i, com_frac);
+        //     // ==================================================
+        //     // accumulate into rack: left/right oppose each other
+        //     // ==================================================
+        
+        //     // - rack leverage
+        //     let steering_arm = 0.14;   // meters (kingpin to tie-rod)
+        //     let rack_gain = 14.0;     // steering ratio (wheel → rack)
+        //     let rack_mz = mz * steering_arm * rack_gain;
             
-            // Apply SAME lateral impulse, different point
-            impulses.push(Impulse {
-                impulse: lat_point,
-                at_point: Some(align_point),
-            });
-        }
+        //     // Left/right sign based on wheel side
+
+        //     // let side_sign = if c.wheel.is_left() { 1.0 } else { -1.0 };
+        //     // rack_torque_sum += rack_mz * side_sign;
+
+        //     // rack_torque_sum += rack_mz;
+        // }
+    } // Contacts iter end
+    TireForces {
+        impulses,
+        // rack_torque: rack_torque_sum,
     }
-
-    impulses
 }

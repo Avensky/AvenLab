@@ -5,6 +5,7 @@ use rapier3d::prelude::*;
 use serde_json::json;
 use crate::physics::DebugOverlay;
 use crate::spawn::{PlayerSpawnInfo, SpawnManager, Team};
+use tokio::sync::mpsc::UnboundedSender;
 
 /// =======================
 /// Player Input (from net)
@@ -81,7 +82,7 @@ pub struct SharedGameState {
     pub spawns: crate::spawn::SpawnManager,
 
     /// All connected WebSocket clients for this process
-    pub clients: Vec<tokio::sync::mpsc::UnboundedSender<String>>,
+    pub clients: HashMap<String, UnboundedSender<String>>,
     
 }
 
@@ -91,13 +92,18 @@ impl SharedGameState {
             tick: 0,
             entities: HashMap::new(),
             spawns: SpawnManager::new(10),
-            clients: Vec::new(),
+            clients: HashMap::new(),
         }
     }
 
     /// Register a new client sender so we can push snapshots to it.
-    pub fn register_client(&mut self, tx: tokio::sync::mpsc::UnboundedSender<String>) {
-        self.clients.push(tx);
+    pub fn register_client(&mut self, player_id: String, tx: UnboundedSender<String>) {
+        self.clients.insert(player_id, tx);
+        // self.clients.push(tx);
+    }
+
+    pub fn unregister_client(&mut self, player_id: &str) {
+        self.clients.remove(player_id);
     }
 
     /// Create an entity entry. net.rs calls this right after it decides
@@ -173,7 +179,7 @@ impl SharedGameState {
         //     let _ = tx.send(msg.clone());
         // }
         
-        for tx in &self.clients {
+        for (player_id, tx) in &self.clients {
             let _ = tx.send(msg.clone());
         }
     }
@@ -244,7 +250,7 @@ impl SharedGameState {
         // println!("   Snapshot payload: {}", json);
 
         // Send to all registered clients
-        for (i, tx) in self.clients.iter().enumerate() {
+        for (player_id, tx) in self.clients.iter() {
             match tx.send(json.clone()) {
                 Ok(_) => {
                     // println!(
@@ -255,7 +261,7 @@ impl SharedGameState {
                 Err(e) => {
                     println!(
                         "   ❌ failed to send snapshot to client #{}: {}",
-                        i, e
+                        player_id, e
                     );
                 }
             }

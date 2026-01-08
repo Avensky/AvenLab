@@ -74,15 +74,16 @@ pub async fn start_websocket_server(
                     }
                 }
             });
+            
+            // ---------- 1) Create player_id ----------
+            let player_id = Uuid::new_v4().to_string();
 
-            // ---------- 1) Register client for snapshots ----------
+            // ---------- 2) Register client for snapshots ----------
             {
                 let mut game = state_clone.lock().await;
-                game.register_client(tx.clone());
+                game.register_client(player_id.clone(), tx.clone());
             }
             
-            // ---------- 2) Create player_id ----------
-            let player_id = Uuid::new_v4().to_string();
 
             // ---------- 3) Ask SpawnManager for spawn info ----------
             let spawn_info = {
@@ -167,8 +168,18 @@ pub async fn start_websocket_server(
             }
 
             // ---------- 9) Cleanup on disconnect ----------
+            
             {
+                // 1) Remove physics FIRST
+                let mut phys = physics_clone.lock().await;
+                phys.despawn_vehicle_for_player(&player_id);
+            }
+            
+            
+            {
+                // 2) Remove game entity
                 let mut game = state_clone.lock().await;
+                game.unregister_client(&player_id);
                 game.remove_entity(&player_id);
                 // (optional) also remove from clients if you track per-player
             }

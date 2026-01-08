@@ -61,6 +61,14 @@ impl WheelId {
         }
     }
 
+    pub fn is_left(&self) -> bool {
+        matches!(self, WheelId::FL | WheelId::RL)
+    }
+
+    pub fn is_right(&self) -> bool {
+        matches!(self, WheelId::FR | WheelId::RR)
+    }
+
     pub fn is_front(&self) -> bool {
         matches!(self, WheelId::FL | WheelId::FR)
     }
@@ -143,6 +151,7 @@ pub struct ContactPatch {
 
     pub v_long: f32,   // m/s along forward
     pub v_lat: f32,    // m/s along side
+    pub v_lat_relaxed: f32,
 
     pub normal_force: f32, // N
     pub mu_lat: f32,
@@ -155,7 +164,6 @@ pub struct ContactPatch {
     pub compression_ratio: Real, // 0..1
 }
 
-
 #[derive(Clone, Copy, Debug)]
 pub struct Impulse {
     /// Linear impulse in world space (N*s).
@@ -164,3 +172,4 @@ pub struct Impulse {
     /// Optional application point (world). If None => apply at COM.
     pub at_point: Option<Vec3>,
 }
+
