@@ -6,6 +6,7 @@ mod state;      // world state
 mod spawn;      // spawn logic
 mod suspension_contact;
 mod debug_builders;
+mod vehicle;
 
 
 use rapier3d::prelude::RigidBodyHandle;

@@ -8,20 +8,53 @@ interface Spring {
     ratio: number;
 }
 
-export function DebugSpringVisualizer({ springs, opacity1 = 0.9, opacity2 = 0.3 }: { springs: Spring[], opacity1?: number, opacity2?: number }) {
+export function DebugSpringVisualizer({
+    springs, opacity1 = 0.9, opacity2 = 0.3,
+    vehiclePosition,
+    vehicleQuaternion,
+}: {
+    springs: Spring[];
+    opacity1?: number;
+    opacity2?: number;
+    vehiclePosition: [number, number, number];
+    vehicleQuaternion: [number, number, number, number];
+}) {
+
+    const vehiclePos = new THREE.Vector3(...vehiclePosition);
+    const vehicleQuat = new THREE.Quaternion(
+        vehicleQuaternion[0],
+        vehicleQuaternion[1],
+        vehicleQuaternion[2],
+        vehicleQuaternion[3]
+    );
+    const invQuat = vehicleQuat.clone().invert();
+
 
     return (
         <>
-            {springs.map((s, i) => <group key={i}>
-                <SpringHelix
-                    start={s.start}
-                    end={s.end}
-                    restEnd={s.restEnd}
+            {springs.map((s, i) => {
+                const start = new THREE.Vector3(...s.start)
+                    .sub(vehiclePos)
+                    .applyQuaternion(invQuat);
+
+                const end = new THREE.Vector3(...s.end)
+                    .sub(vehiclePos)
+                    .applyQuaternion(invQuat);
+
+                const restEnd = new THREE.Vector3(...s.restEnd)
+                    .sub(vehiclePos)
+                    .applyQuaternion(invQuat);
+
+                return <SpringHelix
+                    start={start.toArray() as [number, number, number]}
+                    end={end.toArray() as [number, number, number]}
+                    restEnd={restEnd.toArray() as [number, number, number]}
                     ratio={s.ratio}
                     opacity1={opacity1}
                     opacity2={opacity2}
                 />
-            </group>)}
+
+            })}
         </>
     );
 }

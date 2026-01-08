@@ -32,9 +32,9 @@ pub fn point_velocity(linvel: Vector<Real>, angvel: Vector<Real>, com: Point<Rea
     linvel + angvel.cross(&r)
 }
 
-/// Returns (wheel_forward, wheel_side) in world space.
-/// - Front wheels use steering solution output
-/// - Rear wheels use chassis orientation (rot)
+// Returns (wheel_forward, wheel_side) in world space.
+// - Front wheels use steering solution output
+// - Rear wheels use chassis orientation (rot)
 #[inline]
 pub fn wheel_basis_world(
     wheel_id: &str,
@@ -42,31 +42,71 @@ pub fn wheel_basis_world(
     fl: &WheelSteering,
     fr: &WheelSteering,
 ) -> (Vector<Real>, Vector<Real>) {
+
+    // World up (authoritative)
+    // let up = Vector::new(0.0, 1.0, 0.0);
+
+    // -----------------------------
+    // Select forward direction
+    // -----------------------------
     match wheel_id {
-        "FL" => {
-            let f = Vector::new(fl.forward[0] as Real, fl.forward[1] as Real, fl.forward[2] as Real);
-            let s = Vector::new(fl.side[0] as Real,    fl.side[1] as Real,    fl.side[2] as Real);
-            (safe_normalize(f, Vector::z()), safe_normalize(s, Vector::x()))
-        }
-        "FR" => {
-            let f = Vector::new(fr.forward[0] as Real, fr.forward[1] as Real, fr.forward[2] as Real);
-            let s = Vector::new(fr.side[0] as Real,    fr.side[1] as Real,    fr.side[2] as Real);
-            (safe_normalize(f, Vector::z()), safe_normalize(s, Vector::x()))
-        }
-        _ => {
+        // -------------------------
+        // FRONT WHEELS (STEERED)
+        // -------------------------
+        "FL" => (
+            Vector::new(
+                fl.forward[0] as Real, 
+                fl.forward[1] as Real, 
+                fl.forward[2] as Real
+            ),
+            Vector::new(
+                fl.side[0] as Real, 
+                fl.side[1] as Real, 
+                fl.side[2] as Real
+            )
+        ),
+        "FR" => (
+            Vector::new(
+                fr.forward[0] as Real,
+                fr.forward[1] as Real,
+                fr.forward[2] as Real,
+            ),
+            Vector::new(
+                fr.side[0] as Real,
+                fr.side[1] as Real,
+                fr.side[2] as Real,
+            )
+        ),
+        // -------------------------
+        // REAR WHEELS (STRAIGHT)
+        // -------------------------
+        "RL" | "RR" => {
             // Rear wheels: chassis forward
-            let fwd = rot * Vector::new(0.0, 0.0, 1.0);
-            let up  = Vector::new(0.0, 1.0, 0.0);
-            let side = up.cross(&fwd);
-            (safe_normalize(fwd, Vector::z()), safe_normalize(side, Vector::x()))
+            let forward = *rot * Vector::new(0.0, 0.0, 1.0);   // +Z is forward
+            let side    = *rot * Vector::new(-1.0, 0.0, 0.0);  // -X is right, +X left
+
+            (forward, side)
+
+        },
+        // -------------------------
+        // FALLBACK (SAFE)
+        // -------------------------
+        _ => {
+            let forward = *rot * Vector::new(0.0, 0.0, 1.0);   // +Z is forward
+            let side    = *rot * Vector::new(1.0, 0.0, 0.0);   // +X is right
+
+            (forward, side)
         }
+
     }
+
 }
+
 
 /// Compute (v_long, v_lat) given point velocity and wheel basis.
 #[inline]
 pub fn slip_components(point_vel: Vector<Real>, wheel_forward: Vector<Real>, wheel_side: Vector<Real>) -> (Real, Real) {
-    (point_vel.dot(&wheel_forward), point_vel.dot(&wheel_side))
+    (-point_vel.dot(&wheel_forward), point_vel.dot(&wheel_side))
 }
 
 #[inline]

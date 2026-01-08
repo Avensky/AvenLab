@@ -49,6 +49,7 @@ export interface DebugRay {
 export interface DebugSlipRay {
     origin: [number, number, number];
     direction: [number, number, number];
+    slip_angle: number;
     magnitude: number;
     color: [number, number, number];
 }

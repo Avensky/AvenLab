@@ -113,7 +113,7 @@ export function DebugVisualizer() {
             />
             <DebugSpringVisualizer springs={springs} opacity1={0.8} opacity2={0.3} />
             <DebugNormalForceVisualizer wheels={debug.wheels} />
-            <DebugLateralForceVisualizer wheels={debug.wheels} />
+            {/* <DebugLateralForceVisualizer wheels={debug.wheels} /> */}
         </>
     );
 }

@@ -85,7 +85,7 @@ pub fn solve_longitudinal(
     // Brake impulse opposes longitudinal velocity
 
     let desired_brake =
-        (-patch.v_long * ctx.mass) * ctrl.brake * brake_share;
+        (patch.v_long * ctx.mass) * ctrl.brake * brake_share;
 
     let max_brake =
         (ctx.brake_force * brake_share * dt).min(max_long);
