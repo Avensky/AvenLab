@@ -106,7 +106,7 @@ pub fn wheel_basis_world(
 /// Compute (v_long, v_lat) given point velocity and wheel basis.
 #[inline]
 pub fn slip_components(point_vel: Vector<Real>, wheel_forward: Vector<Real>, wheel_side: Vector<Real>) -> (Real, Real) {
-    (-point_vel.dot(&wheel_forward), point_vel.dot(&wheel_side))
+    (point_vel.dot(&wheel_forward), point_vel.dot(&wheel_side))
 }
 
 #[inline]

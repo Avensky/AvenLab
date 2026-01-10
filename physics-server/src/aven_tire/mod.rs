@@ -7,6 +7,7 @@ pub mod solve;
 pub mod steering;
 pub mod kinematics;
 pub mod anti_roll;
+pub mod state;
 
 pub use types::*;
 pub use solve::solve_step;

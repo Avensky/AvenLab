@@ -59,8 +59,16 @@ pub fn apply_arb_load_transfer(
     // Raw Force transfer proportional to compression difference
     let transfer = arb_stiffness * delta;
 
+    
+    // left / right normals
     let nl = axle_normal_force.get(&left).copied().unwrap_or(0.0);
     let nr = axle_normal_force.get(&right).copied().unwrap_or(0.0);
+    
+
+    // scale by load to avoid jacking
+    let load_scale = (nl + nr) / (2.0 * fz_ref);
+    let transfer = transfer * load_scale.clamp(0.3, 1.2);
+
 
     // Saturation: cannot exceed available load
     // let max_transfer = 0.6 * (nl + nr);

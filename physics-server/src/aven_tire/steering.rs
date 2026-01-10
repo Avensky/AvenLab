@@ -17,20 +17,6 @@
 // - Produces left/right wheel steering angles (fl, fr) that approximate
 //   ackermann geometry.
 // - Uses a blend between parallel steer (both wheels equal) and full ackermann.
-//
-// τ_net = 
-//        - τ_driver 
-//        - τ_sat
-//        - (c * ω) 
-//        - (k * θ) 
-//
-// where: 
-//        τ_sat = Self Aligning Torque → Steering Rack ONLY
-//        τ_driver = assist * steer_input
-//        c = damping
-//        ω = steer_rate
-//        k = steering column stiffness
-//        θ = steer_angle
 // 
 // steer_vector(rot, angle):
 // - Rotates chassis forward vector around world-up by a steering angle.
@@ -41,12 +27,12 @@
 // ==============================================================================
 
 // use rapier3d::prelude::*;
-use rapier3d::prelude::{Real, RigidBodySet};
+use rapier3d::prelude::{Real};
 use rapier3d::prelude::Vector;
 use rapier3d::na::UnitQuaternion;
 use crate::aven_tire::types::{Vec3};
 use crate::vehicle::Vehicle;
-use std::collections::hash_map::{Values, ValuesMut};
+use std::collections::hash_map::{ ValuesMut};
 
 
 /// Steering configuration (per vehicle)
@@ -112,7 +98,7 @@ pub fn update_steering_rack(
     let driver_torque = assist * steer_input;
 
     let coulomb = 1.2;           // N*m "dry friction" around center (tune 0.5–3.0)
-    let viscous = 0.0;           // optional extra
+    // let viscous = 0.0;           // optional extra
     
     // let friction = coulomb * steer_rate.signum() + viscous * (*steer_rate);
     // let friction = coulomb * net_torque.signum();
@@ -146,17 +132,6 @@ pub fn update_steering_rack(
     if *steer_angle > max_angle { *steer_angle = max_angle; *steer_rate = 0.0; } 
     else if *steer_angle < -max_angle { *steer_angle = -max_angle; *steer_rate = 0.0; }
     
-
-    // println!(
-    //     "[RACK DBG] θ={:+.3} ω={:+.3} τ_driver={:+.2} τ_sat={:+.2} τ_center={:+.2}",
-    //     *steer_angle,
-    //     *steer_rate,
-    //     driver_torque,
-    //     rack_torque,
-    //     -stiffness * (*steer_angle),
-    // );
-
-
 }
 
 /// Compute Ackermann inner/outer wheel angles
@@ -189,15 +164,7 @@ fn ackermann_angles(
     }
 }
 
-/// Main steering solve
-///
-/// Inputs:
-/// - chassis rotation
-/// - driver steer input (-1..1)
-/// - current vehicle speed
-///
-/// Output:
-/// - per-wheel forward & side directions
+// Main steering solve
 pub fn solve_steering(
     config: &SteeringConfig,
     chassis_rot: &UnitQuaternion<f32>,
@@ -216,13 +183,6 @@ pub fn solve_steering(
         (1.0 - config.ackermann) * steer_angle + config.ackermann * ack_r;
 
     // ------------------------------------------------------------
-    // - Build wheel directions in world space
-    // ------------------------------------------------------------
-    // let up = Vector3::y_axis();
-    // let chassis_fwd = chassis_rot * Vector3::z_axis().into_inner();
-
-
-    // ------------------------------------------------------------
     // World-space chassis basis (MUST match wheel_basis_world)
     // ------------------------------------------------------------
     let up = Vector::new(0.0, 1.0, 0.0);
@@ -232,11 +192,10 @@ pub fn solve_steering(
     let chassis_fwd   = chassis_rot * Vector::new(1.0, 0.0, 0.0);
     let chassis_right = chassis_rot * Vector::new(0.0, 0.0, -1.0);
 
-
     // ------------------------------------------------------------
     // Rotate forward direction by steering angles (PLANAR)
     // ------------------------------------------------------------
-        let fl_forward =
+    let fl_forward =
         (chassis_fwd * fl_angle.cos() + chassis_right * fl_angle.sin()).normalize();
 
     let fr_forward =
@@ -247,7 +206,6 @@ pub fn solve_steering(
     // ------------------------------------------------------------
     let fl_side = up.cross(&fl_forward).normalize();
     let fr_side = up.cross(&fr_forward).normalize();
-    
 
     // Sanity: orthogonality
     debug_assert!(fl_forward.dot(&fl_side).abs() < 1e-4);
@@ -271,54 +229,10 @@ pub fn solve_steering(
 // =========================================================================
 pub fn apply_vehicle_controls<'a>(
     vehicles: ValuesMut<'a, String, Vehicle>,
-    dt: Real,
+    _dt: Real,
 ) {
-    // let cutoff_hz = 12.0; // 8–20Hz
-    // let alpha = 1.0 - (-2.0 * std::f32::consts::PI * cutoff_hz * dt as f32).exp();
     for v in vehicles {
-        // v.rack_torque = v.rack_torque.clamp(-1500.0, 1500.0);
-        // v.rack_torque_filtered += (v.rack_torque - v.rack_torque_filtered) * alpha;            
-        
-        // v.steer_angle = v.steer * v.config.max_steer`_angle;
         v.throttle = v.throttle.clamp(-1.0, 1.0);
         v.brake    = v.brake.clamp(0.0, 1.0);
-        
-        // update_steering_rack(
-        //     v.steer,
-        //     // v.rack_torque_filtered,
-        //     &mut v.steer_angle,
-        //     &mut v.steer_rate,
-        //     v.config.max_steer_angle,
-        //     dt as f32,
-        // );
-
-        // println!(
-        //     "[STEER RACK] input={:+.2} angle={:+.3} rad rate={:+.3} rack_torque={:+.1}",
-        //     v.steer,
-        //     v.steer_angle,
-        //     v.steer_rate,
-        //     v.rack_torque
-        // );
-
-    }
-}
-
-// ===========================================================================
-// Anisotropic Angular damping (kills roll/yaw oscillations)
-// ===========================================================================
-pub fn apply_angular_damping<'a>(
-    vehicles: Values<'a, String, Vehicle>,
-    bodies: &mut RigidBodySet,
-    dt: Real,
-) {
-    
-    let ang_damp_per_sec = 0.05; // tune-here
-
-    for v in vehicles {
-        if let Some(body) = bodies.get_mut(v.body) {
-            let angvel = *body.angvel();
-            let factor = (-ang_damp_per_sec * dt).exp();
-            body.set_angvel(angvel * factor, true);
-        }
     }
 }

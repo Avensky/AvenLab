@@ -179,7 +179,7 @@ impl SharedGameState {
         //     let _ = tx.send(msg.clone());
         // }
         
-        for (player_id, tx) in &self.clients {
+        for (_player_id, tx) in &self.clients {
             let _ = tx.send(msg.clone());
         }
     }

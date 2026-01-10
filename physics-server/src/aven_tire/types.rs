@@ -3,6 +3,8 @@
 use std::fmt;
 pub type Vec3 = [f32; 3];
 use rapier3d::prelude::Real;
+use crate::aven_tire::state::{TireState};
+
 
 // ----- tiny vec helpers (avoid pulling a math crate into the tire solver) -----
 #[inline] pub fn v_add(a: Vec3, b: Vec3) -> Vec3 { [a[0]+b[0], a[1]+b[1], a[2]+b[2]] }
@@ -151,7 +153,6 @@ pub struct ContactPatch {
 
     pub v_long: f32,   // m/s along forward
     pub v_lat: f32,    // m/s along side
-    pub v_lat_relaxed: f32,
 
     pub normal_force: f32, // N
     pub mu_lat: f32,
@@ -164,6 +165,14 @@ pub struct ContactPatch {
     pub compression_ratio: Real, // 0..1
 
     pub vel_world: Vec3,
+
+    pub brake_dir: Vec3,
+    pub speed_planar: f32,
+
+    pub yaw_rate: f32,          // rad/s (world up)
+    pub relative_com: [f32; 3],  // apply_point - COM (world-space vector)
+    
+    pub tire_state: TireState,
 }
 
 #[derive(Clone, Copy, Debug)]

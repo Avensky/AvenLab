@@ -32,6 +32,8 @@
 
 
 // use rapier3d::prelude::Real;
+// use crate::physics::Wheel;
+use crate::aven_tire::state::{TireState};
 use crate::aven_tire::types::{
     Vec3,
     SolveContext,
@@ -39,7 +41,6 @@ use crate::aven_tire::types::{
     ContactPatch,
     v_scale,
     v_add,
-    v_mag,
 };
 
 // ====================================================================
@@ -47,8 +48,7 @@ use crate::aven_tire::types::{
 // ====================================================================
 
 pub struct LongitudinalResult {
-    pub impulse: Vec3,
-    pub nx: f32,
+    pub impulse: Vec3
 }
 // ====================================================================
 // Longitudinal tire model step
@@ -59,134 +59,126 @@ pub fn solve_longitudinal(
     ctx: &SolveContext,
     ctrl: &ControlInput,
     patch: &ContactPatch,
-    brake_share: f32,
+    _brake_share: f32,
 ) -> LongitudinalResult {
-    if !patch.grounded { return LongitudinalResult { impulse: [0.0,0.0,0.0], nx: 0.0 };}
 
+    if !patch.grounded { return LongitudinalResult { impulse: [0.0,0.0,0.0]};}
+    
     let dt = ctx.dt.max(1e-6);
 
     // =========================================================
-    // CARDINAL RULE: one source of truth for longitudinal capacity
-    // J_cap is the max friction impulse available this step
+    //  Longitudinal friction capacity (impulse domain)
     // =========================================================
     let j_cap = (patch.mu_long * patch.normal_force * dt).max(1e-6);
+    
+    // =========================================================
+    //  Forward projection helper (XZ plane)
+    // =========================================================
+    let fwd_xz = {
+        let fx = patch.forward[0];
+        let fz = patch.forward[2];
+        let len = (fx * fx + fz * fz).sqrt().max(1e-6);
+        [fx / len, 0.0, fz / len]
+    };
 
     // =========================================================
-    // ENGINE (drive wheels only)
-    // - produce an impulse along +forward
-    // - clamp by friction capacity
+    //  ENGINE (drive wheels only)  -> along +forward
     // =========================================================
-
-    let load_frac = (patch.normal_force / (ctx.mass * 9.81 / ctx.driven_wheels.max(1.0)))
-        .clamp(0.5, 1.6);
-
+    let load_frac = 
+        (patch.normal_force / (ctx.mass * 9.81 / ctx.driven_wheels.max(1.0)))
+            .clamp(0.5, 1.6);
+    
     let engine_force = if patch.drive {
         (ctx.engine_force / ctx.driven_wheels.max(1.0))
-            * ctrl.throttle
-            * load_frac
+        * ctrl.throttle
+        * load_frac
+
     } else {
         0.0
     };
-
-    // Convert force -> impulse and clamp to friction capacity
-    let mut engine_j = (engine_force * dt).clamp(-j_cap, j_cap);
+    
+    // force -> impulse, limited by friction budget
+    let engine_j = (engine_force * dt).clamp(-j_cap, j_cap);
     let mut engine_impulse = v_scale(patch.forward, engine_j);
-
+    
     // =========================================================
-    // BRAKE (all wheels)
-    // CARDINAL RULE: brake must oppose v_long
+    // BRAKE = longitudinal friction constraint
     // =========================================================
+    let brake_input = ctrl.brake.clamp(0.0, 1.0);
+    let mut brake_impulse = [0.0, 0.0, 0.0];
 
-    // Actuator brake limit in impulse domain (force * dt)
-    let j_brake_act = (ctx.brake_force * brake_share * dt).max(0.0);
+    if brake_input > 0.001 {
 
-    // "How much impulse would stop the current longitudinal speed this frame?"
-    // (If v_long>0, J_stop is negative, i.e. opposite forward.)
-    let j_stop = -ctx.mass * patch.v_long;
+        // Longitudinal slip velocity INCLUDING yaw contribution
+        let v_long_eff =
+            patch.v_long
+            - patch.yaw_rate * patch.relative_com[2];
 
-    // Demand: scaled by brake input and brake share
-    let j_brake_demand = j_stop * ctrl.brake;
+        // Deadband prevents jitter at rest
+        if v_long_eff.abs() > 0.15 {
 
-    // Final brake impulse scalar: clamp by actuator AND friction capacity
-    // Also: never exceed available friction budget for long channel
-    let mut brake_j = j_brake_demand.clamp(-j_brake_act, j_brake_act);
-    brake_j = brake_j.clamp(-j_cap, j_cap);
+            // Desired impulse to cancel longitudinal slip
+            // NOTE: no mass guess — use velocity cancellation directly
+            let j_desired = -v_long_eff * ctx.mass * 0.25;
 
-    // Optional: “no reverse push” safety
-    // Brake should never be in the same direction as velocity.
-    // i.e. brake_j * v_long should be <= 0
-    if brake_j * patch.v_long > 0.0 {
-        brake_j = 0.0;
-    }
+            // Scale by brake input (driver intent)
+            let j_cmd = j_desired * brake_input;
 
-    // Low-speed handling:
-    // - If braking and almost stopped, just cancel the tiny residual velocity (prevents jitter)
-    // - If not braking, don’t inject noise
-    if patch.v_long.abs() < 0.05 {
-        if ctrl.brake > 0.1 {
-            // cancel residual
-            brake_j = (-ctx.mass * patch.v_long)
-                .clamp(-j_brake_act, j_brake_act)
-                .clamp(-j_cap, j_cap);
-        } else {
-            brake_j = 0.0;
+            // Clamp by friction capacity
+            let j = j_cmd.clamp(-j_cap, j_cap);
+
+            brake_impulse = v_scale(patch.forward, j);
         }
     }
 
-    let mut brake_impulse = v_scale(patch.forward, brake_j);
-
-    // direction opposite actual motion on ground
-    let v = patch.vel_world;
-    let v_planar = [v[0], 0.0, v[2]];
-    let speed = v_mag(v_planar);
-
-    if speed > 1e-3 {
-        let brake_dir = v_scale(v_planar, -1.0 / speed);
-        brake_impulse = v_scale(brake_dir, brake_j.abs());
-    } else {
-        brake_impulse = [0.0, 0.0, 0.0];
-    }
-
-
     // =========================================================
-    // ABS / TCS (operate on impulse ratios vs capacity)
+    // Compute longitudinal usage (projection onto forward)
+    // This is what ABS/TCS + solve.rs ellipse should measure.
     // =========================================================
-    let engine_nx = v_mag(engine_impulse) / j_cap;
-    let brake_nx  = v_mag(brake_impulse)  / j_cap;
-
-    // Traction Control
-    if ctx.tcs_enabled && ctrl.throttle > 0.01 && engine_nx > ctx.tcs_limit {
-        let s = (ctx.tcs_limit / engine_nx).clamp(0.0, 1.0);
-        engine_impulse = v_scale(engine_impulse, s);
+    let engine_jx = (engine_impulse[0]*fwd_xz[0] + engine_impulse[2]*fwd_xz[2]).abs();
+    let brake_jx  = (brake_impulse[0]*fwd_xz[0]  + brake_impulse[2]*fwd_xz[2]).abs();
+    
+    // =========================================================
+    // TCS (traction control based on longitudinal usage)
+    // =========================================================
+    if ctx.tcs_enabled && ctrl.throttle > 0.01 {
+        let nx = engine_jx / j_cap;
+        if nx > ctx.tcs_limit {
+            let s = (ctx.tcs_limit / nx).clamp(0.0, 1.0);
+            engine_impulse = v_scale(engine_impulse, s);
+        }
     }
-
-    // Reduce engine while braking at low speed (optional “auto-clutch”)
-    // if ctrl.brake > 0.3 && patch.v_long.abs() < 1.0 {
-    //     engine_impulse = v_scale(engine_impulse, 0.25);
-    // }
-
-    // ABS
+    
+    // =========================================================
+    // ABS (based on longitudinal usage)
+    // =========================================================
     if ctx.abs_enabled
         && ctrl.brake > 0.01
-        && patch.v_long.abs() > 1.0
-        && brake_nx > ctx.abs_limit
+        && patch.speed_planar > 1.0
     {
-        let s = (ctx.abs_limit / brake_nx).clamp(0.0, 1.0);
+        let nx = brake_jx / j_cap;
+        let s = (ctx.abs_limit / nx).clamp(0.2, 1.0);
         brake_impulse = v_scale(brake_impulse, s);
     }
 
-    // =========================================================
-    // IMPORTANT BUGFIX:
-    // Remove speed-based "relax" that weakens brakes more at high speed.
-    // If you want smoothing, use a *constant* time constant, not |v|.
-    // =========================================================
-    // If you want a gentle smoothing:
-    // let tau = 0.10; // seconds
-    // let a = 1.0 - (-dt / tau).exp();
-    // brake_impulse = v_scale(brake_impulse, a);
+    let mut impulse = v_add(engine_impulse, brake_impulse);
 
-    let impulse = v_add(engine_impulse, brake_impulse);
-    let nx = v_mag(impulse) / j_cap;
 
-    LongitudinalResult { impulse, nx }
+    match patch.tire_state {
+        TireState::Grip => { 
+            /* unchanged */ 
+        }
+
+        TireState::Slide => {
+            // soften longitudinal authority
+            impulse = v_scale(impulse, 0.85);
+        }
+
+        TireState::Lock => {
+            // braking lock: NO engine, NO corrective braking
+            impulse = v_scale(impulse, 0.5);
+        }
+    }
+
+    LongitudinalResult { impulse }
 }
