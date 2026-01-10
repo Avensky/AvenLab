@@ -32,6 +32,48 @@ use crate::aven_tire::steering::SteeringState;
 use crate::aven_tire::kinematics::{wheel_basis_world, slip_components};
 use crate::aven_tire::WheelId;
 
+
+// struct SuspensionState {
+//     compression: f32,
+//     compression_ratio: f32,
+//     suspension_vel: f32,
+// }
+
+// struct SuspensionForces {
+//     normal_force: f32,
+// }
+
+// struct SuspensionContact {
+//     // geometry
+//     hit_point: Point<Real>,
+//     apply_point: Point<Real>,
+//     ground_normal: Vector<Real>,
+
+//     // state
+//     state: SuspensionState,
+
+//     // forces
+//     forces: SuspensionForces,
+
+//     // kinematics
+//     point_vel: Vector<Real>,
+
+//     // tire interface
+//     forward: Vector<Real>,
+//     side: Vector<Real>,
+//     v_long: f32,
+//     v_lat: f32,
+
+//     // friction
+//     mu_lat: f32,
+//     mu_long: f32,
+
+//     // misc
+//     wheel_id: String,
+//     roll_factor: f32,
+//     grounded: bool,
+// }
+
 pub struct RawSuspension {
     wheel_id: WheelId,
     normal_force: f32,
@@ -67,7 +109,6 @@ pub struct SuspensionContact {
     // slip
     pub v_long: f32,
     pub v_lat: f32,
-    pub v_lat_relaxed: f32,
 
     // misc
     pub grounded: bool,
@@ -165,18 +206,14 @@ pub fn build_suspension_contact(
         filter,
     )?;
 
-    if toi <= wheel.radius {
-        return None;
-    }
+    if toi <= wheel.radius { return None; }
 
     let hit_point = origin + dir * toi;
-    let suspension_length = toi - wheel.radius;
-    let compression = (wheel.rest_length - suspension_length)
-        .clamp(0.0, wheel.max_length);
+    let suspension_length = (toi - 0.02) - wheel.radius;
+    let suspension_length = suspension_length.clamp(0.0, (wheel.rest_length + wheel.max_length) as f32);
 
-    if compression <= 0.0 {
-        return None;
-    }
+    let compression = (wheel.rest_length as f32 - suspension_length)
+        .clamp(0.0, wheel.max_length as f32);
 
     let compression_ratio = compression / wheel.max_length;
 
@@ -200,56 +237,15 @@ pub fn build_suspension_contact(
     let load_ratio = (normal_force / fz_ref).max(0.2);
     let mu_lat = (mu0 * load_ratio.powf(-k)).clamp(mu0 * 0.6, mu0 * 1.1);
 
-
-    let (raw_forward, _) =
-        wheel_basis_world(&wheel.debug_id, &rot, &steering.fl, &steering.fr);
+    let (raw_forward, _) = wheel_basis_world(&wheel.debug_id, &rot, &steering.fl, &steering.fr);
 
     // Build planar basis using contact normal
-    let (forward, side) =
-        planar_wheel_basis(raw_forward, ground_n);
+    let (forward, side) = planar_wheel_basis(raw_forward, ground_n);
 
-    // println!(
-    //     "[BASIS {}] fwd.y={:+.3} side.y={:+.3} n.y={:+.3}",
-    //     wheel.debug_id,
-    //     forward.y,
-    //     side.y,
-    //     ground_n.y,
-    // );
-
-    let (v_long, v_lat) =
-        slip_components(point_vel, forward, side);
+    let (v_long, v_lat) = slip_components(point_vel, forward, side);
 
     let steer_intensity = vehicle.steer.abs().clamp(0.0, 1.0);
     let roll_factor = 0.30 * (1.0 - steer_intensity * 0.65);
-
-    
-    
-    // if wheel.debug_id == "FL" || wheel.debug_id == "FR" {
-    //     println!(
-    //         "[SLIP RELAX {}] v_lat={:+.3} v_lat_relaxed={:+.3} k={:.3}",
-    //         wheel.debug_id,
-    //         v_lat,
-    //         wheel.v_lat_relaxed,
-    //         k
-    //     );
-    // }
-    
-    // let handed = forward.cross(&side).dot(&ground_n);
-    // println!("[HAND {}] handed={:+.3}", wheel.debug_id, handed);
-    
-    // if wheel.debug_id == "FL" || wheel.debug_id == "FR" {
-    //     println!(
-    //         "[STEERDBG {}] steer={:+.2} ang={:+.3} v_long={:+.2} v_lat={:+.2} side=({:+.2},{:+.2},{:+.2}) fwd=({:+.2},{:+.2},{:+.2})",
-    //         wheel.debug_id,
-    //         vehicle.steer,
-    //         vehicle.steer_angle,
-    //         v_long,
-    //         v_lat,
-    //         side.x, side.y, side.z,
-    //         forward.x, forward.y, forward.z
-    //     );
-    // }
-
 
     Some(SuspensionContact {
         wheel_id: wheel.debug_id.clone(),
@@ -266,7 +262,6 @@ pub fn build_suspension_contact(
         side,
         v_long: v_long as f32,
         v_lat: v_lat as f32,
-        v_lat_relaxed: wheel.v_lat_relaxed,
         grounded: true,
         roll_factor: roll_factor as f32,
         point_vel: point_vel,
