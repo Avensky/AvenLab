@@ -127,6 +127,12 @@ pub fn solve_longitudinal(
             // Clamp by friction capacity
             let j = j_cmd.clamp(-j_cap, j_cap);
 
+            // brake actuator cap 
+            // let j_act = (ctx.brake_force * brake_share * dt).max(0.0);
+
+            // final brake magnitude
+            // let j = (j).min(j_act).min(j_cap);
+
             brake_impulse = v_scale(patch.forward, j);
         }
     }
@@ -153,7 +159,7 @@ pub fn solve_longitudinal(
     // ABS (based on longitudinal usage)
     // =========================================================
     if ctx.abs_enabled
-        && ctrl.brake > 0.01
+        && brake_input > 0.01
         && patch.speed_planar > 1.0
     {
         let nx = brake_jx / j_cap;
@@ -161,24 +167,7 @@ pub fn solve_longitudinal(
         brake_impulse = v_scale(brake_impulse, s);
     }
 
-    let mut impulse = v_add(engine_impulse, brake_impulse);
-
-
-    match patch.tire_state {
-        TireState::Grip => { 
-            /* unchanged */ 
-        }
-
-        TireState::Slide => {
-            // soften longitudinal authority
-            impulse = v_scale(impulse, 0.85);
-        }
-
-        TireState::Lock => {
-            // braking lock: NO engine, NO corrective braking
-            impulse = v_scale(impulse, 0.5);
-        }
-    }
+    let impulse = v_add(engine_impulse, brake_impulse);
 
     LongitudinalResult { impulse }
 }

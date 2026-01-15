@@ -6,8 +6,8 @@ import { useGLTF } from '@react-three/drei';
 import { Group, MathUtils, Color, SpotLight, Vector3, Object3D } from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
 // import { GroupProps, useFrame, useThree } from '@react-three/fiber';
-import { useStore } from '../../store';
-// import { Camera, Controls, getState, PhysicsData, useStore } from '../../store';
+import { useSnapshotStore } from '../../store/store';
+// import { Camera, Controls, getState, PhysicsData, useSnapshotStore } from '../../store';
 import { setupVehicleParts } from '../../utils/setupVehicleParts';
 import { sharedGlassMaterial } from '../../utils/createGlassMaterialFactory';
 import { usePhysicsInterpolator } from '../../hooks/usePhysicsInterpolator'
@@ -42,10 +42,12 @@ export default forwardRef(function Camaro({ children }: PropsWithChildren, ref: 
 
     useImperativeHandle(ref, () => vehicleGroupRef.current, [])
 
-    const headlightsOn = useStore().controls.headlights
-    const leftBlinker = useStore().controls.blinkerLeft
-    const rightBlinker = useStore().controls.blinkerRight
-    const hazards = useStore().controls.hazards
+    const input = useSnapshotStore.getState().input
+    const controls = useSnapshotStore.getState().controls
+    const headlightsOn = input.headlights
+    const leftBlinker = input.blinkerLeft
+    const rightBlinker = input.blinkerRight
+    const hazards = input.hazards
 
     const { setSnapshot, getInterpolated } = usePhysicsInterpolator(100)
 
@@ -250,24 +252,25 @@ export default forwardRef(function Camaro({ children }: PropsWithChildren, ref: 
 
     // Update transformations every frame ie. chassis
     useEffect(() => {
-        const id = useStore.getState().player?.id
-        const snapshot = useStore.getState()?.physicsData
+        const id = useSnapshotStore.getState().playerId
+        const snapshot = useSnapshotStore.getState()?.physicsData
         if (id && snapshot) {
             // console.log('[Prime] Initial snapshot', snapshot)
             setSnapshot(id, snapshot)
         }
-    }, [useStore(s => s.physicsData)])
+    }, [useSnapshotStore(s => s.physicsData)])
 
     useFrame((_, delta) => {
         // get state on frame
-        const id = useStore.getState().player?.id
+        const id = useSnapshotStore.getState().playerId
         if (!id) return
         const interp = getInterpolated(id)
         if (!interp) return
 
-        const controls = useStore.getState().controls
-        const camMode = useStore.getState().camera
-        const isEditor = useStore.getState().booleans.editor
+        const input = useSnapshotStore.getState().input
+        const controls = useSnapshotStore.getState().controls
+        const camMode = useSnapshotStore.getState().camera
+        const isEditor = useSnapshotStore.getState().editor
 
         // Update blink state every 0.5s
         blinkTimer.current += delta
@@ -277,24 +280,24 @@ export default forwardRef(function Camaro({ children }: PropsWithChildren, ref: 
         }
 
         // Lights visibility
-        if (leftLightRef.current) leftLightRef.current.visible = controls.headlights
-        if (rightLightRef.current) rightLightRef.current.visible = controls.headlights
+        if (leftLightRef.current) leftLightRef.current.visible = input.headlights
+        if (rightLightRef.current) rightLightRef.current.visible = input.headlights
 
-        if (leftTailRef.current) leftTailRef.current.visible = controls.brake
-        if (rightTailRef.current) rightTailRef.current.visible = controls.brake
+        if (leftTailRef.current) leftTailRef.current.visible = controls.braking
+        if (rightTailRef.current) rightTailRef.current.visible = controls.braking
 
-        const hazards = controls.hazards
-        const blinkerLeft = controls.blinkerLeft
-        const blinkerRight = controls.blinkerRight && !hazards
+        const hazards = input.hazards
+        const blinkerLeft = input.blinkerLeft
+        const blinkerRight = input.blinkerRight && !hazards
         const blinkOn = blinkState.current
 
         //headlights
-        leftLightRef.current.visible = controls.headlights
-        rightLightRef.current.visible = controls.headlights
+        leftLightRef.current.visible = input.headlights
+        rightLightRef.current.visible = input.headlights
 
         //taillights
-        leftTailRef.current.visible = controls.brake
-        rightTailRef.current.visible = controls.brake
+        leftTailRef.current.visible = controls.braking
+        rightTailRef.current.visible = controls.braking
 
         if (flBlinkerRef.current) flBlinkerRef.current.visible = (hazards || blinkerLeft) && blinkOn
         if (frBlinkerRef.current) frBlinkerRef.current.visible = (hazards || blinkerRight) && blinkOn

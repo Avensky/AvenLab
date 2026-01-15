@@ -1,7 +1,7 @@
 import { useThree, useFrame } from '@react-three/fiber';
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { useStore } from '../store';
+import { useSnapshotStore } from '../store/store';
 import type { OrbitControls } from 'three-stdlib'
 
 interface RotatingCameraProps {
@@ -14,13 +14,14 @@ interface RotatingCameraProps {
 }
 export function RotatingCamera({ radius = 5, height = 2, speed = 0.3, resumeDuration = 10, orbitRef }: RotatingCameraProps) {
     const { camera } = useThree();
-    const screen = useStore((s) => s.screen);
-    const camMode = useStore((s) => s.camera);
-    const setRotatingCamera = useStore((s) => s.setRotatingCamera);
-    // const angle = useStore((s) => s.rotatingCamera.angle);
+    const screen = useSnapshotStore((s) => s.screen);
+    const camMode = useSnapshotStore((s) => s.camera);
+    const setRotatingCamera = useSnapshotStore((s) => s.setRotatingCamera);
+    // const angle = useSnapshotStore((s) => s.rotatingCamera.angle);
 
     const [paused, setPaused] = useState(false);
-    const pauseTimer = useRef<NodeJS.Timeout | null>(null);
+    const pauseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
 
     const isActive = screen === 'selection-screen' && camMode === 'GALLERY';
 
@@ -55,17 +56,17 @@ export function RotatingCamera({ radius = 5, height = 2, speed = 0.3, resumeDura
     useFrame(() => {
         if (paused || !isActive) return;
 
-        const physicsData = useStore.getState().physicsData;
-        const player = useStore.getState().player?.id;
+        const physicsData = useSnapshotStore.getState().physicsData;
+        const player = useSnapshotStore.getState().playerId;
 
         if (!player) return;
 
         const target = physicsData?.chassisBody?.position ?? new THREE.Vector3(0, 0, 0);
         if (!target) return;
 
-        const currentAngle = useStore.getState().rotatingCamera.angle;
+        const currentAngle = useSnapshotStore.getState().rotatingCamera;
         const newAngle = currentAngle + speed * 0.01;
-        setRotatingCamera({ angle: newAngle });
+        setRotatingCamera(newAngle);
 
         const x = radius * Math.sin(newAngle);
         const z = radius * Math.cos(newAngle);

@@ -12,7 +12,7 @@ mod vehicle;
 use rapier3d::prelude::RigidBodyHandle;
 use crate::net::start_websocket_server;
 use crate::physics::PhysicsWorld;
-use crate::state::{SharedGameState, EntityType}; // shared world state
+use crate::state::{SharedGameState}; // shared world state
 
 use std::sync::Arc; // multiple threads own the same object
 use tokio::sync::Mutex; // only 1 thread at a time can mutate the object
@@ -68,42 +68,8 @@ async fn main() {
             }
 
             // If the player has sent recent input, apply it
-            if let Some(ref input) = entity.last_input {
-                let axes = &input.axes;
-                match entity.kind {
-                    // Vehicle: throttle + steering
-                    EntityType::Vehicle => {
-                        // Vehicle: throttle + steering
-                        phys.apply_player_input(
-                            &entity.id,
-                            axes.throttle,
-                            axes.steer,
-                            axes.brake,
-                            axes.ascend,
-                            axes.pitch,
-                            axes.yaw,
-                            axes.roll,
-                        );
-
-                    }
-                    // Air/sea vehicles: full 6DOF controls
-                    EntityType::Drone
-                    | EntityType::Helicopter
-                    | EntityType::Jet
-                    | EntityType::Boat
-                    | EntityType::Ship => {
-                        phys.apply_player_input(
-                            &entity.id,
-                            axes.throttle,
-                            axes.steer,
-                            axes.brake,
-                            axes.ascend,
-                            axes.pitch,
-                            axes.yaw,
-                            axes.roll,
-                        );
-                    }
-                }
+            if let Some(ref packet) = entity.last_packet {
+                phys.apply_player_input_packet(&entity.id, packet.clone());
             }
         }
 
@@ -117,11 +83,14 @@ async fn main() {
         // 7) Update global tick counter
         // -----------------------------------------------------
         game.tick += 1;
+        // if game.tick % 60 == 0 {
+        //     println!("🕒 Tick = {}", game.tick);
+        // }
 
         // -----------------------------------------------------
         // 8) Broadcast snapshots to all connected players
         // -----------------------------------------------------
-        game.broadcast_snapshot(&phys.bodies);
+        game.broadcast_snapshot(&phys);
 
         // -----------------------------------------------------
         // 9) Broadcast debug overlay (raycasts, wheels, springs)

@@ -1,8 +1,13 @@
 // src/store/snapshotStore.ts
 import { create } from "zustand";
-import type { PlayerInput } from "../types/playerInput";
+// import type { Input, PlayerStateInput, VehicleControlInput, VehicleStateInput } from "./playerInput";
+import { deriveVehicleSignals } from "../utils/deriveVehicleSignals";
+import type { VehicleControls } from "./playerInput";
+import type { PhysicsData } from "./snapshot";
+import { socket } from "../net/rustSocket";
+// import { encodePlayerMask, encodeVehicleMask } from "../utils/encoding";
+import { PlayerFlags, VehicleFlags } from "../utils/inputMasks";
 // import type { PendingInput } from "../types/playerInput";
-
 export type RenderMode = "glb" | "geometry" | "collider";
 
 // export interface PredictedSelfState {
@@ -18,25 +23,39 @@ export interface DebugChassis {
     half_extents: [number, number, number];     // hx,hy,hz
 }
 
-export interface PlayerSnapshot {
+export interface PhysicsEntitySnapshot {
     id: string;
-    kind: string;
+    kind: "vehicle" | "tank" | "drone" | "boat";
+    team?: "red" | "blue";
     room_id: number;
-    team: "red" | "blue";
-    x: number;
-    y: number;
-    z: number;
 
-    // full orientation (world-space)
-    rot: [number, number, number, number]; // quaternion [x,y,z,w]
+    position: [number, number, number];
+    rotation: [number, number, number, number];
 
-    // OPTIONAL convenience (UI only, never authoritative)
-    yaw?: number;
+    // telemetry
+    speed: number;
+    rpm: number;
+    gear: number;
+    fuel: number;
+    temp: number;
+    engine_torque: number;
+
+    vehicle_mask: number;
+    player_mask: number;
 }
 
 export interface PhysicsSnapshot {
     tick: number;
-    players: PlayerSnapshot[];
+    entities: PhysicsEntitySnapshot[];
+}
+
+
+export interface PhysicsEntity {
+    id: string;                 // entity id (player, AI, drone, etc.)
+    kind: "car" | "tank" | "drone" | "boat"; // extensible
+    team?: "red" | "blue";
+
+    physics: PhysicsData;
 }
 
 export interface DebugRay {
@@ -77,35 +96,108 @@ export interface DebugOverlay {
     chassis_right: [number, number, number];
 }
 
-const DEFAULT_INPUT: PlayerInput = {
-    type: "input",
+export const cameras = ['GALLERY', 'DEFAULT', 'FIRST_PERSON', 'BIRDS_EYE'] as const
+export type Camera = (typeof cameras)[number]
 
-    throttle: 0,
-    steer: 0,
-    brake: 0,
+export interface InputPacket {
+    type: "input";
+    seq: number;
+    dt: number;
 
-    ascend: 0,
-    pitch: 0,
-    yaw: 0,
-    roll: 0,
-};
+    // analog controls (always present)
+    throttle: number;   // [-1..1]
+    steer: number;      // [-1..1]
+    brake: number;      // [0..1]
+    handbrake: number;  // [0..1]
+
+    // bitmasks
+    vehicleMask: number; // uint16
+    playerMask: number;  // uint16
+}
+
+let seq = 0;
+
+function sendPackedInput(socket: WebSocket | null, input: InputPacket, dt: number) {
+    if (!socket || socket.readyState !== WebSocket.OPEN) return;
+
+    const packet = {
+        type: "input",
+        seq: seq++,
+        dt,
+
+        throttle: input.throttle,
+        steer: input.steer,
+        brake: input.brake,
+        handbrake: input.handbrake,
+
+        vehicleMask: input.vehicleMask,
+        playerMask: input.playerMask,
+    };
+
+    socket.send(JSON.stringify(packet));
+}
 
 interface SnapshotState {
+
+    // =======================================
+    //  Game Selection
+    // =======================================
+    screen: 'selection-screen' | 'game-screen'
+    selectedVehicle: string
+    selectedMap: string
+    setScreen: (screen: 'selection-screen' | 'game-screen') => void
+    setSelectedVehicle: (vehicle: string) => void
+    setSelectedMap: (map: string) => void
+
+    camera: Camera
+    rotatingCamera: number
+    setRotatingCamera: (angle: number) => void
+
+    binding: boolean,
+    debugBool: boolean,
+    editor: boolean,
+    help: boolean,
+    menu: boolean,
+    cli: boolean,
+    map: boolean,
+    pickcolor: boolean,
+    shadows: boolean,
+    sound: boolean,
+
+    // =======================================
+    //  Net
+    // =======================================
     connected: boolean;
     setConnected: (v: boolean) => void;
 
     snapshot: PhysicsSnapshot | null;
     setSnapshot: (snap: PhysicsSnapshot) => void;
 
+    physicsData: PhysicsData | null;
+    setPhysicsData: (data: PhysicsData | null) => void;
+
+    // getMyPhysics(): PhysicsData | null;
+    // getOtherPhysics(): PhysicsData[];
+
+    // =======================================
     // --- INPUT STATE ---
-    input: PlayerInput;
-    setInput: (partial: Partial<PlayerInput>) => void;
-    resetInput: () => void;
+    // =======================================
+    seqCounter: number;
+    lastVehicleMask: number;
+    lastPlayerMask: number;
+
+    input: InputPacket;
+    setInput: (partial: Partial<InputPacket>) => void;
+    controls: VehicleControls;
+
 
     mode: RenderMode;
     setMode: (mode: RenderMode) => void;
 
-    playerId: string | null;
+    // =======================================
+    //  Player Data
+    // =======================================
+    playerId: string;
     setPlayerId: (id: string) => void;
 
     team: "Red" | "Blue" | null;
@@ -119,9 +211,12 @@ interface SnapshotState {
     tick: number | null;
     // lastTick: number | null;
 
-    getMe: () => PlayerSnapshot | null;
-    getOthers: () => PlayerSnapshot[];
+    getMe: () => PhysicsEntitySnapshot | null;
+    getOthers: () => PhysicsEntitySnapshot[];
 
+    // =======================================
+    //  Debug
+    // =======================================
     debug: DebugOverlay | null;
     setDebugOverlay: (dbg: DebugOverlay) => void;
 
@@ -136,27 +231,108 @@ interface SnapshotState {
 
 
 export const useSnapshotStore = create<SnapshotState>((set, get) => ({
+    // =======================================
+    //  Game Selection
+    // =======================================
+    screen: 'selection-screen',
+    selectedVehicle: 'ae86',
+    selectedMap: 'rtx',
+    setScreen: (screen) => { set({ screen }) },
+    setSelectedVehicle: (vehicle) => set({ selectedVehicle: vehicle }),
+    setSelectedMap: (map) => set({ selectedMap: map }),
+
+    camera: cameras[0],
+    rotatingCamera: 0.0,
+    setRotatingCamera: (angle: number) => set({ rotatingCamera: angle }),
+    binding: false,
+    debugBool: false,
+    editor: false,
+    help: false,
+    menu: false,
+    cli: false,
+    map: true,
+    pickcolor: false,
+    shadows: true,
+    sound: true,
+
+    // =======================================
+    //  Net
+    // =======================================
     connected: false,
-    playerId: null,
-    snapshot: null,
-    tick: 0,
-    // lastTick: 0,
-
-    // --- INPUT ---
-    input: DEFAULT_INPUT,
-
-    setInput: (partial) =>
-        set((s) => ({
-            input: { ...s.input, ...partial },
-        })),
-
-    resetInput: () => set({ input: DEFAULT_INPUT }),
-
-
     setConnected: (v) => set({ connected: v }),
-    setPlayerId: (id) => set({ playerId: id }),
-    setSnapshot: snap => set({ snapshot: snap }),
 
+    snapshot: null,
+    setSnapshot: (snap) => {
+        const myId = get().playerId;
+        const me = snap.entities.find(e => e.id === myId);
+
+        set({
+            snapshot: snap,
+            physicsData: me
+                ? {
+                    speed: me.speed,
+                    rpm: me.rpm,
+                    gear: me.gear,
+                    fuel: me.fuel,
+                    temp: me.temp,
+                    engineTorque: me.engine_torque,
+                    vehicleMask: me.vehicle_mask,
+                    playerMask: me.player_mask,
+                }
+                : null,
+        });
+    },
+    physicsData: null,
+    setPhysicsData: (data: PhysicsData | null) => set({ physicsData: data }),
+
+    // getMyPhysics: get({state.physicsData}),
+    // getOtherPhysics: PhysicsData[],
+
+    // =======================================
+    // --- INPUT ---
+    // =======================================
+    seqCounter: 0,
+    lastVehicleMask: 0,
+    lastPlayerMask: 0,
+
+    input: {
+        type: "input",
+        seq: 0,
+        dt: 0,
+        throttle: 0,
+        steer: 0,
+        brake: 0,
+        handbrake: 0,
+        vehicleMask: VehicleFlags.ENGINE_ON | VehicleFlags.ABS | VehicleFlags.TCS,
+        playerMask: 0,
+    },
+
+    setInput(partial) {
+        const nextInput = { ...get().input, ...partial };
+
+        sendPackedInput(socket, nextInput, 1 / 60);
+
+        set({
+            input: nextInput,
+            controls: deriveVehicleSignals(nextInput),
+        });
+    },
+
+    controls: {
+        braking: false,
+        accelerating: false,
+        reversing: false,
+        coasting: true,
+    },
+
+    mode: "geometry",
+    setMode: (mode) => set({ mode }),
+
+    // =======================================
+    //  Player Data
+    // =======================================
+    playerId: "",
+    setPlayerId: (id) => set({ playerId: id }),
 
     team: null,
     kind: null,
@@ -166,29 +342,28 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
     y: null,
     z: null,
 
-    mode: "geometry",
-    setMode: (mode) => set({ mode }),
+    tick: 0,
 
 
     getMe() {
         const snap = get().snapshot;
         const id = get().playerId;
-        // console.log("getMe snapshot:", snap, " playerId:", id);
-        if (!snap || !id || !snap.players) return null;
-        return snap.players.find(p => p.id === id) || null;
-        // if (!snap || !id) return null;
-        // return snap.players.find(p => p.id === id) || null;
+        if (!snap || !id) return null;
+
+        return snap.entities.find(e => e.id === id) ?? null;
     },
 
     getOthers() {
         const snap = get().snapshot;
         const id = get().playerId;
-        if (!snap || !snap.players) return [];
-        return snap.players.filter(p => p.id !== id);
-        // if (!snap) return [];
-        // return snap.players.filter(p => p.id !== id);
+        if (!snap) return [];
+
+        return snap.entities.filter(e => e.id !== id);
     },
 
+    // =======================================
+    //  Debug
+    // =======================================
     debug: null,
     setDebugOverlay: (dbg) => set({ debug: dbg }),
 

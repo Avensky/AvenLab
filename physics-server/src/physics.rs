@@ -48,6 +48,8 @@ use crate::aven_tire::steering::{ apply_vehicle_controls, SteeringState, Steerin
 use crate::aven_tire::{ ContactPatch, ControlInput, SolveContext, WheelId, solve_step};
 use crate::aven_tire::state::{TireState};
 use crate::vehicle::{Vehicle, VehicleConfig};
+use crate::state::InputPacket;
+use crate::vehicle::VehicleStateFlags;
 // use crate::aven_tire::v_mag;
 
 const GROUP_GROUND: Group  = Group::from_bits_truncate(0b0001);
@@ -380,23 +382,29 @@ impl PhysicsWorld {
             },
         }
     }
-
+    
     // ===========================================================================
     // Attach input to a player's vehicle (just stores it; actual forces are
     // applied in `step`).
     // ===========================================================================
-    pub fn apply_player_input(&mut self,player_id: &str,throttle: f32,steer: f32,brake: f32,ascend: f32,pitch: f32,yaw: f32,roll: f32) {
+    pub fn apply_player_input_packet(
+        &mut self,
+        player_id: &str,
+        packet: InputPacket,
+    ) {
         if let Some(v) = self.vehicles.get_mut(player_id) {
-            v.throttle = throttle.clamp(-1.0, 1.0);
-            v.steer = steer.clamp(-1.0, 1.0);
-            v.brake = brake.clamp(0.0, 1.0);
-            v.pitch = pitch;
-            v.roll = roll;
-            v.yaw = yaw;
-            v.ascend = ascend;
-            // v.last_input_time = now();
+
+            // analog
+            v.throttle = packet.throttle.clamp(-1.0, 1.0);
+            v.steer    = packet.steer.clamp(-1.0, 1.0);
+            v.brake    = packet.brake.clamp(0.0, 1.0);
+
+            // digital states
+            v.vehicle_flags = VehicleStateFlags::from_bits_truncate(packet.vehicleMask);
+            v.player_flags  = packet.playerMask;
         }
     }
+
 
     // ============================================================================
     // Spawn a simple "car" for this player:
@@ -458,6 +466,15 @@ impl PhysicsWorld {
                 steering: SteeringState::default(),
                 rack_torque: 0.0,
                 rack_torque_filtered: 0.0,
+                vehicle_flags: VehicleStateFlags::ENGINE_ON
+                                | VehicleStateFlags::ABS
+                                | VehicleStateFlags::TCS,
+                player_flags: 0,
+                rpm: 0.0,
+                gear: 0,
+                fuel: 0.0,
+                engine_temp: 0.0,
+                engine_torque: 0.0,
             },
         );
 
@@ -770,8 +787,10 @@ impl PhysicsWorld {
                 mass: body_mass,
                 engine_force: vehicle.config.engine_force,
                 brake_force: vehicle.config.brake_force,
-                abs_enabled: vehicle.config.abs_enabled,
-                tcs_enabled: vehicle.config.tcs_enabled,
+                // abs_enabled: vehicle.config.abs_enabled,
+                // tcs_enabled: vehicle.config.tcs_enabled,
+                abs_enabled: vehicle.vehicle_flags.contains(VehicleStateFlags::ABS),
+                tcs_enabled: vehicle.vehicle_flags.contains(VehicleStateFlags::TCS),
                 abs_limit: vehicle.config.abs_nx_limit,
                 tcs_limit: vehicle.config.tcs_nx_limit,
                 driven_wheels: 2.0,

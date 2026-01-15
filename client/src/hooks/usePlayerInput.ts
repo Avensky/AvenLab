@@ -1,46 +1,105 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useSnapshotStore } from "../store/store";
-import { socket, connectRustServer } from "../net/rustSocket";
+import { VehicleFlags, PlayerFlags } from "../utils/inputMasks";
 
 export function usePlayerInput() {
     const setInput = useSnapshotStore((s) => s.setInput);
-    connectRustServer();
+    console.log(useSnapshotStore.getState().input);
+
+    // Track key state locally (prevents jitter)
+    const keys = useRef<Record<string, boolean>>({});
 
     useEffect(() => {
-        const interval = setInterval(() => {
-            const input = useSnapshotStore.getState().input;
-            if (!socket || socket.readyState !== WebSocket.OPEN) return;
-            socket.send(JSON.stringify({ ...input }));
-            // console.log('input', input)
 
-        }, 1000 / 30);
+        const recomputeAxes = () => {
+            const k = keys.current;
 
-        return () => clearInterval(interval);
-    }, []);
+            let throttle = 0;
+            if (k["KeyW"]) throttle += 1;
+            if (k["KeyS"]) throttle -= 1;
 
-    useEffect(() => {
+            let steer = 0;
+            if (k["KeyA"]) steer -= 1;
+            if (k["KeyD"]) steer += 1;
+
+            const brake = k["Space"] ? 1 : 0;
+
+            setInput({ throttle, steer, brake });
+        };
+
+        const toggleVehicleFlag = (flag: number) => {
+            const { input } = useSnapshotStore.getState();
+            const mask = input.vehicleMask ^ flag;
+            setInput({ vehicleMask: mask });
+        };
+
+        const togglePlayerFlag = (flag: number) => {
+            const { input } = useSnapshotStore.getState();
+            const mask = input.playerMask ^ flag;
+            setInput({ playerMask: mask });
+        };
 
         const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.code === "KeyW") setInput({ throttle: 1 });
-            if (e.code === "KeyS") setInput({ throttle: -1 });
-            if (e.code === "KeyA") setInput({ steer: -1 });
-            if (e.code === "KeyD") setInput({ steer: 1 });
-            if (e.code === "Space") setInput({ brake: 1 });
+            if (e.repeat) return;
+            keys.current[e.code] = true;
+
+            switch (e.code) {
+                // --------------------
+                // Driving
+                // --------------------
+                case "KeyW":
+                case "KeyS":
+                case "KeyA":
+                case "KeyD":
+                case "Space":
+                    recomputeAxes();
+                    break;
+
+                // --------------------
+                // Vehicle toggles
+                // --------------------
+                case "KeyE":
+                    toggleVehicleFlag(VehicleFlags.ENGINE_ON);
+                    break;
+
+                case "KeyL":
+                    toggleVehicleFlag(VehicleFlags.HEADLIGHTS);
+                    break;
+
+                case "KeyQ":
+                    toggleVehicleFlag(VehicleFlags.ABS);
+                    break;
+
+                case "KeyT":
+                    toggleVehicleFlag(VehicleFlags.TCS);
+                    break;
+
+                // --------------------
+                // Player toggles
+                // --------------------
+                case "KeyR":
+                    togglePlayerFlag(PlayerFlags.RESET);
+                    break;
+
+                case "ShiftLeft":
+                    togglePlayerFlag(PlayerFlags.BOOST);
+                    break;
+            }
         };
 
         const handleKeyUp = (e: KeyboardEvent) => {
+            keys.current[e.code] = false;
 
-            // const i = inputRef.current;
-
-            const input = useSnapshotStore.getState().input;
-
-            if (e.code === "KeyW" && input.throttle > 0) setInput({ throttle: 0 });
-            if (e.code === "KeyS" && input.throttle < 0) setInput({ throttle: 0 });
-            if (e.code === "KeyA" && input.steer < 0) setInput({ steer: 0 });
-            if (e.code === "KeyD" && input.steer > 0) setInput({ steer: 0 });
-            if (e.code === "Space") setInput({ brake: 0 });
-        }
-
+            switch (e.code) {
+                case "KeyW":
+                case "KeyS":
+                case "KeyA":
+                case "KeyD":
+                case "Space":
+                    recomputeAxes();
+                    break;
+            }
+        };
 
         window.addEventListener("keydown", handleKeyDown);
         window.addEventListener("keyup", handleKeyUp);
@@ -49,5 +108,5 @@ export function usePlayerInput() {
             window.removeEventListener("keydown", handleKeyDown);
             window.removeEventListener("keyup", handleKeyUp);
         };
-    }, []);
+    }, [setInput]);
 }

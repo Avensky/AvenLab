@@ -1,6 +1,6 @@
 import { useSnapshotStore } from "../store/store";
-import { useFrame } from "@react-three/fiber";
-import { useState } from "react";
+// import { useFrame } from "@react-three/fiber";
+// import { useState } from "react";
 
 export function DebugOverlay() {
     const connected = useSnapshotStore((s) => s.connected);
@@ -39,9 +39,9 @@ export function DebugOverlay() {
                 <>
                     {"\n"}PlayerID: {me.id}
                     {"\n"}Position:
-                    {"\n"}  x={me.x.toFixed(2)}
-                    {"\n"}  y={me.y.toFixed(2)}
-                    {"\n"}  z={me.z.toFixed(2)}
+                    {"\n"}  x={me.position[0].toFixed(2)}
+                    {"\n"}  y={me.position[1].toFixed(2)}
+                    {"\n"}  z={me.position[2].toFixed(2)}
                 </>
             ) : (
                 "\nPlayer: null"

@@ -1,6 +1,8 @@
 use rapier3d::prelude::*;
 use crate::aven_tire::steering::SteeringState;
+use serde::Serialize;
 
+#[derive(Serialize, Clone, Copy, Debug)]
 pub struct VehicleConfig {
     pub mass: f32,              // kg
     pub engine_force: f32,      // N
@@ -35,8 +37,15 @@ pub struct VehicleConfig {
 }
 
 pub struct Vehicle {
+    // ==========================================
+    // Physics
+    // ==========================================
     pub body: RigidBodyHandle,  // the chassis body
     pub config: VehicleConfig,  // vehicle parameters
+
+    // ==========================================
+    // Inputs
+    // ==========================================
     pub throttle: f32,          // -1.0 (full reverse) .. 1.0 (full forward)
     pub steer: f32,             // -1.0 (full left) .. 1.0 (full right)
     pub brake: f32,             // 0.0 (no brake) .. 1.0 (full brake)
@@ -44,9 +53,44 @@ pub struct Vehicle {
     pub yaw: f32,               // for flying vehicles
     pub roll: f32,              // for flying vehicles
     pub ascend: f32,            // for flying vehicles
+
+    // ==========================================
+    // State
+    // ==========================================
     pub steer_angle: f32,       // current steering angle (radians)
     pub steer_rate: f32,        // radians / sec
     pub steering: SteeringState,// state
     pub rack_torque: f32,       // from tires
     pub rack_torque_filtered: f32, // from tires
+
+    // ==========================================
+    // Bit Masking
+    // ==========================================
+    pub vehicle_flags: VehicleStateFlags,
+    pub player_flags: u16, // later: bitflags too
+
+    // ==========================================
+    // Telemetry
+    // ==========================================
+    pub rpm: f32,
+    pub gear: i32,
+    pub fuel: f32,
+    pub engine_temp: f32,
+    pub engine_torque: f32,
+}
+
+
+use bitflags::bitflags;
+
+bitflags! {
+    #[derive(Clone, Copy, Debug, Default)]
+    pub struct VehicleStateFlags: u16 {
+        const ENGINE_ON     = 1 << 0;
+        const HEADLIGHTS    = 1 << 1;
+        const BLINKER_LEFT  = 1 << 2;
+        const BLINKER_RIGHT = 1 << 3;
+        const HAZARDS       = 1 << 4;
+        const ABS           = 1 << 5;
+        const TCS           = 1 << 6;
+    }
 }

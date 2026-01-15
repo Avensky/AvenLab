@@ -1,14 +1,14 @@
 import React from 'react'
 import { Environment, Sky, useGLTF } from "@react-three/drei"
-import { Layers } from "three"
-import { levelLayer } from "../../store"
+// import { Layers } from "three"
+// import { levelLayer } from "../../store/store"
 
 type GroupProps = React.JSX.IntrinsicElements['group']
 
 export default function Rtx(props: GroupProps) {
 
-    const layers = new Layers()
-    layers.enable(levelLayer)
+    // const layers = new Layers()
+    // layers.enable(levelLayer)
 
     const { scene } = useGLTF('/models/city_rtx.glb')
 

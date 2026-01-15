@@ -10,7 +10,7 @@ import { SpotLight } from 'three'
 // import { useHelper } from '@react-three/drei'
 // import { AccelerateAudio, BoostAudio, Boost, BrakeAudio, Dust, EngineAudio, HonkAudio, Skid, Cameras } from '../../effects'
 // import { useToggle } from '../../useToggle'
-import { useStore } from '../../store'
+import { useSnapshotStore } from '../../store/store'
 import { usePhysicsInterpolator } from '../../hooks/usePhysicsInterpolator'
 
 interface WheelInfo {
@@ -43,10 +43,10 @@ export default forwardRef(function Ae86({ children }: PropsWithChildren, ref: Re
     const rrBlinkerRef = useRef<SpotLight>(null!)
 
     useImperativeHandle(ref, () => carGroupRef.current, [])
-    const headlightsOn = useStore().controls.headlights
-    const leftBlinker = useStore().controls.blinkerRight
-    const rightBlinker = useStore().controls.blinkerRight
-    const hazards = useStore().controls.hazards
+    const headlightsOn = useSnapshotStore().input.headlights
+    const leftBlinker = useSnapshotStore().input.blinkerRight
+    const rightBlinker = useSnapshotStore().input.blinkerRight
+    const hazards = useSnapshotStore().input.hazards
 
     const { setSnapshot, getInterpolated } = usePhysicsInterpolator(100)
 
@@ -155,27 +155,28 @@ export default forwardRef(function Ae86({ children }: PropsWithChildren, ref: Re
 
     // Update transformations every frame ie. chassis
     useEffect(() => {
-        const id = useStore.getState().player?.id
-        const snapshot = useStore.getState()?.physicsData
+        const id = useSnapshotStore.getState().playerId
+        const snapshot = useSnapshotStore.getState()?.physicsData
         if (id && snapshot) setSnapshot(id, snapshot)
 
-    }, [useStore(s => s.physicsData)])
+    }, [useSnapshotStore(s => s.physicsData)])
 
     useFrame((_, delta) => {
         // get state on frame
-        const id = useStore.getState().player?.id
+        const id = useSnapshotStore.getState().playerId
         if (!id) return
         const interp = getInterpolated(id)
         if (!interp) return
 
-        const controls = useStore.getState().controls
-        const camMode = useStore.getState().camera
-        const isEditor = useStore.getState().booleans.editor
+        const input = useSnapshotStore.getState().input
+        const controls = useSnapshotStore.getState().controls
+        const camMode = useSnapshotStore.getState().camera
+        const isEditor = useSnapshotStore.getState().editor
 
         //POP UP HEADLIGHTS
         const openRotation = 0// headlights up
         const closedRotation = -Math.PI / 3 // headlights down
-        const target = controls.headlights ? openRotation : closedRotation
+        const target = input.headlights ? openRotation : closedRotation
         headlightRotation.current = MathUtils.lerp(headlightRotation.current, target, 5 * delta)
 
         if (headlightRef.current) {
@@ -190,24 +191,24 @@ export default forwardRef(function Ae86({ children }: PropsWithChildren, ref: Re
         }
 
         // Lights visibility
-        if (leftLightRef.current) leftLightRef.current.visible = controls.headlights
-        if (rightLightRef.current) rightLightRef.current.visible = controls.headlights
+        if (leftLightRef.current) leftLightRef.current.visible = input.headlights
+        if (rightLightRef.current) rightLightRef.current.visible = input.headlights
 
-        if (leftTailRef.current) leftTailRef.current.visible = controls.brake
-        if (rightTailRef.current) rightTailRef.current.visible = controls.brake
+        if (leftTailRef.current) leftTailRef.current.visible = controls.braking
+        if (rightTailRef.current) rightTailRef.current.visible = controls.braking
 
-        const hazards = controls.hazards
-        const blinkerLeft = controls.blinkerLeft
-        const blinkerRight = controls.blinkerRight && !hazards
+        const hazards = input.hazards
+        const blinkerLeft = input.blinkerLeft
+        const blinkerRight = input.blinkerRight && !hazards
         const blinkOn = blinkState.current
 
         //headlights
-        leftLightRef.current.visible = controls.headlights
-        rightLightRef.current.visible = controls.headlights
+        leftLightRef.current.visible = input.headlights
+        rightLightRef.current.visible = input.headlights
 
         //taillights
-        leftTailRef.current.visible = controls.brake
-        rightTailRef.current.visible = controls.brake
+        leftTailRef.current.visible = controls.braking
+        rightTailRef.current.visible = controls.braking
 
         if (flBlinkerRef.current) flBlinkerRef.current.visible = (hazards || blinkerLeft) && blinkOn
         if (frBlinkerRef.current) frBlinkerRef.current.visible = (hazards || blinkerRight) && blinkOn

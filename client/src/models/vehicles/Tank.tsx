@@ -3,7 +3,7 @@ import React, { forwardRef, useImperativeHandle, useRef, useMemo, useEffect } fr
 import { Group, Vector3 } from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
-import { useStore } from '../../store';
+import { useSnapshotStore } from '../../store/store';
 import { getTankParts } from '../../utils/getTankParts';
 import { usePhysicsInterpolator } from '../../hooks/usePhysicsInterpolator'
 
@@ -38,15 +38,16 @@ export default forwardRef(function TankModel(
     const v = new Vector3();
     // Update transformations every frame ie. chassis
     useEffect(() => {
-        const id = useStore.getState().player?.id
-        const snapshot = useStore.getState()?.physicsData
+        const id = useSnapshotStore.getState().playerId
+        const snapshot = useSnapshotStore.getState()?.physicsData
         if (id && snapshot) {
             // console.log('[Prime] Initial snapshot', snapshot)
             setSnapshot(id, snapshot)
         }
-    }, [useStore(s => s.physicsData)])
+    }, [useSnapshotStore(s => s.physicsData)])
+
     useFrame((_, delta) => {
-        const id = useStore.getState().player?.id
+        const id = useSnapshotStore.getState().playerId
         if (!id) return
         const interp = getInterpolated(id)
         if (!interp) return
@@ -64,8 +65,8 @@ export default forwardRef(function TankModel(
         }
 
         // Camera logic
-        const camMode = useStore.getState().camera;
-        const editor = useStore.getState().booleans.editor;
+        const camMode = useSnapshotStore.getState().camera;
+        const editor = useSnapshotStore.getState().editor;
 
         if (!editor) {
             if (camMode === 'FIRST_PERSON') { v.set(0.5, 2.5, 0.5); }

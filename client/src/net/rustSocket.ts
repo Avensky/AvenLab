@@ -68,13 +68,19 @@ export function connectRustServer() {
 
             // Snapshot
             if (data.type === "snapshot") {
-                const { tick, players } = data.data;
-                // console.log('data', data.data);
+                const { tick, entities } = data.data;
 
                 setSnapshot({
-                    players: Array.isArray(players) ? players : [],
-                    tick: tick,
+                    tick,
+                    entities: Array.isArray(entities) ? entities : [],
                 });
+
+                return;
+            }
+
+
+            if (data.type === "physics") {
+                useSnapshotStore.getState().setPhysicsData(data.data);
                 return;
             }
 
