@@ -2,7 +2,7 @@ import { OrbitControls, useGLTF } from "@react-three/drei";
 // import { WorldRenderer } from "./components/WorldRenderer";
 import { ModeSwitcher } from "./components/ModeSwitcher";
 // import { useSnapshots } from "./hooks/useSnapshots";
-import { usePlayerInput } from "./hooks/usePlayerInput";
+import { usePlayerInput } from "./controls/usePlayerInput";
 import { FullscreenCanvas } from "./layout/FullscreenCanvas";
 // import { CityScene } from "./scenes/CityScene";
 // import { HeightfieldGeneratorPanel } from "./tools/HeightfieldGeneratorPanel";
@@ -17,13 +17,13 @@ import { connectRustServer } from "./net/rustSocket";
 import { DebugOverlay } from "./ui/DebugOverlay";
 // import { DebugVisualizer } from "./components/DebugVisualizer";
 // import { GroundPlane } from "./scenes/GroundPlane";
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect } from 'react';
 // import { Canvas } from '@react-three/fiber'
 // import { Layers } from 'three';
 // import { levelLayer, useStore } from './store'
 // import type { VehicleConfig, CanFrame, Snapshots } from './store'
 // import { Pedals, Steering, ControlsPanel, Menu, Help, CommandLine, Dashboard } from './ui';
-import { Gt86, Ae86, Camaro, Tank, TimesSquare, Rtx, Brz } from './models';
+import { Ae86, Camaro, Tank, TimesSquare, Rtx, Brz } from './models';
 import { GameScene, SelectionScreen, SelectionUI } from './components'
 // import { Keyboard, HideMouse, GameController } from './controls';
 import { Cameras } from "./effects"

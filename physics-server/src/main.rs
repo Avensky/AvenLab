@@ -1,5 +1,6 @@
 // main.rs — Clean Enterprise Architecture
 mod aven_tire;  // tire + suspension solver
+mod world;      // world management
 mod physics;    // physics world and body creation
 mod net;        // player join / disconnect, team/room assignment
 mod state;      // world state

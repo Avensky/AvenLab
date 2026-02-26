@@ -6,7 +6,7 @@ import type { VehicleControls } from "./playerInput";
 import type { PhysicsData } from "./snapshot";
 import { socket } from "../net/rustSocket";
 // import { encodePlayerMask, encodeVehicleMask } from "../utils/encoding";
-import { PlayerFlags, VehicleFlags } from "../utils/inputMasks";
+import { VehicleFlags } from "../utils/inputMasks";
 // import type { PendingInput } from "../types/playerInput";
 export type RenderMode = "glb" | "geometry" | "collider";
 
@@ -85,6 +85,10 @@ export interface DebugWheel {
     lateral_magnitude: number;
 }
 
+export interface DebugAabbBox {
+    center: [number,number,number],
+    half_extents: [number,number,number],
+}
 export interface DebugOverlay {
     chassis?: DebugChassis;
 
@@ -94,6 +98,7 @@ export interface DebugOverlay {
     arb_links: DebugRay[];
     wheels: DebugWheel[];
     chassis_right: [number, number, number];
+    block_boxes: DebugAabbBox[];
 }
 
 export const cameras = ['GALLERY', 'DEFAULT', 'FIRST_PERSON', 'BIRDS_EYE'] as const

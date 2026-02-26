@@ -9,11 +9,12 @@ import { useSnapshotStore } from "../store/store";
 import { useRef } from "react";
 import * as THREE from "three";
 import { DebugAntiRollBarVisualizer } from "../components/DebugAntiRollBarVisualizer";
-import { DebugLoadBarVisualizer } from "../components/DebugLoadBarVisualizer";
+// import { DebugLoadBarVisualizer } from "../components/DebugLoadBarVisualizer";
 import { DebugSlipAngleVisualizer } from "../components/DebugSlipAngleVisualizer";
 import { DebugSpringVisualizer } from "../components/DebugSpringVisualizer";
-import { DebugNormalForceVisualizer } from "../components/DebugNormalForceVisualizer";
-import { DebugLateralForceVisualizer } from "../components/DebugLateralForceVisualizer";
+import { DebugColliders } from "../components/DebugColliders";
+// import { DebugNormalForceVisualizer } from "../components/DebugNormalForceVisualizer";
+// import { DebugLateralForceVisualizer } from "../components/DebugLateralForceVisualizer";
 
 export function VehicleScene() {
     const ref = useRef<THREE.Group>(null);
@@ -23,7 +24,20 @@ export function VehicleScene() {
     const debug = useSnapshotStore((s) => s.debug);
     const mode = useSnapshotStore((s) => s.mode);
     const me = useSnapshotStore((s) => s.getMe());
-    const physics = useSnapshotStore((s) => s.physicsData);
+    // const physics = useSnapshotStore((s) => s.physicsData);
+
+    // -----------------------------
+    // Frame sync
+    // -----------------------------
+    useFrame(() => {
+        if (!ref.current || !me) return;
+
+        const [x, y, z] = me.position;
+        ref.current.position.set(x, y, z);
+
+        const [qx, qy, qz, qw] = me.rotation;
+        ref.current.quaternion.set(qx, qy, qz, qw);
+    });
 
     if (!snapshot || !playerId || !me) return null;
     if (!debug) return null;
@@ -64,36 +78,25 @@ export function VehicleScene() {
         }[];
 
     // -----------------------------
-    // Frame sync
-    // -----------------------------
-    useFrame(() => {
-        if (!ref.current) return;
-
-        const [x, y, z] = me.position;
-        ref.current.position.set(x, y, z);
-
-        const [qx, qy, qz, qw] = me.rotation;
-        ref.current.quaternion.set(qx, qy, qz, qw);
-
-
-    });
-
-    // -----------------------------
     // Optional: physics-driven animation hooks
     // -----------------------------
-    useFrame(() => {
-        if (!physics) return;
+    // useFrame(() => {
+    //     if (!physics) return;
 
-        // Example hooks (future use)
-        // engine vibration
-        // exhaust animation
-        // dashboard needle
-        // camera shake
+    //     // Example hooks (future use)
+    //     // engine vibration
+    //     // exhaust animation
+    //     // dashboard needle
+    //     // camera shake
 
-        // console.log("RPM:", physics.rpm, "Speed:", physics.speed);
-    });
+    //     // console.log("RPM:", physics.rpm, "Speed:", physics.speed);
+    // });
 
-    return (
+    return (<>
+        {/* WORLD DEBUG (not parented to player/follow group) */}
+        {mode === "collider" && <DebugColliders boxes={debug.block_boxes} />}
+
+        {/* PLAYER DEBUG */}
         <group ref={ref}>
             {mode === "geometry" && (
                 <>
@@ -128,7 +131,7 @@ export function VehicleScene() {
                 </>
             )}
 
-            {mode === "collider" && (
+            {mode === "collider" && (<>
                 <ColliderVisualizer
                     scale={
                         debug.chassis
@@ -136,6 +139,7 @@ export function VehicleScene() {
                             : undefined
                     }
                 />
+                </>
             )}
 
             {mode === "glb" && (
@@ -149,6 +153,6 @@ export function VehicleScene() {
             )}
         </group>
 
-    );
+    </>);
 }
 
