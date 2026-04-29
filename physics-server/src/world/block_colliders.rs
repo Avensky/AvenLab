@@ -1,3 +1,31 @@
+// world/block_colliders.rs
+// ==============================================================================
+// block_colliders.rs — SINGLE-BLOCK SCENE DEFINITION + COLLIDER LOADING
+// ------------------------------------------------------------------------------
+// Defines the serialized layout for one city block.
+//
+// This file is the source of truth for:
+// - static road collider placement
+// - static building collider placement
+// - object transforms used by debug visualization
+// - future visual asset lookup by object id / visual key
+// - future destruction state for building entities
+//
+// Current scope:
+// - focus on loading exactly one block correctly
+// - keep roads and buildings aligned to one shared coordinate system
+// - support collider-first frontend visualization
+//
+// Out of scope for now:
+// - streaming multiple blocks
+// - procedural city expansion
+// - runtime destruction physics
+//
+// Design rule:
+// - one building entry in JSON should map to one building entity in runtime
+// - later, each building entity can map to an intact/damaged/destroyed GLB
+// ==============================================================================
+
 use rapier3d::prelude::*;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -14,26 +42,67 @@ pub struct DebugAabbBox {
 #[derive(Debug, Clone, Deserialize)]
 pub struct BlockColliderFile {
     pub block_id: String,
+    pub version: u32,
     pub cell: [f32; 2], // [CELL_X, CELL_Z]
     #[serde(default)]
-    pub roads: Vec<RoadCollider>,
-    pub buildings: Vec<BuildingCollider>,
+    pub roads: Vec<BlockObject>,
+    #[serde(default)]    
+    pub buildings: Vec<BlockObject>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
-pub struct RoadCollider {
+// #[derive(Debug, Clone, Deserialize)]
+// pub struct RoadCollider {
+//     pub id: String,
+//     pub pos: [f32; 3],          // Blender block-local [x,y,z] (Z-up)
+//     pub half_extents: [f32; 3], // Blender half extents [hx,hy,hz]
+// }
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct BlockObject {
     pub id: String,
-    pub pos: [f32; 3],          // Blender block-local [x,y,z] (Z-up)
-    pub half_extents: [f32; 3], // Blender half extents [hx,hy,hz]
+    pub kind: BlockObjectKind,
+    pub visual: String,
+    pub pos: [f32; 3],
+    pub rot: [f32; 4],
+    pub half_extents: [f32; 3],
+    pub collider: ColliderKind,
+
+    #[serde(default)]
+    pub destructible: bool,
+
+    #[serde(default = "default_state")]
+    pub state: StructureState,
 }
 
-#[derive(Debug, Clone, Deserialize)]
-pub struct BuildingCollider {
-    pub id: String,
-    pub pos: [f32; 3],          // block-local
-    pub rot: [f32; 4],          // unused for now (AABB only)
-    pub half_extents: [f32; 3], // block-local AABB half extents
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BlockObjectKind {
+    Road,
+    Intersection,
+    Building,
+    Block,
+    Prop,
 }
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ColliderKind {
+    Box,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum StructureState {
+    Intact,
+    Damaged,
+    Destroyed,
+    Removed,
+}
+
+fn default_state() -> StructureState {
+    StructureState::Intact
+}
+
 
 const BLOCK_X: f32 = 54.0;
 const BLOCK_Z: f32 = 102.0;

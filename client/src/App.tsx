@@ -1,4 +1,5 @@
-import { OrbitControls, useGLTF } from "@react-three/drei";
+// import { OrbitControls } from "@react-three/drei";
+// import { OrbitControls, useGLTF } from "@react-three/drei";
 // import { WorldRenderer } from "./components/WorldRenderer";
 import { ModeSwitcher } from "./components/ModeSwitcher";
 // import { useSnapshots } from "./hooks/useSnapshots";
@@ -9,7 +10,7 @@ import { FullscreenCanvas } from "./layout/FullscreenCanvas";
 // import { CityHeightfield } from "./scenes/CityHeightfield";
 // import { CityBuildingColliders } from "./scenes/CityBuildingColliders";
 // import heightfieldJSON from '../../server/data/city-heightfield-v4.json'
-import { useSnapshotStore } from "./store/store";
+// import { useSnapshotStore } from "./store/store";
 // import { BuildingColliderExporter } from "./tools/BuildingColliderExporter";
 // import { VehicleScene } from "./scenes/VehicleScene";
 import { connectRustServer } from "./net/rustSocket";
@@ -17,47 +18,49 @@ import { connectRustServer } from "./net/rustSocket";
 import { DebugOverlay } from "./ui/DebugOverlay";
 // import { DebugVisualizer } from "./components/DebugVisualizer";
 // import { GroundPlane } from "./scenes/GroundPlane";
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
+// import { useState, useEffect } from 'react';
 // import { Canvas } from '@react-three/fiber'
 // import { Layers } from 'three';
 // import { levelLayer, useStore } from './store'
 // import type { VehicleConfig, CanFrame, Snapshots } from './store'
 // import { Pedals, Steering, ControlsPanel, Menu, Help, CommandLine, Dashboard } from './ui';
-import { Ae86, Camaro, Tank, TimesSquare, Rtx, Brz } from './models';
-import { GameScene, SelectionScreen, SelectionUI } from './components'
+// import { Ae86, Camaro, Tank, TimesSquare, Rtx, Brz } from './models';
+// import { GameScene, SelectionScreen, SelectionUI } from './components'
 // import { Keyboard, HideMouse, GameController } from './controls';
-import { Cameras } from "./effects"
-import camera from '/images/camera4.svg'
+// import { Cameras } from "./effects"
+// import camera from '/images/camera4.svg'
 // import socket from './socket';
 import './App.css';
 import { VehicleScene } from "./scenes/VehicleScene";
+import { CityScene } from "./scenes/CityScene";
 // import { useThrottledEmitControls } from './hooks/useThrottleEmitControls';
 // import PlaybackControls from './ui/CommandLine/Playback/PlaybackControls';
 
 
 export default function App() {
 
-  const [vehicleIndex, setVehicleIndex] = useState(0);
-  const [mapIndex, setMapIndex] = useState(0);
+  // const [vehicleIndex, setVehicleIndex] = useState(0);
+  // const [mapIndex, setMapIndex] = useState(0);
 
-  const screen = useSnapshotStore.getState().screen;
-  const playerId = useSnapshotStore.getState().playerId;
-  const menu = useSnapshotStore.getState().menu;
+  // const screen = useSnapshotStore.getState().screen;
+  // const playerId = useSnapshotStore.getState().playerId;
+  // const menu = useSnapshotStore.getState().menu;
 
-  const vehicleOptions = [
-    { type: '2015-scion-frs', name: 'FR-S', component: Brz },
-    // { type: '2020-toyota-gt86', name: 'GT86', component: Gt86 },
-    { type: '1986-toyota-ae86', name: 'AE86', component: Ae86 },
-    { type: '2017-chevrolet-camaro', name: 'Camaro', component: Camaro },
-    { type: 'tank', name: 'Tank', component: Tank },
-  ];
+  // const vehicleOptions = [
+  //   { type: '2015-scion-frs', name: 'FR-S', component: Brz },
+  //   // { type: '2020-toyota-gt86', name: 'GT86', component: Gt86 },
+  //   { type: '1986-toyota-ae86', name: 'AE86', component: Ae86 },
+  //   { type: '2017-chevrolet-camaro', name: 'Camaro', component: Camaro },
+  //   { type: 'tank', name: 'Tank', component: Tank },
+  // ];
 
-  const mapOptions = [
-    { type: 'rtx', name: 'Night Life', component: Rtx },
-    { type: 'timesquare', name: 'Time Square', component: TimesSquare },
-  ];
+  // const mapOptions = [
+  //   { type: 'rtx', name: 'Night Life', component: Rtx },
+  //   { type: 'timesquare', name: 'Time Square', component: TimesSquare },
+  // ];
 
-  usePlayerInput();
+  usePlayerInput(); // 
   useEffect(() => { connectRustServer(); }, []);
 
 
@@ -71,10 +74,11 @@ export default function App() {
       <FullscreenCanvas>
 
         {/* Lighting */}
-        <ambientLight intensity={0.5} />
-        <directionalLight intensity={1} position={[5, 5, 5]} />
+        {/* <ambientLight intensity={0.5} /> */}
+        {/* <directionalLight intensity={1} position={[5, 5, 5]} /> */}
 
         {/* YOU */}
+        <CityScene />
         <VehicleScene />
         {/* <DebugVisualizer /> */}
 
@@ -94,28 +98,30 @@ export default function App() {
             ><Cameras /></GameScene>
           )}
         </Suspense> */}
-        <OrbitControls />
+        {/* <OrbitControls /> */}
       </FullscreenCanvas>
 
       {/* <GroundPlane /> */}
-      <div className="ui">
-        <div className='ui-left'>
+
+      {/* UI  */}
+      {/* <div className="ui"> */}
+        {/* <div className='ui-left'>
           <div className='ui-top flex'>
             {!menu && <button
               style={{ background: 'transparent', fontSize: '2rem' }}
               onClick={() => { }}
             >⚙️</button>}
 
-            {/* <PlaybackControls /> */}
+            <PlaybackControls />
           </div>
           <div className='ui-bottom'>
-            {/* <CommandLine cmdEvents={cmdEvents} /> */}
-            {/* <Steering /> */}
+            <CommandLine cmdEvents={cmdEvents} />
+            <Steering />
           </div>
-        </div>
+        </div> */}
 
         {/* <Dashboard /> */}
-        <div className='ui-center'>
+        {/* <div className='ui-center'> */}
           {/* {screen === 'selection-screen' && (
             <SelectionUI
               handleVehicleNext={() => setVehicleIndex((prev) => (prev + 1) % vehicleOptions.length)}
@@ -132,14 +138,14 @@ export default function App() {
               }}
             />
           )} */}
-        </div>
+        {/* </div> */}
 
 
-        <div className='ui-right'>
+        {/* <div className='ui-right'>
           <div className='ui-top flex'>
             <div className='flex items-start text-sm overflow-visible relative z-50 px-1 py-1'>
 
-              {/* <div className="control-wrapper live flex justify-center items-center">
+              <div className="control-wrapper live flex justify-center items-center">
                 Live Can:
                 <button
                   className={`control ${liveCan ? 'switch-on' : 'switch-off'}`}
@@ -166,7 +172,7 @@ export default function App() {
                     }}
                   />
                 </button>
-              </div> */}
+              </div>
               <div className='cmd-control-wrapper opacity-50'>
                 <button
                   onContextMenu={(e) => e.preventDefault()}
@@ -176,13 +182,13 @@ export default function App() {
                 />
               </div>
             </div>
-          </div>
-          <div className='ui-bottom'>
+          </div> */}
+          {/* <div className='ui-bottom'> */}
             {/* <ControlsPanel /> */}
             {/* <Pedals /> */}
-          </div>
-        </div>
-      </div>
+          {/* </div> */}
+        {/* </div> */}
+      {/* </div> */}
 
 
       {/* <Menu
@@ -202,12 +208,6 @@ export default function App() {
       {/* <Keyboard /> */}
       {/* <GameController /> */}
       {/* <HideMouse /> */}
-
-
-
-
-
-
 
       {/* <HeightfieldGeneratorPanel /> */}
       {/* <BuildingColliderExporter /> */}

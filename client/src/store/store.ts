@@ -8,7 +8,8 @@ import { socket } from "../net/rustSocket";
 // import { encodePlayerMask, encodeVehicleMask } from "../utils/encoding";
 import { VehicleFlags } from "../utils/inputMasks";
 // import type { PendingInput } from "../types/playerInput";
-export type RenderMode = "glb" | "geometry" | "collider";
+export type RenderMode = "glb" | "geometry" | "collider" | "hybrid";
+
 
 // export interface PredictedSelfState {
 //     x: number;
@@ -17,12 +18,34 @@ export type RenderMode = "glb" | "geometry" | "collider";
 //     yaw: number; // we’ll derive quaternion from yaw
 // }
 
+export type Quaternion = [number, number, number, number];
+export type Vec3 = [number, number, number];
+export type StructureState = "intact" | "damaged" | "destroyed" | "removed";
+export type ColliderKind = "box";
+export type BlockObjectKind = "road" | "intersection" | "building" | "prop";
+export interface BlockObject {
+    id: string;
+    kind: BlockObjectKind;
+    visual: string;
+    pos: Vec3;
+    rot: Quaternion;
+    half_extents: Vec3;
+    collider: ColliderKind;
+    destructible?: boolean;
+    state?: StructureState;
+}
+export interface BlockColliderFile {
+    block_id: string;
+    version: number;
+    cell: [number, number];
+    roads: BlockObject[];
+    buildings: BlockObject[];
+}
 export interface DebugChassis {
     position: [number, number, number];
     rotation: [number, number, number, number]; // x,y,z,w
     half_extents: [number, number, number];     // hx,hy,hz
 }
-
 export interface PhysicsEntitySnapshot {
     id: string;
     kind: "vehicle" | "tank" | "drone" | "boat";
@@ -48,7 +71,6 @@ export interface PhysicsSnapshot {
     tick: number;
     entities: PhysicsEntitySnapshot[];
 }
-
 
 export interface PhysicsEntity {
     id: string;                 // entity id (player, AI, drone, etc.)
@@ -198,7 +220,9 @@ interface SnapshotState {
 
     mode: RenderMode;
     setMode: (mode: RenderMode) => void;
-
+    activeBlock: BlockColliderFile | null;
+    setActiveBlock: (block: BlockColliderFile | null) => void;
+    
     // =======================================
     //  Player Data
     // =======================================
@@ -330,8 +354,10 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
         coasting: true,
     },
 
-    mode: "geometry",
+    mode: "hybrid",
     setMode: (mode) => set({ mode }),
+    activeBlock: null,
+    setActiveBlock: (block) => set({ activeBlock: block }),
 
     // =======================================
     //  Player Data

@@ -324,53 +324,73 @@ impl PhysicsWorld {
         (bx, by)
     }
 
+    // pub fn update_loaded_blocks_around_players(&mut self) {
+    //     // Desired set of blocks based on all players
+    //     let mut desired_load: HashSet<(i32, i32)> = HashSet::new();
+    //     let mut desired_keep: HashSet<(i32, i32)> = HashSet::new();
+
+    //     for v in self.vehicles.values() {
+    //         let Some(body) = self.bodies.get(v.body) else { continue; };
+    //         let p = body.translation();
+    //         let (bx, by) = Self::world_to_block(p.x as f32, p.z as f32);
+
+    //         for dx in -LOAD_R..=LOAD_R {
+    //             for dy in -LOAD_R..=LOAD_R {
+    //                 desired_load.insert((bx + dx, by + dy));
+    //             }
+    //         }
+
+    //         for dx in -UNLOAD_R..=UNLOAD_R {
+    //             for dy in -UNLOAD_R..=UNLOAD_R {
+    //                 desired_keep.insert((bx + dx, by + dy));
+    //             }
+    //         }
+    //     }
+
+    //     // Unload blocks no longer needed
+    //     // unload only if outside keep radius
+    //     let loaded_keys: Vec<(i32, i32)> = self.block_world.loaded.keys().cloned().collect();
+    //     for key in loaded_keys {
+    //         if !desired_keep.contains(&key) {
+    //             self.unload_block(key.0, key.1);
+    //         }
+    //     }
+
+    //     // Load missing blocks
+    //     // POC: tile the same block everywhere.
+    //     // Later: swap this with a map lookup: (bx,by) -> block_id
+    //     // load anything inside load radius
+    //     for (bx, by) in desired_load {
+    //         if self.block_world.loaded.contains_key(&(bx, by)) {
+    //             continue;
+    //         }
+    //         let block_id = "block_01";
+    //         if let Err(e) = self.load_block(block_id, bx, by) {
+    //             eprintln!("⚠️ Failed to load block {block_id} at ({bx},{by}): {e}");
+    //         }
+    //     }
+    // }
+
     pub fn update_loaded_blocks_around_players(&mut self) {
-        // Desired set of blocks based on all players
-        let mut desired_load: HashSet<(i32, i32)> = HashSet::new();
-        let mut desired_keep: HashSet<(i32, i32)> = HashSet::new();
+        let bx = 0;
+        let by = 0;
 
-        for v in self.vehicles.values() {
-            let Some(body) = self.bodies.get(v.body) else { continue; };
-            let p = body.translation();
-            let (bx, by) = Self::world_to_block(p.x as f32, p.z as f32);
-
-            for dx in -LOAD_R..=LOAD_R {
-                for dy in -LOAD_R..=LOAD_R {
-                    desired_load.insert((bx + dx, by + dy));
-                }
-            }
-
-            for dx in -UNLOAD_R..=UNLOAD_R {
-                for dy in -UNLOAD_R..=UNLOAD_R {
-                    desired_keep.insert((bx + dx, by + dy));
-                }
-            }
-        }
-
-        // Unload blocks no longer needed
-        // unload only if outside keep radius
+        // unload everything except the origin block
         let loaded_keys: Vec<(i32, i32)> = self.block_world.loaded.keys().cloned().collect();
         for key in loaded_keys {
-            if !desired_keep.contains(&key) {
+            if key != (bx, by) {
                 self.unload_block(key.0, key.1);
             }
         }
 
-        // Load missing blocks
-        // POC: tile the same block everywhere.
-        // Later: swap this with a map lookup: (bx,by) -> block_id
-        // load anything inside load radius
-        for (bx, by) in desired_load {
-            if self.block_world.loaded.contains_key(&(bx, by)) {
-                continue;
-            }
+        // load only one block
+        if !self.block_world.loaded.contains_key(&(bx, by)) {
             let block_id = "block_01";
             if let Err(e) = self.load_block(block_id, bx, by) {
                 eprintln!("⚠️ Failed to load block {block_id} at ({bx},{by}): {e}");
             }
         }
-    }
-
+    }    // POC: load only one block at the origin. Later, implement proper streaming based on player positions.
 
     pub fn load_block(&mut self, block_id: &str, bx: i32, by: i32) -> anyhow::Result<()> {
         // Prevent duplicates

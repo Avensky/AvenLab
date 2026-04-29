@@ -11,10 +11,13 @@ export function ModeSwitcher() {
             left: "1rem",
             zIndex: 20,
             display: "flex",
-            gap: "8px",
+            gap: "1rem"
         }}>
             <button onClick={() => setMode("glb")} disabled={mode === "glb"}>
-                GLB
+                Glb
+            </button>
+            <button onClick={() => setMode("hybrid")} disabled={mode === "hybrid"}>
+                Hybrid
             </button>
             <button onClick={() => setMode("geometry")} disabled={mode === "geometry"}>
                 Geometry

@@ -1,7 +1,6 @@
 // src/components/VehicleScene.tsx
 
 import { useFrame } from "@react-three/fiber";
-import { ColliderVisualizer } from "../components/ColliderVisualizer";
 import { DebugWheelVisualizer } from "../components/DebugWheelVisualizer";
 import { GeometryVisualizer } from "../components/GeometryVisualizer";
 import { GLBVisualizer } from "../components/GLBVisualizer";
@@ -12,7 +11,7 @@ import { DebugAntiRollBarVisualizer } from "../components/DebugAntiRollBarVisual
 // import { DebugLoadBarVisualizer } from "../components/DebugLoadBarVisualizer";
 import { DebugSlipAngleVisualizer } from "../components/DebugSlipAngleVisualizer";
 import { DebugSpringVisualizer } from "../components/DebugSpringVisualizer";
-import { DebugColliders } from "../components/DebugColliders";
+import { ChassisCollider } from "../components/debugger/ChassisCollider";
 // import { DebugNormalForceVisualizer } from "../components/DebugNormalForceVisualizer";
 // import { DebugLateralForceVisualizer } from "../components/DebugLateralForceVisualizer";
 
@@ -94,7 +93,9 @@ export function VehicleScene() {
 
     return (<>
         {/* WORLD DEBUG (not parented to player/follow group) */}
-        {mode === "collider" && <DebugColliders boxes={debug.block_boxes} />}
+        {/* {mode === "glb" && <DebugColliders boxes={debug.block_boxes} />} */}
+        {/* {mode === "collider" && <DebugColliders boxes={debug.block_boxes} />} */}
+        {/* {mode === "hybrid" && <DebugColliders boxes={debug.block_boxes} />} */}
 
         {/* PLAYER DEBUG */}
         <group ref={ref}>
@@ -132,15 +133,37 @@ export function VehicleScene() {
             )}
 
             {mode === "collider" && (<>
-                <ColliderVisualizer
+                <DebugWheelVisualizer
+                        wheels={debug.wheels}
+                        vehiclePosition={me.position}
+                        vehicleQuaternion={me.rotation}
+                />
+
+                {/* <DebugColliders boxes={debug.block_boxes} /> */}
+
+                <ChassisCollider
                     scale={
                         debug.chassis
                             ? debug.chassis.half_extents.map(v => v * 2) as [number, number, number]
                             : undefined
                     }
                 />
-                </>
-            )}
+            </>)}
+
+             {mode === "hybrid" && (<>
+                <DebugWheelVisualizer
+                        wheels={debug.wheels}
+                        vehiclePosition={me.position}
+                        vehicleQuaternion={me.rotation}
+                />
+                <ChassisCollider
+                    scale={
+                        debug.chassis
+                            ? debug.chassis.half_extents.map(v => v * 2) as [number, number, number]
+                            : undefined
+                    }
+                />
+            </>)}
 
             {mode === "glb" && (
                 <GLBVisualizer

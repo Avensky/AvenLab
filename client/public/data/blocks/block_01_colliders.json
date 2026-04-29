@@ -1,0 +1,136 @@
+{
+  "block_id": "block_01",
+  "version": 1,
+  "cell": [54.0, 102.0],
+  "roads": [
+  {
+    "id": "road_north",
+    "kind": "road",
+    "visual": "road_wide",
+    "pos": [27.0, 116.5, 0.0],
+    "rot": [0.0, 0.0, 0.0, 1.0],
+    "half_extents": [24.15, 14.5, 0.1],
+    "collider": "box"
+  },
+  {
+    "id": "road_east",
+    "kind": "road",
+    "visual": "road_narrow",
+    "pos": [65.05, 51.0, 0.0],
+    "rot": [0.0, 0.0, 0.0, 1.0],
+    "half_extents": [11.05, 48.0, 0.1],
+    "collider": "box"
+  },
+  {
+    "id": "intersection_ne",
+    "kind": "intersection",
+    "visual": "intersection",
+    "pos": [65.5, 116.5, 0.0],
+    "rot": [0.0, 0.0, 0.0, 1.0],
+    "half_extents": [11.5, 14.5, 0.1],
+    "collider": "box"
+  }
+
+  ],
+  "buildings": [
+    {
+      "id": "building_01",
+      "kind": "building",
+      "visual": "building_01",
+      "pos": [9.493614196777344, 13.438885688781738, 27.39899444580078],
+      "rot": [0.0, 0.0, 0.0, 1.0],
+      "half_extents": [9.493610382080078, 13.451233863830566, 27.40139389038086],
+      "collider": "box",
+      "destructible": true,
+      "state": "intact"
+    },
+    {
+      "id": "building_02",
+      "kind": "building",
+      "visual": "building_02",
+      "pos": [22.34038543701172, 12.916132926940918, 11.300202369689941],
+      "rot": [0.0, 0.0, 0.0, 1.0],
+      "half_extents": [3.519062042236328, 12.928483009338379, 11.302599906921387],
+      "collider": "box",
+      "destructible": true,
+      "state": "intact"
+    },
+    {
+      "id": "building_03",
+      "kind": "building",
+      "visual": "building_03",
+      "pos": [39.686397552490234, 15.477640151977539, 35.396427154541016],
+      "rot": [0.0, 0.0, 0.0, 1.0],
+      "half_extents": [13.913348197937012, 15.413354873657227, 35.40690231323242],
+      "collider": "box",
+      "destructible": true,
+      "state": "intact"
+    },
+    {
+      "id": "building_04",
+      "kind": "building",
+      "visual": "building_04",
+      "pos": [42.90298843383789, 43.324588775634766, 19.500627517700195],
+      "rot": [0.0, 0.0, 0.0, 1.0],
+      "half_extents": [10.180866241455078, 12.519991874694824, 19.50215721130371],
+      "collider": "box",
+      "destructible": true,
+      "state": "intact"
+    },
+    {
+      "id": "building_05",
+      "kind": "building",
+      "visual": "building_05",
+      "pos": [44.46165084838867, 66.65498352050781, 30.51408576965332],
+      "rot": [0.0, 0.0, 0.0, 1.0],
+      "half_extents": [9.410327911376953, 10.907424926757812, 30.604555130004883],
+      "collider": "box",
+      "destructible": true,
+      "state": "intact"
+    },
+    {
+      "id": "building_06",
+      "kind": "building",
+      "visual": "building_06",
+      "pos": [43.25898742675781, 88.65254211425781, 22.595491409301758],
+      "rot": [0.0, 0.0, 0.0, 1.0],
+      "half_extents": [10.390737533569336, 11.885177612304688, 22.6059627532959],
+      "collider": "box",
+      "destructible": true,
+      "state": "intact"
+    },
+    {
+      "id": "building_07",
+      "kind": "building",
+      "visual": "building_07",
+      "pos": [8.99450397491455, 83.19474792480469, 16.19957733154297],
+      "rot": [0.0, 0.0, 0.0, 1.0],
+      "half_extents": [8.9163236618042, 16.39017105102539, 16.201976776123047],
+      "collider": "box",
+      "destructible": true,
+      "state": "intact"
+    },
+    {
+      "id": "building_08",
+      "kind": "building",
+      "visual": "building_08",
+      "pos": [10.449819564819336, 55.609046936035156, 20.89973258972168],
+      "rot": [0.0, 0.0, 0.0, 1.0],
+      "half_extents": [10.444612503051758, 11.287260055541992, 20.902132034301758],
+      "collider": "box",
+      "destructible": true,
+      "state": "intact"
+    },
+    {
+      "id": "building_09",
+      "kind": "building",
+      "visual": "building_09",
+      "pos": [8.651702880859375, 36.83818054199219, 13.099987030029297],
+      "rot": [0.0, 0.0, 0.0, 1.0],
+      "half_extents": [8.020618438720703, 9.50110149383545, 13.099990844726562],
+      "collider": "box",
+      "destructible": true,
+      "state": "intact"
+    }
+  ]
+}
