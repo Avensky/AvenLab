@@ -72,11 +72,6 @@ export default function App() {
 
       {/* Canvas */}
       <FullscreenCanvas>
-
-        {/* Lighting */}
-        {/* <ambientLight intensity={0.5} /> */}
-        {/* <directionalLight intensity={1} position={[5, 5, 5]} /> */}
-
         {/* YOU */}
         <CityScene />
         <VehicleScene />

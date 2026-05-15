@@ -65,15 +65,15 @@ use crate::world::block_colliders::{
 const GROUP_GROUND: Group  = Group::from_bits_truncate(0b0001);
 const GROUP_CHASSIS: Group = Group::from_bits_truncate(0b0010);
 
-const BLOCK_X: f32 = 54.0;
-const BLOCK_Z: f32 = 102.0;
+// const BLOCK_X: f32 = 54.0;
+// const BLOCK_Z: f32 = 102.0;
 
-// gap between building blocks (road band thickness)
-const GAP_X: f32 = 23.0;  // space between blocks left/right
-const GAP_Z: f32 = 29.0;  // space between blocks north/south
+// // gap between building blocks (road band thickness)
+// const GAP_X: f32 = 23.0;  // space between blocks left/right
+// const GAP_Z: f32 = 29.0;  // space between blocks north/south
 
-const TILE_X: f32 = BLOCK_X + GAP_X;
-const TILE_Z: f32 = BLOCK_Z + GAP_Z;
+// const TILE_X: f32 = BLOCK_X + GAP_X;
+// const TILE_Z: f32 = BLOCK_Z + GAP_Z;
 
 const STREAM_R: i32 = 2; // 1 => 3x3 blocks // 2 => 5x5 blocks (much less popping)
 const LOAD_R: i32 = 1;
@@ -318,37 +318,28 @@ pub struct PhysicsWorld {
 impl PhysicsWorld {
 
     #[inline]
-    fn world_to_block(x: f32, z: f32) -> (i32, i32) {
-        let bx = (x / TILE_X).floor() as i32;
-        let by = (z / TILE_Z).floor() as i32;
+    fn world_to_block(x: f32, z: f32, tile: [f32; 2]) -> (i32, i32) {
+        let bx = (x / tile[0]).floor() as i32;
+        let by = (z / tile[1]).floor() as i32;
         (bx, by)
     }
 
     // pub fn update_loaded_blocks_around_players(&mut self) {
-    //     // Desired set of blocks based on all players
+    //     let tile = self.block_world.tile_size.unwrap_or([1.0, 1.0]);
+
     //     let mut desired_load: HashSet<(i32, i32)> = HashSet::new();
     //     let mut desired_keep: HashSet<(i32, i32)> = HashSet::new();
 
     //     for v in self.vehicles.values() {
     //         let Some(body) = self.bodies.get(v.body) else { continue; };
     //         let p = body.translation();
-    //         let (bx, by) = Self::world_to_block(p.x as f32, p.z as f32);
 
-    //         for dx in -LOAD_R..=LOAD_R {
-    //             for dy in -LOAD_R..=LOAD_R {
-    //                 desired_load.insert((bx + dx, by + dy));
-    //             }
-    //         }
+    //         let (bx, by) = Self::world_to_block(p.x as f32, p.z as f32, tile);
 
-    //         for dx in -UNLOAD_R..=UNLOAD_R {
-    //             for dy in -UNLOAD_R..=UNLOAD_R {
-    //                 desired_keep.insert((bx + dx, by + dy));
-    //             }
-    //         }
+    //         desired_load.insert((bx, by));
+    //         desired_keep.insert((bx, by));
     //     }
 
-    //     // Unload blocks no longer needed
-    //     // unload only if outside keep radius
     //     let loaded_keys: Vec<(i32, i32)> = self.block_world.loaded.keys().cloned().collect();
     //     for key in loaded_keys {
     //         if !desired_keep.contains(&key) {
@@ -356,14 +347,11 @@ impl PhysicsWorld {
     //         }
     //     }
 
-    //     // Load missing blocks
-    //     // POC: tile the same block everywhere.
-    //     // Later: swap this with a map lookup: (bx,by) -> block_id
-    //     // load anything inside load radius
     //     for (bx, by) in desired_load {
     //         if self.block_world.loaded.contains_key(&(bx, by)) {
     //             continue;
     //         }
+
     //         let block_id = "block_01";
     //         if let Err(e) = self.load_block(block_id, bx, by) {
     //             eprintln!("⚠️ Failed to load block {block_id} at ({bx},{by}): {e}");
@@ -390,8 +378,7 @@ impl PhysicsWorld {
                 eprintln!("⚠️ Failed to load block {block_id} at ({bx},{by}): {e}");
             }
         }
-    }    // POC: load only one block at the origin. Later, implement proper streaming based on player positions.
-
+    }
     pub fn load_block(&mut self, block_id: &str, bx: i32, by: i32) -> anyhow::Result<()> {
         // Prevent duplicates
         if self.block_world.loaded.contains_key(&(bx, by)) {
@@ -408,6 +395,7 @@ impl PhysicsWorld {
 
         println!("🔎 collider path = {}", path.to_string_lossy().to_string());
         let file = load_block_collider_file(path.to_string_lossy().to_string())?;
+        self.block_world.tile_size = Some(file.tile_size());
 
         let groups = InteractionGroups::new(
             GROUP_GROUND,   // buildings behave like static world

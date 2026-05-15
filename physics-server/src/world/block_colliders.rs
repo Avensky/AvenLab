@@ -32,11 +32,14 @@ use std::collections::HashMap;
 use std::fs;
 use serde::Serialize;
 
+
 #[derive(Debug, Clone, Serialize)]
 pub struct DebugAabbBox {
+    pub id: String,
     pub center: [f32; 3],
     pub half_extents: [f32; 3],
     pub kind: String, // "building" | "road"
+    pub visual: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -49,13 +52,6 @@ pub struct BlockColliderFile {
     #[serde(default)]    
     pub buildings: Vec<BlockObject>,
 }
-
-// #[derive(Debug, Clone, Deserialize)]
-// pub struct RoadCollider {
-//     pub id: String,
-//     pub pos: [f32; 3],          // Blender block-local [x,y,z] (Z-up)
-//     pub half_extents: [f32; 3], // Blender half extents [hx,hy,hz]
-// }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct BlockObject {
@@ -104,74 +100,27 @@ fn default_state() -> StructureState {
 }
 
 
-const BLOCK_X: f32 = 54.0;
-const BLOCK_Z: f32 = 102.0;
+impl BlockColliderFile {
+    pub fn tile_size(&self) -> [f32; 2] {
+        let mut min_x = f32::INFINITY;
+        let mut max_x = f32::NEG_INFINITY;
+        let mut min_z = f32::INFINITY;
+        let mut max_z = f32::NEG_INFINITY;
 
-// gap between building blocks (road band thickness)
-const GAP_X: f32 = 23.0;  // space between blocks left/right
-const GAP_Z: f32 = 29.0;  // space between blocks north/south
+        for obj in self.roads.iter().chain(self.buildings.iter()) {
+            min_x = min_x.min(obj.pos[0] - obj.half_extents[0]);
+            max_x = max_x.max(obj.pos[0] + obj.half_extents[0]);
 
-const TILE_X: f32 = BLOCK_X + GAP_X;
-const TILE_Z: f32 = BLOCK_Z + GAP_Z;
+            // Blender depth axis is pos[1]
+            min_z = min_z.min(obj.pos[1] - obj.half_extents[1]);
+            max_z = max_z.max(obj.pos[1] + obj.half_extents[1]);
+        }
 
-#[inline]
-fn road_half_extents_from_id(id: &str) -> [f32; 3] {
-    // returns Blender-style he: [hx, depth, height]
-    let h = 0.1;
+        let width = (max_x - min_x).max(self.cell[0]);
+        let depth = (max_z - min_z).max(self.cell[1]);
 
-    if id.contains("intersection_") {
-        [GAP_X * 0.5, GAP_Z * 0.5, h]
-    } else if id.contains("_north") || id.contains("_south") {
-        [BLOCK_X * 0.5, GAP_Z * 0.5, h]
-    } else if id.contains("_east") || id.contains("_west") {
-        [GAP_X * 0.5, BLOCK_Z * 0.5, h]
-    } else {
-        // fallback
-        [1.0, 1.0, h]
+        [width, depth]
     }
-}
-
-
-#[inline]
-fn rebase_road_pos(pos: [f32; 3], he: [f32; 3], id: &str) -> [f32; 3] {
-    // We assume roads/intersections in JSON are authored near the block edges:
-    // - east road/intersections: x near BLOCK_X
-    // - north road/intersections: y (Blender depth axis) near BLOCK_Z
-    //
-    // We "push" them outward by half the gap so they occupy the gap band.
-    //
-    // NOTE: blender axes: [x, y, z] with z-up; y is our horizontal "depth" that maps to Rapier Z.
-
-    let mut p = pos;
-
-    let id_l = id.to_lowercase();
-
-    // Push "east" things into the right-side gap band.
-    if id_l.contains("east") || id_l.contains("_e") || id_l.contains("ne") || id_l.contains("se") {
-        // move center from inside-block to gap-center:
-        // desired center x = BLOCK_X + GAP_X/2
-        // if artist put it at ~BLOCK_X - road_half_width, this adds the missing offset.
-        p[0] += GAP_X * 0.5;
-    }
-
-    // Push "north" things into the top gap band.
-    if id_l.contains("north") || id_l.contains("_n") || id_l.contains("ne") || id_l.contains("nw") {
-        p[1] += GAP_Z * 0.5;
-    }
-
-    // Push "west" things into the left gap band (negative side).
-    if id_l.contains("west") || id_l.contains("_w") || id_l.contains("nw") || id_l.contains("sw") {
-        p[0] -= GAP_X * 0.5;
-    }
-
-    // Push "south" things into the bottom gap band (negative side).
-    if id_l.contains("south") || id_l.contains("_s") || id_l.contains("se") || id_l.contains("sw") {
-        p[1] -= GAP_Z * 0.5;
-    }
-
-    // If you ever author the road centered already (in gap),
-    // this still works as long as your ids are consistent.
-    p
 }
 
 #[derive(Default)]
@@ -179,11 +128,13 @@ pub struct BlockColliderWorld {
     // (bx, by) -> rigid bodies spawned for that block
     pub loaded: HashMap<(i32, i32), Vec<RigidBodyHandle>>,
     pub debug_boxes: HashMap<(i32, i32), Vec<DebugAabbBox>>,
+    pub tile_size: Option<[f32; 2]>,
 }
 
 impl BlockColliderWorld {
+
     pub fn new() -> Self {
-        Self { loaded: HashMap::new(), debug_boxes: HashMap::new() }
+        Self { loaded: HashMap::new(), debug_boxes: HashMap::new(), tile_size: None }
     }
 
     pub fn unload(
@@ -217,62 +168,31 @@ impl BlockColliderWorld {
 pub fn load_block_collider_file(path: String) -> anyhow::Result<BlockColliderFile> {
     let bytes = fs::read(&path)?;
     let file: BlockColliderFile = serde_json::from_slice(&bytes)?;
+    // let file = load_block_collider_file(path.to_string_lossy().to_string())?;
+    // self.block_world.tile_size = Some(file.tile_size());
+
     Ok(file)
 }
 
 
 #[inline]
-fn blender_local_to_world(bx: i32, by: i32, cell_x: f32, cell_z: f32, p: [f32; 3]) -> [f32; 3]
-{
-    let base_x = bx as f32 * TILE_X;
-    let base_z = by as f32 * TILE_Z;
+fn blender_local_to_world(
+    bx: i32,
+    by: i32,
+    tile_x: f32,
+    tile_z: f32,
+    p: [f32; 3],
+) -> [f32; 3] {
+    let base_x = bx as f32 * tile_x;
+    let base_z = by as f32 * tile_z;
 
-    // Blender [x,y,z] (z up) -> Rapier [x,y,z] (y up)
+    // Blender [x, y_depth, z_up] -> Rapier [x, y_up, z_depth]
     let wx = base_x + p[0];
-    let wy = p[2];            // height
-    let wz = base_z + p[1];   // depth
+    let wy = p[2];
+    let wz = base_z - p[1]; // flip Blender Y/depth
+
     [wx, wy, wz]
 }
-
-
-
-
-
-
-#[inline]
-fn road_center_from_id(id: &str) -> [f32; 3] {
-    // Blender-local: [x, depth, height]  (height=0 for roads)
-    let y = 0.0;
-
-    if id.contains("_north") {
-        // centered over the NORTH gap band above the block
-        [BLOCK_X * 0.5, BLOCK_Z + GAP_Z * 0.5, y]
-    } else if id.contains("_south") {
-        // centered over the SOUTH gap band below the block
-        [BLOCK_X * 0.5, -GAP_Z * 0.5, y]
-    } else if id.contains("_east") {
-        // centered over the EAST gap band to the right of the block
-        [BLOCK_X + GAP_X * 0.5, BLOCK_Z * 0.5, y]
-    } else if id.contains("_west") {
-        // centered over the WEST gap band to the left of the block
-        [-GAP_X * 0.5, BLOCK_Z * 0.5, y]
-    } else if id.contains("intersection_ne") {
-        [BLOCK_X + GAP_X * 0.5, BLOCK_Z + GAP_Z * 0.5, y]
-    } else if id.contains("intersection_nw") {
-        [-GAP_X * 0.5, BLOCK_Z + GAP_Z * 0.5, y]
-    } else if id.contains("intersection_se") {
-        [BLOCK_X + GAP_X * 0.5, -GAP_Z * 0.5, y]
-    } else if id.contains("intersection_sw") {
-        [-GAP_X * 0.5, -GAP_Z * 0.5, y]
-    } else {
-        // fallback: keep it in-block (so you notice unknown ids)
-        [BLOCK_X * 0.5, BLOCK_Z * 0.5, y]
-    }
-}
-
-
-
-
 
 #[inline]
 fn blender_half_extents_to_rapier(he: [f32; 3]) -> [f32; 3] {
@@ -298,6 +218,8 @@ pub fn spawn_block_building_colliders(
     let mut handles = Vec::new();
     let mut boxes = Vec::new();
 
+    let [tile_x, tile_z] = file.tile_size();
+
     // ---- spawn buildings ----
     for b in &file.buildings {
         // ------------------------------------------------------------
@@ -312,7 +234,7 @@ pub fn spawn_block_building_colliders(
         //   engine_z = blender_y
         // ------------------------------------------------------------
 
-        let [wx, wy, wz] = blender_local_to_world(bx, by, TILE_X, TILE_Z, b.pos);
+        let [wx, wy, wz] = blender_local_to_world(bx, by, tile_x, tile_z, b.pos);
         let [hx, hy, hz] = blender_half_extents_to_rapier(b.half_extents);
 
         let rb = RigidBodyBuilder::fixed()
@@ -329,7 +251,13 @@ pub fn spawn_block_building_colliders(
         colliders.insert_with_parent(col, rb_handle, bodies);
         handles.push(rb_handle);
 
-        boxes.push(DebugAabbBox { center: [wx, wy, wz], half_extents: [hx, hy, hz], kind: "building".to_string() });
+        boxes.push(DebugAabbBox {
+            id: b.id.clone(),
+            center: [wx, wy, wz], 
+            half_extents: [hx, hy, hz], 
+            kind: "building".to_string(),
+            visual: b.visual.clone(),
+        });
    
     }
 
@@ -337,17 +265,18 @@ pub fn spawn_block_building_colliders(
     // ---- spawn roads/intersections ----
     for road in &file.roads {
         // ignore road.pos; we place it in the gap based on id
-         let local = road_center_from_id(&road.id);
+        let local = road.pos;
 
         // auto-size so everything is flush
-        let he_blender = road_half_extents_from_id(&road.id);
+        let he_blender = road.half_extents;
 
-        let [wx, wy, wz] = blender_local_to_world(bx, by, TILE_X, TILE_Z, local);
+        let [wx, wy, wz] = blender_local_to_world(bx, by,  tile_x, tile_z, local);
         let [hx, hy, hz] = blender_half_extents_to_rapier(he_blender);
         
         let rb = RigidBodyBuilder::fixed()
             .translation(vector![wx, wy, wz])
             .build();
+
         let rb_handle = bodies.insert(rb);
 
         let col = ColliderBuilder::cuboid(hx, hy, hz)
@@ -359,10 +288,20 @@ pub fn spawn_block_building_colliders(
         colliders.insert_with_parent(col, rb_handle, bodies);
         handles.push(rb_handle);
 
-        boxes.push(DebugAabbBox { center: [wx, wy, wz], half_extents: [hx, hy, hz], kind: "road".to_string() });
+        let kind = match &road.kind {
+            BlockObjectKind::Road => "road",
+            BlockObjectKind::Intersection => "intersection",
+            _ => "road",
+        };
+
+        boxes.push(DebugAabbBox {
+            id: road.id.clone(),
+            center: [wx, wy, wz], 
+            half_extents: [hx, hy, hz], 
+            kind: kind.to_string(),
+            visual: road.visual.clone(),
+        });
     }
-
-
 
     (handles, boxes)
 }

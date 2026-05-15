@@ -18,11 +18,21 @@ export function FullscreenCanvas({ children }: { children: ReactNode }) {
         >
             <Canvas
                 camera={{ position: [0, 10, 20], fov: 50 }}
-                dpr={[1, 2]}  // improve clarity on retina
+                dpr={[0.75, 1]} // improve clarity on retina
+                gl={{
+                    antialias: false,
+                    powerPreference: "high-performance",
+                    failIfMajorPerformanceCaveat: false,
+                }}
             >
-                <color attach="background" args={["#050509"]} />
+                {/* <color attach="background" args={["#050509"]} /> */}
+
+                {/* Lighting */}
                 <ambientLight intensity={0.5} />
-                <directionalLight position={[10, 20, 10]} intensity={1.2} />
+                {/* <directionalLight intensity={1} position={[5, 5, 5]} /> */}
+                <directionalLight intensity={1.2} position={[10, 20, 10]} />
+
+                {/* Camera Controls */}
                 <OrbitControls />
 
                 {/* Ground */}

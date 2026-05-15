@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { DebugColliders } from "../debugger/DebugColliders";
 import type { BlockColliderFile } from "../../store/store";
-import { blenderHalfExtentsToThree, blenderPosToThree } from "../../utils/blocktransforms";
+import { blenderHalfExtentsToThree, blenderPosToThree } from "../../utils/blockTransforms";
 
 export function BlockColliderVisualizer({
   block,

@@ -1,13 +1,13 @@
 // main.rs — Clean Enterprise Architecture
-mod aven_tire;  // tire + suspension solver
-mod world;      // world management
-mod physics;    // physics world and body creation
-mod net;        // player join / disconnect, team/room assignment
-mod state;      // world state
-mod spawn;      // spawn logic
-mod suspension_contact;
-mod debug_builders;
-mod vehicle;
+mod aven_tire;          // tire + suspension solver
+mod world;              // world management
+mod physics;            // physics world and body creation
+mod net;                // player join / disconnect, team/room assignment
+mod state;              // world state
+mod spawn;              // spawn logic
+mod suspension_contact; // custom contact solver for suspension raycasts
+mod debug_builders;     // debug overlay builders (raycasts, wheels, springs)
+mod vehicle;            // vehicle controller logic (engine, steering, braking)
 
 
 use rapier3d::prelude::RigidBodyHandle;

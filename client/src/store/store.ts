@@ -9,15 +9,12 @@ import { socket } from "../net/rustSocket";
 import { VehicleFlags } from "../utils/inputMasks";
 // import type { PendingInput } from "../types/playerInput";
 export type RenderMode = "glb" | "geometry" | "collider" | "hybrid";
-
-
 // export interface PredictedSelfState {
 //     x: number;
 //     y: number;
 //     z: number;
 //     yaw: number; // we’ll derive quaternion from yaw
 // }
-
 export type Quaternion = [number, number, number, number];
 export type Vec3 = [number, number, number];
 export type StructureState = "intact" | "damaged" | "destroyed" | "removed";
@@ -108,8 +105,11 @@ export interface DebugWheel {
 }
 
 export interface DebugAabbBox {
-    center: [number,number,number],
-    half_extents: [number,number,number],
+  id: string;
+  center: [number, number, number];
+  half_extents: [number, number, number];
+  kind: "road" | "intersection" | "building" | string;
+  visual: string;
 }
 export interface DebugOverlay {
     chassis?: DebugChassis;
