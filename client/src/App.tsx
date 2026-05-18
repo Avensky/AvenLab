@@ -1,10 +1,10 @@
 // import { OrbitControls } from "@react-three/drei";
 // import { OrbitControls, useGLTF } from "@react-three/drei";
 // import { WorldRenderer } from "./components/WorldRenderer";
-import { ModeSwitcher } from "./components/ModeSwitcher";
+import { ModeSwitcher } from "./game/ModeSwitcher";
 // import { useSnapshots } from "./hooks/useSnapshots";
-import { usePlayerInput } from "./controls/usePlayerInput";
-import { FullscreenCanvas } from "./layout/FullscreenCanvas";
+// import { usePlayerInput } from "./controls/usePlayerInput";
+import { FullCanvas } from "./FullCanvas";
 // import { CityScene } from "./scenes/CityScene";
 // import { HeightfieldGeneratorPanel } from "./tools/HeightfieldGeneratorPanel";
 // import { CityHeightfield } from "./scenes/CityHeightfield";
@@ -32,8 +32,9 @@ import { useEffect } from 'react';
 // import camera from '/images/camera4.svg'
 // import socket from './socket';
 import './App.css';
-import { VehicleScene } from "./scenes/VehicleScene";
-import { CityScene } from "./scenes/CityScene";
+import { VehicleScene } from "./vehicles/VehicleScene";
+import { CityScene } from "./world/CityScene";
+import { startInputSender, stopInputSender } from "./store/InputSender";
 // import { useThrottledEmitControls } from './hooks/useThrottleEmitControls';
 // import PlaybackControls from './ui/CommandLine/Playback/PlaybackControls';
 
@@ -60,7 +61,12 @@ export default function App() {
   //   { type: 'timesquare', name: 'Time Square', component: TimesSquare },
   // ];
 
-  usePlayerInput(); // 
+  // usePlayerInput(); 
+  useEffect(() => {
+    startInputSender(60);
+    return () => { stopInputSender(); };
+  }, []);
+
   useEffect(() => { connectRustServer(); }, []);
 
 
@@ -71,7 +77,7 @@ export default function App() {
       <DebugOverlay />
 
       {/* Canvas */}
-      <FullscreenCanvas>
+      <FullCanvas>
         {/* YOU */}
         <CityScene />
         <VehicleScene />
@@ -93,10 +99,10 @@ export default function App() {
             ><Cameras /></GameScene>
           )}
         </Suspense> */}
+        {/* <GroundPlane /> */}
         {/* <OrbitControls /> */}
-      </FullscreenCanvas>
+      </FullCanvas>
 
-      {/* <GroundPlane /> */}
 
       {/* UI  */}
       {/* <div className="ui"> */}
@@ -203,16 +209,6 @@ export default function App() {
       {/* <Keyboard /> */}
       {/* <GameController /> */}
       {/* <HideMouse /> */}
-
-      {/* <HeightfieldGeneratorPanel /> */}
-      {/* <BuildingColliderExporter /> */}
-      {/* <Grid infiniteGrid args={[10, 10]} /> */}
-      {/* OTHER PLAYERS */}
-      {/* <NetworkWorld />          */}
-      {/* {mode === "glb" && <CityScene />} */}
-      {/* {mode === "geometry" && <CityHeightfield data={heightfieldJSON} />} */}
-      {/* {mode === "collider" && <CityBuildingColliders glb={scene} />} */}
-      {/* <WorldRenderer /> */}
 
     </div>
   );

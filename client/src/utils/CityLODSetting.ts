@@ -1,12 +1,12 @@
-export const CITY_LOD = {
-  showDebugColliders: false,
+// export const CITY_LOD = {
+//   showDebugColliders: false,
 
-  lowBlockDistance: 400,
-  detailedBuildingDistance: 50,
+//   lowBlockDistance: 400,
+//   detailedBuildingDistance: 50,
 
-  maxDetailedBuildings: 3,
+//   maxDetailedBuildings: 3,
 
-  heroBuildings: new Set([
-    "building_02",
-  ]),
-};
+//   heroBuildings: new Set([
+//     "building_02",
+//   ]),
+// };

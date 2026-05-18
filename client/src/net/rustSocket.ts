@@ -1,16 +1,19 @@
 // /src/net/rustSocket.ts
-import { useSnapshotStore } from "../store/store";
+
+import { useNetworkStore } from "../store";
 
 let socket: WebSocket | null = null;
-let reconnectTimer: any = null;
-let heartbeatTimer: any = null;
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 
 export function connectRustServer() {
     if (socket) return socket;
 
     // Zustand's built-in setter
-    const set = useSnapshotStore.setState;
-    const setSnapshot = useSnapshotStore.getState().setSnapshot;
+    const set = useNetworkStore.setState;
+    const setSnapshot = useNetworkStore.getState().setSnapshot;
 
     function connect() {
 
@@ -35,7 +38,10 @@ export function connectRustServer() {
             set({ connected: false });
 
             // Clean timers
-            clearInterval(heartbeatTimer);
+            if (heartbeatTimer !== null) {
+                clearInterval(heartbeatTimer);
+                heartbeatTimer = null;
+            }
 
             // Attempt reconnect in 1–3 seconds (random to avoid thundering herd)
             reconnectTimer = setTimeout(() => connect(), 1000 + Math.random() * 2000);
@@ -43,7 +49,7 @@ export function connectRustServer() {
         };
 
         socket.onmessage = (event) => {
-            let data: any;
+            let data;
             try {
                 data = JSON.parse(event.data);
             } catch {
@@ -80,7 +86,7 @@ export function connectRustServer() {
 
 
             if (data.type === "physics") {
-                useSnapshotStore.getState().setPhysicsData(data.data);
+                useNetworkStore.getState().setPhysicsData(data.data);
                 return;
             }
 
@@ -89,7 +95,7 @@ export function connectRustServer() {
                 // Defensive checks
                 if (!data.data) return;
                 // console.log("[DEBUG OVERLAY]", data.data);
-                useSnapshotStore.getState().setDebugOverlay(data.data);
+                useNetworkStore.getState().setDebugOverlay(data.data);
                 return;
             }
 

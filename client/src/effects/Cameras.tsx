@@ -1,13 +1,14 @@
 import { PerspectiveCamera, OrthographicCamera, OrbitControls } from '@react-three/drei'
-import { useSnapshotStore } from '../store/store'
 import { RotatingCamera } from './RotatingCamera'
 import { useEffect, useRef } from 'react';
 import { OrbitControls as ThreeOrbitControls } from 'three-stdlib';
+import { useGameStore } from '../store';
 
 export default function Cameras() {
-  const screen = useSnapshotStore((state) => state.screen);
-  const camMode = useSnapshotStore((state) => state.camera);
-  const editor = useSnapshotStore((state) => state.editor);
+  const screen = useGameStore((state) => state.screen);
+  const camMode = useGameStore((state) => state.camera);
+  const editor = useGameStore((state) => state.editor);
+
   const controlsRef = useRef<ThreeOrbitControls | null>(null);
   // console.log('cameras', camMode)
 

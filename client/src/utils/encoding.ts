@@ -1,4 +1,4 @@
-import type { PlayerStateInput, VehicleStateInput } from "../store/playerInput";
+import type { PlayerStateInput, VehicleStateInput } from "../store";
 export const VehicleStateBits = {
     EngineOn: 1 << 0,
     Headlights: 1 << 1,

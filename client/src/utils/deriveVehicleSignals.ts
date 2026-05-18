@@ -1,6 +1,6 @@
-import type { InputPacket } from "../store/store";
+import type { InputPacket } from "../store";
 import { THROTTLE_THRESHOLD, BRAKE_THRESHOLD } from "./constants";
-import { VehicleFlags } from "../utils/inputMasks";
+import { VehicleFlags } from "../store/inputMasks";
 
 // ✅ PURE FUNCTION — NO HOOKS ALLOWED
 export function deriveVehicleSignals(input: InputPacket) {

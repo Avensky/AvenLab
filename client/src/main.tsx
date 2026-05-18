@@ -6,10 +6,10 @@ import { useGLTF } from "@react-three/drei";
 
 // import ReactDOM from "react-dom/client";
 // ReactDOM.createRoot(document.getElementById("root")!).render(<App />);
-useGLTF.preload('/models/cars/ae86v2.glb');
-useGLTF.preload('/models/cars/tank2.glb');
-useGLTF.preload('/models/camaro.glb');
-useGLTF.preload("/models/city.glb");
+// useGLTF.preload('/models/cars/ae86v2.glb');
+// useGLTF.preload('/models/cars/tank2.glb');
+// useGLTF.preload('/models/camaro.glb');
+useGLTF.preload("/models/models/blocks/block_01.glb");
 // useGLTF.preload('/models/city_rtx.glb');
 // useGLTF.preload('/models/city_time_square.glb');
 

@@ -1,8 +1,8 @@
 import { useThree, useFrame } from '@react-three/fiber';
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { useSnapshotStore } from '../store/store';
 import type { OrbitControls } from 'three-stdlib'
+import { useGameStore, useNetworkStore } from '../store';
 
 interface RotatingCameraProps {
     radius?: number
@@ -14,10 +14,11 @@ interface RotatingCameraProps {
 }
 export function RotatingCamera({ radius = 5, height = 2, speed = 0.3, resumeDuration = 10, orbitRef }: RotatingCameraProps) {
     const { camera } = useThree();
-    const screen = useSnapshotStore((s) => s.screen);
-    const camMode = useSnapshotStore((s) => s.camera);
-    const setRotatingCamera = useSnapshotStore((s) => s.setRotatingCamera);
-    // const angle = useSnapshotStore((s) => s.rotatingCamera.angle);
+
+    const screen = useGameStore((s) => s.screen);
+    const camMode = useGameStore((s) => s.camera);
+    const setRotatingCamera = useGameStore((s) => s.setRotatingCamera);
+    // const angle = useGameStore((s) => s.rotatingCamera.angle);
 
     const [paused, setPaused] = useState(false);
     const pauseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -56,15 +57,15 @@ export function RotatingCamera({ radius = 5, height = 2, speed = 0.3, resumeDura
     useFrame(() => {
         if (paused || !isActive) return;
 
-        const physicsData = useSnapshotStore.getState().physicsData;
-        const player = useSnapshotStore.getState().playerId;
+        const physicsData = useNetworkStore.getState().physicsData;
+        const player = useNetworkStore.getState().playerId;
 
         if (!player) return;
 
         const target = physicsData?.chassisBody?.position ?? new THREE.Vector3(0, 0, 0);
         if (!target) return;
 
-        const currentAngle = useSnapshotStore.getState().rotatingCamera;
+        const currentAngle = useGameStore.getState().rotatingCamera;
         const newAngle = currentAngle + speed * 0.01;
         setRotatingCamera(newAngle);
 

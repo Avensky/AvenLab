@@ -1,11 +1,10 @@
-import { useSnapshotStore } from "../store/store";
-// import { useFrame } from "@react-three/fiber";
-// import { useState } from "react";
+import { useNetworkStore } from "../store";
+
 
 export function DebugOverlay() {
-    const connected = useSnapshotStore((s) => s.connected);
-    const snapshot = useSnapshotStore((s) => s.snapshot);
-    const me = useSnapshotStore((s) => s.getMe());
+    const connected = useNetworkStore((s) => s.connected);
+    const snapshot = useNetworkStore((s) => s.snapshot);
+    const me = useNetworkStore((s) => s.getMe());
 
     // const [fps, setFps] = useState(0);
 
