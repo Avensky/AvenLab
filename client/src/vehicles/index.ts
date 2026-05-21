@@ -4,5 +4,6 @@
 // export { default as Ae86 } from './vehicles/Ae86'
 // export { default as Camaro } from './vehicles/Camaro'
 // export { default as Tank } from './vehicles/Tank'
-export { default as TimesSquare } from '../world/environments/TimesSquare'
-export { default as Rtx } from '../world/environments/Rtx'
+export { default as TimesSquare } from '../world/environments/TimesSquare';
+export { default as Rtx } from '../world/environments/Rtx';
+export * from './VehicleScene';

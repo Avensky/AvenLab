@@ -1,12 +1,11 @@
 //  inputStore.ts     ← controls/input packets
 import { create } from "zustand";
-import { deriveVehicleSignals } from "../utils/deriveVehicleSignals";
+import { deriveInputSignals } from "./tools/deriveInputSignals";
 import {
   VehicleFlags,
-  PlayerFlags,
   setFlag,
   hasFlag,
-} from "./inputMasks";
+} from "./tools/inputMasks";
 
 export interface VehicleControls {
     braking: boolean
@@ -60,12 +59,7 @@ export interface InputPacket {
     playerMask: number;  // uint16
 }
 const defaultVehicleMask = VehicleFlags.ENGINE_ON | VehicleFlags.ABS | VehicleFlags.TCS;
-const defaultPlayerMask = PlayerFlags.CANDUMP 
-| PlayerFlags.LIVECAN 
-| PlayerFlags.DYNO 
-| PlayerFlags.RADIO 
-| PlayerFlags.HONK 
-| PlayerFlags.RESET;
+const defaultPlayerMask = 0;
 
 export const inputRef: { current: InputPacket } = {
   current: {
@@ -116,7 +110,7 @@ export const useInputStore = create<InputState>((set, get) => ({
         // Zustand update only for UI/HUD/debug, not networking.
         set({
         input: nextInput,
-        controls: deriveVehicleSignals(nextInput),
+        controls: deriveInputSignals(nextInput),
         });
     },
 

@@ -1,157 +1,202 @@
-// import { useEffect, useRef  } from 'react'
-// // import { keys } from '../keys'
-// // import { isControl, useStore } from '../store'
-// // import type { BindableActionName } from '../store'
-// // import socket from '../socket'
-// import { useSnapshotStore } from "../store/store";
-// import { VehicleFlags, PlayerFlags } from "../utils/inputMasks";
+import { useEffect, useRef } from "react";
+import { VehicleFlags, PlayerFlags } from "../store/tools/inputMasks";
+import { useInputStore, useUIStore } from "../store";
 
-// export function Keyboard() {
-//   // const binding = useStore((state) => state.booleans.binding)
-//   // const actionInputMap = useStore((state) => state.actionInputMap)
-//   // const actions = useStore((state) => state.actions)
+function isTypingTarget(target: EventTarget | null) {
+  const el = target as HTMLElement | null;
+  if (!el) return false;
 
-//   const setInput = useSnapshotStore((s) => s.setInput);
-//   // console.log(useSnapshotStore.getState().input);
-//   // Track key state locally (prevents jitter)
-//   const keys = useRef<Record<string, boolean>>({});
+  return (
+    el.tagName === "INPUT" ||
+    el.tagName === "TEXTAREA" ||
+    el.isContentEditable
+  );
+}
 
-//   // useEffect(() => {
-//   //   if (binding) return
-//   //   const keyMap: Partial<Record<string, BindableActionName>> = keys(actionInputMap).reduce(
-//   //     (out, actionName) => ({ ...out, ...actionInputMap[actionName].reduce((inputs, input) => ({ ...inputs, [input]: actionName }), {}) }),
-//   //     {},
-//   //   )
-//   //   const downHandler = (e: KeyboardEvent) => {
-//   //     const actionName = keyMap[e.key.toLowerCase()]
-//   //     if (e.key.toLowerCase() === "r") {
-//   //       socket.emit("controls", { reset: true });
-//   //       return; // ⬅ prevent further processing for 'r'
-//   //     }
+export function Keyboard() {
+  const setInput = useInputStore((s) => s.setInput);
 
-//   //     if (!actionName || (e.target as HTMLElement).nodeName === 'INPUT' || !isControl(actionName)) return
-//   //     actions[actionName](true)
-//   //     socket.emit('controls', useStore.getState().controls)
-//   //   }
-//   //   const upHandler = (e: KeyboardEvent) => {
-//   //     const actionName = keyMap[e.key.toLowerCase()]
-//   //     if (!actionName || (e.target as HTMLElement).nodeName === 'INPUT') return
-//   //     actions[actionName](false)
-//   //     socket.emit('controls', useStore.getState().controls)
-//   //   }
+  const keys = useRef<Record<string, boolean>>({});
 
-//   //   window.addEventListener('keydown', downHandler, { passive: true })
-//   //   window.addEventListener('keyup', upHandler, { passive: true })
+  useEffect(() => {
+    const recomputeAxes = () => {
+      const k = keys.current;
 
-//   //   return () => {
-//   //     window.removeEventListener('keydown', downHandler)
-//   //     window.removeEventListener('keyup', upHandler)
-//   //   }
-//   // }, [actionInputMap, binding])
+      let throttle = 0;
+      if (k["KeyW"]) throttle += 1;
+      if (k["KeyS"]) throttle -= 1;
 
-//   // return null
+      let steer = 0;
+      if (k["KeyA"]) steer -= 1;
+      if (k["KeyD"]) steer += 1;
 
-//   useEffect(() => {
-//     const recomputeAxes = () => {
-//         const k = keys.current;
+      const brake = k["Space"] ? 1 : 0;
+      const handbrake = k["KeyB"] ? 1 : 0;
 
-//         let throttle = 0;
-//         if (k["KeyW"]) throttle += 1;
-//         if (k["KeyS"]) throttle -= 1;
+      setInput({ throttle, steer, brake, handbrake });
+    };
 
-//         let steer = 0;
-//         if (k["KeyA"]) steer -= 1;
-//         if (k["KeyD"]) steer += 1;
+    const pulsePlayerFlag = (flag: number, ms = 100) => {
+      const store = useInputStore.getState();
 
-//         const brake = k["Space"] ? 1 : 0;
+      store.setPlayerFlag(flag, true);
 
-//         setInput({ throttle, steer, brake });
-//     };
+      window.setTimeout(() => {
+        useInputStore.getState().setPlayerFlag(flag, false);
+      }, ms);
+    };
 
-//     const toggleVehicleFlag = (flag: number) => {
-//         const { input } = useSnapshotStore.getState();
-//         const mask = input.vehicleMask ^ flag;
-//         setInput({ vehicleMask: mask });
-//     };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isTypingTarget(e.target)) return;
+      if (e.repeat) return;
 
-//     const togglePlayerFlag = (flag: number) => {
-//         const { input } = useSnapshotStore.getState();
-//         const mask = input.playerMask ^ flag;
-//         setInput({ playerMask: mask });
-//     };
+      const ui = useUIStore.getState();
+      const inMenu = ui.screen === "main" || ui.screen === "settings" || ui.overlay === "pause";
+      const store = useInputStore.getState();
 
-//     const handleKeyDown = (e: KeyboardEvent) => {
-//         if (e.repeat) return;
-//         keys.current[e.code] = true;
+      // e.preventDefault();
+      // keys.current[e.code] = true;
 
-//         switch (e.code) {
-//           // --------------------
-//           // Driving
-//           // --------------------
-//           case "KeyW":
-//           case "KeyS":
-//           case "KeyA":
-//           case "KeyD":
-//           case "Space":
-//               recomputeAxes();
-//               break;
+      if (inMenu) {
+        switch (e.code) {
+          case "ArrowUp":
+          case "KeyW":
+            e.preventDefault();
+            ui.moveActiveMenuSelection(-1);
+            return;
+            
+            case "ArrowDown":
+              case "KeyS":
+                e.preventDefault();
+                ui.moveActiveMenuSelection(1);
+                return;
+                
+                case "Enter":
+                  case "Space":
+                    e.preventDefault();
+                    ui.activateActiveMenuSelection();
+            return;
 
-//           // --------------------
-//           // Vehicle toggles
-//           // --------------------
-//           case "KeyE":
-//               toggleVehicleFlag(VehicleFlags.ENGINE_ON);
-//               break;
+          case "Escape":
+            e.preventDefault();
+            // ui.setScreen("main");
+            useUIStore.getState().togglePauseMenu();
+            return;
+        }
+      }
 
-//           case "KeyL":
-//               toggleVehicleFlag(VehicleFlags.HEADLIGHTS);
-//               break;
+      switch (e.code) {
+        case "KeyW":
+        case "KeyS":
+        case "KeyA":
+        case "KeyD":
+        case "Space":
+        case "KeyB":
+          recomputeAxes();
+          break;
 
-//           case "KeyQ":
-//               toggleVehicleFlag(VehicleFlags.ABS);
-//               break;
+        // Vehicle toggles
+        case "KeyE":
+          store.toggleVehicleFlag(VehicleFlags.ENGINE_ON);
+          break;
 
-//           case "KeyT":
-//               toggleVehicleFlag(VehicleFlags.TCS);
-//               break;
+        case "KeyL":
+          store.toggleVehicleFlag(VehicleFlags.HEADLIGHTS);
+          break;
 
-//           // --------------------
-//           // Player toggles
-//           // --------------------
-//           case "KeyR":
-//               togglePlayerFlag(PlayerFlags.RESET);
-//               break;
+        case "KeyZ":
+          store.toggleVehicleFlag(VehicleFlags.BLINKER_LEFT);
+          break;
 
-//           case "ShiftLeft":
-//               togglePlayerFlag(PlayerFlags.BOOST);
-//               break;
-//           case "KeyB":
-//               toggle(); // B = block boxes
-//               break;
+        case "KeyX":
+          store.toggleVehicleFlag(VehicleFlags.BLINKER_RIGHT);
+          break;
 
-//         }
-//     };
+        case "KeyH":
+          store.toggleVehicleFlag(VehicleFlags.HAZARDS);
+          break;
 
-//     const handleKeyUp = (e: KeyboardEvent) => {
-//         keys.current[e.code] = false;
+        case "KeyQ":
+          store.toggleVehicleFlag(VehicleFlags.ABS);
+          break;
 
-//         switch (e.code) {
-//           case "KeyW":
-//           case "KeyS":
-//           case "KeyA":
-//           case "KeyD":
-//           case "Space":
-//               recomputeAxes();
-//               break;
-//         }
-//     };
+        case "KeyT":
+          store.toggleVehicleFlag(VehicleFlags.TCS);
+          break;
 
-//     window.addEventListener("keydown", handleKeyDown);
-//     window.addEventListener("keyup", handleKeyUp);
+        // Boost should be hold
+        case "ShiftLeft":
+          store.setVehicleFlag(VehicleFlags.BOOST, true);
+          break;
 
-//     return () => {
-//         window.removeEventListener("keydown", handleKeyDown);
-//         window.removeEventListener("keyup", handleKeyUp);
-//     };
-//   }, [setInput]);
-// }
+        // Player / research tools
+        case "KeyR":
+          pulsePlayerFlag(PlayerFlags.RESET);
+          break;
+
+        case "KeyC":
+          store.togglePlayerFlag(PlayerFlags.CANDUMP);
+          break;
+
+        case "KeyV":
+          store.togglePlayerFlag(PlayerFlags.LIVECAN);
+          break;
+
+        case "KeyY":
+          store.togglePlayerFlag(PlayerFlags.DYNO);
+          break;
+
+        case "KeyM":
+          store.togglePlayerFlag(PlayerFlags.RADIO);
+          break;
+
+        case "KeyN":
+          store.setPlayerFlag(PlayerFlags.HONK, true);
+          break;
+        
+        case "Escape":
+          e.preventDefault();
+          useUIStore.getState().togglePauseMenu();
+          break;
+      }
+    };
+    
+    const handleKeyUp = (e: KeyboardEvent) => {
+      e.preventDefault();
+      keys.current[e.code] = false;
+      
+      if (isTypingTarget(e.target)) return;
+
+      const store = useInputStore.getState();
+
+      switch (e.code) {
+        case "KeyW":
+        case "KeyS":
+        case "KeyA":
+        case "KeyD":
+        case "Space":
+        case "KeyB":
+          recomputeAxes();
+          break;
+
+        case "ShiftLeft":
+          store.setVehicleFlag(VehicleFlags.BOOST, false);
+          break;
+
+        case "KeyN":
+          store.setPlayerFlag(PlayerFlags.HONK, false);
+          break;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [setInput]);
+
+  return null;
+}
