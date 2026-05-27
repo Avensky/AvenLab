@@ -470,9 +470,7 @@ impl PhysicsWorld {
         println!("🧹 Physics vehicle removed for {}", player_id);
     }
 
-    pub fn debug_snapshot(&self) -> DebugOverlay {
-        self.debug_overlay.clone()
-    }
+    pub fn debug_snapshot(&self) -> DebugOverlay { self.debug_overlay.clone()}
 
     pub fn clear_debug_overlay(&mut self) {
         self.debug_overlay.suspension_rays.clear();

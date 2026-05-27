@@ -205,3 +205,157 @@ if export_col.name in bpy.data.collections:
 bpy.data.collections.remove(export_col)
 
 print("Cleaned temp export objects. Original Blender file unchanged.")
+
+car export
+import bpy
+import os
+
+OUTPUT_PATH = r"C:\Users\uriel\Projects\AvenLab\client\public\models\vehicles\ae86.glb"
+
+EXPORT_COLLECTION = "**TEMP_VEHICLE_EXPORT**"
+JOINED_NAME = "vehicle_body_joined"
+
+# Objects with these names stay separate for React animation/pivots
+
+KEEP_SEPARATE_NAMES = {
+"Headlights",
+"SteeringWheel",
+"Door_L",
+"Door_R",
+"FL_Wheel",
+"FR_Wheel",
+"RL_Wheel",
+"RR_Wheel",
+"FL_Caliper",
+"FR_Caliper",
+"RL_Caliper",
+"RR_Caliper",
+"Turret",
+"Cannon",
+}
+
+def mesh_objects_recursive(collection):
+objs = []
+
+    for obj in collection.objects:
+        if obj.type == "MESH" and not obj.hide_get() and not obj.hide_viewport:
+            objs.append(obj)
+
+    for child in collection.children:
+        objs.extend(mesh_objects_recursive(child))
+
+    return objs
+
+src_col = bpy.context.scene.collection
+src_objs = mesh_objects_recursive(src_col)
+
+if not src_objs:
+raise Exception("No visible mesh objects found in Scene Collection")
+
+print("Source mesh count:", len(src_objs))
+
+if bpy.context.object and bpy.context.object.mode != "OBJECT":
+bpy.ops.object.mode_set(mode="OBJECT")
+
+old = bpy.data.collections.get(EXPORT_COLLECTION)
+if old:
+for obj in list(old.objects):
+bpy.data.objects.remove(obj, do_unlink=True)
+bpy.data.collections.remove(old)
+
+export_col = bpy.data.collections.new(EXPORT_COLLECTION)
+bpy.context.scene.collection.children.link(export_col)
+
+static_dupes = []
+separate_dupes = []
+
+for obj in src_objs:
+dup = obj.copy()
+dup.data = obj.data.copy()
+dup.matrix_world = obj.matrix_world.copy()
+
+    export_col.objects.link(dup)
+
+    if obj.name in KEEP_SEPARATE_NAMES:
+        separate_dupes.append(dup)
+    else:
+        static_dupes.append(dup)
+
+print("Static meshes to join:", len(static_dupes))
+print("Movable meshes kept separate:", [o.name for o in separate_dupes])
+
+joined = None
+
+if static_dupes:
+bpy.ops.object.select_all(action="DESELECT")
+
+    for obj in static_dupes:
+        obj.select_set(True)
+
+    bpy.context.view_layer.objects.active = static_dupes[0]
+    bpy.ops.object.join()
+
+    joined = bpy.context.object
+    joined.name = JOINED_NAME
+    joined.data.name = f"{JOINED_NAME}_mesh"
+
+    bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
+
+    print("Joined object:", joined.name)
+    print("Polygons:", len(joined.data.polygons))
+    print("Material slots:", len(joined.material_slots))
+
+# Select joined body + movable parts
+
+bpy.ops.object.select_all(action="DESELECT")
+
+if joined:
+joined.select_set(True)
+
+for obj in separate_dupes:
+obj.select_set(True)
+
+if joined:
+bpy.context.view_layer.objects.active = joined
+elif separate_dupes:
+bpy.context.view_layer.objects.active = separate_dupes[0]
+
+os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
+
+bpy.ops.export_scene.gltf(
+filepath=OUTPUT_PATH,
+export_format="GLB",
+use_selection=True,
+export_apply=True,
+
+    export_materials="EXPORT",
+    export_image_format="WEBP",
+    export_image_quality=75,
+
+    export_lights=False,
+    export_cameras=False,
+    export_skins=False,
+    export_animations=False,
+    export_morph=False,
+
+    export_draco_mesh_compression_enable=True,
+    export_draco_mesh_compression_level=6,
+    export_draco_position_quantization=14,
+    export_draco_normal_quantization=10,
+    export_draco_texcoord_quantization=12,
+    export_draco_color_quantization=10,
+    export_draco_generic_quantization=12,
+
+)
+
+print("Exported:", OUTPUT_PATH)
+
+# Cleanup temp objects
+
+for obj in list(export_col.objects):
+bpy.data.objects.remove(obj, do_unlink=True)
+
+if export_col.name in bpy.data.collections:
+bpy.data.collections.remove(export_col)
+
+print("Cleaned temp export objects. Original Blender file unchanged.")

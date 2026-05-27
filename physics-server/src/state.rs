@@ -43,6 +43,7 @@ use crate::vehicle::VehicleStateFlags;
 // Per-entity physics snapshot (sent every tick)
 // This mirrors what your frontend's PhysicsData expects.
 // ---------------------------------------------------------------------------
+
 #[derive(Debug, Clone, Serialize)]
 pub struct PhysicsEntitySnapshot {
     pub id: String,
@@ -65,6 +66,8 @@ pub struct PhysicsEntitySnapshot {
     // --- Bitmasked state ---
     pub vehicle_mask: u16,
     pub player_mask: u16,
+
+    pub wheels: Option<Vec<WheelSnapshot>>,
 }
 
 // ---------------------------------------------------------------------------
@@ -74,6 +77,14 @@ pub struct PhysicsEntitySnapshot {
 pub struct PhysicsSnapshot {
     pub tick: u64,
     pub entities: Vec<PhysicsEntitySnapshot>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct WheelSnapshot {
+    pub id: String,
+    pub position: [f32; 3],
+    pub rotation: [f32; 4],
+    pub grounded: bool,
 }
 
 // ---------------------------------------------------------------------------
@@ -286,7 +297,19 @@ impl SharedGameState {
     // - Packs bitmasks (vehicle + player)
     // - Sends a compact deterministic payload to all clients
     // ------------------------------------------------------------------------
+
+    
     pub fn broadcast_snapshot(&mut self, physics: &PhysicsWorld) {
+
+        fn wheel_id_to_frontend(id: &str) -> String {
+            match id {
+                "FL" => "fl".to_string(),
+                "FR" => "fr".to_string(),
+                "RL" => "rl".to_string(),
+                "RR" => "rr".to_string(),
+                other => other.to_lowercase(),
+            }
+        }
         // If no clients, do nothing (saves work when menu/server idle)
         if self.clients.is_empty() { return; }
         let mut entities_out: Vec<PhysicsEntitySnapshot> = Vec::new();
@@ -338,7 +361,22 @@ impl SharedGameState {
             let temp           = vehicle.engine_temp;     // add field when ready
             let engine_torque  = vehicle.engine_torque;   // add field when ready
 
+            let wheels_snapshot = Some(
+                physics
+                    .debug_snapshot()
+                    .wheels
+                    .iter()
+                    .map(|w| WheelSnapshot {
+                        id: wheel_id_to_frontend(&w.id),
+                        position: w.center,
+                        rotation: [rot.i, rot.j, rot.k, rot.w],
+                        grounded: w.grounded,
+                    })
+                    .collect::<Vec<_>>()
+            );
+
             entities_out.push(PhysicsEntitySnapshot {
+                
                 id: ent.id.clone(),
                 kind: ent.kind.as_str().to_string(),
                 room_id: ent.room_id,
@@ -356,6 +394,8 @@ impl SharedGameState {
 
                 vehicle_mask: vehicle.vehicle_flags.bits(),
                 player_mask: vehicle.player_flags,
+
+                wheels: wheels_snapshot,
             });    
         }
 
