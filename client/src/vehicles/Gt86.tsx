@@ -1,375 +1,341 @@
-// // Gt86.tsx
+// Gt86.tsx
 
-// import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
-// import type { PropsWithChildren } from 'react';
-// import { useGLTF } from '@react-three/drei';
-// import { Group, Color, MathUtils, SpotLight, Vector3, Object3D } from 'three';
-// import { useFrame, useThree } from '@react-three/fiber';
-// // import { GroupProps, useFrame, useThree } from '@react-three/fiber';
-// import { useSnapshotStore } from '../../store/store';
-// // import { Camera, Controls, getState, PhysicsData, useSnapshotStore } from '../../store';
-// import { setupVehicleParts } from '../../utils/setupVehicleParts';
-// import { sharedGlassMaterial } from '../../utils/createGlassMaterialFactory';
-// import { usePhysicsInterpolator } from '../../hooks/usePhysicsInterpolator'
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
+import type { PropsWithChildren } from 'react';
+import { useGLTF } from '@react-three/drei';
+import { Group, Color, MathUtils, SpotLight, Vector3, Object3D } from 'three';
+import { useFrame, useThree } from '@react-three/fiber';
+import { setupVehicleParts } from './tools/setupVehicleParts';
+import { sharedGlassMaterial } from './tools/createGlassMaterialFactory';
 
+import { useNetworkStore, useInputStore, useGameStore } from "../store";
+import { usePhysicsInterpolator } from "../hooks/usePhysicsInterpolator";
+import { hasFlag, VehicleFlags } from "../store/tools/inputMasks";
 
-// interface WheelInfo {
-//     position: { x: number; y: number; z: number }
-//     quaternion: { x: number; y: number; z: number; w: number }
-// }
+const MODEL_PATH = "/models/vehicles/gt86.glb";
+export const Gt86 = forwardRef<Group, PropsWithChildren>(function Gt86(
+  { children },
+  ref
+) {   
+    const tintFirstPerson = new Color(0xffffff);  // Clear
+    const tintExterior = new Color(0x556677);     // Blue-gray tint (customize as needed)
+    
+    const { scene } = useGLTF(MODEL_PATH);
+    const camera = useThree((state) => state.camera)
+    
+    const vehicleGroupRef = useRef<Group>(null!)
+    useImperativeHandle(ref, () => vehicleGroupRef.current, []);
 
-// export default forwardRef(function Gt86({ children }: PropsWithChildren, ref: React.Ref<Group>) {
-//     const tintFirstPerson = new Color(0xffffff);  // Clear
-//     const tintExterior = new Color(0x556677);     // Blue-gray tint (customize as needed)
-//     const { scene } = useGLTF('/models/cars/gt86.glb');
-//     const v = new Vector3()
-//     const camera = useThree((state) => state.camera)
-//     const vehicleGroupRef = useRef<Group>(null!)
+    // Simulate hazard lights
+    const blinkTimer = useRef(0)
+    const blinkState = useRef(false)
 
-//     // Simulate hazard lights
-//     const blinkTimer = useRef(0)
-//     const blinkState = useRef(false)
+    // Ref's are used for movements    
+    const leftLightRef = useRef<SpotLight | null>(null);
+    const rightLightRef = useRef<SpotLight | null>(null);
+    const leftTailRef = useRef<SpotLight | null>(null);
+    const rightTailRef = useRef<SpotLight | null>(null);
+    const flBlinkerRef = useRef<SpotLight | null>(null);
+    const frBlinkerRef = useRef<SpotLight | null>(null);
+    const rlBlinkerRef = useRef<SpotLight | null>(null);
+    const rrBlinkerRef = useRef<SpotLight | null>(null);
 
-//     // Ref's are used for movements    
-//     const leftLightRef = useRef<SpotLight>(null!)
-//     const rightLightRef = useRef<SpotLight>(null!)
-//     const leftTailRef = useRef<SpotLight>(null!)
-//     const rightTailRef = useRef<SpotLight>(null!)
-//     const flBlinkerRef = useRef<SpotLight>(null!)
-//     const frBlinkerRef = useRef<SpotLight>(null!)
-//     const rlBlinkerRef = useRef<SpotLight>(null!)
-//     const rrBlinkerRef = useRef<SpotLight>(null!)
+    const snapshot = useNetworkStore((s) => s.snapshot);
+    const { setSnapshot, getInterpolated } = usePhysicsInterpolator(100);
 
-//     useImperativeHandle(ref, () => vehicleGroupRef.current, [])
+    useEffect(() => {
+        if (!snapshot) return;
 
-//     const headlightsOn = useSnapshotStore().input.headlights
-//     const leftBlinker = useSnapshotStore().input.blinkerLeft
-//     const rightBlinker = useSnapshotStore().input.blinkerRight
-//     const hazards = useSnapshotStore().input.hazards
+        for (const entity of snapshot.entities) {
+        setSnapshot(entity.id, entity);
+        }
+    }, [snapshot, setSnapshot]);
 
-//     const { setSnapshot, getInterpolated } = usePhysicsInterpolator(100)
+    const { clonesByGroup, renderedGroups } = useMemo(() => {
+        return setupVehicleParts({
+            scene,
+            groups: [
+                {
+                    name: 'BODY',
+                    parts: [
+                        'body',
+                        'body0',
+                        'body01',
+                        'body02',
+                        'body03',
+                        'body04',
+                        'body05',
+                        'body06',
+                        'chrome',
+                        'chrome0',
+                        'chrome1',
+                        'chrome2',
+                        'chrome02',
+                        'chrome3',
+                        'chrome4',
+                        'chrome04',
+                        'chrome5',
+                        'chrome6',
+                        'chrome7',
+                        'chrome8',
+                        'chrome09',
+                        'chrome14',
+                        // 'glass',
+                        // 'glass0',
+                        // 'glass2',
+                        'gum',
+                        // 'gum.000',
+                        'gum000',
+                        'gum0',
+                        'gum1',
+                        'gum01',
+                        'gum2',
+                        'gum02',
+                        'gum3',
+                        'gum03',
+                        'gum4',
+                        'gum04',
+                        'gum05',
+                        'gum6',
+                        'gum06',
+                        'gum7',
+                        'gum8',
+                        'gum09',
+                        'gum11',
+                        'int01',
+                        'logo',
+                        'Object01',
+                        // 'Object01.000',
+                        'Object01000',
+                        'Object02',
+                        'r_glass',
+                        'r_glass01',
+                        'red',
+                        'red01',
+                        'red02',
+                        'silver',
+                    ],
+                    transparent: [
+                        'glass',
+                        'glass0',
+                        'glass2'
+                    ],
+                    opacity: 0.4,
+                },
 
-//     const { clonesByGroup, renderedGroups } = useMemo(() => {
+                {
+                    name: 'FL_WHEEL',
+                    parts: ['gum397', 'silver0', 'silver01', 'silver02', 'gum07', 'gum08', 'chrome10'],
+                },
+                {
+                    name: 'FR_WHEEL',
+                    parts: ['gum400', 'silver05', 'silver03', 'silver04', 'gum398', 'gum399', 'chrome11'],
+                },
+                {
+                    name: 'RL_WHEEL',
+                    parts: ['gum404', 'silver08', 'silver06', 'silver07', 'gum402', 'gum403', 'chrome12'],
+                },
+                {
+                    name: 'RR_WHEEL',
+                    parts: ['gum408', 'silver10', 'silver11', 'silver09', 'gum409', 'gum407', 'chrome13'],
+                },
+                // {
+                //     name: 'STEERING_WHEEL',
+                //     parts: [
+                //         'STEERING_WHEEL_CENTER', 'STEERING_WHEEL_SIDES',
+                //         'STEERING_WHEEL_INSIDE', 'STEERING_WHEEL_BOTTOM',],
+                // },
+            ],
+            // camMode,
+        })
 
-//         return setupVehicleParts({
-//             scene,
-//             groups: [
-//                 {
-//                     name: 'BODY',
-//                     parts: [
-//                         'body',
-//                         'body0',
-//                         'body01',
-//                         'body02',
-//                         'body03',
-//                         'body04',
-//                         'body05',
-//                         'body06',
-//                         'chrome',
-//                         'chrome0',
-//                         'chrome1',
-//                         'chrome2',
-//                         'chrome02',
-//                         'chrome3',
-//                         'chrome4',
-//                         'chrome04',
-//                         'chrome5',
-//                         'chrome6',
-//                         'chrome7',
-//                         'chrome8',
-//                         'chrome09',
-//                         'chrome14',
-//                         // 'glass',
-//                         // 'glass0',
-//                         // 'glass2',
-//                         'gum',
-//                         // 'gum.000',
-//                         'gum000',
-//                         'gum0',
-//                         'gum1',
-//                         'gum01',
-//                         'gum2',
-//                         'gum02',
-//                         'gum3',
-//                         'gum03',
-//                         'gum4',
-//                         'gum04',
-//                         'gum05',
-//                         'gum6',
-//                         'gum06',
-//                         'gum7',
-//                         'gum8',
-//                         'gum09',
-//                         'gum11',
-//                         'int01',
-//                         'logo',
-//                         'Object01',
-//                         // 'Object01.000',
-//                         'Object01000',
-//                         'Object02',
-//                         'r_glass',
-//                         'r_glass01',
-//                         'red',
-//                         'red01',
-//                         'red02',
-//                         'silver',
-//                     ],
-//                     transparent: [
-//                         'glass',
-//                         'glass0',
-//                         'glass2'
-//                     ],
-//                     opacity: 0.4,
-//                 },
+    }, [scene])
 
-//                 {
-//                     name: 'FL_WHEEL',
-//                     parts: ['gum397', 'silver0', 'silver01', 'silver02', 'gum07', 'gum08', 'chrome10'],
-//                 },
-//                 {
-//                     name: 'FR_WHEEL',
-//                     parts: ['gum400', 'silver05', 'silver03', 'silver04', 'gum398', 'gum399', 'chrome11'],
-//                 },
-//                 {
-//                     name: 'RL_WHEEL',
-//                     parts: ['gum404', 'silver08', 'silver06', 'silver07', 'gum402', 'gum403', 'chrome12'],
-//                 },
-//                 {
-//                     name: 'RR_WHEEL',
-//                     parts: ['gum408', 'silver10', 'silver11', 'silver09', 'gum409', 'gum407', 'chrome13'],
-//                 },
-//                 // {
-//                 //     name: 'STEERING_WHEEL',
-//                 //     parts: [
-//                 //         'STEERING_WHEEL_CENTER', 'STEERING_WHEEL_SIDES',
-//                 //         'STEERING_WHEEL_INSIDE', 'STEERING_WHEEL_BOTTOM',],
-//                 // },
-//             ],
-//             // camMode,
-//         })
+    useEffect(() => {
+        const addSpot = (
+        refObj: { current: SpotLight | null },
+        color: number,
+        intensity: number,
+        distance: number,
+        position: [number, number, number],
+        target: [number, number, number]
+        ) => {
+        const light = new SpotLight(color, intensity, distance, Math.PI / 6, 0.2);
 
-//     }, [scene])
+        light.position.set(...position);
+        light.target.position.set(...target);
+        light.target.updateMatrixWorld();
+        light.visible = false;
 
-//     useEffect(() => {
-//         // Create left headlight
-//         leftLightRef.current = new SpotLight(0xffffff, 5, 40, Math.PI / 6, 0.2)
-//         const leftLight = leftLightRef.current
-//         leftLight.position.set(-.5, 0.7, -1.8) // relative to headlight mesh center
-//         leftLight.target.position.set(-0.4, -0.6, -5)
-//         leftLight.target.updateMatrixWorld()
-//         leftLight.visible = headlightsOn
-//         vehicleGroupRef.current.add(leftLight)
-//         vehicleGroupRef.current.add(leftLight.target)
+        refObj.current = light;
 
-//         // Create right headlight
-//         rightLightRef.current = new SpotLight(0xffffff, 5, 40, Math.PI / 6, 0.2)
-//         const rightLight = rightLightRef.current
-//         rightLight.position.set(.55, 0.7, -1.8)
-//         rightLight.target.position.set(0.4, -0.6, -5)
-//         rightLight.target.updateMatrixWorld()
-//         rightLight.visible = headlightsOn
-//         vehicleGroupRef.current.add(rightLight)
-//         vehicleGroupRef.current.add(rightLight.target)
+        vehicleGroupRef.current.add(light);
+        vehicleGroupRef.current.add(light.target);
+        };
 
-//         // Left tail light
-//         leftTailRef.current = new SpotLight(0xff0000, 3, 8, Math.PI / 4, 0.2)
-//         const leftTail = leftTailRef.current
-//         leftTail.position.set(-0.5, 0.6, 1.9) // Rear of the car (x,y,z)
-//         leftTail.target.position.set(-0.5, 0.5, 3)
-//         leftTail.target.updateMatrixWorld()
-//         leftTail.visible = false
-//         vehicleGroupRef.current.add(leftTail)
-//         vehicleGroupRef.current.add(leftTail.target)
+        addSpot(leftLightRef, 0xffffff, 5, 40, [-0.5, 0.7, -1.8], [-0.4, -0.6, -5]);
+        addSpot(rightLightRef, 0xffffff, 5, 40, [0.55, 0.7, -1.8], [0.4, -0.6, -5]);
 
-//         // Front Right tail light
-//         rightTailRef.current = new SpotLight(0xff0000, 3, 8, Math.PI / 4, 0.2)
-//         const rightTail = rightTailRef.current
-//         rightTail.position.set(0.57, 0.6, 1.8)
-//         rightTail.target.position.set(0.57, 0.5, 3)
-//         rightTail.target.updateMatrixWorld()
-//         rightTail.visible = false
-//         vehicleGroupRef.current.add(rightTail)
-//         vehicleGroupRef.current.add(rightTail.target)
+        addSpot(leftTailRef, 0xff0000, 3, 8, [-0.5, 0.6, 1.9], [-0.5, 0.5, 3]);
+        addSpot(rightTailRef, 0xff0000, 3, 8, [0.57, 0.6, 1.8], [0.57, 0.5, 3]);
 
-//         // front Left blinker (orange)
-//         flBlinkerRef.current = new SpotLight(0xffa500, 12, 16, Math.PI / 8, 0.2)
-//         const frontLeftBlinker = flBlinkerRef.current
-//         frontLeftBlinker.position.set(-0.7, 0.6, -1.9)
-//         frontLeftBlinker.target.position.set(-0.85, 0.6, -3)
-//         frontLeftBlinker.visible = leftBlinker || hazards
-//         frontLeftBlinker.target.updateMatrixWorld()
-//         vehicleGroupRef.current.add(frontLeftBlinker)
-//         vehicleGroupRef.current.add(frontLeftBlinker.target)
+        addSpot(flBlinkerRef, 0xffa500, 12, 16, [-0.7, 0.6, -1.9], [-0.85, 0.6, -3]);
+        addSpot(frBlinkerRef, 0xffa500, 12, 16, [0.7, 0.6, -1.9], [0.9, 0.6, -3]);
+        addSpot(rlBlinkerRef, 0xffa500, 12, 16, [-0.5, 0.6, 1.9], [-0.9, 0.6, 3]);
+        addSpot(rrBlinkerRef, 0xffa500, 12, 18, [0.5, 0.6, 1.9], [0.9, 0.6, 3]);
+    }, [scene]);
 
-//         // front Right blinker (orange)
-//         frBlinkerRef.current = new SpotLight(0xffa500, 12, 16, Math.PI / 8, 0.2)
-//         const frontRightBlinker = frBlinkerRef.current
-//         frontRightBlinker.position.set(0.7, 0.6, -1.9)
-//         frontRightBlinker.target.position.set(0.9, 0.6, -3)
-//         frontRightBlinker.visible = rightBlinker || hazards
-//         frontRightBlinker.target.updateMatrixWorld()
-//         vehicleGroupRef.current.add(frontRightBlinker)
-//         vehicleGroupRef.current.add(frontRightBlinker.target)
+    const wheels = useMemo(() => {
+        return [
+        clonesByGroup["FL_WHEEL"],
+        clonesByGroup["FR_WHEEL"],
+        clonesByGroup["RL_WHEEL"],
+        clonesByGroup["RR_WHEEL"],
+        ].map((group) => {
+        const groupObj = new Group();
 
-//         // rear Left blinker (orange)
-//         rlBlinkerRef.current = new SpotLight(0xffa500, 12, 16, Math.PI / 8, 0.2)
-//         const rearLeftBlinker = rlBlinkerRef.current
-//         rearLeftBlinker.position.set(-0.5, 0.6, 1.9)
-//         rearLeftBlinker.target.position.set(-0.9, 0.6, 3)
-//         rearLeftBlinker.visible = leftBlinker || hazards
-//         rearLeftBlinker.target.updateMatrixWorld()
-//         vehicleGroupRef.current.add(rearLeftBlinker)
-//         vehicleGroupRef.current.add(rearLeftBlinker.target)
+        if (!group) return groupObj;
 
-//         // rear Right blinker (orange)
-//         rrBlinkerRef.current = new SpotLight(0xffa500, 12, 18, Math.PI / 8, 0.2)
-//         const rearRightBlinker = rrBlinkerRef.current
-//         rearRightBlinker.position.set(0.5, 0.6, 1.9)
-//         rearRightBlinker.target.position.set(0.9, 0.6, 3)
-//         rearRightBlinker.visible = rightBlinker || hazards
-//         rearRightBlinker.target.updateMatrixWorld()
-//         vehicleGroupRef.current.add(rearRightBlinker)
-//         vehicleGroupRef.current.add(rearRightBlinker.target)
-//     }, [scene, leftBlinker, rightBlinker, hazards, headlightsOn])
+        Object.values(group).forEach((obj: Object3D) => {
+            groupObj.add(obj);
+        });
 
+        return groupObj;
+        });
+    }, [clonesByGroup]);
 
-//     const wheels = useMemo(() => {
-//         return [
-//             clonesByGroup['FL_WHEEL'],
-//             clonesByGroup['FR_WHEEL'],
-//             clonesByGroup['RL_WHEEL'],
-//             clonesByGroup['RR_WHEEL'],
-//         ].map((group) => {
-//             // Each group might contain multiple meshes, but we'll treat the group itself as a container
-//             const groupObj = new Group();
-//             Object.values(group).forEach((obj: Object3D) => {
-//                 groupObj.add(obj);
-//             });
-//             return groupObj;
-//         });
-//     }, [clonesByGroup]);
+    useFrame((_, delta) => {
+        const inputState = useInputStore.getState();
+        const gameState = useGameStore.getState();
+        const networkState = useNetworkStore.getState();
 
-//     // Update transformations every frame ie. chassis
-//     useEffect(() => {
-//         const id = useSnapshotStore.getState().playerId
-//         const snapshot = useSnapshotStore.getState()?.physicsData
-//         if (id && snapshot) {
-//             // console.log('[Prime] Initial snapshot', snapshot)
-//             setSnapshot(id, snapshot)
-//         }
-//     }, [useSnapshotStore(s => s.physicsData)])
+        const id = networkState.playerId;
+        if (!id) return;
 
-//     useFrame((_, delta) => {
-//         // get state on frame
-//         const id = useSnapshotStore.getState().playerId
-//         if (!id) return
-//         const interp = getInterpolated(id)
-//         if (!interp) return
+        const interp = getInterpolated(id);
+        if (!interp) return;
 
-//         const input = useSnapshotStore.getState().input
-//         const controls = useSnapshotStore.getState().controls
-//         const camMode = useSnapshotStore.getState().camera
-//         const isEditor = useSnapshotStore.getState().editor
+        const input = inputState.input;
+        const controls = inputState.controls;
+        const camMode = gameState.camera;
+        const isEditor = gameState.editor;
 
-//         // Update blink state every 0.5s
-//         blinkTimer.current += delta
-//         if (blinkTimer.current >= 0.5) {
-//             blinkTimer.current = 0
-//             blinkState.current = !blinkState.current
-//         }
+        const group = vehicleGroupRef.current;
 
-//         // Lights visibility
-//         if (leftLightRef.current) leftLightRef.current.visible = input.headlights
-//         if (rightLightRef.current) rightLightRef.current.visible = input.headlights
+        blinkTimer.current += delta;
+        if (blinkTimer.current >= 0.5) {
+        blinkTimer.current = 0;
+        blinkState.current = !blinkState.current;
+        }
 
-//         if (leftTailRef.current) leftTailRef.current.visible = controls.braking
-//         if (rightTailRef.current) rightTailRef.current.visible = controls.braking
+        const vehicleMask = input.vehicleMask;
 
-//         const hazards = input.hazards
-//         const blinkerLeft = input.blinkerLeft
-//         const blinkerRight = input.blinkerRight && !hazards
-//         const blinkOn = blinkState.current
+        const headlights = hasFlag(vehicleMask, VehicleFlags.HEADLIGHTS);
+        const hazards = hasFlag(vehicleMask, VehicleFlags.HAZARDS);
+        const blinkerLeft =
+        hasFlag(vehicleMask, VehicleFlags.BLINKER_LEFT) && !hazards;
+        const blinkerRight =
+        hasFlag(vehicleMask, VehicleFlags.BLINKER_RIGHT) && !hazards;
 
-//         //headlights
-//         leftLightRef.current.visible = input.headlights
-//         rightLightRef.current.visible = input.headlights
+        const blinkOn = blinkState.current;
 
-//         //taillights
-//         leftTailRef.current.visible = controls.braking
-//         rightTailRef.current.visible = controls.braking
+        if (leftLightRef.current) leftLightRef.current.visible = headlights;
+        if (rightLightRef.current) rightLightRef.current.visible = headlights;
 
-//         if (flBlinkerRef.current) flBlinkerRef.current.visible = (hazards || blinkerLeft) && blinkOn
-//         if (frBlinkerRef.current) frBlinkerRef.current.visible = (hazards || blinkerRight) && blinkOn
-//         if (rlBlinkerRef.current) rlBlinkerRef.current.visible = (hazards || blinkerLeft) && blinkOn
-//         if (rrBlinkerRef.current) rrBlinkerRef.current.visible = (hazards || blinkerRight) && blinkOn
+        if (leftTailRef.current) leftTailRef.current.visible = controls.braking;
+        if (rightTailRef.current) rightTailRef.current.visible = controls.braking;
 
-//         const group = vehicleGroupRef.current
+        if (flBlinkerRef.current) {
+        flBlinkerRef.current.visible = (hazards || blinkerLeft) && blinkOn;
+        }
 
-//         // Update vehicle body
-//         group.position.set(interp.chassisBody.position.x, interp.chassisBody.position.y, interp.chassisBody.position.z)
-//         group.quaternion.set(interp.chassisBody.quaternion.x, interp.chassisBody.quaternion.y, interp.chassisBody.quaternion.z, interp.chassisBody.quaternion.w)
+        if (frBlinkerRef.current) {
+        frBlinkerRef.current.visible = (hazards || blinkerRight) && blinkOn;
+        }
 
-//         // ✅ Direct apply instead of lerp
-//         interp.wheelInfos.forEach((wheel: WheelInfo, i: number) => {
-//             if (!wheels[i]) return
-//             wheels[i].position.set(wheel.position.x, wheel.position.y, wheel.position.z)
-//             wheels[i].quaternion.set(wheel.quaternion.x, wheel.quaternion.y, wheel.quaternion.z, wheel.quaternion.w)
-//         })
+        if (rlBlinkerRef.current) {
+        rlBlinkerRef.current.visible = (hazards || blinkerLeft) && blinkOn;
+        }
 
-//         if (!isEditor && (camMode === 'FIRST_PERSON' || camMode === 'DEFAULT' || camMode === 'BIRDS_EYE')) {
-//             if (camMode === 'FIRST_PERSON') { v.set(-0.25, .98, -.1); }
-//             else if (camMode === 'DEFAULT') { v.set(0, 2, 4); }
-//             else if (camMode === 'BIRDS_EYE') { v.set(0, 7, 12); }
-//             camera.position.lerp(v, delta);
+        if (rrBlinkerRef.current) {
+        rrBlinkerRef.current.visible = (hazards || blinkerRight) && blinkOn;
+        }
 
-//             // NEW: Smooth camera lookAt
-//             const target2 = new Vector3();
-//             vehicleGroupRef.current.getWorldPosition(target2);
-//             if (camMode === 'DEFAULT') {
-//                 target2.y += 1.5; // Slight elevation for third-person
-//                 camera.lookAt(target2)
-//             }
-//         }
+        group.position.set(...interp.position);
+        group.quaternion.set(...interp.rotation);
 
-//         const isFirstPerson = camMode === 'FIRST_PERSON';
-//         const targetOpacity = isFirstPerson ? 0.1 : 0.4;
-//         const targetIOR = isFirstPerson ? 1.0 : 6.5;
-//         const targetColor = isFirstPerson ? tintFirstPerson : tintExterior;
-//         const transitionSpeed = 3.0; // seconds it takes to reach 90% of the transition
-//         const t = delta / transitionSpeed;
+        const wheelMap = {
+        fl: wheels[0],
+        fr: wheels[1],
+        rl: wheels[2],
+        rr: wheels[3],
+        } as const;
 
-//         sharedGlassMaterial.opacity = MathUtils.lerp(
-//             sharedGlassMaterial.opacity,
-//             targetOpacity,
-//             t
-//         );
+        interp.wheels?.forEach((wheel) => {
+        const wheelObject = wheelMap[wheel.id];
+        if (!wheelObject) return;
 
-//         sharedGlassMaterial.ior = MathUtils.lerp(
-//             sharedGlassMaterial.ior,
-//             targetIOR,
-//             t
-//         );
+        wheelObject.position.set(...wheel.position);
+        wheelObject.quaternion.set(...wheel.rotation);
+        });
 
-//         sharedGlassMaterial.color.lerp(targetColor, t); // 👈 tint fade
+        if (
+        !isEditor &&
+        (camMode === "FIRST_PERSON" ||
+            camMode === "DEFAULT" ||
+            camMode === "BIRDS_EYE")
+        ) {
+        const offset = new Vector3();
 
-//         sharedGlassMaterial.needsUpdate = true;
+        if (camMode === "FIRST_PERSON") offset.set(-0.25, 0.98, -0.1);
+        if (camMode === "DEFAULT") offset.set(0, 2, 4);
+        if (camMode === "BIRDS_EYE") offset.set(0, 7, 12);
 
+        offset.applyQuaternion(group.quaternion).add(group.position);
+        camera.position.lerp(offset, delta * 5);
 
-//     })
+        const target = group.position.clone();
+        target.y += 1.2;
+        camera.lookAt(target);
+        }
 
-//     {/* <Dust /> */ }
-//     {/* <Skid /> */ }
-//     return (
-//         <>
-//             <group ref={vehicleGroupRef} >
-//                 {Object.values(renderedGroups)}
-//                 {children}
-//             </group>
-//             {
-//                 wheels.map((wheel, i) => (
-//                     <primitive key={`wheel-${i}`} object={wheel} />
-//                 ))
-//             }
-//         </>
-//     )
-// })
+        const isFirstPerson = camMode === "FIRST_PERSON";
+        const targetOpacity = isFirstPerson ? 0.1 : 0.4;
+        const targetIOR = isFirstPerson ? 1.0 : 6.5;
+        const targetColor = isFirstPerson ? tintFirstPerson : tintExterior;
+        const transitionSpeed = 3.0;
+        const t = delta / transitionSpeed;
+
+        sharedGlassMaterial.opacity = MathUtils.lerp(
+        sharedGlassMaterial.opacity,
+        targetOpacity,
+        t
+        );
+
+        sharedGlassMaterial.ior = MathUtils.lerp(
+        sharedGlassMaterial.ior,
+        targetIOR,
+        t
+        );
+
+        sharedGlassMaterial.color.lerp(targetColor, t);
+        sharedGlassMaterial.needsUpdate = true;
+    });
+    
+    return (
+        <>
+            <group ref={vehicleGroupRef} >
+                {Object.values(renderedGroups)}
+                {children}
+            </group>
+            {
+                wheels.map((wheel, i) => (
+                    <primitive key={`wheel-${i}`} object={wheel} />
+                ))
+            }
+        </>
+    )
+});
+
+useGLTF.preload(MODEL_PATH);
+export default Gt86;

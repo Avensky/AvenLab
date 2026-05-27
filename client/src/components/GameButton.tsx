@@ -24,7 +24,7 @@ export const GameButton = forwardRef<HTMLDivElement, GameButtonProps>(
     ref
   ) {
     const base =
-      "select-none rounded-xl border px-5 py-4 text-left font-bold transition active:scale-[0.99]";
+      "select-none rounded-xl border px-3 py-2 text-left font-bold transition active:scale-[0.99]";
 
     const variants = {
       primary:

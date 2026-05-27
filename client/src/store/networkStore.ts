@@ -19,7 +19,19 @@ export type PhysicsData = {
     engineTorque: number
     vehicleMask: number,
     playerMask: number,
+    wheels?: WheelSnapshot[];
     // steeringValue: number
+}
+
+export type WheelId = "fl" | "fr" | "rl" | "rr";
+
+export interface WheelSnapshot {
+  id: WheelId;
+  position: [number, number, number];
+  rotation: [number, number, number, number];
+  wheel_speed?: number;  // rad/s is best for tire visual spin
+  steer_angle?: number;  // radians, useful for front wheel steering visual
+  grounded?: boolean;
 }
 
 export interface PhysicsEntitySnapshot {
@@ -30,6 +42,7 @@ export interface PhysicsEntitySnapshot {
 
     position: [number, number, number];
     rotation: [number, number, number, number];
+    wheels?: WheelSnapshot[];
 
     // telemetry
     speed: number;
@@ -165,6 +178,7 @@ export const useNetworkStore = create<NetworkState>((set, get) => ({
                     engineTorque: me.engine_torque,
                     vehicleMask: me.vehicle_mask,
                     playerMask: me.player_mask,
+                    wheels: me.wheels,
                 }
                 : null,
         });

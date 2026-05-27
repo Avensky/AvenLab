@@ -1,4 +1,3 @@
-import { OrbitControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import { type ReactNode } from "react";
 
@@ -12,7 +11,7 @@ export function FullCanvas({ children }: { children: ReactNode }) {
                 height: "100svh",  // mobile-safe viewport height
                 overflow: "hidden",
                 touchAction: "none",
-                background: "black",
+                // background: "black",
                 zIndex: 0,
             }}
         >
@@ -26,13 +25,6 @@ export function FullCanvas({ children }: { children: ReactNode }) {
                 }}
             >
                 {/* <color attach="background" args={["#050509"]} /> */}
-
-                {/* Lighting */}
-                <ambientLight intensity={0.5} />
-                <directionalLight intensity={1.2} position={[10, 20, 10]} />
-
-                {/* Camera Controls */}
-                <OrbitControls />
 
                 {/* Ground */}
                 {/* <mesh rotation={[-Math.PI / 2, 0, 0]}>

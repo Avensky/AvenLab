@@ -1,8 +1,10 @@
 import { create } from "zustand";
+import { useSelectionStore } from "./selectionStore";
 
 export type MenuScreen =
   | "loading"
   | "main"
+  | "sandbox_setup"
   | "sandbox"
   | "signal_recon"
   | "swarm"
@@ -11,7 +13,7 @@ export type MenuScreen =
 
 export type UIOverlay = null | "pause" | "settings" | "vehicle_select";
 
-export type MenuId = "main" | "pause" | "settings";
+export type MenuId = "main" | "pause" | "settings" | "sandbox_setup";
 
 const playableScreens = new Set<MenuScreen>([
   "sandbox",
@@ -23,6 +25,7 @@ const menuItemCounts: Record<MenuId, number> = {
   main: 4,
   pause: 3,
   settings: 3,
+  sandbox_setup: 4,
 };
 
 function getActiveMenu(screen: MenuScreen, overlay: UIOverlay): MenuId | null {
@@ -30,6 +33,7 @@ function getActiveMenu(screen: MenuScreen, overlay: UIOverlay): MenuId | null {
   if (overlay === "settings") return "settings";
   if (screen === "main") return "main";
   if (screen === "settings") return "settings";
+  if (screen === "sandbox_setup") return "sandbox_setup";
   return null;
 }
 
@@ -61,27 +65,25 @@ type UIState = {
   openPause: () => void;
   closeOverlay: () => void;
   togglePauseMenu: () => void;
+
+  moveActiveMenuHorizontal: (dir: 1 | -1) => void;
 };
+
 
 export const useUIStore = create<UIState>((set, get) => ({
   screen: "main",
   setScreen: (screen) => {set({ screen, overlay: null,});},
-
   overlay: null,
   setOverlay: (overlay) => {set({ overlay });},
-
-  
   selectedMenuIndexById: {
     main: 0,
     pause: 0,
     settings: 0,
+    sandbox_setup: 0,
   },
-  
-  
   isModeLoading: false,
   loadingLabel: "Loading...",
   loadingProgress: 0,
-
   startModeLoading: (screen, label = "Loading...") =>
     set({
       screen,
@@ -90,31 +92,25 @@ export const useUIStore = create<UIState>((set, get) => ({
       loadingLabel: label,
       loadingProgress: 1,
     }),
-
   setLoadingProgress: (value) =>
     set({
       loadingProgress: Math.max(0, Math.min(100, value)),
     }),
-
   finishModeLoading: () =>
     set({
       isModeLoading: false,
       loadingProgress: 100,
     }),
-
-
   getActiveMenuId: () => {
     const { screen, overlay } = get();
     return getActiveMenu(screen, overlay);
   },
-
   getActiveMenuIndex: () => {
     const activeMenu = get().getActiveMenuId();
     if (!activeMenu) return 0;
 
     return get().selectedMenuIndexById[activeMenu] ?? 0;
   },
-
   setActiveMenuIndex: (index) => {
     const activeMenu = get().getActiveMenuId();
     if (!activeMenu) return;
@@ -129,7 +125,6 @@ export const useUIStore = create<UIState>((set, get) => ({
       },
     });
   },
-
   moveActiveMenuSelection: (dir) => {
     const activeMenu = get().getActiveMenuId();
     if (!activeMenu) return;
@@ -145,7 +140,6 @@ export const useUIStore = create<UIState>((set, get) => ({
       },
     });
   },
-
   activateActiveMenuSelection: () => {
     const activeMenu = get().getActiveMenuId();
     if (!activeMenu) return;
@@ -154,7 +148,7 @@ export const useUIStore = create<UIState>((set, get) => ({
 
     if (activeMenu === "main") {
       const targets: MenuScreen[] = [
-        "sandbox",
+        "sandbox_setup",
         "signal_recon",
         "swarm",
         "settings",
@@ -207,19 +201,45 @@ export const useUIStore = create<UIState>((set, get) => ({
         return;
       }
     }
-  },
 
+    if (activeMenu === "sandbox_setup") {
+      if (index === 0) {
+        useSelectionStore.getState().nextVehicle();
+        return;
+      }
+
+      if (index === 1) {
+        useSelectionStore.getState().nextMap();
+        return;
+      }
+
+      if (index === 2) {
+        set({
+          screen: "sandbox",
+          overlay: null,
+        });
+        return;
+      }
+
+      if (index === 3) {
+        set({
+          screen: "main",
+          overlay: null,
+        });
+        return;
+      }
+    }
+
+  },
   openPause: () => {
     const { screen } = get();
     if (!playableScreens.has(screen)) return;
 
     set({ overlay: "pause" });
   },
-
   closeOverlay: () => {
     set({ overlay: null });
   },
-
   togglePauseMenu: () => {
     const { screen, overlay } = get();
 
@@ -228,5 +248,25 @@ export const useUIStore = create<UIState>((set, get) => ({
     set({
       overlay: overlay === "pause" ? null : "pause",
     });
+  },
+  moveActiveMenuHorizontal: (dir) => {
+    const activeMenu = get().getActiveMenuId();
+    if (!activeMenu) return;
+
+    const index = get().selectedMenuIndexById[activeMenu] ?? 0;
+
+    if (activeMenu === "sandbox_setup") {
+      const selection = useSelectionStore.getState();
+
+      if (index === 0) {
+        dir === 1 ? selection.nextVehicle() : selection.prevVehicle();
+        return;
+      }
+
+      if (index === 1) {
+        dir === 1 ? selection.nextMap() : selection.prevMap();
+        return;
+      }
+    }
   },
 }));

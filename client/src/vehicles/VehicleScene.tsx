@@ -1,5 +1,4 @@
-// src/components/VehicleScene.tsx
-
+// src/vehicles/VehicleScene.tsx
 import { useFrame } from "@react-three/fiber";
 import { DebugWheelVisualizer } from "../components/debugger/DebugWheelVisualizer";
 import { GeometryVisualizer } from "./GeometryVisualizer";
@@ -10,9 +9,13 @@ import { DebugAntiRollBarVisualizer } from "../components/debugger/DebugAntiRoll
 import { DebugSlipAngleVisualizer } from "../components/debugger/DebugSlipAngleVisualizer";
 import { DebugSpringVisualizer } from "../components/debugger/DebugSpringVisualizer";
 import { ChassisCollider } from "../components/debugger/ChassisCollider";
+// import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 // import { DebugLoadBarVisualizer } from "../components/DebugLoadBarVisualizer";
 // import { DebugNormalForceVisualizer } from "../components/DebugNormalForceVisualizer";
 // import { DebugLateralForceVisualizer } from "../components/DebugLateralForceVisualizer";
+import { OrbitControls } from "@react-three/drei";
+import { VehiclePreviewModel } from "../game/preview";
+
 
 export function VehicleScene() {
     const ref = useRef<THREE.Group>(null);
@@ -96,6 +99,13 @@ export function VehicleScene() {
         {/* {mode === "collider" && <DebugColliders boxes={debug.block_boxes} />} */}
         {/* {mode === "hybrid" && <DebugColliders boxes={debug.block_boxes} />} */}
 
+        {/* Camera Controls */}
+        <OrbitControls />
+
+        {/* Effects */}
+        {/* <Dust /> */ }
+        {/* <Skid /> */ }
+
         {/* PLAYER DEBUG */}
         <group ref={ref}>
             {mode === "geometry" && (
@@ -150,6 +160,7 @@ export function VehicleScene() {
             </>)}
 
              {mode === "hybrid" && (<>
+                <VehiclePreviewModel />
                 <DebugWheelVisualizer
                         wheels={debug.wheels}
                         vehiclePosition={me.position}
@@ -162,6 +173,10 @@ export function VehicleScene() {
                             : undefined
                     }
                 />
+            </>)}
+
+             {mode === "glb" && (<>
+                <VehiclePreviewModel />
             </>)}
 
         </group>

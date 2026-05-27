@@ -6,7 +6,7 @@ const menuItems = [
   {
     label: "START SANDBOX",
     desc: "Load Blue Team base, city chunk, vehicle controls, and physics.",
-    screen: "sandbox" as const,
+    screen: "sandbox_setup" as const,
     variant: "primary" as const,
   },
   {

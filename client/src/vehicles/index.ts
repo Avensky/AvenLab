@@ -1,9 +1,7 @@
 
-// export { default as Brz } from './vehicles/Brz'
-// export { default as Gt86 } from './vehicles/Gt86'
-// export { default as Ae86 } from './vehicles/Ae86'
-// export { default as Camaro } from './vehicles/Camaro'
-// export { default as Tank } from './vehicles/Tank'
-export { default as TimesSquare } from '../world/environments/TimesSquare';
-export { default as Rtx } from '../world/environments/Rtx';
+export * from './Brz'
+export * from './Gt86'
+export * from './Ae86'
+export * from './Camaro'
+export * from './Tank'
 export * from './VehicleScene';

@@ -11,6 +11,11 @@ export function CityScene() {
 
     return (
         <group name="city-scene">
+
+            {/* Lighting */}
+            <ambientLight intensity={0.5} />
+            <directionalLight intensity={1.2} position={[10, 20, 10]} />
+
             {(mode === "collider" || mode === "hybrid") && debug && (
                 <DebugColliders boxes={debug.block_boxes} />
             )}

@@ -59,14 +59,8 @@ function createGamepadDebugLogger() {
 export function GameController() {
     const prevButtons = useRef<boolean[]>([]);
 
-    const ui = useUIStore.getState();
-    const inMenu =
-      ui.screen === "main" ||
-      ui.screen === "settings" ||
-      ui.overlay === "pause"||
-      ui.overlay === "settings"||
-      ui.overlay === "vehicle_select";
-
+    const lastMenuMoveRef = useRef(0);
+    const lastMenuHorizontalRef = useRef(0);
     const debugGamepadRef = useRef(createGamepadDebugLogger());
 
     useEffect(() => {
@@ -77,6 +71,14 @@ export function GameController() {
             const store = useInputStore.getState();
 
             if (gp) {
+                const ui = useUIStore.getState();
+                const inMenu =
+                  ui.screen === "main" ||
+                  ui.screen === "settings" ||
+                  ui.screen === "sandbox_setup" ||
+                  ui.overlay === "pause"||
+                  ui.overlay === "settings"||
+                  ui.overlay === "vehicle_select";
 
                 debugGamepadRef.current(gp);
                 
@@ -121,15 +123,47 @@ export function GameController() {
                     prevButtons.current[index] = pressed;
                 };
 
-                if (inMenu) {
-                    onPress(12, () => {useUIStore.getState().moveActiveMenuSelection(-1);});
-                    onPress(13, () => {useUIStore.getState().moveActiveMenuSelection(1);});
-                    onPress(0,  () => {useUIStore.getState().activateActiveMenuSelection();});
-                    onPress(1,  () => {useUIStore.getState().closeOverlay();});
-                    onPress(9,  () => {useUIStore.getState().togglePauseMenu();});
 
-                    frameId = requestAnimationFrame(pollGamepad);
-                    return;
+                const now = performance.now();
+
+                const leftStickX = applyDeadzone(gp.axes[0] ?? 0, 0.45);
+                const leftStickY = applyDeadzone(gp.axes[1] ?? 0, 0.45);
+                if (inMenu) {
+                  if (now - lastMenuMoveRef.current > 220) {
+                    if (leftStickY < -0.5) {
+                      useUIStore.getState().moveActiveMenuSelection(-1);
+                      lastMenuMoveRef.current = now;
+                    }
+
+                    if (leftStickY > 0.5) {
+                      useUIStore.getState().moveActiveMenuSelection(1);
+                      lastMenuMoveRef.current = now;
+                    }
+                  }
+
+                  if (now - lastMenuHorizontalRef.current > 220) {
+                    if (leftStickX < -0.5) {
+                      useUIStore.getState().moveActiveMenuHorizontal(-1);
+                      lastMenuHorizontalRef.current = now;
+                    }
+
+                    if (leftStickX > 0.5) {
+                      useUIStore.getState().moveActiveMenuHorizontal(1);
+                      lastMenuHorizontalRef.current = now;
+                    }
+                  }
+
+                  onPress(12, () => {useUIStore.getState().moveActiveMenuSelection(-1);});
+                  onPress(13, () => {useUIStore.getState().moveActiveMenuSelection(1);});
+                  onPress(14, () => useUIStore.getState().moveActiveMenuHorizontal(-1));
+                  onPress(15, () => useUIStore.getState().moveActiveMenuHorizontal(1));
+                  
+                  onPress(0,  () => {useUIStore.getState().activateActiveMenuSelection();});
+                  onPress(1,  () => {useUIStore.getState().closeOverlay();});
+                  onPress(9,  () => {useUIStore.getState().togglePauseMenu();});
+
+                  frameId = requestAnimationFrame(pollGamepad);
+                  return;
                 }
 
                 // --------------------
