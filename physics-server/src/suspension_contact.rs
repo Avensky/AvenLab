@@ -195,6 +195,7 @@ pub fn build_suspension_contact(
     let ray = Ray::new(origin, dir);
     let max_dist = wheel.rest_length + wheel.max_length + wheel.radius;
 
+    // let filter = QueryFilter::default().exclude_rigid_body(handle);
     let filter = QueryFilter::default().exclude_rigid_body(handle);
 
     let (_hit, toi) = query.cast_ray(
@@ -206,7 +207,8 @@ pub fn build_suspension_contact(
         filter,
     )?;
 
-    if toi <= wheel.radius { return None; }
+    // if toi <= wheel.radius { return None; }
+    if toi <= 0.02 { return None; }
 
     let hit_point = origin + dir * toi;
     let suspension_length = (toi - 0.02) - wheel.radius;

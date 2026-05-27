@@ -1,6 +1,6 @@
 import {forwardRef, useEffect, useImperativeHandle, useMemo, useRef,} from "react";
 import type { PropsWithChildren } from "react";
-import { Group, MathUtils, SpotLight, Vector3 } from "three";
+import { Group, MathUtils, Object3D, SpotLight, Vector3 } from "three";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useGLTF } from "@react-three/drei";
 import { clone } from "lodash-es";
@@ -10,7 +10,23 @@ import { usePhysicsInterpolator } from "../hooks/usePhysicsInterpolator";
 import { hasFlag, VehicleFlags } from "../store/tools/inputMasks";
 
 
-const MODEL_PATH = "/models/vehicles/ae86v2.glb";
+const MODEL_PATH = "/models/vehicles/ae86.glb";
+const BODY_NAMES = ["vehicle_body_joined", "CarBody", "BODY"];
+const HEADLIGHT_NAMES = ["Headlights", "Headlights001", "headlights"];
+const WHEEL_NAMES = {
+  fl: ["FL_Wheel", "FL_Wheel001", "Wheel_FL", "wheel_fl"],
+  fr: ["FR_Wheel", "FR_Wheel001", "Wheel_FR", "wheel_fr"],
+  rl: ["RL_Wheel", "RL_Wheel001", "Wheel_RL", "wheel_rl"],
+  rr: ["RR_Wheel", "RR_Wheel001", "Wheel_RR", "wheel_rr"],
+} as const;
+
+function findFirst(scene: Object3D, names: readonly string[]) {
+  for (const name of names) {
+    const found = scene.getObjectByName(name);
+    if (found) return found;
+  }
+  return null;
+}
 
 export const Ae86 = forwardRef<Group, PropsWithChildren>(function Ae86(
   { children },
@@ -21,7 +37,8 @@ export const Ae86 = forwardRef<Group, PropsWithChildren>(function Ae86(
 
 
     const vehicleGroupRef = useRef<Group>(null!);
-    const headlightRef = useRef<Group | null>(null);
+    const visualRootRef = useRef<Group>(null!);
+    const headlightRef = useRef<Object3D | null>(null);
     
     // Allow parent components to access the car group ref
     useImperativeHandle(ref, () => vehicleGroupRef.current, [])
@@ -33,14 +50,14 @@ export const Ae86 = forwardRef<Group, PropsWithChildren>(function Ae86(
     const blinkState = useRef(false);
 
     // Refs for individual lights
-    const leftLightRef = useRef<SpotLight | null>(null);
+    const leftLightRef  = useRef<SpotLight | null>(null);
     const rightLightRef = useRef<SpotLight | null>(null);
-    const leftTailRef = useRef<SpotLight | null>(null);
-    const rightTailRef = useRef<SpotLight | null>(null);
-    const flBlinkerRef = useRef<SpotLight | null>(null);
-    const frBlinkerRef = useRef<SpotLight | null>(null);
-    const rlBlinkerRef = useRef<SpotLight | null>(null);
-    const rrBlinkerRef = useRef<SpotLight | null>(null);
+    const leftTailRef   = useRef<SpotLight | null>(null);
+    const rightTailRef  = useRef<SpotLight | null>(null);
+    const flBlinkerRef  = useRef<SpotLight | null>(null);
+    const frBlinkerRef  = useRef<SpotLight | null>(null);
+    const rlBlinkerRef  = useRef<SpotLight | null>(null);
+    const rrBlinkerRef  = useRef<SpotLight | null>(null);
 
     const snapshot = useNetworkStore((s) => s.snapshot);
     const { setSnapshot, getInterpolated } = usePhysicsInterpolator(100);
@@ -51,30 +68,23 @@ export const Ae86 = forwardRef<Group, PropsWithChildren>(function Ae86(
     }, [snapshot, setSnapshot]);
 
 
+    const bodyObject = useMemo(() => {
+      const body = findFirst(scene, BODY_NAMES);
+      return body ? clone(body) : clone(scene);
+    }, [scene]);
+
+    const wheels = useMemo(() => {
+      return [
+        findFirst(scene, WHEEL_NAMES.fl),
+        findFirst(scene, WHEEL_NAMES.fr),
+        findFirst(scene, WHEEL_NAMES.rl),
+        findFirst(scene, WHEEL_NAMES.rr),
+      ].map((obj) => (obj ? clone(obj) : null));
+    }, [scene]);
+
     useEffect(() => {
-      const parts = [
-          "CarBody",
-          "Interior",
-          "SteeringWheel",
-          "Headlights",
-          "FL_Caliper",
-          "FR_Caliper",
-          "RL_Caliper",
-          "RR_Caliper",
-      ];
-      
-      for (const name of parts) {
-        const original = scene.getObjectByName(name);
-        if (!original) continue;
-
-        const cloned = original.clone(true);
-
-        if (name === "Headlights" && cloned instanceof Group) {
-          headlightRef.current = cloned;
-        }
-        
-        vehicleGroupRef.current.add(cloned);
-      }
+      const headlight = findFirst(bodyObject, HEADLIGHT_NAMES);
+      if (headlight) {headlightRef.current = headlight;}
     
       const addSpot = (
           refObj: { current: SpotLight | null },
@@ -90,8 +100,8 @@ export const Ae86 = forwardRef<Group, PropsWithChildren>(function Ae86(
         light.visible = false;
         refObj.current = light;
         
-        vehicleGroupRef.current.add(light);
-        vehicleGroupRef.current.add(light.target);
+        visualRootRef.current.add(light);
+        visualRootRef.current.add(light.target);
       };
 
       addSpot(leftLightRef, 0xffffff, 5, 40, [-0.5, 0.7, -1.8], [-0.4, -0.6, -5]);
@@ -104,24 +114,7 @@ export const Ae86 = forwardRef<Group, PropsWithChildren>(function Ae86(
       addSpot(frBlinkerRef, 0xffa500, 12, 16, [0.7, 0.6, -1.9], [0.9, 0.6, -3]);
       addSpot(rlBlinkerRef, 0xffa500, 12, 16, [-0.5, 0.6, 1.9], [-0.9, 0.6, 3]);
       addSpot(rrBlinkerRef, 0xffa500, 12, 16, [0.5, 0.6, 1.9], [0.9, 0.6, 3]);
-  }, [scene]);
-
-  const wheels = useMemo(() => {
-    return ["FL_Wheel", "FR_Wheel", "RL_Wheel", "RR_Wheel"].map((group) => {
-      const original = scene.getObjectByName(group);
-      return original ? clone(original) : null;
-    });
-  }, [scene]);
-
-  // const wheels = useMemo(() => {
-  //   return ["FL_Wheel", "FR_Wheel", "RL_Wheel", "RR_Wheel"].map((group) => {
-  //       // Each group might contain multiple meshes, but we'll treat the group itself as a container
-  //       const groupObj = new Group();
-  //       Object.values(group).forEach((obj: Object3D) => { groupObj.add(obj);});
-  //       return groupObj;
-  //   });
-  // }, [clonesByGroup]);
-
+  }, [bodyObject]);
 
   useFrame((_, delta) => {
     const inputState = useInputStore.getState();
@@ -143,21 +136,26 @@ export const Ae86 = forwardRef<Group, PropsWithChildren>(function Ae86(
     
     group.position.set(...interp.position);
     group.quaternion.set(...interp.rotation);
+    
+    // Temporary visual correction only.
+    visualRootRef.current.position.set(0, -.35, 0);
 
-    const wheelMap = {
+    if (interp.wheels) {
+      const wheelMap = {
         fl: wheels[0],
         fr: wheels[1],
         rl: wheels[2],
         rr: wheels[3],
-    } as const;
+      } as const;
 
-    interp.wheels?.forEach((wheel) => {
+      interp.wheels.forEach((wheel) => {
         const wheelObject = wheelMap[wheel.id];
         if (!wheelObject) return;
 
         wheelObject.position.set(...wheel.position);
         wheelObject.quaternion.set(...wheel.rotation);
-    });
+      });
+    }
 
     const vehicleMask = input.vehicleMask;
     const headlights = hasFlag(vehicleMask, VehicleFlags.HEADLIGHTS);
@@ -212,18 +210,30 @@ export const Ae86 = forwardRef<Group, PropsWithChildren>(function Ae86(
       target.y += 1.2;
       camera.lookAt(target);
     }
+
+    console.log("interp wheels", interp.wheels?.length);
   });
+
+
+  useEffect(() => {
+    scene.traverse((obj) => {
+      console.log("[ae86 glb]", obj.name, obj.type);
+    });
+  }, [scene]);
+
 
   return (
     <>
       <group ref={vehicleGroupRef}>
-        {children}
-      
+        <group ref={visualRootRef}>
+          <primitive object={bodyObject} />
+          {wheels.map((wheel, i) =>
+            wheel ? <primitive key={`ae86-wheel-${i}`} object={wheel} /> : null
+          )}
+          {children}
+        </group>
       </group>
 
-      {wheels.map((wheel, i) =>
-        wheel ? <primitive key={i} object={wheel} /> : null
-      )}
     </>
   );
 });

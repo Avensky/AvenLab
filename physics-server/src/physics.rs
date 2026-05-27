@@ -498,7 +498,7 @@ impl PhysicsWorld {
 
         let ground_handle = bodies.insert(ground_rb);
 
-        let ground_collider = ColliderBuilder::cuboid(500.0, 1.0, 500.0)
+        let ground_collider = ColliderBuilder::cuboid(500.0, 0.1, 500.0)
             .collision_groups(InteractionGroups::new(
                 GROUP_GROUND,
                 // Group::empty(),
@@ -576,7 +576,7 @@ impl PhysicsWorld {
     pub fn spawn_vehicle_for_player(&mut self, id: String, position: [f32; 3]) {
         let spawn_x = position[0];
         let spawn_z = position[2];
-        let spawn_y = 1.3;                  // fixed server convention
+        let spawn_y = 1.5; // spawn 1 meter above the ground
         let config = GT86;                  // you can choose different configs per player if desired
         let volume = 2.0 * 1.0 * 4.0;       // box size
         let density = config.mass / volume; // ρ = m / V
@@ -666,15 +666,17 @@ impl PhysicsWorld {
 
         let vehicle_mass = 1350.0;  // kg
         let wheels = 4;             // number of wheels
-        let sag_m = 0.065;     // meters
-        let zeta = 1.05;     // damping ratio (0.7–1.0)
-        
+        let sag_m = 0.065;          // meters
+        let zeta = 1.05;            // damping ratio (0.7–1.0)
+        let rest_length = 0.18;     // meters (neutral suspension length)
+        let max_length = 0.30;      // meters (max suspension extension + compression from rest)
+        let radius = 0.35;         // meters (wheel radius)
         let (k, c) = self.suspension_from_sag(vehicle_mass, wheels, sag_m, zeta);
         let w = vec![
-            Wheel { offset: point![-0.8, -0.3,  1.5], rest_length: 0.5, max_length: 0.9, radius: 0.35, stiffness: k, damping: c, drive: false, steer: true, debug_id: "FL".to_string(), tire_state: TireState::Grip},
-            Wheel { offset: point![ 0.8, -0.3,  1.5], rest_length: 0.5, max_length: 0.9, radius: 0.35, stiffness: k, damping: c, drive: false, steer: true, debug_id: "FR".to_string(), tire_state: TireState::Grip},
-            Wheel { offset: point![-0.8, -0.3, -1.5], rest_length: 0.5, max_length: 0.9, radius: 0.35, stiffness: k, damping: c, drive: true,  steer: false, debug_id: "RL".to_string(), tire_state: TireState::Grip},
-            Wheel { offset: point![ 0.8, -0.3, -1.5], rest_length: 0.5, max_length: 0.9, radius: 0.35, stiffness: k, damping: c, drive: true,  steer: false, debug_id: "RR".to_string(), tire_state: TireState::Grip},
+            Wheel { offset: point![-0.8, -0.15,  1.5], rest_length, max_length, radius, stiffness: k, damping: c, drive: false, steer: true, debug_id: "FL".to_string(), tire_state: TireState::Grip},
+            Wheel { offset: point![ 0.8, -0.15,  1.5], rest_length, max_length, radius, stiffness: k, damping: c, drive: false, steer: true, debug_id: "FR".to_string(), tire_state: TireState::Grip},
+            Wheel { offset: point![-0.8, -0.15, -1.5], rest_length, max_length, radius, stiffness: k, damping: c, drive: true,  steer: false, debug_id: "RL".to_string(), tire_state: TireState::Grip},
+            Wheel { offset: point![ 0.8, -0.15, -1.5], rest_length, max_length, radius, stiffness: k, damping: c, drive: true,  steer: false, debug_id: "RR".to_string(), tire_state: TireState::Grip},
         ];
         self.wheels.insert(body, w);
     }
@@ -720,6 +722,15 @@ impl PhysicsWorld {
             let mut suspension_contacts: Vec<(WheelId, SuspensionContact)> = Vec::new();
             let mut axle_compression = HashMap::new();
             let mut axle_normal_force = HashMap::new();
+
+            // println!(
+            //     "vehicle={} contacts={} throttle={} brake={} steer={}",
+            //     player_id,
+            //     contacts.len(),
+            //     vehicle.throttle,
+            //     vehicle.brake,
+            //     vehicle.steer
+            // );
             
             let cfg = SteeringConfig {
                 wheelbase: vehicle.config.wheelbase,

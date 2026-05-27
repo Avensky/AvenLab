@@ -144,8 +144,8 @@ impl SpawnManager {
 
         // SPAWN POSITION
         let position = match team {
-            Team::Red => [-5.0, 4.0, 0.0],
-            Team::Blue => [5.0, 4.0, 0.0],
+            Team::Red => [0.0, 0.0, 0.0],
+            Team::Blue => [0.0, 0.0, 0.0],
         };
 
         // Return full spawn info

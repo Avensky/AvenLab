@@ -5,17 +5,7 @@ import * as THREE from "three";
 import { useInputStore, type DebugWheel } from "../../store";
 import { useFrame } from "@react-three/fiber";
 
-export function DebugWheelVisualizer({
-    wheels,
-    vehiclePosition,
-    vehicleQuaternion,
-}: {
-    wheels: DebugWheel[];
-    vehiclePosition: [number, number, number];
-    vehicleQuaternion: [number, number, number, number];
-}) {
-
-
+export function DebugWheelVisualizer({ wheels}: {wheels: DebugWheel[];}) {
     const steerGroups = useRef<THREE.Group[]>([]);
     const wheelMeshes = useRef<THREE.Mesh[]>([]);
 
@@ -27,16 +17,6 @@ export function DebugWheelVisualizer({
         () => new THREE.MeshStandardMaterial({ color: "red", wireframe: true }),
         []
     );
-
-    const vehiclePos = new THREE.Vector3(...vehiclePosition);
-    const vehicleQuat = new THREE.Quaternion(
-        vehicleQuaternion[0],
-        vehicleQuaternion[1],
-        vehicleQuaternion[2],
-        vehicleQuaternion[3]
-    );
-    const invVehicleQuat = vehicleQuat.clone().invert();
-
 
     useFrame((_, dt) => {
         const input = useInputStore.getState().input;
@@ -80,19 +60,11 @@ export function DebugWheelVisualizer({
     return (
         <>
             {wheels.map((w, i) => {
-                // const axis = new THREE.AxesHelper(0.5);
-                // wheel.add(axis);
-                // const mat = w.grounded ? materialGround : materialAir;
-
-                // const role: "front" | "rear" = i < 2 ? "front" : "rear";
                 const isFront = w.steering === true;
-
-                const world = new THREE.Vector3(...w.center);
-                const local = world.sub(vehiclePos).applyQuaternion(invVehicleQuat);
                 return (
                     <group
                         key={i}
-                        position={local.toArray() as [number, number, number]}
+                        position={w.center as [number, number, number]}
                         ref={(el) => {
                             if (isFront) steerGroups.current[i] = el!;
                         }}

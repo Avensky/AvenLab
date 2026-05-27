@@ -1,186 +1,131 @@
 // src/vehicles/VehicleScene.tsx
-import { useFrame } from "@react-three/fiber";
+import * as THREE from "three";
+import { OrbitControls } from "@react-three/drei";
+
 import { DebugWheelVisualizer } from "../components/debugger/DebugWheelVisualizer";
 import { GeometryVisualizer } from "./GeometryVisualizer";
-import { useRef } from "react";
-import * as THREE from "three";
-import { useNetworkStore, useWorldStore } from "../store";
 import { DebugAntiRollBarVisualizer } from "../components/debugger/DebugAntiRollBarVisualizer";
 import { DebugSlipAngleVisualizer } from "../components/debugger/DebugSlipAngleVisualizer";
 import { DebugSpringVisualizer } from "../components/debugger/DebugSpringVisualizer";
 import { ChassisCollider } from "../components/debugger/ChassisCollider";
-// import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-// import { DebugLoadBarVisualizer } from "../components/DebugLoadBarVisualizer";
-// import { DebugNormalForceVisualizer } from "../components/DebugNormalForceVisualizer";
-// import { DebugLateralForceVisualizer } from "../components/DebugLateralForceVisualizer";
-import { OrbitControls } from "@react-three/drei";
+
+import { useNetworkStore, useWorldStore } from "../store";
 import { VehiclePreviewModel } from "../game/preview";
 
-
 export function VehicleScene() {
-    const ref = useRef<THREE.Group>(null);
+  const snapshot = useNetworkStore((s) => s.snapshot);
+  const playerId = useNetworkStore((s) => s.playerId);
+  const debug = useNetworkStore((s) => s.debugOverlay);
+  const mode = useWorldStore((s) => s.mode);
+  const me = useNetworkStore((s) => s.getMe());
 
-    const snapshot = useNetworkStore((s) => s.snapshot);
-    const playerId = useNetworkStore((s) => s.playerId);
-    const debug = useNetworkStore((s) => s.debugOverlay);
-    const mode = useWorldStore((s) => s.mode);
-    const me = useNetworkStore((s) => s.getMe());
-    // const physics = useSnapshotStore((s) => s.physicsData);
+  if (!snapshot || !playerId || !me) return null;
+  if (!debug) return null;
 
-    // -----------------------------
-    // Frame sync
-    // -----------------------------
-    useFrame(() => {
-        if (!ref.current || !me) return;
+  const springs = debug.suspension_rays
+    .map((r, i) => {
+      const wheel = debug.wheels[i];
+      if (!r.hit || !wheel) return null;
 
-        const [x, y, z] = me.position;
-        ref.current.position.set(x, y, z);
+      const normal = new THREE.Vector3(0, 1, 0);
+      const hit = new THREE.Vector3(...r.hit);
 
-        const [qx, qy, qz, qw] = me.rotation;
-        ref.current.quaternion.set(qx, qy, qz, qw);
-    });
+      const end = hit.clone().add(normal.multiplyScalar(wheel.radius));
+      const start = new THREE.Vector3(...r.origin);
 
-    if (!snapshot || !playerId || !me) return null;
-    if (!debug) return null;
+      const restEnd = start
+        .clone()
+        .addScaledVector(normal, -(r.length - wheel.radius));
 
-    // -----------------------------
-    // Springs
-    // -----------------------------
-    const springs = debug.suspension_rays
-        .map((r, i) => {
-            const wheel = debug.wheels[i];
-            if (!r.hit || !wheel) return null;
+      const length = start.distanceTo(end);
+      const ratio = 1 - Math.min(length / r.length, 1);
 
-            const normal = new THREE.Vector3(0, 1, 0);
-            const hit = new THREE.Vector3(...r.hit);
+      return {
+        start: start.toArray() as [number, number, number],
+        end: end.toArray() as [number, number, number],
+        restEnd: restEnd.toArray() as [number, number, number],
+        ratio,
+      };
+    })
+    .filter(Boolean) as {
+    start: [number, number, number];
+    end: [number, number, number];
+    restEnd: [number, number, number];
+    ratio: number;
+  }[];
 
-            const end = hit.clone().add(normal.multiplyScalar(wheel.radius));
-            const start = new THREE.Vector3(...r.origin);
+  console.log("debug wheels", debug.wheels.length, debug.wheels[0]);
 
-            const restEnd = start
-                .clone()
-                .addScaledVector(normal, -(r.length - wheel.radius));
+  return (
+    <>
+      <OrbitControls />
 
-            const length = start.distanceTo(end);
-            const ratio = 1 - Math.min(length / r.length, 1);
+      {(mode === "glb" || mode === "hybrid") && <VehiclePreviewModel />}
 
-            return {
-                start: start.toArray() as [number, number, number],
-                end: end.toArray() as [number, number, number],
-                restEnd: restEnd.toArray() as [number, number, number],
-                ratio,
-            };
-        })
-        .filter(Boolean) as {
-            start: [number, number, number];
-            end: [number, number, number];
-            restEnd: [number, number, number];
-            ratio: number;
-        }[];
+      {mode === "geometry" && (
+        <>
+          <DebugWheelVisualizer wheels={debug.wheels}/>
 
-    // -----------------------------
-    // Optional: physics-driven animation hooks
-    // -----------------------------
-    // useFrame(() => {
-    //     if (!physics) return;
+          <GeometryVisualizer
+            chassis={debug.chassis}
+            color="white"
+            opacity={0.5}
+            mode={mode}
+          />
 
-    //     // Example hooks (future use)
-    //     // engine vibration
-    //     // exhaust animation
-    //     // dashboard needle
-    //     // camera shake
+          <DebugAntiRollBarVisualizer links={debug.arb_links} />
 
-    //     // console.log("RPM:", physics.rpm, "Speed:", physics.speed);
-    // });
+          <DebugSlipAngleVisualizer
+            slips={debug.slip_vectors}
+            vehiclePosition={me.position}
+            vehicleQuaternion={me.rotation}
+          />
 
-    return (<>
-        {/* WORLD DEBUG (not parented to player/follow group) */}
-        {/* {mode === "glb" && <DebugColliders boxes={debug.block_boxes} />} */}
-        {/* {mode === "collider" && <DebugColliders boxes={debug.block_boxes} />} */}
-        {/* {mode === "hybrid" && <DebugColliders boxes={debug.block_boxes} />} */}
+          <DebugSpringVisualizer
+            springs={springs}
+            opacity1={0.8}
+            opacity2={0.3}
+            vehiclePosition={me.position}
+            vehicleQuaternion={me.rotation}
+          />
+        </>
+      )}
 
-        {/* Camera Controls */}
-        <OrbitControls />
+      {mode === "collider" && (
+        <>
+          <DebugWheelVisualizer wheels={debug.wheels}/>
 
-        {/* Effects */}
-        {/* <Dust /> */ }
-        {/* <Skid /> */ }
+          {debug.chassis && (
+            <ChassisCollider
+              position={debug.chassis.position}
+              quaternion={debug.chassis.rotation}
+              scale={debug.chassis.half_extents.map((v: number) => v * 2) as [
+                number,
+                number,
+                number
+              ]}
+            />
+          )}
+        </>
+      )}
 
-        {/* PLAYER DEBUG */}
-        <group ref={ref}>
-            {mode === "geometry" && (
-                <>
-                    <DebugWheelVisualizer
-                        wheels={debug.wheels}
-                        vehiclePosition={me.position}
-                        vehicleQuaternion={me.rotation}
-                    />
+      {mode === "hybrid" && (
+        <>
+          <DebugWheelVisualizer wheels={debug.wheels}/>
 
-                    <GeometryVisualizer
-                        chassis={debug.chassis}
-                        color="white"
-                        opacity={0.5}
-                        mode={mode}
-                    />
-
-                    <DebugAntiRollBarVisualizer links={debug.arb_links} />
-
-                    <DebugSlipAngleVisualizer
-                        slips={debug.slip_vectors}
-                        vehiclePosition={me.position}
-                        vehicleQuaternion={me.rotation}
-                    />
-
-                    <DebugSpringVisualizer
-                        springs={springs}
-                        opacity1={0.8}
-                        opacity2={0.3}
-                        vehiclePosition={me.position}
-                        vehicleQuaternion={me.rotation}
-                    />
-                </>
-            )}
-
-            {mode === "collider" && (<>
-                <DebugWheelVisualizer
-                        wheels={debug.wheels}
-                        vehiclePosition={me.position}
-                        vehicleQuaternion={me.rotation}
-                />
-
-                {/* <DebugColliders boxes={debug.block_boxes} /> */}
-
-                <ChassisCollider
-                    scale={
-                        debug.chassis
-                            ? debug.chassis.half_extents.map((v: number) => v * 2) as [number, number, number]
-                            : undefined
-                    }
-                />
-            </>)}
-
-             {mode === "hybrid" && (<>
-                <VehiclePreviewModel />
-                <DebugWheelVisualizer
-                        wheels={debug.wheels}
-                        vehiclePosition={me.position}
-                        vehicleQuaternion={me.rotation}
-                />
-                <ChassisCollider
-                    scale={
-                        debug.chassis
-                            ? debug.chassis.half_extents.map((v: number) => v * 2) as [number, number, number]
-                            : undefined
-                    }
-                />
-            </>)}
-
-             {mode === "glb" && (<>
-                <VehiclePreviewModel />
-            </>)}
-
-        </group>
-
-    </>);
+          {debug.chassis && (
+            <ChassisCollider
+              position={debug.chassis.position}
+              quaternion={debug.chassis.rotation}
+              scale={debug.chassis.half_extents.map((v: number) => v * 2) as [
+                number,
+                number,
+                number
+              ]}
+            />
+          )}
+        </>
+      )}
+    </>
+  );
 }
-
