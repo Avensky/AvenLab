@@ -1,3 +1,5 @@
+import { SpotLight } from "three";
+
 export const addSpot = (
         refObj: { current: SpotLight | null },
         color: number,

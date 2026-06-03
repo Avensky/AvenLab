@@ -3,6 +3,7 @@ import { useUIStore } from "../store";
 import { VehiclePreview } from "./preview";
 import { MainMenu, ModeLoadingScreen, PauseMenu } from "./index";
 import { Sandbox, SandboxSetup, SignalRecon, Swarm } from "./modes";
+import { DebugMenu } from "../components/debugger/DebugMenu";
 
 export function GameUI() {
   const screen = useUIStore((s) => s.screen);
@@ -24,11 +25,8 @@ export function GameUI() {
 
     {/* Menus */}
     {screen === "main" && <MainMenu />}
-    {overlay === "pause" && (
-      <div className="fixed inset-0 z-9999">
-        <PauseMenu />
-      </div>
-    )}
+    {overlay === "pause" && <PauseMenu />}
+    {overlay === "debug_menu" && <DebugMenu />}
 
     <ModeLoadingScreen />
   </div>

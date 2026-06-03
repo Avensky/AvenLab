@@ -8,7 +8,7 @@ import { DebugAntiRollBarVisualizer } from "../components/debugger/DebugAntiRoll
 import { DebugSlipAngleVisualizer } from "../components/debugger/DebugSlipAngleVisualizer";
 import { DebugSpringVisualizer } from "../components/debugger/DebugSpringVisualizer";
 import { ChassisCollider } from "../components/debugger/ChassisCollider";
-
+import { DebugFlags, hasDebugFlag } from "../store/tools/debugMasks";
 import { useNetworkStore, useWorldStore } from "../store";
 import { VehiclePreviewModel } from "../game/preview";
 
@@ -18,6 +18,12 @@ export function VehicleScene() {
   const debug = useNetworkStore((s) => s.debugOverlay);
   const mode = useWorldStore((s) => s.mode);
   const me = useNetworkStore((s) => s.getMe());
+  const debugMask = useWorldStore((s) => s.debugMask);
+  const showChassis = hasDebugFlag(debugMask, DebugFlags.CHASSIS);
+  const showWheels = hasDebugFlag(debugMask, DebugFlags.WHEELS);
+  const showBars = hasDebugFlag(debugMask, DebugFlags.LOAD_BARS);
+  const showSlipAngles = hasDebugFlag(debugMask, DebugFlags.SLIP);
+  const showSprings = hasDebugFlag(debugMask, DebugFlags.RAYS);
 
   if (!snapshot || !playerId || !me) return null;
   if (!debug) return null;
@@ -54,8 +60,6 @@ export function VehicleScene() {
     ratio: number;
   }[];
 
-  console.log("debug wheels", debug.wheels.length, debug.wheels[0]);
-
   return (
     <>
       <OrbitControls />
@@ -65,37 +69,41 @@ export function VehicleScene() {
       {mode === "geometry" && (
         <>
           <DebugWheelVisualizer wheels={debug.wheels}/>
-
           <GeometryVisualizer
             chassis={debug.chassis}
             color="white"
             opacity={0.5}
             mode={mode}
           />
+        </>
+      )}
 
-          <DebugAntiRollBarVisualizer links={debug.arb_links} />
+    { showBars && <DebugAntiRollBarVisualizer links={debug.arb_links} />}
 
-          <DebugSlipAngleVisualizer
-            slips={debug.slip_vectors}
-            vehiclePosition={me.position}
-            vehicleQuaternion={me.rotation}
-          />
+    { showSlipAngles &&
+      <DebugSlipAngleVisualizer
+      slips={debug.slip_vectors}
+      vehiclePosition={me.position}
+      vehicleQuaternion={me.rotation}
+      />
+    }  
 
+      
+    { showSprings && 
           <DebugSpringVisualizer
-            springs={springs}
-            opacity1={0.8}
-            opacity2={0.3}
-            vehiclePosition={me.position}
-            vehicleQuaternion={me.rotation}
+          springs={springs}
+          opacity1={0.8}
+          opacity2={0.3}
+          vehiclePosition={me.position}
+          vehicleQuaternion={me.rotation}
           />
-        </>
-      )}
+    }
 
-      {mode === "collider" && (
+      {mode === "collider" || mode === "hybrid" && (
         <>
-          <DebugWheelVisualizer wheels={debug.wheels}/>
+          {showWheels && <DebugWheelVisualizer wheels={debug.wheels}/>}
 
-          {debug.chassis && (
+          {showChassis && debug.chassis && (
             <ChassisCollider
               position={debug.chassis.position}
               quaternion={debug.chassis.rotation}
@@ -108,24 +116,7 @@ export function VehicleScene() {
           )}
         </>
       )}
-
-      {mode === "hybrid" && (
-        <>
-          <DebugWheelVisualizer wheels={debug.wheels}/>
-
-          {debug.chassis && (
-            <ChassisCollider
-              position={debug.chassis.position}
-              quaternion={debug.chassis.rotation}
-              scale={debug.chassis.half_extents.map((v: number) => v * 2) as [
-                number,
-                number,
-                number
-              ]}
-            />
-          )}
-        </>
-      )}
+      
     </>
   );
 }

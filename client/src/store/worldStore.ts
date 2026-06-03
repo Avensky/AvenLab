@@ -1,6 +1,7 @@
 //  worldStore.ts     ← map/render/block state
 import { create } from "zustand";
 import type { Quaternion, Vec3 } from "./types";
+import { DebugFlags, toggleDebugFlag } from "./tools/debugMasks";
 
 export type StructureState = "intact" | "damaged" | "destroyed" | "removed"
 export type ColliderKind = "box"
@@ -33,6 +34,13 @@ interface WorldState {
   debugEnabled: boolean
   setDebugEnabled: (v: boolean) => void;
 
+  debugMask: number;
+  setDebugMask: (mask: number) => void;
+  toggleDebugFlag: (flag: number) => void;
+
+  renderChassis: boolean
+  setRenderChassis: (v: boolean) => void;
+
   renderColliders: boolean
   setRenderColliders: (v: boolean) => void;
 
@@ -59,9 +67,18 @@ export const useWorldStore = create<WorldState>((set) => ({
   debugEnabled: false,
   setDebugEnabled: (v: boolean) => set({ debugEnabled: v }),
 
+
+  debugMask: DebugFlags.NONE,
+  setDebugMask: (mask: number) => set({ debugMask: mask }),
+  toggleDebugFlag: (flag: number) =>
+    set((s) => ({ debugMask: toggleDebugFlag(s.debugMask, flag) })),
+
   renderColliders: false,
   setRenderColliders: (v: boolean) => set({ renderColliders: v }),
 
+  renderChassis: false,
+  setRenderChassis: (v: boolean) => set({ renderChassis: v }),
+  
   renderWheels: false,
   setRenderWheels: (v: boolean) => set({ renderWheels: v }),
 

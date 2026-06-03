@@ -1,4 +1,5 @@
 import { inputRef } from "../inputStore";
+import { useWorldStore } from "../worldStore";
 import { socket } from "../../net/rustSocket";
 
 let seq = 0;
@@ -13,11 +14,13 @@ function sendInputPacket() {
   lastSendTime = now;
 
   const input = inputRef.current;
+  const debugMask = useWorldStore.getState().debugMask;
 
   const packet = {
     ...input,
     seq: seq++,
     dt,
+    debug_mask: debugMask,
   };
 
   socket.send(JSON.stringify(packet));

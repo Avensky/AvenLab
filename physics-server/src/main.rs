@@ -6,8 +6,10 @@ mod net;                // player join / disconnect, team/room assignment
 mod state;              // world state
 mod spawn;              // spawn logic
 mod suspension_contact; // custom contact solver for suspension raycasts
-mod debug_builders;     // debug overlay builders (raycasts, wheels, springs)
-mod vehicle;            // vehicle controller logic (engine, steering, braking)
+mod vehicle_debug;     // debug overlay builders (raycasts, wheels, springs)
+mod vehicle_state;            // vehicle state struct and bitflags
+mod vehicle_setup;            // vehicle configuration and setup
+mod vehicle_forces;           // vehicle force application (engine, brakes, steering)
 
 
 use rapier3d::prelude::RigidBodyHandle;
@@ -102,7 +104,7 @@ async fn main() {
         // -----------------------------------------------------
         // 10) Clear debug overlay for next frame
         // -----------------------------------------------------
-        phys.clear_debug_overlay();
+        phys.debug_overlay.clear();
 
     }
 }

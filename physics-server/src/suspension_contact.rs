@@ -25,9 +25,7 @@
 
 use rapier3d::prelude::*;
 use rapier3d::prelude::vector;
-
-use crate::physics::Wheel;
-use crate::vehicle::Vehicle;
+use crate::vehicle_state::{Vehicle, Wheel};
 use crate::aven_tire::steering::SteeringState;
 use crate::aven_tire::kinematics::{wheel_basis_world, slip_components};
 use crate::aven_tire::WheelId;

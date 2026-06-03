@@ -80,10 +80,8 @@ export function connectRustServer() {
                     tick,
                     entities: Array.isArray(entities) ? entities : [],
                 });
-
                 return;
             }
-
 
             if (data.type === "physics") {
                 useNetworkStore.getState().setPhysicsData(data.data);

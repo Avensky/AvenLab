@@ -4,9 +4,9 @@ use tokio::net::TcpListener;
 use tokio::sync::{Mutex, mpsc}; 
 use futures::{StreamExt, SinkExt};
 use tokio_tungstenite::{accept_async, tungstenite::Message};
-use crate::state::{SharedGameState, EntityType};
+use crate::state::{SharedGameState, EntityType, InputPacket};
 use crate::physics::PhysicsWorld;
-use crate::state::InputPacket;
+use crate::vehicle_debug::DebugFlags;
 
 pub async fn start_websocket_server(
     state: Arc<Mutex<SharedGameState>>,
@@ -120,6 +120,13 @@ pub async fn start_websocket_server(
                     match serde_json::from_str::<InputPacket>(text) {
                         Ok(packet) => {
                             if packet.r#type == "input" {
+                                // 1. Apply debug mask to physics world
+                                if let Some(mask) = packet.debug_mask {
+                                    let mut phys = physics_clone.lock().await;
+                                    phys.set_debug_flags(DebugFlags::from_bits_truncate(mask));
+                                }
+
+                                // 2. Store input packet on game entity
                                 let mut game = state_clone.lock().await;
 
                                 if let Some(entity) = game.entities.get_mut(&player_id) {

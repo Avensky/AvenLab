@@ -138,7 +138,7 @@ export const Ae86 = forwardRef<Group, PropsWithChildren>(function Ae86(
     group.quaternion.set(...interp.rotation);
     
     // Temporary visual correction only.
-    visualRootRef.current.position.set(0, -.35, 0);
+    // group.position.set(0, 0, 0);
 
     if (interp.wheels) {
       const wheelMap = {
@@ -155,6 +155,12 @@ export const Ae86 = forwardRef<Group, PropsWithChildren>(function Ae86(
         wheelObject.position.set(...wheel.position);
         wheelObject.quaternion.set(...wheel.rotation);
       });
+
+      //  const me = useNetworkStore.getState().getMe();
+
+      // console.log("raw position", me?.position);
+      // console.log("interp position", interp.position);
+      // console.log("wheel positions", interp.wheels?.map(w => [w.id, w.position]));
     }
 
     const vehicleMask = input.vehicleMask;
@@ -203,15 +209,13 @@ export const Ae86 = forwardRef<Group, PropsWithChildren>(function Ae86(
       if (camMode === "DEFAULT") offset.set(0, 1.75, 3.85);
       if (camMode === "BIRDS_EYE") offset.set(0, 7, 12);
 
-      offset.applyQuaternion(group.quaternion).add(group.position);
-      camera.position.lerp(offset, delta * 5);
+      // offset.applyQuaternion(group.quaternion).add(group.position);
+      // camera.position.lerp(offset, delta * 5);
 
-      const target = group.position.clone();
-      target.y += 1.2;
-      camera.lookAt(target);
+      // const target = group.position.clone();
+      // target.y += 1.2;
+      // camera.lookAt(target);
     }
-
-    console.log("interp wheels", interp.wheels?.length);
   });
 
 
@@ -220,20 +224,21 @@ export const Ae86 = forwardRef<Group, PropsWithChildren>(function Ae86(
       console.log("[ae86 glb]", obj.name, obj.type);
     });
   }, [scene]);
+  
 
+ 
 
   return (
     <>
       <group ref={vehicleGroupRef}>
         <group ref={visualRootRef}>
           <primitive object={bodyObject} />
-          {wheels.map((wheel, i) =>
-            wheel ? <primitive key={`ae86-wheel-${i}`} object={wheel} /> : null
-          )}
           {children}
         </group>
       </group>
-
+      {wheels.map((wheel, i) =>
+        wheel ? <primitive key={`ae86-wheel-${i}`} object={wheel} /> : null
+      )}
     </>
   );
 });

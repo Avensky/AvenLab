@@ -57,9 +57,11 @@ export interface InputPacket {
     // bitmasks
     vehicleMask: number; // uint16
     playerMask: number;  // uint16
+    debug_mask?: number; // uint32, optional
 }
 const defaultVehicleMask = VehicleFlags.ENGINE_ON | VehicleFlags.ABS | VehicleFlags.TCS;
 const defaultPlayerMask = 0;
+const defaultDebugMask = 0;
 
 export const inputRef: { current: InputPacket } = {
   current: {
@@ -72,6 +74,7 @@ export const inputRef: { current: InputPacket } = {
     handbrake: 0,
     vehicleMask: defaultVehicleMask,
     playerMask: defaultPlayerMask,
+    debug_mask: defaultDebugMask,
   },
 };
 

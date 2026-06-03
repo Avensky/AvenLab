@@ -11,7 +11,7 @@ export type MenuScreen =
   | "settings"
   | "vehicle_select";
 
-export type UIOverlay = null | "pause" | "settings" | "vehicle_select";
+export type UIOverlay = null | "pause" | "debug_menu" | "settings" | "vehicle_select";
 
 export type MenuId = "main" | "pause" | "settings" | "sandbox_setup";
 
@@ -23,7 +23,7 @@ const playableScreens = new Set<MenuScreen>([
 
 const menuItemCounts: Record<MenuId, number> = {
   main: 4,
-  pause: 3,
+  pause: 4,
   settings: 3,
   sandbox_setup: 4,
 };
@@ -81,6 +81,7 @@ export const useUIStore = create<UIState>((set, get) => ({
     settings: 0,
     sandbox_setup: 0,
   },
+
   isModeLoading: false,
   loadingLabel: "Loading...",
   loadingProgress: 0,
@@ -101,16 +102,19 @@ export const useUIStore = create<UIState>((set, get) => ({
       isModeLoading: false,
       loadingProgress: 100,
     }),
+  
   getActiveMenuId: () => {
     const { screen, overlay } = get();
     return getActiveMenu(screen, overlay);
   },
+
   getActiveMenuIndex: () => {
     const activeMenu = get().getActiveMenuId();
     if (!activeMenu) return 0;
 
     return get().selectedMenuIndexById[activeMenu] ?? 0;
   },
+
   setActiveMenuIndex: (index) => {
     const activeMenu = get().getActiveMenuId();
     if (!activeMenu) return;
@@ -125,6 +129,7 @@ export const useUIStore = create<UIState>((set, get) => ({
       },
     });
   },
+
   moveActiveMenuSelection: (dir) => {
     const activeMenu = get().getActiveMenuId();
     if (!activeMenu) return;
@@ -140,6 +145,7 @@ export const useUIStore = create<UIState>((set, get) => ({
       },
     });
   },
+
   activateActiveMenuSelection: () => {
     const activeMenu = get().getActiveMenuId();
     if (!activeMenu) return;
@@ -169,11 +175,16 @@ export const useUIStore = create<UIState>((set, get) => ({
       }
 
       if (index === 1) {
-        set({ overlay: "settings" });
+        set({ overlay: "debug_menu" });
         return;
       }
 
       if (index === 2) {
+        set({ overlay: "settings" });
+        return;
+      }
+
+      if (index === 3) {
         set({
           screen: "main",
           overlay: null,

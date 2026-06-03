@@ -31,7 +31,7 @@ use rapier3d::prelude::{Real};
 use rapier3d::prelude::Vector;
 use rapier3d::na::UnitQuaternion;
 use crate::aven_tire::types::{Vec3};
-use crate::vehicle::Vehicle;
+use crate::vehicle_state::Vehicle;
 use std::collections::hash_map::{ ValuesMut};
 
 

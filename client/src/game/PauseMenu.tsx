@@ -32,16 +32,24 @@ export function PauseMenu() {
             onFocus={() => setActiveMenuIndex(1)}
             onPress={activateActiveMenuSelection}
           >
+            DEBUGGER
+          </GameButton>
+
+          <GameButton
+          selected={selectedIndex === 2}
+            onFocus={() => setActiveMenuIndex(1)}
+            onPress={activateActiveMenuSelection}
+          >
             SETTINGS
           </GameButton>
 
           <GameButton
-            selected={selectedIndex === 2}
+            selected={selectedIndex === 3}
             variant="danger"
             onFocus={() => setActiveMenuIndex(2)}
             onPress={activateActiveMenuSelection}
           >
-            RETURN TO MAIN MENU
+            RETURN TO MAIN MENU          
           </GameButton>
         </div>
       </div>

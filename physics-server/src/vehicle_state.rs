@@ -1,6 +1,8 @@
+use bitflags::bitflags;
 use rapier3d::prelude::*;
-use crate::aven_tire::steering::SteeringState;
 use serde::Serialize;
+use crate::aven_tire::state::TireState;
+use crate::aven_tire::steering::SteeringState;
 
 #[derive(Serialize, Clone, Copy, Debug)]
 pub struct VehicleConfig {
@@ -19,6 +21,15 @@ pub struct VehicleConfig {
     pub max_steer_angle: f32,// radians
     pub ackermann: f32,      // 0..1 blend (0 = parallel, 1 = full ackermann)
 
+    pub wheel_forward_offset: f32,
+    pub wheels: usize,                  // number of wheels (for load distribution);
+    pub wheel_radius: f32,              // meters (for visual size + suspension geometry)       
+    pub suspension_rest_length: f32,    // meters (neutral suspension length)
+    pub suspension_max_length: f32,     // meters (max suspension extension + compression from rest)
+    pub suspension_sag: f32,            // 0..1 (how much the suspension compresses under the vehicle's weight)
+    pub suspension_damping_ratio: f32,  // 0.7–1.0 for typical car suspension
+    pub wheel_y: f32,                   // vertical position of the wheel relative to the chassis center (meters, usually negative) 
+    
     // --- Anti-roll bars ---
     pub arb_front: f32,         // N/m
     pub arb_rear: f32,          // N/m
@@ -79,9 +90,6 @@ pub struct Vehicle {
     pub engine_torque: f32,
 }
 
-
-use bitflags::bitflags;
-
 bitflags! {
     #[derive(Clone, Copy, Debug, Default)]
     pub struct VehicleStateFlags: u16 {
@@ -93,4 +101,38 @@ bitflags! {
         const ABS           = 1 << 5;
         const TCS           = 1 << 6;
     }
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct PhysicsWheelSnapshot {
+    pub id: String,
+    pub position: [f32; 3],
+    pub rotation: [f32; 4],
+    pub radius: f32,
+    pub wheel_speed: f32,
+    pub steer_angle: f32,
+    pub grounded: bool,
+}
+
+#[derive(Clone, Debug)] 
+pub struct Wheel {
+    pub debug_id: String,        // "FL", "FR", "RL", "RR"
+    pub offset: Point<Real>,     // position in chassis local space
+    pub rest_length: Real,       // suspension neutral length
+    pub max_length: Real,        // max compression + extension
+    pub radius: Real,            // wheel radius
+
+    pub grounded: bool,             // is the wheel currently touching the ground?
+    pub world_center: [f32; 3],     // world position of wheel center (for debug visualization)
+    pub world_rotation: [f32; 4],   // world rotation of wheel (for debug visualization)
+    pub wheel_speed: f32,           // linear speed at the contact patch (for debug visualization)
+    pub steer_angle: f32,           // current steer angle (for debug visualization)
+
+    pub stiffness: Real,         // spring constant
+    pub damping: Real,           // damper constant
+
+    pub drive: bool,             // is this a driven wheel?
+    pub steer: bool,             // is this a steering wheel?
+
+    pub tire_state: TireState,
 }

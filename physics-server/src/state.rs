@@ -30,11 +30,10 @@ use serde::{Serialize, Deserialize};
 use serde_json::json;
 use rapier3d::prelude::*;
 
-use crate::physics::{PhysicsWorld, DebugOverlay};
+use crate::physics::{PhysicsWorld};
 use crate::spawn::{PlayerSpawnInfo, SpawnManager, Team};
-use crate::vehicle::{Vehicle, VehicleConfig};
-use crate::vehicle::VehicleStateFlags;
-
+use crate::vehicle_state::{Vehicle, VehicleConfig, PhysicsWheelSnapshot};
+use crate::vehicle_debug::DebugOverlay;
 // ============================================================================
 // Network Payloads (What the Frontend Sees)
 // ============================================================================
@@ -67,7 +66,7 @@ pub struct PhysicsEntitySnapshot {
     pub vehicle_mask: u16,
     pub player_mask: u16,
 
-    pub wheels: Option<Vec<WheelSnapshot>>,
+    pub wheels: Option<Vec<PhysicsWheelSnapshot>>,
 }
 
 // ---------------------------------------------------------------------------
@@ -77,14 +76,6 @@ pub struct PhysicsEntitySnapshot {
 pub struct PhysicsSnapshot {
     pub tick: u64,
     pub entities: Vec<PhysicsEntitySnapshot>,
-}
-
-#[derive(Debug, Clone, Serialize)]
-pub struct WheelSnapshot {
-    pub id: String,
-    pub position: [f32; 3],
-    pub rotation: [f32; 4],
-    pub grounded: bool,
 }
 
 // ---------------------------------------------------------------------------
@@ -153,6 +144,9 @@ pub struct InputPacket {
     
     pub vehicleMask: u16,
     pub playerMask: u16,
+
+    #[serde(default)]
+    pub debug_mask: Option<u32>,
 }
 
 // ============================================================================
@@ -362,17 +356,7 @@ impl SharedGameState {
             let engine_torque  = vehicle.engine_torque;   // add field when ready
 
             let wheels_snapshot = Some(
-                physics
-                    .debug_snapshot()
-                    .wheels
-                    .iter()
-                    .map(|w| WheelSnapshot {
-                        id: wheel_id_to_frontend(&w.id),
-                        position: w.center,
-                        rotation: [rot.i, rot.j, rot.k, rot.w],
-                        grounded: w.grounded,
-                    })
-                    .collect::<Vec<_>>()
+                physics.wheel_snapshots_for_body(ent.body_handle, vehicle.steer_angle)
             );
 
             entities_out.push(PhysicsEntitySnapshot {
