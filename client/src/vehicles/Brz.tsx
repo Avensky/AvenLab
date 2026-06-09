@@ -15,46 +15,41 @@ import { hasFlag, VehicleFlags } from "../store/tools/inputMasks";
 const MODEL_PATH = "/models/vehicles/brz.glb";
 
 export const Brz = forwardRef<Group, PropsWithChildren>(function Brz(
-  { children },
-  ref
+    { children },
+    ref
 ) {
     // Tint colors for first-person and exterior views
-    const tintFirstPerson = new Color(0xffffff);  // Clear
-    const tintExterior = new Color(0x556677);     // Blue-gray tint (customize as needed)
-    
-    // Load the car model
-    const { scene } = useGLTF(MODEL_PATH);
-    
-    // Access the camera for later use
-    const camera = useThree((state) => state.camera)
-    
-    // Refs for car group 
-    const vehicleGroupRef   = useRef<Group>(null!);
+    const tintFirstPerson = new Color(0xffffff);        // Clear tint for first-person view
+    const tintExterior = new Color(0x556677);           // Blue-gray tint (customize as needed)
+
+    const { scene } = useGLTF(MODEL_PATH);              // Load the car model
+    const camera = useThree((state) => state.camera)    // Access the camera for later use
+    const vehicleGroupRef = useRef<Group>(null!);       // Refs for car group 
 
     // Allow parent components to access the car group ref
     useImperativeHandle(ref, () => vehicleGroupRef.current, [])
-    
+
     // Simulate hazard lights
     const blinkTimer = useRef(0);
     const blinkState = useRef(false);
 
     // Refs for individual lights
-    const leftLightRef  = useRef<SpotLight | null>(null);
+    const leftLightRef = useRef<SpotLight | null>(null);
     const rightLightRef = useRef<SpotLight | null>(null);
-    const leftTailRef   = useRef<SpotLight | null>(null);
-    const rightTailRef  = useRef<SpotLight | null>(null);
-    const flBlinkerRef  = useRef<SpotLight | null>(null);
-    const frBlinkerRef  = useRef<SpotLight | null>(null);
-    const rlBlinkerRef  = useRef<SpotLight | null>(null);
-    const rrBlinkerRef  = useRef<SpotLight | null>(null);
+    const leftTailRef = useRef<SpotLight | null>(null);
+    const rightTailRef = useRef<SpotLight | null>(null);
+    const flBlinkerRef = useRef<SpotLight | null>(null);
+    const frBlinkerRef = useRef<SpotLight | null>(null);
+    const rlBlinkerRef = useRef<SpotLight | null>(null);
+    const rrBlinkerRef = useRef<SpotLight | null>(null);
 
     // Network and interpolation setup
     const snapshot = useNetworkStore((s) => s.snapshot);
     const { setSnapshot, getInterpolated } = usePhysicsInterpolator(100);
 
     useEffect(() => {
-      if (!snapshot) return;
-      for (const entity of snapshot.entities) { setSnapshot(entity.id, entity);}
+        if (!snapshot) return;
+        for (const entity of snapshot.entities) { setSnapshot(entity.id, entity); }
     }, [snapshot, setSnapshot]);
 
 
@@ -132,7 +127,6 @@ export const Brz = forwardRef<Group, PropsWithChildren>(function Brz(
 
                         'WINDSHIELD_WIPERS',
                         'WINDSHIELD_WIPERS_01',
-
 
                         'HEADLIGHT_LEFT',
                         'HEADLIGHT_RIGHT',
@@ -262,21 +256,21 @@ export const Brz = forwardRef<Group, PropsWithChildren>(function Brz(
 
     useEffect(() => {
         const addSpot = (
-          refObj: { current: SpotLight | null },
-          color: number,
-          intensity: number,
-          distance: number,
-          position: [number, number, number],
-          target: [number, number, number]
-      ) => {
-          const light = new SpotLight(color, intensity, distance, Math.PI / 6, 0.2);
-        light.position.set(...position);
-        light.target.position.set(...target);
-        light.visible = false;
-        refObj.current = light;
-        
-        vehicleGroupRef.current.add(light);
-        vehicleGroupRef.current.add(light.target);
+            refObj: { current: SpotLight | null },
+            color: number,
+            intensity: number,
+            distance: number,
+            position: [number, number, number],
+            target: [number, number, number]
+        ) => {
+            const light = new SpotLight(color, intensity, distance, Math.PI / 6, 0.2);
+            light.position.set(...position);
+            light.target.position.set(...target);
+            light.visible = false;
+            refObj.current = light;
+
+            vehicleGroupRef.current.add(light);
+            vehicleGroupRef.current.add(light.target);
         };
 
         addSpot(leftLightRef, 0xffffff, 5, 40, [-0.5, 0.7, -1.8], [-0.4, -0.6, -5]);
@@ -289,7 +283,7 @@ export const Brz = forwardRef<Group, PropsWithChildren>(function Brz(
         addSpot(frBlinkerRef, 0xffa500, 12, 16, [0.7, 0.6, -1.9], [0.9, 0.6, -3]);
         addSpot(rlBlinkerRef, 0xffa500, 12, 16, [-0.5, 0.6, 1.9], [-0.9, 0.6, 3]);
         addSpot(rrBlinkerRef, 0xffa500, 12, 16, [0.5, 0.6, 1.9], [0.9, 0.6, 3]);
-      
+
     }, [scene])
 
 
@@ -332,14 +326,14 @@ export const Brz = forwardRef<Group, PropsWithChildren>(function Brz(
 
         // Determine which lights should be on based on input state
         const vehicleMask = input.vehicleMask;
-        
+
         const headlights = hasFlag(vehicleMask, VehicleFlags.HEADLIGHTS);
         const hazards = hasFlag(vehicleMask, VehicleFlags.HAZARDS);
         const blinkerLeft = hasFlag(vehicleMask, VehicleFlags.BLINKER_LEFT) && !hazards;
         const blinkerRight = hasFlag(vehicleMask, VehicleFlags.BLINKER_RIGHT) && !hazards;
-        
+
         const blinkOn = blinkState.current;
-        
+
         // Lights visibility
         if (leftLightRef.current) leftLightRef.current.visible = headlights;
         if (rightLightRef.current) rightLightRef.current.visible = headlights;
