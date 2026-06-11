@@ -120,6 +120,22 @@ pub async fn start_websocket_server(
                     match serde_json::from_str::<InputPacket>(text) {
                         Ok(packet) => {
                             if packet.r#type == "input" {
+
+                                // static INPUT_TICK: std::sync::atomic::AtomicU32 =
+                                //     std::sync::atomic::AtomicU32::new(0);
+                                // let tick = INPUT_TICK.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                                // if tick % 60 == 0 {
+                                //     println!(
+                                //         "[net input] throttle={:.2} steer={:.2} brake={:.2} vehicle_mask={} player_mask={}",
+                                //         packet.throttle,
+                                //         packet.steer,
+                                //         packet.brake,
+                                //         packet.vehicleMask,
+                                //         packet.playerMask,
+                                //     );
+                                // }
+
+
                                 // 1. Apply debug mask to physics world
                                 if let Some(mask) = packet.debug_mask {
                                     let mut phys = physics_clone.lock().await;

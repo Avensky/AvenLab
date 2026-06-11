@@ -29,7 +29,9 @@ use crate::vehicle_state::{Vehicle, Wheel};
 use crate::aven_tire::steering::SteeringState;
 use crate::aven_tire::kinematics::{wheel_basis_world, slip_components};
 use crate::aven_tire::WheelId;
+use std::sync::atomic::{AtomicU32, Ordering};
 
+static DEBUG_TICK: AtomicU32 = AtomicU32::new(0);
 
 // struct SuspensionState {
 //     compression: f32,
@@ -41,36 +43,6 @@ use crate::aven_tire::WheelId;
 //     normal_force: f32,
 // }
 
-// struct SuspensionContact {
-//     // geometry
-//     hit_point: Point<Real>,
-//     apply_point: Point<Real>,
-//     ground_normal: Vector<Real>,
-
-//     // state
-//     state: SuspensionState,
-
-//     // forces
-//     forces: SuspensionForces,
-
-//     // kinematics
-//     point_vel: Vector<Real>,
-
-//     // tire interface
-//     forward: Vector<Real>,
-//     side: Vector<Real>,
-//     v_long: f32,
-//     v_lat: f32,
-
-//     // friction
-//     mu_lat: f32,
-//     mu_long: f32,
-
-//     // misc
-//     wheel_id: String,
-//     roll_factor: f32,
-//     grounded: bool,
-// }
 
 pub struct RawSuspension {
     wheel_id: WheelId,
@@ -212,7 +184,7 @@ pub fn build_suspension_contact(
     let suspension_length = (toi - 0.02) - wheel.radius;
     let suspension_length = suspension_length.clamp(0.0, (wheel.rest_length + wheel.max_length) as f32);
 
-    let compression = (wheel.rest_length as f32 - suspension_length)
+    let compression = ((wheel.rest_length + wheel.max_length) as f32 - suspension_length)
         .clamp(0.0, wheel.max_length as f32);
 
     let compression_ratio = compression / wheel.max_length;
@@ -221,12 +193,38 @@ pub fn build_suspension_contact(
     let point_vel = linvel + angvel.cross(&r);
     let suspension_vel = point_vel.dot(&ground_n) as f32;
 
+    let tick = DEBUG_TICK.fetch_add(1, Ordering::Relaxed);
+
+    let should_debug = tick % 60 == 0; // roughly once per second at 60hz
+
+    if should_debug {
+        println!(
+            "[susp] wheel={} toi={:.3} susp_len={:.3} rest={:.3} max={:.3} radius={:.3} comp={:.3}",
+            wheel.debug_id,
+            toi,
+            suspension_length,
+            wheel.rest_length,
+            wheel.max_length,
+            wheel.radius,
+            compression,
+        );
+    }
+
     let normal_force = compute_suspension_force(
         compression,
         suspension_vel,
         wheel.stiffness as f32,
         wheel.damping as f32,
     );
+
+    if should_debug {
+        println!(
+            "{} nf={:.0} comp={:.3}",
+            wheel.debug_id,
+            normal_force,
+            compression
+        );
+    }
 
     let max_nf = fz_ref * 2.2; // allow some load transfer, but not insanity
     let normal_force = normal_force.min(max_nf);

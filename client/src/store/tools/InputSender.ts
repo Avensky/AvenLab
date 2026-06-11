@@ -23,6 +23,8 @@ function sendInputPacket() {
     debug_mask: debugMask,
   };
 
+  console.log("[send input]", packet.throttle, packet.steer, packet.brake);
+
   socket.send(JSON.stringify(packet));
 }
 

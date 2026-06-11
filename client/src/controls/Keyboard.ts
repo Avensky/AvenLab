@@ -54,9 +54,6 @@ export function Keyboard() {
       const inMenu = ui.screen === "main" || ui.screen === "settings" || ui.overlay === "pause";
       const store = useInputStore.getState();
 
-      // e.preventDefault();
-      // keys.current[e.code] = true;
-
       if (inMenu) {
         switch (e.code) {
           case "ArrowUp":
@@ -64,17 +61,17 @@ export function Keyboard() {
             e.preventDefault();
             ui.moveActiveMenuSelection(-1);
             return;
-            
-            case "ArrowDown":
-              case "KeyS":
-                e.preventDefault();
-                ui.moveActiveMenuSelection(1);
-                return;
-                
-                case "Enter":
-                  case "Space":
-                    e.preventDefault();
-                    ui.activateActiveMenuSelection();
+
+          case "ArrowDown":
+          case "KeyS":
+            e.preventDefault();
+            ui.moveActiveMenuSelection(1);
+            return;
+
+          case "Enter":
+          case "Space":
+            e.preventDefault();
+            ui.activateActiveMenuSelection();
             return;
 
           case "Escape":
@@ -85,6 +82,8 @@ export function Keyboard() {
         }
       }
 
+      keys.current[e.code] = true;
+
       switch (e.code) {
         case "KeyW":
         case "KeyS":
@@ -92,6 +91,7 @@ export function Keyboard() {
         case "KeyD":
         case "Space":
         case "KeyB":
+          e.preventDefault();
           recomputeAxes();
           break;
 
@@ -153,19 +153,20 @@ export function Keyboard() {
         case "KeyN":
           store.setPlayerFlag(PlayerFlags.HONK, true);
           break;
-        
+
         case "Escape":
           e.preventDefault();
           useUIStore.getState().togglePauseMenu();
           break;
       }
     };
-    
+
     const handleKeyUp = (e: KeyboardEvent) => {
-      e.preventDefault();
-      keys.current[e.code] = false;
-      
+      // e.preventDefault();
+
       if (isTypingTarget(e.target)) return;
+
+      keys.current[e.code] = false;
 
       const store = useInputStore.getState();
 
