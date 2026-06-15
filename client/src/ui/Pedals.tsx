@@ -1,104 +1,55 @@
-// import React from 'react';
-// import { useStore } from '../store';
-// import socket from '../socket';
-// import gear from '/images/gear-stick.svg';
-// import { useThrottledEmitControls } from '../hooks/useThrottleEmitControls';
-// function Pedals(): React.JSX.Element {
-//   // const [gasPedal, setGasPedal] = useState(0);
-//   // const [brakePedal, setBrakePedal] = useState(0);
+import React from "react";
+import { useInputStore } from "../store";
 
-//   const setControls = useStore((s) => s.setControls);
-//   const controls = useStore((s) => s.controls);
-//   useThrottledEmitControls(socket, 60)
-//   // const handleGasPedalChange = (value: number) => {
-//   //   // setGasPedal(value);
-//   //   setControls({ forward: true });
-//   //   socket.emit('controls', { forward: true });
-//   //   console.log('accelerator clicked');
-//   // };
+const gear = "/images/gear-stick.svg";
+const brakes = "/images/brakePedal.png";
+const accelerator = "/images/gasPedal.png";
 
-//   // const handleBrakePedalChange = (value: number) => {
-//   //   // setBrakePedal(value);
-//   //   setControls({ brake: true });
-//   //   // socket.emit('controls', { brake: value });
-//   //   console.log('brake clicked');
-//   // };
+function Pedals(): React.JSX.Element {
+    const throttle = useInputStore((s) => s.input.throttle);
+    const brake = useInputStore((s) => s.input.brake);
+    const setAnalog = useInputStore((s) => s.setAnalog);
 
-//   return (
-//     <div className="Pedals">
-//       <div className='split'>
-//         <button
-//           style={{ backgroundImage: `url(${gear})` }}
-//           onContextMenu={(e) => e.preventDefault()}
-//           className={`backward pedal ${controls.backward ? 'pressed' : ''}`}
-//           onPointerDown={() => {
-//             const nextControls = { ...controls, backward: true };
-//             setControls(nextControls);
-//             // socket.emit('controls', { ...nextControls });
+    return (
+        <div className="Pedals">
+            <div className="split">
+                {/* Reverse */}
+                <button
+                    style={{ backgroundImage: `url(${gear})` }}
+                    onContextMenu={(e) => e.preventDefault()}
+                    className={`backward pedal ${throttle < 0 ? "pressed" : ""}`}
+                    onPointerDown={() => setAnalog({ throttle: -1 })}
+                    onPointerUp={() => setAnalog({ throttle: 0 })}
+                    onPointerLeave={() => setAnalog({ throttle: 0 })}
+                    onPointerCancel={() => setAnalog({ throttle: 0 })}
+                />
 
-//           }}
-//           onPointerUp={() => {
-//             const nextControls = { ...controls, backward: false };
-//             setControls(nextControls);
-//             // socket.emit('controls', { ...nextControls });
+                {/* Brake */}
+                <button
+                    style={{ backgroundImage: `url(${brakes})` }}
+                    onContextMenu={(e) => e.preventDefault()}
+                    className={`pedal ${brake > 0 ? "pressed" : ""}`}
+                    onPointerDown={() => setAnalog({ brake: 1 })}
+                    onPointerUp={() => setAnalog({ brake: 0 })}
+                    onPointerLeave={() => setAnalog({ brake: 0 })}
+                    onPointerCancel={() => setAnalog({ brake: 0 })}
+                >
+                    <div className="footBrake" />
+                </button>
 
-//           }}
-//           onPointerLeave={() => {
-//             const nextControls = { ...controls, backward: false };
-//             setControls(nextControls);
-//             // socket.emit('controls', { ...nextControls });
+                {/* Accelerator */}
+                <button
+                    style={{ backgroundImage: `url(${accelerator})` }}
+                    onContextMenu={(e) => e.preventDefault()}
+                    className={`pedal ${throttle > 0 ? "pressed" : ""}`}
+                    onPointerDown={() => setAnalog({ throttle: 1 })}
+                    onPointerUp={() => setAnalog({ throttle: 0 })}
+                    onPointerLeave={() => setAnalog({ throttle: 0 })}
+                    onPointerCancel={() => setAnalog({ throttle: 0 })}
+                />
+            </div>
+        </div>
+    );
+}
 
-//           }}
-//         />
-//         <button
-//           onContextMenu={(e) => e.preventDefault()}
-//           className={`pedal ${controls.brake ? 'pressed' : ''}`}
-//           onPointerDown={() => {
-//             const nextControls = { ...controls, brake: true };
-//             setControls(nextControls);
-//             // socket.emit('controls', { ...nextControls });
-
-//           }}
-//           onPointerUp={() => {
-//             const nextControls = { ...controls, brake: false };
-//             setControls(nextControls);
-//             // socket.emit('controls', { ...nextControls });
-
-//           }}
-//           onPointerLeave={() => {
-//             const nextControls = { ...controls, brake: false };
-//             setControls(nextControls);
-//             // socket.emit('controls', { ...nextControls });
-
-//           }}
-//         >
-//           <div className='footBrake' />
-//         </button>
-//         <button
-//           onContextMenu={(e) => e.preventDefault()}
-//           className={`accelerator pedal ${controls.forward ? 'pressed' : ''}`}
-//           onPointerDown={() => {
-//             const nextControls = { ...controls, forward: true };
-//             setControls(nextControls);
-//             // socket.emit('controls', { ...nextControls });
-
-//           }}
-//           onPointerUp={() => {
-//             const nextControls = { ...controls, forward: false };
-//             setControls(nextControls);
-//             // socket.emit('controls', { ...nextControls });
-
-//           }}
-//           onPointerLeave={() => {
-//             const nextControls = { ...controls, forward: false };
-//             setControls(nextControls);
-//             // socket.emit('controls', { ...nextControls });
-
-//           }}
-//         />
-//       </div>
-//     </div >
-//   );
-// }
-
-// export default Pedals;
+export default Pedals;

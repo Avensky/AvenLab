@@ -193,22 +193,22 @@ pub fn build_suspension_contact(
     let point_vel = linvel + angvel.cross(&r);
     let suspension_vel = point_vel.dot(&ground_n) as f32;
 
-    let tick = DEBUG_TICK.fetch_add(1, Ordering::Relaxed);
+    // let tick = DEBUG_TICK.fetch_add(1, Ordering::Relaxed);
 
-    let should_debug = tick % 60 == 0; // roughly once per second at 60hz
+    // let should_debug = tick % 60 == 0; // roughly once per second at 60hz
 
-    if should_debug {
-        println!(
-            "[susp] wheel={} toi={:.3} susp_len={:.3} rest={:.3} max={:.3} radius={:.3} comp={:.3}",
-            wheel.debug_id,
-            toi,
-            suspension_length,
-            wheel.rest_length,
-            wheel.max_length,
-            wheel.radius,
-            compression,
-        );
-    }
+    // if should_debug {
+    //     println!(
+    //         "[susp] wheel={} toi={:.3} susp_len={:.3} rest={:.3} max={:.3} radius={:.3} comp={:.3}",
+    //         wheel.debug_id,
+    //         toi,
+    //         suspension_length,
+    //         wheel.rest_length,
+    //         wheel.max_length,
+    //         wheel.radius,
+    //         compression,
+    //     );
+    // }
 
     let normal_force = compute_suspension_force(
         compression,
@@ -217,14 +217,14 @@ pub fn build_suspension_contact(
         wheel.damping as f32,
     );
 
-    if should_debug {
-        println!(
-            "{} nf={:.0} comp={:.3}",
-            wheel.debug_id,
-            normal_force,
-            compression
-        );
-    }
+    // if should_debug {
+    //     println!(
+    //         "{} nf={:.0} comp={:.3}",
+    //         wheel.debug_id,
+    //         normal_force,
+    //         compression
+    //     );
+    // }
 
     let max_nf = fz_ref * 2.2; // allow some load transfer, but not insanity
     let normal_force = normal_force.min(max_nf);

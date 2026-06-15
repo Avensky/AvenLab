@@ -160,16 +160,16 @@ export const Ae86 = forwardRef<Group, PropsWithChildren>(function Ae86(
       vehicleGroupRef.current.add(light.target);
     };
 
-    addSpot(leftLightRef, 0xffffff, 5, 40, [-0.5, 0.7, -1.8], [-0.4, -0.6, -5]);
-    addSpot(rightLightRef, 0xffffff, 5, 40, [0.55, 0.7, -1.8], [0.4, -0.6, -5]);
+    addSpot(leftLightRef, 0xffffff, 5, 40, [-0.5, 0.7, 2.1], [-0.4, -0.6, 5]);  //FR
+    addSpot(rightLightRef, 0xffffff, 5, 40, [0.55, 0.7, 2.1], [0.4, -0.6, 5]);  //FL
 
-    addSpot(leftTailRef, 0xff0000, 3, 8, [-0.5, 0.6, 1.9], [-0.5, 0.5, 3]);
-    addSpot(rightTailRef, 0xff0000, 3, 8, [0.57, 0.6, 1.8], [0.57, 0.5, 3]);
+    addSpot(leftTailRef, 0xff0000, 3, 8, [-0.5, 0.6, 1.9], [-0.5, 0.5, 3]); // Rr
+    // addSpot(rightTailRef, 0xff0000, 3, 8, [0.57, 0.6, 1.8], [0.57, 0.5, 3]);
 
-    addSpot(flBlinkerRef, 0xffa500, 12, 16, [-0.7, 0.6, -1.9], [-0.85, 0.6, -3]);
-    addSpot(frBlinkerRef, 0xffa500, 12, 16, [0.7, 0.6, -1.9], [0.9, 0.6, -3]);
-    addSpot(rlBlinkerRef, 0xffa500, 12, 16, [-0.5, 0.6, 1.9], [-0.9, 0.6, 3]);
-    addSpot(rrBlinkerRef, 0xffa500, 12, 16, [0.5, 0.6, 1.9], [0.9, 0.6, 3]);
+    addSpot(flBlinkerRef, 0xffa500, 12, 16, [-0.7, 0.6, -1.9], [-0.85, 0.6, -3]); // Rf
+    addSpot(frBlinkerRef, 0xffa500, 12, 16, [0.7, 0.6, -1.9], [0.9, 0.6, -3]);  // Lf 
+    addSpot(rlBlinkerRef, 0xffa500, 12, 16, [-0.5, 0.6, 1.9], [-0.9, 0.6, 3]);  // Rr    
+    addSpot(rrBlinkerRef, 0xffa500, 12, 16, [0.5, 0.6, 1.9], [0.9, 0.6, 3]);    // Lr 
 
     return () => {
       const vehicleGroup = vehicleGroupRef.current;
@@ -247,8 +247,8 @@ export const Ae86 = forwardRef<Group, PropsWithChildren>(function Ae86(
     const blinkerRight = hasFlag(vehicleMask, VehicleFlags.BLINKER_RIGHT) && !hazards;
 
     // Animate headlights opening/closing based on input
-    const openRotation = 0;
-    const closedRotation = -Math.PI / 3;
+    const openRotation = -Math.PI / 3;
+    const closedRotation = 0;
     const targetRotation = headlights ? openRotation : closedRotation;
 
     headlightRotation.current = MathUtils.lerp(

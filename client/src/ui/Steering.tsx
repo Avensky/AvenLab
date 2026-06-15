@@ -1,79 +1,57 @@
-// import React, { useState } from 'react';
-// import { useStore } from '../store';
-// import socket from '../socket';
-// import left from '/images/arrowleft.svg';
-// import right from '/images/arrowright.svg';
-// import { useThrottledEmitControls } from '../hooks/useThrottleEmitControls';
+import React, { useState } from "react";
+import { useInputStore } from "../store";
 
-// function Steering(): React.JSX.Element {
-//     const setControls = useStore((s) => s.setControls);
-//     const controls = useStore((s) => s.controls);
-//     useThrottledEmitControls(socket, 60)
+const left = "/images/arrowleft.svg";
+const right = "/images/arrowright.svg";
 
-//     const [clickedBtn, setClickedBtn] = useState<string | null>(null);
+function Steering(): React.JSX.Element {
+    const steer = useInputStore((s) => s.input.steer);
+    const setAnalog = useInputStore((s) => s.setAnalog);
 
-//     function animateButton(id: string) {
-//         setClickedBtn(id);
-//         setTimeout(() => setClickedBtn(null), 300);
-//     }
+    const [clickedBtn, setClickedBtn] = useState<string | null>(null);
 
-//     return (
-//         <div className="Steering">
-//             <div className='split'>
-//                 <button
-//                     style={{ backgroundImage: `url(${left})` }}
-//                     onContextMenu={(e) => e.preventDefault()}
-//                     className={`left arrow ${controls.left ? 'hold' : ''} ${clickedBtn === 'leftArrow' ? 'clicked' : ''}`}
-//                     onClick={() => animateButton('leftArrow')}
-//                     onPointerDown={() => {
-//                         const nextControls = { ...controls, left: true };
-//                         setControls(nextControls);
-//                         // socket.emit('controls', { ...nextControls });
+    function animateButton(id: string) {
+        setClickedBtn(id);
+        window.setTimeout(() => setClickedBtn(null), 300);
+    }
 
-//                     }}
-//                     onPointerUp={() => {
-//                         const nextControls = { ...controls, left: false };
-//                         setControls(nextControls);
-//                         // socket.emit('controls', { ...nextControls });
+    const setSteerLeft = (enabled: boolean) => {
+        setAnalog({ steer: enabled ? -1 : 0 });
+    };
 
-//                     }}
-//                     onPointerLeave={() => {
-//                         const nextControls = { ...controls, left: false };
-//                         setControls(nextControls);
-//                         // socket.emit('controls', { ...nextControls });
+    const setSteerRight = (enabled: boolean) => {
+        setAnalog({ steer: enabled ? 1 : 0 });
+    };
 
-//                     }}
-//                 />
+    return (
+        <div className="Steering">
+            <div className="split">
+                <button
+                    style={{ backgroundImage: `url(${left})` }}
+                    onContextMenu={(e) => e.preventDefault()}
+                    className={`left arrow ${steer < 0 ? "hold" : ""} ${clickedBtn === "leftArrow" ? "clicked" : ""
+                        }`}
+                    onClick={() => animateButton("leftArrow")}
+                    onPointerDown={() => setSteerLeft(true)}
+                    onPointerUp={() => setSteerLeft(false)}
+                    onPointerLeave={() => setSteerLeft(false)}
+                    onPointerCancel={() => setSteerLeft(false)}
+                />
 
+                <button
+                    style={{ backgroundImage: `url(${right})` }}
+                    onContextMenu={(e) => e.preventDefault()}
+                    className={`right arrow ${steer > 0 ? "hold" : ""} ${clickedBtn === "rightArrow" ? "clicked" : ""
+                        }`}
+                    onClick={() => animateButton("rightArrow")}
+                    onPointerDown={() => setSteerRight(true)}
+                    onPointerUp={() => setSteerRight(false)}
+                    onPointerLeave={() => setSteerRight(false)}
+                    onPointerCancel={() => setSteerRight(false)}
+                />
+            </div>
+        </div>
+    );
+}
 
-
-//                 <button
-//                     style={{ backgroundImage: `url(${right})` }}
-//                     onContextMenu={(e) => e.preventDefault()}
-//                     className={`right arrow ${controls.right ? 'hold' : ''} ${clickedBtn === 'rightArrow' ? 'clicked' : ''}`}
-//                     onClick={() => animateButton('rightArrow')}
-//                     onPointerDown={() => {
-//                         const nextControls = { ...controls, right: true };
-//                         setControls(nextControls);
-//                         // socket.emit('controls', { ...nextControls });
-
-//                     }}
-//                     onPointerUp={() => {
-//                         const nextControls = { ...controls, right: false };
-//                         setControls(nextControls);
-//                         // socket.emit('controls', { ...nextControls });
-
-//                     }}
-//                     onPointerLeave={() => {
-//                         const nextControls = { ...controls, right: false };
-//                         setControls(nextControls);
-//                         // socket.emit('controls', { ...nextControls });
-
-//                     }}
-//                 />
-//             </div>
-//         </div>
-//     );
-// }
-
-// export default Steering;
+export default Steering;

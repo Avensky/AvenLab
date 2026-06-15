@@ -51,18 +51,18 @@ impl PhysicsWorld {
             let Some(player_id) = self.body_to_player.get(&handle) else { continue };
             let Some(vehicle) = self.vehicles.get_mut(player_id) else { continue };
             
-            let tick = DEBUG_TICK.fetch_add(1, Ordering::Relaxed);
+            // let tick = DEBUG_TICK.fetch_add(1, Ordering::Relaxed);
 
-            let should_debug = tick % 60 == 0; // roughly once per second at 60hz
+            // let should_debug = tick % 60 == 0; // roughly once per second at 60hz
 
-            if should_debug {
-                println!(
-                    "[vehicle debug] throttle={:.2} brake={:.2} steer={:.2}",
-                    vehicle.throttle,
-                    vehicle.brake,
-                    vehicle.steer
-                );
-            }
+            // if should_debug {
+            //     println!(
+            //         "[vehicle debug] throttle={:.2} brake={:.2} steer={:.2}",
+            //         vehicle.throttle,
+            //         vehicle.brake,
+            //         vehicle.steer
+            //     );
+            // }
 
 
             // ======================================================
@@ -387,42 +387,42 @@ impl PhysicsWorld {
 
             let tire_forces = solve_step(&ctx, &control, &mut contacts);
 
-            if should_debug {
-                println!(
-                    "[solve] contacts={} impulses={} throttle={:.2} engine_force={:.1} brake={:.2}",
-                    contacts.len(),
-                    tire_forces.impulses.len(),
-                    control.throttle,
-                    ctx.engine_force,
-                    control.brake,
-                );
+            // if should_debug {
+            //     println!(
+            //         "[solve] contacts={} impulses={} throttle={:.2} engine_force={:.1} brake={:.2}",
+            //         contacts.len(),
+            //         tire_forces.impulses.len(),
+            //         control.throttle,
+            //         ctx.engine_force,
+            //         control.brake,
+            //     );
 
-                for contact in contacts.iter() {
-                    println!(
-                        "  contact {:?} grounded={} drive={} nf={:.1} v_long={:.2} v_lat={:.2}",
-                        contact.wheel,
-                        contact.grounded,
-                        contact.drive,
-                        contact.normal_force,
-                        contact.v_long,
-                        contact.v_lat,
-                    );
-                }
-            }
+            //     for contact in contacts.iter() {
+            //         println!(
+            //             "  contact {:?} grounded={} drive={} nf={:.1} v_long={:.2} v_lat={:.2}",
+            //             contact.wheel,
+            //             contact.grounded,
+            //             contact.drive,
+            //             contact.normal_force,
+            //             contact.v_long,
+            //             contact.v_lat,
+            //         );
+            //     }
+            // }
 
             for imp in tire_forces.impulses {
                 let j: Vector<Real> = imp.impulse.into();
 
-                if should_debug {
-                    println!(
-                        "[impulse] j=({:.2}, {:.2}, {:.2}) mag={:.2} at_point={}",
-                        j.x,
-                        j.y,
-                        j.z,
-                        j.norm(),
-                        imp.at_point.is_some(),
-                    );
-                }
+                // if should_debug {
+                //     println!(
+                //         "[impulse] j=({:.2}, {:.2}, {:.2}) mag={:.2} at_point={}",
+                //         j.x,
+                //         j.y,
+                //         j.z,
+                //         j.norm(),
+                //         imp.at_point.is_some(),
+                //     );
+                // }
                 
                 match imp.at_point {
                     Some(p) => impulses.at_points.push((j, Point::from(p))),

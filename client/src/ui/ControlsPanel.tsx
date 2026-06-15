@@ -1,147 +1,124 @@
-// import React from 'react';
-// import { useStore } from '../store';
-// import socket from '../socket';
-// import onOff from '/images/onOff.svg'
-// import headlights from '/images/headlights.svg'
-// import left from '/images/left.svg'
-// import right from '/images/right.svg'
-// import hazard from '/images/hazzard.svg'
-// import horn from '/images/hornCurve.svg'
-// import nos from '/images/nos.svg'
-// import soundOn from '/images/soundOn.svg'
-// import soundOff from '/images/soundOff.svg'
-// import reset from '/images/reset.svg'
-// import { useThrottledEmitControls } from '../hooks/useThrottleEmitControls';
+import React from "react";
+import { useInputStore } from "../store";
+import { VehicleFlags, PlayerFlags, hasFlag } from "../store/tools/inputMasks";
 
-// function ControlsPanel(): React.JSX.Element {
-//     const controls = useStore((state) => state.controls);
-//     const setControls = useStore((s) => s.setControls);
-//     useThrottledEmitControls(socket, 60)
+const onOff = "/images/onOff.svg";
+const headlights = "/images/headlights.svg";
+const left = "/images/left.svg";
+const right = "/images/right.svg";
+const hazard = "/images/hazzard.svg";
+const horn = "/images/hornCurve.svg";
+const nos = "/images/nos.svg";
+const soundOn = "/images/soundOn.svg";
+const soundOff = "/images/soundOff.svg";
+const reset = "/images/reset.svg";
 
-//     const toggleControl = (key: keyof typeof controls) => {
-//         const nextControls = { ...controls, [key]: !controls[key] };
-//         setControls(nextControls);
-//         // socket.emit('controls', { ...nextControls });
-//     };
 
-//     return (
-//         <div className="ControlsPanel">
-//             <div className="row">
-//                 <button
-//                     onContextMenu={(e) => e.preventDefault()}
-//                     className={`control ${controls.reset ? 'pulse' : ''}`}
-//                     style={{ backgroundImage: `url(${reset})` }}
-//                     onPointerDown={() => {
-//                         const nextControls = { ...controls, reset: true };
-//                         setControls(nextControls);
-//                         // socket.emit('controls', { ...nextControls });
+function ControlsPanel(): React.JSX.Element {
+    const vehicleMask = useInputStore((s) => s.input.vehicleMask);
+    const playerMask = useInputStore((s) => s.input.playerMask);
 
-//                     }}
-//                     onPointerUp={() => {
-//                         const nextControls = { ...controls, reset: false };
-//                         setControls(nextControls);
-//                         // socket.emit('controls', { ...nextControls });
+    const toggleVehicleFlag = useInputStore((s) => s.toggleVehicleFlag);
+    const setVehicleFlag = useInputStore((s) => s.setVehicleFlag);
+    const togglePlayerFlag = useInputStore((s) => s.togglePlayerFlag);
+    const setPlayerFlag = useInputStore((s) => s.setPlayerFlag);
 
-//                     }}
-//                     onPointerLeave={() => {
-//                         if (controls.reset) {
-//                             const nextControls = { ...controls, reset: false };
-//                             setControls(nextControls);
-//                             // socket.emit('controls', { ...nextControls });
+    const engineOn = hasFlag(vehicleMask, VehicleFlags.ENGINE_ON);
+    const headlightsOn = hasFlag(vehicleMask, VehicleFlags.HEADLIGHTS);
+    const blinkerLeft = hasFlag(vehicleMask, VehicleFlags.BLINKER_LEFT);
+    const blinkerRight = hasFlag(vehicleMask, VehicleFlags.BLINKER_RIGHT);
+    const hazards = hasFlag(vehicleMask, VehicleFlags.HAZARDS);
+    const boost = hasFlag(vehicleMask, VehicleFlags.BOOST);
 
-//                         }
-//                     }}
-//                     onPointerCancel={() => {
-//                         if (controls.reset) {
-//                             const nextControls = { ...controls, reset: false };
-//                             setControls(nextControls);
-//                             // socket.emit('controls', { ...nextControls });
+    const radio = hasFlag(playerMask, PlayerFlags.RADIO);
+    const honk = hasFlag(playerMask, PlayerFlags.HONK);
+    const resetActive = hasFlag(playerMask, PlayerFlags.RESET);
 
-//                         }
-//                     }}
-//                 />
-//                 <button
-//                     onContextMenu={(e) => e.preventDefault()}
-//                     className={`control ${controls.radio ? 'headlight' : ''}`}
-//                     style={{ backgroundImage: `url(${controls.radio ? soundOn : soundOff})` }}
-//                     onClick={() => toggleControl('radio')}
-//                 />
-//                 <button
-//                     onContextMenu={(e) => e.preventDefault()}
-//                     className={`control ${controls.headlights ? 'headlight' : ''}`}
-//                     style={{ backgroundImage: `url(${headlights})` }}
-//                     onClick={() => toggleControl('headlights')} />
-//             </div>
-//             <div className="row">
-//                 <button
-//                     onContextMenu={(e) => e.preventDefault()}
-//                     className={`control ${controls.blinkerLeft ? 'flash' : ''}`}
-//                     style={{ backgroundImage: `url(${left})` }}
+    const holdPlayerFlag = (flag: number, enabled: boolean) => {
+        setPlayerFlag(flag, enabled);
+    };
 
-//                     onClick={() => toggleControl('blinkerLeft')}
-//                 />
-//                 <button
-//                     onContextMenu={(e) => e.preventDefault()}
-//                     className={`control ${controls.hazards ? 'flash' : ''}`}
-//                     style={{ backgroundImage: `url(${hazard})` }}
-//                     onClick={() => toggleControl('hazards')}
-//                 />
-//                 <button
-//                     onContextMenu={(e) => e.preventDefault()}
-//                     className={`control ${controls.blinkerRight ? 'flash' : ''}`}
-//                     style={{ backgroundImage: `url(${right})` }}
-//                     onClick={() => toggleControl('blinkerRight')}
-//                 />
-//             </div>
-//             <div className="row">
+    return (
+        <div className="ControlsPanel">
+            <div className="row">
+                <button
+                    onContextMenu={(e) => e.preventDefault()}
+                    className={`control ${resetActive ? "pulse" : ""}`}
+                    style={{ backgroundImage: `url(${reset})` }}
+                    onPointerDown={() => holdPlayerFlag(PlayerFlags.RESET, true)}
+                    onPointerUp={() => holdPlayerFlag(PlayerFlags.RESET, false)}
+                    onPointerLeave={() => holdPlayerFlag(PlayerFlags.RESET, false)}
+                    onPointerCancel={() => holdPlayerFlag(PlayerFlags.RESET, false)}
+                />
 
-//                 <button
-//                     onContextMenu={(e) => e.preventDefault()}
-//                     className={`control ${controls.honk ? 'pulse' : ''}`}
-//                     style={{ backgroundImage: `url(${horn})` }}
-//                     onPointerDown={() => {
-//                         const nextControls = { ...controls, honk: true };
-//                         setControls(nextControls);
-//                         // socket.emit('controls', { ...nextControls });
+                <button
+                    onContextMenu={(e) => e.preventDefault()}
+                    className={`control ${radio ? "headlight" : ""}`}
+                    style={{ backgroundImage: `url(${radio ? soundOn : soundOff})` }}
+                    onClick={() => togglePlayerFlag(PlayerFlags.RADIO)}
+                />
 
-//                     }}
-//                     onPointerUp={() => {
-//                         const nextControls = { ...controls, honk: false };
-//                         setControls(nextControls);
-//                         // socket.emit('controls', { ...nextControls });
+                <button
+                    onContextMenu={(e) => e.preventDefault()}
+                    className={`control ${headlightsOn ? "headlight" : ""}`}
+                    style={{ backgroundImage: `url(${headlights})` }}
+                    onClick={() => toggleVehicleFlag(VehicleFlags.HEADLIGHTS)}
+                />
+            </div>
 
-//                     }}
-//                     onPointerLeave={() => {
-//                         if (controls.honk) {
-//                             const nextControls = { ...controls, honk: false };
-//                             setControls(nextControls);
-//                             // socket.emit('controls', { ...nextControls });
+            <div className="row">
+                <button
+                    onContextMenu={(e) => e.preventDefault()}
+                    className={`control ${blinkerLeft ? "flash" : ""}`}
+                    style={{ backgroundImage: `url(${left})` }}
+                    onClick={() => toggleVehicleFlag(VehicleFlags.BLINKER_LEFT)}
+                />
 
-//                         }
-//                     }}
-//                     onPointerCancel={() => {
-//                         if (controls.honk) {
-//                             const nextControls = { ...controls, honk: false };
-//                             setControls(nextControls);
-//                             // socket.emit('controls', { ...nextControls });
+                <button
+                    onContextMenu={(e) => e.preventDefault()}
+                    className={`control ${hazards ? "flash" : ""}`}
+                    style={{ backgroundImage: `url(${hazard})` }}
+                    onClick={() => toggleVehicleFlag(VehicleFlags.HAZARDS)}
+                />
 
-//                         }
-//                     }}
-//                 />
-//                 <button
-//                     onContextMenu={(e) => e.preventDefault()}
-//                     className={`control ${controls.boost ? 'boost' : ''}`}
-//                     style={{ backgroundImage: `url(${nos})` }}
-//                     onClick={() => toggleControl('boost')}
-//                 />
-//                 <button
-//                     onContextMenu={(e) => e.preventDefault()}
-//                     className={`control ${controls.engineOn ? 'active' : ''}`}
-//                     style={{ backgroundImage: `url(${onOff})` }}
-//                     onClick={() => toggleControl('engineOn')} />
-//             </div>
-//         </div>
-//     );
-// }
+                <button
+                    onContextMenu={(e) => e.preventDefault()}
+                    className={`control ${blinkerRight ? "flash" : ""}`}
+                    style={{ backgroundImage: `url(${right})` }}
+                    onClick={() => toggleVehicleFlag(VehicleFlags.BLINKER_RIGHT)}
+                />
+            </div>
 
-// export default ControlsPanel;
+            <div className="row">
+                <button
+                    onContextMenu={(e) => e.preventDefault()}
+                    className={`control ${honk ? "pulse" : ""}`}
+                    style={{ backgroundImage: `url(${horn})` }}
+                    onPointerDown={() => holdPlayerFlag(PlayerFlags.HONK, true)}
+                    onPointerUp={() => holdPlayerFlag(PlayerFlags.HONK, false)}
+                    onPointerLeave={() => holdPlayerFlag(PlayerFlags.HONK, false)}
+                    onPointerCancel={() => holdPlayerFlag(PlayerFlags.HONK, false)}
+                />
+
+                <button
+                    onContextMenu={(e) => e.preventDefault()}
+                    className={`control ${boost ? "boost" : ""}`}
+                    style={{ backgroundImage: `url(${nos})` }}
+                    onPointerDown={() => setVehicleFlag(VehicleFlags.BOOST, true)}
+                    onPointerUp={() => setVehicleFlag(VehicleFlags.BOOST, false)}
+                    onPointerLeave={() => setVehicleFlag(VehicleFlags.BOOST, false)}
+                    onPointerCancel={() => setVehicleFlag(VehicleFlags.BOOST, false)}
+                />
+
+                <button
+                    onContextMenu={(e) => e.preventDefault()}
+                    className={`control ${engineOn ? "active" : ""}`}
+                    style={{ backgroundImage: `url(${onOff})` }}
+                    onClick={() => toggleVehicleFlag(VehicleFlags.ENGINE_ON)}
+                />
+            </div>
+        </div>
+    );
+}
+
+export default ControlsPanel;

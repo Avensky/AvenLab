@@ -8,3 +8,151 @@
   -webkit-overflow-scrolling: touch;
 }
 
+/* Canvas should stay at the bottom layer */
+canvas {
+  position: relative;
+  z-index: 0;
+}
+
+/* Mobile/sandbox controls layer */
+.ControlsPanel,
+.Steering,
+.Pedals {
+  position: fixed;
+  z-index: 20;
+  pointer-events: auto;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+/* Overlay menus should be higher than controls */
+.MainMenu,
+.PauseMenu,
+.SettingsMenu,
+.Overlay,
+.GameOverlay {
+  z-index: 100;
+}
+
+/* Controls panel: right side */
+.ControlsPanel {
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ControlsPanel .row {
+  display: flex;
+  gap: 10px;
+}
+
+.control {
+  width: 56px;
+  height: 56px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 14px;
+  /* background-color: transparent; */
+  background-color: rgb(0, 195, 255);
+  background-size: 60%;
+  background-position: center;
+  background-repeat: no-repeat;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
+}
+
+.control.active,
+.control.headlight,
+.control.boost {
+  border-color: rgba(120, 220, 255, 0.9);
+  box-shadow: 0 0 18px rgba(120, 220, 255, 0.55);
+}
+
+.control.flash {
+  border-color: rgba(255, 180, 60, 0.95);
+  box-shadow: 0 0 18px rgba(255, 180, 60, 0.55);
+}
+
+.control.pulse {
+  border-color: rgba(255, 80, 80, 0.95);
+  box-shadow: 0 0 18px rgba(255, 80, 80, 0.6);
+}
+
+/* Steering: bottom left */
+.Steering {
+  left: 24px;
+  bottom: 28px;
+}
+
+.Steering .split {
+  display: flex;
+  gap: 18px;
+}
+
+.arrow {
+  width: 78px;
+  height: 78px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  /* color: 120, 220, 255, 0.9;  */
+  background-color: rgba(12, 18, 28, 0.72);
+  background-size: 58%;
+  background-position: center;
+  background-repeat: no-repeat;
+  backdrop-filter: blur(8px);
+}
+
+.arrow.hold,
+.arrow.clicked {
+  border-color: rgba(120, 220, 255, 0.9);
+  box-shadow: 0 0 18px rgba(120, 220, 255, 0.55);
+}
+
+/* Pedals: bottom right */
+.Pedals {
+  right: 24px;
+  bottom: 28px;
+}
+
+.Pedals .split {
+  display: flex;
+  gap: 14px;
+  align-items: flex-end;
+}
+
+.pedal {
+  width: 72px;
+  height: 96px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background-color: rgba(12, 18, 28, 0.72);
+  background-size: 54%;
+  background-position: center;
+  background-repeat: no-repeat;
+  backdrop-filter: blur(8px);
+}
+
+.pedal.pressed {
+  transform: translateY(4px);
+  border-color: rgba(120, 255, 160, 0.9);
+  box-shadow: 0 0 18px rgba(120, 255, 160, 0.5);
+}
+
+.accelerator {
+  height: 120px;
+}
+
+.backward {
+  height: 82px;
+}
+
+.footBrake {
+  width: 34px;
+  height: 54px;
+  margin: auto;
+  border-radius: 8px;
+  /* background: rgba(255, 80, 80, 0.75); */
+}
