@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { VehicleFlags, PlayerFlags } from "../store/tools/inputMasks";
-import { useInputStore, useUIStore } from "../store";
+import { useInputStore, useUIStore, useCanDataStore } from "../store";
 
 function isTypingTarget(target: EventTarget | null) {
   const el = target as HTMLElement | null;
@@ -157,6 +157,13 @@ export function Keyboard() {
         case "Escape":
           e.preventDefault();
           useUIStore.getState().togglePauseMenu();
+          break;
+
+        case "Backquote":
+          e.preventDefault();
+          useCanDataStore.setState((s) => ({
+            commandOpen: !s.commandOpen,
+          }));
           break;
       }
     };

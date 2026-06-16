@@ -7,6 +7,7 @@ export type MenuScreen =
   | "sandbox_setup"
   | "sandbox"
   | "signal_recon"
+  | "signal_recon_mission"
   | "swarm"
   | "settings"
   | "vehicle_select";
@@ -36,6 +37,13 @@ function getActiveMenu(screen: MenuScreen, overlay: UIOverlay): MenuId | null {
   if (screen === "sandbox_setup") return "sandbox_setup";
   return null;
 }
+
+type SignalMission = {
+  id: string;
+  title: string;
+  target: string;
+  status: string;
+};
 
 type UIState = {
   screen: MenuScreen;
@@ -67,14 +75,18 @@ type UIState = {
   togglePauseMenu: () => void;
 
   moveActiveMenuHorizontal: (dir: 1 | -1) => void;
+
+  selectedMission: SignalMission | null;
+  setSelectedMission: (mission: SignalMission | null) => void;
+
 };
 
 
 export const useUIStore = create<UIState>((set, get) => ({
   screen: "main",
-  setScreen: (screen) => {set({ screen, overlay: null,});},
+  setScreen: (screen) => { set({ screen, overlay: null, }); },
   overlay: null,
-  setOverlay: (overlay) => {set({ overlay });},
+  setOverlay: (overlay) => { set({ overlay }); },
   selectedMenuIndexById: {
     main: 0,
     pause: 0,
@@ -102,7 +114,7 @@ export const useUIStore = create<UIState>((set, get) => ({
       isModeLoading: false,
       loadingProgress: 100,
     }),
-  
+
   getActiveMenuId: () => {
     const { screen, overlay } = get();
     return getActiveMenu(screen, overlay);
@@ -280,4 +292,8 @@ export const useUIStore = create<UIState>((set, get) => ({
       }
     }
   },
+
+  selectedMission: null,
+  setSelectedMission: (mission: SignalMission | null) => set({ selectedMission: mission }),
+
 }));

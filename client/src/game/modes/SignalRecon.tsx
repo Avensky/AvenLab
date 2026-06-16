@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useUIStore } from "../../store";
+import { GameButton } from "../../components/GameButton";
 
 const missions = [
   {
@@ -33,7 +34,7 @@ export function SignalRecon() {
   const [selectedMission, setSelectedMission] = useState(missions[0]);
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-[#020617] text-green-100">
+    <div className="game-ui h-screen w-screen overflow-hidden bg-[#020617] text-green-100">
       <div className="absolute inset-0 bg-[linear-gradient(rgba(34,197,94,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(34,197,94,0.05)_1px,transparent_1px)] bg-[size:32px_32px]" />
 
       <div className="relative z-10 flex h-full flex-col p-6">
@@ -47,12 +48,12 @@ export function SignalRecon() {
             </h1>
           </div>
 
-          <button
-            onClick={() => setScreen("main")}
+          <GameButton
+            onPress={() => setScreen("main")}
             className="rounded-lg border border-red-400/40 bg-red-500/10 px-4 py-2 text-sm font-bold text-red-100 hover:bg-red-500/20"
           >
-            EXIT
-          </button>
+            BACK
+          </GameButton>
         </header>
 
         <main className="grid flex-1 grid-cols-1 gap-4 lg:grid-cols-[0.8fr_1.2fr]">
@@ -63,14 +64,13 @@ export function SignalRecon() {
 
             <div className="space-y-3">
               {missions.map((mission) => (
-                <button
+                <GameButton
                   key={mission.id}
-                  onClick={() => setSelectedMission(mission)}
-                  className={`w-full rounded-xl border p-4 text-left transition ${
-                    selectedMission.id === mission.id
-                      ? "border-green-300 bg-green-500/15"
-                      : "border-slate-700 bg-slate-900/80 hover:bg-slate-800"
-                  }`}
+                  onPress={() => setSelectedMission(mission)}
+                  className={`w-full rounded-xl border p-4 text-left transition ${selectedMission.id === mission.id
+                    ? "border-green-300 bg-green-500/15"
+                    : "border-slate-700 bg-slate-900/80 hover:bg-slate-800"
+                    }`}
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-mono text-xs text-yellow-300">
@@ -88,7 +88,7 @@ export function SignalRecon() {
                   <p className="font-mono text-xs text-slate-500">
                     target: {mission.target}
                   </p>
-                </button>
+                </GameButton>
               ))}
             </div>
           </section>
@@ -133,21 +133,28 @@ export function SignalRecon() {
             </div>
 
             <div className="mt-6 grid grid-cols-2 gap-3">
-              <button className="rounded-xl border border-green-300/40 bg-green-500/10 px-5 py-4 font-bold text-green-100 hover:bg-green-400/20">
+              <GameButton
+                className="rounded-xl border border-green-300/40 bg-green-500/10 px-5 py-4 font-bold text-green-100 hover:bg-green-400/20"
+                onPress={() => {
+                  useUIStore.getState().setSelectedMission(selectedMission);
+                  setScreen("signal_recon_mission");
+                }}
+                disabled={selectedMission.status === "LOCKED"}
+              >
                 START MISSION
-              </button>
+              </GameButton>
 
-              <button className="rounded-xl border border-yellow-300/40 bg-yellow-500/10 px-5 py-4 font-bold text-yellow-100 hover:bg-yellow-400/20">
+              <GameButton className="rounded-xl border border-yellow-300/40 bg-yellow-500/10 px-5 py-4 font-bold text-yellow-100 hover:bg-yellow-400/20">
                 RECORD
-              </button>
+              </GameButton>
 
-              <button className="rounded-xl border border-cyan-300/40 bg-cyan-500/10 px-5 py-4 font-bold text-cyan-100 hover:bg-cyan-400/20">
+              <GameButton className="rounded-xl border border-cyan-300/40 bg-cyan-500/10 px-5 py-4 font-bold text-cyan-100 hover:bg-cyan-400/20">
                 REPLAY
-              </button>
+              </GameButton>
 
-              <button className="rounded-xl border border-red-300/40 bg-red-500/10 px-5 py-4 font-bold text-red-100 hover:bg-red-400/20">
+              <GameButton className="rounded-xl border border-red-300/40 bg-red-500/10 px-5 py-4 font-bold text-red-100 hover:bg-red-400/20">
                 ABORT
-              </button>
+              </GameButton>
             </div>
           </section>
         </main>
