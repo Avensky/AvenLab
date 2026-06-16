@@ -160,16 +160,24 @@ export const Ae86 = forwardRef<Group, PropsWithChildren>(function Ae86(
       vehicleGroupRef.current.add(light.target);
     };
 
-    addSpot(leftLightRef, 0xffffff, 5, 40, [-0.5, 0.7, 2.1], [-0.4, -0.6, 5]);  //FR
-    addSpot(rightLightRef, 0xffffff, 5, 40, [0.55, 0.7, 2.1], [0.4, -0.6, 5]);  //FL
+    // addSpot( SpotLight, color, intensity, distance, 
+    // position: [X, Y, Z],
+    // target: [X, Y, Z])
 
-    addSpot(leftTailRef, 0xff0000, 3, 8, [-0.5, 0.6, 1.9], [-0.5, 0.5, 3]); // Rr
-    // addSpot(rightTailRef, 0xff0000, 3, 8, [0.57, 0.6, 1.8], [0.57, 0.5, 3]);
+    // Add headlights
+    addSpot(leftLightRef, 0xffffff, 12, 40, [0.5, 0.7, 1.9], [0.4, -0.6, 4]);       // FL
+    addSpot(rightLightRef, 0xffffff, 12, 40, [-0.55, 0.7, 1.9], [-0.4, -0.6, 4]);   // FR
 
-    addSpot(flBlinkerRef, 0xffa500, 12, 16, [-0.7, 0.6, -1.9], [-0.85, 0.6, -3]); // Rf
-    addSpot(frBlinkerRef, 0xffa500, 12, 16, [0.7, 0.6, -1.9], [0.9, 0.6, -3]);  // Lf 
-    addSpot(rlBlinkerRef, 0xffa500, 12, 16, [-0.5, 0.6, 1.9], [-0.9, 0.6, 3]);  // Rr    
-    addSpot(rrBlinkerRef, 0xffa500, 12, 16, [0.5, 0.6, 1.9], [0.9, 0.6, 3]);    // Lr 
+    // Add tail lights
+    addSpot(leftTailRef, 0xff0000, 7, 8, [0.5, 0.6, -1.9], [0.5, -0.5, -3]);        // RL
+    addSpot(rightTailRef, 0xff0000, 7, 8, [-0.55, 0.6, -1.9], [-0.5, -0.5, -3]);    // RR
+
+    // Add blinkers
+    addSpot(flBlinkerRef, 0xffa500, 12, 16, [0.7, 0.6, 1.9], [0.9, -0.6, 3]);       // FL
+    addSpot(frBlinkerRef, 0xffa500, 12, 16, [-0.7, 0.6, 1.9], [-0.9, -0.6, 3]);     // FR
+
+    addSpot(rlBlinkerRef, 0xffa500, 12, 16, [0.5, 0.6, -1.9], [0.9, -0.6, -3]);     // RL
+    addSpot(rrBlinkerRef, 0xffa500, 12, 16, [-0.5, 0.6, -1.9], [-0.9, -0.6, -3]);   // RR
 
     return () => {
       const vehicleGroup = vehicleGroupRef.current;

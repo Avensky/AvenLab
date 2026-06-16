@@ -61,6 +61,11 @@ install cargo based on your architecture
 
 cargo install cargo-watch
 
+# Ollama
+
+curl -fsSL <https://ollama.com/install.sh> | sh
+ollama serve
+
 ## export via scripts
 
 import bpy

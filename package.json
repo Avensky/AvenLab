@@ -4,7 +4,8 @@
   "scripts": {
     "dev": "concurrently \"npm:dev:*\"",
     "dev:client": "npm --prefix client run dev",
-    "dev:rust": "cd physics-server && cargo watch -x run"
+    "dev:rust": "cd physics-server && cargo watch -x run",
+    "dev:ollama": "ollama serve"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
