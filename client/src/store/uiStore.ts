@@ -7,6 +7,7 @@ export type MenuScreen =
   | "sandbox_setup"
   | "sandbox"
   | "signal_recon"
+  | "signal_recon_setup"
   | "signal_recon_mission"
   | "swarm"
   | "settings"
@@ -14,7 +15,7 @@ export type MenuScreen =
 
 export type UIOverlay = null | "pause" | "debug_menu" | "settings" | "vehicle_select";
 
-export type MenuId = "main" | "pause" | "settings" | "sandbox_setup";
+export type MenuId = "main" | "pause" | "settings" | "sandbox_setup" | "signal_recon_setup";
 
 const playableScreens = new Set<MenuScreen>([
   "sandbox",
@@ -27,6 +28,7 @@ const menuItemCounts: Record<MenuId, number> = {
   pause: 4,
   settings: 3,
   sandbox_setup: 4,
+  signal_recon_setup: 2,
 };
 
 function getActiveMenu(screen: MenuScreen, overlay: UIOverlay): MenuId | null {
@@ -92,6 +94,7 @@ export const useUIStore = create<UIState>((set, get) => ({
     pause: 0,
     settings: 0,
     sandbox_setup: 0,
+    signal_recon_setup: 0,
   },
 
   isModeLoading: false,

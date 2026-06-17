@@ -2,7 +2,7 @@ import { FullCanvas } from "../FullCanvas";
 import { useUIStore } from "../store";
 import { VehiclePreview } from "./preview";
 import { MainMenu, ModeLoadingScreen, PauseMenu } from "./index";
-import { Sandbox, SandboxSetup, SignalRecon, SignalReconMission, Swarm } from "./modes";
+import { Sandbox, SandboxSetup, SignalRecon, SignalReconSetup, SignalReconMission, Swarm } from "./modes";
 import { DebugMenu } from "../components/debugger/DebugMenu";
 import { ControlsPanel, Pedals, Steering } from "../ui";
 import { CommandLine } from "../ui/command/CommandLine";
@@ -17,7 +17,9 @@ export function GameUI() {
     <FullCanvas>
       {screen === "sandbox_setup" && <VehiclePreview />}
       {screen === "sandbox" && <Sandbox />}
+
       {screen === "swarm" && <Swarm />}
+      {screen === "signal_recon_setup" && <VehiclePreview />}
       {/* {!needsCanvas && screen === "settings" && <Settings />} */}
     </FullCanvas>
 
@@ -30,6 +32,7 @@ export function GameUI() {
     {screen === "signal_recon" && <SignalRecon />}
     {screen === "signal_recon_mission" && <SignalReconMission />}
     {screen === "sandbox_setup" && <SandboxSetup />}
+    {screen === "signal_recon_setup" && <SignalReconSetup />}
 
     {/* Menus */}
     {screen === "main" && <MainMenu />}

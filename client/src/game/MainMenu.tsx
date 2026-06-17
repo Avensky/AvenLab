@@ -12,7 +12,7 @@ const menuItems = [
   {
     label: "SIGNAL RECON MODE",
     desc: "Baseline, action, validation, record, replay.",
-    screen: "signal_recon" as const,
+    screen: "signal_recon_setup" as const,
     variant: "warning" as const,
   },
   {

@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 import httpx
 from services.ollama_client import OLLAMA_URL, embed_text, ask_question
+from app.can.status import get_can_status
 app = FastAPI(title="Aven Data Server")
 
 class EmbedRequest(BaseModel): text: str
@@ -16,6 +17,11 @@ class GenerateRequest(BaseModel):
 class CANQuestion(BaseModel):
     context: str
     question: str
+
+
+@app.get("/can/status")
+async def can_status():
+    return get_can_status()
 
 @app.get("/health")
 async def health():
