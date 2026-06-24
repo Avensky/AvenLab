@@ -36,21 +36,29 @@ jobs:
           .venv/bin/pip install -r requirements.txt
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        run: |
+          if ! command -v rustc >/dev/null 2>&1; then
+            curl https://sh.rustup.rs -sSf | sh -s -- -y
+          fi
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
 
       - name: Confirm Rust toolchain
         run: |
+          source "$HOME/.cargo/env"
           rustc --version
           cargo --version
 
       - name: Run project checks
-        run: npm run check
+        run: |
+          source "$HOME/.cargo/env"
+          npm run check
 
       - name: Build frontend
         run: npm --prefix frontend run build
 
       - name: Build Rust server
         run: |
+          source "$HOME/.cargo/env"
           cd physics-server
           cargo build --release
 
