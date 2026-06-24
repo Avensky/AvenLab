@@ -36,37 +36,37 @@ jobs:
           .venv/bin/pip install -r requirements.txt
 
       - name: Install Rust toolchain
+        shell: bash
         run: |
-          if ! command -v rustc >/dev/null 2>&1; then
-            curl https://sh.rustup.rs -sSf | sh -s -- -y
-          fi
-          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          set -eux
+          echo "HOME=$HOME"
+          echo "USER=$(whoami)"
 
-      - name: Confirm Rust toolchain
-        run: |
-          source "$HOME/.cargo/env"
+          if [ ! -x "$HOME/.cargo/bin/rustc" ]; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          fi
+
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.cargo/bin:$PATH"
+
           rustc --version
           cargo --version
 
       - name: Run project checks
+        shell: bash
         run: |
-          source "$HOME/.cargo/env"
+          export PATH="$HOME/.cargo/bin:$PATH"
           npm run check
 
       - name: Build frontend
         run: npm --prefix frontend run build
 
       - name: Build Rust server
+        shell: bash
         run: |
-          source "$HOME/.cargo/env"
+          export PATH="$HOME/.cargo/bin:$PATH"
           cd physics-server
           cargo build --release
-
-      - name: Prepare runtime directories
-        run: |
-          mkdir -p data-server/data
-          mkdir -p data-server/logs
-          mkdir -p captures
 
       - name: Initial deployment complete
         run: |
