@@ -3,12 +3,21 @@
   "private": true,
   "scripts": {
     "dev": "concurrently \"npm:dev:*\"",
-    "dev:client": "npm --prefix client run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
     "dev:rust": "cd physics-server && cargo watch -x run",
-    "dev:ollama": "ollama serve"
+    "dev:uvicorn": "cd data-server && .venv/bin/uvicorn app.main:app --reload --port 8001",
+    "dev:ollama": "ollama serve",
+    "check": "concurrently -n frontend,data,rust \"npm:check:frontend\" \"npm:check:data\" \"npm:check:rust\"",
+    "check:frontend": "npm --prefix frontend run lint && npm --prefix frontend run build",
+    "check:data": "cd data-server && .venv/bin/python -m compileall app",
+    "check:rust": "cd physics-server && cargo check",
+    "lint": "npm run check"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
     "wait-on": "^9.0.3"
+  },
+  "engines": {
+    "node": ">=24 <25"
   }
 }
