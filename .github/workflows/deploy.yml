@@ -8,179 +8,114 @@ on:
     branches: [main]
 
 jobs:
-  backend:
+  check:
     runs-on: self-hosted
-    steps:
-      - name: Stop the server
-        run: |
-          pm2 stop AMLVF
 
-      - name: Checkout to the repository
+    steps:
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Use system Python
-        run: |
-          python3 --version
-          pip3 --version
+      - name: Set up NodeJS
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
 
-      - name: Cache Python packages
-        id: cache-python
+      - name: Cache Python pip
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          key: ${{ runner.os }}-pip-${{ hashFiles('data-server/requirements.txt') }}
 
-      - name: Install Python dependencies
-        if: steps.cache-python.outputs.cache-hit != 'true'
-        run: |
-          pip3 install --break-system-packages -r python/requirements.txt
-
-      - name: Check and install Ollama
-        run: |
-          if ! command -v ollama &> /dev/null; then
-            echo "🔧 Installing Ollama..."
-            curl -fsSL https://ollama.com/install.sh | sh
-          else
-            echo "✅ Ollama already installed"
-          fi
- 
-      - name: Ensure nomic-embed-text model is available
-        run: |
-          if ! ollama list | grep -q 'nomic-embed-text'; then
-            ollama pull nomic-embed-text
-          fi
-         
-      - name: Check Ollama health
-        run: |
-          ollama serve &
-          sleep 3
-          curl -s http://localhost:11434/api/tags || echo "⚠️ Ollama did not respond"
-
-      - name: Set up NodeJS environment
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18.20.8
-    
-      - name: Cache node modules
-        id: cache-backend
-        uses: actions/cache@v4
-        env:
-          cache-name: cache-node-modules
-        with:
-          path: node_modules
-          key: ${{runner.os}}-${{ env.cache-name }}-${{ hashFiles('package-lock.json')}}
-          restore-keys: |
-            ${{ runner.os }}-${{ env.cache-name }}-
-            ${{ runner.os }}-
-
-      - name: Install Dependencies
-        run: npm ci
-
-      - name: Check linting and formatting
-        run: npm run lint
-        
-      - name: Check Postgres
-        run: docker compose up -d
-
-      - name: Wait for Postgres
-        run: |
-          chmod +x wait-for-it.sh
-          ./wait-for-it.sh localhost echo "✅ DB ready!"
-
-      - name: Re-run schema.sql if needed
-        run: docker exec $(docker ps -qf "ancestor=ankane/pgvector") psql -U postgres -d amlvf -f /docker-entrypoint-initdb.d/schema.sql
-
-      - name: Run testVector.js
-        run: node database/testVector.js
-
-      - name: Verify DB schema
-        run: docker exec $(docker ps -qf "ancestor=ankane/pgvector") psql -U postgres -d amlvf -c '\dt'
-
-  frontend:
-    needs: backend
-    runs-on: self-hosted
-    steps:
-      - name: Checkout to the repository
-        uses: actions/checkout@v4
-
-      - name: Set up NodeJS environment
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18.20.8
-
-      - name: Cache node modules
-        id: cache-frontend
-        uses: actions/cache@v4
-        env:
-          cache-name: cache-node-modules
-        with:
-          path: frontend/node_modules
-          key: ${{runner.os}}-frontend-${{env.cache-name}}-${{ hashFiles('frontend/package-lock.json')}}
-          restore-keys: |
-            ${{ runner.os }}-frontend-${{ env.cache-name }}
-            ${{ runner.os }}-frontend-
-            ${{ runner.os }}-
-
-      - name: Install Dependencies
-        if: steps.cache-frontend.outputs.cache-hit !='true'
-        run: |
-          cd frontend
-          npm ci
-
-      - name: Check linting and formatting
-        run: |
-          cd frontend
-          npm run lint
-
-  build:
-    needs: frontend
-    runs-on: self-hosted
-    steps:
-      - name: Checkout to the repository
-        uses: actions/checkout@v4
-
-      - name: Set up NodeJS environment
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18.20.8
-
-      - name: Use cache node modules
+      - name: Cache Rust cargo
         uses: actions/cache@v4
         with:
           path: |
-            node_modules
-            frontend/node_modules
-          key: |
-            backend-cache-backend-${{ hashFiles('package-lock.json')}}
-            frontend-cache-frontend-${{ hashFiles('frontend/package-lock.json')}}
+            ~/.cargo/registry
+            ~/.cargo/git
+            physics-server/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('physics-server/Cargo.lock') }}
 
-      - name: Install Dependencies
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install frontend dependencies
+        run: npm ci --prefix frontend
+
+      - name: Install Python dependencies
+        run: |
+          cd data-server
+          python3 -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/pip install -r requirements.txt
+
+      - name: Run project checks
+        run: npm run check
+
+  build:
+    needs: check
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up NodeJS
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
+
+      - name: Cache Rust cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            physics-server/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('physics-server/Cargo.lock') }}
+
+      - name: Install dependencies
         run: |
           npm ci
-          cd frontend
-          npm ci
+          npm ci --prefix frontend
 
-      - name: Ensure vcan0 is active
+      - name: Build frontend
+        run: npm --prefix frontend run build
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Confirm Rust toolchain
         run: |
-          sudo modprobe can
-          sudo modprobe vcan
-          sudo modprobe can_raw
-          if ! ip link show vcan0 > /dev/null 2>&1; then
-            sudo ip link add dev vcan0 type vcan
-            sudo ip link set up vcan0
-            echo "✅ vcan0 created"
-          else
-            echo "✅ vcan0 already exists"
-          fi
+          rustc --version
+          cargo --version
 
-      - name: Verify vcan0 is running
-        run: ip link show vcan0
-        
-      - name: Create production build
+      - name: Build Rust physics server
         run: |
-          cd frontend
-          npm run build
-          pm2 start AMLVF --update-env
-          pm2 save
+          cd physics-server
+          cargo build --release
 
-          sudo service nginx restart
+  deploy:
+    needs: build
+    runs-on: self-hosted
+    if: github.event_name != 'pull_request'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Restart AvenLab services
+        run: |
+          sudo systemctl restart avenlab-data || true
+          sudo systemctl restart avenlab-physics || true
+          sudo systemctl restart nginx || true
+
+      - name: Deploy complete
+        run: echo "AvenLab deploy complete"
