@@ -1,14 +1,16 @@
-name: Deploy
+name: Deploy AvenLab
 
 on:
-  workflow_dispatch:
   push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+    branches:
+      - main
+
+concurrency:
+  group: avenlab-deploy
+  cancel-in-progress: true
 
 jobs:
-  check:
+  deploy:
     runs-on: self-hosted
 
     steps:
@@ -20,24 +22,6 @@ jobs:
         with:
           node-version-file: ".nvmrc"
           cache: "npm"
-          cache-dependency-path: |
-            package-lock.json
-            frontend/package-lock.json
-
-      - name: Cache Python pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('data-server/requirements.txt') }}
-
-      - name: Cache Rust cargo
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            physics-server/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('physics-server/Cargo.lock') }}
 
       - name: Install root dependencies
         run: npm ci
@@ -45,77 +29,71 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci --prefix frontend
 
-      - name: Install Python dependencies
-        run: |
-          cd data-server
-          python3 -m venv .venv
-          .venv/bin/python -m pip install --upgrade pip
-          .venv/bin/pip install -r requirements.txt
-
-      - name: Run project checks
-        run: npm run check
-
-  build:
-    needs: check
-    runs-on: self-hosted
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up NodeJS
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: ".nvmrc"
-          cache: "npm"
-          cache-dependency-path: |
-            package-lock.json
-            frontend/package-lock.json
-
-      - name: Cache Rust cargo
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            physics-server/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('physics-server/Cargo.lock') }}
-
-      - name: Install dependencies
-        run: |
-          npm ci
-          npm ci --prefix frontend
-
       - name: Build frontend
         run: npm --prefix frontend run build
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Confirm Rust toolchain
+        shell: bash
         run: |
+          set -eux
+          if [ ! -x "$HOME/.cargo/bin/rustc" ]; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          fi
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.cargo/bin:$PATH"
           rustc --version
           cargo --version
 
-      - name: Build Rust physics server
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: physics-server
+
+      - name: Run project checks
+        shell: bash
         run: |
+          export PATH="$HOME/.cargo/bin:$PATH"
+          npm run check
+
+      - name: Build Rust physics server
+        shell: bash
+        run: |
+          export PATH="$HOME/.cargo/bin:$PATH"
           cd physics-server
           cargo build --release
 
-  deploy:
-    needs: build
-    runs-on: self-hosted
-    if: github.event_name != 'pull_request'
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Restart AvenLab services
+      - name: Restart physics server
         run: |
-          sudo systemctl restart avenlab-data || true
-          sudo systemctl restart avenlab-physics || true
-          sudo systemctl restart nginx || true
+          sudo systemctl restart avenlab-physics
+          sleep 2
+          sudo systemctl is-active --quiet avenlab-physics
 
-      - name: Deploy complete
-        run: echo "AvenLab deploy complete"
+      - name: Test and reload NGINX
+        run: |
+          sudo nginx -t
+          sudo systemctl reload nginx
+
+      - name: Health check frontend
+        run: |
+          curl -f http://127.0.0.1/ > /dev/null
+
+      - name: Health check physics port
+        run: |
+          ss -ltn | grep ':9001'
+
+      - name: Optional data-server health check
+        continue-on-error: true
+        run: |
+          systemctl is-active --quiet avenlab-data-server
+          curl -f http://127.0.0.1:8001/health
+
+      - name: Optional Ollama health check
+        continue-on-error: true
+        run: |
+          curl -f http://127.0.0.1:11434/api/tags
+
+      - name: Optional CAN interface check
+        continue-on-error: true
+        run: |
+          ip link show can0
+          ip -details link show can0

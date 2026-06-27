@@ -1,14 +1,14 @@
-# AvenLab
+# AvensLab
 
-```AvenLab is a real-time vehicle simulation and ML engine powered by a Rust/Rappier physics core and a React Three Fiber frontend. It supports deterministic backend physics, multiplayer networking, dataset recording, and tools for autonomous control, reinforcement learning, and CAN-bus modeling.```
+```t
+AvenLab is a real-time vehicle simulation and ML engine powered by a Rust/Rappier physics core and a React Three Fiber frontend. It supports deterministic backend physics, multiplayer networking, dataset recording, and tools for autonomous control, reinforcement learning, and CAN-bus modeling.
+```
 
-# AvenLab
+## Real-Time Vehicle Simulation, Machine Learning, and Autonomous Systems Research Platform
 
-### Real-Time Vehicle Simulation, Machine Learning, and Autonomous Systems Research Platform
-
-```AvenLab is a next-generation vehicle simulation and machine-learning engine designed for real-time physics, autonomous control, and multiplayer environments. Built with a modern architecture using a Rust-powered physics backend (Rappier), a React Three Fiber visualization frontend, and a modular networking layer, AvenLab enables high-performance experimentation across robotics, vehicle dynamics, and AI-driven behavior learning.```
-
----
+```t
+AvenLab is a next-generation vehicle simulation and machine-learning engine designed for real-time physics, autonomous control, and multiplayer environments. Built with a modern architecture using a Rust-powered physics backend (Rappier), a React Three Fiber visualization frontend, and a modular networking layer, AvenLab enables high-performance experimentation across robotics, vehicle dynamics, and AI-driven behavior learning.
+```
 
 ## 🔥 Core Features
 
@@ -19,7 +19,7 @@
 - **High-Performance Visualization** using React Three Fiber
 - **Socket-Based Networking** for live state syncing
 - **Recording & Replay System** for dataset generation and training
-- **Self-Driving Research Tools** (future)
+- **Self-Driving Research Tools** (future)  
 
 ---
 
@@ -47,27 +47,24 @@
 
 Coming soon at **<https://avensky.com/avenlab>**
 
-# AVENLAB
+---
 
-This is a vehicle reverse engineering app that uses AI concepts to facilitate the process of reverse engineering can bus logs
+## 🚗 CANBUS HACKING CTF, TOOLKIT, AND SIMULATOR
 
-# 🚗 CANBUS HACKING CTF, TOOLKIT, AND SIMULATOR
-
-``` A curated collection of tools, scripts, and resources for automotive security research and CAN bus experimentation.
+A curated collection of tools, scripts, and resources for automotive security research and CAN bus experimentation.
 
 This project launches a 3D vehicle simulator where users can attempt code injections for points in a CTF.
 
-When the fuel gauge reaches 0, the simulation ends and all gauges are reset.```
-
----
+When the fuel gauge reaches 0, the simulation ends and all gauges are reset.
 
 ## 📁 Project Structure
 
-Avenlab/
+```t
+AvenLab/
 ├── .github/
 │    └── workflows/        # CICD yml files
-│        ├── deploy.yml    # File runs when code is pushed 
-│        └── init.yml      # File required to start the first workflow 
+│        ├── deploy.yml    # File runs when code is pushed
+│        └── init.yml      # File required to start the first workflow
 |
 ├── .vscode/
 │    └── launch.json       # Code Editor
@@ -75,19 +72,19 @@ Avenlab/
 ├── data-server/
 │   ├── app/
 │   │   ├── can/
-│   │   │   ├── __init__.py
-│   │   │   ├── capture.py 
+│   │   │   ├── **init**.py
+│   │   │   ├── capture.py
 │   │   │   ├── decoders.py
-│   │   │   ├── session.py 
-│   │   │   └── status.py    
+│   │   │   ├── session.py
+│   │   │   └── status.py
 │   │   ├── exports/
-│   │   │   ├── __init__.py
-│   │   │   ├── csv_export.py 
+│   │   │   ├── **init**.py
+│   │   │   ├── csv_export.py
 │   │   │   └── pdf_export.py
 │   │   ├── services/
-│   │   │   ├── __init__.py
+│   │   │   ├── **init**.py
 │   │   │   └── ollama_client.py
-│   │   ├── __init__.py
+│   │   ├── **init**.py
 │   │   ├── db.py
 │   │   └── main.py
 │   ├── db/
@@ -283,7 +280,7 @@ Avenlab/
 │   │   │   ├── volumeOff.svg
 │   │   │   ├── windshield.svg
 │   │   │   ├── wretch.svg
-│   │   │   └── zip.svg    
+│   │   │   └── zip.svg
 │   │   ├── models/
 │   │   │   ├── blocks/
 │   │   │   │   └── block_01/
@@ -463,37 +460,37 @@ Avenlab/
 │   └── vite.config.ts
 │
 ├── physics-server
-│   ├── src/                  
-│   │   ├── assets/                  
-│   │   │   └── blocks                 
-│   │   │      └── block_01_collidrs.json                  
-│   │   ├── aven_tire/                 
-│   │   │   ├── anti_roll.rs              
-│   │   │   ├── brush_lite.rs              
-│   │   │   ├── kinematics.rs              
-│   │   │   ├── longitudinal.rs              
-│   │   │   ├── mod.rs              
-│   │   │   ├── solve.rs              
-│   │   │   ├── state.rs              
-│   │   │   ├── steering.rs              
-│   │   │   └── types.rs               
-│   │   ├── world/                 
-│   │   │   ├── block_colliders.rs              
-│   │   │   └── mod.rs               
-│   │   ├── main.rs                 
-│   │   ├── net.rs                 
-│   │   ├── physics_blocks.rs                
-│   │   ├── physics.rs                 
-│   │   ├── spawn.rs                 
-│   │   ├── state.rs                 
-│   │   ├── suspension_contact.rs                
-│   │   ├── vehicle_debug.rs                 
-│   │   ├── vehicle_forces.rs                 
-│   │   ├── vehicle_setup.rs                 
-│   │   └── vehicle_state.rs                 
-│   ├── target/             
-│   ├── Cargo.lock            
-│   └── Cargo.toml                    
+│   ├── src/
+│   │   ├── assets/
+│   │   │   └── blocks
+│   │   │      └── block_01_collidrs.json
+│   │   ├── aven_tire/
+│   │   │   ├── anti_roll.rs
+│   │   │   ├── brush_lite.rs
+│   │   │   ├── kinematics.rs
+│   │   │   ├── longitudinal.rs
+│   │   │   ├── mod.rs
+│   │   │   ├── solve.rs
+│   │   │   ├── state.rs
+│   │   │   ├── steering.rs
+│   │   │   └── types.rs
+│   │   ├── world/
+│   │   │   ├── block_colliders.rs
+│   │   │   └── mod.rs
+│   │   ├── main.rs
+│   │   ├── net.rs
+│   │   ├── physics_blocks.rs
+│   │   ├── physics.rs
+│   │   ├── spawn.rs
+│   │   ├── state.rs
+│   │   ├── suspension_contact.rs
+│   │   ├── vehicle_debug.rs
+│   │   ├── vehicle_forces.rs
+│   │   ├── vehicle_setup.rs
+│   │   └── vehicle_state.rs
+│   ├── target/
+│   ├── Cargo.lock
+│   └── Cargo.toml
 │
 ├── .gitattributes
 ├── .gitignore
@@ -501,6 +498,7 @@ Avenlab/
 ├── package-lock.json
 ├── package.json
 └── README.md
+```
 
 ---
 
@@ -635,7 +633,6 @@ Then boot the Pi and connect via:
 ```bash
 ssh uri@<IP_ADDRESS>
 or 
-
 ssh -o IPQoS=throughput uri@<your-ip-address>
 ```
 
@@ -750,9 +747,9 @@ sudo ip link set up vcan0
 
 ---
 
-# 🚀 CI/CD Pipeline Setup for Aversarial-Machine-Learning-Vehicle-Framework (GitHub Actions + Self-Hosted Runner)
+# 🚀 CI/CD Pipeline Setup for AvenLab (GitHub Actions + Self-Hosted Runner)
 
-This guide explains how to set up a **self-hosted GitHub Actions runner** for deploying the (<https://github.com/Avensky/Aversarial-Machine-Learning-Vehicle-Framework>) project using CI/CD on a Raspberry Pi or ARM64 device.
+This guide explains how to set up a **self-hosted GitHub Actions runner** for deploying the (<https://github.com/Avensky/AvenLab>) project using CI/CD on a Raspberry Pi or ARM64 device.
 
 ---
 
@@ -760,8 +757,8 @@ This guide explains how to set up a **self-hosted GitHub Actions runner** for de
 
 ```bash
 # Create a directory recognized by Nginx
-sudo mkdir -p /var/www/
-cd /var/www/
+sudo mkdir -p /var/www
+cd /var/www
 
 # Set correct ownership and permissions
 sudo chown -R $USER:$USER /var/www
@@ -807,10 +804,8 @@ Replace with the latest version from GitHub’s runner releases page (commenting
 ## ⚙️ 5. Configure the Runner
 
 ```bash
-
-
 # Replace the token with your actual GitHub token
-# ./config.sh --url https://github.com/<your-username>/Aversarial-Machine-Learning-Vehicle-Framework --token YOUR_TOKEN_HERE
+# ./config.sh --url https://github.com/<your-username>/AvenLab --token YOUR_TOKEN_HERE
 ```
 
 > 🧠 During this step, you’ll name the runner and accept default prompts.
@@ -841,7 +836,7 @@ Your GitHub Actions runner is now connected. Any workflow `.yml` files you add t
 
 ---
 
-# 🚀 Manually Triggering Initial GitHub Actions Workflow
+## 🚀 Manually Triggering Initial GitHub Actions Workflow
 
 After setting up your **self-hosted GitHub Actions runner**, you need to manually trigger the first workflow to verify the runner and kick off the deployment pipeline.
 
@@ -876,7 +871,7 @@ This enables **manual triggering** from the GitHub web interface.
 
 The workflow performs these steps across 3 jobs:
 
-### 🔧 `backend` job
+### 🔧 backend job
 
 - Checks out code
 - Sets up Node.js
@@ -884,12 +879,12 @@ The workflow performs these steps across 3 jobs:
 - Installs dependencies
 - Lints and tests backend
 
-### 🎨 `frontend` job
+### 🎨 frontend job
 
 - Waits for `backend` to finish
 - Repeats setup and linting steps for frontend code
 
-### 🏗 `build` job
+### 🏗 build job
 
 - Waits for `frontend`
 - Builds the production frontend with `npm run build`
@@ -898,48 +893,47 @@ The workflow performs these steps across 3 jobs:
 
 ✅ Once complete, the runner should have tested, linted, and built your app for deployment.
 
-# 🌐 Install and Configure NGINX with PM2
-
-This guide walks you through installing **PM2** and **NGINX** on a Raspberry Pi to persist and proxy a Node.js backend using GitHub Actions and virtual CAN bus.
-
----
-
-## 🔧 Install PM2 for Persistent Ollama Server
-
-pm2 start "ollama serve" --name Ollama
-
-## 🔧 Install PM2 for Persistent Node Server
-
-Verify your server runs then close it.
+# 🌐 Create Service for Server Persistance
 
 ```bash
-node /var/www/Avenlab/_work/Aversarial-Machine-Learning-Vehicle-Framework/Aversarial-Machine-Learning-Vehicle-Framework/server.js
+sudo nano /etc/systemd/system/avenlab-physics.service
 ```
 
-Install pm2
+## Add the following script
 
 ```bash
-npm install -g pm2
-pm2 start /var/www/Avenlab/_work/Aversarial-Machine-Learning-Vehicle-Framework/Aversarial-Machine-Learning-Vehicle-Framework/server.js --name Avenlab
-pm2 startup
+[Unit]
+Description=AvenLab Rust Physics Server
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/var/www/_work/AvenLab/AvenLab/physics-server
+ExecStart=/var/www/_work/AvenLab/AvenLab/physics-server/target/release/avenlab-server
+Restart=always
+RestartSec=3
+User=www-data
+Environment=RUST_LOG=info
+
+[Install]
+WantedBy=multi-user.target
 ```
 
-## copy the startup script and run it - looks similar to this
+## Activate Server
 
 ```bash
-# sudo env PATH=$PATH:/home/pi/.nvm/versions/node/v24.1.0/bin \
-#     /home/pi/.nvm/versions/node/v24.1.0/lib/node_modules/pm2/bin/pm2 \ startup systemd -u pi --hp /home/pi
-
-pm2 save
+sudo systemctl daemon-reload
+sudo systemctl enable avenlab-physics
+sudo systemctl start avenlab-physics
+sudo systemctl status avenlab-physics
 ```
-
----
 
 ## 🌍 Install NGINX (Reverse Proxy for Frontend + API)
 
 ```bash
 sudo apt update
 sudo apt install nginx
+
 ```
 
 ---
@@ -947,10 +941,9 @@ sudo apt install nginx
 ## 🗂 Set Up Server Directory Permissions
 
 ```bash
-sudo chown -R $USER:$USER /var/www/Avenlab
-sudo chmod -R 755 /var/www/Avenlab
-sudo chown -R $USER:$USER /var/www/Avenlab/_work/Aversarial-Machine-Learning-Vehicle-Framework/Aversarial-Machine-Learning-Vehicle-Framework/frontend/dist
-sudo chmod -R 777 /var/www/Avenlab
+sudo chown -R $USER:www-data /var/www
+sudo chmod -R 755 /var/www
+
 ```
 
 ---
@@ -960,7 +953,7 @@ sudo chmod -R 777 /var/www/Avenlab
 Edit the NGINX site configuration:
 
 ```bash
-sudo nano /etc/nginx/sites-available/Avenlab
+sudo nano /etc/nginx/sites-available/AvenLab
 ```
 
 ```t
@@ -968,50 +961,37 @@ server {
   listen 80;
   listen [::]:80;
 
-  root /var/www/Avenlab/_work/Aversarial-Machine-Learning-Vehicle-Framework/Aversarial-Machine-Learning-Vehicle-Framework/frontend/dist;
-  index index.html index.htm index.nginx-debian.html;
-
   server_name _;
 
+  root /var/www/_work/AvenLab/AvenLab/frontend/dist;
+  index index.html;
+
   location / {
-    try_files $uri $uri/ =404;
+    try_files $uri $uri/ /index.html;
   }
 
-  location /api {
-    proxy_pass http://localhost:5000;
-    proxy_http_version 1.1;
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection 'upgrade';
-    proxy_set_header Host $host;
-    proxy_cache_bypass $http_upgrade;
-    proxy_buffers 8 16k;
-    proxy_buffer_size 32k;
-  }
-
-  location /socket.io/ {
-    proxy_pass http://localhost:5000/socket.io/;
+  location /ws/ {
+    proxy_pass http://127.0.0.1:9001/;
     proxy_http_version 1.1;
     proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+    proxy_read_timeout 86400;
+  }
+
+  location /api/ {
+    proxy_pass http://127.0.0.1:9001/api/;
+    proxy_http_version 1.1;
     proxy_set_header Host $host;
   }
 }
 ```
 
-Enable the site and tweak NGINX settings:
+## ✅ Enable Site & Tweak NGINX settings
 
 ```bash
-sudo ln -s /etc/nginx/sites-available/Avenlab /etc/nginx/sites-enabled/
-sudo nano /etc/nginx/nginx.conf
+sudo ln -sf /etc/nginx/sites-available/AvenLab /etc/nginx/sites-enabled/AvenLab
 ```
-
-In the `http` block, ensure:
-
-```s
-server_names_hash_bucket_size 64;
-```
-
----
 
 ## 🔁 Remove Default, Test, and Restart NGINX
 
@@ -1036,8 +1016,8 @@ sudo nano /usr/local/bin/startup.sh
 ```t
 #!/bin/bash
 
-echo "Starting Avenlab service..."
-cd /var/www/Avenlab
+echo "Starting AvenLab service..."
+cd /var/www/AvenLab
 sudo ./svc.sh start
 
 echo "Checking for vcan0..."
@@ -1059,19 +1039,19 @@ fi
 ## Run it automatically on boot
 
 ```bash
-sudo nano /etc/systemd/system/Avenlab.service
+sudo nano /etc/systemd/system/AvenLab.service
 ```
 
 ## Edit to use your username, Copy, Paste, Save
 
 ```t
 [Unit]
-Description=Avenlab Startup with VCAN Check
+Description=AvenLab Startup with VCAN Check
 After=network.target
 
 [Service]
 Type=simple
-WorkingDirectory=/var/www/Avenlab
+WorkingDirectory=/var/www/AvenLab
 ExecStart=/bin/bash /usr/local/bin/startup.sh
 Restart=always
 User=pi
@@ -1084,9 +1064,9 @@ WantedBy=multi-user.target
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable Avenlab.service
-sudo systemctl start Avenlab.service
-sudo systemctl status Avenlab.service
+sudo systemctl enable AvenLab.service
+sudo systemctl start AvenLab.service
+sudo systemctl status AvenLab.service
 ```
 
 # Manual Recovery From IP Change
@@ -1130,7 +1110,7 @@ hostname -I
 ### Update `server_name` in NGINX config
 
 ```bash
-sudo nano /etc/nginx/sites-available/Avenlab
+sudo nano /etc/nginx/sites-available/AvenLab
 ```
 
 Update server_name or use server_name _;
@@ -1182,66 +1162,7 @@ Please ensure your contributions adhere to the project's coding standards and in
 
 For questions, suggestions, or collaborations, please open an issue or contact [Avensky](https://github.com/Avensky).
 
-# Acknowledgements
-
-Project concept and execution inspired by rhysmorgan134/Can-App
-
-Frontend inspired by Domenicobrz/R3F-in-practice
-
-T-90M 3D model
-"T-90M (With interior) [FREE]" (<https://skfb.ly/oWGUu>) by DerpDude is licensed under Creative Commons Attribution (<http://creativecommons.org/licenses/by/4.0/>).
-
-Panzer II model
-"Panzer II (Pz.Kpfw. II)" (<https://skfb.ly/oTOqy>) by vmatthew is licensed under Creative Commons Attribution (<http://creativecommons.org/licenses/by/4.0/>).
-
-## TODO
-
-REMOVE GIMMICKY BUTTON LOGIC, ONLY USE BUTTONS WHEN WE
-WANT THEM TO BE TABBED/ ACCESSSIBLE
-
-INTERMEDIATE FIX, MAKE GAME FULLY GAMEPAD ACCESSABLE TO AVOID KEYBOARD ISSUES
-
-MIX OF UI BUTTONS WITH KEYBOARD CAN HAVE MANY UNWANTED CONSEQUENCES
-
-CREATE A REUSABLE DIV TO ACT LIKE A BUTTON
-
-```s
-export function AccessibleButton({
-  children,
-  onClick,
-  className = '',
-}: {
-  children: React.ReactNode,
-  onClick: () => void,
-  className?: string,
-}) {
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={onClick}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
-          onClick()
-        }
-      }}
-      className={className}
-    >
-      {children}
-    </div>
-  )
-}
-
-```
-
-✅ What’s going on:
-
-Attribute Purpose
-role="button" Tells screen readers “this acts like a button”
-tabIndex={0} Makes it keyboard focusable
-onKeyDown Allows Enter/Space to “click” the div
-e.preventDefault() Stops Spacebar from scrolling the page
+## Connect BOARD
 
 connect waveshare board to pi
 
@@ -1251,10 +1172,10 @@ ensure you have enough voltage converter to handle pi
 get a nice thick cable thats 3m or less, the shorter the better
 
 🔌 OBD-II (J1962) Port Pinout
-  ________________________
+ __________________________
 
 /  1  2  3  4  5  6  7  8  \
-|   9 10 11 12 13 14 15 16  |
+| 9  10 11 12 13 14 15  16  |
  ---------------------------
 
 🔌 OBD-II Pigtail to Pi HAT
@@ -1299,7 +1220,11 @@ sudo reboot
 ip link show
 ✅ If you see can0 or can1 → you’re good to go:
 sudo ip link set can0 up type can bitrate 500000
-sudo ip link set can0 up type can bitrate 500000 listen-only on
+sudo ip link set can1 up type can bitrate 500000
+
+sudo ip link set can0 down || true
+sudo ip link set can1 down || true
+sudo ip link set can0 up type can bitrate 500000
 sudo ip link set can1 up type can bitrate 500000
 
 Terminal 1
@@ -1313,32 +1238,24 @@ dtoverlay=mcp2515-can0,oscillator=16000000,interrupt=23
 dtoverlay=spi-bcm2835-overlay
 sudo reboot
 
-## TODO
-
-use a new physics engine that can handle drones planes ships and tanks
-
-<!-- AFTER INSTALLING posgres database install wireshark in production
-
-```bash
-sudo apt update && sudo apt install wireshark -y
-sudo usermod -aG wireshark $USER
-newgrp wireshark
-``` -->
-
-updating schema
-psql -U postgres -d amlvf -f docker/init/schema.sql
-
-install llm
-curl -fsSL <https://ollama.com/install.sh> | sh
-
-uvicorn main:app --reload
-
 # in the /python directory
 
 source python/venv/bin/activate
 uvicorn python/main:app --host 127.0.0.1 --port 8000 --reload
 
 ---
+
+# Acknowledgements
+
+Project concept and execution inspired by rhysmorgan134/Can-App
+
+Frontend inspired by Domenicobrz/R3F-in-practice
+
+T-90M 3D model
+"T-90M (With interior) [FREE]" (<https://skfb.ly/oWGUu>) by DerpDude is licensed under Creative Commons Attribution (<http://creativecommons.org/licenses/by/4.0/>).
+
+Panzer II model
+"Panzer II (Pz.Kpfw. II)" (<https://skfb.ly/oTOqy>) by vmatthew is licensed under Creative Commons Attribution (<http://creativecommons.org/licenses/by/4.0/>).
 
 ## 📄 License
 

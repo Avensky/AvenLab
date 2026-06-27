@@ -5,6 +5,22 @@ import { useNetworkStore } from "../store";
 let socket: WebSocket | null = null;
 let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 
+function getRustWsUrl() {
+    // Optional manual override from .env
+    if (import.meta.env.VITE_RUST_WS_URL) {
+        return import.meta.env.VITE_RUST_WS_URL;
+    }
+
+    // Vite dev mode: frontend on localhost:5173, Rust on localhost:9001
+    if (import.meta.env.DEV) {
+        return "ws://localhost:9001";
+    }
+
+    // Production: browser -> NGINX -> Rust
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    return `${protocol}//${window.location.host}/ws/`;
+}
+
 export function connectRustServer() {
     if (socket) return socket;
 
@@ -13,8 +29,7 @@ export function connectRustServer() {
     const setSnapshot = useNetworkStore.getState().setSnapshot;
 
     function connect() {
-
-        socket = new WebSocket("ws://localhost:9001");
+        socket = new WebSocket(getRustWsUrl());
 
         socket.onopen = () => {
             console.log("Connected to Rust physics server");
@@ -29,19 +44,19 @@ export function connectRustServer() {
 
         socket.onclose = () => {
             set({ connected: false });
-        };
-
-        socket.onerror = () => {
-            set({ connected: false });
-
-            // Clean timers
             if (heartbeatTimer !== null) {
                 clearInterval(heartbeatTimer);
                 heartbeatTimer = null;
             }
 
-            // Attempt reconnect in 1–3 seconds (random to avoid thundering herd)
+            socket = null;
+
             setTimeout(connect, 1000 + Math.random() * 2000);
+        };
+
+        socket.onerror = () => {
+            set({ connected: false });
+            socket?.close();
         };
 
         socket.onmessage = (event) => {
