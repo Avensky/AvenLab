@@ -816,6 +816,7 @@ Replace with the latest version from GitHub’s runner releases page (commenting
 
 ```bash
 # Run manually
+cd /var/www
 ./run.sh
 ```
 
@@ -824,6 +825,7 @@ Replace with the latest version from GitHub’s runner releases page (commenting
 ## 🛠 7. Install as a Service (Recommended)
 
 ```bash
+cd /var/www
 sudo ./svc.sh install
 sudo ./svc.sh start
 ```
@@ -926,6 +928,8 @@ sudo systemctl daemon-reload
 sudo systemctl enable avenlab-physics
 sudo systemctl start avenlab-physics
 sudo systemctl status avenlab-physics
+sudo chmod +x /var/www/_work/AvenLab/AvenLab/physics-server/target/release/avenlab-server
+sudo chown -R www-data:www-data /var/www/_work/AvenLab/AvenLab/physics-server/target/release
 ```
 
 ## 🌍 Install NGINX (Reverse Proxy for Frontend + API)

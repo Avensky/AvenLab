@@ -4,13 +4,13 @@
   "scripts": {
     "dev": "concurrently \"npm:dev:*\"",
     "dev:frontend": "npm --prefix frontend run dev",
-    "dev:rust": "cd physics-server && cargo watch -x run",
+    "dev:rust": "cd avenlab-server && cargo watch -x run",
     "dev:uvicorn": "cd data-server && .venv/bin/uvicorn app.main:app --reload --port 8001",
     "dev:ollama": "ollama serve",
     "check": "concurrently -n frontend,data,rust \"npm:check:frontend\" \"npm:check:data\" \"npm:check:rust\"",
     "check:frontend": "npm --prefix frontend run lint && npm --prefix frontend run build",
     "check:data": "cd data-server && .venv/bin/python -m compileall app",
-    "check:rust": "cd physics-server && cargo check",
+    "check:rust": "cd avenlab-server && cargo check",
     "lint": "npm run check"
   },
   "devDependencies": {

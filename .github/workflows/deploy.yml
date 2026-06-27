@@ -47,7 +47,7 @@ jobs:
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: physics-server
+          workspaces: avenlab-server
 
       - name: Run project checks
         shell: bash
@@ -59,7 +59,7 @@ jobs:
         shell: bash
         run: |
           export PATH="$HOME/.cargo/bin:$PATH"
-          cd physics-server
+          cd avenlab-server
           cargo build --release
 
       - name: Restart physics server
