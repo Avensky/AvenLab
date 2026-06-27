@@ -26,18 +26,15 @@ jobs:
       - name: Install root dependencies
         run: npm ci
 
+      - name: Install frontend dependencies
+        run: npm ci --prefix frontend
+
       - name: Set up Python venv
         run: |
           cd data-server
           python3 -m venv .venv
           .venv/bin/python -m pip install --upgrade pip
           .venv/bin/pip install -r requirements.txt
-
-      - name: Install frontend dependencies
-        run: npm ci --prefix frontend
-
-      - name: Build frontend
-        run: npm --prefix frontend run build
 
       - name: Install Rust toolchain
         shell: bash
@@ -62,14 +59,28 @@ jobs:
           export PATH="$HOME/.cargo/bin:$PATH"
           npm run check
 
-      - name: Build Rust physics server
+      - name: Build frontend
+        run: npm --prefix frontend run build
+
+      - name: Build Rust physics server outside workspace
         shell: bash
         run: |
           export PATH="$HOME/.cargo/bin:$PATH"
           cd avenlab-server
-          cargo build --release
+          cargo build --release --target-dir /tmp/avenlab-rust-build
 
-      - name: Restart physics server
+      - name: Install runtime files
+        run: |
+          sudo mkdir -p /var/www/avenlab/bin
+          sudo mkdir -p /var/www/avenlab/current/frontend
+          sudo mkdir -p /var/www/avenlab/current/data-server
+
+          sudo rsync -a --delete frontend/dist/ /var/www/avenlab/current/frontend/dist/
+          sudo rsync -a --delete data-server/ /var/www/avenlab/current/data-server/
+
+          sudo install -m 755 /tmp/avenlab-rust-build/release/avenlab-server /var/www/avenlab/bin/avenlab-server
+
+      - name: Restart physics service
         run: |
           sudo systemctl restart avenlab-physics
           sleep 2

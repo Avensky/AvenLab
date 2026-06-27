@@ -905,17 +905,20 @@ sudo nano /etc/systemd/system/avenlab-physics.service
 
 ```bash
 [Unit]
-Description=AvenLab Rust Physics Server
+Description=AvenLab Physics Server
 After=network.target
 
 [Service]
 Type=simple
-WorkingDirectory=/var/www/_work/AvenLab/AvenLab/avenlab-server
-ExecStart=/var/www/_work/AvenLab/AvenLab/avenlab-server/target/release/avenlab-server
+ExecStart=/var/www/avenlab/bin/avenlab-server
+WorkingDirectory=/var/www/avenlab/current
+
+User=www-data
+Group=www-data
+Environment=RUST_LOG=info
+
 Restart=always
 RestartSec=3
-User=www-data
-Environment=RUST_LOG=info
 
 [Install]
 WantedBy=multi-user.target
@@ -928,8 +931,9 @@ sudo systemctl daemon-reload
 sudo systemctl enable avenlab-physics
 sudo systemctl start avenlab-physics
 sudo systemctl status avenlab-physics
-sudo chmod +x /var/www/_work/AvenLab/AvenLab/avenlab-server/target/release/avenlab-server
-sudo chown -R www-data:www-data /var/www/_work/AvenLab/AvenLab/avenlab-server/target/release
+
+sudo mkdir -p /var/www/avenlab/bin /var/www/avenlab/current
+sudo chown -R www-data:www-data /var/www/avenlab
 ```
 
 ## 🌍 Install NGINX (Reverse Proxy for Frontend + API)
@@ -966,8 +970,7 @@ server {
   listen [::]:80;
 
   server_name _;
-
-  root /var/www/_work/AvenLab/AvenLab/frontend/dist;
+  root /var/www/avenlab/current/frontend/dist;
   index index.html;
 
   location / {
