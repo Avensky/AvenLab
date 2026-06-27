@@ -459,7 +459,7 @@ AvenLab/
 │   ├── tsconfig.node.json
 │   └── vite.config.ts
 │
-├── physics-server
+├── avenlab-server
 │   ├── src/
 │   │   ├── assets/
 │   │   │   └── blocks
@@ -910,8 +910,8 @@ After=network.target
 
 [Service]
 Type=simple
-WorkingDirectory=/var/www/_work/AvenLab/AvenLab/physics-server
-ExecStart=/var/www/_work/AvenLab/AvenLab/physics-server/target/release/avenlab-server
+WorkingDirectory=/var/www/_work/AvenLab/AvenLab/avenlab-server
+ExecStart=/var/www/_work/AvenLab/AvenLab/avenlab-server/target/release/avenlab-server
 Restart=always
 RestartSec=3
 User=www-data
@@ -928,8 +928,8 @@ sudo systemctl daemon-reload
 sudo systemctl enable avenlab-physics
 sudo systemctl start avenlab-physics
 sudo systemctl status avenlab-physics
-sudo chmod +x /var/www/_work/AvenLab/AvenLab/physics-server/target/release/avenlab-server
-sudo chown -R www-data:www-data /var/www/_work/AvenLab/AvenLab/physics-server/target/release
+sudo chmod +x /var/www/_work/AvenLab/AvenLab/avenlab-server/target/release/avenlab-server
+sudo chown -R www-data:www-data /var/www/_work/AvenLab/AvenLab/avenlab-server/target/release
 ```
 
 ## 🌍 Install NGINX (Reverse Proxy for Frontend + API)
