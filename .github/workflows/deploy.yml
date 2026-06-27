@@ -26,6 +26,13 @@ jobs:
       - name: Install root dependencies
         run: npm ci
 
+      - name: Set up Python venv
+        run: |
+          cd data-server
+          python3 -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/pip install -r requirements.txt
+
       - name: Install frontend dependencies
         run: npm ci --prefix frontend
 
