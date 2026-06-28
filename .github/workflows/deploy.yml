@@ -39,13 +39,6 @@ jobs:
           file frontend/public/models/vehicles/ae86.glb
           head -c 20 frontend/public/models/vehicles/ae86.glb
 
-      - name: Install production data-server venv
-        run: |
-          cd /var/www/avenlab/current/data-server
-          python3 -m venv .venv
-          .venv/bin/python -m pip install --upgrade pip
-          .venv/bin/pip install -r requirements.txt
-
       - name: Install Rust toolchain
         shell: bash
         run: |
@@ -86,10 +79,17 @@ jobs:
           sudo mkdir -p /var/www/avenlab/current/data-server
 
           sudo rsync -a --delete frontend/dist/ /var/www/avenlab/current/frontend/dist/
-          sudo rsync -a --delete data-server/ /var/www/avenlab/current/data-server/
           sudo rsync -a --delete --exclude '.venv' data-server/ /var/www/avenlab/current/data-server/
 
           sudo install -m 755 /tmp/avenlab-rust-build/release/avenlab-server /var/www/avenlab/bin/avenlab-server
+
+      - name: Install production data-server venv
+        run: |
+          cd /var/www/avenlab/current/data-server
+          rm -rf .venv
+          python3 -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/python -m pip install -r requirements.txt
 
       - name: Restart physics service
         run: |
