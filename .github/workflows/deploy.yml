@@ -29,9 +29,19 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci --prefix frontend
 
-      - name: Set up Python venv
+      - name: Pull Git LFS files
         run: |
-          cd data-server
+          git lfs install
+          git lfs pull
+
+      - name: Verify GLB files are real
+        run: |
+          file frontend/public/models/vehicles/ae86.glb
+          head -c 20 frontend/public/models/vehicles/ae86.glb
+
+      - name: Install production data-server venv
+        run: |
+          cd /var/www/avenlab/current/data-server
           python3 -m venv .venv
           .venv/bin/python -m pip install --upgrade pip
           .venv/bin/pip install -r requirements.txt
@@ -77,6 +87,7 @@ jobs:
 
           sudo rsync -a --delete frontend/dist/ /var/www/avenlab/current/frontend/dist/
           sudo rsync -a --delete data-server/ /var/www/avenlab/current/data-server/
+          sudo rsync -a --delete --exclude '.venv' data-server/ /var/www/avenlab/current/data-server/
 
           sudo install -m 755 /tmp/avenlab-rust-build/release/avenlab-server /var/www/avenlab/bin/avenlab-server
 
@@ -85,6 +96,12 @@ jobs:
           sudo systemctl restart avenlab-physics
           sleep 2
           sudo systemctl is-active --quiet avenlab-physics
+
+      - name: Restart data server
+        run: |
+          sudo systemctl restart avenlab-data
+          sleep 2
+          sudo systemctl is-active --quiet avenlab-data
 
       - name: Test and reload NGINX
         run: |
@@ -110,8 +127,13 @@ jobs:
         run: |
           curl -f http://127.0.0.1:11434/api/tags
 
-      - name: Optional CAN interface check
+      - name: Health check virtual CAN
+        continue-on-error: true
+        run: |
+          ip link show vcan0
+
+      - name: Health check physical CAN
         continue-on-error: true
         run: |
           ip link show can0
-          ip -details link show can0
+          ip link show can1

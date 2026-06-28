@@ -34,9 +34,19 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci --prefix frontend
 
-      - name: Set up Python venv
+      - name: Pull Git LFS files
         run: |
-          cd data-server
+          git lfs install
+          git lfs pull
+
+      - name: Verify GLB files are real
+        run: |
+          file frontend/public/models/vehicles/ae86.glb
+          head -c 20 frontend/public/models/vehicles/ae86.glb
+
+      - name: Install production data-server venv
+        run: |
+          cd /var/www/avenlab/current/data-server
           python3 -m venv .venv
           .venv/bin/python -m pip install --upgrade pip
           .venv/bin/pip install -r requirements.txt
@@ -76,6 +86,7 @@ jobs:
 
       - name: Install runtime files
         run: |
+          sudo rsync -a --delete --exclude '.venv' data-server/ /var/www/avenlab/current/data-server/
           sudo rsync -a --delete frontend/dist/ /var/www/avenlab/current/frontend/dist/
           sudo rsync -a --delete data-server/ /var/www/avenlab/current/data-server/
           sudo install -m 755 /tmp/avenlab-rust-build/release/avenlab-server /var/www/avenlab/bin/avenlab-server

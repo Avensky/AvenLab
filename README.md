@@ -740,9 +740,72 @@ sudo apt-get install postgresql-client
 
 ```bash
 sudo apt-get install can-utils
-sudo modprobe vcan
-sudo ip link add dev vcan0 type vcan
-sudo ip link set up vcan0
+sudo nano /etc/systemd/system/avenlab-vcan.service
+```
+
+```ini
+[Unit]
+Description=AvenLab Virtual CAN Interface
+After=network.target
+Before=avenlab-data.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStartPre=-/sbin/ip link delete vcan0
+ExecStart=-/sbin/modprobe vcan
+ExecStart=-/sbin/ip link add dev vcan0 type vcan
+ExecStart=/sbin/ip link set up vcan0
+ExecStop=-/sbin/ip link set down vcan0
+ExecStop=-/sbin/ip link delete vcan0
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable avenlab-vcan
+sudo systemctl restart avenlab-vcan
+ip link show vcan0
+```
+
+---
+
+## 🚗 Set Up Physical CAN Bus
+
+```bash
+sudo nano /etc/systemd/system/avenlab-can.service
+```
+
+```ini
+[Unit]
+Description=AvenLab Physical CAN Interface
+After=network.target
+Before=avenlab-data.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+
+# Bring down the interface if it already exists
+ExecStartPre=-/sbin/ip link set can0 down
+
+# Configure the interface
+ExecStart=/sbin/ip link set can0 up type can bitrate 500000 restart-ms 100
+
+# Shut down cleanly
+ExecStop=-/sbin/ip link set can0 down
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable avenlab-can
+sudo systemctl restart avenlab-can
+ip link show can0
 ```
 
 ---
@@ -822,12 +885,41 @@ cd /var/www
 
 ---
 
-## 🛠 7. Install as a Service (Recommended)
+## 🛠 7 Install a Service (Recommended)
 
 ```bash
-cd /var/www
-sudo ./svc.sh install
-sudo ./svc.sh start
+sudo nano /etc/systemd/system/avenlab-runner.service
+```
+
+```ini
+[Unit]
+Description=AvenLab GitHub Runner
+After=network.target
+
+[Service]
+Type=simple
+User=uri
+Group=uri
+
+WorkingDirectory=/var/www/actions-runner
+ExecStart=/var/www/actions-runner/runsvc.sh
+
+Restart=always
+RestartSec=5
+
+KillMode=process
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable avenlab-runner
+sudo systemctl start avenlab-runner
+sudo systemctl status avenlab-runner
 ```
 
 ---
@@ -903,22 +995,27 @@ sudo nano /etc/systemd/system/avenlab-physics.service
 
 ## Add the following script
 
-```bash
+```ini
 [Unit]
 Description=AvenLab Physics Server
 After=network.target
 
 [Service]
 Type=simple
+
 ExecStart=/var/www/avenlab/bin/avenlab-server
 WorkingDirectory=/var/www/avenlab/current
 
-User=www-data
-Group=www-data
+User=uri
+Group=uri
+
 Environment=RUST_LOG=info
 
 Restart=always
 RestartSec=3
+
+KillSignal=SIGTERM
+TimeoutStopSec=30
 
 [Install]
 WantedBy=multi-user.target
@@ -934,6 +1031,45 @@ sudo systemctl status avenlab-physics
 
 sudo mkdir -p /var/www/avenlab/bin /var/www/avenlab/current
 sudo chown -R www-data:www-data /var/www/avenlab
+```
+
+# Install Data-server (Python)
+
+```bash
+sudo nano /etc/systemd/system/avenlab-data.service
+```
+
+```ini
+[Unit]
+Description=AvenLab Data Server
+After=network.target
+
+[Service]
+Type=simple
+
+WorkingDirectory=/var/www/avenlab/current/data-server
+ExecStart=/var/www/avenlab/current/data-server/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8001
+
+User=uri
+Group=uri
+
+Environment=PYTHONUNBUFFERED=1
+
+Restart=always
+RestartSec=3
+
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable avenlab-data
+sudo systemctl restart avenlab-data
+sudo systemctl status avenlab-data
 ```
 
 ## 🌍 Install NGINX (Reverse Proxy for Frontend + API)
@@ -964,7 +1100,7 @@ Edit the NGINX site configuration:
 sudo nano /etc/nginx/sites-available/AvenLab
 ```
 
-```t
+```ini
 server {
   listen 80;
   listen [::]:80;
@@ -1010,92 +1146,11 @@ sudo systemctl restart nginx
 
 ---
 
-## 🔄 Recovery After Restart / IP Change
-
-## Create Startup Script to Account For Ip Change
+## Fix install LFS on the runner
 
 ```bash
-sudo nano /usr/local/bin/startup.sh
-```
-
-## Paste, Save & exit
-
-```t
-#!/bin/bash
-
-echo "Starting AvenLab service..."
-cd /var/www/AvenLab
-sudo ./svc.sh start
-
-echo "Checking for vcan0..."
-if ! ip link show vcan0 &> /dev/null; then
-  echo "vcan0 does not exist. Creating..."
-  sudo ip link add dev vcan0 type vcan
-  sudo ip link set up vcan0
-else
-  echo "vcan0 already exists."
-fi
-```
-
-## make it executable
-
-```bash
-  sudo chmod +x /usr/local/bin/startup.sh
-```
-
-## Run it automatically on boot
-
-```bash
-sudo nano /etc/systemd/system/AvenLab.service
-```
-
-## Edit to use your username, Copy, Paste, Save
-
-```t
-[Unit]
-Description=AvenLab Startup with VCAN Check
-After=network.target
-
-[Service]
-Type=simple
-WorkingDirectory=/var/www/AvenLab
-ExecStart=/bin/bash /usr/local/bin/startup.sh
-Restart=always
-User=pi
-
-[Install]
-WantedBy=multi-user.target
-```
-
-## Reload, Enable, And Test
-
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable AvenLab.service
-sudo systemctl start AvenLab.service
-sudo systemctl status AvenLab.service
-```
-
-# Manual Recovery From IP Change
-
-### 1. Restart GitHub Actions Runner
-
-```bash
-cd /var/www
-sudo ./svc.sh start
-```
-
-### 2. Restart Virtual CAN Bus
-
-```bash
-sudo ip link add dev vcan0 type vcan
-sudo ip link set up vcan0
-```
-
-### 3. Restart PM2 Server
-
-```bash
-pm2 restart 0
+sudo apt install git-lfs
+git lfs install
 ```
 
 ---
@@ -1103,10 +1158,6 @@ pm2 restart 0
 ## 🌐 Recover From IP Address Change
 
 ### Stop server
-
-```bash
-pm2 stop 0
-```
 
 ### Find your new IP
 
@@ -1120,9 +1171,9 @@ hostname -I
 sudo nano /etc/nginx/sites-available/AvenLab
 ```
 
-Update server_name or use server_name _;
+### Update server_name or use server_name _
 
-```s
+```ini
 server_name <new.ip.address>;
 ```
 
@@ -1179,11 +1230,14 @@ ensure you have enough voltage converter to handle pi
 get a nice thick cable thats 3m or less, the shorter the better
 
 🔌 OBD-II (J1962) Port Pinout
- __________________________
 
-/  1  2  3  4  5  6  7  8  \
-| 9  10 11 12 13 14 15  16  |
- ---------------------------
+```
+  _______________________
+/ 9  10 11 12 13 14 15 16 \
+| 1  2  3  4  5  6  7  8  |
+ -------------------------
+
+```
 
 🔌 OBD-II Pigtail to Pi HAT
 OBD-II Pigtail Wire Waveshare HAT Screw Terminal
@@ -1202,7 +1256,7 @@ connect pi to obd2 port
 turn the ignitions
 open conenction
 
-```s
+```bash
 sudo modprobe can
 sudo modprobe can_raw
 sudo modprobe mcp251x
@@ -1214,41 +1268,122 @@ sudo nano /boot/firmware/config.txt
 
 Add these lines at the end (adjust your pins & oscillator if needed):
 
-dtoverlay=mcp2515-can0,oscillator=16000000,interrupt=25
-dtoverlay=mcp2515-can1,oscillator=16000000,interrupt=24
-
 Verify spi is on
 On pi desktop check Interface Options → SPI → Enable
+
+```bash
+sudo nano /boot/firmware/config.txt
+```
+
+```ini
 dtparam=spi=on
+dtoverlay=spi1-3cs
+dtoverlay=spi-bcm2835-overlay
+dtoverlay=waveshare-can-fd-hat-mode-a
+dtoverlay=mcp251xfd,spi0-0,interrupt=25
+#dtoverlay=mcp251xfd,spi0-1,interrupt=13
+dtoverlay=mcp251xfd,spi1-0,interrupt=24
+#dtoverlay=mcp251xfd,spi1-1,interrupt=23
+```
+
+```bash
+sudo nano /etc/udev/rules.d/80-can.rules
+```
+
+```ini
+ACTION=="add", SUBSYSTEM=="net", DEVPATH=="*/spi0.0/net/can?", NAME="can0"
+ACTION=="add", SUBSYSTEM=="net", DEVPATH=="*/spi1.0/net/can?", NAME="can1"
+```
 
 Save & reboot
+
+```bash
+sudo udevadm control --reload-rules
+sudo udevadm trigger
 sudo reboot
+```
 
+```bash
 ip link show
-✅ If you see can0 or can1 → you’re good to go:
-sudo ip link set can0 up type can bitrate 500000
-sudo ip link set can1 up type can bitrate 500000
+```
 
+✅ If you see can0 or can1 → you’re good to go:
+
+```bash
 sudo ip link set can0 down || true
 sudo ip link set can1 down || true
 sudo ip link set can0 up type can bitrate 500000
 sudo ip link set can1 up type can bitrate 500000
+```
+
+### Check loopback by connect can0 to can1
+
+```t
+connect h to h
+connect l to l
+connect g to g
+```
 
 Terminal 1
+
+```bash
 candump can0
+```
 
 Terminal 2
+
+```bash
 cansend can1 123#DEADBEEF
+```
 
-sudo nano /boot/firmware/config.txt
-dtoverlay=mcp2515-can0,oscillator=16000000,interrupt=23
-dtoverlay=spi-bcm2835-overlay
+```t
+Result shouls show in can0
+uri@pi:~ $ candump can0
+  can1  123   [4]  DE AD BE EF
+```
+
+### Create a service
+
+```bash
+sudo nano /etc/systemd/system/avenlab-can.service
+```
+
+```ini
+[Unit]
+Description=AvenLab Physical CAN FD Interfaces
+After=network.target
+Before=avenlab-data.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+
+ExecStartPre=-/sbin/ip link set can0 down
+ExecStartPre=-/sbin/ip link set can1 down
+
+# ExecStart=/sbin/ip link set can0 up type can bitrate 500000 dbitrate 2000000 fd on restart-ms 100
+# ExecStart=/sbin/ip link set can1 up type can bitrate 500000 dbitrate 2000000 fd on restart-ms 100
+
+ExecStart=/sbin/ip link set can0 up type can bitrate 500000 restart-ms 100
+ExecStart=/sbin/ip link set can1 up type can bitrate 500000 restart-ms 100
+
+ExecStop=-/sbin/ip link set can0 down
+ExecStop=-/sbin/ip link set can1 down
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart avenlab-can
+sudo systemctl status avenlab-can.service
+ip -details link show can0
+```
+
+```bash
 sudo reboot
-
-# in the /python directory
-
-source python/venv/bin/activate
-uvicorn python/main:app --host 127.0.0.1 --port 8000 --reload
+```
 
 ---
 
