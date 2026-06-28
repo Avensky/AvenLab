@@ -11,7 +11,8 @@
     "check:frontend": "npm --prefix frontend run lint && npm --prefix frontend run typecheck",
     "check:data": "cd data-server && python3 -m compileall app",
     "check:rust": "cd avenlab-server && cargo check",
-    "lint": "npm run check"
+    "lint": "npm run check",
+    "typecheck": "tsc -b --noEmit"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
