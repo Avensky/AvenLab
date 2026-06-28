@@ -15,12 +15,24 @@ type CanBusState = {
     refreshStatus: () => Promise<void>;
 };
 
+function getApiBaseUrl() {
+    if (import.meta.env.VITE_API_BASE_URL) {
+        return import.meta.env.VITE_API_BASE_URL;
+    }
+
+    if (import.meta.env.DEV) {
+        return "http://localhost:8001";
+    }
+
+    return "";
+}
+
 export const useCanBusStore = create<CanBusState>((set) => ({
     status: null,
 
     async refreshStatus() {
         try {
-            const res = await fetch("http://localhost:8001/can/status");
+            const res = await fetch(`${getApiBaseUrl()}/data/can/status`);
             const status = await res.json();
             set({ status });
         } catch {
