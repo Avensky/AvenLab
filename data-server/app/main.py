@@ -1,23 +1,46 @@
+# app/main.py
+from typing import Any, Dict, Optional
+
 import httpx
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional, Dict, Any
+
+from app.can.can_router import APP_ENV, IS_PRODUCTION, RUNTIME_ENV, router as can_router
 from app.can.status import get_can_status
-from app.services.ollama_client import OLLAMA_URL, embed_text, ask_question
-from app.db import fetch, fetchrow, execute
+from app.db import fetch, fetchrow
+from app.services.ollama_client import OLLAMA_URL, ask_question, embed_text
 
 app = FastAPI(title="Aven Data Server")
 
-class EmbedRequest(BaseModel): text: str
+# Only APP_ENV matters:
+#   APP_ENV=production -> production=True
+#   anything else / missing -> development=True
+#
+# In production, prefer same-origin hosting or a reverse proxy for the frontend.
+# These localhost origins keep Vite dev working without adding another env var.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Always include the CAN router. The router decides runtime behavior using only
+# APP_ENV=production; otherwise it assumes development/virtual CAN.
+app.include_router(can_router)
 
 
-class AskRequest(BaseModel): prompt: str
+class EmbedRequest(BaseModel):
+    text: str
 
 
 class AskRequest(BaseModel):
-    model: str
-    question: str
-    context: str
+    prompt: str
 
 
 class GenerateRequest(BaseModel):
@@ -50,6 +73,7 @@ class MarkerRequest(BaseModel):
 
 class StopSessionRequest(BaseModel):
     metadata: Dict[str, Any] = {}
+
 
 @app.get("/db/missions/{vehicle_slug}")
 async def list_missions(vehicle_slug: str):
@@ -143,7 +167,11 @@ async def start_can_session(req: StartSessionRequest):
         req.label,
         req.bus_interface,
         req.bus_mode,
-        req.metadata,
+        {
+            **req.metadata,
+            "app_env": RUNTIME_ENV,
+            "production": IS_PRODUCTION,
+        },
     )
 
     return {
@@ -153,6 +181,8 @@ async def start_can_session(req: StartSessionRequest):
         "mission_code": req.mission_code,
         "bus_interface": req.bus_interface,
         "bus_mode": req.bus_mode,
+        "app_env": RUNTIME_ENV,
+        "production": IS_PRODUCTION,
     }
 
 
@@ -217,7 +247,11 @@ async def add_session_marker(session_id: str, req: MarkerRequest):
         req.marker_type,
         req.label,
         req.timestamp_ms,
-        req.metadata,
+        {
+            **req.metadata,
+            "app_env": RUNTIME_ENV,
+            "production": IS_PRODUCTION,
+        },
     )
 
     return {
@@ -226,6 +260,8 @@ async def add_session_marker(session_id: str, req: MarkerRequest):
         "session_id": session_id,
         "marker_type": req.marker_type,
         "timestamp_ms": req.timestamp_ms,
+        "app_env": RUNTIME_ENV,
+        "production": IS_PRODUCTION,
     }
 
 
@@ -240,7 +276,11 @@ async def stop_can_session(session_id: str, req: StopSessionRequest):
         RETURNING id, started_at, ended_at
         """,
         session_id,
-        req.metadata,
+        {
+            **req.metadata,
+            "app_env": RUNTIME_ENV,
+            "production": IS_PRODUCTION,
+        },
     )
 
     if not row:
@@ -250,6 +290,8 @@ async def stop_can_session(session_id: str, req: StopSessionRequest):
         "session_id": str(row["id"]),
         "started_at": row["started_at"],
         "ended_at": row["ended_at"],
+        "app_env": RUNTIME_ENV,
+        "production": IS_PRODUCTION,
     }
 
 
@@ -260,23 +302,34 @@ async def list_vehicles():
     )
     return [dict(row) for row in rows]
 
+
 @app.get("/can/status")
 async def can_status():
     return get_can_status()
 
+
 @app.get("/health")
 async def health():
-    return {"ok": True, "service": "aven-data-server"}
+    return {
+        "ok": True,
+        "service": "aven-data-server",
+        "app_env": RUNTIME_ENV,
+        "production": IS_PRODUCTION,
+        "can_router": "included",
+    }
+
 
 @app.post("/ai/embed")
 async def embed(req: EmbedRequest):
     embedding = await embed_text(req.text)
     return {"embedding": embedding}
 
+
 @app.post("/ai/ask")
 async def ask(req: AskRequest):
     response = await ask_question(req.prompt)
     return {"response": response}
+
 
 @app.post("/generate")
 async def generate(req: GenerateRequest):
@@ -286,19 +339,19 @@ async def generate(req: GenerateRequest):
             json={
                 "model": req.model,
                 "prompt": req.prompt,
-                "stream": False
-            }
+                "stream": False,
+            },
         )
 
     res.raise_for_status()
 
     return {
-        "response": res.json()["response"]
+        "response": res.json()["response"],
     }
+
 
 @app.post("/can/ask")
 async def can_ask(req: CANQuestion):
-
     prompt = f"""
 You are a CAN bus reverse engineering assistant.
 
@@ -318,13 +371,5 @@ Respond with:
     answer = await ask_question(prompt)
 
     return {
-        "answer": answer
+        "answer": answer,
     }
-
-# To_do: add endpoints for session management and live data handling
-# GET  /health
-# POST /can/session/start
-# POST /can/session/stop
-# POST /can/live/on
-# POST /can/live/off
-# GET  /can/session/{id}/export

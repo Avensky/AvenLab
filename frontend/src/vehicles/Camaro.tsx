@@ -13,13 +13,13 @@ import { hasFlag, VehicleFlags } from "../store/tools/inputMasks";
 
 const MODEL_PATH = "/models/vehicles/camaro2017.glb";
 export const Camaro = forwardRef<Group, PropsWithChildren>(function Camaro(
-  { children },
-  ref
-) {  
+    { children },
+    ref
+) {
     // Tint colors for first-person and exterior view  
     const tintFirstPerson = new Color(0xffffff);  // Clear
     const tintExterior = new Color(0x556677);     // Blue-gray tint (customize as needed)
-    
+
     // Load the car model
     const { scene } = useGLTF(MODEL_PATH);
 
@@ -157,21 +157,21 @@ export const Camaro = forwardRef<Group, PropsWithChildren>(function Camaro(
 
     useEffect(() => {
         const addSpot = (
-          refObj: { current: SpotLight | null },
-          color: number,
-          intensity: number,
-          distance: number,
-          position: [number, number, number],
-          target: [number, number, number]
-      ) => {
-          const light = new SpotLight(color, intensity, distance, Math.PI / 6, 0.2);
-        light.position.set(...position);
-        light.target.position.set(...target);
-        light.visible = false;
-        refObj.current = light;
-        
-        vehicleGroupRef.current.add(light);
-        vehicleGroupRef.current.add(light.target);
+            refObj: { current: SpotLight | null },
+            color: number,
+            intensity: number,
+            distance: number,
+            position: [number, number, number],
+            target: [number, number, number]
+        ) => {
+            const light = new SpotLight(color, intensity, distance, Math.PI / 6, 0.2);
+            light.position.set(...position);
+            light.target.position.set(...target);
+            light.visible = false;
+            refObj.current = light;
+
+            vehicleGroupRef.current.add(light);
+            vehicleGroupRef.current.add(light.target);
         };
 
         addSpot(leftLightRef, 0xffffff, 5, 40, [-0.5, 0.7, -1.8], [-0.4, -0.6, -5]);
@@ -184,7 +184,7 @@ export const Camaro = forwardRef<Group, PropsWithChildren>(function Camaro(
         addSpot(frBlinkerRef, 0xffa500, 12, 16, [0.7, 0.6, -1.9], [0.9, 0.6, -3]);
         addSpot(rlBlinkerRef, 0xffa500, 12, 16, [-0.5, 0.6, 1.9], [-0.9, 0.6, 3]);
         addSpot(rrBlinkerRef, 0xffa500, 12, 16, [0.5, 0.6, 1.9], [0.9, 0.6, 3]);
-      
+
     }, [scene])
 
 
@@ -200,7 +200,7 @@ export const Camaro = forwardRef<Group, PropsWithChildren>(function Camaro(
     }, [clonesByGroup]);
 
     useFrame((_, delta) => {
-       // get state on frame
+        // get state on frame
         const inputState = useInputStore.getState();
         const gameState = useGameStore.getState();
         const networkState = useNetworkStore.getState();
@@ -227,14 +227,14 @@ export const Camaro = forwardRef<Group, PropsWithChildren>(function Camaro(
 
         // Determine which lights should be on based on input state
         const vehicleMask = input.vehicleMask;
-        
+
         const headlights = hasFlag(vehicleMask, VehicleFlags.HEADLIGHTS);
         const hazards = hasFlag(vehicleMask, VehicleFlags.HAZARDS);
         const blinkerLeft = hasFlag(vehicleMask, VehicleFlags.BLINKER_LEFT) && !hazards;
         const blinkerRight = hasFlag(vehicleMask, VehicleFlags.BLINKER_RIGHT) && !hazards;
-        
+
         const blinkOn = blinkState.current;
-        
+
         // Lights visibility
         if (leftLightRef.current) leftLightRef.current.visible = headlights;
         if (rightLightRef.current) rightLightRef.current.visible = headlights;
@@ -267,7 +267,7 @@ export const Camaro = forwardRef<Group, PropsWithChildren>(function Camaro(
 
         if (!isEditor && (camMode === 'FIRST_PERSON' || camMode === 'DEFAULT' || camMode === 'BIRDS_EYE')) {
             const offset = new Vector3();
-            
+
             if (camMode === 'FIRST_PERSON') { offset.set(-0.25, .98, -.1); }
             if (camMode === 'DEFAULT') { offset.set(0, 2, 4); }
             if (camMode === 'BIRDS_EYE') { offset.set(0, 7, 12); }

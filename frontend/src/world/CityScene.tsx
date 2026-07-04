@@ -10,6 +10,7 @@ export function CityScene() {
     const mode = useWorldStore((s) => s.mode);
     const debug = useNetworkStore((s) => s.debugOverlay);
 
+
     return (
         <group name="city-scene">
 

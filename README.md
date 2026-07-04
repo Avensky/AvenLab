@@ -1,4 +1,4 @@
-# AvensLab
+z# AvensLab
 
 ```t
 AvenLab is a real-time vehicle simulation and ML engine powered by a Rust/Rappier physics core and a React Three Fiber frontend. It supports deterministic backend physics, multiplayer networking, dataset recording, and tools for autonomous control, reinforcement learning, and CAN-bus modeling.
@@ -662,26 +662,6 @@ Password: raspberry
 
 Use a good-quality SD card and power supply for stability
 
-## Set Up Environment Variables
-
-```bash
-  nano ~/.bashrc
-```
-
-## Add This to Bottom of File
-
-```s
-  export NODE_ENV=production
-  export PORT=5000
-  export IP=<your ip goes here>
-```
-
-## Apply it Immediately (without reboot)
-
-```bash
-  source ~/.bashrc
-```
-
 ## ✅ Install `nvm`
 
 Open your terminal and run:
@@ -807,6 +787,49 @@ sudo systemctl enable avenlab-can
 sudo systemctl restart avenlab-can
 ip link show can0
 ```
+
+## CAN FD Isolatore (RH02 PRO)
+
+```bash
+sudo apt install can-utils
+```
+
+Check if slcand exists:
+
+```bash
+which slcand
+```
+
+If it does:
+
+```bash
+sudo slcand -o -c -s6 /dev/ttyACM0 can2
+sudo ip link set can2 up
+```
+
+Now check:
+
+```bash
+ip link
+```
+
+sudo ip link set can2 down
+
+sudo ip link set can2 up type can bitrate 500000 listen-only on
+
+ip -details link show can2
+
+avenlab-can-usb.service
+
+sudo ip link set can2 down
+
+sudo ip link set can2 up \
+    type can \
+    bitrate 500000 \
+    listen-only on \
+    restart-ms 100
+
+candump can2
 
 ---
 
@@ -987,7 +1010,7 @@ The workflow performs these steps across 3 jobs:
 
 ✅ Once complete, the runner should have tested, linted, and built your app for deployment.
 
-# 🌐 Create Service for Server Persistance
+## 🌐 Create Service for Server Persistance
 
 ```bash
 sudo nano /etc/systemd/system/avenlab-physics.service
@@ -1033,164 +1056,61 @@ sudo mkdir -p /var/www/avenlab/bin /var/www/avenlab/current
 sudo chown -R www-data:www-data /var/www/avenlab
 ```
 
-# Install Data-server (Python)
+# Install Data-server & Environment Variables (Python)
+
+```bash
+sudo nano /etc/environment.env
+```
+
+```ini
+APP_ENV=production
+```
+
+## Create The Service
 
 ```bash
 sudo nano /etc/systemd/system/avenlab-data.service
 ```
 
 ```ini
-[Unit]
-Description=AvenLab Data Server
-After=network.target
+[Unit] 
+Description=AvenLab Data Server 
+After=network-online.target 
+Wants=network-online.target 
 
-[Service]
-Type=simple
+[Service] 
+Type=simple 
+User=uri 
+Group=uri 
 
-WorkingDirectory=/var/www/avenlab/current/data-server
-ExecStart=/var/www/avenlab/current/data-server/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8001
+WorkingDirectory=/var/www/avenlab/current/data-server 
+EnvironmentFile=/etc/environment.env 
+ExecStart=/var/www/avenlab/current/data-server/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8001 
 
-User=uri
-Group=uri
+Restart=always 
+RestartSec=3 
 
-Environment=PYTHONUNBUFFERED=1
+KillSignal=SIGTERM 
+TimeoutStopSec=30 
 
-Restart=always
-RestartSec=3
-
-KillSignal=SIGTERM
-TimeoutStopSec=30
-
-[Install]
+[Install] 
 WantedBy=multi-user.target
 ```
 
 ```bash
+sudo chmod 644 /etc/environment.env
 sudo systemctl daemon-reload
 sudo systemctl enable avenlab-data
 sudo systemctl restart avenlab-data
+journalctl -u avenlab-data
+echo $APP_ENV
+```
+
+## Check Status
+
+```bash
 sudo systemctl status avenlab-data
 ```
-
-## 🌍 Install NGINX (Reverse Proxy for Frontend + API)
-
-```bash
-sudo apt update
-sudo apt install nginx
-
-```
-
----
-
-## 🗂 Set Up Server Directory Permissions
-
-```bash
-sudo chown -R $USER:www-data /var/www
-sudo chmod -R 755 /var/www
-
-```
-
----
-
-## 📝 Configure NGINX Site
-
-Edit the NGINX site configuration:
-
-```bash
-sudo nano /etc/nginx/sites-available/AvenLab
-```
-
-```ini
-server {
-  listen 80;
-  listen [::]:80;
-
-  server_name _;
-  root /var/www/avenlab/current/frontend/dist;
-  index index.html;
-
-  location / {
-    try_files $uri $uri/ /index.html;
-  }
-
-  location /ws/ {
-    proxy_pass http://127.0.0.1:9001/;
-    proxy_http_version 1.1;
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection "upgrade";
-    proxy_set_header Host $host;
-    proxy_read_timeout 86400;
-  }
-
-  location /api/ {
-    proxy_pass http://127.0.0.1:9001/api/;
-    proxy_http_version 1.1;
-    proxy_set_header Host $host;
-  }
-
-  location /data/ {
-    proxy_pass http://127.0.0.1:8001/;
-    proxy_http_version 1.1;
-    proxy_set_header Host $host;
-  }
-}
-```
-
-## ✅ Enable Site & Tweak NGINX settings
-
-```bash
-sudo ln -sf /etc/nginx/sites-available/AvenLab /etc/nginx/sites-enabled/AvenLab
-```
-
-## 🔁 Remove Default, Test, and Restart NGINX
-
-```bash
-sudo rm /etc/nginx/sites-enabled/default
-sudo nginx -t
-sudo systemctl restart nginx
-```
-
----
-
-## Fix install LFS on the runner
-
-```bash
-sudo apt install git-lfs
-git lfs install
-```
-
----
-
-## 🌐 Recover From IP Address Change
-
-### Stop server
-
-### Find your new IP
-
-```bash
-hostname -I
-```
-
-### Update `server_name` in NGINX config
-
-```bash
-sudo nano /etc/nginx/sites-available/AvenLab
-```
-
-### Update server_name or use server_name _
-
-```ini
-server_name <new.ip.address>;
-```
-
-### Restart NGINX
-
-```bash
-sudo nginx -t
-sudo service nginx restart
-```
-
----
 
 # 🤝 Contributing
 
@@ -1228,54 +1148,63 @@ For questions, suggestions, or collaborations, please open an issue or contact [
 
 ## Connect BOARD
 
-connect waveshare board to pi
+- connect waveshare board to pi
+- connect pigtail to pi
+- ensure you have enough voltage converter to handle pi
+- get a nice thick cable thats 3m or less, the shorter the better
 
-connect pigtail to pi
+## 🔌 OBD-II Port Pinout Female View
 
-ensure you have enough voltage converter to handle pi
-get a nice thick cable thats 3m or less, the shorter the better
-
-🔌 OBD-II (J1962) Port Pinout
-
-```
+```t
   _______________________
-/ 9  10 11 12 13 14 15 16 \
-| 1  2  3  4  5  6  7  8  |
+/  8  7  6  5  4  3  2  1 \
+| 16 15 14 13 12 11 10  9 |
  -------------------------
 
 ```
 
 🔌 OBD-II Pigtail to Pi HAT
 OBD-II Pigtail Wire Waveshare HAT Screw Terminal
-Pin 6 → (CAN High) CANH (Channel 1 or 2, you choose)
-Pin 14 → (CAN Low) CANL (same channel)
-Pin 4 (or 5) → (Ground) GND on the Pi (optional but recommended for clean signal)
+Pin 14 → (CAN High) CANH (Channel 1 or 2, you choose)
+Pin 6 → (CAN Low) CANL (same channel)
+Pin 13 (or 12) → (Ground) GND on the Pi (optional but recommended for clean signal)
 Your HAT has two channels — pick one!
 E.g. CAN0 = Channel 1 → use CANH0 and CANL0 terminals.
+Use Voltmeter to verify those wires are live
+
+Make a table like this:
+
+Std Pin Function Wire Color Cont Verified
+6       CAN High Brown/white     ✅
+4       Ground   Black/white    ✅
+14     CAN Low   Green           ✅
+16     +12 V     Black          ✅
 
 ## plug into car
 
-while engine is completely off
-connect power cord
-connect pi to obd2 port
-
-turn the ignitions
-open conenction
+- while engine is completely off
+- connect pi to power
+- connect pi to obd2 port
+- turn the ignitions
+- open ssh conenction
 
 ```bash
 sudo modprobe can
 sudo modprobe can_raw
-sudo modprobe mcp251x
-sudo ip link set can0 up type can bitrate 500000
+sudo modprobe mcp251xfd
+sudo ip link set can0 up type can bitrate 500000 listen-only on restart-ms 100
 ip link show can0
+
+
 ```
 
+```bash
 sudo nano /boot/firmware/config.txt
+```
 
-Add these lines at the end (adjust your pins & oscillator if needed):
-
-Verify spi is on
-On pi desktop check Interface Options → SPI → Enable
+- Add these lines at the end (adjust your pins & oscillator if needed):
+- Verify spi is on
+- On pi desktop check Interface Options → SPI → Enable
 
 ```bash
 sudo nano /boot/firmware/config.txt
@@ -1322,7 +1251,7 @@ sudo ip link set can0 up type can bitrate 500000
 sudo ip link set can1 up type can bitrate 500000
 ```
 
-### Check loopback by connect can0 to can1
+## Check loopback by connecting can0 to can1 directly
 
 ```t
 connect h to h
@@ -1392,6 +1321,17 @@ sudo reboot
 ```
 
 ---
+
+```bash
+sudo pkill slcand
+sudo ip link set can2 down 2>/dev/null
+sudo ip link delete can2 2>/dev/null
+sudo modprobe slcan
+sudo slcand -o -c -f -s6 /dev/ttyACM0 can2
+sudo ip link set can2 up
+ip -details link show can2
+candump can2
+```
 
 # Acknowledgements
 

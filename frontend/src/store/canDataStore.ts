@@ -28,7 +28,7 @@ type CanDataState = {
     logs: string[];
     frames: CanFrame[];
 
-    currentSessionId: number | null;
+    currentSessionId: string | null;
 
     isPlaying: boolean;
     playbackIndex: number;
@@ -46,7 +46,7 @@ type CanDataState = {
     addFrame: (frame: CanFrame) => void;
     clearFrames: () => void;
 
-    setCurrentSessionId: (id: number | null) => void;
+    setCurrentSessionId: (id: string | null) => void;
 
     setPlaying: (playing: boolean) => void;
     setPlaybackIndex: (index: number) => void;

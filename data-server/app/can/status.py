@@ -18,10 +18,18 @@ def iface_state(name: str):
 
 def get_can_status():
     can0 = iface_state("can0")
+    can1 = iface_state("can1")
+    can2 = iface_state("can2")
     vcan0 = iface_state("vcan0")
 
     if can0["up"]:
         active = "can0"
+        mode = "live"
+    elif can1["up"]:
+        active = "can1"
+        mode = "live"
+    elif can2["up"]:
+        active = "can2"
         mode = "live"
     elif vcan0["up"]:
         active = "vcan0"
@@ -34,5 +42,7 @@ def get_can_status():
         "active": active,
         "mode": mode,
         "can0": can0,
+        "can1": can1,
+        "can2": can2,
         "vcan0": vcan0,
     }

@@ -1,148 +1,359 @@
+// store/signalReconStore.ts
 import { create } from "zustand";
+import { getApiBaseUrl, type CanInterface, type CanMode } from "./canBusStore";
+import { useCanDataStore } from "./canDataStore";
+import {
+    CAPTURE_MS,
+    ACTION_MS,
+    BASELINE_MS,
+    COUNTDOWN_MS,
+    RECON_MISSIONS,
+    getMissionSteps,
+    type MissionRank,
+    type ReconMissionDefinition,
+    type ReconPhaseName,
+    type ReconStepDefinition,
+} from "./signalReconMissions";
 
-export type ReconTaskKind =
-    | "idle"
-    | "brake"
-    | "throttle"
-    | "steer_left"
-    | "steer_right"
-    | "headlights"
-    | "blinker_left"
-    | "blinker_right";
+export type ReconMission = ReconMissionDefinition;
+export type ReconStep = ReconStepDefinition;
 
-export type ReconTask = {
-    id: string;
-    label: string;
-    instruction: string;
-    kind: ReconTaskKind;
-    durationMs: number;
-};
-
-export type ReconMarker = {
-    taskId: string;
-    event: "task_start" | "task_complete" | "user_action";
-    timestamp: number;
-};
-
-const TASKS: ReconTask[] = [
-    {
-        id: "idle_baseline",
-        label: "Idle Baseline",
-        instruction: "Keep the vehicle idle. Do not press anything.",
-        kind: "idle",
-        durationMs: 10_000,
-    },
-    {
-        id: "brake_press",
-        label: "Brake Signal",
-        instruction: "Press and hold brake.",
-        kind: "brake",
-        durationMs: 5_000,
-    },
-    {
-        id: "headlights_toggle",
-        label: "Headlights",
-        instruction: "Toggle headlights once.",
-        kind: "headlights",
-        durationMs: 5_000,
-    },
-    {
-        id: "left_blinker",
-        label: "Left Blinker",
-        instruction: "Toggle left blinker.",
-        kind: "blinker_left",
-        durationMs: 5_000,
-    },
-    {
-        id: "right_blinker",
-        label: "Right Blinker",
-        instruction: "Toggle right blinker.",
-        kind: "blinker_right",
-        durationMs: 5_000,
-    },
-];
+export type ReconRunPhase = ReconPhaseName | "idle" | "complete" | "cancelled";
 
 type SignalReconState = {
-    active: boolean;
-    taskIndex: number;
-    taskStartedAt: number | null;
-    tasks: ReconTask[];
-    markers: ReconMarker[];
+    vehicleSlug: string;
+    missions: ReconMission[];
+    steps: ReconStep[];
+    selectedMission: ReconMission | null;
+    selectedRank: MissionRank | "ALL";
 
-    start: () => void;
-    stop: () => void;
-    nextTask: () => void;
-    addMarker: (marker: Omit<ReconMarker, "timestamp">) => void;
+    activeSessionId: string | null;
+    sessionStartedAt: number | null;
+
+    activeRunId: string | null;
+    activeStep: ReconStep | null;
+    activeStepIndex: number;
+    activePhase: ReconRunPhase;
+    phaseStartedAt: number | null;
+    phaseEndsAt: number | null;
+
+    setVehicleSlug: (slug: string) => void;
+    setSelectedRank: (rank: MissionRank | "ALL") => void;
+    loadMissions: () => Promise<void>;
+    selectMission: (mission: ReconMission) => Promise<void>;
+    selectMissionByCode: (missionCode: string) => Promise<void>;
+    selectStepByIndex: (index: number) => void;
+
+    startSession: (args: {
+        busInterface: CanInterface;
+        busMode: CanMode;
+    }) => Promise<string>;
+
+    postMarker: (args: {
+        stepCode?: string;
+        markerType: string;
+        label?: string;
+        metadata?: Record<string, unknown>;
+    }) => Promise<void>;
+
+    runStep: (step?: ReconStep) => Promise<void>;
+    runSelectedMission: () => Promise<void>;
+    cancelActiveRun: () => void;
+
+    stopSession: (metadata?: Record<string, unknown>) => Promise<void>;
 };
 
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+function makeRunId() {
+    return globalThis.crypto?.randomUUID?.() ?? `run-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function nowMs() {
+    return performance.now();
+}
+
+async function readApiError(res: Response, fallback: string) {
+    const data = await res.json().catch(() => ({}));
+    return data?.error ?? data?.detail ?? fallback;
+}
+
+function phaseDuration(step: ReconStep, phase: ReconPhaseName): number {
+    if (phase === "baseline") return step.baseline_ms ?? BASELINE_MS;
+    if (phase === "countdown") return step.countdown_ms ?? COUNTDOWN_MS;
+    if (phase === "action") return step.action_ms ?? ACTION_MS;
+    return step.capture_ms ?? CAPTURE_MS;
+}
+
 export const useSignalReconStore = create<SignalReconState>((set, get) => ({
-    active: false,
-    taskIndex: 0,
-    taskStartedAt: null,
-    tasks: TASKS,
-    markers: [],
+    vehicleSlug: "2015-scion-frs",
+    missions: RECON_MISSIONS,
+    steps: getMissionSteps(RECON_MISSIONS[0]),
+    selectedMission: RECON_MISSIONS[0] ?? null,
+    selectedRank: "ALL",
 
-    start() {
-        const task = get().tasks[0];
+    activeSessionId: null,
+    sessionStartedAt: null,
 
+    activeRunId: null,
+    activeStep: null,
+    activeStepIndex: 0,
+    activePhase: "idle",
+    phaseStartedAt: null,
+    phaseEndsAt: null,
+
+    setVehicleSlug: (slug) => set({ vehicleSlug: slug }),
+
+    setSelectedRank: (rank) => set({ selectedRank: rank }),
+
+    async loadMissions() {
+        const selectedMission = get().selectedMission ?? RECON_MISSIONS[0] ?? null;
         set({
-            active: true,
-            taskIndex: 0,
-            taskStartedAt: performance.now(),
-            markers: [
-                {
-                    taskId: task.id,
-                    event: "task_start",
-                    timestamp: Date.now(),
-                },
-            ],
+            missions: RECON_MISSIONS,
+            selectedMission,
+            steps: selectedMission ? getMissionSteps(selectedMission) : [],
         });
     },
 
-    stop() {
+    async selectMission(mission) {
         set({
-            active: false,
-            taskStartedAt: null,
+            selectedMission: mission,
+            steps: getMissionSteps(mission),
+            activeRunId: null,
+            activeStep: null,
+            activeStepIndex: 0,
+            activePhase: "idle",
+            phaseStartedAt: null,
+            phaseEndsAt: null,
         });
     },
 
-    nextTask() {
-        const state = get();
-        const nextIndex = state.taskIndex + 1;
+    async selectMissionByCode(missionCode) {
+        const mission = get().missions.find((item) => item.mission_code === missionCode);
+        if (!mission) throw new Error(`Unknown Signal Recon mission: ${missionCode}`);
+        await get().selectMission(mission);
+    },
 
-        if (nextIndex >= state.tasks.length) {
-            set({
-                active: false,
-                taskStartedAt: null,
-            });
-            return;
+    selectStepByIndex(index) {
+        const steps = get().steps;
+        const safeIndex = Math.max(0, Math.min(index, steps.length - 1));
+        set({ activeStepIndex: safeIndex, activeStep: steps[safeIndex] ?? null });
+    },
+
+    async startSession({ busInterface, busMode }) {
+        const { vehicleSlug, selectedMission } = get();
+
+        if (!selectedMission) {
+            throw new Error("No mission selected");
         }
 
-        const nextTask = state.tasks[nextIndex];
+        const res = await fetch(`${getApiBaseUrl()}/data/can/session/start`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                vehicle_slug: vehicleSlug,
+                mission_code: selectedMission.mission_code,
+                label: selectedMission.title,
+                bus_interface: busInterface,
+                bus_mode: busMode,
+                metadata: {
+                    source: "signal-recon",
+                    target: selectedMission.target,
+                    rank: selectedMission.rank,
+                    category: selectedMission.category,
+                    recording_stage: selectedMission.recording_stage,
+                    difficulty: selectedMission.difficulty,
+                    default_timing: selectedMission.default_timing,
+                    frontend_started_at: new Date().toISOString(),
+                    dev_fake_can: busMode === "simulation" || busInterface === "vcan0",
+                },
+            }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || !data.session_id) {
+            throw new Error(data?.error ?? data?.detail ?? "Failed to start session");
+        }
 
         set({
-            taskIndex: nextIndex,
-            taskStartedAt: performance.now(),
-            markers: [
-                ...state.markers,
-                {
-                    taskId: nextTask.id,
-                    event: "task_start",
-                    timestamp: Date.now(),
+            activeSessionId: data.session_id,
+            sessionStartedAt: nowMs(),
+        });
+
+        useCanDataStore.getState().setCurrentSessionId(data.session_id);
+        useCanDataStore.getState().addLog(`[signal-recon] started ${selectedMission.mission_code}: ${selectedMission.title}`);
+
+        return data.session_id;
+    },
+
+    async postMarker({ stepCode, markerType, label, metadata = {} }) {
+        const { activeSessionId, selectedMission, sessionStartedAt } = get();
+
+        if (!activeSessionId || !selectedMission || sessionStartedAt === null) return;
+
+        const timestampMs = Math.round(nowMs() - sessionStartedAt);
+
+        const res = await fetch(`${getApiBaseUrl()}/data/can/session/${activeSessionId}/marker`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                mission_code: selectedMission.mission_code,
+                step_code: stepCode,
+                marker_type: markerType,
+                label,
+                timestamp_ms: timestampMs,
+                metadata: {
+                    source: "signal-recon",
+                    ...metadata,
                 },
-            ],
+            }),
+        });
+
+        if (!res.ok) {
+            throw new Error(await readApiError(res, `Failed to post marker: ${markerType}`));
+        }
+    },
+
+    async runStep(stepArg) {
+        const step = stepArg ?? get().steps[get().activeStepIndex];
+        const selectedMission = get().selectedMission;
+
+        if (!selectedMission) throw new Error("No mission selected");
+        if (!step) throw new Error("No step selected");
+        if (!get().activeSessionId) throw new Error("Start a CAN session before running a Signal Recon step");
+
+        const runId = makeRunId();
+        const stepIndex = get().steps.findIndex((item) => item.id === step.id);
+
+        set({
+            activeRunId: runId,
+            activeStep: step,
+            activeStepIndex: stepIndex >= 0 ? stepIndex : get().activeStepIndex,
+            activePhase: "idle",
+            phaseStartedAt: null,
+            phaseEndsAt: null,
+        });
+
+        const phases: ReconPhaseName[] = ["baseline", "countdown", "action", "capture"];
+
+        await get().postMarker({
+            stepCode: step.step_code,
+            markerType: "step_start",
+            label: step.label,
+            metadata: {
+                step_id: step.id,
+                action_text: step.action_text,
+                instruction: step.instruction,
+                step_metadata: step.metadata,
+            },
+        });
+
+        for (const phase of phases) {
+            if (get().activeRunId !== runId) return;
+
+            const startedAt = nowMs();
+            const durationMs = phaseDuration(step, phase);
+
+            set({
+                activePhase: phase,
+                phaseStartedAt: startedAt,
+                phaseEndsAt: startedAt + durationMs,
+            });
+
+            await get().postMarker({
+                stepCode: step.step_code,
+                markerType: `${phase}_start`,
+                label: phase === "action" ? step.action_text ?? step.label : step.label,
+                metadata: {
+                    phase,
+                    planned_duration_ms: durationMs,
+                    step_id: step.id,
+                    step_metadata: step.metadata,
+                },
+            });
+
+            await sleep(durationMs);
+        }
+
+        if (get().activeRunId !== runId) return;
+
+        await get().postMarker({
+            stepCode: step.step_code,
+            markerType: "step_complete",
+            label: step.label,
+            metadata: { step_id: step.id, step_metadata: step.metadata },
+        });
+
+        set({
+            activeRunId: null,
+            activePhase: "complete",
+            phaseStartedAt: nowMs(),
+            phaseEndsAt: null,
         });
     },
 
-    addMarker(marker) {
-        set((state) => ({
-            markers: [
-                ...state.markers,
-                {
-                    ...marker,
-                    timestamp: Date.now(),
+    async runSelectedMission() {
+        const steps = get().steps;
+
+        for (let index = 0; index < steps.length; index += 1) {
+            if (!get().activeSessionId) return;
+            set({ activeStepIndex: index, activeStep: steps[index] });
+            await get().runStep(steps[index]);
+        }
+    },
+
+    cancelActiveRun() {
+        const step = get().activeStep;
+        void get().postMarker({
+            stepCode: step?.step_code,
+            markerType: "run_cancelled",
+            label: step?.label,
+            metadata: { step_id: step?.id },
+        });
+
+        set({
+            activeRunId: null,
+            activePhase: "cancelled",
+            phaseStartedAt: nowMs(),
+            phaseEndsAt: null,
+        });
+    },
+
+    async stopSession(metadata = {}) {
+        const { activeSessionId, selectedMission } = get();
+        if (!activeSessionId) return;
+
+        get().cancelActiveRun();
+
+        const res = await fetch(`${getApiBaseUrl()}/data/can/session/${activeSessionId}/stop`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                metadata: {
+                    source: "signal-recon",
+                    mission_code: selectedMission?.mission_code,
+                    frontend_stopped_at: new Date().toISOString(),
+                    ...metadata,
                 },
-            ],
-        }));
+            }),
+        });
+
+        if (!res.ok) {
+            throw new Error(await readApiError(res, "Failed to stop session"));
+        }
+
+        useCanDataStore.getState().setCurrentSessionId(null);
+        useCanDataStore.getState().addLog(`[signal-recon] stopped ${selectedMission?.mission_code ?? "session"}`);
+
+        set({
+            activeSessionId: null,
+            sessionStartedAt: null,
+            activeRunId: null,
+            activeStep: null,
+            activePhase: "idle",
+            phaseStartedAt: null,
+            phaseEndsAt: null,
+        });
     },
 }));

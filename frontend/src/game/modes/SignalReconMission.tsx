@@ -1,243 +1,154 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { GameButton } from "../../components/GameButton";
+import { useCanBusStore } from "../../store/canBusStore";
+import { useSignalReconStore, type ReconStep } from "../../store/signalReconStore";
+import { getStepTotalMs } from "../../store/signalReconMissions";
 
-type Mission = {
-    id: string;
-    title: string;
-    target: string;
-    status: string;
+type SignalReconMissionProps = {
+    onExit?: () => void;
 };
 
-type ReconStep = {
-    id: string;
-    label: string;
-    instruction: string;
-    actionText: string;
-};
-
-type DoorMethod = "driver_door" | "passenger_door" | "key_fob";
-
-type ProtocolPhase =
-    | "idle"
-    | "baseline"
-    | "countdown"
-    | "action_now"
-    | "capturing"
-    | "complete";
-
-const BASELINE_MS = 2000;
-const COUNTDOWN_MS = 3000;
-const ACTION_MS = 1800;
-const CAPTURE_MS = 1500;
-
-const DOOR_UNLOCK_STEPS: ReconStep[] = [
-    {
-        id: "unlock_press_once",
-        label: "Unlock Once",
-        instruction: "Prepare to press UNLOCK one time.",
-        actionText: "PRESS UNLOCK ONCE",
-    },
-    {
-        id: "unlock_press_twice",
-        label: "Unlock Twice",
-        instruction: "Prepare to press UNLOCK twice.",
-        actionText: "PRESS UNLOCK TWICE",
-    },
-    {
-        id: "lock_press_once",
-        label: "Lock Once",
-        instruction: "Prepare to press LOCK one time.",
-        actionText: "PRESS LOCK ONCE",
-    },
-    {
-        id: "lock_press_twice",
-        label: "Lock Twice",
-        instruction: "Prepare to press LOCK twice.",
-        actionText: "PRESS LOCK TWICE",
-    },
-    {
-        id: "unlock_repeat_1",
-        label: "Unlock Repeat 1",
-        instruction: "Prepare to press UNLOCK again.",
-        actionText: "PRESS UNLOCK",
-    },
-    {
-        id: "unlock_repeat_2",
-        label: "Unlock Repeat 2",
-        instruction: "Prepare for final UNLOCK repeat.",
-        actionText: "PRESS UNLOCK AGAIN",
-    },
-];
-
-const methodLabels: Record<DoorMethod, string> = {
-    driver_door: "Driver Door Switch",
-    passenger_door: "Passenger Door Switch",
-    key_fob: "Key Fob",
-};
-
-async function postMarker(payload: unknown) {
-    // Later replace this with your real aven-data-server endpoint.
-    // Example: http://localhost:8001/can/session/{sessionId}/marker
-    console.log("[signal marker]", payload);
-
-    // await fetch("http://localhost:8001/can/marker", {
-    //   method: "POST",
-    //   headers: { "Content-Type": "application/json" },
-    //   body: JSON.stringify(payload),
-    // });
+function formatMs(ms: number) {
+    if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`;
+    return `${ms}ms`;
 }
-const DEFAULT_MISSION: Mission = {
-    id: "door_unlock",
-    title: "Door Unlock Recon",
-    target: "door_unlock",
-    status: "pending",
-};
 
-export function SignalReconMission({
-    mission = DEFAULT_MISSION,
-}: {
-    mission?: Mission;
-}) {
-    const [active, setActive] = useState(false);
-    const [method, setMethod] = useState<DoorMethod>("driver_door");
-    const [stepIndex, setStepIndex] = useState(0);
-    const [phase, setPhase] = useState<ProtocolPhase>("idle");
-    const [phaseStartedAt, setPhaseStartedAt] = useState(0);
-    const [now, setNow] = useState(0);
+function formatPhase(phase: string) {
+    return phase.replace(/_/g, " ").toUpperCase();
+}
 
-    const [markers, setMarkers] = useState<
-        {
-            stepId: string;
-            method: DoorMethod;
-            phase: ProtocolPhase;
-            frontendTs: number;
-        }[]
-    >([]);
+function phaseLabel(phase: string) {
+    if (phase === "baseline") return "BASELINE CAPTURE";
+    if (phase === "countdown") return "GET READY";
+    if (phase === "action") return "ACTION WINDOW OPEN";
+    if (phase === "capture") return "POST-ACTION CAPTURE";
+    if (phase === "complete") return "STEP COMPLETE";
+    if (phase === "cancelled") return "RUN CANCELLED";
+    return "IDLE";
+}
 
-    const actionMarkedRef = useRef(false);
+function getStepSource(step: ReconStep | null) {
+    const value = step?.metadata?.sub_mission_title;
+    return typeof value === "string" ? value : null;
+}
 
-    const steps = useMemo(() => {
-        if (mission.target === "door_unlock") return DOOR_UNLOCK_STEPS;
-        return [];
-    }, [mission.target]);
+export function SignalReconMission({ onExit }: SignalReconMissionProps) {
+    const selectedMission = useSignalReconStore((s) => s.selectedMission);
+    const steps = useSignalReconStore((s) => s.steps);
+    const activeSessionId = useSignalReconStore((s) => s.activeSessionId);
+    const activeRunId = useSignalReconStore((s) => s.activeRunId);
+    const activeStep = useSignalReconStore((s) => s.activeStep);
+    const activeStepIndex = useSignalReconStore((s) => s.activeStepIndex);
+    const activePhase = useSignalReconStore((s) => s.activePhase);
+    const phaseStartedAt = useSignalReconStore((s) => s.phaseStartedAt);
+    const phaseEndsAt = useSignalReconStore((s) => s.phaseEndsAt);
+    const selectStepByIndex = useSignalReconStore((s) => s.selectStepByIndex);
+    const startSession = useSignalReconStore((s) => s.startSession);
+    const runStep = useSignalReconStore((s) => s.runStep);
+    const runSelectedMission = useSignalReconStore((s) => s.runSelectedMission);
+    const cancelActiveRun = useSignalReconStore((s) => s.cancelActiveRun);
+    const stopSession = useSignalReconStore((s) => s.stopSession);
 
-    const step = steps[stepIndex];
-    const complete = active && stepIndex >= steps.length;
-    const totalProgress = steps.length ? stepIndex / steps.length : 0;
+    const selectedInterface = useCanBusStore((s) => s.selectedInterface);
+    const selectedMode = useCanBusStore((s) => s.selectedMode);
 
-    const phaseElapsed = now - phaseStartedAt;
+    const [now, setNow] = useState(() => performance.now());
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-    const phaseDuration =
-        phase === "baseline"
-            ? BASELINE_MS
-            : phase === "countdown"
-                ? COUNTDOWN_MS
-                : phase === "action_now"
-                    ? ACTION_MS
-                    : phase === "capturing"
-                        ? CAPTURE_MS
-                        : 1;
-
-    const phaseProgress = Math.min(phaseElapsed / phaseDuration, 1);
-
-    const countdownNumber =
-        phase === "countdown"
-            ? Math.max(1, Math.ceil((COUNTDOWN_MS - phaseElapsed) / 1000))
-            : null;
-
-    const beginPhase = useCallback((nextPhase: ProtocolPhase) => {
-        setPhase(nextPhase);
-        setPhaseStartedAt(performance.now());
+    useEffect(() => {
+        const id = window.setInterval(() => setNow(performance.now()), 50);
+        return () => window.clearInterval(id);
     }, []);
 
-    const startSession = () => {
-        setActive(true);
-        setStepIndex(0);
-        setMarkers([]);
-        actionMarkedRef.current = false;
-        beginPhase("baseline");
+    const isRunning = Boolean(activeRunId);
+    const displayStep = activeStep ?? steps[activeStepIndex] ?? null;
+    const selectedStepSource = getStepSource(displayStep);
+
+    const phaseDuration = useMemo(() => {
+        if (phaseStartedAt === null || phaseEndsAt === null) return 1;
+        return Math.max(phaseEndsAt - phaseStartedAt, 1);
+    }, [phaseEndsAt, phaseStartedAt]);
+
+    const phaseElapsed = phaseStartedAt === null ? 0 : Math.max(now - phaseStartedAt, 0);
+    const phaseProgress = phaseEndsAt === null ? 0 : Math.min(phaseElapsed / phaseDuration, 1);
+    const timeRemainingMs = phaseEndsAt === null ? 0 : Math.max(phaseEndsAt - now, 0);
+
+    const countdownNumber = activePhase === "countdown"
+        ? Math.max(1, Math.ceil(timeRemainingMs / 1000))
+        : null;
+
+    const missionProgress = steps.length
+        ? Math.min(
+            1,
+            (activeStepIndex + (activePhase === "complete" ? 1 : phaseProgress)) / steps.length
+        )
+        : 0;
+
+    const ensureSession = async () => {
+        if (activeSessionId) return activeSessionId;
+        return startSession({ busInterface: selectedInterface, busMode: selectedMode });
     };
 
-    const stopSession = () => {
-        setActive(false);
-        setStepIndex(0);
-        setPhase("idle");
-        actionMarkedRef.current = false;
-    };
+    const handleRunCurrentStep = async () => {
+        setBusy(true);
+        setError(null);
 
-    const markActionNow = useCallback(async () => {
-        if (!step || actionMarkedRef.current) return;
-
-        actionMarkedRef.current = true;
-
-        const marker = {
-            missionId: mission.id,
-            target: mission.target,
-            stepId: step.id,
-            method,
-            phase: "action_now" as const,
-            frontendTs: Date.now(),
-        };
-
-        setMarkers((prev) => [...prev, marker]);
-
-        await postMarker({
-            ...marker,
-            event: "action_window_open",
-            note: "Backend should store authoritative timestamp here.",
-        });
-    }, [method, mission.id, mission.target, step]);
-
-    useEffect(() => {
-        if (!active) return;
-
-        const id = window.setInterval(() => {
-            setNow(performance.now());
-        }, 50);
-
-        return () => window.clearInterval(id);
-    }, [active]);
-
-    useEffect(() => {
-        if (!active || complete || !step) return;
-
-        let timeoutId: number | undefined;
-
-        const schedule = (fn: () => void) => {
-            timeoutId = window.setTimeout(fn, 0);
-        };
-
-        if (phase === "baseline" && phaseElapsed >= BASELINE_MS) {
-            schedule(() => beginPhase("countdown"));
-        } else if (phase === "countdown" && phaseElapsed >= COUNTDOWN_MS) {
-            schedule(() => beginPhase("action_now"));
-        } else if (phase === "action_now") {
-            schedule(() => {
-                markActionNow();
-
-                if (phaseElapsed >= ACTION_MS) {
-                    beginPhase("capturing");
-                }
-            });
-        } else if (phase === "capturing" && phaseElapsed >= CAPTURE_MS) {
-            schedule(() => {
-                actionMarkedRef.current = false;
-
-                if (stepIndex + 1 >= steps.length) {
-                    setStepIndex(steps.length);
-                    beginPhase("complete");
-                } else {
-                    setStepIndex((i) => i + 1);
-                    beginPhase("baseline");
-                }
-            });
+        try {
+            await ensureSession();
+            await runStep(displayStep ?? undefined);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to run selected Signal Recon step.");
+        } finally {
+            setBusy(false);
         }
+    };
 
-        return () => {
-            if (timeoutId !== undefined) {
-                window.clearTimeout(timeoutId);
+    const handleRunMission = async () => {
+        setBusy(true);
+        setError(null);
+
+        try {
+            await ensureSession();
+            await runSelectedMission();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to run Signal Recon mission.");
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const handleCancelRun = () => {
+        cancelActiveRun();
+        setBusy(false);
+    };
+
+    const handleStopSession = async () => {
+        setBusy(true);
+        setError(null);
+
+        try {
+            if (activeRunId) cancelActiveRun();
+            if (activeSessionId) {
+                await stopSession({ ui_event: "mission_terminal_closed" });
             }
-        };
-    }, [active, complete, step, phase, phaseElapsed, stepIndex, steps.length, beginPhase, markActionNow]);
+            onExit?.();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to stop Signal Recon session.");
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    if (!selectedMission) {
+        return (
+            <div className="grid h-full place-items-center rounded-2xl bg-[#020617] p-6 font-mono text-green-100">
+                <div className="rounded-2xl border border-yellow-300/30 bg-yellow-500/10 p-6 text-yellow-100">
+                    No Signal Recon mission is selected.
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="relative h-full w-full overflow-hidden rounded-2xl bg-[#020617] text-green-100">
@@ -246,174 +157,226 @@ export function SignalReconMission({
             <div className="relative z-10 flex h-full w-full flex-col p-6 font-mono">
                 <div className="mb-4 flex items-center justify-between border-b border-green-400/20 pb-3">
                     <div>
-                        <p className="text-xs text-yellow-300">{mission.id}</p>
-                        <h2 className="text-2xl font-black text-green-100">
-                            {mission.title}
-                        </h2>
-                        <p className="text-sm text-slate-400">target: {mission.target}</p>
+                        <p className="text-xs text-yellow-300">{selectedMission.mission_code}</p>
+                        <h2 className="text-2xl font-black text-green-100">{selectedMission.title}</h2>
+                        <p className="text-sm text-slate-400">target: {selectedMission.target}</p>
                     </div>
 
-                    <span className="rounded-lg border border-green-300/40 bg-green-500/10 px-3 py-2 text-xs font-bold text-green-100">
-                        {active ? phase.toUpperCase() : "IDLE"}
-                    </span>
+                    <div className="flex items-center gap-3">
+                        <div className="hidden text-right text-xs text-slate-500 md:block">
+                            <p>SESSION: {activeSessionId ? activeSessionId : "not started"}</p>
+                            <p>{selectedInterface} / {selectedMode}</p>
+                        </div>
+                        <span className="rounded-lg border border-green-300/40 bg-green-500/10 px-3 py-2 text-xs font-bold text-green-100">
+                            {formatPhase(activePhase)}
+                        </span>
+                    </div>
                 </div>
 
-                {!active ? (
-                    <div className="grid flex-1 place-items-center">
-                        <div className="w-full max-w-xl rounded-2xl border border-green-400/20 bg-slate-950/80 p-6">
-                            <h3 className="mb-3 text-xl font-bold text-yellow-300">
-                                Select Door Test Method
-                            </h3>
+                {error && (
+                    <div className="mb-4 rounded-xl border border-red-300/40 bg-red-500/10 p-3 text-sm text-red-100">
+                        {error}
+                    </div>
+                )}
 
-                            <div className="mb-6 grid gap-3">
-                                {(Object.keys(methodLabels) as DoorMethod[]).map((key) => (
-                                    <button
-                                        key={key}
-                                        onClick={() => setMethod(key)}
-                                        className={`rounded-xl border px-4 py-4 text-left font-bold ${method === key
+                <div className="mb-5 grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
+                    <div className="rounded-xl border border-green-400/20 bg-slate-950/80 p-4">
+                        <div className="mb-3 flex items-center justify-between text-xs">
+                            <span className="text-yellow-300">MISSION STEPS</span>
+                            <span className="text-slate-400">
+                                STEP {steps.length ? Math.min(activeStepIndex + 1, steps.length) : 0} / {steps.length}
+                            </span>
+                        </div>
+
+                        <div className="mb-3 h-3 overflow-hidden rounded-full bg-slate-800">
+                            <div
+                                className="h-full rounded-full bg-green-400 transition-all"
+                                style={{ width: `${missionProgress * 100}%` }}
+                            />
+                        </div>
+
+                        <div className="max-h-[220px] space-y-2 overflow-y-auto pr-1">
+                            {steps.map((step, index) => {
+                                const selected = displayStep?.id === step.id;
+                                const source = getStepSource(step);
+
+                                return (
+                                    <GameButton
+                                        key={step.id}
+                                        disabled={isRunning || busy}
+                                        onPress={() => selectStepByIndex(index)}
+                                        className={`w-full rounded-xl border p-3 text-left transition disabled:cursor-not-allowed disabled:opacity-40 ${selected
                                             ? "border-green-300 bg-green-500/15 text-green-100"
-                                            : "border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800"
+                                            : "border-slate-700 bg-slate-900/80 text-slate-300 hover:bg-slate-800"
                                             }`}
                                     >
-                                        {methodLabels[key]}
-                                    </button>
-                                ))}
-                            </div>
-
-                            <button
-                                onClick={startSession}
-                                className="w-full rounded-xl border border-green-300/40 bg-green-500/10 px-5 py-5 text-lg font-black text-green-100 hover:bg-green-400/20"
-                            >
-                                START TIMED RECON SESSION
-                            </button>
+                                        <div className="flex items-center justify-between gap-3">
+                                            <span className="font-bold">{step.label}</span>
+                                            <span className="text-[10px] text-slate-500">{formatMs(getStepTotalMs(step))}</span>
+                                        </div>
+                                        {source && <p className="mt-1 text-[11px] text-slate-500">{source}</p>}
+                                    </GameButton>
+                                );
+                            })}
                         </div>
                     </div>
-                ) : complete ? (
-                    <div className="grid flex-1 place-items-center">
-                        <div className="w-full max-w-xl rounded-2xl border border-green-300/30 bg-green-500/10 p-6 text-center">
-                            <h3 className="mb-3 text-3xl font-black text-green-100">
-                                MISSION COMPLETE
-                            </h3>
 
-                            <p className="mb-6 text-slate-300">
-                                Captured {markers.length} action markers for{" "}
-                                {methodLabels[method]}.
-                            </p>
-
-                            <button
-                                onClick={stopSession}
-                                className="rounded-xl border border-green-300/40 bg-green-500/10 px-6 py-4 font-bold text-green-100 hover:bg-green-400/20"
-                            >
-                                RETURN TO MISSION
-                            </button>
-                        </div>
-                    </div>
-                ) : (
-                    <>
-                        <div className="mb-6">
-                            <div className="mb-2 flex items-center justify-between text-xs">
-                                <span className="text-yellow-300">
-                                    METHOD: {methodLabels[method]}
-                                </span>
-                                <span className="text-slate-400">
-                                    STEP {Math.min(stepIndex + 1, steps.length)} / {steps.length}
-                                </span>
-                            </div>
-
-                            <div className="h-4 overflow-hidden rounded-full bg-slate-800">
-                                <div
-                                    className="h-full rounded-full bg-green-400 transition-all"
-                                    style={{ width: `${totalProgress * 100}%` }}
-                                />
-                            </div>
+                    <div className="rounded-xl border border-green-400/20 bg-slate-950/80 p-4">
+                        <div className="mb-3 flex items-center justify-between text-xs">
+                            <span className="text-yellow-300">ACTIVE STEP</span>
+                            <span className="text-slate-500">
+                                {displayStep?.step_code ?? "none"}
+                            </span>
                         </div>
 
-                        <div className="grid flex-1 place-items-center text-center">
-                            <div className="w-full max-w-3xl">
-                                {phase === "baseline" && (
-                                    <>
-                                        <p className="mb-2 text-xs tracking-[0.35em] text-cyan-300">
-                                            BASELINE CAPTURE
-                                        </p>
-                                        <h3 className="mb-4 text-4xl font-black text-green-100">
-                                            DO NOTHING
-                                        </h3>
-                                        <p className="text-slate-300">
-                                            Hold still. Capturing quiet CAN baseline before action.
-                                        </p>
-                                    </>
-                                )}
-
-                                {phase === "countdown" && (
-                                    <>
-                                        <p className="mb-2 text-xs tracking-[0.35em] text-yellow-300">
-                                            GET READY
-                                        </p>
-                                        <div className="mb-4 text-8xl font-black text-yellow-100">
-                                            {countdownNumber}
-                                        </div>
-                                        <h3 className="text-3xl font-black text-green-100">
-                                            {step?.label}
-                                        </h3>
-                                    </>
-                                )}
-
-                                {phase === "action_now" && (
-                                    <>
-                                        <p className="mb-2 text-xs tracking-[0.35em] text-red-300">
-                                            ACTION WINDOW OPEN
-                                        </p>
-
-                                        <div className="rounded-3xl border border-red-300/60 bg-red-500/20 px-8 py-16 shadow-2xl shadow-red-500/20">
-                                            <h3 className="text-5xl font-black text-red-100">
-                                                {step?.actionText}
-                                            </h3>
-                                        </div>
-
-                                        <p className="mt-5 text-sm text-slate-400">
-                                            Marker was recorded automatically at ACTION NOW.
-                                        </p>
-                                    </>
-                                )}
-
-                                {phase === "capturing" && (
-                                    <>
-                                        <p className="mb-2 text-xs tracking-[0.35em] text-green-300">
-                                            POST-ACTION CAPTURE
-                                        </p>
-                                        <h3 className="mb-4 text-4xl font-black text-green-100">
-                                            HOLD STILL
-                                        </h3>
-                                        <p className="text-slate-300">
-                                            Capturing CAN response after the action.
-                                        </p>
-                                    </>
-                                )}
-
-                                <div className="mt-8 h-3 overflow-hidden rounded-full bg-slate-800">
-                                    <div
-                                        className={`h-full rounded-full transition-all ${phase === "action_now" ? "bg-red-400" : "bg-yellow-300"
-                                            }`}
-                                        style={{ width: `${phaseProgress * 100}%` }}
-                                    />
+                        {displayStep ? (
+                            <div className="space-y-3 text-sm text-slate-300">
+                                <h3 className="text-xl font-black text-green-100">{displayStep.label}</h3>
+                                {selectedStepSource && <p className="text-cyan-300">sub-mission: {selectedStepSource}</p>}
+                                <p>{displayStep.instruction ?? "Follow the selected mission prompt."}</p>
+                                <div className="grid grid-cols-2 gap-2 text-xs text-slate-500 md:grid-cols-4">
+                                    <p>baseline: {formatMs(displayStep.baseline_ms ?? 0)}</p>
+                                    <p>countdown: {formatMs(displayStep.countdown_ms ?? 0)}</p>
+                                    <p>action: {formatMs(displayStep.action_ms ?? 0)}</p>
+                                    <p>capture: {formatMs(displayStep.capture_ms ?? 0)}</p>
                                 </div>
                             </div>
+                        ) : (
+                            <p className="text-sm text-slate-500">No step selected.</p>
+                        )}
+                    </div>
+                </div>
+
+                <div className="grid flex-1 place-items-center text-center">
+                    <div className="w-full max-w-3xl">
+                        {activePhase === "baseline" && (
+                            <>
+                                <p className="mb-2 text-xs tracking-[0.35em] text-cyan-300">
+                                    {phaseLabel(activePhase)}
+                                </p>
+                                <h3 className="mb-4 text-4xl font-black text-green-100">DO NOTHING</h3>
+                                <p className="text-slate-300">
+                                    Hold still. Capturing quiet CAN baseline before this action.
+                                </p>
+                            </>
+                        )}
+
+                        {activePhase === "countdown" && (
+                            <>
+                                <p className="mb-2 text-xs tracking-[0.35em] text-yellow-300">
+                                    {phaseLabel(activePhase)}
+                                </p>
+                                <div className="mb-4 text-8xl font-black text-yellow-100">
+                                    {countdownNumber}
+                                </div>
+                                <h3 className="text-3xl font-black text-green-100">
+                                    {displayStep?.label}
+                                </h3>
+                            </>
+                        )}
+
+                        {activePhase === "action" && (
+                            <>
+                                <p className="mb-2 text-xs tracking-[0.35em] text-red-300">
+                                    {phaseLabel(activePhase)}
+                                </p>
+
+                                <div className="rounded-3xl border border-red-300/60 bg-red-500/20 px-8 py-16 shadow-2xl shadow-red-500/20">
+                                    <h3 className="text-5xl font-black text-red-100">
+                                        {displayStep?.action_text ?? displayStep?.label ?? "ACTION NOW"}
+                                    </h3>
+                                </div>
+
+                                <p className="mt-5 text-sm text-slate-400">
+                                    Store posted the action marker at the start of this phase.
+                                </p>
+                            </>
+                        )}
+
+                        {activePhase === "capture" && (
+                            <>
+                                <p className="mb-2 text-xs tracking-[0.35em] text-green-300">
+                                    {phaseLabel(activePhase)}
+                                </p>
+                                <h3 className="mb-4 text-4xl font-black text-green-100">HOLD STILL</h3>
+                                <p className="text-slate-300">
+                                    Capturing CAN response after the action window.
+                                </p>
+                            </>
+                        )}
+
+                        {(activePhase === "idle" || activePhase === "complete" || activePhase === "cancelled") && (
+                            <>
+                                <p className="mb-2 text-xs tracking-[0.35em] text-yellow-300">
+                                    {phaseLabel(activePhase)}
+                                </p>
+                                <h3 className="mb-4 text-4xl font-black text-green-100">
+                                    {activePhase === "idle" ? "READY TO RECORD" : formatPhase(activePhase)}
+                                </h3>
+                                <p className="text-slate-300">
+                                    Choose a step, run one capture, or run the full mission sequence.
+                                </p>
+                            </>
+                        )}
+
+                        <div className="mt-8 h-3 overflow-hidden rounded-full bg-slate-800">
+                            <div
+                                className={`h-full rounded-full transition-all ${activePhase === "action" ? "bg-red-400" : "bg-yellow-300"
+                                    }`}
+                                style={{ width: `${phaseProgress * 100}%` }}
+                            />
                         </div>
 
-                        <div className="mt-6 flex justify-between border-t border-green-400/20 pt-4">
-                            <button
-                                onClick={stopSession}
-                                className="rounded-xl border border-red-300/40 bg-red-500/10 px-5 py-3 font-bold text-red-100 hover:bg-red-400/20"
-                            >
-                                ABORT
-                            </button>
+                        {phaseEndsAt !== null && (
+                            <p className="mt-2 text-xs text-slate-500">
+                                phase remaining: {formatMs(Math.ceil(timeRemainingMs))}
+                            </p>
+                        )}
+                    </div>
+                </div>
 
-                            <div className="text-xs text-slate-500">
-                                current step: {step?.id}
-                            </div>
-                        </div>
-                    </>
-                )}
+                <div className="mt-6 grid gap-3 border-t border-green-400/20 pt-4 md:grid-cols-4">
+                    {isRunning ? (
+                        <GameButton
+                            onPress={handleCancelRun}
+                            className="rounded-xl border border-red-300/40 bg-red-500/10 px-5 py-3 font-bold text-red-100 hover:bg-red-400/20"
+                        >
+                            CANCEL RUN
+                        </GameButton>
+                    ) : (
+                        <GameButton
+                            onPress={handleStopSession}
+                            disabled={busy}
+                            className="rounded-xl border border-red-300/40 bg-red-500/10 px-5 py-3 font-bold text-red-100 hover:bg-red-400/20 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                            END SESSION
+                        </GameButton>
+                    )}
+
+                    <GameButton
+                        onPress={handleRunCurrentStep}
+                        disabled={busy || isRunning || !displayStep}
+                        className="rounded-xl border border-yellow-300/40 bg-yellow-500/10 px-5 py-3 font-bold text-yellow-100 hover:bg-yellow-400/20 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                        RUN STEP
+                    </GameButton>
+
+                    <GameButton
+                        onPress={handleRunMission}
+                        disabled={busy || isRunning || steps.length === 0}
+                        className="rounded-xl border border-green-300/40 bg-green-500/10 px-5 py-3 font-bold text-green-100 hover:bg-green-400/20 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                        RUN FULL MISSION
+                    </GameButton>
+
+                    <GameButton
+                        onPress={onExit}
+                        disabled={busy || isRunning}
+                        className="rounded-xl border border-cyan-300/40 bg-cyan-500/10 px-5 py-3 font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                        BACK TO QUEUE
+                    </GameButton>
+                </div>
             </div>
         </div>
     );

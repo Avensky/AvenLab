@@ -14,15 +14,15 @@ import { hasFlag, VehicleFlags } from "../store/tools/inputMasks";
 
 const MODEL_PATH = "/models/vehicles/gt86.glb";
 export const Gt86 = forwardRef<Group, PropsWithChildren>(function Gt86(
-  { children },
-  ref
-) {   
+    { children },
+    ref
+) {
     const tintFirstPerson = new Color(0xffffff);  // Clear
     const tintExterior = new Color(0x556677);     // Blue-gray tint (customize as needed)
-    
+
     const { scene } = useGLTF(MODEL_PATH);
     const camera = useThree((state) => state.camera)
-    
+
     const vehicleGroupRef = useRef<Group>(null!)
     useImperativeHandle(ref, () => vehicleGroupRef.current, []);
 
@@ -47,7 +47,7 @@ export const Gt86 = forwardRef<Group, PropsWithChildren>(function Gt86(
         if (!snapshot) return;
 
         for (const entity of snapshot.entities) {
-        setSnapshot(entity.id, entity);
+            setSnapshot(entity.id, entity);
         }
     }, [snapshot, setSnapshot]);
 
@@ -153,24 +153,24 @@ export const Gt86 = forwardRef<Group, PropsWithChildren>(function Gt86(
 
     useEffect(() => {
         const addSpot = (
-        refObj: { current: SpotLight | null },
-        color: number,
-        intensity: number,
-        distance: number,
-        position: [number, number, number],
-        target: [number, number, number]
+            refObj: { current: SpotLight | null },
+            color: number,
+            intensity: number,
+            distance: number,
+            position: [number, number, number],
+            target: [number, number, number]
         ) => {
-        const light = new SpotLight(color, intensity, distance, Math.PI / 6, 0.2);
+            const light = new SpotLight(color, intensity, distance, Math.PI / 6, 0.2);
 
-        light.position.set(...position);
-        light.target.position.set(...target);
-        light.target.updateMatrixWorld();
-        light.visible = false;
+            light.position.set(...position);
+            light.target.position.set(...target);
+            light.target.updateMatrixWorld();
+            light.visible = false;
 
-        refObj.current = light;
+            refObj.current = light;
 
-        vehicleGroupRef.current.add(light);
-        vehicleGroupRef.current.add(light.target);
+            vehicleGroupRef.current.add(light);
+            vehicleGroupRef.current.add(light.target);
         };
 
         addSpot(leftLightRef, 0xffffff, 5, 40, [-0.5, 0.7, -1.8], [-0.4, -0.6, -5]);
@@ -187,20 +187,20 @@ export const Gt86 = forwardRef<Group, PropsWithChildren>(function Gt86(
 
     const wheels = useMemo(() => {
         return [
-        clonesByGroup["FL_WHEEL"],
-        clonesByGroup["FR_WHEEL"],
-        clonesByGroup["RL_WHEEL"],
-        clonesByGroup["RR_WHEEL"],
+            clonesByGroup["FL_WHEEL"],
+            clonesByGroup["FR_WHEEL"],
+            clonesByGroup["RL_WHEEL"],
+            clonesByGroup["RR_WHEEL"],
         ].map((group) => {
-        const groupObj = new Group();
+            const groupObj = new Group();
 
-        if (!group) return groupObj;
+            if (!group) return groupObj;
 
-        Object.values(group).forEach((obj: Object3D) => {
-            groupObj.add(obj);
-        });
+            Object.values(group).forEach((obj: Object3D) => {
+                groupObj.add(obj);
+            });
 
-        return groupObj;
+            return groupObj;
         });
     }, [clonesByGroup]);
 
@@ -224,8 +224,8 @@ export const Gt86 = forwardRef<Group, PropsWithChildren>(function Gt86(
 
         blinkTimer.current += delta;
         if (blinkTimer.current >= 0.5) {
-        blinkTimer.current = 0;
-        blinkState.current = !blinkState.current;
+            blinkTimer.current = 0;
+            blinkState.current = !blinkState.current;
         }
 
         const vehicleMask = input.vehicleMask;
@@ -233,9 +233,9 @@ export const Gt86 = forwardRef<Group, PropsWithChildren>(function Gt86(
         const headlights = hasFlag(vehicleMask, VehicleFlags.HEADLIGHTS);
         const hazards = hasFlag(vehicleMask, VehicleFlags.HAZARDS);
         const blinkerLeft =
-        hasFlag(vehicleMask, VehicleFlags.BLINKER_LEFT) && !hazards;
+            hasFlag(vehicleMask, VehicleFlags.BLINKER_LEFT) && !hazards;
         const blinkerRight =
-        hasFlag(vehicleMask, VehicleFlags.BLINKER_RIGHT) && !hazards;
+            hasFlag(vehicleMask, VehicleFlags.BLINKER_RIGHT) && !hazards;
 
         const blinkOn = blinkState.current;
 
@@ -246,57 +246,57 @@ export const Gt86 = forwardRef<Group, PropsWithChildren>(function Gt86(
         if (rightTailRef.current) rightTailRef.current.visible = controls.braking;
 
         if (flBlinkerRef.current) {
-        flBlinkerRef.current.visible = (hazards || blinkerLeft) && blinkOn;
+            flBlinkerRef.current.visible = (hazards || blinkerLeft) && blinkOn;
         }
 
         if (frBlinkerRef.current) {
-        frBlinkerRef.current.visible = (hazards || blinkerRight) && blinkOn;
+            frBlinkerRef.current.visible = (hazards || blinkerRight) && blinkOn;
         }
 
         if (rlBlinkerRef.current) {
-        rlBlinkerRef.current.visible = (hazards || blinkerLeft) && blinkOn;
+            rlBlinkerRef.current.visible = (hazards || blinkerLeft) && blinkOn;
         }
 
         if (rrBlinkerRef.current) {
-        rrBlinkerRef.current.visible = (hazards || blinkerRight) && blinkOn;
+            rrBlinkerRef.current.visible = (hazards || blinkerRight) && blinkOn;
         }
 
         group.position.set(...interp.position);
         group.quaternion.set(...interp.rotation);
 
         const wheelMap = {
-        fl: wheels[0],
-        fr: wheels[1],
-        rl: wheels[2],
-        rr: wheels[3],
+            fl: wheels[0],
+            fr: wheels[1],
+            rl: wheels[2],
+            rr: wheels[3],
         } as const;
 
         interp.wheels?.forEach((wheel) => {
-        const wheelObject = wheelMap[wheel.id];
-        if (!wheelObject) return;
+            const wheelObject = wheelMap[wheel.id];
+            if (!wheelObject) return;
 
-        wheelObject.position.set(...wheel.position);
-        wheelObject.quaternion.set(...wheel.rotation);
+            wheelObject.position.set(...wheel.position);
+            wheelObject.quaternion.set(...wheel.rotation);
         });
 
         if (
-        !isEditor &&
-        (camMode === "FIRST_PERSON" ||
-            camMode === "DEFAULT" ||
-            camMode === "BIRDS_EYE")
+            !isEditor &&
+            (camMode === "FIRST_PERSON" ||
+                camMode === "DEFAULT" ||
+                camMode === "BIRDS_EYE")
         ) {
-        const offset = new Vector3();
+            const offset = new Vector3();
 
-        if (camMode === "FIRST_PERSON") offset.set(-0.25, 0.98, -0.1);
-        if (camMode === "DEFAULT") offset.set(0, 2, 4);
-        if (camMode === "BIRDS_EYE") offset.set(0, 7, 12);
+            if (camMode === "FIRST_PERSON") offset.set(-0.25, 0.98, -0.1);
+            if (camMode === "DEFAULT") offset.set(0, 2, 4);
+            if (camMode === "BIRDS_EYE") offset.set(0, 7, 12);
 
-        offset.applyQuaternion(group.quaternion).add(group.position);
-        camera.position.lerp(offset, delta * 5);
+            offset.applyQuaternion(group.quaternion).add(group.position);
+            camera.position.lerp(offset, delta * 5);
 
-        const target = group.position.clone();
-        target.y += 1.2;
-        camera.lookAt(target);
+            const target = group.position.clone();
+            target.y += 1.2;
+            camera.lookAt(target);
         }
 
         const isFirstPerson = camMode === "FIRST_PERSON";
@@ -307,21 +307,21 @@ export const Gt86 = forwardRef<Group, PropsWithChildren>(function Gt86(
         const t = delta / transitionSpeed;
 
         sharedGlassMaterial.opacity = MathUtils.lerp(
-        sharedGlassMaterial.opacity,
-        targetOpacity,
-        t
+            sharedGlassMaterial.opacity,
+            targetOpacity,
+            t
         );
 
         sharedGlassMaterial.ior = MathUtils.lerp(
-        sharedGlassMaterial.ior,
-        targetIOR,
-        t
+            sharedGlassMaterial.ior,
+            targetIOR,
+            t
         );
 
         sharedGlassMaterial.color.lerp(targetColor, t);
         sharedGlassMaterial.needsUpdate = true;
     });
-    
+
     return (
         <>
             <group ref={vehicleGroupRef} >

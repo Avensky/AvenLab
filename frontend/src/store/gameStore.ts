@@ -35,6 +35,11 @@ interface GameState {
     //  Camera Settings
     // =======================================
     camera: Camera
+    setCamera: (camera: Camera) => void
+    cycleCamera: () => void
+    setEditor: (value: boolean) => void
+    toggleEditor: () => void
+
     rotatingCamera: number
     setRotatingCamera: (angle: number) => void
 
@@ -60,7 +65,7 @@ export const useGameStore = create<GameState>((set) => ({
     // =======================================
     screen: 'selection-screen',
     setScreen: (screen) => { set({ screen }) },
-    
+
     selectedVehicle: 'ae86',
     setSelectedVehicle: (vehicle) => set({ selectedVehicle: vehicle }),
 
@@ -68,9 +73,21 @@ export const useGameStore = create<GameState>((set) => ({
     setSelectedMap: (map) => set({ selectedMap: map }),
 
     camera: cameras[0],
+    setCamera: (camera) => set({ camera }),
+
+    cycleCamera: () =>
+        set((state) => {
+            const index = cameras.indexOf(state.camera)
+            const next = cameras[(index + 1) % cameras.length]
+            return { camera: next }
+        }),
+
+    setEditor: (value) => set({ editor: value }),
+    toggleEditor: () => set((state) => ({ editor: !state.editor })),
+
     rotatingCamera: 0.0,
     setRotatingCamera: (angle: number) => set({ rotatingCamera: angle }),
-    
+
     binding: false,
     debugBool: false,
     editor: false,

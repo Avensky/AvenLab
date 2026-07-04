@@ -8,7 +8,7 @@ import { Gt86 } from "../vehicles/Gt86";
 import { Tank } from "../vehicles/Tank";
 
 export type VehicleRole = "tank" | "dps" | "healer" | "utility";
-export type VehicleComponent = ComponentType<PropsWithChildren & { ref?: React.Ref<Group>;}>;
+export type VehicleComponent = ComponentType<PropsWithChildren & { ref?: React.Ref<Group>; }>;
 export type VehicleDefinition = {
   id: string;
   name: string;
@@ -120,5 +120,5 @@ export const useSelectionStore = create<SelectionState>((set, get) => ({
 
   getSelectedVehicle: () => vehicleCatalog[get().vehicleIndex],
   getSelectedMap: () => mapCatalog[get().mapIndex],
-  
+
 }));
