@@ -24,9 +24,9 @@ jobs:
 
       - name: Create runtime directories
         run: |
-          sudo mkdir -p /var/www/avenlab/bin
-          sudo mkdir -p /var/www/avenlab/current/frontend
-          sudo mkdir -p /var/www/avenlab/current/data-server
+          sudo install -d -o uri -g uri /var/www/avenlab/bin
+          sudo install -d -o uri -g uri /var/www/avenlab/current/frontend
+          sudo install -d -o uri -g uri /var/www/avenlab/current/data-server
 
       - name: Install root dependencies
         run: npm ci

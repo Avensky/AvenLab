@@ -74,34 +74,30 @@ jobs:
 
       - name: Install runtime files
         run: |
-          sudo mkdir -p /var/www/avenlab/bin
-          sudo mkdir -p /var/www/avenlab/current/frontend
-          sudo mkdir -p /var/www/avenlab/current/data-server
-
-          sudo rsync -a --delete frontend/dist/ /var/www/avenlab/current/frontend/dist/
-          sudo rsync -a --delete --exclude '.venv' data-server/ /var/www/avenlab/current/data-server/
-
-          sudo install -m 755 /tmp/avenlab-rust-build/release/avenlab-server /var/www/avenlab/bin/avenlab-server
+          sudo rsync -a --delete --exclude '.venv' --chown=uri:uri data-server/ /var/www/avenlab/current/data-server/
+          sudo rsync -a --delete --chown=uri:uri frontend/dist/ /var/www/avenlab/current/frontend/dist/
+          sudo install -o uri -g uri -m 755 /tmp/avenlab-rust-build/release/avenlab-server /var/www/avenlab/bin/avenlab-server
 
       - name: Install production data-server venv
         run: |
-          cd /var/www/avenlab/current/data-server
-          rm -rf .venv
-          python3 -m venv .venv
-          .venv/bin/python -m pip install --upgrade pip
-          .venv/bin/python -m pip install -r requirements.txt
+          sudo -u uri bash -lc '
+            cd /var/www/avenlab/current/data-server
+            python3 -m venv .venv
+            .venv/bin/python -m pip install --upgrade pip
+            .venv/bin/pip install -r requirements.txt
+          '
 
-      - name: Restart physics service
+      - name: Start backend services
         run: |
-          sudo systemctl restart avenlab-physics
-          sleep 2
-          sudo systemctl is-active --quiet avenlab-physics
+          sudo systemctl daemon-reload
 
-      - name: Restart data server
-        run: |
+          sudo systemctl enable avenlab-data
           sudo systemctl restart avenlab-data
-          sleep 2
           sudo systemctl is-active --quiet avenlab-data
+
+          sudo systemctl enable avenlab-physics
+          sudo systemctl restart avenlab-physics
+          sudo systemctl is-active --quiet avenlab-physics
 
       - name: Test and reload NGINX
         run: |
