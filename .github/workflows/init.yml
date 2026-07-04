@@ -43,13 +43,7 @@ jobs:
         run: |
           file frontend/public/models/vehicles/ae86.glb
           head -c 20 frontend/public/models/vehicles/ae86.glb
-
-      - name: Install production data-server venv
-        run: |
-          cd /var/www/avenlab/current/data-server
-          python3 -m venv .venv
-          .venv/bin/python -m pip install --upgrade pip
-          .venv/bin/pip install -r requirements.txt
+          echo
 
       - name: Install Rust toolchain
         shell: bash
@@ -86,17 +80,43 @@ jobs:
 
       - name: Install runtime files
         run: |
-          sudo rsync -a --delete --exclude '.venv' data-server/ /var/www/avenlab/current/data-server/
-          sudo rsync -a --delete frontend/dist/ /var/www/avenlab/current/frontend/dist/
-          sudo rsync -a --delete data-server/ /var/www/avenlab/current/data-server/
-          sudo install -m 755 /tmp/avenlab-rust-build/release/avenlab-server /var/www/avenlab/bin/avenlab-server
+          sudo rsync -a --delete --exclude '.venv' --chown=uri:uri data-server/ /var/www/avenlab/current/data-server/
+          sudo rsync -a --delete --chown=uri:uri frontend/dist/ /var/www/avenlab/current/frontend/dist/
+          sudo install -o uri -g uri -m 755 /tmp/avenlab-rust-build/release/avenlab-server /var/www/avenlab/bin/avenlab-server
 
-      - name: Start physics service
+      - name: Install production data-server venv
+        run: |
+          sudo -u uri bash -lc '
+            cd /var/www/avenlab/current/data-server
+            python3 -m venv .venv
+            .venv/bin/python -m pip install --upgrade pip
+            .venv/bin/pip install -r requirements.txt
+          '
+
+      - name: Start backend services
         run: |
           sudo systemctl daemon-reload
+
+          sudo systemctl enable avenlab-data
+          sudo systemctl restart avenlab-data
+          sudo systemctl is-active --quiet avenlab-data
+
           sudo systemctl enable avenlab-physics
           sudo systemctl restart avenlab-physics
           sudo systemctl is-active --quiet avenlab-physics
+
+      - name: Verify deployment
+        run: |
+          curl -f http://127.0.0.1:8001/health
+          echo
+          curl -f http://127.0.0.1:8001/openapi.json > /tmp/avenlab-openapi.json
+          python3 - <<'PY'
+          import json
+          data = json.load(open("/tmp/avenlab-openapi.json"))
+          for path in sorted(data["paths"]):
+              if "can" in path:
+                  print(path)
+          PY
 
       - name: Initial deployment complete
         run: |
