@@ -1,62 +1,42 @@
+# data-server/app/can/can_router.py
 """
-FastAPI CAN router for Aven Data Server.
+PostgreSQL-backed CAN router for Aven Data Server.
 
-Only one environment switch is used:
-    APP_ENV=production
+Only APP_ENV matters:
+- APP_ENV=production -> production behavior
+- any other value / missing -> development behavior
 
-Behavior:
-- If APP_ENV is exactly "production", production=True.
-- If APP_ENV is missing or anything else, assume development.
-- Development mode virtualizes every selected interface so macOS can test DB/session flows.
-- Production mode still allows fake/generated CAN recording for database testing, but labels
-  every session/frame by the frontend-selected CAN interface: can0, can1, can2, or vcan0.
-
-Routes:
-    GET  /data/can/status
-    POST /data/can/session/start
-    POST /data/can/session/{session_id}/marker
-    POST /data/can/session/{session_id}/stop
-    GET  /data/can/session/{session_id}/frames
-    GET  /data/can/session/{session_id}/summary
+The router still supports fake/generated CAN frames in production, but writes them
+to the real PostgreSQL schema:
+- can_sessions
+- can_session_markers
+- can_frames_raw
+- can_frames_decoded
 """
 
-import json
+from __future__ import annotations
+
 import os
-import sqlite3
-import uuid
-from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-router = APIRouter(prefix="/data/can", tags=["can"])
+from app.db import execute, fetch, fetchrow, jsonb_dumps
 
 APP_ENV = os.getenv("APP_ENV", "").strip().lower()
 IS_PRODUCTION = APP_ENV == "production"
 RUNTIME_ENV = "production" if IS_PRODUCTION else "development"
 
-# No DB env var. Development writes to the dev DB by default; production is the
-# only signal to write to the production fake-CAN DB.
-DB_PATH = Path("./data/can_prod.sqlite3" if IS_PRODUCTION else "./data/can_dev.sqlite3")
-FRAME_SOURCE = "fake-can-production" if IS_PRODUCTION else "fake-can-development"
+router = APIRouter(prefix="/data/can", tags=["can"])
 
-CAN_INTERFACES = ("vcan0", "can0", "can1", "can2")
-DEFAULT_INTERFACE = "can2"
-DEFAULT_MODE = "listen-only" if IS_PRODUCTION else "simulation"
-
-
-# -----------------------------------------------------------------------------
-# Models
-# -----------------------------------------------------------------------------
 
 class StartSessionRequest(BaseModel):
     vehicle_slug: str = "2015-scion-frs"
-    mission_code: str
+    mission_code: Optional[str] = None
     label: Optional[str] = None
-    bus_interface: str = DEFAULT_INTERFACE
-    bus_mode: str = DEFAULT_MODE
+    bus_interface: str = "can2"
+    bus_mode: str = "listen-only"
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
@@ -73,116 +53,20 @@ class StopSessionRequest(BaseModel):
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
-# -----------------------------------------------------------------------------
-# SQLite helpers
-# -----------------------------------------------------------------------------
-
-def utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat()
-
-
-def json_dumps(value: Any) -> str:
-    return json.dumps(value, separators=(",", ":"), sort_keys=True)
-
-
-def get_conn() -> sqlite3.Connection:
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA foreign_keys=ON")
-    init_db(conn)
-    return conn
-
-
-def ensure_column(conn: sqlite3.Connection, table: str, column: str, definition: str) -> None:
-    columns = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})")}
-    if column not in columns:
-        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
-
-
-def init_db(conn: sqlite3.Connection) -> None:
-    conn.executescript(
-        """
-        CREATE TABLE IF NOT EXISTS can_sessions (
-            session_id TEXT PRIMARY KEY,
-            vehicle_slug TEXT NOT NULL,
-            mission_code TEXT NOT NULL,
-            label TEXT,
-            bus_interface TEXT NOT NULL,
-            bus_mode TEXT NOT NULL,
-            status TEXT NOT NULL,
-            started_at TEXT NOT NULL,
-            stopped_at TEXT,
-            metadata_json TEXT NOT NULL DEFAULT '{}'
-        );
-
-        CREATE TABLE IF NOT EXISTS can_markers (
-            id TEXT PRIMARY KEY,
-            session_id TEXT NOT NULL,
-            mission_code TEXT,
-            step_code TEXT,
-            marker_type TEXT NOT NULL,
-            label TEXT,
-            timestamp_ms INTEGER NOT NULL,
-            created_at TEXT NOT NULL,
-            metadata_json TEXT NOT NULL DEFAULT '{}',
-            FOREIGN KEY(session_id) REFERENCES can_sessions(session_id) ON DELETE CASCADE
-        );
-
-        CREATE TABLE IF NOT EXISTS can_frames (
-            id TEXT PRIMARY KEY,
-            session_id TEXT NOT NULL,
-            timestamp_ms INTEGER NOT NULL,
-            can_id INTEGER NOT NULL,
-            can_id_hex TEXT NOT NULL,
-            dlc INTEGER NOT NULL,
-            data_hex TEXT NOT NULL,
-            data_json TEXT NOT NULL,
-            signal_name TEXT,
-            decoded TEXT,
-            bus_interface TEXT NOT NULL DEFAULT 'can2',
-            app_env TEXT NOT NULL DEFAULT 'development',
-            source TEXT NOT NULL DEFAULT 'fake-can-development',
-            created_at TEXT NOT NULL,
-            FOREIGN KEY(session_id) REFERENCES can_sessions(session_id) ON DELETE CASCADE
-        );
-
-        CREATE INDEX IF NOT EXISTS idx_can_markers_session_time
-            ON can_markers(session_id, timestamp_ms);
-
-        CREATE INDEX IF NOT EXISTS idx_can_frames_session_time
-            ON can_frames(session_id, timestamp_ms);
-
-        CREATE INDEX IF NOT EXISTS idx_can_frames_session_canid
-            ON can_frames(session_id, can_id_hex);
-
-        CREATE INDEX IF NOT EXISTS idx_can_frames_session_interface
-            ON can_frames(session_id, bus_interface);
-        """
-    )
-
-    # Lightweight migration for earlier local dev DBs created before interface/env labels existed.
-    ensure_column(conn, "can_frames", "bus_interface", "TEXT NOT NULL DEFAULT 'can2'")
-    ensure_column(conn, "can_frames", "app_env", "TEXT NOT NULL DEFAULT 'development'")
-    conn.commit()
-
-
-def require_session(conn: sqlite3.Connection, session_id: str) -> sqlite3.Row:
-    row = conn.execute(
-        "SELECT * FROM can_sessions WHERE session_id = ?",
-        (session_id,),
-    ).fetchone()
-    if not row:
-        raise HTTPException(status_code=404, detail="Unknown CAN session")
-    return row
-
-
-# -----------------------------------------------------------------------------
-# Fake CAN generation
-# -----------------------------------------------------------------------------
-
 Frame = Tuple[int, List[int], str, str]
+
+
+def runtime_metadata(extra: Optional[Dict[str, Any]] = None, *, bus_interface: Optional[str] = None, bus_mode: Optional[str] = None) -> Dict[str, Any]:
+    return {
+        **(extra or {}),
+        "app_env": RUNTIME_ENV,
+        "production": IS_PRODUCTION,
+        "development": not IS_PRODUCTION,
+        "fake_can": True,
+        "virtual": not IS_PRODUCTION,
+        **({"bus_interface": bus_interface} if bus_interface else {}),
+        **({"bus_mode": bus_mode} if bus_mode else {}),
+    }
 
 
 def clamp_byte(value: int) -> int:
@@ -195,14 +79,10 @@ def frame(can_id: int, data: List[int], signal_name: str, decoded: str) -> Frame
 
 
 def baseline_frames(seed: int = 0) -> List[Frame]:
-    # Stable-ish Toyota/Subaru-like fake IDs for recon testing. They are not meant
-    # to claim true FR-S decoding; they just give the database enough structured
-    # traffic to validate session/marker/correlation workflows.
     rpm = 720 + (seed % 30)
-    speed_kph = 0
     return [
         frame(0x200, [rpm & 0xFF, rpm >> 8, 0, 0, 0, 0, 0, 0], "engine_rpm", f"idle {rpm} rpm"),
-        frame(0x201, [speed_kph, 0, 0, 0, 0, 0, 0, 0], "vehicle_speed", "0 kph"),
+        frame(0x201, [0, 0, 0, 0, 0, 0, 0, 0], "vehicle_speed", "0 kph"),
         frame(0x210, [0, 0, 0, 0, 0, 0, 0, 0], "pedals", "no pedal input"),
         frame(0x320, [0, 0, 0, 0, 0, 0, 0, 0], "body_status", "body idle"),
         frame(0x321, [0, 0, 0, 0, 0, 0, 0, 0], "lighting_status", "lights idle"),
@@ -211,15 +91,13 @@ def baseline_frames(seed: int = 0) -> List[Frame]:
 
 
 def mission_frames(mission_code: str, step_code: Optional[str], marker_type: str, tick: int) -> List[Frame]:
-    """Return fake frames correlated to mission action/capture markers."""
-    mission_code = mission_code.upper()
+    mission_code = (mission_code or "").upper()
     step_code_l = (step_code or "").lower()
 
     active = marker_type in {"action_start", "capture_start", "step_complete"}
     pulse = 1 if active else 0
     wobble = tick % 4
 
-    # Rank A: demo-critical body/light signals.
     if mission_code == "A01":
         return [frame(0x321, [0b00000001 if pulse else 0, wobble, 0, 0, 0, 0, 0, 0], "left_turn_signal", "left blinker ON" if pulse else "left blinker OFF")]
     if mission_code == "A02":
@@ -249,7 +127,6 @@ def mission_frames(mission_code: str, step_code: Optional[str], marker_type: str
     if mission_code == "A12":
         return [frame(0x220, [0, 0, 0, 0b00000001 if pulse else 0, 0, 0, 0, 0], "reverse_gear", "reverse selected" if pulse else "reverse not selected")]
 
-    # Rank S: driving/control signals.
     if mission_code == "S01":
         angle = 128 + (40 if pulse else 0) + wobble
         return [frame(0x024, [angle, 0, 0, 0, 0, 0, 0, 0], "steering_angle", f"steering angle raw={angle}")]
@@ -281,49 +158,53 @@ def mission_frames(mission_code: str, step_code: Optional[str], marker_type: str
     if mission_code == "S10":
         return [frame(0x200, [0x40 if pulse else 0, 0x06 if pulse else 0, 1 if pulse else 0, 0, 0, 0, 0, 0], "ignition_engine_start", "engine start / ignition ON" if pulse else "ignition idle")]
 
-    # Rank B/C fallback: make a consistent body-control pulse.
     rank_hint = mission_code[0] if mission_code else "X"
     return [frame(0x342, [ord(rank_hint) & 0xFF, pulse, tick & 0xFF, 0, 0, 0, 0, 0], "generic_body_control", f"{mission_code} pulse={pulse}")]
 
 
-def insert_frame(
-    conn: sqlite3.Connection,
+async def insert_raw_frame(
     session_id: str,
     timestamp_ms: int,
     item: Frame,
+    *,
     bus_interface: str,
+    extra_metadata: Optional[Dict[str, Any]] = None,
 ) -> None:
     can_id, data, signal_name, decoded = item
-    data_hex = "".join(f"{byte:02X}" for byte in data)
-    conn.execute(
+    await execute(
         """
-        INSERT INTO can_frames (
-            id, session_id, timestamp_ms, can_id, can_id_hex, dlc,
-            data_hex, data_json, signal_name, decoded, bus_interface,
-            app_env, source, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        (
-            str(uuid.uuid4()),
+        INSERT INTO can_frames_raw (
             session_id,
             timestamp_ms,
+            elapsed_ms,
             can_id,
-            f"0x{can_id:03X}",
-            len(data),
-            data_hex,
-            json_dumps(data),
-            signal_name,
-            decoded,
-            bus_interface,
-            RUNTIME_ENV,
-            FRAME_SOURCE,
-            utc_now(),
-        ),
+            can_id_hex,
+            dlc,
+            data,
+            source,
+            metadata
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7::bytea, $8, $9::jsonb)
+        """,
+        session_id,
+        timestamp_ms,
+        timestamp_ms / 1000.0,
+        can_id,
+        f"0x{can_id:03X}",
+        len(data),
+        bytes(data),
+        bus_interface,
+        jsonb_dumps(runtime_metadata({
+            **(extra_metadata or {}),
+            "signal_name": signal_name,
+            "decoded": decoded,
+            "data_hex": "".join(f"{byte:02X}" for byte in data),
+        }, bus_interface=bus_interface)),
     )
 
 
-def insert_fake_burst(
-    conn: sqlite3.Connection,
+async def insert_fake_burst(
+    *,
     session_id: str,
     mission_code: str,
     step_code: Optional[str],
@@ -333,222 +214,259 @@ def insert_fake_burst(
 ) -> int:
     inserted = 0
 
-    # Keep normal background traffic around every marker.
     for i, base_frame in enumerate(baseline_frames(timestamp_ms)):
-        insert_frame(conn, session_id, max(0, timestamp_ms - 120 + i * 20), base_frame, bus_interface)
+        await insert_raw_frame(
+            session_id,
+            max(0, timestamp_ms - 120 + i * 20),
+            base_frame,
+            bus_interface=bus_interface,
+            extra_metadata={"frame_role": "baseline_around_marker", "marker_type": marker_type},
+        )
         inserted += 1
 
-    # Only produce strong signal bursts around useful mission phases.
     if marker_type in {"action_start", "capture_start", "step_complete"}:
         for tick in range(10):
             for sim_frame in mission_frames(mission_code, step_code, marker_type, tick):
-                insert_frame(conn, session_id, timestamp_ms + tick * 75, sim_frame, bus_interface)
+                await insert_raw_frame(
+                    session_id,
+                    timestamp_ms + tick * 75,
+                    sim_frame,
+                    bus_interface=bus_interface,
+                    extra_metadata={
+                        "frame_role": "mission_signal_burst",
+                        "mission_code": mission_code,
+                        "step_code": step_code,
+                        "marker_type": marker_type,
+                    },
+                )
                 inserted += 1
 
     return inserted
 
 
-# -----------------------------------------------------------------------------
-# Routes
-# -----------------------------------------------------------------------------
-
-def interface_status(name: str) -> Dict[str, Any]:
-    if IS_PRODUCTION:
-        state = "PRODUCTION_FAKE_RECORDING_READY"
-    else:
-        state = "DEV_VIRTUAL_READY"
-
-    return {
-        "exists": True,
-        "up": True,
-        "state": state,
-        "virtual": not IS_PRODUCTION,
-        "fake_data": True,
-        "bus_interface": name,
-    }
-
-
 @router.get("/status")
-def can_status() -> Dict[str, Any]:
-    interfaces = {name: interface_status(name) for name in CAN_INTERFACES}
+async def can_status() -> Dict[str, Any]:
+    default_active = "can2" if IS_PRODUCTION else "vcan0"
+    default_mode = "listen-only" if IS_PRODUCTION else "simulation"
+
+    def iface(name: str) -> Dict[str, Any]:
+        return {
+            "exists": True,
+            "up": True,
+            "state": "PRODUCTION_FAKE_RECORDING_READY" if IS_PRODUCTION else "DEV_VIRTUAL_READY",
+            "virtual": not IS_PRODUCTION,
+            "fake_data": True,
+            "bus_interface": name,
+        }
 
     return {
-        "active": DEFAULT_INTERFACE,
-        "mode": DEFAULT_MODE,
+        "active": default_active,
+        "mode": default_mode,
         "app_env": RUNTIME_ENV,
         "env": RUNTIME_ENV,
         "production": IS_PRODUCTION,
         "development": not IS_PRODUCTION,
         "virtual": not IS_PRODUCTION,
         "fake_data": True,
-        "database": str(DB_PATH),
-        **interfaces,
+        "database": "postgres",
+        "vcan0": iface("vcan0"),
+        "can0": iface("can0"),
+        "can1": iface("can1"),
+        "can2": iface("can2"),
     }
 
 
 @router.post("/session/start")
-def start_session(payload: StartSessionRequest) -> Dict[str, Any]:
-    session_id = str(uuid.uuid4())
-    now = utc_now()
-    bus_interface = (payload.bus_interface or DEFAULT_INTERFACE).strip() or DEFAULT_INTERFACE
-    bus_mode = (payload.bus_mode or DEFAULT_MODE).strip() or DEFAULT_MODE
+async def start_session(payload: StartSessionRequest) -> Dict[str, Any]:
+    vehicle = await fetchrow(
+        "SELECT id FROM vehicles WHERE slug = $1",
+        payload.vehicle_slug,
+    )
 
-    metadata = {
-        **payload.metadata,
-        "app_env": RUNTIME_ENV,
-        "production": IS_PRODUCTION,
-        "development": not IS_PRODUCTION,
-        "fake_can": True,
-        "virtual": not IS_PRODUCTION,
-        "bus_interface": bus_interface,
-        "bus_mode": bus_mode,
-        "database": str(DB_PATH),
-    }
+    if not vehicle:
+        raise HTTPException(status_code=404, detail=f"Vehicle not found: {payload.vehicle_slug}")
 
-    with get_conn() as conn:
-        conn.execute(
+    mission = None
+    if payload.mission_code:
+        mission = await fetchrow(
             """
-            INSERT INTO can_sessions (
-                session_id, vehicle_slug, mission_code, label, bus_interface,
-                bus_mode, status, started_at, metadata_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            SELECT id FROM recon_missions
+            WHERE vehicle_id = $1 AND mission_code = $2
             """,
-            (
-                session_id,
-                payload.vehicle_slug,
-                payload.mission_code,
-                payload.label,
-                bus_interface,
-                bus_mode,
-                "recording",
-                now,
-                json_dumps(metadata),
-            ),
+            vehicle["id"],
+            payload.mission_code,
         )
 
-        for t in range(0, 1000, 100):
-            for base_frame in baseline_frames(t):
-                insert_frame(conn, session_id, t, base_frame, bus_interface)
+    session = await fetchrow(
+        """
+        INSERT INTO can_sessions (
+            vehicle_id,
+            mission_id,
+            label,
+            bus_interface,
+            bus_mode,
+            metadata
+        )
+        VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+        RETURNING id, started_at
+        """,
+        vehicle["id"],
+        mission["id"] if mission else None,
+        payload.label,
+        payload.bus_interface,
+        payload.bus_mode,
+        jsonb_dumps(runtime_metadata(payload.metadata, bus_interface=payload.bus_interface, bus_mode=payload.bus_mode)),
+    )
 
-        conn.commit()
+    session_id = str(session["id"])
+
+    for t in range(0, 1000, 100):
+        for base_frame in baseline_frames(t):
+            await insert_raw_frame(
+                session_id,
+                t,
+                base_frame,
+                bus_interface=payload.bus_interface,
+                extra_metadata={"frame_role": "initial_baseline"},
+            )
 
     return {
         "ok": True,
         "session_id": session_id,
-        "mode": bus_mode,
-        "bus_interface": bus_interface,
+        "started_at": session["started_at"],
+        "mode": payload.bus_mode,
+        "bus_interface": payload.bus_interface,
         "app_env": RUNTIME_ENV,
         "production": IS_PRODUCTION,
         "development": not IS_PRODUCTION,
         "fake_can": True,
         "virtual": not IS_PRODUCTION,
-        "database": str(DB_PATH),
+        "database": "postgres",
     }
 
 
 @router.post("/session/{session_id}/marker")
-def post_marker(session_id: str, payload: MarkerRequest) -> Dict[str, Any]:
-    marker_id = str(uuid.uuid4())
-    created_at = utc_now()
+async def post_marker(session_id: str, payload: MarkerRequest) -> Dict[str, Any]:
+    session = await fetchrow(
+        """
+        SELECT cs.id, cs.vehicle_id, cs.mission_id, cs.bus_interface, cs.bus_mode, cs.ended_at
+        FROM can_sessions cs
+        WHERE cs.id = $1
+        """,
+        session_id,
+    )
 
-    with get_conn() as conn:
-        session = require_session(conn, session_id)
-        if session["status"] != "recording":
-            raise HTTPException(status_code=409, detail="CAN session is not recording")
+    if not session:
+        raise HTTPException(status_code=404, detail="Unknown CAN session")
 
-        mission_code = payload.mission_code or session["mission_code"]
-        bus_interface = session["bus_interface"]
-        marker_metadata = {
-            **payload.metadata,
-            "app_env": RUNTIME_ENV,
-            "production": IS_PRODUCTION,
-            "fake_can": True,
-            "virtual": not IS_PRODUCTION,
-            "bus_interface": bus_interface,
-        }
+    if session["ended_at"] is not None:
+        raise HTTPException(status_code=409, detail="CAN session is already stopped")
 
-        conn.execute(
+    mission_id = session["mission_id"]
+    mission_code = payload.mission_code
+
+    if payload.mission_code:
+        mission = await fetchrow(
             """
-            INSERT INTO can_markers (
-                id, session_id, mission_code, step_code, marker_type, label,
-                timestamp_ms, created_at, metadata_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            SELECT id FROM recon_missions
+            WHERE vehicle_id = $1 AND mission_code = $2
             """,
-            (
-                marker_id,
-                session_id,
-                mission_code,
-                payload.step_code,
-                payload.marker_type,
-                payload.label,
-                payload.timestamp_ms,
-                created_at,
-                json_dumps(marker_metadata),
-            ),
+            session["vehicle_id"],
+            payload.mission_code,
         )
+        if mission:
+            mission_id = mission["id"]
 
-        frames_inserted = insert_fake_burst(
-            conn=conn,
-            session_id=session_id,
-            mission_code=mission_code,
-            step_code=payload.step_code,
-            marker_type=payload.marker_type,
-            timestamp_ms=payload.timestamp_ms,
-            bus_interface=bus_interface,
+    step_id = None
+    if payload.step_code and mission_id:
+        step = await fetchrow(
+            """
+            SELECT id FROM recon_steps
+            WHERE mission_id = $1 AND step_code = $2
+            """,
+            mission_id,
+            payload.step_code,
         )
-        conn.commit()
+        if step:
+            step_id = step["id"]
+
+    marker = await fetchrow(
+        """
+        INSERT INTO can_session_markers (
+            session_id,
+            mission_id,
+            step_id,
+            marker_type,
+            label,
+            timestamp_ms,
+            metadata
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+        RETURNING id, created_at
+        """,
+        session_id,
+        mission_id,
+        step_id,
+        payload.marker_type,
+        payload.label,
+        payload.timestamp_ms,
+        jsonb_dumps(runtime_metadata(payload.metadata, bus_interface=session["bus_interface"], bus_mode=session["bus_mode"])),
+    )
+
+    frames_inserted = await insert_fake_burst(
+        session_id=session_id,
+        mission_code=mission_code or "",
+        step_code=payload.step_code,
+        marker_type=payload.marker_type,
+        timestamp_ms=payload.timestamp_ms,
+        bus_interface=session["bus_interface"],
+    )
 
     return {
         "ok": True,
-        "marker_id": marker_id,
+        "marker_id": str(marker["id"]),
+        "created_at": marker["created_at"],
         "frames_inserted": frames_inserted,
-        "bus_interface": bus_interface,
+        "bus_interface": session["bus_interface"],
         "app_env": RUNTIME_ENV,
         "production": IS_PRODUCTION,
     }
 
 
 @router.post("/session/{session_id}/stop")
-def stop_session(session_id: str, payload: StopSessionRequest) -> Dict[str, Any]:
-    with get_conn() as conn:
-        session = require_session(conn, session_id)
-        stopped_at = utc_now()
-        existing_metadata = json.loads(session["metadata_json"] or "{}")
-        merged_metadata = {
-            **existing_metadata,
-            "stop_metadata": payload.metadata,
-            "app_env": RUNTIME_ENV,
-            "production": IS_PRODUCTION,
-        }
-        conn.execute(
-            """
-            UPDATE can_sessions
-            SET status = ?, stopped_at = ?, metadata_json = ?
-            WHERE session_id = ?
-            """,
-            (
-                "stopped",
-                stopped_at,
-                json_dumps(merged_metadata),
-                session_id,
-            ),
-        )
-        frame_count = conn.execute(
-            "SELECT COUNT(*) AS count FROM can_frames WHERE session_id = ?",
-            (session_id,),
-        ).fetchone()["count"]
-        marker_count = conn.execute(
-            "SELECT COUNT(*) AS count FROM can_markers WHERE session_id = ?",
-            (session_id,),
-        ).fetchone()["count"]
-        conn.commit()
+async def stop_session(session_id: str, payload: StopSessionRequest) -> Dict[str, Any]:
+    session = await fetchrow(
+        """
+        UPDATE can_sessions
+        SET ended_at = NOW(),
+            metadata = metadata || $2::jsonb
+        WHERE id = $1
+        RETURNING id, bus_interface, bus_mode, started_at, ended_at
+        """,
+        session_id,
+        jsonb_dumps(runtime_metadata({"stop_metadata": payload.metadata})),
+    )
+
+    if not session:
+        raise HTTPException(status_code=404, detail="Unknown CAN session")
+
+    frame_count = await fetchrow(
+        "SELECT COUNT(*) AS count FROM can_frames_raw WHERE session_id = $1",
+        session_id,
+    )
+    marker_count = await fetchrow(
+        "SELECT COUNT(*) AS count FROM can_session_markers WHERE session_id = $1",
+        session_id,
+    )
 
     return {
         "ok": True,
-        "session_id": session_id,
+        "session_id": str(session["id"]),
         "status": "stopped",
-        "frames": frame_count,
-        "markers": marker_count,
+        "started_at": session["started_at"],
+        "ended_at": session["ended_at"],
+        "frames": frame_count["count"],
+        "markers": marker_count["count"],
         "bus_interface": session["bus_interface"],
         "app_env": RUNTIME_ENV,
         "production": IS_PRODUCTION,
@@ -556,30 +474,39 @@ def stop_session(session_id: str, payload: StopSessionRequest) -> Dict[str, Any]
 
 
 @router.get("/session/{session_id}/frames")
-def get_session_frames(session_id: str, limit: int = 250) -> Dict[str, Any]:
+async def get_session_frames(session_id: str, limit: int = 250) -> Dict[str, Any]:
     limit = max(1, min(limit, 5000))
-    with get_conn() as conn:
-        session = require_session(conn, session_id)
-        rows = conn.execute(
-            """
-            SELECT
-                timestamp_ms,
-                can_id_hex,
-                dlc,
-                data_hex,
-                data_json,
-                signal_name,
-                decoded,
-                bus_interface,
-                app_env,
-                source
-            FROM can_frames
-            WHERE session_id = ?
-            ORDER BY timestamp_ms ASC, can_id ASC
-            LIMIT ?
-            """,
-            (session_id, limit),
-        ).fetchall()
+    session = await fetchrow(
+        "SELECT id, bus_interface FROM can_sessions WHERE id = $1",
+        session_id,
+    )
+    if not session:
+        raise HTTPException(status_code=404, detail="Unknown CAN session")
+
+    rows = await fetch(
+        """
+        SELECT
+            timestamp_ms,
+            can_id_hex,
+            dlc,
+            upper(encode(data, 'hex')) AS data_hex,
+            metadata->>'signal_name' AS signal_name,
+            metadata->>'decoded' AS decoded,
+            source AS bus_interface,
+            metadata->>'app_env' AS app_env,
+            CASE
+                WHEN metadata->>'production' = 'true'
+                THEN 'fake-can-production'
+                ELSE 'fake-can-development'
+            END AS source
+        FROM can_frames_raw
+        WHERE session_id = $1
+        ORDER BY timestamp_ms ASC, can_id ASC
+        LIMIT $2
+        """,
+        session_id,
+        limit,
+    )
 
     return {
         "ok": True,
@@ -592,33 +519,42 @@ def get_session_frames(session_id: str, limit: int = 250) -> Dict[str, Any]:
 
 
 @router.get("/session/{session_id}/summary")
-def get_session_summary(session_id: str) -> Dict[str, Any]:
-    with get_conn() as conn:
-        session = require_session(conn, session_id)
-        frame_count = conn.execute(
-            "SELECT COUNT(*) AS count FROM can_frames WHERE session_id = ?",
-            (session_id,),
-        ).fetchone()["count"]
-        marker_count = conn.execute(
-            "SELECT COUNT(*) AS count FROM can_markers WHERE session_id = ?",
-            (session_id,),
-        ).fetchone()["count"]
-        by_id = conn.execute(
-            """
-            SELECT bus_interface, can_id_hex, signal_name, COUNT(*) AS count
-            FROM can_frames
-            WHERE session_id = ?
-            GROUP BY bus_interface, can_id_hex, signal_name
-            ORDER BY count DESC
-            """,
-            (session_id,),
-        ).fetchall()
+async def get_session_summary(session_id: str) -> Dict[str, Any]:
+    session = await fetchrow(
+        "SELECT * FROM can_sessions WHERE id = $1",
+        session_id,
+    )
+    if not session:
+        raise HTTPException(status_code=404, detail="Unknown CAN session")
+
+    frame_count = await fetchrow(
+        "SELECT COUNT(*) AS count FROM can_frames_raw WHERE session_id = $1",
+        session_id,
+    )
+    marker_count = await fetchrow(
+        "SELECT COUNT(*) AS count FROM can_session_markers WHERE session_id = $1",
+        session_id,
+    )
+    by_id = await fetch(
+        """
+        SELECT
+            source AS bus_interface,
+            can_id_hex,
+            COALESCE(metadata->>'signal_name', 'unknown') AS signal_name,
+            COUNT(*) AS count
+        FROM can_frames_raw
+        WHERE session_id = $1
+        GROUP BY source, can_id_hex, COALESCE(metadata->>'signal_name', 'unknown')
+        ORDER BY count DESC
+        """,
+        session_id,
+    )
 
     return {
         "ok": True,
         "session": dict(session),
-        "markers": marker_count,
-        "frames": frame_count,
+        "markers": marker_count["count"],
+        "frames": frame_count["count"],
         "bus_interface": session["bus_interface"],
         "app_env": RUNTIME_ENV,
         "production": IS_PRODUCTION,

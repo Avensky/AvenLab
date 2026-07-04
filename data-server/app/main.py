@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 from app.can.can_router import APP_ENV, IS_PRODUCTION, RUNTIME_ENV, router as can_router
 from app.can.status import get_can_status
-from app.db import fetch, fetchrow
+from app.db import check_database, close_db, fetch, fetchrow, jsonb_dumps, smoke_test_database
 from app.services.ollama_client import OLLAMA_URL, ask_question, embed_text
 
 app = FastAPI(title="Aven Data Server")
@@ -33,6 +33,22 @@ app.add_middleware(
 # Always include the CAN router. The router decides runtime behavior using only
 # APP_ENV=production; otherwise it assumes development/virtual CAN.
 app.include_router(can_router)
+
+
+@app.on_event("shutdown")
+async def shutdown_db_pool():
+    await close_db()
+
+
+@app.get("/db/health")
+async def db_health():
+    return await check_database()
+
+
+@app.post("/db/smoke-test")
+async def db_smoke_test(persist: bool = False):
+    return await smoke_test_database(persist=persist)
+
 
 
 class EmbedRequest(BaseModel):
@@ -167,11 +183,11 @@ async def start_can_session(req: StartSessionRequest):
         req.label,
         req.bus_interface,
         req.bus_mode,
-        {
+        jsonb_dumps({
             **req.metadata,
             "app_env": RUNTIME_ENV,
             "production": IS_PRODUCTION,
-        },
+        }),
     )
 
     return {
@@ -247,11 +263,11 @@ async def add_session_marker(session_id: str, req: MarkerRequest):
         req.marker_type,
         req.label,
         req.timestamp_ms,
-        {
+        jsonb_dumps({
             **req.metadata,
             "app_env": RUNTIME_ENV,
             "production": IS_PRODUCTION,
-        },
+        }),
     )
 
     return {
@@ -276,11 +292,11 @@ async def stop_can_session(session_id: str, req: StopSessionRequest):
         RETURNING id, started_at, ended_at
         """,
         session_id,
-        {
+        jsonb_dumps({
             **req.metadata,
             "app_env": RUNTIME_ENV,
             "production": IS_PRODUCTION,
-        },
+        }),
     )
 
     if not row:

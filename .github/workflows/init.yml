@@ -3,6 +3,10 @@ name: Initial Deployment
 on:
   workflow_dispatch:
 
+concurrency:
+  group: avenlab-deploy
+  cancel-in-progress: true
+
 jobs:
   init:
     runs-on: self-hosted
@@ -106,7 +110,7 @@ jobs:
           sudo systemctl status avenlab-data --no-pager -l || true
           sudo systemctl status avenlab-physics --no-pager -l || true
 
-      - name: Verify deployment
+      - name: Verify deployment, database, and CAN write path
         run: |
           echo "Checking avenlab-data service status..."
           sudo systemctl status avenlab-data --no-pager -l || true
@@ -132,6 +136,11 @@ jobs:
             fi
           done
 
+          echo "Checking APP_ENV loaded into systemd process..."
+          PID=$(systemctl show -p MainPID --value avenlab-data)
+          sudo tr '\0' '\n' < /proc/$PID/environ | grep '^APP_ENV=production$'
+
+          echo "Checking OpenAPI CAN routes..."
           curl -fsS http://127.0.0.1:8001/openapi.json > /tmp/avenlab-openapi.json
 
           python3 - <<'PY'
@@ -148,14 +157,64 @@ jobs:
               "/data/can/session/start",
               "/data/can/session/{session_id}/marker",
               "/data/can/session/{session_id}/stop",
+              "/data/can/session/{session_id}/frames",
+              "/data/can/session/{session_id}/summary",
+              "/db/health",
+              "/db/smoke-test",
           ]
 
           missing = [path for path in required if path not in data["paths"]]
           if missing:
-              raise SystemExit(f"Missing required CAN routes: {missing}")
+              raise SystemExit(f"Missing required routes: {missing}")
           PY
 
+          echo "Checking PostgreSQL health..."
+          curl -fsS http://127.0.0.1:8001/db/health
+          echo
+
+          echo "Checking PostgreSQL write path with rollback smoke test..."
+          curl -fsS -X POST "http://127.0.0.1:8001/db/smoke-test?persist=false"
+          echo
+
+          echo "Checking CAN status..."
           curl -fsS http://127.0.0.1:8001/data/can/status
+          echo
+
+          echo "Checking /data/can end-to-end session/marker/frame/stop/summary path..."
+          SESSION_ID=$(curl -fsS -X POST http://127.0.0.1:8001/data/can/session/start \
+            -H "Content-Type: application/json" \
+            -d '{
+              "vehicle_slug": "2015-scion-frs",
+              "mission_code": "A10",
+              "label": "deploy smoke test A10 unlock",
+              "bus_interface": "can2",
+              "bus_mode": "listen-only",
+              "metadata": {"source": "github-actions-deploy-smoke"}
+            }' | python3 -c 'import sys,json; print(json.load(sys.stdin)["session_id"])')
+
+          echo "Created session: $SESSION_ID"
+
+          curl -fsS -X POST "http://127.0.0.1:8001/data/can/session/$SESSION_ID/marker" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "mission_code": "A10",
+              "step_code": "unlock_fob",
+              "marker_type": "action_start",
+              "label": "Deploy smoke unlock marker",
+              "timestamp_ms": 3000,
+              "metadata": {"source": "github-actions-deploy-smoke"}
+            }'
+          echo
+
+          curl -fsS "http://127.0.0.1:8001/data/can/session/$SESSION_ID/frames?limit=5"
+          echo
+
+          curl -fsS -X POST "http://127.0.0.1:8001/data/can/session/$SESSION_ID/stop" \
+            -H "Content-Type: application/json" \
+            -d '{"metadata": {"source": "github-actions-deploy-smoke", "result": "complete"}}'
+          echo
+
+          curl -fsS "http://127.0.0.1:8001/data/can/session/$SESSION_ID/summary"
           echo
 
       - name: Initial deployment complete
