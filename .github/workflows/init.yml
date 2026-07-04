@@ -99,22 +99,46 @@ jobs:
 
           sudo systemctl enable avenlab-data
           sudo systemctl restart avenlab-data
-          sudo systemctl is-active --quiet avenlab-data
 
           sudo systemctl enable avenlab-physics
           sudo systemctl restart avenlab-physics
-          sudo systemctl is-active --quiet avenlab-physics
+
+          sudo systemctl status avenlab-data --no-pager -l || true
+          sudo systemctl status avenlab-physics --no-pager -l || true
 
       - name: Verify deployment
         run: |
-          curl -f http://127.0.0.1:8001/health
-          echo
+          echo "Checking avenlab-data service status..."
+          sudo systemctl status avenlab-data --no-pager -l || true
 
-          curl -f http://127.0.0.1:8001/openapi.json > /tmp/avenlab-openapi.json
+          echo "Waiting for data server on port 8001..."
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:8001/health; then
+              echo
+              echo "Data server is ready."
+              break
+            fi
+
+            echo "Attempt $i: data server not ready yet..."
+            sleep 1
+
+            if [ "$i" -eq 30 ]; then
+              echo "Data server failed to become ready."
+              echo "---- avenlab-data status ----"
+              sudo systemctl status avenlab-data --no-pager -l || true
+              echo "---- avenlab-data logs ----"
+              journalctl -u avenlab-data -n 150 --no-pager || true
+              exit 1
+            fi
+          done
+
+          curl -fsS http://127.0.0.1:8001/openapi.json > /tmp/avenlab-openapi.json
 
           python3 - <<'PY'
           import json
           data = json.load(open("/tmp/avenlab-openapi.json"))
+
+          print("CAN routes:")
           for path in sorted(data["paths"]):
               if "can" in path:
                   print(path)
@@ -131,7 +155,7 @@ jobs:
               raise SystemExit(f"Missing required CAN routes: {missing}")
           PY
 
-          curl -f http://127.0.0.1:8001/data/can/status
+          curl -fsS http://127.0.0.1:8001/data/can/status
           echo
 
       - name: Initial deployment complete
