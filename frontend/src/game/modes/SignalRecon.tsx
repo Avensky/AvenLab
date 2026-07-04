@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useUIStore } from "../../store";
 import { SignalReconMission } from "./SignalReconMission";
 import { GameButton } from "../../components/GameButton";
-import { CanBusStatusBadge } from "./CanBusStatusBadge";
 import { useCanBusStore } from "../../store/canBusStore";
 import { useSignalReconStore, type ReconMission } from "../../store/signalReconStore";
 import { MISSION_RANKS, type MissionRank } from "../../store/signalReconMissions";
@@ -161,7 +160,6 @@ export function SignalRecon() {
               <p>IFACE: {selectedInterface}</p>
               <p>MODE: {selectedMode}</p>
             </div>
-            <CanBusStatusBadge />
             <GameButton
               onPress={handleExit}
               disabled={busy || runActive}
