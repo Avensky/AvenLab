@@ -109,14 +109,30 @@ jobs:
         run: |
           curl -f http://127.0.0.1:8001/health
           echo
+
           curl -f http://127.0.0.1:8001/openapi.json > /tmp/avenlab-openapi.json
+
           python3 - <<'PY'
           import json
           data = json.load(open("/tmp/avenlab-openapi.json"))
           for path in sorted(data["paths"]):
               if "can" in path:
                   print(path)
+
+          required = [
+              "/data/can/status",
+              "/data/can/session/start",
+              "/data/can/session/{session_id}/marker",
+              "/data/can/session/{session_id}/stop",
+          ]
+
+          missing = [path for path in required if path not in data["paths"]]
+          if missing:
+              raise SystemExit(f"Missing required CAN routes: {missing}")
           PY
+
+          curl -f http://127.0.0.1:8001/data/can/status
+          echo
 
       - name: Initial deployment complete
         run: |
