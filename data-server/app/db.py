@@ -87,12 +87,22 @@ REQUIRED_TABLES = [
 
 
 async def check_database() -> dict[str, Any]:
-    pool = await connect_db()
+    try:
+        pool = await connect_db()
+    except Exception as exc:
+        return {
+            "ok": False,
+            "error": "database_connection_failed",
+            "detail": str(exc),
+            "database_url": safe_database_url(),
+        }
+
     async with pool.acquire() as conn:
         version = await conn.fetchval("SHOW server_version")
         database = await conn.fetchval("SELECT current_database()")
         user = await conn.fetchval("SELECT current_user")
         now = await conn.fetchval("SELECT NOW()")
+
         extensions = await conn.fetch(
             """
             SELECT extname
@@ -114,15 +124,16 @@ async def check_database() -> dict[str, Any]:
         missing = [row["name"] for row in table_rows if not row["exists"]]
 
         counts: dict[str, int] = {}
-        if not missing:
-            # Whitelist protects these dynamic table names.
-            for table in REQUIRED_TABLES:
+        for table in REQUIRED_TABLES:
+            if table not in missing:
                 counts[table] = await conn.fetchval(f"SELECT COUNT(*) FROM {table}")
 
-        vehicle = await conn.fetchrow(
-            "SELECT id, slug, year, make, model FROM vehicles WHERE slug = $1",
-            "2015-scion-frs",
-        )
+        vehicle = None
+        if "vehicles" not in missing:
+            vehicle = await conn.fetchrow(
+                "SELECT id, slug, year, make, model FROM vehicles WHERE slug = $1",
+                "2015-scion-frs",
+            )
 
     return {
         "ok": len(missing) == 0,
@@ -137,7 +148,6 @@ async def check_database() -> dict[str, Any]:
         "counts": counts,
         "seed_vehicle": dict(vehicle) if vehicle else None,
     }
-
 
 async def smoke_test_database(persist: bool = False) -> dict[str, Any]:
     """

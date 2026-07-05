@@ -1065,6 +1065,7 @@ sudo nano /etc/environment.env
 ```ini
 APP_ENV=production
 DATABASE_URL=postgresql://avenlab:<password>@127.0.0.1:5432/avenlab_data
+POSTGRES_PASSWORD=mysecretpassword
 ```
 
 ```bash
@@ -1073,6 +1074,7 @@ sudo systemctl restart avenlab-data
 
 sudo apt update
 sudo apt install -y postgresql postgresql-contrib
+sudo apt install -y postgresql-17-pgvector
 sudo systemctl enable postgresql
 sudo systemctl start postgresql
 sudo systemctl status postgresql --no-pager -l
@@ -1082,6 +1084,15 @@ sudo -u postgres psql -c "CREATE USER avenlab WITH PASSWORD 'mysecretpassword';"
 sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE avenlab_data TO avenlab;"
 sudo -u postgres psql -d avenlab_data -c "GRANT ALL ON SCHEMA public TO avenlab;"
 sudo -u postgres psql -d avenlab_data -c "ALTER SCHEMA public OWNER TO avenlab;"
+```
+
+## load schema.sql
+
+```bash
+cd /var/www/avenlab/current/data-server/db
+source /etc/environment.env
+
+psql "$DATABASE_URL" -c "SELECT current_database(), current_user, NOW();"
 ```
 
 ## Create The Service
