@@ -1149,33 +1149,19 @@ echo $APP_ENV
 sudo systemctl status avenlab-data
 ```
 
-# 🤝 Contributing
-
-Contributions are welcome! If you have tools, scripts, or documentation to add:
-
-1. **Fork the Repository**
-
-2. **Create a New Branch**:
+# 🤝 AI ollama
 
 ```bash
-  git checkout -b feature/your-feature-name
+curl -fsSL https://ollama.com/install.sh | sh
+
+sudo systemctl enable ollama
+sudo systemctl start ollama
+
+curl -fsS http://127.0.0.1:11434/api/tags
+
+ollama pull qwen2.5:3b
+ollama pull nomic-embed-text
 ```
-
-1. **Commit Your Changes**:
-
-```bash
-  git commit -m "Add your feature"
-```
-
-1. **Push to Your Fork**:
-
-```bash
-  git push origin
-```
-
-1. **Create a Pull Request**
-
-Please ensure your contributions adhere to the project's coding standards and include appropriate documentation.
 
 ---
 

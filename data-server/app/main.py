@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from app.can.can_ai_router import router as can_ai_router
 from app.can.can_router import APP_ENV, IS_PRODUCTION, RUNTIME_ENV, router as can_router
 from app.can.status import get_can_status
 from app.db import check_database, close_db, fetch, fetchrow, jsonb_dumps, smoke_test_database
@@ -33,6 +34,7 @@ app.add_middleware(
 # Always include the CAN router. The router decides runtime behavior using only
 # APP_ENV=production; otherwise it assumes development/virtual CAN.
 app.include_router(can_router)
+app.include_router(can_ai_router)
 
 
 @app.on_event("shutdown")

@@ -99,63 +99,6 @@ jobs:
             .venv/bin/pip install -r requirements.txt
           '
 
-      - name: Install and initialize PostgreSQL
-        env:
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-        run: |
-          set -euo pipefail
-
-          if [ -z "$POSTGRES_PASSWORD" ]; then
-            echo "POSTGRES_PASSWORD secret is missing."
-            exit 1
-          fi
-
-          sudo apt-get update
-          sudo apt-get install -y postgresql postgresql-contrib postgresql-client
-
-          sudo systemctl enable postgresql
-          sudo systemctl start postgresql
-
-          if ! sudo -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname='avenlab_data'" | grep -q 1; then
-            sudo -u postgres createdb avenlab_data
-            echo "Created database avenlab_data."
-          else
-            echo "Database avenlab_data already exists."
-          fi
-
-          if ! sudo -u postgres psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='avenlab'" | grep -q 1; then
-            sudo -u postgres psql -c "CREATE USER avenlab WITH PASSWORD '$POSTGRES_PASSWORD';"
-            echo "Created PostgreSQL user avenlab."
-          else
-            sudo -u postgres psql -c "ALTER USER avenlab WITH PASSWORD '$POSTGRES_PASSWORD';"
-            echo "Updated password for PostgreSQL user avenlab."
-          fi
-
-          sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE avenlab_data TO avenlab;"
-          sudo -u postgres psql -d avenlab_data -c "GRANT ALL ON SCHEMA public TO avenlab;"
-          sudo -u postgres psql -d avenlab_data -c "ALTER SCHEMA public OWNER TO avenlab;"
-
-      - name: Initialize database schema
-        run: |
-          set -euo pipefail
-
-          cd /var/www/avenlab/current/data-server
-          source /etc/environment.env
-
-          echo "Checking database login..."
-          psql "$DATABASE_URL" -c "SELECT current_database(), current_user, NOW();"
-
-          echo "Checking if schema exists..."
-          if psql "$DATABASE_URL" -tAc "SELECT to_regclass('public.vehicles')" | grep -q vehicles; then
-            echo "Database schema already initialized."
-          else
-            echo "Loading schema.sql..."
-            psql "$DATABASE_URL" -f schema.sql
-          fi
-
-          echo "Verifying key tables..."
-          psql "$DATABASE_URL" -c "\dt"
-
       - name: Start backend services
         run: |
           sudo systemctl daemon-reload
@@ -289,10 +232,24 @@ jobs:
         run: |
           ss -ltn | grep ':9001'
 
-      - name: Optional Ollama health check
+      - name: Install Ollama for local AI analysis
+        run: |
+          if ! command -v ollama >/dev/null 2>&1; then
+            curl -fsSL https://ollama.com/install.sh | sh
+          fi
+          sudo systemctl enable ollama
+          sudo systemctl start ollama
+
+      - name: Pull Ollama models
         continue-on-error: true
         run: |
-          curl -f http://127.0.0.1:11434/api/tags
+          ollama pull qwen2.5:3b
+          ollama pull nomic-embed-text
+
+      - name: Ollama health check
+        continue-on-error: true
+        run: |
+          curl -fsS http://127.0.0.1:11434/api/tags
 
       - name: CAN interfaces present
         continue-on-error: true
