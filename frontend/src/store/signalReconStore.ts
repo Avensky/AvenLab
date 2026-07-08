@@ -251,6 +251,11 @@ export const useSignalReconStore = create<SignalReconState>((set, get) => ({
                 timestamp_ms: timestampMs,
                 metadata: {
                     source: "signal-recon",
+                    analysis_mode: selectedMission.analysis_mode,
+                    expected_target:
+                        selectedMission.analysis_mode === "baseline_profile"
+                            ? null
+                            : selectedMission.target,
                     ...metadata,
                 },
             }),

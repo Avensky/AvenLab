@@ -49,8 +49,14 @@ type SignalReconBrainConsoleProps = {
     sessionId: string | null;
     missionCode: string;
     missionTitle: string;
+    useLlm: boolean;
+    useEmbeddings: boolean;
+    autoAnalyze: boolean;
     onClose: () => void;
     onAnalyze: () => void;
+    onToggleLlm: () => void;
+    onToggleEmbeddings: () => void;
+    onToggleAutoAnalyze: () => void;
 };
 
 const TABS: Array<{ id: BrainTab; label: string }> = [
@@ -113,8 +119,14 @@ export function SignalReconBrainConsole({
     sessionId,
     missionCode,
     missionTitle,
+    useLlm,
+    useEmbeddings,
+    autoAnalyze,
     onClose,
     onAnalyze,
+    onToggleLlm,
+    onToggleEmbeddings,
+    onToggleAutoAnalyze,
 }: SignalReconBrainConsoleProps) {
     const [activeTab, setActiveTab] = useState<BrainTab>("summary");
 
@@ -151,13 +163,43 @@ export function SignalReconBrainConsole({
                             </p>
                         </div>
 
-                        <div className="flex shrink-0 gap-2">
+                        <div className="flex shrink-0 flex-wrap justify-end gap-1 sm:gap-2">
                             <GameButton
                                 onPress={onAnalyze}
                                 disabled={analyzing || !sessionId}
                                 className="rounded-lg border border-yellow-300/40 bg-yellow-500/10 px-2 py-1 text-[10px] font-bold text-yellow-100 hover:bg-yellow-400/20 disabled:cursor-not-allowed disabled:opacity-40 sm:px-3 sm:py-2 sm:text-xs"
                             >
                                 {analyzing ? "ANALYZING" : "RE-RUN"}
+                            </GameButton>
+                            <GameButton
+                                onPress={onToggleLlm}
+                                disabled={analyzing}
+                                className={`rounded-lg border px-2 py-1 text-[10px] font-bold disabled:cursor-not-allowed disabled:opacity-40 sm:px-3 sm:py-2 sm:text-xs ${useLlm
+                                    ? "border-green-300/40 bg-green-500/10 text-green-100 hover:bg-green-400/20"
+                                    : "border-slate-600 bg-slate-900 text-slate-400 hover:bg-slate-800"
+                                    }`}
+                            >
+                                LLM {useLlm ? "ON" : "OFF"}
+                            </GameButton>
+                            <GameButton
+                                onPress={onToggleEmbeddings}
+                                disabled={analyzing}
+                                className={`rounded-lg border px-2 py-1 text-[10px] font-bold disabled:cursor-not-allowed disabled:opacity-40 sm:px-3 sm:py-2 sm:text-xs ${useEmbeddings
+                                    ? "border-cyan-300/40 bg-cyan-500/10 text-cyan-100 hover:bg-cyan-400/20"
+                                    : "border-slate-600 bg-slate-900 text-slate-400 hover:bg-slate-800"
+                                    }`}
+                            >
+                                VEC {useEmbeddings ? "ON" : "OFF"}
+                            </GameButton>
+                            <GameButton
+                                onPress={onToggleAutoAnalyze}
+                                disabled={analyzing}
+                                className={`rounded-lg border px-2 py-1 text-[10px] font-bold disabled:cursor-not-allowed disabled:opacity-40 sm:px-3 sm:py-2 sm:text-xs ${autoAnalyze
+                                    ? "border-cyan-300/40 bg-cyan-500/10 text-cyan-100 hover:bg-cyan-400/20"
+                                    : "border-slate-600 bg-slate-900 text-slate-400 hover:bg-slate-800"
+                                    }`}
+                            >
+                                AUTO {autoAnalyze ? "ON" : "OFF"}
                             </GameButton>
                             <GameButton
                                 onPress={onClose}

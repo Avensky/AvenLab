@@ -8,6 +8,12 @@ export const COUNTDOWN_MS = 3000;
 export const ACTION_MS = 1800;
 export const CAPTURE_MS = 1500;
 
+export type MissionAnalysisMode =
+    | "baseline_profile"
+    | "target_correlation"
+    | "state_compare"
+    | "playback_validation";
+
 export type MissionRank = "BASELINE" | "S" | "A" | "B" | "C";
 export type MissionStatus = "ready" | "research" | "optional";
 export type RecordingStage =
@@ -65,6 +71,7 @@ export type ReconSubMissionDefinition = {
 };
 
 export type ReconMissionDefinition = {
+    analysis_mode: MissionAnalysisMode;
     id: string;
     mission_code: string;
     title: string;
@@ -193,6 +200,7 @@ function mission(args: {
     category: string;
     stage: RecordingStage;
     index: number;
+    analysis_mode?: MissionAnalysisMode;
     description?: string;
     status?: MissionStatus;
     timing?: Partial<ReconTiming>;
@@ -200,6 +208,13 @@ function mission(args: {
     sub_missions?: ReconSubMissionDefinition[];
     metadata?: Record<string, unknown>;
 }): ReconMissionDefinition {
+
+    const analysisMode =
+        args.analysis_mode ??
+        (args.rank === "BASELINE" || args.stage === "baseline"
+            ? "baseline_profile"
+            : "target_correlation");
+
     return {
         id: args.code,
         mission_code: args.code,
@@ -215,7 +230,24 @@ function mission(args: {
         default_timing: timing(args.timing),
         steps: args.steps,
         sub_missions: args.sub_missions,
-        metadata: args.metadata,
+        analysis_mode: analysisMode,
+        metadata: {
+            source: "signal-recon",
+            target: args.target,
+            rank: args.rank,
+            category: args.category,
+            recording_stage: args.stage,
+            difficulty: MISSION_RANKS[args.rank],
+            default_timing: timing(args.timing),
+
+            analysis_mode: args.analysis_mode,
+            expected_target:
+                args.analysis_mode === "baseline_profile"
+                    ? null
+                    : args.target,
+
+            frontend_started_at: new Date().toISOString(),
+        },
     };
 }
 
