@@ -22,6 +22,7 @@ DEFAULT_EMBED_MODEL = "nomic-embed-text"
 MAX_ANALYSIS_FRAMES = 75_000
 MAX_DELTAS_TO_STORE = 50_000
 VECTOR_DIMENSION = 768
+EMBED_ONLY_MODEL_HINTS = ("embed", "embedding", "nomic-embed-text", "all-minilm")
 
 
 def json_dumps(value: Any) -> str:
@@ -90,13 +91,62 @@ class FrameRow:
     data: list[int]
 
 
+def is_embedding_only_model(model_name: str) -> bool:
+    lowered = model_name.lower()
+    return any(hint in lowered for hint in EMBED_ONLY_MODEL_HINTS)
+
+
+async def list_ollama_models() -> list[str]:
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(f"{OLLAMA_URL}/api/tags")
+            response.raise_for_status()
+            payload = response.json()
+    except Exception:
+        return []
+
+    names: list[str] = []
+    for model in payload.get("models", []):
+        name = model.get("name")
+        if isinstance(name, str) and name:
+            names.append(name)
+    return names
+
+
+async def resolve_llm_model(requested_model: str) -> tuple[str, list[str]]:
+    installed = await list_ollama_models()
+    generate_capable = [name for name in installed if not is_embedding_only_model(name)]
+
+    if requested_model in generate_capable:
+        return requested_model, installed
+
+    if generate_capable:
+        return generate_capable[0], installed
+
+    if installed and requested_model in installed and is_embedding_only_model(requested_model):
+        raise RuntimeError(
+            f"Ollama model '{requested_model}' is installed, but it appears to be embedding-only. "
+            "Pull a generate-capable model, for example: ollama pull qwen2.5:3b"
+        )
+
+    raise RuntimeError(
+        f"No generate-capable Ollama model is installed. Installed models: {installed or 'none'}. "
+        f"Requested model: {requested_model}. Run: ollama pull {requested_model}"
+    )
+
+
 async def call_ollama_generate(model: str, prompt: str) -> dict[str, Any]:
     async with httpx.AsyncClient(timeout=120.0) as client:
         response = await client.post(
             f"{OLLAMA_URL}/api/generate",
             json={"model": model, "prompt": prompt, "stream": False},
         )
-        response.raise_for_status()
+        if response.status_code >= 400:
+            detail = response.text.strip()
+            raise RuntimeError(
+                f"Ollama generate failed for model '{model}' "
+                f"with HTTP {response.status_code}: {detail}"
+            )
         return response.json()
 
 
@@ -145,10 +195,12 @@ def build_llm_prompt(session: dict[str, Any], markers: list[dict[str, Any]], can
 You are a CAN bus reverse-engineering assistant for AvenLab.
 
 You must be conservative. Do not claim a signal is decoded unless the evidence supports it.
-Treat the output as a research hypothesis for the user's own 2015 Scion FR-S dataset.
+Treat the output as a research hypothesis for the selected vehicle dataset only.
+Do not assume every session belongs to a 2015 Scion FR-S. Practice vehicles such as AE86 custom ECU, BRZ, Camaro, and Tank must keep separate hypotheses from live FR-S captures.
 
 Session:
 - session_id: {session.get('id')}
+- vehicle_slug: {session.get('vehicle_slug')}
 - vehicle: {session.get('year')} {session.get('make')} {session.get('model')}
 - mission_code: {session.get('mission_code')}
 - bus_interface: {session.get('bus_interface')}
@@ -281,6 +333,23 @@ def analyze_frames(frames: list[FrameRow], markers: list[dict[str, Any]], marker
     return candidates, all_deltas, heatmap
 
 
+@router.get("/ai/status")
+async def get_ai_status() -> dict[str, Any]:
+    models = await list_ollama_models()
+    generate_models = [name for name in models if not is_embedding_only_model(name)]
+    embedding_models = [name for name in models if is_embedding_only_model(name)]
+    return {
+        "ok": True,
+        "ollama_url": OLLAMA_URL,
+        "models": models,
+        "generate_models": generate_models,
+        "embedding_models": embedding_models,
+        "default_llm_model": DEFAULT_LLM_MODEL,
+        "default_embed_model": DEFAULT_EMBED_MODEL,
+        "llm_ready": len(generate_models) > 0,
+    }
+
+
 @router.post("/session/{session_id}/analyze")
 async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> dict[str, Any]:
     pool = await connect_db()
@@ -342,10 +411,13 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
 
     llm_response: Optional[str] = None
     llm_error: Optional[str] = None
+    resolved_llm_model: Optional[str] = payload.llm_model if payload.use_llm else None
+    installed_ollama_models: list[str] = []
     if payload.use_llm:
         try:
+            resolved_llm_model, installed_ollama_models = await resolve_llm_model(payload.llm_model)
             prompt = build_llm_prompt(session_dict, marker_dicts, candidates)
-            result = await call_ollama_generate(payload.llm_model, prompt)
+            result = await call_ollama_generate(resolved_llm_model, prompt)
             llm_response = result.get("response", "")
         except Exception as exc:
             llm_error = str(exc)
@@ -459,12 +531,13 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                     RETURNING id
                     """,
                     session_id,
-                    f"AI CAN analysis for session {session_id}",
+                    f"AI CAN analysis for {session_dict.get('vehicle_slug')} session {session_id}",
                     report_content,
                     json_dumps({
+                        "vehicle_slug": session_dict.get("vehicle_slug"),
                         "frames_analyzed": len(frames),
                         "markers": len(marker_dicts),
-                        "model": payload.llm_model if payload.use_llm else None,
+                        "model": resolved_llm_model,
                         "llm_error": llm_error,
                         "top_candidates": [c.model_dump() for c in candidates[:10]],
                         "heatmap": heatmap,
@@ -482,15 +555,18 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                         session["vehicle_id"],
                         prompt,
                         llm_response,
-                        payload.llm_model,
-                        json_dumps({"report_id": str(report_row["id"])}),
+                        resolved_llm_model,
+                        json_dumps({
+                            "report_id": str(report_row["id"]),
+                            "vehicle_slug": session_dict.get("vehicle_slug"),
+                        }),
                     )
 
                 embedding_inserted = False
                 embedding_error = None
                 if payload.use_embeddings and candidates:
                     text = (
-                        f"CAN analysis session {session_id}. Top candidates: "
+                        f"CAN analysis {session_dict.get('vehicle_slug')} session {session_id}. Top candidates: "
                         + "; ".join(
                             f"{c.can_id_hex} confidence {c.confidence} changes {c.change_count} markers {c.likely_marker_types}"
                             for c in candidates[:10]
@@ -523,9 +599,10 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
         "markers": len(marker_dicts),
         "candidates": [c.model_dump() for c in candidates[:50]],
         "heatmap": heatmap,
-        "llm_model": payload.llm_model if payload.use_llm else None,
+        "llm_model": resolved_llm_model,
         "llm_available": llm_response is not None,
         "llm_error": llm_error,
+        "installed_ollama_models": installed_ollama_models,
         "analysis": llm_response,
         "persisted": payload.persist,
     }

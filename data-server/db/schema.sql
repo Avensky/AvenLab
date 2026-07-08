@@ -300,19 +300,3 @@ CREATE INDEX idx_signal_embeddings_vector
 ON signal_embeddings
 USING ivfflat (embedding vector_cosine_ops)
 WITH (lists = 100);
-
--- =========================
--- Seed Vehicle
--- =========================
-
-INSERT INTO vehicles (slug, year, make, model, trim, alias, metadata)
-VALUES (
-  '2015-scion-frs',
-  2015,
-  'Scion',
-  'FR-S',
-  'Manual',
-  'FRS',
-  '{"platform":"ZN6","notes":"Primary live CAN target vehicle"}'
-)
-ON CONFLICT (slug) DO NOTHING;

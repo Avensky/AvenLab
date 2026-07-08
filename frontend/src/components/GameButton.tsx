@@ -24,7 +24,7 @@ export const GameButton = forwardRef<HTMLDivElement, GameButtonProps>(
     ref
   ) {
     const base =
-      "select-none rounded-xl border px-3 py-2 text-left font-bold transition active:scale-[0.99]";
+      "select-none rounded-lg border px-2 py-1 text-left font-bold transition active:scale-[0.99]";
 
     const variants = {
       primary:
@@ -43,9 +43,8 @@ export const GameButton = forwardRef<HTMLDivElement, GameButtonProps>(
         role="button"
         tabIndex={disabled ? -1 : 0}
         aria-disabled={disabled}
-        className={`${base} ${variants[variant]} ${
-          selected ? "ring-2 ring-yellow-300/80 bg-yellow-400/10" : ""
-        } ${disabled ? "pointer-events-none opacity-40" : "cursor-pointer"} ${className}`}
+        className={`${base} ${variants[variant]} ${selected ? "ring-2 ring-yellow-300/80 bg-yellow-400/10" : ""
+          } ${disabled ? "pointer-events-none opacity-40" : "cursor-pointer"} ${className}`}
         onPointerEnter={onFocus}
         onPointerDown={(e) => e.preventDefault()}
         onPointerUp={(e) => {

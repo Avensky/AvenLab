@@ -18,10 +18,24 @@ import {
 export type ReconMission = ReconMissionDefinition;
 export type ReconStep = ReconStepDefinition;
 
+export type CanVehicleIdentity = {
+    slug: string;
+    year?: number | null;
+    make: string;
+    model: string;
+    trim?: string | null;
+    alias?: string | null;
+    vin?: string | null;
+    datasetKind?: "live" | "practice" | "simulation";
+    notes?: string;
+    metadata?: Record<string, unknown>;
+};
+
 export type ReconRunPhase = ReconPhaseName | "idle" | "complete" | "cancelled";
 
 type SignalReconState = {
     vehicleSlug: string;
+    vehicleIdentity: CanVehicleIdentity;
     missions: ReconMission[];
     steps: ReconStep[];
     selectedMission: ReconMission | null;
@@ -38,6 +52,7 @@ type SignalReconState = {
     phaseEndsAt: number | null;
 
     setVehicleSlug: (slug: string) => void;
+    setVehicleIdentity: (vehicle: CanVehicleIdentity) => void;
     setSelectedRank: (rank: MissionRank | "ALL") => void;
     loadMissions: () => Promise<void>;
     selectMission: (mission: ReconMission) => Promise<void>;
@@ -73,11 +88,6 @@ function nowMs() {
     return performance.now();
 }
 
-async function readApiError(res: Response, fallback: string) {
-    const data = await res.json().catch(() => ({}));
-    return data?.error ?? data?.detail ?? fallback;
-}
-
 function phaseDuration(step: ReconStep, phase: ReconPhaseName): number {
     if (phase === "baseline") return step.baseline_ms ?? BASELINE_MS;
     if (phase === "countdown") return step.countdown_ms ?? COUNTDOWN_MS;
@@ -85,8 +95,32 @@ function phaseDuration(step: ReconStep, phase: ReconPhaseName): number {
     return step.capture_ms ?? CAPTURE_MS;
 }
 
+const DEFAULT_VEHICLE_IDENTITY: CanVehicleIdentity = {
+    slug: "custom-vehicle",
+    year: null,
+    make: "Custom",
+    model: "Vehicle",
+    trim: null,
+    alias: "Custom",
+    datasetKind: "practice",
+    notes: "Auto-created vehicle profile for Signal Recon sessions.",
+    metadata: { source: "signal-recon-store-default" },
+};
+
+function normalizeVehicleIdentity(vehicle: CanVehicleIdentity): CanVehicleIdentity {
+    const slug = vehicle.slug.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "custom-vehicle";
+    return {
+        ...DEFAULT_VEHICLE_IDENTITY,
+        ...vehicle,
+        slug,
+        make: vehicle.make || "Custom",
+        model: vehicle.model || vehicle.alias || slug,
+    };
+}
+
 export const useSignalReconStore = create<SignalReconState>((set, get) => ({
-    vehicleSlug: "2015-scion-frs",
+    vehicleSlug: DEFAULT_VEHICLE_IDENTITY.slug,
+    vehicleIdentity: DEFAULT_VEHICLE_IDENTITY,
     missions: RECON_MISSIONS,
     steps: getMissionSteps(RECON_MISSIONS[0]),
     selectedMission: RECON_MISSIONS[0] ?? null,
@@ -102,7 +136,18 @@ export const useSignalReconStore = create<SignalReconState>((set, get) => ({
     phaseStartedAt: null,
     phaseEndsAt: null,
 
-    setVehicleSlug: (slug) => set({ vehicleSlug: slug }),
+    setVehicleSlug: (slug) => set((state) => {
+        const vehicleIdentity = normalizeVehicleIdentity({
+            ...state.vehicleIdentity,
+            slug,
+        });
+        return { vehicleSlug: vehicleIdentity.slug, vehicleIdentity };
+    }),
+
+    setVehicleIdentity: (vehicle) => set(() => {
+        const vehicleIdentity = normalizeVehicleIdentity(vehicle);
+        return { vehicleSlug: vehicleIdentity.slug, vehicleIdentity };
+    }),
 
     setSelectedRank: (rank) => set({ selectedRank: rank }),
 
@@ -141,7 +186,8 @@ export const useSignalReconStore = create<SignalReconState>((set, get) => ({
     },
 
     async startSession({ busInterface, busMode }) {
-        const { vehicleSlug, selectedMission } = get();
+        const { vehicleIdentity, selectedMission } = get();
+        const vehicleSlug = vehicleIdentity.slug;
 
         if (!selectedMission) {
             throw new Error("No mission selected");
@@ -152,6 +198,7 @@ export const useSignalReconStore = create<SignalReconState>((set, get) => ({
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 vehicle_slug: vehicleSlug,
+                vehicle: vehicleIdentity,
                 mission_code: selectedMission.mission_code,
                 label: selectedMission.title,
                 bus_interface: busInterface,
@@ -165,7 +212,6 @@ export const useSignalReconStore = create<SignalReconState>((set, get) => ({
                     difficulty: selectedMission.difficulty,
                     default_timing: selectedMission.default_timing,
                     frontend_started_at: new Date().toISOString(),
-                    dev_fake_can: busMode === "simulation" || busInterface === "vcan0",
                 },
             }),
         });
@@ -173,7 +219,7 @@ export const useSignalReconStore = create<SignalReconState>((set, get) => ({
         const data = await res.json();
 
         if (!res.ok || !data.session_id) {
-            throw new Error(data?.error ?? data?.detail ?? "Failed to start session");
+            throw new Error(data.error ?? "Failed to start session");
         }
 
         set({
@@ -211,7 +257,8 @@ export const useSignalReconStore = create<SignalReconState>((set, get) => ({
         });
 
         if (!res.ok) {
-            throw new Error(await readApiError(res, `Failed to post marker: ${markerType}`));
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.error ?? `Failed to post marker: ${markerType}`);
         }
     },
 
@@ -340,7 +387,8 @@ export const useSignalReconStore = create<SignalReconState>((set, get) => ({
         });
 
         if (!res.ok) {
-            throw new Error(await readApiError(res, "Failed to stop session"));
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.error ?? "Failed to stop session");
         }
 
         useCanDataStore.getState().setCurrentSessionId(null);

@@ -17,6 +17,7 @@ to the real PostgreSQL schema:
 from __future__ import annotations
 
 import os
+import re
 from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, HTTPException
@@ -32,7 +33,10 @@ router = APIRouter(prefix="/data/can", tags=["can"])
 
 
 class StartSessionRequest(BaseModel):
-    vehicle_slug: str = "2015-scion-frs"
+    # The frontend may send either vehicle_slug or a full vehicle object.
+    # The router will create/update vehicles automatically; no seed SQL required.
+    vehicle_slug: Optional[str] = None
+    vehicle: Dict[str, Any] = Field(default_factory=dict)
     mission_code: Optional[str] = None
     label: Optional[str] = None
     bus_interface: str = "can2"
@@ -54,6 +58,151 @@ class StopSessionRequest(BaseModel):
 
 
 Frame = Tuple[int, List[int], str, str]
+
+
+SLUG_RE = re.compile(r"[^a-z0-9]+")
+
+
+def slugify(value: str) -> str:
+    slug = SLUG_RE.sub("-", value.strip().lower()).strip("-")
+    return slug or "custom-vehicle"
+
+
+def vehicle_payload_value(payload: StartSessionRequest, *keys: str) -> Any:
+    for key in keys:
+        if key in payload.vehicle and payload.vehicle[key] not in (None, ""):
+            return payload.vehicle[key]
+        if key in payload.metadata and payload.metadata[key] not in (None, ""):
+            return payload.metadata[key]
+    return None
+
+
+def normalized_vehicle_payload(payload: StartSessionRequest) -> Dict[str, Any]:
+    raw_name = vehicle_payload_value(payload, "displayName", "display_name", "name")
+    raw_slug = payload.vehicle_slug or vehicle_payload_value(payload, "slug", "vehicle_slug", "id")
+
+    make = vehicle_payload_value(payload, "make", "manufacturer")
+    model = vehicle_payload_value(payload, "model")
+
+    if not raw_slug:
+        raw_slug = " ".join(str(part) for part in [make, model, raw_name] if part)
+
+    slug = slugify(str(raw_slug or "custom-vehicle"))
+    display_name = str(raw_name or " ".join(str(part) for part in [make, model] if part) or slug)
+
+    year_value = vehicle_payload_value(payload, "year")
+    try:
+        year = int(year_value) if year_value not in (None, "") else None
+    except (TypeError, ValueError):
+        year = None
+
+    dataset_kind = vehicle_payload_value(payload, "datasetKind", "dataset_kind") or "practice"
+    notes = vehicle_payload_value(payload, "notes", "description")
+
+    # vehicles.make and vehicles.model are NOT NULL in schema.sql.
+    safe_make = str(make or "Custom")
+    safe_model = str(model or display_name or slug)
+
+    metadata = {
+        "source": "auto-vehicle-upsert",
+        "display_name": display_name,
+        "dataset_kind": dataset_kind,
+        "notes": notes,
+        "frontend_vehicle": payload.vehicle,
+        "session_metadata_vehicle": {
+            key: value
+            for key, value in payload.metadata.items()
+            if key.startswith("vehicle") or key in {"dataset_kind", "datasetKind"}
+        },
+    }
+
+    return {
+        "slug": slug,
+        "year": year,
+        "make": safe_make,
+        "model": safe_model,
+        "trim": vehicle_payload_value(payload, "trim"),
+        "alias": vehicle_payload_value(payload, "alias") or vehicle_payload_value(payload, "name"),
+        "vin": vehicle_payload_value(payload, "vin"),
+        "metadata": metadata,
+    }
+
+
+async def ensure_vehicle(payload: StartSessionRequest) -> Dict[str, Any]:
+    vehicle = normalized_vehicle_payload(payload)
+    row = await fetchrow(
+        """
+        INSERT INTO vehicles (slug, year, make, model, trim, alias, vin, metadata)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)
+        ON CONFLICT (slug) DO UPDATE
+        SET
+            year = COALESCE(EXCLUDED.year, vehicles.year),
+            make = COALESCE(NULLIF(EXCLUDED.make, ''), vehicles.make),
+            model = COALESCE(NULLIF(EXCLUDED.model, ''), vehicles.model),
+            trim = COALESCE(EXCLUDED.trim, vehicles.trim),
+            alias = COALESCE(EXCLUDED.alias, vehicles.alias),
+            vin = COALESCE(EXCLUDED.vin, vehicles.vin),
+            metadata = vehicles.metadata || EXCLUDED.metadata
+        RETURNING id, slug, year, make, model, trim, alias, vin, metadata
+        """,
+        vehicle["slug"],
+        vehicle["year"],
+        vehicle["make"],
+        vehicle["model"],
+        vehicle["trim"],
+        vehicle["alias"],
+        vehicle["vin"],
+        jsonb_dumps(vehicle["metadata"]),
+    )
+    return dict(row)
+
+
+async def ensure_recon_mission(vehicle_id: str, payload: StartSessionRequest) -> Optional[Dict[str, Any]]:
+    if not payload.mission_code:
+        return None
+
+    mission_metadata = {
+        "source": "auto-mission-upsert",
+        "rank": payload.metadata.get("rank"),
+        "category": payload.metadata.get("category"),
+        "difficulty": payload.metadata.get("difficulty"),
+        "recording_stage": payload.metadata.get("recording_stage"),
+        "default_timing": payload.metadata.get("default_timing"),
+        "frontend_metadata": payload.metadata,
+    }
+
+    title = payload.label or payload.metadata.get("mission_title") or payload.mission_code
+    target = payload.metadata.get("target") or title
+    description = payload.metadata.get("description")
+
+    row = await fetchrow(
+        """
+        INSERT INTO recon_missions (
+            vehicle_id,
+            mission_code,
+            title,
+            target,
+            status,
+            description,
+            metadata
+        )
+        VALUES ($1, $2, $3, $4, 'READY', $5, $6::jsonb)
+        ON CONFLICT (vehicle_id, mission_code) DO UPDATE
+        SET
+            title = COALESCE(NULLIF(EXCLUDED.title, ''), recon_missions.title),
+            target = COALESCE(NULLIF(EXCLUDED.target, ''), recon_missions.target),
+            description = COALESCE(EXCLUDED.description, recon_missions.description),
+            metadata = recon_missions.metadata || EXCLUDED.metadata
+        RETURNING id, mission_code, title, target
+        """,
+        vehicle_id,
+        payload.mission_code,
+        title,
+        target,
+        description,
+        jsonb_dumps(mission_metadata),
+    )
+    return dict(row) if row else None
 
 
 def runtime_metadata(extra: Optional[Dict[str, Any]] = None, *, bus_interface: Optional[str] = None, bus_mode: Optional[str] = None) -> Dict[str, Any]:
@@ -278,24 +427,24 @@ async def can_status() -> Dict[str, Any]:
 
 @router.post("/session/start")
 async def start_session(payload: StartSessionRequest) -> Dict[str, Any]:
-    vehicle = await fetchrow(
-        "SELECT id FROM vehicles WHERE slug = $1",
-        payload.vehicle_slug,
+    vehicle = await ensure_vehicle(payload)
+    mission = await ensure_recon_mission(vehicle["id"], payload)
+
+    session_metadata = runtime_metadata(
+        {
+            **payload.metadata,
+            "vehicle_slug": vehicle["slug"],
+            "vehicle_id": str(vehicle["id"]),
+            "vehicle_make": vehicle["make"],
+            "vehicle_model": vehicle["model"],
+            "vehicle_year": vehicle["year"],
+            "vehicle_identity": payload.vehicle,
+            "auto_vehicle_upsert": True,
+            "auto_mission_upsert": bool(mission),
+        },
+        bus_interface=payload.bus_interface,
+        bus_mode=payload.bus_mode,
     )
-
-    if not vehicle:
-        raise HTTPException(status_code=404, detail=f"Vehicle not found: {payload.vehicle_slug}")
-
-    mission = None
-    if payload.mission_code:
-        mission = await fetchrow(
-            """
-            SELECT id FROM recon_missions
-            WHERE vehicle_id = $1 AND mission_code = $2
-            """,
-            vehicle["id"],
-            payload.mission_code,
-        )
 
     session = await fetchrow(
         """
@@ -315,7 +464,7 @@ async def start_session(payload: StartSessionRequest) -> Dict[str, Any]:
         payload.label,
         payload.bus_interface,
         payload.bus_mode,
-        jsonb_dumps(runtime_metadata(payload.metadata, bus_interface=payload.bus_interface, bus_mode=payload.bus_mode)),
+        jsonb_dumps(session_metadata),
     )
 
     session_id = str(session["id"])
@@ -342,6 +491,44 @@ async def start_session(payload: StartSessionRequest) -> Dict[str, Any]:
         "fake_can": True,
         "virtual": not IS_PRODUCTION,
         "database": "postgres",
+        "vehicle": {
+            "id": str(vehicle["id"]),
+            "slug": vehicle["slug"],
+            "year": vehicle["year"],
+            "make": vehicle["make"],
+            "model": vehicle["model"],
+            "trim": vehicle["trim"],
+            "alias": vehicle["alias"],
+        },
+        "mission": {
+            "id": str(mission["id"]),
+            "mission_code": mission["mission_code"],
+            "title": mission["title"],
+            "target": mission["target"],
+        } if mission else None,
+    }
+
+
+@router.get("/vehicles")
+async def list_vehicles() -> Dict[str, Any]:
+    rows = await fetch(
+        """
+        SELECT
+            id, slug, year, make, model, trim, alias, vin, metadata, created_at
+        FROM vehicles
+        ORDER BY created_at DESC, slug ASC
+        """
+    )
+    return {
+        "ok": True,
+        "vehicles": [
+            {
+                **dict(row),
+                "id": str(row["id"]),
+                "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+            }
+            for row in rows
+        ],
     }
 
 
