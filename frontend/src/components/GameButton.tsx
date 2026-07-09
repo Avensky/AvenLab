@@ -1,6 +1,6 @@
-import { forwardRef, type ReactNode } from "react";
+import { forwardRef, type HTMLAttributes, type ReactNode } from "react";
 
-type GameButtonProps = {
+type GameButtonProps = Omit<HTMLAttributes<HTMLDivElement>, "children" | "onFocus"> & {
   children: ReactNode;
   onPress?: () => void;
   onFocus?: () => void;
@@ -20,6 +20,7 @@ export const GameButton = forwardRef<HTMLDivElement, GameButtonProps>(
       selected = false,
       variant = "primary",
       className = "",
+      ...rest
     },
     ref
   ) {
@@ -39,6 +40,7 @@ export const GameButton = forwardRef<HTMLDivElement, GameButtonProps>(
 
     return (
       <div
+        {...rest}
         ref={ref}
         role="button"
         tabIndex={disabled ? -1 : 0}
@@ -65,4 +67,4 @@ export const GameButton = forwardRef<HTMLDivElement, GameButtonProps>(
       </div>
     );
   }
-); 
+);

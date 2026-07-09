@@ -9,7 +9,7 @@ from typing import Any, Optional
 from uuid import UUID
 
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from app.db import connect_db
@@ -964,4 +964,239 @@ async def get_session_analysis(session_id: UUID) -> dict[str, Any]:
         "features": [dict(row) for row in features],
         "correlations": [dict(row) for row in correlations],
         "latest_report": latest_report,
+    }
+
+
+
+def capture_kind_for(bus_interface: str | None, bus_mode: str | None) -> str:
+    iface = (bus_interface or "").lower()
+    mode = (bus_mode or "").lower()
+    if mode in {"simulation", "replay", "offline"} or iface == "vcan0":
+        return "simulation"
+    return "live"
+
+
+def source_label_for(bus_interface: str | None, bus_mode: str | None) -> str:
+    mode = (bus_mode or "").lower()
+    if mode == "listen-only":
+        return "LIVE / LISTEN-ONLY"
+    if mode == "live":
+        return "LIVE / ACTIVE"
+    if mode == "simulation":
+        return "SIMULATION"
+    return (bus_mode or "UNKNOWN").upper()
+
+
+def safe_float(value: Any) -> Optional[float]:
+    if isinstance(value, (int, float)) and math.isfinite(float(value)):
+        return float(value)
+    return None
+
+
+@router.get("/mission-progress")
+async def get_mission_progress(
+    vehicle_slug: Optional[str] = Query(default=None),
+    bus_interface: Optional[str] = Query(default=None),
+    bus_mode: Optional[str] = Query(default=None),
+    capture_kind: Optional[str] = Query(default=None),
+    limit: int = Query(default=500, ge=1, le=2000),
+) -> dict[str, Any]:
+    """Return latest recorded/analyzed session status by mission.
+
+    This endpoint is intentionally lightweight for the mobile mission queue:
+    - It does not run analysis.
+    - It reads saved sessions/reports/correlations from Postgres.
+    - `listen-only` and `live` are both treated as live captures; the label still
+      preserves whether the capture was listen-only or active/live.
+    """
+
+    pool = await connect_db()
+    conditions: list[str] = []
+    values: list[Any] = []
+
+    if vehicle_slug:
+        values.append(vehicle_slug)
+        conditions.append(f"v.slug = ${len(values)}")
+
+    if bus_interface:
+        values.append(bus_interface)
+        conditions.append(f"cs.bus_interface = ${len(values)}")
+
+    if bus_mode:
+        values.append(bus_mode)
+        conditions.append(f"cs.bus_mode = ${len(values)}")
+
+    if capture_kind == "live":
+        conditions.append("cs.bus_mode IN ('listen-only', 'live') AND cs.bus_interface <> 'vcan0'")
+    elif capture_kind == "simulation":
+        conditions.append("(cs.bus_mode IN ('simulation', 'replay', 'offline') OR cs.bus_interface = 'vcan0')")
+
+    where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
+    values.append(limit)
+    limit_arg = len(values)
+
+    query = f"""
+        SELECT
+            cs.id AS session_id,
+            cs.label,
+            cs.bus_interface,
+            cs.bus_mode,
+            cs.started_at,
+            cs.ended_at,
+            cs.metadata AS session_metadata,
+            v.slug AS vehicle_slug,
+            v.year,
+            v.make,
+            v.model,
+            rm.mission_code,
+            rm.title AS mission_title,
+            rm.target AS mission_target,
+            rm.metadata AS mission_metadata,
+            COALESCE(fr.frame_count, 0) AS frame_count,
+            COALESCE(mk.marker_count, 0) AS marker_count,
+            sr.id AS report_id,
+            sr.created_at AS report_created_at,
+            sr.metadata AS report_metadata,
+            cc.can_id AS top_can_id,
+            cc.confidence AS top_confidence,
+            cc.score AS top_score,
+            cc.notes AS top_notes,
+            cc.metadata AS correlation_metadata
+        FROM can_sessions cs
+        JOIN vehicles v ON v.id = cs.vehicle_id
+        LEFT JOIN recon_missions rm ON rm.id = cs.mission_id
+        LEFT JOIN LATERAL (
+            SELECT COUNT(*)::int AS frame_count
+            FROM can_frames_raw cfr
+            WHERE cfr.session_id = cs.id
+        ) fr ON true
+        LEFT JOIN LATERAL (
+            SELECT COUNT(*)::int AS marker_count
+            FROM can_session_markers csm
+            WHERE csm.session_id = cs.id
+        ) mk ON true
+        LEFT JOIN LATERAL (
+            SELECT id, metadata, created_at
+            FROM session_reports
+            WHERE session_id = cs.id AND report_type = 'ai_analysis'
+            ORDER BY created_at DESC
+            LIMIT 1
+        ) sr ON true
+        LEFT JOIN LATERAL (
+            SELECT can_id, confidence, score, notes, metadata
+            FROM can_id_correlations
+            WHERE session_id = cs.id
+            ORDER BY confidence DESC, score DESC, created_at DESC
+            LIMIT 1
+        ) cc ON true
+        {where_clause}
+        ORDER BY cs.started_at DESC
+        LIMIT ${limit_arg}
+    """
+
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(query, *values)
+
+    sessions: list[dict[str, Any]] = []
+    missions: dict[str, dict[str, Any]] = {}
+
+    for raw_row in rows:
+        row = dict(raw_row)
+        session_metadata = metadata_dict(row.get("session_metadata"))
+        mission_metadata = metadata_dict(row.get("mission_metadata"))
+        report_metadata = metadata_dict(row.get("report_metadata"))
+        correlation_metadata = metadata_dict(row.get("correlation_metadata"))
+        mission_code = row.get("mission_code") or session_metadata.get("mission_code") or "UNKNOWN"
+
+        top_candidates = report_metadata.get("top_candidates")
+        top_candidate = top_candidates[0] if isinstance(top_candidates, list) and top_candidates else {}
+        if not isinstance(top_candidate, dict):
+            top_candidate = {}
+
+        top_can_id = row.get("top_can_id") or top_candidate.get("can_id")
+        top_can_id_hex = None
+        if isinstance(top_can_id, int):
+            top_can_id_hex = can_hex(top_can_id)
+        elif isinstance(top_candidate.get("can_id_hex"), str):
+            top_can_id_hex = top_candidate["can_id_hex"]
+        elif isinstance(correlation_metadata.get("can_id_hex"), str):
+            top_can_id_hex = correlation_metadata["can_id_hex"]
+
+        confidence = safe_float(row.get("top_confidence"))
+        if confidence is None:
+            confidence = safe_float(top_candidate.get("confidence"))
+
+        analysis_mode = (
+            report_metadata.get("analysis_mode")
+            or session_metadata.get("analysis_mode")
+            or mission_metadata.get("analysis_mode")
+        )
+        if not isinstance(analysis_mode, str):
+            analysis_mode = infer_analysis_mode(
+                {
+                    "mission_code": mission_code,
+                    "session_metadata": session_metadata,
+                    "mission_metadata": mission_metadata,
+                },
+                [],
+            )
+
+        frame_count = int(row.get("frame_count") or 0)
+        marker_count = int(row.get("marker_count") or 0)
+        analyzed = bool(row.get("report_id")) or confidence is not None
+        completed = row.get("ended_at") is not None or frame_count > 0 or marker_count > 0
+        status = "open"
+        if completed and analyzed:
+            status = "analyzed"
+        elif completed:
+            status = "recorded"
+        if frame_count == 0 and marker_count > 0:
+            status = "markers_only"
+
+        item = {
+            "mission_code": mission_code,
+            "mission_title": row.get("mission_title") or row.get("label"),
+            "mission_target": row.get("mission_target"),
+            "session_id": str(row["session_id"]),
+            "vehicle_slug": row.get("vehicle_slug"),
+            "vehicle": {
+                "year": row.get("year"),
+                "make": row.get("make"),
+                "model": row.get("model"),
+            },
+            "bus_interface": row.get("bus_interface"),
+            "bus_mode": row.get("bus_mode"),
+            "capture_kind": capture_kind_for(row.get("bus_interface"), row.get("bus_mode")),
+            "source_label": source_label_for(row.get("bus_interface"), row.get("bus_mode")),
+            "completed": completed,
+            "analyzed": analyzed,
+            "status": status,
+            "analysis_mode": analysis_mode,
+            "confidence": confidence,
+            "top_can_id": top_can_id,
+            "top_can_id_hex": top_can_id_hex,
+            "top_score": safe_float(row.get("top_score")) or safe_float(top_candidate.get("correlation_score")),
+            "frame_count": frame_count,
+            "marker_count": marker_count,
+            "started_at": row.get("started_at"),
+            "ended_at": row.get("ended_at"),
+            "report_id": str(row["report_id"]) if row.get("report_id") else None,
+            "report_created_at": row.get("report_created_at"),
+        }
+        sessions.append(item)
+
+        # Rows are newest first, so first one per mission is the current queue status.
+        if mission_code not in missions:
+            missions[mission_code] = item
+
+    return {
+        "ok": True,
+        "filters": {
+            "vehicle_slug": vehicle_slug,
+            "bus_interface": bus_interface,
+            "bus_mode": bus_mode,
+            "capture_kind": capture_kind,
+        },
+        "missions": missions,
+        "sessions": sessions,
     }

@@ -18,6 +18,18 @@ export type BrainCandidate = {
 export type BrainAnalysisResult = {
     ok: boolean;
     session_id: string;
+    analysis_mode?: "baseline_profile" | "target_correlation" | string;
+    target_expected?: boolean;
+    baseline_profile?: {
+        kind?: string;
+        target_expected?: boolean;
+        total_frames?: number;
+        observed_ids?: number;
+        high_rate_ids?: Array<Record<string, unknown>>;
+        noisy_ids?: Array<Record<string, unknown>>;
+        stable_ids?: Array<Record<string, unknown>>;
+        guidance?: string;
+    };
     frames_analyzed: number;
     markers: number;
     candidates: BrainCandidate[];
@@ -49,11 +61,17 @@ type SignalReconBrainConsoleProps = {
     sessionId: string | null;
     missionCode: string;
     missionTitle: string;
+    vehicleSlug: string;
+    busInterface: string;
+    busMode: string;
+    sourceLabel: string;
     useLlm: boolean;
     useEmbeddings: boolean;
     autoAnalyze: boolean;
     onClose: () => void;
     onAnalyze: () => void;
+    onExplainWithLlm: () => void;
+    onLoadLatest: () => void;
     onToggleLlm: () => void;
     onToggleEmbeddings: () => void;
     onToggleAutoAnalyze: () => void;
@@ -119,11 +137,17 @@ export function SignalReconBrainConsole({
     sessionId,
     missionCode,
     missionTitle,
+    vehicleSlug,
+    busInterface,
+    busMode,
+    sourceLabel,
     useLlm,
     useEmbeddings,
     autoAnalyze,
     onClose,
     onAnalyze,
+    onExplainWithLlm,
+    onLoadLatest,
     onToggleLlm,
     onToggleEmbeddings,
     onToggleAutoAnalyze,
@@ -144,22 +168,29 @@ export function SignalReconBrainConsole({
         [analysis],
     );
 
+    const isBaselineProfile =
+        analysis?.analysis_mode === "baseline_profile" ||
+        analysis?.target_expected === false ||
+        analysis?.baseline_profile?.target_expected === false;
+
+    const resultModeLabel = isBaselineProfile ? "NOISE PROFILE" : "SIGNAL HYPOTHESIS";
+
     if (!open) return null;
 
     return (
-        <div className="absolute inset-0 z-50 flex items-end justify-center bg-black/60 p-2 backdrop-blur-sm sm:p-4">
-            <div className="flex h-[88dvh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-green-300/30 bg-slate-950/95 font-mono text-green-100 shadow-2xl shadow-green-500/10 sm:h-[78dvh]">
-                <div className="shrink-0 border-b border-green-400/20 px-3 py-2 sm:px-4">
+        <div className="absolute inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm">
+            <div className="overflow-y-auto py-2 flex h-[88dvh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-green-300/30 bg-slate-950/95 font-mono text-green-100 shadow-2xl shadow-green-500/10 sm:h-[78dvh]">
+                <div className="shrink-0 border-b border-green-400/20 px-3 py-2 sm:px-2">
                     <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                             <p className="text-[10px] tracking-[0.32em] text-yellow-300 sm:text-xs">
                                 AVENLAB // PI BRAIN
                             </p>
                             <h2 className="truncate text-lg font-black text-green-100 sm:text-2xl">
-                                MISSION ANALYSIS
+                                {resultModeLabel}
                             </h2>
                             <p className="truncate text-[11px] text-slate-400 sm:text-xs">
-                                {missionCode} · {missionTitle} · {shortSessionId(sessionId)}
+                                {missionCode} · {missionTitle} · {vehicleSlug} · {busInterface}/{sourceLabel || busMode} · {shortSessionId(sessionId)}
                             </p>
                         </div>
 
@@ -169,7 +200,21 @@ export function SignalReconBrainConsole({
                                 disabled={analyzing || !sessionId}
                                 className="rounded-lg border border-yellow-300/40 bg-yellow-500/10 px-2 py-1 text-[10px] font-bold text-yellow-100 hover:bg-yellow-400/20 disabled:cursor-not-allowed disabled:opacity-40 sm:px-3 sm:py-2 sm:text-xs"
                             >
-                                {analyzing ? "ANALYZING" : "RE-RUN"}
+                                {analyzing ? "ANALYZING" : "QUICK ID"}
+                            </GameButton>
+                            <GameButton
+                                onPress={onExplainWithLlm}
+                                disabled={analyzing || !sessionId}
+                                className="rounded-lg border border-purple-300/40 bg-purple-500/10 px-2 py-1 text-[10px] font-bold text-purple-100 hover:bg-purple-400/20 disabled:cursor-not-allowed disabled:opacity-40 sm:px-3 sm:py-2 sm:text-xs"
+                            >
+                                EXPLAIN
+                            </GameButton>
+                            <GameButton
+                                onPress={onLoadLatest}
+                                disabled={analyzing || !sessionId}
+                                className="rounded-lg border border-cyan-300/40 bg-cyan-500/10 px-2 py-1 text-[10px] font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-40 sm:px-3 sm:py-2 sm:text-xs"
+                            >
+                                READ DB
                             </GameButton>
                             <GameButton
                                 onPress={onToggleLlm}
@@ -226,7 +271,7 @@ export function SignalReconBrainConsole({
                     </div>
                 </div>
 
-                <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4">
+                <div className="min-h-0 flex-1 p-3 sm:p-2">
                     {error && (
                         <div className="mb-3 rounded-xl border border-red-300/40 bg-red-500/10 p-3 text-sm text-red-100">
                             {error}
@@ -235,15 +280,28 @@ export function SignalReconBrainConsole({
 
                     {analyzing && (
                         <div className="mb-3 rounded-xl border border-yellow-300/40 bg-yellow-500/10 p-3 text-sm text-yellow-100">
-                            &gt; analyzing CAN deltas, marker windows, byte volatility, and LLM report...
+                            &gt; analyzing CAN deltas, marker windows, byte volatility, and optional LLM report...
                         </div>
                     )}
 
                     {activeTab === "summary" && (
                         <div className="space-y-3">
                             <div className="rounded-xl border border-green-400/20 bg-slate-900/80 p-4">
-                                <p className="text-xs text-yellow-300">TOP HYPOTHESIS</p>
-                                {topCandidate ? (
+                                <p className="text-xs text-yellow-300">{resultModeLabel}</p>
+                                {isBaselineProfile ? (
+                                    <div className="mt-2 grid gap-3 sm:grid-cols-[0.75fr_1.25fr]">
+                                        <div className="rounded-xl border border-cyan-300/40 bg-cyan-500/10 p-4 text-cyan-100">
+                                            <p className="text-4xl font-black">{analysis?.baseline_profile?.observed_ids ?? Object.keys(analysis?.heatmap ?? {}).length}</p>
+                                            <p className="text-sm">observed CAN IDs</p>
+                                            <p className="mt-3 text-2xl font-black">BASELINE</p>
+                                        </div>
+                                        <div className="space-y-2 text-sm text-slate-300">
+                                            <p>No target ID expected for this mission.</p>
+                                            <p>Use this profile to filter high-rate, stable, and naturally noisy IDs during later action missions.</p>
+                                            <p className="text-cyan-200">{analysis?.baseline_profile?.guidance ?? "Background traffic profile captured."}</p>
+                                        </div>
+                                    </div>
+                                ) : topCandidate ? (
                                     <div className="mt-2 grid gap-3 sm:grid-cols-[0.7fr_1.3fr]">
                                         <div className={`rounded-xl border p-4 ${candidateTone(topCandidate.confidence)}`}>
                                             <p className="text-4xl font-black">{percent(topCandidate.confidence)}</p>
@@ -274,7 +332,7 @@ export function SignalReconBrainConsole({
                                 )}
                             </div>
 
-                            <div className="grid gap-2 text-sm sm:grid-cols-3">
+                            <div className="grid gap-2 text-sm sm:grid-cols-4">
                                 <div className="rounded-xl border border-green-400/20 bg-slate-900/80 p-3">
                                     <p className="text-slate-500">frames</p>
                                     <p className="text-2xl font-black">{analysis?.frames_analyzed ?? 0}</p>
@@ -282,6 +340,10 @@ export function SignalReconBrainConsole({
                                 <div className="rounded-xl border border-green-400/20 bg-slate-900/80 p-3">
                                     <p className="text-slate-500">markers</p>
                                     <p className="text-2xl font-black">{analysis?.markers ?? 0}</p>
+                                </div>
+                                <div className="rounded-xl border border-green-400/20 bg-slate-900/80 p-3">
+                                    <p className="text-slate-500">mode</p>
+                                    <p className="text-lg font-black">{busMode.toUpperCase()}</p>
                                 </div>
                                 <div className="rounded-xl border border-green-400/20 bg-slate-900/80 p-3">
                                     <p className="text-slate-500">LLM</p>

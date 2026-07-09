@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSelectionStore, useUIStore } from "../../store";
 import { SignalReconMission } from "./SignalReconMission";
 import { GameButton } from "../../components/GameButton";
 import {
+  getApiBaseUrl,
   useCanBusStore,
   type CanInterface,
   type CanMode,
@@ -26,6 +27,28 @@ const RANK_FILTERS: Array<MissionRank | "ALL"> = [
 ];
 const CAN_INTERFACE_OPTIONS: CanInterface[] = ["can0", "can1", "can2", "vcan0"];
 const CAN_MODE_OPTIONS: CanMode[] = ["listen-only", "simulation", "live"];
+
+type CaptureKind = "live" | "simulation";
+
+type MissionRunSummary = {
+  mission_code: string;
+  session_id: string;
+  vehicle_slug: string;
+  bus_interface: string;
+  bus_mode: string;
+  capture_kind: CaptureKind | string;
+  source_label: string;
+  completed: boolean;
+  analyzed: boolean;
+  status: string;
+  analysis_mode: string | null;
+  confidence: number | null;
+  top_can_id_hex: string | null;
+  frame_count: number;
+  marker_count: number;
+  started_at: string | null;
+  ended_at: string | null;
+};
 
 function formatStatus(status: ReconMission["status"]) {
   return status.toUpperCase();
@@ -54,6 +77,49 @@ function missionButtonTitle(mission: ReconMission) {
   return mission.rank === "BASELINE"
     ? mission.mission_code.replace("BASE_", "")
     : mission.mission_code;
+}
+
+
+function captureKindFor(mode: CanMode, iface: CanInterface): CaptureKind {
+  if (mode === "simulation" || iface === "vcan0") return "simulation";
+  return "live";
+}
+
+function busModeLabel(mode: CanMode) {
+  if (mode === "listen-only") return "LIVE / LISTEN-ONLY";
+  if (mode === "live") return "LIVE / ACTIVE";
+  return "SIMULATION";
+}
+
+function shortSessionId(sessionId: string | null | undefined) {
+  if (!sessionId) return "—";
+  return `${sessionId.slice(0, 8)}…${sessionId.slice(-4)}`;
+}
+
+function formatConfidence(value: number | null | undefined) {
+  if (typeof value !== "number" || Number.isNaN(value)) return "—";
+  return `${Math.round(value * 100)}%`;
+}
+
+function missionProgressLabel(summary: MissionRunSummary | undefined, mission: ReconMission) {
+  if (!summary) return "OPEN";
+  if (summary.frame_count <= 0) return "NO FRAMES";
+  if (summary.analysis_mode === "baseline_profile" || mission.rank === "BASELINE") {
+    return summary.analyzed ? "PROFILED" : "RECORDED";
+  }
+  if (typeof summary.confidence === "number") return `DONE ${formatConfidence(summary.confidence)}`;
+  return summary.analyzed ? "ANALYZED" : "RECORDED";
+}
+
+function missionProgressClass(summary: MissionRunSummary | undefined, mission: ReconMission) {
+  if (!summary) return "border-slate-700 bg-slate-900 text-slate-400";
+  if (summary.frame_count <= 0) return "border-red-300/50 bg-red-500/10 text-red-100";
+  if (summary.analysis_mode === "baseline_profile" || mission.rank === "BASELINE") {
+    return "border-cyan-300/50 bg-cyan-500/10 text-cyan-100";
+  }
+  if ((summary.confidence ?? 0) >= 0.75) return "border-green-300/50 bg-green-500/10 text-green-100";
+  if ((summary.confidence ?? 0) >= 0.45) return "border-yellow-300/50 bg-yellow-500/10 text-yellow-100";
+  return "border-slate-500 bg-slate-800 text-slate-300";
 }
 
 export function SignalRecon() {
@@ -87,6 +153,12 @@ export function SignalRecon() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [missionProgressByCode, setMissionProgressByCode] = useState<Record<string, MissionRunSummary>>({});
+  const [missionProgressLoading, setMissionProgressLoading] = useState(false);
+  const [missionProgressError, setMissionProgressError] = useState<string | null>(null);
+
+
+
   useEffect(() => {
     void loadMissions();
   }, [loadMissions]);
@@ -104,6 +176,49 @@ export function SignalRecon() {
   const sessionActive = Boolean(activeSessionId);
   const runActive = Boolean(activeRunId);
   const canControlsDisabled = busy || sessionActive || runActive;
+
+  const selectedCaptureKind = useMemo(
+    () => captureKindFor(selectedMode, selectedInterface),
+    [selectedInterface, selectedMode],
+  );
+
+  const refreshMissionProgressFromDb = useCallback(async () => {
+    if (!vehicleSlug) return;
+
+    setMissionProgressLoading(true);
+    setMissionProgressError(null);
+
+    try {
+      const params = new URLSearchParams({
+        vehicle_slug: vehicleSlug,
+        bus_interface: selectedInterface,
+        capture_kind: selectedCaptureKind,
+      });
+
+      const res = await fetch(`${getApiBaseUrl()}/data/can/mission-progress?${params.toString()}`);
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        missions?: Record<string, MissionRunSummary>;
+        detail?: string;
+        error?: string;
+      };
+
+      if (!res.ok || data.ok === false) {
+        throw new Error(data.detail ?? data.error ?? `Mission progress read failed with HTTP ${res.status}.`);
+      }
+
+      setMissionProgressByCode(data.missions ?? {});
+    } catch (err) {
+      setMissionProgressError(err instanceof Error ? err.message : "Failed to read mission progress.");
+    } finally {
+      setMissionProgressLoading(false);
+    }
+  }, [selectedCaptureKind, selectedInterface, vehicleSlug]);
+
+  useEffect(() => {
+    void refreshMissionProgressFromDb();
+  }, [activeSessionId, refreshMissionProgressFromDb]);
+
 
   useEffect(() => {
     if (sessionActive || runActive) return;
@@ -244,6 +359,9 @@ export function SignalRecon() {
                   ? ` · session ${activeSessionId.slice(0, 8)}…${activeSessionId.slice(-4)}`
                   : ""}
                 {` · ${activePhase.toUpperCase()}`}
+                {` · ${busModeLabel(selectedMode)}`}
+                {missionProgressLoading ? " · DB SYNC" : ` · ${Object.keys(missionProgressByCode).length} DB RUNS`}
+
               </p>
             </div>
             <div className="grid grid-cols-2 gap-2 font-mono text-xs text-slate-400 sm:flex sm:items-end sm:justify-end">
@@ -314,7 +432,7 @@ export function SignalRecon() {
           <section
             className={`flex flex-col h-full min-h-0 self-stretch overflow-hidden rounded-2xl border border-green-400/20 bg-slate-950/90 shadow-xl shadow-green-500/10 transition-all ${queueMinimized
               ? "w-[56px] p-1 sm:w-[72px] sm:px-2 sm:py-2 lg:w-[96px]"
-              : "w-full p-3 sm:px2 sm:py-2"
+              : "w-full p-3 sm:px-2 sm:py-2"
               }`}
           >
             {queueMinimized ? (
@@ -331,18 +449,24 @@ export function SignalRecon() {
                     const selected =
                       mission?.mission_code === item.mission_code;
                     const disabled = runActive || (sessionActive && !selected);
+                    const progress = missionProgressByCode[item.mission_code];
 
                     return (
                       <GameButton
                         key={item.mission_code}
                         disabled={disabled}
                         onPress={() => void handleSelectMission(item)}
-                        className={`flex min-h-10 w-full items-center justify-center rounded-xl border px-1 py-2 text-center font-mono text-[10px] font-black leading-tight transition disabled:cursor-not-allowed disabled:opacity-30 sm:text-xs ${selected
+                        className={`flex min-h-10 w-full flex-col items-center justify-center rounded-xl border px-1 py-2 text-center font-mono text-[10px] font-black leading-tight transition disabled:cursor-not-allowed disabled:opacity-30 sm:text-xs ${selected
                           ? "border-green-300 bg-green-500/20 text-green-100"
                           : "border-slate-700 bg-slate-900/80 text-slate-400 hover:bg-slate-800"
                           }`}
+                        title={`${item.mission_code} · ${missionProgressLabel(progress, item)}`}
+
                       >
-                        {missionButtonTitle(item)}
+                        <span>{missionButtonTitle(item)}</span>
+                        {progress && (
+                          <span className={`mt-1 h-1.5 w-1.5 rounded-full ${progress.frame_count > 0 ? "bg-green-300" : "bg-red-300"}`} />
+                        )}
                       </GameButton>
                     );
                   })}
@@ -356,18 +480,28 @@ export function SignalRecon() {
                       Mission Queue
                     </h2>
                     <p className="font-mono text-xs text-slate-500">
-                      {visibleMissions.length} visible / {missions.length} total
+                      {visibleMissions.length} visible / {missions.length} total · {selectedInterface}/{busModeLabel(selectedMode)}
+                      {missionProgressError ? ` · DB ERROR` : ""}
                     </p>
                   </div>
 
-                  <GameButton
-                    onPress={() => {
-                      if (mission) setQueueMinimized(true);
-                    }}
-                    className="rounded-lg border border-slate-600 bg-slate-900 px-3 py-1 font-mono text-xs text-slate-300 hover:bg-slate-800"
-                  >
-                    TERMINAL
-                  </GameButton>
+                  <div className="flex items-center gap-2">
+                    <GameButton
+                      onPress={() => void refreshMissionProgressFromDb()}
+                      disabled={missionProgressLoading}
+                      className="rounded-lg border border-cyan-300/40 bg-cyan-500/10 px-3 py-1 font-mono text-xs font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      {missionProgressLoading ? "SYNC" : "READ DB"}
+                    </GameButton>
+                    <GameButton
+                      onPress={() => {
+                        if (mission) setQueueMinimized(true);
+                      }}
+                      className="rounded-lg border border-slate-600 bg-slate-900 px-3 py-1 font-mono text-xs text-slate-300 hover:bg-slate-800"
+                    >
+                      TERMINAL
+                    </GameButton>
+                  </div>
                 </div>
 
                 <div className="mb-4 sm:mb-2 flex flex-wrap items-center gap-2">
@@ -391,12 +525,17 @@ export function SignalRecon() {
                     {error}
                   </div>
                 )}
-
+                {missionProgressError && (
+                  <div className="mb-3 rounded-xl border border-yellow-300/40 bg-yellow-500/10 p-3 text-sm text-yellow-100">
+                    DB mission progress unavailable: {missionProgressError}
+                  </div>
+                )}
                 <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1 pb-4">
                   {visibleMissions.map((item) => {
                     const selected =
                       mission?.mission_code === item.mission_code;
                     const disabled = runActive || (sessionActive && !selected);
+                    const progress = missionProgressByCode[item.mission_code];
 
                     return (
                       <GameButton
@@ -412,13 +551,20 @@ export function SignalRecon() {
                           <span className="font-mono text-xs text-yellow-300">
                             {item.mission_code}
                           </span>
-                          <span
-                            className={`rounded-full border px-2 py-1 text-[10px] font-bold ${rankClass(item.rank)}`}
-                          >
-                            {item.rank === "BASELINE"
-                              ? "BASELINE"
-                              : `RANK ${item.rank}`}
-                          </span>
+                          <div className="flex shrink-0 items-center gap-2">
+                            <span
+                              className={`rounded-full border px-2 py-1 text-[10px] font-bold ${missionProgressClass(progress, item)}`}
+                            >
+                              {missionProgressLabel(progress, item)}
+                            </span>
+                            <span
+                              className={`rounded-full border px-2 py-1 text-[10px] font-bold ${rankClass(item.rank)}`}
+                            >
+                              {item.rank === "BASELINE"
+                                ? "BASELINE"
+                                : `RANK ${item.rank}`}
+                            </span>
+                          </div>
                         </div>
 
                         <h3 className="mt-2 font-bold text-green-100">
@@ -429,6 +575,12 @@ export function SignalRecon() {
                           <p>target: {item.target}</p>
                           <p>stage: {formatStage(item.recording_stage)}</p>
                           <p>status: {formatStatus(item.status)}</p>
+                          {progress && (
+                            <p>
+                              db: {progress.source_label} · {progress.frame_count} frames · {progress.marker_count} markers
+                              {progress.top_can_id_hex ? ` · ${progress.top_can_id_hex} ${formatConfidence(progress.confidence)}` : ""}
+                            </p>
+                          )}
                         </div>
                       </GameButton>
                     );
@@ -484,6 +636,15 @@ export function SignalRecon() {
                         <p className="text-slate-400">
                           &gt; protocol: baseline → countdown → action → capture →
                           marker sync
+                        </p>
+                        <p className="text-slate-400">
+                          &gt; bus: {selectedInterface} / {busModeLabel(selectedMode)}
+                        </p>
+                        <p className="text-slate-400">
+                          &gt; db result: {missionProgressLabel(missionProgressByCode[mission.mission_code], mission)}
+                          {missionProgressByCode[mission.mission_code]?.top_can_id_hex
+                            ? ` · ${missionProgressByCode[mission.mission_code]?.top_can_id_hex} ${formatConfidence(missionProgressByCode[mission.mission_code]?.confidence)}`
+                            : ""}
                         </p>
                       </div>
 

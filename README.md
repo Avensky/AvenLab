@@ -813,6 +813,7 @@ Now check:
 ip link
 ```
 
+```bash
 sudo ip link set can2 down
 
 sudo ip link set can2 up type can bitrate 500000 listen-only on

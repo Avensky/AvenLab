@@ -16,20 +16,46 @@ to the real PostgreSQL schema:
 
 from __future__ import annotations
 
+import asyncio
 import os
 import re
+import shutil
+import subprocess
+import time
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from app.db import execute, fetch, fetchrow, jsonb_dumps
+from app.db import connect_db, execute, fetch, fetchrow, jsonb_dumps
 
 APP_ENV = os.getenv("APP_ENV", "").strip().lower()
 IS_PRODUCTION = APP_ENV == "production"
 RUNTIME_ENV = "production" if IS_PRODUCTION else "development"
 
 router = APIRouter(prefix="/data/can", tags=["can"])
+
+SIMULATION_MODES = {"simulation", "sim", "replay", "offline", "fake", "dev"}
+REAL_CAPTURE_MODES = {"listen-only", "listen_only", "live"}
+INTERFACES_TO_REPORT = ("vcan0", "can0", "can1", "can2")
+CAN_FORCE_FAKE = os.getenv("CAN_FORCE_FAKE", "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+@dataclass
+class CaptureState:
+    session_id: str
+    bus_interface: str
+    bus_mode: str
+    started_epoch: float
+    task: asyncio.Task[None]
+    process: Optional[asyncio.subprocess.Process] = None
+    frames_inserted: int = 0
+    lines_seen: int = 0
+    last_error: Optional[str] = None
+
+
+ACTIVE_CAPTURES: Dict[str, CaptureState] = {}
 
 
 class StartSessionRequest(BaseModel):
@@ -205,14 +231,304 @@ async def ensure_recon_mission(vehicle_id: str, payload: StartSessionRequest) ->
     return dict(row) if row else None
 
 
-def runtime_metadata(extra: Optional[Dict[str, Any]] = None, *, bus_interface: Optional[str] = None, bus_mode: Optional[str] = None) -> Dict[str, Any]:
+
+def normalize_mode(bus_mode: Optional[str]) -> str:
+    return (bus_mode or "").strip().lower().replace("_", "-")
+
+
+def should_use_fake_capture(bus_interface: Optional[str], bus_mode: Optional[str]) -> bool:
+    iface = (bus_interface or "").strip().lower()
+    mode = normalize_mode(bus_mode)
+    if CAN_FORCE_FAKE:
+        return True
+    if iface == "vcan0" or mode in SIMULATION_MODES:
+        return True
+    return False
+
+
+def capture_kind_for(bus_interface: Optional[str], bus_mode: Optional[str]) -> str:
+    return "simulation" if should_use_fake_capture(bus_interface, bus_mode) else "live"
+
+
+def can_interface_state(name: str, bus_mode: Optional[str] = None) -> Dict[str, Any]:
+    fake_data = should_use_fake_capture(name, bus_mode)
+    result = subprocess.run(
+        ["ip", "-details", "link", "show", name],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        check=False,
+    )
+    output = result.stdout or ""
+    exists = result.returncode == 0
+    up = exists and "<" in output and "UP" in output.split(">", 1)[0]
+    lower_up = exists and "LOWER_UP" in output.split("\n", 1)[0]
+
+    can_state_match = re.search(r"can state\s+([^\s]+)", output)
+    can_state = can_state_match.group(1) if can_state_match else ("UP" if up else "DOWN")
+    bitrate_match = re.search(r"bitrate\s+(\d+)", output)
+    bitrate = int(bitrate_match.group(1)) if bitrate_match else None
+
+    if not exists:
+        state = "MISSING"
+    elif fake_data:
+        state = "SIMULATION_READY" if up else "SIMULATION_DOWN"
+    elif up:
+        state = can_state or "REAL_CAN_READY"
+    else:
+        state = "DOWN"
+
+    return {
+        "exists": exists,
+        "up": up,
+        "lower_up": lower_up,
+        "state": state,
+        "can_state": can_state,
+        "bitrate": bitrate,
+        "virtual": name == "vcan0",
+        "fake_data": fake_data,
+        "bus_interface": name,
+        "bus_mode": bus_mode,
+        "capture_kind": capture_kind_for(name, bus_mode),
+        "details": output.strip() if exists else (result.stderr or "").strip(),
+    }
+
+
+CANDUMP_RE = re.compile(
+    r"^\((?P<epoch>\d+(?:\.\d+)?)\)\s+"
+    r"(?P<iface>\S+)\s+"
+    r"(?P<can_id>[0-9A-Fa-f]+)(?:##[0-9A-Fa-f]|#)(?P<data>[0-9A-Fa-f]*)"
+)
+
+
+def parse_candump_line(line: str, started_epoch: float) -> Optional[Dict[str, Any]]:
+    match = CANDUMP_RE.match(line.strip())
+    if not match:
+        return None
+
+    can_id_hex = match.group("can_id").upper()
+    data_hex = match.group("data").upper()
+    if len(data_hex) % 2:
+        return None
+
+    try:
+        epoch = float(match.group("epoch"))
+        can_id = int(can_id_hex, 16)
+        data = bytes.fromhex(data_hex)
+    except ValueError:
+        return None
+
+    elapsed_ms = max(0, int((epoch - started_epoch) * 1000))
+    return {
+        "timestamp_ms": elapsed_ms,
+        "elapsed_ms": elapsed_ms / 1000.0,
+        "can_id": can_id,
+        "can_id_hex": f"0x{can_id:03X}",
+        "dlc": len(data),
+        "data": data,
+        "data_hex": data_hex,
+        "epoch": epoch,
+        "iface": match.group("iface"),
+    }
+
+
+async def insert_socketcan_batch(
+    session_id: str,
+    bus_interface: str,
+    bus_mode: str,
+    rows: List[Dict[str, Any]],
+) -> int:
+    if not rows:
+        return 0
+
+    pool = await connect_db()
+    async with pool.acquire() as conn:
+        await conn.executemany(
+            """
+            INSERT INTO can_frames_raw (
+                session_id,
+                timestamp_ms,
+                elapsed_ms,
+                can_id,
+                can_id_hex,
+                dlc,
+                data,
+                source,
+                metadata
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7::bytea, $8, $9::jsonb)
+            """,
+            [
+                (
+                    session_id,
+                    row["timestamp_ms"],
+                    row["elapsed_ms"],
+                    row["can_id"],
+                    row["can_id_hex"],
+                    row["dlc"],
+                    row["data"],
+                    bus_interface,
+                    jsonb_dumps(runtime_metadata(
+                        {
+                            "source": "socketcan-candump",
+                            "capture_source": "real-socketcan",
+                            "epoch": row["epoch"],
+                            "data_hex": row["data_hex"],
+                            "candump_iface": row["iface"],
+                        },
+                        bus_interface=bus_interface,
+                        bus_mode=bus_mode,
+                        fake_can=False,
+                    )),
+                )
+                for row in rows
+            ],
+        )
+    return len(rows)
+
+
+async def capture_socketcan_session(state: CaptureState) -> None:
+    buffer: List[Dict[str, Any]] = []
+    last_flush = time.monotonic()
+
+    try:
+        if shutil.which("candump") is None:
+            state.last_error = "candump is not installed. Install can-utils."
+            return
+
+        state.process = await asyncio.create_subprocess_exec(
+            "candump",
+            "-L",
+            state.bus_interface,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+
+        assert state.process.stdout is not None
+        while True:
+            line_bytes = await state.process.stdout.readline()
+            if not line_bytes:
+                break
+
+            line = line_bytes.decode("utf-8", errors="replace").strip()
+            state.lines_seen += 1
+            parsed = parse_candump_line(line, state.started_epoch)
+            if parsed:
+                buffer.append(parsed)
+
+            now = time.monotonic()
+            if len(buffer) >= 100 or (buffer and now - last_flush >= 0.25):
+                inserted = await insert_socketcan_batch(
+                    state.session_id,
+                    state.bus_interface,
+                    state.bus_mode,
+                    buffer,
+                )
+                state.frames_inserted += inserted
+                buffer.clear()
+                last_flush = now
+
+        if buffer:
+            inserted = await insert_socketcan_batch(
+                state.session_id,
+                state.bus_interface,
+                state.bus_mode,
+                buffer,
+            )
+            state.frames_inserted += inserted
+            buffer.clear()
+
+        if state.process.stderr is not None:
+            try:
+                stderr = (await asyncio.wait_for(state.process.stderr.read(), timeout=0.25)).decode("utf-8", errors="replace").strip()
+                if stderr:
+                    state.last_error = stderr
+            except asyncio.TimeoutError:
+                pass
+    except asyncio.CancelledError:
+        if buffer:
+            inserted = await insert_socketcan_batch(
+                state.session_id,
+                state.bus_interface,
+                state.bus_mode,
+                buffer,
+            )
+            state.frames_inserted += inserted
+        raise
+    except Exception as exc:
+        state.last_error = str(exc)
+    finally:
+        if state.process and state.process.returncode is None:
+            state.process.terminate()
+            try:
+                await asyncio.wait_for(state.process.wait(), timeout=1.0)
+            except asyncio.TimeoutError:
+                state.process.kill()
+                await state.process.wait()
+
+
+async def start_socketcan_capture(session_id: str, bus_interface: str, bus_mode: str) -> CaptureState:
+    iface = can_interface_state(bus_interface, bus_mode)
+    if not iface["exists"]:
+        raise HTTPException(status_code=400, detail=f"CAN interface {bus_interface} does not exist")
+    if not iface["up"]:
+        raise HTTPException(status_code=400, detail=f"CAN interface {bus_interface} is not UP")
+    if shutil.which("candump") is None:
+        raise HTTPException(status_code=500, detail="candump is not installed. Run: sudo apt install -y can-utils")
+
+    # End any old capture for this session id before starting a new one.
+    old = ACTIVE_CAPTURES.pop(session_id, None)
+    if old and old.process and old.process.returncode is None:
+        old.process.terminate()
+
+    state = CaptureState(
+        session_id=session_id,
+        bus_interface=bus_interface,
+        bus_mode=bus_mode,
+        started_epoch=time.time(),
+        task=asyncio.create_task(asyncio.sleep(0)),
+    )
+    state.task = asyncio.create_task(capture_socketcan_session(state))
+    ACTIVE_CAPTURES[session_id] = state
+    await asyncio.sleep(0.05)
+    return state
+
+
+async def stop_socketcan_capture(session_id: str) -> Optional[CaptureState]:
+    state = ACTIVE_CAPTURES.pop(session_id, None)
+    if not state:
+        return None
+
+    if state.process and state.process.returncode is None:
+        state.process.terminate()
+
+    try:
+        await asyncio.wait_for(state.task, timeout=2.0)
+    except asyncio.TimeoutError:
+        if state.process and state.process.returncode is None:
+            state.process.kill()
+        state.task.cancel()
+    except Exception as exc:
+        state.last_error = str(exc)
+    return state
+
+
+def runtime_metadata(
+    extra: Optional[Dict[str, Any]] = None,
+    *,
+    bus_interface: Optional[str] = None,
+    bus_mode: Optional[str] = None,
+    fake_can: Optional[bool] = None,
+) -> Dict[str, Any]:
+    fake = should_use_fake_capture(bus_interface, bus_mode) if fake_can is None else fake_can
     return {
         **(extra or {}),
         "app_env": RUNTIME_ENV,
         "production": IS_PRODUCTION,
         "development": not IS_PRODUCTION,
-        "fake_can": True,
-        "virtual": not IS_PRODUCTION,
+        "fake_can": fake,
+        "virtual": (bus_interface == "vcan0") or not IS_PRODUCTION,
+        "capture_kind": "simulation" if fake else "live",
         **({"bus_interface": bus_interface} if bus_interface else {}),
         **({"bus_mode": bus_mode} if bus_mode else {}),
     }
@@ -345,10 +661,11 @@ async def insert_raw_frame(
         bus_interface,
         jsonb_dumps(runtime_metadata({
             **(extra_metadata or {}),
+            "capture_source": "generated-fake-can",
             "signal_name": signal_name,
             "decoded": decoded,
             "data_hex": "".join(f"{byte:02X}" for byte in data),
-        }, bus_interface=bus_interface)),
+        }, bus_interface=bus_interface, fake_can=True)),
     )
 
 
@@ -395,18 +712,18 @@ async def insert_fake_burst(
 
 @router.get("/status")
 async def can_status() -> Dict[str, Any]:
-    default_active = "can2" if IS_PRODUCTION else "vcan0"
     default_mode = "listen-only" if IS_PRODUCTION else "simulation"
+    statuses = {name: can_interface_state(name, default_mode) for name in INTERFACES_TO_REPORT}
 
-    def iface(name: str) -> Dict[str, Any]:
-        return {
-            "exists": True,
-            "up": True,
-            "state": "PRODUCTION_FAKE_RECORDING_READY" if IS_PRODUCTION else "DEV_VIRTUAL_READY",
-            "virtual": not IS_PRODUCTION,
-            "fake_data": True,
-            "bus_interface": name,
-        }
+    configured_active = os.getenv("CAN_ACTIVE_INTERFACE", "").strip()
+    if configured_active and configured_active in statuses:
+        default_active = configured_active
+    else:
+        real_ready = [name for name in ("can2", "can0", "can1") if statuses[name]["exists"] and statuses[name]["up"]]
+        default_active = real_ready[0] if real_ready else "vcan0"
+
+    active_status = statuses.get(default_active, can_interface_state(default_active, default_mode))
+    active_fake = bool(active_status.get("fake_data"))
 
     return {
         "active": default_active,
@@ -415,13 +732,22 @@ async def can_status() -> Dict[str, Any]:
         "env": RUNTIME_ENV,
         "production": IS_PRODUCTION,
         "development": not IS_PRODUCTION,
-        "virtual": not IS_PRODUCTION,
-        "fake_data": True,
+        "virtual": default_active == "vcan0",
+        "fake_data": active_fake,
+        "capture_kind": "simulation" if active_fake else "live",
         "database": "postgres",
-        "vcan0": iface("vcan0"),
-        "can0": iface("can0"),
-        "can1": iface("can1"),
-        "can2": iface("can2"),
+        "active_captures": {
+            sid: {
+                "bus_interface": state.bus_interface,
+                "bus_mode": state.bus_mode,
+                "frames_inserted": state.frames_inserted,
+                "lines_seen": state.lines_seen,
+                "last_error": state.last_error,
+                "running": not state.task.done(),
+            }
+            for sid, state in ACTIVE_CAPTURES.items()
+        },
+        **statuses,
     }
 
 
@@ -468,16 +794,21 @@ async def start_session(payload: StartSessionRequest) -> Dict[str, Any]:
     )
 
     session_id = str(session["id"])
+    fake_capture = should_use_fake_capture(payload.bus_interface, payload.bus_mode)
+    capture_state: Optional[CaptureState] = None
 
-    for t in range(0, 1000, 100):
-        for base_frame in baseline_frames(t):
-            await insert_raw_frame(
-                session_id,
-                t,
-                base_frame,
-                bus_interface=payload.bus_interface,
-                extra_metadata={"frame_role": "initial_baseline"},
-            )
+    if fake_capture:
+        for t in range(0, 1000, 100):
+            for base_frame in baseline_frames(t):
+                await insert_raw_frame(
+                    session_id,
+                    t,
+                    base_frame,
+                    bus_interface=payload.bus_interface,
+                    extra_metadata={"frame_role": "initial_baseline"},
+                )
+    else:
+        capture_state = await start_socketcan_capture(session_id, payload.bus_interface, payload.bus_mode)
 
     return {
         "ok": True,
@@ -488,8 +819,11 @@ async def start_session(payload: StartSessionRequest) -> Dict[str, Any]:
         "app_env": RUNTIME_ENV,
         "production": IS_PRODUCTION,
         "development": not IS_PRODUCTION,
-        "fake_can": True,
-        "virtual": not IS_PRODUCTION,
+        "fake_can": fake_capture,
+        "virtual": payload.bus_interface == "vcan0",
+        "capture_kind": "simulation" if fake_capture else "live",
+        "capture_source": "generated-fake-can" if fake_capture else "socketcan-candump",
+        "capture_running": bool(capture_state and not capture_state.task.done()),
         "database": "postgres",
         "vehicle": {
             "id": str(vehicle["id"]),
@@ -600,14 +934,19 @@ async def post_marker(session_id: str, payload: MarkerRequest) -> Dict[str, Any]
         jsonb_dumps(runtime_metadata(payload.metadata, bus_interface=session["bus_interface"], bus_mode=session["bus_mode"])),
     )
 
-    frames_inserted = await insert_fake_burst(
-        session_id=session_id,
-        mission_code=mission_code or "",
-        step_code=payload.step_code,
-        marker_type=payload.marker_type,
-        timestamp_ms=payload.timestamp_ms,
-        bus_interface=session["bus_interface"],
-    )
+    fake_capture = should_use_fake_capture(session["bus_interface"], session["bus_mode"])
+    frames_inserted = 0
+    capture_source = "socketcan-candump"
+    if fake_capture:
+        capture_source = "generated-fake-can"
+        frames_inserted = await insert_fake_burst(
+            session_id=session_id,
+            mission_code=mission_code or "",
+            step_code=payload.step_code,
+            marker_type=payload.marker_type,
+            timestamp_ms=payload.timestamp_ms,
+            bus_interface=session["bus_interface"],
+        )
 
     return {
         "ok": True,
@@ -615,6 +954,9 @@ async def post_marker(session_id: str, payload: MarkerRequest) -> Dict[str, Any]
         "created_at": marker["created_at"],
         "frames_inserted": frames_inserted,
         "bus_interface": session["bus_interface"],
+        "bus_mode": session["bus_mode"],
+        "capture_kind": "simulation" if fake_capture else "live",
+        "capture_source": capture_source,
         "app_env": RUNTIME_ENV,
         "production": IS_PRODUCTION,
     }
@@ -622,6 +964,16 @@ async def post_marker(session_id: str, payload: MarkerRequest) -> Dict[str, Any]
 
 @router.post("/session/{session_id}/stop")
 async def stop_session(session_id: str, payload: StopSessionRequest) -> Dict[str, Any]:
+    existing_session = await fetchrow(
+        "SELECT id, bus_interface, bus_mode FROM can_sessions WHERE id = $1",
+        session_id,
+    )
+    if not existing_session:
+        raise HTTPException(status_code=404, detail="Unknown CAN session")
+
+    capture_state = await stop_socketcan_capture(session_id)
+    fake_capture = should_use_fake_capture(existing_session["bus_interface"], existing_session["bus_mode"])
+
     session = await fetchrow(
         """
         UPDATE can_sessions
@@ -631,11 +983,13 @@ async def stop_session(session_id: str, payload: StopSessionRequest) -> Dict[str
         RETURNING id, bus_interface, bus_mode, started_at, ended_at
         """,
         session_id,
-        jsonb_dumps(runtime_metadata({"stop_metadata": payload.metadata})),
+        jsonb_dumps(runtime_metadata({
+            "stop_metadata": payload.metadata,
+            "capture_frames_inserted": capture_state.frames_inserted if capture_state else None,
+            "capture_lines_seen": capture_state.lines_seen if capture_state else None,
+            "capture_error": capture_state.last_error if capture_state else None,
+        }, bus_interface=existing_session["bus_interface"], bus_mode=existing_session["bus_mode"], fake_can=fake_capture)),
     )
-
-    if not session:
-        raise HTTPException(status_code=404, detail="Unknown CAN session")
 
     frame_count = await fetchrow(
         "SELECT COUNT(*) AS count FROM can_frames_raw WHERE session_id = $1",
@@ -655,6 +1009,12 @@ async def stop_session(session_id: str, payload: StopSessionRequest) -> Dict[str
         "frames": frame_count["count"],
         "markers": marker_count["count"],
         "bus_interface": session["bus_interface"],
+        "bus_mode": session["bus_mode"],
+        "capture_kind": "simulation" if fake_capture else "live",
+        "fake_can": fake_capture,
+        "capture_frames_inserted": capture_state.frames_inserted if capture_state else None,
+        "capture_lines_seen": capture_state.lines_seen if capture_state else None,
+        "capture_error": capture_state.last_error if capture_state else None,
         "app_env": RUNTIME_ENV,
         "production": IS_PRODUCTION,
     }
@@ -681,11 +1041,7 @@ async def get_session_frames(session_id: str, limit: int = 250) -> Dict[str, Any
             metadata->>'decoded' AS decoded,
             source AS bus_interface,
             metadata->>'app_env' AS app_env,
-            CASE
-                WHEN metadata->>'production' = 'true'
-                THEN 'fake-can-production'
-                ELSE 'fake-can-development'
-            END AS source
+            COALESCE(metadata->>'capture_source', metadata->>'source', 'unknown') AS source
         FROM can_frames_raw
         WHERE session_id = $1
         ORDER BY timestamp_ms ASC, can_id ASC

@@ -17,6 +17,24 @@ type SignalReconMissionProps = {
 
 type MissionPanel = "game" | "steps" | "details" | "session";
 
+type BrainAnalyzeOptions = {
+    useLlmOverride?: boolean;
+    useEmbeddingsOverride?: boolean;
+    persist?: boolean;
+    openConsole?: boolean;
+};
+
+type SavedAnalysisResponse = {
+    ok?: boolean;
+    session_id?: string;
+    features?: Array<Record<string, unknown>>;
+    correlations?: Array<Record<string, unknown>>;
+    latest_report?: {
+        content?: string | null;
+        metadata?: unknown;
+    } | null;
+};
+
 const PANELS: Array<{ id: MissionPanel; label: string }> = [
     { id: "game", label: "PLAY" },
     { id: "steps", label: "STEPS" },
@@ -54,8 +72,36 @@ function shortSessionId(sessionId: string | null) {
     return `${sessionId.slice(0, 8)}…${sessionId.slice(-4)}`;
 }
 
+function asRecord(value: unknown): Record<string, unknown> {
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+        return value as Record<string, unknown>;
+    }
+    return {};
+}
+
+function parseMetadata(value: unknown): Record<string, unknown> {
+    if (typeof value === "string") {
+        try {
+            return asRecord(JSON.parse(value));
+        } catch {
+            return {};
+        }
+    }
+    return asRecord(value);
+}
+
+function toNumber(value: unknown, fallback = 0) {
+    return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function toNullableString(value: unknown) {
+    return typeof value === "string" && value.length > 0 ? value : null;
+}
+
 export function SignalReconMission({ onExit }: SignalReconMissionProps) {
     const selectedMission = useSignalReconStore((s) => s.selectedMission);
+    const vehicleSlug = useSignalReconStore((s) => s.vehicleSlug);
+    const vehicleIdentity = useSignalReconStore((s) => s.vehicleIdentity);
     const steps = useSignalReconStore((s) => s.steps);
     const activeSessionId = useSignalReconStore((s) => s.activeSessionId);
     const activeRunId = useSignalReconStore((s) => s.activeRunId);
@@ -84,8 +130,9 @@ export function SignalReconMission({ onExit }: SignalReconMissionProps) {
     const [brainError, setBrainError] = useState<string | null>(null);
     const [brainAnalysis, setBrainAnalysis] = useState<BrainAnalysisResult | null>(null);
     const [brainLogs, setBrainLogs] = useState<string[]>([]);
-    const [useLlm, setUseLlm] = useState(true);
-    const [useEmbeddings, setUseEmbeddings] = useState(true);
+    const [lastAnalyzedSessionId, setLastAnalyzedSessionId] = useState<string | null>(null);
+    const [useLlm, setUseLlm] = useState(false);
+    const [useEmbeddings, setUseEmbeddings] = useState(false);
     const [autoAnalyze, setAutoAnalyze] = useState(true);
 
     useEffect(() => {
@@ -129,6 +176,24 @@ export function SignalReconMission({ onExit }: SignalReconMissionProps) {
         )
         : 0;
 
+
+    const captureKind = selectedMode === "simulation" || selectedInterface === "vcan0" ? "simulation" : "live";
+    const busSafetyLabel = selectedMode === "listen-only"
+        ? "LIVE / LISTEN-ONLY"
+        : selectedMode === "live"
+            ? "LIVE / ACTIVE"
+            : "SIMULATION";
+    const topCandidate = useMemo(
+        () => [...(brainAnalysis?.candidates ?? [])].sort((a, b) => b.confidence - a.confidence)[0] ?? null,
+        [brainAnalysis],
+    );
+    const confidenceSummary = topCandidate
+        ? `${topCandidate.can_id_hex} ${Math.round(topCandidate.confidence * 100)}%`
+        : brainAnalysis?.analysis_mode === "baseline_profile"
+            ? "noise profile"
+            : "not analyzed";
+    const latestSessionId = activeSessionId ?? brainAnalysis?.session_id ?? lastAnalyzedSessionId;
+
     const panelIndex = PANELS.findIndex((panel) => panel.id === activePanel);
     const canGoBack = !isRunning && panelIndex > 0;
     const canGoForward = !isRunning && panelIndex < PANELS.length - 1;
@@ -144,11 +209,17 @@ export function SignalReconMission({ onExit }: SignalReconMissionProps) {
     };
 
     const ensureSession = async () => {
-        if (activeSessionId) return activeSessionId;
-        return startSession({
+        if (activeSessionId) {
+            setLastAnalyzedSessionId(activeSessionId);
+            return activeSessionId;
+        }
+
+        const sessionId = await startSession({
             busInterface: selectedInterface,
             busMode: selectedMode,
         });
+        setLastAnalyzedSessionId(sessionId);
+        return sessionId;
     };
 
     const appendBrainLog = (line: string) => {
@@ -158,28 +229,38 @@ export function SignalReconMission({ onExit }: SignalReconMissionProps) {
         ].slice(-80));
     };
 
+    const resolveAnalysisSessionId = (sessionIdOverride?: string) =>
+        sessionIdOverride ??
+        useSignalReconStore.getState().activeSessionId ??
+        activeSessionId ??
+        brainAnalysis?.session_id ??
+        lastAnalyzedSessionId;
+
     const handleAnalyzeSession = async (
         sessionIdOverride?: string,
-        source: "manual" | "step-complete" | "mission-complete" = "manual",
+        source: "manual" | "step-complete" | "mission-complete" | "llm-explain" = "manual",
+        options: BrainAnalyzeOptions = {},
     ) => {
-        const sessionId =
-            sessionIdOverride ??
-            useSignalReconStore.getState().activeSessionId ??
-            activeSessionId;
+        const sessionId = resolveAnalysisSessionId(sessionIdOverride);
+        const requestUseLlm = options.useLlmOverride ?? useLlm;
+        const requestUseEmbeddings = options.useEmbeddingsOverride ?? useEmbeddings;
 
-        setBrainOpen(true);
+        if (options.openConsole !== false) {
+            setBrainOpen(true);
+        }
 
         if (!sessionId) {
             setBrainError("Start or record a session before running Pi Brain analysis.");
-            appendBrainLog("[ai] blocked: no active session id");
+            appendBrainLog("[ai] blocked: no session id available");
             return;
         }
 
         setBrainAnalyzing(true);
         setBrainError(null);
         appendBrainLog(`[ai] ${source}: analyzing ${shortSessionId(sessionId)}`);
+        appendBrainLog(`[bus] ${selectedInterface}/${selectedMode}`);
         appendBrainLog(
-            `[ai] options: llm=${useLlm ? "on" : "off"} embeddings=${useEmbeddings ? "on" : "off"}`,
+            `[ai] options: llm=${requestUseLlm ? "on" : "off"} embeddings=${requestUseEmbeddings ? "on" : "off"}`,
         );
 
         try {
@@ -190,11 +271,11 @@ export function SignalReconMission({ onExit }: SignalReconMissionProps) {
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         marker_window_ms: 900,
-                        use_llm: useLlm,
-                        use_embeddings: useEmbeddings,
+                        use_llm: requestUseLlm,
+                        use_embeddings: requestUseEmbeddings,
                         llm_model: "qwen2.5:3b",
                         embed_model: "nomic-embed-text",
-                        persist: true,
+                        persist: options.persist ?? true,
                     }),
                 },
             );
@@ -203,16 +284,19 @@ export function SignalReconMission({ onExit }: SignalReconMissionProps) {
 
             if (!res.ok || data.ok === false) {
                 throw new Error(
-                    typeof data.error === "string"
-                        ? data.error
-                        : "Pi Brain analysis failed.",
+                    typeof data.detail === "string"
+                        ? data.detail
+                        : typeof data.error === "string"
+                            ? data.error
+                            : `Pi Brain analysis failed with HTTP ${res.status}.`,
                 );
             }
 
             const nextAnalysis = data as BrainAnalysisResult;
             setBrainAnalysis(nextAnalysis);
+            setLastAnalyzedSessionId(nextAnalysis.session_id ?? sessionId);
             appendBrainLog(
-                `[ai] done: frames=${nextAnalysis.frames_analyzed} markers=${nextAnalysis.markers} candidates=${nextAnalysis.candidates.length}`,
+                `[ai] done: mode=${nextAnalysis.analysis_mode ?? "unknown"} frames=${nextAnalysis.frames_analyzed} markers=${nextAnalysis.markers} candidates=${nextAnalysis.candidates.length}`,
             );
             appendBrainLog(
                 `[llm] ${nextAnalysis.llm_available ? `on (${nextAnalysis.llm_model ?? "model unknown"})` : `off${nextAnalysis.llm_error ? `: ${nextAnalysis.llm_error}` : ""}`}`,
@@ -227,6 +311,93 @@ export function SignalReconMission({ onExit }: SignalReconMissionProps) {
         }
     };
 
+    const handleQuickAnalyze = (
+        sessionIdOverride?: string,
+        source: "manual" | "step-complete" | "mission-complete" = "manual",
+    ) =>
+        handleAnalyzeSession(sessionIdOverride, source, {
+            useLlmOverride: false,
+            useEmbeddingsOverride: false,
+            persist: true,
+        });
+
+    const handleExplainWithLlm = () => {
+        setUseLlm(true);
+        setUseEmbeddings(true);
+        return handleAnalyzeSession(undefined, "llm-explain", {
+            useLlmOverride: true,
+            useEmbeddingsOverride: true,
+            persist: true,
+        });
+    };
+
+    const handleLoadLatestAnalysis = async () => {
+        const sessionId = resolveAnalysisSessionId();
+        setBrainOpen(true);
+
+        if (!sessionId) {
+            setBrainError("No session id available to read from the database.");
+            appendBrainLog("[db] blocked: no session id available");
+            return;
+        }
+
+        setBrainAnalyzing(true);
+        setBrainError(null);
+        appendBrainLog(`[db] reading latest saved analysis for ${shortSessionId(sessionId)}`);
+
+        try {
+            const res = await fetch(`${getApiBaseUrl()}/data/can/session/${sessionId}/analysis`);
+            const data = (await res.json().catch(() => ({}))) as SavedAnalysisResponse;
+
+            if (!res.ok || data.ok === false) {
+                throw new Error(`Database analysis read failed with HTTP ${res.status}.`);
+            }
+
+            const reportMetadata = parseMetadata(data.latest_report?.metadata);
+            const candidates = Array.isArray(reportMetadata.top_candidates)
+                ? (reportMetadata.top_candidates as BrainAnalysisResult["candidates"])
+                : [];
+            const heatmap = asRecord(reportMetadata.heatmap) as BrainAnalysisResult["heatmap"];
+            const baselineProfile = asRecord(reportMetadata.baseline_profile) as BrainAnalysisResult["baseline_profile"];
+            const analysisMode = toNullableString(reportMetadata.analysis_mode);
+            const model = toNullableString(reportMetadata.model);
+            const llmError = toNullableString(reportMetadata.llm_error);
+            const reportContent = data.latest_report?.content ?? null;
+
+            const nextAnalysis: BrainAnalysisResult = {
+                ok: true,
+                session_id: data.session_id ?? sessionId,
+                analysis_mode: analysisMode ?? undefined,
+                target_expected:
+                    typeof reportMetadata.target_expected === "boolean"
+                        ? reportMetadata.target_expected
+                        : undefined,
+                baseline_profile: baselineProfile,
+                frames_analyzed: toNumber(reportMetadata.frames_analyzed),
+                markers: toNumber(reportMetadata.markers),
+                candidates,
+                heatmap,
+                llm_model: model,
+                llm_available: Boolean(reportContent && !llmError),
+                llm_error: llmError,
+                analysis: reportContent,
+                persisted: true,
+            };
+
+            setBrainAnalysis(nextAnalysis);
+            setLastAnalyzedSessionId(nextAnalysis.session_id);
+            appendBrainLog(
+                `[db] loaded: features=${data.features?.length ?? 0} correlations=${data.correlations?.length ?? 0} candidates=${candidates.length}`,
+            );
+        } catch (err) {
+            const message = err instanceof Error ? err.message : "Failed to read saved analysis.";
+            setBrainError(message);
+            appendBrainLog(`[db] error: ${message}`);
+        } finally {
+            setBrainAnalyzing(false);
+        }
+    };
+
     const handleRunCurrentStep = async () => {
         setBusy(true);
         setError(null);
@@ -236,7 +407,7 @@ export function SignalReconMission({ onExit }: SignalReconMissionProps) {
             const sessionId = await ensureSession();
             await runStep(displayStep ?? undefined);
             if (autoAnalyze) {
-                await handleAnalyzeSession(sessionId, "step-complete");
+                await handleQuickAnalyze(sessionId, "step-complete");
             }
         } catch (err) {
             setError(
@@ -258,7 +429,7 @@ export function SignalReconMission({ onExit }: SignalReconMissionProps) {
             const sessionId = await ensureSession();
             await runSelectedMission();
             if (autoAnalyze) {
-                await handleAnalyzeSession(sessionId, "mission-complete");
+                await handleQuickAnalyze(sessionId, "mission-complete");
             }
         } catch (err) {
             setError(
@@ -283,7 +454,9 @@ export function SignalReconMission({ onExit }: SignalReconMissionProps) {
 
         try {
             if (activeRunId) cancelActiveRun();
-            if (activeSessionId) {
+            const sessionId = activeSessionId;
+            if (sessionId) {
+                setLastAnalyzedSessionId(sessionId);
                 await stopSession({ ui_event: "mission_terminal_closed" });
             }
             onExit?.();
@@ -520,9 +693,9 @@ export function SignalReconMission({ onExit }: SignalReconMissionProps) {
                 <p className="mb-3 text-xs text-yellow-300">SESSION</p>
                 <div className="grid gap-2 text-slate-300 sm:grid-cols-2">
                     <p>
-                        id:{" "}
+                        session:{" "}
                         <span className="text-slate-500">
-                            {shortSessionId(activeSessionId)}
+                            {shortSessionId(latestSessionId)}
                         </span>
                     </p>
                     <p>
@@ -530,11 +703,20 @@ export function SignalReconMission({ onExit }: SignalReconMissionProps) {
                         <span className="text-slate-500">{formatPhase(activePhase)}</span>
                     </p>
                     <p>
-                        interface:{" "}
-                        <span className="text-slate-500">{selectedInterface}</span>
+                        vehicle:{" "}
+                        <span className="text-slate-500">{vehicleIdentity.alias ?? vehicleIdentity.model}</span>
                     </p>
                     <p>
-                        mode: <span className="text-slate-500">{selectedMode}</span>
+                        slug: <span className="text-slate-500">{vehicleSlug}</span>
+                    </p>
+                    <p>
+                        capture:{" "}
+                        <span className={captureKind === "live" ? "text-green-300" : "text-cyan-300"}>
+                            {busSafetyLabel}
+                        </span>
+                    </p>
+                    <p>
+                        interface: <span className="text-slate-500">{selectedInterface}</span>
                     </p>
                     <p>
                         steps: <span className="text-slate-500">{steps.length}</span>
@@ -545,18 +727,48 @@ export function SignalReconMission({ onExit }: SignalReconMissionProps) {
                             {Math.round(missionProgress * 100)}%
                         </span>
                     </p>
+                    <p>
+                        ai result: <span className="text-yellow-300">{confidenceSummary}</span>
+                    </p>
+                    <p>
+                        analyzed frames:{" "}
+                        <span className="text-slate-500">{brainAnalysis?.frames_analyzed ?? 0}</span>
+                    </p>
+                    <p>
+                        llm:{" "}
+                        <span className={brainAnalysis?.llm_available ? "text-green-300" : "text-slate-500"}>
+                            {brainAnalysis?.llm_available ? `ON · ${brainAnalysis.llm_model ?? "model"}` : "OFF"}
+                        </span>
+                    </p>
+                    <p>
+                        db: <span className="text-slate-500">{brainAnalysis?.persisted ? "saved" : "not loaded"}</span>
+                    </p>
                 </div>
             </div>
 
             <div className="rounded-xl border border-cyan-400/20 bg-cyan-500/10 p-4 text-cyan-100">
                 <p className="mb-3 text-xs text-cyan-200">PI BRAIN</p>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-6">
                     <GameButton
-                        onPress={() => void handleAnalyzeSession(undefined, "manual")}
-                        disabled={brainAnalyzing || !activeSessionId}
+                        onPress={() => void handleQuickAnalyze(undefined, "manual")}
+                        disabled={brainAnalyzing || !resolveAnalysisSessionId()}
                         className="rounded-lg border border-cyan-300/40 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                         {brainAnalyzing ? "ANALYZING" : "ANALYZE"}
+                    </GameButton>
+                    <GameButton
+                        onPress={() => void handleExplainWithLlm()}
+                        disabled={brainAnalyzing || !resolveAnalysisSessionId()}
+                        className="rounded-lg border border-purple-300/40 bg-purple-500/10 px-3 py-2 text-xs font-bold text-purple-100 hover:bg-purple-400/20 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                        EXPLAIN
+                    </GameButton>
+                    <GameButton
+                        onPress={() => void handleLoadLatestAnalysis()}
+                        disabled={brainAnalyzing || !resolveAnalysisSessionId()}
+                        className="rounded-lg border border-cyan-300/40 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                        READ DB
                     </GameButton>
                     <GameButton
                         onPress={() => setBrainOpen(true)}
@@ -587,8 +799,7 @@ export function SignalReconMission({ onExit }: SignalReconMissionProps) {
                     </GameButton>
                 </div>
                 <p className="mt-3 text-xs text-cyan-100/80">
-                    AI analysis runs after each completed step/mission when AUTO is on.
-                    LLM controls whether Ollama writes the explanation; probabilities still work with LLM off.
+                    AUTO runs quick ID confidence only, with LLM and vectors off for speed. Use EXPLAIN when you want Ollama to read the saved session and write the deeper report.
                 </p>
             </div>
         </div>
@@ -606,14 +817,14 @@ export function SignalReconMission({ onExit }: SignalReconMissionProps) {
                                 <span>{selectedMission.mission_code}</span>
                                 <span className="text-slate-600">/</span>
                                 <span className="truncate text-slate-400">
-                                    {selectedInterface} · {selectedMode}
+                                    {selectedInterface} · {busSafetyLabel}
                                 </span>
                             </div>
                             <p className="truncate text-base font-black text-green-100 sm:text-lg">
                                 {selectedMission.title}
                             </p>
                             <p className="truncate text-[11px] text-slate-500 sm:text-xs">
-                                {displayStep?.label ?? selectedMission.target}
+                                {displayStep?.label ?? selectedMission.target} · {vehicleSlug} · {confidenceSummary}
                             </p>
                         </div>
 
@@ -622,7 +833,7 @@ export function SignalReconMission({ onExit }: SignalReconMissionProps) {
                                 <GameButton
                                     onPress={() => {
                                         if (!brainAnalysis && activeSessionId) {
-                                            void handleAnalyzeSession(undefined, "manual");
+                                            void handleQuickAnalyze(undefined, "manual");
                                         } else {
                                             setBrainOpen(true);
                                         }
@@ -630,7 +841,7 @@ export function SignalReconMission({ onExit }: SignalReconMissionProps) {
                                     disabled={brainAnalyzing || (!activeSessionId && !brainAnalysis)}
                                     className="rounded-lg border border-cyan-300/40 bg-cyan-500/10 px-2 py-1 text-[10px] font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-40 sm:text-xs"
                                 >
-                                    {brainAnalyzing ? "AI..." : "AI"}
+                                    {brainAnalyzing ? "AI..." : "QUICK ID"}
                                 </GameButton>
 
                                 <GameButton
@@ -667,7 +878,7 @@ export function SignalReconMission({ onExit }: SignalReconMissionProps) {
                             </div>
 
                             <span className="max-w-[120px] truncate text-[10px] text-slate-500 sm:max-w-[220px]">
-                                {shortSessionId(activeSessionId)}
+                                {shortSessionId(latestSessionId)}
                             </span>
                         </div>
                     </div>
@@ -762,11 +973,11 @@ export function SignalReconMission({ onExit }: SignalReconMissionProps) {
                         </GameButton>
 
                         <GameButton
-                            onPress={() => void handleAnalyzeSession(undefined, "manual")}
+                            onPress={() => void handleQuickAnalyze(undefined, "manual")}
                             disabled={brainAnalyzing || !activeSessionId}
                             className="rounded-lg border border-cyan-300/40 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-40 sm:px-2 sm:py-1 sm:text-sm"
                         >
-                            {brainAnalyzing ? "AI..." : "AI"}
+                            {brainAnalyzing ? "AI..." : "QUICK ID"}
                         </GameButton>
 
                         <GameButton
@@ -786,14 +997,20 @@ export function SignalReconMission({ onExit }: SignalReconMissionProps) {
                 error={brainError}
                 analysis={brainAnalysis}
                 logs={brainLogs}
-                sessionId={activeSessionId}
+                sessionId={latestSessionId}
                 missionCode={selectedMission.mission_code}
                 missionTitle={selectedMission.title}
+                vehicleSlug={vehicleSlug}
+                busInterface={selectedInterface}
+                busMode={selectedMode}
+                sourceLabel={busSafetyLabel}
                 useLlm={useLlm}
                 useEmbeddings={useEmbeddings}
                 autoAnalyze={autoAnalyze}
                 onClose={() => setBrainOpen(false)}
-                onAnalyze={() => void handleAnalyzeSession(undefined, "manual")}
+                onAnalyze={() => void handleQuickAnalyze(undefined, "manual")}
+                onExplainWithLlm={() => void handleExplainWithLlm()}
+                onLoadLatest={() => void handleLoadLatestAnalysis()}
                 onToggleLlm={() => setUseLlm((value) => !value)}
                 onToggleEmbeddings={() => setUseEmbeddings((value) => !value)}
                 onToggleAutoAnalyze={() => setAutoAnalyze((value) => !value)}
