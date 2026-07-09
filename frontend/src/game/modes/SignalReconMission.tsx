@@ -11,8 +11,29 @@ import {
     type BrainAnalysisResult,
 } from "./SignalReconBrainConsole";
 
+type MissionRunSummary = {
+    session_id: string;
+    mission_code: string;
+    vehicle_slug: string;
+    bus_interface: string;
+    bus_mode: string;
+    capture_kind: string;
+    source_label: string;
+    status: string;
+    analysis_mode: string | null;
+    confidence: number | null;
+    top_can_id_hex: string | null;
+    frame_count: number;
+    marker_count: number;
+    started_at: string | null;
+    ended_at: string | null;
+};
+
 type SignalReconMissionProps = {
     onExit?: () => void;
+    initialSessionId?: string | null;
+    initialMissionProgress?: MissionRunSummary | null;
+    onDatabaseChanged?: () => void;
 };
 
 type MissionPanel = "game" | "steps" | "details" | "session";
@@ -98,7 +119,12 @@ function toNullableString(value: unknown) {
     return typeof value === "string" && value.length > 0 ? value : null;
 }
 
-export function SignalReconMission({ onExit }: SignalReconMissionProps) {
+export function SignalReconMission({
+    onExit,
+    initialSessionId = null,
+    initialMissionProgress = null,
+    onDatabaseChanged,
+}: SignalReconMissionProps) {
     const selectedMission = useSignalReconStore((s) => s.selectedMission);
     const vehicleSlug = useSignalReconStore((s) => s.vehicleSlug);
     const vehicleIdentity = useSignalReconStore((s) => s.vehicleIdentity);
@@ -192,7 +218,13 @@ export function SignalReconMission({ onExit }: SignalReconMissionProps) {
         : brainAnalysis?.analysis_mode === "baseline_profile"
             ? "noise profile"
             : "not analyzed";
-    const latestSessionId = activeSessionId ?? brainAnalysis?.session_id ?? lastAnalyzedSessionId;
+    const latestSessionId =
+        activeSessionId ??
+        brainAnalysis?.session_id ??
+        lastAnalyzedSessionId ??
+        initialSessionId ??
+        initialMissionProgress?.session_id ??
+        null;
 
     const panelIndex = PANELS.findIndex((panel) => panel.id === activePanel);
     const canGoBack = !isRunning && panelIndex > 0;
@@ -234,7 +266,10 @@ export function SignalReconMission({ onExit }: SignalReconMissionProps) {
         useSignalReconStore.getState().activeSessionId ??
         activeSessionId ??
         brainAnalysis?.session_id ??
-        lastAnalyzedSessionId;
+        lastAnalyzedSessionId ??
+        initialSessionId ??
+        initialMissionProgress?.session_id ??
+        null;
 
     const handleAnalyzeSession = async (
         sessionIdOverride?: string,
@@ -331,9 +366,12 @@ export function SignalReconMission({ onExit }: SignalReconMissionProps) {
         });
     };
 
-    const handleLoadLatestAnalysis = async () => {
-        const sessionId = resolveAnalysisSessionId();
-        setBrainOpen(true);
+    const handleLoadLatestAnalysis = async (
+        sessionIdOverride?: string,
+        openConsole = true,
+    ) => {
+        const sessionId = resolveAnalysisSessionId(sessionIdOverride);
+        if (openConsole) setBrainOpen(true);
 
         if (!sessionId) {
             setBrainError("No session id available to read from the database.");
@@ -398,6 +436,75 @@ export function SignalReconMission({ onExit }: SignalReconMissionProps) {
         }
     };
 
+    useEffect(() => {
+        const savedSessionId = initialSessionId ?? initialMissionProgress?.session_id ?? null;
+        if (!savedSessionId || activeSessionId) return;
+
+        setLastAnalyzedSessionId(savedSessionId);
+        appendBrainLog(
+            `[db] review mode: latest saved ${shortSessionId(savedSessionId)} (${initialMissionProgress?.frame_count ?? 0} frames)`,
+        );
+        void handleLoadLatestAnalysis(savedSessionId, false);
+        // This effect intentionally refreshes when the selected mission's saved
+        // DB session changes, not on every log/state update.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeSessionId, initialSessionId, initialMissionProgress?.session_id, selectedMission?.mission_code]);
+
+    const handleDeleteSession = async () => {
+        const sessionId = resolveAnalysisSessionId();
+        if (!sessionId || brainAnalyzing || isRunning || activeSessionId === sessionId) return;
+
+        const ok = window.confirm(
+            `Delete CAN session ${shortSessionId(sessionId)} and all derived analysis? This cannot be undone.`,
+        );
+        if (!ok) return;
+
+        setBrainAnalyzing(true);
+        setBrainError(null);
+        appendBrainLog(`[db] deleting dead/mistake run ${shortSessionId(sessionId)}`);
+
+        try {
+            const res = await fetch(`${getApiBaseUrl()}/data/can/session/${sessionId}`, {
+                method: "DELETE",
+            });
+            const data = await res.json().catch(() => ({}));
+
+            if (!res.ok || data.ok === false) {
+                throw new Error(
+                    typeof data.detail === "string"
+                        ? data.detail
+                        : typeof data.error === "string"
+                            ? data.error
+                            : `Delete failed with HTTP ${res.status}.`,
+                );
+            }
+
+            setBrainAnalysis(null);
+            setLastAnalyzedSessionId(null);
+            appendBrainLog(`[db] deleted ${shortSessionId(sessionId)}`);
+            onDatabaseChanged?.();
+            onExit?.();
+        } catch (err) {
+            const message = err instanceof Error ? err.message : "Failed to delete session.";
+            setBrainError(message);
+            appendBrainLog(`[db] delete error: ${message}`);
+        } finally {
+            setBrainAnalyzing(false);
+        }
+    };
+
+    const handleExportSession = () => {
+        const sessionId = resolveAnalysisSessionId();
+        if (!sessionId) {
+            setBrainError("No saved session is available to export.");
+            appendBrainLog("[export] blocked: no session id available");
+            return;
+        }
+
+        appendBrainLog(`[export] opening JSON export for ${shortSessionId(sessionId)}`);
+        window.open(`${getApiBaseUrl()}/data/can/session/${sessionId}/export?format=json`, "_blank", "noopener,noreferrer");
+    };
+
     const handleRunCurrentStep = async () => {
         setBusy(true);
         setError(null);
@@ -409,6 +516,7 @@ export function SignalReconMission({ onExit }: SignalReconMissionProps) {
             if (autoAnalyze) {
                 await handleQuickAnalyze(sessionId, "step-complete");
             }
+            onDatabaseChanged?.();
         } catch (err) {
             setError(
                 err instanceof Error
@@ -431,6 +539,7 @@ export function SignalReconMission({ onExit }: SignalReconMissionProps) {
             if (autoAnalyze) {
                 await handleQuickAnalyze(sessionId, "mission-complete");
             }
+            onDatabaseChanged?.();
         } catch (err) {
             setError(
                 err instanceof Error
@@ -691,7 +800,12 @@ export function SignalReconMission({ onExit }: SignalReconMissionProps) {
 
             <div className="rounded-xl border border-green-400/20 bg-slate-950/80 p-4">
                 <p className="mb-3 text-xs text-yellow-300">SESSION</p>
-                <div className="grid gap-2 text-slate-300 sm:grid-cols-2">
+                {!activeSessionId && initialMissionProgress && (
+                    <div className="mb-3 rounded-lg border border-cyan-300/30 bg-cyan-500/10 p-2 text-xs text-cyan-100">
+                        REVIEWING SAVED RUN · {initialMissionProgress.frame_count} frames · {initialMissionProgress.marker_count} markers · {initialMissionProgress.source_label}
+                    </div>
+                )}
+                < div className="grid gap-2 text-slate-300 sm:grid-cols-2">
                     <p>
                         session:{" "}
                         <span className="text-slate-500">
@@ -744,64 +858,78 @@ export function SignalReconMission({ onExit }: SignalReconMissionProps) {
                         db: <span className="text-slate-500">{brainAnalysis?.persisted ? "saved" : "not loaded"}</span>
                     </p>
                 </div>
-            </div>
 
-            <div className="rounded-xl border border-cyan-400/20 bg-cyan-500/10 p-4 text-cyan-100">
-                <p className="mb-3 text-xs text-cyan-200">PI BRAIN</p>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-6">
-                    <GameButton
-                        onPress={() => void handleQuickAnalyze(undefined, "manual")}
-                        disabled={brainAnalyzing || !resolveAnalysisSessionId()}
-                        className="rounded-lg border border-cyan-300/40 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                        {brainAnalyzing ? "ANALYZING" : "ANALYZE"}
-                    </GameButton>
-                    <GameButton
-                        onPress={() => void handleExplainWithLlm()}
-                        disabled={brainAnalyzing || !resolveAnalysisSessionId()}
-                        className="rounded-lg border border-purple-300/40 bg-purple-500/10 px-3 py-2 text-xs font-bold text-purple-100 hover:bg-purple-400/20 disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                        EXPLAIN
-                    </GameButton>
-                    <GameButton
-                        onPress={() => void handleLoadLatestAnalysis()}
-                        disabled={brainAnalyzing || !resolveAnalysisSessionId()}
-                        className="rounded-lg border border-cyan-300/40 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                        READ DB
-                    </GameButton>
-                    <GameButton
-                        onPress={() => setBrainOpen(true)}
-                        disabled={!brainAnalysis && !brainError}
-                        className="rounded-lg border border-green-300/40 bg-green-500/10 px-3 py-2 text-xs font-bold text-green-100 hover:bg-green-400/20 disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                        RESULTS
-                    </GameButton>
-                    <GameButton
-                        onPress={() => setUseLlm((value) => !value)}
-                        disabled={isRunning || brainAnalyzing}
-                        className={`rounded-lg border px-3 py-2 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-40 ${useLlm
-                            ? "border-green-300/40 bg-green-500/10 text-green-100 hover:bg-green-400/20"
-                            : "border-slate-600 bg-slate-900 text-slate-400 hover:bg-slate-800"
-                            }`}
-                    >
-                        LLM {useLlm ? "ON" : "OFF"}
-                    </GameButton>
-                    <GameButton
-                        onPress={() => setAutoAnalyze((value) => !value)}
-                        disabled={isRunning || brainAnalyzing}
-                        className={`rounded-lg border px-3 py-2 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-40 ${autoAnalyze
-                            ? "border-yellow-300/40 bg-yellow-500/10 text-yellow-100 hover:bg-yellow-400/20"
-                            : "border-slate-600 bg-slate-900 text-slate-400 hover:bg-slate-800"
-                            }`}
-                    >
-                        AUTO {autoAnalyze ? "ON" : "OFF"}
-                    </GameButton>
+                <div className="rounded-xl border border-cyan-400/20 bg-cyan-500/10 p-4 text-cyan-100">
+                    <p className="mb-3 text-xs text-cyan-200">PI BRAIN</p>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-6">
+                        <GameButton
+                            onPress={() => void handleQuickAnalyze(undefined, "manual")}
+                            disabled={brainAnalyzing || !resolveAnalysisSessionId()}
+                            className="rounded-lg border border-cyan-300/40 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                            {brainAnalyzing ? "ANALYZING" : "ANALYZE"}
+                        </GameButton>
+                        <GameButton
+                            onPress={() => void handleExplainWithLlm()}
+                            disabled={brainAnalyzing || !resolveAnalysisSessionId()}
+                            className="rounded-lg border border-purple-300/40 bg-purple-500/10 px-3 py-2 text-xs font-bold text-purple-100 hover:bg-purple-400/20 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                            EXPLAIN
+                        </GameButton>
+                        <GameButton
+                            onPress={() => void handleLoadLatestAnalysis(undefined, true)}
+                            disabled={brainAnalyzing || !resolveAnalysisSessionId()}
+                            className="rounded-lg border border-cyan-300/40 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                            READ DB
+                        </GameButton>
+                        <GameButton
+                            onPress={() => setBrainOpen(true)}
+                            disabled={!brainAnalysis && !brainError}
+                            className="rounded-lg border border-green-300/40 bg-green-500/10 px-3 py-2 text-xs font-bold text-green-100 hover:bg-green-400/20 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                            RESULTS
+                        </GameButton>
+                        <GameButton
+                            onPress={handleExportSession}
+                            disabled={!resolveAnalysisSessionId()}
+                            className="rounded-lg border border-cyan-300/40 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                            EXPORT
+                        </GameButton>
+                        <GameButton
+                            onPress={() => void handleDeleteSession()}
+                            disabled={brainAnalyzing || isRunning || !resolveAnalysisSessionId() || Boolean(activeSessionId)}
+                            className="rounded-lg border border-red-300/40 bg-red-500/10 px-3 py-2 text-xs font-bold text-red-100 hover:bg-red-400/20 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                            DELETE
+                        </GameButton>
+                        <GameButton
+                            onPress={() => setUseLlm((value) => !value)}
+                            disabled={isRunning || brainAnalyzing}
+                            className={`rounded-lg border px-3 py-2 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-40 ${useLlm
+                                ? "border-green-300/40 bg-green-500/10 text-green-100 hover:bg-green-400/20"
+                                : "border-slate-600 bg-slate-900 text-slate-400 hover:bg-slate-800"
+                                }`}
+                        >
+                            LLM {useLlm ? "ON" : "OFF"}
+                        </GameButton>
+                        <GameButton
+                            onPress={() => setAutoAnalyze((value) => !value)}
+                            disabled={isRunning || brainAnalyzing}
+                            className={`rounded-lg border px-3 py-2 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-40 ${autoAnalyze
+                                ? "border-yellow-300/40 bg-yellow-500/10 text-yellow-100 hover:bg-yellow-400/20"
+                                : "border-slate-600 bg-slate-900 text-slate-400 hover:bg-slate-800"
+                                }`}
+                        >
+                            AUTO {autoAnalyze ? "ON" : "OFF"}
+                        </GameButton>
+                    </div>
+                    <p className="mt-3 text-xs text-cyan-100/80">
+                        AUTO runs quick ID confidence only, with LLM and vectors off for speed. Use EXPLAIN when you want Ollama to read the saved session and write the deeper report.
+                    </p>
                 </div>
-                <p className="mt-3 text-xs text-cyan-100/80">
-                    AUTO runs quick ID confidence only, with LLM and vectors off for speed. Use EXPLAIN when you want Ollama to read the saved session and write the deeper report.
-                </p>
-            </div>
+            </div >
         </div>
     );
 
@@ -868,7 +996,7 @@ export function SignalReconMission({ onExit }: SignalReconMissionProps) {
                                         disabled={busy}
                                         className="rounded-lg border border-red-300/40 bg-red-500/10 px-2 py-1 text-xs font-bold text-red-100 hover:bg-red-400/20 disabled:cursor-not-allowed disabled:opacity-40 sm:px-2 sm:py-1 sm:text-xm"
                                     >
-                                        END
+                                        {activeSessionId ? "END" : "QUEUE"}
                                     </GameButton>
                                 )}
 
@@ -1010,10 +1138,12 @@ export function SignalReconMission({ onExit }: SignalReconMissionProps) {
                 onClose={() => setBrainOpen(false)}
                 onAnalyze={() => void handleQuickAnalyze(undefined, "manual")}
                 onExplainWithLlm={() => void handleExplainWithLlm()}
-                onLoadLatest={() => void handleLoadLatestAnalysis()}
+                onLoadLatest={() => void handleLoadLatestAnalysis(undefined, true)}
                 onToggleLlm={() => setUseLlm((value) => !value)}
                 onToggleEmbeddings={() => setUseEmbeddings((value) => !value)}
                 onToggleAutoAnalyze={() => setAutoAnalyze((value) => !value)}
+                onExportSession={handleExportSession}
+                onDeleteSession={() => void handleDeleteSession()}
             />
         </div>
     );

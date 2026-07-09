@@ -24,6 +24,7 @@ import subprocess
 import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
+import platform
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
@@ -250,47 +251,52 @@ def capture_kind_for(bus_interface: Optional[str], bus_mode: Optional[str]) -> s
     return "simulation" if should_use_fake_capture(bus_interface, bus_mode) else "live"
 
 
-def can_interface_state(name: str, bus_mode: Optional[str] = None) -> Dict[str, Any]:
-    fake_data = should_use_fake_capture(name, bus_mode)
+def can_interface_state(name: str, default_mode: str) -> dict[str, Any]:
+    app_env = os.getenv("APP_ENV", "development")
+    is_dev = app_env != "production"
+    is_linux = platform.system().lower() == "linux"
+    ip_cmd = shutil.which("ip")
+
+    # macOS/dev fallback:
+    # macOS does not have Linux SocketCAN interfaces or the `ip` command.
+    # Do not crash /data/can/status just because we are developing locally.
+    if not is_linux or ip_cmd is None:
+        return {
+            "name": name,
+            "exists": name == "vcan0" and is_dev,
+            "up": name == "vcan0" and is_dev,
+            "state": "up" if name == "vcan0" and is_dev else "missing",
+            "mode": "simulation" if name == "vcan0" and is_dev else default_mode,
+            "details": "dev fallback: linux ip command unavailable",
+        }
+
     result = subprocess.run(
-        ["ip", "-details", "link", "show", name],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        [ip_cmd, "-details", "link", "show", name],
+        capture_output=True,
         text=True,
         check=False,
     )
-    output = result.stdout or ""
-    exists = result.returncode == 0
-    up = exists and "<" in output and "UP" in output.split(">", 1)[0]
-    lower_up = exists and "LOWER_UP" in output.split("\n", 1)[0]
 
-    can_state_match = re.search(r"can state\s+([^\s]+)", output)
-    can_state = can_state_match.group(1) if can_state_match else ("UP" if up else "DOWN")
-    bitrate_match = re.search(r"bitrate\s+(\d+)", output)
-    bitrate = int(bitrate_match.group(1)) if bitrate_match else None
+    if result.returncode != 0:
+        return {
+            "name": name,
+            "exists": False,
+            "up": False,
+            "state": "missing",
+            "mode": default_mode,
+            "details": result.stderr.strip() or result.stdout.strip(),
+        }
 
-    if not exists:
-        state = "MISSING"
-    elif fake_data:
-        state = "SIMULATION_READY" if up else "SIMULATION_DOWN"
-    elif up:
-        state = can_state or "REAL_CAN_READY"
-    else:
-        state = "DOWN"
+    output = result.stdout
+    is_up = "UP" in output
 
     return {
-        "exists": exists,
-        "up": up,
-        "lower_up": lower_up,
-        "state": state,
-        "can_state": can_state,
-        "bitrate": bitrate,
-        "virtual": name == "vcan0",
-        "fake_data": fake_data,
-        "bus_interface": name,
-        "bus_mode": bus_mode,
-        "capture_kind": capture_kind_for(name, bus_mode),
-        "details": output.strip() if exists else (result.stderr or "").strip(),
+        "name": name,
+        "exists": True,
+        "up": is_up,
+        "state": "up" if is_up else "down",
+        "mode": default_mode,
+        "details": output,
     }
 
 

@@ -1357,6 +1357,92 @@ ip -details link show can2
 candump can2
 ```
 
+```bash
+sudo nano /usr/local/sbin/can2-slcan
+```
+
+```ini
+#!/usr/bin/env bash
+set -euo pipefail
+
+ACTION="${1:-start}"
+
+DEVICE="${CAN2_DEVICE:-/dev/ttyACM0}"
+IFACE="${CAN2_IFACE:-can2}"
+SPEED_CODE="${CAN2_SPEED_CODE:-6}"   # slcan -s6 = 500k
+
+start_can2() {
+  if [ ! -e "$DEVICE" ]; then
+    echo "[can2-slcan] $DEVICE not found. CANable not plugged in. Nothing to do."
+    exit 0
+  fi
+
+  echo "[can2-slcan] Starting $IFACE from $DEVICE at slcan speed code $SPEED_CODE..."
+
+  modprobe slcan || true
+
+  pkill -f "slcand .* ${IFACE}" 2>/dev/null || true
+  ip link set "$IFACE" down 2>/dev/null || true
+  ip link delete "$IFACE" 2>/dev/null || true
+
+  slcand -o -c -f -s"$SPEED_CODE" "$DEVICE" "$IFACE"
+
+  sleep 0.5
+
+  ip link set "$IFACE" up
+
+  echo "[can2-slcan] $IFACE is up:"
+  ip -details link show "$IFACE"
+}
+
+stop_can2() {
+  echo "[can2-slcan] Stopping $IFACE..."
+
+  ip link set "$IFACE" down 2>/dev/null || true
+  ip link delete "$IFACE" 2>/dev/null || true
+  pkill -f "slcand .* ${IFACE}" 2>/dev/null || true
+}
+
+status_can2() {
+  if ip link show "$IFACE" >/dev/null 2>&1; then
+    ip -details link show "$IFACE"
+  else
+    echo "[can2-slcan] $IFACE does not exist."
+    exit 1
+  fi
+}
+
+case "$ACTION" in
+  start)
+    start_can2
+    ;;
+  stop)
+    stop_can2
+    ;;
+  restart)
+    stop_can2
+    start_can2
+    ;;
+  status)
+    status_can2
+    ;;
+  *)
+    echo "Usage: $0 {start|stop|restart|status}"
+    exit 2
+    ;;
+esac
+```
+
+```bash
+sudo chmod +x /usr/local/sbin/can2-slcan
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable can2-slcan.service
+sudo systemctl start can2-slcan.service
+```
+
 # Acknowledgements
 
 Project concept and execution inspired by rhysmorgan134/Can-App

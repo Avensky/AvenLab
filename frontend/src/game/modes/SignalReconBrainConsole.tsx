@@ -72,6 +72,8 @@ type SignalReconBrainConsoleProps = {
     onAnalyze: () => void;
     onExplainWithLlm: () => void;
     onLoadLatest: () => void;
+    onExportSession: () => void;
+    onDeleteSession: () => void;
     onToggleLlm: () => void;
     onToggleEmbeddings: () => void;
     onToggleAutoAnalyze: () => void;
@@ -148,6 +150,8 @@ export function SignalReconBrainConsole({
     onAnalyze,
     onExplainWithLlm,
     onLoadLatest,
+    onExportSession,
+    onDeleteSession,
     onToggleLlm,
     onToggleEmbeddings,
     onToggleAutoAnalyze,
@@ -215,6 +219,20 @@ export function SignalReconBrainConsole({
                                 className="rounded-lg border border-cyan-300/40 bg-cyan-500/10 px-2 py-1 text-[10px] font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-40 sm:px-3 sm:py-2 sm:text-xs"
                             >
                                 READ DB
+                            </GameButton>
+                            <GameButton
+                                onPress={onExportSession}
+                                disabled={analyzing || !sessionId}
+                                className="rounded-lg border border-cyan-300/40 bg-cyan-500/10 px-2 py-1 text-[10px] font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-40 sm:px-3 sm:py-2 sm:text-xs"
+                            >
+                                EXPORT
+                            </GameButton>
+                            <GameButton
+                                onPress={onDeleteSession}
+                                disabled={analyzing || !sessionId}
+                                className="rounded-lg border border-red-300/40 bg-red-500/10 px-2 py-1 text-[10px] font-bold text-red-100 hover:bg-red-400/20 disabled:cursor-not-allowed disabled:opacity-40 sm:px-3 sm:py-2 sm:text-xs"
+                            >
+                                DELETE
                             </GameButton>
                             <GameButton
                                 onPress={onToggleLlm}

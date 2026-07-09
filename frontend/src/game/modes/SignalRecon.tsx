@@ -138,7 +138,6 @@ export function SignalRecon() {
   const loadMissions = useSignalReconStore((s) => s.loadMissions);
   const selectMission = useSignalReconStore((s) => s.selectMission);
   const setSelectedRank = useSignalReconStore((s) => s.setSelectedRank);
-  const startSession = useSignalReconStore((s) => s.startSession);
   const stopSession = useSignalReconStore((s) => s.stopSession);
 
   const canStatus = useCanBusStore((s) => s.status);
@@ -173,6 +172,7 @@ export function SignalRecon() {
   }, [missions, selectedRank]);
 
   const mission = selectedMission ?? visibleMissions[0] ?? missions[0] ?? null;
+  const selectedMissionProgress = mission ? missionProgressByCode[mission.mission_code] : undefined;
   const sessionActive = Boolean(activeSessionId);
   const runActive = Boolean(activeRunId);
   const canControlsDisabled = busy || sessionActive || runActive;
@@ -292,20 +292,16 @@ export function SignalRecon() {
         await selectMission(mission);
       }
 
-      if (!activeSessionId) {
-        await startSession({
-          busInterface: selectedInterface,
-          busMode: selectedMode,
-        });
-      }
-
+      // Review mode first: opening the tactical terminal must not create a new
+      // CAN session. SignalReconMission will load the latest saved DB run for
+      // this mission, and only RUN STEP / RUN FULL MISSION creates a new one.
       setMissionTerminalOpen(true);
       setQueueMinimized(true);
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
-          : "Failed to start Signal Recon session.",
+          : "Failed to open Signal Recon terminal.",
       );
     } finally {
       setBusy(false);
@@ -326,7 +322,7 @@ export function SignalRecon() {
       }
     }
 
-    setScreen("main");
+    setScreen("signal_recon_setup");
   };
 
   const handleMaximizeQueue = () => {
@@ -593,7 +589,12 @@ export function SignalRecon() {
           {queueMinimized && (
             <section className="h-full min-h-0 self-stretch overflow-hidden rounded-2xl border border-green-400/20 bg-black/80 font-mono shadow-xl shadow-green-500/10">
               {missionTerminalOpen ? (
-                <SignalReconMission onExit={handleMissionClosed} />
+                <SignalReconMission
+                  onExit={handleMissionClosed}
+                  initialSessionId={selectedMissionProgress?.session_id ?? null}
+                  initialMissionProgress={selectedMissionProgress ?? null}
+                  onDatabaseChanged={() => void refreshMissionProgressFromDb()}
+                />
               ) : (
                 <div className="h-full min-h-0 overflow-y-auto p-3 sm:px-2 sm:py-1">
                   <div className="mb-4 sm:mb-1 sm:pb-1 pb-6 flex items-center justify-between border-b border-green-400/20">
@@ -707,8 +708,10 @@ export function SignalRecon() {
                           className="rounded-xl border border-green-300/40 bg-green-500/10 px-5 py-4 sm:px-2 sm:py-1 font-bold text-green-100 hover:bg-green-400/20 disabled:cursor-not-allowed disabled:opacity-40"
                         >
                           {activeSessionId
-                            ? "OPEN MISSION TERMINAL"
-                            : "START CAN SESSION"}
+                            ? "OPEN ACTIVE SESSION"
+                            : selectedMissionProgress
+                              ? "OPEN SAVED RUN"
+                              : "OPEN TACTICAL TERMINAL"}
                         </GameButton>
 
                         <GameButton

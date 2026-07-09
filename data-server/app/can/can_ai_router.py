@@ -9,7 +9,7 @@ from typing import Any, Optional
 from uuid import UUID
 
 import httpx
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Response
 from pydantic import BaseModel, Field
 
 from app.db import connect_db
@@ -1200,3 +1200,342 @@ async def get_mission_progress(
         "missions": missions,
         "sessions": sessions,
     }
+
+
+@router.get("/session/latest")
+async def get_latest_session_for_mission(
+    vehicle_slug: Optional[str] = Query(default=None),
+    mission_code: Optional[str] = Query(default=None),
+    bus_interface: Optional[str] = Query(default=None),
+    bus_mode: Optional[str] = Query(default=None),
+    capture_kind: Optional[str] = Query(default=None),
+) -> dict[str, Any]:
+    """Return the newest session for a vehicle/mission/filter without creating a new run."""
+    pool = await connect_db()
+    conditions: list[str] = []
+    values: list[Any] = []
+
+    if vehicle_slug:
+        values.append(vehicle_slug)
+        conditions.append(f"v.slug = ${len(values)}")
+    if mission_code:
+        values.append(mission_code)
+        conditions.append(f"rm.mission_code = ${len(values)}")
+    if bus_interface:
+        values.append(bus_interface)
+        conditions.append(f"cs.bus_interface = ${len(values)}")
+    if bus_mode:
+        values.append(bus_mode)
+        conditions.append(f"cs.bus_mode = ${len(values)}")
+
+    if capture_kind == "live":
+        conditions.append("cs.bus_mode IN ('listen-only', 'live') AND cs.bus_interface <> 'vcan0'")
+    elif capture_kind == "simulation":
+        conditions.append("(cs.bus_mode IN ('simulation', 'replay', 'offline') OR cs.bus_interface = 'vcan0')")
+
+    where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
+
+    query = f"""
+        SELECT
+            cs.id AS session_id,
+            cs.label,
+            cs.bus_interface,
+            cs.bus_mode,
+            cs.started_at,
+            cs.ended_at,
+            cs.metadata AS session_metadata,
+            v.slug AS vehicle_slug,
+            v.year,
+            v.make,
+            v.model,
+            rm.mission_code,
+            rm.title AS mission_title,
+            rm.target AS mission_target,
+            COALESCE(fr.frame_count, 0) AS frame_count,
+            COALESCE(mk.marker_count, 0) AS marker_count,
+            sr.id AS report_id,
+            sr.created_at AS report_created_at,
+            sr.metadata AS report_metadata,
+            cc.can_id AS top_can_id,
+            cc.confidence AS top_confidence,
+            cc.score AS top_score,
+            cc.notes AS top_notes,
+            cc.metadata AS correlation_metadata
+        FROM can_sessions cs
+        JOIN vehicles v ON v.id = cs.vehicle_id
+        LEFT JOIN recon_missions rm ON rm.id = cs.mission_id
+        LEFT JOIN LATERAL (
+            SELECT COUNT(*)::int AS frame_count
+            FROM can_frames_raw cfr
+            WHERE cfr.session_id = cs.id
+        ) fr ON true
+        LEFT JOIN LATERAL (
+            SELECT COUNT(*)::int AS marker_count
+            FROM can_session_markers csm
+            WHERE csm.session_id = cs.id
+        ) mk ON true
+        LEFT JOIN LATERAL (
+            SELECT id, metadata, created_at
+            FROM session_reports
+            WHERE session_id = cs.id AND report_type = 'ai_analysis'
+            ORDER BY created_at DESC
+            LIMIT 1
+        ) sr ON true
+        LEFT JOIN LATERAL (
+            SELECT can_id, confidence, score, notes, metadata
+            FROM can_id_correlations
+            WHERE session_id = cs.id
+            ORDER BY confidence DESC, score DESC, created_at DESC
+            LIMIT 1
+        ) cc ON true
+        {where_clause}
+        ORDER BY cs.started_at DESC
+        LIMIT 1
+    """
+
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(query, *values)
+
+    if not row:
+        return {
+            "ok": True,
+            "found": False,
+            "filters": {
+                "vehicle_slug": vehicle_slug,
+                "mission_code": mission_code,
+                "bus_interface": bus_interface,
+                "bus_mode": bus_mode,
+                "capture_kind": capture_kind,
+            },
+            "session": None,
+        }
+
+    item = dict(row)
+    session_metadata = metadata_dict(item.get("session_metadata"))
+    report_metadata = metadata_dict(item.get("report_metadata"))
+    correlation_metadata = metadata_dict(item.get("correlation_metadata"))
+    top_candidates = report_metadata.get("top_candidates")
+    top_candidate = top_candidates[0] if isinstance(top_candidates, list) and top_candidates else {}
+    if not isinstance(top_candidate, dict):
+        top_candidate = {}
+
+    top_can_id = item.get("top_can_id") or top_candidate.get("can_id")
+    top_can_id_hex = None
+    if isinstance(top_can_id, int):
+        top_can_id_hex = can_hex(top_can_id)
+    elif isinstance(top_candidate.get("can_id_hex"), str):
+        top_can_id_hex = top_candidate["can_id_hex"]
+    elif isinstance(correlation_metadata.get("can_id_hex"), str):
+        top_can_id_hex = correlation_metadata["can_id_hex"]
+
+    confidence = safe_float(item.get("top_confidence"))
+    if confidence is None:
+        confidence = safe_float(top_candidate.get("confidence"))
+
+    analysis_mode = report_metadata.get("analysis_mode") or session_metadata.get("analysis_mode")
+    if not isinstance(analysis_mode, str):
+        analysis_mode = infer_analysis_mode(
+            {
+                "mission_code": item.get("mission_code"),
+                "label": item.get("label"),
+                "session_metadata": session_metadata,
+                "mission_metadata": {},
+            },
+            [],
+        )
+
+    session_item = {
+        "session_id": str(item["session_id"]),
+        "label": item.get("label"),
+        "vehicle_slug": item.get("vehicle_slug"),
+        "vehicle": {
+            "year": item.get("year"),
+            "make": item.get("make"),
+            "model": item.get("model"),
+        },
+        "mission_code": item.get("mission_code"),
+        "mission_title": item.get("mission_title"),
+        "mission_target": item.get("mission_target"),
+        "bus_interface": item.get("bus_interface"),
+        "bus_mode": item.get("bus_mode"),
+        "capture_kind": capture_kind_for(item.get("bus_interface"), item.get("bus_mode")),
+        "source_label": source_label_for(item.get("bus_interface"), item.get("bus_mode")),
+        "analysis_mode": analysis_mode,
+        "confidence": confidence,
+        "top_can_id": top_can_id,
+        "top_can_id_hex": top_can_id_hex,
+        "top_score": safe_float(item.get("top_score")) or safe_float(top_candidate.get("correlation_score")),
+        "frame_count": int(item.get("frame_count") or 0),
+        "marker_count": int(item.get("marker_count") or 0),
+        "started_at": item.get("started_at"),
+        "ended_at": item.get("ended_at"),
+        "report_id": str(item["report_id"]) if item.get("report_id") else None,
+        "report_created_at": item.get("report_created_at"),
+    }
+
+    return {"ok": True, "found": True, "session": session_item}
+
+
+@router.delete("/session/{session_id}")
+async def delete_can_session(session_id: UUID) -> dict[str, Any]:
+    """Delete a bad/dead recording and all derived analysis rows for that session."""
+    pool = await connect_db()
+    deleted: dict[str, int] = {}
+
+    async with pool.acquire() as conn:
+        exists = await conn.fetchval("SELECT EXISTS (SELECT 1 FROM can_sessions WHERE id = $1)", session_id)
+        if not exists:
+            raise HTTPException(status_code=404, detail="CAN session not found")
+
+        async with conn.transaction():
+            table_order = [
+                ("signal_embeddings", "session_id"),
+                ("ai_insights", "session_id"),
+                ("session_reports", "session_id"),
+                ("can_id_correlations", "session_id"),
+                ("can_id_features", "session_id"),
+                ("can_frame_deltas", "session_id"),
+                ("can_frames_decoded", "session_id"),
+                ("can_frames_raw", "session_id"),
+                ("can_session_markers", "session_id"),
+                ("can_sessions", "id"),
+            ]
+
+            for table, column in table_order:
+                table_exists = await conn.fetchval("SELECT to_regclass($1)", f"public.{table}")
+                if not table_exists:
+                    deleted[table] = 0
+                    continue
+
+                status = await conn.execute(f"DELETE FROM {table} WHERE {column} = $1", session_id)
+                try:
+                    deleted[table] = int(status.split()[-1])
+                except (ValueError, IndexError):
+                    deleted[table] = 0
+
+    return {
+        "ok": True,
+        "session_id": str(session_id),
+        "deleted": deleted,
+    }
+
+
+@router.get("/session/{session_id}/export", response_model=None)
+async def export_session(
+    session_id: UUID,
+    format: str = Query(default="json", pattern="^(json|candump|csv)$"),
+    limit: int = Query(default=250_000, ge=1, le=1_000_000),
+) -> Response | dict[str, Any]:
+    """Export a session for offline decoding by another person/tool."""
+    pool = await connect_db()
+    async with pool.acquire() as conn:
+        session = await conn.fetchrow(
+            """
+            SELECT
+                cs.id, cs.label, cs.bus_interface, cs.bus_mode, cs.started_at, cs.ended_at,
+                cs.metadata AS session_metadata,
+                v.slug AS vehicle_slug, v.year, v.make, v.model, v.trim, v.alias,
+                rm.mission_code, rm.title AS mission_title, rm.target AS mission_target
+            FROM can_sessions cs
+            JOIN vehicles v ON v.id = cs.vehicle_id
+            LEFT JOIN recon_missions rm ON rm.id = cs.mission_id
+            WHERE cs.id = $1
+            """,
+            session_id,
+        )
+        if not session:
+            raise HTTPException(status_code=404, detail="CAN session not found")
+
+        markers = await conn.fetch(
+            """
+            SELECT marker_type, label, timestamp_ms, metadata, created_at
+            FROM can_session_markers
+            WHERE session_id = $1
+            ORDER BY timestamp_ms ASC, created_at ASC
+            """,
+            session_id,
+        )
+        frames = await conn.fetch(
+            """
+            SELECT timestamp_ms, elapsed_ms, can_id, can_id_hex, dlc,
+                   upper(encode(data, 'hex')) AS data_hex,
+                   source, metadata
+            FROM can_frames_raw
+            WHERE session_id = $1
+            ORDER BY timestamp_ms ASC, id ASC
+            LIMIT $2
+            """,
+            session_id,
+            limit,
+        )
+        report = await conn.fetchrow(
+            """
+            SELECT title, content, metadata, created_at
+            FROM session_reports
+            WHERE session_id = $1 AND report_type = 'ai_analysis'
+            ORDER BY created_at DESC
+            LIMIT 1
+            """,
+            session_id,
+        )
+
+    session_dict = dict(session)
+    session_dict["id"] = str(session_dict["id"])
+    session_dict["session_metadata"] = metadata_dict(session_dict.get("session_metadata"))
+
+    marker_items = []
+    for row in markers:
+        item = dict(row)
+        item["metadata"] = metadata_dict(item.get("metadata"))
+        marker_items.append(item)
+
+    frame_items = []
+    for row in frames:
+        item = dict(row)
+        item["metadata"] = metadata_dict(item.get("metadata"))
+        frame_items.append(item)
+
+    if format == "candump":
+        lines = []
+        for frame in frame_items:
+            # candump -L compatible enough for most tools. Timestamp is relative seconds.
+            elapsed = safe_float(frame.get("elapsed_ms"))
+            if elapsed is None:
+                elapsed = float(frame.get("timestamp_ms") or 0) / 1000.0
+            data_hex = frame.get("data_hex") or ""
+            can_id_hex = str(frame.get("can_id_hex") or can_hex(int(frame.get("can_id") or 0))).replace("0x", "")
+            iface = frame.get("source") or session_dict.get("bus_interface") or "can0"
+            lines.append(f"({elapsed:.6f}) {iface} {can_id_hex}#{data_hex}")
+        return Response(
+            "\n".join(lines) + ("\n" if lines else ""),
+            media_type="text/plain",
+            headers={"Content-Disposition": f'attachment; filename="{session_id}.candump"'},
+        )
+
+    if format == "csv":
+        header = "timestamp_ms,elapsed_ms,interface,can_id_hex,dlc,data_hex\n"
+        rows = [
+            f"{frame.get('timestamp_ms')},{frame.get('elapsed_ms')},{frame.get('source')},{frame.get('can_id_hex')},{frame.get('dlc')},{frame.get('data_hex')}"
+            for frame in frame_items
+        ]
+        return Response(
+            header + "\n".join(rows) + ("\n" if rows else ""),
+            media_type="text/csv",
+            headers={"Content-Disposition": f'attachment; filename="{session_id}.csv"'},
+        )
+
+    payload = {
+        "ok": True,
+        "export_version": 1,
+        "session": session_dict,
+        "markers": marker_items,
+        "frames": frame_items,
+        "frame_count": len(frame_items),
+        "latest_report": dict(report) if report else None,
+    }
+
+    return Response(
+        json.dumps(payload, default=str, indent=2),
+        media_type="application/json",
+        headers={"Content-Disposition": f'attachment; filename="{session_id}.json"'},
+    )

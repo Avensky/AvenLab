@@ -212,7 +212,7 @@ export function SignalReconSetup() {
                         onFocus={() => setActiveMenuIndex(3)}
                         onPress={() => setScreen("main")}
                     >
-                        BACK
+                        EXIT
                     </GameButton>
                 </div>
             </div>
