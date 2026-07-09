@@ -91,10 +91,10 @@ function busModeLabel(mode: CanMode) {
   return "SIMULATION";
 }
 
-function shortSessionId(sessionId: string | null | undefined) {
-  if (!sessionId) return "—";
-  return `${sessionId.slice(0, 8)}…${sessionId.slice(-4)}`;
-}
+// function shortSessionId(sessionId: string | null | undefined) {
+//   if (!sessionId) return "—";
+//   return `${sessionId.slice(0, 8)}…${sessionId.slice(-4)}`;
+// }
 
 function formatConfidence(value: number | null | undefined) {
   if (typeof value !== "number" || Number.isNaN(value)) return "—";
