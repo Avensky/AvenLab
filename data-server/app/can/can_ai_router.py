@@ -702,6 +702,13 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
             prompt = build_llm_prompt(session_dict, marker_dicts, candidates, analysis_mode, baseline_profile)
             result = await call_ollama_generate(resolved_llm_model, prompt)
             llm_response = result.get("response", "")
+
+            text = result.get("response")
+            if isinstance(text, str) and text.strip():
+                llm_response = text.strip()
+            else:
+                raise RuntimeError(f"Ollama returned no usable response: {result}")
+            
         except Exception as exc:
             llm_error = str(exc)
             llm_response = None
@@ -907,11 +914,19 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
         "markers": len(marker_dicts),
         "candidates": [c.model_dump() for c in candidates[:50]],
         "heatmap": heatmap,
-        "llm_model": resolved_llm_model,
+
+        # LLM status
+        "llm_requested": payload.use_llm,
+        "llm_succeeded": llm_response is not None,
         "llm_available": llm_response is not None,
+        "llm_model": resolved_llm_model,
         "llm_error": llm_error,
         "installed_ollama_models": installed_ollama_models,
-        "analysis": llm_response,
+
+        # Important: always return something the UI can render.
+        "analysis": report_content,
+        "analysis_source": "llm" if llm_response else "fallback",
+
         "persisted": payload.persist,
     }
 
