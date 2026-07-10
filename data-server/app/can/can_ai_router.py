@@ -310,7 +310,17 @@ async def call_ollama_generate(model: str, prompt: str) -> dict[str, Any]:
     async with httpx.AsyncClient(timeout=120.0) as client:
         response = await client.post(
             f"{OLLAMA_URL}/api/generate",
-            json={"model": model, "prompt": prompt, "stream": False},
+            json={
+                "model": model,
+                "prompt": prompt,
+                "stream": False,
+                "options": {
+                    "temperature": 0.2,
+                    "top_p": 0.9,
+                    "num_ctx": 4096,
+                    "num_predict": 1800,
+                },
+            },
         )
         if response.status_code >= 400:
             detail = response.text.strip()
@@ -443,6 +453,14 @@ Human event markers:
 {candidate_heading}:
 {candidate_lines}
 
+Detailed reporting requirements:
+- Write a full technical report, not a short list.
+- For each top CAN ID, explain why it ranked high and why it might be a false positive.
+- Discuss byte-level behavior for bytes 0 through 7 when available.
+- Compare marker timing against byte changes.
+- Separate evidence, hypothesis, and next validation steps.
+- Include at least 3 concrete follow-up experiments.
+- Do not stop after listing IDs.
 {response_structure}
 """.strip()
 

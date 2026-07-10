@@ -157,8 +157,8 @@ export function SignalReconMission({
     const [brainAnalysis, setBrainAnalysis] = useState<BrainAnalysisResult | null>(null);
     const [brainLogs, setBrainLogs] = useState<string[]>([]);
     const [lastAnalyzedSessionId, setLastAnalyzedSessionId] = useState<string | null>(null);
-    const [useLlm, setUseLlm] = useState(false);
-    const [useEmbeddings, setUseEmbeddings] = useState(false);
+    const [useLlm, setUseLlm] = useState(true);
+    const [useEmbeddings, setUseEmbeddings] = useState(true);
     const [autoAnalyze, setAutoAnalyze] = useState(true);
 
     useEffect(() => {
@@ -353,6 +353,16 @@ export function SignalReconMission({
         handleAnalyzeSession(sessionIdOverride, source, {
             useLlmOverride: false,
             useEmbeddingsOverride: false,
+            persist: true,
+        });
+
+    const handleFullAnalyze = (
+        sessionIdOverride?: string,
+        source: "manual" | "step-complete" | "mission-complete" = "manual",
+    ) =>
+        handleAnalyzeSession(sessionIdOverride, source, {
+            useLlmOverride: useLlm,
+            useEmbeddingsOverride: useEmbeddings,
             persist: true,
         });
 
@@ -863,11 +873,11 @@ export function SignalReconMission({
                     <p className="mb-3 text-xs text-cyan-200">PI BRAIN</p>
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-6">
                         <GameButton
-                            onPress={() => void handleQuickAnalyze(undefined, "manual")}
+                            onPress={() => void handleFullAnalyze(undefined, "manual")}
                             disabled={brainAnalyzing || !resolveAnalysisSessionId()}
                             className="rounded-lg border border-cyan-300/40 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-40"
                         >
-                            {brainAnalyzing ? "ANALYZING" : "ANALYZE"}
+                            {brainAnalyzing ? "ANALYZING" : useLlm ? "ANALYZE + LLM" : "ANALYZE"}
                         </GameButton>
                         <GameButton
                             onPress={() => void handleExplainWithLlm()}
