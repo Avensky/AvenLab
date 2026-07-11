@@ -5,7 +5,7 @@
     "check": "concurrently -n frontend,data,rust \"npm:check:frontend\" \"npm:check:data\" \"npm:check:rust\"",
     "check:frontend": "npm --prefix frontend run lint && npm --prefix frontend run typecheck",
     "check:cargo": "cargo --version && rustc --version",
-    "check:data": "cd data-server && .venv\\Scripts\\python.exe -m compileall app",
+    "check:data": "cd data-server && .venv/Scripts/python.exe -m compileall app",
     "check:rust": "cd avenlab-server && cargo check",
     
     "dev": "concurrently -n frontend,data,rust \"npm:dev:frontend\" \"npm:dev:uvicorn\" \"npm:dev:rust\"",
