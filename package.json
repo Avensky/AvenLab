@@ -2,16 +2,29 @@
   "name": "avenlab-dev",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"npm:dev:*\"",
-    "dev:frontend": "npm --prefix frontend run dev",
-    "dev:rust": "cd avenlab-server && cargo watch -x run",
-    "dev:uvicorn": "cd data-server && .venv/bin/uvicorn app.main:app --reload --port 8001",
-    "dev:ollama": "ollama serve",
     "check": "concurrently -n frontend,data,rust \"npm:check:frontend\" \"npm:check:data\" \"npm:check:rust\"",
     "check:frontend": "npm --prefix frontend run lint && npm --prefix frontend run typecheck",
-    "check:data": "cd data-server && python3 -m compileall app",
+    "check:cargo": "cargo --version && rustc --version",
+    "check:data": "cd data-server && .venv\\Scripts\\python.exe -m compileall app",
     "check:rust": "cd avenlab-server && cargo check",
-    "lint": "npm run check"
+    
+    "dev": "concurrently -n frontend,data,rust \"npm:dev:frontend\" \"npm:dev:uvicorn\" \"npm:dev:rust\"",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev:rust": "cd avenlab-server && cargo run",
+    "dev:rust:watch": "cd avenlab-server && cargo watch -x run",
+    "dev:uvicorn": "cd data-server && .venv\\Scripts\\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8001 --env-file .env",
+    "dev:ai": "ollama serve",
+    "lint": "npm run check",
+    
+    "install:all": "npm run install:frontend && npm run install:data && npm run install:rust",
+    "install:frontend": "npm --prefix frontend install",
+    "install:data": "cd data-server && py -3.12 -m venv .venv && .venv\\Scripts\\python.exe -m pip install --upgrade pip && .venv\\Scripts\\python.exe -m pip install -r requirements.txt",
+    "install:data:linux": "python3 -m venv data-server/.venv && data-server/.venv/bin/python -m pip install --upgrade pip && data-server/.venv/bin/python -m pip install -r data-server/requirements.txt",
+    
+    "install:cargo": "winget install -e --id Rustlang.Rustup --accept-package-agreements --accept-source-agreements",
+    "install:cargo:linux": "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y",
+    "install:rust": "cargo fetch --manifest-path avenlab-server/Cargo.toml",
+    "install:rust-tools": "cargo install cargo-watch"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

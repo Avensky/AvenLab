@@ -307,7 +307,14 @@ async def resolve_llm_model(requested_model: str) -> tuple[str, list[str]]:
 
 
 async def call_ollama_generate(model: str, prompt: str) -> dict[str, Any]:
-    async with httpx.AsyncClient(timeout=120.0) as client:
+    timeout = httpx.Timeout(
+        connect=10.0,
+        read=600.0,
+        write=30.0,
+        pool=30.0,
+    )
+
+    async with httpx.AsyncClient(timeout=timeout) as client:
         response = await client.post(
             f"{OLLAMA_URL}/api/generate",
             json={
@@ -318,7 +325,7 @@ async def call_ollama_generate(model: str, prompt: str) -> dict[str, Any]:
                     "temperature": 0.2,
                     "top_p": 0.9,
                     "num_ctx": 4096,
-                    "num_predict": 1800,
+                    "num_predict": 900,
                 },
             },
         )
@@ -376,7 +383,7 @@ def build_llm_prompt(
                 f"hz={c.frequency_hz}, changes={c.change_count}, entropy={c.entropy:.3f}, "
                 f"baseline_score={c.baseline_score:.3f}, byte_changes={c.byte_change_counts}"
             )
-            for c in candidates[:20]
+            for c in candidates[:12]
         ) or "- no background IDs"
 
         profile = baseline_profile or {}
@@ -410,7 +417,7 @@ Respond in this exact structure:
                 f"score={c.correlation_score:.3f}, confidence={c.confidence:.3f}, "
                 f"byte_changes={c.byte_change_counts}, markers={c.likely_marker_types}"
             )
-            for c in candidates[:20]
+            for c in candidates[:12]
         ) or "- no candidates"
 
         mode_instructions = """
@@ -728,7 +735,15 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                 raise RuntimeError(f"Ollama returned no usable response: {result}")
             
         except Exception as exc:
-            llm_error = str(exc)
+            llm_error = f"{type(exc).__name__}: {exc}"
+            print(
+                "[can-ai] LLM generation failed "
+                f"session={session_id} "
+                f"requested_model={payload.llm_model} "
+                f"resolved_model={resolved_llm_model} "
+                f"error={llm_error}",
+                flush=True,
+            )
             llm_response = None
 
     report_content = llm_response or build_fallback_report(
@@ -851,9 +866,13 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                         "vehicle_slug": session_dict.get("vehicle_slug"),
                         "analysis_mode": analysis_mode,
                         "baseline_profile": baseline_profile,
+                        "target_expected": not baseline_mode,
                         "frames_analyzed": len(frames),
                         "markers": len(marker_dicts),
                         "model": resolved_llm_model,
+                        "llm_requested": payload.use_llm,
+                        "llm_succeeded": llm_response is not None,
+                        "analysis_source": "llm" if llm_response else "fallback",
                         "llm_error": llm_error,
                         "top_candidates": [c.model_dump() for c in candidates[:10]],
                         "heatmap": heatmap,

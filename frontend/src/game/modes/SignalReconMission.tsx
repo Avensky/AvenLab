@@ -328,13 +328,28 @@ export function SignalReconMission({
             }
 
             const nextAnalysis = data as BrainAnalysisResult;
+
+            if (requestUseLlm && nextAnalysis.analysis_source !== "llm") {
+                const llmMessage =
+                    nextAnalysis.llm_error?.trim() ||
+                    "Ollama did not produce a report. Showing statistical fallback results.";
+                setBrainError(`LLM unavailable: ${llmMessage}`);
+                appendBrainLog(`[llm] fallback: ${llmMessage}`);
+            } else {
+                setBrainError(null);
+            }
+
             setBrainAnalysis(nextAnalysis);
             setLastAnalyzedSessionId(nextAnalysis.session_id ?? sessionId);
             appendBrainLog(
                 `[ai] done: mode=${nextAnalysis.analysis_mode ?? "unknown"} frames=${nextAnalysis.frames_analyzed} markers=${nextAnalysis.markers} candidates=${nextAnalysis.candidates.length}`,
             );
             appendBrainLog(
-                `[llm] ${nextAnalysis.llm_available ? `on (${nextAnalysis.llm_model ?? "model unknown"})` : `off${nextAnalysis.llm_error ? `: ${nextAnalysis.llm_error}` : ""}`}`,
+                `[llm] ${
+                    nextAnalysis.analysis_source === "llm"
+                        ? `report generated (${nextAnalysis.llm_model ?? "model unknown"})`
+                        : `fallback used${nextAnalysis.llm_error ? `: ${nextAnalysis.llm_error}` : ""}`
+                }`,
             );
         } catch (err) {
             const message =
@@ -408,14 +423,25 @@ export function SignalReconMission({
             const heatmap = asRecord(reportMetadata.heatmap) as BrainAnalysisResult["heatmap"];
             const baselineProfile = asRecord(reportMetadata.baseline_profile) as BrainAnalysisResult["baseline_profile"];
             const analysisMode = toNullableString(reportMetadata.analysis_mode);
+            const analysisSource = toNullableString(reportMetadata.analysis_source);
             const model = toNullableString(reportMetadata.model);
             const llmError = toNullableString(reportMetadata.llm_error);
+            const llmSucceeded = reportMetadata.llm_succeeded === true;
             const reportContent = data.latest_report?.content ?? null;
 
             const nextAnalysis: BrainAnalysisResult = {
                 ok: true,
                 session_id: data.session_id ?? sessionId,
                 analysis_mode: analysisMode ?? undefined,
+                analysis_source:
+                    analysisSource === "llm" || analysisSource === "fallback"
+                        ? analysisSource
+                        : undefined,
+                llm_requested:
+                    typeof reportMetadata.llm_requested === "boolean"
+                        ? reportMetadata.llm_requested
+                        : undefined,
+                llm_succeeded: llmSucceeded,
                 target_expected:
                     typeof reportMetadata.target_expected === "boolean"
                         ? reportMetadata.target_expected
@@ -426,7 +452,7 @@ export function SignalReconMission({
                 candidates,
                 heatmap,
                 llm_model: model,
-                llm_available: Boolean(reportContent && !llmError),
+                llm_available: llmSucceeded && Boolean(reportContent),
                 llm_error: llmError,
                 analysis: reportContent,
                 persisted: true,

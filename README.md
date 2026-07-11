@@ -1067,6 +1067,16 @@ sudo nano /etc/environment.env
 APP_ENV=production
 DATABASE_URL=postgresql://avenlab:<password>@127.0.0.1:5432/avenlab_data
 POSTGRES_PASSWORD=mysecretpassword
+POSTGRES_USER=avenlab
+```
+
+```bash
+docker run --name avenlab-data \
+  -e POSTGRES_USER=avenlab \
+  -e POSTGRES_PASSWORD=mysecretpassword \
+  -e POSTGRES_DB=avenlab_data \
+  -p 5432:5432 \
+  -d pgvector/pgvector:pg16
 ```
 
 ```bash

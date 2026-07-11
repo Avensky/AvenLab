@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { GameButton } from "../../components/GameButton";
 
 export type BrainCandidate = {
@@ -19,6 +19,9 @@ export type BrainAnalysisResult = {
     ok: boolean;
     session_id: string;
     analysis_mode?: "baseline_profile" | "target_correlation" | string;
+    analysis_source?: "llm" | "fallback";
+    llm_requested?: boolean;
+    llm_succeeded?: boolean;
     target_expected?: boolean;
     baseline_profile?: {
         kind?: string;
@@ -157,6 +160,14 @@ export function SignalReconBrainConsole({
     onToggleAutoAnalyze,
 }: SignalReconBrainConsoleProps) {
     const [activeTab, setActiveTab] = useState<BrainTab>("summary");
+
+    useEffect(() => {
+        if (!analysis) return;
+
+        if (analysis.analysis_source === "llm" && analysis.analysis?.trim()) {
+            setActiveTab("llm");
+        }
+    }, [analysis]);
 
     const topCandidates = useMemo(
         () => [...(analysis?.candidates ?? [])].sort((a, b) => b.confidence - a.confidence).slice(0, 12),
