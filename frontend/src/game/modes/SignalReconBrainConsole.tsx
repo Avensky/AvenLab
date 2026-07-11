@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { GameButton } from "../../components/GameButton";
 
 export type BrainCandidate = {
@@ -161,14 +161,6 @@ export function SignalReconBrainConsole({
 }: SignalReconBrainConsoleProps) {
     const [activeTab, setActiveTab] = useState<BrainTab>("summary");
 
-    useEffect(() => {
-        if (!analysis) return;
-
-        if (analysis.analysis_source === "llm" && analysis.analysis?.trim()) {
-            setActiveTab("llm");
-        }
-    }, [analysis]);
-
     const topCandidates = useMemo(
         () => [...(analysis?.candidates ?? [])].sort((a, b) => b.confidence - a.confidence).slice(0, 12),
         [analysis],
@@ -218,7 +210,10 @@ export function SignalReconBrainConsole({
                                 {analyzing ? "ANALYZING" : "QUICK ID"}
                             </GameButton>
                             <GameButton
-                                onPress={onExplainWithLlm}
+                                onPress={() => {
+                                    setActiveTab("llm");
+                                    onExplainWithLlm();
+                                }}
                                 disabled={analyzing || !sessionId}
                                 className="rounded-lg border border-purple-300/40 bg-purple-500/10 px-2 py-1 text-[10px] font-bold text-purple-100 hover:bg-purple-400/20 disabled:cursor-not-allowed disabled:opacity-40 sm:px-3 sm:py-2 sm:text-xs"
                             >
@@ -431,13 +426,15 @@ export function SignalReconBrainConsole({
 
                     {activeTab === "logs" && (
                         <div className="space-y-1 rounded-xl border border-green-400/20 bg-black/60 p-4 text-sm">
-                            {logs.length ? (
+                            {logs.length 
+                            ? (
                                 logs.map((line, index) => (
                                     <p key={`${line}-${index}`} className="text-green-300">
                                         &gt; {line}
                                     </p>
                                 ))
-                            ) : (
+                            ) 
+                            : (
                                 <p className="text-slate-500">&gt; waiting for mission analysis...</p>
                             )}
                         </div>
