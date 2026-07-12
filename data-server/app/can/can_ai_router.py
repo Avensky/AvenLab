@@ -5,6 +5,8 @@ from __future__ import annotations
 import asyncio
 import json
 import math
+import os
+import re
 import statistics
 import time
 from bisect import bisect_left, bisect_right
@@ -19,32 +21,68 @@ from pydantic import BaseModel, Field
 
 from app.db import connect_db
 
-import os
 
-LLM_DEADLINE_SECONDS = float(
-    os.getenv("LLM_DEADLINE_SECONDS", "1800")
-)
+def env_float(name: str, default: float, minimum: float = 0.0) -> float:
+    raw = os.getenv(name)
+    try:
+        value = float(raw) if raw is not None else float(default)
+    except (TypeError, ValueError):
+        value = float(default)
+    return max(value, minimum)
 
-LLM_HTTP_READ_TIMEOUT_SECONDS = float(
-    os.getenv("LLM_HTTP_READ_TIMEOUT_SECONDS", "1810")
-)
+
+def env_int(name: str, default: int, minimum: int = 1) -> int:
+    raw = os.getenv(name)
+    try:
+        value = int(raw) if raw is not None else int(default)
+    except (TypeError, ValueError):
+        value = int(default)
+    return max(value, minimum)
+
 
 router = APIRouter(prefix="/data/can", tags=["can-ai"])
 
-OLLAMA_URL = "http://127.0.0.1:11434"
-DEFAULT_LLM_MODEL = "qwen2.5:3b"
-DEFAULT_EMBED_MODEL = "nomic-embed-text"
+OLLAMA_URL = os.getenv(
+    "OLLAMA_URL",
+    "http://127.0.0.1:11434",
+).rstrip("/")
+
+DEFAULT_LLM_MODEL = os.getenv("DEFAULT_LLM_MODEL", "qwen2.5:3b")
+DEFAULT_EMBED_MODEL = os.getenv("DEFAULT_EMBED_MODEL", "nomic-embed-text")
+
 MAX_ANALYSIS_FRAMES = 75_000
 MAX_DELTAS_TO_STORE = 50_000
 MAX_DELTAS_TO_PERSIST = 10_000
 MAX_DELTA_CANDIDATES_TO_PERSIST = 20
 
-LLM_DEADLINE_SECONDS = 105.0
-LLM_HTTP_READ_TIMEOUT_SECONDS = 110.0
-LLM_NUM_CTX = 3072
-LLM_NUM_PREDICT = 420
-LLM_CANDIDATE_LIMIT = 5
-LLM_BYTE_EVIDENCE_LIMIT = 2
+# Three-hour ceiling for a deliberately slow Raspberry Pi inference run.
+LLM_DEADLINE_SECONDS = env_float(
+    "LLM_DEADLINE_SECONDS",
+    10_800.0,
+    minimum=60.0,
+)
+LLM_HTTP_READ_TIMEOUT_SECONDS = max(
+    env_float(
+        "LLM_HTTP_READ_TIMEOUT_SECONDS",
+        10_920.0,
+        minimum=61.0,
+    ),
+    LLM_DEADLINE_SECONDS + 30.0,
+)
+LLM_NUM_CTX = env_int("LLM_NUM_CTX", 4096, minimum=1024)
+LLM_NUM_PREDICT = env_int("LLM_NUM_PREDICT", 700, minimum=128)
+LLM_CANDIDATE_LIMIT = env_int("LLM_CANDIDATE_LIMIT", 5, minimum=1)
+LLM_BYTE_EVIDENCE_LIMIT = env_int(
+    "LLM_BYTE_EVIDENCE_LIMIT",
+    2,
+    minimum=1,
+)
+OLLAMA_KEEP_ALIVE = os.getenv("OLLAMA_KEEP_ALIVE", "3h")
+EMBED_TIMEOUT_SECONDS = env_float(
+    "EMBED_TIMEOUT_SECONDS",
+    300.0,
+    minimum=10.0,
+)
 
 # Keep production responses small enough for the Pi, browser, and React renderer.
 MAX_RESPONSE_CANDIDATES = 15
@@ -213,19 +251,29 @@ def build_baseline_profile(frames: list[FrameRow], candidates: list[Candidate]) 
     observed_ids = len({frame.can_id for frame in frames})
     total_frames = len(frames)
     high_rate_ids = [
-        c.model_dump()
-        for c in candidates
-        if c.frequency_hz is not None and c.frequency_hz >= 20
+        compact_candidate_payload(
+            candidate,
+            include_byte_evidence=False,
+        )
+        for candidate in candidates
+        if candidate.frequency_hz is not None
+        and candidate.frequency_hz >= 20
     ][:15]
     noisy_ids = [
-        c.model_dump()
-        for c in candidates
-        if c.change_count > 0
+        compact_candidate_payload(
+            candidate,
+            include_byte_evidence=False,
+        )
+        for candidate in candidates
+        if candidate.change_count > 0
     ][:15]
     stable_ids = [
-        c.model_dump()
-        for c in candidates
-        if c.change_count == 0
+        compact_candidate_payload(
+            candidate,
+            include_byte_evidence=False,
+        )
+        for candidate in candidates
+        if candidate.change_count == 0
     ][:15]
 
     return {
@@ -303,7 +351,9 @@ def build_fallback_report(
     candidate_lines = [
         (
             f"- {candidate.can_id_hex}: confidence={candidate.confidence}, "
-            f"correlation={candidate.correlation_score}, "
+            f"adjusted_correlation={candidate.correlation_score}, "
+            f"raw_marker_fraction={candidate.raw_marker_fraction}, "
+            f"window_coverage={candidate.marker_window_coverage}, "
             f"changes={candidate.change_count}, "
             f"change_ratio={candidate.change_ratio}, "
             f"markers={candidate.likely_marker_types}"
@@ -334,7 +384,8 @@ def build_fallback_report(
             "",
             "# 4. Warnings and Uncertainty",
             "- No LLM interpretation was available; this is a deterministic fallback report.",
-            "- Marker correlation does not prove that an ID owns the intended signal.",
+            "- Correlation is adjusted for the percentage of the timeline covered by marker windows.",
+            "- Even adjusted marker correlation does not prove that an ID owns the intended signal.",
             "- Naturally noisy background traffic may still rank highly without a matched baseline.",
             "",
             "# 5. Recommendations and Next Mission",
@@ -383,6 +434,9 @@ class Candidate(BaseModel):
     byte_entropy: dict[str, float]
     byte_evidence: list[ByteEvidence]
     entropy: float
+    raw_marker_fraction: float
+    marker_window_coverage: float
+    correlation_lift: float
     correlation_score: float
     confidence: float
     likely_marker_types: list[str]
@@ -435,6 +489,77 @@ def build_interval_index(
 ) -> tuple[list[tuple[int, int]], list[int]]:
     merged = merge_intervals(intervals)
     return merged, [start for start, _ in merged]
+
+
+def interval_coverage_fraction(
+    intervals: list[tuple[int, int]],
+    session_start_ms: int,
+    session_end_ms: int,
+) -> float:
+    """Return the fraction of the recorded timeline covered by marker windows."""
+    if session_end_ms <= session_start_ms:
+        return 0.0
+
+    covered_ms = 0
+    for start, end in intervals:
+        clipped_start = max(start, session_start_ms)
+        clipped_end = min(end, session_end_ms)
+        if clipped_end >= clipped_start:
+            covered_ms += clipped_end - clipped_start + 1
+
+    duration_ms = session_end_ms - session_start_ms + 1
+    return min(1.0, covered_ms / max(duration_ms, 1))
+
+
+REPORT_SECTION_PATTERN = re.compile(
+    r"(?im)^\s*#{0,6}\s*([1-5])\s*[.)\-:]\s*[^\n]*$"
+)
+
+
+def split_numbered_report_sections(report: str) -> dict[int, str]:
+    """Split a Markdown report into numbered sections 1 through 5."""
+    matches = list(REPORT_SECTION_PATTERN.finditer(report or ""))
+    sections: dict[int, str] = {}
+
+    for index, match in enumerate(matches):
+        section_number = int(match.group(1))
+        section_end = (
+            matches[index + 1].start()
+            if index + 1 < len(matches)
+            else len(report)
+        )
+        sections.setdefault(
+            section_number,
+            report[match.start():section_end].strip(),
+        )
+
+    return sections
+
+
+def ensure_complete_five_section_report(
+    report: str,
+    fallback_report: str,
+) -> tuple[str, list[int]]:
+    """Append deterministic fallback sections when a model omits or truncates them."""
+    model_sections = split_numbered_report_sections(report)
+    fallback_sections = split_numbered_report_sections(fallback_report)
+
+    missing_sections = [
+        section_number
+        for section_number in range(1, 6)
+        if section_number not in model_sections
+    ]
+
+    if not missing_sections:
+        return report.strip(), []
+
+    repaired = report.rstrip()
+    for section_number in missing_sections:
+        fallback_section = fallback_sections.get(section_number)
+        if fallback_section:
+            repaired += "\n\n" + fallback_section
+
+    return repaired.strip(), missing_sections
 
 
 def timestamp_in_intervals(
@@ -674,7 +799,7 @@ async def call_ollama_generate(model: str, prompt: str) -> dict[str, Any]:
                 "model": model,
                 "prompt": prompt,
                 "stream": False,
-                "keep_alive": "30m",
+                "keep_alive": OLLAMA_KEEP_ALIVE,
                 "options": {
                     "temperature": 0.2,
                     "top_p": 0.9,
@@ -694,10 +819,14 @@ async def call_ollama_generate(model: str, prompt: str) -> dict[str, Any]:
 
 async def call_ollama_embed(model: str, text: str) -> Optional[list[float]]:
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(timeout=EMBED_TIMEOUT_SECONDS) as client:
             response = await client.post(
                 f"{OLLAMA_URL}/api/embed",
-                json={"model": model, "input": text},
+                json={
+                    "model": model,
+                    "input": text,
+                    "keep_alive": OLLAMA_KEEP_ALIVE,
+                },
             )
             response.raise_for_status()
             payload = response.json()
@@ -806,6 +935,9 @@ def compact_heatmap_payload(
             "frame_count": candidate.frame_count,
             "frequency_hz": candidate.frequency_hz,
             "baseline_score": candidate.baseline_score,
+            "raw_marker_fraction": candidate.raw_marker_fraction,
+            "marker_window_coverage": candidate.marker_window_coverage,
+            "correlation_lift": candidate.correlation_lift,
             "correlation_score": candidate.correlation_score,
             "confidence": candidate.confidence,
         }
@@ -888,6 +1020,9 @@ def build_llm_prompt(
                 f"- {c.can_id_hex}: frames={c.frame_count}, hz={c.frequency_hz}, "
                 f"changes={c.change_count}, entropy={c.entropy:.3f}, "
                 f"score={c.correlation_score:.3f}, confidence={c.confidence:.3f}, "
+                f"raw_marker_fraction={c.raw_marker_fraction:.3f}, "
+                f"marker_window_coverage={c.marker_window_coverage:.3f}, "
+                f"correlation_lift={c.correlation_lift:.3f}, "
                 f"change_ratio={c.change_ratio:.5f}, changed_frames={c.changed_frame_count}, "
                 f"byte_changes={c.byte_change_counts}, byte_entropy={c.byte_entropy}, "
                 f"markers={c.likely_marker_types}, byte_evidence=[{compact_byte_evidence(c, limit=LLM_BYTE_EVIDENCE_LIMIT)}]"
@@ -971,7 +1106,7 @@ def build_llm_prompt(
     Detailed reporting requirements:
     - Write a full technical report, not a short list.
     - For each top CAN ID, explain why it ranked high and why it might be a false positive.
-    - Discuss byte-level behavior for bytes 0 through 7 when available.
+    - Discuss only the active byte evidence explicitly supplied in the prompt.
     - Compare marker timing against byte changes.
     - Separate evidence, hypothesis, and next validation steps.
     - Follow the exact recommendation count required by section 5.
@@ -1009,6 +1144,20 @@ def analyze_frames(
 
     correlation_intervals, correlation_starts = build_interval_index(
         [(start, end) for start, end, _ in marker_windows]
+    )
+
+    session_start_ms = min(
+        (frame.timestamp_ms for frame in frames),
+        default=0,
+    )
+    session_end_ms = max(
+        (frame.timestamp_ms for frame in frames),
+        default=session_start_ms,
+    )
+    marker_window_coverage = interval_coverage_fraction(
+        correlation_intervals,
+        session_start_ms,
+        session_end_ms,
     )
 
     for can_id, rows in sorted(by_id.items()):
@@ -1134,6 +1283,8 @@ def analyze_frames(
                 marker_hits[str(step_code)] += hits
 
         if baseline_mode:
+            raw_marker_fraction = 0.0
+            correlation_lift = 0.0
             correlation_score = 0.0
             confidence = 0.0
 
@@ -1153,11 +1304,26 @@ def analyze_frames(
                 candidate_role = "stable_background"
                 notes = "stable/background traffic observed during passive profile"
         else:
-            correlation_score = (
+            raw_marker_fraction = (
                 min(1.0, window_delta_count / max(change_count, 1))
                 if change_count > 0
                 else 0.0
             )
+
+            # A raw marker fraction is misleading when marker windows cover a
+            # large share of the recording. Score only the lift above the
+            # fraction expected from timeline coverage.
+            if (
+                raw_marker_fraction > marker_window_coverage
+                and marker_window_coverage < 1.0
+            ):
+                correlation_lift = (
+                    raw_marker_fraction - marker_window_coverage
+                ) / max(1.0 - marker_window_coverage, 1e-9)
+            else:
+                correlation_lift = 0.0
+
+            correlation_score = min(1.0, max(0.0, correlation_lift))
 
             confidence = min(
                 1.0,
@@ -1205,6 +1371,9 @@ def analyze_frames(
             byte_entropy=byte_entropy,
             byte_evidence=byte_evidence,
             entropy=round(entropy_score, 4),
+            raw_marker_fraction=round(raw_marker_fraction, 5),
+            marker_window_coverage=round(marker_window_coverage, 5),
+            correlation_lift=round(correlation_lift, 5),
             correlation_score=round(correlation_score, 5),
             confidence=round(confidence, 5),
             likely_marker_types=top_markers,
@@ -1236,6 +1405,11 @@ def analyze_frames(
                 else None
             ),
             "baseline_score": round(baseline_score, 5),
+            "raw_marker_fraction": round(raw_marker_fraction, 5),
+            "marker_window_coverage": round(marker_window_coverage, 5),
+            "correlation_lift": round(correlation_lift, 5),
+            "correlation_score": round(correlation_score, 5),
+            "confidence": round(confidence, 5),
         }
 
     if baseline_mode:
@@ -1275,6 +1449,13 @@ async def get_ai_status() -> dict[str, Any]:
         "default_llm_model": DEFAULT_LLM_MODEL,
         "default_embed_model": DEFAULT_EMBED_MODEL,
         "llm_ready": len(generate_models) > 0,
+        "llm_deadline_seconds": LLM_DEADLINE_SECONDS,
+        "llm_http_read_timeout_seconds": LLM_HTTP_READ_TIMEOUT_SECONDS,
+        "llm_num_ctx": LLM_NUM_CTX,
+        "llm_num_predict": LLM_NUM_PREDICT,
+        "llm_candidate_limit": LLM_CANDIDATE_LIMIT,
+        "llm_byte_evidence_limit": LLM_BYTE_EVIDENCE_LIMIT,
+        "ollama_keep_alive": OLLAMA_KEEP_ALIVE,
     }
 
 
@@ -1291,6 +1472,13 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
         use_llm=payload.use_llm,
         use_embeddings=payload.use_embeddings,
         persist=payload.persist,
+        llm_deadline_seconds=(
+            LLM_DEADLINE_SECONDS
+            if payload.use_llm
+            else None
+        ),
+        llm_num_ctx=LLM_NUM_CTX if payload.use_llm else None,
+        llm_num_predict=LLM_NUM_PREDICT if payload.use_llm else None,
     )
 
     pool = await connect_db()
@@ -1520,7 +1708,7 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
             )
             llm_response = None
 
-    report_content = llm_response or build_fallback_report(
+    fallback_report = build_fallback_report(
         session_id=session_id,
         analysis_mode=analysis_mode,
         frames_count=len(frames),
@@ -1529,11 +1717,28 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
         baseline_profile=baseline_profile,
     )
 
+    repaired_report_sections: list[int] = []
+    if llm_response:
+        report_content, repaired_report_sections = (
+            ensure_complete_five_section_report(
+                llm_response,
+                fallback_report,
+            )
+        )
+    else:
+        report_content = fallback_report
+
+    report_sections_present = sorted(
+        split_numbered_report_sections(report_content).keys()
+    )
+
     can_ai_log(
         "report_selected",
         session=session_id,
         source="llm" if llm_response else "fallback",
         report_chars=len(report_content),
+        report_sections=report_sections_present,
+        repaired_sections=repaired_report_sections,
         llm_error=llm_error,
     )
 
@@ -1648,6 +1853,9 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                                 "analysis_mode": analysis_mode,
                                 "candidate_role": c.candidate_role,
                                 "baseline_score": c.baseline_score,
+                                "raw_marker_fraction": c.raw_marker_fraction,
+                                "marker_window_coverage": c.marker_window_coverage,
+                                "correlation_lift": c.correlation_lift,
                                 "change_ratio": c.change_ratio,
                                 "changed_frame_count": c.changed_frame_count,
                                 "changed_frame_ratio": c.changed_frame_ratio,
@@ -1684,6 +1892,9 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                                 "analysis_mode": analysis_mode,
                                 "candidate_role": c.candidate_role,
                                 "baseline_score": c.baseline_score,
+                                "raw_marker_fraction": c.raw_marker_fraction,
+                                "marker_window_coverage": c.marker_window_coverage,
+                                "correlation_lift": c.correlation_lift,
                                 "change_ratio": c.change_ratio,
                                 "changed_frame_count": c.changed_frame_count,
                                 "changed_frame_ratio": c.changed_frame_ratio,
@@ -1720,11 +1931,26 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                         "frames_analyzed": len(frames),
                         "markers": len(marker_dicts),
                         "model": resolved_llm_model,
+                        "ollama_url": OLLAMA_URL,
+                        "llm_deadline_seconds": LLM_DEADLINE_SECONDS,
+                        "llm_http_read_timeout_seconds": LLM_HTTP_READ_TIMEOUT_SECONDS,
+                        "llm_num_ctx": LLM_NUM_CTX,
+                        "llm_num_predict": LLM_NUM_PREDICT,
+                        "llm_candidate_limit": LLM_CANDIDATE_LIMIT,
+                        "llm_byte_evidence_limit": LLM_BYTE_EVIDENCE_LIMIT,
+                        "ollama_keep_alive": OLLAMA_KEEP_ALIVE,
                         "llm_requested": payload.use_llm,
                         "llm_succeeded": llm_response is not None,
                         "analysis_source": "llm" if llm_response else "fallback",
                         "llm_error": llm_error,
                         "llm_timed_out": llm_timed_out,
+                        "report_sections_present": report_sections_present,
+                        "report_repaired_sections": repaired_report_sections,
+                        "marker_window_coverage": (
+                            candidates[0].marker_window_coverage
+                            if candidates
+                            else 0.0
+                        ),
                         "generation": generation_metadata,
                         "deltas_computed": len(deltas),
                         "deltas_persisted": len(deltas_to_persist),
@@ -1843,6 +2069,11 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
         "short_dlc_frames": short_dlc_frames,
         "invalid_width_frames": invalid_width_frames,
         "markers": len(marker_dicts),
+        "marker_window_coverage": (
+            candidates[0].marker_window_coverage
+            if candidates
+            else 0.0
+        ),
         "candidate_count": len(candidates),
         "candidates": response_candidates,
         "heatmap": response_heatmap,
@@ -1858,8 +2089,20 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
         "llm_succeeded": llm_response is not None,
         "llm_available": llm_response is not None,
         "llm_model": resolved_llm_model,
+        "llm_runtime": {
+            "ollama_url": OLLAMA_URL,
+            "deadline_seconds": LLM_DEADLINE_SECONDS,
+            "http_read_timeout_seconds": LLM_HTTP_READ_TIMEOUT_SECONDS,
+            "num_ctx": LLM_NUM_CTX,
+            "num_predict": LLM_NUM_PREDICT,
+            "candidate_limit": LLM_CANDIDATE_LIMIT,
+            "byte_evidence_limit": LLM_BYTE_EVIDENCE_LIMIT,
+            "keep_alive": OLLAMA_KEEP_ALIVE,
+        },
         "llm_error": llm_error,
         "llm_timed_out": llm_timed_out,
+        "report_sections_present": report_sections_present,
+        "report_repaired_sections": repaired_report_sections,
         "installed_ollama_models": installed_ollama_models,
         "deltas_computed": len(deltas),
         "deltas_persisted": (
@@ -2102,17 +2345,6 @@ async def get_mission_progress(
             )
 
         frame_count = int(row.get("frame_count") or 0)     
-        
-        # changed_frame_count = len(set(changed_frame_timestamps))
-
-        # changed_frame_ratio = (
-        #     changed_frame_count / max(len(rows) - 1, 1)
-        # )
-        # changed_frame_timestamps: set[int] = set()
-        # byte_change_events: list[tuple[int, int]] = []
-        # if prev_byte != cur_byte:
-        #     changed_frame_timestamps.add(row.timestamp_ms)
-        #     byte_change_events.append((row.timestamp_ms, idx))
 
         marker_count = int(row.get("marker_count") or 0)
         analyzed = bool(row.get("report_id")) or confidence is not None
