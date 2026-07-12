@@ -19,7 +19,7 @@ AvenLab is a next-generation vehicle simulation and machine-learning engine desi
 - **High-Performance Visualization** using React Three Fiber
 - **Socket-Based Networking** for live state syncing
 - **Recording & Replay System** for dataset generation and training
-- **Self-Driving Research Tools** (future)  
+- **Self-Driving Research Tools** (future)
 
 ---
 
@@ -512,7 +512,7 @@ This repository includes various tools and scripts designed to assist in car hac
 - **Command Line**: Command line allows for unique code injection from a browser.
 - **Diagnostic Tools**: Programs to interact with vehicle ECUs using standard protocols.
 
-*Note: Ensure you have the necessary permissions and are compliant with local laws before interacting with vehicle networks.*
+_Note: Ensure you have the necessary permissions and are compliant with local laws before interacting with vehicle networks._
 
 ---
 
@@ -632,7 +632,7 @@ Then boot the Pi and connect via:
 
 ```bash
 ssh uri@<IP_ADDRESS>
-or 
+or
 ssh -o IPQoS=throughput uri@<your-ip-address>
 ```
 
@@ -692,7 +692,7 @@ nvm --version
 
 ```bash
 nvm install 24.18.0      # Specific version
-nvm use 24.18.0          # Switch to version 
+nvm use 24.18.0          # Switch to version
 ```
 
 ## Set a default version:S
@@ -813,7 +813,7 @@ Now check:
 ip link
 ```
 
-```bash
+````bash
 sudo ip link set can2 down
 
 sudo ip link set can2 up type can bitrate 500000 listen-only on
@@ -850,11 +850,23 @@ cd /var/www
 # Set correct ownership and permissions
 sudo chown -R $USER:$USER /var/www
 sudo chmod -R 755 /var/www
-```
+````
 
 ```bash
 sudo nano /etc/nginx/sites-available/AvenLab
 ```
+
+sudo -u postgres psql \
+ -v ON_ERROR_STOP=1 \
+ -d avenlab_data \
+ -f schema.sql
+
+psql \
+ -v ON_ERROR_STOP=1 \
+ -h 127.0.0.1 \
+ -U avenlab \
+ -d avenlab_data \
+ -f schema.sql
 
 ```ini
 server {
@@ -874,7 +886,7 @@ server {
     proxy_pass http://127.0.0.1:8001;
 
     proxy_http_version 1.1;
-    
+
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -884,7 +896,7 @@ server {
     proxy_send_timeout 900s;
     proxy_read_timeout 900s;
     send_timeout 900s;
-    
+
     proxy_buffering off;
     proxy_request_buffering off;
   }
@@ -898,7 +910,7 @@ server {
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
-    
+
     proxy_connect_timeout 15s;
     proxy_send_timeout 900s;
     proxy_read_timeout 900s;
@@ -922,7 +934,7 @@ server {
     proxy_send_timeout 30s;
     proxy_read_timeout 30s;
   }
-  
+
   location /ws/ {
     proxy_pass http://127.0.0.1:9001/;
 
@@ -945,12 +957,12 @@ server {
 }
 ```
 
-
 ```bash
 sudo ln -s \
   /etc/nginx/sites-available/AvenLab \
   /etc/nginx/sites-enabled/AvenLab
 ```
+
 ---
 
 ## 🍴 2. Fork the Repository
@@ -1220,27 +1232,27 @@ psql "$DATABASE_URL" -c "SELECT current_database(), current_user, NOW();"
 ```
 
 ```ini
-[Unit] 
-Description=AvenLab Data Server 
-After=network-online.target 
-Wants=network-online.target 
+[Unit]
+Description=AvenLab Data Server
+After=network-online.target
+Wants=network-online.target
 
-[Service] 
-Type=simple 
-User=uri 
-Group=uri 
+[Service]
+Type=simple
+User=uri
+Group=uri
 
-WorkingDirectory=/var/www/avenlab/current/data-server 
-EnvironmentFile=/etc/environment.env 
-ExecStart=/var/www/avenlab/current/data-server/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8001 
+WorkingDirectory=/var/www/avenlab/current/data-server
+EnvironmentFile=/etc/environment.env
+ExecStart=/var/www/avenlab/current/data-server/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8001
 
-Restart=always 
-RestartSec=3 
+Restart=always
+RestartSec=3
 
-KillSignal=SIGTERM 
-TimeoutStopSec=30 
+KillSignal=SIGTERM
+TimeoutStopSec=30
 
-[Install] 
+[Install]
 WantedBy=multi-user.target
 ```
 
@@ -1308,10 +1320,10 @@ Use Voltmeter to verify those wires are live
 Make a table like this:
 
 Std Pin Function Wire Color Cont Verified
-6       CAN High Brown/white     ✅
-4       Ground   Black/white    ✅
-14     CAN Low   Green           ✅
-16     +12 V     Black          ✅
+6 CAN High Brown/white ✅
+4 Ground Black/white ✅
+14 CAN Low Green ✅
+16 +12 V Black ✅
 
 ## plug into car
 
