@@ -852,6 +852,105 @@ sudo chown -R $USER:$USER /var/www
 sudo chmod -R 755 /var/www
 ```
 
+```bash
+sudo nano /etc/nginx/sites-available/AvenLab
+```
+
+```ini
+server {
+  listen 80;
+  listen [::]:80;
+
+  server_name _;
+
+  root /var/www/avenlab/current/frontend/dist;
+  index index.html;
+
+  location / {
+    try_files $uri $uri/ /index.html;
+  }
+
+  location /data/ {
+    proxy_pass http://127.0.0.1:8001;
+
+    proxy_http_version 1.1;
+    
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    proxy_connect_timeout 15s;
+    proxy_send_timeout 900s;
+    proxy_read_timeout 900s;
+    send_timeout 900s;
+    
+    proxy_buffering off;
+    proxy_request_buffering off;
+  }
+
+  location /db/ {
+    proxy_pass http://127.0.0.1:8001;
+
+    proxy_http_version 1.1;
+
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    
+    proxy_connect_timeout 15s;
+    proxy_send_timeout 900s;
+    proxy_read_timeout 900s;
+    send_timeout 900s;
+
+    proxy_buffering off;
+    proxy_request_buffering off;
+}
+
+  location /health {
+    proxy_pass http://127.0.0.1:8001;
+
+    proxy_http_version 1.1;
+
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    proxy_connect_timeout 5s;
+    proxy_send_timeout 30s;
+    proxy_read_timeout 30s;
+  }
+  
+  location /ws/ {
+    proxy_pass http://127.0.0.1:9001/;
+
+    proxy_http_version 1.1;
+
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    proxy_connect_timeout 15s;
+    proxy_read_timeout 86400;
+    proxy_send_timeout 86400;
+
+    proxy_buffering off;
+  }
+}
+```
+
+
+```bash
+sudo ln -s \
+  /etc/nginx/sites-available/AvenLab \
+  /etc/nginx/sites-enabled/AvenLab
+```
 ---
 
 ## 🍴 2. Fork the Repository

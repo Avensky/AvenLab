@@ -1,3 +1,5 @@
+# data-server/app/can/can_ai_router.py
+
 from __future__ import annotations
 
 import json
@@ -185,43 +187,94 @@ def build_fallback_report(
 ) -> str:
     if is_baseline_mode(analysis_mode):
         profile = baseline_profile or {}
-        lines = [
-            "# CAN Baseline / Noise Profile",
-            "",
-            f"Session: {session_id}",
-            f"Frames analyzed: {frames_count}",
-            f"Markers: {markers_count}",
-            f"Observed CAN IDs: {profile.get('observed_ids', 0)}",
-            "",
-            "## Background IDs to filter in future action missions",
-            *[
+        background_lines = [
+            (
+                f"- {candidate.can_id_hex}: role={candidate.candidate_role}, "
+                f"frames={candidate.frame_count}, hz={candidate.frequency_hz}, "
+                f"changes={candidate.change_count}, "
+                f"change_ratio={candidate.change_ratio}, "
+                f"bytes={candidate.byte_change_counts}"
+            )
+            for candidate in candidates[:5]
+        ] or ["- No CAN IDs were available for baseline analysis."]
+
+        byte_lines = [
+            f"- {candidate.can_id_hex}: {compact_byte_evidence(candidate)}"
+            for candidate in candidates[:3]
+        ] or ["- No changing-byte evidence was available."]
+
+        return "\n".join(
+            [
+                "# 1. Executive Summary",
+                "",
                 (
-                    f"- {c.can_id_hex}: frames={c.frame_count}, hz={c.frequency_hz}, "
-                    f"changes={c.change_count}, entropy={c.entropy}, "
-                    f"baseline_score={c.baseline_score}, role={c.candidate_role}, "
-                    f"bytes={c.byte_change_counts}"
-                )
-                for c in candidates[:15]
-            ],
-            "",
-            "## Analyst note",
-            "No target action was expected in this mission, so confidence values are not treated as signal probabilities.",
-        ]
-        return "\n".join(lines)
+                    f"Statistical baseline analysis completed for session {session_id}. "
+                    f"It analyzed {frames_count} frames, {markers_count} markers, and "
+                    f"observed {profile.get('observed_ids', 0)} CAN IDs. This is a "
+                    "noise profile, not a decoded target signal."
+                ),
+                "",
+                "# 2. Baseline Traffic Profile",
+                *background_lines,
+                "",
+                "# 3. Byte-Level Baseline Evidence",
+                *byte_lines,
+                "",
+                "# 4. Warnings and Uncertainty",
+                "- No LLM interpretation was available; this is a deterministic fallback report.",
+                "- High-rate or high-change IDs may be normal background traffic.",
+                "- Baseline observations should be matched to the same vehicle and operating state.",
+                "",
+                "# 5. Recommendations and Next Mission",
+                "1. Preserve this baseline as a negative-control profile.",
+                "2. Repeat the same baseline state to measure natural variability.",
+                "3. Compare the next action mission against these naturally active IDs and bytes.",
+                "Recommended next mission: record one repeated target action with at least four repetitions and idle recovery between actions.",
+            ]
+        )
+
+    candidate_lines = [
+        (
+            f"- {candidate.can_id_hex}: confidence={candidate.confidence}, "
+            f"correlation={candidate.correlation_score}, "
+            f"changes={candidate.change_count}, "
+            f"change_ratio={candidate.change_ratio}, "
+            f"markers={candidate.likely_marker_types}"
+        )
+        for candidate in candidates[:5]
+    ] or ["- No candidate CAN IDs were found."]
+
+    byte_lines = [
+        f"- {candidate.can_id_hex}: {compact_byte_evidence(candidate)}"
+        for candidate in candidates[:3]
+    ] or ["- No changing-byte evidence was available."]
 
     return "\n".join(
         [
-            "# CAN Session Analysis",
+            "# 1. Executive Summary",
             "",
-            f"Session: {session_id}",
-            f"Frames analyzed: {frames_count}",
-            f"Markers: {markers_count}",
+            (
+                f"Statistical target-correlation analysis completed for session {session_id}. "
+                f"It analyzed {frames_count} frames and {markers_count} markers. "
+                "The following results are hypotheses, not confirmed decodes."
+            ),
             "",
-            "## Top candidates",
-            *[
-                f"- {c.can_id_hex}: confidence={c.confidence}, score={c.correlation_score}, changes={c.change_count}, bytes={c.byte_change_counts}"
-                for c in candidates[:15]
-            ],
+            "# 2. Top CAN ID Hypotheses",
+            *candidate_lines,
+            "",
+            "# 3. Byte-Level Evidence",
+            *byte_lines,
+            "",
+            "# 4. Warnings and Uncertainty",
+            "- No LLM interpretation was available; this is a deterministic fallback report.",
+            "- Marker correlation does not prove that an ID owns the intended signal.",
+            "- Naturally noisy background traffic may still rank highly without a matched baseline.",
+            "",
+            "# 5. Recommendations and Next Mission",
+            "1. Repeat the target action at least four times and verify the same byte transition each time.",
+            "2. Record an equal-duration no-action control and reject candidates that behave similarly there.",
+            "3. Verify that the candidate returns to its pre-action value after deactivation.",
+            "Recommended next mission: 2-second baseline, four action repetitions, 1.8-second action windows, 1.5-second capture windows, and 2-second idle recovery between repetitions.",
         ]
     )
 
@@ -236,13 +289,32 @@ class AnalyzeSessionRequest(BaseModel):
     persist: bool = True
 
 
+class ByteEvidence(BaseModel):
+    byte_index: int
+    change_count: int
+    unique_values: list[int]
+    most_common_values: list[tuple[int, int]]
+    pre_marker_mode: Optional[int]
+    action_window_mode: Optional[int]
+    post_marker_mode: Optional[int]
+    bit_flip_counts: dict[str, int]
+    median_marker_latency_ms: Optional[float]
+    in_window_changes: int
+    out_of_window_changes: int
+
+
 class Candidate(BaseModel):
     can_id: int
     can_id_hex: str
     frame_count: int
     frequency_hz: Optional[float]
     change_count: int
+    change_ratio: float
+    changed_frame_count: int
+    changed_frame_ratio: float
     byte_change_counts: dict[str, int]
+    byte_entropy: dict[str, float]
+    byte_evidence: list[ByteEvidence]
     entropy: float
     correlation_score: float
     confidence: float
@@ -261,6 +333,135 @@ class FrameRow:
     dlc: int
     data: list[int]
 
+
+def mode_value(values: list[int]) -> Optional[int]:
+    if not values:
+        return None
+    return int(Counter(values).most_common(1)[0][0])
+
+
+def timestamp_in_any_window(
+    timestamp_ms: int,
+    windows: list[tuple[int, int, dict[str, Any]]],
+) -> bool:
+    return any(start <= timestamp_ms <= end for start, end, _ in windows)
+
+
+def build_byte_evidence(
+    rows: list[FrameRow],
+    marker_windows: list[tuple[int, int, dict[str, Any]]],
+    marker_window_ms: int,
+) -> tuple[list[ByteEvidence], dict[str, float]]:
+    """Build observed byte evidence without claiming a decoded encoding.
+
+    For each byte, this records value diversity, common values, bit flips,
+    marker-window activity, and the first non-negative change latency after
+    each marker. Pre/action/post modes summarize all marker repetitions.
+    """
+    marker_times = [
+        int(marker.get("timestamp_ms") or 0)
+        for _, _, marker in marker_windows
+    ]
+
+    evidence_rows: list[ByteEvidence] = []
+    byte_entropy: dict[str, float] = {}
+
+    for byte_index in range(8):
+        values = [row.data[byte_index] for row in rows]
+        byte_entropy[str(byte_index)] = round(max(0.0, entropy(values)), 4)
+
+        change_timestamps: list[int] = []
+        bit_flip_counts = [0] * 8
+
+        for previous, current in zip(rows, rows[1:]):
+            previous_value = previous.data[byte_index]
+            current_value = current.data[byte_index]
+            if previous_value == current_value:
+                continue
+
+            change_timestamps.append(current.timestamp_ms)
+            changed_bits = previous_value ^ current_value
+            for bit_index in range(8):
+                if changed_bits & (1 << bit_index):
+                    bit_flip_counts[bit_index] += 1
+
+        in_window_changes = sum(
+            1
+            for timestamp_ms in change_timestamps
+            if timestamp_in_any_window(timestamp_ms, marker_windows)
+        )
+        out_of_window_changes = len(change_timestamps) - in_window_changes
+
+        pre_marker_values: list[int] = []
+        action_window_values: list[int] = []
+        post_marker_values: list[int] = []
+        marker_latencies: list[int] = []
+
+        for marker_time in marker_times:
+            pre_start = marker_time - marker_window_ms
+            action_end = marker_time + marker_window_ms
+            post_end = action_end + marker_window_ms
+
+            pre_marker_values.extend(
+                row.data[byte_index]
+                for row in rows
+                if pre_start <= row.timestamp_ms < marker_time
+            )
+            action_window_values.extend(
+                row.data[byte_index]
+                for row in rows
+                if marker_time <= row.timestamp_ms <= action_end
+            )
+            post_marker_values.extend(
+                row.data[byte_index]
+                for row in rows
+                if action_end < row.timestamp_ms <= post_end
+            )
+
+            first_change = next(
+                (
+                    timestamp_ms
+                    for timestamp_ms in change_timestamps
+                    if marker_time <= timestamp_ms <= action_end
+                ),
+                None,
+            )
+            if first_change is not None:
+                marker_latencies.append(first_change - marker_time)
+
+        median_latency = (
+            float(statistics.median(marker_latencies))
+            if marker_latencies
+            else None
+        )
+
+        evidence_rows.append(
+            ByteEvidence(
+                byte_index=byte_index,
+                change_count=len(change_timestamps),
+                unique_values=sorted(set(values))[:32],
+                most_common_values=[
+                    (int(value), int(count))
+                    for value, count in Counter(values).most_common(5)
+                ],
+                pre_marker_mode=mode_value(pre_marker_values),
+                action_window_mode=mode_value(action_window_values),
+                post_marker_mode=mode_value(post_marker_values),
+                bit_flip_counts={
+                    str(bit_index): int(count)
+                    for bit_index, count in enumerate(bit_flip_counts)
+                },
+                median_marker_latency_ms=(
+                    round(median_latency, 2)
+                    if median_latency is not None
+                    else None
+                ),
+                in_window_changes=in_window_changes,
+                out_of_window_changes=out_of_window_changes,
+            )
+        )
+
+    return evidence_rows, byte_entropy
 
 def is_embedding_only_model(model_name: str) -> bool:
     lowered = model_name.lower()
@@ -363,6 +564,45 @@ async def call_ollama_embed(model: str, text: str) -> Optional[list[float]]:
     return None
 
 
+def compact_byte_evidence(candidate: Candidate, limit: int = 3) -> str:
+    active = [
+        item
+        for item in candidate.byte_evidence
+        if item.change_count > 0
+    ]
+    active.sort(
+        key=lambda item: (
+            item.in_window_changes,
+            item.change_count,
+        ),
+        reverse=True,
+    )
+
+    if not active:
+        return "no changing bytes"
+
+    summaries: list[str] = []
+    for item in active[:limit]:
+        nonzero_bit_flips = {
+            bit: count
+            for bit, count in item.bit_flip_counts.items()
+            if count > 0
+        }
+        summaries.append(
+            f"B{item.byte_index}: changes={item.change_count}, "
+            f"in_window={item.in_window_changes}, "
+            f"out_window={item.out_of_window_changes}, "
+            f"pre={item.pre_marker_mode}, "
+            f"action={item.action_window_mode}, "
+            f"post={item.post_marker_mode}, "
+            f"latency_ms={item.median_marker_latency_ms}, "
+            f"common={item.most_common_values[:4]}, "
+            f"bit_flips={nonzero_bit_flips}"
+        )
+
+    return "; ".join(summaries)
+
+
 def build_llm_prompt(
     session: dict[str, Any],
     markers: list[dict[str, Any]],
@@ -381,33 +621,56 @@ def build_llm_prompt(
             (
                 f"- {c.can_id_hex}: role={c.candidate_role}, frames={c.frame_count}, "
                 f"hz={c.frequency_hz}, changes={c.change_count}, entropy={c.entropy:.3f}, "
-                f"baseline_score={c.baseline_score:.3f}, byte_changes={c.byte_change_counts}"
+                f"baseline_score={c.baseline_score:.3f}, change_ratio={c.change_ratio:.5f}, "
+                f"byte_changes={c.byte_change_counts}, byte_entropy={c.byte_entropy}, "
+                f"byte_evidence=[{compact_byte_evidence(c)}]"
             )
-            for c in candidates[:12]
+            for c in candidates[:8]
         ) or "- no background IDs"
 
         profile = baseline_profile or {}
+
         mode_instructions = f"""
-This is a PASSIVE BASELINE / NOISE-SNIFFING mission.
-There is no intended target action and no expected CAN ID to decode.
-Do not say any ID is "the right ID" for a command.
-Do not present confidence as a probability of a target signal.
-Instead, summarize background traffic for this vehicle state:
-- observed_ids: {profile.get('observed_ids')}
-- total_frames: {profile.get('total_frames')}
-- high-rate periodic IDs
-- naturally noisy bytes
-- stable IDs
-- which IDs should be filtered or down-weighted during future action missions.
-"""
+        This is a PASSIVE BASELINE / NOISE-SNIFFING mission.
+        There is no intended target action and no expected CAN ID to decode.
+        Do not say any ID is "the right ID" for a command.
+        Do not present confidence as a probability of a target signal.
+        Instead, summarize background traffic for this vehicle state:
+        - observed_ids: {profile.get('observed_ids')}
+        - total_frames: {profile.get('total_frames')}
+        - high-rate periodic IDs
+        - naturally noisy bytes
+        - stable IDs
+        - which IDs should be filtered or down-weighted during future action missions.
+        """
+                    
         response_structure = """
-Respond in this exact structure:
-1. Executive summary
-2. Baseline traffic profile table with: CAN ID, role, frequency, byte activity, why it matters
-3. Background/noise filter recommendations
-4. Warnings / uncertainty
-5. Recommended next recording mission
-"""
+        Return exactly these five numbered sections.
+
+        1. Executive Summary
+        - Maximum 100 words.
+        - State that this is a baseline/noise profile, not a decoded target.
+
+        2. Baseline Traffic Profile
+        - Include no more than five CAN IDs.
+        - Use a compact table with:
+          CAN ID | background role | frequency | strongest changing bytes | why it matters
+
+        3. Byte-Level Baseline Evidence
+        - Discuss only the top three background IDs.
+        - Identify stable, periodic, and naturally noisy bytes from the supplied evidence.
+        - Do not invent encodings.
+
+        4. Warnings and Uncertainty
+        - Maximum five bullets.
+        - Explain that baseline activity can cause false positives in later target missions.
+
+        5. Recommendations and Next Mission
+        - This section is mandatory.
+        - Include exactly three practical recommendations.
+        - End with one target-action mission that should be recorded next.
+        - If the output budget is low, shorten sections 2 and 3, but always produce section 5.
+        """
     else:
         candidate_heading = "Ranked statistical CAN-ID candidates"
         candidate_lines = "\n".join(
@@ -415,61 +678,95 @@ Respond in this exact structure:
                 f"- {c.can_id_hex}: frames={c.frame_count}, hz={c.frequency_hz}, "
                 f"changes={c.change_count}, entropy={c.entropy:.3f}, "
                 f"score={c.correlation_score:.3f}, confidence={c.confidence:.3f}, "
-                f"byte_changes={c.byte_change_counts}, markers={c.likely_marker_types}"
+                f"change_ratio={c.change_ratio:.5f}, changed_frames={c.changed_frame_count}, "
+                f"byte_changes={c.byte_change_counts}, byte_entropy={c.byte_entropy}, "
+                f"markers={c.likely_marker_types}, byte_evidence=[{compact_byte_evidence(c)}]"
             )
-            for c in candidates[:12]
+            for c in candidates[:8]
         ) or "- no candidates"
 
         mode_instructions = """
-This is a TARGET CORRELATION mission.
-Rank candidate CAN IDs by evidence near action/capture markers.
-Confidence is a research score, not proof.
-Prefer IDs that changed near the intended action and are not merely noisy baseline traffic.
-"""
+        This is a TARGET CORRELATION mission.
+        Rank candidate CAN IDs by evidence near action/capture markers.
+        Confidence is a research score, not proof.
+        Prefer IDs that changed near the intended action and are not merely noisy baseline traffic.
+        """
+
         response_structure = """
-Respond in this exact structure:
-1. Executive summary
-2. Top CAN ID hypotheses table with: CAN ID, likely signal, evidence, confidence, next validation experiment
-3. Byte-level observations and heatmap interpretation
-4. Warnings / uncertainty
-5. Recommended next recording mission
-"""
+        Return exactly these five numbered sections.
+
+        1. Executive Summary
+        - Maximum 120 words.
+        - State whether evidence is strong, moderate, weak, or insufficient.
+        - Name no more than three leading CAN IDs.
+
+        2. Top CAN ID Hypotheses
+        - Include no more than five candidates.
+        - Use a compact table with:
+          CAN ID | suspected role | strongest byte | observed evidence | confidence | false-positive risk
+
+        3. Byte-Level Evidence
+        - Discuss only the top three candidates.
+        - Distinguish observed values and transitions from interpretation.
+        - Do not invent byte values, bit positions, scale, offset, or endianness.
+
+        4. Warnings and Uncertainty
+        - Maximum five bullets.
+        - Mention missing controls, baseline noise, marker ambiguity, and insufficient repetition when applicable.
+
+        5. Recommendations and Next Mission
+        - This section is mandatory.
+        - Include exactly three validation experiments.
+        - End with one recommended mission containing:
+          action, repetitions, baseline duration, action duration, capture duration, and expected evidence.
+        - If the output budget is low, shorten sections 2 and 3, but always produce section 5.
+        """
 
     return f"""
-You are a CAN bus reverse-engineering assistant for AvenLab.
+    You are a CAN bus reverse-engineering assistant for AvenLab.
 
-You must be conservative. Do not claim a signal is decoded unless the evidence supports it.
-Treat the output as a research hypothesis for the selected vehicle dataset only.
-Do not assume every session belongs to a 2015 Scion FR-S. Practice vehicles such as AE86 custom ECU, BRZ, Camaro, and Tank must keep separate hypotheses from live FR-S captures.
+    You must be conservative. Do not claim a signal is decoded unless the evidence supports it.
+    Treat the output as a research hypothesis for the selected vehicle dataset only.
+    Do not assume every session belongs to a 2015 Scion FR-S. Practice vehicles such as AE86, vcan interface, and simulation mode must keep as separate hypotheses from live captures.
 
-Analysis mode:
-- analysis_mode: {analysis_mode}
-{mode_instructions}
+    The intended target describes the human action being tested. It does not prove
+    that any candidate carries that signal. Use it only to evaluate temporal and
+    behavioral consistency.
 
-Session:
-- session_id: {session.get('id')}
-- vehicle_slug: {session.get('vehicle_slug')}
-- vehicle: {session.get('year')} {session.get('make')} {session.get('model')}
-- mission_code: {session.get('mission_code')}
-- bus_interface: {session.get('bus_interface')}
-- bus_mode: {session.get('bus_mode')}
+    You are only given byte-change counts, not decoded byte values.
+    Do not claim a specific byte value, bit position, scale, offset, endianness,
+    or encoding unless that evidence is explicitly included.
 
-Human event markers:
-{marker_lines}
+    Analysis mode:
+    - analysis_mode: {analysis_mode}
+    {mode_instructions}
 
-{candidate_heading}:
-{candidate_lines}
+    Session:
+    - session_id: {session.get('id')}
+    - vehicle_slug: {session.get('vehicle_slug')}
+    - vehicle: {session.get('year')} {session.get('make')} {session.get('model')}
+    - mission_code: {session.get('mission_code')}
+    - mission_title: {session.get('mission_title')}
+    - intended_target: {session.get('mission_target')}
+    - bus_interface: {session.get('bus_interface')}
+    - bus_mode: {session.get('bus_mode')}
 
-Detailed reporting requirements:
-- Write a full technical report, not a short list.
-- For each top CAN ID, explain why it ranked high and why it might be a false positive.
-- Discuss byte-level behavior for bytes 0 through 7 when available.
-- Compare marker timing against byte changes.
-- Separate evidence, hypothesis, and next validation steps.
-- Include at least 3 concrete follow-up experiments.
-- Do not stop after listing IDs.
-{response_structure}
-""".strip()
+    Human event markers:
+    {marker_lines}
+
+    {candidate_heading}:
+    {candidate_lines}
+
+    Detailed reporting requirements:
+    - Write a full technical report, not a short list.
+    - For each top CAN ID, explain why it ranked high and why it might be a false positive.
+    - Discuss byte-level behavior for bytes 0 through 7 when available.
+    - Compare marker timing against byte changes.
+    - Separate evidence, hypothesis, and next validation steps.
+    - Follow the exact recommendation count required by section 5.
+    - Do not stop after listing IDs.
+    {response_structure}
+    """.strip()
 
 
 def analyze_frames(
@@ -490,49 +787,95 @@ def analyze_frames(
 
     marker_windows: list[tuple[int, int, dict[str, Any]]] = []
     for marker in markers:
-        t = int(marker.get("timestamp_ms") or 0)
-        marker_windows.append((t - marker_window_ms, t + marker_window_ms, marker))
+        timestamp_ms = int(marker.get("timestamp_ms") or 0)
+        marker_windows.append(
+            (
+                timestamp_ms - marker_window_ms,
+                timestamp_ms + marker_window_ms,
+                marker,
+            )
+        )
 
     for can_id, rows in sorted(by_id.items()):
-        rows.sort(key=lambda r: (r.timestamp_ms, r.id))
+        rows.sort(key=lambda row: (row.timestamp_ms, row.id))
+
         byte_change_counts = [0] * 8
-        changed_timestamps: list[int] = []
-        byte_values: list[int] = []
+        changed_frame_timestamps: set[int] = set()
+        byte_change_events: list[tuple[int, int]] = []
 
         previous: Optional[FrameRow] = None
         for row in rows:
-            byte_values.extend(row.data[:8])
             if previous is not None:
-                for idx, (prev_byte, cur_byte) in enumerate(zip(previous.data[:8], row.data[:8])):
-                    if prev_byte != cur_byte:
-                        byte_change_counts[idx] += 1
-                        changed_timestamps.append(row.timestamp_ms)
-                        if len(all_deltas) < MAX_DELTAS_TO_STORE:
-                            all_deltas.append(
-                                {
-                                    "session_id": None,
-                                    "can_id": can_id,
-                                    "timestamp_ms": row.timestamp_ms,
-                                    "byte_index": idx,
-                                    "previous_value": prev_byte,
-                                    "current_value": cur_byte,
-                                    "delta": int(cur_byte) - int(prev_byte),
-                                    "metadata": {
-                                        "can_id_hex": can_hex(can_id),
-                                        "raw_frame_id": row.id,
-                                        "analysis_mode": analysis_mode,
-                                    },
-                                }
-                            )
+                frame_changed = False
+                for byte_index, (previous_byte, current_byte) in enumerate(
+                    zip(previous.data[:8], row.data[:8])
+                ):
+                    if previous_byte == current_byte:
+                        continue
+
+                    frame_changed = True
+                    byte_change_counts[byte_index] += 1
+                    byte_change_events.append((row.timestamp_ms, byte_index))
+
+                    if len(all_deltas) < MAX_DELTAS_TO_STORE:
+                        all_deltas.append(
+                            {
+                                "session_id": None,
+                                "can_id": can_id,
+                                "timestamp_ms": row.timestamp_ms,
+                                "byte_index": byte_index,
+                                "previous_value": previous_byte,
+                                "current_value": current_byte,
+                                "delta": int(current_byte) - int(previous_byte),
+                                "metadata": {
+                                    "can_id_hex": can_hex(can_id),
+                                    "raw_frame_id": row.id,
+                                    "analysis_mode": analysis_mode,
+                                },
+                            }
+                        )
+
+                if frame_changed:
+                    changed_frame_timestamps.add(row.timestamp_ms)
+
             previous = row
 
-        first_t = rows[0].timestamp_ms if rows else 0
-        last_t = rows[-1].timestamp_ms if rows else first_t
-        duration_s = max((last_t - first_t) / 1000.0, 0.001)
-        frequency_hz = len(rows) / duration_s if len(rows) > 1 else None
+        byte_evidence, byte_entropy = build_byte_evidence(
+            rows,
+            marker_windows,
+            marker_window_ms,
+        )
+
+        active_entropy_values = [
+            byte_entropy[str(byte_index)]
+            for byte_index, count in enumerate(byte_change_counts)
+            if count > 0
+        ]
+        entropy_score = (
+            float(statistics.mean(active_entropy_values))
+            if active_entropy_values
+            else 0.0
+        )
+
+        first_timestamp = rows[0].timestamp_ms if rows else 0
+        last_timestamp = rows[-1].timestamp_ms if rows else first_timestamp
+        duration_seconds = max(
+            (last_timestamp - first_timestamp) / 1000.0,
+            0.001,
+        )
+        frequency_hz = len(rows) / duration_seconds if len(rows) > 1 else None
+
         change_count = sum(byte_change_counts)
-        entropy_score = entropy(byte_values)
-        change_ratio = min(change_count / max(len(rows), 1), 1.0)
+
+        # Byte changes are measured against all possible byte transitions, not
+        # against the number of frames. This prevents multi-byte frames from
+        # immediately saturating the activity score.
+        possible_byte_transitions = max((len(rows) - 1) * 8, 1)
+        change_ratio = change_count / possible_byte_transitions
+
+        changed_frame_count = len(changed_frame_timestamps)
+        changed_frame_ratio = changed_frame_count / max(len(rows) - 1, 1)
+
         frame_volume_score = min(len(rows) / 200.0, 1.0)
         entropy_norm = min(entropy_score / 8.0, 1.0)
         baseline_score = min(
@@ -543,34 +886,55 @@ def analyze_frames(
         )
 
         marker_hits: Counter[str] = Counter()
-        window_delta_count = 0
+        in_window_events = [
+            event
+            for event in byte_change_events
+            if timestamp_in_any_window(event[0], marker_windows)
+        ]
+        window_delta_count = len(in_window_events)
+
+        # Count each byte-change event once overall, while still recording which
+        # marker labels had activity for analyst context.
         for start, end, marker in marker_windows:
-            hits = sum(1 for t in changed_timestamps if start <= t <= end)
+            hits = sum(
+                1
+                for timestamp_ms, _ in byte_change_events
+                if start <= timestamp_ms <= end
+            )
             if hits:
                 marker_type = marker.get("marker_type") or "unknown_marker"
-                step_code = marker.get("step_code") or marker.get("label") or marker_type
+                step_code = (
+                    marker.get("step_code")
+                    or marker.get("label")
+                    or marker_type
+                )
                 marker_hits[str(step_code)] += hits
-                window_delta_count += hits
 
         if baseline_mode:
-            # Baseline missions are not trying to decode a target action.
             correlation_score = 0.0
             confidence = 0.0
 
             if change_count == 0 and frequency_hz is not None and frequency_hz >= 5:
                 candidate_role = "periodic_stable_background"
-                notes = "baseline periodic traffic; useful for down-weighting future false positives"
+                notes = (
+                    "baseline periodic traffic; useful for down-weighting "
+                    "future false positives"
+                )
             elif change_count > 0:
                 candidate_role = "baseline_noisy_background"
-                notes = "naturally changing baseline traffic; filter before target correlation"
+                notes = (
+                    "naturally changing baseline traffic; filter before "
+                    "target correlation"
+                )
             else:
                 candidate_role = "stable_background"
                 notes = "stable/background traffic observed during passive profile"
         else:
-            if change_count > 0:
-                correlation_score = min(1.0, window_delta_count / max(change_count, 1))
-            else:
-                correlation_score = 0.0
+            correlation_score = (
+                min(1.0, window_delta_count / max(change_count, 1))
+                if change_count > 0
+                else 0.0
+            )
 
             confidence = min(
                 1.0,
@@ -579,49 +943,97 @@ def analyze_frames(
                 + (frame_volume_score * 0.10),
             )
 
-            candidate_role = "target_candidate" if correlation_score >= 0.05 else "weak_or_background_candidate"
-            if correlation_score >= 0.05 or change_count > 0:
-                notes = "correlated changes near markers" if correlation_score >= 0.05 else "changed during session but weak marker correlation"
+            candidate_role = (
+                "target_candidate"
+                if correlation_score >= 0.05
+                else "weak_or_background_candidate"
+            )
+            if correlation_score >= 0.05:
+                notes = "correlated changes near markers"
+            elif change_count > 0:
+                notes = "changed during session but weak marker correlation"
             else:
                 notes = "stable/background traffic"
 
-        byte_change_map = {str(i): int(v) for i, v in enumerate(byte_change_counts)}
-        top_markers = [] if baseline_mode else [name for name, _ in marker_hits.most_common(5)]
-
-        candidates.append(
-            Candidate(
-                can_id=can_id,
-                can_id_hex=can_hex(can_id),
-                frame_count=len(rows),
-                frequency_hz=round(frequency_hz, 3) if frequency_hz else None,
-                change_count=change_count,
-                byte_change_counts=byte_change_map,
-                entropy=round(entropy_score, 4),
-                correlation_score=round(correlation_score, 5),
-                confidence=round(confidence, 5),
-                likely_marker_types=top_markers,
-                notes=notes,
-                analysis_mode=analysis_mode,
-                candidate_role=candidate_role,
-                baseline_score=round(baseline_score, 5),
-            )
+        byte_change_map = {
+            str(byte_index): int(count)
+            for byte_index, count in enumerate(byte_change_counts)
+        }
+        top_markers = (
+            []
+            if baseline_mode
+            else [name for name, _ in marker_hits.most_common(5)]
         )
+
+        candidate = Candidate(
+            can_id=can_id,
+            can_id_hex=can_hex(can_id),
+            frame_count=len(rows),
+            frequency_hz=(
+                round(frequency_hz, 3)
+                if frequency_hz is not None
+                else None
+            ),
+            change_count=change_count,
+            change_ratio=round(change_ratio, 6),
+            changed_frame_count=changed_frame_count,
+            changed_frame_ratio=round(changed_frame_ratio, 6),
+            byte_change_counts=byte_change_map,
+            byte_entropy=byte_entropy,
+            byte_evidence=byte_evidence,
+            entropy=round(entropy_score, 4),
+            correlation_score=round(correlation_score, 5),
+            confidence=round(confidence, 5),
+            likely_marker_types=top_markers,
+            notes=notes,
+            analysis_mode=analysis_mode,
+            candidate_role=candidate_role,
+            baseline_score=round(baseline_score, 5),
+        )
+        candidates.append(candidate)
 
         heatmap[can_hex(can_id)] = {
             "can_id": can_id,
             "analysis_mode": analysis_mode,
             "candidate_role": candidate_role,
             "byte_change_counts": byte_change_map,
+            "byte_entropy": byte_entropy,
+            "byte_evidence": [
+                item.model_dump()
+                for item in byte_evidence
+            ],
             "change_count": change_count,
+            "change_ratio": round(change_ratio, 6),
+            "changed_frame_count": changed_frame_count,
+            "changed_frame_ratio": round(changed_frame_ratio, 6),
             "frame_count": len(rows),
-            "frequency_hz": round(frequency_hz, 3) if frequency_hz else None,
+            "frequency_hz": (
+                round(frequency_hz, 3)
+                if frequency_hz is not None
+                else None
+            ),
             "baseline_score": round(baseline_score, 5),
         }
 
     if baseline_mode:
-        candidates.sort(key=lambda c: (c.baseline_score, c.change_count, c.frame_count), reverse=True)
+        candidates.sort(
+            key=lambda candidate: (
+                candidate.baseline_score,
+                candidate.change_count,
+                candidate.frame_count,
+            ),
+            reverse=True,
+        )
     else:
-        candidates.sort(key=lambda c: (c.confidence, c.correlation_score, c.change_count, c.frame_count), reverse=True)
+        candidates.sort(
+            key=lambda candidate: (
+                candidate.confidence,
+                candidate.correlation_score,
+                candidate.change_count,
+                candidate.frame_count,
+            ),
+            reverse=True,
+        )
 
     return candidates, all_deltas, heatmap
 
@@ -652,7 +1064,10 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
             SELECT
                 cs.id, cs.vehicle_id, cs.mission_id, cs.label, cs.bus_interface, cs.bus_mode,
                 cs.metadata AS session_metadata,
-                rm.mission_code, rm.metadata AS mission_metadata,
+                rm.mission_code,
+                rm.title AS mission_title,
+                rm.target AS mission_target,
+                rm.metadata AS mission_metadata,
                 v.slug AS vehicle_slug, v.year, v.make, v.model
             FROM can_sessions cs
             JOIN vehicles v ON v.id = cs.vehicle_id
@@ -721,11 +1136,30 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
     llm_error: Optional[str] = None
     resolved_llm_model: Optional[str] = payload.llm_model if payload.use_llm else None
     installed_ollama_models: list[str] = []
+    generation_metadata: dict[str, Any] = {}
     if payload.use_llm:
         try:
             resolved_llm_model, installed_ollama_models = await resolve_llm_model(payload.llm_model)
             prompt = build_llm_prompt(session_dict, marker_dicts, candidates, analysis_mode, baseline_profile)
             result = await call_ollama_generate(resolved_llm_model, prompt)
+            if result.get("done_reason") != "stop":
+                print(
+                    "[can-ai] LLM generation ended unexpectedly "
+                    f"session={session_id} "
+                    f"reason={result.get('done_reason')} "
+                    f"output_tokens={result.get('eval_count')}",
+                    flush=True,
+                )
+            generation_metadata = {
+                "done": result.get("done"),
+                "done_reason": result.get("done_reason"),
+                "total_duration": result.get("total_duration"),
+                "load_duration": result.get("load_duration"),
+                "prompt_eval_count": result.get("prompt_eval_count"),
+                "prompt_eval_duration": result.get("prompt_eval_duration"),
+                "eval_count": result.get("eval_count"),
+                "eval_duration": result.get("eval_duration"),
+            }
             llm_response = result.get("response", "")
 
             text = result.get("response")
@@ -814,6 +1248,14 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                                 "analysis_mode": analysis_mode,
                                 "candidate_role": c.candidate_role,
                                 "baseline_score": c.baseline_score,
+                                "change_ratio": c.change_ratio,
+                                "changed_frame_count": c.changed_frame_count,
+                                "changed_frame_ratio": c.changed_frame_ratio,
+                                "byte_entropy": c.byte_entropy,
+                                "byte_evidence": [
+                                    item.model_dump()
+                                    for item in c.byte_evidence
+                                ],
                             }),
                         )
                         for c in candidates
@@ -842,6 +1284,14 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                                 "analysis_mode": analysis_mode,
                                 "candidate_role": c.candidate_role,
                                 "baseline_score": c.baseline_score,
+                                "change_ratio": c.change_ratio,
+                                "changed_frame_count": c.changed_frame_count,
+                                "changed_frame_ratio": c.changed_frame_ratio,
+                                "byte_entropy": c.byte_entropy,
+                                "byte_evidence": [
+                                    item.model_dump()
+                                    for item in c.byte_evidence
+                                ],
                             }),
                         )
                         for c in candidates
@@ -874,6 +1324,7 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                         "llm_succeeded": llm_response is not None,
                         "analysis_source": "llm" if llm_response else "fallback",
                         "llm_error": llm_error,
+                        "generation": generation_metadata,
                         "top_candidates": [c.model_dump() for c in candidates[:10]],
                         "heatmap": heatmap,
                     }),
@@ -942,6 +1393,7 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                         embedding_error = "Embedding request failed or returned no embedding"
 
     return {
+        "generation": generation_metadata,
         "ok": True,
         "session_id": str(session_id),
         "analysis_mode": analysis_mode,
@@ -1193,7 +1645,19 @@ async def get_mission_progress(
                 [],
             )
 
-        frame_count = int(row.get("frame_count") or 0)
+        frame_count = int(row.get("frame_count") or 0)     
+        
+        # changed_frame_count = len(set(changed_frame_timestamps))
+
+        # changed_frame_ratio = (
+        #     changed_frame_count / max(len(rows) - 1, 1)
+        # )
+        # changed_frame_timestamps: set[int] = set()
+        # byte_change_events: list[tuple[int, int]] = []
+        # if prev_byte != cur_byte:
+        #     changed_frame_timestamps.add(row.timestamp_ms)
+        #     byte_change_events.append((row.timestamp_ms, idx))
+
         marker_count = int(row.get("marker_count") or 0)
         analyzed = bool(row.get("report_id")) or confidence is not None
         completed = row.get("ended_at") is not None or frame_count > 0 or marker_count > 0
