@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import math
 import statistics
 import time
+from bisect import bisect_left, bisect_right
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from typing import Any, Optional
@@ -24,6 +26,22 @@ DEFAULT_LLM_MODEL = "qwen2.5:3b"
 DEFAULT_EMBED_MODEL = "nomic-embed-text"
 MAX_ANALYSIS_FRAMES = 75_000
 MAX_DELTAS_TO_STORE = 50_000
+MAX_DELTAS_TO_PERSIST = 10_000
+MAX_DELTA_CANDIDATES_TO_PERSIST = 20
+
+LLM_DEADLINE_SECONDS = 105.0
+LLM_HTTP_READ_TIMEOUT_SECONDS = 110.0
+LLM_NUM_CTX = 3072
+LLM_NUM_PREDICT = 420
+LLM_CANDIDATE_LIMIT = 5
+LLM_BYTE_EVIDENCE_LIMIT = 2
+
+# Keep production responses small enough for the Pi, browser, and React renderer.
+MAX_RESPONSE_CANDIDATES = 15
+MAX_RESPONSE_EVIDENCE_CANDIDATES = 5
+MAX_RESPONSE_BYTE_EVIDENCE = 3
+MAX_PERSISTED_REPORT_CANDIDATES = 10
+
 VECTOR_DIMENSION = 768
 EMBED_ONLY_MODEL_HINTS = ("embed", "embedding", "nomic-embed-text", "all-minilm")
 
@@ -379,11 +397,61 @@ def mode_value(values: list[int]) -> Optional[int]:
     return int(Counter(values).most_common(1)[0][0])
 
 
+def merge_intervals(
+    intervals: list[tuple[int, int]],
+) -> list[tuple[int, int]]:
+    """Merge overlapping inclusive timestamp intervals."""
+    if not intervals:
+        return []
+
+    ordered = sorted(
+        (min(start, end), max(start, end))
+        for start, end in intervals
+    )
+    merged: list[tuple[int, int]] = [ordered[0]]
+
+    for start, end in ordered[1:]:
+        previous_start, previous_end = merged[-1]
+        if start <= previous_end + 1:
+            merged[-1] = (previous_start, max(previous_end, end))
+        else:
+            merged.append((start, end))
+
+    return merged
+
+
+def build_interval_index(
+    intervals: list[tuple[int, int]],
+) -> tuple[list[tuple[int, int]], list[int]]:
+    merged = merge_intervals(intervals)
+    return merged, [start for start, _ in merged]
+
+
+def timestamp_in_intervals(
+    timestamp_ms: int,
+    intervals: list[tuple[int, int]],
+    starts: list[int],
+) -> bool:
+    if not intervals:
+        return False
+
+    index = bisect_right(starts, timestamp_ms) - 1
+    if index < 0:
+        return False
+
+    start, end = intervals[index]
+    return start <= timestamp_ms <= end
+
+
 def timestamp_in_any_window(
     timestamp_ms: int,
     windows: list[tuple[int, int, dict[str, Any]]],
 ) -> bool:
-    return any(start <= timestamp_ms <= end for start, end, _ in windows)
+    # Compatibility helper for callers that do not already have an interval index.
+    intervals, starts = build_interval_index(
+        [(start, end) for start, end, _ in windows]
+    )
+    return timestamp_in_intervals(timestamp_ms, intervals, starts)
 
 
 def build_byte_evidence(
@@ -391,23 +459,52 @@ def build_byte_evidence(
     marker_windows: list[tuple[int, int, dict[str, Any]]],
     marker_window_ms: int,
 ) -> tuple[list[ByteEvidence], dict[str, float]]:
-    """Build observed byte evidence without claiming a decoded encoding.
+    """Build byte evidence without repeatedly rescanning frames for every marker.
 
-    For each byte, this records value diversity, common values, bit flips,
-    marker-window activity, and the first non-negative change latency after
-    each marker. Pre/action/post modes summarize all marker repetitions.
+    The previous implementation performed three full row scans for every marker
+    and every byte. On a 75,000-frame Pi session that can create tens of millions
+    of Python-level comparisons. This version builds merged phase intervals once,
+    scans each byte's rows once, and uses binary search for marker latency.
     """
-    marker_times = [
+    marker_times = sorted(
         int(marker.get("timestamp_ms") or 0)
         for _, _, marker in marker_windows
-    ]
+    )
+
+    correlation_intervals, correlation_starts = build_interval_index(
+        [(start, end) for start, end, _ in marker_windows]
+    )
+    pre_intervals, pre_starts = build_interval_index(
+        [
+            (marker_time - marker_window_ms, marker_time - 1)
+            for marker_time in marker_times
+        ]
+    )
+    action_intervals, action_starts = build_interval_index(
+        [
+            (marker_time, marker_time + marker_window_ms)
+            for marker_time in marker_times
+        ]
+    )
+    post_intervals, post_starts = build_interval_index(
+        [
+            (
+                marker_time + marker_window_ms + 1,
+                marker_time + (2 * marker_window_ms),
+            )
+            for marker_time in marker_times
+        ]
+    )
 
     evidence_rows: list[ByteEvidence] = []
     byte_entropy: dict[str, float] = {}
 
     for byte_index in range(8):
         values = [frame_byte(row, byte_index) for row in rows]
-        byte_entropy[str(byte_index)] = round(max(0.0, entropy(values)), 4)
+        byte_entropy[str(byte_index)] = round(
+            max(0.0, entropy(values)),
+            4,
+        )
 
         change_timestamps: list[int] = []
         bit_flip_counts = [0] * 8
@@ -427,45 +524,50 @@ def build_byte_evidence(
         in_window_changes = sum(
             1
             for timestamp_ms in change_timestamps
-            if timestamp_in_any_window(timestamp_ms, marker_windows)
+            if timestamp_in_intervals(
+                timestamp_ms,
+                correlation_intervals,
+                correlation_starts,
+            )
         )
         out_of_window_changes = len(change_timestamps) - in_window_changes
 
         pre_marker_values: list[int] = []
         action_window_values: list[int] = []
         post_marker_values: list[int] = []
+
+        for row, value in zip(rows, values):
+            timestamp_ms = row.timestamp_ms
+
+            if timestamp_in_intervals(
+                timestamp_ms,
+                pre_intervals,
+                pre_starts,
+            ):
+                pre_marker_values.append(value)
+
+            if timestamp_in_intervals(
+                timestamp_ms,
+                action_intervals,
+                action_starts,
+            ):
+                action_window_values.append(value)
+
+            if timestamp_in_intervals(
+                timestamp_ms,
+                post_intervals,
+                post_starts,
+            ):
+                post_marker_values.append(value)
+
         marker_latencies: list[int] = []
-
         for marker_time in marker_times:
-            pre_start = marker_time - marker_window_ms
-            action_end = marker_time + marker_window_ms
-            post_end = action_end + marker_window_ms
+            change_index = bisect_left(change_timestamps, marker_time)
+            if change_index >= len(change_timestamps):
+                continue
 
-            pre_marker_values.extend(
-                frame_byte(row, byte_index)
-                for row in rows
-                if pre_start <= row.timestamp_ms < marker_time
-            )
-            action_window_values.extend(
-                frame_byte(row, byte_index)
-                for row in rows
-                if marker_time <= row.timestamp_ms <= action_end
-            )
-            post_marker_values.extend(
-                frame_byte(row, byte_index)
-                for row in rows
-                if action_end < row.timestamp_ms <= post_end
-            )
-
-            first_change = next(
-                (
-                    timestamp_ms
-                    for timestamp_ms in change_timestamps
-                    if marker_time <= timestamp_ms <= action_end
-                ),
-                None,
-            )
-            if first_change is not None:
+            first_change = change_timestamps[change_index]
+            if first_change <= marker_time + marker_window_ms:
                 marker_latencies.append(first_change - marker_time)
 
         median_latency = (
@@ -501,6 +603,7 @@ def build_byte_evidence(
         )
 
     return evidence_rows, byte_entropy
+
 
 def is_embedding_only_model(model_name: str) -> bool:
     lowered = model_name.lower()
@@ -549,7 +652,7 @@ async def resolve_llm_model(requested_model: str) -> tuple[str, list[str]]:
 async def call_ollama_generate(model: str, prompt: str) -> dict[str, Any]:
     timeout = httpx.Timeout(
         connect=10.0,
-        read=600.0,
+        read=LLM_HTTP_READ_TIMEOUT_SECONDS,
         write=30.0,
         pool=30.0,
     )
@@ -564,8 +667,8 @@ async def call_ollama_generate(model: str, prompt: str) -> dict[str, Any]:
                 "options": {
                     "temperature": 0.2,
                     "top_p": 0.9,
-                    "num_ctx": 4096,
-                    "num_predict": 900,
+                    "num_ctx": LLM_NUM_CTX,
+                    "num_predict": LLM_NUM_PREDICT,
                 },
             },
         )
@@ -642,6 +745,63 @@ def compact_byte_evidence(candidate: Candidate, limit: int = 3) -> str:
     return "; ".join(summaries)
 
 
+def compact_candidate_payload(
+    candidate: Candidate,
+    *,
+    include_byte_evidence: bool,
+    byte_evidence_limit: int = MAX_RESPONSE_BYTE_EVIDENCE,
+) -> dict[str, Any]:
+    """Serialize a candidate without returning all eight evidence objects by default."""
+    payload = candidate.model_dump(exclude={"byte_evidence"})
+
+    if include_byte_evidence:
+        active_evidence = [
+            item
+            for item in candidate.byte_evidence
+            if item.change_count > 0
+        ]
+        active_evidence.sort(
+            key=lambda item: (
+                item.in_window_changes,
+                item.change_count,
+            ),
+            reverse=True,
+        )
+        payload["byte_evidence"] = [
+            item.model_dump()
+            for item in active_evidence[:byte_evidence_limit]
+        ]
+    else:
+        payload["byte_evidence"] = []
+
+    return payload
+
+
+def compact_heatmap_payload(
+    candidates: list[Candidate],
+) -> dict[str, dict[str, Any]]:
+    """Return visualization data without duplicating full byte evidence."""
+    return {
+        candidate.can_id_hex: {
+            "can_id": candidate.can_id,
+            "analysis_mode": candidate.analysis_mode,
+            "candidate_role": candidate.candidate_role,
+            "byte_change_counts": candidate.byte_change_counts,
+            "byte_entropy": candidate.byte_entropy,
+            "change_count": candidate.change_count,
+            "change_ratio": candidate.change_ratio,
+            "changed_frame_count": candidate.changed_frame_count,
+            "changed_frame_ratio": candidate.changed_frame_ratio,
+            "frame_count": candidate.frame_count,
+            "frequency_hz": candidate.frequency_hz,
+            "baseline_score": candidate.baseline_score,
+            "correlation_score": candidate.correlation_score,
+            "confidence": candidate.confidence,
+        }
+        for candidate in candidates
+    }
+
+
 def build_llm_prompt(
     session: dict[str, Any],
     markers: list[dict[str, Any]],
@@ -662,9 +822,9 @@ def build_llm_prompt(
                 f"hz={c.frequency_hz}, changes={c.change_count}, entropy={c.entropy:.3f}, "
                 f"baseline_score={c.baseline_score:.3f}, change_ratio={c.change_ratio:.5f}, "
                 f"byte_changes={c.byte_change_counts}, byte_entropy={c.byte_entropy}, "
-                f"byte_evidence=[{compact_byte_evidence(c)}]"
+                f"byte_evidence=[{compact_byte_evidence(c, limit=LLM_BYTE_EVIDENCE_LIMIT)}]"
             )
-            for c in candidates[:8]
+            for c in candidates[:LLM_CANDIDATE_LIMIT]
         ) or "- no background IDs"
 
         profile = baseline_profile or {}
@@ -719,9 +879,9 @@ def build_llm_prompt(
                 f"score={c.correlation_score:.3f}, confidence={c.confidence:.3f}, "
                 f"change_ratio={c.change_ratio:.5f}, changed_frames={c.changed_frame_count}, "
                 f"byte_changes={c.byte_change_counts}, byte_entropy={c.byte_entropy}, "
-                f"markers={c.likely_marker_types}, byte_evidence=[{compact_byte_evidence(c)}]"
+                f"markers={c.likely_marker_types}, byte_evidence=[{compact_byte_evidence(c, limit=LLM_BYTE_EVIDENCE_LIMIT)}]"
             )
-            for c in candidates[:8]
+            for c in candidates[:LLM_CANDIDATE_LIMIT]
         ) or "- no candidates"
 
         mode_instructions = """
@@ -836,6 +996,10 @@ def analyze_frames(
             )
         )
 
+    correlation_intervals, correlation_starts = build_interval_index(
+        [(start, end) for start, end, _ in marker_windows]
+    )
+
     for can_id, rows in sorted(by_id.items()):
         rows.sort(key=lambda row: (row.timestamp_ms, row.id))
 
@@ -930,18 +1094,25 @@ def analyze_frames(
         in_window_events = [
             event
             for event in byte_change_events
-            if timestamp_in_any_window(event[0], marker_windows)
+            if timestamp_in_intervals(
+                event[0],
+                correlation_intervals,
+                correlation_starts,
+            )
         ]
         window_delta_count = len(in_window_events)
 
         # Count each byte-change event once overall, while still recording which
         # marker labels had activity for analyst context.
+        event_timestamps = [
+            timestamp_ms
+            for timestamp_ms, _ in byte_change_events
+        ]
+
         for start, end, marker in marker_windows:
-            hits = sum(
-                1
-                for timestamp_ms, _ in byte_change_events
-                if start <= timestamp_ms <= end
-            )
+            left_index = bisect_left(event_timestamps, start)
+            right_index = bisect_right(event_timestamps, end)
+            hits = right_index - left_index
             if hits:
                 marker_type = marker.get("marker_type") or "unknown_marker"
                 step_code = (
@@ -1246,6 +1417,7 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
 
     llm_response: Optional[str] = None
     llm_error: Optional[str] = None
+    llm_timed_out = False
     resolved_llm_model: Optional[str] = payload.llm_model if payload.use_llm else None
     installed_ollama_models: list[str] = []
     generation_metadata: dict[str, Any] = {}
@@ -1273,7 +1445,18 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                 elapsed_ms=round((time.perf_counter() - phase_started) * 1000, 2),
             )
             phase_started = time.perf_counter()
-            result = await call_ollama_generate(resolved_llm_model, prompt)
+            try:
+                async with asyncio.timeout(LLM_DEADLINE_SECONDS):
+                    result = await call_ollama_generate(
+                        resolved_llm_model,
+                        prompt,
+                    )
+            except TimeoutError as exc:
+                llm_timed_out = True
+                raise RuntimeError(
+                    f"Ollama exceeded the {LLM_DEADLINE_SECONDS:.0f}s "
+                    "production response budget"
+                ) from exc
             if result.get("done_reason") != "stop":
                 print(
                     "[can-ai] LLM generation ended unexpectedly "
@@ -1343,12 +1526,57 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
         llm_error=llm_error,
     )
 
+    response_candidates = [
+        compact_candidate_payload(
+            candidate,
+            include_byte_evidence=(
+                index < MAX_RESPONSE_EVIDENCE_CANDIDATES
+            ),
+        )
+        for index, candidate in enumerate(
+            candidates[:MAX_RESPONSE_CANDIDATES]
+        )
+    ]
+    response_heatmap = compact_heatmap_payload(candidates)
+
+    persisted_top_candidates = [
+        compact_candidate_payload(
+            candidate,
+            include_byte_evidence=True,
+        )
+        for candidate in candidates[:MAX_PERSISTED_REPORT_CANDIDATES]
+    ]
+    persisted_heatmap = response_heatmap
+
+    can_ai_log(
+        "response_compacted",
+        session=session_id,
+        candidates_total=len(candidates),
+        candidates_returned=len(response_candidates),
+        evidence_candidates=min(
+            len(response_candidates),
+            MAX_RESPONSE_EVIDENCE_CANDIDATES,
+        ),
+        heatmap_ids=len(response_heatmap),
+    )
+
+    persisted_candidate_ids = {
+        candidate.can_id
+        for candidate in candidates[:MAX_DELTA_CANDIDATES_TO_PERSIST]
+    }
+    deltas_to_persist = [
+        delta
+        for delta in deltas
+        if delta["can_id"] in persisted_candidate_ids
+    ][:MAX_DELTAS_TO_PERSIST]
+
     if payload.persist:
         can_ai_log(
             "persistence_started",
             session=session_id,
             candidates=len(candidates),
-            deltas=len(deltas),
+            deltas_computed=len(deltas),
+            deltas_selected=len(deltas_to_persist),
         )
         phase_started = time.perf_counter()
         async with pool.acquire() as conn:
@@ -1357,7 +1585,7 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                 await conn.execute("DELETE FROM can_id_features WHERE session_id = $1", session_id)
                 await conn.execute("DELETE FROM can_id_correlations WHERE session_id = $1", session_id)
 
-                if deltas:
+                if deltas_to_persist:
                     await conn.executemany(
                         """
                         INSERT INTO can_frame_deltas (
@@ -1376,7 +1604,7 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                                 d["delta"],
                                 json_dumps(d["metadata"]),
                             )
-                            for d in deltas
+                            for d in deltas_to_persist
                         ],
                     )
 
@@ -1485,9 +1713,12 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                         "llm_succeeded": llm_response is not None,
                         "analysis_source": "llm" if llm_response else "fallback",
                         "llm_error": llm_error,
+                        "llm_timed_out": llm_timed_out,
                         "generation": generation_metadata,
-                        "top_candidates": [c.model_dump() for c in candidates[:10]],
-                        "heatmap": heatmap,
+                        "deltas_computed": len(deltas),
+                        "deltas_persisted": len(deltas_to_persist),
+                        "top_candidates": persisted_top_candidates,
+                        "heatmap": persisted_heatmap,
                     }),
                 )
 
@@ -1601,8 +1832,15 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
         "short_dlc_frames": short_dlc_frames,
         "invalid_width_frames": invalid_width_frames,
         "markers": len(marker_dicts),
-        "candidates": [c.model_dump() for c in candidates[:50]],
-        "heatmap": heatmap,
+        "candidate_count": len(candidates),
+        "candidates": response_candidates,
+        "heatmap": response_heatmap,
+        "response_detail": {
+            "candidate_limit": MAX_RESPONSE_CANDIDATES,
+            "evidence_candidate_limit": MAX_RESPONSE_EVIDENCE_CANDIDATES,
+            "byte_evidence_per_candidate": MAX_RESPONSE_BYTE_EVIDENCE,
+            "heatmap_includes_byte_evidence": False,
+        },
 
         # LLM status
         "llm_requested": payload.use_llm,
@@ -1610,7 +1848,14 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
         "llm_available": llm_response is not None,
         "llm_model": resolved_llm_model,
         "llm_error": llm_error,
+        "llm_timed_out": llm_timed_out,
         "installed_ollama_models": installed_ollama_models,
+        "deltas_computed": len(deltas),
+        "deltas_persisted": (
+            len(deltas_to_persist)
+            if payload.persist
+            else 0
+        ),
 
         # Important: always return something the UI can render.
         "analysis": report_content,
