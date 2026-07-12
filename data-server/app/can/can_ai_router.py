@@ -2268,6 +2268,12 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                     conn,
                     vehicle_id=session["vehicle_id"],
                     mission_code=session_dict.get("mission_code"),
+                    bus_interface=session_dict.get("bus_interface"),
+                    bus_mode=session_dict.get("bus_mode"),
+                    capture_kind=capture_kind_for(
+                        session_dict.get("bus_interface"),
+                        session_dict.get("bus_mode"),
+                    ),
                     requested_model_id=payload.ml_model_id,
                 )
         except HTTPException as exc:

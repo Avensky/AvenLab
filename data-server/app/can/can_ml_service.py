@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import math
 import os
+import secrets
 import statistics
 from typing import Any, Optional
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Header, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from app.db import connect_db
@@ -31,7 +33,19 @@ def _env_int(name: str, default: int, minimum: int = 1) -> int:
     return max(value, minimum)
 
 
+ML_FEATURE_SCHEMA_VERSION = 1
 ML_MIN_EXAMPLES = _env_int("ML_MIN_EXAMPLES", 8, minimum=4)
+ML_MIN_DISTINCT_SESSIONS = _env_int(
+    "ML_MIN_DISTINCT_SESSIONS",
+    2,
+    minimum=2,
+)
+ML_RECOMMENDED_DISTINCT_SESSIONS = _env_int(
+    "ML_RECOMMENDED_DISTINCT_SESSIONS",
+    5,
+    minimum=2,
+)
+ML_ADMIN_TOKEN = os.getenv("ML_ADMIN_TOKEN", "").strip()
 ML_TRAINING_EPOCHS = _env_int(
     "ML_TRAINING_EPOCHS",
     900,
@@ -79,7 +93,17 @@ class CandidateLabelRequest(BaseModel):
 class TrainCandidateModelRequest(BaseModel):
     vehicle_slug: str = Field(min_length=1, max_length=160)
     mission_code: Optional[str] = Field(default=None, max_length=160)
+    bus_interface: Optional[str] = Field(default=None, max_length=80)
+    bus_mode: Optional[str] = Field(default=None, max_length=80)
+    capture_kind: str = Field(
+        pattern="^(live|simulation)$",
+    )
     min_examples: int = Field(default=ML_MIN_EXAMPLES, ge=4, le=10_000)
+    min_distinct_sessions: int = Field(
+        default=ML_MIN_DISTINCT_SESSIONS,
+        ge=2,
+        le=10_000,
+    )
     epochs: int = Field(
         default=ML_TRAINING_EPOCHS,
         ge=100,
@@ -121,16 +145,81 @@ def _can_hex(can_id: int) -> str:
     return f"0x{can_id:03X}"
 
 
+def _capture_kind(
+    bus_interface: Optional[str],
+    bus_mode: Optional[str],
+) -> str:
+    interface = (bus_interface or "").lower()
+    mode = (bus_mode or "").lower()
+    if mode in {"simulation", "replay", "offline"} or interface == "vcan0":
+        return "simulation"
+    return "live"
+
+
+def _require_ml_admin(token: Optional[str]) -> None:
+    """Require the configured token for write operations.
+
+    Development remains backward-compatible when ML_ADMIN_TOKEN is unset.
+    Production should always configure a token and keep it out of public
+    frontend bundles.
+    """
+    if not ML_ADMIN_TOKEN:
+        return
+    if not token or not secrets.compare_digest(token, ML_ADMIN_TOKEN):
+        raise HTTPException(
+            status_code=403,
+            detail="A valid X-AvenLab-ML-Token header is required.",
+        )
+
+
+def _validated_positive_label(payload: CandidateLabelRequest) -> None:
+    if payload.label != "positive":
+        return
+
+    if not payload.signal_name or not payload.signal_name.strip():
+        raise HTTPException(
+            status_code=422,
+            detail="Positive labels require signal_name.",
+        )
+    if not payload.notes or len(payload.notes.strip()) < 20:
+        raise HTTPException(
+            status_code=422,
+            detail="Positive labels require meaningful validation notes.",
+        )
+
+    validation_method = payload.metadata.get("validation_method")
+    independent_sessions = payload.metadata.get("independent_sessions", 0)
+    try:
+        independent_sessions = int(independent_sessions)
+    except (TypeError, ValueError):
+        independent_sessions = 0
+
+    if not validation_method or independent_sessions < 2:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "Positive labels require metadata.validation_method and "
+                "metadata.independent_sessions >= 2. Use uncertain until "
+                "the candidate is independently validated."
+            ),
+        )
+
+
 def ml_configuration() -> dict[str, Any]:
     return {
         "model_type": "balanced_logistic_regression",
+        "feature_schema_version": ML_FEATURE_SCHEMA_VERSION,
         "feature_names": list(ML_FEATURE_NAMES),
         "minimum_examples": ML_MIN_EXAMPLES,
+        "minimum_distinct_sessions": ML_MIN_DISTINCT_SESSIONS,
+        "recommended_distinct_sessions": ML_RECOMMENDED_DISTINCT_SESSIONS,
         "training_epochs": ML_TRAINING_EPOCHS,
         "learning_rate": ML_LEARNING_RATE,
         "l2": ML_L2,
         "blend_weight": ML_BLEND_WEIGHT,
         "label_source": "explicit_human_labels_only",
+        "cross_validation": "grouped_by_recording_session",
+        "write_routes_protected": bool(ML_ADMIN_TOKEN),
         "runtime_dependencies": "python_standard_library",
     }
 
@@ -595,96 +684,120 @@ def _evaluate(
     )
 
 
-def _cross_validate(
-    examples: list[tuple[dict[str, float], int]],
+def _cross_validate_grouped(
+    examples: list[tuple[dict[str, float], int, str]],
     *,
     epochs: int,
     learning_rate: float,
     l2: float,
 ) -> dict[str, Any]:
-    positives = [
-        example
-        for example in examples
-        if example[1] == 1
-    ]
-    negatives = [
-        example
-        for example in examples
-        if example[1] == 0
-    ]
-    fold_count = min(5, len(positives), len(negatives))
-
-    if fold_count < 2:
+    """Evaluate without placing candidates from one session in both sets."""
+    session_ids = sorted({session_id for _, _, session_id in examples})
+    if len(session_ids) < 2:
         return {
             "available": False,
             "folds": 0,
-            "reason": (
-                "Cross-validation requires at least two examples "
-                "in each class."
-            ),
+            "grouping": "session_id",
+            "reason": "Grouped validation requires at least two sessions.",
         }
 
-    fold_metrics: list[dict[str, float]] = []
+    fold_count = min(5, len(session_ids))
+    fold_sessions: list[set[str]] = [set() for _ in range(fold_count)]
+    for index, session_id in enumerate(session_ids):
+        fold_sessions[index % fold_count].add(session_id)
 
-    for fold_index in range(fold_count):
-        test_examples = [
-            example
-            for index, example in enumerate(positives)
-            if index % fold_count == fold_index
-        ] + [
-            example
-            for index, example in enumerate(negatives)
-            if index % fold_count == fold_index
+    fold_results: list[dict[str, Any]] = []
+    skipped_folds: list[dict[str, Any]] = []
+
+    for fold_index, test_session_ids in enumerate(fold_sessions):
+        training_rows = [
+            (features, label)
+            for features, label, session_id in examples
+            if session_id not in test_session_ids
         ]
-        train_examples = [
-            example
-            for index, example in enumerate(positives)
-            if index % fold_count != fold_index
-        ] + [
-            example
-            for index, example in enumerate(negatives)
-            if index % fold_count != fold_index
+        testing_rows = [
+            (features, label)
+            for features, label, session_id in examples
+            if session_id in test_session_ids
         ]
 
-        if not train_examples or not test_examples:
+        training_positive = sum(label for _, label in training_rows)
+        training_negative = len(training_rows) - training_positive
+        if (
+            not training_rows
+            or not testing_rows
+            or training_positive < 1
+            or training_negative < 1
+        ):
+            skipped_folds.append({
+                "fold": fold_index + 1,
+                "test_sessions": sorted(test_session_ids),
+                "reason": "Training fold did not contain both classes.",
+            })
             continue
 
         model = _train_logistic_model(
-            train_examples,
+            training_rows,
             epochs=epochs,
             learning_rate=learning_rate,
             l2=l2,
         )
-        fold_metrics.append(_evaluate(model, test_examples))
+        metrics = _evaluate(model, testing_rows)
+        fold_results.append({
+            "fold": fold_index + 1,
+            "test_sessions": sorted(test_session_ids),
+            "training_examples": len(training_rows),
+            "testing_examples": len(testing_rows),
+            **metrics,
+        })
 
-    if not fold_metrics:
+    if not fold_results:
         return {
             "available": False,
             "folds": 0,
-            "reason": "No valid cross-validation folds were produced.",
+            "grouping": "session_id",
+            "distinct_sessions": len(session_ids),
+            "skipped_folds": skipped_folds,
+            "reason": "No valid session-grouped folds could be trained.",
         }
 
-    metric_names = (
-        "accuracy",
-        "precision",
-        "recall",
-        "f1",
-        "log_loss",
-    )
+    metric_names = ("accuracy", "precision", "recall", "f1", "log_loss")
     return {
         "available": True,
-        "folds": len(fold_metrics),
+        "folds": len(fold_results),
+        "grouping": "session_id",
+        "distinct_sessions": len(session_ids),
         "mean": {
-            name: float(
-                statistics.mean(
-                    fold[name]
-                    for fold in fold_metrics
-                )
-            )
+            name: float(statistics.mean(fold[name] for fold in fold_results))
             for name in metric_names
         },
-        "per_fold": fold_metrics,
+        "per_fold": fold_results,
+        "skipped_folds": skipped_folds,
     }
+
+
+def _train_and_evaluate(
+    examples: list[tuple[dict[str, float], int, str]],
+    *,
+    epochs: int,
+    learning_rate: float,
+    l2: float,
+) -> tuple[dict[str, Any], dict[str, float], dict[str, Any]]:
+    flat_examples = [(features, label) for features, label, _ in examples]
+    model = _train_logistic_model(
+        flat_examples,
+        epochs=epochs,
+        learning_rate=learning_rate,
+        l2=l2,
+    )
+    training_metrics = _evaluate(model, flat_examples)
+    cross_validation = _cross_validate_grouped(
+        examples,
+        epochs=max(200, epochs // 2),
+        learning_rate=learning_rate,
+        l2=l2,
+    )
+    return model, training_metrics, cross_validation
 
 
 async def ensure_ml_tables(conn: Any) -> None:
@@ -710,6 +823,9 @@ async def load_active_ml_model(
     *,
     vehicle_id: UUID,
     mission_code: Optional[str],
+    bus_interface: Optional[str],
+    bus_mode: Optional[str],
+    capture_kind: str,
     requested_model_id: Optional[UUID],
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     await ensure_ml_tables(conn)
@@ -721,9 +837,15 @@ async def load_active_ml_model(
             FROM can_ml_models
             WHERE id = $1
               AND vehicle_id = $2
+              AND (bus_interface = $3 OR bus_interface IS NULL)
+              AND (bus_mode = $4 OR bus_mode IS NULL)
+              AND capture_kind = $5
             """,
             requested_model_id,
             vehicle_id,
+            bus_interface,
+            bus_mode,
+            capture_kind,
         )
         selection = "explicit"
     else:
@@ -733,20 +855,22 @@ async def load_active_ml_model(
             FROM can_ml_models
             WHERE vehicle_id = $1
               AND is_active = true
-              AND (
-                    mission_code = $2
-                    OR mission_code IS NULL
-              )
+              AND (mission_code = $2 OR mission_code IS NULL)
+              AND (bus_interface = $3 OR bus_interface IS NULL)
+              AND (bus_mode = $4 OR bus_mode IS NULL)
+              AND capture_kind = $5
             ORDER BY
-                CASE
-                    WHEN mission_code = $2 THEN 0
-                    ELSE 1
-                END,
+                CASE WHEN mission_code = $2 THEN 0 ELSE 1 END,
+                CASE WHEN bus_interface = $3 THEN 0 ELSE 1 END,
+                CASE WHEN bus_mode = $4 THEN 0 ELSE 1 END,
                 created_at DESC
             LIMIT 1
             """,
             vehicle_id,
             mission_code,
+            bus_interface,
+            bus_mode,
+            capture_kind,
         )
         selection = "automatic"
 
@@ -756,9 +880,15 @@ async def load_active_ml_model(
                 "applied": False,
                 "found": False,
                 "selection": selection,
+                "scope": {
+                    "mission_code": mission_code,
+                    "bus_interface": bus_interface,
+                    "bus_mode": bus_mode,
+                    "capture_kind": capture_kind,
+                },
                 "reason": (
-                    "No active supervised model was found for this "
-                    "vehicle and mission scope."
+                    "No active supervised model was found for this vehicle, "
+                    "mission, and capture-source scope."
                 ),
             },
             {},
@@ -771,6 +901,24 @@ async def load_active_ml_model(
     model["metrics"] = _json_object(model.get("metrics"))
     model["metadata"] = _json_object(model.get("metadata"))
 
+    model_version = int(
+        model["metadata"].get("feature_schema_version", 0) or 0
+    )
+    if model_version != ML_FEATURE_SCHEMA_VERSION:
+        return (
+            {
+                "applied": False,
+                "found": True,
+                "selection": selection,
+                "model_id": str(model["id"]),
+                "reason": (
+                    f"Model feature schema {model_version} does not match "
+                    f"runtime schema {ML_FEATURE_SCHEMA_VERSION}. Retrain it."
+                ),
+            },
+            {},
+        )
+
     return (
         {
             "applied": True,
@@ -778,7 +926,11 @@ async def load_active_ml_model(
             "selection": selection,
             "model_id": str(model["id"]),
             "model_type": model.get("model_type"),
+            "feature_schema_version": model_version,
             "mission_code": model.get("mission_code"),
+            "bus_interface": model.get("bus_interface"),
+            "bus_mode": model.get("bus_mode"),
+            "capture_kind": model.get("capture_kind"),
             "label_count": int(model.get("label_count") or 0),
             "positive_count": int(model.get("positive_count") or 0),
             "negative_count": int(model.get("negative_count") or 0),
@@ -846,19 +998,26 @@ async def label_candidate(
     session_id: UUID,
     can_id: int,
     payload: CandidateLabelRequest,
+    x_avenlab_ml_token: Optional[str] = Header(
+        default=None,
+        alias="X-AvenLab-ML-Token",
+    ),
 ) -> dict[str, Any]:
-    """Store an explicit human candidate label and its feature snapshot."""
+    """Store an explicit human candidate label and immutable feature snapshot."""
+    _require_ml_admin(x_avenlab_ml_token)
+    _validated_positive_label(payload)
     pool = await connect_db()
 
     async with pool.acquire() as conn:
         await ensure_ml_tables(conn)
-
         session = await conn.fetchrow(
             """
             SELECT
                 cs.id,
                 cs.vehicle_id,
                 cs.mission_id,
+                cs.bus_interface,
+                cs.bus_mode,
                 v.slug AS vehicle_slug,
                 rm.mission_code
             FROM can_sessions cs
@@ -869,24 +1028,14 @@ async def label_candidate(
             session_id,
         )
         if session is None:
-            raise HTTPException(
-                status_code=404,
-                detail="CAN session not found",
-            )
+            raise HTTPException(status_code=404, detail="CAN session not found")
 
         feature = await conn.fetchrow(
             """
-            SELECT
-                can_id,
-                frame_count,
-                change_count,
-                byte_change_counts,
-                entropy,
-                frequency_hz,
-                metadata
+            SELECT can_id, frame_count, change_count, byte_change_counts,
+                   entropy, frequency_hz, metadata
             FROM can_id_features
-            WHERE session_id = $1
-              AND can_id = $2
+            WHERE session_id = $1 AND can_id = $2
             """,
             session_id,
             can_id,
@@ -895,8 +1044,8 @@ async def label_candidate(
             raise HTTPException(
                 status_code=404,
                 detail=(
-                    "Candidate features were not found. Analyze and "
-                    "persist the session before labeling it."
+                    "Candidate features were not found. Analyze and persist "
+                    "the session before labeling it."
                 ),
             )
 
@@ -904,8 +1053,7 @@ async def label_candidate(
             """
             SELECT score, confidence, notes, metadata
             FROM can_id_correlations
-            WHERE session_id = $1
-              AND can_id = $2
+            WHERE session_id = $1 AND can_id = $2
             ORDER BY created_at DESC
             LIMIT 1
             """,
@@ -917,30 +1065,35 @@ async def label_candidate(
             dict(feature),
             dict(correlation) if correlation else None,
         )
+        capture_kind = _capture_kind(
+            session["bus_interface"],
+            session["bus_mode"],
+        )
+        label_metadata = {
+            **payload.metadata,
+            "feature_schema_version": ML_FEATURE_SCHEMA_VERSION,
+            "vehicle_slug": session["vehicle_slug"],
+            "capture_kind": capture_kind,
+        }
 
         await conn.execute(
             """
             INSERT INTO can_ml_labels (
-                id,
-                session_id,
-                vehicle_id,
-                mission_id,
-                mission_code,
-                can_id,
-                label,
-                signal_name,
-                notes,
-                feature_vector,
-                source,
-                metadata,
-                created_at,
-                updated_at
+                id, session_id, vehicle_id, mission_id, mission_code,
+                bus_interface, bus_mode, capture_kind,
+                can_id, label, signal_name, notes, feature_vector,
+                source, metadata, created_at, updated_at
             ) VALUES (
-                $1, $2, $3, $4, $5, $6, $7, $8, $9,
-                $10::jsonb, 'human', $11::jsonb, now(), now()
+                $1, $2, $3, $4, $5, $6, $7, $8,
+                $9, $10, $11, $12, $13::jsonb,
+                'human', $14::jsonb, now(), now()
             )
             ON CONFLICT (session_id, can_id)
             DO UPDATE SET
+                mission_code = EXCLUDED.mission_code,
+                bus_interface = EXCLUDED.bus_interface,
+                bus_mode = EXCLUDED.bus_mode,
+                capture_kind = EXCLUDED.capture_kind,
                 label = EXCLUDED.label,
                 signal_name = EXCLUDED.signal_name,
                 notes = EXCLUDED.notes,
@@ -954,12 +1107,15 @@ async def label_candidate(
             session["vehicle_id"],
             session["mission_id"],
             session["mission_code"],
+            session["bus_interface"],
+            session["bus_mode"],
+            capture_kind,
             can_id,
             payload.label,
             payload.signal_name,
             payload.notes,
             _json_dumps(feature_vector),
-            _json_dumps(payload.metadata),
+            _json_dumps(label_metadata),
         )
 
     return {
@@ -968,24 +1124,218 @@ async def label_candidate(
         "can_id": can_id,
         "can_id_hex": _can_hex(can_id),
         "label": payload.label,
-        "included_in_training": payload.label in {
-            "positive",
-            "negative",
+        "scope": {
+            "vehicle_slug": session["vehicle_slug"],
+            "mission_code": session["mission_code"],
+            "bus_interface": session["bus_interface"],
+            "bus_mode": session["bus_mode"],
+            "capture_kind": capture_kind,
         },
+        "feature_schema_version": ML_FEATURE_SCHEMA_VERSION,
+        "included_in_training": payload.label in {"positive", "negative"},
         "feature_vector": feature_vector,
+    }
+
+
+@ml_router.get("/session/{session_id}/ml-labels")
+async def get_session_ml_labels(session_id: UUID) -> dict[str, Any]:
+    pool = await connect_db()
+    async with pool.acquire() as conn:
+        await ensure_ml_tables(conn)
+        rows = await conn.fetch(
+            """
+            SELECT can_id, label, signal_name, notes, source, metadata,
+                   bus_interface, bus_mode, capture_kind,
+                   created_at, updated_at
+            FROM can_ml_labels
+            WHERE session_id = $1
+            ORDER BY can_id ASC
+            """,
+            session_id,
+        )
+
+    labels = {}
+    for row in rows:
+        item = dict(row)
+        item["metadata"] = _json_object(item.get("metadata"))
+        item["can_id_hex"] = _can_hex(int(item["can_id"]))
+        labels[str(item["can_id"])] = item
+
+    return {
+        "ok": True,
+        "session_id": str(session_id),
+        "label_count": len(labels),
+        "labels": labels,
+    }
+
+
+async def _load_training_rows(
+    conn: Any,
+    *,
+    vehicle_id: UUID,
+    mission_code: Optional[str],
+    bus_interface: Optional[str],
+    bus_mode: Optional[str],
+    capture_kind: Optional[str],
+    include_uncertain: bool = False,
+) -> list[Any]:
+    labels = ("positive", "negative", "uncertain") if include_uncertain else (
+        "positive",
+        "negative",
+    )
+    return list(await conn.fetch(
+        """
+        SELECT id, session_id, can_id, label, mission_code,
+               bus_interface, bus_mode, capture_kind,
+               feature_vector, metadata, created_at, updated_at
+        FROM can_ml_labels
+        WHERE vehicle_id = $1
+          AND label = ANY($2::text[])
+          AND ($3::text IS NULL OR mission_code = $3)
+          AND ($4::text IS NULL OR bus_interface = $4)
+          AND ($5::text IS NULL OR bus_mode = $5)
+          AND ($6::text IS NULL OR capture_kind = $6)
+        ORDER BY created_at ASC, id ASC
+        """,
+        vehicle_id,
+        list(labels),
+        mission_code,
+        bus_interface,
+        bus_mode,
+        capture_kind,
+    ))
+
+
+def _training_examples(rows: list[Any]) -> tuple[
+    list[tuple[dict[str, float], int, str]],
+    list[str],
+    set[str],
+]:
+    examples: list[tuple[dict[str, float], int, str]] = []
+    label_ids: list[str] = []
+    session_ids: set[str] = set()
+
+    for row in rows:
+        metadata = _json_object(row["metadata"])
+        version = int(metadata.get("feature_schema_version", 0) or 0)
+        if version != ML_FEATURE_SCHEMA_VERSION:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"Label {row['id']} uses feature schema {version}; "
+                    f"runtime expects {ML_FEATURE_SCHEMA_VERSION}. Relabel "
+                    "the candidate after reanalysis."
+                ),
+            )
+
+        raw_vector = _json_object(row["feature_vector"])
+        vector = {
+            name: float(raw_vector.get(name, 0.0) or 0.0)
+            for name in ML_FEATURE_NAMES
+        }
+        label = 1 if row["label"] == "positive" else 0
+        session_id = str(row["session_id"])
+        examples.append((vector, label, session_id))
+        label_ids.append(str(row["id"]))
+        session_ids.add(session_id)
+
+    return examples, label_ids, session_ids
+
+
+@ml_router.get("/ml/readiness")
+async def get_ml_readiness(
+    vehicle_slug: str = Query(...),
+    mission_code: Optional[str] = Query(default=None),
+    bus_interface: Optional[str] = Query(default=None),
+    bus_mode: Optional[str] = Query(default=None),
+    capture_kind: Optional[str] = Query(default=None),
+) -> dict[str, Any]:
+    pool = await connect_db()
+    async with pool.acquire() as conn:
+        await ensure_ml_tables(conn)
+        vehicle = await conn.fetchrow(
+            "SELECT id FROM vehicles WHERE slug = $1",
+            vehicle_slug,
+        )
+        if vehicle is None:
+            raise HTTPException(status_code=404, detail="Vehicle not found")
+
+        rows = await _load_training_rows(
+            conn,
+            vehicle_id=vehicle["id"],
+            mission_code=mission_code,
+            bus_interface=bus_interface,
+            bus_mode=bus_mode,
+            capture_kind=capture_kind,
+            include_uncertain=True,
+        )
+
+    counts = {"positive": 0, "negative": 0, "uncertain": 0}
+    trainable_sessions: set[str] = set()
+    compatible_counts = {"positive": 0, "negative": 0}
+    compatible_trainable = 0
+    incompatible = 0
+
+    for row in rows:
+        counts[row["label"]] = counts.get(row["label"], 0) + 1
+        metadata = _json_object(row["metadata"])
+        version = int(metadata.get("feature_schema_version", 0) or 0)
+        if row["label"] in {"positive", "negative"}:
+            if version == ML_FEATURE_SCHEMA_VERSION:
+                compatible_trainable += 1
+                compatible_counts[row["label"]] += 1
+                trainable_sessions.add(str(row["session_id"]))
+            else:
+                incompatible += 1
+
+    missing = {
+        "total": max(0, ML_MIN_EXAMPLES - compatible_trainable),
+        "positive": max(0, 2 - compatible_counts["positive"]),
+        "negative": max(0, 2 - compatible_counts["negative"]),
+        "distinct_sessions": max(
+            0,
+            ML_MIN_DISTINCT_SESSIONS - len(trainable_sessions),
+        ),
+    }
+    ready = all(value == 0 for value in missing.values())
+
+    return {
+        "ok": True,
+        "ready_to_train": ready,
+        "scope": {
+            "vehicle_slug": vehicle_slug,
+            "mission_code": mission_code,
+            "bus_interface": bus_interface,
+            "bus_mode": bus_mode,
+            "capture_kind": capture_kind,
+        },
+        "feature_schema_version": ML_FEATURE_SCHEMA_VERSION,
+        "counts": counts,
+        "compatible_counts": compatible_counts,
+        "compatible_trainable_labels": compatible_trainable,
+        "incompatible_feature_labels": incompatible,
+        "distinct_sessions": len(trainable_sessions),
+        "minimum_examples": ML_MIN_EXAMPLES,
+        "minimum_distinct_sessions": ML_MIN_DISTINCT_SESSIONS,
+        "recommended_distinct_sessions": ML_RECOMMENDED_DISTINCT_SESSIONS,
+        "missing": missing,
     }
 
 
 @ml_router.post("/ml/train")
 async def train_candidate_model(
     payload: TrainCandidateModelRequest,
+    x_avenlab_ml_token: Optional[str] = Header(
+        default=None,
+        alias="X-AvenLab-ML-Token",
+    ),
 ) -> dict[str, Any]:
-    """Train and persist a human-supervised candidate classifier."""
+    """Train a scoped model and evaluate it by recording session."""
+    _require_ml_admin(x_avenlab_ml_token)
     pool = await connect_db()
 
     async with pool.acquire() as conn:
         await ensure_ml_tables(conn)
-
         vehicle = await conn.fetchrow(
             """
             SELECT id, slug, year, make, model
@@ -995,103 +1345,74 @@ async def train_candidate_model(
             payload.vehicle_slug,
         )
         if vehicle is None:
-            raise HTTPException(
-                status_code=404,
-                detail="Vehicle not found",
-            )
+            raise HTTPException(status_code=404, detail="Vehicle not found")
 
-        rows = await conn.fetch(
-            """
-            SELECT
-                id,
-                session_id,
-                can_id,
-                label,
-                mission_code,
-                feature_vector,
-                created_at,
-                updated_at
-            FROM can_ml_labels
-            WHERE vehicle_id = $1
-              AND label IN ('positive', 'negative')
-              AND (
-                    $2::text IS NULL
-                    OR mission_code = $2
-              )
-            ORDER BY created_at ASC, id ASC
-            """,
-            vehicle["id"],
-            payload.mission_code,
+        rows = await _load_training_rows(
+            conn,
+            vehicle_id=vehicle["id"],
+            mission_code=payload.mission_code,
+            bus_interface=payload.bus_interface,
+            bus_mode=payload.bus_mode,
+            capture_kind=payload.capture_kind,
         )
 
-        examples: list[tuple[dict[str, float], int]] = []
-        label_ids: list[str] = []
-        session_ids: set[str] = set()
+    examples, label_ids, session_ids = _training_examples(rows)
+    positive_count = sum(label for _, label, _ in examples)
+    negative_count = len(examples) - positive_count
 
-        for row in rows:
-            raw_vector = _json_object(row["feature_vector"])
-            vector = {
-                name: float(raw_vector.get(name, 0.0) or 0.0)
-                for name in ML_FEATURE_NAMES
-            }
-            label = 1 if row["label"] == "positive" else 0
-            examples.append((vector, label))
-            label_ids.append(str(row["id"]))
-            session_ids.add(str(row["session_id"]))
-
-        positive_count = sum(label for _, label in examples)
-        negative_count = len(examples) - positive_count
-
-        if len(examples) < payload.min_examples:
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    f"Need at least {payload.min_examples} labeled "
-                    f"candidates; found {len(examples)}."
-                ),
-            )
-
-        if positive_count < 2 or negative_count < 2:
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    "Need at least two positive and two negative "
-                    f"labels. Found positives={positive_count}, "
-                    f"negatives={negative_count}."
-                ),
-            )
-
-        model = _train_logistic_model(
-            examples,
-            epochs=payload.epochs,
-            learning_rate=payload.learning_rate,
-            l2=payload.l2,
+    if len(examples) < payload.min_examples:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Need at least {payload.min_examples} compatible labels; "
+                f"found {len(examples)}."
+            ),
         )
-        training_metrics = _evaluate(model, examples)
-        cross_validation = _cross_validate(
-            examples,
-            epochs=max(200, payload.epochs // 2),
-            learning_rate=payload.learning_rate,
-            l2=payload.l2,
+    if positive_count < 2 or negative_count < 2:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Need at least two positive and two negative labels. "
+                f"Found positives={positive_count}, negatives={negative_count}."
+            ),
+        )
+    if len(session_ids) < payload.min_distinct_sessions:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Need labels from at least {payload.min_distinct_sessions} "
+                f"distinct sessions; found {len(session_ids)}."
+            ),
         )
 
-        metrics = {
-            "training": training_metrics,
-            "cross_validation": cross_validation,
-        }
-        metadata = {
-            "training_method": "balanced_batch_gradient_descent",
-            "label_source": "explicit_human_labels_only",
-            "feature_snapshot": True,
-            "label_ids": label_ids,
-            "session_ids": sorted(session_ids),
-            "epochs": payload.epochs,
-            "learning_rate": payload.learning_rate,
-            "l2": payload.l2,
-            "blend_weight": ML_BLEND_WEIGHT,
-        }
-        model_id = uuid4()
+    model, training_metrics, cross_validation = await asyncio.to_thread(
+        _train_and_evaluate,
+        examples,
+        epochs=payload.epochs,
+        learning_rate=payload.learning_rate,
+        l2=payload.l2,
+    )
 
+    metrics = {
+        "training": training_metrics,
+        "cross_validation": cross_validation,
+    }
+    metadata = {
+        "feature_schema_version": ML_FEATURE_SCHEMA_VERSION,
+        "training_method": "balanced_batch_gradient_descent",
+        "label_source": "explicit_human_labels_only",
+        "cross_validation_grouping": "session_id",
+        "feature_snapshot": True,
+        "label_ids": label_ids,
+        "session_ids": sorted(session_ids),
+        "epochs": payload.epochs,
+        "learning_rate": payload.learning_rate,
+        "l2": payload.l2,
+        "blend_weight": ML_BLEND_WEIGHT,
+    }
+    model_id = uuid4()
+
+    async with pool.acquire() as conn:
         async with conn.transaction():
             if payload.activate:
                 await conn.execute(
@@ -1100,43 +1421,41 @@ async def train_candidate_model(
                     SET is_active = false
                     WHERE vehicle_id = $1
                       AND mission_code IS NOT DISTINCT FROM $2
+                      AND bus_interface IS NOT DISTINCT FROM $3
+                      AND bus_mode IS NOT DISTINCT FROM $4
+                      AND capture_kind IS NOT DISTINCT FROM $5
                     """,
                     vehicle["id"],
                     payload.mission_code,
+                    payload.bus_interface,
+                    payload.bus_mode,
+                    payload.capture_kind,
                 )
 
             await conn.execute(
                 """
                 INSERT INTO can_ml_models (
-                    id,
-                    vehicle_id,
-                    vehicle_slug,
-                    mission_code,
-                    model_type,
-                    feature_names,
-                    feature_means,
-                    feature_scales,
-                    weights,
-                    bias,
-                    label_count,
-                    positive_count,
-                    negative_count,
-                    metrics,
-                    metadata,
-                    is_active,
-                    created_at
+                    id, vehicle_id, vehicle_slug, mission_code,
+                    bus_interface, bus_mode, capture_kind,
+                    model_type, feature_names, feature_means,
+                    feature_scales, weights, bias,
+                    label_count, positive_count, negative_count,
+                    metrics, metadata, is_active, created_at
                 ) VALUES (
-                    $1, $2, $3, $4,
+                    $1, $2, $3, $4, $5, $6, $7,
                     'balanced_logistic_regression',
-                    $5::jsonb, $6::jsonb, $7::jsonb, $8::jsonb,
-                    $9, $10, $11, $12,
-                    $13::jsonb, $14::jsonb, $15, now()
+                    $8::jsonb, $9::jsonb, $10::jsonb, $11::jsonb,
+                    $12, $13, $14, $15,
+                    $16::jsonb, $17::jsonb, $18, now()
                 )
                 """,
                 model_id,
                 vehicle["id"],
                 vehicle["slug"],
                 payload.mission_code,
+                payload.bus_interface,
+                payload.bus_mode,
+                payload.capture_kind,
                 _json_dumps(model["feature_names"]),
                 _json_dumps(model["means"]),
                 _json_dumps(model["scales"]),
@@ -1155,11 +1474,16 @@ async def train_candidate_model(
         "model_id": str(model_id),
         "vehicle_slug": payload.vehicle_slug,
         "mission_code": payload.mission_code,
+        "bus_interface": payload.bus_interface,
+        "bus_mode": payload.bus_mode,
+        "capture_kind": payload.capture_kind,
+        "feature_schema_version": ML_FEATURE_SCHEMA_VERSION,
         "model_type": "balanced_logistic_regression",
         "active": payload.activate,
         "label_count": len(examples),
         "positive_count": positive_count,
         "negative_count": negative_count,
+        "distinct_sessions": len(session_ids),
         "feature_names": list(ML_FEATURE_NAMES),
         "metrics": metrics,
         "training": {
@@ -1175,35 +1499,39 @@ async def train_candidate_model(
 async def get_ml_status(
     vehicle_slug: Optional[str] = Query(default=None),
     mission_code: Optional[str] = Query(default=None),
+    bus_interface: Optional[str] = Query(default=None),
+    bus_mode: Optional[str] = Query(default=None),
+    capture_kind: Optional[str] = Query(default=None),
 ) -> dict[str, Any]:
     pool = await connect_db()
-
     async with pool.acquire() as conn:
         await ensure_ml_tables(conn)
 
         label_conditions: list[str] = []
         label_values: list[Any] = []
-
         if vehicle_slug:
             label_values.append(vehicle_slug)
-            label_conditions.append(
-                f"v.slug = ${len(label_values)}"
-            )
-        if mission_code:
-            label_values.append(mission_code)
-            label_conditions.append(
-                f"l.mission_code = ${len(label_values)}"
-            )
-
+            label_conditions.append(f"v.slug = ${len(label_values)}")
+        for column, value in (
+            ("mission_code", mission_code),
+            ("bus_interface", bus_interface),
+            ("bus_mode", bus_mode),
+            ("capture_kind", capture_kind),
+        ):
+            if value is not None:
+                label_values.append(value)
+                label_conditions.append(
+                    f"l.{column} = ${len(label_values)}"
+                )
         label_where = (
             "WHERE " + " AND ".join(label_conditions)
             if label_conditions
             else ""
         )
-
         label_rows = await conn.fetch(
             f"""
-            SELECT l.label, COUNT(*)::int AS count
+            SELECT l.label, COUNT(*)::int AS count,
+                   COUNT(DISTINCT l.session_id)::int AS sessions
             FROM can_ml_labels l
             JOIN vehicles v ON v.id = l.vehicle_id
             {label_where}
@@ -1215,38 +1543,30 @@ async def get_ml_status(
 
         model_conditions: list[str] = []
         model_values: list[Any] = []
-
-        if vehicle_slug:
-            model_values.append(vehicle_slug)
-            model_conditions.append(
-                f"vehicle_slug = ${len(model_values)}"
-            )
-        if mission_code:
-            model_values.append(mission_code)
-            model_conditions.append(
-                f"mission_code = ${len(model_values)}"
-            )
-
+        for column, value in (
+            ("vehicle_slug", vehicle_slug),
+            ("mission_code", mission_code),
+            ("bus_interface", bus_interface),
+            ("bus_mode", bus_mode),
+            ("capture_kind", capture_kind),
+        ):
+            if value is not None:
+                model_values.append(value)
+                model_conditions.append(
+                    f"{column} = ${len(model_values)}"
+                )
         model_where = (
             "WHERE " + " AND ".join(model_conditions)
             if model_conditions
             else ""
         )
-
         model_rows = await conn.fetch(
             f"""
-            SELECT
-                id,
-                vehicle_slug,
-                mission_code,
-                model_type,
-                label_count,
-                positive_count,
-                negative_count,
-                metrics,
-                metadata,
-                is_active,
-                created_at
+            SELECT id, vehicle_slug, mission_code,
+                   bus_interface, bus_mode, capture_kind,
+                   model_type, label_count, positive_count,
+                   negative_count, metrics, metadata,
+                   is_active, created_at
             FROM can_ml_models
             {model_where}
             ORDER BY created_at DESC
@@ -1260,9 +1580,15 @@ async def get_ml_status(
         "filters": {
             "vehicle_slug": vehicle_slug,
             "mission_code": mission_code,
+            "bus_interface": bus_interface,
+            "bus_mode": bus_mode,
+            "capture_kind": capture_kind,
         },
         "labels": {
-            row["label"]: int(row["count"])
+            row["label"]: {
+                "count": int(row["count"]),
+                "sessions": int(row["sessions"]),
+            }
             for row in label_rows
         },
         "models": [
