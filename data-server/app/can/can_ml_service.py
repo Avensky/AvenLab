@@ -1,0 +1,1278 @@
+from __future__ import annotations
+
+import json
+import math
+import os
+import statistics
+from typing import Any, Optional
+from uuid import UUID, uuid4
+
+from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel, Field
+
+from app.db import connect_db
+
+
+def _env_float(name: str, default: float, minimum: float = 0.0) -> float:
+    raw = os.getenv(name)
+    try:
+        value = float(raw) if raw is not None else float(default)
+    except (TypeError, ValueError):
+        value = float(default)
+    return max(value, minimum)
+
+
+def _env_int(name: str, default: int, minimum: int = 1) -> int:
+    raw = os.getenv(name)
+    try:
+        value = int(raw) if raw is not None else int(default)
+    except (TypeError, ValueError):
+        value = int(default)
+    return max(value, minimum)
+
+
+ML_MIN_EXAMPLES = _env_int("ML_MIN_EXAMPLES", 8, minimum=4)
+ML_TRAINING_EPOCHS = _env_int(
+    "ML_TRAINING_EPOCHS",
+    900,
+    minimum=100,
+)
+ML_LEARNING_RATE = _env_float(
+    "ML_LEARNING_RATE",
+    0.08,
+    minimum=0.0001,
+)
+ML_L2 = _env_float("ML_L2", 0.002, minimum=0.0)
+ML_BLEND_WEIGHT = min(
+    0.50,
+    _env_float("ML_BLEND_WEIGHT", 0.25, minimum=0.0),
+)
+
+ML_FEATURE_NAMES = (
+    "correlation_score",
+    "raw_marker_fraction",
+    "correlation_lift",
+    "change_ratio",
+    "changed_frame_ratio",
+    "entropy_norm",
+    "frequency_norm",
+    "frame_volume_score",
+    "active_byte_fraction",
+    "max_byte_change_rate",
+    "marker_latency_score",
+    "action_shift_fraction",
+    "baseline_overlap_score",
+    "baseline_adjusted_change_ratio",
+    "baseline_penalty",
+)
+
+ml_router = APIRouter(tags=["can-ai"])
+
+
+class CandidateLabelRequest(BaseModel):
+    label: str = Field(pattern="^(positive|negative|uncertain)$")
+    signal_name: Optional[str] = Field(default=None, max_length=160)
+    notes: Optional[str] = Field(default=None, max_length=2_000)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class TrainCandidateModelRequest(BaseModel):
+    vehicle_slug: str = Field(min_length=1, max_length=160)
+    mission_code: Optional[str] = Field(default=None, max_length=160)
+    min_examples: int = Field(default=ML_MIN_EXAMPLES, ge=4, le=10_000)
+    epochs: int = Field(
+        default=ML_TRAINING_EPOCHS,
+        ge=100,
+        le=20_000,
+    )
+    learning_rate: float = Field(
+        default=ML_LEARNING_RATE,
+        gt=0.0,
+        le=1.0,
+    )
+    l2: float = Field(default=ML_L2, ge=0.0, le=10.0)
+    activate: bool = True
+
+
+def _json_dumps(value: Any) -> str:
+    return json.dumps(
+        value,
+        separators=(",", ":"),
+        sort_keys=True,
+        default=str,
+    )
+
+
+def _json_object(value: Any) -> dict[str, Any]:
+    if value is None:
+        return {}
+    if isinstance(value, dict):
+        return dict(value)
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError:
+            return {}
+        return dict(parsed) if isinstance(parsed, dict) else {}
+    return {}
+
+
+def _can_hex(can_id: int) -> str:
+    return f"0x{can_id:03X}"
+
+
+def ml_configuration() -> dict[str, Any]:
+    return {
+        "model_type": "balanced_logistic_regression",
+        "feature_names": list(ML_FEATURE_NAMES),
+        "minimum_examples": ML_MIN_EXAMPLES,
+        "training_epochs": ML_TRAINING_EPOCHS,
+        "learning_rate": ML_LEARNING_RATE,
+        "l2": ML_L2,
+        "blend_weight": ML_BLEND_WEIGHT,
+        "label_source": "explicit_human_labels_only",
+        "runtime_dependencies": "python_standard_library",
+    }
+
+
+def _sigmoid(value: float) -> float:
+    if value >= 0:
+        exponent = math.exp(-value)
+        return 1.0 / (1.0 + exponent)
+    exponent = math.exp(value)
+    return exponent / (1.0 + exponent)
+
+
+def _safe_probability(value: float) -> float:
+    return min(1.0 - 1e-9, max(1e-9, float(value)))
+
+
+def _feature_vector_from_values(
+    *,
+    frame_count: int,
+    frequency_hz: Optional[float],
+    entropy_value: float,
+    byte_change_counts: dict[str, int],
+    byte_evidence: list[dict[str, Any]],
+    correlation_score: float,
+    raw_marker_fraction: float,
+    correlation_lift: float,
+    change_ratio: float,
+    changed_frame_ratio: float,
+    baseline_overlap_score: float,
+    baseline_adjusted_change_ratio: float,
+    baseline_penalty: float,
+) -> dict[str, float]:
+    transitions = max(int(frame_count) - 1, 1)
+    byte_rates = [
+        float(byte_change_counts.get(str(index), 0) or 0) / transitions
+        for index in range(8)
+    ]
+    active_byte_fraction = (
+        sum(1 for rate in byte_rates if rate > 0.0) / 8.0
+    )
+    max_byte_change_rate = max(byte_rates, default=0.0)
+
+    latencies: list[float] = []
+    action_shift_count = 0
+    evidence_count = 0
+
+    for item in byte_evidence:
+        if not isinstance(item, dict):
+            continue
+        evidence_count += 1
+
+        latency = item.get("median_marker_latency_ms")
+        if isinstance(latency, (int, float)) and latency >= 0:
+            latencies.append(float(latency))
+
+        pre_value = item.get("pre_marker_mode")
+        action_value = item.get("action_window_mode")
+        if (
+            pre_value is not None
+            and action_value is not None
+            and pre_value != action_value
+        ):
+            action_shift_count += 1
+
+    marker_latency_score = 0.0
+    if latencies:
+        median_latency = float(statistics.median(latencies))
+        marker_latency_score = 1.0 / (
+            1.0 + (median_latency / 1_000.0)
+        )
+
+    action_shift_fraction = (
+        action_shift_count / evidence_count
+        if evidence_count > 0
+        else 0.0
+    )
+
+    frequency_value = max(0.0, float(frequency_hz or 0.0))
+    frequency_norm = min(
+        1.0,
+        math.log1p(frequency_value) / math.log1p(100.0),
+    )
+
+    return {
+        "correlation_score": float(correlation_score),
+        "raw_marker_fraction": float(raw_marker_fraction),
+        "correlation_lift": float(correlation_lift),
+        "change_ratio": float(change_ratio),
+        "changed_frame_ratio": float(changed_frame_ratio),
+        "entropy_norm": min(
+            1.0,
+            max(0.0, float(entropy_value) / 8.0),
+        ),
+        "frequency_norm": frequency_norm,
+        "frame_volume_score": min(
+            max(int(frame_count), 0) / 200.0,
+            1.0,
+        ),
+        "active_byte_fraction": active_byte_fraction,
+        "max_byte_change_rate": max_byte_change_rate,
+        "marker_latency_score": marker_latency_score,
+        "action_shift_fraction": action_shift_fraction,
+        "baseline_overlap_score": float(baseline_overlap_score),
+        "baseline_adjusted_change_ratio": float(
+            baseline_adjusted_change_ratio
+        ),
+        "baseline_penalty": float(baseline_penalty),
+    }
+
+
+def candidate_feature_vector(candidate: Any) -> dict[str, float]:
+    evidence = []
+    for item in getattr(candidate, "byte_evidence", []):
+        if hasattr(item, "model_dump"):
+            evidence.append(item.model_dump())
+        elif isinstance(item, dict):
+            evidence.append(item)
+
+    return _feature_vector_from_values(
+        frame_count=int(getattr(candidate, "frame_count", 0) or 0),
+        frequency_hz=getattr(candidate, "frequency_hz", None),
+        entropy_value=float(getattr(candidate, "entropy", 0.0) or 0.0),
+        byte_change_counts=dict(
+            getattr(candidate, "byte_change_counts", {}) or {}
+        ),
+        byte_evidence=evidence,
+        correlation_score=float(
+            getattr(candidate, "correlation_score", 0.0) or 0.0
+        ),
+        raw_marker_fraction=float(
+            getattr(candidate, "raw_marker_fraction", 0.0) or 0.0
+        ),
+        correlation_lift=float(
+            getattr(candidate, "correlation_lift", 0.0) or 0.0
+        ),
+        change_ratio=float(
+            getattr(candidate, "change_ratio", 0.0) or 0.0
+        ),
+        changed_frame_ratio=float(
+            getattr(candidate, "changed_frame_ratio", 0.0) or 0.0
+        ),
+        baseline_overlap_score=float(
+            getattr(candidate, "baseline_overlap_score", 0.0) or 0.0
+        ),
+        baseline_adjusted_change_ratio=float(
+            getattr(
+                candidate,
+                "baseline_adjusted_change_ratio",
+                getattr(candidate, "change_ratio", 0.0),
+            )
+            or 0.0
+        ),
+        baseline_penalty=float(
+            getattr(candidate, "baseline_penalty", 0.0) or 0.0
+        ),
+    )
+
+
+def _persisted_feature_vector(
+    feature_row: dict[str, Any],
+    correlation_row: Optional[dict[str, Any]],
+) -> dict[str, float]:
+    feature_metadata = _json_object(feature_row.get("metadata"))
+    correlation_metadata = _json_object(
+        correlation_row.get("metadata")
+        if correlation_row
+        else None
+    )
+
+    evidence = feature_metadata.get("byte_evidence")
+    if not isinstance(evidence, list):
+        evidence = correlation_metadata.get("byte_evidence")
+    if not isinstance(evidence, list):
+        evidence = []
+
+    byte_counts_raw = _json_object(
+        feature_row.get("byte_change_counts")
+    )
+    byte_counts = {
+        str(index): int(byte_counts_raw.get(str(index), 0) or 0)
+        for index in range(8)
+    }
+
+    correlation_score = 0.0
+    if correlation_row:
+        correlation_score = float(
+            correlation_row.get("score") or 0.0
+        )
+
+    return _feature_vector_from_values(
+        frame_count=int(feature_row.get("frame_count") or 0),
+        frequency_hz=(
+            float(feature_row["frequency_hz"])
+            if feature_row.get("frequency_hz") is not None
+            else None
+        ),
+        entropy_value=float(feature_row.get("entropy") or 0.0),
+        byte_change_counts=byte_counts,
+        byte_evidence=[
+            item
+            for item in evidence
+            if isinstance(item, dict)
+        ],
+        correlation_score=correlation_score,
+        raw_marker_fraction=float(
+            correlation_metadata.get(
+                "raw_marker_fraction",
+                feature_metadata.get("raw_marker_fraction", 0.0),
+            )
+            or 0.0
+        ),
+        correlation_lift=float(
+            correlation_metadata.get(
+                "correlation_lift",
+                feature_metadata.get("correlation_lift", 0.0),
+            )
+            or 0.0
+        ),
+        change_ratio=float(
+            feature_metadata.get("change_ratio") or 0.0
+        ),
+        changed_frame_ratio=float(
+            feature_metadata.get("changed_frame_ratio") or 0.0
+        ),
+        baseline_overlap_score=float(
+            correlation_metadata.get(
+                "baseline_overlap_score",
+                feature_metadata.get("baseline_overlap_score", 0.0),
+            )
+            or 0.0
+        ),
+        baseline_adjusted_change_ratio=float(
+            correlation_metadata.get(
+                "baseline_adjusted_change_ratio",
+                feature_metadata.get(
+                    "baseline_adjusted_change_ratio",
+                    feature_metadata.get("change_ratio", 0.0),
+                ),
+            )
+            or 0.0
+        ),
+        baseline_penalty=float(
+            correlation_metadata.get(
+                "baseline_penalty",
+                feature_metadata.get("baseline_penalty", 0.0),
+            )
+            or 0.0
+        ),
+    )
+
+
+def _standardization_parameters(
+    examples: list[tuple[dict[str, float], int]],
+) -> tuple[dict[str, float], dict[str, float]]:
+    means: dict[str, float] = {}
+    scales: dict[str, float] = {}
+
+    for name in ML_FEATURE_NAMES:
+        values = [
+            float(features.get(name, 0.0))
+            for features, _ in examples
+        ]
+        mean_value = (
+            float(statistics.mean(values))
+            if values
+            else 0.0
+        )
+        variance = (
+            float(
+                statistics.mean(
+                    (value - mean_value) ** 2
+                    for value in values
+                )
+            )
+            if values
+            else 0.0
+        )
+        means[name] = mean_value
+        scales[name] = max(math.sqrt(variance), 1e-6)
+
+    return means, scales
+
+
+def _standardized_vector(
+    features: dict[str, float],
+    means: dict[str, float],
+    scales: dict[str, float],
+) -> list[float]:
+    return [
+        (
+            float(features.get(name, 0.0))
+            - float(means.get(name, 0.0))
+        )
+        / max(float(scales.get(name, 1.0)), 1e-6)
+        for name in ML_FEATURE_NAMES
+    ]
+
+
+def _train_logistic_model(
+    examples: list[tuple[dict[str, float], int]],
+    *,
+    epochs: int,
+    learning_rate: float,
+    l2: float,
+) -> dict[str, Any]:
+    positive_count = sum(label for _, label in examples)
+    negative_count = len(examples) - positive_count
+
+    if positive_count < 1 or negative_count < 1:
+        raise ValueError(
+            "Training requires at least one positive and one negative label."
+        )
+
+    means, scales = _standardization_parameters(examples)
+    rows = [
+        (_standardized_vector(features, means, scales), label)
+        for features, label in examples
+    ]
+
+    weights = [0.0 for _ in ML_FEATURE_NAMES]
+    base_rate = _safe_probability(
+        positive_count / len(examples)
+    )
+    bias = math.log(base_rate / (1.0 - base_rate))
+
+    positive_weight = len(examples) / (2.0 * positive_count)
+    negative_weight = len(examples) / (2.0 * negative_count)
+
+    for _ in range(epochs):
+        weight_gradients = [0.0 for _ in ML_FEATURE_NAMES]
+        bias_gradient = 0.0
+
+        for vector, label in rows:
+            score = bias + sum(
+                weight * value
+                for weight, value in zip(weights, vector)
+            )
+            prediction = _sigmoid(score)
+            sample_weight = (
+                positive_weight
+                if label == 1
+                else negative_weight
+            )
+            error = (prediction - label) * sample_weight
+
+            bias_gradient += error
+            for index, value in enumerate(vector):
+                weight_gradients[index] += error * value
+
+        count = max(len(rows), 1)
+        bias -= learning_rate * (bias_gradient / count)
+
+        for index in range(len(weights)):
+            gradient = (
+                weight_gradients[index] / count
+            ) + (l2 * weights[index])
+            weights[index] -= learning_rate * gradient
+
+    return {
+        "feature_names": list(ML_FEATURE_NAMES),
+        "means": means,
+        "scales": scales,
+        "weights": {
+            name: float(weights[index])
+            for index, name in enumerate(ML_FEATURE_NAMES)
+        },
+        "bias": float(bias),
+    }
+
+
+def _predict(
+    model: dict[str, Any],
+    features: dict[str, float],
+) -> float:
+    means = {
+        str(key): float(value)
+        for key, value in _json_object(model.get("means")).items()
+    }
+    scales = {
+        str(key): float(value)
+        for key, value in _json_object(model.get("scales")).items()
+    }
+    weights = {
+        str(key): float(value)
+        for key, value in _json_object(model.get("weights")).items()
+    }
+
+    vector = _standardized_vector(features, means, scales)
+    score = float(model.get("bias") or 0.0)
+
+    for index, name in enumerate(ML_FEATURE_NAMES):
+        score += float(weights.get(name, 0.0)) * vector[index]
+
+    return _sigmoid(score)
+
+
+def _binary_metrics(
+    probabilities: list[float],
+    labels: list[int],
+) -> dict[str, float]:
+    true_positive = 0
+    false_positive = 0
+    true_negative = 0
+    false_negative = 0
+    log_loss = 0.0
+
+    for probability, label in zip(probabilities, labels):
+        probability = _safe_probability(probability)
+        prediction = 1 if probability >= 0.5 else 0
+
+        log_loss += -(
+            label * math.log(probability)
+            + (1 - label) * math.log(1.0 - probability)
+        )
+
+        if prediction == 1 and label == 1:
+            true_positive += 1
+        elif prediction == 1 and label == 0:
+            false_positive += 1
+        elif prediction == 0 and label == 0:
+            true_negative += 1
+        else:
+            false_negative += 1
+
+    total = max(len(labels), 1)
+    precision = true_positive / max(
+        true_positive + false_positive,
+        1,
+    )
+    recall = true_positive / max(
+        true_positive + false_negative,
+        1,
+    )
+    f1 = (
+        2.0 * precision * recall
+        / max(precision + recall, 1e-9)
+    )
+
+    return {
+        "accuracy": (true_positive + true_negative) / total,
+        "precision": precision,
+        "recall": recall,
+        "f1": f1,
+        "log_loss": log_loss / total,
+        "true_positive": float(true_positive),
+        "false_positive": float(false_positive),
+        "true_negative": float(true_negative),
+        "false_negative": float(false_negative),
+    }
+
+
+def _evaluate(
+    model: dict[str, Any],
+    examples: list[tuple[dict[str, float], int]],
+) -> dict[str, float]:
+    return _binary_metrics(
+        [
+            _predict(model, features)
+            for features, _ in examples
+        ],
+        [label for _, label in examples],
+    )
+
+
+def _cross_validate(
+    examples: list[tuple[dict[str, float], int]],
+    *,
+    epochs: int,
+    learning_rate: float,
+    l2: float,
+) -> dict[str, Any]:
+    positives = [
+        example
+        for example in examples
+        if example[1] == 1
+    ]
+    negatives = [
+        example
+        for example in examples
+        if example[1] == 0
+    ]
+    fold_count = min(5, len(positives), len(negatives))
+
+    if fold_count < 2:
+        return {
+            "available": False,
+            "folds": 0,
+            "reason": (
+                "Cross-validation requires at least two examples "
+                "in each class."
+            ),
+        }
+
+    fold_metrics: list[dict[str, float]] = []
+
+    for fold_index in range(fold_count):
+        test_examples = [
+            example
+            for index, example in enumerate(positives)
+            if index % fold_count == fold_index
+        ] + [
+            example
+            for index, example in enumerate(negatives)
+            if index % fold_count == fold_index
+        ]
+        train_examples = [
+            example
+            for index, example in enumerate(positives)
+            if index % fold_count != fold_index
+        ] + [
+            example
+            for index, example in enumerate(negatives)
+            if index % fold_count != fold_index
+        ]
+
+        if not train_examples or not test_examples:
+            continue
+
+        model = _train_logistic_model(
+            train_examples,
+            epochs=epochs,
+            learning_rate=learning_rate,
+            l2=l2,
+        )
+        fold_metrics.append(_evaluate(model, test_examples))
+
+    if not fold_metrics:
+        return {
+            "available": False,
+            "folds": 0,
+            "reason": "No valid cross-validation folds were produced.",
+        }
+
+    metric_names = (
+        "accuracy",
+        "precision",
+        "recall",
+        "f1",
+        "log_loss",
+    )
+    return {
+        "available": True,
+        "folds": len(fold_metrics),
+        "mean": {
+            name: float(
+                statistics.mean(
+                    fold[name]
+                    for fold in fold_metrics
+                )
+            )
+            for name in metric_names
+        },
+        "per_fold": fold_metrics,
+    }
+
+
+async def ensure_ml_tables(conn: Any) -> None:
+    labels_table = await conn.fetchval(
+        "SELECT to_regclass('public.can_ml_labels')"
+    )
+    models_table = await conn.fetchval(
+        "SELECT to_regclass('public.can_ml_models')"
+    )
+
+    if not labels_table or not models_table:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Supervised ML tables are not installed. Apply "
+                "20260712_add_can_supervised_ml.sql first."
+            ),
+        )
+
+
+async def load_active_ml_model(
+    conn: Any,
+    *,
+    vehicle_id: UUID,
+    mission_code: Optional[str],
+    requested_model_id: Optional[UUID],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    await ensure_ml_tables(conn)
+
+    if requested_model_id is not None:
+        row = await conn.fetchrow(
+            """
+            SELECT *
+            FROM can_ml_models
+            WHERE id = $1
+              AND vehicle_id = $2
+            """,
+            requested_model_id,
+            vehicle_id,
+        )
+        selection = "explicit"
+    else:
+        row = await conn.fetchrow(
+            """
+            SELECT *
+            FROM can_ml_models
+            WHERE vehicle_id = $1
+              AND is_active = true
+              AND (
+                    mission_code = $2
+                    OR mission_code IS NULL
+              )
+            ORDER BY
+                CASE
+                    WHEN mission_code = $2 THEN 0
+                    ELSE 1
+                END,
+                created_at DESC
+            LIMIT 1
+            """,
+            vehicle_id,
+            mission_code,
+        )
+        selection = "automatic"
+
+    if row is None:
+        return (
+            {
+                "applied": False,
+                "found": False,
+                "selection": selection,
+                "reason": (
+                    "No active supervised model was found for this "
+                    "vehicle and mission scope."
+                ),
+            },
+            {},
+        )
+
+    model = dict(row)
+    model["means"] = _json_object(model.get("feature_means"))
+    model["scales"] = _json_object(model.get("feature_scales"))
+    model["weights"] = _json_object(model.get("weights"))
+    model["metrics"] = _json_object(model.get("metrics"))
+    model["metadata"] = _json_object(model.get("metadata"))
+
+    return (
+        {
+            "applied": True,
+            "found": True,
+            "selection": selection,
+            "model_id": str(model["id"]),
+            "model_type": model.get("model_type"),
+            "mission_code": model.get("mission_code"),
+            "label_count": int(model.get("label_count") or 0),
+            "positive_count": int(model.get("positive_count") or 0),
+            "negative_count": int(model.get("negative_count") or 0),
+            "metrics": model["metrics"],
+            "blend_weight": ML_BLEND_WEIGHT,
+            "created_at": model.get("created_at"),
+        },
+        model,
+    )
+
+
+def apply_supervised_model(
+    candidates: list[Any],
+    model: dict[str, Any],
+    model_context: dict[str, Any],
+) -> None:
+    if not model_context.get("applied") or not model:
+        return
+
+    model_id = str(model.get("id"))
+
+    for candidate in candidates:
+        features = candidate_feature_vector(candidate)
+        probability = _predict(model, features)
+        original_confidence = float(
+            getattr(candidate, "confidence", 0.0) or 0.0
+        )
+        blended_confidence = (
+            ((1.0 - ML_BLEND_WEIGHT) * original_confidence)
+            + (ML_BLEND_WEIGHT * probability)
+        )
+
+        candidate.ml_applied = True
+        candidate.ml_model_id = model_id
+        candidate.ml_probability = round(probability, 6)
+        candidate.ml_blend_weight = ML_BLEND_WEIGHT
+        candidate.confidence_before_ml = original_confidence
+        candidate.ml_feature_vector = {
+            key: round(value, 8)
+            for key, value in features.items()
+        }
+        candidate.confidence = round(
+            min(1.0, max(0.0, blended_confidence)),
+            5,
+        )
+        candidate.notes = (
+            f"{candidate.notes}; supervised probability="
+            f"{candidate.ml_probability:.3f}"
+        )
+
+    candidates.sort(
+        key=lambda candidate: (
+            candidate.confidence,
+            candidate.ml_probability or 0.0,
+            candidate.correlation_score,
+            candidate.baseline_adjusted_change_ratio,
+            candidate.change_count,
+        ),
+        reverse=True,
+    )
+
+
+@ml_router.post("/session/{session_id}/candidate/{can_id}/label")
+async def label_candidate(
+    session_id: UUID,
+    can_id: int,
+    payload: CandidateLabelRequest,
+) -> dict[str, Any]:
+    """Store an explicit human candidate label and its feature snapshot."""
+    pool = await connect_db()
+
+    async with pool.acquire() as conn:
+        await ensure_ml_tables(conn)
+
+        session = await conn.fetchrow(
+            """
+            SELECT
+                cs.id,
+                cs.vehicle_id,
+                cs.mission_id,
+                v.slug AS vehicle_slug,
+                rm.mission_code
+            FROM can_sessions cs
+            JOIN vehicles v ON v.id = cs.vehicle_id
+            LEFT JOIN recon_missions rm ON rm.id = cs.mission_id
+            WHERE cs.id = $1
+            """,
+            session_id,
+        )
+        if session is None:
+            raise HTTPException(
+                status_code=404,
+                detail="CAN session not found",
+            )
+
+        feature = await conn.fetchrow(
+            """
+            SELECT
+                can_id,
+                frame_count,
+                change_count,
+                byte_change_counts,
+                entropy,
+                frequency_hz,
+                metadata
+            FROM can_id_features
+            WHERE session_id = $1
+              AND can_id = $2
+            """,
+            session_id,
+            can_id,
+        )
+        if feature is None:
+            raise HTTPException(
+                status_code=404,
+                detail=(
+                    "Candidate features were not found. Analyze and "
+                    "persist the session before labeling it."
+                ),
+            )
+
+        correlation = await conn.fetchrow(
+            """
+            SELECT score, confidence, notes, metadata
+            FROM can_id_correlations
+            WHERE session_id = $1
+              AND can_id = $2
+            ORDER BY created_at DESC
+            LIMIT 1
+            """,
+            session_id,
+            can_id,
+        )
+
+        feature_vector = _persisted_feature_vector(
+            dict(feature),
+            dict(correlation) if correlation else None,
+        )
+
+        await conn.execute(
+            """
+            INSERT INTO can_ml_labels (
+                id,
+                session_id,
+                vehicle_id,
+                mission_id,
+                mission_code,
+                can_id,
+                label,
+                signal_name,
+                notes,
+                feature_vector,
+                source,
+                metadata,
+                created_at,
+                updated_at
+            ) VALUES (
+                $1, $2, $3, $4, $5, $6, $7, $8, $9,
+                $10::jsonb, 'human', $11::jsonb, now(), now()
+            )
+            ON CONFLICT (session_id, can_id)
+            DO UPDATE SET
+                label = EXCLUDED.label,
+                signal_name = EXCLUDED.signal_name,
+                notes = EXCLUDED.notes,
+                feature_vector = EXCLUDED.feature_vector,
+                source = EXCLUDED.source,
+                metadata = EXCLUDED.metadata,
+                updated_at = now()
+            """,
+            uuid4(),
+            session_id,
+            session["vehicle_id"],
+            session["mission_id"],
+            session["mission_code"],
+            can_id,
+            payload.label,
+            payload.signal_name,
+            payload.notes,
+            _json_dumps(feature_vector),
+            _json_dumps(payload.metadata),
+        )
+
+    return {
+        "ok": True,
+        "session_id": str(session_id),
+        "can_id": can_id,
+        "can_id_hex": _can_hex(can_id),
+        "label": payload.label,
+        "included_in_training": payload.label in {
+            "positive",
+            "negative",
+        },
+        "feature_vector": feature_vector,
+    }
+
+
+@ml_router.post("/ml/train")
+async def train_candidate_model(
+    payload: TrainCandidateModelRequest,
+) -> dict[str, Any]:
+    """Train and persist a human-supervised candidate classifier."""
+    pool = await connect_db()
+
+    async with pool.acquire() as conn:
+        await ensure_ml_tables(conn)
+
+        vehicle = await conn.fetchrow(
+            """
+            SELECT id, slug, year, make, model
+            FROM vehicles
+            WHERE slug = $1
+            """,
+            payload.vehicle_slug,
+        )
+        if vehicle is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Vehicle not found",
+            )
+
+        rows = await conn.fetch(
+            """
+            SELECT
+                id,
+                session_id,
+                can_id,
+                label,
+                mission_code,
+                feature_vector,
+                created_at,
+                updated_at
+            FROM can_ml_labels
+            WHERE vehicle_id = $1
+              AND label IN ('positive', 'negative')
+              AND (
+                    $2::text IS NULL
+                    OR mission_code = $2
+              )
+            ORDER BY created_at ASC, id ASC
+            """,
+            vehicle["id"],
+            payload.mission_code,
+        )
+
+        examples: list[tuple[dict[str, float], int]] = []
+        label_ids: list[str] = []
+        session_ids: set[str] = set()
+
+        for row in rows:
+            raw_vector = _json_object(row["feature_vector"])
+            vector = {
+                name: float(raw_vector.get(name, 0.0) or 0.0)
+                for name in ML_FEATURE_NAMES
+            }
+            label = 1 if row["label"] == "positive" else 0
+            examples.append((vector, label))
+            label_ids.append(str(row["id"]))
+            session_ids.add(str(row["session_id"]))
+
+        positive_count = sum(label for _, label in examples)
+        negative_count = len(examples) - positive_count
+
+        if len(examples) < payload.min_examples:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Need at least {payload.min_examples} labeled "
+                    f"candidates; found {len(examples)}."
+                ),
+            )
+
+        if positive_count < 2 or negative_count < 2:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Need at least two positive and two negative "
+                    f"labels. Found positives={positive_count}, "
+                    f"negatives={negative_count}."
+                ),
+            )
+
+        model = _train_logistic_model(
+            examples,
+            epochs=payload.epochs,
+            learning_rate=payload.learning_rate,
+            l2=payload.l2,
+        )
+        training_metrics = _evaluate(model, examples)
+        cross_validation = _cross_validate(
+            examples,
+            epochs=max(200, payload.epochs // 2),
+            learning_rate=payload.learning_rate,
+            l2=payload.l2,
+        )
+
+        metrics = {
+            "training": training_metrics,
+            "cross_validation": cross_validation,
+        }
+        metadata = {
+            "training_method": "balanced_batch_gradient_descent",
+            "label_source": "explicit_human_labels_only",
+            "feature_snapshot": True,
+            "label_ids": label_ids,
+            "session_ids": sorted(session_ids),
+            "epochs": payload.epochs,
+            "learning_rate": payload.learning_rate,
+            "l2": payload.l2,
+            "blend_weight": ML_BLEND_WEIGHT,
+        }
+        model_id = uuid4()
+
+        async with conn.transaction():
+            if payload.activate:
+                await conn.execute(
+                    """
+                    UPDATE can_ml_models
+                    SET is_active = false
+                    WHERE vehicle_id = $1
+                      AND mission_code IS NOT DISTINCT FROM $2
+                    """,
+                    vehicle["id"],
+                    payload.mission_code,
+                )
+
+            await conn.execute(
+                """
+                INSERT INTO can_ml_models (
+                    id,
+                    vehicle_id,
+                    vehicle_slug,
+                    mission_code,
+                    model_type,
+                    feature_names,
+                    feature_means,
+                    feature_scales,
+                    weights,
+                    bias,
+                    label_count,
+                    positive_count,
+                    negative_count,
+                    metrics,
+                    metadata,
+                    is_active,
+                    created_at
+                ) VALUES (
+                    $1, $2, $3, $4,
+                    'balanced_logistic_regression',
+                    $5::jsonb, $6::jsonb, $7::jsonb, $8::jsonb,
+                    $9, $10, $11, $12,
+                    $13::jsonb, $14::jsonb, $15, now()
+                )
+                """,
+                model_id,
+                vehicle["id"],
+                vehicle["slug"],
+                payload.mission_code,
+                _json_dumps(model["feature_names"]),
+                _json_dumps(model["means"]),
+                _json_dumps(model["scales"]),
+                _json_dumps(model["weights"]),
+                model["bias"],
+                len(examples),
+                positive_count,
+                negative_count,
+                _json_dumps(metrics),
+                _json_dumps(metadata),
+                payload.activate,
+            )
+
+    return {
+        "ok": True,
+        "model_id": str(model_id),
+        "vehicle_slug": payload.vehicle_slug,
+        "mission_code": payload.mission_code,
+        "model_type": "balanced_logistic_regression",
+        "active": payload.activate,
+        "label_count": len(examples),
+        "positive_count": positive_count,
+        "negative_count": negative_count,
+        "feature_names": list(ML_FEATURE_NAMES),
+        "metrics": metrics,
+        "training": {
+            "epochs": payload.epochs,
+            "learning_rate": payload.learning_rate,
+            "l2": payload.l2,
+            "blend_weight": ML_BLEND_WEIGHT,
+        },
+    }
+
+
+@ml_router.get("/ml/status")
+async def get_ml_status(
+    vehicle_slug: Optional[str] = Query(default=None),
+    mission_code: Optional[str] = Query(default=None),
+) -> dict[str, Any]:
+    pool = await connect_db()
+
+    async with pool.acquire() as conn:
+        await ensure_ml_tables(conn)
+
+        label_conditions: list[str] = []
+        label_values: list[Any] = []
+
+        if vehicle_slug:
+            label_values.append(vehicle_slug)
+            label_conditions.append(
+                f"v.slug = ${len(label_values)}"
+            )
+        if mission_code:
+            label_values.append(mission_code)
+            label_conditions.append(
+                f"l.mission_code = ${len(label_values)}"
+            )
+
+        label_where = (
+            "WHERE " + " AND ".join(label_conditions)
+            if label_conditions
+            else ""
+        )
+
+        label_rows = await conn.fetch(
+            f"""
+            SELECT l.label, COUNT(*)::int AS count
+            FROM can_ml_labels l
+            JOIN vehicles v ON v.id = l.vehicle_id
+            {label_where}
+            GROUP BY l.label
+            ORDER BY l.label
+            """,
+            *label_values,
+        )
+
+        model_conditions: list[str] = []
+        model_values: list[Any] = []
+
+        if vehicle_slug:
+            model_values.append(vehicle_slug)
+            model_conditions.append(
+                f"vehicle_slug = ${len(model_values)}"
+            )
+        if mission_code:
+            model_values.append(mission_code)
+            model_conditions.append(
+                f"mission_code = ${len(model_values)}"
+            )
+
+        model_where = (
+            "WHERE " + " AND ".join(model_conditions)
+            if model_conditions
+            else ""
+        )
+
+        model_rows = await conn.fetch(
+            f"""
+            SELECT
+                id,
+                vehicle_slug,
+                mission_code,
+                model_type,
+                label_count,
+                positive_count,
+                negative_count,
+                metrics,
+                metadata,
+                is_active,
+                created_at
+            FROM can_ml_models
+            {model_where}
+            ORDER BY created_at DESC
+            LIMIT 20
+            """,
+            *model_values,
+        )
+
+    return {
+        "ok": True,
+        "filters": {
+            "vehicle_slug": vehicle_slug,
+            "mission_code": mission_code,
+        },
+        "labels": {
+            row["label"]: int(row["count"])
+            for row in label_rows
+        },
+        "models": [
+            {
+                **dict(row),
+                "id": str(row["id"]),
+                "metrics": _json_object(row["metrics"]),
+                "metadata": _json_object(row["metadata"]),
+            }
+            for row in model_rows
+        ],
+        "configuration": ml_configuration(),
+    }

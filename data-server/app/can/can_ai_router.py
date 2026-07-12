@@ -20,6 +20,13 @@ from fastapi import APIRouter, HTTPException, Query, Response
 from pydantic import BaseModel, Field
 
 from app.db import connect_db
+from app.can.can_ml_service import (
+    ML_BLEND_WEIGHT,
+    apply_supervised_model,
+    load_active_ml_model,
+    ml_configuration,
+    ml_router,
+)
 
 
 def env_float(name: str, default: float, minimum: float = 0.0) -> float:
@@ -41,6 +48,7 @@ def env_int(name: str, default: int, minimum: int = 1) -> int:
 
 
 router = APIRouter(prefix="/data/can", tags=["can-ai"])
+router.include_router(ml_router)
 
 OLLAMA_URL = os.getenv(
     "OLLAMA_URL",
@@ -306,6 +314,7 @@ def build_fallback_report(
     candidates: list[Candidate],
     baseline_profile: Optional[dict[str, Any]],
     baseline_context: Optional[dict[str, Any]] = None,
+    ml_context: Optional[dict[str, Any]] = None,
 ) -> str:
     if is_baseline_mode(analysis_mode):
         profile = baseline_profile or {}
@@ -356,6 +365,12 @@ def build_fallback_report(
         )
 
     baseline_context = baseline_context or {}
+    ml_context = ml_context or {}
+    ml_model_text = (
+        str(ml_context.get("model_id"))
+        if ml_context.get("applied")
+        else "none"
+    )
     baseline_session_text = (
         str(baseline_context.get("session_id"))
         if baseline_context.get("applied")
@@ -369,6 +384,8 @@ def build_fallback_report(
             f"baseline_overlap={candidate.baseline_overlap_score}, "
             f"baseline_penalty={candidate.baseline_penalty}, "
             f"baseline_adjusted_change_ratio={candidate.baseline_adjusted_change_ratio}, "
+            f"ml_probability={candidate.ml_probability}, "
+            f"pre_ml_confidence={candidate.confidence_before_ml}, "
             f"adjusted_correlation={candidate.correlation_score}, "
             f"raw_marker_fraction={candidate.raw_marker_fraction}, "
             f"window_coverage={candidate.marker_window_coverage}, "
@@ -392,7 +409,8 @@ def build_fallback_report(
                 f"Statistical target-correlation analysis completed for session {session_id}. "
                 f"It analyzed {frames_count} frames and {markers_count} markers. "
                 "The following results are hypotheses, not confirmed decodes. "
-                f"Matched baseline session: {baseline_session_text}."
+                f"Matched baseline session: {baseline_session_text}. "
+                f"Supervised model: {ml_model_text}."
             ),
             "",
             "# 2. Top CAN ID Hypotheses",
@@ -411,6 +429,11 @@ def build_fallback_report(
                 else "- No compatible analyzed baseline was available."
             ),
             "- Baseline subtraction reduces false positives but does not prove signal ownership.",
+            (
+                f"- Supervised model {ml_model_text} was applied using explicit human labels."
+                if ml_context.get("applied")
+                else "- No supervised model was applied; ranking remains statistical and rule-based."
+            ),
             "",
             "# 5. Recommendations and Next Mission",
             "1. Repeat the target action at least four times and verify the same byte transition each time.",
@@ -428,6 +451,8 @@ class AnalyzeSessionRequest(BaseModel):
     use_embeddings: bool = True
     use_baseline: bool = True
     baseline_session_id: Optional[UUID] = None
+    use_ml_model: bool = True
+    ml_model_id: Optional[UUID] = None
     llm_model: str = DEFAULT_LLM_MODEL
     embed_model: str = DEFAULT_EMBED_MODEL
     persist: bool = True
@@ -479,6 +504,13 @@ class Candidate(BaseModel):
     baseline_adjusted_change_ratio: float = 0.0
     confidence_before_baseline: float = 0.0
     baseline_evidence: dict[str, Any] = Field(default_factory=dict)
+
+    ml_applied: bool = False
+    ml_model_id: Optional[str] = None
+    ml_probability: Optional[float] = None
+    ml_blend_weight: float = 0.0
+    confidence_before_ml: float = 0.0
+    ml_feature_vector: dict[str, float] = Field(default_factory=dict)
 
 
 @dataclass
@@ -1425,6 +1457,11 @@ def compact_heatmap_payload(
             "confidence_before_baseline": (
                 candidate.confidence_before_baseline
             ),
+            "ml_applied": candidate.ml_applied,
+            "ml_model_id": candidate.ml_model_id,
+            "ml_probability": candidate.ml_probability,
+            "ml_blend_weight": candidate.ml_blend_weight,
+            "confidence_before_ml": candidate.confidence_before_ml,
         }
         for candidate in candidates
     }
@@ -1437,6 +1474,7 @@ def build_llm_prompt(
     analysis_mode: str,
     baseline_profile: Optional[dict[str, Any]] = None,
     baseline_context: Optional[dict[str, Any]] = None,
+    ml_context: Optional[dict[str, Any]] = None,
 ) -> str:
     marker_lines = "\n".join(
         f"- {m.get('timestamp_ms')}ms {m.get('marker_type')} {m.get('step_code') or ''}: {m.get('label') or ''}"
@@ -1444,6 +1482,21 @@ def build_llm_prompt(
     ) or "- no markers"
 
     baseline_context = baseline_context or {}
+    ml_context = ml_context or {}
+
+    if ml_context.get("applied"):
+        ml_summary = (
+            f"model={ml_context.get('model_id')}, "
+            f"scope={ml_context.get('mission_code') or 'vehicle-wide'}, "
+            f"labels={ml_context.get('label_count')}, "
+            f"blend_weight={ml_context.get('blend_weight')}"
+        )
+    else:
+        ml_summary = (
+            "not applied; "
+            f"reason={ml_context.get('reason') or 'not requested'}"
+        )
+
     if baseline_context.get("applied"):
         baseline_summary = (
             f"session={baseline_context.get('session_id')}, "
@@ -1531,6 +1584,8 @@ def build_llm_prompt(
                 f"baseline_penalty={c.baseline_penalty:.3f}, "
                 f"baseline_adjusted_change_ratio={c.baseline_adjusted_change_ratio:.5f}, "
                 f"confidence_before_baseline={c.confidence_before_baseline:.3f}, "
+                f"ml_probability={c.ml_probability}, "
+                f"confidence_before_ml={c.confidence_before_ml:.3f}, "
                 f"byte_evidence=[{compact_byte_evidence(c, limit=LLM_BYTE_EVIDENCE_LIMIT)}]"
             )
             for c in candidates[:LLM_CANDIDATE_LIMIT]
@@ -1545,6 +1600,9 @@ def build_llm_prompt(
         fraction of target byte activity already present in the control session.
         Interpret baseline_adjusted_change_ratio as activity remaining after
         normalized per-byte subtraction.
+        When ml_probability is present, treat it as a classifier estimate
+        learned only from explicit human labels. It is supporting evidence,
+        not proof.
         """
 
         response_structure = """
@@ -1609,6 +1667,9 @@ def build_llm_prompt(
 
     Matched baseline:
     - {baseline_summary}
+
+    Supervised model:
+    - {ml_summary}
 
     Human event markers:
     {marker_lines}
@@ -1978,6 +2039,7 @@ async def get_ai_status() -> dict[str, Any]:
             "normalized per-byte transition-rate subtraction with bounded "
             "activity-overlap penalty"
         ),
+        "supervised_ml": ml_configuration(),
     }
 
 
@@ -1995,6 +2057,8 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
         use_embeddings=payload.use_embeddings,
         use_baseline=payload.use_baseline,
         requested_baseline_session=payload.baseline_session_id,
+        use_ml_model=payload.use_ml_model,
+        requested_ml_model=payload.ml_model_id,
         persist=payload.persist,
         llm_deadline_seconds=(
             LLM_DEADLINE_SECONDS
@@ -2172,6 +2236,69 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
             baseline_context,
         )
 
+    # Preserve the statistical/baseline-adjusted score even when no model exists.
+    for candidate in candidates:
+        candidate.confidence_before_ml = candidate.confidence
+
+    ml_context: dict[str, Any]
+    ml_model: dict[str, Any]
+
+    if baseline_mode:
+        ml_context = {
+            "applied": False,
+            "found": False,
+            "selection": "not_applicable",
+            "reason": (
+                "Baseline profiles are not candidate-classification targets."
+            ),
+        }
+        ml_model = {}
+    elif not payload.use_ml_model:
+        ml_context = {
+            "applied": False,
+            "found": False,
+            "selection": "disabled",
+            "reason": "Supervised model use was disabled for this request.",
+        }
+        ml_model = {}
+    else:
+        try:
+            async with pool.acquire() as conn:
+                ml_context, ml_model = await load_active_ml_model(
+                    conn,
+                    vehicle_id=session["vehicle_id"],
+                    mission_code=session_dict.get("mission_code"),
+                    requested_model_id=payload.ml_model_id,
+                )
+        except HTTPException as exc:
+            if exc.status_code == 503:
+                ml_context = {
+                    "applied": False,
+                    "found": False,
+                    "selection": "unavailable",
+                    "reason": exc.detail,
+                }
+                ml_model = {}
+            else:
+                raise
+
+    if ml_context.get("applied"):
+        apply_supervised_model(
+            candidates,
+            ml_model,
+            ml_context,
+        )
+
+    can_ai_log(
+        "ml_model_selected",
+        session=session_id,
+        applied=ml_context.get("applied"),
+        selection=ml_context.get("selection"),
+        model_id=ml_context.get("model_id"),
+        label_count=ml_context.get("label_count"),
+        reason=ml_context.get("reason"),
+    )
+
     baseline_profile = build_baseline_profile(frames, candidates) if baseline_mode else None
 
     can_ai_log(
@@ -2182,6 +2309,8 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
         heatmap_ids=len(heatmap),
         baseline_applied=baseline_context.get("applied"),
         baseline_session=baseline_context.get("session_id"),
+        ml_applied=ml_context.get("applied"),
+        ml_model_id=ml_context.get("model_id"),
         top_candidate=(
             candidates[0].can_id_hex
             if candidates
@@ -2217,6 +2346,7 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                 analysis_mode,
                 baseline_profile,
                 baseline_context,
+                ml_context,
             )
             can_ai_log(
                 "llm_generation_started",
@@ -2299,6 +2429,7 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
         candidates=candidates,
         baseline_profile=baseline_profile,
         baseline_context=baseline_context,
+        ml_context=ml_context,
     )
 
     repaired_report_sections: list[int] = []
@@ -2449,6 +2580,12 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                                     c.confidence_before_baseline
                                 ),
                                 "baseline_evidence": c.baseline_evidence,
+                                "ml_applied": c.ml_applied,
+                                "ml_model_id": c.ml_model_id,
+                                "ml_probability": c.ml_probability,
+                                "ml_blend_weight": c.ml_blend_weight,
+                                "confidence_before_ml": c.confidence_before_ml,
+                                "ml_feature_vector": c.ml_feature_vector,
                                 "raw_marker_fraction": c.raw_marker_fraction,
                                 "marker_window_coverage": c.marker_window_coverage,
                                 "correlation_lift": c.correlation_lift,
@@ -2500,6 +2637,12 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                                     c.confidence_before_baseline
                                 ),
                                 "baseline_evidence": c.baseline_evidence,
+                                "ml_applied": c.ml_applied,
+                                "ml_model_id": c.ml_model_id,
+                                "ml_probability": c.ml_probability,
+                                "ml_blend_weight": c.ml_blend_weight,
+                                "confidence_before_ml": c.confidence_before_ml,
+                                "ml_feature_vector": c.ml_feature_vector,
                                 "raw_marker_fraction": c.raw_marker_fraction,
                                 "marker_window_coverage": c.marker_window_coverage,
                                 "correlation_lift": c.correlation_lift,
@@ -2537,6 +2680,7 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                         "baseline_profile": baseline_profile,
                         "target_expected": not baseline_mode,
                         "baseline_subtraction": baseline_context,
+                        "supervised_ml": ml_context,
                         "frames_analyzed": len(frames),
                         "markers": len(marker_dicts),
                         "model": resolved_llm_model,
@@ -2576,6 +2720,7 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                         analysis_mode,
                         baseline_profile,
                         baseline_context,
+                        ml_context,
                     )
                     await conn.execute(
                         """
@@ -2592,6 +2737,7 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                             "vehicle_slug": session_dict.get("vehicle_slug"),
                             "analysis_mode": analysis_mode,
                             "baseline_subtraction": baseline_context,
+                            "supervised_ml": ml_context,
                         }),
                     )
 
@@ -2616,7 +2762,8 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                     else:
                         text = (
                             f"CAN analysis {session_dict.get('vehicle_slug')} session {session_id}. "
-                            f"Baseline {baseline_context.get('session_id') or 'none'}. Top candidates: "
+                            f"Baseline {baseline_context.get('session_id') or 'none'}. "
+                            f"ML model {ml_context.get('model_id') or 'none'}. Top candidates: "
                             + "; ".join(
                                 f"{c.can_id_hex} confidence {c.confidence} "
                                 f"baseline_overlap {c.baseline_overlap_score} "
@@ -2641,6 +2788,7 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                                 "dimension": len(embedding),
                                 "analysis_mode": analysis_mode,
                                 "baseline_subtraction": baseline_context,
+                                "supervised_ml": ml_context,
                             }),
                         )
                         embedding_inserted = True
@@ -2686,6 +2834,7 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
         "analysis_mode": analysis_mode,
         "baseline_profile": baseline_profile,
         "baseline_subtraction": baseline_context,
+        "supervised_ml": ml_context,
         "target_expected": not baseline_mode,
         "frames_analyzed": len(frames),
         "short_dlc_frames": short_dlc_frames,
@@ -2721,6 +2870,7 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
             "byte_evidence_limit": LLM_BYTE_EVIDENCE_LIMIT,
             "keep_alive": OLLAMA_KEEP_ALIVE,
             "baseline_penalty_weight": BASELINE_PENALTY_WEIGHT,
+            "ml_blend_weight": ML_BLEND_WEIGHT,
         },
         "llm_error": llm_error,
         "llm_timed_out": llm_timed_out,
@@ -2786,6 +2936,8 @@ async def get_session_analysis(session_id: UUID) -> dict[str, Any]:
         "session_id": str(session_id),
         "analysis_mode": latest_report_metadata.get("analysis_mode"),
         "baseline_profile": latest_report_metadata.get("baseline_profile"),
+        "baseline_subtraction": latest_report_metadata.get("baseline_subtraction"),
+        "supervised_ml": latest_report_metadata.get("supervised_ml"),
         "target_expected": latest_report_metadata.get("analysis_mode") != ANALYSIS_MODE_BASELINE if latest_report_metadata else None,
         "features": [dict(row) for row in features],
         "correlations": [dict(row) for row in correlations],
