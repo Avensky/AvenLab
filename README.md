@@ -866,7 +866,7 @@ psql \
  -h 127.0.0.1 \
  -U avenlab \
  -d avenlab_data \
- -f schema.sql
+ -f supervised_ml.sql
 
 ```ini
 server {

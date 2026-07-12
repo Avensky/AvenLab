@@ -63,4 +63,15 @@ CREATE INDEX IF NOT EXISTS can_ml_models_active_scope_idx
         created_at DESC
     );
 
+-- update the schema of existing tables to include new columns for bus interface, bus mode, and capture kind.
+ALTER TABLE can_ml_labels
+ADD COLUMN IF NOT EXISTS bus_interface text,
+ADD COLUMN IF NOT EXISTS bus_mode text,
+ADD COLUMN IF NOT EXISTS capture_kind text;
+
+ALTER TABLE can_ml_models
+ADD COLUMN IF NOT EXISTS bus_interface text,
+ADD COLUMN IF NOT EXISTS bus_mode text,
+ADD COLUMN IF NOT EXISTS capture_kind text;
+
 COMMIT;
