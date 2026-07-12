@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import math
 import statistics
+import time
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from typing import Any, Optional
@@ -48,8 +49,17 @@ def entropy(values: list[int]) -> float:
 
 
 def normalize_data(data: Any, dlc: int = 8) -> list[int]:
+    """Return an eight-byte analysis buffer while preserving the original DLC separately.
+
+    Classical CAN frames may legitimately have DLC values below eight. The statistical
+    analyzer still iterates over byte positions 0 through 7, so absent positions are
+    represented as zero instead of producing IndexError.
+    """
+    frame_width = 8
+
     if data is None:
-        return [0] * dlc
+        return [0] * frame_width
+
     if isinstance(data, memoryview):
         raw = data.tobytes()
     elif isinstance(data, bytes):
@@ -58,10 +68,39 @@ def normalize_data(data: Any, dlc: int = 8) -> list[int]:
         raw = bytes(data)
     else:
         raw = bytes(data)
-    padded = list(raw[:dlc])
-    while len(padded) < dlc:
+
+    try:
+        reported_dlc = max(0, min(int(dlc), frame_width))
+    except (TypeError, ValueError):
+        reported_dlc = min(len(raw), frame_width)
+
+    usable_length = reported_dlc if reported_dlc > 0 else min(len(raw), frame_width)
+    padded = list(raw[:usable_length])
+
+    while len(padded) < frame_width:
         padded.append(0)
-    return padded
+
+    return padded[:frame_width]
+
+
+def can_ai_log(event: str, **fields: Any) -> None:
+    """Emit one-line structured diagnostics to journald/stdout."""
+    details = " ".join(
+        f"{key}={value}"
+        for key, value in fields.items()
+        if value is not None
+    )
+    message = f"[can-ai] {event}"
+    if details:
+        message = f"{message} {details}"
+    print(message, flush=True)
+
+
+def frame_byte(row: FrameRow, byte_index: int) -> int:
+    """Read one byte defensively from legacy or short-DLC frame rows."""
+    if 0 <= byte_index < len(row.data):
+        return int(row.data[byte_index])
+    return 0
 
 
 def metadata_dict(value: Any) -> dict[str, Any]:
@@ -367,15 +406,15 @@ def build_byte_evidence(
     byte_entropy: dict[str, float] = {}
 
     for byte_index in range(8):
-        values = [row.data[byte_index] for row in rows]
+        values = [frame_byte(row, byte_index) for row in rows]
         byte_entropy[str(byte_index)] = round(max(0.0, entropy(values)), 4)
 
         change_timestamps: list[int] = []
         bit_flip_counts = [0] * 8
 
         for previous, current in zip(rows, rows[1:]):
-            previous_value = previous.data[byte_index]
-            current_value = current.data[byte_index]
+            previous_value = frame_byte(previous, byte_index)
+            current_value = frame_byte(current, byte_index)
             if previous_value == current_value:
                 continue
 
@@ -403,17 +442,17 @@ def build_byte_evidence(
             post_end = action_end + marker_window_ms
 
             pre_marker_values.extend(
-                row.data[byte_index]
+                frame_byte(row, byte_index)
                 for row in rows
                 if pre_start <= row.timestamp_ms < marker_time
             )
             action_window_values.extend(
-                row.data[byte_index]
+                frame_byte(row, byte_index)
                 for row in rows
                 if marker_time <= row.timestamp_ms <= action_end
             )
             post_marker_values.extend(
-                row.data[byte_index]
+                frame_byte(row, byte_index)
                 for row in rows
                 if action_end < row.timestamp_ms <= post_end
             )
@@ -733,9 +772,10 @@ def build_llm_prompt(
     that any candidate carries that signal. Use it only to evaluate temporal and
     behavioral consistency.
 
-    You are only given byte-change counts, not decoded byte values.
-    Do not claim a specific byte value, bit position, scale, offset, endianness,
-    or encoding unless that evidence is explicitly included.
+    You are given raw observed byte values, transition counts, bit-flip counts,
+    and pre/action/post marker-window summaries. These observations do not have
+    confirmed semantic meaning. Do not claim a decoded signal, scale, offset,
+    signedness, endianness, or bit assignment unless repeated evidence supports it.
 
     Analysis mode:
     - analysis_mode: {analysis_mode}
@@ -807,9 +847,10 @@ def analyze_frames(
         for row in rows:
             if previous is not None:
                 frame_changed = False
-                for byte_index, (previous_byte, current_byte) in enumerate(
-                    zip(previous.data[:8], row.data[:8])
-                ):
+                for byte_index in range(8):
+                    previous_byte = frame_byte(previous, byte_index)
+                    current_byte = frame_byte(row, byte_index)
+
                     if previous_byte == current_byte:
                         continue
 
@@ -1057,6 +1098,19 @@ async def get_ai_status() -> dict[str, Any]:
 
 @router.post("/session/{session_id}/analyze")
 async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> dict[str, Any]:
+    analysis_started = time.perf_counter()
+    phase_started = analysis_started
+
+    can_ai_log(
+        "analysis_started",
+        session=session_id,
+        marker_window_ms=payload.marker_window_ms,
+        max_frames=payload.max_frames,
+        use_llm=payload.use_llm,
+        use_embeddings=payload.use_embeddings,
+        persist=payload.persist,
+    )
+
     pool = await connect_db()
     async with pool.acquire() as conn:
         session = await conn.fetchrow(
@@ -1103,6 +1157,15 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
             payload.max_frames,
         )
 
+    can_ai_log(
+        "database_input_loaded",
+        session=session_id,
+        raw_frames=len(raw_rows),
+        markers=len(markers),
+        elapsed_ms=round((time.perf_counter() - phase_started) * 1000, 2),
+    )
+    phase_started = time.perf_counter()
+
     frames = [
         FrameRow(
             id=int(row["id"]),
@@ -1113,6 +1176,26 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
         )
         for row in raw_rows
     ]
+    short_dlc_frames = sum(1 for row in raw_rows if int(row["dlc"] or 0) < 8)
+    invalid_width_frames = sum(1 for frame in frames if len(frame.data) != 8)
+
+    can_ai_log(
+        "frames_normalized",
+        session=session_id,
+        frames=len(frames),
+        short_dlc_frames=short_dlc_frames,
+        invalid_width_frames=invalid_width_frames,
+        elapsed_ms=round((time.perf_counter() - phase_started) * 1000, 2),
+    )
+    phase_started = time.perf_counter()
+
+    if not frames:
+        can_ai_log("analysis_rejected_no_frames", session=session_id)
+        raise HTTPException(
+            status_code=400,
+            detail="CAN session contains no frames to analyze",
+        )
+
     marker_dicts = [dict(row) for row in markers]
     for marker in marker_dicts:
         marker["metadata"] = metadata_dict(marker.get("metadata"))
@@ -1124,13 +1207,42 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
     analysis_mode = infer_analysis_mode(session_dict, marker_dicts)
     baseline_mode = is_baseline_mode(analysis_mode)
 
-    candidates, deltas, heatmap = analyze_frames(
-        frames,
-        marker_dicts,
-        payload.marker_window_ms,
-        analysis_mode,
+    can_ai_log(
+        "statistics_started",
+        session=session_id,
+        analysis_mode=analysis_mode,
+        frames=len(frames),
+        markers=len(marker_dicts),
     )
+
+    try:
+        candidates, deltas, heatmap = analyze_frames(
+            frames,
+            marker_dicts,
+            payload.marker_window_ms,
+            analysis_mode,
+        )
+    except Exception as exc:
+        can_ai_log(
+            "statistics_failed",
+            session=session_id,
+            error_type=type(exc).__name__,
+            error=repr(exc),
+            elapsed_ms=round((time.perf_counter() - phase_started) * 1000, 2),
+        )
+        raise
+
     baseline_profile = build_baseline_profile(frames, candidates) if baseline_mode else None
+
+    can_ai_log(
+        "statistics_completed",
+        session=session_id,
+        candidates=len(candidates),
+        deltas=len(deltas),
+        heatmap_ids=len(heatmap),
+        elapsed_ms=round((time.perf_counter() - phase_started) * 1000, 2),
+    )
+    phase_started = time.perf_counter()
 
     llm_response: Optional[str] = None
     llm_error: Optional[str] = None
@@ -1139,8 +1251,28 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
     generation_metadata: dict[str, Any] = {}
     if payload.use_llm:
         try:
+            can_ai_log(
+                "llm_resolution_started",
+                session=session_id,
+                requested_model=payload.llm_model,
+            )
             resolved_llm_model, installed_ollama_models = await resolve_llm_model(payload.llm_model)
-            prompt = build_llm_prompt(session_dict, marker_dicts, candidates, analysis_mode, baseline_profile)
+            prompt = build_llm_prompt(
+                session_dict,
+                marker_dicts,
+                candidates,
+                analysis_mode,
+                baseline_profile,
+            )
+            can_ai_log(
+                "llm_generation_started",
+                session=session_id,
+                resolved_model=resolved_llm_model,
+                installed_models=len(installed_ollama_models),
+                prompt_chars=len(prompt),
+                elapsed_ms=round((time.perf_counter() - phase_started) * 1000, 2),
+            )
+            phase_started = time.perf_counter()
             result = await call_ollama_generate(resolved_llm_model, prompt)
             if result.get("done_reason") != "stop":
                 print(
@@ -1160,6 +1292,19 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                 "eval_count": result.get("eval_count"),
                 "eval_duration": result.get("eval_duration"),
             }
+
+            can_ai_log(
+                "llm_generation_completed",
+                session=session_id,
+                resolved_model=resolved_llm_model,
+                done=result.get("done"),
+                done_reason=result.get("done_reason"),
+                prompt_tokens=result.get("prompt_eval_count"),
+                output_tokens=result.get("eval_count"),
+                elapsed_ms=round((time.perf_counter() - phase_started) * 1000, 2),
+            )
+            phase_started = time.perf_counter()
+
             llm_response = result.get("response", "")
 
             text = result.get("response")
@@ -1170,13 +1315,14 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
             
         except Exception as exc:
             llm_error = f"{type(exc).__name__}: {exc}"
-            print(
-                "[can-ai] LLM generation failed "
-                f"session={session_id} "
-                f"requested_model={payload.llm_model} "
-                f"resolved_model={resolved_llm_model} "
-                f"error={llm_error}",
-                flush=True,
+            can_ai_log(
+                "llm_generation_failed",
+                session=session_id,
+                requested_model=payload.llm_model,
+                resolved_model=resolved_llm_model,
+                error_type=type(exc).__name__,
+                error=repr(exc),
+                elapsed_ms=round((time.perf_counter() - phase_started) * 1000, 2),
             )
             llm_response = None
 
@@ -1189,7 +1335,22 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
         baseline_profile=baseline_profile,
     )
 
+    can_ai_log(
+        "report_selected",
+        session=session_id,
+        source="llm" if llm_response else "fallback",
+        report_chars=len(report_content),
+        llm_error=llm_error,
+    )
+
     if payload.persist:
+        can_ai_log(
+            "persistence_started",
+            session=session_id,
+            candidates=len(candidates),
+            deltas=len(deltas),
+        )
+        phase_started = time.perf_counter()
         async with pool.acquire() as conn:
             async with conn.transaction():
                 await conn.execute("DELETE FROM can_frame_deltas WHERE session_id = $1", session_id)
@@ -1352,6 +1513,13 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                 embedding_inserted = False
                 embedding_error = None
                 if payload.use_embeddings and candidates:
+                    can_ai_log(
+                        "embedding_started",
+                        session=session_id,
+                        model=payload.embed_model,
+                    )
+                    embedding_phase_started = time.perf_counter()
+
                     if baseline_mode:
                         text = (
                             f"CAN baseline profile {session_dict.get('vehicle_slug')} session {session_id}. Background IDs: "
@@ -1392,6 +1560,36 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                     else:
                         embedding_error = "Embedding request failed or returned no embedding"
 
+                    can_ai_log(
+                        "embedding_completed",
+                        session=session_id,
+                        model=payload.embed_model,
+                        inserted=embedding_inserted,
+                        error=embedding_error,
+                        elapsed_ms=round(
+                            (time.perf_counter() - embedding_phase_started) * 1000,
+                            2,
+                        ),
+                    )
+
+        can_ai_log(
+            "persistence_completed",
+            session=session_id,
+            elapsed_ms=round((time.perf_counter() - phase_started) * 1000, 2),
+        )
+
+    can_ai_log(
+        "analysis_completed",
+        session=session_id,
+        source="llm" if llm_response else "fallback",
+        candidates=len(candidates),
+        persisted=payload.persist,
+        total_elapsed_ms=round(
+            (time.perf_counter() - analysis_started) * 1000,
+            2,
+        ),
+    )
+
     return {
         "generation": generation_metadata,
         "ok": True,
@@ -1400,6 +1598,8 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
         "baseline_profile": baseline_profile,
         "target_expected": not baseline_mode,
         "frames_analyzed": len(frames),
+        "short_dlc_frames": short_dlc_frames,
+        "invalid_width_frames": invalid_width_frames,
         "markers": len(marker_dicts),
         "candidates": [c.model_dump() for c in candidates[:50]],
         "heatmap": heatmap,
