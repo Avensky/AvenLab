@@ -985,7 +985,7 @@ def baseline_feature_map(
         frame_count = int(row.get("frame_count") or 0)
         change_count = int(row.get("change_count") or 0)
 
-        stored_ratio = metadata.get("change_ratio")
+        stored_ratio = float(metadata.get("change_ratio") or 0.0)
         try:
             change_ratio = float(stored_ratio)
         except (TypeError, ValueError):
