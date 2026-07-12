@@ -19,6 +19,16 @@ from pydantic import BaseModel, Field
 
 from app.db import connect_db
 
+import os
+
+LLM_DEADLINE_SECONDS = float(
+    os.getenv("LLM_DEADLINE_SECONDS", "1800")
+)
+
+LLM_HTTP_READ_TIMEOUT_SECONDS = float(
+    os.getenv("LLM_HTTP_READ_TIMEOUT_SECONDS", "1810")
+)
+
 router = APIRouter(prefix="/data/can", tags=["can-ai"])
 
 OLLAMA_URL = "http://127.0.0.1:11434"
@@ -664,6 +674,7 @@ async def call_ollama_generate(model: str, prompt: str) -> dict[str, Any]:
                 "model": model,
                 "prompt": prompt,
                 "stream": False,
+                "keep_alive": "30m",
                 "options": {
                     "temperature": 0.2,
                     "top_p": 0.9,
