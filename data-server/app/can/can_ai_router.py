@@ -984,6 +984,32 @@ def compact_candidate_payload(
     return payload
 
 
+def score_candidate_confidence(
+    correlation_score: float,
+    activity_ratio: float,
+    frame_count: int,
+) -> float:
+    """Score evidence without allowing frame volume to create evidence.
+
+    Frame count is sample support only. A high-volume CAN ID with no marker
+    correlation and no changing bytes must receive zero confidence.
+    """
+    correlation = min(1.0, max(0.0, float(correlation_score)))
+    activity = min(1.0, max(0.0, float(activity_ratio)))
+    sample_support = min(max(int(frame_count), 0) / 200.0, 1.0)
+
+    evidence_score = (
+        (correlation * 0.80)
+        + (activity * 0.20)
+    )
+    support_multiplier = 0.50 + (sample_support * 0.50)
+
+    return min(
+        1.0,
+        max(0.0, evidence_score * support_multiplier),
+    )
+
+
 def normalized_byte_change_rates(
     frame_count: int,
     byte_change_counts: dict[str, int],
@@ -1362,18 +1388,13 @@ def apply_baseline_subtraction(
             overlap_score * BASELINE_PENALTY_WEIGHT,
         )
 
-        frame_volume_score = min(
-            candidate.frame_count / 200.0,
-            1.0,
-        )
-        adjusted_confidence = min(
-            1.0,
-            (
-                (candidate.correlation_score * 0.72)
-                + (adjusted_change_ratio * 0.18)
-                + (frame_volume_score * 0.10)
+        adjusted_confidence = (
+            score_candidate_confidence(
+                candidate.correlation_score,
+                adjusted_change_ratio,
+                candidate.frame_count,
             )
-            * (1.0 - penalty),
+            * (1.0 - penalty)
         )
 
         candidate.baseline_overlap_score = round(overlap_score, 8)
@@ -1899,11 +1920,10 @@ def analyze_frames(
 
             correlation_score = min(1.0, max(0.0, correlation_lift))
 
-            confidence = min(
-                1.0,
-                (correlation_score * 0.72)
-                + (change_ratio * 0.18)
-                + (frame_volume_score * 0.10),
+            confidence = score_candidate_confidence(
+                correlation_score,
+                change_ratio,
+                len(rows),
             )
 
             candidate_role = (
@@ -2038,6 +2058,10 @@ async def get_ai_status() -> dict[str, Any]:
         "baseline_subtraction_method": (
             "normalized per-byte transition-rate subtraction with bounded "
             "activity-overlap penalty"
+        ),
+        "candidate_confidence_method": (
+            "marker correlation and activity evidence, with frame count used "
+            "only as a support multiplier; zero evidence yields zero confidence"
         ),
         "supervised_ml": ml_configuration(),
     }
