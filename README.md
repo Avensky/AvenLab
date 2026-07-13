@@ -1579,23 +1579,3 @@ Panzer II model
 ## 📄 License
 
 MIT License
-
-Mission A1 LIVE
-36b775c8-6920-4fba-8903-7a2c930d641c
-
-curl --max-time 300 -sS \
- -X POST \
- "http://127.0.0.1:8001/data/can/36b775c8-6920-4fba-8903-7a2c930d641c/analyze" \
- -H "Content-Type: application/json" \
- -d @- <<'JSON' |
-{
-"marker_window_ms": 900,
-"max_frames": 75000,
-"use_llm": false,
-"use_embeddings": false,
-"use_baseline": true,
-"use_ml_model": false,
-"persist": true
-}
-JSON
-python3 -m json.tool

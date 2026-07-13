@@ -153,6 +153,7 @@ export function SignalRecon() {
   const [error, setError] = useState<string | null>(null);
 
   const [missionProgressByCode, setMissionProgressByCode] = useState<Record<string, MissionRunSummary>>({});
+  const [missionSessions, setMissionSessions] = useState<MissionRunSummary[]>([]);
   const [missionProgressLoading, setMissionProgressLoading] = useState(false);
   const [missionProgressError, setMissionProgressError] = useState<string | null>(null);
 
@@ -173,6 +174,12 @@ export function SignalRecon() {
 
   const mission = selectedMission ?? visibleMissions[0] ?? missions[0] ?? null;
   const selectedMissionProgress = mission ? missionProgressByCode[mission.mission_code] : undefined;
+  const selectedMissionSessions = useMemo(
+    () => mission
+      ? missionSessions.filter((session) => session.mission_code === mission.mission_code)
+      : [],
+    [mission, missionSessions],
+  );
   const sessionActive = Boolean(activeSessionId);
   const runActive = Boolean(activeRunId);
   const canControlsDisabled = busy || sessionActive || runActive;
@@ -189,25 +196,43 @@ export function SignalRecon() {
     setMissionProgressError(null);
 
     try {
-      const params = new URLSearchParams({
+      const progressParams = new URLSearchParams({
         vehicle_slug: vehicleSlug,
         bus_interface: selectedInterface,
         capture_kind: selectedCaptureKind,
       });
+      const historyParams = new URLSearchParams({
+        vehicle_slug: vehicleSlug,
+        capture_kind: selectedCaptureKind,
+        limit: "500",
+      });
 
-      const res = await fetch(`${getApiBaseUrl()}/data/can/mission-progress?${params.toString()}`);
-      const data = (await res.json().catch(() => ({}))) as {
+      const [progressResponse, historyResponse] = await Promise.all([
+        fetch(`${getApiBaseUrl()}/data/can/mission-progress?${progressParams.toString()}`),
+        fetch(`${getApiBaseUrl()}/data/can/mission-progress?${historyParams.toString()}`),
+      ]);
+      const progressData = (await progressResponse.json().catch(() => ({}))) as {
         ok?: boolean;
         missions?: Record<string, MissionRunSummary>;
         detail?: string;
         error?: string;
       };
+      const historyData = (await historyResponse.json().catch(() => ({}))) as {
+        ok?: boolean;
+        sessions?: MissionRunSummary[];
+        detail?: string;
+        error?: string;
+      };
 
-      if (!res.ok || data.ok === false) {
-        throw new Error(data.detail ?? data.error ?? `Mission progress read failed with HTTP ${res.status}.`);
+      if (!progressResponse.ok || progressData.ok === false) {
+        throw new Error(progressData.detail ?? progressData.error ?? `Mission progress read failed with HTTP ${progressResponse.status}.`);
+      }
+      if (!historyResponse.ok || historyData.ok === false) {
+        throw new Error(historyData.detail ?? historyData.error ?? `Session history read failed with HTTP ${historyResponse.status}.`);
       }
 
-      setMissionProgressByCode(data.missions ?? {});
+      setMissionProgressByCode(progressData.missions ?? {});
+      setMissionSessions(historyData.sessions ?? []);
     } catch (err) {
       setMissionProgressError(err instanceof Error ? err.message : "Failed to read mission progress.");
     } finally {
@@ -593,6 +618,7 @@ export function SignalRecon() {
                   onExit={handleMissionClosed}
                   initialSessionId={selectedMissionProgress?.session_id ?? null}
                   initialMissionProgress={selectedMissionProgress ?? null}
+                  sessionHistory={selectedMissionSessions}
                   onDatabaseChanged={() => void refreshMissionProgressFromDb()}
                 />
               ) : (

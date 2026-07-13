@@ -9,9 +9,15 @@ import { getStepTotalMs } from "../../store/signalReconMissions";
 import {
     SignalReconBrainConsole,
     type BrainAnalysisResult,
+    type BrainCandidate,
+    type CandidateLabelMetadata,
+    type CandidateMlLabel,
+    type CandidateMlLabelValue,
+    type MlModelSummary,
+    type MlReadiness,
 } from "./SignalReconBrainConsole";
 
-type MissionRunSummary = {
+export type MissionRunSummary = {
     session_id: string;
     mission_code: string;
     vehicle_slug: string;
@@ -19,6 +25,8 @@ type MissionRunSummary = {
     bus_mode: string;
     capture_kind: string;
     source_label: string;
+    completed: boolean;
+    analyzed: boolean;
     status: string;
     analysis_mode: string | null;
     confidence: number | null;
@@ -27,12 +35,14 @@ type MissionRunSummary = {
     marker_count: number;
     started_at: string | null;
     ended_at: string | null;
+    report_id?: string | null;
 };
 
 type SignalReconMissionProps = {
     onExit?: () => void;
     initialSessionId?: string | null;
     initialMissionProgress?: MissionRunSummary | null;
+    sessionHistory?: MissionRunSummary[];
     onDatabaseChanged?: () => void;
 };
 
@@ -119,15 +129,36 @@ function toNullableString(value: unknown) {
     return typeof value === "string" && value.length > 0 ? value : null;
 }
 
+function formatSessionDate(value: string | null) {
+    if (!value) return "unknown time";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleString();
+}
+
+function getMlAdminToken() {
+    const storageKey = "avenlab.mlAdminToken";
+    const existing = window.sessionStorage.getItem(storageKey)?.trim();
+    if (existing) return existing;
+
+    const entered = window.prompt(
+        "Enter the AvenLab ML admin token. It will be kept only for this browser tab.",
+    )?.trim();
+    if (!entered) return null;
+
+    window.sessionStorage.setItem(storageKey, entered);
+    return entered;
+}
+
 export function SignalReconMission({
     onExit,
     initialSessionId = null,
     initialMissionProgress = null,
+    sessionHistory = [],
     onDatabaseChanged,
 }: SignalReconMissionProps) {
     const selectedMission = useSignalReconStore((s) => s.selectedMission);
     const vehicleSlug = useSignalReconStore((s) => s.vehicleSlug);
-    const vehicleIdentity = useSignalReconStore((s) => s.vehicleIdentity);
     const steps = useSignalReconStore((s) => s.steps);
     const activeSessionId = useSignalReconStore((s) => s.activeSessionId);
     const activeRunId = useSignalReconStore((s) => s.activeRunId);
@@ -160,6 +191,16 @@ export function SignalReconMission({
     const [useLlm, setUseLlm] = useState(true);
     const [useEmbeddings, setUseEmbeddings] = useState(true);
     const [autoAnalyze, setAutoAnalyze] = useState(true);
+
+    const [selectedSavedSessionId, setSelectedSavedSessionId] = useState<string | null>(
+        initialSessionId ?? initialMissionProgress?.session_id ?? null,
+    );
+    const [mlLabels, setMlLabels] = useState<Record<string, CandidateMlLabel>>({});
+    const [mlReadiness, setMlReadiness] = useState<MlReadiness | null>(null);
+    const [activeModel, setActiveModel] = useState<MlModelSummary | null>(null);
+    const [mlLoading, setMlLoading] = useState(false);
+    const [mlError, setMlError] = useState<string | null>(null);
+    const [labelingCandidateId, setLabelingCandidateId] = useState<number | null>(null);
 
     useEffect(() => {
         const id = window.setInterval(() => setNow(performance.now()), 50);
@@ -204,6 +245,20 @@ export function SignalReconMission({
 
 
     const captureKind = selectedMode === "simulation" || selectedInterface === "vcan0" ? "simulation" : "live";
+    const selectedSessionSummary = useMemo(
+        () => sessionHistory.find((item) => item.session_id === selectedSavedSessionId) ?? null,
+        [selectedSavedSessionId, sessionHistory],
+    );
+    const reviewBusInterface = selectedSessionSummary?.bus_interface ?? selectedInterface;
+    const reviewBusMode = selectedSessionSummary?.bus_mode ?? selectedMode;
+    const reviewCaptureKind = selectedSessionSummary?.capture_kind ?? captureKind;
+    const reviewSourceLabel = selectedSessionSummary?.source_label ?? (
+        reviewBusMode === "listen-only"
+            ? "LIVE / LISTEN-ONLY"
+            : reviewBusMode === "live"
+                ? "LIVE / ACTIVE"
+                : "SIMULATION"
+    );
     const busSafetyLabel = selectedMode === "listen-only"
         ? "LIVE / LISTEN-ONLY"
         : selectedMode === "live"
@@ -220,6 +275,7 @@ export function SignalReconMission({
             : "not analyzed";
     const latestSessionId =
         activeSessionId ??
+        selectedSavedSessionId ??
         brainAnalysis?.session_id ??
         lastAnalyzedSessionId ??
         initialSessionId ??
@@ -265,11 +321,71 @@ export function SignalReconMission({
         sessionIdOverride ??
         useSignalReconStore.getState().activeSessionId ??
         activeSessionId ??
+        selectedSavedSessionId ??
         brainAnalysis?.session_id ??
         lastAnalyzedSessionId ??
         initialSessionId ??
         initialMissionProgress?.session_id ??
         null;
+
+    const refreshMlContext = async (sessionIdOverride?: string) => {
+        const sessionId = resolveAnalysisSessionId(sessionIdOverride);
+        if (!sessionId || !selectedMission) {
+            setMlLabels({});
+            setMlReadiness(null);
+            setActiveModel(null);
+            return;
+        }
+
+        const summary = sessionHistory.find((item) => item.session_id === sessionId);
+        const scopeInterface = summary?.bus_interface ?? reviewBusInterface;
+        const scopeMode = summary?.bus_mode ?? reviewBusMode;
+        const scopeKind = summary?.capture_kind ?? reviewCaptureKind;
+        const params = new URLSearchParams({
+            vehicle_slug: vehicleSlug,
+            mission_code: selectedMission.mission_code,
+            bus_interface: scopeInterface,
+            bus_mode: scopeMode,
+            capture_kind: scopeKind,
+        });
+
+        setMlLoading(true);
+        setMlError(null);
+        try {
+            const [labelsResponse, readinessResponse, statusResponse] = await Promise.all([
+                fetch(`${getApiBaseUrl()}/data/can/session/${sessionId}/ml-labels`),
+                fetch(`${getApiBaseUrl()}/data/can/ml/readiness?${params.toString()}`),
+                fetch(`${getApiBaseUrl()}/data/can/ml/status?${params.toString()}`),
+            ]);
+
+            const labelsData = await labelsResponse.json().catch(() => ({}));
+            const readinessData = await readinessResponse.json().catch(() => ({}));
+            const statusData = await statusResponse.json().catch(() => ({}));
+
+            if (!labelsResponse.ok) {
+                throw new Error(labelsData.detail ?? `Label read failed with HTTP ${labelsResponse.status}.`);
+            }
+            if (!readinessResponse.ok) {
+                throw new Error(readinessData.detail ?? `Readiness read failed with HTTP ${readinessResponse.status}.`);
+            }
+            if (!statusResponse.ok) {
+                throw new Error(statusData.detail ?? `Model status read failed with HTTP ${statusResponse.status}.`);
+            }
+
+            setMlLabels((labelsData.labels ?? {}) as Record<string, CandidateMlLabel>);
+            setMlReadiness(readinessData as MlReadiness);
+            const models = Array.isArray(statusData.models)
+                ? (statusData.models as MlModelSummary[])
+                : [];
+            setActiveModel(models.find((model) => model.is_active) ?? null);
+        } catch (err) {
+            const message = err instanceof Error ? err.message : "Failed to read ML context.";
+            setMlError(message);
+            appendBrainLog(`[ml] read error: ${message}`);
+        } finally {
+            setMlLoading(false);
+        }
+    };
 
     const handleAnalyzeSession = async (
         sessionIdOverride?: string,
@@ -305,7 +421,8 @@ export function SignalReconMission({
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        marker_window_ms: 900,
+                        marker_window_ms:
+                            selectedMission?.analysis_mode === "baseline_profile" ? 900 : 450,
                         use_llm: requestUseLlm,
                         use_embeddings: requestUseEmbeddings,
                         llm_model: "qwen2.5:3b",
@@ -340,7 +457,9 @@ export function SignalReconMission({
             }
 
             setBrainAnalysis(nextAnalysis);
+            setSelectedSavedSessionId(nextAnalysis.session_id ?? sessionId);
             setLastAnalyzedSessionId(nextAnalysis.session_id ?? sessionId);
+            await refreshMlContext(nextAnalysis.session_id ?? sessionId);
             appendBrainLog(
                 `[ai] done: mode=${nextAnalysis.analysis_mode ?? "unknown"} frames=${nextAnalysis.frames_analyzed} markers=${nextAnalysis.markers} candidates=${nextAnalysis.candidates.length}`,
             );
@@ -459,7 +578,9 @@ export function SignalReconMission({
             };
 
             setBrainAnalysis(nextAnalysis);
+            setSelectedSavedSessionId(nextAnalysis.session_id);
             setLastAnalyzedSessionId(nextAnalysis.session_id);
+            await refreshMlContext(nextAnalysis.session_id);
             appendBrainLog(
                 `[db] loaded: features=${data.features?.length ?? 0} correlations=${data.correlations?.length ?? 0} candidates=${candidates.length}`,
             );
@@ -473,31 +594,114 @@ export function SignalReconMission({
     };
 
     useEffect(() => {
-        const savedSessionId = initialSessionId ?? initialMissionProgress?.session_id ?? null;
-        if (!savedSessionId || activeSessionId) return;
+        if (activeSessionId) return;
+        const preferredSessionId =
+            selectedSavedSessionId ??
+            sessionHistory[0]?.session_id ??
+            initialSessionId ??
+            initialMissionProgress?.session_id ??
+            null;
+        if (!preferredSessionId) {
+            setBrainAnalysis(null);
+            setMlLabels({});
+            setMlReadiness(null);
+            setActiveModel(null);
+            return;
+        }
 
-        setLastAnalyzedSessionId(savedSessionId);
-        appendBrainLog(
-            `[db] review mode: latest saved ${shortSessionId(savedSessionId)} (${initialMissionProgress?.frame_count ?? 0} frames)`,
-        );
-        void handleLoadLatestAnalysis(savedSessionId, false);
-        // This effect intentionally refreshes when the selected mission's saved
-        // DB session changes, not on every log/state update.
+        if (selectedSavedSessionId !== preferredSessionId) {
+            setSelectedSavedSessionId(preferredSessionId);
+        }
+        setLastAnalyzedSessionId(preferredSessionId);
+        appendBrainLog(`[db] review mode: selected ${shortSessionId(preferredSessionId)}`);
+        void handleLoadLatestAnalysis(preferredSessionId, false);
+        // Reload only when mission/session history changes.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeSessionId, initialSessionId, initialMissionProgress?.session_id, selectedMission?.mission_code]);
+    }, [activeSessionId, selectedMission?.mission_code, sessionHistory[0]?.session_id]);
 
-    const handleDeleteSession = async () => {
+    const handleSelectSavedSession = async (session: MissionRunSummary, openResults = false) => {
+        if (activeSessionId || isRunning || brainAnalyzing) return;
+        setSelectedSavedSessionId(session.session_id);
+        setLastAnalyzedSessionId(session.session_id);
+        setBrainAnalysis(null);
+        setBrainError(null);
+        appendBrainLog(`[db] selected ${shortSessionId(session.session_id)} · ${session.frame_count} frames`);
+        await handleLoadLatestAnalysis(session.session_id, openResults);
+    };
+
+    const handleLabelCandidate = async (
+        candidate: BrainCandidate,
+        label: CandidateMlLabelValue,
+        notes: string,
+        metadata: CandidateLabelMetadata,
+    ) => {
         const sessionId = resolveAnalysisSessionId();
+        if (!sessionId) {
+            setBrainError("Select an analyzed session before labeling a candidate.");
+            return;
+        }
+
+        const token = getMlAdminToken();
+        if (!token) {
+            setBrainError("ML admin token is required to save human labels.");
+            return;
+        }
+
+        setLabelingCandidateId(candidate.can_id);
+        setBrainError(null);
+        try {
+            const response = await fetch(
+                `${getApiBaseUrl()}/data/can/session/${sessionId}/candidate/${candidate.can_id}/label`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-AvenLab-ML-Token": token,
+                    },
+                    body: JSON.stringify({
+                        label,
+                        signal_name: selectedMission?.target ?? "unknown_signal",
+                        notes: notes || null,
+                        metadata,
+                    }),
+                },
+            );
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || data.ok === false) {
+                if (response.status === 403) {
+                    window.sessionStorage.removeItem("avenlab.mlAdminToken");
+                }
+                throw new Error(data.detail ?? data.error ?? `Label save failed with HTTP ${response.status}.`);
+            }
+
+            appendBrainLog(`[ml] ${candidate.can_id_hex} labeled ${label}`);
+            await refreshMlContext(sessionId);
+            onDatabaseChanged?.();
+        } catch (err) {
+            const message = err instanceof Error ? err.message : "Failed to save candidate label.";
+            setBrainError(message);
+            appendBrainLog(`[ml] label error: ${message}`);
+        } finally {
+            setLabelingCandidateId(null);
+        }
+    };
+
+
+    const handleDeleteSession = async (sessionIdOverride?: string) => {
+        const sessionId = resolveAnalysisSessionId(sessionIdOverride);
         if (!sessionId || brainAnalyzing || isRunning || activeSessionId === sessionId) return;
 
+        const summary = sessionHistory.find((item) => item.session_id === sessionId);
         const ok = window.confirm(
-            `Delete CAN session ${shortSessionId(sessionId)} and all derived analysis? This cannot be undone.`,
+            `Delete CAN session ${shortSessionId(sessionId)}?\n\n` +
+            `${summary?.frame_count ?? 0} frames · ${summary?.marker_count ?? 0} markers · ${summary?.status ?? "saved"}\n\n` +
+            "Human labels and derived analysis for this session will also be removed. This cannot be undone.",
         );
         if (!ok) return;
 
         setBrainAnalyzing(true);
         setBrainError(null);
-        appendBrainLog(`[db] deleting dead/mistake run ${shortSessionId(sessionId)}`);
+        appendBrainLog(`[db] deleting ${shortSessionId(sessionId)}`);
 
         try {
             const res = await fetch(`${getApiBaseUrl()}/data/can/session/${sessionId}`, {
@@ -506,20 +710,19 @@ export function SignalReconMission({
             const data = await res.json().catch(() => ({}));
 
             if (!res.ok || data.ok === false) {
-                throw new Error(
-                    typeof data.detail === "string"
-                        ? data.detail
-                        : typeof data.error === "string"
-                            ? data.error
-                            : `Delete failed with HTTP ${res.status}.`,
-                );
+                throw new Error(data.detail ?? data.error ?? `Delete failed with HTTP ${res.status}.`);
             }
 
-            setBrainAnalysis(null);
-            setLastAnalyzedSessionId(null);
+            if (selectedSavedSessionId === sessionId || brainAnalysis?.session_id === sessionId) {
+                setBrainAnalysis(null);
+                setSelectedSavedSessionId(null);
+                setLastAnalyzedSessionId(null);
+                setMlLabels({});
+                setMlReadiness(null);
+                setActiveModel(null);
+            }
             appendBrainLog(`[db] deleted ${shortSessionId(sessionId)}`);
             onDatabaseChanged?.();
-            onExit?.();
         } catch (err) {
             const message = err instanceof Error ? err.message : "Failed to delete session.";
             setBrainError(message);
@@ -528,6 +731,7 @@ export function SignalReconMission({
             setBrainAnalyzing(false);
         }
     };
+
 
     const handleExportSession = () => {
         const sessionId = resolveAnalysisSessionId();
@@ -828,146 +1032,139 @@ export function SignalReconMission({
 
     const renderSessionPanel = () => (
         <div className="h-full min-h-0 space-y-3 overflow-y-auto p-3 text-sm sm:p-5">
-            {error && (
+            {(error || mlError) && (
                 <div className="rounded-xl border border-red-300/40 bg-red-500/10 p-3 text-red-100">
-                    {error}
+                    {mlError ?? error}
                 </div>
             )}
 
             <div className="rounded-xl border border-green-400/20 bg-slate-950/80 p-4">
-                <p className="mb-3 text-xs text-yellow-300">SESSION</p>
-                {!activeSessionId && initialMissionProgress && (
-                    <div className="mb-3 rounded-lg border border-cyan-300/30 bg-cyan-500/10 p-2 text-xs text-cyan-100">
-                        REVIEWING SAVED RUN · {initialMissionProgress.frame_count} frames · {initialMissionProgress.marker_count} markers · {initialMissionProgress.source_label}
+                <div className="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                        <p className="text-xs text-yellow-300">SESSION BROWSER</p>
+                        <p className="text-[11px] text-slate-500">
+                            {sessionHistory.length} saved run{sessionHistory.length === 1 ? "" : "s"} for {selectedMission.mission_code}
+                        </p>
                     </div>
-                )}
-                < div className="grid gap-2 text-slate-300 sm:grid-cols-2">
-                    <p>
-                        session:{" "}
-                        <span className="text-slate-500">
-                            {shortSessionId(latestSessionId)}
-                        </span>
-                    </p>
-                    <p>
-                        phase:{" "}
-                        <span className="text-slate-500">{formatPhase(activePhase)}</span>
-                    </p>
-                    <p>
-                        vehicle:{" "}
-                        <span className="text-slate-500">{vehicleIdentity.alias ?? vehicleIdentity.model}</span>
-                    </p>
-                    <p>
-                        slug: <span className="text-slate-500">{vehicleSlug}</span>
-                    </p>
-                    <p>
-                        capture:{" "}
-                        <span className={captureKind === "live" ? "text-green-300" : "text-cyan-300"}>
-                            {busSafetyLabel}
-                        </span>
-                    </p>
-                    <p>
-                        interface: <span className="text-slate-500">{selectedInterface}</span>
-                    </p>
-                    <p>
-                        steps: <span className="text-slate-500">{steps.length}</span>
-                    </p>
-                    <p>
-                        mission progress:{" "}
-                        <span className="text-slate-500">
-                            {Math.round(missionProgress * 100)}%
-                        </span>
-                    </p>
-                    <p>
-                        ai result: <span className="text-yellow-300">{confidenceSummary}</span>
-                    </p>
-                    <p>
-                        analyzed frames:{" "}
-                        <span className="text-slate-500">{brainAnalysis?.frames_analyzed ?? 0}</span>
-                    </p>
-                    <p>
-                        llm:{" "}
-                        <span className={brainAnalysis?.llm_available ? "text-green-300" : "text-slate-500"}>
-                            {brainAnalysis?.llm_available ? `ON · ${brainAnalysis.llm_model ?? "model"}` : "OFF"}
-                        </span>
-                    </p>
-                    <p>
-                        db: <span className="text-slate-500">{brainAnalysis?.persisted ? "saved" : "not loaded"}</span>
-                    </p>
+                    <GameButton
+                        onPress={() => onDatabaseChanged?.()}
+                        disabled={brainAnalyzing}
+                        className="rounded-lg border border-cyan-300/40 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:opacity-40"
+                    >
+                        REFRESH
+                    </GameButton>
                 </div>
 
-                <div className="rounded-xl border border-cyan-400/20 bg-cyan-500/10 p-4 text-cyan-100">
-                    <p className="mb-3 text-xs text-cyan-200">PI BRAIN</p>
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-6">
-                        <GameButton
-                            onPress={() => void handleFullAnalyze(undefined, "manual")}
-                            disabled={brainAnalyzing || !resolveAnalysisSessionId()}
-                            className="rounded-lg border border-cyan-300/40 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                            {brainAnalyzing ? "ANALYZING" : useLlm ? "ANALYZE + LLM" : "ANALYZE"}
-                        </GameButton>
-                        <GameButton
-                            onPress={() => void handleExplainWithLlm()}
-                            disabled={brainAnalyzing || !resolveAnalysisSessionId()}
-                            className="rounded-lg border border-purple-300/40 bg-purple-500/10 px-3 py-2 text-xs font-bold text-purple-100 hover:bg-purple-400/20 disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                            EXPLAIN
-                        </GameButton>
-                        <GameButton
-                            onPress={() => void handleLoadLatestAnalysis(undefined, true)}
-                            disabled={brainAnalyzing || !resolveAnalysisSessionId()}
-                            className="rounded-lg border border-cyan-300/40 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                            READ DB
-                        </GameButton>
-                        <GameButton
-                            onPress={() => setBrainOpen(true)}
-                            disabled={!brainAnalysis && !brainError}
-                            className="rounded-lg border border-green-300/40 bg-green-500/10 px-3 py-2 text-xs font-bold text-green-100 hover:bg-green-400/20 disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                            RESULTS
-                        </GameButton>
-                        <GameButton
-                            onPress={handleExportSession}
-                            disabled={!resolveAnalysisSessionId()}
-                            className="rounded-lg border border-cyan-300/40 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                            EXPORT
-                        </GameButton>
-                        <GameButton
-                            onPress={() => void handleDeleteSession()}
-                            disabled={brainAnalyzing || isRunning || !resolveAnalysisSessionId() || Boolean(activeSessionId)}
-                            className="rounded-lg border border-red-300/40 bg-red-500/10 px-3 py-2 text-xs font-bold text-red-100 hover:bg-red-400/20 disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                            DELETE
-                        </GameButton>
-                        <GameButton
-                            onPress={() => setUseLlm((value) => !value)}
-                            disabled={isRunning || brainAnalyzing}
-                            className={`rounded-lg border px-3 py-2 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-40 ${useLlm
-                                ? "border-green-300/40 bg-green-500/10 text-green-100 hover:bg-green-400/20"
-                                : "border-slate-600 bg-slate-900 text-slate-400 hover:bg-slate-800"
+                <div className="space-y-2">
+                    {sessionHistory.map((session) => {
+                        const selected = latestSessionId === session.session_id;
+                        const empty = session.frame_count <= 0;
+                        return (
+                            <div
+                                key={session.session_id}
+                                className={`rounded-xl border p-3 ${selected
+                                    ? "border-green-300/60 bg-green-500/10"
+                                    : empty
+                                        ? "border-red-300/30 bg-red-500/5"
+                                        : "border-slate-700 bg-slate-900/70"
                                 }`}
-                        >
-                            LLM {useLlm ? "ON" : "OFF"}
-                        </GameButton>
-                        <GameButton
-                            onPress={() => setAutoAnalyze((value) => !value)}
-                            disabled={isRunning || brainAnalyzing}
-                            className={`rounded-lg border px-3 py-2 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-40 ${autoAnalyze
-                                ? "border-yellow-300/40 bg-yellow-500/10 text-yellow-100 hover:bg-yellow-400/20"
-                                : "border-slate-600 bg-slate-900 text-slate-400 hover:bg-slate-800"
-                                }`}
-                        >
-                            AUTO {autoAnalyze ? "ON" : "OFF"}
-                        </GameButton>
-                    </div>
-                    <p className="mt-3 text-xs text-cyan-100/80">
-                        AUTO runs quick ID confidence only, with LLM and vectors off for speed. Use EXPLAIN when you want Ollama to read the saved session and write the deeper report.
-                    </p>
+                            >
+                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                    <div className="min-w-0">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <span className="font-black text-green-100">{shortSessionId(session.session_id)}</span>
+                                            <span className={`rounded border px-1.5 py-0.5 text-[9px] font-black ${empty
+                                                ? "border-red-300/40 text-red-200"
+                                                : session.analyzed
+                                                    ? "border-green-300/40 text-green-200"
+                                                    : "border-yellow-300/40 text-yellow-200"
+                                            }`}>
+                                                {empty ? "EMPTY" : session.status.toUpperCase()}
+                                            </span>
+                                            <span className="rounded border border-cyan-300/30 px-1.5 py-0.5 text-[9px] text-cyan-200">
+                                                {session.bus_interface}/{session.bus_mode}
+                                            </span>
+                                        </div>
+                                        <p className="mt-1 text-[11px] text-slate-500">{formatSessionDate(session.started_at)}</p>
+                                        <p className="mt-1 text-xs text-slate-300">
+                                            {session.frame_count.toLocaleString()} frames · {session.marker_count} markers
+                                            {session.top_can_id_hex ? ` · top ${session.top_can_id_hex}` : ""}
+                                            {typeof session.confidence === "number" ? ` ${Math.round(session.confidence * 100)}%` : ""}
+                                        </p>
+                                    </div>
+
+                                    <div className="flex flex-wrap gap-1">
+                                        <GameButton
+                                            onPress={() => void handleSelectSavedSession(session, false)}
+                                            disabled={brainAnalyzing || Boolean(activeSessionId)}
+                                            className="rounded-lg border border-green-300/40 bg-green-500/10 px-2 py-1 text-[10px] font-bold text-green-100 hover:bg-green-400/20 disabled:opacity-40"
+                                        >
+                                            SELECT
+                                        </GameButton>
+                                        <GameButton
+                                            onPress={() => void handleSelectSavedSession(session, true)}
+                                            disabled={brainAnalyzing || Boolean(activeSessionId) || !session.analyzed}
+                                            className="rounded-lg border border-cyan-300/40 bg-cyan-500/10 px-2 py-1 text-[10px] font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:opacity-40"
+                                        >
+                                            RESULTS
+                                        </GameButton>
+                                        <GameButton
+                                            onPress={() => void handleQuickAnalyze(session.session_id, "manual")}
+                                            disabled={brainAnalyzing || Boolean(activeSessionId) || empty}
+                                            className="rounded-lg border border-yellow-300/40 bg-yellow-500/10 px-2 py-1 text-[10px] font-bold text-yellow-100 hover:bg-yellow-400/20 disabled:opacity-40"
+                                        >
+                                            ANALYZE
+                                        </GameButton>
+                                        <GameButton
+                                            onPress={() => window.open(`${getApiBaseUrl()}/data/can/session/${session.session_id}/export?format=json`, "_blank", "noopener,noreferrer")}
+                                            disabled={empty}
+                                            className="rounded-lg border border-slate-500 bg-slate-800 px-2 py-1 text-[10px] font-bold text-slate-200 hover:bg-slate-700 disabled:opacity-40"
+                                        >
+                                            EXPORT
+                                        </GameButton>
+                                        <GameButton
+                                            onPress={() => void handleDeleteSession(session.session_id)}
+                                            disabled={brainAnalyzing || isRunning || activeSessionId === session.session_id}
+                                            className="rounded-lg border border-red-300/40 bg-red-500/10 px-2 py-1 text-[10px] font-bold text-red-100 hover:bg-red-400/20 disabled:opacity-40"
+                                        >
+                                            DELETE
+                                        </GameButton>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                    {!sessionHistory.length && (
+                        <div className="rounded-xl border border-slate-700 bg-slate-900/70 p-4 text-slate-500">
+                            No saved sessions for this mission and capture scope.
+                        </div>
+                    )}
                 </div>
-            </div >
+            </div>
+
+            <div className="rounded-xl border border-cyan-400/20 bg-cyan-500/10 p-4 text-cyan-100">
+                <p className="mb-3 text-xs text-cyan-200">SELECTED SESSION</p>
+                <div className="grid gap-2 text-xs text-slate-300 sm:grid-cols-3">
+                    <p>session: <span className="text-slate-500">{shortSessionId(latestSessionId)}</span></p>
+                    <p>scope: <span className="text-slate-500">{reviewBusInterface}/{reviewBusMode}</span></p>
+                    <p>capture: <span className="text-slate-500">{reviewCaptureKind}</span></p>
+                    <p>AI result: <span className="text-yellow-300">{confidenceSummary}</span></p>
+                    <p>frames: <span className="text-slate-500">{brainAnalysis?.frames_analyzed ?? selectedSessionSummary?.frame_count ?? 0}</span></p>
+                    <p>ML labels: <span className="text-slate-500">{Object.keys(mlLabels).length}</span></p>
+                </div>
+
+                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-6">
+                    <GameButton onPress={() => void handleFullAnalyze(undefined, "manual")} disabled={brainAnalyzing || !resolveAnalysisSessionId()} className="rounded-lg border border-cyan-300/40 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:opacity-40">{brainAnalyzing ? "ANALYZING" : "ANALYZE"}</GameButton>
+                    <GameButton onPress={() => void handleExplainWithLlm()} disabled={brainAnalyzing || !resolveAnalysisSessionId()} className="rounded-lg border border-purple-300/40 bg-purple-500/10 px-3 py-2 text-xs font-bold text-purple-100 hover:bg-purple-400/20 disabled:opacity-40">EXPLAIN</GameButton>
+                    <GameButton onPress={() => void handleLoadLatestAnalysis(undefined, true)} disabled={brainAnalyzing || !resolveAnalysisSessionId()} className="rounded-lg border border-green-300/40 bg-green-500/10 px-3 py-2 text-xs font-bold text-green-100 hover:bg-green-400/20 disabled:opacity-40">RESULTS</GameButton>
+                    <GameButton onPress={() => void refreshMlContext()} disabled={mlLoading || !resolveAnalysisSessionId()} className="rounded-lg border border-purple-300/40 bg-purple-500/10 px-3 py-2 text-xs font-bold text-purple-100 hover:bg-purple-400/20 disabled:opacity-40">{mlLoading ? "ML..." : "ML STATUS"}</GameButton>
+                    <GameButton onPress={handleExportSession} disabled={!resolveAnalysisSessionId()} className="rounded-lg border border-slate-500 bg-slate-800 px-3 py-2 text-xs font-bold text-slate-200 hover:bg-slate-700 disabled:opacity-40">EXPORT</GameButton>
+                    <GameButton onPress={() => void handleDeleteSession()} disabled={brainAnalyzing || isRunning || !resolveAnalysisSessionId() || Boolean(activeSessionId)} className="rounded-lg border border-red-300/40 bg-red-500/10 px-3 py-2 text-xs font-bold text-red-100 hover:bg-red-400/20 disabled:opacity-40">DELETE</GameButton>
+                </div>
+            </div>
         </div>
     );
+
 
     return (
         <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden rounded-2xl bg-[#020617] text-green-100">
@@ -1164,17 +1361,25 @@ export function SignalReconMission({
                 sessionId={latestSessionId}
                 missionCode={selectedMission.mission_code}
                 missionTitle={selectedMission.title}
+                signalName={selectedMission.target}
                 vehicleSlug={vehicleSlug}
-                busInterface={selectedInterface}
-                busMode={selectedMode}
-                sourceLabel={busSafetyLabel}
+                busInterface={reviewBusInterface}
+                busMode={reviewBusMode}
+                sourceLabel={reviewSourceLabel}
                 useLlm={useLlm}
                 useEmbeddings={useEmbeddings}
                 autoAnalyze={autoAnalyze}
+                mlLabels={mlLabels}
+                mlReadiness={mlReadiness}
+                activeModel={activeModel}
+                mlLoading={mlLoading}
+                labelingCandidateId={labelingCandidateId}
                 onClose={() => setBrainOpen(false)}
                 onAnalyze={() => void handleQuickAnalyze(undefined, "manual")}
                 onExplainWithLlm={() => void handleExplainWithLlm()}
                 onLoadLatest={() => void handleLoadLatestAnalysis(undefined, true)}
+                onRefreshMl={() => void refreshMlContext()}
+                onLabelCandidate={handleLabelCandidate}
                 onToggleLlm={() => setUseLlm((value) => !value)}
                 onToggleEmbeddings={() => setUseEmbeddings((value) => !value)}
                 onToggleAutoAnalyze={() => setAutoAnalyze((value) => !value)}
