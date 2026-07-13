@@ -85,6 +85,46 @@ export type BrainCandidate = {
     ml_probability?: number | null;
     ml_blend_weight?: number;
     confidence_before_ml?: number;
+    historical_support?: {
+        retrieved_sessions?: number;
+        seen_sessions?: number;
+        top_five_sessions?: number;
+        same_active_bytes_sessions?: number;
+        mean_similarity?: number | null;
+        label_counts?: {
+            positive?: number;
+            negative?: number;
+            uncertain?: number;
+        };
+        confidence_influence?: boolean;
+    };
+};
+
+export type VectorMemoryMatch = {
+    embedding_id?: string;
+    session_id: string;
+    similarity: number;
+    mission_code?: string | null;
+    bus_interface?: string | null;
+    bus_mode?: string | null;
+    capture_kind?: string | null;
+    analysis_mode?: string | null;
+    created_at?: string | null;
+};
+
+export type VectorMemoryContext = {
+    requested: boolean;
+    query_embedded?: boolean;
+    retrieved?: boolean;
+    stored?: boolean;
+    match_count?: number;
+    minimum_similarity?: number;
+    confidence_influence?: boolean;
+    reason?: string;
+    error?: string;
+    storage_error?: string | null;
+    matches?: VectorMemoryMatch[];
+    scope?: Record<string, string | null>;
 };
 
 export type BrainAnalysisResult = {
@@ -107,6 +147,9 @@ export type BrainAnalysisResult = {
     };
     frames_analyzed: number;
     markers: number;
+    marker_window_ms?: number;
+    marker_window_coverage?: number;
+    vector_memory?: VectorMemoryContext | null;
     candidates: BrainCandidate[];
     heatmap: Record<
         string,
@@ -430,7 +473,7 @@ export function SignalReconBrainConsole({
                             <GameButton onPress={onExportSession} disabled={analyzing || !sessionId} className="rounded-lg border border-cyan-300/40 bg-cyan-500/10 px-2 py-1 text-[10px] font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:opacity-40">EXPORT</GameButton>
                             <GameButton onPress={onDeleteSession} disabled={analyzing || !sessionId} className="rounded-lg border border-red-300/40 bg-red-500/10 px-2 py-1 text-[10px] font-bold text-red-100 hover:bg-red-400/20 disabled:opacity-40">DELETE</GameButton>
                             <GameButton onPress={onToggleLlm} disabled={analyzing} className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${useLlm ? "border-green-300/40 bg-green-500/10 text-green-100" : "border-slate-600 bg-slate-900 text-slate-400"}`}>LLM {useLlm ? "ON" : "OFF"}</GameButton>
-                            <GameButton onPress={onToggleEmbeddings} disabled={analyzing} className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${useEmbeddings ? "border-cyan-300/40 bg-cyan-500/10 text-cyan-100" : "border-slate-600 bg-slate-900 text-slate-400"}`}>VEC {useEmbeddings ? "ON" : "OFF"}</GameButton>
+                            <GameButton onPress={onToggleEmbeddings} disabled={analyzing} className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${useEmbeddings ? "border-cyan-300/40 bg-cyan-500/10 text-cyan-100" : "border-slate-600 bg-slate-900 text-slate-400"}`}>MEM {useEmbeddings ? "ON" : "OFF"}</GameButton>
                             <GameButton onPress={onToggleAutoAnalyze} disabled={analyzing} className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${autoAnalyze ? "border-cyan-300/40 bg-cyan-500/10 text-cyan-100" : "border-slate-600 bg-slate-900 text-slate-400"}`}>AUTO {autoAnalyze ? "ON" : "OFF"}</GameButton>
                             <GameButton onPress={onClose} className="rounded-lg border border-slate-600 bg-slate-900 px-2 py-1 text-[10px] font-bold text-slate-100 hover:bg-slate-800">CLOSE</GameButton>
                         </div>
@@ -456,6 +499,43 @@ export function SignalReconBrainConsole({
                     {activeTab === "summary" && (
                         <div className="space-y-3">
                             <ReadinessPanel readiness={mlReadiness} activeModel={activeModel} loading={mlLoading} onRefresh={onRefreshMl} />
+
+                            <div className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 p-3 text-cyan-100">
+                                <div className="flex flex-wrap items-center justify-between gap-3">
+                                    <div>
+                                        <p className="text-[10px] tracking-[0.24em] text-cyan-200">VECTOR MEMORY</p>
+                                        <p className="text-sm font-black">
+                                            {analysis?.vector_memory?.retrieved
+                                                ? `${analysis.vector_memory.match_count ?? 0} HISTORICAL MATCHES`
+                                                : analysis?.vector_memory?.query_embedded
+                                                    ? "NO COMPATIBLE MATCHES"
+                                                    : "MEMORY NOT QUERIED"}
+                                        </p>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
+                                        <div className="rounded-lg border border-cyan-300/20 bg-black/20 px-2 py-1">
+                                            <p className="text-slate-500">query</p>
+                                            <p className="font-black">{analysis?.vector_memory?.query_embedded ? "YES" : "NO"}</p>
+                                        </div>
+                                        <div className="rounded-lg border border-cyan-300/20 bg-black/20 px-2 py-1">
+                                            <p className="text-slate-500">matches</p>
+                                            <p className="font-black">{analysis?.vector_memory?.match_count ?? 0}</p>
+                                        </div>
+                                        <div className="rounded-lg border border-cyan-300/20 bg-black/20 px-2 py-1">
+                                            <p className="text-slate-500">stored</p>
+                                            <p className="font-black">{analysis?.vector_memory?.stored ? "YES" : "—"}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <p className="mt-2 text-[10px] text-cyan-100/70">
+                                    Same vehicle, mission, capture kind, analysis mode, and embedding model. Historical memory does not directly alter confidence.
+                                </p>
+                                {(analysis?.vector_memory?.error || analysis?.vector_memory?.storage_error) && (
+                                    <p className="mt-1 text-[10px] text-red-200">
+                                        {analysis.vector_memory.error ?? analysis.vector_memory.storage_error}
+                                    </p>
+                                )}
+                            </div>
 
                             <div className="rounded-xl border border-green-400/20 bg-slate-900/80 p-4">
                                 <p className="text-xs text-yellow-300">{resultModeLabel}</p>
@@ -531,6 +611,29 @@ export function SignalReconBrainConsole({
                                             <div className="rounded-lg border border-slate-700 bg-black/20 p-2"><p className="text-slate-500">ML probability</p><p className="text-lg font-black">{percent(candidate.ml_probability)}</p></div>
                                             <div className="rounded-lg border border-slate-700 bg-black/20 p-2"><p className="text-slate-500">Final blended</p><p className="text-lg font-black">{percent(candidate.confidence)}</p></div>
                                         </div>
+
+                                        {candidate.historical_support && (
+                                            <div className="mt-3 grid grid-cols-2 gap-2 rounded-lg border border-cyan-300/20 bg-cyan-500/5 p-2 text-xs sm:grid-cols-4">
+                                                <div>
+                                                    <p className="text-slate-500">Historical sessions</p>
+                                                    <p className="font-black text-cyan-100">
+                                                        {candidate.historical_support.seen_sessions ?? 0}/{candidate.historical_support.retrieved_sessions ?? 0}
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-slate-500">Top-five repeats</p>
+                                                    <p className="font-black text-cyan-100">{candidate.historical_support.top_five_sessions ?? 0}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-slate-500">Same active bytes</p>
+                                                    <p className="font-black text-cyan-100">{candidate.historical_support.same_active_bytes_sessions ?? 0}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-slate-500">Mean similarity</p>
+                                                    <p className="font-black text-cyan-100">{percent(candidate.historical_support.mean_similarity)}</p>
+                                                </div>
+                                            </div>
+                                        )}
 
                                         <div className="mt-3 grid grid-cols-8 gap-1">{byteCells(candidate.byte_change_counts)}</div>
 

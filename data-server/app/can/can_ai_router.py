@@ -92,6 +92,23 @@ EMBED_TIMEOUT_SECONDS = env_float(
     minimum=10.0,
 )
 
+# Vector memory is retrieved only as historical context. It never directly
+# changes candidate confidence; supervised ML remains the learned reranker.
+VECTOR_MEMORY_SCHEMA_VERSION = 1
+VECTOR_MEMORY_LIMIT = min(
+    10,
+    env_int("VECTOR_MEMORY_LIMIT", 5, minimum=1),
+)
+VECTOR_MEMORY_MIN_SIMILARITY = min(
+    1.0,
+    env_float("VECTOR_MEMORY_MIN_SIMILARITY", 0.60, minimum=0.0),
+)
+DEFAULT_MARKER_WINDOW_MS = env_int(
+    "CAN_MARKER_WINDOW_MS",
+    300,
+    minimum=100,
+)
+
 # Keep production responses small enough for the Pi, browser, and React renderer.
 MAX_RESPONSE_CANDIDATES = 15
 MAX_RESPONSE_EVIDENCE_CANDIDATES = 5
@@ -315,6 +332,7 @@ def build_fallback_report(
     baseline_profile: Optional[dict[str, Any]],
     baseline_context: Optional[dict[str, Any]] = None,
     ml_context: Optional[dict[str, Any]] = None,
+    vector_context: Optional[dict[str, Any]] = None,
 ) -> str:
     if is_baseline_mode(analysis_mode):
         profile = baseline_profile or {}
@@ -366,6 +384,8 @@ def build_fallback_report(
 
     baseline_context = baseline_context or {}
     ml_context = ml_context or {}
+    vector_context = vector_context or {}
+    vector_match_count = int(vector_context.get("match_count") or 0)
     ml_model_text = (
         str(ml_context.get("model_id"))
         if ml_context.get("applied")
@@ -430,6 +450,12 @@ def build_fallback_report(
             ),
             "- Baseline subtraction reduces false positives but does not prove signal ownership.",
             (
+                f"- Scoped vector memory retrieved {vector_match_count} similar prior sessions; "
+                "those matches did not alter numerical confidence."
+                if vector_context.get("requested")
+                else "- Vector memory was not requested for this analysis."
+            ),
+            (
                 f"- Supervised model {ml_model_text} was applied using explicit human labels."
                 if ml_context.get("applied")
                 else "- No supervised model was applied; ranking remains statistical and rule-based."
@@ -445,7 +471,7 @@ def build_fallback_report(
 
 
 class AnalyzeSessionRequest(BaseModel):
-    marker_window_ms: int = Field(default=900, ge=100, le=10_000)
+    marker_window_ms: int = Field(default=DEFAULT_MARKER_WINDOW_MS, ge=100, le=10_000)
     max_frames: int = Field(default=MAX_ANALYSIS_FRAMES, ge=100, le=250_000)
     use_llm: bool = True
     use_embeddings: bool = True
@@ -511,6 +537,10 @@ class Candidate(BaseModel):
     ml_blend_weight: float = 0.0
     confidence_before_ml: float = 0.0
     ml_feature_vector: dict[str, float] = Field(default_factory=dict)
+
+    # Read-only cross-session evidence from scoped vector retrieval. This is
+    # deliberately excluded from the numerical confidence calculation.
+    historical_support: dict[str, Any] = Field(default_factory=dict)
 
 
 @dataclass
@@ -950,6 +980,420 @@ def compact_byte_evidence(candidate: Candidate, limit: int = 3) -> str:
         )
 
     return "; ".join(summaries)
+
+
+
+def embedding_candidate_metadata(candidate: Candidate) -> dict[str, Any]:
+    active_evidence = [
+        item
+        for item in candidate.byte_evidence
+        if item.change_count > 0
+    ]
+    active_evidence.sort(
+        key=lambda item: (
+            item.in_window_changes,
+            item.change_count,
+        ),
+        reverse=True,
+    )
+
+    return {
+        "can_id": candidate.can_id,
+        "can_id_hex": candidate.can_id_hex,
+        "confidence": candidate.confidence,
+        "candidate_role": candidate.candidate_role,
+        "correlation_score": candidate.correlation_score,
+        "baseline_overlap_score": candidate.baseline_overlap_score,
+        "baseline_adjusted_change_ratio": (
+            candidate.baseline_adjusted_change_ratio
+        ),
+        "ml_probability": candidate.ml_probability,
+        "byte_change_counts": candidate.byte_change_counts,
+        "byte_evidence": [
+            item.model_dump()
+            for item in active_evidence[:2]
+        ],
+    }
+
+
+def build_embedding_document(
+    session: dict[str, Any],
+    candidates: list[Candidate],
+    analysis_mode: str,
+    marker_window_ms: int,
+    baseline_context: Optional[dict[str, Any]] = None,
+    ml_context: Optional[dict[str, Any]] = None,
+) -> str:
+    """Create evidence-rich text for both storage and similarity search."""
+    baseline_context = baseline_context or {}
+    ml_context = ml_context or {}
+    capture_kind = capture_kind_for(
+        session.get("bus_interface"),
+        session.get("bus_mode"),
+    )
+
+    lines = [
+        f"Vehicle: {session.get('vehicle_slug')}",
+        f"Mission: {session.get('mission_code')}",
+        f"Target: {session.get('mission_target')}",
+        f"Analysis mode: {analysis_mode}",
+        f"Capture kind: {capture_kind}",
+        (
+            "CAN source: "
+            f"{session.get('bus_interface')}/{session.get('bus_mode')}"
+        ),
+        f"Marker half-window: {marker_window_ms} ms",
+        (
+            "Matched baseline: "
+            f"{baseline_context.get('session_id') or 'none'}"
+        ),
+        (
+            "Supervised model: "
+            f"{ml_context.get('model_id') or 'none'}"
+        ),
+        "Ranked candidate evidence:",
+    ]
+
+    for candidate in candidates[:10]:
+        lines.append(
+            " | ".join(
+                [
+                    candidate.can_id_hex,
+                    f"confidence={candidate.confidence}",
+                    f"role={candidate.candidate_role}",
+                    f"correlation={candidate.correlation_score}",
+                    f"baseline_overlap={candidate.baseline_overlap_score}",
+                    (
+                        "baseline_excess="
+                        f"{candidate.baseline_adjusted_change_ratio}"
+                    ),
+                    f"ml_probability={candidate.ml_probability}",
+                    f"changes={candidate.change_count}",
+                    f"bytes={candidate.byte_change_counts}",
+                    (
+                        "evidence="
+                        f"{compact_byte_evidence(candidate, limit=2)}"
+                    ),
+                ]
+            )
+        )
+
+    return "\n".join(lines)
+
+
+def vector_literal(values: list[float]) -> str:
+    return "[" + ",".join(f"{value:.8f}" for value in values) + "]"
+
+
+async def retrieve_vector_memory(
+    conn: Any,
+    *,
+    query_embedding: list[float],
+    session: dict[str, Any],
+    analysis_mode: str,
+    embed_model: str,
+) -> dict[str, Any]:
+    """Retrieve latest exact-scope memories, deduplicated by session."""
+    mission_code = session.get("mission_code")
+    capture_kind = capture_kind_for(
+        session.get("bus_interface"),
+        session.get("bus_mode"),
+    )
+
+    context: dict[str, Any] = {
+        "requested": True,
+        "query_embedded": True,
+        "retrieved": False,
+        "scope": {
+            "vehicle_slug": session.get("vehicle_slug"),
+            "mission_code": mission_code,
+            "capture_kind": capture_kind,
+            "analysis_mode": analysis_mode,
+            "embed_model": embed_model,
+        },
+        "limit": VECTOR_MEMORY_LIMIT,
+        "minimum_similarity": VECTOR_MEMORY_MIN_SIMILARITY,
+        "confidence_influence": False,
+        "matches": [],
+        "match_count": 0,
+    }
+
+    if not mission_code:
+        context["reason"] = "Session has no mission code for scoped retrieval."
+        return context
+
+    query_vector = vector_literal(query_embedding)
+
+    try:
+        rows = await conn.fetch(
+            """
+            WITH latest_embeddings AS (
+                SELECT DISTINCT ON (se.session_id)
+                    se.id AS embedding_id,
+                    se.session_id,
+                    se.text,
+                    se.embedding,
+                    se.metadata,
+                    se.created_at,
+                    cs.bus_interface,
+                    cs.bus_mode,
+                    rm.mission_code
+                FROM signal_embeddings se
+                JOIN can_sessions cs ON cs.id = se.session_id
+                LEFT JOIN recon_missions rm ON rm.id = cs.mission_id
+                WHERE se.vehicle_id = $2
+                  AND se.session_id <> $3
+                  AND rm.mission_code = $4
+                  AND COALESCE(se.metadata->>'model', '') = $5
+                  AND COALESCE(se.metadata->>'analysis_mode', '') = $6
+                  AND se.embedding IS NOT NULL
+                  AND (
+                        (
+                            $7 = 'simulation'
+                            AND (
+                                LOWER(COALESCE(cs.bus_mode, '')) IN (
+                                    'simulation', 'replay', 'offline'
+                                )
+                                OR LOWER(COALESCE(cs.bus_interface, '')) = 'vcan0'
+                            )
+                        )
+                        OR
+                        (
+                            $7 = 'live'
+                            AND LOWER(COALESCE(cs.bus_mode, '')) NOT IN (
+                                'simulation', 'replay', 'offline'
+                            )
+                            AND LOWER(COALESCE(cs.bus_interface, '')) <> 'vcan0'
+                        )
+                  )
+                ORDER BY se.session_id, se.created_at DESC
+            ),
+            scored AS (
+                SELECT
+                    latest_embeddings.*,
+                    1.0 - (embedding <=> $1::vector) AS similarity
+                FROM latest_embeddings
+            )
+            SELECT *
+            FROM scored
+            WHERE similarity >= $8
+            ORDER BY
+                CASE WHEN bus_interface IS NOT DISTINCT FROM $9 THEN 0 ELSE 1 END,
+                CASE WHEN bus_mode IS NOT DISTINCT FROM $10 THEN 0 ELSE 1 END,
+                similarity DESC,
+                created_at DESC
+            LIMIT $11
+            """,
+            query_vector,
+            session.get("vehicle_id"),
+            session.get("id"),
+            mission_code,
+            embed_model,
+            analysis_mode,
+            capture_kind,
+            VECTOR_MEMORY_MIN_SIMILARITY,
+            session.get("bus_interface"),
+            session.get("bus_mode"),
+            VECTOR_MEMORY_LIMIT,
+        )
+    except Exception as exc:
+        context["error"] = f"{type(exc).__name__}: {exc}"
+        context["reason"] = "Vector-memory query failed."
+        return context
+
+    matches: list[dict[str, Any]] = []
+    for raw_row in rows:
+        row = dict(raw_row)
+        metadata = metadata_dict(row.get("metadata"))
+        matches.append({
+            "embedding_id": str(row["embedding_id"]),
+            "session_id": str(row["session_id"]),
+            "similarity": round(float(row.get("similarity") or 0.0), 6),
+            "mission_code": row.get("mission_code"),
+            "bus_interface": row.get("bus_interface"),
+            "bus_mode": row.get("bus_mode"),
+            "capture_kind": capture_kind_for(
+                row.get("bus_interface"),
+                row.get("bus_mode"),
+            ),
+            "analysis_mode": metadata.get("analysis_mode"),
+            "created_at": row.get("created_at"),
+            "text": str(row.get("text") or "")[:2_000],
+            "metadata": metadata,
+            "labels": {},
+        })
+
+    if matches:
+        session_ids = [UUID(match["session_id"]) for match in matches]
+        try:
+            label_rows = await conn.fetch(
+                """
+                SELECT
+                    session_id,
+                    can_id,
+                    label,
+                    signal_name,
+                    notes,
+                    metadata
+                FROM can_ml_labels
+                WHERE session_id = ANY($1::uuid[])
+                """,
+                session_ids,
+            )
+            labels_by_session: dict[str, dict[str, Any]] = defaultdict(dict)
+            for raw_label in label_rows:
+                label = dict(raw_label)
+                labels_by_session[str(label["session_id"])][
+                    str(label["can_id"])
+                ] = {
+                    "label": label.get("label"),
+                    "signal_name": label.get("signal_name"),
+                    "notes": label.get("notes"),
+                    "metadata": metadata_dict(label.get("metadata")),
+                }
+            for match in matches:
+                match["labels"] = labels_by_session.get(
+                    match["session_id"],
+                    {},
+                )
+        except Exception as exc:
+            context["label_lookup_error"] = f"{type(exc).__name__}: {exc}"
+
+    context["matches"] = matches
+    context["match_count"] = len(matches)
+    context["retrieved"] = bool(matches)
+    if not matches:
+        context["reason"] = "No compatible historical embeddings met the similarity threshold."
+    return context
+
+
+def apply_vector_historical_support(
+    candidates: list[Candidate],
+    vector_context: dict[str, Any],
+) -> None:
+    """Attach transparent support counts without changing confidence."""
+    matches = vector_context.get("matches")
+    if not isinstance(matches, list):
+        return
+
+    for candidate in candidates:
+        seen_sessions = 0
+        top_five_sessions = 0
+        same_active_bytes_sessions = 0
+        similarities: list[float] = []
+        label_counts = {
+            "positive": 0,
+            "negative": 0,
+            "uncertain": 0,
+        }
+        current_active_bytes = {
+            str(byte_index)
+            for byte_index in range(8)
+            if int(candidate.byte_change_counts.get(str(byte_index), 0) or 0) > 0
+        }
+
+        for match in matches:
+            metadata = metadata_dict(match.get("metadata"))
+            historical_candidates = metadata.get("top_candidates")
+            if not isinstance(historical_candidates, list):
+                historical_candidates = []
+
+            historical_candidate: Optional[dict[str, Any]] = None
+            historical_index: Optional[int] = None
+            for index, item in enumerate(historical_candidates):
+                if not isinstance(item, dict):
+                    continue
+                if int(item.get("can_id") or -1) == candidate.can_id:
+                    historical_candidate = item
+                    historical_index = index
+                    break
+
+            if historical_candidate is not None:
+                seen_sessions += 1
+                if historical_index is not None and historical_index < 5:
+                    top_five_sessions += 1
+                similarities.append(float(match.get("similarity") or 0.0))
+
+                historical_counts = metadata_dict(
+                    historical_candidate.get("byte_change_counts")
+                )
+                historical_active_bytes = {
+                    str(byte_index)
+                    for byte_index in range(8)
+                    if int(historical_counts.get(str(byte_index), 0) or 0) > 0
+                }
+                if current_active_bytes and (
+                    current_active_bytes == historical_active_bytes
+                ):
+                    same_active_bytes_sessions += 1
+
+            labels = metadata_dict(match.get("labels"))
+            label = metadata_dict(labels.get(str(candidate.can_id)))
+            label_value = label.get("label")
+            if label_value in label_counts:
+                label_counts[label_value] += 1
+
+        candidate.historical_support = {
+            "retrieved_sessions": len(matches),
+            "seen_sessions": seen_sessions,
+            "top_five_sessions": top_five_sessions,
+            "same_active_bytes_sessions": same_active_bytes_sessions,
+            "mean_similarity": (
+                round(float(statistics.mean(similarities)), 6)
+                if similarities
+                else None
+            ),
+            "label_counts": label_counts,
+            "confidence_influence": False,
+        }
+
+
+def vector_memory_prompt_text(vector_context: dict[str, Any]) -> str:
+    matches = vector_context.get("matches")
+    if not isinstance(matches, list) or not matches:
+        return (
+            "No compatible historical vector memories were retrieved. "
+            f"Reason: {vector_context.get('reason') or 'none available'}."
+        )
+
+    lines = [
+        (
+            f"Retrieved {len(matches)} scoped historical sessions. "
+            "Similarity is contextual evidence only and must not override "
+            "the current raw CAN observations."
+        )
+    ]
+    for index, match in enumerate(matches, 1):
+        metadata = metadata_dict(match.get("metadata"))
+        historical_candidates = metadata.get("top_candidates")
+        summaries: list[str] = []
+        if isinstance(historical_candidates, list):
+            for candidate in historical_candidates[:3]:
+                if not isinstance(candidate, dict):
+                    continue
+                summaries.append(
+                    f"{candidate.get('can_id_hex')} "
+                    f"confidence={candidate.get('confidence')} "
+                    f"bytes={candidate.get('byte_change_counts')}"
+                )
+        labels = metadata_dict(match.get("labels"))
+        label_summary = ", ".join(
+            f"{can_hex(int(can_id))}:{metadata_dict(value).get('label')}"
+            for can_id, value in list(labels.items())[:5]
+            if str(can_id).isdigit()
+        ) or "none"
+        memory_excerpt = " ".join(
+            str(match.get("text") or "").split()
+        )[:400]
+        lines.append(
+            f"{index}. session={match.get('session_id')} "
+            f"similarity={match.get('similarity')} "
+            f"source={match.get('bus_interface')}/{match.get('bus_mode')} "
+            f"top=[{'; '.join(summaries) or 'not stored'}] "
+            f"human_labels=[{label_summary}] "
+            f"memory_excerpt={memory_excerpt or 'none'}"
+        )
+    return "\n".join(lines)
 
 
 def compact_candidate_payload(
@@ -1496,6 +1940,7 @@ def build_llm_prompt(
     baseline_profile: Optional[dict[str, Any]] = None,
     baseline_context: Optional[dict[str, Any]] = None,
     ml_context: Optional[dict[str, Any]] = None,
+    vector_context: Optional[dict[str, Any]] = None,
 ) -> str:
     marker_lines = "\n".join(
         f"- {m.get('timestamp_ms')}ms {m.get('marker_type')} {m.get('step_code') or ''}: {m.get('label') or ''}"
@@ -1504,6 +1949,13 @@ def build_llm_prompt(
 
     baseline_context = baseline_context or {}
     ml_context = ml_context or {}
+    vector_context = vector_context or {
+        "requested": False,
+        "retrieved": False,
+        "reason": "Vector memory was not requested.",
+        "matches": [],
+    }
+    historical_memory = vector_memory_prompt_text(vector_context)
 
     if ml_context.get("applied"):
         ml_summary = (
@@ -1607,6 +2059,7 @@ def build_llm_prompt(
                 f"confidence_before_baseline={c.confidence_before_baseline:.3f}, "
                 f"ml_probability={c.ml_probability}, "
                 f"confidence_before_ml={c.confidence_before_ml:.3f}, "
+                f"historical_support={c.historical_support}, "
                 f"byte_evidence=[{compact_byte_evidence(c, limit=LLM_BYTE_EVIDENCE_LIMIT)}]"
             )
             for c in candidates[:LLM_CANDIDATE_LIMIT]
@@ -1691,6 +2144,16 @@ def build_llm_prompt(
 
     Supervised model:
     - {ml_summary}
+
+    Retrieved vector memory:
+    {historical_memory}
+
+    Vector-memory rule:
+    - Historical similarity is supporting context only.
+    - Do not change or overrule current-session evidence solely because a prior
+      report is semantically similar.
+    - Prefer repeated agreement in CAN ID, active byte, bit transitions,
+      latency, return state, baseline behavior, and human labels.
 
     Human event markers:
     {marker_lines}
@@ -2063,6 +2526,20 @@ async def get_ai_status() -> dict[str, Any]:
             "marker correlation and activity evidence, with frame count used "
             "only as a support multiplier; zero evidence yields zero confidence"
         ),
+        "default_marker_window_ms": DEFAULT_MARKER_WINDOW_MS,
+        "vector_memory": {
+            "storage": True,
+            "retrieval": True,
+            "schema_version": VECTOR_MEMORY_SCHEMA_VERSION,
+            "limit": VECTOR_MEMORY_LIMIT,
+            "minimum_similarity": VECTOR_MEMORY_MIN_SIMILARITY,
+            "scope": (
+                "same vehicle + mission + capture kind + analysis mode + "
+                "embedding model; exact interface/mode preferred"
+            ),
+            "confidence_influence": False,
+            "usage": "LLM context and transparent historical support only",
+        },
         "supervised_ml": ml_configuration(),
     }
 
@@ -2331,6 +2808,82 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
 
     baseline_profile = build_baseline_profile(frames, candidates) if baseline_mode else None
 
+    embedding_text: Optional[str] = None
+    query_embedding: Optional[list[float]] = None
+    vector_context: dict[str, Any] = {
+        "requested": payload.use_embeddings,
+        "query_embedded": False,
+        "retrieved": False,
+        "match_count": 0,
+        "matches": [],
+        "stored": False,
+        "confidence_influence": False,
+    }
+
+    if payload.use_embeddings and candidates:
+        embedding_text = build_embedding_document(
+            session_dict,
+            candidates,
+            analysis_mode,
+            payload.marker_window_ms,
+            baseline_context,
+            ml_context,
+        )
+        can_ai_log(
+            "vector_memory_embedding_started",
+            session=session_id,
+            model=payload.embed_model,
+            document_chars=len(embedding_text),
+        )
+        vector_phase_started = time.perf_counter()
+        query_embedding = await call_ollama_embed(
+            payload.embed_model,
+            embedding_text,
+        )
+        if query_embedding and len(query_embedding) == VECTOR_DIMENSION:
+            async with pool.acquire() as conn:
+                vector_context = await retrieve_vector_memory(
+                    conn,
+                    query_embedding=query_embedding,
+                    session=session_dict,
+                    analysis_mode=analysis_mode,
+                    embed_model=payload.embed_model,
+                )
+            apply_vector_historical_support(candidates, vector_context)
+        elif query_embedding:
+            vector_context.update({
+                "query_embedded": False,
+                "error": (
+                    f"Embedding dimension {len(query_embedding)} does not "
+                    f"match schema vector({VECTOR_DIMENSION})."
+                ),
+                "reason": "Embedding dimension mismatch.",
+            })
+            query_embedding = None
+        else:
+            vector_context.update({
+                "query_embedded": False,
+                "error": "Embedding request failed or returned no embedding.",
+                "reason": "Query embedding was unavailable.",
+            })
+
+        can_ai_log(
+            "vector_memory_retrieval_completed",
+            session=session_id,
+            query_embedded=vector_context.get("query_embedded"),
+            retrieved=vector_context.get("retrieved"),
+            match_count=vector_context.get("match_count"),
+            error=vector_context.get("error"),
+            elapsed_ms=round(
+                (time.perf_counter() - vector_phase_started) * 1000,
+                2,
+            ),
+        )
+    elif payload.use_embeddings:
+        vector_context["reason"] = "No candidates were available to embed."
+    else:
+        vector_context["reason"] = "Vector memory was disabled for this request."
+
     can_ai_log(
         "statistics_completed",
         session=session_id,
@@ -2341,6 +2894,7 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
         baseline_session=baseline_context.get("session_id"),
         ml_applied=ml_context.get("applied"),
         ml_model_id=ml_context.get("model_id"),
+        vector_matches=vector_context.get("match_count"),
         top_candidate=(
             candidates[0].can_id_hex
             if candidates
@@ -2377,6 +2931,7 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                 baseline_profile,
                 baseline_context,
                 ml_context,
+                vector_context,
             )
             can_ai_log(
                 "llm_generation_started",
@@ -2460,6 +3015,7 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
         baseline_profile=baseline_profile,
         baseline_context=baseline_context,
         ml_context=ml_context,
+        vector_context=vector_context,
     )
 
     repaired_report_sections: list[int] = []
@@ -2711,6 +3267,8 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                         "target_expected": not baseline_mode,
                         "baseline_subtraction": baseline_context,
                         "supervised_ml": ml_context,
+                        "vector_memory": vector_context,
+                        "marker_window_ms": payload.marker_window_ms,
                         "frames_analyzed": len(frames),
                         "markers": len(marker_dicts),
                         "model": resolved_llm_model,
@@ -2751,6 +3309,7 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                         baseline_profile,
                         baseline_context,
                         ml_context,
+                        vector_context,
                     )
                     await conn.execute(
                         """
@@ -2768,76 +3327,94 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                             "analysis_mode": analysis_mode,
                             "baseline_subtraction": baseline_context,
                             "supervised_ml": ml_context,
+                            "vector_memory": vector_context,
+                            "marker_window_ms": payload.marker_window_ms,
                         }),
                     )
 
                 embedding_inserted = False
-                embedding_error = None
-                if payload.use_embeddings and candidates:
-                    can_ai_log(
-                        "embedding_started",
-                        session=session_id,
-                        model=payload.embed_model,
-                    )
-                    embedding_phase_started = time.perf_counter()
-
-                    if baseline_mode:
-                        text = (
-                            f"CAN baseline profile {session_dict.get('vehicle_slug')} session {session_id}. Background IDs: "
-                            + "; ".join(
-                                f"{c.can_id_hex} role {c.candidate_role} baseline_score {c.baseline_score} changes {c.change_count}"
-                                for c in candidates[:10]
-                            )
-                        )
-                    else:
-                        text = (
-                            f"CAN analysis {session_dict.get('vehicle_slug')} session {session_id}. "
-                            f"Baseline {baseline_context.get('session_id') or 'none'}. "
-                            f"ML model {ml_context.get('model_id') or 'none'}. Top candidates: "
-                            + "; ".join(
-                                f"{c.can_id_hex} confidence {c.confidence} "
-                                f"baseline_overlap {c.baseline_overlap_score} "
-                                f"changes {c.change_count} markers {c.likely_marker_types}"
-                                for c in candidates[:10]
-                            )
-                        )
-                    embedding = await call_ollama_embed(payload.embed_model, text)
-                    if embedding and len(embedding) == VECTOR_DIMENSION:
-                        vector_literal = "[" + ",".join(f"{x:.8f}" for x in embedding) + "]"
+                embedding_error = vector_context.get("error")
+                if query_embedding is not None and embedding_text is not None:
+                    try:
                         await conn.execute(
                             """
-                            INSERT INTO signal_embeddings (vehicle_id, session_id, text, embedding, metadata)
+                            DELETE FROM signal_embeddings
+                            WHERE session_id = $1
+                              AND COALESCE(metadata->>'model', '') = $2
+                              AND COALESCE(metadata->>'analysis_mode', '') = $3
+                            """,
+                            session_id,
+                            payload.embed_model,
+                            analysis_mode,
+                        )
+                        await conn.execute(
+                            """
+                            INSERT INTO signal_embeddings (
+                                vehicle_id,
+                                session_id,
+                                text,
+                                embedding,
+                                metadata
+                            )
                             VALUES ($1, $2, $3, $4::vector, $5::jsonb)
                             """,
                             session["vehicle_id"],
                             session_id,
-                            text,
-                            vector_literal,
+                            embedding_text,
+                            vector_literal(query_embedding),
                             json_dumps({
+                                "schema_version": VECTOR_MEMORY_SCHEMA_VERSION,
                                 "model": payload.embed_model,
-                                "dimension": len(embedding),
+                                "dimension": len(query_embedding),
+                                "vehicle_slug": session_dict.get("vehicle_slug"),
+                                "mission_code": session_dict.get("mission_code"),
+                                "bus_interface": session_dict.get("bus_interface"),
+                                "bus_mode": session_dict.get("bus_mode"),
+                                "capture_kind": capture_kind_for(
+                                    session_dict.get("bus_interface"),
+                                    session_dict.get("bus_mode"),
+                                ),
                                 "analysis_mode": analysis_mode,
+                                "marker_window_ms": payload.marker_window_ms,
                                 "baseline_subtraction": baseline_context,
                                 "supervised_ml": ml_context,
+                                "retrieved_session_ids": [
+                                    match.get("session_id")
+                                    for match in vector_context.get("matches", [])
+                                    if isinstance(match, dict)
+                                ],
+                                "top_candidates": [
+                                    embedding_candidate_metadata(candidate)
+                                    for candidate in candidates[:10]
+                                ],
                             }),
                         )
                         embedding_inserted = True
-                    elif embedding:
-                        embedding_error = f"Embedding dimension {len(embedding)} does not match schema vector({VECTOR_DIMENSION})"
-                    else:
-                        embedding_error = "Embedding request failed or returned no embedding"
+                    except Exception as exc:
+                        embedding_error = f"{type(exc).__name__}: {exc}"
 
-                    can_ai_log(
-                        "embedding_completed",
-                        session=session_id,
-                        model=payload.embed_model,
-                        inserted=embedding_inserted,
-                        error=embedding_error,
-                        elapsed_ms=round(
-                            (time.perf_counter() - embedding_phase_started) * 1000,
-                            2,
-                        ),
+                vector_context["stored"] = embedding_inserted
+                vector_context["storage_error"] = embedding_error
+                await conn.execute(
+                    """
+                    UPDATE session_reports
+                    SET metadata = metadata || jsonb_build_object(
+                        'vector_memory', $2::jsonb
                     )
+                    WHERE id = $1
+                    """,
+                    report_row["id"],
+                    json_dumps(vector_context),
+                )
+
+                can_ai_log(
+                    "vector_memory_storage_completed",
+                    session=session_id,
+                    model=payload.embed_model,
+                    inserted=embedding_inserted,
+                    error=embedding_error,
+                )
+
 
         can_ai_log(
             "persistence_completed",
@@ -2870,11 +3447,13 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
         "short_dlc_frames": short_dlc_frames,
         "invalid_width_frames": invalid_width_frames,
         "markers": len(marker_dicts),
+        "marker_window_ms": payload.marker_window_ms,
         "marker_window_coverage": (
             candidates[0].marker_window_coverage
             if candidates
             else 0.0
         ),
+        "vector_memory": vector_context,
         "candidate_count": len(candidates),
         "candidates": response_candidates,
         "heatmap": response_heatmap,
@@ -2968,6 +3547,8 @@ async def get_session_analysis(session_id: UUID) -> dict[str, Any]:
         "baseline_profile": latest_report_metadata.get("baseline_profile"),
         "baseline_subtraction": latest_report_metadata.get("baseline_subtraction"),
         "supervised_ml": latest_report_metadata.get("supervised_ml"),
+        "vector_memory": latest_report_metadata.get("vector_memory"),
+        "marker_window_ms": latest_report_metadata.get("marker_window_ms"),
         "target_expected": latest_report_metadata.get("analysis_mode") != ANALYSIS_MODE_BASELINE if latest_report_metadata else None,
         "features": [dict(row) for row in features],
         "correlations": [dict(row) for row in correlations],

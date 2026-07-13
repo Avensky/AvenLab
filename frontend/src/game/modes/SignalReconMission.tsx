@@ -58,6 +58,8 @@ type BrainAnalyzeOptions = {
 type SavedAnalysisResponse = {
     ok?: boolean;
     session_id?: string;
+    vector_memory?: BrainAnalysisResult["vector_memory"];
+    marker_window_ms?: number;
     features?: Array<Record<string, unknown>>;
     correlations?: Array<Record<string, unknown>>;
     latest_report?: {
@@ -422,7 +424,7 @@ export function SignalReconMission({
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         marker_window_ms:
-                            selectedMission?.analysis_mode === "baseline_profile" ? 900 : 450,
+                            selectedMission?.analysis_mode === "baseline_profile" ? 900 : 300,
                         use_llm: requestUseLlm,
                         use_embeddings: requestUseEmbeddings,
                         llm_model: "qwen2.5:3b",
@@ -464,6 +466,9 @@ export function SignalReconMission({
                 `[ai] done: mode=${nextAnalysis.analysis_mode ?? "unknown"} frames=${nextAnalysis.frames_analyzed} markers=${nextAnalysis.markers} candidates=${nextAnalysis.candidates.length}`,
             );
             appendBrainLog(
+                `[memory] query=${nextAnalysis.vector_memory?.query_embedded ? "yes" : "no"} matches=${nextAnalysis.vector_memory?.match_count ?? 0} stored=${nextAnalysis.vector_memory?.stored ? "yes" : "no"}`,
+            );
+            appendBrainLog(
                 `[llm] ${
                     nextAnalysis.analysis_source === "llm"
                         ? `report generated (${nextAnalysis.llm_model ?? "model unknown"})`
@@ -486,7 +491,7 @@ export function SignalReconMission({
     ) =>
         handleAnalyzeSession(sessionIdOverride, source, {
             useLlmOverride: false,
-            useEmbeddingsOverride: false,
+            useEmbeddingsOverride: useEmbeddings,
             persist: true,
         });
 
@@ -547,6 +552,13 @@ export function SignalReconMission({
             const llmError = toNullableString(reportMetadata.llm_error);
             const llmSucceeded = reportMetadata.llm_succeeded === true;
             const reportContent = data.latest_report?.content ?? null;
+            const vectorMemory = (
+                data.vector_memory ??
+                asRecord(reportMetadata.vector_memory)
+            ) as BrainAnalysisResult["vector_memory"];
+            const markerWindowMs = toNumber(
+                data.marker_window_ms ?? reportMetadata.marker_window_ms,
+            );
 
             const nextAnalysis: BrainAnalysisResult = {
                 ok: true,
@@ -568,6 +580,9 @@ export function SignalReconMission({
                 baseline_profile: baselineProfile,
                 frames_analyzed: toNumber(reportMetadata.frames_analyzed),
                 markers: toNumber(reportMetadata.markers),
+                marker_window_ms: markerWindowMs || undefined,
+                marker_window_coverage: toNumber(reportMetadata.marker_window_coverage),
+                vector_memory: vectorMemory,
                 candidates,
                 heatmap,
                 llm_model: model,
@@ -583,6 +598,9 @@ export function SignalReconMission({
             await refreshMlContext(nextAnalysis.session_id);
             appendBrainLog(
                 `[db] loaded: features=${data.features?.length ?? 0} correlations=${data.correlations?.length ?? 0} candidates=${candidates.length}`,
+            );
+            appendBrainLog(
+                `[memory] saved context: matches=${vectorMemory?.match_count ?? 0}`,
             );
         } catch (err) {
             const message = err instanceof Error ? err.message : "Failed to read saved analysis.";
