@@ -5,7 +5,15 @@ import {
     useSignalReconStore,
     type ReconStep,
 } from "../../store/signalReconStore";
-import { getStepTotalMs } from "../../store/signalReconMissions";
+import {
+    ALL_RECON_PHASES,
+    getDefaultMissionProtocol,
+    getStepTotalMs,
+    type ReconMarkerLabelSource,
+    type ReconMarkerTrigger,
+    type ReconPhaseName,
+    type ReconTiming,
+} from "../../store/signalReconMissions";
 import {
     SignalReconBrainConsole,
     type BrainAnalysisResult,
@@ -46,7 +54,7 @@ type SignalReconMissionProps = {
     onDatabaseChanged?: () => void;
 };
 
-type MissionPanel = "game" | "steps" | "details" | "session";
+type MissionPanel = "game" | "steps" | "protocol" | "details" | "session";
 
 type BrainAnalyzeOptions = {
     useLlmOverride?: boolean;
@@ -75,13 +83,75 @@ type SavedAnalysisResponse = {
 const PANELS: Array<{ id: MissionPanel; label: string }> = [
     { id: "game", label: "PLAY" },
     { id: "steps", label: "STEPS" },
+    { id: "protocol", label: "PROTOCOL" },
     { id: "details", label: "DETAILS" },
     { id: "session", label: "SESSION" },
 ];
 
+const MARKER_TRIGGERS: Array<{
+    value: ReconMarkerTrigger;
+    label: string;
+}> = [
+    { value: "step_start", label: "Step start" },
+    { value: "baseline", label: "Baseline phase" },
+    { value: "countdown", label: "Countdown phase" },
+    { value: "action", label: "Action phase" },
+    { value: "capture", label: "Capture phase" },
+    { value: "step_complete", label: "Step complete" },
+    { value: "run_cancelled", label: "Run cancelled" },
+];
+
+const MARKER_LABEL_SOURCES: Array<{
+    value: ReconMarkerLabelSource;
+    label: string;
+}> = [
+    { value: "action_text", label: "Action text" },
+    { value: "step_label", label: "Step label" },
+    { value: "custom", label: "Custom label" },
+];
+
+const CAPTURE_PRESETS: Array<{ label: string; milliseconds: number }> = [
+    { label: "30 SEC", milliseconds: 30_000 },
+    { label: "5 MIN", milliseconds: 5 * 60_000 },
+    { label: "30 MIN", milliseconds: 30 * 60_000 },
+];
+
 function formatMs(ms: number) {
+    if (ms >= 60_000) {
+        const minutes = ms / 60_000;
+        return `${minutes.toFixed(minutes >= 10 ? 0 : 1)}m`;
+    }
     if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`;
     return `${ms}ms`;
+}
+
+function timingValue(
+    step: ReconStep,
+    phase: ReconPhaseName,
+): number {
+    if (phase === "baseline") return step.baseline_ms ?? 0;
+    if (phase === "countdown") return step.countdown_ms ?? 0;
+    if (phase === "action") return step.action_ms ?? 0;
+    return step.capture_ms ?? 0;
+}
+
+function timingPatch(
+    phase: ReconPhaseName,
+    milliseconds: number,
+): Partial<ReconTiming> {
+    if (phase === "baseline") return { baseline_ms: milliseconds };
+    if (phase === "countdown") return { countdown_ms: milliseconds };
+    if (phase === "action") return { action_ms: milliseconds };
+    return { capture_ms: milliseconds };
+}
+
+function markerIsCorrelationTarget(markerType: string) {
+    return [
+        "action_start",
+        "action",
+        "target_action",
+        "target_event",
+    ].includes(markerType.trim().toLowerCase());
 }
 
 function formatPhase(phase: string) {
@@ -173,7 +243,14 @@ export function SignalReconMission({
     const activePhase = useSignalReconStore((s) => s.activePhase);
     const phaseStartedAt = useSignalReconStore((s) => s.phaseStartedAt);
     const phaseEndsAt = useSignalReconStore((s) => s.phaseEndsAt);
+    const missionProtocols = useSignalReconStore((s) => s.missionProtocols);
     const selectStepByIndex = useSignalReconStore((s) => s.selectStepByIndex);
+    const setMissionEnabledPhases = useSignalReconStore((s) => s.setMissionEnabledPhases);
+    const addMissionMarker = useSignalReconStore((s) => s.addMissionMarker);
+    const updateMissionMarker = useSignalReconStore((s) => s.updateMissionMarker);
+    const removeMissionMarker = useSignalReconStore((s) => s.removeMissionMarker);
+    const updateStepTiming = useSignalReconStore((s) => s.updateStepTiming);
+    const resetMissionProtocol = useSignalReconStore((s) => s.resetMissionProtocol);
     const startSession = useSignalReconStore((s) => s.startSession);
     const runStep = useSignalReconStore((s) => s.runStep);
     const runSelectedMission = useSignalReconStore((s) => s.runSelectedMission);
@@ -197,6 +274,7 @@ export function SignalReconMission({
     const [useLlm, setUseLlm] = useState(true);
     const [useEmbeddings, setUseEmbeddings] = useState(true);
     const [autoAnalyze, setAutoAnalyze] = useState(true);
+    const [timingDrafts, setTimingDrafts] = useState<Record<string, string>>({});
 
     const [selectedSavedSessionId, setSelectedSavedSessionId] = useState<string | null>(
         initialSessionId ?? initialMissionProgress?.session_id ?? null,
@@ -214,15 +292,28 @@ export function SignalReconMission({
     }, []);
 
     const isRunning = Boolean(activeRunId);
+    const selectedProtocol = useMemo(
+        () =>
+            selectedMission
+                ? missionProtocols[selectedMission.mission_code] ??
+                  getDefaultMissionProtocol(selectedMission)
+                : null,
+        [missionProtocols, selectedMission],
+    );
     const displayStep = activeStep ?? steps[activeStepIndex] ?? null;
     const selectedStepSource = getStepSource(displayStep);
+    const passiveProfile =
+        selectedMission?.analysis_mode === "baseline_profile";
+    const actionMarkerConfigured = Boolean(
+        selectedProtocol?.markers.some(
+            (marker) =>
+                marker.enabled !== false &&
+                marker.trigger === "action",
+        ),
+    );
     const activeStepNumber = steps.length
         ? Math.min(activeStepIndex + 1, steps.length)
         : 0;
-
-    useEffect(() => {
-        if (isRunning) setActivePanel("game");
-    }, [activePhase, isRunning]);
 
     const phaseDuration = useMemo(() => {
         if (phaseStartedAt === null || phaseEndsAt === null) return 1;
@@ -642,27 +733,48 @@ export function SignalReconMission({
     };
 
     useEffect(() => {
-        if (activeSessionId) return;
-        const preferredSessionId =
-            selectedSavedSessionId ??
-            sessionHistory[0]?.session_id ??
-            initialSessionId ??
-            initialMissionProgress?.session_id ??
-            null;
-        if (!preferredSessionId) {
-            setBrainAnalysis(null);
-            setMlLabels({});
-            setMlReadiness(null);
-            setActiveModel(null);
-            return;
-        }
+        let cancelled = false;
 
-        if (selectedSavedSessionId !== preferredSessionId) {
-            setSelectedSavedSessionId(preferredSessionId);
-        }
-        setLastAnalyzedSessionId(preferredSessionId);
-        appendBrainLog(`[db] review mode: selected ${shortSessionId(preferredSessionId)}`);
-        void handleLoadLatestAnalysis(preferredSessionId, false);
+        const syncReviewSession = async () => {
+            // Keep state updates out of the synchronous effect body. The work
+            // below synchronizes React with saved database session history.
+            await Promise.resolve();
+            if (cancelled || activeSessionId) return;
+
+            const selectedStillAvailable = sessionHistory.some(
+                (item) => item.session_id === selectedSavedSessionId,
+            );
+            const preferredSessionId =
+                (selectedStillAvailable
+                    ? selectedSavedSessionId
+                    : null) ??
+                sessionHistory[0]?.session_id ??
+                initialSessionId ??
+                initialMissionProgress?.session_id ??
+                null;
+
+            if (!preferredSessionId) {
+                setBrainAnalysis(null);
+                setMlLabels({});
+                setMlReadiness(null);
+                setActiveModel(null);
+                return;
+            }
+
+            if (selectedSavedSessionId !== preferredSessionId) {
+                setSelectedSavedSessionId(preferredSessionId);
+            }
+            setLastAnalyzedSessionId(preferredSessionId);
+            appendBrainLog(
+                `[db] review mode: selected ${shortSessionId(preferredSessionId)}`,
+            );
+            await handleLoadLatestAnalysis(preferredSessionId, false);
+        };
+
+        void syncReviewSession();
+        return () => {
+            cancelled = true;
+        };
         // Reload only when mission/session history changes.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeSessionId, selectedMission?.mission_code, sessionHistory[0]?.session_id]);
@@ -896,7 +1008,9 @@ export function SignalReconMission({
                             DO NOTHING
                         </h3>
                         <p className="text-sm text-slate-300 sm:text-base">
-                            Hold still. Capturing quiet CAN baseline before this action.
+                            {passiveProfile
+                                ? "Recording passive CAN traffic. Do not operate controls."
+                                : "Hold still. Capturing quiet CAN baseline before this action."}
                         </p>
                     </>
                 )}
@@ -927,7 +1041,9 @@ export function SignalReconMission({
 
 
                         <p className="text-sm text-slate-400 sm:text-base">
-                            Marker posted. Perform only the requested action.
+                            {actionMarkerConfigured
+                                ? "Configured action marker posted. Perform only the requested action."
+                                : "No action marker is configured. Timing continues without posting one."}
                         </p>
                     </>
                 )}
@@ -941,7 +1057,9 @@ export function SignalReconMission({
                             HOLD STILL
                         </h3>
                         <p className="text-sm text-slate-300 sm:text-base">
-                            Capturing CAN response after the action window.
+                            {passiveProfile
+                                ? "Recording passive noise for the configured capture duration."
+                                : "Capturing CAN response after the action window."}
                         </p>
                     </>
                 )}
@@ -1020,7 +1138,7 @@ export function SignalReconMission({
                             <div className="flex items-center justify-between gap-3">
                                 <span className="font-bold">{step.label}</span>
                                 <span className="text-[10px] text-slate-500">
-                                    {formatMs(getStepTotalMs(step))}
+                                    {formatMs(getStepTotalMs(step, selectedProtocol?.enabled_phases))}
                                 </span>
                             </div>
                             <p className="mt-1 text-[11px] text-slate-500">
@@ -1033,6 +1151,453 @@ export function SignalReconMission({
             </div>
         </div>
     );
+
+    const renderProtocolPanel = () => {
+        if (!selectedProtocol) {
+            return (
+                <div className="p-4 text-sm text-slate-500">
+                    No mission protocol is available.
+                </div>
+            );
+        }
+
+        const updatePhases = (
+            phase: ReconPhaseName,
+            enabled: boolean,
+        ) => {
+            const current = selectedProtocol.enabled_phases;
+            const next = enabled
+                ? [...current, phase]
+                : current.filter((item) => item !== phase);
+            setMissionEnabledPhases(
+                selectedMission.mission_code,
+                next,
+            );
+        };
+
+        const commitTiming = (
+            phase: ReconPhaseName,
+            key: string,
+        ) => {
+            if (!displayStep) return;
+
+            const raw =
+                timingDrafts[key] ??
+                String(timingValue(displayStep, phase) / 1000);
+            const seconds = Number.parseFloat(raw);
+            if (!Number.isFinite(seconds) || seconds < 0) {
+                setError("Phase duration must be a non-negative number.");
+                return;
+            }
+
+            updateStepTiming(
+                selectedMission.mission_code,
+                displayStep.id,
+                timingPatch(
+                    phase,
+                    Math.min(
+                        Math.round(seconds * 1000),
+                        24 * 60 * 60 * 1000,
+                    ),
+                ),
+            );
+            setTimingDrafts((current) => {
+                const next = { ...current };
+                delete next[key];
+                return next;
+            });
+            setError(null);
+        };
+
+        return (
+            <div className="h-full min-h-0 space-y-4 overflow-y-auto p-3 sm:p-5">
+                <div className="rounded-xl border border-cyan-300/30 bg-cyan-500/5 p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                            <p className="text-[10px] tracking-[0.22em] text-cyan-300">
+                                RUNTIME MISSION PROTOCOL
+                            </p>
+                            <h3 className="text-xl font-black text-green-100">
+                                {selectedMission.mission_code} · {selectedMission.title}
+                            </h3>
+                            <p className="mt-1 text-xs text-slate-400">
+                                Changes save locally and apply immediately to the next step.
+                                Active runs must be cancelled before editing.
+                            </p>
+                        </div>
+                        <GameButton
+                            onPress={() =>
+                                resetMissionProtocol(
+                                    selectedMission.mission_code,
+                                )
+                            }
+                            disabled={isRunning}
+                            className="rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-xs font-bold text-slate-200 hover:bg-slate-800 disabled:opacity-40"
+                        >
+                            RESET DEFAULT
+                        </GameButton>
+                    </div>
+
+                    <div className="mt-4">
+                        <p className="text-[10px] tracking-[0.18em] text-slate-500">
+                            ENABLED PHASES
+                        </p>
+                        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                            {ALL_RECON_PHASES.map((phase) => {
+                                const enabled =
+                                    selectedProtocol.enabled_phases.includes(
+                                        phase,
+                                    );
+                                return (
+                                    <label
+                                        key={phase}
+                                        className={`flex items-center gap-2 rounded-lg border p-2 text-xs ${
+                                            enabled
+                                                ? "border-green-300/40 bg-green-500/10 text-green-100"
+                                                : "border-slate-700 bg-slate-950 text-slate-500"
+                                        }`}
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={enabled}
+                                            disabled={isRunning}
+                                            onChange={(event) =>
+                                                updatePhases(
+                                                    phase,
+                                                    event.target.checked,
+                                                )
+                                            }
+                                        />
+                                        {phase.toUpperCase()}
+                                    </label>
+                                );
+                            })}
+                        </div>
+                        {passiveProfile && (
+                            <p className="mt-2 text-xs text-cyan-200">
+                                Baseline profiles default to CAPTURE only and zero markers.
+                            </p>
+                        )}
+                    </div>
+                </div>
+
+                <div className="rounded-xl border border-green-400/20 bg-slate-950/80 p-4">
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <p className="text-[10px] tracking-[0.18em] text-slate-500">
+                                CURRENT STEP TIMING
+                            </p>
+                            <p className="font-black text-green-100">
+                                {displayStep?.label ?? "No step selected"}
+                            </p>
+                        </div>
+                        {displayStep && (
+                            <span className="text-xs text-slate-500">
+                                total {formatMs(
+                                    getStepTotalMs(
+                                        displayStep,
+                                        selectedProtocol.enabled_phases,
+                                    ),
+                                )}
+                            </span>
+                        )}
+                    </div>
+
+                    {displayStep ? (
+                        <>
+                            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                                {ALL_RECON_PHASES.map((phase) => {
+                                    const key = `${selectedMission.mission_code}:${displayStep.id}:${phase}`;
+                                    const seconds =
+                                        timingValue(displayStep, phase) /
+                                        1000;
+                                    return (
+                                        <label
+                                            key={phase}
+                                            className={`rounded-lg border p-2 ${
+                                                selectedProtocol.enabled_phases.includes(
+                                                    phase,
+                                                )
+                                                    ? "border-green-300/30 bg-green-500/5"
+                                                    : "border-slate-800 bg-black/20 opacity-60"
+                                            }`}
+                                        >
+                                            <span className="text-[10px] tracking-[0.15em] text-slate-500">
+                                                {phase.toUpperCase()} SECONDS
+                                            </span>
+                                            <input
+                                                type="number"
+                                                min={0}
+                                                max={86400}
+                                                step={0.1}
+                                                disabled={isRunning}
+                                                value={
+                                                    timingDrafts[key] ??
+                                                    String(seconds)
+                                                }
+                                                onChange={(event) =>
+                                                    setTimingDrafts(
+                                                        (current) => ({
+                                                            ...current,
+                                                            [key]:
+                                                                event.target
+                                                                    .value,
+                                                        }),
+                                                    )
+                                                }
+                                                onBlur={() =>
+                                                    commitTiming(phase, key)
+                                                }
+                                                className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-green-100 outline-none focus:border-green-300 disabled:opacity-40"
+                                            />
+                                        </label>
+                                    );
+                                })}
+                            </div>
+
+                            <div className="mt-3 flex flex-wrap gap-2">
+                                <span className="self-center text-[10px] tracking-[0.15em] text-slate-500">
+                                    CAPTURE PRESETS
+                                </span>
+                                {CAPTURE_PRESETS.map((preset) => (
+                                    <GameButton
+                                        key={preset.label}
+                                        disabled={isRunning}
+                                        onPress={() =>
+                                            updateStepTiming(
+                                                selectedMission.mission_code,
+                                                displayStep.id,
+                                                {
+                                                    capture_ms:
+                                                        preset.milliseconds,
+                                                },
+                                            )
+                                        }
+                                        className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-1.5 text-[10px] font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:opacity-40"
+                                    >
+                                        {preset.label}
+                                    </GameButton>
+                                ))}
+                            </div>
+                        </>
+                    ) : (
+                        <p className="text-sm text-slate-500">
+                            Select a step before editing its timing.
+                        </p>
+                    )}
+                </div>
+
+                <div className="rounded-xl border border-purple-300/25 bg-purple-500/5 p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                            <p className="text-[10px] tracking-[0.18em] text-purple-200">
+                                MISSION MARKERS
+                            </p>
+                            <p className="text-xs text-slate-400">
+                                {selectedProtocol.markers.length} configured marker
+                                {selectedProtocol.markers.length === 1 ? "" : "s"}.
+                                Only action marker types influence target correlation;
+                                other types remain control/context events.
+                            </p>
+                        </div>
+                        <GameButton
+                            disabled={isRunning}
+                            onPress={() =>
+                                addMissionMarker(
+                                    selectedMission.mission_code,
+                                )
+                            }
+                            className="rounded-lg border border-purple-300/40 bg-purple-500/10 px-3 py-2 text-xs font-bold text-purple-100 hover:bg-purple-400/20 disabled:opacity-40"
+                        >
+                            + ADD MARKER
+                        </GameButton>
+                    </div>
+
+                    <div className="mt-3 space-y-3">
+                        {selectedProtocol.markers.map((marker) => (
+                            <div
+                                key={marker.id}
+                                className="rounded-xl border border-slate-700 bg-slate-950/80 p-3"
+                            >
+                                <div className="grid gap-2 lg:grid-cols-[90px_150px_1fr_150px_auto]">
+                                    <label className="flex items-center gap-2 text-xs text-slate-300">
+                                        <input
+                                            type="checkbox"
+                                            checked={marker.enabled !== false}
+                                            disabled={isRunning}
+                                            onChange={(event) =>
+                                                updateMissionMarker(
+                                                    selectedMission.mission_code,
+                                                    marker.id,
+                                                    {
+                                                        enabled:
+                                                            event.target
+                                                                .checked,
+                                                    },
+                                                )
+                                            }
+                                        />
+                                        ENABLED
+                                    </label>
+
+                                    <label>
+                                        <span className="text-[9px] text-slate-500">
+                                            TRIGGER
+                                        </span>
+                                        <select
+                                            value={marker.trigger}
+                                            disabled={isRunning}
+                                            onChange={(event) =>
+                                                updateMissionMarker(
+                                                    selectedMission.mission_code,
+                                                    marker.id,
+                                                    {
+                                                        trigger:
+                                                            event.target
+                                                                .value as ReconMarkerTrigger,
+                                                    },
+                                                )
+                                            }
+                                            className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-slate-200"
+                                        >
+                                            {MARKER_TRIGGERS.map((option) => (
+                                                <option
+                                                    key={option.value}
+                                                    value={option.value}
+                                                >
+                                                    {option.label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </label>
+
+                                    <label>
+                                        <span className="text-[9px] text-slate-500">
+                                            MARKER TYPE
+                                        </span>
+                                        <input
+                                            value={marker.marker_type}
+                                            disabled={isRunning}
+                                            onChange={(event) =>
+                                                updateMissionMarker(
+                                                    selectedMission.mission_code,
+                                                    marker.id,
+                                                    {
+                                                        marker_type:
+                                                            event.target.value,
+                                                    },
+                                                )
+                                            }
+                                            className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-slate-200"
+                                        />
+                                    </label>
+
+                                    <label>
+                                        <span className="text-[9px] text-slate-500">
+                                            LABEL SOURCE
+                                        </span>
+                                        <select
+                                            value={marker.label_source}
+                                            disabled={isRunning}
+                                            onChange={(event) =>
+                                                updateMissionMarker(
+                                                    selectedMission.mission_code,
+                                                    marker.id,
+                                                    {
+                                                        label_source:
+                                                            event.target
+                                                                .value as ReconMarkerLabelSource,
+                                                    },
+                                                )
+                                            }
+                                            className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-slate-200"
+                                        >
+                                            {MARKER_LABEL_SOURCES.map(
+                                                (option) => (
+                                                    <option
+                                                        key={option.value}
+                                                        value={option.value}
+                                                    >
+                                                        {option.label}
+                                                    </option>
+                                                ),
+                                            )}
+                                        </select>
+                                    </label>
+
+                                    <GameButton
+                                        disabled={isRunning}
+                                        onPress={() =>
+                                            removeMissionMarker(
+                                                selectedMission.mission_code,
+                                                marker.id,
+                                            )
+                                        }
+                                        className="self-end rounded-lg border border-red-300/40 bg-red-500/10 px-3 py-2 text-xs font-bold text-red-100 hover:bg-red-400/20 disabled:opacity-40"
+                                    >
+                                        REMOVE
+                                    </GameButton>
+                                </div>
+
+                                {marker.label_source === "custom" && (
+                                    <label className="mt-2 block">
+                                        <span className="text-[9px] text-slate-500">
+                                            CUSTOM LABEL
+                                        </span>
+                                        <input
+                                            value={marker.label ?? ""}
+                                            disabled={isRunning}
+                                            onChange={(event) =>
+                                                updateMissionMarker(
+                                                    selectedMission.mission_code,
+                                                    marker.id,
+                                                    {
+                                                        label:
+                                                            event.target.value,
+                                                    },
+                                                )
+                                            }
+                                            className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-slate-200"
+                                        />
+                                    </label>
+                                )}
+
+                                <div className="mt-2 flex flex-wrap gap-2 text-[10px]">
+                                    <span
+                                        className={`rounded border px-2 py-1 ${
+                                            markerIsCorrelationTarget(
+                                                marker.marker_type,
+                                            )
+                                                ? "border-green-300/40 bg-green-500/10 text-green-100"
+                                                : "border-cyan-300/30 bg-cyan-500/10 text-cyan-100"
+                                        }`}
+                                    >
+                                        {markerIsCorrelationTarget(
+                                            marker.marker_type,
+                                        )
+                                            ? "TARGET CORRELATION"
+                                            : "CONTROL / CONTEXT"}
+                                    </span>
+                                    <span className="rounded border border-slate-700 px-2 py-1 text-slate-500">
+                                        trigger {marker.trigger}
+                                    </span>
+                                </div>
+                            </div>
+                        ))}
+
+                        {!selectedProtocol.markers.length && (
+                            <div className="rounded-xl border border-cyan-300/30 bg-cyan-500/5 p-4 text-sm text-cyan-100">
+                                No markers will be posted for this mission.
+                                {passiveProfile
+                                    ? " This is the recommended baseline behavior."
+                                    : " Add an action marker before relying on target correlation."}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    };
 
     const renderDetailsPanel = () => (
         <div className="h-full min-h-0 space-y-4 overflow-y-auto p-3 sm:p-5">
@@ -1299,7 +1864,7 @@ export function SignalReconMission({
                         />
                     </div>
 
-                    <div className="mt-1 grid grid-cols-4 gap-1 sm:gap-2">
+                    <div className="mt-1 grid grid-cols-5 gap-1 sm:gap-2">
                         {PANELS.map((panel) => (
                             <GameButton
                                 key={panel.id}
@@ -1325,6 +1890,7 @@ export function SignalReconMission({
                 <div className="relative min-h-0 flex-1 overflow-hidden">
                     {activePanel === "game" && renderGamePanel()}
                     {activePanel === "steps" && renderStepsPanel()}
+                    {activePanel === "protocol" && renderProtocolPanel()}
                     {activePanel === "details" && renderDetailsPanel()}
                     {activePanel === "session" && renderSessionPanel()}
                 </div>

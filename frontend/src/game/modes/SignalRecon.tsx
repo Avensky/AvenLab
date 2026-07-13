@@ -137,6 +137,7 @@ export function SignalRecon() {
   const setVehicleSlug = useSignalReconStore((s) => s.setVehicleSlug);
   const loadMissions = useSignalReconStore((s) => s.loadMissions);
   const selectMission = useSignalReconStore((s) => s.selectMission);
+  const switchMission = useSignalReconStore((s) => s.switchMission);
   const setSelectedRank = useSignalReconStore((s) => s.setSelectedRank);
   const stopSession = useSignalReconStore((s) => s.stopSession);
 
@@ -241,7 +242,11 @@ export function SignalRecon() {
   }, [selectedCaptureKind, selectedInterface, vehicleSlug]);
 
   useEffect(() => {
-    void refreshMissionProgressFromDb();
+    const timeoutId = window.setTimeout(() => {
+      void refreshMissionProgressFromDb();
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   }, [activeSessionId, refreshMissionProgressFromDb]);
 
 
@@ -282,27 +287,49 @@ export function SignalRecon() {
   }, [sessionActive, selectedMission, selectMission, visibleMissions]);
 
   const handleSelectMission = async (nextMission: ReconMission) => {
-    if (runActive) return;
+    if (busy || runActive) return;
 
-    if (
-      sessionActive &&
-      selectedMission?.mission_code !== nextMission.mission_code
-    ) {
-      setError("Stop the active CAN session before switching missions.");
+    const isSameMission =
+      selectedMission?.mission_code === nextMission.mission_code;
+    if (isSameMission) {
+      setQueueMinimized(true);
       return;
     }
 
-    const isSameMission = selectedMission?.mission_code === nextMission.mission_code;
-
+    setBusy(true);
     setError(null);
-    await selectMission(nextMission);
 
-    // Terminal mode: the queue becomes a compact rail and the terminal owns
-    // the rest of the game canvas. Selecting a new mission shows the tactical
-    // preview first; START CAN SESSION opens the live mission runner.
-    setQueueMinimized(true);
-    if (!isSameMission || !queueMinimized) {
-      setMissionTerminalOpen(false);
+    try {
+      if (sessionActive) {
+        // Preserve data integrity: one database session belongs to one mission.
+        // A hot switch closes the old session and immediately starts a new
+        // session using the same interface and safety mode.
+        await switchMission({
+          mission: nextMission,
+          busInterface: selectedInterface,
+          busMode: selectedMode,
+          restartActiveSession: true,
+        });
+        setMissionTerminalOpen(true);
+      } else {
+        await selectMission(nextMission);
+        // When browsing the queue, select the protocol without recording.
+        // If the tactical terminal is already open, it updates in place.
+        if (!missionTerminalOpen) {
+          setMissionTerminalOpen(false);
+        }
+      }
+
+      setQueueMinimized(true);
+      await refreshMissionProgressFromDb();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to switch Signal Recon missions.",
+      );
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -469,7 +496,7 @@ export function SignalRecon() {
                   {visibleMissions.map((item) => {
                     const selected =
                       mission?.mission_code === item.mission_code;
-                    const disabled = runActive || (sessionActive && !selected);
+                    const disabled = busy || runActive;
                     const progress = missionProgressByCode[item.mission_code];
 
                     return (
@@ -555,7 +582,7 @@ export function SignalRecon() {
                   {visibleMissions.map((item) => {
                     const selected =
                       mission?.mission_code === item.mission_code;
-                    const disabled = runActive || (sessionActive && !selected);
+                    const disabled = busy || runActive;
                     const progress = missionProgressByCode[item.mission_code];
 
                     return (

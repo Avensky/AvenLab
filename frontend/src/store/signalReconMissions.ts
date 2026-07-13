@@ -25,11 +25,37 @@ export type RecordingStage =
 
 export type ReconPhaseName = "baseline" | "countdown" | "action" | "capture";
 
+export type ReconMarkerTrigger =
+    | "step_start"
+    | ReconPhaseName
+    | "step_complete"
+    | "run_cancelled";
+
+export type ReconMarkerLabelSource =
+    | "step_label"
+    | "action_text"
+    | "custom";
+
 export type ReconTiming = {
     baseline_ms: number;
     countdown_ms: number;
     action_ms: number;
     capture_ms: number;
+};
+
+export type ReconMarkerDefinition = {
+    id: string;
+    trigger: ReconMarkerTrigger;
+    marker_type: string;
+    label_source: ReconMarkerLabelSource;
+    label?: string;
+    enabled?: boolean;
+};
+
+export type ReconMissionProtocol = {
+    enabled_phases: ReconPhaseName[];
+    markers: ReconMarkerDefinition[];
+    step_timing_overrides: Record<string, Partial<ReconTiming>>;
 };
 
 export type MissionDifficulty = {
@@ -84,6 +110,7 @@ export type ReconMissionDefinition = {
     difficulty: MissionDifficulty;
     description?: string;
     default_timing: ReconTiming;
+    protocol?: Partial<Omit<ReconMissionProtocol, "step_timing_overrides">>;
     steps?: ReconStepTemplate[];
     sub_missions?: ReconSubMissionDefinition[];
     metadata?: Record<string, unknown>;
@@ -95,6 +122,57 @@ export const DEFAULT_RECON_TIMING: ReconTiming = {
     action_ms: ACTION_MS,
     capture_ms: CAPTURE_MS,
 };
+
+export const ALL_RECON_PHASES: ReconPhaseName[] = [
+    "baseline",
+    "countdown",
+    "action",
+    "capture",
+];
+
+export const DEFAULT_TARGET_MARKERS: ReconMarkerDefinition[] = [
+    {
+        id: "action-start",
+        trigger: "action",
+        marker_type: "action_start",
+        label_source: "action_text",
+        enabled: true,
+    },
+];
+
+function cloneMarkers(
+    markers: ReconMarkerDefinition[],
+): ReconMarkerDefinition[] {
+    return markers.map((marker) => ({ ...marker }));
+}
+
+export function getDefaultMissionProtocol(
+    mission: ReconMissionDefinition,
+): ReconMissionProtocol {
+    const baselineProfile =
+        mission.analysis_mode === "baseline_profile" ||
+        mission.rank === "BASELINE";
+
+    const enabledPhases =
+        mission.protocol?.enabled_phases?.length
+            ? [...mission.protocol.enabled_phases]
+            : baselineProfile
+                ? (["capture"] as ReconPhaseName[])
+                : [...ALL_RECON_PHASES];
+
+    const markers =
+        mission.protocol?.markers !== undefined
+            ? cloneMarkers(mission.protocol.markers)
+            : baselineProfile
+                ? []
+                : cloneMarkers(DEFAULT_TARGET_MARKERS);
+
+    return {
+        enabled_phases: enabledPhases,
+        markers,
+        step_timing_overrides: {},
+    };
+}
 
 export const MISSION_RANKS: Record<MissionRank, MissionDifficulty> = {
     BASELINE: {
@@ -204,6 +282,7 @@ function mission(args: {
     description?: string;
     status?: MissionStatus;
     timing?: Partial<ReconTiming>;
+    protocol?: Partial<Omit<ReconMissionProtocol, "step_timing_overrides">>;
     steps?: ReconStepTemplate[];
     sub_missions?: ReconSubMissionDefinition[];
     metadata?: Record<string, unknown>;
@@ -214,6 +293,22 @@ function mission(args: {
         (args.rank === "BASELINE" || args.stage === "baseline"
             ? "baseline_profile"
             : "target_correlation");
+
+    const baselineProfile = analysisMode === "baseline_profile";
+    const protocol = {
+        enabled_phases:
+            args.protocol?.enabled_phases?.length
+                ? [...args.protocol.enabled_phases]
+                : baselineProfile
+                    ? (["capture"] as ReconPhaseName[])
+                    : [...ALL_RECON_PHASES],
+        markers:
+            args.protocol?.markers !== undefined
+                ? cloneMarkers(args.protocol.markers)
+                : baselineProfile
+                    ? []
+                    : cloneMarkers(DEFAULT_TARGET_MARKERS),
+    };
 
     return {
         id: args.code,
@@ -228,6 +323,7 @@ function mission(args: {
         difficulty: MISSION_RANKS[args.rank],
         description: args.description,
         default_timing: timing(args.timing),
+        protocol,
         steps: args.steps,
         sub_missions: args.sub_missions,
         analysis_mode: analysisMode,
@@ -239,10 +335,11 @@ function mission(args: {
             recording_stage: args.stage,
             difficulty: MISSION_RANKS[args.rank],
             default_timing: timing(args.timing),
+            protocol,
 
-            analysis_mode: args.analysis_mode,
+            analysis_mode: analysisMode,
             expected_target:
-                args.analysis_mode === "baseline_profile"
+                analysisMode === "baseline_profile"
                     ? null
                     : args.target,
 
@@ -295,6 +392,19 @@ export function getMissionSteps(mission: ReconMissionDefinition): ReconStepDefin
     );
 }
 
+export function applyMissionProtocolToSteps(
+    mission: ReconMissionDefinition,
+    protocol: ReconMissionProtocol,
+): ReconStepDefinition[] {
+    return getMissionSteps(mission).map((step) => {
+        const override = protocol.step_timing_overrides[step.id] ?? {};
+        return {
+            ...step,
+            ...override,
+        };
+    });
+}
+
 export function getMissionByCode(code: string): ReconMissionDefinition | undefined {
     return RECON_MISSIONS.find((mission) => mission.mission_code === code);
 }
@@ -303,13 +413,25 @@ export function getMissionsByRank(rank: MissionRank): ReconMissionDefinition[] {
     return RECON_MISSIONS.filter((mission) => mission.rank === rank);
 }
 
-export function getStepTotalMs(stepDef: Pick<ReconStepDefinition, "baseline_ms" | "countdown_ms" | "action_ms" | "capture_ms">): number {
-    return (
-        (stepDef.baseline_ms ?? BASELINE_MS) +
-        (stepDef.countdown_ms ?? COUNTDOWN_MS) +
-        (stepDef.action_ms ?? ACTION_MS) +
-        (stepDef.capture_ms ?? CAPTURE_MS)
-    );
+export function getStepTotalMs(
+    stepDef: Pick<
+        ReconStepDefinition,
+        "baseline_ms" | "countdown_ms" | "action_ms" | "capture_ms"
+    >,
+    enabledPhases: ReconPhaseName[] = ALL_RECON_PHASES,
+): number {
+    return enabledPhases.reduce((total, phase) => {
+        if (phase === "baseline") {
+            return total + (stepDef.baseline_ms ?? BASELINE_MS);
+        }
+        if (phase === "countdown") {
+            return total + (stepDef.countdown_ms ?? COUNTDOWN_MS);
+        }
+        if (phase === "action") {
+            return total + (stepDef.action_ms ?? ACTION_MS);
+        }
+        return total + (stepDef.capture_ms ?? CAPTURE_MS);
+    }, 0);
 }
 
 const BASELINE_MISSIONS: ReconMissionDefinition[] = [
