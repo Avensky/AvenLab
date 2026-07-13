@@ -127,6 +127,29 @@ export type VectorMemoryContext = {
     scope?: Record<string, string | null>;
 };
 
+export type MarkerSelectionContext = {
+    strategy?: string;
+    action_markers?: number;
+    explicit_action_markers?: number;
+    control_markers?: number;
+    ignored_markers?: number;
+    unknown_markers?: number;
+    fallback_used?: boolean;
+    action_keys?: string[];
+    window_coverage?: number;
+};
+
+export type FrameSelectionContext = {
+    total_frames?: number;
+    max_frames?: number;
+    selected_frames?: number;
+    truncated?: boolean;
+    strategy?: string;
+    segment_count?: number;
+    action_marker_count?: number;
+    warning?: string;
+};
+
 export type BrainAnalysisResult = {
     ok: boolean;
     session_id: string;
@@ -146,7 +169,12 @@ export type BrainAnalysisResult = {
         guidance?: string;
     };
     frames_analyzed: number;
+    frames_available?: number;
     markers: number;
+    selected_action_markers?: number;
+    marker_selection?: MarkerSelectionContext | null;
+    frame_selection?: FrameSelectionContext | null;
+    confidence_semantics?: string;
     marker_window_ms?: number;
     marker_window_coverage?: number;
     vector_memory?: VectorMemoryContext | null;
@@ -528,7 +556,7 @@ export function SignalReconBrainConsole({
                                     </div>
                                 </div>
                                 <p className="mt-2 text-[10px] text-cyan-100/70">
-                                    Same vehicle, mission, capture kind, analysis mode, and embedding model. Historical memory does not directly alter confidence.
+                                    Same vehicle, mission, capture kind, analysis mode, and embedding model. Historical memory does not directly alter the evidence score.
                                 </p>
                                 {(analysis?.vector_memory?.error || analysis?.vector_memory?.storage_error) && (
                                     <p className="mt-1 text-[10px] text-red-200">
@@ -556,12 +584,12 @@ export function SignalReconBrainConsole({
                                     <div className="mt-2 grid gap-3 sm:grid-cols-[0.7fr_1.3fr]">
                                         <div className={`rounded-xl border p-4 ${candidateTone(topCandidate.confidence)}`}>
                                             <p className="text-4xl font-black">{percent(topCandidate.confidence)}</p>
-                                            <p className="text-sm">final blended confidence</p>
+                                            <p className="text-sm">final evidence score</p>
                                             <p className="mt-3 text-2xl font-black">{topCandidate.can_id_hex}</p>
                                         </div>
                                         <div className="grid gap-2 text-sm text-slate-300 sm:grid-cols-2">
-                                            <p><span className="text-slate-500">statistical:</span> {percent(topCandidate.confidence_before_baseline)}</p>
-                                            <p><span className="text-slate-500">baseline-adjusted:</span> {percent(topCandidate.confidence_before_ml ?? topCandidate.confidence)}</p>
+                                            <p><span className="text-slate-500">statistical evidence:</span> {percent(topCandidate.confidence_before_baseline)}</p>
+                                            <p><span className="text-slate-500">baseline-adjusted evidence:</span> {percent(topCandidate.confidence_before_ml ?? topCandidate.confidence)}</p>
                                             <p><span className="text-slate-500">ML probability:</span> {percent(topCandidate.ml_probability)}</p>
                                             <p><span className="text-slate-500">marker score:</span> {fixed(topCandidate.correlation_score)}</p>
                                             <p><span className="text-slate-500">frames:</span> {topCandidate.frame_count}</p>
@@ -571,6 +599,46 @@ export function SignalReconBrainConsole({
                                     </div>
                                 ) : (
                                     <p className="mt-2 text-sm text-slate-500">No candidates yet. Select a session and analyze it.</p>
+                                )}
+                            </div>
+
+                            <div className="rounded-xl border border-cyan-300/20 bg-cyan-500/5 p-3 text-xs text-cyan-100">
+                                <div className="grid gap-2 sm:grid-cols-3">
+                                    <div>
+                                        <p className="text-slate-500">Evidence semantics</p>
+                                        <p className="font-bold">
+                                            {analysis?.confidence_semantics ??
+                                                "Research evidence score in [0,1], not a calibrated probability."}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-slate-500">Correlation markers</p>
+                                        <p className="font-bold">
+                                            {analysis?.selected_action_markers ??
+                                                analysis?.marker_selection?.action_markers ??
+                                                0} action / {analysis?.markers ?? 0} total
+                                        </p>
+                                        <p className="text-[10px] text-slate-500">
+                                            {analysis?.marker_selection?.strategy ?? "explicit action markers only"}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-slate-500">Frame selection</p>
+                                        <p className="font-bold">
+                                            {analysis?.frames_analyzed ?? 0} / {analysis?.frames_available ??
+                                                analysis?.frame_selection?.total_frames ??
+                                                analysis?.frames_analyzed ??
+                                                0}
+                                        </p>
+                                        <p className="text-[10px] text-slate-500">
+                                            {analysis?.frame_selection?.strategy ?? "all_frames"}
+                                        </p>
+                                    </div>
+                                </div>
+                                {analysis?.frame_selection?.warning && (
+                                    <p className="mt-2 rounded-lg border border-yellow-300/20 bg-yellow-500/10 p-2 text-yellow-100">
+                                        {analysis.frame_selection.warning}
+                                    </p>
                                 )}
                             </div>
 
@@ -606,10 +674,10 @@ export function SignalReconBrainConsole({
                                         </div>
 
                                         <div className="mt-3 grid grid-cols-2 gap-2 text-xs lg:grid-cols-4">
-                                            <div className="rounded-lg border border-slate-700 bg-black/20 p-2"><p className="text-slate-500">Statistical confidence</p><p className="text-lg font-black">{percent(statisticalConfidence)}</p></div>
-                                            <div className="rounded-lg border border-slate-700 bg-black/20 p-2"><p className="text-slate-500">Baseline-adjusted</p><p className="text-lg font-black">{percent(baselineAdjustedConfidence)}</p></div>
+                                            <div className="rounded-lg border border-slate-700 bg-black/20 p-2"><p className="text-slate-500">Statistical evidence</p><p className="text-lg font-black">{percent(statisticalConfidence)}</p></div>
+                                            <div className="rounded-lg border border-slate-700 bg-black/20 p-2"><p className="text-slate-500">Baseline-adjusted evidence</p><p className="text-lg font-black">{percent(baselineAdjustedConfidence)}</p></div>
                                             <div className="rounded-lg border border-slate-700 bg-black/20 p-2"><p className="text-slate-500">ML probability</p><p className="text-lg font-black">{percent(candidate.ml_probability)}</p></div>
-                                            <div className="rounded-lg border border-slate-700 bg-black/20 p-2"><p className="text-slate-500">Final blended</p><p className="text-lg font-black">{percent(candidate.confidence)}</p></div>
+                                            <div className="rounded-lg border border-slate-700 bg-black/20 p-2"><p className="text-slate-500">Final evidence score</p><p className="text-lg font-black">{percent(candidate.confidence)}</p></div>
                                         </div>
 
                                         {candidate.historical_support && (

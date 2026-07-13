@@ -59,6 +59,10 @@ type SavedAnalysisResponse = {
     ok?: boolean;
     session_id?: string;
     vector_memory?: BrainAnalysisResult["vector_memory"];
+    marker_selection?: BrainAnalysisResult["marker_selection"];
+    frame_selection?: BrainAnalysisResult["frame_selection"];
+    frames_available?: number;
+    confidence_semantics?: string;
     marker_window_ms?: number;
     features?: Array<Record<string, unknown>>;
     correlations?: Array<Record<string, unknown>>;
@@ -559,6 +563,18 @@ export function SignalReconMission({
             const markerWindowMs = toNumber(
                 data.marker_window_ms ?? reportMetadata.marker_window_ms,
             );
+            const markerSelection = (
+                data.marker_selection ??
+                asRecord(reportMetadata.marker_selection)
+            ) as BrainAnalysisResult["marker_selection"];
+            const frameSelection = (
+                data.frame_selection ??
+                asRecord(reportMetadata.frame_selection)
+            ) as BrainAnalysisResult["frame_selection"];
+            const confidenceSemantics = toNullableString(
+                data.confidence_semantics ??
+                reportMetadata.confidence_semantics,
+            );
 
             const nextAnalysis: BrainAnalysisResult = {
                 ok: true,
@@ -579,7 +595,21 @@ export function SignalReconMission({
                         : undefined,
                 baseline_profile: baselineProfile,
                 frames_analyzed: toNumber(reportMetadata.frames_analyzed),
+                frames_available: toNumber(
+                    data.frames_available ??
+                    reportMetadata.frames_available ??
+                    frameSelection?.total_frames,
+                ),
                 markers: toNumber(reportMetadata.markers),
+                selected_action_markers: toNumber(
+                    reportMetadata.marker_selection &&
+                    typeof reportMetadata.marker_selection === "object"
+                        ? asRecord(reportMetadata.marker_selection).action_markers
+                        : markerSelection?.action_markers,
+                ),
+                marker_selection: markerSelection,
+                frame_selection: frameSelection,
+                confidence_semantics: confidenceSemantics ?? undefined,
                 marker_window_ms: markerWindowMs || undefined,
                 marker_window_coverage: toNumber(reportMetadata.marker_window_coverage),
                 vector_memory: vectorMemory,

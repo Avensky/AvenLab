@@ -33,7 +33,7 @@ def _env_int(name: str, default: int, minimum: int = 1) -> int:
     return max(value, minimum)
 
 
-ML_FEATURE_SCHEMA_VERSION = 1
+ML_FEATURE_SCHEMA_VERSION = 2
 ML_MIN_EXAMPLES = _env_int("ML_MIN_EXAMPLES", 8, minimum=4)
 ML_MIN_DISTINCT_SESSIONS = _env_int(
     "ML_MIN_DISTINCT_SESSIONS",
@@ -271,6 +271,36 @@ def _feature_vector_from_values(
             continue
         evidence_count += 1
 
+        marker_observations = item.get("marker_observations")
+        observation_shift_found = False
+
+        if isinstance(marker_observations, list) and marker_observations:
+            for observation in marker_observations:
+                if not isinstance(observation, dict):
+                    continue
+
+                latency = observation.get("latency_ms")
+                if (
+                    isinstance(latency, (int, float))
+                    and latency >= 0
+                ):
+                    latencies.append(float(latency))
+
+                pre_value = observation.get("pre_mode")
+                action_value = observation.get("action_mode")
+                if (
+                    pre_value is not None
+                    and action_value is not None
+                    and pre_value != action_value
+                ):
+                    observation_shift_found = True
+
+            if observation_shift_found:
+                action_shift_count += 1
+            continue
+
+        # Backward-compatible fallback for schema-v1 evidence that predates
+        # explicit per-marker observations.
         latency = item.get("median_marker_latency_ms")
         if isinstance(latency, (int, float)) and latency >= 0:
             latencies.append(float(latency))

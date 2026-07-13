@@ -128,6 +128,30 @@ ANALYSIS_MODE_BASELINE = "baseline_profile"
 ANALYSIS_MODE_TARGET = "target_correlation"
 BASELINE_CODE_PREFIXES = ("BASE", "NOISE", "SNIFF", "PROFILE")
 
+# Only explicit action markers contribute to target correlation. Structural
+# markers remain useful as controls/audit context but must not create evidence.
+ACTION_MARKER_TYPES = {
+    "action_start",
+    "action",
+    "target_action",
+    "target_event",
+}
+CONTROL_MARKER_TYPES = {
+    "step_start",
+    "baseline_start",
+    "countdown_start",
+    "capture_start",
+    "step_complete",
+}
+IGNORED_MARKER_TYPES = {
+    "run_cancelled",
+    "session_start",
+    "session_stop",
+}
+CONFIDENCE_SEMANTICS = (
+    "bounded research evidence score in [0,1]; not a calibrated probability"
+)
+
 
 def json_dumps(value: Any) -> str:
     return json.dumps(value, separators=(",", ":"), sort_keys=True, default=str)
@@ -484,18 +508,37 @@ class AnalyzeSessionRequest(BaseModel):
     persist: bool = True
 
 
+class MarkerObservation(BaseModel):
+    marker_type: str
+    step_code: Optional[str]
+    label: Optional[str]
+    action_key: str
+    timestamp_ms: int
+    pre_mode: Optional[int]
+    action_mode: Optional[int]
+    post_mode: Optional[int]
+    change_count: int
+    latency_ms: Optional[float]
+
+
 class ByteEvidence(BaseModel):
     byte_index: int
     change_count: int
     unique_values: list[int]
     most_common_values: list[tuple[int, int]]
+
+    # These three compatibility fields are populated only when all explicit
+    # action groups agree. ON and OFF groups are never pooled into one mode.
     pre_marker_mode: Optional[int]
     action_window_mode: Optional[int]
     post_marker_mode: Optional[int]
+
     bit_flip_counts: dict[str, int]
     median_marker_latency_ms: Optional[float]
     in_window_changes: int
     out_of_window_changes: int
+    marker_observations: list[MarkerObservation] = Field(default_factory=list)
+    action_group_modes: dict[str, Any] = Field(default_factory=dict)
 
 
 class Candidate(BaseModel):
@@ -550,6 +593,9 @@ class FrameRow:
     can_id: int
     dlc: int
     data: list[int]
+    # Truncated sessions are loaded as multiple contiguous time segments.
+    # Transitions are never calculated across segment boundaries.
+    segment_id: int = 0
 
 
 def mode_value(values: list[int]) -> Optional[int]:
@@ -686,50 +732,113 @@ def timestamp_in_any_window(
     return timestamp_in_intervals(timestamp_ms, intervals, starts)
 
 
+
+def normalized_marker_type(marker: dict[str, Any]) -> str:
+    return str(marker.get("marker_type") or "").strip().lower().replace("-", "_")
+
+
+def marker_action_key(marker: dict[str, Any]) -> str:
+    return str(
+        marker.get("step_code")
+        or marker.get("label")
+        or normalized_marker_type(marker)
+        or "unknown_action"
+    )
+
+
+def classify_marker_role(marker: dict[str, Any]) -> str:
+    marker_type = normalized_marker_type(marker)
+    metadata = metadata_dict(marker.get("metadata"))
+    phase = str(metadata.get("phase") or "").strip().lower().replace("-", "_")
+
+    if marker_type in ACTION_MARKER_TYPES or phase == "action":
+        return "action"
+    if marker_type in CONTROL_MARKER_TYPES or phase in {
+        "baseline",
+        "countdown",
+        "capture",
+    }:
+        return "control"
+    if marker_type in IGNORED_MARKER_TYPES:
+        return "ignored"
+    if marker_type.startswith("action_"):
+        return "action"
+    return "unknown"
+
+
+def select_analysis_markers(
+    markers: list[dict[str, Any]],
+    *,
+    baseline_mode: bool,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Select explicit action markers and retain structural markers as controls."""
+    roles = {
+        "action": [],
+        "control": [],
+        "ignored": [],
+        "unknown": [],
+    }
+    for marker in markers:
+        roles[classify_marker_role(marker)].append(marker)
+
+    selected = [] if baseline_mode else list(roles["action"])
+    fallback_used = False
+
+    # Legacy captures may predate action_start. Only use unknown markers when
+    # there are no explicit action markers at all; structural controls remain
+    # excluded.
+    if not baseline_mode and not selected and roles["unknown"]:
+        selected = list(roles["unknown"])
+        fallback_used = True
+
+    context = {
+        "strategy": (
+            "baseline_profile_no_target_windows"
+            if baseline_mode
+            else (
+                "legacy_unknown_marker_fallback"
+                if fallback_used
+                else "explicit_action_markers_only"
+            )
+        ),
+        "action_markers": len(selected),
+        "explicit_action_markers": len(roles["action"]),
+        "control_markers": len(roles["control"]),
+        "ignored_markers": len(roles["ignored"]),
+        "unknown_markers": len(roles["unknown"]),
+        "fallback_used": fallback_used,
+        "action_keys": sorted({
+            marker_action_key(marker)
+            for marker in selected
+        }),
+        "confidence_influence": (
+            "selected action markers define correlation windows; controls do not"
+        ),
+    }
+    return selected, context
+
+
+def strict_consensus(values: list[Optional[int]]) -> Optional[int]:
+    """Return a mode only when every group supplied and agreed on one value."""
+    if not values or any(value is None for value in values):
+        return None
+    unique = {int(value) for value in values if value is not None}
+    return next(iter(unique)) if len(unique) == 1 else None
+
+
 def build_byte_evidence(
     rows: list[FrameRow],
     marker_windows: list[tuple[int, int, dict[str, Any]]],
     marker_window_ms: int,
 ) -> tuple[list[ByteEvidence], dict[str, float]]:
-    """Build byte evidence without repeatedly rescanning frames for every marker.
-
-    The previous implementation performed three full row scans for every marker
-    and every byte. On a 75,000-frame Pi session that can create tens of millions
-    of Python-level comparisons. This version builds merged phase intervals once,
-    scans each byte's rows once, and uses binary search for marker latency.
-    """
-    marker_times = sorted(
-        int(marker.get("timestamp_ms") or 0)
-        for _, _, marker in marker_windows
-    )
-
+    """Build per-action evidence without pooling ON and OFF marker states."""
     correlation_intervals, correlation_starts = build_interval_index(
         [(start, end) for start, end, _ in marker_windows]
-    )
-    pre_intervals, pre_starts = build_interval_index(
-        [
-            (marker_time - marker_window_ms, marker_time - 1)
-            for marker_time in marker_times
-        ]
-    )
-    action_intervals, action_starts = build_interval_index(
-        [
-            (marker_time, marker_time + marker_window_ms)
-            for marker_time in marker_times
-        ]
-    )
-    post_intervals, post_starts = build_interval_index(
-        [
-            (
-                marker_time + marker_window_ms + 1,
-                marker_time + (2 * marker_window_ms),
-            )
-            for marker_time in marker_times
-        ]
     )
 
     evidence_rows: list[ByteEvidence] = []
     byte_entropy: dict[str, float] = {}
+    row_timestamps = [row.timestamp_ms for row in rows]
 
     for byte_index in range(8):
         values = [frame_byte(row, byte_index) for row in rows]
@@ -742,6 +851,9 @@ def build_byte_evidence(
         bit_flip_counts = [0] * 8
 
         for previous, current in zip(rows, rows[1:]):
+            if previous.segment_id != current.segment_id:
+                continue
+
             previous_value = frame_byte(previous, byte_index)
             current_value = frame_byte(current, byte_index)
             if previous_value == current_value:
@@ -764,49 +876,107 @@ def build_byte_evidence(
         )
         out_of_window_changes = len(change_timestamps) - in_window_changes
 
-        pre_marker_values: list[int] = []
-        action_window_values: list[int] = []
-        post_marker_values: list[int] = []
+        observations: list[MarkerObservation] = []
+        grouped: dict[str, list[MarkerObservation]] = defaultdict(list)
 
-        for row, value in zip(rows, values):
-            timestamp_ms = row.timestamp_ms
+        for _, _, marker in marker_windows:
+            marker_time = int(marker.get("timestamp_ms") or 0)
+            pre_start = marker_time - marker_window_ms
+            pre_end = marker_time - 1
+            action_start = marker_time
+            action_end = marker_time + marker_window_ms
+            post_start = action_end + 1
+            post_end = marker_time + (2 * marker_window_ms)
 
-            if timestamp_in_intervals(
-                timestamp_ms,
-                pre_intervals,
-                pre_starts,
-            ):
-                pre_marker_values.append(value)
+            def values_between(start_ms: int, end_ms: int) -> list[int]:
+                left = bisect_left(row_timestamps, start_ms)
+                right = bisect_right(row_timestamps, end_ms)
+                return values[left:right]
 
-            if timestamp_in_intervals(
-                timestamp_ms,
-                action_intervals,
-                action_starts,
-            ):
-                action_window_values.append(value)
+            pre_values = values_between(pre_start, pre_end)
+            action_values = values_between(action_start, action_end)
+            post_values = values_between(post_start, post_end)
 
-            if timestamp_in_intervals(
-                timestamp_ms,
-                post_intervals,
-                post_starts,
-            ):
-                post_marker_values.append(value)
+            left_change = bisect_left(change_timestamps, action_start)
+            right_change = bisect_right(change_timestamps, action_end)
+            marker_change_count = right_change - left_change
 
-        marker_latencies: list[int] = []
-        for marker_time in marker_times:
-            change_index = bisect_left(change_timestamps, marker_time)
-            if change_index >= len(change_timestamps):
-                continue
+            latency: Optional[float] = None
+            if left_change < len(change_timestamps):
+                first_change = change_timestamps[left_change]
+                if first_change <= action_end:
+                    latency = float(first_change - marker_time)
 
-            first_change = change_timestamps[change_index]
-            if first_change <= marker_time + marker_window_ms:
-                marker_latencies.append(first_change - marker_time)
+            action_key = marker_action_key(marker)
+            observation = MarkerObservation(
+                marker_type=normalized_marker_type(marker),
+                step_code=(
+                    str(marker.get("step_code"))
+                    if marker.get("step_code") is not None
+                    else None
+                ),
+                label=(
+                    str(marker.get("label"))
+                    if marker.get("label") is not None
+                    else None
+                ),
+                action_key=action_key,
+                timestamp_ms=marker_time,
+                pre_mode=mode_value(pre_values),
+                action_mode=mode_value(action_values),
+                post_mode=mode_value(post_values),
+                change_count=marker_change_count,
+                latency_ms=(
+                    round(latency, 2)
+                    if latency is not None
+                    else None
+                ),
+            )
+            observations.append(observation)
+            grouped[action_key].append(observation)
 
-        median_latency = (
-            float(statistics.median(marker_latencies))
-            if marker_latencies
-            else None
-        )
+        action_group_modes: dict[str, Any] = {}
+        group_pre_modes: list[Optional[int]] = []
+        group_action_modes: list[Optional[int]] = []
+        group_post_modes: list[Optional[int]] = []
+        all_latencies: list[float] = []
+
+        for action_key, group_observations in grouped.items():
+            pre_modes = [item.pre_mode for item in group_observations]
+            action_modes = [item.action_mode for item in group_observations]
+            post_modes = [item.post_mode for item in group_observations]
+            latencies = [
+                float(item.latency_ms)
+                for item in group_observations
+                if item.latency_ms is not None
+            ]
+
+            group_pre = strict_consensus(pre_modes)
+            group_action = strict_consensus(action_modes)
+            group_post = strict_consensus(post_modes)
+            group_pre_modes.append(group_pre)
+            group_action_modes.append(group_action)
+            group_post_modes.append(group_post)
+            all_latencies.extend(latencies)
+
+            action_group_modes[action_key] = {
+                "repetitions": len(group_observations),
+                "pre_modes": pre_modes,
+                "action_modes": action_modes,
+                "post_modes": post_modes,
+                "consensus_pre_mode": group_pre,
+                "consensus_action_mode": group_action,
+                "consensus_post_mode": group_post,
+                "total_action_window_changes": sum(
+                    item.change_count
+                    for item in group_observations
+                ),
+                "median_latency_ms": (
+                    round(float(statistics.median(latencies)), 2)
+                    if latencies
+                    else None
+                ),
+            }
 
         evidence_rows.append(
             ByteEvidence(
@@ -817,25 +987,28 @@ def build_byte_evidence(
                     (int(value), int(count))
                     for value, count in Counter(values).most_common(5)
                 ],
-                pre_marker_mode=mode_value(pre_marker_values),
-                action_window_mode=mode_value(action_window_values),
-                post_marker_mode=mode_value(post_marker_values),
+                # Do not collapse opposing action groups. These remain None
+                # whenever ON/OFF or press/release groups disagree.
+                pre_marker_mode=strict_consensus(group_pre_modes),
+                action_window_mode=strict_consensus(group_action_modes),
+                post_marker_mode=strict_consensus(group_post_modes),
                 bit_flip_counts={
                     str(bit_index): int(count)
                     for bit_index, count in enumerate(bit_flip_counts)
                 },
                 median_marker_latency_ms=(
-                    round(median_latency, 2)
-                    if median_latency is not None
+                    round(float(statistics.median(all_latencies)), 2)
+                    if all_latencies
                     else None
                 ),
                 in_window_changes=in_window_changes,
                 out_of_window_changes=out_of_window_changes,
+                marker_observations=observations,
+                action_group_modes=action_group_modes,
             )
         )
 
     return evidence_rows, byte_entropy
-
 
 def is_embedding_only_model(model_name: str) -> bool:
     lowered = model_name.lower()
@@ -971,9 +1144,10 @@ def compact_byte_evidence(candidate: Candidate, limit: int = 3) -> str:
             f"B{item.byte_index}: changes={item.change_count}, "
             f"in_window={item.in_window_changes}, "
             f"out_window={item.out_of_window_changes}, "
-            f"pre={item.pre_marker_mode}, "
-            f"action={item.action_window_mode}, "
-            f"post={item.post_marker_mode}, "
+            f"consensus_pre={item.pre_marker_mode}, "
+            f"consensus_action={item.action_window_mode}, "
+            f"consensus_post={item.post_marker_mode}, "
+            f"action_groups={item.action_group_modes}, "
             f"latency_ms={item.median_marker_latency_ms}, "
             f"common={item.most_common_values[:4]}, "
             f"bit_flips={nonzero_bit_flips}"
@@ -1042,7 +1216,7 @@ def build_embedding_document(
             "CAN source: "
             f"{session.get('bus_interface')}/{session.get('bus_mode')}"
         ),
-        f"Marker half-window: {marker_window_ms} ms",
+        f"Post-marker action window: {marker_window_ms} ms",
         (
             "Matched baseline: "
             f"{baseline_context.get('session_id') or 'none'}"
@@ -1942,10 +2116,40 @@ def build_llm_prompt(
     ml_context: Optional[dict[str, Any]] = None,
     vector_context: Optional[dict[str, Any]] = None,
 ) -> str:
-    marker_lines = "\n".join(
-        f"- {m.get('timestamp_ms')}ms {m.get('marker_type')} {m.get('step_code') or ''}: {m.get('label') or ''}"
-        for m in markers[:40]
-    ) or "- no markers"
+    selected_action_markers, prompt_marker_context = select_analysis_markers(
+        markers,
+        baseline_mode=is_baseline_mode(analysis_mode),
+    )
+    selected_ids = {
+        str(marker.get("id"))
+        for marker in selected_action_markers
+        if marker.get("id") is not None
+    }
+    control_markers = [
+        marker
+        for marker in markers
+        if str(marker.get("id")) not in selected_ids
+    ]
+
+    action_marker_lines = "\n".join(
+        (
+            f"- {marker.get('timestamp_ms')}ms "
+            f"{marker.get('marker_type')} "
+            f"{marker.get('step_code') or ''}: "
+            f"{marker.get('label') or ''}"
+        )
+        for marker in selected_action_markers[:40]
+    ) or "- no explicit action markers"
+
+    control_marker_lines = "\n".join(
+        (
+            f"- {marker.get('timestamp_ms')}ms "
+            f"{marker.get('marker_type')} "
+            f"{marker.get('step_code') or ''}: "
+            f"{marker.get('label') or ''}"
+        )
+        for marker in control_markers[:40]
+    ) or "- no structural/control markers"
 
     baseline_context = baseline_context or {}
     ml_context = ml_context or {}
@@ -2155,8 +2359,16 @@ def build_llm_prompt(
     - Prefer repeated agreement in CAN ID, active byte, bit transitions,
       latency, return state, baseline behavior, and human labels.
 
-    Human event markers:
-    {marker_lines}
+    Marker selection:
+    - strategy: {prompt_marker_context.get('strategy')}
+    - action markers used for correlation: {prompt_marker_context.get('action_markers')}
+    - structural/control markers excluded from correlation: {prompt_marker_context.get('control_markers')}
+
+    Explicit action markers used for correlation:
+    {action_marker_lines}
+
+    Structural/control markers retained only as context:
+    {control_marker_lines}
 
     {candidate_heading}:
     {candidate_lines}
@@ -2178,8 +2390,17 @@ def analyze_frames(
     markers: list[dict[str, Any]],
     marker_window_ms: int,
     analysis_mode: str = ANALYSIS_MODE_TARGET,
-) -> tuple[list[Candidate], list[dict[str, Any]], dict[str, Any]]:
+) -> tuple[
+    list[Candidate],
+    list[dict[str, Any]],
+    dict[str, Any],
+    dict[str, Any],
+]:
     baseline_mode = is_baseline_mode(analysis_mode)
+    selected_markers, marker_context = select_analysis_markers(
+        markers,
+        baseline_mode=baseline_mode,
+    )
 
     by_id: dict[int, list[FrameRow]] = defaultdict(list)
     for frame in frames:
@@ -2190,11 +2411,11 @@ def analyze_frames(
     heatmap: dict[str, Any] = {}
 
     marker_windows: list[tuple[int, int, dict[str, Any]]] = []
-    for marker in markers:
+    for marker in selected_markers:
         timestamp_ms = int(marker.get("timestamp_ms") or 0)
         marker_windows.append(
             (
-                timestamp_ms - marker_window_ms,
+                timestamp_ms,
                 timestamp_ms + marker_window_ms,
                 marker,
             )
@@ -2222,12 +2443,15 @@ def analyze_frames(
         rows.sort(key=lambda row: (row.timestamp_ms, row.id))
 
         byte_change_counts = [0] * 8
-        changed_frame_timestamps: set[int] = set()
+        changed_frame_timestamps: set[tuple[int, int]] = set()
         byte_change_events: list[tuple[int, int]] = []
 
         previous: Optional[FrameRow] = None
         for row in rows:
-            if previous is not None:
+            if (
+                previous is not None
+                and previous.segment_id == row.segment_id
+            ):
                 frame_changed = False
                 for byte_index in range(8):
                     previous_byte = frame_byte(previous, byte_index)
@@ -2259,7 +2483,7 @@ def analyze_frames(
                         )
 
                 if frame_changed:
-                    changed_frame_timestamps.add(row.timestamp_ms)
+                    changed_frame_timestamps.add((row.segment_id, row.timestamp_ms))
 
             previous = row
 
@@ -2280,24 +2504,47 @@ def analyze_frames(
             else 0.0
         )
 
-        first_timestamp = rows[0].timestamp_ms if rows else 0
-        last_timestamp = rows[-1].timestamp_ms if rows else first_timestamp
-        duration_seconds = max(
-            (last_timestamp - first_timestamp) / 1000.0,
-            0.001,
+        rows_by_segment: dict[int, list[FrameRow]] = defaultdict(list)
+        for row in rows:
+            rows_by_segment[row.segment_id].append(row)
+
+        observed_duration_seconds = 0.0
+        observed_frame_count = 0
+        for segment_rows in rows_by_segment.values():
+            if len(segment_rows) < 2:
+                continue
+            segment_rows.sort(key=lambda item: (item.timestamp_ms, item.id))
+            observed_duration_seconds += max(
+                (
+                    segment_rows[-1].timestamp_ms
+                    - segment_rows[0].timestamp_ms
+                )
+                / 1000.0,
+                0.001,
+            )
+            observed_frame_count += len(segment_rows)
+
+        frequency_hz = (
+            observed_frame_count / observed_duration_seconds
+            if observed_duration_seconds > 0.0
+            else None
         )
-        frequency_hz = len(rows) / duration_seconds if len(rows) > 1 else None
 
         change_count = sum(byte_change_counts)
+        valid_frame_transitions = sum(
+            max(len(segment_rows) - 1, 0)
+            for segment_rows in rows_by_segment.values()
+        )
 
-        # Byte changes are measured against all possible byte transitions, not
-        # against the number of frames. This prevents multi-byte frames from
-        # immediately saturating the activity score.
-        possible_byte_transitions = max((len(rows) - 1) * 8, 1)
+        # Byte changes are measured only across adjacent frames from the same
+        # selected time segment. Truncation gaps never become synthetic changes.
+        possible_byte_transitions = max(valid_frame_transitions * 8, 1)
         change_ratio = change_count / possible_byte_transitions
 
         changed_frame_count = len(changed_frame_timestamps)
-        changed_frame_ratio = changed_frame_count / max(len(rows) - 1, 1)
+        changed_frame_ratio = (
+            changed_frame_count / max(valid_frame_transitions, 1)
+        )
 
         frame_volume_score = min(len(rows) / 200.0, 1.0)
         entropy_norm = min(entropy_score / 8.0, 1.0)
@@ -2489,7 +2736,12 @@ def analyze_frames(
             reverse=True,
         )
 
-    return candidates, all_deltas, heatmap
+    marker_context["window_coverage"] = round(marker_window_coverage, 5)
+    marker_context["selected_marker_timestamps"] = [
+        int(marker.get("timestamp_ms") or 0)
+        for marker in selected_markers
+    ]
+    return candidates, all_deltas, heatmap, marker_context
 
 
 @router.get("/ai/status")
@@ -2526,6 +2778,24 @@ async def get_ai_status() -> dict[str, Any]:
             "marker correlation and activity evidence, with frame count used "
             "only as a support multiplier; zero evidence yields zero confidence"
         ),
+        "confidence_semantics": CONFIDENCE_SEMANTICS,
+        "marker_selection": {
+            "target_windows": "post-marker windows from explicit action_start/action markers only",
+            "control_markers": (
+                "baseline/countdown/capture/step markers are retained as "
+                "controls but excluded from correlation"
+            ),
+            "legacy_fallback": (
+                "unknown marker types are used only when no explicit action "
+                "markers exist"
+            ),
+        },
+        "frame_limit_strategy": (
+            "all frames when within limit; otherwise contiguous action-marker "
+            "strata plus an initial control stratum, with no cross-segment "
+            "transitions"
+        ),
+        "report_storage": "replace latest ai_analysis report per session",
         "default_marker_window_ms": DEFAULT_MARKER_WINDOW_MS,
         "vector_memory": {
             "storage": True,
@@ -2542,6 +2812,256 @@ async def get_ai_status() -> dict[str, Any]:
         },
         "supervised_ml": ml_configuration(),
     }
+
+
+
+async def load_analysis_frame_rows(
+    conn: Any,
+    *,
+    session_id: UUID,
+    max_frames: int,
+    markers: list[dict[str, Any]],
+    marker_window_ms: int,
+    analysis_mode: str,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Load a bounded but temporally representative frame set.
+
+    Full sessions are unchanged. Truncated target sessions prioritize contiguous
+    pre/action/post slices around every explicit action marker plus an initial
+    control slice. Baseline/no-marker sessions use four contiguous time strata.
+    """
+    total_frames = int(
+        await conn.fetchval(
+            """
+            SELECT COUNT(*)::bigint
+            FROM can_frames_raw
+            WHERE session_id = $1
+            """,
+            session_id,
+        )
+        or 0
+    )
+
+    context: dict[str, Any] = {
+        "total_frames": total_frames,
+        "max_frames": max_frames,
+        "truncated": total_frames > max_frames,
+        "selected_frames": 0,
+        "strategy": "all_frames",
+        "segment_count": 1,
+        "transition_rule": "adjacent frames within the same selected segment",
+    }
+
+    if total_frames <= max_frames:
+        rows = await conn.fetch(
+            """
+            SELECT id, timestamp_ms, can_id, dlc, data
+            FROM can_frames_raw
+            WHERE session_id = $1
+            ORDER BY timestamp_ms ASC, id ASC
+            """,
+            session_id,
+        )
+        items = [dict(row) for row in rows]
+        for item in items:
+            item["_segment_id"] = 0
+        context["selected_frames"] = len(items)
+        return items, context
+
+    baseline_mode = is_baseline_mode(analysis_mode)
+    action_markers, marker_context = select_analysis_markers(
+        markers,
+        baseline_mode=baseline_mode,
+    )
+
+    async def fetch_phase(
+        *,
+        start_ms: int,
+        end_ms: int,
+        limit: int,
+        segment_id: int,
+        descending: bool = False,
+    ) -> list[dict[str, Any]]:
+        if limit <= 0 or end_ms < start_ms:
+            return []
+        direction = "DESC" if descending else "ASC"
+        rows = await conn.fetch(
+            f"""
+            SELECT id, timestamp_ms, can_id, dlc, data
+            FROM can_frames_raw
+            WHERE session_id = $1
+              AND timestamp_ms BETWEEN $2 AND $3
+            ORDER BY timestamp_ms {direction}, id {direction}
+            LIMIT $4
+            """,
+            session_id,
+            int(start_ms),
+            int(end_ms),
+            int(limit),
+        )
+        items = [dict(row) for row in rows]
+        if descending:
+            items.reverse()
+        for item in items:
+            item["_segment_id"] = segment_id
+        return items
+
+    selected_action: dict[int, dict[str, Any]] = {}
+    selected_control: dict[int, dict[str, Any]] = {}
+
+    if action_markers:
+        target_budget = max(1, int(max_frames * 0.85))
+        control_budget = max_frames - target_budget
+        per_marker_budget = max(
+            3,
+            target_budget // max(len(action_markers), 1),
+        )
+
+        for marker_index, marker in enumerate(action_markers, start=1):
+            marker_time = int(marker.get("timestamp_ms") or 0)
+            pre_budget = max(1, per_marker_budget // 4)
+            action_budget = max(1, (per_marker_budget * 3) // 8)
+            post_budget = max(
+                1,
+                per_marker_budget - pre_budget - action_budget,
+            )
+
+            phase_rows = []
+            phase_rows.extend(
+                await fetch_phase(
+                    start_ms=marker_time - marker_window_ms,
+                    end_ms=marker_time - 1,
+                    limit=pre_budget,
+                    segment_id=marker_index,
+                    descending=True,
+                )
+            )
+            phase_rows.extend(
+                await fetch_phase(
+                    start_ms=marker_time,
+                    end_ms=marker_time + marker_window_ms,
+                    limit=action_budget,
+                    segment_id=marker_index,
+                )
+            )
+            phase_rows.extend(
+                await fetch_phase(
+                    start_ms=marker_time + marker_window_ms + 1,
+                    end_ms=marker_time + (2 * marker_window_ms),
+                    limit=post_budget,
+                    segment_id=marker_index,
+                )
+            )
+
+            for item in phase_rows:
+                selected_action.setdefault(int(item["id"]), item)
+
+        first_action_time = min(
+            int(marker.get("timestamp_ms") or 0)
+            for marker in action_markers
+        )
+        control_rows = await conn.fetch(
+            """
+            SELECT id, timestamp_ms, can_id, dlc, data
+            FROM can_frames_raw
+            WHERE session_id = $1
+              AND timestamp_ms < $2
+            ORDER BY timestamp_ms DESC, id DESC
+            LIMIT $3
+            """,
+            session_id,
+            first_action_time,
+            control_budget,
+        )
+        control_items = [dict(row) for row in control_rows]
+        control_items.reverse()
+        for item in control_items:
+            item["_segment_id"] = 0
+            selected_control.setdefault(int(item["id"]), item)
+
+        ordered_action = sorted(
+            selected_action.values(),
+            key=lambda item: (item["timestamp_ms"], item["id"]),
+        )
+        ordered_control = sorted(
+            (
+                item
+                for frame_id, item in selected_control.items()
+                if frame_id not in selected_action
+            ),
+            key=lambda item: (item["timestamp_ms"], item["id"]),
+        )
+
+        selected = ordered_action[:target_budget]
+        remaining = max_frames - len(selected)
+        selected.extend(ordered_control[-remaining:] if remaining > 0 else [])
+        selected.sort(key=lambda item: (item["timestamp_ms"], item["id"]))
+
+        context.update({
+            "strategy": "action_marker_stratified",
+            "selected_frames": len(selected),
+            "segment_count": len(action_markers) + (1 if ordered_control else 0),
+            "action_marker_count": len(action_markers),
+            "control_frame_budget": control_budget,
+            "action_frame_budget": target_budget,
+            "marker_selection": marker_context,
+            "warning": (
+                "Session exceeded the frame limit. Candidate activity and "
+                "frequency are calculated only from selected contiguous "
+                "segments; no transitions cross segment boundaries."
+            ),
+        })
+        return selected, context
+
+    bounds = await conn.fetchrow(
+        """
+        SELECT
+            MIN(timestamp_ms)::bigint AS min_timestamp_ms,
+            MAX(timestamp_ms)::bigint AS max_timestamp_ms
+        FROM can_frames_raw
+        WHERE session_id = $1
+        """,
+        session_id,
+    )
+    min_timestamp = int(bounds["min_timestamp_ms"] or 0)
+    max_timestamp = int(bounds["max_timestamp_ms"] or min_timestamp)
+    stratum_count = 4
+    per_stratum = max(1, max_frames // stratum_count)
+    duration = max(max_timestamp - min_timestamp + 1, 1)
+
+    selected: list[dict[str, Any]] = []
+    for stratum_index in range(stratum_count):
+        start_ms = min_timestamp + (duration * stratum_index) // stratum_count
+        end_ms = (
+            max_timestamp
+            if stratum_index == stratum_count - 1
+            else min_timestamp
+            + (duration * (stratum_index + 1)) // stratum_count
+            - 1
+        )
+        selected.extend(
+            await fetch_phase(
+                start_ms=start_ms,
+                end_ms=end_ms,
+                limit=per_stratum,
+                segment_id=stratum_index,
+            )
+        )
+
+    selected = selected[:max_frames]
+    selected.sort(key=lambda item: (item["timestamp_ms"], item["id"]))
+    context.update({
+        "strategy": "time_stratified_contiguous",
+        "selected_frames": len(selected),
+        "segment_count": stratum_count,
+        "action_marker_count": 0,
+        "marker_selection": marker_context,
+        "warning": (
+            "Session exceeded the frame limit and had no explicit action "
+            "markers. Four contiguous time strata were analyzed."
+        ),
+    })
+    return selected, context
 
 
 @router.post("/session/{session_id}/analyze")
@@ -2605,22 +3125,37 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
             session_id,
         )
 
-        raw_rows = await conn.fetch(
-            """
-            SELECT id, timestamp_ms, can_id, dlc, data
-            FROM can_frames_raw
-            WHERE session_id = $1
-            ORDER BY timestamp_ms ASC, id ASC
-            LIMIT $2
-            """,
-            session_id,
-            payload.max_frames,
+        marker_dicts = [dict(row) for row in markers]
+        for marker in marker_dicts:
+            marker["metadata"] = metadata_dict(marker.get("metadata"))
+
+        session_dict = dict(session)
+        session_dict["session_metadata"] = metadata_dict(
+            session_dict.get("session_metadata")
+        )
+        session_dict["mission_metadata"] = metadata_dict(
+            session_dict.get("mission_metadata")
+        )
+
+        analysis_mode = infer_analysis_mode(session_dict, marker_dicts)
+        baseline_mode = is_baseline_mode(analysis_mode)
+
+        raw_rows, frame_selection = await load_analysis_frame_rows(
+            conn,
+            session_id=session_id,
+            max_frames=payload.max_frames,
+            markers=marker_dicts,
+            marker_window_ms=payload.marker_window_ms,
+            analysis_mode=analysis_mode,
         )
 
     can_ai_log(
         "database_input_loaded",
         session=session_id,
         raw_frames=len(raw_rows),
+        total_raw_frames=frame_selection.get("total_frames"),
+        frame_selection=frame_selection.get("strategy"),
+        truncated=frame_selection.get("truncated"),
         markers=len(markers),
         elapsed_ms=round((time.perf_counter() - phase_started) * 1000, 2),
     )
@@ -2633,6 +3168,7 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
             can_id=int(row["can_id"]),
             dlc=int(row["dlc"] or 8),
             data=normalize_data(row["data"], int(row["dlc"] or 8)),
+            segment_id=int(row.get("_segment_id", 0)),
         )
         for row in raw_rows
     ]
@@ -2655,17 +3191,6 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
             status_code=400,
             detail="CAN session contains no frames to analyze",
         )
-
-    marker_dicts = [dict(row) for row in markers]
-    for marker in marker_dicts:
-        marker["metadata"] = metadata_dict(marker.get("metadata"))
-
-    session_dict = dict(session)
-    session_dict["session_metadata"] = metadata_dict(session_dict.get("session_metadata"))
-    session_dict["mission_metadata"] = metadata_dict(session_dict.get("mission_metadata"))
-
-    analysis_mode = infer_analysis_mode(session_dict, marker_dicts)
-    baseline_mode = is_baseline_mode(analysis_mode)
 
     if baseline_mode:
         baseline_context = {
@@ -2705,16 +3230,23 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
         reason=baseline_context.get("reason"),
     )
 
+    _, marker_selection_preview = select_analysis_markers(
+        marker_dicts,
+        baseline_mode=baseline_mode,
+    )
+
     can_ai_log(
         "statistics_started",
         session=session_id,
         analysis_mode=analysis_mode,
         frames=len(frames),
         markers=len(marker_dicts),
+        selected_action_markers=marker_selection_preview.get("action_markers"),
+        marker_strategy=marker_selection_preview.get("strategy"),
     )
 
     try:
-        candidates, deltas, heatmap = analyze_frames(
+        candidates, deltas, heatmap, marker_selection = analyze_frames(
             frames,
             marker_dicts,
             payload.marker_window_ms,
@@ -3246,59 +3778,122 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                     ],
                 )
 
-                report_row = await conn.fetchrow(
+                existing_report = await conn.fetchrow(
                     """
-                    INSERT INTO session_reports (
-                        session_id, report_type, title, content, metadata
-                    ) VALUES ($1, 'ai_analysis', $2, $3, $4::jsonb)
-                    RETURNING id
+                    SELECT id, metadata
+                    FROM session_reports
+                    WHERE session_id = $1
+                      AND report_type = 'ai_analysis'
+                    ORDER BY created_at DESC
+                    LIMIT 1
                     """,
                     session_id,
-                    (
-                        f"CAN baseline profile for {session_dict.get('vehicle_slug')} session {session_id}"
-                        if baseline_mode
-                        else f"AI CAN analysis for {session_dict.get('vehicle_slug')} session {session_id}"
-                    ),
-                    report_content,
-                    json_dumps({
-                        "vehicle_slug": session_dict.get("vehicle_slug"),
-                        "analysis_mode": analysis_mode,
-                        "baseline_profile": baseline_profile,
-                        "target_expected": not baseline_mode,
-                        "baseline_subtraction": baseline_context,
-                        "supervised_ml": ml_context,
-                        "vector_memory": vector_context,
-                        "marker_window_ms": payload.marker_window_ms,
-                        "frames_analyzed": len(frames),
-                        "markers": len(marker_dicts),
-                        "model": resolved_llm_model,
-                        "ollama_url": OLLAMA_URL,
-                        "llm_deadline_seconds": LLM_DEADLINE_SECONDS,
-                        "llm_http_read_timeout_seconds": LLM_HTTP_READ_TIMEOUT_SECONDS,
-                        "llm_num_ctx": LLM_NUM_CTX,
-                        "llm_num_predict": LLM_NUM_PREDICT,
-                        "llm_candidate_limit": LLM_CANDIDATE_LIMIT,
-                        "llm_byte_evidence_limit": LLM_BYTE_EVIDENCE_LIMIT,
-                        "ollama_keep_alive": OLLAMA_KEEP_ALIVE,
-                        "llm_requested": payload.use_llm,
-                        "llm_succeeded": llm_response is not None,
-                        "analysis_source": "llm" if llm_response else "fallback",
-                        "llm_error": llm_error,
-                        "llm_timed_out": llm_timed_out,
-                        "report_sections_present": report_sections_present,
-                        "report_repaired_sections": repaired_report_sections,
-                        "marker_window_coverage": (
-                            candidates[0].marker_window_coverage
-                            if candidates
-                            else 0.0
-                        ),
-                        "generation": generation_metadata,
-                        "deltas_computed": len(deltas),
-                        "deltas_persisted": len(deltas_to_persist),
-                        "top_candidates": persisted_top_candidates,
-                        "heatmap": persisted_heatmap,
-                    }),
                 )
+                previous_report_metadata = metadata_dict(
+                    existing_report.get("metadata")
+                    if existing_report
+                    else None
+                )
+                analysis_revision = int(
+                    previous_report_metadata.get("analysis_revision", 0) or 0
+                ) + 1
+
+                report_title = (
+                    f"CAN baseline profile for {session_dict.get('vehicle_slug')} session {session_id}"
+                    if baseline_mode
+                    else f"AI CAN analysis for {session_dict.get('vehicle_slug')} session {session_id}"
+                )
+                report_metadata = {
+                    "vehicle_slug": session_dict.get("vehicle_slug"),
+                    "analysis_mode": analysis_mode,
+                    "analysis_revision": analysis_revision,
+                    "report_storage": "replace_latest_per_session",
+                    "baseline_profile": baseline_profile,
+                    "target_expected": not baseline_mode,
+                    "baseline_subtraction": baseline_context,
+                    "supervised_ml": ml_context,
+                    "vector_memory": vector_context,
+                    "marker_window_ms": payload.marker_window_ms,
+                    "marker_selection": marker_selection,
+                    "frame_selection": frame_selection,
+                    "confidence_semantics": CONFIDENCE_SEMANTICS,
+                    "frames_analyzed": len(frames),
+                    "frames_available": frame_selection.get("total_frames"),
+                    "markers": len(marker_dicts),
+                    "model": resolved_llm_model,
+                    "ollama_url": OLLAMA_URL,
+                    "llm_deadline_seconds": LLM_DEADLINE_SECONDS,
+                    "llm_http_read_timeout_seconds": LLM_HTTP_READ_TIMEOUT_SECONDS,
+                    "llm_num_ctx": LLM_NUM_CTX,
+                    "llm_num_predict": LLM_NUM_PREDICT,
+                    "llm_candidate_limit": LLM_CANDIDATE_LIMIT,
+                    "llm_byte_evidence_limit": LLM_BYTE_EVIDENCE_LIMIT,
+                    "ollama_keep_alive": OLLAMA_KEEP_ALIVE,
+                    "llm_requested": payload.use_llm,
+                    "llm_succeeded": llm_response is not None,
+                    "analysis_source": "llm" if llm_response else "fallback",
+                    "llm_error": llm_error,
+                    "llm_timed_out": llm_timed_out,
+                    "report_sections_present": report_sections_present,
+                    "report_repaired_sections": repaired_report_sections,
+                    "marker_window_coverage": (
+                        candidates[0].marker_window_coverage
+                        if candidates
+                        else 0.0
+                    ),
+                    "generation": generation_metadata,
+                    "deltas_computed": len(deltas),
+                    "deltas_persisted": len(deltas_to_persist),
+                    "top_candidates": persisted_top_candidates,
+                    "heatmap": persisted_heatmap,
+                }
+
+                if existing_report:
+                    report_row = await conn.fetchrow(
+                        """
+                        UPDATE session_reports
+                        SET
+                            title = $2,
+                            content = $3,
+                            metadata = $4::jsonb,
+                            created_at = NOW()
+                        WHERE id = $1
+                        RETURNING id
+                        """,
+                        existing_report["id"],
+                        report_title,
+                        report_content,
+                        json_dumps(report_metadata),
+                    )
+                    await conn.execute(
+                        """
+                        DELETE FROM session_reports
+                        WHERE session_id = $1
+                          AND report_type = 'ai_analysis'
+                          AND id <> $2
+                        """,
+                        session_id,
+                        report_row["id"],
+                    )
+                else:
+                    report_row = await conn.fetchrow(
+                        """
+                        INSERT INTO session_reports (
+                            session_id,
+                            report_type,
+                            title,
+                            content,
+                            metadata
+                        )
+                        VALUES ($1, 'ai_analysis', $2, $3, $4::jsonb)
+                        RETURNING id
+                        """,
+                        session_id,
+                        report_title,
+                        report_content,
+                        json_dumps(report_metadata),
+                    )
+
 
                 if payload.use_llm and llm_response:
                     prompt = build_llm_prompt(
@@ -3447,6 +4042,8 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
         "short_dlc_frames": short_dlc_frames,
         "invalid_width_frames": invalid_width_frames,
         "markers": len(marker_dicts),
+        "selected_action_markers": marker_selection.get("action_markers"),
+        "marker_selection": marker_selection,
         "marker_window_ms": payload.marker_window_ms,
         "marker_window_coverage": (
             candidates[0].marker_window_coverage
@@ -3454,6 +4051,9 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
             else 0.0
         ),
         "vector_memory": vector_context,
+        "frame_selection": frame_selection,
+        "frames_available": frame_selection.get("total_frames"),
+        "confidence_semantics": CONFIDENCE_SEMANTICS,
         "candidate_count": len(candidates),
         "candidates": response_candidates,
         "heatmap": response_heatmap,
@@ -3548,6 +4148,13 @@ async def get_session_analysis(session_id: UUID) -> dict[str, Any]:
         "baseline_subtraction": latest_report_metadata.get("baseline_subtraction"),
         "supervised_ml": latest_report_metadata.get("supervised_ml"),
         "vector_memory": latest_report_metadata.get("vector_memory"),
+        "marker_selection": latest_report_metadata.get("marker_selection"),
+        "frame_selection": latest_report_metadata.get("frame_selection"),
+        "frames_available": latest_report_metadata.get("frames_available"),
+        "confidence_semantics": latest_report_metadata.get(
+            "confidence_semantics",
+            CONFIDENCE_SEMANTICS,
+        ),
         "marker_window_ms": latest_report_metadata.get("marker_window_ms"),
         "target_expected": latest_report_metadata.get("analysis_mode") != ANALYSIS_MODE_BASELINE if latest_report_metadata else None,
         "features": [dict(row) for row in features],
