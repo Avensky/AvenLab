@@ -57,7 +57,6 @@ type SignalReconState = {
     missionProtocols: Record<string, ReconMissionProtocol>;
 
     activeSessionId: string | null;
-    sessionStartedAt: number | null;
 
     activeRunId: string | null;
     activeStep: ReconStep | null;
@@ -127,14 +126,14 @@ const sleep = (ms: number) =>
 function makeRunId() {
     return (
         globalThis.crypto?.randomUUID?.() ??
-        `run-${Date.now()}-${Math.random().toString(16).slice(2)}`
+        `run-${Math.random().toString(16).slice(2)}-${Math.random().toString(16).slice(2)}`
     );
 }
 
 function makeMarkerId() {
     return (
         globalThis.crypto?.randomUUID?.() ??
-        `marker-${Date.now()}-${Math.random().toString(16).slice(2)}`
+        `marker-${Math.random().toString(16).slice(2)}-${Math.random().toString(16).slice(2)}`
     );
 }
 
@@ -390,7 +389,6 @@ export const useSignalReconStore = create<SignalReconState>((set, get) => ({
     selectedRank: "ALL",
 
     activeSessionId: null,
-    sessionStartedAt: null,
 
     activeRunId: null,
     activeStep: null,
@@ -757,8 +755,6 @@ export const useSignalReconStore = create<SignalReconState>((set, get) => ({
                             action_ms: step.action_ms,
                             capture_ms: step.capture_ms,
                         })),
-                        frontend_started_at:
-                            new Date().toISOString(),
                     },
                 }),
             },
@@ -774,7 +770,6 @@ export const useSignalReconStore = create<SignalReconState>((set, get) => ({
 
         set({
             activeSessionId: data.session_id,
-            sessionStartedAt: nowMs(),
         });
 
         useCanDataStore
@@ -795,23 +790,11 @@ export const useSignalReconStore = create<SignalReconState>((set, get) => ({
         label,
         metadata = {},
     }) {
-        const {
-            activeSessionId,
-            selectedMission,
-            sessionStartedAt,
-        } = get();
+        const { activeSessionId, selectedMission } = get();
 
-        if (
-            !activeSessionId ||
-            !selectedMission ||
-            sessionStartedAt === null
-        ) {
+        if (!activeSessionId || !selectedMission) {
             return;
         }
-
-        const timestampMs = Math.round(
-            nowMs() - sessionStartedAt,
-        );
 
         const res = await fetch(
             `${getApiBaseUrl()}/data/can/session/${activeSessionId}/marker`,
@@ -824,8 +807,11 @@ export const useSignalReconStore = create<SignalReconState>((set, get) => ({
                     step_code: stepCode,
                     marker_type: markerType,
                     label,
-                    timestamp_ms: timestampMs,
+                    client_event_id:
+                        globalThis.crypto?.randomUUID?.() ??
+                        `marker-${Math.random().toString(16).slice(2)}-${Math.random().toString(16).slice(2)}`,
                     metadata: {
+                        timestamp_authority: "server",
                         source: "signal-recon",
                         analysis_mode:
                             selectedMission.analysis_mode,
@@ -1042,7 +1028,7 @@ export const useSignalReconStore = create<SignalReconState>((set, get) => ({
         }
 
         const res = await fetch(
-            `${getApiBaseUrl()}/data/can/session/${activeSessionId}/stop`,
+            `${getApiBaseUrl()}/data/can/session/${activeSessionId}/finalize`,
             {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -1068,8 +1054,6 @@ export const useSignalReconStore = create<SignalReconState>((set, get) => ({
                             action_ms: step.action_ms,
                             capture_ms: step.capture_ms,
                         })),
-                        frontend_stopped_at:
-                            new Date().toISOString(),
                         ...metadata,
                     },
                 }),
@@ -1083,7 +1067,7 @@ export const useSignalReconStore = create<SignalReconState>((set, get) => ({
             throw new Error(
                 data.error ??
                     data.detail ??
-                    "Failed to stop session",
+                    "Failed to finalize session",
             );
         }
 
@@ -1093,12 +1077,11 @@ export const useSignalReconStore = create<SignalReconState>((set, get) => ({
         useCanDataStore
             .getState()
             .addLog(
-                `[signal-recon] stopped ${selectedMission?.mission_code ?? "session"}`,
+                `[signal-recon] finalized ${selectedMission?.mission_code ?? "session"} using Pi server time`,
             );
 
         set({
             activeSessionId: null,
-            sessionStartedAt: null,
             activeRunId: null,
             activeStep: null,
             activePhase: "idle",

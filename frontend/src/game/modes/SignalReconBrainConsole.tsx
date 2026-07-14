@@ -60,6 +60,18 @@ export type MlModelSummary = {
     metrics?: Record<string, unknown>;
 };
 
+export type ByteRoleHypothesis = {
+    byte_index: number;
+    hypothesis_kind: string;
+    confidence: number;
+    bit_mask?: number | null;
+    auto_detected?: boolean;
+    source?: string;
+    validation_status?: "unreviewed" | "positive" | "negative" | "uncertain";
+    reason: string;
+    metrics?: Record<string, number>;
+};
+
 export type BrainCandidate = {
     can_id: number;
     can_id_hex: string;
@@ -69,6 +81,7 @@ export type BrainCandidate = {
     change_ratio?: number;
     changed_frame_ratio?: number;
     byte_change_counts: Record<string, number>;
+    byte_role_hypotheses?: ByteRoleHypothesis[];
     entropy: number;
     correlation_score: number;
     confidence: number;
@@ -153,6 +166,15 @@ export type FrameSelectionContext = {
 export type BrainAnalysisResult = {
     ok: boolean;
     session_id: string;
+    session_integrity?: {
+        capture_status?: string;
+        finalized_at?: string | null;
+        final_frame_count?: number | null;
+        final_marker_count?: number | null;
+        timestamp_authority?: string;
+        capture_quality?: Record<string, unknown>;
+    };
+    byte_hypothesis_count?: number;
     analysis_mode?: "baseline_profile" | "target_correlation" | string;
     analysis_source?: "llm" | "fallback";
     llm_requested?: boolean;
@@ -240,6 +262,11 @@ type SignalReconBrainConsoleProps = {
         notes: string,
         metadata: CandidateLabelMetadata,
     ) => Promise<void> | void;
+    onValidateByteHypothesis: (
+        candidate: BrainCandidate,
+        hypothesis: ByteRoleHypothesis,
+        validationStatus: "positive" | "negative" | "uncertain",
+    ) => Promise<void> | void;
     onToggleLlm: () => void;
     onToggleEmbeddings: () => void;
     onToggleAutoAnalyze: () => void;
@@ -287,6 +314,19 @@ function labelText(label: CandidateMlLabelValue | undefined) {
     if (label === "negative") return "VALIDATED BACKGROUND";
     if (label === "uncertain") return "NEEDS MORE EVIDENCE";
     return "UNLABELED";
+}
+
+function hypothesisTone(kind: string) {
+    if (kind === "rolling_counter") return "border-cyan-300/40 bg-cyan-500/10 text-cyan-100";
+    if (kind === "checksum_candidate") return "border-purple-300/40 bg-purple-500/10 text-purple-100";
+    if (kind === "constant") return "border-slate-600 bg-slate-900 text-slate-400";
+    if (kind === "periodic_or_state_bits") return "border-yellow-300/40 bg-yellow-500/10 text-yellow-100";
+    return "border-green-300/30 bg-green-500/5 text-green-100";
+}
+
+function formatMask(mask: number | null | undefined) {
+    if (typeof mask !== "number") return "—";
+    return `0x${mask.toString(16).toUpperCase().padStart(2, "0")}`;
 }
 
 function byteCells(byteCounts: Record<string, number>) {
@@ -414,6 +454,7 @@ export function SignalReconBrainConsole({
     onDeleteSession,
     onRefreshMl,
     onLabelCandidate,
+    onValidateByteHypothesis,
     onToggleLlm,
     onToggleEmbeddings,
     onToggleAutoAnalyze,
@@ -704,6 +745,52 @@ export function SignalReconBrainConsole({
                                         )}
 
                                         <div className="mt-3 grid grid-cols-8 gap-1">{byteCells(candidate.byte_change_counts)}</div>
+
+                                        {Boolean(candidate.byte_role_hypotheses?.length) && (
+                                            <div className="mt-3 rounded-lg border border-cyan-300/20 bg-black/20 p-2">
+                                                <p className="mb-2 text-[10px] tracking-[0.18em] text-cyan-300">AUTO BYTE ROLES</p>
+                                                <div className="grid gap-1 sm:grid-cols-2 lg:grid-cols-4">
+                                                    {candidate.byte_role_hypotheses?.map((hypothesis) => (
+                                                        <div
+                                                            key={`${candidate.can_id}:${hypothesis.byte_index}:${hypothesis.hypothesis_kind}`}
+                                                            className={`rounded-lg border p-2 text-[10px] ${hypothesisTone(hypothesis.hypothesis_kind)}`}
+                                                            title={hypothesis.reason}
+                                                        >
+                                                            <div className="flex items-center justify-between gap-2">
+                                                                <span className="font-black">B{hypothesis.byte_index}</span>
+                                                                <span>{percent(hypothesis.confidence)}</span>
+                                                            </div>
+                                                            <p className="mt-1 break-words font-bold">{hypothesis.hypothesis_kind.replace(/_/g, " ").toUpperCase()}</p>
+                                                            <p className="mt-1 text-slate-500">mask {formatMask(hypothesis.bit_mask)}</p>
+                                                            {hypothesis.validation_status && hypothesis.validation_status !== "unreviewed" && (
+                                                                <p className="mt-1 font-black">{hypothesis.validation_status.toUpperCase()}</p>
+                                                            )}
+                                                            <div className="mt-2 grid grid-cols-3 gap-1">
+                                                                <GameButton
+                                                                    onPress={() => void onValidateByteHypothesis(candidate, hypothesis, "positive")}
+                                                                    className="rounded border border-green-300/30 px-1 py-0.5 text-[9px] text-green-200"
+                                                                >
+                                                                    CONFIRM
+                                                                </GameButton>
+                                                                <GameButton
+                                                                    onPress={() => void onValidateByteHypothesis(candidate, hypothesis, "negative")}
+                                                                    className="rounded border border-red-300/30 px-1 py-0.5 text-[9px] text-red-200"
+                                                                >
+                                                                    REJECT
+                                                                </GameButton>
+                                                                <GameButton
+                                                                    onPress={() => void onValidateByteHypothesis(candidate, hypothesis, "uncertain")}
+                                                                    className="rounded border border-yellow-300/30 px-1 py-0.5 text-[9px] text-yellow-200"
+                                                                >
+                                                                    UNSURE
+                                                                </GameButton>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                <p className="mt-2 text-[10px] text-slate-500">Checksum labels are conservative candidates, not confirmed algorithms.</p>
+                                            </div>
+                                        )}
 
                                         <div className="mt-3 grid gap-2 lg:grid-cols-[1fr_180px]">
                                             <label className="block">

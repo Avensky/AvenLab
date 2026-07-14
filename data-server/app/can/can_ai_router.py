@@ -331,11 +331,18 @@ def build_baseline_profile(frames: list[FrameRow], candidates: list[Candidate]) 
         if candidate.change_count == 0
     ][:15]
 
+    role_counts = Counter(
+        hypothesis.hypothesis_kind
+        for candidate in candidates
+        for hypothesis in candidate.byte_role_hypotheses
+    )
+
     return {
         "kind": ANALYSIS_MODE_BASELINE,
         "target_expected": False,
         "total_frames": total_frames,
         "observed_ids": observed_ids,
+        "byte_role_counts": dict(role_counts),
         "high_rate_ids": high_rate_ids,
         "noisy_ids": noisy_ids,
         "stable_ids": stable_ids,
@@ -366,7 +373,7 @@ def build_fallback_report(
                 f"frames={candidate.frame_count}, hz={candidate.frequency_hz}, "
                 f"changes={candidate.change_count}, "
                 f"change_ratio={candidate.change_ratio}, "
-                f"bytes={candidate.byte_change_counts}"
+                f"bytes={candidate.byte_change_counts}, roles={compact_byte_roles(candidate)}"
             )
             for candidate in candidates[:5]
         ] or ["- No CAN IDs were available for baseline analysis."]
@@ -506,6 +513,7 @@ class AnalyzeSessionRequest(BaseModel):
     llm_model: str = DEFAULT_LLM_MODEL
     embed_model: str = DEFAULT_EMBED_MODEL
     persist: bool = True
+    allow_low_quality: bool = False
 
 
 class MarkerObservation(BaseModel):
@@ -541,6 +549,18 @@ class ByteEvidence(BaseModel):
     action_group_modes: dict[str, Any] = Field(default_factory=dict)
 
 
+class ByteRoleHypothesis(BaseModel):
+    byte_index: int
+    hypothesis_kind: str
+    confidence: float
+    bit_mask: Optional[int] = None
+    auto_detected: bool = True
+    source: str = "auto_analysis"
+    validation_status: str = "unreviewed"
+    reason: str
+    metrics: dict[str, Any] = Field(default_factory=dict)
+
+
 class Candidate(BaseModel):
     can_id: int
     can_id_hex: str
@@ -553,6 +573,7 @@ class Candidate(BaseModel):
     byte_change_counts: dict[str, int]
     byte_entropy: dict[str, float]
     byte_evidence: list[ByteEvidence]
+    byte_role_hypotheses: list[ByteRoleHypothesis] = Field(default_factory=list)
     entropy: float
     raw_marker_fraction: float
     marker_window_coverage: float
@@ -1157,6 +1178,17 @@ def compact_byte_evidence(candidate: Candidate, limit: int = 3) -> str:
 
 
 
+def compact_byte_roles(candidate: Candidate) -> str:
+    if not candidate.byte_role_hypotheses:
+        return "none"
+    return "; ".join(
+        f"B{item.byte_index}={item.hypothesis_kind}"
+        + (f" mask=0x{item.bit_mask:02X}" if item.bit_mask is not None else "")
+        + f" confidence={item.confidence:.3f}"
+        for item in candidate.byte_role_hypotheses
+    )
+
+
 def embedding_candidate_metadata(candidate: Candidate) -> dict[str, Any]:
     active_evidence = [
         item
@@ -1183,6 +1215,10 @@ def embedding_candidate_metadata(candidate: Candidate) -> dict[str, Any]:
         ),
         "ml_probability": candidate.ml_probability,
         "byte_change_counts": candidate.byte_change_counts,
+        "byte_role_hypotheses": [
+            item.model_dump()
+            for item in candidate.byte_role_hypotheses
+        ],
         "byte_evidence": [
             item.model_dump()
             for item in active_evidence[:2]
@@ -1244,6 +1280,7 @@ def build_embedding_document(
                     f"ml_probability={candidate.ml_probability}",
                     f"changes={candidate.change_count}",
                     f"bytes={candidate.byte_change_counts}",
+                    f"byte_roles={compact_byte_roles(candidate)}",
                     (
                         "evidence="
                         f"{compact_byte_evidence(candidate, limit=2)}"
@@ -1687,6 +1724,11 @@ def baseline_feature_map(
             "baseline_score": float(
                 metadata.get("baseline_score") or 0.0
             ),
+            "byte_role_hypotheses": (
+                metadata.get("byte_role_hypotheses")
+                if isinstance(metadata.get("byte_role_hypotheses"), list)
+                else []
+            ),
         }
 
     return features
@@ -2035,6 +2077,7 @@ def apply_baseline_subtraction(
             ),
             "baseline_frequency_hz": baseline.get("frequency_hz"),
             "baseline_entropy": baseline.get("entropy"),
+            "baseline_byte_roles": baseline.get("byte_role_hypotheses", []),
         }
 
         if (
@@ -2195,6 +2238,7 @@ def build_llm_prompt(
                 f"hz={c.frequency_hz}, changes={c.change_count}, entropy={c.entropy:.3f}, "
                 f"baseline_score={c.baseline_score:.3f}, change_ratio={c.change_ratio:.5f}, "
                 f"byte_changes={c.byte_change_counts}, byte_entropy={c.byte_entropy}, "
+                f"byte_roles=[{compact_byte_roles(c)}], "
                 f"byte_evidence=[{compact_byte_evidence(c, limit=LLM_BYTE_EVIDENCE_LIMIT)}]"
             )
             for c in candidates[:LLM_CANDIDATE_LIMIT]
@@ -2264,6 +2308,7 @@ def build_llm_prompt(
                 f"ml_probability={c.ml_probability}, "
                 f"confidence_before_ml={c.confidence_before_ml:.3f}, "
                 f"historical_support={c.historical_support}, "
+                f"byte_roles=[{compact_byte_roles(c)}], "
                 f"byte_evidence=[{compact_byte_evidence(c, limit=LLM_BYTE_EVIDENCE_LIMIT)}]"
             )
             for c in candidates[:LLM_CANDIDATE_LIMIT]
@@ -2385,6 +2430,246 @@ def build_llm_prompt(
     """.strip()
 
 
+def _modulo_counter_score(
+    value_sequences: list[list[int]],
+    modulus: int,
+) -> tuple[float, Optional[int]]:
+    deltas: list[int] = []
+    for values in value_sequences:
+        deltas.extend(
+            (current - previous) % modulus
+            for previous, current in zip(values, values[1:])
+            if current != previous
+        )
+    if len(deltas) < 3:
+        return 0.0, None
+    counts = Counter(deltas)
+    delta, count = counts.most_common(1)[0]
+    score = count / len(deltas)
+    if delta not in {1, modulus - 1}:
+        score *= 0.5
+    return score, int(delta)
+
+
+def classify_byte_roles(
+    rows: list[FrameRow],
+    byte_entropy: dict[str, float],
+) -> list[ByteRoleHypothesis]:
+    """Conservatively identify normal baseline byte mechanics.
+
+    `checksum_candidate` is intentionally a hypothesis, never a confirmed
+    checksum. Rolling counters are detected across full bytes and nibbles.
+    """
+    roles: list[ByteRoleHypothesis] = []
+
+    transition_pairs: list[tuple[FrameRow, FrameRow]] = []
+    for previous, current in zip(rows, rows[1:]):
+        if previous.segment_id == current.segment_id:
+            transition_pairs.append((previous, current))
+
+    for byte_index in range(8):
+        values = [frame_byte(row, byte_index) for row in rows]
+        unique_values = len(set(values))
+        entropy_value = float(byte_entropy.get(str(byte_index), 0.0) or 0.0)
+
+        changed = 0
+        co_changed = 0
+        for previous, current in transition_pairs:
+            before = frame_byte(previous, byte_index)
+            after = frame_byte(current, byte_index)
+            if before == after:
+                continue
+            changed += 1
+            if any(
+                frame_byte(previous, other) != frame_byte(current, other)
+                for other in range(8)
+                if other != byte_index
+            ):
+                co_changed += 1
+
+        transitions = max(len(transition_pairs), 1)
+        change_rate = changed / transitions
+        co_change_ratio = co_changed / max(changed, 1)
+
+        rows_by_segment: dict[int, list[FrameRow]] = defaultdict(list)
+        for row in rows:
+            rows_by_segment[row.segment_id].append(row)
+        full_sequences = [
+            [frame_byte(row, byte_index) for row in segment_rows]
+            for segment_rows in rows_by_segment.values()
+        ]
+        low_sequences = [
+            [value & 0x0F for value in sequence]
+            for sequence in full_sequences
+        ]
+        high_sequences = [
+            [(value >> 4) & 0x0F for value in sequence]
+            for sequence in full_sequences
+        ]
+
+        full_score, full_delta = _modulo_counter_score(full_sequences, 256)
+        low_score, low_delta = _modulo_counter_score(low_sequences, 16)
+        high_score, high_delta = _modulo_counter_score(high_sequences, 16)
+
+        best_counter = max(
+            (full_score, 0xFF, full_delta, "full byte"),
+            (low_score, 0x0F, low_delta, "low nibble"),
+            (high_score, 0xF0, high_delta, "high nibble"),
+            key=lambda item: item[0],
+        )
+
+        metrics = {
+            "unique_values": unique_values,
+            "entropy": round(entropy_value, 4),
+            "change_rate": round(change_rate, 6),
+            "co_change_ratio": round(co_change_ratio, 6),
+            "full_counter_score": round(full_score, 6),
+            "low_nibble_counter_score": round(low_score, 6),
+            "high_nibble_counter_score": round(high_score, 6),
+        }
+
+        if changed == 0:
+            roles.append(ByteRoleHypothesis(
+                byte_index=byte_index,
+                hypothesis_kind="constant",
+                confidence=1.0,
+                reason="byte did not change in the analyzed recording",
+                metrics=metrics,
+            ))
+            continue
+
+        if best_counter[0] >= 0.72 and unique_values >= 4:
+            roles.append(ByteRoleHypothesis(
+                byte_index=byte_index,
+                hypothesis_kind="rolling_counter",
+                confidence=round(min(0.99, best_counter[0]), 5),
+                bit_mask=best_counter[1],
+                reason=(
+                    f"{best_counter[3]} follows a dominant modulo "
+                    f"delta of {best_counter[2]}"
+                ),
+                metrics=metrics,
+            ))
+            continue
+
+        checksum_score = min(
+            1.0,
+            (min(entropy_value / 8.0, 1.0) * 0.45)
+            + (min(change_rate, 1.0) * 0.30)
+            + (co_change_ratio * 0.25),
+        )
+        if (
+            entropy_value >= 4.0
+            and change_rate >= 0.25
+            and co_change_ratio >= 0.60
+            and best_counter[0] < 0.55
+            and unique_values >= 12
+        ):
+            roles.append(ByteRoleHypothesis(
+                byte_index=byte_index,
+                hypothesis_kind="checksum_candidate",
+                confidence=round(checksum_score, 5),
+                bit_mask=0xFF,
+                reason=(
+                    "high-entropy byte changes with other payload bytes and "
+                    "does not resemble a simple modulo counter"
+                ),
+                metrics=metrics,
+            ))
+            continue
+
+        varying_mask = 0
+        for previous, current in transition_pairs:
+            varying_mask |= (
+                frame_byte(previous, byte_index)
+                ^ frame_byte(current, byte_index)
+            )
+
+        if unique_values <= 4 and varying_mask:
+            roles.append(ByteRoleHypothesis(
+                byte_index=byte_index,
+                hypothesis_kind="periodic_or_state_bits",
+                confidence=round(min(0.9, 0.45 + change_rate), 5),
+                bit_mask=int(varying_mask),
+                reason="few observed values with a repeatable changing bit mask",
+                metrics=metrics,
+            ))
+        else:
+            roles.append(ByteRoleHypothesis(
+                byte_index=byte_index,
+                hypothesis_kind="payload_or_noise",
+                confidence=round(min(0.8, 0.25 + entropy_value / 16.0), 5),
+                bit_mask=int(varying_mask) if varying_mask else None,
+                reason="changing byte did not meet conservative counter/checksum heuristics",
+                metrics=metrics,
+            ))
+
+    return roles
+
+
+async def load_human_byte_hypotheses(
+    conn: Any,
+    session_id: UUID,
+) -> list[dict[str, Any]]:
+    rows = await conn.fetch(
+        """
+        SELECT can_id, byte_index, bit_mask, hypothesis_kind, confidence,
+               validation_status, notes, evidence, metadata
+        FROM can_signal_hypotheses
+        WHERE session_id = $1 AND source = 'human'
+        ORDER BY updated_at ASC
+        """,
+        session_id,
+    )
+    return [dict(row) for row in rows]
+
+
+def apply_human_byte_hypotheses(
+    candidates: list[Candidate],
+    human_rows: list[dict[str, Any]],
+) -> None:
+    by_id = {candidate.can_id: candidate for candidate in candidates}
+    for row in human_rows:
+        candidate = by_id.get(int(row.get("can_id") or -1))
+        if candidate is None:
+            continue
+        byte_index = int(row.get("byte_index") or 0)
+        kind = str(row.get("hypothesis_kind") or "unknown")
+        validation_status = str(row.get("validation_status") or "unreviewed")
+        match = next(
+            (
+                item
+                for item in candidate.byte_role_hypotheses
+                if item.byte_index == byte_index
+                and item.hypothesis_kind == kind
+            ),
+            None,
+        )
+        if match is None:
+            candidate.byte_role_hypotheses.append(ByteRoleHypothesis(
+                byte_index=byte_index,
+                hypothesis_kind=kind,
+                confidence=float(row.get("confidence") or 0.5),
+                bit_mask=(
+                    int(row["bit_mask"])
+                    if row.get("bit_mask") is not None
+                    else None
+                ),
+                auto_detected=False,
+                source="human",
+                validation_status=validation_status,
+                reason=str(row.get("notes") or "human analyst hypothesis"),
+                metrics=metadata_dict(row.get("evidence")),
+            ))
+        else:
+            match.source = "human"
+            match.validation_status = validation_status
+            if row.get("notes"):
+                match.reason = str(row["notes"])
+            if row.get("confidence") is not None:
+                match.confidence = float(row["confidence"])
+
+
 def analyze_frames(
     frames: list[FrameRow],
     markers: list[dict[str, Any]],
@@ -2492,6 +2777,7 @@ def analyze_frames(
             marker_windows,
             marker_window_ms,
         )
+        byte_role_hypotheses = classify_byte_roles(rows, byte_entropy)
 
         active_entropy_values = [
             byte_entropy[str(byte_index)]
@@ -2674,6 +2960,7 @@ def analyze_frames(
             byte_change_counts=byte_change_map,
             byte_entropy=byte_entropy,
             byte_evidence=byte_evidence,
+            byte_role_hypotheses=byte_role_hypotheses,
             entropy=round(entropy_score, 4),
             raw_marker_fraction=round(raw_marker_fraction, 5),
             marker_window_coverage=round(marker_window_coverage, 5),
@@ -2697,6 +2984,10 @@ def analyze_frames(
             "byte_evidence": [
                 item.model_dump()
                 for item in byte_evidence
+            ],
+            "byte_role_hypotheses": [
+                item.model_dump()
+                for item in byte_role_hypotheses
             ],
             "change_count": change_count,
             "change_ratio": round(change_ratio, 6),
@@ -2796,6 +3087,19 @@ async def get_ai_status() -> dict[str, Any]:
             "transitions"
         ),
         "report_storage": "replace latest ai_analysis report per session",
+        "session_integrity": {
+            "analysis_requires": "capture_status=finalized",
+            "timestamp_authority": "server only",
+            "browser_timestamps": "ignored for persisted markers",
+        },
+        "byte_role_detection": {
+            "automatic": True,
+            "roles": [
+                "constant", "rolling_counter", "checksum_candidate",
+                "periodic_or_state_bits", "payload_or_noise"
+            ],
+            "checksum_semantics": "candidate only; requires validation",
+        },
         "default_marker_window_ms": DEFAULT_MARKER_WINDOW_MS,
         "vector_memory": {
             "storage": True,
@@ -3096,7 +3400,9 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
             """
             SELECT
                 cs.id, cs.vehicle_id, cs.mission_id, cs.label, cs.bus_interface, cs.bus_mode,
-                cs.started_at, cs.ended_at,
+                cs.started_at, cs.ended_at, cs.finalized_at,
+                cs.capture_status, cs.final_frame_id, cs.final_frame_count,
+                cs.final_marker_count, cs.capture_quality,
                 cs.metadata AS session_metadata,
                 rm.mission_code,
                 rm.title AS mission_title,
@@ -3112,6 +3418,20 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
         )
         if not session:
             raise HTTPException(status_code=404, detail="CAN session not found")
+
+        if session["capture_status"] != "finalized":
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "CAN session must be finalized before analysis. "
+                    f"Current capture_status={session['capture_status']}."
+                ),
+            )
+        if session["ended_at"] is None or session["finalized_at"] is None:
+            raise HTTPException(
+                status_code=409,
+                detail="Finalized session is missing ended_at/finalized_at integrity fields.",
+            )
 
         markers = await conn.fetch(
             """
@@ -3136,6 +3456,20 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
         session_dict["mission_metadata"] = metadata_dict(
             session_dict.get("mission_metadata")
         )
+        session_dict["capture_quality"] = metadata_dict(
+            session_dict.get("capture_quality")
+        )
+        if (
+            session_dict["capture_quality"].get("usable_for_analysis") is False
+            and not payload.allow_low_quality
+        ):
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "Capture quality gate rejected this session. "
+                    "Set allow_low_quality=true only for explicit forensic review."
+                ),
+            )
 
         analysis_mode = infer_analysis_mode(session_dict, marker_dicts)
         baseline_mode = is_baseline_mode(analysis_mode)
@@ -3148,6 +3482,16 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
             marker_window_ms=payload.marker_window_ms,
             analysis_mode=analysis_mode,
         )
+        finalized_count = int(session["final_frame_count"] or 0)
+        observed_count = int(frame_selection.get("total_frames") or 0)
+        if finalized_count and observed_count != finalized_count:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "Finalized frame-count integrity mismatch: "
+                    f"expected {finalized_count}, observed {observed_count}."
+                ),
+            )
 
     can_ai_log(
         "database_input_loaded",
@@ -3252,6 +3596,20 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
             payload.marker_window_ms,
             analysis_mode,
         )
+        try:
+            async with pool.acquire() as conn:
+                human_hypotheses = await load_human_byte_hypotheses(
+                    conn,
+                    session_id,
+                )
+            apply_human_byte_hypotheses(candidates, human_hypotheses)
+        except Exception as hypothesis_exc:
+            can_ai_log(
+                "human_hypothesis_load_failed",
+                session=session_id,
+                error_type=type(hypothesis_exc).__name__,
+                error=repr(hypothesis_exc),
+            )
     except Exception as exc:
         can_ai_log(
             "statistics_failed",
@@ -3715,6 +4073,10 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                                     item.model_dump()
                                     for item in c.byte_evidence
                                 ],
+                                "byte_role_hypotheses": [
+                                    item.model_dump()
+                                    for item in c.byte_role_hypotheses
+                                ],
                             }),
                         )
                         for c in candidates
@@ -3772,6 +4134,10 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                                     item.model_dump()
                                     for item in c.byte_evidence
                                 ],
+                                "byte_role_hypotheses": [
+                                    item.model_dump()
+                                    for item in c.byte_role_hypotheses
+                                ],
                             }),
                         )
                         for c in candidates
@@ -3807,6 +4173,19 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                     "vehicle_slug": session_dict.get("vehicle_slug"),
                     "analysis_mode": analysis_mode,
                     "analysis_revision": analysis_revision,
+                    "session_integrity": {
+                        "capture_status": session_dict.get("capture_status"),
+                        "finalized_at": session_dict.get("finalized_at"),
+                        "final_frame_id": session_dict.get("final_frame_id"),
+                        "final_frame_count": session_dict.get("final_frame_count"),
+                        "final_marker_count": session_dict.get("final_marker_count"),
+                        "capture_quality": session_dict.get("capture_quality"),
+                        "timestamp_authority": "server",
+                    },
+                    "byte_hypothesis_count": sum(
+                        len(candidate.byte_role_hypotheses)
+                        for candidate in candidates
+                    ),
                     "report_storage": "replace_latest_per_session",
                     "baseline_profile": baseline_profile,
                     "target_expected": not baseline_mode,
@@ -3847,6 +4226,72 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                     "top_candidates": persisted_top_candidates,
                     "heatmap": persisted_heatmap,
                 }
+
+                await conn.execute(
+                    """
+                    DELETE FROM can_signal_hypotheses
+                    WHERE session_id = $1 AND source = 'auto_analysis'
+                    """,
+                    session_id,
+                )
+                hypothesis_rows = []
+                for candidate in candidates:
+                    for hypothesis in candidate.byte_role_hypotheses:
+                        bit_mask = hypothesis.bit_mask
+                        hypothesis_key = (
+                            f"{candidate.can_id}:{hypothesis.byte_index}:"
+                            f"{bit_mask if bit_mask is not None else 0}:"
+                            f"{hypothesis.hypothesis_kind}"
+                        )
+                        hypothesis_rows.append((
+                            session_id,
+                            session["vehicle_id"],
+                            session["mission_id"],
+                            session_dict.get("mission_code"),
+                            hypothesis_key,
+                            candidate.can_id,
+                            hypothesis.byte_index,
+                            bit_mask,
+                            hypothesis.hypothesis_kind,
+                            hypothesis.confidence,
+                            hypothesis.reason,
+                            json_dumps(hypothesis.metrics),
+                            json_dumps({
+                                "analysis_mode": analysis_mode,
+                                "can_id_hex": candidate.can_id_hex,
+                                "auto_detected": True,
+                            }),
+                        ))
+                if hypothesis_rows:
+                    await conn.executemany(
+                        """
+                        INSERT INTO can_signal_hypotheses (
+                            session_id, vehicle_id, mission_id, mission_code,
+                            hypothesis_key, can_id, byte_index, bit_mask,
+                            hypothesis_kind, confidence, source, notes,
+                            evidence, metadata
+                        ) VALUES (
+                            $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
+                            'auto_analysis',$11,$12::jsonb,$13::jsonb
+                        )
+                        ON CONFLICT (session_id, hypothesis_key)
+                        DO UPDATE SET
+                            confidence = EXCLUDED.confidence,
+                            notes = CASE
+                                WHEN can_signal_hypotheses.source = 'human'
+                                    THEN can_signal_hypotheses.notes
+                                ELSE EXCLUDED.notes
+                            END,
+                            evidence = CASE
+                                WHEN can_signal_hypotheses.source = 'human'
+                                    THEN can_signal_hypotheses.evidence || EXCLUDED.evidence
+                                ELSE EXCLUDED.evidence
+                            END,
+                            metadata = can_signal_hypotheses.metadata || EXCLUDED.metadata,
+                            updated_at = now()
+                        """,
+                        hypothesis_rows,
+                    )
 
                 if existing_report:
                     report_row = await conn.fetchrow(
@@ -4034,6 +4479,19 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
         "ok": True,
         "session_id": str(session_id),
         "analysis_mode": analysis_mode,
+        "session_integrity": {
+            "capture_status": session_dict.get("capture_status"),
+            "finalized_at": session_dict.get("finalized_at"),
+            "final_frame_id": session_dict.get("final_frame_id"),
+            "final_frame_count": session_dict.get("final_frame_count"),
+            "final_marker_count": session_dict.get("final_marker_count"),
+            "capture_quality": session_dict.get("capture_quality"),
+            "timestamp_authority": "server",
+        },
+        "byte_hypothesis_count": sum(
+            len(candidate.byte_role_hypotheses)
+            for candidate in candidates
+        ),
         "baseline_profile": baseline_profile,
         "baseline_subtraction": baseline_context,
         "supervised_ml": ml_context,
@@ -4144,6 +4602,8 @@ async def get_session_analysis(session_id: UUID) -> dict[str, Any]:
         "ok": True,
         "session_id": str(session_id),
         "analysis_mode": latest_report_metadata.get("analysis_mode"),
+        "session_integrity": latest_report_metadata.get("session_integrity"),
+        "byte_hypothesis_count": latest_report_metadata.get("byte_hypothesis_count", 0),
         "baseline_profile": latest_report_metadata.get("baseline_profile"),
         "baseline_subtraction": latest_report_metadata.get("baseline_subtraction"),
         "supervised_ml": latest_report_metadata.get("supervised_ml"),
@@ -4239,6 +4699,11 @@ async def get_mission_progress(
             cs.bus_mode,
             cs.started_at,
             cs.ended_at,
+            cs.finalized_at,
+            cs.capture_status,
+            cs.final_frame_count,
+            cs.final_marker_count,
+            cs.capture_quality,
             cs.metadata AS session_metadata,
             v.slug AS vehicle_slug,
             v.year,
@@ -4341,13 +4806,14 @@ async def get_mission_progress(
 
         marker_count = int(row.get("marker_count") or 0)
         analyzed = bool(row.get("report_id")) or confidence is not None
-        completed = row.get("ended_at") is not None or frame_count > 0 or marker_count > 0
-        status = "open"
-        if completed and analyzed:
+        capture_status = str(row.get("capture_status") or "open")
+        completed = capture_status == "finalized"
+        status = capture_status
+        if capture_status == "finalized" and analyzed:
             status = "analyzed"
-        elif completed:
+        elif capture_status == "finalized":
             status = "recorded"
-        if frame_count == 0 and marker_count > 0:
+        if capture_status == "finalized" and frame_count == 0 and marker_count > 0:
             status = "markers_only"
 
         item = {
@@ -4377,6 +4843,11 @@ async def get_mission_progress(
             "marker_count": marker_count,
             "started_at": row.get("started_at"),
             "ended_at": row.get("ended_at"),
+            "finalized_at": row.get("finalized_at"),
+            "capture_status": row.get("capture_status"),
+            "final_frame_count": row.get("final_frame_count"),
+            "final_marker_count": row.get("final_marker_count"),
+            "capture_quality": metadata_dict(row.get("capture_quality")),
             "report_id": str(row["report_id"]) if row.get("report_id") else None,
             "report_created_at": row.get("report_created_at"),
         }
@@ -4440,6 +4911,11 @@ async def get_latest_session_for_mission(
             cs.bus_mode,
             cs.started_at,
             cs.ended_at,
+            cs.finalized_at,
+            cs.capture_status,
+            cs.final_frame_count,
+            cs.final_marker_count,
+            cs.capture_quality,
             cs.metadata AS session_metadata,
             v.slug AS vehicle_slug,
             v.year,
@@ -4566,6 +5042,11 @@ async def get_latest_session_for_mission(
         "marker_count": int(item.get("marker_count") or 0),
         "started_at": item.get("started_at"),
         "ended_at": item.get("ended_at"),
+        "finalized_at": item.get("finalized_at"),
+        "capture_status": item.get("capture_status"),
+        "final_frame_count": item.get("final_frame_count"),
+        "final_marker_count": item.get("final_marker_count"),
+        "capture_quality": metadata_dict(item.get("capture_quality")),
         "report_id": str(item["report_id"]) if item.get("report_id") else None,
         "report_created_at": item.get("report_created_at"),
     }
@@ -4586,6 +5067,7 @@ async def delete_can_session(session_id: UUID) -> dict[str, Any]:
 
         async with conn.transaction():
             table_order = [
+                ("can_signal_hypotheses", "session_id"),
                 ("signal_embeddings", "session_id"),
                 ("ai_insights", "session_id"),
                 ("session_reports", "session_id"),
@@ -4630,6 +5112,8 @@ async def export_session(
             """
             SELECT
                 cs.id, cs.label, cs.bus_interface, cs.bus_mode, cs.started_at, cs.ended_at,
+                cs.finalized_at, cs.capture_status, cs.final_frame_id,
+                cs.final_frame_count, cs.final_marker_count, cs.capture_quality,
                 cs.metadata AS session_metadata,
                 v.slug AS vehicle_slug, v.year, v.make, v.model, v.trim, v.alias,
                 rm.mission_code, rm.title AS mission_title, rm.target AS mission_target
@@ -4675,10 +5159,31 @@ async def export_session(
             """,
             session_id,
         )
+        hypotheses = await conn.fetch(
+            """
+            SELECT id, can_id, byte_index, bit_mask, hypothesis_kind,
+                   action_group, confidence, source, validation_status,
+                   notes, evidence, metadata, created_at, updated_at
+            FROM can_signal_hypotheses
+            WHERE session_id = $1
+            ORDER BY can_id, byte_index, confidence DESC
+            """,
+            session_id,
+        )
 
     session_dict = dict(session)
     session_dict["id"] = str(session_dict["id"])
     session_dict["session_metadata"] = metadata_dict(session_dict.get("session_metadata"))
+    session_dict["capture_quality"] = metadata_dict(session_dict.get("capture_quality"))
+
+    hypothesis_items = []
+    for row in hypotheses:
+        item = dict(row)
+        item["id"] = str(item["id"])
+        item["can_id_hex"] = can_hex(int(item["can_id"]))
+        item["evidence"] = metadata_dict(item.get("evidence"))
+        item["metadata"] = metadata_dict(item.get("metadata"))
+        hypothesis_items.append(item)
 
     marker_items = []
     for row in markers:
@@ -4726,6 +5231,7 @@ async def export_session(
         "export_version": 1,
         "session": session_dict,
         "markers": marker_items,
+        "signal_hypotheses": hypothesis_items,
         "frames": frame_items,
         "frame_count": len(frame_items),
         "latest_report": dict(report) if report else None,

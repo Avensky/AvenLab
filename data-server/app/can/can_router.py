@@ -49,6 +49,7 @@ class CaptureState:
     bus_interface: str
     bus_mode: str
     started_epoch: float
+    started_monotonic: float
     task: asyncio.Task[None]
     process: Optional[asyncio.subprocess.Process] = None
     frames_inserted: int = 0
@@ -76,7 +77,10 @@ class MarkerRequest(BaseModel):
     step_code: Optional[str] = None
     marker_type: str
     label: Optional[str] = None
-    timestamp_ms: int = 0
+    # Accepted only for diagnostics/backward compatibility. The canonical
+    # marker timestamp is always assigned by the Pi when the request arrives.
+    timestamp_ms: Optional[int] = None
+    client_event_id: Optional[str] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
@@ -492,6 +496,7 @@ async def start_socketcan_capture(session_id: str, bus_interface: str, bus_mode:
         bus_interface=bus_interface,
         bus_mode=bus_mode,
         started_epoch=time.time(),
+        started_monotonic=time.monotonic(),
         task=asyncio.create_task(asyncio.sleep(0)),
     )
     state.task = asyncio.create_task(capture_socketcan_session(state))
@@ -517,6 +522,38 @@ async def stop_socketcan_capture(session_id: str) -> Optional[CaptureState]:
     except Exception as exc:
         state.last_error = str(exc)
     return state
+
+
+async def server_capture_timestamp_ms(
+    session_id: str,
+    started_at: Any,
+) -> tuple[int, str]:
+    """Return the Pi-authoritative elapsed capture time.
+
+    Browser clocks are never used for persisted marker timestamps. Live
+    captures use the same process start pair as candump; finalized/recovered or
+    simulated sessions fall back to PostgreSQL clock_timestamp().
+    """
+    state = ACTIVE_CAPTURES.get(session_id)
+    if state is not None:
+        elapsed_ms = max(
+            0,
+            int((time.monotonic() - state.started_monotonic) * 1000),
+        )
+        return elapsed_ms, "capture_process_monotonic"
+
+    row = await fetchrow(
+        """
+        SELECT GREATEST(
+            0,
+            FLOOR(EXTRACT(EPOCH FROM (clock_timestamp() - started_at)) * 1000)
+        )::bigint AS elapsed_ms
+        FROM can_sessions
+        WHERE id = $1
+        """,
+        session_id,
+    )
+    return int(row["elapsed_ms"] if row else 0), "postgres_clock"
 
 
 def runtime_metadata(
@@ -786,10 +823,11 @@ async def start_session(payload: StartSessionRequest) -> Dict[str, Any]:
             label,
             bus_interface,
             bus_mode,
-            metadata
+            metadata,
+            capture_status
         )
-        VALUES ($1, $2, $3, $4, $5, $6::jsonb)
-        RETURNING id, started_at
+        VALUES ($1, $2, $3, $4, $5, $6::jsonb, 'recording')
+        RETURNING id, started_at, capture_status
         """,
         vehicle["id"],
         mission["id"] if mission else None,
@@ -830,6 +868,8 @@ async def start_session(payload: StartSessionRequest) -> Dict[str, Any]:
         "capture_kind": "simulation" if fake_capture else "live",
         "capture_source": "generated-fake-can" if fake_capture else "socketcan-candump",
         "capture_running": bool(capture_state and not capture_state.task.done()),
+        "capture_status": session["capture_status"],
+        "timestamp_authority": "server",
         "database": "postgres",
         "vehicle": {
             "id": str(vehicle["id"]),
@@ -876,7 +916,8 @@ async def list_vehicles() -> Dict[str, Any]:
 async def post_marker(session_id: str, payload: MarkerRequest) -> Dict[str, Any]:
     session = await fetchrow(
         """
-        SELECT cs.id, cs.vehicle_id, cs.mission_id, cs.bus_interface, cs.bus_mode, cs.ended_at
+        SELECT cs.id, cs.vehicle_id, cs.mission_id, cs.bus_interface,
+               cs.bus_mode, cs.started_at, cs.ended_at, cs.capture_status
         FROM can_sessions cs
         WHERE cs.id = $1
         """,
@@ -886,8 +927,16 @@ async def post_marker(session_id: str, payload: MarkerRequest) -> Dict[str, Any]
     if not session:
         raise HTTPException(status_code=404, detail="Unknown CAN session")
 
-    if session["ended_at"] is not None:
-        raise HTTPException(status_code=409, detail="CAN session is already stopped")
+    if session["capture_status"] != "recording" or session["ended_at"] is not None:
+        raise HTTPException(
+            status_code=409,
+            detail="CAN session is not recording; markers require an active capture",
+        )
+
+    canonical_timestamp_ms, timestamp_source = await server_capture_timestamp_ms(
+        session_id,
+        session["started_at"],
+    )
 
     mission_id = session["mission_id"]
     mission_code = payload.mission_code
@@ -917,16 +966,25 @@ async def post_marker(session_id: str, payload: MarkerRequest) -> Dict[str, Any]
         if step:
             step_id = step["id"]
 
+    marker_metadata = runtime_metadata(
+        {
+            **payload.metadata,
+            "timestamp_authority": "server",
+            "timestamp_source": timestamp_source,
+            "server_timestamp_ms": canonical_timestamp_ms,
+            "client_timestamp_ms_ignored": payload.timestamp_ms,
+            "client_event_id": payload.client_event_id,
+            "server_received_epoch_ms": int(time.time() * 1000),
+        },
+        bus_interface=session["bus_interface"],
+        bus_mode=session["bus_mode"],
+    )
+
     marker = await fetchrow(
         """
         INSERT INTO can_session_markers (
-            session_id,
-            mission_id,
-            step_id,
-            marker_type,
-            label,
-            timestamp_ms,
-            metadata
+            session_id, mission_id, step_id, marker_type, label,
+            timestamp_ms, metadata
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
         RETURNING id, created_at
@@ -936,8 +994,8 @@ async def post_marker(session_id: str, payload: MarkerRequest) -> Dict[str, Any]
         step_id,
         payload.marker_type,
         payload.label,
-        payload.timestamp_ms,
-        jsonb_dumps(runtime_metadata(payload.metadata, bus_interface=session["bus_interface"], bus_mode=session["bus_mode"])),
+        canonical_timestamp_ms,
+        jsonb_dumps(marker_metadata),
     )
 
     fake_capture = should_use_fake_capture(session["bus_interface"], session["bus_mode"])
@@ -950,7 +1008,7 @@ async def post_marker(session_id: str, payload: MarkerRequest) -> Dict[str, Any]
             mission_code=mission_code or "",
             step_code=payload.step_code,
             marker_type=payload.marker_type,
-            timestamp_ms=payload.timestamp_ms,
+            timestamp_ms=canonical_timestamp_ms,
             bus_interface=session["bus_interface"],
         )
 
@@ -958,6 +1016,9 @@ async def post_marker(session_id: str, payload: MarkerRequest) -> Dict[str, Any]
         "ok": True,
         "marker_id": str(marker["id"]),
         "created_at": marker["created_at"],
+        "timestamp_ms": canonical_timestamp_ms,
+        "timestamp_authority": "server",
+        "timestamp_source": timestamp_source,
         "frames_inserted": frames_inserted,
         "bus_interface": session["bus_interface"],
         "bus_mode": session["bus_mode"],
@@ -968,62 +1029,162 @@ async def post_marker(session_id: str, payload: MarkerRequest) -> Dict[str, Any]
     }
 
 
-@router.post("/session/{session_id}/stop")
-async def stop_session(session_id: str, payload: StopSessionRequest) -> Dict[str, Any]:
+async def finalize_session_capture(
+    session_id: str,
+    payload: StopSessionRequest,
+) -> Dict[str, Any]:
     existing_session = await fetchrow(
-        "SELECT id, bus_interface, bus_mode FROM can_sessions WHERE id = $1",
+        """
+        SELECT id, bus_interface, bus_mode, started_at, ended_at,
+               capture_status, finalized_at, final_frame_count,
+               final_marker_count, final_frame_id, capture_quality
+        FROM can_sessions
+        WHERE id = $1
+        """,
         session_id,
     )
     if not existing_session:
         raise HTTPException(status_code=404, detail="Unknown CAN session")
 
+    # Finalization is idempotent. This makes UI retries safe.
+    if existing_session["capture_status"] == "finalized":
+        return {
+            "ok": True,
+            "session_id": str(existing_session["id"]),
+            "status": "finalized",
+            "capture_status": "finalized",
+            "finalized_at": existing_session["finalized_at"],
+            "frames": int(existing_session["final_frame_count"] or 0),
+            "markers": int(existing_session["final_marker_count"] or 0),
+            "final_frame_id": existing_session["final_frame_id"],
+            "capture_quality": existing_session["capture_quality"] or {},
+            "already_finalized": True,
+            "timestamp_authority": "server",
+        }
+
+    await execute(
+        "UPDATE can_sessions SET capture_status = 'finalizing' WHERE id = $1",
+        session_id,
+    )
+
     capture_state = await stop_socketcan_capture(session_id)
-    fake_capture = should_use_fake_capture(existing_session["bus_interface"], existing_session["bus_mode"])
+    fake_capture = should_use_fake_capture(
+        existing_session["bus_interface"],
+        existing_session["bus_mode"],
+    )
+
+    stats = await fetchrow(
+        """
+        SELECT
+            COUNT(*)::bigint AS frame_count,
+            MAX(id)::bigint AS final_frame_id,
+            MIN(timestamp_ms)::bigint AS first_frame_timestamp_ms,
+            MAX(timestamp_ms)::bigint AS last_frame_timestamp_ms
+        FROM can_frames_raw
+        WHERE session_id = $1
+        """,
+        session_id,
+    )
+    marker_stats = await fetchrow(
+        """
+        SELECT COUNT(*)::int AS marker_count,
+               COUNT(*) FILTER (WHERE marker_type IN ('action_start','action','target_action','target_event'))::int AS action_marker_count
+        FROM can_session_markers
+        WHERE session_id = $1
+        """,
+        session_id,
+    )
+
+    frame_count = int(stats["frame_count"] or 0)
+    marker_count = int(marker_stats["marker_count"] or 0)
+    action_marker_count = int(marker_stats["action_marker_count"] or 0)
+    capture_error = capture_state.last_error if capture_state else None
+    final_flush_completed = capture_error is None
+    duration_ms = max(
+        0,
+        int((time.time() - existing_session["started_at"].timestamp()) * 1000),
+    )
+    quality_score = 1.0
+    if frame_count <= 0:
+        quality_score -= 0.60
+    if capture_error:
+        quality_score -= 0.25
+    if not final_flush_completed:
+        quality_score -= 0.15
+    quality_score = max(0.0, min(1.0, quality_score))
+
+    capture_quality = {
+        "duration_ms": duration_ms,
+        "frames_received": frame_count,
+        "markers_received": marker_count,
+        "action_markers": action_marker_count,
+        "lines_seen": capture_state.lines_seen if capture_state else None,
+        "capture_frames_inserted": capture_state.frames_inserted if capture_state else None,
+        "capture_error": capture_error,
+        "final_flush_completed": final_flush_completed,
+        "first_frame_timestamp_ms": stats["first_frame_timestamp_ms"],
+        "last_frame_timestamp_ms": stats["last_frame_timestamp_ms"],
+        "quality_score": round(quality_score, 4),
+        "usable_for_analysis": frame_count > 0 and final_flush_completed,
+        "timestamp_authority": "server",
+    }
 
     session = await fetchrow(
         """
         UPDATE can_sessions
-        SET ended_at = NOW(),
-            metadata = metadata || $2::jsonb
+        SET ended_at = COALESCE(ended_at, clock_timestamp()),
+            finalized_at = clock_timestamp(),
+            capture_status = 'finalized',
+            final_frame_id = $2,
+            final_frame_count = $3,
+            final_marker_count = $4,
+            capture_quality = $5::jsonb,
+            metadata = metadata || $6::jsonb
         WHERE id = $1
-        RETURNING id, bus_interface, bus_mode, started_at, ended_at
+        RETURNING id, bus_interface, bus_mode, started_at, ended_at, finalized_at
         """,
         session_id,
+        stats["final_frame_id"],
+        frame_count,
+        marker_count,
+        jsonb_dumps(capture_quality),
         jsonb_dumps(runtime_metadata({
-            "stop_metadata": payload.metadata,
-            "capture_frames_inserted": capture_state.frames_inserted if capture_state else None,
-            "capture_lines_seen": capture_state.lines_seen if capture_state else None,
-            "capture_error": capture_state.last_error if capture_state else None,
+            "finalize_metadata": payload.metadata,
+            "capture_quality": capture_quality,
         }, bus_interface=existing_session["bus_interface"], bus_mode=existing_session["bus_mode"], fake_can=fake_capture)),
-    )
-
-    frame_count = await fetchrow(
-        "SELECT COUNT(*) AS count FROM can_frames_raw WHERE session_id = $1",
-        session_id,
-    )
-    marker_count = await fetchrow(
-        "SELECT COUNT(*) AS count FROM can_session_markers WHERE session_id = $1",
-        session_id,
     )
 
     return {
         "ok": True,
         "session_id": str(session["id"]),
-        "status": "stopped",
+        "status": "finalized",
+        "capture_status": "finalized",
         "started_at": session["started_at"],
         "ended_at": session["ended_at"],
-        "frames": frame_count["count"],
-        "markers": marker_count["count"],
+        "finalized_at": session["finalized_at"],
+        "frames": frame_count,
+        "markers": marker_count,
+        "final_frame_id": stats["final_frame_id"],
+        "capture_quality": capture_quality,
         "bus_interface": session["bus_interface"],
         "bus_mode": session["bus_mode"],
         "capture_kind": "simulation" if fake_capture else "live",
         "fake_can": fake_capture,
-        "capture_frames_inserted": capture_state.frames_inserted if capture_state else None,
-        "capture_lines_seen": capture_state.lines_seen if capture_state else None,
-        "capture_error": capture_state.last_error if capture_state else None,
+        "timestamp_authority": "server",
         "app_env": RUNTIME_ENV,
         "production": IS_PRODUCTION,
     }
+
+
+@router.post("/session/{session_id}/finalize")
+async def finalize_session(session_id: str, payload: StopSessionRequest) -> Dict[str, Any]:
+    return await finalize_session_capture(session_id, payload)
+
+
+@router.post("/session/{session_id}/stop")
+async def stop_session(session_id: str, payload: StopSessionRequest) -> Dict[str, Any]:
+    # Backward-compatible alias. Stop now means finalize.
+    return await finalize_session_capture(session_id, payload)
 
 
 @router.get("/session/{session_id}/frames")

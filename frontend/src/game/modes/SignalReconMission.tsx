@@ -18,6 +18,7 @@ import {
     SignalReconBrainConsole,
     type BrainAnalysisResult,
     type BrainCandidate,
+    type ByteRoleHypothesis,
     type CandidateLabelMetadata,
     type CandidateMlLabel,
     type CandidateMlLabelValue,
@@ -66,6 +67,8 @@ type BrainAnalyzeOptions = {
 type SavedAnalysisResponse = {
     ok?: boolean;
     session_id?: string;
+    session_integrity?: BrainAnalysisResult["session_integrity"];
+    byte_hypothesis_count?: number;
     vector_memory?: BrainAnalysisResult["vector_memory"];
     marker_selection?: BrainAnalysisResult["marker_selection"];
     frame_selection?: BrainAnalysisResult["frame_selection"];
@@ -503,6 +506,14 @@ export function SignalReconMission({
             return;
         }
 
+        if (useSignalReconStore.getState().activeSessionId === sessionId) {
+            setBrainError(
+                "Finalize the recording before analysis. Pi Brain only analyzes immutable sessions.",
+            );
+            appendBrainLog("[ai] blocked: active capture must be finalized first");
+            return;
+        }
+
         setBrainAnalyzing(true);
         setBrainError(null);
         appendBrainLog(`[ai] ${source}: analyzing ${shortSessionId(sessionId)}`);
@@ -670,6 +681,13 @@ export function SignalReconMission({
             const nextAnalysis: BrainAnalysisResult = {
                 ok: true,
                 session_id: data.session_id ?? sessionId,
+                session_integrity: (
+                    data.session_integrity ??
+                    (asRecord(reportMetadata.session_integrity) as BrainAnalysisResult["session_integrity"])
+                ),
+                byte_hypothesis_count: toNumber(
+                    data.byte_hypothesis_count ?? reportMetadata.byte_hypothesis_count,
+                ),
                 analysis_mode: analysisMode ?? undefined,
                 analysis_source:
                     analysisSource === "llm" || analysisSource === "fallback"
@@ -847,6 +865,72 @@ export function SignalReconMission({
     };
 
 
+    const handleValidateByteHypothesis = async (
+        candidate: BrainCandidate,
+        hypothesis: ByteRoleHypothesis,
+        validationStatus: "positive" | "negative" | "uncertain",
+    ) => {
+        const sessionId = resolveAnalysisSessionId();
+        if (!sessionId) {
+            setBrainError("Select an analyzed session before validating a byte role.");
+            return;
+        }
+
+        const token = getMlAdminToken();
+        if (!token) {
+            setBrainError("ML admin token is required to validate byte hypotheses.");
+            return;
+        }
+
+        setBrainError(null);
+        try {
+            const response = await fetch(
+                `${getApiBaseUrl()}/data/can/session/${sessionId}/hypotheses`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-AvenLab-ML-Token": token,
+                    },
+                    body: JSON.stringify({
+                        can_id: candidate.can_id,
+                        byte_index: hypothesis.byte_index,
+                        bit_mask: hypothesis.bit_mask ?? null,
+                        hypothesis_kind: hypothesis.hypothesis_kind,
+                        validation_status: validationStatus,
+                        confidence: hypothesis.confidence,
+                        notes: hypothesis.reason,
+                        evidence: hypothesis.metrics ?? {},
+                        metadata: {
+                            source: "signal-recon-brain-console",
+                            auto_detected: hypothesis.auto_detected ?? true,
+                        },
+                    }),
+                },
+            );
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || data.ok === false) {
+                if (response.status === 403) {
+                    window.sessionStorage.removeItem("avenlab.mlAdminToken");
+                }
+                throw new Error(
+                    data.detail ?? data.error ??
+                    `Byte hypothesis save failed with HTTP ${response.status}.`,
+                );
+            }
+            appendBrainLog(
+                `[hypothesis] ${candidate.can_id_hex} B${hypothesis.byte_index} ` +
+                `${hypothesis.hypothesis_kind} → ${validationStatus}`,
+            );
+        } catch (err) {
+            const message =
+                err instanceof Error ? err.message : "Failed to validate byte hypothesis.";
+            setBrainError(message);
+            appendBrainLog(`[hypothesis] error: ${message}`);
+        }
+    };
+
+
     const handleDeleteSession = async (sessionIdOverride?: string) => {
         const sessionId = resolveAnalysisSessionId(sessionIdOverride);
         if (!sessionId || brainAnalyzing || isRunning || activeSessionId === sessionId) return;
@@ -911,11 +995,11 @@ export function SignalReconMission({
         setActivePanel("game");
 
         try {
-            const sessionId = await ensureSession();
+            await ensureSession();
             await runStep(displayStep ?? undefined);
-            if (autoAnalyze) {
-                await handleQuickAnalyze(sessionId, "step-complete");
-            }
+            appendBrainLog(
+                "[capture] step complete; session remains recording until FINALIZE",
+            );
             onDatabaseChanged?.();
         } catch (err) {
             setError(
@@ -936,6 +1020,14 @@ export function SignalReconMission({
         try {
             const sessionId = await ensureSession();
             await runSelectedMission();
+            setLastAnalyzedSessionId(sessionId);
+            await stopSession({
+                ui_event: "mission_complete",
+                auto_finalize: true,
+            });
+            appendBrainLog(
+                `[capture] finalized ${shortSessionId(sessionId)} before analysis`,
+            );
             if (autoAnalyze) {
                 await handleQuickAnalyze(sessionId, "mission-complete");
             }
@@ -966,8 +1058,15 @@ export function SignalReconMission({
             const sessionId = activeSessionId;
             if (sessionId) {
                 setLastAnalyzedSessionId(sessionId);
-                await stopSession({ ui_event: "mission_terminal_closed" });
+                await stopSession({ ui_event: "manual_finalize" });
+                appendBrainLog(
+                    `[capture] finalized ${shortSessionId(sessionId)} using Pi server time`,
+                );
+                if (autoAnalyze) {
+                    await handleQuickAnalyze(sessionId, "manual");
+                }
             }
+            onDatabaseChanged?.();
             onExit?.();
         } catch (err) {
             setError(
@@ -1842,7 +1941,7 @@ export function SignalReconMission({
                                         disabled={busy}
                                         className="rounded-lg border border-red-300/40 bg-red-500/10 px-2 py-1 text-xs font-bold text-red-100 hover:bg-red-400/20 disabled:cursor-not-allowed disabled:opacity-40 sm:px-2 sm:py-1 sm:text-xm"
                                     >
-                                        {activeSessionId ? "END" : "QUEUE"}
+                                        {activeSessionId ? "FINALIZE" : "QUEUE"}
                                     </GameButton>
                                 )}
 
@@ -1927,7 +2026,7 @@ export function SignalReconMission({
                                 disabled={busy}
                                 className="rounded-lg border border-red-300/40 bg-red-500/10 px-3 py-2 text-xs font-bold text-red-100 hover:bg-red-400/20 disabled:cursor-not-allowed disabled:opacity-40 sm:px-2 sm:py-1 sm:text-sm"
                             >
-                                END
+                                FINALIZE
                             </GameButton>
                         )}
 
@@ -1994,6 +2093,7 @@ export function SignalReconMission({
                 onLoadLatest={() => void handleLoadLatestAnalysis(undefined, true)}
                 onRefreshMl={() => void refreshMlContext()}
                 onLabelCandidate={handleLabelCandidate}
+                onValidateByteHypothesis={handleValidateByteHypothesis}
                 onToggleLlm={() => setUseLlm((value) => !value)}
                 onToggleEmbeddings={() => setUseEmbeddings((value) => !value)}
                 onToggleAutoAnalyze={() => setAutoAnalyze((value) => !value)}

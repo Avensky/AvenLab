@@ -6,6 +6,7 @@ import math
 import os
 import secrets
 import statistics
+from collections import Counter
 from typing import Any, Optional
 from uuid import UUID, uuid4
 
@@ -33,7 +34,7 @@ def _env_int(name: str, default: int, minimum: int = 1) -> int:
     return max(value, minimum)
 
 
-ML_FEATURE_SCHEMA_VERSION = 2
+ML_FEATURE_SCHEMA_VERSION = 3
 ML_MIN_EXAMPLES = _env_int("ML_MIN_EXAMPLES", 8, minimum=4)
 ML_MIN_DISTINCT_SESSIONS = _env_int(
     "ML_MIN_DISTINCT_SESSIONS",
@@ -78,6 +79,9 @@ ML_FEATURE_NAMES = (
     "baseline_overlap_score",
     "baseline_adjusted_change_ratio",
     "baseline_penalty",
+    "rolling_counter_byte_fraction",
+    "checksum_candidate_byte_fraction",
+    "constant_byte_fraction",
 )
 
 ml_router = APIRouter(tags=["can-ai"])
@@ -87,6 +91,22 @@ class CandidateLabelRequest(BaseModel):
     label: str = Field(pattern="^(positive|negative|uncertain)$")
     signal_name: Optional[str] = Field(default=None, max_length=160)
     notes: Optional[str] = Field(default=None, max_length=2_000)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class SignalHypothesisRequest(BaseModel):
+    can_id: int = Field(ge=0, le=0x1FFFFFFF)
+    byte_index: int = Field(ge=0, le=7)
+    bit_mask: Optional[int] = Field(default=None, ge=1, le=255)
+    hypothesis_kind: str = Field(min_length=1, max_length=80)
+    action_group: Optional[str] = Field(default=None, max_length=160)
+    validation_status: str = Field(
+        default="unreviewed",
+        pattern="^(unreviewed|positive|negative|uncertain)$",
+    )
+    confidence: float = Field(default=0.5, ge=0.0, le=1.0)
+    notes: Optional[str] = Field(default=None, max_length=2_000)
+    evidence: dict[str, Any] = Field(default_factory=dict)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -139,6 +159,19 @@ def _json_object(value: Any) -> dict[str, Any]:
             return {}
         return dict(parsed) if isinstance(parsed, dict) else {}
     return {}
+
+
+def _model_or_dict(value: Any) -> Optional[dict[str, Any]]:
+    """Return a plain dict from a Pydantic model or mapping.
+
+    Using isinstance(..., BaseModel) gives Pylance a concrete type before
+    model_dump() is called; hasattr() alone does not provide that narrowing.
+    """
+    if isinstance(value, BaseModel):
+        return value.model_dump()
+    if isinstance(value, dict):
+        return dict(value)
+    return None
 
 
 def _can_hex(can_id: int) -> str:
@@ -251,6 +284,7 @@ def _feature_vector_from_values(
     baseline_overlap_score: float,
     baseline_adjusted_change_ratio: float,
     baseline_penalty: float,
+    byte_role_hypotheses: Optional[list[dict[str, Any]]] = None,
 ) -> dict[str, float]:
     transitions = max(int(frame_count) - 1, 1)
     byte_rates = [
@@ -333,6 +367,15 @@ def _feature_vector_from_values(
         math.log1p(frequency_value) / math.log1p(100.0),
     )
 
+    role_items = byte_role_hypotheses or []
+    role_counts = Counter(
+        str(item.get("hypothesis_kind") or "")
+        for item in role_items
+        if isinstance(item, dict)
+        and str(item.get("validation_status") or "unreviewed") != "negative"
+    )
+    role_denominator = max(len(role_items), 1)
+
     return {
         "correlation_score": float(correlation_score),
         "raw_marker_fraction": float(raw_marker_fraction),
@@ -357,16 +400,30 @@ def _feature_vector_from_values(
             baseline_adjusted_change_ratio
         ),
         "baseline_penalty": float(baseline_penalty),
+        "rolling_counter_byte_fraction": (
+            role_counts.get("rolling_counter", 0) / role_denominator
+        ),
+        "checksum_candidate_byte_fraction": (
+            role_counts.get("checksum_candidate", 0) / role_denominator
+        ),
+        "constant_byte_fraction": (
+            role_counts.get("constant", 0) / role_denominator
+        ),
     }
 
 
 def candidate_feature_vector(candidate: Any) -> dict[str, float]:
-    evidence = []
-    for item in getattr(candidate, "byte_evidence", []):
-        if hasattr(item, "model_dump"):
-            evidence.append(item.model_dump())
-        elif isinstance(item, dict):
-            evidence.append(item)
+    evidence: list[dict[str, Any]] = []
+    for item in getattr(candidate, "byte_evidence", []) or []:
+        converted = _model_or_dict(item)
+        if converted is not None:
+            evidence.append(converted)
+
+    byte_role_hypotheses: list[dict[str, Any]] = []
+    for item in getattr(candidate, "byte_role_hypotheses", []) or []:
+        converted = _model_or_dict(item)
+        if converted is not None:
+            byte_role_hypotheses.append(converted)
 
     return _feature_vector_from_values(
         frame_count=int(getattr(candidate, "frame_count", 0) or 0),
@@ -405,6 +462,7 @@ def candidate_feature_vector(candidate: Any) -> dict[str, float]:
         baseline_penalty=float(
             getattr(candidate, "baseline_penalty", 0.0) or 0.0
         ),
+        byte_role_hypotheses=byte_role_hypotheses,
     )
 
 
@@ -497,6 +555,11 @@ def _persisted_feature_vector(
                 feature_metadata.get("baseline_penalty", 0.0),
             )
             or 0.0
+        ),
+        byte_role_hypotheses=(
+            feature_metadata.get("byte_role_hypotheses")
+            if isinstance(feature_metadata.get("byte_role_hypotheses"), list)
+            else []
         ),
     )
 
@@ -838,12 +901,16 @@ async def ensure_ml_tables(conn: Any) -> None:
         "SELECT to_regclass('public.can_ml_models')"
     )
 
-    if not labels_table or not models_table:
+    hypotheses_table = await conn.fetchval(
+        "SELECT to_regclass('public.can_signal_hypotheses')"
+    )
+
+    if not labels_table or not models_table or not hypotheses_table:
         raise HTTPException(
             status_code=503,
             detail=(
                 "Supervised ML tables are not installed. Apply "
-                "20260712_add_can_supervised_ml.sql first."
+                "the supervised-ML and 20260713 integrity migrations first."
             ),
         )
 
@@ -1023,6 +1090,131 @@ def apply_supervised_model(
     )
 
 
+@ml_router.get("/session/{session_id}/hypotheses")
+async def get_session_hypotheses(session_id: UUID) -> dict[str, Any]:
+    pool = await connect_db()
+    async with pool.acquire() as conn:
+        await ensure_ml_tables(conn)
+        rows = await conn.fetch(
+            """
+            SELECT id, can_id, byte_index, bit_mask, hypothesis_kind,
+                   action_group, confidence, source, validation_status,
+                   notes, evidence, metadata, created_at, updated_at
+            FROM can_signal_hypotheses
+            WHERE session_id = $1
+            ORDER BY can_id, byte_index, confidence DESC
+            """,
+            session_id,
+        )
+    items = []
+    for raw in rows:
+        item = dict(raw)
+        item["id"] = str(item["id"])
+        item["can_id_hex"] = _can_hex(int(item["can_id"]))
+        item["evidence"] = _json_object(item.get("evidence"))
+        item["metadata"] = _json_object(item.get("metadata"))
+        items.append(item)
+    return {
+        "ok": True,
+        "session_id": str(session_id),
+        "hypothesis_count": len(items),
+        "hypotheses": items,
+    }
+
+
+@ml_router.post("/session/{session_id}/hypotheses")
+async def upsert_signal_hypothesis(
+    session_id: UUID,
+    payload: SignalHypothesisRequest,
+    x_avenlab_ml_token: Optional[str] = Header(
+        default=None,
+        alias="X-AvenLab-ML-Token",
+    ),
+) -> dict[str, Any]:
+    _require_ml_admin(x_avenlab_ml_token)
+    pool = await connect_db()
+    async with pool.acquire() as conn:
+        await ensure_ml_tables(conn)
+        session = await conn.fetchrow(
+            """
+            SELECT cs.id, cs.vehicle_id, cs.mission_id, cs.capture_status,
+                   rm.mission_code
+            FROM can_sessions cs
+            LEFT JOIN recon_missions rm ON rm.id = cs.mission_id
+            WHERE cs.id = $1
+            """,
+            session_id,
+        )
+        if session is None:
+            raise HTTPException(status_code=404, detail="CAN session not found")
+        if session["capture_status"] != "finalized":
+            raise HTTPException(
+                status_code=409,
+                detail="Signal hypotheses may be saved only for finalized sessions.",
+            )
+
+        hypothesis_key = (
+            f"{payload.can_id}:{payload.byte_index}:"
+            f"{payload.bit_mask or 0}:{payload.hypothesis_kind}:"
+            f"{payload.action_group or ''}"
+        )
+        row = await conn.fetchrow(
+            """
+            INSERT INTO can_signal_hypotheses (
+                session_id, vehicle_id, mission_id, mission_code,
+                hypothesis_key, can_id, byte_index, bit_mask,
+                hypothesis_kind, action_group, confidence, source,
+                validation_status, notes, evidence, metadata
+            ) VALUES (
+                $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,
+                'human',$12,$13,$14::jsonb,$15::jsonb
+            )
+            ON CONFLICT (session_id, hypothesis_key)
+            DO UPDATE SET
+                confidence = EXCLUDED.confidence,
+                source = 'human',
+                validation_status = EXCLUDED.validation_status,
+                notes = EXCLUDED.notes,
+                evidence = EXCLUDED.evidence,
+                metadata = can_signal_hypotheses.metadata || EXCLUDED.metadata,
+                updated_at = now()
+            RETURNING id, hypothesis_key, created_at, updated_at
+            """,
+            session_id,
+            session["vehicle_id"],
+            session["mission_id"],
+            session["mission_code"],
+            hypothesis_key,
+            payload.can_id,
+            payload.byte_index,
+            payload.bit_mask,
+            payload.hypothesis_kind,
+            payload.action_group,
+            payload.confidence,
+            payload.validation_status,
+            payload.notes,
+            _json_dumps(payload.evidence),
+            _json_dumps({
+                **payload.metadata,
+                "feature_schema_version": ML_FEATURE_SCHEMA_VERSION,
+                "manual_override": True,
+            }),
+        )
+    return {
+        "ok": True,
+        "id": str(row["id"]),
+        "session_id": str(session_id),
+        "hypothesis_key": row["hypothesis_key"],
+        "can_id": payload.can_id,
+        "can_id_hex": _can_hex(payload.can_id),
+        "byte_index": payload.byte_index,
+        "bit_mask": payload.bit_mask,
+        "hypothesis_kind": payload.hypothesis_kind,
+        "validation_status": payload.validation_status,
+        "feature_schema_version": ML_FEATURE_SCHEMA_VERSION,
+    }
+
+
 @ml_router.post("/session/{session_id}/candidate/{can_id}/label")
 async def label_candidate(
     session_id: UUID,
@@ -1048,6 +1240,7 @@ async def label_candidate(
                 cs.mission_id,
                 cs.bus_interface,
                 cs.bus_mode,
+                cs.capture_status,
                 v.slug AS vehicle_slug,
                 rm.mission_code
             FROM can_sessions cs
@@ -1059,6 +1252,11 @@ async def label_candidate(
         )
         if session is None:
             raise HTTPException(status_code=404, detail="CAN session not found")
+        if session["capture_status"] != "finalized":
+            raise HTTPException(
+                status_code=409,
+                detail="Candidate labels require a finalized immutable session.",
+            )
 
         feature = await conn.fetchrow(
             """
