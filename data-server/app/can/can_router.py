@@ -1187,6 +1187,511 @@ async def stop_session(session_id: str, payload: StopSessionRequest) -> Dict[str
     return await finalize_session_capture(session_id, payload)
 
 
+
+def parse_can_id_filter(raw: Optional[str]) -> list[int]:
+    if not raw or not raw.strip():
+        return []
+
+    parsed: list[int] = []
+    for token in re.split(r"[\s,;]+", raw.strip()):
+        if not token:
+            continue
+        try:
+            value = int(token, 16) if token.lower().startswith("0x") else int(token, 10)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Invalid CAN ID filter token: {token!r}",
+            ) from exc
+        if value < 0 or value > 0x1FFFFFFF:
+            raise HTTPException(
+                status_code=422,
+                detail=f"CAN ID filter is outside the valid range: {token!r}",
+            )
+        parsed.append(value)
+    return sorted(set(parsed))
+
+
+def parse_byte_value_filter(raw: Optional[str]) -> Optional[int]:
+    if raw is None or not raw.strip():
+        return None
+
+    token = raw.strip().lower()
+    try:
+        if token.startswith("0x"):
+            value = int(token, 16)
+        elif re.search(r"[a-f]", token):
+            value = int(token, 16)
+        else:
+            value = int(token, 10)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid byte value filter: {raw!r}",
+        ) from exc
+
+    if value < 0 or value > 255:
+        raise HTTPException(
+            status_code=422,
+            detail="Byte value filter must be between 0 and 255.",
+        )
+    return value
+
+
+def playback_filter_cte(
+    *,
+    session_id: str,
+    tolerance_ms: int,
+    id_filter: Optional[str],
+    search: Optional[str],
+    byte_index: Optional[int],
+    byte_value: Optional[str],
+    deltas_only: bool,
+    byte_changed_only: bool,
+) -> tuple[str, list[Any]]:
+    can_ids = parse_can_id_filter(id_filter)
+    parsed_byte_value = parse_byte_value_filter(byte_value)
+
+    params: list[Any] = [session_id, tolerance_ms]
+    conditions: list[str] = []
+
+    def add_param(value: Any) -> str:
+        params.append(value)
+        return f"${len(params)}"
+
+    if can_ids:
+        placeholder = add_param(can_ids)
+        conditions.append(f"can_id = ANY({placeholder}::bigint[])")
+
+    if byte_index is not None:
+        byte_position = add_param(byte_index)
+        byte_exists = f"{byte_position} < octet_length(data)"
+        conditions.append(byte_exists)
+
+        if parsed_byte_value is not None:
+            value_placeholder = add_param(parsed_byte_value)
+            conditions.append(
+                f"get_byte(data, {byte_position}) = {value_placeholder}"
+            )
+
+        if byte_changed_only:
+            conditions.append(
+                "previous_data IS NOT NULL AND "
+                f"{byte_position} < octet_length(previous_data) AND "
+                f"get_byte(data, {byte_position}) "
+                f"IS DISTINCT FROM get_byte(previous_data, {byte_position})"
+            )
+    elif parsed_byte_value is not None:
+        value_placeholder = add_param(parsed_byte_value)
+        conditions.append(
+            "EXISTS ("
+            "SELECT 1 FROM generate_series(0, octet_length(data) - 1) AS byte_pos "
+            f"WHERE get_byte(data, byte_pos) = {value_placeholder}"
+            ")"
+        )
+
+    if deltas_only:
+        conditions.append("previous_data IS NOT NULL AND data IS DISTINCT FROM previous_data")
+
+    normalized_search = (search or "").strip()
+    if normalized_search:
+        search_like = add_param(f"%{normalized_search.upper()}%")
+        search_conditions = [
+            f"UPPER(can_id_hex) LIKE {search_like}",
+            f"can_id::text LIKE {search_like}",
+            f"UPPER(encode(data, 'hex')) LIKE {search_like}",
+        ]
+        numeric_search: Optional[int] = None
+        try:
+            lowered = normalized_search.lower()
+            if lowered.startswith("0x"):
+                numeric_search = int(lowered, 16)
+            elif re.fullmatch(r"\d+", lowered):
+                numeric_search = int(lowered, 10)
+        except ValueError:
+            numeric_search = None
+
+        if numeric_search is not None:
+            numeric_placeholder = add_param(numeric_search)
+            search_conditions.append(f"can_id = {numeric_placeholder}")
+            if 0 <= numeric_search <= 255:
+                search_conditions.append(
+                    "EXISTS ("
+                    "SELECT 1 FROM generate_series(0, octet_length(data) - 1) AS byte_pos "
+                    f"WHERE get_byte(data, byte_pos) = {numeric_placeholder}"
+                    ")"
+                )
+        conditions.append("(" + " OR ".join(search_conditions) + ")")
+
+    where_clause = " AND ".join(conditions) if conditions else "TRUE"
+    cte = f"""
+        WITH ordered AS (
+            SELECT
+                id,
+                timestamp_ms,
+                can_id,
+                can_id_hex,
+                dlc,
+                data,
+                source,
+                metadata,
+                LAG(data) OVER (
+                    PARTITION BY can_id
+                    ORDER BY timestamp_ms ASC, id ASC
+                ) AS previous_data
+            FROM can_frames_raw
+            WHERE session_id = $1
+        ),
+        filtered AS (
+            SELECT
+                *,
+                (timestamp_ms / $2::bigint) * $2::bigint AS bucket_ms
+            FROM ordered
+            WHERE {where_clause}
+        )
+    """
+    return cte, params
+
+
+@router.get("/session/{session_id}/playback/meta")
+async def get_session_playback_meta(session_id: str) -> Dict[str, Any]:
+    session = await fetchrow(
+        """
+        SELECT id, label, bus_interface, bus_mode, capture_status,
+               started_at, ended_at, finalized_at, final_frame_count,
+               final_marker_count, capture_quality
+        FROM can_sessions
+        WHERE id = $1
+        """,
+        session_id,
+    )
+    if not session:
+        raise HTTPException(status_code=404, detail="Unknown CAN session")
+
+    stats = await fetchrow(
+        """
+        SELECT
+            COUNT(*)::bigint AS frame_count,
+            COUNT(DISTINCT can_id)::int AS distinct_ids,
+            MIN(timestamp_ms)::bigint AS first_timestamp_ms,
+            MAX(timestamp_ms)::bigint AS last_timestamp_ms
+        FROM can_frames_raw
+        WHERE session_id = $1
+        """,
+        session_id,
+    )
+
+    return {
+        "ok": True,
+        "session_id": session_id,
+        "label": session["label"],
+        "bus_interface": session["bus_interface"],
+        "bus_mode": session["bus_mode"],
+        "capture_status": session["capture_status"],
+        "started_at": session["started_at"],
+        "ended_at": session["ended_at"],
+        "finalized_at": session["finalized_at"],
+        "final_frame_count": int(session["final_frame_count"] or 0),
+        "final_marker_count": int(session["final_marker_count"] or 0),
+        "capture_quality": dict(session["capture_quality"] or {}),
+        "frame_count": int(stats["frame_count"] or 0),
+        "distinct_ids": int(stats["distinct_ids"] or 0),
+        "first_timestamp_ms": int(stats["first_timestamp_ms"] or 0),
+        "last_timestamp_ms": int(stats["last_timestamp_ms"] or 0),
+        "duration_ms": max(
+            0,
+            int(stats["last_timestamp_ms"] or 0)
+            - int(stats["first_timestamp_ms"] or 0),
+        ),
+        "timestamp_authority": "server",
+    }
+
+
+@router.get("/session/{session_id}/playback")
+async def get_session_playback_slices(
+    session_id: str,
+    cursor_ms: Optional[int] = None,
+    direction: str = "start",
+    tolerance_ms: int = 1,
+    slice_limit: int = 160,
+    id_filter: Optional[str] = None,
+    search: Optional[str] = None,
+    byte_index: Optional[int] = None,
+    byte_value: Optional[str] = None,
+    deltas_only: bool = False,
+    byte_changed_only: bool = False,
+) -> Dict[str, Any]:
+    direction = direction.strip().lower()
+    if direction not in {"start", "end", "next", "prev", "nearest"}:
+        raise HTTPException(
+            status_code=422,
+            detail="direction must be start, end, next, prev, or nearest",
+        )
+    tolerance_ms = max(1, min(int(tolerance_ms), 10_000))
+    slice_limit = max(1, min(int(slice_limit), 500))
+    if byte_index is not None and not 0 <= byte_index <= 7:
+        raise HTTPException(status_code=422, detail="byte_index must be 0 through 7")
+
+    session = await fetchrow(
+        "SELECT id, capture_status, bus_interface, bus_mode FROM can_sessions WHERE id = $1",
+        session_id,
+    )
+    if not session:
+        raise HTTPException(status_code=404, detail="Unknown CAN session")
+
+    cte, params = playback_filter_cte(
+        session_id=session_id,
+        tolerance_ms=tolerance_ms,
+        id_filter=id_filter,
+        search=search,
+        byte_index=byte_index,
+        byte_value=byte_value,
+        deltas_only=deltas_only,
+        byte_changed_only=byte_changed_only,
+    )
+
+    stats_row = await fetchrow(
+        cte
+        + """
+        SELECT
+            COUNT(*)::bigint AS matching_frame_count,
+            COUNT(DISTINCT bucket_ms)::bigint AS matching_slice_count,
+            MIN(bucket_ms)::bigint AS first_bucket_ms,
+            MAX(bucket_ms)::bigint AS last_bucket_ms
+        FROM filtered
+        """,
+        *params,
+    )
+
+    matching_frame_count = int(stats_row["matching_frame_count"] or 0)
+    matching_slice_count = int(stats_row["matching_slice_count"] or 0)
+    first_bucket_ms = (
+        int(stats_row["first_bucket_ms"])
+        if stats_row["first_bucket_ms"] is not None
+        else None
+    )
+    last_bucket_ms = (
+        int(stats_row["last_bucket_ms"])
+        if stats_row["last_bucket_ms"] is not None
+        else None
+    )
+
+    if not matching_frame_count:
+        return {
+            "ok": True,
+            "session_id": session_id,
+            "capture_status": session["capture_status"],
+            "timestamp_authority": "server",
+            "tolerance_ms": tolerance_ms,
+            "direction": direction,
+            "filters": {
+                "id_filter": id_filter,
+                "search": search,
+                "byte_index": byte_index,
+                "byte_value": byte_value,
+                "deltas_only": deltas_only,
+                "byte_changed_only": byte_changed_only,
+            },
+            "matching_frame_count": 0,
+            "matching_slice_count": 0,
+            "first_bucket_ms": None,
+            "last_bucket_ms": None,
+            "has_before": False,
+            "has_after": False,
+            "slices": [],
+        }
+
+    cursor_value = cursor_ms
+    if cursor_value is None:
+        cursor_value = last_bucket_ms if direction in {"end", "prev"} else first_bucket_ms
+    assert cursor_value is not None
+
+    params.extend([cursor_value, slice_limit])
+    cursor_placeholder = f"${len(params) - 1}"
+    limit_placeholder = f"${len(params)}"
+
+    if direction == "start":
+        bucket_selection = f"""
+            SELECT DISTINCT bucket_ms
+            FROM filtered
+            ORDER BY bucket_ms ASC
+            LIMIT {limit_placeholder}
+        """
+    elif direction == "end":
+        bucket_selection = f"""
+            SELECT bucket_ms
+            FROM (
+                SELECT DISTINCT bucket_ms
+                FROM filtered
+                ORDER BY bucket_ms DESC
+                LIMIT {limit_placeholder}
+            ) recent
+            ORDER BY bucket_ms ASC
+        """
+    elif direction == "next":
+        bucket_selection = f"""
+            SELECT DISTINCT bucket_ms
+            FROM filtered
+            WHERE bucket_ms > (({cursor_placeholder}::bigint / $2::bigint) * $2::bigint)
+            ORDER BY bucket_ms ASC
+            LIMIT {limit_placeholder}
+        """
+    elif direction == "prev":
+        bucket_selection = f"""
+            SELECT bucket_ms
+            FROM (
+                SELECT DISTINCT bucket_ms
+                FROM filtered
+                WHERE bucket_ms < (({cursor_placeholder}::bigint / $2::bigint) * $2::bigint)
+                ORDER BY bucket_ms DESC
+                LIMIT {limit_placeholder}
+            ) previous
+            ORDER BY bucket_ms ASC
+        """
+    else:
+        bucket_selection = f"""
+            WITH anchor AS (
+                SELECT DISTINCT bucket_ms
+                FROM filtered
+                ORDER BY ABS(bucket_ms - {cursor_placeholder}::bigint), bucket_ms ASC
+                LIMIT 1
+            )
+            SELECT DISTINCT filtered.bucket_ms
+            FROM filtered, anchor
+            WHERE filtered.bucket_ms >= anchor.bucket_ms
+            ORDER BY filtered.bucket_ms ASC
+            LIMIT {limit_placeholder}
+        """
+
+    rows = await fetch(
+        cte
+        + f"""
+        , selected_buckets AS (
+            {bucket_selection}
+        )
+        SELECT
+            filtered.id,
+            filtered.timestamp_ms,
+            filtered.bucket_ms,
+            filtered.can_id,
+            filtered.can_id_hex,
+            filtered.dlc,
+            filtered.data,
+            filtered.previous_data,
+            filtered.source,
+            filtered.metadata
+        FROM filtered
+        JOIN selected_buckets USING (bucket_ms)
+        ORDER BY filtered.bucket_ms ASC,
+                 filtered.timestamp_ms ASC,
+                 filtered.can_id ASC,
+                 filtered.id ASC
+        """,
+        *params,
+    )
+
+    slices_by_bucket: Dict[int, list[dict[str, Any]]] = {}
+    for raw_row in rows:
+        row = dict(raw_row)
+        data = bytes(row.get("data") or b"")
+        previous_data_raw = row.get("previous_data")
+        previous_data = (
+            bytes(previous_data_raw)
+            if previous_data_raw is not None
+            else None
+        )
+        delta_positions = [
+            index
+            for index in range(max(len(data), len(previous_data or b"")))
+            if (
+                (data[index] if index < len(data) else None)
+                != (
+                    previous_data[index]
+                    if previous_data is not None and index < len(previous_data)
+                    else None
+                )
+            )
+        ]
+        metadata = dict(row.get("metadata") or {})
+        frame = {
+            "id": int(row["id"]),
+            "timestamp_ms": int(row["timestamp_ms"]),
+            "bucket_ms": int(row["bucket_ms"]),
+            "can_id": int(row["can_id"]),
+            "can_id_hex": row["can_id_hex"],
+            "dlc": int(row["dlc"]),
+            "data_hex": data.hex().upper(),
+            "bytes": list(data),
+            "previous_data_hex": (
+                previous_data.hex().upper()
+                if previous_data is not None
+                else None
+            ),
+            "previous_bytes": (
+                list(previous_data)
+                if previous_data is not None
+                else None
+            ),
+            "delta_positions": delta_positions,
+            "changed": bool(delta_positions),
+            "signal_name": metadata.get("signal_name"),
+            "decoded": metadata.get("decoded"),
+            "source": row.get("source"),
+        }
+        slices_by_bucket.setdefault(int(row["bucket_ms"]), []).append(frame)
+
+    slices = [
+        {
+            "bucket_ms": bucket_ms,
+            "start_ms": min(frame["timestamp_ms"] for frame in frames),
+            "end_ms": max(frame["timestamp_ms"] for frame in frames),
+            "frame_count": len(frames),
+            "frames": frames,
+        }
+        for bucket_ms, frames in sorted(slices_by_bucket.items())
+    ]
+
+    returned_first = slices[0]["bucket_ms"] if slices else None
+    returned_last = slices[-1]["bucket_ms"] if slices else None
+
+    return {
+        "ok": True,
+        "session_id": session_id,
+        "capture_status": session["capture_status"],
+        "bus_interface": session["bus_interface"],
+        "bus_mode": session["bus_mode"],
+        "timestamp_authority": "server",
+        "tolerance_ms": tolerance_ms,
+        "direction": direction,
+        "cursor_ms": cursor_value,
+        "filters": {
+            "id_filter": id_filter,
+            "search": search,
+            "byte_index": byte_index,
+            "byte_value": byte_value,
+            "deltas_only": deltas_only,
+            "byte_changed_only": byte_changed_only,
+        },
+        "matching_frame_count": matching_frame_count,
+        "matching_slice_count": matching_slice_count,
+        "first_bucket_ms": first_bucket_ms,
+        "last_bucket_ms": last_bucket_ms,
+        "returned_first_bucket_ms": returned_first,
+        "returned_last_bucket_ms": returned_last,
+        "has_before": bool(
+            returned_first is not None
+            and first_bucket_ms is not None
+            and returned_first > first_bucket_ms
+        ),
+        "has_after": bool(
+            returned_last is not None
+            and last_bucket_ms is not None
+            and returned_last < last_bucket_ms
+        ),
+        "slices": slices,
+    }
+
+
 @router.get("/session/{session_id}/frames")
 async def get_session_frames(session_id: str, limit: int = 250) -> Dict[str, Any]:
     limit = max(1, min(limit, 5000))

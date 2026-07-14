@@ -27,6 +27,7 @@ import {
     type MlModelSummary,
     type MlReadiness,
 } from "./SignalReconBrainConsole";
+import { SignalReconPlayback } from "./SignalReconPlayback";
 
 export type MissionRunSummary = {
     session_id: string;
@@ -57,7 +58,7 @@ type SignalReconMissionProps = {
     onDatabaseChanged?: () => void;
 };
 
-type MissionPanel = "game" | "steps" | "protocol" | "details" | "session";
+type MissionPanel = "game" | "steps" | "protocol" | "details" | "playback" | "session";
 
 type BrainAnalyzeOptions = {
     useLlmOverride?: boolean;
@@ -93,6 +94,7 @@ const PANELS: Array<{ id: MissionPanel; label: string }> = [
     { id: "steps", label: "STEPS" },
     { id: "protocol", label: "PROTOCOL" },
     { id: "details", label: "DETAILS" },
+    { id: "playback", label: "PLAYBACK" },
     { id: "session", label: "SESSION" },
 ];
 
@@ -846,6 +848,17 @@ export function SignalReconMission({
         setBrainError(null);
         appendBrainLog(`[db] selected ${shortSessionId(session.session_id)} · ${session.frame_count} frames`);
         await handleLoadLatestAnalysis(session.session_id, openResults);
+    };
+
+    const handleOpenPlayback = (session: MissionRunSummary) => {
+        if (activeSessionId || isRunning || brainAnalyzing || session.frame_count <= 0) return;
+        setSelectedSavedSessionId(session.session_id);
+        setLastAnalyzedSessionId(session.session_id);
+        setBrainError(null);
+        appendBrainLog(
+            `[playback] opened ${shortSessionId(session.session_id)} · ${session.frame_count} server-timestamped frames`,
+        );
+        setActivePanel("playback");
     };
 
     const handleLabelCandidate = async (
@@ -1935,6 +1948,13 @@ export function SignalReconMission({
         </div>
     );
 
+    const renderPlaybackPanel = () => (
+        <SignalReconPlayback
+            sessionId={resolveAnalysisSessionId()}
+            disabled={Boolean(activeSessionId) || isRunning}
+        />
+    );
+
     const renderSessionPanel = () => (
         <div className="h-full min-h-0 space-y-3 overflow-y-auto p-3 text-sm sm:p-5">
             {(error || mlError) && (
@@ -2007,6 +2027,13 @@ export function SignalReconMission({
                                             SELECT
                                         </GameButton>
                                         <GameButton
+                                            onPress={() => handleOpenPlayback(session)}
+                                            disabled={brainAnalyzing || Boolean(activeSessionId) || empty}
+                                            className="rounded-lg border border-purple-300/40 bg-purple-500/10 px-2 py-1 text-[10px] font-bold text-purple-100 hover:bg-purple-400/20 disabled:opacity-40"
+                                        >
+                                            PLAYBACK
+                                        </GameButton>
+                                        <GameButton
                                             onPress={() => void handleSelectSavedSession(session, true)}
                                             disabled={brainAnalyzing || Boolean(activeSessionId) || !session.analyzed}
                                             className="rounded-lg border border-cyan-300/40 bg-cyan-500/10 px-2 py-1 text-[10px] font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:opacity-40"
@@ -2058,10 +2085,11 @@ export function SignalReconMission({
                     <p>ML labels: <span className="text-slate-500">{Object.keys(mlLabels).length}</span></p>
                 </div>
 
-                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-6">
+                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-7">
                     <GameButton onPress={() => void handleFullAnalyze(undefined, "manual")} disabled={brainAnalyzing || !resolveAnalysisSessionId()} className="rounded-lg border border-cyan-300/40 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:opacity-40">{brainAnalyzing ? "ANALYZING" : "ANALYZE"}</GameButton>
                     <GameButton onPress={() => void handleExplainWithLlm()} disabled={brainAnalyzing || !resolveAnalysisSessionId()} className="rounded-lg border border-purple-300/40 bg-purple-500/10 px-3 py-2 text-xs font-bold text-purple-100 hover:bg-purple-400/20 disabled:opacity-40">EXPLAIN</GameButton>
                     <GameButton onPress={() => void handleLoadLatestAnalysis(undefined, true)} disabled={brainAnalyzing || !resolveAnalysisSessionId()} className="rounded-lg border border-green-300/40 bg-green-500/10 px-3 py-2 text-xs font-bold text-green-100 hover:bg-green-400/20 disabled:opacity-40">RESULTS</GameButton>
+                    <GameButton onPress={() => setActivePanel("playback")} disabled={brainAnalyzing || !resolveAnalysisSessionId() || Boolean(activeSessionId)} className="rounded-lg border border-purple-300/40 bg-purple-500/10 px-3 py-2 text-xs font-bold text-purple-100 hover:bg-purple-400/20 disabled:opacity-40">PLAYBACK</GameButton>
                     <GameButton onPress={() => void refreshMlContext()} disabled={mlLoading || !resolveAnalysisSessionId()} className="rounded-lg border border-purple-300/40 bg-purple-500/10 px-3 py-2 text-xs font-bold text-purple-100 hover:bg-purple-400/20 disabled:opacity-40">{mlLoading ? "ML..." : "ML STATUS"}</GameButton>
                     <GameButton onPress={handleExportSession} disabled={!resolveAnalysisSessionId()} className="rounded-lg border border-slate-500 bg-slate-800 px-3 py-2 text-xs font-bold text-slate-200 hover:bg-slate-700 disabled:opacity-40">EXPORT</GameButton>
                     <GameButton onPress={() => void handleDeleteSession()} disabled={brainAnalyzing || isRunning || !resolveAnalysisSessionId() || Boolean(activeSessionId)} className="rounded-lg border border-red-300/40 bg-red-500/10 px-3 py-2 text-xs font-bold text-red-100 hover:bg-red-400/20 disabled:opacity-40">DELETE</GameButton>
@@ -2156,7 +2184,7 @@ export function SignalReconMission({
                         />
                     </div>
 
-                    <div className="mt-1 grid grid-cols-5 gap-1 sm:gap-2">
+                    <div className="mt-1 grid grid-cols-3 gap-1 sm:grid-cols-6 sm:gap-2">
                         {PANELS.map((panel) => (
                             <GameButton
                                 key={panel.id}
@@ -2184,6 +2212,7 @@ export function SignalReconMission({
                     {activePanel === "steps" && renderStepsPanel()}
                     {activePanel === "protocol" && renderProtocolPanel()}
                     {activePanel === "details" && renderDetailsPanel()}
+                    {activePanel === "playback" && renderPlaybackPanel()}
                     {activePanel === "session" && renderSessionPanel()}
                 </div>
 
