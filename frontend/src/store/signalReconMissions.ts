@@ -14,6 +14,35 @@ export type MissionAnalysisMode =
     | "state_compare"
     | "playback_validation";
 
+export type MissionAnalyzerProfile =
+    | "baseline_profile"
+    | "boolean_transition"
+    | "ordinal_level"
+    | "continuous_trace"
+    | "enum_state"
+    | "pulse_event";
+
+export type ExpectedDirection =
+    | "increase"
+    | "decrease"
+    | "bidirectional"
+    | "categorical"
+    | "unknown";
+
+export type ReconStepAnalysisMetadata = {
+    analyzer_profile?: MissionAnalyzerProfile;
+    expected_value?: number;
+    expected_unit?: string;
+    expected_direction?: ExpectedDirection;
+    return_value?: number;
+    hold_ms?: number;
+    repetition?: number;
+    field_widths?: Array<8 | 16 | 24 | 32>;
+    allow_signed?: boolean;
+    allow_little_endian?: boolean;
+    allow_big_endian?: boolean;
+};
+
 export type MissionRank = "BASELINE" | "S" | "A" | "B" | "C";
 export type MissionStatus = "ready" | "research" | "optional";
 export type RecordingStage =
@@ -56,6 +85,7 @@ export type ReconMissionProtocol = {
     enabled_phases: ReconPhaseName[];
     markers: ReconMarkerDefinition[];
     step_timing_overrides: Record<string, Partial<ReconTiming>>;
+    step_analysis_overrides: Record<string, Partial<ReconStepAnalysisMetadata>>;
 };
 
 export type MissionDifficulty = {
@@ -98,6 +128,7 @@ export type ReconSubMissionDefinition = {
 
 export type ReconMissionDefinition = {
     analysis_mode: MissionAnalysisMode;
+    analyzer_profile: MissionAnalyzerProfile;
     id: string;
     mission_code: string;
     title: string;
@@ -171,6 +202,7 @@ export function getDefaultMissionProtocol(
         enabled_phases: enabledPhases,
         markers,
         step_timing_overrides: {},
+        step_analysis_overrides: {},
     };
 }
 
@@ -279,6 +311,8 @@ function mission(args: {
     stage: RecordingStage;
     index: number;
     analysis_mode?: MissionAnalysisMode;
+    analyzer_profile?: MissionAnalyzerProfile;
+    analysis_contract?: Partial<ReconStepAnalysisMetadata>;
     description?: string;
     status?: MissionStatus;
     timing?: Partial<ReconTiming>;
@@ -295,6 +329,11 @@ function mission(args: {
             : "target_correlation");
 
     const baselineProfile = analysisMode === "baseline_profile";
+    const analyzerProfile =
+        args.analyzer_profile ??
+        (baselineProfile
+            ? "baseline_profile"
+            : "boolean_transition");
     const protocol = {
         enabled_phases:
             args.protocol?.enabled_phases?.length
@@ -327,6 +366,7 @@ function mission(args: {
         steps: args.steps,
         sub_missions: args.sub_missions,
         analysis_mode: analysisMode,
+        analyzer_profile: analyzerProfile,
         metadata: {
             source: "signal-recon",
             target: args.target,
@@ -336,6 +376,9 @@ function mission(args: {
             difficulty: MISSION_RANKS[args.rank],
             default_timing: timing(args.timing),
             protocol,
+            analyzer_profile: analyzerProfile,
+            ...args.analysis_contract,
+            ...args.metadata,
 
             analysis_mode: analysisMode,
             expected_target:
@@ -398,9 +441,15 @@ export function applyMissionProtocolToSteps(
 ): ReconStepDefinition[] {
     return getMissionSteps(mission).map((step) => {
         const override = protocol.step_timing_overrides[step.id] ?? {};
+        const analysisOverride =
+            protocol.step_analysis_overrides[step.id] ?? {};
         return {
             ...step,
             ...override,
+            metadata: {
+                ...(step.metadata ?? {}),
+                ...analysisOverride,
+            },
         };
     });
 }
@@ -662,25 +711,28 @@ const S_MISSIONS: ReconMissionDefinition[] = [
         category: "Analog driver input",
         stage: "core_driving",
         index: 1,
-        description: "Likely analog or encoded; use multiple known positions to correlate bytes.",
+        analyzer_profile: "continuous_trace",
+        analysis_contract: {
+            expected_unit: "percent_left_right",
+            expected_direction: "bidirectional",
+            return_value: 0,
+            field_widths: [8, 16],
+            allow_signed: true,
+            allow_little_endian: true,
+            allow_big_endian: true,
+        },
+        description: "Correlate signed or centered fields across known left/right positions.",
         timing: { action_ms: 2500, capture_ms: 2500 },
         steps: [
-            step("steering_center", "Steering centered", "Hold steering wheel centered.", "Hold center", { timing: { action_ms: 2500 } }),
-            step("steering_left_half", "Steering left half", "Turn steering wheel about half-left and hold.", "Hold half-left", {
-                timing: { action_ms: 2500 },
-            }),
-            step("steering_left_full", "Steering left full", "Turn steering wheel full-left and hold briefly.", "Hold full-left", {
-                timing: { action_ms: 2500 },
-            }),
-            step("steering_right_half", "Steering right half", "Turn steering wheel about half-right and hold.", "Hold half-right", {
-                timing: { action_ms: 2500 },
-            }),
-            step("steering_right_full", "Steering right full", "Turn steering wheel full-right and hold briefly.", "Hold full-right", {
-                timing: { action_ms: 2500 },
-            }),
-            step("steering_sweep", "Steering sweep", "Slowly sweep left to right, then return center.", "Sweep steering", {
-                timing: { action_ms: 4500, capture_ms: 2500 },
-            }),
+            step("steering_center_a", "Steering centered", "Hold steering wheel centered.", "Hold center", { metadata: { expected_value: 0 } }),
+            step("steering_left_half", "Steering left 50%", "Turn steering wheel about half-left and hold.", "Hold left 50%", { metadata: { expected_value: -50 } }),
+            step("steering_center_b", "Return center", "Return steering wheel to center and hold.", "Return center", { metadata: { expected_value: 0 } }),
+            step("steering_left_full", "Steering left 100%", "Turn steering wheel full-left and hold briefly.", "Hold left 100%", { metadata: { expected_value: -100 } }),
+            step("steering_center_c", "Return center", "Return steering wheel to center and hold.", "Return center", { metadata: { expected_value: 0 } }),
+            step("steering_right_half", "Steering right 50%", "Turn steering wheel about half-right and hold.", "Hold right 50%", { metadata: { expected_value: 50 } }),
+            step("steering_center_d", "Return center", "Return steering wheel to center and hold.", "Return center", { metadata: { expected_value: 0 } }),
+            step("steering_right_full", "Steering right 100%", "Turn steering wheel full-right and hold briefly.", "Hold right 100%", { metadata: { expected_value: 100 } }),
+            step("steering_center_e", "Return center", "Return steering wheel to center and hold.", "Return center", { metadata: { expected_value: 0 } }),
         ],
     }),
     mission({
@@ -691,17 +743,27 @@ const S_MISSIONS: ReconMissionDefinition[] = [
         category: "Analog driver input",
         stage: "core_driving",
         index: 2,
-        description: "Capture multiple pedal depths to identify analog scaling.",
-        timing: { action_ms: 2500, capture_ms: 2500 },
+        analyzer_profile: "ordinal_level",
+        analysis_contract: {
+            expected_unit: "percent",
+            expected_direction: "increase",
+            return_value: 0,
+            field_widths: [8, 16],
+            allow_signed: false,
+            allow_little_endian: true,
+            allow_big_endian: true,
+        },
+        description: "Find one exact field that rises monotonically across 0/25/50/70% holds and returns to zero.",
+        timing: { action_ms: 2500, capture_ms: 1800 },
         metadata: { safety: "Stationary, neutral/parked capture unless intentionally testing driving data." },
         steps: [
-            step("accel_idle", "Pedal released", "Hold accelerator released.", "Hold released"),
-            step("accel_25", "Accelerator 25%", "Press accelerator to about 25% and hold.", "Hold 25%"),
-            step("accel_50", "Accelerator 50%", "Press accelerator to about 50% and hold.", "Hold 50%"),
-            step("accel_75", "Accelerator 75%", "Press accelerator to about 75% and hold.", "Hold 75%"),
-            step("accel_tap", "Accelerator tap", "Quickly tap and release accelerator once.", "Tap accelerator", {
-                timing: { action_ms: 1200, capture_ms: 2200 },
-            }),
+            step("accel_0_a", "Pedal 0%", "Hold accelerator fully released.", "Hold 0%", { metadata: { expected_value: 0 } }),
+            step("accel_25", "Accelerator 25%", "Press accelerator to about 25% and hold.", "Hold 25%", { metadata: { expected_value: 25 } }),
+            step("accel_0_b", "Return 0%", "Release accelerator completely and hold.", "Return 0%", { metadata: { expected_value: 0 } }),
+            step("accel_50", "Accelerator 50%", "Press accelerator to about 50% and hold.", "Hold 50%", { metadata: { expected_value: 50 } }),
+            step("accel_0_c", "Return 0%", "Release accelerator completely and hold.", "Return 0%", { metadata: { expected_value: 0 } }),
+            step("accel_70", "Accelerator 70%", "Press accelerator to about 70% and hold.", "Hold 70%", { metadata: { expected_value: 70 } }),
+            step("accel_0_d", "Return 0%", "Release accelerator completely and hold.", "Return 0%", { metadata: { expected_value: 0 } }),
         ],
     }),
     mission({
@@ -712,11 +774,25 @@ const S_MISSIONS: ReconMissionDefinition[] = [
         category: "Analog/switch driver input",
         stage: "core_driving",
         index: 3,
+        analyzer_profile: "ordinal_level",
+        analysis_contract: {
+            expected_unit: "percent_effort",
+            expected_direction: "increase",
+            return_value: 0,
+            field_widths: [8, 16],
+            allow_signed: false,
+            allow_little_endian: true,
+            allow_big_endian: true,
+        },
+        description: "Search for both an exact brake-switch bit and a pressure/position proxy field.",
         steps: [
-            step("brake_released", "Brake released", "Hold brake pedal released.", "Hold released"),
-            step("brake_light_press", "Brake switch threshold", "Press brake lightly until brake lights should trigger.", "Light press"),
-            step("brake_firm_press", "Firm brake", "Press brake firmly and hold.", "Firm press"),
-            step("brake_release", "Brake release", "Release brake pedal completely.", "Release brake"),
+            step("brake_0_a", "Brake 0%", "Hold brake pedal fully released.", "Hold 0%", { metadata: { expected_value: 0 } }),
+            step("brake_25", "Brake 25%", "Press brake lightly and hold.", "Hold 25%", { metadata: { expected_value: 25 } }),
+            step("brake_0_b", "Return 0%", "Release brake completely and hold.", "Return 0%", { metadata: { expected_value: 0 } }),
+            step("brake_50", "Brake 50%", "Press brake to medium effort and hold.", "Hold 50%", { metadata: { expected_value: 50 } }),
+            step("brake_0_c", "Return 0%", "Release brake completely and hold.", "Return 0%", { metadata: { expected_value: 0 } }),
+            step("brake_70", "Brake 70%", "Press brake firmly to about 70% effort and hold.", "Hold 70%", { metadata: { expected_value: 70 } }),
+            step("brake_0_d", "Return 0%", "Release brake completely and hold.", "Return 0%", { metadata: { expected_value: 0 } }),
         ],
     }),
     mission({
@@ -727,12 +803,23 @@ const S_MISSIONS: ReconMissionDefinition[] = [
         category: "Powertrain",
         stage: "core_driving",
         index: 4,
+        analyzer_profile: "ordinal_level",
+        analysis_contract: {
+            expected_unit: "rpm",
+            expected_direction: "increase",
+            return_value: 800,
+            field_widths: [8, 16, 24],
+            allow_signed: false,
+            allow_little_endian: true,
+            allow_big_endian: true,
+        },
         timing: { action_ms: 3000, capture_ms: 2500 },
         steps: [
-            step("rpm_idle", "Idle RPM", "Hold engine at idle.", "Hold idle"),
-            step("rpm_1500", "1500 RPM", "Raise engine speed to about 1500 RPM and hold.", "Hold 1500 RPM"),
-            step("rpm_2500", "2500 RPM", "Raise engine speed to about 2500 RPM and hold.", "Hold 2500 RPM"),
-            step("rpm_return_idle", "Return to idle", "Release accelerator and return to idle.", "Return idle"),
+            step("rpm_idle_a", "Idle RPM", "Hold engine at stable idle.", "Hold idle", { metadata: { expected_value: 800 } }),
+            step("rpm_1500", "1500 RPM", "Raise engine speed to about 1500 RPM and hold.", "Hold 1500 RPM", { metadata: { expected_value: 1500 } }),
+            step("rpm_idle_b", "Return idle", "Release accelerator and return to stable idle.", "Return idle", { metadata: { expected_value: 800 } }),
+            step("rpm_2500", "2500 RPM", "Raise engine speed to about 2500 RPM and hold.", "Hold 2500 RPM", { metadata: { expected_value: 2500 } }),
+            step("rpm_idle_c", "Return idle", "Release accelerator and return to stable idle.", "Return idle", { metadata: { expected_value: 800 } }),
         ],
         metadata: { safety: "Use neutral and avoid extended high-RPM holds." },
     }),
@@ -744,11 +831,23 @@ const S_MISSIONS: ReconMissionDefinition[] = [
         category: "Motion state",
         stage: "core_driving",
         index: 5,
+        analyzer_profile: "ordinal_level",
+        analysis_contract: {
+            expected_unit: "mph",
+            expected_direction: "increase",
+            return_value: 0,
+            field_widths: [8, 16, 24],
+            allow_signed: false,
+            allow_little_endian: true,
+            allow_big_endian: true,
+        },
         timing: { action_ms: 4000, capture_ms: 3000 },
         steps: [
-            step("speed_stationary", "Stationary", "Hold vehicle completely stopped.", "Hold stopped"),
-            step("speed_low_roll", "Low-speed roll", "Roll slowly at a steady low speed in a safe controlled area.", "Hold low speed"),
-            step("speed_stop", "Stop", "Bring vehicle to a complete stop.", "Stop"),
+            step("speed_0_a", "Stationary", "Hold vehicle completely stopped.", "Hold 0 mph", { metadata: { expected_value: 0 } }),
+            step("speed_5", "About 5 mph", "Hold approximately 5 mph in a safe controlled area.", "Hold 5 mph", { metadata: { expected_value: 5 } }),
+            step("speed_0_b", "Stop", "Bring vehicle to a complete stop and hold.", "Return 0 mph", { metadata: { expected_value: 0 } }),
+            step("speed_10", "About 10 mph", "Hold approximately 10 mph in a safe controlled area.", "Hold 10 mph", { metadata: { expected_value: 10 } }),
+            step("speed_0_c", "Stop", "Bring vehicle to a complete stop and hold.", "Return 0 mph", { metadata: { expected_value: 0 } }),
         ],
         metadata: { safety: "Controlled area only; do not perform on public roads while operating the UI." },
     }),
@@ -760,12 +859,24 @@ const S_MISSIONS: ReconMissionDefinition[] = [
         category: "Drivetrain state",
         stage: "core_driving",
         index: 6,
+        analyzer_profile: "enum_state",
+        analysis_contract: {
+            expected_unit: "gear_code",
+            expected_direction: "categorical",
+            return_value: 0,
+            field_widths: [8, 16],
+            allow_signed: true,
+            allow_little_endian: true,
+            allow_big_endian: true,
+        },
         steps: [
-            step("gear_neutral", "Neutral", "Shift to neutral and hold.", "Hold neutral"),
-            step("gear_reverse", "Reverse", "Shift to reverse while stationary and hold.", "Hold reverse"),
-            step("gear_first", "First gear", "Shift to first gear while stationary and hold clutch as needed.", "Hold first"),
-            step("gear_second", "Second gear", "Shift to second gear while stationary and hold clutch as needed.", "Hold second"),
-            step("gear_neutral_return", "Return neutral", "Return shifter to neutral.", "Return neutral"),
+            step("gear_neutral_a", "Neutral", "Shift to neutral and hold.", "Hold neutral", { metadata: { expected_value: 0 } }),
+            step("gear_reverse", "Reverse", "Shift to reverse while stationary and hold.", "Hold reverse", { metadata: { expected_value: -1 } }),
+            step("gear_neutral_b", "Return neutral", "Return shifter to neutral.", "Return neutral", { metadata: { expected_value: 0 } }),
+            step("gear_first", "First gear", "Shift to first gear while stationary and hold clutch as needed.", "Hold first", { metadata: { expected_value: 1 } }),
+            step("gear_neutral_c", "Return neutral", "Return shifter to neutral.", "Return neutral", { metadata: { expected_value: 0 } }),
+            step("gear_second", "Second gear", "Shift to second gear while stationary and hold clutch as needed.", "Hold second", { metadata: { expected_value: 2 } }),
+            step("gear_neutral_d", "Return neutral", "Return shifter to neutral.", "Return neutral", { metadata: { expected_value: 0 } }),
         ],
         metadata: { transmission: "manual", safety: "Stationary capture; clutch as needed." },
     }),

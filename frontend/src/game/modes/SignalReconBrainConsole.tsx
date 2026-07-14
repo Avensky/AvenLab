@@ -69,7 +69,82 @@ export type ByteRoleHypothesis = {
     source?: string;
     validation_status?: "unreviewed" | "positive" | "negative" | "uncertain";
     reason: string;
-    metrics?: Record<string, number>;
+    metrics?: Record<string, unknown>;
+};
+
+export type BitSignalActionGroup = {
+    polarity?: "on" | "off" | null;
+    repetitions?: number;
+    matched_repetitions?: number;
+    consensus_pre_state?: number | null;
+    consensus_action_state?: number | null;
+    consensus_post_state?: number | null;
+    flip_counts?: number[];
+};
+
+export type FieldMarkerObservation = {
+    marker_type: string;
+    step_code?: string | null;
+    label?: string | null;
+    action_key: string;
+    timestamp_ms: number;
+    expected_value: number;
+    expected_unit?: string | null;
+    expected_direction?: string | null;
+    pre_value?: number | null;
+    action_value?: number | null;
+    post_value?: number | null;
+    plateau_mad?: number | null;
+    response_latency_ms?: number | null;
+    hold_ms: number;
+};
+
+export type FieldSignalHypothesis = {
+    start_byte: number;
+    width_bits: number;
+    endianness: string;
+    signed: boolean;
+    score: number;
+    monotonicity: number;
+    observed_direction: string;
+    level_separation: number;
+    repeatability: number;
+    plateau_stability: number;
+    return_consistency: number;
+    outside_action_drift: number;
+    response_latency_score: number;
+    marker_coverage: number;
+    location_dominance: number;
+    baseline_penalty?: number;
+    baseline_adjusted_score?: number | null;
+    expected_levels: number[];
+    observed_level_medians: Record<string, number>;
+    observations: FieldMarkerObservation[];
+    reason: string;
+};
+
+export type BitSignalHypothesis = {
+    byte_index: number;
+    bit_index: number;
+    bit_mask: number;
+    score: number;
+    marker_lift: number;
+    window_purity: number;
+    outside_action_fraction: number;
+    repetition_score: number;
+    single_flip_score: number;
+    location_dominance: number;
+    total_flips: number;
+    in_window_flips: number;
+    out_of_window_flips: number;
+    matched_repetitions: number;
+    total_repetitions: number;
+    inverse_pair_verified: boolean;
+    median_latency_ms?: number | null;
+    baseline_penalty?: number;
+    baseline_adjusted_score?: number | null;
+    action_groups: Record<string, BitSignalActionGroup>;
+    reason: string;
 };
 
 export type BrainCandidate = {
@@ -82,6 +157,10 @@ export type BrainCandidate = {
     changed_frame_ratio?: number;
     byte_change_counts: Record<string, number>;
     byte_role_hypotheses?: ByteRoleHypothesis[];
+    signal_hypotheses?: BitSignalHypothesis[];
+    field_hypotheses?: FieldSignalHypothesis[];
+    analyzer_profile?: string;
+    quick_id_method?: string;
     entropy: number;
     correlation_score: number;
     confidence: number;
@@ -175,7 +254,9 @@ export type BrainAnalysisResult = {
         capture_quality?: Record<string, unknown>;
     };
     byte_hypothesis_count?: number;
+    field_hypothesis_count?: number;
     analysis_mode?: "baseline_profile" | "target_correlation" | string;
+    analyzer_profile?: string;
     analysis_source?: "llm" | "fallback";
     llm_requested?: boolean;
     llm_succeeded?: boolean;
@@ -197,6 +278,7 @@ export type BrainAnalysisResult = {
     marker_selection?: MarkerSelectionContext | null;
     frame_selection?: FrameSelectionContext | null;
     confidence_semantics?: string;
+    quick_id_method?: string;
     marker_window_ms?: number;
     marker_window_coverage?: number;
     vector_memory?: VectorMemoryContext | null;
@@ -327,6 +409,13 @@ function hypothesisTone(kind: string) {
 function formatMask(mask: number | null | undefined) {
     if (typeof mask !== "number") return "—";
     return `0x${mask.toString(16).toUpperCase().padStart(2, "0")}`;
+}
+
+function stateTransition(group: BitSignalActionGroup) {
+    const before = group.consensus_pre_state;
+    const after = group.consensus_action_state;
+    if (before === null || before === undefined || after === null || after === undefined) return "unresolved";
+    return `${before}→${after}`;
 }
 
 function byteCells(byteCounts: Record<string, number>) {
@@ -627,6 +716,15 @@ export function SignalReconBrainConsole({
                                             <p className="text-4xl font-black">{percent(topCandidate.confidence)}</p>
                                             <p className="text-sm">final evidence score</p>
                                             <p className="mt-3 text-2xl font-black">{topCandidate.can_id_hex}</p>
+                                            {topCandidate.field_hypotheses?.[0] ? (
+                                                <p className="mt-1 text-sm font-black text-cyan-200">
+                                                    B{topCandidate.field_hypotheses[0].start_byte} · {topCandidate.field_hypotheses[0].width_bits}-bit · {topCandidate.field_hypotheses[0].endianness}{topCandidate.field_hypotheses[0].signed ? " signed" : ""}
+                                                </p>
+                                            ) : topCandidate.signal_hypotheses?.[0] ? (
+                                                <p className="mt-1 text-sm font-black text-cyan-200">
+                                                    B{topCandidate.signal_hypotheses[0].byte_index} · bit {topCandidate.signal_hypotheses[0].bit_index} · {formatMask(topCandidate.signal_hypotheses[0].bit_mask)}
+                                                </p>
+                                            ) : null}
                                         </div>
                                         <div className="grid gap-2 text-sm text-slate-300 sm:grid-cols-2">
                                             <p><span className="text-slate-500">statistical evidence:</span> {percent(topCandidate.confidence_before_baseline)}</p>
@@ -634,7 +732,13 @@ export function SignalReconBrainConsole({
                                             <p><span className="text-slate-500">ML probability:</span> {percent(topCandidate.ml_probability)}</p>
                                             <p><span className="text-slate-500">marker score:</span> {fixed(topCandidate.correlation_score)}</p>
                                             <p><span className="text-slate-500">frames:</span> {topCandidate.frame_count}</p>
-                                            <p><span className="text-slate-500">changes:</span> {topCandidate.change_count}</p>
+                                            <p><span className="text-slate-500">aggregate ID changes:</span> {topCandidate.change_count}</p>
+                                            {topCandidate.signal_hypotheses?.[0] && (
+                                                <>
+                                                    <p><span className="text-slate-500">matched actions:</span> {topCandidate.signal_hypotheses[0].matched_repetitions}/{topCandidate.signal_hypotheses[0].total_repetitions}</p>
+                                                    <p><span className="text-slate-500">outside-action flips:</span> {topCandidate.signal_hypotheses[0].out_of_window_flips}</p>
+                                                </>
+                                            )}
                                             <p className="sm:col-span-2 text-cyan-200">{topCandidate.notes}</p>
                                         </div>
                                     </div>
@@ -702,6 +806,8 @@ export function SignalReconBrainConsole({
                                 const existingLabel = mlLabels[labelKey];
                                 const statisticalConfidence = candidate.confidence_before_baseline ?? candidate.confidence_before_ml ?? candidate.confidence;
                                 const baselineAdjustedConfidence = candidate.confidence_before_ml ?? candidate.confidence;
+                                const topBitSignal = candidate.signal_hypotheses?.[0] ?? null;
+                                const topFieldSignal = candidate.field_hypotheses?.[0] ?? null;
                                 const saving = labelingCandidateId === candidate.can_id;
 
                                 return (
@@ -709,7 +815,14 @@ export function SignalReconBrainConsole({
                                         <div className="flex flex-wrap items-start justify-between gap-3">
                                             <div>
                                                 <p className="text-xl font-black">{candidate.can_id_hex}</p>
-                                                <p className="text-xs text-slate-500">decimal {candidate.can_id} · {candidate.frame_count} frames · {candidate.change_count} changes</p>
+                                                <p className="text-xs text-slate-500">
+                                                    decimal {candidate.can_id} · {candidate.frame_count} frames · {candidate.change_count} aggregate ID changes
+                                                </p>
+                                                {topBitSignal && (
+                                                    <p className="mt-1 text-xs font-black text-cyan-200">
+                                                        QUICK ID: B{topBitSignal.byte_index} bit {topBitSignal.bit_index} ({formatMask(topBitSignal.bit_mask)})
+                                                    </p>
+                                                )}
                                             </div>
                                             <span className={`rounded-lg border px-2 py-1 text-[10px] font-black ${labelTone(existingLabel?.label)}`}>{labelText(existingLabel?.label)}</span>
                                         </div>
@@ -720,6 +833,175 @@ export function SignalReconBrainConsole({
                                             <div className="rounded-lg border border-slate-700 bg-black/20 p-2"><p className="text-slate-500">ML probability</p><p className="text-lg font-black">{percent(candidate.ml_probability)}</p></div>
                                             <div className="rounded-lg border border-slate-700 bg-black/20 p-2"><p className="text-slate-500">Final evidence score</p><p className="text-lg font-black">{percent(candidate.confidence)}</p></div>
                                         </div>
+
+                                        {topFieldSignal && (
+                                            <div className="mt-3 rounded-lg border border-purple-300/30 bg-purple-500/5 p-3 text-xs">
+                                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                                    <div>
+                                                        <p className="text-[10px] tracking-[0.18em] text-purple-300">FIELD-FIRST QUICK ID</p>
+                                                        <p className="text-lg font-black text-purple-100">
+                                                            {candidate.can_id_hex} / B{topFieldSignal.start_byte} / {topFieldSignal.width_bits}-bit {topFieldSignal.endianness}{topFieldSignal.signed ? " signed" : ""}
+                                                        </p>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="text-2xl font-black text-purple-100">{percent(topFieldSignal.baseline_adjusted_score ?? topFieldSignal.score)}</p>
+                                                        <p className="text-[10px] text-slate-500">exact-field evidence</p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-5">
+                                                    <div><p className="text-slate-500">monotonicity</p><p className="font-black">{percent(topFieldSignal.monotonicity)}</p></div>
+                                                    <div><p className="text-slate-500">level separation</p><p className="font-black">{percent(topFieldSignal.level_separation)}</p></div>
+                                                    <div><p className="text-slate-500">repeatability</p><p className="font-black">{percent(topFieldSignal.repeatability)}</p></div>
+                                                    <div><p className="text-slate-500">plateau stability</p><p className="font-black">{percent(topFieldSignal.plateau_stability)}</p></div>
+                                                    <div><p className="text-slate-500">outside drift</p><p className={`font-black ${topFieldSignal.outside_action_drift <= 0.1 ? "text-green-200" : "text-red-200"}`}>{percent(topFieldSignal.outside_action_drift)}</p></div>
+                                                </div>
+
+                                                <div className="mt-2 overflow-x-auto rounded border border-slate-700 bg-black/20 p-2">
+                                                    <table className="w-full min-w-[420px] text-left text-[10px]">
+                                                        <thead className="text-slate-500">
+                                                            <tr><th>expected</th><th>observed median</th><th>unit</th></tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {topFieldSignal.expected_levels.map((level) => (
+                                                                <tr key={level} className="border-t border-slate-800">
+                                                                    <td>{level}</td>
+                                                                    <td className="font-black text-purple-100">{fixed(topFieldSignal.observed_level_medians[String(level)], 2)}</td>
+                                                                    <td>{topFieldSignal.observations.find((item) => item.expected_value === level)?.expected_unit ?? "raw"}</td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+
+                                                <div className="mt-2 grid grid-cols-3 gap-2">
+                                                    <GameButton
+                                                        onPress={() => void onValidateByteHypothesis(candidate, {
+                                                            byte_index: topFieldSignal.start_byte,
+                                                            hypothesis_kind: "numeric_field_candidate",
+                                                            confidence: topFieldSignal.score,
+                                                            bit_mask: null,
+                                                            reason: topFieldSignal.reason,
+                                                            metrics: { ...topFieldSignal },
+                                                        }, "positive")}
+                                                        className="rounded border border-green-300/30 px-2 py-1 text-[10px] text-green-200"
+                                                    >
+                                                        CONFIRM FIELD
+                                                    </GameButton>
+                                                    <GameButton
+                                                        onPress={() => void onValidateByteHypothesis(candidate, {
+                                                            byte_index: topFieldSignal.start_byte,
+                                                            hypothesis_kind: "numeric_field_candidate",
+                                                            confidence: topFieldSignal.score,
+                                                            bit_mask: null,
+                                                            reason: topFieldSignal.reason,
+                                                            metrics: { ...topFieldSignal },
+                                                        }, "negative")}
+                                                        className="rounded border border-red-300/30 px-2 py-1 text-[10px] text-red-200"
+                                                    >
+                                                        REJECT FIELD
+                                                    </GameButton>
+                                                    <GameButton
+                                                        onPress={() => void onValidateByteHypothesis(candidate, {
+                                                            byte_index: topFieldSignal.start_byte,
+                                                            hypothesis_kind: "numeric_field_candidate",
+                                                            confidence: topFieldSignal.score,
+                                                            bit_mask: null,
+                                                            reason: topFieldSignal.reason,
+                                                            metrics: { ...topFieldSignal },
+                                                        }, "uncertain")}
+                                                        className="rounded border border-yellow-300/30 px-2 py-1 text-[10px] text-yellow-200"
+                                                    >
+                                                        UNSURE
+                                                    </GameButton>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {topBitSignal && (
+                                            <div className="mt-3 rounded-lg border border-cyan-300/30 bg-cyan-500/5 p-3 text-xs">
+                                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                                    <div>
+                                                        <p className="text-[10px] tracking-[0.18em] text-cyan-300">
+                                                            {candidate.quick_id_method === "bit_first_opposing_actions"
+                                                                ? "BIT-FIRST QUICK ID"
+                                                                : "SECONDARY BIT THRESHOLD"}
+                                                        </p>
+                                                        <p className="text-lg font-black text-cyan-100">
+                                                            {candidate.can_id_hex} / B{topBitSignal.byte_index} / bit {topBitSignal.bit_index}
+                                                        </p>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="text-2xl font-black text-cyan-100">{percent(topBitSignal.baseline_adjusted_score ?? topBitSignal.score)}</p>
+                                                        <p className="text-[10px] text-slate-500">exact-location evidence</p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-5">
+                                                    <div><p className="text-slate-500">matched</p><p className="font-black">{topBitSignal.matched_repetitions}/{topBitSignal.total_repetitions}</p></div>
+                                                    <div><p className="text-slate-500">inside flips</p><p className="font-black">{topBitSignal.in_window_flips}</p></div>
+                                                    <div><p className="text-slate-500">outside flips</p><p className={`font-black ${topBitSignal.out_of_window_flips === 0 ? "text-green-200" : "text-red-200"}`}>{topBitSignal.out_of_window_flips}</p></div>
+                                                    <div><p className="text-slate-500">window purity</p><p className="font-black">{percent(topBitSignal.window_purity)}</p></div>
+                                                    <div><p className="text-slate-500">inverse ON/OFF</p><p className={`font-black ${topBitSignal.inverse_pair_verified ? "text-green-200" : "text-yellow-200"}`}>{topBitSignal.inverse_pair_verified ? "YES" : "NO"}</p></div>
+                                                </div>
+
+                                                <div className="mt-2 grid gap-1 sm:grid-cols-2">
+                                                    {Object.entries(topBitSignal.action_groups).map(([actionKey, group]) => (
+                                                        <div key={actionKey} className="rounded border border-slate-700 bg-black/20 p-2">
+                                                            <div className="flex items-center justify-between gap-2">
+                                                                <span className="font-black">{actionKey}</span>
+                                                                <span className="text-cyan-200">{stateTransition(group)}</span>
+                                                            </div>
+                                                            <p className="text-[10px] text-slate-500">
+                                                                {group.matched_repetitions ?? 0}/{group.repetitions ?? 0} matched · flips {(group.flip_counts ?? []).join(", ") || "none"}
+                                                            </p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+
+                                                <div className="mt-2 grid grid-cols-3 gap-2">
+                                                    <GameButton
+                                                        onPress={() => void onValidateByteHypothesis(candidate, {
+                                                            byte_index: topBitSignal.byte_index,
+                                                            hypothesis_kind: "boolean_signal_candidate",
+                                                            confidence: topBitSignal.score,
+                                                            bit_mask: topBitSignal.bit_mask,
+                                                            reason: topBitSignal.reason,
+                                                            metrics: { ...topBitSignal },
+                                                        }, "positive")}
+                                                        className="rounded border border-green-300/30 px-2 py-1 text-[10px] text-green-200"
+                                                    >
+                                                        CONFIRM BIT
+                                                    </GameButton>
+                                                    <GameButton
+                                                        onPress={() => void onValidateByteHypothesis(candidate, {
+                                                            byte_index: topBitSignal.byte_index,
+                                                            hypothesis_kind: "boolean_signal_candidate",
+                                                            confidence: topBitSignal.score,
+                                                            bit_mask: topBitSignal.bit_mask,
+                                                            reason: topBitSignal.reason,
+                                                            metrics: { ...topBitSignal },
+                                                        }, "negative")}
+                                                        className="rounded border border-red-300/30 px-2 py-1 text-[10px] text-red-200"
+                                                    >
+                                                        REJECT BIT
+                                                    </GameButton>
+                                                    <GameButton
+                                                        onPress={() => void onValidateByteHypothesis(candidate, {
+                                                            byte_index: topBitSignal.byte_index,
+                                                            hypothesis_kind: "boolean_signal_candidate",
+                                                            confidence: topBitSignal.score,
+                                                            bit_mask: topBitSignal.bit_mask,
+                                                            reason: topBitSignal.reason,
+                                                            metrics: { ...topBitSignal },
+                                                        }, "uncertain")}
+                                                        className="rounded border border-yellow-300/30 px-2 py-1 text-[10px] text-yellow-200"
+                                                    >
+                                                        UNSURE
+                                                    </GameButton>
+                                                </div>
+                                            </div>
+                                        )}
 
                                         {candidate.historical_support && (
                                             <div className="mt-3 grid grid-cols-2 gap-2 rounded-lg border border-cyan-300/20 bg-cyan-500/5 p-2 text-xs sm:grid-cols-4">

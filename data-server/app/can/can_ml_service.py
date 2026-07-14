@@ -34,7 +34,7 @@ def _env_int(name: str, default: int, minimum: int = 1) -> int:
     return max(value, minimum)
 
 
-ML_FEATURE_SCHEMA_VERSION = 3
+ML_FEATURE_SCHEMA_VERSION = 5
 ML_MIN_EXAMPLES = _env_int("ML_MIN_EXAMPLES", 8, minimum=4)
 ML_MIN_DISTINCT_SESSIONS = _env_int(
     "ML_MIN_DISTINCT_SESSIONS",
@@ -82,6 +82,22 @@ ML_FEATURE_NAMES = (
     "rolling_counter_byte_fraction",
     "checksum_candidate_byte_fraction",
     "constant_byte_fraction",
+    "top_bit_signal_score",
+    "top_bit_window_purity",
+    "top_bit_outside_action_fraction",
+    "top_bit_repetition_score",
+    "top_bit_inverse_pair_verified",
+    "top_bit_location_dominance",
+    "top_field_signal_score",
+    "top_field_monotonicity",
+    "top_field_level_separation",
+    "top_field_repeatability",
+    "top_field_plateau_stability",
+    "top_field_return_consistency",
+    "top_field_outside_action_drift",
+    "top_field_response_latency_score",
+    "top_field_marker_coverage",
+    "top_field_location_dominance",
 )
 
 ml_router = APIRouter(tags=["can-ai"])
@@ -285,6 +301,8 @@ def _feature_vector_from_values(
     baseline_adjusted_change_ratio: float,
     baseline_penalty: float,
     byte_role_hypotheses: Optional[list[dict[str, Any]]] = None,
+    signal_hypotheses: Optional[list[dict[str, Any]]] = None,
+    field_hypotheses: Optional[list[dict[str, Any]]] = None,
 ) -> dict[str, float]:
     transitions = max(int(frame_count) - 1, 1)
     byte_rates = [
@@ -376,6 +394,27 @@ def _feature_vector_from_values(
     )
     role_denominator = max(len(role_items), 1)
 
+    signal_items = [
+        item
+        for item in (signal_hypotheses or [])
+        if isinstance(item, dict)
+    ]
+    top_signal = max(
+        signal_items,
+        key=lambda item: float(item.get("score") or 0.0),
+        default={},
+    )
+    field_items = [
+        item
+        for item in (field_hypotheses or [])
+        if isinstance(item, dict)
+    ]
+    top_field = max(
+        field_items,
+        key=lambda item: float(item.get("score") or 0.0),
+        default={},
+    )
+
     return {
         "correlation_score": float(correlation_score),
         "raw_marker_fraction": float(raw_marker_fraction),
@@ -409,6 +448,32 @@ def _feature_vector_from_values(
         "constant_byte_fraction": (
             role_counts.get("constant", 0) / role_denominator
         ),
+        "top_bit_signal_score": float(top_signal.get("score") or 0.0),
+        "top_bit_window_purity": float(
+            top_signal.get("window_purity") or 0.0
+        ),
+        "top_bit_outside_action_fraction": float(
+            top_signal.get("outside_action_fraction") or 0.0
+        ),
+        "top_bit_repetition_score": float(
+            top_signal.get("repetition_score") or 0.0
+        ),
+        "top_bit_inverse_pair_verified": (
+            1.0 if top_signal.get("inverse_pair_verified") else 0.0
+        ),
+        "top_bit_location_dominance": float(
+            top_signal.get("location_dominance") or 0.0
+        ),
+        "top_field_signal_score": float(top_field.get("score") or 0.0),
+        "top_field_monotonicity": float(top_field.get("monotonicity") or 0.0),
+        "top_field_level_separation": float(top_field.get("level_separation") or 0.0),
+        "top_field_repeatability": float(top_field.get("repeatability") or 0.0),
+        "top_field_plateau_stability": float(top_field.get("plateau_stability") or 0.0),
+        "top_field_return_consistency": float(top_field.get("return_consistency") or 0.0),
+        "top_field_outside_action_drift": float(top_field.get("outside_action_drift") or 0.0),
+        "top_field_response_latency_score": float(top_field.get("response_latency_score") or 0.0),
+        "top_field_marker_coverage": float(top_field.get("marker_coverage") or 0.0),
+        "top_field_location_dominance": float(top_field.get("location_dominance") or 0.0),
     }
 
 
@@ -424,6 +489,18 @@ def candidate_feature_vector(candidate: Any) -> dict[str, float]:
         converted = _model_or_dict(item)
         if converted is not None:
             byte_role_hypotheses.append(converted)
+
+    signal_hypotheses: list[dict[str, Any]] = []
+    for item in getattr(candidate, "signal_hypotheses", []) or []:
+        converted = _model_or_dict(item)
+        if converted is not None:
+            signal_hypotheses.append(converted)
+
+    field_hypotheses: list[dict[str, Any]] = []
+    for item in getattr(candidate, "field_hypotheses", []) or []:
+        converted = _model_or_dict(item)
+        if converted is not None:
+            field_hypotheses.append(converted)
 
     return _feature_vector_from_values(
         frame_count=int(getattr(candidate, "frame_count", 0) or 0),
@@ -463,6 +540,8 @@ def candidate_feature_vector(candidate: Any) -> dict[str, float]:
             getattr(candidate, "baseline_penalty", 0.0) or 0.0
         ),
         byte_role_hypotheses=byte_role_hypotheses,
+        signal_hypotheses=signal_hypotheses,
+        field_hypotheses=field_hypotheses,
     )
 
 
@@ -559,6 +638,16 @@ def _persisted_feature_vector(
         byte_role_hypotheses=(
             feature_metadata.get("byte_role_hypotheses")
             if isinstance(feature_metadata.get("byte_role_hypotheses"), list)
+            else []
+        ),
+        signal_hypotheses=(
+            feature_metadata.get("signal_hypotheses")
+            if isinstance(feature_metadata.get("signal_hypotheses"), list)
+            else []
+        ),
+        field_hypotheses=(
+            feature_metadata.get("field_hypotheses")
+            if isinstance(feature_metadata.get("field_hypotheses"), list)
             else []
         ),
     )

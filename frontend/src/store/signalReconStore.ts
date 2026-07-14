@@ -16,8 +16,10 @@ import {
     type ReconMarkerLabelSource,
     type ReconMarkerTrigger,
     type ReconMissionDefinition,
+    type MissionAnalyzerProfile,
     type ReconMissionProtocol,
     type ReconPhaseName,
+    type ReconStepAnalysisMetadata,
     type ReconStepDefinition,
     type ReconTiming,
 } from "./signalReconMissions";
@@ -95,6 +97,11 @@ type SignalReconState = {
         missionCode: string,
         stepId: string,
         timing: Partial<ReconTiming>,
+    ) => void;
+    updateStepAnalysis: (
+        missionCode: string,
+        stepId: string,
+        analysis: Partial<ReconStepAnalysisMetadata>,
     ) => void;
     resetMissionProtocol: (missionCode: string) => void;
 
@@ -182,6 +189,24 @@ function isLabelSource(value: unknown): value is ReconMarkerLabelSource {
     );
 }
 
+
+function isAnalyzerProfile(value: unknown): value is MissionAnalyzerProfile {
+    return (
+        value === "baseline_profile" ||
+        value === "boolean_transition" ||
+        value === "ordinal_level" ||
+        value === "continuous_trace" ||
+        value === "enum_state" ||
+        value === "pulse_event"
+    );
+}
+
+function finiteNumber(value: unknown): number | undefined {
+    return typeof value === "number" && Number.isFinite(value)
+        ? value
+        : undefined;
+}
+
 function sanitizeProtocol(
     mission: ReconMission,
     value: unknown,
@@ -249,11 +274,59 @@ function sanitizeProtocol(
         step_timing_overrides[stepId] = clean;
     }
 
+    const rawAnalysisOverrides =
+        raw.step_analysis_overrides &&
+        typeof raw.step_analysis_overrides === "object" &&
+        !Array.isArray(raw.step_analysis_overrides)
+            ? raw.step_analysis_overrides
+            : {};
+    const step_analysis_overrides: Record<
+        string,
+        Partial<ReconStepAnalysisMetadata>
+    > = {};
+    for (const [stepId, rawAnalysis] of Object.entries(rawAnalysisOverrides)) {
+        if (!rawAnalysis || typeof rawAnalysis !== "object") continue;
+        const analysis = rawAnalysis as Partial<ReconStepAnalysisMetadata>;
+        const clean: Partial<ReconStepAnalysisMetadata> = {};
+        if (isAnalyzerProfile(analysis.analyzer_profile)) {
+            clean.analyzer_profile = analysis.analyzer_profile;
+        }
+        const expectedValue = finiteNumber(analysis.expected_value);
+        const returnValue = finiteNumber(analysis.return_value);
+        const holdMs = clampDuration(analysis.hold_ms);
+        if (expectedValue !== undefined) clean.expected_value = expectedValue;
+        if (returnValue !== undefined) clean.return_value = returnValue;
+        if (holdMs !== undefined) clean.hold_ms = holdMs;
+        if (typeof analysis.expected_unit === "string") {
+            clean.expected_unit = analysis.expected_unit;
+        }
+        if (
+            analysis.expected_direction === "increase" ||
+            analysis.expected_direction === "decrease" ||
+            analysis.expected_direction === "bidirectional" ||
+            analysis.expected_direction === "categorical" ||
+            analysis.expected_direction === "unknown"
+        ) {
+            clean.expected_direction = analysis.expected_direction;
+        }
+        if (Array.isArray(analysis.field_widths)) {
+            clean.field_widths = analysis.field_widths.filter(
+                (value): value is 8 | 16 | 24 | 32 =>
+                    value === 8 || value === 16 || value === 24 || value === 32,
+            );
+        }
+        if (typeof analysis.allow_signed === "boolean") clean.allow_signed = analysis.allow_signed;
+        if (typeof analysis.allow_little_endian === "boolean") clean.allow_little_endian = analysis.allow_little_endian;
+        if (typeof analysis.allow_big_endian === "boolean") clean.allow_big_endian = analysis.allow_big_endian;
+        step_analysis_overrides[stepId] = clean;
+    }
+
     return {
         enabled_phases:
             enabledPhases.length > 0 ? enabledPhases : ["capture"],
         markers,
         step_timing_overrides,
+        step_analysis_overrides,
     };
 }
 
@@ -673,6 +746,43 @@ export const useSignalReconStore = create<SignalReconState>((set, get) => ({
         });
     },
 
+    updateStepAnalysis(missionCode, stepId, analysis) {
+        const state = get();
+        const mission = state.missions.find(
+            (item) => item.mission_code === missionCode,
+        );
+        if (!mission) return;
+
+        const current =
+            state.missionProtocols[missionCode] ??
+            getDefaultMissionProtocol(mission);
+        const currentAnalysis =
+            current.step_analysis_overrides[stepId] ?? {};
+        const nextProtocol = sanitizeProtocol(mission, {
+            ...current,
+            step_analysis_overrides: {
+                ...current.step_analysis_overrides,
+                [stepId]: {
+                    ...currentAnalysis,
+                    ...analysis,
+                },
+            },
+        });
+        const missionProtocols = {
+            ...state.missionProtocols,
+            [missionCode]: nextProtocol,
+        };
+
+        persistProtocolMap(missionProtocols);
+        set({
+            missionProtocols,
+            steps:
+                state.selectedMission?.mission_code === missionCode
+                    ? applyMissionProtocolToSteps(mission, nextProtocol)
+                    : state.steps,
+        });
+    },
+
     resetMissionProtocol(missionCode) {
         const state = get();
         const mission = state.missions.find(
@@ -745,6 +855,8 @@ export const useSignalReconStore = create<SignalReconState>((set, get) => ({
                             "baseline_profile"
                                 ? null
                                 : selectedMission.target,
+                        analyzer_profile: selectedMission.analyzer_profile,
+                        ...selectedMission.metadata,
                         mission_protocol: protocol,
                         mission_steps: steps.map((step) => ({
                             id: step.id,
@@ -754,6 +866,7 @@ export const useSignalReconStore = create<SignalReconState>((set, get) => ({
                             countdown_ms: step.countdown_ms,
                             action_ms: step.action_ms,
                             capture_ms: step.capture_ms,
+                            metadata: step.metadata,
                         })),
                     },
                 }),
@@ -910,6 +1023,22 @@ export const useSignalReconStore = create<SignalReconState>((set, get) => ({
                         action_text: step.action_text,
                         instruction: step.instruction,
                         step_metadata: step.metadata,
+                        analyzer_profile:
+                            step.metadata?.analyzer_profile ??
+                            selectedMission.analyzer_profile,
+                        expected_value: step.metadata?.expected_value,
+                        expected_unit: step.metadata?.expected_unit,
+                        expected_direction:
+                            step.metadata?.expected_direction,
+                        return_value: step.metadata?.return_value,
+                        hold_ms:
+                            step.metadata?.hold_ms ?? durationMs,
+                        field_widths: step.metadata?.field_widths,
+                        allow_signed: step.metadata?.allow_signed,
+                        allow_little_endian:
+                            step.metadata?.allow_little_endian,
+                        allow_big_endian:
+                            step.metadata?.allow_big_endian,
                     },
                 });
             }

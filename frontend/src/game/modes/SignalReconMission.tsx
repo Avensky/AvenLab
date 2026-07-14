@@ -9,6 +9,8 @@ import {
     ALL_RECON_PHASES,
     getDefaultMissionProtocol,
     getStepTotalMs,
+    type ExpectedDirection,
+    type MissionAnalyzerProfile,
     type ReconMarkerLabelSource,
     type ReconMarkerTrigger,
     type ReconPhaseName,
@@ -69,6 +71,9 @@ type SavedAnalysisResponse = {
     session_id?: string;
     session_integrity?: BrainAnalysisResult["session_integrity"];
     byte_hypothesis_count?: number;
+    field_hypothesis_count?: number;
+    analyzer_profile?: string;
+    quick_id_method?: string;
     vector_memory?: BrainAnalysisResult["vector_memory"];
     marker_selection?: BrainAnalysisResult["marker_selection"];
     frame_selection?: BrainAnalysisResult["frame_selection"];
@@ -117,6 +122,30 @@ const CAPTURE_PRESETS: Array<{ label: string; milliseconds: number }> = [
     { label: "30 SEC", milliseconds: 30_000 },
     { label: "5 MIN", milliseconds: 5 * 60_000 },
     { label: "30 MIN", milliseconds: 30 * 60_000 },
+];
+
+
+const ANALYZER_PROFILES: Array<{
+    value: MissionAnalyzerProfile;
+    label: string;
+}> = [
+    { value: "boolean_transition", label: "Boolean / exact bit" },
+    { value: "ordinal_level", label: "Ordinal levels / exact field" },
+    { value: "continuous_trace", label: "Continuous signed/analog field" },
+    { value: "enum_state", label: "Categorical / enum field" },
+    { value: "pulse_event", label: "Pulse event" },
+    { value: "baseline_profile", label: "Baseline / no target" },
+];
+
+const EXPECTED_DIRECTIONS: Array<{
+    value: ExpectedDirection;
+    label: string;
+}> = [
+    { value: "increase", label: "Increase" },
+    { value: "decrease", label: "Decrease" },
+    { value: "bidirectional", label: "Bidirectional" },
+    { value: "categorical", label: "Categorical" },
+    { value: "unknown", label: "Unknown" },
 ];
 
 function formatMs(ms: number) {
@@ -253,6 +282,7 @@ export function SignalReconMission({
     const updateMissionMarker = useSignalReconStore((s) => s.updateMissionMarker);
     const removeMissionMarker = useSignalReconStore((s) => s.removeMissionMarker);
     const updateStepTiming = useSignalReconStore((s) => s.updateStepTiming);
+    const updateStepAnalysis = useSignalReconStore((s) => s.updateStepAnalysis);
     const resetMissionProtocol = useSignalReconStore((s) => s.resetMissionProtocol);
     const startSession = useSignalReconStore((s) => s.startSession);
     const runStep = useSignalReconStore((s) => s.runStep);
@@ -653,6 +683,12 @@ export function SignalReconMission({
             const heatmap = asRecord(reportMetadata.heatmap) as BrainAnalysisResult["heatmap"];
             const baselineProfile = asRecord(reportMetadata.baseline_profile) as BrainAnalysisResult["baseline_profile"];
             const analysisMode = toNullableString(reportMetadata.analysis_mode);
+            const analyzerProfile = toNullableString(
+                data.analyzer_profile ?? reportMetadata.analyzer_profile,
+            );
+            const quickIdMethod = toNullableString(
+                data.quick_id_method ?? reportMetadata.quick_id_method,
+            );
             const analysisSource = toNullableString(reportMetadata.analysis_source);
             const model = toNullableString(reportMetadata.model);
             const llmError = toNullableString(reportMetadata.llm_error);
@@ -688,7 +724,12 @@ export function SignalReconMission({
                 byte_hypothesis_count: toNumber(
                     data.byte_hypothesis_count ?? reportMetadata.byte_hypothesis_count,
                 ),
+                field_hypothesis_count: toNumber(
+                    data.field_hypothesis_count ?? reportMetadata.field_hypothesis_count,
+                ),
                 analysis_mode: analysisMode ?? undefined,
+                analyzer_profile: analyzerProfile ?? undefined,
+                quick_id_method: quickIdMethod ?? undefined,
                 analysis_source:
                     analysisSource === "llm" || analysisSource === "fallback"
                         ? analysisSource
@@ -1484,6 +1525,158 @@ export function SignalReconMission({
                             Select a step before editing its timing.
                         </p>
                     )}
+                </div>
+
+                <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/5 p-4">
+                    <div className="mb-3">
+                        <p className="text-[10px] tracking-[0.18em] text-cyan-200">
+                            CURRENT STEP ANALYSIS CONTRACT
+                        </p>
+                        <p className="text-xs text-slate-400">
+                            These values are attached to the Pi-timestamped action marker and select the Quick ID analyzer.
+                        </p>
+                    </div>
+
+                    {displayStep ? (
+                        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+                            <label>
+                                <span className="text-[9px] text-slate-500">ANALYZER</span>
+                                <select
+                                    value={
+                                        typeof displayStep.metadata?.analyzer_profile === "string"
+                                            ? displayStep.metadata.analyzer_profile
+                                            : selectedMission.analyzer_profile
+                                    }
+                                    disabled={isRunning}
+                                    onChange={(event) =>
+                                        updateStepAnalysis(
+                                            selectedMission.mission_code,
+                                            displayStep.id,
+                                            {
+                                                analyzer_profile: event.target.value as MissionAnalyzerProfile,
+                                            },
+                                        )
+                                    }
+                                    className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-slate-200"
+                                >
+                                    {ANALYZER_PROFILES.map((option) => (
+                                        <option key={option.value} value={option.value}>
+                                            {option.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+
+                            <label>
+                                <span className="text-[9px] text-slate-500">EXPECTED VALUE</span>
+                                <input
+                                    type="number"
+                                    step="any"
+                                    value={
+                                        typeof displayStep.metadata?.expected_value === "number"
+                                            ? displayStep.metadata.expected_value
+                                            : ""
+                                    }
+                                    disabled={isRunning}
+                                    onChange={(event) => {
+                                        const value = event.target.value;
+                                        updateStepAnalysis(
+                                            selectedMission.mission_code,
+                                            displayStep.id,
+                                            {
+                                                expected_value:
+                                                    value === "" ? undefined : Number(value),
+                                            },
+                                        );
+                                    }}
+                                    placeholder="0, 25, 50, 70..."
+                                    className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-slate-200"
+                                />
+                            </label>
+
+                            <label>
+                                <span className="text-[9px] text-slate-500">UNIT</span>
+                                <input
+                                    value={
+                                        typeof displayStep.metadata?.expected_unit === "string"
+                                            ? displayStep.metadata.expected_unit
+                                            : ""
+                                    }
+                                    disabled={isRunning}
+                                    onChange={(event) =>
+                                        updateStepAnalysis(
+                                            selectedMission.mission_code,
+                                            displayStep.id,
+                                            { expected_unit: event.target.value },
+                                        )
+                                    }
+                                    placeholder="percent, rpm, mph"
+                                    className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-slate-200"
+                                />
+                            </label>
+
+                            <label>
+                                <span className="text-[9px] text-slate-500">DIRECTION</span>
+                                <select
+                                    value={
+                                        typeof displayStep.metadata?.expected_direction === "string"
+                                            ? displayStep.metadata.expected_direction
+                                            : "unknown"
+                                    }
+                                    disabled={isRunning}
+                                    onChange={(event) =>
+                                        updateStepAnalysis(
+                                            selectedMission.mission_code,
+                                            displayStep.id,
+                                            {
+                                                expected_direction: event.target.value as ExpectedDirection,
+                                            },
+                                        )
+                                    }
+                                    className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-slate-200"
+                                >
+                                    {EXPECTED_DIRECTIONS.map((option) => (
+                                        <option key={option.value} value={option.value}>
+                                            {option.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+
+                            <label>
+                                <span className="text-[9px] text-slate-500">RETURN VALUE</span>
+                                <input
+                                    type="number"
+                                    step="any"
+                                    value={
+                                        typeof displayStep.metadata?.return_value === "number"
+                                            ? displayStep.metadata.return_value
+                                            : ""
+                                    }
+                                    disabled={isRunning}
+                                    onChange={(event) => {
+                                        const value = event.target.value;
+                                        updateStepAnalysis(
+                                            selectedMission.mission_code,
+                                            displayStep.id,
+                                            {
+                                                return_value:
+                                                    value === "" ? undefined : Number(value),
+                                            },
+                                        );
+                                    }}
+                                    placeholder="usually 0"
+                                    className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-slate-200"
+                                />
+                            </label>
+                        </div>
+                    ) : (
+                        <p className="text-sm text-slate-500">Select a step to edit its analysis contract.</p>
+                    )}
+
+                    <p className="mt-3 text-[10px] text-cyan-100/70">
+                        Boolean missions rank an exact bit. Ordinal and continuous missions rank exact 8/16/24/32-bit fields by marker level, repeatability, plateau stability, return state, and outside-action drift.
+                    </p>
                 </div>
 
                 <div className="rounded-xl border border-purple-300/25 bg-purple-500/5 p-4">

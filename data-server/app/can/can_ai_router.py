@@ -151,6 +151,25 @@ IGNORED_MARKER_TYPES = {
 CONFIDENCE_SEMANTICS = (
     "bounded research evidence score in [0,1]; not a calibrated probability"
 )
+QUICK_ID_BIT_FIRST_METHOD = "bit_first_opposing_actions"
+QUICK_ID_ORDINAL_FIELD_METHOD = "field_first_ordinal_levels"
+QUICK_ID_CONTINUOUS_FIELD_METHOD = "field_first_continuous_trace"
+QUICK_ID_ENUM_FIELD_METHOD = "field_first_enum_state"
+QUICK_ID_PULSE_METHOD = "pulse_event"
+QUICK_ID_FALLBACK_METHOD = "aggregate_id_fallback"
+
+ANALYZER_PROFILE_BASELINE = "baseline_profile"
+ANALYZER_PROFILE_BOOLEAN = "boolean_transition"
+ANALYZER_PROFILE_ORDINAL = "ordinal_level"
+ANALYZER_PROFILE_CONTINUOUS = "continuous_trace"
+ANALYZER_PROFILE_ENUM = "enum_state"
+ANALYZER_PROFILE_PULSE = "pulse_event"
+FIELD_ANALYZER_PROFILES = {
+    ANALYZER_PROFILE_ORDINAL,
+    ANALYZER_PROFILE_CONTINUOUS,
+    ANALYZER_PROFILE_ENUM,
+}
+
 
 
 def json_dumps(value: Any) -> str:
@@ -561,6 +580,71 @@ class ByteRoleHypothesis(BaseModel):
     metrics: dict[str, Any] = Field(default_factory=dict)
 
 
+class FieldMarkerObservation(BaseModel):
+    marker_type: str
+    step_code: Optional[str]
+    label: Optional[str]
+    action_key: str
+    timestamp_ms: int
+    expected_value: float
+    expected_unit: Optional[str] = None
+    expected_direction: Optional[str] = None
+    pre_value: Optional[float]
+    action_value: Optional[float]
+    post_value: Optional[float]
+    plateau_mad: Optional[float]
+    response_latency_ms: Optional[float]
+    hold_ms: int
+
+
+class FieldSignalHypothesis(BaseModel):
+    start_byte: int
+    width_bits: int
+    endianness: str
+    signed: bool
+    score: float
+    monotonicity: float
+    observed_direction: str
+    level_separation: float
+    repeatability: float
+    plateau_stability: float
+    return_consistency: float
+    outside_action_drift: float
+    response_latency_score: float
+    marker_coverage: float
+    location_dominance: float = 0.0
+    baseline_penalty: float = 0.0
+    baseline_adjusted_score: Optional[float] = None
+    expected_levels: list[float] = Field(default_factory=list)
+    observed_level_medians: dict[str, float] = Field(default_factory=dict)
+    observations: list[FieldMarkerObservation] = Field(default_factory=list)
+    reason: str
+
+
+class BitSignalHypothesis(BaseModel):
+    byte_index: int
+    bit_index: int
+    bit_mask: int
+    score: float
+    marker_lift: float
+    window_purity: float
+    outside_action_fraction: float
+    repetition_score: float
+    single_flip_score: float
+    location_dominance: float
+    total_flips: int
+    in_window_flips: int
+    out_of_window_flips: int
+    matched_repetitions: int
+    total_repetitions: int
+    inverse_pair_verified: bool
+    median_latency_ms: Optional[float] = None
+    baseline_penalty: float = 0.0
+    baseline_adjusted_score: Optional[float] = None
+    action_groups: dict[str, Any] = Field(default_factory=dict)
+    reason: str
+
+
 class Candidate(BaseModel):
     can_id: int
     can_id_hex: str
@@ -574,6 +658,10 @@ class Candidate(BaseModel):
     byte_entropy: dict[str, float]
     byte_evidence: list[ByteEvidence]
     byte_role_hypotheses: list[ByteRoleHypothesis] = Field(default_factory=list)
+    signal_hypotheses: list[BitSignalHypothesis] = Field(default_factory=list)
+    field_hypotheses: list[FieldSignalHypothesis] = Field(default_factory=list)
+    analyzer_profile: str = ANALYZER_PROFILE_BOOLEAN
+    quick_id_method: str = QUICK_ID_FALLBACK_METHOD
     entropy: float
     raw_marker_fraction: float
     marker_window_coverage: float
@@ -1031,6 +1119,870 @@ def build_byte_evidence(
 
     return evidence_rows, byte_entropy
 
+
+def marker_polarity(marker: dict[str, Any]) -> Optional[str]:
+    """Classify explicit opposing actions without substring false positives."""
+    text = " ".join(
+        str(value or "")
+        for value in (
+            marker.get("step_code"),
+            marker.get("label"),
+            marker_action_key(marker),
+        )
+    ).lower().replace("-", "_")
+    tokens = set(re.findall(r"[a-z0-9]+", text))
+
+    negative_tokens = {
+        "off", "release", "released", "close", "closed", "disable",
+        "disabled", "deactivate", "deactivated", "inactive", "down",
+    }
+    positive_tokens = {
+        "on", "press", "pressed", "open", "opened", "enable", "enabled",
+        "activate", "activated", "active", "up",
+    }
+    if tokens & negative_tokens:
+        return "off"
+    if tokens & positive_tokens:
+        return "on"
+    return None
+
+
+def has_opposing_action_markers(markers: list[dict[str, Any]]) -> bool:
+    polarities = {
+        polarity
+        for marker in markers
+        if (polarity := marker_polarity(marker)) is not None
+    }
+    return {"on", "off"}.issubset(polarities)
+
+
+
+def combined_marker_metadata(marker: dict[str, Any]) -> dict[str, Any]:
+    metadata = metadata_dict(marker.get("metadata"))
+    step_metadata = metadata_dict(metadata.get("step_metadata"))
+    return {**step_metadata, **metadata}
+
+
+def marker_expected_value(marker: dict[str, Any]) -> Optional[float]:
+    metadata = combined_marker_metadata(marker)
+    value = metadata.get("expected_value")
+    if isinstance(value, bool):
+        return float(int(value))
+    if isinstance(value, (int, float)) and math.isfinite(float(value)):
+        return float(value)
+    if isinstance(value, str):
+        try:
+            parsed = float(value.strip())
+        except ValueError:
+            return None
+        return parsed if math.isfinite(parsed) else None
+    return None
+
+
+def normalize_analyzer_profile(value: Any) -> Optional[str]:
+    if not isinstance(value, str):
+        return None
+    profile = value.strip().lower().replace("-", "_").replace(" ", "_")
+    aliases = {
+        "boolean": ANALYZER_PROFILE_BOOLEAN,
+        "bit": ANALYZER_PROFILE_BOOLEAN,
+        "digital": ANALYZER_PROFILE_BOOLEAN,
+        "ordinal": ANALYZER_PROFILE_ORDINAL,
+        "levels": ANALYZER_PROFILE_ORDINAL,
+        "analog_levels": ANALYZER_PROFILE_ORDINAL,
+        "continuous": ANALYZER_PROFILE_CONTINUOUS,
+        "analog": ANALYZER_PROFILE_CONTINUOUS,
+        "trace": ANALYZER_PROFILE_CONTINUOUS,
+        "enum": ANALYZER_PROFILE_ENUM,
+        "categorical": ANALYZER_PROFILE_ENUM,
+        "pulse": ANALYZER_PROFILE_PULSE,
+        "baseline": ANALYZER_PROFILE_BASELINE,
+    }
+    profile = aliases.get(profile, profile)
+    valid = {
+        ANALYZER_PROFILE_BASELINE,
+        ANALYZER_PROFILE_BOOLEAN,
+        ANALYZER_PROFILE_ORDINAL,
+        ANALYZER_PROFILE_CONTINUOUS,
+        ANALYZER_PROFILE_ENUM,
+        ANALYZER_PROFILE_PULSE,
+    }
+    return profile if profile in valid else None
+
+
+def resolve_analyzer_profile(
+    session: dict[str, Any],
+    markers: list[dict[str, Any]],
+    analysis_mode: str,
+) -> str:
+    if is_baseline_mode(analysis_mode):
+        return ANALYZER_PROFILE_BASELINE
+
+    # Step/marker metadata is the most specific contract.
+    marker_profiles = [
+        normalize_analyzer_profile(
+            combined_marker_metadata(marker).get("analyzer_profile")
+        )
+        for marker in markers
+    ]
+    explicit_marker_profiles = [profile for profile in marker_profiles if profile]
+    if explicit_marker_profiles:
+        counts = Counter(explicit_marker_profiles)
+        return counts.most_common(1)[0][0]
+
+    session_metadata = metadata_dict(session.get("session_metadata"))
+    mission_metadata = metadata_dict(session.get("mission_metadata"))
+    frontend_metadata = metadata_dict(mission_metadata.get("frontend_metadata"))
+    for metadata in (session_metadata, mission_metadata, frontend_metadata):
+        profile = normalize_analyzer_profile(metadata.get("analyzer_profile"))
+        if profile:
+            return profile
+
+    selected, _ = select_analysis_markers(markers, baseline_mode=False)
+    if has_opposing_action_markers(selected):
+        return ANALYZER_PROFILE_BOOLEAN
+
+    numeric_values = [
+        value
+        for marker in selected
+        if (value := marker_expected_value(marker)) is not None
+    ]
+    unique_values = sorted(set(numeric_values))
+    if len(unique_values) >= 3:
+        if any(value < 0 for value in unique_values):
+            return ANALYZER_PROFILE_CONTINUOUS
+        return ANALYZER_PROFILE_ORDINAL
+    if len(unique_values) >= 2:
+        return ANALYZER_PROFILE_CONTINUOUS
+    return ANALYZER_PROFILE_BOOLEAN
+
+
+def quick_id_method_for_profile(profile: str, opposing_actions: bool) -> str:
+    if profile == ANALYZER_PROFILE_ORDINAL:
+        return QUICK_ID_ORDINAL_FIELD_METHOD
+    if profile == ANALYZER_PROFILE_CONTINUOUS:
+        return QUICK_ID_CONTINUOUS_FIELD_METHOD
+    if profile == ANALYZER_PROFILE_ENUM:
+        return QUICK_ID_ENUM_FIELD_METHOD
+    if profile == ANALYZER_PROFILE_PULSE:
+        return QUICK_ID_PULSE_METHOD
+    if profile == ANALYZER_PROFILE_BOOLEAN and opposing_actions:
+        return QUICK_ID_BIT_FIRST_METHOD
+    return QUICK_ID_FALLBACK_METHOD
+
+
+def median_float(values: list[float]) -> Optional[float]:
+    return float(statistics.median(values)) if values else None
+
+
+def median_absolute_deviation(values: list[float]) -> Optional[float]:
+    if not values:
+        return None
+    center = float(statistics.median(values))
+    return float(statistics.median(abs(value - center) for value in values))
+
+
+def field_value(
+    row: FrameRow,
+    start_byte: int,
+    width_bits: int,
+    endianness: str,
+    signed: bool,
+) -> int:
+    width_bytes = width_bits // 8
+    payload = bytes(frame_byte(row, start_byte + index) for index in range(width_bytes))
+    byteorder = "little" if endianness == "little" else "big"
+    return int.from_bytes(payload, byteorder=byteorder, signed=signed)
+
+
+def field_specs(
+    markers: list[dict[str, Any]],
+    session: Optional[dict[str, Any]] = None,
+) -> list[tuple[int, int, str, bool]]:
+    widths: set[int] = {8, 16}
+    allow_signed = False
+    allow_little = True
+    allow_big = True
+    metadata_sources: list[dict[str, Any]] = [
+        combined_marker_metadata(marker) for marker in markers
+    ]
+    if session:
+        session_metadata = metadata_dict(session.get("session_metadata"))
+        mission_metadata = metadata_dict(session.get("mission_metadata"))
+        metadata_sources.extend([session_metadata, mission_metadata])
+
+    for metadata in metadata_sources:
+        raw_widths = metadata.get("field_widths")
+        if isinstance(raw_widths, list):
+            parsed = {
+                int(value)
+                for value in raw_widths
+                if isinstance(value, (int, float)) and int(value) in {8, 16, 24, 32}
+            }
+            if parsed:
+                widths = parsed
+        allow_signed = allow_signed or bool(metadata.get("allow_signed"))
+        if metadata.get("allow_little_endian") is False:
+            allow_little = False
+        if metadata.get("allow_big_endian") is False:
+            allow_big = False
+
+    expected_values = [
+        value
+        for marker in markers
+        if (value := marker_expected_value(marker)) is not None
+    ]
+    if any(value < 0 for value in expected_values):
+        allow_signed = True
+
+    specs: list[tuple[int, int, str, bool]] = []
+    for width_bits in sorted(widths):
+        width_bytes = width_bits // 8
+        for start_byte in range(0, 9 - width_bytes):
+            if width_bits == 8:
+                specs.append((start_byte, width_bits, "big", False))
+                if allow_signed:
+                    specs.append((start_byte, width_bits, "big", True))
+                continue
+            for endianness, allowed in (("little", allow_little), ("big", allow_big)):
+                if not allowed:
+                    continue
+                specs.append((start_byte, width_bits, endianness, False))
+                if allow_signed:
+                    specs.append((start_byte, width_bits, endianness, True))
+    return specs
+
+
+def pairwise_monotonicity(
+    expected: list[float],
+    observed: list[float],
+) -> tuple[float, str]:
+    concordant = 0
+    discordant = 0
+    for left in range(len(expected)):
+        for right in range(left + 1, len(expected)):
+            expected_delta = expected[right] - expected[left]
+            observed_delta = observed[right] - observed[left]
+            if expected_delta == 0 or observed_delta == 0:
+                continue
+            if expected_delta * observed_delta > 0:
+                concordant += 1
+            else:
+                discordant += 1
+    total = concordant + discordant
+    if total == 0:
+        return 0.0, "unknown"
+    if concordant >= discordant:
+        return concordant / total, "increasing"
+    return discordant / total, "decreasing"
+
+
+def build_field_signal_hypotheses(
+    rows: list[FrameRow],
+    markers: list[dict[str, Any]],
+    marker_window_ms: int,
+    analyzer_profile: str,
+    session: Optional[dict[str, Any]] = None,
+) -> list[FieldSignalHypothesis]:
+    """Rank exact numeric fields against marker-declared expected levels.
+
+    Aggregate CAN-ID activity never increases this score. A field wins by
+    matching expected marker levels, remaining stable during holds, returning
+    consistently, and avoiding significant unexplained movement outside action
+    intervals.
+    """
+    numeric_markers = [
+        marker for marker in markers if marker_expected_value(marker) is not None
+    ]
+    if not rows or len(numeric_markers) < 2:
+        return []
+
+    rows = sorted(rows, key=lambda row: (row.timestamp_ms, row.id))
+    timestamps = [row.timestamp_ms for row in rows]
+    provisional: list[FieldSignalHypothesis] = []
+
+    for start_byte, width_bits, endianness, signed in field_specs(numeric_markers, session):
+        values = [
+            float(field_value(row, start_byte, width_bits, endianness, signed))
+            for row in rows
+        ]
+        if len(set(values)) < 2:
+            continue
+
+        observations: list[FieldMarkerObservation] = []
+        action_intervals: list[tuple[int, int]] = []
+        expected_values: list[float] = []
+        observed_values: list[float] = []
+        plateau_mads: list[float] = []
+        latencies: list[float] = []
+
+        for marker in numeric_markers:
+            expected = marker_expected_value(marker)
+            if expected is None:
+                continue
+            metadata = combined_marker_metadata(marker)
+            marker_time = int(marker.get("timestamp_ms") or 0)
+            planned_duration: object = metadata.get(
+                "hold_ms",
+                metadata.get("planned_duration_ms"),
+            )
+            hold_ms = marker_window_ms
+            if (
+                not isinstance(planned_duration, bool)
+                and isinstance(planned_duration, (int, float, str))
+            ):
+                try:
+                    hold_ms = int(planned_duration)
+                except ValueError:
+                    hold_ms = marker_window_ms
+            hold_ms = max(marker_window_ms, min(hold_ms, 60_000))
+            settle_ms = min(marker_window_ms, max(0, hold_ms // 3))
+            action_start = marker_time + settle_ms
+            action_end = marker_time + hold_ms
+            action_intervals.append((marker_time, action_end))
+
+            def values_between(start_ms: int, end_ms: int) -> list[float]:
+                left = bisect_left(timestamps, start_ms)
+                right = bisect_right(timestamps, end_ms)
+                return values[left:right]
+
+            pre_values = values_between(marker_time - marker_window_ms, marker_time - 1)
+            action_values = values_between(action_start, action_end)
+            post_values = values_between(
+                action_end + 1,
+                action_end + marker_window_ms,
+            )
+            pre_value = median_float(pre_values)
+            action_value = median_float(action_values)
+            post_value = median_float(post_values)
+            plateau_mad = median_absolute_deviation(action_values)
+            if action_value is None:
+                continue
+
+            response_latency: Optional[float] = None
+            if pre_value is not None:
+                raw_span = max(values) - min(values)
+                threshold = max(1.0, raw_span * 0.02)
+                left = bisect_left(timestamps, marker_time)
+                right = bisect_right(timestamps, min(action_end, marker_time + (2 * marker_window_ms)))
+                for index in range(left, right):
+                    if abs(values[index] - pre_value) >= threshold:
+                        response_latency = float(timestamps[index] - marker_time)
+                        break
+
+            observation = FieldMarkerObservation(
+                marker_type=normalized_marker_type(marker),
+                step_code=(str(marker.get("step_code")) if marker.get("step_code") is not None else None),
+                label=(str(marker.get("label")) if marker.get("label") is not None else None),
+                action_key=marker_action_key(marker),
+                timestamp_ms=marker_time,
+                expected_value=expected,
+                expected_unit=(str(metadata.get("expected_unit")) if metadata.get("expected_unit") is not None else None),
+                expected_direction=(str(metadata.get("expected_direction")) if metadata.get("expected_direction") is not None else None),
+                pre_value=pre_value,
+                action_value=action_value,
+                post_value=post_value,
+                plateau_mad=plateau_mad,
+                response_latency_ms=response_latency,
+                hold_ms=hold_ms,
+            )
+            observations.append(observation)
+            expected_values.append(expected)
+            observed_values.append(action_value)
+            if plateau_mad is not None:
+                plateau_mads.append(plateau_mad)
+            if response_latency is not None:
+                latencies.append(response_latency)
+
+        if len(observations) < 2 or len(set(expected_values)) < 2:
+            continue
+
+        observed_span = max(observed_values) - min(observed_values)
+        if observed_span <= 0:
+            continue
+
+        monotonicity, observed_direction = pairwise_monotonicity(
+            expected_values,
+            observed_values,
+        )
+
+        by_level: dict[float, list[float]] = defaultdict(list)
+        for expected, observed in zip(expected_values, observed_values):
+            by_level[expected].append(observed)
+        level_medians = {
+            level: float(statistics.median(level_values))
+            for level, level_values in by_level.items()
+        }
+        ordered_levels = sorted(level_medians)
+        adjacent_gaps = [
+            abs(level_medians[right] - level_medians[left])
+            for left, right in zip(ordered_levels, ordered_levels[1:])
+        ]
+        level_separation = (
+            min(1.0, (min(adjacent_gaps) * max(len(adjacent_gaps), 1)) / observed_span)
+            if adjacent_gaps
+            else 0.0
+        )
+
+        repeated_deviations: list[float] = []
+        for level, level_values in by_level.items():
+            if len(level_values) < 2:
+                continue
+            center = float(statistics.median(level_values))
+            repeated_deviations.extend(abs(value - center) for value in level_values)
+        repeatability = 1.0 - min(
+            1.0,
+            (float(statistics.median(repeated_deviations)) / observed_span)
+            if repeated_deviations else 0.0,
+        )
+        plateau_stability = 1.0 - min(
+            1.0,
+            (float(statistics.median(plateau_mads)) / observed_span)
+            if plateau_mads else 1.0,
+        )
+
+        return_values = [
+            combined_marker_metadata(marker).get("return_value")
+            for marker in numeric_markers
+        ]
+        numeric_returns = [
+            float(value)
+            for value in return_values
+            if isinstance(value, (int, float)) and math.isfinite(float(value))
+        ]
+        return_level = (
+            float(statistics.median(numeric_returns))
+            if numeric_returns
+            else min(expected_values)
+        )
+        return_observed = [
+            observed
+            for expected, observed in zip(expected_values, observed_values)
+            if abs(expected - return_level) < 1e-9
+        ]
+        if return_observed:
+            return_center = float(statistics.median(return_observed))
+            return_consistency = 1.0 - min(
+                1.0,
+                float(statistics.median(abs(value - return_center) for value in return_observed))
+                / observed_span,
+            )
+        else:
+            return_consistency = 0.5
+
+        significant_threshold = max(1.0, observed_span * 0.02)
+        merged_actions = merge_intervals(action_intervals)
+        action_starts = [start for start, _ in merged_actions]
+        significant_total = 0
+        significant_outside = 0
+        for previous, current in zip(rows, rows[1:]):
+            if previous.segment_id != current.segment_id:
+                continue
+            previous_value = float(field_value(previous, start_byte, width_bits, endianness, signed))
+            current_value = float(field_value(current, start_byte, width_bits, endianness, signed))
+            if abs(current_value - previous_value) < significant_threshold:
+                continue
+            significant_total += 1
+            if not timestamp_in_intervals(current.timestamp_ms, merged_actions, action_starts):
+                significant_outside += 1
+        outside_action_drift = (
+            significant_outside / significant_total if significant_total else 0.0
+        )
+
+        response_latency_score = 0.5
+        if latencies:
+            median_latency = float(statistics.median(latencies))
+            response_latency_score = 1.0 / (1.0 + median_latency / max(marker_window_ms, 1))
+        marker_coverage = len(observations) / max(len(numeric_markers), 1)
+
+        score = (
+            (monotonicity * 0.30)
+            + (level_separation * 0.20)
+            + (repeatability * 0.15)
+            + (return_consistency * 0.15)
+            + (plateau_stability * 0.10)
+            + (response_latency_score * 0.10)
+        )
+        score *= marker_coverage
+        score *= (1.0 - outside_action_drift) ** 2
+
+        if analyzer_profile == ANALYZER_PROFILE_ENUM:
+            # Enum states need repeatable, well-separated levels but do not
+            # require numeric order to carry meaning.
+            score = (
+                (level_separation * 0.35)
+                + (repeatability * 0.25)
+                + (plateau_stability * 0.15)
+                + (return_consistency * 0.10)
+                + (marker_coverage * 0.15)
+            ) * ((1.0 - outside_action_drift) ** 2)
+
+        provisional.append(FieldSignalHypothesis(
+            start_byte=start_byte,
+            width_bits=width_bits,
+            endianness=endianness,
+            signed=signed,
+            score=round(min(1.0, max(0.0, score)), 6),
+            monotonicity=round(monotonicity, 6),
+            observed_direction=observed_direction,
+            level_separation=round(level_separation, 6),
+            repeatability=round(repeatability, 6),
+            plateau_stability=round(plateau_stability, 6),
+            return_consistency=round(return_consistency, 6),
+            outside_action_drift=round(outside_action_drift, 6),
+            response_latency_score=round(response_latency_score, 6),
+            marker_coverage=round(marker_coverage, 6),
+            expected_levels=ordered_levels,
+            observed_level_medians={
+                str(level): round(level_medians[level], 6)
+                for level in ordered_levels
+            },
+            observations=observations,
+            reason=(
+                f"{width_bits}-bit {endianness} field at B{start_byte}; "
+                f"monotonicity={monotonicity:.3f}, separation={level_separation:.3f}, "
+                f"repeatability={repeatability:.3f}, outside_drift={outside_action_drift:.3f}"
+            ),
+        ))
+
+    provisional.sort(key=lambda item: item.score, reverse=True)
+    total_score = sum(item.score for item in provisional[:8])
+    for item in provisional:
+        item.location_dominance = round(
+            item.score / max(total_score, 1e-9),
+            6,
+        )
+    return provisional[:20]
+
+
+def build_bit_signal_hypotheses(
+    rows: list[FrameRow],
+    marker_windows: list[tuple[int, int, dict[str, Any]]],
+    marker_window_ms: int,
+    marker_window_coverage: float,
+) -> list[BitSignalHypothesis]:
+    """Rank exact byte/bit locations for discrete ON/OFF-style missions.
+
+    The score rewards one repeatable state transition at the same location for
+    each action and directly penalizes flips outside action windows. Aggregate
+    CAN-ID activity cannot increase this score.
+    """
+    if not rows or not marker_windows:
+        return []
+
+    row_timestamps = [row.timestamp_ms for row in rows]
+    correlation_intervals, correlation_starts = build_interval_index(
+        [(start, end) for start, end, _ in marker_windows]
+    )
+    opposing_actions_present = has_opposing_action_markers(
+        [marker for _, _, marker in marker_windows]
+    )
+
+    provisional: list[dict[str, Any]] = []
+    total_in_window_flips_all_bits = 0
+
+    for byte_index in range(8):
+        byte_values = [frame_byte(row, byte_index) for row in rows]
+        for bit_index in range(8):
+            bit_mask = 1 << bit_index
+            transition_events: list[tuple[int, int, int]] = []
+
+            for previous, current in zip(rows, rows[1:]):
+                if previous.segment_id != current.segment_id:
+                    continue
+                previous_state = 1 if frame_byte(previous, byte_index) & bit_mask else 0
+                current_state = 1 if frame_byte(current, byte_index) & bit_mask else 0
+                if previous_state != current_state:
+                    transition_events.append(
+                        (current.timestamp_ms, previous_state, current_state)
+                    )
+
+            if not transition_events:
+                continue
+
+            event_timestamps = [event[0] for event in transition_events]
+            in_window_flips = sum(
+                1
+                for timestamp_ms in event_timestamps
+                if timestamp_in_intervals(
+                    timestamp_ms,
+                    correlation_intervals,
+                    correlation_starts,
+                )
+            )
+            if in_window_flips == 0:
+                continue
+
+            total_flips = len(transition_events)
+            out_of_window_flips = total_flips - in_window_flips
+            total_in_window_flips_all_bits += in_window_flips
+
+            observations: list[dict[str, Any]] = []
+            grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
+            matched_repetitions = 0
+            exact_single_flips = 0
+            latencies: list[float] = []
+
+            bit_values = [1 if value & bit_mask else 0 for value in byte_values]
+
+            def states_between(start_ms: int, end_ms: int) -> list[int]:
+                left = bisect_left(row_timestamps, start_ms)
+                right = bisect_right(row_timestamps, end_ms)
+                return bit_values[left:right]
+
+            for action_start, action_end, marker in marker_windows:
+                marker_time = int(marker.get("timestamp_ms") or action_start)
+                pre_states = states_between(
+                    marker_time - marker_window_ms,
+                    marker_time - 1,
+                )
+                action_states = states_between(action_start, action_end)
+                post_states = states_between(
+                    action_end + 1,
+                    marker_time + (2 * marker_window_ms),
+                )
+
+                left_event = bisect_left(event_timestamps, action_start)
+                right_event = bisect_right(event_timestamps, action_end)
+                window_events = transition_events[left_event:right_event]
+                flip_count = len(window_events)
+                pre_state = mode_value(pre_states)
+                action_state = mode_value(action_states)
+                post_state = mode_value(post_states)
+                transition_matched = (
+                    pre_state is not None
+                    and action_state is not None
+                    and pre_state != action_state
+                    and flip_count >= 1
+                )
+                if transition_matched:
+                    matched_repetitions += 1
+                if flip_count == 1:
+                    exact_single_flips += 1
+
+                latency_ms: Optional[float] = None
+                if window_events:
+                    latency_ms = float(window_events[0][0] - marker_time)
+                    if latency_ms >= 0:
+                        latencies.append(latency_ms)
+
+                action_key = marker_action_key(marker)
+                observation = {
+                    "action_key": action_key,
+                    "polarity": marker_polarity(marker),
+                    "timestamp_ms": marker_time,
+                    "pre_state": pre_state,
+                    "action_state": action_state,
+                    "post_state": post_state,
+                    "flip_count": flip_count,
+                    "transition_matched": transition_matched,
+                    "latency_ms": (
+                        round(latency_ms, 2)
+                        if latency_ms is not None
+                        else None
+                    ),
+                }
+                observations.append(observation)
+                grouped[action_key].append(observation)
+
+            total_repetitions = len(marker_windows)
+            repetition_score = (
+                matched_repetitions / total_repetitions
+                if total_repetitions
+                else 0.0
+            )
+            single_flip_score = (
+                exact_single_flips / total_repetitions
+                if total_repetitions
+                else 0.0
+            )
+            window_purity = in_window_flips / max(total_flips, 1)
+            outside_action_fraction = out_of_window_flips / max(total_flips, 1)
+            marker_lift = (
+                (window_purity - marker_window_coverage)
+                / max(1.0 - marker_window_coverage, 1e-9)
+                if window_purity > marker_window_coverage
+                and marker_window_coverage < 1.0
+                else 0.0
+            )
+            latency_score = 0.0
+            median_latency_ms: Optional[float] = None
+            if latencies:
+                median_latency_ms = float(statistics.median(latencies))
+                latency_score = 1.0 / (
+                    1.0 + (median_latency_ms / max(marker_window_ms, 1))
+                )
+
+            action_groups: dict[str, Any] = {}
+            valid_on_groups: list[dict[str, Any]] = []
+            valid_off_groups: list[dict[str, Any]] = []
+            for action_key, group_observations in grouped.items():
+                pre_consensus = strict_consensus(
+                    [item.get("pre_state") for item in group_observations]
+                )
+                action_consensus = strict_consensus(
+                    [item.get("action_state") for item in group_observations]
+                )
+                post_consensus = strict_consensus(
+                    [item.get("post_state") for item in group_observations]
+                )
+                polarity_values = {
+                    item.get("polarity")
+                    for item in group_observations
+                    if item.get("polarity") is not None
+                }
+                polarity = (
+                    next(iter(polarity_values))
+                    if len(polarity_values) == 1
+                    else None
+                )
+                matched = sum(
+                    1
+                    for item in group_observations
+                    if item.get("transition_matched")
+                )
+                group_payload = {
+                    "polarity": polarity,
+                    "repetitions": len(group_observations),
+                    "matched_repetitions": matched,
+                    "consensus_pre_state": pre_consensus,
+                    "consensus_action_state": action_consensus,
+                    "consensus_post_state": post_consensus,
+                    "flip_counts": [
+                        int(item.get("flip_count") or 0)
+                        for item in group_observations
+                    ],
+                }
+                action_groups[action_key] = group_payload
+                if (
+                    pre_consensus is not None
+                    and action_consensus is not None
+                    and pre_consensus != action_consensus
+                ):
+                    if polarity == "on":
+                        valid_on_groups.append(group_payload)
+                    elif polarity == "off":
+                        valid_off_groups.append(group_payload)
+
+            inverse_pair_verified = any(
+                on_group["consensus_pre_state"]
+                    == off_group["consensus_action_state"]
+                and off_group["consensus_pre_state"]
+                    == on_group["consensus_action_state"]
+                and on_group["consensus_action_state"]
+                    != off_group["consensus_action_state"]
+                for on_group in valid_on_groups
+                for off_group in valid_off_groups
+            )
+
+            provisional.append({
+                "byte_index": byte_index,
+                "bit_index": bit_index,
+                "bit_mask": bit_mask,
+                "marker_lift": min(1.0, max(0.0, marker_lift)),
+                "window_purity": window_purity,
+                "outside_action_fraction": outside_action_fraction,
+                "repetition_score": repetition_score,
+                "single_flip_score": single_flip_score,
+                "total_flips": total_flips,
+                "in_window_flips": in_window_flips,
+                "out_of_window_flips": out_of_window_flips,
+                "matched_repetitions": matched_repetitions,
+                "total_repetitions": total_repetitions,
+                "inverse_pair_verified": inverse_pair_verified,
+                "median_latency_ms": median_latency_ms,
+                "latency_score": latency_score,
+                "action_groups": action_groups,
+                "opposing_actions_present": opposing_actions_present,
+            })
+
+    hypotheses: list[BitSignalHypothesis] = []
+    for item in provisional:
+        location_dominance = (
+            item["in_window_flips"] / max(total_in_window_flips_all_bits, 1)
+        )
+        if item["opposing_actions_present"]:
+            score = (
+                (item["repetition_score"] * 0.32)
+                + (item["window_purity"] * 0.25)
+                + ((1.0 if item["inverse_pair_verified"] else 0.0) * 0.20)
+                + (item["single_flip_score"] * 0.10)
+                + (item["latency_score"] * 0.08)
+                + (location_dominance * 0.05)
+            )
+            if not item["inverse_pair_verified"]:
+                score = min(score, 0.35)
+        else:
+            score = (
+                (item["repetition_score"] * 0.40)
+                + (item["window_purity"] * 0.30)
+                + (item["single_flip_score"] * 0.12)
+                + (item["latency_score"] * 0.10)
+                + (location_dominance * 0.08)
+            )
+
+        # A clean command/state bit should not continue changing outside the
+        # action. This multiplier makes one exact transition beat hundreds of
+        # unrelated changes elsewhere in the CAN ID.
+        score *= max(0.02, (1.0 - item["outside_action_fraction"]) ** 2)
+        average_action_flips = (
+            item["in_window_flips"] / max(item["total_repetitions"], 1)
+        )
+        if average_action_flips > 1.0:
+            score /= average_action_flips
+        if item["matched_repetitions"] == 0:
+            score = 0.0
+
+        score = min(1.0, max(0.0, score))
+        reason = (
+            f"B{item['byte_index']} bit {item['bit_index']} matched "
+            f"{item['matched_repetitions']}/{item['total_repetitions']} "
+            f"action markers; in-window flips={item['in_window_flips']}, "
+            f"outside flips={item['out_of_window_flips']}, "
+            f"inverse ON/OFF={item['inverse_pair_verified']}"
+        )
+        hypotheses.append(BitSignalHypothesis(
+            byte_index=int(item["byte_index"]),
+            bit_index=int(item["bit_index"]),
+            bit_mask=int(item["bit_mask"]),
+            score=round(score, 6),
+            marker_lift=round(float(item["marker_lift"]), 6),
+            window_purity=round(float(item["window_purity"]), 6),
+            outside_action_fraction=round(
+                float(item["outside_action_fraction"]),
+                6,
+            ),
+            repetition_score=round(float(item["repetition_score"]), 6),
+            single_flip_score=round(float(item["single_flip_score"]), 6),
+            location_dominance=round(location_dominance, 6),
+            total_flips=int(item["total_flips"]),
+            in_window_flips=int(item["in_window_flips"]),
+            out_of_window_flips=int(item["out_of_window_flips"]),
+            matched_repetitions=int(item["matched_repetitions"]),
+            total_repetitions=int(item["total_repetitions"]),
+            inverse_pair_verified=bool(item["inverse_pair_verified"]),
+            median_latency_ms=(
+                round(float(item["median_latency_ms"]), 2)
+                if item["median_latency_ms"] is not None
+                else None
+            ),
+            action_groups=dict(item["action_groups"]),
+            reason=reason,
+        ))
+
+    hypotheses.sort(
+        key=lambda item: (
+            item.score,
+            item.inverse_pair_verified,
+            item.repetition_score,
+            item.window_purity,
+            -item.out_of_window_flips,
+        ),
+        reverse=True,
+    )
+    return hypotheses[:24]
+
+
 def is_embedding_only_model(model_name: str) -> bool:
     lowered = model_name.lower()
     return any(hint in lowered for hint in EMBED_ONLY_MODEL_HINTS)
@@ -1189,6 +2141,33 @@ def compact_byte_roles(candidate: Candidate) -> str:
     )
 
 
+def compact_signal_hypothesis(candidate: Candidate) -> str:
+    if candidate.field_hypotheses:
+        field = candidate.field_hypotheses[0]
+        return (
+            f"B{field.start_byte} width={field.width_bits} "
+            f"endianness={field.endianness} signed={field.signed} "
+            f"score={field.score:.3f} monotonicity={field.monotonicity:.3f} "
+            f"separation={field.level_separation:.3f} "
+            f"repeatability={field.repeatability:.3f} "
+            f"outside_drift={field.outside_action_drift:.3f} "
+            f"levels={field.observed_level_medians}"
+        )
+    if not candidate.signal_hypotheses:
+        return "none"
+    top = candidate.signal_hypotheses[0]
+    groups = ", ".join(
+        f"{name}:{group.get('consensus_pre_state')}->{group.get('consensus_action_state')}"
+        for name, group in top.action_groups.items()
+    )
+    return (
+        f"B{top.byte_index} bit={top.bit_index} mask=0x{top.bit_mask:02X} "
+        f"score={top.score:.3f} matched={top.matched_repetitions}/"
+        f"{top.total_repetitions} outside={top.out_of_window_flips} "
+        f"inverse={top.inverse_pair_verified} groups=[{groups}]"
+    )
+
+
 def embedding_candidate_metadata(candidate: Candidate) -> dict[str, Any]:
     active_evidence = [
         item
@@ -1219,6 +2198,16 @@ def embedding_candidate_metadata(candidate: Candidate) -> dict[str, Any]:
             item.model_dump()
             for item in candidate.byte_role_hypotheses
         ],
+        "signal_hypotheses": [
+            item.model_dump()
+            for item in candidate.signal_hypotheses[:8]
+        ],
+        "field_hypotheses": [
+            item.model_dump()
+            for item in candidate.field_hypotheses[:8]
+        ],
+        "analyzer_profile": candidate.analyzer_profile,
+        "quick_id_method": candidate.quick_id_method,
         "byte_evidence": [
             item.model_dump()
             for item in active_evidence[:2]
@@ -1281,6 +2270,8 @@ def build_embedding_document(
                     f"changes={candidate.change_count}",
                     f"bytes={candidate.byte_change_counts}",
                     f"byte_roles={compact_byte_roles(candidate)}",
+                    f"top_signal={compact_signal_hypothesis(candidate)}",
+                    f"quick_id_method={candidate.quick_id_method}",
                     (
                         "evidence="
                         f"{compact_byte_evidence(candidate, limit=2)}"
@@ -2048,14 +3039,96 @@ def apply_baseline_subtraction(
             overlap_score * BASELINE_PENALTY_WEIGHT,
         )
 
-        adjusted_confidence = (
-            score_candidate_confidence(
-                candidate.correlation_score,
-                adjusted_change_ratio,
-                candidate.frame_count,
-            )
-            * (1.0 - penalty)
+        top_signal = (
+            candidate.signal_hypotheses[0]
+            if candidate.signal_hypotheses
+            else None
         )
+        top_field = (
+            candidate.field_hypotheses[0]
+            if candidate.field_hypotheses
+            else None
+        )
+        if (
+            candidate.quick_id_method == QUICK_ID_BIT_FIRST_METHOD
+            and top_signal is not None
+        ):
+            baseline_role_penalty = 0.0
+            for role in baseline.get("byte_role_hypotheses", []):
+                if not isinstance(role, dict):
+                    continue
+                role_byte_index = role.get("byte_index")
+                if (
+                    role_byte_index is None
+                    or int(role_byte_index) != top_signal.byte_index
+                ):
+                    continue
+                kind = str(role.get("hypothesis_kind") or "")
+                if kind in {"rolling_counter", "checksum_candidate"}:
+                    baseline_role_penalty = max(baseline_role_penalty, 0.45)
+                elif kind == "payload_or_noise":
+                    baseline_role_penalty = max(baseline_role_penalty, 0.15)
+
+            target_bit_rate = top_signal.total_flips / max(
+                candidate.frame_count - 1,
+                1,
+            )
+            baseline_byte_rate = baseline_rates.get(
+                str(top_signal.byte_index),
+                0.0,
+            )
+            bit_overlap = min(
+                1.0,
+                baseline_byte_rate / max(target_bit_rate, 1e-9),
+            )
+            bit_penalty = min(
+                BASELINE_PENALTY_WEIGHT,
+                (bit_overlap * 0.50) + baseline_role_penalty,
+            )
+            top_signal.baseline_penalty = round(bit_penalty, 6)
+            top_signal.baseline_adjusted_score = round(
+                top_signal.score * (1.0 - bit_penalty),
+                6,
+            )
+            adjusted_confidence = top_signal.baseline_adjusted_score
+        elif top_field is not None and candidate.analyzer_profile in FIELD_ANALYZER_PROFILES:
+            width_bytes = max(1, top_field.width_bits // 8)
+            role_penalty = 0.0
+            field_bytes = set(range(top_field.start_byte, top_field.start_byte + width_bytes))
+            for role in baseline.get("byte_role_hypotheses", []):
+                if not isinstance(role, dict):
+                    continue
+                role_byte_index = role.get("byte_index")
+                if role_byte_index is None or int(role_byte_index) not in field_bytes:
+                    continue
+                kind = str(role.get("hypothesis_kind") or "")
+                if kind in {"rolling_counter", "checksum_candidate"}:
+                    role_penalty = max(role_penalty, 0.50)
+                elif kind == "payload_or_noise":
+                    role_penalty = max(role_penalty, 0.12)
+            baseline_field_rate = sum(
+                baseline_rates.get(str(byte_index), 0.0)
+                for byte_index in field_bytes
+            ) / max(len(field_bytes), 1)
+            field_penalty = min(
+                BASELINE_PENALTY_WEIGHT,
+                role_penalty + min(0.35, baseline_field_rate * 2.0),
+            )
+            top_field.baseline_penalty = round(field_penalty, 6)
+            top_field.baseline_adjusted_score = round(
+                top_field.score * (1.0 - field_penalty),
+                6,
+            )
+            adjusted_confidence = top_field.baseline_adjusted_score
+        else:
+            adjusted_confidence = (
+                score_candidate_confidence(
+                    candidate.correlation_score,
+                    adjusted_change_ratio,
+                    candidate.frame_count,
+                )
+                * (1.0 - penalty)
+            )
 
         candidate.baseline_overlap_score = round(overlap_score, 8)
         candidate.baseline_penalty = round(penalty, 8)
@@ -2288,7 +3361,7 @@ def build_llm_prompt(
         - If the output budget is low, shorten sections 2 and 3, but always produce section 5.
         """
     else:
-        candidate_heading = "Ranked statistical CAN-ID candidates"
+        candidate_heading = "Ranked exact signal hypotheses grouped by CAN ID"
         candidate_lines = "\n".join(
             (
                 f"- {c.can_id_hex}: frames={c.frame_count}, hz={c.frequency_hz}, "
@@ -2308,6 +3381,8 @@ def build_llm_prompt(
                 f"ml_probability={c.ml_probability}, "
                 f"confidence_before_ml={c.confidence_before_ml:.3f}, "
                 f"historical_support={c.historical_support}, "
+                f"quick_id_method={c.quick_id_method}, "
+                f"top_signal=[{compact_signal_hypothesis(c)}], "
                 f"byte_roles=[{compact_byte_roles(c)}], "
                 f"byte_evidence=[{compact_byte_evidence(c, limit=LLM_BYTE_EVIDENCE_LIMIT)}]"
             )
@@ -2316,9 +3391,12 @@ def build_llm_prompt(
 
         mode_instructions = """
         This is a TARGET CORRELATION mission.
-        Rank candidate CAN IDs by evidence near action/capture markers.
+        For opposing ON/OFF actions, rank the exact CAN ID + byte + bit location,
+        not the total number of changes in the CAN ID. A clean hypothesis should
+        transition at the same location for ON and OFF, show inverse states, and
+        have few or no flips outside action windows. Aggregate ID changes are
+        diagnostic only and must not outweigh exact-location evidence.
         Confidence is a research score, not proof.
-        Prefer IDs that changed near the intended action and are not merely noisy baseline traffic.
         When a matched baseline is available, interpret baseline_overlap as the
         fraction of target byte activity already present in the control session.
         Interpret baseline_adjusted_change_ratio as activity remaining after
@@ -2675,6 +3753,8 @@ def analyze_frames(
     markers: list[dict[str, Any]],
     marker_window_ms: int,
     analysis_mode: str = ANALYSIS_MODE_TARGET,
+    analyzer_profile: str = ANALYZER_PROFILE_BOOLEAN,
+    session: Optional[dict[str, Any]] = None,
 ) -> tuple[
     list[Candidate],
     list[dict[str, Any]],
@@ -2686,6 +3766,34 @@ def analyze_frames(
         markers,
         baseline_mode=baseline_mode,
     )
+    opposing_actions = (
+        not baseline_mode
+        and has_opposing_action_markers(selected_markers)
+    )
+    bit_first_required = (
+        analyzer_profile == ANALYZER_PROFILE_BOOLEAN
+        and opposing_actions
+    )
+    field_first_required = analyzer_profile in FIELD_ANALYZER_PROFILES
+    numeric_expected_values = [
+        value
+        for marker in selected_markers
+        if (value := marker_expected_value(marker)) is not None
+    ]
+    secondary_bit_scan = (
+        field_first_required
+        and numeric_expected_values
+        and min(numeric_expected_values) <= 0
+        and max(numeric_expected_values) > 0
+    )
+    quick_id_method = quick_id_method_for_profile(
+        analyzer_profile,
+        opposing_actions,
+    )
+    marker_context["analyzer_profile"] = analyzer_profile
+    marker_context["quick_id_method"] = quick_id_method
+    marker_context["numeric_expected_markers"] = len(numeric_expected_values)
+    marker_context["secondary_bit_scan"] = bool(secondary_bit_scan)
 
     by_id: dict[int, list[FrameRow]] = defaultdict(list)
     for frame in frames:
@@ -2778,6 +3886,37 @@ def analyze_frames(
             marker_window_ms,
         )
         byte_role_hypotheses = classify_byte_roles(rows, byte_entropy)
+        signal_hypotheses = (
+            build_bit_signal_hypotheses(
+                rows,
+                marker_windows,
+                marker_window_ms,
+                marker_window_coverage,
+            )
+            if bit_first_required or secondary_bit_scan
+            else []
+        )
+        top_signal_hypothesis = (
+            signal_hypotheses[0]
+            if signal_hypotheses
+            else None
+        )
+        field_hypotheses = (
+            build_field_signal_hypotheses(
+                rows,
+                selected_markers,
+                marker_window_ms,
+                analyzer_profile,
+                session,
+            )
+            if field_first_required
+            else []
+        )
+        top_field_hypothesis = (
+            field_hypotheses[0]
+            if field_hypotheses
+            else None
+        )
 
         active_entropy_values = [
             byte_entropy[str(byte_index)]
@@ -2895,44 +4034,88 @@ def analyze_frames(
                 candidate_role = "stable_background"
                 notes = "stable/background traffic observed during passive profile"
         else:
-            raw_marker_fraction = (
-                min(1.0, window_delta_count / max(change_count, 1))
-                if change_count > 0
-                else 0.0
-            )
-
-            # A raw marker fraction is misleading when marker windows cover a
-            # large share of the recording. Score only the lift above the
-            # fraction expected from timeline coverage.
-            if (
-                raw_marker_fraction > marker_window_coverage
-                and marker_window_coverage < 1.0
-            ):
-                correlation_lift = (
-                    raw_marker_fraction - marker_window_coverage
-                ) / max(1.0 - marker_window_coverage, 1e-9)
+            if field_first_required:
+                if top_field_hypothesis is not None:
+                    raw_marker_fraction = 1.0 - top_field_hypothesis.outside_action_drift
+                    correlation_lift = top_field_hypothesis.monotonicity
+                    correlation_score = top_field_hypothesis.score
+                    confidence = top_field_hypothesis.score
+                    candidate_role = (
+                        "exact_field_signal_candidate"
+                        if confidence >= 0.45
+                        else "weak_field_signal_candidate"
+                    )
+                    notes = (
+                        f"field-first Quick ID: B{top_field_hypothesis.start_byte} "
+                        f"{top_field_hypothesis.width_bits}-bit "
+                        f"{top_field_hypothesis.endianness}; "
+                        f"levels={len(top_field_hypothesis.expected_levels)}; "
+                        f"outside drift={top_field_hypothesis.outside_action_drift:.3f}"
+                    )
+                else:
+                    raw_marker_fraction = 0.0
+                    correlation_lift = 0.0
+                    correlation_score = 0.0
+                    confidence = 0.0
+                    candidate_role = "no_exact_field_candidate"
+                    notes = "no exact numeric field matched marker-declared levels"
+            elif bit_first_required:
+                if top_signal_hypothesis is not None:
+                    raw_marker_fraction = top_signal_hypothesis.window_purity
+                    correlation_lift = top_signal_hypothesis.marker_lift
+                    correlation_score = top_signal_hypothesis.score
+                    confidence = top_signal_hypothesis.score
+                    candidate_role = (
+                        "exact_bit_signal_candidate"
+                        if confidence >= 0.45
+                        else "weak_bit_signal_candidate"
+                    )
+                    notes = (
+                        f"bit-first Quick ID: B{top_signal_hypothesis.byte_index} "
+                        f"bit {top_signal_hypothesis.bit_index}; "
+                        f"{top_signal_hypothesis.matched_repetitions}/"
+                        f"{top_signal_hypothesis.total_repetitions} markers; "
+                        f"outside flips={top_signal_hypothesis.out_of_window_flips}"
+                    )
+                else:
+                    raw_marker_fraction = 0.0
+                    correlation_lift = 0.0
+                    correlation_score = 0.0
+                    confidence = 0.0
+                    candidate_role = "no_exact_bit_candidate"
+                    notes = "no exact bit location repeated the opposing actions"
             else:
-                correlation_lift = 0.0
-
-            correlation_score = min(1.0, max(0.0, correlation_lift))
-
-            confidence = score_candidate_confidence(
-                correlation_score,
-                change_ratio,
-                len(rows),
-            )
-
-            candidate_role = (
-                "target_candidate"
-                if correlation_score >= 0.05
-                else "weak_or_background_candidate"
-            )
-            if correlation_score >= 0.05:
-                notes = "correlated changes near markers"
-            elif change_count > 0:
-                notes = "changed during session but weak marker correlation"
-            else:
-                notes = "stable/background traffic"
+                raw_marker_fraction = (
+                    min(1.0, window_delta_count / max(change_count, 1))
+                    if change_count > 0
+                    else 0.0
+                )
+                if (
+                    raw_marker_fraction > marker_window_coverage
+                    and marker_window_coverage < 1.0
+                ):
+                    correlation_lift = (
+                        raw_marker_fraction - marker_window_coverage
+                    ) / max(1.0 - marker_window_coverage, 1e-9)
+                else:
+                    correlation_lift = 0.0
+                correlation_score = min(1.0, max(0.0, correlation_lift))
+                confidence = score_candidate_confidence(
+                    correlation_score,
+                    change_ratio,
+                    len(rows),
+                )
+                candidate_role = (
+                    "target_candidate"
+                    if correlation_score >= 0.05
+                    else "weak_or_background_candidate"
+                )
+                if correlation_score >= 0.05:
+                    notes = "aggregate fallback: correlated byte changes near markers"
+                elif change_count > 0:
+                    notes = "changed during session but weak marker correlation"
+                else:
+                    notes = "stable/background traffic"
 
         byte_change_map = {
             str(byte_index): int(count)
@@ -2961,6 +4144,10 @@ def analyze_frames(
             byte_entropy=byte_entropy,
             byte_evidence=byte_evidence,
             byte_role_hypotheses=byte_role_hypotheses,
+            signal_hypotheses=signal_hypotheses,
+            field_hypotheses=field_hypotheses,
+            analyzer_profile=analyzer_profile,
+            quick_id_method=quick_id_method,
             entropy=round(entropy_score, 4),
             raw_marker_fraction=round(raw_marker_fraction, 5),
             marker_window_coverage=round(marker_window_coverage, 5),
@@ -2989,6 +4176,16 @@ def analyze_frames(
                 item.model_dump()
                 for item in byte_role_hypotheses
             ],
+            "signal_hypotheses": [
+                item.model_dump()
+                for item in signal_hypotheses[:8]
+            ],
+            "field_hypotheses": [
+                item.model_dump()
+                for item in field_hypotheses[:8]
+            ],
+            "analyzer_profile": analyzer_profile,
+            "quick_id_method": quick_id_method,
             "change_count": change_count,
             "change_ratio": round(change_ratio, 6),
             "changed_frame_count": changed_frame_count,
@@ -3066,9 +4263,23 @@ async def get_ai_status() -> dict[str, Any]:
             "activity-overlap penalty"
         ),
         "candidate_confidence_method": (
-            "marker correlation and activity evidence, with frame count used "
-            "only as a support multiplier; zero evidence yields zero confidence"
+            "mission-aware: discrete controls rank exact bits; numeric sensors "
+            "rank exact byte fields against marker-declared levels"
         ),
+        "quick_id": {
+            "boolean_method": QUICK_ID_BIT_FIRST_METHOD,
+            "ordinal_method": QUICK_ID_ORDINAL_FIELD_METHOD,
+            "continuous_method": QUICK_ID_CONTINUOUS_FIELD_METHOD,
+            "enum_method": QUICK_ID_ENUM_FIELD_METHOD,
+            "digital_ranking_unit": "can_id + byte_index + bit_index",
+            "field_ranking_unit": "can_id + start_byte + width + endianness + signedness",
+            "outside_action_changes": "direct score penalty",
+            "marker_contract": (
+                "analyzer_profile + expected_value + expected_unit + "
+                "expected_direction + return_value + hold_ms"
+            ),
+            "aggregate_fallback": QUICK_ID_FALLBACK_METHOD,
+        },
         "confidence_semantics": CONFIDENCE_SEMANTICS,
         "marker_selection": {
             "target_windows": "post-marker windows from explicit action_start/action markers only",
@@ -3574,6 +4785,11 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
         reason=baseline_context.get("reason"),
     )
 
+    analyzer_profile = resolve_analyzer_profile(
+        session_dict,
+        marker_dicts,
+        analysis_mode,
+    )
     _, marker_selection_preview = select_analysis_markers(
         marker_dicts,
         baseline_mode=baseline_mode,
@@ -3587,6 +4803,7 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
         markers=len(marker_dicts),
         selected_action_markers=marker_selection_preview.get("action_markers"),
         marker_strategy=marker_selection_preview.get("strategy"),
+        analyzer_profile=analyzer_profile,
     )
 
     try:
@@ -3595,6 +4812,8 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
             marker_dicts,
             payload.marker_window_ms,
             analysis_mode,
+            analyzer_profile,
+            session_dict,
         )
         try:
             async with pool.acquire() as conn:
@@ -4077,6 +5296,16 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                                     item.model_dump()
                                     for item in c.byte_role_hypotheses
                                 ],
+                                "signal_hypotheses": [
+                                    item.model_dump()
+                                    for item in c.signal_hypotheses[:12]
+                                ],
+                                "field_hypotheses": [
+                                    item.model_dump()
+                                    for item in c.field_hypotheses[:12]
+                                ],
+                                "analyzer_profile": c.analyzer_profile,
+                                "quick_id_method": c.quick_id_method,
                             }),
                         )
                         for c in candidates
@@ -4138,6 +5367,16 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                                     item.model_dump()
                                     for item in c.byte_role_hypotheses
                                 ],
+                                "signal_hypotheses": [
+                                    item.model_dump()
+                                    for item in c.signal_hypotheses[:12]
+                                ],
+                                "field_hypotheses": [
+                                    item.model_dump()
+                                    for item in c.field_hypotheses[:12]
+                                ],
+                                "analyzer_profile": c.analyzer_profile,
+                                "quick_id_method": c.quick_id_method,
                             }),
                         )
                         for c in candidates
@@ -4184,8 +5423,15 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                     },
                     "byte_hypothesis_count": sum(
                         len(candidate.byte_role_hypotheses)
+                        + len(candidate.signal_hypotheses)
                         for candidate in candidates
                     ),
+                    "field_hypothesis_count": sum(
+                        len(candidate.field_hypotheses)
+                        for candidate in candidates
+                    ),
+                    "analyzer_profile": analyzer_profile,
+                    "quick_id_method": marker_selection.get("quick_id_method"),
                     "report_storage": "replace_latest_per_session",
                     "baseline_profile": baseline_profile,
                     "target_expected": not baseline_mode,
@@ -4253,6 +5499,7 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                             hypothesis.byte_index,
                             bit_mask,
                             hypothesis.hypothesis_kind,
+                            None,
                             hypothesis.confidence,
                             hypothesis.reason,
                             json_dumps(hypothesis.metrics),
@@ -4262,17 +5509,77 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                                 "auto_detected": True,
                             }),
                         ))
+                    for field in candidate.field_hypotheses[:12]:
+                        field_key = (
+                            f"{candidate.can_id}:{field.start_byte}:0:"
+                            f"numeric_field_candidate:{field.width_bits}:"
+                            f"{field.endianness}:{int(field.signed)}"
+                        )
+                        hypothesis_rows.append((
+                            session_id,
+                            session["vehicle_id"],
+                            session["mission_id"],
+                            session_dict.get("mission_code"),
+                            field_key,
+                            candidate.can_id,
+                            field.start_byte,
+                            None,
+                            "numeric_field_candidate",
+                            analyzer_profile,
+                            field.score,
+                            field.reason,
+                            json_dumps(field.model_dump()),
+                            json_dumps({
+                                "analysis_mode": analysis_mode,
+                                "analyzer_profile": analyzer_profile,
+                                "can_id_hex": candidate.can_id_hex,
+                                "auto_detected": True,
+                                "width_bits": field.width_bits,
+                                "endianness": field.endianness,
+                                "signed": field.signed,
+                                "quick_id_method": candidate.quick_id_method,
+                            }),
+                        ))
+                    for signal in candidate.signal_hypotheses[:12]:
+                        signal_key = (
+                            f"{candidate.can_id}:{signal.byte_index}:"
+                            f"{signal.bit_mask}:boolean_signal_candidate:"
+                            f"{','.join(sorted(signal.action_groups))}"
+                        )
+                        hypothesis_rows.append((
+                            session_id,
+                            session["vehicle_id"],
+                            session["mission_id"],
+                            session_dict.get("mission_code"),
+                            signal_key,
+                            candidate.can_id,
+                            signal.byte_index,
+                            signal.bit_mask,
+                            "boolean_signal_candidate",
+                            ",".join(sorted(signal.action_groups)),
+                            signal.score,
+                            signal.reason,
+                            json_dumps(signal.model_dump()),
+                            json_dumps({
+                                "analysis_mode": analysis_mode,
+                                "can_id_hex": candidate.can_id_hex,
+                                "auto_detected": True,
+                                "bit_index": signal.bit_index,
+                                "quick_id_method": candidate.quick_id_method,
+                                "action_groups": sorted(signal.action_groups),
+                            }),
+                        ))
                 if hypothesis_rows:
                     await conn.executemany(
                         """
                         INSERT INTO can_signal_hypotheses (
                             session_id, vehicle_id, mission_id, mission_code,
                             hypothesis_key, can_id, byte_index, bit_mask,
-                            hypothesis_kind, confidence, source, notes,
+                            hypothesis_kind, action_group, confidence, source, notes,
                             evidence, metadata
                         ) VALUES (
-                            $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
-                            'auto_analysis',$11,$12::jsonb,$13::jsonb
+                            $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,
+                            'auto_analysis',$12,$13::jsonb,$14::jsonb
                         )
                         ON CONFLICT (session_id, hypothesis_key)
                         DO UPDATE SET
@@ -4479,6 +5786,7 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
         "ok": True,
         "session_id": str(session_id),
         "analysis_mode": analysis_mode,
+        "analyzer_profile": analyzer_profile,
         "session_integrity": {
             "capture_status": session_dict.get("capture_status"),
             "finalized_at": session_dict.get("finalized_at"),
@@ -4490,6 +5798,11 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
         },
         "byte_hypothesis_count": sum(
             len(candidate.byte_role_hypotheses)
+            + len(candidate.signal_hypotheses)
+            for candidate in candidates
+        ),
+        "field_hypothesis_count": sum(
+            len(candidate.field_hypotheses)
             for candidate in candidates
         ),
         "baseline_profile": baseline_profile,
@@ -4502,6 +5815,7 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
         "markers": len(marker_dicts),
         "selected_action_markers": marker_selection.get("action_markers"),
         "marker_selection": marker_selection,
+        "quick_id_method": marker_selection.get("quick_id_method"),
         "marker_window_ms": payload.marker_window_ms,
         "marker_window_coverage": (
             candidates[0].marker_window_coverage
@@ -4602,8 +5916,11 @@ async def get_session_analysis(session_id: UUID) -> dict[str, Any]:
         "ok": True,
         "session_id": str(session_id),
         "analysis_mode": latest_report_metadata.get("analysis_mode"),
+        "analyzer_profile": latest_report_metadata.get("analyzer_profile"),
+        "quick_id_method": latest_report_metadata.get("quick_id_method"),
         "session_integrity": latest_report_metadata.get("session_integrity"),
         "byte_hypothesis_count": latest_report_metadata.get("byte_hypothesis_count", 0),
+        "field_hypothesis_count": latest_report_metadata.get("field_hypothesis_count", 0),
         "baseline_profile": latest_report_metadata.get("baseline_profile"),
         "baseline_subtraction": latest_report_metadata.get("baseline_subtraction"),
         "supervised_ml": latest_report_metadata.get("supervised_ml"),
