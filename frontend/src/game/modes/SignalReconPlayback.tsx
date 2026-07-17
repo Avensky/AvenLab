@@ -235,7 +235,7 @@ export function SignalReconPlayback({
         }
         try {
             const response = await fetch(
-                `${getApiBaseUrl()}/data/session/${sessionId}/hypotheses`,
+                `${getApiBaseUrl()}/data/can/session/${sessionId}/hypotheses`,
             );
             const data = (await response.json().catch(() => ({}))) as HypothesesResponse;
             if (!response.ok || data.ok === false) {
