@@ -12,7 +12,7 @@ export function GameUI() {
   const overlay = useUIStore((s) => s.overlay);
 
 
-  return <div className="relative h-screen w-screen overflow-hidden bg-slate-950">
+  return <div className="relative game-wrapper">
     {/* Requires Canvas */}
     <FullCanvas>
       {screen === "sandbox_setup" && <VehiclePreview />}

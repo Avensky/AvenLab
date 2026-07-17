@@ -18,7 +18,7 @@ export default function App() {
   }, []);
 
   return (
-    <div className="canvas-wrapper">
+    <div className="canvas-container">
       <GameUI />
       
       <Keyboard />

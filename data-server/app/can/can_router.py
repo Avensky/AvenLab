@@ -17,6 +17,7 @@ to the real PostgreSQL schema:
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import re
 import shutil
@@ -24,6 +25,7 @@ import subprocess
 import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
+from uuid import UUID
 import platform
 
 from fastapi import APIRouter, HTTPException
@@ -97,6 +99,21 @@ SLUG_RE = re.compile(r"[^a-z0-9]+")
 def slugify(value: str) -> str:
     slug = SLUG_RE.sub("-", value.strip().lower()).strip("-")
     return slug or "custom-vehicle"
+
+
+def json_object(value: Any) -> Dict[str, Any]:
+    """Normalize asyncpg json/jsonb values to a plain dictionary."""
+    if value is None:
+        return {}
+    if isinstance(value, dict):
+        return dict(value)
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError:
+            return {}
+        return dict(parsed) if isinstance(parsed, dict) else {}
+    return {}
 
 
 def vehicle_payload_value(payload: StartSessionRequest, *keys: str) -> Any:
@@ -1028,6 +1045,7 @@ async def post_marker(session_id: str, payload: MarkerRequest) -> Dict[str, Any]
         "production": IS_PRODUCTION,
     }
 
+
 async def finalize_session_capture(
     session_id: str,
     payload: StopSessionRequest,
@@ -1239,7 +1257,7 @@ def parse_byte_value_filter(raw: Optional[str]) -> Optional[int]:
 
 def playback_filter_cte(
     *,
-    session_id: str,
+    session_id: UUID,
     tolerance_ms: int,
     id_filter: Optional[str],
     search: Optional[str],
@@ -1353,7 +1371,7 @@ def playback_filter_cte(
 
 
 @router.get("/session/{session_id}/playback/meta")
-async def get_session_playback_meta(session_id: str) -> Dict[str, Any]:
+async def get_session_playback_meta(session_id: UUID) -> Dict[str, Any]:
     session = await fetchrow(
         """
         SELECT id, label, bus_interface, bus_mode, capture_status,
@@ -1382,7 +1400,7 @@ async def get_session_playback_meta(session_id: str) -> Dict[str, Any]:
 
     return {
         "ok": True,
-        "session_id": session_id,
+        "session_id": str(session_id),
         "label": session["label"],
         "bus_interface": session["bus_interface"],
         "bus_mode": session["bus_mode"],
@@ -1392,7 +1410,7 @@ async def get_session_playback_meta(session_id: str) -> Dict[str, Any]:
         "finalized_at": session["finalized_at"],
         "final_frame_count": int(session["final_frame_count"] or 0),
         "final_marker_count": int(session["final_marker_count"] or 0),
-        "capture_quality": dict(session["capture_quality"] or {}),
+        "capture_quality": json_object(session["capture_quality"]),
         "frame_count": int(stats["frame_count"] or 0),
         "distinct_ids": int(stats["distinct_ids"] or 0),
         "first_timestamp_ms": int(stats["first_timestamp_ms"] or 0),
@@ -1408,7 +1426,7 @@ async def get_session_playback_meta(session_id: str) -> Dict[str, Any]:
 
 @router.get("/session/{session_id}/playback")
 async def get_session_playback_slices(
-    session_id: str,
+    session_id: UUID,
     cursor_ms: Optional[int] = None,
     direction: str = "start",
     tolerance_ms: int = 1,
@@ -1478,7 +1496,7 @@ async def get_session_playback_slices(
     if not matching_frame_count:
         return {
             "ok": True,
-            "session_id": session_id,
+            "session_id": str(session_id),
             "capture_status": session["capture_status"],
             "timestamp_authority": "server",
             "tolerance_ms": tolerance_ms,
@@ -1611,7 +1629,7 @@ async def get_session_playback_slices(
                 )
             )
         ]
-        metadata = dict(row.get("metadata") or {})
+        metadata = json_object(row.get("metadata"))
         frame = {
             "id": int(row["id"]),
             "timestamp_ms": int(row["timestamp_ms"]),
@@ -1655,7 +1673,7 @@ async def get_session_playback_slices(
 
     return {
         "ok": True,
-        "session_id": session_id,
+        "session_id": str(session_id),
         "capture_status": session["capture_status"],
         "bus_interface": session["bus_interface"],
         "bus_mode": session["bus_mode"],
