@@ -485,9 +485,9 @@ export function SignalReconMission({
         setMlError(null);
         try {
             const [labelsResponse, readinessResponse, statusResponse] = await Promise.all([
-                fetch(`${getApiBaseUrl()}/data/can/session/${sessionId}/ml-labels`),
-                fetch(`${getApiBaseUrl()}/data/can/ml/readiness?${params.toString()}`),
-                fetch(`${getApiBaseUrl()}/data/can/ml/status?${params.toString()}`),
+                fetch(`${getApiBaseUrl()}/data/session/${sessionId}/ml-labels`),
+                fetch(`${getApiBaseUrl()}/data/ml/readiness?${params.toString()}`),
+                fetch(`${getApiBaseUrl()}/data/ml/status?${params.toString()}`),
             ]);
 
             const labelsData = await labelsResponse.json().catch(() => ({}));

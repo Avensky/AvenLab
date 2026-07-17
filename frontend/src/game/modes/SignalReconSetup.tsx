@@ -89,18 +89,18 @@ export function SignalReconSetup() {
             <div className="absolute top-2 flex justify-between items-start rounded-2xl border border-cyan-400/30 bg-slate-950/90 p-4 shadow-2xl shadow-cyan-500/20 left-1/2 z-20 w-[min(94vw,900px)] -translate-x-1/2">
                 <div>
                     <p className="text-xs uppercase tracking-[0.4em] text-yellow-300">
-                        SIGNAL RECON DEPLOYMENT
+                        SIGNAL RECON SETUP
                     </p>
 
                     <p className="text-4xl font-black text-cyan-100">
-                        Select Loadout
+                        Select Vehicle
                     </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 font-mono text-xs text-slate-400 sm:flex sm:items-end sm:justify-end">
                     <label className="">
                         <span className="text-[10px] tracking-[0.24em] text-slate-500">
-                            IFACE
+                            IFACE: 
                         </span>
                         <select
                             value={selectedInterface}
@@ -203,7 +203,7 @@ export function SignalReconSetup() {
                         onFocus={() => setActiveMenuIndex(2)}
                         onPress={startSignalRecon}
                     >
-                        START SIGNAL RECON
+                        START
                     </GameButton>
 
                     <GameButton

@@ -235,7 +235,7 @@ export function SignalReconPlayback({
         }
         try {
             const response = await fetch(
-                `${getApiBaseUrl()}/data/can/session/${sessionId}/hypotheses`,
+                `${getApiBaseUrl()}/data/session/${sessionId}/hypotheses`,
             );
             const data = (await response.json().catch(() => ({}))) as HypothesesResponse;
             if (!response.ok || data.ok === false) {
@@ -255,7 +255,7 @@ export function SignalReconPlayback({
             return;
         }
         const response = await fetch(
-            `${getApiBaseUrl()}/data/can/session/${sessionId}/playback/meta`,
+            `${getApiBaseUrl()}/data/session/${sessionId}/playback/meta`,
         );
         const data = (await response.json().catch(() => ({}))) as PlaybackMeta & {
             detail?: string;
@@ -287,7 +287,7 @@ export function SignalReconPlayback({
             }
 
             const response = await fetch(
-                `${getApiBaseUrl()}/data/can/session/${sessionId}/playback?${params.toString()}`,
+                `${getApiBaseUrl()}/data/session/${sessionId}/playback?${params.toString()}`,
             );
             const data = (await response.json().catch(() => ({}))) as PlaybackResponse;
             if (!response.ok || data.ok === false) {
@@ -466,7 +466,7 @@ export function SignalReconPlayback({
 
         try {
             const response = await fetch(
-                `${getApiBaseUrl()}/data/can/session/${sessionId}/hypotheses`,
+                `${getApiBaseUrl()}/data/session/${sessionId}/hypotheses`,
                 {
                     method: "POST",
                     headers: {

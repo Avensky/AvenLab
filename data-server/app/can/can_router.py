@@ -1028,7 +1028,6 @@ async def post_marker(session_id: str, payload: MarkerRequest) -> Dict[str, Any]
         "production": IS_PRODUCTION,
     }
 
-
 async def finalize_session_capture(
     session_id: str,
     payload: StopSessionRequest,

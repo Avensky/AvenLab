@@ -388,7 +388,7 @@ export function SignalRecon() {
   };
 
   return (
-    <div className="relative game-ui h-[100dvh] w-screen overflow-hidden bg-[#020617] text-green-100">
+    <div className="relative game-ui w-screen overflow-hidden bg-[#020617] text-green-100">
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(34,197,94,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(34,197,94,0.05)_1px,transparent_1px)] bg-[size:32px_32px]" />
 
       <div className="relative z-10 flex h-full min-h-0 flex-col overflow-hidden p-2 sm:p-3">
