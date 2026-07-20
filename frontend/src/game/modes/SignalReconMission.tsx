@@ -28,27 +28,27 @@ import {
     type MlReadiness,
 } from "./SignalReconBrainConsole";
 import { SignalReconPlayback } from "./SignalReconPlayback";
-
-export type MissionRunSummary = {
-    session_id: string;
-    mission_code: string;
-    vehicle_slug: string;
-    bus_interface: string;
-    bus_mode: string;
-    capture_kind: string;
-    source_label: string;
-    completed: boolean;
-    analyzed: boolean;
-    status: string;
-    analysis_mode: string | null;
-    confidence: number | null;
-    top_can_id_hex: string | null;
-    frame_count: number;
-    marker_count: number;
-    started_at: string | null;
-    ended_at: string | null;
-    report_id?: string | null;
-};
+import { type MissionRunSummary } from "./SignalRecon";
+// type MissionRunSummary = {
+//     session_id: string;
+//     mission_code: string;
+//     vehicle_slug: string;
+//     bus_interface: string;
+//     bus_mode: string;
+//     capture_kind: string;
+//     source_label: string;
+//     completed: boolean;
+//     analyzed: boolean;
+//     status: string;
+//     analysis_mode: string | null;
+//     confidence: number | null;
+//     top_can_id_hex: string | null;
+//     frame_count: number;
+//     marker_count: number;
+//     started_at: string | null;
+//     ended_at: string | null;
+//     report_id?: string | null;
+// };
 
 type SignalReconMissionProps = {
     onExit?: () => void;
@@ -2200,7 +2200,7 @@ export function SignalReconMission({
                             style={{ width: `${missionProgress * 100}%` }}
                         />
                     </div>
-                    
+                    ``
                     {error && (
                         <div className="mt-1 rounded-xl border border-red-300/40 bg-red-500/10 p-2 text-xs text-red-100">
                             {error}
