@@ -68,7 +68,14 @@ export function SignalReconSetup() {
 
     return (
         <div className="absolute inset-0 z-10 flex flex-col w-screen text-cyan-100">
-            <SignalReconHeader />
+            <SignalReconHeader 
+                title="NIWC // CAN SIGNAL ACQUISITION"
+                subtitle="VEHICLE SELECTION"
+                exitLabel="MAIN"
+                controlsDisabled={false}
+                exitDisabled={false}
+                onExit={() => setScreen("main")}
+            />
             {/* Selection Components */}
             <div className="absolute bottom-0 left-1/2 z-20 w-full -translate-x-1/2">
 

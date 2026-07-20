@@ -414,19 +414,19 @@ export function SignalReconMission({
         initialMissionProgress?.session_id ??
         null;
 
-    const panelIndex = PANELS.findIndex((panel) => panel.id === activePanel);
-    const canGoBack = !isRunning && panelIndex > 0;
-    const canGoForward = !isRunning && panelIndex < PANELS.length - 1;
+    // const panelIndex = PANELS.findIndex((panel) => panel.id === activePanel);
+    // const canGoBack = !isRunning && panelIndex > 0;
+    // const canGoForward = !isRunning && panelIndex < PANELS.length - 1;
 
-    const goBack = () => {
-        if (!canGoBack) return;
-        setActivePanel(PANELS[panelIndex - 1].id);
-    };
+    // const goBack = () => {
+    //     if (!canGoBack) return;
+    //     setActivePanel(PANELS[panelIndex - 1].id);
+    // };
 
-    const goForward = () => {
-        if (!canGoForward) return;
-        setActivePanel(PANELS[panelIndex + 1].id);
-    };
+    // const goForward = () => {
+    //     if (!canGoForward) return;
+    //     setActivePanel(PANELS[panelIndex + 1].id);
+    // };
 
     const ensureSession = async () => {
         if (activeSessionId) {
@@ -1150,7 +1150,7 @@ export function SignalReconMission({
     }
 
     const renderGamePanel = () => (
-        <div className="grid h-full min-h-0 place-items-center overflow-hidden px-2 py-2 text-center sm:px-6">
+        <div className="grid h-full px-2 place-items-center overflow-hidden text-center">
             <div className="w-full max-w-3xl align-center items-center text-center">
                 {activePhase === "baseline" && (
                     <>
@@ -1363,8 +1363,8 @@ export function SignalReconMission({
         };
 
         return (
-            <div className="h-full min-h-0 space-y-4 overflow-y-auto p-3 sm:p-5">
-                <div className="rounded-xl border border-cyan-300/30 bg-cyan-500/5 p-4">
+            <div className="game-ui">
+                <div className="bg-cyan-500/5 p-2">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
                             <p className="text-[10px] tracking-[0.22em] text-cyan-300">
@@ -2100,11 +2100,11 @@ export function SignalReconMission({
 
 
     return (
-        <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden rounded-2xl bg-[#020617] text-green-100">
+        <div className="game-ui h-full relative flex w-full flex-col overflow-hidden rounded-2xl bg-[#020617] text-green-100">
             <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(34,197,94,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(34,197,94,0.05)_1px,transparent_1px)] bg-[size:32px_32px]" />
 
-            <div className="relative z-10 flex h-full min-h-0 w-full flex-col overflow-hidden font-mono">
-                <div className="shrink-0 border-b border-green-400/20 px-2 py-2 sm:px-3">
+            <div className="game-ui h-full relative z-10 flex justify-between w-full flex-col overflow-hidden font-mono">
+                <div className="shrink-0 px-2">
                     <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                             <div className="flex items-center gap-2 text-[10px] text-yellow-300 sm:text-xs">
@@ -2117,13 +2117,10 @@ export function SignalReconMission({
                             <p className="truncate text-base font-black text-green-100 sm:text-lg">
                                 {selectedMission.title}
                             </p>
-                            <p className="truncate text-[11px] text-slate-500 sm:text-xs">
-                                {displayStep?.label ?? selectedMission.target} · {vehicleSlug} · {confidenceSummary}
-                            </p>
                         </div>
 
                         <div className="flex shrink-0 flex-col items-end gap-1 text-right">
-                            <div className="flex flex-wrap items-center justify-end gap-1 sm:gap-2">
+                            <div className="flex flex-wrap gap-1 items-center justify-end ">
                                 <GameButton
                                     onPress={() => {
                                         if (!brainAnalysis && activeSessionId) {
@@ -2133,26 +2130,26 @@ export function SignalReconMission({
                                         }
                                     }}
                                     disabled={brainAnalyzing || (!activeSessionId && !brainAnalysis)}
-                                    className="rounded-lg border border-cyan-300/40 bg-cyan-500/10 px-2 py-1 text-[10px] font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-40 sm:text-xs"
+                                    className="rounded-sm border border-cyan-300/40 bg-cyan-500/10 px-1 text-[10px] font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-40 sm:text-xs"
                                 >
-                                    {brainAnalyzing ? "AI..." : "QUICK ID"}
+                                    {brainAnalyzing ? "AI" : "ID"}
                                 </GameButton>
 
                                 <GameButton
                                     onPress={() => setUseLlm((value) => !value)}
                                     disabled={isRunning || brainAnalyzing}
-                                    className={`rounded-lg border px-2 py-1 text-[10px] font-bold disabled:cursor-not-allowed disabled:opacity-40 sm:text-xs ${useLlm
+                                    className={`rounded-sm border px-1 text-[10px] font-bold disabled:cursor-not-allowed disabled:opacity-40 sm:text-xs ${useLlm
                                         ? "border-green-300/40 bg-green-500/10 text-green-100 hover:bg-green-400/20"
                                         : "border-slate-600 bg-slate-900/80 text-slate-400 hover:bg-slate-800"
                                         }`}
                                 >
-                                    LLM {useLlm ? "ON" : "OFF"}
+                                    LLM
                                 </GameButton>
 
                                 {isRunning ? (
                                     <GameButton
                                         onPress={handleCancelRun}
-                                        className="rounded-lg border border-red-300/40 bg-red-500/10 px-2 py-1 text-xs font-bold text-red-100 hover:bg-red-400/20 sm:px-2 sm:py-1 sm:text-xm"
+                                        className="rounded-sm border border-red-300/40 bg-red-500/10 px-1 text-xs font-bold text-red-100 hover:bg-red-400/20 sm:text-xm"
                                     >
                                         CANCEL
                                     </GameButton>
@@ -2160,13 +2157,13 @@ export function SignalReconMission({
                                     <GameButton
                                         onPress={handleStopSession}
                                         disabled={busy}
-                                        className="rounded-lg border border-red-300/40 bg-red-500/10 px-2 py-1 text-xs font-bold text-red-100 hover:bg-red-400/20 disabled:cursor-not-allowed disabled:opacity-40 sm:px-2 sm:py-1 sm:text-xm"
+                                        className="rounded-sm border border-red-300/40 bg-red-500/10 px-1 text-xs font-bold text-red-100 hover:bg-red-400/20 disabled:cursor-not-allowed disabled:opacity-40 sm:text-xm"
                                     >
-                                        {activeSessionId ? "FINALIZE" : "QUEUE"}
+                                        {activeSessionId ? "DONE" : "LIST"}
                                     </GameButton>
                                 )}
 
-                                <span className="rounded-lg border border-green-300/40 bg-green-500/10 px-2 py-1 text-[10px] font-bold text-green-100 sm:px-2 sm:py-1 sm:text-xs">
+                                <span className="rounded-sm border border-green-300/40 bg-green-500/10 px-1 text-[10px] font-bold text-green-100 sm:text-xs">
                                     {formatPhase(activePhase)}
                                 </span>
                             </div>
@@ -2177,20 +2174,17 @@ export function SignalReconMission({
                         </div>
                     </div>
 
-                    <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-800">
-                        <div
-                            className="h-full rounded-full bg-green-400 transition-all"
-                            style={{ width: `${missionProgress * 100}%` }}
-                        />
-                    </div>
+                    <p className="truncate text-[11px] text-slate-500 sm:text-xs">
+                        {displayStep?.label ?? selectedMission.target} · {vehicleSlug} · {confidenceSummary}
+                    </p>
 
-                    <div className="mt-1 grid grid-cols-3 gap-1 sm:grid-cols-6 sm:gap-2">
+                    <div className="mt-1  gap-1 flex">
                         {PANELS.map((panel) => (
                             <GameButton
                                 key={panel.id}
                                 disabled={isRunning && panel.id !== "game"}
                                 onPress={() => setActivePanel(panel.id)}
-                                className={`rounded-lg border px-1.5 py-1 text-[9px] font-bold transition disabled:cursor-not-allowed disabled:opacity-30 sm:px-2 sm:text-xs ${activePanel === panel.id
+                                className={`rounded-sm border px-1.5 py-0.5 text-[9px] font-bold transition disabled:cursor-not-allowed disabled:opacity-30 sm:px-2 sm:text-xs ${activePanel === panel.id
                                     ? "border-green-300 bg-green-500/20 text-green-100"
                                     : "border-slate-700 bg-slate-900/80 text-slate-400 hover:bg-slate-800"
                                     }`}
@@ -2200,6 +2194,13 @@ export function SignalReconMission({
                         ))}
                     </div>
 
+                    <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-800">
+                        <div
+                            className="h-full rounded-full bg-green-400 transition-all"
+                            style={{ width: `${missionProgress * 100}%` }}
+                        />
+                    </div>
+                    
                     {error && (
                         <div className="mt-1 rounded-xl border border-red-300/40 bg-red-500/10 p-2 text-xs text-red-100">
                             {error}
@@ -2207,7 +2208,9 @@ export function SignalReconMission({
                     )}
                 </div>
 
-                <div className="relative min-h-0 flex-1 overflow-hidden">
+
+                <div className="game-ui h-full relative overflow-hidden">
+                    
                     {activePanel === "game" && renderGamePanel()}
                     {activePanel === "steps" && renderStepsPanel()}
                     {activePanel === "protocol" && renderProtocolPanel()}
@@ -2216,75 +2219,57 @@ export function SignalReconMission({
                     {activePanel === "session" && renderSessionPanel()}
                 </div>
 
-                <div className="shrink-0 border-t border-green-400/20 bg-black/40 p-2 sm:px-2 sm:py-1">
-                    <div className="mb-2 grid grid-cols-2 gap-2 sm:hidden">
+                <div className="grid sm:grid-cols-5 grid-cols-3 gap-2 p-2">
+                    {isRunning ? (
                         <GameButton
-                            onPress={goBack}
-                            disabled={!canGoBack}
-                            className="rounded-xl border border-slate-600 bg-slate-900 px-3 py-2 text-xs font-bold text-slate-200 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-30"
+                            onPress={handleCancelRun}
+                            className="rounded-sm border border-red-300/40 bg-red-500/10 px-3 py-2 text-xs font-bold text-red-100 hover:bg-red-400/20 sm:px-2 sm:py-1 sm:text-sm"
                         >
-                            ◀ BACK
+                            CANCEL
                         </GameButton>
+                    ) : (
                         <GameButton
-                            onPress={goForward}
-                            disabled={!canGoForward}
-                            className="rounded-xl border border-slate-600 bg-slate-900 px-3 py-2 text-xs font-bold text-slate-200 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-30"
+                            onPress={handleStopSession}
+                            disabled={busy}
+                            className="rounded-sm border border-red-300/40 bg-red-500/10 px-3 py-2 text-xs font-bold text-red-100 hover:bg-red-400/20 disabled:cursor-not-allowed disabled:opacity-40 sm:px-2 sm:py-1 sm:text-sm"
                         >
-                            NEXT ▶
+                            DONE
                         </GameButton>
-                    </div>
+                    )}
 
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-                        {isRunning ? (
-                            <GameButton
-                                onPress={handleCancelRun}
-                                className="rounded-lg border border-red-300/40 bg-red-500/10 px-3 py-2 text-xs font-bold text-red-100 hover:bg-red-400/20 sm:px-2 sm:py-1 sm:text-sm"
-                            >
-                                CANCEL
-                            </GameButton>
-                        ) : (
-                            <GameButton
-                                onPress={handleStopSession}
-                                disabled={busy}
-                                className="rounded-lg border border-red-300/40 bg-red-500/10 px-3 py-2 text-xs font-bold text-red-100 hover:bg-red-400/20 disabled:cursor-not-allowed disabled:opacity-40 sm:px-2 sm:py-1 sm:text-sm"
-                            >
-                                FINALIZE
-                            </GameButton>
-                        )}
+                    <GameButton
+                        onPress={handleRunCurrentStep}
+                        disabled={busy || isRunning || !displayStep}
+                        className="rounded-sm border border-yellow-300/40 bg-yellow-500/10 px-3 py-2 text-xs font-bold text-yellow-100 hover:bg-yellow-400/20 disabled:cursor-not-allowed disabled:opacity-40 sm:px-2 sm:py-1 sm:text-sm"
+                    >
+                        RUN STEP
+                    </GameButton>
 
-                        <GameButton
-                            onPress={handleRunCurrentStep}
-                            disabled={busy || isRunning || !displayStep}
-                            className="rounded-lg border border-yellow-300/40 bg-yellow-500/10 px-3 py-2 text-xs font-bold text-yellow-100 hover:bg-yellow-400/20 disabled:cursor-not-allowed disabled:opacity-40 sm:px-2 sm:py-1 sm:text-sm"
-                        >
-                            RUN STEP
-                        </GameButton>
+                    <GameButton
+                        onPress={handleRunMission}
+                        disabled={busy || isRunning || steps.length === 0}
+                        className="rounded-sm border border-green-300/40 bg-green-500/10 px-3 py-2 text-xs font-bold text-green-100 hover:bg-green-400/20 disabled:cursor-not-allowed disabled:opacity-40 sm:px-2 sm:py-1 sm:text-sm"
+                    >
+                        RUN ALL
+                    </GameButton>
 
-                        <GameButton
-                            onPress={handleRunMission}
-                            disabled={busy || isRunning || steps.length === 0}
-                            className="rounded-lg border border-green-300/40 bg-green-500/10 px-3 py-2 text-xs font-bold text-green-100 hover:bg-green-400/20 disabled:cursor-not-allowed disabled:opacity-40 sm:px-2 sm:py-1 sm:text-sm"
-                        >
-                            RUN ALL
-                        </GameButton>
+                    <GameButton
+                        onPress={() => void handleQuickAnalyze(undefined, "manual")}
+                        disabled={brainAnalyzing || !activeSessionId}
+                        className="rounded-sm border border-cyan-300/40 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-40 sm:px-2 sm:py-1 sm:text-sm"
+                    >
+                        {brainAnalyzing ? "AI" : "ID"}
+                    </GameButton>
 
-                        <GameButton
-                            onPress={() => void handleQuickAnalyze(undefined, "manual")}
-                            disabled={brainAnalyzing || !activeSessionId}
-                            className="rounded-lg border border-cyan-300/40 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-40 sm:px-2 sm:py-1 sm:text-sm"
-                        >
-                            {brainAnalyzing ? "AI..." : "QUICK ID"}
-                        </GameButton>
-
-                        <GameButton
-                            onPress={onExit}
-                            disabled={busy || isRunning}
-                            className="rounded-lg border border-cyan-300/40 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-40 sm:px-2 sm:py-1 sm:text-sm"
-                        >
-                            QUEUE
-                        </GameButton>
-                    </div>
+                    <GameButton
+                        onPress={onExit}
+                        disabled={busy || isRunning}
+                        className="rounded-sm border border-cyan-300/40 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-40 sm:px-2 sm:py-1 sm:text-sm"
+                    >
+                        LIST
+                    </GameButton>
                 </div>
+
             </div>
 
             <SignalReconBrainConsole

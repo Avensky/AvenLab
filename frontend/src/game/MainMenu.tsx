@@ -85,7 +85,7 @@ export function MainMenu() {
             variant={item.variant}
             onPress={() => startModeLoading(item.screen, `Loading ${item.label}`)}
             onFocus={() => setActiveMenuIndex(index)}
-            className="rounded-lg text-center"
+            className="rounded-lg text-center px-2 py-1"
           >
             {item.label}
             <span className="block text-xs font-normal text-slate-400">
