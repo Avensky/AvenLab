@@ -2196,11 +2196,10 @@ export function SignalReconMission({
 
                     <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-800">
                         <div
-                            className="h-full rounded-full bg-green-400 transition-all"
+                            className="h-96 rounded-full bg-green-400 transition-all"
                             style={{ width: `${missionProgress * 100}%` }}
                         />
                     </div>
-                    ``
                     {error && (
                         <div className="mt-1 rounded-xl border border-red-300/40 bg-red-500/10 p-2 text-xs text-red-100">
                             {error}
