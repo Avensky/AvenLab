@@ -391,7 +391,7 @@ export function SignalRecon() {
 
 
         <main
-          className={`grid h-11/12 overflow-hidden ${queueMinimized
+          className={`grid h-5/6 overflow-hidden ${queueMinimized
             ? "grid-cols-[56px_minmax(0,1fr)] sm:grid-cols-[72px_minmax(0,1fr)] lg:grid-cols-[96px_minmax(0,1fr)]"
             : "grid-cols-1"
             }`}
@@ -564,157 +564,157 @@ export function SignalRecon() {
             )}
           </section>
             
-            {queueMinimized && (
-              <section className="bg-black/80 font-mono shadow-xl shadow-green-500/10">
-                {missionTerminalOpen ? (
-                  <SignalReconMission
-                    onExit={handleMissionClosed}
-                    initialSessionId={selectedMissionProgress?.session_id ?? null}
-                    initialMissionProgress={selectedMissionProgress ?? null}
-                    sessionHistory={selectedMissionSessions}
-                    onDatabaseChanged={() => void refreshMissionProgressFromDb()}
-                  />
-                ) : (
-                  <div className=" overflow-y-auto">
-                    <div className="px-2">
+          {queueMinimized && (
+            <section className="bg-black/80 overflow-hidden font-mono shadow-xl shadow-green-500/10">
+              {missionTerminalOpen ? (
+                <SignalReconMission
+                  onExit={handleMissionClosed}
+                  initialSessionId={selectedMissionProgress?.session_id ?? null}
+                  initialMissionProgress={selectedMissionProgress ?? null}
+                  sessionHistory={selectedMissionSessions}
+                  onDatabaseChanged={() => void refreshMissionProgressFromDb()}
+                />
+              ) : (
+                <div className="game-uif">
+                  <div className="px-2">
 
-                      <div className="mb-1 pb-1 flex items-center justify-between border-b border-green-400/20">
-                        <div>
-                          <h2 className="text-lg font-bold text-green-200">
-                            Tactical Terminal
-                          </h2>
-                          <p className="text-xs text-slate-500">
-                            Store-driven mission catalog + backend CAN session markers
+                    <div className="mb-1 pb-1 flex items-center justify-between border-b border-green-400/20">
+                      <div> 
+                        <h2 className="text-lg font-bold text-green-200">
+                          Tactical Terminal
+                        </h2>
+                        <p className="text-xs text-slate-500">
+                          Store-driven mission catalog + backend CAN session markers
+                        </p>
+                      </div>
+                      <span className="text-xs text-yellow-300">
+                        SESSION:{" "}
+                        {activeSessionId ? activePhase.toUpperCase() : "IDLE"}
+                      </span>
+                    </div>
+
+                    {error && (
+                      <div className="mb-4 sm:mb-1 rounded-xl border border-red-300/40 bg-red-500/10 p-3 sm:p-1 text-sm text-red-100">
+                        {error}
+                      </div>
+                    )}
+
+                    {mission ? (
+                      <>
+                        <div className="text-sm">
+                          <p className="text-green-400">
+                            &gt; selected mission: {mission.title}
+                          </p>
+                          <p className="text-slate-400">
+                            &gt; mission code: {mission.mission_code}
+                          </p>
+                          <p className="text-slate-400">
+                            &gt; target signal: {mission.target}
+                          </p>
+                          <p className="text-slate-400">
+                            &gt; difficulty: {mission.difficulty.label} / score{" "}
+                            {mission.difficulty.difficulty_score}
+                          </p>
+                          <p className="text-slate-400">
+                            &gt; protocol: baseline → countdown → action → capture →
+                            marker sync
+                          </p>
+                          <p className="text-slate-400">
+                            &gt; bus: {selectedInterface} / {busModeLabel(selectedMode)}
+                          </p>
+                          <p className="text-slate-400">
+                            &gt; db result: {missionProgressLabel(missionProgressByCode[mission.mission_code], mission)}
+                            {missionProgressByCode[mission.mission_code]?.top_can_id_hex
+                              ? ` · ${missionProgressByCode[mission.mission_code]?.top_can_id_hex} ${formatConfidence(missionProgressByCode[mission.mission_code]?.confidence)}`
+                              : ""}
                           </p>
                         </div>
-                        <span className="text-xs text-yellow-300">
-                          SESSION:{" "}
-                          {activeSessionId ? activePhase.toUpperCase() : "IDLE"}
-                        </span>
-                      </div>
 
-                      {error && (
-                        <div className="mb-4 sm:mb-1 rounded-xl border border-red-300/40 bg-red-500/10 p-3 sm:p-1 text-sm text-red-100">
-                          {error}
-                        </div>
-                      )}
+                        <div className="mt-1 grid lg:grid-cols-[1fr_0.85fr]">
+                          <div className="border-t border-green-400/20 bg-slate-950">
+                            <h3 className="font-bold text-yellow-300">
+                              Mission Steps
+                            </h3>
 
-                      {mission ? (
-                        <>
-                          <div className="text-sm">
-                            <p className="text-green-400">
-                              &gt; selected mission: {mission.title}
-                            </p>
-                            <p className="text-slate-400">
-                              &gt; mission code: {mission.mission_code}
-                            </p>
-                            <p className="text-slate-400">
-                              &gt; target signal: {mission.target}
-                            </p>
-                            <p className="text-slate-400">
-                              &gt; difficulty: {mission.difficulty.label} / score{" "}
-                              {mission.difficulty.difficulty_score}
-                            </p>
-                            <p className="text-slate-400">
-                              &gt; protocol: baseline → countdown → action → capture →
-                              marker sync
-                            </p>
-                            <p className="text-slate-400">
-                              &gt; bus: {selectedInterface} / {busModeLabel(selectedMode)}
-                            </p>
-                            <p className="text-slate-400">
-                              &gt; db result: {missionProgressLabel(missionProgressByCode[mission.mission_code], mission)}
-                              {missionProgressByCode[mission.mission_code]?.top_can_id_hex
-                                ? ` · ${missionProgressByCode[mission.mission_code]?.top_can_id_hex} ${formatConfidence(missionProgressByCode[mission.mission_code]?.confidence)}`
-                                : ""}
-                            </p>
-                          </div>
-
-                          <div className="mt-1 grid lg:grid-cols-[1fr_0.85fr]">
-                            <div className="border-t border-green-400/20 bg-slate-950">
-                              <h3 className="font-bold text-yellow-300">
-                                Mission Steps
-                              </h3>
-
-                              {steps.length > 0 ? (
-                                <ol className="list-decimal pl-5 text-sm text-slate-300">
-                                  {steps.slice(0, 8).map((step) => (
-                                    <li key={step.id}>
-                                      <span className="text-green-100">
-                                        {step.label}
+                            {steps.length > 0 ? (
+                              <ol className="list-decimal pl-5 text-sm text-slate-300">
+                                {steps.slice(0, 8).map((step) => (
+                                  <li key={step.id}>
+                                    <span className="text-green-100">
+                                      {step.label}
+                                    </span>
+                                    {step.action_text && (
+                                      <span className="text-slate-500">
+                                        {" "}
+                                        — {step.action_text}
                                       </span>
-                                      {step.action_text && (
-                                        <span className="text-slate-500">
-                                          {" "}
-                                          — {step.action_text}
-                                        </span>
-                                      )}
-                                    </li>
-                                  ))}
-                                  {steps.length > 8 && (
-                                    <li className="text-slate-500">
-                                      + {steps.length - 8} more steps
-                                    </li>
-                                  )}
-                                </ol>
-                              ) : (
-                                <p className="text-sm text-slate-500">
-                                  No steps generated for this mission yet.
-                                </p>
-                              )}
-                            </div>
-
-                            <div className="mt-1 border-t border-green-400/20 bg-slate-950">
-                              <h3 className="sm:mb-1 font-bold text-yellow-300">
-                                Rank Metadata
-                              </h3>
-                              <div className=" text-sm text-slate-300">
-                                <p>rank: {mission.rank}</p>
-                                <p>category: {mission.category}</p>
-                                <p>
-                                  research value: {mission.difficulty.research_value}
-                                </p>
-                                <p>demo value: {mission.difficulty.demo_value}</p>
-                                <p className="text-slate-500">
-                                  {MISSION_RANKS[mission.rank].reason}
-                                </p>
-                              </div>
-                            </div>
+                                    )}
+                                  </li>
+                                ))}
+                                {steps.length > 8 && (
+                                  <li className="text-slate-500">
+                                    + {steps.length - 8} more steps
+                                  </li>
+                                )}
+                              </ol>
+                            ) : (
+                              <p className="text-sm text-slate-500">
+                                No steps generated for this mission yet.
+                              </p>
+                            )}
                           </div>
 
-                        
-                        </>
-                      ) : (
-                        <div className="rounded-xl border border-yellow-300/40 bg-yellow-500/10 p-4 text-yellow-100">
-                          No Signal Recon missions are loaded.
+                          <div className="mt-1 border-t border-green-400/20 bg-slate-950">
+                            <h3 className="sm:mb-1 font-bold text-yellow-300">
+                              Rank Metadata
+                            </h3>
+                            <div className=" text-sm text-slate-300">
+                              <p>rank: {mission.rank}</p>
+                              <p>category: {mission.category}</p>
+                              <p>
+                                research value: {mission.difficulty.research_value}
+                              </p>
+                              <p>demo value: {mission.difficulty.demo_value}</p>
+                              <p className="text-slate-500">
+                                {MISSION_RANKS[mission.rank].reason}
+                              </p>
+                            </div>
+                          </div>
                         </div>
-                      )}
 
-                    </div> 
-                    <div className="flex">
-                      <GameButton
-                        onPress={openMissionTerminal}
-                        disabled={busy || !steps.length || runActive}
-                        className="w-1/2 border border-green-300/40 bg-green-500/10 font-bold text-green-100 hover:bg-green-400/20 disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        {activeSessionId
-                          ? "ACTIVE SESSION"
-                          : selectedMissionProgress
-                            ? "SAVED RUN"
-                            : "TACTICAL TERMINAL"}
-                      </GameButton>
+                      
+                      </>
+                    ) : (
+                      <div className="rounded-xl border border-yellow-300/40 bg-yellow-500/10 p-4 text-yellow-100">
+                        No Signal Recon missions are loaded.
+                      </div>
+                    )}
 
-                      <GameButton
-                        onPress={handleMaximizeQueue}
-                        disabled={runActive}
-                        className="w-1/2 border border-cyan-300/40 bg-cyan-500/10 font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        LIST
-                      </GameButton>
-                    </div>
+                  </div> 
+                  <div className="flex">
+                    <GameButton
+                      onPress={openMissionTerminal}
+                      disabled={busy || !steps.length || runActive}
+                      className="w-1/2 border border-green-300/40 bg-green-500/10 font-bold text-green-100 hover:bg-green-400/20 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      {activeSessionId
+                        ? "ACTIVE SESSION"
+                        : selectedMissionProgress
+                          ? "SAVED RUN"
+                          : "TACTICAL TERMINAL"}
+                    </GameButton>
+
+                    <GameButton
+                      onPress={handleMaximizeQueue}
+                      disabled={runActive}
+                      className="w-1/2 border border-cyan-300/40 bg-cyan-500/10 font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      LIST
+                    </GameButton>
                   </div>
-                )}
-            </section>
+                </div>
+              )}
+          </section>
           )}
         </main>
       {/* </div> */}
