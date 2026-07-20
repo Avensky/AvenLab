@@ -38,8 +38,8 @@ ML_FEATURE_SCHEMA_VERSION = 5
 ML_MIN_EXAMPLES = _env_int("ML_MIN_EXAMPLES", 8, minimum=4)
 ML_MIN_DISTINCT_SESSIONS = _env_int(
     "ML_MIN_DISTINCT_SESSIONS",
-    2,
-    minimum=2,
+    1,
+    minimum=1,
 )
 ML_RECOMMENDED_DISTINCT_SESSIONS = _env_int(
     "ML_RECOMMENDED_DISTINCT_SESSIONS",
@@ -106,7 +106,7 @@ ml_router = APIRouter(tags=["can-ai"])
 class CandidateLabelRequest(BaseModel):
     label: str = Field(pattern="^(positive|negative|uncertain)$")
     signal_name: Optional[str] = Field(default=None, max_length=160)
-    notes: Optional[str] = Field(default=None, max_length=2_000)
+    notes: Optional[str] = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -121,7 +121,7 @@ class SignalHypothesisRequest(BaseModel):
         pattern="^(unreviewed|positive|negative|uncertain)$",
     )
     confidence: float = Field(default=0.5, ge=0.0, le=1.0)
-    notes: Optional[str] = Field(default=None, max_length=2_000)
+    notes: Optional[str] = None
     evidence: dict[str, Any] = Field(default_factory=dict)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
@@ -137,7 +137,7 @@ class TrainCandidateModelRequest(BaseModel):
     min_examples: int = Field(default=ML_MIN_EXAMPLES, ge=4, le=10_000)
     min_distinct_sessions: int = Field(
         default=ML_MIN_DISTINCT_SESSIONS,
-        ge=2,
+        ge=1,
         le=10_000,
     )
     epochs: int = Field(
@@ -230,12 +230,6 @@ def _validated_positive_label(payload: CandidateLabelRequest) -> None:
             status_code=422,
             detail="Positive labels require signal_name.",
         )
-    if not payload.notes or len(payload.notes.strip()) < 20:
-        raise HTTPException(
-            status_code=422,
-            detail="Positive labels require meaningful validation notes.",
-        )
-
     validation_method = payload.metadata.get("validation_method")
     independent_sessions = payload.metadata.get("independent_sessions", 0)
     try:
@@ -243,13 +237,13 @@ def _validated_positive_label(payload: CandidateLabelRequest) -> None:
     except (TypeError, ValueError):
         independent_sessions = 0
 
-    if not validation_method or independent_sessions < 2:
+    if not validation_method or independent_sessions < 1:
         raise HTTPException(
             status_code=422,
             detail=(
                 "Positive labels require metadata.validation_method and "
-                "metadata.independent_sessions >= 2. Use uncertain until "
-                "the candidate is independently validated."
+                "metadata.independent_sessions >= 1. Additional independent "
+                "sessions improve confidence but are not required to begin labeling."
             ),
         )
 
@@ -267,6 +261,8 @@ def ml_configuration() -> dict[str, Any]:
         "l2": ML_L2,
         "blend_weight": ML_BLEND_WEIGHT,
         "label_source": "explicit_human_labels_only",
+        "positive_label_min_independent_sessions": 1,
+        "validation_notes_limit": None,
         "cross_validation": "grouped_by_recording_session",
         # Human annotation routes are intentionally usable from the local UI
         # without exposing the server-only ML_ADMIN_TOKEN to the browser.

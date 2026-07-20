@@ -196,6 +196,10 @@ export function SignalReconPlayback({
     const [selectedByte, setSelectedByte] = useState<SelectedByte | null>(null);
     const [loading, setLoading] = useState(false);
     const [savingRole, setSavingRole] = useState<string | null>(null);
+    const [roleFeedback, setRoleFeedback] = useState<Record<
+        string,
+        { validationStatus: ValidationStatus; state: "saving" | "saved" | "error" }
+    >>({});
     const [error, setError] = useState<string | null>(null);
 
     const requestSequence = useRef(0);
@@ -310,6 +314,7 @@ export function SignalReconPlayback({
             setSlices([]);
             setSliceIndex(0);
             setSelectedByte(null);
+            setRoleFeedback({});
             setError(null);
             if (!sessionId) {
                 setMeta(null);
@@ -434,8 +439,13 @@ export function SignalReconPlayback({
         validationStatus: ValidationStatus,
     ) => {
         if (!sessionId || !selectedByte) return;
+
         const key = `${selectedByte.frame.can_id}:${selectedByte.byteIndex}:${role}`;
         setSavingRole(key);
+        setRoleFeedback((current) => ({
+            ...current,
+            [key]: { validationStatus, state: "saving" },
+        }));
         setError(null);
 
         const existing = hypothesisFor(
@@ -485,8 +495,16 @@ export function SignalReconPlayback({
                     data.detail ?? data.error ?? `Byte-role save failed with HTTP ${response.status}.`,
                 );
             }
+            setRoleFeedback((current) => ({
+                ...current,
+                [key]: { validationStatus, state: "saved" },
+            }));
             await loadHypotheses();
         } catch (err) {
+            setRoleFeedback((current) => ({
+                ...current,
+                [key]: { validationStatus, state: "error" },
+            }));
             setError(err instanceof Error ? err.message : "Failed to validate byte role.");
         } finally {
             setSavingRole(null);
@@ -671,25 +689,35 @@ export function SignalReconPlayback({
                                     selectedByte.byteIndex,
                                     role.kind,
                                 );
-                                const saving = savingRole === `${selectedByte.frame.can_id}:${selectedByte.byteIndex}:${role.kind}`;
+                                const roleKey = `${selectedByte.frame.can_id}:${selectedByte.byteIndex}:${role.kind}`;
+                                const feedback = roleFeedback[roleKey];
+                                const saving = savingRole === roleKey || feedback?.state === "saving";
+                                const effectiveStatus = feedback?.state !== "error"
+                                    ? feedback?.validationStatus ?? saved?.validation_status
+                                    : saved?.validation_status;
+                                const statusLabel = saving
+                                    ? "SAVING…"
+                                    : feedback?.state === "saved"
+                                        ? `${effectiveStatus?.toUpperCase()} SAVED`
+                                        : effectiveStatus?.toUpperCase() ?? "UNREVIEWED";
                                 return (
-                                    <div key={role.kind} className="rounded-lg border border-slate-700 bg-slate-900/70 p-3">
+                                    <div key={role.kind} className={`rounded-lg border p-3 ${statusTone(effectiveStatus)}`}>
                                         <div className="flex items-start justify-between gap-2">
                                             <div>
                                                 <p className="font-black text-green-100">{role.label}?</p>
                                                 <p className="mt-1 text-[10px] leading-relaxed text-slate-500">{role.description}</p>
                                             </div>
-                                            <span className={`rounded border px-1.5 py-0.5 text-[9px] font-black ${statusTone(saved?.validation_status)}`}>
-                                                {saved?.validation_status?.toUpperCase() ?? "UNREVIEWED"}
+                                            <span className={`rounded border px-1.5 py-0.5 text-[9px] font-black ${statusTone(effectiveStatus)}`}>
+                                                {statusLabel}
                                             </span>
                                         </div>
                                         {saved?.notes && (
                                             <p className="mt-2 text-[10px] text-cyan-100/70">auto: {saved.notes}</p>
                                         )}
                                         <div className="mt-2 grid grid-cols-3 gap-1">
-                                            <GameButton onPress={() => void validateRole(role.kind, "positive")} disabled={saving} className="rounded border border-green-300/40 bg-green-500/10 px-2 py-1 text-[10px] text-green-100 disabled:opacity-40">CONFIRM</GameButton>
-                                            <GameButton onPress={() => void validateRole(role.kind, "negative")} disabled={saving} className="rounded border border-red-300/40 bg-red-500/10 px-2 py-1 text-[10px] text-red-100 disabled:opacity-40">REJECT</GameButton>
-                                            <GameButton onPress={() => void validateRole(role.kind, "uncertain")} disabled={saving} className="rounded border border-yellow-300/40 bg-yellow-500/10 px-2 py-1 text-[10px] text-yellow-100 disabled:opacity-40">UNSURE</GameButton>
+                                            <GameButton onPress={() => void validateRole(role.kind, "positive")} disabled={saving} className={`rounded border px-2 py-1 text-[10px] disabled:opacity-40 ${effectiveStatus === "positive" ? "border-green-200 bg-green-500/30 text-green-50 ring-1 ring-green-300" : "border-green-300/40 bg-green-500/10 text-green-100"}`}>{effectiveStatus === "positive" ? "✓ CONFIRMED" : "CONFIRM"}</GameButton>
+                                            <GameButton onPress={() => void validateRole(role.kind, "negative")} disabled={saving} className={`rounded border px-2 py-1 text-[10px] disabled:opacity-40 ${effectiveStatus === "negative" ? "border-red-200 bg-red-500/30 text-red-50 ring-1 ring-red-300" : "border-red-300/40 bg-red-500/10 text-red-100"}`}>{effectiveStatus === "negative" ? "✓ REJECTED" : "REJECT"}</GameButton>
+                                            <GameButton onPress={() => void validateRole(role.kind, "uncertain")} disabled={saving} className={`rounded border px-2 py-1 text-[10px] disabled:opacity-40 ${effectiveStatus === "uncertain" ? "border-yellow-200 bg-yellow-500/30 text-yellow-50 ring-1 ring-yellow-300" : "border-yellow-300/40 bg-yellow-500/10 text-yellow-100"}`}>{effectiveStatus === "uncertain" ? "✓ UNSURE" : "UNSURE"}</GameButton>
                                         </div>
                                     </div>
                                 );

@@ -20,6 +20,7 @@ import {
     SignalReconBrainConsole,
     type BrainAnalysisResult,
     type BrainCandidate,
+    type CandidateLabelTarget,
     type ByteRoleHypothesis,
     type CandidateLabelMetadata,
     type CandidateMlLabel,
@@ -848,15 +849,15 @@ export function SignalReconMission({
     };
 
     const handleLabelCandidate = async (
-        candidate: BrainCandidate,
+        candidate: CandidateLabelTarget,
         label: CandidateMlLabelValue,
         notes: string,
         metadata: CandidateLabelMetadata,
-    ) => {
+    ): Promise<boolean> => {
         const sessionId = resolveAnalysisSessionId();
         if (!sessionId) {
             setBrainError("Select an analyzed session before labeling a candidate.");
-            return;
+            return false;
         }
 
         setLabelingCandidateId(candidate.can_id);
@@ -885,10 +886,12 @@ export function SignalReconMission({
             appendBrainLog(`[ml] ${candidate.can_id_hex} labeled ${label}`);
             await refreshMlContext(sessionId);
             onDatabaseChanged?.();
+            return true;
         } catch (err) {
             const message = err instanceof Error ? err.message : "Failed to save candidate label.";
             setBrainError(message);
             appendBrainLog(`[ml] label error: ${message}`);
+            return false;
         } finally {
             setLabelingCandidateId(null);
         }
@@ -899,11 +902,11 @@ export function SignalReconMission({
         candidate: BrainCandidate,
         hypothesis: ByteRoleHypothesis,
         validationStatus: "positive" | "negative" | "uncertain",
-    ) => {
+    ): Promise<boolean> => {
         const sessionId = resolveAnalysisSessionId();
         if (!sessionId) {
             setBrainError("Select an analyzed session before validating a byte role.");
-            return;
+            return false;
         }
 
         setBrainError(null);
@@ -942,11 +945,32 @@ export function SignalReconMission({
                 `[hypothesis] ${candidate.can_id_hex} B${hypothesis.byte_index} ` +
                 `${hypothesis.hypothesis_kind} → ${validationStatus}`,
             );
+            setBrainAnalysis((current) => {
+                if (!current) return current;
+                return {
+                    ...current,
+                    candidates: current.candidates.map((item) => {
+                        if (item.can_id !== candidate.can_id) return item;
+                        return {
+                            ...item,
+                            byte_role_hypotheses: item.byte_role_hypotheses?.map((entry) =>
+                                entry.byte_index === hypothesis.byte_index
+                                && entry.hypothesis_kind === hypothesis.hypothesis_kind
+                                && (entry.bit_mask ?? null) === (hypothesis.bit_mask ?? null)
+                                    ? { ...entry, validation_status: validationStatus, source: "human" }
+                                    : entry,
+                            ),
+                        };
+                    }),
+                };
+            });
+            return true;
         } catch (err) {
             const message =
                 err instanceof Error ? err.message : "Failed to validate byte hypothesis.";
             setBrainError(message);
             appendBrainLog(`[hypothesis] error: ${message}`);
+            return false;
         }
     };
 

@@ -291,6 +291,12 @@ export type BrainAnalysisResult = {
             change_count: number;
             frame_count: number;
             frequency_hz: number | null;
+            confidence?: number;
+            correlation_score?: number;
+            candidate_role?: string;
+            change_ratio?: number;
+            baseline_score?: number;
+            baseline_overlap_score?: number;
         }
     >;
     llm_model: string | null;
@@ -300,13 +306,28 @@ export type BrainAnalysisResult = {
     persisted: boolean;
 };
 
-type BrainTab = "summary" | "candidates" | "heatmap" | "llm" | "logs";
+type BrainTab = "summary" | "candidates" | "all_ids" | "heatmap" | "llm" | "logs";
 
 export type CandidateLabelMetadata = {
     validation_method?: string;
     independent_sessions?: number;
     baseline_checked?: boolean;
     return_state_verified?: boolean;
+};
+
+export type CandidateLabelTarget = {
+    can_id: number;
+    can_id_hex: string;
+};
+
+type CandidateSaveFeedback = {
+    label: CandidateMlLabelValue;
+    state: "saving" | "saved" | "error";
+};
+
+type HypothesisSaveFeedback = {
+    validationStatus: "positive" | "negative" | "uncertain";
+    state: "saving" | "saved" | "error";
 };
 
 type SignalReconBrainConsoleProps = {
@@ -339,16 +360,16 @@ type SignalReconBrainConsoleProps = {
     onDeleteSession: () => void;
     onRefreshMl: () => void;
     onLabelCandidate: (
-        candidate: BrainCandidate,
+        candidate: CandidateLabelTarget,
         label: CandidateMlLabelValue,
         notes: string,
         metadata: CandidateLabelMetadata,
-    ) => Promise<void> | void;
+    ) => Promise<boolean> | boolean;
     onValidateByteHypothesis: (
         candidate: BrainCandidate,
         hypothesis: ByteRoleHypothesis,
         validationStatus: "positive" | "negative" | "uncertain",
-    ) => Promise<void> | void;
+    ) => Promise<boolean> | boolean;
     onToggleLlm: () => void;
     onToggleEmbeddings: () => void;
     onToggleAutoAnalyze: () => void;
@@ -356,7 +377,8 @@ type SignalReconBrainConsoleProps = {
 
 const TABS: Array<{ id: BrainTab; label: string }> = [
     { id: "summary", label: "SUMMARY" },
-    { id: "candidates", label: "IDS + LABELS" },
+    { id: "candidates", label: "TOP IDS" },
+    { id: "all_ids", label: "ALL IDS" },
     { id: "heatmap", label: "HEAT" },
     { id: "llm", label: "LLM" },
     { id: "logs", label: "LOG" },
@@ -551,6 +573,9 @@ export function SignalReconBrainConsole({
     const [activeTab, setActiveTab] = useState<BrainTab>("summary");
     const [notesByCandidate, setNotesByCandidate] = useState<Record<string, string>>({});
     const [sessionsByCandidate, setSessionsByCandidate] = useState<Record<string, string>>({});
+    const [candidateFeedback, setCandidateFeedback] = useState<Record<string, CandidateSaveFeedback>>({});
+    const [hypothesisFeedback, setHypothesisFeedback] = useState<Record<string, HypothesisSaveFeedback>>({});
+    const [allIdSearch, setAllIdSearch] = useState("");
     const [localError, setLocalError] = useState<string | null>(null);
 
     const topCandidates = useMemo(
@@ -559,12 +584,31 @@ export function SignalReconBrainConsole({
     );
 
     const topCandidate = topCandidates[0] ?? null;
-    const heatRows = useMemo(
-        () =>
-            Object.entries(analysis?.heatmap ?? {})
-                .sort(([, a], [, b]) => b.change_count - a.change_count)
-                .slice(0, 16),
+    const allIdRows = useMemo(
+        () => Object.entries(analysis?.heatmap ?? {}).sort(([, a], [, b]) =>
+            (b.confidence ?? b.correlation_score ?? 0)
+            - (a.confidence ?? a.correlation_score ?? 0)
+            || b.change_count - a.change_count
+            || a.can_id - b.can_id,
+        ),
         [analysis],
+    );
+
+    const filteredAllIdRows = useMemo(() => {
+        const query = allIdSearch.trim().toLowerCase();
+        if (!query) return allIdRows;
+        return allIdRows.filter(([canId, row]) =>
+            canId.toLowerCase().includes(query)
+            || String(row.can_id).includes(query)
+            || String(row.candidate_role ?? "").toLowerCase().includes(query),
+        );
+    }, [allIdRows, allIdSearch]);
+
+    const heatRows = useMemo(
+        () => [...allIdRows]
+            .sort(([, a], [, b]) => b.change_count - a.change_count)
+            .slice(0, 16),
+        [allIdRows],
     );
 
     const isBaselineProfile =
@@ -574,35 +618,87 @@ export function SignalReconBrainConsole({
 
     const resultModeLabel = isBaselineProfile ? "NOISE PROFILE" : "SIGNAL HYPOTHESIS";
 
-    const submitLabel = async (candidate: BrainCandidate, label: CandidateMlLabelValue) => {
+    const submitLabel = async (
+        candidate: CandidateLabelTarget,
+        label: CandidateMlLabelValue,
+    ) => {
         const labelKey = String(candidate.can_id);
         const draftKey = `${sessionId ?? "no-session"}:${candidate.can_id}`;
+        const existingMetadata = mlLabels[labelKey]?.metadata;
+        const storedIndependentSessions =
+            existingMetadata && typeof existingMetadata.independent_sessions === "number"
+                ? existingMetadata.independent_sessions
+                : 1;
 
-        const notes = (
-            notesByCandidate[draftKey] ??
-            mlLabels[labelKey]?.notes ??
-            ""
-        ).trim();
-
-        const independentSessions =
-            Number.parseInt(sessionsByCandidate[draftKey] ?? "0", 10) || 0;
-
-        if (label === "positive") {
-            if (notes.length < 20) {
-                setLocalError("Validated Relevant requires at least 20 characters of validation notes.");
-                return;
-            }
-            if (independentSessions < 2) {
-                setLocalError("Validated Relevant requires evidence from at least two independent sessions.");
-                return;
-            }
-        }
+        const notes = notesByCandidate[draftKey] ?? mlLabels[labelKey]?.notes ?? "";
+        const independentSessions = Math.max(
+            1,
+            Number.parseInt(
+                sessionsByCandidate[draftKey] ?? String(storedIndependentSessions),
+                10,
+            ) || 1,
+        );
 
         setLocalError(null);
-        await onLabelCandidate(candidate, label, notes, label === "positive" ? {
-            validation_method: "repeated_controlled_sessions",
-            independent_sessions: independentSessions,
-        } : {});
+        setCandidateFeedback((current) => ({
+            ...current,
+            [draftKey]: { label, state: "saving" },
+        }));
+
+        const saved = await onLabelCandidate(
+            candidate,
+            label,
+            notes,
+            label === "positive"
+                ? {
+                    validation_method: "controlled_session_review",
+                    independent_sessions: independentSessions,
+                }
+                : {},
+        );
+
+        setCandidateFeedback((current) => ({
+            ...current,
+            [draftKey]: { label, state: saved ? "saved" : "error" },
+        }));
+    };
+
+    const hypothesisReviewKey = (
+        candidate: BrainCandidate,
+        hypothesis: ByteRoleHypothesis,
+    ) => [
+        sessionId ?? "no-session",
+        candidate.can_id,
+        hypothesis.byte_index,
+        hypothesis.bit_mask ?? 0,
+        hypothesis.hypothesis_kind,
+    ].join(":");
+
+    const submitHypothesisValidation = async (
+        candidate: BrainCandidate,
+        hypothesis: ByteRoleHypothesis,
+        validationStatus: "positive" | "negative" | "uncertain",
+    ) => {
+        const key = hypothesisReviewKey(candidate, hypothesis);
+        setLocalError(null);
+        setHypothesisFeedback((current) => ({
+            ...current,
+            [key]: { validationStatus, state: "saving" },
+        }));
+
+        const saved = await onValidateByteHypothesis(
+            candidate,
+            hypothesis,
+            validationStatus,
+        );
+
+        setHypothesisFeedback((current) => ({
+            ...current,
+            [key]: {
+                validationStatus,
+                state: saved ? "saved" : "error",
+            },
+        }));
     };
 
     if (!open) return null;
@@ -620,33 +716,33 @@ export function SignalReconBrainConsole({
                             </p>
                         </div>
 
-                        <div className="justify-end gap-1 grid-cols-3">
-                            <GameButton onPress={onAnalyze} disabled={analyzing || !sessionId} className="rounded-sm border border-yellow-300/40 bg-yellow-500/10 px-1 text-[10px] font-bold text-yellow-100 hover:bg-yellow-400/20 disabled:opacity-40">
-                                {analyzing ? "AI" : "ID"}
+                        <div className="flex shrink-0 flex-wrap justify-end gap-1">
+                            <GameButton onPress={onAnalyze} disabled={analyzing || !sessionId} className="rounded-lg border border-yellow-300/40 bg-yellow-500/10 px-2 py-1 text-[10px] font-bold text-yellow-100 hover:bg-yellow-400/20 disabled:opacity-40">
+                                {analyzing ? "ANALYZING" : "QUICK ID"}
                             </GameButton>
-                            <GameButton onPress={() => { setActiveTab("llm"); onExplainWithLlm(); }} disabled={analyzing || !sessionId} className="rounded-sm border border-purple-300/40 bg-purple-500/10 px-1 text-[10px] font-bold text-purple-100 hover:bg-purple-400/20 disabled:opacity-40">
+                            <GameButton onPress={() => { setActiveTab("llm"); onExplainWithLlm(); }} disabled={analyzing || !sessionId} className="rounded-lg border border-purple-300/40 bg-purple-500/10 px-2 py-1 text-[10px] font-bold text-purple-100 hover:bg-purple-400/20 disabled:opacity-40">
                                 EXPLAIN
                             </GameButton>
-                            <GameButton onPress={onLoadLatest} disabled={analyzing || !sessionId} className="rounded-sm border border-cyan-300/40 bg-cyan-500/10 px-1 text-[10px] font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:opacity-40">RELOAD</GameButton>
-                            <GameButton onPress={onExportSession} disabled={analyzing || !sessionId} className="rounded-sm border border-cyan-300/40 bg-cyan-500/10 px-1 text-[10px] font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:opacity-40">EXPORT</GameButton>
-                            <GameButton onPress={onDeleteSession} disabled={analyzing || !sessionId} className="rounded-sm border border-red-300/40 bg-red-500/10 px-1 text-[10px] font-bold text-red-100 hover:bg-red-400/20 disabled:opacity-40">DELETE</GameButton>
-                            <GameButton onPress={onToggleLlm} disabled={analyzing} className={`rounded-sm border px-1 text-[10px] font-bold ${useLlm ? "border-green-300/40 bg-green-500/10 text-green-100" : "border-slate-600 bg-slate-900 text-slate-400"}`}>LLM {useLlm ? "ON" : "OFF"}</GameButton>
-                            <GameButton onPress={onToggleEmbeddings} disabled={analyzing} className={`rounded-sm border px-1 text-[10px] font-bold ${useEmbeddings ? "border-cyan-300/40 bg-cyan-500/10 text-cyan-100" : "border-slate-600 bg-slate-900 text-slate-400"}`}>MEM {useEmbeddings ? "ON" : "OFF"}</GameButton>
-                            <GameButton onPress={onToggleAutoAnalyze} disabled={analyzing} className={`rounded-sm border px-1 text-[10px] font-bold ${autoAnalyze ? "border-cyan-300/40 bg-cyan-500/10 text-cyan-100" : "border-slate-600 bg-slate-900 text-slate-400"}`}>AUTO {autoAnalyze ? "ON" : "OFF"}</GameButton>
-                            <GameButton onPress={onClose} className="rounded-sm border border-slate-600 bg-slate-900 px-1 text-[10px] font-bold text-slate-100 hover:bg-slate-800">CLOSE</GameButton>
+                            <GameButton onPress={onLoadLatest} disabled={analyzing || !sessionId} className="rounded-lg border border-cyan-300/40 bg-cyan-500/10 px-2 py-1 text-[10px] font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:opacity-40">READ DB</GameButton>
+                            <GameButton onPress={onExportSession} disabled={analyzing || !sessionId} className="rounded-lg border border-cyan-300/40 bg-cyan-500/10 px-2 py-1 text-[10px] font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:opacity-40">EXPORT</GameButton>
+                            <GameButton onPress={onDeleteSession} disabled={analyzing || !sessionId} className="rounded-lg border border-red-300/40 bg-red-500/10 px-2 py-1 text-[10px] font-bold text-red-100 hover:bg-red-400/20 disabled:opacity-40">DELETE</GameButton>
+                            <GameButton onPress={onToggleLlm} disabled={analyzing} className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${useLlm ? "border-green-300/40 bg-green-500/10 text-green-100" : "border-slate-600 bg-slate-900 text-slate-400"}`}>LLM {useLlm ? "ON" : "OFF"}</GameButton>
+                            <GameButton onPress={onToggleEmbeddings} disabled={analyzing} className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${useEmbeddings ? "border-cyan-300/40 bg-cyan-500/10 text-cyan-100" : "border-slate-600 bg-slate-900 text-slate-400"}`}>MEM {useEmbeddings ? "ON" : "OFF"}</GameButton>
+                            <GameButton onPress={onToggleAutoAnalyze} disabled={analyzing} className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${autoAnalyze ? "border-cyan-300/40 bg-cyan-500/10 text-cyan-100" : "border-slate-600 bg-slate-900 text-slate-400"}`}>AUTO {autoAnalyze ? "ON" : "OFF"}</GameButton>
+                            <GameButton onPress={onClose} className="rounded-lg border border-slate-600 bg-slate-900 px-2 py-1 text-[10px] font-bold text-slate-100 hover:bg-slate-800">CLOSE</GameButton>
                         </div>
                     </div>
 
                     <div className="mt-2 flex gap-1 overflow-x-auto pb-1">
                         {TABS.map((tab) => (
-                            <GameButton key={tab.id} onPress={() => setActiveTab(tab.id)} className={`shrink-0 rounded-sm border px-1.5 py-0.5 text-[10px] font-bold transition sm:text-xs ${activeTab === tab.id ? "border-green-300 bg-green-500/20 text-green-100" : "border-slate-700 bg-slate-900 text-slate-400 hover:bg-slate-800"}`}>
+                            <GameButton key={tab.id} onPress={() => setActiveTab(tab.id)} className={`shrink-0 rounded-lg border px-2 py-1 text-[10px] font-bold transition sm:text-xs ${activeTab === tab.id ? "border-green-300 bg-green-500/20 text-green-100" : "border-slate-700 bg-slate-900 text-slate-400 hover:bg-slate-800"}`}>
                                 {tab.label}
                             </GameButton>
                         ))}
                     </div>
                 </div>
 
-                <div className="min-h-0 flex-1 overflow-y-auto ">
+                <div className="min-h-0 flex-1 overflow-y-auto p-3">
                     {(error || localError) && (
                         <div className="mb-3 rounded-xl border border-red-300/40 bg-red-500/10 p-3 text-sm text-red-100">{localError ?? error}</div>
                     )}
@@ -655,7 +751,7 @@ export function SignalReconBrainConsole({
                     )}
 
                     {activeTab === "summary" && (
-                        <div className="space-y-1">
+                        <div className="space-y-3">
                             <ReadinessPanel readiness={mlReadiness} activeModel={activeModel} loading={mlLoading} onRefresh={onRefreshMl} />
 
                             <div className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 p-3 text-cyan-100">
@@ -804,11 +900,48 @@ export function SignalReconBrainConsole({
                                 const labelKey = String(candidate.can_id);
                                 const draftKey = `${sessionId ?? "no-session"}:${candidate.can_id}`;
                                 const existingLabel = mlLabels[labelKey];
+                                const saveFeedback = candidateFeedback[draftKey];
+                                const effectiveLabel = saveFeedback?.state !== "error"
+                                    ? saveFeedback?.label ?? existingLabel?.label
+                                    : existingLabel?.label;
                                 const statisticalConfidence = candidate.confidence_before_baseline ?? candidate.confidence_before_ml ?? candidate.confidence;
                                 const baselineAdjustedConfidence = candidate.confidence_before_ml ?? candidate.confidence;
                                 const topBitSignal = candidate.signal_hypotheses?.[0] ?? null;
                                 const topFieldSignal = candidate.field_hypotheses?.[0] ?? null;
-                                const saving = labelingCandidateId === candidate.can_id;
+                                const fieldReview: ByteRoleHypothesis | null = topFieldSignal
+                                    ? {
+                                        byte_index: topFieldSignal.start_byte,
+                                        hypothesis_kind: "numeric_field_candidate",
+                                        confidence: topFieldSignal.score,
+                                        bit_mask: null,
+                                        reason: topFieldSignal.reason,
+                                        metrics: { ...topFieldSignal },
+                                    }
+                                    : null;
+                                const bitReview: ByteRoleHypothesis | null = topBitSignal
+                                    ? {
+                                        byte_index: topBitSignal.byte_index,
+                                        hypothesis_kind: "boolean_signal_candidate",
+                                        confidence: topBitSignal.score,
+                                        bit_mask: topBitSignal.bit_mask,
+                                        reason: topBitSignal.reason,
+                                        metrics: { ...topBitSignal },
+                                    }
+                                    : null;
+                                const fieldFeedback = fieldReview
+                                    ? hypothesisFeedback[hypothesisReviewKey(candidate, fieldReview)]
+                                    : undefined;
+                                const bitFeedback = bitReview
+                                    ? hypothesisFeedback[hypothesisReviewKey(candidate, bitReview)]
+                                    : undefined;
+                                const fieldStatus = fieldFeedback?.state !== "error"
+                                    ? fieldFeedback?.validationStatus
+                                    : undefined;
+                                const bitStatus = bitFeedback?.state !== "error"
+                                    ? bitFeedback?.validationStatus
+                                    : undefined;
+                                const saving = labelingCandidateId === candidate.can_id
+                                    || saveFeedback?.state === "saving";
 
                                 return (
                                     <div key={candidate.can_id_hex} className={`rounded-xl border p-3 ${candidateTone(candidate.confidence)}`}>
@@ -824,7 +957,13 @@ export function SignalReconBrainConsole({
                                                     </p>
                                                 )}
                                             </div>
-                                            <span className={`rounded-lg border px-2 py-1 text-[10px] font-black ${labelTone(existingLabel?.label)}`}>{labelText(existingLabel?.label)}</span>
+                                            <span className={`rounded-lg border px-2 py-1 text-[10px] font-black ${labelTone(effectiveLabel)}`}>
+                                                {saveFeedback?.state === "saving"
+                                                    ? "SAVING LABEL…"
+                                                    : saveFeedback?.state === "saved"
+                                                        ? `✓ ${labelText(effectiveLabel)} SAVED`
+                                                        : labelText(effectiveLabel)}
+                                            </span>
                                         </div>
 
                                         <div className="mt-3 grid grid-cols-2 gap-2 text-xs lg:grid-cols-4">
@@ -874,45 +1013,38 @@ export function SignalReconBrainConsole({
                                                     </table>
                                                 </div>
 
+                                                {fieldReview && (
+                                                    <div className={`mt-2 rounded border px-2 py-1 text-[10px] font-black ${labelTone(fieldStatus)}`}>
+                                                        {fieldFeedback?.state === "saving"
+                                                            ? "SAVING FIELD REVIEW…"
+                                                            : fieldFeedback?.state === "saved"
+                                                                ? `✓ ${labelText(fieldStatus)} SAVED`
+                                                                : fieldStatus
+                                                                    ? labelText(fieldStatus)
+                                                                    : "FIELD UNREVIEWED"}
+                                                    </div>
+                                                )}
                                                 <div className="mt-2 grid grid-cols-3 gap-2">
                                                     <GameButton
-                                                        onPress={() => void onValidateByteHypothesis(candidate, {
-                                                            byte_index: topFieldSignal.start_byte,
-                                                            hypothesis_kind: "numeric_field_candidate",
-                                                            confidence: topFieldSignal.score,
-                                                            bit_mask: null,
-                                                            reason: topFieldSignal.reason,
-                                                            metrics: { ...topFieldSignal },
-                                                        }, "positive")}
-                                                        className="rounded border border-green-300/30 px-2 py-1 text-[10px] text-green-200"
+                                                        onPress={() => fieldReview && void submitHypothesisValidation(candidate, fieldReview, "positive")}
+                                                        disabled={!fieldReview || fieldFeedback?.state === "saving"}
+                                                        className={`rounded border px-2 py-1 text-[10px] disabled:opacity-40 ${fieldStatus === "positive" ? "border-green-200 bg-green-500/30 text-green-50 ring-1 ring-green-300" : "border-green-300/30 text-green-200"}`}
                                                     >
-                                                        CONFIRM FIELD
+                                                        {fieldStatus === "positive" ? "✓ FIELD CONFIRMED" : "CONFIRM FIELD"}
                                                     </GameButton>
                                                     <GameButton
-                                                        onPress={() => void onValidateByteHypothesis(candidate, {
-                                                            byte_index: topFieldSignal.start_byte,
-                                                            hypothesis_kind: "numeric_field_candidate",
-                                                            confidence: topFieldSignal.score,
-                                                            bit_mask: null,
-                                                            reason: topFieldSignal.reason,
-                                                            metrics: { ...topFieldSignal },
-                                                        }, "negative")}
-                                                        className="rounded border border-red-300/30 px-2 py-1 text-[10px] text-red-200"
+                                                        onPress={() => fieldReview && void submitHypothesisValidation(candidate, fieldReview, "negative")}
+                                                        disabled={!fieldReview || fieldFeedback?.state === "saving"}
+                                                        className={`rounded border px-2 py-1 text-[10px] disabled:opacity-40 ${fieldStatus === "negative" ? "border-red-200 bg-red-500/30 text-red-50 ring-1 ring-red-300" : "border-red-300/30 text-red-200"}`}
                                                     >
-                                                        REJECT FIELD
+                                                        {fieldStatus === "negative" ? "✓ FIELD REJECTED" : "REJECT FIELD"}
                                                     </GameButton>
                                                     <GameButton
-                                                        onPress={() => void onValidateByteHypothesis(candidate, {
-                                                            byte_index: topFieldSignal.start_byte,
-                                                            hypothesis_kind: "numeric_field_candidate",
-                                                            confidence: topFieldSignal.score,
-                                                            bit_mask: null,
-                                                            reason: topFieldSignal.reason,
-                                                            metrics: { ...topFieldSignal },
-                                                        }, "uncertain")}
-                                                        className="rounded border border-yellow-300/30 px-2 py-1 text-[10px] text-yellow-200"
+                                                        onPress={() => fieldReview && void submitHypothesisValidation(candidate, fieldReview, "uncertain")}
+                                                        disabled={!fieldReview || fieldFeedback?.state === "saving"}
+                                                        className={`rounded border px-2 py-1 text-[10px] disabled:opacity-40 ${fieldStatus === "uncertain" ? "border-yellow-200 bg-yellow-500/30 text-yellow-50 ring-1 ring-yellow-300" : "border-yellow-300/30 text-yellow-200"}`}
                                                     >
-                                                        UNSURE
+                                                        {fieldStatus === "uncertain" ? "✓ FIELD UNSURE" : "UNSURE"}
                                                     </GameButton>
                                                 </div>
                                             </div>
@@ -959,45 +1091,38 @@ export function SignalReconBrainConsole({
                                                     ))}
                                                 </div>
 
+                                                {bitReview && (
+                                                    <div className={`mt-2 rounded border px-2 py-1 text-[10px] font-black ${labelTone(bitStatus)}`}>
+                                                        {bitFeedback?.state === "saving"
+                                                            ? "SAVING BIT REVIEW…"
+                                                            : bitFeedback?.state === "saved"
+                                                                ? `✓ ${labelText(bitStatus)} SAVED`
+                                                                : bitStatus
+                                                                    ? labelText(bitStatus)
+                                                                    : "BIT UNREVIEWED"}
+                                                    </div>
+                                                )}
                                                 <div className="mt-2 grid grid-cols-3 gap-2">
                                                     <GameButton
-                                                        onPress={() => void onValidateByteHypothesis(candidate, {
-                                                            byte_index: topBitSignal.byte_index,
-                                                            hypothesis_kind: "boolean_signal_candidate",
-                                                            confidence: topBitSignal.score,
-                                                            bit_mask: topBitSignal.bit_mask,
-                                                            reason: topBitSignal.reason,
-                                                            metrics: { ...topBitSignal },
-                                                        }, "positive")}
-                                                        className="rounded border border-green-300/30 px-2 py-1 text-[10px] text-green-200"
+                                                        onPress={() => bitReview && void submitHypothesisValidation(candidate, bitReview, "positive")}
+                                                        disabled={!bitReview || bitFeedback?.state === "saving"}
+                                                        className={`rounded border px-2 py-1 text-[10px] disabled:opacity-40 ${bitStatus === "positive" ? "border-green-200 bg-green-500/30 text-green-50 ring-1 ring-green-300" : "border-green-300/30 text-green-200"}`}
                                                     >
-                                                        CONFIRM BIT
+                                                        {bitStatus === "positive" ? "✓ BIT CONFIRMED" : "CONFIRM BIT"}
                                                     </GameButton>
                                                     <GameButton
-                                                        onPress={() => void onValidateByteHypothesis(candidate, {
-                                                            byte_index: topBitSignal.byte_index,
-                                                            hypothesis_kind: "boolean_signal_candidate",
-                                                            confidence: topBitSignal.score,
-                                                            bit_mask: topBitSignal.bit_mask,
-                                                            reason: topBitSignal.reason,
-                                                            metrics: { ...topBitSignal },
-                                                        }, "negative")}
-                                                        className="rounded border border-red-300/30 px-2 py-1 text-[10px] text-red-200"
+                                                        onPress={() => bitReview && void submitHypothesisValidation(candidate, bitReview, "negative")}
+                                                        disabled={!bitReview || bitFeedback?.state === "saving"}
+                                                        className={`rounded border px-2 py-1 text-[10px] disabled:opacity-40 ${bitStatus === "negative" ? "border-red-200 bg-red-500/30 text-red-50 ring-1 ring-red-300" : "border-red-300/30 text-red-200"}`}
                                                     >
-                                                        REJECT BIT
+                                                        {bitStatus === "negative" ? "✓ BIT REJECTED" : "REJECT BIT"}
                                                     </GameButton>
                                                     <GameButton
-                                                        onPress={() => void onValidateByteHypothesis(candidate, {
-                                                            byte_index: topBitSignal.byte_index,
-                                                            hypothesis_kind: "boolean_signal_candidate",
-                                                            confidence: topBitSignal.score,
-                                                            bit_mask: topBitSignal.bit_mask,
-                                                            reason: topBitSignal.reason,
-                                                            metrics: { ...topBitSignal },
-                                                        }, "uncertain")}
-                                                        className="rounded border border-yellow-300/30 px-2 py-1 text-[10px] text-yellow-200"
+                                                        onPress={() => bitReview && void submitHypothesisValidation(candidate, bitReview, "uncertain")}
+                                                        disabled={!bitReview || bitFeedback?.state === "saving"}
+                                                        className={`rounded border px-2 py-1 text-[10px] disabled:opacity-40 ${bitStatus === "uncertain" ? "border-yellow-200 bg-yellow-500/30 text-yellow-50 ring-1 ring-yellow-300" : "border-yellow-300/30 text-yellow-200"}`}
                                                     >
-                                                        UNSURE
+                                                        {bitStatus === "uncertain" ? "✓ BIT UNSURE" : "UNSURE"}
                                                     </GameButton>
                                                 </div>
                                             </div>
@@ -1044,24 +1169,30 @@ export function SignalReconBrainConsole({
                                                             </div>
                                                             <p className="mt-1 break-words font-bold">{hypothesis.hypothesis_kind.replace(/_/g, " ").toUpperCase()}</p>
                                                             <p className="mt-1 text-slate-500">mask {formatMask(hypothesis.bit_mask)}</p>
-                                                            {hypothesis.validation_status && hypothesis.validation_status !== "unreviewed" && (
-                                                                <p className="mt-1 font-black">{hypothesis.validation_status.toUpperCase()}</p>
-                                                            )}
+                                                            <p className="mt-1 font-black">
+                                                                {hypothesisFeedback[hypothesisReviewKey(candidate, hypothesis)]?.state === "saving"
+                                                                    ? "SAVING REVIEW…"
+                                                                    : hypothesisFeedback[hypothesisReviewKey(candidate, hypothesis)]?.state === "saved"
+                                                                        ? `✓ ${hypothesisFeedback[hypothesisReviewKey(candidate, hypothesis)]?.validationStatus.toUpperCase()} SAVED`
+                                                                        : hypothesis.validation_status && hypothesis.validation_status !== "unreviewed"
+                                                                            ? hypothesis.validation_status.toUpperCase()
+                                                                            : "UNREVIEWED"}
+                                                            </p>
                                                             <div className="mt-2 grid grid-cols-3 gap-1">
                                                                 <GameButton
-                                                                    onPress={() => void onValidateByteHypothesis(candidate, hypothesis, "positive")}
+                                                                    onPress={() => void submitHypothesisValidation(candidate, hypothesis, "positive")}
                                                                     className="rounded border border-green-300/30 px-1 py-0.5 text-[9px] text-green-200"
                                                                 >
                                                                     CONFIRM
                                                                 </GameButton>
                                                                 <GameButton
-                                                                    onPress={() => void onValidateByteHypothesis(candidate, hypothesis, "negative")}
+                                                                    onPress={() => void submitHypothesisValidation(candidate, hypothesis, "negative")}
                                                                     className="rounded border border-red-300/30 px-1 py-0.5 text-[9px] text-red-200"
                                                                 >
                                                                     REJECT
                                                                 </GameButton>
                                                                 <GameButton
-                                                                    onPress={() => void onValidateByteHypothesis(candidate, hypothesis, "uncertain")}
+                                                                    onPress={() => void submitHypothesisValidation(candidate, hypothesis, "uncertain")}
                                                                     className="rounded border border-yellow-300/30 px-1 py-0.5 text-[9px] text-yellow-200"
                                                                 >
                                                                     UNSURE
@@ -1093,8 +1224,8 @@ export function SignalReconBrainConsole({
                                                 <span className="text-[10px] tracking-[0.18em] text-slate-500">INDEPENDENT SESSIONS</span>
                                                 <input
                                                     type="number"
-                                                    min={0}
-                                                    value={sessionsByCandidate[draftKey] ?? ""}
+                                                    min={1}
+                                                    value={sessionsByCandidate[draftKey] ?? "1"}
                                                     onChange={(event) =>
                                                         setSessionsByCandidate((current) => ({
                                                             ...current,
@@ -1104,7 +1235,7 @@ export function SignalReconBrainConsole({
                                                     placeholder="required for relevant"
                                                     className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 p-2 text-xs text-slate-200 outline-none focus:border-green-300"
                                                 />
-                                                <p className="mt-2 text-[10px] text-slate-500">Positive labels require 2+ repeated sessions.</p>
+                                                <p className="mt-2 text-[10px] text-slate-500">Start at 1 controlled session. More independent sessions improve confidence and cross-validation.</p>
                                             </label>
                                         </div>
 
@@ -1114,16 +1245,132 @@ export function SignalReconBrainConsole({
                                             </div>
                                         )}
 
+                                        {saveFeedback?.state === "error" && (
+                                            <p className="mt-2 rounded border border-red-300/40 bg-red-500/10 px-2 py-1 text-[10px] text-red-100">
+                                                Label was not saved. Review the error above and try again.
+                                            </p>
+                                        )}
+
                                         <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                                            <GameButton onPress={() => void submitLabel(candidate, "positive")} disabled={saving || analyzing} className="rounded-lg border border-green-300/40 bg-green-500/10 px-3 py-2 text-xs font-bold text-green-100 hover:bg-green-400/20 disabled:opacity-40">VALIDATED RELEVANT</GameButton>
-                                            <GameButton onPress={() => void submitLabel(candidate, "negative")} disabled={saving || analyzing} className="rounded-lg border border-red-300/40 bg-red-500/10 px-3 py-2 text-xs font-bold text-red-100 hover:bg-red-400/20 disabled:opacity-40">VALIDATED BACKGROUND</GameButton>
-                                            <GameButton onPress={() => void submitLabel(candidate, "uncertain")} disabled={saving || analyzing} className="rounded-lg border border-yellow-300/40 bg-yellow-500/10 px-3 py-2 text-xs font-bold text-yellow-100 hover:bg-yellow-400/20 disabled:opacity-40">NEEDS MORE EVIDENCE</GameButton>
+                                            <GameButton
+                                                onPress={() => void submitLabel(candidate, "positive")}
+                                                disabled={saving || analyzing}
+                                                className={`rounded-lg border px-3 py-2 text-xs font-bold disabled:opacity-40 ${effectiveLabel === "positive" ? "border-green-200 bg-green-500/30 text-green-50 ring-1 ring-green-300" : "border-green-300/40 bg-green-500/10 text-green-100 hover:bg-green-400/20"}`}
+                                            >
+                                                {saving && saveFeedback?.label === "positive" ? "SAVING…" : effectiveLabel === "positive" ? "✓ VALIDATED RELEVANT" : "VALIDATED RELEVANT"}
+                                            </GameButton>
+                                            <GameButton
+                                                onPress={() => void submitLabel(candidate, "negative")}
+                                                disabled={saving || analyzing}
+                                                className={`rounded-lg border px-3 py-2 text-xs font-bold disabled:opacity-40 ${effectiveLabel === "negative" ? "border-red-200 bg-red-500/30 text-red-50 ring-1 ring-red-300" : "border-red-300/40 bg-red-500/10 text-red-100 hover:bg-red-400/20"}`}
+                                            >
+                                                {saving && saveFeedback?.label === "negative" ? "SAVING…" : effectiveLabel === "negative" ? "✓ VALIDATED BACKGROUND" : "VALIDATED BACKGROUND"}
+                                            </GameButton>
+                                            <GameButton
+                                                onPress={() => void submitLabel(candidate, "uncertain")}
+                                                disabled={saving || analyzing}
+                                                className={`rounded-lg border px-3 py-2 text-xs font-bold disabled:opacity-40 ${effectiveLabel === "uncertain" ? "border-yellow-200 bg-yellow-500/30 text-yellow-50 ring-1 ring-yellow-300" : "border-yellow-300/40 bg-yellow-500/10 text-yellow-100 hover:bg-yellow-400/20"}`}
+                                            >
+                                                {saving && saveFeedback?.label === "uncertain" ? "SAVING…" : effectiveLabel === "uncertain" ? "✓ NEEDS MORE EVIDENCE" : "NEEDS MORE EVIDENCE"}
+                                            </GameButton>
                                         </div>
                                     </div>
                                 );
                             })}
 
                             {!topCandidates.length && <p className="text-sm text-slate-500">No saved candidates are available for this session.</p>}
+                        </div>
+                    )}
+
+                    {activeTab === "all_ids" && (
+                        <div className="space-y-2">
+                            <div className="sticky top-0 z-10 rounded-xl border border-cyan-300/30 bg-slate-950/95 p-3">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <div>
+                                        <p className="font-black text-cyan-100">ALL OBSERVED SESSION IDS</p>
+                                        <p className="text-[10px] text-slate-500">
+                                            {filteredAllIdRows.length} shown / {allIdRows.length} observed. Rich byte evidence remains in TOP IDS; every row here can be labeled for supervised learning.
+                                        </p>
+                                    </div>
+                                    <input
+                                        value={allIdSearch}
+                                        onChange={(event) => setAllIdSearch(event.target.value)}
+                                        placeholder="Filter hex, decimal, or role"
+                                        className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-cyan-100 outline-none focus:border-cyan-300 sm:w-64"
+                                    />
+                                </div>
+                            </div>
+
+                            {filteredAllIdRows.map(([canId, row]) => {
+                                const target: CandidateLabelTarget = {
+                                    can_id: row.can_id,
+                                    can_id_hex: canId,
+                                };
+                                const labelKey = String(row.can_id);
+                                const draftKey = `${sessionId ?? "no-session"}:${row.can_id}`;
+                                const existingLabel = mlLabels[labelKey];
+                                const saveFeedback = candidateFeedback[draftKey];
+                                const effectiveLabel = saveFeedback?.state !== "error"
+                                    ? saveFeedback?.label ?? existingLabel?.label
+                                    : existingLabel?.label;
+                                const saving = labelingCandidateId === row.can_id
+                                    || saveFeedback?.state === "saving";
+
+                                return (
+                                    <div key={canId} className={`rounded-xl border p-3 ${candidateTone(row.confidence ?? 0)}`}>
+                                        <div className="flex flex-wrap items-start justify-between gap-2">
+                                            <div>
+                                                <p className="text-lg font-black">{canId}</p>
+                                                <p className="text-[10px] text-slate-500">
+                                                    decimal {row.can_id} · {row.frame_count} frames · {row.change_count} changes · {fixed(row.frequency_hz)} Hz
+                                                </p>
+                                                <p className="text-[10px] text-slate-400">
+                                                    role: {row.candidate_role ?? "unclassified"} · evidence {percent(row.confidence ?? row.correlation_score)}
+                                                </p>
+                                            </div>
+                                            <span className={`rounded border px-2 py-1 text-[10px] font-black ${labelTone(effectiveLabel)}`}>
+                                                {saveFeedback?.state === "saving"
+                                                    ? "SAVING…"
+                                                    : saveFeedback?.state === "saved"
+                                                        ? `✓ ${labelText(effectiveLabel)} SAVED`
+                                                        : labelText(effectiveLabel)}
+                                            </span>
+                                        </div>
+
+                                        <div className="mt-2 grid grid-cols-8 gap-1">
+                                            {byteCells(row.byte_change_counts)}
+                                        </div>
+
+                                        <div className="mt-2 grid gap-1 sm:grid-cols-3">
+                                            <GameButton
+                                                onPress={() => void submitLabel(target, "positive")}
+                                                disabled={saving || analyzing}
+                                                className={`rounded border px-2 py-1 text-[10px] font-bold disabled:opacity-40 ${effectiveLabel === "positive" ? "border-green-200 bg-green-500/30 text-green-50 ring-1 ring-green-300" : "border-green-300/30 bg-green-500/10 text-green-100"}`}
+                                            >
+                                                {effectiveLabel === "positive" ? "✓ RELEVANT" : "RELEVANT"}
+                                            </GameButton>
+                                            <GameButton
+                                                onPress={() => void submitLabel(target, "negative")}
+                                                disabled={saving || analyzing}
+                                                className={`rounded border px-2 py-1 text-[10px] font-bold disabled:opacity-40 ${effectiveLabel === "negative" ? "border-red-200 bg-red-500/30 text-red-50 ring-1 ring-red-300" : "border-red-300/30 bg-red-500/10 text-red-100"}`}
+                                            >
+                                                {effectiveLabel === "negative" ? "✓ BACKGROUND" : "BACKGROUND"}
+                                            </GameButton>
+                                            <GameButton
+                                                onPress={() => void submitLabel(target, "uncertain")}
+                                                disabled={saving || analyzing}
+                                                className={`rounded border px-2 py-1 text-[10px] font-bold disabled:opacity-40 ${effectiveLabel === "uncertain" ? "border-yellow-200 bg-yellow-500/30 text-yellow-50 ring-1 ring-yellow-300" : "border-yellow-300/30 bg-yellow-500/10 text-yellow-100"}`}
+                                            >
+                                                {effectiveLabel === "uncertain" ? "✓ MORE EVIDENCE" : "MORE EVIDENCE"}
+                                            </GameButton>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+
+                            {!filteredAllIdRows.length && (
+                                <p className="text-sm text-slate-500">No CAN IDs match this filter.</p>
+                            )}
                         </div>
                     )}
 
