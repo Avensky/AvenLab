@@ -620,33 +620,33 @@ export function SignalReconBrainConsole({
                             </p>
                         </div>
 
-                        <div className="flex shrink-0 flex-wrap justify-end gap-1">
-                            <GameButton onPress={onAnalyze} disabled={analyzing || !sessionId} className="rounded-lg border border-yellow-300/40 bg-yellow-500/10 px-2 py-1 text-[10px] font-bold text-yellow-100 hover:bg-yellow-400/20 disabled:opacity-40">
-                                {analyzing ? "ANALYZING" : "QUICK ID"}
+                        <div className="justify-end gap-1 grid-cols-3">
+                            <GameButton onPress={onAnalyze} disabled={analyzing || !sessionId} className="rounded-sm border border-yellow-300/40 bg-yellow-500/10 px-1 text-[10px] font-bold text-yellow-100 hover:bg-yellow-400/20 disabled:opacity-40">
+                                {analyzing ? "AI" : "ID"}
                             </GameButton>
-                            <GameButton onPress={() => { setActiveTab("llm"); onExplainWithLlm(); }} disabled={analyzing || !sessionId} className="rounded-lg border border-purple-300/40 bg-purple-500/10 px-2 py-1 text-[10px] font-bold text-purple-100 hover:bg-purple-400/20 disabled:opacity-40">
+                            <GameButton onPress={() => { setActiveTab("llm"); onExplainWithLlm(); }} disabled={analyzing || !sessionId} className="rounded-sm border border-purple-300/40 bg-purple-500/10 px-1 text-[10px] font-bold text-purple-100 hover:bg-purple-400/20 disabled:opacity-40">
                                 EXPLAIN
                             </GameButton>
-                            <GameButton onPress={onLoadLatest} disabled={analyzing || !sessionId} className="rounded-lg border border-cyan-300/40 bg-cyan-500/10 px-2 py-1 text-[10px] font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:opacity-40">READ DB</GameButton>
-                            <GameButton onPress={onExportSession} disabled={analyzing || !sessionId} className="rounded-lg border border-cyan-300/40 bg-cyan-500/10 px-2 py-1 text-[10px] font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:opacity-40">EXPORT</GameButton>
-                            <GameButton onPress={onDeleteSession} disabled={analyzing || !sessionId} className="rounded-lg border border-red-300/40 bg-red-500/10 px-2 py-1 text-[10px] font-bold text-red-100 hover:bg-red-400/20 disabled:opacity-40">DELETE</GameButton>
-                            <GameButton onPress={onToggleLlm} disabled={analyzing} className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${useLlm ? "border-green-300/40 bg-green-500/10 text-green-100" : "border-slate-600 bg-slate-900 text-slate-400"}`}>LLM {useLlm ? "ON" : "OFF"}</GameButton>
-                            <GameButton onPress={onToggleEmbeddings} disabled={analyzing} className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${useEmbeddings ? "border-cyan-300/40 bg-cyan-500/10 text-cyan-100" : "border-slate-600 bg-slate-900 text-slate-400"}`}>MEM {useEmbeddings ? "ON" : "OFF"}</GameButton>
-                            <GameButton onPress={onToggleAutoAnalyze} disabled={analyzing} className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${autoAnalyze ? "border-cyan-300/40 bg-cyan-500/10 text-cyan-100" : "border-slate-600 bg-slate-900 text-slate-400"}`}>AUTO {autoAnalyze ? "ON" : "OFF"}</GameButton>
-                            <GameButton onPress={onClose} className="rounded-lg border border-slate-600 bg-slate-900 px-2 py-1 text-[10px] font-bold text-slate-100 hover:bg-slate-800">CLOSE</GameButton>
+                            <GameButton onPress={onLoadLatest} disabled={analyzing || !sessionId} className="rounded-sm border border-cyan-300/40 bg-cyan-500/10 px-1 text-[10px] font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:opacity-40">RELOAD</GameButton>
+                            <GameButton onPress={onExportSession} disabled={analyzing || !sessionId} className="rounded-sm border border-cyan-300/40 bg-cyan-500/10 px-1 text-[10px] font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:opacity-40">EXPORT</GameButton>
+                            <GameButton onPress={onDeleteSession} disabled={analyzing || !sessionId} className="rounded-sm border border-red-300/40 bg-red-500/10 px-1 text-[10px] font-bold text-red-100 hover:bg-red-400/20 disabled:opacity-40">DELETE</GameButton>
+                            <GameButton onPress={onToggleLlm} disabled={analyzing} className={`rounded-sm border px-1 text-[10px] font-bold ${useLlm ? "border-green-300/40 bg-green-500/10 text-green-100" : "border-slate-600 bg-slate-900 text-slate-400"}`}>LLM {useLlm ? "ON" : "OFF"}</GameButton>
+                            <GameButton onPress={onToggleEmbeddings} disabled={analyzing} className={`rounded-sm border px-1 text-[10px] font-bold ${useEmbeddings ? "border-cyan-300/40 bg-cyan-500/10 text-cyan-100" : "border-slate-600 bg-slate-900 text-slate-400"}`}>MEM {useEmbeddings ? "ON" : "OFF"}</GameButton>
+                            <GameButton onPress={onToggleAutoAnalyze} disabled={analyzing} className={`rounded-sm border px-1 text-[10px] font-bold ${autoAnalyze ? "border-cyan-300/40 bg-cyan-500/10 text-cyan-100" : "border-slate-600 bg-slate-900 text-slate-400"}`}>AUTO {autoAnalyze ? "ON" : "OFF"}</GameButton>
+                            <GameButton onPress={onClose} className="rounded-sm border border-slate-600 bg-slate-900 px-1 text-[10px] font-bold text-slate-100 hover:bg-slate-800">CLOSE</GameButton>
                         </div>
                     </div>
 
                     <div className="mt-2 flex gap-1 overflow-x-auto pb-1">
                         {TABS.map((tab) => (
-                            <GameButton key={tab.id} onPress={() => setActiveTab(tab.id)} className={`shrink-0 rounded-lg border px-2 py-1 text-[10px] font-bold transition sm:text-xs ${activeTab === tab.id ? "border-green-300 bg-green-500/20 text-green-100" : "border-slate-700 bg-slate-900 text-slate-400 hover:bg-slate-800"}`}>
+                            <GameButton key={tab.id} onPress={() => setActiveTab(tab.id)} className={`shrink-0 rounded-sm border px-1.5 py-0.5 text-[10px] font-bold transition sm:text-xs ${activeTab === tab.id ? "border-green-300 bg-green-500/20 text-green-100" : "border-slate-700 bg-slate-900 text-slate-400 hover:bg-slate-800"}`}>
                                 {tab.label}
                             </GameButton>
                         ))}
                     </div>
                 </div>
 
-                <div className="min-h-0 flex-1 overflow-y-auto p-3">
+                <div className="min-h-0 flex-1 overflow-y-auto ">
                     {(error || localError) && (
                         <div className="mb-3 rounded-xl border border-red-300/40 bg-red-500/10 p-3 text-sm text-red-100">{localError ?? error}</div>
                     )}
@@ -655,7 +655,7 @@ export function SignalReconBrainConsole({
                     )}
 
                     {activeTab === "summary" && (
-                        <div className="space-y-3">
+                        <div className="space-y-1">
                             <ReadinessPanel readiness={mlReadiness} activeModel={activeModel} loading={mlLoading} onRefresh={onRefreshMl} />
 
                             <div className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 p-3 text-cyan-100">

@@ -48,7 +48,7 @@ export function MainMenu() {
   }, [selectedIndex]);
 
   return (
-    <div className="game-ui h-full items-center flex flex-col justify-center bg-slate-950/85 shadow-2xl shadow-cyan-500/20 backdrop-blur">
+    <div className="game-ui px-2 h-full items-center flex flex-col justify-center bg-slate-950/85 shadow-2xl shadow-cyan-500/20 backdrop-blur">
       <div className="border-b border-cyan-400/20 p-2">
         <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
           <img
