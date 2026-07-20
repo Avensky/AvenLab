@@ -1523,8 +1523,15 @@ async def get_session_playback_slices(
         cursor_value = last_bucket_ms if direction in {"end", "prev"} else first_bucket_ms
     assert cursor_value is not None
 
-    params.extend([cursor_value, slice_limit])
-    cursor_placeholder = f"${len(params) - 1}"
+    # Only bind a cursor for directions that actually reference it.
+    # Binding an unused positional parameter for start/end leaves PostgreSQL
+    # unable to infer that parameter's type and causes an HTTP 500.
+    cursor_placeholder: Optional[str] = None
+    if direction in {"next", "prev", "nearest"}:
+        params.append(cursor_value)
+        cursor_placeholder = f"${len(params)}"
+
+    params.append(slice_limit)
     limit_placeholder = f"${len(params)}"
 
     if direction == "start":
@@ -1546,6 +1553,7 @@ async def get_session_playback_slices(
             ORDER BY bucket_ms ASC
         """
     elif direction == "next":
+        assert cursor_placeholder is not None
         bucket_selection = f"""
             SELECT DISTINCT bucket_ms
             FROM filtered
@@ -1554,6 +1562,7 @@ async def get_session_playback_slices(
             LIMIT {limit_placeholder}
         """
     elif direction == "prev":
+        assert cursor_placeholder is not None
         bucket_selection = f"""
             SELECT bucket_ms
             FROM (
@@ -1566,15 +1575,22 @@ async def get_session_playback_slices(
             ORDER BY bucket_ms ASC
         """
     else:
+        assert cursor_placeholder is not None
         bucket_selection = f"""
             WITH anchor AS (
-                SELECT DISTINCT bucket_ms
-                FROM filtered
-                ORDER BY ABS(bucket_ms - {cursor_placeholder}::bigint), bucket_ms ASC
+                SELECT bucket_ms
+                FROM (
+                    SELECT DISTINCT bucket_ms
+                    FROM filtered
+                ) available_buckets
+                ORDER BY
+                    ABS(bucket_ms - {cursor_placeholder}::bigint),
+                    bucket_ms ASC
                 LIMIT 1
             )
             SELECT DISTINCT filtered.bucket_ms
-            FROM filtered, anchor
+            FROM filtered
+            CROSS JOIN anchor
             WHERE filtered.bucket_ms >= anchor.bucket_ms
             ORDER BY filtered.bucket_ms ASC
             LIMIT {limit_placeholder}
