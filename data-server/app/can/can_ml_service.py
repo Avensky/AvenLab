@@ -268,7 +268,11 @@ def ml_configuration() -> dict[str, Any]:
         "blend_weight": ML_BLEND_WEIGHT,
         "label_source": "explicit_human_labels_only",
         "cross_validation": "grouped_by_recording_session",
+        # Human annotation routes are intentionally usable from the local UI
+        # without exposing the server-only ML_ADMIN_TOKEN to the browser.
         "write_routes_protected": bool(ML_ADMIN_TOKEN),
+        "annotation_routes_protected": False,
+        "training_routes_protected": bool(ML_ADMIN_TOKEN),
         "runtime_dependencies": "python_standard_library",
     }
 
@@ -1215,12 +1219,12 @@ async def get_session_hypotheses(session_id: UUID) -> dict[str, Any]:
 async def upsert_signal_hypothesis(
     session_id: UUID,
     payload: SignalHypothesisRequest,
-    x_avenlab_ml_token: Optional[str] = Header(
-        default=None,
-        alias="X-AvenLab-ML-Token",
-    ),
 ) -> dict[str, Any]:
-    _require_ml_admin(x_avenlab_ml_token)
+    """Store a human byte/bit review for a finalized session.
+
+    Annotation writes intentionally do not receive the ML admin secret. The
+    secret remains server-side and is reserved for model-training operations.
+    """
     pool = await connect_db()
     async with pool.acquire() as conn:
         await ensure_ml_tables(conn)
@@ -1309,13 +1313,12 @@ async def label_candidate(
     session_id: UUID,
     can_id: int,
     payload: CandidateLabelRequest,
-    x_avenlab_ml_token: Optional[str] = Header(
-        default=None,
-        alias="X-AvenLab-ML-Token",
-    ),
 ) -> dict[str, Any]:
-    """Store an explicit human candidate label and immutable feature snapshot."""
-    _require_ml_admin(x_avenlab_ml_token)
+    """Store a human label and immutable feature snapshot.
+
+    The finalized-session and positive-label evidence gates remain enforced.
+    Model training continues to require the ML admin token.
+    """
     _validated_positive_label(payload)
     pool = await connect_db()
 

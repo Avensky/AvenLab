@@ -149,20 +149,6 @@ function shortSessionId(sessionId: string | null) {
     return `${sessionId.slice(0, 8)}…${sessionId.slice(-4)}`;
 }
 
-function getMlAdminToken() {
-    const storageKey = "avenlab.mlAdminToken";
-    const existing = window.sessionStorage.getItem(storageKey)?.trim();
-    if (existing) return existing;
-
-    const entered = window.prompt(
-        "Enter the AvenLab ML admin token. It remains only in this browser tab.",
-    )?.trim();
-    if (!entered) return null;
-
-    window.sessionStorage.setItem(storageKey, entered);
-    return entered;
-}
-
 function statusTone(status: SavedHypothesis["validation_status"] | undefined) {
     if (status === "positive") return "border-green-300/50 bg-green-500/15 text-green-100";
     if (status === "negative") return "border-red-300/50 bg-red-500/15 text-red-100";
@@ -448,12 +434,6 @@ export function SignalReconPlayback({
         validationStatus: ValidationStatus,
     ) => {
         if (!sessionId || !selectedByte) return;
-        const token = getMlAdminToken();
-        if (!token) {
-            setError("ML admin token is required to validate byte roles.");
-            return;
-        }
-
         const key = `${selectedByte.frame.can_id}:${selectedByte.byteIndex}:${role}`;
         setSavingRole(key);
         setError(null);
@@ -471,7 +451,6 @@ export function SignalReconPlayback({
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
-                        "X-AvenLab-ML-Token": token,
                     },
                     body: JSON.stringify({
                         can_id: selectedByte.frame.can_id,
@@ -502,9 +481,6 @@ export function SignalReconPlayback({
             );
             const data = await response.json().catch(() => ({}));
             if (!response.ok || data.ok === false) {
-                if (response.status === 403) {
-                    window.sessionStorage.removeItem("avenlab.mlAdminToken");
-                }
                 throw new Error(
                     data.detail ?? data.error ?? `Byte-role save failed with HTTP ${response.status}.`,
                 );

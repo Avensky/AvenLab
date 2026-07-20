@@ -246,20 +246,6 @@ function formatSessionDate(value: string | null) {
     return date.toLocaleString();
 }
 
-function getMlAdminToken() {
-    const storageKey = "avenlab.mlAdminToken";
-    const existing = window.sessionStorage.getItem(storageKey)?.trim();
-    if (existing) return existing;
-
-    const entered = window.prompt(
-        "Enter the AvenLab ML admin token. It will be kept only for this browser tab.",
-    )?.trim();
-    if (!entered) return null;
-
-    window.sessionStorage.setItem(storageKey, entered);
-    return entered;
-}
-
 export function SignalReconMission({
     onExit,
     initialSessionId = null,
@@ -873,12 +859,6 @@ export function SignalReconMission({
             return;
         }
 
-        const token = getMlAdminToken();
-        if (!token) {
-            setBrainError("ML admin token is required to save human labels.");
-            return;
-        }
-
         setLabelingCandidateId(candidate.can_id);
         setBrainError(null);
         try {
@@ -888,7 +868,6 @@ export function SignalReconMission({
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
-                        "X-AvenLab-ML-Token": token,
                     },
                     body: JSON.stringify({
                         label,
@@ -900,9 +879,6 @@ export function SignalReconMission({
             );
             const data = await response.json().catch(() => ({}));
             if (!response.ok || data.ok === false) {
-                if (response.status === 403) {
-                    window.sessionStorage.removeItem("avenlab.mlAdminToken");
-                }
                 throw new Error(data.detail ?? data.error ?? `Label save failed with HTTP ${response.status}.`);
             }
 
@@ -930,12 +906,6 @@ export function SignalReconMission({
             return;
         }
 
-        const token = getMlAdminToken();
-        if (!token) {
-            setBrainError("ML admin token is required to validate byte hypotheses.");
-            return;
-        }
-
         setBrainError(null);
         try {
             const response = await fetch(
@@ -944,7 +914,6 @@ export function SignalReconMission({
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
-                        "X-AvenLab-ML-Token": token,
                     },
                     body: JSON.stringify({
                         can_id: candidate.can_id,
@@ -964,9 +933,6 @@ export function SignalReconMission({
             );
             const data = await response.json().catch(() => ({}));
             if (!response.ok || data.ok === false) {
-                if (response.status === 403) {
-                    window.sessionStorage.removeItem("avenlab.mlAdminToken");
-                }
                 throw new Error(
                     data.detail ?? data.error ??
                     `Byte hypothesis save failed with HTTP ${response.status}.`,
