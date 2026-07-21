@@ -175,8 +175,8 @@ export function SignalReconPlayback({
     const [sliceIndex, setSliceIndex] = useState(0);
     const [hasBefore, setHasBefore] = useState(false);
     const [hasAfter, setHasAfter] = useState(false);
-    const [matchingFrameCount, setMatchingFrameCount] = useState(0);
-    const [matchingSliceCount, setMatchingSliceCount] = useState(0);
+    // const [matchingFrameCount, setMatchingFrameCount] = useState(0);
+    // const [matchingSliceCount, setMatchingSliceCount] = useState(0);
     const [firstBucketMs, setFirstBucketMs] = useState<number | null>(null);
     const [lastBucketMs, setLastBucketMs] = useState<number | null>(null);
 
