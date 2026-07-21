@@ -293,8 +293,8 @@ export function SignalReconPlayback({
                 : 0);
             setHasBefore(Boolean(data.has_before));
             setHasAfter(Boolean(data.has_after));
-            setMatchingFrameCount(data.matching_frame_count ?? 0);
-            setMatchingSliceCount(data.matching_slice_count ?? 0);
+            // setMatchingFrameCount(data.matching_frame_count ?? 0);
+            // setMatchingSliceCount(data.matching_slice_count ?? 0);
             setFirstBucketMs(data.first_bucket_ms);
             setLastBucketMs(data.last_bucket_ms);
             setSelectedByte(null);
