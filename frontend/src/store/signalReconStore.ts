@@ -827,7 +827,7 @@ export const useSignalReconStore = create<SignalReconState>((set, get) => ({
             getDefaultMissionProtocol(selectedMission);
 
         const res = await fetch(
-            `${getApiBaseUrl()}/data/session/start`,
+            `${getApiBaseUrl()}/data/can/session/start`,
             {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -910,7 +910,7 @@ export const useSignalReconStore = create<SignalReconState>((set, get) => ({
         }
 
         const res = await fetch(
-            `${getApiBaseUrl()}/data/session/${activeSessionId}/marker`,
+            `${getApiBaseUrl()}/data/can/session/${activeSessionId}/marker`,
             {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -1157,7 +1157,7 @@ export const useSignalReconStore = create<SignalReconState>((set, get) => ({
         }
 
         const res = await fetch(
-            `${getApiBaseUrl()}/data/session/${activeSessionId}/finalize`,
+            `${getApiBaseUrl()}/data/can/session/${activeSessionId}/finalize`,
             {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },

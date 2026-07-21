@@ -2094,7 +2094,7 @@ export function SignalReconMission({
             <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(34,197,94,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(34,197,94,0.05)_1px,transparent_1px)] bg-[size:32px_32px]" />
 
             <div className="game-ui h-full relative z-10 flex justify-between w-full flex-col overflow-hidden font-mono">
-                <div className="shrink-0 px-2">
+                <div className="shrink-0 px-2 py-1">
                     <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                             <div className="flex items-center gap-2 text-[10px] text-yellow-300 sm:text-xs">
@@ -2184,12 +2184,14 @@ export function SignalReconMission({
                         ))}
                     </div>
 
-                    <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-800">
-                        <div
-                            className="h-96 rounded-full bg-green-400 transition-all"
-                            style={{ width: `${missionProgress * 100}%` }}
-                        />
-                    </div>
+                    {activePanel === "game" && 
+                        <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-800">
+                            <div
+                                className="h-96 rounded-full bg-green-400 transition-all"
+                                style={{ width: `${missionProgress * 100}%` }}
+                            />
+                        </div>
+                    }
                     {error && (
                         <div className="mt-1 rounded-xl border border-red-300/40 bg-red-500/10 p-2 text-xs text-red-100">
                             {error}
@@ -2198,8 +2200,7 @@ export function SignalReconMission({
                 </div>
 
 
-                <div className="game-ui h-full relative overflow-hidden">
-                    
+                <div className="game-ui h-full relative overflow-hidden">   
                     {activePanel === "game" && renderGamePanel()}
                     {activePanel === "steps" && renderStepsPanel()}
                     {activePanel === "protocol" && renderProtocolPanel()}
@@ -2208,7 +2209,7 @@ export function SignalReconMission({
                     {activePanel === "session" && renderSessionPanel()}
                 </div>
 
-                <div className="grid sm:grid-cols-5 grid-cols-3 gap-2 p-2">
+                <div className="grid sm:grid-cols-5 grid-cols-3 gap-2 px-2">
                     {isRunning ? (
                         <GameButton
                             onPress={handleCancelRun}

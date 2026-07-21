@@ -522,37 +522,38 @@ export function SignalReconPlayback({
     }
 
     return (
-        <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[#020617] p-2 font-mono text-green-100 sm:p-3">
-            <div className="shrink-0 space-y-2 rounded-xl border border-green-400/20 bg-black/60 p-2">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                        <p className="text-[10px] tracking-[0.28em] text-yellow-300">
-                            DATABASE PLAYBACK // SERVER TIMESTAMPS
-                        </p>
-                        <p className="text-xs text-slate-400">
-                            {shortSessionId(sessionId)} · {meta?.frame_count.toLocaleString() ?? 0} frames · {meta?.distinct_ids ?? 0} IDs · {meta?.capture_status ?? "loading"}
-                        </p>
-                    </div>
+        <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[#020617] font-mono text-green-100">
+            <div className="shrink-0 border border-green-400/20 bg-black/60 px-2 py-1">
+                <div className="flex flex-wrap items-center justify-between">
+                
+                    <p className="text-xs text-slate-400">
+                        {shortSessionId(sessionId)} · {meta?.frame_count.toLocaleString() ?? 0} frames · {toleranceMs} ms · {meta?.distinct_ids ?? 0} IDs · {meta?.capture_status ?? "loading" } 
+                    </p>
                     <div className="flex flex-wrap items-center gap-1">
-                        <GameButton onPress={() => void goToStart()} disabled={loading || disabled} className="rounded border border-slate-500 bg-slate-900 px-2 py-1 text-sm disabled:opacity-40" title="Go to start">|◀</GameButton>
-                        <GameButton onPress={() => void stepBackward()} disabled={loading || disabled || (!hasBefore && sliceIndex <= 0)} className="rounded border border-slate-500 bg-slate-900 px-2 py-1 text-sm disabled:opacity-40" title="Previous time slice">◀</GameButton>
-                        <GameButton onPress={() => setPlaying(true)} disabled={loading || disabled || playing || !currentSlice} className="rounded border border-green-300/40 bg-green-500/10 px-3 py-1 text-sm disabled:opacity-40" title="Play">▶</GameButton>
-                        <GameButton onPress={() => setPlaying(false)} disabled={!playing} className="rounded border border-red-300/40 bg-red-500/10 px-3 py-1 text-sm disabled:opacity-40" title="Stop">■</GameButton>
-                        <GameButton onPress={() => void stepForward()} disabled={loading || disabled || (!hasAfter && sliceIndex + 1 >= slices.length)} className="rounded border border-slate-500 bg-slate-900 px-2 py-1 text-sm disabled:opacity-40" title="Next time slice">▶</GameButton>
-                        <GameButton onPress={() => void goToEnd()} disabled={loading || disabled} className="rounded border border-slate-500 bg-slate-900 px-2 py-1 text-sm disabled:opacity-40" title="Go to end">▶|</GameButton>
-                        <GameButton onPress={() => setLoop((value) => !value)} disabled={disabled} className={`rounded border px-2 py-1 text-sm ${loop ? "border-cyan-300 bg-cyan-500/20 text-cyan-100" : "border-slate-600 bg-slate-900 text-slate-400"}`} title="Repeat continuously">↻</GameButton>
+                        <GameButton onPress={() => void goToStart()} disabled={loading || disabled} className="rounded border border-slate-500 bg-slate-900 px-1 text-sm disabled:opacity-40" title="Go to start">|◀</GameButton>
+                        <GameButton onPress={() => void stepBackward()} disabled={loading || disabled || (!hasBefore && sliceIndex <= 0)} className="rounded border border-slate-500 bg-slate-900 px-1 text-sm disabled:opacity-40" title="Previous time slice">◀</GameButton>
+                        <GameButton onPress={() => setPlaying(true)} disabled={loading || disabled || playing || !currentSlice} className="rounded border border-green-300/40 bg-green-500/10 px-2 text-sm disabled:opacity-40" title="Play">▶</GameButton>
+                        <GameButton onPress={() => setPlaying(false)} disabled={!playing} className="rounded border border-red-300/40 bg-red-500/10 px-2 text-sm disabled:opacity-40" title="Stop">■</GameButton>
+                        <GameButton onPress={() => void stepForward()} disabled={loading || disabled || (!hasAfter && sliceIndex + 1 >= slices.length)} className="rounded border border-slate-500 bg-slate-900 px-1 text-sm disabled:opacity-40" title="Next time slice">▶</GameButton>
+                        <GameButton onPress={() => void goToEnd()} disabled={loading || disabled} className="rounded border border-slate-500 bg-slate-900 px-1 text-sm disabled:opacity-40" title="Go to end">▶|</GameButton>
+                        <GameButton onPress={() => setLoop((value) => !value)} disabled={disabled} className={`rounded border px-1 text-sm ${loop ? "border-cyan-300 bg-cyan-500/20 text-cyan-100" : "border-slate-600 bg-slate-900 text-slate-400"}`} title="Repeat continuously">↻</GameButton>
 
-                        <select value={speed} onChange={(event: ChangeEvent<HTMLSelectElement>) => setSpeed(Number(event.target.value))} className="rounded border border-slate-600 bg-slate-950 px-2 py-1 text-xs text-green-100">
+                        <select value={speed} onChange={(event: ChangeEvent<HTMLSelectElement>) => setSpeed(Number(event.target.value))} className="rounded border border-slate-600 bg-slate-950 px-1 text-xs text-green-100">
                             {SPEEDS.map((value) => <option key={value} value={value}>{value}x</option>)}
                         </select>
-                        <select value={toleranceMs} onChange={(event: ChangeEvent<HTMLSelectElement>) => setToleranceMs(Number(event.target.value))} className="rounded border border-slate-600 bg-slate-950 px-2 py-1 text-xs text-green-100" title="Frames within this server-time bucket are one playback slice">
+                        <select value={toleranceMs} onChange={(event: ChangeEvent<HTMLSelectElement>) => setToleranceMs(Number(event.target.value))} className="rounded border border-slate-600 bg-slate-950 px-1 text-xs text-green-100" title="Frames within this server-time bucket are one playback slice">
                             {TOLERANCES.map((value) => <option key={value} value={value}>{value} ms</option>)}
                         </select>
                     </div>
                 </div>
 
-                <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+                <div className="grid gap-1 sm:grid-cols-[1fr_auto]">
                     <div>
+                        <div className="h-2.5 flex justify-between text-[10px] text-slate-500">
+                            <span>{formatTime(progressStart)}</span>
+                            <span className="text-green-200">{formatTime(progressValue)} · {progressPercent.toFixed(1)}%</span>
+                            <span>{formatTime(progressEnd)}</span>
+                        </div>
                         <input
                             type="range"
                             min={progressStart}
@@ -563,15 +564,6 @@ export function SignalReconPlayback({
                             className="w-full accent-green-400"
                             aria-label="Playback position"
                         />
-                        <div className="flex justify-between text-[10px] text-slate-500">
-                            <span>{formatTime(progressStart)}</span>
-                            <span className="text-green-200">{formatTime(progressValue)} · {progressPercent.toFixed(1)}%</span>
-                            <span>{formatTime(progressEnd)}</span>
-                        </div>
-                    </div>
-                    <div className="self-center text-right text-[10px] text-slate-500">
-                        <p>{matchingFrameCount.toLocaleString()} filtered frames</p>
-                        <p>{matchingSliceCount.toLocaleString()} slices at {toleranceMs} ms</p>
                     </div>
                 </div>
 
@@ -601,17 +593,17 @@ export function SignalReconPlayback({
                 </div>
             )}
 
-            <div className="mt-2 grid min-h-0 flex-1 gap-2 lg:grid-cols-[minmax(0,1fr)_320px]">
-                <div className="min-h-0 overflow-auto rounded-xl border border-green-400/20 bg-black/50">
+            <div className="mt-1 grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1fr)_320px]">
+                <div className="min-h-0 border overflow-auto border-green-400/20 bg-black/50">
                     <table className="w-full min-w-[860px] border-collapse text-left text-xs">
                         <thead className="sticky top-0 z-10 bg-emerald-950/95 text-green-100">
                             <tr>
-                                <th className="border-b border-r border-green-300/30 px-2 py-2">Time</th>
-                                <th className="border-b border-r border-green-300/30 px-2 py-2">Hex ID</th>
-                                <th className="border-b border-r border-green-300/30 px-2 py-2">Ln</th>
-                                <th className="border-b border-r border-green-300/30 px-2 py-2">Data · click a byte</th>
-                                <th className="border-b border-r border-green-300/30 px-2 py-2">Label</th>
-                                <th className="border-b border-green-300/30 px-2 py-2">Decoded</th>
+                                <th className="border-b border-r border-green-300/30 px-2 py-1">Time</th>
+                                <th className="border-b border-r border-green-300/30 px-2 py-1">Hex ID</th>
+                                <th className="border-b border-r border-green-300/30 px-2 py-1">Ln</th>
+                                <th className="border-b border-r border-green-300/30 px-2 py-1">Data · click a byte</th>
+                                <th className="border-b border-r border-green-300/30 px-2 py-1">Label</th>
+                                <th className="border-b border-green-300/30 px-2 py-1">Decoded</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -663,14 +655,14 @@ export function SignalReconPlayback({
                     )}
                 </div>
 
-                <aside className="min-h-0 overflow-y-auto rounded-xl border border-cyan-300/20 bg-slate-950/90 p-3">
+                <aside className="min-h-0 border game-ui border-cyan-300/20 bg-slate-950/90 px-2 py-1">
                     <p className="text-[10px] tracking-[0.25em] text-cyan-300">BYTE ROLE REVIEW</p>
                     {!selectedByte ? (
                         <div className="mt-3 rounded-lg border border-slate-700 bg-slate-900/70 p-4 text-xs text-slate-500">
                             Click a byte in the frame table. Changed bytes are cyan. You can then confirm, reject, or mark uncertain for constant, counter/timer, and checksum roles.
                         </div>
                     ) : (
-                        <div className="mt-3 space-y-3">
+                        <div className="mt-3 space-y-2">
                             <div className="rounded-lg border border-green-300/30 bg-green-500/10 p-3">
                                 <p className="font-black text-green-100">
                                     {selectedByte.frame.can_id_hex} / B{selectedByte.byteIndex}
