@@ -7,24 +7,28 @@ const menuItems = [
     label: "START SANDBOX",
     desc: "Load Blue Team base, city chunk, vehicle controls, and physics.",
     screen: "sandbox_setup" as const,
+    link: "sandbox_setup" as const,
     variant: "primary" as const,
   },
   {
     label: "SIGNAL RECON MODE",
     desc: "Baseline, action, validation, record, replay.",
     screen: "signal_recon_setup" as const,
+    link: "signal_recon_setup" as const,
     variant: "warning" as const,
   },
   {
     label: "SWARM COMMAND",
     desc: "Multi-domain vehicle orchestration.",
     screen: "swarm" as const,
+    link: "main" as const,
     variant: "danger" as const,
   },
   {
     label: "SETTINGS",
     desc: "Controls, mobile layout, audio, HUD, and display.",
     screen: "settings" as const,
+    link: "main" as const,
     variant: "secondary" as const,
   },
 ];
@@ -60,7 +64,7 @@ export function MainMenu() {
 
           <div className="min-w-0">
             <p className="text-xs uppercase tracking-[0.3em] text-yellow-300 sm:tracking-[0.45em]">
-              AVENLAB // CYBER S&amp;T DIVISION
+              CYBERSECURITY SCIENCE &amp; TECHNOLOGY
             </p>
 
             <h1 className="mt-3 text-4xl font-black tracking-tight text-cyan-100 sm:text-5xl">
@@ -83,7 +87,7 @@ export function MainMenu() {
             }}
             selected={selectedIndex === index}
             variant={item.variant}
-            onPress={() => startModeLoading(item.screen, `Loading ${item.label}`)}
+            onPress={() => startModeLoading(item.link, `Loading ${item.label}`)}
             onFocus={() => setActiveMenuIndex(index)}
             className="rounded-lg text-center px-2 py-1"
           >

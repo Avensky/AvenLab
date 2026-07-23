@@ -704,10 +704,10 @@ export function SignalReconBrainConsole({
     if (!open) return null;
 
     return (
-        <div className="absolute inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm">
-            <div className="flex h-[92dvh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-green-300/30 bg-slate-950/95 font-mono text-green-100 shadow-2xl shadow-green-500/10 sm:h-[84dvh]">
+        <div className="fixed inset-0 z-50 bg-slate-950">
+            <div className="flex h-dvh w-full flex-col overflow-hidden bg-slate-950 font-mono text-green-100">
                 <div className="shrink-0 border-b border-green-400/20 px-3 py-2">
-                    <div className="flex items-start justify-between gap-3">
+                    <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_minmax(320px,auto)] md:items-start">
                         <div className="min-w-0">
                             <p className="text-[10px] tracking-[0.32em] text-yellow-300 sm:text-xs">AVENLAB // PI BRAIN</p>
                             <h2 className="truncate text-lg font-black text-green-100 sm:text-2xl">{resultModeLabel}</h2>
@@ -716,7 +716,7 @@ export function SignalReconBrainConsole({
                             </p>
                         </div>
 
-                        <div className="flex shrink-0 flex-wrap justify-end gap-1">
+                        <div className="grid shrink-0 grid-cols-3 gap-1 sm:grid-cols-5">
                             <GameButton onPress={onAnalyze} disabled={analyzing || !sessionId} className="rounded-lg border border-yellow-300/40 bg-yellow-500/10 px-2 py-1 text-[10px] font-bold text-yellow-100 hover:bg-yellow-400/20 disabled:opacity-40">
                                 {analyzing ? "ANALYZING" : "QUICK ID"}
                             </GameButton>
@@ -729,7 +729,7 @@ export function SignalReconBrainConsole({
                             <GameButton onPress={onToggleLlm} disabled={analyzing} className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${useLlm ? "border-green-300/40 bg-green-500/10 text-green-100" : "border-slate-600 bg-slate-900 text-slate-400"}`}>LLM {useLlm ? "ON" : "OFF"}</GameButton>
                             <GameButton onPress={onToggleEmbeddings} disabled={analyzing} className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${useEmbeddings ? "border-cyan-300/40 bg-cyan-500/10 text-cyan-100" : "border-slate-600 bg-slate-900 text-slate-400"}`}>MEM {useEmbeddings ? "ON" : "OFF"}</GameButton>
                             <GameButton onPress={onToggleAutoAnalyze} disabled={analyzing} className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${autoAnalyze ? "border-cyan-300/40 bg-cyan-500/10 text-cyan-100" : "border-slate-600 bg-slate-900 text-slate-400"}`}>AUTO {autoAnalyze ? "ON" : "OFF"}</GameButton>
-                            <GameButton onPress={onClose} className="rounded-lg border border-slate-600 bg-slate-900 px-2 py-1 text-[10px] font-bold text-slate-100 hover:bg-slate-800">CLOSE</GameButton>
+                            <GameButton onPress={onClose} className="rounded-lg border border-slate-500 bg-slate-900 px-2 py-1 text-[10px] font-bold text-slate-100 hover:bg-slate-800">BACK</GameButton>
                         </div>
                     </div>
 

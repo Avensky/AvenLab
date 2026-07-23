@@ -91,7 +91,7 @@ type SavedAnalysisResponse = {
 };
 
 const PANELS: Array<{ id: MissionPanel; label: string }> = [
-    { id: "game", label: "PLAY" },
+    { id: "game", label: "START" },
     { id: "steps", label: "STEPS" },
     { id: "protocol", label: "PROTOCOL" },
     { id: "details", label: "DETAILS" },
@@ -354,13 +354,63 @@ export function SignalReconMission({
             ? Math.max(1, Math.ceil(timeRemainingMs / 1000))
             : null;
 
-    const missionProgress = steps.length
-        ? Math.min(
+    const missionProgress = useMemo(() => {
+        if (!steps.length || activePhase === "idle") return 0;
+
+        const enabledPhases =
+            selectedProtocol?.enabled_phases ?? ALL_RECON_PHASES;
+        const totalMissionMs = steps.reduce(
+            (total, step) => total + getStepTotalMs(step, enabledPhases),
+            0,
+        );
+        if (totalMissionMs <= 0) {
+            return activePhase === "complete" ? 1 : 0;
+        }
+
+        const stepIndex = Math.min(
+            Math.max(activeStepIndex, 0),
+            steps.length - 1,
+        );
+        const elapsedBeforeStepMs = steps
+            .slice(0, stepIndex)
+            .reduce(
+                (total, step) => total + getStepTotalMs(step, enabledPhases),
+                0,
+            );
+        const currentStep = steps[stepIndex];
+        const currentStepTotalMs = getStepTotalMs(
+            currentStep,
+            enabledPhases,
+        );
+
+        let currentStepElapsedMs = 0;
+        if (activePhase === "complete") {
+            currentStepElapsedMs = currentStepTotalMs;
+        } else {
+            for (const phase of enabledPhases) {
+                const phaseMs = Math.max(timingValue(currentStep, phase), 0);
+                if (phase === activePhase) {
+                    currentStepElapsedMs += phaseMs * phaseProgress;
+                    break;
+                }
+                currentStepElapsedMs += phaseMs;
+            }
+        }
+
+        return Math.min(
             1,
-            (activeStepIndex + (activePhase === "complete" ? 1 : phaseProgress)) /
-            steps.length,
-        )
-        : 0;
+            Math.max(
+                0,
+                (elapsedBeforeStepMs + currentStepElapsedMs) / totalMissionMs,
+            ),
+        );
+    }, [
+        activePhase,
+        activeStepIndex,
+        phaseProgress,
+        selectedProtocol?.enabled_phases,
+        steps,
+    ]);
 
 
     const captureKind = selectedMode === "simulation" || selectedInterface === "vcan0" ? "simulation" : "live";
@@ -434,6 +484,34 @@ export function SignalReconMission({
             ...current,
             `${new Date().toLocaleTimeString()} ${line}`,
         ].slice(-80));
+    };
+
+    const startFreshMissionSession = async () => {
+        const currentSessionId =
+            useSignalReconStore.getState().activeSessionId ?? activeSessionId;
+
+        if (currentSessionId) {
+            setLastAnalyzedSessionId(currentSessionId);
+            await stopSession({
+                ui_event: "run_all_new_session",
+                auto_finalize: true,
+            });
+            appendBrainLog(
+                `[capture] finalized partial session ${shortSessionId(currentSessionId)} before RUN ALL`,
+            );
+        }
+
+        const sessionId = await startSession({
+            busInterface: selectedInterface,
+            busMode: selectedMode,
+        });
+        setSelectedSavedSessionId(null);
+        setBrainAnalysis(null);
+        setLastAnalyzedSessionId(sessionId);
+        appendBrainLog(
+            `[capture] RUN ALL started fresh session ${shortSessionId(sessionId)}`,
+        );
+        return sessionId;
     };
 
     const resolveAnalysisSessionId = (sessionIdOverride?: string) =>
@@ -1062,7 +1140,7 @@ export function SignalReconMission({
         setActivePanel("game");
 
         try {
-            const sessionId = await ensureSession();
+            const sessionId = await startFreshMissionSession();
             await runSelectedMission();
             setLastAnalyzedSessionId(sessionId);
             await stopSession({
@@ -1196,7 +1274,7 @@ export function SignalReconMission({
                         <p className=" text-[10px] tracking-[0.3em] text-green-300 sm:text-xs">
                             {phaseLabel(activePhase)}
                         </p>
-                        <h3 className="text-4xl font-black text-green-100 sm:text-6xl   ">
+                        <h3 className="text-4xl font-black text-green-100 sm:text-6xl   ">  
                             HOLD STILL
                         </h3>
                         <p className="text-sm text-slate-300 sm:text-base">
@@ -1248,21 +1326,13 @@ export function SignalReconMission({
     );
 
     const renderStepsPanel = () => (
-        <div className="h-full min-h-0 overflow-y-auto p-3 sm:p-5">
-            <div className="mb-3 flex items-center justify-between text-xs">
+        <div className="h-full min-h-0 overflow-y-auto px-2 pb-2">
+            <div className="mb-1 flex items-center justify-between text-xs">
                 <span className="text-yellow-300">MISSION STEPS</span>
                 <span className="text-slate-400">
                     STEP {activeStepNumber} / {steps.length}
                 </span>
             </div>
-
-            <div className="mb-4 h-3 overflow-hidden rounded-full bg-slate-800">
-                <div
-                    className="h-full rounded-full bg-green-400 transition-all"
-                    style={{ width: `${missionProgress * 100}%` }}
-                />
-            </div>
-
             <div className="space-y-2 pr-1">
                 {steps.map((step, index) => {
                     const selected = displayStep?.id === step.id;
@@ -1273,7 +1343,7 @@ export function SignalReconMission({
                             key={step.id}
                             disabled={isRunning || busy}
                             onPress={() => handleSelectStep(index)}
-                            className={`w-full rounded-xl border p-3 text-left transition disabled:cursor-not-allowed disabled:opacity-40 ${selected
+                            className={`w-full rounded-md border p-3 text-left transition disabled:cursor-not-allowed disabled:opacity-40 ${selected
                                 ? "border-green-300 bg-green-500/15 text-green-100"
                                 : "border-slate-700 bg-slate-900/80 text-slate-300 hover:bg-slate-800"
                                 }`}
@@ -1353,17 +1423,14 @@ export function SignalReconMission({
         };
 
         return (
-            <div className="game-ui">
-                <div className="bg-cyan-500/5 p-2">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="game-ui flex flex-col gap-1">
+                <div className="px-2">
+                    <div className="flex flex-wrap items-start justify-between gap-1">
                         <div>
                             <p className="text-[10px] tracking-[0.22em] text-cyan-300">
                                 RUNTIME MISSION PROTOCOL
                             </p>
-                            <h3 className="text-xl font-black text-green-100">
-                                {selectedMission.mission_code} · {selectedMission.title}
-                            </h3>
-                            <p className="mt-1 text-xs text-slate-400">
+                            <p className=" text-xs text-slate-400">
                                 Changes save locally and apply immediately to the next step.
                                 Active runs must be cancelled before editing.
                             </p>
@@ -1375,17 +1442,17 @@ export function SignalReconMission({
                                 )
                             }
                             disabled={isRunning}
-                            className="rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-xs font-bold text-slate-200 hover:bg-slate-800 disabled:opacity-40"
+                            className="rounded-sm border border-slate-600 bg-slate-900 px-1.5 py-0.5 text-xs font-bold text-slate-200 hover:bg-slate-800 disabled:opacity-40"
                         >
                             RESET DEFAULT
                         </GameButton>
                     </div>
 
-                    <div className="mt-4">
+                    <div className="mt-0.5">
                         <p className="text-[10px] tracking-[0.18em] text-slate-500">
                             ENABLED PHASES
                         </p>
-                        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        <div className="grid grid-cols-2 gap-1 sm:grid-cols-4">
                             {ALL_RECON_PHASES.map((phase) => {
                                 const enabled =
                                     selectedProtocol.enabled_phases.includes(
@@ -1394,7 +1461,7 @@ export function SignalReconMission({
                                 return (
                                     <label
                                         key={phase}
-                                        className={`flex items-center gap-2 rounded-lg border p-2 text-xs ${
+                                        className={`flex items-center gap-2 rounded-sm border px-1.5 py-0.5 text-xs ${
                                             enabled
                                                 ? "border-green-300/40 bg-green-500/10 text-green-100"
                                                 : "border-slate-700 bg-slate-950 text-slate-500"
@@ -1424,8 +1491,8 @@ export function SignalReconMission({
                     </div>
                 </div>
 
-                <div className="rounded-xl border border-green-400/20 bg-slate-950/80 p-4">
-                    <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                <div className="bg-slate-950/80">
+                    <div className="mb-1 flex flex-wrap items-center justify-between gap-3 px-2">
                         <div>
                             <p className="text-[10px] tracking-[0.18em] text-slate-500">
                                 CURRENT STEP TIMING
@@ -1448,7 +1515,7 @@ export function SignalReconMission({
 
                     {displayStep ? (
                         <>
-                            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                            <div className="grid gap-2 px-2 sm:grid-cols-2 lg:grid-cols-4">
                                 {ALL_RECON_PHASES.map((phase) => {
                                     const key = `${selectedMission.mission_code}:${displayStep.id}:${phase}`;
                                     const seconds =
@@ -1457,7 +1524,7 @@ export function SignalReconMission({
                                     return (
                                         <label
                                             key={phase}
-                                            className={`rounded-lg border p-2 ${
+                                            className={`rounded-sm border p-1 ${
                                                 selectedProtocol.enabled_phases.includes(
                                                     phase,
                                                 )
@@ -1491,14 +1558,14 @@ export function SignalReconMission({
                                                 onBlur={() =>
                                                     commitTiming(phase, key)
                                                 }
-                                                className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-green-100 outline-none focus:border-green-300 disabled:opacity-40"
+                                                className="mt-1 w-full rounded-sm border border-slate-700 bg-slate-950 px-1.5 py-0.5 text-xs text-green-100 outline-none focus:border-green-300 disabled:opacity-40"
                                             />
                                         </label>
                                     );
                                 })}
                             </div>
 
-                            <div className="mt-3 flex flex-wrap gap-2">
+                            <div className="mt-1 flex flex-wrap gap-2 px-2">
                                 <span className="self-center text-[10px] tracking-[0.15em] text-slate-500">
                                     CAPTURE PRESETS
                                 </span>
@@ -1516,7 +1583,7 @@ export function SignalReconMission({
                                                 },
                                             )
                                         }
-                                        className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-1.5 text-[10px] font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:opacity-40"
+                                        className="rounded-sm border border-cyan-300/30 bg-cyan-500/10 px-1.5 py-0.5 text-[10px] font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:opacity-40"
                                     >
                                         {preset.label}
                                     </GameButton>
@@ -1530,8 +1597,8 @@ export function SignalReconMission({
                     )}
                 </div>
 
-                <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/5 p-4">
-                    <div className="mb-3">
+                <div className="border border-cyan-300/25 bg-cyan-500/5 px-2 py-1">
+                    <div>
                         <p className="text-[10px] tracking-[0.18em] text-cyan-200">
                             CURRENT STEP ANALYSIS CONTRACT
                         </p>
@@ -1541,7 +1608,7 @@ export function SignalReconMission({
                     </div>
 
                     {displayStep ? (
-                        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+                        <div className="grid sm:grid-cols-2 lg:grid-cols-5">
                             <label>
                                 <span className="text-[9px] text-slate-500">ANALYZER</span>
                                 <select
@@ -1560,7 +1627,7 @@ export function SignalReconMission({
                                             },
                                         )
                                     }
-                                    className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-slate-200"
+                                    className="w-full rounded-sm border border-slate-700 bg-slate-950 px-1.5 py-0.5 text-xs text-slate-200"
                                 >
                                     {ANALYZER_PROFILES.map((option) => (
                                         <option key={option.value} value={option.value}>
@@ -1593,7 +1660,7 @@ export function SignalReconMission({
                                         );
                                     }}
                                     placeholder="0, 25, 50, 70..."
-                                    className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-slate-200"
+                                    className="mt-1 w-full rounded-sm border border-slate-700 bg-slate-950 px-1.5 y-0.5 text-xs text-slate-200"
                                 />
                             </label>
 
@@ -1614,7 +1681,7 @@ export function SignalReconMission({
                                         )
                                     }
                                     placeholder="percent, rpm, mph"
-                                    className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-slate-200"
+                                    className="mt-1 w-full rounded-sm border border-slate-700 bg-slate-950 px-1.5 py-0.5 text-xs text-slate-200"
                                 />
                             </label>
 
@@ -1636,7 +1703,7 @@ export function SignalReconMission({
                                             },
                                         )
                                     }
-                                    className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-slate-200"
+                                    className="mt-1 w-full rounded-sm border border-slate-700 bg-slate-950 px-1.5 py-0.5 text-xs text-slate-200"
                                 >
                                     {EXPECTED_DIRECTIONS.map((option) => (
                                         <option key={option.value} value={option.value}>
@@ -1669,7 +1736,7 @@ export function SignalReconMission({
                                         );
                                     }}
                                     placeholder="usually 0"
-                                    className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-slate-200"
+                                    className="mt-1 w-full rounded-sm border border-slate-700 bg-slate-950 px-1.5 py-0.5 text-xs text-slate-200"
                                 />
                             </label>
                         </div>
@@ -1677,13 +1744,13 @@ export function SignalReconMission({
                         <p className="text-sm text-slate-500">Select a step to edit its analysis contract.</p>
                     )}
 
-                    <p className="mt-3 text-[10px] text-cyan-100/70">
+                    <p className="mt-1 text-[10px] text-cyan-100/70">
                         Boolean missions rank an exact bit. Ordinal and continuous missions rank exact 8/16/24/32-bit fields by marker level, repeatability, plateau stability, return state, and outside-action drift.
                     </p>
                 </div>
 
-                <div className="rounded-xl border border-purple-300/25 bg-purple-500/5 p-4">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className=" border border-purple-300/25 bg-purple-500/5 px-2 py-2">
+                    <div className="flex flex-wrap items-start justify-between gap-1">
                         <div>
                             <p className="text-[10px] tracking-[0.18em] text-purple-200">
                                 MISSION MARKERS
@@ -1702,19 +1769,19 @@ export function SignalReconMission({
                                     selectedMission.mission_code,
                                 )
                             }
-                            className="rounded-lg border border-purple-300/40 bg-purple-500/10 px-3 py-2 text-xs font-bold text-purple-100 hover:bg-purple-400/20 disabled:opacity-40"
+                            className="rounded-sm border border-purple-300/40 bg-purple-500/10 px-1.5 py-0.5 text-xs font-bold text-purple-100 hover:bg-purple-400/20 disabled:opacity-40"
                         >
                             + ADD MARKER
                         </GameButton>
                     </div>
 
-                    <div className="mt-3 space-y-3">
+                    <div className="mt-2">
                         {selectedProtocol.markers.map((marker) => (
                             <div
                                 key={marker.id}
-                                className="rounded-xl border border-slate-700 bg-slate-950/80 p-3"
+                                className="rounded-sm border border-slate-700 bg-slate-950/80 p-2"
                             >
-                                <div className="grid gap-2 lg:grid-cols-[90px_150px_1fr_150px_auto]">
+                                <div className="grid gap-1 lg:grid-cols-[90px_150px_1fr_150px_auto]">
                                     <label className="flex items-center gap-2 text-xs text-slate-300">
                                         <input
                                             type="checkbox"
@@ -1753,7 +1820,7 @@ export function SignalReconMission({
                                                     },
                                                 )
                                             }
-                                            className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-slate-200"
+                                            className="mt-1 w-full rounded-sm border border-slate-700 bg-slate-950 px-1.5 py-0.5 text-xs text-slate-200"
                                         >
                                             {MARKER_TRIGGERS.map((option) => (
                                                 <option
@@ -1783,7 +1850,7 @@ export function SignalReconMission({
                                                     },
                                                 )
                                             }
-                                            className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-slate-200"
+                                            className="mt-1 w-full rounded-sm border border-slate-700 bg-slate-950 px-1.5 py-0.5 text-xs text-slate-200"
                                         />
                                     </label>
 
@@ -1805,7 +1872,7 @@ export function SignalReconMission({
                                                     },
                                                 )
                                             }
-                                            className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-slate-200"
+                                            className="mt-1 w-full rounded-sm border border-slate-700 bg-slate-950 px-1.5 py-0.5 text-xs text-slate-200"
                                         >
                                             {MARKER_LABEL_SOURCES.map(
                                                 (option) => (
@@ -1828,7 +1895,7 @@ export function SignalReconMission({
                                                 marker.id,
                                             )
                                         }
-                                        className="self-end rounded-lg border border-red-300/40 bg-red-500/10 px-3 py-2 text-xs font-bold text-red-100 hover:bg-red-400/20 disabled:opacity-40"
+                                        className="self-end rounded-sm border border-red-300/40 bg-red-500/10 px-1.5 py-0.5 text-xs font-bold text-red-100 hover:bg-red-400/20 disabled:opacity-40"
                                     >
                                         REMOVE
                                     </GameButton>
@@ -1895,9 +1962,9 @@ export function SignalReconMission({
     };
 
     const renderDetailsPanel = () => (
-        <div className="h-full min-h-0 space-y-4 overflow-y-auto p-3 sm:p-5">
-            <div className="rounded-xl border border-green-400/20 bg-slate-950/80 p-4">
-                <div className="mb-3 flex items-center justify-between text-xs">
+        <div className="h-full space-y-2 overflow-y-auto px-2 py-1">
+            <div className="rounded-sm border border-green-400/20 bg-slate-950/80 p-2">
+                <div className=" flex items-center justify-between text-xs">
                     <span className="text-yellow-300">ACTIVE STEP</span>
                     <span className="text-slate-500">
                         {displayStep?.step_code ?? "none"}
@@ -1905,7 +1972,7 @@ export function SignalReconMission({
                 </div>
 
                 {displayStep ? (
-                    <div className="space-y-3 text-sm text-slate-300">
+                    <div className="text-sm text-slate-300">
                         <h3 className="text-2xl font-black text-green-100">
                             {displayStep.label}
                         </h3>
@@ -1915,7 +1982,7 @@ export function SignalReconMission({
                         <p>
                             {displayStep.instruction ?? "Follow the selected mission prompt."}
                         </p>
-                        <div className="grid grid-cols-2 gap-2 text-xs text-slate-500 sm:grid-cols-4">
+                        <div className="grid grid-cols-2 gap-2 text-xs text-slate-500">
                             <p>baseline: {formatMs(displayStep.baseline_ms ?? 0)}</p>
                             <p>countdown: {formatMs(displayStep.countdown_ms ?? 0)}</p>
                             <p>action: {formatMs(displayStep.action_ms ?? 0)}</p>
@@ -1927,12 +1994,12 @@ export function SignalReconMission({
                 )}
             </div>
 
-            <div className="rounded-xl border border-green-400/20 bg-slate-950/80 p-4 text-sm text-slate-300">
-                <p className="mb-1 text-xs text-yellow-300">MISSION</p>
+            <div className="rounded-sm border border-green-400/20 bg-slate-950/80 px-2 py-2 text-sm text-slate-300">
+                <p className="text-xs text-yellow-300">MISSION</p>
                 <h3 className="text-xl font-black text-green-100">
                     {selectedMission.title}
                 </h3>
-                <p className="mt-2 text-slate-400">target: {selectedMission.target}</p>
+                <p className=" text-slate-400">target: {selectedMission.target}</p>
                 <p className="text-slate-500">code: {selectedMission.mission_code}</p>
             </div>
         </div>
@@ -2090,7 +2157,7 @@ export function SignalReconMission({
 
 
     return (
-        <div className="game-ui h-full relative flex w-full flex-col overflow-hidden rounded-2xl bg-[#020617] text-green-100">
+        <div className="game-ui pb-4 h-full relative flex w-full flex-col overflow-hidden rounded-2xl bg-[#020617] text-green-100">
             <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(34,197,94,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(34,197,94,0.05)_1px,transparent_1px)] bg-[size:32px_32px]" />
 
             <div className="game-ui h-full relative z-10 flex justify-between w-full flex-col overflow-hidden font-mono">
@@ -2168,7 +2235,7 @@ export function SignalReconMission({
                         {displayStep?.label ?? selectedMission.target} · {vehicleSlug} · {confidenceSummary}
                     </p>
 
-                    <div className="mt-1  gap-1 flex">
+                    <div className="mt-1 gap-1 flex">
                         {PANELS.map((panel) => (
                             <GameButton
                                 key={panel.id}
@@ -2184,10 +2251,10 @@ export function SignalReconMission({
                         ))}
                     </div>
 
-                    {activePanel === "game" && 
-                        <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-800">
+                    {(activePanel === "game" || activePanel === "steps") && 
+                        <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-800">
                             <div
-                                className="h-96 rounded-full bg-green-400 transition-all"
+                                className="h-full w-full rounded-full bg-green-400 transition-all"
                                 style={{ width: `${missionProgress * 100}%` }}
                             />
                         </div>
@@ -2209,7 +2276,7 @@ export function SignalReconMission({
                     {activePanel === "session" && renderSessionPanel()}
                 </div>
 
-                <div className="grid sm:grid-cols-5 grid-cols-3 gap-2 px-2">
+                <div className="grid grid-cols-3 gap-2 px-2">
                     {isRunning ? (
                         <GameButton
                             onPress={handleCancelRun}
@@ -2243,7 +2310,7 @@ export function SignalReconMission({
                         RUN ALL
                     </GameButton>
 
-                    <GameButton
+                    {/* <GameButton
                         onPress={() => void handleQuickAnalyze(undefined, "manual")}
                         disabled={brainAnalyzing || !activeSessionId}
                         className="rounded-sm border border-cyan-300/40 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-40 sm:px-2 sm:py-1 sm:text-sm"
@@ -2257,7 +2324,7 @@ export function SignalReconMission({
                         className="rounded-sm border border-cyan-300/40 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-40 sm:px-2 sm:py-1 sm:text-sm"
                     >
                         LIST
-                    </GameButton>
+                    </GameButton> */}
                 </div>
 
             </div>

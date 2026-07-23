@@ -13,6 +13,16 @@ type PlaybackDirection = "start" | "end" | "next" | "prev" | "nearest";
 type ValidationStatus = "positive" | "negative" | "uncertain";
 type PlaybackRole = "constant" | "rolling_counter" | "checksum_candidate";
 
+type PlaybackMarker = {
+    id: string;
+    timestamp_ms: number;
+    marker_type: string;
+    label?: string | null;
+    step_code?: string | null;
+    mission_code?: string | null;
+    metadata?: Record<string, unknown>;
+};
+
 type PlaybackMeta = {
     ok: boolean;
     session_id: string;
@@ -25,6 +35,9 @@ type PlaybackMeta = {
     first_timestamp_ms: number;
     last_timestamp_ms: number;
     duration_ms: number;
+    marker_count?: number;
+    markers?: PlaybackMarker[];
+    observed_ids?: number[];
     timestamp_authority: "server" | string;
 };
 
@@ -110,6 +123,8 @@ type SignalReconPlaybackProps = {
 const SPEEDS = [0.1, 0.25, 0.5, 1, 2, 5, 10, 25, 50, 100];
 const TOLERANCES = [1, 2, 5, 10, 25, 50, 100, 250, 500, 1000];
 const PAGE_SLICES = 180;
+const BYTE_CELL_CLASS =
+    "inline-flex h-6 w-8 shrink-0 items-center justify-center rounded border px-0.5 py-0.5 font-black";
 
 const ROLE_OPTIONS: Array<{
     kind: PlaybackRole;
@@ -143,6 +158,11 @@ function byteHex(value: number | undefined) {
     return value.toString(16).toUpperCase().padStart(2, "0");
 }
 
+function canIdHex(value: number) {
+    const width = value <= 0x7ff ? 3 : 8;
+    return `0x${value.toString(16).toUpperCase().padStart(width, "0")}`;
+}
+
 function shortSessionId(sessionId: string | null) {
     if (!sessionId) return "none";
     if (sessionId.length <= 14) return sessionId;
@@ -154,6 +174,54 @@ function statusTone(status: SavedHypothesis["validation_status"] | undefined) {
     if (status === "negative") return "border-red-300/50 bg-red-500/15 text-red-100";
     if (status === "uncertain") return "border-yellow-300/50 bg-yellow-500/15 text-yellow-100";
     return "border-slate-600 bg-slate-900 text-slate-400";
+}
+
+function markerTone(markerType: string) {
+    const normalized = markerType.trim().toLowerCase().replace(/-/g, "_");
+    if (["action_start", "action", "target_action", "target_event"].includes(normalized)) {
+        return "border-yellow-200 bg-yellow-400 text-slate-950";
+    }
+    if (normalized.includes("baseline")) {
+        return "border-cyan-200 bg-cyan-400 text-slate-950";
+    }
+    if (normalized.includes("countdown")) {
+        return "border-slate-300 bg-slate-400 text-slate-950";
+    }
+    if (normalized.includes("capture")) {
+        return "border-green-200 bg-green-400 text-slate-950";
+    }
+    if (normalized.includes("complete")) {
+        return "border-purple-200 bg-purple-400 text-slate-950";
+    }
+    if (normalized.includes("cancel")) {
+        return "border-red-200 bg-red-400 text-slate-950";
+    }
+    return "border-slate-300 bg-slate-500 text-white";
+}
+
+function markerTitle(marker: PlaybackMarker) {
+    return [
+        marker.step_code,
+        marker.label,
+        marker.marker_type,
+    ].find((value) => typeof value === "string" && value.trim()) ?? "MARKER";
+}
+
+function markerPercent(
+    marker: PlaybackMarker,
+    startMs: number,
+    endMs: number,
+) {
+    if (endMs <= startMs) return 0;
+    return Math.min(
+        100,
+        Math.max(0, ((marker.timestamp_ms - startMs) / (endMs - startMs)) * 100),
+    );
+}
+
+function bitString(value: number | undefined) {
+    if (typeof value !== "number") return "--------";
+    return value.toString(2).padStart(8, "0");
 }
 
 function decodedText(value: unknown) {
@@ -175,9 +243,8 @@ export function SignalReconPlayback({
     const [sliceIndex, setSliceIndex] = useState(0);
     const [hasBefore, setHasBefore] = useState(false);
     const [hasAfter, setHasAfter] = useState(false);
-    // const [matchingFrameCount, setMatchingFrameCount] = useState(0);
-    // const [matchingSliceCount, setMatchingSliceCount] = useState(0);
-    const [firstBucketMs, setFirstBucketMs] = useState<number | null>(null);
+    const [matchingFrameCount, setMatchingFrameCount] = useState(0);
+    const [matchingSliceCount, setMatchingSliceCount] = useState(0);
     const [lastBucketMs, setLastBucketMs] = useState<number | null>(null);
 
     const [playing, setPlaying] = useState(false);
@@ -185,7 +252,9 @@ export function SignalReconPlayback({
     const [speed, setSpeed] = useState(1);
     const [toleranceMs, setToleranceMs] = useState(1);
 
-    const [idFilter, setIdFilter] = useState("");
+    const [selectedCanIds, setSelectedCanIds] = useState<number[]>([]);
+    const [idFilterSearch, setIdFilterSearch] = useState("");
+    const [idMenuOpen, setIdMenuOpen] = useState(false);
     const [search, setSearch] = useState("");
     const [byteIndex, setByteIndex] = useState("");
     const [byteValue, setByteValue] = useState("");
@@ -200,23 +269,94 @@ export function SignalReconPlayback({
         string,
         { validationStatus: ValidationStatus; state: "saving" | "saved" | "error" }
     >>({});
+    const [activeMarkerId, setActiveMarkerId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     const requestSequence = useRef(0);
+    const idMenuRef = useRef<HTMLDivElement | null>(null);
     const currentSlice = slices[sliceIndex] ?? null;
+    const markers = useMemo(
+        () => [...(meta?.markers ?? [])].sort(
+            (left, right) => left.timestamp_ms - right.timestamp_ms,
+        ),
+        [meta?.markers],
+    );
+    const activeMarker = markers.find((marker) => marker.id === activeMarkerId) ?? null;
+    const activeMarkerIndex = activeMarker
+        ? markers.findIndex((marker) => marker.id === activeMarker.id)
+        : -1;
+    const observedCanIds = useMemo(() => {
+        const fromMeta = meta?.observed_ids ?? [];
+        if (fromMeta.length) return [...fromMeta].sort((a, b) => a - b);
+
+        return Array.from(
+            new Set(
+                slices.flatMap((slice) =>
+                    slice.frames.map((frame) => frame.can_id),
+                ),
+            ),
+        ).sort((a, b) => a - b);
+    }, [meta?.observed_ids, slices]);
+    const visibleCanIdOptions = useMemo(() => {
+        const query = idFilterSearch.trim().toLowerCase();
+        if (!query) return observedCanIds;
+
+        return observedCanIds.filter((canId) =>
+            canIdHex(canId).toLowerCase().includes(query)
+            || String(canId).includes(query),
+        );
+    }, [idFilterSearch, observedCanIds]);
+
+    useEffect(() => {
+        if (!idMenuOpen) return;
+
+        const closeOnOutsidePointer = (event: PointerEvent) => {
+            const target = event.target;
+            if (
+                target instanceof Node
+                && !idMenuRef.current?.contains(target)
+            ) {
+                setIdMenuOpen(false);
+            }
+        };
+
+        const closeOnEscape = (event: KeyboardEvent) => {
+            if (event.key === "Escape") {
+                setIdMenuOpen(false);
+            }
+        };
+
+        document.addEventListener("pointerdown", closeOnOutsidePointer);
+        document.addEventListener("keydown", closeOnEscape);
+
+        return () => {
+            document.removeEventListener("pointerdown", closeOnOutsidePointer);
+            document.removeEventListener("keydown", closeOnEscape);
+        };
+    }, [idMenuOpen]);
 
     const queryString = useMemo(() => {
         const params = new URLSearchParams();
         params.set("tolerance_ms", String(toleranceMs));
         params.set("slice_limit", String(PAGE_SLICES));
-        if (idFilter.trim()) params.set("id_filter", idFilter.trim());
+        if (selectedCanIds.length) {
+            params.set("id_filter", selectedCanIds.join(","));
+        }
         if (search.trim()) params.set("search", search.trim());
         if (byteIndex !== "") params.set("byte_index", byteIndex);
         if (byteValue.trim()) params.set("byte_value", byteValue.trim());
         if (deltasOnly) params.set("deltas_only", "true");
         if (byteChangedOnly) params.set("byte_changed_only", "true");
         return params;
-    }, [byteChangedOnly, byteIndex, byteValue, deltasOnly, idFilter, search, toleranceMs]);
+    }, [
+        byteChangedOnly,
+        byteIndex,
+        byteValue,
+        deltasOnly,
+        search,
+        selectedCanIds,
+        toleranceMs,
+    ]);
 
     const loadHypotheses = useCallback(async () => {
         if (!sessionId) {
@@ -293,9 +433,8 @@ export function SignalReconPlayback({
                 : 0);
             setHasBefore(Boolean(data.has_before));
             setHasAfter(Boolean(data.has_after));
-            // setMatchingFrameCount(data.matching_frame_count ?? 0);
-            // setMatchingSliceCount(data.matching_slice_count ?? 0);
-            setFirstBucketMs(data.first_bucket_ms);
+            setMatchingFrameCount(data.matching_frame_count ?? 0);
+            setMatchingSliceCount(data.matching_slice_count ?? 0);
             setLastBucketMs(data.last_bucket_ms);
             setSelectedByte(null);
         } catch (err) {
@@ -315,6 +454,10 @@ export function SignalReconPlayback({
             setSliceIndex(0);
             setSelectedByte(null);
             setRoleFeedback({});
+            setActiveMarkerId(null);
+            setSelectedCanIds([]);
+            setIdFilterSearch("");
+            setIdMenuOpen(false);
             setError(null);
             if (!sessionId) {
                 setMeta(null);
@@ -349,6 +492,22 @@ export function SignalReconPlayback({
         setPlaying(false);
         await loadPage("end");
     }, [loadPage]);
+
+    const stopPlayback = useCallback(async () => {
+        setPlaying(false);
+        setActiveMarkerId(null);
+        setSelectedByte(null);
+        await loadPage("start");
+    }, [loadPage]);
+
+    const toggleCanId = (canId: number) => {
+        setPlaying(false);
+        setSelectedCanIds((current) =>
+            current.includes(canId)
+                ? current.filter((value) => value !== canId)
+                : [...current, canId].sort((a, b) => a - b),
+        );
+    };
 
     const stepForward = useCallback(async () => {
         if (!currentSlice) {
@@ -400,20 +559,63 @@ export function SignalReconPlayback({
         return () => window.clearTimeout(timer);
     }, [currentSlice, disabled, loading, playing, sliceIndex, slices, speed, stepForward]);
 
-    const progressStart = meta?.first_timestamp_ms ?? firstBucketMs ?? 0;
-    const progressEnd = meta?.last_timestamp_ms ?? lastBucketMs ?? progressStart;
+    // Frame capture can begin after the session/marker clock starts. Anchoring
+    // the range at the first frame compresses every early marker toward the
+    // left edge. Keep frames, markers, and the seek control in the same
+    // server-issued session-elapsed domain instead.
+    const progressStart = 0;
+    const progressEnd = Math.max(
+        meta?.duration_ms ?? 0,
+        meta?.last_timestamp_ms ?? 0,
+        lastBucketMs ?? 0,
+        markers[markers.length - 1]?.timestamp_ms ?? 0,
+        1,
+    );
     const progressValue = currentSlice?.bucket_ms ?? progressStart;
     const progressPercent = progressEnd > progressStart
-        ? ((progressValue - progressStart) / (progressEnd - progressStart)) * 100
+        ? Math.min(
+            100,
+            Math.max(
+                0,
+                ((progressValue - progressStart) / (progressEnd - progressStart)) * 100,
+            ),
+        )
         : 0;
+    const markerOffsetMs = activeMarker && currentSlice
+        ? currentSlice.bucket_ms - activeMarker.timestamp_ms
+        : null;
+    const currentChangedFrames = currentSlice?.frames.filter((frame) => frame.changed).length ?? 0;
+    const currentChangedBytes = currentSlice?.frames.reduce(
+        (total, frame) => total + frame.delta_positions.length,
+        0,
+    ) ?? 0;
 
     const seek = async (value: number) => {
         setPlaying(false);
         await loadPage("nearest", value);
     };
 
+    const seekToMarker = async (marker: PlaybackMarker) => {
+        setActiveMarkerId(marker.id);
+        setSelectedByte(null);
+        await seek(marker.timestamp_ms);
+    };
+
+    const stepMarker = async (direction: -1 | 1) => {
+        if (!markers.length) return;
+        const nextIndex = activeMarkerIndex < 0
+            ? (direction > 0 ? 0 : markers.length - 1)
+            : Math.min(
+                markers.length - 1,
+                Math.max(0, activeMarkerIndex + direction),
+            );
+        await seekToMarker(markers[nextIndex]);
+    };
+
     const clearFilters = () => {
-        setIdFilter("");
+        setSelectedCanIds([]);
+        setIdFilterSearch("");
+        setIdMenuOpen(false);
         setSearch("");
         setByteIndex("");
         setByteValue("");
@@ -523,97 +725,276 @@ export function SignalReconPlayback({
 
     return (
         <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[#020617] font-mono text-green-100">
-            <div className="shrink-0 border border-green-400/20 bg-black/60 px-2 py-1">
-                <div className="flex flex-wrap items-center justify-between">
-                
-                    <p className="text-xs text-slate-400">
-                        {shortSessionId(sessionId)} · {meta?.frame_count.toLocaleString() ?? 0} frames · {toleranceMs} ms · {meta?.distinct_ids ?? 0} IDs · {meta?.capture_status ?? "loading" } 
-                    </p>
-                    <div className="flex flex-wrap items-center gap-1">
-                        <GameButton onPress={() => void goToStart()} disabled={loading || disabled} className="rounded border border-slate-500 bg-slate-900 px-1 text-sm disabled:opacity-40" title="Go to start">|◀</GameButton>
-                        <GameButton onPress={() => void stepBackward()} disabled={loading || disabled || (!hasBefore && sliceIndex <= 0)} className="rounded border border-slate-500 bg-slate-900 px-1 text-sm disabled:opacity-40" title="Previous time slice">◀</GameButton>
-                        <GameButton onPress={() => setPlaying(true)} disabled={loading || disabled || playing || !currentSlice} className="rounded border border-green-300/40 bg-green-500/10 px-2 text-sm disabled:opacity-40" title="Play">▶</GameButton>
-                        <GameButton onPress={() => setPlaying(false)} disabled={!playing} className="rounded border border-red-300/40 bg-red-500/10 px-2 text-sm disabled:opacity-40" title="Stop">■</GameButton>
-                        <GameButton onPress={() => void stepForward()} disabled={loading || disabled || (!hasAfter && sliceIndex + 1 >= slices.length)} className="rounded border border-slate-500 bg-slate-900 px-1 text-sm disabled:opacity-40" title="Next time slice">▶</GameButton>
-                        <GameButton onPress={() => void goToEnd()} disabled={loading || disabled} className="rounded border border-slate-500 bg-slate-900 px-1 text-sm disabled:opacity-40" title="Go to end">▶|</GameButton>
-                        <GameButton onPress={() => setLoop((value) => !value)} disabled={disabled} className={`rounded border px-1 text-sm ${loop ? "border-cyan-300 bg-cyan-500/20 text-cyan-100" : "border-slate-600 bg-slate-900 text-slate-400"}`} title="Repeat continuously">↻</GameButton>
+            <div className="shrink-0 border border-green-400/20 bg-black/60">
+                <div className="px-2 flex flex-wrap items-center justify-between">
+                    <div>
+                        <p className="text-[10px] tracking-[0.28em] text-yellow-300">
+                            DATABASE PLAYBACK // SERVER TIMESTAMPS
+                        </p>
+                        <p className="text-xs text-slate-400">
+                            {shortSessionId(sessionId)} · {matchingFrameCount ?? 0} frames · {meta?.distinct_ids ?? 0} IDs · {matchingSliceCount.toLocaleString()} slices at {toleranceMs} ms · {markers.length} server markers
+                        </p>
+                    </div>
+                    <div className="w-full flex flex-wrap items-center gap-1">
+                        <GameButton onPress={() => void goToStart()} disabled={loading || disabled} className="rounded border border-slate-500 bg-slate-900 px-1.5 py-0.5 text-sm disabled:opacity-40" title="Go to start">|◀</GameButton>
+                        <GameButton onPress={() => void stepBackward()} disabled={loading || disabled || (!hasBefore && sliceIndex <= 0)} className="rounded border border-slate-500 bg-slate-900 px-1.5 py-0.5 text-sm disabled:opacity-40" title="Previous time slice">◀</GameButton>
+                        <GameButton
+                            onPress={() => setPlaying((value) => !value)}
+                            disabled={loading || disabled || !currentSlice}
+                            className={`rounded border px-1.5 py-0.5 text-sm disabled:opacity-40 ${
+                                playing
+                                    ? "border-yellow-300/50 bg-yellow-500/15 text-yellow-100"
+                                    : "border-green-300/40 bg-green-500/10 text-green-100"
+                            }`}
+                            title={playing ? "Pause" : "Play"}
+                        >
+                            {playing ? "⏸" : "▶"}
+                        </GameButton>
+                        <GameButton onPress={() => void stepForward()} disabled={loading || disabled || (!hasAfter && sliceIndex + 1 >= slices.length)} className="rounded border border-slate-500 bg-slate-900 px-1.5 py-0.5 text-sm disabled:opacity-40" title="Next time slice">▶</GameButton>
+                        <GameButton onPress={() => void goToEnd()} disabled={loading || disabled} className="rounded border border-slate-500 bg-slate-900 px-1.5 py-0.5 text-sm disabled:opacity-40" title="Go to end">▶|</GameButton>
+                        <GameButton onPress={() => void stopPlayback()} disabled={loading || disabled} className="rounded border border-red-300/40 bg-red-500/10 px-1.5 py-0.5 text-sm disabled:opacity-40" title="Stop and reset to start">■</GameButton>
+                        <GameButton onPress={() => setLoop((value) => !value)} disabled={disabled} className={`rounded border px-1.5 py-0.5 text-sm ${loop ? "border-cyan-300 bg-cyan-500/20 text-cyan-100" : "border-slate-600 bg-slate-900 text-slate-400"}`} title="Repeat continuously">↻</GameButton>
 
-                        <select value={speed} onChange={(event: ChangeEvent<HTMLSelectElement>) => setSpeed(Number(event.target.value))} className="rounded border border-slate-600 bg-slate-950 px-1 text-xs text-green-100">
+                        <select value={speed} onChange={(event: ChangeEvent<HTMLSelectElement>) => setSpeed(Number(event.target.value))} className="rounded border border-slate-600 bg-slate-950 px-0.5 py-1 text-xs text-green-100">
                             {SPEEDS.map((value) => <option key={value} value={value}>{value}x</option>)}
                         </select>
-                        <select value={toleranceMs} onChange={(event: ChangeEvent<HTMLSelectElement>) => setToleranceMs(Number(event.target.value))} className="rounded border border-slate-600 bg-slate-950 px-1 text-xs text-green-100" title="Frames within this server-time bucket are one playback slice">
+                        <select value={toleranceMs} onChange={(event: ChangeEvent<HTMLSelectElement>) => setToleranceMs(Number(event.target.value))} className="rounded border border-slate-600 bg-slate-950 px-0.5 py-1 text-xs text-green-100" title="Frames within this server-time bucket are one playback slice">
                             {TOLERANCES.map((value) => <option key={value} value={value}>{value} ms</option>)}
                         </select>
                     </div>
                 </div>
 
-                <div className="grid gap-1 sm:grid-cols-[1fr_auto]">
-                    <div>
-                        <div className="h-2.5 flex justify-between text-[10px] text-slate-500">
+                <div className="grid gap-2 px-2 sm:grid-cols-[1fr_auto]">
+                    <div className="min-w-0">
+                        <div className="relative h-6 pt-2.5">
+                            <div
+                                className="pointer-events-none absolute inset-x-2 top-0 z-10 h-7"
+                                aria-label="Session markers"
+                            >
+                                {markers.map((marker) => {
+                                    const percent = markerPercent(marker, progressStart, progressEnd);
+                                    const selected = marker.id === activeMarkerId;
+                                    return (
+                                        <button
+                                            key={marker.id}
+                                            type="button"
+                                            onClick={() => void seekToMarker(marker)}
+                                            disabled={loading || disabled}
+                                            className="pointer-events-auto group absolute top-0 h-7 w-5 -translate-x-1/2 disabled:cursor-not-allowed disabled:opacity-40"
+                                            style={{ left: `${percent}%` }}
+                                            title={`${formatTime(marker.timestamp_ms)} · ${markerTitle(marker)} · ${marker.marker_type}`}
+                                            aria-label={`Seek to ${markerTitle(marker)} at ${formatTime(marker.timestamp_ms)}`}
+                                        >
+                                            <span className={`absolute left-1/2 top-1 h-5 w-0.5 -translate-x-1/2 ${selected ? "bg-white" : "bg-slate-400"}`} />
+                                            <span className={`absolute left-1/2 top-1 h-2.5 w-2.5 -translate-x-1/2 rotate-45 border ${markerTone(marker.marker_type)} ${selected ? "ring-2 ring-white" : "group-hover:ring-2 group-hover:ring-cyan-200"}`} />
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                            <input
+                                type="range"
+                                min={progressStart}
+                                max={progressEnd}
+                                value={Math.min(Math.max(progressValue, progressStart), progressEnd)}
+                                onChange={(event: ChangeEvent<HTMLInputElement>) => void seek(Number(event.target.value))}
+                                disabled={loading || disabled || !meta?.frame_count}
+                                className="relative z-0 w-full accent-green-400"
+                                aria-label="Playback position"
+                            />
+                        </div>
+                        <div className="flex justify-between text-[10px] text-slate-500">
                             <span>{formatTime(progressStart)}</span>
                             <span className="text-green-200">{formatTime(progressValue)} · {progressPercent.toFixed(1)}%</span>
                             <span>{formatTime(progressEnd)}</span>
                         </div>
-                        <input
-                            type="range"
-                            min={progressStart}
-                            max={Math.max(progressEnd, progressStart + 1)}
-                            value={Math.min(Math.max(progressValue, progressStart), Math.max(progressEnd, progressStart + 1))}
-                            onChange={(event: ChangeEvent<HTMLInputElement>) => void seek(Number(event.target.value))}
-                            disabled={loading || disabled || !meta?.frame_count}
-                            className="w-full accent-green-400"
-                            aria-label="Playback position"
-                        />
+
+                        <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1 pb-1">
+                            <GameButton
+                                onPress={() => void stepMarker(-1)}
+                                disabled={loading || disabled || !markers.length || activeMarkerIndex === 0}
+                                className="rounded border border-slate-600 bg-slate-900 px-2 py-1 text-[10px] text-slate-300 disabled:opacity-30"
+                                title="Previous mission marker"
+                            >
+                                ◀ MARK
+                            </GameButton>
+
+                            <div
+                                className={`min-w-0 rounded border px-2 py-1 text-center text-[10px] font-black ${
+                                    activeMarker
+                                        ? markerTone(activeMarker.marker_type)
+                                        : "border-slate-700 bg-slate-950 text-slate-500"
+                                }`}
+                                title={
+                                    activeMarker
+                                        ? `${activeMarker.marker_type} · ${activeMarker.label ?? "no label"}`
+                                        : "Select a marker from the progress bar or use the marker buttons."
+                                }
+                            >
+                                <span className="block truncate">
+                                    {activeMarker
+                                        ? `MARK ${activeMarkerIndex + 1}/${markers.length} · ${formatTime(activeMarker.timestamp_ms)} · ${markerTitle(activeMarker)}`
+                                        : markers.length
+                                            ? `${markers.length} MARKERS · SELECT FROM TIMELINE`
+                                            : "NO SESSION MARKERS"}
+                                </span>
+                                {activeMarker && (
+                                    <span className="block truncate text-[9px] font-normal opacity-75">
+                                        nearest slice {markerOffsetMs === null ? "—" : `${markerOffsetMs >= 0 ? "+" : ""}${markerOffsetMs} ms`}
+                                        {" · "}{currentChangedFrames} changed frames
+                                        {" · "}{currentChangedBytes} changed bytes
+                                    </span>
+                                )}
+                            </div>
+
+                            <GameButton
+                                onPress={() => void stepMarker(1)}
+                                disabled={loading || disabled || !markers.length || activeMarkerIndex === markers.length - 1}
+                                className="rounded border border-slate-600 bg-slate-900 px-2 py-1 text-[10px] text-slate-300 disabled:opacity-30"
+                                title="Next mission marker"
+                            >
+                                MARK ▶
+                            </GameButton>
+                        </div>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-1 sm:grid-cols-6">
-                    <input value={idFilter} onChange={(event: ChangeEvent<HTMLInputElement>) => setIdFilter(event.target.value)} placeholder="ID: 0x123 or 291" className="rounded border border-slate-600 bg-slate-950 px-2 py-1 text-xs text-green-100 placeholder:text-slate-600" />
-                    <input value={search} onChange={(event: ChangeEvent<HTMLInputElement>) => setSearch(event.target.value)} placeholder="Search ID, hex, digit" className="rounded border border-slate-600 bg-slate-950 px-2 py-1 text-xs text-green-100 placeholder:text-slate-600" />
-                    <select value={byteIndex} onChange={(event: ChangeEvent<HTMLSelectElement>) => setByteIndex(event.target.value)} className="rounded border border-slate-600 bg-slate-950 px-2 py-1 text-xs text-green-100">
+                <div className="px-2 pb-1 grid grid-cols-3 gap-1 sm:grid-cols-6">
+                    <div ref={idMenuRef} className="relative z-30">
+                        <button
+                            type="button"
+                            onClick={() => setIdMenuOpen((open) => !open)}
+                            aria-expanded={idMenuOpen}
+                            aria-haspopup="listbox"
+                            className="flex h-full w-full items-center justify-between gap-2 rounded border border-slate-600 bg-slate-950 px-2 py-0.5 text-left text-xs text-green-100"
+                        >
+                            <span className="truncate">
+                                {selectedCanIds.length
+                                    ? `${selectedCanIds.length} ID${selectedCanIds.length === 1 ? "" : "S"} SELECTED`
+                                    : "ALL CAN IDS"}
+                            </span>
+                            <span className={`shrink-0 text-slate-500 transition-transform ${idMenuOpen ? "rotate-180" : ""}`}>
+                                ▾
+                            </span>
+                        </button>
+
+                        {idMenuOpen && (
+                            <div className="absolute left-0 top-full z-50 mt-1 flex max-h-[min(24rem,65dvh)] w-72 max-w-[calc(100vw-1rem)] flex-col overflow-hidden rounded border border-cyan-300/30 bg-slate-950 shadow-2xl shadow-black/70">
+                                <div className="sticky top-0 z-10 flex shrink-0 items-center gap-1 border-b border-slate-800 bg-slate-950 p-2">
+                                    <input
+                                        value={idFilterSearch}
+                                        onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                                            setIdFilterSearch(event.target.value)
+                                        }
+                                        placeholder="Find hex or decimal ID"
+                                        className="min-w-0 flex-1 rounded border border-slate-700 bg-black/40 px-2 py-1 text-xs text-cyan-100 placeholder:text-slate-600"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedCanIds([])}
+                                        className="rounded border border-red-300/30 bg-red-500/10 px-2 py-1 text-[10px] font-black text-red-100"
+                                    >
+                                        ALL
+                                    </button>
+                                </div>
+
+                                <div
+                                    className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+                                    role="listbox"
+                                    aria-multiselectable="true"
+                                >
+                                    {visibleCanIdOptions.map((canId) => (
+                                        <label
+                                            key={canId}
+                                            className="flex cursor-pointer items-center justify-between gap-3 border-b border-slate-800 px-2 py-1.5 text-xs hover:bg-cyan-500/10"
+                                        >
+                                            <span className="flex items-center gap-2">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedCanIds.includes(canId)}
+                                                    onChange={() => toggleCanId(canId)}
+                                                />
+                                                <span className="font-black text-cyan-200">
+                                                    {canIdHex(canId)}
+                                                </span>
+                                            </span>
+                                            <span className="text-slate-500">{canId}</span>
+                                        </label>
+                                    ))}
+                                    {!visibleCanIdOptions.length && (
+                                        <p className="p-3 text-center text-xs text-slate-500">
+                                            No CAN IDs match this search.
+                                        </p>
+                                    )}
+                                </div>
+
+                                <p className="shrink-0 border-t border-slate-800 bg-slate-950 p-2 text-[10px] text-slate-500">
+                                    No selection means all IDs. Select multiple IDs to compare changes in the same server-time slice.
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                    <input value={search} onChange={(event: ChangeEvent<HTMLInputElement>) => setSearch(event.target.value)} placeholder="ID, hex, digit" className="rounded border border-slate-600 bg-slate-950 px-2 py-0.5 text-xs text-green-100 placeholder:text-slate-600" />
+                    <select value={byteIndex} onChange={(event: ChangeEvent<HTMLSelectElement>) => setByteIndex(event.target.value)} className="rounded border border-slate-600 bg-slate-950 px-2 py-0.5 text-xs text-green-100">
                         <option value="">Any byte</option>
                         {Array.from({ length: 8 }, (_, index) => <option key={index} value={index}>Byte B{index}</option>)}
                     </select>
-                    <input value={byteValue} onChange={(event: ChangeEvent<HTMLInputElement>) => setByteValue(event.target.value)} placeholder="Byte value: 47 / 2F" className="rounded border border-slate-600 bg-slate-950 px-2 py-1 text-xs text-green-100 placeholder:text-slate-600" />
-                    <label className="flex items-center gap-2 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-[10px] text-slate-300">
-                        <input type="checkbox" checked={deltasOnly} onChange={(event: ChangeEvent<HTMLInputElement>) => setDeltasOnly(event.target.checked)} /> DELTAS ONLY
+                    <input value={byteValue} onChange={(event: ChangeEvent<HTMLInputElement>) => setByteValue(event.target.value)} placeholder="Byte value: 47 / 2F" className="rounded border border-slate-600 bg-slate-950 px-2 py-0.5 text-xs text-green-100 placeholder:text-slate-600" />
+                    <label className="flex items-center gap-2 rounded border border-slate-700 bg-slate-950 p-0.5  text-[10px] text-slate-300">
+                        <input type="checkbox" checked={deltasOnly} onChange={(event: ChangeEvent<HTMLInputElement>) => setDeltasOnly(event.target.checked)} />DELTAS (Δ)
                     </label>
                     <div className="flex gap-1">
-                        <label className="flex flex-1 items-center gap-1 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-[10px] text-slate-300">
-                            <input type="checkbox" checked={byteChangedOnly} onChange={(event: ChangeEvent<HTMLInputElement>) => setByteChangedOnly(event.target.checked)} disabled={byteIndex === ""} /> BYTE CHANGED
+                        <label className="flex flex-1 items-center gap-1 rounded border border-slate-700 bg-slate-950 p-0.5 text-[10px] text-slate-300">
+                            <input type="checkbox" checked={byteChangedOnly} onChange={(event: ChangeEvent<HTMLInputElement>) => setByteChangedOnly(event.target.checked)} disabled={byteIndex === ""} />BYTE Δ
                         </label>
-                        <GameButton onPress={clearFilters} className="rounded border border-red-300/30 bg-red-500/10 px-2 text-[10px] text-red-100">CLEAR</GameButton>
+                        <GameButton onPress={clearFilters} className="rounded border border-red-300/30 bg-red-500/10 p-0.5  text-[10px] text-red-100">CLEAR</GameButton>
                     </div>
                 </div>
             </div>
 
             {error && (
-                <div className="mt-2 shrink-0 rounded-lg border border-red-300/40 bg-red-500/10 p-2 text-xs text-red-100">
+                <div className="shrink-0 border border-red-300/40 bg-red-500/10 text-xs text-red-100">
                     {error}
                 </div>
             )}
 
-            <div className="mt-1 grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1fr)_320px]">
-                <div className="min-h-0 border overflow-auto border-green-400/20 bg-black/50">
+            <div
+                className={`min-h-0 flex-1 gap-2 pb-2 ${
+                    selectedByte
+                        ? "grid grid-rows-[minmax(12rem,1fr)_minmax(14rem,42dvh)] lg:grid-cols-[minmax(0,1fr)_360px] lg:grid-rows-1"
+                        : "grid grid-cols-1"
+                }`}
+            >
+                <div className="min-h-0 min-w-0 overflow-auto bg-black/50">
                     <table className="w-full min-w-[860px] border-collapse text-left text-xs">
                         <thead className="sticky top-0 z-10 bg-emerald-950/95 text-green-100">
                             <tr>
-                                <th className="border-b border-r border-green-300/30 px-2 py-1">Time</th>
-                                <th className="border-b border-r border-green-300/30 px-2 py-1">Hex ID</th>
-                                <th className="border-b border-r border-green-300/30 px-2 py-1">Ln</th>
-                                <th className="border-b border-r border-green-300/30 px-2 py-1">Data · click a byte</th>
-                                <th className="border-b border-r border-green-300/30 px-2 py-1">Label</th>
-                                <th className="border-b border-green-300/30 px-2 py-1">Decoded</th>
+                                <th className="border-b border-r border-green-300/30 px-1.5 py-0.5">Time</th>
+                                <th className="border-b border-r border-green-300/30 px-1.5 py-0.5">ID</th>
+                                <th className="border-b border-r border-green-300/30 px-0.5 py-0.5">Ln</th>
+                                <th className="border-b border-r border-green-300/30 px-1.5 py-0.5">
+                                    <div className="flex flex-nowrap gap-1" title="Payload byte positions; click a byte value below to inspect it">
+                                        {Array.from({ length: 8 }, (_, index) => (
+                                            <span
+                                                key={index}
+                                                className={`${BYTE_CELL_CLASS} border-green-300/30 bg-slate-900 text-[9px] text-green-200`}
+                                            >
+                                                B{index}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </th>
+                                <th className="border-b border-r border-green-300/30 px-1.5 py-0.5">Label</th>
+                                <th className="border-b border-green-300/30 px-1.5 py-0.5">Decoded</th>
                             </tr>
                         </thead>
                         <tbody>
                             {(currentSlice?.frames ?? []).map((frame) => (
                                 <tr key={frame.id} className="border-b border-slate-800 hover:bg-green-500/5">
-                                    <td className="border-r border-slate-800 px-2 py-2 text-cyan-300">{formatTime(frame.timestamp_ms)}</td>
-                                    <td className="border-r border-slate-800 px-2 py-2 font-black text-cyan-300">{frame.can_id_hex}</td>
-                                    <td className="border-r border-slate-800 px-2 py-2 text-slate-400">{frame.dlc}</td>
-                                    <td className="border-r border-slate-800 px-2 py-2">
-                                        <div className="flex flex-wrap gap-1">
+                                    <td className="border-r border-slate-800 px-1.5 py-0.5 text-cyan-300">{formatTime(frame.timestamp_ms)}</td>
+                                    <td className="border-r border-slate-800 px-1.5 py-0.5 font-black text-cyan-300">{frame.can_id_hex}</td>
+                                    <td className="border-r border-slate-800 px-0.5 py-0.5 text-slate-400">{frame.dlc}</td>
+                                    <td className="border-r border-slate-800 px-1.5 py-0.5">
+                                        <div className="flex flex-nowrap gap-1">
                                             {frame.bytes.map((value, index) => {
                                                 const changed = frame.delta_positions.includes(index);
                                                 const selected = selectedByte?.frame.id === frame.id && selectedByte.byteIndex === index;
@@ -621,8 +1002,14 @@ export function SignalReconPlayback({
                                                     <button
                                                         key={index}
                                                         type="button"
-                                                        onClick={() => setSelectedByte({ frame, byteIndex: index })}
-                                                        className={`rounded border px-1.5 py-1 font-black ${selected
+                                                        onClick={() => {
+                                                            setPlaying(false);
+                                                            setSelectedByte({
+                                                                frame,
+                                                                byteIndex: index,
+                                                            });
+                                                        }}
+                                                        className={`${BYTE_CELL_CLASS} ${selected
                                                             ? "border-yellow-200 bg-yellow-500/20 text-yellow-100"
                                                             : changed
                                                                 ? "border-cyan-300/70 bg-cyan-500/20 text-cyan-100"
@@ -630,14 +1017,14 @@ export function SignalReconPlayback({
                                                         }`}
                                                         title={`B${index}: hex ${byteHex(value)}, decimal ${value}${changed ? ", changed from previous frame" : ""}`}
                                                     >
-                                                        <span className="mr-1 text-[8px] text-slate-600">B{index}</span>{byteHex(value)}
+                                                        {byteHex(value)}
                                                     </button>
                                                 );
                                             })}
                                         </div>
                                     </td>
-                                    <td className="max-w-[220px] truncate border-r border-slate-800 px-2 py-2 text-cyan-300">{frame.signal_name ?? "—"}</td>
-                                    <td className="max-w-[360px] truncate px-2 py-2 text-slate-400">{decodedText(frame.decoded)}</td>
+                                    <td className="max-w-[220px] truncate border-r border-slate-800 px-1.5 py-0.5 text-cyan-300">{frame.signal_name ?? "—"}</td>
+                                    <td className="max-w-[360px] truncate px-1.5 py-0.5 text-slate-400">{decodedText(frame.decoded)}</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -655,23 +1042,66 @@ export function SignalReconPlayback({
                     )}
                 </div>
 
-                <aside className="min-h-0 border game-ui border-cyan-300/20 bg-slate-950/90 px-2 py-1">
-                    <p className="text-[10px] tracking-[0.25em] text-cyan-300">BYTE ROLE REVIEW</p>
-                    {!selectedByte ? (
-                        <div className="mt-3 rounded-lg border border-slate-700 bg-slate-900/70 p-4 text-xs text-slate-500">
-                            Click a byte in the frame table. Changed bytes are cyan. You can then confirm, reject, or mark uncertain for constant, counter/timer, and checksum roles.
-                        </div>
-                    ) : (
-                        <div className="mt-3 space-y-2">
-                            <div className="rounded-lg border border-green-300/30 bg-green-500/10 p-3">
+                {selectedByte && (
+                <aside className="min-h-0 overflow-y-auto border border-cyan-300/20 bg-slate-950/95">
+                    <div className="sticky top-0 z-10 flex items-center justify-between border-b border-cyan-300/20 bg-slate-950 px-2 py-1">
+                        <p className="text-[10px] tracking-[0.25em] text-cyan-300">
+                            BYTE ROLE REVIEW
+                        </p>
+                        <button
+                            type="button"
+                            onClick={() => setSelectedByte(null)}
+                            className="rounded border border-slate-600 bg-slate-900 px-2 py-0.5 text-[10px] font-black text-slate-300 hover:bg-slate-800"
+                            aria-label="Close byte role review"
+                        >
+                            CLOSE
+                        </button>
+                    </div>
+                    <div className="mt-1 space-y-1">
+                            <div className="border border-green-300/30 bg-green-500/10 px-2 pb-2">
                                 <p className="font-black text-green-100">
                                     {selectedByte.frame.can_id_hex} / B{selectedByte.byteIndex}
                                 </p>
-                                <div className="mt-2 grid grid-cols-2 gap-2 text-[10px] text-slate-400">
+                                <div className="grid grid-cols-2 gap-0.5 text-[10px] text-slate-400">
                                     <p>current: <span className="text-cyan-200">0x{byteHex(selectedByte.frame.bytes[selectedByte.byteIndex])} / {selectedByte.frame.bytes[selectedByte.byteIndex]}</span></p>
                                     <p>previous: <span className="text-slate-200">{selectedByte.frame.previous_bytes ? `0x${byteHex(selectedByte.frame.previous_bytes[selectedByte.byteIndex])} / ${selectedByte.frame.previous_bytes[selectedByte.byteIndex]}` : "none"}</span></p>
                                     <p>changed: <span className={selectedByte.frame.delta_positions.includes(selectedByte.byteIndex) ? "text-cyan-200" : "text-slate-500"}>{selectedByte.frame.delta_positions.includes(selectedByte.byteIndex) ? "YES" : "NO"}</span></p>
                                     <p>server time: <span className="text-slate-200">{formatTime(selectedByte.frame.timestamp_ms)}</span></p>
+                                </div>
+                                <div className="rounded border border-cyan-300/20 bg-black/30 p-2">
+                                    <div className="grid grid-cols-[58px_repeat(8,minmax(0,1fr))] gap-1 text-center text-[9px]">
+                                        <span className="text-left text-slate-500">bit</span>
+                                        {[7, 6, 5, 4, 3, 2, 1, 0].map((bit) => (
+                                            <span key={bit} className="text-slate-500">{bit}</span>
+                                        ))}
+                                        <span className="text-left text-slate-500">previous</span>
+                                        {bitString(selectedByte.frame.previous_bytes?.[selectedByte.byteIndex]).split("").map((bit, index) => (
+                                            <span key={`previous-${index}`} className="rounded border border-slate-700 bg-slate-900 py-0.5 text-slate-300">{bit}</span>
+                                        ))}
+                                        <span className="text-left text-cyan-300">current</span>
+                                        {bitString(selectedByte.frame.bytes[selectedByte.byteIndex]).split("").map((bit, index) => {
+                                            const previousValue = selectedByte.frame.previous_bytes?.[selectedByte.byteIndex];
+                                            const currentValue = selectedByte.frame.bytes[selectedByte.byteIndex];
+                                            const mask = typeof previousValue === "number" ? previousValue ^ currentValue : 0;
+                                            const bitNumber = 7 - index;
+                                            const changed = Boolean(mask & (1 << bitNumber));
+                                            return (
+                                                <span
+                                                    key={`current-${index}`}
+                                                    className={`rounded border py-0.5 font-black ${changed ? "border-yellow-200 bg-yellow-500/30 text-yellow-100" : "border-slate-700 bg-slate-900 text-cyan-200"}`}
+                                                >
+                                                    {bit}
+                                                </span>
+                                            );
+                                        })}
+                                    </div>
+                                    <p className="mt-1 text-[10px] text-slate-500">
+                                        XOR mask: <span className="font-black text-yellow-200">0x{byteHex(
+                                            typeof selectedByte.frame.previous_bytes?.[selectedByte.byteIndex] === "number"
+                                                ? selectedByte.frame.previous_bytes[selectedByte.byteIndex] ^ selectedByte.frame.bytes[selectedByte.byteIndex]
+                                                : 0,
+                                        )}</span> · yellow bits changed from the previous frame for this CAN ID
+                                    </p>
                                 </div>
                             </div>
 
@@ -693,11 +1123,11 @@ export function SignalReconPlayback({
                                         ? `${effectiveStatus?.toUpperCase()} SAVED`
                                         : effectiveStatus?.toUpperCase() ?? "UNREVIEWED";
                                 return (
-                                    <div key={role.kind} className={`rounded-lg border p-3 ${statusTone(effectiveStatus)}`}>
+                                    <div key={role.kind} className={`border px-2 py-1 ${statusTone(effectiveStatus)}`}>
                                         <div className="flex items-start justify-between gap-2">
                                             <div>
                                                 <p className="font-black text-green-100">{role.label}?</p>
-                                                <p className="mt-1 text-[10px] leading-relaxed text-slate-500">{role.description}</p>
+                                                <p className="text-[10px] leading-relaxed text-slate-500">{role.description}</p>
                                             </div>
                                             <span className={`rounded border px-1.5 py-0.5 text-[9px] font-black ${statusTone(effectiveStatus)}`}>
                                                 {statusLabel}
@@ -706,17 +1136,17 @@ export function SignalReconPlayback({
                                         {saved?.notes && (
                                             <p className="mt-2 text-[10px] text-cyan-100/70">auto: {saved.notes}</p>
                                         )}
-                                        <div className="mt-2 grid grid-cols-3 gap-1">
-                                            <GameButton onPress={() => void validateRole(role.kind, "positive")} disabled={saving} className={`rounded border px-2 py-1 text-[10px] disabled:opacity-40 ${effectiveStatus === "positive" ? "border-green-200 bg-green-500/30 text-green-50 ring-1 ring-green-300" : "border-green-300/40 bg-green-500/10 text-green-100"}`}>{effectiveStatus === "positive" ? "✓ CONFIRMED" : "CONFIRM"}</GameButton>
-                                            <GameButton onPress={() => void validateRole(role.kind, "negative")} disabled={saving} className={`rounded border px-2 py-1 text-[10px] disabled:opacity-40 ${effectiveStatus === "negative" ? "border-red-200 bg-red-500/30 text-red-50 ring-1 ring-red-300" : "border-red-300/40 bg-red-500/10 text-red-100"}`}>{effectiveStatus === "negative" ? "✓ REJECTED" : "REJECT"}</GameButton>
-                                            <GameButton onPress={() => void validateRole(role.kind, "uncertain")} disabled={saving} className={`rounded border px-2 py-1 text-[10px] disabled:opacity-40 ${effectiveStatus === "uncertain" ? "border-yellow-200 bg-yellow-500/30 text-yellow-50 ring-1 ring-yellow-300" : "border-yellow-300/40 bg-yellow-500/10 text-yellow-100"}`}>{effectiveStatus === "uncertain" ? "✓ UNSURE" : "UNSURE"}</GameButton>
+                                        <div className="grid grid-cols-3 gap-1">
+                                            <GameButton onPress={() => void validateRole(role.kind, "positive")} disabled={saving} className={`rounded border px-1.5 py-0.5 text-[10px] disabled:opacity-40 ${effectiveStatus === "positive" ? "border-green-200 bg-green-500/30 text-green-50 ring-1 ring-green-300" : "border-green-300/40 bg-green-500/10 text-green-100"}`}>{effectiveStatus === "positive" ? "✓ CONFIRMED" : "CONFIRM"}</GameButton>
+                                            <GameButton onPress={() => void validateRole(role.kind, "negative")} disabled={saving} className={`rounded border px-1.5 py-0.5 text-[10px] disabled:opacity-40 ${effectiveStatus === "negative" ? "border-red-200 bg-red-500/30 text-red-50 ring-1 ring-red-300" : "border-red-300/40 bg-red-500/10 text-red-100"}`}>{effectiveStatus === "negative" ? "✓ REJECTED" : "REJECT"}</GameButton>
+                                            <GameButton onPress={() => void validateRole(role.kind, "uncertain")} disabled={saving} className={`rounded border px-1.5 py-0.5 text-[10px] disabled:opacity-40 ${effectiveStatus === "uncertain" ? "border-yellow-200 bg-yellow-500/30 text-yellow-50 ring-1 ring-yellow-300" : "border-yellow-300/40 bg-yellow-500/10 text-yellow-100"}`}>{effectiveStatus === "uncertain" ? "✓ UNSURE" : "UNSURE"}</GameButton>
                                         </div>
                                     </div>
                                 );
                             })}
-                        </div>
-                    )}
+                    </div>
                 </aside>
+                )}
             </div>
         </div>
     );

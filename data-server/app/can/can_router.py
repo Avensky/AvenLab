@@ -1390,6 +1390,7 @@ async def get_session_playback_meta(session_id: UUID) -> Dict[str, Any]:
         SELECT
             COUNT(*)::bigint AS frame_count,
             COUNT(DISTINCT can_id)::int AS distinct_ids,
+            ARRAY_AGG(DISTINCT can_id ORDER BY can_id) AS observed_ids,
             MIN(timestamp_ms)::bigint AS first_timestamp_ms,
             MAX(timestamp_ms)::bigint AS last_timestamp_ms
         FROM can_frames_raw
@@ -1397,6 +1398,37 @@ async def get_session_playback_meta(session_id: UUID) -> Dict[str, Any]:
         """,
         session_id,
     )
+
+    marker_rows = await fetch(
+        """
+        SELECT
+            csm.id,
+            csm.timestamp_ms,
+            csm.marker_type,
+            csm.label,
+            csm.metadata,
+            rs.step_code,
+            rm.mission_code
+        FROM can_session_markers csm
+        LEFT JOIN recon_steps rs ON rs.id = csm.step_id
+        LEFT JOIN recon_missions rm ON rm.id = csm.mission_id
+        WHERE csm.session_id = $1
+        ORDER BY csm.timestamp_ms ASC, csm.id ASC
+        """,
+        session_id,
+    )
+    markers = [
+        {
+            "id": str(row["id"]),
+            "timestamp_ms": int(row["timestamp_ms"] or 0),
+            "marker_type": str(row["marker_type"] or "unknown"),
+            "label": row["label"],
+            "step_code": row["step_code"],
+            "mission_code": row["mission_code"],
+            "metadata": json_object(row["metadata"]),
+        }
+        for row in marker_rows
+    ]
 
     return {
         "ok": True,
@@ -1413,6 +1445,10 @@ async def get_session_playback_meta(session_id: UUID) -> Dict[str, Any]:
         "capture_quality": json_object(session["capture_quality"]),
         "frame_count": int(stats["frame_count"] or 0),
         "distinct_ids": int(stats["distinct_ids"] or 0),
+        "observed_ids": [
+            int(can_id)
+            for can_id in (stats["observed_ids"] or [])
+        ],
         "first_timestamp_ms": int(stats["first_timestamp_ms"] or 0),
         "last_timestamp_ms": int(stats["last_timestamp_ms"] or 0),
         "duration_ms": max(
@@ -1420,6 +1456,8 @@ async def get_session_playback_meta(session_id: UUID) -> Dict[str, Any]:
             int(stats["last_timestamp_ms"] or 0)
             - int(stats["first_timestamp_ms"] or 0),
         ),
+        "marker_count": len(markers),
+        "markers": markers,
         "timestamp_authority": "server",
     }
 

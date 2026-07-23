@@ -16,7 +16,6 @@ import {
   MISSION_RANKS,
   type MissionRank,
 } from "../../store/signalReconMissions";
-import SignalReconHeader from "./SignalReconHeader";
 
 const RANK_FILTERS: Array<MissionRank | "ALL"> = [
   "ALL",
@@ -372,30 +371,84 @@ export function SignalRecon() {
     handleMaximizeQueue();
   };
 
+  // Once the real mission terminal opens, it owns the entire content area.
+  // SignalReconMission already exposes its own LIST action through onExit.
+  const showMissionList = !missionTerminalOpen;
+  const showTerminalPane = queueMinimized || missionTerminalOpen;
+
   return (
-    <div className="relative h-full w-screen overflow-hidden bg-[#020617] text-green-100">
+    <div className="relative flex h-full w-screen flex-col overflow-hidden bg-[#020617] text-green-100">
       {/* <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(34,197,94,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(34,197,94,0.05)_1px,transparent_1px)] bg-[size:32px_32px]" /> */}
 
       {/* <div className="relative z-10 flex h-full min-h-0 flex-col overflow-hidden p-2 sm:p-3"> */}
-        
-        <SignalReconHeader
-          title="NIWC // CAN SIGNAL ACQUISITION"
-          subtitle="SIGNAL RECON"
-          missionProgressByCode={missionProgressByCode}
-          missionProgressLoading={missionProgressLoading}
-          controlsDisabled={busy || sessionActive || runActive}
-          exitDisabled={busy || runActive}
-          onExit={() => void handleExit()}
-          exitLabel={sessionActive || runActive ? "STOP" : "VEHICLE"}
-        />
+        {!missionTerminalOpen && (
+          <header className="relative z-20 shrink-0 border-b border-green-400/20 bg-slate-950/90 px-2 py-1">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <h2 className="truncate text-xl font-bold text-green-200">
+                  Missions Database
+                </h2>
+                <p className="truncate font-mono text-xs text-slate-500">
+                  {visibleMissions.length} visible / {missions.length} total · {selectedInterface}/{busModeLabel(selectedMode)}
+                  {missionProgressError ? " · DB ERROR" : ""}
+                </p>
+              </div>
 
+              <div className="grid shrink-0 grid-cols-3 gap-1">
+                <GameButton
+                  onPress={() => void handleExit()}
+                  disabled={busy || runActive}
+                  className="border border-red-300/40 bg-red-500/10 px-2 py-1 font-mono text-xs font-bold text-red-100 hover:bg-red-400/20 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  VEHICLE
+                </GameButton>
+                <GameButton
+                  onPress={() => void refreshMissionProgressFromDb()}
+                  disabled={missionProgressLoading}
+                  className="border border-cyan-300/40 bg-cyan-500/10 px-2 py-1 font-mono text-xs font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {missionProgressLoading ? "SYNCING" : "REFRESH"}
+                </GameButton>
+                <GameButton
+                  onPress={() => {
+                    if (mission) setQueueMinimized(true);
+                  }}
+                  disabled={!mission}
+                  className="border border-slate-600 bg-slate-900 px-2 py-1 font-mono text-xs text-slate-300 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  TERMINAL
+                </GameButton>
+              </div>
+            </div>
+
+            <div className="mt-1 flex flex-wrap items-center">
+              {RANK_FILTERS.map((rank) => (
+                <GameButton
+                  key={rank}
+                  disabled={runActive || sessionActive}
+                  onPress={() => setSelectedRank(rank)}
+                  className={`border px-1 font-mono text-xs font-bold transition disabled:cursor-not-allowed disabled:opacity-40 ${selectedRank === rank
+                    ? "border-green-300 bg-green-500/20 text-green-100"
+                    : "border-slate-700 bg-slate-900 text-slate-400 hover:bg-slate-800"
+                    }`}
+                >
+                  {rankLabel(rank)}
+                </GameButton>
+              ))}
+            </div>
+          </header>
+        )}
 
         <main
-          className={`grid h-5/6 overflow-hidden ${queueMinimized
-            ? "grid-cols-[56px_minmax(0,1fr)] sm:grid-cols-[72px_minmax(0,1fr)] lg:grid-cols-[96px_minmax(0,1fr)]"
-            : "grid-cols-1"
-            }`}
+          className={`grid min-h-0 flex-1 overflow-hidden ${
+            missionTerminalOpen
+              ? "grid-cols-1"
+              : queueMinimized
+                ? "grid-cols-[56px_minmax(0,1fr)] sm:grid-cols-[72px_minmax(0,1fr)] lg:grid-cols-[96px_minmax(0,1fr)]"
+                : "grid-cols-1"
+          }`}
         >
+          {showMissionList && (
           <section
             className={`flex flex-col self-stretch overflow-hidden transition-all ${queueMinimized
               ? "w-[56px] sm:w-[72px] lg:w-[96px]"
@@ -441,52 +494,6 @@ export function SignalRecon() {
               </div>
             ) : (
               <>
-                <div className="flex items-center justify-between px-2">
-                  <div>
-                    <h2 className="text-xl font-bold text-green-200">
-                      Missions Database
-                    </h2>
-                    <p className="font-mono text-xs text-slate-500">
-                      {visibleMissions.length} visible / {missions.length} total · {selectedInterface}/{busModeLabel(selectedMode)}
-                      {missionProgressError ? ` · DB ERROR` : ""}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center">
-                    <GameButton
-                      onPress={() => void refreshMissionProgressFromDb()}
-                      disabled={missionProgressLoading}
-                      className=" border border-cyan-300/40 bg-cyan-500/10 px-2 py-1 font-mono text-xs font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      {missionProgressLoading ? "SYNCING" : "REFRESH"}
-                    </GameButton>
-                    <GameButton
-                      onPress={() => {
-                        if (mission) setQueueMinimized(true);
-                      }}
-                      className=" border border-slate-600 bg-slate-900 px-2 py-1 font-mono text-xs text-slate-300 hover:bg-slate-800"
-                    >
-                      TERMINAL
-                    </GameButton>
-                  </div>
-                </div>
-
-                <div className="px-2 my-1 flex flex-wrap items-center">
-                  {RANK_FILTERS.map((rank) => (
-                    <GameButton
-                      key={rank}
-                      disabled={runActive || sessionActive}
-                      onPress={() => setSelectedRank(rank)}
-                      className={`px-1 border font-mono text-xs font-bold transition disabled:cursor-not-allowed disabled:opacity-40 ${selectedRank === rank
-                        ? "border-green-300 bg-green-500/20 text-green-100"
-                        : "border-slate-700 bg-slate-900 text-slate-400 hover:bg-slate-800"
-                        }`}
-                    >
-                      {rankLabel(rank)}
-                    </GameButton>
-                  ))}
-                </div>
-
                 {error && (
                   <div className="mb-3 rounded-xl border border-red-300/40 bg-red-500/10 p-3 text-sm text-red-100">
                     {error}
@@ -563,9 +570,10 @@ export function SignalRecon() {
               </>
             )}
           </section>
-            
-          {queueMinimized && (
-            <section className="bg-black/80 overflow-hidden font-mono shadow-xl shadow-green-500/10">
+          )}
+
+          {showTerminalPane && (
+            <section className="game-ui transition-all bg-black/80 font-mono shadow-xl shadow-green-500/10">
               {missionTerminalOpen ? (
                 <SignalReconMission
                   onExit={handleMissionClosed}
@@ -575,8 +583,8 @@ export function SignalRecon() {
                   onDatabaseChanged={() => void refreshMissionProgressFromDb()}
                 />
               ) : (
-                <div className="game-uif">
-                  <div className="px-2">
+                <div className="px-2 pb-4 flex flex-col game-ui">
+                  {/* <div className="px-2"> */}
 
                     <div className="mb-1 pb-1 flex items-center justify-between border-b border-green-400/20">
                       <div> 
@@ -689,8 +697,6 @@ export function SignalRecon() {
                         No Signal Recon missions are loaded.
                       </div>
                     )}
-
-                  </div> 
                   <div className="flex">
                     <GameButton
                       onPress={openMissionTerminal}
@@ -712,9 +718,11 @@ export function SignalRecon() {
                       LIST
                     </GameButton>
                   </div>
+                  {/* </div>  */}
+                  
                 </div>
               )}
-          </section>
+            </section>
           )}
         </main>
       {/* </div> */}

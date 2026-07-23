@@ -68,6 +68,9 @@ export default function SignalReconHeader({
     (state) => state.setSelectedMode,
   );
 
+  const selectedMission = useSignalReconStore((state) => state.selectedMission);
+
+
   const selectedVehicle = useSelectionStore(
     (state) => state.getSelectedVehicle(),
   );
@@ -98,13 +101,19 @@ export default function SignalReconHeader({
     >
       <div className="min-w-0">
         <p className="text-[10px] uppercase tracking-[0.28em] text-yellow-300 sm:text-xs sm:tracking-[0.4em]">
-          {title}
+          {selectedMission
+            ? `${title}`
+            : title
+          }
         </p>
 
         <h1 className="truncate text-2xl font-black text-cyan-100">
-          {subtitle}
+          { selectedMission
+            ? `${subtitle}`
+            : subtitle
+          }
         </h1>
-
+ 
         <p className="truncate font-mono text-[10px] text-slate-500 sm:text-xs">
           {selectedVehicle.name} · {vehicleSlug}
           {activeSessionId
