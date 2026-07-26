@@ -745,7 +745,6 @@ export function SignalRecon({
                   sessionHistory={selectedMissionSessions}
                   onDatabaseChanged={() => void refreshMissionProgressFromDb()}
                   handleMaximizeQueue={handleMaximizeQueue}
-                  runActive= {runActive}
                 />
               ) : (
                 <div className="px-2 pb-2 flex flex-col game-ui">

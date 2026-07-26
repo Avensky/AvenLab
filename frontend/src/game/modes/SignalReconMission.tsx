@@ -43,7 +43,6 @@ type SignalReconMissionProps = {
     sessionHistory?: MissionRunSummary[];
     onDatabaseChanged?: () => void;
     handleMaximizeQueue?: () => void;
-    runActive: boolean;
 };
 
 type MissionPanel = "game" | "steps"  | "protocol" | "details" | "playback" | "session";
