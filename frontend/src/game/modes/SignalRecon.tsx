@@ -550,7 +550,7 @@ export function SignalRecon({
                     setQueueMinimized(true);
                   }}
                   disabled={!mission}
-                  className="px-1.5 rounded-sm border flex justify-center items-center border-cyan-400/25order-slate-600 bg-slate-900 text-[9px] font-black text-cyan-100 hover:bg-slate-800 disabled:opacity-40"
+                  className="px-1.5 rounded-sm border flex justify-center items-center border-green-400/25 order-green-600 bg-green-500/10 text-[9px] font-black text-green-100 hover:bg-slate-800 disabled:opacity-40"
                 >
                   TERMINAL
                 </GameButton>
