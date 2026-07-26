@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSelectionStore, useUIStore } from "../../store";
 import { SignalReconMission } from "./SignalReconMission";
 import { GameButton } from "../../components/GameButton";
+import { ReconWorkspaceHeader, type ReconHeaderTab } from "./ReconWorkspaceHeader";
 import {
   getApiBaseUrl,
   useCanBusStore,
@@ -26,7 +27,13 @@ const RANK_FILTERS: Array<MissionRank | "ALL"> = [
   "C",
 ];
 
+const RANK_HEADER_TABS: ReconHeaderTab[] = RANK_FILTERS.map((rank) => ({
+  id: rank,
+  label: rankLabel(rank),
+}));
+
 type CaptureKind = "live" | "simulation";
+export type MissionTerminalInitialView = "start" | "session" | "playback" | "results";
 
 export type MissionRunSummary = {
   mission_code: string;
@@ -46,6 +53,14 @@ export type MissionRunSummary = {
   marker_count: number;
   started_at: string | null;
   ended_at: string | null;
+  capture_quality?: {
+    usable_for_analysis?: boolean;
+    quality_score?: number;
+    action_markers?: number;
+    expected_action_markers?: number;
+    marker_completion_ratio?: number;
+    quality_issue?: string | null;
+  };
 };
 
 function busModeLabel(mode: CanMode) {
@@ -120,7 +135,19 @@ function missionProgressClass(summary: MissionRunSummary | undefined, mission: R
   return "border-slate-500 bg-slate-800 text-slate-300";
 }
 
-export function SignalRecon() {
+type SignalReconProps = {
+  collapsed: boolean;
+  setCollapsed: (collapsed: boolean) => void;
+  sidebarHidden: boolean;
+  setSidebarHidden: (hidden: boolean) => void;
+};
+
+export function SignalRecon({
+  collapsed,
+  setCollapsed,
+  sidebarHidden,
+  setSidebarHidden,
+}: SignalReconProps) {
   const setScreen = useUIStore((s) => s.setScreen);
   const selectedVehicle = useSelectionStore((s) => s.getSelectedVehicle());
 
@@ -145,6 +172,8 @@ export function SignalRecon() {
 
   const [missionTerminalOpen, setMissionTerminalOpen] = useState(false);
   const [queueMinimized, setQueueMinimized] = useState(false);
+  const [terminalInitialSessionId, setTerminalInitialSessionId] = useState<string | null>(null);
+  const [terminalInitialView, setTerminalInitialView] = useState<MissionTerminalInitialView>("start");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -152,7 +181,6 @@ export function SignalRecon() {
   const [missionSessions, setMissionSessions] = useState<MissionRunSummary[]>([]);
   const [missionProgressLoading, setMissionProgressLoading] = useState(false);
   const [missionProgressError, setMissionProgressError] = useState<string | null>(null);
-
 
 
   useEffect(() => {
@@ -178,6 +206,7 @@ export function SignalRecon() {
   );
   const sessionActive = Boolean(activeSessionId);
   const runActive = Boolean(activeRunId);
+  const [showTabs, setShowTabs] = useState(true);
 
   const selectedCaptureKind = useMemo(
     () => captureKindFor(selectedMode, selectedInterface),
@@ -198,7 +227,6 @@ export function SignalRecon() {
       });
       const historyParams = new URLSearchParams({
         vehicle_slug: vehicleSlug,
-        capture_kind: selectedCaptureKind,
         limit: "500",
       });
 
@@ -273,9 +301,13 @@ export function SignalRecon() {
   const handleSelectMission = async (nextMission: ReconMission) => {
     if (busy || runActive) return;
 
+    setShowTabs(false);
+
+
     const isSameMission =
       selectedMission?.mission_code === nextMission.mission_code;
     if (isSameMission) {
+      setSidebarHidden(false);
       setQueueMinimized(true);
       return;
     }
@@ -284,6 +316,9 @@ export function SignalRecon() {
     setError(null);
 
     try {
+      setTerminalInitialSessionId(null);
+      setTerminalInitialView("start");
+
       if (sessionActive) {
         // Preserve data integrity: one database session belongs to one mission.
         // A hot switch closes the old session and immediately starts a new
@@ -304,6 +339,7 @@ export function SignalRecon() {
         }
       }
 
+      setSidebarHidden(false);
       setQueueMinimized(true);
       await refreshMissionProgressFromDb();
     } catch (err) {
@@ -320,6 +356,7 @@ export function SignalRecon() {
   const openMissionTerminal = async () => {
     if (!mission || busy) return;
 
+    setShowTabs(false);
     setBusy(true);
     setError(null);
 
@@ -331,6 +368,8 @@ export function SignalRecon() {
       // Review mode first: opening the tactical terminal must not create a new
       // CAN session. SignalReconMission will load the latest saved DB run for
       // this mission, and only RUN STEP / RUN FULL MISSION creates a new one.
+      setTerminalInitialSessionId(selectedMissionProgress?.session_id ?? null);
+      setTerminalInitialView(selectedMissionProgress ? "session" : "start");
       setMissionTerminalOpen(true);
       setQueueMinimized(true);
     } catch (err) {
@@ -339,6 +378,86 @@ export function SignalRecon() {
           ? err.message
           : "Failed to open Signal Recon terminal.",
       );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const openSavedSession = async (
+    session: MissionRunSummary,
+    initialView: Exclude<MissionTerminalInitialView, "start">,
+  ) => {
+    if (
+      busy
+      || runActive
+      || (session.frame_count <= 0 && initialView === "playback")
+    ) return;
+
+    const sessionMission = missions.find(
+      (item) => item.mission_code === session.mission_code,
+    );
+
+    if (!sessionMission) {
+      setError(`Mission ${session.mission_code} is not available in the local catalog.`);
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    
+    try {
+      if (selectedMission?.mission_code !== sessionMission.mission_code) {
+        await selectMission(sessionMission);
+      }
+      setTerminalInitialSessionId(session.session_id);
+      setTerminalInitialView(initialView);
+      setMissionTerminalOpen(true);
+      setQueueMinimized(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to open the saved session.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const deleteSavedSession = async (session: MissionRunSummary) => {
+    if (busy || runActive || activeSessionId === session.session_id) return;
+
+    const confirmed = window.confirm(
+      `Delete ${session.mission_code} session ${session.session_id.slice(0, 8)}…?\n\n` +
+      `${session.frame_count.toLocaleString()} frames and ${session.marker_count} markers will be removed. ` +
+      "Saved analysis and labels for this session will also be deleted.",
+    );
+    if (!confirmed) return;
+
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await fetch(
+        `${getApiBaseUrl()}/data/can/session/${session.session_id}`,
+        { method: "DELETE" },
+      );
+      const data = (await response.json().catch(() => ({}))) as {
+        ok?: boolean;
+        detail?: string;
+        error?: string;
+      };
+      if (!response.ok || data.ok === false) {
+        throw new Error(
+          typeof data.detail === "string"
+            ? data.detail
+            : typeof data.error === "string"
+              ? data.error
+              : `Session delete failed with HTTP ${response.status}.`,
+        );
+      }
+      if (terminalInitialSessionId === session.session_id) {
+        setTerminalInitialSessionId(null);
+        setTerminalInitialView("start");
+      }
+      await refreshMissionProgressFromDb();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete the saved session.");
     } finally {
       setBusy(false);
     }
@@ -358,22 +477,34 @@ export function SignalRecon() {
       }
     }
 
+    setSidebarHidden(false);
     setScreen("signal_recon_setup");
   };
 
   const handleMaximizeQueue = () => {
     if (runActive) return;
+    setShowTabs(true);
     setMissionTerminalOpen(false);
     setQueueMinimized(false);
+    setSidebarHidden(false);
+    setTerminalInitialSessionId(null);
+    setTerminalInitialView("start");
   };
 
   const handleMissionClosed = () => {
-    handleMaximizeQueue();
+    if (runActive) return;
+    setMissionTerminalOpen(false);
+    setQueueMinimized(true);
+    setSidebarHidden(false);
+    setTerminalInitialSessionId(null);
+    setTerminalInitialView("start");
   };
 
-  // Once the real mission terminal opens, it owns the entire content area.
-  // SignalReconMission already exposes its own LIST action through onExit.
-  const showMissionList = !missionTerminalOpen;
+  // The rank header belongs only to the full mission database. Review and
+  // Tactical Terminal modes use their own compact action navigation.
+  const showMissionDatabaseHeader = !missionTerminalOpen;
+  const showMissionList =
+    !missionTerminalOpen && (!queueMinimized || !sidebarHidden);
   const showTerminalPane = queueMinimized || missionTerminalOpen;
 
   return (
@@ -381,67 +512,76 @@ export function SignalRecon() {
       {/* <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(34,197,94,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(34,197,94,0.05)_1px,transparent_1px)] bg-[size:32px_32px]" /> */}
 
       {/* <div className="relative z-10 flex h-full min-h-0 flex-col overflow-hidden p-2 sm:p-3"> */}
-        {!missionTerminalOpen && (
-          <header className="relative z-20 shrink-0 border-b border-green-400/20 bg-slate-950/90 px-2 py-1">
-            <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0">
-                <h2 className="truncate text-xl font-bold text-green-200">
-                  Missions Database
-                </h2>
-                <p className="truncate font-mono text-xs text-slate-500">
-                  {visibleMissions.length} visible / {missions.length} total · {selectedInterface}/{busModeLabel(selectedMode)}
-                  {missionProgressError ? " · DB ERROR" : ""}
-                </p>
-              </div>
-
-              <div className="grid shrink-0 grid-cols-3 gap-1">
-                <GameButton
-                  onPress={() => void handleExit()}
-                  disabled={busy || runActive}
-                  className="border border-red-300/40 bg-red-500/10 px-2 py-1 font-mono text-xs font-bold text-red-100 hover:bg-red-400/20 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  VEHICLE
-                </GameButton>
+        {showMissionDatabaseHeader && (
+          <ReconWorkspaceHeader
+            theme="cyan"
+            eyebrow="SIGNAL RECON // MISSION DATABASE"
+            title={mission?.title ?? "Missions Database"}
+            meta={mission ? `${mission.mission_code} · ${mission.target}` : "Select a mission"}
+            collapsed={collapsed}
+            setCollapsed={setCollapsed}
+            showTabs={showTabs} 
+            tabs={RANK_HEADER_TABS.map((tab) => ({
+              ...tab,
+              disabled: runActive || sessionActive,
+            }))}
+            activeTab={selectedRank}
+            onTabChange={(tabId) => setSelectedRank(tabId as MissionRank | "ALL")}
+            status={
+              <span>
+                {visibleMissions.length}/{missions.length} MISSIONS · {selectedInterface}/{busModeLabel(selectedMode)}
+                {missionProgressLoading ? " · DB SYNC" : ""}
+                {missionProgressError ? " · DB ERROR" : ""}
+              </span>
+            }
+            actions={
+              <div className="grid grid-cols-1 items-end space-y-0.5">
                 <GameButton
                   onPress={() => void refreshMissionProgressFromDb()}
                   disabled={missionProgressLoading}
-                  className="border border-cyan-300/40 bg-cyan-500/10 px-2 py-1 font-mono text-xs font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="rounded-sm border flex justify-center border-cyan-300/40 bg-cyan-500/10 text-[9px] font-black text-cyan-100 hover:bg-cyan-400/20 disabled:opacity-40"
                 >
                   {missionProgressLoading ? "SYNCING" : "REFRESH"}
                 </GameButton>
                 <GameButton
                   onPress={() => {
-                    if (mission) setQueueMinimized(true);
+                    if (!mission) return;
+                    setSidebarHidden(false);
+                    setQueueMinimized(true);
                   }}
                   disabled={!mission}
-                  className="border border-slate-600 bg-slate-900 px-2 py-1 font-mono text-xs text-slate-300 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="rounded-sm border flex justify-center border-slate-600 bg-slate-900 text-[9px] font-black text-slate-300 hover:bg-slate-800 disabled:opacity-40"
                 >
                   TERMINAL
                 </GameButton>
+                <div className="flex gap-0.5 justify-end">
+                  <GameButton
+                    variant="danger"
+                    disabled={busy || runActive}
+                    onPress={() => void handleExit()}
+                    className="h-4 rounded-sm border flex justify-center border-red-300/40 px-1 text-[9px] font-black"
+                  >
+                    BACK
+                  </GameButton>
+                  
+                    <button
+                      type="button"
+                      onClick={() => setCollapsed(true)}
+                      className={`shrink-0 border rounded-sm bg-slate-900 px-1 flex items-center text-[9px] font-black text-slate-300`}
+                      aria-label="Hide workspace header"
+                      title="Hide header"
+                    >
+                      ▴
+                    </button>
+                </div>
               </div>
-            </div>
-
-            <div className="mt-1 flex flex-wrap items-center">
-              {RANK_FILTERS.map((rank) => (
-                <GameButton
-                  key={rank}
-                  disabled={runActive || sessionActive}
-                  onPress={() => setSelectedRank(rank)}
-                  className={`border px-1 font-mono text-xs font-bold transition disabled:cursor-not-allowed disabled:opacity-40 ${selectedRank === rank
-                    ? "border-green-300 bg-green-500/20 text-green-100"
-                    : "border-slate-700 bg-slate-900 text-slate-400 hover:bg-slate-800"
-                    }`}
-                >
-                  {rankLabel(rank)}
-                </GameButton>
-              ))}
-            </div>
-          </header>
+            }
+          />
         )}
 
         <main
           className={`grid min-h-0 flex-1 overflow-hidden ${
-            missionTerminalOpen
+            missionTerminalOpen || (queueMinimized && sidebarHidden)
               ? "grid-cols-1"
               : queueMinimized
                 ? "grid-cols-[56px_minmax(0,1fr)] sm:grid-cols-[72px_minmax(0,1fr)] lg:grid-cols-[96px_minmax(0,1fr)]"
@@ -457,12 +597,20 @@ export function SignalRecon() {
             >
             {queueMinimized ? (
               <div className="flex flex-col w-full game-ui">
-                <GameButton
-                  onPress={handleMaximizeQueue}
-                  className="flex h-9 w-full items-center justify-center border border-slate-600 bg-slate-900 font-mono text-[10px] text-slate-300 hover:bg-slate-800 sm:text-xs"
-                >
-                  LIST
-                </GameButton>
+                <div className="grid grid-cols-1 gap-px bg-slate-800">
+                  <GameButton
+                    onPress={handleMaximizeQueue}
+                    className="flex h-8 w-full items-center justify-center rounded-none border border-cyan-300/30 bg-cyan-500/10 font-mono text-[9px] font-black text-cyan-100 hover:bg-cyan-400/20 sm:text-[10px]"
+                  >
+                    MISSIONS
+                  </GameButton>
+                  <GameButton
+                    onPress={() => setSidebarHidden(true)}
+                    className="flex h-6 w-full items-center justify-center rounded-none border border-slate-700 bg-slate-950 font-mono text-[8px] font-black text-slate-400 hover:bg-slate-900"
+                  >
+                    HIDE
+                  </GameButton>
+                </div>
 
                 <div className="flex flex-1 flex-col game-ui">
                   {visibleMissions.map((item) => {
@@ -573,17 +721,34 @@ export function SignalRecon() {
           )}
 
           {showTerminalPane && (
-            <section className="game-ui transition-all bg-black/80 font-mono shadow-xl shadow-green-500/10">
+            <section className="game-ui relative transition-all bg-black/80 font-mono shadow-xl shadow-green-500/10">
+              {queueMinimized && sidebarHidden && !missionTerminalOpen && (
+                <button
+                  type="button"
+                  onClick={() => setSidebarHidden(false)}
+                  className="absolute left-0 top-0 z-40 border border-cyan-300/30 bg-slate-950 px-1 py-2 text-[9px] font-black text-cyan-200"
+                  aria-label="Show mission sidebar"
+                  title="Show mission sidebar"
+                >
+                  ▸
+                </button>
+              )}
               {missionTerminalOpen ? (
                 <SignalReconMission
+                  key={`${mission?.mission_code ?? "none"}:${terminalInitialSessionId ?? "latest"}:${terminalInitialView}`}
                   onExit={handleMissionClosed}
-                  initialSessionId={selectedMissionProgress?.session_id ?? null}
+                  collapsed={collapsed}
+                  setCollapsed={setCollapsed}
+                  initialSessionId={terminalInitialSessionId ?? selectedMissionProgress?.session_id ?? null}
+                  initialView={terminalInitialView}
                   initialMissionProgress={selectedMissionProgress ?? null}
                   sessionHistory={selectedMissionSessions}
                   onDatabaseChanged={() => void refreshMissionProgressFromDb()}
+                  handleMaximizeQueue={handleMaximizeQueue}
+                  runActive= {runActive}
                 />
               ) : (
-                <div className="px-2 pb-4 flex flex-col game-ui">
+                <div className="px-2 pb-2 flex flex-col game-ui">
                   {/* <div className="px-2"> */}
 
                     <div className="mb-1 pb-1 flex items-center justify-between border-b border-green-400/20">
@@ -697,23 +862,105 @@ export function SignalRecon() {
                         No Signal Recon missions are loaded.
                       </div>
                     )}
+                  <div className="mt-2 border-t border-cyan-400/20 py-1">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-bold text-cyan-200">Recent Mission Sessions</h3>
+                        <p className="text-[10px] text-slate-500">
+                          Review, play back, inspect results, or delete runs for the selected mission.
+                        </p>
+                      </div>
+                      <span className="text-[10px] text-slate-500">
+                        {selectedMissionSessions.length} RUN{selectedMissionSessions.length === 1 ? "" : "S"}
+                      </span>
+                    </div>
+
+                    <div className="my-1 max-h-56 space-y-1 overflow-y-auto ">
+                      {selectedMissionSessions.slice(0, 12).map((session) => {
+                        const empty = session.frame_count <= 0;
+                        return (
+                          <div
+                            key={session.session_id}
+                            className={`border px-2 py-1 ${empty
+                              ? "border-red-300/30 bg-red-500/5"
+                              : "border-slate-700 bg-slate-900/70"
+                            }`}
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div className="min-w-0 text-[10px]">
+                                <p className="truncate font-black text-green-100">
+                                  {session.mission_code} · {session.session_id.slice(0, 8)}… · {session.source_label}
+                                </p>
+                                <p className="truncate text-slate-500">
+                                  {session.frame_count.toLocaleString()} frames · {session.marker_count} markers
+                                  {session.top_can_id_hex ? ` · ${session.top_can_id_hex} ${formatConfidence(session.confidence)}` : ""}
+                                </p>
+                                {session.capture_quality?.quality_issue && (
+                                  <p className="truncate text-red-300">
+                                    {session.capture_quality.quality_issue}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="flex flex-wrap gap-1">
+                                <GameButton
+                                  onPress={() => void openSavedSession(session, "session")}
+                                  disabled={busy || runActive}
+                                  className="border border-green-300/30 bg-green-500/10 px-1.5 py-0.5 text-[9px] font-bold text-green-100 disabled:opacity-40"
+                                >
+                                  REVIEW
+                                </GameButton>
+                                <GameButton
+                                  onPress={() => void openSavedSession(session, "playback")}
+                                  disabled={busy || runActive || empty}
+                                  className="border border-purple-300/30 bg-purple-500/10 px-1.5 py-0.5 text-[9px] font-bold text-purple-100 disabled:opacity-40"
+                                >
+                                  PLAYBACK
+                                </GameButton>
+                                <GameButton
+                                  onPress={() => void openSavedSession(session, "results")}
+                                  disabled={busy || runActive || !session.analyzed}
+                                  className="border border-cyan-300/30 bg-cyan-500/10 px-1.5 py-0.5 text-[9px] font-bold text-cyan-100 disabled:opacity-40"
+                                >
+                                  RESULTS
+                                </GameButton>
+                                <GameButton
+                                  onPress={() => void deleteSavedSession(session)}
+                                  disabled={busy || runActive || activeSessionId === session.session_id}
+                                  className="border border-red-300/30 bg-red-500/10 px-1.5 py-0.5 text-[9px] font-bold text-red-100 disabled:opacity-40"
+                                >
+                                  DELETE
+                                </GameButton>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {!selectedMissionSessions.length && (
+                        <div className="border border-slate-700 bg-slate-900/60 px-2 py-2 text-xs text-slate-500">
+                          No saved sessions for the selected mission yet.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                   <div className="flex">
                     <GameButton
                       onPress={openMissionTerminal}
                       disabled={busy || !steps.length || runActive}
-                      className="w-1/2 border border-green-300/40 bg-green-500/10 font-bold text-green-100 hover:bg-green-400/20 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="flex justify-center w-1/2 border border-green-300/40 bg-green-500/10 font-bold text-green-100 hover:bg-green-400/20 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       {activeSessionId
-                        ? "ACTIVE SESSION"
+                        ? "SESSION"
                         : selectedMissionProgress
-                          ? "SAVED RUN"
-                          : "TACTICAL TERMINAL"}
+                          ? "REVIEW"
+                          : "TERMINAL"}
                     </GameButton>
 
                     <GameButton
                       onPress={handleMaximizeQueue}
                       disabled={runActive}
-                      className="w-1/2 border border-cyan-300/40 bg-cyan-500/10 font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="flex justify-center w-1/2 border border-cyan-300/40 bg-cyan-500/10 font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       LIST
                     </GameButton>

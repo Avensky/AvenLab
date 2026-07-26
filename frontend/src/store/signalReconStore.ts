@@ -8,6 +8,7 @@ import {
     ACTION_MS,
     BASELINE_MS,
     COUNTDOWN_MS,
+    DEFAULT_TARGET_MARKERS,
     RECON_MISSIONS,
     applyMissionProtocolToSteps,
     getDefaultMissionProtocol,
@@ -66,6 +67,8 @@ type SignalReconState = {
     activePhase: ReconRunPhase;
     phaseStartedAt: number | null;
     phaseEndsAt: number | null;
+    postedMarkerCount: number;
+    markerPostFailures: number;
 
     setVehicleSlug: (slug: string) => void;
     setVehicleIdentity: (vehicle: CanVehicleIdentity) => void;
@@ -116,19 +119,49 @@ type SignalReconState = {
         label?: string;
         metadata?: Record<string, unknown>;
     }) => Promise<void>;
+    flushMarkerPosts: () => Promise<void>;
 
     runStep: (step?: ReconStep) => Promise<void>;
     runSelectedMission: () => Promise<void>;
-    cancelActiveRun: () => void;
+    cancelActiveRun: () => Promise<void>;
 
     stopSession: (metadata?: Record<string, unknown>) => Promise<void>;
 };
 
 const PROTOCOL_STORAGE_KEY = "avenlab.signal-recon.protocols.v1";
 const MAX_PHASE_DURATION_MS = 24 * 60 * 60 * 1000;
+const MARKER_POST_ATTEMPTS = 3;
 
 const sleep = (ms: number) =>
     new Promise<void>((resolve) => window.setTimeout(resolve, ms));
+
+let markerPostTail: Promise<void> = Promise.resolve();
+
+function serializeMarkerPost<T>(
+    operation: () => Promise<T>,
+): Promise<T> {
+    const result = markerPostTail.then(operation, operation);
+    markerPostTail = result.then(
+        () => undefined,
+        () => undefined,
+    );
+    return result;
+}
+
+function waitForPendingMarkerPosts(): Promise<void> {
+    return markerPostTail;
+}
+
+function isCorrelationMarker(marker: ReconMarkerDefinition) {
+    const markerType = marker.marker_type.trim().toLowerCase();
+    return (
+        marker.trigger === "action" ||
+        markerType === "action_start" ||
+        markerType === "action" ||
+        markerType === "target_action" ||
+        markerType === "target_event"
+    );
+}
 
 function makeRunId() {
     return (
@@ -220,7 +253,7 @@ function sanitizeProtocol(
     const requestedPhases = Array.isArray(raw.enabled_phases)
         ? raw.enabled_phases.filter(isPhase)
         : fallback.enabled_phases;
-    const enabledPhases = ALL_RECON_PHASES.filter((phase) =>
+    let enabledPhases = ALL_RECON_PHASES.filter((phase) =>
         requestedPhases.includes(phase),
     );
 
@@ -247,6 +280,65 @@ function sanitizeProtocol(
                   enabled: marker.enabled !== false,
               }))
         : fallback.markers;
+
+    const targetCorrelationRequired =
+        mission.analysis_mode !== "baseline_profile" &&
+        mission.rank !== "BASELINE";
+    const isTargetMarker = (marker: ReconMarkerDefinition) =>
+        (
+            marker.marker_type.trim().toLowerCase() === "action_start" ||
+            marker.marker_type.trim().toLowerCase() === "action" ||
+            marker.marker_type.trim().toLowerCase() === "target_action" ||
+            marker.marker_type.trim().toLowerCase() === "target_event"
+        );
+    const hasEnabledTargetMarker = markers.some(
+        (marker) =>
+            marker.enabled !== false &&
+            marker.marker_type.trim().length > 0 &&
+            isTargetMarker(marker),
+    );
+
+    // Old per-mission localStorage entries can contain an empty/invalid marker
+    // list. A target-correlation mission without an action marker produces a
+    // normal-looking recording that the analyzer can never correlate.
+    if (targetCorrelationRequired && !hasEnabledTargetMarker) {
+        const recoveryMarkers = fallback.markers.some(isTargetMarker)
+            ? fallback.markers.filter(isTargetMarker)
+            : DEFAULT_TARGET_MARKERS;
+        for (const recoveryMarker of recoveryMarkers) {
+            const existingIndex = markers.findIndex(
+                (marker) => marker.id === recoveryMarker.id,
+            );
+            if (existingIndex >= 0) {
+                markers[existingIndex] = {
+                    ...recoveryMarker,
+                    enabled: true,
+                };
+            } else {
+                markers.push({
+                    ...recoveryMarker,
+                    enabled: true,
+                });
+            }
+        }
+    }
+
+    // A configured marker must never be silently skipped merely because its
+    // phase was disabled in a stale protocol. Heal the phase list in memory.
+    const requiredMarkerPhases = new Set<ReconPhaseName>();
+    for (const marker of markers) {
+        if (
+            marker.enabled !== false &&
+            isPhase(marker.trigger)
+        ) {
+            requiredMarkerPhases.add(marker.trigger);
+        }
+    }
+    enabledPhases = ALL_RECON_PHASES.filter(
+        (phase) =>
+            requestedPhases.includes(phase) ||
+            requiredMarkerPhases.has(phase),
+    );
 
     const rawOverrides =
         raw.step_timing_overrides &&
@@ -469,6 +561,8 @@ export const useSignalReconStore = create<SignalReconState>((set, get) => ({
     activePhase: "idle",
     phaseStartedAt: null,
     phaseEndsAt: null,
+    postedMarkerCount: 0,
+    markerPostFailures: 0,
 
     setVehicleSlug: (slug) =>
         set((state) => {
@@ -883,6 +977,8 @@ export const useSignalReconStore = create<SignalReconState>((set, get) => ({
 
         set({
             activeSessionId: data.session_id,
+            postedMarkerCount: 0,
+            markerPostFailures: 0,
         });
 
         useCanDataStore
@@ -897,58 +993,104 @@ export const useSignalReconStore = create<SignalReconState>((set, get) => ({
         return data.session_id as string;
     },
 
-    async postMarker({
+    postMarker({
         stepCode,
         markerType,
         label,
         metadata = {},
     }) {
+        return serializeMarkerPost(async () => {
         const { activeSessionId, selectedMission } = get();
 
         if (!activeSessionId || !selectedMission) {
-            return;
-        }
-
-        const res = await fetch(
-            `${getApiBaseUrl()}/data/can/session/${activeSessionId}/marker`,
-            {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    mission_code:
-                        selectedMission.mission_code,
-                    step_code: stepCode,
-                    marker_type: markerType,
-                    label,
-                    client_event_id:
-                        globalThis.crypto?.randomUUID?.() ??
-                        `marker-${Math.random().toString(16).slice(2)}-${Math.random().toString(16).slice(2)}`,
-                    metadata: {
-                        timestamp_authority: "server",
-                        source: "signal-recon",
-                        analysis_mode:
-                            selectedMission.analysis_mode,
-                        expected_target:
-                            selectedMission.analysis_mode ===
-                            "baseline_profile"
-                                ? null
-                                : selectedMission.target,
-                        ...metadata,
-                    },
-                }),
-            },
-        );
-
-        if (!res.ok) {
-            const data = await res
-                .json()
-                .catch(() => ({}));
             throw new Error(
-                data.error ??
-                    data.detail ??
-                    `Failed to post marker: ${markerType}`,
+                `Cannot post ${markerType}: no active Signal Recon session`,
             );
         }
+
+        const sessionId = activeSessionId;
+        const mission = selectedMission;
+        const clientEventId =
+            globalThis.crypto?.randomUUID?.() ??
+            `marker-${Math.random().toString(16).slice(2)}-${Math.random().toString(16).slice(2)}`;
+        let lastError = `Failed to post marker: ${markerType}`;
+
+        for (
+            let attempt = 1;
+            attempt <= MARKER_POST_ATTEMPTS;
+            attempt += 1
+        ) {
+            try {
+                const res = await fetch(
+                    `${getApiBaseUrl()}/data/can/session/${sessionId}/marker`,
+                    {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            mission_code: mission.mission_code,
+                            step_code: stepCode,
+                            marker_type: markerType,
+                            label,
+                            client_event_id: clientEventId,
+                            metadata: {
+                                timestamp_authority: "server",
+                                source: "signal-recon",
+                                analysis_mode: mission.analysis_mode,
+                                expected_target:
+                                    mission.analysis_mode ===
+                                    "baseline_profile"
+                                        ? null
+                                        : mission.target,
+                                ...metadata,
+                            },
+                        }),
+                    },
+                );
+                const data = await res.json().catch(() => ({}));
+
+                if (res.ok && data.ok !== false && data.marker_id) {
+                    set((current) => ({
+                        postedMarkerCount:
+                            current.postedMarkerCount + 1,
+                    }));
+                    return;
+                }
+
+                lastError =
+                    data.error ??
+                    data.detail ??
+                    `Failed to post marker: ${markerType}`;
+
+                // Conflicts and validation failures are not transient.
+                if (
+                    res.status < 500 &&
+                    res.status !== 408 &&
+                    res.status !== 429
+                ) {
+                    break;
+                }
+            } catch (error) {
+                lastError =
+                    error instanceof Error
+                        ? error.message
+                        : lastError;
+            }
+
+            if (attempt < MARKER_POST_ATTEMPTS) {
+                await sleep(150 * attempt);
+            }
+        }
+
+        set((current) => ({
+            markerPostFailures:
+                current.markerPostFailures + 1,
+        }));
+        throw new Error(lastError);
+        });
+    },
+
+    async flushMarkerPosts() {
+        await waitForPendingMarkerPosts();
     },
 
     async runStep(stepArg) {
@@ -1082,6 +1224,7 @@ export const useSignalReconStore = create<SignalReconState>((set, get) => ({
 
     async runSelectedMission() {
         const steps = get().steps;
+        const sessionId = get().activeSessionId;
 
         for (
             let index = 0;
@@ -1095,10 +1238,19 @@ export const useSignalReconStore = create<SignalReconState>((set, get) => ({
                 activeStep: steps[index],
             });
             await get().runStep(steps[index]);
+            const current = get();
+            if (
+                current.activeSessionId !== sessionId ||
+                current.activePhase === "cancelled"
+            ) {
+                return;
+            }
         }
+
+        await waitForPendingMarkerPosts();
     },
 
-    cancelActiveRun() {
+    async cancelActiveRun() {
         const state = get();
         if (!state.activeRunId) return;
 
@@ -1110,36 +1262,38 @@ export const useSignalReconStore = create<SignalReconState>((set, get) => ({
               ] ?? getDefaultMissionProtocol(mission)
             : null;
 
-        if (step && protocol) {
-            for (const marker of protocol.markers) {
-                if (
-                    marker.enabled === false ||
-                    marker.trigger !== "run_cancelled" ||
-                    !marker.marker_type.trim()
-                ) {
-                    continue;
-                }
-
-                void get().postMarker({
-                    stepCode: step.step_code,
-                    markerType: marker.marker_type,
-                    label: markerLabel(marker, step),
-                    metadata: {
-                        marker_definition_id: marker.id,
-                        marker_trigger: "run_cancelled",
-                        step_id: step.id,
-                        step_metadata: step.metadata,
-                    },
-                });
-            }
-        }
-
+        // Clear the run id first so waitForRun exits immediately, then wait for
+        // cancellation markers before a caller is allowed to finalize.
         set({
             activeRunId: null,
             activePhase: "cancelled",
             phaseStartedAt: nowMs(),
             phaseEndsAt: null,
         });
+
+        if (!step || !protocol) return;
+
+        for (const marker of protocol.markers) {
+            if (
+                marker.enabled === false ||
+                marker.trigger !== "run_cancelled" ||
+                !marker.marker_type.trim()
+            ) {
+                continue;
+            }
+
+            await get().postMarker({
+                stepCode: step.step_code,
+                markerType: marker.marker_type,
+                label: markerLabel(marker, step),
+                metadata: {
+                    marker_definition_id: marker.id,
+                    marker_trigger: "run_cancelled",
+                    step_id: step.id,
+                    step_metadata: step.metadata,
+                },
+            });
+        }
     },
 
     async stopSession(metadata = {}) {
@@ -1153,8 +1307,26 @@ export const useSignalReconStore = create<SignalReconState>((set, get) => ({
         if (!activeSessionId) return;
 
         if (activeRunId) {
-            get().cancelActiveRun();
+            await get().cancelActiveRun();
         }
+
+        await waitForPendingMarkerPosts();
+
+        const finalProtocol = selectedMission
+            ? missionProtocols[selectedMission.mission_code] ??
+              getDefaultMissionProtocol(selectedMission)
+            : null;
+        const expectedActionMarkerCount =
+            finalProtocol && selectedMission
+                ? steps.length *
+                  finalProtocol.markers.filter(
+                      (marker) =>
+                          marker.enabled !== false &&
+                          isCorrelationMarker(marker),
+                  ).length
+                : 0;
+        const postedMarkerCount = get().postedMarkerCount;
+        const markerPostFailures = get().markerPostFailures;
 
         const res = await fetch(
             `${getApiBaseUrl()}/data/can/session/${activeSessionId}/finalize`,
@@ -1167,14 +1339,7 @@ export const useSignalReconStore = create<SignalReconState>((set, get) => ({
                         mission_code:
                             selectedMission?.mission_code,
                         final_mission_protocol:
-                            selectedMission
-                                ? missionProtocols[
-                                      selectedMission.mission_code
-                                  ] ??
-                                  getDefaultMissionProtocol(
-                                      selectedMission,
-                                  )
-                                : null,
+                            finalProtocol,
                         final_mission_steps: steps.map((step) => ({
                             id: step.id,
                             step_code: step.step_code,
@@ -1183,16 +1348,22 @@ export const useSignalReconStore = create<SignalReconState>((set, get) => ({
                             action_ms: step.action_ms,
                             capture_ms: step.capture_ms,
                         })),
+                        browser_posted_marker_count:
+                            postedMarkerCount,
+                        browser_marker_post_failures:
+                            markerPostFailures,
+                        expected_action_marker_count:
+                            expectedActionMarkerCount,
                         ...metadata,
                     },
                 }),
             },
         );
 
+        const data = await res
+            .json()
+            .catch(() => ({}));
         if (!res.ok) {
-            const data = await res
-                .json()
-                .catch(() => ({}));
             throw new Error(
                 data.error ??
                     data.detail ??
@@ -1208,6 +1379,29 @@ export const useSignalReconStore = create<SignalReconState>((set, get) => ({
             .addLog(
                 `[signal-recon] finalized ${selectedMission?.mission_code ?? "session"} using Pi server time`,
             );
+        const serverMarkerCount =
+            typeof data.markers === "number"
+                ? data.markers
+                : null;
+        if (
+            serverMarkerCount !== null &&
+            serverMarkerCount < postedMarkerCount
+        ) {
+            useCanDataStore
+                .getState()
+                .addLog(
+                    `[signal-recon] marker reconciliation warning: browser acknowledged ${postedMarkerCount}, server finalized ${serverMarkerCount}`,
+                );
+        }
+        if (
+            data.capture_quality?.usable_for_analysis === false
+        ) {
+            useCanDataStore
+                .getState()
+                .addLog(
+                    `[signal-recon] capture quality warning: ${data.capture_quality?.quality_issue ?? "session is not usable for target analysis"}`,
+                );
+        }
 
         set({
             activeSessionId: null,
@@ -1216,6 +1410,8 @@ export const useSignalReconStore = create<SignalReconState>((set, get) => ({
             activePhase: "idle",
             phaseStartedAt: null,
             phaseEndsAt: null,
+            postedMarkerCount: 0,
+            markerPostFailures: 0,
         });
     },
 }));

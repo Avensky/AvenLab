@@ -57,6 +57,10 @@ type PlaybackFrame = {
     signal_name?: string | null;
     decoded?: unknown;
     source?: string | null;
+    observed_in_slice?: boolean;
+    state_carried?: boolean;
+    state_available?: boolean;
+    state_age_ms?: number | null;
 };
 
 type PlaybackSlice = {
@@ -65,6 +69,7 @@ type PlaybackSlice = {
     end_ms: number;
     frame_count: number;
     frames: PlaybackFrame[];
+    state_frames?: PlaybackFrame[];
 };
 
 type PlaybackResponse = {
@@ -124,7 +129,7 @@ const SPEEDS = [0.1, 0.25, 0.5, 1, 2, 5, 10, 25, 50, 100];
 const TOLERANCES = [1, 2, 5, 10, 25, 50, 100, 250, 500, 1000];
 const PAGE_SLICES = 180;
 const BYTE_CELL_CLASS =
-    "inline-flex h-6 w-8 shrink-0 items-center justify-center rounded border px-0.5 py-0.5 font-black";
+    "inline-flex h-5 w-full min-w-0 items-center justify-center rounded-sm border px-0 text-[9px] font-black leading-none sm:text-[10px]";
 
 const ROLE_OPTIONS: Array<{
     kind: PlaybackRole;
@@ -163,11 +168,11 @@ function canIdHex(value: number) {
     return `0x${value.toString(16).toUpperCase().padStart(width, "0")}`;
 }
 
-function shortSessionId(sessionId: string | null) {
-    if (!sessionId) return "none";
-    if (sessionId.length <= 14) return sessionId;
-    return `${sessionId.slice(0, 8)}…${sessionId.slice(-4)}`;
-}
+// function shortSessionId(sessionId: string | null) {
+//     if (!sessionId) return "none";
+//     if (sessionId.length <= 14) return sessionId;
+//     return `${sessionId.slice(0, 8)}…${sessionId.slice(-4)}`;
+// }
 
 function statusTone(status: SavedHypothesis["validation_status"] | undefined) {
     if (status === "positive") return "border-green-300/50 bg-green-500/15 text-green-100";
@@ -307,6 +312,24 @@ export function SignalReconPlayback({
         );
     }, [idFilterSearch, observedCanIds]);
 
+    // Pinned-state mode is intentionally limited to an ID-only filter.
+    // Delta/value searches keep their original event-row semantics.
+    const persistentSelectionActive =
+        selectedCanIds.length > 0
+        && !search.trim()
+        && byteIndex === ""
+        && !byteValue.trim()
+        && !deltasOnly
+        && !byteChangedOnly;
+
+    const displayFrames = useMemo(() => {
+        if (!currentSlice) return [];
+        if (persistentSelectionActive && currentSlice.state_frames?.length) {
+            return currentSlice.state_frames;
+        }
+        return currentSlice.frames;
+    }, [currentSlice, persistentSelectionActive]);
+
     useEffect(() => {
         if (!idMenuOpen) return;
 
@@ -342,6 +365,9 @@ export function SignalReconPlayback({
         if (selectedCanIds.length) {
             params.set("id_filter", selectedCanIds.join(","));
         }
+        if (persistentSelectionActive) {
+            params.set("carry_selected", "true");
+        }
         if (search.trim()) params.set("search", search.trim());
         if (byteIndex !== "") params.set("byte_index", byteIndex);
         if (byteValue.trim()) params.set("byte_value", byteValue.trim());
@@ -353,6 +379,7 @@ export function SignalReconPlayback({
         byteIndex,
         byteValue,
         deltasOnly,
+        persistentSelectionActive,
         search,
         selectedCanIds,
         toleranceMs,
@@ -589,6 +616,9 @@ export function SignalReconPlayback({
         (total, frame) => total + frame.delta_positions.length,
         0,
     ) ?? 0;
+    const coldStateCount = displayFrames.filter(
+        (frame) => frame.state_carried || frame.state_available === false,
+    ).length;
 
     const seek = async (value: number) => {
         setPlaying(false);
@@ -728,11 +758,11 @@ export function SignalReconPlayback({
             <div className="shrink-0 border border-green-400/20 bg-black/60">
                 <div className="px-2 flex flex-wrap items-center justify-between">
                     <div>
-                        <p className="text-[10px] tracking-[0.28em] text-yellow-300">
+                        {/* <p className="text-[10px] tracking-[0.28em] text-yellow-300">
                             DATABASE PLAYBACK // SERVER TIMESTAMPS
-                        </p>
+                        </p> */}
                         <p className="text-xs text-slate-400">
-                            {shortSessionId(sessionId)} · {matchingFrameCount ?? 0} frames · {meta?.distinct_ids ?? 0} IDs · {matchingSliceCount.toLocaleString()} slices at {toleranceMs} ms · {markers.length} server markers
+                            {matchingFrameCount ?? 0}frames · {meta?.distinct_ids ?? 0} IDs · {matchingSliceCount.toLocaleString()} slices @{toleranceMs}ms · {markers.length} markers
                         </p>
                     </div>
                     <div className="w-full flex flex-wrap items-center gap-1">
@@ -812,14 +842,14 @@ export function SignalReconPlayback({
                             <GameButton
                                 onPress={() => void stepMarker(-1)}
                                 disabled={loading || disabled || !markers.length || activeMarkerIndex === 0}
-                                className="rounded border border-slate-600 bg-slate-900 px-2 py-1 text-[10px] text-slate-300 disabled:opacity-30"
+                                className="rounded border border-slate-600 bg-slate-900 flex items-center h-8 text-[10px] text-slate-300 disabled:opacity-30"
                                 title="Previous mission marker"
                             >
                                 ◀ MARK
                             </GameButton>
 
                             <div
-                                className={`min-w-0 rounded border px-2 py-1 text-center text-[10px] font-black ${
+                                className={`min-w-0 rounded border h-8 flex flex-col px-0.5 justify-center text-center text-[10px] font-black ${
                                     activeMarker
                                         ? markerTone(activeMarker.marker_type)
                                         : "border-slate-700 bg-slate-950 text-slate-500"
@@ -838,10 +868,10 @@ export function SignalReconPlayback({
                                             : "NO SESSION MARKERS"}
                                 </span>
                                 {activeMarker && (
-                                    <span className="block truncate text-[9px] font-normal opacity-75">
-                                        nearest slice {markerOffsetMs === null ? "—" : `${markerOffsetMs >= 0 ? "+" : ""}${markerOffsetMs} ms`}
-                                        {" · "}{currentChangedFrames} changed frames
-                                        {" · "}{currentChangedBytes} changed bytes
+                                    <span className="block justify-start truncate text-[9px] font-normal opacity-75">
+                                        nearest slice {markerOffsetMs === null ? "—" : `${markerOffsetMs >= 0 ? "+" : ""}${markerOffsetMs}ms`}
+                                        {" · "}{currentChangedFrames} Δframe{currentChangedFrames > 1? "s" : ""}
+                                        {" · "}{currentChangedBytes} Δbyte{currentChangedBytes > 1? "s" : ""}
                                     </span>
                                 )}
                             </div>
@@ -849,7 +879,7 @@ export function SignalReconPlayback({
                             <GameButton
                                 onPress={() => void stepMarker(1)}
                                 disabled={loading || disabled || !markers.length || activeMarkerIndex === markers.length - 1}
-                                className="rounded border border-slate-600 bg-slate-900 px-2 py-1 text-[10px] text-slate-300 disabled:opacity-30"
+                                className="rounded border border-slate-600 bg-slate-900 h-8 flex items-center text-[10px] text-slate-300 disabled:opacity-30"
                                 title="Next mission marker"
                             >
                                 MARK ▶
@@ -928,7 +958,7 @@ export function SignalReconPlayback({
                                 </div>
 
                                 <p className="shrink-0 border-t border-slate-800 bg-slate-950 p-2 text-[10px] text-slate-500">
-                                    No selection means all IDs. Select multiple IDs to compare changes in the same server-time slice.
+                                    No selection means all IDs. Selected IDs are pinned in numeric order and keep their last known cold state between transmissions. Search, delta, and byte filters temporarily use event rows only.
                                 </p>
                             </div>
                         )}
@@ -965,68 +995,123 @@ export function SignalReconPlayback({
                 }`}
             >
                 <div className="min-h-0 min-w-0 overflow-auto bg-black/50">
-                    <table className="w-full min-w-[860px] border-collapse text-left text-xs">
+                    <div className="flex h-5 items-center justify-between border-b border-slate-800 bg-slate-950/80 px-1 text-[9px] text-slate-500">
+                        <span>
+                            {persistentSelectionActive
+                                ? `${selectedCanIds.length} PINNED ID${selectedCanIds.length === 1 ? "" : "S"} · FIXED ROW ORDER`
+                                : `${displayFrames.length} EVENT ROW${displayFrames.length === 1 ? "" : "S"}`}
+                        </span>
+                        {persistentSelectionActive && (
+                            <span>{coldStateCount} COLD · {displayFrames.length - coldStateCount} CURRENT</span>
+                        )}
+                    </div>
+                    <table className="w-full min-w-[320px] table-auto border-collapse text-left text-[10px] sm:min-w-[455px] sm:text-xs xl:min-w-[720px]">
                         <thead className="sticky top-0 z-10 bg-emerald-950/95 text-green-100">
-                            <tr>
-                                <th className="border-b border-r border-green-300/30 px-1.5 py-0.5">Time</th>
-                                <th className="border-b border-r border-green-300/30 px-1.5 py-0.5">ID</th>
-                                <th className="border-b border-r border-green-300/30 px-0.5 py-0.5">Ln</th>
-                                <th className="border-b border-r border-green-300/30 px-1.5 py-0.5">
-                                    <div className="flex flex-nowrap gap-1" title="Payload byte positions; click a byte value below to inspect it">
+                            <tr className="h-5">
+                                <th className="w-[66px] border-b border-r border-green-300/30 px-1 py-0">ID</th>
+                                <th className="hidden w-[66px] border-b border-r border-green-300/30 px-1 py-0 sm:table-cell">Time</th>
+                                <th className="hidden w-[26px] border-b border-r border-green-300/30 px-0.5 py-0 lg:table-cell">Ln</th>
+                                <th className="border-b border-r border-green-300/30 px-0.5 py-0">
+                                    <div className="grid grid-cols-8 gap-px" title="Payload byte positions; click a byte value below to inspect it">
                                         {Array.from({ length: 8 }, (_, index) => (
                                             <span
                                                 key={index}
-                                                className={`${BYTE_CELL_CLASS} border-green-300/30 bg-slate-900 text-[9px] text-green-200`}
+                                                className={`${BYTE_CELL_CLASS} border-green-300/30 bg-slate-900 text-green-200`}
                                             >
                                                 B{index}
                                             </span>
                                         ))}
                                     </div>
                                 </th>
-                                <th className="border-b border-r border-green-300/30 px-1.5 py-0.5">Label</th>
-                                <th className="border-b border-green-300/30 px-1.5 py-0.5">Decoded</th>
+                                <th className="hidden w-[130px] border-b border-r border-green-300/30 px-1 py-0 xl:table-cell">Label</th>
+                                <th className="hidden w-[200px] border-b border-green-300/30 px-1 py-0 xl:table-cell">Decoded</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {(currentSlice?.frames ?? []).map((frame) => (
-                                <tr key={frame.id} className="border-b border-slate-800 hover:bg-green-500/5">
-                                    <td className="border-r border-slate-800 px-1.5 py-0.5 text-cyan-300">{formatTime(frame.timestamp_ms)}</td>
-                                    <td className="border-r border-slate-800 px-1.5 py-0.5 font-black text-cyan-300">{frame.can_id_hex}</td>
-                                    <td className="border-r border-slate-800 px-0.5 py-0.5 text-slate-400">{frame.dlc}</td>
-                                    <td className="border-r border-slate-800 px-1.5 py-0.5">
-                                        <div className="flex flex-nowrap gap-1">
-                                            {frame.bytes.map((value, index) => {
-                                                const changed = frame.delta_positions.includes(index);
-                                                const selected = selectedByte?.frame.id === frame.id && selectedByte.byteIndex === index;
-                                                return (
-                                                    <button
-                                                        key={index}
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setPlaying(false);
-                                                            setSelectedByte({
-                                                                frame,
-                                                                byteIndex: index,
-                                                            });
-                                                        }}
-                                                        className={`${BYTE_CELL_CLASS} ${selected
-                                                            ? "border-yellow-200 bg-yellow-500/20 text-yellow-100"
-                                                            : changed
-                                                                ? "border-cyan-300/70 bg-cyan-500/20 text-cyan-100"
-                                                                : "border-slate-700 bg-slate-900 text-slate-400"
-                                                        }`}
-                                                        title={`B${index}: hex ${byteHex(value)}, decimal ${value}${changed ? ", changed from previous frame" : ""}`}
-                                                    >
-                                                        {byteHex(value)}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    </td>
-                                    <td className="max-w-[220px] truncate border-r border-slate-800 px-1.5 py-0.5 text-cyan-300">{frame.signal_name ?? "—"}</td>
-                                    <td className="max-w-[360px] truncate px-1.5 py-0.5 text-slate-400">{decodedText(frame.decoded)}</td>
-                                </tr>
-                            ))}
+                            {displayFrames.map((frame) => {
+                                const cold = frame.state_carried === true;
+                                const unavailable = frame.state_available === false;
+                                const rowChanged = !cold && frame.changed;
+                                const rowKey = persistentSelectionActive
+                                    ? `state:${frame.can_id}`
+                                    : `frame:${frame.id}`;
+                                return (
+                                    <tr
+                                        key={rowKey}
+                                        className={`h-6 border-b border-slate-800 hover:bg-green-500/5 ${cold || unavailable ? "bg-slate-950/70" : ""}`}
+                                    >
+                                        <td
+                                            className="whitespace-nowrap border-r border-slate-800 px-1 py-0 font-black text-cyan-300"
+                                            title={`${frame.can_id_hex}${frame.signal_name ? ` · ${frame.signal_name}` : ""}`}
+                                        >
+                                            <span>{frame.can_id_hex}</span>
+                                            <span className={`ml-1 text-[8px] ${rowChanged
+                                                ? "text-cyan-200"
+                                                : cold
+                                                    ? "text-slate-600"
+                                                    : unavailable
+                                                        ? "text-slate-700"
+                                                        : "text-green-400"
+                                            }`}>
+                                                {rowChanged ? "Δ" : cold ? "○" : unavailable ? "?" : "•"}
+                                            </span>
+                                        </td>
+                                        <td className="hidden whitespace-nowrap border-r border-slate-800 px-1 py-0 text-cyan-300 sm:table-cell">
+                                            {unavailable ? "—" : formatTime(frame.timestamp_ms)}
+                                            {cold && typeof frame.state_age_ms === "number" && (
+                                                <span className="ml-1 text-[8px] text-slate-600">+{frame.state_age_ms}ms</span>
+                                            )}
+                                        </td>
+                                        <td className="hidden border-r border-slate-800 px-0.5 py-0 text-slate-500 lg:table-cell">
+                                            {unavailable ? "—" : frame.dlc}
+                                        </td>
+                                        <td className="border-r border-slate-800 px-0.5 py-0">
+                                            <div className="grid grid-cols-8 gap-px">
+                                                {Array.from({ length: 8 }, (_, index) => {
+                                                    const value = frame.bytes[index];
+                                                    const byteAvailable = !unavailable && index < frame.dlc && typeof value === "number";
+                                                    const changed = byteAvailable && !cold && frame.delta_positions.includes(index);
+                                                    const selected = byteAvailable
+                                                        && selectedByte?.frame.id === frame.id
+                                                        && selectedByte.byteIndex === index;
+                                                    return (
+                                                        <button
+                                                            key={index}
+                                                            type="button"
+                                                            disabled={!byteAvailable}
+                                                            onClick={() => {
+                                                                setPlaying(false);
+                                                                setSelectedByte({ frame, byteIndex: index });
+                                                            }}
+                                                            className={`${BYTE_CELL_CLASS} ${selected
+                                                                ? "border-yellow-200 bg-yellow-500/20 text-yellow-100"
+                                                                : changed
+                                                                    ? "border-cyan-300/70 bg-cyan-500/25 text-cyan-100"
+                                                                    : cold
+                                                                        ? "border-slate-800 bg-slate-950 text-slate-600"
+                                                                        : byteAvailable
+                                                                            ? "border-slate-700 bg-slate-900 text-slate-400"
+                                                                            : "border-slate-900 bg-black/20 text-slate-800"
+                                                            } disabled:cursor-default`}
+                                                            title={byteAvailable
+                                                                ? `B${index}: hex ${byteHex(value)}, decimal ${value}${changed ? ", changed in this slice" : cold ? ", carried from the last transmission" : ""}`
+                                                                : `B${index}: no state available yet`}
+                                                        >
+                                                            {byteAvailable ? byteHex(value) : "--"}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </td>
+                                        <td className="hidden max-w-[130px] truncate border-r border-slate-800 px-1 py-0 text-cyan-300 xl:table-cell">
+                                            {frame.signal_name ?? "—"}
+                                        </td>
+                                        <td className="hidden max-w-[200px] truncate px-1 py-0 text-slate-400 xl:table-cell">
+                                            {decodedText(frame.decoded)}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
 

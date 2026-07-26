@@ -8,8 +8,12 @@ import {
 import { useEffect } from "react";
 import SignalReconHeader from "./SignalReconHeader";
 
+type SignalReconProps = {
+  collapsed: boolean; 
+  setCollapsed: (collapsed: boolean)=>void;
+}
 
-export function SignalReconSetup() {
+export function SignalReconSetup({collapsed, setCollapsed}: SignalReconProps) {
     const setScreen = useUIStore((s) => s.setScreen);
 
     const vehicle = useSelectionStore((s) => s.getSelectedVehicle());
@@ -71,7 +75,9 @@ export function SignalReconSetup() {
             <SignalReconHeader 
                 title="NIWC // CAN SIGNAL ACQUISITION"
                 subtitle="VEHICLE SELECTION"
-                exitLabel="MAIN"
+                collapsed={collapsed}
+                setCollapsed={setCollapsed}
+                exitLabel="BACK"
                 controlsDisabled={false}
                 exitDisabled={false}
                 onExit={() => setScreen("main")}
@@ -80,7 +86,7 @@ export function SignalReconSetup() {
             <div className="absolute bottom-0 left-1/2 z-20 w-full -translate-x-1/2">
 
                 {/* Vehicle */}
-                <div className={`px-4 border-t  ${selectedIndex === 0
+                <div className={`px-4 py-2 border-t  ${selectedIndex === 0
                     ? "border-yellow-300/80 bg-yellow-400/10"
                     : "border-cyan-400/20 bg-slate-950/45"
                     }`}
@@ -91,7 +97,7 @@ export function SignalReconSetup() {
                     </p>
 
                     <div className="flex items-center justify-between gap-3">
-                        <GameButton variant="secondary" onPress={prevVehicle}>
+                        <GameButton variant="secondary" onPress={prevVehicle} className="h-7">
                             ◀
                         </GameButton>
 
@@ -111,20 +117,20 @@ export function SignalReconSetup() {
                             </p>
                         </div>
 
-                        <GameButton variant="secondary" onPress={nextVehicle}>
+                        <GameButton variant="secondary" onPress={nextVehicle} className="h-7">
                             ▶
                         </GameButton>
                     </div>
                 </div>
 
                 {/* Actions */}
-                <div className="grid grid-cols-2">
+                <div className="grid grid-cols-2 align-baseline">
                     <GameButton
                         selected={selectedIndex === 2}
                         disabled={!canStartSignalRecon}
                         onFocus={() => setActiveMenuIndex(2)}
                         onPress={startSignalRecon}
-                        className="border-t"
+                        className="border-t flex justify-center"
                     >
                         START
                     </GameButton>
@@ -134,7 +140,7 @@ export function SignalReconSetup() {
                         variant="danger"
                         onFocus={() => setActiveMenuIndex(3)}
                         onPress={() => setScreen("main")}
-                        className="border-t border-l"
+                        className="border-t flex justify-center"
                     >
                         EXIT
                     </GameButton>

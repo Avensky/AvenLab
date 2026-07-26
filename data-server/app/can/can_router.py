@@ -60,6 +60,14 @@ class CaptureState:
 
 
 ACTIVE_CAPTURES: Dict[str, CaptureState] = {}
+SIMULATION_SIGNAL_STATE: Dict[str, Dict[str, float]] = {}
+
+ACTION_MARKER_TYPES = {
+    "action_start",
+    "action",
+    "target_action",
+    "target_event",
+}
 
 
 class StartSessionRequest(BaseModel):
@@ -251,6 +259,192 @@ async def ensure_recon_mission(vehicle_id: str, payload: StartSessionRequest) ->
         jsonb_dumps(mission_metadata),
     )
     return dict(row) if row else None
+
+
+def optional_int(value: Any) -> Optional[int]:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    if isinstance(value, str):
+        try:
+            return int(float(value.strip()))
+        except ValueError:
+            return None
+    return None
+
+
+async def recon_step_columns() -> set[str]:
+    rows = await fetch(
+        """
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema = current_schema()
+          AND table_name = 'recon_steps'
+        """
+    )
+    return {str(row["column_name"]) for row in rows}
+
+
+async def upsert_recon_step(
+    mission_id: str,
+    step_payload: Dict[str, Any],
+    *,
+    sort_order: int,
+    columns: set[str],
+) -> Optional[str]:
+    step_code = str(step_payload.get("step_code") or "").strip()
+    if not step_code or "mission_id" not in columns or "step_code" not in columns:
+        return None
+
+    label = str(
+        step_payload.get("label")
+        or step_payload.get("action_text")
+        or step_code
+    )
+    metadata = json_object(step_payload.get("metadata"))
+    metadata = {
+        **metadata,
+        "source": "signal-recon-session-start",
+        "frontend_step": step_payload,
+    }
+    values_by_column: dict[str, Any] = {
+        "mission_id": mission_id,
+        "step_code": step_code,
+        "label": label,
+        "title": label,
+        "instruction": step_payload.get("instruction"),
+        "action_text": step_payload.get("action_text"),
+        "sort_order": sort_order,
+        "baseline_ms": optional_int(step_payload.get("baseline_ms")),
+        "countdown_ms": optional_int(step_payload.get("countdown_ms")),
+        "action_ms": optional_int(step_payload.get("action_ms")),
+        "capture_ms": optional_int(step_payload.get("capture_ms")),
+        "metadata": jsonb_dumps(metadata),
+    }
+
+    existing = await fetchrow(
+        """
+        SELECT id
+        FROM recon_steps
+        WHERE mission_id = $1 AND step_code = $2
+        """,
+        mission_id,
+        step_code,
+    )
+
+    usable_columns = [
+        column
+        for column, value in values_by_column.items()
+        if column in columns and value is not None
+    ]
+    if existing:
+        update_columns = [
+            column
+            for column in usable_columns
+            if column not in {"mission_id", "step_code"}
+        ]
+        if not update_columns:
+            return str(existing["id"])
+        assignments = []
+        args: list[Any] = [existing["id"]]
+        for column in update_columns:
+            args.append(values_by_column[column])
+            placeholder = f"${len(args)}"
+            if column == "metadata":
+                placeholder += "::jsonb"
+            assignments.append(f"{column} = {placeholder}")
+        row = await fetchrow(
+            f"""
+            UPDATE recon_steps
+            SET {', '.join(assignments)}
+            WHERE id = $1
+            RETURNING id
+            """,
+            *args,
+        )
+        return str(row["id"]) if row else str(existing["id"])
+
+    insert_columns = usable_columns
+    placeholders = []
+    args = []
+    for column in insert_columns:
+        args.append(values_by_column[column])
+        placeholder = f"${len(args)}"
+        if column == "metadata":
+            placeholder += "::jsonb"
+        placeholders.append(placeholder)
+    row = await fetchrow(
+        f"""
+        INSERT INTO recon_steps ({', '.join(insert_columns)})
+        VALUES ({', '.join(placeholders)})
+        RETURNING id
+        """,
+        *args,
+    )
+    return str(row["id"]) if row else None
+
+
+async def ensure_recon_steps(
+    mission_id: Optional[str],
+    payload: StartSessionRequest,
+) -> int:
+    if not mission_id:
+        return 0
+    steps = payload.metadata.get("mission_steps")
+    if not isinstance(steps, list):
+        return 0
+    try:
+        columns = await recon_step_columns()
+        count = 0
+        for index, raw_step in enumerate(steps):
+            if not isinstance(raw_step, dict):
+                continue
+            step_id = await upsert_recon_step(
+                mission_id,
+                raw_step,
+                sort_order=index,
+                columns=columns,
+            )
+            if step_id:
+                count += 1
+        return count
+    except Exception as exc:
+        print(f"[can_router] recon_step_upsert_failed mission_id={mission_id} error={exc}")
+        return 0
+
+
+async def ensure_marker_step(
+    mission_id: Optional[str],
+    step_code: Optional[str],
+    label: Optional[str],
+    metadata: Dict[str, Any],
+) -> Optional[str]:
+    if not mission_id or not step_code:
+        return None
+    try:
+        columns = await recon_step_columns()
+        return await upsert_recon_step(
+            mission_id,
+            {
+                "step_code": step_code,
+                "label": label or step_code,
+                "instruction": metadata.get("instruction"),
+                "action_text": metadata.get("action_text"),
+                "baseline_ms": None,
+                "countdown_ms": None,
+                "action_ms": metadata.get("planned_duration_ms"),
+                "capture_ms": None,
+                "metadata": metadata.get("step_metadata") or metadata,
+            },
+            sort_order=0,
+            columns=columns,
+        )
+    except Exception as exc:
+        print(f"[can_router] marker_step_upsert_failed mission_id={mission_id} step_code={step_code} error={exc}")
+        return None
 
 
 
@@ -603,6 +797,77 @@ def frame(can_id: int, data: List[int], signal_name: str, decoded: str) -> Frame
     return can_id, [clamp_byte(x) for x in padded], signal_name, decoded
 
 
+def marker_metadata_value(
+    metadata: Optional[Dict[str, Any]],
+    key: str,
+) -> Any:
+    payload = metadata or {}
+    if payload.get(key) is not None:
+        return payload.get(key)
+    step_metadata = json_object(payload.get("step_metadata"))
+    return step_metadata.get(key)
+
+
+def marker_number(
+    metadata: Optional[Dict[str, Any]],
+    key: str,
+) -> Optional[float]:
+    value = marker_metadata_value(metadata, key)
+    if isinstance(value, bool):
+        return float(int(value))
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        try:
+            return float(value.strip())
+        except ValueError:
+            return None
+    return None
+
+
+def inferred_step_state(step_code: Optional[str]) -> float:
+    tokens = set(
+        re.findall(
+            r"[a-z0-9]+",
+            (step_code or "").lower().replace("-", "_"),
+        )
+    )
+    if tokens & {
+        "off", "release", "released", "close", "closed", "neutral",
+        "stop", "stopped", "idle", "inactive", "disable", "disabled",
+    }:
+        return 0.0
+    return 1.0
+
+
+def simulation_signal_value(
+    step_code: Optional[str],
+    metadata: Optional[Dict[str, Any]],
+) -> float:
+    expected = marker_number(metadata, "expected_value")
+    return expected if expected is not None else inferred_step_state(step_code)
+
+
+def simulation_action_duration_ms(
+    metadata: Optional[Dict[str, Any]],
+) -> int:
+    duration = marker_number(metadata, "planned_duration_ms")
+    if duration is None:
+        duration = marker_number(metadata, "hold_ms")
+    if duration is None:
+        duration = 1800.0
+    return max(300, min(int(duration), 10_000))
+
+
+def encoded_u8(value: float) -> int:
+    return int(round(value)) & 0xFF
+
+
+def encoded_u16(value: float) -> tuple[int, int]:
+    encoded = int(round(value)) & 0xFFFF
+    return encoded & 0xFF, (encoded >> 8) & 0xFF
+
+
 def baseline_frames(seed: int = 0) -> List[Frame]:
     rpm = 720 + (seed % 30)
     return [
@@ -615,13 +880,27 @@ def baseline_frames(seed: int = 0) -> List[Frame]:
     ]
 
 
-def mission_frames(mission_code: str, step_code: Optional[str], marker_type: str, tick: int) -> List[Frame]:
+def mission_frames(
+    mission_code: str,
+    step_code: Optional[str],
+    marker_type: str,
+    tick: int,
+    *,
+    signal_value: Optional[float] = None,
+    marker_metadata: Optional[Dict[str, Any]] = None,
+) -> List[Frame]:
     mission_code = (mission_code or "").upper()
     step_code_l = (step_code or "").lower()
 
-    active = marker_type in {"action_start", "capture_start", "step_complete"}
-    pulse = 1 if active else 0
-    wobble = tick % 4
+    value = (
+        float(signal_value)
+        if signal_value is not None
+        else simulation_signal_value(step_code, marker_metadata)
+    )
+    pulse = 1 if value != 0 else 0
+    # Deliberate counter noise is useful for proving that an exact action bit
+    # outranks a normal modulo nibble in the same synthetic payload.
+    wobble = tick % 16
 
     if mission_code == "A01":
         return [frame(0x321, [0b00000001 if pulse else 0, wobble, 0, 0, 0, 0, 0, 0], "left_turn_signal", "left blinker ON" if pulse else "left blinker OFF")]
@@ -653,35 +932,46 @@ def mission_frames(mission_code: str, step_code: Optional[str], marker_type: str
         return [frame(0x220, [0, 0, 0, 0b00000001 if pulse else 0, 0, 0, 0, 0], "reverse_gear", "reverse selected" if pulse else "reverse not selected")]
 
     if mission_code == "S01":
-        angle = 128 + (40 if pulse else 0) + wobble
-        return [frame(0x024, [angle, 0, 0, 0, 0, 0, 0, 0], "steering_angle", f"steering angle raw={angle}")]
+        angle = encoded_u8(value)
+        return [frame(0x024, [angle, wobble, 0, 0, 0, 0, 0, 0], "steering_angle", f"steering angle signed={int(round(value))}")]
     if mission_code == "S02":
-        pedal = 80 if pulse else 0
+        pedal = encoded_u8(value)
         return [frame(0x210, [pedal, 0, 0, 0, 0, 0, 0, 0], "accelerator_pedal", f"accelerator {pedal}/255")]
     if mission_code == "S03":
-        pressure = 120 if pulse else 0
+        pressure = encoded_u8(value)
         return [
             frame(0x210, [0, pressure, 0b00000001 if pulse else 0, 0, 0, 0, 0, 0], "brake_pressure", f"brake pressure {pressure}"),
-            frame(0x321, [0, 0, 0b00000001 if pulse else 0, 0, 0, 0, 0, 0], "brake_lights", "brake switch ON" if pulse else "brake switch OFF"),
+            frame(0x321, [0, 0, 0b00000001 if pulse else 0, wobble, 0, 0, 0, 0], "brake_lights", "brake switch ON" if pulse else "brake switch OFF"),
         ]
     if mission_code == "S04":
-        rpm = 720 + (900 if pulse else 0) + tick * 8
-        return [frame(0x200, [rpm & 0xFF, rpm >> 8, 0, 0, 0, 0, 0, 0], "engine_rpm", f"{rpm} rpm")]
+        rpm = (
+            value
+            if marker_number(marker_metadata, "expected_value") is not None
+            or signal_value is not None
+            else 720.0
+        )
+        low, high = encoded_u16(rpm)
+        return [frame(0x200, [low, high, 0, wobble, 0, 0, 0, 0], "engine_rpm", f"{int(round(rpm))} rpm")]
     if mission_code == "S05":
-        speed = 12 + tick if pulse else 0
+        speed = encoded_u8(value)
         return [frame(0x201, [speed, 0, 0, 0, 0, 0, 0, 0], "vehicle_speed", f"{speed} kph")]
     if mission_code == "S06":
-        gear = 1 if pulse else 0
-        return [frame(0x220, [gear, 0, 0, 0, 0, 0, 0, 0], "gear_position", f"gear raw={gear}")]
+        # Signed int8 makes Reverse (-1) observable as 0xFF while neutral,
+        # first, and second remain 0x00, 0x01, and 0x02.
+        gear = encoded_u8(value)
+        return [frame(0x220, [gear, 0, 0, wobble, 0, 0, 0, 0], "gear_position", f"gear signed={int(round(value))} raw=0x{gear:02X}")]
     if mission_code == "S07":
         return [frame(0x220, [0, 0b00000001 if pulse else 0, 0, 0, 0, 0, 0, 0], "clutch_pedal", "clutch pressed" if pulse else "clutch released")]
     if mission_code == "S08":
         return [frame(0x338, [20 if pulse else 0, 8 if pulse else 0, 1 if pulse else 0, 0, 0, 0, 0, 0], "yaw_stability", "stability/yaw event" if pulse else "stable")]
     if mission_code == "S09":
-        base = 30 if pulse else 0
+        base = encoded_u8(
+            value if signal_value is not None else (30 if pulse else 0)
+        )
         return [frame(0x208, [base, base + wobble, base, base + wobble, 0, 0, 0, 0], "wheel_speeds_abs", f"wheel speed base={base}")]
     if mission_code == "S10":
-        return [frame(0x200, [0x40 if pulse else 0, 0x06 if pulse else 0, 1 if pulse else 0, 0, 0, 0, 0, 0], "ignition_engine_start", "engine start / ignition ON" if pulse else "ignition idle")]
+        ignition_state = encoded_u8(value)
+        return [frame(0x200, [ignition_state, 0x06 if ignition_state else 0, 1 if ignition_state >= 3 else 0, wobble, 0, 0, 0, 0], "ignition_engine_start", f"ignition state={ignition_state}")]
 
     rank_hint = mission_code[0] if mission_code else "X"
     return [frame(0x342, [ord(rank_hint) & 0xFF, pulse, tick & 0xFF, 0, 0, 0, 0, 0], "generic_body_control", f"{mission_code} pulse={pulse}")]
@@ -737,6 +1027,8 @@ async def insert_fake_burst(
     marker_type: str,
     timestamp_ms: int,
     bus_interface: str,
+    marker_metadata: Optional[Dict[str, Any]] = None,
+    client_event_id: Optional[str] = None,
 ) -> int:
     inserted = 0
 
@@ -746,26 +1038,159 @@ async def insert_fake_burst(
             max(0, timestamp_ms - 120 + i * 20),
             base_frame,
             bus_interface=bus_interface,
-            extra_metadata={"frame_role": "baseline_around_marker", "marker_type": marker_type},
+            extra_metadata={
+                "frame_role": "baseline_around_marker",
+                "marker_type": marker_type,
+                "client_event_id": client_event_id,
+            },
         )
         inserted += 1
 
-    if marker_type in {"action_start", "capture_start", "step_complete"}:
-        for tick in range(10):
-            for sim_frame in mission_frames(mission_code, step_code, marker_type, tick):
+    normalized_marker_type = (
+        marker_type or ""
+    ).strip().lower().replace("-", "_")
+    if normalized_marker_type in ACTION_MARKER_TYPES:
+        desired_value = simulation_signal_value(
+            step_code,
+            marker_metadata,
+        )
+        session_state = SIMULATION_SIGNAL_STATE.setdefault(
+            session_id,
+            {},
+        )
+        state_key = (mission_code or "").upper()
+        previous_value = session_state.get(state_key)
+        if previous_value is None:
+            return_value = marker_number(
+                marker_metadata,
+                "return_value",
+            )
+            if return_value is not None:
+                previous_value = return_value
+            elif (
+                desired_value == 0
+                and inferred_step_state(step_code) == 0
+            ):
+                previous_value = 1.0
+            else:
+                previous_value = 0.0
+
+        for tick in range(4):
+            pre_timestamp = max(
+                0,
+                timestamp_ms - 200 + tick * 50,
+            )
+            for sim_frame in mission_frames(
+                mission_code,
+                step_code,
+                marker_type,
+                tick,
+                signal_value=previous_value,
+                marker_metadata=marker_metadata,
+            ):
                 await insert_raw_frame(
                     session_id,
-                    timestamp_ms + tick * 75,
+                    pre_timestamp,
                     sim_frame,
                     bus_interface=bus_interface,
                     extra_metadata={
-                        "frame_role": "mission_signal_burst",
+                        "frame_role": "mission_signal_pre_action",
                         "mission_code": mission_code,
                         "step_code": step_code,
                         "marker_type": marker_type,
+                        "client_event_id": client_event_id,
+                        "simulation_previous_value": previous_value,
+                        "simulation_expected_value": desired_value,
                     },
                 )
                 inserted += 1
+
+        action_duration_ms = simulation_action_duration_ms(
+            marker_metadata,
+        )
+        tick_interval_ms = 100
+        action_ticks = max(
+            8,
+            min(
+                200,
+                (action_duration_ms // tick_interval_ms) + 1,
+            ),
+        )
+        for tick in range(action_ticks):
+            for sim_frame in mission_frames(
+                mission_code,
+                step_code,
+                marker_type,
+                tick,
+                signal_value=desired_value,
+                marker_metadata=marker_metadata,
+            ):
+                await insert_raw_frame(
+                    session_id,
+                    timestamp_ms + tick * tick_interval_ms,
+                    sim_frame,
+                    bus_interface=bus_interface,
+                    extra_metadata={
+                        "frame_role": "mission_signal_action",
+                        "mission_code": mission_code,
+                        "step_code": step_code,
+                        "marker_type": marker_type,
+                        "client_event_id": client_event_id,
+                        "simulation_previous_value": previous_value,
+                        "simulation_expected_value": desired_value,
+                    },
+                )
+                inserted += 1
+
+        analyzer_profile = str(
+            marker_metadata_value(
+                marker_metadata,
+                "analyzer_profile",
+            )
+            or ""
+        ).strip().lower()
+        if analyzer_profile == "pulse_event":
+            return_value = marker_number(
+                marker_metadata,
+                "return_value",
+            )
+            post_value = (
+                return_value
+                if return_value is not None
+                else 0.0
+            )
+        else:
+            post_value = desired_value
+
+        for tick in range(6):
+            for sim_frame in mission_frames(
+                mission_code,
+                step_code,
+                marker_type,
+                tick,
+                signal_value=post_value,
+                marker_metadata=marker_metadata,
+            ):
+                await insert_raw_frame(
+                    session_id,
+                    timestamp_ms
+                    + action_duration_ms
+                    + ((tick + 1) * tick_interval_ms),
+                    sim_frame,
+                    bus_interface=bus_interface,
+                    extra_metadata={
+                        "frame_role": "mission_signal_post_action",
+                        "mission_code": mission_code,
+                        "step_code": step_code,
+                        "marker_type": marker_type,
+                        "client_event_id": client_event_id,
+                        "simulation_expected_value": desired_value,
+                        "simulation_post_value": post_value,
+                    },
+                )
+                inserted += 1
+
+        session_state[state_key] = post_value
 
     return inserted
 
@@ -815,6 +1240,10 @@ async def can_status() -> Dict[str, Any]:
 async def start_session(payload: StartSessionRequest) -> Dict[str, Any]:
     vehicle = await ensure_vehicle(payload)
     mission = await ensure_recon_mission(vehicle["id"], payload)
+    recon_steps_upserted = await ensure_recon_steps(
+        str(mission["id"]) if mission else None,
+        payload,
+    )
 
     session_metadata = runtime_metadata(
         {
@@ -827,6 +1256,7 @@ async def start_session(payload: StartSessionRequest) -> Dict[str, Any]:
             "vehicle_identity": payload.vehicle,
             "auto_vehicle_upsert": True,
             "auto_mission_upsert": bool(mission),
+            "auto_steps_upserted": recon_steps_upserted,
         },
         bus_interface=payload.bus_interface,
         bus_mode=payload.bus_mode,
@@ -859,6 +1289,7 @@ async def start_session(payload: StartSessionRequest) -> Dict[str, Any]:
     capture_state: Optional[CaptureState] = None
 
     if fake_capture:
+        SIMULATION_SIGNAL_STATE[session_id] = {}
         for t in range(0, 1000, 100):
             for base_frame in baseline_frames(t):
                 await insert_raw_frame(
@@ -902,6 +1333,7 @@ async def start_session(payload: StartSessionRequest) -> Dict[str, Any]:
             "mission_code": mission["mission_code"],
             "title": mission["title"],
             "target": mission["target"],
+            "steps_upserted": recon_steps_upserted,
         } if mission else None,
     }
 
@@ -934,8 +1366,10 @@ async def post_marker(session_id: str, payload: MarkerRequest) -> Dict[str, Any]
     session = await fetchrow(
         """
         SELECT cs.id, cs.vehicle_id, cs.mission_id, cs.bus_interface,
-               cs.bus_mode, cs.started_at, cs.ended_at, cs.capture_status
+               cs.bus_mode, cs.started_at, cs.ended_at, cs.capture_status,
+               rm.mission_code AS session_mission_code
         FROM can_sessions cs
+        LEFT JOIN recon_missions rm ON rm.id = cs.mission_id
         WHERE cs.id = $1
         """,
         session_id,
@@ -950,13 +1384,102 @@ async def post_marker(session_id: str, payload: MarkerRequest) -> Dict[str, Any]
             detail="CAN session is not recording; markers require an active capture",
         )
 
+    fake_capture = should_use_fake_capture(
+        session["bus_interface"],
+        session["bus_mode"],
+    )
+    mission_code = payload.mission_code or session["session_mission_code"]
+    if payload.client_event_id:
+        existing_marker = await fetchrow(
+            """
+            SELECT id, created_at, timestamp_ms, metadata
+            FROM can_session_markers
+            WHERE session_id = $1
+              AND metadata->>'client_event_id' = $2
+            ORDER BY created_at ASC
+            LIMIT 1
+            """,
+            session_id,
+            payload.client_event_id,
+        )
+        if existing_marker:
+            existing_metadata = json_object(
+                existing_marker["metadata"],
+            )
+            repaired_frames = 0
+            if (
+                fake_capture
+                and "simulation_frames_inserted"
+                not in existing_metadata
+            ):
+                repaired_frames = await insert_fake_burst(
+                    session_id=session_id,
+                    mission_code=mission_code or "",
+                    step_code=payload.step_code,
+                    marker_type=payload.marker_type,
+                    timestamp_ms=int(
+                        existing_marker["timestamp_ms"] or 0
+                    ),
+                    bus_interface=session["bus_interface"],
+                    marker_metadata=payload.metadata,
+                    client_event_id=payload.client_event_id,
+                )
+                await execute(
+                    """
+                    UPDATE can_session_markers
+                    SET metadata = metadata || $2::jsonb
+                    WHERE id = $1
+                    """,
+                    existing_marker["id"],
+                    jsonb_dumps({
+                        "simulation_frames_inserted": repaired_frames,
+                        "simulation_ground_truth": True,
+                        "simulation_burst_repaired": True,
+                    }),
+                )
+            return {
+                "ok": True,
+                "marker_id": str(existing_marker["id"]),
+                "created_at": existing_marker["created_at"],
+                "timestamp_ms": int(
+                    existing_marker["timestamp_ms"] or 0
+                ),
+                "timestamp_authority": "server",
+                "timestamp_source": existing_metadata.get(
+                    "timestamp_source",
+                    "idempotent_retry",
+                ),
+                "frames_inserted": int(
+                    repaired_frames
+                    or existing_metadata.get(
+                            "simulation_frames_inserted",
+                            0,
+                        )
+                    or 0
+                ),
+                "deduplicated": True,
+                "bus_interface": session["bus_interface"],
+                "bus_mode": session["bus_mode"],
+                "capture_kind": (
+                    "simulation"
+                    if fake_capture
+                    else "live"
+                ),
+                "capture_source": (
+                    "generated-fake-can"
+                    if fake_capture
+                    else "socketcan-candump"
+                ),
+                "app_env": RUNTIME_ENV,
+                "production": IS_PRODUCTION,
+            }
+
     canonical_timestamp_ms, timestamp_source = await server_capture_timestamp_ms(
         session_id,
         session["started_at"],
     )
 
     mission_id = session["mission_id"]
-    mission_code = payload.mission_code
 
     if payload.mission_code:
         mission = await fetchrow(
@@ -982,10 +1505,21 @@ async def post_marker(session_id: str, payload: MarkerRequest) -> Dict[str, Any]
         )
         if step:
             step_id = step["id"]
+        else:
+            step_id = await ensure_marker_step(
+                str(mission_id),
+                payload.step_code,
+                payload.label,
+                payload.metadata,
+            )
 
     marker_metadata = runtime_metadata(
         {
             **payload.metadata,
+            "mission_code": mission_code,
+            "step_code": payload.step_code,
+            "marker_type": payload.marker_type,
+            "label": payload.label,
             "timestamp_authority": "server",
             "timestamp_source": timestamp_source,
             "server_timestamp_ms": canonical_timestamp_ms,
@@ -1004,7 +1538,7 @@ async def post_marker(session_id: str, payload: MarkerRequest) -> Dict[str, Any]
             timestamp_ms, metadata
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
-        RETURNING id, created_at
+        RETURNING id, created_at, timestamp_ms
         """,
         session_id,
         mission_id,
@@ -1015,7 +1549,6 @@ async def post_marker(session_id: str, payload: MarkerRequest) -> Dict[str, Any]
         jsonb_dumps(marker_metadata),
     )
 
-    fake_capture = should_use_fake_capture(session["bus_interface"], session["bus_mode"])
     frames_inserted = 0
     capture_source = "socketcan-candump"
     if fake_capture:
@@ -1027,6 +1560,20 @@ async def post_marker(session_id: str, payload: MarkerRequest) -> Dict[str, Any]
             marker_type=payload.marker_type,
             timestamp_ms=canonical_timestamp_ms,
             bus_interface=session["bus_interface"],
+            marker_metadata=payload.metadata,
+            client_event_id=payload.client_event_id,
+        )
+        await execute(
+            """
+            UPDATE can_session_markers
+            SET metadata = metadata || $2::jsonb
+            WHERE id = $1
+            """,
+            marker["id"],
+            jsonb_dumps({
+                "simulation_frames_inserted": frames_inserted,
+                "simulation_ground_truth": True,
+            }),
         )
 
     return {
@@ -1037,6 +1584,7 @@ async def post_marker(session_id: str, payload: MarkerRequest) -> Dict[str, Any]
         "timestamp_authority": "server",
         "timestamp_source": timestamp_source,
         "frames_inserted": frames_inserted,
+        "deduplicated": False,
         "bus_interface": session["bus_interface"],
         "bus_mode": session["bus_mode"],
         "capture_kind": "simulation" if fake_capture else "live",
@@ -1054,7 +1602,7 @@ async def finalize_session_capture(
         """
         SELECT id, bus_interface, bus_mode, started_at, ended_at,
                capture_status, finalized_at, final_frame_count,
-               final_marker_count, final_frame_id, capture_quality
+               final_marker_count, final_frame_id, capture_quality, metadata
         FROM can_sessions
         WHERE id = $1
         """,
@@ -1065,6 +1613,7 @@ async def finalize_session_capture(
 
     # Finalization is idempotent. This makes UI retries safe.
     if existing_session["capture_status"] == "finalized":
+        SIMULATION_SIGNAL_STATE.pop(session_id, None)
         return {
             "ok": True,
             "session_id": str(existing_session["id"]),
@@ -1105,7 +1654,14 @@ async def finalize_session_capture(
     marker_stats = await fetchrow(
         """
         SELECT COUNT(*)::int AS marker_count,
-               COUNT(*) FILTER (WHERE marker_type IN ('action_start','action','target_action','target_event'))::int AS action_marker_count
+               COUNT(*) FILTER (
+                   WHERE marker_type IN (
+                       'action_start','action',
+                       'target_action','target_event'
+                   )
+                   OR metadata->>'marker_trigger' = 'action'
+                   OR metadata->>'phase' = 'action'
+               )::int AS action_marker_count
         FROM can_session_markers
         WHERE session_id = $1
         """,
@@ -1115,6 +1671,52 @@ async def finalize_session_capture(
     frame_count = int(stats["frame_count"] or 0)
     marker_count = int(marker_stats["marker_count"] or 0)
     action_marker_count = int(marker_stats["action_marker_count"] or 0)
+    session_metadata = json_object(existing_session["metadata"])
+    analysis_mode = str(
+        session_metadata.get("analysis_mode") or "target_correlation"
+    ).strip().lower().replace("-", "_")
+    target_markers_required = analysis_mode != "baseline_profile"
+    mission_steps = session_metadata.get("mission_steps")
+    mission_protocol = json_object(
+        session_metadata.get("mission_protocol")
+    )
+    configured_markers = mission_protocol.get("markers")
+    configured_action_markers = 0
+    if isinstance(configured_markers, list):
+        for marker_definition in configured_markers:
+            if not isinstance(marker_definition, dict):
+                continue
+            if marker_definition.get("enabled") is False:
+                continue
+            trigger = str(
+                marker_definition.get("trigger") or ""
+            ).strip().lower()
+            marker_type = str(
+                marker_definition.get("marker_type") or ""
+            ).strip().lower()
+            if (
+                trigger == "action"
+                or marker_type in ACTION_MARKER_TYPES
+            ):
+                configured_action_markers += 1
+    expected_action_marker_count = (
+        len(mission_steps) * configured_action_markers
+        if isinstance(mission_steps, list)
+        else 0
+    )
+    marker_completion_ratio = (
+        min(
+            1.0,
+            action_marker_count / expected_action_marker_count,
+        )
+        if expected_action_marker_count > 0
+        else (
+            1.0
+            if not target_markers_required
+            or action_marker_count > 0
+            else 0.0
+        )
+    )
     capture_error = capture_state.last_error if capture_state else None
     final_flush_completed = capture_error is None
     duration_ms = max(
@@ -1128,13 +1730,47 @@ async def finalize_session_capture(
         quality_score -= 0.25
     if not final_flush_completed:
         quality_score -= 0.15
+    if target_markers_required and action_marker_count <= 0:
+        quality_score -= 0.35
+    elif (
+        expected_action_marker_count > 0
+        and action_marker_count < expected_action_marker_count
+    ):
+        quality_score -= min(
+            0.25,
+            (1.0 - marker_completion_ratio) * 0.25,
+        )
     quality_score = max(0.0, min(1.0, quality_score))
+    marker_quality_ok = (
+        not target_markers_required
+        or action_marker_count > 0
+    )
+    quality_issue = None
+    if target_markers_required and action_marker_count <= 0:
+        quality_issue = (
+            "target-correlation session finalized without an action marker"
+        )
+    elif (
+        expected_action_marker_count > 0
+        and action_marker_count < expected_action_marker_count
+    ):
+        quality_issue = (
+            f"received {action_marker_count} of "
+            f"{expected_action_marker_count} expected action markers"
+        )
 
     capture_quality = {
         "duration_ms": duration_ms,
         "frames_received": frame_count,
         "markers_received": marker_count,
         "action_markers": action_marker_count,
+        "expected_action_markers": expected_action_marker_count,
+        "marker_completion_ratio": round(
+            marker_completion_ratio,
+            4,
+        ),
+        "marker_quality_ok": marker_quality_ok,
+        "quality_issue": quality_issue,
         "lines_seen": capture_state.lines_seen if capture_state else None,
         "capture_frames_inserted": capture_state.frames_inserted if capture_state else None,
         "capture_error": capture_error,
@@ -1142,7 +1778,11 @@ async def finalize_session_capture(
         "first_frame_timestamp_ms": stats["first_frame_timestamp_ms"],
         "last_frame_timestamp_ms": stats["last_frame_timestamp_ms"],
         "quality_score": round(quality_score, 4),
-        "usable_for_analysis": frame_count > 0 and final_flush_completed,
+        "usable_for_analysis": (
+            frame_count > 0
+            and final_flush_completed
+            and marker_quality_ok
+        ),
         "timestamp_authority": "server",
     }
 
@@ -1170,6 +1810,7 @@ async def finalize_session_capture(
             "capture_quality": capture_quality,
         }, bus_interface=existing_session["bus_interface"], bus_mode=existing_session["bus_mode"], fake_can=fake_capture)),
     )
+    SIMULATION_SIGNAL_STATE.pop(session_id, None)
 
     return {
         "ok": True,
@@ -1407,8 +2048,8 @@ async def get_session_playback_meta(session_id: UUID) -> Dict[str, Any]:
             csm.marker_type,
             csm.label,
             csm.metadata,
-            rs.step_code,
-            rm.mission_code
+            COALESCE(rs.step_code, csm.metadata->>'step_code') AS step_code,
+            COALESCE(rm.mission_code, csm.metadata->>'mission_code') AS mission_code
         FROM can_session_markers csm
         LEFT JOIN recon_steps rs ON rs.id = csm.step_id
         LEFT JOIN recon_missions rm ON rm.id = csm.mission_id
@@ -1475,6 +2116,7 @@ async def get_session_playback_slices(
     byte_value: Optional[str] = None,
     deltas_only: bool = False,
     byte_changed_only: bool = False,
+    carry_selected: bool = False,
 ) -> Dict[str, Any]:
     direction = direction.strip().lower()
     if direction not in {"start", "end", "next", "prev", "nearest"}:
@@ -1486,6 +2128,9 @@ async def get_session_playback_slices(
     slice_limit = max(1, min(int(slice_limit), 500))
     if byte_index is not None and not 0 <= byte_index <= 7:
         raise HTTPException(status_code=422, detail="byte_index must be 0 through 7")
+
+    selected_can_ids = parse_can_id_filter(id_filter)
+    carry_selected = bool(carry_selected and selected_can_ids)
 
     session = await fetchrow(
         "SELECT id, capture_status, bus_interface, bus_mode FROM can_sessions WHERE id = $1",
@@ -1546,6 +2191,7 @@ async def get_session_playback_slices(
                 "byte_value": byte_value,
                 "deltas_only": deltas_only,
                 "byte_changed_only": byte_changed_only,
+                "carry_selected": carry_selected,
             },
             "matching_frame_count": 0,
             "matching_slice_count": 0,
@@ -1661,8 +2307,11 @@ async def get_session_playback_slices(
         *params,
     )
 
-    slices_by_bucket: Dict[int, list[dict[str, Any]]] = {}
-    for raw_row in rows:
+    def playback_frame_payload(
+        raw_row: Any,
+        *,
+        bucket_override: Optional[int] = None,
+    ) -> dict[str, Any]:
         row = dict(raw_row)
         data = bytes(row.get("data") or b"")
         previous_data_raw = row.get("previous_data")
@@ -1684,10 +2333,14 @@ async def get_session_playback_slices(
             )
         ]
         metadata = json_object(row.get("metadata"))
-        frame = {
+        return {
             "id": int(row["id"]),
             "timestamp_ms": int(row["timestamp_ms"]),
-            "bucket_ms": int(row["bucket_ms"]),
+            "bucket_ms": int(
+                bucket_override
+                if bucket_override is not None
+                else row.get("bucket_ms", row["timestamp_ms"])
+            ),
             "can_id": int(row["can_id"]),
             "can_id_hex": row["can_id_hex"],
             "dlc": int(row["dlc"]),
@@ -1708,8 +2361,16 @@ async def get_session_playback_slices(
             "signal_name": metadata.get("signal_name"),
             "decoded": metadata.get("decoded"),
             "source": row.get("source"),
+            "observed_in_slice": True,
+            "state_carried": False,
+            "state_available": True,
+            "state_age_ms": 0,
         }
-        slices_by_bucket.setdefault(int(row["bucket_ms"]), []).append(frame)
+
+    slices_by_bucket: Dict[int, list[dict[str, Any]]] = {}
+    for raw_row in rows:
+        frame = playback_frame_payload(raw_row)
+        slices_by_bucket.setdefault(frame["bucket_ms"], []).append(frame)
 
     slices = [
         {
@@ -1721,6 +2382,103 @@ async def get_session_playback_slices(
         }
         for bucket_ms, frames in sorted(slices_by_bucket.items())
     ]
+
+    # When the UI pins selected IDs, return a second stable state lane. Each
+    # slice contains exactly one row per selected ID in numeric order. IDs that
+    # did not transmit in the current slice carry their last database state
+    # forward with change heat disabled. The seed query makes this accurate
+    # after seeks, previous-page navigation, and direct marker jumps.
+    if carry_selected and selected_can_ids and slices:
+        first_returned_bucket = int(slices[0]["bucket_ms"])
+        seed_rows = await fetch(
+            """
+            WITH ordered AS (
+                SELECT
+                    id, timestamp_ms, can_id, can_id_hex, dlc, data, source, metadata,
+                    LAG(data) OVER (
+                        PARTITION BY can_id
+                        ORDER BY timestamp_ms ASC, id ASC
+                    ) AS previous_data
+                FROM can_frames_raw
+                WHERE session_id = $1
+            )
+            SELECT DISTINCT ON (can_id)
+                id, timestamp_ms, can_id, can_id_hex, dlc, data,
+                previous_data, source, metadata
+            FROM ordered
+            WHERE can_id = ANY($2::bigint[])
+              AND timestamp_ms < $3
+            ORDER BY can_id ASC, timestamp_ms DESC, id DESC
+            """,
+            session_id,
+            selected_can_ids,
+            first_returned_bucket,
+        )
+
+        state_by_id: Dict[int, dict[str, Any]] = {
+            int(row["can_id"]): playback_frame_payload(
+                row,
+                bucket_override=first_returned_bucket,
+            )
+            for row in seed_rows
+        }
+
+        for slice_payload in slices:
+            bucket_ms = int(slice_payload["bucket_ms"])
+            latest_in_slice: Dict[int, dict[str, Any]] = {}
+            for frame in slice_payload["frames"]:
+                latest_in_slice[int(frame["can_id"])] = frame
+
+            state_frames: list[dict[str, Any]] = []
+            for can_id in selected_can_ids:
+                current = latest_in_slice.get(can_id)
+                if current is not None:
+                    state_by_id[can_id] = current
+                    state_frames.append(dict(current))
+                    continue
+
+                previous = state_by_id.get(can_id)
+                if previous is not None:
+                    carried = dict(previous)
+                    carried.update({
+                        "bucket_ms": bucket_ms,
+                        "delta_positions": [],
+                        "changed": False,
+                        "observed_in_slice": False,
+                        "state_carried": True,
+                        "state_available": True,
+                        "state_age_ms": max(
+                            0,
+                            bucket_ms - int(previous["timestamp_ms"]),
+                        ),
+                    })
+                    state_frames.append(carried)
+                    continue
+
+                width = 3 if can_id <= 0x7FF else 8
+                state_frames.append({
+                    "id": -(can_id + 1),
+                    "timestamp_ms": 0,
+                    "bucket_ms": bucket_ms,
+                    "can_id": can_id,
+                    "can_id_hex": f"0x{can_id:0{width}X}",
+                    "dlc": 0,
+                    "data_hex": "",
+                    "bytes": [],
+                    "previous_data_hex": None,
+                    "previous_bytes": None,
+                    "delta_positions": [],
+                    "changed": False,
+                    "signal_name": None,
+                    "decoded": None,
+                    "source": None,
+                    "observed_in_slice": False,
+                    "state_carried": True,
+                    "state_available": False,
+                    "state_age_ms": None,
+                })
+
+            slice_payload["state_frames"] = state_frames
 
     returned_first = slices[0]["bucket_ms"] if slices else None
     returned_last = slices[-1]["bucket_ms"] if slices else None
@@ -1742,6 +2500,7 @@ async def get_session_playback_slices(
             "byte_value": byte_value,
             "deltas_only": deltas_only,
             "byte_changed_only": byte_changed_only,
+            "carry_selected": carry_selected,
         },
         "matching_frame_count": matching_frame_count,
         "matching_slice_count": matching_slice_count,

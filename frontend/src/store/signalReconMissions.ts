@@ -283,22 +283,64 @@ function step(
 
 function toggleSteps(target: string, onInstruction: string, offInstruction: string): ReconStepTemplate[] {
     return [
-        step(`${target}_on`, "Turn ON", onInstruction, "Turn ON"),
-        step(`${target}_off`, "Turn OFF", offInstruction, "Turn OFF"),
+        step(`${target}_on`, "Turn ON", onInstruction, "Turn ON", {
+            metadata: {
+                expected_value: 1,
+                expected_unit: "boolean",
+                expected_direction: "increase",
+                return_value: 0,
+            },
+        }),
+        step(`${target}_off`, "Turn OFF", offInstruction, "Turn OFF", {
+            metadata: {
+                expected_value: 0,
+                expected_unit: "boolean",
+                expected_direction: "decrease",
+                return_value: 0,
+            },
+        }),
     ];
 }
 
 function pressSteps(target: string, pressInstruction: string, releaseInstruction: string): ReconStepTemplate[] {
     return [
-        step(`${target}_press`, "Press / activate", pressInstruction, "Press"),
-        step(`${target}_release`, "Release", releaseInstruction, "Release"),
+        step(`${target}_press`, "Press / activate", pressInstruction, "Press", {
+            metadata: {
+                expected_value: 1,
+                expected_unit: "boolean",
+                expected_direction: "increase",
+                return_value: 0,
+            },
+        }),
+        step(`${target}_release`, "Release", releaseInstruction, "Release", {
+            metadata: {
+                expected_value: 0,
+                expected_unit: "boolean",
+                expected_direction: "decrease",
+                return_value: 0,
+            },
+        }),
     ];
 }
 
 function openCloseSteps(target: string, openInstruction: string, closeInstruction: string): ReconStepTemplate[] {
     return [
-        step(`${target}_open`, "Open", openInstruction, "Open"),
-        step(`${target}_close`, "Close", closeInstruction, "Close"),
+        step(`${target}_open`, "Open", openInstruction, "Open", {
+            metadata: {
+                expected_value: 1,
+                expected_unit: "boolean",
+                expected_direction: "increase",
+                return_value: 0,
+            },
+        }),
+        step(`${target}_close`, "Close", closeInstruction, "Close", {
+            metadata: {
+                expected_value: 0,
+                expected_unit: "boolean",
+                expected_direction: "decrease",
+                return_value: 0,
+            },
+        }),
     ];
 }
 
@@ -641,17 +683,32 @@ const A_MISSIONS: ReconMissionDefinition[] = [
         category: "Body state",
         stage: "quick_wins",
         index: 9,
+        analyzer_profile: "pulse_event",
         sub_missions: [
             {
                 sub_mission_code: "lock_fob",
                 title: "Lock using key fob",
-                steps: [step("lock_fob_press", "Fob lock", "Press LOCK on the key fob once.", "Press fob LOCK")],
+                steps: [step("lock_fob_press", "Fob lock", "Press LOCK on the key fob once.", "Press fob LOCK", {
+                    metadata: {
+                        expected_value: 1,
+                        expected_unit: "pulse",
+                        expected_direction: "increase",
+                        return_value: 0,
+                    },
+                })],
                 metadata: { source: "fob" },
             },
             {
                 sub_mission_code: "lock_door_switch",
                 title: "Lock using door switch",
-                steps: [step("lock_switch_press", "Door switch lock", "Press the interior LOCK switch once.", "Press LOCK switch")],
+                steps: [step("lock_switch_press", "Door switch lock", "Press the interior LOCK switch once.", "Press LOCK switch", {
+                    metadata: {
+                        expected_value: 1,
+                        expected_unit: "pulse",
+                        expected_direction: "increase",
+                        return_value: 0,
+                    },
+                })],
                 metadata: { source: "door_switch" },
             },
         ],
@@ -664,17 +721,32 @@ const A_MISSIONS: ReconMissionDefinition[] = [
         category: "Body state",
         stage: "quick_wins",
         index: 10,
+        analyzer_profile: "pulse_event",
         sub_missions: [
             {
                 sub_mission_code: "unlock_fob",
                 title: "Unlock using key fob",
-                steps: [step("unlock_fob_press", "Fob unlock", "Press UNLOCK on the key fob once.", "Press fob UNLOCK")],
+                steps: [step("unlock_fob_press", "Fob unlock", "Press UNLOCK on the key fob once.", "Press fob UNLOCK", {
+                    metadata: {
+                        expected_value: 1,
+                        expected_unit: "pulse",
+                        expected_direction: "increase",
+                        return_value: 0,
+                    },
+                })],
                 metadata: { source: "fob" },
             },
             {
                 sub_mission_code: "unlock_door_switch",
                 title: "Unlock using door switch",
-                steps: [step("unlock_switch_press", "Door switch unlock", "Press the interior UNLOCK switch once.", "Press UNLOCK switch")],
+                steps: [step("unlock_switch_press", "Door switch unlock", "Press the interior UNLOCK switch once.", "Press UNLOCK switch", {
+                    metadata: {
+                        expected_value: 1,
+                        expected_unit: "pulse",
+                        expected_direction: "increase",
+                        return_value: 0,
+                    },
+                })],
                 metadata: { source: "door_switch" },
             },
         ],
@@ -889,9 +961,9 @@ const S_MISSIONS: ReconMissionDefinition[] = [
         stage: "core_driving",
         index: 7,
         steps: [
-            step("clutch_released", "Clutch released", "Hold clutch pedal released.", "Hold released"),
-            step("clutch_pressed", "Clutch pressed", "Press clutch pedal fully and hold.", "Press clutch"),
-            step("clutch_release", "Clutch release", "Release clutch pedal smoothly.", "Release clutch"),
+            step("clutch_released", "Clutch released", "Hold clutch pedal released.", "Hold released", { metadata: { expected_value: 0, return_value: 0 } }),
+            step("clutch_pressed", "Clutch pressed", "Press clutch pedal fully and hold.", "Press clutch", { metadata: { expected_value: 1, return_value: 0 } }),
+            step("clutch_release", "Clutch release", "Release clutch pedal smoothly.", "Release clutch", { metadata: { expected_value: 0, return_value: 0 } }),
         ],
         metadata: { transmission: "manual" },
     }),
@@ -954,13 +1026,23 @@ const S_MISSIONS: ReconMissionDefinition[] = [
         category: "Power state",
         stage: "core_driving",
         index: 10,
+        analyzer_profile: "enum_state",
+        analysis_contract: {
+            expected_unit: "ignition_state",
+            expected_direction: "categorical",
+            return_value: 0,
+            field_widths: [8, 16],
+            allow_signed: false,
+            allow_little_endian: true,
+            allow_big_endian: true,
+        },
         timing: { action_ms: 3000, capture_ms: 3000 },
         steps: [
-            step("ignition_off", "Ignition OFF", "Hold ignition OFF.", "Hold OFF"),
-            step("ignition_acc", "ACC", "Switch to ACC.", "ACC"),
-            step("ignition_on", "Ignition ON", "Switch to ignition ON without starting engine.", "Ignition ON"),
-            step("engine_start", "Engine start", "Start the engine.", "Start engine", { timing: { action_ms: 4000, capture_ms: 3500 } }),
-            step("engine_stop", "Engine stop", "Turn engine OFF.", "Stop engine"),
+            step("ignition_off", "Ignition OFF", "Hold ignition OFF.", "Hold OFF", { metadata: { expected_value: 0 } }),
+            step("ignition_acc", "ACC", "Switch to ACC.", "ACC", { metadata: { expected_value: 1 } }),
+            step("ignition_on", "Ignition ON", "Switch to ignition ON without starting engine.", "Ignition ON", { metadata: { expected_value: 2 } }),
+            step("engine_start", "Engine start", "Start the engine.", "Start engine", { timing: { action_ms: 4000, capture_ms: 3500 }, metadata: { expected_value: 3 } }),
+            step("engine_stop", "Engine stop", "Turn engine OFF.", "Stop engine", { metadata: { expected_value: 0 } }),
         ],
     }),
 ];

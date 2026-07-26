@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 import { GameButton } from "../../components/GameButton";
+import { ReconWorkspaceHeader } from "./ReconWorkspaceHeader";
+import { ReconHeaderActionGrid } from "./ReconHeaderActionGrid";
 
 export type CandidateMlLabelValue = "positive" | "negative" | "uncertain";
 
@@ -147,6 +149,45 @@ export type BitSignalHypothesis = {
     reason: string;
 };
 
+export type ByteEvidence = {
+    byte_index: number;
+    change_count: number;
+    unique_values: number[];
+    most_common_values: Array<[number, number]>;
+    byte_delta_counts?: Record<string, number>;
+    byte_modulo_delta_counts?: Record<string, number>;
+    low_nibble_delta_counts?: Record<string, number>;
+    high_nibble_delta_counts?: Record<string, number>;
+    hamming_distance_counts?: Record<string, number>;
+    transition_step_counts?: Record<string, number>;
+    inverse_transition_pairs?: Array<Record<string, unknown>>;
+    transition_symmetry_score?: number;
+    pre_marker_mode?: number | null;
+    action_window_mode?: number | null;
+    post_marker_mode?: number | null;
+    bit_flip_counts?: Record<string, number>;
+    median_marker_latency_ms?: number | null;
+    in_window_changes: number;
+    out_of_window_changes: number;
+    marker_transition_coverage?: number;
+    transition_score?: number;
+    encoding_hint?: string;
+    marker_observations?: Array<Record<string, unknown>>;
+    action_group_modes?: Record<string, unknown>;
+};
+
+export type LabelPriorContext = {
+    applied?: boolean;
+    compatible_id_priors?: number;
+    candidates_adjusted?: number;
+    historical_priors_reused?: number;
+    negative_ids_filtered?: number;
+    positive_ids_supported?: number;
+    uncertain_ids_capped?: number;
+    reason?: string;
+    scope?: string;
+};
+
 export type BrainCandidate = {
     can_id: number;
     can_id_hex: string;
@@ -156,6 +197,9 @@ export type BrainCandidate = {
     change_ratio?: number;
     changed_frame_ratio?: number;
     byte_change_counts: Record<string, number>;
+    byte_evidence?: ByteEvidence[];
+    byte_transition_score?: number;
+    byte_transition_evidence?: Record<string, unknown>;
     byte_role_hypotheses?: ByteRoleHypothesis[];
     signal_hypotheses?: BitSignalHypothesis[];
     field_hypotheses?: FieldSignalHypothesis[];
@@ -177,6 +221,9 @@ export type BrainCandidate = {
     ml_probability?: number | null;
     ml_blend_weight?: number;
     confidence_before_ml?: number;
+    confidence_before_label_prior?: number;
+    label_prior_applied?: boolean;
+    label_prior?: Record<string, unknown>;
     historical_support?: {
         retrieved_sessions?: number;
         seen_sessions?: number;
@@ -282,6 +329,7 @@ export type BrainAnalysisResult = {
     marker_window_ms?: number;
     marker_window_coverage?: number;
     vector_memory?: VectorMemoryContext | null;
+    label_priors?: LabelPriorContext | null;
     candidates: BrainCandidate[];
     heatmap: Record<
         string,
@@ -297,6 +345,8 @@ export type BrainAnalysisResult = {
             change_ratio?: number;
             baseline_score?: number;
             baseline_overlap_score?: number;
+            byte_transition_score?: number;
+            byte_transition_evidence?: Record<string, unknown>;
         }
     >;
     llm_model: string | null;
@@ -307,6 +357,7 @@ export type BrainAnalysisResult = {
 };
 
 type BrainTab = "summary" | "candidates" | "all_ids" | "heatmap" | "llm" | "logs";
+type BrainView = BrainTab | "tools";
 
 export type CandidateLabelMetadata = {
     validation_method?: string;
@@ -341,6 +392,8 @@ type SignalReconBrainConsoleProps = {
     missionTitle: string;
     signalName: string;
     vehicleSlug: string;
+    collapsed: boolean;
+    setCollapsed: (collapsed: boolean) => void;
     busInterface: string;
     busMode: string;
     sourceLabel: string;
@@ -375,12 +428,12 @@ type SignalReconBrainConsoleProps = {
     onToggleAutoAnalyze: () => void;
 };
 
-const TABS: Array<{ id: BrainTab; label: string }> = [
+const BRAIN_HEADER_TABS: Array<{ id: BrainTab; label: string }> = [
     { id: "summary", label: "SUMMARY" },
     { id: "candidates", label: "TOP IDS" },
     { id: "all_ids", label: "ALL IDS" },
     { id: "heatmap", label: "HEAT" },
-    { id: "llm", label: "LLM" },
+    { id: "llm", label: "REPORT" },
     { id: "logs", label: "LOG" },
 ];
 
@@ -475,8 +528,8 @@ function ReadinessPanel({
     const counts = readiness?.counts ?? { positive: 0, negative: 0, uncertain: 0 };
 
     return (
-        <div className="rounded-xl border border-purple-300/30 bg-purple-500/10 p-3 text-purple-100">
-            <div className="mb-2 flex items-center justify-between gap-3">
+        <div className="rounded-sm border border-purple-300/30 bg-purple-500/10 p-3 text-purple-100">
+            <div className="mb-2 flex items-center justify-between gap-1">
                 <div>
                     <p className="text-[10px] tracking-[0.25em] text-purple-200">SUPERVISED LEARNING</p>
                     <p className="text-sm font-black">MODEL READINESS</p>
@@ -484,36 +537,36 @@ function ReadinessPanel({
                 <GameButton
                     onPress={onRefresh}
                     disabled={loading}
-                    className="rounded-lg border border-purple-300/40 bg-purple-500/10 px-2 py-1 text-[10px] font-bold text-purple-100 hover:bg-purple-400/20 disabled:opacity-40"
+                    className="rounded-sm border border-purple-300/40 bg-purple-500/10 px-2 py-1 text-[10px] font-bold text-purple-100 hover:bg-purple-400/20 disabled:opacity-40"
                 >
                     {loading ? "SYNCING" : "REFRESH"}
                 </GameButton>
             </div>
 
             <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4 lg:grid-cols-7">
-                <div className="rounded-lg border border-green-300/20 bg-black/20 p-2">
+                <div className="rounded-sm border border-green-300/20 bg-black/20 p-2">
                     <p className="text-slate-500">positive</p>
                     <p className="text-xl font-black text-green-200">{counts.positive}</p>
                 </div>
-                <div className="rounded-lg border border-red-300/20 bg-black/20 p-2">
+                <div className="rounded-sm border border-red-300/20 bg-black/20 p-2">
                     <p className="text-slate-500">negative</p>
                     <p className="text-xl font-black text-red-200">{counts.negative}</p>
                 </div>
-                <div className="rounded-lg border border-yellow-300/20 bg-black/20 p-2">
+                <div className="rounded-sm border border-yellow-300/20 bg-black/20 p-2">
                     <p className="text-slate-500">uncertain</p>
                     <p className="text-xl font-black text-yellow-200">{counts.uncertain}</p>
                 </div>
-                <div className="rounded-lg border border-cyan-300/20 bg-black/20 p-2">
+                <div className="rounded-sm border border-cyan-300/20 bg-black/20 p-2">
                     <p className="text-slate-500">sessions</p>
                     <p className="text-xl font-black text-cyan-200">{readiness?.distinct_sessions ?? 0}</p>
                 </div>
-                <div className="rounded-lg border border-slate-600 bg-black/20 p-2">
+                <div className="rounded-sm border border-slate-600 bg-black/20 p-2">
                     <p className="text-slate-500">ready</p>
                     <p className={`text-xl font-black ${readiness?.ready_to_train ? "text-green-200" : "text-slate-400"}`}>
                         {readiness?.ready_to_train ? "YES" : "NO"}
                     </p>
                 </div>
-                <div className="col-span-2 rounded-lg border border-slate-600 bg-black/20 p-2">
+                <div className="col-span-2 rounded-sm border border-slate-600 bg-black/20 p-2">
                     <p className="text-slate-500">active model</p>
                     <p className="truncate text-sm font-black text-purple-100">
                         {activeModel ? shortSessionId(activeModel.id) : "NONE"}
@@ -545,7 +598,9 @@ export function SignalReconBrainConsole({
     missionCode,
     missionTitle,
     signalName,
-    vehicleSlug,
+    // vehicleSlug,
+    collapsed,
+    setCollapsed,
     busInterface,
     busMode,
     sourceLabel,
@@ -570,7 +625,7 @@ export function SignalReconBrainConsole({
     onToggleEmbeddings,
     onToggleAutoAnalyze,
 }: SignalReconBrainConsoleProps) {
-    const [activeTab, setActiveTab] = useState<BrainTab>("summary");
+    const [activeTab, setActiveTab] = useState<BrainView>("summary");
     const [notesByCandidate, setNotesByCandidate] = useState<Record<string, string>>({});
     const [sessionsByCandidate, setSessionsByCandidate] = useState<Record<string, string>>({});
     const [candidateFeedback, setCandidateFeedback] = useState<Record<string, CandidateSaveFeedback>>({});
@@ -706,56 +761,96 @@ export function SignalReconBrainConsole({
     return (
         <div className="fixed inset-0 z-50 bg-slate-950">
             <div className="flex h-dvh w-full flex-col overflow-hidden bg-slate-950 font-mono text-green-100">
-                <div className="shrink-0 border-b border-green-400/20 px-3 py-2">
-                    <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_minmax(320px,auto)] md:items-start">
-                        <div className="min-w-0">
-                            <p className="text-[10px] tracking-[0.32em] text-yellow-300 sm:text-xs">AVENLAB // PI BRAIN</p>
-                            <h2 className="truncate text-lg font-black text-green-100 sm:text-2xl">{resultModeLabel}</h2>
-                            <p className="truncate text-[11px] text-slate-400 sm:text-xs">
-                                {missionCode} · {missionTitle} · {signalName} · {vehicleSlug} · {busInterface}/{sourceLabel || busMode} · {shortSessionId(sessionId)}
-                            </p>
-                        </div>
+                <ReconWorkspaceHeader
+                    theme="purple"
+                    eyebrow={`${missionCode} // AVENLAB AI`}
+                    title={resultModeLabel}
+                    collapsed={collapsed}
+                    setCollapsed={setCollapsed}
+                    meta={`${missionTitle} · ${signalName}`}
+                    activeLabel={
+                        activeTab === "tools"
+                            ? "TOOLS"
+                            : BRAIN_HEADER_TABS.find((tab) => tab.id === activeTab)?.label
+                    }
+                    status={
+                        <span>
+                            {shortSessionId(sessionId)} · {busInterface}/{sourceLabel || busMode}
+                            {analysis ? ` · ${analysis.frames_analyzed} FRAMES · ${analysis.markers} MARKERS` : " · NOT ANALYZED"}
+                            {analysis?.llm_model ? ` · ${analysis.llm_model}` : ""}
+                        </span>
+                    }
+                    actions={
+                        <ReconHeaderActionGrid
+                            ariaLabel="AI analysis navigation"
+                            items={[
+                                ...BRAIN_HEADER_TABS.map((tab) => ({
+                                    id: tab.id,
+                                    label: tab.label,
+                                    active: activeTab === tab.id,
+                                    onPress: () => setActiveTab(tab.id),
+                                    tone: "purple" as const,
+                                })),
+                                {
+                                    id: "tools",
+                                    label: "TOOLS",
+                                    active: activeTab === "tools",
+                                    onPress: () => setActiveTab("tools"),
+                                    tone: "yellow" as const,
+                                },
+                                {
+                                    id: "hide",
+                                    label: "HIDE ▴",
+                                    onPress: () => setCollapsed(true),
+                                    tone: "cyan" as const,
+                                },
+                                {
+                                    id: "back",
+                                    label: "BACK",
+                                    onPress: onClose,
+                                    tone: "red" as const,
+                                },
+                            ]}
+                        />
+                    }
+                />
 
-                        <div className="grid shrink-0 grid-cols-3 gap-1 sm:grid-cols-5">
-                            <GameButton onPress={onAnalyze} disabled={analyzing || !sessionId} className="rounded-lg border border-yellow-300/40 bg-yellow-500/10 px-2 py-1 text-[10px] font-bold text-yellow-100 hover:bg-yellow-400/20 disabled:opacity-40">
-                                {analyzing ? "ANALYZING" : "QUICK ID"}
-                            </GameButton>
-                            <GameButton onPress={() => { setActiveTab("llm"); onExplainWithLlm(); }} disabled={analyzing || !sessionId} className="rounded-lg border border-purple-300/40 bg-purple-500/10 px-2 py-1 text-[10px] font-bold text-purple-100 hover:bg-purple-400/20 disabled:opacity-40">
-                                EXPLAIN
-                            </GameButton>
-                            <GameButton onPress={onLoadLatest} disabled={analyzing || !sessionId} className="rounded-lg border border-cyan-300/40 bg-cyan-500/10 px-2 py-1 text-[10px] font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:opacity-40">READ DB</GameButton>
-                            <GameButton onPress={onExportSession} disabled={analyzing || !sessionId} className="rounded-lg border border-cyan-300/40 bg-cyan-500/10 px-2 py-1 text-[10px] font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:opacity-40">EXPORT</GameButton>
-                            <GameButton onPress={onDeleteSession} disabled={analyzing || !sessionId} className="rounded-lg border border-red-300/40 bg-red-500/10 px-2 py-1 text-[10px] font-bold text-red-100 hover:bg-red-400/20 disabled:opacity-40">DELETE</GameButton>
-                            <GameButton onPress={onToggleLlm} disabled={analyzing} className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${useLlm ? "border-green-300/40 bg-green-500/10 text-green-100" : "border-slate-600 bg-slate-900 text-slate-400"}`}>LLM {useLlm ? "ON" : "OFF"}</GameButton>
-                            <GameButton onPress={onToggleEmbeddings} disabled={analyzing} className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${useEmbeddings ? "border-cyan-300/40 bg-cyan-500/10 text-cyan-100" : "border-slate-600 bg-slate-900 text-slate-400"}`}>MEM {useEmbeddings ? "ON" : "OFF"}</GameButton>
-                            <GameButton onPress={onToggleAutoAnalyze} disabled={analyzing} className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${autoAnalyze ? "border-cyan-300/40 bg-cyan-500/10 text-cyan-100" : "border-slate-600 bg-slate-900 text-slate-400"}`}>AUTO {autoAnalyze ? "ON" : "OFF"}</GameButton>
-                            <GameButton onPress={onClose} className="rounded-lg border border-slate-500 bg-slate-900 px-2 py-1 text-[10px] font-bold text-slate-100 hover:bg-slate-800">BACK</GameButton>
-                        </div>
-                    </div>
-
-                    <div className="mt-2 flex gap-1 overflow-x-auto pb-1">
-                        {TABS.map((tab) => (
-                            <GameButton key={tab.id} onPress={() => setActiveTab(tab.id)} className={`shrink-0 rounded-lg border px-2 py-1 text-[10px] font-bold transition sm:text-xs ${activeTab === tab.id ? "border-green-300 bg-green-500/20 text-green-100" : "border-slate-700 bg-slate-900 text-slate-400 hover:bg-slate-800"}`}>
-                                {tab.label}
-                            </GameButton>
-                        ))}
-                    </div>
-                </div>
-
-                <div className="min-h-0 flex-1 overflow-y-auto p-3">
+                <div className="min-h-0 flex-1 overflow-y-auto p-1">
                     {(error || localError) && (
-                        <div className="mb-3 rounded-xl border border-red-300/40 bg-red-500/10 p-3 text-sm text-red-100">{localError ?? error}</div>
+                        <div className="mb-1 rounded-sm border border-red-300/40 bg-red-500/10 p-3 text-sm text-red-100">{localError ?? error}</div>
                     )}
                     {analyzing && (
-                        <div className="mb-3 rounded-xl border border-yellow-300/40 bg-yellow-500/10 p-3 text-sm text-yellow-100">&gt; analyzing CAN evidence and model context...</div>
+                        <div className="mb-1 rounded-sm border border-yellow-300/40 bg-yellow-500/10 p-3 text-sm text-yellow-100">&gt; analyzing CAN evidence and model context...</div>
+                    )}
+
+                    {activeTab === "tools" && (
+                        <div className="border border-purple-300/25 bg-slate-950 text-sm text-purple-100">
+                            <div className="border-b border-slate-800 px-2 py-1">
+                                <p className="text-[9px] tracking-[0.22em] text-purple-200">AI TOOLS</p>
+                                <p className="text-[10px] text-slate-500">
+                                    Analysis settings and destructive database actions are kept off the primary navigation.
+                                </p>
+                            </div>
+                            <div className="grid gap-px bg-slate-800 grid-cols-3">
+                                <GameButton onPress={() => { setActiveTab("llm"); onExplainWithLlm(); }} disabled={analyzing || !sessionId} className="rounded-none border border-purple-300/40 bg-purple-500/10 px-2 py-2 text-[10px] font-bold text-purple-100 hover:bg-purple-400/20 disabled:opacity-40">GENERATE REPORT</GameButton>
+                                <GameButton onPress={onAnalyze} disabled={analyzing || !sessionId} className="rounded-none border border-yellow-300/40 bg-yellow-500/10 px-2 py-2 text-[10px] font-bold text-yellow-100 hover:bg-yellow-400/20 disabled:opacity-40">RUN ID</GameButton>
+                                <GameButton onPress={onRefreshMl} disabled={mlLoading || !sessionId} className="rounded-none border border-purple-300/40 bg-purple-500/10 px-2 py-2 text-[10px] font-bold text-purple-100 hover:bg-purple-400/20 disabled:opacity-40">{mlLoading ? "ML…" : "REFRESH ML"}</GameButton>
+                                <GameButton onPress={onLoadLatest} disabled={analyzing || !sessionId} className="rounded-none border border-cyan-300/40 bg-cyan-500/10 px-2 py-2 text-[10px] font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:opacity-40">READ DATABASE</GameButton>
+                                <GameButton onPress={onToggleEmbeddings} disabled={analyzing} className={`rounded-none border px-2 py-2 text-[10px] font-bold ${useEmbeddings ? "border-cyan-300/40 bg-cyan-500/10 text-cyan-100" : "border-slate-600 bg-slate-900 text-slate-400"}`}>MEMORY {useEmbeddings ? "ON" : "OFF"}</GameButton>
+                                <GameButton onPress={onToggleAutoAnalyze} disabled={analyzing} className={`rounded-none border px-2 py-2 text-[10px] font-bold ${autoAnalyze ? "border-cyan-300/40 bg-cyan-500/10 text-cyan-100" : "border-slate-600 bg-slate-900 text-slate-400"}`}>AUTO {autoAnalyze ? "ON" : "OFF"}</GameButton>
+                                <GameButton onPress={onToggleLlm} disabled={analyzing} className={`rounded-none border px-2 py-2 text-[10px] font-bold ${useLlm ? "border-green-300/40 bg-green-500/10 text-green-100" : "border-slate-600 bg-slate-900 text-slate-400"}`}>LLM {useLlm ? "ON" : "OFF"}</GameButton>
+                                <GameButton onPress={onExportSession} disabled={analyzing || !sessionId} className="rounded-none border border-slate-500 bg-slate-900 px-2 py-2 text-[10px] font-bold text-slate-200 hover:bg-slate-800 disabled:opacity-40">EXPORT</GameButton>
+                                <GameButton onPress={onDeleteSession} disabled={analyzing || !sessionId} className="rounded-none border border-red-300/40 bg-red-500/10 px-2 py-2 text-[10px] font-bold text-red-100 hover:bg-red-400/20 disabled:opacity-40">DELETE SESSION</GameButton>
+                            </div>
+                        </div>
                     )}
 
                     {activeTab === "summary" && (
-                        <div className="space-y-3">
+                        <div className="space-y-1">
                             <ReadinessPanel readiness={mlReadiness} activeModel={activeModel} loading={mlLoading} onRefresh={onRefreshMl} />
 
-                            <div className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 p-3 text-cyan-100">
-                                <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div className="rounded-sm border border-cyan-300/30 bg-cyan-500/10 p-3 text-cyan-100">
+                                <div className="flex flex-wrap items-center justify-between gap-1">
                                     <div>
                                         <p className="text-[10px] tracking-[0.24em] text-cyan-200">VECTOR MEMORY</p>
                                         <p className="text-sm font-black">
@@ -767,15 +862,15 @@ export function SignalReconBrainConsole({
                                         </p>
                                     </div>
                                     <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
-                                        <div className="rounded-lg border border-cyan-300/20 bg-black/20 px-2 py-1">
+                                        <div className="rounded-sm border border-cyan-300/20 bg-black/20 px-2 py-1">
                                             <p className="text-slate-500">query</p>
                                             <p className="font-black">{analysis?.vector_memory?.query_embedded ? "YES" : "NO"}</p>
                                         </div>
-                                        <div className="rounded-lg border border-cyan-300/20 bg-black/20 px-2 py-1">
+                                        <div className="rounded-sm border border-cyan-300/20 bg-black/20 px-2 py-1">
                                             <p className="text-slate-500">matches</p>
                                             <p className="font-black">{analysis?.vector_memory?.match_count ?? 0}</p>
                                         </div>
-                                        <div className="rounded-lg border border-cyan-300/20 bg-black/20 px-2 py-1">
+                                        <div className="rounded-sm border border-cyan-300/20 bg-black/20 px-2 py-1">
                                             <p className="text-slate-500">stored</p>
                                             <p className="font-black">{analysis?.vector_memory?.stored ? "YES" : "—"}</p>
                                         </div>
@@ -791,14 +886,14 @@ export function SignalReconBrainConsole({
                                 )}
                             </div>
 
-                            <div className="rounded-xl border border-green-400/20 bg-slate-900/80 p-4">
+                            <div className="rounded-sm border border-green-400/20 bg-slate-900/80 p-4">
                                 <p className="text-xs text-yellow-300">{resultModeLabel}</p>
                                 {isBaselineProfile ? (
-                                    <div className="mt-2 grid gap-3 sm:grid-cols-[0.75fr_1.25fr]">
-                                        <div className="rounded-xl border border-cyan-300/40 bg-cyan-500/10 p-4 text-cyan-100">
+                                    <div className="mt-2 grid gap-1 sm:grid-cols-[0.75fr_1.25fr]">
+                                        <div className="rounded-sm border border-cyan-300/40 bg-cyan-500/10 p-4 text-cyan-100">
                                             <p className="text-4xl font-black">{analysis?.baseline_profile?.observed_ids ?? Object.keys(analysis?.heatmap ?? {}).length}</p>
                                             <p className="text-sm">observed CAN IDs</p>
-                                            <p className="mt-3 text-2xl font-black">BASELINE</p>
+                                            <p className="mt-1 text-2xl font-black">BASELINE</p>
                                         </div>
                                         <div className="space-y-2 text-sm text-slate-300">
                                             <p>No target ID expected for this mission.</p>
@@ -807,11 +902,11 @@ export function SignalReconBrainConsole({
                                         </div>
                                     </div>
                                 ) : topCandidate ? (
-                                    <div className="mt-2 grid gap-3 sm:grid-cols-[0.7fr_1.3fr]">
-                                        <div className={`rounded-xl border p-4 ${candidateTone(topCandidate.confidence)}`}>
+                                    <div className="mt-2 grid gap-1 sm:grid-cols-[0.7fr_1.3fr]">
+                                        <div className={`rounded-sm border p-4 ${candidateTone(topCandidate.confidence)}`}>
                                             <p className="text-4xl font-black">{percent(topCandidate.confidence)}</p>
                                             <p className="text-sm">final evidence score</p>
-                                            <p className="mt-3 text-2xl font-black">{topCandidate.can_id_hex}</p>
+                                            <p className="mt-1 text-2xl font-black">{topCandidate.can_id_hex}</p>
                                             {topCandidate.field_hypotheses?.[0] ? (
                                                 <p className="mt-1 text-sm font-black text-cyan-200">
                                                     B{topCandidate.field_hypotheses[0].start_byte} · {topCandidate.field_hypotheses[0].width_bits}-bit · {topCandidate.field_hypotheses[0].endianness}{topCandidate.field_hypotheses[0].signed ? " signed" : ""}
@@ -826,6 +921,8 @@ export function SignalReconBrainConsole({
                                             <p><span className="text-slate-500">statistical evidence:</span> {percent(topCandidate.confidence_before_baseline)}</p>
                                             <p><span className="text-slate-500">baseline-adjusted evidence:</span> {percent(topCandidate.confidence_before_ml ?? topCandidate.confidence)}</p>
                                             <p><span className="text-slate-500">ML probability:</span> {percent(topCandidate.ml_probability)}</p>
+                                            <p><span className="text-slate-500">byte transition:</span> {percent(topCandidate.byte_transition_score)}</p>
+                                            <p><span className="text-slate-500">label prior:</span> {topCandidate.label_prior_applied ? "applied" : "none"}</p>
                                             <p><span className="text-slate-500">marker score:</span> {fixed(topCandidate.correlation_score)}</p>
                                             <p><span className="text-slate-500">frames:</span> {topCandidate.frame_count}</p>
                                             <p><span className="text-slate-500">aggregate ID changes:</span> {topCandidate.change_count}</p>
@@ -835,6 +932,18 @@ export function SignalReconBrainConsole({
                                                     <p><span className="text-slate-500">outside-action flips:</span> {topCandidate.signal_hypotheses[0].out_of_window_flips}</p>
                                                 </>
                                             )}
+                                            {typeof topCandidate.byte_transition_evidence?.encoding_hint === "string" && (
+                                                <p className="sm:col-span-2">
+                                                    <span className="text-slate-500">byte encoding hint:</span>{" "}
+                                                    {topCandidate.byte_transition_evidence.encoding_hint}
+                                                </p>
+                                            )}
+                                            {typeof topCandidate.byte_transition_evidence?.transition_symmetry_score === "number" && (
+                                                <p className="sm:col-span-2">
+                                                    <span className="text-slate-500">inverse transition symmetry:</span>{" "}
+                                                    {percent(topCandidate.byte_transition_evidence.transition_symmetry_score as number)}
+                                                </p>
+                                            )}
                                             <p className="sm:col-span-2 text-cyan-200">{topCandidate.notes}</p>
                                         </div>
                                     </div>
@@ -843,7 +952,7 @@ export function SignalReconBrainConsole({
                                 )}
                             </div>
 
-                            <div className="rounded-xl border border-cyan-300/20 bg-cyan-500/5 p-3 text-xs text-cyan-100">
+                            <div className="rounded-sm border border-cyan-300/20 bg-cyan-500/5 p-3 text-xs text-cyan-100">
                                 <div className="grid gap-2 sm:grid-cols-3">
                                     <div>
                                         <p className="text-slate-500">Evidence semantics</p>
@@ -876,24 +985,29 @@ export function SignalReconBrainConsole({
                                         </p>
                                     </div>
                                 </div>
+                                {analysis?.label_priors && (
+                                    <p className="mt-2 rounded-sm border border-cyan-300/20 bg-cyan-500/10 p-2 text-cyan-100">
+                                        Label priors: {analysis.label_priors.compatible_id_priors ?? 0} compatible IDs · {analysis.label_priors.candidates_adjusted ?? 0} adjusted · {analysis.label_priors.negative_ids_filtered ?? 0} rejected IDs filtered · {analysis.label_priors.uncertain_ids_capped ?? 0} unsure IDs capped.
+                                    </p>
+                                )}
                                 {analysis?.frame_selection?.warning && (
-                                    <p className="mt-2 rounded-lg border border-yellow-300/20 bg-yellow-500/10 p-2 text-yellow-100">
+                                    <p className="mt-2 rounded-sm border border-yellow-300/20 bg-yellow-500/10 p-2 text-yellow-100">
                                         {analysis.frame_selection.warning}
                                     </p>
                                 )}
                             </div>
 
                             <div className="grid gap-2 text-sm sm:grid-cols-4">
-                                <div className="rounded-xl border border-green-400/20 bg-slate-900/80 p-3"><p className="text-slate-500">frames</p><p className="text-2xl font-black">{analysis?.frames_analyzed ?? 0}</p></div>
-                                <div className="rounded-xl border border-green-400/20 bg-slate-900/80 p-3"><p className="text-slate-500">markers</p><p className="text-2xl font-black">{analysis?.markers ?? 0}</p></div>
-                                <div className="rounded-xl border border-green-400/20 bg-slate-900/80 p-3"><p className="text-slate-500">mode</p><p className="text-lg font-black">{busMode.toUpperCase()}</p></div>
-                                <div className="rounded-xl border border-green-400/20 bg-slate-900/80 p-3"><p className="text-slate-500">LLM</p><p className="text-2xl font-black">{analysis?.llm_available ? "ON" : "OFF"}</p></div>
+                                <div className="rounded-sm border border-green-400/20 bg-slate-900/80 p-3"><p className="text-slate-500">frames</p><p className="text-2xl font-black">{analysis?.frames_analyzed ?? 0}</p></div>
+                                <div className="rounded-sm border border-green-400/20 bg-slate-900/80 p-3"><p className="text-slate-500">markers</p><p className="text-2xl font-black">{analysis?.markers ?? 0}</p></div>
+                                <div className="rounded-sm border border-green-400/20 bg-slate-900/80 p-3"><p className="text-slate-500">mode</p><p className="text-lg font-black">{busMode.toUpperCase()}</p></div>
+                                <div className="rounded-sm border border-green-400/20 bg-slate-900/80 p-3"><p className="text-slate-500">LLM</p><p className="text-2xl font-black">{analysis?.llm_available ? "ON" : "OFF"}</p></div>
                             </div>
                         </div>
                     )}
 
                     {activeTab === "candidates" && (
-                        <div className="space-y-3">
+                        <div className="space-y-1">
                             <ReadinessPanel readiness={mlReadiness} activeModel={activeModel} loading={mlLoading} onRefresh={onRefreshMl} />
 
                             {topCandidates.map((candidate) => {
@@ -944,8 +1058,8 @@ export function SignalReconBrainConsole({
                                     || saveFeedback?.state === "saving";
 
                                 return (
-                                    <div key={candidate.can_id_hex} className={`rounded-xl border p-3 ${candidateTone(candidate.confidence)}`}>
-                                        <div className="flex flex-wrap items-start justify-between gap-3">
+                                    <div key={candidate.can_id_hex} className={`rounded-sm border p-3 ${candidateTone(candidate.confidence)}`}>
+                                        <div className="flex flex-wrap items-start justify-between gap-1">
                                             <div>
                                                 <p className="text-xl font-black">{candidate.can_id_hex}</p>
                                                 <p className="text-xs text-slate-500">
@@ -957,7 +1071,7 @@ export function SignalReconBrainConsole({
                                                     </p>
                                                 )}
                                             </div>
-                                            <span className={`rounded-lg border px-2 py-1 text-[10px] font-black ${labelTone(effectiveLabel)}`}>
+                                            <span className={`rounded-sm border px-2 py-1 text-[10px] font-black ${labelTone(effectiveLabel)}`}>
                                                 {saveFeedback?.state === "saving"
                                                     ? "SAVING LABEL…"
                                                     : saveFeedback?.state === "saved"
@@ -966,15 +1080,15 @@ export function SignalReconBrainConsole({
                                             </span>
                                         </div>
 
-                                        <div className="mt-3 grid grid-cols-2 gap-2 text-xs lg:grid-cols-4">
-                                            <div className="rounded-lg border border-slate-700 bg-black/20 p-2"><p className="text-slate-500">Statistical evidence</p><p className="text-lg font-black">{percent(statisticalConfidence)}</p></div>
-                                            <div className="rounded-lg border border-slate-700 bg-black/20 p-2"><p className="text-slate-500">Baseline-adjusted evidence</p><p className="text-lg font-black">{percent(baselineAdjustedConfidence)}</p></div>
-                                            <div className="rounded-lg border border-slate-700 bg-black/20 p-2"><p className="text-slate-500">ML probability</p><p className="text-lg font-black">{percent(candidate.ml_probability)}</p></div>
-                                            <div className="rounded-lg border border-slate-700 bg-black/20 p-2"><p className="text-slate-500">Final evidence score</p><p className="text-lg font-black">{percent(candidate.confidence)}</p></div>
+                                        <div className="mt-1 grid grid-cols-2 gap-2 text-xs lg:grid-cols-4">
+                                            <div className="rounded-sm border border-slate-700 bg-black/20 p-2"><p className="text-slate-500">Statistical evidence</p><p className="text-lg font-black">{percent(statisticalConfidence)}</p></div>
+                                            <div className="rounded-sm border border-slate-700 bg-black/20 p-2"><p className="text-slate-500">Baseline-adjusted evidence</p><p className="text-lg font-black">{percent(baselineAdjustedConfidence)}</p></div>
+                                            <div className="rounded-sm border border-slate-700 bg-black/20 p-2"><p className="text-slate-500">ML probability</p><p className="text-lg font-black">{percent(candidate.ml_probability)}</p></div>
+                                            <div className="rounded-sm border border-slate-700 bg-black/20 p-2"><p className="text-slate-500">Final evidence score</p><p className="text-lg font-black">{percent(candidate.confidence)}</p></div>
                                         </div>
 
                                         {topFieldSignal && (
-                                            <div className="mt-3 rounded-lg border border-purple-300/30 bg-purple-500/5 p-3 text-xs">
+                                            <div className="mt-1 rounded-sm border border-purple-300/30 bg-purple-500/5 p-3 text-xs">
                                                 <div className="flex flex-wrap items-center justify-between gap-2">
                                                     <div>
                                                         <p className="text-[10px] tracking-[0.18em] text-purple-300">FIELD-FIRST QUICK ID</p>
@@ -1051,7 +1165,7 @@ export function SignalReconBrainConsole({
                                         )}
 
                                         {topBitSignal && (
-                                            <div className="mt-3 rounded-lg border border-cyan-300/30 bg-cyan-500/5 p-3 text-xs">
+                                            <div className="mt-1 rounded-sm border border-cyan-300/30 bg-cyan-500/5 p-3 text-xs">
                                                 <div className="flex flex-wrap items-center justify-between gap-2">
                                                     <div>
                                                         <p className="text-[10px] tracking-[0.18em] text-cyan-300">
@@ -1078,7 +1192,7 @@ export function SignalReconBrainConsole({
                                                 </div>
 
                                                 <div className="mt-2 grid gap-1 sm:grid-cols-2">
-                                                    {Object.entries(topBitSignal.action_groups).map(([actionKey, group]) => (
+                                                    {(Object.entries(topBitSignal.action_groups) as Array<[string, BitSignalActionGroup]>).map(([actionKey, group]) => (
                                                         <div key={actionKey} className="rounded border border-slate-700 bg-black/20 p-2">
                                                             <div className="flex items-center justify-between gap-2">
                                                                 <span className="font-black">{actionKey}</span>
@@ -1126,10 +1240,33 @@ export function SignalReconBrainConsole({
                                                     </GameButton>
                                                 </div>
                                             </div>
+	                                        )}
+
+                                        {!topFieldSignal && !topBitSignal && (candidate.byte_transition_score ?? 0) > 0 && (
+                                            <div className="mt-1 rounded-sm border border-yellow-300/30 bg-yellow-500/5 p-3 text-xs">
+                                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                                    <div>
+                                                        <p className="text-[10px] tracking-[0.18em] text-yellow-300">BYTE-LEVEL CANDIDATE</p>
+                                                        <p className="text-lg font-black text-yellow-100">
+                                                            {candidate.can_id_hex} / B{String(candidate.byte_transition_evidence?.byte_index ?? "?")}
+                                                        </p>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="text-2xl font-black text-yellow-100">{percent(candidate.byte_transition_score)}</p>
+                                                        <p className="text-[10px] text-slate-500">transition evidence</p>
+                                                    </div>
+                                                </div>
+                                                <p className="mt-2 text-yellow-100/80">
+                                                    Byte moved near action markers, but no exact bit or field is confirmed yet. Encoding hint: {String(candidate.byte_transition_evidence?.encoding_hint ?? "unknown")}.
+                                                    {typeof candidate.byte_transition_evidence?.transition_symmetry_score === "number"
+                                                        ? ` Inverse transition symmetry: ${percent(candidate.byte_transition_evidence.transition_symmetry_score as number)}.`
+                                                        : ""}
+                                                </p>
+                                            </div>
                                         )}
 
                                         {candidate.historical_support && (
-                                            <div className="mt-3 grid grid-cols-2 gap-2 rounded-lg border border-cyan-300/20 bg-cyan-500/5 p-2 text-xs sm:grid-cols-4">
+                                            <div className="mt-1 grid grid-cols-2 gap-2 rounded-sm border border-cyan-300/20 bg-cyan-500/5 p-2 text-xs sm:grid-cols-4">
                                                 <div>
                                                     <p className="text-slate-500">Historical sessions</p>
                                                     <p className="font-black text-cyan-100">
@@ -1151,16 +1288,16 @@ export function SignalReconBrainConsole({
                                             </div>
                                         )}
 
-                                        <div className="mt-3 grid grid-cols-8 gap-1">{byteCells(candidate.byte_change_counts)}</div>
+                                        <div className="mt-1 grid grid-cols-8 gap-1">{byteCells(candidate.byte_change_counts)}</div>
 
                                         {Boolean(candidate.byte_role_hypotheses?.length) && (
-                                            <div className="mt-3 rounded-lg border border-cyan-300/20 bg-black/20 p-2">
+                                            <div className="mt-1 rounded-sm border border-cyan-300/20 bg-black/20 p-2">
                                                 <p className="mb-2 text-[10px] tracking-[0.18em] text-cyan-300">AUTO BYTE ROLES</p>
                                                 <div className="grid gap-1 sm:grid-cols-2 lg:grid-cols-4">
                                                     {candidate.byte_role_hypotheses?.map((hypothesis) => (
                                                         <div
                                                             key={`${candidate.can_id}:${hypothesis.byte_index}:${hypothesis.hypothesis_kind}`}
-                                                            className={`rounded-lg border p-2 text-[10px] ${hypothesisTone(hypothesis.hypothesis_kind)}`}
+                                                            className={`rounded-sm border p-2 text-[10px] ${hypothesisTone(hypothesis.hypothesis_kind)}`}
                                                             title={hypothesis.reason}
                                                         >
                                                             <div className="flex items-center justify-between gap-2">
@@ -1205,7 +1342,7 @@ export function SignalReconBrainConsole({
                                             </div>
                                         )}
 
-                                        <div className="mt-3 grid gap-2 lg:grid-cols-[1fr_180px]">
+                                        <div className="mt-1 grid gap-2 lg:grid-cols-[1fr_180px]">
                                             <label className="block">
                                                 <span className="text-[10px] tracking-[0.18em] text-slate-500">VALIDATION NOTES</span>
                                                 <textarea
@@ -1217,7 +1354,7 @@ export function SignalReconBrainConsole({
                                                         }))
                                                     }
                                                     placeholder="Record why this candidate is relevant, background, or still uncertain."
-                                                    className="mt-1 min-h-20 w-full rounded-lg border border-slate-700 bg-slate-950 p-2 text-xs text-slate-200 outline-none focus:border-green-300"
+                                                    className="mt-1 min-h-20 w-full rounded-sm border border-slate-700 bg-slate-950 p-2 text-xs text-slate-200 outline-none focus:border-green-300"
                                                 />
                                             </label>
                                             <label className="block">
@@ -1233,14 +1370,14 @@ export function SignalReconBrainConsole({
                                                         }))
                                                     }
                                                     placeholder="required for relevant"
-                                                    className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 p-2 text-xs text-slate-200 outline-none focus:border-green-300"
+                                                    className="mt-1 w-full rounded-sm border border-slate-700 bg-slate-950 p-2 text-xs text-slate-200 outline-none focus:border-green-300"
                                                 />
                                                 <p className="mt-2 text-[10px] text-slate-500">Start at 1 controlled session. More independent sessions improve confidence and cross-validation.</p>
                                             </label>
                                         </div>
 
                                         {existingLabel?.notes && (
-                                            <div className="mt-2 rounded-lg border border-slate-700 bg-black/20 p-2 text-xs text-slate-400">
+                                            <div className="mt-2 rounded-sm border border-slate-700 bg-black/20 p-2 text-xs text-slate-400">
                                                 <span className="text-slate-500">Existing label notes:</span> {existingLabel.notes}
                                             </div>
                                         )}
@@ -1251,25 +1388,25 @@ export function SignalReconBrainConsole({
                                             </p>
                                         )}
 
-                                        <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                                        <div className="mt-1 grid gap-2 sm:grid-cols-3">
                                             <GameButton
                                                 onPress={() => void submitLabel(candidate, "positive")}
                                                 disabled={saving || analyzing}
-                                                className={`rounded-lg border px-3 py-2 text-xs font-bold disabled:opacity-40 ${effectiveLabel === "positive" ? "border-green-200 bg-green-500/30 text-green-50 ring-1 ring-green-300" : "border-green-300/40 bg-green-500/10 text-green-100 hover:bg-green-400/20"}`}
+                                                className={`rounded-sm border px-3 py-2 text-xs font-bold disabled:opacity-40 ${effectiveLabel === "positive" ? "border-green-200 bg-green-500/30 text-green-50 ring-1 ring-green-300" : "border-green-300/40 bg-green-500/10 text-green-100 hover:bg-green-400/20"}`}
                                             >
                                                 {saving && saveFeedback?.label === "positive" ? "SAVING…" : effectiveLabel === "positive" ? "✓ VALIDATED RELEVANT" : "VALIDATED RELEVANT"}
                                             </GameButton>
                                             <GameButton
                                                 onPress={() => void submitLabel(candidate, "negative")}
                                                 disabled={saving || analyzing}
-                                                className={`rounded-lg border px-3 py-2 text-xs font-bold disabled:opacity-40 ${effectiveLabel === "negative" ? "border-red-200 bg-red-500/30 text-red-50 ring-1 ring-red-300" : "border-red-300/40 bg-red-500/10 text-red-100 hover:bg-red-400/20"}`}
+                                                className={`rounded-sm border px-3 py-2 text-xs font-bold disabled:opacity-40 ${effectiveLabel === "negative" ? "border-red-200 bg-red-500/30 text-red-50 ring-1 ring-red-300" : "border-red-300/40 bg-red-500/10 text-red-100 hover:bg-red-400/20"}`}
                                             >
                                                 {saving && saveFeedback?.label === "negative" ? "SAVING…" : effectiveLabel === "negative" ? "✓ VALIDATED BACKGROUND" : "VALIDATED BACKGROUND"}
                                             </GameButton>
                                             <GameButton
                                                 onPress={() => void submitLabel(candidate, "uncertain")}
                                                 disabled={saving || analyzing}
-                                                className={`rounded-lg border px-3 py-2 text-xs font-bold disabled:opacity-40 ${effectiveLabel === "uncertain" ? "border-yellow-200 bg-yellow-500/30 text-yellow-50 ring-1 ring-yellow-300" : "border-yellow-300/40 bg-yellow-500/10 text-yellow-100 hover:bg-yellow-400/20"}`}
+                                                className={`rounded-sm border px-3 py-2 text-xs font-bold disabled:opacity-40 ${effectiveLabel === "uncertain" ? "border-yellow-200 bg-yellow-500/30 text-yellow-50 ring-1 ring-yellow-300" : "border-yellow-300/40 bg-yellow-500/10 text-yellow-100 hover:bg-yellow-400/20"}`}
                                             >
                                                 {saving && saveFeedback?.label === "uncertain" ? "SAVING…" : effectiveLabel === "uncertain" ? "✓ NEEDS MORE EVIDENCE" : "NEEDS MORE EVIDENCE"}
                                             </GameButton>
@@ -1284,7 +1421,7 @@ export function SignalReconBrainConsole({
 
                     {activeTab === "all_ids" && (
                         <div className="space-y-2">
-                            <div className="sticky top-0 z-10 rounded-xl border border-cyan-300/30 bg-slate-950/95 p-3">
+                            <div className="sticky top-0 z-10 rounded-sm border border-cyan-300/30 bg-slate-950/95 p-3">
                                 <div className="flex flex-wrap items-center justify-between gap-2">
                                     <div>
                                         <p className="font-black text-cyan-100">ALL OBSERVED SESSION IDS</p>
@@ -1296,7 +1433,7 @@ export function SignalReconBrainConsole({
                                         value={allIdSearch}
                                         onChange={(event) => setAllIdSearch(event.target.value)}
                                         placeholder="Filter hex, decimal, or role"
-                                        className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-cyan-100 outline-none focus:border-cyan-300 sm:w-64"
+                                        className="w-full rounded-sm border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-cyan-100 outline-none focus:border-cyan-300 sm:w-64"
                                     />
                                 </div>
                             </div>
@@ -1317,7 +1454,7 @@ export function SignalReconBrainConsole({
                                     || saveFeedback?.state === "saving";
 
                                 return (
-                                    <div key={canId} className={`rounded-xl border p-3 ${candidateTone(row.confidence ?? 0)}`}>
+                                    <div key={canId} className={`rounded-sm border p-3 ${candidateTone(row.confidence ?? 0)}`}>
                                         <div className="flex flex-wrap items-start justify-between gap-2">
                                             <div>
                                                 <p className="text-lg font-black">{canId}</p>
@@ -1377,8 +1514,8 @@ export function SignalReconBrainConsole({
                     {activeTab === "heatmap" && (
                         <div className="space-y-2">
                             {heatRows.map(([canId, row]) => (
-                                <div key={canId} className="rounded-xl border border-green-400/20 bg-slate-900/80 p-3">
-                                    <div className="mb-2 flex items-center justify-between gap-3">
+                                <div key={canId} className="rounded-sm border border-green-400/20 bg-slate-900/80 p-3">
+                                    <div className="mb-2 flex items-center justify-between gap-1">
                                         <span className="font-black text-green-100">{canId}</span>
                                         <span className="text-xs text-slate-500">{row.change_count} changes · {fixed(row.frequency_hz)} Hz</span>
                                     </div>
@@ -1390,14 +1527,14 @@ export function SignalReconBrainConsole({
                     )}
 
                     {activeTab === "llm" && (
-                        <div className="rounded-xl border border-purple-300/30 bg-purple-500/10 p-4 text-sm text-purple-100">
-                            <div className="mb-3 flex items-center justify-between gap-3"><span className="font-black">OLLAMA REPORT</span><span className="text-xs text-purple-200">{analysis?.llm_model ?? "no model"}</span></div>
+                        <div className="rounded-sm border border-purple-300/30 bg-purple-500/10 p-4 text-sm text-purple-100">
+                            <div className="mb-1 flex items-center justify-between gap-1"><span className="font-black">OLLAMA REPORT</span><span className="text-xs text-purple-200">{analysis?.llm_model ?? "no model"}</span></div>
                             <pre className="whitespace-pre-wrap font-mono text-xs leading-relaxed text-slate-200">{analysis?.analysis ?? "No saved report. Run EXPLAIN."}</pre>
                         </div>
                     )}
 
                     {activeTab === "logs" && (
-                        <div className="rounded-xl border border-green-400/20 bg-black/60 p-3">
+                        <div className="rounded-sm border border-green-400/20 bg-black/60 p-3">
                             <pre className="whitespace-pre-wrap font-mono text-xs leading-relaxed text-green-200">{logs.length ? logs.join("\n") : "> no logs"}</pre>
                         </div>
                     )}

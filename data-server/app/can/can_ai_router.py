@@ -22,7 +22,9 @@ from pydantic import BaseModel, Field
 from app.db import connect_db
 from app.can.can_ml_service import (
     ML_BLEND_WEIGHT,
+    apply_candidate_label_priors,
     apply_supervised_model,
+    load_candidate_label_priors,
     load_active_ml_model,
     ml_configuration,
     ml_router,
@@ -553,6 +555,14 @@ class ByteEvidence(BaseModel):
     change_count: int
     unique_values: list[int]
     most_common_values: list[tuple[int, int]]
+    byte_delta_counts: dict[str, int] = Field(default_factory=dict)
+    byte_modulo_delta_counts: dict[str, int] = Field(default_factory=dict)
+    low_nibble_delta_counts: dict[str, int] = Field(default_factory=dict)
+    high_nibble_delta_counts: dict[str, int] = Field(default_factory=dict)
+    hamming_distance_counts: dict[str, int] = Field(default_factory=dict)
+    transition_step_counts: dict[str, int] = Field(default_factory=dict)
+    inverse_transition_pairs: list[dict[str, Any]] = Field(default_factory=list)
+    transition_symmetry_score: float = 0.0
 
     # These three compatibility fields are populated only when all explicit
     # action groups agree. ON and OFF groups are never pooled into one mode.
@@ -564,6 +574,9 @@ class ByteEvidence(BaseModel):
     median_marker_latency_ms: Optional[float]
     in_window_changes: int
     out_of_window_changes: int
+    marker_transition_coverage: float = 0.0
+    transition_score: float = 0.0
+    encoding_hint: str = "unknown"
     marker_observations: list[MarkerObservation] = Field(default_factory=list)
     action_group_modes: dict[str, Any] = Field(default_factory=dict)
 
@@ -673,6 +686,8 @@ class Candidate(BaseModel):
     analysis_mode: str = ANALYSIS_MODE_TARGET
     candidate_role: str = "target_candidate"
     baseline_score: float = 0.0
+    byte_transition_score: float = 0.0
+    byte_transition_evidence: dict[str, Any] = Field(default_factory=dict)
 
     baseline_applied: bool = False
     baseline_session_id: Optional[str] = None
@@ -689,6 +704,9 @@ class Candidate(BaseModel):
     ml_blend_weight: float = 0.0
     confidence_before_ml: float = 0.0
     ml_feature_vector: dict[str, float] = Field(default_factory=dict)
+    confidence_before_label_prior: float = 0.0
+    label_prior_applied: bool = False
+    label_prior: dict[str, Any] = Field(default_factory=dict)
 
     # Read-only cross-session evidence from scoped vector retrieval. This is
     # deliberately excluded from the numerical confidence calculation.
@@ -711,6 +729,190 @@ def mode_value(values: list[int]) -> Optional[int]:
     if not values:
         return None
     return int(Counter(values).most_common(1)[0][0])
+
+
+def top_count_map(counter: Counter[Any], limit: int = 8) -> dict[str, int]:
+    return {
+        str(value): int(count)
+        for value, count in counter.most_common(limit)
+        if count > 0
+    }
+
+
+def dominant_count_fraction(counter: Counter[Any], keys: set[Any]) -> float:
+    total = sum(counter.values())
+    if total <= 0:
+        return 0.0
+    return sum(count for value, count in counter.items() if value in keys) / total
+
+
+def byte_encoding_hint(
+    *,
+    unique_values: int,
+    hamming_distance_counts: Counter[int],
+    byte_modulo_delta_counts: Counter[int],
+    low_nibble_delta_counts: Counter[int],
+    high_nibble_delta_counts: Counter[int],
+) -> str:
+    full_counter_fraction = dominant_count_fraction(
+        byte_modulo_delta_counts,
+        {1, 255},
+    )
+    low_counter_fraction = dominant_count_fraction(
+        low_nibble_delta_counts,
+        {1, 15},
+    )
+    high_counter_fraction = dominant_count_fraction(
+        high_nibble_delta_counts,
+        {1, 15},
+    )
+    bit_flip_fraction = dominant_count_fraction(
+        hamming_distance_counts,
+        {1},
+    )
+
+    if unique_values <= 1:
+        return "constant"
+    if unique_values >= 4 and full_counter_fraction >= 0.70:
+        return "full_byte_modulo_counter"
+    if unique_values >= 4 and low_counter_fraction >= 0.70:
+        return "low_nibble_modulo_counter"
+    if unique_values >= 4 and high_counter_fraction >= 0.70:
+        return "high_nibble_modulo_counter"
+    if unique_values <= 4 and bit_flip_fraction >= 0.65:
+        return "sparse_bitfield_or_enum"
+    if unique_values <= 16:
+        return "enum_or_small_encoded_field"
+    return "encoded_byte_or_noise"
+
+
+def byte_role_map(
+    roles: list[ByteRoleHypothesis],
+) -> dict[int, ByteRoleHypothesis]:
+    return {role.byte_index: role for role in roles}
+
+
+def byte_inverse_transition_evidence(
+    observations: list[MarkerObservation],
+) -> tuple[dict[str, int], list[dict[str, Any]], float]:
+    transition_step_counts: Counter[int] = Counter()
+    transition_groups: dict[tuple[int, int], list[int]] = defaultdict(list)
+
+    for observation in observations:
+        if observation.change_count > 0:
+            transition_step_counts[int(observation.change_count)] += 1
+
+        source = observation.pre_mode
+        target = (
+            observation.action_mode
+            if observation.action_mode is not None
+            else observation.post_mode
+        )
+        if source is None or target is None or source == target:
+            continue
+        transition_groups[(int(source), int(target))].append(
+            max(0, int(observation.change_count)),
+        )
+
+    pairs: list[dict[str, Any]] = []
+    seen: set[tuple[int, int]] = set()
+    weighted_score = 0.0
+    weight_total = 0
+
+    for transition, forward_counts in transition_groups.items():
+        if transition in seen:
+            continue
+        inverse = (transition[1], transition[0])
+        inverse_counts = transition_groups.get(inverse)
+        if not inverse_counts:
+            continue
+        seen.add(transition)
+        seen.add(inverse)
+
+        forward_median = float(statistics.median(forward_counts))
+        inverse_median = float(statistics.median(inverse_counts))
+        denominator = max(forward_median, inverse_median, 1.0)
+        symmetry = 1.0 - min(
+            1.0,
+            abs(forward_median - inverse_median) / denominator,
+        )
+        support = len(forward_counts) + len(inverse_counts)
+        weighted_score += symmetry * support
+        weight_total += support
+        pairs.append(
+            {
+                "from": transition[0],
+                "to": transition[1],
+                "from_hex": f"0x{transition[0]:02X}",
+                "to_hex": f"0x{transition[1]:02X}",
+                "forward_samples": len(forward_counts),
+                "inverse_samples": len(inverse_counts),
+                "forward_median_steps": round(forward_median, 3),
+                "inverse_median_steps": round(inverse_median, 3),
+                "symmetry_score": round(symmetry, 6),
+            }
+        )
+
+    pairs.sort(
+        key=lambda item: (
+            item.get("symmetry_score", 0),
+            item.get("forward_samples", 0) + item.get("inverse_samples", 0),
+        ),
+        reverse=True,
+    )
+    symmetry_score = (
+        weighted_score / weight_total
+        if weight_total > 0
+        else 0.0
+    )
+    return top_count_map(transition_step_counts), pairs[:8], round(symmetry_score, 6)
+
+
+def strongest_byte_transition(
+    evidence: list[ByteEvidence],
+    roles: list[ByteRoleHypothesis],
+) -> tuple[Optional[ByteEvidence], float, dict[str, Any]]:
+    roles_by_byte = byte_role_map(roles)
+    best_item: Optional[ByteEvidence] = None
+    best_score = 0.0
+    best_payload: dict[str, Any] = {}
+
+    for item in evidence:
+        if item.change_count <= 0:
+            continue
+        role = roles_by_byte.get(item.byte_index)
+        score = float(item.transition_score)
+        role_kind = role.hypothesis_kind if role else "unknown"
+        if role_kind == "rolling_counter":
+            score = min(score * 0.35, 0.25)
+        elif role_kind == "checksum_candidate":
+            score = min(score * 0.25, 0.20)
+
+        if score <= best_score:
+            continue
+
+        best_item = item
+        best_score = score
+        best_payload = {
+            "byte_index": item.byte_index,
+            "score": round(score, 6),
+            "raw_transition_score": item.transition_score,
+            "marker_transition_coverage": item.marker_transition_coverage,
+            "in_window_changes": item.in_window_changes,
+            "out_of_window_changes": item.out_of_window_changes,
+            "change_count": item.change_count,
+            "encoding_hint": item.encoding_hint,
+            "transition_step_counts": item.transition_step_counts,
+            "transition_symmetry_score": item.transition_symmetry_score,
+            "inverse_transition_pairs": item.inverse_transition_pairs,
+            "byte_role": role_kind,
+            "byte_modulo_delta_counts": item.byte_modulo_delta_counts,
+            "low_nibble_delta_counts": item.low_nibble_delta_counts,
+            "high_nibble_delta_counts": item.high_nibble_delta_counts,
+            "hamming_distance_counts": item.hamming_distance_counts,
+        }
+
+    return best_item, round(best_score, 6), best_payload
 
 
 def merge_intervals(
@@ -927,6 +1129,35 @@ def select_analysis_markers(
     return selected, context
 
 
+def marker_action_duration_ms(
+    marker: dict[str, Any],
+    default_window_ms: int,
+) -> int:
+    """Return the expected action hold plus a bounded recovery tolerance.
+
+    Mission markers are posted at action onset, while many vehicle ECUs update
+    later in the hold or again when the control returns to rest. Restricting the
+    evidence window to the first 300 ms discards both legitimate delayed updates
+    and the return transition.
+    """
+    metadata = metadata_dict(marker.get("metadata"))
+    step_metadata = metadata_dict(metadata.get("step_metadata"))
+    combined = {**step_metadata, **metadata}
+
+    raw_duration = combined.get(
+        "hold_ms",
+        combined.get("planned_duration_ms", default_window_ms),
+    )
+    try:
+        duration_ms = int(float(raw_duration))
+    except (TypeError, ValueError):
+        duration_ms = int(default_window_ms)
+
+    duration_ms = max(int(default_window_ms), min(duration_ms, 10_000))
+    recovery_ms = max(100, min(int(default_window_ms), 1_000))
+    return duration_ms + recovery_ms
+
+
 def strict_consensus(values: list[Optional[int]]) -> Optional[int]:
     """Return a mode only when every group supplied and agreed on one value."""
     if not values or any(value is None for value in values):
@@ -958,6 +1189,11 @@ def build_byte_evidence(
 
         change_timestamps: list[int] = []
         bit_flip_counts = [0] * 8
+        byte_delta_counts: Counter[int] = Counter()
+        byte_modulo_delta_counts: Counter[int] = Counter()
+        low_nibble_delta_counts: Counter[int] = Counter()
+        high_nibble_delta_counts: Counter[int] = Counter()
+        hamming_distance_counts: Counter[int] = Counter()
 
         for previous, current in zip(rows, rows[1:]):
             if previous.segment_id != current.segment_id:
@@ -970,6 +1206,19 @@ def build_byte_evidence(
 
             change_timestamps.append(current.timestamp_ms)
             changed_bits = previous_value ^ current_value
+            byte_delta_counts[int(current_value) - int(previous_value)] += 1
+            byte_modulo_delta_counts[
+                (int(current_value) - int(previous_value)) % 256
+            ] += 1
+            previous_low = previous_value & 0x0F
+            current_low = current_value & 0x0F
+            if previous_low != current_low:
+                low_nibble_delta_counts[(current_low - previous_low) % 16] += 1
+            previous_high = (previous_value >> 4) & 0x0F
+            current_high = (current_value >> 4) & 0x0F
+            if previous_high != current_high:
+                high_nibble_delta_counts[(current_high - previous_high) % 16] += 1
+            hamming_distance_counts[int(changed_bits).bit_count()] += 1
             for bit_index in range(8):
                 if changed_bits & (1 << bit_index):
                     bit_flip_counts[bit_index] += 1
@@ -988,14 +1237,12 @@ def build_byte_evidence(
         observations: list[MarkerObservation] = []
         grouped: dict[str, list[MarkerObservation]] = defaultdict(list)
 
-        for _, _, marker in marker_windows:
-            marker_time = int(marker.get("timestamp_ms") or 0)
+        for action_start, action_end, marker in marker_windows:
+            marker_time = int(marker.get("timestamp_ms") or action_start)
             pre_start = marker_time - marker_window_ms
             pre_end = marker_time - 1
-            action_start = marker_time
-            action_end = marker_time + marker_window_ms
             post_start = action_end + 1
-            post_end = marker_time + (2 * marker_window_ms)
+            post_end = action_end + marker_window_ms
 
             def values_between(start_ms: int, end_ms: int) -> list[int]:
                 left = bisect_left(row_timestamps, start_ms)
@@ -1087,6 +1334,40 @@ def build_byte_evidence(
                 ),
             }
 
+        (
+            transition_step_counts,
+            inverse_transition_pairs,
+            transition_symmetry_score,
+        ) = byte_inverse_transition_evidence(observations)
+        marker_transition_coverage = (
+            sum(1 for observation in observations if observation.change_count > 0)
+            / max(len(observations), 1)
+            if marker_windows
+            else 0.0
+        )
+        window_purity = (
+            in_window_changes / max(len(change_timestamps), 1)
+            if change_timestamps
+            else 0.0
+        )
+        latency_score = 0.0
+        if all_latencies:
+            median_latency = float(statistics.median(all_latencies))
+            latency_score = 1.0 / (
+                1.0 + (median_latency / max(marker_window_ms, 1))
+            )
+        transition_score = (
+            (marker_transition_coverage * 0.55)
+            + (window_purity * 0.30)
+            + (latency_score * 0.15)
+        )
+        if inverse_transition_pairs:
+            transition_score = min(
+                1.0,
+                transition_score + (transition_symmetry_score * 0.10),
+            )
+        unique_value_count = len(set(values))
+
         evidence_rows.append(
             ByteEvidence(
                 byte_index=byte_index,
@@ -1096,6 +1377,22 @@ def build_byte_evidence(
                     (int(value), int(count))
                     for value, count in Counter(values).most_common(5)
                 ],
+                byte_delta_counts=top_count_map(byte_delta_counts),
+                byte_modulo_delta_counts=top_count_map(
+                    byte_modulo_delta_counts,
+                ),
+                low_nibble_delta_counts=top_count_map(
+                    low_nibble_delta_counts,
+                ),
+                high_nibble_delta_counts=top_count_map(
+                    high_nibble_delta_counts,
+                ),
+                hamming_distance_counts=top_count_map(
+                    hamming_distance_counts,
+                ),
+                transition_step_counts=transition_step_counts,
+                inverse_transition_pairs=inverse_transition_pairs,
+                transition_symmetry_score=transition_symmetry_score,
                 # Do not collapse opposing action groups. These remain None
                 # whenever ON/OFF or press/release groups disagree.
                 pre_marker_mode=strict_consensus(group_pre_modes),
@@ -1112,6 +1409,21 @@ def build_byte_evidence(
                 ),
                 in_window_changes=in_window_changes,
                 out_of_window_changes=out_of_window_changes,
+                marker_transition_coverage=round(
+                    marker_transition_coverage,
+                    6,
+                ),
+                transition_score=round(
+                    min(1.0, max(0.0, transition_score)),
+                    6,
+                ),
+                encoding_hint=byte_encoding_hint(
+                    unique_values=unique_value_count,
+                    hamming_distance_counts=hamming_distance_counts,
+                    byte_modulo_delta_counts=byte_modulo_delta_counts,
+                    low_nibble_delta_counts=low_nibble_delta_counts,
+                    high_nibble_delta_counts=high_nibble_delta_counts,
+                ),
                 marker_observations=observations,
                 action_group_modes=action_group_modes,
             )
@@ -1266,7 +1578,7 @@ def quick_id_method_for_profile(profile: str, opposing_actions: bool) -> str:
         return QUICK_ID_ENUM_FIELD_METHOD
     if profile == ANALYZER_PROFILE_PULSE:
         return QUICK_ID_PULSE_METHOD
-    if profile == ANALYZER_PROFILE_BOOLEAN and opposing_actions:
+    if profile == ANALYZER_PROFILE_BOOLEAN:
         return QUICK_ID_BIT_FIRST_METHOD
     return QUICK_ID_FALLBACK_METHOD
 
@@ -1739,7 +2051,7 @@ def build_bit_signal_hypotheses(
                 action_states = states_between(action_start, action_end)
                 post_states = states_between(
                     action_end + 1,
-                    marker_time + (2 * marker_window_ms),
+                    action_end + marker_window_ms,
                 )
 
                 left_event = bisect_left(event_timestamps, action_start)
@@ -2117,12 +2429,23 @@ def compact_byte_evidence(candidate: Candidate, limit: int = 3) -> str:
             f"B{item.byte_index}: changes={item.change_count}, "
             f"in_window={item.in_window_changes}, "
             f"out_window={item.out_of_window_changes}, "
+            f"marker_coverage={item.marker_transition_coverage}, "
+            f"transition_score={item.transition_score}, "
+            f"transition_symmetry={item.transition_symmetry_score}, "
+            f"encoding_hint={item.encoding_hint}, "
             f"consensus_pre={item.pre_marker_mode}, "
             f"consensus_action={item.action_window_mode}, "
             f"consensus_post={item.post_marker_mode}, "
             f"action_groups={item.action_group_modes}, "
+            f"inverse_pairs={item.inverse_transition_pairs[:3]}, "
+            f"transition_steps={item.transition_step_counts}, "
             f"latency_ms={item.median_marker_latency_ms}, "
             f"common={item.most_common_values[:4]}, "
+            f"byte_delta={item.byte_delta_counts}, "
+            f"mod_delta={item.byte_modulo_delta_counts}, "
+            f"low_nibble_delta={item.low_nibble_delta_counts}, "
+            f"high_nibble_delta={item.high_nibble_delta_counts}, "
+            f"hamming={item.hamming_distance_counts}, "
             f"bit_flips={nonzero_bit_flips}"
         )
 
@@ -2188,6 +2511,8 @@ def embedding_candidate_metadata(candidate: Candidate) -> dict[str, Any]:
         "confidence": candidate.confidence,
         "candidate_role": candidate.candidate_role,
         "correlation_score": candidate.correlation_score,
+        "byte_transition_score": candidate.byte_transition_score,
+        "byte_transition_evidence": candidate.byte_transition_evidence,
         "baseline_overlap_score": candidate.baseline_overlap_score,
         "baseline_adjusted_change_ratio": (
             candidate.baseline_adjusted_change_ratio
@@ -3090,7 +3415,20 @@ def apply_baseline_subtraction(
                 top_signal.score * (1.0 - bit_penalty),
                 6,
             )
-            adjusted_confidence = top_signal.baseline_adjusted_score
+            byte_adjusted_confidence = (
+                score_candidate_confidence(
+                    candidate.byte_transition_score,
+                    adjusted_change_ratio,
+                    candidate.frame_count,
+                )
+                * (1.0 - penalty)
+                if candidate.byte_transition_score > 0.0
+                else 0.0
+            )
+            adjusted_confidence = max(
+                top_signal.baseline_adjusted_score,
+                byte_adjusted_confidence,
+            )
         elif top_field is not None and candidate.analyzer_profile in FIELD_ANALYZER_PROFILES:
             width_bytes = max(1, top_field.width_bits // 8)
             role_penalty = 0.0
@@ -3196,6 +3534,8 @@ def compact_heatmap_payload(
             "frame_count": candidate.frame_count,
             "frequency_hz": candidate.frequency_hz,
             "baseline_score": candidate.baseline_score,
+            "byte_transition_score": candidate.byte_transition_score,
+            "byte_transition_evidence": candidate.byte_transition_evidence,
             "raw_marker_fraction": candidate.raw_marker_fraction,
             "marker_window_coverage": candidate.marker_window_coverage,
             "correlation_lift": candidate.correlation_lift,
@@ -3378,6 +3718,9 @@ def build_llm_prompt(
                 f"baseline_penalty={c.baseline_penalty:.3f}, "
                 f"baseline_adjusted_change_ratio={c.baseline_adjusted_change_ratio:.5f}, "
                 f"confidence_before_baseline={c.confidence_before_baseline:.3f}, "
+                f"byte_transition_score={c.byte_transition_score:.3f}, "
+                f"byte_transition_evidence={c.byte_transition_evidence}, "
+                f"label_prior={c.label_prior}, "
                 f"ml_probability={c.ml_probability}, "
                 f"confidence_before_ml={c.confidence_before_ml:.3f}, "
                 f"historical_support={c.historical_support}, "
@@ -3396,6 +3739,10 @@ def build_llm_prompt(
         transition at the same location for ON and OFF, show inverse states, and
         have few or no flips outside action windows. Aggregate ID changes are
         diagnostic only and must not outweigh exact-location evidence.
+        If the best role is byte_transition_candidate, describe it as byte-level
+        evidence only. Do not call it ON/OFF unless a bit_signal_hypothesis
+        isolates the bit. Nibble sequences such as 0..F or F..0 are usually
+        counters or encoded fields, not direct human action bits.
         Confidence is a research score, not proof.
         When a matched baseline is available, interpret baseline_overlap as the
         fraction of target byte activity already present in the control session.
@@ -3448,9 +3795,10 @@ def build_llm_prompt(
     behavioral consistency.
 
     You are given raw observed byte values, transition counts, bit-flip counts,
-    and pre/action/post marker-window summaries. These observations do not have
-    confirmed semantic meaning. Do not claim a decoded signal, scale, offset,
-    signedness, endianness, or bit assignment unless repeated evidence supports it.
+    byte deltas, modulo byte/nibble deltas, Hamming distances, and pre/action/post
+    marker-window summaries. These observations do not have confirmed semantic
+    meaning. Do not claim a decoded signal, scale, offset, signedness, endianness,
+    or bit assignment unless repeated evidence supports it.
 
     Analysis mode:
     - analysis_mode: {analysis_mode}
@@ -3772,7 +4120,7 @@ def analyze_frames(
     )
     bit_first_required = (
         analyzer_profile == ANALYZER_PROFILE_BOOLEAN
-        and opposing_actions
+        and bool(selected_markers)
     )
     field_first_required = analyzer_profile in FIELD_ANALYZER_PROFILES
     numeric_expected_values = [
@@ -3809,7 +4157,10 @@ def analyze_frames(
         marker_windows.append(
             (
                 timestamp_ms,
-                timestamp_ms + marker_window_ms,
+                timestamp_ms + marker_action_duration_ms(
+                    marker,
+                    marker_window_ms,
+                ),
                 marker,
             )
         )
@@ -3886,6 +4237,12 @@ def analyze_frames(
             marker_window_ms,
         )
         byte_role_hypotheses = classify_byte_roles(rows, byte_entropy)
+        top_byte_transition, byte_transition_score, byte_transition_payload = (
+            strongest_byte_transition(
+                byte_evidence,
+                byte_role_hypotheses,
+            )
+        )
         signal_hypotheses = (
             build_bit_signal_hypotheses(
                 rows,
@@ -4053,37 +4410,110 @@ def analyze_frames(
                         f"outside drift={top_field_hypothesis.outside_action_drift:.3f}"
                     )
                 else:
-                    raw_marker_fraction = 0.0
+                    raw_marker_fraction = (
+                        top_byte_transition.marker_transition_coverage
+                        if top_byte_transition is not None
+                        else 0.0
+                    )
                     correlation_lift = 0.0
-                    correlation_score = 0.0
-                    confidence = 0.0
-                    candidate_role = "no_exact_field_candidate"
-                    notes = "no exact numeric field matched marker-declared levels"
+                    if byte_transition_score > 0.0:
+                        correlation_score = byte_transition_score
+                        confidence = score_candidate_confidence(
+                            byte_transition_score,
+                            change_ratio,
+                            len(rows),
+                        )
+                        candidate_role = (
+                            "byte_transition_candidate"
+                            if byte_transition_score >= 0.20
+                            else "weak_byte_transition_candidate"
+                        )
+                        notes = (
+                            "field-first fallback: byte movement repeated near "
+                            "action markers, but no exact numeric field was decoded"
+                        )
+                    else:
+                        correlation_score = 0.0
+                        confidence = 0.0
+                        candidate_role = "no_exact_field_candidate"
+                        notes = "no exact numeric field or marker-linked byte transition was found"
             elif bit_first_required:
-                if top_signal_hypothesis is not None:
-                    raw_marker_fraction = top_signal_hypothesis.window_purity
+                if (
+                    top_signal_hypothesis is not None
+                    and top_signal_hypothesis.score > 0.0
+                ):
+                    byte_fallback_confidence = (
+                        score_candidate_confidence(
+                            byte_transition_score,
+                            change_ratio,
+                            len(rows),
+                        )
+                        if byte_transition_score > 0.0
+                        else 0.0
+                    )
+                    exact_bit_wins = (
+                        top_signal_hypothesis.score >= byte_fallback_confidence
+                    )
+                    raw_marker_fraction = max(
+                        top_signal_hypothesis.window_purity,
+                        top_byte_transition.marker_transition_coverage
+                        if top_byte_transition is not None
+                        else 0.0,
+                    )
                     correlation_lift = top_signal_hypothesis.marker_lift
-                    correlation_score = top_signal_hypothesis.score
-                    confidence = top_signal_hypothesis.score
+                    correlation_score = max(
+                        top_signal_hypothesis.score,
+                        byte_transition_score,
+                    )
+                    confidence = max(
+                        top_signal_hypothesis.score,
+                        byte_fallback_confidence,
+                    )
                     candidate_role = (
                         "exact_bit_signal_candidate"
-                        if confidence >= 0.45
+                        if exact_bit_wins and confidence >= 0.45
                         else "weak_bit_signal_candidate"
+                        if exact_bit_wins
+                        else "byte_transition_candidate"
+                        if byte_transition_score >= 0.20
+                        else "weak_byte_transition_candidate"
                     )
                     notes = (
-                        f"bit-first Quick ID: B{top_signal_hypothesis.byte_index} "
-                        f"bit {top_signal_hypothesis.bit_index}; "
+                        f"boolean hybrid Quick ID: exact B{top_signal_hypothesis.byte_index} "
+                        f"bit {top_signal_hypothesis.bit_index} matched "
                         f"{top_signal_hypothesis.matched_repetitions}/"
                         f"{top_signal_hypothesis.total_repetitions} markers; "
+                        f"byte transition score={byte_transition_score:.3f}; "
                         f"outside flips={top_signal_hypothesis.out_of_window_flips}"
                     )
                 else:
-                    raw_marker_fraction = 0.0
+                    raw_marker_fraction = (
+                        top_byte_transition.marker_transition_coverage
+                        if top_byte_transition is not None
+                        else 0.0
+                    )
                     correlation_lift = 0.0
-                    correlation_score = 0.0
-                    confidence = 0.0
-                    candidate_role = "no_exact_bit_candidate"
-                    notes = "no exact bit location repeated the opposing actions"
+                    if byte_transition_score > 0.0:
+                        correlation_score = byte_transition_score
+                        confidence = score_candidate_confidence(
+                            byte_transition_score,
+                            change_ratio,
+                            len(rows),
+                        )
+                        candidate_role = (
+                            "byte_transition_candidate"
+                            if byte_transition_score >= 0.20
+                            else "weak_byte_transition_candidate"
+                        )
+                        notes = (
+                            "bit-first fallback: marker-linked byte movement was "
+                            "found, but no exact bit transition was isolated"
+                        )
+                    else:
+                        correlation_score = 0.0
+                        confidence = 0.0
+                        candidate_role = "no_exact_bit_candidate"
+                        notes = "no exact bit or marker-linked byte transition was found"
             else:
                 raw_marker_fraction = (
                     min(1.0, window_delta_count / max(change_count, 1))
@@ -4099,18 +4529,30 @@ def analyze_frames(
                     ) / max(1.0 - marker_window_coverage, 1e-9)
                 else:
                     correlation_lift = 0.0
-                correlation_score = min(1.0, max(0.0, correlation_lift))
+                correlation_score = min(
+                    1.0,
+                    max(0.0, correlation_lift, byte_transition_score),
+                )
                 confidence = score_candidate_confidence(
                     correlation_score,
                     change_ratio,
                     len(rows),
                 )
                 candidate_role = (
-                    "target_candidate"
+                    "byte_transition_candidate"
+                    if byte_transition_score >= correlation_lift
+                    and byte_transition_score >= 0.20
+                    else "target_candidate"
                     if correlation_score >= 0.05
                     else "weak_or_background_candidate"
                 )
-                if correlation_score >= 0.05:
+                if candidate_role == "byte_transition_candidate":
+                    notes = (
+                        "byte-level fallback: action windows repeatedly "
+                        "changed a byte, but bit/field encoding remains "
+                        "unconfirmed"
+                    )
+                elif correlation_score >= 0.05:
                     notes = "aggregate fallback: correlated byte changes near markers"
                 elif change_count > 0:
                     notes = "changed during session but weak marker correlation"
@@ -4159,6 +4601,8 @@ def analyze_frames(
             analysis_mode=analysis_mode,
             candidate_role=candidate_role,
             baseline_score=round(baseline_score, 5),
+            byte_transition_score=byte_transition_score,
+            byte_transition_evidence=byte_transition_payload,
         )
         candidates.append(candidate)
 
@@ -4197,6 +4641,8 @@ def analyze_frames(
                 else None
             ),
             "baseline_score": round(baseline_score, 5),
+            "byte_transition_score": byte_transition_score,
+            "byte_transition_evidence": byte_transition_payload,
             "raw_marker_fraction": round(raw_marker_fraction, 5),
             "marker_window_coverage": round(marker_window_coverage, 5),
             "correlation_lift": round(correlation_lift, 5),
@@ -4225,6 +4671,11 @@ def analyze_frames(
         )
 
     marker_context["window_coverage"] = round(marker_window_coverage, 5)
+    marker_context["adaptive_action_windows"] = True
+    marker_context["action_window_durations_ms"] = [
+        max(0, end - start)
+        for start, end, _ in marker_windows
+    ]
     marker_context["selected_marker_timestamps"] = [
         int(marker.get("timestamp_ms") or 0)
         for marker in selected_markers
@@ -4447,7 +4898,7 @@ async def load_analysis_frame_rows(
                     start_ms=marker_time - marker_window_ms,
                     end_ms=marker_time - 1,
                     limit=pre_budget,
-                    segment_id=marker_index,
+                    segment_id=(marker_index * 3) - 2,
                     descending=True,
                 )
             )
@@ -4456,7 +4907,7 @@ async def load_analysis_frame_rows(
                     start_ms=marker_time,
                     end_ms=marker_time + marker_window_ms,
                     limit=action_budget,
-                    segment_id=marker_index,
+                    segment_id=(marker_index * 3) - 1,
                 )
             )
             phase_rows.extend(
@@ -4464,7 +4915,7 @@ async def load_analysis_frame_rows(
                     start_ms=marker_time + marker_window_ms + 1,
                     end_ms=marker_time + (2 * marker_window_ms),
                     limit=post_budget,
-                    segment_id=marker_index,
+                    segment_id=marker_index * 3,
                 )
             )
 
@@ -4515,7 +4966,7 @@ async def load_analysis_frame_rows(
         context.update({
             "strategy": "action_marker_stratified",
             "selected_frames": len(selected),
-            "segment_count": len(action_markers) + (1 if ordered_control else 0),
+            "segment_count": (len(action_markers) * 3) + (1 if ordered_control else 0),
             "action_marker_count": len(action_markers),
             "control_frame_budget": control_budget,
             "action_frame_budget": target_budget,
@@ -4647,9 +5098,11 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
         markers = await conn.fetch(
             """
             SELECT csm.id, csm.marker_type, csm.label, csm.timestamp_ms, csm.metadata,
-                   rs.step_code
+                   COALESCE(rs.step_code, csm.metadata->>'step_code') AS step_code,
+                   COALESCE(rm.mission_code, csm.metadata->>'mission_code') AS mission_code
             FROM can_session_markers csm
             LEFT JOIN recon_steps rs ON rs.id = csm.step_id
+            LEFT JOIN recon_missions rm ON rm.id = csm.mission_id
             WHERE csm.session_id = $1
             ORDER BY csm.timestamp_ms ASC, csm.created_at ASC
             """,
@@ -4905,6 +5358,54 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
             ml_context,
         )
 
+    label_prior_context: dict[str, Any] = {
+        "applied": False,
+        "compatible_id_priors": 0,
+        "candidates_adjusted": 0,
+        "reason": (
+            "Baseline profiles are not candidate-classification targets."
+            if baseline_mode
+            else "No compatible labels loaded."
+        ),
+    }
+    if not baseline_mode:
+        try:
+            async with pool.acquire() as conn:
+                label_priors = await load_candidate_label_priors(
+                    conn,
+                    session_id=session_id,
+                    vehicle_id=session["vehicle_id"],
+                    mission_code=session_dict.get("mission_code"),
+                    bus_interface=session_dict.get("bus_interface"),
+                    bus_mode=session_dict.get("bus_mode"),
+                    capture_kind=capture_kind_for(
+                        session_dict.get("bus_interface"),
+                        session_dict.get("bus_mode"),
+                    ),
+                )
+            label_prior_context = apply_candidate_label_priors(
+                candidates,
+                label_priors,
+                supervised_model_applied=bool(ml_context.get("applied")),
+            )
+            label_prior_context["applied"] = (
+                int(label_prior_context.get("candidates_adjusted") or 0) > 0
+            )
+        except Exception as label_exc:
+            label_prior_context = {
+                "applied": False,
+                "compatible_id_priors": 0,
+                "candidates_adjusted": 0,
+                "reason": "Could not load compatible human labels.",
+                "error_type": type(label_exc).__name__,
+            }
+            can_ai_log(
+                "label_prior_load_failed",
+                session=session_id,
+                error_type=type(label_exc).__name__,
+                error=repr(label_exc),
+            )
+
     can_ai_log(
         "ml_model_selected",
         session=session_id,
@@ -4912,6 +5413,8 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
         selection=ml_context.get("selection"),
         model_id=ml_context.get("model_id"),
         label_count=ml_context.get("label_count"),
+        label_priors=label_prior_context.get("compatible_id_priors"),
+        label_prior_adjusted=label_prior_context.get("candidates_adjusted"),
         reason=ml_context.get("reason"),
     )
 
@@ -5281,9 +5784,16 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                                 "ml_blend_weight": c.ml_blend_weight,
                                 "confidence_before_ml": c.confidence_before_ml,
                                 "ml_feature_vector": c.ml_feature_vector,
+                                "confidence_before_label_prior": (
+                                    c.confidence_before_label_prior
+                                ),
+                                "label_prior_applied": c.label_prior_applied,
+                                "label_prior": c.label_prior,
                                 "raw_marker_fraction": c.raw_marker_fraction,
                                 "marker_window_coverage": c.marker_window_coverage,
                                 "correlation_lift": c.correlation_lift,
+                                "byte_transition_score": c.byte_transition_score,
+                                "byte_transition_evidence": c.byte_transition_evidence,
                                 "change_ratio": c.change_ratio,
                                 "changed_frame_count": c.changed_frame_count,
                                 "changed_frame_ratio": c.changed_frame_ratio,
@@ -5352,9 +5862,16 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                                 "ml_blend_weight": c.ml_blend_weight,
                                 "confidence_before_ml": c.confidence_before_ml,
                                 "ml_feature_vector": c.ml_feature_vector,
+                                "confidence_before_label_prior": (
+                                    c.confidence_before_label_prior
+                                ),
+                                "label_prior_applied": c.label_prior_applied,
+                                "label_prior": c.label_prior,
                                 "raw_marker_fraction": c.raw_marker_fraction,
                                 "marker_window_coverage": c.marker_window_coverage,
                                 "correlation_lift": c.correlation_lift,
+                                "byte_transition_score": c.byte_transition_score,
+                                "byte_transition_evidence": c.byte_transition_evidence,
                                 "change_ratio": c.change_ratio,
                                 "changed_frame_count": c.changed_frame_count,
                                 "changed_frame_ratio": c.changed_frame_ratio,
@@ -5437,6 +5954,7 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                     "target_expected": not baseline_mode,
                     "baseline_subtraction": baseline_context,
                     "supervised_ml": ml_context,
+                    "label_priors": label_prior_context,
                     "vector_memory": vector_context,
                     "marker_window_ms": payload.marker_window_ms,
                     "marker_selection": marker_selection,
@@ -5674,6 +6192,7 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                             "analysis_mode": analysis_mode,
                             "baseline_subtraction": baseline_context,
                             "supervised_ml": ml_context,
+                            "label_priors": label_prior_context,
                             "vector_memory": vector_context,
                             "marker_window_ms": payload.marker_window_ms,
                         }),
@@ -5725,6 +6244,7 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                                 "marker_window_ms": payload.marker_window_ms,
                                 "baseline_subtraction": baseline_context,
                                 "supervised_ml": ml_context,
+                                "label_priors": label_prior_context,
                                 "retrieved_session_ids": [
                                     match.get("session_id")
                                     for match in vector_context.get("matches", [])
@@ -5808,6 +6328,7 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
         "baseline_profile": baseline_profile,
         "baseline_subtraction": baseline_context,
         "supervised_ml": ml_context,
+        "label_priors": label_prior_context,
         "target_expected": not baseline_mode,
         "frames_analyzed": len(frames),
         "short_dlc_frames": short_dlc_frames,
