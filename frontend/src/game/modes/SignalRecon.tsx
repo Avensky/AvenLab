@@ -550,7 +550,7 @@ export function SignalRecon({
                     setQueueMinimized(true);
                   }}
                   disabled={!mission}
-                  className="rounded-sm border flex justify-center border-slate-600 bg-slate-900 text-[9px] font-black text-slate-300 hover:bg-slate-800 disabled:opacity-40"
+                  className="px-1.5 rounded-sm border flex justify-center items-center border-cyan-400/25order-slate-600 bg-slate-900 text-[9px] font-black text-cyan-100 hover:bg-slate-800 disabled:opacity-40"
                 >
                   TERMINAL
                 </GameButton>
@@ -559,7 +559,7 @@ export function SignalRecon({
                     variant="danger"
                     disabled={busy || runActive}
                     onPress={() => void handleExit()}
-                    className="h-4 rounded-sm border flex justify-center border-red-300/40 px-1 text-[9px] font-black"
+                    className=" rounded-sm border flex justify-center  border-red-300/40 px-1.5 text-[9px] font-black"
                   >
                     BACK
                   </GameButton>
@@ -567,7 +567,7 @@ export function SignalRecon({
                     <button
                       type="button"
                       onClick={() => setCollapsed(true)}
-                      className={`shrink-0 border rounded-sm bg-slate-900 px-1 flex items-center text-[9px] font-black text-slate-300`}
+                      className={`shrink-0 border rounded-sm bg-slate-900 border-cyan-400/25 px-1 flex items-center text-[9px] font-black text-slate-300`}
                       aria-label="Hide workspace header"
                       title="Hide header"
                     >

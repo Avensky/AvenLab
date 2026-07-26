@@ -94,7 +94,7 @@ export function ReconWorkspaceHeader({
   if (collapsed) {
     return (
       <header
-        className={`relative z-30 flex h-8 shrink-0 items-center justify-between border-b bg-slate-950/95 px-1.5 font-mono shadow-lg ${tone.border} ${tone.glow} ${className}`}
+        className={`relative z-30 flex shrink-0 items-center justify-between border-b bg-slate-950/95 px-1.5 py-0.5 font-mono shadow-lg ${tone.border} ${tone.glow} ${className}`}
       >
         <div className="min-w-0 truncate text-[9px] text-slate-400">
           <span className={`font-black ${tone.title}`}>{title}</span>
@@ -104,7 +104,7 @@ export function ReconWorkspaceHeader({
         <button
           type="button"
           onClick={() => setCollapsed(false)}
-          className={`ml-2 shrink-0 border bg-slate-900 px-2 py-0.5 text-[9px] font-black text-slate-200 ${tone.border}`}
+          className={`rounded-sm border bg-slate-900 px-2 text-[9px] font-black text-slate-200 ${tone.border}`}
           aria-label="Show workspace header"
           title="Show header"
         >

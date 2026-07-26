@@ -754,9 +754,9 @@ export function SignalReconPlayback({
     }
 
     return (
-        <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[#020617] font-mono text-green-100">
+        <div className="flex h-full min-h-0 flex-col  overflow-hidden bg-[#020617] font-mono text-green-100">
             <div className="shrink-0 border border-green-400/20 bg-black/60">
-                <div className="px-2 flex flex-wrap items-center justify-between">
+                <div className="px-2 w-full grid grid-cols-1 sm:grid-cols-2">
                     <div>
                         {/* <p className="text-[10px] tracking-[0.28em] text-yellow-300">
                             DATABASE PLAYBACK // SERVER TIMESTAMPS
@@ -765,13 +765,13 @@ export function SignalReconPlayback({
                             {matchingFrameCount ?? 0}frames · {meta?.distinct_ids ?? 0} IDs · {matchingSliceCount.toLocaleString()} slices @{toleranceMs}ms · {markers.length} markers
                         </p>
                     </div>
-                    <div className="w-full flex flex-wrap items-center gap-1">
+                    <div className="flex flex-wrap items-center justify-start sm:justify-end gap-1">
                         <GameButton onPress={() => void goToStart()} disabled={loading || disabled} className="rounded border border-slate-500 bg-slate-900 px-1.5 py-0.5 text-sm disabled:opacity-40" title="Go to start">|◀</GameButton>
                         <GameButton onPress={() => void stepBackward()} disabled={loading || disabled || (!hasBefore && sliceIndex <= 0)} className="rounded border border-slate-500 bg-slate-900 px-1.5 py-0.5 text-sm disabled:opacity-40" title="Previous time slice">◀</GameButton>
                         <GameButton
                             onPress={() => setPlaying((value) => !value)}
                             disabled={loading || disabled || !currentSlice}
-                            className={`rounded border px-1.5 py-0.5 text-sm disabled:opacity-40 ${
+                            className={`rounded border flex items-center justify-center w-6 px-1.5 py-0.5 text-sm disabled:opacity-40 ${
                                 playing
                                     ? "border-yellow-300/50 bg-yellow-500/15 text-yellow-100"
                                     : "border-green-300/40 bg-green-500/10 text-green-100"

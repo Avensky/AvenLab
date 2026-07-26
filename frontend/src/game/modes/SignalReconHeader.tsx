@@ -198,7 +198,7 @@ export default function SignalReconHeader({
             variant="danger"
             disabled={exitDisabled}
             onPress={onExit}
-            className="h-4 rounded-sm border border-red-300/40 px-2 text-[9px] font-black"
+            className="rounded-sm border flex items-center justify-center border-red-300/40 text-[9px] font-black"
             >
               {exitLabel}
             </GameButton>
