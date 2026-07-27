@@ -1912,6 +1912,7 @@ def playback_filter_cte(
 
     params: list[Any] = [session_id, tolerance_ms]
     conditions: list[str] = []
+    ordered_conditions: list[str] = ["session_id = $1"]
 
     def add_param(value: Any) -> str:
         params.append(value)
@@ -1920,6 +1921,12 @@ def playback_filter_cte(
     if can_ids:
         placeholder = add_param(can_ids)
         conditions.append(f"can_id = ANY({placeholder}::bigint[])")
+        # Restrict the LAG window to pinned IDs as well. LAG is partitioned by
+        # CAN ID, so this preserves previous-byte semantics while avoiding a
+        # full-session window scan when Top IDs opens selected candidates.
+        ordered_conditions.append(
+            f"can_id = ANY({placeholder}::bigint[])"
+        )
 
     if byte_index is not None:
         byte_position = add_param(byte_index)
@@ -1998,7 +2005,7 @@ def playback_filter_cte(
                     ORDER BY timestamp_ms ASC, id ASC
                 ) AS previous_data
             FROM can_frames_raw
-            WHERE session_id = $1
+            WHERE {" AND ".join(ordered_conditions)}
         ),
         filtered AS (
             SELECT
@@ -2117,6 +2124,7 @@ async def get_session_playback_slices(
     deltas_only: bool = False,
     byte_changed_only: bool = False,
     carry_selected: bool = False,
+    include_stats: bool = True,
 ) -> Dict[str, Any]:
     direction = direction.strip().lower()
     if direction not in {"start", "end", "next", "prev", "nearest"}:
@@ -2150,61 +2158,87 @@ async def get_session_playback_slices(
         byte_changed_only=byte_changed_only,
     )
 
-    stats_row = await fetchrow(
-        cte
-        + """
-        SELECT
-            COUNT(*)::bigint AS matching_frame_count,
-            COUNT(DISTINCT bucket_ms)::bigint AS matching_slice_count,
-            MIN(bucket_ms)::bigint AS first_bucket_ms,
-            MAX(bucket_ms)::bigint AS last_bucket_ms
-        FROM filtered
-        """,
-        *params,
+    # Initial loads and explicit seeks return full counts and timeline bounds.
+    # Sequential next/previous prefetches can skip that aggregate query and
+    # request one extra bucket to determine whether another page exists.
+    lightweight_page = (
+        not include_stats
+        and direction in {"next", "prev"}
     )
 
-    matching_frame_count = int(stats_row["matching_frame_count"] or 0)
-    matching_slice_count = int(stats_row["matching_slice_count"] or 0)
-    first_bucket_ms = (
-        int(stats_row["first_bucket_ms"])
-        if stats_row["first_bucket_ms"] is not None
-        else None
-    )
-    last_bucket_ms = (
-        int(stats_row["last_bucket_ms"])
-        if stats_row["last_bucket_ms"] is not None
-        else None
-    )
+    matching_frame_count: Optional[int] = None
+    matching_slice_count: Optional[int] = None
+    first_bucket_ms: Optional[int] = None
+    last_bucket_ms: Optional[int] = None
 
-    if not matching_frame_count:
-        return {
-            "ok": True,
-            "session_id": str(session_id),
-            "capture_status": session["capture_status"],
-            "timestamp_authority": "server",
-            "tolerance_ms": tolerance_ms,
-            "direction": direction,
-            "filters": {
-                "id_filter": id_filter,
-                "search": search,
-                "byte_index": byte_index,
-                "byte_value": byte_value,
-                "deltas_only": deltas_only,
-                "byte_changed_only": byte_changed_only,
-                "carry_selected": carry_selected,
-            },
-            "matching_frame_count": 0,
-            "matching_slice_count": 0,
-            "first_bucket_ms": None,
-            "last_bucket_ms": None,
-            "has_before": False,
-            "has_after": False,
-            "slices": [],
-        }
+    if not lightweight_page:
+        stats_row = await fetchrow(
+            cte
+            + """
+            SELECT
+                COUNT(*)::bigint AS matching_frame_count,
+                COUNT(DISTINCT bucket_ms)::bigint AS matching_slice_count,
+                MIN(bucket_ms)::bigint AS first_bucket_ms,
+                MAX(bucket_ms)::bigint AS last_bucket_ms
+            FROM filtered
+            """,
+            *params,
+        )
+
+        matching_frame_count = int(stats_row["matching_frame_count"] or 0)
+        matching_slice_count = int(stats_row["matching_slice_count"] or 0)
+        first_bucket_ms = (
+            int(stats_row["first_bucket_ms"])
+            if stats_row["first_bucket_ms"] is not None
+            else None
+        )
+        last_bucket_ms = (
+            int(stats_row["last_bucket_ms"])
+            if stats_row["last_bucket_ms"] is not None
+            else None
+        )
+
+        if not matching_frame_count:
+            return {
+                "ok": True,
+                "session_id": str(session_id),
+                "capture_status": session["capture_status"],
+                "timestamp_authority": "server",
+                "tolerance_ms": tolerance_ms,
+                "direction": direction,
+                "stats_included": True,
+                "filters": {
+                    "id_filter": id_filter,
+                    "search": search,
+                    "byte_index": byte_index,
+                    "byte_value": byte_value,
+                    "deltas_only": deltas_only,
+                    "byte_changed_only": byte_changed_only,
+                    "carry_selected": carry_selected,
+                },
+                "matching_frame_count": 0,
+                "matching_slice_count": 0,
+                "first_bucket_ms": None,
+                "last_bucket_ms": None,
+                "page_frame_count": 0,
+                "page_slice_count": 0,
+                "has_before": False,
+                "has_after": False,
+                "slices": [],
+            }
+    elif cursor_ms is None:
+        raise HTTPException(
+            status_code=422,
+            detail="cursor_ms is required when include_stats=false",
+        )
 
     cursor_value = cursor_ms
     if cursor_value is None:
-        cursor_value = last_bucket_ms if direction in {"end", "prev"} else first_bucket_ms
+        cursor_value = (
+            last_bucket_ms
+            if direction in {"end", "prev"}
+            else first_bucket_ms
+        )
     assert cursor_value is not None
 
     # Only bind a cursor for directions that actually reference it.
@@ -2215,7 +2249,8 @@ async def get_session_playback_slices(
         params.append(cursor_value)
         cursor_placeholder = f"${len(params)}"
 
-    params.append(slice_limit)
+    query_slice_limit = slice_limit + 1 if lightweight_page else slice_limit
+    params.append(query_slice_limit)
     limit_placeholder = f"${len(params)}"
 
     if direction == "start":
@@ -2383,6 +2418,23 @@ async def get_session_playback_slices(
         for bucket_ms, frames in sorted(slices_by_bucket.items())
     ]
 
+    lightweight_has_before: Optional[bool] = None
+    lightweight_has_after: Optional[bool] = None
+    if lightweight_page:
+        has_extra_bucket = len(slices) > slice_limit
+        if direction == "next":
+            if has_extra_bucket:
+                slices = slices[:slice_limit]
+            lightweight_has_before = bool(slices)
+            lightweight_has_after = has_extra_bucket
+        else:
+            # PREV selects nearest buckets in descending order and returns them
+            # ascending. The extra bucket is therefore the oldest one.
+            if has_extra_bucket:
+                slices = slices[1:]
+            lightweight_has_before = has_extra_bucket
+            lightweight_has_after = bool(slices)
+
     # When the UI pins selected IDs, return a second stable state lane. Each
     # slice contains exactly one row per selected ID in numeric order. IDs that
     # did not transmit in the current slice carry their last database state
@@ -2502,21 +2554,35 @@ async def get_session_playback_slices(
             "byte_changed_only": byte_changed_only,
             "carry_selected": carry_selected,
         },
+        "stats_included": not lightweight_page,
         "matching_frame_count": matching_frame_count,
         "matching_slice_count": matching_slice_count,
         "first_bucket_ms": first_bucket_ms,
         "last_bucket_ms": last_bucket_ms,
+        "page_frame_count": sum(
+            int(slice_payload["frame_count"])
+            for slice_payload in slices
+        ),
+        "page_slice_count": len(slices),
         "returned_first_bucket_ms": returned_first,
         "returned_last_bucket_ms": returned_last,
-        "has_before": bool(
-            returned_first is not None
-            and first_bucket_ms is not None
-            and returned_first > first_bucket_ms
+        "has_before": (
+            bool(lightweight_has_before)
+            if lightweight_page
+            else bool(
+                returned_first is not None
+                and first_bucket_ms is not None
+                and returned_first > first_bucket_ms
+            )
         ),
-        "has_after": bool(
-            returned_last is not None
-            and last_bucket_ms is not None
-            and returned_last < last_bucket_ms
+        "has_after": (
+            bool(lightweight_has_after)
+            if lightweight_page
+            else bool(
+                returned_last is not None
+                and last_bucket_ms is not None
+                and returned_last < last_bucket_ms
+            )
         ),
         "slices": slices,
     }

@@ -81,8 +81,11 @@ type PlaybackResponse = {
     tolerance_ms: number;
     direction: PlaybackDirection;
     cursor_ms: number;
-    matching_frame_count: number;
-    matching_slice_count: number;
+    matching_frame_count: number | null;
+    matching_slice_count: number | null;
+    stats_included?: boolean;
+    page_frame_count?: number;
+    page_slice_count?: number;
     first_bucket_ms: number | null;
     last_bucket_ms: number | null;
     returned_first_bucket_ms: number | null;
@@ -134,7 +137,10 @@ type SignalReconPlaybackProps = {
 
 const SPEEDS = [0.1, 0.25, 0.5, 1, 2, 5, 10, 25, 50, 100];
 const TOLERANCES = [1, 2, 5, 10, 25, 50, 100, 250, 500, 1000];
-const PAGE_SLICES = 180;
+const PAGE_SLICES = 500;
+const PREFETCH_TARGET_SLICES = 1000;
+const RETAIN_BEHIND_SLICES = 250;
+const TRIM_TRIGGER_SLICES = 750;
 const BYTE_CELL_CLASS =
     "inline-flex h-5 w-full min-w-0 items-center justify-center rounded-sm border px-0 text-[9px] font-black leading-none sm:text-[10px]";
 
@@ -312,6 +318,7 @@ export function SignalReconPlayback({
     const [hypotheses, setHypotheses] = useState<SavedHypothesis[]>([]);
     const [selectedByte, setSelectedByte] = useState<SelectedByte | null>(null);
     const [loading, setLoading] = useState(false);
+    const [buffering, setBuffering] = useState(false);
     const [savingRole, setSavingRole] = useState<string | null>(null);
     const [roleFeedback, setRoleFeedback] = useState<Record<
         string,
@@ -321,6 +328,8 @@ export function SignalReconPlayback({
     const [error, setError] = useState<string | null>(null);
 
     const requestSequence = useRef(0);
+    const prefetchPromiseRef = useRef<Promise<boolean> | null>(null);
+    const prefetchAbortRef = useRef<AbortController | null>(null);
     const idMenuRef = useRef<HTMLDivElement | null>(null);
     const currentSlice = slices[sliceIndex] ?? null;
     const playbackAtEnd = Boolean(currentSlice)
@@ -514,6 +523,11 @@ export function SignalReconPlayback({
     ) => {
         if (!sessionId || disabled) return;
 
+        prefetchAbortRef.current?.abort();
+        prefetchAbortRef.current = null;
+        prefetchPromiseRef.current = null;
+        setBuffering(false);
+
         const sequence = ++requestSequence.current;
         setLoading(true);
         setError(null);
@@ -521,6 +535,7 @@ export function SignalReconPlayback({
         try {
             const params = new URLSearchParams(queryString);
             params.set("direction", direction);
+            params.set("include_stats", "true");
             if (typeof cursorMs === "number" && Number.isFinite(cursorMs)) {
                 params.set("cursor_ms", String(Math.max(0, Math.round(cursorMs))));
             }
@@ -542,8 +557,12 @@ export function SignalReconPlayback({
                 : 0);
             setHasBefore(Boolean(data.has_before));
             setHasAfter(Boolean(data.has_after));
-            setMatchingFrameCount(data.matching_frame_count ?? 0);
-            setMatchingSliceCount(data.matching_slice_count ?? 0);
+            if (typeof data.matching_frame_count === "number") {
+                setMatchingFrameCount(data.matching_frame_count);
+            }
+            if (typeof data.matching_slice_count === "number") {
+                setMatchingSliceCount(data.matching_slice_count);
+            }
             setLastBucketMs(data.last_bucket_ms);
         } catch (err) {
             if (sequence !== requestSequence.current) return;
@@ -555,8 +574,82 @@ export function SignalReconPlayback({
         }
     }, [disabled, queryString, sessionId]);
 
+    const prefetchNextPage = useCallback((): Promise<boolean> => {
+        if (prefetchPromiseRef.current) return prefetchPromiseRef.current;
+        if (!sessionId || disabled || loading || !hasAfter || !slices.length) {
+            return Promise.resolve(false);
+        }
+
+        const cursorMs = slices[slices.length - 1]?.bucket_ms;
+        if (typeof cursorMs !== "number") return Promise.resolve(false);
+
+        const generation = requestSequence.current;
+        const controller = new AbortController();
+        prefetchAbortRef.current = controller;
+        setBuffering(true);
+
+        const promise = (async () => {
+            try {
+                const params = new URLSearchParams(queryString);
+                params.set("direction", "next");
+                params.set("cursor_ms", String(cursorMs));
+                params.set("include_stats", "false");
+
+                const response = await fetch(
+                    `${getApiBaseUrl()}/data/can/session/${sessionId}/playback?${params.toString()}`,
+                    { signal: controller.signal },
+                );
+                const data = (await response.json().catch(() => ({}))) as PlaybackResponse;
+                if (!response.ok || data.ok === false) {
+                    throw new Error(
+                        data.detail ?? data.error ?? `Playback prefetch failed with HTTP ${response.status}.`,
+                    );
+                }
+                if (controller.signal.aborted || generation !== requestSequence.current) {
+                    return false;
+                }
+
+                const incoming = (data.slices ?? []).filter(
+                    (slice) => slice.bucket_ms > cursorMs,
+                );
+                if (!incoming.length) {
+                    setHasAfter(false);
+                    return false;
+                }
+
+                setSlices((current) => {
+                    const lastBufferedBucket = current[current.length - 1]?.bucket_ms ?? -1;
+                    const appended = incoming.filter(
+                        (slice) => slice.bucket_ms > lastBufferedBucket,
+                    );
+                    return appended.length ? [...current, ...appended] : current;
+                });
+                setHasAfter(Boolean(data.has_after));
+                return true;
+            } catch (err) {
+                if (controller.signal.aborted) return false;
+                setError(err instanceof Error ? err.message : "Playback prefetch failed.");
+                setPlaying(false);
+                return false;
+            } finally {
+                if (prefetchAbortRef.current === controller) {
+                    prefetchAbortRef.current = null;
+                    prefetchPromiseRef.current = null;
+                    setBuffering(false);
+                }
+            }
+        })();
+
+        prefetchPromiseRef.current = promise;
+        return promise;
+    }, [disabled, hasAfter, loading, queryString, sessionId, slices]);
+
     useEffect(() => {
         const timer = window.setTimeout(() => {
+            prefetchAbortRef.current?.abort();
+            prefetchAbortRef.current = null;
+            prefetchPromiseRef.current = null;
+            setBuffering(false);
             setPlaying(false);
             setSlices([]);
             setSliceIndex(0);
@@ -627,7 +720,10 @@ export function SignalReconPlayback({
             return;
         }
         if (hasAfter) {
-            await loadPage("next", currentSlice.bucket_ms);
+            // Keep playing while the already-started background request fills
+            // the next buffer page. The playback timer resumes automatically
+            // after slices are appended; no blocking loading state is entered.
+            await prefetchNextPage();
             return;
         }
         if (loop) {
@@ -635,7 +731,7 @@ export function SignalReconPlayback({
             return;
         }
         setPlaying(false);
-    }, [currentSlice, hasAfter, loadPage, loop, sliceIndex, slices.length]);
+    }, [currentSlice, hasAfter, loadPage, loop, prefetchNextPage, sliceIndex, slices.length]);
 
     const stepBackward = useCallback(async () => {
         if (!currentSlice) {
@@ -663,6 +759,41 @@ export function SignalReconPlayback({
 
         setPlaying(true);
     }, [loadPage, playbackAtEnd, playing]);
+
+    const bufferedAheadSlices = Math.max(0, slices.length - sliceIndex - 1);
+
+    useEffect(() => {
+        if (
+            !sessionId
+            || disabled
+            || loading
+            || buffering
+            || !currentSlice
+            || !hasAfter
+            || bufferedAheadSlices >= PREFETCH_TARGET_SLICES
+        ) return;
+
+        void prefetchNextPage();
+    }, [
+        bufferedAheadSlices,
+        buffering,
+        currentSlice,
+        disabled,
+        hasAfter,
+        loading,
+        prefetchNextPage,
+        sessionId,
+    ]);
+
+    useEffect(() => {
+        if (sliceIndex < TRIM_TRIGGER_SLICES) return;
+        const trimCount = Math.max(0, sliceIndex - RETAIN_BEHIND_SLICES);
+        if (!trimCount) return;
+
+        setSlices((current) => current.slice(trimCount));
+        setSliceIndex((current) => Math.max(0, current - trimCount));
+        setHasBefore(true);
+    }, [sliceIndex]);
 
     useEffect(() => {
         if (!playing || loading || disabled || !currentSlice) return;
@@ -917,7 +1048,7 @@ export function SignalReconPlayback({
                             DATABASE PLAYBACK // SERVER TIMESTAMPS
                         </p> */}
                         <p className="text-xs text-slate-400">
-                            {matchingFrameCount ?? 0}frames · {meta?.distinct_ids ?? 0} IDs · {matchingSliceCount.toLocaleString()} slices @{toleranceMs}ms · {markers.length} markers
+                            {matchingFrameCount ?? 0}frames · {meta?.distinct_ids ?? 0} IDs · {matchingSliceCount.toLocaleString()} slices @{toleranceMs}ms · {markers.length} markers{buffering ? " · BUFFERING" : ""}
                         </p>
                     </div>
                     <div className="flex flex-wrap items-center justify-start sm:justify-end gap-1">

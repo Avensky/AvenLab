@@ -4370,7 +4370,7 @@ def rescore_candidates_after_human_byte_roles(
         )
         factor = byte_role_score_factor(decisive_role)
         human_applied = bool(
-            decisive_role
+            decisive_role is not None
             and decisive_role.source == "human"
             and decisive_role.validation_status in {"positive", "uncertain"}
             and decisive_role.hypothesis_kind in BACKGROUND_BYTE_ROLE_KINDS
@@ -4378,7 +4378,11 @@ def rescore_candidates_after_human_byte_roles(
         )
 
         candidate.confidence_before_human_byte_roles = candidate.confidence
-        if human_applied and apply_confidence_penalty:
+        if (
+            decisive_role is not None
+            and human_applied
+            and apply_confidence_penalty
+        ):
             candidate.confidence = round(candidate.confidence * factor, 5)
             candidate.correlation_score = round(
                 candidate.correlation_score * factor,
