@@ -423,6 +423,7 @@ type SignalReconBrainConsoleProps = {
         hypothesis: ByteRoleHypothesis,
         validationStatus: "positive" | "negative" | "uncertain",
     ) => Promise<boolean> | boolean;
+    onOpenPlaybackForIds: (canIds: number[]) => void;
     onToggleLlm: () => void;
     onToggleEmbeddings: () => void;
     onToggleAutoAnalyze: () => void;
@@ -621,6 +622,7 @@ export function SignalReconBrainConsole({
     onRefreshMl,
     onLabelCandidate,
     onValidateByteHypothesis,
+    onOpenPlaybackForIds,
     onToggleLlm,
     onToggleEmbeddings,
     onToggleAutoAnalyze,
@@ -632,6 +634,7 @@ export function SignalReconBrainConsole({
     const [hypothesisFeedback, setHypothesisFeedback] = useState<Record<string, HypothesisSaveFeedback>>({});
     const [allIdSearch, setAllIdSearch] = useState("");
     const [localError, setLocalError] = useState<string | null>(null);
+    const [playbackCompareIds, setPlaybackCompareIds] = useState<number[]>([]);
 
     const topCandidates = useMemo(
         () => [...(analysis?.candidates ?? [])].sort((a, b) => b.confidence - a.confidence).slice(0, 15),
@@ -672,6 +675,14 @@ export function SignalReconBrainConsole({
         analysis?.baseline_profile?.target_expected === false;
 
     const resultModeLabel = isBaselineProfile ? "NOISE PROFILE" : "SIGNAL HYPOTHESIS";
+
+    const togglePlaybackCompareId = (canId: number) => {
+        setPlaybackCompareIds((current) =>
+            current.includes(canId)
+                ? current.filter((value) => value !== canId)
+                : [...current, canId].sort((left, right) => left - right),
+        );
+    };
 
     const submitLabel = async (
         candidate: CandidateLabelTarget,
@@ -1010,6 +1021,26 @@ export function SignalReconBrainConsole({
                         <div className="space-y-1">
                             <ReadinessPanel readiness={mlReadiness} activeModel={activeModel} loading={mlLoading} onRefresh={onRefreshMl} />
 
+                            {playbackCompareIds.length > 0 && (
+                                <div className="flex flex-wrap items-center justify-between gap-1 rounded-sm border border-cyan-300/20 bg-cyan-500/5 px-2 py-1 text-[10px] text-cyan-100">
+                                    <span>{playbackCompareIds.length} ID{playbackCompareIds.length === 1 ? "" : "S"} SELECTED FOR PLAYBACK</span>
+                                    <div className="flex gap-1">
+                                        <GameButton
+                                            onPress={() => onOpenPlaybackForIds(playbackCompareIds)}
+                                            className="rounded-sm border border-cyan-300/40 bg-cyan-500/10 px-2 py-1 text-[9px] font-black text-cyan-100"
+                                        >
+                                            PLAYBACK SELECTED
+                                        </GameButton>
+                                        <GameButton
+                                            onPress={() => setPlaybackCompareIds([])}
+                                            className="rounded-sm border border-slate-600 bg-slate-900 px-2 py-1 text-[9px] font-black text-slate-300"
+                                        >
+                                            CLEAR
+                                        </GameButton>
+                                    </div>
+                                </div>
+                            )}
+
                             {topCandidates.map((candidate) => {
                                 const labelKey = String(candidate.can_id);
                                 const draftKey = `${sessionId ?? "no-session"}:${candidate.can_id}`;
@@ -1071,13 +1102,31 @@ export function SignalReconBrainConsole({
                                                     </p>
                                                 )}
                                             </div>
-                                            <span className={`rounded-sm border px-2 py-1 text-[10px] font-black ${labelTone(effectiveLabel)}`}>
-                                                {saveFeedback?.state === "saving"
-                                                    ? "SAVING LABEL…"
-                                                    : saveFeedback?.state === "saved"
-                                                        ? `✓ ${labelText(effectiveLabel)} SAVED`
-                                                        : labelText(effectiveLabel)}
-                                            </span>
+                                            <div className="flex flex-wrap items-center justify-end gap-1">
+                                                <GameButton
+                                                    onPress={() => onOpenPlaybackForIds([candidate.can_id])}
+                                                    className="rounded-sm border border-cyan-300/40 bg-cyan-500/10 px-2 py-1 text-[9px] font-black text-cyan-100"
+                                                >
+                                                    PLAYBACK
+                                                </GameButton>
+                                                <GameButton
+                                                    onPress={() => togglePlaybackCompareId(candidate.can_id)}
+                                                    className={`rounded-sm border px-2 py-1 text-[9px] font-black ${
+                                                        playbackCompareIds.includes(candidate.can_id)
+                                                            ? "border-yellow-200 bg-yellow-500/25 text-yellow-100"
+                                                            : "border-slate-600 bg-slate-900 text-slate-300"
+                                                    }`}
+                                                >
+                                                    {playbackCompareIds.includes(candidate.can_id) ? "✓ COMPARE" : "COMPARE"}
+                                                </GameButton>
+                                                <span className={`rounded-sm border px-2 py-1 text-[10px] font-black ${labelTone(effectiveLabel)}`}>
+                                                    {saveFeedback?.state === "saving"
+                                                        ? "SAVING LABEL…"
+                                                        : saveFeedback?.state === "saved"
+                                                            ? `✓ ${labelText(effectiveLabel)} SAVED`
+                                                            : labelText(effectiveLabel)}
+                                                </span>
+                                            </div>
                                         </div>
 
                                         <div className="mt-1 grid grid-cols-2 gap-2 text-xs lg:grid-cols-4">
@@ -1294,9 +1343,15 @@ export function SignalReconBrainConsole({
                                             <div className="mt-1 rounded-sm border border-cyan-300/20 bg-black/20 p-2">
                                                 <p className="mb-2 text-[10px] tracking-[0.18em] text-cyan-300">AUTO BYTE ROLES</p>
                                                 <div className="grid gap-1 sm:grid-cols-2 lg:grid-cols-4">
-                                                    {candidate.byte_role_hypotheses?.map((hypothesis) => (
+                                                    {candidate.byte_role_hypotheses?.map((hypothesis) => {
+                                                        const reviewKey = hypothesisReviewKey(candidate, hypothesis);
+                                                        const feedback = hypothesisFeedback[reviewKey];
+                                                        const effectiveStatus = feedback?.state !== "error"
+                                                            ? feedback?.validationStatus ?? hypothesis.validation_status
+                                                            : hypothesis.validation_status;
+                                                        return (
                                                         <div
-                                                            key={`${candidate.can_id}:${hypothesis.byte_index}:${hypothesis.hypothesis_kind}`}
+                                                            key={`${candidate.can_id}:${hypothesis.byte_index}:${hypothesis.bit_mask ?? 0}:${hypothesis.hypothesis_kind}`}
                                                             className={`rounded-sm border p-2 text-[10px] ${hypothesisTone(hypothesis.hypothesis_kind)}`}
                                                             title={hypothesis.reason}
                                                         >
@@ -1307,36 +1362,37 @@ export function SignalReconBrainConsole({
                                                             <p className="mt-1 break-words font-bold">{hypothesis.hypothesis_kind.replace(/_/g, " ").toUpperCase()}</p>
                                                             <p className="mt-1 text-slate-500">mask {formatMask(hypothesis.bit_mask)}</p>
                                                             <p className="mt-1 font-black">
-                                                                {hypothesisFeedback[hypothesisReviewKey(candidate, hypothesis)]?.state === "saving"
+                                                                {feedback?.state === "saving"
                                                                     ? "SAVING REVIEW…"
-                                                                    : hypothesisFeedback[hypothesisReviewKey(candidate, hypothesis)]?.state === "saved"
-                                                                        ? `✓ ${hypothesisFeedback[hypothesisReviewKey(candidate, hypothesis)]?.validationStatus.toUpperCase()} SAVED`
-                                                                        : hypothesis.validation_status && hypothesis.validation_status !== "unreviewed"
-                                                                            ? hypothesis.validation_status.toUpperCase()
-                                                                            : "UNREVIEWED"}
+                                                                    : feedback?.state === "saved"
+                                                                        ? `✓ ${effectiveStatus?.toUpperCase()} SAVED`
+                                                                        : effectiveStatus && effectiveStatus !== "unreviewed"
+                                                                            ? `${effectiveStatus.toUpperCase()} · ${hypothesis.source === "human" ? "HUMAN" : "AUTO"}`
+                                                                            : hypothesis.source === "human" ? "HUMAN REVIEW" : "AUTO SUGGESTION"}
                                                             </p>
                                                             <div className="mt-2 grid grid-cols-3 gap-1">
                                                                 <GameButton
                                                                     onPress={() => void submitHypothesisValidation(candidate, hypothesis, "positive")}
-                                                                    className="rounded border border-green-300/30 px-1 py-0.5 text-[9px] text-green-200"
+                                                                    className={`rounded border px-1 py-0.5 text-[9px] ${effectiveStatus === "positive" ? "border-green-200 bg-green-500/30 text-green-50 ring-1 ring-green-300" : "border-green-300/30 text-green-200"}`}
                                                                 >
                                                                     CONFIRM
                                                                 </GameButton>
                                                                 <GameButton
                                                                     onPress={() => void submitHypothesisValidation(candidate, hypothesis, "negative")}
-                                                                    className="rounded border border-red-300/30 px-1 py-0.5 text-[9px] text-red-200"
+                                                                    className={`rounded border px-1 py-0.5 text-[9px] ${effectiveStatus === "negative" ? "border-red-200 bg-red-500/30 text-red-50 ring-1 ring-red-300" : "border-red-300/30 text-red-200"}`}
                                                                 >
                                                                     REJECT
                                                                 </GameButton>
                                                                 <GameButton
                                                                     onPress={() => void submitHypothesisValidation(candidate, hypothesis, "uncertain")}
-                                                                    className="rounded border border-yellow-300/30 px-1 py-0.5 text-[9px] text-yellow-200"
+                                                                    className={`rounded border px-1 py-0.5 text-[9px] ${effectiveStatus === "uncertain" ? "border-yellow-200 bg-yellow-500/30 text-yellow-50 ring-1 ring-yellow-300" : "border-yellow-300/30 text-yellow-200"}`}
                                                                 >
                                                                     UNSURE
                                                                 </GameButton>
                                                             </div>
                                                         </div>
-                                                    ))}
+                                                        );
+                                                    })}
                                                 </div>
                                                 <p className="mt-2 text-[10px] text-slate-500">Checksum labels are conservative candidates, not confirmed algorithms.</p>
                                             </div>

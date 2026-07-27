@@ -721,7 +721,7 @@ export function SignalRecon({
           )}
 
           {showTerminalPane && (
-            <section className="game-ui relative transition-all bg-black/80 font-mono shadow-xl shadow-green-500/10">
+            <section className="h-full game-ui relative transition-all bg-black/80 font-mono shadow-xl shadow-green-500/10">
               {queueMinimized && sidebarHidden && !missionTerminalOpen && (
                 <button
                   type="button"
@@ -747,7 +747,7 @@ export function SignalRecon({
                   handleMaximizeQueue={handleMaximizeQueue}
                 />
               ) : (
-                <div className="px-2 pb-2 flex flex-col game-ui">
+                <div className="h-full px-2 pb-2 flex flex-col game-ui">
                   {/* <div className="px-2"> */}
 
                     <div className="mb-1 pb-1 flex items-center justify-between border-b border-green-400/20">
@@ -861,7 +861,7 @@ export function SignalRecon({
                         No Signal Recon missions are loaded.
                       </div>
                     )}
-                  <div className="mt-2 border-t border-cyan-400/20 py-1">
+                  <div className="mt-2 h-full border-t border-cyan-400/20 py-1">
                     <div className="flex items-center justify-between">
                       <div>
                         <h3 className="font-bold text-cyan-200">Recent Mission Sessions</h3>
@@ -874,7 +874,7 @@ export function SignalRecon({
                       </span>
                     </div>
 
-                    <div className="my-1 max-h-56 space-y-1 overflow-y-auto ">
+                    <div className="my-1 space-y-1 overflow-y-auto flex flex-col justify-between ">
                       {selectedMissionSessions.slice(0, 12).map((session) => {
                         const empty = session.frame_count <= 0;
                         return (

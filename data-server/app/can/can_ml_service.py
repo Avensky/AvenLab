@@ -102,6 +102,17 @@ ML_FEATURE_NAMES = (
 
 ml_router = APIRouter(tags=["can-ai"])
 
+# Byte-role reviews represent one analyst decision per session/CAN ID/byte/role.
+# UI surfaces may attach their own context in metadata, but action_group must not
+# create duplicate rows for the same structural byte classification.
+CANONICAL_BYTE_ROLE_KINDS = {
+    "constant",
+    "rolling_counter",
+    "checksum_candidate",
+    "periodic_or_state_bits",
+    "payload_or_noise",
+}
+
 
 class CandidateLabelRequest(BaseModel):
     label: str = Field(pattern="^(positive|negative|uncertain)$")
@@ -1463,7 +1474,13 @@ async def get_session_hypotheses(session_id: UUID) -> dict[str, Any]:
                    notes, evidence, metadata, created_at, updated_at
             FROM can_signal_hypotheses
             WHERE session_id = $1
-            ORDER BY can_id, byte_index, confidence DESC
+            ORDER BY
+                can_id,
+                byte_index,
+                CASE WHEN source = 'human' THEN 0 ELSE 1 END,
+                CASE WHEN action_group IS NULL OR action_group = '' THEN 0 ELSE 1 END,
+                updated_at DESC,
+                confidence DESC
             """,
             session_id,
         )
@@ -1488,10 +1505,11 @@ async def upsert_signal_hypothesis(
     session_id: UUID,
     payload: SignalHypothesisRequest,
 ) -> dict[str, Any]:
-    """Store a human byte/bit review for a finalized session.
+    """Store one human byte/bit review for a finalized session.
 
-    Annotation writes intentionally do not receive the ML admin secret. The
-    secret remains server-side and is reserved for model-training operations.
+    Structural byte roles use a canonical key shared by Playback and Top IDs.
+    This prevents a review context such as ``baseline_playback_review`` from
+    creating a second human decision for the same byte role.
     """
     pool = await connect_db()
     async with pool.acquire() as conn:
@@ -1514,53 +1532,82 @@ async def upsert_signal_hypothesis(
                 detail="Signal hypotheses may be saved only for finalized sessions.",
             )
 
+        canonical_action_group = (
+            None
+            if payload.hypothesis_kind in CANONICAL_BYTE_ROLE_KINDS
+            else payload.action_group
+        )
         hypothesis_key = (
             f"{payload.can_id}:{payload.byte_index}:"
             f"{payload.bit_mask or 0}:{payload.hypothesis_kind}:"
-            f"{payload.action_group or ''}"
+            f"{canonical_action_group or ''}"
         )
-        row = await conn.fetchrow(
-            """
-            INSERT INTO can_signal_hypotheses (
-                session_id, vehicle_id, mission_id, mission_code,
-                hypothesis_key, can_id, byte_index, bit_mask,
-                hypothesis_kind, action_group, confidence, source,
-                validation_status, notes, evidence, metadata
-            ) VALUES (
-                $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,
-                'human',$12,$13,$14::jsonb,$15::jsonb
+
+        async with conn.transaction():
+            if payload.hypothesis_kind in CANONICAL_BYTE_ROLE_KINDS:
+                # Remove legacy human duplicates created by older UI-specific
+                # action_group values before writing the canonical decision.
+                await conn.execute(
+                    """
+                    DELETE FROM can_signal_hypotheses
+                    WHERE session_id = $1
+                      AND source = 'human'
+                      AND can_id = $2
+                      AND byte_index = $3
+                      AND COALESCE(bit_mask, 0) = COALESCE($4::integer, 0)
+                      AND hypothesis_kind = $5
+                      AND hypothesis_key <> $6
+                    """,
+                    session_id,
+                    payload.can_id,
+                    payload.byte_index,
+                    payload.bit_mask,
+                    payload.hypothesis_kind,
+                    hypothesis_key,
+                )
+
+            row = await conn.fetchrow(
+                """
+                INSERT INTO can_signal_hypotheses (
+                    session_id, vehicle_id, mission_id, mission_code,
+                    hypothesis_key, can_id, byte_index, bit_mask,
+                    hypothesis_kind, action_group, confidence, source,
+                    validation_status, notes, evidence, metadata
+                ) VALUES (
+                    $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,
+                    'human',$12,$13,$14::jsonb,$15::jsonb
+                )
+                ON CONFLICT (session_id, hypothesis_key)
+                DO UPDATE SET
+                    confidence = EXCLUDED.confidence,
+                    source = 'human',
+                    validation_status = EXCLUDED.validation_status,
+                    notes = EXCLUDED.notes,
+                    evidence = EXCLUDED.evidence,
+                    metadata = can_signal_hypotheses.metadata || EXCLUDED.metadata,
+                    updated_at = now()
+                RETURNING id, hypothesis_key, action_group, created_at, updated_at
+                """,
+                session_id,
+                session["vehicle_id"],
+                session["mission_id"],
+                session["mission_code"],
+                hypothesis_key,
+                payload.can_id,
+                payload.byte_index,
+                payload.bit_mask,
+                payload.hypothesis_kind,
+                canonical_action_group,
+                payload.confidence,
+                payload.validation_status,
+                payload.notes,
+                _json_dumps(payload.evidence),
+                _json_dumps({
+                    **payload.metadata,
+                    "feature_schema_version": ML_FEATURE_SCHEMA_VERSION,
+                    "manual_override": True,
+                }),
             )
-            ON CONFLICT (session_id, hypothesis_key)
-            DO UPDATE SET
-                confidence = EXCLUDED.confidence,
-                source = 'human',
-                validation_status = EXCLUDED.validation_status,
-                notes = EXCLUDED.notes,
-                evidence = EXCLUDED.evidence,
-                metadata = can_signal_hypotheses.metadata || EXCLUDED.metadata,
-                updated_at = now()
-            RETURNING id, hypothesis_key, created_at, updated_at
-            """,
-            session_id,
-            session["vehicle_id"],
-            session["mission_id"],
-            session["mission_code"],
-            hypothesis_key,
-            payload.can_id,
-            payload.byte_index,
-            payload.bit_mask,
-            payload.hypothesis_kind,
-            payload.action_group,
-            payload.confidence,
-            payload.validation_status,
-            payload.notes,
-            _json_dumps(payload.evidence),
-            _json_dumps({
-                **payload.metadata,
-                "feature_schema_version": ML_FEATURE_SCHEMA_VERSION,
-                "manual_override": True,
-            }),
-        )
     return {
         "ok": True,
         "id": str(row["id"]),
@@ -1571,7 +1618,11 @@ async def upsert_signal_hypothesis(
         "byte_index": payload.byte_index,
         "bit_mask": payload.bit_mask,
         "hypothesis_kind": payload.hypothesis_kind,
+        "action_group": row["action_group"],
+        "source": "human",
         "validation_status": payload.validation_status,
+        "created_at": row["created_at"],
+        "updated_at": row["updated_at"],
         "feature_schema_version": ML_FEATURE_SCHEMA_VERSION,
     }
 

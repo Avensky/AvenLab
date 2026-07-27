@@ -28,7 +28,10 @@ import {
     type MlModelSummary,
     type MlReadiness,
 } from "./SignalReconBrainConsole";
-import { SignalReconPlayback } from "./SignalReconPlayback";
+import {
+    SignalReconPlayback,
+    type SavedHypothesis,
+} from "./SignalReconPlayback";
 import { type MissionRunSummary, type MissionTerminalInitialView } from "./SignalRecon";
 import { ReconWorkspaceHeader } from "./ReconWorkspaceHeader";
 import { ReconHeaderActionGrid } from "./ReconHeaderActionGrid";
@@ -234,6 +237,85 @@ function formatSessionDate(value: string | null) {
     return date.toLocaleString();
 }
 
+type SessionHypothesesResponse = {
+    ok?: boolean;
+    hypotheses?: SavedHypothesis[];
+    detail?: string;
+    error?: string;
+};
+
+function hypothesisTimestamp(item: SavedHypothesis) {
+    const value = Date.parse(item.updated_at ?? item.created_at ?? "");
+    return Number.isFinite(value) ? value : 0;
+}
+
+function canonicalHumanHypotheses(items: SavedHypothesis[]) {
+    const selected = new Map<string, SavedHypothesis>();
+    for (const item of items) {
+        if (item.source !== "human") continue;
+        const key = [
+            item.can_id,
+            item.byte_index,
+            item.bit_mask ?? 0,
+            item.hypothesis_kind,
+        ].join(":");
+        const current = selected.get(key);
+        if (!current) {
+            selected.set(key, item);
+            continue;
+        }
+        const itemCanonical = item.action_group ? 0 : 1;
+        const currentCanonical = current.action_group ? 0 : 1;
+        if (
+            itemCanonical > currentCanonical
+            || (itemCanonical === currentCanonical
+                && hypothesisTimestamp(item) >= hypothesisTimestamp(current))
+        ) {
+            selected.set(key, item);
+        }
+    }
+    return [...selected.values()];
+}
+
+function mergeHumanHypothesesIntoAnalysis(
+    analysis: BrainAnalysisResult,
+    hypotheses: SavedHypothesis[],
+): BrainAnalysisResult {
+    const humanRows = canonicalHumanHypotheses(hypotheses);
+    if (!humanRows.length) return analysis;
+
+    return {
+        ...analysis,
+        candidates: analysis.candidates.map((candidate) => {
+            const rows = humanRows.filter((row) => row.can_id === candidate.can_id);
+            if (!rows.length) return candidate;
+
+            const roles = [...(candidate.byte_role_hypotheses ?? [])];
+            for (const row of rows) {
+                const index = roles.findIndex((entry) =>
+                    entry.byte_index === row.byte_index
+                    && entry.hypothesis_kind === row.hypothesis_kind
+                    && (entry.bit_mask ?? null) === (row.bit_mask ?? null),
+                );
+                const nextRole: ByteRoleHypothesis = {
+                    byte_index: row.byte_index,
+                    hypothesis_kind: row.hypothesis_kind,
+                    confidence: row.confidence,
+                    bit_mask: row.bit_mask ?? null,
+                    auto_detected: false,
+                    source: "human",
+                    validation_status: row.validation_status,
+                    reason: row.notes ?? "Human playback review",
+                    metrics: row.evidence ?? {},
+                };
+                if (index >= 0) roles[index] = { ...roles[index], ...nextRole };
+                else roles.push(nextRole);
+            }
+            return { ...candidate, byte_role_hypotheses: roles };
+        }),
+    };
+}
+
 export function SignalReconMission({
     onExit,
     collapsed,
@@ -305,6 +387,8 @@ export function SignalReconMission({
     const [mlLoading, setMlLoading] = useState(false);
     const [mlError, setMlError] = useState<string | null>(null);
     const [labelingCandidateId, setLabelingCandidateId] = useState<number | null>(null);
+    const [playbackSelectedCanIds, setPlaybackSelectedCanIds] = useState<number[]>([]);
+    const [playbackSelectionRequestKey, setPlaybackSelectionRequestKey] = useState(0);
 
     useEffect(() => {
         const id = window.setInterval(() => setNow(performance.now()), 50);
@@ -467,6 +551,20 @@ export function SignalReconMission({
         initialMissionProgress?.session_id ??
         null;
 
+    const loadSessionHypotheses = async (sessionId: string) => {
+        const response = await fetch(
+            `${getApiBaseUrl()}/data/can/session/${sessionId}/hypotheses`,
+        );
+        const data = (await response.json().catch(() => ({}))) as SessionHypothesesResponse;
+        if (!response.ok || data.ok === false) {
+            throw new Error(
+                data.detail ?? data.error
+                ?? `Hypothesis read failed with HTTP ${response.status}.`,
+            );
+        }
+        return Array.isArray(data.hypotheses) ? data.hypotheses : [];
+    };
+
     const refreshMlContext = async (sessionIdOverride?: string) => {
         const sessionId = resolveAnalysisSessionId(sessionIdOverride);
         if (!sessionId || !selectedMission) {
@@ -595,10 +693,28 @@ export function SignalReconMission({
             }
 
             const nextAnalysis = data as BrainAnalysisResult;
+            let synchronizedAnalysis = nextAnalysis;
+            try {
+                const savedHypotheses = await loadSessionHypotheses(
+                    nextAnalysis.session_id ?? sessionId,
+                );
+                synchronizedAnalysis = mergeHumanHypothesesIntoAnalysis(
+                    nextAnalysis,
+                    savedHypotheses,
+                );
+            } catch (hypothesisError) {
+                appendBrainLog(
+                    `[hypothesis] refresh warning: ${
+                        hypothesisError instanceof Error
+                            ? hypothesisError.message
+                            : "could not reload saved byte reviews"
+                    }`,
+                );
+            }
 
-            if (requestUseLlm && nextAnalysis.analysis_source !== "llm") {
+            if (requestUseLlm && synchronizedAnalysis.analysis_source !== "llm") {
                 const llmMessage =
-                    nextAnalysis.llm_error?.trim() ||
+                    synchronizedAnalysis.llm_error?.trim() ||
                     "Ollama did not produce a report. Showing statistical fallback results.";
                 setBrainError(`LLM unavailable: ${llmMessage}`);
                 appendBrainLog(`[llm] fallback: ${llmMessage}`);
@@ -606,21 +722,21 @@ export function SignalReconMission({
                 setBrainError(null);
             }
 
-            setBrainAnalysis(nextAnalysis);
-            setSelectedSavedSessionId(nextAnalysis.session_id ?? sessionId);
-            setLastAnalyzedSessionId(nextAnalysis.session_id ?? sessionId);
-            await refreshMlContext(nextAnalysis.session_id ?? sessionId);
+            setBrainAnalysis(synchronizedAnalysis);
+            setSelectedSavedSessionId(synchronizedAnalysis.session_id ?? sessionId);
+            setLastAnalyzedSessionId(synchronizedAnalysis.session_id ?? sessionId);
+            await refreshMlContext(synchronizedAnalysis.session_id ?? sessionId);
             appendBrainLog(
-                `[ai] done: mode=${nextAnalysis.analysis_mode ?? "unknown"} frames=${nextAnalysis.frames_analyzed} markers=${nextAnalysis.markers} candidates=${nextAnalysis.candidates.length}`,
+                `[ai] done: mode=${synchronizedAnalysis.analysis_mode ?? "unknown"} frames=${synchronizedAnalysis.frames_analyzed} markers=${synchronizedAnalysis.markers} candidates=${synchronizedAnalysis.candidates.length}`,
             );
             appendBrainLog(
-                `[memory] query=${nextAnalysis.vector_memory?.query_embedded ? "yes" : "no"} matches=${nextAnalysis.vector_memory?.match_count ?? 0} stored=${nextAnalysis.vector_memory?.stored ? "yes" : "no"}`,
+                `[memory] query=${synchronizedAnalysis.vector_memory?.query_embedded ? "yes" : "no"} matches=${synchronizedAnalysis.vector_memory?.match_count ?? 0} stored=${synchronizedAnalysis.vector_memory?.stored ? "yes" : "no"}`,
             );
             appendBrainLog(
                 `[llm] ${
-                    nextAnalysis.analysis_source === "llm"
-                        ? `report generated (${nextAnalysis.llm_model ?? "model unknown"})`
-                        : `fallback used${nextAnalysis.llm_error ? `: ${nextAnalysis.llm_error}` : ""}`
+                    synchronizedAnalysis.analysis_source === "llm"
+                        ? `report generated (${synchronizedAnalysis.llm_model ?? "model unknown"})`
+                        : `fallback used${synchronizedAnalysis.llm_error ? `: ${synchronizedAnalysis.llm_error}` : ""}`
                 }`,
             );
         } catch (err) {
@@ -789,10 +905,27 @@ export function SignalReconMission({
                 persisted: true,
             };
 
-            setBrainAnalysis(nextAnalysis);
-            setSelectedSavedSessionId(nextAnalysis.session_id);
-            setLastAnalyzedSessionId(nextAnalysis.session_id);
-            await refreshMlContext(nextAnalysis.session_id);
+            let synchronizedAnalysis = nextAnalysis;
+            try {
+                const savedHypotheses = await loadSessionHypotheses(nextAnalysis.session_id);
+                synchronizedAnalysis = mergeHumanHypothesesIntoAnalysis(
+                    nextAnalysis,
+                    savedHypotheses,
+                );
+            } catch (hypothesisError) {
+                appendBrainLog(
+                    `[hypothesis] saved-analysis merge warning: ${
+                        hypothesisError instanceof Error
+                            ? hypothesisError.message
+                            : "could not reload saved byte reviews"
+                    }`,
+                );
+            }
+
+            setBrainAnalysis(synchronizedAnalysis);
+            setSelectedSavedSessionId(synchronizedAnalysis.session_id);
+            setLastAnalyzedSessionId(synchronizedAnalysis.session_id);
+            await refreshMlContext(synchronizedAnalysis.session_id);
             appendBrainLog(
                 `[db] loaded: features=${data.features?.length ?? 0} correlations=${data.correlations?.length ?? 0} candidates=${candidates.length}`,
             );
@@ -965,6 +1098,7 @@ export function SignalReconMission({
                         byte_index: hypothesis.byte_index,
                         bit_mask: hypothesis.bit_mask ?? null,
                         hypothesis_kind: hypothesis.hypothesis_kind,
+                        action_group: null,
                         validation_status: validationStatus,
                         confidence: hypothesis.confidence,
                         notes: hypothesis.reason,
@@ -987,25 +1121,37 @@ export function SignalReconMission({
                 `[hypothesis] ${candidate.can_id_hex} B${hypothesis.byte_index} ` +
                 `${hypothesis.hypothesis_kind} → ${validationStatus}`,
             );
-            setBrainAnalysis((current) => {
-                if (!current) return current;
-                return {
-                    ...current,
-                    candidates: current.candidates.map((item) => {
-                        if (item.can_id !== candidate.can_id) return item;
-                        return {
-                            ...item,
-                            byte_role_hypotheses: item.byte_role_hypotheses?.map((entry) =>
-                                entry.byte_index === hypothesis.byte_index
-                                && entry.hypothesis_kind === hypothesis.hypothesis_kind
-                                && (entry.bit_mask ?? null) === (hypothesis.bit_mask ?? null)
-                                    ? { ...entry, validation_status: validationStatus, source: "human" }
-                                    : entry,
-                            ),
-                        };
-                    }),
-                };
-            });
+            const savedHypothesis: SavedHypothesis = {
+                id: String(data.id ?? [
+                    candidate.can_id,
+                    hypothesis.byte_index,
+                    hypothesis.bit_mask ?? 0,
+                    hypothesis.hypothesis_kind,
+                ].join(":")),
+                can_id: candidate.can_id,
+                can_id_hex: candidate.can_id_hex,
+                byte_index: hypothesis.byte_index,
+                bit_mask: hypothesis.bit_mask ?? null,
+                hypothesis_kind: hypothesis.hypothesis_kind,
+                action_group: null,
+                confidence: hypothesis.confidence,
+                source: "human",
+                validation_status: validationStatus,
+                notes: hypothesis.reason,
+                evidence: hypothesis.metrics ?? {},
+                metadata: {
+                    source: "signal-recon-brain-console",
+                    auto_detected: hypothesis.auto_detected ?? true,
+                    manual_override: true,
+                },
+                updated_at: new Date().toISOString(),
+            };
+            setBrainAnalysis((current) =>
+                current
+                    ? mergeHumanHypothesesIntoAnalysis(current, [savedHypothesis])
+                    : current,
+            );
+            onDatabaseChanged?.();
             return true;
         } catch (err) {
             const message =
@@ -1977,10 +2123,41 @@ export function SignalReconMission({
         </div>
     );
 
+    const handlePlaybackHypothesisSaved = (hypothesis: SavedHypothesis) => {
+        setBrainAnalysis((current) =>
+            current
+                ? mergeHumanHypothesesIntoAnalysis(current, [hypothesis])
+                : current,
+        );
+        appendBrainLog(
+            `[hypothesis] playback saved ${hypothesis.can_id_hex ?? hypothesis.can_id} `
+            + `B${hypothesis.byte_index} ${hypothesis.hypothesis_kind} `
+            + `→ ${hypothesis.validation_status}`,
+        );
+        onDatabaseChanged?.();
+    };
+
+    const handleOpenPlaybackForIds = (canIds: number[]) => {
+        const selectedIds = [...new Set(canIds)].sort((a, b) => a - b);
+        if (!selectedIds.length) return;
+        setPlaybackSelectedCanIds(selectedIds);
+        setPlaybackSelectionRequestKey((current) => current + 1);
+        setActivePanel("playback");
+        setBrainOpen(false);
+        appendBrainLog(
+            `[playback] pinned ${selectedIds
+                .map((canId) => `0x${canId.toString(16).toUpperCase().padStart(3, "0")}`)
+                .join(", ")}`,
+        );
+    };
+
     const renderPlaybackPanel = () => (
         <SignalReconPlayback
             sessionId={resolveAnalysisSessionId()}
             disabled={Boolean(activeSessionId) || isRunning}
+            initialSelectedCanIds={playbackSelectedCanIds}
+            selectionRequestKey={playbackSelectionRequestKey}
+            onHypothesisSaved={handlePlaybackHypothesisSaved}
         />
     );
 
@@ -2251,6 +2428,7 @@ export function SignalReconMission({
                 onRefreshMl={() => void refreshMlContext()}
                 onLabelCandidate={handleLabelCandidate}
                 onValidateByteHypothesis={handleValidateByteHypothesis}
+                onOpenPlaybackForIds={handleOpenPlaybackForIds}
                 onToggleLlm={() => setUseLlm((value) => !value)}
                 onToggleEmbeddings={() => setUseEmbeddings((value) => !value)}
                 onToggleAutoAnalyze={() => setAutoAnalyze((value) => !value)}

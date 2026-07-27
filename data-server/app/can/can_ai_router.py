@@ -712,6 +712,11 @@ class Candidate(BaseModel):
     # deliberately excluded from the numerical confidence calculation.
     historical_support: dict[str, Any] = Field(default_factory=dict)
 
+    confidence_before_human_byte_roles: float = 0.0
+    human_byte_role_applied: bool = False
+    human_byte_role_penalty: float = 0.0
+    human_byte_role_evidence: dict[str, Any] = Field(default_factory=dict)
+
 
 @dataclass
 class FrameRow:
@@ -786,10 +791,95 @@ def byte_encoding_hint(
     return "encoded_byte_or_noise"
 
 
+BACKGROUND_BYTE_ROLE_KINDS = {
+    "constant",
+    "rolling_counter",
+    "checksum_candidate",
+    "payload_or_noise",
+}
+
+
 def byte_role_map(
     roles: list[ByteRoleHypothesis],
 ) -> dict[int, ByteRoleHypothesis]:
-    return {role.byte_index: role for role in roles}
+    """Select the effective structural role for each byte.
+
+    A human rejection vetoes the matching auto suggestion. Confirmed human
+    classifications outrank uncertain and auto suggestions. This lets Playback
+    and Top IDs share one saved decision without allowing an old auto role to
+    silently override it during the next analysis.
+    """
+    by_byte: dict[int, list[ByteRoleHypothesis]] = defaultdict(list)
+    for role in roles:
+        by_byte[role.byte_index].append(role)
+
+    selected: dict[int, ByteRoleHypothesis] = {}
+    for byte_index, items in by_byte.items():
+        rejected_kinds = {
+            item.hypothesis_kind
+            for item in items
+            if item.source == "human"
+            and item.validation_status == "negative"
+        }
+        eligible = [
+            item
+            for item in items
+            if item.validation_status != "negative"
+            and not (
+                item.source != "human"
+                and item.hypothesis_kind in rejected_kinds
+            )
+        ]
+        if not eligible:
+            continue
+
+        def priority(item: ByteRoleHypothesis) -> tuple[int, float]:
+            if item.source == "human" and item.validation_status == "positive":
+                rank = 4
+            elif item.source == "human" and item.validation_status == "uncertain":
+                rank = 3
+            elif item.source == "human":
+                rank = 2
+            else:
+                rank = 1
+            return rank, float(item.confidence)
+
+        selected[byte_index] = max(eligible, key=priority)
+    return selected
+
+
+def byte_role_score_factor(role: Optional[ByteRoleHypothesis]) -> float:
+    if role is None or role.validation_status == "negative":
+        return 1.0
+
+    kind = role.hypothesis_kind
+    human = role.source == "human"
+    status = role.validation_status
+
+    if kind == "constant":
+        if human and status == "positive":
+            return 0.0
+        if human and status == "uncertain":
+            return 0.45
+        return 0.20
+    if kind == "rolling_counter":
+        if human and status == "positive":
+            return 0.20
+        if human and status == "uncertain":
+            return 0.55
+        return 0.35
+    if kind == "checksum_candidate":
+        if human and status == "positive":
+            return 0.15
+        if human and status == "uncertain":
+            return 0.45
+        return 0.25
+    if kind == "payload_or_noise":
+        if human and status == "positive":
+            return 0.50
+        if human and status == "uncertain":
+            return 0.75
+    return 1.0
 
 
 def byte_inverse_transition_evidence(
@@ -881,12 +971,16 @@ def strongest_byte_transition(
         if item.change_count <= 0:
             continue
         role = roles_by_byte.get(item.byte_index)
-        score = float(item.transition_score)
+        raw_score = float(item.transition_score)
+        factor = byte_role_score_factor(role)
+        score = raw_score * factor
         role_kind = role.hypothesis_kind if role else "unknown"
-        if role_kind == "rolling_counter":
-            score = min(score * 0.35, 0.25)
-        elif role_kind == "checksum_candidate":
-            score = min(score * 0.25, 0.20)
+        if role_kind == "rolling_counter" and factor < 1.0:
+            score = min(score, 0.15 if role and role.source == "human" else 0.25)
+        elif role_kind == "checksum_candidate" and factor < 1.0:
+            score = min(score, 0.12 if role and role.source == "human" else 0.20)
+        elif role_kind == "constant" and factor < 1.0:
+            score = min(score, 0.10)
 
         if score <= best_score:
             continue
@@ -906,6 +1000,9 @@ def strongest_byte_transition(
             "transition_symmetry_score": item.transition_symmetry_score,
             "inverse_transition_pairs": item.inverse_transition_pairs,
             "byte_role": role_kind,
+            "byte_role_source": role.source if role else None,
+            "byte_role_validation_status": role.validation_status if role else None,
+            "byte_role_score_factor": round(factor, 6),
             "byte_modulo_delta_counts": item.byte_modulo_delta_counts,
             "low_nibble_delta_counts": item.low_nibble_delta_counts,
             "high_nibble_delta_counts": item.high_nibble_delta_counts,
@@ -4037,17 +4134,154 @@ async def load_human_byte_hypotheses(
     conn: Any,
     session_id: UUID,
 ) -> list[dict[str, Any]]:
-    rows = await conn.fetch(
+    """Load current reviews plus conservative compatible-session consensus.
+
+    Current-session decisions always win. Rolling-counter and checksum roles
+    may carry across matching vehicle/interface/mode sessions after two
+    independent confirmations. Constant/noise roles require three confirmations
+    from baseline-style missions because state-dependent bytes can otherwise be
+    incorrectly suppressed.
+    """
+    target = await conn.fetchrow(
         """
-        SELECT can_id, byte_index, bit_mask, hypothesis_kind, confidence,
-               validation_status, notes, evidence, metadata
-        FROM can_signal_hypotheses
-        WHERE session_id = $1 AND source = 'human'
-        ORDER BY updated_at ASC
+        SELECT vehicle_id, bus_interface, bus_mode
+        FROM can_sessions
+        WHERE id = $1
         """,
         session_id,
     )
-    return [dict(row) for row in rows]
+    if target is None:
+        return []
+
+    rows = await conn.fetch(
+        """
+        SELECT h.session_id, h.can_id, h.byte_index, h.bit_mask,
+               h.hypothesis_kind, h.action_group, h.confidence,
+               h.validation_status, h.notes, h.evidence, h.metadata,
+               h.updated_at, rm.mission_code
+        FROM can_signal_hypotheses h
+        JOIN can_sessions cs ON cs.id = h.session_id
+        LEFT JOIN recon_missions rm ON rm.id = cs.mission_id
+        WHERE h.source = 'human'
+          AND cs.capture_status = 'finalized'
+          AND cs.vehicle_id = $2
+          AND cs.bus_interface IS NOT DISTINCT FROM $3
+          AND cs.bus_mode IS NOT DISTINCT FROM $4
+        ORDER BY h.updated_at DESC
+        """,
+        session_id,
+        target["vehicle_id"],
+        target["bus_interface"],
+        target["bus_mode"],
+    )
+
+    # Keep one canonical/latest decision per session and structural role.
+    per_session: dict[tuple[str, int, int, int, str], dict[str, Any]] = {}
+    for raw in rows:
+        row = dict(raw)
+        key = (
+            str(row.get("session_id")),
+            int(row.get("can_id") or 0),
+            int(row.get("byte_index") or 0),
+            int(row.get("bit_mask") or 0),
+            str(row.get("hypothesis_kind") or "unknown"),
+        )
+        current = per_session.get(key)
+        if current is None:
+            per_session[key] = row
+            continue
+        row_canonical = not bool(row.get("action_group"))
+        current_canonical = not bool(current.get("action_group"))
+        if row_canonical and not current_canonical:
+            per_session[key] = row
+
+    current_rows: dict[tuple[int, int, int, str], dict[str, Any]] = {}
+    prior_groups: dict[
+        tuple[int, int, int, str],
+        list[dict[str, Any]],
+    ] = defaultdict(list)
+
+    for row in per_session.values():
+        role_key = (
+            int(row.get("can_id") or 0),
+            int(row.get("byte_index") or 0),
+            int(row.get("bit_mask") or 0),
+            str(row.get("hypothesis_kind") or "unknown"),
+        )
+        if str(row.get("session_id")) == str(session_id):
+            current_rows[role_key] = row
+        else:
+            prior_groups[role_key].append(row)
+
+    inherited: list[dict[str, Any]] = []
+    for role_key, group in prior_groups.items():
+        if role_key in current_rows:
+            continue
+
+        kind = role_key[3]
+        if kind not in BACKGROUND_BYTE_ROLE_KINDS:
+            continue
+        statuses = {
+            str(row.get("validation_status") or "unreviewed")
+            for row in group
+            if str(row.get("validation_status") or "unreviewed")
+            in {"positive", "negative"}
+        }
+        if len(statuses) != 1:
+            continue
+        status = next(iter(statuses))
+        matching = [
+            row
+            for row in group
+            if str(row.get("validation_status") or "") == status
+        ]
+        distinct_sessions = {str(row.get("session_id")) for row in matching}
+
+        baseline_only = kind in {"constant", "payload_or_noise"}
+        if baseline_only:
+            matching = [
+                row
+                for row in matching
+                if str(row.get("mission_code") or "").upper().startswith(
+                    BASELINE_CODE_PREFIXES
+                )
+            ]
+            distinct_sessions = {str(row.get("session_id")) for row in matching}
+
+        minimum_sessions = 3 if baseline_only else 2
+        if len(distinct_sessions) < minimum_sessions:
+            continue
+
+        template = dict(max(
+            matching,
+            key=lambda row: row.get("updated_at") or 0,
+        ))
+        confidences = [
+            float(row.get("confidence") or 0.5)
+            for row in matching
+        ]
+        template["confidence"] = min(
+            0.95,
+            float(statistics.mean(confidences)),
+        )
+        template["notes"] = (
+            f"Inherited {status} consensus from "
+            f"{len(distinct_sessions)} compatible finalized sessions"
+        )
+        template["evidence"] = {
+            **metadata_dict(template.get("evidence")),
+            "inherited_consensus": True,
+            "independent_sessions": len(distinct_sessions),
+            "source_session_ids": sorted(distinct_sessions),
+        }
+        template["metadata"] = {
+            **metadata_dict(template.get("metadata")),
+            "inherited_consensus": True,
+            "scope": "same_vehicle_interface_mode",
+        }
+        inherited.append(template)
+
+    return [*current_rows.values(), *inherited]
 
 
 def apply_human_byte_hypotheses(
@@ -4068,6 +4302,7 @@ def apply_human_byte_hypotheses(
                 for item in candidate.byte_role_hypotheses
                 if item.byte_index == byte_index
                 and item.hypothesis_kind == kind
+                and (item.bit_mask or 0) == int(row.get("bit_mask") or 0)
             ),
             None,
         )
@@ -4094,6 +4329,113 @@ def apply_human_byte_hypotheses(
                 match.reason = str(row["notes"])
             if row.get("confidence") is not None:
                 match.confidence = float(row["confidence"])
+
+
+def rescore_candidates_after_human_byte_roles(
+    candidates: list[Candidate],
+    heatmap: dict[str, Any],
+    *,
+    apply_confidence_penalty: bool = True,
+) -> None:
+    """Apply saved structural-byte reviews to the current session ranking.
+
+    The review affects only the byte it classifies. A confirmed counter,
+    checksum, or constant can suppress that byte as a target explanation while
+    leaving other bytes on the same CAN ID available for consideration.
+    """
+    for candidate in candidates:
+        roles_by_byte = byte_role_map(candidate.byte_role_hypotheses)
+        best_item, best_score, best_payload = strongest_byte_transition(
+            candidate.byte_evidence,
+            candidate.byte_role_hypotheses,
+        )
+        candidate.byte_transition_score = best_score
+        candidate.byte_transition_evidence = best_payload
+
+        decisive_byte: Optional[int] = None
+        decisive_source = "byte_transition"
+        if candidate.field_hypotheses:
+            decisive_byte = candidate.field_hypotheses[0].start_byte
+            decisive_source = "field"
+        elif candidate.signal_hypotheses:
+            decisive_byte = candidate.signal_hypotheses[0].byte_index
+            decisive_source = "bit"
+        elif best_item is not None:
+            decisive_byte = best_item.byte_index
+
+        decisive_role = (
+            roles_by_byte.get(decisive_byte)
+            if decisive_byte is not None
+            else None
+        )
+        factor = byte_role_score_factor(decisive_role)
+        human_applied = bool(
+            decisive_role
+            and decisive_role.source == "human"
+            and decisive_role.validation_status in {"positive", "uncertain"}
+            and decisive_role.hypothesis_kind in BACKGROUND_BYTE_ROLE_KINDS
+            and factor < 1.0
+        )
+
+        candidate.confidence_before_human_byte_roles = candidate.confidence
+        if human_applied and apply_confidence_penalty:
+            candidate.confidence = round(candidate.confidence * factor, 5)
+            candidate.correlation_score = round(
+                candidate.correlation_score * factor,
+                5,
+            )
+            candidate.human_byte_role_applied = True
+            candidate.human_byte_role_penalty = round(1.0 - factor, 6)
+            candidate.human_byte_role_evidence = {
+                "byte_index": decisive_byte,
+                "decisive_source": decisive_source,
+                "hypothesis_kind": decisive_role.hypothesis_kind,
+                "validation_status": decisive_role.validation_status,
+                "factor": round(factor, 6),
+            }
+            candidate.notes = (
+                f"{candidate.notes}; human review marked decisive B{decisive_byte} "
+                f"as {decisive_role.hypothesis_kind} "
+                f"({decisive_role.validation_status})"
+            )
+        elif decisive_source == "byte_transition" and apply_confidence_penalty:
+            # A rejected auto background suggestion restores the raw byte
+            # transition as a valid lead for the next analysis.
+            candidate.correlation_score = round(
+                max(candidate.correlation_lift, best_score),
+                5,
+            )
+            candidate.confidence = round(
+                score_candidate_confidence(
+                    candidate.correlation_score,
+                    candidate.change_ratio,
+                    candidate.frame_count,
+                ),
+                5,
+            )
+
+        row = heatmap.get(candidate.can_id_hex)
+        if isinstance(row, dict):
+            row["byte_role_hypotheses"] = [
+                item.model_dump()
+                for item in candidate.byte_role_hypotheses
+            ]
+            row["byte_transition_score"] = candidate.byte_transition_score
+            row["byte_transition_evidence"] = candidate.byte_transition_evidence
+            row["correlation_score"] = candidate.correlation_score
+            row["confidence"] = candidate.confidence
+            row["human_byte_role_applied"] = candidate.human_byte_role_applied
+            row["human_byte_role_penalty"] = candidate.human_byte_role_penalty
+
+    candidates.sort(
+        key=lambda item: (
+            item.confidence,
+            item.correlation_score,
+            item.byte_transition_score,
+            item.change_count,
+        ),
+        reverse=True,
+    )
 
 
 def analyze_frames(
@@ -5268,6 +5610,7 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
             analyzer_profile,
             session_dict,
         )
+        human_hypotheses: list[dict[str, Any]] = []
         try:
             async with pool.acquire() as conn:
                 human_hypotheses = await load_human_byte_hypotheses(
@@ -5275,6 +5618,11 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
                     session_id,
                 )
             apply_human_byte_hypotheses(candidates, human_hypotheses)
+            rescore_candidates_after_human_byte_roles(
+                candidates,
+                heatmap,
+                apply_confidence_penalty=False,
+            )
         except Exception as hypothesis_exc:
             can_ai_log(
                 "human_hypothesis_load_failed",
@@ -5297,6 +5645,16 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
             candidates,
             baseline_features,
             baseline_context,
+        )
+
+    # Baseline subtraction may replace exact-bit/field confidence. Apply the
+    # saved human structural-byte decision once, after that statistical stage
+    # and before supervised ML/ID-level priors.
+    if human_hypotheses:
+        rescore_candidates_after_human_byte_roles(
+            candidates,
+            heatmap,
+            apply_confidence_penalty=True,
         )
 
     # Preserve the statistical/baseline-adjusted score even when no model exists.
@@ -5993,14 +6351,31 @@ async def analyze_session(session_id: UUID, payload: AnalyzeSessionRequest) -> d
 
                 await conn.execute(
                     """
-                    DELETE FROM can_signal_hypotheses
-                    WHERE session_id = $1 AND source = 'auto_analysis'
+                    DELETE FROM can_signal_hypotheses auto_role
+                    WHERE auto_role.session_id = $1
+                      AND auto_role.source = 'auto_analysis'
+                      AND NOT EXISTS (
+                          SELECT 1
+                          FROM can_signal_hypotheses human_role
+                          WHERE human_role.session_id = auto_role.session_id
+                            AND human_role.source = 'human'
+                            AND human_role.can_id = auto_role.can_id
+                            AND human_role.byte_index = auto_role.byte_index
+                            AND COALESCE(human_role.bit_mask, 0) = COALESCE(auto_role.bit_mask, 0)
+                            AND human_role.hypothesis_kind = auto_role.hypothesis_kind
+                      )
                     """,
                     session_id,
                 )
                 hypothesis_rows = []
                 for candidate in candidates:
                     for hypothesis in candidate.byte_role_hypotheses:
+                        if hypothesis.source == "human":
+                            # The canonical human row already exists. Preserve
+                            # any previous auto suggestion for side-by-side
+                            # review instead of duplicating the human decision
+                            # as an auto_analysis record.
+                            continue
                         bit_mask = hypothesis.bit_mask
                         hypothesis_key = (
                             f"{candidate.can_id}:{hypothesis.byte_index}:"

@@ -10,8 +10,9 @@ import { GameButton } from "../../components/GameButton";
 import { getApiBaseUrl } from "../../store/canBusStore";
 
 type PlaybackDirection = "start" | "end" | "next" | "prev" | "nearest";
-type ValidationStatus = "positive" | "negative" | "uncertain";
-type PlaybackRole = "constant" | "rolling_counter" | "checksum_candidate";
+export type PlaybackValidationStatus = "positive" | "negative" | "uncertain";
+export type PlaybackRole = "constant" | "rolling_counter" | "checksum_candidate";
+type ValidationStatus = PlaybackValidationStatus;
 
 type PlaybackMarker = {
     id: string;
@@ -93,7 +94,7 @@ type PlaybackResponse = {
     error?: string;
 };
 
-type SavedHypothesis = {
+export type SavedHypothesis = {
     id: string;
     can_id: number;
     can_id_hex?: string;
@@ -102,10 +103,13 @@ type SavedHypothesis = {
     hypothesis_kind: string;
     confidence: number;
     source: string;
+    action_group?: string | null;
     validation_status: "unreviewed" | ValidationStatus;
     notes?: string | null;
     evidence?: Record<string, unknown>;
     metadata?: Record<string, unknown>;
+    created_at?: string | null;
+    updated_at?: string | null;
 };
 
 type HypothesesResponse = {
@@ -123,6 +127,9 @@ type SelectedByte = {
 type SignalReconPlaybackProps = {
     sessionId: string | null;
     disabled?: boolean;
+    initialSelectedCanIds?: number[];
+    selectionRequestKey?: number;
+    onHypothesisSaved?: (hypothesis: SavedHypothesis) => void;
 };
 
 const SPEEDS = [0.1, 0.25, 0.5, 1, 2, 5, 10, 25, 50, 100];
@@ -239,9 +246,43 @@ function decodedText(value: unknown) {
     }
 }
 
+function hypothesisTimestamp(item: SavedHypothesis) {
+    const timestamp = Date.parse(item.updated_at ?? item.created_at ?? "");
+    return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+function hypothesisPriority(item: SavedHypothesis) {
+    if (item.source === "human" && !item.action_group) return 4;
+    if (item.source === "human") return 3;
+    if (item.validation_status !== "unreviewed") return 2;
+    return 1;
+}
+
+function latestFrameForCanId(
+    frames: PlaybackFrame[] | undefined,
+    canId: number,
+) {
+    if (!frames?.length) return null;
+    let latest: PlaybackFrame | null = null;
+    for (const frame of frames) {
+        if (frame.can_id !== canId) continue;
+        if (
+            !latest
+            || frame.timestamp_ms > latest.timestamp_ms
+            || (frame.timestamp_ms === latest.timestamp_ms && frame.id > latest.id)
+        ) {
+            latest = frame;
+        }
+    }
+    return latest;
+}
+
 export function SignalReconPlayback({
     sessionId,
     disabled = false,
+    initialSelectedCanIds = [],
+    selectionRequestKey = 0,
+    onHypothesisSaved,
 }: SignalReconPlaybackProps) {
     const [meta, setMeta] = useState<PlaybackMeta | null>(null);
     const [slices, setSlices] = useState<PlaybackSlice[]>([]);
@@ -257,7 +298,9 @@ export function SignalReconPlayback({
     const [speed, setSpeed] = useState(1);
     const [toleranceMs, setToleranceMs] = useState(1);
 
-    const [selectedCanIds, setSelectedCanIds] = useState<number[]>([]);
+    const [selectedCanIds, setSelectedCanIds] = useState<number[]>(() =>
+        [...new Set(initialSelectedCanIds)].sort((a, b) => a - b),
+    );
     const [idFilterSearch, setIdFilterSearch] = useState("");
     const [idMenuOpen, setIdMenuOpen] = useState(false);
     const [search, setSearch] = useState("");
@@ -280,6 +323,9 @@ export function SignalReconPlayback({
     const requestSequence = useRef(0);
     const idMenuRef = useRef<HTMLDivElement | null>(null);
     const currentSlice = slices[sliceIndex] ?? null;
+    const playbackAtEnd = Boolean(currentSlice)
+        && !hasAfter
+        && sliceIndex + 1 >= slices.length;
     const markers = useMemo(
         () => [...(meta?.markers ?? [])].sort(
             (left, right) => left.timestamp_ms - right.timestamp_ms,
@@ -329,6 +375,42 @@ export function SignalReconPlayback({
         }
         return currentSlice.frames;
     }, [currentSlice, persistentSelectionActive]);
+
+    const selectedByteFrame = useMemo(() => {
+        if (!selectedByte) return null;
+        const canId = selectedByte.frame.can_id;
+        return (
+            latestFrameForCanId(displayFrames, canId)
+            ?? latestFrameForCanId(currentSlice?.state_frames, canId)
+            ?? latestFrameForCanId(currentSlice?.frames, canId)
+            ?? selectedByte.frame
+        );
+    }, [currentSlice, displayFrames, selectedByte]);
+
+    const selectedByteSuggestions = useMemo(() => {
+        if (!selectedByteFrame || !selectedByte) return [];
+        return hypotheses
+            .filter((item) =>
+                item.can_id === selectedByteFrame.can_id
+                && item.byte_index === selectedByte.byteIndex
+                && item.source !== "human"
+                && item.validation_status !== "negative",
+            )
+            .sort((left, right) =>
+                right.confidence - left.confidence
+                || hypothesisTimestamp(right) - hypothesisTimestamp(left),
+            );
+    }, [hypotheses, selectedByte, selectedByteFrame]);
+
+    const topSelectedByteSuggestion = selectedByteSuggestions[0] ?? null;
+
+    useEffect(() => {
+        if (!initialSelectedCanIds.length) return;
+        setPlaying(false);
+        setSelectedCanIds(
+            [...new Set(initialSelectedCanIds)].sort((a, b) => a - b),
+        );
+    }, [initialSelectedCanIds, selectionRequestKey]);
 
     useEffect(() => {
         if (!idMenuOpen) return;
@@ -463,7 +545,6 @@ export function SignalReconPlayback({
             setMatchingFrameCount(data.matching_frame_count ?? 0);
             setMatchingSliceCount(data.matching_slice_count ?? 0);
             setLastBucketMs(data.last_bucket_ms);
-            setSelectedByte(null);
         } catch (err) {
             if (sequence !== requestSequence.current) return;
             setError(err instanceof Error ? err.message : "Playback request failed.");
@@ -522,8 +603,8 @@ export function SignalReconPlayback({
 
     const stopPlayback = useCallback(async () => {
         setPlaying(false);
+        setLoop(false)
         setActiveMarkerId(null);
-        setSelectedByte(null);
         await loadPage("start");
     }, [loadPage]);
 
@@ -543,7 +624,6 @@ export function SignalReconPlayback({
         }
         if (sliceIndex + 1 < slices.length) {
             setSliceIndex((index) => index + 1);
-            setSelectedByte(null);
             return;
         }
         if (hasAfter) {
@@ -564,13 +644,25 @@ export function SignalReconPlayback({
         }
         if (sliceIndex > 0) {
             setSliceIndex((index) => Math.max(0, index - 1));
-            setSelectedByte(null);
             return;
         }
         if (hasBefore) {
             await loadPage("prev", currentSlice.bucket_ms);
         }
     }, [currentSlice, hasBefore, loadPage, sliceIndex]);
+
+    const handlePlayPause = useCallback(async () => {
+        if (playing) {
+            setPlaying(false);
+            return;
+        }
+
+        if (playbackAtEnd) {
+            await loadPage("start");
+        }
+
+        setPlaying(true);
+    }, [loadPage, playbackAtEnd, playing]);
 
     useEffect(() => {
         if (!playing || loading || disabled || !currentSlice) return;
@@ -627,7 +719,6 @@ export function SignalReconPlayback({
 
     const seekToMarker = async (marker: PlaybackMarker) => {
         setActiveMarkerId(marker.id);
-        setSelectedByte(null);
         await seek(marker.timestamp_ms);
     };
 
@@ -658,21 +749,44 @@ export function SignalReconPlayback({
         targetByteIndex: number,
         kind: PlaybackRole,
     ) => {
-        const matches = hypotheses.filter(
-            (item) => item.can_id === canId
-                && item.byte_index === targetByteIndex
-                && item.hypothesis_kind === kind,
-        );
-        return matches.find((item) => item.source === "human") ?? matches[0] ?? null;
+        const matches = hypotheses
+            .filter(
+                (item) => item.can_id === canId
+                    && item.byte_index === targetByteIndex
+                    && item.hypothesis_kind === kind,
+            )
+            .sort((left, right) =>
+                hypothesisPriority(right) - hypothesisPriority(left)
+                || hypothesisTimestamp(right) - hypothesisTimestamp(left)
+                || right.confidence - left.confidence,
+            );
+        return matches[0] ?? null;
     }, [hypotheses]);
+
+    const suggestionFor = useCallback((
+        canId: number,
+        targetByteIndex: number,
+        kind: PlaybackRole,
+    ) => hypotheses
+        .filter((item) =>
+            item.can_id === canId
+            && item.byte_index === targetByteIndex
+            && item.hypothesis_kind === kind
+            && item.source !== "human"
+            && item.validation_status !== "negative",
+        )
+        .sort((left, right) =>
+            right.confidence - left.confidence
+            || hypothesisTimestamp(right) - hypothesisTimestamp(left),
+        )[0] ?? null, [hypotheses]);
 
     const validateRole = async (
         role: PlaybackRole,
         validationStatus: ValidationStatus,
     ) => {
-        if (!sessionId || !selectedByte) return;
+        if (!sessionId || !selectedByte || !selectedByteFrame) return;
 
-        const key = `${selectedByte.frame.can_id}:${selectedByte.byteIndex}:${role}`;
+        const key = `${selectedByteFrame.can_id}:${selectedByte.byteIndex}:${role}`;
         setSavingRole(key);
         setRoleFeedback((current) => ({
             ...current,
@@ -681,7 +795,7 @@ export function SignalReconPlayback({
         setError(null);
 
         const existing = hypothesisFor(
-            selectedByte.frame.can_id,
+            selectedByteFrame.can_id,
             selectedByte.byteIndex,
             role,
         );
@@ -695,22 +809,22 @@ export function SignalReconPlayback({
                         "Content-Type": "application/json",
                     },
                     body: JSON.stringify({
-                        can_id: selectedByte.frame.can_id,
+                        can_id: selectedByteFrame.can_id,
                         byte_index: selectedByte.byteIndex,
                         bit_mask: existing?.bit_mask ?? null,
                         hypothesis_kind: role,
-                        action_group: "baseline_playback_review",
+                        action_group: null,
                         validation_status: validationStatus,
                         confidence: existing?.confidence ?? 0.75,
                         notes: existing?.notes
-                            ?? `Playback review of ${selectedByte.frame.can_id_hex} B${selectedByte.byteIndex}.`,
+                            ?? `Playback review of ${selectedByteFrame.can_id_hex} B${selectedByte.byteIndex}.`,
                         evidence: {
                             ...(existing?.evidence ?? {}),
-                            playback_frame_id: selectedByte.frame.id,
-                            playback_timestamp_ms: selectedByte.frame.timestamp_ms,
-                            observed_value: selectedByte.frame.bytes[selectedByte.byteIndex],
-                            previous_value: selectedByte.frame.previous_bytes?.[selectedByte.byteIndex] ?? null,
-                            changed_in_frame: selectedByte.frame.delta_positions.includes(selectedByte.byteIndex),
+                            playback_frame_id: selectedByteFrame.id,
+                            playback_timestamp_ms: selectedByteFrame.timestamp_ms,
+                            observed_value: selectedByteFrame.bytes[selectedByte.byteIndex],
+                            previous_value: selectedByteFrame.previous_bytes?.[selectedByte.byteIndex] ?? null,
+                            changed_in_frame: selectedByteFrame.delta_positions.includes(selectedByte.byteIndex),
                             timestamp_authority: "server",
                         },
                         metadata: {
@@ -727,10 +841,51 @@ export function SignalReconPlayback({
                     data.detail ?? data.error ?? `Byte-role save failed with HTTP ${response.status}.`,
                 );
             }
+            const savedHypothesis: SavedHypothesis = {
+                ...(existing ?? {}),
+                id: String(data.id ?? existing?.id ?? key),
+                can_id: selectedByteFrame.can_id,
+                can_id_hex: selectedByteFrame.can_id_hex,
+                byte_index: selectedByte.byteIndex,
+                bit_mask: existing?.bit_mask ?? null,
+                hypothesis_kind: role,
+                action_group: null,
+                confidence: existing?.confidence ?? 0.75,
+                source: "human",
+                validation_status: validationStatus,
+                notes: existing?.notes
+                    ?? `Playback review of ${selectedByteFrame.can_id_hex} B${selectedByte.byteIndex}.`,
+                evidence: {
+                    ...(existing?.evidence ?? {}),
+                    playback_frame_id: selectedByteFrame.id,
+                    playback_timestamp_ms: selectedByteFrame.timestamp_ms,
+                    observed_value: selectedByteFrame.bytes[selectedByte.byteIndex],
+                    previous_value: selectedByteFrame.previous_bytes?.[selectedByte.byteIndex] ?? null,
+                    changed_in_frame: selectedByteFrame.delta_positions.includes(selectedByte.byteIndex),
+                    timestamp_authority: "server",
+                },
+                metadata: {
+                    ...(existing?.metadata ?? {}),
+                    source: "signal-recon-playback",
+                    manual_override: true,
+                },
+                updated_at: new Date().toISOString(),
+            };
+            setHypotheses((current) => [
+                ...current.filter((item) => !(
+                    item.source === "human"
+                    && item.can_id === savedHypothesis.can_id
+                    && item.byte_index === savedHypothesis.byte_index
+                    && item.hypothesis_kind === savedHypothesis.hypothesis_kind
+                    && (item.bit_mask ?? null) === (savedHypothesis.bit_mask ?? null)
+                )),
+                savedHypothesis,
+            ]);
             setRoleFeedback((current) => ({
                 ...current,
                 [key]: { validationStatus, state: "saved" },
             }));
+            onHypothesisSaved?.(savedHypothesis);
             await loadHypotheses();
         } catch (err) {
             setRoleFeedback((current) => ({
@@ -769,7 +924,7 @@ export function SignalReconPlayback({
                         <GameButton onPress={() => void goToStart()} disabled={loading || disabled} className="rounded border border-slate-500 bg-slate-900 px-1.5 py-0.5 text-sm disabled:opacity-40" title="Go to start">|◀</GameButton>
                         <GameButton onPress={() => void stepBackward()} disabled={loading || disabled || (!hasBefore && sliceIndex <= 0)} className="rounded border border-slate-500 bg-slate-900 px-1.5 py-0.5 text-sm disabled:opacity-40" title="Previous time slice">◀</GameButton>
                         <GameButton
-                            onPress={() => setPlaying((value) => !value)}
+                            onPress={() => void handlePlayPause()}
                             disabled={loading || disabled || !currentSlice}
                             className={`rounded border flex items-center justify-center w-6 px-1.5 py-0.5 text-sm disabled:opacity-40 ${
                                 playing
@@ -783,7 +938,19 @@ export function SignalReconPlayback({
                         <GameButton onPress={() => void stepForward()} disabled={loading || disabled || (!hasAfter && sliceIndex + 1 >= slices.length)} className="rounded border border-slate-500 bg-slate-900 px-1.5 py-0.5 text-sm disabled:opacity-40" title="Next time slice">▶</GameButton>
                         <GameButton onPress={() => void goToEnd()} disabled={loading || disabled} className="rounded border border-slate-500 bg-slate-900 px-1.5 py-0.5 text-sm disabled:opacity-40" title="Go to end">▶|</GameButton>
                         <GameButton onPress={() => void stopPlayback()} disabled={loading || disabled} className="rounded border border-red-300/40 bg-red-500/10 px-1.5 py-0.5 text-sm disabled:opacity-40" title="Stop and reset to start">■</GameButton>
-                        <GameButton onPress={() => setLoop((value) => !value)} disabled={disabled} className={`rounded border px-1.5 py-0.5 text-sm ${loop ? "border-cyan-300 bg-cyan-500/20 text-cyan-100" : "border-slate-600 bg-slate-900 text-slate-400"}`} title="Repeat continuously">↻</GameButton>
+                        <GameButton
+                            onPress={() => setLoop((value) => !value)}
+                            disabled={disabled}
+                            className={`rounded border px-1.5 py-0.5 text-sm ${loop ? "border-cyan-300 bg-cyan-500/20 text-cyan-100" : "border-slate-600 bg-slate-900 text-slate-400"}`}
+                            title="Repeat continuously"
+                        >
+                            <span
+                                aria-hidden="true"
+                                className={`inline-block ${loop ? "animate-spin [animation-duration:3s]" : ""}`}
+                            >
+                                ↻
+                            </span>
+                        </GameButton>
 
                         <select value={speed} onChange={(event: ChangeEvent<HTMLSelectElement>) => setSpeed(Number(event.target.value))} className="rounded border border-slate-600 bg-slate-950 px-0.5 py-1 text-xs text-green-100">
                             {SPEEDS.map((value) => <option key={value} value={value}>{value}x</option>)}
@@ -838,15 +1005,21 @@ export function SignalReconPlayback({
                             <span>{formatTime(progressEnd)}</span>
                         </div>
 
-                        <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1 pb-1">
-                            <GameButton
-                                onPress={() => void stepMarker(-1)}
-                                disabled={loading || disabled || !markers.length || activeMarkerIndex === 0}
-                                className="rounded border border-slate-600 bg-slate-900 flex items-center h-8 text-[10px] text-slate-300 disabled:opacity-30"
-                                title="Previous mission marker"
-                            >
-                                ◀ MARK
-                            </GameButton>
+                        <div className={`grid items-center gap-1 pb-1 ${
+                            markers.length
+                                ? "grid-cols-[auto_minmax(0,1fr)_auto]"
+                                : "grid-cols-1"
+                        }`}>
+                            {markers.length > 0 && (
+                                <GameButton
+                                    onPress={() => void stepMarker(-1)}
+                                    disabled={loading || disabled || activeMarkerIndex === 0}
+                                    className="rounded border border-slate-600 bg-slate-900 flex items-center h-8 text-[10px] text-slate-300 disabled:opacity-30"
+                                    title="Previous mission marker"
+                                >
+                                    ◀ MARK
+                                </GameButton>
+                            )}
 
                             <div
                                 className={`min-w-0 rounded border h-8 flex flex-col px-0.5 justify-center text-center text-[10px] font-black ${
@@ -876,14 +1049,16 @@ export function SignalReconPlayback({
                                 )}
                             </div>
 
-                            <GameButton
-                                onPress={() => void stepMarker(1)}
-                                disabled={loading || disabled || !markers.length || activeMarkerIndex === markers.length - 1}
-                                className="rounded border border-slate-600 bg-slate-900 h-8 flex items-center text-[10px] text-slate-300 disabled:opacity-30"
-                                title="Next mission marker"
-                            >
-                                MARK ▶
-                            </GameButton>
+                            {markers.length > 0 && (
+                                <GameButton
+                                    onPress={() => void stepMarker(1)}
+                                    disabled={loading || disabled || activeMarkerIndex === markers.length - 1}
+                                    className="rounded border border-slate-600 bg-slate-900 h-8 flex items-center text-[10px] text-slate-300 disabled:opacity-30"
+                                    title="Next mission marker"
+                                >
+                                    MARK ▶
+                                </GameButton>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -1072,16 +1247,21 @@ export function SignalReconPlayback({
                                                     const byteAvailable = !unavailable && index < frame.dlc && typeof value === "number";
                                                     const changed = byteAvailable && !cold && frame.delta_positions.includes(index);
                                                     const selected = byteAvailable
-                                                        && selectedByte?.frame.id === frame.id
-                                                        && selectedByte.byteIndex === index;
+                                                        && selectedByteFrame?.can_id === frame.can_id
+                                                        && selectedByte?.byteIndex === index;
                                                     return (
                                                         <button
                                                             key={index}
                                                             type="button"
                                                             disabled={!byteAvailable}
                                                             onClick={() => {
-                                                                setPlaying(false);
-                                                                setSelectedByte({ frame, byteIndex: index });
+                                                                setSelectedByte((current) =>
+                                                                    current
+                                                                    && current.frame.can_id === frame.can_id
+                                                                    && current.byteIndex === index
+                                                                        ? null
+                                                                        : { frame, byteIndex: index },
+                                                                );
                                                             }}
                                                             className={`${BYTE_CELL_CLASS} ${selected
                                                                 ? "border-yellow-200 bg-yellow-500/20 text-yellow-100"
@@ -1127,7 +1307,7 @@ export function SignalReconPlayback({
                     )}
                 </div>
 
-                {selectedByte && (
+                {selectedByte && selectedByteFrame && (
                 <aside className="min-h-0 overflow-y-auto border border-cyan-300/20 bg-slate-950/95">
                     <div className="sticky top-0 z-10 flex items-center justify-between border-b border-cyan-300/20 bg-slate-950 px-2 py-1">
                         <p className="text-[10px] tracking-[0.25em] text-cyan-300">
@@ -1145,13 +1325,13 @@ export function SignalReconPlayback({
                     <div className="mt-1 space-y-1">
                             <div className="border border-green-300/30 bg-green-500/10 px-2 pb-2">
                                 <p className="font-black text-green-100">
-                                    {selectedByte.frame.can_id_hex} / B{selectedByte.byteIndex}
+                                    {selectedByteFrame.can_id_hex} / B{selectedByte.byteIndex}
                                 </p>
                                 <div className="grid grid-cols-2 gap-0.5 text-[10px] text-slate-400">
-                                    <p>current: <span className="text-cyan-200">0x{byteHex(selectedByte.frame.bytes[selectedByte.byteIndex])} / {selectedByte.frame.bytes[selectedByte.byteIndex]}</span></p>
-                                    <p>previous: <span className="text-slate-200">{selectedByte.frame.previous_bytes ? `0x${byteHex(selectedByte.frame.previous_bytes[selectedByte.byteIndex])} / ${selectedByte.frame.previous_bytes[selectedByte.byteIndex]}` : "none"}</span></p>
-                                    <p>changed: <span className={selectedByte.frame.delta_positions.includes(selectedByte.byteIndex) ? "text-cyan-200" : "text-slate-500"}>{selectedByte.frame.delta_positions.includes(selectedByte.byteIndex) ? "YES" : "NO"}</span></p>
-                                    <p>server time: <span className="text-slate-200">{formatTime(selectedByte.frame.timestamp_ms)}</span></p>
+                                    <p>current: <span className="text-cyan-200">0x{byteHex(selectedByteFrame.bytes[selectedByte.byteIndex])} / {selectedByteFrame.bytes[selectedByte.byteIndex]}</span></p>
+                                    <p>previous: <span className="text-slate-200">{selectedByteFrame.previous_bytes ? `0x${byteHex(selectedByteFrame.previous_bytes[selectedByte.byteIndex])} / ${selectedByteFrame.previous_bytes[selectedByte.byteIndex]}` : "none"}</span></p>
+                                    <p>changed: <span className={selectedByteFrame.delta_positions.includes(selectedByte.byteIndex) ? "text-cyan-200" : "text-slate-500"}>{selectedByteFrame.delta_positions.includes(selectedByte.byteIndex) ? "YES" : "NO"}</span></p>
+                                    <p>server time: <span className="text-slate-200">{formatTime(selectedByteFrame.timestamp_ms)}</span></p>
                                 </div>
                                 <div className="rounded border border-cyan-300/20 bg-black/30 p-2">
                                     <div className="grid grid-cols-[58px_repeat(8,minmax(0,1fr))] gap-1 text-center text-[9px]">
@@ -1160,13 +1340,13 @@ export function SignalReconPlayback({
                                             <span key={bit} className="text-slate-500">{bit}</span>
                                         ))}
                                         <span className="text-left text-slate-500">previous</span>
-                                        {bitString(selectedByte.frame.previous_bytes?.[selectedByte.byteIndex]).split("").map((bit, index) => (
+                                        {bitString(selectedByteFrame.previous_bytes?.[selectedByte.byteIndex]).split("").map((bit, index) => (
                                             <span key={`previous-${index}`} className="rounded border border-slate-700 bg-slate-900 py-0.5 text-slate-300">{bit}</span>
                                         ))}
                                         <span className="text-left text-cyan-300">current</span>
-                                        {bitString(selectedByte.frame.bytes[selectedByte.byteIndex]).split("").map((bit, index) => {
-                                            const previousValue = selectedByte.frame.previous_bytes?.[selectedByte.byteIndex];
-                                            const currentValue = selectedByte.frame.bytes[selectedByte.byteIndex];
+                                        {bitString(selectedByteFrame.bytes[selectedByte.byteIndex]).split("").map((bit, index) => {
+                                            const previousValue = selectedByteFrame.previous_bytes?.[selectedByte.byteIndex];
+                                            const currentValue = selectedByteFrame.bytes[selectedByte.byteIndex];
                                             const mask = typeof previousValue === "number" ? previousValue ^ currentValue : 0;
                                             const bitNumber = 7 - index;
                                             const changed = Boolean(mask & (1 << bitNumber));
@@ -1182,21 +1362,43 @@ export function SignalReconPlayback({
                                     </div>
                                     <p className="mt-1 text-[10px] text-slate-500">
                                         XOR mask: <span className="font-black text-yellow-200">0x{byteHex(
-                                            typeof selectedByte.frame.previous_bytes?.[selectedByte.byteIndex] === "number"
-                                                ? selectedByte.frame.previous_bytes[selectedByte.byteIndex] ^ selectedByte.frame.bytes[selectedByte.byteIndex]
+                                            typeof selectedByteFrame.previous_bytes?.[selectedByte.byteIndex] === "number"
+                                                ? selectedByteFrame.previous_bytes[selectedByte.byteIndex] ^ selectedByteFrame.bytes[selectedByte.byteIndex]
                                                 : 0,
                                         )}</span> · yellow bits changed from the previous frame for this CAN ID
                                     </p>
+                                </div>
+                                <div className="mt-1 border border-cyan-300/20 bg-cyan-500/5 px-2 py-1 text-[10px]">
+                                    {topSelectedByteSuggestion ? (
+                                        <>
+                                            <p className="font-black text-cyan-200">
+                                                AI SUGGESTION · {topSelectedByteSuggestion.hypothesis_kind.replace(/_/g, " ").toUpperCase()} · {Math.round(topSelectedByteSuggestion.confidence * 100)}%
+                                                {typeof topSelectedByteSuggestion.bit_mask === "number"
+                                                    ? ` · MASK 0x${topSelectedByteSuggestion.bit_mask.toString(16).toUpperCase().padStart(2, "0")}`
+                                                    : ""}
+                                            </p>
+                                            <p className="text-slate-500">
+                                                {topSelectedByteSuggestion.notes ?? "No explanation was persisted for this suggestion."}
+                                            </p>
+                                        </>
+                                    ) : (
+                                        <p className="text-slate-500">No persisted AI byte-role suggestion for this byte yet.</p>
+                                    )}
                                 </div>
                             </div>
 
                             {ROLE_OPTIONS.map((role) => {
                                 const saved = hypothesisFor(
-                                    selectedByte.frame.can_id,
+                                    selectedByteFrame.can_id,
                                     selectedByte.byteIndex,
                                     role.kind,
                                 );
-                                const roleKey = `${selectedByte.frame.can_id}:${selectedByte.byteIndex}:${role.kind}`;
+                                const suggestion = suggestionFor(
+                                    selectedByteFrame.can_id,
+                                    selectedByte.byteIndex,
+                                    role.kind,
+                                );
+                                const roleKey = `${selectedByteFrame.can_id}:${selectedByte.byteIndex}:${role.kind}`;
                                 const feedback = roleFeedback[roleKey];
                                 const saving = savingRole === roleKey || feedback?.state === "saving";
                                 const effectiveStatus = feedback?.state !== "error"
@@ -1218,8 +1420,13 @@ export function SignalReconPlayback({
                                                 {statusLabel}
                                             </span>
                                         </div>
-                                        {saved?.notes && (
-                                            <p className="mt-2 text-[10px] text-cyan-100/70">auto: {saved.notes}</p>
+                                        {suggestion && (
+                                            <p className="mt-1 text-[10px] text-cyan-100/70">
+                                                suggested {Math.round(suggestion.confidence * 100)}% · {suggestion.notes ?? "auto analysis"}
+                                            </p>
+                                        )}
+                                        {saved?.source === "human" && saved.notes && (
+                                            <p className="mt-1 text-[10px] text-green-100/70">saved review: {saved.notes}</p>
                                         )}
                                         <div className="grid grid-cols-3 gap-1">
                                             <GameButton onPress={() => void validateRole(role.kind, "positive")} disabled={saving} className={`rounded border px-1.5 py-0.5 text-[10px] disabled:opacity-40 ${effectiveStatus === "positive" ? "border-green-200 bg-green-500/30 text-green-50 ring-1 ring-green-300" : "border-green-300/40 bg-green-500/10 text-green-100"}`}>{effectiveStatus === "positive" ? "✓ CONFIRMED" : "CONFIRM"}</GameButton>
