@@ -4,14 +4,14 @@ import { useEffect, useRef } from "react";
 
 const menuItems = [
   {
-    label: "START SANDBOX",
+    label: "SANDBOX",
     desc: "Load Blue Team base, city chunk, vehicle controls, and physics.",
     screen: "sandbox_setup" as const,
     link: "sandbox_setup" as const,
     variant: "primary" as const,
   },
   {
-    label: "SIGNAL RECON MODE",
+    label: "SIGNAL RECON",
     desc: "Baseline, action, validation, record, replay.",
     screen: "signal_recon_setup" as const,
     link: "signal_recon_setup" as const,

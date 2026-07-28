@@ -73,7 +73,7 @@ export function SignalReconSetup({collapsed, setCollapsed}: SignalReconProps) {
     return (
         <div className="absolute inset-0 z-10 flex flex-col w-screen text-cyan-100">
             <SignalReconHeader 
-                title="NIWC // CAN SIGNAL ACQUISITION"
+                title="REDLINE VECTOR // SIGNAL RECON"
                 subtitle="VEHICLE SELECTION"
                 collapsed={collapsed}
                 setCollapsed={setCollapsed}

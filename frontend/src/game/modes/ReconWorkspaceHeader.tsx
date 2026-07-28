@@ -118,55 +118,51 @@ export function ReconWorkspaceHeader({
     <header
       className={`relative z-30 shrink-0 border-b bg-slate-950/95 font-mono shadow-lg ${tone.border}  ${tone.glow} ${className}`}
     >
-      <div className="grid min-w-0 gap-1 px-2 py-1 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,32rem)] lg:items-start">
-        <div className="min-w-0">
-          <div className="flex min-w-0 items-center gap-2">
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-[9px] uppercase tracking-[0.22em] text-yellow-300 sm:text-[px]">
-                {eyebrow}
-              </p>
-              <h1 className={`truncate text-base font-black leading-tight sm:text-lg ${tone.title}`}>
-                {title}
-              </h1>
-              {status ? (
-                <div className="truncate text-[10px] leading-tight text-slate-500 sm:text-[11px]">
-                {status ?? "READY"}
-                </div>
-            ) : null}
-
+      
+      <div className="px-2 py-1 flex min-w-0 items-center gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[9px] uppercase tracking-[0.22em] text-yellow-300 sm:text-[px]">
+            {eyebrow}
+          </p>
+          <h1 className={`truncate text-base font-black leading-tight sm:text-lg ${tone.title}`}>
+            {title}
+          </h1>
+          {status ? (
+            <div className="truncate text-[10px] leading-tight text-slate-500 sm:text-[11px]">
+            {status ?? "READY"}
             </div>
-            
-                {actions ? (
-                <div className="min-w-0 lg:w-full">
-                    {actions}
-                </div>
-                ) : null}
-            </div>
+          ) : null}
         </div>
-
+      
+        {actions ? (
+        <div className="min-w-0">
+            {actions}
+        </div>
+        ) : null}
       </div>
 
-       {showTabs && tabs.length ? (
-          <nav
-            className="flex gap-1 py-0.5 bg-slate-900 border-slate-700 border"
-            aria-label="Workspace navigation"
+
+      {showTabs && tabs.length ? (
+      <nav
+        className="flex gap-1 py-0.5 bg-slate-900 border-slate-700 border"
+        aria-label="Workspace navigation"
+      >
+        {tabs.map((tab) => (
+          <GameButton
+            key={tab.id}
+            onPress={() => onTabChange?.(tab.id)}
+            disabled={tab.disabled}
+            title={tab.title}
+            className={`rounded-sm border px-1.5 text-[9px] font-black transition disabled:cursor-not-allowed disabled:opacity-30 sm:text-[10px] ${activeTab === tab.id
+              ? tone.active
+              : "border-slate-700 bg-slate-950/95 text-slate-400 hover:bg-slate-900 hover:text-slate-200"
+            }`}
           >
-            {tabs.map((tab) => (
-              <GameButton
-                key={tab.id}
-                onPress={() => onTabChange?.(tab.id)}
-                disabled={tab.disabled}
-                title={tab.title}
-                className={`rounded-sm border px-1.5 text-[9px] font-black transition disabled:cursor-not-allowed disabled:opacity-30 sm:text-[10px] ${activeTab === tab.id
-                  ? tone.active
-                  : "border-slate-700 bg-slate-950/95 text-slate-400 hover:bg-slate-900 hover:text-slate-200"
-                }`}
-              >
-                {tab.label}
-              </GameButton>
-            ))}
-          </nav>
-        ) : null}
+            {tab.label}
+          </GameButton>
+        ))}
+      </nav>
+    ) : null}
     </header>
   );
 }
