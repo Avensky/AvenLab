@@ -2289,7 +2289,7 @@ export function SignalReconMission({
     );
 
     return (
-        <div className="game-ui pb-4 h-full relative flex w-full flex-col overflow-hidden bg-[#020617] text-green-100">
+        <div className="game-ui h-full relative flex w-full flex-col overflow-hidden bg-[#020617] text-green-100">
             <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(34,197,94,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(34,197,94,0.05)_1px,transparent_1px)] bg-[size:32px_32px]" />
 
             <div className="game-ui h-full relative z-10 flex justify-between w-full flex-col overflow-hidden font-mono">
