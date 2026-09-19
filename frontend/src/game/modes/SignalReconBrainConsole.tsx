@@ -529,8 +529,8 @@ function ReadinessPanel({
     const counts = readiness?.counts ?? { positive: 0, negative: 0, uncertain: 0 };
 
     return (
-        <div className="rounded-sm border border-purple-300/30 bg-purple-500/10 p-3 text-purple-100">
-            <div className="mb-2 flex items-center justify-between gap-1">
+        <div className="rounded-sm border border-purple-300/30 bg-purple-500/10 px-2 py-0.5 text-purple-100">
+            <div className=" flex items-center justify-between gap-1">
                 <div>
                     <p className="text-[10px] tracking-[0.25em] text-purple-200">SUPERVISED LEARNING</p>
                     <p className="text-sm font-black">MODEL READINESS</p>
@@ -544,32 +544,32 @@ function ReadinessPanel({
                 </GameButton>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4 lg:grid-cols-7">
-                <div className="rounded-sm border border-green-300/20 bg-black/20 p-2">
+            <div className="grid grid-cols-4 gap-0.5 text-xs lg:grid-cols-7">
+                <div className="rounded-sm border border-green-300/20 bg-black/20 px-2">
                     <p className="text-slate-500">positive</p>
                     <p className="text-xl font-black text-green-200">{counts.positive}</p>
                 </div>
-                <div className="rounded-sm border border-red-300/20 bg-black/20 p-2">
+                <div className="rounded-sm border border-red-300/20 bg-black/20 px-2">
                     <p className="text-slate-500">negative</p>
                     <p className="text-xl font-black text-red-200">{counts.negative}</p>
                 </div>
-                <div className="rounded-sm border border-yellow-300/20 bg-black/20 p-2">
+                <div className="rounded-sm border border-yellow-300/20 bg-black/20 px-2">
                     <p className="text-slate-500">uncertain</p>
                     <p className="text-xl font-black text-yellow-200">{counts.uncertain}</p>
                 </div>
-                <div className="rounded-sm border border-cyan-300/20 bg-black/20 p-2">
+                <div className="rounded-sm border border-cyan-300/20 bg-black/20 px-2">
                     <p className="text-slate-500">sessions</p>
                     <p className="text-xl font-black text-cyan-200">{readiness?.distinct_sessions ?? 0}</p>
                 </div>
-                <div className="rounded-sm border border-slate-600 bg-black/20 p-2">
+                <div className="rounded-sm border border-slate-600 bg-black/20 px-2">
                     <p className="text-slate-500">ready</p>
                     <p className={`text-xl font-black ${readiness?.ready_to_train ? "text-green-200" : "text-slate-400"}`}>
                         {readiness?.ready_to_train ? "YES" : "NO"}
                     </p>
                 </div>
-                <div className="col-span-2 rounded-sm border border-slate-600 bg-black/20 p-2">
+                <div className="col-span-3 lg:col-span-2 rounded-sm border border-slate-600 bg-black/20 px-2">
                     <p className="text-slate-500">active model</p>
-                    <p className="truncate text-sm font-black text-purple-100">
+                    <p className="truncate text-xl font-black text-purple-100">
                         {activeModel ? shortSessionId(activeModel.id) : "NONE"}
                     </p>
                     {activeModel && (
@@ -581,7 +581,7 @@ function ReadinessPanel({
             </div>
 
             {!readiness?.ready_to_train && readiness?.missing && (
-                <p className="mt-2 text-[10px] text-purple-100/70">
+                <p className="mt-0.5 text-[10px] text-purple-100/70">
                     missing: {readiness.missing.total} total · {readiness.missing.positive} positive · {readiness.missing.negative} negative · {readiness.missing.distinct_sessions} sessions
                 </p>
             )}
@@ -860,7 +860,7 @@ export function SignalReconBrainConsole({
                         <div className="space-y-1">
                             <ReadinessPanel readiness={mlReadiness} activeModel={activeModel} loading={mlLoading} onRefresh={onRefreshMl} />
 
-                            <div className="rounded-sm border border-cyan-300/30 bg-cyan-500/10 p-3 text-cyan-100">
+                            <div className="rounded-sm border border-cyan-300/30 bg-cyan-500/10 px-2 py-0.5 text-cyan-100">
                                 <div className="flex flex-wrap items-center justify-between gap-1">
                                     <div>
                                         <p className="text-[10px] tracking-[0.24em] text-cyan-200">VECTOR MEMORY</p>
@@ -897,7 +897,7 @@ export function SignalReconBrainConsole({
                                 )}
                             </div>
 
-                            <div className="rounded-sm border border-green-400/20 bg-slate-900/80 p-4">
+                            <div className="rounded-sm border border-green-400/20 bg-slate-900/80 px-2 py-1">
                                 <p className="text-xs text-yellow-300">{resultModeLabel}</p>
                                 {isBaselineProfile ? (
                                     <div className="mt-2 grid gap-1 sm:grid-cols-[0.75fr_1.25fr]">
@@ -963,7 +963,7 @@ export function SignalReconBrainConsole({
                                 )}
                             </div>
 
-                            <div className="rounded-sm border border-cyan-300/20 bg-cyan-500/5 p-3 text-xs text-cyan-100">
+                            <div className="rounded-sm border border-cyan-300/20 bg-cyan-500/5 px-2 py-1 text-xs text-cyan-100">
                                 <div className="grid gap-2 sm:grid-cols-3">
                                     <div>
                                         <p className="text-slate-500">Evidence semantics</p>
@@ -1008,11 +1008,11 @@ export function SignalReconBrainConsole({
                                 )}
                             </div>
 
-                            <div className="grid gap-2 text-sm sm:grid-cols-4">
-                                <div className="rounded-sm border border-green-400/20 bg-slate-900/80 p-3"><p className="text-slate-500">frames</p><p className="text-2xl font-black">{analysis?.frames_analyzed ?? 0}</p></div>
-                                <div className="rounded-sm border border-green-400/20 bg-slate-900/80 p-3"><p className="text-slate-500">markers</p><p className="text-2xl font-black">{analysis?.markers ?? 0}</p></div>
-                                <div className="rounded-sm border border-green-400/20 bg-slate-900/80 p-3"><p className="text-slate-500">mode</p><p className="text-lg font-black">{busMode.toUpperCase()}</p></div>
-                                <div className="rounded-sm border border-green-400/20 bg-slate-900/80 p-3"><p className="text-slate-500">LLM</p><p className="text-2xl font-black">{analysis?.llm_available ? "ON" : "OFF"}</p></div>
+                            <div className="grid gap-0.5 text-sm grid-cols-2 lg:grid-cols-4">
+                                <div className="rounded-sm border border-green-400/20 bg-slate-900/80 px-2 py-0.5"><p className="text-slate-500">frames</p><p className="text-2xl font-black">{analysis?.frames_analyzed ?? 0}</p></div>
+                                <div className="rounded-sm border border-green-400/20 bg-slate-900/80 px-2 py-0.5"><p className="text-slate-500">markers</p><p className="text-2xl font-black">{analysis?.markers ?? 0}</p></div>
+                                <div className="rounded-sm border border-green-400/20 bg-slate-900/80 px-2 py-0.5"><p className="text-slate-500">mode</p><p className="text-lg font-black">{busMode.toUpperCase()}</p></div>
+                                <div className="rounded-sm border border-green-400/20 bg-slate-900/80 px-2 py-0.5"><p className="text-slate-500">LLM</p><p className="text-2xl font-black">{analysis?.llm_available ? "ON" : "OFF"}</p></div>
                             </div>
                         </div>
                     )}
@@ -1089,8 +1089,8 @@ export function SignalReconBrainConsole({
                                     || saveFeedback?.state === "saving";
 
                                 return (
-                                    <div key={candidate.can_id_hex} className={`rounded-sm border p-3 ${candidateTone(candidate.confidence)}`}>
-                                        <div className="flex flex-wrap items-start justify-between gap-1">
+                                    <div key={candidate.can_id_hex} className={`rounded-sm border px-2 py-0.5 ${candidateTone(candidate.confidence)}`}>
+                                        <div className="flex flex-wrap items-start justify-between ">
                                             <div>
                                                 <p className="text-xl font-black">{candidate.can_id_hex}</p>
                                                 <p className="text-xs text-slate-500">
@@ -1129,11 +1129,11 @@ export function SignalReconBrainConsole({
                                             </div>
                                         </div>
 
-                                        <div className="mt-1 grid grid-cols-2 gap-2 text-xs lg:grid-cols-4">
-                                            <div className="rounded-sm border border-slate-700 bg-black/20 p-2"><p className="text-slate-500">Statistical evidence</p><p className="text-lg font-black">{percent(statisticalConfidence)}</p></div>
-                                            <div className="rounded-sm border border-slate-700 bg-black/20 p-2"><p className="text-slate-500">Baseline-adjusted evidence</p><p className="text-lg font-black">{percent(baselineAdjustedConfidence)}</p></div>
-                                            <div className="rounded-sm border border-slate-700 bg-black/20 p-2"><p className="text-slate-500">ML probability</p><p className="text-lg font-black">{percent(candidate.ml_probability)}</p></div>
-                                            <div className="rounded-sm border border-slate-700 bg-black/20 p-2"><p className="text-slate-500">Final evidence score</p><p className="text-lg font-black">{percent(candidate.confidence)}</p></div>
+                                        <div className="mt-1 grid grid-cols-2 gap-0.5 text-xs lg:grid-cols-4">
+                                            <div className="rounded-sm border border-slate-700 bg-black/20 px-2 py-0.5"><p className="text-slate-500">Statistical evidence</p><p className="text-lg font-black">{percent(statisticalConfidence)}</p></div>
+                                            <div className="rounded-sm border border-slate-700 bg-black/20 px-2 py-0.5"><p className="text-slate-500">Baseline-adjusted evidence</p><p className="text-lg font-black">{percent(baselineAdjustedConfidence)}</p></div>
+                                            <div className="rounded-sm border border-slate-700 bg-black/20 px-2 py-0.5"><p className="text-slate-500">ML probability</p><p className="text-lg font-black">{percent(candidate.ml_probability)}</p></div>
+                                            <div className="rounded-sm border border-slate-700 bg-black/20 px-2 py-0.5"><p className="text-slate-500">Final evidence score</p><p className="text-lg font-black">{percent(candidate.confidence)}</p></div>
                                         </div>
 
                                         {topFieldSignal && (
@@ -1187,7 +1187,7 @@ export function SignalReconBrainConsole({
                                                                     : "FIELD UNREVIEWED"}
                                                     </div>
                                                 )}
-                                                <div className="mt-2 grid grid-cols-3 gap-2">
+                                                <div className="mt-2 grid grid-cols-3 gap-0.5">
                                                     <GameButton
                                                         onPress={() => fieldReview && void submitHypothesisValidation(candidate, fieldReview, "positive")}
                                                         disabled={!fieldReview || fieldFeedback?.state === "saving"}
@@ -1340,9 +1340,9 @@ export function SignalReconBrainConsole({
                                         <div className="mt-1 grid grid-cols-8 gap-1">{byteCells(candidate.byte_change_counts)}</div>
 
                                         {Boolean(candidate.byte_role_hypotheses?.length) && (
-                                            <div className="mt-1 rounded-sm border border-cyan-300/20 bg-black/20 p-2">
-                                                <p className="mb-2 text-[10px] tracking-[0.18em] text-cyan-300">AUTO BYTE ROLES</p>
-                                                <div className="grid gap-1 sm:grid-cols-2 lg:grid-cols-4">
+                                            <div className=" bg-black/20">
+                                                <p className=" px-2 py-1 text-[10px] tracking-[0.18em] text-cyan-300">AUTO BYTE ROLES</p>
+                                                <div className="grid gap-0.5 grid-cols-2 lg:grid-cols-4">
                                                     {candidate.byte_role_hypotheses?.map((hypothesis) => {
                                                         const reviewKey = hypothesisReviewKey(candidate, hypothesis);
                                                         const feedback = hypothesisFeedback[reviewKey];
@@ -1359,46 +1359,50 @@ export function SignalReconBrainConsole({
                                                                 <span className="font-black">B{hypothesis.byte_index}</span>
                                                                 <span>{percent(hypothesis.confidence)}</span>
                                                             </div>
-                                                            <p className="mt-1 break-words font-bold">{hypothesis.hypothesis_kind.replace(/_/g, " ").toUpperCase()}</p>
-                                                            <p className="mt-1 text-slate-500">mask {formatMask(hypothesis.bit_mask)}</p>
-                                                            <p className="mt-1 font-black">
-                                                                {feedback?.state === "saving"
-                                                                    ? "SAVING REVIEW…"
-                                                                    : feedback?.state === "saved"
-                                                                        ? `✓ ${effectiveStatus?.toUpperCase()} SAVED`
-                                                                        : effectiveStatus && effectiveStatus !== "unreviewed"
+                                                            <div className="flex justify-between">
+                                                                <div>
+                                                                    <p className="mt-1 break-words font-bold">{hypothesis.hypothesis_kind.replace(/_/g, " ").toUpperCase()}</p>
+                                                                    <p className="mt-1 text-slate-500">mask {formatMask(hypothesis.bit_mask)}</p>
+                                                                    <p className="mt-1 font-black">
+                                                                        {feedback?.state === "saving"
+                                                                            ? "SAVING REVIEW…"
+                                                                            : feedback?.state === "saved"
+                                                                            ? `✓ ${effectiveStatus?.toUpperCase()} SAVED`
+                                                                            : effectiveStatus && effectiveStatus !== "unreviewed"
                                                                             ? `${effectiveStatus.toUpperCase()} · ${hypothesis.source === "human" ? "HUMAN" : "AUTO"}`
-                                                                            : hypothesis.source === "human" ? "HUMAN REVIEW" : "AUTO SUGGESTION"}
-                                                            </p>
-                                                            <div className="mt-2 grid grid-cols-3 gap-1">
-                                                                <GameButton
-                                                                    onPress={() => void submitHypothesisValidation(candidate, hypothesis, "positive")}
-                                                                    className={`rounded border px-1 py-0.5 text-[9px] ${effectiveStatus === "positive" ? "border-green-200 bg-green-500/30 text-green-50 ring-1 ring-green-300" : "border-green-300/30 text-green-200"}`}
-                                                                >
-                                                                    CONFIRM
-                                                                </GameButton>
-                                                                <GameButton
-                                                                    onPress={() => void submitHypothesisValidation(candidate, hypothesis, "negative")}
-                                                                    className={`rounded border px-1 py-0.5 text-[9px] ${effectiveStatus === "negative" ? "border-red-200 bg-red-500/30 text-red-50 ring-1 ring-red-300" : "border-red-300/30 text-red-200"}`}
-                                                                >
-                                                                    REJECT
-                                                                </GameButton>
-                                                                <GameButton
-                                                                    onPress={() => void submitHypothesisValidation(candidate, hypothesis, "uncertain")}
-                                                                    className={`rounded border px-1 py-0.5 text-[9px] ${effectiveStatus === "uncertain" ? "border-yellow-200 bg-yellow-500/30 text-yellow-50 ring-1 ring-yellow-300" : "border-yellow-300/30 text-yellow-200"}`}
-                                                                >
-                                                                    UNSURE
-                                                                </GameButton>
+                                                                                    : hypothesis.source === "human" ? "HUMAN REVIEW" : "AUTO SUGGESTION"}
+                                                                    </p>
+                                                                </div>
+                                                                <div className="grid grid-cols-1 items-end gap-0.5">
+                                                                    <GameButton
+                                                                        onPress={() => void submitHypothesisValidation(candidate, hypothesis, "positive")}
+                                                                        className={`rounded border px-1 py-0.5 text-[9px] ${effectiveStatus === "positive" ? "border-green-200 bg-green-500/30 text-green-50 ring-1 ring-green-300" : "border-green-300/30 text-green-200"}`}
+                                                                    >
+                                                                        CONFIRM
+                                                                    </GameButton>
+                                                                    <GameButton
+                                                                        onPress={() => void submitHypothesisValidation(candidate, hypothesis, "negative")}
+                                                                        className={`rounded border px-1 py-0.5 text-[9px] ${effectiveStatus === "negative" ? "border-red-200 bg-red-500/30 text-red-50 ring-1 ring-red-300" : "border-red-300/30 text-red-200"}`}
+                                                                    >
+                                                                        REJECT
+                                                                    </GameButton>
+                                                                    <GameButton
+                                                                        onPress={() => void submitHypothesisValidation(candidate, hypothesis, "uncertain")}
+                                                                        className={`rounded border px-1 py-0.5 text-[9px] ${effectiveStatus === "uncertain" ? "border-yellow-200 bg-yellow-500/30 text-yellow-50 ring-1 ring-yellow-300" : "border-yellow-300/30 text-yellow-200"}`}
+                                                                    >
+                                                                        UNSURE
+                                                                    </GameButton>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                         );
                                                     })}
                                                 </div>
-                                                <p className="mt-2 text-[10px] text-slate-500">Checksum labels are conservative candidates, not confirmed algorithms.</p>
+                                                <p className="mt-2 px-2 pb-1 text-[10px] text-slate-500">Checksum labels are conservative candidates, not confirmed algorithms.</p>
                                             </div>
                                         )}
 
-                                        <div className="mt-1 grid gap-2 lg:grid-cols-[1fr_180px]">
+                                        <div className="mt-1 grid gap-0.5 lg:grid-cols-[1fr_180px]">
                                             <label className="block">
                                                 <span className="text-[10px] tracking-[0.18em] text-slate-500">VALIDATION NOTES</span>
                                                 <textarea
@@ -1444,7 +1448,7 @@ export function SignalReconBrainConsole({
                                             </p>
                                         )}
 
-                                        <div className="mt-1 grid gap-2 sm:grid-cols-3">
+                                        <div className="my-1 grid gap-0.5 sm:grid-cols-3">
                                             <GameButton
                                                 onPress={() => void submitLabel(candidate, "positive")}
                                                 disabled={saving || analyzing}
@@ -1570,7 +1574,7 @@ export function SignalReconBrainConsole({
                     {activeTab === "heatmap" && (
                         <div className="space-y-2">
                             {heatRows.map(([canId, row]) => (
-                                <div key={canId} className="rounded-sm border border-green-400/20 bg-slate-900/80 p-3">
+                                <div key={canId} className="rounded-sm border border-green-400/20 bg-slate-900/80 px-2 py-1">
                                     <div className="mb-2 flex items-center justify-between gap-1">
                                         <span className="font-black text-green-100">{canId}</span>
                                         <span className="text-xs text-slate-500">{row.change_count} changes · {fixed(row.frequency_hz)} Hz</span>

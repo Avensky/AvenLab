@@ -1040,7 +1040,7 @@ export function SignalReconPlayback({
     }
 
     return (
-        <div className="flex h-full min-h-0 flex-col  overflow-hidden bg-[#020617] font-mono text-green-100">
+        <div className="flex h-full flex-col  overflow-hidden bg-[#020617] font-mono text-green-100">
             <div className="shrink-0 border border-green-400/20 bg-black/60">
                 <div className="px-2 w-full grid grid-cols-1 sm:grid-cols-2">
                     <div>
@@ -1092,8 +1092,8 @@ export function SignalReconPlayback({
                     </div>
                 </div>
 
-                <div className="grid gap-2 px-2 sm:grid-cols-[1fr_auto]">
-                    <div className="min-w-0">
+                <div className="w-full grid px-2 sm:grid-cols-[1fr_auto]">
+                    <div className="w-full">
                         <div className="relative h-6 pt-2.5">
                             <div
                                 className="pointer-events-none absolute inset-x-2 top-0 z-10 h-7"
@@ -1294,13 +1294,13 @@ export function SignalReconPlayback({
             )}
 
             <div
-                className={`min-h-0 flex-1 gap-2 pb-2 ${
+                className={`h-full flex-1 px-2 ${
                     selectedByte
-                        ? "grid grid-rows-[minmax(12rem,1fr)_minmax(14rem,42dvh)] lg:grid-cols-[minmax(0,1fr)_360px] lg:grid-rows-1"
+                        ? "grid grid-cols-1"
                         : "grid grid-cols-1"
                 }`}
             >
-                <div className="min-h-0 min-w-0 overflow-auto bg-black/50">
+                <div className="h-full min-w-0 overflow-auto bg-black/50">
                     <div className="flex h-5 items-center justify-between border-b border-slate-800 bg-slate-950/80 px-1 text-[9px] text-slate-500">
                         <span>
                             {persistentSelectionActive
@@ -1439,30 +1439,34 @@ export function SignalReconPlayback({
                 </div>
 
                 {selectedByte && selectedByteFrame && (
-                <aside className="min-h-0 overflow-y-auto border border-cyan-300/20 bg-slate-950/95">
-                    <div className="sticky top-0 z-10 flex items-center justify-between border-b border-cyan-300/20 bg-slate-950 px-2 py-1">
+                <aside className="h-full overflow-y-auto border-cyan-300/20 bg-slate-950/95">
+                    <div className="sticky top-0 z-10 flex items-center justify-between border-b border-cyan-300/20 bg-slate-950">
                         <p className="text-[10px] tracking-[0.25em] text-cyan-300">
                             BYTE ROLE REVIEW
                         </p>
                         <button
                             type="button"
                             onClick={() => setSelectedByte(null)}
-                            className="rounded border border-slate-600 bg-slate-900 px-2 py-0.5 text-[10px] font-black text-slate-300 hover:bg-slate-800"
+                            className="rounded-sm border border-slate-600 bg-slate-900 px-2 py-0 text-[10px] font-black text-slate-300 hover:bg-slate-800"
                             aria-label="Close byte role review"
                         >
                             CLOSE
                         </button>
                     </div>
-                    <div className="mt-1 space-y-1">
+                    <div className=" space-y-1">
                             <div className="border border-green-300/30 bg-green-500/10 px-2 pb-2">
-                                <p className="font-black text-green-100">
-                                    {selectedByteFrame.can_id_hex} / B{selectedByte.byteIndex}
-                                </p>
-                                <div className="grid grid-cols-2 gap-0.5 text-[10px] text-slate-400">
-                                    <p>current: <span className="text-cyan-200">0x{byteHex(selectedByteFrame.bytes[selectedByte.byteIndex])} / {selectedByteFrame.bytes[selectedByte.byteIndex]}</span></p>
-                                    <p>previous: <span className="text-slate-200">{selectedByteFrame.previous_bytes ? `0x${byteHex(selectedByteFrame.previous_bytes[selectedByte.byteIndex])} / ${selectedByteFrame.previous_bytes[selectedByte.byteIndex]}` : "none"}</span></p>
-                                    <p>changed: <span className={selectedByteFrame.delta_positions.includes(selectedByte.byteIndex) ? "text-cyan-200" : "text-slate-500"}>{selectedByteFrame.delta_positions.includes(selectedByte.byteIndex) ? "YES" : "NO"}</span></p>
-                                    <p>server time: <span className="text-slate-200">{formatTime(selectedByteFrame.timestamp_ms)}</span></p>
+                                <div className="grid grid-cols-3 gap-0.5 text-[10px] text-slate-400">
+                                    <p className="font-black text-green-100">
+                                        {selectedByteFrame.can_id_hex} / B{selectedByte.byteIndex}
+                                    </p>
+                                    <div>
+                                        <p>current: <span className="text-cyan-200">0x{byteHex(selectedByteFrame.bytes[selectedByte.byteIndex])} / {selectedByteFrame.bytes[selectedByte.byteIndex]}</span></p>
+                                        <p>previous: <span className="text-slate-200">{selectedByteFrame.previous_bytes ? `0x${byteHex(selectedByteFrame.previous_bytes[selectedByte.byteIndex])} / ${selectedByteFrame.previous_bytes[selectedByte.byteIndex]}` : "none"}</span></p>
+                                    </div>
+                                    <div>
+                                        <p>changed: <span className={selectedByteFrame.delta_positions.includes(selectedByte.byteIndex) ? "text-cyan-200" : "text-slate-500"}>{selectedByteFrame.delta_positions.includes(selectedByte.byteIndex) ? "YES" : "NO"}</span></p>
+                                        <p>server time: <span className="text-slate-200">{formatTime(selectedByteFrame.timestamp_ms)}</span></p>
+                                    </div>
                                 </div>
                                 <div className="rounded border border-cyan-300/20 bg-black/30 p-2">
                                     <div className="grid grid-cols-[58px_repeat(8,minmax(0,1fr))] gap-1 text-center text-[9px]">
