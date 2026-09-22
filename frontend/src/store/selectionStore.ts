@@ -4,7 +4,7 @@ import type { Group } from "three";
 import { Ae86 } from "../vehicles/Ae86";
 import { Brz } from "../vehicles/Brz";
 import { Camaro } from "../vehicles/Camaro";
-import { Gt86 } from "../vehicles/Gt86";
+import { Supra } from "../vehicles/Supra";
 import { Tank } from "../vehicles/Tank";
 import type { CanVehicleIdentity } from "./signalReconStore";
 export type VehicleRole = "tank" | "dps" | "healer" | "utility";
@@ -86,21 +86,21 @@ export const vehicleCatalog: VehicleDefinition[] = [
     stats: { armor: 35, speed: 80, handling: 70, support: 10 },
   },
   {
-    id: "gt86",
-    name: "GT86",
+    id: "supra",
+    name: "Supra",
     role: "dps",
-    Component: Gt86,
+    Component: Supra,
     description: "Balanced lightweight pursuit vehicle.",
     canIdentity: {
-      slug: "2015-scion-frs",
-      year: 2015,
-      make: "Scion",
+      slug: "1998-toyota-supra",
+      year: 1998,
+      make: "Toyota",
       model: "FR-S",
       trim: "Manual",
-      alias: "GT86",
+      alias: "Supra",
       datasetKind: "live",
-      notes: "Primary real CAN target. The GT86 visual model represents the 2015 Scion FR-S dataset.",
-      metadata: { platform: "ZN6", source: "vehicle-selector" },
+      notes: "Live dataset for the 1998 Toyota Supra.",
+      metadata: { source: "vehicle-selector" },
     },
     stats: { armor: 25, speed: 85, handling: 90, support: 10 },
   },
@@ -133,9 +133,9 @@ export type MapDefinition = {
 
 export const mapCatalog: MapDefinition[] = [
   {
-    id: "blue_base",
-    name: "Blue Team Base",
-    desc: "Block_01 city chunk with alley spawn and ocean boundary.",
+    id: "streaming_endless_city",
+    name: "Streaming Endless City",
+    desc: "Large streamed city built from repeating detailed 2x2 chunks.",
   },
 ];
 

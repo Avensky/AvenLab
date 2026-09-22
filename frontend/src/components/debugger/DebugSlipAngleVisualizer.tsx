@@ -1,6 +1,7 @@
 import * as THREE from "three";
 
 type SlipRay = {
+    player_id?: string;
     origin: [number, number, number];
     direction: [number, number, number];
     slip_angle: number;
@@ -8,69 +9,76 @@ type SlipRay = {
     color: [number, number, number];
 };
 
+type DebugSlipAngleVisualizerProps = {
+    slips: SlipRay[];
+    radius?: number;
+
+    // Kept temporarily for compatibility with older calls.
+    // The values are intentionally not applied again.
+    vehiclePosition?: [number, number, number];
+    vehicleQuaternion?: [
+        number,
+        number,
+        number,
+        number,
+    ];
+};
+
 export function DebugSlipAngleVisualizer({
     slips,
     radius = 0.035,
-    vehiclePosition,
-    vehicleQuaternion,
-
-}: {
-    slips: SlipRay[];
-    radius?: number;
-    vehiclePosition: [number, number, number];
-    vehicleQuaternion: [number, number, number, number];
-}) {
-
-
-    const vehiclePos = new THREE.Vector3(...vehiclePosition);
-    const vehicleQuat = new THREE.Quaternion(
-        vehicleQuaternion[0],
-        vehicleQuaternion[1],
-        vehicleQuaternion[2],
-        vehicleQuaternion[3]
-    );
-    const invQuat = vehicleQuat.clone().invert();
-
+}: DebugSlipAngleVisualizerProps) {
     return (
         <>
-            {slips.map((s, i) => {
-                // const dir = new THREE.Vector3(...s.direction).normalize();
-                const dir = new THREE.Vector3(...s.direction).applyQuaternion(invQuat).normalize();
+            {slips.map((slip, index) => {
+                const direction = new THREE.Vector3(
+                    ...slip.direction
+                ).normalize();
 
-                // if you later send slip_angle (rad) instead of v_lat:
-                const height = Math.max(s.magnitude, 0.01);
-                // const height = THREE.MathUtils.clamp(
-                //     Math.abs(s.slip_angle) * 0.6,
-                //     0.02,
-                //     0.6
-                // );
-
-                // const pos = new THREE.Vector3(...s.origin)
-                //     .add(dir.clone().multiplyScalar(height * 0.5));
-
-                const pos = new THREE.Vector3(...s.origin)
-                    .sub(vehiclePos).applyQuaternion(invQuat)
-                    .add(dir.clone().multiplyScalar(height * 0.5));
-
-                // Rotate cylinder to face direction
-                const quat = new THREE.Quaternion().setFromUnitVectors(
-                    new THREE.Vector3(0, 1, 0),
-                    dir
+                const height = Math.max(
+                    slip.magnitude,
+                    0.01
                 );
 
+                const position = new THREE.Vector3(
+                    ...slip.origin
+                ).add(
+                    direction
+                        .clone()
+                        .multiplyScalar(height * 0.5)
+                );
 
+                const quaternion =
+                    new THREE.Quaternion().setFromUnitVectors(
+                        new THREE.Vector3(0, 1, 0),
+                        direction
+                    );
+
+                const color = new THREE.Color(
+                    ...slip.color
+                );
 
                 return (
                     <mesh
-                        key={i}
-                        position={pos}
-                        quaternion={quat}
+                        key={`${
+                            slip.player_id ?? "slip"
+                        }-${index}`}
+                        position={position}
+                        quaternion={quaternion}
                         renderOrder={10}
                     >
-                        <cylinderGeometry args={[radius, radius, height, 8]} />
+                        <cylinderGeometry
+                            args={[
+                                radius,
+                                radius,
+                                height,
+                                8,
+                            ]}
+                        />
+
                         <meshStandardMaterial
-                            color={new THREE.Color(...s.color)}
-                            emissive={new THREE.Color(...s.color)}
+                            color={color}
+                            emissive={color}
                             emissiveIntensity={0.7}
                             transparent
                             opacity={0.8}

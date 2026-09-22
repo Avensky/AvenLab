@@ -1,0 +1,844 @@
+{
+  "block_id": "streaming_endless_city",
+  "version": 1,
+  "cell": [
+    644.724854,
+    1098.621704
+  ],
+  "roads": [
+    {
+      "id": "roads_2x2",
+      "kind": "road",
+      "visual": "Roads",
+      "pos": [
+        0.0,
+        -0.0,
+        -0.04999999999999999
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "half_extents": [
+        322.362427,
+        549.310852,
+        0.05
+      ],
+      "collider": "box",
+      "destructible": false,
+      "state": "intact"
+    }
+  ],
+  "buildings": [
+    {
+      "id": "block_0_0_b1_building_1",
+      "kind": "building",
+      "visual": "B1_Building_1",
+      "pos": [
+        -84.246582,
+        -104.064377,
+        107.714927
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "half_extents": [
+        50.860256,
+        52.969223,
+        107.71492
+      ],
+      "collider": "box",
+      "destructible": false,
+      "state": "intact"
+    },
+    {
+      "id": "block_0_0_b1_building_2",
+      "kind": "building",
+      "visual": "B1_Building_2",
+      "pos": [
+        -121.327209,
+        -102.750977,
+        44.328216
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "half_extents": [
+        13.858383,
+        50.143402,
+        44.328217
+      ],
+      "collider": "box",
+      "destructible": false,
+      "state": "intact"
+    },
+    {
+      "id": "block_0_0_b1_building_3",
+      "kind": "building",
+      "visual": "B1_Building_3",
+      "pos": [
+        -189.61261,
+        -112.089218,
+        139.210136
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "half_extents": [
+        54.786842,
+        60.692341,
+        139.210129
+      ],
+      "collider": "box",
+      "destructible": false,
+      "state": "intact"
+    },
+    {
+      "id": "block_0_0_b1_building_4",
+      "kind": "building",
+      "visual": "B1_Building_4",
+      "pos": [
+        -202.280853,
+        -221.713287,
+        76.61170200000001
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "half_extents": [
+        40.087502,
+        49.291412,
+        76.611694
+      ],
+      "collider": "box",
+      "destructible": false,
+      "state": "intact"
+    },
+    {
+      "id": "block_0_0_b1_building_5",
+      "kind": "building",
+      "visual": "B1_Building_5",
+      "pos": [
+        -208.433136,
+        -313.566284,
+        120.15503700000001
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "half_extents": [
+        37.038124,
+        42.943634,
+        120.155029
+      ],
+      "collider": "box",
+      "destructible": false,
+      "state": "intact"
+    },
+    {
+      "id": "block_0_0_b1_building_6",
+      "kind": "building",
+      "visual": "B1_Building_6",
+      "pos": [
+        -203.690033,
+        -400.169983,
+        88.81642900000001
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "half_extents": [
+        40.906212,
+        46.792068,
+        88.816422
+      ],
+      "collider": "box",
+      "destructible": false,
+      "state": "intact"
+    },
+    {
+      "id": "block_0_0_b1_building_7",
+      "kind": "building",
+      "visual": "B1_Building_7",
+      "pos": [
+        -68.789787,
+        -378.682465,
+        63.619571
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "half_extents": [
+        35.101852,
+        64.52832,
+        63.619572
+      ],
+      "collider": "box",
+      "destructible": false,
+      "state": "intact"
+    },
+    {
+      "id": "block_0_0_b1_building_8",
+      "kind": "building",
+      "visual": "B1_Building_8",
+      "pos": [
+        -74.512268,
+        -270.076569,
+        82.12436600000001
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "half_extents": [
+        41.126015,
+        44.437416,
+        82.124359
+      ],
+      "collider": "box",
+      "destructible": false,
+      "state": "intact"
+    },
+    {
+      "id": "block_0_0_b1_building_9",
+      "kind": "building",
+      "visual": "B1_Building_9",
+      "pos": [
+        -68.098846,
+        -194.154221,
+        51.41484
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "half_extents": [
+        31.574865,
+        37.405151,
+        51.414841
+      ],
+      "collider": "box",
+      "destructible": false,
+      "state": "intact"
+    },
+    {
+      "id": "block_0_1_b5_building_2",
+      "kind": "building",
+      "visual": "B5_Building_2",
+      "pos": [
+        76.034393,
+        -280.768402,
+        51.021137
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "half_extents": [
+        40.906235,
+        41.417305,
+        51.021137
+      ],
+      "collider": "box",
+      "destructible": false,
+      "state": "intact"
+    },
+    {
+      "id": "block_0_1_b5_building_3",
+      "kind": "building",
+      "visual": "B5_Building_3",
+      "pos": [
+        75.895119,
+        -347.69754,
+        51.021141
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "half_extents": [
+        41.045509,
+        25.669403,
+        51.021141
+      ],
+      "collider": "box",
+      "destructible": false,
+      "state": "intact"
+    },
+    {
+      "id": "block_0_1_b5_building_4",
+      "kind": "building",
+      "visual": "B5_Building_4",
+      "pos": [
+        108.16037,
+        -407.660431,
+        76.21801
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "half_extents": [
+        71.772446,
+        34.588867,
+        76.218002
+      ],
+      "collider": "box",
+      "destructible": false,
+      "state": "intact"
+    },
+    {
+      "id": "block_0_1_b5_building_5",
+      "kind": "building",
+      "visual": "B5_Building_5",
+      "pos": [
+        212.958282,
+        -366.960876,
+        69.919639
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "half_extents": [
+        33.183044,
+        76.551712,
+        69.919632
+      ],
+      "collider": "box",
+      "destructible": false,
+      "state": "intact"
+    },
+    {
+      "id": "block_0_1_b5_building_6",
+      "kind": "building",
+      "visual": "B5_Building_6",
+      "pos": [
+        211.988754,
+        -325.975098,
+        57.714054
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "half_extents": [
+        32.213516,
+        35.580704,
+        57.714054
+      ],
+      "collider": "box",
+      "destructible": false,
+      "state": "intact"
+    },
+    {
+      "id": "block_0_1_b5_building_7",
+      "kind": "building",
+      "visual": "B5_Building_7",
+      "pos": [
+        207.052734,
+        -274.013519,
+        75.825157
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "half_extents": [
+        39.088593,
+        16.878357,
+        75.82515
+      ],
+      "collider": "box",
+      "destructible": false,
+      "state": "intact"
+    },
+    {
+      "id": "block_0_1_b5_building_8",
+      "kind": "building",
+      "visual": "B5_Building_8",
+      "pos": [
+        200.996368,
+        -227.618774,
+        51.021137
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "half_extents": [
+        44.843246,
+        35.511833,
+        51.021137
+      ],
+      "collider": "box",
+      "destructible": false,
+      "state": "intact"
+    },
+    {
+      "id": "block_0_1_b5_building_9",
+      "kind": "building",
+      "visual": "B5_Building_9",
+      "pos": [
+        200.996368,
+        -121.899567,
+        82.517212
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "half_extents": [
+        44.843246,
+        70.502701,
+        82.517204
+      ],
+      "collider": "box",
+      "destructible": false,
+      "state": "intact"
+    },
+    {
+      "id": "block_1_0_b4_building_1",
+      "kind": "building",
+      "visual": "B4_Building_1",
+      "pos": [
+        -169.229126,
+        86.854378,
+        114.014122
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "half_extents": [
+        73.503609,
+        34.303673,
+        114.014114
+      ],
+      "collider": "box",
+      "destructible": false,
+      "state": "intact"
+    },
+    {
+      "id": "block_1_0_b4_building_2",
+      "kind": "building",
+      "visual": "B4_Building_2",
+      "pos": [
+        -68.549469,
+        106.380783,
+        88.42272200000001
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "half_extents": [
+        33.171467,
+        53.80695,
+        88.422714
+      ],
+      "collider": "box",
+      "destructible": false,
+      "state": "intact"
+    },
+    {
+      "id": "block_1_0_b4_building_3",
+      "kind": "building",
+      "visual": "B4_Building_3",
+      "pos": [
+        -59.326935,
+        219.300629,
+        51.021118
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "half_extents": [
+        22.708887,
+        65.108284,
+        51.021118
+      ],
+      "collider": "box",
+      "destructible": false,
+      "state": "intact"
+    },
+    {
+      "id": "block_1_0_b4_building_4",
+      "kind": "building",
+      "visual": "B4_Building_4",
+      "pos": [
+        -67.200996,
+        326.412537,
+        76.21797900000001
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "half_extents": [
+        30.582949,
+        42.436676,
+        76.217972
+      ],
+      "collider": "box",
+      "destructible": false,
+      "state": "intact"
+    },
+    {
+      "id": "block_1_0_b4_building_5",
+      "kind": "building",
+      "visual": "B4_Building_5",
+      "pos": [
+        -65.434372,
+        404.348145,
+        51.414818
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "half_extents": [
+        30.30582,
+        41.419052,
+        51.414818
+      ],
+      "collider": "box",
+      "destructible": false,
+      "state": "intact"
+    },
+    {
+      "id": "block_1_0_b4_building_6",
+      "kind": "building",
+      "visual": "B4_Building_6",
+      "pos": [
+        -201.595154,
+        142.066406,
+        63.619552
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "half_extents": [
+        41.11438,
+        27.637814,
+        63.619553
+      ],
+      "collider": "box",
+      "destructible": false,
+      "state": "intact"
+    },
+    {
+      "id": "block_1_0_b4_building_7",
+      "kind": "building",
+      "visual": "B4_Building_7",
+      "pos": [
+        -201.562912,
+        210.964066,
+        82.517204
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "half_extents": [
+        41.146622,
+        47.255234,
+        82.517197
+      ],
+      "collider": "box",
+      "destructible": false,
+      "state": "intact"
+    },
+    {
+      "id": "block_1_0_b4_building_8",
+      "kind": "building",
+      "visual": "B4_Building_8",
+      "pos": [
+        -214.358215,
+        309.389282,
+        63.619545
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "half_extents": [
+        29.335625,
+        57.16539,
+        63.619545
+      ],
+      "collider": "box",
+      "destructible": false,
+      "state": "intact"
+    },
+    {
+      "id": "block_1_1_b6_building_1",
+      "kind": "building",
+      "visual": "B6_Building_1",
+      "pos": [
+        83.826347,
+        125.205002,
+        76.218849
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "half_extents": [
+        49.000053,
+        72.654221,
+        76.218842
+      ],
+      "collider": "box",
+      "destructible": false,
+      "state": "intact"
+    },
+    {
+      "id": "block_1_1_b6_building_2",
+      "kind": "building",
+      "visual": "B6_Building_2",
+      "pos": [
+        189.255707,
+        102.349686,
+        107.32035800000001
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "half_extents": [
+        56.862419,
+        48.988434,
+        107.320351
+      ],
+      "collider": "box",
+      "destructible": false,
+      "state": "intact"
+    },
+    {
+      "id": "block_1_1_b6_building_3",
+      "kind": "building",
+      "visual": "B6_Building_3",
+      "pos": [
+        194.200119,
+        176.712112,
+        57.714035
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "half_extents": [
+        49.995743,
+        25.669296,
+        57.714035
+      ],
+      "collider": "box",
+      "destructible": false,
+      "state": "intact"
+    },
+    {
+      "id": "block_1_1_b6_building_4",
+      "kind": "building",
+      "visual": "B6_Building_4",
+      "pos": [
+        195.241669,
+        271.200226,
+        82.51805800000001
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "half_extents": [
+        50.899651,
+        69.178673,
+        82.518051
+      ],
+      "collider": "box",
+      "destructible": false,
+      "state": "intact"
+    },
+    {
+      "id": "block_1_1_b6_building_5",
+      "kind": "building",
+      "visual": "B6_Building_5",
+      "pos": [
+        190.436874,
+        392.895325,
+        101.41482500000001
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "half_extents": [
+        54.893906,
+        56.734543,
+        101.414818
+      ],
+      "collider": "box",
+      "destructible": false,
+      "state": "intact"
+    },
+    {
+      "id": "block_1_1_b6_building_6",
+      "kind": "building",
+      "visual": "B6_Building_6",
+      "pos": [
+        88.656715,
+        394.056641,
+        51.021114
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "half_extents": [
+        53.80703,
+        54.825073,
+        51.021114
+      ],
+      "collider": "box",
+      "destructible": false,
+      "state": "intact"
+    },
+    {
+      "id": "block_1_1_b6_building_7",
+      "kind": "building",
+      "visual": "B6_Building_7",
+      "pos": [
+        76.757812,
+        311.751404,
+        45.1156
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "half_extents": [
+        40.182816,
+        27.637817,
+        45.115601
+      ],
+      "collider": "box",
+      "destructible": false,
+      "state": "intact"
+    },
+    {
+      "id": "block_1_1_b6_building_8",
+      "kind": "building",
+      "visual": "B6_Building_8",
+      "pos": [
+        90.443848,
+        238.035339,
+        57.320335
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "half_extents": [
+        54.055923,
+        46.373711,
+        57.320335
+      ],
+      "collider": "box",
+      "destructible": false,
+      "state": "intact"
+    }
+  ],
+  "metadata": {
+    "source_chunk": "Chunck_0,0",
+    "asset_scale": 0.01,
+    "road_surface_y": 0.0,
+    "road_collider_thickness": 0.1,
+    "center_blender": [
+      -64.675781,
+      -71.984375
+    ],
+    "building_collider_count": 33,
+    "road_collider_count": 1,
+    "warnings": [
+      "Excluded block_0_1_b5_building_1: malformed 393x606m coarse AABB covered the central road/spawn area"
+    ],
+    "physics_vertical_offset_applied": -0.32
+  }
+}

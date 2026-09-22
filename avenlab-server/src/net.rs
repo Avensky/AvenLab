@@ -4,9 +4,21 @@ use tokio::net::TcpListener;
 use tokio::sync::{Mutex, mpsc}; 
 use futures::{StreamExt, SinkExt};
 use tokio_tungstenite::{accept_async, tungstenite::Message};
+use serde::Deserialize;
+use serde_json::Value;
 use crate::state::{SharedGameState, EntityType, InputPacket};
 use crate::physics::PhysicsWorld;
 use crate::vehicle_debug::DebugFlags;
+
+// The sandbox has ten verified spawn slots: five red and five blue.
+// Enforce the limit on the authoritative server, not in the renderer.
+const MAX_SANDBOX_PLAYERS: usize = 10;
+
+#[derive(Debug, Deserialize)]
+struct SpawnRequest {
+    vehicle: String,
+    map: String,
+}
 
 pub async fn start_websocket_server(
     state: Arc<Mutex<SharedGameState>>,
@@ -69,24 +81,12 @@ pub async fn start_websocket_server(
                 
             }
 
-            // ---------- 5) Create Rapier body in physics ----------
-            let body_handle = {
-                let mut phys = physics_clone.lock().await;
-                phys.spawn_vehicle_for_player(player_id.clone(), spawn_info.position);
-                phys.vehicles[&player_id].body
-            };
-
-            // ---------- 6) Attach body handle back to game state ----------
-            {
-                let mut game = state_clone.lock().await;
-                game.attach_body(&player_id, body_handle);
-            }
-
             let welcome = serde_json::json!({
                 "type": "welcome",
                 "player_id": player_id,
                 "room_id": room_id_u32,
                 "team": team.as_str(),
+                "spawned": false,
             }).to_string();
 
             let _ = tx.send(welcome);
@@ -114,47 +114,132 @@ pub async fn start_websocket_server(
                         continue;
                     }
 
+                    let value: Value = match serde_json::from_str(text) {
+                        Ok(value) => value,
+                        Err(error) => {
+                            eprintln!("⚠️ Bad JSON from client: {error}");
+                            continue;
+                        }
+                    };
+
+                    let message_type = value
+                        .get("type")
+                        .and_then(Value::as_str)
+                        .unwrap_or_default();
+
                     // --------------------------------------------------
-                    // Input packet
+                    // Map-selected spawn request
                     // --------------------------------------------------
-                    match serde_json::from_str::<InputPacket>(text) {
-                        Ok(packet) => {
-                            if packet.r#type == "input" {
+                    if message_type == "spawn_request" {
+                        let request: SpawnRequest = match serde_json::from_value(value) {
+                            Ok(request) => request,
+                            Err(error) => {
+                                let _ = tx.send(serde_json::json!({
+                                    "type": "spawn_error",
+                                    "message": format!("Invalid spawn request: {error}"),
+                                }).to_string());
+                                continue;
+                            }
+                        };
 
-                                // static INPUT_TICK: std::sync::atomic::AtomicU32 =
-                                //     std::sync::atomic::AtomicU32::new(0);
-                                // let tick = INPUT_TICK.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                                // if tick % 60 == 0 {
-                                //     println!(
-                                //         "[net input] throttle={:.2} steer={:.2} brake={:.2} vehicle_mask={} player_mask={}",
-                                //         packet.throttle,
-                                //         packet.steer,
-                                //         packet.brake,
-                                //         packet.vehicleMask,
-                                //         packet.playerMask,
-                                //     );
-                                // }
+                        let spawn_result = {
+                            let mut phys = physics_clone.lock().await;
 
-
-                                // 1. Apply debug mask to physics world
-                                if let Some(mask) = packet.debug_mask {
-                                    let mut phys = physics_clone.lock().await;
-                                    phys.set_debug_flags(DebugFlags::from_bits_truncate(mask));
+                            match phys.select_map(&request.map) {
+                                Err(error) => Err(error.to_string()),
+                                Ok(()) => {
+                                    if let Some(vehicle) = phys.vehicles.get(&player_id) {
+                                        // Duplicate A-button presses or reconnect noise are
+                                        // harmless: return the existing body instead of
+                                        // spawning a second vehicle.
+                                        Ok((vehicle.body, false))
+                                    } else if phys.vehicles.len() >= MAX_SANDBOX_PLAYERS {
+                                        Err(format!(
+                                            "Sandbox is full ({MAX_SANDBOX_PLAYERS}/{MAX_SANDBOX_PLAYERS} players)"
+                                        ))
+                                    } else {
+                                        phys.spawn_vehicle_for_player(
+                                            player_id.clone(),
+                                            spawn_info.position,
+                                            &request.vehicle,
+                                        )
+                                        .map(|body_handle| {
+                                            (body_handle, true)
+                                        })
+                                        .map_err(|error| {
+                                            format!("Vehicle spawn failed: {error}")
+                                        })
+                                    }
                                 }
+                            }
+                        };
 
-                                // 2. Store input packet on game entity
+                        match spawn_result {
+                            Ok((body_handle, newly_spawned)) => {
                                 let mut game = state_clone.lock().await;
-
-                                if let Some(entity) = game.entities.get_mut(&player_id) {
-                                    entity.last_packet = Some(packet);
+                                game.attach_body(&player_id, body_handle);
+                                // Only a newly created physics vehicle may set its
+                                // visual model id. A duplicate spawn request must
+                                // not change the model without changing physics.
+                                if newly_spawned {
+                                    game.set_vehicle_id(&player_id, &request.vehicle);
                                 }
+                                drop(game);
+
+                                println!(
+                                    "✅ Spawn ready: player={} vehicle={} map={}",
+                                    player_id,
+                                    request.vehicle,
+                                    request.map,
+                                );
+
+                                let _ = tx.send(serde_json::json!({
+                                    "type": "spawn_ready",
+                                    "player_id": player_id,
+                                    "vehicle": request.vehicle,
+                                    "map": request.map,
+                                    "newly_spawned": newly_spawned,
+                                }).to_string());
+                            }
+                            Err(message) => {
+                                eprintln!(
+                                    "⚠️ Spawn rejected for player {}: {}",
+                                    player_id,
+                                    message,
+                                );
+
+                                let _ = tx.send(serde_json::json!({
+                                    "type": "spawn_error",
+                                    "map": request.map,
+                                    "message": message,
+                                }).to_string());
                             }
                         }
 
-                        Err(_) => {
-                            // Ignore non-JSON noise silently (avoids spam)
-                            // Uncomment for debugging if needed:
-                            // eprintln!("⚠️ Bad JSON from client: {}", text);
+                        continue;
+                    }
+
+                    // --------------------------------------------------
+                    // Input packets are accepted before spawning, but main.rs
+                    // skips entities whose body handle is still invalid.
+                    // --------------------------------------------------
+                    if message_type == "input" {
+                        let packet: InputPacket = match serde_json::from_value(value) {
+                            Ok(packet) => packet,
+                            Err(error) => {
+                                eprintln!("⚠️ Invalid input packet: {error}");
+                                continue;
+                            }
+                        };
+
+                        if let Some(mask) = packet.debug_mask {
+                            let mut phys = physics_clone.lock().await;
+                            phys.set_debug_flags(DebugFlags::from_bits_truncate(mask));
+                        }
+
+                        let mut game = state_clone.lock().await;
+                        if let Some(entity) = game.entities.get_mut(&player_id) {
+                            entity.last_packet = Some(packet);
                         }
                     }
                 }

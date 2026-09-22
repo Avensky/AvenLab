@@ -1,84 +1,111 @@
 // src/components/DebugWheelVisualizer.tsx
 
-import { useMemo, useRef } from "react";
+import { useRef } from "react";
 import * as THREE from "three";
-import { useInputStore, type DebugWheel } from "../../store";
+import { type DebugWheel } from "../../store";
 import { useFrame } from "@react-three/fiber";
 
-export function DebugWheelVisualizer({ wheels}: {wheels: DebugWheel[];}) {
-    const steerGroups = useRef<THREE.Group[]>([]);
-    const wheelMeshes = useRef<THREE.Mesh[]>([]);
 
-    const materialGround = useMemo(
-        () => new THREE.MeshStandardMaterial({ color: "lime", wireframe: true }),
-        []
-    );
-    const materialAir = useMemo(
-        () => new THREE.MeshStandardMaterial({ color: "red", wireframe: true }),
-        []
-    );
+function wheelColor(wheel: DebugWheel) {
+    if (!wheel.grounded) return "#ef4444";
+
+    if (Math.abs(wheel.slip_ratio) > 0.15) {
+        return "#d946ef"; // wheelspin or locked wheel
+    }
+
+    if (Math.abs(wheel.slip_angle) > 0.21) {
+        return "#f97316"; // drifting: over about 12 degrees
+    }
+
+    if (Math.abs(wheel.slip_angle) > 0.10) {
+        return "#facc15"; // tire scrub
+    }
+
+    return "#22c55e"; // grip
+}
+
+export function DebugWheelVisualizer({ wheels}: {wheels: DebugWheel[];}) {
+    // const steerGroups = useRef<THREE.Group[]>([]);
+    // const wheelMeshes = useRef<THREE.Mesh[]>([]);
+
+    // const materialGround = useMemo(
+    //     () => new THREE.MeshStandardMaterial({ color: "lime", wireframe: true }),
+    //     []
+    // );
+    // const materialAir = useMemo(
+    //     () => new THREE.MeshStandardMaterial({ color: "red", wireframe: true }),
+    //     []
+    // );
+
+   const steerGroups = useRef<(THREE.Group | null)[]>([]);
+    const spinGroups = useRef<(THREE.Group | null)[]>([]);
+    const spinAngles = useRef<number[]>([]);
 
     useFrame((_, dt) => {
-        const input = useInputStore.getState().input;
+        wheels.forEach((wheel, index) => {
+            const steerGroup = steerGroups.current[index];
+            const spinGroup = spinGroups.current[index];
 
-        const MAX_STEER = Math.PI / 6;
-        const steerAngle = -(input?.steer ?? 0) * MAX_STEER;
+            if (steerGroup) {
+                const targetSteer = wheel.steering
+                    ? -wheel.steer_angle
+                    : 0;
 
-        const throttle = input?.throttle ?? 0;
-        const brake = input?.brake ?? 0;
-        // const handbrake = input?.handbrake ?? 0; // add later if not yet present
-
-        steerGroups.current.forEach((g) => {
-            if (!g) return;
-            g.rotation.y = THREE.MathUtils.lerp(g.rotation.y, steerAngle, 0.25);
-        });
-
-        wheelMeshes.current.forEach((m, i) => {
-            if (!m) return;
-
-            const wheel = wheels[i];
-            const isRear = wheel.drive === true;
-
-            // --- DRIVETRAIN (RWD) ---
-            if (isRear && throttle !== 0) {
-                m.rotation.x += throttle * dt * 12;
+                steerGroup.rotation.y = THREE.MathUtils.damp(
+                    steerGroup.rotation.y,
+                    targetSteer,
+                    12,
+                    dt
+                );
             }
 
-            // --- SERVICE BRAKE (ALL WHEELS) ---
-            if (brake > 0) {
-                m.rotation.x *= THREE.MathUtils.lerp(1, 0.85, brake);
-            }
+            if (spinGroup) {
+                spinAngles.current[index] =
+                    (spinAngles.current[index] ?? 0) +
+                    wheel.wheel_speed * dt;
 
-            // --- HANDBRAKE (REAR ONLY, HARD LOCK) ---
-            // if (handbrake > 0 && isRear) {
-            //     m.rotation.x *= 0.2;
-            // }
+                spinGroup.rotation.x = spinAngles.current[index];
+            }
         });
     });
 
 
     return (
         <>
-            {wheels.map((w, i) => {
-                const isFront = w.steering === true;
+            {wheels.map((wheel, index) => {
+                // const isFront = wheel.steering === true;
                 return (
                     <group
-                        key={i}
-                        position={w.center as [number, number, number]}
-                        ref={(el) => {
-                            if (isFront) steerGroups.current[i] = el!;
-                        }}
+                        key={index}
+                        position={wheel.center}
+                        quaternion={wheel.rotation}
                     >
-                        <mesh
-                            ref={(el) => (wheelMeshes.current[i] = el!)}
-                            material={w.grounded ? materialGround : materialAir}
-                            rotation={[0, 0, Math.PI / 2]}
+                        <group
+                            ref={(element) => {
+                                steerGroups.current[index] = element;
+                            }}
                         >
-                            <cylinderGeometry
-                                args={[w.radius, w.radius, w.radius * 0.6, 20]}
-                            />
-                            <axesHelper args={[w.radius * 1.5]} />
-                        </mesh>
+                            <group
+                                ref={(element) => {
+                                    spinGroups.current[index] = element;
+                                }}
+                            >
+                                <mesh rotation={[0, 0, Math.PI / 2]}>
+                                    <cylinderGeometry
+                                        args={[
+                                            wheel.radius,
+                                            wheel.radius,
+                                            wheel.radius * 0.6,
+                                            20,
+                                        ]}
+                                    />
+                                    <meshStandardMaterial
+                                        color={wheelColor(wheel)}
+                                        wireframe
+                                    />
+                                </mesh>
+                            </group>
+                        </group>
                     </group>
                 );
             })}

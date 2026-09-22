@@ -2,20 +2,78 @@
 
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
 import type { PropsWithChildren } from 'react';
-import { Group, Color, MathUtils, SpotLight, Vector3, Object3D } from 'three';
-import { setupVehicleParts } from './tools/setupVehicleParts';
+import { Group, Color, MathUtils, Quaternion, SpotLight, Vector3, Object3D } from 'three';
 import { sharedGlassMaterial } from './tools/createGlassMaterialFactory';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 
-import { useNetworkStore, useInputStore, useGameStore } from "../store";
+import { useNetworkStore, useInputStore, useGameStore, useUIStore } from "../store";
 import { usePhysicsInterpolator } from "../hooks/usePhysicsInterpolator";
 import { hasFlag, VehicleFlags } from "../store/tools/inputMasks";
 
 const MODEL_PATH = "/models/vehicles/brz.glb";
 
-export const Brz = forwardRef<Group, PropsWithChildren>(function Brz(
-    { children },
+// The exported VEHICLE_ROOT is 0.50 m above the visible model floor. Keep this
+// as a visual-only correction; backend wheel and chassis positions stay in
+// authoritative world space.
+const BRZ_VISUAL_OFFSET_Y = -0.57;
+
+const BRZ_ROOT_NAME = "VEHICLE_ROOT";
+
+// Support the original BRZ names and the newer naming convention used by the
+// AE86 export. The first matching object is used for each wheel.
+const BRZ_WHEEL_NAMES = {
+    fr: ["WHEEL_FR", "Wheel_FR", "FR_WHEEL"],
+    fl: ["WHEEL_FL", "Wheel_FL", "FL_WHEEL"],
+    rr: ["WHEEL_RR", "Wheel_RR", "RR_WHEEL"],
+    rl: ["WHEEL_RL", "Wheel_RL", "RL_WHEEL"],
+} as const;
+
+function findFirstNamedObject(
+    root: Object3D,
+    names: readonly string[]
+): Object3D | null {
+    for (const name of names) {
+        const exact = root.getObjectByName(name);
+        if (exact) return exact;
+    }
+
+    const lowerNames = new Set(names.map((name) => name.toLowerCase()));
+    let match: Object3D | null = null;
+
+    root.traverse((object) => {
+        if (!match && lowerNames.has(object.name.toLowerCase())) {
+            match = object;
+        }
+    });
+
+    return match;
+}
+
+function extractWheel(root: Object3D, names: readonly string[]) {
+    const wheel = findFirstNamedObject(root, names);
+    if (!wheel) return null;
+
+    // Preserve transforms contributed by any intermediate Blender parents.
+    root.updateMatrixWorld(true);
+    wheel.updateMatrixWorld(true);
+
+    // Keep the complete imported orientation/scale, including VEHICLE_ROOT's
+    // 180-degree Blender correction. Position is replaced by backend data.
+    const importedWorldMatrix = wheel.matrixWorld.clone();
+    wheel.removeFromParent();
+    importedWorldMatrix.decompose(wheel.position, wheel.quaternion, wheel.scale);
+    wheel.updateMatrix();
+
+    return wheel;
+}
+
+type BrzProps = PropsWithChildren<{
+    entityId?: string;
+}>;
+
+export const Brz = forwardRef<Group, BrzProps>(function Brz(
+    { children, entityId },
     ref
 ) {
     // Tint colors for first-person and exterior views
@@ -24,7 +82,13 @@ export const Brz = forwardRef<Group, PropsWithChildren>(function Brz(
 
     const { scene } = useGLTF(MODEL_PATH);              // Load the car model
     const camera = useThree((state) => state.camera)    // Access the camera for later use
+    const isVehiclePreview = useUIStore(
+        (state) =>
+            state.screen === "sandbox_setup" ||
+            state.screen === "signal_recon_setup"
+    );
     const vehicleGroupRef = useRef<Group>(null!);       // Refs for car group 
+    const visualGroupRef = useRef<Group>(null!);
 
     // Allow parent components to access the car group ref
     useImperativeHandle(ref, () => vehicleGroupRef.current, [])
@@ -53,208 +117,30 @@ export const Brz = forwardRef<Group, PropsWithChildren>(function Brz(
     }, [snapshot, setSnapshot]);
 
 
-    const { clonesByGroup, renderedGroups } = useMemo(() => {
-        return setupVehicleParts({
-            scene,
-            groups: [
-                {
-                    name: 'BODY',
-                    parts: [
-                        'BODY_01',
-                        'BODY_02',
-                        'BODY_03',
-                        'BODY_CHASSIS',
-                        'BODY_FIN',
+    const { vehicleVisualRoot, wheels } = useMemo(() => {
+        // Clone the complete hierarchy instead of rebuilding a partial model
+        // from a flat list of object names. This keeps every child beneath the
+        // Blender VEHICLE_ROOT visible.
+        const sourceRoot = scene.getObjectByName(BRZ_ROOT_NAME) ?? scene;
+        const root = sourceRoot.clone(true);
 
-                        'BUMPER_FRONT',
-                        'BUMPER_REAR',
-                        'BUMPER_REAR_BOTTOM',
+        const extractedWheels = [
+            extractWheel(root, BRZ_WHEEL_NAMES.fr),
+            extractWheel(root, BRZ_WHEEL_NAMES.fl),
+            extractWheel(root, BRZ_WHEEL_NAMES.rr),
+            extractWheel(root, BRZ_WHEEL_NAMES.rl),
+        ];
 
-                        'CRASHBAR_FRONT',
-                        'CRASHBAR_REAR',
-
-                        'DOOR_STICKERS',
-
-                        'ENGINE',
-                        'ENGINE_01',
-                        'ENGINE_02',
-                        'ENGINE_03',
-                        'ENGINE_04',
-                        'ENGINE_05',
-                        'ENGINE_INTERCOOLER',
-
-                        'FENDER_FRONT_LEFT',
-                        'FENDER_FRONT_RIGHT',
-
-                        'FENDER_REAR_LEFT',
-                        'FENDER_REAR_RIGHT',
-
-                        'HEADLIGHT_LEFT',
-                        'HEADLIGHT_RIGHT',
-
-                        'INTERIOR',
-                        'INTERIOR_FRAME',
-
-                        'MUFFLER',
-                        'MUFFLER_LEFT_01',
-                        'MUFFLER_LEFT_02',
-                        'MUFFLER_LEFT_03',
-                        'MUFFLER_LEFT_04',
-                        'MUFFLER_RIGHT_01',
-                        'MUFFLER_RIGHT_02',
-                        'MUFFLER_RIGHT_03',
-                        'MUFFLER_RIGHT_04',
-
-                        'SIDESKIRT_LEFT',
-                        'SIDESKIRT_RIGHT',
-
-                        'TAILLIGHT_LEFT',
-                        'TAILLIGHT_RIGHT',
-
-                        'TRANSMISSION_SYSTEM',
-
-                        'REAR_WINDSHIELD_FRAME',
-                        'REAR_WINDSHIELD',
-                        'REAR_WINDSHIELD_TINT',
-
-                        'WINDOW_REAR_LEFT_FRAME',
-                        'WINDOW_REAR_RIGHT_FRAME',
-                        'WINDOWS_FRAME',
-
-                        'WINDSHIELD_FRAME',
-                        'WINDSHIELD',
-                        'WINDSHIELD_TINT',
-
-                        'WINDSHIELD_WIPERS',
-                        'WINDSHIELD_WIPERS_01',
-
-                        'HEADLIGHT_LEFT',
-                        'HEADLIGHT_RIGHT',
-
-                        'TAILLIGHT_LEFT',
-                        'TAILLIGHT_RIGHT',
-
-                        'HEADLIGHT_LEFT_LENS_COVER',
-                        'HEADLIGHT_RIGHT_LENS_COVER',
-
-                        'TAILLIGHT_LEFT_LENS_COVER',
-                        'TAILLIGHT_RIGHT_LENS_COVER',
-
-                    ],
-                    transparent: [
-                        'REAR_WINDSHIELD',
-                        'REAR_WINDSHIELD_TINT',
-
-                        'WINDSHIELD',
-                        'WINDSHIELD_TINT',
-
-                        'HEADLIGHT_LEFT_LENS_COVER',
-                        'HEADLIGHT_RIGHT_LENS_COVER',
-
-                        'TAILLIGHT_LEFT_LENS_COVER',
-                        'TAILLIGHT_RIGHT_LENS_COVER',
-                    ],
-                    opacity: .9,
-                },
-                {
-                    name: 'HOOD',
-                    parts: [
-                        'HOOD',
-                        'HOOD_ARM',
-                        'HOOD_FRAME',
-                        'HOOD_LATCH',
-                        'HOOD_LATCH_LOCK',
-                        'HOOD_VENT',
-                        'HOOD_VENT_FRAME',
-                    ],
-                },
-                {
-                    name: 'TRUNK',
-                    parts: [
-                        'TRUNK',
-                        'TRUNK_01',
-                        'TRUNK_02',
-                        'TRUNK_03',
-                        'TRUNK_04',
-                        'TRUNK_05',
-                        'TRUNK_06',
-                        'TRUNK_ARMS',
-                        'TRUNK_LISENCE_PLATE',
-                        'TRUNK_SPOILER',
-                    ],
-
-                },
-                {
-                    name: 'DOOR_LEFT',
-                    parts: [
-                        'DOOR_LEFT',
-
-                        'WINDOW_REAR_LEFT',
-                        'WINDOW_REAR_LEFT_TINT',
-                        'WINDOW_LEFT',
-                        'WINDOW_LEFT_TINT',
-                        'WINDOW_FRONT_LEFT',
-                        'WINDOW_FRONT_LEFT_TINT',
-                    ],
-                    transparent: [
-                        'WINDOW_REAR_LEFT',
-                        'WINDOW_REAR_LEFT_TINT',
-                        'WINDOW_LEFT',
-                        'WINDOW_LEFT_TINT',
-                        'WINDOW_FRONT_LEFT',
-                        'WINDOW_FRONT_LEFT_TINT',
-                    ],
-                    opacity: 0.9,
-                },
-                {
-                    name: 'DOOR_RIGHT',
-                    parts: [
-                        'DOOR_RIGHT',
-                        'WINDOW_REAR_RIGHT',
-                        'WINDOW_REAR_RIGHT_TINT',
-                        'WINDOW_RIGHT',
-                        'WINDOW_RIGHT_TINT',
-                        'WINDOW_FRONT_RIGHT',
-                        'WINDOW_FRONT_RIGHT_TINT',
-                    ],
-                    transparent: [
-                        'WINDOW_REAR_RIGHT',
-                        'WINDOW_REAR_RIGHT_TINT',
-                        'WINDOW_RIGHT',
-                        'WINDOW_RIGHT_TINT',
-                        'WINDOW_FRONT_RIGHT',
-                        'WINDOW_FRONT_RIGHT_TINT',
-                    ],
-                    opacity: 0.9,
-                },
-                {
-                    name: 'FL_WHEEL',
-                    parts: ['WHEEL_FL'],
-                },
-                {
-                    name: 'FR_WHEEL',
-                    parts: ['WHEEL_FR'],
-                },
-                {
-                    name: 'RL_WHEEL',
-                    parts: ['WHEEL_RL'],
-                },
-                {
-                    name: 'RR_WHEEL',
-                    parts: ['WHEEL_RR'],
-                },
-                {
-                    name: 'STEERING_WHEEL',
-                    parts: [
-                        'STEERING_WHEEL',],
-                },
-            ],
-            // camMode,
-        })
-
-    }, [scene])
+        return {
+            vehicleVisualRoot: root,
+            wheels: extractedWheels,
+        };
+    }, [scene]);
 
     useEffect(() => {
+        const visualGroup = visualGroupRef.current;
+        if (!visualGroup) return;
+
         const addSpot = (
             refObj: { current: SpotLight | null },
             color: number,
@@ -269,8 +155,8 @@ export const Brz = forwardRef<Group, PropsWithChildren>(function Brz(
             light.visible = false;
             refObj.current = light;
 
-            vehicleGroupRef.current.add(light);
-            vehicleGroupRef.current.add(light.target);
+            visualGroup.add(light);
+            visualGroup.add(light.target);
         };
 
         addSpot(leftLightRef, 0xffffff, 5, 40, [-0.5, 0.7, -1.8], [-0.4, -0.6, -5]);
@@ -284,28 +170,68 @@ export const Brz = forwardRef<Group, PropsWithChildren>(function Brz(
         addSpot(rlBlinkerRef, 0xffa500, 12, 16, [-0.5, 0.6, 1.9], [-0.9, 0.6, 3]);
         addSpot(rrBlinkerRef, 0xffa500, 12, 16, [0.5, 0.6, 1.9], [0.9, 0.6, 3]);
 
-    }, [scene])
+        return () => {
+            [
+                leftLightRef,
+                rightLightRef,
+                leftTailRef,
+                rightTailRef,
+                flBlinkerRef,
+                frBlinkerRef,
+                rlBlinkerRef,
+                rrBlinkerRef,
+            ].forEach((lightRef) => {
+                const light = lightRef.current;
+                if (!light) return;
 
-
-    const wheels = useMemo(() => {
-        return [clonesByGroup['FL_WHEEL'], clonesByGroup['FR_WHEEL'], clonesByGroup['RL_WHEEL'], clonesByGroup['RR_WHEEL']].map((group) => {
-            // Each group might contain multiple meshes, but we'll treat the group itself as a container
-            const groupObj = new Group();
-            Object.values(group).forEach((obj: Object3D) => {
-                groupObj.add(obj);
+                light.parent?.remove(light);
+                light.target.parent?.remove(light.target);
+                light.dispose();
+                lightRef.current = null;
             });
-            return groupObj;
-        });
-    }, [clonesByGroup]);
+        };
+    }, []);
+
+    useEffect(() => {
+        const missingWheelNames = (["FL", "FR", "RL", "RR"] as const)
+            .filter((_, index) => !wheels[index]);
+
+        if (missingWheelNames.length > 0) {
+            console.warn(
+                `[BRZ] Missing wheel roots: ${missingWheelNames.join(", ")}.`,
+                "Expected one of:",
+                BRZ_WHEEL_NAMES
+            );
+        }
+    }, [wheels]);
+    // Preserve every wheel's imported GLB orientation. Backend wheel_speed is
+    // radians/second, so integrate it into a continuous visual rotation.
+    const wheelRestRotations = useMemo(
+        () => wheels.map((wheel) => wheel?.quaternion.clone() ?? null),
+        [wheels]
+    );
+    const wheelSpinAngles = useRef([0, 0, 0, 0]);
+    const wheelBaseQuaternion = useRef(new Quaternion());
+    const wheelSteerQuaternion = useRef(new Quaternion());
+    const wheelSpinQuaternion = useRef(new Quaternion());
+    const steeringAxis = useRef(new Vector3(0, 1, 0));
+    const wheelAxle = useRef(new Vector3(1, 0, 0));
 
     useFrame((_, delta) => {
+        // Keep the selection model in its imported GLB pose. A previous game
+        // may still have an interpolated snapshot for this player.
+        if (isVehiclePreview) return;
+
         // get state on frame
         const inputState = useInputStore.getState();
         const gameState = useGameStore.getState();
         const networkState = useNetworkStore.getState();
-        const id = networkState.playerId;
+        const localPlayerId = networkState.playerId;
+        const id = entityId ?? localPlayerId;
 
         if (!id) return;
+
+        const isLocalPlayer = id === localPlayerId;
 
         const interp = getInterpolated(id);
         if (!interp) return;
@@ -325,7 +251,9 @@ export const Brz = forwardRef<Group, PropsWithChildren>(function Brz(
         }
 
         // Determine which lights should be on based on input state
-        const vehicleMask = input.vehicleMask;
+        const vehicleMask = isLocalPlayer
+            ? input.vehicleMask
+            : (interp as { vehicle_mask?: number }).vehicle_mask ?? 0;
 
         const headlights = hasFlag(vehicleMask, VehicleFlags.HEADLIGHTS);
         const hazards = hasFlag(vehicleMask, VehicleFlags.HAZARDS);
@@ -337,8 +265,9 @@ export const Brz = forwardRef<Group, PropsWithChildren>(function Brz(
         // Lights visibility
         if (leftLightRef.current) leftLightRef.current.visible = headlights;
         if (rightLightRef.current) rightLightRef.current.visible = headlights;
-        if (leftTailRef.current) leftTailRef.current.visible = controls.braking;
-        if (rightTailRef.current) rightTailRef.current.visible = controls.braking;
+        const braking = isLocalPlayer && controls.braking;
+        if (leftTailRef.current) leftTailRef.current.visible = braking;
+        if (rightTailRef.current) rightTailRef.current.visible = braking;
 
         if (flBlinkerRef.current) flBlinkerRef.current.visible = (hazards || blinkerLeft) && blinkOn
         if (frBlinkerRef.current) frBlinkerRef.current.visible = (hazards || blinkerRight) && blinkOn
@@ -349,22 +278,51 @@ export const Brz = forwardRef<Group, PropsWithChildren>(function Brz(
         group.position.set(...interp.position);
         group.quaternion.set(...interp.rotation);
 
-        const wheelMap = {
-            fl: wheels[0],
-            fr: wheels[1],
-            rl: wheels[2],
-            rr: wheels[3],
+        const indexById = {
+            fl: 0,
+            fr: 1,
+            rl: 2,
+            rr: 3,
         } as const;
 
+        // Avoid a large animation jump after a slow frame or tab switch.
+        const wheelDelta = Math.min(delta, 0.05);
+
         interp.wheels?.forEach((wheel) => {
-            const wheelObject = wheelMap[wheel.id];
-            if (!wheelObject) return;
+            const wheelId = wheel.id.toLowerCase() as keyof typeof indexById;
+            const index = indexById[wheelId];
+            if (index === undefined) return;
+
+            const wheelObject = wheels[index];
+            const restRotation = wheelRestRotations[index];
+            if (!wheelObject || !restRotation) return;
 
             wheelObject.position.set(...wheel.position);
-            wheelObject.quaternion.set(...wheel.rotation);
+
+            wheelSpinAngles.current[index] = MathUtils.euclideanModulo(
+                wheelSpinAngles.current[index]
+                    + (wheel.wheel_speed ?? 0) * wheelDelta,
+                Math.PI * 2
+            );
+
+            wheelBaseQuaternion.current.set(...wheel.rotation);
+            wheelSteerQuaternion.current.setFromAxisAngle(
+                steeringAxis.current,
+                -(wheel.steer_angle ?? 0)
+            );
+            wheelSpinQuaternion.current.setFromAxisAngle(
+                wheelAxle.current,
+                wheelSpinAngles.current[index]
+            );
+
+            wheelObject.quaternion
+                .copy(wheelBaseQuaternion.current)
+                .multiply(wheelSteerQuaternion.current)
+                .multiply(wheelSpinQuaternion.current)
+                .multiply(restRotation);
         });
 
-        if (!isEditor && (camMode === "FIRST_PERSON" || camMode === "DEFAULT" || camMode === "BIRDS_EYE")) {
+        if (isLocalPlayer && !isEditor && (camMode === "FIRST_PERSON" || camMode === "DEFAULT" || camMode === "BIRDS_EYE")) {
             const offset = new Vector3();
 
             if (camMode === "FIRST_PERSON") offset.set(-0.28, 1.01, -.1);
@@ -379,37 +337,51 @@ export const Brz = forwardRef<Group, PropsWithChildren>(function Brz(
             camera.lookAt(target);
         }
 
-        const isFirstPerson = camMode === 'FIRST_PERSON';
-        const targetOpacity = isFirstPerson ? 0.1 : 0.4;
-        const targetIOR = isFirstPerson ? 1.0 : 6.5;
-        const targetColor = isFirstPerson ? tintFirstPerson : tintExterior;
-        const transitionSpeed = 3.0; // seconds it takes to reach 90% of the transition
-        const t = delta / transitionSpeed;
+        if (isLocalPlayer) {
+            const isFirstPerson = camMode === 'FIRST_PERSON';
+            const targetOpacity = isFirstPerson ? 0.1 : 0.4;
+            const targetIOR = isFirstPerson ? 1.0 : 6.5;
+            const targetColor = isFirstPerson ? tintFirstPerson : tintExterior;
+            const transitionSpeed = 3.0;
+            const t = delta / transitionSpeed;
 
-        sharedGlassMaterial.opacity = MathUtils.lerp(
-            sharedGlassMaterial.opacity,
-            targetOpacity,
-            t
-        );
+            sharedGlassMaterial.opacity = MathUtils.lerp(
+                sharedGlassMaterial.opacity,
+                targetOpacity,
+                t
+            );
 
-        sharedGlassMaterial.ior = MathUtils.lerp(
-            sharedGlassMaterial.ior,
-            targetIOR,
-            t
-        );
-        sharedGlassMaterial.color.lerp(targetColor, t); // 👈 tint fade
-        sharedGlassMaterial.needsUpdate = true;
+            sharedGlassMaterial.ior = MathUtils.lerp(
+                sharedGlassMaterial.ior,
+                targetIOR,
+                t
+            );
+            sharedGlassMaterial.color.lerp(targetColor, t);
+            sharedGlassMaterial.needsUpdate = true;
+        }
     })
 
     return (
         <>
             <group ref={vehicleGroupRef}>
-                {Object.values(renderedGroups)}
+                <group
+                    ref={visualGroupRef}
+                    position={[0, isVehiclePreview ? 0 : BRZ_VISUAL_OFFSET_Y, 0]}
+                >
+                    <primitive object={vehicleVisualRoot} />
+                </group>
+                {isVehiclePreview &&
+                    wheels.map((wheel, i) => (
+                        wheel ? (
+                            <primitive key={`brz-preview-wheel-${i}`} object={wheel} />
+                        ) : null
+                    ))}
                 {children}
             </group>
-            {wheels.map((wheel, i) => (
-                wheel ? <primitive key={i} object={wheel} /> : null
-            ))}
+            {!isVehiclePreview &&
+                wheels.map((wheel, i) => (
+                    wheel ? <primitive key={`brz-wheel-${i}`} object={wheel} /> : null
+                ))}
         </>
     );
 })

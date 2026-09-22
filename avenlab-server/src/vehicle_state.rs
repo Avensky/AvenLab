@@ -16,12 +16,13 @@ pub struct VehicleConfig {
     pub load_sensitivity: f32, // how much friction decreases with load
 
     // --- Geometry ---
-    pub wheelbase: f32,      // meters (front axle to rear axle)
-    pub track_width: f32,    // meters (left to right)
-    pub max_steer_angle: f32,// radians
-    pub ackermann: f32,      // 0..1 blend (0 = parallel, 1 = full ackermann)
+    pub front_axle_z: f32,       // chassis-local meters; forward is positive Z
+    pub rear_axle_z: f32,        // chassis-local meters; rearward is negative Z
+    pub front_track_width: f32,  // front wheel-center distance, left to right
+    pub rear_track_width: f32,   // rear wheel-center distance, left to right
+    pub max_steer_angle: f32,    // radians
+    pub ackermann: f32,          // 0..1 blend (0 = parallel, 1 = full ackermann)
 
-    pub wheel_forward_offset: f32,
     pub wheels: usize,                  // number of wheels (for load distribution);
     pub wheel_radius: f32,              // meters (for visual size + suspension geometry)       
     pub suspension_rest_length: f32,    // meters (neutral suspension length)
@@ -134,5 +135,16 @@ pub struct Wheel {
     pub drive: bool,             // is this a driven wheel?
     pub steer: bool,             // is this a steering wheel?
 
+    pub compression: f32,          // current suspension compression (for debug visualization)
+    pub compression_ratio: f32,    // current suspension compression ratio (for debug visualization)
+
     pub tire_state: TireState,
+}
+
+impl VehicleConfig {
+    /// Front-to-rear axle distance used by Ackermann and tire physics.
+    #[inline]
+    pub fn wheelbase(&self) -> f32 {
+        (self.front_axle_z - self.rear_axle_z).abs()
+    }
 }

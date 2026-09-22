@@ -1,5 +1,5 @@
 import { useSelectionStore } from "../../store";
-import { Ae86, Brz, Camaro, Gt86, Tank } from "../../vehicles";
+import { Ae86, Brz, Camaro, Supra, Tank } from "../../vehicles";
 
 export function VehiclePreviewModel() {
   const vehicleId = useSelectionStore((s) => s.getSelectedVehicle().id);
@@ -8,7 +8,7 @@ export function VehiclePreviewModel() {
       {vehicleId === "ae86"   && <Ae86 />}
       {vehicleId === "brz"    && <Brz />}
       {vehicleId === "camaro" && <Camaro />}
-      {vehicleId === "gt86"   && <Gt86 />}
+      {vehicleId === "supra"  && <Supra />}
       {vehicleId === "tank"   && <Tank />}
     </>
   );

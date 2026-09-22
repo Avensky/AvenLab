@@ -41,7 +41,7 @@ export function GameUI() {
       />
     )}
     {screen === "signal_recon_mission" && <SignalReconMission collapsed={collapsed} setCollapsed={setCollapsed}/>}
-    {screen === "sandbox_setup" && <SandboxSetup />}
+    {screen === "sandbox_setup" && <SandboxSetup collapsed={collapsed} setCollapsed={setCollapsed} />}
     {screen === "signal_recon_setup" && <SignalReconSetup collapsed={collapsed} setCollapsed={setCollapsed}/>}
     {/* Menus */}
     {screen === "main" && <MainMenu />}

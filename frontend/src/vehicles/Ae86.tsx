@@ -1,16 +1,22 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, } from "react";
 import type { PropsWithChildren } from "react";
-import { Group, MathUtils, Object3D, SpotLight, Vector3 } from "three";
+import { Group, MathUtils, Object3D, Quaternion, SpotLight, Vector3 } from "three";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useGLTF } from "@react-three/drei";
 
-import { useNetworkStore, useInputStore, useGameStore } from "../store";
+import { useNetworkStore, useInputStore, useGameStore, useUIStore } from "../store";
 import { usePhysicsInterpolator } from "../hooks/usePhysicsInterpolator";
 import { hasFlag, VehicleFlags } from "../store/tools/inputMasks";
 import { setupVehicleParts } from "./tools/setupVehicleParts";
 
-
 const MODEL_PATH = "/models/vehicles/ae86.glb";
+
+// The exported body origin is on the bottom of the chassis, while the backend
+// rigid-body pose is the center of its 0.70 m-tall box collider. Move only the
+// visual body down by the collider half-height; the world-space wheel poses
+// from the backend remain unchanged.
+const CHASSIS_VISUAL_OFFSET_Y = -0.50;
+
 const PARTS = {
   root: "VEHICLE_ROOT",
 
@@ -38,12 +44,21 @@ const PARTS = {
   },
 } as const;
 
-export const Ae86 = forwardRef<Group, PropsWithChildren>(function Ae86(
-  { children },
+type Ae86Props = PropsWithChildren<{
+  entityId?: string;
+}>;
+
+export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
+  { children, entityId },
   ref: React.Ref<Group>
 ) {
   const { scene } = useGLTF(MODEL_PATH);            //load the model and get the scene
   const camera = useThree((state) => state.camera);
+  const isVehiclePreview = useUIStore(
+    (state) =>
+      state.screen === "sandbox_setup" ||
+      state.screen === "signal_recon_setup"
+  );
 
 
   const vehicleGroupRef = useRef<Group>(null!);
@@ -124,21 +139,23 @@ export const Ae86 = forwardRef<Group, PropsWithChildren>(function Ae86(
 
   const wheels = useMemo(() => {
     return [
-      clonesByGroup.WHEEL_FL?.[PARTS.wheels.fl] ?? null,
       clonesByGroup.WHEEL_FR?.[PARTS.wheels.fr] ?? null,
-      clonesByGroup.WHEEL_RL?.[PARTS.wheels.rl] ?? null,
+      clonesByGroup.WHEEL_FL?.[PARTS.wheels.fl] ?? null,
       clonesByGroup.WHEEL_RR?.[PARTS.wheels.rr] ?? null,
+      clonesByGroup.WHEEL_RL?.[PARTS.wheels.rl] ?? null,
     ];
   }, [clonesByGroup]);
 
+  // Log the body parts and headlights when they are available
   useEffect(() => {
     headlightRef.current = clonesByGroup.BODY?.[PARTS.headlights] ?? null;
 
-    console.log("[ae86 used] body parts:", Object.keys(clonesByGroup.BODY ?? {}));
-    console.log("[ae86 used] headlights:", headlightRef.current?.name);
+    // console.log("[ae86 used] body parts:", Object.keys(clonesByGroup.BODY ?? {}));
+    // console.log("[ae86 used] headlights:", headlightRef.current?.name);
     // console.log("[ae86 used] wheels:", wheels.map((w) => w?.name));
   }, [clonesByGroup, wheels]);
 
+  // light setup
   useEffect(() => {
     const addSpot = (
       refObj: { current: SpotLight | null },
@@ -208,13 +225,35 @@ export const Ae86 = forwardRef<Group, PropsWithChildren>(function Ae86(
     };
   }, []);
 
+  // Store the initial wheel rotations for later use
+  const wheelRestRotations = useMemo(
+    () => wheels.map((wheel) => wheel?.quaternion.clone() ?? null),
+    [wheels]
+  );
+
+  // Backend wheel_speed is radians/second. Keep a continuous angle locally so
+  // snapshot interpolation does not reset the visible wheel rotation.
+  const wheelSpinAngles = useRef([0, 0, 0, 0]);
+  const wheelBaseQuaternion = useRef(new Quaternion());
+  const wheelSteerQuaternion = useRef(new Quaternion());
+  const wheelSpinQuaternion = useRef(new Quaternion());
+  const steeringAxis = useRef(new Vector3(0, 1, 0));
+  const wheelAxle = useRef(new Vector3(1, 0, 0));
+
   useFrame((_, delta) => {
+    // Selection previews use the transforms imported from the GLB. Do not let
+    // a stale backend snapshot move the preview vehicle or its wheels.
+    if (isVehiclePreview) return;
+
     const inputState = useInputStore.getState();
     const gameState = useGameStore.getState();
     const networkState = useNetworkStore.getState();
 
-    const id = networkState.playerId;
+    const localPlayerId = networkState.playerId;
+    const id = entityId ?? localPlayerId;
     if (!id) return;
+
+    const isLocalPlayer = id === localPlayerId;
 
     const interp = getInterpolated(id);
     if (!interp) return;
@@ -232,23 +271,61 @@ export const Ae86 = forwardRef<Group, PropsWithChildren>(function Ae86(
     // Temporary visual correction only.
     // group.position.set(0, 0, 0);
 
-    const wheelMap = {
-      fl: wheels[0],
-      fr: wheels[1],
-      rl: wheels[2],
-      rr: wheels[3],
+    // const wheelMap = {
+    //   fl: wheels[0],
+    //   fr: wheels[1],
+    //   rl: wheels[2],
+    //   rr: wheels[3],
+    // } as const;
+
+    const indexById = {
+      fl: 0,
+      fr: 1,
+      rl: 2,
+      rr: 3,
     } as const;
 
+    const wheelDelta = Math.min(delta, 0.05);
+
     interp.wheels?.forEach((wheel) => {
-      const wheelObject = wheelMap[wheel.id];
-      if (!wheelObject) return;
+
+      const index = indexById[wheel.id];
+      const wheelObject = wheels[index];
+      const restRotation = wheelRestRotations[index];
+
+      if (!wheelObject || !restRotation) return;
 
       wheelObject.position.set(...wheel.position);
-      wheelObject.quaternion.set(...wheel.rotation);
+
+      wheelSpinAngles.current[index] = MathUtils.euclideanModulo(
+        wheelSpinAngles.current[index]
+          + (wheel.wheel_speed ?? 0) * wheelDelta,
+        Math.PI * 2
+      );
+
+      // Match DebugWheelVisualizer's steering sign and spin axis:
+      // chassis rotation -> steering -> rolling spin -> GLB rest rotation.
+      wheelBaseQuaternion.current.set(...wheel.rotation);
+      wheelSteerQuaternion.current.setFromAxisAngle(
+        steeringAxis.current,
+        -(wheel.steer_angle ?? 0)
+      );
+      wheelSpinQuaternion.current.setFromAxisAngle(
+        wheelAxle.current,
+        wheelSpinAngles.current[index]
+      );
+
+      wheelObject.quaternion
+        .copy(wheelBaseQuaternion.current)
+        .multiply(wheelSteerQuaternion.current)
+        .multiply(wheelSpinQuaternion.current)
+        .multiply(restRotation);
     });
 
 
-    const vehicleMask = input.vehicleMask;
+    const vehicleMask = isLocalPlayer
+      ? input.vehicleMask
+      : (interp as { vehicle_mask?: number }).vehicle_mask ?? 0;
     const headlights = hasFlag(vehicleMask, VehicleFlags.HEADLIGHTS);
     const hazards = hasFlag(vehicleMask, VehicleFlags.HAZARDS);
     const blinkerLeft = hasFlag(vehicleMask, VehicleFlags.BLINKER_LEFT) && !hazards;
@@ -281,15 +358,16 @@ export const Ae86 = forwardRef<Group, PropsWithChildren>(function Ae86(
     if (leftLightRef.current) leftLightRef.current.visible = headlights;
     if (rightLightRef.current) rightLightRef.current.visible = headlights;
 
-    if (leftTailRef.current) leftTailRef.current.visible = controls.braking;
-    if (rightTailRef.current) rightTailRef.current.visible = controls.braking;
+    const braking = isLocalPlayer && controls.braking;
+    if (leftTailRef.current) leftTailRef.current.visible = braking;
+    if (rightTailRef.current) rightTailRef.current.visible = braking;
 
     if (flBlinkerRef.current) flBlinkerRef.current.visible = (hazards || blinkerLeft) && blinkOn;
     if (frBlinkerRef.current) frBlinkerRef.current.visible = (hazards || blinkerRight) && blinkOn;
     if (rlBlinkerRef.current) rlBlinkerRef.current.visible = (hazards || blinkerLeft) && blinkOn;
     if (rrBlinkerRef.current) rrBlinkerRef.current.visible = (hazards || blinkerRight) && blinkOn;
 
-    if (!isEditor && (camMode === "FIRST_PERSON" || camMode === "DEFAULT" || camMode === "BIRDS_EYE")) {
+    if (isLocalPlayer && !isEditor && (camMode === "FIRST_PERSON" || camMode === "DEFAULT" || camMode === "BIRDS_EYE")) {
       const offset = new Vector3();
 
       if (camMode === "FIRST_PERSON") offset.set(0.29, 0.97, -0.01);
@@ -308,12 +386,23 @@ export const Ae86 = forwardRef<Group, PropsWithChildren>(function Ae86(
   return (
     <>
       <group ref={vehicleGroupRef}>
-        {renderedGroups.BODY}
+          <group
+            position={[0, isVehiclePreview ? 0 : CHASSIS_VISUAL_OFFSET_Y, 0]}
+          >
+            {renderedGroups.BODY}
+          </group>
+        {isVehiclePreview &&
+          wheels.map((wheel, i) =>
+            wheel ? (
+              <primitive key={`ae86-preview-wheel-${i}`} object={wheel} />
+            ) : null
+          )}
         {children}
       </group>
-      {wheels.map((wheel, i) =>
-        wheel ? <primitive key={`ae86-wheel-${i}`} object={wheel} /> : null
-      )}
+      {!isVehiclePreview &&
+        wheels.map((wheel, i) =>
+          wheel ? <primitive key={`ae86-wheel-${i}`} object={wheel} /> : null
+        )}
     </>
   );
 });

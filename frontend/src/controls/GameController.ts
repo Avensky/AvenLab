@@ -1,7 +1,7 @@
 // src/components/GameController.tsx
 
 import { useRef, useEffect } from 'react';
-import { useInputStore, useUIStore } from "../store";
+import { useInputStore, useSelectionStore, useUIStore } from "../store";
 import { VehicleFlags, PlayerFlags } from "../store/tools/inputMasks";
 
 /**
@@ -78,6 +78,7 @@ export function GameController() {
                   ui.screen === "sandbox_setup" ||
                   ui.overlay === "pause"||
                   ui.overlay === "settings"||
+                  ui.overlay === "debug_menu"||
                   ui.overlay === "vehicle_select";
 
                 debugGamepadRef.current(gp);
@@ -128,38 +129,168 @@ export function GameController() {
 
                 const leftStickX = applyDeadzone(gp.axes[0] ?? 0, 0.45);
                 const leftStickY = applyDeadzone(gp.axes[1] ?? 0, 0.45);
-                if (inMenu) {
-                  if (now - lastMenuMoveRef.current > 220) {
-                    if (leftStickY < -0.5) {
-                      useUIStore.getState().moveActiveMenuSelection(-1);
-                      lastMenuMoveRef.current = now;
-                    }
+                const rightStickX = applyDeadzone(gp.axes[2] ?? 0, 0.45);
+                const rightStickY = applyDeadzone(gp.axes[3] ?? 0, 0.45);
 
-                    if (leftStickY > 0.5) {
-                      useUIStore.getState().moveActiveMenuSelection(1);
+                const isDebugMenu = ui.overlay === "debug_menu";
+
+                if (isDebugMenu) {
+                  const dispatchDebugMenuEvent = (
+                    action: "up" | "down" | "left" | "right" | "activate" | "back"
+                  ) => {
+                    window.dispatchEvent(
+                      new Event(`avenlab:debug-menu-${action}`)
+                    );
+                  };
+
+                  if (now - lastMenuMoveRef.current > 220) {
+                    if (leftStickY < -0.5 || rightStickY < -0.5) {
+                      dispatchDebugMenuEvent("up");
+                      lastMenuMoveRef.current = now;
+                    } else if (leftStickY > 0.5 || rightStickY > 0.5) {
+                      dispatchDebugMenuEvent("down");
                       lastMenuMoveRef.current = now;
                     }
                   }
 
                   if (now - lastMenuHorizontalRef.current > 220) {
-                    if (leftStickX < -0.5) {
-                      useUIStore.getState().moveActiveMenuHorizontal(-1);
+                    if (leftStickX < -0.5 || rightStickX < -0.5) {
+                      dispatchDebugMenuEvent("left");
                       lastMenuHorizontalRef.current = now;
-                    }
-
-                    if (leftStickX > 0.5) {
-                      useUIStore.getState().moveActiveMenuHorizontal(1);
+                    } else if (leftStickX > 0.5 || rightStickX > 0.5) {
+                      dispatchDebugMenuEvent("right");
                       lastMenuHorizontalRef.current = now;
                     }
                   }
 
-                  onPress(12, () => {useUIStore.getState().moveActiveMenuSelection(-1);});
-                  onPress(13, () => {useUIStore.getState().moveActiveMenuSelection(1);});
-                  onPress(14, () => useUIStore.getState().moveActiveMenuHorizontal(-1));
-                  onPress(15, () => useUIStore.getState().moveActiveMenuHorizontal(1));
+                  onPress(12, () => dispatchDebugMenuEvent("up"));
+                  onPress(13, () => dispatchDebugMenuEvent("down"));
+                  onPress(14, () => dispatchDebugMenuEvent("left"));
+                  onPress(15, () => dispatchDebugMenuEvent("right"));
+                  onPress(0, () => dispatchDebugMenuEvent("activate"));
+                  onPress(1, () => dispatchDebugMenuEvent("back"));
+
+                  frameId = requestAnimationFrame(pollGamepad);
+                  return;
+                }
+
+                const isSandboxSetup = ui.screen === "sandbox_setup";
+
+                // On the main and Sandbox setup screens, either stick may
+                // navigate vertically. Use the stronger input so the two
+                // sticks cannot produce duplicate moves in the same poll.
+                // Use only the stick with the stronger input so moving both
+                // sticks cannot trigger two menu steps during the same poll.
+                const menuVerticalAxis =
+                  (ui.screen === "main" || isSandboxSetup) &&
+                  Math.abs(rightStickY) > Math.abs(leftStickY)
+                    ? rightStickY
+                    : leftStickY;
+
+                const menuHorizontalAxis =
+                  isSandboxSetup &&
+                  Math.abs(rightStickX) > Math.abs(leftStickX)
+                    ? rightStickX
+                    : leftStickX;
+
+                const moveSandboxRow = (direction: -1 | 1) => {
+                  const sandboxIndex =
+                    useUIStore.getState().selectedMenuIndexById.sandbox_setup;
+                  const nextIndex = (sandboxIndex + direction + 2) % 2;
+                  useUIStore.getState().setActiveMenuIndex(nextIndex);
+                };
+
+                const moveMenuVertically = (direction: -1 | 1) => {
+                  if (isSandboxSetup) {
+                    moveSandboxRow(direction);
+                    return;
+                  }
+                  useUIStore.getState().moveActiveMenuSelection(direction);
+                };
+
+                const moveMenuHorizontally = (direction: -1 | 1) => {
+                  if (!isSandboxSetup) {
+                    useUIStore.getState().moveActiveMenuHorizontal(direction);
+                    return;
+                  }
+
+                  const sandboxIndex =
+                    useUIStore.getState().selectedMenuIndexById.sandbox_setup;
+                  const selection = useSelectionStore.getState();
+
+                  if (sandboxIndex === 0) {
+                    if (direction < 0) {
+                      selection.prevVehicle();
+                    } else {
+                      selection.nextVehicle();
+                    }
+                  } else if (sandboxIndex === 1) {
+                    if (direction < 0) {
+                      selection.prevMap();
+                    } else {
+                      selection.nextMap();
+                    }
+                  }
+                };
+
+                if (inMenu) {
+                  if (now - lastMenuMoveRef.current > 220) {
+                    if (menuVerticalAxis < -0.5) {
+                      moveMenuVertically(-1);
+                      lastMenuMoveRef.current = now;
+                    }
+
+                    if (menuVerticalAxis > 0.5) {
+                      moveMenuVertically(1);
+                      lastMenuMoveRef.current = now;
+                    }
+                  }
+
+                  if (now - lastMenuHorizontalRef.current > 220) {
+                    if (menuHorizontalAxis < -0.5) {
+                      moveMenuHorizontally(-1);
+                      lastMenuHorizontalRef.current = now;
+                    }
+
+                    if (menuHorizontalAxis > 0.5) {
+                      moveMenuHorizontally(1);
+                      lastMenuHorizontalRef.current = now;
+                    }
+                  }
+
+                  onPress(12, () => moveMenuVertically(-1));
+                  onPress(13, () => moveMenuVertically(1));
+                  onPress(14, () => moveMenuHorizontally(-1));
+                  onPress(15, () => moveMenuHorizontally(1));
                   
-                  onPress(0,  () => {useUIStore.getState().activateActiveMenuSelection();});
-                  onPress(1,  () => {useUIStore.getState().closeOverlay();});
+                  onPress(0, () => {
+                    const currentUi = useUIStore.getState();
+                    if (currentUi.screen === "sandbox_setup") {
+                      window.dispatchEvent(new Event("avenlab:sandbox-start"));
+                      return;
+                    }
+
+                    // Open the debugger explicitly from the pause menu. This
+                    // keeps controller access working even if the generic UI
+                    // action table has not added a debugger entry yet.
+                    if (
+                      currentUi.overlay === "pause" &&
+                      currentUi.selectedMenuIndexById.pause === 1
+                    ) {
+                      useUIStore.setState({ overlay: "debug_menu" });
+                      return;
+                    }
+
+                    currentUi.activateActiveMenuSelection();
+                  });
+                  onPress(1, () => {
+                    const currentUi = useUIStore.getState();
+                    if (currentUi.screen === "sandbox_setup") {
+                      window.dispatchEvent(new Event("avenlab:sandbox-exit"));
+                      return;
+                    }
+                    currentUi.closeOverlay();
+                  });
                   onPress(9,  () => {useUIStore.getState().togglePauseMenu();});
 
                   frameId = requestAnimationFrame(pollGamepad);

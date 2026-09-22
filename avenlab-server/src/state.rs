@@ -47,6 +47,8 @@ use crate::vehicle_debug::DebugOverlay;
 pub struct PhysicsEntitySnapshot {
     pub id: String,
     pub kind: String,
+    /// Canonical model id selected at spawn (ae86, brz, camaro, supra, ...).
+    pub vehicle_id: Option<String>,
     pub room_id: usize,
     pub team: String,
 
@@ -122,6 +124,8 @@ impl EntityType {
 pub struct EntityState {
     pub id: String,
     pub kind: EntityType,
+    /// Selected model id used by every client to render this entity.
+    pub vehicle_id: Option<String>,
     pub room_id: usize,
     pub team: Team,
     pub body_handle: RigidBodyHandle,
@@ -202,6 +206,7 @@ impl SharedGameState {
         let ent = EntityState {
             id: id.to_string(),
             kind,
+            vehicle_id: None,
             room_id: 0, // overwritten later
             team: Team::Red, // overwritten later
             body_handle: RigidBodyHandle::invalid(),
@@ -235,6 +240,15 @@ impl SharedGameState {
             );
         } else {
             println!("⚠ attach_body called for unknown entity id={}", id);
+        }
+    }
+
+    /// Store the authoritative vehicle model selected during spawning.
+    pub fn set_vehicle_id(&mut self, id: &str, vehicle_id: &str) {
+        if let Some(ent) = self.entities.get_mut(id) {
+            ent.vehicle_id = Some(vehicle_id.trim().to_ascii_lowercase());
+        } else {
+            println!("⚠ set_vehicle_id called for unknown entity id={}", id);
         }
     }
 
@@ -313,8 +327,13 @@ impl SharedGameState {
         for ent in self.entities.values() {
 
             // Skip entities that don’t yet have a physics body
+            // if ent.body_handle == RigidBodyHandle::invalid() {
+            //     println!("↪ entity {} has invalid body_handle, skipping", ent.id );
+            //     continue;
+            // }
+
+            // Connected but still on the setup screen.
             if ent.body_handle == RigidBodyHandle::invalid() {
-                println!("↪ entity {} has invalid body_handle, skipping", ent.id );
                 continue;
             }
 
@@ -363,6 +382,7 @@ impl SharedGameState {
                 
                 id: ent.id.clone(),
                 kind: ent.kind.as_str().to_string(),
+                vehicle_id: ent.vehicle_id.clone(),
                 room_id: ent.room_id,
                 team: ent.team.as_str().to_string(),
 

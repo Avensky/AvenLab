@@ -37,6 +37,8 @@ export interface WheelSnapshot {
 export interface PhysicsEntitySnapshot {
     id: string;
     kind: VehicleKind;
+    /** Canonical selected model id, such as ae86, brz, camaro, or supra. */
+    vehicle_id?: string | null;
     team?: Team;
     room_id: number;
 
@@ -64,12 +66,14 @@ export interface PhysicsEntity {
 }
 
 export interface DebugChassis {
+    player_id: string;
     position: [number, number, number];
     rotation: [number, number, number, number]; // x,y,z,w
     half_extents: [number, number, number];     // hx,hy,hz
 }
 
 export interface DebugRay {
+    player_id: string;
     origin: [number, number, number];
     direction: [number, number, number];
     length: number;
@@ -78,6 +82,7 @@ export interface DebugRay {
 }
 
 export interface DebugSlipRay {
+    player_id: string;
     origin: [number, number, number];
     direction: [number, number, number];
     slip_angle: number;
@@ -86,15 +91,24 @@ export interface DebugSlipRay {
 }
 
 export interface DebugWheel {
+    player_id: string;
     center: [number, number, number];
     radius: number;
     grounded: boolean;
     compression: number;
+    compression_ratio: number;
     normal_force: number;
     steering: boolean;
     drive: boolean;
     lateral_force: [number, number, number];
     lateral_magnitude: number;
+    rotation: [number, number, number, number];
+    wheel_speed: number; // radians per second
+    steer_angle: number;
+    v_long: number;
+    v_lat: number;
+    slip_angle: number;
+    slip_ratio: number;
 }
 
 export interface DebugAabbBox {
@@ -106,7 +120,7 @@ export interface DebugAabbBox {
 }
 
 export interface DebugOverlay {
-    chassis?: DebugChassis;
+    chassis: DebugChassis[];
     suspension_rays: DebugRay[];
     slip_vectors: DebugSlipRay[];
     load_bars: DebugRay[];

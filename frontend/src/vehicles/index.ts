@@ -1,6 +1,6 @@
 
 export * from './Brz'
-export * from './Gt86'
+export * from './Supra'
 export * from './Ae86'
 export * from './Camaro'
 export * from './Tank'

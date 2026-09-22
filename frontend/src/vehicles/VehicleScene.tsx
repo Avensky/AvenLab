@@ -10,113 +10,242 @@ import { DebugSpringVisualizer } from "../components/debugger/DebugSpringVisuali
 import { ChassisCollider } from "../components/debugger/ChassisCollider";
 import { DebugFlags, hasDebugFlag } from "../store/tools/debugMasks";
 import { useNetworkStore, useWorldStore } from "../store";
-import { VehiclePreviewModel } from "../game/preview";
+import { useDebugViewStore } from "../store/debugViewStore";
+import { VehicleRoster } from "./VehicleRoster";
 
 export function VehicleScene() {
-  const snapshot = useNetworkStore((s) => s.snapshot);
-  const playerId = useNetworkStore((s) => s.playerId);
-  const debug = useNetworkStore((s) => s.debugOverlay);
-  const mode = useWorldStore((s) => s.mode);
-  const me = useNetworkStore((s) => s.getMe());
-  const debugMask = useWorldStore((s) => s.debugMask);
-  const showChassis = hasDebugFlag(debugMask, DebugFlags.CHASSIS);
-  const showWheels = hasDebugFlag(debugMask, DebugFlags.WHEELS);
-  const showBars = hasDebugFlag(debugMask, DebugFlags.LOAD_BARS);
-  const showSlipAngles = hasDebugFlag(debugMask, DebugFlags.SLIP);
-  const showSprings = hasDebugFlag(debugMask, DebugFlags.RAYS);
+    const snapshot = useNetworkStore((s) => s.snapshot);
+    const playerId = useNetworkStore((s) => s.playerId);
+    const debug = useNetworkStore((s) => s.debugOverlay);
 
-  if (!snapshot || !playerId || !me) return null;
-  if (!debug) return null;
+    const playerScope = useDebugViewStore((s) => s.playerScope);
 
-  const springs = debug.suspension_rays
-    .map((r, i) => {
-      const wheel = debug.wheels[i];
-      if (!r.hit || !wheel) return null;
+    const mode = useWorldStore((s) => s.mode);
+    const debugMask = useWorldStore((s) => s.debugMask);
 
-      const normal = new THREE.Vector3(0, 1, 0);
-      const hit = new THREE.Vector3(...r.hit);
+    const showChassis = hasDebugFlag(
+        debugMask,
+        DebugFlags.CHASSIS
+    );
+    const showWheels = hasDebugFlag(
+        debugMask,
+        DebugFlags.WHEELS
+    );
+    const showLoadBars = hasDebugFlag(
+        debugMask,
+        DebugFlags.LOAD_BARS
+    );
+    const showAntiRollBars = hasDebugFlag(
+        debugMask,
+        DebugFlags.ARB
+    );
+    const showSlipAngles = hasDebugFlag(
+        debugMask,
+        DebugFlags.SLIP
+    );
+    const showSprings = hasDebugFlag(
+        debugMask,
+        DebugFlags.RAYS
+    );
 
-      const end = hit.clone().add(normal.multiplyScalar(wheel.radius));
-      const start = new THREE.Vector3(...r.origin);
+    if (!snapshot || !playerId) return null;
 
-      const restEnd = start
-        .clone()
-        .addScaledVector(normal, -(r.length - wheel.radius));
+    const isVisiblePlayer = (debugPlayerId: string) =>
+        playerScope === "all" || debugPlayerId === playerId;
 
-      const length = start.distanceTo(end);
-      const ratio = 1 - Math.min(length / r.length, 1);
+    const chassis = (debug?.chassis ?? []).filter((item) =>
+        isVisiblePlayer(item.player_id)
+    );
 
-      return {
-        start: start.toArray() as [number, number, number],
-        end: end.toArray() as [number, number, number],
-        restEnd: restEnd.toArray() as [number, number, number],
-        ratio,
-      };
-    })
-    .filter(Boolean) as {
-    start: [number, number, number];
-    end: [number, number, number];
-    restEnd: [number, number, number];
-    ratio: number;
-  }[];
+    const wheels = (debug?.wheels ?? []).filter((item) =>
+        isVisiblePlayer(item.player_id)
+    );
 
-  return (
-    <>
-      <OrbitControls />
+    const suspensionRays = (
+        debug?.suspension_rays ?? []
+    ).filter((item) => isVisiblePlayer(item.player_id));
 
-      {(mode === "glb" || mode === "hybrid") && <VehiclePreviewModel />}
+    const slipVectors = (
+        debug?.slip_vectors ?? []
+    ).filter((item) => isVisiblePlayer(item.player_id));
 
-      {mode === "geometry" && (
-        <>
-          <DebugWheelVisualizer wheels={debug.wheels}/>
-          <GeometryVisualizer
-            chassis={debug.chassis}
-            color="white"
-            opacity={0.5}
-            mode={mode}
-          />
-        </>
-      )}
+    const loadBars = (debug?.load_bars ?? []).filter(
+        (item) => isVisiblePlayer(item.player_id)
+    );
 
-    { showBars && <DebugAntiRollBarVisualizer links={debug.arb_links} />}
+    const arbLinks = (debug?.arb_links ?? []).filter(
+        (item) => isVisiblePlayer(item.player_id)
+    );
 
-    { showSlipAngles &&
-      <DebugSlipAngleVisualizer
-      slips={debug.slip_vectors}
-      vehiclePosition={me.position}
-      vehicleQuaternion={me.rotation}
-      />
-    }  
+    /*
+     * Keep wheel/ray pairing separate for each player.
+     * A global wheels[index] lookup can connect player two's
+     * spring to player one's wheel.
+     */
+    const wheelsByPlayer = new Map<string, typeof wheels>();
 
-      
-    { showSprings && 
-          <DebugSpringVisualizer
-          springs={springs}
-          opacity1={0.8}
-          opacity2={0.3}
-          vehiclePosition={me.position}
-          vehicleQuaternion={me.rotation}
-          />
+    for (const wheel of wheels) {
+        const playerWheels =
+            wheelsByPlayer.get(wheel.player_id) ?? [];
+
+        playerWheels.push(wheel);
+        wheelsByPlayer.set(wheel.player_id, playerWheels);
     }
 
-      {mode === "collider" || mode === "hybrid" && (
-        <>
-          {showWheels && <DebugWheelVisualizer wheels={debug.wheels}/>}
+    const nextRayIndexByPlayer = new Map<string, number>();
 
-          {showChassis && debug.chassis && (
-            <ChassisCollider
-              position={debug.chassis.position}
-              quaternion={debug.chassis.rotation}
-              scale={debug.chassis.half_extents.map((v: number) => v * 2) as [
-                number,
-                number,
-                number
-              ]}
-            />
-          )}
+    const springs = suspensionRays.flatMap((ray) => {
+        const wheelIndex =
+            nextRayIndexByPlayer.get(ray.player_id) ?? 0;
+
+        nextRayIndexByPlayer.set(
+            ray.player_id,
+            wheelIndex + 1
+        );
+
+        const wheel =
+            wheelsByPlayer.get(ray.player_id)?.[wheelIndex];
+
+        if (!ray.hit || !wheel) {
+            return [];
+        }
+
+        const start = new THREE.Vector3(...ray.origin);
+        const end = new THREE.Vector3(...wheel.center);
+
+        const direction = new THREE.Vector3(
+            ...ray.direction
+        ).normalize();
+
+        const maximumSpringLength = Math.max(
+            ray.length - wheel.radius,
+            0.001
+        );
+
+        const currentSpringLength =
+            start.distanceTo(end);
+
+        const ratio = THREE.MathUtils.clamp(
+            1 -
+                currentSpringLength /
+                    maximumSpringLength,
+            0,
+            1
+        );
+
+        const restEnd = start
+            .clone()
+            .addScaledVector(
+                direction,
+                maximumSpringLength
+            );
+
+        return [
+            {
+                start: start.toArray() as [
+                    number,
+                    number,
+                    number,
+                ],
+                end: end.toArray() as [
+                    number,
+                    number,
+                    number,
+                ],
+                restEnd: restEnd.toArray() as [
+                    number,
+                    number,
+                    number,
+                ],
+                ratio,
+            },
+        ];
+    });
+
+    return (
+        <>
+            <OrbitControls />
+
+            {(mode === "glb" || mode === "hybrid") && (
+                <VehicleRoster />
+            )}
+
+            {mode === "geometry" && (
+                <>
+                    {showWheels && (
+                        <DebugWheelVisualizer
+                            wheels={wheels}
+                        />
+                    )}
+
+                    {showChassis &&
+                        chassis.map((item) => (
+                            <GeometryVisualizer
+                                key={item.player_id}
+                                chassis={item}
+                                color="white"
+                                opacity={0.5}
+                                mode={mode}
+                            />
+                        ))}
+                </>
+            )}
+
+            {showLoadBars && (
+                <DebugAntiRollBarVisualizer
+                    links={loadBars}
+                />
+            )}
+
+            {showAntiRollBars && (
+                <DebugAntiRollBarVisualizer
+                    links={arbLinks}
+                />
+            )}
+
+            {showSlipAngles && (
+                <DebugSlipAngleVisualizer
+                    slips={slipVectors}
+                />
+            )}
+
+            {showSprings && (
+                <DebugSpringVisualizer
+                    springs={springs}
+                    opacity1={0.8}
+                    opacity2={0.3}
+                />
+            )}
+
+            {(mode === "collider" ||
+                mode === "hybrid") && (
+                <>
+                    {showWheels && (
+                        <DebugWheelVisualizer
+                            wheels={wheels}
+                        />
+                    )}
+
+                    {showChassis &&
+                        chassis.map((item) => (
+                            <ChassisCollider
+                                key={item.player_id}
+                                position={item.position}
+                                quaternion={item.rotation}
+                                scale={
+                                    item.half_extents.map(
+                                        (value) =>
+                                            value * 2
+                                    ) as [
+                                        number,
+                                        number,
+                                        number,
+                                    ]
+                                }
+                            />
+                        ))}
+                </>
+            )}
         </>
-      )}
-      
-    </>
-  );
+    );
 }

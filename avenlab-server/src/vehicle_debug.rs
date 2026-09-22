@@ -24,6 +24,7 @@ bitflags::bitflags! {
 
 #[derive(Clone, Serialize)]
 pub struct DebugChassis {
+    pub player_id: String,
     pub position: [f32; 3],
     pub rotation: [f32; 4], // quaternion
     pub half_extents: [f32; 3],
@@ -31,15 +32,24 @@ pub struct DebugChassis {
 
 #[derive(Clone, Serialize)]
 pub struct DebugWheel {
+    pub player_id: String,
     pub id: String,                 // "FL", "FR", "RL", "RR"
     pub center: [f32; 3],           // in world space
     pub radius: f32,
     pub grounded: bool,
     pub compression: f32,
+    pub compression_ratio: f32,
     pub normal_force: f32,
     pub steer: f32,
     pub steering: bool,
     pub drive: bool,
+    pub rotation: [f32; 4],
+    pub wheel_speed: f32,
+    pub steer_angle: f32,
+    pub v_long: f32,
+    pub v_lat: f32,
+    pub slip_angle: f32,
+    pub slip_ratio: f32,
 
     // pub lateral_force: [f32; 3],                // for debug visualization
     // pub lateral_magnitude: f32,                 // for debug visualization
@@ -47,6 +57,7 @@ pub struct DebugWheel {
 
 #[derive(Clone, Serialize)]
 pub struct DebugRay {
+    pub player_id: String,
     pub origin: [f32; 3],
     pub direction: [f32; 3],
     pub length: f32,
@@ -56,6 +67,7 @@ pub struct DebugRay {
 
 #[derive(Clone, Serialize)]
 pub struct DebugSlipRay {
+    pub player_id: String,
     pub origin: [f32; 3],
     pub direction: [f32; 3],
     pub slip_angle: f32,
@@ -65,7 +77,7 @@ pub struct DebugSlipRay {
 
 #[derive(Clone, Serialize)]
 pub struct DebugOverlay {
-    pub chassis: Option<DebugChassis>,
+    pub chassis: Vec<DebugChassis>,
     pub suspension_rays: Vec<DebugRay>,
     pub load_bars: Vec<DebugRay>,
     pub arb_links: Vec<DebugRay>,
@@ -77,7 +89,7 @@ pub struct DebugOverlay {
 
 impl DebugOverlay {
     pub fn clear(&mut self) {
-        self.chassis = None;
+        self.chassis.clear();
         self.suspension_rays.clear();
         self.load_bars.clear();
         self.arb_links.clear();

@@ -100,7 +100,7 @@ export function MainMenu() {
       </div>
 
       <div className="mt-3 flex items-center justify-between border-t border-cyan-400/20 pt-2 text-xs text-slate-500">
-        <span>&gt; D-PAD / LEFT STICK TO NAVIGATE</span>
+        <span>&gt; D-PAD / EITHER STICK TO NAVIGATE</span>
         <span className="text-red-300">A / ENTER TO SELECT</span>
       </div>
     </div>

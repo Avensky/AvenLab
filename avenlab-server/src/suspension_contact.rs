@@ -29,7 +29,7 @@ use crate::vehicle_state::{Vehicle, Wheel};
 use crate::aven_tire::steering::SteeringState;
 use crate::aven_tire::kinematics::{wheel_basis_world, slip_components};
 use crate::aven_tire::WheelId;
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::{AtomicU32};
 
 static DEBUG_TICK: AtomicU32 = AtomicU32::new(0);
 
@@ -124,16 +124,20 @@ pub(crate) fn compute_suspension_force(
     k: f32,
     c: f32,
 ) -> f32 {
-    // Deadzone
-    let v = if suspension_vel.abs() < 0.05 { 0.0 } else { suspension_vel };
-
-    // One-way damper (kills rebound)
-    // let v = if v > 0.0 { v * 0.4 } else { v };
-    let v = if v > 0.0 { v * 1.5 } else { v * 0.8 };
-
+    // Keep only a tiny noise deadzone. The previous 0.05 m/s deadzone removed
+    // damping exactly where the suspension should settle at rest.
+    let v = if suspension_vel.abs() < 0.01 {
+        0.0
+    } else {
+        suspension_vel
+    };
 
     let spring = k * compression;
-    let damper = (-c * v).clamp(-spring * 0.6, spring * 0.6);
+
+    // The configured damping ratio already determines damping strength. A
+    // symmetric damper is smoother, and allowing it to cancel the full spring
+    // force during rebound prevents the chassis from being launched upward.
+    let damper = (-c * v).clamp(-spring, spring);
 
     (spring + damper).max(0.0)
 }
@@ -163,7 +167,7 @@ pub fn build_suspension_contact(
     let ground_n = vector![0.0, 1.0, 0.0];
 
     let ray = Ray::new(origin, dir);
-    let max_dist = wheel.rest_length + wheel.max_length + wheel.radius;
+    let max_dist = wheel.rest_length + wheel.max_length + wheel.radius + 0.15;
 
     // let filter = QueryFilter::default().exclude_rigid_body(handle);
     let filter = QueryFilter::default().exclude_rigid_body(handle);
