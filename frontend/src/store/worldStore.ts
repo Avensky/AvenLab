@@ -29,6 +29,59 @@ export interface BlockColliderFile {
 
 export type RenderMode = "glb" | "geometry" | "collider" | "hybrid"
 
+export type MapCoordinateSystem = {
+  units: string;
+  up_axis: string;
+  forward_axis: string;
+};
+
+export type MapSurface = {
+  road_y: number;
+};
+
+export type FixedGridLayout = {
+  kind: "fixed_grid";
+  origin: [number, number];
+  size: [number, number];
+};
+
+export type StreamedLayout = {
+  kind: "streamed";
+  radius: number;
+};
+
+export type MapLayout = FixedGridLayout | StreamedLayout;
+
+export type VisualAsset = {
+  id: string;
+  asset: string;
+  position: [number, number, number];
+  rotation: [number, number, number, number];
+  scale: [number, number, number];
+};
+
+export type LoadedChunkInstance = {
+  x: number;
+  z: number;
+  origin: [number, number, number];
+};
+
+export type MapSnapshot = {
+  schema_version: number;
+  map_id: string;
+
+  coordinate_system: MapCoordinateSystem;
+
+  cell: [number, number];
+
+  surface: MapSurface;
+
+  layout: MapLayout;
+
+  visuals: VisualAsset[];
+
+  chunks: LoadedChunkInstance[];
+};
 
 interface WorldState {
   debugEnabled: boolean
@@ -59,7 +112,8 @@ interface WorldState {
   activeBlock: BlockColliderFile | null
   setActiveBlock: (block: BlockColliderFile | null) => void
 
-
+  map: MapSnapshot | null;
+  setMap: (map: MapSnapshot | null) => void;
 }
 
 
@@ -93,4 +147,8 @@ export const useWorldStore = create<WorldState>((set) => ({
 
   activeBlock: null,
   setActiveBlock: (block) => set({ activeBlock: block }),
+
+  map: null,
+  setMap: (map) => set({ map }),
+
 }));

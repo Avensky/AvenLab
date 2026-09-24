@@ -42,51 +42,22 @@ use rapier3d::prelude::*;
 use rapier3d::prelude::{InteractionGroups, Group};
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::Arc;
 use crate::aven_tire::steering::{apply_vehicle_controls, SteeringState};
 use crate::vehicle_state::{Vehicle, VehicleStateFlags, Wheel, PhysicsWheelSnapshot};
 use crate::vehicle_setup::config_for_vehicle;
 use crate::state::InputPacket;
 use crate::vehicle_debug::{DebugOverlay, DebugFlags};
-use crate::world::block_colliders::{BlockColliderWorld, load_block_collider_file, spawn_block_building_colliders,};
+use crate::world::block_colliders::{
+    BlockColliderFile,
+    BlockColliderWorld,
+    MapSnapshot,
+    load_block_collider_file,
+    spawn_block_building_colliders,
+};
 // constants
 const GROUP_GROUND: Group  = Group::from_bits_truncate(0b0001);
 const GROUP_CHASSIS: Group = Group::from_bits_truncate(0b0010);
-
-#[derive(Debug, Clone, Copy)]
-pub struct PhysicsMapDefinition {
-    pub id: &'static str,
-    pub collider_template: &'static str,
-}
-
-const STREAMING_ENDLESS_CITY: PhysicsMapDefinition = PhysicsMapDefinition {
-    id: "streaming_endless_city",
-    collider_template: "streaming_endless_city",
-};
-
-const BLUE_BASE: PhysicsMapDefinition = PhysicsMapDefinition {
-    id: "blue_base",
-    collider_template: "block_01",
-};
-
-// Verified against streaming_endless_city_colliders.json. These positions are
-// inside the road collider and outside every detailed building AABB. Ordering
-// alternates between the red and blue rows because SpawnManager currently
-// allocates teams Red, Blue, Red, Blue...
-const STREAMING_CITY_SPAWN_SLOTS: [[f32; 2]; 10] = [
-    [-8.0, -20.0], [8.0, -20.0],
-    [-8.0, -10.0], [8.0, -10.0],
-    [-8.0,   0.0], [8.0,   0.0],
-    [-8.0,  10.0], [8.0,  10.0],
-    [-8.0,  20.0], [8.0,  20.0],
-];
-
-fn physics_map_definition(map_id: &str) -> Option<PhysicsMapDefinition> {
-    match map_id {
-        "streaming_endless_city" => Some(STREAMING_ENDLESS_CITY),
-        "blue_base" => Some(BLUE_BASE),
-        _ => None,
-    }
-}
 
 pub struct PhysicsWorld {
     pub gravity: Vector<Real>, // gravity vector
@@ -97,7 +68,7 @@ pub struct PhysicsWorld {
     pub bodies: RigidBodySet, // for rigid bodies
     pub colliders: ColliderSet, // for collision shapes
     pub block_world: BlockColliderWorld, // for block-based colliders
-    active_map: Option<PhysicsMapDefinition>,
+    active_map: Option<Arc<BlockColliderFile>>, // currently active map
     pub joints: ImpulseJointSet, // for constraints
     pub multibody_joints: MultibodyJointSet,// for articulated bodies
     pub ccd: CCDSolver, // continuous collision detection
@@ -112,47 +83,93 @@ pub struct PhysicsWorld {
 
 impl PhysicsWorld {
 
-    pub fn active_map_id(&self) -> Option<&'static str> {
-        self.active_map.map(|map| map.id)
+    fn map_definition_path(map_id: &str) -> anyhow::Result<PathBuf> {
+        if map_id.is_empty()
+            || !map_id
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+        {
+            anyhow::bail!("Invalid map id: {map_id}");
+        }
+
+        Ok(
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("src")
+                .join("assets")
+                .join("blocks")
+                .join(format!("{map_id}_colliders.json"))
+        )
+    }
+
+    pub fn active_map_id(&self) -> Option<&str> {
+        self.active_map
+            .as_ref()
+            .map(|map| map.map_id.as_str())
+    }
+
+    pub fn map_snapshot(&self) -> Option<MapSnapshot> {
+        let map = self.active_map.as_ref()?;
+
+        Some(map.snapshot(&self.block_world))
     }
 
     /// Load the collider set selected by the frontend before spawning a car.
     pub fn select_map(&mut self, map_id: &str) -> anyhow::Result<()> {
-        let requested = physics_map_definition(map_id)
-            .ok_or_else(|| anyhow::anyhow!("Unknown map id: {map_id}"))?;
+        // Already selected.
+        if self.active_map_id() == Some(map_id) {
+            self.update_loaded_blocks_around_players();
+            return Ok(());
+        }
 
-        if let Some(active) = self.active_map {
-            if active.id == requested.id {
-                if !self.block_world.loaded.contains_key(&(0, 0)) {
-                    self.load_block(requested.collider_template, 0, 0)?;
-                }
-                return Ok(());
-            }
-
+        if let Some(current) = self.active_map_id() {
             if !self.vehicles.is_empty() {
                 anyhow::bail!(
                     "Cannot switch physics map from '{}' to '{}' while vehicles are spawned",
-                    active.id,
-                    requested.id,
+                    current,
+                    map_id,
                 );
             }
         }
 
+        // Load and validate the NEW map before destroying the current one.
+        let path = Self::map_definition_path(map_id)?;
+
+        println!("🗺️ Loading map definition: {}", path.display());
+
+        let file = load_block_collider_file(
+            path.to_string_lossy().to_string()
+        )?;
+
+        if file.map_id != map_id {
+            anyhow::bail!(
+                "Requested map '{}' but definition contains map_id '{}'",
+                map_id,
+                file.map_id,
+            );
+        }
+
+        let requested = Arc::new(file);
+
+        // New definition is valid. Now remove previous chunks.
         let loaded_keys: Vec<(i32, i32)> =
             self.block_world.loaded.keys().copied().collect();
 
-        for (bx, by) in loaded_keys {
-            self.unload_block(bx, by);
+        for (bx, bz) in loaded_keys {
+            self.unload_block(bx, bz);
         }
 
-        self.block_world.tile_size = None;
-        self.load_block(requested.collider_template, 0, 0)?;
+        self.block_world.tile_size = Some(requested.cell);
         self.active_map = Some(requested);
 
+        self.update_loaded_blocks_around_players();
+
+        let chunk_count = self.block_world.loaded.len();
+
         println!(
-            "Active map '{}' loaded from '{}_colliders.json'",
-            requested.id,
-            requested.collider_template,
+            "✅ Active map '{}' loaded: cell={:?}, chunks={}",
+            map_id,
+            self.block_world.tile_size,
+            chunk_count,
         );
 
         Ok(())
@@ -211,73 +228,68 @@ impl PhysicsWorld {
     }
 
     pub fn update_loaded_blocks_around_players(&mut self) {
-        let Some(active_map) = self.active_map else {
-            // No world colliders are loaded until the setup screen chooses a map.
-            return;
+        let wanted = match self.active_map.as_ref() {
+            Some(map) => map.initial_chunks(),
+            None => return,
         };
 
-        let bx = 0;
-        let by = 0;
+        let loaded_keys: Vec<(i32, i32)> =
+            self.block_world.loaded.keys().copied().collect();
 
-        // unload everything except the origin block
-        let loaded_keys: Vec<(i32, i32)> = self.block_world.loaded.keys().cloned().collect();
         for key in loaded_keys {
-            if key != (bx, by) {
+            if !wanted.contains(&key) {
                 self.unload_block(key.0, key.1);
             }
         }
 
-        // load only one block
-        if !self.block_world.loaded.contains_key(&(bx, by)) {
-            let block_id = active_map.collider_template;
-            if let Err(e) = self.load_block(block_id, bx, by) {
-                eprintln!("⚠️ Failed to load block {block_id} at ({bx},{by}): {e}");
+        for (bx, bz) in wanted {
+            if let Err(error) = self.load_block(bx, bz) {
+                eprintln!(
+                    "⚠️ Failed to load map chunk ({bx},{bz}): {error}"
+                );
             }
         }
     }
 
-    pub fn load_block(&mut self, block_id: &str, bx: i32, by: i32) -> anyhow::Result<()> {
-        // Prevent duplicates
-        if self.block_world.loaded.contains_key(&(bx, by)) {
+    pub fn load_block(
+        &mut self,
+        bx: i32,
+        bz: i32,
+    ) -> anyhow::Result<()> {
+        if self.block_world.loaded.contains_key(&(bx, bz)) {
             return Ok(());
         }
 
-        // let path = format!("assets/blocks/{}_colliders.json", block_id);
-        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("src")
-            .join("assets")
-            .join("blocks")
-            .join(format!("{}_colliders.json", block_id));
+        let file = self.active_map
+            .as_ref()
+            .cloned()
+            .ok_or_else(|| anyhow::anyhow!("No active map selected"))?;
 
-
-        println!("🔎 collider path = {}", path.to_string_lossy().to_string());
-        let file = load_block_collider_file(path.to_string_lossy().to_string())?;
-        self.block_world.tile_size = Some(file.tile_size());
+        self.block_world.tile_size = Some(file.cell);
 
         let groups = InteractionGroups::new(
-            GROUP_GROUND,   // buildings behave like static world
-            GROUP_CHASSIS,  // collide with cars
+            GROUP_GROUND,
+            GROUP_CHASSIS,
         );
 
         let (handles, boxes) = spawn_block_building_colliders(
             &mut self.bodies,
             &mut self.colliders,
-            &file,
+            file.as_ref(),
             bx,
-            by,
+            bz,
             groups,
         );
 
-        // after spawn_block_building_colliders returns handles
-        if let Some(h) = handles.first() {
-            if let Some(rb) = self.bodies.get(*h) {
-                println!("🏢 first building rb pos = {:?}", rb.translation());
-            }
-        }
+        self.block_world.loaded.insert((bx, bz), handles);
+        self.block_world.debug_boxes.insert((bx, bz), boxes);
 
-        self.block_world.loaded.insert((bx, by), handles);
-        self.block_world.debug_boxes.insert((bx, by), boxes);
-        println!("🧱 Loaded block ({}, {})", bx, by);
+        println!(
+            "🧱 Loaded map '{}' chunk ({},{})",
+            file.map_id,
+            bx,
+            bz,
+        );
 
         Ok(())
     }
@@ -412,42 +424,45 @@ impl PhysicsWorld {
             format!("Unknown vehicle id '{vehicle_id}'")
         })?;
         let [hx, hy, hz] = config.chassis_half_extents;
+        let [_cx, cy, _cz] = config.chassis_com_offset;
 
-        let (spawn_x, spawn_z, road_surface_y) =
-            if self.active_map_id() == Some(STREAMING_ENDLESS_CITY.id) {
-                // Pick the first city slot that is not already occupied. This
-                // prevents reconnects from stacking a new chassis inside an
-                // existing player while keeping the capacity at ten vehicles.
-                let selected = STREAMING_CITY_SPAWN_SLOTS
-                    .iter()
-                    .copied()
-                    .find(|candidate| {
-                        let candidate_x = candidate[0];
-                        let candidate_z = candidate[1];
-                        self.vehicles.values().all(|vehicle| {
-                            self.bodies
-                                .get(vehicle.body)
-                                .map(|body| {
-                                    let p = body.translation();
-                                    let dx = p.x - candidate_x;
-                                    let dz = p.z - candidate_z;
-                                    dx * dx + dz * dz > 36.0
-                                })
-                                .unwrap_or(true)
-                        })
+        let (spawn_x, spawn_z, road_surface_y) = {
+            let map = self.active_map
+                .as_ref()
+                .ok_or_else(|| "No map selected".to_string())?;
+
+            let selected = map.spawn_points
+                .iter()
+                .copied()
+                .find(|candidate| {
+                    let candidate_x = candidate[0];
+                    let candidate_z = candidate[1];
+
+                    self.vehicles.values().all(|vehicle| {
+                        self.bodies
+                            .get(vehicle.body)
+                            .map(|body| {
+                                let p = body.translation();
+
+                                let dx = p.x - candidate_x;
+                                let dz = p.z - candidate_z;
+
+                                dx * dx + dz * dz > 36.0
+                            })
+                            .unwrap_or(true)
                     })
-                    .unwrap_or(STREAMING_CITY_SPAWN_SLOTS[0]);
+                })
+                .unwrap_or([position[0], position[2]]);
 
-                // Backend world convention: the driveable road surface is
-                // always y=0. The GLB's +32 adjustment is visual/local-space
-                // only and must not leak into Rapier coordinates.
-                (selected[0], selected[1], 0.0)
-            } else {
-                (position[0], position[2], 0.0)
-            };
+            (
+                selected[0],
+                selected[1],
+                map.surface.road_y,
+            )
+        };
 
         // Start fully above the backend y=0 road surface.
-        let spawn_y = road_surface_y + hy + 0.15;
+        let spawn_y = road_surface_y + hy -cy + 0.15;
         let volume = (hx * 2.0) * (hy * 2.0) * (hz * 2.0);  // box size
         let density = config.mass / volume;                 // ρ = m / V
 
@@ -562,13 +577,23 @@ impl PhysicsWorld {
         for (_, body) in self.bodies.iter_mut() {
             let mut pos = *body.translation();
 
+            // let bad =
+            //     !pos.x.is_finite() 
+            //     || !pos.y.is_finite() 
+            //     || !pos.z.is_finite() 
+            //     || pos.x.abs() > 1_000.0 
+            //     || pos.y.abs() > 1_000.0 
+            //     || pos.z.abs() > 1_000.0;
+
             let bad =
-                !pos.x.is_finite() || !pos.y.is_finite() || !pos.z.is_finite() ||
-                pos.x.abs() > 1_000.0 || pos.y.abs() > 1_000.0 || pos.z.abs() > 1_000.0;
+                !pos.x.is_finite()
+                || !pos.y.is_finite()
+                || !pos.z.is_finite()
+                || pos.y.abs() > 10_000.0;
 
             if bad {
                 // Reset this body to a safe position above the heightfield
-                pos = vector![0.0, 1.0, 0.0];
+                pos = vector![0.0, 5.0, 0.0];
                 body.set_translation(pos, true);
                 body.set_linvel(vector![0.0, 0.0, 0.0], true);
                 body.set_angvel(vector![0.0, 0.0, 0.0], true);

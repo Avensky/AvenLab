@@ -1,6 +1,8 @@
 // /src/net/rustSocket.ts
 
 import { useNetworkStore } from "../store";
+import { useWorldStore } from "../store/worldStore";
+import type { MapSnapshot } from "../store/worldStore";
 
 let socket: WebSocket | null = null;
 let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
@@ -68,6 +70,8 @@ export function connectRustServer() {
                 return;
             }
 
+            
+
             // Pong heartbeat
             if (data.type === "pong") return;
 
@@ -91,6 +95,23 @@ export function connectRustServer() {
                     tick,
                     entities: Array.isArray(entities) ? entities : [],
                 });
+                return;
+            }
+
+            // Map snapshot
+            if (data.type === "map_snapshot") {
+                const map = data.data as MapSnapshot;
+
+                console.log(
+                    "🗺️ MAP SNAPSHOT RECEIVED:",
+                    map.map_id,
+                    "chunks:",
+                    map.chunks.length,
+                    "visuals:",
+                    map.visuals
+                );
+
+                useWorldStore.getState().setMap(map);
                 return;
             }
 

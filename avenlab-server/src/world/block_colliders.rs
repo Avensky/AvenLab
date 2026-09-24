@@ -32,6 +32,46 @@ use std::collections::HashMap;
 use std::fs;
 use serde::Serialize;
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct CoordinateSystem {
+    pub units: String,
+    pub up_axis: String,
+    pub forward_axis: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct MapSurface {
+    pub road_y: f32,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct VisualTransform {
+    pub position: [f32; 3],
+    pub rotation: [f32; 4],
+    pub scale: [f32; 3],
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct VisualAsset {
+    pub id: String,
+    pub asset: String,
+
+    #[serde(flatten)]
+    pub transform: VisualTransform,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum MapLayout {
+    FixedGrid {
+        origin: [i32; 2],
+        size: [u32; 2],
+    },
+
+    Streamed {
+        radius: i32,
+    },
+}
 
 #[derive(Debug, Clone, Serialize)]
 pub struct DebugAabbBox {
@@ -42,14 +82,28 @@ pub struct DebugAabbBox {
     pub visual: String,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct BlockColliderFile {
-    pub block_id: String,
-    pub version: u32,
-    pub cell: [f32; 2], // [CELL_X, CELL_Z]
+    pub schema_version: u32,
+    pub map_id: String,
+
+    pub coordinate_system: CoordinateSystem,
+
+    pub cell: [f32; 2],
+
+    pub surface: MapSurface,
+
+    pub layout: MapLayout,
+
+    #[serde(default)]
+    pub spawn_points: Vec<[f32; 2]>,
+
+    pub visuals: Vec<VisualAsset>,
+
     #[serde(default)]
     pub roads: Vec<BlockObject>,
-    #[serde(default)]    
+
+    #[serde(default)]
     pub buildings: Vec<BlockObject>,
 }
 
@@ -86,6 +140,32 @@ pub enum ColliderKind {
     Box,
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct LoadedChunkInstance {
+    pub x: i32,
+    pub z: i32,
+
+    pub origin: [f32; 3],
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct MapSnapshot {
+    pub schema_version: u32,
+    pub map_id: String,
+
+    pub coordinate_system: CoordinateSystem,
+
+    pub cell: [f32; 2],
+
+    pub surface: MapSurface,
+
+    pub layout: MapLayout,
+
+    pub visuals: Vec<VisualAsset>,
+
+    pub chunks: Vec<LoadedChunkInstance>,
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum StructureState {
@@ -101,25 +181,54 @@ fn default_state() -> StructureState {
 
 
 impl BlockColliderFile {
-    pub fn tile_size(&self) -> [f32; 2] {
-        let mut min_x = f32::INFINITY;
-        let mut max_x = f32::NEG_INFINITY;
-        let mut min_z = f32::INFINITY;
-        let mut max_z = f32::NEG_INFINITY;
+     pub fn tile_size(&self) -> [f32; 2] {
+        self.cell
+    }
 
-        for obj in self.roads.iter().chain(self.buildings.iter()) {
-            min_x = min_x.min(obj.pos[0] - obj.half_extents[0]);
-            max_x = max_x.max(obj.pos[0] + obj.half_extents[0]);
+    
+    pub fn initial_chunks(&self) -> Vec<(i32, i32)> {
+        match self.layout {
+            MapLayout::FixedGrid { origin, size } => {
+                let mut chunks = Vec::new();
 
-            // Blender depth axis is pos[1]
-            min_z = min_z.min(obj.pos[1] - obj.half_extents[1]);
-            max_z = max_z.max(obj.pos[1] + obj.half_extents[1]);
+                for z in 0..size[1] as i32 {
+                    for x in 0..size[0] as i32 {
+                        chunks.push((
+                            origin[0] + x,
+                            origin[1] + z,
+                        ));
+                    }
+                }
+                chunks
+            }
+
+            MapLayout::Streamed { radius } => {
+                let mut chunks = Vec::new();
+
+                for z in -radius..=radius {
+                    for x in -radius..=radius {
+                        chunks.push((x, z));
+                    }
+                }
+                chunks
+            }
         }
+    }
 
-        let width = (max_x - min_x).max(self.cell[0]);
-        let depth = (max_z - min_z).max(self.cell[1]);
-
-        [width, depth]
+    pub fn snapshot(
+        &self,
+        world: &BlockColliderWorld,
+    ) -> MapSnapshot {
+        MapSnapshot {
+            schema_version: self.schema_version,
+            map_id: self.map_id.clone(),
+            coordinate_system: self.coordinate_system.clone(),
+            cell: self.cell,
+            surface: self.surface.clone(),
+            layout: self.layout.clone(),
+            visuals: self.visuals.clone(),
+            chunks: world.chunk_instances(self.cell),
+        }
     }
 }
 
@@ -131,7 +240,34 @@ pub struct BlockColliderWorld {
     pub tile_size: Option<[f32; 2]>,
 }
 
+
+
 impl BlockColliderWorld {
+
+    pub fn chunk_instances(
+        &self,
+        tile_size: [f32; 2],
+    ) -> Vec<LoadedChunkInstance> {
+        let [tile_x, tile_z] = tile_size;
+
+        let mut chunks: Vec<LoadedChunkInstance> = self.loaded
+            .keys()
+            .map(|&(x, z)| LoadedChunkInstance {
+                x,
+                z,
+                origin: [
+                    x as f32 * tile_x,
+                    0.0,
+                    z as f32 * tile_z,
+                ],
+            })
+            .collect();
+
+        chunks.sort_by_key(|chunk| (chunk.z, chunk.x));
+
+        chunks
+    }
+
 
     pub fn new() -> Self {
         Self { loaded: HashMap::new(), debug_boxes: HashMap::new(), tile_size: None }
@@ -165,11 +301,45 @@ impl BlockColliderWorld {
     }
 }
 
-pub fn load_block_collider_file(path: String) -> anyhow::Result<BlockColliderFile> {
+pub fn load_block_collider_file(
+    path: String
+) -> anyhow::Result<BlockColliderFile> {
     let bytes = fs::read(&path)?;
     let file: BlockColliderFile = serde_json::from_slice(&bytes)?;
-    // let file = load_block_collider_file(path.to_string_lossy().to_string())?;
-    // self.block_world.tile_size = Some(file.tile_size());
+
+    if file.map_id.trim().is_empty() {
+        anyhow::bail!("Map definition has an empty map_id");
+    }
+
+    if file.cell[0] <= 0.0 || file.cell[1] <= 0.0 {
+        anyhow::bail!(
+            "Map '{}' has invalid cell size {:?}",
+            file.map_id,
+            file.cell,
+        );
+    }
+
+    if file.coordinate_system.units != "meters" {
+        anyhow::bail!(
+            "Map '{}' must use meters, got '{}'",
+            file.map_id,
+            file.coordinate_system.units,
+        );
+    }
+
+    if file.coordinate_system.up_axis != "y" {
+        anyhow::bail!(
+            "Map '{}' must use Y-up",
+            file.map_id,
+        );
+    }
+
+    if file.visuals.is_empty() {
+        anyhow::bail!(
+            "Map '{}' has no visual assets",
+            file.map_id,
+        );
+    }
 
     Ok(file)
 }
@@ -201,6 +371,7 @@ fn blender_half_extents_to_rapier(he: [f32; 3]) -> [f32; 3] {
     let hz = he[1].max(0.01); // depth
     [hx, hy, hz]
 }
+
 
 
 pub fn spawn_block_building_colliders(

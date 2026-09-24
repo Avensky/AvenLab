@@ -1,26 +1,41 @@
 import { memo } from "react";
-import { useGLTF } from "@react-three/drei";
+import { Clone, useGLTF } from "@react-three/drei";
 
 type Props = {
-  chunkId: string;
+  path: string;
+
   position?: [number, number, number];
+
+  quaternion?: [
+    number,
+    number,
+    number,
+    number
+  ];
+
+  scale?: [
+    number,
+    number,
+    number
+  ];
 };
 
-const CITY_MODEL_PATH = "/models/chuncks";
-
 export const CityChunk = memo(function CityChunk({
-  chunkId,
+  path,
   position = [0, 0, 0],
+  quaternion = [0, 0, 0, 1],
+  scale = [1, 1, 1],
 }: Props) {
-  // The exported assets currently live in public/models/chuncks.
-  // A missing asset makes Vite return index.html, which produces the
-  // "Unexpected token '<'" JSON error from GLTFLoader.
-  const path = `${CITY_MODEL_PATH}/${chunkId}.glb`;
   const gltf = useGLTF(path);
 
   return (
-    <group name={`city-chunk-${chunkId}`} position={position}>
-      <primitive object={gltf.scene} dispose={null} />
+    <group
+      name={`city-asset-${path}`}
+      position={position}
+      quaternion={quaternion}
+      scale={scale}
+    >
+      <Clone object={gltf.scene} />
     </group>
   );
 });

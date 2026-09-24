@@ -1,9 +1,56 @@
 {
-  "block_id": "streaming_endless_city",
-  "version": 1,
+  "schema_version": 2,
+  "map_id": "streaming_endless_city",
+
+  "coordinate_system": {
+    "units": "meters",
+    "up_axis": "y",
+    "forward_axis": "-z"
+  },
+
   "cell": [
-    644.724854,
-    1098.621704
+    257.889923,
+    439.4487
+  ],
+
+  "surface": {
+    "road_y": 0.32
+  },
+
+  "layout": {
+    "kind": "fixed_grid",
+    "origin": [0, 0],
+    "size": [3, 3]
+  },
+
+  "spawn_points": [
+    [-8.0, -20.0],
+    [8.0, -20.0],
+    [-8.0, -10.0],
+    [8.0, -10.0],
+    [-8.0, 0.0],
+    [8.0, 0.0],
+    [-8.0, 10.0],
+    [8.0, 10.0],
+    [-8.0, 20.0],
+    [8.0, 20.0]
+  ],
+
+  "visuals": [
+    {
+      "id": "blocks",
+      "asset": "/models/chuncks/chunck_0,0_2x2_blocks_centered.glb",
+      "position": [0.0, 0.0, 0.0],
+      "rotation": [0.0, 0.0, 0.0, 1.0],
+      "scale": [1.0, 1.0, 1.0]
+    },
+    {
+      "id": "roads",
+      "asset": "/models/chuncks/chunck_0,0_2x2_roads.glb",
+      "position": [0.0, 1.12, 0.0],
+      "rotation": [0.0, 0.0, 0.0, 1.0],
+      "scale": [1.0, 1.0, 1.0]
+    }
   ],
   "roads": [
     {
@@ -13,7 +60,7 @@
       "pos": [
         0.0,
         -0.0,
-        -0.04999999999999999
+        0.27
       ],
       "rot": [
         0.0,
@@ -22,8 +69,8 @@
         1.0
       ],
       "half_extents": [
-        322.362427,
-        549.310852,
+        128.944962,
+        219.72435,
         0.05
       ],
       "collider": "box",
@@ -33,13 +80,13 @@
   ],
   "buildings": [
     {
-      "id": "block_0_0_b1_building_1",
+      "id": "block_0_0_b_0_0_building_1",
       "kind": "building",
-      "visual": "B1_Building_1",
+      "visual": "B_0,0_Building_1",
       "pos": [
-        -84.246582,
-        -104.064377,
-        107.714927
+        -28.303194,
+        -41.625751,
+        43.309967
       ],
       "rot": [
         0.0,
@@ -48,22 +95,22 @@
         1.0
       ],
       "half_extents": [
-        50.860256,
-        52.969223,
-        107.71492
+        14.948664,
+        21.187687,
+        42.989967
       ],
       "collider": "box",
-      "destructible": false,
+      "destructible": true,
       "state": "intact"
     },
     {
-      "id": "block_0_0_b1_building_2",
+      "id": "block_0_0_b_0_0_building_2",
       "kind": "building",
-      "visual": "B1_Building_2",
+      "visual": "B_0,0_Building_2",
       "pos": [
-        -121.327209,
-        -102.750977,
-        44.328216
+        -48.530884,
+        -40.797905,
+        17.955629
       ],
       "rot": [
         0.0,
@@ -72,22 +119,22 @@
         1.0
       ],
       "half_extents": [
-        13.858383,
-        50.143402,
-        44.328217
+        5.543352,
+        20.359844,
+        17.63563
       ],
       "collider": "box",
-      "destructible": false,
+      "destructible": true,
       "state": "intact"
     },
     {
-      "id": "block_0_0_b1_building_3",
+      "id": "block_0_0_b_0_0_building_3",
       "kind": "building",
-      "visual": "B1_Building_3",
+      "visual": "B_0,0_Building_3",
       "pos": [
-        -189.61261,
-        -112.089218,
-        139.210136
+        -75.845047,
+        -44.835686,
+        55.908051
       ],
       "rot": [
         0.0,
@@ -96,22 +143,22 @@
         1.0
       ],
       "half_extents": [
-        54.786842,
-        60.692341,
-        139.210129
+        21.914734,
+        24.276937,
+        55.588051
       ],
       "collider": "box",
-      "destructible": false,
+      "destructible": true,
       "state": "intact"
     },
     {
-      "id": "block_0_0_b1_building_4",
+      "id": "block_0_0_b_0_0_building_4",
       "kind": "building",
-      "visual": "B1_Building_4",
+      "visual": "B_0,0_Building_4",
       "pos": [
-        -202.280853,
-        -221.713287,
-        76.61170200000001
+        -80.912338,
+        -88.685318,
+        30.868679
       ],
       "rot": [
         0.0,
@@ -120,22 +167,22 @@
         1.0
       ],
       "half_extents": [
-        40.087502,
-        49.291412,
-        76.611694
+        16.035,
+        19.716564,
+        30.548679
       ],
       "collider": "box",
-      "destructible": false,
+      "destructible": true,
       "state": "intact"
     },
     {
-      "id": "block_0_0_b1_building_5",
+      "id": "block_0_0_b_0_0_building_5",
       "kind": "building",
-      "visual": "B1_Building_5",
+      "visual": "B_0,0_Building_5",
       "pos": [
-        -208.433136,
-        -313.566284,
-        120.15503700000001
+        -83.373245,
+        -125.426514,
+        48.286011
       ],
       "rot": [
         0.0,
@@ -144,22 +191,22 @@
         1.0
       ],
       "half_extents": [
-        37.038124,
-        42.943634,
-        120.155029
+        14.81525,
+        17.177456,
+        47.966011
       ],
       "collider": "box",
-      "destructible": false,
+      "destructible": true,
       "state": "intact"
     },
     {
-      "id": "block_0_0_b1_building_6",
+      "id": "block_0_0_b_0_0_building_6",
       "kind": "building",
-      "visual": "B1_Building_6",
+      "visual": "B_0,0_Building_6",
       "pos": [
-        -203.690033,
-        -400.169983,
-        88.81642900000001
+        -81.476013,
+        -160.067978,
+        35.750568
       ],
       "rot": [
         0.0,
@@ -168,22 +215,22 @@
         1.0
       ],
       "half_extents": [
-        40.906212,
-        46.792068,
-        88.816422
+        16.362484,
+        18.716827,
+        35.430569
       ],
       "collider": "box",
-      "destructible": false,
+      "destructible": true,
       "state": "intact"
     },
     {
-      "id": "block_0_0_b1_building_7",
+      "id": "block_0_0_b_0_0_building_7",
       "kind": "building",
-      "visual": "B1_Building_7",
+      "visual": "B_0,0_Building_7",
       "pos": [
-        -68.789787,
-        -378.682465,
-        63.619571
+        -27.515915,
+        -151.472992,
+        25.671827
       ],
       "rot": [
         0.0,
@@ -192,22 +239,22 @@
         1.0
       ],
       "half_extents": [
-        35.101852,
-        64.52832,
-        63.619572
+        14.040742,
+        25.811329,
+        25.351828
       ],
       "collider": "box",
-      "destructible": false,
+      "destructible": true,
       "state": "intact"
     },
     {
-      "id": "block_0_0_b1_building_8",
+      "id": "block_0_0_b_0_0_building_8",
       "kind": "building",
-      "visual": "B1_Building_8",
+      "visual": "B_0,0_Building_8",
       "pos": [
-        -74.512268,
-        -270.076569,
-        82.12436600000001
+        -29.804907,
+        -108.030624,
+        33.073746
       ],
       "rot": [
         0.0,
@@ -216,22 +263,22 @@
         1.0
       ],
       "half_extents": [
-        41.126015,
-        44.437416,
-        82.124359
+        16.450407,
+        17.774971,
+        32.753746
       ],
       "collider": "box",
-      "destructible": false,
+      "destructible": true,
       "state": "intact"
     },
     {
-      "id": "block_0_0_b1_building_9",
+      "id": "block_0_0_b_0_0_building_9",
       "kind": "building",
-      "visual": "B1_Building_9",
+      "visual": "B_0,0_Building_9",
       "pos": [
-        -68.098846,
-        -194.154221,
-        51.41484
+        -27.239538,
+        -77.661682,
+        20.789936
       ],
       "rot": [
         0.0,
@@ -240,22 +287,22 @@
         1.0
       ],
       "half_extents": [
-        31.574865,
-        37.405151,
-        51.414841
+        12.629946,
+        14.962063,
+        20.469936
       ],
       "collider": "box",
-      "destructible": false,
+      "destructible": true,
       "state": "intact"
     },
     {
-      "id": "block_0_1_b5_building_2",
+      "id": "block_0_1_b_0_1_building_1",
       "kind": "building",
-      "visual": "B5_Building_2",
+      "visual": "B_0,1_Building_1",
       "pos": [
-        76.034393,
-        -280.768402,
-        51.021137
+        38.272491,
+        -58.165813,
+        48.191517
       ],
       "rot": [
         0.0,
@@ -264,22 +311,22 @@
         1.0
       ],
       "half_extents": [
-        40.906235,
-        41.417305,
-        51.021137
+        24.332634,
+        37.718472,
+        47.871517
       ],
       "collider": "box",
-      "destructible": false,
+      "destructible": true,
       "state": "intact"
     },
     {
-      "id": "block_0_1_b5_building_3",
+      "id": "block_0_1_b_0_1_building_2",
       "kind": "building",
-      "visual": "B5_Building_3",
+      "visual": "B_0,1_Building_2",
       "pos": [
-        75.895119,
-        -347.69754,
-        51.021141
+        30.413757,
+        -112.307358,
+        20.632456
       ],
       "rot": [
         0.0,
@@ -288,22 +335,22 @@
         1.0
       ],
       "half_extents": [
-        41.045509,
-        25.669403,
-        51.021141
+        16.362492,
+        16.566921,
+        20.312456
       ],
       "collider": "box",
-      "destructible": false,
+      "destructible": true,
       "state": "intact"
     },
     {
-      "id": "block_0_1_b5_building_4",
+      "id": "block_0_1_b_0_1_building_3",
       "kind": "building",
-      "visual": "B5_Building_4",
+      "visual": "B_0,1_Building_3",
       "pos": [
-        108.16037,
-        -407.660431,
-        76.21801
+        30.358047,
+        -139.07901,
+        20.632458
       ],
       "rot": [
         0.0,
@@ -312,22 +359,22 @@
         1.0
       ],
       "half_extents": [
-        71.772446,
-        34.588867,
-        76.218002
+        16.418201,
+        10.267769,
+        20.312458
       ],
       "collider": "box",
-      "destructible": false,
+      "destructible": true,
       "state": "intact"
     },
     {
-      "id": "block_0_1_b5_building_5",
+      "id": "block_0_1_b_0_1_building_4",
       "kind": "building",
-      "visual": "B5_Building_5",
+      "visual": "B_0,1_Building_4",
       "pos": [
-        212.958282,
-        -366.960876,
-        69.919639
+        43.264145,
+        -163.064178,
+        30.711201
       ],
       "rot": [
         0.0,
@@ -336,22 +383,22 @@
         1.0
       ],
       "half_extents": [
-        33.183044,
-        76.551712,
-        69.919632
+        28.708975,
+        13.835548,
+        30.391201
       ],
       "collider": "box",
-      "destructible": false,
+      "destructible": true,
       "state": "intact"
     },
     {
-      "id": "block_0_1_b5_building_6",
+      "id": "block_0_1_b_0_1_building_5",
       "kind": "building",
-      "visual": "B5_Building_6",
+      "visual": "B_0,1_Building_5",
       "pos": [
-        211.988754,
-        -325.975098,
-        57.714054
+        85.183311,
+        -146.784348,
+        28.191854
       ],
       "rot": [
         0.0,
@@ -360,22 +407,22 @@
         1.0
       ],
       "half_extents": [
-        32.213516,
-        35.580704,
-        57.714054
+        13.273216,
+        30.620686,
+        27.871855
       ],
       "collider": "box",
-      "destructible": false,
+      "destructible": true,
       "state": "intact"
     },
     {
-      "id": "block_0_1_b5_building_7",
+      "id": "block_0_1_b_0_1_building_6",
       "kind": "building",
-      "visual": "B5_Building_7",
+      "visual": "B_0,1_Building_6",
       "pos": [
-        207.052734,
-        -274.013519,
-        75.825157
+        84.795502,
+        -130.39003,
+        23.309622
       ],
       "rot": [
         0.0,
@@ -384,22 +431,22 @@
         1.0
       ],
       "half_extents": [
-        39.088593,
-        16.878357,
-        75.82515
+        12.885406,
+        14.232281,
+        22.989622
       ],
       "collider": "box",
-      "destructible": false,
+      "destructible": true,
       "state": "intact"
     },
     {
-      "id": "block_0_1_b5_building_8",
+      "id": "block_0_1_b_0_1_building_7",
       "kind": "building",
-      "visual": "B5_Building_8",
+      "visual": "B_0,1_Building_7",
       "pos": [
-        200.996368,
-        -227.618774,
-        51.021137
+        82.821091,
+        -109.605408,
+        30.55406
       ],
       "rot": [
         0.0,
@@ -408,22 +455,22 @@
         1.0
       ],
       "half_extents": [
-        44.843246,
-        35.511833,
-        51.021137
+        15.635437,
+        6.751343,
+        30.23406
       ],
       "collider": "box",
-      "destructible": false,
+      "destructible": true,
       "state": "intact"
     },
     {
-      "id": "block_0_1_b5_building_9",
+      "id": "block_0_1_b_0_1_building_8",
       "kind": "building",
-      "visual": "B5_Building_9",
+      "visual": "B_0,1_Building_8",
       "pos": [
-        200.996368,
-        -121.899567,
-        82.517212
+        80.398544,
+        -91.047516,
+        20.632456
       ],
       "rot": [
         0.0,
@@ -432,22 +479,22 @@
         1.0
       ],
       "half_extents": [
-        44.843246,
-        70.502701,
-        82.517204
+        17.937298,
+        14.204735,
+        20.312456
       ],
       "collider": "box",
-      "destructible": false,
+      "destructible": true,
       "state": "intact"
     },
     {
-      "id": "block_1_0_b4_building_1",
+      "id": "block_0_1_b_0_1_building_9",
       "kind": "building",
-      "visual": "B4_Building_1",
+      "visual": "B_0,1_Building_9",
       "pos": [
-        -169.229126,
-        86.854378,
-        114.014122
+        80.398544,
+        -48.759827,
+        33.230885
       ],
       "rot": [
         0.0,
@@ -456,22 +503,22 @@
         1.0
       ],
       "half_extents": [
-        73.503609,
-        34.303673,
-        114.014114
+        17.937298,
+        28.201078,
+        32.910885
       ],
       "collider": "box",
-      "destructible": false,
+      "destructible": true,
       "state": "intact"
     },
     {
-      "id": "block_1_0_b4_building_2",
+      "id": "block_1_0_b_1_0_building_1",
       "kind": "building",
-      "visual": "B4_Building_2",
+      "visual": "B_1,0_Building_1",
       "pos": [
-        -68.549469,
-        106.380783,
-        88.42272200000001
+        -67.69165,
+        34.741749,
+        45.829647
       ],
       "rot": [
         0.0,
@@ -480,22 +527,22 @@
         1.0
       ],
       "half_extents": [
-        33.171467,
-        53.80695,
-        88.422714
+        29.401445,
+        13.721469,
+        45.509647
       ],
       "collider": "box",
-      "destructible": false,
+      "destructible": true,
       "state": "intact"
     },
     {
-      "id": "block_1_0_b4_building_3",
+      "id": "block_1_0_b_1_0_building_2",
       "kind": "building",
-      "visual": "B4_Building_3",
+      "visual": "B_1,0_Building_2",
       "pos": [
-        -59.326935,
-        219.300629,
-        51.021118
+        -27.419788,
+        42.552315,
+        35.593086
       ],
       "rot": [
         0.0,
@@ -504,22 +551,22 @@
         1.0
       ],
       "half_extents": [
-        22.708887,
-        65.108284,
-        51.021118
+        13.268585,
+        21.522781,
+        35.273087
       ],
       "collider": "box",
-      "destructible": false,
+      "destructible": true,
       "state": "intact"
     },
     {
-      "id": "block_1_0_b4_building_4",
+      "id": "block_1_0_b_1_0_building_3",
       "kind": "building",
-      "visual": "B4_Building_4",
+      "visual": "B_1,0_Building_3",
       "pos": [
-        -67.200996,
-        326.412537,
-        76.21797900000001
+        -23.730774,
+        87.720253,
+        20.632446
       ],
       "rot": [
         0.0,
@@ -528,22 +575,22 @@
         1.0
       ],
       "half_extents": [
-        30.582949,
-        42.436676,
-        76.217972
+        9.083554,
+        26.043314,
+        20.312447
       ],
       "collider": "box",
-      "destructible": false,
+      "destructible": true,
       "state": "intact"
     },
     {
-      "id": "block_1_0_b4_building_5",
+      "id": "block_1_0_b_1_0_building_4",
       "kind": "building",
-      "visual": "B4_Building_5",
+      "visual": "B_1,0_Building_4",
       "pos": [
-        -65.434372,
-        404.348145,
-        51.414818
+        -26.880398,
+        130.565018,
+        30.711189
       ],
       "rot": [
         0.0,
@@ -552,22 +599,22 @@
         1.0
       ],
       "half_extents": [
-        30.30582,
-        41.419052,
-        51.414818
+        12.23318,
+        16.97467,
+        30.39119
       ],
       "collider": "box",
-      "destructible": false,
+      "destructible": true,
       "state": "intact"
     },
     {
-      "id": "block_1_0_b4_building_6",
+      "id": "block_1_0_b_1_0_building_5",
       "kind": "building",
-      "visual": "B4_Building_6",
+      "visual": "B_1,0_Building_5",
       "pos": [
-        -201.595154,
-        142.066406,
-        63.619552
+        -26.17375,
+        161.739258,
+        20.789928
       ],
       "rot": [
         0.0,
@@ -576,22 +623,22 @@
         1.0
       ],
       "half_extents": [
-        41.11438,
-        27.637814,
-        63.619553
+        12.122328,
+        16.567619,
+        20.469929
       ],
       "collider": "box",
-      "destructible": false,
+      "destructible": true,
       "state": "intact"
     },
     {
-      "id": "block_1_0_b4_building_7",
+      "id": "block_1_0_b_1_0_building_6",
       "kind": "building",
-      "visual": "B4_Building_7",
+      "visual": "B_1,0_Building_6",
       "pos": [
-        -201.562912,
-        210.964066,
-        82.517204
+        -80.638062,
+        56.826565,
+        25.67182
       ],
       "rot": [
         0.0,
@@ -600,22 +647,22 @@
         1.0
       ],
       "half_extents": [
-        41.146622,
-        47.255234,
-        82.517197
+        16.445747,
+        11.055126,
+        25.35182
       ],
       "collider": "box",
-      "destructible": false,
+      "destructible": true,
       "state": "intact"
     },
     {
-      "id": "block_1_0_b4_building_8",
+      "id": "block_1_0_b_1_0_building_7",
       "kind": "building",
-      "visual": "B4_Building_8",
+      "visual": "B_1,0_Building_7",
       "pos": [
-        -214.358215,
-        309.389282,
-        63.619545
+        -80.625168,
+        84.38562,
+        33.230877
       ],
       "rot": [
         0.0,
@@ -624,22 +671,22 @@
         1.0
       ],
       "half_extents": [
-        29.335625,
-        57.16539,
-        63.619545
+        16.458645,
+        18.902096,
+        32.910877
       ],
       "collider": "box",
-      "destructible": false,
+      "destructible": true,
       "state": "intact"
     },
     {
-      "id": "block_1_1_b6_building_1",
+      "id": "block_1_0_b_1_0_building_8",
       "kind": "building",
-      "visual": "B6_Building_1",
+      "visual": "B_1,0_Building_8",
       "pos": [
-        83.826347,
-        125.205002,
-        76.218849
+        -85.743286,
+        123.796646,
+        25.671818
       ],
       "rot": [
         0.0,
@@ -648,22 +695,22 @@
         1.0
       ],
       "half_extents": [
-        49.000053,
-        72.654221,
-        76.218842
+        11.734249,
+        22.907085,
+        25.351818
       ],
       "collider": "box",
-      "destructible": false,
+      "destructible": true,
       "state": "intact"
     },
     {
-      "id": "block_1_1_b6_building_2",
+      "id": "block_1_1_b_1_1_building_1",
       "kind": "building",
-      "visual": "B6_Building_2",
+      "visual": "B_1,1_Building_1",
       "pos": [
-        189.255707,
-        102.349686,
-        107.32035800000001
+        33.53054,
+        50.082001,
+        30.711536
       ],
       "rot": [
         0.0,
@@ -672,22 +719,22 @@
         1.0
       ],
       "half_extents": [
-        56.862419,
-        48.988434,
-        107.320351
+        19.600023,
+        29.061686,
+        30.391537
       ],
       "collider": "box",
-      "destructible": false,
+      "destructible": true,
       "state": "intact"
     },
     {
-      "id": "block_1_1_b6_building_3",
+      "id": "block_1_1_b_1_1_building_2",
       "kind": "building",
-      "visual": "B6_Building_3",
+      "visual": "B_1,1_Building_2",
       "pos": [
-        194.200119,
-        176.712112,
-        57.714035
+        75.702286,
+        40.939877,
+        43.152142
       ],
       "rot": [
         0.0,
@@ -696,22 +743,22 @@
         1.0
       ],
       "half_extents": [
-        49.995743,
-        25.669296,
-        57.714035
+        22.744968,
+        19.595375,
+        42.832142
       ],
       "collider": "box",
-      "destructible": false,
+      "destructible": true,
       "state": "intact"
     },
     {
-      "id": "block_1_1_b6_building_4",
+      "id": "block_1_1_b_1_1_building_3",
       "kind": "building",
-      "visual": "B6_Building_4",
+      "visual": "B_1,1_Building_3",
       "pos": [
-        195.241669,
-        271.200226,
-        82.51805800000001
+        77.680046,
+        70.684845,
+        23.309612
       ],
       "rot": [
         0.0,
@@ -720,22 +767,22 @@
         1.0
       ],
       "half_extents": [
-        50.899651,
-        69.178673,
-        82.518051
+        19.998297,
+        10.267717,
+        22.989613
       ],
       "collider": "box",
-      "destructible": false,
+      "destructible": true,
       "state": "intact"
     },
     {
-      "id": "block_1_1_b6_building_5",
+      "id": "block_1_1_b_1_1_building_4",
       "kind": "building",
-      "visual": "B6_Building_5",
+      "visual": "B_1,1_Building_4",
       "pos": [
-        190.436874,
-        392.895325,
-        101.41482500000001
+        78.096672,
+        108.480095,
+        33.231224
       ],
       "rot": [
         0.0,
@@ -744,22 +791,22 @@
         1.0
       ],
       "half_extents": [
-        54.893906,
-        56.734543,
-        101.414818
+        20.359858,
+        27.671471,
+        32.911224
       ],
       "collider": "box",
-      "destructible": false,
+      "destructible": true,
       "state": "intact"
     },
     {
-      "id": "block_1_1_b6_building_6",
+      "id": "block_1_1_b_1_1_building_5",
       "kind": "building",
-      "visual": "B6_Building_6",
+      "visual": "B_1,1_Building_5",
       "pos": [
-        88.656715,
-        394.056641,
-        51.021114
+        76.174744,
+        157.158127,
+        40.789928
       ],
       "rot": [
         0.0,
@@ -768,22 +815,22 @@
         1.0
       ],
       "half_extents": [
-        53.80703,
-        54.825073,
-        51.021114
+        21.957561,
+        22.693817,
+        40.469929
       ],
       "collider": "box",
-      "destructible": false,
+      "destructible": true,
       "state": "intact"
     },
     {
-      "id": "block_1_1_b6_building_7",
+      "id": "block_1_1_b_1_1_building_6",
       "kind": "building",
-      "visual": "B6_Building_7",
+      "visual": "B_1,1_Building_6",
       "pos": [
-        76.757812,
-        311.751404,
-        45.1156
+        35.462688,
+        157.62265,
+        20.632444
       ],
       "rot": [
         0.0,
@@ -792,22 +839,22 @@
         1.0
       ],
       "half_extents": [
-        40.182816,
-        27.637817,
-        45.115601
+        21.522812,
+        21.930031,
+        20.312445
       ],
       "collider": "box",
-      "destructible": false,
+      "destructible": true,
       "state": "intact"
     },
     {
-      "id": "block_1_1_b6_building_8",
+      "id": "block_1_1_b_1_1_building_7",
       "kind": "building",
-      "visual": "B6_Building_8",
+      "visual": "B_1,1_Building_7",
       "pos": [
-        90.443848,
-        238.035339,
-        57.320335
+        30.703125,
+        124.700562,
+        18.270241
       ],
       "rot": [
         0.0,
@@ -816,29 +863,50 @@
         1.0
       ],
       "half_extents": [
-        54.055923,
-        46.373711,
-        57.320335
+        16.073124,
+        11.055126,
+        17.950241
       ],
       "collider": "box",
-      "destructible": false,
+      "destructible": true,
+      "state": "intact"
+    },
+    {
+      "id": "block_1_1_b_1_1_building_8",
+      "kind": "building",
+      "visual": "B_1,1_Building_8",
+      "pos": [
+        36.17754,
+        95.214142,
+        23.152134
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "half_extents": [
+        21.622368,
+        18.549484,
+        22.832134
+      ],
+      "collider": "box",
+      "destructible": true,
       "state": "intact"
     }
   ],
   "metadata": {
     "source_chunk": "Chunck_0,0",
-    "asset_scale": 0.01,
-    "road_surface_y": 0.0,
+    "asset_scale": 0.004,
+    "road_surface_y": 0.32,
     "road_collider_thickness": 0.1,
     "center_blender": [
       -64.675781,
       -71.984375
     ],
-    "building_collider_count": 33,
+    "building_collider_count": 34,
     "road_collider_count": 1,
-    "warnings": [
-      "Excluded block_0_1_b5_building_1: malformed 393x606m coarse AABB covered the central road/spawn area"
-    ],
-    "physics_vertical_offset_applied": -0.32
+    "warnings": []
   }
 }

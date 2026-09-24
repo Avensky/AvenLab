@@ -1,9 +1,9 @@
 // Camaro.tsx
 
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef } from 'react';
 import type { PropsWithChildren } from 'react';
 import { useGLTF } from '@react-three/drei';
-import { Group, MathUtils, Mesh, SpotLight, Vector3 } from 'three';
+import { Group, MathUtils, Matrix4, Mesh, SpotLight, Vector3 } from 'three';
 import type { Material, Object3D } from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
 import { setupVehicleParts } from './tools/setupVehicleParts';
@@ -44,6 +44,7 @@ type WheelVisualRig = {
     carrier: Group;
     steer: Group;
     spin: Group;
+    previewMatrix: Matrix4;
 };
 
 function cloneVehicleMaterial(material: Material, isGlass: boolean) {
@@ -302,6 +303,17 @@ export const Camaro = forwardRef<Group, CamaroProps>(function Camaro(
             const sourceCaliper = scene.getObjectByName(`${prefix}_BRAKE_CALIPER`);
             const clonedTire = parts[`${prefix}_TIRE`] as Object3D | undefined;
 
+            // Restore the authored tire placement in the preview. The clone
+            // may have been recentered by setupVehicleParts, so account for
+            // its local matrix rather than copying only the Empty position.
+            const previewMatrix = new Matrix4();
+            if (sourceTire && clonedTire) {
+                sourceTire.updateWorldMatrix(true, false);
+                clonedTire.updateMatrix();
+                previewMatrix.copy(sourceTire.matrixWorld)
+                    .multiply(clonedTire.matrix.clone().invert());
+            }
+
             if (sourceTire && sourceCaliper && clonedTire) {
                 sourceTire.updateWorldMatrix(true, false);
                 sourceCaliper.updateWorldMatrix(true, false);
@@ -323,13 +335,33 @@ export const Camaro = forwardRef<Group, CamaroProps>(function Camaro(
                 console.warn(`[Camaro] Missing tire/caliper for ${prefix}`);
             }
 
-            return { carrier, steer, spin };
+            return { carrier, steer, spin, previewMatrix };
         });
     }, [clonesByGroup, scene]);
 
     // Rolling and steering must use separate pivots or one transform will
     // overwrite the other.
     const wheelSpinAngles = useRef([0, 0, 0, 0]);
+
+    useLayoutEffect(() => {
+        for (const rig of wheelRigs) {
+            if (isVehiclePreview) {
+                rig.previewMatrix.decompose(
+                    rig.carrier.position,
+                    rig.carrier.quaternion,
+                    rig.carrier.scale
+                );
+                rig.steer.rotation.set(0, 0, 0);
+                rig.spin.rotation.set(0, 0, 0);
+            } else {
+                // Runtime position/rotation come from backend world data.
+                rig.carrier.scale.set(1, 1, 1);
+            }
+        }
+        if (isVehiclePreview) {
+            wheelSpinAngles.current.fill(0);
+        }
+    }, [isVehiclePreview, wheelRigs]);
 
     useFrame((_, delta) => {
         // Selection previews keep the transforms imported from Blender.

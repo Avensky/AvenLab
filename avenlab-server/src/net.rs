@@ -148,34 +148,46 @@ pub async fn start_websocket_server(
                             match phys.select_map(&request.map) {
                                 Err(error) => Err(error.to_string()),
                                 Ok(()) => {
-                                    if let Some(vehicle) = phys.vehicles.get(&player_id) {
-                                        // Duplicate A-button presses or reconnect noise are
-                                        // harmless: return the existing body instead of
-                                        // spawning a second vehicle.
-                                        Ok((vehicle.body, false))
-                                    } else if phys.vehicles.len() >= MAX_SANDBOX_PLAYERS {
-                                        Err(format!(
-                                            "Sandbox is full ({MAX_SANDBOX_PLAYERS}/{MAX_SANDBOX_PLAYERS} players)"
-                                        ))
+                                    if let Some(map_snapshot) = phys.map_snapshot() {
+                                        if let Some(vehicle) = phys.vehicles.get(&player_id) {
+                                            Ok((
+                                                vehicle.body,
+                                                false,
+                                                map_snapshot,
+                                            ))
+                                        } else if phys.vehicles.len() >= MAX_SANDBOX_PLAYERS {
+                                            Err(format!(
+                                                "Sandbox is full ({MAX_SANDBOX_PLAYERS}/{MAX_SANDBOX_PLAYERS} players)"
+                                            ))
+                                        } else {
+                                            phys.spawn_vehicle_for_player(
+                                                player_id.clone(),
+                                                spawn_info.position,
+                                                &request.vehicle,
+                                            )
+                                            .map(|body_handle| {
+                                                (
+                                                    body_handle,
+                                                    true,
+                                                    map_snapshot,
+                                                )
+                                            })
+                                            .map_err(|error| {
+                                                format!("Vehicle spawn failed: {error}")
+                                            })
+                                        }
                                     } else {
-                                        phys.spawn_vehicle_for_player(
-                                            player_id.clone(),
-                                            spawn_info.position,
-                                            &request.vehicle,
+                                        Err(
+                                            "Map selected but no authoritative map snapshot exists"
+                                                .to_string()
                                         )
-                                        .map(|body_handle| {
-                                            (body_handle, true)
-                                        })
-                                        .map_err(|error| {
-                                            format!("Vehicle spawn failed: {error}")
-                                        })
                                     }
                                 }
                             }
                         };
 
                         match spawn_result {
-                            Ok((body_handle, newly_spawned)) => {
+                            Ok((body_handle, newly_spawned, map_snapshot)) => {
                                 let mut game = state_clone.lock().await;
                                 game.attach_body(&player_id, body_handle);
                                 // Only a newly created physics vehicle may set its
@@ -191,6 +203,14 @@ pub async fn start_websocket_server(
                                     player_id,
                                     request.vehicle,
                                     request.map,
+                                );
+
+                                let _ = tx.send(
+                                    serde_json::json!({
+                                        "type": "map_snapshot",
+                                        "data": map_snapshot,
+                                    })
+                                    .to_string()
                                 );
 
                                 let _ = tx.send(serde_json::json!({
