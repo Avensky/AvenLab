@@ -3,6 +3,7 @@ import { create } from "zustand";
 import type { Team, VehicleKind } from "./types";
 
 export interface PhysicsSnapshot {
+    server_timing?: { lock_ms: number; physics_ms: number; work_ms: number };
     tick: number; // Completed backend simulation tick, not a browser frame count.
     simulation_time_s?: number;
     tick_dt_s?: number;
@@ -35,7 +36,15 @@ export interface WheelSnapshot {
   grounded?: boolean;
 }
 
+export interface VehicleColliderShape {
+    chassis_half_extents: [number, number, number];
+    chassis_offset: [number, number, number];
+    wheel_radius: number;
+    wheel_count: number;
+}
+
 export interface PhysicsEntitySnapshot {
+    collider?: VehicleColliderShape;
     id: string;
     kind: VehicleKind;
     /** Canonical selected model id, such as ae86, brz, camaro, or supra. */

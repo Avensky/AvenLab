@@ -81,6 +81,8 @@ export type MapSnapshot = {
   visuals: VisualAsset[];
 
   chunks: LoadedChunkInstance[];
+  // Static authoritative boxes, sent with map setup rather than at 60 Hz.
+  collider_chunks?: { x: number; z: number; boxes: import("./networkStore").DebugAabbBox[] }[];
 };
 
 interface WorldState {
@@ -142,7 +144,7 @@ export const useWorldStore = create<WorldState>((set) => ({
   renderAabbs: false,
   setRenderAabbs: (v: boolean) => set({ renderAabbs: v }),
 
-  mode: "hybrid",
+  mode: "collider",
   setMode: (mode) => set({ mode }),
 
   activeBlock: null,

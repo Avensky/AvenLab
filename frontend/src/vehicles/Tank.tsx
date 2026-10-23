@@ -102,5 +102,4 @@ export const Tank = forwardRef<Group, PropsWithChildren>(function TankModel(
     );
 });
 
-useGLTF.preload('/models/vehicles/tank2.glb');
 export default Tank;

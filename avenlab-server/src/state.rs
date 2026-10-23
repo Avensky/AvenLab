@@ -44,7 +44,17 @@ use crate::vehicle_state::{Vehicle, VehicleConfig, PhysicsWheelSnapshot};
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone, Serialize)]
+pub struct VehicleColliderShape {
+    pub chassis_half_extents: [f32; 3],
+    pub chassis_offset: [f32; 3],
+    pub wheel_radius: f32,
+    pub wheel_count: usize,
+}
+
+#[derive(Debug, Clone, Serialize)]
 pub struct PhysicsEntitySnapshot {
+    // Collider preview metadata is independent of expensive force diagnostics.
+    pub collider: VehicleColliderShape,
     pub id: String,
     pub kind: String,
     /// Canonical model id selected at spawn (ae86, brz, camaro, supra, ...).
@@ -77,8 +87,17 @@ pub struct PhysicsEntitySnapshot {
 // ---------------------------------------------------------------------------
 // Snapshot payload sent to all clients every tick.
 // ---------------------------------------------------------------------------
+#[derive(Debug, Default, Clone, Serialize)]
+pub struct ServerTiming {
+    pub lock_ms: f64,
+    pub physics_ms: f64,
+    // Tick work before serialization/socket send, measured on the server clock.
+    pub work_ms: f64,
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct PhysicsSnapshot {
+    pub server_timing: ServerTiming,
     pub tick: u64,
     // Simulation time is independent of socket arrival time. Clients may use
     // these additive fields, or tick / 60, for one shared interpolation clock.
@@ -175,6 +194,7 @@ pub struct InputPacket {
 pub struct SharedGameState {
     /// Authoritative simulation tick counter
     pub tick: u64,
+    pub server_timing: ServerTiming,
 
     /// All connected entities keyed by player_id
     pub entities: HashMap<String, EntityState>,
@@ -198,6 +218,7 @@ impl SharedGameState {
     pub fn new() -> Self {
         Self {
             tick: 0,
+            server_timing: ServerTiming::default(),
             entities: HashMap::new(),
             spawns: SpawnManager::new(10),
             clients: HashMap::new(),
@@ -336,16 +357,26 @@ impl SharedGameState {
     // ------------------------------------------------------------------------
     pub fn publish_physics_frame(&self, physics: &PhysicsWorld) -> usize {
         if self.frame_clients.is_empty() { return 0; }
-        // Serialize each payload once per outer tick, then share its strings.
+        let wants_debug = |id: &String| self.entities.get(id)
+            .and_then(|entity| entity.last_packet.as_ref())
+            .and_then(|packet| packet.debug_mask).unwrap_or(0) != 0;
+        let any_debug = self.frame_clients.keys().any(wants_debug);
+        // Serialize diagnostics only when requested. Collider previews use normal
+        // pose/shape snapshots and static map metadata instead of this stream.
         let frame = Arc::new(PhysicsFrame {
             snapshot: json!({ "type": "snapshot", "data": self.build_snapshot(physics) }).to_string(),
-            // Keep the debug data shape stable. The additive envelope tick lets
-            // a renderer identify its age relative to the interpolated chassis.
-            // Empty overlays are still sent so turning debug off clears old rays.
-            debug: json!({ "type": "debug", "tick": self.tick, "data": &physics.debug_overlay }).to_string(),
+            debug: if any_debug {
+                json!({ "type": "debug", "tick": self.tick, "data": &physics.debug_overlay }).to_string()
+            } else { String::new() },
         });
-        for tx in self.frame_clients.values() {
-            let _ = tx.send_replace(Some(Arc::clone(&frame)));
+        // One client's diagnostics must not add JSON/traffic to everybody else.
+        // Share one quiet frame across all clients with diagnostics disabled.
+        let quiet = if any_debug { Arc::new(PhysicsFrame {
+            snapshot: frame.snapshot.clone(), debug: String::new(),
+        }) } else { Arc::clone(&frame) };
+        for (id, tx) in &self.frame_clients {
+            let selected = if wants_debug(id) { &frame } else { &quiet };
+            let _ = tx.send_replace(Some(Arc::clone(selected)));
         }
         frame.snapshot.len() + frame.debug.len()
     }
@@ -415,6 +446,12 @@ impl SharedGameState {
             );
 
             entities_out.push(PhysicsEntitySnapshot {
+                collider: VehicleColliderShape {
+                    chassis_half_extents: vehicle.config.chassis_half_extents,
+                    chassis_offset: vehicle.config.chassis_com_offset,
+                    wheel_radius: vehicle.config.wheel_radius,
+                    wheel_count: vehicle.config.wheels,
+                },
 
                 id: ent.id.clone(),
                 kind: ent.kind.as_str().to_string(),
@@ -444,6 +481,7 @@ impl SharedGameState {
         // just because a HashMap iteration order changed after a join/disconnect.
         entities_out.sort_by(|a, b| a.id.cmp(&b.id));
         PhysicsSnapshot {
+            server_timing: self.server_timing.clone(),
             tick: self.tick,
             simulation_time_s: self.tick as f64 / SIMULATION_HZ,
             tick_dt_s: SIMULATION_DT,
@@ -473,15 +511,43 @@ mod tests {
         }
         let frame = frame_rx.borrow_and_update().clone().unwrap();
         let snapshot: serde_json::Value = serde_json::from_str(&frame.snapshot).unwrap();
-        let debug: serde_json::Value = serde_json::from_str(&frame.debug).unwrap();
         assert_eq!(snapshot["data"]["tick"], 120);
-        assert_eq!(debug["tick"], 120);
+        assert!(frame.debug.is_empty());
         assert_eq!(snapshot["data"]["simulation_time_s"], 2.0);
         assert_eq!(reliable_rx.try_recv().unwrap(), "welcome");
         assert!(reliable_rx.try_recv().is_err());
         game.unregister_client("slow");
         assert!(game.frame_clients.is_empty());
         assert!(game.input_clients.is_empty());
+    }
+
+    #[test]
+    fn diagnostics_are_opt_in_per_client_and_keep_the_completed_tick() {
+        let mut game = SharedGameState::new();
+        let physics = PhysicsWorld::new();
+        let mut receivers = Vec::new();
+        for (id, mask) in [("quiet", 0), ("debug", 1)] {
+            let (reliable_tx, _reliable_rx) = tokio::sync::mpsc::unbounded_channel();
+            let (frame_tx, frame_rx) = watch::channel(None);
+            let (input_tx, input_rx) = watch::channel(None);
+            game.register_client(id.into(), reliable_tx, frame_tx, input_rx);
+            game.add_entity(id, EntityType::Vehicle);
+            input_tx.send_replace(Some(InputPacket {
+                r#type: "input".into(), seq: 1, dt: 1.0 / 60.0,
+                throttle: 0.0, steer: 0.0, brake: 0.0, handbrake: 0.0,
+                vehicleMask: 0, playerMask: 0, debug_mask: Some(mask),
+            }));
+            game.collect_input_packets();
+            receivers.push(frame_rx);
+        }
+        game.tick = 7;
+        game.publish_physics_frame(&physics);
+        let quiet = receivers[0].borrow().clone().unwrap();
+        let debug = receivers[1].borrow().clone().unwrap();
+        assert!(quiet.debug.is_empty());
+        assert_eq!(quiet.snapshot, debug.snapshot);
+        let envelope: serde_json::Value = serde_json::from_str(&debug.debug).unwrap();
+        assert_eq!(envelope["tick"], 7);
     }
 
     #[test]

@@ -1,7 +1,11 @@
 import { Canvas } from "@react-three/fiber";
 import { type ReactNode } from "react";
+import { useRenderSettingsStore } from "./store/renderSettingsStore";
+import { PerformanceProbe } from "./performance/PerformanceProbe";
 
 export function FullCanvas({ children }: { children: ReactNode }) {
+    const dpr = useRenderSettingsStore((s) => s.dpr);
+    const shadows = useRenderSettingsStore((s) => s.shadows);
     return (
         <div
             style={{
@@ -17,7 +21,8 @@ export function FullCanvas({ children }: { children: ReactNode }) {
         >
             <Canvas
                 camera={{ position: [0, 10, 20], fov: 50 }}
-                dpr={[0.75, 1]} // improve clarity on retina
+                dpr={dpr}
+                shadows={shadows}
                 gl={{
                     antialias: false,
                     powerPreference: "high-performance",
@@ -32,6 +37,7 @@ export function FullCanvas({ children }: { children: ReactNode }) {
                     <meshStandardMaterial color="#222" />
                 </mesh> */}
 
+                <PerformanceProbe />
                 {children}
             </Canvas>
         </div>

@@ -1,3 +1,4 @@
+import { useRenderSettingsStore } from "../store/renderSettingsStore";
 // Camaro.tsx
 
 import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef } from 'react';
@@ -74,6 +75,7 @@ export const Camaro = forwardRef<Group, CamaroProps>(function Camaro(
     ref
 ) {
     // Load the car model
+      const vehicleLights = useRenderSettingsStore((s) => s.vehicleLights);
     const { scene } = useGLTF(MODEL_PATH);
 
     // Refs for car group 
@@ -207,6 +209,7 @@ export const Camaro = forwardRef<Group, CamaroProps>(function Camaro(
     }, [scene])
 
     useEffect(() => {
+        if (!vehicleLights) return;
         const visualGroup = vehicleVisualGroupRef.current;
         if (!visualGroup) return;
 
@@ -262,7 +265,7 @@ export const Camaro = forwardRef<Group, CamaroProps>(function Camaro(
             });
         };
 
-    }, [])
+    }, [vehicleLights])
 
 
     const wheelRigs = useMemo<WheelVisualRig[]>(() => {
@@ -480,5 +483,4 @@ export const Camaro = forwardRef<Group, CamaroProps>(function Camaro(
     );
 });
 
-useGLTF.preload(MODEL_PATH);
 export default Camaro;

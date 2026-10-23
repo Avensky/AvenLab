@@ -8,8 +8,11 @@ import { ControlsPanel, Pedals, Steering } from "../ui";
 import { CommandLine } from "../ui/command/CommandLine";
 import { useState } from "react";
 import { Cameras } from "../effects";
+import { PerformanceOverlay } from "../performance/PerformanceOverlay";
+import { useRenderSettingsStore } from "../store/renderSettingsStore";
 
 export function GameUI() {
+  const hud = useRenderSettingsStore((s) => s.hud);
   const screen = useUIStore((s) => s.screen);
   const overlay = useUIStore((s) => s.overlay);
   const [collapsed, setCollapsed] = useState(false);
@@ -29,9 +32,9 @@ export function GameUI() {
     </FullCanvas>
 
     {/* UI Overlay */}
-    {screen === "sandbox" && <ControlsPanel />}
-    {screen === "sandbox" && <Steering />}
-    {screen === "sandbox" && <Pedals />}
+    {screen === "sandbox" && hud && <ControlsPanel />}
+    {screen === "sandbox" && hud && <Steering />}
+    {screen === "sandbox" && hud && <Pedals />}
 
     {/* Game Screens */}
     {screen === "signal_recon" && (
@@ -50,7 +53,8 @@ export function GameUI() {
     {overlay === "pause" && <PauseMenu />}
     {overlay === "debug_menu" && <DebugMenu />}
 
-    <CommandLine />
+    {hud && <CommandLine />}
+    {screen === "sandbox" && <PerformanceOverlay />}
     <ModeLoadingScreen />
   </div>
 }

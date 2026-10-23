@@ -11,6 +11,11 @@ import { useDebugViewStore } from "../store/debugViewStore";
 import { VehicleRoster } from "./VehicleRoster";
 
 export function VehicleScene() {
+    const mask = useWorldStore((s) => s.debugMask);
+    return <><VehicleRoster />{mask !== 0 && <VehicleDiagnostics />}</>;
+}
+
+function VehicleDiagnostics() {
     // Membership/diagnostics may rerender; poses belong to frame callbacks.
     const hasSnapshot = useNetworkStore((s) => s.snapshot !== null);
     const playerId = useNetworkStore((s) => s.playerId);
@@ -20,7 +25,6 @@ export function VehicleScene() {
 
     const playerScope = useDebugViewStore((s) => s.playerScope);
 
-    const mode = useWorldStore((s) => s.mode);
     const debugMask = useWorldStore((s) => s.debugMask);
 
     const showChassis = hasDebugFlag(
@@ -62,7 +66,7 @@ export function VehicleScene() {
     );
 
     const suspensionRays = (
-        debug?.suspension_rays ?? []
+        showSprings ? debug?.suspension_rays ?? [] : []
     ).filter((item) => isVisiblePlayer(item.player_id));
 
     const slipVectors = (
@@ -160,25 +164,6 @@ export function VehicleScene() {
 
     return (
         <>
-            {(mode === "glb" || mode === "hybrid") && (
-                <VehicleRoster />
-            )}
-
-            {mode === "geometry" && (
-                <>
-                    {showWheels && (
-                        <DebugWheelVisualizer
-                            wheels={wheels}
-                        />
-                    )}
-
-                    {showChassis &&
-                        chassis.map((item) => (
-                            <DebugChassisPose key={item.player_id} chassis={item} mode="geometry" />
-                        ))}
-                </>
-            )}
-
             {showLoadBars && (
                 <DebugAntiRollBarVisualizer
                     links={loadBars}
@@ -205,8 +190,7 @@ export function VehicleScene() {
                 />
             )}
 
-            {(mode === "collider" ||
-                mode === "hybrid") && (
+            {(
                 <>
                     {showWheels && (
                         <DebugWheelVisualizer

@@ -1,3 +1,4 @@
+import { useRenderSettingsStore } from "../store/renderSettingsStore";
 import {
   forwardRef,
   useEffect,
@@ -81,6 +82,7 @@ export const Supra = forwardRef<Group, SupraProps>(function Supra(
   },
   ref
 ) {
+  const vehicleLights = useRenderSettingsStore((s) => s.vehicleLights);
   const { scene } = useGLTF(MODEL_PATH);
   const vehicleGroupRef = useRef<Group>(null!);
   const vehicleVisualGroupRef = useRef<Group>(null!);
@@ -159,6 +161,7 @@ export const Supra = forwardRef<Group, SupraProps>(function Supra(
   const rrBlinkerRef = useRef<SpotLight | null>(null);
 
   useEffect(() => {
+    if (!vehicleLights) return;
     const vehicleVisualGroup = vehicleVisualGroupRef.current;
     if (!vehicleVisualGroup) return;
 
@@ -213,7 +216,7 @@ export const Supra = forwardRef<Group, SupraProps>(function Supra(
         lightRef.current = null;
       });
     };
-  }, []);
+  }, [vehicleLights]);
 
   const wheelSpinAngles = useRef([0, 0, 0, 0]);
 
@@ -309,7 +312,7 @@ export const Supra = forwardRef<Group, SupraProps>(function Supra(
       isFirstPerson ? tintFirstPerson : tintExterior,
       interpolation
     );
-    glassMaterial.needsUpdate = true;
+
   });
 
   return (
@@ -346,5 +349,4 @@ export const Supra = forwardRef<Group, SupraProps>(function Supra(
   );
 });
 
-useGLTF.preload(MODEL_PATH);
 export default Supra;

@@ -1,3 +1,4 @@
+import { useRenderSettingsStore } from "../store/renderSettingsStore";
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, } from "react";
 import type { PropsWithChildren } from "react";
 import { Group, MathUtils, Object3D, Quaternion, SpotLight, Vector3 } from "three";
@@ -49,6 +50,7 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
   { children, entityId },
   ref: React.Ref<Group>
 ) {
+  const vehicleLights = useRenderSettingsStore((s) => s.vehicleLights);
   const { scene } = useGLTF(MODEL_PATH);            //load the model and get the scene
   const isVehiclePreview = useUIStore(
     (state) =>
@@ -148,6 +150,8 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
 
   // light setup
   useEffect(() => {
+    if (!vehicleLights) return;
+    const vehicleGroup = vehicleGroupRef.current;
     const addSpot = (
       refObj: { current: SpotLight | null },
       color: number,
@@ -188,8 +192,6 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
     addSpot(rrBlinkerRef, 0xffa500, 12, 16, [-0.5, 0.6, -1.9], [-0.9, -0.6, -3]);   // RR
 
     return () => {
-      const vehicleGroup = vehicleGroupRef.current;
-
       [
         leftLightRef,
         rightLightRef,
@@ -214,7 +216,7 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
         lightRef.current = null;
       });
     };
-  }, []);
+  }, [vehicleLights]);
 
   // Store the initial wheel rotations for later use
   const wheelRestRotations = useMemo(
@@ -369,5 +371,4 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
   );
 });
 
-useGLTF.preload(MODEL_PATH);
 export default Ae86;

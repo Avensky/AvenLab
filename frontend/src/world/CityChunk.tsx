@@ -1,4 +1,5 @@
 import { memo } from "react";
+import { useRenderSettingsStore } from "../store/renderSettingsStore";
 import { Clone, useGLTF } from "@react-three/drei";
 
 type Props = {
@@ -27,6 +28,7 @@ export const CityChunk = memo(function CityChunk({
   scale = [1, 1, 1],
 }: Props) {
   const gltf = useGLTF(path);
+  const shadows = useRenderSettingsStore((s) => s.shadows);
 
   // Keep the GLB export origin and node transforms. The backend visual entry
   // supplies the asset-to-chunk transform; the parent supplies chunk-to-world.
@@ -39,7 +41,7 @@ export const CityChunk = memo(function CityChunk({
       quaternion={quaternion}
       scale={scale}
     >
-      <Clone object={gltf.scene} />
+      <Clone object={gltf.scene} inject={{ castShadow: shadows, receiveShadow: shadows }} />
     </group>
   );
 });

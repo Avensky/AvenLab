@@ -1,0 +1,48 @@
+import { useEffect } from "react";
+import { addEffect, addAfterEffect, useThree } from "@react-three/fiber";
+import { useRenderSettingsStore } from "../store/renderSettingsStore";
+import { useNetworkStore } from "../store/networkStore";
+import { getInputSenderStats } from "../net/rustSocket";
+import { useUIStore } from "../store/uiStore";
+import { experimentContext } from "./context";
+import { performanceRecorder as recorder } from "./measurements";
+
+export function PerformanceProbe() {
+  const gl = useThree((s) => s.gl);
+  const overlay = useRenderSettingsStore((s) => s.overlay);
+  useEffect(() => { recorder.enabled = overlay; return () => { recorder.enabled = false; }; }, [overlay]);
+  useEffect(() => {
+    let previous: number | null = null;
+    let started = 0;
+    const before = addEffect(() => {
+      started = performance.now();
+      if ((!recorder.enabled && !recorder.capturing) || document.visibilityState !== "visible" || useUIStore.getState().screen !== "sandbox") {
+        previous = null; return;
+      }
+      if (previous !== null) recorder.record("frameMs", started - previous, started);
+      previous = started;
+    });
+    const after = addAfterEffect(() => {
+      if (previous === null) return;
+      const now = performance.now();
+      recorder.record("cpuSubmitMs", now - started, now);
+      recorder.record("drawCalls", gl.info.render.calls, now);
+      recorder.record("triangles", gl.info.render.triangles, now);
+      recorder.record("geometries", gl.info.memory.geometries, now);
+      recorder.record("textures", gl.info.memory.textures, now);
+      const receipt = useNetworkStore.getState().snapshot?.received_at_ms;
+      if (receipt !== undefined) recorder.record("receiptAgeMs", now - receipt, now);
+      recorder.record("queuedBytes", getInputSenderStats().queuedBytes, now);
+    });
+    const timer = window.setInterval(() => {
+      if (recorder.capturing) recorder.tick(experimentContext());
+    }, 100);
+    const hidden = () => {
+      previous = null;
+      if (document.visibilityState !== "visible" && recorder.capturing) recorder.cancel("Discarded: tab hidden");
+    };
+    document.addEventListener("visibilitychange", hidden);
+    return () => { before(); after(); clearInterval(timer); document.removeEventListener("visibilitychange", hidden); recorder.cancel("Canvas stopped"); };
+  }, [gl]);
+  return null;
+}

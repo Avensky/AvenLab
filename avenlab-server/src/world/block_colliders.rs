@@ -171,7 +171,16 @@ pub struct LoadedChunkInstance {
 }
 
 #[derive(Debug, Clone, Serialize)]
+pub struct ChunkColliderSnapshot {
+    pub x: i32,
+    pub z: i32,
+    pub boxes: Vec<DebugAabbBox>,
+}
+
+#[derive(Debug, Clone, Serialize)]
 pub struct MapSnapshot {
+    // Static setup data: collider previews do not request BLOCKS every tick.
+    pub collider_chunks: Vec<ChunkColliderSnapshot>,
     pub schema_version: u32,
     pub map_id: String,
 
@@ -241,7 +250,12 @@ impl BlockColliderFile {
         &self,
         world: &BlockColliderWorld,
     ) -> MapSnapshot {
+        let mut collider_chunks: Vec<_> = world.debug_boxes.iter().map(|(&(x, z), boxes)|
+            ChunkColliderSnapshot { x, z, boxes: boxes.clone() }
+        ).collect();
+        collider_chunks.sort_by_key(|chunk| (chunk.z, chunk.x));
         MapSnapshot {
+            collider_chunks,
             schema_version: self.schema_version,
             map_id: self.map_id.clone(),
             coordinate_system: self.coordinate_system.clone(),

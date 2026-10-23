@@ -13,7 +13,7 @@ type DebugViewState = {
 };
 
 export const useDebugViewStore = create<DebugViewState>((set) => ({
-    interpolationEnabled: true,
+    interpolationEnabled: false,
     setInterpolationEnabled: (interpolationEnabled) => set({ interpolationEnabled }),
     toggleInterpolation: () => set((state) => ({ interpolationEnabled: !state.interpolationEnabled })),
     playerScope: "local",

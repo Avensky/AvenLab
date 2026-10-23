@@ -297,6 +297,6 @@ export function useVehiclePhysicsInterpolator(entityId?: string, delayMs = DEFAU
     framePoses.clear();
   }, []);
   const clearVehicle = useCallback((entity: string) => { vehicleBuffer.clearVehicle(entity); framePoses.clear(); }, []);
-  const clearAll = useCallback(clearVehicleHistory, []);
+  const clearAll = useCallback(() => clearVehicleHistory(), []);
   return { setSnapshot, setSnapshots, getInterpolated, clearVehicle, clearAll };
 }
