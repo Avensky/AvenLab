@@ -1,16 +1,15 @@
 use std::sync::Arc;
 use uuid::Uuid;
 use tokio::net::TcpListener;
-use tokio::sync::{Mutex, mpsc}; 
+use tokio::sync::{Mutex, mpsc, watch};
 use futures::{StreamExt, SinkExt};
 use tokio_tungstenite::{accept_async, tungstenite::Message};
 use serde::Deserialize;
 use serde_json::Value;
-use crate::state::{SharedGameState, EntityType, InputPacket};
+use crate::state::{SharedGameState, EntityType, InputPacket, PhysicsFrame};
 use crate::physics::PhysicsWorld;
-use crate::vehicle_debug::DebugFlags;
 
-// The sandbox has ten verified spawn slots: five red and five blue.
+// The map config lists ten slots; the occupancy check can block nearby slots.
 // Enforce the limit on the authoritative server, not in the renderer.
 const MAX_SANDBOX_PLAYERS: usize = 10;
 
@@ -32,7 +31,6 @@ pub async fn start_websocket_server(
 
     while let Ok((raw_stream, _addr)) = listener.accept().await {
 
-        // let (raw_stream, _) = listener.accept().await.unwrap();
         let state_clone: Arc<Mutex<SharedGameState>> = Arc::clone(&state);
         let physics_clone: Arc<Mutex<PhysicsWorld>> = Arc::clone(&physics);
 
@@ -41,26 +39,48 @@ pub async fn start_websocket_server(
             let ws_stream = accept_async(raw_stream).await.unwrap();
             let (write, mut read) = ws_stream.split();
 
-            // Create channel for sending snapshots TO THIS CLIENT
+            // Setup/config/pong messages must survive in FIFO order. Physics is
+            // replaceable state, so it has a separate single-value watch channel.
             let (tx, mut rx) = mpsc::unbounded_channel::<String>();
+            let (frame_tx, mut frame_rx) = watch::channel::<Option<Arc<PhysicsFrame>>>(None);
+            // Input is held state too. Receiving a packet must not wait for
+            // physics/game locks while older packets accumulate in the socket.
+            let (input_tx, input_rx) = watch::channel::<Option<InputPacket>>(None);
 
-            // Spawn writer task that owns the write half
-            tokio::spawn(async move {
+            // Only this task writes to the socket. It never holds physics/game
+            // locks while awaiting network I/O, so a slow client cannot stall dt.
+            let writer_task = tokio::spawn(async move {
                 let mut ws_write = write;
-                while let Some(msg) = rx.recv().await {
-                    if ws_write.send(Message::Text(msg)).await.is_err() {
-                        break; // client disconnected
+                loop {
+                    tokio::select! {
+                        // Give pending setup events priority over replaceable state.
+                        biased;
+                        msg = rx.recv() => {
+                            let Some(msg) = msg else { break; };
+                            if ws_write.send(Message::Text(msg)).await.is_err() { break; }
+                        }
+                        changed = frame_rx.changed() => {
+                            if changed.is_err() { break; }
+                            // Clone the Arc and drop the watch borrow BEFORE await.
+                            // A held borrow would block publication of the next tick.
+                            let frame = frame_rx.borrow_and_update().clone();
+                            let Some(frame) = frame else { continue; };
+                            // This pair stays on one tick even if a newer frame is
+                            // published while the first socket send is in flight.
+                            if ws_write.send(Message::Text(frame.snapshot.clone())).await.is_err() { break; }
+                            if ws_write.send(Message::Text(frame.debug.clone())).await.is_err() { break; }
+                        }
                     }
                 }
             });
-            
+
             // ---------- 1) Create player_id ----------
             let player_id = Uuid::new_v4().to_string();
 
             // ---------- 2) Register client for snapshots ----------
             {
                 let mut game = state_clone.lock().await;
-                game.register_client(player_id.clone(), tx.clone());
+                game.register_client(player_id.clone(), tx.clone(), frame_tx, input_rx);
             }
 
             // ---------- 3) Ask SpawnManager for spawn info ----------
@@ -78,7 +98,7 @@ pub async fn start_websocket_server(
                 let mut game = state_clone.lock().await;
                 game.add_entity(&player_id, EntityType::Vehicle);
                 game.apply_spawn_info(&spawn_info);
-                
+
             }
 
             let welcome = serde_json::json!({
@@ -90,16 +110,6 @@ pub async fn start_websocket_server(
             }).to_string();
 
             let _ = tx.send(welcome);
-
-            // ---------- Send vehicle configs to frontned ----------
-//             {
-//                 let mut game = state_clone.lock().await;
-//                 let Some(vehicle) = physics.vehicles.get(player_id) else {
-//                     println!("↪ vehicle {} has invalid body_handle, skipping", ent.id );
-//                     continue;
-//                 };
-//                 game.broadcast_vehicle_config(&player_id, &vehicle);
-//             }
 
             // ---------- 8) Read loop: pings + input ----------
             while let Some(Ok(msg)) = read.next().await {
@@ -164,6 +174,7 @@ pub async fn start_websocket_server(
                                                 player_id.clone(),
                                                 spawn_info.position,
                                                 &request.vehicle,
+                                                team.as_str(),
                                             )
                                             .map(|body_handle| {
                                                 (
@@ -252,28 +263,22 @@ pub async fn start_websocket_server(
                             }
                         };
 
-                        if let Some(mask) = packet.debug_mask {
-                            let mut phys = physics_clone.lock().await;
-                            phys.set_debug_flags(DebugFlags::from_bits_truncate(mask));
-                        }
-
-                        let mut game = state_clone.lock().await;
-                        if let Some(entity) = game.entities.get_mut(&player_id) {
-                            entity.last_packet = Some(packet);
-                        }
+                        // Replace the newest intent immediately. Main alone
+                        // applies it and its debug request on the next tick.
+                        let _ = input_tx.send_replace(Some(packet));
                     }
                 }
             }
 
             // ---------- 9) Cleanup on disconnect ----------
-            
+
             {
                 // 1) Remove physics FIRST
                 let mut phys = physics_clone.lock().await;
                 phys.despawn_vehicle_for_player(&player_id);
             }
-            
-            
+
+
             {
                 // 2) Remove game entity
                 let mut game = state_clone.lock().await;
@@ -283,6 +288,8 @@ pub async fn start_websocket_server(
             }
 
             println!("🔴 Player disconnected: {}", player_id);
+            // End a writer stuck in socket I/O after the read side has closed.
+            writer_task.abort();
         });
     }
 }

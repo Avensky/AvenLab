@@ -83,7 +83,7 @@ pub fn wheel_basis_world(
         "RL" | "RR" => {
             // Rear wheels: chassis forward
             let forward = *rot * Vector::new(0.0, 0.0, 1.0);   // +Z is forward
-            let side    = *rot * Vector::new(-1.0, 0.0, 0.0);  // -X is right, +X left
+            let side    = *rot * Vector::new(1.0, 0.0, 0.0);   // +X is right
 
             (forward, side)
 
@@ -113,4 +113,21 @@ pub fn slip_components(point_vel: Vector<Real>, wheel_forward: Vector<Real>, whe
 fn safe_normalize(v: Vector<Real>, fallback: Vector<Real>) -> Vector<Real> {
     let n = v.norm();
     if n > 1e-6 { v / n } else { fallback }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn point_velocity_is_independent_of_city_coordinates() {
+        for shift in [0.0, 400.0, 1200.0] {
+            let com = Point::new(shift, 0.565, shift);
+            let point = com + Vector::new(-0.84, -0.565, 1.38);
+            let velocity = point_velocity(
+                Vector::zeros(), Vector::new(0.02, 0.0, 0.0), com, point,
+            );
+            assert!((velocity.y + 0.0276).abs() < 1.0e-4);
+        }
+    }
 }

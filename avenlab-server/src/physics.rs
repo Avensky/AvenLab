@@ -1,41 +1,13 @@
-// ==============================================================================
-// physics.rs — WORLD STEP + VEHICLE FORCE PIPELINE (RAPIER INTEGRATION)
-// ==============================================================================
-// We are implementing a hybrid impulse-based tire model, best described as:
-// Raycast suspension + brush tire model + impulse-domain friction ellipse
-// ------------------------------------------------------------------------------
-// This file owns the server-side rigid-body simulation loop and integrates a
-// custom raycast-vehicle model into Rapier.
-//
-// Design goals:
-// - Chassis collider has friction = 0.0 (no ground friction from Rapier contacts).
-// - All tire forces are computed manually (impulse domain) and applied to the
-//   chassis as impulses (and optional torque impulses).
-// - Suspension is raycast-based: spring + damper -> normal force -> impulse.
-// - Tires use a lightweight brush lateral model + longitudinal engine/brake
-//   model, combined via a friction ellipse in *impulse space*.
-//
-// Step pipeline (high-level):
-// 1) apply_vehicle_controls(dt)
-//    - Converts player inputs into intent (steer smoothing / rate-limiting).
-//    - Does NOT apply physics forces.
-// 2) apply_suspension(dt)
-//    - Phase 1 (Sense): raycast each wheel, compute compression, point velocity,
-//      slip components, raw normal force, and build ContactPatch.
-//    - Phase 2 (Redistribute): apply anti-roll bar load transfer (per axle),
-//      updating per-wheel normal forces.
-//    - Phase 3 (Act): apply suspension impulses (Jn = n * Fz * dt), then call
-//      aven_tire::solve_step() to compute tire impulses (long + lat + yaw +
-//      optional aligning `), then apply all impulses to the chassis.
-// 3) pipeline.step(...)
-//    - Rapier integrates the final velocities/poses.
-// ------------------------------------------------------------------------------
-// Key dependencies:
-// - suspension_contact::build_suspension_contact()
-// - anti_roll::apply_arb_load_transfer()
-// - aven_tire::solve_step()
-// ==============================================================================
-// ==============================================================================
+// Backend simulation ownership:
+// * main: holds latest controls and requests one fixed 60 Hz outer tick.
+// * step: clears debug scratch, maintains map/query data, runs 120 Hz substeps,
+//   then samples final wheel/chassis poses once and builds the final overlay.
+// * step_substep: vehicle_forces senses contacts, transfers ARB load, solves
+//   tire impulses and applies each once; Rapier then integrates the rigid body.
+// Collision normals remain Rapier's job. Ray springs supply wheel support;
+// the chassis must not normally rest on the road. Tire grip is custom only.
+// A second floor, turn torque, steering smoother or post-step force would
+// duplicate an existing owner. See AUDIT.md for units and inactive strategies.
 
 // src/physics.rs
 use rapier3d::prelude::*;
@@ -43,7 +15,7 @@ use rapier3d::prelude::{InteractionGroups, Group};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
-use crate::aven_tire::steering::{apply_vehicle_controls, SteeringState};
+use crate::aven_tire::steering::SteeringState;
 use crate::vehicle_state::{Vehicle, VehicleStateFlags, Wheel, PhysicsWheelSnapshot};
 use crate::vehicle_setup::config_for_vehicle;
 use crate::state::InputPacket;
@@ -58,6 +30,11 @@ use crate::world::block_colliders::{
 // constants
 const GROUP_GROUND: Group  = Group::from_bits_truncate(0b0001);
 const GROUP_CHASSIS: Group = Group::from_bits_truncate(0b0010);
+// One timing definition is shared by the wall timer, physics and snapshot metadata.
+pub const SIMULATION_HZ: f64 = 60.0;
+pub const SIMULATION_DT: Real = (1.0 / SIMULATION_HZ) as Real;
+const MAX_PHYSICS_SUBSTEP: Real = 1.0 / 120.0;
+const MAX_PHYSICS_SUBSTEPS: usize = 8;
 
 pub struct PhysicsWorld {
     pub gravity: Vector<Real>, // gravity vector
@@ -73,9 +50,8 @@ pub struct PhysicsWorld {
     pub multibody_joints: MultibodyJointSet,// for articulated bodies
     pub ccd: CCDSolver, // continuous collision detection
     pub query_pipeline: QueryPipeline, // for raycasting
-    // pub suspension: VehicleSuspension,
     pub wheels: HashMap<RigidBodyHandle, Vec<Wheel>>, // body handle → wheels
-    pub vehicles: HashMap<String, Vehicle>, // playerId → vehicle   
+    pub vehicles: HashMap<String, Vehicle>, // playerId → vehicle
     pub body_to_player: HashMap<RigidBodyHandle, String>, // body handle → playerId
     pub debug_overlay: DebugOverlay,// for debug visualization
     pub debug_flags: DebugFlags,
@@ -200,10 +176,10 @@ impl PhysicsWorld {
             .iter()
             .map(|w| {
                 let id = match w.debug_id.as_str() {
-                    "FL" => "fl",
-                    "FR" => "fr",
-                    "RL" => "rl",
-                    "RR" => "rr",
+                    "FL" => "fr",
+                    "FR" => "fl",
+                    "RL" => "rr",
+                    "RR" => "rl",
                     other => other,
                 };
 
@@ -307,8 +283,11 @@ impl PhysicsWorld {
     }
 
     fn populate_block_debug(&mut self) {
-        // Copy loaded AABB boxes into the overlay each frame
-        self.debug_overlay.block_boxes = self.debug_block_boxes();
+        if self.debug_flags.contains(DebugFlags::BLOCKS) {
+            self.debug_overlay.block_boxes = self.debug_block_boxes();
+        } else {
+            self.debug_overlay.block_boxes.clear();
+        }
     }
 
     pub fn debug_block_boxes(&self) -> Vec<crate::world::block_colliders::DebugAabbBox> {
@@ -385,7 +364,7 @@ impl PhysicsWorld {
             debug_flags: DebugFlags::NONE,
         }
     }
-    
+
     // ===========================================================================
     // Attach input to a player's vehicle (just stores it; actual forces are
     // applied in `step`).
@@ -412,13 +391,14 @@ impl PhysicsWorld {
     // ============================================================================
     // Spawn a simple "car" for this player:
     // - Dynamic rigid body with a box collider.
-    // - Positioned slightly above the ground so it can fall and settle.
+    // - Starts near static sag above the map road, with a chassis clearance guard.
     // ============================================================================
     pub fn spawn_vehicle_for_player(
         &mut self,
         id: String,
-        position: [f32; 3],
+        _position: [f32; 3],
         vehicle_id: &str,
+        team: &str,
     ) -> Result<RigidBodyHandle, String> {
         let config = config_for_vehicle(vehicle_id).ok_or_else(|| {
             format!("Unknown vehicle id '{vehicle_id}'")
@@ -426,17 +406,37 @@ impl PhysicsWorld {
         let [hx, hy, hz] = config.chassis_half_extents;
         let [_cx, cy, _cz] = config.chassis_com_offset;
 
-        let (spawn_x, spawn_z, road_surface_y) = {
+        let (spawn_x, spawn_z, spawn_yaw, road_surface_y) = {
             let map = self.active_map
                 .as_ref()
                 .ok_or_else(|| "No map selected".to_string())?;
 
-            let selected = map.spawn_points
+            let spawns = match team {
+                "red" => &map.team_spawns.red,
+                "blue" => &map.team_spawns.blue,
+                other => {
+                    return Err(format!("Unknown team '{other}'"));
+                }
+            };
+
+            if spawns.is_empty() {
+                return Err(format!(
+                    "Map '{}' has no spawn points configured for team '{}'",
+                    map.map_id,
+                    team,
+                ));
+            }
+
+            let spawn = spawns
                 .iter()
-                .copied()
-                .find(|candidate| {
-                    let candidate_x = candidate[0];
-                    let candidate_z = candidate[1];
+                .find(|spawn| {
+                    let candidate_x =
+                        spawn.chunk[0] as f32 * map.cell[0]
+                        + spawn.local[0];
+
+                    let candidate_z =
+                        spawn.chunk[1] as f32 * map.cell[1]
+                        + spawn.local[1];
 
                     self.vehicles.values().all(|vehicle| {
                         self.bodies
@@ -452,50 +452,82 @@ impl PhysicsWorld {
                             .unwrap_or(true)
                     })
                 })
-                .unwrap_or([position[0], position[2]]);
+                .ok_or_else(|| {
+                    format!(
+                        "No free spawn point available for team '{}' on map '{}'",
+                        team,
+                        map.map_id,
+                    )
+                })?;
+
+            let spawn_x =
+                spawn.chunk[0] as f32 * map.cell[0]
+                + spawn.local[0];
+
+            let spawn_z =
+                spawn.chunk[1] as f32 * map.cell[1]
+                + spawn.local[1];
 
             (
-                selected[0],
-                selected[1],
+                spawn_x,
+                spawn_z,
+                spawn.yaw,
                 map.surface.road_y,
             )
         };
 
-        // Start fully above the backend y=0 road surface.
-        let spawn_y = road_surface_y + hy -cy + 0.15;
-        let volume = (hx * 2.0) * (hy * 2.0) * (hz * 2.0);  // box size
+        // The road top is map.surface.road_y (0.32 m for this city), not y=0.
+        // wheel_y locates the mount below the body origin. Subtract it exactly
+        // once when solving body height; omitting it starts the springs bottomed
+        // out and launches the chassis toward the actual equilibrium height.
+        let suspension_spawn_y = config.nominal_chassis_y(road_surface_y);
+        // The translated collider bottom is body_y + cy - hy. Keep it clear of
+        // the road at creation without adding a second suspension/visual offset.
+        let minimum_chassis_y =
+            road_surface_y
+            + hy
+            - cy
+            + 0.05;
+
+        let spawn_y =
+            suspension_spawn_y.max(minimum_chassis_y);
+        let volume = (hx * 2.0) * (hy * 2.0) * (hz * 2.0);  // m^3, full cuboid volume
         let density = config.mass / volume;                 // ρ = m / V
 
         // Rigid body
         let rb = RigidBodyBuilder::dynamic()
             .translation(vector![spawn_x, spawn_y, spawn_z])
+            .rotation(vector![0.0, spawn_yaw, 0.0])
             .linear_damping(config.linear_damping)
             .angular_damping(config.angular_damping)
             .ccd_enabled(true)
             .build();
-        
+
         // Box collider
-        let [hx, hy, hz] = config.chassis_half_extents;
         let [cx, cy, cz] = config.chassis_com_offset;
 
         let collider = ColliderBuilder::cuboid(hx, hy, hz)
-            .translation(vector![cx, cy, cz]) // COM offset
+            .translation(vector![cx, cy, cz]) // Moves collision geometry and its density-derived COM.
             .collision_groups(InteractionGroups::new(
                 GROUP_CHASSIS,
                 GROUP_GROUND,
             ))
             .active_events(ActiveEvents::empty())
             .density(density)
-            .friction(0.0) // IMPORTANT
+            // Average(0, road friction 1.2) is still 0.6. Min wins over the
+            // map's default Average rule, making chassis contacts frictionless.
+            // Rapier owns collision normals; the custom tire solver owns grip.
+            .friction(0.0)
+            .friction_combine_rule(CoefficientCombineRule::Min)
             .restitution(0.0)
             .build();
 
         let handle = self.bodies.insert(rb); // insert rigid body
-        
+
         self.colliders.insert_with_parent(collider, handle, &mut self.bodies); // attach to body
-        self.body_to_player.insert(handle, id.clone()); // map body to player ID  
+        self.body_to_player.insert(handle, id.clone()); // map body to player ID
         self.register_vehicle(handle, config); // setup wheels
-        
+
         self.vehicles.insert(
             id.clone(),
             Vehicle {
@@ -531,19 +563,46 @@ impl PhysicsWorld {
         );
 
         Ok(handle)
-    }    
-    
-    pub fn step(&mut self, dt: Real) {
+    }
 
-        // prevent ui clutter
+    pub fn step(&mut self, dt: Real) {
+        if !dt.is_finite() || dt <= 0.0 {
+            return;
+        }
+
+        let step_started = std::time::Instant::now();
+        // Map maintenance and debug allocation belong to the outer tick.
+        // Rapier keeps this query pipeline current between substeps.
         self.debug_overlay.clear();
-        
-        // Convert inputs → intent (NO PHYSICS)
-        apply_vehicle_controls(self.vehicles.values_mut(), dt);
-        
-        // Apply suspension + traction + tire forces
+        self.update_loaded_blocks_around_players();
+        self.query_pipeline.update(&self.colliders);
+
+        // Recompute custom contacts and forces for each small integration step.
+        // Bound catch-up work after a stall as well as the spring integration dt.
+        let elapsed = dt.min(MAX_PHYSICS_SUBSTEP * MAX_PHYSICS_SUBSTEPS as Real);
+        let count = ((elapsed / MAX_PHYSICS_SUBSTEP).ceil() as usize)
+            .clamp(1, MAX_PHYSICS_SUBSTEPS);
+        let substep_dt = elapsed / count as Real;
+        for _ in 0..count {
+            self.step_substep(substep_dt);
+        }
+        let trace_now = self.refresh_vehicle_wheel_snapshots();
+        self.populate_block_debug();
+        if trace_now {
+            println!("[physics] substeps={} step_ms={:.2} debug_boxes={}",
+                count, step_started.elapsed().as_secs_f64() * 1000.0,
+                self.debug_overlay.block_boxes.len());
+        }
+    }
+
+    fn step_substep(&mut self, dt: Real) {
+
+        // Inputs were clamped once when attached to the vehicle. Steering
+        // smoothing has one owner inside apply_vehicle_forces, not a second
+        // rack integrator or a second control pass here.
+        // Apply suspension + traction + tire forces exactly once per substep.
         self.apply_vehicle_forces(dt);
-        
+
         // Step physics
         let hooks = ();
         let mut events = ();
@@ -567,23 +626,9 @@ impl PhysicsWorld {
         );
 
 
-        // streaming step
-        self.update_loaded_blocks_around_players();
-
-        // NOW repopulate debug overlay with the up-to-date loaded boxes
-        self.populate_block_debug();    
-
         // Safety: prevent bodies from exploding to insane coordinates
         for (_, body) in self.bodies.iter_mut() {
             let mut pos = *body.translation();
-
-            // let bad =
-            //     !pos.x.is_finite() 
-            //     || !pos.y.is_finite() 
-            //     || !pos.z.is_finite() 
-            //     || pos.x.abs() > 1_000.0 
-            //     || pos.y.abs() > 1_000.0 
-            //     || pos.z.abs() > 1_000.0;
 
             let bad =
                 !pos.x.is_finite()
@@ -592,7 +637,9 @@ impl PhysicsWorld {
                 || pos.y.abs() > 10_000.0;
 
             if bad {
-                // Reset this body to a safe position above the heightfield
+                // Emergency fallback only: this is not normal vehicle spawning.
+                // A reset at y=5 is announced below and can explain a sudden high
+                // spawn if non-finite state was produced elsewhere.
                 pos = vector![0.0, 5.0, 0.0];
                 body.set_translation(pos, true);
                 body.set_linvel(vector![0.0, 0.0, 0.0], true);
@@ -601,5 +648,70 @@ impl PhysicsWorld {
                 println!("⚠️ Reset exploding body back to {:?}", pos);
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::suspension_contact::cast_wheel_ground;
+
+    // Test the public spawn path against a minimal map using the actual loader's
+    // Blender-to-Rapier collider conversion. No frontend height assumptions.
+    fn flat_world() -> PhysicsWorld {
+        let mut world = PhysicsWorld::new();
+        let map: BlockColliderFile = serde_json::from_value(serde_json::json!({
+            "schema_version": 2, "map_id": "audit_flat",
+            "coordinate_system": {"units": "meters", "up_axis": "y", "forward_axis": "-z"},
+            "cell": [200.0, 200.0], "surface": {"road_y": 0.32},
+            "layout": {"kind": "fixed_grid", "origin": [0, 0], "size": [1, 1]},
+            "team_spawns": {"red": [{"chunk": [0, 0], "local": [0.0, 0.0], "yaw": 0.0}], "blue": []},
+            "visuals": [{"id": "roads", "asset": "unused.glb", "position": [0.0, 0.0, 0.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0], "scale": [1.0, 1.0, 1.0]}],
+            "roads": [{"id": "road", "kind": "road", "visual": "Roads", "pos": [0.0, 0.0, 0.27],
+                "rot": [0.0, 0.0, 0.0, 1.0], "half_extents": [100.0, 100.0, 0.05],
+                "collider": "box", "destructible": false, "state": "intact"}],
+            "buildings": []
+        })).unwrap();
+        world.active_map = Some(Arc::new(map));
+        world.update_loaded_blocks_around_players();
+        world
+    }
+
+    #[test]
+    fn real_spawn_path_places_all_vehicle_wheels_at_target_sag_on_the_road() {
+        for id in ["ae86", "gt86", "brz", "camaro", "supra", "tank"] {
+            let mut world = flat_world();
+            let handle = world.spawn_vehicle_for_player("test".into(), [0.0; 3], id, "red").unwrap();
+            world.query_pipeline.update(&world.colliders);
+            let config = config_for_vehicle(id).unwrap();
+            for wheel in &world.wheels[&handle] {
+                let hit = cast_wheel_ground(wheel, &world.bodies[handle], &world.query_pipeline,
+                    &world.bodies, &world.colliders, handle).unwrap();
+                assert!((hit.hit_point.y - 0.32).abs() < 1.0e-5);
+                assert!((hit.compression - config.suspension_sag).abs() < 1.0e-5);
+            }
+        }
+    }
+
+    #[test]
+    fn a_scraping_chassis_does_not_add_a_second_tire_friction_model() {
+        let mut world = flat_world();
+        let handle = world.spawn_vehicle_for_player("test".into(), [0.0; 3], "ae86", "red").unwrap();
+        // Isolate Rapier contacts: wheels must not contribute support or grip.
+        world.wheels.clear();
+        let config = world.vehicles["test"].config;
+        let body = &mut world.bodies[handle];
+        body.set_translation(vector![0.0, 0.32 + config.chassis_half_extents[1]
+            - config.chassis_com_offset[1] + 0.001, 0.0], true);
+        body.set_linvel(vector![10.0, 0.0, 0.0], true);
+        let dt = 1.0 / 120.0;
+        for _ in 0..120 { world.step_substep(dt); }
+        // Only the configured linear damping may slow horizontal motion.
+        // Average(0, 1.2) friction would cause a large extra speed loss here.
+        let damping_only = 10.0 / (1.0 + config.linear_damping * dt).powi(120);
+        assert!((world.bodies[handle].linvel().x - damping_only).abs() < 0.02);
+        assert!((world.bodies[handle].translation().y
+            - (0.32 + config.chassis_half_extents[1] - config.chassis_com_offset[1])).abs() < 0.03);
     }
 }

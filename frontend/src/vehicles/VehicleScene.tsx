@@ -1,21 +1,21 @@
 // src/vehicles/VehicleScene.tsx
 import * as THREE from "three";
-import { OrbitControls } from "@react-three/drei";
-
 import { DebugWheelVisualizer } from "../components/debugger/DebugWheelVisualizer";
-import { GeometryVisualizer } from "./GeometryVisualizer";
+import { DebugChassisPose } from "../components/debugger/DebugChassisPose";
 import { DebugAntiRollBarVisualizer } from "../components/debugger/DebugAntiRollBarVisualizer";
 import { DebugSlipAngleVisualizer } from "../components/debugger/DebugSlipAngleVisualizer";
 import { DebugSpringVisualizer } from "../components/debugger/DebugSpringVisualizer";
-import { ChassisCollider } from "../components/debugger/ChassisCollider";
 import { DebugFlags, hasDebugFlag } from "../store/tools/debugMasks";
 import { useNetworkStore, useWorldStore } from "../store";
 import { useDebugViewStore } from "../store/debugViewStore";
 import { VehicleRoster } from "./VehicleRoster";
 
 export function VehicleScene() {
-    const snapshot = useNetworkStore((s) => s.snapshot);
+    // Membership/diagnostics may rerender; poses belong to frame callbacks.
+    const hasSnapshot = useNetworkStore((s) => s.snapshot !== null);
     const playerId = useNetworkStore((s) => s.playerId);
+    // Force/ray diagnostics stay raw. Chassis and wheel poses now share
+    // the GLB/camera timeline; OFF exposes raw poses for contact inspection.
     const debug = useNetworkStore((s) => s.debugOverlay);
 
     const playerScope = useDebugViewStore((s) => s.playerScope);
@@ -48,7 +48,7 @@ export function VehicleScene() {
         DebugFlags.RAYS
     );
 
-    if (!snapshot || !playerId) return null;
+    if (!hasSnapshot || !playerId) return null;
 
     const isVisiblePlayer = (debugPlayerId: string) =>
         playerScope === "all" || debugPlayerId === playerId;
@@ -117,21 +117,17 @@ export function VehicleScene() {
             ...ray.direction
         ).normalize();
 
+        // This reference is ray reach minus tire radius (full droop plus the
+        // server's contact tolerance); it is not the spring's rest length.
         const maximumSpringLength = Math.max(
             ray.length - wheel.radius,
             0.001
         );
 
-        const currentSpringLength =
-            start.distanceTo(end);
-
-        const ratio = THREE.MathUtils.clamp(
-            1 -
-                currentSpringLength /
-                    maximumSpringLength,
-            0,
-            1
-        );
+        // The server measures compression against suspension travel. Ray
+        // reach includes full droop and contact tolerance, so it cannot supply
+        // a second, equivalent compression formula. Use the backend result.
+        const ratio = THREE.MathUtils.clamp(wheel.compression_ratio, 0, 1);
 
         const restEnd = start
             .clone()
@@ -164,8 +160,6 @@ export function VehicleScene() {
 
     return (
         <>
-            <OrbitControls />
-
             {(mode === "glb" || mode === "hybrid") && (
                 <VehicleRoster />
             )}
@@ -180,13 +174,7 @@ export function VehicleScene() {
 
                     {showChassis &&
                         chassis.map((item) => (
-                            <GeometryVisualizer
-                                key={item.player_id}
-                                chassis={item}
-                                color="white"
-                                opacity={0.5}
-                                mode={mode}
-                            />
+                            <DebugChassisPose key={item.player_id} chassis={item} mode="geometry" />
                         ))}
                 </>
             )}
@@ -228,21 +216,7 @@ export function VehicleScene() {
 
                     {showChassis &&
                         chassis.map((item) => (
-                            <ChassisCollider
-                                key={item.player_id}
-                                position={item.position}
-                                quaternion={item.rotation}
-                                scale={
-                                    item.half_extents.map(
-                                        (value) =>
-                                            value * 2
-                                    ) as [
-                                        number,
-                                        number,
-                                        number,
-                                    ]
-                                }
-                            />
+                            <DebugChassisPose key={item.player_id} chassis={item} mode="collider" />
                         ))}
                 </>
             )}

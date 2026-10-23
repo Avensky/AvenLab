@@ -4,19 +4,17 @@ import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from 'rea
 import type { PropsWithChildren } from 'react';
 import { Group, Color, MathUtils, Quaternion, SpotLight, Vector3, Object3D } from 'three';
 import { sharedGlassMaterial } from './tools/createGlassMaterialFactory';
-import { useFrame, useThree } from '@react-three/fiber';
+import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 
 import { useNetworkStore, useInputStore, useGameStore, useUIStore } from "../store";
-import { usePhysicsInterpolator } from "../hooks/usePhysicsInterpolator";
+import { useVehiclePhysicsInterpolator } from "../hooks/usePhysicsInterpolator";
 import { hasFlag, VehicleFlags } from "../store/tools/inputMasks";
 
 const MODEL_PATH = "/models/vehicles/brz.glb";
 
-// The exported VEHICLE_ROOT is 0.50 m above the visible model floor. Keep this
-// as a visual-only correction; backend wheel and chassis positions stay in
-// authoritative world space.
-const BRZ_VISUAL_OFFSET_Y = -0.57;
+// Use the exported asset transform beneath the backend body pose. There is
+// no runtime body-height correction: road alignment belongs to the map data.
 
 const BRZ_ROOT_NAME = "VEHICLE_ROOT";
 
@@ -81,7 +79,6 @@ export const Brz = forwardRef<Group, BrzProps>(function Brz(
     const tintExterior = new Color(0x556677);           // Blue-gray tint (customize as needed)
 
     const { scene } = useGLTF(MODEL_PATH);              // Load the car model
-    const camera = useThree((state) => state.camera)    // Access the camera for later use
     const isVehiclePreview = useUIStore(
         (state) =>
             state.screen === "sandbox_setup" ||
@@ -107,14 +104,8 @@ export const Brz = forwardRef<Group, BrzProps>(function Brz(
     const rlBlinkerRef = useRef<SpotLight | null>(null);
     const rrBlinkerRef = useRef<SpotLight | null>(null);
 
-    // Network and interpolation setup
-    const snapshot = useNetworkStore((s) => s.snapshot);
-    const { setSnapshot, getInterpolated } = usePhysicsInterpolator(100);
-
-    useEffect(() => {
-        if (!snapshot) return;
-        for (const entity of snapshot.entities) { setSnapshot(entity.id, entity); }
-    }, [snapshot, setSnapshot]);
+    // One completed backend timeline drives both the body and world-space wheels.
+    const { getInterpolated } = useVehiclePhysicsInterpolator(entityId);
 
 
     const { vehicleVisualRoot, wheels } = useMemo(() => {
@@ -125,10 +116,10 @@ export const Brz = forwardRef<Group, BrzProps>(function Brz(
         const root = sourceRoot.clone(true);
 
         const extractedWheels = [
-            extractWheel(root, BRZ_WHEEL_NAMES.fr),
             extractWheel(root, BRZ_WHEEL_NAMES.fl),
-            extractWheel(root, BRZ_WHEEL_NAMES.rr),
+            extractWheel(root, BRZ_WHEEL_NAMES.fr),
             extractWheel(root, BRZ_WHEEL_NAMES.rl),
+            extractWheel(root, BRZ_WHEEL_NAMES.rr),
         ];
 
         return {
@@ -212,9 +203,7 @@ export const Brz = forwardRef<Group, BrzProps>(function Brz(
     );
     const wheelSpinAngles = useRef([0, 0, 0, 0]);
     const wheelBaseQuaternion = useRef(new Quaternion());
-    const wheelSteerQuaternion = useRef(new Quaternion());
     const wheelSpinQuaternion = useRef(new Quaternion());
-    const steeringAxis = useRef(new Vector3(0, 1, 0));
     const wheelAxle = useRef(new Vector3(1, 0, 0));
 
     useFrame((_, delta) => {
@@ -239,7 +228,6 @@ export const Brz = forwardRef<Group, BrzProps>(function Brz(
         const controls = inputState.controls;
         const input = inputState.input;
         const camMode = gameState.camera;
-        const isEditor = gameState.editor;
 
         const group = vehicleGroupRef.current;
 
@@ -306,10 +294,6 @@ export const Brz = forwardRef<Group, BrzProps>(function Brz(
             );
 
             wheelBaseQuaternion.current.set(...wheel.rotation);
-            wheelSteerQuaternion.current.setFromAxisAngle(
-                steeringAxis.current,
-                -(wheel.steer_angle ?? 0)
-            );
             wheelSpinQuaternion.current.setFromAxisAngle(
                 wheelAxle.current,
                 wheelSpinAngles.current[index]
@@ -317,25 +301,9 @@ export const Brz = forwardRef<Group, BrzProps>(function Brz(
 
             wheelObject.quaternion
                 .copy(wheelBaseQuaternion.current)
-                .multiply(wheelSteerQuaternion.current)
                 .multiply(wheelSpinQuaternion.current)
                 .multiply(restRotation);
         });
-
-        if (isLocalPlayer && !isEditor && (camMode === "FIRST_PERSON" || camMode === "DEFAULT" || camMode === "BIRDS_EYE")) {
-            const offset = new Vector3();
-
-            if (camMode === "FIRST_PERSON") offset.set(-0.28, 1.01, -.1);
-            if (camMode === "DEFAULT") offset.set(0, 2, 4);
-            if (camMode === "BIRDS_EYE") offset.set(0, 7, 12);
-
-            offset.applyQuaternion(group.quaternion).add(group.position);
-            camera.position.lerp(offset, delta * 5);
-
-            const target = group.position.clone();
-            target.y += 1.2;
-            camera.lookAt(target);
-        }
 
         if (isLocalPlayer) {
             const isFirstPerson = camMode === 'FIRST_PERSON';
@@ -366,7 +334,6 @@ export const Brz = forwardRef<Group, BrzProps>(function Brz(
             <group ref={vehicleGroupRef}>
                 <group
                     ref={visualGroupRef}
-                    position={[0, isVehiclePreview ? 0 : BRZ_VISUAL_OFFSET_Y, 0]}
                 >
                     <primitive object={vehicleVisualRoot} />
                 </group>

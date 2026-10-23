@@ -2,7 +2,7 @@ import { useThree, useFrame } from "@react-three/fiber";
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import type { OrbitControls } from "three-stdlib";
-import { useGameStore, useNetworkStore } from "../store";
+import { useGameStore, useNetworkStore, useUIStore } from "../store";
 
 interface RotatingCameraProps {
     radius?: number;
@@ -23,14 +23,16 @@ export function RotatingCamera({
 }: RotatingCameraProps) {
     const { camera } = useThree();
 
-    const screen = useGameStore((s) => s.screen);
+    const screen = useUIStore((s) => s.screen);
     const camMode = useGameStore((s) => s.camera);
     const setRotatingCamera = useGameStore((s) => s.setRotatingCamera);
 
     const [paused, setPaused] = useState(false);
     const pauseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const isActive = screen === "selection-screen" && camMode === "GALLERY";
+    const isActive =
+        camMode === "GALLERY" &&
+        (screen === "sandbox_setup" || screen === "signal_recon_setup");
 
     useEffect(() => {
         const controls = orbitRef.current;

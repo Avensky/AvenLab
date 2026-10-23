@@ -7,6 +7,7 @@ import { DebugMenu } from "../components/debugger/DebugMenu";
 import { ControlsPanel, Pedals, Steering } from "../ui";
 import { CommandLine } from "../ui/command/CommandLine";
 import { useState } from "react";
+import { Cameras } from "../effects";
 
 export function GameUI() {
   const screen = useUIStore((s) => s.screen);
@@ -24,6 +25,7 @@ export function GameUI() {
       {screen === "swarm" && <Swarm />}
       {screen === "signal_recon_setup" && <VehiclePreview />}
       {/* {!needsCanvas && screen === "settings" && <Settings />} */}
+      <Cameras />
     </FullCanvas>
 
     {/* UI Overlay */}

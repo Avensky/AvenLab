@@ -97,7 +97,7 @@ impl fmt::Display for WheelId {
 // ============================================
 #[derive(Debug, Clone, Copy)]
 pub struct SolveContext {
-    pub dt: f32,                // s  
+    pub dt: f32,                // s
     pub mass: f32,              // kg
 
     pub engine_force: f32,      // N
@@ -112,7 +112,7 @@ pub struct SolveContext {
 
     /// brake bias params (matches your old block)
     pub base_front_bias: f32,   // 0.0–1.0
-    pub bias_gain: f32,         // per total brake force
+    pub bias_gain: f32,         // legacy/inactive; current bias is base_front_bias only
 
     pub wheelbase: f32,
     pub mu_base: f32,
@@ -157,7 +157,7 @@ pub struct ContactPatch {
     pub normal_force: f32, // N
     pub mu_lat: f32,
     pub mu_long: f32,
-    pub roll_factor: f32,  // 0..1
+    pub roll_factor: f32,  // legacy/inactive: solve.rs applies full lateral impulse at the patch
 
     pub drive: bool,
     pub brake: f32,
@@ -169,9 +169,9 @@ pub struct ContactPatch {
     pub brake_dir: Vec3,
     pub speed_planar: f32,
 
-    pub yaw_rate: f32,          // rad/s (world up)
-    pub relative_com: [f32; 3],  // apply_point - COM (world-space vector)
-    
+    pub yaw_rate: f32,          // rad/s; telemetry/reserved, NOT subtracted from v_long again
+    pub relative_com: [f32; 3],  // m; telemetry/reserved, actual r x J is handled by Rapier
+
     pub tire_state: TireState,
 }
 

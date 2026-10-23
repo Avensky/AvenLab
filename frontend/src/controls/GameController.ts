@@ -1,335 +1,120 @@
-// src/components/GameController.tsx
-
-import { useRef, useEffect } from 'react';
-import { useInputStore, useSelectionStore, useUIStore } from "../store";
+import { useEffect } from "react";
+import { useInputStore } from "../store/inputStore";
+import { useUIStore } from "../store/uiStore";
+import { useCanDataStore } from "../store/canDataStore";
 import { VehicleFlags, PlayerFlags } from "../store/tools/inputMasks";
+import { canDrive, isTypingTarget, routeMenuAction } from "../store/tools/inputRouting";
 
-/**
- * Simple deadzone filter for single-axis drift.
- * Zeroes small values to prevent unwanted steering.
-**/
-
-function applyDeadzone(value: number, deadzone = 0.12) {
-    return Math.abs(value) < deadzone ? 0 : value;
+function axis(value = 0, deadzone = 0.12) {
+  return Number.isFinite(value) && Math.abs(value) >= deadzone ? Math.max(-1, Math.min(1, value)) : 0;
 }
-
-function clamp01(value: number) {
-  return Math.max(0, Math.min(1, value));
-}
-
-function pulsePlayerFlag(flag: number, ms = 100) {
-    const store = useInputStore.getState();
-    store.setPlayerFlag(flag, true);
-    window.setTimeout(() => {
-        useInputStore.getState().setPlayerFlag(flag, false);
-    }, ms);
-}
-
-function createGamepadDebugLogger() {
-  const prevButtons: boolean[] = [];
-  const prevAxes: number[] = [];
-
-  return function debugGamepad(gp: Gamepad) {
-    gp.buttons.forEach((button, index) => {
-      const pressed = button.pressed;
-      const wasPressed = prevButtons[index] ?? false;
-
-      if (pressed !== wasPressed) {
-        console.log(
-          `[GAMEPAD BUTTON] index=${index} pressed=${pressed} value=${button.value}`
-        );
-      }
-
-      prevButtons[index] = pressed;
-    });
-
-    gp.axes.forEach((value, index) => {
-      const prev = prevAxes[index] ?? 0;
-
-      // Only log big axis changes
-      if (Math.abs(value - prev) > 0.25) {
-        console.log(`[GAMEPAD AXIS] index=${index} value=${value.toFixed(3)}`);
-      }
-
-      prevAxes[index] = value;
-    });
-  };
+function trigger(value = 0) {
+  return Number.isFinite(value) && value > 0.05 ? Math.min(1, value) : 0;
 }
 
 export function GameController() {
-    const prevButtons = useRef<boolean[]>([]);
+  useEffect(() => {
+    let frameId = 0;
+    let focused = document.hasFocus();
+    let previousButtons: boolean[] = [];
+    let padKey: string | null = null;
+    let armed = false;
+    let resetTimer: number | null = null;
+    let lastVertical = -Infinity;
+    let lastHorizontal = -Infinity;
+    const release = () => {
+      armed = false;
+      if (resetTimer !== null) window.clearTimeout(resetTimer);
+      resetTimer = null;
+      useInputStore.getState().releaseInputSource("gamepad");
+    };
+    const onBlur = () => { focused = false; release(); };
+    const onFocus = () => { focused = true; };
+    const onVisibility = () => { if (document.visibilityState === "hidden") release(); };
+    const onFocusIn = (event: FocusEvent) => { if (isTypingTarget(event.target)) release(); };
+    const releaseIfBlocked = () => { if (!canDrive()) release(); };
+    const unsubscribeUI = useUIStore.subscribe(releaseIfBlocked);
+    const unsubscribeCAN = useCanDataStore.subscribe((state, previous) => {
+      if (state.commandOpen && !previous.commandOpen) release();
+    });
 
-    const lastMenuMoveRef = useRef(0);
-    const lastMenuHorizontalRef = useRef(0);
-    const debugGamepadRef = useRef(createGamepadDebugLogger());
-
-    useEffect(() => {
-        let frameId: number;
-        const pollGamepad = () => {
-            const gamepads = navigator.getGamepads?.() ?? [];
-            const gp = gamepads[0]; // just grab the first for now
-            const store = useInputStore.getState();
-
-            if (gp) {
-                const ui = useUIStore.getState();
-                const inMenu =
-                  ui.screen === "main" ||
-                  ui.screen === "settings" ||
-                  ui.screen === "sandbox_setup" ||
-                  ui.overlay === "pause"||
-                  ui.overlay === "settings"||
-                  ui.overlay === "debug_menu"||
-                  ui.overlay === "vehicle_select";
-
-                debugGamepadRef.current(gp);
-                
-                // Example: Left stick X-axis for steering
-                const rawSteeringAxis = gp.axes[0] ?? 0; // Left stick X-axis for steering (common mapping, but may vary)
-                const rawThrottleAxis = gp.axes[3] ?? 0; // Right stick Y-axis for throttle (common mapping, but may vary)
-                
-                const steeringAxis = applyDeadzone(rawSteeringAxis, 0.12);  // tweak as needed
-                const throttleAxis = applyDeadzone(rawThrottleAxis, 0.12);  // optional: only if needed
-                
-                const triggerBrake = clamp01(gp.buttons[6]?.value ?? 0);
-                const triggerThrottle = clamp01(gp.buttons[7]?.value ?? 0);
-                
-                // Fallback: allow left stick up/down as throttle if triggers are not used
-                const stickThrottle = throttleAxis < 0 ? Math.abs(throttleAxis) : 0;
-                const stickReverse = throttleAxis > 0 ? -throttleAxis : 0;
-                
-                const throttle = triggerThrottle > 0.05 
-                    ? triggerThrottle 
-                    : stickThrottle + stickReverse;
-
-                const brake = triggerBrake;
-
-                const handbrake = gp.buttons[1]?.pressed ? 1 : 0; // B / Circle
-
-                useInputStore.getState().setAnalog({
-                    throttle,
-                    steer: steeringAxis,
-                    brake,
-                    handbrake,
-                });
-                
-                const onPress = (index: number, action: () => void) => {
-                    const pressed = gp.buttons[index]?.pressed ?? false;
-                    if (pressed && !prevButtons.current[index]) { action();}
-                    prevButtons.current[index] = pressed;
-                };
-                
-                const holdButton = (index: number, onHold: (pressed: boolean) => void) => {
-                    const pressed = gp.buttons[index]?.pressed ?? false;
-                    onHold(pressed);
-                    prevButtons.current[index] = pressed;
-                };
-
-
-                const now = performance.now();
-
-                const leftStickX = applyDeadzone(gp.axes[0] ?? 0, 0.45);
-                const leftStickY = applyDeadzone(gp.axes[1] ?? 0, 0.45);
-                const rightStickX = applyDeadzone(gp.axes[2] ?? 0, 0.45);
-                const rightStickY = applyDeadzone(gp.axes[3] ?? 0, 0.45);
-
-                const isDebugMenu = ui.overlay === "debug_menu";
-
-                if (isDebugMenu) {
-                  const dispatchDebugMenuEvent = (
-                    action: "up" | "down" | "left" | "right" | "activate" | "back"
-                  ) => {
-                    window.dispatchEvent(
-                      new Event(`avenlab:debug-menu-${action}`)
-                    );
-                  };
-
-                  if (now - lastMenuMoveRef.current > 220) {
-                    if (leftStickY < -0.5 || rightStickY < -0.5) {
-                      dispatchDebugMenuEvent("up");
-                      lastMenuMoveRef.current = now;
-                    } else if (leftStickY > 0.5 || rightStickY > 0.5) {
-                      dispatchDebugMenuEvent("down");
-                      lastMenuMoveRef.current = now;
-                    }
-                  }
-
-                  if (now - lastMenuHorizontalRef.current > 220) {
-                    if (leftStickX < -0.5 || rightStickX < -0.5) {
-                      dispatchDebugMenuEvent("left");
-                      lastMenuHorizontalRef.current = now;
-                    } else if (leftStickX > 0.5 || rightStickX > 0.5) {
-                      dispatchDebugMenuEvent("right");
-                      lastMenuHorizontalRef.current = now;
-                    }
-                  }
-
-                  onPress(12, () => dispatchDebugMenuEvent("up"));
-                  onPress(13, () => dispatchDebugMenuEvent("down"));
-                  onPress(14, () => dispatchDebugMenuEvent("left"));
-                  onPress(15, () => dispatchDebugMenuEvent("right"));
-                  onPress(0, () => dispatchDebugMenuEvent("activate"));
-                  onPress(1, () => dispatchDebugMenuEvent("back"));
-
-                  frameId = requestAnimationFrame(pollGamepad);
-                  return;
-                }
-
-                const isSandboxSetup = ui.screen === "sandbox_setup";
-
-                // On the main and Sandbox setup screens, either stick may
-                // navigate vertically. Use the stronger input so the two
-                // sticks cannot produce duplicate moves in the same poll.
-                // Use only the stick with the stronger input so moving both
-                // sticks cannot trigger two menu steps during the same poll.
-                const menuVerticalAxis =
-                  (ui.screen === "main" || isSandboxSetup) &&
-                  Math.abs(rightStickY) > Math.abs(leftStickY)
-                    ? rightStickY
-                    : leftStickY;
-
-                const menuHorizontalAxis =
-                  isSandboxSetup &&
-                  Math.abs(rightStickX) > Math.abs(leftStickX)
-                    ? rightStickX
-                    : leftStickX;
-
-                const moveSandboxRow = (direction: -1 | 1) => {
-                  const sandboxIndex =
-                    useUIStore.getState().selectedMenuIndexById.sandbox_setup;
-                  const nextIndex = (sandboxIndex + direction + 2) % 2;
-                  useUIStore.getState().setActiveMenuIndex(nextIndex);
-                };
-
-                const moveMenuVertically = (direction: -1 | 1) => {
-                  if (isSandboxSetup) {
-                    moveSandboxRow(direction);
-                    return;
-                  }
-                  useUIStore.getState().moveActiveMenuSelection(direction);
-                };
-
-                const moveMenuHorizontally = (direction: -1 | 1) => {
-                  if (!isSandboxSetup) {
-                    useUIStore.getState().moveActiveMenuHorizontal(direction);
-                    return;
-                  }
-
-                  const sandboxIndex =
-                    useUIStore.getState().selectedMenuIndexById.sandbox_setup;
-                  const selection = useSelectionStore.getState();
-
-                  if (sandboxIndex === 0) {
-                    if (direction < 0) {
-                      selection.prevVehicle();
-                    } else {
-                      selection.nextVehicle();
-                    }
-                  } else if (sandboxIndex === 1) {
-                    if (direction < 0) {
-                      selection.prevMap();
-                    } else {
-                      selection.nextMap();
-                    }
-                  }
-                };
-
-                if (inMenu) {
-                  if (now - lastMenuMoveRef.current > 220) {
-                    if (menuVerticalAxis < -0.5) {
-                      moveMenuVertically(-1);
-                      lastMenuMoveRef.current = now;
-                    }
-
-                    if (menuVerticalAxis > 0.5) {
-                      moveMenuVertically(1);
-                      lastMenuMoveRef.current = now;
-                    }
-                  }
-
-                  if (now - lastMenuHorizontalRef.current > 220) {
-                    if (menuHorizontalAxis < -0.5) {
-                      moveMenuHorizontally(-1);
-                      lastMenuHorizontalRef.current = now;
-                    }
-
-                    if (menuHorizontalAxis > 0.5) {
-                      moveMenuHorizontally(1);
-                      lastMenuHorizontalRef.current = now;
-                    }
-                  }
-
-                  onPress(12, () => moveMenuVertically(-1));
-                  onPress(13, () => moveMenuVertically(1));
-                  onPress(14, () => moveMenuHorizontally(-1));
-                  onPress(15, () => moveMenuHorizontally(1));
-                  
-                  onPress(0, () => {
-                    const currentUi = useUIStore.getState();
-                    if (currentUi.screen === "sandbox_setup") {
-                      window.dispatchEvent(new Event("avenlab:sandbox-start"));
-                      return;
-                    }
-
-                    // Open the debugger explicitly from the pause menu. This
-                    // keeps controller access working even if the generic UI
-                    // action table has not added a debugger entry yet.
-                    if (
-                      currentUi.overlay === "pause" &&
-                      currentUi.selectedMenuIndexById.pause === 1
-                    ) {
-                      useUIStore.setState({ overlay: "debug_menu" });
-                      return;
-                    }
-
-                    currentUi.activateActiveMenuSelection();
-                  });
-                  onPress(1, () => {
-                    const currentUi = useUIStore.getState();
-                    if (currentUi.screen === "sandbox_setup") {
-                      window.dispatchEvent(new Event("avenlab:sandbox-exit"));
-                      return;
-                    }
-                    currentUi.closeOverlay();
-                  });
-                  onPress(9,  () => {useUIStore.getState().togglePauseMenu();});
-
-                  frameId = requestAnimationFrame(pollGamepad);
-                  return;
-                }
-
-                // --------------------
-                // Vehicle toggles
-                // --------------------
-
-                onPress(2,  () => {store.toggleVehicleFlag(VehicleFlags.ENGINE_ON);});// X / Square
-                onPress(3,  () => {store.toggleVehicleFlag(VehicleFlags.HEADLIGHTS);}); // Y / Triangle
-                onPress(12, () => {store.toggleVehicleFlag(VehicleFlags.HAZARDS);});// D-pad up
-                onPress(14, () => {store.toggleVehicleFlag(VehicleFlags.BLINKER_LEFT);});// D-pad left
-                onPress(15, () => {store.toggleVehicleFlag(VehicleFlags.BLINKER_RIGHT);});// D-pad right
-
-                // Boost / nitrous = hold
-                holdButton(4, (pressed) => {store.setVehicleFlag(VehicleFlags.BOOST, pressed);});// LB / L1
-
-                // Honk = hold
-                holdButton(5, (pressed) => {store.setPlayerFlag(PlayerFlags.HONK, pressed);});// RB / R1
-
-                // --------------------
-                // Player / research tools
-                // --------------------
-                onPress(8, () => {store.togglePlayerFlag(PlayerFlags.CANDUMP);});// Select / Back
-                onPress(9, () => {useUIStore.getState().togglePauseMenu();});// Start / Menu
-                onPress(10, () => {pulsePlayerFlag(PlayerFlags.RESET);});// Reset vehicle state
-                // onPress(10, () => {store.togglePlayerFlag(PlayerFlags.LIVECAN);});// Left stick press
-                onPress(11, () => {store.togglePlayerFlag(PlayerFlags.DYNO);});// Right stick press
-                onPress(13, () => {store.togglePlayerFlag(PlayerFlags.RADIO);}); // D-pad down
-            }
-
-            frameId = requestAnimationFrame(pollGamepad);
-        };
-        
-        frameId = requestAnimationFrame(pollGamepad);
-        return () => cancelAnimationFrame(frameId);
-    }, []);
-
-    return null; // no UI needed
+    const poll = () => {
+      frameId = requestAnimationFrame(poll);
+      // A connected controller can occupy any slot. Keep the selected one
+      // until it disconnects, then release only its device's intent.
+      const pads = Array.from(navigator.getGamepads?.() ?? []);
+      const pad = pads.find((item) => item?.connected && `${item.index}:${item.id}` === padKey)
+        ?? pads.find((item) => item?.connected);
+      if (!pad) { if (padKey !== null) release(); padKey = null; previousButtons = []; return; }
+      const buttons = pad.buttons.map((button) => button.pressed);
+      const nextKey = `${pad.index}:${pad.id}`;
+      if (nextKey !== padKey) { release(); padKey = nextKey; previousButtons = buttons; }
+      const pressed = (index: number) => buttons[index] === true;
+      const edges = buttons.map((_, index) => pressed(index) && !previousButtons[index]);
+      // Record every button every poll, including while menus/focus block driving.
+      previousButtons = buttons;
+      if (!focused || document.visibilityState === "hidden" || isTypingTarget(document.activeElement)) { release(); return; }
+      if (useCanDataStore.getState().commandOpen) { release(); return; }
+      if (edges[9]) { release(); useUIStore.getState().togglePauseMenu(); return; }
+      if (!canDrive()) {
+        release();
+        const now = performance.now();
+        const vertical = Math.abs(axis(pad.axes[1], 0.5)) >= Math.abs(axis(pad.axes[3], 0.5))
+          ? axis(pad.axes[1], 0.5) : axis(pad.axes[3], 0.5);
+        const horizontal = Math.abs(axis(pad.axes[0], 0.5)) >= Math.abs(axis(pad.axes[2], 0.5))
+          ? axis(pad.axes[0], 0.5) : axis(pad.axes[2], 0.5);
+        if (edges[12] || edges[13]) { routeMenuAction(edges[12] ? "up" : "down"); lastVertical = now; }
+        else if (vertical !== 0 && now - lastVertical >= 220) { routeMenuAction(vertical < 0 ? "up" : "down"); lastVertical = now; }
+        if (edges[14] || edges[15]) { routeMenuAction(edges[14] ? "left" : "right"); lastHorizontal = now; }
+        else if (horizontal !== 0 && now - lastHorizontal >= 220) { routeMenuAction(horizontal < 0 ? "left" : "right"); lastHorizontal = now; }
+        if (edges[0]) routeMenuAction("activate");
+        else if (edges[1]) routeMenuAction("back");
+        return;
+      }
+      const steer = axis(pad.axes[0]);
+      const throttle = trigger(pad.buttons[7]?.value) || -axis(pad.axes[3]);
+      const brake = trigger(pad.buttons[6]?.value);
+      const handbrake = Number(pressed(1));
+      // After menu/focus/device changes, release and re-engage drive controls.
+      // B used to leave a menu must not immediately become a held handbrake.
+      if (!armed) {
+        if (steer !== 0 || throttle !== 0 || brake !== 0 || handbrake !== 0 || pressed(4) || pressed(5) || pressed(10)) return;
+        armed = true;
+      }
+      const store = useInputStore.getState();
+      store.setAnalogFromSource("gamepad", { throttle, steer, brake, handbrake });
+      store.setHeldVehicleFlag("gamepad", VehicleFlags.BOOST, pressed(4));
+      store.setHeldPlayerFlag("gamepad", PlayerFlags.HONK, pressed(5));
+      if (edges[2]) store.toggleVehicleFlag(VehicleFlags.ENGINE_ON);
+      if (edges[3]) store.toggleVehicleFlag(VehicleFlags.HEADLIGHTS);
+      if (edges[12]) store.toggleVehicleFlag(VehicleFlags.HAZARDS);
+      if (edges[14]) store.toggleVehicleFlag(VehicleFlags.BLINKER_LEFT);
+      if (edges[15]) store.toggleVehicleFlag(VehicleFlags.BLINKER_RIGHT);
+      if (edges[8]) store.togglePlayerFlag(PlayerFlags.CANDUMP);
+      if (edges[11]) store.togglePlayerFlag(PlayerFlags.DYNO);
+      if (edges[13]) store.togglePlayerFlag(PlayerFlags.RADIO);
+      if (edges[10]) {
+        if (resetTimer !== null) window.clearTimeout(resetTimer);
+        store.setHeldPlayerFlag("gamepad", PlayerFlags.RESET, true);
+        resetTimer = window.setTimeout(() => {
+          resetTimer = null;
+          useInputStore.getState().setHeldPlayerFlag("gamepad", PlayerFlags.RESET, false);
+        }, 100);
+      }
+    };
+    window.addEventListener("blur", onBlur);
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
+    document.addEventListener("focusin", onFocusIn);
+    frameId = requestAnimationFrame(poll);
+    return () => {
+      cancelAnimationFrame(frameId);
+      window.removeEventListener("blur", onBlur);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
+      document.removeEventListener("focusin", onFocusIn);
+      unsubscribeUI(); unsubscribeCAN(); release();
+    };
+  }, []);
+  return null;
 }

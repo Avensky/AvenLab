@@ -24,13 +24,15 @@ pub struct VehicleConfig {
     pub ackermann: f32,          // 0..1 blend (0 = parallel, 1 = full ackermann)
 
     pub wheels: usize,                  // number of wheels (for load distribution);
-    pub wheel_radius: f32,              // meters (for visual size + suspension geometry)       
-    pub suspension_rest_length: f32,    // meters (neutral suspension length)
-    pub suspension_max_length: f32,     // meters (max suspension extension + compression from rest)
-    pub suspension_sag: f32,            // 0..1 (how much the suspension compresses under the vehicle's weight)
-    pub suspension_damping_ratio: f32,  // 0.7–1.0 for typical car suspension
-    pub wheel_y: f32,                   // vertical position of the wheel relative to the chassis center (meters, usually negative) 
-    
+    pub wheel_radius: f32,              // meters (for visual size + suspension geometry)
+    // This solver uses rest + max as its zero-load/full-droop length and caps
+    // compression at max. These names are retained for the network config.
+    pub suspension_rest_length: f32,    // m; shortest represented suspension length
+    pub suspension_max_length: f32,     // m; travel from full droop to maximum compression
+    pub suspension_sag: f32,            // m; desired compression from full droop under static load
+    pub suspension_damping_ratio: f32,  // dimensionless; 1 = critical damping in the quarter-car approximation
+    pub wheel_y: f32,                   // m; SUSPENSION MOUNT Y relative to the body origin, not wheel center Y
+
     // --- Anti-roll bars ---
     pub arb_front: f32,         // N/m
     pub arb_rear: f32,          // N/m
@@ -45,7 +47,10 @@ pub struct VehicleConfig {
 
     // --- Chassis geometry ---
     pub chassis_half_extents: [f32; 3], // [hx, hy, hz] meters
-    pub chassis_com_offset: [f32; 3],   // local offset from collider center
+    // The only massive collider is translated by this local offset. Therefore
+    // it moves BOTH the collision box and the COM; it is not an independent
+    // center-of-mass adjustment. Its world COM is read directly from Rapier.
+    pub chassis_com_offset: [f32; 3],
 }
 
 pub struct Vehicle {
@@ -59,7 +64,7 @@ pub struct Vehicle {
     // Inputs
     // ==========================================
     pub throttle: f32,          // -1.0 (full reverse) .. 1.0 (full forward)
-    pub steer: f32,             // -1.0 (full left) .. 1.0 (full right)
+    pub steer: f32,             // positive = left toward local -X; negative = right toward +X
     pub brake: f32,             // 0.0 (no brake) .. 1.0 (full brake)
     pub pitch: f32,             // for flying vehicles
     pub yaw: f32,               // for flying vehicles
@@ -115,18 +120,19 @@ pub struct PhysicsWheelSnapshot {
     pub grounded: bool,
 }
 
-#[derive(Clone, Debug)] 
+#[derive(Clone, Debug)]
 pub struct Wheel {
     pub debug_id: String,        // "FL", "FR", "RL", "RR"
-    pub offset: Point<Real>,     // position in chassis local space
-    pub rest_length: Real,       // suspension neutral length
-    pub max_length: Real,        // max compression + extension
+    pub offset: Point<Real>,     // suspension mount in body-local meters
+    pub rest_length: Real,       // minimum represented suspension length (m)
+    pub max_length: Real,        // available compression from full droop (m)
     pub radius: Real,            // wheel radius
 
     pub grounded: bool,             // is the wheel currently touching the ground?
+    pub normal_force: f32,          // final load actually applied in the last substep (N)
     pub world_center: [f32; 3],     // world position of wheel center (for debug visualization)
     pub world_rotation: [f32; 4],   // world rotation of wheel (for debug visualization)
-    pub wheel_speed: f32,           // linear speed at the contact patch (for debug visualization)
+    pub wheel_speed: f32,           // rad/s; rolling kinematics for visual spin, not a tire inertia state
     pub steer_angle: f32,           // current steer angle (for debug visualization)
 
     pub stiffness: Real,         // spring constant
@@ -142,9 +148,50 @@ pub struct Wheel {
 }
 
 impl VehicleConfig {
+    /// Nominal body-origin height that gives each upright wheel its target sag.
+    /// mount_y = body_y + wheel_y; center_y = road_y + radius;
+    /// mount_y - center_y = full_droop - sag. Solve once for body_y.
+    /// This is a spawn estimate; Rapier still resolves axle load/pitch at runtime.
+    pub fn nominal_chassis_y(&self, road_y: f32) -> f32 {
+        road_y + self.wheel_radius
+            + self.suspension_rest_length + self.suspension_max_length
+            - self.suspension_sag - self.wheel_y
+    }
+
     /// Front-to-rear axle distance used by Ackermann and tire physics.
     #[inline]
     pub fn wheelbase(&self) -> f32 {
         (self.front_axle_z - self.rear_axle_z).abs()
+    }
+}
+
+impl Wheel {
+    /// Shared by contact sensing and final visual placement. Adding a second
+    /// rest length in either path would give forces and meshes different travel.
+    #[inline]
+    pub fn full_droop_length(&self) -> Real {
+        self.rest_length + self.max_length
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::vehicle_setup::{AE86, BRZ, GT86, CAMARO, SUPRA, TANK};
+
+    #[test]
+    fn every_config_spawns_at_target_sag_above_its_chassis_clearance() {
+        for road_y in [0.0, 0.32, 12.0] {
+            for config in [AE86, BRZ, GT86, CAMARO, SUPRA, TANK] {
+                let body_y = config.nominal_chassis_y(road_y);
+                let mount_y = body_y + config.wheel_y;
+                let wheel_center_y = road_y + config.wheel_radius;
+                let compression = config.suspension_rest_length + config.suspension_max_length
+                    - (mount_y - wheel_center_y);
+                assert!((compression - config.suspension_sag).abs() < 1.0e-5);
+                let bottom = body_y + config.chassis_com_offset[1] - config.chassis_half_extents[1];
+                assert!(bottom >= road_y + 0.05);
+            }
+        }
     }
 }

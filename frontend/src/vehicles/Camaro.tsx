@@ -3,18 +3,17 @@
 import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef } from 'react';
 import type { PropsWithChildren } from 'react';
 import { useGLTF } from '@react-three/drei';
-import { Group, MathUtils, Matrix4, Mesh, SpotLight, Vector3 } from 'three';
+import { Group, MathUtils, Matrix4, Mesh, SpotLight } from 'three';
 import type { Material, Object3D } from 'three';
-import { useFrame, useThree } from '@react-three/fiber';
+import { useFrame } from '@react-three/fiber';
 import { setupVehicleParts } from './tools/setupVehicleParts';
-import { useNetworkStore, useInputStore, useGameStore, useUIStore } from "../store";
-import { usePhysicsInterpolator } from "../hooks/usePhysicsInterpolator";
+import { useNetworkStore, useInputStore, useUIStore } from "../store";
+import { useVehiclePhysicsInterpolator } from "../hooks/usePhysicsInterpolator";
 import { hasFlag, VehicleFlags } from "../store/tools/inputMasks";
 
 const MODEL_PATH = "/models/vehicles/camaro.glb";
 
-// Move only the rendered chassis. Backend wheel centers remain in world space.
-const DEFAULT_VISUAL_Y_OFFSET = -0.55;
+// Chassis and wheel placement use backend poses; map data owns road alignment.
 const GLASS_OPACITY = 0.60;
 
 const GLASS_PARTS = new Set([
@@ -37,7 +36,6 @@ const DYNAMIC_WHEEL_GROUPS = new Set([
 
 type CamaroProps = PropsWithChildren<{
     entityId?: string;
-    visualYOffset?: number;
 }>;
 
 type WheelVisualRig = {
@@ -72,15 +70,11 @@ export const Camaro = forwardRef<Group, CamaroProps>(function Camaro(
     {
         children,
         entityId,
-        visualYOffset = DEFAULT_VISUAL_Y_OFFSET,
     },
     ref
 ) {
     // Load the car model
     const { scene } = useGLTF(MODEL_PATH);
-
-    // Access the camera for later use
-    const camera = useThree((state) => state.camera)
 
     // Refs for car group 
     const vehicleGroupRef = useRef<Group>(null!)
@@ -109,14 +103,8 @@ export const Camaro = forwardRef<Group, CamaroProps>(function Camaro(
     const rlBlinkerRef = useRef<SpotLight | null>(null);
     const rrBlinkerRef = useRef<SpotLight | null>(null);
 
-    // Network and interpolation setup
-    const snapshot = useNetworkStore((s) => s.snapshot);
-    const { setSnapshot, getInterpolated } = usePhysicsInterpolator(100);
-
-    useEffect(() => {
-        if (!snapshot) return;
-        for (const entity of snapshot.entities) { setSnapshot(entity.id, entity); }
-    }, [snapshot, setSnapshot]);
+    // One completed backend timeline drives both the body and world-space wheels.
+    const { getInterpolated } = useVehiclePhysicsInterpolator(entityId);
 
     const { clonesByGroup, renderedGroups } = useMemo(() => {
         const setup = setupVehicleParts({
@@ -369,7 +357,6 @@ export const Camaro = forwardRef<Group, CamaroProps>(function Camaro(
 
         // get state on frame
         const inputState = useInputStore.getState();
-        const gameState = useGameStore.getState();
         const networkState = useNetworkStore.getState();
         const localPlayerId = networkState.playerId;
         const id = entityId ?? localPlayerId;
@@ -381,28 +368,12 @@ export const Camaro = forwardRef<Group, CamaroProps>(function Camaro(
         const interp = getInterpolated(id);
         if (!interp) return;
 
-        // Wheel transforms are interpolated, but some interpolator versions
-        // omit scalar wheel fields. Read those fields from the newest raw
-        // snapshot so steering cannot silently fall back to zero.
-        const rawEntity = networkState.snapshot?.entities.find(
-            (entity) => entity.id === id
-        );
-        const rawWheelsById = new Map(
-            (rawEntity?.wheels ?? []).map((wheel) => [
-                wheel.id.toLowerCase(),
-                wheel,
-            ])
-        );
-        const animatedWheels =
-            interp.wheels && interp.wheels.length > 0
-                ? interp.wheels
-                : rawEntity?.wheels ?? [];
+        // Pose and wheel_speed come from the same buffered backend sample.
+        // Mixing the newest raw wheels with a delayed body creates two clocks.
+        const animatedWheels = interp.wheels ?? [];
 
         const controls = inputState.controls;
         const input = inputState.input;
-        const camMode = gameState.camera;
-        const isEditor = gameState.editor;
-
         const group = vehicleGroupRef.current;
 
         // Update blink state every 0.5s
@@ -441,10 +412,10 @@ export const Camaro = forwardRef<Group, CamaroProps>(function Camaro(
         group.quaternion.set(...interp.rotation);
 
         const indexById = {
-            fr: 0,
-            fl: 1,
-            rr: 2,
-            rl: 3,
+            fl: 0,
+            fr: 1,
+            rl: 2,
+            rr: 3,
         } as const;
 
         // Avoid a large spin jump after a slow frame or returning to the tab.
@@ -458,23 +429,11 @@ export const Camaro = forwardRef<Group, CamaroProps>(function Camaro(
             const rig = wheelRigs[index];
             if (!rig) return;
 
-            const rawWheel = rawWheelsById.get(wheelId);
-            const steerAngle =
-                wheelId === 'fl' || wheelId === 'fr'
-                    ? rawWheel?.steer_angle ?? wheel.steer_angle ?? 0
-                    : 0;
-            const wheelSpeed =
-                rawWheel?.wheel_speed ?? wheel.wheel_speed ?? 0;
+            const wheelSpeed = wheel.wheel_speed ?? 0;
 
             rig.carrier.position.set(...wheel.position);
             rig.carrier.quaternion.set(...wheel.rotation);
-
-            rig.steer.rotation.y = MathUtils.damp(
-                rig.steer.rotation.y,
-                -steerAngle,
-                12,
-                wheelDelta
-            );
+            rig.steer.rotation.y = 0;
 
             wheelSpinAngles.current[index] = MathUtils.euclideanModulo(
                 wheelSpinAngles.current[index]
@@ -483,20 +442,6 @@ export const Camaro = forwardRef<Group, CamaroProps>(function Camaro(
             );
             rig.spin.rotation.x = wheelSpinAngles.current[index];
         });
-
-        if (isLocalPlayer && !isEditor && (camMode === 'FIRST_PERSON' || camMode === 'DEFAULT' || camMode === 'BIRDS_EYE')) {
-            const offset = new Vector3();
-
-            if (camMode === 'FIRST_PERSON') { offset.set(-0.25, .98 + visualYOffset, -.1); }
-            if (camMode === 'DEFAULT') { offset.set(0, 2 + visualYOffset, 4); }
-            if (camMode === 'BIRDS_EYE') { offset.set(0, 7 + visualYOffset, 12); }
-            offset.applyQuaternion(group.quaternion).add(group.position);
-            camera.position.lerp(offset, delta * 5);
-
-            const target = group.position.clone();
-            target.y += 1.2 + visualYOffset;
-            camera.lookAt(target);
-        }
 
     })
 
@@ -507,7 +452,6 @@ export const Camaro = forwardRef<Group, CamaroProps>(function Camaro(
             <group ref={vehicleGroupRef}>
                 <group
                     ref={vehicleVisualGroupRef}
-                    position={[0, isVehiclePreview ? 0 : visualYOffset, 0]}
                 >
                     {Object.entries(renderedGroups)
                         .filter(([groupName]) =>

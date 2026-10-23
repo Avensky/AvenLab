@@ -1,140 +1,138 @@
-// ==============================================================================
-// brush_lite.rs — LIGHTWEIGHT LATERAL TIRE MODEL (IMPULSE DOMAIN)
-// ==============================================================================
-// This is a "brush-lite" lateral model
-// ------------------------------------------------------------------------------
-// Inputs:
-// - ContactPatch (v_lat, v_long, normal_force, mu_lat, compression_ratio, basis)
-// - SolveContext (mass, dt)
-// - ControlInput (steer/brake shaping)
-//
-// Model steps (high-level):
-// 1) deadzone for tiny v_lat
-// 2) slip relaxation via relaxation length (reduces instantaneous lateral demand)
-// 3) authority falloffs (steer + suspension compression shaping)
-// 4) brake-stiction shaping near low speed
-// 5) desired lateral impulse ~ -v_lat * mass (impulse cancels lateral slip)
-// 6) Coulomb clamp: |J_lat| <= mu_lat * Fz * dt
-//
-// Output:
-// - A world-space lateral impulse vector aligned with patch.side.
-//
-// This file does NOT apply impulses; solve.rs combines it with longitudinal and
-// applies a friction ellipse + yaw split.
-// ==============================================================================
-// Cardinal Rules 
-// ==============================================================================
-// - Braking must oppose vehicle motion, not wheel heading.
-// ==============================================================================
-
+// Lateral tire impulses. Small sideways motion must produce grip, including
+// low-speed turns. Response is a continuous function of elapsed time.
 use rapier3d::prelude::Real;
 use crate::aven_tire::types::{ContactPatch, ControlInput, SolveContext, Vec3, v_scale};
-use crate::aven_tire::state::TireState;
 
-/// Configuration for lightweight brush tire model
 #[derive(Clone, Copy, Debug)]
 pub struct BrushLiteConfig {
-    pub relaxation_length: Real,    // meters (0.5–1.5 typical)
-    pub steer_falloff: Real,        // 0..1 (reduces lateral authority with steer)
-    pub suspension_falloff: Real,   // 0..1 (reduces lateral authority when compressed)
-    pub v_lat_deadzone: Real,       // m/s
+    pub relaxation_length: Real, // m; converted to a speed-dependent response time
+    pub suspension_falloff: Real, // dimensionless loss at full compression, applied once
+    pub v_lat_deadzone: Real, // m/s; a 0.02 m/s noise band, not a 1.5 m/s grip cutoff
 }
 
 impl Default for BrushLiteConfig {
     fn default() -> Self {
         Self {
-            relaxation_length: 1.0,
-            steer_falloff: 0.45,
+            relaxation_length: 0.25,
             suspension_falloff: 0.10,
-            v_lat_deadzone: 1.5,
+            v_lat_deadzone: 0.02,
         }
     }
-}
-
-
-/// Output remains identical to old behavior
-#[derive(Clone, Copy, Debug)]
-pub struct BrushLiteOutput {
-    pub impulse_lat: Vec3,
-    pub ny: Real,
 }
 
 pub fn solve_brush_lite(
     cfg: &BrushLiteConfig,
     ctx: &SolveContext,
-    ctrl: &ControlInput,
+    _ctrl: &ControlInput,
     patch: &ContactPatch,
 ) -> Vec3 {
-
-    if !patch.grounded { return [0.0, 0.0, 0.0]; }
-
-    // HARD braking → no lateral correction (pure slide)
-    if ctrl.brake > 0.6 && patch.speed_planar > 3.0 {
-        return [0.0, 0.0, 0.0];
+    if !patch.grounded || ctx.dt <= 0.0 || patch.normal_force <= 0.0 {
+        return [0.0; 3];
     }
 
-    let dt = ctx.dt;
+    // Subtract a small noise band without introducing a jump in force.
+    let v_lat = patch.v_lat.signum()
+        * (patch.v_lat.abs() - cfg.v_lat_deadzone.max(0.0)).max(0.0);
+    // Approximation for four wheels: impulse to cancel sideways speed is m*v.
+    let mass_per_wheel = (ctx.mass * 0.25).max(1.0);
+    let response_time = (cfg.relaxation_length / patch.v_long.abs().max(1.0))
+        .clamp(0.025, 0.10);
+    // Exponential response is stable when caller/substep frequency changes.
+    let response = 1.0 - (-ctx.dt / response_time).exp();
+    let suspension_factor =
+        (1.0 - patch.compression_ratio.clamp(0.0, 1.0) * cfg.suspension_falloff)
+        .clamp(0.0, 1.0);
 
-    // 1) lat deadzone
-    let v_lat = patch.v_lat;
-    // let v_lat = patch.v_lat_relaxed;
+    // m/s * kg gives N*s. Oppose measured slip, not driver steer intent.
+    let desired = -v_lat * mass_per_wheel * response * suspension_factor;
+    // This is the lateral axis limit; solve_step also enforces the shared ellipse.
+    let capacity = (patch.mu_lat * patch.normal_force * ctx.dt).max(0.0);
+    let lateral = desired.clamp(-capacity, capacity);
 
-    let v_lat_eff = patch.v_lat;
+    // Braking shares the friction budget through solve_step's ellipse. Brake
+    // input alone does not erase lateral grip or declare a tire locked.
+    v_scale(patch.side, lateral)
+}
 
-    // Smooth deadzone (not hard cutoff)
-    let dead = cfg.v_lat_deadzone;
-    let scale = ((v_lat_eff.abs() - dead) / dead).clamp(0.0, 1.0);
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::aven_tire::state::TireState;
+    use crate::aven_tire::types::{WheelId, v_dot, v_mag};
 
-    if scale <= 0.0 {
-        return [0.0, 0.0, 0.0];
+    fn context() -> SolveContext {
+        SolveContext {
+            dt: 1.0 / 120.0, mass: 1280.0, engine_force: 8500.0, brake_force: 7600.0,
+            abs_enabled: false, tcs_enabled: false, abs_limit: 0.9, tcs_limit: 0.85,
+            driven_wheels: 2.0, base_front_bias: 0.66, bias_gain: 0.25,
+            wheelbase: 2.6, mu_base: 0.9,
+        }
     }
 
-    let steer_factor = 1.0;
-
-    let compression_ratio = patch.compression_ratio.clamp(0.0, 1.0);
-    let suspension_factor = 1.0 - compression_ratio * cfg.suspension_falloff;
-    let speed = (patch.v_long * patch.v_long + v_lat * v_lat).sqrt();
-    let mass = (ctx.mass * 0.25).max(1.0);
-
-    // 5) Same desired impulse  
-    let mut lateral_impulse =
-        (-patch.v_lat * mass)
-        * suspension_factor
-        * steer_factor
-        * scale;
-
-
-    // Coulomb clamp
-    let max_lat_impulse = patch.mu_lat * patch.normal_force * dt;
-    lateral_impulse = lateral_impulse.clamp(-max_lat_impulse, max_lat_impulse);
-
-
-    // slip factor
-    // let alpha = patch.v_lat_relaxed.atan2(patch.v_long.abs().max(1.0));
-    let alpha = patch.v_lat.atan2(patch.v_long.abs().max(1.0));
-    let alpha_sat = 0.6; // ~35°
-
-    let slip_factor = (1.0 - (alpha.abs() / alpha_sat)).clamp(0.2, 1.0);
-
-    lateral_impulse *= slip_factor;
-
-
-    // Brake reduces lateral authority
-    let brake_lat_scale = (1.0 - ctrl.brake * 0.6).clamp(0.3, 1.0);
-    lateral_impulse *= brake_lat_scale;
-
-    // rear saturation
-    if patch.wheel.is_rear() { lateral_impulse *= 0.85; }
-
-    // Brake-stabilized lateral reduction
-    if ctrl.brake > 0.4 && speed > 10.0 {
-        lateral_impulse *= 0.6;
+    fn patch(v_lat: f32) -> ContactPatch {
+        ContactPatch {
+            wheel: WheelId::FL, grounded: true, hit_point: [0.0; 3], apply_point: [0.0; 3],
+            forward: [0.0, 0.0, 1.0], side: [1.0, 0.0, 0.0], v_long: 1.0, v_lat,
+            normal_force: 3139.2, mu_lat: 0.9, mu_long: 0.9, roll_factor: 0.3,
+            drive: false, brake: 0.0, steer_angle: 0.3, compression_ratio: 0.5,
+            vel_world: [v_lat, 0.0, 1.0], brake_dir: [0.0, 0.0, -1.0],
+            speed_planar: 1.0, yaw_rate: 0.0, relative_com: [0.0, 0.0, 1.38],
+            tire_state: TireState::Grip,
+        }
     }
 
-    if ctrl.brake > 0.3 {
-        lateral_impulse *= 0.6;
+    #[test]
+    fn low_speed_sideways_motion_has_restoring_grip() {
+        let cfg = BrushLiteConfig::default();
+        let ctx = context();
+        let ctrl = ControlInput::default();
+        for slip in [-1.4, -0.2, -0.05, 0.05, 0.2, 1.4] {
+            let contact = patch(slip);
+            let impulse = solve_brush_lite(&cfg, &ctx, &ctrl, &contact);
+            assert!(v_dot(impulse, contact.side) * slip < 0.0);
+            assert!(v_mag(impulse) <= contact.mu_lat * contact.normal_force * ctx.dt + 1.0e-5);
+        }
     }
 
-    v_scale(patch.side, lateral_impulse)
+    #[test]
+    fn hard_braking_keeps_lateral_grip_for_the_combined_budget() {
+        let cfg = BrushLiteConfig::default();
+        let ctx = context();
+        let ctrl = ControlInput { brake: 1.0, ..ControlInput::default() };
+        let mut contact = patch(0.3);
+        contact.speed_planar = 5.0;
+        assert!(v_mag(solve_brush_lite(&cfg, &ctx, &ctrl, &contact)) > 0.0);
+        contact.grounded = false;
+        assert_eq!(solve_brush_lite(&cfg, &ctx, &ctrl, &contact), [0.0; 3]);
+    }
 
+    #[test]
+    fn no_motion_or_no_support_has_no_lateral_impulse() {
+        let cfg = BrushLiteConfig::default();
+        let ctx = context();
+        let ctrl = ControlInput::default();
+        assert_eq!(solve_brush_lite(&cfg, &ctx, &ctrl, &patch(0.0)), [0.0; 3]);
+        let mut contact = patch(0.3);
+        contact.normal_force = 0.0;
+        assert_eq!(solve_brush_lite(&cfg, &ctx, &ctrl, &contact), [0.0; 3]);
+    }
+
+    #[test]
+    fn braking_and_cornering_share_one_friction_budget() {
+        let ctx = context();
+        let ctrl = ControlInput { brake: 1.0, ..ControlInput::default() };
+        let mut contact = patch(2.0);
+        contact.v_long = 5.0;
+        contact.speed_planar = 5.4;
+        let mut contacts = [contact];
+        let result = crate::aven_tire::solve_step(&ctx, &ctrl, &mut contacts);
+        let mut total = [0.0; 3];
+        for action in result.impulses {
+            for axis in 0..3 { total[axis] += action.impulse[axis]; }
+        }
+        let longitudinal = v_dot(total, contact.forward) / (contact.mu_long * contact.normal_force * ctx.dt);
+        let lateral = v_dot(total, contact.side) / (contact.mu_lat * contact.normal_force * ctx.dt);
+        assert!(longitudinal < 0.0 && lateral < 0.0);
+        assert!(longitudinal * longitudinal + lateral * lateral <= 1.0 + 1.0e-5);
+    }
 }

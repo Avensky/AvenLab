@@ -61,21 +61,56 @@ pub fn apply_arb_load_transfer(
 
     
     // left / right normals
-    let nl = axle_normal_force.get(&left).copied().unwrap_or(0.0);
-    let nr = axle_normal_force.get(&right).copied().unwrap_or(0.0);
+    let nl = axle_normal_force.get(&left).copied().unwrap_or(0.0).max(0.0);
+    let nr = axle_normal_force.get(&right).copied().unwrap_or(0.0).max(0.0);
     
 
     // scale by load to avoid jacking
-    let load_scale = (nl + nr) / (2.0 * fz_ref);
+    let load_scale = (nl + nr) / (2.0 * fz_ref.max(1.0e-6));
     let transfer = transfer * load_scale.clamp(0.3, 1.2);
 
 
     // Saturation: cannot exceed available load
     // let max_transfer = 0.6 * (nl + nr);
-    let max_transfer = 0.4 * fz_ref;
+    let max_transfer = 0.4 * fz_ref.max(0.0);
     let transfer = transfer.clamp(-max_transfer, max_transfer);
+    let transfer = transfer.clamp(-nl, nr);
 
     // redistribute
-    axle_normal_force.insert(left,  (nl - transfer).max(0.0));
-    axle_normal_force.insert(right, (nr + transfer).max(0.0));
+    // Support the lower, more compressed side without creating axle load.
+    axle_normal_force.insert(left, nl + transfer);
+    axle_normal_force.insert(right, nr - transfer);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn redistribution_conserves_axle_load_when_a_wheel_unloads() {
+        for (nl, nr) in [(100.0, 100.0), (0.0, 1000.0), (1000.0, 0.0)] {
+            for (cl, cr) in [(0.06, 0.02), (0.02, 0.06), (0.12, 0.0)] {
+                let mut loads = HashMap::from([(WheelId::FL, nl), (WheelId::FR, nr)]);
+                let compression = HashMap::from([(WheelId::FL, cl), (WheelId::FR, cr)]);
+                apply_arb_load_transfer(
+                    WheelId::FL, WheelId::FR, &mut loads, &compression, 14000.0, 3139.2,
+                );
+                let left = loads[&WheelId::FL];
+                let right = loads[&WheelId::FR];
+                assert!(left >= 0.0 && right >= 0.0);
+                assert!((left + right - nl - nr).abs() < 0.001);
+            }
+        }
+    }
+
+    #[test]
+    fn more_compressed_side_receives_restoring_support() {
+        let mut loads = HashMap::from([(WheelId::FL, 3000.0), (WheelId::FR, 3000.0)]);
+        let compression = HashMap::from([(WheelId::FL, 0.08), (WheelId::FR, 0.05)]);
+        apply_arb_load_transfer(
+            WheelId::FL, WheelId::FR, &mut loads, &compression, 14000.0, 3139.2,
+        );
+        assert!(loads[&WheelId::FL] > 3000.0);
+        assert!(loads[&WheelId::FR] < 3000.0);
+    }
 }

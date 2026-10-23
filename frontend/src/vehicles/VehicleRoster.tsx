@@ -1,8 +1,13 @@
-import { Suspense } from "react";
+import { Suspense, memo, useMemo, useRef } from "react";
+import type { Group } from "three";
+import { useFrame } from "@react-three/fiber";
+import { useVehiclePhysicsInterpolator } from "../hooks/usePhysicsInterpolator";
 import type { ReactNode } from "react";
 
-import { useNetworkStore } from "../store";
-import type { PhysicsEntitySnapshot } from "../store/networkStore";
+import { useNetworkStore } from "../store/networkStore";
+
+// Only roster metadata belongs in React; positions are sampled per frame.
+type RosterEntity = { id: string; vehicle_id?: string | null; team?: string };
 import { Ae86 } from "./Ae86";
 import { Brz } from "./Brz";
 import { Camaro } from "./Camaro";
@@ -16,9 +21,17 @@ function VehicleFallback({
   entity,
   loading = false,
 }: {
-  entity: PhysicsEntitySnapshot;
+  entity: RosterEntity;
   loading?: boolean;
 }) {
+  const root = useRef<Group | null>(null);
+  const { getInterpolated } = useVehiclePhysicsInterpolator(entity.id);
+  useFrame(() => {
+    const pose = getInterpolated(entity.id);
+    if (!root.current || !pose) return;
+    root.current.position.fromArray(pose.position);
+    root.current.quaternion.fromArray(pose.rotation);
+  });
   const team = String(entity.team ?? "").toLowerCase();
   const color = loading
     ? "#334155"
@@ -29,8 +42,7 @@ function VehicleFallback({
   return (
     <group
       name={`vehicle-fallback-${entity.id}`}
-      position={entity.position}
-      quaternion={entity.rotation}
+      ref={root}
     >
       <mesh position={[0, 0.35, 0]}>
         <boxGeometry args={[1.8, 0.7, 4.2]} />
@@ -40,7 +52,7 @@ function VehicleFallback({
   );
 }
 
-function NetworkVehicle({ entity }: { entity: PhysicsEntitySnapshot }) {
+function NetworkVehicle({ entity }: { entity: RosterEntity }) {
   const vehicleId = normalizeVehicleId(entity.vehicle_id);
 
   let model: ReactNode;
@@ -87,8 +99,15 @@ function NetworkVehicle({ entity }: { entity: PhysicsEntitySnapshot }) {
   );
 }
 
-export function VehicleRoster() {
-  const entities = useNetworkStore((state) => state.snapshot?.entities ?? []);
+export const VehicleRoster = memo(function VehicleRoster() {
+  // A stable scalar selector avoids rerendering all loaded GLBs on every
+  // snapshot/debug packet. Joins, model changes and team changes still update.
+  const rosterKey = useNetworkStore((state) => JSON.stringify(
+    (state.snapshot?.entities ?? []).map((entity) => ({
+      id: entity.id, vehicle_id: entity.vehicle_id, team: entity.team,
+    })),
+  ));
+  const entities = useMemo(() => JSON.parse(rosterKey) as RosterEntity[], [rosterKey]);
 
   return (
     <group name="network-vehicle-roster">
@@ -97,6 +116,6 @@ export function VehicleRoster() {
       ))}
     </group>
   );
-}
+});
 
 export default VehicleRoster;

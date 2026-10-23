@@ -28,6 +28,10 @@ export const CityChunk = memo(function CityChunk({
 }: Props) {
   const gltf = useGLTF(path);
 
+  // Keep the GLB export origin and node transforms. The backend visual entry
+  // supplies the asset-to-chunk transform; the parent supplies chunk-to-world.
+  // Do not add Center, recenter bounding boxes, or guess a floor offset here.
+
   return (
     <group
       name={`city-asset-${path}`}

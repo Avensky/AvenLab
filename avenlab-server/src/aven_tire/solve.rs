@@ -1,33 +1,18 @@
-// ==============================================================================
-// solve.rs — TIRE SOLVER (IMPULSE-DOMAIN FRICTION + YAW + ALIGNING TORQUE)
-// ==============================================================================
-// ------------------------------------------------------------------------------
-// This module combines:
-// - Longitudinal impulses (engine + brake) from longitudinal.rs
-// - Lateral impulses from brush_lite.rs
-// - A combined-slip friction ellipse in impulse space
-// - A split of lateral impulse into:
-//     (a) at-contact component -> yaw moment
-//     (b) at-COM component     -> lateral translation
-// - Optional aligning torque (Mz) via pneumatic trail approximation:
-//
-//     Fy ≈ (J_lat / dt) projected onto wheel side
-//     trail(|α|) = trail0 * exp(-|α|/alpha_falloff)
-//     Mz = -Fy * trail
-//     torque impulse = Mz * dt around up axis
-//
-// Outputs a list of Impulse actions consumed by physics.rs, which applies:
-// - apply_impulse() at COM
-// - apply_impulse_at_point() at contact point
-// - apply_torque_impulse() for aligning torque
-// ==============================================================================
-
+// One tire solve per grounded patch per physics substep, in N*s.
+// Longitudinal: demand -> actuator/ABS/TCS limits. Lateral: brush response.
+// Their final impulses share one combined-slip ellipse. The individual clamps
+// enforce axis limits; the ellipse enforces simultaneous use of both axes.
+// Longitudinal impulses act at COM (no drive/brake pitch moment in this model).
+// Lateral impulses act at the contact point, producing physical yaw AND roll.
+// There is no lateral split, roll_factor reduction, aligning torque or separate
+// yaw assist in the active implementation. Those old descriptions were stale.
 
 use crate::aven_tire::types::{ ContactPatch, ControlInput, Impulse, SolveContext, v_mag, v_scale,};
 use crate::aven_tire::longitudinal::solve_longitudinal;
 use crate::aven_tire::brush_lite::{solve_brush_lite, BrushLiteConfig};
 use crate::aven_tire::state::update_tire_state;
 
+// Reserved experiment; not instantiated or consumed by the active solve.
 #[derive(Clone, Copy, Debug)]
 pub struct AligningTorqueConfig {
     pub trail0: f32,        // meters (0.04–0.12 typical)
@@ -60,7 +45,6 @@ pub fn solve_step(
 ) -> TireForces {
 
     let mut impulses = Vec::new();
-    // let mut rack_torque_sum: f32 = 0.0;
 
     let brush_cfg = BrushLiteConfig::default();
 
@@ -69,12 +53,14 @@ pub fn solve_step(
     // --------------------------------------------------
     for patch in contacts.iter_mut() {
         if !patch.grounded || patch.normal_force < 50.0 { continue; }
-        
-        // let brake_share = if patch.wheel.is_front() { front_per_wheel } else { rear_per_wheel };
+
+        // Total brake actuator force is split between axles, then between the
+        // two wheels on each axle. These four shares sum to 1, not 2.
+        let front_bias = ctx.base_front_bias.clamp(0.0, 1.0);
         let brake_share = if patch.wheel.is_front() {
-            0.6 * 0.5 // 60% front axle, split across two wheels
+            front_bias * 0.5
         } else {
-            0.4 * 0.5 // 40% rear axle, split across two wheels
+            (1.0 - front_bias) * 0.5
         };
 
         // Longitudinal impulse (engine + brake)
@@ -84,10 +70,11 @@ pub fn solve_step(
         let lat  = solve_brush_lite(&brush_cfg, ctx, ctrl, patch);
 
         // =====================================================
-        // friction ellipsse
+        // combined friction ellipse
         // =====================================================
-        
+
         // friction capacities
+        // Final normal load comes from suspension AFTER anti-roll redistribution.
         let jx_cap = (patch.mu_long * patch.normal_force * ctx.dt).max(1e-6);
         let jy_cap = (patch.mu_lat  * patch.normal_force * ctx.dt).max(1e-6);
 
@@ -104,6 +91,8 @@ pub fn solve_step(
         let ny = v_mag(lat) / jy_cap;
 
         // ellipse constraint
+        // nx^2 + ny^2 <= 1 is the shared traction budget. Scaling both demands
+        // once preserves their ratio; no extra brake/steer grip multiplier follows.
         let k = (nx*nx + ny*ny).sqrt();
 
         let scale = if k > 1.0 {
@@ -124,24 +113,25 @@ pub fn solve_step(
         patch.tire_state = new_state;
 
         // --------------------------------------------------
-        // LONGITUDINAL → ENGINE
+        // LONGITUDINAL (ENGINE + BRAKE) -> COM
         // --------------------------------------------------
         let long_i = v_scale(long.impulse, scale);
         impulses.push(Impulse {
             impulse: long_i,
             at_point: None,
         });
-        
+
         // --------------------------------------------------
         // LATERAL → CONTACT (yaw comes from tire geometry)
-        // Apply roll coupling reduction
+        // Full impulse goes to the patch. r x J already produces the yaw and
+        // roll moments; do not also inject turn torque or a second copy at COM.
         // --------------------------------------------------
         let lat_i = v_scale(lat, scale);
         impulses.push(Impulse {
             impulse: lat_i,
             at_point: Some(patch.apply_point),
         });
-        
+
     } // Contacts iter end
 
 

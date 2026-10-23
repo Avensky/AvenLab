@@ -52,6 +52,9 @@ impl PhysicsWorld {
         sag_m: f32,
         damping_ratio: f32,
     ) -> (f32, f32) {
+        // Static quarter-car approximation, evaluated once at registration.
+        // Sag is in METERS, not a 0..1 compression ratio. k = static load / sag;
+        // c = 2*zeta*sqrt(k*m) is N*s/m. Damper forces are evaluated per substep.
         let sprung_mass_per_wheel = vehicle_mass / wheel_count as f32;
         let gravity = 9.81_f32;
         let static_load = sprung_mass_per_wheel * gravity;
@@ -84,36 +87,46 @@ impl PhysicsWorld {
             z: Real,
             drive: bool,
             steer: bool,
-            debug_id: &str,
-        | Wheel {
-            // Dynamic suspension state
-            compression: 0.0,
-            compression_ratio: 0.0,
-            grounded: false,
+            debug_id: &str
+        | -> Wheel {
+            Wheel {
+                // Dynamic suspension state
+                compression: 0.0,
+                compression_ratio: 0.0,
+                grounded: false,
+                normal_force: 0.0,
 
-            // Local and world transforms
-            offset: point![x, config.wheel_y, z],
-            world_center: [0.0, 0.0, 0.0],
-            world_rotation: [0.0, 0.0, 0.0, 1.0],
+                // The mount is below the body origin; suspension length extends
+                // downward from here. It is not an additional mesh wheel offset.
+                // Final wheel centers/rotations are sampled after physics integrates.
+                // Local and world transforms
+                offset: point![x, config.wheel_y, z],
+                world_center: [0.0, 0.0, 0.0],
+                world_rotation: [0.0, 0.0, 0.0, 1.0],
 
-            // Visual/runtime wheel state
-            wheel_speed: 0.0,
-            steer_angle: 0.0,
+                // Visual/runtime wheel state
+                wheel_speed: 0.0,
+                steer_angle: 0.0,
 
-            // Suspension geometry and forces
-            rest_length: config.suspension_rest_length,
-            max_length: config.suspension_max_length,
-            radius: config.wheel_radius,
-            stiffness,
-            damping,
+                // Suspension geometry and forces
+                rest_length: config.suspension_rest_length,
+                max_length: config.suspension_max_length,
+                radius: config.wheel_radius,
+                stiffness,
+                damping,
 
-            // Wheel role
-            drive,
-            steer,
-            debug_id: debug_id.to_string(),
-            tire_state: TireState::Grip,
+                // Wheel role
+                drive,
+                steer,
+                debug_id: debug_id.to_string(),
+                tire_state: TireState::Grip,
+            }
         };
 
+        // Physics coordinates: +Z forward, +X side; these internal IDs are used
+        // for Ackermann/ARB. The existing asset-ID mapping occurs once when
+        // snapshots are serialized, preserving the current correct visual sides.
+        // This implementation registers four wheels for every current config.
         let wheels = vec![
             make_wheel(-half_front_track, front_z, false, true, "FL"),
             make_wheel(half_front_track, front_z, false, true, "FR"),
@@ -138,6 +151,10 @@ impl PhysicsWorld {
 //   7. Driver assists
 //
 // Derived configs list only their defining overrides and inherit the rest.
+// Keep these handling numbers while auditing geometry/timing. A lower sports-car
+// COM/ride height needs an explicit geometry choice, not extra grip reductions.
+// Current COM offsets also move the collider. See VehicleConfig::nominal_chassis_y
+// before editing wheel_y, radius, travel or sag: all affect the body ride height.
 // =============================================================================
 
 // -----------------------------------------------------------------------------

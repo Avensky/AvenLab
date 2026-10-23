@@ -1,210 +1,112 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
+import { useInputStore } from "../store/inputStore";
+import { useUIStore } from "../store/uiStore";
+import { useCanDataStore } from "../store/canDataStore";
 import { VehicleFlags, PlayerFlags } from "../store/tools/inputMasks";
-import { useInputStore, useUIStore, useCanDataStore } from "../store";
+import { canDrive, isTypingTarget, routeMenuAction, type MenuAction } from "../store/tools/inputRouting";
 
-function isTypingTarget(target: EventTarget | null) {
-  const el = target as HTMLElement | null;
-  if (!el) return false;
-
-  return (
-    el.tagName === "INPUT" ||
-    el.tagName === "TEXTAREA" ||
-    el.isContentEditable
-  );
-}
+const ANALOG_KEYS = new Set(["KeyW", "KeyS", "KeyA", "KeyD", "Space", "KeyB"]);
+const MENU_KEYS: Record<string, MenuAction> = {
+  ArrowUp: "up", KeyW: "up", ArrowDown: "down", KeyS: "down",
+  ArrowLeft: "left", KeyA: "left", ArrowRight: "right", KeyD: "right",
+  Enter: "activate", Space: "activate", Escape: "back",
+};
+const VEHICLE_TOGGLES: Record<string, number> = {
+  KeyE: VehicleFlags.ENGINE_ON, KeyL: VehicleFlags.HEADLIGHTS,
+  KeyZ: VehicleFlags.BLINKER_LEFT, KeyX: VehicleFlags.BLINKER_RIGHT,
+  KeyH: VehicleFlags.HAZARDS, KeyQ: VehicleFlags.ABS, KeyT: VehicleFlags.TCS,
+};
+const PLAYER_TOGGLES: Record<string, number> = {
+  KeyC: PlayerFlags.CANDUMP, KeyV: PlayerFlags.LIVECAN,
+  KeyY: PlayerFlags.DYNO, KeyM: PlayerFlags.RADIO,
+};
 
 export function Keyboard() {
-  const setInput = useInputStore((s) => s.setInput);
-
-  const keys = useRef<Record<string, boolean>>({});
-
   useEffect(() => {
-    const recomputeAxes = () => {
-      const k = keys.current;
-
-      let throttle = 0;
-      if (k["KeyW"]) throttle += 1;
-      if (k["KeyS"]) throttle -= 1;
-
-      let steer = 0;
-      if (k["KeyA"]) steer -= 1;
-      if (k["KeyD"]) steer += 1;
-
-      const brake = k["Space"] ? 1 : 0;
-      const handbrake = k["KeyB"] ? 1 : 0;
-
-      setInput({ throttle, steer, brake, handbrake });
+    const keys = new Set<string>();
+    let focused = document.hasFocus();
+    let resetTimer: number | null = null;
+    const release = () => {
+      keys.clear();
+      if (resetTimer !== null) window.clearTimeout(resetTimer);
+      resetTimer = null;
+      useInputStore.getState().releaseInputSource("keyboard");
     };
-
-    const pulsePlayerFlag = (flag: number, ms = 100) => {
-      const store = useInputStore.getState();
-
-      store.setPlayerFlag(flag, true);
-
-      window.setTimeout(() => {
-        useInputStore.getState().setPlayerFlag(flag, false);
-      }, ms);
-    };
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (isTypingTarget(e.target)) return;
-      if (e.repeat) return;
-
+    const updateAxes = () => useInputStore.getState().setAnalogFromSource("keyboard", {
+      throttle: Number(keys.has("KeyW")) - Number(keys.has("KeyS")),
+      steer: Number(keys.has("KeyD")) - Number(keys.has("KeyA")),
+      brake: Number(keys.has("Space")), handbrake: Number(keys.has("KeyB")),
+    });
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.repeat || !focused || document.visibilityState === "hidden" || isTypingTarget(event.target)) return;
       const ui = useUIStore.getState();
-      const inMenu = ui.screen === "main" || ui.screen === "settings" || ui.overlay === "pause";
-      const store = useInputStore.getState();
-
-      if (inMenu) {
-        switch (e.code) {
-          case "ArrowUp":
-          case "KeyW":
-            e.preventDefault();
-            ui.moveActiveMenuSelection(-1);
-            return;
-
-          case "ArrowDown":
-          case "KeyS":
-            e.preventDefault();
-            ui.moveActiveMenuSelection(1);
-            return;
-
-          case "Enter":
-          case "Space":
-            e.preventDefault();
-            ui.activateActiveMenuSelection();
-            return;
-
-          case "Escape":
-            e.preventDefault();
-            // ui.setScreen("main");
-            useUIStore.getState().togglePauseMenu();
-            return;
-        }
+      // DebugMenu and focused GameButtons own these events. Never also brake
+      // or toggle a vehicle flag when selecting a debugger option.
+      if (ui.overlay === "debug_menu") return;
+      if (!ui.isModeLoading && ui.overlay === null
+        && ["sandbox", "swarm", "signal_recon"].includes(ui.screen) && event.code === "Backquote") {
+        event.preventDefault();
+        useCanDataStore.getState().setCommandOpen(!useCanDataStore.getState().commandOpen);
+        return;
       }
-
-      keys.current[e.code] = true;
-
-      switch (e.code) {
-        case "KeyW":
-        case "KeyS":
-        case "KeyA":
-        case "KeyD":
-        case "Space":
-        case "KeyB":
-          e.preventDefault();
-          recomputeAxes();
-          break;
-
-        // Vehicle toggles
-        case "KeyE":
-          store.toggleVehicleFlag(VehicleFlags.ENGINE_ON);
-          break;
-
-        case "KeyL":
-          store.toggleVehicleFlag(VehicleFlags.HEADLIGHTS);
-          break;
-
-        case "KeyZ":
-          store.toggleVehicleFlag(VehicleFlags.BLINKER_LEFT);
-          break;
-
-        case "KeyX":
-          store.toggleVehicleFlag(VehicleFlags.BLINKER_RIGHT);
-          break;
-
-        case "KeyH":
-          store.toggleVehicleFlag(VehicleFlags.HAZARDS);
-          break;
-
-        case "KeyQ":
-          store.toggleVehicleFlag(VehicleFlags.ABS);
-          break;
-
-        case "KeyT":
-          store.toggleVehicleFlag(VehicleFlags.TCS);
-          break;
-
-        // Boost should be hold
-        case "ShiftLeft":
-          store.setVehicleFlag(VehicleFlags.BOOST, true);
-          break;
-
-        // Player / research tools
-        case "KeyR":
-          pulsePlayerFlag(PlayerFlags.RESET);
-          break;
-
-        case "KeyC":
-          store.togglePlayerFlag(PlayerFlags.CANDUMP);
-          break;
-
-        case "KeyV":
-          store.togglePlayerFlag(PlayerFlags.LIVECAN);
-          break;
-
-        case "KeyY":
-          store.togglePlayerFlag(PlayerFlags.DYNO);
-          break;
-
-        case "KeyM":
-          store.togglePlayerFlag(PlayerFlags.RADIO);
-          break;
-
-        case "KeyN":
-          store.setPlayerFlag(PlayerFlags.HONK, true);
-          break;
-
-        case "Escape":
-          e.preventDefault();
-          useUIStore.getState().togglePauseMenu();
-          break;
-
-        case "Backquote":
-          e.preventDefault();
-          useCanDataStore.setState((s) => ({
-            commandOpen: !s.commandOpen,
-          }));
-          break;
+      if (!canDrive()) {
+        release();
+        if (useCanDataStore.getState().commandOpen) return;
+        const action = MENU_KEYS[event.code];
+        if (action) { event.preventDefault(); routeMenuAction(action); }
+        return;
+      }
+      const store = useInputStore.getState();
+      if (event.code === "Escape") {
+        event.preventDefault(); ui.togglePauseMenu(); return;
+      }
+      keys.add(event.code);
+      if (ANALOG_KEYS.has(event.code)) { event.preventDefault(); updateAxes(); }
+      else if (VEHICLE_TOGGLES[event.code] !== undefined) store.toggleVehicleFlag(VEHICLE_TOGGLES[event.code]);
+      else if (PLAYER_TOGGLES[event.code] !== undefined) store.togglePlayerFlag(PLAYER_TOGGLES[event.code]);
+      else if (event.code === "ShiftLeft") store.setHeldVehicleFlag("keyboard", VehicleFlags.BOOST, true);
+      else if (event.code === "KeyN") store.setHeldPlayerFlag("keyboard", PlayerFlags.HONK, true);
+      else if (event.code === "KeyR") {
+        if (resetTimer !== null) window.clearTimeout(resetTimer);
+        store.setHeldPlayerFlag("keyboard", PlayerFlags.RESET, true);
+        resetTimer = window.setTimeout(() => {
+          resetTimer = null;
+          useInputStore.getState().setHeldPlayerFlag("keyboard", PlayerFlags.RESET, false);
+        }, 100);
       }
     };
-
-    const handleKeyUp = (e: KeyboardEvent) => {
-      // e.preventDefault();
-
-      if (isTypingTarget(e.target)) return;
-
-      keys.current[e.code] = false;
-
-      const store = useInputStore.getState();
-
-      switch (e.code) {
-        case "KeyW":
-        case "KeyS":
-        case "KeyA":
-        case "KeyD":
-        case "Space":
-        case "KeyB":
-          recomputeAxes();
-          break;
-
-        case "ShiftLeft":
-          store.setVehicleFlag(VehicleFlags.BOOST, false);
-          break;
-
-        case "KeyN":
-          store.setPlayerFlag(PlayerFlags.HONK, false);
-          break;
-      }
+    const onKeyUp = (event: KeyboardEvent) => {
+      // Release a key even if focus moved into an input after its keydown.
+      const owned = keys.delete(event.code);
+      if (owned && ANALOG_KEYS.has(event.code)) updateAxes();
+      if (event.code === "ShiftLeft") useInputStore.getState().setHeldVehicleFlag("keyboard", VehicleFlags.BOOST, false);
+      if (event.code === "KeyN") useInputStore.getState().setHeldPlayerFlag("keyboard", PlayerFlags.HONK, false);
     };
-
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp);
-
+    const onBlur = () => { focused = false; release(); };
+    const onFocus = () => { focused = true; };
+    const onVisibility = () => { if (document.visibilityState === "hidden") release(); };
+    const onFocusIn = (event: FocusEvent) => { if (isTypingTarget(event.target)) release(); };
+    const releaseIfBlocked = () => { if (!canDrive()) release(); };
+    // Clear physical key state at the transition, not on the next key press.
+    const unsubscribeUI = useUIStore.subscribe(releaseIfBlocked);
+    const unsubscribeCAN = useCanDataStore.subscribe((state, previous) => {
+      if (state.commandOpen && !previous.commandOpen) release();
+    });
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("blur", onBlur);
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
+    document.addEventListener("focusin", onFocusIn);
     return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("blur", onBlur);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
+      document.removeEventListener("focusin", onFocusIn);
+      unsubscribeUI(); unsubscribeCAN(); release();
     };
-  }, [setInput]);
-
+  }, []);
   return null;
 }

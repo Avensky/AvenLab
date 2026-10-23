@@ -1,31 +1,62 @@
 // src/components/debugger/DebugMenu.tsx
 import { useCallback, useEffect, useState } from "react";
-
 import { GameButton } from "../GameButton";
-import { useUIStore, useWorldStore } from "../../store";
+import { useUIStore } from "../../store/uiStore";
+import { useWorldStore } from "../../store/worldStore";
+import { useNetworkStore } from "../../store/networkStore";
+import { inputRef } from "../../store/inputStore";
+import { getInputSenderStats } from "../../net/rustSocket";
+import { DEFAULT_INTERPOLATION_DELAY_MS } from "../../hooks/usePhysicsInterpolator";
 import { useDebugViewStore } from "../../store/debugViewStore";
 import { DebugFlags, hasDebugFlag } from "../../store/tools/debugMasks";
 
 const VIEW_MODES = ["glb", "geometry", "collider", "hybrid"] as const;
-
 const DEBUG_OPTIONS = [
-  ["Chassis", DebugFlags.CHASSIS],
-  ["Wheels", DebugFlags.WHEELS],
-  ["Suspension Rays", DebugFlags.RAYS],
-  ["Slip Vectors", DebugFlags.SLIP],
-  ["Load Bars", DebugFlags.LOAD_BARS],
-  ["Anti-Roll Bars", DebugFlags.ARB],
+  ["Chassis", DebugFlags.CHASSIS], ["Wheels", DebugFlags.WHEELS],
+  ["Suspension Rays", DebugFlags.RAYS], ["Slip Vectors", DebugFlags.SLIP],
+  ["Load Bars", DebugFlags.LOAD_BARS], ["Anti-Roll Bars", DebugFlags.ARB],
   ["Block Colliders", DebugFlags.BLOCKS],
 ] as const;
-
 const ALL_DEBUG = DEBUG_OPTIONS.reduce((mask, [, flag]) => mask | flag, 0);
-
 const SCOPE_ROW = 0;
 const MODE_ROW = 1;
-const MASTER_DEBUG_ROW = 2;
-const FIRST_FLAG_ROW = 3;
+const INTERPOLATION_ROW = 2;
+const MASTER_DEBUG_ROW = 3;
+const FIRST_FLAG_ROW = 4;
 const BACK_ROW = FIRST_FLAG_ROW + DEBUG_OPTIONS.length;
 const ROW_COUNT = BACK_ROW + 1;
+
+function readDiagnostics() {
+  const state = useNetworkStore.getState();
+  return {
+    tick: state.tick, debugTick: state.debugTick, connected: state.connected,
+    interval: state.snapshotIntervalMs, ping: state.pingMs,
+    age: state.snapshot?.received_at_ms === undefined ? null : performance.now() - state.snapshot.received_at_ms,
+    speed: state.snapshot?.entities.find((entity) => entity.id === state.playerId)?.speed ?? null,
+    throttle: inputRef.current.throttle, brake: inputRef.current.brake, handbrake: inputRef.current.handbrake,
+    ...getInputSenderStats(),
+  };
+}
+
+function NetworkDiagnostics() {
+  const [stats, setStats] = useState(readDiagnostics);
+  useEffect(() => {
+    // Slow refresh keeps the menu out of the packet/render hot path.
+    const timer = window.setInterval(() => setStats(readDiagnostics()), 250);
+    return () => window.clearInterval(timer);
+  }, []);
+  const ms = (value: number | null) => value === null ? "—" : `${Math.round(value)} ms`;
+  return (
+    <p className="mt-1" aria-live="off">
+      {stats.connected ? "connected" : "disconnected"} · tick: {stats.tick ?? "—"} · debug tick: {stats.debugTick ?? "—"}
+      <br />receipt age: {ms(stats.age)} · arrival interval: {ms(stats.interval)} · RTT: {ms(stats.ping)}
+      <br />input loop: {stats.running ? "on" : "off"} · sent: {stats.sent} · skipped while queued: {stats.skipped} · queued: {stats.queuedBytes} B
+      <br />backend speed: {stats.speed === null ? "—" : `${stats.speed.toFixed(2)} m/s`} · requested throttle: {stats.throttle.toFixed(2)} · brake: {stats.brake.toFixed(2)} · handbrake: {stats.handbrake.toFixed(2)}
+      <br />input → completed tick → receipt: {ms(stats.inputAckMs)} · ack seq: {stats.acknowledgedInputSeq ?? "—"} · pending: {stats.pendingInputs} · oldest pending: {ms(stats.oldestPendingMs)}
+      <br />snapshot: {stats.snapshotChars} chars · debug: {stats.debugChars} chars · JSON decode: {stats.decodeMs.toFixed(1)} ms · peak: {stats.worstDecodeMs.toFixed(1)} ms
+    </p>
+  );
+}
 
 export function DebugMenu() {
   const mode = useWorldStore((state) => state.mode);
@@ -33,74 +64,63 @@ export function DebugMenu() {
   const debugMask = useWorldStore((state) => state.debugMask);
   const setDebugMask = useWorldStore((state) => state.setDebugMask);
   const toggleDebugFlag = useWorldStore((state) => state.toggleDebugFlag);
-
   const playerScope = useDebugViewStore((state) => state.playerScope);
   const setPlayerScope = useDebugViewStore((state) => state.setPlayerScope);
   const togglePlayerScope = useDebugViewStore((state) => state.togglePlayerScope);
-
+  const interpolationEnabled = useDebugViewStore((state) => state.interpolationEnabled);
+  const setInterpolationEnabled = useDebugViewStore((state) => state.setInterpolationEnabled);
+  const toggleInterpolation = useDebugViewStore((state) => state.toggleInterpolation);
   const [selectedRow, setSelectedRow] = useState(0);
   const allDebugEnabled = (debugMask & ALL_DEBUG) === ALL_DEBUG;
-
   const returnToPause = useCallback(() => {
     useUIStore.setState({ overlay: "pause" });
   }, []);
-
   const moveSelection = useCallback((direction: -1 | 1) => {
     setSelectedRow((current) => (current + direction + ROW_COUNT) % ROW_COUNT);
   }, []);
-
   const cycleMode = useCallback((direction: -1 | 1) => {
     const current = VIEW_MODES.indexOf(mode);
     const next = (current + direction + VIEW_MODES.length) % VIEW_MODES.length;
     setMode(VIEW_MODES[next]);
   }, [mode, setMode]);
-
   const adjustSelectedRow = useCallback((direction: -1 | 1) => {
-    if (selectedRow === SCOPE_ROW) {
-      setPlayerScope(direction < 0 ? "local" : "all");
-    } else if (selectedRow === MODE_ROW) {
-      cycleMode(direction);
-    } else if (selectedRow === MASTER_DEBUG_ROW) {
-      setDebugMask(direction < 0 ? 0 : ALL_DEBUG);
-    }
-  }, [cycleMode, selectedRow, setDebugMask, setPlayerScope]);
-
+    if (selectedRow === SCOPE_ROW) setPlayerScope(direction < 0 ? "local" : "all");
+    else if (selectedRow === MODE_ROW) cycleMode(direction);
+    else if (selectedRow === INTERPOLATION_ROW) setInterpolationEnabled(direction > 0);
+    else if (selectedRow === MASTER_DEBUG_ROW) setDebugMask(direction < 0 ? 0 : ALL_DEBUG);
+  }, [cycleMode, selectedRow, setDebugMask, setPlayerScope, setInterpolationEnabled]);
   const activateSelectedRow = useCallback(() => {
     if (selectedRow === SCOPE_ROW) togglePlayerScope();
     else if (selectedRow === MODE_ROW) cycleMode(1);
-    else if (selectedRow === MASTER_DEBUG_ROW) {
-      setDebugMask(allDebugEnabled ? 0 : ALL_DEBUG);
-    }
+    else if (selectedRow === INTERPOLATION_ROW) toggleInterpolation();
+    else if (selectedRow === MASTER_DEBUG_ROW) setDebugMask(allDebugEnabled ? 0 : ALL_DEBUG);
     else if (selectedRow === BACK_ROW) returnToPause();
     else {
       const option = DEBUG_OPTIONS[selectedRow - FIRST_FLAG_ROW];
       if (option) toggleDebugFlag(option[1]);
     }
-  }, [allDebugEnabled, cycleMode, returnToPause, selectedRow, setDebugMask, toggleDebugFlag, togglePlayerScope]);
-
+  }, [allDebugEnabled, cycleMode, returnToPause, selectedRow, setDebugMask, toggleDebugFlag, togglePlayerScope, toggleInterpolation]);
   useEffect(() => {
     const handlers = {
-      up: () => moveSelection(-1),
-      down: () => moveSelection(1),
-      left: () => adjustSelectedRow(-1),
-      right: () => adjustSelectedRow(1),
-      activate: () => activateSelectedRow(),
-      back: () => returnToPause(),
+      up: () => moveSelection(-1), down: () => moveSelection(1),
+      left: () => adjustSelectedRow(-1), right: () => adjustSelectedRow(1),
+      activate: () => activateSelectedRow(), back: () => returnToPause(),
     };
     const eventNames = {
-      up: "avenlab:debug-menu-up",
-      down: "avenlab:debug-menu-down",
-      left: "avenlab:debug-menu-left",
-      right: "avenlab:debug-menu-right",
-      activate: "avenlab:debug-menu-activate",
-      back: "avenlab:debug-menu-back",
+      up: "avenlab:debug-menu-up", down: "avenlab:debug-menu-down",
+      left: "avenlab:debug-menu-left", right: "avenlab:debug-menu-right",
+      activate: "avenlab:debug-menu-activate", back: "avenlab:debug-menu-back",
     } as const;
-
     Object.entries(eventNames).forEach(([key, name]) => {
       window.addEventListener(name, handlers[key as keyof typeof handlers]);
     });
-
     const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      if (event.key === "Enter" || event.key === " ") {
+        if (event.repeat) { event.preventDefault(); return; }
+        // Focused buttons own native activation; the window must not toggle twice.
+        if (event.target instanceof HTMLElement && event.target.closest("button, [role=button]")) return;
+      }
       if (event.key === "ArrowUp") handlers.up();
       else if (event.key === "ArrowDown") handlers.down();
       else if (event.key === "ArrowLeft") handlers.left();
@@ -111,7 +131,6 @@ export function DebugMenu() {
       event.preventDefault();
     };
     window.addEventListener("keydown", onKeyDown);
-
     return () => {
       Object.entries(eventNames).forEach(([key, name]) => {
         window.removeEventListener(name, handlers[key as keyof typeof handlers]);
@@ -119,20 +138,20 @@ export function DebugMenu() {
       window.removeEventListener("keydown", onKeyDown);
     };
   }, [activateSelectedRow, adjustSelectedRow, moveSelection, returnToPause]);
-
   return (
     <div className="game-ui fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-md">
       <section className="flex max-h-[92vh] w-[min(94vw,900px)] flex-col overflow-hidden rounded-2xl border border-cyan-300/35 bg-slate-950/95 shadow-2xl shadow-cyan-500/20">
         <header className="border-b border-cyan-400/20 px-6 py-5">
-          <p className="text-xs uppercase tracking-[0.4em] text-yellow-300">
-            REDLINE VECTOR // IN-GAME MENU
-          </p>
+          <p className="text-xs uppercase tracking-[0.4em] text-yellow-300">REDLINE VECTOR // IN-GAME MENU</p>
           <h2 className="mt-2 text-3xl font-black text-cyan-100">DEBUGGER</h2>
-          <p className="mt-1 text-sm text-slate-400">
-            D-pad or stick to navigate · A to change · B to return
+          <p className="mt-1 text-sm text-slate-400">D-pad or stick to navigate · A to change · B to return</p>
+          <p className="mt-2 text-sm text-slate-300">
+            All vehicle views and the camera share the pose timeline: ON buffers {DEFAULT_INTERPOLATION_DELAY_MS} ms; OFF shows the latest backend poses.
+            Contact colors, forces and rays remain raw backend diagnostics.
+            Compare backend speed for acceleration and stopping; the render mode only changes the displayed timeline.
+            Input acknowledgement measures command delivery and a completed tick; it excludes the render buffer. "—" requires the matching backend patch and a spawned vehicle.
           </p>
         </header>
-
         <div className="grid min-h-0 flex-1 gap-3 overflow-y-auto p-6 md:grid-cols-2">
           <GameButton selected={selectedRow === SCOPE_ROW} onFocus={() => setSelectedRow(SCOPE_ROW)} onPress={togglePlayerScope}>
             PLAYER VIEW: {playerScope === "all" ? "ALL PLAYERS" : "MY VEHICLE"}
@@ -140,16 +159,12 @@ export function DebugMenu() {
           <GameButton selected={selectedRow === MODE_ROW} onFocus={() => setSelectedRow(MODE_ROW)} onPress={() => cycleMode(1)}>
             VIEW MODE: {mode.toUpperCase()}
           </GameButton>
-          <GameButton
-            selected={selectedRow === MASTER_DEBUG_ROW}
-            onFocus={() => setSelectedRow(MASTER_DEBUG_ROW)}
-            onPress={() => setDebugMask(allDebugEnabled ? 0 : ALL_DEBUG)}
-            className="md:col-span-2"
-            aria-pressed={allDebugEnabled}
-          >
+          <GameButton selected={selectedRow === INTERPOLATION_ROW} onFocus={() => setSelectedRow(INTERPOLATION_ROW)} onPress={toggleInterpolation} className="md:col-span-2" aria-pressed={interpolationEnabled}>
+            VEHICLE INTERPOLATION: {interpolationEnabled ? "ON — BUFFERED" : "OFF — RAW BACKEND"}
+          </GameButton>
+          <GameButton selected={selectedRow === MASTER_DEBUG_ROW} onFocus={() => setSelectedRow(MASTER_DEBUG_ROW)} onPress={() => setDebugMask(allDebugEnabled ? 0 : ALL_DEBUG)} className="md:col-span-2" aria-pressed={allDebugEnabled}>
             ALL DEBUG: {allDebugEnabled ? "ON" : "OFF"}
           </GameButton>
-
           {DEBUG_OPTIONS.map(([label, flag], index) => {
             const row = FIRST_FLAG_ROW + index;
             return (
@@ -158,14 +173,11 @@ export function DebugMenu() {
               </GameButton>
             );
           })}
-
-          <GameButton selected={selectedRow === BACK_ROW} variant="danger" onFocus={() => setSelectedRow(BACK_ROW)} onPress={returnToPause} className="md:col-span-2">
-            BACK TO PAUSE MENU
-          </GameButton>
+          <GameButton selected={selectedRow === BACK_ROW} variant="danger" onFocus={() => setSelectedRow(BACK_ROW)} onPress={returnToPause} className="md:col-span-2">BACK TO PAUSE MENU</GameButton>
         </div>
-
         <footer className="border-t border-cyan-400/15 px-6 py-3 font-mono text-xs text-slate-500">
           mask: {debugMask} · scope: {playerScope}
+          <NetworkDiagnostics />
         </footer>
       </section>
     </div>

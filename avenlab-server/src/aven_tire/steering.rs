@@ -1,30 +1,11 @@
-// ==============================================================================
-// steering.rs — ACKERMANN STEERING GEOMETRY (FRONT AXLE)
-// ==============================================================================
-// Responsibilities:
-// - Convert driver steering intent into wheel orientations
-// - Apply Ackermann steering geometry
-// - Apply speed-sensitive steering limits
-// - Output per-wheel forward & side directions (unit vectors)
-// ------------------------------------------------------------------------------
-// Given:
-// - wheelbase, track_width
-// - max_steer_angle
-// - ackermann blend (0..1)
-// - driver steer input (or steer angle)
-//
-// solve_steering(...):
-// - Produces left/right wheel steering angles (fl, fr) that approximate
-//   ackermann geometry.
-// - Uses a blend between parallel steer (both wheels equal) and full ackermann.
-// 
-// steer_vector(rot, angle):
-// - Rotates chassis forward vector around world-up by a steering angle.
-// - IMPORTANT: sign convention must match your input mapping (left vs right).
-//
-// Output angles are used by kinematics::wheel_basis_world() to build the wheel
-// forward/side basis for slip computation.
-// ==============================================================================
+// Pure front-wheel Ackermann geometry. Runtime physics forward is local +Z;
+// positive steer input turns toward local -X. The final basis is projected onto
+// the road plane by suspension_contact before slip is measured.
+// vehicle_forces owns the ONLY active 0.10 s steering smoother, once per substep.
+// solve_steering has no time integration or speed-sensitive limiting. Calling it
+// again after physics is safe: final poses need the updated chassis orientation.
+// The torque-rack and input-clamp helpers below are legacy APIs with no active
+// PhysicsWorld callers, not additional stages of the current steering strategy.
 
 // use rapier3d::prelude::*;
 use rapier3d::prelude::{Real};
@@ -76,8 +57,10 @@ fn default() -> Self {
 }
 
 // ================================================================================
-// - steering rack (self aligning torque based)
+// - Legacy steering rack experiment (INACTIVE in PhysicsWorld)
 // ================================================================================
+// Do not call this alongside the active exponential steering response.
+// It would integrate a second, incompatible strategy into the same steer_angle.
 pub fn update_steering_rack(
     steer_input: f32,     // -1..1
     // rack_torque: f32,     // Nm from tires (SAT)
@@ -92,14 +75,14 @@ pub fn update_steering_rack(
     let stiffness = 18.0;
     let assist  = 8.0;    // driver strength
     // let assist  = lerp(10.0, 4.0, speed / 30.0);    // driver strength
-    
+
 
     // Driver input torque
     let driver_torque = assist * steer_input;
 
     let coulomb = 1.2;           // N*m "dry friction" around center (tune 0.5–3.0)
     // let viscous = 0.0;           // optional extra
-    
+
     // let friction = coulomb * steer_rate.signum() + viscous * (*steer_rate);
     // let friction = coulomb * net_torque.signum();
     let friction = if steer_rate.abs() < 0.05 {
@@ -115,12 +98,12 @@ pub fn update_steering_rack(
     - damping * (*steer_rate)
     - stiffness * (*steer_angle)
     - friction;
-    
+
     // deadband: if torque is tiny, don’t integrate noise
     if net_torque.abs() < 0.05 {
         net_torque = 0.0;
     }
-    
+
     // Integrate (semi-implicit)
     let max_rate = 8.0;          // rad/s rack angular speed clamp
     let steer_accel = net_torque / inertia;
@@ -129,9 +112,9 @@ pub fn update_steering_rack(
     *steer_angle += *steer_rate * dt;
 
     // Hard mechanical stops
-    if *steer_angle > max_angle { *steer_angle = max_angle; *steer_rate = 0.0; } 
+    if *steer_angle > max_angle { *steer_angle = max_angle; *steer_rate = 0.0; }
     else if *steer_angle < -max_angle { *steer_angle = -max_angle; *steer_rate = 0.0; }
-    
+
 }
 
 /// Compute Ackermann inner/outer wheel angles
@@ -170,7 +153,7 @@ pub fn solve_steering(
     chassis_rot: &UnitQuaternion<f32>,
     steer_angle: f32,
 ) -> (WheelSteering, WheelSteering) {
-    
+
     // ------------------------------------------------------------
     // - Ackermann geometry
     // ------------------------------------------------------------
@@ -185,21 +168,20 @@ pub fn solve_steering(
     // ------------------------------------------------------------
     // World-space chassis basis (MUST match wheel_basis_world)
     // ------------------------------------------------------------
-    let up = Vector::new(0.0, 1.0, 0.0);
+    let up = chassis_rot * Vector::new(0.0, 1.0, 0.0);
 
-    // your chassis basis (MUST match wheel_basis_world rear)
-    // +X forward, -Z right
-    let chassis_fwd   = chassis_rot * Vector::new(1.0, 0.0, 0.0);
-    let chassis_right = chassis_rot * Vector::new(0.0, 0.0, -1.0);
+    // +Z forward, +X right; positive input turns left (-X).
+    let chassis_fwd   = chassis_rot * Vector::new(0.0, 0.0, 1.0);
+    let chassis_right = chassis_rot * Vector::new(1.0, 0.0, 0.0);
 
     // ------------------------------------------------------------
     // Rotate forward direction by steering angles (PLANAR)
     // ------------------------------------------------------------
     let fl_forward =
-        (chassis_fwd * fl_angle.cos() + chassis_right * fl_angle.sin()).normalize();
+        (chassis_fwd * fl_angle.cos() - chassis_right * fl_angle.sin()).normalize();
 
     let fr_forward =
-        (chassis_fwd * fr_angle.cos() + chassis_right * fr_angle.sin()).normalize();
+        (chassis_fwd * fr_angle.cos() - chassis_right * fr_angle.sin()).normalize();
 
     // ------------------------------------------------------------
     // Side vectors (right-handed: side = up × forward)
@@ -227,6 +209,8 @@ pub fn solve_steering(
 // =========================================================================
 // - Apply vehicle controls (throttle + steering) to each vehicle.
 // =========================================================================
+// Legacy input clamp helper; PhysicsWorld now clamps when attaching input and
+// does not call this again in substeps. Kept as an API, with no active caller.
 pub fn apply_vehicle_controls<'a>(
     vehicles: ValuesMut<'a, String, Vehicle>,
     _dt: Real,
@@ -234,5 +218,40 @@ pub fn apply_vehicle_controls<'a>(
     for v in vehicles {
         v.throttle = v.throttle.clamp(-1.0, 1.0);
         v.brake    = v.brake.clamp(0.0, 1.0);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn config() -> SteeringConfig {
+        SteeringConfig { wheelbase: 2.6, track_width: 1.68, max_steer_angle: 0.6, ackermann: 0.8 }
+    }
+
+    #[test]
+    fn zero_steer_matches_the_rear_forward_axis_after_chassis_yaw() {
+        let rot = UnitQuaternion::from_axis_angle(&Vector::y_axis(), 1.1);
+        let expected = rot * Vector::new(0.0, 0.0, 1.0);
+        let (fl, fr) = solve_steering(&config(), &rot, 0.0);
+        for wheel in [fl, fr] {
+            let forward = Vector::new(wheel.forward[0], wheel.forward[1], wheel.forward[2]);
+            assert!((forward - expected).norm() < 1.0e-5);
+        }
+    }
+
+    #[test]
+    fn ackermann_turns_the_inner_wheel_more_on_each_side() {
+        let rot = UnitQuaternion::identity();
+        for input in [-0.25, 0.25] {
+            let (fl, fr) = solve_steering(&config(), &rot, input);
+            assert!(fl.forward[0] * input < 0.0);
+            assert!(fr.forward[0] * input < 0.0);
+            if input > 0.0 {
+                assert!(fl.forward[0].abs() > fr.forward[0].abs());
+            } else {
+                assert!(fr.forward[0].abs() > fl.forward[0].abs());
+            }
+        }
     }
 }

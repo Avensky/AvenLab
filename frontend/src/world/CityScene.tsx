@@ -11,7 +11,8 @@ import { Environment, Stars } from "@react-three/drei";
 
 export function CityScene() {
 
-    // const activeBlock = useSnapshotStore((s) => s.activeBlock);
+    // This scene renders backend map geometry; it creates no physics floor.
+    // PhysicsFloor is an optional reference overlay, not a second collider.
     const mode = useWorldStore((s) => s.mode);
     const debug = useNetworkStore((s) => s.debugOverlay);
 
@@ -20,6 +21,7 @@ export function CityScene() {
 
             {/* Lighting */}
             {/* <ambientLight intensity={0.1} /> */}
+            {/* <PhysicsFloor />     */}
 
 
             {/* --- NIGHT SKY --- */}
@@ -56,9 +58,6 @@ export function CityScene() {
                 position={[-120, 180, -80]}
                 castShadow
             />
-
-
-            {/* <PhysicsFloor /> */}
 
 
             {(mode === "collider" || mode === "hybrid") && debug && (

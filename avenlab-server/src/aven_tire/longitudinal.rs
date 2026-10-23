@@ -18,8 +18,7 @@
 // - Capacity is proportional to normal force (Fz) and dt.
 //
 // Output:
-// - LongitudinalResult { impulse, nx }
-// where nx is used in solve.rs for the combined-slip ellipse.
+// - LongitudinalResult { impulse }; solve.rs measures its normalized usage.
 // ================================================================================
 // - cardinal rules
 // ================================================================================
@@ -33,7 +32,6 @@
 
 // use rapier3d::prelude::Real;
 // use crate::physics::Wheel;
-use crate::aven_tire::state::{TireState};
 use crate::aven_tire::types::{
     Vec3,
     SolveContext,
@@ -53,24 +51,26 @@ pub struct LongitudinalResult {
 // ====================================================================
 // Longitudinal tire model step
 // - Engine + brake + ABS/TCS + traction limits.
-// - Returns longitudinal impulse at COM and nx for combined-slip ellipse.
+// - Returns longitudinal impulse at COM; solve.rs computes ellipse usage.
 // ====================================================================
 pub fn solve_longitudinal(
     ctx: &SolveContext,
     ctrl: &ControlInput,
     patch: &ContactPatch,
-    _brake_share: f32,
+    brake_share: f32,
 ) -> LongitudinalResult {
 
-    if !patch.grounded { return LongitudinalResult { impulse: [0.0,0.0,0.0]};}
-    
+    if !patch.grounded || patch.normal_force <= 0.0 || ctx.dt <= 0.0 {
+        return LongitudinalResult { impulse: [0.0; 3] };
+    }
+
     let dt = ctx.dt.max(1e-6);
 
     // =========================================================
     //  Longitudinal friction capacity (impulse domain)
     // =========================================================
     let j_cap = (patch.mu_long * patch.normal_force * dt).max(1e-6);
-    
+
     // =========================================================
     //  Forward projection helper (XZ plane)
     // =========================================================
@@ -84,23 +84,21 @@ pub fn solve_longitudinal(
     // =========================================================
     //  ENGINE (drive wheels only)  -> along +forward
     // =========================================================
-    let load_frac = 
-        (patch.normal_force / (ctx.mass * 9.81 / ctx.driven_wheels.max(1.0)))
-            .clamp(0.5, 1.6);
-    
+    // Divide the configured total drive force once. Normal load already limits
+    // usable traction through j_cap; multiplying by a load fraction again
+    // halved the requested force for a normally loaded rear-drive car.
     let engine_force = if patch.drive {
         (ctx.engine_force / ctx.driven_wheels.max(1.0))
-        * ctrl.throttle
-        * load_frac
+        * ctrl.throttle.clamp(-1.0, 1.0)
 
     } else {
         0.0
     };
-    
+
     // force -> impulse, limited by friction budget
     let engine_j = (engine_force * dt).clamp(-j_cap, j_cap);
     let mut engine_impulse = v_scale(patch.forward, engine_j);
-    
+
     // =========================================================
     // BRAKE = longitudinal friction constraint
     // =========================================================
@@ -109,29 +107,24 @@ pub fn solve_longitudinal(
 
     if brake_input > 0.001 {
 
-        // Longitudinal slip velocity INCLUDING yaw contribution
-        let v_long_eff =
-            patch.v_long
-            - patch.yaw_rate * patch.relative_com[2];
+        // Contact-point velocity already includes angular motion.
+        let v_long_eff = patch.v_long;
 
         // Deadband prevents jitter at rest
         if v_long_eff.abs() > 0.15 {
 
             // Desired impulse to cancel longitudinal slip
-            // NOTE: no mass guess — use velocity cancellation directly
+            // This solver approximates each wheel's effective mass as mass / 4.
             let j_desired = -v_long_eff * ctx.mass * 0.25;
 
             // Scale by brake input (driver intent)
             let j_cmd = j_desired * brake_input;
 
-            // Clamp by friction capacity
-            let j = j_cmd.clamp(-j_cap, j_cap);
-
-            // brake actuator cap 
-            // let j_act = (ctx.brake_force * brake_share * dt).max(0.0);
-
-            // final brake magnitude
-            // let j = (j).min(j_act).min(j_cap);
+            // Driver brake input scales actuator strength once. The desired
+            // velocity-cancel impulse is a separate upper bound near rest.
+            let j_act = (ctx.brake_force * brake_share * brake_input * dt).max(0.0);
+            let j_limit = j_cap.min(j_act);
+            let j = j_cmd.clamp(-j_limit, j_limit);
 
             brake_impulse = v_scale(patch.forward, j);
         }
@@ -143,7 +136,7 @@ pub fn solve_longitudinal(
     // =========================================================
     let engine_jx = (engine_impulse[0]*fwd_xz[0] + engine_impulse[2]*fwd_xz[2]).abs();
     let brake_jx  = (brake_impulse[0]*fwd_xz[0]  + brake_impulse[2]*fwd_xz[2]).abs();
-    
+
     // =========================================================
     // TCS (traction control based on longitudinal usage)
     // =========================================================
@@ -154,7 +147,7 @@ pub fn solve_longitudinal(
             engine_impulse = v_scale(engine_impulse, s);
         }
     }
-    
+
     // =========================================================
     // ABS (based on longitudinal usage)
     // =========================================================
@@ -167,7 +160,63 @@ pub fn solve_longitudinal(
         brake_impulse = v_scale(brake_impulse, s);
     }
 
+    // Engine and brake can oppose each other when both controls are held.
+    // Their net demand is combined with lateral demand by one ellipse in solve.rs.
     let impulse = v_add(engine_impulse, brake_impulse);
 
     LongitudinalResult { impulse }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::aven_tire::state::TireState;
+    use crate::aven_tire::types::WheelId;
+
+    fn context() -> SolveContext {
+        SolveContext {
+            dt: 1.0 / 120.0, mass: 1280.0, engine_force: 0.0, brake_force: 7600.0,
+            abs_enabled: false, tcs_enabled: false, abs_limit: 0.9, tcs_limit: 0.85,
+            driven_wheels: 2.0, base_front_bias: 0.66, bias_gain: 0.25,
+            wheelbase: 2.6, mu_base: 0.9,
+        }
+    }
+
+    fn patch(v_long: f32) -> ContactPatch {
+        ContactPatch {
+            wheel: WheelId::FL, grounded: true, hit_point: [0.0; 3], apply_point: [0.0; 3],
+            forward: [0.0, 0.0, 1.0], side: [1.0, 0.0, 0.0], v_long, v_lat: 0.0,
+            normal_force: 3139.2, mu_lat: 0.9, mu_long: 0.9, roll_factor: 0.3,
+            drive: false, brake: 1.0, steer_angle: 0.0, compression_ratio: 0.5,
+            vel_world: [0.0, 0.0, v_long], brake_dir: [0.0, 0.0, -1.0],
+            speed_planar: v_long.abs(), yaw_rate: 0.4, relative_com: [0.0, 0.0, 1.38],
+            tire_state: TireState::Grip,
+        }
+    }
+
+    #[test]
+    fn braking_opposes_measured_motion_and_respects_actuator_strength() {
+        let ctx = context();
+        let ctrl = ControlInput { brake: 1.0, ..ControlInput::default() };
+        for speed in [-0.2, 0.2] {
+            let result = solve_longitudinal(&ctx, &ctrl, &patch(speed), 0.3);
+            assert!(result.impulse[2] * speed < 0.0);
+            assert!(result.impulse[2].abs() <= ctx.brake_force * 0.3 * ctx.dt + 1.0e-5);
+        }
+        let disabled = SolveContext { brake_force: 0.0, ..ctx };
+        assert_eq!(solve_longitudinal(&disabled, &ctrl, &patch(0.2), 0.3).impulse, [0.0; 3]);
+    }
+
+    #[test]
+    fn normally_loaded_driven_wheels_receive_the_configured_total_drive_force() {
+        let ctx = SolveContext { engine_force: 8500.0, ..context() };
+        let ctrl = ControlInput { throttle: 0.25, ..ControlInput::default() };
+        let mut contact = patch(0.0);
+        contact.drive = true;
+        let result = solve_longitudinal(&ctx, &ctrl, &contact, 0.17);
+        let total_force = result.impulse[2] * ctx.driven_wheels / ctx.dt;
+        assert!((total_force - ctx.engine_force * ctrl.throttle).abs() < 0.01);
+        contact.grounded = false;
+        assert_eq!(solve_longitudinal(&ctx, &ctrl, &contact, 0.17).impulse, [0.0; 3]);
+    }
 }

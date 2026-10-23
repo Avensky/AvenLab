@@ -47,18 +47,22 @@ export const GameButton = forwardRef<HTMLDivElement, GameButtonProps>(
         aria-disabled={disabled}
         className={`${base} ${variants[variant]} ${selected ? "ring-2 ring-yellow-300/80 bg-yellow-400/10" : ""
           } ${disabled ? "pointer-events-none opacity-40" : "cursor-pointer"} ${className} px-1`}
-        onPointerEnter={onFocus}
+        onPointerEnter={() => { if (!disabled) onFocus?.(); }}
+        onFocus={() => { if (!disabled) onFocus?.(); }}
         onPointerDown={(e) => e.preventDefault()}
         onPointerUp={(e) => {
           e.preventDefault();
-          if (!disabled) onPress?.();
+          if (!disabled && (e.pointerType !== "mouse" || e.button === 0)) onPress?.();
         }}
         onKeyDown={(e) => {
           if (disabled) return;
 
           if (e.code === "Enter" || e.code === "Space") {
             e.preventDefault();
-            onPress?.();
+            // The focused button owns activation; window listeners must not
+            // also select another row or treat Space as braking.
+            e.stopPropagation();
+            if (!e.repeat) onPress?.();
           }
         }}
         onContextMenu={(e) => e.preventDefault()}

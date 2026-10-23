@@ -7,14 +7,13 @@ import {
 } from "react";
 import type { PropsWithChildren } from "react";
 import { useGLTF } from "@react-three/drei";
-import { useFrame, useThree } from "@react-three/fiber";
+import { useFrame } from "@react-three/fiber";
 import {
   Color,
   Group,
   MathUtils,
   MeshPhysicalMaterial,
   SpotLight,
-  Vector3,
 } from "three";
 
 import { sharedGlassMaterial } from "./tools/createGlassMaterialFactory";
@@ -31,17 +30,14 @@ import {
   useNetworkStore,
   useUIStore,
 } from "../store";
-import { usePhysicsInterpolator } from "../hooks/usePhysicsInterpolator";
+import { useVehiclePhysicsInterpolator } from "../hooks/usePhysicsInterpolator";
 import { hasFlag, VehicleFlags } from "../store/tools/inputMasks";
 
 const MODEL_PATH = "/models/vehicles/supra_2020.glb";
 const VEHICLE_ROOT_NAME = "VEHICLE_ROOT";
-const DEFAULT_VISUAL_Y_OFFSET = -0.60;
 
 type SupraProps = PropsWithChildren<{
   entityId?: string;
-  /** Moves only the rendered chassis/lights, never the Rapier body or wheels. */
-  visualYOffset?: number;
 }>;
 
 // The source model labels its positive-X side as left. Backend left is
@@ -82,12 +78,10 @@ export const Supra = forwardRef<Group, SupraProps>(function Supra(
   {
     children,
     entityId,
-    visualYOffset = DEFAULT_VISUAL_Y_OFFSET,
   },
   ref
 ) {
   const { scene } = useGLTF(MODEL_PATH);
-  const camera = useThree((state) => state.camera);
   const vehicleGroupRef = useRef<Group>(null!);
   const vehicleVisualGroupRef = useRef<Group>(null!);
   useImperativeHandle(ref, () => vehicleGroupRef.current, []);
@@ -150,13 +144,8 @@ export const Supra = forwardRef<Group, SupraProps>(function Supra(
     }
   }, [wheelAssemblies]);
 
-  const snapshot = useNetworkStore((state) => state.snapshot);
-  const { setSnapshot, getInterpolated } = usePhysicsInterpolator(100);
-
-  useEffect(() => {
-    if (!snapshot) return;
-    for (const entity of snapshot.entities) setSnapshot(entity.id, entity);
-  }, [snapshot, setSnapshot]);
+  // One completed backend timeline drives both the body and world-space wheels.
+  const { getInterpolated } = useVehiclePhysicsInterpolator(entityId);
 
   const blinkTimer = useRef(0);
   const blinkState = useRef(false);
@@ -266,7 +255,7 @@ export const Supra = forwardRef<Group, SupraProps>(function Supra(
         assembly,
         wheel.position,
         wheel.rotation,
-        wheel.steer_angle ?? 0,
+        0, // Steering is already included in the backend quaternion.
         wheelSpinAngles.current[index]
       );
     });
@@ -301,27 +290,6 @@ export const Supra = forwardRef<Group, SupraProps>(function Supra(
     if (rrBlinkerRef.current) rrBlinkerRef.current.visible = (hazards || blinkerRight) && blinkOn;
 
     const cameraMode = gameState.camera;
-    if (
-      isLocalPlayer &&
-      !gameState.editor &&
-      (cameraMode === "FIRST_PERSON" ||
-        cameraMode === "DEFAULT" ||
-        cameraMode === "BIRDS_EYE")
-    ) {
-      const offset = new Vector3();
-      if (cameraMode === "FIRST_PERSON") {
-        offset.set(-0.25, 1.02 + visualYOffset, 0.25);
-      }
-      if (cameraMode === "DEFAULT") offset.set(0, 2.1, -4.5);
-      if (cameraMode === "BIRDS_EYE") offset.set(0, 7.5, -12);
-      offset.applyQuaternion(group.quaternion).add(group.position);
-      camera.position.lerp(offset, delta * 5);
-
-      const target = group.position.clone();
-      target.y += 1.05 + visualYOffset;
-      camera.lookAt(target);
-    }
-
     const isFirstPerson = isLocalPlayer && cameraMode === "FIRST_PERSON";
     const interpolation = Math.min(delta / 3, 1);
     const glassMaterial = glassMaterialRef.current;
@@ -349,7 +317,6 @@ export const Supra = forwardRef<Group, SupraProps>(function Supra(
       <group ref={vehicleGroupRef}>
         <group
           ref={vehicleVisualGroupRef}
-          position-y={isVehiclePreview ? 0 : visualYOffset}
         >
           <primitive object={vehicleVisualRoot} />
           {children}

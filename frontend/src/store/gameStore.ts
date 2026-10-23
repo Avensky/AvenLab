@@ -22,7 +22,7 @@ interface GameState {
     // =======================================
     //  Game Selection
     // =======================================
-    screen: 'selection-screen' | 'game-screen'
+    screen: 'selection-screen' | 'game-screen' | 'sandbox'
     setScreen: (screen: 'selection-screen' | 'game-screen') => void
 
     selectedVehicle: string

@@ -20,7 +20,6 @@ export default function App() {
   return (
     <div className="canvas-container">
       <GameUI />
-      
       <Keyboard />
       <GameController />
     </div>

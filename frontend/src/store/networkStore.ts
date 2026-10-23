@@ -3,11 +3,12 @@ import { create } from "zustand";
 import type { Team, VehicleKind } from "./types";
 
 export interface PhysicsSnapshot {
-    // type: "physics_snapshot";
-    tick: number;               // authoritative sim tick
-    // serverTime: number;         // ms, optional but useful
-    // entities: Record<string, PhysicsEntity>;
-    entities: PhysicsEntitySnapshot[]
+    tick: number; // Completed backend simulation tick, not a browser frame count.
+    simulation_time_s?: number;
+    tick_dt_s?: number;
+    // Client-only receipt clock, stamped once at socket ingestion. Never sent to Rust.
+    received_at_ms?: number;
+    entities: PhysicsEntitySnapshot[];
 }
 
 export type PhysicsData = {
@@ -56,6 +57,8 @@ export interface PhysicsEntitySnapshot {
 
     vehicle_mask: number;
     player_mask: number;
+    /** Optional acknowledgement from the completed backend simulation tick. */
+    last_input_seq?: number | null;
 }
 
 export interface PhysicsEntity {
@@ -92,6 +95,7 @@ export interface DebugSlipRay {
 
 export interface DebugWheel {
     player_id: string;
+    id?: string; // Backend wheel identity; optional for older debug packets.
     center: [number, number, number];
     radius: number;
     grounded: boolean;
@@ -100,8 +104,9 @@ export interface DebugWheel {
     normal_force: number;
     steering: boolean;
     drive: boolean;
-    lateral_force: [number, number, number];
-    lateral_magnitude: number;
+    steer?: number;
+    lateral_force?: [number, number, number];
+    lateral_magnitude?: number;
     rotation: [number, number, number, number];
     wheel_speed: number; // radians per second
     steer_angle: number;
@@ -131,15 +136,19 @@ export interface DebugOverlay {
 }
 
 
-interface NetworkState {
+export interface NetworkState {
     // =======================================
     //  Net
     // =======================================
     connected: boolean;
     setConnected: (v: boolean) => void;
+    resetSession: () => void;
 
     snapshot: PhysicsSnapshot | null;
-    setSnapshot: (snap: PhysicsSnapshot) => void;
+    setSnapshot: (snap: PhysicsSnapshot, receivedMs?: number) => void;
+    snapshotIntervalMs: number | null;
+    pingMs: number | null;
+    setPingMs: (ms: number) => void;
 
     physicsData: PhysicsData | null;
     setPhysicsData: (data: PhysicsData | null) => void;
@@ -165,56 +174,59 @@ interface NetworkState {
     getOthers: () => PhysicsEntitySnapshot[];
     
     debugOverlay: DebugOverlay | null
-    setDebugOverlay: (dbg: DebugOverlay) => void
+    debugTick: number | null;
+    setDebugOverlay: (dbg: DebugOverlay, tick?: number) => void;
 }
 
+function telemetry(me: PhysicsEntitySnapshot | undefined): PhysicsData | null {
+    return me ? {
+        speed: me.speed, rpm: me.rpm, gear: me.gear, fuel: me.fuel, temp: me.temp,
+        engineTorque: me.engine_torque, vehicleMask: me.vehicle_mask,
+        playerMask: me.player_mask, wheels: me.wheels,
+    } : null;
+}
+
+// Clearing a session is also what allows a restarted server to begin at tick zero.
+// Keep actions out of this object so Zustand merges retain their stable identities.
+const emptySession = {
+    connected: false, snapshot: null, physicsData: null, playerId: "",
+    team: "blue" as Team, kind: null, room_id: null, spawn: null,
+    x: null, y: null, z: null, tick: null, debugOverlay: null, debugTick: null,
+    snapshotIntervalMs: null, pingMs: null,
+};
+
 export const useNetworkStore = create<NetworkState>((set, get) => ({
-    // =======================================
-    //  Net
-    // =======================================
-    connected: false,
-    setConnected: (v) => set({ connected: v }),
-
-    snapshot: null,
-    setSnapshot: (snap) => {
-        const myId = get().playerId;
-        const me = snap.entities.find(e => e.id === myId);
-
+    ...emptySession,
+    resetSession: () => set({ ...emptySession }),
+    setConnected: (connected) => {
+        if (!connected) { get().resetSession(); return; }
+        if (!get().connected) set({ connected: true });
+    },
+    setSnapshot: (snap, receivedMs = performance.now()) => {
+        const state = get();
+        // WebSockets are ordered. This also catches duplicate store writes and
+        // prevents a stale callback from rewinding HUD/raw rendering state.
+        if (!Number.isSafeInteger(snap.tick) || snap.tick < 0) return;
+        if (state.tick !== null && snap.tick <= state.tick) return;
+        const previousReceipt = state.snapshot?.received_at_ms;
+        const me = snap.entities.find((entity) => entity.id === state.playerId);
         set({
-            snapshot: snap,
-            physicsData: me
-                ? {
-                    speed: me.speed,
-                    rpm: me.rpm,
-                    gear: me.gear,
-                    fuel: me.fuel,
-                    temp: me.temp,
-                    engineTorque: me.engine_torque,
-                    vehicleMask: me.vehicle_mask,
-                    playerMask: me.player_mask,
-                    wheels: me.wheels,
-                }
-                : null,
+            snapshot: { ...snap, received_at_ms: receivedMs },
+            tick: snap.tick,
+            snapshotIntervalMs: previousReceipt === undefined ? null : receivedMs - previousReceipt,
+            physicsData: telemetry(me),
         });
     },
-
-    physicsData: null,
-    setPhysicsData: (data: PhysicsData | null) => set({ physicsData: data }),
-
-    // =======================================
-    //  Player Data
-    // =======================================
-    playerId: "",
-    setPlayerId: (id) => set({ playerId: id }),
-
-    team: "blue",
-    kind: null,
-    room_id: null,
-    spawn: null,
-    x: null,
-    y: null,
-    z: null,
-    tick: 0,
+    // Compatibility with older servers only. Once snapshots exist, their local
+    // entity is the sole telemetry source; a second packet cannot overwrite it.
+    setPhysicsData: (data) => {
+        if (get().snapshot === null) set({ physicsData: data });
+    },
+    setPingMs: (pingMs) => set({ pingMs }),
+    setPlayerId: (playerId) => {
+        const me = get().snapshot?.entities.find((entity) => entity.id === playerId);
+        set({ playerId, physicsData: telemetry(me) });
+    },
 
     getMe() {
         const snap = get().snapshot;
@@ -230,6 +242,11 @@ export const useNetworkStore = create<NetworkState>((set, get) => ({
     },
 
 
-    debugOverlay: null,
-    setDebugOverlay: (dbg) => set({ debugOverlay: dbg }),
+    setDebugOverlay: (debugOverlay, tick) => {
+        const debugTick = Number.isSafeInteger(tick) && tick! >= 0 ? tick! : null;
+        if (debugTick !== null && get().debugTick !== null && debugTick <= get().debugTick!) return;
+        // Debug forces remain raw results. Retaining the envelope tick makes
+        // their age relative to the buffered GLB vehicle visible in the menu.
+        set({ debugOverlay, debugTick });
+    },
 }));

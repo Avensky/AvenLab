@@ -45,6 +45,28 @@ pub struct MapSurface {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct MapSpawnPoint {
+    /// Chunk coordinate inside this map.
+    pub chunk: [i32; 2],
+
+    /// Runtime X/Z offset from that chunk's center/origin.
+    pub local: [f32; 2],
+
+    /// Vehicle heading in radians.
+    #[serde(default)]
+    pub yaw: f32,
+}
+
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+pub struct TeamSpawnPoints {
+    #[serde(default)]
+    pub red: Vec<MapSpawnPoint>,
+
+    #[serde(default)]
+    pub blue: Vec<MapSpawnPoint>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct VisualTransform {
     pub position: [f32; 3],
     pub rotation: [f32; 4],
@@ -96,7 +118,7 @@ pub struct BlockColliderFile {
     pub layout: MapLayout,
 
     #[serde(default)]
-    pub spawn_points: Vec<[f32; 2]>,
+    pub team_spawns: TeamSpawnPoints,
 
     pub visuals: Vec<VisualAsset>,
 

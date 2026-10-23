@@ -99,29 +99,24 @@ export const useCanDataStore = create<CanDataState>((set, get) => ({
         const frames = get().frames;
         const volatility: Record<string, number[]> = {};
 
+        // Capture order, one pass: reverse/find used future samples and copied
+        // the entire recording once per frame (quadratic work on the main thread).
+        const previousById = new Map<string, number[]>();
         for (const frame of frames) {
             const hexId = frame[0];
             const data = frame[6] ?? [];
 
             if (!volatility[hexId]) {
                 volatility[hexId] = Array(data.length).fill(0);
-                continue;
             }
 
-            const prev = frames
-                .slice()
-                .reverse()
-                .find((f) => f[0] === hexId && f !== frame);
-
-            if (!prev) continue;
-
-            const prevData = prev[6] ?? [];
-
-            data.forEach((byte, i) => {
-                if (prevData[i] !== byte) {
+            const prevData = previousById.get(hexId);
+            if (prevData) data.forEach((byte, i) => {
+                if (i < prevData.length && prevData[i] !== byte) {
                     volatility[hexId][i] = (volatility[hexId][i] ?? 0) + 1;
                 }
             });
+            previousById.set(hexId, data);
         }
 
         set({ byteVolatility: volatility });

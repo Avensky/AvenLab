@@ -14,6 +14,7 @@ function CityChunkInstance({
   visuals: VisualAsset[];
 }) {
   return (
+    // Apply the backend chunk origin exactly once to every asset in it.
     <group position={chunk.origin}>
       {visuals.map((visual) => (
         <MapVisual
@@ -44,7 +45,6 @@ function MapVisual({
 
 export function CityGeometry() {
   const map = useWorldStore((state) => state.map);
-  console.log("CITY MAP:", map);
 
 
   if (!map) {

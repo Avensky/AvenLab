@@ -14,7 +14,7 @@
 // - build_suspension_contact(...)
 //     Casts a ray from wheel mount downward, computes compression, computes
 //     suspension force via compute_suspension_force(), then builds the wheel
-//     basis via steering::solve_steering() and kinematics::wheel_basis_world(),
+//     basis from the precomputed steering directions via kinematics::wheel_basis_world(),
 //     and finally computes slip components via kinematics::slip_components().
 //
 // Notes:
@@ -25,30 +25,11 @@
 
 use rapier3d::prelude::*;
 use rapier3d::prelude::vector;
-use crate::vehicle_state::{Vehicle, Wheel};
+use crate::vehicle_state::Wheel;
 use crate::aven_tire::steering::SteeringState;
-use crate::aven_tire::kinematics::{wheel_basis_world, slip_components};
-use crate::aven_tire::WheelId;
-use std::sync::atomic::{AtomicU32};
-
-static DEBUG_TICK: AtomicU32 = AtomicU32::new(0);
-
-// struct SuspensionState {
-//     compression: f32,
-//     compression_ratio: f32,
-//     suspension_vel: f32,
-// }
-
-// struct SuspensionForces {
-//     normal_force: f32,
-// }
-
-
-pub struct RawSuspension {
-    wheel_id: WheelId,
-    normal_force: f32,
-    compression: f32,
-}
+use crate::aven_tire::kinematics::{point_velocity, wheel_basis_world, slip_components};
+// Raycast reach tolerance in meters; extends only the ray maximum distance.
+pub(crate) const CONTACT_EPSILON: Real = 0.005;
 
 #[derive(Clone)]
 pub struct SuspensionContact {
@@ -68,10 +49,6 @@ pub struct SuspensionContact {
     // kinematics
     pub point_vel: Vector<Real>,
 
-    // friction
-    pub mu_lat: f32,
-    pub mu_long: f32,
-
     // wheel basis (world)
     pub forward: Vector<Real>,
     pub side: Vector<Real>,
@@ -82,7 +59,6 @@ pub struct SuspensionContact {
 
     // misc
     pub grounded: bool,
-    pub roll_factor: f32,
 }
 
 // ==========================================================
@@ -91,7 +67,7 @@ pub struct SuspensionContact {
 // - side ⟂ normal
 // ==========================================================
 #[inline]
-fn planar_wheel_basis(
+pub(crate) fn planar_wheel_basis(
     forward_world: Vector<Real>,
     ground_normal: Vector<Real>,
 ) -> (Vector<Real>, Vector<Real>) {
@@ -124,28 +100,65 @@ pub(crate) fn compute_suspension_force(
     k: f32,
     c: f32,
 ) -> f32 {
-    // Keep only a tiny noise deadzone. The previous 0.05 m/s deadzone removed
-    // damping exactly where the suspension should settle at rest.
-    let v = if suspension_vel.abs() < 0.01 {
-        0.0
-    } else {
-        suspension_vel
-    };
+    // Positive mount velocity is rebound. Damping must also act at first
+    // contact, when spring compression can still be zero.
+    let spring = k * compression.max(0.0);
+    // N/m * m - N*s/m * m/s = N. Never let a road contact pull downward.
+    (spring - c * suspension_vel).max(0.0)
+}
 
-    let spring = k * compression;
+/// The same ground measurement is used by force solving and final wheel poses.
+pub(crate) struct WheelGroundHit {
+    pub origin: Point<Real>,
+    pub hit_point: Point<Real>,
+    pub ground_normal: Vector<Real>,
+    pub compression: f32,
+    pub compression_ratio: f32,
+}
 
-    // The configured damping ratio already determines damping strength. A
-    // symmetric damper is smoother, and allowing it to cancel the full spring
-    // force during rebound prevents the chassis from being launched upward.
-    let damper = (-c * v).clamp(-spring, spring);
-
-    (spring + damper).max(0.0)
+pub(crate) fn cast_wheel_ground(
+    wheel: &Wheel,
+    body: &RigidBody,
+    query: &QueryPipeline,
+    bodies: &RigidBodySet,
+    colliders: &ColliderSet,
+    handle: RigidBodyHandle,
+) -> Option<WheelGroundHit> {
+    // Wheel.offset is a mount, transformed once from body space to world space.
+    let origin = body.position() * wheel.offset;
+    // This model supports a flat map and keeps suspension rays world-vertical.
+    // Tilting chassis axes must not rotate the ray into a building wall.
+    let dir = vector![0.0, -1.0, 0.0];
+    let full_droop = wheel.full_droop_length();
+    // Self and sensors are excluded. The road/building shapes in Rapier, not a
+    // frontend ground plane or a second fallback floor, determine the hit height.
+    let filter = QueryFilter::default()
+        .exclude_rigid_body(handle)
+        .exclude_sensors();
+    let (_, toi) = query.cast_ray(
+        bodies, colliders, &Ray::new(origin, dir),
+        full_droop + wheel.radius + CONTACT_EPSILON, true, filter,
+    )?;
+    if toi <= CONTACT_EPSILON {
+        // A ray starting inside a collider is not a usable suspension contact.
+        return None;
+    }
+    let suspension_length = (toi - wheel.radius).clamp(0.0, full_droop);
+    // ray distance includes the radius; subtract it once to get mount-to-center
+    // length. Spring compression is measured from ZERO-LOAD full droop.
+    let compression = (full_droop - suspension_length).clamp(0.0, wheel.max_length);
+    Some(WheelGroundHit {
+        origin,
+        hit_point: origin + dir * toi,
+        ground_normal: vector![0.0, 1.0, 0.0],
+        compression,
+        compression_ratio: compression / wheel.max_length.max(1.0e-6),
+    })
 }
 
 
 pub fn build_suspension_contact(
     wheel: &Wheel,
-    vehicle: &Vehicle,
     steering: &SteeringState,
     body_ro: &RigidBody,
     query: &QueryPipeline,
@@ -153,66 +166,27 @@ pub fn build_suspension_contact(
     colliders: &ColliderSet,
     handle: RigidBodyHandle,
     fz_ref: f32,
-    _dt: f32,
 ) -> Option<SuspensionContact> {
 
     let pos = body_ro.position();
     let rot = pos.rotation;
+
+    let hit = cast_wheel_ground(wheel, body_ro, query, bodies, colliders, handle)?;
+    let origin = hit.origin;
+    let hit_point = hit.hit_point;
+    let ground_n = hit.ground_normal;
+    let compression = hit.compression;
+    let compression_ratio = hit.compression_ratio;
+
     let linvel = *body_ro.linvel();
     let angvel = *body_ro.angvel();
-    let com = pos * body_ro.center_of_mass();
-
-    let origin = pos * (wheel.offset + vector![0.0, wheel.radius + 0.02, 0.0]);
-    let dir = vector![0.0, -1.0, 0.0];
-    let ground_n = vector![0.0, 1.0, 0.0];
-
-    let ray = Ray::new(origin, dir);
-    let max_dist = wheel.rest_length + wheel.max_length + wheel.radius + 0.15;
-
-    // let filter = QueryFilter::default().exclude_rigid_body(handle);
-    let filter = QueryFilter::default().exclude_rigid_body(handle);
-
-    let (_hit, toi) = query.cast_ray(
-        bodies,
-        colliders,
-        &ray,
-        max_dist,
-        true,
-        filter,
-    )?;
-
-    // if toi <= wheel.radius { return None; }
-    if toi <= 0.02 { return None; }
-
-    let hit_point = origin + dir * toi;
-    let suspension_length = (toi - 0.02) - wheel.radius;
-    let suspension_length = suspension_length.clamp(0.0, (wheel.rest_length + wheel.max_length) as f32);
-
-    let compression = ((wheel.rest_length + wheel.max_length) as f32 - suspension_length)
-        .clamp(0.0, wheel.max_length as f32);
-
-    let compression_ratio = compression / wheel.max_length;
-
-    let r = hit_point.coords - com.coords;
-    let point_vel = linvel + angvel.cross(&r);
-    let suspension_vel = point_vel.dot(&ground_n) as f32;
-
-    // let tick = DEBUG_TICK.fetch_add(1, Ordering::Relaxed);
-
-    // let should_debug = tick % 60 == 0; // roughly once per second at 60hz
-
-    // if should_debug {
-    //     println!(
-    //         "[susp] wheel={} toi={:.3} susp_len={:.3} rest={:.3} max={:.3} radius={:.3} comp={:.3}",
-    //         wheel.debug_id,
-    //         toi,
-    //         suspension_length,
-    //         wheel.rest_length,
-    //         wheel.max_length,
-    //         wheel.radius,
-    //         compression,
-    //     );
-    // }
+    let com = *body_ro.center_of_mass();
+    // Rapier returns WORLD COM. Applying pos * com again would manufacture
+    // angular point velocities that increase with distance across the city.
+    let point_vel = point_velocity(linvel, angvel, com, hit_point);
+    // The damper follows the mount, while the tire follows the contact point.
+    // These two velocities represent different mechanics; do not combine them.
+    let suspension_vel = point_velocity(linvel, angvel, com, origin).dot(&ground_n) as f32;
 
     let normal_force = compute_suspension_force(
         compression,
@@ -221,23 +195,11 @@ pub fn build_suspension_contact(
         wheel.damping as f32,
     );
 
-    // if should_debug {
-    //     println!(
-    //         "{} nf={:.0} comp={:.3}",
-    //         wheel.debug_id,
-    //         normal_force,
-    //         compression
-    //     );
-    // }
-
-    let max_nf = fz_ref * 2.2; // allow some load transfer, but not insanity
+    // Pre-transfer impact guard. The final per-wheel 1.5*reference support cap
+    // lives after the anti-roll pass in vehicle_forces. Neither cap applies a
+    // force here: this module only measures the candidate normal load.
+    let max_nf = fz_ref * 2.2;
     let normal_force = normal_force.min(max_nf);
-
-    // load-sensitive friction
-    let mu0 = vehicle.config.mu_base;
-    let k = vehicle.config.load_sensitivity;
-    let load_ratio = (normal_force / fz_ref).max(0.2);
-    let mu_lat = (mu0 * load_ratio.powf(-k)).clamp(mu0 * 0.6, mu0 * 1.1);
 
     let (raw_forward, _) = wheel_basis_world(&wheel.debug_id, &rot, &steering.fl, &steering.fr);
 
@@ -245,9 +207,6 @@ pub fn build_suspension_contact(
     let (forward, side) = planar_wheel_basis(raw_forward, ground_n);
 
     let (v_long, v_lat) = slip_components(point_vel, forward, side);
-
-    let steer_intensity = vehicle.steer.abs().clamp(0.0, 1.0);
-    let roll_factor = 0.30 * (1.0 - steer_intensity * 0.65);
 
     Some(SuspensionContact {
         wheel_id: wheel.debug_id.clone(),
@@ -258,14 +217,77 @@ pub fn build_suspension_contact(
         compression_ratio,
         suspension_vel,
         normal_force,
-        mu_lat,
-        mu_long: mu0,
         forward,
         side,
         v_long: v_long as f32,
         v_lat: v_lat as f32,
         grounded: true,
-        roll_factor: roll_factor as f32,
         point_vel: point_vel,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn wheel() -> Wheel {
+        Wheel {
+            debug_id: "FL".into(), offset: point![0.0, 0.0, 0.0],
+            rest_length: 0.18, max_length: 0.12, radius: 0.33,
+            grounded: false, normal_force: 0.0, world_center: [0.0; 3],
+            world_rotation: [0.0, 0.0, 0.0, 1.0], wheel_speed: 0.0, steer_angle: 0.0,
+            stiffness: 48295.38, damping: 8255.57, drive: false, steer: true,
+            compression: 0.0, compression_ratio: 0.0,
+            tire_state: crate::aven_tire::state::TireState::Grip,
+        }
+    }
+
+    #[test]
+    fn sag_supports_the_static_wheel_load() {
+        let load = 1280.0 * 9.81 / 4.0;
+        let sag = 0.065;
+        let force = compute_suspension_force(sag, 0.0, load / sag, 8255.57);
+        assert!((force - load).abs() < 0.001);
+    }
+
+    #[test]
+    fn damping_opposes_motion_including_first_contact() {
+        let resting = compute_suspension_force(0.065, 0.0, 48295.38, 8255.57);
+        assert!(compute_suspension_force(0.065, -0.1, 48295.38, 8255.57) > resting);
+        assert!(compute_suspension_force(0.065, 0.1, 48295.38, 8255.57) < resting);
+        assert!(compute_suspension_force(0.0, -0.1, 48295.38, 8255.57) > 0.0);
+        assert_eq!(compute_suspension_force(0.065, 1.0, 48295.38, 8255.57), 0.0);
+    }
+
+    #[test]
+    fn grounded_wheel_bottom_matches_the_actual_ground_hit() {
+        let mut bodies = RigidBodySet::new();
+        let mut colliders = ColliderSet::new();
+        colliders.insert(ColliderBuilder::cuboid(1000.0, 0.05, 1000.0)
+            .translation(vector![0.0, -0.05, 0.0]).build());
+        let mut query = QueryPipeline::new();
+        query.update(&colliders);
+        let wheel = wheel();
+        for z in [0.0, 400.0] {
+            let handle = bodies.insert(RigidBodyBuilder::dynamic()
+                .translation(vector![5.0, 0.565, z]).build());
+            let hit = cast_wheel_ground(&wheel, &bodies[handle], &query, &bodies, &colliders, handle).unwrap();
+            let center = hit.hit_point + hit.ground_normal * wheel.radius;
+            assert!((center.y - wheel.radius).abs() < 1.0e-5);
+            assert!((hit.compression - 0.065).abs() < 1.0e-5);
+        }
+    }
+
+    #[test]
+    fn wheel_above_full_droop_has_no_ground_contact() {
+        let mut bodies = RigidBodySet::new();
+        let handle = bodies.insert(RigidBodyBuilder::dynamic()
+            .translation(vector![0.0, 0.70, 0.0]).build());
+        let mut colliders = ColliderSet::new();
+        colliders.insert(ColliderBuilder::cuboid(10.0, 0.05, 10.0)
+            .translation(vector![0.0, -0.05, 0.0]).build());
+        let mut query = QueryPipeline::new();
+        query.update(&colliders);
+        assert!(cast_wheel_ground(&wheel(), &bodies[handle], &query, &bodies, &colliders, handle).is_none());
+    }
 }

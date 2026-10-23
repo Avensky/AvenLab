@@ -1,21 +1,18 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, } from "react";
 import type { PropsWithChildren } from "react";
 import { Group, MathUtils, Object3D, Quaternion, SpotLight, Vector3 } from "three";
-import { useFrame, useThree } from "@react-three/fiber";
+import { useFrame } from "@react-three/fiber";
 import { useGLTF } from "@react-three/drei";
 
-import { useNetworkStore, useInputStore, useGameStore, useUIStore } from "../store";
-import { usePhysicsInterpolator } from "../hooks/usePhysicsInterpolator";
+import { useNetworkStore, useInputStore, useUIStore } from "../store";
+import { useVehiclePhysicsInterpolator } from "../hooks/usePhysicsInterpolator";
 import { hasFlag, VehicleFlags } from "../store/tools/inputMasks";
 import { setupVehicleParts } from "./tools/setupVehicleParts";
 
 const MODEL_PATH = "/models/vehicles/ae86.glb";
 
-// The exported body origin is on the bottom of the chassis, while the backend
-// rigid-body pose is the center of its 0.70 m-tall box collider. Move only the
-// visual body down by the collider half-height; the world-space wheel poses
-// from the backend remain unchanged.
-const CHASSIS_VISUAL_OFFSET_Y = -0.50;
+// Runtime body and wheel poses are backend world coordinates. Exported model
+// transforms stay in the asset; a road height mismatch is fixed in map data.
 
 const PARTS = {
   root: "VEHICLE_ROOT",
@@ -53,7 +50,6 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
   ref: React.Ref<Group>
 ) {
   const { scene } = useGLTF(MODEL_PATH);            //load the model and get the scene
-  const camera = useThree((state) => state.camera);
   const isVehiclePreview = useUIStore(
     (state) =>
       state.screen === "sandbox_setup" ||
@@ -84,13 +80,8 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
   const rlBlinkerRef = useRef<SpotLight | null>(null);
   const rrBlinkerRef = useRef<SpotLight | null>(null);
 
-  const snapshot = useNetworkStore((s) => s.snapshot);
-  const { setSnapshot, getInterpolated } = usePhysicsInterpolator(100);
-
-  useEffect(() => {
-    if (!snapshot) return;
-    for (const entity of snapshot.entities) { setSnapshot(entity.id, entity); }
-  }, [snapshot, setSnapshot]);
+  // One completed backend timeline drives both the body and world-space wheels.
+  const { getInterpolated } = useVehiclePhysicsInterpolator(entityId);
 
   const { clonesByGroup, renderedGroups } = useMemo(() => {
     return setupVehicleParts({
@@ -139,10 +130,10 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
 
   const wheels = useMemo(() => {
     return [
-      clonesByGroup.WHEEL_FR?.[PARTS.wheels.fr] ?? null,
       clonesByGroup.WHEEL_FL?.[PARTS.wheels.fl] ?? null,
-      clonesByGroup.WHEEL_RR?.[PARTS.wheels.rr] ?? null,
+      clonesByGroup.WHEEL_FR?.[PARTS.wheels.fr] ?? null,
       clonesByGroup.WHEEL_RL?.[PARTS.wheels.rl] ?? null,
+      clonesByGroup.WHEEL_RR?.[PARTS.wheels.rr] ?? null,
     ];
   }, [clonesByGroup]);
 
@@ -235,9 +226,7 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
   // snapshot interpolation does not reset the visible wheel rotation.
   const wheelSpinAngles = useRef([0, 0, 0, 0]);
   const wheelBaseQuaternion = useRef(new Quaternion());
-  const wheelSteerQuaternion = useRef(new Quaternion());
   const wheelSpinQuaternion = useRef(new Quaternion());
-  const steeringAxis = useRef(new Vector3(0, 1, 0));
   const wheelAxle = useRef(new Vector3(1, 0, 0));
 
   useFrame((_, delta) => {
@@ -246,7 +235,6 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
     if (isVehiclePreview) return;
 
     const inputState = useInputStore.getState();
-    const gameState = useGameStore.getState();
     const networkState = useNetworkStore.getState();
 
     const localPlayerId = networkState.playerId;
@@ -260,16 +248,11 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
 
     const input = inputState.input;
     const controls = inputState.controls;
-    const camMode = gameState.camera;
-    const isEditor = gameState.editor;
 
     const group = vehicleGroupRef.current;
 
     group.position.set(...interp.position);
     group.quaternion.set(...interp.rotation);
-
-    // Temporary visual correction only.
-    // group.position.set(0, 0, 0);
 
     // const wheelMap = {
     //   fl: wheels[0],
@@ -289,7 +272,8 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
 
     interp.wheels?.forEach((wheel) => {
 
-      const index = indexById[wheel.id];
+      const wheelId = wheel.id.toLowerCase() as keyof typeof indexById;
+      const index = indexById[wheelId];
       const wheelObject = wheels[index];
       const restRotation = wheelRestRotations[index];
 
@@ -303,13 +287,8 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
         Math.PI * 2
       );
 
-      // Match DebugWheelVisualizer's steering sign and spin axis:
-      // chassis rotation -> steering -> rolling spin -> GLB rest rotation.
+      // Backend owns wheel position and steering orientation.
       wheelBaseQuaternion.current.set(...wheel.rotation);
-      wheelSteerQuaternion.current.setFromAxisAngle(
-        steeringAxis.current,
-        -(wheel.steer_angle ?? 0)
-      );
       wheelSpinQuaternion.current.setFromAxisAngle(
         wheelAxle.current,
         wheelSpinAngles.current[index]
@@ -317,7 +296,6 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
 
       wheelObject.quaternion
         .copy(wheelBaseQuaternion.current)
-        .multiply(wheelSteerQuaternion.current)
         .multiply(wheelSpinQuaternion.current)
         .multiply(restRotation);
     });
@@ -367,28 +345,12 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
     if (rlBlinkerRef.current) rlBlinkerRef.current.visible = (hazards || blinkerLeft) && blinkOn;
     if (rrBlinkerRef.current) rrBlinkerRef.current.visible = (hazards || blinkerRight) && blinkOn;
 
-    if (isLocalPlayer && !isEditor && (camMode === "FIRST_PERSON" || camMode === "DEFAULT" || camMode === "BIRDS_EYE")) {
-      const offset = new Vector3();
-
-      if (camMode === "FIRST_PERSON") offset.set(0.29, 0.97, -0.01);
-      if (camMode === "DEFAULT") offset.set(0, 1.75, 3.85);
-      if (camMode === "BIRDS_EYE") offset.set(0, 7, 12);
-
-      // offset.applyQuaternion(group.quaternion).add(group.position);
-      // camera.position.lerp(offset, delta * 5);
-
-      const target = group.position.clone();
-      target.y += 1.2;
-      camera.lookAt(target);
-    }
   });
 
   return (
     <>
       <group ref={vehicleGroupRef}>
-          <group
-            position={[0, isVehiclePreview ? 0 : CHASSIS_VISUAL_OFFSET_Y, 0]}
-          >
+          <group>
             {renderedGroups.BODY}
           </group>
         {isVehiclePreview &&

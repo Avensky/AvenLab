@@ -1,4 +1,4 @@
-import { useSelectionStore, useUIStore } from "../../store";
+import { useGameStore, useSelectionStore, useUIStore } from "../../store";
 import { useSignalReconStore } from "../../store/signalReconStore";
 import { GameButton } from "../../components/GameButton";
 import { socket } from "../../net/rustSocket";
@@ -62,6 +62,9 @@ export function SandboxSetup({collapsed, setCollapsed}: Sandbox) {
         );
 
         setScreen("sandbox");
+        useGameStore.setState({
+            camera: "DEFAULT",
+        });
     }, [
         canStartSandbox,
         map.id,
