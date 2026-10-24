@@ -68,7 +68,7 @@ pub async fn start_websocket_server(
                             // This pair stays on one tick even if a newer frame is
                             // published while the first socket send is in flight.
                             if ws_write.send(Message::Text(frame.snapshot.clone())).await.is_err() { break; }
-                            if ws_write.send(Message::Text(frame.debug.clone())).await.is_err() { break; }
+                            if !frame.debug.is_empty() && ws_write.send(Message::Text(frame.debug.clone())).await.is_err() { break; }
                         }
                     }
                 }

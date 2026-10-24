@@ -1,6 +1,7 @@
 import { useProgress } from "@react-three/drei";
 import { useUIStore } from "../store";
 import { useEffect, useMemo } from "react";
+import { isAssetLoadingComplete } from "./tools/assetLoading";
 
 export function ModeLoadingScreen() {
   const { active, progress, item, loaded, total } = useProgress();
@@ -9,22 +10,24 @@ export function ModeLoadingScreen() {
   const loadingLabel = useUIStore((s) => s.loadingLabel);
   const finishModeLoading = useUIStore((s) => s.finishModeLoading);
 
+  const assetsReady = isAssetLoadingComplete({ active, progress, total });
+
   const shownProgress = useMemo(() => {
-    if (!isModeLoading) return 100;
+    if (!isModeLoading || assetsReady) return 100;
     return Math.max(1, Math.min(100, progress));
-  }, [isModeLoading, progress]);
+  }, [isModeLoading, assetsReady, progress]);
 
   useEffect(() => {
     if (!isModeLoading) return;
 
-    if (!active && progress >= 100) {
+    if (assetsReady) {
       const t = window.setTimeout(() => {
         finishModeLoading();
       }, 900);
 
       return () => window.clearTimeout(t);
     }
-  }, [active, progress, isModeLoading, finishModeLoading]);
+  }, [assetsReady, isModeLoading, finishModeLoading]);
 
   if (!isModeLoading) return null;
 

@@ -1,3 +1,4 @@
+import { useRenderSettingsStore } from "../store/renderSettingsStore";
 // Brz.tsx
 
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
@@ -78,7 +79,8 @@ export const Brz = forwardRef<Group, BrzProps>(function Brz(
     const tintFirstPerson = new Color(0xffffff);        // Clear tint for first-person view
     const tintExterior = new Color(0x556677);           // Blue-gray tint (customize as needed)
 
-    const { scene } = useGLTF(MODEL_PATH);              // Load the car model
+    const vehicleLights = useRenderSettingsStore((s) => s.vehicleLights);
+      const { scene } = useGLTF(MODEL_PATH);              // Load the car model
     const isVehiclePreview = useUIStore(
         (state) =>
             state.screen === "sandbox_setup" ||
@@ -129,6 +131,7 @@ export const Brz = forwardRef<Group, BrzProps>(function Brz(
     }, [scene]);
 
     useEffect(() => {
+        if (!vehicleLights) return;
         const visualGroup = visualGroupRef.current;
         if (!visualGroup) return;
 
@@ -181,7 +184,7 @@ export const Brz = forwardRef<Group, BrzProps>(function Brz(
                 lightRef.current = null;
             });
         };
-    }, []);
+    }, [vehicleLights]);
 
     useEffect(() => {
         const missingWheelNames = (["FL", "FR", "RL", "RR"] as const)
@@ -325,7 +328,7 @@ export const Brz = forwardRef<Group, BrzProps>(function Brz(
                 t
             );
             sharedGlassMaterial.color.lerp(targetColor, t);
-            sharedGlassMaterial.needsUpdate = true;
+
         }
     })
 
@@ -353,5 +356,4 @@ export const Brz = forwardRef<Group, BrzProps>(function Brz(
     );
 })
 
-useGLTF.preload(MODEL_PATH);
 export default Brz;

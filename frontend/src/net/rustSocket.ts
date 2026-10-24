@@ -3,6 +3,9 @@ import { useNetworkStore, type PhysicsSnapshot } from "../store/networkStore";
 import { useInputStore } from "../store/inputStore";
 import { useWorldStore, type MapSnapshot } from "../store/worldStore";
 
+import { performanceRecorder as recorder } from "../performance/measurements";
+const packetEncoder = new TextEncoder();
+
 let socket: WebSocket | null = null;
 let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -29,6 +32,7 @@ function acknowledgeInput(seq: unknown, receivedMs: number) {
   if (sentMs === undefined) return; // Older servers or an untracked connection.
   acknowledgedInputSeq = seq;
   inputAckMs = Math.max(0, receivedMs - sentMs);
+  recorder.record("inputAckMs", inputAckMs, receivedMs);
   // The newest held-state ack supersedes older packets, including dropped
   // intermediate intent. Delete by insertion order, which also handles u32 wrap.
   for (const pendingSeq of pendingInputTimes.keys()) {
@@ -152,10 +156,14 @@ export function connectRustServer(): WebSocket {
     if (!message || typeof message !== "object") return;
     packetDiagnostics.decodeMs = Math.max(0, performance.now() - receivedMs);
     packetDiagnostics.worstDecodeMs = Math.max(packetDiagnostics.worstDecodeMs, packetDiagnostics.decodeMs);
+    if (recorder.enabled || recorder.capturing) recorder.packet(message.type, packetEncoder.encode(event.data).byteLength, packetDiagnostics.decodeMs, receivedMs);
     const state = useNetworkStore.getState();
     switch (message.type) {
       case "pong":
-        if (pingSentMs !== null) state.setPingMs(receivedMs - pingSentMs);
+        if (pingSentMs !== null) {
+          state.setPingMs(receivedMs - pingSentMs);
+          recorder.record("rttMs", receivedMs - pingSentMs, receivedMs);
+        }
         pingSentMs = null;
         return;
       case "welcome":
@@ -171,6 +179,11 @@ export function connectRustServer(): WebSocket {
         // Preserve simulation_time_s/tick_dt_s instead of rebuilding tick/entities only.
         if (isSnapshot(message.data)) {
           packetDiagnostics.snapshotChars = typeof event.data === "string" ? event.data.length : 0;
+          const previousReceipt = state.snapshot?.received_at_ms;
+          if (previousReceipt !== undefined) recorder.record("arrivalMs", receivedMs - previousReceipt, receivedMs);
+          recorder.record("serverLockMs", message.data.server_timing?.lock_ms, receivedMs);
+          recorder.record("serverPhysicsMs", message.data.server_timing?.physics_ms, receivedMs);
+          recorder.record("serverWorkMs", message.data.server_timing?.work_ms, receivedMs);
           state.setSnapshot(message.data, receivedMs);
           const me = message.data.entities.find((entity: PhysicsSnapshot["entities"][number]) => entity.id === state.playerId);
           acknowledgeInput(me?.last_input_seq, performance.now());

@@ -1,4 +1,6 @@
 import { Suspense } from "react";
+import { AssetBoundary } from "../../components/debugger/AssetBoundary";
+import { useRenderSettingsStore } from "../../store/renderSettingsStore";
 import {
   Environment,
   Grid,
@@ -10,6 +12,7 @@ import { VehiclePreviewModel } from "./VehiclePreviewModel";
 import { VehicleRotatingCamera } from "../../effects/VehicleRotatingCamera";
 
 export function VehiclePreview() {
+  const reflections = useRenderSettingsStore((s) => s.reflections);
   return (
     <>
       <color attach="background" args={["#020617"]} />
@@ -20,10 +23,10 @@ export function VehiclePreview() {
       <directionalLight position={[5, 8, 5]} intensity={2.4} />
       <directionalLight position={[-5, 4, -5]} intensity={0.8} />
 
-      <Suspense fallback={null}>
+      <AssetBoundary fallback={null}><Suspense fallback={null}>
         <VehiclePreviewModel />
-        <Environment preset="night" />
-      </Suspense>
+        {reflections && <Environment preset="night" />}
+      </Suspense></AssetBoundary>
 
       <Grid
         args={[20, 20]}

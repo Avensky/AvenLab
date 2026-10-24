@@ -63,7 +63,13 @@ async fn main() {
         phys.set_debug_flags(requested_debug);
 
         // PhysicsWorld owns 120 Hz force substeps and the final pose refresh.
+        let physics_started = std::time::Instant::now();
         phys.step(SIMULATION_DT);
+        game.server_timing = crate::state::ServerTiming {
+            lock_ms,
+            physics_ms: physics_started.elapsed().as_secs_f64() * 1000.0,
+            work_ms: tick_started.elapsed().as_secs_f64() * 1000.0,
+        };
         game.tick += 1;
         // Snapshot and debug are built together from this completed tick. A
         // slow writer keeps only the latest pair, while setup messages stay FIFO.
