@@ -40,15 +40,21 @@ fn steering_config(vehicle: &Vehicle) -> SteeringConfig {
     }
 }
 
-fn wheel_pose_rotation(rotation: Rotation<Real>, wheel: &str, steer_angle: f32) -> [f32; 4] {
-    // Backend publishes chassis orientation plus the actual wheel steer angle.
-    // Spin is a visual rad/s value; renderers must not add steering a second time.
-    let steer = if matches!(wheel, "FL" | "FR") {
-        Rotation::from_axis_angle(&Vector::y_axis(), steer_angle as Real)
+fn wheel_pose_rotation(
+    rotation: Rotation<Real>, forward: Vector<Real>, ground_normal: Option<Vector<Real>>,
+    steer_angle: f32,
+) -> [f32; 4] {
+    // This ray-wheel solver has no camber linkage. Grounded wheels use the
+    // contact frame instead of inheriting the body's entire roll/pitch. Their
+    // centers, orientation and diagnostics now agree about the support plane.
+    // Airborne wheels retain chassis orientation and steering; never pin them.
+    let q = if let Some(normal) = ground_normal {
+        let (forward, side) = planar_wheel_basis(forward, normal);
+        let basis = rapier3d::na::Matrix3::from_columns(&[side, normal, forward]);
+        Rotation::from_rotation_matrix(&rapier3d::na::Rotation3::from_matrix_unchecked(basis))
     } else {
-        Rotation::identity()
+        rotation * Rotation::from_axis_angle(&Vector::y_axis(), steer_angle)
     };
-    let q = rotation * steer;
     [q.i, q.j, q.k, q.w]
 }
 
@@ -176,7 +182,11 @@ impl PhysicsWorld {
                 WheelId::RL, WheelId::RR, &mut loads, &compression,
                 vehicle.config.arb_rear, fz_ref,
             );
-            for load in loads.values_mut() { *load = load.clamp(0.0, fz_ref * 1.5); }
+            // Keep the axle load conserved after ARB redistribution. Clipping
+            // each outside tire to 1.5*reference discarded needed support in a
+            // hard turn, bottoming the chassis instead of resisting roll. The
+            // contact builder already bounds raw impact load; ARB is bounded
+            // and cannot make either side negative.
             // The same FINAL Fz goes to suspension impulse, friction budget and
             // telemetry. Anti-roll redistributes spring support; do not apply a
             // second independent ARB force/torque as well as these changed loads.
@@ -306,7 +316,10 @@ impl PhysicsWorld {
                 wheel.steer_angle = if wheel.steer {
                     local_forward.x.atan2(local_forward.z)
                 } else { 0.0 };
-                wheel.world_rotation = wheel_pose_rotation(pos.rotation, &wheel.debug_id, wheel.steer_angle);
+                wheel.world_rotation = wheel_pose_rotation(
+                    pos.rotation, raw_forward, ground.as_ref().map(|hit| hit.ground_normal),
+                    wheel.steer_angle,
+                );
                 let normal = vector![0.0, 1.0, 0.0];
                 let (forward, side) = planar_wheel_basis(raw_forward, normal);
                 let velocity = kinematics::point_velocity(
@@ -397,6 +410,32 @@ mod tests {
     use crate::vehicle_setup::BRZ;
 
     #[test]
+    fn grounded_wheels_follow_the_contact_plane_instead_of_chassis_roll() {
+        for roll in [-0.15, 0.15] {
+            for steer in [-0.25, 0.25] {
+                let chassis = Rotation::from_euler_angles(0.08, 0.7, roll);
+                let wheel_forward = chassis * Rotation::from_axis_angle(&Vector::y_axis(), steer) * Vector::z();
+                let normal = Vector::y();
+                let q = wheel_pose_rotation(chassis, wheel_forward, Some(normal), steer);
+                let q = Rotation::from_quaternion(rapier3d::na::Quaternion::new(q[3], q[0], q[1], q[2]));
+                assert!((q * Vector::y() - normal).norm() < 1.0e-5);
+                let (expected, _) = planar_wheel_basis(wheel_forward, normal);
+                assert!((q * Vector::z() - expected).norm() < 1.0e-5);
+            }
+        }
+    }
+
+    #[test]
+    fn airborne_wheels_keep_the_body_pose_and_steering() {
+        let chassis = Rotation::from_euler_angles(0.2, 0.7, -0.3);
+        let steer = -0.25;
+        let expected = chassis * Rotation::from_axis_angle(&Vector::y_axis(), steer);
+        let q = wheel_pose_rotation(chassis, expected * Vector::z(), None, steer);
+        let q = Rotation::from_quaternion(rapier3d::na::Quaternion::new(q[3], q[0], q[1], q[2]));
+        assert!((q.inverse() * expected).angle() < 1.0e-5);
+    }
+
+    #[test]
     fn wheel_snapshots_and_debug_use_the_final_chassis_pose() {
         let mut world = PhysicsWorld::new();
         world.debug_flags = DebugFlags::CHASSIS | DebugFlags::WHEELS | DebugFlags::RAYS;
@@ -418,11 +457,12 @@ mod tests {
         world.query_pipeline.update(&world.colliders);
         world.refresh_vehicle_wheel_snapshots();
 
-        // Emulate a new integrated pose. Refresh must use it without retaining
-        // any wheel center or rotation from the preceding body pose.
+        // Emulate a new integrated pose with body roll. Refresh must use it
+        // without making the grounded wheels inherit that body tilt.
         world.bodies[handle].set_translation(vector![20.0, height, 405.0], true);
         let yaw = Rotation::from_axis_angle(&Vector::y_axis(), 0.7);
-        world.bodies[handle].set_rotation(yaw, true);
+        let roll = Rotation::from_axis_angle(&Vector::z_axis(), 0.03);
+        world.bodies[handle].set_rotation(yaw * roll, true);
         world.debug_overlay.clear();
         world.refresh_vehicle_wheel_snapshots();
 
@@ -434,9 +474,8 @@ mod tests {
             assert!((snapshot.position[2] - mount.z).abs() < 1.0e-4);
             assert!((snapshot.position[1] - snapshot.radius).abs() < 1.0e-4);
             assert!(snapshot.grounded);
-            let q = body.rotation();
-            let dot = snapshot.rotation[0] * q.i + snapshot.rotation[1] * q.j
-                + snapshot.rotation[2] * q.k + snapshot.rotation[3] * q.w;
+            let dot = snapshot.rotation[0] * yaw.i + snapshot.rotation[1] * yaw.j
+                + snapshot.rotation[2] * yaw.k + snapshot.rotation[3] * yaw.w;
             assert!(dot.abs() > 1.0 - 1.0e-5);
             let debug = world.debug_overlay.wheels.iter().find(|debug| debug.id == wheel.debug_id).unwrap();
             assert_eq!(debug.center, snapshot.position);

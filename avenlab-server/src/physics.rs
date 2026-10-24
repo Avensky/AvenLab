@@ -491,8 +491,6 @@ impl PhysicsWorld {
 
         let spawn_y =
             suspension_spawn_y.max(minimum_chassis_y);
-        let volume = (hx * 2.0) * (hy * 2.0) * (hz * 2.0);  // m^3, full cuboid volume
-        let density = config.mass / volume;                 // ρ = m / V
 
         // Rigid body
         let rb = RigidBodyBuilder::dynamic()
@@ -500,6 +498,7 @@ impl PhysicsWorld {
             .rotation(vector![0.0, spawn_yaw, 0.0])
             .linear_damping(config.linear_damping)
             .angular_damping(config.angular_damping)
+            .additional_mass_properties(config.mass_properties())
             .ccd_enabled(true)
             .build();
 
@@ -507,13 +506,15 @@ impl PhysicsWorld {
         let [cx, cy, cz] = config.chassis_com_offset;
 
         let collider = ColliderBuilder::cuboid(hx, hy, hz)
-            .translation(vector![cx, cy, cz]) // Moves collision geometry and its density-derived COM.
+            .translation(vector![cx, cy, cz])
             .collision_groups(InteractionGroups::new(
                 GROUP_CHASSIS,
                 GROUP_GROUND,
             ))
             .active_events(ActiveEvents::empty())
-            .density(density)
+            // The body above owns mass/COM/inertia. A second density-derived
+            // mass here would raise the COM again and double the vehicle mass.
+            .density(0.0)
             // Average(0, road friction 1.2) is still 0.6. Min wins over the
             // map's default Average rule, making chassis contacts frictionless.
             // Rapier owns collision normals; the custom tire solver owns grip.
@@ -525,6 +526,9 @@ impl PhysicsWorld {
         let handle = self.bodies.insert(rb); // insert rigid body
 
         self.colliders.insert_with_parent(collider, handle, &mut self.bodies); // attach to body
+        // Custom suspension runs before Rapier's next step. Make mass/COM valid
+        // now instead of giving that first force solve zero reference load.
+        self.bodies[handle].recompute_mass_properties_from_colliders(&self.colliders);
         self.body_to_player.insert(handle, id.clone()); // map body to player ID
         self.register_vehicle(handle, config); // setup wheels
 
@@ -691,6 +695,89 @@ mod tests {
                 assert!((hit.hit_point.y - 0.32).abs() < 1.0e-5);
                 assert!((hit.compression - config.suspension_sag).abs() < 1.0e-5);
             }
+        }
+    }
+
+    #[test]
+    fn handling_com_does_not_move_the_collision_box_or_double_vehicle_mass() {
+        for id in ["ae86", "gt86", "brz", "camaro", "supra", "tank"] {
+            let mut world = flat_world();
+            let handle = world.spawn_vehicle_for_player("test".into(), [0.0; 3], id, "red").unwrap();
+            let config = world.vehicles["test"].config;
+            let body = &world.bodies[handle];
+            assert!((body.mass() - config.mass).abs() < config.mass * 1.0e-5);
+            assert!((body.center_of_mass().y - 0.32 - config.center_of_mass_height).abs() < 1.0e-5);
+            assert!((body.translation().y - config.nominal_chassis_y(0.32)).abs() < 1.0e-5);
+            let collider = &world.colliders[body.colliders()[0]];
+            assert!((collider.translation().y - body.translation().y
+                - config.chassis_com_offset[1]).abs() < 1.0e-5);
+        }
+    }
+
+    #[derive(Debug)]
+    struct TurnSample {
+        peak_roll_deg: f32,
+        contact_loss_frames: usize,
+        peak_lateral_g: f32,
+    }
+
+    fn cornering_sample(id: &str, steer: f32, legacy_com: bool) -> TurnSample {
+        let mut world = flat_world();
+        let handle = world.spawn_vehicle_for_player("test".into(), [0.0; 3], id, "red").unwrap();
+        if legacy_com {
+            let mut config = world.vehicles["test"].config;
+            config.center_of_mass_height = config.nominal_chassis_y(0.0) + config.chassis_com_offset[1];
+            world.bodies[handle].set_additional_mass_properties(config.mass_properties(), true);
+            world.bodies[handle].recompute_mass_properties_from_colliders(&world.colliders);
+        }
+        for _ in 0..120 { world.step(SIMULATION_DT); }
+        world.bodies[handle].set_linvel(vector![0.0, 0.0, 20.0], true);
+        world.vehicles.get_mut("test").unwrap().steer = steer;
+        let mut result = TurnSample { peak_roll_deg: 0.0, contact_loss_frames: 0, peak_lateral_g: 0.0 };
+        for _ in 0..300 {
+            let before = *world.bodies[handle].linvel();
+            world.step(SIMULATION_DT);
+            let body = &world.bodies[handle];
+            let right = body.rotation() * Vector::x();
+            let up = body.rotation() * Vector::y();
+            let roll = right.y.atan2(up.y).to_degrees().abs();
+            result.peak_roll_deg = result.peak_roll_deg.max(roll);
+            result.contact_loss_frames += usize::from(world.wheels[&handle].iter().any(|w| !w.grounded));
+            let acceleration = (body.linvel() - before) / SIMULATION_DT;
+            let lateral_g = (body.rotation().inverse() * acceleration).x.abs() / 9.81;
+            result.peak_lateral_g = result.peak_lateral_g.max(lateral_g);
+        }
+        result
+    }
+
+    #[test]
+    fn sports_car_turns_reduce_roll_in_both_directions_without_losing_contact() {
+        for id in ["ae86", "gt86", "brz", "camaro", "supra"] {
+            for steer in [-0.2, 0.2] {
+                let old = cornering_sample(id, steer, true);
+                let new = cornering_sample(id, steer, false);
+                println!("{id} steer={steer}: old={old:?}, new={new:?}");
+                assert!(new.peak_roll_deg.is_finite());
+                assert!(new.peak_roll_deg < old.peak_roll_deg * 0.75, "{id}: {old:?} -> {new:?}");
+                assert!(new.peak_roll_deg < 4.0, "{id}: {new:?}");
+                assert_eq!(new.contact_loss_frames, 0, "{id}: {new:?}");
+                assert!(new.peak_lateral_g > 0.3, "{id}: turn did not exercise lateral grip");
+            }
+        }
+    }
+
+    #[test]
+    fn impact_guard_still_settles_a_half_meter_drop_without_freezing_roll() {
+        for id in ["ae86", "gt86", "brz", "camaro", "supra", "tank"] {
+            let mut world = flat_world();
+            let handle = world.spawn_vehicle_for_player("test".into(), [0.0; 3], id, "red").unwrap();
+            let nominal_y = world.vehicles["test"].config.nominal_chassis_y(0.32);
+            world.bodies[handle].set_translation(vector![0.0, nominal_y + 0.5, 0.0], true);
+            for _ in 0..300 { world.step(SIMULATION_DT); }
+            let body = &world.bodies[handle];
+            assert!((body.translation().y - nominal_y).abs() < 0.03, "{id}");
+            assert!((body.rotation() * Vector::y()).y > 0.99, "{id}");
+            assert!(world.wheels[&handle].iter().all(|w| w.grounded), "{id}");
         }
     }
 

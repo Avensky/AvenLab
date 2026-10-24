@@ -195,9 +195,9 @@ pub fn build_suspension_contact(
         wheel.damping as f32,
     );
 
-    // Pre-transfer impact guard. The final per-wheel 1.5*reference support cap
-    // lives after the anti-roll pass in vehicle_forces. Neither cap applies a
-    // force here: this module only measures the candidate normal load.
+    // Pre-transfer impact guard. Do not clip again after ARB redistribution:
+    // doing so would discard axle support when the outside tire takes load.
+    // This module measures candidate normal load; it never applies a force.
     let max_nf = fz_ref * 2.2;
     let normal_force = normal_force.min(max_nf);
 

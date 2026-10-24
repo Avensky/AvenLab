@@ -151,10 +151,9 @@ impl PhysicsWorld {
 //   7. Driver assists
 //
 // Derived configs list only their defining overrides and inherit the rest.
-// Keep these handling numbers while auditing geometry/timing. A lower sports-car
-// COM/ride height needs an explicit geometry choice, not extra grip reductions.
-// Current COM offsets also move the collider. See VehicleConfig::nominal_chassis_y
-// before editing wheel_y, radius, travel or sag: all affect the body ride height.
+// center_of_mass_height controls roll without changing ride height or collider
+// geometry. wheel_y, radius, travel and sag still determine body ride height;
+// keep the GLB's static import registration separate from handling tuning.
 // =============================================================================
 
 // -----------------------------------------------------------------------------
@@ -171,6 +170,7 @@ pub const AE86: VehicleConfig = VehicleConfig {
     // Physical dimensions
     chassis_half_extents: [0.86, 0.35, 2.10],
     chassis_com_offset: [0.0, 0.0, 0.0],
+    center_of_mass_height: 0.50,
     // Axle centers in chassis-local Z. Their difference is the wheelbase.
     front_axle_z: 1.27,
     rear_axle_z: -1.11,
@@ -220,6 +220,7 @@ pub const GT86: VehicleConfig = VehicleConfig {
 
     // Physical dimensions
     chassis_half_extents: [1.00, 0.35, 2.10],
+    center_of_mass_height: 0.46,
     front_axle_z: 1.365,
     rear_axle_z: -1.205,
     front_track_width: 1.52,
@@ -264,6 +265,7 @@ pub const CAMARO: VehicleConfig = VehicleConfig {
 
     // Physical dimensions
     chassis_half_extents: [1.05, 0.40, 2.35],
+    center_of_mass_height: 0.53,
     front_axle_z: 1.485,
     rear_axle_z: -1.325,
     front_track_width: 1.60,
@@ -292,6 +294,7 @@ pub const SUPRA: VehicleConfig = VehicleConfig {
     // The wide-body GLB measures about 2.03 m x 1.29 m x 4.51 m overall.
     chassis_half_extents: [1.00, 0.36, 2.20],
     chassis_com_offset: [0.0, -0.08, 0.0],
+    center_of_mass_height: 0.46,
 
     // These axle centers and tracks come directly from supra_2020.glb so the
     // backend wheels, debug wheels and visual wheel assemblies line up.
@@ -344,6 +347,7 @@ pub const TANK: VehicleConfig = VehicleConfig {
     // Physical dimensions
     chassis_half_extents: [1.50, 0.80, 3.00],
     chassis_com_offset: [0.0, -0.25, 0.0],
+    center_of_mass_height: 1.30, // Preserve the tracked vehicle's existing mass height.
     front_axle_z: 2.33,
     rear_axle_z: -2.17,
     front_track_width: 3.20,

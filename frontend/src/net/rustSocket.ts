@@ -4,6 +4,7 @@ import { useInputStore } from "../store/inputStore";
 import { useWorldStore, type MapSnapshot } from "../store/worldStore";
 
 import { performanceRecorder as recorder } from "../performance/measurements";
+import { handlingSample } from "../performance/handling";
 const packetEncoder = new TextEncoder();
 
 let socket: WebSocket | null = null;
@@ -186,6 +187,11 @@ export function connectRustServer(): WebSocket {
           recorder.record("serverWorkMs", message.data.server_timing?.work_ms, receivedMs);
           state.setSnapshot(message.data, receivedMs);
           const me = message.data.entities.find((entity: PhysicsSnapshot["entities"][number]) => entity.id === state.playerId);
+          if (recorder.enabled || recorder.capturing) {
+            const handling = handlingSample(me);
+            recorder.record("bodyRollDeg", handling.bodyRollDeg, receivedMs);
+            recorder.record("airborneWheels", handling.airborneWheels, receivedMs);
+          }
           acknowledgeInput(me?.last_input_seq, performance.now());
         }
         return;

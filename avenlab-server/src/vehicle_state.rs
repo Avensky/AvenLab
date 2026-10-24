@@ -47,10 +47,10 @@ pub struct VehicleConfig {
 
     // --- Chassis geometry ---
     pub chassis_half_extents: [f32; 3], // [hx, hy, hz] meters
-    // The only massive collider is translated by this local offset. Therefore
-    // it moves BOTH the collision box and the COM; it is not an independent
-    // center-of-mass adjustment. Its world COM is read directly from Rapier.
+    // Collision-box translation (legacy field name retained). Mass properties
+    // are independent, so changing handling does not move the box or the GLB.
     pub chassis_com_offset: [f32; 3],
+    pub center_of_mass_height: f32, // m above a level road at nominal suspension sag
 }
 
 pub struct Vehicle {
@@ -148,6 +148,20 @@ pub struct Wheel {
 }
 
 impl VehicleConfig {
+    /// Handling mass is independent of collision/visual origins. The cuboid
+    /// inertia is a finite approximation about this COM, not a rotation lock.
+    pub fn mass_properties(&self) -> MassProperties {
+        let [hx, hy, hz] = self.chassis_half_extents;
+        let local_com = point![
+            self.chassis_com_offset[0],
+            self.center_of_mass_height - self.nominal_chassis_y(0.0),
+            self.chassis_com_offset[2],
+        ];
+        MassProperties::new(local_com, self.mass, self.mass / 3.0 * vector![
+            hy * hy + hz * hz, hx * hx + hz * hz, hx * hx + hy * hy,
+        ])
+    }
+
     /// Static body-local wheel-center Y for aligning imported visual assets.
     /// The existing body pose and runtime suspension remain authoritative.
     pub fn nominal_wheel_center_y(&self) -> f32 {

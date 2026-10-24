@@ -113,4 +113,14 @@ mod tests {
         assert!(loads[&WheelId::FL] > 3000.0);
         assert!(loads[&WheelId::FR] < 3000.0);
     }
+
+    #[test]
+    fn a_loaded_outside_tire_can_support_more_than_one_and_a_half_resting_loads() {
+        let reference = 3000.0;
+        let mut loads = HashMap::from([(WheelId::FL, 1.8 * reference), (WheelId::FR, 0.2 * reference)]);
+        let compression = HashMap::from([(WheelId::FL, 0.1), (WheelId::FR, 0.01)]);
+        apply_arb_load_transfer(WheelId::FL, WheelId::FR, &mut loads, &compression, 14000.0, reference);
+        assert!(loads[&WheelId::FL] > 1.5 * reference);
+        assert!((loads[&WheelId::FL] + loads[&WheelId::FR] - 2.0 * reference).abs() < 0.001);
+    }
 }

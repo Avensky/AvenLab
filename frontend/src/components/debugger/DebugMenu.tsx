@@ -13,6 +13,7 @@ import { experimentContext } from "../../performance/context";
 import { capturesCsv, difference, performanceRecorder as recorder } from "../../performance/measurements";
 import { useVisualAlignmentStore } from "../../store/visualAlignmentStore";
 import { usePerformanceReadout } from "../../performance/usePerformanceReadout";
+import { handlingSample } from "../../performance/handling";
 
 const MODES: VisualMode[] = ["collider", "geometry", "glb", "hybrid", "hidden"];
 const DEBUG_OPTIONS = [
@@ -32,11 +33,13 @@ function download(contents: string, extension: "json" | "csv") {
 }
 function readDiagnostics() {
   const state = useNetworkStore.getState();
+  const me = state.connected ? state.snapshot?.entities.find((entity) => entity.id === state.playerId) : undefined;
   return {
     tick: state.tick, debugTick: state.debugTick, connected: state.connected,
     interval: state.snapshotIntervalMs, ping: state.pingMs,
     age: state.snapshot?.received_at_ms === undefined ? null : performance.now() - state.snapshot.received_at_ms,
     speed: state.snapshot?.entities.find((entity) => entity.id === state.playerId)?.speed ?? null,
+    handling: handlingSample(me),
     throttle: inputRef.current.throttle, brake: inputRef.current.brake, handbrake: inputRef.current.handbrake,
     ...getInputSenderStats(),
   };
@@ -56,6 +59,7 @@ function NetworkDiagnostics() {
       <br />receipt age: {ms(stats.age)} · arrival interval: {ms(stats.interval)} · RTT: {ms(stats.ping)}
       <br />input loop: {stats.running ? "on" : "off"} · sent: {stats.sent} · skipped while queued: {stats.skipped} · queued: {stats.queuedBytes} B
       <br />backend speed: {stats.speed === null ? "—" : `${stats.speed.toFixed(2)} m/s`} · requested throttle: {stats.throttle.toFixed(2)} · brake: {stats.brake.toFixed(2)} · handbrake: {stats.handbrake.toFixed(2)}
+      <br />body roll: {stats.handling.bodyRollDeg?.toFixed(2) ?? "—"}° · grounded tires: {stats.handling.groundedWheels ?? "—"}/{stats.handling.wheelCount || "—"}
       <br />input → completed tick → receipt: {ms(stats.inputAckMs)} · ack seq: {stats.acknowledgedInputSeq ?? "—"} · pending: {stats.pendingInputs} · oldest pending: {ms(stats.oldestPendingMs)}
       <br />snapshot: {stats.snapshotChars} chars · debug: {stats.debugChars} chars · JSON decode: {stats.decodeMs.toFixed(1)} ms · peak: {stats.worstDecodeMs.toFixed(1)} ms
     </p>

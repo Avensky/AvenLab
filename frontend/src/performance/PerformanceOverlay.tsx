@@ -41,6 +41,8 @@ function Readout() {
       <span>Server physics / work p95</span><span>{format(m.serverPhysicsMs?.p95, 2)} / {format(m.serverWorkMs?.p95, 2)} ms</span>
       <span>Server lock p95 / input queue</span><span>{format(m.serverLockMs?.p95, 2)} ms / {queuedBytes} B · {pendingInputs} pending</span>
       <span>Interpolation target</span><span>{interpolation ? DEFAULT_INTERPOLATION_DELAY_MS : 0} ms</span>
+      <span>Body roll mean / p95</span><span>{format(m.bodyRollDeg?.mean)} / {format(m.bodyRollDeg?.p95)}°</span>
+      <span>Airborne tires mean / p95</span><span>{format(m.airborneWheels?.mean)} / {format(m.airborneWheels?.p95, 0)}</span>
     </div>
     <p className="mt-2 border-t border-slate-700 pt-2 text-amber-200">{stats.status}</p>
     {delta !== null && last && baseline && <p>Last capture Δ baseline: {delta >= 0 ? "+" : ""}{format(delta)} ms/frame</p>}
