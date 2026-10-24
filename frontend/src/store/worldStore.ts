@@ -144,7 +144,7 @@ export const useWorldStore = create<WorldState>((set) => ({
   renderAabbs: false,
   setRenderAabbs: (v: boolean) => set({ renderAabbs: v }),
 
-  mode: "collider",
+  mode: "glb",
   setMode: (mode) => set({ mode }),
 
   activeBlock: null,

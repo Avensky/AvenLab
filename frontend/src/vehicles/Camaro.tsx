@@ -1,3 +1,4 @@
+import { useVehicleVisualAlignment } from "../hooks/useVehicleVisualAlignment";
 import { useRenderSettingsStore } from "../store/renderSettingsStore";
 // Camaro.tsx
 
@@ -336,12 +337,11 @@ export const Camaro = forwardRef<Group, CamaroProps>(function Camaro(
 
     useLayoutEffect(() => {
         for (const rig of wheelRigs) {
+            // Restore the authored rest pose before the alignment layout
+            // effect measures wheel centers. The first physics frame replaces
+            // position/rotation with backend poses, as before.
+            rig.previewMatrix.decompose(rig.carrier.position, rig.carrier.quaternion, rig.carrier.scale);
             if (isVehiclePreview) {
-                rig.previewMatrix.decompose(
-                    rig.carrier.position,
-                    rig.carrier.quaternion,
-                    rig.carrier.scale
-                );
                 rig.steer.rotation.set(0, 0, 0);
                 rig.spin.rotation.set(0, 0, 0);
             } else {
@@ -353,6 +353,9 @@ export const Camaro = forwardRef<Group, CamaroProps>(function Camaro(
             wheelSpinAngles.current.fill(0);
         }
     }, [isVehiclePreview, wheelRigs]);
+
+    const alignmentWheels = useMemo(() => wheelRigs.map((rig) => rig.carrier), [wheelRigs]);
+    useVehicleVisualAlignment("camaro", entityId, vehicleVisualGroupRef, alignmentWheels, isVehiclePreview);
 
     useFrame((_, delta) => {
         // Selection previews keep the transforms imported from Blender.

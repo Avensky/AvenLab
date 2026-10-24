@@ -148,6 +148,13 @@ pub struct Wheel {
 }
 
 impl VehicleConfig {
+    /// Static body-local wheel-center Y for aligning imported visual assets.
+    /// The existing body pose and runtime suspension remain authoritative.
+    pub fn nominal_wheel_center_y(&self) -> f32 {
+        self.wheel_y - self.suspension_rest_length - self.suspension_max_length
+            + self.suspension_sag
+    }
+
     /// Nominal body-origin height that gives each upright wheel its target sag.
     /// mount_y = body_y + wheel_y; center_y = road_y + radius;
     /// mount_y - center_y = full_droop - sag. Solve once for body_y.
@@ -178,6 +185,15 @@ impl Wheel {
 mod tests {
     use super::*;
     use crate::vehicle_setup::{AE86, BRZ, GT86, CAMARO, SUPRA, TANK};
+
+    #[test]
+    fn visual_reference_matches_nominal_wheel_center_in_body_coordinates() {
+        for config in [AE86, BRZ, GT86, CAMARO, SUPRA, TANK] {
+            let body_y = config.nominal_chassis_y(0.32);
+            let world_wheel_y = body_y + config.nominal_wheel_center_y();
+            assert!((world_wheel_y - (0.32 + config.wheel_radius)).abs() < 1.0e-5);
+        }
+    }
 
     #[test]
     fn every_config_spawns_at_target_sag_above_its_chassis_clearance() {

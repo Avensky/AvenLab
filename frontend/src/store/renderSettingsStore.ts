@@ -16,13 +16,15 @@ export type RenderSettings = {
   vehicleLights: boolean;
   hud: boolean;
   overlay: boolean;
+  autoVehicleAlignment: boolean;
 };
 
-// Every reload starts lean. No GLB, HDR or diagnostic request is needed to drive.
+// Driving starts with vehicle GLBs and a collider city. The collider-only
+// benchmark remains an explicit preset in the debug menu.
 export const BASELINE_SETTINGS: RenderSettings = {
   environmentMode: "collider", vehicleOverrides: {}, chunkOverrides: {}, assetGlbs: {},
   dpr: 1, shadows: false, reflections: false, stars: false, fog: false,
-  vehicleLights: false, hud: false, overlay: false,
+  vehicleLights: false, hud: false, overlay: false, autoVehicleAlignment: true,
 };
 
 type State = RenderSettings & {
@@ -31,8 +33,9 @@ type State = RenderSettings & {
   setChunkMode: (key: string, mode: VisualMode) => void;
   setAssetGlb: (key: string, enabled: boolean) => void;
   baseline: () => void;
+  startSandbox: () => void;
 };
-export const useRenderSettingsStore = create<State>((set) => ({
+export const useRenderSettingsStore = create<State>((set, get) => ({
   ...BASELINE_SETTINGS,
   update: (settings) => set(settings),
   setVehicleMode: (id, mode) => set((s) => ({ vehicleOverrides: { ...s.vehicleOverrides, [id]: mode } })),
@@ -41,6 +44,11 @@ export const useRenderSettingsStore = create<State>((set) => ({
     assetGlbs: Object.fromEntries(Object.entries(s.assetGlbs).filter(([asset]) => !asset.startsWith(`${key}/`))),
   })),
   setAssetGlb: (key, enabled) => set((s) => ({ assetGlbs: { ...s.assetGlbs, [key]: enabled } })),
+  startSandbox: () => {
+    useWorldStore.getState().setMode("glb");
+    useWorldStore.getState().setDebugMask(0);
+    set({ ...BASELINE_SETTINGS, overlay: get().overlay });
+  },
   baseline: () => {
     useWorldStore.getState().setMode("collider");
     useWorldStore.getState().setDebugMask(0);

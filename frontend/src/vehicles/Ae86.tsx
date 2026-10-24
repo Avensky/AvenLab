@@ -1,3 +1,4 @@
+import { useVehicleVisualAlignment } from "../hooks/useVehicleVisualAlignment";
 import { useRenderSettingsStore } from "../store/renderSettingsStore";
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, } from "react";
 import type { PropsWithChildren } from "react";
@@ -60,6 +61,7 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
 
 
   const vehicleGroupRef = useRef<Group>(null!);
+  const vehicleVisualRef = useRef<Group>(null!);
   const headlightRef = useRef<Object3D | null>(null);
 
   // Allow parent components to access the car group ref
@@ -139,6 +141,8 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
     ];
   }, [clonesByGroup]);
 
+  useVehicleVisualAlignment("ae86", entityId, vehicleVisualRef, wheels, isVehiclePreview);
+
   // Log the body parts and headlights when they are available
   useEffect(() => {
     headlightRef.current = clonesByGroup.BODY?.[PARTS.headlights] ?? null;
@@ -151,7 +155,7 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
   // light setup
   useEffect(() => {
     if (!vehicleLights) return;
-    const vehicleGroup = vehicleGroupRef.current;
+    const vehicleGroup = vehicleVisualRef.current;
     const addSpot = (
       refObj: { current: SpotLight | null },
       color: number,
@@ -160,7 +164,7 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
       position: [number, number, number],
       target: [number, number, number]
     ) => {
-      if (!vehicleGroupRef.current) return;
+      if (!vehicleGroup) return;
 
       const light = new SpotLight(color, intensity, distance, Math.PI / 6, 0.2);
       light.position.set(...position);
@@ -168,8 +172,8 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
       light.visible = false;
       refObj.current = light;
 
-      vehicleGroupRef.current.add(light);
-      vehicleGroupRef.current.add(light.target);
+      vehicleGroup.add(light);
+      vehicleGroup.add(light.target);
     };
 
     // addSpot( SpotLight, color, intensity, distance, 
@@ -352,7 +356,7 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
   return (
     <>
       <group ref={vehicleGroupRef}>
-          <group>
+          <group ref={vehicleVisualRef}>
             {renderedGroups.BODY}
           </group>
         {isVehiclePreview &&

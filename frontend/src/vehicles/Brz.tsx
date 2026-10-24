@@ -1,3 +1,4 @@
+import { useVehicleVisualAlignment } from "../hooks/useVehicleVisualAlignment";
 import { useRenderSettingsStore } from "../store/renderSettingsStore";
 // Brz.tsx
 
@@ -129,6 +130,8 @@ export const Brz = forwardRef<Group, BrzProps>(function Brz(
             wheels: extractedWheels,
         };
     }, [scene]);
+
+    useVehicleVisualAlignment("brz", entityId, visualGroupRef, wheels, isVehiclePreview);
 
     useEffect(() => {
         if (!vehicleLights) return;

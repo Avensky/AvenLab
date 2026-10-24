@@ -55,7 +55,9 @@ export function setupVehicleParts({
 
         const seen = new Set<string>();
 
-        for (const partName of parts) {
+        const includedParts = name === "BODY" && scene.getObjectByName("CHASSIS_ANCHOR")
+            ? [...parts, "CHASSIS_ANCHOR"] : parts;
+        for (const partName of includedParts) {
             if (seen.has(partName)) continue;
             seen.add(partName);
 

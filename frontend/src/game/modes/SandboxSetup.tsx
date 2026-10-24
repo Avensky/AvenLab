@@ -1,4 +1,5 @@
 import { useGameStore, useSelectionStore, useUIStore } from "../../store";
+import { useRenderSettingsStore } from "../../store/renderSettingsStore";
 import { useSignalReconStore } from "../../store/signalReconStore";
 import { GameButton } from "../../components/GameButton";
 import { socket } from "../../net/rustSocket";
@@ -45,6 +46,7 @@ export function SandboxSetup({collapsed, setCollapsed}: Sandbox) {
             return;
         }
 
+        useRenderSettingsStore.getState().startSandbox();
         setVehicleIdentity(vehicle.canIdentity);
 
         socket?.send?.(

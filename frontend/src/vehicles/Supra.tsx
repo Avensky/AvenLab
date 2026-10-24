@@ -1,3 +1,4 @@
+import { useVehicleVisualAlignment } from "../hooks/useVehicleVisualAlignment";
 import { useRenderSettingsStore } from "../store/renderSettingsStore";
 import {
   forwardRef,
@@ -123,6 +124,9 @@ export const Supra = forwardRef<Group, SupraProps>(function Supra(
       wheelAssemblies: assemblies,
     };
   }, [scene]);
+
+  const alignmentWheels = useMemo(() => wheelAssemblies.map((assembly) => assembly?.carrier ?? null), [wheelAssemblies]);
+  useVehicleVisualAlignment("supra", entityId, vehicleVisualGroupRef, alignmentWheels, isVehiclePreview);
 
   useEffect(() => {
     const glassMaterial = glassMaterialRef.current;

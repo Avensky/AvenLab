@@ -16,6 +16,7 @@ import { Ae86 } from "./Ae86";
 import { Brz } from "./Brz";
 import { Camaro } from "./Camaro";
 import { Supra } from "./Supra";
+import { Tank } from "./Tank";
 
 function normalizeVehicleId(vehicleId?: string | null) {
   return vehicleId?.trim().toLowerCase().replaceAll("_", "-") ?? "";
@@ -103,6 +104,10 @@ function GlbVehicle({ entity }: { entity: RosterEntity }) {
     case "a90":
     case "toyota-a90":
       model = <Supra entityId={entity.id} />;
+      break;
+
+    case "tank":
+      model = <Tank entityId={entity.id} />;
       break;
 
     default:

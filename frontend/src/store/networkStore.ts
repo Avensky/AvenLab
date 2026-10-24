@@ -37,6 +37,7 @@ export interface WheelSnapshot {
 }
 
 export interface VehicleColliderShape {
+    nominal_wheel_center_y?: number; // Static body-local wheel plane at target sag.
     chassis_half_extents: [number, number, number];
     chassis_offset: [number, number, number];
     wheel_radius: number;

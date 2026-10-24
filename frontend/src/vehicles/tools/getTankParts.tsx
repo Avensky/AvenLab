@@ -14,7 +14,7 @@ export function getTankParts(scene: GLTF['scene']) {
     ];
 
     const wheels = wheelNames
-        .map(name => scene.getObjectByName(name))
+        .map(name => scene.getObjectByName(name.replace('Roaadwheel', 'Roadwheel')) ?? scene.getObjectByName(name))
         .filter((obj): obj is Object3D => !!obj);
 
     return {

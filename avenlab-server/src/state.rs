@@ -45,6 +45,8 @@ use crate::vehicle_state::{Vehicle, VehicleConfig, PhysicsWheelSnapshot};
 
 #[derive(Debug, Clone, Serialize)]
 pub struct VehicleColliderShape {
+    // Stable import reference; never derived from moving suspension poses.
+    pub nominal_wheel_center_y: f32,
     pub chassis_half_extents: [f32; 3],
     pub chassis_offset: [f32; 3],
     pub wheel_radius: f32,
@@ -447,6 +449,7 @@ impl SharedGameState {
 
             entities_out.push(PhysicsEntitySnapshot {
                 collider: VehicleColliderShape {
+                    nominal_wheel_center_y: vehicle.config.nominal_wheel_center_y(),
                     chassis_half_extents: vehicle.config.chassis_half_extents,
                     chassis_offset: vehicle.config.chassis_com_offset,
                     wheel_radius: vehicle.config.wheel_radius,

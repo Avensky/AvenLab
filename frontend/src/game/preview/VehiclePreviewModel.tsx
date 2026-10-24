@@ -1,21 +1,23 @@
-import { useSelectionStore } from "../../store";
-import { useWorldStore } from "../../store/worldStore";
-import { Ae86, Brz, Camaro, Supra, Tank } from "../../vehicles";
+import { useMemo } from "react";
+import { Clone, useGLTF } from "@react-three/drei";
+import { Box3, Vector3 } from "three";
+import { useSelectionStore } from "../../store/selectionStore";
+import { VEHICLE_MODEL_PATHS, type VehicleModelId } from "../../vehicles/tools/vehicleModelPaths";
 
+// Selection is always the complete GLB, independent of in-game debug modes.
+// A plain clone also avoids network poses and extracted runtime wheel rigs.
 export function VehiclePreviewModel() {
-  const vehicleId = useSelectionStore((s) => s.getSelectedVehicle().id);
-  const mode = useWorldStore((s) => s.mode);
-  // Selection preview is a placeholder; accurate collision geometry arrives at spawn.
-  if (mode === "collider" || mode === "geometry") return <mesh position={[0, 0.6, 0]}>
-    <boxGeometry args={[1.8, 0.7, 4.2]} /><meshBasicMaterial color="#38bdf8" wireframe={mode === "collider"} />
-  </mesh>;
-  return (
-    <>
-      {vehicleId === "ae86"   && <Ae86 />}
-      {vehicleId === "brz"    && <Brz />}
-      {vehicleId === "camaro" && <Camaro />}
-      {vehicleId === "supra"  && <Supra />}
-      {vehicleId === "tank"   && <Tank />}
-    </>
-  );
+  const vehicleId = useSelectionStore((s) => s.getSelectedVehicle().id) as VehicleModelId;
+  return <PreviewAsset key={vehicleId} path={VEHICLE_MODEL_PATHS[vehicleId]} />;
+}
+function PreviewAsset({ path }: { path: string }) {
+  const { scene } = useGLTF(path);
+  const position = useMemo(() => {
+    const box = new Box3().setFromObject(scene);
+    if (box.isEmpty()) return [0, 0, 0] as [number, number, number];
+    const center = box.getCenter(new Vector3());
+    // Display placement only: keep the vehicle on the selection grid.
+    return [-center.x, -box.min.y, -center.z] as [number, number, number];
+  }, [scene]);
+  return <group position={position} name="selection-vehicle-glb"><Clone object={scene} /></group>;
 }

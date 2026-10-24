@@ -1,105 +1,45 @@
-// Tank.tsx
-import React, { forwardRef, useImperativeHandle, useRef, useEffect, type PropsWithChildren } from 'react';
-import { Group, Vector3 } from 'three';
-import { useFrame, useThree } from '@react-three/fiber';
-import { useGLTF } from '@react-three/drei';
-import { getTankParts } from './tools/getTankParts';
-import { useNetworkStore, useGameStore } from "../store";
-import { usePhysicsInterpolator } from "../hooks/usePhysicsInterpolator";
-interface TankProps extends React.PropsWithChildren {
-    turretRotation?: number;
-    cannonElevation?: number;
+import { forwardRef, useImperativeHandle, useLayoutEffect, useMemo, useRef, type PropsWithChildren } from "react";
+import { Group } from "three";
+import { useFrame } from "@react-three/fiber";
+import { useGLTF } from "@react-three/drei";
+import { getTankParts } from "./tools/getTankParts";
+import { useNetworkStore } from "../store/networkStore";
+import { useUIStore } from "../store/uiStore";
+import { useVehiclePhysicsInterpolator } from "../hooks/usePhysicsInterpolator";
+import { useVehicleVisualAlignment } from "../hooks/useVehicleVisualAlignment";
+
+interface TankProps extends PropsWithChildren {
+  entityId?: string;
+  turretRotation?: number;
+  cannonElevation?: number;
 }
-
 const MODEL_PATH = "/models/vehicles/tank2.glb";
-export const Tank = forwardRef<Group, PropsWithChildren>(function TankModel(
-    { children, turretRotation = 0, cannonElevation = 0 }: TankProps,
-    ref: React.Ref<Group>
-) {
-    // Load the car model
-    const { scene } = useGLTF(MODEL_PATH);
-
-    // Access the camera for later use
-    const camera = useThree((state) => state.camera)
-
-    // Refs for car group 
-    const vehicleGroupRef = useRef<Group>(null!);
-
-    // Allow parent components to access the car group ref
-    useImperativeHandle(ref, () => vehicleGroupRef.current, [])
-
-    // Get references to the specific parts INSIDE the scene
-    const turretRef = useRef<Group | null>(null);
-    const cannonRef = useRef<Group | null>(null);
-
-    useEffect(() => {
-        const { turret, cannon } = getTankParts(scene);
-
-        turretRef.current = turret ?? (scene.getObjectByName("Turret") as Group | null);
-        cannonRef.current = cannon ?? (scene.getObjectByName("Cannon") as Group | null);
-    }, [scene]);
-
-    // Network and interpolation setup
-    const snapshot = useNetworkStore((s) => s.snapshot);
-    const { setSnapshot, getInterpolated } = usePhysicsInterpolator(100);
-
-    useEffect(() => {
-        if (!snapshot) return;
-        for (const entity of snapshot.entities) { setSnapshot(entity.id, entity); }
-    }, [snapshot, setSnapshot]);
-
-
-    useFrame((_, delta) => {
-        // get state on frame
-        const gameState = useGameStore.getState();
-        const networkState = useNetworkStore.getState();
-        const id = networkState.playerId;
-
-        if (!id) return;
-
-        const interp = getInterpolated(id);
-        if (!interp) return;
-
-        const camMode = gameState.camera;
-        const isEditor = gameState.editor;
-
-        const group = vehicleGroupRef.current;
-
-
-        // Update vehicle body
-        group.position.set(...interp.position);
-        group.quaternion.set(...interp.rotation);
-
-        // Apply tank parts rotation
-        if (turretRef.current) {
-            turretRef.current.rotation.y = turretRotation;
-        }
-        if (cannonRef.current) {
-            cannonRef.current.rotation.x = cannonElevation;
-        }
-
-        if (!isEditor) {
-            const offset = new Vector3();
-            if (camMode === 'FIRST_PERSON') { offset.set(0.5, 2.5, 0.5); }
-            if (camMode === 'DEFAULT') { offset.set(0, 2.5, 4.5); }
-            if (camMode === 'BIRDS_EYE') { offset.set(0, 7, 12); }
-            camera.position.lerp(offset, delta);
-
-            offset.applyQuaternion(group.quaternion).add(group.position);
-            camera.position.lerp(offset, delta * 5);
-
-            const target = group.position.clone();
-            target.y += 1.5;
-            camera.lookAt(target);
-        }
-    });
-
-    return (<>
-        <primitive ref={vehicleGroupRef} object={scene}>
-            {children}
-        </primitive>
-    </>
-    );
+export const Tank = forwardRef<Group, TankProps>(function Tank({ children, entityId, turretRotation = 0, cannonElevation = 0 }, ref) {
+  const { scene } = useGLTF(MODEL_PATH);
+  const root = useRef<Group>(null!);
+  const visual = useRef<Group>(null!);
+  const turret = useRef<Group | null>(null);
+  const cannon = useRef<Group | null>(null);
+  useImperativeHandle(ref, () => root.current, []);
+  const localId = useNetworkStore((s) => s.playerId);
+  const preview = useUIStore((s) => s.screen === "sandbox_setup" || s.screen === "signal_recon_setup");
+  const { model, parts, turretY, cannonX } = useMemo(() => {
+    const model = scene.clone(true);
+    const parts = getTankParts(model);
+    return { model, parts, turretY: parts.turret?.rotation.y ?? 0, cannonX: parts.cannon?.rotation.x ?? 0 };
+  }, [scene]);
+  useLayoutEffect(() => { turret.current = parts.turret; cannon.current = parts.cannon; }, [parts]);
+  useVehicleVisualAlignment("tank", entityId, visual, parts.wheels, preview);
+  const { getInterpolated } = useVehiclePhysicsInterpolator(entityId);
+  useFrame(() => {
+    if (preview || !root.current) return;
+    const pose = getInterpolated(entityId ?? localId);
+    if (!pose) return;
+    root.current.position.fromArray(pose.position);
+    root.current.quaternion.fromArray(pose.rotation);
+    if (turret.current) turret.current.rotation.y = turretY + turretRotation;
+    if (cannon.current) cannon.current.rotation.x = cannonX + cannonElevation;
+  });
+  return <group ref={root}><group ref={visual}><primitive object={model} /></group>{children}</group>;
 });
-
 export default Tank;

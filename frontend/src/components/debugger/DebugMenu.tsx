@@ -11,6 +11,7 @@ import { DebugFlags, hasDebugFlag } from "../../store/tools/debugMasks";
 import { assetKey, chunkKey, useRenderSettingsStore, type VisualMode } from "../../store/renderSettingsStore";
 import { experimentContext } from "../../performance/context";
 import { capturesCsv, difference, performanceRecorder as recorder } from "../../performance/measurements";
+import { useVisualAlignmentStore } from "../../store/visualAlignmentStore";
 import { usePerformanceReadout } from "../../performance/usePerformanceReadout";
 
 const MODES: VisualMode[] = ["collider", "geometry", "glb", "hybrid", "hidden"];
@@ -78,8 +79,8 @@ export function DebugMenu() {
       recorder.start(label, baseline, duration, experimentContext());
       useUIStore.getState().setOverlay(null);
     };
-    const toggles = (["overlay", "shadows", "reflections", "stars", "fog", "vehicleLights", "hud"] as const).map((key) => ({
-      label: `${({ overlay: "Lag / data overlay", shadows: "Shadows", reflections: "HDR reflections", stars: "Animated stars", fog: "Fog", vehicleLights: "Vehicle spotlights", hud: "Driving HUD + terminal" })[key]}: ${settings[key] ? "ON" : "OFF"}`,
+    const toggles = (["overlay", "shadows", "reflections", "stars", "fog", "vehicleLights", "hud", "autoVehicleAlignment"] as const).map((key) => ({
+      label: `${({ overlay: "Lag / data overlay", shadows: "Shadows", reflections: "HDR reflections", stars: "Animated stars", fog: "Fog", vehicleLights: "Vehicle spotlights", hud: "Driving HUD + terminal", autoVehicleAlignment: "Automatic GLB alignment" })[key]}: ${settings[key] ? "ON" : "OFF"}`,
       action: () => settings.update({ [key]: !settings[key] }),
     }));
     return [
@@ -164,6 +165,7 @@ export function DebugMenu() {
             onFocus={() => setSelectedRow(index)} onPress={() => row.action()} className="rounded-lg px-3 py-2 text-xs">{row.label}</GameButton>)}
         </div>
         <CaptureResults />
+        <VehicleAlignmentReadout />
         <p className="mt-3 text-xs text-slate-400">Δ = current mean − baseline mean. Repeat runs with the same camera and route. Feature costs depend on the other features enabled. CPU submit is browser work through render submission; GPU completion and physical input-to-display latency are unmeasured. Captures stay in this tab until export or reload.</p>
         <div className="mt-3 font-mono text-[11px] text-slate-400"><NetworkDiagnostics /></div>
       </div>
@@ -187,5 +189,23 @@ function CaptureResults() {
           <td className="p-2">{ms(run.metrics.drawCalls?.mean)}</td><td className="p-2">{ms(run.metrics.inputAckMs?.mean)}</td></tr>;
       })}</tbody>
     </table>}
+  </div>;
+}
+
+function VehicleAlignmentReadout() {
+  const reports = useVisualAlignmentStore((s) => s.reports);
+  const rows = Object.entries(reports);
+  if (!rows.length) return null;
+  return <div className="mt-4 overflow-x-auto text-xs text-slate-300">
+    <p className="mb-2 font-bold text-cyan-300">GLB alignment · measured once from the imported asset</p>
+    <table className="w-full text-left font-mono">
+      <thead><tr>{["Model", "Reference", "Offset X/Y/Z (m)", "Wheel Y spread", "Status"].map((h) => <th key={h} className="p-2">{h}</th>)}</tr></thead>
+      <tbody>{rows.map(([id, r]) => <tr key={id} className="border-t border-slate-800">
+        <td className="p-2">{r.model} · {id.slice(0, 8)}</td><td className="p-2">{r.method}</td>
+        <td className="p-2">{r.offset.map((v) => v.toFixed(3)).join(" / ")}</td>
+        <td className="p-2">{(r.wheelSpreadY * 1000).toFixed(1)} mm</td><td className="p-2">{r.status}</td>
+      </tr>)}</tbody>
+    </table>
+    <p className="mt-1 text-slate-400">Missing backend reference: rebuild/restart Rust. Missing asset reference: add CHASSIS_ANCHOR or identify wheel meshes. This aligns body height; orientation and model scale retain their imported values.</p>
   </div>;
 }
