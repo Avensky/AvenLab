@@ -1,264 +1,1581 @@
-# ChangeOrder App
+# AvensLab
 
-SDSU AI Club's ChangeOrder app helps field contractors document changes to contracted work, send them to the office for review, and request client approval.
-
-This guide covers local development on **Windows with PowerShell and an iPhone running Expo Go**. The current scaffold runs an Expo/React Native frontend and a FastAPI backend, with a **Check backend** button to verify connectivity. Photo submission, office review, AI, and client approval are planned features.
-
-See [SPECIFICATIONS.MD](SPECIFICATIONS.MD) for the proposed architecture, workflows, data models, and API design. PostgreSQL is part of that design; it is not required for the current health-check scaffold.
-
-## 1. Install the tools
-
-Skip tools that are already installed and pass the version checks below.
-
-| Tool            | Installation                                                                                                                                                                                                                                                                   |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Git             | Install [Git for Windows](https://git-scm.com/download/win) to clone the repository.                                                                                                                                                                                           |
-| Node.js and npm | Install **Node.js 24 LTS** using the [Windows installer](https://nodejs.org/en/download). Keep the npm and PATH options enabled; npm is included with Node.js.                                                                                                                 |
-| Python          | Install **Python 3.12**, including pip and the Windows `py` command. For a new PC, install the [Python install manager](https://www.python.org/downloads/windows/), then run `pymanager install 3.12`. An existing Python 3.12 installation with the `py` launcher also works. |
-| Expo Go         | Install **Expo Go** from the iPhone App Store. [Expo Go downloads](https://expo.dev/go).                                                                                                                                                                                       |
-| Editor          | Use an editor such as [Visual Studio Code](https://code.visualstudio.com/).                                                                                                                                                                                                    |
-
-Close and reopen PowerShell after installing the tools, then verify:
-
-```powershell
-git --version
-node --version
-npm --version
-py -3.12 --version
-py -3.12 -m pip --version
+```t
+AvenLab is a real-time vehicle simulation and ML engine powered by a Rust/Rappier physics core and a React Three Fiber frontend. It supports deterministic backend physics, multiplayer networking, dataset recording, and tools for autonomous control, reinforcement learning, and CAN-bus modeling.
 ```
 
-The working setup used Node.js `v24.18.0`, npm `11.16.0`, and Python `3.12.10`. These are reference versions, not exact patch-version requirements. The Windows install script specifically selects **Python 3.12** with `py -3.12`.
+## Real-Time Vehicle Simulation, Machine Learning, and Autonomous Systems Research Platform
 
-The project installs Expo CLI locally with its frontend dependencies. A global Expo CLI installation is not needed.
-
-## 2. Get the project
-
-In PowerShell, navigate to the parent folder where you keep your projects, then run:
-
-```powershell
-git clone https://github.com/Avensky/ChangeOrder.git
-cd ChangeOrder
+```t
+AvenLab is a next-generation vehicle simulation and machine-learning engine designed for real-time physics, autonomous control, and multiplayer environments. Built with a modern architecture using a Rust-powered physics backend (Rappier), a React Three Fiber visualization frontend, and a modular networking layer, AvenLab enables high-performance experimentation across robotics, vehicle dynamics, and AI-driven behavior learning.
 ```
 
-If you already have the project, open its existing folder instead. Run the remaining commands from the **repository root**, which contains `package.json`, `scripts`, `backend`, and `frontend`.
+## 🔥 Core Features
 
-### Prepare the environment templates
+- **Real-Time Physics Engine** powered by Rappier
+- **Backend-Driven Simulation** for deterministic multiplayer
+- **Neural & ML Integration** for vehicle control, CAN-signal interpretation, and reinforcement learning
+- **Modular Architecture** supporting multiple vehicle types (cars, tanks, multi-axle platforms)
+- **High-Performance Visualization** using React Three Fiber
+- **Socket-Based Networking** for live state syncing
+- **Recording & Replay System** for dataset generation and training
+- **Self-Driving Research Tools** (future)
 
-The installer expects `backend/.env.example` and `frontend/.env.example`. Some checkouts currently contain `env.example` without the leading dot. Run this once to supply the expected filenames when needed:
+---
 
-```powershell
-if (!(Test-Path backend\.env.example)) {
-    Copy-Item backend\env.example backend\.env.example
+## 🎯 Project Goals
+
+- Develop a research-grade environment for vehicle dynamics
+- Explore adversarial ML for CAN bus interpretation and autonomous driving
+- Provide a flexible platform for physics-based multiplayer games
+- Support ML-based controllers and reinforcement learning
+- Build a translatable sim-to-real pipeline
+
+---
+
+## 🗂 Tech Stack
+
+- **Backend Physics:** Rust + Rappier
+- **Frontend Visualization:** React Three Fiber
+- **Networking:** Socket.IO (with optional WebRTC)
+- **ML Pipeline:** Python, PyTorch, custom datasets
+- **Deployment:** Node.js, Vite, Nginx, Docker
+
+---
+
+## 🌐 Demo
+
+Coming soon at **<https://avensky.com/avenlab>**
+
+---
+
+## 🚗 CANBUS HACKING CTF, TOOLKIT, AND SIMULATOR
+
+A curated collection of tools, scripts, and resources for automotive security research and CAN bus experimentation.
+
+This project launches a 3D vehicle simulator where users can attempt code injections for points in a CTF.
+
+When the fuel gauge reaches 0, the simulation ends and all gauges are reset.
+
+## 📁 Project Structure
+
+```t
+AvenLab/
+├── .github/
+│    └── workflows/        # CICD yml files
+│        ├── deploy.yml    # File runs when code is pushed
+│        └── init.yml      # File required to start the first workflow
+|
+├── .vscode/
+│    └── launch.json       # Code Editor
+|
+├── data-server/
+│   ├── app/
+│   │   ├── can/
+│   │   │   ├── **init**.py
+│   │   │   ├── capture.py
+│   │   │   ├── decoders.py
+│   │   │   ├── session.py
+│   │   │   └── status.py
+│   │   ├── exports/
+│   │   │   ├── **init**.py
+│   │   │   ├── csv_export.py
+│   │   │   └── pdf_export.py
+│   │   ├── services/
+│   │   │   ├── **init**.py
+│   │   │   └── ollama_client.py
+│   │   ├── **init**.py
+│   │   ├── db.py
+│   │   └── main.py
+│   ├── db/
+│   │   └── schema.sql    # Database
+│   └── requirements.txt. # Install python files
+|
+├── docs/
+│   ├── A CAN-Bus Lightweight Authentication Scheme.pdf
+│   └── Vehicle Real-time Condition Monitoring Based on CA.pdf
+|
+├── frontend/
+│   ├── public/
+│   │   ├── images/
+│   │   │   ├── abs.svg
+│   │   │   ├── addfolder.svg
+│   │   │   ├── air.svg
+│   │   │   ├── air2.svg
+│   │   │   ├── airbag.svg
+│   │   │   ├── airhorn.svg
+│   │   │   ├── alert.svg
+│   │   │   ├── alert.svg
+│   │   │   ├── analytics.svg
+│   │   │   ├── analytics2.svg
+│   │   │   ├── analytics3.svg
+│   │   │   ├── analytics4.svg
+│   │   │   ├── analytics5.svg
+│   │   │   ├── analytics6.svg
+│   │   │   ├── analytics7.svg
+│   │   │   ├── analytics8.svg
+│   │   │   ├── analytics9.svg
+│   │   │   ├── arrow-square-down.svg
+│   │   │   ├── arrow-square-left.svg
+│   │   │   ├── arrow-square-right.svg
+│   │   │   ├── arrow-square-up.svg
+│   │   │   ├── arrowdown.svg
+│   │   │   ├── arrowright.svg
+│   │   │   ├── arrowup.svg
+│   │   │   ├── back.svg
+│   │   │   ├── backward.svg
+│   │   │   ├── biohazzard.svg
+│   │   │   ├── books.svg
+│   │   │   ├── books2.svg
+│   │   │   ├── brakepedal.png
+│   │   │   ├── camera.svg
+│   │   │   ├── camera2.svg
+│   │   │   ├── camera3.svg
+│   │   │   ├── camera4.svg
+│   │   │   ├── camera5.svg
+│   │   │   ├── camera6.svg
+│   │   │   ├── camera7.svg
+│   │   │   ├── camera8.svg
+│   │   │   ├── camera9.svg
+│   │   │   ├── car-battery.svg
+│   │   │   ├── car-limousine.svg
+│   │   │   ├── car-mini.svg
+│   │   │   ├── car-oil.svg
+│   │   │   ├── car-sport.svg
+│   │   │   ├── car-sport2.svg
+│   │   │   ├── car.svg
+│   │   │   ├── carDoor.svg
+│   │   │   ├── caret-back.svg
+│   │   │   ├── caret-down.svg
+│   │   │   ├── caret-down2.svg
+│   │   │   ├── caret-forward.svg
+│   │   │   ├── caret-left.svg
+│   │   │   ├── caret-right.svg
+│   │   │   ├── caret-up.svg
+│   │   │   ├── caret-up2.svg
+│   │   │   ├── carKey.svg
+│   │   │   ├── carLights.svg
+│   │   │   ├── cassette.svg
+│   │   │   ├── clear-circle.svg
+│   │   │   ├── clear-reflect.svg
+│   │   │   ├── clear.svg
+│   │   │   ├── clear2.svg
+│   │   │   ├── cli.svg
+│   │   │   ├── cli2.svg
+│   │   │   ├── cli3.svg
+│   │   │   ├── cli4.svg
+│   │   │   ├── cli5.svg
+│   │   │   ├── cli6.svg
+│   │   │   ├── cpu.svg
+│   │   │   ├── csv.svg
+│   │   │   ├── engine-coolant.svg
+│   │   │   ├── engine.svg
+│   │   │   ├── engine2.svg
+│   │   │   ├── engine3.svg
+│   │   │   ├── exclamation-warning.svg
+│   │   │   ├── files.svg
+│   │   │   ├── film.svg
+│   │   │   ├── film2.svg
+│   │   │   ├── forward.svg
+│   │   │   ├── game-controller.svg
+│   │   │   ├── gas-station.svg
+│   │   │   ├── gasPedal.png
+│   │   │   ├── gasStation.svg
+│   │   │   ├── gasStation2.svg
+│   │   │   ├── gear-shift-stick.svg
+│   │   │   ├── gear-shift-stick2.svg
+│   │   │   ├── gear-shift-pattern.svg
+│   │   │   ├── gear-stick.svg
+│   │   │   ├── gift.svg
+│   │   │   ├── graph.svg
+│   │   │   ├── graph2.svg
+│   │   │   ├── graph3.svg
+│   │   │   ├── hazard.svg
+│   │   │   ├── hazard2.svg
+│   │   │   ├── hazards.svg
+│   │   │   ├── hazzard.svg
+│   │   │   ├── headlight.svg
+│   │   │   ├── headlight2.svg
+│   │   │   ├── headlight3.svg
+│   │   │   ├── headlights.svg
+│   │   │   ├── headlights2.svg
+│   │   │   ├── hide.svg
+│   │   │   ├── hood.svg
+│   │   │   ├── horn.svg
+│   │   │   ├── hornCurve.svg
+│   │   │   ├── i.svg
+│   │   │   ├── idea.svg
+│   │   │   ├── left-arrow.svg
+│   │   │   ├── left.svg
+│   │   │   ├── linux.svg
+│   │   │   ├── log.svg
+│   │   │   ├── log2.svg
+│   │   │   ├── logo.png
+│   │   │   ├── logs.svg
+│   │   │   ├── loop.svg
+│   │   │   ├── mark.svg
+│   │   │   ├── mark2.svg
+│   │   │   ├── mark3.svg
+│   │   │   ├── microphone.svg
+│   │   │   ├── niwc.jpg
+│   │   │   ├── niwc2.jpg
+│   │   │   ├── niwc3.png
+│   │   │   ├── no_sound.png
+│   │   │   ├── noGas.svg
+│   │   │   ├── nos.svg
+│   │   │   ├── oil.svg
+│   │   │   ├── onOff.svg
+│   │   │   ├── p.svg
+│   │   │   ├── parking.svg
+│   │   │   ├── pause.svg
+│   │   │   ├── pause2.svg
+│   │   │   ├── pause3.svg
+│   │   │   ├── play-circle.svg
+│   │   │   ├── play.svg
+│   │   │   ├── playback.svg
+│   │   │   ├── reload-ui.svg
+│   │   │   ├── reload.svg
+│   │   │   ├── reload2.svg
+│   │   │   ├── reload3.svg
+│   │   │   ├── reload4.svg
+│   │   │   ├── remoteKeys.svg
+│   │   │   ├── reset.svg
+│   │   │   ├── rewind.svg
+│   │   │   ├── right-arrow.svg
+│   │   │   ├── right.svg
+│   │   │   ├── save.svg
+│   │   │   ├── SEASTRIKE-2043.png
+│   │   │   ├── seat-belt.svg
+│   │   │   ├── seatBelt.svg
+│   │   │   ├── settings.svg
+│   │   │   ├── skip.svg
+│   │   │   ├── soundLow2.svg
+│   │   │   ├── soundOff.svg
+│   │   │   ├── soundOff2.svg
+│   │   │   ├── soundOn.svg
+│   │   │   ├── soundOn2.svg
+│   │   │   ├── spave.png
+│   │   │   ├── speedometer.svg
+│   │   │   ├── sql.svg
+│   │   │   ├── stop-circle.svg
+│   │   │   ├── stop.svg
+│   │   │   ├── stop2.svg
+│   │   │   ├── stop3.svg
+│   │   │   ├── stop4.svg
+│   │   │   ├── temp.svg
+│   │   │   ├── temp2.svg
+│   │   │   ├── tempCold.svg
+│   │   │   ├── temperature.svg
+│   │   │   ├── tempHot.svg
+│   │   │   ├── tempHot2.svg
+│   │   │   ├── tools.svg
+│   │   │   ├── trunk.svg
+│   │   │   ├── turbo.svg
+│   │   │   ├── tv.svg
+│   │   │   ├── tv2.svg
+│   │   │   ├── upload.svg
+│   │   │   ├── voice.svg
+│   │   │   ├── volumeFull.svg
+│   │   │   ├── volumeMedium.svg
+│   │   │   ├── volumeOff.svg
+│   │   │   ├── windshield.svg
+│   │   │   ├── wretch.svg
+│   │   │   └── zip.svg
+│   │   ├── models/
+│   │   │   ├── blocks/
+│   │   │   │   └── block_01/
+│   │   │   │       └── block_01.glb
+│   │   │   ├── roads/
+│   │   │   │   ├── intersection.glb
+│   │   │   │   ├── road_narrow.glb
+│   │   │   │   └── road_wide.glb
+│   │   │   ├── vehicles/
+│   │   │   │   ├── ae86.glb
+│   │   │   │   ├── brz.glb
+│   │   │   │   ├── camaro.glb
+│   │   │   │   ├── camaro2017.glb
+│   │   │   │   ├── frs.glb
+│   │   │   │   ├── gt86.glb
+│   │   │   │   ├── tank.glb
+│   │   │   │   └── tank2.glb
+│   │   │   ├── world/
+│   │   │   │  ├── city_rtx.glb
+│   │   │   │  ├── city_time_square.glb
+│   │   │   │  └── city.glb
+│   │   ├── sounds/
+│   │   │   ├── accelerate.mp3
+│   │   │   ├── boost.mp3
+│   │   │   ├── car_start.mp3
+│   │   │   ├── crash.mp3
+│   │   │   ├── engine.mp3
+│   │   │   ├── honk.mp3
+│   │   │   ├── tire-brake.mp3
+│   │   │   └── water.mp3
+│   │   ├── videos/
+│   │   |   ├── NIWC-Pacific.mp4
+│   │   |   └── SEA-STRIKE-2043.mp4
+│   │   ├── favicon.ico
+│   │   └── vite.svg
+│   ├── src/
+│   │   ├── controls/
+│   │   |   ├── GameController.ts
+│   │   |   ├── HideMouse.ts
+│   │   |   ├── index.ts
+│   │   |   └── Keyboard.ts
+│   │   ├── effects/
+│   │   │   ├── audio/
+│   │   │   │   ├── Accelerate.tsx
+│   │   │   │   ├── Boost.tsx
+│   │   │   │   ├── Brake.tsx
+│   │   │   │   ├── Engine.tsx
+│   │   │   │   ├── Honk.tsx
+│   │   │   │   └── index.tsx
+│   │   │   ├── Boost.tsx
+│   │   │   ├── Cameras.tsx
+│   │   │   ├── Dust.tsx
+│   │   │   ├── index.ts
+│   │   │   ├── RotatingCamera.tsx
+│   │   │   ├── Skid.tsx
+│   │   │   └── VehicleRotatingCamera.ts
+│   │   ├── game/
+│   │   │   ├── modes/
+│   │   │   │   ├──tools/
+│   │   │   │   │   └──FirstFrameReady.ts
+│   │   │   │   ├── CanBusStatusBadge.tsx
+│   │   │   │   ├── index.tsx
+│   │   │   │   ├── SandBox.tsx
+│   │   │   │   ├── SandBoxSetup.tsx
+│   │   │   │   ├── SignalSetup.tsx
+│   │   │   │   ├── SignalRecon.tsx
+│   │   │   │   ├── SignalReconMission.tsx
+│   │   │   │   ├── SignalReconSetup.tsx
+│   │   │   │   └── Swarm.tsx
+│   │   │   ├── preview/
+│   │   │   │   ├── index.tsx
+│   │   │   │   ├── VehiclePreview.tsx
+│   │   │   │   └── VehiclePreviewModel.tsx
+│   │   │   ├── GameScene.tsx
+│   │   │   ├── GameUI.tsx
+│   │   │   ├── index.ts
+│   │   │   ├── LoadingScreen.tsx
+│   │   │   ├── MainMenu.tsx
+│   │   │   ├── ModeLoadingScreen.tsx
+│   │   │   ├── ModeSwitcher.tsx
+│   │   │   ├── PauseMenu.tsx
+│   │   │   ├── SelectionScreen.tsx
+│   │   │   └── SelectionUI.tsx
+│   │   ├── hooks/
+│   │   │   └── usePhysicsInterpolator.ts
+│   │   ├── net/
+│   │   │   └── rustSocket.tsx
+│   │   ├── store/
+│   │   │   ├── tools/
+│   │   │   │   ├── DebugMasks.ts
+│   │   │   │   ├── derriveInputSignals.ts
+│   │   │   │   ├── inputMasks.ts
+│   │   │   │   └── inputSender.ts
+│   │   │   ├── types/
+│   │   │   │   └── signalSender.ts
+│   │   │   ├── canBusStore.ts
+│   │   │   ├── canDataStore.ts
+│   │   │   ├── gameStore.ts
+│   │   │   ├── index.ts
+│   │   │   ├── inputStore.ts
+│   │   │   ├── networkStore.ts
+│   │   │   ├── selectionStore.ts
+│   │   │   ├── signalReconStore.ts
+│   │   │   ├── types.ts
+│   │   │   ├── uiStore.ts
+│   │   │   └── worldStore.ts
+│   │   ├── ui/
+│   │   │   ├── command/
+│   │   │   │   └── CommandLine.tsx
+│   │   │   ├── Commandline/
+│   │   │   │   ├── Playback/
+│   │   │   │   ├── Sessions/
+│   │   │   │   ├── CommandLine.tsx
+│   │   │   │   └── ViewSummary.tsx
+│   │   │   ├── Dashboard/
+│   │   │   │   ├── Boost.tsx
+│   │   │   │   ├── Dashboard.tsx
+│   │   │   │   ├── FuelGauge.tsx
+│   │   │   │   ├── FuelTemp.tsx
+│   │   │   │   ├── index.tsx
+│   │   │   │   ├── Revolutions.tsx
+│   │   │   │   ├── Speedometer.tsx
+│   │   │   │   └── TempGauge.tsx
+│   │   │   ├── ControlPanel.tsx
+│   │   │   ├── DebugOverlay.tsx
+│   │   │   ├── Editor.ts
+│   │   │   ├── Help.tsx
+│   │   │   ├── index.ts
+│   │   │   ├── Intro.ts
+│   │   │   ├── Keys.tsx
+│   │   │   ├── Menu.tsx
+│   │   │   ├── Minimap.tsx
+│   │   │   ├── Pedals.tsx
+│   │   │   ├── PickColor.tsx
+│   │   │   └── Steering.tsx
+│   │   ├── utils/
+│   │   │   └── constants.ts
+│   │   ├── vehicles/
+│   │   │   ├── tools/
+│   │   │   │   ├── addSpot.ts
+│   │   │   │   ├── createGlassMaterialFactory.ts
+│   │   │   │   ├── getTankParts.tsx
+│   │   │   │   ├── setupVehicleParts.tsx
+│   │   │   │   └── VehicleSpotLight.tsx
+│   │   │   ├── Ae86.tsx
+│   │   │   ├── Brz.tsx
+│   │   │   ├── Camaro.tsx
+│   │   │   ├── GeometryVisualizer.tsx
+│   │   │   ├── Gt86.tsx
+│   │   │   ├── index.ts
+│   │   │   ├── Tank.tsx
+│   │   │   └── VehicleScene.tsx
+│   │   ├── world/
+│   │   │   ├── environments/
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── Rtx.tsx
+│   │   │   │   └── TimeSquare.tsx
+│   │   │   ├── BlueTeamBaseGround.tsx
+│   │   │   ├── CityChunk.tsx
+│   │   │   ├── CityGeometry.tsx
+│   │   │   ├── CityScene.tsx
+│   │   │   └── index.ts
+│   │   ├── App.css
+│   │   ├── App.tsx
+│   │   ├── FullCanvas.tsx
+│   │   ├── index.css
+│   │   └── main.tsx
+│   ├── .gitignore
+│   ├── eslint.config.js
+│   ├── index.html
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── README.md
+│   ├── tsconfig.app.json
+│   ├── tsconfig.json
+│   ├── tsconfig.node.json
+│   └── vite.config.ts
+│
+├── avenlab-server
+│   ├── src/
+│   │   ├── assets/
+│   │   │   └── blocks
+│   │   │      └── block_01_collidrs.json
+│   │   ├── aven_tire/
+│   │   │   ├── anti_roll.rs
+│   │   │   ├── brush_lite.rs
+│   │   │   ├── kinematics.rs
+│   │   │   ├── longitudinal.rs
+│   │   │   ├── mod.rs
+│   │   │   ├── solve.rs
+│   │   │   ├── state.rs
+│   │   │   ├── steering.rs
+│   │   │   └── types.rs
+│   │   ├── world/
+│   │   │   ├── block_colliders.rs
+│   │   │   └── mod.rs
+│   │   ├── main.rs
+│   │   ├── net.rs
+│   │   ├── physics_blocks.rs
+│   │   ├── physics.rs
+│   │   ├── spawn.rs
+│   │   ├── state.rs
+│   │   ├── suspension_contact.rs
+│   │   ├── vehicle_debug.rs
+│   │   ├── vehicle_forces.rs
+│   │   ├── vehicle_setup.rs
+│   │   └── vehicle_state.rs
+│   ├── target/
+│   ├── Cargo.lock
+│   └── Cargo.toml
+│
+├── .gitattributes
+├── .gitignore
+├── .nvmrc
+├── package-lock.json
+├── package.json
+└── README.md
+```
+
+---
+
+## 🧰 Tools & Scripts
+
+This repository includes various tools and scripts designed to assist in car hacking endeavors:
+
+- **CAN Bus Sniffers**: Utilities to monitor and log CAN traffic.
+- **Message Injectors**: Scripts to send custom messages onto the CAN bus.
+- **Hack Car**: Script simulates a code injection, manipulating the vehicle gauges, and movements.
+- **Command Line**: Command line allows for unique code injection from a browser.
+- **Diagnostic Tools**: Programs to interact with vehicle ECUs using standard protocols.
+
+_Note: Ensure you have the necessary permissions and are compliant with local laws before interacting with vehicle networks._
+
+---
+
+## 📝 Documentation
+
+The `docs/` directory contains valuable resources to deepen your understanding of automotive security:
+
+- **Research Papers**: In-depth analyses of vehicle network vulnerabilities.
+- **Presentations**: Slides from conferences and workshops on car hacking.
+- **Guides**: Step-by-step instructions for setting up your own car hacking lab.
+
+---
+
+## 📌 Prerequisites
+
+Before using the tools, ensure you have:
+
+- **Hardware**: A compatible CAN interface device (e.g. Raspberry Pi / Jetson)
+- **Software**: Python 3.x installed on your system.
+- **Permissions**: Appropriate rights to interact with vehicle networks.
+
+## 🚀 Getting Started
+
+To begin using the tools in this repository:
+
+1. **Set Up Your Environment**: Ensure you have the necessary hardware (e.g., CAN interface devices) and software dependencies installed.
+
+# 🐧 Flashing Raspberry Pi OS (Raspbian) on a Raspberry Pi
+
+This guide walks you through flashing **Raspberry Pi OS** (formerly Raspbian) onto a microSD card and booting it on your Raspberry Pi.
+
+---
+
+## ✅ Requirements
+
+- 🧠 A **Raspberry Pi** (any model)
+- 💾 A **microSD card** (8GB+ recommended, Class 10/UHS-1)
+- 💻 A computer with **internet access & microSD card reader or usb for mircroSD adapter**
+- 🔌 A **power supply** for the Pi
+- ⌨️ (Optional) Keyboard, mouse, and HDMI display
+
+---
+
+## 🔧 Step-by-Step Instructions
+
+### 🥇 Step 1: Download Raspberry Pi Imager
+
+1. Visit: [https://www.raspberrypi.com/software](https://www.raspberrypi.com/software)
+2. Download and install the **Raspberry Pi Imager** for your OS (Windows/macOS/Linux)
+
+---
+
+### 🥈 Step 2: Insert and Select Your microSD Card
+
+1. Insert your microSD card into your computer
+2. Open **Raspberry Pi Imager**
+3. Click **“Choose OS”** and select one:
+   - `Raspberry Pi OS (32-bit)` (Recommended)
+   - `Raspberry Pi OS Lite` (for headless setup, no GUI)
+
+---
+
+### 🛠️ Step 3: Configure (Optional)
+
+Click the ⚙️ icon in the Imager to:
+
+- Set a **hostname**
+- Enable **SSH**
+- Set **Wi-Fi SSID/password**
+- Set **locale/timezone/keyboard**
+- Create a **user account**
+
+> ⚠️ These options save time if you're setting up a headless system.
+
+---
+
+### 🥉 Step 4: Flash the OS
+
+1. Click **“Choose Storage”** → Select your SD card (Accept Updates)
+2. Click **“Write”** → Wait for the flashing process to finish
+3. Safely **eject** the card
+
+---
+
+### 🚀 Step 5: Boot the Raspberry Pi
+
+1. Insert the flashed SD card into your Raspberry Pi
+2. Plug in HDMI, keyboard, mouse, and power
+3. Raspberry Pi OS will boot into the desktop or CLI
+
+---
+
+## 🧠 Optional: SSH & Wi-Fi (Headless Setup)
+
+If you're not using a monitor/keyboard:
+
+### Enable SSH
+
+Create a blank file named `ssh` (no extension) on the **boot** partition.
+
+### Connect to Wi-Fi
+
+Create a file called `wpa_supplicant.conf` (in boot partition):
+
+```bash
+country=US
+ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
+update_config=1
+
+network={
+ssid="YourWiFiName"
+psk="YourWiFiPassword"
 }
-if (!(Test-Path frontend\.env.example)) {
-    Copy-Item frontend\env.example frontend\.env.example
+```
+
+Then boot the Pi and connect via:
+
+```bash
+ssh uri@<IP_ADDRESS>
+or
+ssh -o IPQoS=throughput uri@<your-ip-address>
+```
+
+### Save a Key Fingerprint
+
+Type your password and save key to your list of known hosts.
+
+🛠 First-Time Setup Commands
+Open config menu:
+
+```bash
+  sudo raspi-config
+```
+
+Update the system:
+
+```bash
+  sudo apt update && sudo apt full-upgrade -y
+```
+
+📝 Notes
+Default login (if using desktop OS):
+
+Username: pi
+
+Password: raspberry
+
+Use a good-quality SD card and power supply for stability
+
+## ✅ Install `nvm`
+
+Open your terminal and run:
+
+```bash
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+```
+
+> This command downloads and runs the official install script from the `nvm-sh` GitHub repo.
+
+---
+
+## 🔄 Step 2: Activate `nvm`
+
+```bash
+\. "$HOME/.nvm/nvm.sh"
+```
+
+## 🔍 Step 3: Verify Installation
+
+```bash
+nvm --version
+```
+
+---
+
+## 🚀 Step 4: Install Node.js with `nvm`
+
+```bash
+nvm install 24.18.0      # Specific version
+nvm use 24.18.0          # Switch to version
+```
+
+## Set a default version:S
+
+```bash
+nvm alias default 24.18.0
+```
+
+---
+
+<!-- ## Set Up Docker
+
+```bash
+curl -fsSL https://get.docker.com -o get-docker.sh && sudo sh get-docker.sh && sudo usermod -aG docker $USER && sudo apt-get install -y docker-compose-plugin
+
+newgrp docker
+
+sudo apt-get install postgresql-client
+
+``` -->
+
+---
+
+## 🚗 Set Up Virtual CAN Bus
+
+```bash
+sudo apt-get install can-utils
+sudo nano /etc/systemd/system/avenlab-vcan.service
+```
+
+```ini
+[Unit]
+Description=AvenLab Virtual CAN Interface
+After=network.target
+Before=avenlab-data.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStartPre=-/sbin/ip link delete vcan0
+ExecStart=-/sbin/modprobe vcan
+ExecStart=-/sbin/ip link add dev vcan0 type vcan
+ExecStart=/sbin/ip link set up vcan0
+ExecStop=-/sbin/ip link set down vcan0
+ExecStop=-/sbin/ip link delete vcan0
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable avenlab-vcan
+sudo systemctl restart avenlab-vcan
+ip link show vcan0
+```
+
+---
+
+## 🚗 Set Up Physical CAN Bus
+
+```bash
+sudo nano /etc/systemd/system/avenlab-can.service
+```
+
+```ini
+[Unit]
+Description=AvenLab Physical CAN Interface
+After=network.target
+Before=avenlab-data.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+
+# Bring down the interface if it already exists
+ExecStartPre=-/sbin/ip link set can0 down
+
+# Configure the interface
+ExecStart=/sbin/ip link set can0 up type can bitrate 500000 restart-ms 100
+
+# Shut down cleanly
+ExecStop=-/sbin/ip link set can0 down
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable avenlab-can
+sudo systemctl restart avenlab-can
+ip link show can0
+```
+
+## CAN FD Isolatore (RH02 PRO)
+
+```bash
+sudo apt install can-utils
+```
+
+Check if slcand exists:
+
+```bash
+which slcand
+```
+
+If it does:
+
+```bash
+sudo slcand -o -c -s6 /dev/ttyACM0 can2
+sudo ip link set can2 up
+```
+
+Now check:
+
+```bash
+ip link
+```
+
+````bash
+sudo ip link set can2 down
+
+sudo ip link set can2 up type can bitrate 500000 listen-only on
+
+ip -details link show can2
+
+avenlab-can-usb.service
+
+sudo ip link set can2 down
+
+sudo ip link set can2 up \
+    type can \
+    bitrate 500000 \
+    listen-only on \
+    restart-ms 100
+
+candump can2
+
+---
+
+# 🚀 CI/CD Pipeline Setup for AvenLab (GitHub Actions + Self-Hosted Runner)
+
+This guide explains how to set up a **self-hosted GitHub Actions runner** for deploying the (<https://github.com/Avensky/AvenLab>) project using CI/CD on a Raspberry Pi or ARM64 device.
+
+---
+
+## 🔁 1. Clone the Repository and Prepare the Environment
+
+```bash
+# Create a directory recognized by Nginx
+sudo mkdir -p /var/www
+cd /var/www
+
+# Set correct ownership and permissions
+sudo chown -R $USER:$USER /var/www
+sudo chmod -R 755 /var/www
+````
+
+```bash
+sudo nano /etc/nginx/sites-available/AvenLab
+```
+
+sudo -u postgres psql \
+ -v ON_ERROR_STOP=1 \
+ -d avenlab_data \
+ -f schema.sql
+
+psql \
+ -v ON_ERROR_STOP=1 \
+ -h 127.0.0.1 \
+ -U avenlab \
+ -d avenlab_data \
+ -f supervised_ml.sql
+
+```ini
+server {
+  listen 80;
+  listen [::]:80;
+
+  server_name _;
+
+  root /var/www/avenlab/current/frontend/dist;
+  index index.html;
+
+  location / {
+    try_files $uri $uri/ /index.html;
+  }
+
+  location /data/ {
+    proxy_pass http://127.0.0.1:8001;
+
+    proxy_http_version 1.1;
+
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    proxy_connect_timeout 15s;
+    proxy_send_timeout 900s;
+    proxy_read_timeout 900s;
+    send_timeout 900s;
+
+    proxy_buffering off;
+    proxy_request_buffering off;
+  }
+
+  location /db/ {
+    proxy_pass http://127.0.0.1:8001;
+
+    proxy_http_version 1.1;
+
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    proxy_connect_timeout 15s;
+    proxy_send_timeout 900s;
+    proxy_read_timeout 900s;
+    send_timeout 900s;
+
+    proxy_buffering off;
+    proxy_request_buffering off;
+}
+
+  location /health {
+    proxy_pass http://127.0.0.1:8001;
+
+    proxy_http_version 1.1;
+
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    proxy_connect_timeout 5s;
+    proxy_send_timeout 30s;
+    proxy_read_timeout 30s;
+  }
+
+  location /ws/ {
+    proxy_pass http://127.0.0.1:9001/;
+
+    proxy_http_version 1.1;
+
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    proxy_connect_timeout 15s;
+    proxy_read_timeout 86400;
+    proxy_send_timeout 86400;
+
+    proxy_buffering off;
+  }
 }
 ```
 
-Keep the `.env.example` templates in version control so new contributors can run the installer.
-
-## 3. Install the project dependencies
-
-From the repository root:
-
-```powershell
-npm run install
+```bash
+sudo ln -s \
+  /etc/nginx/sites-available/AvenLab \
+  /etc/nginx/sites-enabled/AvenLab
 ```
 
-This script:
+---
 
-1. Installs the root Node dependencies, including `concurrently`.
-2. Installs the Expo/React Native frontend dependencies.
-3. Creates `backend/.venv` using Python 3.12 if the virtual environment is missing.
-4. Installs Python packages from `backend/requirements.txt` using the virtual environment's pip.
-5. Copies the environment templates to `backend/.env` and `frontend/.env` if those local files do not exist.
+## 🍴 2. Fork the Repository
 
-Python's `venv` module includes pip by default. The scripts call the virtual environment's Python directly, so **activating the virtual environment is optional**. Re-running `npm run install` preserves existing `.env` files, including any old PC IP address stored there.
+- Go to: <https://github.com/Avensky/AvenLab>
+- Click **Fork** and clone your forked version if needed.
 
-To confirm the backend environment is ready:
+---
 
-```powershell
-.\backend\.venv\Scripts\python.exe --version
-.\backend\.venv\Scripts\python.exe -m pip --version
+## 🏃 3. Set Up a GitHub Self-Hosted Runner
+
+1. Go to your fork on GitHub → **Settings** → **Actions** → **Runners**
+2. Click **New self-hosted runner**
+3. Choose:
+   - OS: Linux
+   - Architecture: ARM64 (for Raspberry Pi)
+4. Follow the instructions (skip directory creation since we already did that - you should be in this directory /var/www)
+
+---
+
+## 📦 4. Download and Configure the Runner
+
+Replace with the latest version from GitHub’s runner releases page (commenting out this section to avoid copy and paste, follow github's instructions):
+
+```bash
+# Download the runner ie:
+# curl -o actions-runner-linux-arm64-2.324.0.tar.gz -L https://github.com/actions/runner/releases/download/v2.324.0/actions-runner-linux-arm64-2.324.0.tar.gz
+
+# Verify integrity
+
+# Extract the runner
+# tar xzf ./actions-runner-linux-arm64-2.324.0.tar.gz
 ```
 
-## 4. Set the backend address for your phone
+---
 
-Connect the PC and iPhone to the **same local network**. In PowerShell, run:
+## ⚙️ 5. Configure the Runner
 
-```powershell
-ipconfig
+```bash
+# Replace the token with your actual GitHub token
+# ./config.sh --url https://github.com/<your-username>/AvenLab --token YOUR_TOKEN_HERE
 ```
 
-Find the **IPv4 Address** under the adapter connected to that network: usually Wi-Fi, or Ethernet if the PC is wired to the same router. Use that address rather than a VPN or virtual adapter address.
+> 🧠 During this step, you’ll name the runner and accept default prompts.
 
-Open `frontend/.env` and set the PC address. For example, if `ipconfig` shows `192.168.1.50`:
+---
 
-```dotenv
-EXPO_PUBLIC_API_URL=http://192.168.1.50:8000
+## ▶️ 6. Run the Runner
+
+```bash
+# Run manually
+cd /var/www
+./run.sh
 ```
 
-Replace the example IP with **your PC's current IPv4 address**. Do not append `/health`; the test function adds it. On a physical phone, `localhost` and `127.0.0.1` refer to the phone. `0.0.0.0` is the backend's listen address, not a destination to put in the app.
+---
 
-**The PC IP can change** after reconnecting or switching networks. If the backend check starts timing out, check `ipconfig` again, update this value, and fully reload the app. Re-running the install script does not update the IP automatically.
+## 🛠 7 Install a Service (Recommended)
 
-The default `backend/.env` contains the browser origins allowed to call the API:
-
-```dotenv
-CORS_ORIGINS=http://localhost:8081,http://127.0.0.1:8081
+```bash
+sudo nano /etc/systemd/system/avenlab-runner.service
 ```
 
-These defaults support the local web preview. If you open the web preview through another origin, add that exact origin to the comma-separated list and restart the backend. Native Expo Go requests do not use browser CORS rules.
+```ini
+[Unit]
+Description=AvenLab GitHub Runner
+After=network.target
 
-`EXPO_PUBLIC_` values are included in the frontend bundle. Use them for public configuration such as the API URL; keep private API keys in the backend.
+[Service]
+Type=simple
+User=uri
+Group=uri
 
-## 5. Start development
+WorkingDirectory=/var/www/actions-runner
+ExecStart=/var/www/actions-runner/runsvc.sh
 
-From the repository root:
+Restart=always
+RestartSec=5
 
-```powershell
-npm run dev
+KillMode=process
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target
 ```
 
-This starts FastAPI on port **8000** and Expo/Metro on port **8081** using LAN mode. Keep the terminal running while testing. Press **Ctrl+C** to stop the development processes.
-
-The root `package.json` should use this `dev` entry so Expo can display its QR code and interactive controls:
-
-```json
-"dev": "concurrently --raw --kill-others \"npm:dev:backend\" \"npm:dev:frontend\""
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable avenlab-runner
+sudo systemctl start avenlab-runner
+sudo systemctl status avenlab-runner
 ```
 
-That line belongs inside the existing `scripts` object. Preserve the comma if another entry follows it.
+---
 
-### Open the app on iPhone
+## ✅ Done
 
-1. Scan the terminal QR code with the iPhone **Camera** app and open the link in **Expo Go**.
-2. Allow Expo Go access to the local network if prompted. You can check this under **Settings > Privacy & Security > Local Network > Expo Go**.
-3. On the app's Home screen, check the address shown in **Backend connection**, then tap **Check backend**.
-4. A successful connection displays **Backend: ok**.
+Your GitHub Actions runner is now connected. Any workflow `.yml` files you add to `.github/workflows/` in your repo will now execute using this runner.
 
-If Expo Go asks you to sign in, use the same Expo account on the phone and in Expo CLI. To sign in on the PC:
+---
 
-```powershell
-Push-Location frontend
-npx expo login
-Pop-Location
+## 🚀 Manually Triggering Initial GitHub Actions Workflow
+
+After setting up your **self-hosted GitHub Actions runner**, you need to manually trigger the first workflow to verify the runner and kick off the deployment pipeline.
+
+---
+
+## 📂 Workflow File: `init.yml`
+
+Your workflow uses:
+
+```yaml
+on:
+  workflow_dispatch:
 ```
 
-If the phone shows an older screen, fully close Expo Go, reopen it, and scan the current QR code. After changing `frontend/.env`, perform a full reload using Expo Go's developer menu; Fast Refresh alone may leave the previous value visible.
+This enables **manual triggering** from the GitHub web interface.
 
-## 6. Verify the backend directly
+---
 
-With the servers running, open these on the PC:
+## 🧭 How to Manually Trigger the Workflow
 
-- Health check: [http://localhost:8000/health](http://localhost:8000/health)
-- Interactive API documentation: [http://localhost:8000/docs](http://localhost:8000/docs)
-- Frontend web preview: [http://localhost:8081](http://localhost:8081)
+1. Go to your **GitHub repository** (your fork).
+2. Click the **"Actions"** tab.
+3. In the left sidebar, select **"Inital Deployment"** (or whatever you named the workflow).
+4. Click the **"Run workflow"** dropdown.
+5. Choose the branch (e.g., `main`), and click **"Run workflow"**.
 
-The health endpoint returns:
+> This will run the full pipeline on your **self-hosted runner**, executing the `backend`, `frontend`, and `build` jobs.
 
-```json
-{ "status": "ok" }
+---
+
+## 🧪 What Happens in the Workflow
+
+The workflow performs these steps across 3 jobs:
+
+### 🔧 backend job
+
+- Checks out code
+- Sets up Node.js
+- Caches `node_modules`
+- Installs dependencies
+- Lints and tests backend
+
+### 🎨 frontend job
+
+- Waits for `backend` to finish
+- Repeats setup and linting steps for frontend code
+
+### 🏗 build job
+
+- Waits for `frontend`
+- Builds the production frontend with `npm run build`
+
+---
+
+✅ Once complete, the runner should have tested, linted, and built your app for deployment.
+
+## 🌐 Create Service for Server Persistance
+
+```bash
+sudo nano /etc/systemd/system/avenlab-physics.service
 ```
 
-On the iPhone, open **the exact address displayed in the app**, followed by `/health`, in Safari. For the example IP above, that would be `http://192.168.1.50:8000/health`.
+## Add the following script
 
-The Expo QR code connects to Metro on port 8081. The **Check backend** button makes a separate request to FastAPI on port 8000, so loading the frontend does not verify the API connection.
+```ini
+[Unit]
+Description=AvenLab Physics Server
+After=network.target
 
-## Everyday commands
+[Service]
+Type=simple
 
-Run these from the repository root:
+ExecStart=/var/www/avenlab/bin/avenlab-server
+WorkingDirectory=/var/www/avenlab/current
 
-| Command                | Purpose                                                                                                             |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `npm run install`      | Install root/frontend packages, create the backend virtual environment if missing, and install Python requirements. |
-| `npm run dev`          | Start the backend and frontend together.                                                                            |
-| `npm run dev:backend`  | Start only FastAPI, with reload enabled.                                                                            |
-| `npm run dev:frontend` | Start only Expo in LAN mode and display its QR code.                                                                |
-| `npm run typecheck`    | Check frontend TypeScript types.                                                                                    |
-| `npm run lint`         | Run the frontend linter.                                                                                            |
+User=uri
+Group=uri
 
-On a normal workday, open the project, confirm the PC IP in `frontend/.env`, run `npm run dev`, and open the project in Expo Go. Re-run installation after dependency files change.
+Environment=RUST_LOG=info
 
-To add a frontend library, run `npx expo install PACKAGE_NAME` from `frontend` so Expo can select a compatible version. Add backend dependencies to `backend/requirements.txt`, then re-run the root installer.
+Restart=always
+RestartSec=3
 
-## Troubleshooting
+KillSignal=SIGTERM
+TimeoutStopSec=30
 
-| Symptom                                                 | What to check                                                                                                                                                                         |
-| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `node`, `npm`, `git`, or `py` is not recognized         | Reopen PowerShell after installing the tool and check its PATH configuration.                                                                                                         |
-| PowerShell blocks `npm.ps1`                             | Use `npm.cmd run install` or `npm.cmd run dev` in place of the corresponding `npm` command.                                                                                           |
-| Python 3.12 is not found                                | Check `py -3.12 --version`; the Windows installer script requires that version.                                                                                                       |
-| Installer reports a missing `.env.example` file         | Run the template preparation commands in step 2, then re-run `npm run install`.                                                                                                       |
-| Expo does not show a QR code                            | Confirm the root `dev` script includes `--raw`. You can also stop it and use `npm run dev:backend` and `npm run dev:frontend` in separate terminals.                                  |
-| Phone shows the previous UI                             | Fully close Expo Go and scan the QR code from the current server.                                                                                                                     |
-| `Connection timed out`                                  | Check the PC's current IPv4 address, the address displayed in the app, the running backend, and the shared local network. Update `frontend/.env` and fully reload after an IP change. |
-| PC health check works, but iPhone Safari cannot open it | Check the LAN address and network first, then Windows Firewall access for the backend Python executable on your trusted private network.                                              |
-| iPhone Safari health check works, but Expo Go fails     | Check Expo Go's Local Network permission and confirm the app displays the same API address. Fully reload after changing `.env`.                                                       |
-
-## Manual backend setup (optional)
-
-These commands show what the automated setup does for the backend. Use them for troubleshooting or when working on the backend alone; they are **not an additional required step** after a successful `npm run install`.
-
-From the repository root:
-
-```powershell
-py -3.12 -m venv backend\.venv
-.\backend\.venv\Scripts\python.exe -m pip install --upgrade pip
-.\backend\.venv\Scripts\python.exe -m pip install -r backend\requirements.txt
+[Install]
+WantedBy=multi-user.target
 ```
 
-If pip is missing from the virtual environment, bootstrap it with:
+## Activate Server
 
-```powershell
-.\backend\.venv\Scripts\python.exe -m ensurepip --upgrade
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable avenlab-physics
+sudo systemctl start avenlab-physics
+sudo systemctl status avenlab-physics
+
+sudo mkdir -p /var/www/avenlab/bin /var/www/avenlab/current
+sudo chown -R www-data:www-data /var/www/avenlab
 ```
 
-Then repeat the pip installation commands above. Use `npm run dev:backend` to start the API; the launcher handles its working directory, `.env`, LAN binding, and reload options.
+# Install Data-server & Environment Variables (Python)
 
-## Optional: Android Emulator on Windows
+```bash
+sudo nano /etc/environment.env
+```
 
-You can develop with your physical iPhone without installing an emulator. To also test Android:
+```ini
+APP_ENV=production
+DATABASE_URL=postgresql://avenlab:<password>@127.0.0.1:5432/avenlab_data
+POSTGRES_PASSWORD=mysecretpassword
+POSTGRES_USER=avenlab
+```
 
-1. Follow the [Expo Android Emulator setup guide](https://docs.expo.dev/workflow/android-studio-emulator/) to install Android Studio, its SDK tools, and configure `ANDROID_HOME` and the platform-tools PATH.
-2. In Android Studio's **Device Manager**, create a virtual phone, install a system image, and start it.
-3. Run `npm run dev`, then press **a** in the Expo terminal to open the project on the emulator. If terminal input is unreliable, run the frontend and backend in separate terminals using the commands above.
-4. Test **Check backend** there as well. The API URL must be reachable from the emulator; verify the displayed URL in its browser if needed.
+```bash
+docker run --name avenlab-data \
+  -e POSTGRES_USER=avenlab \
+  -e POSTGRES_PASSWORD=mysecretpassword \
+  -e POSTGRES_DB=avenlab_data \
+  -p 5432:5432 \
+  -d pgvector/pgvector:pg16
+```
 
-The local **iOS Simulator requires macOS and Xcode**. On this Windows setup, use your physical iPhone for local iOS testing. See [Expo's iOS Simulator guide](https://docs.expo.dev/workflow/ios-simulator/).
+```bash
+sudo chmod 600 /etc/environment.env
+sudo systemctl restart avenlab-data
 
-## Project layout and design
+sudo apt update
+sudo apt install -y postgresql postgresql-contrib
+sudo apt install -y postgresql-17-pgvector
+sudo systemctl enable postgresql
+sudo systemctl start postgresql
+sudo systemctl status postgresql --no-pager -l
+sudo -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname='avenlab_data'" | grep -q 1 || \
+sudo -u postgres createdb avenlab_data
+sudo -u postgres psql -c "CREATE USER avenlab WITH PASSWORD 'mysecretpassword';"
+sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE avenlab_data TO avenlab;"
+sudo -u postgres psql -d avenlab_data -c "GRANT ALL ON SCHEMA public TO avenlab;"
+sudo -u postgres psql -d avenlab_data -c "ALTER SCHEMA public OWNER TO avenlab;"
+```
 
-| Location                                          | Responsibility                                                                                               |
-| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `scripts/`                                        | Shared installation and development launchers.                                                               |
-| `backend/main.py`                                 | FastAPI entry point.                                                                                         |
-| `backend/api/routes/`                             | HTTP routes, including `/health`.                                                                            |
-| `backend/schemas/`                                | Request and response schemas.                                                                                |
-| `backend/core/`                                   | Backend configuration.                                                                                       |
-| `backend/services/`, `backend/ai/`, `backend/db/` | Starting locations for business logic, AI integrations, and database code as those features are implemented. |
-| `frontend/src/app/`                               | Expo Router screens and layouts.                                                                             |
-| `frontend/src/components/`                        | Reusable UI components.                                                                                      |
-| `frontend/src/lib/api.ts`                         | Backend URL and health-check request.                                                                        |
+## load schema.sql
 
-Architecture and approval-flow details are in [SPECIFICATIONS.MD](SPECIFICATIONS.MD). This README focuses on getting the current development scaffold running.
+```bash
+cd /var/www/avenlab/current/data-server/db
+source /etc/environment.env
 
-## Collaborators
+psql "$DATABASE_URL" -c "SELECT current_database(), current_user, NOW();"
+```
 
-### SDSU AI Club members
+## Create The Service
 
-- Aadi Bery (sdsuaiclub@gmail.com)
-- Jaylan Luong (jluong5067@sdsu.edu)
-- Uriel Zacarias (urielzacarias@gmail.com)
-- Tad Schiller (tad@zacksmithplumbing.com)
-- Ajay (arao3465@sdsu.edu)
-- Bona O'Quinn (boquinn1053@sdsu.edu)
+```bash
+sudo systemctl restart avenlab-data
+sudo nano /etc/systemd/system/avenlab-data.service
+```
 
-## Setup references
+## test
 
-- [Node.js and npm installation](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm/)
-- [Python on Windows](https://docs.python.org/3/using/windows.html)
-- [Python virtual environments and pip](https://docs.python.org/3.12/library/venv.html)
-- [Expo: start developing](https://docs.expo.dev/get-started/start-developing/)
-- [Expo environment variables and reloading](https://docs.expo.dev/guides/environment-variables/)
+```bash
+source /etc/environment.env
+psql "$DATABASE_URL" -c "SELECT current_database(), current_user, NOW();"
+```
+
+```ini
+[Unit]
+Description=AvenLab Data Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=uri
+Group=uri
+
+WorkingDirectory=/var/www/avenlab/current/data-server
+EnvironmentFile=/etc/environment.env
+ExecStart=/var/www/avenlab/current/data-server/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8001
+
+Restart=always
+RestartSec=3
+
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo chmod 644 /etc/environment.env
+sudo systemctl daemon-reload
+sudo systemctl enable avenlab-data
+sudo systemctl restart avenlab-data
+journalctl -u avenlab-data
+echo $APP_ENV
+```
+
+## Check Status
+
+```bash
+sudo systemctl status avenlab-data
+```
+
+# 🤝 AI ollama
+
+```bash
+curl -fsSL https://ollama.com/install.sh | sh
+
+sudo systemctl enable ollama
+sudo systemctl start ollama
+
+curl -fsS http://127.0.0.1:11434/api/tags
+
+ollama pull qwen2.5:3b
+ollama pull nomic-embed-text
+```
+
+---
+
+## 📬 Contact
+
+For questions, suggestions, or collaborations, please open an issue or contact [Avensky](https://github.com/Avensky).
+
+## Connect BOARD
+
+- connect waveshare board to pi
+- connect pigtail to pi
+- ensure you have enough voltage converter to handle pi
+- get a nice thick cable thats 3m or less, the shorter the better
+
+## 🔌 OBD-II Port Pinout Female View
+
+```t
+  _______________________
+/  8  7  6  5  4  3  2  1 \
+| 16 15 14 13 12 11 10  9 |
+ -------------------------
+
+```
+
+🔌 OBD-II Pigtail to Pi HAT
+OBD-II Pigtail Wire Waveshare HAT Screw Terminal
+Pin 14 → (CAN High) CANH (Channel 1 or 2, you choose)
+Pin 6 → (CAN Low) CANL (same channel)
+Pin 13 (or 12) → (Ground) GND on the Pi (optional but recommended for clean signal)
+Your HAT has two channels — pick one!
+E.g. CAN0 = Channel 1 → use CANH0 and CANL0 terminals.
+Use Voltmeter to verify those wires are live
+
+Make a table like this:
+
+Std Pin Function Wire Color Cont Verified
+6 CAN High Brown/white ✅
+4 Ground Black/white ✅
+14 CAN Low Green ✅
+16 +12 V Black ✅
+
+## plug into car
+
+- while engine is completely off
+- connect pi to power
+- connect pi to obd2 port
+- turn the ignitions
+- open ssh conenction
+
+```bash
+sudo modprobe can
+sudo modprobe can_raw
+sudo modprobe mcp251xfd
+sudo ip link set can0 up type can bitrate 500000 listen-only on restart-ms 100
+ip link show can0
+
+
+```
+
+```bash
+sudo nano /boot/firmware/config.txt
+```
+
+- Add these lines at the end (adjust your pins & oscillator if needed):
+- Verify spi is on
+- On pi desktop check Interface Options → SPI → Enable
+
+```bash
+sudo nano /boot/firmware/config.txt
+```
+
+```ini
+dtparam=spi=on
+dtoverlay=spi1-3cs
+dtoverlay=spi-bcm2835-overlay
+dtoverlay=waveshare-can-fd-hat-mode-a
+dtoverlay=mcp251xfd,spi0-0,interrupt=25
+#dtoverlay=mcp251xfd,spi0-1,interrupt=13
+dtoverlay=mcp251xfd,spi1-0,interrupt=24
+#dtoverlay=mcp251xfd,spi1-1,interrupt=23
+```
+
+```bash
+sudo nano /etc/udev/rules.d/80-can.rules
+```
+
+```ini
+ACTION=="add", SUBSYSTEM=="net", DEVPATH=="*/spi0.0/net/can?", NAME="can0"
+ACTION=="add", SUBSYSTEM=="net", DEVPATH=="*/spi1.0/net/can?", NAME="can1"
+```
+
+Save & reboot
+
+```bash
+sudo udevadm control --reload-rules
+sudo udevadm trigger
+sudo reboot
+```
+
+```bash
+ip link show
+```
+
+✅ If you see can0 or can1 → you’re good to go:
+
+```bash
+sudo ip link set can0 down || true
+sudo ip link set can1 down || true
+sudo ip link set can0 up type can bitrate 500000
+sudo ip link set can1 up type can bitrate 500000
+```
+
+## Check loopback by connecting can0 to can1 directly
+
+```t
+connect h to h
+connect l to l
+connect g to g
+```
+
+Terminal 1
+
+```bash
+candump can0
+```
+
+Terminal 2
+
+```bash
+cansend can1 123#DEADBEEF
+```
+
+```t
+Result shouls show in can0
+uri@pi:~ $ candump can0
+  can1  123   [4]  DE AD BE EF
+```
+
+### Create a service
+
+```bash
+sudo nano /etc/systemd/system/avenlab-can.service
+```
+
+```ini
+[Unit]
+Description=AvenLab Physical CAN FD Interfaces
+After=network.target
+Before=avenlab-data.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+
+ExecStartPre=-/sbin/ip link set can0 down
+ExecStartPre=-/sbin/ip link set can1 down
+
+# ExecStart=/sbin/ip link set can0 up type can bitrate 500000 dbitrate 2000000 fd on restart-ms 100
+# ExecStart=/sbin/ip link set can1 up type can bitrate 500000 dbitrate 2000000 fd on restart-ms 100
+
+ExecStart=/sbin/ip link set can0 up type can bitrate 500000 restart-ms 100
+ExecStart=/sbin/ip link set can1 up type can bitrate 500000 restart-ms 100
+
+ExecStop=-/sbin/ip link set can0 down
+ExecStop=-/sbin/ip link set can1 down
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart avenlab-can
+sudo systemctl status avenlab-can.service
+ip -details link show can0
+```
+
+```bash
+sudo reboot
+```
+
+---
+
+```bash
+sudo pkill slcand
+sudo ip link set can2 down 2>/dev/null
+sudo ip link delete can2 2>/dev/null
+sudo modprobe slcan
+sudo slcand -o -c -f -s6 /dev/ttyACM0 can2
+sudo ip link set can2 up
+ip -details link show can2
+candump can2
+```
+
+```bash
+sudo nano /usr/local/sbin/can2-slcan
+```
+
+```ini
+#!/usr/bin/env bash
+set -euo pipefail
+
+ACTION="${1:-start}"
+
+DEVICE="${CAN2_DEVICE:-/dev/ttyACM0}"
+IFACE="${CAN2_IFACE:-can2}"
+SPEED_CODE="${CAN2_SPEED_CODE:-6}"   # slcan -s6 = 500k
+
+start_can2() {
+  if [ ! -e "$DEVICE" ]; then
+    echo "[can2-slcan] $DEVICE not found. CANable not plugged in. Nothing to do."
+    exit 0
+  fi
+
+  echo "[can2-slcan] Starting $IFACE from $DEVICE at slcan speed code $SPEED_CODE..."
+
+  modprobe slcan || true
+
+  pkill -f "slcand .* ${IFACE}" 2>/dev/null || true
+  ip link set "$IFACE" down 2>/dev/null || true
+  ip link delete "$IFACE" 2>/dev/null || true
+
+  slcand -o -c -f -s"$SPEED_CODE" "$DEVICE" "$IFACE"
+
+  sleep 0.5
+
+  ip link set "$IFACE" up
+
+  echo "[can2-slcan] $IFACE is up:"
+  ip -details link show "$IFACE"
+}
+
+stop_can2() {
+  echo "[can2-slcan] Stopping $IFACE..."
+
+  ip link set "$IFACE" down 2>/dev/null || true
+  ip link delete "$IFACE" 2>/dev/null || true
+  pkill -f "slcand .* ${IFACE}" 2>/dev/null || true
+}
+
+status_can2() {
+  if ip link show "$IFACE" >/dev/null 2>&1; then
+    ip -details link show "$IFACE"
+  else
+    echo "[can2-slcan] $IFACE does not exist."
+    exit 1
+  fi
+}
+
+case "$ACTION" in
+  start)
+    start_can2
+    ;;
+  stop)
+    stop_can2
+    ;;
+  restart)
+    stop_can2
+    start_can2
+    ;;
+  status)
+    status_can2
+    ;;
+  *)
+    echo "Usage: $0 {start|stop|restart|status}"
+    exit 2
+    ;;
+esac
+```
+
+```bash
+sudo chmod +x /usr/local/sbin/can2-slcan
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable can2-slcan.service
+sudo systemctl start can2-slcan.service
+```
+
+# Acknowledgements
+
+Project concept and execution inspired by rhysmorgan134/Can-App
+
+Frontend inspired by Domenicobrz/R3F-in-practice
+
+T-90M 3D model
+"T-90M (With interior) [FREE]" (<https://skfb.ly/oWGUu>) by DerpDude is licensed under Creative Commons Attribution (<http://creativecommons.org/licenses/by/4.0/>).
+
+Panzer II model
+"Panzer II (Pz.Kpfw. II)" (<https://skfb.ly/oTOqy>) by vmatthew is licensed under Creative Commons Attribution (<http://creativecommons.org/licenses/by/4.0/>).
+
+## 📄 License
+
+MIT License
