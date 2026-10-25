@@ -16,6 +16,8 @@ export type WheelVisualAssembly = {
   spinner: Group;
   /** Imported carrier rotation retained as the model-specific correction. */
   restRotation: Quaternion;
+  /** Optional imported axle in the carrier frame, for multipart wheel collections. */
+  axleAxis?: Vector3;
 };
 
 export type WheelAssemblySpec = {
@@ -159,7 +161,7 @@ export function applyBackendWheelPose(
   steerAngle: number,
   spinAngle: number,
   steeringAxis = DEFAULT_STEERING_AXIS,
-  axleAxis = DEFAULT_AXLE_AXIS
+  axleAxis = assembly.axleAxis ?? DEFAULT_AXLE_AXIS
 ) {
   scratchBaseRotation.set(...baseRotation);
   scratchSteerRotation.setFromAxisAngle(steeringAxis, -steerAngle);

@@ -1,0 +1,17 @@
+# Vehicle previews, materials and Supra wheel assemblies
+
+The selection preview intentionally loads a complete GLB without mounting the runtime vehicle TSX. That path previously skipped the material corrections in Camaro.tsx and Supra.tsx. Preview and runtime now share `vehicleMaterials.ts`: solid surfaces write depth and use opaque materials, while Camaro window parts and Supra window material slots remain see-through. Supra window surrounds and red lamp slots remain separate from the glass. Materials belong to each vehicle instance; geometry and texture resources stay shared with the GLTF cache.
+
+The Supra currently in main contains 295 mesh objects: 25 body meshes and 270 wheel pieces. GLTFLoader sanitizes names such as `Calliper Front R` into `Calliper_Front_R`, retaining the original name in `userData.name`. The previous exact-name lookup did not recognize these loaded names. The asset also contains repeated corner names, empty corner groups and wheel fragments for other corners nested under Front R. Treating one matching group as a complete wheel would assign fragments to the wrong wheel or drop them.
+
+`supraVisualRig.ts` starts from the complete scene, including collections beside VEHICLE_ROOT. It discovers wheel branches using both original and loaded names, records each fragment's full imported matrix, and assigns the fragments by their positions in the vehicle's +Z-forward frame. Negative model X maps to backend left. It creates one carrier and one rotating subgroup for each of FL, FR, RL and RR. Caliper materials stay on the non-spinning carrier; tire, rim and rotor pieces spin around their imported axle. Reparenting preserves the full fragment matrices, including mirrored scales.
+
+The runtime body and carriers still follow the backend poses. The recovered wheels provide a valid static wheel-plane reference to the existing visual alignment hook, so its height correction can align the body with the backend's nominal wheel center. This does not change physical suspension, spawn height or collider geometry. Alignment still requires the backend collider metadata and Automatic GLB alignment enabled.
+
+The source GLBs are not re-exported by this patch. The frontend uses the current Supra GLB as supplied. New clean wheel collections can remain siblings of VEHICLE_ROOT; they do not have to be merged into a single wheel mesh.
+
+## Verification
+
+Run the normal frontend lint, typecheck, test:performance and build commands. Fixture tests cover sibling collections, nested duplicate groups, preservation of every mesh and transform, material ownership, glass isolation, caliper behavior and backend wheel poses. An additional test loads the real current Supra GLB and confirms four wheel assemblies, preserved bounds and a valid alignment reference. That test substitutes image uploads only, since Node has no browser image decoder or GPU; mesh buffers and transforms are real. It skips with an explicit message in a checkout that has only an LFS pointer. Run `git lfs pull --include=frontend/public/models/vehicles/supra_2020.glb` to enable it.
+
+In the browser, select Camaro and Supra and check body opacity and clear windows, then drive Supra in Sandbox. Inspect all four wheels while steering, rolling and braking. Test per-instance glass by viewing another Supra while switching the local camera. Browser visual and live driving checks remain necessary because automated tests do not render the materials through a GPU.

@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { Keyboard } from "./controls/Keyboard";
 import { GameController } from "./controls/GameController";
 import { connectRustServer } from "./net/rustSocket";
-import { startInputSender, stopInputSender } from "./store/tools/InputSender";
+import { startInputSender, stopInputSender } from "./store/tools/inputSender";
 import './App.css';
 import { GameUI } from './game/GameUI';
 

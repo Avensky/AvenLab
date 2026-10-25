@@ -6,7 +6,8 @@ import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useMemo, u
 import type { PropsWithChildren } from 'react';
 import { useGLTF } from '@react-three/drei';
 import { Group, MathUtils, Matrix4, Mesh, SpotLight } from 'three';
-import type { Material, Object3D } from 'three';
+import { CAMARO_GLASS_PARTS as GLASS_PARTS, createVehicleMaterial } from './tools/vehicleMaterials';
+import type { Object3D } from 'three';
 import { useFrame } from '@react-three/fiber';
 import { setupVehicleParts } from './tools/setupVehicleParts';
 import { useNetworkStore, useInputStore, useUIStore } from "../store";
@@ -16,19 +17,6 @@ import { hasFlag, VehicleFlags } from "../store/tools/inputMasks";
 const MODEL_PATH = "/models/vehicles/camaro.glb";
 
 // Chassis and wheel placement use backend poses; map data owns road alignment.
-const GLASS_OPACITY = 0.60;
-
-const GLASS_PARTS = new Set([
-    'SUNROOF_window',
-    'FRONT_windows',
-    'WINDSHIELD',
-    'REAR_WINDOW',
-    'RIGHT_QUARTER_WINDOW',
-    'LEFT_QUARTER_WINDOW',
-    'LEFT_WINDOW',
-    'RIGHT_WINDOWS',
-]);
-
 const DYNAMIC_WHEEL_GROUPS = new Set([
     'FL_WHEEL',
     'FR_WHEEL',
@@ -47,24 +35,15 @@ type WheelVisualRig = {
     previewMatrix: Matrix4;
 };
 
-function cloneVehicleMaterial(material: Material, isGlass: boolean) {
-    const clone = material.clone();
-    clone.transparent = isGlass;
-    clone.opacity = isGlass ? GLASS_OPACITY : 1;
-    clone.depthWrite = !isGlass;
-    clone.needsUpdate = true;
-    return clone;
-}
-
 function configureObjectMaterials(root: Object3D, isGlass: boolean) {
     root.traverse((object) => {
         if (!(object instanceof Mesh)) return;
 
         object.material = Array.isArray(object.material)
             ? object.material.map((material) =>
-                cloneVehicleMaterial(material, isGlass)
+                createVehicleMaterial(material, isGlass, "camaro")
             )
-            : cloneVehicleMaterial(object.material, isGlass);
+            : createVehicleMaterial(object.material, isGlass, "camaro");
     });
 }
 

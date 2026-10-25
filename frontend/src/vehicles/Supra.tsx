@@ -11,21 +11,14 @@ import type { PropsWithChildren } from "react";
 import { useGLTF } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import {
-  Color,
   Group,
   MathUtils,
-  MeshPhysicalMaterial,
   SpotLight,
 } from "three";
 
-import { sharedGlassMaterial } from "./tools/createGlassMaterialFactory";
-import {
-  applyBackendWheelPose,
-  applyDynamicMaterial,
-  extractWheelAssembly,
-  isBrakeCaliperPart,
-  type WheelAssemblySpec,
-} from "./tools/vehicleVisualRig";
+import { applyBackendWheelPose } from "./tools/vehicleVisualRig";
+import { updateVehicleGlass } from "./tools/vehicleMaterials";
+import { createSupraVisualRig, SUPRA_WHEEL_CORNERS } from "./tools/supraVisualRig";
 import {
   useGameStore,
   useInputStore,
@@ -36,45 +29,10 @@ import { useVehiclePhysicsInterpolator } from "../hooks/usePhysicsInterpolator";
 import { hasFlag, VehicleFlags } from "../store/tools/inputMasks";
 
 const MODEL_PATH = "/models/vehicles/supra_2020.glb";
-const VEHICLE_ROOT_NAME = "VEHICLE_ROOT";
 
 type SupraProps = PropsWithChildren<{
   entityId?: string;
 }>;
-
-// The source model labels its positive-X side as left. Backend left is
-// negative X, so the imported R assemblies intentionally map to backend L.
-const WHEEL_SPECS: readonly WheelAssemblySpec[] = [
-  {
-    corner: "fl",
-    rootNames: ["Calliper Front R", "Caliper Front R"],
-    isFixedPart: isBrakeCaliperPart,
-  },
-  {
-    corner: "fr",
-    rootNames: ["Calliper Front L", "Caliper Front L"],
-    isFixedPart: isBrakeCaliperPart,
-  },
-  {
-    corner: "rl",
-    rootNames: ["Calliper Rear R", "Caliper Rear R"],
-    isFixedPart: isBrakeCaliperPart,
-  },
-  {
-    corner: "rr",
-    rootNames: ["Calliper Rear L", "Caliper Rear L"],
-    isFixedPart: isBrakeCaliperPart,
-  },
-];
-
-function isSupraGlassMaterial(materialName: string) {
-  const name = materialName.toLowerCase();
-
-  // Do not replace the window surround or red lamp glass slots that share the
-  // same multi-material mesh with the actual windows.
-  if (name.includes("surr") || name.includes("red_glass")) return false;
-  return name.includes("window_material");
-}
 
 export const Supra = forwardRef<Group, SupraProps>(function Supra(
   {
@@ -95,53 +53,17 @@ export const Supra = forwardRef<Group, SupraProps>(function Supra(
       state.screen === "signal_recon_setup"
   );
 
-  // Three.js materials are mutable external objects. Keep this instance in a
-  // ref so React does not treat it as an immutable value returned by a hook.
-  // Each vehicle still gets its own glass instance, preventing first-person
-  // transparency from affecting remote players.
-  const glassMaterialRef = useRef<MeshPhysicalMaterial | null>(null);
-  if (glassMaterialRef.current === null) {
-    glassMaterialRef.current = sharedGlassMaterial.clone();
-  }
-  const tintFirstPerson = useMemo(() => new Color(0xffffff), []);
-  const tintExterior = useMemo(() => new Color(0x556677), []);
-
-  useEffect(() => {
-    const glassMaterial = glassMaterialRef.current;
-    return () => glassMaterial?.dispose();
-  }, []);
-
-  const { vehicleVisualRoot, wheelAssemblies } = useMemo(() => {
-    const sourceRoot = scene.getObjectByName(VEHICLE_ROOT_NAME) ?? scene;
-    const root = sourceRoot.clone(true);
-
-    const assemblies = WHEEL_SPECS.map((spec) =>
-      extractWheelAssembly(root, spec)
-    );
-
-    return {
-      vehicleVisualRoot: root,
-      wheelAssemblies: assemblies,
-    };
-  }, [scene]);
+  const rig = useMemo(() => createSupraVisualRig(scene), [scene]);
+  const { vehicleVisualRoot, wheelAssemblies } = rig;
+  useEffect(() => () => rig.dispose(), [rig]);
 
   const alignmentWheels = useMemo(() => wheelAssemblies.map((assembly) => assembly?.carrier ?? null), [wheelAssemblies]);
   useVehicleVisualAlignment("supra", entityId, vehicleVisualGroupRef, alignmentWheels, isVehiclePreview);
 
   useEffect(() => {
-    const glassMaterial = glassMaterialRef.current;
-    if (!glassMaterial) return;
-    applyDynamicMaterial(
-      vehicleVisualRoot,
-      glassMaterial,
-      isSupraGlassMaterial
-    );
-  }, [vehicleVisualRoot]);
-
-  useEffect(() => {
-    const missing = WHEEL_SPECS.filter(
+    const missing = SUPRA_WHEEL_CORNERS.filter(
       (_, index) => !wheelAssemblies[index]
-    ).map((spec) => spec.corner.toUpperCase());
+    ).map((corner) => corner.toUpperCase());
 
     if (missing.length > 0) {
       console.warn(
@@ -299,23 +221,7 @@ export const Supra = forwardRef<Group, SupraProps>(function Supra(
     const cameraMode = gameState.camera;
     const isFirstPerson = isLocalPlayer && cameraMode === "FIRST_PERSON";
     const interpolation = Math.min(delta / 3, 1);
-    const glassMaterial = glassMaterialRef.current;
-    if (!glassMaterial) return;
-
-    glassMaterial.opacity = MathUtils.lerp(
-      glassMaterial.opacity,
-      isFirstPerson ? 0.08 : 0.42,
-      interpolation
-    );
-    glassMaterial.ior = MathUtils.lerp(
-      glassMaterial.ior,
-      isFirstPerson ? 1 : 1.45,
-      interpolation
-    );
-    glassMaterial.color.lerp(
-      isFirstPerson ? tintFirstPerson : tintExterior,
-      interpolation
-    );
+    updateVehicleGlass(rig.glassMaterials, isFirstPerson, interpolation);
 
   });
 

@@ -13,7 +13,7 @@ interface TankProps extends PropsWithChildren {
   turretRotation?: number;
   cannonElevation?: number;
 }
-const MODEL_PATH = "/models/vehicles/tank2.glb";
+const MODEL_PATH = "/models/vehicles/tank.glb";
 export const Tank = forwardRef<Group, TankProps>(function Tank({ children, entityId, turretRotation = 0, cannonElevation = 0 }, ref) {
   const { scene } = useGLTF(MODEL_PATH);
   const root = useRef<Group>(null!);

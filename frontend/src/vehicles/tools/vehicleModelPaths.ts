@@ -3,6 +3,6 @@ export const VEHICLE_MODEL_PATHS = {
   brz: "/models/vehicles/brz.glb",
   camaro: "/models/vehicles/camaro.glb",
   supra: "/models/vehicles/supra_2020.glb",
-  tank: "/models/vehicles/tank2.glb",
+  tank: "/models/vehicles/tank.glb",
 } as const;
 export type VehicleModelId = keyof typeof VEHICLE_MODEL_PATHS;
