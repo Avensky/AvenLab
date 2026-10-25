@@ -6,7 +6,8 @@ import { socket } from "../../net/rustSocket";
 import {
     useCanBusStore,
 } from "../../store/canBusStore";
-import { useCallback, useEffect } from "react";
+import { useNetworkStore } from "../../store/networkStore";
+import { useCallback, useEffect, useState } from "react";
 import SignalReconHeader from "./SignalReconHeader";
 import { MapSelector } from "./MapSelector";
 import { VehicleSelector } from "./VehicleSelector";
@@ -17,6 +18,8 @@ type Sandbox = {
 }
 
 export function SandboxSetup({collapsed, setCollapsed}: Sandbox) {
+    const connected = useNetworkStore((s) => s.connected);
+    const [spawnError, setSpawnError] = useState("");
     const setScreen = useUIStore((s) => s.setScreen);
 
     const vehicle = useSelectionStore((s) => s.getSelectedVehicle());
@@ -46,6 +49,11 @@ export function SandboxSetup({collapsed, setCollapsed}: Sandbox) {
             return;
         }
 
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+            setSpawnError("Connecting to the game server. Try again when connected.");
+            return;
+        }
+        setSpawnError("");
         useRenderSettingsStore.getState().startSandbox();
         setVehicleIdentity(vehicle.canIdentity);
 
@@ -120,6 +128,7 @@ export function SandboxSetup({collapsed, setCollapsed}: Sandbox) {
             {/* Selection Components */}
             <div className="absolute bottom-0 left-1/2 z-20 w-full -translate-x-1/2">
 
+                {(!connected || spawnError) && <p role="status" className="bg-slate-950/95 px-4 py-2 text-center text-sm text-amber-200">{spawnError || "Connecting to the game server…"}</p>}
                 <VehicleSelector 
                     menuId="sandbox_setup"
                     menuIndex={0}
@@ -134,7 +143,7 @@ export function SandboxSetup({collapsed, setCollapsed}: Sandbox) {
                 >
                   <div className="grid grid-cols-2 align-baseline">
                     <GameButton
-                        disabled={!canStartSandbox}
+                        disabled={!canStartSandbox || !connected}
                         onPress={startSandbox}
                         className="flex justify-center border-0 bg-transparent"
                     >

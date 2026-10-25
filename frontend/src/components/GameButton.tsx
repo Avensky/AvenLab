@@ -44,7 +44,7 @@ export const GameButton = forwardRef<HTMLDivElement, GameButtonProps>(
         ref={ref}
         role="button"
         tabIndex={disabled ? -1 : 0}
-        aria-disabled={disabled}
+        aria-disabled={disabled || rest["aria-disabled"] || false}
         className={`${base} ${variants[variant]} ${selected ? "ring-2 ring-yellow-300/80 bg-yellow-400/10" : ""
           } ${disabled ? "pointer-events-none opacity-40" : "cursor-pointer"} ${className} px-1`}
         onPointerEnter={() => { if (!disabled) onFocus?.(); }}

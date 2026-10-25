@@ -1,15 +1,15 @@
 import { useEffect } from "react";
+import { usePreferencesStore } from "../store/preferencesStore";
 import { useInputStore } from "../store/inputStore";
-import { useUIStore } from "../store/uiStore";
+import { isDrivingScreen, useUIStore } from "../store/uiStore";
 import { useCanDataStore } from "../store/canDataStore";
 import { VehicleFlags, PlayerFlags } from "../store/tools/inputMasks";
-import { canDrive, isTypingTarget, routeMenuAction, type MenuAction } from "../store/tools/inputRouting";
+import { canDrive, canNavigateMenu, isTypingTarget, routeMenuAction, type MenuAction } from "../store/tools/inputRouting";
 
-const ANALOG_KEYS = new Set(["KeyW", "KeyS", "KeyA", "KeyD", "Space", "KeyB"]);
 const MENU_KEYS: Record<string, MenuAction> = {
   ArrowUp: "up", KeyW: "up", ArrowDown: "down", KeyS: "down",
   ArrowLeft: "left", KeyA: "left", ArrowRight: "right", KeyD: "right",
-  Enter: "activate", Space: "activate", Escape: "back",
+  Enter: "activate", Space: "activate", Escape: "back", KeyQ: "previous_tab", KeyE: "next_tab", PageUp: "previous_tab", PageDown: "next_tab",
 };
 const VEHICLE_TOGGLES: Record<string, number> = {
   KeyE: VehicleFlags.ENGINE_ON, KeyL: VehicleFlags.HEADLIGHTS,
@@ -32,26 +32,29 @@ export function Keyboard() {
       resetTimer = null;
       useInputStore.getState().releaseInputSource("keyboard");
     };
-    const updateAxes = () => useInputStore.getState().setAnalogFromSource("keyboard", {
-      throttle: Number(keys.has("KeyW")) - Number(keys.has("KeyS")),
-      steer: Number(keys.has("KeyD")) - Number(keys.has("KeyA")),
-      brake: Number(keys.has("Space")), handbrake: Number(keys.has("KeyB")),
-    });
+    const updateAxes = () => {
+      const bindings = usePreferencesStore.getState().bindings;
+      useInputStore.getState().setAnalogFromSource("keyboard", {
+        throttle: Number(keys.has(bindings.forward)) - Number(keys.has(bindings.reverse)),
+        steer: Number(keys.has(bindings.right)) - Number(keys.has(bindings.left)),
+        brake: Number(keys.has(bindings.brake)), handbrake: Number(keys.has(bindings.handbrake)),
+      });
+    };
+    const isAnalogKey = (code: string) => Object.values(usePreferencesStore.getState().bindings).includes(code);
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.repeat || !focused || document.visibilityState === "hidden" || isTypingTarget(event.target)) return;
       const ui = useUIStore.getState();
-      // DebugMenu and focused GameButtons own these events. Never also brake
-      // or toggle a vehicle flag when selecting a debugger option.
-      if (ui.overlay === "debug_menu") return;
+      // Focused menu buttons consume activation before this listener. Menu
+      // actions always stay separate from driving controls.
       if (!ui.isModeLoading && ui.overlay === null
-        && ["sandbox", "swarm", "signal_recon"].includes(ui.screen) && event.code === "Backquote") {
+        && isDrivingScreen(ui.screen) && event.code === "Backquote") {
         event.preventDefault();
         useCanDataStore.getState().setCommandOpen(!useCanDataStore.getState().commandOpen);
         return;
       }
       if (!canDrive()) {
         release();
-        if (useCanDataStore.getState().commandOpen) return;
+        if (useCanDataStore.getState().commandOpen || !canNavigateMenu()) return;
         const action = MENU_KEYS[event.code];
         if (action) { event.preventDefault(); routeMenuAction(action); }
         return;
@@ -61,7 +64,7 @@ export function Keyboard() {
         event.preventDefault(); ui.togglePauseMenu(); return;
       }
       keys.add(event.code);
-      if (ANALOG_KEYS.has(event.code)) { event.preventDefault(); updateAxes(); }
+      if (isAnalogKey(event.code)) { event.preventDefault(); updateAxes(); }
       else if (VEHICLE_TOGGLES[event.code] !== undefined) store.toggleVehicleFlag(VEHICLE_TOGGLES[event.code]);
       else if (PLAYER_TOGGLES[event.code] !== undefined) store.togglePlayerFlag(PLAYER_TOGGLES[event.code]);
       else if (event.code === "ShiftLeft") store.setHeldVehicleFlag("keyboard", VehicleFlags.BOOST, true);
@@ -78,7 +81,7 @@ export function Keyboard() {
     const onKeyUp = (event: KeyboardEvent) => {
       // Release a key even if focus moved into an input after its keydown.
       const owned = keys.delete(event.code);
-      if (owned && ANALOG_KEYS.has(event.code)) updateAxes();
+      if (owned && isAnalogKey(event.code)) updateAxes();
       if (event.code === "ShiftLeft") useInputStore.getState().setHeldVehicleFlag("keyboard", VehicleFlags.BOOST, false);
       if (event.code === "KeyN") useInputStore.getState().setHeldPlayerFlag("keyboard", PlayerFlags.HONK, false);
     };

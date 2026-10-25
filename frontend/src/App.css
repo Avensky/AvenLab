@@ -156,3 +156,52 @@ canvas {
   border-radius: 8px;
   /* background: rgba(255, 80, 80, 0.75); */
 }
+.menu-surface button:focus-visible,
+.menu-surface [role="button"]:focus-visible {
+  outline: 2px solid #fde047;
+  outline-offset: 3px;
+}
+.menu-surface .text-xs { font-size: calc(0.75rem * var(--menu-text-scale, 1)); }
+.menu-surface .text-sm { font-size: calc(0.875rem * var(--menu-text-scale, 1)); }
+html[data-high-contrast="true"] .menu-shell,
+html[data-high-contrast="true"] .menu-row { background: #000; border-color: #94a3b8; }
+html[data-high-contrast="true"] .menu-surface .text-slate-400,
+html[data-high-contrast="true"] .menu-surface .text-slate-500 { color: #e2e8f0; }
+html[data-reduce-motion="true"] .menu-surface * { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+@media (prefers-reduced-motion: reduce) {
+  .menu-surface * { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+}
+
+/* Every main-menu entry uses Sandbox's theme and the same mouse/key/pad focus. */
+.main-menu .menu-row[data-selected="true"] {
+  background-color: rgb(250 204 21 / 0.1);
+}
+
+/* Fill the dynamic viewport. Only the tab content scrolls; short tabs cannot
+   collapse the shell or move the header, tabs and Back button. */
+.tabbed-menu {
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  padding: 0;
+}
+.tabbed-menu-shell {
+  height: 100%;
+  max-width: none;
+  border-radius: 0;
+}
+.tabbed-menu-header {
+  padding-top: max(0.75rem, env(safe-area-inset-top));
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+}
+.tabbed-menu-tabs,
+.tabbed-menu-content,
+.tabbed-menu-footer {
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+}
+.tabbed-menu-footer {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}

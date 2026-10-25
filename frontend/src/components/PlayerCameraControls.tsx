@@ -1,3 +1,4 @@
+import { usePreferencesStore } from "../store/preferencesStore";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
 import { MathUtils } from "three";
@@ -23,6 +24,7 @@ export function PlayerCameraControls({
   lookSensitivity = 0.004, returnSpeed = 3.5,
   maxYaw = Math.PI * 0.65, maxPitch = 0.45,
 }: PlayerCameraControlsProps) {
+  const sensitivity = usePreferencesStore((s) => s.cameraSensitivity);
   const { camera, gl } = useThree();
   const { getInterpolated } = useVehiclePhysicsInterpolator(playerId);
   const follower = useRef<VehicleCameraFollower | null>(null);
@@ -59,8 +61,8 @@ export function PlayerCameraControls({
       // Preserve precise short drags and the existing faster long-drag curve.
       const yawCurve = MathUtils.clamp(Math.abs(dx) / 30, 0, 1) ** 2;
       const pitchCurve = MathUtils.clamp(Math.abs(dy) / 30, 0, 1) ** 2;
-      orbitYaw.current = MathUtils.clamp(orbitYaw.current - dx * MathUtils.lerp(lookSensitivity * 0.2, lookSensitivity * 1.75, yawCurve), -maxYaw, maxYaw);
-      orbitPitch.current = MathUtils.clamp(orbitPitch.current - dy * MathUtils.lerp(lookSensitivity * 0.2, lookSensitivity * 1.35, pitchCurve), -maxPitch, maxPitch);
+      orbitYaw.current = MathUtils.clamp(orbitYaw.current - dx * sensitivity * MathUtils.lerp(lookSensitivity * 0.2, lookSensitivity * 1.75, yawCurve), -maxYaw, maxYaw);
+      orbitPitch.current = MathUtils.clamp(orbitPitch.current - dy * sensitivity * MathUtils.lerp(lookSensitivity * 0.2, lookSensitivity * 1.35, pitchCurve), -maxPitch, maxPitch);
     };
     const onUp = (event: PointerEvent) => { if (activePointer.current === event.pointerId) releasePointer(); };
     const onLostCapture = () => { looking.current = false; activePointer.current = null; };
@@ -82,7 +84,7 @@ export function PlayerCameraControls({
       window.removeEventListener("blur", releasePointer);
       releasePointer(); orbitYaw.current = orbitPitch.current = 0;
     };
-  }, [enabled, gl, playerId, lookSensitivity, maxYaw, maxPitch]);
+  }, [enabled, gl, playerId, sensitivity, lookSensitivity, maxYaw, maxPitch]);
 
   useFrame((_, delta) => {
     if (!enabled) return;

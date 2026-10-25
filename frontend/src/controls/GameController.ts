@@ -1,9 +1,10 @@
+import { usePreferencesStore } from "../store/preferencesStore";
 import { useEffect } from "react";
 import { useInputStore } from "../store/inputStore";
 import { useUIStore } from "../store/uiStore";
 import { useCanDataStore } from "../store/canDataStore";
 import { VehicleFlags, PlayerFlags } from "../store/tools/inputMasks";
-import { canDrive, isTypingTarget, routeMenuAction } from "../store/tools/inputRouting";
+import { canDrive, canNavigateMenu, isTypingTarget, routeMenuAction } from "../store/tools/inputRouting";
 
 function axis(value = 0, deadzone = 0.12) {
   return Number.isFinite(value) && Math.abs(value) >= deadzone ? Math.max(-1, Math.min(1, value)) : 0;
@@ -58,6 +59,7 @@ export function GameController() {
       if (edges[9]) { release(); useUIStore.getState().togglePauseMenu(); return; }
       if (!canDrive()) {
         release();
+        if (!canNavigateMenu()) return;
         const now = performance.now();
         const vertical = Math.abs(axis(pad.axes[1], 0.5)) >= Math.abs(axis(pad.axes[3], 0.5))
           ? axis(pad.axes[1], 0.5) : axis(pad.axes[3], 0.5);
@@ -67,12 +69,14 @@ export function GameController() {
         else if (vertical !== 0 && now - lastVertical >= 220) { routeMenuAction(vertical < 0 ? "up" : "down"); lastVertical = now; }
         if (edges[14] || edges[15]) { routeMenuAction(edges[14] ? "left" : "right"); lastHorizontal = now; }
         else if (horizontal !== 0 && now - lastHorizontal >= 220) { routeMenuAction(horizontal < 0 ? "left" : "right"); lastHorizontal = now; }
+        if (edges[4] || edges[5]) routeMenuAction(edges[4] ? "previous_tab" : "next_tab");
         if (edges[0]) routeMenuAction("activate");
         else if (edges[1]) routeMenuAction("back");
         return;
       }
-      const steer = axis(pad.axes[0]);
-      const throttle = trigger(pad.buttons[7]?.value) || -axis(pad.axes[3]);
+      const preferences = usePreferencesStore.getState();
+      const steer = Math.max(-1, Math.min(1, axis(pad.axes[0], preferences.controllerDeadzone) * preferences.steeringSensitivity * (preferences.invertSteering ? -1 : 1)));
+      const throttle = trigger(pad.buttons[7]?.value) || -axis(pad.axes[3], preferences.controllerDeadzone);
       const brake = trigger(pad.buttons[6]?.value);
       const handbrake = Number(pressed(1));
       // After menu/focus/device changes, release and re-engage drive controls.

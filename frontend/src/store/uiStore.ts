@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { useSelectionStore } from "./selectionStore";
+import { MAIN_MENU_ITEMS, PAUSE_MENU_ITEMS } from "../game/menuItems";
 
 export type MenuScreen =
   | "loading"
@@ -11,31 +12,29 @@ export type MenuScreen =
   | "signal_recon_mission"
   | "swarm"
   | "settings"
-  | "vehicle_select";
+  | "vehicle_select"
+  | "career"
+  | "missions";
 
-export type UIOverlay = null | "pause" | "debug_menu" | "settings" | "vehicle_select";
+export type UIOverlay = null | "pause" | "debug_menu" | "settings" | "vehicle_select" | "career" | "missions" | "leave_game";
 
 export type MenuId = "main" | "pause" | "settings" | "sandbox_setup" | "signal_recon_setup";
 
-const playableScreens = new Set<MenuScreen>([
-  "sandbox",
-  "swarm",
-  "signal_recon",
-]);
+// Only Sandbox owns driving controls and the in-game pause stack.
+export const isDrivingScreen = (screen: MenuScreen) => screen === "sandbox";
 
 const menuItemCounts: Record<MenuId, number> = {
-  main: 4,
-  pause: 4,
+  main: MAIN_MENU_ITEMS.length,
+  pause: PAUSE_MENU_ITEMS.length,
   settings: 3,
   sandbox_setup: 4,
   signal_recon_setup: 2,
 };
 
 function getActiveMenu(screen: MenuScreen, overlay: UIOverlay): MenuId | null {
-  if (overlay === "pause") return "pause";
-  if (overlay === "settings") return "settings";
+  if (overlay === "pause" && isDrivingScreen(screen)) return "pause";
+  if (overlay !== null) return null;
   if (screen === "main") return "main";
-  if (screen === "settings") return "settings";
   if (screen === "sandbox_setup") return "sandbox_setup";
   return null;
 }
@@ -74,6 +73,7 @@ type UIState = {
 
   openPause: () => void;
   closeOverlay: () => void;
+  backToParentMenu: () => void;
   togglePauseMenu: () => void;
 
   moveActiveMenuHorizontal: (dir: 1 | -1) => void;
@@ -88,7 +88,10 @@ export const useUIStore = create<UIState>((set, get) => ({
   screen: "main",
   setScreen: (screen) => { set({ screen, overlay: null, }); },
   overlay: null,
-  setOverlay: (overlay) => { set({ overlay }); },
+  setOverlay: (overlay) => {
+    if (overlay && ["pause", "debug_menu", "vehicle_select", "leave_game"].includes(overlay) && !isDrivingScreen(get().screen)) return;
+    set({ overlay });
+  },
   selectedMenuIndexById: {
     main: 0,
     pause: 0,
@@ -168,64 +171,15 @@ export const useUIStore = create<UIState>((set, get) => ({
     const index = get().selectedMenuIndexById[activeMenu] ?? 0;
 
     if (activeMenu === "main") {
-      const targets: MenuScreen[] = [
-        "sandbox_setup",
-        "signal_recon",
-        "swarm",
-        "settings",
-      ];
-
-      set({
-        screen: targets[index] ?? "sandbox",
-        overlay: null,
-      });
-
+      const item = MAIN_MENU_ITEMS[index];
+      if (item?.available) set({ screen: item.screen, overlay: null });
       return;
     }
 
     if (activeMenu === "pause") {
-      if (index === 0) {
-        set({ overlay: null });
-        return;
-      }
-
-      if (index === 1) {
-        set({ overlay: "debug_menu" });
-        return;
-      }
-
-      if (index === 2) {
-        set({ overlay: "settings" });
-        return;
-      }
-
-      if (index === 3) {
-        set({
-          screen: "main",
-          overlay: null,
-        });
-        return;
-      }
-    }
-
-    if (activeMenu === "settings") {
-      if (index === 0) {
-        set({ overlay: null });
-        return;
-      }
-
-      if (index === 1) {
-        // placeholder: controls/settings action
-        return;
-      }
-
-      if (index === 2) {
-        set({
-          screen: "main",
-          overlay: null,
-        });
-        return;
-      }
+      const item = PAUSE_MENU_ITEMS[index];
+      if (item) set({ overlay: item.id === "resume" ? null : item.id });
+      return;
     }
 
     if (activeMenu === "sandbox_setup") {
@@ -259,17 +213,21 @@ export const useUIStore = create<UIState>((set, get) => ({
   },
   openPause: () => {
     const { screen } = get();
-    if (!playableScreens.has(screen)) return;
+    if (!isDrivingScreen(screen)) return;
 
     set({ overlay: "pause" });
   },
   closeOverlay: () => {
     set({ overlay: null });
   },
+  backToParentMenu: () => {
+    if (get().overlay !== null) set({ overlay: isDrivingScreen(get().screen) ? "pause" : null });
+    else set({ screen: "main", overlay: null });
+  },
   togglePauseMenu: () => {
     const { screen, overlay } = get();
 
-    if (!playableScreens.has(screen)) return;
+    if (!isDrivingScreen(screen)) return;
 
     set({
       overlay: overlay === "pause" ? null : "pause",
@@ -299,7 +257,7 @@ export const useUIStore = create<UIState>((set, get) => ({
         if (dir === 1) {
           selection.nextMap();
         } else {
-          selection.nextMap();
+          selection.prevMap();
         }
         return;
       }

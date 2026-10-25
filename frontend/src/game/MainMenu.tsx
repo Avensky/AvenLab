@@ -2,41 +2,12 @@ import { useUIStore } from "../store";
 import { GameButton } from "../components/GameButton";
 import { useEffect, useRef } from "react";
 
-const menuItems = [
-  {
-    label: "SANDBOX",
-    desc: "Load Blue Team base, city chunk, vehicle controls, and physics.",
-    screen: "sandbox_setup" as const,
-    link: "sandbox_setup" as const,
-    variant: "primary" as const,
-  },
-  {
-    label: "SIGNAL RECON",
-    desc: "Baseline, action, validation, record, replay.",
-    screen: "signal_recon_setup" as const,
-    link: "signal_recon_setup" as const,
-    variant: "warning" as const,
-  },
-  {
-    label: "SWARM COMMAND",
-    desc: "Multi-domain vehicle orchestration.",
-    screen: "swarm" as const,
-    link: "main" as const,
-    variant: "danger" as const,
-  },
-  {
-    label: "SETTINGS",
-    desc: "Controls, mobile layout, audio, HUD, and display.",
-    screen: "settings" as const,
-    link: "main" as const,
-    variant: "secondary" as const,
-  },
-];
+import { MAIN_MENU_ITEMS } from "./menuItems";
 
 export function MainMenu() {
   const selectedIndex = useUIStore((s) => s.selectedMenuIndexById.main);
   const setActiveMenuIndex = useUIStore((s) => s.setActiveMenuIndex);
-  const startModeLoading = useUIStore((s) => s.startModeLoading);
+  const activate = useUIStore((s) => s.activateActiveMenuSelection);
 
   const itemRefs = useRef<Array<HTMLDivElement | null>>([]);
 
@@ -44,16 +15,17 @@ export function MainMenu() {
     const el = itemRefs.current[selectedIndex];
     if (!el) return;
 
+    el.focus({ preventScroll: true });
     el.scrollIntoView({
       block: "nearest",
       inline: "nearest",
-      behavior: "smooth",
+      behavior: "auto",
     });
   }, [selectedIndex]);
 
   return (
-    <div className="game-ui px-2 h-full items-center flex flex-col justify-center bg-slate-950/85 shadow-2xl shadow-cyan-500/20 backdrop-blur">
-      <div className="border-b border-cyan-400/20 p-2">
+    <div className="game-ui menu-surface main-menu relative z-30 px-2 h-full items-center flex flex-col justify-start py-5 sm:justify-center bg-slate-950/85 shadow-2xl shadow-cyan-500/20 backdrop-blur">
+      <div className="shrink-0 border-b border-cyan-400/20 p-2">
         <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
           <img
             src="/images/logo.png"
@@ -78,22 +50,24 @@ export function MainMenu() {
         </div>
       </div>
 
-      <div className="mt-2 grid gap-2">
-        {menuItems.map((item, index) => (
+      <div className="mt-2 grid shrink-0 gap-2">
+        {MAIN_MENU_ITEMS.map((item, index) => (
           <GameButton
-            key={item.screen}
+            key={item.id}
             ref={(el) => {
               itemRefs.current[index] = el;
             }}
             selected={selectedIndex === index}
-            variant={item.variant}
-            onPress={() => startModeLoading(item.link, `Loading ${item.label}`)}
+            variant="primary"
+            data-selected={selectedIndex === index}
+            aria-disabled={!item.available}
+            onPress={() => { setActiveMenuIndex(index); activate(); }}
             onFocus={() => setActiveMenuIndex(index)}
-            className="rounded-lg text-center px-2 py-1"
+            className="menu-row rounded-lg text-center px-2 py-1"
           >
             {item.label}
             <span className="block text-xs font-normal text-slate-400">
-              {item.desc}
+              {item.description}
             </span>
           </GameButton>
         ))}

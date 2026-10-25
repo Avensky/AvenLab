@@ -3,6 +3,7 @@ import { RotatingCamera } from './RotatingCamera'
 import { useEffect, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { OrbitControls as ThreeOrbitControls } from 'three-stdlib';
+import { usePreferencesStore } from "../store/preferencesStore";
 import { useGameStore } from '../store/gameStore';
 import { useUIStore } from '../store/uiStore';
 import { useNetworkStore } from '../store/networkStore';
@@ -83,6 +84,9 @@ function cameraPresetForVehicle(vehicleId?: string | null): VehicleCameraPreset 
 }
 
 export default function Cameras() {
+  const fov = usePreferencesStore((s) => s.fov);
+  const reducedMotion = usePreferencesStore((s) => s.reducedMotion);
+  const overlay = useUIStore((s) => s.overlay);
   const screen = useUIStore((state) => state.screen);
   const camMode = useGameStore((state) => state.camera);
   const editor = useGameStore((state) => state.editor);
@@ -116,10 +120,10 @@ export default function Cameras() {
     camMode === "DEFAULT";
   return (
     <>
-      <PerspectiveCamera makeDefault fov={75} position={[0, 7, 12]} />
+      <PerspectiveCamera makeDefault fov={fov} position={[0, 7, 12]} />
       <PlayerCameraControls
         playerId={playerId}
-        enabled={isDriving}
+        enabled={isDriving && overlay === null}
         offset={playerCameraPreset.offset}
         targetOffset={playerCameraPreset.targetOffset}
         positionSpeed={playerCameraPreset.positionSpeed}
@@ -136,7 +140,7 @@ export default function Cameras() {
         maxDistance={13}
       />
       {
-        (isGallery) && (
+        (isGallery && !reducedMotion) && (
         <RotatingCamera
           orbitRef={controlsRef}
           radius={4.5}

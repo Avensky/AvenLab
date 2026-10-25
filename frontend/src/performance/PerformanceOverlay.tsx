@@ -1,3 +1,4 @@
+import { inputRef } from "../store/inputStore";
 import { useRenderSettingsStore } from "../store/renderSettingsStore";
 import { useDebugViewStore } from "../store/debugViewStore";
 import { useUIStore } from "../store/uiStore";
@@ -20,14 +21,17 @@ function Readout() {
   const overlay = useUIStore((s) => s.overlay);
   const hasMapShapes = useWorldStore((s) => s.map?.collider_chunks !== undefined);
   const connected = useNetworkStore((s) => s.connected);
-  const { queuedBytes, pendingInputs } = getInputSenderStats();
+  const sender = getInputSenderStats();
+  const { queuedBytes, pendingInputs } = sender;
+  const network = useNetworkStore.getState();
+  const input = inputRef.current;
   const m = stats.metrics;
   const baseline = stats.runs.find((r) => r.id === stats.baselineId);
   const last = stats.runs.at(-1);
   const delta = difference(last?.metrics.frameMs?.mean, baseline?.metrics.frameMs?.mean);
-  return <aside className="pointer-events-none fixed left-3 top-3 z-40 max-w-[calc(100vw-24px)] rounded-xl border border-cyan-500/40 bg-slate-950/95 px-4 py-3 font-mono text-xs text-slate-200 shadow-xl" aria-label="Performance overlay">
+  return <aside className="pointer-events-none fixed left-3 top-3 z-40 max-h-[calc(100svh-24px)] max-w-[calc(100vw-24px)] overflow-hidden rounded-xl border border-cyan-500/40 bg-slate-950/95 px-4 py-3 font-mono text-[10px] text-slate-200 sm:text-xs shadow-xl" aria-label="Performance overlay">
     <div className="mb-2 flex justify-between gap-6 text-cyan-300"><strong>LATENCY LAB</strong><span>5 s window</span></div>
-    <div className="grid grid-cols-[1fr_auto] gap-x-5 gap-y-1">
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-5 gap-y-1">
       <span>FPS / frame mean</span><span>{format(m.frameMs ? 1000 / m.frameMs.mean : null, 0)} / {format(m.frameMs?.mean)} ms</span>
       <span>Frame p95 / p99</span><span>{format(m.frameMs?.p95)} / {format(m.frameMs?.p99)} ms</span>
       <span>CPU submit mean / p95</span><span>{format(m.cpuSubmitMs?.mean)} / {format(m.cpuSubmitMs?.p95)} ms</span>
@@ -40,6 +44,13 @@ function Readout() {
       <span>Snapshots / debug traffic</span><span>{format(stats.snapshotKiBps)} / {format(stats.debugKiBps)} KiB/s</span>
       <span>Server physics / work p95</span><span>{format(m.serverPhysicsMs?.p95, 2)} / {format(m.serverWorkMs?.p95, 2)} ms</span>
       <span>Server lock p95 / input queue</span><span>{format(m.serverLockMs?.p95, 2)} ms / {queuedBytes} B · {pendingInputs} pending</span>
+      <span>Tick / debug tick</span><span>{network.tick ?? "—"} / {network.debugTick ?? "—"}</span>
+      <span>Input sender / sent / skipped</span><span>{sender.running ? "on" : "off"} / {sender.sent} / {sender.skipped}</span>
+      <span>Oldest pending input</span><span>{format(sender.oldestPendingMs)} ms</span>
+      <span>Payload snapshot / debug</span><span>{sender.snapshotChars} / {sender.debugChars} chars</span>
+      <span>Peak decode / ack seq</span><span>{format(sender.worstDecodeMs, 2)} ms / {sender.acknowledgedInputSeq ?? "—"}</span>
+      <span>Backend vehicle speed</span><span>{format(network.physicsData?.speed, 2)} m/s</span>
+      <span>Throttle / brake / handbrake</span><span>{format(input.throttle, 2)} / {format(input.brake, 2)} / {format(input.handbrake, 2)}</span>
       <span>Interpolation target</span><span>{interpolation ? DEFAULT_INTERPOLATION_DELAY_MS : 0} ms</span>
       <span>Body roll mean / p95</span><span>{format(m.bodyRollDeg?.mean)} / {format(m.bodyRollDeg?.p95)}°</span>
       <span>Airborne tires mean / p95</span><span>{format(m.airborneWheels?.mean)} / {format(m.airborneWheels?.p95, 0)}</span>
