@@ -8,6 +8,7 @@ export function ModeLoadingScreen() {
   const { active, progress, item, loaded, total } = useProgress();
 
   const isModeLoading = useUIStore((s) => s.isModeLoading);
+  const screen = useUIStore((s) => s.screen);
   const loadingLabel = useUIStore((s) => s.loadingLabel);
   const finishModeLoading = useUIStore((s) => s.finishModeLoading);
 
@@ -30,7 +31,9 @@ export function ModeLoadingScreen() {
     }
   }, [assetsReady, isModeLoading, finishModeLoading]);
 
-  if (!isModeLoading) return null;
+  // Selection already has an immediate native grid showroom while its assets
+  // load. Keep the readiness gate, without covering it with a second loader.
+  if (!isModeLoading || screen === "sandbox_setup" || screen === "signal_recon_setup") return null;
 
   return (
     <div className="fixed inset-0 z-[99999] flex items-center justify-center overflow-hidden bg-black text-cyan-100">

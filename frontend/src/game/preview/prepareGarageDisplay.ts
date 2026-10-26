@@ -32,6 +32,24 @@ export function prepareGarageDisplay(scene: Object3D) {
         material.emissive.setRGB(0.01799614, 0.94552903, 0.00267312);
         material.emissiveIntensity = 2;
         break;
+      case "BARR LTTRl":
+      case "INOX":
+        material.color.setRGB(0.7, 0.74, 0.8);
+        material.metalness = 0.35;
+        material.roughness = 0.22;
+        material.envMapIntensity = 1;
+        break;
+      case "BASE":
+      case "Material.004":
+        material.color.setRGB(0.22, 0.24, 0.28);
+        material.metalness = 0.25;
+        material.roughness = 0.32;
+        material.envMapIntensity = 0.9;
+        break;
+      case "Material.006":
+        material.emissive.setRGB(1, 1, 1);
+        material.emissiveIntensity = 3;
+        break;
       case "Sol cubique":
         material.color.setRGB(0.005, 0.005, 0.006);
         material.metalness = 1;
@@ -43,15 +61,21 @@ export function prepareGarageDisplay(scene: Object3D) {
         material.roughness = 0.2;
         break;
       case "Fond":
+      case "Murs":
+        material.color.setRGB(0.075, 0.08, 0.095);
+        material.metalness = 0.4;
+        material.roughness = 0.24;
+        material.envMapIntensity = 1.1;
+        break;
       case "Material.001":
         material.color.setRGB(0.006, 0.006, 0.007);
         material.roughness = 0.2;
         break;
-      case "Murs":
-        material.color.setRGB(0.009, 0.009, 0.011);
-        break;
       case "Haut":
-        material.color.setRGB(0.00308228, 0.00285042, 0.00285042);
+        material.color.setRGB(0.025, 0.028, 0.035);
+        material.metalness = 0.3;
+        material.roughness = 0.4;
+        material.envMapIntensity = 0.9;
         break;
     }
     return material;

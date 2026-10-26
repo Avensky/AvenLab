@@ -2,7 +2,7 @@ import { useEffect, useMemo } from "react";
 import { DataTexture, LinearFilter } from "three";
 
 // Small display-only contact cue. One draw call, no network or shadow-map pass.
-export function PreviewContactShadow({ footprint }: { footprint: [number, number] }) {
+export function PreviewContactShadow({ footprint, offset = [0, 0] }: { footprint: [number, number]; offset?: readonly [number, number] }) {
   const texture = useMemo(() => {
     const side = 32, pixels = new Uint8Array(side * side * 4);
     for (let y = 0; y < side; y++) for (let x = 0; x < side; x++) {
@@ -14,7 +14,7 @@ export function PreviewContactShadow({ footprint }: { footprint: [number, number
     return result;
   }, []);
   useEffect(() => () => texture.dispose(), [texture]);
-  return <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.003, 0]}>
+  return <mesh name="preview-contact-shadow" rotation={[-Math.PI / 2, 0, 0]} position={[offset[0], 0.006, offset[1]]}>
     <planeGeometry args={[footprint[0] * 1.5, footprint[1] * 1.25]} />
     <meshBasicMaterial map={texture} transparent depthWrite={false} toneMapped={false} />
   </mesh>;

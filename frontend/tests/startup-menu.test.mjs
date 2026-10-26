@@ -48,6 +48,16 @@ test('real App removes the startup cover and opens the latest main menu without 
     assert.equal(ui.getState().screen, 'settings', 'main menu remains interactive with unavailable media/backend');
     await act(async () => ui.setState({ screen: 'main', overlay: null }));
     assert.ok(document.querySelector('.main-menu'));
+    const { ModeLoadingScreen } = await server.ssrLoadModule('/src/game/ModeLoadingScreen.tsx');
+    await act(async () => root.render(h(ModeLoadingScreen)));
+    for (const screen of ['sandbox_setup', 'signal_recon_setup']) {
+      await act(async () => ui.setState({ screen, isModeLoading: true, loadingLabel: 'PREPARING SELECTION' }));
+      assert.equal(document.getElementById('root').childElementCount, 0,
+        'selection must leave the native grid stage visible instead of a loading card/video');
+      assert.equal(ui.getState().isModeLoading, true, 'hiding the card must not bypass the readiness gate');
+    }
+    await act(async () => ui.setState({ screen: 'sandbox', loadingLabel: 'LOADING SANDBOX' }));
+    assert.equal(document.querySelector('h1')?.textContent, 'LOADING SANDBOX', 'gameplay keeps its loading screen');
   } finally {
     if (root) await act(async () => root.unmount());
     transport?.disconnectRustServer();
