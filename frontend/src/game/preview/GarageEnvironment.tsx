@@ -45,17 +45,24 @@ function GarageModel({ turntable }: { turntable: Group | null }) {
     return { ...display, platform, footprint };
   }, [scene]);
   useEffect(() => () => prepared.dispose(), [prepared]);
+  const footprint = prepared.footprint;
   return <>
     <group name="garage-special-environment"><primitive object={prepared.root} dispose={null} /></group>
     {turntable && createPortal(<>
       <primitive object={prepared.platform} dispose={null} />
-      {prepared.footprint && <GarageFloorReflection width={prepared.footprint.x} depth={prepared.footprint.z} />}
+      {footprint && <group name="platform-corner-lights">
+        {[-1, 1].flatMap(x => [-1, 1].map(z => <mesh key={`${x},${z}`} position={[x * (footprint.x / 2 - 0.24), 0.015, z * (footprint.z / 2 - 0.24)]}>
+          <boxGeometry args={[0.14, 0.018, 0.14]} />
+          <meshStandardMaterial color="#0a1608" emissive="#65ff1d" emissiveIntensity={2.1} />
+        </mesh>))}
+      </group>}
     </>, turntable)}
+    {footprint && <GarageFloorReflection width={footprint.x} depth={footprint.z} turntable={turntable} />}
     {/* One small, generated reflection map. No HDRI fetch or per-frame cube capture. */}
     <Environment resolution={128} frames={1}>
       <Lightformer form="rect" intensity={1} position={[0, 6, 0]} rotation={[Math.PI / 2, 0, 0]} scale={[3, 8, 1]} />
-      <Lightformer form="rect" color="#48ff18" intensity={1.3} position={[0, 3, -6]} scale={[10, 0.2, 1]} />
-      <Lightformer form="rect" color="#d9ffe1" intensity={1} position={[-6, 3, 0]} rotation={[0, Math.PI / 2, 0]} scale={[8, 0.3, 1]} />
+      <Lightformer form="rect" color="#d8e2f0" intensity={0.35} position={[0, 3, -6]} scale={[8, 0.1, 1]} />
+      <Lightformer form="rect" color="#e9eef5" intensity={0.65} position={[-6, 3, 0]} rotation={[0, Math.PI / 2, 0]} scale={[8, 0.2, 1]} />
     </Environment>
   </>;
 }

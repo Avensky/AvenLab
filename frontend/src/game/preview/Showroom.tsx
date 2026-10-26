@@ -1,12 +1,11 @@
 // No models, textures, HDRIs or network requests. This stage is ready with UI.
 export function Showroom({ floor = true }: { floor?: boolean }) {
   return <>
-    <color attach="background" args={["#050907"]} />
-    <fog attach="fog" args={["#050907", 25, 65]} />
-    <hemisphereLight args={["#d8eadd", "#19231c", 0.4]} />
-    <directionalLight position={[-6, 8, -4]} color="#f0fff3" intensity={1.2} />
-    <directionalLight position={[6, 5, 4]} color="#5bff69" intensity={0.3} />
-    <pointLight position={[0, 2.5, -4]} color="#48ff18" intensity={8} distance={14} decay={2} />
+    <color attach="background" args={["#020204"]} />
+    <fog attach="fog" args={["#020204", 25, 65]} />
+    <hemisphereLight args={["#d1d7e0", "#090a0d", 0.3]} />
+    <directionalLight position={[-6, 8, -4]} color="#f0f4ff" intensity={1} />
+    <directionalLight position={[6, 5, 4]} color="#bfcee2" intensity={0.3} />
     {floor && <ShowroomFloor />}
   </>;
 }

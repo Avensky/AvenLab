@@ -15,9 +15,11 @@ test('Sketchfab presentation restores green emission without changing cached ass
   const restored = display.root.children[0].material[0];
   assert.equal(restored, display.root.children[1].material, 'shared source materials should have one display copy');
   assert.notEqual(restored, rail);
-  assert.ok(restored.emissive.g * restored.emissiveIntensity > 9, 'HDR green reaches bloom before tone mapping');
+  const energy = restored.emissive.g * restored.emissiveIntensity;
+  assert.ok(energy > 1.6 && energy < 3, 'light cores reach bloom without the old scene-wide green spill');
   assert.ok(restored.emissive.g > 200 * restored.emissive.r);
   assert.equal(display.root.children[0].material[1].metalness, 1);
+  assert.ok(display.root.children[0].material[1].color.toArray().every(value => value < 0.02), 'the display pad stays black');
   assert.equal(display.root.children[0].geometry, geometry);
   assert.equal(display.root.children.length, 2);
   assert.equal(source.children.length, 3);

@@ -14,7 +14,8 @@ export function GarageGlow() {
     const target = new WebGLRenderTarget(1, 1, { type: HalfFloatType });
     const composer = new EffectComposer(gl, target);
     const render = new RenderPass(scene, camera);
-    const bloom = new UnrealBloomPass(new Vector2(1, 1), 0.25, 0, 1);
+    // Only HDR light cores bloom; ordinary surfaces/reflections stay black.
+    const bloom = new UnrealBloomPass(new Vector2(1, 1), 0.12, 0, 1.6);
     const output = new OutputPass();
     composer.addPass(render); composer.addPass(bloom); composer.addPass(output);
     return { composer, render, bloom, output };

@@ -58,6 +58,7 @@ export function SignalReconSetup({ collapsed, setCollapsed }: SignalReconProps) 
 
   return <div className="game-ui absolute inset-0 z-10 flex w-screen flex-col text-cyan-100">
     <SignalReconHeader title="REDLINE VECTOR // SIGNAL RECON" subtitle="VEHICLE & CAN SETUP"
+      className="garage-selection-header"
       collapsed={collapsed} setCollapsed={setCollapsed}
       exitLabel="BACK" onExit={() => setScreen("main")} />
     {startAttempted && !canStart && <div className="pointer-events-none relative z-40">

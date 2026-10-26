@@ -85,6 +85,7 @@ export function SandboxSetup({collapsed, setCollapsed}: Sandbox) {
             <SignalReconHeader 
                 title="REDLINE VECTOR // SANDBOX"
                 subtitle="VEHICLE & MAP SELECTION"
+                className="garage-selection-header"
                 collapsed={collapsed}
                 setCollapsed={setCollapsed}
                 exitLabel="BACK"
@@ -97,7 +98,7 @@ export function SandboxSetup({collapsed, setCollapsed}: Sandbox) {
             {/* Selection Components */}
             <div ref={choices} className="garage-selection-controls absolute bottom-0 left-1/2 z-20 max-h-[65svh] w-full -translate-x-1/2 overflow-y-auto">
 
-                {(!connected || spawnError) && <p role="status" className="bg-slate-950/95 px-4 py-2 text-center text-sm text-amber-200">{spawnError || "Connecting to the game server…"}</p>}
+                {(!connected || spawnError) && <p role="status" className="garage-selection-status px-4 py-2 text-center text-sm text-amber-200">{spawnError || "Connecting to the game server…"}</p>}
                 <div data-sandbox-choice={0} tabIndex={0} role="group" aria-label="Vehicle selection" className="outline-none"
                     onFocus={() => setActiveMenuIndex(0)}>
                     <VehicleSelector

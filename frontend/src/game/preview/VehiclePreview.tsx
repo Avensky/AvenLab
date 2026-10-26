@@ -19,21 +19,19 @@ export function VehiclePreview() {
   const reducedMotion = usePreferencesStore((s) => s.reducedMotion);
   const size = useThree(s => s.size);
   const [turntable, setTurntable] = useState<Group | null>(null);
-  // Reserve the header/selector area on short landscape phones. Use the same
-  // framing for every car, including the tank's antenna and extended barrel.
-  // Selection never changes this camera; only viewport resizing does.
-  const stageHeight = Math.max(72, size.height - 240);
-  const radius = Math.max(8.5, 5.2 * size.height / stageHeight, 9.6 * size.height / Math.max(1, size.width));
-  const targetY = Math.max(0.9, 1.7 - Math.max(0, size.height - 390) * 0.004);
+  // Frame the full-screen showroom, including the view through transparent
+  // controls. Vehicle changes retain this same camera and turntable angle.
+  const radius = Math.max(8.5, 7.3 * size.height / Math.max(1, size.width));
+  const targetY = 1.6;
   return (
     <>
       <GarageEnvironment turntable={turntable} />
-      <PerspectiveCamera makeDefault fov={55} position={[radius * 0.75, 2.8, radius * 0.66]} near={Math.max(0.1, radius - 6)}
+      <PerspectiveCamera makeDefault fov={50} position={[radius * 0.75, 3.2, radius * 0.66]} near={Math.max(0.1, radius - 6)}
         onUpdate={camera => {
           // Portrait framing can put the camera beyond a garage wall. The
           // near plane cuts away that foreground while retaining the stage.
           // Keep the car above the selector rows, especially on short phones.
-          const offsetY = Math.min(96, size.height * (size.width > size.height ? 0.23 : 0.09));
+          const offsetY = Math.min(56, size.height * 0.1);
           camera.setViewOffset(size.width, size.height, 0, offsetY, size.width, size.height);
         }} />
 
