@@ -32,16 +32,10 @@ export function routeMenuAction(action: MenuAction) {
     return;
   }
   if (action === "previous_tab" || action === "next_tab") return;
-  if (ui.screen === "sandbox_setup" && ui.overlay === null) {
-    // Preserve the setup screen's existing two selection rows and start/exit events.
-    if (action === "up" || action === "down") ui.setActiveMenuIndex((ui.getActiveMenuIndex() + 1) % 2);
-    else if (action === "left" || action === "right") ui.moveActiveMenuHorizontal(action === "left" ? -1 : 1);
-    else window.dispatchEvent(new Event(action === "activate" ? "avenlab:sandbox-start" : "avenlab:sandbox-exit"));
-    return;
-  }
   if (action === "up" || action === "down") ui.moveActiveMenuSelection(action === "up" ? -1 : 1);
   else if (action === "left" || action === "right") ui.moveActiveMenuHorizontal(action === "left" ? -1 : 1);
   else if (action === "activate") ui.activateActiveMenuSelection();
   else if (ui.overlay !== null) ui.closeOverlay();
-  else if (ui.screen === "settings") ui.setScreen("main");
+  else if (ui.screen === "sandbox_setup") window.dispatchEvent(new Event("avenlab:sandbox-exit"));
+  else if (ui.screen === "settings" || ui.screen === "signal_recon_setup") ui.setScreen("main");
 }

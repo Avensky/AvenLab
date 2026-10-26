@@ -1,13 +1,9 @@
 import { useGameStore, useSelectionStore, useUIStore } from "../../store";
 import { useRenderSettingsStore } from "../../store/renderSettingsStore";
-import { useSignalReconStore } from "../../store/signalReconStore";
 import { GameButton } from "../../components/GameButton";
 import { socket } from "../../net/rustSocket";
-import {
-    useCanBusStore,
-} from "../../store/canBusStore";
 import { useNetworkStore } from "../../store/networkStore";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import SignalReconHeader from "./SignalReconHeader";
 import { MapSelector } from "./MapSelector";
 import { VehicleSelector } from "./VehicleSelector";
@@ -24,50 +20,24 @@ export function SandboxSetup({collapsed, setCollapsed}: Sandbox) {
 
     const vehicle = useSelectionStore((s) => s.getSelectedVehicle());
     const map = useSelectionStore((s) => s.getSelectedMap());
-    const setVehicleIdentity = useSignalReconStore((s) => s.setVehicleIdentity);
     const setActiveMenuIndex = useUIStore((s) => s.setActiveMenuIndex);
-   
-    const canStatus = useCanBusStore((s) => s.status);
-    const selectedInterface = useCanBusStore((s) => s.selectedInterface);
-    const selectedMode = useCanBusStore((s) => s.selectedMode);
-    const refreshCanStatus = useCanBusStore((s) => s.refreshStatus);
-    
-
-    const selectedInterfaceStatus = canStatus?.[selectedInterface];
-    const selectedCaptureKind =
-        selectedMode === "simulation" || selectedInterface === "vcan0"
-            ? "simulation"
-            : "live";
-
-    const canStartSandbox =
-        selectedCaptureKind === "simulation" ||
-        Boolean(selectedInterfaceStatus?.exists && selectedInterfaceStatus?.up);
+    const selectedIndex = useUIStore((s) => s.selectedMenuIndexById.sandbox_setup);
+    const choices = useRef<HTMLDivElement>(null);
 
     const startSandbox = useCallback(() => {
-        if (!canStartSandbox) {
-            void refreshCanStatus();
-            return;
-        }
-
-        if (!socket || socket.readyState !== WebSocket.OPEN) {
+        if (!connected || !socket || socket.readyState !== WebSocket.OPEN) {
             setSpawnError("Connecting to the game server. Try again when connected.");
             return;
         }
         setSpawnError("");
         useRenderSettingsStore.getState().startSandbox();
-        setVehicleIdentity(vehicle.canIdentity);
 
         socket?.send?.(
             JSON.stringify({
                 type: "spawn_request",
                 vehicle: vehicle.id,
                 map: map.id,
-                can_vehicle_slug: vehicle.canIdentity.slug,
-                can_vehicle_identity: vehicle.canIdentity,
                 mode: "sandbox",
-                can_interface: selectedInterface,
-                can_mode: selectedMode,
-                capture_kind: selectedCaptureKind,
             })
         );
 
@@ -76,15 +46,10 @@ export function SandboxSetup({collapsed, setCollapsed}: Sandbox) {
             camera: "DEFAULT",
         });
     }, [
-        canStartSandbox,
+        connected,
         map.id,
-        refreshCanStatus,
-        selectedCaptureKind,
-        selectedInterface,
-        selectedMode,
         setScreen,
-        setVehicleIdentity,
-        vehicle,
+        vehicle.id,
     ]);
 
     const exitSandboxSetup = useCallback(() => {
@@ -93,12 +58,14 @@ export function SandboxSetup({collapsed, setCollapsed}: Sandbox) {
 
 
     useEffect(() => {
-        void refreshCanStatus();
-    }, [refreshCanStatus]);
-
-    useEffect(() => {
         setActiveMenuIndex(0);
     }, [setActiveMenuIndex]);
+
+    useEffect(() => {
+        const element = choices.current?.querySelector<HTMLElement>(`[data-sandbox-choice="${selectedIndex}"]`);
+        element?.focus({ preventScroll: true });
+        element?.scrollIntoView({ block: "nearest" });
+    }, [selectedIndex]);
 
     useEffect(() => {
         const handleStart = () => startSandbox();
@@ -121,43 +88,55 @@ export function SandboxSetup({collapsed, setCollapsed}: Sandbox) {
                 collapsed={collapsed}
                 setCollapsed={setCollapsed}
                 exitLabel="BACK"
-                controlsDisabled={false}
+                exitVariant="neutral"
+                showCanControls={false}
+                showStatus={false}
                 exitDisabled={false}
                 onExit={() => setScreen("main")}
             />
             {/* Selection Components */}
-            <div className="absolute bottom-0 left-1/2 z-20 w-full -translate-x-1/2">
+            <div ref={choices} className="absolute bottom-0 left-1/2 z-20 max-h-[65svh] w-full -translate-x-1/2 overflow-y-auto">
 
                 {(!connected || spawnError) && <p role="status" className="bg-slate-950/95 px-4 py-2 text-center text-sm text-amber-200">{spawnError || "Connecting to the game server…"}</p>}
-                <VehicleSelector 
-                    menuId="sandbox_setup"
-                    menuIndex={0}
-                    showCanSlug={false}
-                    showNotes={false}
-                />
-                <MapSelector menuId="sandbox_setup" menuIndex={1} />
+                <div data-sandbox-choice={0} tabIndex={0} role="group" aria-label="Vehicle selection" className="outline-none"
+                    onFocus={() => setActiveMenuIndex(0)}>
+                    <VehicleSelector
+                        menuId="sandbox_setup"
+                        menuIndex={0}
+                        showCanSlug={false}
+                        showNotes={false}
+                        translucent
+                    />
+                </div>
+                <div data-sandbox-choice={1} tabIndex={0} role="group" aria-label="Environment selection" className="outline-none"
+                    onFocus={() => setActiveMenuIndex(1)}>
+                    <MapSelector menuId="sandbox_setup" menuIndex={1} translucent />
+                </div>
 
-                {/* Persistent controller actions; only Vehicle and Map are navigable. */}
-                <div
-                    className="border-y border-cyan-400/20 bg-slate-950/85 shadow-[inset_0_0_24px_rgba(0,0,0,0.7)]"
-                >
-                  <div className="grid grid-cols-2 align-baseline">
+                <div className="relative grid grid-cols-2 border border-cyan-400/30">
                     <GameButton
-                        disabled={!canStartSandbox || !connected}
+                        data-sandbox-choice={2}
+                        variant="neutral"
+                        selected={selectedIndex === 2}
+                        aria-disabled={!connected}
+                        onFocus={() => setActiveMenuIndex(2)}
                         onPress={startSandbox}
-                        className="flex justify-center border-0 bg-transparent"
+                        className={`flex justify-center border-0 ${connected ? "" : "opacity-50"}`}
                     >
                         A&nbsp;&nbsp;START
                     </GameButton>
 
                     <GameButton
-                        variant="danger"
+                        data-sandbox-choice={3}
+                        variant="neutral"
+                        selected={selectedIndex === 3}
+                        onFocus={() => setActiveMenuIndex(3)}
                         onPress={exitSandboxSetup}
-                        className="flex justify-center border-0 bg-transparent"
+                        className="flex justify-center border-0"
                     >
                         B&nbsp;&nbsp;EXIT
                     </GameButton>
-                  </div>
+                    <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-1/2 z-10 border-l border-cyan-300/60" />
                 </div>
             </div>
         </div>

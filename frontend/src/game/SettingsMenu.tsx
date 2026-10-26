@@ -56,7 +56,7 @@ export function SettingsMenu() {
         ...(Object.keys(DEFAULT_BINDINGS) as BindingAction[]).map((action): MenuRow => ({ id: action, label: BINDING_LABELS[action], value: keyLabel(prefs.bindings[action]), adjustable: false, action: () => { setNotice(`Choose a key for ${BINDING_LABELS[action]}`); setPendingBinding(action); } })),
         { id: "look", label: "Mouse look sensitivity", description: "Hold the right mouse button and drag to look around.", value: `${prefs.cameraSensitivity}×`, action: (dir) => prefs.update({ cameraSensitivity: step([0.25, 0.5, 0.75, 1, 1.5, 2], prefs.cameraSensitivity, dir) }) },
         { id: "restore", label: "Restore default controls", action: () => { prefs.resetControls(); setNotice("Default keyboard and controller controls restored"); } },
-      ], content: <p className="mt-5 text-xs leading-loose text-slate-400">E Engine · L Lights · Z/X Indicators · H Hazards · Q ABS · T TCS · Shift Boost · N Horn · R Reset · ` Terminal</p> },
+      ], content: <p className="mt-1 text-xs leading-tight text-slate-400">H Change vehicle · Shift+H Hazards · E Engine · L Lights · Z/X Indicators · Q ABS · T TCS · Shift Boost · N Horn · R Reset · ` Terminal</p> },
       { id: "controller", label: "Controller", description: "Standard gamepad layout: RT accelerate · LT brake · Left stick steer · B handbrake · Start pause. In menus: A select, B back, LB/RB tabs. Release driving controls after closing a menu before driving again.", rows: [
         { id: "deadzone", label: "Stick deadzone", value: `${Math.round(prefs.controllerDeadzone * 100)}%`, action: (dir) => prefs.update({ controllerDeadzone: step([0.05, 0.12, 0.2, 0.3, 0.4], prefs.controllerDeadzone, dir) }) },
         { id: "steering", label: "Steering sensitivity", value: `${prefs.steeringSensitivity}×`, action: (dir) => prefs.update({ steeringSensitivity: step([0.5, 0.75, 1, 1.25, 1.5], prefs.steeringSensitivity, dir) }) },
@@ -78,8 +78,8 @@ export function SettingsMenu() {
         upcoming("subtitles", "Subtitles", "Available when voiced content is added."),
       ] },
     ]} />
-    {pendingBinding && <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-5" role="dialog" aria-modal="true" aria-label="Choose keyboard binding">
-      <div className="max-w-lg rounded-2xl border border-yellow-300 bg-slate-950 p-8 text-slate-100"><h2 className="text-xl font-bold">Press a key for {BINDING_LABELS[pendingBinding]}</h2><p className="mt-4 text-sm text-cyan-200" role="status">{notice}</p><button autoFocus type="button" className="mt-6 rounded border border-slate-500 px-4 py-2" onClick={() => setPendingBinding(null)}>Cancel · Esc / B</button></div>
+    {pendingBinding && <div className="menu-surface menu-bind-dialog fixed inset-0 z-[60] flex items-center justify-center bg-black/85" role="dialog" aria-modal="true" aria-label="Choose keyboard binding">
+      <div className="menu-bind-card"><h2>Press a key for {BINDING_LABELS[pendingBinding]}</h2><p role="status">{notice}</p><button autoFocus type="button" className="menu-control menu-action" onClick={() => setPendingBinding(null)}>Cancel · Esc / B</button></div>
     </div>}
   </>;
 }

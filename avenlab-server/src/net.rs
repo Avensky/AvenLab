@@ -19,6 +19,12 @@ struct SpawnRequest {
     map: String,
 }
 
+#[derive(Debug, Deserialize)]
+struct VehicleChangeRequest {
+    vehicle: String,
+    request_id: String,
+}
+
 pub async fn start_websocket_server(
     state: Arc<Mutex<SharedGameState>>,
     physics: Arc<Mutex<PhysicsWorld>>,
@@ -247,6 +253,48 @@ pub async fn start_websocket_server(
                             }
                         }
 
+                        continue;
+                    }
+
+                    if message_type == "change_vehicle_request" {
+                        let request_id = value.get("request_id").and_then(Value::as_str)
+                            .unwrap_or_default().to_string();
+                        let request: VehicleChangeRequest = match serde_json::from_value(value) {
+                            Ok(request) => request,
+                            Err(error) => {
+                                let _ = tx.send(serde_json::json!({
+                                    "type": "vehicle_change_error", "request_id": request_id,
+                                    "message": format!("Invalid vehicle change request: {error}"),
+                                }).to_string());
+                                continue;
+                            }
+                        };
+                        // Same lock order as the simulation. The connection's
+                        // player_id owns this request; clients cannot pick an owner.
+                        let mut phys = physics_clone.lock().await;
+                        let mut game = state_clone.lock().await;
+                        match phys.change_vehicle_for_player(&player_id, &request.vehicle) {
+                            Ok(()) => {
+                                game.set_vehicle_id(&player_id, &request.vehicle);
+                                if let Some(entity) = game.entities.get_mut(&player_id) {
+                                    entity.last_packet = None;
+                                }
+                                let _ = input_tx.send_replace(None);
+                                if let Some(vehicle) = phys.vehicles.get(&player_id) {
+                                    game.broadcast_vehicle_config(&player_id, vehicle);
+                                }
+                                let _ = tx.send(serde_json::json!({
+                                    "type": "vehicle_changed", "request_id": request.request_id,
+                                    "vehicle": request.vehicle, "player_id": player_id,
+                                }).to_string());
+                            }
+                            Err(message) => {
+                                let _ = tx.send(serde_json::json!({
+                                    "type": "vehicle_change_error", "request_id": request.request_id,
+                                    "message": message,
+                                }).to_string());
+                            }
+                        }
                         continue;
                     }
 

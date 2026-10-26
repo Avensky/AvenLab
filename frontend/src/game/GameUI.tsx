@@ -11,6 +11,7 @@ import { SettingsMenu } from "./SettingsMenu";
 import { CareerMenu } from "./CareerMenu";
 import { MissionsMenu } from "./MissionsMenu";
 import { SessionMenu } from "./SessionMenu";
+import { VehicleMenu } from "./VehicleMenu";
 import { usePreferencesStore } from "../store/preferencesStore";
 import { Cameras } from "../effects";
 import { PerformanceOverlay } from "../performance/PerformanceOverlay";
@@ -20,6 +21,7 @@ export function GameUI() {
   const hud = useRenderSettingsStore((s) => s.hud);
   const screen = useUIStore((s) => s.screen);
   const overlay = useUIStore((s) => s.overlay);
+  const needsCanvas = screen === "sandbox" || screen === "sandbox_setup" || screen === "signal_recon_setup";
   const reducedMotion = usePreferencesStore((s) => s.reducedMotion);
   const highContrast = usePreferencesStore((s) => s.highContrast);
   const textScale = usePreferencesStore((s) => s.menuTextScale);
@@ -34,14 +36,14 @@ export function GameUI() {
 
   return <div className="relative game-wrapper">
     {/* Requires Canvas */}
-    <FullCanvas>
+    {needsCanvas && <FullCanvas>
       {screen === "sandbox_setup" && <VehiclePreview />}
       {screen === "sandbox" && <Sandbox />}
 
       {screen === "signal_recon_setup" && <VehiclePreview />}
       {/* {!needsCanvas && screen === "settings" && <Settings />} */}
       <Cameras />
-    </FullCanvas>
+    </FullCanvas>}
 
     {/* UI Overlay */}
     {screen === "sandbox" && !overlay && hud && <ControlsPanel />}
@@ -67,7 +69,7 @@ export function GameUI() {
     {(overlay === "settings" || (screen === "settings" && !overlay)) && <SettingsMenu />}
     {(overlay === "career" || (screen === "career" && !overlay)) && <CareerMenu />}
     {(overlay === "missions" || (screen === "missions" && !overlay)) && <MissionsMenu />}
-    {overlay === "vehicle_select" && <SessionMenu changeVehicle />}
+    {overlay === "vehicle_select" && <VehicleMenu />}
     {overlay === "leave_game" && <SessionMenu />}
 
     {screen === "sandbox" && hud && !overlay && <CommandLine />}

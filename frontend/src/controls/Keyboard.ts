@@ -14,7 +14,7 @@ const MENU_KEYS: Record<string, MenuAction> = {
 const VEHICLE_TOGGLES: Record<string, number> = {
   KeyE: VehicleFlags.ENGINE_ON, KeyL: VehicleFlags.HEADLIGHTS,
   KeyZ: VehicleFlags.BLINKER_LEFT, KeyX: VehicleFlags.BLINKER_RIGHT,
-  KeyH: VehicleFlags.HAZARDS, KeyQ: VehicleFlags.ABS, KeyT: VehicleFlags.TCS,
+  KeyQ: VehicleFlags.ABS, KeyT: VehicleFlags.TCS,
 };
 const PLAYER_TOGGLES: Record<string, number> = {
   KeyC: PlayerFlags.CANDUMP, KeyV: PlayerFlags.LIVECAN,
@@ -44,6 +44,17 @@ export function Keyboard() {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.repeat || !focused || document.visibilityState === "hidden" || isTypingTarget(event.target)) return;
       const ui = useUIStore.getState();
+      if (event.code === "KeyH" && isDrivingScreen(ui.screen) && !ui.isModeLoading
+        && !useCanDataStore.getState().commandOpen) {
+        if (event.shiftKey && canDrive()) {
+          event.preventDefault();
+          useInputStore.getState().toggleVehicleFlag(VehicleFlags.HAZARDS);
+          return;
+        }
+        if (!event.shiftKey && (ui.overlay === null || ui.overlay === "pause")) {
+          event.preventDefault(); release(); ui.openVehicleSelection(); return;
+        }
+      }
       // Focused menu buttons consume activation before this listener. Menu
       // actions always stay separate from driving controls.
       if (!ui.isModeLoading && ui.overlay === null

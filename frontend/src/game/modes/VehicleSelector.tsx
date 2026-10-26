@@ -1,5 +1,6 @@
 import { useSelectionStore, useUIStore } from "../../store";
 import { GameButton } from "../../components/GameButton";
+import { getSelectionClasses } from "../../components/menus/selectionStyles";
 
 type VehicleSelectorProps = {
     menuIndex?: number;
@@ -8,6 +9,7 @@ type VehicleSelectorProps = {
     showRole?: boolean;
     showCanSlug?: boolean;
     showNotes?: boolean;
+    translucent?: boolean;
 };
 
 export function VehicleSelector({
@@ -17,6 +19,7 @@ export function VehicleSelector({
     showRole = true,
     showCanSlug = true,
     showNotes = true,
+    translucent = false,
 }: VehicleSelectorProps) {
     const vehicle = useSelectionStore((s) => s.getSelectedVehicle());
     const previousVehicle = useSelectionStore((s) => s.prevVehicle);
@@ -30,14 +33,11 @@ export function VehicleSelector({
     );
 
     const selected = selectedIndex === menuIndex;
+    const background = getSelectionClasses(selected, translucent);
 
     return (
         <div
-            className={`border-t px-4 pb-1 transition-[background,border-color,box-shadow] duration-200 ${
-                selected
-                    ? "border-cyan-300/45 bg-[radial-gradient(ellipse_at_center,_rgba(30,41,59,0.72)_20%,_rgba(8,47,73,0.3)_60%,_rgba(2,6,23,0.9)_100%)] shadow-[inset_0_0_18px_rgba(0,0,0,0.55),0_0_12px_rgba(34,211,238,0.08)]"
-                    : "border-slate-800/80 bg-slate-950/90 shadow-[inset_0_0_30px_rgba(0,0,0,0.9)]"
-            }`}
+            className={`border-t px-4 pb-1 transition-[background,border-color,box-shadow] duration-200 ${background}`}
             onPointerEnter={() => setActiveMenuIndex(menuIndex)}
             onFocusCapture={() => setActiveMenuIndex(menuIndex)}
         >
@@ -47,7 +47,7 @@ export function VehicleSelector({
 
             <div className="flex items-center justify-between gap-3">
                 <GameButton
-                    variant="secondary"
+                    variant={translucent ? "neutral" : menuId === "sandbox_setup" ? "selector" : "secondary"}
                     onPress={previousVehicle}
                     className="h-7"
                     aria-label="Previous vehicle"
@@ -59,7 +59,7 @@ export function VehicleSelector({
                     {showName && (
                         <h2
                             className={`truncate text-2xl font-black transition-colors duration-200 ${
-                                selected
+                                selected || translucent
                                     ? "text-cyan-100"
                                     : "text-slate-500"
                             }`}
@@ -71,7 +71,7 @@ export function VehicleSelector({
                     {showRole && vehicle.role && (
                         <p
                             className={`text-sm uppercase transition-colors duration-200 ${
-                                selected
+                                selected || translucent
                                     ? "text-yellow-300"
                                     : "text-yellow-300/40"
                             }`}
@@ -83,7 +83,7 @@ export function VehicleSelector({
                     {showCanSlug && vehicle.canIdentity?.slug && (
                         <p
                             className={`truncate font-mono text-xs transition-colors duration-200 ${
-                                selected
+                                selected || translucent
                                     ? "text-cyan-300"
                                     : "text-cyan-300/35"
                             }`}
@@ -95,7 +95,7 @@ export function VehicleSelector({
                     {showNotes && vehicle.canIdentity?.notes && (
                         <p
                             className={`truncate text-[11px] transition-colors duration-200 ${
-                                selected
+                                selected || translucent
                                     ? "text-slate-400"
                                     : "text-slate-600"
                             }`}
@@ -106,7 +106,7 @@ export function VehicleSelector({
                 </div>
 
                 <GameButton
-                    variant="secondary"
+                    variant={translucent ? "neutral" : menuId === "sandbox_setup" ? "selector" : "secondary"}
                     onPress={nextVehicle}
                     className="h-7"
                     aria-label="Next vehicle"

@@ -4,6 +4,8 @@ import { ReconWorkspaceHeader, type ReconHeaderTheme } from "./ReconWorkspaceHea
 import { useSelectionStore, useSignalReconStore } from "../../store";
 import {
   useCanBusStore,
+  CAN_INTERFACE_OPTIONS,
+  CAN_MODE_OPTIONS,
   type CanInterface,
   type CanMode,
 } from "../../store/canBusStore";
@@ -46,19 +48,6 @@ const THEME_CLASSES: Record<ReconHeaderTheme, {
     glow: "shadow-yellow-500/10",
   },
 };
-const CAN_INTERFACE_OPTIONS: readonly CanInterface[] = [
-  "can0",
-  "can1",
-  "can2",
-  "vcan0",
-];
-
-const CAN_MODE_OPTIONS: readonly CanMode[] = [
-  "live",
-  "listen-only",
-  "simulation",
-];
-
 export type SignalReconHeaderProps = {
   title?: string;
   subtitle?: string;
@@ -70,9 +59,12 @@ export type SignalReconHeaderProps = {
   missionProgressLoading?: boolean;
   missionProgressByCode?: Record<string, MissionRunSummary>;
   controlsDisabled?: boolean;
+  showCanControls?: boolean;
+  showStatus?: boolean;
   exitDisabled?: boolean;
   showExit?: boolean;
   exitLabel?: string;
+  exitVariant?: "danger" | "neutral";
   onExit?: () => void;
   actions?: ReactNode;
   className?: string;
@@ -94,9 +86,12 @@ export default function SignalReconHeader({
   missionProgressLoading = false,
   missionProgressByCode,
   controlsDisabled = false,
+  showCanControls = true,
+  showStatus = true,
   exitDisabled = false,
   showExit = true,
   exitLabel = "EXIT",
+  exitVariant = "danger",
   onExit,
   actions,
   className = "",
@@ -146,8 +141,8 @@ export default function SignalReconHeader({
       collapsed={collapsed}
       setCollapsed={setCollapsed}
       collapsible={collapsible}
-      meta={`${selectedVehicle.name} · ${selectedVehicle.canIdentity.slug}`}
-      status={<span>
+      meta={showStatus ? `${selectedVehicle.name} · ${selectedVehicle.canIdentity.slug}` : undefined}
+      status={showStatus ? <span>
         {activeSessionId
           ? `SESSION ${activeSessionId.slice(0, 8)}…${activeSessionId.slice(-4)}`
           : "NO ACTIVE SESSION"}
@@ -157,10 +152,10 @@ export default function SignalReconHeader({
         {!missionProgressLoading && databaseRunCount !== null
           ? ` · ${databaseRunCount} DB RUNS`
           : ""}
-      </span>}
+      </span> : undefined}
       className={className}
       actions={<div className="grid col-1 space-y-0.5">
-        <label className="flex h-4 min-w-0 items-center rounded-sm border border-cyan-400/25 bg-slate-950 px-1 py-0.5">
+        {showCanControls && <><label className="flex h-4 min-w-0 items-center rounded-sm border border-cyan-400/25 bg-slate-950 px-1 py-0.5">
           <span className="mr-1 text-[8px] tracking-[0.18em] text-slate-500">IFACE</span>
           <select
             value={selectedInterface}
@@ -190,15 +185,17 @@ export default function SignalReconHeader({
           </select>
         </label>
 
+        </>}
+
         {actions}
 
         <div className="flex justify-end gap-0.5">
           {showExit && onExit ? (
             <GameButton
-            variant="danger"
+            variant={exitVariant}
             disabled={exitDisabled}
             onPress={onExit}
-            className="rounded-sm border flex items-center justify-center border-red-300/40 text-[9px] font-black"
+            className={`rounded-sm border flex items-center justify-center text-[9px] font-black ${exitVariant === "danger" ? "border-red-300/40" : ""}`}
             >
               {exitLabel}
             </GameButton>

@@ -1,10 +1,28 @@
 # Game menus and capture-the-flag direction
 
-The main-menu entries share the Sandbox button theme for pointer, keyboard and controller selection. Swarm Command remains a focusable planned item and performs no navigation. Signal Recon is an analysis workspace: only Sandbox accepts driving input or opens the in-game pause stack.
+Main, Pause and the tabbed panels share the compact cyan menu theme for pointer, keyboard and controller selection. Swarm Command remains a focusable planned item and performs no navigation. Signal Recon is an analysis workspace: only Sandbox accepts driving input or opens the in-game pause stack.
 
 Missions, Career, Settings and the other tabbed panels fill the dynamic viewport. The shell does not shrink around short tabs; the header, tabs and footer remain outside the scrolling content. Tab changes reset content scrolling and keep the active tab visible on mobile.
 
 The pause menu previously mapped Settings hover to Debugger and Leave hover to Settings. Menu labels, item counts and routes now share `frontend/src/game/menuItems.ts`. Mouse actions explicitly activate the clicked row; keyboard focus follows controller selection.
+
+## Browser menu layout conventions
+
+Design menus for the browser viewport, including short phone landscape windows with browser controls visible. Keep portrait layouts readable and allow scrolling when the content exceeds the available height.
+
+- Use `GameButton variant="menu"` for game-menu actions and the shared `menu-control` class for native buttons, tabs and settings rows. Keep these controls square. Their idle, hover, keyboard focus and selected styles live in `frontend/src/components/menus/menus.css`; do not add separate per-screen colors or interaction effects.
+- Display menu labels and values in uppercase through the shared CSS. Keep identifiers and routing strings unchanged.
+- Keep controls near 28px minimum height with 2px vertical padding and 2px between rows. Text enlargement may grow rows naturally. Avoid large card padding and decorative empty space.
+- Use the shared `MenuLogo` component. Preserve its 80px size, or 96px at wider breakpoints. In short landscape viewports, place branding beside the action list instead of spending more height or shrinking the logo.
+- Keep the main-menu brand's three text lines close together. Main and Pause actions use compact title-only buttons; planned entries retain an availability label.
+- In tabbed panels, show the title first and the secondary brand beside it, wrapping naturally rather than clipping. Keep subtitles accessible without reserving a separate visible paragraph. Keep the tab strip tightly wrapped around its buttons and keep only actual status messages in the footer.
+- Preserve the full-screen tabbed shell, pinned header/tab navigation, safe-area insets, focus handling, high-contrast mode and reduced-motion preferences.
+
+## Main-menu background and startup
+
+Main loops the existing `/videos/NIWC-Pacific.mp4` behind its logo and buttons, with a dark tint for readability. The mode-loading screen uses the same `MenuVideoBackground` component. Playback is muted and inline for mobile; media is decorative and cannot intercept input. The video pauses while the document is hidden and is unmounted when leaving the screen. Browser or in-game reduced-motion settings use a static gradient instead. Missing media or rejected autoplay never blocks the menu; pointer/keyboard interaction can retry autoplay.
+
+The HTML entry includes a centered logo before the JavaScript bundle is ready. App removes it on the first animation frame after its UI commits, without waiting for video, a game server or 3D assets. The game canvas is created only for Sandbox and the two vehicle setup screens. The loading video remains an existing public asset; no second copy is required.
 
 ## Available now
 
@@ -29,11 +47,15 @@ Display/input/accessibility preferences and favorites are stored in browser loca
 | LB / RB / Q / E / Page Up / Page Down | Switch tabs |
 | B / Escape | Back to pause or main menu |
 | Start / Escape while driving | Open pause menu |
+| H while driving / paused | Open the in-game vehicle picker |
+| Shift+H while driving | Toggle hazards |
 | Mouse / touch | Select tabs and activate the actual clicked row |
 
 Focused text inputs retain editing keys. Native Tab navigation and visible focus outlines remain available. Opening menus releases held driving inputs; the gamepad must return to neutral before driving resumes. The online simulation continues while a menu is open.
 
-Change vehicle ends the current run and returns to the existing garage. It closes the connection so the server's existing disconnect cleanup removes the old vehicle, then reconnects before a new spawn. A duplicate spawn request on an existing connection intentionally retains that connection's original vehicle. Leave game also cleans up the current vehicle. Neither action claims to save progress.
+Change vehicle opens an in-game picker over the current scene. H opens the same picker; Back returns to driving or Pause according to where it opened. Selecting another model sends a validated request to the Rust server and waits for acknowledgement. The server retains the connection, player identity, map, position in X/Z and rotation, adjusts ride height, rebuilds the vehicle collider/mass/wheels and stops its motion. A larger vehicle is rejected if it would overlap an obstacle; errors appear in the picker. The interpolation buffer resets when the model changes. Rebuild and restart the Rust server with this frontend update.
+
+Leave game uses a separate full-width rectangular confirmation dialog, about one third-and-a-half of the viewport height. Cancel is focused first; mouse, keyboard and controller can confirm or return to Pause. Confirm disconnects the current vehicle, returns to Main and reconnects the lobby connection. Neither action claims to save progress.
 
 ## CTF systems to build next
 
@@ -53,4 +75,4 @@ Vehicle roles can trade speed and agility against armor, cooling, tank size and 
 
 Run `npm --prefix frontend run lint`, `npm --prefix frontend run typecheck`, `npm --prefix frontend run build`, and `npm --prefix frontend run test:performance`.
 
-Check every pause row using mouse hover/click, keyboard and a standard gamepad. Check tab changes with shoulders, value changes with left/right, Back from every tab, settings persistence after reload, favorites, long menu scrolling, small screens, and change/leave cancellation. Verify a real Rust connection removes the old vehicle and spawns the newly selected model after returning to the garage.
+Check every pause row using mouse hover/click, keyboard and a standard gamepad. Check tab changes with shoulders, value changes with left/right, Back from every tab, settings persistence after reload, favorites, long menu scrolling, small screens, and change/leave cancellation. Verify in-game model changes preserve the connection, identity and location; blocked swaps leave the original vehicle intact. Confirm Leave removes the old vehicle. Run `cargo test --locked --manifest-path avenlab-server/Cargo.toml` for the server regression suite.

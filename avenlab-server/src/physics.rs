@@ -569,6 +569,79 @@ impl PhysicsWorld {
         Ok(handle)
     }
 
+    /// Change this player's vehicle in place. Keep the existing body/session,
+    /// but rebuild its collider, mass properties and wheel/suspension state.
+    pub fn change_vehicle_for_player(&mut self, player_id: &str, vehicle_id: &str) -> Result<(), String> {
+        let config = config_for_vehicle(vehicle_id)
+            .ok_or_else(|| format!("Unknown vehicle id '{vehicle_id}'"))?;
+        let current = self.vehicles.get(player_id)
+            .ok_or_else(|| "Spawn a vehicle before changing cars".to_string())?;
+        let previous = current.config;
+        let handle = current.body;
+        let body = self.bodies.get(handle)
+            .ok_or_else(|| "The current vehicle body is unavailable".to_string())?;
+        let collider_handle = *body.colliders().first()
+            .ok_or_else(|| "The current vehicle collider is unavailable".to_string())?;
+        if !self.colliders.contains(collider_handle) {
+            return Err("The current vehicle collider is unavailable".to_string());
+        }
+
+        // Preserve location and orientation. Only the geometry-derived ride
+        // height changes, so a larger/smaller vehicle retains road clearance.
+        let height = |c: crate::vehicle_state::VehicleConfig| {
+            c.nominal_chassis_y(0.0)
+                .max(c.chassis_half_extents[1] - c.chassis_com_offset[1] + 0.05)
+        };
+        let mut pose = *body.position();
+        pose.translation.y += height(config) - height(previous);
+        let [hx, hy, hz] = config.chassis_half_extents;
+        let [cx, cy, cz] = config.chassis_com_offset;
+        let shape = SharedShape::cuboid(hx, hy, hz);
+        let collider_pose = pose * Isometry::translation(cx, cy, cz);
+        self.query_pipeline.update(&self.colliders);
+        if self.query_pipeline.intersection_with_shape(
+            &self.bodies, &self.colliders, &collider_pose, &*shape,
+            QueryFilter::default().exclude_rigid_body(handle),
+        ).is_some() {
+            return Err("Not enough room for this vehicle. Move to an open area and try again.".to_string());
+        }
+
+        // All fallible validation is above: a rejected request leaves the old
+        // vehicle intact. Reusing the handle also keeps ownership/team stable.
+        let collider = self.colliders.get_mut(collider_handle).unwrap();
+        collider.set_shape(shape);
+        collider.set_translation_wrt_parent(vector![cx, cy, cz]);
+        let body = self.bodies.get_mut(handle).unwrap();
+        body.set_position(pose, true);
+        body.set_linear_damping(config.linear_damping);
+        body.set_angular_damping(config.angular_damping);
+        body.set_additional_mass_properties(config.mass_properties(), true);
+        body.recompute_mass_properties_from_colliders(&self.colliders);
+        body.set_linvel(Vector::zeros(), true);
+        body.set_angvel(Vector::zeros(), true);
+        body.reset_forces(true);
+        body.reset_torques(true);
+
+        let vehicle = self.vehicles.get_mut(player_id).unwrap();
+        vehicle.config = config;
+        vehicle.throttle = 0.0;
+        vehicle.steer = 0.0;
+        vehicle.brake = 0.0;
+        vehicle.steer_angle = 0.0;
+        vehicle.steer_rate = 0.0;
+        vehicle.steering = SteeringState::default();
+        vehicle.rack_torque = 0.0;
+        vehicle.rack_torque_filtered = 0.0;
+        vehicle.player_flags = 0;
+        vehicle.rpm = 0.0;
+        vehicle.gear = 0;
+        vehicle.engine_torque = 0.0;
+        self.register_vehicle(handle, config);
+        self.bodies.propagate_modified_body_positions_to_colliders(&mut self.colliders);
+        self.query_pipeline.update(&self.colliders);
+        Ok(())
+    }
+
     pub fn step(&mut self, dt: Real) {
         if !dt.is_finite() || dt <= 0.0 {
             return;
@@ -696,6 +769,71 @@ mod tests {
                 assert!((hit.compression - config.suspension_sag).abs() < 1.0e-5);
             }
         }
+    }
+
+    #[test]
+    fn vehicle_changes_keep_owner_position_and_rotation_and_rebuild_physics() {
+        let mut world = flat_world();
+        let handle = world.spawn_vehicle_for_player("test".into(), [0.0; 3], "ae86", "red").unwrap();
+        let original_count = world.colliders.len();
+        let mut parked = *world.bodies[handle].position();
+        parked.translation.x = 11.0;
+        parked.translation.z = 22.0;
+        parked.rotation = Rotation::from_euler_angles(0.0, 0.7, 0.0);
+        world.bodies[handle].set_position(parked, true);
+        world.bodies.propagate_modified_body_positions_to_colliders(&mut world.colliders);
+        for target in ["brz", "camaro", "supra", "tank", "ae86"] {
+            world.bodies[handle].set_linvel(vector![3.0, 0.0, 1.0], true);
+            world.change_vehicle_for_player("test", target).unwrap();
+            let expected = config_for_vehicle(target).unwrap();
+            let body = &world.bodies[handle];
+            assert_eq!(world.vehicles["test"].body, handle);
+            assert_eq!(world.body_to_player[&handle], "test");
+            assert_eq!(body.translation().x, 11.0);
+            assert_eq!(body.translation().z, 22.0);
+            assert!(body.rotation().angle_to(&parked.rotation) < 1.0e-5);
+            assert!((body.mass() - expected.mass).abs() < expected.mass * 1.0e-5);
+            assert_eq!(*body.linvel(), Vector::zeros());
+            assert_eq!(world.colliders.len(), original_count);
+            let shape = world.colliders[body.colliders()[0]].shape().as_cuboid().unwrap();
+            assert_eq!(shape.half_extents, Vector::from(expected.chassis_half_extents));
+            assert_eq!(world.wheels[&handle].len(), expected.wheels);
+            for wheel in &world.wheels[&handle] { assert_eq!(wheel.radius, expected.wheel_radius); }
+            assert_eq!(world.vehicles.len(), 1);
+            assert_eq!(world.wheels.len(), 1);
+        }
+    }
+
+    #[test]
+    fn invalid_vehicle_change_does_not_remove_or_mutate_the_existing_car() {
+        let mut world = flat_world();
+        let handle = world.spawn_vehicle_for_player("test".into(), [0.0; 3], "ae86", "red").unwrap();
+        let pose = *world.bodies[handle].position();
+        let count = world.colliders.len();
+        assert!(world.change_vehicle_for_player("test", "not-a-car").is_err());
+        assert!(world.change_vehicle_for_player("not-the-owner", "supra").is_err());
+        assert_eq!(*world.bodies[handle].position(), pose);
+        assert_eq!(world.vehicles["test"].body, handle);
+        assert_eq!(world.colliders.len(), count);
+        assert_eq!(world.vehicles["test"].config.mass, config_for_vehicle("ae86").unwrap().mass);
+    }
+
+    #[test]
+    fn a_vehicle_that_does_not_fit_is_rejected_before_changing_the_old_car() {
+        let mut world = flat_world();
+        let handle = world.spawn_vehicle_for_player("test".into(), [0.0; 3], "ae86", "red").unwrap();
+        let old = world.vehicles["test"].config;
+        let target = config_for_vehicle("tank").unwrap();
+        assert!(target.chassis_half_extents[0] > old.chassis_half_extents[0]);
+        let pose = *world.bodies[handle].position();
+        let wall_x = pose.translation.x + (old.chassis_half_extents[0] + target.chassis_half_extents[0]) * 0.5;
+        world.colliders.insert(ColliderBuilder::cuboid(0.02, 3.0, 0.5)
+            .translation(vector![wall_x, pose.translation.y, pose.translation.z]).build());
+        let error = world.change_vehicle_for_player("test", "tank").unwrap_err();
+        assert!(error.contains("Not enough room"));
+        assert_eq!(*world.bodies[handle].position(), pose);
+        assert_eq!(world.vehicles["test"].config.mass, old.mass);
+        assert_eq!(world.vehicles["test"].body, handle);
     }
 
     #[test]

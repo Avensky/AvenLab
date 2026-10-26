@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { useSelectionStore } from "./selectionStore";
+import { CAN_INTERFACE_OPTIONS, CAN_MODE_OPTIONS, useCanBusStore } from "./canBusStore";
 import { MAIN_MENU_ITEMS, PAUSE_MENU_ITEMS } from "../game/menuItems";
 
 export type MenuScreen =
@@ -28,7 +29,7 @@ const menuItemCounts: Record<MenuId, number> = {
   pause: PAUSE_MENU_ITEMS.length,
   settings: 3,
   sandbox_setup: 4,
-  signal_recon_setup: 2,
+  signal_recon_setup: 5,
 };
 
 function getActiveMenu(screen: MenuScreen, overlay: UIOverlay): MenuId | null {
@@ -36,6 +37,7 @@ function getActiveMenu(screen: MenuScreen, overlay: UIOverlay): MenuId | null {
   if (overlay !== null) return null;
   if (screen === "main") return "main";
   if (screen === "sandbox_setup") return "sandbox_setup";
+  if (screen === "signal_recon_setup") return "signal_recon_setup";
   return null;
 }
 
@@ -52,6 +54,8 @@ type UIState = {
 
   overlay: UIOverlay;
   setOverlay: (overlay: UIOverlay) => void;
+  vehicleSelectionParent: "pause" | null;
+  openVehicleSelection: () => void;
 
   selectedMenuIndexById: Record<MenuId, number>;
 
@@ -86,9 +90,17 @@ type UIState = {
 
 export const useUIStore = create<UIState>((set, get) => ({
   screen: "main",
-  setScreen: (screen) => { set({ screen, overlay: null, }); },
+  setScreen: (screen) => { set({ screen, overlay: null, vehicleSelectionParent: null }); },
   overlay: null,
+  vehicleSelectionParent: null,
+  openVehicleSelection: () => {
+    const state = get();
+    if (!isDrivingScreen(state.screen) || state.isModeLoading
+      || (state.overlay !== null && state.overlay !== "pause")) return;
+    set({ overlay: "vehicle_select", vehicleSelectionParent: state.overlay });
+  },
   setOverlay: (overlay) => {
+    if (overlay === "vehicle_select") { get().openVehicleSelection(); return; }
     if (overlay && ["pause", "debug_menu", "vehicle_select", "leave_game"].includes(overlay) && !isDrivingScreen(get().screen)) return;
     set({ overlay });
   },
@@ -178,7 +190,15 @@ export const useUIStore = create<UIState>((set, get) => ({
 
     if (activeMenu === "pause") {
       const item = PAUSE_MENU_ITEMS[index];
-      if (item) set({ overlay: item.id === "resume" ? null : item.id });
+      if (item) get().setOverlay(item.id === "resume" ? null : item.id);
+      return;
+    }
+
+    if (activeMenu === "signal_recon_setup") {
+      if (index < 3) get().moveActiveMenuHorizontal(1);
+      // The setup component owns validation and copying the selected CAN identity.
+      else if (index === 3) window.dispatchEvent(new Event("avenlab:signal-recon-start"));
+      else if (index === 4) get().setScreen("main");
       return;
     }
 
@@ -194,18 +214,13 @@ export const useUIStore = create<UIState>((set, get) => ({
       }
 
       if (index === 2) {
-        set({
-          screen: "sandbox",
-          overlay: null,
-        });
+        // The setup component owns server validation and the spawn request.
+        window.dispatchEvent(new Event("avenlab:sandbox-start"));
         return;
       }
 
       if (index === 3) {
-        set({
-          screen: "main",
-          overlay: null,
-        });
+        window.dispatchEvent(new Event("avenlab:sandbox-exit"));
         return;
       }
     }
@@ -218,10 +233,11 @@ export const useUIStore = create<UIState>((set, get) => ({
     set({ overlay: "pause" });
   },
   closeOverlay: () => {
-    set({ overlay: null });
+    set({ overlay: null, vehicleSelectionParent: null });
   },
   backToParentMenu: () => {
-    if (get().overlay !== null) set({ overlay: isDrivingScreen(get().screen) ? "pause" : null });
+    if (get().overlay === "vehicle_select") set({ overlay: get().vehicleSelectionParent, vehicleSelectionParent: null });
+    else if (get().overlay !== null) set({ overlay: isDrivingScreen(get().screen) ? "pause" : null });
     else set({ screen: "main", overlay: null });
   },
   togglePauseMenu: () => {
@@ -238,6 +254,21 @@ export const useUIStore = create<UIState>((set, get) => ({
     if (!activeMenu) return;
 
     const index = get().selectedMenuIndexById[activeMenu] ?? 0;
+
+    if (activeMenu === "signal_recon_setup") {
+      const selection = useSelectionStore.getState();
+      const bus = useCanBusStore.getState();
+      if (index === 0) {
+        const current = CAN_INTERFACE_OPTIONS.indexOf(bus.selectedInterface);
+        bus.setSelectedInterface(CAN_INTERFACE_OPTIONS[(current + dir + CAN_INTERFACE_OPTIONS.length) % CAN_INTERFACE_OPTIONS.length]);
+      } else if (index === 1) {
+        const current = CAN_MODE_OPTIONS.indexOf(bus.selectedMode);
+        bus.setSelectedMode(CAN_MODE_OPTIONS[(current + dir + CAN_MODE_OPTIONS.length) % CAN_MODE_OPTIONS.length]);
+      } else if (index === 2) {
+        if (dir === 1) selection.nextVehicle(); else selection.prevVehicle();
+      }
+      return;
+    }
 
     if (activeMenu === "sandbox_setup") {
       const selection = useSelectionStore.getState();

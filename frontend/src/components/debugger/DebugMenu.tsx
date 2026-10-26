@@ -76,7 +76,7 @@ export function DebugMenu() {
     { id: "environment", label: "Environment", description: "Set a world default, override a chunk, or switch individual GLB assets. The list is populated from the server's selected map.", rows: [
       { id: "environment-default", label: "Environment default", value: settings.environmentMode.toUpperCase(), action: (dir) => settings.update({ environmentMode: step(MODES, settings.environmentMode, dir), chunkOverrides: {}, assetGlbs: {} }) },
       ...environmentRows,
-    ], content: !map?.collider_chunks && <p className="mt-4 text-sm text-amber-300">Collider metadata is unavailable. Connect to the updated Rust backend to inspect city chunks.</p> },
+    ], content: !map?.collider_chunks && <p className="mt-1 text-xs text-amber-300">Collider metadata is unavailable. Connect to the updated Rust backend to inspect city chunks.</p> },
     { id: "rendering", label: "Rendering", description: "These controls share the same settings as Display. Captures can help compare the cost of one effect at a time.", rows: [
       { id: "interpolation", label: "Vehicle interpolation", value: debug.interpolationEnabled ? `On · ${DEFAULT_INTERPOLATION_DELAY_MS} ms` : "Off · latest snapshot", action: () => debug.toggleInterpolation() },
       { id: "dpr", label: "Resolution scale", value: `${settings.dpr}×`, action: (dir) => settings.update({ dpr: step([0.5, 0.75, 1, 1.5, 2], settings.dpr, dir) }) },
@@ -92,15 +92,15 @@ export function DebugMenu() {
       { id: "csv", label: "Export captures as CSV", action: () => download(capturesCsv(recorder.runs), "csv") },
       { id: "json", label: "Export captures as JSON", action: () => download(JSON.stringify(recorder.runs, null, 2), "json") },
       { id: "clear", label: "Clear captures", danger: true, action: () => recorder.clear() },
-    ], content: <><label className="mt-5 flex items-center gap-3 text-sm text-slate-300">Optional capture label<input value={label} onChange={(event) => setLabel(event.target.value)} placeholder="e.g. BRZ GLB only" maxLength={120} className="min-w-0 flex-1 rounded border border-slate-600 bg-slate-900 px-3 py-2" /></label><CaptureResults /><p className="mt-3 text-xs text-slate-400">Captures stay in this browser tab until export or reload. CPU submit excludes GPU completion; physical input-to-display latency is unmeasured.</p></> },
+    ], content: <><label className="menu-field">Optional capture label<input value={label} onChange={(event) => setLabel(event.target.value)} placeholder="e.g. BRZ GLB only" maxLength={120} className="menu-input" /></label><CaptureResults /><p className="mt-1 text-xs leading-tight text-slate-400">Captures stay in this browser tab until export or reload. CPU submit excludes GPU completion; physical input-to-display latency is unmeasured.</p></> },
   ]} />;
 }
 function CaptureResults() {
   const { runs, status } = usePerformanceReadout();
   const ms = (value: number | null | undefined) => value === null || value === undefined ? "—" : value.toFixed(2);
-  return <div className="mt-5 overflow-x-auto">
-    <p className="mb-2 text-sm text-cyan-300" role="status">{status}</p>
-    {runs.length > 0 && <table className="w-full whitespace-nowrap text-left font-mono text-xs">
+  return <div className="mt-1 overflow-x-auto">
+    <p className="mb-1 text-xs text-cyan-300" role="status">{status}</p>
+    {runs.length > 0 && <table className="menu-table w-full whitespace-nowrap text-left font-mono text-xs">
       <thead className="text-slate-400"><tr>{["Capture", "Mean ms", "p95 ms", "p99 ms", "Δ baseline", "Δ previous", "Calls", "Ack ms"].map((h) => <th key={h} className="p-2">{h}</th>)}</tr></thead>
       <tbody>{runs.map((run, index) => {
         const baseline = runs.find((r) => r.id === run.baselineId);
@@ -119,9 +119,9 @@ function VehicleAlignmentReadout() {
   const reports = useVisualAlignmentStore((s) => s.reports);
   const rows = Object.entries(reports);
   if (!rows.length) return null;
-  return <div className="mt-4 overflow-x-auto text-xs text-slate-300">
-    <p className="mb-2 font-bold text-cyan-300">GLB alignment · measured once from the imported asset</p>
-    <table className="w-full text-left font-mono">
+  return <div className="mt-1 overflow-x-auto text-xs text-slate-300">
+    <p className="mb-1 font-bold text-cyan-300">GLB alignment · measured once from the imported asset</p>
+    <table className="menu-table w-full text-left font-mono">
       <thead><tr>{["Model", "Reference", "Offset X/Y/Z (m)", "Wheel Y spread", "Status"].map((h) => <th key={h} className="p-2">{h}</th>)}</tr></thead>
       <tbody>{rows.map(([id, r]) => <tr key={id} className="border-t border-slate-800">
         <td className="p-2">{r.model} · {id.slice(0, 8)}</td><td className="p-2">{r.method}</td>

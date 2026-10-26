@@ -12,6 +12,39 @@ let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let reconnectEnabled = false;
 let pingSentMs: number | null = null;
+let vehicleChangeSequence = 0;
+
+export function requestVehicleChange(vehicle: string): Promise<void> {
+  const connection = socket;
+  if (!connection || connection.readyState !== WebSocket.OPEN) {
+    return Promise.reject(new Error("Connect to the game server before changing vehicles."));
+  }
+  const requestId = `vehicle-${++vehicleChangeSequence}`;
+  return new Promise((resolve, reject) => {
+    const finish = (error?: Error) => {
+      clearTimeout(timeout);
+      connection.removeEventListener("message", onMessage);
+      connection.removeEventListener("close", onClose);
+      if (error) reject(error); else resolve();
+    };
+    const onMessage = (event: MessageEvent) => {
+      let message;
+      try { message = JSON.parse(event.data); } catch { return; }
+      if (message?.request_id !== requestId) return;
+      if (message.type === "vehicle_changed" && message.vehicle === vehicle) finish();
+      else if (message.type === "vehicle_change_error") finish(new Error(message.message || "Unable to change vehicles."));
+    };
+    const onClose = () => finish(new Error("The game-server connection closed before the vehicle change completed."));
+    const timeout = setTimeout(() => finish(new Error("The server did not confirm the vehicle change. Try again.")), 5000);
+    connection.addEventListener("message", onMessage);
+    connection.addEventListener("close", onClose);
+    try {
+      connection.send(JSON.stringify({ type: "change_vehicle_request", vehicle, request_id: requestId }));
+    } catch (error) {
+      finish(error instanceof Error ? error : new Error("Unable to send the vehicle change."));
+    }
+  });
+}
 
 // The input sender is the only writer; diagnostics are plain counters, not React state.
 // Keeping them here lets the menu inspect transport without importing/starting a sender.
@@ -217,6 +250,8 @@ export function connectRustServer(): WebSocket {
       case "spawn_ok":
       case "spawn_ready":
       case "spawn_error":
+      case "vehicle_changed":
+      case "vehicle_change_error":
         return;
       default:
         console.warn("Unknown Rust message type:", message.type);

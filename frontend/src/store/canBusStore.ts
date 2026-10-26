@@ -3,6 +3,8 @@ import { create } from "zustand";
 
 export type CanInterface = "vcan0" | "can0" | "can1" | "can2";
 export type CanMode = "live" | "simulation" | "listen-only" | "offline";
+export const CAN_INTERFACE_OPTIONS: readonly CanInterface[] = ["can0", "can1", "can2", "vcan0"];
+export const CAN_MODE_OPTIONS: readonly CanMode[] = ["live", "listen-only", "simulation"];
 
 export type CanInterfaceStatus = {
     exists: boolean;

@@ -125,7 +125,8 @@ export class PhysicsInterpolationBuffer {
 
     // After a long delivery/server pause, show the fresh state and start a new
     // short buffer. Playing an old backlog would add visible input latency.
-    if (!history || receivedMs - history.lastReceivedMs > STALE_GAP_MS) {
+    if (!history || receivedMs - history.lastReceivedMs > STALE_GAP_MS
+      || last?.pose.vehicle_id !== pose.vehicle_id) {
       history = { frames: [], lastReceivedMs: receivedMs, localOriginMs: receivedMs, serverOriginMs: serverMs };
       this.histories.set(id, history);
     }
