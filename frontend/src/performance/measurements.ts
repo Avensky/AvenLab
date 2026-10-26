@@ -1,3 +1,5 @@
+import type { PlayerLocation } from "./location";
+
 // No React/store writes in the frame or packet hot paths. Bounded numeric rings
 // keep the profiler's own cost stable, even during a long driving session.
 export const METRICS = ["frameMs", "cpuSubmitMs", "drawCalls", "triangles", "geometries", "textures",
@@ -6,12 +8,15 @@ export const METRICS = ["frameMs", "cpuSubmitMs", "drawCalls", "triangles", "geo
 export type Metric = typeof METRICS[number];
 export type Summary = { count: number; mean: number; p50: number; p95: number; p99: number; stddev: number };
 export type Summaries = Partial<Record<Metric, Summary>>;
-export type ExperimentContext = { key: string; settings: Record<string, unknown>; ready: boolean; reason: string };
+export type ExperimentContext = { key: string; settings: Record<string, unknown>; ready: boolean; reason: string; location?: PlayerLocation | null };
+export type CapturePoint = { timeMs: number; location: PlayerLocation | null; metrics: Partial<Record<Metric, number>> };
 export type Capture = {
   id: number; label: string; baseline: boolean; startedAt: string; durationMs: number;
   settings: Record<string, unknown>; metrics: Summaries;
   snapshotKiBps: number; debugKiBps: number; snapshotHz: number;
   slowFrames: number; frameCount: number; baselineId: number | null;
+  startLocation?: PlayerLocation | null; endLocation?: PlayerLocation | null;
+  frameSamplesMs?: number[]; timeline?: CapturePoint[];
 };
 export function summarize(values: number[]): Summary | undefined {
   if (!values.length) return undefined;
@@ -44,22 +49,42 @@ class Series {
 
 type Pending = { label: string; baseline: boolean; key: string; settings: Record<string, unknown>;
   requestedMs: number; warmSince: number | null; startMs: number | null; durationMs: number;
-  samples: Partial<Record<Metric, number[]>>; snapshots: number; snapshotBytes: number; debugBytes: number };
+  samples: Partial<Record<Metric, number[]>>; snapshots: number; snapshotBytes: number; debugBytes: number;
+  startedAt: string | null; startLocation: PlayerLocation | null; timeline: CapturePoint[]; lastPointMs: number };
+export type CaptureProgress = { phase: "idle" | "waiting" | "warmup" | "recording"; label: string; remainingMs: number };
 export class PerformanceRecorder {
   enabled = false;
   runs: Capture[] = [];
   baselineId: number | null = null;
   status = "Ready";
+  storageStatus = "Export JSON to share captures.";
+  private archiveListeners = new Set<() => void>();
   private nextId = 1;
   private pending: Pending | null = null;
   private series = Object.fromEntries(METRICS.map((name) => [name, new Series()])) as Record<Metric, Series>;
   private traffic: { time: number; snapshot: number; debug: number }[] = [];
   get capturing() { return this.pending !== null; }
+  progress(now = performance.now()): CaptureProgress {
+    const p = this.pending;
+    if (!p) return { phase: "idle", label: "", remainingMs: 0 };
+    if (p.startMs !== null) return { phase: "recording", label: p.label, remainingMs: Math.max(0, p.durationMs - now + p.startMs) };
+    if (p.warmSince !== null) return { phase: "warmup", label: p.label, remainingMs: Math.max(0, 3000 - now + p.warmSince) };
+    return { phase: "waiting", label: p.label, remainingMs: 0 };
+  }
+  subscribeArchive(listener: () => void) { this.archiveListeners.add(listener); return () => { this.archiveListeners.delete(listener); }; }
+  restore(runs: Capture[], baselineId: number | null) {
+    if (this.pending || this.runs.length) return;
+    this.runs = runs.slice(-50);
+    this.baselineId = this.runs.some((r) => r.id === baselineId) ? baselineId : null;
+    this.nextId = Math.max(0, ...this.runs.map((r) => r.id)) + 1;
+    if (this.runs.length) this.status = `Restored ${this.runs.length} captures`;
+  }
+  private archiveChanged() { for (const listener of this.archiveListeners) listener(); }
   record(metric: Metric, value: number | null | undefined, now = performance.now()) {
     if ((!this.enabled && !this.pending) || value === null || value === undefined || !Number.isFinite(value) || value < 0) return;
     this.series[metric].add(value, now);
     const p = this.pending;
-    if (p && p.startMs !== null && now >= p.startMs) {
+    if (p && p.startMs !== null && now >= p.startMs && now <= p.startMs + p.durationMs) {
       const samples = p.samples[metric] ??= [];
       // A maximum of 20 seconds at 240 Hz plus packet samples stays bounded.
       if (samples.length < 16384) samples.push(value);
@@ -72,7 +97,7 @@ export class PerformanceRecorder {
     this.traffic.push({ time: now, snapshot: kind === "snapshot" ? bytes : 0, debug: kind === "debug" ? bytes : 0 });
     if (this.traffic.length > 4096) this.traffic.splice(0, 2048);
     const p = this.pending;
-    if (p && p.startMs !== null) {
+    if (p && p.startMs !== null && now >= p.startMs && now <= p.startMs + p.durationMs) {
       if (kind === "snapshot") { p.snapshots++; p.snapshotBytes += bytes; }
       else p.debugBytes += bytes;
     }
@@ -88,9 +113,11 @@ export class PerformanceRecorder {
   }
   start(label: string, baseline: boolean, seconds: number, context: ExperimentContext, now = performance.now()) {
     if (this.pending) return;
-    this.pending = { label: label.trim() || (baseline ? "Collider baseline" : "Feature comparison"), baseline,
+    this.pending = { label: label.trim().slice(0, 120) || (baseline ? "Baseline" : "Feature comparison"), baseline,
       key: context.key, settings: context.settings, requestedMs: now, warmSince: null,
-      startMs: null, durationMs: Math.min(20, Math.max(5, seconds)) * 1000, samples: {}, snapshots: 0, snapshotBytes: 0, debugBytes: 0 };
+      startMs: null, durationMs: Math.min(20, Math.max(5, Number.isFinite(seconds) ? seconds : 10)) * 1000,
+      samples: {}, snapshots: 0, snapshotBytes: 0, debugBytes: 0,
+      startedAt: null, startLocation: null, timeline: [], lastPointMs: -Infinity };
     this.status = "Waiting for gameplay and assets";
   }
   cancel(reason = "Cancelled") { this.pending = null; this.status = reason; }
@@ -109,9 +136,20 @@ export class PerformanceRecorder {
     if (p.startMs === null) {
       if (now - p.warmSince < 3000) { this.status = `Warming up: ${Math.ceil((3000 - now + p.warmSince) / 1000)} s`; return; }
       p.startMs = now;
+      p.startedAt = new Date().toISOString();
+      p.startLocation = context.location ?? null;
       p.settings = context.settings;
     }
     const elapsed = now - p.startMs;
+    if (elapsed <= p.durationMs && now - p.lastPointMs >= 100 && p.timeline.length < 201) {
+      const metrics: Partial<Record<Metric, number>> = {};
+      for (const metric of METRICS) {
+        const value = p.samples[metric]?.at(-1);
+        if (value !== undefined) metrics[metric] = Number(value.toFixed(3));
+      }
+      p.timeline.push({ timeMs: Math.round(elapsed), location: context.location ?? null, metrics });
+      p.lastPointMs = now;
+    }
     this.status = `Recording ${p.label}: ${Math.max(0, (p.durationMs - elapsed) / 1000).toFixed(1)} s`;
     if (elapsed < p.durationMs) return;
     const frameCount = p.samples.frameMs?.length ?? 0;
@@ -120,17 +158,19 @@ export class PerformanceRecorder {
     for (const metric of METRICS) metrics[metric] = summarize(p.samples[metric] ?? []);
     const id = this.nextId++;
     if (p.baseline) this.baselineId = id;
-    this.runs.push({ id, label: p.label, baseline: p.baseline, startedAt: new Date().toISOString(),
-      durationMs: elapsed, settings: { ...p.settings, endPlayerPose: context.settings.playerPose }, metrics,
-      snapshotKiBps: p.snapshotBytes / 1024 / (elapsed / 1000), debugKiBps: p.debugBytes / 1024 / (elapsed / 1000),
-      snapshotHz: p.snapshots / (elapsed / 1000), frameCount,
+    this.runs.push({ id, label: p.label, baseline: p.baseline, startedAt: p.startedAt!,
+      durationMs: p.durationMs, settings: { ...p.settings, endPlayerPose: context.settings.playerPose }, metrics,
+      snapshotKiBps: p.snapshotBytes / 1024 / (p.durationMs / 1000), debugKiBps: p.debugBytes / 1024 / (p.durationMs / 1000),
+      snapshotHz: p.snapshots / (p.durationMs / 1000), frameCount,
       slowFrames: (p.samples.frameMs ?? []).filter((v) => v > 1000 / 60 + 0.5).length,
-      baselineId: this.baselineId });
+      baselineId: this.baselineId, startLocation: p.startLocation, endLocation: context.location ?? null,
+      frameSamplesMs: p.samples.frameMs?.map((value) => Number(value.toFixed(3))), timeline: p.timeline });
     if (this.runs.length > 50) this.runs.splice(this.runs.findIndex((run) => run.id !== this.baselineId), 1);
     this.pending = null;
-    this.status = `Saved: ${p.label}`;
+    this.status = `Recorded: ${p.label}`;
+    this.archiveChanged();
   }
-  clear() { this.cancel("Ready"); this.runs = []; this.baselineId = null; }
+  clear() { this.cancel("Ready"); this.runs = []; this.baselineId = null; this.archiveChanged(); }
 }
 export const performanceRecorder = new PerformanceRecorder();
 

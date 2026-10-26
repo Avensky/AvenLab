@@ -5,6 +5,8 @@ import { useUIStore } from "../store/uiStore";
 import { useCanDataStore } from "../store/canDataStore";
 import { VehicleFlags, PlayerFlags } from "../store/tools/inputMasks";
 import { canDrive, canNavigateMenu, isTypingTarget, routeMenuAction } from "../store/tools/inputRouting";
+import { useRenderSettingsStore } from "../store/renderSettingsStore";
+import { togglePerformanceCapture } from "../performance/captureActions";
 
 function axis(value = 0, deadzone = 0.12) {
   return Number.isFinite(value) && Math.abs(value) >= deadzone ? Math.max(-1, Math.min(1, value)) : 0;
@@ -86,6 +88,9 @@ export function GameController() {
         armed = true;
       }
       const store = useInputStore.getState();
+      // A/Cross has no driving action. Keep it as menu activation when paused,
+      // and only use it for capture when the player can see the profiler.
+      if (edges[0] && useUIStore.getState().screen === "sandbox" && useRenderSettingsStore.getState().overlay) togglePerformanceCapture();
       store.setAnalogFromSource("gamepad", { throttle, steer, brake, handbrake });
       store.setHeldVehicleFlag("gamepad", VehicleFlags.BOOST, pressed(4));
       store.setHeldPlayerFlag("gamepad", PlayerFlags.HONK, pressed(5));

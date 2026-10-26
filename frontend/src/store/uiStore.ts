@@ -56,6 +56,8 @@ type UIState = {
   setOverlay: (overlay: UIOverlay) => void;
   vehicleSelectionParent: "pause" | null;
   openVehicleSelection: () => void;
+  debugMenuParent: "pause" | null;
+  toggleDebugMenu: () => void;
 
   selectedMenuIndexById: Record<MenuId, number>;
 
@@ -92,6 +94,13 @@ export const useUIStore = create<UIState>((set, get) => ({
   screen: "main",
   setScreen: (screen) => { set({ screen, overlay: null, vehicleSelectionParent: null }); },
   overlay: null,
+  debugMenuParent: "pause",
+  toggleDebugMenu: () => {
+    const state = get();
+    if (!isDrivingScreen(state.screen) || state.isModeLoading) return;
+    if (state.overlay === "debug_menu") get().backToParentMenu();
+    else if (state.overlay === null || state.overlay === "pause") get().setOverlay("debug_menu");
+  },
   vehicleSelectionParent: null,
   openVehicleSelection: () => {
     const state = get();
@@ -100,6 +109,12 @@ export const useUIStore = create<UIState>((set, get) => ({
     set({ overlay: "vehicle_select", vehicleSelectionParent: state.overlay });
   },
   setOverlay: (overlay) => {
+    if (overlay === "debug_menu") {
+      const state = get();
+      if (!isDrivingScreen(state.screen)) return;
+      if (state.overlay !== "debug_menu") set({ overlay, debugMenuParent: state.overlay === "pause" ? "pause" : null });
+      return;
+    }
     if (overlay === "vehicle_select") { get().openVehicleSelection(); return; }
     if (overlay && ["pause", "debug_menu", "vehicle_select", "leave_game"].includes(overlay) && !isDrivingScreen(get().screen)) return;
     set({ overlay });
@@ -236,7 +251,8 @@ export const useUIStore = create<UIState>((set, get) => ({
     set({ overlay: null, vehicleSelectionParent: null });
   },
   backToParentMenu: () => {
-    if (get().overlay === "vehicle_select") set({ overlay: get().vehicleSelectionParent, vehicleSelectionParent: null });
+    if (get().overlay === "debug_menu") set({ overlay: get().debugMenuParent, debugMenuParent: "pause" });
+    else if (get().overlay === "vehicle_select") set({ overlay: get().vehicleSelectionParent, vehicleSelectionParent: null });
     else if (get().overlay !== null) set({ overlay: isDrivingScreen(get().screen) ? "pause" : null });
     else set({ screen: "main", overlay: null });
   },

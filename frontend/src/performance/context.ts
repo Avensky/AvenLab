@@ -7,11 +7,12 @@ import { useGameStore } from "../store/gameStore";
 import { useUIStore } from "../store/uiStore";
 import { useVisualAlignmentStore } from "../store/visualAlignmentStore";
 import type { ExperimentContext } from "./measurements";
+import { playerLocation } from "./location";
 
 export function experimentContext(): ExperimentContext {
   const s = useRenderSettingsStore.getState();
   const render = { environmentMode: s.environmentMode, vehicleOverrides: s.vehicleOverrides, chunkOverrides: s.chunkOverrides, assetGlbs: s.assetGlbs,
-    dpr: s.dpr, shadows: s.shadows, reflections: s.reflections, stars: s.stars, fog: s.fog, vehicleLights: s.vehicleLights, hud: s.hud, overlay: s.overlay, autoVehicleAlignment: s.autoVehicleAlignment };
+    dpr: s.dpr, shadows: s.shadows, reflections: s.reflections, stars: s.stars, fog: s.fog, vehicleLights: s.vehicleLights, hud: s.hud, overlay: s.overlay, autoVehicleAlignment: s.autoVehicleAlignment, opaqueCityMaterials: s.opaqueCityMaterials };
   const network = useNetworkStore.getState();
   const world = useWorldStore.getState();
   const ui = useUIStore.getState();
@@ -21,6 +22,7 @@ export function experimentContext(): ExperimentContext {
     interpolation: debug.interpolationEnabled, playerScope: debug.playerScope,
     camera: game.camera, editor: game.editor, map: world.map?.map_id,
     chunks: world.map?.chunks.map((c) => [c.x, c.z]),
+    visuals: world.map?.visuals, cell: world.map?.cell, coordinateSystem: world.map?.coordinate_system,
     roster: network.snapshot?.entities.map((e) => [e.id, e.vehicle_id]),
     viewport: [window.innerWidth, window.innerHeight], devicePixelRatio: window.devicePixelRatio,
     build: import.meta.env.MODE, userAgent: navigator.userAgent };
@@ -32,5 +34,6 @@ export function experimentContext(): ExperimentContext {
           : useProgress.getState().active ? "assets loading" : "";
   const me = network.snapshot?.entities.find((entity) => entity.id === network.playerId);
   return { settings: { ...settings, alignment: useVisualAlignmentStore.getState().reports, playerPose: me ? { position: me.position, rotation: me.rotation, speed: me.speed } : null },
+    location: playerLocation(me, world.map),
     key: JSON.stringify(settings), ready: reason === "", reason };
 }

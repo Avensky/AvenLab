@@ -24,6 +24,15 @@ Main loops the existing `/videos/NIWC-Pacific.mp4` behind its logo and buttons, 
 
 The HTML entry includes a centered logo before the JavaScript bundle is ready. App removes it on the first animation frame after its UI commits, without waiting for video, a game server or 3D assets. The game canvas is created only for Sandbox and the two vehicle setup screens. The loading video remains an existing public asset; no second copy is required.
 
+## Lightweight selection showroom
+
+Sandbox and Signal Recon vehicle selection now use `Showroom`: a flat floor, subtle ring, fog and local lights made from native geometry. No city, carrier, textures or HDRI are requested by the stage. The city/carrier prototype remains in source for later use, but is not mounted in selection.
+
+All five vehicles share the same camera position, orbit target and viewport framing. Only resizing changes the framing; switching to/from Tank leaves the orbit untouched. Reduced Motion stops auto-rotation and damping. Display placement uses precise visible tire/track vertex bounds at floor Y=0, avoiding inflated accessor boxes, hidden helpers and body trim. A small procedural contact shadow adds a floor cue without texture downloads or shadow-map passes. Grounding changes only the preview group, not the GLB or authoritative gameplay poses.
+
+Draco decoders are served by the app from `/draco/` instead of an external CDN. The JavaScript and WASM files are vendored from the installed Three.js distribution with their Apache 2.0 license. Keep the whole decoder set together when upgrading Three.js. Vehicle GLBs still load on demand and remain cached; the showroom does not eliminate their first download or texture-decoding cost. BRZ is about 18 MB and Tank about 31 MB in this checkout, so a two-second first-load guarantee is not realistic on every connection.
+
+
 ## Available now
 
 - Pause: Resume game, Debugger, Settings, Change vehicle, View missions, Career, Leave game.
@@ -49,7 +58,11 @@ Display/input/accessibility preferences and favorites are stored in browser loca
 | Start / Escape while driving | Open pause menu |
 | H while driving / paused | Open the in-game vehicle picker |
 | Shift+H while driving | Toggle hazards |
+| F2 in Sandbox | Open/close Debugger, returning to driving or Pause as appropriate |
+| F3 in Sandbox | Show/hide the latency overlay |
 | Mouse / touch | Select tabs and activate the actual clicked row |
+
+The latency readout also has a clickable Close button. F2/F3 ignore key repeats, modified keys, text editing, loading, terminal input and non-Sandbox screens.
 
 Focused text inputs retain editing keys. Native Tab navigation and visible focus outlines remain available. Opening menus releases held driving inputs; the gamepad must return to neutral before driving resumes. The online simulation continues while a menu is open.
 

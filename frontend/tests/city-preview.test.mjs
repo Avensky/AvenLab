@@ -1,0 +1,31 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { BoxGeometry, Group, Mesh, MeshPhysicalMaterial, Texture } from 'three';
+import { prepareCityShowcase } from '../src/game/preview/prepareCityShowcase.ts';
+
+test('city display repairs transmission without changing cached materials, textures or transforms', () => {
+  const map = new Texture();
+  const material = new MeshPhysicalMaterial({ transmission: 1, thickness: 2, map, color: '#bb7755' });
+  const geometry = new BoxGeometry();
+  const source = new Group();
+  const a = new Mesh(geometry, material), b = new Mesh(geometry, [material]);
+  a.position.set(10, 4, -6); source.add(a, b);
+  const display = prepareCityShowcase(source);
+  const fixed = display.root.children[0];
+  assert.notEqual(fixed.material, material);
+  assert.equal(fixed.material.transmission, 0);
+  assert.equal(display.root.children[1].material[0], fixed.material);
+  assert.equal(material.transmission, 1);
+  assert.equal(material.thickness, 2);
+  assert.equal(fixed.material.map, map);
+  assert.equal(fixed.geometry, geometry);
+  assert.deepEqual(fixed.position.toArray(), [10, 4, -6]);
+  let materialDisposed = false, geometryDisposed = false, textureDisposed = false;
+  fixed.material.addEventListener('dispose', () => { materialDisposed = true; });
+  geometry.addEventListener('dispose', () => { geometryDisposed = true; });
+  map.addEventListener('dispose', () => { textureDisposed = true; });
+  display.dispose();
+  assert.equal(materialDisposed, true);
+  assert.equal(geometryDisposed, false);
+  assert.equal(textureDisposed, false);
+});

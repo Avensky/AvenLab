@@ -18,6 +18,7 @@ export type RenderSettings = {
   hud: boolean;
   overlay: boolean;
   autoVehicleAlignment: boolean;
+  opaqueCityMaterials: boolean;
 };
 
 // Driving starts with vehicle GLBs and a collider city. The collider-only
@@ -25,7 +26,7 @@ export type RenderSettings = {
 export const BASELINE_SETTINGS: RenderSettings = {
   environmentMode: "collider", vehicleOverrides: {}, chunkOverrides: {}, assetGlbs: {},
   dpr: 1, shadows: false, reflections: false, stars: false, fog: false,
-  vehicleLights: false, hud: false, overlay: false, autoVehicleAlignment: true,
+  vehicleLights: false, hud: false, overlay: false, autoVehicleAlignment: true, opaqueCityMaterials: false,
 };
 
 type State = RenderSettings & {
@@ -62,11 +63,11 @@ export const useRenderSettingsStore = create<State>()(persist((set) => ({
   storage: createJSONStorage(() => localStorage),
   partialize: (state) => ({ dpr: state.dpr, shadows: state.shadows, reflections: state.reflections,
     stars: state.stars, fog: state.fog, vehicleLights: state.vehicleLights, hud: state.hud,
-    overlay: state.overlay, autoVehicleAlignment: state.autoVehicleAlignment, environmentMode: state.environmentMode }),
+    overlay: state.overlay, autoVehicleAlignment: state.autoVehicleAlignment, opaqueCityMaterials: state.opaqueCityMaterials, environmentMode: state.environmentMode }),
   merge: (persisted, current) => {
     const data = persisted && typeof persisted === "object" ? persisted as Partial<RenderSettings> : {};
     const merged = { ...current };
-    for (const key of ["shadows", "reflections", "stars", "fog", "vehicleLights", "hud", "overlay", "autoVehicleAlignment"] as const) {
+    for (const key of ["shadows", "reflections", "stars", "fog", "vehicleLights", "hud", "overlay", "autoVehicleAlignment", "opaqueCityMaterials"] as const) {
       if (typeof data[key] === "boolean") merged[key] = data[key];
     }
     if (data.dpr !== undefined && [0.5, 0.75, 1, 1.5, 2].includes(data.dpr)) merged.dpr = data.dpr;

@@ -1,6 +1,7 @@
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import { useRenderSettingsStore } from "../store/renderSettingsStore";
 import { Clone, useGLTF } from "@react-three/drei";
+import { cityMaterialScene } from "./cityMaterials";
 
 type Props = {
   path: string;
@@ -29,6 +30,8 @@ export const CityChunk = memo(function CityChunk({
 }: Props) {
   const gltf = useGLTF(path);
   const shadows = useRenderSettingsStore((s) => s.shadows);
+  const opaqueMaterials = useRenderSettingsStore((s) => s.opaqueCityMaterials);
+  const scene = useMemo(() => cityMaterialScene(gltf.scene, opaqueMaterials), [gltf.scene, opaqueMaterials]);
 
   // Keep the GLB export origin and node transforms. The backend visual entry
   // supplies the asset-to-chunk transform; the parent supplies chunk-to-world.
@@ -41,7 +44,7 @@ export const CityChunk = memo(function CityChunk({
       quaternion={quaternion}
       scale={scale}
     >
-      <Clone object={gltf.scene} inject={{ castShadow: shadows, receiveShadow: shadows }} />
+      <Clone object={scene} inject={{ castShadow: shadows, receiveShadow: shadows }} />
     </group>
   );
 });

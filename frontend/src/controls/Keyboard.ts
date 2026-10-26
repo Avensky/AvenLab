@@ -3,6 +3,7 @@ import { usePreferencesStore } from "../store/preferencesStore";
 import { useInputStore } from "../store/inputStore";
 import { isDrivingScreen, useUIStore } from "../store/uiStore";
 import { useCanDataStore } from "../store/canDataStore";
+import { useRenderSettingsStore } from "../store/renderSettingsStore";
 import { VehicleFlags, PlayerFlags } from "../store/tools/inputMasks";
 import { canDrive, canNavigateMenu, isTypingTarget, routeMenuAction, type MenuAction } from "../store/tools/inputRouting";
 
@@ -44,6 +45,16 @@ export function Keyboard() {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.repeat || !focused || document.visibilityState === "hidden" || isTypingTarget(event.target)) return;
       const ui = useUIStore.getState();
+      if ((event.code === "F2" || event.code === "F3") && !event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey
+        && isDrivingScreen(ui.screen) && !ui.isModeLoading && !useCanDataStore.getState().commandOpen) {
+        event.preventDefault();
+        if (event.code === "F2") ui.toggleDebugMenu();
+        else {
+          const settings = useRenderSettingsStore.getState();
+          settings.update({ overlay: !settings.overlay });
+        }
+        return;
+      }
       if (event.code === "KeyH" && isDrivingScreen(ui.screen) && !ui.isModeLoading
         && !useCanDataStore.getState().commandOpen) {
         if (event.shiftKey && canDrive()) {

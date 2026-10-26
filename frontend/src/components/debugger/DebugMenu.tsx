@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { TabbedMenu, type MenuRow } from "../menus/TabbedMenu";
 import { useUIStore } from "../../store/uiStore";
 import { useWorldStore } from "../../store/worldStore";
@@ -7,8 +6,9 @@ import { DEFAULT_INTERPOLATION_DELAY_MS } from "../../hooks/usePhysicsInterpolat
 import { useDebugViewStore } from "../../store/debugViewStore";
 import { DebugFlags, hasDebugFlag } from "../../store/tools/debugMasks";
 import { assetKey, chunkKey, useRenderSettingsStore, type VisualMode } from "../../store/renderSettingsStore";
-import { experimentContext } from "../../performance/context";
-import { capturesCsv, difference, performanceRecorder as recorder } from "../../performance/measurements";
+import { difference, performanceRecorder as recorder } from "../../performance/measurements";
+import { exportPerformanceCaptures, startPerformanceCapture } from "../../performance/captureActions";
+import { useCaptureSettingsStore } from "../../performance/captureSettingsStore";
 import { useVisualAlignmentStore } from "../../store/visualAlignmentStore";
 import { usePerformanceReadout } from "../../performance/usePerformanceReadout";
 
@@ -21,13 +21,6 @@ const DEBUG_OPTIONS = [
 ] as const;
 const ALL_DEBUG = DEBUG_OPTIONS.reduce((mask, [, flag]) => mask | flag, 0);
 const step = <T,>(values: readonly T[], value: T, dir: 1 | -1 = 1): T => values[(Math.max(0, values.indexOf(value)) + dir + values.length) % values.length];
-function download(contents: string, extension: "json" | "csv") {
-  const url = URL.createObjectURL(new Blob([contents], { type: extension === "csv" ? "text/csv;charset=utf-8" : "application/json" }));
-  const link = document.createElement("a");
-  link.href = url; link.download = `avenlab-performance-${Date.now()}.${extension}`;
-  document.body.append(link); link.click(); link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
 
 export function DebugMenu() {
   const settings = useRenderSettingsStore();
@@ -38,13 +31,12 @@ export function DebugMenu() {
   const back = useUIStore((s) => s.backToParentMenu);
   // Entity poses update at network rate; menu membership changes much less often.
   const rosterKey = useNetworkStore((s) => JSON.stringify((s.snapshot?.entities ?? []).map((e) => [e.id, e.vehicle_id])));
-  const [label, setLabel] = useState("");
-  const [duration, setDuration] = useState(10);
+  const captureSettings = useCaptureSettingsStore();
+  const label = captureSettings.label;
+  const duration = captureSettings.seconds;
   const world = useWorldStore.getState();
   const capture = (baseline: boolean) => {
-    settings.update({ overlay: true });
-    recorder.start(label, baseline, duration, experimentContext());
-    useUIStore.getState().closeOverlay();
+    startPerformanceCapture(baseline, true);
   };
   const renderToggles = (["shadows", "reflections", "stars", "fog", "vehicleLights", "hud"] as const).map((key): MenuRow => ({
     id: key, label: ({ shadows: "Shadows", reflections: "HDR reflections", stars: "Animated stars", fog: "Fog", vehicleLights: "Vehicle spotlights", hud: "Driving HUD + terminal" })[key],
@@ -75,6 +67,7 @@ export function DebugMenu() {
     ], content: <VehicleAlignmentReadout /> },
     { id: "environment", label: "Environment", description: "Set a world default, override a chunk, or switch individual GLB assets. The list is populated from the server's selected map.", rows: [
       { id: "environment-default", label: "Environment default", value: settings.environmentMode.toUpperCase(), action: (dir) => settings.update({ environmentMode: step(MODES, settings.environmentMode, dir), chunkOverrides: {}, assetGlbs: {} }) },
+      { id: "opaque-city", label: "Opaque city materials (A/B test)", value: settings.opaqueCityMaterials ? "On" : "Off", action: () => settings.update({ opaqueCityMaterials: !settings.opaqueCityMaterials }) },
       ...environmentRows,
     ], content: !map?.collider_chunks && <p className="mt-1 text-xs text-amber-300">Collider metadata is unavailable. Connect to the updated Rust backend to inspect city chunks.</p> },
     { id: "rendering", label: "Rendering", description: "These controls share the same settings as Display. Captures can help compare the cost of one effect at a time.", rows: [
@@ -85,14 +78,14 @@ export function DebugMenu() {
     ] },
     { id: "captures", label: "Captures", description: "Start with a collider baseline. Captures resume gameplay, warm up for 3 seconds and record frame / network metrics. Repeat the same camera and route for useful comparisons.", rows: [
       { id: "baseline-reset", label: "Reset to lowest-lag collider baseline", action: () => { recorder.cancel("Baseline reset"); settings.baseline(); } },
-      { id: "duration", label: "Capture length", value: `${duration}s + 3s warm-up`, action: (dir) => setDuration(step([5, 10, 20], duration, dir)) },
+      { id: "duration", label: "Capture length", value: `${duration}s + 3s warm-up`, action: (dir) => captureSettings.update({ seconds: step([5, 10, 20], duration, dir) }) },
       { id: "baseline", label: "Record baseline & resume", action: () => capture(true) },
       { id: "compare", label: "Record comparison & resume", action: () => capture(false) },
       { id: "cancel", label: "Cancel capture", action: () => recorder.cancel() },
-      { id: "csv", label: "Export captures as CSV", action: () => download(capturesCsv(recorder.runs), "csv") },
-      { id: "json", label: "Export captures as JSON", action: () => download(JSON.stringify(recorder.runs, null, 2), "json") },
+      { id: "csv", label: "Export captures as CSV", action: () => exportPerformanceCaptures("csv") },
+      { id: "json", label: "Export captures as JSON", action: () => exportPerformanceCaptures("json") },
       { id: "clear", label: "Clear captures", danger: true, action: () => recorder.clear() },
-    ], content: <><label className="menu-field">Optional capture label<input value={label} onChange={(event) => setLabel(event.target.value)} placeholder="e.g. BRZ GLB only" maxLength={120} className="menu-input" /></label><CaptureResults /><p className="mt-1 text-xs leading-tight text-slate-400">Captures stay in this browser tab until export or reload. CPU submit excludes GPU completion; physical input-to-display latency is unmeasured.</p></> },
+    ], content: <><label className="menu-field">Optional capture label<input value={label} onChange={(event) => captureSettings.update({ label: event.target.value })} placeholder="e.g. BRZ GLB only" maxLength={120} className="menu-input" /></label><CaptureResults /><p className="mt-1 text-xs leading-tight text-slate-400">Up to 20 completed captures save in this browser across reloads. Export JSON for frame samples and route coordinates; CSV contains the comparison summary. CPU submit excludes GPU completion; physical input-to-display latency is unmeasured.</p></> },
   ]} />;
 }
 function CaptureResults() {

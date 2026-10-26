@@ -6,12 +6,14 @@ import { getInputSenderStats } from "../net/rustSocket";
 import { useUIStore } from "../store/uiStore";
 import { experimentContext } from "./context";
 import { performanceRecorder as recorder } from "./measurements";
+import { initializeCaptureArchive } from "./captureActions";
 
 export function PerformanceProbe() {
   const gl = useThree((s) => s.gl);
   const overlay = useRenderSettingsStore((s) => s.overlay);
   useEffect(() => { recorder.enabled = overlay; return () => { recorder.enabled = false; }; }, [overlay]);
   useEffect(() => {
+    initializeCaptureArchive();
     let previous: number | null = null;
     let started = 0;
     const before = addEffect(() => {

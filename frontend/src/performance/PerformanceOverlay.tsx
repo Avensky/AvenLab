@@ -30,7 +30,10 @@ function Readout() {
   const last = stats.runs.at(-1);
   const delta = difference(last?.metrics.frameMs?.mean, baseline?.metrics.frameMs?.mean);
   return <aside className="pointer-events-none fixed left-3 top-3 z-40 max-h-[calc(100svh-24px)] max-w-[calc(100vw-24px)] overflow-hidden rounded-xl border border-cyan-500/40 bg-slate-950/95 px-4 py-3 font-mono text-[10px] text-slate-200 sm:text-xs shadow-xl" aria-label="Performance overlay">
-    <div className="mb-2 flex justify-between gap-6 text-cyan-300"><strong>LATENCY LAB</strong><span>5 s window</span></div>
+    <div className="mb-2 flex items-center justify-between gap-3 text-cyan-300"><strong>LATENCY LAB</strong><span>5 s window</span>
+      <button type="button" className="menu-control pointer-events-auto" aria-label="Close performance overlay" title="Close performance overlay (F3)"
+        onClick={() => useRenderSettingsStore.getState().update({ overlay: false })}>F3 · ×</button>
+    </div>
     <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-5 gap-y-1">
       <span>FPS / frame mean</span><span>{format(m.frameMs ? 1000 / m.frameMs.mean : null, 0)} / {format(m.frameMs?.mean)} ms</span>
       <span>Frame p95 / p99</span><span>{format(m.frameMs?.p95)} / {format(m.frameMs?.p99)} ms</span>

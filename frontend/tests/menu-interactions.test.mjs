@@ -45,17 +45,19 @@ test('mouse, keyboard and polled gamepad navigate the real menus and preferences
     const { SessionMenu } = await load('game/SessionMenu.tsx');
     const { VehicleMenu } = await load('game/VehicleMenu.tsx');
     const { DebugMenu } = await load('components/debugger/DebugMenu.tsx');
+    const { PerformanceOverlay } = await load('performance/PerformanceOverlay.tsx');
     const { Keyboard } = await load('controls/Keyboard.ts');
     const { GameController } = await load('controls/GameController.ts');
     function Harness() {
       const screen = ui(s => s.screen), overlay = ui(s => s.overlay);
       const panel = overlay ?? screen;
       const Component = ({ main: MainMenu, sandbox_setup: SandboxSetup, signal_recon_setup: SignalReconSetup, pause: PauseMenu, settings: SettingsMenu, career: CareerMenu, missions: MissionsMenu, debug_menu: DebugMenu, vehicle_select: VehicleMenu, leave_game: SessionMenu })[panel];
-      return h(Fragment, null, Component ? h(Component, { collapsed: false, setCollapsed: () => {} }) : null, h(Keyboard), h(GameController));
+      return h(Fragment, null, Component ? h(Component, { collapsed: false, setCollapsed: () => {} }) : null,
+        screen === 'sandbox' ? h(PerformanceOverlay) : null, h(Keyboard), h(GameController));
     }
     root = createRoot(document.getElementById('root'));
     const reset = async (screen = 'main', overlay = null) => act(async () => {
-      ui.setState({ screen, overlay, vehicleSelectionParent: null, isModeLoading: false, selectedMenuIndexById: { main: 0, pause: 0, settings: 0, sandbox_setup: 0, signal_recon_setup: 0 } });
+      ui.setState({ screen, overlay, vehicleSelectionParent: null, debugMenuParent: 'pause', isModeLoading: false, selectedMenuIndexById: { main: 0, pause: 0, settings: 0, sandbox_setup: 0, signal_recon_setup: 0 } });
     });
     const click = async element => { assert.ok(element, 'element exists'); await act(async () => element.click()); };
     const tab = label => [...document.querySelectorAll('[role="tab"]')].find(el => el.textContent === label);
@@ -389,6 +391,27 @@ test('mouse, keyboard and polled gamepad navigate the real menus and preferences
       await click(tab('Rendering')); await click(row('overlay')); assert.equal(rendering.getState().overlay, true);
       await click(tab('Captures')); assert.ok(row('csv')); assert.ok(row('json'));
       await button(1); assert.equal(ui.getState().overlay, 'pause');
+    });
+    await t.test('F2 and F3 toggle the debugger and readout, and the readout has a working close button', async () => {
+      await reset('sandbox'); await act(async () => rendering.getState().update({ overlay: false }));
+      await key('F3'); assert.equal(rendering.getState().overlay, true);
+      await key('F3', 'F3', { repeat: true }); assert.equal(rendering.getState().overlay, true);
+      await key('F3'); assert.equal(rendering.getState().overlay, false);
+      await key('F3'); await click(document.querySelector('[aria-label="Close performance overlay"]'));
+      assert.equal(rendering.getState().overlay, false);
+      await key('F2'); assert.equal(ui.getState().overlay, 'debug_menu');
+      await key('F2'); assert.equal(ui.getState().overlay, null);
+      await key('F2'); await key('Escape'); assert.equal(ui.getState().overlay, null);
+      await reset('sandbox', 'pause'); await key('F2'); assert.equal(ui.getState().overlay, 'debug_menu');
+      await key('F2'); assert.equal(ui.getState().overlay, 'pause');
+      await reset('signal_recon'); await key('F2'); await key('F3');
+      assert.equal(ui.getState().overlay, null); assert.equal(rendering.getState().overlay, false);
+      await reset('sandbox');
+      const field = document.createElement('input'); document.body.append(field); field.focus();
+      await key('F2'); await key('F3'); assert.equal(ui.getState().overlay, null); assert.equal(rendering.getState().overlay, false);
+      field.remove();
+      await act(async () => ui.setState({ isModeLoading: true })); await key('F2'); await key('F3');
+      assert.equal(ui.getState().overlay, null); assert.equal(rendering.getState().overlay, false);
     });
     await t.test('directional input cannot confirm leave or launch an available mission', async () => {
       await reset('sandbox', 'leave_game'); await button(13);

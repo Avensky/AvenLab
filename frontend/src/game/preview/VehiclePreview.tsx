@@ -1,51 +1,46 @@
 import { Suspense } from "react";
+import { useThree } from "@react-three/fiber";
 import { AssetBoundary } from "../../components/debugger/AssetBoundary";
-import { useRenderSettingsStore } from "../../store/renderSettingsStore";
 import {
-  Environment,
   Html,
-  Grid,
   OrbitControls,
   PerspectiveCamera,
 } from "@react-three/drei";
 
 import { useSelectionStore } from "../../store/selectionStore";
 import { VehiclePreviewModel } from "./VehiclePreviewModel";
-import { VehicleRotatingCamera } from "../../effects/VehicleRotatingCamera";
+import { usePreferencesStore } from "../../store/preferencesStore";
+import { Showroom } from "./Showroom";
 
 export function VehiclePreview() {
   const vehicleId = useSelectionStore((s) => s.getSelectedVehicle().id);
-  const reflections = useRenderSettingsStore((s) => s.reflections);
+  const reducedMotion = usePreferencesStore((s) => s.reducedMotion);
+  const size = useThree(s => s.size);
+  // Common framing includes the largest model. Selection never moves camera
+  // or target; only resizing the viewport adjusts the initial framing.
+  const radius = Math.max(10, 9.6 * size.height / Math.max(1, size.width));
   return (
     <>
-      <color attach="background" args={["#020617"]} />
-
-      <PerspectiveCamera makeDefault fov={55} position={[0, 2.2, 7]} />
-
-      <ambientLight intensity={1.2} />
-      <directionalLight position={[5, 8, 5]} intensity={2.4} />
-      <directionalLight position={[-5, 4, -5]} intensity={0.8} />
+      <Showroom />
+      <PerspectiveCamera makeDefault fov={55} position={[-radius, 2.1, 0]}
+        onUpdate={camera => {
+          // Keep the car above the selector rows, especially on short phones.
+          const offsetY = Math.min(96, size.height * (size.width > size.height ? 0.18 : 0.09));
+          camera.setViewOffset(size.width, size.height, 0, offsetY, size.width, size.height);
+        }} />
 
       <AssetBoundary key={vehicleId} fallback={<Html center><p className="rounded bg-slate-950 p-3 text-sm text-amber-200">Vehicle model unavailable. Check Git LFS assets or select another vehicle.</p></Html>}>
         <Suspense fallback={<Html center><p className="text-sm text-cyan-200">Loading vehicle…</p></Html>}>
           <VehiclePreviewModel />
         </Suspense>
       </AssetBoundary>
-      {reflections && <AssetBoundary fallback={null}><Suspense fallback={null}><Environment preset="night" /></Suspense></AssetBoundary>}
-
-      <Grid
-        args={[20, 20]}
-        position={[0, -0.02, 0]}
-        cellSize={1}
-        cellThickness={0.5}
-        sectionSize={5}
-        sectionThickness={1.2}
-        fadeDistance={18}
-        fadeStrength={1}
-      />
 
       <OrbitControls
         makeDefault
+        target={[0, 1.1, 0]}
+        autoRotate={!reducedMotion}
+        enableDamping={!reducedMotion}
+        autoRotateSpeed={0.7}
         enablePan={false}
         enableZoom={false}
         enableRotate
@@ -53,7 +48,6 @@ export function VehiclePreview() {
         minPolarAngle={Math.PI / 8}
       />
 
-      <VehicleRotatingCamera radius={7} height={2.4} speed={0.35} />
     </>
   );
 }

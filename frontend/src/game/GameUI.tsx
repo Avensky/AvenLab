@@ -42,7 +42,7 @@ export function GameUI() {
 
       {screen === "signal_recon_setup" && <VehiclePreview />}
       {/* {!needsCanvas && screen === "settings" && <Settings />} */}
-      <Cameras />
+      {screen === "sandbox" && <Cameras />}
     </FullCanvas>}
 
     {/* UI Overlay */}
