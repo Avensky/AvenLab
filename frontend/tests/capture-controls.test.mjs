@@ -19,6 +19,7 @@ test('overlay recording, keyboard/controller shortcuts, countdown and labeled do
     requestAnimationFrame: dom.window.requestAnimationFrame.bind(dom.window), cancelAnimationFrame: dom.window.cancelAnimationFrame.bind(dom.window), IS_REACT_ACT_ENVIRONMENT: true };
   for (const [key, value] of Object.entries(globals)) { previous.set(key, Object.getOwnPropertyDescriptor(globalThis, key)); Object.defineProperty(globalThis, key, { configurable: true, writable: true, value }); }
   dom.window.document.hasFocus = () => true;
+  dom.window.HTMLElement.prototype.scrollIntoView = () => {};
   const pad = { connected: true, index: 0, id: 'capture-pad', axes: [0, 0, 0, 0], buttons: Array.from({ length: 16 }, () => ({ pressed: false, value: 0 })) };
   dom.window.navigator.getGamepads = () => [pad];
   const { createRoot } = await import('react-dom/client');
@@ -37,6 +38,7 @@ test('overlay recording, keyboard/controller shortcuts, countdown and labeled do
     const { experimentContext } = await load('performance/context.ts');
     const { loadCaptureArchive } = await load('performance/captureArchive.ts');
     const { PerformanceOverlay } = await load('performance/PerformanceOverlay.tsx');
+    const { DebugMenu } = await load('components/debugger/DebugMenu.tsx');
     const { Keyboard } = await load('controls/Keyboard.ts');
     const { GameController } = await load('controls/GameController.ts');
     const map = { map_id: 'test-city', cell: [200, 400], chunks: [{ x: 1, z: 0, origin: [200, 0, 0] }], collider_chunks: [],
@@ -125,6 +127,33 @@ test('overlay recording, keyboard/controller shortcuts, countdown and labeled do
       await act(async () => document.querySelector('[aria-label="Close performance overlay"]').click());
       assert.equal(rendering.getState().overlay, false);
       await press('F3'); assert.equal(rendering.getState().overlay, true);
+    });
+    await t.test('the default debug tab opens the overlay without recording, by mouse or controller', async () => {
+      const captures = recorder.runs.length;
+      function DebugHarness() {
+        const menu = ui(s => s.overlay);
+        return h(Fragment, null, menu === 'debug_menu' && h(DebugMenu), h(PerformanceOverlay), h(Keyboard), h(GameController));
+      }
+      await act(async () => {
+        rendering.getState().update({ overlay: false }); ui.setState({ overlay: 'debug_menu' });
+        root.render(h(DebugHarness));
+      });
+      await button(false);
+      const row = () => document.querySelector('[data-menu-row="performance-overlay"]');
+      assert.match(row().textContent, /Open performance overlay/);
+      await act(async () => row().click());
+      assert.equal(rendering.getState().overlay, true);
+      assert.equal(ui.getState().overlay, null);
+      assert.equal(recorder.capturing, false);
+      assert.ok(document.querySelector('[aria-label="Performance overlay"]'));
+      await act(async () => { rendering.getState().update({ overlay: false }); ui.setState({ overlay: 'debug_menu' }); });
+      await button(true);
+      assert.equal(rendering.getState().overlay, true);
+      assert.equal(ui.getState().overlay, null);
+      await wait(80);
+      assert.equal(recorder.capturing, false, 'holding menu A must not start a capture after resuming');
+      await button(false);
+      assert.equal(recorder.runs.length, captures);
     });
   } finally {
     if (root) await act(async () => root.unmount());

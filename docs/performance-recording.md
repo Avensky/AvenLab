@@ -6,7 +6,7 @@ downloadable data. These are measurements, not a video recording.
 
 ## Record and share
 
-1. Enable **Performance overlay** in Debugger → Rendering. Enter a label such as
+1. Choose **Open performance overlay** at the top of Debugger → Visualizers (or Captures), or press **F3** while driving. This opens live stats and resumes gameplay without recording. F3 and the overlay's × button close it. Enter a label such as
    `city-original` and select 5, 10 or 20 seconds. The first run becomes the
    baseline automatically; **Set baseline** replaces that reference explicitly.
 2. Click **RECORD**, press **F8**, or press **A / Cross** while driving with the

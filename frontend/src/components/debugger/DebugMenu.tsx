@@ -38,6 +38,13 @@ export function DebugMenu() {
   const capture = (baseline: boolean) => {
     startPerformanceCapture(baseline, true);
   };
+  const overlayRow: MenuRow = {
+    id: "performance-overlay", label: settings.overlay ? "Close performance overlay" : "Open performance overlay", value: "F3", adjustable: false,
+    action: () => {
+      settings.update({ overlay: !settings.overlay });
+      if (!settings.overlay) useUIStore.getState().closeOverlay();
+    },
+  };
   const renderToggles = (["shadows", "reflections", "stars", "fog", "vehicleLights", "hud"] as const).map((key): MenuRow => ({
     id: key, label: ({ shadows: "Shadows", reflections: "HDR reflections", stars: "Animated stars", fog: "Fog", vehicleLights: "Vehicle spotlights", hud: "Driving HUD + terminal" })[key],
     value: settings[key] ? "On" : "Off", action: () => settings.update({ [key]: !settings[key] }),
@@ -56,6 +63,7 @@ export function DebugMenu() {
   });
   return <TabbedMenu title="Debugger" eyebrow="REDLINE VECTOR / ENGINE TOOLS" onBack={back} subtitle="Inspect physics, isolate visual cost and compare driving captures. Live latency stats appear in the performance overlay." tabs={[
     { id: "visualizers", label: "Visualizers", description: "Diagnostic streams are separate from model rendering. Disable streams you do not need to reduce debug traffic.", rows: [
+      overlayRow,
       { id: "scope", label: "Diagnostic player scope", value: debug.playerScope.toUpperCase(), action: () => debug.togglePlayerScope() },
       { id: "all-streams", label: "All diagnostic streams", value: (mask & ALL_DEBUG) === ALL_DEBUG ? "On" : "Off", action: () => world.setDebugMask((mask & ALL_DEBUG) === ALL_DEBUG ? 0 : ALL_DEBUG) },
       ...DEBUG_OPTIONS.map(([name, flag]): MenuRow => ({ id: `debug-${flag}`, label: `${name} diagnostics`, value: hasDebugFlag(mask, flag) ? "On" : "Off", action: () => world.toggleDebugFlag(flag) })),
@@ -77,6 +85,7 @@ export function DebugMenu() {
       { id: "overlay", label: "Performance overlay", value: settings.overlay ? "On" : "Off", action: () => settings.update({ overlay: !settings.overlay }) },
     ] },
     { id: "captures", label: "Captures", description: "Start with a collider baseline. Captures resume gameplay, warm up for 3 seconds and record frame / network metrics. Repeat the same camera and route for useful comparisons.", rows: [
+      overlayRow,
       { id: "baseline-reset", label: "Reset to lowest-lag collider baseline", action: () => { recorder.cancel("Baseline reset"); settings.baseline(); } },
       { id: "duration", label: "Capture length", value: `${duration}s + 3s warm-up`, action: (dir) => captureSettings.update({ seconds: step([5, 10, 20], duration, dir) }) },
       { id: "baseline", label: "Record baseline & resume", action: () => capture(true) },

@@ -1,0 +1,32 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { BoxGeometry, Group, Mesh, MeshStandardMaterial } from 'three';
+import { prepareGarageDisplay } from '../src/game/preview/prepareGarageDisplay.ts';
+
+test('Sketchfab presentation restores green emission without changing cached assets or disposing their resources', () => {
+  const source = new Group(), geometry = new BoxGeometry();
+  const rail = new MeshStandardMaterial({ name: 'BLACK METAL' });
+  const floor = new MeshStandardMaterial({ name: 'Sol_CAR' });
+  source.add(new Mesh(geometry, [rail, floor]), new Mesh(geometry, rail));
+  const car = new Group(); car.name = 'Lambo_T_M'; source.add(car);
+  let sourceDisposals = 0;
+  for (const object of [geometry, rail, floor]) object.addEventListener('dispose', () => sourceDisposals++);
+  const display = prepareGarageDisplay(source);
+  const restored = display.root.children[0].material[0];
+  assert.equal(restored, display.root.children[1].material, 'shared source materials should have one display copy');
+  assert.notEqual(restored, rail);
+  assert.ok(restored.emissive.g * restored.emissiveIntensity > 9, 'HDR green reaches bloom before tone mapping');
+  assert.ok(restored.emissive.g > 200 * restored.emissive.r);
+  assert.equal(display.root.children[0].material[1].metalness, 1);
+  assert.equal(display.root.children[0].geometry, geometry);
+  assert.equal(display.root.children.length, 2);
+  assert.equal(source.children.length, 3);
+  assert.equal(rail.emissive.getHex(), 0);
+  assert.equal(floor.roughness, 1);
+  let displayDisposals = 0;
+  restored.addEventListener('dispose', () => displayDisposals++);
+  display.dispose();
+  assert.equal(displayDisposals, 1);
+  assert.equal(sourceDisposals, 0);
+  geometry.dispose(); rail.dispose(); floor.dispose();
+});
