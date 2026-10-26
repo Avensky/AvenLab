@@ -112,6 +112,20 @@ test('overlay recording, keyboard/controller shortcuts, countdown and labeled do
       await button(true); assert.equal(recorder.capturing, false);
       await button(false);
     });
+    await t.test('Copy Spawn and F3/Close remain usable alongside F8 recording', async () => {
+      await act(async () => { ui.setState({ overlay: null }); rendering.getState().update({ overlay: true }); });
+      let copied = '';
+      Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async value => { copied = value; } } });
+      await click('COPY SPAWN');
+      assert.deepEqual(JSON.parse(copied), { chunk: [1, 0], local: [20, -60], yaw: 0 });
+      const press = async code => act(async () => document.body.dispatchEvent(new dom.window.KeyboardEvent('keydown', { code, key: code, bubbles: true, cancelable: true })));
+      await press('F3'); assert.equal(rendering.getState().overlay, false);
+      await press('F8'); assert.equal(recorder.capturing, true); assert.equal(rendering.getState().overlay, true);
+      await press('F8'); assert.equal(recorder.capturing, false);
+      await act(async () => document.querySelector('[aria-label="Close performance overlay"]').click());
+      assert.equal(rendering.getState().overlay, false);
+      await press('F3'); assert.equal(rendering.getState().overlay, true);
+    });
   } finally {
     if (root) await act(async () => root.unmount());
     await server.close(); dom.window.close();

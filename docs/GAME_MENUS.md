@@ -24,13 +24,17 @@ Main loops the existing `/videos/NIWC-Pacific.mp4` behind its logo and buttons, 
 
 The HTML entry includes a centered logo before the JavaScript bundle is ready. App removes it on the first animation frame after its UI commits, without waiting for video, a game server or 3D assets. The game canvas is created only for Sandbox and the two vehicle setup screens. The loading video remains an existing public asset; no second copy is required.
 
-## Lightweight selection showroom
+## Garage Special selection stage
 
-Sandbox and Signal Recon vehicle selection now use `Showroom`: a flat floor, subtle ring, fog and local lights made from native geometry. No city, carrier, textures or HDRI are requested by the stage. The city/carrier prototype remains in source for later use, but is not mounted in selection.
+Sandbox and Signal Recon load `/models/world/garage_special.glb` for vehicle selection. The file lives in `frontend/public/models/world/`; public files are served without `/public` in their URLs. Garage Special is approximately 0.9 MB in the uploaded revision. `garage.glb` and `big_e_cvn65.glb` remain available assets and are not requested by the selection screen.
 
-All five vehicles share the same camera position, orbit target and viewport framing. Only resizing changes the framing; switching to/from Tank leaves the orbit untouched. Reduced Motion stops auto-rotation and damping. Display placement uses precise visible tire/track vertex bounds at floor Y=0, avoiding inflated accessor boxes, hidden helpers and body trim. A small procedural contact shadow adds a floor cue without texture downloads or shadow-map passes. Grounding changes only the preview group, not the GLB or authoritative gameplay poses.
+The display clone removes the embedded `Lambo T M` demo vehicle, uses a uniform 0.16 display scale, and centers the selection on the `Plane_PISTE` floor. A downward ray finds the pad's highest horizontal surface, including its double-sided reversed winding; the roof is excluded from grounding. The garage's cached geometry, materials and authored source poses remain unchanged. The scale is for this display stage, not a gameplay or physical-world conversion. An explicit `VEHICLE_ANCHOR` or `GARAGE_ANCHOR` floor-level marker takes priority if supplied by a future export.
 
-Draco decoders are served by the app from `/draco/` instead of an external CDN. The JavaScript and WASM files are vendored from the installed Three.js distribution with their Apache 2.0 license. Keep the whole decoder set together when upgrading Three.js. Vehicle GLBs still load on demand and remain cached; the showroom does not eliminate their first download or texture-decoding cost. BRZ is about 18 MB and Tank about 31 MB in this checkout, so a two-second first-load guarantee is not realistic on every connection.
+The native `ShowroomFloor` remains visible during loading or an asset error, independently of the selected car. Selection never waits for the environment to become interactive. The garage is retained across vehicle changes, so it is not downloaded or rebuilt per model. No city, ship or HDRI is loaded here.
+
+All five vehicles share the same camera position, orbit target and viewport framing. Only resizing changes the framing; switching to/from Tank leaves the orbit untouched. Portrait uses a near-plane cutaway so foreground garage walls cannot hide the stage when the camera must move farther out. Reduced Motion stops auto-rotation and damping. Display placement uses precise visible tire/track vertex bounds at floor Y=0 and a small procedural contact shadow. Grounding changes only the preview group, not GLBs or authoritative gameplay poses.
+
+Draco decoders are served by the app from `/draco/` rather than an external CDN. Keep the bundled decoder set and Apache 2.0 license together when upgrading Three.js. Vehicle files still load on demand and remain cached; the garage cannot eliminate their first download or decoding cost.
 
 
 ## Available now
@@ -44,7 +48,7 @@ Draco decoders are served by the app from `/draco/` instead of an external CDN. 
 - Mission board: sandbox entry plus CTF objective, logistics and squad-role briefings. CTF is not playable yet.
 - Debugger: Visualizers, Vehicles & GLBs, Environment, Rendering and Captures. Per-vehicle/chunk/asset rendering remains independent. Timing and transport readouts live in the performance overlay.
 
-Display/input/accessibility preferences and favorites are stored in browser local storage. They are device-local, not an account profile. Performance captures remain in memory until exported. Audio and social controls are marked planned because their runtime services are not active.
+Display/input/accessibility preferences and favorites are stored in browser local storage. They are device-local, not an account profile. Labeled performance captures are saved in this browser; JSON/CSV downloads make them shareable. See `docs/performance-recording.md` for countdowns, position/yaw, Copy Spawn and the centered-city material comparison. Audio and social controls are marked planned because their runtime services are not active.
 
 ## Input and menu behavior
 
@@ -60,6 +64,8 @@ Display/input/accessibility preferences and favorites are stored in browser loca
 | Shift+H while driving | Toggle hazards |
 | F2 in Sandbox | Open/close Debugger, returning to driving or Pause as appropriate |
 | F3 in Sandbox | Show/hide the latency overlay |
+| F8 while driving | Start/cancel a performance capture |
+| A / Cross while driving with latency overlay visible | Start/cancel a performance capture |
 | Mouse / touch | Select tabs and activate the actual clicked row |
 
 The latency readout also has a clickable Close button. F2/F3 ignore key repeats, modified keys, text editing, loading, terminal input and non-Sandbox screens.

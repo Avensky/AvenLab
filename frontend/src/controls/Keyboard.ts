@@ -6,6 +6,7 @@ import { useCanDataStore } from "../store/canDataStore";
 import { useRenderSettingsStore } from "../store/renderSettingsStore";
 import { VehicleFlags, PlayerFlags } from "../store/tools/inputMasks";
 import { canDrive, canNavigateMenu, isTypingTarget, routeMenuAction, type MenuAction } from "../store/tools/inputRouting";
+import { togglePerformanceCapture } from "../performance/captureActions";
 
 const MENU_KEYS: Record<string, MenuAction> = {
   ArrowUp: "up", KeyW: "up", ArrowDown: "down", KeyS: "down",
@@ -82,6 +83,9 @@ export function Keyboard() {
         return;
       }
       const store = useInputStore.getState();
+      if (ui.screen === "sandbox" && event.code === "F8" && !event.ctrlKey && !event.altKey && !event.metaKey) {
+        event.preventDefault(); togglePerformanceCapture(); return;
+      }
       if (event.code === "Escape") {
         event.preventDefault(); ui.togglePauseMenu(); return;
       }

@@ -10,7 +10,7 @@ import {
 import { useSelectionStore } from "../../store/selectionStore";
 import { VehiclePreviewModel } from "./VehiclePreviewModel";
 import { usePreferencesStore } from "../../store/preferencesStore";
-import { Showroom } from "./Showroom";
+import { GarageEnvironment } from "./GarageEnvironment";
 
 export function VehiclePreview() {
   const vehicleId = useSelectionStore((s) => s.getSelectedVehicle().id);
@@ -21,9 +21,11 @@ export function VehiclePreview() {
   const radius = Math.max(10, 9.6 * size.height / Math.max(1, size.width));
   return (
     <>
-      <Showroom />
-      <PerspectiveCamera makeDefault fov={55} position={[-radius, 2.1, 0]}
+      <GarageEnvironment />
+      <PerspectiveCamera makeDefault fov={55} position={[-radius, 2.1, 0]} near={Math.max(0.1, radius - 12)}
         onUpdate={camera => {
+          // Portrait framing can put the camera beyond a garage wall. The
+          // near plane cuts away that foreground while retaining the stage.
           // Keep the car above the selector rows, especially on short phones.
           const offsetY = Math.min(96, size.height * (size.width > size.height ? 0.18 : 0.09));
           camera.setViewOffset(size.width, size.height, 0, offsetY, size.width, size.height);

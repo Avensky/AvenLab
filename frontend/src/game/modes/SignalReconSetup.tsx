@@ -65,7 +65,7 @@ export function SignalReconSetup({ collapsed, setCollapsed }: SignalReconProps) 
         {selectedInterface} is {interfaceStatus?.exists ? "down" : "unavailable"}. Choose an active interface or Simulation.
       </p>
     </div>}
-    <div ref={choices} className="absolute bottom-0 left-0 z-20 max-h-[65svh] w-full overflow-y-auto">
+    <div ref={choices} className="garage-selection-controls absolute bottom-0 left-0 z-20 max-h-[65svh] w-full overflow-y-auto">
       <div className="grid grid-cols-2" role="group" aria-label="CAN capture controls">
         <GameButton data-recon-choice={0} variant="neutral" selected={selectedIndex === 0} onFocus={() => setIndex(0)}
           onPress={() => { setIndex(0); adjust(1); }} className="flex min-h-11 min-w-0 flex-col items-start justify-center px-3 py-1 text-xs"

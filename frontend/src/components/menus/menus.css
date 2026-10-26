@@ -1,4 +1,5 @@
 /* Shared browser menu theme. Change density and interaction states here. */
+.garage-selection-controls { background-color: rgb(2 6 23 / 0.92); }
 .menu-home.main-menu { isolation: isolate; background: #020617; backdrop-filter: none; }
 .main-menu .menu-home-content { position: relative; z-index: 1; }
 .menu-video-background {
