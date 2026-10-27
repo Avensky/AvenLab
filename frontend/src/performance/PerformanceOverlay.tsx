@@ -12,6 +12,8 @@ import { difference } from "./measurements";
 import { useCaptureSettingsStore } from "./captureSettingsStore";
 import { exportPerformanceCaptures, startPerformanceCapture, togglePerformanceCapture } from "./captureActions";
 import { spawnJson } from "./location";
+import { cityStreamingStats } from "../world/cityWorkQueue";
+import { CITY_QUALITY_LABELS } from "../world/cityLod";
 
 const format = (value: number | null | undefined, digits = 1) => value === undefined || value === null ? "—" : value.toFixed(digits);
 export function PerformanceOverlay() {
@@ -23,6 +25,8 @@ function Readout() {
   const stats = usePerformanceReadout();
   const capture = useCaptureSettingsStore();
   const opaqueCityMaterials = useRenderSettingsStore((s) => s.opaqueCityMaterials);
+  const cityQuality = useRenderSettingsStore((s) => s.cityQuality);
+  const city = cityStreamingStats();
   const [copyStatus, setCopyStatus] = useState("");
   const interpolation = useDebugViewStore((s) => s.interpolationEnabled);
   const overlay = useUIStore((s) => s.overlay);
@@ -96,7 +100,10 @@ function Readout() {
       <span>CPU submit mean / p95</span><span>{format(m.cpuSubmitMs?.mean)} / {format(m.cpuSubmitMs?.p95)} ms</span>
       <span>Draw calls / triangles</span><span>{format(m.drawCalls?.mean, 0)} / {format(m.triangles?.mean, 0)}</span>
       <span>Geometries / textures</span><span>{format(m.geometries?.mean, 0)} / {format(m.textures?.mean, 0)}</span>
+      <span>City detail / detailed / skyline</span><span>{CITY_QUALITY_LABELS[cityQuality]} · {city.detailed} / {city.proxies}</span>
+      <span>City preparations / long task p95</span><span>{city.pending} / {format(m.longTaskMs?.p95)} ms</span>
     </div>
+    {city.pending > 0 && <p role="status" className="mt-1 text-amber-200">{city.phase}</p>}
     <details className="mt-2"><summary className="py-2 text-cyan-300">NETWORK / PHYSICS DETAILS</summary>
     <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1">
       <span>Input → completed tick → receipt</span><span>{format(m.inputAckMs?.mean)} ms</span>
@@ -117,8 +124,8 @@ function Readout() {
       <span>Body roll mean / p95</span><span>{format(m.bodyRollDeg?.mean)} / {format(m.bodyRollDeg?.p95)}°</span>
       <span>Airborne tires mean / p95</span><span>{format(m.airborneWheels?.mean)} / {format(m.airborneWheels?.p95, 0)}</span>
     </div></details>
-    <label className="mt-2 flex items-center gap-2 border-t border-slate-700 pt-2"><input type="checkbox" checked={opaqueCityMaterials} disabled={stats.capturing}
-      onChange={(event) => useRenderSettingsStore.getState().update({ opaqueCityMaterials: event.target.checked })} />OPAQUE CITY MATERIALS · A/B TEST</label>
+    <label className="mt-2 flex items-center gap-2 border-t border-slate-700 pt-2"><input type="checkbox" checked={cityQuality !== "original" || opaqueCityMaterials} disabled={stats.capturing || cityQuality !== "original"}
+      onChange={(event) => useRenderSettingsStore.getState().update({ opaqueCityMaterials: event.target.checked })} />OPAQUE CITY MATERIALS · {cityQuality === "original" ? "A/B TEST" : "CITY DETAIL PRESET"}</label>
     <details className="mt-1"><summary className="py-2 text-cyan-300">ACTIVE CITY ASSETS</summary>
       {useWorldStore.getState().map?.visuals.map((visual) => <p key={visual.id} className="break-all">{visual.id}: {visual.asset}</p>)}
     </details>

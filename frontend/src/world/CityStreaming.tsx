@@ -1,0 +1,99 @@
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useFrame, useThree } from "@react-three/fiber";
+import { Environment, Lightformer, useGLTF } from "@react-three/drei";
+import { Frustum, Matrix4 } from "three";
+import type { MapSnapshot, VisualAsset } from "../store/worldStore";
+import { useNetworkStore } from "../store/networkStore";
+import { useGameStore } from "../store/gameStore";
+import { useRenderSettingsStore, type RenderSettings } from "../store/renderSettingsStore";
+import { AssetBoundary } from "../components/debugger/AssetBoundary";
+import { CityChunk } from "./CityChunk";
+import { CityProxy } from "./CityProxy";
+import { cityAssetVisible, cityChunkKey, detailedCityChunks, cityTextureAsset, type CityPlacement } from "./cityLod";
+import { createCityInstances, supportsCityInstancing } from "./cityInstances";
+import { prepareCityGpu } from "./prepareCityGpu";
+import { beginCityPreparation, setCityDetailCounts } from "./cityWorkQueue";
+
+// Drei attaches its shared Draco loader after extendLoader returns.
+const cityLoader = (loader: { dracoLoader?: { setWorkerLimit: (limit: number) => unknown } | null }) => {
+  queueMicrotask(() => loader.dracoLoader?.setWorkerLimit(2));
+};
+export function CityReflectionEnvironment() {
+  // Local generated night highlights instead of a network HDRI on first entry.
+  return <Environment resolution={64} frames={1}>
+    <Lightformer intensity={0.75} color="#8299c2" position={[0, 8, 0]} rotation={[Math.PI / 2, 0, 0]} scale={[12, 12, 1]} />
+    <Lightformer intensity={0.4} color="#c3d1e8" position={[6, 3, -4]} scale={[4, 6, 1]} />
+  </Environment>;
+}
+
+export function CityStreaming({ map, settings }: { map: MapSnapshot; settings: RenderSettings }) {
+  const camera = useThree(s => s.camera);
+  const [detailed, setDetailed] = useState<string[]>(() => detailedCityChunks(map, camera.position.x, camera.position.z, settings.cityQuality));
+  const previous = useRef(detailed), lastCheck = useRef(-Infinity);
+  const [ready, setReady] = useState<Record<string, boolean>>({});
+  const onReady = useCallback((id: string, value: boolean) => setReady(current => current[id] === value ? current : { ...current, [id]: value }), []);
+  useFrame(({ clock }) => {
+    if (clock.elapsedTime - lastCheck.current < 0.1) return; lastCheck.current = clock.elapsedTime;
+    const me = useNetworkStore.getState().getMe();
+    const position = !useGameStore.getState().editor && me ? me.position : [camera.position.x, camera.position.y, camera.position.z];
+    const next = detailedCityChunks(map, position[0], position[2], settings.cityQuality, previous.current);
+    if (next.join("|") !== previous.current.join("|")) { previous.current = next; setDetailed(next); }
+  }, -2);
+  const plans = useMemo(() => map.visuals.map(visual => ({ visual,
+    placements: map.chunks.filter(chunk => cityAssetVisible(chunk, visual, settings.environmentMode, settings.chunkOverrides, settings.assetGlbs)
+      && (visual.id === "roads" || detailed.includes(cityChunkKey(chunk)) || !map.collider_chunks?.find(c => c.x === chunk.x && c.z === chunk.z)?.boxes.some(box => box.kind === "building")))
+      .map(chunk => ({ chunk, visual })),
+  })), [map, settings.environmentMode, settings.chunkOverrides, settings.assetGlbs, detailed]);
+  const proxyBoxes = useMemo(() => (map.collider_chunks ?? []).flatMap(chunk => {
+    const instance = map.chunks.find(c => c.x === chunk.x && c.z === chunk.z); if (!instance) return [];
+    const buildings = plans.some(plan => plan.visual.id !== "roads" && cityAssetVisible(instance, plan.visual, settings.environmentMode, settings.chunkOverrides, settings.assetGlbs)
+      && (!ready[plan.visual.id] || !detailed.includes(cityChunkKey(instance))));
+    const roads = plans.some(plan => plan.visual.id === "roads" && !ready[plan.visual.id]
+      && cityAssetVisible(instance, plan.visual, settings.environmentMode, settings.chunkOverrides, settings.assetGlbs));
+    return chunk.boxes.filter(box => box.kind === "building" ? buildings : roads);
+  }), [map, plans, ready, detailed, settings.environmentMode, settings.chunkOverrides, settings.assetGlbs]);
+  useEffect(() => {
+    const full = map.chunks.filter(chunk => plans.some(plan => plan.visual.id !== "roads" && ready[plan.visual.id] && plan.placements.some(p => p.chunk === chunk))).length;
+    const proxy = (map.collider_chunks ?? []).filter(chunk => chunk.boxes.some(box => proxyBoxes.includes(box))).length;
+    setCityDetailCounts(full, proxy);
+    return () => setCityDetailCounts(0, 0);
+  }, [map, plans, proxyBoxes, ready]);
+  return <>
+    <CityProxy boxes={proxyBoxes} shadows={settings.shadows} />
+    {plans.filter(plan => plan.placements.length).map(plan => <AssetBoundary key={`${plan.visual.id}/${plan.visual.asset}/${settings.cityQuality}/${settings.shadows}/${settings.reflections}/${map.chunks.length}`} fallback={null}>
+      <Suspense fallback={null}><CityAssetInstances visual={plan.visual} placements={plan.placements} capacity={map.chunks.length}
+        fast={settings.cityQuality === "fast"} onReady={onReady} /></Suspense>
+    </AssetBoundary>)}
+  </>;
+}
+
+function CityAssetInstances({ visual, placements, capacity, fast, onReady }: { visual: VisualAsset; placements: CityPlacement[]; capacity: number; fast: boolean; onReady: (id: string, value: boolean) => void }) {
+  const path = cityTextureAsset(visual.asset, fast ? "fast" : "balanced");
+  const { scene: source } = useGLTF(path, "/draco/", true, cityLoader);
+  const gl = useThree(s => s.gl), camera = useThree(s => s.camera), scene = useThree(s => s.scene);
+  const get = useThree(s => s.get);
+  const shadows = useRenderSettingsStore(s => s.shadows);
+  const [asset, setAsset] = useState<ReturnType<typeof createCityInstances>>(null);
+  const supported = useMemo(() => supportsCityInstancing(source), [source]);
+  const frustum = useMemo(() => new Frustum(), []), projection = useMemo(() => new Matrix4(), []);
+  useEffect(() => {
+    const abort = new AbortController(), progress = beginCityPreparation(visual.id);
+    const prepared = createCityInstances(source, capacity, fast); let completed = false, failed = false;
+    onReady(visual.id, false);
+    if (!prepared) { onReady(visual.id, true); progress.end(); return () => onReady(visual.id, false); }
+    void prepareCityGpu(prepared, gl, get().camera, scene, abort.signal, progress.phase, shadows).then(() => {
+      if (!abort.signal.aborted) { completed = true; setAsset(prepared); onReady(visual.id, true); }
+    }).catch(reason => { if (!abort.signal.aborted) { failed = true; progress.phase("preparation failed; reload"); console.warn("City preparation failed", reason); } })
+      .finally(() => { if (!failed) progress.end(); if (!completed) prepared.dispose(); });
+    return () => { abort.abort(); progress.end(); onReady(visual.id, false); if (completed) prepared.dispose(); };
+  }, [source, capacity, fast, gl, get, scene, visual.id, onReady, shadows]);
+  useFrame(() => {
+    if (!asset) return;
+    camera.updateMatrixWorld(); projection.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); frustum.setFromProjectionMatrix(projection);
+    asset.group.updateWorldMatrix(true, false); asset.update(placements, frustum, shadows);
+  }, 0);
+  if (!supported) return <>{placements.map(({ chunk, visual }) => <group key={cityChunkKey(chunk)} position={chunk.origin}>
+    <CityChunk path={visual.asset} position={visual.position} quaternion={visual.rotation} scale={visual.scale} />
+  </group>)}</>;
+  return asset ? <primitive object={asset.group} dispose={null} /> : null;
+}

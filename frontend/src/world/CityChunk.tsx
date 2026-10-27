@@ -28,7 +28,7 @@ export const CityChunk = memo(function CityChunk({
   quaternion = [0, 0, 0, 1],
   scale = [1, 1, 1],
 }: Props) {
-  const gltf = useGLTF(path);
+  const gltf = useGLTF(path, "/draco/");
   const shadows = useRenderSettingsStore((s) => s.shadows);
   const opaqueMaterials = useRenderSettingsStore((s) => s.opaqueCityMaterials);
   const scene = useMemo(() => cityMaterialScene(gltf.scene, opaqueMaterials), [gltf.scene, opaqueMaterials]);
@@ -39,6 +39,7 @@ export const CityChunk = memo(function CityChunk({
 
   return (
     <group
+      dispose={null}
       name={`city-asset-${path}`}
       position={position}
       quaternion={quaternion}

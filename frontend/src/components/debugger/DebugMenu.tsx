@@ -11,6 +11,7 @@ import { exportPerformanceCaptures, startPerformanceCapture } from "../../perfor
 import { useCaptureSettingsStore } from "../../performance/captureSettingsStore";
 import { useVisualAlignmentStore } from "../../store/visualAlignmentStore";
 import { usePerformanceReadout } from "../../performance/usePerformanceReadout";
+import { cityQualityControl, cityPerformanceControl } from "../menus/cityQualityControl";
 
 const MODES: VisualMode[] = ["collider", "geometry", "glb", "hybrid", "hidden"];
 const DEBUG_OPTIONS = [
@@ -75,12 +76,15 @@ export function DebugMenu() {
     ], content: <VehicleAlignmentReadout /> },
     { id: "environment", label: "Environment", description: "Set a world default, override a chunk, or switch individual GLB assets. The list is populated from the server's selected map.", rows: [
       { id: "environment-default", label: "Environment default", value: settings.environmentMode.toUpperCase(), action: (dir) => settings.update({ environmentMode: step(MODES, settings.environmentMode, dir), chunkOverrides: {}, assetGlbs: {} }) },
-      { id: "opaque-city", label: "Opaque city materials (A/B test)", value: settings.opaqueCityMaterials ? "On" : "Off", action: () => settings.update({ opaqueCityMaterials: !settings.opaqueCityMaterials }) },
+      cityQualityControl(settings),
+      cityPerformanceControl(settings),
+      { id: "opaque-city", label: "Opaque city materials (Original A/B)", value: settings.cityQuality !== "original" ? "City detail preset" : settings.opaqueCityMaterials ? "On" : "Off", disabled: settings.cityQuality !== "original", action: () => settings.update({ opaqueCityMaterials: !settings.opaqueCityMaterials }) },
       ...environmentRows,
     ], content: !map?.collider_chunks && <p className="mt-1 text-xs text-amber-300">Collider metadata is unavailable. Connect to the updated Rust backend to inspect city chunks.</p> },
     { id: "rendering", label: "Rendering", description: "These controls share the same settings as Display. Captures can help compare the cost of one effect at a time.", rows: [
       { id: "interpolation", label: "Vehicle interpolation", value: debug.interpolationEnabled ? `On · ${DEFAULT_INTERPOLATION_DELAY_MS} ms` : "Off · latest snapshot", action: () => debug.toggleInterpolation() },
       { id: "dpr", label: "Resolution scale", value: `${settings.dpr}×`, action: (dir) => settings.update({ dpr: step([0.5, 0.75, 1, 1.5, 2], settings.dpr, dir) }) },
+      cityQualityControl(settings),
       ...renderToggles,
       { id: "overlay", label: "Performance overlay", value: settings.overlay ? "On" : "Off", action: () => settings.update({ overlay: !settings.overlay }) },
     ] },

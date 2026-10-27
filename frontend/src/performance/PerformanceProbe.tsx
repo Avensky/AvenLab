@@ -7,6 +7,7 @@ import { useUIStore } from "../store/uiStore";
 import { experimentContext } from "./context";
 import { performanceRecorder as recorder } from "./measurements";
 import { initializeCaptureArchive } from "./captureActions";
+import { cityStreamingStats } from "../world/cityWorkQueue";
 
 export function PerformanceProbe() {
   const gl = useThree((s) => s.gl);
@@ -32,6 +33,10 @@ export function PerformanceProbe() {
       recorder.record("triangles", gl.info.render.triangles, now);
       recorder.record("geometries", gl.info.memory.geometries, now);
       recorder.record("textures", gl.info.memory.textures, now);
+      const city = cityStreamingStats();
+      recorder.record("cityDetailedChunks", city.detailed, now);
+      recorder.record("cityProxyChunks", city.proxies, now);
+      recorder.record("cityPendingAssets", city.pending, now);
       const receipt = useNetworkStore.getState().snapshot?.received_at_ms;
       if (receipt !== undefined) recorder.record("receiptAgeMs", now - receipt, now);
       recorder.record("queuedBytes", getInputSenderStats().queuedBytes, now);
@@ -44,7 +49,10 @@ export function PerformanceProbe() {
       if (document.visibilityState !== "visible" && recorder.capturing) recorder.cancel("Discarded: tab hidden");
     };
     document.addEventListener("visibilitychange", hidden);
-    return () => { before(); after(); clearInterval(timer); document.removeEventListener("visibilitychange", hidden); recorder.cancel("Canvas stopped"); };
+    const observer = typeof PerformanceObserver !== "undefined" && PerformanceObserver.supportedEntryTypes?.includes("longtask")
+      ? new PerformanceObserver(list => { for (const entry of list.getEntries()) recorder.record("longTaskMs", entry.duration, entry.startTime + entry.duration); }) : null;
+    observer?.observe({ type: "longtask", buffered: true });
+    return () => { before(); after(); observer?.disconnect(); clearInterval(timer); document.removeEventListener("visibilitychange", hidden); recorder.cancel("Canvas stopped"); };
   }, [gl]);
   return null;
 }

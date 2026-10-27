@@ -31,9 +31,22 @@ export function SettingsMenu() {
     window.addEventListener("avenlab:panel-action", cancelFromPad, true);
     return () => { window.removeEventListener("keydown", capture, true); window.removeEventListener("avenlab:panel-action", cancelFromPad, true); };
   }, [pendingBinding]);
-  const graphics = (key: "shadows" | "reflections" | "stars" | "fog" | "vehicleLights" | "hud" | "overlay", label: string, description?: string): MenuRow => ({
-    id: key, label, description, value: render[key] ? "On" : "Off", action: () => render.update({ [key]: !render[key] }),
-  });
+
+  const graphics = (
+  key: "shadows" | "reflections" | "stars" | "fog" |
+       "vehicleLights" | "hud" | "overlay",
+  label: string,
+  description?: string
+): MenuRow => ({
+  id: key,
+  label,
+  description,
+  value: render[key] ? "On" : "Off",
+  action: () => {
+    const store = useRenderSettingsStore.getState();
+    store.update({ [key]: !store[key] });
+  },
+});
   const upcoming = (id: string, label: string, description: string): MenuRow => ({ id, label, description, value: "Planned", disabled: true });
   return <>
     <TabbedMenu title="Settings" subtitle="Set up your driver station. Graphics, input and accessibility changes apply immediately." onBack={back} status={notice} tabs={[

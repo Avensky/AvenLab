@@ -4,7 +4,8 @@ import type { PlayerLocation } from "./location";
 // keep the profiler's own cost stable, even during a long driving session.
 export const METRICS = ["frameMs", "cpuSubmitMs", "drawCalls", "triangles", "geometries", "textures",
   "receiptAgeMs", "inputAckMs", "rttMs", "arrivalMs", "decodeMs", "queuedBytes",
-  "serverLockMs", "serverPhysicsMs", "serverWorkMs", "bodyRollDeg", "airborneWheels"] as const;
+  "serverLockMs", "serverPhysicsMs", "serverWorkMs", "bodyRollDeg", "airborneWheels",
+  "cityDetailedChunks", "cityProxyChunks", "cityPendingAssets", "longTaskMs"] as const;
 export type Metric = typeof METRICS[number];
 export type Summary = { count: number; mean: number; p50: number; p95: number; p99: number; stddev: number };
 export type Summaries = Partial<Record<Metric, Summary>>;

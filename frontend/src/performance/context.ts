@@ -8,10 +8,11 @@ import { useUIStore } from "../store/uiStore";
 import { useVisualAlignmentStore } from "../store/visualAlignmentStore";
 import type { ExperimentContext } from "./measurements";
 import { playerLocation } from "./location";
+import { cityStreamingStats } from "../world/cityWorkQueue";
 
 export function experimentContext(): ExperimentContext {
   const s = useRenderSettingsStore.getState();
-  const render = { environmentMode: s.environmentMode, vehicleOverrides: s.vehicleOverrides, chunkOverrides: s.chunkOverrides, assetGlbs: s.assetGlbs,
+  const render = { cityQuality: s.cityQuality, environmentMode: s.environmentMode, vehicleOverrides: s.vehicleOverrides, chunkOverrides: s.chunkOverrides, assetGlbs: s.assetGlbs,
     dpr: s.dpr, shadows: s.shadows, reflections: s.reflections, stars: s.stars, fog: s.fog, vehicleLights: s.vehicleLights, hud: s.hud, overlay: s.overlay, autoVehicleAlignment: s.autoVehicleAlignment, opaqueCityMaterials: s.opaqueCityMaterials };
   const network = useNetworkStore.getState();
   const world = useWorldStore.getState();
@@ -31,7 +32,7 @@ export function experimentContext(): ExperimentContext {
     : ui.overlay !== null ? "close menus" : !network.connected || age > 500 ? "no fresh physics snapshots"
       : !world.map?.collider_chunks ? "restart the updated Rust backend"
         : useProgress.getState().errors.length > 0 ? "asset load failed; reload for a clean baseline"
-          : useProgress.getState().active ? "assets loading" : "";
+          : useProgress.getState().active ? "assets loading" : cityStreamingStats().pending ? "city visuals preparing" : "";
   const me = network.snapshot?.entities.find((entity) => entity.id === network.playerId);
   return { settings: { ...settings, alignment: useVisualAlignmentStore.getState().reports, playerPose: me ? { position: me.position, rotation: me.rotation, speed: me.speed } : null },
     location: playerLocation(me, world.map),
