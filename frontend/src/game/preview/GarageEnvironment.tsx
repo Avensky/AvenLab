@@ -50,8 +50,6 @@ function GarageModel({ turntable, onPlatformReady }: GarageProps) {
       const part = display.root.getObjectByName(name);
       if (part) platform.attach(part);
     }
-    const nativeCorners = display.root.userData.avenlabGarageComplete === true ? display.root.getObjectByName("4*4") : undefined;
-    if (nativeCorners) platform.attach(nativeCorners);
     const completed = completeGarageStructure(display.root);
     // The full-plane tile overlay covers the original grey floor edging.
     // Follow the authored wall frame when restoring that perimeter finish.
@@ -60,7 +58,7 @@ function GarageModel({ turntable, onPlatformReady }: GarageProps) {
     // A static copy in the environment probe gives glossy walls the actual
     // ceiling fixtures, alongside neutral studio highlights.
     const probeRoot = new Group(); probeRoot.add(display.root.clone(true), completed.structure.clone(true));
-    return { ...display, platform, footprint, perimeter, hasNativeCorners: Boolean(nativeCorners), probeRoot, structure: completed.structure, dispose: () => {
+    return { ...display, platform, footprint, perimeter, probeRoot, structure: completed.structure, dispose: () => {
       probeRoot.traverse(object => { if (object instanceof InstancedMesh) object.dispose(); });
       completed.dispose(); display.dispose();
     } };
@@ -72,12 +70,6 @@ function GarageModel({ turntable, onPlatformReady }: GarageProps) {
     <group name="garage-special-environment"><primitive object={prepared.root} dispose={null} /><primitive object={prepared.structure} dispose={null} /></group>
     {turntable && createPortal(<>
       <primitive object={prepared.platform} dispose={null} />
-      {footprint && !prepared.hasNativeCorners && <group name="platform-corner-lights">
-        {[-1, 1].flatMap(x => [-1, 1].map(z => <mesh key={`${x},${z}`} position={[x * (footprint.x / 2 - 0.24), 0.015, z * (footprint.z / 2 - 0.24)]}>
-          <boxGeometry args={[0.14, 0.018, 0.14]} />
-          <meshStandardMaterial color="#0a1608" emissive="#65ff1d" emissiveIntensity={2.1} />
-        </mesh>))}
-      </group>}
     </>, turntable)}
     {footprint && <GarageFloorReflection width={footprint.x} depth={footprint.z} turntable={turntable} perimeter={prepared.perimeter} />}
     {/* One small, generated reflection map. No HDRI fetch or per-frame cube capture. */}

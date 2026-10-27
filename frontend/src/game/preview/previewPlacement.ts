@@ -2,10 +2,20 @@ import { Box3, Mesh, Vector3, type Object3D } from "three";
 
 // Native fallback stage while the authored garage pad is loading (long X, short Z).
 export const DEFAULT_PREVIEW_PLATFORM: [number, number] = [8, 5];
-// Current Tank GLB dimensions in its authored preview orientation. Keep one
-// shared scale for the lineup without downloading its 31MB file to size a car.
+// Current Tank's Hull mesh, excluding the cannon, in its authored orientation.
+// Keep one shared scale without downloading the Tank just to size another car.
 // Re-measure this reference when replacing the tank asset.
-export const PREVIEW_LINEUP_REFERENCE = { model: "tank", width: 2.76154, length: 7.931901 } as const;
+export const PREVIEW_LINEUP_REFERENCE = { model: "tank", width: 2.76154, length: 5.590224 } as const;
+
+function tankChassisPart(object: Object3D) {
+  let chassis = false;
+  for (let part: Object3D | null = object; part; part = part.parent) {
+    const name = String(part.userData.name ?? part.name).toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (/^(?:cannon|barrel|turret)\d*$/.test(name)) return false;
+    if (/^(?:hull|chassis)\d*$/.test(name)) chassis = true;
+  }
+  return chassis;
+}
 
 function supportPart(object: Object3D) {
   for (let part: Object3D | null = object; part; part = part.parent) {
@@ -23,18 +33,29 @@ function supportPart(object: Object3D) {
 // Precise vertex bounds avoid the oversized transformed accessor boxes of
 // rotated wheels. Ground the tires/tracks, not hidden helpers or body trim.
 // Measure once before attaching the clone to a scaled/rotated display group.
-export function measurePreviewBounds(root: Object3D) {
+export function measurePreviewBounds(root: Object3D, model?: string) {
   root.updateWorldMatrix(true, true);
-  const bounds = new Box3(), contact = new Box3();
+  const bounds = new Box3(), contact = new Box3(), chassis = new Box3();
+  const vertex = new Vector3();
   root.traverseVisible(object => {
     if (!(object instanceof Mesh)) return;
     const slots = Array.isArray(object.material) ? object.material : [object.material];
     if (!slots.some(material => material.visible && material.opacity > 0)) return;
-    const box = new Box3().setFromObject(object, true);
+    // Measure this mesh only. setFromObject also includes descendants, which
+    // would put a child cannon back into an otherwise chassis-only box.
+    const box = new Box3(), positions = object.geometry.getAttribute("position");
+    if (!positions) return;
+    for (let i = 0; i < positions.count; i++) {
+      box.expandByPoint(object.getVertexPosition(i, vertex).applyMatrix4(object.matrixWorld));
+    }
     bounds.union(box);
     if (supportPart(object)) contact.union(box);
+    if (model === "tank" && tankChassisPart(object)) chassis.union(box);
   });
-  return { bounds, support: contact.isEmpty() ? bounds : contact };
+  const support = contact.isEmpty() ? bounds : contact;
+  // Tracks are the fallback if a future Tank export lacks a named hull.
+  const centering = model === "tank" ? (chassis.isEmpty() ? support : chassis) : bounds;
+  return { bounds, support, centering };
 }
 
 export function measurePreviewGrounding(root: Object3D): { position: [number, number, number]; footprint: [number, number] } {
@@ -46,13 +67,13 @@ export function measurePreviewGrounding(root: Object3D): { position: [number, nu
 
 export function previewPlacement(root: Object3D): [number, number, number] { return measurePreviewGrounding(root).position; }
 
-// Fit the whole lineup using the Tank (including its barrel) as the reference,
+// Fit the whole lineup using the Tank's chassis as the reference,
 // accounting for the preview's 90-degree vehicle heading. All models use the
 // same factor so their original relative sizes are retained.
 // Keep the floor contact and its shadow separate from this visual scale.
-export function fitPreviewToPlatform({ bounds, support }: ReturnType<typeof measurePreviewBounds>, platform: readonly [number, number]) {
+export function fitPreviewToPlatform({ bounds, support, centering }: ReturnType<typeof measurePreviewBounds>, platform: readonly [number, number]) {
   if (bounds.isEmpty()) return { scale: 1, position: [0, 0, 0] as [number, number, number], footprint: [2, 4] as [number, number], shadowOffset: [0, 0] as [number, number] };
-  const center = bounds.getCenter(new Vector3());
+  const center = centering.getCenter(new Vector3());
   const contactSize = support.getSize(new Vector3()), contactCenter = support.getCenter(new Vector3());
   // Leave the 14cm safety band and a little clear space around the body.
   const length = Math.max(0.1, platform[0] - 0.4), width = Math.max(0.1, platform[1] - 0.4);

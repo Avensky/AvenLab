@@ -25,7 +25,9 @@ export function prepareGarageDisplay(scene: Object3D) {
         break;
       case "LIGHT":
         material.emissive.setRGB(0.02350918, 0.95040749, 0.00495542);
-        material.emissiveIntensity = 2.4;
+        // Native counter faces and the horizontal rack bars share this slot.
+        // Bright cores lift both fixtures without adding a broad green light.
+        material.emissiveIntensity = 4;
         break;
       case "SDC":
         material.color.setRGB(0.008, 0.08, 0.002);
@@ -81,6 +83,9 @@ export function prepareGarageDisplay(scene: Object3D) {
     return material;
   };
   root.traverse(object => {
+    // The authored four-corner fixture stays in the GLB; the rotating display
+    // and its reflection probe omit it. Never hide or edit the cached source.
+    if (String(object.userData.name ?? object.name) === "4*4") object.visible = false;
     if (!(object instanceof Mesh)) return;
     object.material = Array.isArray(object.material) ? object.material.map(prepare) : prepare(object.material);
   });

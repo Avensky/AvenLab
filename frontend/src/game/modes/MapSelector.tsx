@@ -32,34 +32,25 @@ export function MapSelector({
 
     return (
         <div
-            className={`border-t px-4 pb-1 transition-[background,border-color,box-shadow] duration-200 ${getSelectionClasses(selected, translucent)}`}
+            className={`selection-strip border-t transition-[background,border-color,box-shadow] duration-200 ${getSelectionClasses(selected, translucent)}`}
             onPointerEnter={() => setActiveMenuIndex(menuIndex)}
             onFocusCapture={() => setActiveMenuIndex(menuIndex)}
         >
-            <p
-                className={`text-xs uppercase transition-colors duration-200 ${
-                    selected || translucent
-                        ? "text-slate-400"
-                        : "text-slate-600"
-                }`}
-            >
-                Map
-            </p>
-
-            <div className="flex items-center justify-between gap-3">
+            <div className="selection-strip-layout">
                 <GameButton
                     variant={translucent ? "neutral" : menuId === "sandbox_setup" ? "selector" : "secondary"}
                     onPress={previousMap}
-                    className="h-7"
+                    className="selection-strip-arrow"
                     aria-label="Previous map"
                 >
                     ◀
                 </GameButton>
 
                 <div className="min-w-0 flex-1 text-center">
+                    <p className="selection-strip-label text-slate-400">ENVIRONMENT</p>
                     {showName && (
                         <h2
-                            className={`truncate text-2xl font-black transition-colors duration-200 ${
+                            className={`selection-strip-title truncate font-black transition-colors duration-200 ${
                                 selected || translucent
                                     ? "text-cyan-100"
                                     : "text-slate-500"
@@ -71,7 +62,7 @@ export function MapSelector({
 
                     {showDesc && map.desc && (
                         <p
-                            className={`line-clamp-2 text-sm transition-colors duration-200 ${
+                            className={`selection-strip-meta truncate transition-colors duration-200 ${
                                 selected || translucent
                                     ? "text-slate-400"
                                     : "text-slate-600"
@@ -85,7 +76,7 @@ export function MapSelector({
                 <GameButton
                     variant={translucent ? "neutral" : menuId === "sandbox_setup" ? "selector" : "secondary"}
                     onPress={nextMap}
-                    className="h-7"
+                    className="selection-strip-arrow"
                     aria-label="Next map"
                 >
                     ▶

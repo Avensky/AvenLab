@@ -25,12 +25,12 @@ export function VehiclePreview() {
   // controls. Vehicle changes retain this same camera and turntable angle.
   // Stay inside the room on phones. Widen vertical FOV instead of moving the
   // camera outside and clipping away the racks, aluminum frame and lights.
-  // One closer camera for the entire lineup; the full Tank still fits through
-  // every turntable heading on desktop and phone aspect ratios.
+  // One shared camera frames the enlarged chassis throughout the turntable.
+  // The cannon is free to overhang instead of limiting the lineup's size.
   const radius = 7.25;
   const aspect = size.width / Math.max(1, size.height);
-  // A 75-degree horizontal minimum includes the tank barrel at every yaw.
-  const fov = Math.max(55, 2 * Math.atan(Math.tan(75 * Math.PI / 360) / aspect) * 180 / Math.PI);
+  // Give the enlarged turret headroom while keeping the chassis visible on phones.
+  const fov = Math.max(60, 2 * Math.atan(Math.tan(75 * Math.PI / 360) / aspect) * 180 / Math.PI);
   const targetY = 1.8;
   return (
     <>

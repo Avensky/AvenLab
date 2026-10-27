@@ -5,6 +5,15 @@
 }
 .garage-selection-header { background-color: rgb(0 0 0 / 0.3); box-shadow: none; }
 .garage-selection-status { background-color: rgb(0 0 0 / 0.3); }
+.selection-strip { padding: 0.125rem 0.375rem; }
+.selection-strip-layout { display: flex; align-items: center; gap: 0.375rem; }
+.selection-strip-heading { display: flex; min-width: 0; align-items: center; justify-content: center; gap: 0.375rem; }
+.selection-strip-label { margin: 0; font-size: calc(0.5625rem * var(--menu-text-scale, 1)); line-height: 1.2; letter-spacing: 0.09em; }
+.selection-strip-title { margin: 0; min-width: 0; font-size: calc(0.9375rem * var(--menu-text-scale, 1)); line-height: 1.2; text-transform: uppercase; }
+.selection-strip-role { margin: 0; flex-shrink: 0; font-size: calc(0.5625rem * var(--menu-text-scale, 1)); line-height: 1.2; }
+.selection-strip-meta { margin: 0; font-size: calc(0.6875rem * var(--menu-text-scale, 1)); line-height: 1.2; }
+.selection-strip-note { margin: 0; font-size: calc(0.5625rem * var(--menu-text-scale, 1)); line-height: 1.2; }
+.selection-strip-arrow { display: flex; width: 2.25rem; min-height: 2.25rem; flex-shrink: 0; align-items: center; justify-content: center; }
 .menu-home.main-menu { isolation: isolate; background: #020617; backdrop-filter: none; }
 .main-menu .menu-home-content { position: relative; z-index: 1; }
 .menu-video-background {

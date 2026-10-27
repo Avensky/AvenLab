@@ -18,7 +18,7 @@ function PreviewAsset({ path, model, platform }: { path: string; model: VehicleM
   useEffect(() => () => prepared.dispose(), [prepared]);
   // Keep the original measurements when the garage finishes loading; re-reading
   // a mounted model would measure its already-scaled parent a second time.
-  const measurements = useMemo(() => measurePreviewBounds(prepared.root), [prepared]);
+  const measurements = useMemo(() => measurePreviewBounds(prepared.root, model), [prepared, model]);
   const display = useMemo(() => fitPreviewToPlatform(measurements, platform), [measurements, platform]);
   return <>
     <PreviewContactShadow footprint={display.footprint} offset={display.shadowOffset} />

@@ -37,28 +37,26 @@ export function VehicleSelector({
 
     return (
         <div
-            className={`border-t px-4 pb-1 transition-[background,border-color,box-shadow] duration-200 ${background}`}
+            className={`selection-strip border-t transition-[background,border-color,box-shadow] duration-200 ${background}`}
             onPointerEnter={() => setActiveMenuIndex(menuIndex)}
             onFocusCapture={() => setActiveMenuIndex(menuIndex)}
         >
-            <p className="text-xs uppercase text-slate-500">
-                Vehicle
-            </p>
-
-            <div className="flex items-center justify-between gap-3">
+            <div className="selection-strip-layout">
                 <GameButton
                     variant={translucent ? "neutral" : menuId === "sandbox_setup" ? "selector" : "secondary"}
                     onPress={previousVehicle}
-                    className="h-7"
+                    className="selection-strip-arrow"
                     aria-label="Previous vehicle"
                 >
                     ◀
                 </GameButton>
 
                 <div className="min-w-0 flex-1 text-center">
+                    <p className="selection-strip-label text-slate-400">VEHICLE</p>
+                    <div className="selection-strip-heading">
                     {showName && (
                         <h2
-                            className={`truncate text-2xl font-black transition-colors duration-200 ${
+                            className={`selection-strip-title truncate font-black transition-colors duration-200 ${
                                 selected || translucent
                                     ? "text-cyan-100"
                                     : "text-slate-500"
@@ -70,19 +68,20 @@ export function VehicleSelector({
 
                     {showRole && vehicle.role && (
                         <p
-                            className={`text-sm uppercase transition-colors duration-200 ${
+                            className={`selection-strip-role uppercase transition-colors duration-200 ${
                                 selected || translucent
                                     ? "text-yellow-300"
                                     : "text-yellow-300/40"
                             }`}
                         >
-                            Role: {vehicle.role}
+                            {vehicle.role}
                         </p>
                     )}
+                    </div>
 
                     {showCanSlug && vehicle.canIdentity?.slug && (
                         <p
-                            className={`truncate font-mono text-xs transition-colors duration-200 ${
+                            className={`selection-strip-meta truncate font-mono transition-colors duration-200 ${
                                 selected || translucent
                                     ? "text-cyan-300"
                                     : "text-cyan-300/35"
@@ -94,7 +93,7 @@ export function VehicleSelector({
 
                     {showNotes && vehicle.canIdentity?.notes && (
                         <p
-                            className={`truncate text-[11px] transition-colors duration-200 ${
+                            className={`selection-strip-note truncate transition-colors duration-200 ${
                                 selected || translucent
                                     ? "text-slate-400"
                                     : "text-slate-600"
@@ -108,7 +107,7 @@ export function VehicleSelector({
                 <GameButton
                     variant={translucent ? "neutral" : menuId === "sandbox_setup" ? "selector" : "secondary"}
                     onPress={nextVehicle}
-                    className="h-7"
+                    className="selection-strip-arrow"
                     aria-label="Next vehicle"
                 >
                     ▶

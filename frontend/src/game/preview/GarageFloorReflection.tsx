@@ -12,6 +12,7 @@ const floorShader = {
     color: { value: null }, tDiffuse: { value: null }, textureMatrix: { value: null },
     platformHalfSize: { value: new Vector2() }, platformAngle: { value: 0 },
     reflectionTexel: { value: new Vector2(1 / 768, 1 / 768) },
+    greenDesaturation: { value: 0.18 },
     perimeterBounds: { value: new Vector4() }, showPerimeter: { value: 0 },
   },
   vertexShader: /* glsl */`
@@ -33,6 +34,7 @@ const floorShader = {
     uniform vec2 platformHalfSize;
     uniform float platformAngle;
     uniform vec2 reflectionTexel;
+    uniform float greenDesaturation;
     uniform vec4 perimeterBounds;
     uniform float showPerimeter;
     varying vec4 vReflection;
@@ -64,6 +66,12 @@ const floorShader = {
         // Keep the pad mainly reflective, with just a little softened detail.
         reflection = mix(reflection, soft, platform * 0.25);
       }
+      // Dark glossy surfaces otherwise make green cores appear more saturated
+      // than their source. Gently neutralize only green-dominant reflections;
+      // keep their luminance and the neutral vehicle/ceiling highlights.
+      float greenDominance = clamp((reflection.g - max(reflection.r, reflection.b)) / max(reflection.g, 0.001), 0.0, 1.0);
+      float reflectedLuminance = dot(reflection, vec3(0.2126, 0.7152, 0.0722));
+      reflection = mix(reflection, vec3(reflectedLuminance), greenDominance * greenDesaturation);
       // Equal world units on X/Z produce square tiles at every aspect ratio.
       vec2 tile = vFloor / 0.4;
       vec2 grid = abs(fract(tile + 0.5) - 0.5);

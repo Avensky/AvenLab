@@ -32,16 +32,23 @@ After export, restart/reload the frontend. The model URL includes an export revi
 
 ## Shared vehicle sizing
 
-Vehicle previews use one common factor, calculated from the Tank's full visible footprint, including its barrel. The factor is applied equally to the entire lineup. Contact shadows follow each model's wheels/tracks and all models remain grounded. The Tank dimensions are stored as small preview metadata so selecting a car does not download the 31MB Tank model.
+Vehicle previews use one common factor, calculated from the Tank's `Hull` mesh, excluding its cannon. The factor is applied equally to the entire lineup. The Tank is centered on that chassis in X/Z; its cannon can extend beyond the platform without shifting the rotation pivot or shrinking other vehicles. Contact shadows follow each model's wheels/tracks and all models remain grounded. If a future Tank export has no named hull/chassis, its track footprint supplies the center. The Tank dimensions are stored as small preview metadata so selecting a car does not download the Tank model.
 
-The current Tank is about 7.93m long and the platform is about 7.93m long. With clearance around the safety band, the common factor is about 0.95. A closer shared camera makes the lineup more prominent without changing its proportions. Its Tank framing was checked over 16 turntable headings on desktop and phone aspect ratios. A literal 2x enlargement of every vehicle cannot fit this existing platform while preserving their relative sizes; that would require a larger display space.
+The current Tank chassis is about 2.76m wide and 5.59m long, compared with 7.93m including its cannon. On the approximately 7.93m platform, clearance around the safety band produces a common factor of about 1.35: roughly 42% larger than the preceding cannon-limited 0.95 fit. The shared camera stays at the same position and target across vehicle changes. Its minimum vertical field of view is 60 degrees to give the enlarged turret headroom; phone framing retains the existing horizontal minimum. Chassis/support framing was checked over 16 turntable headings on desktop and phone aspect ratios; the cannon is intentionally excluded from those framing constraints.
 
 When replacing the Tank asset, re-measure `PREVIEW_LINEUP_REFERENCE` in `previewPlacement.ts`. Gameplay geometry, wheel poses and physics sizes are unaffected by these presentation settings.
+
+## Display-only fixtures
+
+The selection clone hides `4*4`, the original four green platform-corner lamps, and omits procedural replacements. The source asset still contains them. The wall counter retains its original **0999** appearance, with the unlit leading position, original black housing/glass (`Cube.023`) and both native digit-light layers (`Cube.024` and `1000`). All authored segment geometry and detailing stay visible; no replacement sign is generated. This uses the existing GLB without another Blender export. The counter and horizontal rack bars use the same `LIGHT` slot with emission 4. Selection bloom uses strength 0.24 and radius 0.15, retaining its 1.6 threshold and existing exposure so the stronger glow stays concentrated around bright fixtures.
+
+The single planar reflection applies 18% desaturation only to green-dominant colors while preserving their linear luminance. White ceiling/vehicle reflections and orange safety stripes retain their colors; the platform keeps its sharp reflection with a little blur.
 
 ## Verification
 
 - `frontend/tests/garage-asset.test.mjs` checks real exported array/mirror coverage and the stand base.
+- `frontend/tests/garage-display.test.mjs` checks corner-lamp visibility and preserves both native counter layers and their original geometry without changing the cached asset.
 - `frontend/tests/garage-structure.test.mjs` checks that complete assets bypass the legacy replacement.
-- `frontend/tests/preview-placement.test.mjs` checks shared lineup scale, grounding and shadow alignment.
+- `frontend/tests/preview-placement.test.mjs` checks shared lineup scale against the shipped Tank chassis, cannon overhang, the chassis-centered pivot, grounding, track fallback and shadow alignment.
 
 References: [Blender glTF exporter](https://docs.blender.org/manual/en/latest/addons/scene_gltf2.html), [Blender instance realization](https://docs.blender.org/manual/en/latest/modeling/geometry_nodes/instances/realize_instances.html).

@@ -32,3 +32,32 @@ test('Sketchfab presentation restores green emission without changing cached ass
   assert.equal(sourceDisposals, 0);
   geometry.dispose(); rail.dispose(); floor.dispose();
 });
+
+test('the display omits rotating corner lamps but retains every original counter layer and detail', () => {
+  const source = new Group(), geometry = new BoxGeometry(), material = new MeshStandardMaterial({ name: 'LIGHT ' });
+  const corners = new Mesh(geometry, material); corners.name = '4*4';
+  const housing = new Group(); housing.name = 'Cube023';
+  const digits = new Mesh(geometry, material); digits.name = 'Cube024';
+  const bars = new Mesh(geometry, material); bars.name = 'Base_Light001';
+  const secondLayer = new Group(); secondLayer.name = '1000'; secondLayer.add(new Mesh(geometry, material));
+  source.add(corners, housing, digits, secondLayer, bars);
+  const display = prepareGarageDisplay(source);
+  assert.equal(display.root.getObjectByName('garage-wall-sign'), undefined);
+  assert.equal(display.root.getObjectByName('4*4').visible, false);
+  assert.equal(display.root.getObjectByName('Cube024').visible, true);
+  assert.equal(display.root.getObjectByName('1000').visible, true);
+  const counterMaterial = display.root.getObjectByName('Cube024').material;
+  assert.ok(counterMaterial.emissiveIntensity >= 4, 'the native counter has a brighter green core');
+  assert.equal(display.root.getObjectByName('Base_Light001').material, counterMaterial, 'rack bars share the same bright green source');
+  assert.equal(display.root.getObjectByName('Cube024').geometry, geometry);
+  assert.equal(display.root.getObjectByName('1000').children[0].geometry, geometry);
+  assert.equal(display.root.getObjectByName('Cube023').children.length, 0, 'keep the authored housing without replacement light geometry');
+  assert.equal(corners.visible, true); assert.equal(digits.visible, true); assert.equal(secondLayer.visible, true);
+  assert.equal(housing.children.length, 0); assert.equal(material.emissiveIntensity, 1);
+  let cachedDisposals = 0;
+  geometry.addEventListener('dispose', () => cachedDisposals++);
+  material.addEventListener('dispose', () => cachedDisposals++);
+  display.dispose();
+  assert.equal(cachedDisposals, 0);
+  geometry.dispose(); material.dispose();
+});
