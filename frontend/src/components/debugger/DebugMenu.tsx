@@ -66,8 +66,8 @@ export function DebugMenu() {
     { id: "visualizers", label: "Visualizers", description: "Diagnostic streams are separate from model rendering. Disable streams you do not need to reduce debug traffic.", rows: [
       overlayRow,
       { id: "scope", label: "Diagnostic player scope", value: debug.playerScope.toUpperCase(), action: () => debug.togglePlayerScope() },
-      { id: "all-streams", label: "All diagnostic streams", value: (mask & ALL_DEBUG) === ALL_DEBUG ? "On" : "Off", action: () => world.setDebugMask((mask & ALL_DEBUG) === ALL_DEBUG ? 0 : ALL_DEBUG) },
-      ...DEBUG_OPTIONS.map(([name, flag]): MenuRow => ({ id: `debug-${flag}`, label: `${name} diagnostics`, value: hasDebugFlag(mask, flag) ? "On" : "Off", action: () => world.toggleDebugFlag(flag) })),
+      { id: "all-streams", label: "All diagnostic streams", value: (mask & ALL_DEBUG) === ALL_DEBUG ? "On" : "Off", adjustable: false, action: () => world.setDebugMask((useWorldStore.getState().debugMask & ALL_DEBUG) === ALL_DEBUG ? 0 : ALL_DEBUG) },
+      ...DEBUG_OPTIONS.map(([name, flag]): MenuRow => ({ id: `debug-${flag}`, label: `${name} diagnostics`, value: hasDebugFlag(mask, flag) ? "On" : "Off", adjustable: false, action: () => world.toggleDebugFlag(flag) })),
     ] },
     { id: "vehicles", label: "Vehicles & GLBs", description: "Choose each vehicle's representation independently. These options change the rendering, while collision and simulation stay authoritative on the server.", rows: [
       { id: "vehicle-default", label: "Vehicles default", value: mode.toUpperCase(), action: (dir) => { world.setMode(step(["collider", "geometry", "glb", "hybrid"] as const, mode, dir)); settings.update({ vehicleOverrides: {} }); } },

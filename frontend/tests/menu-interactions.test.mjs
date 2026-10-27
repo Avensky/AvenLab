@@ -392,6 +392,25 @@ test('mouse, keyboard and polled gamepad navigate the real menus and preferences
       await click(tab('Captures')); assert.ok(row('csv')); assert.ok(row('json'));
       await button(1); assert.equal(ui.getState().overlay, 'pause');
     });
+    await t.test('opening Debugger with a held stick cannot change diagnostics, and streams require explicit activation', async () => {
+      const { useWorldStore: world } = await load('store/worldStore.ts');
+      await reset('sandbox'); await act(async () => world.getState().setDebugMask(5));
+      pad.axes[0] = -0.9;
+      await key('F2');
+      await act(async () => row('all-streams').dispatchEvent(new dom.window.MouseEvent('pointerover', { bubbles:true })));
+      await act(async () => new Promise(resolve=>setTimeout(resolve,300)));
+      assert.equal(world.getState().debugMask,5,'a steering stick held before entry cannot alter the focused stream row');
+      pad.axes[0] = 0; await act(async () => new Promise(resolve=>setTimeout(resolve,40)));
+      await button(14); assert.equal(world.getState().debugMask,5,'horizontal navigation is not confirmation');
+      await button(0); assert.equal(world.getState().debugMask,127,'a fresh A press explicitly enables all streams');
+      await act(async () => row('all-streams').dispatchEvent(new dom.window.MouseEvent('click',{bubbles:true,cancelable:true,detail:1})));
+      assert.equal(world.getState().debugMask,127,'a pointer release/click without a press on this panel is ignored');
+      await act(async () => {
+        row('all-streams').dispatchEvent(new dom.window.MouseEvent('pointerdown',{bubbles:true,button:0}));
+        row('all-streams').dispatchEvent(new dom.window.MouseEvent('click',{bubbles:true,cancelable:true,detail:1}));
+      });
+      assert.equal(world.getState().debugMask,0,'an intentional pointer press and click toggles once');
+    });
     await t.test('F2 and F3 toggle the debugger and readout, and the readout has a working close button', async () => {
       await reset('sandbox'); await act(async () => rendering.getState().update({ overlay: false }));
       await key('F3'); assert.equal(rendering.getState().overlay, true);

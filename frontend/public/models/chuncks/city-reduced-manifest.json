@@ -1,0 +1,27 @@
+{
+  "source": "chunck_0,0_2x2_blocks_centered_textures512.glb",
+  "sourceSHA256": "282f0ef1efadead94c0097bc866f440a0516112283feff8c7dd171dd3d806f6c",
+  "originalTriangles": 1035438,
+  "reducedTriangles": 357447,
+  "reducedRatio": 0.3452133300110678,
+  "meshCount": 273,
+  "nodeCount": 279,
+  "textures": 0,
+  "recipe": {
+    "targetRatio": 0.15,
+    "error": 0.005,
+    "normalWeights": [
+      0.1,
+      0.1,
+      0.1
+    ],
+    "uvWeights": [
+      0.2,
+      0.2
+    ],
+    "flags": [
+      "Permissive"
+    ]
+  },
+  "transformsVerified": true
+}

@@ -27,6 +27,8 @@ export function TabbedMenu({ title, eyebrow = "REDLINE VECTOR", subtitle, tabs, 
   const content = useRef<HTMLDivElement>(null);
   const buttons = useRef(new Map<string, HTMLButtonElement>());
   const panelId = useId();
+  const pointerOwner = useRef<Element | null>(null);
+  const keyboardOwner = useRef<EventTarget | null>(null);
   const tabId = `${panelId}-${tab.id}`;
 
   const selectTab = (index: number, focus = "row") => setSelection({ tab: tabs[(index + tabs.length) % tabs.length].id, row: "", focus });
@@ -62,7 +64,27 @@ export function TabbedMenu({ title, eyebrow = "REDLINE VECTOR", subtitle, tabs, 
   }, [onBack, rows, selectedRow, tab.id, tabIndex, tabs]);
 
   return <div className="game-ui menu-surface tabbed-menu fixed inset-0 z-50 bg-slate-950 text-slate-100">
-    <section onKeyDown={trapMenuFocus} role="dialog" aria-modal="true" aria-labelledby={`${panelId}-title`} aria-describedby={subtitle ? `${panelId}-description` : undefined} className="menu-shell tabbed-menu-shell flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden bg-slate-950">
+    <section onKeyDown={trapMenuFocus}
+      onPointerDownCapture={event => { pointerOwner.current = event.button === 0 ? (event.target as Element).closest("button") : null; }}
+      onPointerCancelCapture={() => { pointerOwner.current = null; }}
+      onClickCapture={event => {
+        if (event.detail > 0) {
+          if (pointerOwner.current !== (event.target as Element).closest("button")) { event.preventDefault(); event.stopPropagation(); }
+          pointerOwner.current = null;
+        }
+      }}
+      onKeyDownCapture={event => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        if (event.repeat) { event.preventDefault(); event.stopPropagation(); }
+        else keyboardOwner.current = event.target;
+      }}
+      onKeyUpCapture={event => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        // Space released after opening a menu must not click its newly focused row.
+        if (keyboardOwner.current !== event.target) { event.preventDefault(); event.stopPropagation(); }
+        keyboardOwner.current = null;
+      }}
+      role="dialog" aria-modal="true" aria-labelledby={`${panelId}-title`} aria-describedby={subtitle ? `${panelId}-description` : undefined} className="menu-shell tabbed-menu-shell flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden bg-slate-950">
       <header className="tabbed-menu-header">
         <h1 id={`${panelId}-title`} className="menu-heading">
           <span className="menu-heading-title">{title}</span>

@@ -25,20 +25,20 @@ export async function prepareCityGpu(asset: NonNullable<ReturnType<typeof create
     finally { gl.setRenderTarget(previous, face, mip); gl.xr.enabled = xr; gl.shadowMap.autoUpdate = shadowUpdate; }
   };
   try {
-    asset.batches.forEach(batch => { batch.mesh.count = 1; batch.mesh.castShadow = shadows; batch.mesh.receiveShadow = shadows; });
+    asset.meshes.forEach(mesh => { mesh.count = 1; mesh.castShadow = shadows; mesh.receiveShadow = shadows; });
     phase("compiling upload shaders");
     await cityWorkQueue.enqueue(() => inTarget(() => gl.compileAsync(warm, camera)), signal);
     if (signal.aborted) return;
-    asset.batches.forEach(batch => { batch.mesh.visible = false; batch.mesh.count = 0; });
+    asset.meshes.forEach(mesh => { mesh.visible = false; mesh.count = 0; });
     phase("uploading geometry");
-    await Promise.all(asset.batches.map(batch => cityWorkQueue.enqueue(() => {
-      batch.mesh.visible = true; batch.mesh.count = 1;
+    await Promise.all(asset.meshes.map(mesh => cityWorkQueue.enqueue(() => {
+      mesh.visible = true; mesh.count = 1;
       try { inTarget(() => gl.render(warm, camera)); }
-      finally { batch.mesh.visible = false; batch.mesh.count = 0; }
+      finally { mesh.visible = false; mesh.count = 0; }
     }, signal)));
     if (signal.aborted) return;
     warm.remove(asset.group);
-    asset.batches.forEach(batch => { batch.mesh.visible = true; batch.mesh.count = 1; });
+    asset.meshes.forEach(mesh => { mesh.visible = true; mesh.count = 1; });
     phase("compiling city shaders");
     await cityWorkQueue.enqueue(() => gl.compileAsync(asset.group, camera, scene), signal);
   } finally { warm.remove(asset.group); target.dispose(); }

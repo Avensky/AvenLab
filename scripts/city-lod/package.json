@@ -1,0 +1,13 @@
+{
+  "name": "avenlab-city-lod-builder",
+  "private": true,
+  "type": "module",
+  "scripts": { "build": "node build.mjs" },
+  "dependencies": {
+    "@gltf-transform/core": "4.3.0",
+    "@gltf-transform/extensions": "4.3.0",
+    "@gltf-transform/functions": "4.3.0",
+    "draco3dgltf": "1.5.7",
+    "meshoptimizer": "0.25.0"
+  }
+}

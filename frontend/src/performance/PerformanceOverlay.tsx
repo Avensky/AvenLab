@@ -100,7 +100,7 @@ function Readout() {
       <span>CPU submit mean / p95</span><span>{format(m.cpuSubmitMs?.mean)} / {format(m.cpuSubmitMs?.p95)} ms</span>
       <span>Draw calls / triangles</span><span>{format(m.drawCalls?.mean, 0)} / {format(m.triangles?.mean, 0)}</span>
       <span>Geometries / textures</span><span>{format(m.geometries?.mean, 0)} / {format(m.textures?.mean, 0)}</span>
-      <span>City detail / detailed / skyline</span><span>{CITY_QUALITY_LABELS[cityQuality]} · {city.detailed} / {city.proxies}</span>
+      <span>City models / silhouette chunks</span><span>{CITY_QUALITY_LABELS[cityQuality]} · {city.detailed} / {city.proxies}</span>
       <span>City preparations / long task p95</span><span>{city.pending} / {format(m.longTaskMs?.p95)} ms</span>
     </div>
     {city.pending > 0 && <p role="status" className="mt-1 text-amber-200">{city.phase}</p>}

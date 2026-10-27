@@ -1,28 +1,41 @@
 import type { LoadedChunkInstance, MapSnapshot, VisualAsset } from "../store/worldStore";
 import type { VisualMode } from "../store/renderSettingsStore";
+import type { CityBlockLevel } from "./cityBlocks";
 
 export type CityQuality = "fast" | "balanced" | "original";
 export const CITY_QUALITIES: readonly CityQuality[] = ["fast", "balanced", "original"];
 export const CITY_QUALITY_LABELS = { fast: "Fast", balanced: "Balanced", original: "Original / A/B" };
 export const cityChunkKey = (chunk: LoadedChunkInstance) => `${chunk.x},${chunk.z}`;
-export type CityPlacement = { chunk: LoadedChunkInstance; visual: VisualAsset };
+export type CityPlacement = { chunk: LoadedChunkInstance; visual: VisualAsset; blocks?: Record<string, CityBlockLevel> };
 
 // Use the backend's actual cell dimensions and origins, never a guessed 200m grid.
 // Horizontal distance keeps tall towers from forcing every tile to full detail.
-export function detailedCityChunks(map: MapSnapshot, x: number, z: number, quality: CityQuality, previous: readonly string[] = []) {
+// Keep the local tile, then spend the remaining slots toward the camera's view.
+// Otherwise the short side of a rectangular tile crowds out the next street.
+export function detailedCityChunks(map: MapSnapshot, x: number, z: number, quality: CityQuality, previous: readonly string[] = [], forward?: readonly [number, number]) {
   if (quality === "original" || !map.collider_chunks) return map.chunks.map(cityChunkKey);
-  const unit = Math.max(1, Math.min(...map.cell));
-  const distance = quality === "fast" ? unit * 0.5 : unit;
+  const span = Math.max(1, ...map.cell);
+  const distance = span * (quality === "fast" ? 1.25 : 2);
+  const lookAhead = span * (quality === "fast" ? 0.9 : 1.4);
   const limit = quality === "fast" ? 2 : 4;
+  const length = forward ? Math.hypot(...forward) : 0;
+  const looking = Number.isFinite(length) && length > 0.001;
+  const focusX = looking ? x + forward![0] / length * lookAhead : x;
+  const focusZ = looking ? z + forward![1] / length * lookAhead : z;
+  const distanceTo = (chunk: MapSnapshot["chunks"][number], px: number, pz: number) => Math.hypot(
+    Math.max(0, Math.abs(px - chunk.origin[0]) - map.cell[0] / 2),
+    Math.max(0, Math.abs(pz - chunk.origin[2]) - map.cell[1] / 2));
   const ranked = map.chunks.map(chunk => {
-    const dx = Math.max(0, Math.abs(x - chunk.origin[0]) - map.cell[0] / 2);
-    const dz = Math.max(0, Math.abs(z - chunk.origin[2]) - map.cell[1] / 2);
-    const key = cityChunkKey(chunk), d = Math.hypot(dx, dz);
-    return { key, distance: d, score: d - (previous.includes(key) ? 12 : 0) };
+    const key = cityChunkKey(chunk), d = distanceTo(chunk, x, z), retained = previous.includes(key);
+    return { key, distance: d, score: d - (retained ? 12 : 0),
+      aheadScore: distanceTo(chunk, focusX, focusZ) * 0.75 + d * 0.25 - (retained ? 12 : 0) };
   }).sort((a, b) => a.score - b.score || a.key.localeCompare(b.key));
   // Always keep the closest available tile detailed, including outside the grid.
-  return ranked.filter((entry, index) => index === 0 || entry.distance <= distance + (previous.includes(entry.key) ? 12 : 0))
-    .slice(0, limit).map(entry => entry.key);
+  const local = ranked[0];
+  if (!local) return [];
+  const candidates = ranked.filter(entry => entry.key !== local.key && entry.distance <= distance + (previous.includes(entry.key) ? 12 : 0));
+  if (looking) candidates.sort((a, b) => a.aheadScore - b.aheadScore || a.key.localeCompare(b.key));
+  return [local.key, ...candidates.slice(0, limit - 1).map(entry => entry.key)];
 }
 
 export function cityAssetVisible(chunk: LoadedChunkInstance, visual: VisualAsset, environmentMode: VisualMode,

@@ -3,6 +3,7 @@ import { TabbedMenu, type MenuRow } from "../components/menus/TabbedMenu";
 import { useRenderSettingsStore } from "../store/renderSettingsStore";
 import { DEFAULT_BINDINGS, RESERVED_KEYS, usePreferencesStore, type BindingAction } from "../store/preferencesStore";
 import { useUIStore } from "../store/uiStore";
+import { cityQualityControl, cityPerformanceControl } from "../components/menus/cityQualityControl";
 
 const step = <T,>(values: readonly T[], value: T, dir: 1 | -1 = 1): T => values[(Math.max(0, values.indexOf(value)) + dir + values.length) % values.length];
 const keyLabel = (code: string) => code === "Space" ? "Space" : code.replace(/^Key|^Digit/, "");
@@ -55,6 +56,7 @@ export function SettingsMenu() {
         { id: "fov", label: "Field of view", value: `${prefs.fov}°`, action: (dir) => prefs.update({ fov: step([55, 65, 75, 85, 95, 110], prefs.fov, dir) }) },
         graphics("shadows", "Shadows"), graphics("reflections", "HDR reflections"), graphics("fog", "Distance fog"), graphics("stars", "Animated sky"),
         graphics("vehicleLights", "Vehicle spotlights"), graphics("hud", "Driving HUD & touch controls"), graphics("overlay", "Performance overlay", "Frame timing, network latency and server diagnostics."),
+        cityQualityControl(render), cityPerformanceControl(render),
         { id: "fullscreen", label: "Toggle fullscreen", description: "Requires browser support and a direct click or keyboard press.", action: () => {
           const request = document.fullscreenElement ? document.exitFullscreen?.() : document.documentElement.requestFullscreen?.();
           if (!request) setNotice("Fullscreen is unavailable in this browser");
