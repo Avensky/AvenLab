@@ -18,6 +18,7 @@ export type Capture = {
   slowFrames: number; frameCount: number; baselineId: number | null;
   startLocation?: PlayerLocation | null; endLocation?: PlayerLocation | null;
   frameSamplesMs?: number[]; timeline?: CapturePoint[];
+  stoppedEarly?: boolean;
 };
 export function summarize(values: number[]): Summary | undefined {
   if (!values.length) return undefined;
@@ -51,7 +52,7 @@ class Series {
 type Pending = { label: string; baseline: boolean; key: string; settings: Record<string, unknown>;
   requestedMs: number; warmSince: number | null; startMs: number | null; durationMs: number;
   samples: Partial<Record<Metric, number[]>>; snapshots: number; snapshotBytes: number; debugBytes: number;
-  startedAt: string | null; startLocation: PlayerLocation | null; timeline: CapturePoint[]; lastPointMs: number };
+  startedAt: string | null; startLocation: PlayerLocation | null; timeline: CapturePoint[]; lastPointMs: number; stoppedEarly?: boolean };
 export type CaptureProgress = { phase: "idle" | "waiting" | "warmup" | "recording"; label: string; remainingMs: number };
 export class PerformanceRecorder {
   enabled = false;
@@ -122,6 +123,16 @@ export class PerformanceRecorder {
     this.status = "Waiting for gameplay and assets";
   }
   cancel(reason = "Cancelled") { this.pending = null; this.status = reason; }
+  stop(context: ExperimentContext, now = performance.now()) {
+    const p = this.pending;
+    if (!p) return;
+    if (p.startMs === null) { this.cancel("Not saved: stopped before sampling"); return; }
+    const elapsed = now - p.startMs;
+    if (elapsed < 1000) { this.cancel("Not saved: record at least 1 second"); return; }
+    p.stoppedEarly = elapsed < p.durationMs;
+    p.durationMs = Math.min(p.durationMs, elapsed);
+    this.tick(context, now);
+  }
   tick(context: ExperimentContext, now = performance.now()) {
     const p = this.pending;
     if (!p) return;
@@ -159,7 +170,7 @@ export class PerformanceRecorder {
     for (const metric of METRICS) metrics[metric] = summarize(p.samples[metric] ?? []);
     const id = this.nextId++;
     if (p.baseline) this.baselineId = id;
-    this.runs.push({ id, label: p.label, baseline: p.baseline, startedAt: p.startedAt!,
+    this.runs.push({ id, label: p.label, baseline: p.baseline, startedAt: p.startedAt!, stoppedEarly: p.stoppedEarly ?? false,
       durationMs: p.durationMs, settings: { ...p.settings, endPlayerPose: context.settings.playerPose }, metrics,
       snapshotKiBps: p.snapshotBytes / 1024 / (p.durationMs / 1000), debugKiBps: p.debugBytes / 1024 / (p.durationMs / 1000),
       snapshotHz: p.snapshots / (p.durationMs / 1000), frameCount,
@@ -184,7 +195,7 @@ export function capturesCsv(runs: Capture[]) {
     return `"${s.replaceAll('"', '""')}"`;
   };
   const header = ["id", "label", "started_at", "is_baseline", "baseline_id", "delta_baseline_ms", "delta_previous_ms", "delta_baseline_percent",
-    "duration_ms", "snapshot_KiB_s", "debug_KiB_s", "snapshot_Hz", "frame_count", "frames_over_17.17ms",
+    "duration_ms", "stopped_early", "snapshot_KiB_s", "debug_KiB_s", "snapshot_Hz", "frame_count", "frames_over_17.17ms",
     ...METRICS.flatMap((m) => [`${m}_mean`, `${m}_p50`, `${m}_p95`, `${m}_p99`, `${m}_stddev`, `${m}_samples`]), "settings"];
   const rows = runs.map((r, index) => {
     const baseline = runs.find((b) => b.id === r.baselineId);
@@ -193,7 +204,7 @@ export function capturesCsv(runs: Capture[]) {
     return [r.id, r.label, r.startedAt, r.baseline, r.baselineId, delta,
       difference(r.metrics.frameMs?.mean, runs[index - 1]?.metrics.frameMs?.mean),
       delta !== null && baseMean ? 100 * delta / baseMean : null,
-      r.durationMs, r.snapshotKiBps, r.debugKiBps, r.snapshotHz, r.frameCount, r.slowFrames,
+      r.durationMs, r.stoppedEarly ?? false, r.snapshotKiBps, r.debugKiBps, r.snapshotHz, r.frameCount, r.slowFrames,
       ...METRICS.flatMap((m) => [r.metrics[m]?.mean, r.metrics[m]?.p50, r.metrics[m]?.p95,
         r.metrics[m]?.p99, r.metrics[m]?.stddev, r.metrics[m]?.count]), JSON.stringify(r.settings)];
   });

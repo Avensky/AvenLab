@@ -2,7 +2,6 @@ import { TabbedMenu, type MenuRow } from "../menus/TabbedMenu";
 import { useUIStore } from "../../store/uiStore";
 import { useWorldStore } from "../../store/worldStore";
 import { useNetworkStore } from "../../store/networkStore";
-import { DEFAULT_INTERPOLATION_DELAY_MS } from "../../hooks/usePhysicsInterpolator";
 import { useDebugViewStore } from "../../store/debugViewStore";
 import { DebugFlags, hasDebugFlag } from "../../store/tools/debugMasks";
 import { assetKey, chunkKey, useRenderSettingsStore, type VisualMode } from "../../store/renderSettingsStore";
@@ -11,7 +10,7 @@ import { exportPerformanceCaptures, startPerformanceCapture } from "../../perfor
 import { useCaptureSettingsStore } from "../../performance/captureSettingsStore";
 import { useVisualAlignmentStore } from "../../store/visualAlignmentStore";
 import { usePerformanceReadout } from "../../performance/usePerformanceReadout";
-import { cityQualityControl, cityPerformanceControl } from "../menus/cityQualityControl";
+import { cityQualityControl, cityViewDistanceControl, cityPerformanceControl, interpolationControl } from "../menus/cityQualityControl";
 
 const MODES: VisualMode[] = ["collider", "geometry", "glb", "hybrid", "hidden"];
 const DEBUG_OPTIONS = [
@@ -77,20 +76,22 @@ export function DebugMenu() {
     { id: "environment", label: "Environment", description: "Set a world default, override a chunk, or switch individual GLB assets. The list is populated from the server's selected map.", rows: [
       { id: "environment-default", label: "Environment default", value: settings.environmentMode.toUpperCase(), action: (dir) => settings.update({ environmentMode: step(MODES, settings.environmentMode, dir), chunkOverrides: {}, assetGlbs: {} }) },
       cityQualityControl(settings),
+      cityViewDistanceControl(settings),
       cityPerformanceControl(settings),
       { id: "opaque-city", label: "Opaque city materials (Original A/B)", value: settings.cityQuality !== "original" ? "City detail preset" : settings.opaqueCityMaterials ? "On" : "Off", disabled: settings.cityQuality !== "original", action: () => settings.update({ opaqueCityMaterials: !settings.opaqueCityMaterials }) },
       ...environmentRows,
     ], content: !map?.collider_chunks && <p className="mt-1 text-xs text-amber-300">Collider metadata is unavailable. Connect to the updated Rust backend to inspect city chunks.</p> },
     { id: "rendering", label: "Rendering", description: "These controls share the same settings as Display. Captures can help compare the cost of one effect at a time.", rows: [
-      { id: "interpolation", label: "Vehicle interpolation", value: debug.interpolationEnabled ? `On · ${DEFAULT_INTERPOLATION_DELAY_MS} ms` : "Off · latest snapshot", action: () => debug.toggleInterpolation() },
+      interpolationControl(debug),
       { id: "dpr", label: "Resolution scale", value: `${settings.dpr}×`, action: (dir) => settings.update({ dpr: step([0.5, 0.75, 1, 1.5, 2], settings.dpr, dir) }) },
       cityQualityControl(settings),
+      cityViewDistanceControl(settings),
       ...renderToggles,
       { id: "overlay", label: "Performance overlay", value: settings.overlay ? "On" : "Off", action: () => settings.update({ overlay: !settings.overlay }) },
     ] },
     { id: "captures", label: "Captures", description: "Start with a collider baseline. Captures resume gameplay, warm up for 3 seconds and record frame / network metrics. Repeat the same camera and route for useful comparisons.", rows: [
       overlayRow,
-      { id: "baseline-reset", label: "Reset to lowest-lag collider baseline", action: () => { recorder.cancel("Baseline reset"); settings.baseline(); } },
+      { id: "baseline-reset", label: "Reset to collider graphics baseline", action: () => { recorder.cancel("Baseline reset"); settings.baseline(); } },
       { id: "duration", label: "Capture length", value: `${duration}s + 3s warm-up`, action: (dir) => captureSettings.update({ seconds: step([5, 10, 20], duration, dir) }) },
       { id: "baseline", label: "Record baseline & resume", action: () => capture(true) },
       { id: "compare", label: "Record comparison & resume", action: () => capture(false) },

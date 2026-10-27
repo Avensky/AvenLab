@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { loadCaptureArchive, saveCaptureArchive } from '../src/performance/captureArchive.ts';
 import { summarize, difference, PerformanceRecorder, capturesCsv } from '../src/performance/measurements.ts';
 
 const context = (key = 'A', ready = true, reason = '') => ({ key, ready, reason, settings: { mode: key } });
@@ -89,4 +90,29 @@ test('CSV exports measured improvements as numeric negative deltas', () => {
   const csv = capturesCsv(recorder.runs);
   assert.ok(csv.includes('"-5"'));
   assert.ok(!csv.includes('"\'-5"'));
+});
+
+
+test('manual Stop saves a valid partial run with actual duration, rates and an early-stop flag',()=>{
+ const r=new PerformanceRecorder(),ctx=context();r.start('manual',true,10,ctx,0);r.tick(ctx,0);r.tick(ctx,3000);
+ for(let i=1;i<=120;i++){const now=3000+i*2000/120;r.record('frameMs',2000/120,now);r.packet('snapshot',1024,.1,now);if(i%6===0)r.tick(ctx,now);}
+ r.stop(ctx,5000);assert.equal(r.capturing,false);assert.equal(r.runs.length,1);
+ const run=r.runs[0];assert.equal(run.durationMs,2000);assert.equal(run.stoppedEarly,true);assert.equal(run.frameCount,120);assert.equal(run.snapshotHz,60);assert.equal(run.snapshotKiBps,60);assert.equal(run.frameSamplesMs.length,120);
+ const data=new Map(),storage={getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v),removeItem:k=>data.delete(k)};
+ saveCaptureArchive(storage,r.runs,r.baselineId);assert.equal(loadCaptureArchive(storage).runs[0].stoppedEarly,true);
+ assert.ok(capturesCsv(r.runs).includes('"stopped_early"'));
+});
+
+test('Stop during warmup or before one second does not export a misleading run',()=>{
+ const r=new PerformanceRecorder(),ctx=context();r.start('warmup',false,10,ctx,0);r.tick(ctx,0);r.stop(ctx,1000);assert.equal(r.runs.length,0);assert.equal(r.capturing,false);
+ r.start('too short',false,10,ctx,2000);r.tick(ctx,2000);r.tick(ctx,5000);r.stop(ctx,5500);assert.equal(r.runs.length,0);assert.match(r.status,/at least 1 second/);
+});
+
+test('manual Stop retains setting/readiness validation and rejects insufficient frame/snapshot data',()=>{
+ for(const mode of ['settings','readiness','no samples']){
+  const r=new PerformanceRecorder(),ctx=context();r.start(mode,false,10,ctx,0);r.tick(ctx,0);r.tick(ctx,3000);
+  for(let i=1;i<=120;i++){r.record('frameMs',16.667,3000+i*16);if(mode!=='no samples')r.packet('snapshot',1024,.1,3000+i*16);}
+  r.stop(mode==='settings'?{...ctx,key:'changed'}:mode==='readiness'?{...ctx,ready:false,reason:'snapshots stale'}:ctx,5000);
+  assert.equal(r.runs.length,0);assert.equal(r.capturing,false);assert.match(r.status,/Discarded/);
+ }
 });

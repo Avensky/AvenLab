@@ -14,6 +14,7 @@ import { createCityInstances, supportsCityInstancing } from "./cityInstances";
 import { prepareCityGpu } from "./prepareCityGpu";
 import { beginCityPreparation, setCityDetailCounts } from "./cityWorkQueue";
 import { cityBlocks, cityBlockLevels, cityBlockAsset, cityBlockName, cityBlockKey, CITY_REDUCED_ASSET } from "./cityBlocks";
+import { collectCityShadowFrusta } from "./cityShadows";
 
 // Drei attaches its shared Draco loader after extendLoader returns.
 const cityLoader = (loader: { dracoLoader?: { setWorkerLimit: (limit: number) => unknown } | null }) => {
@@ -31,21 +32,24 @@ export function CityStreaming({ map, settings }: { map: MapSnapshot; settings: R
   const camera = useThree(s => s.camera);
   const blocks = useMemo(() => cityBlocks(map), [map]);
   const [detail, setDetail] = useState(() => ({
-    chunks: detailedCityChunks(map, camera.position.x, camera.position.z, settings.cityQuality),
-    blocks: cityBlockLevels(blocks, camera.position.x, camera.position.z, settings.cityQuality),
+    chunks: detailedCityChunks(map, camera.position.x, camera.position.z, settings.cityQuality, [], undefined, settings.cityViewDistance),
+    blocks: cityBlockLevels(blocks, camera.position.x, camera.position.z, settings.cityQuality, {}, settings.cityViewDistance),
   }));
   const previous = useRef(detail), lastCheck = useRef(-Infinity);
+  const previousDistance = useRef(settings.cityViewDistance);
   const direction = useMemo(() => new Vector3(), []);
   const [ready, setReady] = useState<Record<string, boolean>>({});
   const onReady = useCallback((id: string, value: boolean) => setReady(current => current[id] === value ? current : { ...current, [id]: value }), []);
   useFrame(({ clock }) => {
-    if (clock.elapsedTime - lastCheck.current < 0.1) return; lastCheck.current = clock.elapsedTime;
+    const rangeChanged = previousDistance.current !== settings.cityViewDistance;
+    if (!rangeChanged && clock.elapsedTime - lastCheck.current < 0.1) return;
+    lastCheck.current = clock.elapsedTime; previousDistance.current = settings.cityViewDistance;
     const me = useNetworkStore.getState().getMe();
     const position = !useGameStore.getState().editor && me ? me.position : [camera.position.x, camera.position.y, camera.position.z];
     camera.getWorldDirection(direction);
     const next = {
-      chunks: detailedCityChunks(map, position[0], position[2], settings.cityQuality, previous.current.chunks, [direction.x, direction.z]),
-      blocks: cityBlockLevels(blocks, position[0], position[2], settings.cityQuality, previous.current.blocks),
+      chunks: detailedCityChunks(map, position[0], position[2], settings.cityQuality, rangeChanged ? [] : previous.current.chunks, [direction.x, direction.z], settings.cityViewDistance),
+      blocks: cityBlockLevels(blocks, position[0], position[2], settings.cityQuality, rangeChanged ? {} : previous.current.blocks, settings.cityViewDistance),
     };
     if (JSON.stringify(next) !== JSON.stringify(previous.current)) { previous.current = next; setDetail(next); }
   }, -2);
@@ -113,9 +117,12 @@ function PreparedCityAsset({ source, reducedSource, visual, placements, capacity
   const [asset, setAsset] = useState<ReturnType<typeof createCityInstances>>(null);
   const supported = useMemo(() => supportsCityInstancing(source), [source]);
   const frustum = useMemo(() => new Frustum(), []), projection = useMemo(() => new Matrix4(), []);
+  const shadowFrusta = useMemo(() => [] as Frustum[], []);
   useEffect(() => {
     const abort = new AbortController(), progress = beginCityPreparation(visual.id);
-    const prepared = createCityInstances(source, capacity, fast, reducedSource); let completed = false, failed = false;
+    const prepared = createCityInstances(source, capacity, fast, reducedSource, {
+      multiDraw: gl.extensions.has("WEBGL_multi_draw"), castShadow: visual.id !== "roads",
+    }); let completed = false, failed = false;
     onReady(visual.id, false);
     if (!prepared) { onReady(visual.id, true); progress.end(); return () => onReady(visual.id, false); }
     void prepareCityGpu(prepared, gl, get().camera, scene, abort.signal, progress.phase, shadows).then(() => {
@@ -127,7 +134,8 @@ function PreparedCityAsset({ source, reducedSource, visual, placements, capacity
   useFrame(() => {
     if (!asset) return;
     camera.updateMatrixWorld(); projection.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); frustum.setFromProjectionMatrix(projection);
-    asset.group.updateWorldMatrix(true, false); asset.update(placements, frustum, shadows);
+    asset.group.updateWorldMatrix(true, false);
+    asset.update(placements, frustum, shadows, shadows ? collectCityShadowFrusta(scene, shadowFrusta) : undefined);
   }, 0);
   if (!supported) return <>{placements.map(({ chunk, visual }) => <group key={cityChunkKey(chunk)} position={chunk.origin}>
     <CityChunk path={visual.asset} position={visual.position} quaternion={visual.rotation} scale={visual.scale} />

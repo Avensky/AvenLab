@@ -7,6 +7,7 @@ import { VehicleFlags, PlayerFlags } from "../store/tools/inputMasks";
 import { canDrive, canNavigateMenu, isTypingTarget, routeMenuAction } from "../store/tools/inputRouting";
 import { useRenderSettingsStore } from "../store/renderSettingsStore";
 import { togglePerformanceCapture } from "../performance/captureActions";
+import { minimizePerformanceOverlay, performanceOverlayHasFocus, togglePerformanceDetails, usePerformanceOverlayStore } from "../performance/performanceOverlayStore";
 
 function axis(value = 0, deadzone = 0.12) {
   return Number.isFinite(value) && Math.abs(value) >= deadzone ? Math.max(-1, Math.min(1, value)) : 0;
@@ -16,7 +17,7 @@ function trigger(value = 0) {
 }
 function menuNeutral(pad: Gamepad) {
   return pad.axes.slice(0, 4).every(value => axis(value, 0.5) === 0)
-    && [0, 1, 4, 5, 9, 12, 13, 14, 15].every(index => !pad.buttons[index]?.pressed);
+    && [0, 1, 4, 5, 8, 9, 12, 13, 14, 15].every(index => !pad.buttons[index]?.pressed);
 }
 
 export function GameController() {
@@ -51,6 +52,9 @@ export function GameController() {
       if (!canDrive()) release();
     };
     const unsubscribeUI = useUIStore.subscribe(releaseIfBlocked);
+    const unsubscribePerformance = usePerformanceOverlayStore.subscribe((state, previous) => {
+      if (state.focused !== previous.focused) { resetMenuInput(); release(); }
+    });
     const unsubscribeCAN = useCanDataStore.subscribe((state, previous) => {
       if (state.commandOpen !== previous.commandOpen) resetMenuInput();
       if (state.commandOpen && !previous.commandOpen) release();
@@ -71,8 +75,18 @@ export function GameController() {
       const edges = buttons.map((_, index) => pressed(index) && !previousButtons[index]);
       // Record every button every poll, including while menus/focus block driving.
       previousButtons = buttons;
-      if (!focused || document.visibilityState === "hidden" || isTypingTarget(document.activeElement)) { release(); return; }
+      if (!focused || document.visibilityState === "hidden") { release(); return; }
       if (useCanDataStore.getState().commandOpen) { release(); return; }
+      const ui = useUIStore.getState();
+      const typing = isTypingTarget(document.activeElement);
+      const recorderText = typing && document.activeElement instanceof HTMLElement && Boolean(document.activeElement.closest("[data-performance-overlay]"));
+      if (edges[8] && ui.screen === "sandbox" && ui.overlay === null && !ui.isModeLoading
+        && (!typing || performanceOverlayHasFocus() || recorderText)) { release(); togglePerformanceDetails(); return; }
+      if (typing) {
+        release();
+        if ((performanceOverlayHasFocus() || recorderText) && edges[1]) minimizePerformanceOverlay();
+        return;
+      }
       if (edges[9]) { release(); useUIStore.getState().togglePauseMenu(); return; }
       if (!canDrive()) {
         release();
@@ -119,7 +133,6 @@ export function GameController() {
       if (edges[12]) store.toggleVehicleFlag(VehicleFlags.HAZARDS);
       if (edges[14]) store.toggleVehicleFlag(VehicleFlags.BLINKER_LEFT);
       if (edges[15]) store.toggleVehicleFlag(VehicleFlags.BLINKER_RIGHT);
-      if (edges[8]) store.togglePlayerFlag(PlayerFlags.CANDUMP);
       if (edges[11]) store.togglePlayerFlag(PlayerFlags.DYNO);
       if (edges[13]) store.togglePlayerFlag(PlayerFlags.RADIO);
       if (edges[10]) {
@@ -142,7 +155,7 @@ export function GameController() {
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisibility);
       document.removeEventListener("focusin", onFocusIn);
-      unsubscribeUI(); unsubscribeCAN(); release();
+      unsubscribeUI(); unsubscribeCAN(); unsubscribePerformance(); release();
     };
   }, []);
   return null;

@@ -1,7 +1,9 @@
 import { Box3, Frustum, Group, InstancedMesh, Material, Matrix4, Mesh, MeshPhysicalMaterial, Quaternion, Texture, Vector3, type Object3D } from "three";
 import type { CityPlacement } from "./cityLod.ts";
+import { cityDrawBatchJobs, updateCityDrawPart, type CityDrawPart, type CityRenderMesh } from "./cityDrawBatches.ts";
 
-type Batch = { mesh: InstancedMesh; reduced?: InstancedMesh; block?: string; local: Matrix4; bounds: Box3; matrices: Matrix4[]; boxes: Box3[]; visibleIndices: number[]; reducedIndices: number[] };
+type Batch = { mesh: InstancedMesh; reduced?: InstancedMesh; fullDraw: CityDrawPart; reducedDraw?: CityDrawPart; block?: string; local: Matrix4; bounds: Box3; matrices: Matrix4[]; boxes: Box3[]; visibleIndices: number[]; reducedIndices: number[] };
+type CityInstanceOptions = { multiDraw?: boolean; castShadow?: boolean };
 
 export function supportsCityInstancing(source: Object3D) {
   let supported = true;
@@ -15,7 +17,7 @@ export function supportsCityInstancing(source: Object3D) {
 
 // Same geometry/texture data as the GLB. Repeated tiles become instances instead
 // of thousands of cloned React/Three objects. Unsupported animated rigs fall back.
-export function createCityInstances(source: Object3D, capacity: number, fastGlass: boolean, reducedSource?: Object3D) {
+export function createCityInstances(source: Object3D, capacity: number, fastGlass: boolean, reducedSource?: Object3D, options: CityInstanceOptions = {}) {
   const objects: Mesh[] = []; let unsupported = false;
   source.updateWorldMatrix(true, true);
   source.traverseVisible(object => {
@@ -27,7 +29,7 @@ export function createCityInstances(source: Object3D, capacity: number, fastGlas
   const reducedObjects = new Map<string, Mesh>();
   reducedSource?.traverseVisible(object => { if (object instanceof Mesh) reducedObjects.set(object.name, object); });
   const group = new Group(); group.name = "instanced-city-asset";
-  const materials = new Map<Material, Material>(), batches: Batch[] = [], textures = new Set<Texture>(), meshes: InstancedMesh[] = [];
+  const materials = new Map<Material, Material>(), batches: Batch[] = [], textures = new Set<Texture>(), meshes: CityRenderMesh[] = [];
   const materialFor = (source: Material) => {
     const cached = materials.get(source); if (cached) return cached;
     if (!(source instanceof MeshPhysicalMaterial)) return source;
@@ -56,17 +58,42 @@ export function createCityInstances(source: Object3D, capacity: number, fastGlas
       reduced.renderOrder = object.renderOrder; reduced.layers.mask = object.layers.mask; group.add(reduced); meshes.push(reduced);
     }
     if (!object.geometry.boundingBox) object.geometry.computeBoundingBox();
-    batches.push({ mesh, reduced, block, local: object.matrixWorld.clone(), bounds: object.geometry.boundingBox!.clone(), matrices: [], boxes: [], visibleIndices: [], reducedIndices: [] });
+    const castsShadow = options.castShadow !== false && [material].flat().some(slot => !slot.transparent && (!(slot instanceof MeshPhysicalMaterial) || slot.transmission === 0));
+    mesh.castShadow = castsShadow;
+    batches.push({ mesh, reduced, fullDraw: { mesh, reduced: false, castsShadow }, reducedDraw: reduced ? { mesh: reduced, reduced: true, castsShadow: false } : undefined,
+      block, local: object.matrixWorld.clone(), bounds: object.geometry.boundingBox!.clone(), matrices: [], boxes: [], visibleIndices: [], reducedIndices: [] });
     group.add(mesh); meshes.push(mesh);
   };
-  let placements: readonly CityPlacement[] | null = null;
+  const prepareDrawBatches = () => {
+    if (!options.multiDraw) return [];
+    const parts = batches.flatMap(batch => batch.reducedDraw ? [batch.fullDraw, batch.reducedDraw] : [batch.fullDraw]);
+    return cityDrawBatchJobs(parts, Math.max(1, capacity), mesh => {
+      for (const part of parts) if (part.binding?.mesh === mesh) {
+        group.remove(part.mesh); meshes.splice(meshes.indexOf(part.mesh), 1);
+      }
+      group.add(mesh); meshes.push(mesh);
+    });
+  };
+  // Detail-level dictionaries change as the player moves. The authored city is
+  // stationary: compare transform values, not the identity of a React plan array.
+  const placementTransforms: number[][] = [];
+  const stats = { transformRebuilds: 0 };
   const world = new Matrix4(), visual = new Matrix4(), rotation = new Quaternion(), position = new Vector3(), scale = new Vector3(), box = new Box3();
   const indices: number[] = [], reducedIndices: number[] = [];
-  const update = (next: readonly CityPlacement[], frustum: Frustum, shadows: boolean) => {
+  const update = (next: readonly CityPlacement[], frustum: Frustum, shadows: boolean, shadowFrusta?: readonly Frustum[]) => {
     if (next.length > capacity) throw new Error("City instance capacity exceeded");
-    const moved = next !== placements;
+    let moved = placementTransforms.length !== next.length;
+    next.forEach(({ chunk, visual: asset }, i) => {
+      const values = placementTransforms[i] ??= [];
+      let index = 0;
+      for (const tuple of [chunk.origin, asset.position, asset.rotation, asset.scale]) for (const value of tuple) {
+        if (values[index] !== value) moved = true;
+        values[index++] = value;
+      }
+    });
+    placementTransforms.length = next.length;
     if (moved) {
-      placements = next;
+      stats.transformRebuilds++;
       for (const batch of batches) {
         batch.matrices = []; batch.boxes = [];
         for (const { chunk, visual: asset } of next) {
@@ -88,34 +115,36 @@ export function createCityInstances(source: Object3D, capacity: number, fastGlas
           if (frustum.intersectsBox(box)) reducedIndices.push(index);
           return;
         }
-        // Shadow casters outside the main view still matter to the shadow pass.
-        if (shadows || frustum.intersectsBox(box)) indices.push(index);
+        // Roads/glass receive light without casting opaque slabs. Offscreen
+        // buildings are retained only if a live light can see their bounds.
+        const casts = shadows && batch.fullDraw.castsShadow;
+        if (frustum.intersectsBox(box) || (casts && (!shadowFrusta || shadowFrusta.some(light => light.intersectsBox(box))))) indices.push(index);
       });
       const visible = indices.length;
       const changed = moved || visible !== batch.visibleIndices.length || indices.some((index, i) => index !== batch.visibleIndices[i]);
       if (changed) {
-        indices.forEach((index, i) => batch.mesh.setMatrixAt(i, batch.matrices[index]));
+        updateCityDrawPart(batch.fullDraw, indices, batch.matrices, true);
         batch.visibleIndices = [...indices];
-        if (visible) batch.mesh.instanceMatrix.needsUpdate = true;
       }
       batch.mesh.count = visible; batch.mesh.visible = visible > 0;
-      batch.mesh.castShadow = shadows; batch.mesh.receiveShadow = shadows;
+      const high = batch.fullDraw.binding?.mesh ?? batch.mesh;
+      high.castShadow = shadows && batch.fullDraw.castsShadow; high.receiveShadow = shadows;
       count += visible;
       if (batch.reduced) {
         const changed = moved || reducedIndices.length !== batch.reducedIndices.length || reducedIndices.some((index, i) => index !== batch.reducedIndices[i]);
         if (changed) {
-          reducedIndices.forEach((index, i) => batch.reduced!.setMatrixAt(i, batch.matrices[index]));
+          updateCityDrawPart(batch.reducedDraw!, reducedIndices, batch.matrices, true);
           batch.reducedIndices = [...reducedIndices];
-          if (reducedIndices.length) batch.reduced.instanceMatrix.needsUpdate = true;
         }
         batch.reduced.count = reducedIndices.length; batch.reduced.visible = reducedIndices.length > 0;
         // Distant models receive shadows but do not expand the shadow-caster set.
-        batch.reduced.castShadow = false; batch.reduced.receiveShadow = shadows;
+        const low = batch.reducedDraw!.binding?.mesh ?? batch.reduced;
+        low.castShadow = false; low.receiveShadow = shadows;
         count += reducedIndices.length;
       }
     }
     return count;
   };
-  return { group, batches, objects, textures, meshes, prepareMesh, update,
-    dispose: () => { meshes.forEach(mesh => mesh.dispose()); materials.forEach(material => material.dispose()); } };
+  return { group, batches, objects, textures, meshes, stats, prepareMesh, prepareDrawBatches, update,
+    dispose: () => { new Set([...meshes, ...batches.flatMap(batch => batch.reduced ? [batch.mesh, batch.reduced] : [batch.mesh])]).forEach(mesh => mesh.dispose()); materials.forEach(material => material.dispose()); } };
 }

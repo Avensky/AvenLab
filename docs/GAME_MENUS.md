@@ -74,11 +74,19 @@ Display/input/accessibility preferences and favorites are stored in browser loca
 | Shift+H while driving | Toggle hazards |
 | F2 in Sandbox | Open/close Debugger, returning to driving or Pause as appropriate |
 | F3 in Sandbox | Show/hide the latency overlay |
-| F8 while driving | Start/cancel a performance capture |
-| A / Cross while driving with latency overlay visible | Start/cancel a performance capture |
+| Shift+F3 / View or Select in Sandbox | Show/focus the recorder inspector, or minimize it |
+| F8 in Sandbox without a modal menu | Start/stop a performance capture |
+| A / Cross while driving with latency overlay visible | Start/stop a performance capture |
 | Mouse / touch | Select tabs and activate the actual clicked row |
 
-The latency readout also has a clickable Close button. F2/F3 ignore key repeats, modified keys, text editing, loading, terminal input and non-Sandbox screens.
+The latency readout starts as a compact Name / Start–Stop / Export row with Open
+and Close buttons. Open expands Position, Network / Physics and City Assets.
+View/Select gives the inspector controller focus; D-pad navigates, LB/RB switches
+tabs and B minimizes. Starting a capture releases focus for driving. View/Select
+replaces the old controller CAN-dump action; keyboard C retains CAN dump.
+Plain F2/F3 ignore key repeats, modified keys, text editing, loading, terminal
+input and non-Sandbox screens; Shift+F3 is the explicit inspector shortcut.
+See `performance-recording.md` for partial Stop and export behavior.
 
 Focused text inputs retain editing keys. Native Tab navigation and visible focus outlines remain available. Opening menus releases held driving inputs; the gamepad must return to neutral before driving resumes. The online simulation continues while a menu is open.
 

@@ -1,12 +1,13 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { useWorldStore, type RenderMode } from "./worldStore";
-import { useDebugViewStore } from "./debugViewStore";
 import type { CityQuality } from "../world/cityLod";
+import { isCityViewDistance, type CityViewDistance } from "../world/cityViewDistance";
 
 export type VisualMode = RenderMode | "hidden";
 export type RenderSettings = {
   cityQuality: CityQuality;
+  cityViewDistance: CityViewDistance;
   environmentMode: VisualMode;
   vehicleOverrides: Record<string, VisualMode>;
   chunkOverrides: Record<string, VisualMode>;
@@ -26,7 +27,7 @@ export type RenderSettings = {
 // Driving starts with vehicle GLBs and a collider city. The collider-only
 // benchmark remains an explicit preset in the debug menu.
 export const BASELINE_SETTINGS: RenderSettings = {
-  cityQuality: "fast",
+  cityQuality: "fast", cityViewDistance: "auto",
   environmentMode: "collider", vehicleOverrides: {}, chunkOverrides: {}, assetGlbs: {},
   dpr: 1, shadows: false, reflections: false, stars: false, fog: false,
   vehicleLights: false, hud: false, overlay: false, autoVehicleAlignment: true, opaqueCityMaterials: false,
@@ -53,7 +54,7 @@ export const useRenderSettingsStore = create<State>()(persist((set) => ({
   cityPerformancePreset: () => {
     useWorldStore.getState().setMode("glb");
     useWorldStore.getState().setDebugMask(0);
-    set({ cityQuality: "fast", environmentMode: "glb", chunkOverrides: {}, assetGlbs: {}, vehicleOverrides: {},
+    set({ cityQuality: "fast", cityViewDistance: "auto", environmentMode: "glb", chunkOverrides: {}, assetGlbs: {}, vehicleOverrides: {},
       dpr: 1, shadows: false, reflections: false, stars: false, fog: true, vehicleLights: false });
   },
   startSandbox: () => {
@@ -65,19 +66,20 @@ export const useRenderSettingsStore = create<State>()(persist((set) => ({
   baseline: () => {
     useWorldStore.getState().setMode("collider");
     useWorldStore.getState().setDebugMask(0);
-    useDebugViewStore.getState().setInterpolationEnabled(false);
+    // A graphics comparison must not overwrite the driver's smoothing choice.
     set({ ...BASELINE_SETTINGS, overlay: true });
   },
 }), {
   name: "avenlab-display-v1", version: 1,
   storage: createJSONStorage(() => localStorage),
-  partialize: (state) => ({ cityQuality: state.cityQuality, dpr: state.dpr, shadows: state.shadows, reflections: state.reflections,
+  partialize: (state) => ({ cityQuality: state.cityQuality, cityViewDistance: state.cityViewDistance, dpr: state.dpr, shadows: state.shadows, reflections: state.reflections,
     stars: state.stars, fog: state.fog, vehicleLights: state.vehicleLights, hud: state.hud,
     overlay: state.overlay, autoVehicleAlignment: state.autoVehicleAlignment, opaqueCityMaterials: state.opaqueCityMaterials, environmentMode: state.environmentMode }),
   merge: (persisted, current) => {
     const data = persisted && typeof persisted === "object" ? persisted as Partial<RenderSettings> : {};
     const merged = { ...current };
     if (data.cityQuality && ["fast", "balanced", "original"].includes(data.cityQuality)) merged.cityQuality = data.cityQuality;
+    if (isCityViewDistance(data.cityViewDistance)) merged.cityViewDistance = data.cityViewDistance;
     for (const key of ["shadows", "reflections", "stars", "fog", "vehicleLights", "hud", "overlay", "autoVehicleAlignment", "opaqueCityMaterials"] as const) {
       if (typeof data[key] === "boolean") merged[key] = data[key];
     }

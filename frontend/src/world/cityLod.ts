@@ -1,6 +1,7 @@
 import type { LoadedChunkInstance, MapSnapshot, VisualAsset } from "../store/worldStore";
 import type { VisualMode } from "../store/renderSettingsStore";
 import type { CityBlockLevel } from "./cityBlocks";
+import { resolveCityViewDistance, type CityViewDistance } from "./cityViewDistance.ts";
 
 export type CityQuality = "fast" | "balanced" | "original";
 export const CITY_QUALITIES: readonly CityQuality[] = ["fast", "balanced", "original"];
@@ -12,12 +13,12 @@ export type CityPlacement = { chunk: LoadedChunkInstance; visual: VisualAsset; b
 // Horizontal distance keeps tall towers from forcing every tile to full detail.
 // Keep the local tile, then spend the remaining slots toward the camera's view.
 // Otherwise the short side of a rectangular tile crowds out the next street.
-export function detailedCityChunks(map: MapSnapshot, x: number, z: number, quality: CityQuality, previous: readonly string[] = [], forward?: readonly [number, number]) {
+export function detailedCityChunks(map: MapSnapshot, x: number, z: number, quality: CityQuality, previous: readonly string[] = [], forward?: readonly [number, number], viewDistance: CityViewDistance = "auto") {
   if (quality === "original" || !map.collider_chunks) return map.chunks.map(cityChunkKey);
   const span = Math.max(1, ...map.cell);
-  const distance = span * (quality === "fast" ? 1.25 : 2);
+  const distance = viewDistance === "auto" ? span * (quality === "fast" ? 1.25 : 2) : resolveCityViewDistance(quality, viewDistance);
   const lookAhead = span * (quality === "fast" ? 0.9 : 1.4);
-  const limit = quality === "fast" ? 2 : 4;
+  const limit = viewDistance === "auto" ? quality === "fast" ? 2 : 4 : Infinity;
   const length = forward ? Math.hypot(...forward) : 0;
   const looking = Number.isFinite(length) && length > 0.001;
   const focusX = looking ? x + forward![0] / length * lookAhead : x;

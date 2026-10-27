@@ -9,10 +9,13 @@ import { useVisualAlignmentStore } from "../store/visualAlignmentStore";
 import type { ExperimentContext } from "./measurements";
 import { playerLocation } from "./location";
 import { cityStreamingStats } from "../world/cityWorkQueue";
+import { resolveCityViewDistance } from "../world/cityViewDistance";
 
 export function experimentContext(): ExperimentContext {
   const s = useRenderSettingsStore.getState();
-  const render = { cityQuality: s.cityQuality, environmentMode: s.environmentMode, vehicleOverrides: s.vehicleOverrides, chunkOverrides: s.chunkOverrides, assetGlbs: s.assetGlbs,
+  const render = { cityQuality: s.cityQuality, cityViewDistance: s.cityViewDistance,
+    cityViewDistanceMeters: s.cityQuality === "original" ? null : resolveCityViewDistance(s.cityQuality, s.cityViewDistance),
+    environmentMode: s.environmentMode, vehicleOverrides: s.vehicleOverrides, chunkOverrides: s.chunkOverrides, assetGlbs: s.assetGlbs,
     dpr: s.dpr, shadows: s.shadows, reflections: s.reflections, stars: s.stars, fog: s.fog, vehicleLights: s.vehicleLights, hud: s.hud, overlay: s.overlay, autoVehicleAlignment: s.autoVehicleAlignment, opaqueCityMaterials: s.opaqueCityMaterials };
   const network = useNetworkStore.getState();
   const world = useWorldStore.getState();

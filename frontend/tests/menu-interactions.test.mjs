@@ -360,6 +360,26 @@ test('mouse, keyboard and polled gamepad navigate the real menus and preferences
       const savedDpr = rendering.getState().dpr;
       await act(async () => rendering.getState().startSandbox()); assert.equal(rendering.getState().dpr, savedDpr);
     });
+    await t.test('view distance and interpolation share saved mouse, keyboard and controller controls with Debugger', async () => {
+      const {useDebugViewStore:debug}=await load('store/debugViewStore.ts');
+      await act(async()=>rendering.getState().update({cityQuality:'fast',cityViewDistance:'auto'}));await reset('settings');
+      await click(tab('Display'));await act(async()=>row('city-view-distance').focus());
+      await click(row('city-view-distance'));assert.equal(rendering.getState().cityViewDistance,250);
+      await key('ArrowRight');assert.equal(rendering.getState().cityViewDistance,500);
+      await button(15);assert.equal(rendering.getState().cityViewDistance,750);
+      await button(0);assert.equal(rendering.getState().cityViewDistance,1000);
+      assert.equal(JSON.parse(localStorage.getItem('avenlab-display-v1')).state.cityViewDistance,1000);
+      await key('ArrowRight');assert.equal(rendering.getState().cityViewDistance,'auto');
+      await key('ArrowLeft');assert.equal(rendering.getState().cityViewDistance,1000);
+      assert.match(row('interpolation').textContent,/On.*50 ms/);await click(row('interpolation'));assert.equal(debug.getState().interpolationEnabled,false);
+      await reset('sandbox','debug_menu');await click(tab('Rendering'));
+      assert.match(row('interpolation').textContent,/Off/);assert.match(row('city-view-distance').textContent,/1000 m/);
+      await click(row('interpolation'));assert.equal(debug.getState().interpolationEnabled,true);
+      await click(row('city-view-distance'));assert.equal(rendering.getState().cityViewDistance,'auto');
+      await act(async()=>rendering.getState().update({cityQuality:'original'}));
+      assert.equal(row('city-view-distance').disabled,true);assert.match(row('city-view-distance').textContent,/All loaded/);
+      await act(async()=>rendering.getState().update({cityQuality:'fast'}));
+    });
     await t.test('remapped throttle and tuned steering reach driving input and menus release both', async () => {
       await reset('sandbox');
       await act(async () => new Promise(resolve => setTimeout(resolve, 40)));

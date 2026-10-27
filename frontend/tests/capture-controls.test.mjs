@@ -31,9 +31,11 @@ test('overlay recording, keyboard/controller shortcuts, countdown and labeled do
     const load = path => server.ssrLoadModule(`/src/${path}`);
     const { useUIStore: ui } = await load('store/uiStore.ts');
     const { useNetworkStore: network } = await load('store/networkStore.ts');
+    const { useInputStore: inputs } = await load('store/inputStore.ts');
     const { useWorldStore: world } = await load('store/worldStore.ts');
     const { useRenderSettingsStore: rendering } = await load('store/renderSettingsStore.ts');
     const { useCaptureSettingsStore: captureSettings } = await load('performance/captureSettingsStore.ts');
+    const { usePerformanceOverlayStore: panel } = await load('performance/performanceOverlayStore.ts');
     const { performanceRecorder: recorder } = await load('performance/measurements.ts');
     const { experimentContext } = await load('performance/context.ts');
     const { loadCaptureArchive } = await load('performance/captureArchive.ts');
@@ -53,14 +55,21 @@ test('overlay recording, keyboard/controller shortcuts, countdown and labeled do
     await act(async () => { root.render(h(Fragment, null, h(PerformanceOverlay), h(Keyboard), h(GameController))); });
     const wait = async (ms = 280) => act(async () => new Promise(resolve => setTimeout(resolve, ms)));
     const click = async label => act(async () => { const element = [...document.querySelectorAll('button')].find(e => e.textContent === label); assert.ok(element, label); element.click(); });
+    const control = async label => act(async () => { const element=document.querySelector(`[aria-label="${label}"]`);assert.ok(element,label);element.click(); });
+    const pressPad = async index => {
+      await act(async()=>{pad.buttons[index]={pressed:true,value:1};await new Promise(resolve=>setTimeout(resolve,70));});
+      await act(async()=>{pad.buttons[index]={pressed:false,value:0};await new Promise(resolve=>setTimeout(resolve,70));});
+    };
     const key = async (repeat = false, target = document.body) => act(async () => target.dispatchEvent(new dom.window.KeyboardEvent('keydown', { code: 'F8', key: 'F8', repeat, bubbles: true, cancelable: true })));
     const button = async pressed => { await act(async () => { pad.buttons[0] = { pressed, value: pressed ? 1 : 0 }; await new Promise(resolve => setTimeout(resolve, 60)); }); };
     await wait(60);
 
     await t.test('click starts a labeled capture and shows authoritative world/local coordinates', async () => {
+      assert.equal(document.querySelector('[role="tabpanel"]'),null,'starts with the compact recorder');
+      await control('Open diagnostics');await wait();
       assert.ok(document.body.textContent.includes('X 220.000 · Y 1.250 · Z -60.000'));
       assert.ok(document.body.textContent.includes('LOCAL X 20.000 / Z -60.000'));
-      await click('RECORD');
+      await control('Start recording');
       assert.equal(recorder.capturing, true);
       recorder.tick(experimentContext(), clock);
       clock += 1500; snapshot(); await wait();
@@ -81,6 +90,7 @@ test('overlay recording, keyboard/controller shortcuts, countdown and labeled do
     });
 
     await t.test('JSON download carries the label, frame samples, route and active centered asset URL', async () => {
+      await control('Export captures');
       await click('EXPORT JSON');
       assert.equal(downloads.length, 1);
       assert.match(downloads[0].filename, /^avenlab-performance-city-original-full-map-.*\.json$/);
@@ -89,7 +99,14 @@ test('overlay recording, keyboard/controller shortcuts, countdown and labeled do
       assert.ok(payload.runs[0].timeline.length > 20);
       assert.deepEqual(payload.runs[0].startLocation.position, [220, 1.25, -60]);
       assert.match(payload.runs[0].settings.visuals[0].asset, /blocks_centered\.glb$/);
+      assert.equal(payload.runs[0].settings.cityViewDistance,'auto');assert.equal(payload.runs[0].settings.cityViewDistanceMeters,500);
       URL.revokeObjectURL(downloads[0].href);
+    });
+    await t.test('view-distance changes are included in capture metadata and invalidate a recording context', async () => {
+      const before=experimentContext();
+      await act(async()=>rendering.getState().update({cityViewDistance:1000}));
+      const after=experimentContext();assert.equal(after.settings.cityViewDistance,1000);assert.equal(after.settings.cityViewDistanceMeters,1000);assert.notEqual(after.key,before.key);
+      await act(async()=>rendering.getState().update({cityViewDistance:'auto'}));
     });
 
     await t.test('F8 starts/cancels once per press, and typing in the label cannot trigger capture', async () => {
@@ -118,6 +135,7 @@ test('overlay recording, keyboard/controller shortcuts, countdown and labeled do
       await act(async () => { ui.setState({ overlay: null }); rendering.getState().update({ overlay: true }); });
       let copied = '';
       Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async value => { copied = value; } } });
+      await control('Open diagnostics');await wait();
       await click('COPY SPAWN');
       assert.deepEqual(JSON.parse(copied), { chunk: [1, 0], local: [20, -60], yaw: 0 });
       const press = async code => act(async () => document.body.dispatchEvent(new dom.window.KeyboardEvent('keydown', { code, key: code, bubbles: true, cancelable: true })));
@@ -154,6 +172,44 @@ test('overlay recording, keyboard/controller shortcuts, countdown and labeled do
       assert.equal(recorder.capturing, false, 'holding menu A must not start a capture after resuming');
       await button(false);
       assert.equal(recorder.runs.length, captures);
+    });
+    await t.test('compact mode skips invisible metric summaries and expanded mode restores live details',async()=>{
+      await act(async()=>panel.getState().minimize());
+      const live=recorder.live.bind(recorder);let reads=0;recorder.live=(...args)=>{reads++;return live(...args);};
+      try{
+        await wait(550);assert.equal(reads,0);assert.equal(document.querySelector('[role="tabpanel"]'),null);
+        await control('Open diagnostics');await wait(300);assert.ok(reads>0);assert.match(document.body.textContent,/PLAYER POSITION/);
+        await control('Minimize diagnostics');assert.equal(document.querySelector('[role="tabpanel"]'),null);
+      }finally{recorder.live=live;}
+    });
+    await t.test('View/Select owns recorder navigation, neutral-gates held sticks, and B returns to driving without handbrake',async()=>{
+      const playerMask=inputs.getState().input.playerMask;
+      pad.axes[0]=.8;await pressPad(8);assert.equal(panel.getState().focused,true);assert.equal(panel.getState().expanded,true);
+      await wait(300);assert.equal(panel.getState().tab,'position');assert.equal(inputs.getState().input.playerMask,playerMask,'View must not toggle CAN dump');
+      pad.axes[0]=0;await wait(60);await pressPad(5);assert.equal(panel.getState().tab,'network');await pressPad(5);assert.equal(panel.getState().tab,'assets');
+      assert.match(document.body.textContent,/500 M/);await pressPad(4);assert.equal(panel.getState().tab,'network');
+      await act(async()=>{pad.buttons[1]={pressed:true,value:1};await new Promise(resolve=>setTimeout(resolve,80));});
+      assert.equal(panel.getState().expanded,false);assert.equal((await load('store/inputStore.ts')).useInputStore.getState().input.handbrake,0);
+      await act(async()=>{pad.buttons[1]={pressed:false,value:0};await new Promise(resolve=>setTimeout(resolve,60));});
+    });
+    await t.test('a fresh controller A starts once from the inspector and restores compact driving controls',async()=>{
+      await pressPad(8);assert.equal(panel.getState().focused,true);
+      await button(true);assert.equal(recorder.capturing,true);assert.equal(panel.getState().focused,false);assert.equal(panel.getState().expanded,false);
+      await wait(300);assert.equal(recorder.capturing,true,'holding A cannot immediately stop');
+      await button(false);await button(true);assert.equal(recorder.capturing,false,'a second press stops the warm-up');await button(false);
+    });
+    await t.test('controller Export opens a format picker without exporting until a fresh confirmation',async()=>{
+      const count=downloads.length;await pressPad(8);await pressPad(13);assert.equal(document.activeElement.dataset.performanceControl,'export');
+      await pressPad(0);assert.equal(document.activeElement.dataset.performanceControl,'export-csv');assert.equal(downloads.length,count);
+      await pressPad(0);assert.equal(downloads.length,count+1);assert.match(downloads.at(-1).filename,/\.csv$/);
+      await pressPad(1);assert.equal(panel.getState().focused,false);
+    });
+    await t.test('blank names describe the actual configuration and focus is released on pause or close',async()=>{
+      await act(async()=>{captureSettings.getState().update({label:''});ui.setState({overlay:null});rendering.getState().update({shadows:false});});
+      await key();assert.match(recorder.progress().label,/BRZ \/ FAST \/ 500M \/ SHADOWS OFF/);await key();
+      await pressPad(8);assert.equal(panel.getState().focused,true);await act(async()=>ui.setState({overlay:'pause'}));assert.equal(panel.getState().focused,false);
+      await act(async()=>ui.setState({overlay:null}));await pressPad(8);assert.equal(panel.getState().focused,true);
+      await act(async()=>rendering.getState().update({overlay:false}));assert.equal(panel.getState().focused,false);
     });
   } finally {
     if (root) await act(async () => root.unmount());

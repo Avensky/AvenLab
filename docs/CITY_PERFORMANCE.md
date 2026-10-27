@@ -12,16 +12,52 @@ The **City detail** row supports mouse, keyboard and the existing controller men
 
 | Mode | Nearby geometry | Distant geometry | Materials |
 | --- | --- | --- | --- |
-| Fast | Original geometry within 80 m of a block footprint; 512 px textures | Reduced textured GLB to 500 m, skyline beyond | Solid opaque surfaces; inexpensive transparent glass |
-| Balanced | Original geometry within 140 m; 1024 px textures | Reduced textured GLB to 750 m, skyline beyond | Solid opaque surfaces; native transmission on Glass |
+| Fast | Original geometry within 80 m of a block footprint; 512 px textures | Reduced textured GLB to the selected range (Auto: 500 m), skyline beyond | Solid opaque surfaces; inexpensive transparent glass |
+| Balanced | Original geometry within 140 m; 1024 px textures | Reduced textured GLB to the selected range (Auto: 750 m), skyline beyond | Solid opaque surfaces; native transmission on Glass |
 | Original / A/B | All loaded chunks | Original models | Original export, with the existing optional opaque-material diagnostic |
 
 Road models remain visible across the loaded map. Missing building collider metadata retains full models for that chunk. Physics, collisions, map coordinates, spawn points and vehicle handling are unchanged. The source GLB has four named city blocks per 2×2 chunk, with geometry merged by material inside each block. Distance bands now follow those blocks independently, rather than filling a fixed number of whole-chunk slots. The distant skyline is an inexpensive approximation. Original mode remains available for visual comparisons.
 
+## View distance and interpolation settings
+
+**Settings → Display → View distance** and the shared Debugger controls offer **Auto, 250 m, 500 m, 750 m and 1,000 m**. Auto retains the existing quality-specific range. Explicit distances are independent of the Fast/Balanced texture and nearby-geometry choices. The source city's four blocks use horizontal collider footprints; skyline proxies remain beyond the selected range. Normal movement keeps the existing 35 m retention band. Changing the range resets selection hysteresis immediately, without remounting/preparing the active city assets. Custom chunk metadata uses the explicit radius too; Auto retains its existing bounded fallback. Missing metadata retains the safe full-model fallback.
+
+Original / A/B deliberately renders all loaded models, and its View distance row is disabled. Distances are limited to the map the server has loaded; this control does not generate or request additional city chunks. The shared canvas far plane is 2,000 m so the longest option is not cut off by the old default 1,000 m camera plane. Distance fog remains a separate setting.
+
+**Vehicle interpolation defaults to On**, using the existing **50 ms** display buffer. Display and Debugger share one toggle. An explicit Off choice is saved across reloads; only this preference is persisted, while diagnostic player scope still starts Local. Graphics presets and Sandbox entry keep the interpolation choice. The mobile performance preset restores Fast / Auto distance. Render-preset actions no longer silently turn interpolation off.
+
+View distance is validated and saved with display preferences. Old settings without this field use Auto. Captures include `cityViewDistance` and `cityViewDistanceMeters` (null for Original's all-loaded mode), so distance changes invalidate a recording just like other graphics changes.
+
+Validation covers mouse, arrow keys, controller D-pad/A, reload persistence, shared Debugger values and 844×390, 390×844 and 568×320 browser layouts. Real city GLBs were cycled through every distance and back to Auto: model/skyline coverage matched the selected radius, the 223 model geometry allocations and 432 texture allocations stayed stable, no asset preparation repeated, and no JavaScript/shader/WebGL errors occurred. The single optional skyline-box geometry is added/removed when proxies appear/disappear. At the fixed city-only test view, submitted triangles were 1,837,631 at 250 m, 2,385,463 at 500 m and 3,292,914 at 750/1,000 m. The latter two cover the same available city from that position. These software-GPU counters do not establish phone FPS. All **127 frontend tests** and the production build passed.
+
+The latest uploaded CSV, ending `2026-10-27T20-51-46-796Z.csv`, contains two runs. The newer Windows/Edge-labeled Camaro run at 1256×624 averaged **10.77 ms** per frame (about **93 FPS**), p95 **14 ms**, p99 **14.1 ms**, roughly **301 draws / 2.76 million triangles**, input acknowledgement **13.83 ms**, server physics **0.338 ms**, and zero sampled frames over 17.17 ms. It used a development build with interpolation and the listed graphics effects enabled. The older row is a Safari-labeled AE86 run at 956×440; device, car, route, viewport and model coverage differ, so their difference is not a controlled patch speedup. Both predate this new distance setting and lack its explicit metadata.
+
+## Compact recorder and shadows-off capture
+
+The latency overlay now starts with only Name, Start/Stop, Export, Open and Close.
+Its three expanded tabs separate Position, Network / Physics and City Assets.
+The compact readout skips live metric-ring sorting for invisible summaries;
+capture sampling and validation remain active. View/Select focuses the inspector
+for controller navigation, and starting a capture returns to driving. Blank
+labels describe the vehicle/quality/range/shadow setting. Manual Stop can retain
+a valid partial run with its actual duration and an explicit early-stop flag.
+See `performance-recording.md` for controls and export details.
+
+The upload ending `2026-10-27T22-28-12-371Z.csv` adds two ten-second Windows/Edge,
+BRZ, Fast/Auto 500 m, DPR 1 runs with shadows off and interpolation on. The
+near-stationary run averaged **13.97 ms** per frame (about **72 FPS**), p95
+**14.8 ms**, p99 **21 ms**, CPU submit **5.04 ms**, 492 draws and 3.66 million
+triangles. The driving run averaged **12.85 ms** (about **78 FPS**), p95 **14.1 ms**,
+p99 **14.5 ms**, CPU submit **4.13 ms**, about 500 draws and 3.12 million triangles.
+Neither had pending city preparation. Their preceding shadows-on runs averaged
+13.11 and 13.53 ms. Routes, camera movement and model coverage differ; these runs
+do not establish a consistent shadow speedup. Repeat a fixed route/camera in a
+production build, changing only shadows, before attributing a performance gain.
+
 ## Rendering and loading
 
 - Repeated chunk models share instanced draw calls, geometry and textures. Each original mesh's authored transform is preserved, then the visual transform and chunk origin are applied exactly once.
-- Each mesh instance is culled against the camera frustum. When shadows are enabled, nearby original geometry remains available as off-screen shadow casters. Reduced distant models receive shadows and do not expand the caster set. Stable visibility does not re-upload instance matrices every frame.
+- Each mesh instance is culled against the camera frustum. When shadows are enabled, nearby opaque geometry remains available as off-screen shadow casters only where a live light's shadow camera needs it. Roads, transparent glass and reduced distant models receive shadows without casting opaque slabs. Stable visibility does not re-upload instance matrices every frame.
 - Distance bands use authoritative horizontal block footprints from collider metadata. Tower height, camera heading and the old two-chunk Fast cap cannot leave a nearby block as a silhouette. Detail selection updates at 10 Hz. Original geometry has 15 m of retention hysteresis; reduced models have 35 m. Unknown/custom assets retain the existing chunk renderer, including the earlier camera lookahead improvement.
 - The optimized modes remove transmission from solid city surfaces using owned material clones. Cached GLB geometry, textures and original materials are not edited. Unsupported animated/skinned assets retain the original renderer.
 - One shared animation-frame queue stages mesh creation, texture uploads and vertex-buffer uploads, targeting 3 ms or 12 jobs per frame. A single driver upload or shader compilation can exceed that soft budget. Draco decoding uses the bundled decoder with at most two workers for these assets.
@@ -84,6 +120,32 @@ The additional coverage has a similar triangle count at this view, with more dra
 `avenlab-performance-glb-fast-mode-interpolation-off-2026-10-27T07-19-08-344Z.csv` contains a ten-second Fast-mode run. Mean frame time is **21.67 ms** (about 46 FPS), p95 **28 ms**, CPU submit **1.89 ms**, mean input acknowledgement **9.59 ms**, and server physics **0.321 ms**. There were exactly two detailed/seven proxy chunks and zero pending preparations throughout. This supports a selection-policy explanation for nearby silhouettes rather than a waiting download. CPU submit and server time do not establish a GPU bottleneck on their own.
 
 That run used a development build, DPR 1, shadows/reflections/stars/vehicle lights enabled, fog disabled and interpolation off. It is not a controlled comparison to the older capture or to the new patch. Repeat the same route/settings on the target device after installing; use a production frontend when assessing final frame time. Missing Safari long-task samples do not prove absence of stalls.
+
+## Draw batching and transition costs
+
+This follow-up is based on GitHub main `33814e8ba317716f1a803cb0f9c8388dda9fa4c4` (improved view distance). It keeps the existing 80/500 m Fast and 140/750 m Balanced distance bands, retention hysteresis and source geometry. There are no new model files or frontend dependencies.
+
+- City placement transforms are compared by their numeric values. A new React plan or changed detail dictionary no longer rebuilds every static instance matrix and bounding box. An actual map/visual transform edit, placement reorder or count change still rebuilds them. Only changed visible instance packs are uploaded.
+- With native `WEBGL_multi_draw`, compatible opaque meshes share Three.js `BatchedMesh` draws by material, vertex layout, detail level, render order, layer and shadow policy. Authored transforms, individual visibility and per-block detail remain independent. Source textures are shared. Transparent/transmissive materials, partial draw ranges, wireframe and incompatible layouts keep their existing instanced draws.
+- Without native multi-draw, the renderer keeps `InstancedMesh`. Three's emulated multi-draw would otherwise turn each repeated placement into another draw. Both paths receive the transform cache and shadow-culling improvement.
+- Visible directional, spot and point lights contribute their actual shadow frusta. Offscreen city casters remain only where those lights need them. Flat road models and transparent glass receive lighting/shadows without casting opaque shadows. Reduced buildings already skipped shadow casting.
+- Material packing joins the existing shared preparation queue before uploads and shader preparation. Warmup hides its temporary representative instances before gameplay begins. Disposal releases packed geometry and transform/indirection tables while retaining cached source resources.
+
+The ten-second interpolation-on capture shared before this follow-up averaged **15.55 ms** per frame (p95 **21 ms**, p99 **24.3 ms**), about **594 draws / 4.10 million triangles**, CPU submit **2.63 ms**, input acknowledgement **10.49 ms** and server physics **0.349 ms**. Its route, fog and interpolation differed from the preceding run. These captures are not a controlled before/after test. CPU submit alone does not measure GPU execution time. Interpolation settings are preserved.
+
+Controlled city-only Chromium/WebGL checks at 480×270 used the same GLBs, camera route, DPR, lighting, fog and effects on all paths:
+
+| Junction renderer | Draw calls | Submitted triangles |
+| --- | ---: | ---: |
+| Main before this follow-up, shadows/reflections enabled | 561 | 3,667,166 |
+| Updated, native multi-draw deliberately disabled | 433 | 2,549,169 |
+| Updated, native multi-draw enabled | 214 | 2,549,129 |
+
+At this view the native path submits about **62% fewer draws and 30% fewer triangles**. With shadows/reflections disabled, calls changed from **433 to 214** at the junction, **288 to 121** on approach and **407 to 206** during the crossing. Model/silhouette coverage matched across all paths. Geometry/texture allocations remained stable as the camera moved, with no repeated asset preparation and no JavaScript, shader or WebGL errors. Extra texture objects on the batched path are small transform/indirection tables, rather than duplicated city images. These are rendering-work measurements on a software GPU; they do not establish the target phone's FPS.
+
+Seven new automated tests cover plan-only changes, real transform edits, native batching, independent full/reduced visibility, unsupported-browser fallback, incompatible materials/layouts, light frusta, shadow eligibility, warmup and resource ownership. Repeat a production-build capture on the same route and effects after applying, keeping interpolation enabled, to measure frame-time impact.
+
+Controlled junction screenshots matched pixel for pixel with effects both enabled and disabled. A further shader check used Balanced geometry/material behavior with the already-loaded 512 px test textures to avoid a separate high-memory texture benchmark: native transmissive glass stayed instanced, opaque materials stayed batched, and returning to Fast then hiding/remounting the city retained stable geometry/texture allocations. The 156 batches' transform/indirection arrays totaled 379,600 bytes (0.36 MiB) before driver overhead. No additional city images were loaded for those tables. All **121 frontend tests**, the production build and full ESLint passed.
 
 ## Debugger input isolation
 

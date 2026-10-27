@@ -1,5 +1,6 @@
 import type { MapSnapshot } from "../store/worldStore";
 import type { CityQuality } from "./cityLod";
+import { resolveCityViewDistance, type CityViewDistance } from "./cityViewDistance.ts";
 
 export type CityBlockLevel = "full" | "reduced" | "proxy";
 export type CityBlockLevels = Record<string, CityBlockLevel>;
@@ -32,9 +33,9 @@ export function cityBlocks(map: MapSnapshot): CityBlock[] {
   return [...result.values()];
 }
 
-export function cityBlockLevels(blocks: readonly CityBlock[], x: number, z: number, quality: CityQuality, previous: CityBlockLevels = {}): CityBlockLevels {
+export function cityBlockLevels(blocks: readonly CityBlock[], x: number, z: number, quality: CityQuality, previous: CityBlockLevels = {}, viewDistance: CityViewDistance = "auto"): CityBlockLevels {
   const full = quality === "fast" ? 80 : 140;
-  const models = quality === "fast" ? 500 : 750;
+  const models = resolveCityViewDistance(quality, viewDistance);
   return Object.fromEntries(blocks.map(block => {
     const distance = Math.hypot(Math.max(block.minX - x, 0, x - block.maxX), Math.max(block.minZ - z, 0, z - block.maxZ));
     const old = previous[block.key];

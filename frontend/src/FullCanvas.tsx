@@ -20,7 +20,7 @@ export function FullCanvas({ children }: { children: ReactNode }) {
             }}
         >
             <Canvas
-                camera={{ position: [0, 10, 20], fov: 50 }}
+                camera={{ position: [0, 10, 20], fov: 50, far: 2000 }}
                 dpr={dpr}
                 shadows={shadows}
                 gl={{

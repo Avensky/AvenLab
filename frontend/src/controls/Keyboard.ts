@@ -7,6 +7,7 @@ import { useRenderSettingsStore } from "../store/renderSettingsStore";
 import { VehicleFlags, PlayerFlags } from "../store/tools/inputMasks";
 import { canDrive, canNavigateMenu, isTypingTarget, routeMenuAction, type MenuAction } from "../store/tools/inputRouting";
 import { togglePerformanceCapture } from "../performance/captureActions";
+import { closePerformanceOverlay, togglePerformanceDetails, usePerformanceOverlayStore } from "../performance/performanceOverlayStore";
 
 const MENU_KEYS: Record<string, MenuAction> = {
   ArrowUp: "up", KeyW: "up", ArrowDown: "down", KeyS: "down",
@@ -46,13 +47,18 @@ export function Keyboard() {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.repeat || !focused || document.visibilityState === "hidden" || isTypingTarget(event.target)) return;
       const ui = useUIStore.getState();
+      if (event.code === "F3" && event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey
+        && ui.screen === "sandbox" && ui.overlay === null && !ui.isModeLoading && !useCanDataStore.getState().commandOpen) {
+        event.preventDefault(); release(); togglePerformanceDetails(); return;
+      }
       if ((event.code === "F2" || event.code === "F3") && !event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey
         && isDrivingScreen(ui.screen) && !ui.isModeLoading && !useCanDataStore.getState().commandOpen) {
         event.preventDefault();
         if (event.code === "F2") ui.toggleDebugMenu();
         else {
           const settings = useRenderSettingsStore.getState();
-          settings.update({ overlay: !settings.overlay });
+          if (settings.overlay) closePerformanceOverlay();
+          else settings.update({ overlay: true });
         }
         return;
       }
@@ -75,6 +81,10 @@ export function Keyboard() {
         useCanDataStore.getState().setCommandOpen(!useCanDataStore.getState().commandOpen);
         return;
       }
+      if (ui.screen === "sandbox" && ui.overlay === null && !ui.isModeLoading && !useCanDataStore.getState().commandOpen
+        && event.code === "F8" && !event.ctrlKey && !event.altKey && !event.metaKey) {
+        event.preventDefault(); togglePerformanceCapture(); return;
+      }
       if (!canDrive()) {
         release();
         if (useCanDataStore.getState().commandOpen || !canNavigateMenu()) return;
@@ -83,9 +93,6 @@ export function Keyboard() {
         return;
       }
       const store = useInputStore.getState();
-      if (ui.screen === "sandbox" && event.code === "F8" && !event.ctrlKey && !event.altKey && !event.metaKey) {
-        event.preventDefault(); togglePerformanceCapture(); return;
-      }
       if (event.code === "Escape") {
         event.preventDefault(); ui.togglePauseMenu(); return;
       }
@@ -118,6 +125,9 @@ export function Keyboard() {
     const releaseIfBlocked = () => { if (!canDrive()) release(); };
     // Clear physical key state at the transition, not on the next key press.
     const unsubscribeUI = useUIStore.subscribe(releaseIfBlocked);
+    const unsubscribePerformance = usePerformanceOverlayStore.subscribe((state, previous) => {
+      if (state.focused !== previous.focused) release();
+    });
     const unsubscribeCAN = useCanDataStore.subscribe((state, previous) => {
       if (state.commandOpen && !previous.commandOpen) release();
     });
@@ -134,7 +144,7 @@ export function Keyboard() {
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisibility);
       document.removeEventListener("focusin", onFocusIn);
-      unsubscribeUI(); unsubscribeCAN(); release();
+      unsubscribeUI(); unsubscribeCAN(); unsubscribePerformance(); release();
     };
   }, []);
   return null;
