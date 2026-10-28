@@ -60,8 +60,8 @@ export function IgnitionSwitch(){
    <svg viewBox="0 0 120 120" aria-hidden="true"><defs><radialGradient id={gradient}><stop stopColor="#303d49"/><stop offset=".68" stopColor="#07111a"/><stop offset=".73" stopColor="#c0c9ce"/><stop offset=".9" stopColor="#4f5b64"/><stop offset="1" stopColor="#111820"/></radialGradient></defs>
     <circle cx="60" cy="60" r="43" fill={`url(#${gradient})`} stroke="#9ba8b0"/>
     {positions.map((label,i)=>{const a=angles[i]*Math.PI/180;return <g key={label} data-key-position={i}>
-     <path d={`M${60+43*Math.cos(a)} ${60+43*Math.sin(a)}L${60+48*Math.cos(a)} ${60+48*Math.sin(a)}`} stroke={shown>=i?'#abe6f6':'#7e919e'} strokeWidth="2"/>
-     <text transform={`translate(${60+54*Math.cos(a)} ${60+54*Math.sin(a)}) rotate(${angles[i]+90})`} textAnchor="middle" dominantBaseline="middle" fill={shown===i?'#d3f5ff':'#c0ced7'} fontSize="6">{label}</text>
+     <path d={`M${60+43*Math.cos(a)} ${60+43*Math.sin(a)}L${60+48*Math.cos(a)} ${60+48*Math.sin(a)}`} stroke={heldPhase!==null&&shown>=i?'#abe6f6':'#7e919e'} strokeWidth="2"/>
+     <text transform={`translate(${60+54*Math.cos(a)} ${60+54*Math.sin(a)}) rotate(${angles[i]+90})`} textAnchor="middle" dominantBaseline="middle" fill={heldPhase!==null&&shown===i?'#d3f5ff':'#c0ced7'} fontSize="6">{label}</text>
     </g>;})}
     <path className="key-travel" d="M25 25A49.5 49.5 0 0 1 109.5 60" fill="none" pathLength="3" stroke="#9ae6ff" strokeWidth="2" strokeDasharray="3" strokeDashoffset={3-shown}/>
     <path d="M58 50v20h4V50z" fill="#03090e" stroke="#657680"/>

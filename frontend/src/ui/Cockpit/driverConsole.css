@@ -175,14 +175,14 @@ html[data-reduce-motion="true"] .shift-slot:active{animation:none!important}
 .radio-display .radio-vehicle-status[data-alert="true"]{color:#ffb76a;font-weight:700;letter-spacing:.02em}
 
 /* One rotary key beside the console, leaving the vehicle center clear. */
-.driving-hud .ignition-hud{left:auto;right:calc(var(--console-width) + 16px);top:auto;bottom:max(10px,env(safe-area-inset-bottom));width:80px;transform:none}
+.driving-hud .ignition-hud{left:auto;right:calc(var(--console-width) + clamp(24px,5vw,72px));top:auto;bottom:max(10px,env(safe-area-inset-bottom));width:80px;transform:none}
 .ignition-hud .ignition-system{display:block}
 .ignition-hud .ignition-cylinder{display:block;width:100%;height:auto;aspect-ratio:1}
 .ignition-cylinder [data-key-position]{pointer-events:none;cursor:inherit}
-.ignition-cylinder .key-travel{opacity:.3;transition:stroke-dashoffset 130ms linear;pointer-events:none}
+.ignition-cylinder .key-travel{opacity:0;transition:stroke-dashoffset 130ms linear;pointer-events:none}
 .ignition-system[data-holding="true"] .key-travel{opacity:1}
 .ignition-hud .hud-group-body{padding:0;border:0;background:none}
-@media(max-width:600px) and (orientation:portrait){.driving-hud .ignition-hud{width:58px;right:calc(var(--console-width) + 8px)}}
+@media(max-width:600px) and (orientation:portrait){.driving-hud .ignition-hud{width:58px;right:calc(var(--console-width) + 4px)}}
 @media(max-height:320px){.driving-hud .ignition-hud{width:64px}}
 
 /* Three narrow diamonds fill from bottom to top; Off is the empty stack. */
@@ -199,3 +199,11 @@ html[data-reduce-motion="true"] .shift-slot:active{animation:none!important}
 .driving-hud button{-webkit-tap-highlight-color:transparent}
 @media(prefers-reduced-motion:reduce){.key-travel{transition:none!important}}
 html[data-reduce-motion="true"] .key-travel{transition:none}
+
+/* Stalk feedback follows the physical hold, never hover or retained focus. */
+.wheel-assembly :is(.column-stalk-cap,.stalk-step),.wheel-assembly :is(.column-stalk-cap,.stalk-step):is(:hover,:focus,:focus-visible,:active){outline:0;box-shadow:none;color:#dfe7e9;border-color:#5a666f}
+.wheel-assembly .column-stalk-cap{background:linear-gradient(#343d46,#101720 65%,#29333d)}
+.wheel-assembly .stalk-step{background:#101b2480}
+.wheel-assembly :is(.column-stalk-cap,.stalk-step)[data-held="true"]{background:#1e3b49;border-color:#a4d7e4;color:#effbff;outline:1px solid #a4d7e4;outline-offset:1px}
+.ignition-system .ignition-cylinder,.ignition-system .ignition-cylinder:is(:hover,:focus,:focus-visible,:active){outline:0!important;box-shadow:none!important;border:0!important;background:transparent!important}
+.ignition-system[data-holding="true"] .ignition-cylinder>svg>circle{stroke:#abe6f6}

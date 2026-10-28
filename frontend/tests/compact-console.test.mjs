@@ -58,6 +58,12 @@ test('compact cockpit, GPS and inspection preserve authoritative state',async t=
    world.getState().setMap({schema_version:1,map_id:'test',coordinate_system:{units:'meters',up_axis:'Y',forward_axis:'+Z'},cell:[200,200],surface:{road_y:0},layout:{kind:'fixed_grid',origin:[0,0],size:[1,1]},visuals:[],chunks:[],collider_chunks:[{x:0,z:0,boxes:[box('a',0,0,5,300),box('b',80,150,100,5)]}]});
    await render(h(Minimap));assert.equal(document.querySelector('.gps-map'),null);await click('Open map');assert.equal(document.querySelectorAll('.gps-map rect').length,2);await click('GPS destination ahead');assert.ok(nav.getState().destination);assert.ok(document.querySelector('.gps-map polyline'));assert.notEqual(document.querySelector('.gps-status').textContent,'NO ROUTE');await click('Clear GPS destination');assert.equal(nav.getState().destination,null);await click('Minimize map');assert.equal(document.querySelector('.gps-map'),null);
   });
+  await t.test('wide HUD road clicks use the rectangular viewport and the cockpit map stays square',async()=>{
+   const {Minimap}=await load('ui/Minimap.tsx'),{useNavigationStore:nav}=await load('store/navigationStore.ts');await render(h(Minimap));await click('Open map');
+   const map=document.querySelector('.gps-map'),bounds=map.getAttribute('viewBox').split(' ').map(Number);assert.equal(bounds[2]/bounds[3],16/9);assert.equal(map.parentElement.dataset.wide,'true');
+   map.getBoundingClientRect=()=>({left:20,top:30,width:320,height:180});await act(async()=>map.dispatchEvent(new dom.window.MouseEvent('click',{bubbles:true,clientX:180,clientY:210})));
+   assert.deepEqual(nav.getState().destination,{x:0,z:168.75});await render(h(Minimap,{forceExpanded:true}));const full=document.querySelector('.gps-map').getAttribute('viewBox').split(' ').map(Number);assert.equal(full[2],full[3]);
+  });
   await t.test('automatic H animation goes directly through neutral without sending fake shifts',async()=>{
    const {GearSelector}=await load('ui/Cockpit/MechanicalControls.tsx');prefs.getState().update({reducedMotion:false});await render(h(GearSelector,{automatic:false,gear:6,disabled:false,pending:false}));
    const gate=document.querySelector('.shift-gate'),knob=by('Drag gear stick');gate.getBoundingClientRect=()=>({width:100,height:100});let frames;

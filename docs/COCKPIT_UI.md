@@ -48,9 +48,11 @@ The disconnected chat shell has been removed from the HUD and Settings. Older
 saved chat visibility is discarded by preference validation. Equipment can scroll
 in a short viewport while the pedals retain a separate, nonshrinking bottom row.
 The expanded map stays in the safe-area top-right corner. It is smaller than the
-wheel (normally 96–176 px, 80 px on narrow portrait screens), capped by the right
+wheel (normally 112–230 px), capped by the right
 console's width. It paints above the console on short screens and never pushes
-pedals or other controls. The separate Cockpit GPS page retains a larger map.
+pedals or other controls. The HUD plot is 16:9, wider and shorter than the former square; its SVG world
+view and road-click coordinates use the same proportions. The separate Cockpit
+GPS page retains a larger square map.
 Mission title/objective and its optional waypoint live inside the map; tapping a
 supplied objective routes GPS there. `navigationStore.setMission` is a session-only
 adapter entry point, cleared by the mission owner on completion/exit. Today's
@@ -188,11 +190,11 @@ targets remain available. Inside menus Space/Enter holds work the same way, with
 no keyboard repeat dependence; in the driving HUD Space always brakes. Focus loss, pause, disconnect and unmount cancel the charging
 timer, retaining deliberate latched tension. Keyboard B and controller B/Circle
 still supply momentary full cable force. The base ellipse leans with the receding
-OFF handle. Three slim four-sided diamonds fill from bottom to top. The empty
-stack means Off; full strength fills every diamond. There is no permanently empty
-OFF diamond. Applied diamonds glow blue; empty diamonds have dashed outlines. There are no visible percentage
+OFF handle. Three slim, vertically stretched hexagons fill from bottom to top. The empty
+stack means Off; full strength fills every hexagon. There is no permanently empty
+OFF indicator. Applied hexagons glow blue; empty hexagons have dashed outlines. There are no visible percentage
 numbers or BRAKE label on the lever: the dashboard owns that warning. The lever
-has no focus/pressed box; keyboard focus inside menus brightens the diamonds. TRAC, ABS
+has no focus/pressed box; keyboard focus inside menus brightens the hexagons. TRAC, ABS
 and VSC SPORT sit below the brake, in that order, left of the shifter. Rust takes the
 maximum of latched and momentary force and bypasses rear ABS for it.
 
@@ -330,3 +332,11 @@ and existing input routing. Rust tests and a live optimized-server WebSocket
 check cover real start/abort/stop, extended climate, wiping and gear overrides.
 Native browser/phone rendering remains unverified in this environment. Rebuild
 and restart Rust together with the frontend. Validation totals are in APPLY.md.
+
+Stalk center/direction highlights reflect physical holds only. Release, cancel,
+blur and blocked input restore the idle style even while hover/focus remains.
+The ignition outer glow, arc and label accents follow the same rule; the key
+retains its actual position without a selected ring. Ignition is inset slightly
+toward the vehicle between the center and right console. A brake tap clears on
+pointer release directly, without depending on a follow-up synthetic click.
+Holding at full strength keeps full tension and schedules no additional ramp.

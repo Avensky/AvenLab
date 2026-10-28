@@ -54,7 +54,8 @@ test('research controls keep input, display and audio updates independent',async
    try{
     await click('Parking brake');const gear=unpackCockpit(input.getState().input.cockpit_mask).gear;await point('pointerdown');await advance(250);assert.equal(strength(),1);await advance(300);assert.equal(strength(),2);await advance(300);assert.equal(strength(),3);assert.equal(timers.size,0);
     await point('pointerup');await click('Parking brake');assert.equal(strength(),3,'the post-hold click must not release the brake');assert.equal(unpackCockpit(input.getState().input.cockpit_mask).gear,gear);assert.equal(document.querySelectorAll('.parking-levels [data-filled="true"]').length,3);assert.equal(document.querySelector('.parking-levels').textContent,'');assert.equal(document.querySelectorAll('.parking-crystal').length,3);assert.equal(by('Parking brake 0 percent'),null);assert.equal(input.getState().input.throttle,0);
-    await click('Parking brake');assert.equal(strength(),0);assert.equal(document.querySelector('.ebrake-indicator'),null);
+    await point('pointerdown');await advance(250);assert.equal(strength(),3);assert.equal(timers.size,0,'holding max must stop scheduling and never wrap');await point('pointerup');await click('Parking brake');assert.equal(strength(),3);
+    await point('pointerdown');await point('pointerup');assert.equal(strength(),0,'a single tap clears on release even without a browser click');await click('Parking brake');assert.equal(strength(),0);assert.equal(document.querySelector('.ebrake-indicator'),null);
     await act(async()=>by('Parking brake').dispatchEvent(new dom.window.KeyboardEvent('keydown',{code:'Space',key:' ',bubbles:true,cancelable:true})));await advance(250);await act(async()=>by('Parking brake').dispatchEvent(new dom.window.KeyboardEvent('keyup',{code:'Space',key:' ',bubbles:true,cancelable:true})));assert.equal(strength(),1);assert.equal(timers.size,0);await click('Parking brake');assert.equal(strength(),0);
     await point('pointerdown');await advance(250);await act(async()=>window.dispatchEvent(new Event('blur')));assert.equal(timers.size,0);assert.equal(strength(),1,'focus loss stops charging but retains a deliberate latched brake');
    }finally{window.setTimeout=later;window.clearTimeout=clear;}
@@ -72,6 +73,14 @@ test('research controls keep input, display and audio updates independent',async
     await point('pointerdown');await advance(250);await advance(300);await advance(300);await act(async()=>ui.setState({overlay:'pause'}));assert.equal(ignition(),2);assert.equal(timers.size,0);await act(async()=>ui.setState({overlay:null}));
     await act(async()=>{entity.vehicle_mask=97;entity.cabin_mask=4|4096|(2<<10);fresh();});await point('pointerdown');await advance(250);assert.equal(ignition(),3,'running engine does not disable the key');await point('pointerup');await click('Ignition key');assert.equal(ignition(),2);
    }finally{window.setTimeout=later;window.clearTimeout=clear;}
+  });
+  await t.test('stalk center feedback ends on release and cancellation without selecting the button',async()=>{
+   const {ColumnStalks}=await load('ui/Cockpit/ColumnStalks.tsx');await render(h(ColumnStalks));
+   const point=async(label,type,id)=>act(async()=>{const e=new Event(type,{bubbles:true,cancelable:true});Object.assign(e,{pointerId:id,button:0,clientX:100,clientY:100});by(label).dispatchEvent(e);});
+   for(const [i,label] of ['Lights and turn signal stalk','Wiper and washer stalk','Cruise control stalk'].entries()){
+    await point(label,'pointerdown',100+i);assert.equal(by(label).dataset.held,'true');await point(label,'pointerup',100+i);await click(label);assert.equal(by(label).dataset.held,'false');
+   }
+   await point('Cruise control stalk','pointerdown',104);await point('Cruise control stalk','pointercancel',104);assert.equal(by('Cruise control stalk').dataset.held,'false');
   });
   await t.test('HUD pointer controls never own the gas pedal and focused HUD cannot steal the driving brake key',async()=>{
    const {DrivingHUD}=await load('ui/DrivingHUD.tsx'),{Keyboard}=await load('controls/Keyboard.ts');Object.defineProperty(document,'hasFocus',{configurable:true,value:()=>true});

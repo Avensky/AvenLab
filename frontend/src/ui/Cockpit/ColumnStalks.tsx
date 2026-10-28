@@ -7,12 +7,13 @@ type Direction=-1|1;
 type Gesture={id:number|null;key:string|null;kind:'cap'|'step';angle:number;y:number;action:-1|0|1};
 function Stalk({angle,reach=31,spacing=12.5,label,mode,asset,words,onUp,onDown,onTurn,onCancel,onRelease,disabled,repeat=false,detent=0,latched=false}:{angle:number;reach?:number;spacing?:number;label:string;mode:string;asset:string;words:[string,string];onUp:()=>void;onDown:()=>void;onTurn:()=>void;onCancel?:()=>void;onRelease?:(direction:Direction)=>void;disabled:boolean;repeat?:boolean;detent?:number;latched?:boolean}){
  const gesture=useRef<Gesture|null>(null),timer=useRef<number|null>(null),active=useRef<-1|0|1>(0),suppress=useRef(false),[pull,setPull]=useState(0);
+ const [heldTarget,setHeldTarget]=useState<'cap'|Direction|null>(null);
  const callbacks=useRef({onUp,onDown,onTurn,onRelease});useEffect(()=>{callbacks.current={onUp,onDown,onTurn,onRelease};},[onUp,onDown,onTurn,onRelease]);
  const stopAction=useCallback(()=>{
   if(timer.current!==null)window.clearTimeout(timer.current);timer.current=null;
   const direction=active.current;active.current=0;if(direction)callbacks.current.onRelease?.(direction);
  },[]);
- const release=useCallback(()=>{gesture.current=null;stopAction();setPull(0);},[stopAction]);useControlRelease(release);
+ const release=useCallback(()=>{gesture.current=null;stopAction();setPull(0);setHeldTarget(null);},[stopAction]);useControlRelease(release);
  useEffect(()=>release,[disabled,release]);
  const fire=(direction:Direction)=>{
   active.current=direction;(direction===1?callbacks.current.onUp:callbacks.current.onDown)();
@@ -23,6 +24,7 @@ function Stalk({angle,reach=31,spacing=12.5,label,mode,asset,words,onUp,onDown,o
  const begin=(e:PointerEvent<HTMLButtonElement>,direction:-1|0|1)=>{
   if(disabled||e.button!==0||gesture.current)return;e.preventDefault();e.stopPropagation();release();suppress.current=false;
   gesture.current={id:e.pointerId,key:null,kind:direction?'step':'cap',angle:polar(e),y:e.clientY,action:direction};e.currentTarget.setPointerCapture?.(e.pointerId);
+  setHeldTarget(direction||'cap');
   if(direction){if(!latched)setPull(direction);fire(direction);}
  };
  const finish=(e:PointerEvent<HTMLButtonElement>,cancel=false)=>{
@@ -34,13 +36,13 @@ function Stalk({angle,reach=31,spacing=12.5,label,mode,asset,words,onUp,onDown,o
   const direction=e.key==='ArrowUp'?1:e.key==='ArrowDown'?-1:step&&(e.key===' '||e.key==='Enter')?step:0;
   if(e.key==='Escape'){e.preventDefault();e.stopPropagation();release();onCancel?.();return;}
   if(!direction)return;e.preventDefault();e.stopPropagation();if(e.repeat||gesture.current)return;release();suppress.current=false;
-  gesture.current={id:null,key:e.key,kind:'step',angle:0,y:0,action:direction};if(!latched)setPull(direction);fire(direction);
+  gesture.current={id:null,key:e.key,kind:'step',angle:0,y:0,action:direction};setHeldTarget(step??'cap');if(!latched)setPull(direction);fire(direction);
  };
  const keyUp=(e:React.KeyboardEvent<HTMLButtonElement>)=>{if(gesture.current?.key!==e.key)return;e.preventDefault();e.stopPropagation();release();suppress.current=false;};
  const point=(a:number)=>({left:`${50+reach*Math.cos(a*Math.PI/180)}%`,top:`${50-reach*Math.sin(a*Math.PI/180)}%`});
  return <div className="stalk-actuator" data-latched={latched} data-detent={latched?detent:pull} style={{transform:`rotate(${(latched?detent:pull)*12}deg)`}}>
   <span className="column-stalk-rod" style={{'--stalk-angle':`${-angle}deg`,width:`${reach}%`} as CSSProperties} aria-hidden="true"><i/></span>
-  <button type="button" className="column-stalk-cap" disabled={disabled} aria-label={label} title={`${label}: hold a direction or drag; center changes mode`} style={{...point(angle),'--stalk-tangent':`${90-angle}deg`} as CSSProperties}
+  <button type="button" className="column-stalk-cap" disabled={disabled} data-held={heldTarget==='cap'} aria-label={label} title={`${label}: hold a direction or drag; center changes mode`} style={{...point(angle),'--stalk-tangent':`${90-angle}deg`} as CSSProperties}
    onContextMenu={e=>e.preventDefault()} onPointerDown={e=>begin(e,0)}
    onPointerMove={e=>{const held=gesture.current;if(!held||held.id!==e.pointerId||held.kind!=='cap')return;e.stopPropagation();const a=polar(e),delta=Number.isFinite(a)&&Number.isFinite(held.angle)?((a-held.angle+540)%360)-180:held.y-e.clientY,direction=Math.abs(delta)<9?0:delta>0?1:-1;
     if(direction===held.action)return;stopAction();held.action=direction;if(!latched)setPull(direction);if(direction)fire(direction);}}
@@ -48,7 +50,7 @@ function Stalk({angle,reach=31,spacing=12.5,label,mode,asset,words,onUp,onDown,o
    onClick={()=>{if(suppress.current){suppress.current=false;return;}onTurn();}} onKeyDown={e=>keyDown(e)} onKeyUp={keyUp}>
    <img src={`/images/${asset}`} alt=""/><span>{mode}</span>
   </button>
-  {([1,-1] as const).map((direction,i)=>{const a=angle-direction*spacing;return <button key={direction} type="button" className="stalk-step" disabled={disabled} aria-label={`${label} ${direction===1?'up':'down'}`} style={{...point(a),transform:`translate(-50%,-50%) rotate(${90-a}deg)`}}
+  {([1,-1] as const).map((direction,i)=>{const a=angle-direction*spacing;return <button key={direction} type="button" className="stalk-step" disabled={disabled} data-held={heldTarget===direction} aria-label={`${label} ${direction===1?'up':'down'}`} style={{...point(a),transform:`translate(-50%,-50%) rotate(${90-a}deg)`}}
    onContextMenu={e=>e.preventDefault()} onPointerDown={e=>begin(e,direction)} onPointerUp={e=>finish(e)} onPointerCancel={e=>finish(e,true)} onLostPointerCapture={e=>finish(e,true)} onBlur={release}
    onKeyDown={e=>keyDown(e,direction)} onKeyUp={keyUp} onClick={()=>{if(suppress.current){suppress.current=false;return;}tap(direction);}}>{words[i]}</button>;})}
  </div>;
