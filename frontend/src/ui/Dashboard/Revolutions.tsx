@@ -3,6 +3,7 @@ import { GaugeDisc, Hub, Needle, ScaleMarks } from "./Gauge";
 import { arcPath, linearTicks } from "./gaugeGeometry";
 import type { DisplayPower } from "./dashboardModel";
 import { RpmLights } from "./InstrumentLights";
+import { GearClock } from "../Cockpit/CabinClock";
 
 const start = 3 * Math.PI / 4, end = 2 * Math.PI - Math.PI / 36;
 const RpmFace = memo(function RpmFace({ max, redline }: { max: number; redline: number }) {
@@ -19,14 +20,15 @@ const RpmFace = memo(function RpmFace({ max, redline }: { max: number; redline: 
 const DigitalReadouts = memo(function DigitalReadouts({ gear, speed, unit, power, park }: {
   gear: number | null; speed: number | null; unit: "MPH" | "KM/H"; power: DisplayPower; park: boolean;
 }) {
-  const lit = power === "running" || power === "cranking";
+  const lit = power === "running" || power === "cranking" || power === "on";
   return <g className="gauge-displays" data-power={power}>
     <rect x="122" y="110" width="56" height="29" rx="1" className="gauge-lcd-recess" />
     <rect x="62" y="150" width="88" height="30" rx="1" className="gauge-lcd-recess" />
     <g className="gauge-lcd-illumination">
       <g className="gauge-lcd" data-readout="gear">
         <rect x="62" y="150" width="88" height="30" rx="1" />
-        <text x="83" y="166" className="gauge-lcd-label">{lit ? "GEAR" : ""}</text>
+        <text x="84" y="159" className="gauge-lcd-label">{lit ? "GEAR" : ""}</text>
+        <GearClock lit={lit} />
         <text x="132" y="166" className="gauge-lcd-gear">{!lit ? "" : park ? "P" : gear === null ? "—" : gear === -1 ? "R" : gear === 0 ? "N" : gear}</text>
       </g>
       <g className="gauge-lcd" data-readout="speed">

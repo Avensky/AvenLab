@@ -23,11 +23,11 @@ export function GearSelector({ automatic, gear, actualGear, disabled, pending }:
   return <section className="mechanical-shifter" aria-label="Gear selector">
     <div className="cockpit-segments"><button aria-pressed={automatic} disabled={disabled} onClick={()=>useInputStore.getState().setCockpit({automatic:true,gear:1,parking:false},2)}>AUTO</button><button aria-pressed={!automatic} disabled={disabled} onClick={()=>useInputStore.getState().setCockpit({automatic:false,gear:actualGear===-1?7:Math.max(0,Math.min(6,actualGear??0)),parking:false},2)}>MANUAL</button></div>
     <div className="shift-gate" ref={gate} data-automatic={automatic} data-pending={pending}>
-      <svg viewBox="0 0 180 150" aria-hidden="true"><path d={automatic?"M90 25v100":"M22 37v40h133M65 37v80M110 37v80M155 37v80"}/></svg>
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path vectorEffect="non-scaling-stroke" d={automatic?"M50 17V83":"M12 25V51H86M36 25V78M61 25V78M86 25V78"}/></svg>
       {slots.map(slot=><button className="shift-slot" key={slot.gear} disabled={disabled} aria-label={`Select ${slot.label==='R'?'reverse':slot.label==='N'?'neutral':slot.label==='P'?'park':slot.label==='D'?'drive':`gear ${slot.label}`}`} aria-pressed={gear===slot.gear} style={{left:`${slot.x}%`,top:`${slot.y}%`}} onClick={()=>select(slot.gear)}>{slot.label}</button>)}
       <button className="shift-knob" ref={knob} disabled={disabled} tabIndex={-1} aria-label="Drag gear stick" title="Drag to a gear, or select its slot"
         style={{left:`${position.x}%`,top:`${position.y}%`}}
-        onPointerDown={event=>{if(event.button!==0||drag.current)return;drag.current={id:event.pointerId,x:event.clientX,y:event.clientY,moved:false};event.currentTarget.setPointerCapture(event.pointerId);}}
+        onPointerDown={event=>{if(event.button!==0||drag.current)return;drag.current={id:event.pointerId,x:event.clientX,y:event.clientY,moved:false};event.currentTarget.setPointerCapture?.(event.pointerId);}}
         onPointerMove={event=>{const current=drag.current;if(!current||current.id!==event.pointerId)return;
           current.moved ||= Math.hypot(event.clientX-current.x,event.clientY-current.y)>5;if(!current.moved)return;
           const rect=gate.current!.getBoundingClientRect();event.currentTarget.style.left=`${Math.max(8,Math.min(90,(event.clientX-rect.left)/rect.width*100))}%`;
@@ -49,9 +49,9 @@ export function HandbrakeLever({ strength, disabled, pending }: {strength:number
   };
   return <section className="mechanical-handbrake" style={{'--parking-level':strength} as CSSProperties}><button className="handbrake-lever" disabled={disabled} aria-label="Parking brake" aria-description={`${Math.round(strength/3*100)} percent; activate to increase one step`} aria-pressed={strength>0} data-active={strength>0} data-pending={pending}
     onClick={()=>{if(suppressClick.current){suppressClick.current=false;return;}set((strength+1)%4);}}
-    onPointerDown={event=>{if(event.button!==0||start.current)return;suppressClick.current=false;start.current={id:event.pointerId,y:event.clientY,moved:false};event.currentTarget.setPointerCapture(event.pointerId);}}
+    onPointerDown={event=>{if(event.button!==0||start.current)return;suppressClick.current=false;start.current={id:event.pointerId,y:event.clientY,moved:false};event.currentTarget.setPointerCapture?.(event.pointerId);}}
     onPointerMove={event=>{const current=start.current;if(!current||current.id!==event.pointerId)return;const dy=current.y-event.clientY;current.moved ||= Math.abs(dy)>8;
-      if(current.moved&&handle.current)handle.current.style.transform=`rotate(${Math.max(-60,Math.min(-10,-13-strength*13-dy*.5))}deg)`;}}
+      if(current.moved&&handle.current)handle.current.style.transform=`rotate(${Math.max(-66,Math.min(0,-strength*22-dy*.7))}deg)`;}}
     onPointerUp={event=>finish(event)} onPointerCancel={event=>finish(event,true)} onLostPointerCapture={event=>finish(event,true)}>
     <span className="ebrake-base"/><span className="ebrake-handle" ref={handle}><i/></span><span className="ebrake-indicator">BRAKE</span>
   </button><div className="parking-levels" role="group" aria-label="Parking brake levels">{[0,1,2,3].map(level=><button type="button" key={level} disabled={disabled} aria-label={`Parking brake ${Math.round(level/3*100)} percent`} aria-pressed={strength===level} onClick={()=>set(level)}>{level===0?'OFF':`${Math.round(level/3*100)}%`}</button>)}</div><small>{pending?"BRAKE REQUESTED":"REAR PARKING BRAKE"}</small></section>;

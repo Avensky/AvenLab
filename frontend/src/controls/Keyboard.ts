@@ -8,6 +8,7 @@ import { VehicleFlags, PlayerFlags, hasFlag } from "../store/tools/inputMasks";
 import { useNetworkStore } from "../store/networkStore";
 import { useVehicleConfigStore } from "../store/vehicleConfigStore";
 import { unpackCockpit } from "../store/tools/cockpitMasks";
+import { stepManualGear } from "./drivetrainActions";
 import { canDrive, canNavigateMenu, isTypingTarget, routeMenuAction, type MenuAction } from "../store/tools/inputRouting";
 import { togglePerformanceCapture } from "../performance/captureActions";
 import { closePerformanceOverlay, togglePerformanceDetails, usePerformanceOverlayStore } from "../performance/performanceOverlayStore";
@@ -108,6 +109,7 @@ export function Keyboard() {
       }
       keys.add(event.code);
       if (isAnalogKey(event.code)) { event.preventDefault(); updateAxes(); }
+      else if (event.code === "PageUp" || event.code === "PageDown") { event.preventDefault(); stepManualGear(event.code==="PageUp"?1:-1); }
       else if (event.code === "KeyT") {
         // Shortcuts use the raw confirmed packet even when every HUD is hidden.
         const network = useNetworkStore.getState(), confirmed = network.getMe();

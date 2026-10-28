@@ -3,6 +3,7 @@ import { create } from "zustand";
 import type { Team, VehicleKind } from "./types";
 
 export interface PhysicsSnapshot {
+    match_clock?: { remaining_s: number; phase: "regulation" | "overtime" | "ended" };
     server_timing?: { lock_ms: number; physics_ms: number; work_ms: number };
     tick: number; // Completed backend simulation tick, not a browser frame count.
     simulation_time_s?: number;
@@ -75,6 +76,8 @@ export interface PhysicsEntitySnapshot {
     /** Optional confirmed lamp states; absent means the adapter does not supply them. */
     cluster_mask?: number;
     cockpit_mask?: number;
+    cabin_mask?: number;
+    cruise_target_kph?: number | null;
 
     vehicle_mask: number;
     player_mask: number;

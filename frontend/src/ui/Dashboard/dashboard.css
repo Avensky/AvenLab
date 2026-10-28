@@ -1,8 +1,8 @@
-.driving-dashboard { position: absolute; left: 50%; bottom: max(8px, env(safe-area-inset-bottom)); transform: translateX(-50%); width: clamp(300px, 34vw, 460px); color: #f8fafc; pointer-events: none; font: 10px/1.2 ui-monospace, monospace; }
-.dashboard-heading { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 24px; gap: 3px; padding: 0 0 4px; }
-.dashboard-heading .repair-gauge { width: 43%; }
-.dashboard-signal { color: #ffba7c; font-size: 9px; letter-spacing: .04em; }
-.dashboard-signal:empty { display: none; }
+.driving-dashboard { position:relative;left:auto;right:auto;bottom:auto;width:100%;transform:none;color:#f8fafc;pointer-events:none;font:10px/1.2 ui-monospace,monospace; }
+.dashboard-signal { position:absolute;top:-12px;left:0;color:#ffba7c;font-size:8px;letter-spacing:.04em; }
+.dashboard-signal:empty { display:none; }
+.dashboard-speed { width:36%;flex-shrink:0;position:relative; }
+.dashboard-speed .speedometer-wrapper { width:100%; }
 .dashboard-cluster { display: flex; align-items: center; }
 .speedometer-wrapper { position: relative; width: 36%; flex-shrink: 0; }
 .dashboard-rpm { width: 40%; flex-shrink: 0; position: relative; z-index: 2; margin-left: -5%; margin-right: -4%; }
@@ -51,22 +51,27 @@
 .gauge-brake[data-active="true"], .gauge-abs-warning[data-active="true"], .gauge-tcs-warning[data-active="true"] { opacity: 1; }
 .gauge-vsc-warning { position: absolute; left: 47%; top: 78%; transform: translate(-50%, -50%); color: #ffb94c; font-size: clamp(3px, .5vw, 6px); opacity: .08; }
 .gauge-vsc-warning[data-active="true"] { opacity: 1; }
-.resource-line { display: flex; align-items: center; gap: 3px; min-width: 0; font: 7px/1 ui-monospace, monospace; color: #d7dce2; white-space: nowrap; }
-.resource-line strong { color: #ffb549; font-weight: 700; font-variant-numeric: tabular-nums; }
-.resource-line i { display: block; flex: 1; min-width: 12px; height: 4px; border: 1px solid #9a5c27; background: #20150d; }
-.resource-line b { display: block; width: 100%; height: 100%; transform-origin: left center; background: #ef952f; transition: transform 80ms linear; }
-.repair-gauge[data-damaged="true"] b { background: #ec6a39; }
-.ultimate-ring { position: absolute; inset: 0; pointer-events: none; }
-.ultimate-track, .ultimate-fill { fill: none; stroke-width: 2.8; stroke-linecap: round; }
-.ultimate-track { stroke: #79d9f0; opacity: .13; }
-.ultimate-fill { stroke: #a5edff; transition: stroke-dashoffset 80ms linear; }
-.ultimate-ring[data-available="false"] { opacity: .3; }
-.ultimate-ring[data-ready="true"] .ultimate-fill { stroke: #e0faff; stroke-width: 3.6; }
-@media (max-width: 900px) { .driving-dashboard { width: clamp(280px, 38vw, 360px); } }
-@media (max-width: 600px) { .driving-dashboard { width: min(350px, calc(100vw - 24px)); } }
-@media (max-height: 400px) and (min-width: 601px) { .driving-dashboard { width: clamp(260px, 36vw, 330px); } }
-html[data-reduce-motion="true"] .gauge-needle, html[data-reduce-motion="true"] .resource-line b, html[data-reduce-motion="true"] .ultimate-fill { transition: none; }
+.resource-ring { position:absolute;inset:0;pointer-events:none;z-index:3;color:#99e7ff; }
+.resource-ring-track,.resource-ring-fill { fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round; }
+.resource-ring-track { opacity:.15; }
+.resource-ring-fill { transition:stroke-dashoffset 80ms linear; }
+.resource-ring-speed { color:#ee9b45; }
+.resource-ring-speed[data-damaged="true"] { color:#f06a46; }
+.resource-ring-rpm { color:#71d3ff; }
+.resource-ring-rpm[data-active="true"] .resource-ring-fill { stroke:#d9f7ff;filter:drop-shadow(0 0 2px #66c9ff); }
+.resource-ring-hero { color:#79c9ff; }
+.resource-ring[data-available="false"] { opacity:.2; }
+.resource-ring-hero[data-ready="true"] { color:#d3f5ff; }
+.hero-ready-bolt { fill:#d3f5ff;stroke:#49b1f4;stroke-width:.6;opacity:0; }
+.resource-ring-hero[data-ready="true"] .hero-ready-bolt { opacity:1;animation:hero-ready 1.3s ease-in-out infinite; }
+.resource-ring-hero[data-ready="true"] .resource-ring-fill { filter:drop-shadow(0 0 2px #57b9ff); }
+.dashboard-cluster .gauge-lcd .gauge-lcd-clock { fill:#ffb44e;font:7px ui-monospace,monospace;font-variant-numeric:tabular-nums; }
+@keyframes hero-ready { 50% { opacity:.55; } }
+html[data-reduce-motion="true"] .gauge-needle, html[data-reduce-motion="true"] .resource-ring-fill { transition: none; }
 html[data-reduce-motion="true"] .gauge-lcd-illumination,
 html[data-reduce-motion="true"] .instrument-lamp, html[data-reduce-motion="true"] .gauge-turn { animation: none; }
 html[data-reduce-motion="true"] .gauge-displays[data-power="cranking"] .gauge-lcd-illumination { opacity: .8; }
-@media (prefers-reduced-motion: reduce) { .gauge-needle, .resource-line b, .ultimate-fill { transition: none; } .gauge-lcd-illumination, .instrument-lamp, .gauge-turn { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .gauge-needle, .resource-ring-fill { transition: none; } .gauge-lcd-illumination, .instrument-lamp, .gauge-turn { animation: none !important; } }
+
+html[data-reduce-motion="true"] .hero-ready-bolt { animation:none; }
+@media(prefers-reduced-motion:reduce){ .hero-ready-bolt { animation:none!important; } }

@@ -43,6 +43,8 @@ test('instrument scales, confirmed warning lamps and display power states', asyn
       assert.equal(displayPower({signal:'live',engineOn:false,resourceMask:0}),'off');
       assert.equal(displayPower({signal:'live',engineOn:false,resourceMask:1}),'cranking');
       assert.equal(displayPower({signal:'live',engineOn:true,resourceMask:0}),'running');
+      assert.equal(displayPower({signal:'live',engineOn:false,resourceMask:0,cabinMask:16384|(2<<10)}),'on');
+      assert.equal(displayPower({signal:'live',engineOn:false,resourceMask:0,cabinMask:16384|(1<<10)}),'off');
       for(const signal of ['waiting','offline','stale'])assert.equal(displayPower({signal,engineOn:true,resourceMask:1}),'unavailable');
     });
     const {useNetworkStore:network}=await load('store/networkStore.ts');
@@ -69,7 +71,7 @@ test('instrument scales, confirmed warning lamps and display power states', asyn
       const gear=document.querySelector('[data-readout="gear"] rect'),speed=document.querySelector('[data-readout="speed"] rect');
       assert.ok(+gear.getAttribute('y')>+speed.getAttribute('y')+ +speed.getAttribute('height'));
       assert.ok(+gear.getAttribute('width')>+speed.getAttribute('width'));
-      assert.equal(document.querySelector('.dashboard-heading [aria-label="Vehicle condition"]')!==null,true);
+      assert.equal(document.querySelector('.dashboard-speed [aria-label="Vehicle condition"]')!==null,true);
       assert.equal(document.querySelector('.dashboard-heading button'),null,'assists are in Drive, not on the instruments');
     });
     await t.test('the DOM contains the exact mathematical scale and a two-door icon following the adjacent RPM rim',()=>{
@@ -115,14 +117,18 @@ test('instrument scales, confirmed warning lamps and display power states', asyn
     });
     await t.test('ultimate charge requires advertised server damage telemetry and never falls back to NOS or own condition loss',async()=>{
       const config=parseGaugeConfig(calibrated);
-      const data={...base,condition:.2,boost_fraction:1,ultimate_fraction:.37};
+      const data={...base,condition:.2,boost_fraction:.72,ultimate_fraction:.37};
       assert.equal(projectVehicleTelemetry(data,true,1000,1001,config).ultimateFraction,null);
       const capable={...config,telemetryMask:127};
       for(const value of [undefined,NaN,Infinity])assert.equal(projectVehicleTelemetry({...data,ultimate_fraction:value},true,1000,1001,capable).ultimateFraction,null);
       configs.getState().receive('me',{...calibrated,hud:{...calibrated.hud,telemetry_mask:127}});
       await publish(data);
       assert.equal(document.querySelector('[aria-label="Ultimate charge"]').getAttribute('aria-valuenow'),'37');
-      assert.equal(document.querySelector('.ultimate-fill').getAttribute('stroke-dashoffset'),'63');
+      assert.equal(document.querySelector('.resource-ring-hero .resource-ring-fill').getAttribute('stroke-dashoffset'),'63');
+      assert.equal(document.querySelector('.dashboard-rpm [aria-label="NOS reserve"]').getAttribute('aria-valuenow'),'72');
+      assert.equal(document.querySelector('.dashboard-speed [aria-label="Vehicle condition"]').getAttribute('aria-valuenow'),'20');
+      assert.ok(document.querySelector('.fuel-temp-wrapper .resource-ring-hero'));
+      assert.match(document.querySelector('.gauge-lcd-clock').textContent,/\d{2}:\d{2}/);
       await publish({...data,condition:.1});assert.equal(document.querySelector('[aria-label="Ultimate charge"]').getAttribute('aria-valuenow'),'37');
       configs.getState().receive('me',calibrated);
     });

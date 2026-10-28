@@ -14,6 +14,7 @@ export type VehicleTelemetry = {
   ultimateFraction: number | null;
   vehicleMask: number; clusterMask: number | null;
   cockpitMask: number | null;
+  cabinMask: number | null; cruiseTargetKph: number | null;
   config: GaugeConfig;
 };
 const finite = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
@@ -31,6 +32,8 @@ export function projectVehicleTelemetry(entity: PhysicsEntitySnapshot | null | u
     signal, vehicleId: entity?.vehicle_id?.toUpperCase() ?? "VEHICLE",
     vehicleMask: valid ? vehicleMask : 0,
     cockpitMask: valid && Number.isSafeInteger(entity?.cockpit_mask) && entity!.cockpit_mask! >= 0 && entity!.cockpit_mask! <= 0xffffffff ? entity!.cockpit_mask! : null,
+    cabinMask: valid && config.cockpitVersion >= 3 && Number.isSafeInteger(entity?.cabin_mask) && entity!.cabin_mask! >= 0 && entity!.cabin_mask! <= 65535 ? entity!.cabin_mask! : null,
+    cruiseTargetKph: valid && config.cockpitVersion >= 3 && finite(entity?.cruise_target_kph) ? rounded(Math.max(0,Math.min(200,entity.cruise_target_kph)),.1) : null,
     clusterMask: valid && Number.isSafeInteger(entity?.cluster_mask) && entity!.cluster_mask! >= 0 && entity!.cluster_mask! <= 0xffff
       ? entity!.cluster_mask! & CLUSTER_KNOWN_MASK : null,
     speedKph: valid && finite(entity?.speed) ? rounded(Math.abs(entity.speed) * 3.6, 0.1) : null,

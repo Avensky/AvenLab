@@ -385,10 +385,11 @@ impl PhysicsWorld {
             v.handbrake = packet.handbrake.clamp(0.0, 1.0);
             let speed = self.bodies.get(v.body).map(|body| (body.rotation().inverse() * body.linvel()).z).unwrap_or(0.0);
             v.cockpit.receive(packet.cockpit_mask, speed, packet.vehicleMask & VehicleStateFlags::TCS.bits() != 0);
+            v.cockpit.receive_cabin(packet.cabin_mask);
 
             // digital states
             v.vehicle_flags = VehicleStateFlags::from_bits_truncate(packet.vehicleMask);
-            v.powertrain.engine_requested = v.vehicle_flags.contains(VehicleStateFlags::ENGINE_ON);
+            v.powertrain.engine_requested = v.cockpit.engine_request(v.vehicle_flags.contains(VehicleStateFlags::ENGINE_ON),v.powertrain.running);
             v.powertrain.boost_requested = v.vehicle_flags.contains(VehicleStateFlags::BOOST);
             recover = packet.playerMask & (1 << 5) != 0 && v.player_flags & (1 << 5) == 0;
             v.player_flags  = packet.playerMask;
@@ -910,7 +911,7 @@ mod tests {
         let train = &mut world.vehicles.get_mut("recover-test").unwrap().powertrain;
         train.fuel_liters = 12.0; train.condition = 0.6; train.temperature_c = 120.0; train.nos_remaining_s = 2.0;
         let packet = InputPacket { r#type: "input".into(), seq: 1, dt: 1.0 / 60.0,
-            throttle: 0.0, steer: 0.0, brake: 0.0, handbrake: 0.0, cockpit_mask: None, vehicleMask: 97, playerMask: 1 << 5, debug_mask: Some(0) };
+            throttle: 0.0, steer: 0.0, brake: 0.0, handbrake: 0.0, cockpit_mask: None, cabin_mask: None, vehicleMask: 97, playerMask: 1 << 5, debug_mask: Some(0) };
         world.apply_player_input_packet("recover-test", packet.clone());
         assert!((world.bodies[handle].rotation() * Vector::y()).y > 0.99);
         world.bodies[handle].set_linvel(vector![1.0, 0.0, 0.0], true);
@@ -918,6 +919,33 @@ mod tests {
         assert_eq!(world.bodies[handle].linvel().x, 1.0, "a held reset cannot repeatedly freeze the car");
         let train = &world.vehicles["recover-test"].powertrain;
         assert_eq!(train.fuel_liters, 12.0); assert_eq!(train.condition, 0.6); assert_eq!(train.temperature_c, 120.0); assert_eq!(train.nos_remaining_s, 2.0);
+    }
+
+    #[test]
+    fn ignition_packets_power_the_cluster_without_starting_until_the_starter_is_held() {
+        let mut world=flat_world();world.spawn_vehicle_for_player("key-test".into(),[0.0;3],"brz","red").unwrap();
+        let mut packet=InputPacket { r#type:"input".into(),seq:1,dt:1.0/60.0,throttle:0.0,steer:0.0,brake:0.0,handbrake:0.0,
+            cockpit_mask:None,cabin_mask:Some(4|4096|8192),vehicleMask:97,playerMask:0,debug_mask:Some(0) };
+        world.apply_player_input_packet("key-test",packet.clone());world.step(SIMULATION_DT);
+        assert!(!world.vehicles["key-test"].powertrain.running);
+        for stage in [1,2] {
+            packet.cabin_mask=Some(4|4096|8192|(stage<<10));
+            for _ in 0..60 { world.apply_player_input_packet("key-test",packet.clone());world.step(SIMULATION_DT); }
+            assert!(!world.vehicles["key-test"].powertrain.running);assert!(!world.vehicles["key-test"].powertrain.engine_requested);
+        }
+        packet.cabin_mask=Some(4|4096|8192|(3<<10));
+        for _ in 0..10 {world.apply_player_input_packet("key-test",packet.clone());world.step(SIMULATION_DT);}
+        assert!(!world.vehicles["key-test"].powertrain.running);
+        packet.cabin_mask=Some(4|4096|8192|(2<<10));world.apply_player_input_packet("key-test",packet.clone());world.step(SIMULATION_DT);
+        assert!(!world.vehicles["key-test"].powertrain.running,"early release aborts cranking");
+        packet.cabin_mask=Some(4|4096|8192|(3<<10));
+        for _ in 0..60 {world.apply_player_input_packet("key-test",packet.clone());world.step(SIMULATION_DT);}
+        assert!(world.vehicles["key-test"].powertrain.running);
+        assert_eq!((world.vehicles["key-test"].cockpit.cabin_snapshot(true,true)>>10)&3,2);
+        packet.cabin_mask=Some(4|4096|8192|(2<<10));world.apply_player_input_packet("key-test",packet.clone());world.step(SIMULATION_DT);
+        assert!(world.vehicles["key-test"].powertrain.running,"release to ON keeps the engine running");
+        packet.cabin_mask=Some(4|4096|8192);world.apply_player_input_packet("key-test",packet);world.step(SIMULATION_DT);
+        assert!(!world.vehicles["key-test"].powertrain.running);
     }
 
     // Test the public spawn path against a minimal map using the actual loader's

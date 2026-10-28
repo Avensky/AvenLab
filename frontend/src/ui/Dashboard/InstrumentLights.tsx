@@ -44,6 +44,7 @@ export const ResourceLights = memo(function ResourceLights({ mask, fields, resou
   cockpitMask: number | null;
 }) {
   const checking = power === "cranking";
+  const bulbCheck = checking || power === "on";
   const state = (flag: number) => Boolean(fields & flag) && clusterFlag(mask, flag);
   const supplied = (flag: number) => mask !== null && Boolean(fields & flag);
   const brake = state(ClusterFlags.PARK_BRAKE);
@@ -51,9 +52,9 @@ export const ResourceLights = memo(function ResourceLights({ mask, fields, resou
   return <div className="resource-lights" aria-label="Fuel and temperature telltales">
     <span className="gauge-brake" data-active={brake}>BRAKE</span>
     <Lamp name="Seatbelt" asset="seatBelt.svg" x={24} y={28} color="#ff4e48" active={state(ClusterFlags.SEATBELT)} supported={supplied(ClusterFlags.SEATBELT)} />
-    <Lamp name="Battery warning" asset="car-battery.svg" x={24} y={41} color="#ff4e48" active={checking || state(ClusterFlags.LOW_BATTERY)} supported={checking || supplied(ClusterFlags.LOW_BATTERY)} blink={checking} />
-    <Lamp name="Oil pressure warning" asset="car-oil.svg" x={24} y={54} color="#ff4e48" active={checking || state(ClusterFlags.LOW_OIL)} supported={checking || supplied(ClusterFlags.LOW_OIL)} blink={checking} />
-    <Lamp name="Check engine" asset="engine.svg" x={24} y={67} color="#ffb94c" active={checking || state(ClusterFlags.ENGINE_WARNING)} supported={checking || supplied(ClusterFlags.ENGINE_WARNING)} blink={checking} />
+    <Lamp name="Battery warning" asset="car-battery.svg" x={24} y={41} color="#ff4e48" active={bulbCheck || state(ClusterFlags.LOW_BATTERY)} supported={bulbCheck || supplied(ClusterFlags.LOW_BATTERY)} blink={checking} />
+    <Lamp name="Oil pressure warning" asset="car-oil.svg" x={24} y={54} color="#ff4e48" active={bulbCheck || state(ClusterFlags.LOW_OIL)} supported={bulbCheck || supplied(ClusterFlags.LOW_OIL)} blink={checking} />
+    <Lamp name="Check engine" asset="engine.svg" x={24} y={67} color="#ffb94c" active={bulbCheck || state(ClusterFlags.ENGINE_WARNING)} supported={bulbCheck || supplied(ClusterFlags.ENGINE_WARNING)} blink={checking} />
     <span className="gauge-abs-warning" data-active={checking || (live && !absEnabled)}>ABS</span>
     <span className="gauge-tcs-warning" data-active={live && !tcsEnabled}>TRAC OFF</span>
     <span className="gauge-vsc-warning" data-active={live && (assist === 1 || assist === 3)}>{assist === 3 ? "VSC OFF" : "VSC SPORT"}</span>

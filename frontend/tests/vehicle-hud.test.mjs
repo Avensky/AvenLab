@@ -124,12 +124,13 @@ test('restored gauges consume Rust telemetry without inventing resource state or
       assert.ok(inputRef.current.vehicleMask&VehicleFlags.TCS);assert.equal(inputRef.current.brake,0);
     });
     await t.test('simultaneous pedals and steering survive idle device polls and release independently',async()=>{
-      await pointer('Accelerate','pointerdown',1);await pointer('Steer left','pointerdown',2);await pointer('Brake','pointerdown',3);
+      control('Steering wheel').getBoundingClientRect=()=>({x:100,y:100,width:100,height:100});
+      await pointer('Accelerate','pointerdown',1);await pointer('Steering wheel','pointerdown',2,{clientX:100,clientY:150});await pointer('Brake','pointerdown',3);
       assert.equal(inputRef.current.throttle,1);assert.equal(inputRef.current.steer,-1);assert.equal(inputRef.current.brake,1);
       await act(async()=>inputs.getState().setAnalogFromSource('gamepad',{throttle:0,steer:0,brake:0}));assert.equal(inputRef.current.throttle,1);assert.equal(inputRef.current.steer,-1);
       await pointer('Accelerate','pointerup',99);assert.equal(inputRef.current.throttle,1,'an unrelated pointer cannot release the pedal');
       await pointer('Accelerate','pointerup',1);assert.equal(inputRef.current.throttle,0);assert.equal(inputRef.current.steer,-1);assert.equal(inputRef.current.brake,1);
-      await pointer('Steer left','lostpointercapture',2);assert.equal(inputRef.current.steer,0);assert.equal(inputRef.current.brake,1);
+      await pointer('Steering wheel','lostpointercapture',2);assert.equal(inputRef.current.steer,0);assert.equal(inputRef.current.brake,1);
       await pointer('Brake','pointercancel',3);assert.equal(inputRef.current.brake,0);
     });
     await t.test('keyboard/gamepad/optional touch intent still has independent owners',async()=>{
@@ -144,7 +145,7 @@ test('restored gauges consume Rust telemetry without inventing resource state or
       await pointer('Accelerate','pointerdown',1);
       await act(async()=>inputs.getState().setAnalogFromSource('keyboard',{steer:.5}));
       await act(async()=>prefs.getState().update({drivingLayout:'controller',showTouchControls:false,showDriveControls:false}));
-      for(const name of ['Accelerate','Reverse','Brake','Steer left','Steering joystick','Toggle ABS','Toggle TCS'])assert.equal(control(name),null,name);
+      for(const name of ['Accelerate','Reverse','Brake','Steering wheel','Toggle ABS','Toggle TCS'])assert.equal(control(name),null,name);
       assert.equal(inputRef.current.throttle,0);assert.equal(inputRef.current.steer,.5);
       await act(async()=>{inputs.getState().releaseInputSource('keyboard');inputs.getState().setAnalogFromSource('gamepad',{throttle:.6,steer:-.4});});
       assert.equal(inputRef.current.throttle,.6);assert.equal(inputRef.current.steer,-.4);
@@ -157,25 +158,25 @@ test('restored gauges consume Rust telemetry without inventing resource state or
     });
     await t.test('touch layout changes release the old controls and a released throttle stick cannot erase held brakes',async()=>{
       await pointer('Accelerate','pointerdown',1);await act(async()=>prefs.getState().update({touchLayout:'sticks'}));assert.equal(inputRef.current.throttle,0);assert.equal(control('Accelerate'),null);
-      for(const name of ['Steering joystick','Acceleration and reverse joystick'])control(name).getBoundingClientRect=()=>({x:100,y:100,width:88,height:88});
-      await pointer('Steering joystick','pointerdown',1,{clientX:180,clientY:144});await pointer('Acceleration and reverse joystick','pointerdown',2,{clientX:144,clientY:110});await pointer('Brake','pointerdown',3);
+      for(const name of ['Steering wheel','Acceleration and reverse joystick'])control(name).getBoundingClientRect=()=>({x:100,y:100,width:88,height:88});
+      await pointer('Steering wheel','pointerdown',1,{clientX:188,clientY:144});await pointer('Acceleration and reverse joystick','pointerdown',2,{clientX:144,clientY:110});await pointer('Brake','pointerdown',3);
       assert.equal(inputRef.current.steer,1);assert.equal(inputRef.current.throttle,1);assert.equal(inputRef.current.brake,1);
       await pointer('Acceleration and reverse joystick','pointerup',2);assert.equal(inputRef.current.throttle,0);assert.equal(inputRef.current.brake,1);assert.equal(inputRef.current.steer,1);
-      await pointer('Steering joystick','pointercancel',1);await pointer('Brake','pointerup',3);assert.equal(inputRef.current.steer,0);assert.equal(inputRef.current.brake,0);
+      await pointer('Steering wheel','pointercancel',1);await pointer('Brake','pointerup',3);assert.equal(inputRef.current.steer,0);assert.equal(inputRef.current.brake,0);
       assert.equal(JSON.parse(localStorage.getItem('avenlab-preferences-v1')).state.touchLayout,'sticks');
     });
     await t.test('pause and inspector navigation release touch input and cannot resume it from a held finger',async()=>{
-      await pointer('Steering joystick','pointerdown',1,{clientX:173,clientY:144});
+      await pointer('Steering wheel','pointerdown',1,{clientX:173,clientY:144});
       await act(async()=>ui.setState({overlay:'pause'}));assert.equal(inputRef.current.steer,0);
       await act(async()=>ui.setState({overlay:null}));assert.equal(inputRef.current.steer,0);
-      await pointer('Steering joystick','pointerdown',1,{clientX:173,clientY:144});await act(async()=>togglePerformanceDetails());assert.equal(inputRef.current.steer,0);assert.equal(document.querySelector('.driving-hud').hasAttribute('inert'),true);
+      await pointer('Steering wheel','pointerdown',1,{clientX:173,clientY:144});await act(async()=>togglePerformanceDetails());assert.equal(inputRef.current.steer,0);assert.equal(document.querySelector('.driving-hud').hasAttribute('inert'),true);
       await act(async()=>inspector.getState().minimize());assert.equal(inputRef.current.steer,0);
-      await pointer('Steering joystick','pointermove',1,{clientX:170,clientY:144});assert.equal(inputRef.current.steer,0);
+      await pointer('Steering wheel','pointermove',1,{clientX:170,clientY:144});assert.equal(inputRef.current.steer,0);
     });
     await t.test('disconnect releases a captured touch stick and reconnect requires a fresh press',async()=>{
-      await pointer('Steering joystick','pointerdown',1,{clientX:180,clientY:144});assert.equal(inputRef.current.steer,1);
+      await pointer('Steering wheel','pointerdown',1,{clientX:188,clientY:144});assert.equal(inputRef.current.steer,1);
       await act(async()=>network.getState().setConnected(false));assert.equal(inputRef.current.steer,0);
-      await act(async()=>network.getState().setConnected(true));await pointer('Steering joystick','pointermove',1,{clientX:180,clientY:144});assert.equal(inputRef.current.steer,0);
+      await act(async()=>network.getState().setConnected(true));await pointer('Steering wheel','pointermove',1,{clientX:188,clientY:144});assert.equal(inputRef.current.steer,0);
     });
     await t.test('T disables confirmed traction after speed reactivation even if the old request still says off',async()=>{
       const {Keyboard}=await load('controls/Keyboard.ts');

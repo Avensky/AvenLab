@@ -63,11 +63,15 @@ new producers use source-aware actions. Never mutate `inputRef`. The sender read
 the latest merged intent and skips queued repeats when the socket is congested.
 The handbrake field now drives the rear cable brake in Rust. `cockpit_mask` adds
 stepped latched parking, assisted gear selection, stalk modes, cruise and FR-S assist requests
-without another socket writer. The open cockpit also owns the shared 20 Hz
+without another socket writer. Optional v3 `cabin_mask` adds packed key/HVAC
+requests with an explicit key-command marker so a temperature change cannot replay
+START. Confirmed `cabin_mask` and `cruise_target_kph` use the same 20 Hz projection. The open cockpit also owns the shared 20 Hz
 telemetry sampler, so acknowledgements continue while the driving HUD is hidden.
 See [cockpit protocol](../../../docs/COCKPIT_UI.md). `radioStore` is event-driven
 and owns one local Audio element; it sends no audio bytes to Rust and persists no
-selected file. The clock updates twice a minute and has no per-frame writer.
+selected file. `cabinClock.ts` owns one visible-only 30-second local-clock timer shared by the
+gear display and climate strip. It has no per-frame writer. A future server-owned
+`match_clock` is displayed separately when supplied; the client creates no match timer.
 
 Requested `vehicleMask` is not confirmed `vehicle_mask`. Dashboard ABS/TCS lights
 follow server snapshots; a dashed light means the requested bit awaits confirmation.

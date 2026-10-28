@@ -1,38 +1,21 @@
-.driving-hud { position: fixed; inset: 0; z-index: 20; pointer-events: none; user-select: none; }
-.driving-pedals, .driving-steering, .drive-dock, .touch-stick { position: absolute; pointer-events: auto; touch-action: none; }
-.driving-hud button { user-select: none; touch-action: none; -webkit-touch-callout: none; cursor: pointer; border-radius: 1px; }
-.driving-steering { left: max(10px, env(safe-area-inset-left)); bottom: max(10px, env(safe-area-inset-bottom)); display: flex; gap: 3px; }
-.driving-pedals { right: max(10px, env(safe-area-inset-right)); bottom: calc(max(10px, env(safe-area-inset-bottom)) + 106px); display: flex; align-items: flex-end; gap: 3px; }
-.driving-pedal, .driving-steering button, .drive-dock button { display: flex; align-items: center; justify-content: center; border: 1px solid #829bab61; background: #080e1680; color: #d9e5ee; }
-.driving-pedal { flex-direction: column; gap: 3px; width: 40px; height: 46px; padding: 4px 3px; }
-.driving-pedal img { width: auto; max-width: 22px; height: 27px; object-fit: contain; opacity: .6; }
-.driving-pedal small { font: 7px ui-monospace, monospace; letter-spacing: .04em; }
-.driving-reverse > span { font: 22px ui-monospace, monospace; }
-.driving-steering button { width: 46px; height: 44px; font: 29px/1 ui-monospace, monospace; }
-.driving-pedal[aria-pressed="true"], .driving-steering button[aria-pressed="true"], .drive-dock button:hover:not(:disabled), .driving-hud button:focus-visible { border-color: #a2d8e8; background: #19323cbf; color: #ecfeff; outline: 1px solid #a2d8e8; outline-offset: -2px; }
-.driving-brake[aria-pressed="true"] { border-color: #fda4af; background: #571829a0; outline-color: #fda4af; }
-.touch-stick { width: 76px; height: 76px; bottom: max(10px, env(safe-area-inset-bottom)); border: 1px solid #8cabb970; border-radius: 50%; background: #040d1759; color: #d9e5ee; display: grid; place-items: center; }
-.touch-stick-steer { left: max(10px, env(safe-area-inset-left)); }
-.touch-stick-throttle { right: max(10px, env(safe-area-inset-right)); bottom: calc(max(10px, env(safe-area-inset-bottom)) + 106px); }
-.touch-stick-axis { white-space: pre; text-align: center; font: 15px/2.2 ui-monospace, monospace; opacity: .5; }
-.touch-stick-thumb { position: absolute; width: 28px; height: 28px; border: 1px solid #9be7ee; border-radius: 50%; background: #0b334d9c; pointer-events: none; }
-.touch-stick-label { position: absolute; bottom: 2px; font: 7px ui-monospace, monospace; letter-spacing: .06em; pointer-events: none; }
-.touch-stick:focus-visible { outline: 2px solid #a2d8e8; outline-offset: 2px; }
-.driving-hud[data-touch-layout="sticks"] .driving-pedals { right: 91px; }
-@media (max-width: 600px) {
-  .driving-hud[data-touch-visible="true"] .driving-dashboard, .driving-hud[data-drive-controls="true"] .driving-dashboard { bottom: calc(max(8px, env(safe-area-inset-bottom)) + 110px); }
-  .driving-pedals, .driving-hud[data-touch-layout="sticks"] .driving-pedals { right: auto; left: max(10px, env(safe-area-inset-left)); bottom: calc(max(10px, env(safe-area-inset-bottom)) + 52px); }
-  .driving-pedal { width: 34px; height: 44px; }
-  .driving-steering button { width: 49px; height: 40px; }
-  .touch-stick { width: 70px; height: 70px; }
-  .touch-stick-throttle { right: auto; left: 86px; bottom: max(10px, env(safe-area-inset-bottom)); }
-  .driving-hud[data-touch-layout="sticks"] .driving-pedals { left: max(10px, env(safe-area-inset-left)); bottom: calc(max(10px, env(safe-area-inset-bottom)) + 72px); }
-  .driving-hud[data-touch-layout="sticks"] .driving-pedal { width:70px;height:34px;flex-direction:row; }
-  .driving-hud[data-touch-layout="sticks"][data-drive-controls="true"] .drive-dock { width:148px; }
-  .driving-hud[data-touch-visible="false"][data-drive-controls="false"] .drive-dock { bottom: calc(max(10px, env(safe-area-inset-bottom)) + 150px); }
-}
-@media (max-width:600px) and (max-height:300px) {
-  .driving-hud[data-touch-visible="true"] .driving-dashboard, .driving-hud[data-drive-controls="true"] .driving-dashboard { width:min(240px,calc(100vw - 20px)); }
-  .driving-hud .dashboard-heading { height:18px; }
-}
-html[data-high-contrast="true"] .driving-hud button, html[data-high-contrast="true"] .touch-stick { background: #020617f2; border-color: #cbd5e1; }
+.driving-hud{position:fixed;inset:0;z-index:20;pointer-events:none;user-select:none}
+.driving-hud button{user-select:none;touch-action:none;-webkit-touch-callout:none;cursor:pointer}
+.driver-station{position:absolute;left:max(12px,env(safe-area-inset-left));bottom:max(10px,env(safe-area-inset-bottom));width:clamp(280px,32vw,430px);pointer-events:none}
+.driver-station[data-wheel-visible="false"]{width:clamp(280px,32vw,430px)}
+.driving-pedals,.touch-stick-throttle{position:absolute;pointer-events:auto;touch-action:none;bottom:max(10px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%)}
+.driving-pedals{display:flex;align-items:flex-end;gap:3px}
+.driving-pedal{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;width:38px;height:46px;padding:4px 3px;border:1px solid #829bab61;border-radius:1px;background:#080e1680;color:#d9e5ee}
+.driving-pedal img{max-width:22px;height:27px;object-fit:contain;opacity:.6}.driving-pedal small{font:7px ui-monospace,monospace;letter-spacing:.04em}.driving-reverse>span{font:22px ui-monospace,monospace}
+.driving-pedal[aria-pressed="true"],.driving-pedal:hover,.driving-pedal:focus-visible{border-color:#a2d8e8;background:#19323cbf;outline:1px solid #a2d8e8;outline-offset:-2px}
+.driving-brake[aria-pressed="true"]{border-color:#fda4af;background:#571829a0;outline-color:#fda4af}
+.touch-stick-throttle{width:76px;height:76px;border:1px solid #8cabb970;border-radius:50%;background:#040d1759;color:#d9e5ee;display:grid;place-items:center}
+.touch-stick-axis{white-space:pre;text-align:center;font:15px/2.2 ui-monospace,monospace;opacity:.5}
+.touch-stick-thumb{position:absolute;width:28px;height:28px;border:1px solid #9be7ee;border-radius:50%;background:#0b334d9c;pointer-events:none}
+.touch-stick-label{position:absolute;bottom:2px;font:7px ui-monospace,monospace;letter-spacing:.06em;pointer-events:none}.touch-stick:focus-visible{outline:2px solid #a2d8e8;outline-offset:2px}
+.driving-hud[data-touch-layout="sticks"] .driving-pedals{left:calc(50% + 60px)}
+@media(max-height:400px){.driver-station{width:clamp(260px,34vw,330px)}}
+@media(max-width:600px) and (orientation:portrait){.driver-station{width:min(350px,calc(100vw - 24px))}.driver-station[data-wheel-visible="true"]{padding-top:0}.driver-station[data-wheel-visible="true"] .wheel-assembly{width:min(46vw,200px);margin-left:0;margin-top:190px}.driving-hud[data-drive-controls="false"] .wheel-assembly{margin-top:20px;margin-left:auto}.driving-pedals{left:73px;bottom:calc(max(10px,env(safe-area-inset-bottom)) + 235px)}.touch-stick-throttle{left:60px;bottom:calc(max(10px,env(safe-area-inset-bottom)) + 227px)}.driving-hud[data-touch-layout="sticks"] .driving-pedals{left:124px;bottom:calc(max(10px,env(safe-area-inset-bottom)) + 239px)}.driver-station[data-wheel-visible="false"]{width:min(350px,calc(100vw - 24px));bottom:calc(max(10px,env(safe-area-inset-bottom)) + 360px)}.driving-hud[data-drive-controls="false"] .driver-station{bottom:max(10px,env(safe-area-inset-bottom))}.driving-hud[data-drive-controls="false"] .driving-pedals{bottom:calc(max(10px,env(safe-area-inset-bottom)) + 210px)}}
+html[data-high-contrast="true"] .driving-hud button,html[data-high-contrast="true"] .touch-stick-throttle{background:#020617f2;border-color:#cbd5e1}
+
+@media(max-width:600px) and (orientation:portrait){.drive-dock[data-expanded="false"]{bottom:calc(max(10px,env(safe-area-inset-bottom)) + 160px)}}
+@media(max-width:480px) and (max-height:350px){.driver-station,.driver-station[data-wheel-visible="false"]{left:6px;bottom:8px;width:174px}.driver-station .wheel-assembly{width:112px;margin:12px 0 0}.driving-pedals{left:170px;bottom:8px;flex-direction:column;gap:2px}.driving-pedal{width:24px;height:24px;padding:2px}.driving-pedal img{height:14px;max-width:14px}.driving-pedal small{display:none}.driving-reverse>span{font-size:14px}.touch-stick-throttle{left:168px;bottom:8px;width:34px;height:50px}.driving-hud[data-touch-layout="sticks"] .driving-pedals{left:168px;bottom:64px}.touch-stick-label{display:none}.touch-stick-thumb{width:18px;height:18px}}

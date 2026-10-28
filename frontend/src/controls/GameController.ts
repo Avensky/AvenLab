@@ -6,6 +6,7 @@ import { useCanDataStore } from "../store/canDataStore";
 import { VehicleFlags, PlayerFlags } from "../store/tools/inputMasks";
 import { canDrive, canNavigateMenu, isTypingTarget, routeMenuAction } from "../store/tools/inputRouting";
 import { useRenderSettingsStore } from "../store/renderSettingsStore";
+import { stepManualGear } from "./drivetrainActions";
 import { togglePerformanceCapture } from "../performance/captureActions";
 import { minimizePerformanceOverlay, performanceOverlayHasFocus, togglePerformanceDetails, usePerformanceOverlayStore } from "../performance/performanceOverlayStore";
 
@@ -80,6 +81,7 @@ export function GameController() {
       const ui = useUIStore.getState();
       const typing = isTypingTarget(document.activeElement);
       const recorderText = typing && document.activeElement instanceof HTMLElement && Boolean(document.activeElement.closest("[data-performance-overlay]"));
+      if (edges[8] && pressed(4) && canDrive() && !typing) { release(); ui.openCockpit('console'); return; }
       if (edges[8] && ui.screen === "sandbox" && ui.overlay === null && !ui.isModeLoading
         && (!typing || performanceOverlayHasFocus() || recorderText)) { release(); togglePerformanceDetails(); return; }
       if (typing) {
@@ -122,9 +124,9 @@ export function GameController() {
         armed = true;
       }
       const store = useInputStore.getState();
-      // A/Cross has no driving action. Keep it as menu activation when paused,
-      // and only use it for capture when the player can see the profiler.
+      // Visible recording keeps priority over manual upshift on A/Cross.
       if (edges[0] && useUIStore.getState().screen === "sandbox" && useRenderSettingsStore.getState().overlay) togglePerformanceCapture();
+      else if (edges[0]) stepManualGear(1);
       store.setAnalogFromSource("gamepad", { throttle, steer, brake, handbrake });
       store.setHeldVehicleFlag("gamepad", VehicleFlags.BOOST, pressed(4));
       store.setHeldPlayerFlag("gamepad", PlayerFlags.HONK, pressed(5));
@@ -133,7 +135,7 @@ export function GameController() {
       if (edges[12]) store.toggleVehicleFlag(VehicleFlags.HAZARDS);
       if (edges[14]) store.toggleVehicleFlag(VehicleFlags.BLINKER_LEFT);
       if (edges[15]) store.toggleVehicleFlag(VehicleFlags.BLINKER_RIGHT);
-      if (edges[11]) store.togglePlayerFlag(PlayerFlags.DYNO);
+      if (edges[11] && !stepManualGear(-1)) store.togglePlayerFlag(PlayerFlags.DYNO);
       if (edges[13]) store.togglePlayerFlag(PlayerFlags.RADIO);
       if (edges[10]) {
         if (resetTimer !== null) window.clearTimeout(resetTimer);

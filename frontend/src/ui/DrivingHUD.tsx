@@ -15,7 +15,7 @@ export function DrivingHUD() {
   const inspector = usePerformanceOverlayStore(s => s.focused), command = useCanDataStore(s => s.commandOpen);
   return <div className="driving-hud" data-touch-layout={layout} data-driving-layout={drivingLayout} data-touch-visible={touch} data-drive-controls={dock} inert={inspector || command} onPointerDown={event => event.stopPropagation()} onPointerMove={event => event.stopPropagation()} onClick={event => event.stopPropagation()}>
     <ControlsPanel />
-    {touch && (layout === "pedals" ? <><Steering /><Pedals /></> : <><TouchStick axis="steer" /><TouchStick axis="throttle" /><Pedals brakeOnly /></>)}
-    <Dashboard />
+    <div className="driver-station" data-wheel-visible={touch}><Dashboard/>{touch&&<Steering/>}</div>
+    {touch && (layout === "pedals" ? <Pedals /> : <><TouchStick axis="throttle" /><Pedals brakeOnly /></>)}
   </div>;
 }

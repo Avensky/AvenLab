@@ -2,8 +2,8 @@
 
 The custom designs use memoized SVG geometry in `frontend/src/ui/Dashboard/`:
 dark speed face, white RPM band, red needles, stacked amber speed/gear LCDs and
-mirrored fuel/coolant dials. Instruments are bottom-center, condition above the
-cluster and pale blue ultimate charge around RPM. Engine-off needle parking is
+mirrored fuel/coolant dials. Instruments sit above the bottom-left wheel: NOS around RPM, condition around
+speed and blue ultimate around fuel/coolant. Engine-off needle parking is
 presentation only; confirmed physical telemetry remains intact.
 
 Enable **Settings → Display → Driving instruments**. Standard layout supplies
@@ -77,9 +77,10 @@ empty/damaged/heat-lock into `resource_mask`, rather than adding six booleans.
 Vehicle setup config now contains a `hud` calibration block: availability mask,
 max/redline RPM, fuel capacity and temperature limits. Road availability is 127;
 tank is 111. Bits: RPM=1, gear=2, fuel=4, temperature=8, NOS=16, condition=32,
-ultimate=64. Cockpit controls advertise `cockpit_version: 2`.
+ultimate=64. Cockpit controls advertise `cockpit_version: 3`.
 Calibration is sent on first spawn and vehicle change, not repeated per tick.
-Snapshot additions are `condition` (0..1), `boost_fraction` (0..1 or null when
+Optional v3 `cabin_mask` carries climate, key positions and temporary wipe state;
+`cruise_target_kph` carries a confirmed cruise target. Snapshot additions are `condition` (0..1), `boost_fraction` (0..1 or null when
 unfitted), `ultimate_fraction` (0..1), and `resource_mask`. Existing speed/RPM/gear/fuel/temp/torque fields now
 carry model values in m/s, RPM, -1/R 0/N or positive gear, liters, Celsius and N·m.
 

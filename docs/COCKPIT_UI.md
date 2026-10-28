@@ -1,160 +1,183 @@
-# Cockpit and centered instruments
+# Driver station and electronic console
 
-The driving HUD puts the three gauges at bottom center. Condition/repair is a
-thin line above the cluster, outside the speedometer rim. A pale blue ring around
-RPM shows ultimate charge. ABS, TRAC, VSC SPORT and stepped parking brake live in
-the optional bottom-right Drive console, sharing controls with the full cockpit.
+The three instruments and the analogue steering wheel form the bottom-left
+driver station. The bottom-right stack is the electronic display, clock/hazards
+and climate strip, then the manual shifter, cable handbrake and assist switches.
+The full cockpit reuses these components. Signal Recon never mounts them.
 
 ## Layout and access
 
 Settings → Display or Controller → **Driving layout** selects Standard or
-Controller. Standard supplies compact steering and gas/brake/reverse controls.
-Controller hides touch driving inputs and the expanded Drive console. Each can
-be shown independently in either layout; choosing a layout never disables the
-keyboard or gamepad. These are device preferences, not separate physics modes.
-Changing layouts releases held touch input without erasing another input source.
+Controller. Standard supplies a wheel and gas/brake/reverse pedals. The Sticks
+option replaces the gas/reverse pedals with a throttle joystick and keeps a
+separate brake. Controller hides optional touch controls and the expanded console.
+Each visibility option is independent; keyboard/gamepad input remains available.
+Layout changes release the hidden touch source without erasing another device.
 
-Open **Cockpit** from its small screen button, the pause menu, or **F4**.
-Controller shoulders switch tabs, D-pad navigates, A/Cross activates, B/Circle
-closes. Arrows, Tab, Enter and Space work too. The full panel contains the less
-frequent light/wiper/cruise/radio controls, clock and vehicle app links. Signal
-Recon never mounts the driving HUD or opens this driving cockpit.
+Open **Cockpit** from its small button, the pause menu, **F4**, or
+**LB/L1 + View/Select**. The controller shortcut opens the Console tab. View/Select
+alone retains its performance-overlay shortcut. In the full cockpit, shoulders
+switch tabs, D-pad navigates, A/Cross activates and B/Circle closes. Arrows, Tab,
+Enter and Space also work. Controls cannot leak driving input into a menu.
 
-## Drive switches
+The electronic display has fixed-height **IGNITION**, **CONTROLS** and **APPS**
+pages. Controls include lighting, blinkers, hazards, ABS/TRAC, CAN logging/live
+CAN, dyno, horn, NOS, recovery and a single wipe. Apps open Cockpit, Settings,
+Radio, Lights, Wipers, Cruise, Missions, Career, Debugger, Vehicles, Recorder,
+Terminal and Pause. Existing applications retain their existing behavior.
 
-- ABS uses the existing server-confirmed tire-budget assist. Q remains its shortcut.
-- Tap TRAC to toggle traction control. T remains its shortcut. When only TRAC
-  is disabled, Rust restores it above 50 km/h and it remains restored below that
-  speed until explicitly disabled again.
-- VSC SPORT selects a separate profile, retaining the chosen TRAC on/off state.
-  Its traction threshold is 15% more permissive. An actual factory yaw controller
-  that selectively brakes wheels is not implemented.
-- Holding TRAC for more than 3 seconds while stopped requests TRAC + VSC OFF.
-  The full cockpit also has an explicit stopped-only action for keyboard and
-  controller users. Rust rejects this request above 0.5 m/s. This state remains
-  off at speed. Turning the engine off restores the normal assist profile;
-  unrelated stale stalk requests cannot reactivate an old mode.
-- Parking brake has OFF / 33% / 67% / 100% cable tension. Tap to advance a detent,
-  drag up/down, or select a level in the full cockpit. Momentary keyboard B or
-  controller B/Circle still gives full rear-brake force while driving. Rust uses
-  the maximum of momentary and latched force, bypassing rear ABS for the cable
-  brake. The lever can load a running engine without creating reverse drive.
-- The manual H gate is assisted, with selectable slots equivalent to dragging.
-  Automatic P/R/N/D remains available. Rust gates incompatible park/reverse
-  requests at speed. A clutch/torque-curve overhaul remains separate.
+## Ignition and climate
 
-FR-S reference: Toyota owner manual, "Using other driving systems", printed
-pages 175–178. TRAC OFF and VSC SPORT are distinct states; holding the switch
-while stopped turns both off. The speed-triggered TRAC return applies when
-only TRAC is off. These UI switch states follow that distinction, while the
-underlying simulated assists retain the limits described above.
+| Key position | Authoritative behavior |
+| --- | --- |
+| OFF | Stops engine; key can be inserted/removed here. |
+| ACC | Accessory position; does not request a starter. |
+| ON | Powers the instrument LCD and bulb check; keeps an already-running engine running, but cannot start a stopped engine. |
+| START | Requests the existing 700 ms crank. A successful start springs back to ON. Releasing before completion aborts the crank. |
+
+Drag the key clockwise through the detents, click it to advance, or choose a
+labeled position. START activation from a button/controller pulses for one second;
+a dragged key can be held in START. Release, blur, hidden page, menu transition,
+disconnect and unmount all release a held starter to ON. The displayed key follows
+confirmed telemetry. The old E/controller X/Square engine toggle still works.
+Legacy clients that never send a key command retain their existing engine behavior.
+
+Climate controls send temperature (16–30°C), fan (OFF/1/2/3), A/C, recirculation
+and front/rear defrost settings. These are confirmed digital adapter states, not
+cabin thermodynamics. Changing HVAC cannot replay an earlier START/OFF command.
+
+The local clock is shared by the gear LCD and console and updates twice a minute
+only while visible. Optional `snapshot.match_clock` accepts server-owned
+`remaining_s` and `phase: regulation | overtime | ended`. The UI does not create
+a match timer, timeout, score or winner; the server match system remains future work.
+
+## Wheel and column stalks
+
+The wheel is a memoized vector inspired by the FR-S reference: dark perforated
+rim, red stitching and silver lower spoke. Its entire circle is a joystick.
+Thumb travel is constrained to a circle; only horizontal position changes steer.
+The horizontal rim gives full ±1 input and vertical motion only moves the thumb.
+Release centers the touch source. Keyboard/gamepad input also rotates the wheel,
+with a short CSS transition rather than a new animation loop. Visual lock is
+±135°, a HUD choice rather than a claim about factory lock-to-lock geometry.
+
+Stalks stay fixed as the rim turns. Angles are measured counterclockwise from
+3 o'clock. Drag up/down, or focus and use arrow keys. Tap rotates a mode.
+
+| Stalk | Angle | Up / Down | Tap |
+| --- | --- | --- | --- |
+| Left lights/signals | 120° | Right blinker / left blinker | OFF → AUTO → ON |
+| Right wipers | 60° | 400 ms washer / one timed wipe | OFF → SLOW → MID → HIGH |
+| Lower-right cruise | 315° | RES/+ / SET/−; holding repeats | Cruise ON/OFF |
+
+Escape cancels the selected turn signal or cruise. The full cockpit retains
+explicit HIGH beam, wipe and cruise actions for controller access. Single wipes
+last 850 ms; washing requests 1.8 s of wiping after the rotary mode is considered.
+These states do not animate a vehicle GLB without that model's wiper adapter.
+AUTO headlights remain engine-linked pending an ambient-lighting implementation.
+
+Cruise uses a bounded proportional game assist. SET requires 40 km/h; RESUME
+requires 32 km/h and a saved target. With cruise active, the stalk changes the
+target by 1.6 km/h (approximately 1 MPH) per action, clamped to 40–200 km/h.
+Brakes, parking, reverse, engine stop and speed below 32 km/h cancel active cruise.
+Driver throttle overrides it. These are game limits, not a certified factory ECU.
+
+Reference for the physical lever directions and speed adjustment: Toyota FR-S
+2015 owner manual, “Using the driving support systems” and “Windshield wipers”.
 https://assets.sia.toyota.com/publications/en/om-s/OM18027U/pdf/OM18027U.pdf
 
-## Other cockpit tabs
+## Transmission and assist switches
 
-Lights provide OFF/AUTO/LOW/HIGH and turn indicators. AUTO currently means
-engine-linked running lights, pending ambient lighting. Wipers provide
-OFF/LOW/MID/HIGH and a 400 ms wash pulse: authoritative adapter state plus a
-digital illustration, with GLB wiper rigs and vehicle-specific CAN mappings
-remaining separate work.
+The manual H gate uses matching percentage coordinates for both lines and slots,
+including on a non-square screen. R/1/3/5 sit above N/2/4/6. Drag the knob or select
+a slot. Automatic P/R/N/D is always available. The expanded HUD initially selects
+manual on a v3 server if the player has not made a cockpit request. Hidden console
+and legacy clients retain automatic behavior. This remains an assisted selector;
+a clutch and full torque-curve model are separate work.
 
-Cruise ON/OFF, SET, RESUME and CANCEL use a bounded proportional game assist.
-SET requires 30 km/h; RESUME requires 20 km/h and a previous target. Brakes,
-parking, engine stop and reverse cancel it; driver throttle can override it.
-Radio plays a selected local audio file through one lazy browser Audio element,
-including while the cockpit is closed. No licensed music or remote streams are
-bundled. The clock updates twice a minute. Vehicle apps open existing game menus.
+PageUp/PageDown or A/Cross and R3 shift a manual through N and 1–6. Reverse uses
+its explicit gated slot. When the recorder is visible, A/Cross retains recording
+priority. In automatic mode, R3 retains the existing dyno shortcut.
 
-## Instruments and power
+The handbrake sits left of the shifter. Its long lever starts horizontal and
+raises up to 66°. Tap, drag, or choose OFF / 33% / 67% / 100% cable tension.
+Keyboard B / controller B/Circle supplies momentary full cable force while driving.
+Rust takes the maximum of latched and momentary force and bypasses rear ABS for it.
+Park/reverse direction changes remain gated by actual speed.
 
-Outer speed is 0–160 MPH (33 marks, 5 MPH apart). Inner speed is 0–260 km/h
-(53 marks, 5 km/h apart). Both share the exact conversion 1 mile = 1.609344 km;
-160 MPH stops at 257.49504 km/h, just before inner 260. Both scales have an open
-gap. Unit preference changes the numeric reading, not the dial geometry.
+ABS uses the existing tire-budget assist; Q remains its shortcut. T toggles TRAC.
+TRAC OFF rearms above 50 km/h and stays rearmed until explicitly disabled again.
+VSC SPORT is separate and retains the chosen TRAC state, with a 15% more permissive
+traction threshold. Holding TRAC for over 3 seconds while stopped requests TRAC +
+VSC OFF; an explicit cockpit action supplies controller access. Rust rejects it
+above 0.5 m/s. Engine stop restores Normal. This is not factory selective-wheel yaw
+stabilization; no such physical VSC model is implemented.
 
-The RPM white band extends before 0 and beyond 9. **RPMx1000** sits lower in the
-black interior. The speed LCD is to the right of the hub; the wider lower LCD
-shows gear in the reference photo's odometer position. Confirmed engine off or
-unavailable telemetry blanks both. Confirmed cranking pulses their illumination;
-reduced motion suppresses the pulse.
+## Instruments and resource rings
 
-Fuel/coolant use separate, mirrored hubs toward the right, with equal top/right
-and bottom/right insets and all marks inside the frame. Engine off parks fuel
-below E and coolant halfway across its own scale. These are needle presentation
-states; actual liters/temperature values are retained. Missing readings stay
-unavailable. Lamp SVGs and confirmed optional lamp availability are retained,
-including the coupe door, TPMS, cruise, high beam, bulb check and steering warning.
+Speed scales remain evenly spaced open arcs: 0–160 MPH and 0–260 km/h using the
+exact conversion 1 mile = 1.609344 km. RPM reaches 9 with extra white band before
+and after the scale; the lowered label reads **RPMx1000**. The right LCD shows
+speed; the wider lower LCD shows gear and local time. OFF/unavailable blanks both,
+ON powers them and confirmed cranking pulses them. Reduced motion disables pulses.
 
-## Ultimate charge and damage
+Fuel and coolant now use larger 52-unit quarter arcs and separate mirrored hubs
+at (130,70) and (130,130) in the 200-unit parent disc. All marks remain inside the
+rim with equal top/right and bottom/right insets. Engine off parks fuel below E
+and temperature halfway across its scale without changing the physical values.
 
-`ultimate_fraction` is authoritative, starts at zero, and caps at one. The
-current damage source is a chassis-to-chassis ram: a moving vehicle approaching
-another vehicle receives the actual condition loss it causes. One percent
-condition damage adds one percent charge. Vehicle chassis now collide with each
-other as well as the world. Single-player driving does not build an attribution
-table. Damage credits use pre-contact vehicle motion and the strongest actual
-Rapier contact; the existing impact threshold/cooldown still prevents repeated
-substep damage.
+| Ring | Location | Data |
+| --- | --- | --- |
+| NOS, pale blue | Outside RPM | Confirmed finite `boost_fraction`, highlighted only during confirmed boost |
+| Condition, orange/red | Outside speedometer | Authoritative `condition`; redder below 75% |
+| Hero ultimate, blue | Outside fuel/coolant | `ultimate_fraction`; lightning and glow at 100% |
 
-Scenery, standing contacts, own damage, fuel/heat changes, and elapsed time do
-not award charge. Service and vehicle changes preserve earned charge; spawning
-a new vehicle/player lifecycle starts it empty. CTF enemy/team rules and an
-ultimate activation/effect are not defined yet. Sandbox attribution currently
-counts other players regardless of team. No client input can set earned charge.
-Legacy finite NOS still exists in the Rust resource model and Shift/LB shortcut;
-it is separate from ultimate and no longer adds a HUD meter/button.
+Ultimate remains credited only from authoritative damage dealt, currently actual
+chassis ramming. Own damage, scenery, fuel, heat and time cannot award charge.
+No client input awards it. Service/vehicle changes retain it. Team/CTF rules and
+an activation/effect are future work. NOS remains separate and finite.
 
-## Ownership and packed protocol
+## Packed protocol and update owners
 
-`inputStore` is the sole requested-input owner. One existing sender transmits
-optional `cockpit_mask` alongside normal input. Rust owns accepted state and
-safety checks. Setup `hud.cockpit_version: 2` enables the revised physical
-controls; earlier cockpit servers keep those actions disabled until rebuilt.
-ABS remains available through its older vehicle flag.
+`inputStore` owns requests, the existing 60 Hz sender owns transport, Rust owns
+accepted state, physics substeps remain 120 Hz and snapshots target 60 Hz. The
+HUD/full cockpit share one reference-counted, visible-only 20 Hz display sampler.
+Static gauge faces and wheel artwork are memoized. Rings update one stroke offset;
+there are no extra physics, network or per-gauge animation loops.
 
-| Request bits | Meaning |
-|---|---|
-| 0–1 | Light mode |
-| 2–3 | Wiper mode |
-| 4–5 | Normal / Sport / TRAC off / both off |
-| 6 | Automatic selector |
-| 7–10 | Gear: 0=N, 1–6, 7=R, 8=P |
-| 11 | Latched parking enabled |
-| 12 | Momentary washer |
-| 13 | Cruise enabled |
-| 14–15 | Cruise action |
-| 16–23 | Wrapping u8 request revision |
-| 24–27 | Changed control group |
-| 30–31 | Parking tension detent 0–3; old enabled boolean with zero means full |
+Setup advertises `hud.cockpit_version: 3`; version 2 retains basic cockpit actions,
+with v3-only climate/key/stalk actions disabled. `cockpit_mask` keeps its existing
+u32 state/revision layout and adds commands 8=cruise up, 9=cruise down, 10=single wipe.
 
-Sport uses the existing TCS vehicle flag for its independent traction request.
-Assist state changes only on an explicit assist command. Snapshot bits 24–27
-mean cruise active, traction rearmed, parking active, cockpit enabled. Bits
-28–29 hold rejection status; 30–31 retain parking tension. Requests stay unsigned
-through release/cancel, including when these high bits are set.
+Optional `cabin_mask` is a packed u16 in the existing JSON packet:
 
-The shared reference-counted display sampler remains 20 Hz, only while HUD or
-cockpit is mounted and visible, with unchanged values suppressed. Static dial
-faces are memoized; needles use transforms; charge updates one SVG stroke offset.
-There are no per-gauge animation loops or added physics/network timers. Setup
-telemetry availability adds ULTIMATE=64, giving road cars 127 and tank 111.
-Raw values remain JSON numbers with packed flags, not a binary telemetry codec.
+| Bits | Request / snapshot |
+| --- | --- |
+| 0–3 | Temperature minus 16, clamped to 0–14 |
+| 4–5 | Fan 0–3 |
+| 6/7/8/9 | A/C / recirculate / front defrost / rear defrost |
+| 10–11 | Key OFF/ACC/ON/START |
+| 12 | Key inserted |
+| 13 | Request only: explicit key command; ordinary HVAC clears this bit |
+| 14 | Snapshot only: key control has overridden legacy engine toggle |
+| 15 | Snapshot only: temporary wipe cycle active |
+
+Snapshots also add optional `cruise_target_kph`. Older input packets remain valid.
+JSON numbers plus packed flags are retained; this is not a binary telemetry codec
+or an assertion of any manufacturer-specific CAN identifier mapping. See the
+[store reference](../frontend/src/store/README.md) for responsibilities and rates.
 
 ## Preview and validation
 
-Open `/previews/cockpit.html` after starting the frontend, or the standalone
-HTML deliverable. It defaults to the compact HUD; use ZOOM INSTRUMENTS for the
-larger gauge review. Standard/Controller and visibility buttons demonstrate both
-layouts. The sample ultimate slider is explicitly mock data. Preview telemetry
-and acknowledgements are not physics, actual controller polling, or an FPS test.
+`/previews/cockpit.html` and the standalone HTML use clearly labeled sample
+telemetry and simulated acknowledgements. They demonstrate key stages, rings,
+wheel/stalks, climate, shifter and optional layout controls without GLB downloads.
+They are UI previews, not physics, CAN traces, controller polling or FPS benchmarks.
 
-Automated checks cover exact scale geometry, power/needle states, availability,
-static-face reuse, controller routing, touch release, unsigned packed parking
-levels, independent Sport/TRAC states, reactivation/reset rules, actual ramming
-and scenery damage attribution. Native browser/phone rendering remains for review:
-local Chromium is blocked by this environment's socket restriction.
-
-Final automated validation: 174 frontend tests and 62 Rust tests passed with no
-failures or skips; ESLint, TypeScript/Vite production build and optimized Rust
-release build passed. A live Rust WebSocket check also confirmed calibration,
-parking levels, gear/lights/wipers, Sport/TRAC combinations and ignition reset.
+Checks include the scale/power states, independent rings, wheel ownership/release,
+stalk gestures/repeat cleanup, ignition/cabin packing, shared gate geometry,
+controller shortcuts and existing input routing. Rust tests include actual
+start/abort/stop behavior through physics, HVAC isolation, timed wipes and cruise.
+Native browser/phone rendering remains unverified: local browser sockets and
+cloud-browser local-file navigation are blocked in this environment. Rebuild and
+restart Rust and rebuild the frontend together. Validation totals are in APPLY.md.

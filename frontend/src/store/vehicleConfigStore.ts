@@ -29,7 +29,7 @@ export function parseGaugeConfig(value: unknown): GaugeConfig | null {
   const overheatC = number("overheat_c", 110, minTempC + 1, 250);
   return {
     cockpitControls: hud.cockpit_controls === true,
-    cockpitVersion: hud.cockpit_controls === true ? number("cockpit_version", 1, 1, 2) : 0,
+    cockpitVersion: hud.cockpit_controls === true ? number("cockpit_version", 1, 1, 3) : 0,
     clusterFields: typeof hud.cluster_fields === "number" && Number.isInteger(hud.cluster_fields) && hud.cluster_fields >= 0 && hud.cluster_fields <= 0xffff ? hud.cluster_fields & 8191 : 0,
     // Rust max_speed is m/s. Round the face to readable 40 km/h major bands.
     speedMaxKph: Math.max(80, Math.min(800, Math.ceil(config.max_speed * 3.6 / 40) * 40)),

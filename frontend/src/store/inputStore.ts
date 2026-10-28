@@ -2,6 +2,7 @@
 import { create } from "zustand";
 import { deriveInputSignals } from "./tools/deriveInputSignals";
 import { reviseCockpit, unpackCockpit, type CockpitCommand, type CockpitRequest } from "./tools/cockpitMasks";
+import { reviseCabin, unpackCabin, type CabinState } from "./tools/cabinMasks";
 import {
   VehicleFlags,
   PlayerFlags,
@@ -93,6 +94,7 @@ export interface InputPacket {
     playerMask: number;  // uint16
     debug_mask?: number; // uint32, optional
     cockpit_mask?: number; // optional packed cockpit request; absent keeps legacy controls
+    cabin_mask?: number; // optional climate/key request, cockpit protocol v3
 }
 const defaultVehicleMask = VehicleFlags.ENGINE_ON | VehicleFlags.ABS | VehicleFlags.TCS;
 const defaultPlayerMask = 0;
@@ -120,6 +122,8 @@ interface InputState {
     setInput: (partial: Partial<InputPacket>) => void;
     setCockpit: (patch: Partial<CockpitRequest>, command: CockpitCommand) => void;
     setAssist: (assist: number, traction: boolean) => void;
+    setCabin: (patch: Partial<CabinState>, confirmed?: number) => void;
+    setIgnition: (position: number, inserted: boolean, confirmed?: number) => void;
 
     setAnalog: (partial: Partial<VehicleControlInput>) => void;
     releaseAnalog: () => void;
@@ -155,6 +159,7 @@ export const useInputStore = create<InputState>((set, get) => ({
         nextInput.brake = clampControl(nextInput.brake, 0, 1);
         nextInput.handbrake = clampControl(nextInput.handbrake, 0, 1);
         if (nextInput.cockpit_mask !== undefined && (!Number.isSafeInteger(nextInput.cockpit_mask) || nextInput.cockpit_mask < 0 || nextInput.cockpit_mask > 0xffffffff)) nextInput.cockpit_mask = previous.cockpit_mask;
+        if (nextInput.cabin_mask !== undefined && (!Number.isSafeInteger(nextInput.cabin_mask) || nextInput.cabin_mask < 0 || nextInput.cabin_mask > 16383)) nextInput.cabin_mask = previous.cabin_mask;
         // Polling the same held button must not broadcast another React update.
         if ((Object.keys(nextInput) as (keyof InputPacket)[])
             .every((key) => Object.is(nextInput[key], previous[key]))) return;
@@ -177,6 +182,14 @@ export const useInputStore = create<InputState>((set, get) => ({
         const current = inputRef.current;
         const initial = current.cockpit_mask ?? reviseCockpit(undefined, { lights: hasFlag(current.vehicleMask, VehicleFlags.HEADLIGHTS) ? 2 : 0 }, 0);
         get().setInput({ vehicleMask: setFlag(current.vehicleMask, VehicleFlags.TCS, traction), cockpit_mask: reviseCockpit(initial, { assist }, 1) });
+    },
+    setCabin(patch, confirmed) {
+        get().setInput({ cabin_mask: reviseCabin(inputRef.current.cabin_mask ?? confirmed, patch) });
+    },
+    setIgnition(position, inserted, confirmed) {
+        const current=inputRef.current;
+        get().setInput({cabin_mask:reviseCabin(current.cabin_mask??confirmed,{ignition:position,keyInserted:inserted},true),
+          vehicleMask:setFlag(current.vehicleMask,VehicleFlags.ENGINE_ON,inserted&&position>=2&&(position===3||hasFlag(current.vehicleMask,VehicleFlags.ENGINE_ON)))});
     },
     setAnalog(partial) {
             // Compatibility for single-writer callers. Mounted keyboard and
@@ -226,9 +239,12 @@ export const useInputStore = create<InputState>((set, get) => ({
         heldVehicleFlags.clear();
         heldPlayerFlags.clear();
         const cockpit = inputRef.current.cockpit_mask;
+        const cabin = inputRef.current.cabin_mask;
+        const releaseKey = cabin !== undefined && unpackCabin(cabin).ignition === 3;
         const stopCockpit = cockpit !== undefined && ((cockpit & (1 << 12)) !== 0 || ((cockpit >>> 14) & 3) !== 3);
         get().setInput({
             ...neutralControls(),
+            ...(releaseKey ? { cabin_mask:reviseCabin(cabin,{ignition:2},true) } : {}),
             ...(stopCockpit ? { cockpit_mask: reviseCockpit(cockpit, { washer: false, cruiseAction: 3 }, 4) } : {}),
             vehicleMask: inputRef.current.vehicleMask & ~VehicleFlags.BOOST,
             playerMask: inputRef.current.playerMask & ~(PlayerFlags.HONK | PlayerFlags.RESET),
@@ -240,7 +256,8 @@ export const useInputStore = create<InputState>((set, get) => ({
     const vehicleMask = setFlag(current, flag, enabled);
 
     const cockpit = inputRef.current.cockpit_mask;
-    get().setInput({ vehicleMask, ...(cockpit === undefined ? {} : flag === VehicleFlags.TCS
+    const cabin = inputRef.current.cabin_mask;
+    get().setInput({ vehicleMask, ...(flag===VehicleFlags.ENGINE_ON && cabin!==undefined ? {cabin_mask:reviseCabin(cabin,{ignition:enabled?3:0,keyInserted:true},true)} : {}), ...(cockpit === undefined ? {} : flag === VehicleFlags.TCS
         ? { cockpit_mask: reviseCockpit(cockpit, { assist: unpackCockpit(cockpit).assist === 1 ? 1 : enabled ? 0 : 2 }, 1) }
         : flag === VehicleFlags.HEADLIGHTS ? { cockpit_mask: reviseCockpit(cockpit, { lights: enabled ? 2 : 0 }, 6) } : {}) });
     },

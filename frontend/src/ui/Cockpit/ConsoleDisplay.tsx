@@ -1,0 +1,48 @@
+import { useState } from "react";
+import { useUIStore } from "../../store/uiStore";
+import { useInputStore } from "../../store/inputStore";
+import { VehicleFlags,PlayerFlags,hasFlag } from "../../store/tools/inputMasks";
+import { HoldButton } from "../../controls/TouchControls";
+import { useCockpitState } from "./useCockpitState";
+import { IgnitionSwitch } from "./IgnitionSwitch";
+import { canDrive } from "../../store/tools/inputRouting";
+import { useCanDataStore } from "../../store/canDataStore";
+import { togglePerformanceDetails } from "../../performance/performanceOverlayStore";
+
+export function ConsoleDisplay() {
+  const [tab,setTab]=useState<'key'|'commands'|'apps'>('key');
+  const flags=useInputStore(s=>s.input.vehicleMask),player=useInputStore(s=>s.input.playerMask),store=useInputStore.getState();
+  const state=useCockpitState();
+  const driving=canDrive();
+  const route=(overlay:'settings'|'missions'|'career'|'debug_menu')=>useUIStore.getState().setOverlay(overlay);
+  return <section className="console-display" aria-label="Vehicle electronic display" onKeyDown={event=>{if(event.key===' '||event.key==='Enter')event.stopPropagation();}}>
+    <nav className="console-display-tabs" aria-label="Vehicle display tabs">{([['key','IGNITION'],['commands','CONTROLS'],['apps','APPS']] as const).map(([id,label])=><button key={id} type="button" aria-pressed={tab===id} onClick={()=>setTab(id)}>{label}</button>)}</nav>
+    <div className="console-display-content">
+      {tab==='key'&&<IgnitionSwitch/>}
+      {tab==='commands'&&<div className="console-command-grid">
+        {([[VehicleFlags.HEADLIGHTS,'LIGHTS'],[VehicleFlags.BLINKER_LEFT,'LEFT'],[VehicleFlags.BLINKER_RIGHT,'RIGHT'],[VehicleFlags.HAZARDS,'HAZARDS'],[VehicleFlags.ABS,'ABS']] as const).map(([flag,label])=><button type="button" key={flag} aria-pressed={hasFlag(flags,flag)} onClick={()=>store.toggleVehicleFlag(flag)}>{label}</button>)}
+        <button type="button" disabled={!state.supported} onClick={()=>store.setAssist(state.confirmed.assist===1?1:state.tcs?2:0,!state.tcs)}>TRAC</button>
+        {([[PlayerFlags.CANDUMP,'CAN LOG'],[PlayerFlags.LIVECAN,'LIVE CAN'],[PlayerFlags.DYNO,'DYNO']] as const).map(([flag,label])=><button type="button" key={label} aria-pressed={hasFlag(player,flag)} onClick={()=>store.togglePlayerFlag(flag)}>{label}</button>)}
+        <HoldButton disabled={!driving} aria-label="Hold NOS boost" onHold={held=>store.setHeldVehicleFlag('touch-actions',VehicleFlags.BOOST,held)}>NOS</HoldButton>
+        <HoldButton disabled={!driving} aria-label="Horn" onHold={held=>store.setHeldPlayerFlag('touch-actions',PlayerFlags.HONK,held)}>HORN</HoldButton>
+        <HoldButton disabled={!driving} aria-label="Reset vehicle" onHold={held=>store.setHeldPlayerFlag('touch-actions',PlayerFlags.RESET,held)}>RESET</HoldButton>
+        <button type="button" disabled={!state.extended} onClick={()=>store.setCockpit({},10)}>WIPE ONCE</button>
+      </div>}
+      {tab==='apps'&&<div className="console-command-grid">
+        <button type="button" onClick={()=>useUIStore.getState().openCockpit()}>COCKPIT</button>
+        <button type="button" onClick={()=>route('settings')}>SETTINGS</button>
+        <button type="button" onClick={()=>useUIStore.getState().openCockpit('radio')}>RADIO</button>
+        <button type="button" onClick={()=>useUIStore.getState().openCockpit('lights')}>LIGHTS</button>
+        <button type="button" onClick={()=>useUIStore.getState().openCockpit('wipers')}>WIPERS</button>
+        <button type="button" onClick={()=>useUIStore.getState().openCockpit('cruise')}>CRUISE</button>
+        <button type="button" onClick={()=>route('missions')}>MISSIONS</button>
+        <button type="button" onClick={()=>route('career')}>CAREER</button>
+        <button type="button" onClick={()=>route('debug_menu')}>DEBUGGER</button>
+        <button type="button" onClick={()=>{const ui=useUIStore.getState();if(ui.overlay==='cockpit')ui.closeOverlay();ui.openVehicleSelection();}}>VEHICLES</button>
+        <button type="button" onClick={()=>{useUIStore.getState().closeOverlay();togglePerformanceDetails();}}>RECORDER</button>
+        <button type="button" onClick={()=>{useUIStore.getState().closeOverlay();useInputStore.getState().releaseControls();useCanDataStore.getState().setCommandOpen(true);}}>TERMINAL</button>
+        <button type="button" onClick={()=>useUIStore.getState().openPause()}>MENU</button>
+      </div>}
+    </div>
+  </section>;
+}
