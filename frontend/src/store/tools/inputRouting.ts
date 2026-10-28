@@ -16,7 +16,7 @@ export function canNavigateMenu() {
   const ui = useUIStore.getState();
   const panel = ui.overlay ?? ui.screen;
   return !ui.isModeLoading && (ui.getActiveMenuId() !== null
-    || ["debug_menu", "settings", "career", "missions", "vehicle_select", "leave_game"].includes(panel));
+    || ["debug_menu", "settings", "career", "missions", "vehicle_select", "leave_game", "cockpit"].includes(panel));
 }
 
 export function isTypingTarget(target: EventTarget | null) {
@@ -32,7 +32,7 @@ export function routeMenuAction(action: MenuAction) {
   const ui = useUIStore.getState();
   if (!canNavigateMenu()) return;
   const panel = ui.overlay ?? ui.screen;
-  if (["debug_menu", "settings", "career", "missions", "vehicle_select", "leave_game"].includes(panel)) {
+  if (["debug_menu", "settings", "career", "missions", "vehicle_select", "leave_game", "cockpit"].includes(panel)) {
     window.dispatchEvent(new CustomEvent<MenuAction>("avenlab:panel-action", { detail: action }));
     return;
   }

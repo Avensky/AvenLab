@@ -2,17 +2,20 @@ import { memo } from "react";
 import type { GaugeConfig } from "../../store/vehicleConfigStore";
 import FuelGauge from "./FuelGauge";
 import TempGauge from "./TempGauge";
-import { Hub } from "./Gauge";
-import { RepairGauge } from "./RepairGauge";
+import { GaugeDisc } from "./Gauge";
+import { ResourceLights } from "./InstrumentLights";
+import type { DisplayPower } from "./dashboardModel";
 
-export default memo(function FuelTemp({ fuel, temp, condition, config }: { fuel: number | null; temp: number | null; condition: number | null; config: GaugeConfig }) {
+export default memo(function FuelTemp({ fuel, temp, config, clusterMask, resourceMask, power, absEnabled, tcsEnabled, live }: {
+  fuel: number | null; temp: number | null; config: GaugeConfig; clusterMask: number | null; resourceMask: number;
+  power: DisplayPower; absEnabled: boolean; tcsEnabled: boolean; live: boolean;
+}) {
   return <div className="fuel-temp-wrapper" role="group" aria-label="Fuel and temperature">
-    <svg viewBox="0 0 160 160">
-      <circle cx="80" cy="80" r="78" className="gauge-disc" />
+    <svg viewBox="0 0 200 200">
+      <GaugeDisc />
       <FuelGauge fuel={fuel} capacity={config.fuelCapacityLiters} />
       <TempGauge temp={temp} min={config.minTempC} overheat={config.overheatC} critical={config.criticalC} />
-      <Hub x={60} y={80} />
     </svg>
-    <RepairGauge condition={condition} />
+    <ResourceLights mask={clusterMask} fields={config.clusterFields} resourceMask={resourceMask} power={power} absEnabled={absEnabled} tcsEnabled={tcsEnabled} live={live} />
   </div>;
 });

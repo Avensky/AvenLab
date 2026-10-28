@@ -316,7 +316,7 @@ test('mouse, keyboard and polled gamepad navigate the real menus and preferences
       }
     });
     await t.test('Settings and Leave hover/click select their actual pause rows', async () => {
-      for (const [index, target] of [[2, 'settings'], [6, 'leave_game']]) {
+      for (const [index, target] of [[2, 'settings'], [7, 'leave_game']]) {
         await reset('sandbox', 'pause');
         const element = document.querySelectorAll('[role="button"]')[index];
         await act(async () => element.dispatchEvent(new dom.window.MouseEvent('pointerover', { bubbles: true })));

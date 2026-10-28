@@ -17,7 +17,8 @@ export type MenuScreen =
   | "career"
   | "missions";
 
-export type UIOverlay = null | "pause" | "debug_menu" | "settings" | "vehicle_select" | "career" | "missions" | "leave_game";
+export type UIOverlay = null | "pause" | "debug_menu" | "settings" | "vehicle_select" | "career" | "missions" | "leave_game" | "cockpit";
+export type CockpitTab = "drive" | "lights" | "wipers" | "cruise" | "radio" | "vehicle";
 
 export type MenuId = "main" | "pause" | "settings" | "sandbox_setup" | "signal_recon_setup";
 
@@ -49,6 +50,9 @@ type SignalMission = {
 };
 
 type UIState = {
+  cockpitTab: CockpitTab;
+  setCockpitTab: (tab: CockpitTab) => void;
+  openCockpit: (tab?: CockpitTab) => void;
   screen: MenuScreen;
   setScreen: (screen: MenuScreen) => void;
 
@@ -91,6 +95,9 @@ type UIState = {
 
 
 export const useUIStore = create<UIState>((set, get) => ({
+  cockpitTab: "drive",
+  setCockpitTab: (cockpitTab) => set({ cockpitTab }),
+  openCockpit: (cockpitTab = "drive") => { if (isDrivingScreen(get().screen) && !get().isModeLoading) set({ overlay: "cockpit", cockpitTab }); },
   screen: "main",
   setScreen: (screen) => { set({ screen, overlay: null, vehicleSelectionParent: null }); },
   overlay: null,
@@ -116,7 +123,7 @@ export const useUIStore = create<UIState>((set, get) => ({
       return;
     }
     if (overlay === "vehicle_select") { get().openVehicleSelection(); return; }
-    if (overlay && ["pause", "debug_menu", "vehicle_select", "leave_game"].includes(overlay) && !isDrivingScreen(get().screen)) return;
+    if (overlay && ["pause", "debug_menu", "vehicle_select", "leave_game", "cockpit"].includes(overlay) && !isDrivingScreen(get().screen)) return;
     set({ overlay });
   },
   selectedMenuIndexById: {

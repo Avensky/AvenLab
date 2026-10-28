@@ -71,6 +71,9 @@ export interface PhysicsEntitySnapshot {
     boost_fraction?: number;
     condition?: number;
     resource_mask?: number;
+    /** Optional confirmed lamp states; absent means the adapter does not supply them. */
+    cluster_mask?: number;
+    cockpit_mask?: number;
 
     vehicle_mask: number;
     player_mask: number;

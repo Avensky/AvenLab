@@ -47,6 +47,13 @@ export function Keyboard() {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.repeat || !focused || document.visibilityState === "hidden" || isTypingTarget(event.target)) return;
       const ui = useUIStore.getState();
+      if (event.code === "F4" && !event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey
+        && isDrivingScreen(ui.screen) && !ui.isModeLoading && !useCanDataStore.getState().commandOpen) {
+        event.preventDefault(); release();
+        if (ui.overlay === "cockpit") ui.closeOverlay();
+        else if (ui.overlay === null || ui.overlay === "pause") ui.openCockpit();
+        return;
+      }
       if (event.code === "F3" && event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey
         && ui.screen === "sandbox" && ui.overlay === null && !ui.isModeLoading && !useCanDataStore.getState().commandOpen) {
         event.preventDefault(); release(); togglePerformanceDetails(); return;

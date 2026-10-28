@@ -1,6 +1,7 @@
 //  inputStore.ts     ← controls/input packets
 import { create } from "zustand";
 import { deriveInputSignals } from "./tools/deriveInputSignals";
+import { reviseCockpit, type CockpitCommand, type CockpitRequest } from "./tools/cockpitMasks";
 import {
   VehicleFlags,
   PlayerFlags,
@@ -91,6 +92,7 @@ export interface InputPacket {
     vehicleMask: number; // uint16
     playerMask: number;  // uint16
     debug_mask?: number; // uint32, optional
+    cockpit_mask?: number; // optional packed cockpit request; absent keeps legacy controls
 }
 const defaultVehicleMask = VehicleFlags.ENGINE_ON | VehicleFlags.ABS | VehicleFlags.TCS;
 const defaultPlayerMask = 0;
@@ -116,6 +118,7 @@ interface InputState {
     
     input: InputPacket;
     setInput: (partial: Partial<InputPacket>) => void;
+    setCockpit: (patch: Partial<CockpitRequest>, command: CockpitCommand) => void;
 
     setAnalog: (partial: Partial<VehicleControlInput>) => void;
     releaseAnalog: () => void;
@@ -150,6 +153,7 @@ export const useInputStore = create<InputState>((set, get) => ({
         nextInput.steer = clampControl(nextInput.steer, -1, 1);
         nextInput.brake = clampControl(nextInput.brake, 0, 1);
         nextInput.handbrake = clampControl(nextInput.handbrake, 0, 1);
+        if (nextInput.cockpit_mask !== undefined && (!Number.isSafeInteger(nextInput.cockpit_mask) || nextInput.cockpit_mask < 0 || nextInput.cockpit_mask > 0xffffffff)) nextInput.cockpit_mask = previous.cockpit_mask;
         // Polling the same held button must not broadcast another React update.
         if ((Object.keys(nextInput) as (keyof InputPacket)[])
             .every((key) => Object.is(nextInput[key], previous[key]))) return;
@@ -163,6 +167,11 @@ export const useInputStore = create<InputState>((set, get) => ({
         });
     },
 
+    setCockpit(patch, command) {
+        const current = inputRef.current;
+        const initial = current.cockpit_mask ?? reviseCockpit(undefined, { lights: hasFlag(current.vehicleMask, VehicleFlags.HEADLIGHTS) ? 2 : 0 }, 0);
+        get().setInput({ cockpit_mask: reviseCockpit(initial, patch, command) });
+    },
     setAnalog(partial) {
             // Compatibility for single-writer callers. Mounted keyboard and
             // controller producers use setAnalogFromSource instead.
@@ -210,8 +219,11 @@ export const useInputStore = create<InputState>((set, get) => ({
         for (const source of Object.keys(analogSources) as InputSource[]) analogSources[source] = neutralControls();
         heldVehicleFlags.clear();
         heldPlayerFlags.clear();
+        const cockpit = inputRef.current.cockpit_mask;
+        const stopCockpit = cockpit !== undefined && ((cockpit & (1 << 12)) !== 0 || ((cockpit >>> 14) & 3) !== 3);
         get().setInput({
             ...neutralControls(),
+            ...(stopCockpit ? { cockpit_mask: reviseCockpit(cockpit, { washer: false, cruiseAction: 3 }, 4) & ~(1 << 12) } : {}),
             vehicleMask: inputRef.current.vehicleMask & ~VehicleFlags.BOOST,
             playerMask: inputRef.current.playerMask & ~(PlayerFlags.HONK | PlayerFlags.RESET),
         });
@@ -221,7 +233,10 @@ export const useInputStore = create<InputState>((set, get) => ({
     const current = inputRef.current.vehicleMask;
     const vehicleMask = setFlag(current, flag, enabled);
 
-    get().setInput({ vehicleMask });
+    const cockpit = inputRef.current.cockpit_mask;
+    get().setInput({ vehicleMask, ...(cockpit === undefined ? {} : flag === VehicleFlags.TCS
+        ? { cockpit_mask: reviseCockpit(cockpit, { assist: 0 }, 1) }
+        : flag === VehicleFlags.HEADLIGHTS ? { cockpit_mask: reviseCockpit(cockpit, { lights: enabled ? 2 : 0 }, 6) } : {}) });
     },
 
     toggleVehicleFlag(flag) {

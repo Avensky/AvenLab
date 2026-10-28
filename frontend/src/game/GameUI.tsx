@@ -5,6 +5,7 @@ import { MainMenu, ModeLoadingScreen, PauseMenu } from "./index";
 import { Sandbox, SandboxSetup, SignalRecon, SignalReconSetup, SignalReconMission } from "./modes";
 import { DebugMenu } from "../components/debugger/DebugMenu";
 import { DrivingHUD } from "../ui/DrivingHUD";
+import { CockpitPanel } from "../ui/Cockpit/CockpitPanel";
 import { CommandLine } from "../ui/command/CommandLine";
 import { useEffect, useState } from "react";
 import { SettingsMenu } from "./SettingsMenu";
@@ -69,6 +70,7 @@ export function GameUI() {
     {(overlay === "missions" || (screen === "missions" && !overlay)) && <MissionsMenu />}
     {overlay === "vehicle_select" && <VehicleMenu />}
     {overlay === "leave_game" && <SessionMenu />}
+    {screen === "sandbox" && overlay === "cockpit" && <CockpitPanel />}
 
     {screen === "sandbox" && hud && !overlay && <CommandLine />}
     {screen === "sandbox" && <PerformanceOverlay />}

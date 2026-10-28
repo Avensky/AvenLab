@@ -382,6 +382,9 @@ impl PhysicsWorld {
             v.throttle = packet.throttle.clamp(-1.0, 1.0);
             v.steer    = packet.steer.clamp(-1.0, 1.0);
             v.brake    = packet.brake.clamp(0.0, 1.0);
+            v.handbrake = packet.handbrake.clamp(0.0, 1.0);
+            let speed = self.bodies.get(v.body).map(|body| (body.rotation().inverse() * body.linvel()).z).unwrap_or(0.0);
+            v.cockpit.receive(packet.cockpit_mask, speed);
 
             // digital states
             v.vehicle_flags = VehicleStateFlags::from_bits_truncate(packet.vehicleMask);
@@ -576,6 +579,7 @@ impl PhysicsWorld {
                 throttle: 0.0,
                 steer: 0.0,
                 brake: 0.0,
+                handbrake: 0.0,
                 pitch: 0.0,
                 yaw: 0.0,
                 roll: 0.0,
@@ -590,6 +594,7 @@ impl PhysicsWorld {
                                 | VehicleStateFlags::TCS,
                 player_flags: 0,
                 powertrain: Powertrain::new(config.resources),
+                cockpit: crate::cockpit::Cockpit::default(),
             },
         );
 
@@ -853,7 +858,7 @@ mod tests {
         let train = &mut world.vehicles.get_mut("recover-test").unwrap().powertrain;
         train.fuel_liters = 12.0; train.condition = 0.6; train.temperature_c = 120.0; train.nos_remaining_s = 2.0;
         let packet = InputPacket { r#type: "input".into(), seq: 1, dt: 1.0 / 60.0,
-            throttle: 0.0, steer: 0.0, brake: 0.0, handbrake: 0.0, vehicleMask: 97, playerMask: 1 << 5, debug_mask: Some(0) };
+            throttle: 0.0, steer: 0.0, brake: 0.0, handbrake: 0.0, cockpit_mask: None, vehicleMask: 97, playerMask: 1 << 5, debug_mask: Some(0) };
         world.apply_player_input_packet("recover-test", packet.clone());
         assert!((world.bodies[handle].rotation() * Vector::y()).y > 0.99);
         world.bodies[handle].set_linvel(vector![1.0, 0.0, 0.0], true);

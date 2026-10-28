@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { useNetworkStore, type PhysicsEntitySnapshot } from "./networkStore";
 import { DEFAULT_GAUGE_CONFIG, TelemetryFields, useVehicleConfigStore, type GaugeConfig } from "./vehicleConfigStore";
 import { VehicleFlags, hasFlag } from "./tools/inputMasks";
+import { CLUSTER_KNOWN_MASK } from "./tools/clusterMasks";
 
 export const HUD_UPDATE_HZ = 20;
 export const HUD_STALE_MS = 500;
@@ -10,6 +11,8 @@ export type VehicleTelemetry = {
   speedKph: number | null; rpm: number | null; gear: number | null; fuelLiters: number | null;
   tempC: number | null; boostFraction: number | null; engineOn: boolean; boostActive: boolean;
   conditionFraction: number | null; resourceMask: number; absEnabled: boolean; tcsEnabled: boolean;
+  vehicleMask: number; clusterMask: number | null;
+  cockpitMask: number | null;
   config: GaugeConfig;
 };
 const finite = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
@@ -25,6 +28,10 @@ export function projectVehicleTelemetry(entity: PhysicsEntitySnapshot | null | u
   const vehicleMask = entity?.vehicle_mask ?? 0;
   return {
     signal, vehicleId: entity?.vehicle_id?.toUpperCase() ?? "VEHICLE",
+    vehicleMask: valid ? vehicleMask : 0,
+    cockpitMask: valid && Number.isSafeInteger(entity?.cockpit_mask) && entity!.cockpit_mask! >= 0 && entity!.cockpit_mask! <= 0xffffffff ? entity!.cockpit_mask! : null,
+    clusterMask: valid && Number.isSafeInteger(entity?.cluster_mask) && entity!.cluster_mask! >= 0 && entity!.cluster_mask! <= 0xffff
+      ? entity!.cluster_mask! & CLUSTER_KNOWN_MASK : null,
     speedKph: valid && finite(entity?.speed) ? rounded(Math.abs(entity.speed) * 3.6, 0.1) : null,
     rpm: reading(TelemetryFields.RPM, entity?.rpm, 25, 0, config.maxRpm),
     gear: valid && hasFlag(mask, TelemetryFields.GEAR) && Number.isInteger(entity?.gear) && entity!.gear >= -1 && entity!.gear <= 20 ? entity!.gear : null,

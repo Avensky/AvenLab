@@ -94,6 +94,8 @@ pub const TANK_RESOURCES: ResourceConfig = ResourceConfig {
 
 #[derive(Clone, Copy, Debug, Serialize)]
 pub struct HudCalibration {
+    pub cockpit_controls: bool,
+    pub cluster_fields: u16,
     pub telemetry_mask: u16,
     pub max_rpm: f32,
     pub redline_rpm: f32,
@@ -105,6 +107,8 @@ pub struct HudCalibration {
 impl ResourceConfig {
     pub fn hud(self) -> HudCalibration {
         HudCalibration {
+            cockpit_controls: true,
+            cluster_fields: (1 << 2) | (1 << 3) | (1 << 9) | (1 << 10),
             telemetry_mask: RPM
                 | GEAR
                 | FUEL
@@ -123,6 +127,7 @@ impl ResourceConfig {
 
 #[derive(Clone, Debug)]
 pub struct Powertrain {
+    pub manual_gear: Option<i32>,
     pub engine_requested: bool,
     pub boost_requested: bool,
     pub running: bool,
@@ -153,6 +158,7 @@ pub struct Demand {
 impl Powertrain {
     pub fn new(config: ResourceConfig) -> Self {
         Self {
+            manual_gear: None,
             engine_requested: true,
             boost_requested: false,
             running: true,
@@ -184,11 +190,12 @@ impl Powertrain {
         } else {
             0.0
         };
-        let throttle = if demand.throttle.is_finite() {
+        let requested_throttle = if demand.throttle.is_finite() {
             demand.throttle.clamp(-1.0, 1.0)
         } else {
             0.0
         };
+        let throttle = self.manual_gear.map(|gear| gear.signum() as f32 * requested_throttle.max(0.0)).unwrap_or(requested_throttle);
         self.shift_remaining_s = (self.shift_remaining_s - dt).max(0.0);
         self.impact_cooldown_s = (self.impact_cooldown_s - dt).max(0.0);
         if self.temperature_c >= config.critical_c {
@@ -217,13 +224,15 @@ impl Powertrain {
         // near stop before changing direction; it cannot select reverse at speed.
         let opposing =
             throttle.abs() > 0.05 && speed.abs() > 0.6 && throttle.signum() != speed.signum();
-        self.direction_brake = if opposing { throttle.abs() } else { 0.0 };
+        self.direction_brake = if opposing { throttle.abs() } else if self.manual_gear.is_some() { (-requested_throttle).max(0.0) } else { 0.0 };
         self.drive_throttle = if self.running && !opposing {
             throttle
         } else {
             0.0
         };
-        if !self.running {
+        if let Some(gear) = self.manual_gear {
+            self.gear = gear.clamp(-1, 6);
+        } else if !self.running {
             self.gear = 0;
         } else if throttle.abs() > 0.05 && speed.abs() <= 0.6 {
             self.gear = if throttle < 0.0 { -1 } else { self.gear.max(1) };
@@ -244,7 +253,7 @@ impl Powertrain {
             }
         };
         let coupled = wheel_rpm * gear_ratio(self.gear) * config.final_drive;
-        if self.running && self.gear > 0 && self.shift_remaining_s <= 0.0 {
+        if self.manual_gear.is_none() && self.running && self.gear > 0 && self.shift_remaining_s <= 0.0 {
             if coupled > config.redline_rpm * 0.90 && self.gear < 6 {
                 self.gear += 1;
                 self.shift_remaining_s = 0.4;
@@ -264,7 +273,9 @@ impl Powertrain {
                 * 1.6
                 * (1.0 - speed.abs() / 5.0).clamp(0.0, 1.0);
         let rpm_target = if self.running {
-            (wheel_rpm * ratio).max(launch_rpm).min(config.max_rpm)
+            if self.manual_gear == Some(0) {
+                config.idle_rpm + requested_throttle.max(0.0) * (config.max_rpm - config.idle_rpm)
+            } else { (wheel_rpm * ratio).max(launch_rpm).min(config.max_rpm) }
         } else if can_run {
             300.0
         } else {
@@ -407,6 +418,23 @@ impl Powertrain {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn assisted_manual_neutral_rev_and_reverse_use_selected_gear() {
+        let mut p=Powertrain::new(ROAD_RESOURCES);
+        let demand=Demand{throttle:1.0,longitudinal_speed:0.0,wheel_radius:0.3,engine_force:7000.0};
+        p.manual_gear=Some(0);p.advance(ROAD_RESOURCES,demand,1.0/120.0);
+        assert_eq!(p.gear,0);assert_eq!(p.drive_throttle,0.0);assert!(p.rpm>ROAD_RESOURCES.idle_rpm);
+        p.manual_gear=Some(-1);p.advance(ROAD_RESOURCES,demand,1.0/120.0);
+        assert_eq!(p.gear,-1);assert_eq!(p.drive_throttle,-1.0);
+    }
+
+    #[test]
+    fn manual_reverse_cannot_reverse_propulsion_while_rolling_forward() {
+        let mut p=Powertrain::new(ROAD_RESOURCES);p.manual_gear=Some(-1);
+        p.advance(ROAD_RESOURCES,Demand{throttle:1.0,longitudinal_speed:3.0,wheel_radius:0.3,engine_force:7000.0},1.0/120.0);
+        assert_eq!(p.drive_throttle,0.0);assert_eq!(p.direction_brake,1.0);
+    }
     fn demand(throttle: f32, speed: f32) -> Demand {
         Demand {
             throttle,

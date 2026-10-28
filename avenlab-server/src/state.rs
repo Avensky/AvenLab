@@ -79,6 +79,8 @@ pub struct PhysicsEntitySnapshot {
     pub condition: f32,      // 0..1 mechanical/body condition; 1 = healthy
     pub boost_fraction: Option<f32>, // 0..1; None when no NOS is fitted
     pub resource_mask: u16,  // cranking/heat/fuel/damage status bits
+    pub cockpit_mask: u32,
+    pub cluster_mask: u16,
 
     // --- Bitmasked state ---
     pub vehicle_mask: u16,
@@ -196,7 +198,10 @@ pub struct InputPacket {
     pub throttle: f32,
     pub steer: f32,
     pub brake: f32,
-    pub handbrake: f32, // reserved input; current vehicle solver consumes brake only
+    pub handbrake: f32, // momentary rear-axle cable brake
+
+    #[serde(default)]
+    pub cockpit_mask: Option<u32>,
 
     pub vehicleMask: u16,
     pub playerMask: u16,
@@ -460,6 +465,8 @@ impl SharedGameState {
                 condition: vehicle.powertrain.condition,
                 boost_fraction: vehicle.powertrain.boost_fraction(vehicle.config.resources),
                 resource_mask: vehicle.powertrain.resource_mask(vehicle.config.resources),
+                cockpit_mask: vehicle.cockpit.snapshot(),
+                cluster_mask: vehicle.cockpit.cluster_mask(vehicle.handbrake),
                 collider: VehicleColliderShape {
                     nominal_wheel_center_y: vehicle.config.nominal_wheel_center_y(),
                     chassis_half_extents: vehicle.config.chassis_half_extents,
@@ -561,7 +568,7 @@ mod tests {
             game.add_entity(id, EntityType::Vehicle);
             input_tx.send_replace(Some(InputPacket {
                 r#type: "input".into(), seq: 1, dt: 1.0 / 60.0,
-                throttle: 0.0, steer: 0.0, brake: 0.0, handbrake: 0.0,
+                throttle: 0.0, steer: 0.0, brake: 0.0, handbrake: 0.0, cockpit_mask: None,
                 vehicleMask: 0, playerMask: 0, debug_mask: Some(mask),
             }));
             game.collect_input_packets();
@@ -590,7 +597,7 @@ mod tests {
                 r#type: "input".into(), seq, dt: 1.0 / 60.0,
                 throttle: if seq == 119 { 0.0 } else { 1.0 },
                 steer: 0.0, brake: if seq == 119 { 1.0 } else { 0.0 },
-                handbrake: 0.0, vehicleMask: 97, playerMask: 0, debug_mask: Some(0),
+                handbrake: 0.0, cockpit_mask: None, vehicleMask: 97, playerMask: 0, debug_mask: Some(0),
             }));
         }
         game.collect_input_packets();

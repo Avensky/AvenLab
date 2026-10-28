@@ -61,8 +61,13 @@ a pedal, and releasing a joystick cannot clear another device or brake button.
 engine/light/assist settings. `setInput` / `setAnalog` remain compatibility APIs;
 new producers use source-aware actions. Never mutate `inputRef`. The sender reads
 the latest merged intent and skips queued repeats when the socket is congested.
-The existing handbrake field remains reserved in Rust; this patch exposes the
-working center brake and does not add a nonfunctional handbrake HUD button.
+The handbrake field now drives the rear cable brake in Rust. `cockpit_mask` adds
+latched parking, assisted gear selection, stalk modes, cruise and Sport requests
+without another socket writer. The open cockpit also owns the shared 20 Hz
+telemetry sampler, so acknowledgements continue while the driving HUD is hidden.
+See [cockpit protocol](../../../docs/COCKPIT_UI.md). `radioStore` is event-driven
+and owns one local Audio element; it sends no audio bytes to Rust and persists no
+selected file. The clock updates twice a minute and has no per-frame writer.
 
 Requested `vehicleMask` is not confirmed `vehicle_mask`. Dashboard ABS/TCS lights
 follow server snapshots; a dashed light means the requested bit awaits confirmation.

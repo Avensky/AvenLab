@@ -102,7 +102,9 @@ pub fn solve_longitudinal(
     // =========================================================
     // BRAKE = longitudinal friction constraint
     // =========================================================
-    let brake_input = ctrl.brake.clamp(0.0, 1.0);
+    let cable_brake = !patch.wheel.is_front() && ctrl.handbrake > 0.001;
+    let brake_input = ctrl.brake.max(if cable_brake { ctrl.handbrake } else { 0.0 }).clamp(0.0, 1.0);
+    let brake_share = if cable_brake { brake_share.max(0.5) } else { brake_share };
     let mut brake_impulse = [0.0, 0.0, 0.0];
 
     if brake_input > 0.001 {
@@ -127,6 +129,14 @@ pub fn solve_longitudinal(
             let j = j_cmd.clamp(-j_limit, j_limit);
 
             brake_impulse = v_scale(patch.forward, j);
+        } else if cable_brake {
+            // A latched cable brake also opposes drive at rest. Use the same
+            // post-TCS engine demand so this cannot push a stopped car backward.
+            let engine_after_tcs = if ctx.tcs_enabled {
+                engine_j.clamp(-j_cap * ctx.tcs_limit, j_cap * ctx.tcs_limit)
+            } else { engine_j };
+            let hold = (ctx.brake_force * brake_share * brake_input * dt).min(j_cap);
+            brake_impulse = v_scale(patch.forward, -engine_after_tcs.clamp(-hold, hold));
         }
     }
 
@@ -151,7 +161,7 @@ pub fn solve_longitudinal(
     // =========================================================
     // ABS (based on longitudinal usage)
     // =========================================================
-    if ctx.abs_enabled
+    if ctx.abs_enabled && !cable_brake
         && brake_input > 0.01
         && patch.speed_planar > 1.0
     {
@@ -232,6 +242,28 @@ mod tests {
             assert!(raw * throttle > 0.0 && limited * throttle > 0.0);
             assert!(limited.abs() < raw.abs());
             assert!((limited.abs() / raw.abs() - on.tcs_limit).abs() < 0.001);
+        }
+    }
+
+    #[test]
+    fn cable_brake_only_slows_rear_wheels_and_bypasses_rear_abs() {
+        let ctx = SolveContext { abs_enabled:true, brake_force:100_000.0, ..context() };
+        let input = ControlInput { handbrake:1.0, ..ControlInput::default() };
+        let front = patch(10.0);
+        assert_eq!(solve_longitudinal(&ctx,&input,&front,0.33).impulse,[0.0;3]);
+        let rear = ContactPatch { wheel:WheelId::RL, ..front };
+        let raw=solve_longitudinal(&ctx,&input,&rear,0.17).impulse[2];
+        let no_abs=SolveContext { abs_enabled:false, ..ctx };
+        assert!(raw<0.0);assert_eq!(raw,solve_longitudinal(&no_abs,&input,&rear,0.17).impulse[2]);
+    }
+
+    #[test]
+    fn cable_brake_holds_engine_demand_at_rest_without_pushing_backward() {
+        for tcs_enabled in [false,true] {
+            let ctx=SolveContext {engine_force:8000.0,brake_force:20_000.0,tcs_enabled,..context()};
+            let input=ControlInput {throttle:1.0,handbrake:1.0,..ControlInput::default()};
+            let rear=ContactPatch {wheel:WheelId::RL,drive:true,..patch(0.0)};
+            assert!(solve_longitudinal(&ctx,&input,&rear,0.17).impulse[2].abs()<1e-5);
         }
     }
 

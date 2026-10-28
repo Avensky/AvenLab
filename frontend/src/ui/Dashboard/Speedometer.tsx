@@ -1,16 +1,30 @@
 import { memo } from "react";
-import { Hub, Needle, TickRing } from "./Gauge";
+import { GaugeDisc, Hub, Needle, ScaleMarks } from "./Gauge";
+import { arcPath, KPH_TICKS, MPH_TICKS, MPH_TO_KPH, SPEED_MAX_KPH, SPEED_MAX_MPH, SPEED_START, SPEED_SWEEP, speedAngle } from "./gaugeGeometry";
+import { SpeedometerLights } from "./InstrumentLights";
 
-const start = -7 * Math.PI / 4, end = -Math.PI / 3;
-export default memo(function Speedometer({ speed, maxSpeed, unit }: { speed: number | null; maxSpeed: number; unit: string }) {
-  const ratio = Math.max(0, Math.min(1, (speed ?? 0) / maxSpeed));
-  return <div className="speedometer-wrapper" role="meter" aria-label="Speed" aria-valuemin={0} aria-valuemax={maxSpeed}
-    aria-valuenow={speed === null ? undefined : Math.min(maxSpeed, speed)} aria-valuetext={speed === null ? "Unavailable" : `${Math.round(speed)} ${unit}`}>
-    <svg viewBox="0 0 160 160" aria-hidden="true">
-      <TickRing max={maxSpeed} steps={8} start={start} end={end} />
-      <text x="80" y="94" className="gauge-caption">{unit}</text>
-      <text x="80" y="114" className="gauge-speed">{speed === null ? "—" : Math.round(speed)}</text>
-      <Needle angle={start + ratio * (end - start)} visible={speed !== null} /><Hub />
+const SpeedFace = memo(function SpeedFace() {
+  return <g className="speedometer-face">
+    <GaugeDisc />
+    <g data-scale="mph"><ScaleMarks ticks={MPH_TICKS} radius={93} labelRadius={77} /></g>
+    <g data-scale="kmh">
+      <path d={arcPath(100, 100, 64, SPEED_START, SPEED_START + SPEED_SWEEP)} fill="none" stroke="#8f9aa6" strokeWidth=".5" />
+      <ScaleMarks ticks={KPH_TICKS} radius={64} labelRadius={53} small />
+    </g>
+    <text x="95" y="56" className="gauge-caption">MPH</text>
+    <text x="95" y="70" className="gauge-caption gauge-unit-inner">km/h</text>
+  </g>;
+});
+
+export default memo(function Speedometer({ speedKph, unit, clusterMask, clusterFields }: { speedKph: number | null; unit: "MPH" | "KM/H"; clusterMask: number | null; clusterFields: number }) {
+  const value = speedKph === null ? null : unit === "MPH" ? speedKph / MPH_TO_KPH : speedKph;
+  const max = unit === "MPH" ? SPEED_MAX_MPH : SPEED_MAX_KPH;
+  return <div className="speedometer-wrapper" role="meter" aria-label="Speed" aria-valuemin={0} aria-valuemax={max}
+    aria-valuenow={value === null ? undefined : Math.min(max, value)} aria-valuetext={value === null ? "Unavailable" : `${Math.round(value)} ${unit}`}>
+    <svg viewBox="0 0 200 200" aria-hidden="true">
+      <SpeedFace />
+      <Needle angle={speedAngle(Math.max(0, Math.min(SPEED_MAX_KPH, speedKph ?? 0)))} visible={speedKph !== null} x={100} y={100} length={90} /><Hub x={100} y={100} />
     </svg>
+    <SpeedometerLights mask={clusterMask} fields={clusterFields} />
   </div>;
 });

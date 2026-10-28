@@ -2,8 +2,8 @@
 
 The uploaded custom designs are integrated in `frontend/src/ui/Dashboard/`:
 dark speed face, white tachometer band, red needles, amber gear LCD and paired
-fuel/temperature dial. A NOS arc sits just outside RPM; condition/repair has a
-small meter under the resource dial. Shared SVG geometry preserves those visual
+fuel/temperature dial. NOS and condition/repair use thin horizontal meters below
+the dials. Shared SVG geometry preserves those visual
 features while removing independent canvas loops and the retired mutation store.
 
 Enable **Settings → Display → Driving HUD & touch controls**. The three main
@@ -17,7 +17,8 @@ ABS/TCS buttons show confirmed enabled/disabled state. Amber OFF is distinct fro
 enabled; a dashed border means the input request awaits a server acknowledgement.
 Keyboard Q/T and **Settings → Controller → ABS/TCS** offer the same controls,
 including controller A/Cross activation. These are the existing tire-budget
-assists, not VSC/stability control or a branded Sport mode.
+assists. The cockpit adds a game-specific one-launch Sport traction policy;
+factory VSC yaw/brake intervention is not simulated. See [cockpit reference](COCKPIT_UI.md).
 
 ## Simulation ownership and behavior
 
@@ -110,17 +111,16 @@ multiplied fuel use by gear index and had several RPM writers using inconsistent
 fuel state. Its cooling path could read a missing speed field. The Rust version
 uses one clock and one state owner with explicit units and dt-based rates.
 
-A draggable manual gated shifter can be fun alongside automatic assist. Next
-implement a server-owned clutch/gear request and full torque-curve model, then
-add snap-to-gate dragging plus controller/keyboard equivalents. Switching to auto
-should retain a valid current gear and avoid a torque jump. VSC/Sport needs a
-separate stability-control implementation; ABS/TCS switches alone cannot claim it.
+The cockpit now has a draggable assisted manual selector with server-owned gear
+requests, plus automatic mode. A clutch and full torque-curve model remain further
+work. Factory VSC yaw control remains separate from the game's Sport traction rule.
 
 Tests cover fuel/thermal rates, timestep independence, heat/fuel cutoffs, NOS,
 impact damage, actual Rapier collisions, service gates, assist limits and HUD/
-input ownership. Browser checks include actual Rust WebSocket data and native
-multi-touch layouts. UI-only layout fixtures use synthetic samples; those are
-not phone-FPS benchmarks. Rebuild/restart Rust and rebuild the frontend together.
+input ownership. The original integration was checked with Rust WebSocket data;
+the revised cockpit's native rendering is unverified because this environment
+blocked local Chromium. The included preview uses sample data, not a physics or
+phone-FPS benchmark. Rebuild/restart Rust and rebuild the frontend together.
 
 Final checks: **150 frontend tests** and **47 Rust tests** passed with no skips
 or failures. Full ESLint, TypeScript/production frontend build and optimized Rust

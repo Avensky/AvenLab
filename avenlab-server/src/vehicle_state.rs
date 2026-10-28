@@ -69,6 +69,7 @@ pub struct Vehicle {
     pub throttle: f32,          // -1.0 (full reverse) .. 1.0 (full forward)
     pub steer: f32,             // positive = left toward local -X; negative = right toward +X
     pub brake: f32,             // 0.0 (no brake) .. 1.0 (full brake)
+    pub handbrake: f32,
     pub pitch: f32,             // for flying vehicles
     pub yaw: f32,               // for flying vehicles
     pub roll: f32,              // for flying vehicles
@@ -93,6 +94,7 @@ pub struct Vehicle {
     // Telemetry
     // ==========================================
     pub powertrain: Powertrain,
+    pub cockpit: crate::cockpit::Cockpit,
 }
 
 bitflags! {

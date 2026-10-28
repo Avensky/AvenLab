@@ -23,7 +23,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   bindings: DEFAULT_BINDINGS, favoriteVehicles: [], touchLayout: "pedals", speedUnit: "kmh",
 };
 // Fixed shortcuts remain available; rebinding movement must never steal them.
-export const RESERVED_KEYS = new Set(["F2", "F3", "F8", "Escape", "Enter", "Tab", "Backquote", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
+export const RESERVED_KEYS = new Set(["F2", "F3", "F4", "F8", "Escape", "Enter", "Tab", "Backquote", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
   "KeyE", "KeyL", "KeyZ", "KeyX", "KeyH", "KeyQ", "KeyT", "KeyC", "KeyV", "KeyY", "KeyM", "KeyN", "KeyR", "ShiftLeft", "ShiftRight"]);
 
 // The persisted payload is treated as input, so old/corrupt settings cannot

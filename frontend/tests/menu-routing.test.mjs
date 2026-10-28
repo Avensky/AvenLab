@@ -12,8 +12,8 @@ before(async () => {
 });
 after(async () => { delete globalThis.window; await server?.close(); });
 
-test('every pause row routes correctly and navigation wraps across all seven items', () => {
-  [null, 'debug_menu', 'settings', 'vehicle_select', 'missions', 'career', 'leave_game'].forEach((target, index) => {
+test('every pause row routes correctly and navigation wraps across all eight items', () => {
+  [null, 'debug_menu', 'settings', 'vehicle_select', 'cockpit', 'missions', 'career', 'leave_game'].forEach((target, index) => {
     ui.setState({ screen: 'sandbox', overlay: 'pause', isModeLoading: false });
     ui.getState().setActiveMenuIndex(index); route('activate');
     assert.equal(ui.getState().overlay, target, `pause row ${index}`);
@@ -21,7 +21,7 @@ test('every pause row routes correctly and navigation wraps across all seven ite
   });
   ui.setState({ overlay: 'pause' });
   ui.getState().setActiveMenuIndex(0); route('up');
-  assert.equal(ui.getState().getActiveMenuIndex(), 6);
+  assert.equal(ui.getState().getActiveMenuIndex(), 7);
   route('down'); assert.equal(ui.getState().getActiveMenuIndex(), 0);
 });
 

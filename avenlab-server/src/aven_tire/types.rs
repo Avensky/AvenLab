@@ -130,6 +130,7 @@ pub struct SolveContext {
 pub struct ControlInput {
     pub throttle: f32,  // -1..1
     pub brake: f32,     // 0..1
+    pub handbrake: f32, // rear wheels only; cable brake bypasses rear ABS
     pub steer: Real,    // -1..1 (normalized steer input)
 }
 

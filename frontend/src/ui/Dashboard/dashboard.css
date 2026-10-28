@@ -1,49 +1,74 @@
-.driving-dashboard { position: absolute; right: max(12px, env(safe-area-inset-right)); bottom: max(14px, env(safe-area-inset-bottom)); width: clamp(260px, 30vw, 410px); padding-bottom: 26px; color: #f8fafc; pointer-events: none; font: 10px/1.2 ui-monospace, monospace; filter: drop-shadow(0 2px 4px #0008); }
-.dashboard-heading { display: flex; justify-content: space-between; align-items: center; padding: 0 10px 8px; color: #cbd5e1; font-weight: 700; letter-spacing: .16em; }
-.dashboard-signal { color: #fda4af; font-size: 9px; letter-spacing: .04em; }
+.driving-dashboard { position: absolute; right: max(12px, env(safe-area-inset-right)); bottom: max(14px, env(safe-area-inset-bottom)); width: clamp(260px, 30vw, 410px); color: #f8fafc; pointer-events: none; font: 10px/1.2 ui-monospace, monospace; }
+.dashboard-heading { display: flex; justify-content: space-between; align-items: center; min-height: 22px; padding: 0 5px 3px; }
+.dashboard-signal { color: #ffba7c; font-size: 9px; letter-spacing: .04em; }
 .dashboard-cluster { display: flex; align-items: center; }
-.speedometer-wrapper { width: 36%; flex-shrink: 0; }
+.speedometer-wrapper { position: relative; width: 36%; flex-shrink: 0; }
 .dashboard-rpm { width: 40%; flex-shrink: 0; position: relative; z-index: 2; margin-left: -5%; margin-right: -4%; }
+.revolutions-wrapper { position: relative; }
 .fuel-temp-wrapper { width: 34%; flex-shrink: 0; position: relative; }
 .dashboard-cluster svg { display: block; width: 100%; height: auto; overflow: visible; }
-.dashboard-cluster text { font: 700 12px ui-monospace, monospace; text-anchor: middle; dominant-baseline: middle; fill: #f1f5f9; }
-.dashboard-cluster .gauge-ticks-dark text { fill: #111827; }
-.gauge-disc { fill: rgb(3 7 18 / .78); stroke: rgb(148 163 184 / .28); stroke-width: 1; }
-.gauge-needle { transition: transform 70ms linear, opacity 100ms linear; }
-.gauge-needle path { fill: #c51935; stroke: #ff697e; stroke-width: .7; filter: drop-shadow(0 0 3px #f13b5b); }
-.gauge-hub { fill: #090c14; stroke: #ba263e; stroke-width: 1; filter: drop-shadow(0 0 3px #dd173e); }
-.dashboard-cluster .gauge-caption { font-size: 9px; font-weight: 500; letter-spacing: .06em; fill: #cbd5e1; }
-.dashboard-cluster .gauge-speed { font-size: 24px; font-weight: 700; fill: #f8fafc; }
-.gauge-lcd rect { fill: #ec9c28; stroke: #fbc76c; stroke-width: 1; }
-.dashboard-cluster .gauge-lcd text { fill: #301700; font-size: 23px; }
-.gauge-lcd-off { opacity: .6; }
-.dashboard-cluster .gauge-warning { fill: #ff758b; }
+.dashboard-cluster text { font: 700 12px ui-monospace, monospace; text-anchor: middle; dominant-baseline: middle; fill: #eef1f4; }
+.dashboard-cluster .gauge-scale text { font-size: 12px; font-style: italic; }
+.dashboard-cluster .gauge-scale-small text { font-size: 8px; font-weight: 500; }
+.dashboard-cluster .gauge-scale-dark text { fill: #171a20; font-size: 13px; }
+.gauge-rim { fill: #080b10; stroke: #82909e; stroke-width: 1.8; }
+.gauge-disc { fill: rgb(10 13 19 / .94); stroke: #283039; stroke-width: 1; }
+.gauge-needle { transform-box: view-box; transition: transform 70ms linear, opacity 100ms linear; }
+.gauge-needle path { fill: #e65132; stroke: #ffb25e; stroke-width: .65; }
+.gauge-hub { fill: #10131a; stroke: #80362d; stroke-width: 1.2; }
+.dashboard-cluster .gauge-caption { font-size: 7px; font-weight: 500; letter-spacing: .02em; fill: #d4dbe2; }
+.dashboard-cluster .gauge-unit-inner { font-size: 6px; }
+.dashboard-cluster .gauge-rpm-unit { font-size: 7px; font-weight: 500; fill: #cdd4da; }
+.gauge-lcd-recess { fill: #120c08; stroke: #39291b; stroke-width: .6; }
+.gauge-lcd rect { fill: #321708; stroke: #bb7429; stroke-width: .65; }
+.dashboard-cluster .gauge-lcd text { fill: #ffae40; font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.dashboard-cluster .gauge-lcd .gauge-lcd-label { fill: #ffb44e; font-size: 5.4px; font-weight: 700; }
+.gauge-displays[data-power="off"] .gauge-lcd-illumination,
+.gauge-displays[data-power="unavailable"] .gauge-lcd-illumination { opacity: 0; }
+.gauge-displays[data-power="cranking"] .gauge-lcd-illumination { animation: gauge-crank-pulse 520ms ease-in-out infinite; }
+@keyframes gauge-crank-pulse { 0%, 100% { opacity: .28; } 50% { opacity: 1; } }
 .driving-dashboard:not([data-signal="live"]) .dashboard-cluster { opacity: .55; }
-.nos-ring { position: absolute; inset: 0; pointer-events: none; }
-.nos-ring > svg { position: absolute; width: 112%; height: 112%; inset: -6%; }
-.nos-track, .nos-fill { fill: none; stroke-width: 3; stroke-linecap: butt; }
-.nos-track { stroke: #42606c; stroke-dasharray: 3 1; }
-.nos-fill { stroke: #5ce6f2; transition: stroke-dasharray 80ms linear; }
-.nos-ring[data-active="true"] .nos-fill { stroke: #f8fafc; filter: drop-shadow(0 0 3px #67e8f9); }
-.nos-button { position: absolute; left: 3%; bottom: -24px; min-height: 22px; display: flex; align-items: center; gap: 4px; padding: 2px 6px; border: 1px solid #3f6f7e; border-radius: 1px; background: #07121aee; color: #c8f6fc; font: 9px ui-monospace, monospace; pointer-events: auto; touch-action: none; }
-.nos-button strong { font-size: 11px; color: #67e8f9; }
-.nos-button:disabled { color: #94a3b8; border-color: #334155; }
-.nos-button:disabled strong { color: #94a3b8; }
-.nos-button:hover:not(:disabled), .nos-button:focus-visible, .nos-ring[data-requested="true"] .nos-button { outline: 1px solid #67e8f9; background: #0e3543; }
-.dashboard-heading > div:first-child { display: flex; flex-direction: column; gap: 2px; }
+.gauge-symbol { filter: brightness(0) invert(1); }
+.speedometer-lights, .rpm-lights, .resource-lights { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+.instrument-lamp { position: absolute; width: 8%; aspect-ratio: 1; transform: translate(-50%, -50%); opacity: .12; }
+.instrument-lamp::before { content: ""; display: block; width: 100%; height: 100%; background: currentColor; mask-image: var(--lamp-icon); mask-size: contain; mask-repeat: no-repeat; mask-position: center; }
+.instrument-lamp[data-supported="false"] { opacity: .055; }
+.instrument-lamp[data-active="true"] { opacity: 1; }
+.instrument-lamp[data-blink="true"], .gauge-turn[data-active="true"] { animation: instrument-flash 900ms steps(1, end) infinite; }
+.instrument-lamp[data-lamp="High beam"]::before { transform: scaleX(-1); }
+.traction-activity { position: absolute; left: 61%; top: 32%; width: 4%; aspect-ratio: 1; border-radius: 50%; background: #ffb13d; opacity: .08; }
+.traction-activity[data-active="true"] { opacity: 1; }
+.gauge-turn { position: absolute; top: 14%; transform: translate(-50%, -50%); color: #b3f36b; font-size: clamp(8px, 1.1vw, 16px); opacity: .06; }
+.gauge-turn-left { left: 5%; }.gauge-turn-right { left: 95%; }
+.gauge-turn[data-active="true"] { opacity: 1; }
+@keyframes instrument-flash { 50% { opacity: .16; } }
+.gauge-brake, .gauge-abs-warning, .gauge-tcs-warning { position: absolute; transform: translate(-50%, -50%); font-size: clamp(4px, .65vw, 8px); color: #ffb94c; opacity: .1; }
+.gauge-brake { left: 29%; top: 12%; color: #ff4e48; }
+.gauge-abs-warning { left: 24%; top: 78%; }.gauge-tcs-warning { left: 29%; top: 88%; font-size: clamp(3px, .5vw, 6px); }
+.gauge-brake[data-active="true"], .gauge-abs-warning[data-active="true"], .gauge-tcs-warning[data-active="true"] { opacity: 1; }
 .dashboard-assists { display: flex; gap: 4px; pointer-events: auto; }
-.dashboard-assists button { display: flex; flex-direction: column; justify-content: center; gap: 1px; min-width: 34px; min-height: 25px; padding: 2px 4px; border: 1px solid #b28236; background: #342613d9; color: #fbc26e; font: 8px/1 ui-monospace, monospace; }
+.dashboard-assists button { display: flex; flex-direction: column; justify-content: center; gap: 1px; min-width: 34px; min-height: 22px; padding: 2px 4px; border: 1px solid #b28236; background: #342613d9; color: #fbc26e; font: 8px/1 ui-monospace, monospace; }
 .dashboard-assists button span { font-size: 7px; }
 .dashboard-assists button[data-enabled="true"] { border-color: #5b7685; background: #0c1d29d9; color: #dbe7ec; }
 .dashboard-assists button[aria-busy="true"] { border-style: dashed; }
 .dashboard-assists button:disabled { opacity: .5; cursor: default; }
-.repair-gauge { position: absolute; left: 5%; right: 0; bottom: -8px; display: grid; grid-template-columns: 1fr auto; gap: 2px 3px; color: #cbd5e1; font: 7px/1 ui-monospace, monospace; }
-.repair-gauge > span { grid-column: 1 / -1; letter-spacing: .04em; }
-.repair-gauge i { display: block; height: 3px; align-self: center; background: #334155; }
-.repair-gauge b { display: block; height: 100%; background: #89bfc6; }
-.repair-gauge strong { font-weight: 500; }
-.repair-gauge[data-damaged="true"] b { background: #fda46d; }
-@media (max-width: 900px) { .driving-dashboard { width: clamp(240px, 37vw, 310px); bottom: calc(max(8px, env(safe-area-inset-bottom)) + 92px); } }
+.dashboard-footer { margin-left: 20%; width: 80%; display: grid; grid-template-columns: 1fr 1.2fr; align-items: center; gap: 5px; margin-top: 3px; min-height: 18px; }
+.nos-line { min-width: 0; }
+.resource-line { display: flex; align-items: center; gap: 3px; min-width: 0; font: 7px/1 ui-monospace, monospace; color: #d7dce2; white-space: nowrap; }
+.resource-line strong { color: #ffb549; font-weight: 700; font-variant-numeric: tabular-nums; }
+.resource-line i { display: block; flex: 1; min-width: 12px; height: 4px; border: 1px solid #9a5c27; background: #20150d; }
+.resource-line b { display: block; width: 100%; height: 100%; transform-origin: left center; background: #ef952f; transition: transform 80ms linear; }
+.nos-button { width: 100%; min-height: 18px; padding: 2px 0; border: 0; background: transparent; pointer-events: auto; touch-action: none; }
+.nos-button:disabled { opacity: .5; cursor: default; }
+.nos-button:hover:not(:disabled), .nos-button:focus-visible, .nos-line[data-requested="true"] .nos-button { outline: 1px solid #fbc26e; outline-offset: 2px; }
+.nos-line[data-active="true"] .resource-line b { background: #fff0b9; }
+.repair-gauge[data-damaged="true"] b { background: #ec6a39; }
+@media (max-width: 900px) { .driving-dashboard { width: clamp(240px, 37vw, 330px); bottom: calc(max(8px, env(safe-area-inset-bottom)) + 92px); } }
+@media (max-width: 600px) { .driving-dashboard { width: min(330px, calc(100vw - 24px)); } }
 @media (max-height: 400px) and (min-width: 901px) { .driving-dashboard { width: 270px; } }
-@media (max-width: 380px) { .driving-dashboard { width: 216px; padding-bottom: 21px; } .dashboard-heading { padding-bottom: 5px; } .dashboard-assists button { min-height: 20px; } .nos-button { bottom: -19px; min-height: 18px; padding: 1px 4px; } }
-html[data-reduce-motion="true"] .gauge-needle, html[data-reduce-motion="true"] .nos-fill { transition: none; }
+@media (max-width: 380px) and (max-height: 330px) { .driving-dashboard { width: 216px; } .dashboard-heading { min-height: 18px; padding-bottom: 2px; } .dashboard-assists button { min-height: 18px; } .resource-line { font-size: 6px; gap: 2px; } }
+html[data-reduce-motion="true"] .gauge-needle, html[data-reduce-motion="true"] .resource-line b { transition: none; }
+html[data-reduce-motion="true"] .gauge-lcd-illumination,
+html[data-reduce-motion="true"] .instrument-lamp, html[data-reduce-motion="true"] .gauge-turn { animation: none; }
+html[data-reduce-motion="true"] .gauge-displays[data-power="cranking"] .gauge-lcd-illumination { opacity: .8; }
+@media (prefers-reduced-motion: reduce) { .gauge-needle, .resource-line b { transition: none; } .gauge-lcd-illumination, .instrument-lamp, .gauge-turn { animation: none !important; } }

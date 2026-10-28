@@ -56,11 +56,12 @@ frame-rate angle writer when mounted/active. A future camera cleanup should
 keep transient angles in local refs. The normal routing/settings fields remain
 event-driven. See [store reference](../frontend/src/store/README.md).
 
-The rear handbrake input and older radio/visual/audio experiments still
-need their own backend/feature audit. This patch keeps the working foot brake
-and assists explicit. A VSC/Sport mode needs stability-control behavior before
-its badge should appear. Future lowercase folder renames should use a temporary
-git path so Windows records case changes reliably.
+The revised cockpit wires the rear cable brake, latched parking, assisted gear
+selection and game Sport traction policy. `radioStore` owns local Audio playback;
+older archived audio experiments remain separate. Factory VSC yaw control and
+model-specific wiper rigs remain future work. See [cockpit reference](COCKPIT_UI.md).
+Future lowercase folder renames should use a temporary git path so Windows
+records case changes reliably.
 
 The existing Reset request now recovers an upright pose on clear road once per
 press, preserving fuel, heat, condition and NOS. Repairs/refills require the

@@ -87,12 +87,19 @@ impl PhysicsWorld {
             if wheels.is_empty() { continue; }
 
             let longitudinal_speed = (body_ro.rotation().inverse() * body_ro.linvel()).z;
+            let (throttle, brake) = vehicle.cockpit.advance(dt, longitudinal_speed, vehicle.throttle, vehicle.brake, vehicle.handbrake, vehicle.powertrain.running);
+            let handbrake = vehicle.handbrake.max(if vehicle.cockpit.parked() { 1.0 } else { 0.0 });
+            vehicle.powertrain.manual_gear = vehicle.cockpit.manual_gear();
+            vehicle.vehicle_flags.set(VehicleStateFlags::TCS, vehicle.cockpit.tcs_enabled(vehicle.vehicle_flags.contains(VehicleStateFlags::TCS)));
             vehicle.powertrain.advance(vehicle.config.resources, Demand {
-                throttle: vehicle.throttle, longitudinal_speed,
+                throttle, longitudinal_speed,
                 wheel_radius: vehicle.config.wheel_radius, engine_force: vehicle.config.engine_force,
             }, dt);
             vehicle.vehicle_flags.set(VehicleStateFlags::ENGINE_ON, vehicle.powertrain.running);
             vehicle.vehicle_flags.set(VehicleStateFlags::BOOST, vehicle.powertrain.boost_active);
+            if vehicle.cockpit.enabled {
+                vehicle.vehicle_flags.set(VehicleStateFlags::HEADLIGHTS, vehicle.cockpit.headlights(vehicle.powertrain.running));
+            }
 
             let mut impulses = ImpulseAccumulator::new();
             let body_mass = body_ro.mass() as f32;
@@ -231,8 +238,13 @@ impl PhysicsWorld {
             };
             let control = ControlInput {
                 throttle: vehicle.powertrain.drive_throttle,
-                brake: vehicle.brake.max(vehicle.powertrain.direction_brake), steer: vehicle.steer,
+                brake: brake.max(vehicle.powertrain.direction_brake), handbrake, steer: vehicle.steer,
             };
+            let driven = ctx.driven_wheels.max(1.0);
+            vehicle.cockpit.grip_limited = contacts.iter().any(|patch| patch.drive && patch.grounded
+                && ctx.engine_force * control.throttle.abs() / driven > patch.normal_force * patch.mu_long * 0.95);
+            vehicle.cockpit.traction_active = ctx.tcs_enabled && contacts.iter().any(|patch| patch.drive && patch.grounded
+                && ctx.engine_force * control.throttle.abs() / driven > patch.normal_force * patch.mu_long * ctx.tcs_limit);
             let tire_forces = solve_step(&ctx, &control, &mut contacts);
             // solve_step emits engine/brake at COM and lateral impulse at the
             // patch. Contact application already produces yaw and roll torque;
@@ -253,7 +265,7 @@ impl PhysicsWorld {
             let body = self.bodies.get_mut(handle).unwrap();
             let velocity = *body.linvel();
             let speed = (velocity.x * velocity.x + velocity.z * velocity.z).sqrt();
-            if control.brake > 0.8 && control.throttle.abs() < 0.001 && speed < 0.08 {
+            if control.brake.max(control.handbrake) > 0.8 && control.throttle.abs() < 0.001 && speed < 0.08 {
                 // A near-rest brake hold only removes planar drift/yaw. It does
                 // not freeze suspension motion, pitch or roll, or affect launch.
                 body.set_linvel(vector![0.0, velocity.y, 0.0], true);
@@ -456,12 +468,13 @@ mod tests {
         world.register_vehicle(handle, BRZ);
         world.body_to_player.insert(handle, "test".into());
         world.vehicles.insert("test".into(), Vehicle {
-            body: handle, config: BRZ, throttle: 0.0, steer: 0.0, brake: 0.0,
+            body: handle, config: BRZ, throttle: 0.0, steer: 0.0, brake: 0.0, handbrake: 0.0,
             pitch: 0.0, yaw: 0.0, roll: 0.0, ascend: 0.0,
             steer_angle: 0.0, steer_rate: 0.0, steering: SteeringState::default(),
             rack_torque: 0.0, rack_torque_filtered: 0.0,
             vehicle_flags: VehicleStateFlags::ENGINE_ON, player_flags: 0,
             powertrain: Powertrain::new(BRZ.resources),
+            cockpit: crate::cockpit::Cockpit::default(),
         });
         world.query_pipeline.update(&world.colliders);
         world.refresh_vehicle_wheel_snapshots();
