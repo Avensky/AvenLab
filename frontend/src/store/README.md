@@ -69,9 +69,9 @@ requests with an explicit key-command marker so a temperature change cannot repl
 START. Confirmed `cabin_mask` and `cruise_target_kph` use the same 20 Hz projection. The open cockpit also owns the shared 20 Hz
 telemetry sampler, so acknowledgements continue while the driving HUD is hidden.
 See [cockpit protocol](../../../docs/COCKPIT_UI.md). `radioStore` is event-driven
-and owns one local Audio element; it sends no audio bytes to Rust and persists no
+and owns one local Audio element plus a bounded 100-file local queue; it sends no audio bytes to Rust and persists no
 selected file. Protocol v4 command 11 is a temporary forward gear override; the server resumes
-automatic shifts after 0.75 s. Presentation choices and hiding groups never write
+automatic shifts after 0.75 loaded seconds; idle gear taps wait for throttle. Presentation choices and hiding groups never write
 a gear or engine request. Chat is a disconnected channel shell, not another
 simulation/network store. v5 extends `cabin_mask` to u32 with airflow bits16–18
 and fan4 bit19; ambient °C comes once in vehicle configuration and displays °F.
@@ -119,3 +119,9 @@ does not revive the retired monolithic `useStore` / `mutation` system.
 selectionStore. Review callers before removing compatibility fields. Future
 binary/quantized transport belongs in a versioned socket codec with round-trip
 tests, decoded into these same units. See [HUD/resource integration](../../../docs/VEHICLE_HUD.md).
+
+Instrument subscriptions are separate for speed, RPM and fuel/temperature.
+Position/yaw projections serve the map without invalidating those components.
+Steering axis updates only the rotor; stalk state is memoized separately. Chat's
+unused component and saved visibility option were removed. Radio transport and
+volume remain event-driven, with no new progress timer or network sender.

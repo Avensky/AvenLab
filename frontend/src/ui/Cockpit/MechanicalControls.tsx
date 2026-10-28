@@ -15,7 +15,7 @@ export function GearSelector({ automatic, gear, disabled, pending }: { automatic
   const selection=automatic&&gear>0&&gear<7?1:gear;
   const position = slots.find(slot=>slot.gear===selection) ?? slots[0];
   const gate = useRef<HTMLDivElement>(null), knob = useRef<HTMLButtonElement>(null), drag = useRef<{id:number;x:number;y:number;moved:boolean;neutral:boolean}|null>(null);
-  const select = (next:number) => selectDriveGear(next,!automatic);
+  const select = (next:number) => selectDriveGear(next);
   const shown=useRef(position);
   const reset = () => { if(knob.current){knob.current.style.left=`${position.x}%`;knob.current.style.top=`${position.y}%`;} };
   useEffect(()=>{
@@ -40,9 +40,9 @@ export function GearSelector({ automatic, gear, disabled, pending }: { automatic
   };
   return <section className="mechanical-shifter" aria-label="Gear selector">
 
-    <div className="shift-gate" ref={gate} data-automatic={automatic} data-pending={pending}>
+    <div className="shift-gate" ref={gate} data-automatic={automatic} aria-busy={pending}>
       <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path vectorEffect="non-scaling-stroke" d={automatic?"M50 17V83":"M12 25V51H86M36 25V78M61 25V78M86 25V78"}/></svg>
-      {slots.map(slot=><button className="shift-slot" key={slot.gear} disabled={disabled} aria-label={`Select ${slot.label==='R'?'reverse':slot.label==='N'?'neutral':slot.label==='P'?'park':slot.label==='D'?'drive':`gear ${slot.label}`}`} aria-pressed={selection===slot.gear} style={{left:`${slot.x}%`,top:`${slot.y}%`}} onClick={()=>select(slot.gear)}>{slot.label}</button>)}
+      {slots.map(slot=><button className="shift-slot" key={slot.gear} disabled={disabled} aria-label={`Select ${slot.label==='R'?'reverse':slot.label==='N'?'neutral':slot.label==='P'?'park':slot.label==='D'?'drive':`gear ${slot.label}`}`} aria-current={selection===slot.gear?"true":undefined} style={{left:`${slot.x}%`,top:`${slot.y}%`}} onClick={()=>select(slot.gear)}>{slot.label}</button>)}
       <button className="shift-knob" ref={knob} disabled={disabled} tabIndex={-1} aria-label="Drag gear stick" title="Drag to a gear, or select its slot"
         style={{left:`${position.x}%`,top:`${position.y}%`}}
         onPointerDown={event=>{if(event.button!==0||drag.current)return;animation.current?.cancel();drag.current={id:event.pointerId,x:event.clientX,y:event.clientY,moved:false,neutral:false};event.currentTarget.setPointerCapture?.(event.pointerId);}}

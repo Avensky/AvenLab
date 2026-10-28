@@ -1,37 +1,36 @@
-import { useEffect } from "react";
-import { startVehicleTelemetry, useVehicleTelemetryStore } from "../../store/vehicleTelemetryStore";
-import { usePreferencesStore } from "../../store/preferencesStore";
+import {memo,useEffect} from "react";
+import {useShallow} from "zustand/react/shallow";
+import {startVehicleTelemetry,useVehicleTelemetryStore} from "../../store/vehicleTelemetryStore";
+import {usePreferencesStore} from "../../store/preferencesStore";
 import Speedometer from "./Speedometer";
 import Revolutions from "./Revolutions";
 import FuelTemp from "./FuelTemp";
-import { ResourceFlags } from "../../store/tools/resourceMasks";
-import { MPH_TO_KPH } from "./gaugeGeometry";
-import { displayPower } from "./dashboardModel";
-import { ResourceRing } from "./ResourceRings";
+import {ResourceFlags} from "../../store/tools/resourceMasks";
+import {MPH_TO_KPH} from "./gaugeGeometry";
+import {displayPower} from "./dashboardModel";
+import {ResourceRing} from "./ResourceRings";
 import "./dashboard.css";
 
-export default function Dashboard() {
-  const data = useVehicleTelemetryStore(s => s.data);
-  const units = usePreferencesStore(s => s.speedUnit);
-  useEffect(startVehicleTelemetry, []);
-  const unit = units === "mph" ? "MPH" : "KM/H";
-  const speed = data.speedKph === null ? null : units === "mph" ? data.speedKph / MPH_TO_KPH : data.speedKph;
-  const power = displayPower(data);
-  const park = data.cockpitMask !== null && Boolean(data.cockpitMask & (1 << 6)) && ((data.cockpitMask >>> 7) & 15) === 8;
-  const warning = data.resourceMask & ResourceFlags.STARVED ? "FUEL EMPTY" : data.resourceMask & ResourceFlags.HEAT_LOCK ? "COOL ENGINE"
-    : data.resourceMask & ResourceFlags.HOT ? "ENGINE HOT" : data.resourceMask & ResourceFlags.LOW_FUEL ? "LOW FUEL" : data.resourceMask & ResourceFlags.DAMAGED ? "REPAIR" : data.resourceMask & ResourceFlags.STARTING ? "STARTING" : "";
-  return <section className="driving-dashboard" data-signal={data.signal} aria-label="Vehicle instruments">
-    <span className="dashboard-signal" role="status">{data.signal === "live" ? warning : data.signal === "offline" ? "LINK LOST" : data.signal === "stale" ? "NO SIGNAL" : "WAITING"}</span>
-    <div className="dashboard-cluster">
-      <div className="dashboard-speed"><Speedometer speedKph={data.speedKph} unit={unit} clusterMask={data.clusterMask} clusterFields={data.config.clusterFields} />
-        <ResourceRing kind="speed" fraction={data.conditionFraction} /></div>
-      <div className="dashboard-rpm">
-        <Revolutions rpm={data.rpm} gear={data.gear} maxRpm={data.config.maxRpm} redlineRpm={data.config.redlineRpm}
-          speed={speed} unit={unit} power={power} vehicleMask={data.vehicleMask} clusterMask={data.clusterMask} park={park} />
-        <ResourceRing kind="rpm" fraction={data.boostFraction} active={data.boostActive} />
-      </div>
-      <FuelTemp fuel={data.fuelLiters} temp={data.tempC} config={data.config} clusterMask={data.clusterMask}
-        resourceMask={data.resourceMask} power={power} absEnabled={data.absEnabled} tcsEnabled={data.tcsEnabled} live={data.signal === "live"} cockpitMask={data.cockpitMask} ultimate={data.ultimateFraction} />
-    </div>
-  </section>;
+// Position/yaw and unrelated controls must not redraw all three instrument faces.
+const SpeedInstrument=memo(function SpeedInstrument(){
+ const d=useVehicleTelemetryStore(useShallow(s=>({speed:s.data.speedKph,cluster:s.data.clusterMask,fields:s.data.config.clusterFields,condition:s.data.conditionFraction}))),units=usePreferencesStore(s=>s.speedUnit);
+ return <div className="dashboard-speed"><Speedometer speedKph={d.speed} unit={units==='mph'?'MPH':'KM/H'} clusterMask={d.cluster} clusterFields={d.fields}/><ResourceRing kind="speed" fraction={d.condition}/></div>;
+});
+const RpmInstrument=memo(function RpmInstrument(){
+ const d=useVehicleTelemetryStore(useShallow(s=>({rpm:s.data.rpm,gear:s.data.gear,speedKph:s.data.speedKph,engineOn:s.data.engineOn,signal:s.data.signal,resourceMask:s.data.resourceMask,cabinMask:s.data.cabinMask,cockpitMask:s.data.cockpitMask,vehicleMask:s.data.vehicleMask,clusterMask:s.data.clusterMask,config:s.data.config,boost:s.data.boostFraction,boostActive:s.data.boostActive}))),units=usePreferencesStore(s=>s.speedUnit);
+ const unit=units==='mph'?'MPH':'KM/H',speed=d.speedKph===null?null:units==='mph'?d.speedKph/MPH_TO_KPH:d.speedKph,park=d.cockpitMask!==null&&Boolean(d.cockpitMask&64)&&((d.cockpitMask>>>7)&15)===8;
+ return <div className="dashboard-rpm"><Revolutions rpm={d.rpm} gear={d.gear} maxRpm={d.config.maxRpm} redlineRpm={d.config.redlineRpm} speed={speed} unit={unit} power={displayPower(d)} vehicleMask={d.vehicleMask} clusterMask={d.clusterMask} park={park}/><ResourceRing kind="rpm" fraction={d.boost} active={d.boostActive}/></div>;
+});
+const FuelInstrument=memo(function FuelInstrument(){
+ const d=useVehicleTelemetryStore(useShallow(s=>({fuel:s.data.fuelLiters,temp:s.data.tempC,config:s.data.config,cluster:s.data.clusterMask,resourceMask:s.data.resourceMask,engineOn:s.data.engineOn,signal:s.data.signal,cabinMask:s.data.cabinMask,abs:s.data.absEnabled,tcs:s.data.tcsEnabled,cockpit:s.data.cockpitMask,ultimate:s.data.ultimateFraction})));
+ return <FuelTemp fuel={d.fuel} temp={d.temp} config={d.config} clusterMask={d.cluster} resourceMask={d.resourceMask} power={displayPower(d)} absEnabled={d.abs} tcsEnabled={d.tcs} live={d.signal==='live'} cockpitMask={d.cockpit} ultimate={d.ultimate}/>;
+});
+const InstrumentStatus=memo(function InstrumentStatus(){
+ const signal=useVehicleTelemetryStore(s=>s.data.signal),mask=useVehicleTelemetryStore(s=>s.data.resourceMask);
+ const warning=mask&ResourceFlags.STARVED?'FUEL EMPTY':mask&ResourceFlags.HEAT_LOCK?'COOL ENGINE':mask&ResourceFlags.HOT?'ENGINE HOT':mask&ResourceFlags.LOW_FUEL?'LOW FUEL':mask&ResourceFlags.DAMAGED?'REPAIR':mask&ResourceFlags.STARTING?'STARTING':'';
+ return <span className="dashboard-signal" role="status">{signal==='live'?warning:signal==='offline'?'LINK LOST':signal==='stale'?'NO SIGNAL':'WAITING'}</span>;
+});
+export default function Dashboard(){
+ const signal=useVehicleTelemetryStore(s=>s.data.signal);useEffect(startVehicleTelemetry,[]);
+ return <section className="driving-dashboard" data-signal={signal} aria-label="Vehicle instruments"><InstrumentStatus/><div className="dashboard-cluster"><SpeedInstrument/><RpmInstrument/><FuelInstrument/></div></section>;
 }

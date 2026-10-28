@@ -43,7 +43,7 @@ export function DriveAssists({ compact = false }: { compact?: boolean }) {
         }, 3100); }}
       onPointerUp={event => { if (held.current === event.pointerId) stop(); }} onPointerCancel={() => { stop(); consumed.current = false; }} onPointerLeave={() => { stop(); consumed.current = false; }}
       onClick={() => { if (consumed.current) { consumed.current = false; return; } toggleTrac(); }}>
-      <img src="/images/traction-control.svg" alt="" /><span>TRAC<br />{tcs ? "ON" : "OFF"}</span></button>
+      <span className="assist-trac-content"><img src="/images/traction-control.svg" alt="" /><span>TRAC<br />{tcs ? "ON" : "OFF"}</span></span></button>
     <button type="button" className="assist-sport" aria-label="VSC Sport" disabled={!live || !supported} aria-pressed={confirmed.assist === 1} aria-busy={pending}
       onClick={() => requestAssist(confirmed.assist === 1 ? (tcs ? 0 : 2) : 1, tcs)}>VSC<span>SPORT</span></button>
     {!compact && <><button type="button" aria-label="TRAC and VSC off" disabled={!live || !supported || moving} aria-pressed={confirmed.assist === 3}

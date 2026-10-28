@@ -988,6 +988,23 @@ mod tests {
     }
 
     #[test]
+    fn healthy_frs_reaches_sixth_and_its_configured_speed_in_the_real_tire_solver() {
+        let mut world=flat_world();let handle=world.spawn_vehicle_for_player("top-speed".into(),[0.0;3],"frs","red").unwrap();
+        for _ in 0..120 {world.step(SIMULATION_DT);}
+        let configured=world.vehicles["top-speed"].config.max_speed;let mut highest=0;let mut speed=0.0;
+        for _ in 0..7200 {
+            // A virtual rolling road keeps the finite fixture beneath the car.
+            // No velocity or tire force is supplied by the test.
+            let body=&mut world.bodies[handle];let y=body.translation().y;body.set_translation(vector![0.0,y,0.0],true);
+            let v=world.vehicles.get_mut("top-speed").unwrap();v.throttle=1.0;
+            world.step(SIMULATION_DT);
+            highest=highest.max(world.vehicles["top-speed"].powertrain.gear);speed=world.bodies[handle].linvel().norm();
+        }
+        println!("FRS tire solver: {speed:.3} m/s, gear {highest}, configured {configured:.3} m/s; fuel={:.2} L, temperature={:.2} C",world.vehicles["top-speed"].powertrain.fuel_liters,world.vehicles["top-speed"].powertrain.temperature_c);
+        assert_eq!(highest,6);assert!(speed>configured*0.94&&speed<configured*1.06,"{speed} vs {configured}");
+    }
+
+    #[test]
     fn real_spawn_path_places_all_vehicle_wheels_at_target_sag_on_the_road() {
         for id in ["ae86", "gt86", "brz", "camaro", "supra", "tank"] {
             let mut world = flat_world();

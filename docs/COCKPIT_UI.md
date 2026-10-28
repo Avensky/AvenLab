@@ -1,7 +1,6 @@
 # Mobile driver station and optional controls
 
-The instruments sit at top-left, a team/game/general chat area occupies middle-left,
-and the cropped steering wheel sits at bottom-left. Gas/brake/reverse controls are
+The instruments sit at top-left and the cropped steering wheel sits at bottom-left. Gas/brake/reverse controls are
 at bottom-right. The right-hand console has independent display, climate, shifter,
 parking-brake and assist groups. The ignition key is a separate center-screen pod.
 A collapsible top-right minimap plots the loaded authoritative roads and routes to a waypoint. It adds no second 3D render.
@@ -9,9 +8,9 @@ Signal Recon never mounts the driving HUD.
 
 ## Layout and access
 
-Settings → **HUD** offers saved Show/Hide choices for eleven groups, including
+Settings → **HUD** offers saved Show/Hide choices for ten groups, including
 minimap. Visibility and Restore HUD remain in the menu; no generic close/title
-bars appear over the road. Radio, climate, chat and map have their own compact
+bars appear over the road. Radio, climate and map have their own compact
 minimize controls. Instruments, wheel, pedals and ignition have no close bar.
 
 Standard and Controller layouts retain independent touch/console master choices.
@@ -43,10 +42,11 @@ NOS, recovery and single wipe. Apps open game menus, GPS and driving views.
 Ignition is a separate rotary circle between the vehicle and right stack and
 remains visible when running. The full Cockpit retains its Ignition tab.
 
-The chat group has Team / Game / General channel tabs. It is a layout shell with
-a disabled composer and an explicit disconnected state; no message service or
-pretend delivery is implemented. This reserves space for the eventual transport
-without adding another fast store or network sender.
+The disconnected chat shell has been removed from the HUD and Settings. Older
+saved chat visibility is discarded by preference validation. Equipment can scroll
+in a short viewport while the pedals retain a separate, nonshrinking bottom row.
+The expanded map uses the wheel's width. In short landscape viewports it sits
+beside the console; in portrait it opens below the instruments to avoid overlap.
 
 ## Ignition and climate
 
@@ -82,23 +82,28 @@ a match timer, timeout, score or winner; the server match system remains future 
 ## Wheel and column stalks
 
 The wheel is a memoized vector inspired by the FR-S reference: dark perforated
-rim, red stitching and silver lower spoke. Its entire circle is a joystick.
+rim, red stitching and silver lower spoke. Its painted rim/spokes/hub are a joystick. Transparent gaps pass through to the
+stalks behind it. The wheel stays visually above the stalks; SVG painted regions
+provide hit targets without invisible rectangular blockers.
 Thumb travel is constrained to a circle; only horizontal position changes steer.
 The horizontal travel limit gives full ±1 input and vertical motion only moves the thumb.
-Release centers the touch source. Keyboard/gamepad input also rotates the wheel,
+Release centers the touch source. Steering transforms update a separate rotor,
+so axis input cannot redraw the stalk controls. Keyboard/gamepad input also rotates the wheel,
 with a short CSS transition rather than a new animation loop. Visual lock is
 ±135°, a HUD choice rather than a claim about factory lock-to-lock geometry.
 
 Stalks are smaller and stay inside the rim as it turns; their rods remain fixed. Angles are measured counterclockwise from
 3 o'clock. Drag clockwise for up and counterclockwise for down, use the
 small tangent-labeled step targets, or focus and use arrow keys. The actuator
-springs to center after a gesture. Tap the center cap to rotate its mode.
+springs to center for wipers/cruise. The turn signal holds Left / Off / Right;
+clockwise advances toward Right and counterclockwise toward Left, through Off.
+Labels are tightened along their tangent. Tap the center cap to rotate its mode.
 
 | Stalk | Angle | Up / Down | Tap |
 | --- | --- | --- | --- |
 | Left lights/signals | 120° | Right blinker / left blinker | OFF → AUTO → ON |
 | Right wipers | 60° | 400 ms washer / one timed wipe | OFF → SLOW → MID → HIGH |
-| Lower-right cruise | 315° | RES/+ / SET/−; holding repeats | Cruise ON/OFF |
+| Lower-right cruise | 340°, 35% reach | RES/+ / SET/−; holding repeats | Cruise ON/OFF |
 
 Escape cancels the selected turn signal or cruise. The full cockpit retains
 explicit HIGH beam, wipe and cruise actions for controller access. Single wipes
@@ -124,12 +129,15 @@ coordinates for lines/slots, including on non-square screens. Dragging anywhere
 within the middle lane (y=39–63%) immediately selects N, without repeated requests
 while the thumb stays in that band. Dropping into another slot selects that gear.
 
+Gear-number targets are momentary actions, with a brief press flash and no
+latched selected style. `aria-current` reports the actual position accessibly.
 The H knob follows authoritative automatic gear telemetry with a 260 ms browser
 animation through the neutral lane. A 6→1 change crosses the horizontal lane
 directly, without fabricated intermediate gear requests. Reduced motion snaps
 to the final position. Dragging cancels that animation. Both layouts request automatic forward operation. A forward gear tap (H slot,
-PageUp/PageDown, A/Cross or R3) supplies a 0.75-second override, then the existing
-automatic up/downshift rules resume. No clutch or manually locked forward gear is
+PageUp/PageDown, A/Cross or R3) selects a gear at idle and preserves it. Applying throttle starts a 0.75-second
+loaded trial before automatic up/downshifts resume. Low-speed downshifts require
+throttle demand; releasing the accelerator does not restart an idle gear. No clutch or manually locked forward gear is
 required. Selecting N remains neutral under throttle until a driving gear is
 selected. P/R retain the existing speed gates. A visible recorder keeps A/Cross
 priority; the old dyno fallback remains when a gear-down action is unavailable.
@@ -142,7 +150,10 @@ background (projected -115°); full application rises toward -75°. These are sc
 projections of floor/up axes, not a claim that perpendicular 3D lines must appear
 90° apart in the image. Tap, drag or choose OFF / 33% / 67% / 100%. Keyboard B and
 controller B/Circle still supply momentary full cable force. The base ellipse
-leans with the receding OFF handle; level targets sit at its top-right. TRAC, ABS
+leans with the receding OFF handle; level targets descend vertically from its top-right. The red BRAKE legend stays
+at top-left. Clicking the lever cycles the same detents as the level buttons;
+only the chosen level receives a toggle border. The lever has no focus/pressed
+box; keyboard focus underlines its legend. TRAC, ABS
 and VSC SPORT sit below the brake, in that order, left of the shifter. Rust takes the
 maximum of latched and momentary force and bypasses rear ABS for it.
 
@@ -152,7 +163,8 @@ VSC SPORT is separate and retains the chosen TRAC state, with a 15% more permiss
 traction threshold. Holding TRAC for over 3 seconds while stopped requests TRAC +
 VSC OFF; an explicit cockpit action supplies controller access. Rust rejects it
 above 0.5 m/s. Engine stop restores Normal. This is not factory selective-wheel yaw
-stabilization; no such physical VSC model is implemented.
+stabilization; no such physical VSC model is implemented. The TRAC icon and label
+share one vertically stacked content wrapper.
 
 ## Instruments and resource rings
 
@@ -186,7 +198,10 @@ accepted state, physics substeps remain 120 Hz and snapshots target 60 Hz. The
 HUD/full cockpit share one reference-counted, visible-only 20 Hz display sampler.
 The root mounts its shared sampler only when a wheel/cockpit group needs it;
 Dashboard owns its own reference while visible. All groups hidden stops both.
-Static gauge faces and wheel artwork are memoized. Rings update one stroke offset;
+Static gauge faces and wheel artwork are memoized. Instrument groups subscribe
+only to their own values; GPS-only position updates do not commit dashboard
+updates. A React Profiler regression checks 20 position projections with zero
+extra dashboard commits. Rings update one stroke offset;
 there are no extra physics, network or per-gauge animation loops.
 
 Setup advertises `hud.cockpit_version: 5`; v5 enables airflow/fan4 and v4
@@ -221,7 +236,8 @@ or an assertion of any manufacturer-specific CAN identifier mapping. See the
 Open MAP at top-right or Cockpit → GPS. Click/tap a road for a snapped waypoint,
 use GPS for a point ahead, or Clear. The memoized SVG road layer uses static
 `map.collider_chunks` road/intersection AABBs, not city GLBs. A bounded road graph
-(maximum 1,024 segments) routes along intersecting centerlines. It covers loaded
+(maximum 1,024 segments) routes along intersecting centerlines. The SVG only mounts roads in an overscanned view region, refreshed when its
+coarse cell/zoom changes. It covers loaded
 road data, not an entire streamed world or a lane-aware navigation mesh. Nearby
 routes require both ends within 80 m of a known road. A vehicle arrow uses the
 existing local 20 Hz position/yaw projection; no additional transport loop exists.
@@ -234,6 +250,31 @@ the interpolated chassis and offers suspension, collider and handling diagnostic
 presets. Entering releases driving inputs; leaving restores diagnostic settings.
 Steering-input sensitivity is editable. Authoritative spring/collider/handling
 parameters are read-only because Rust has no live physical tuning endpoint yet.
+
+## Driveline and radio updates
+
+Every current vehicle uses its configured six forward ratios. Effective final
+reduction is calibrated from wheel radius, configured top speed and 82% redline
+in sixth, so the last upshift occurs before the configured speed. Drive force
+now follows the selected ratio, a bounded torque curve and a soft RPM limiter.
+The lower body damping is supplemented by one planar rolling/aerodynamic load
+in the existing force accumulator. Healthy full-throttle equilibrium matches
+configured speed without a hard velocity clamp or a second tire solver. NOS,
+fuel/heat/damage derating and ABS/TCS still act through their existing owners.
+This is a simulation calibration, not factory ECU/CAN gear-ratio documentation.
+
+Rust regression checks all six configured vehicles in a healthy one-dimensional
+driveline test. A real tire-solver FR-S rolling-road test reached sixth at
+61.795 m/s against its configured 62 m/s. The fleet test isolates degradation. The FR-S test runs fuel and heat normally,
+finishing with 29.03 L and 98.27°C after two minutes of full throttle. Longer
+full-load driving can still lose performance through fuel, heat or damage.
+
+The compact radio always exposes previous/replay, play/pause, next, restart,
+source and a volume dial. Dial-center toggles mute. Source accepts up to 100 local
+files, with one Audio owner and one active object URL. Previous rewinds after
+three seconds; otherwise it selects the previous file. End of a track advances
+to the next queued file. Track labels are filename-derived; no online station or
+ID3 lookup is fabricated. No playback progress timer is added to the HUD.
 
 ## Preview and validation
 

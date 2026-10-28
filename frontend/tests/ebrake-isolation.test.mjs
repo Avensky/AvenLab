@@ -23,21 +23,21 @@ test('parking brake requests cannot move the selector or mark other controls pen
   root=createRoot(document.getElementById('root'));const by=label=>document.querySelector(`[aria-label="${label}"]`);
   await t.test('unacknowledged brake changes leave sixth gear and assist indicators alone',async()=>{
    await act(async()=>{input.getState().setInput({cockpit_mask:undefined,vehicleMask:97});snapshot(192);root.render(h(Fragment,null,h(DriveGearControl),h(ParkingBrakeControl),h(DriveAssists,{compact:true})));});
-   assert.equal(by('Select gear 6').getAttribute('aria-pressed'),'true');const knob=by('Drag gear stick'),left=knob.style.left,top=knob.style.top;
+   assert.equal(by('Select gear 6').getAttribute('aria-current'),'true');const knob=by('Drag gear stick'),left=knob.style.left,top=knob.style.top;
    await act(async()=>by('Parking brake 67 percent').click());
-   assert.equal(knob.style.left,left);assert.equal(knob.style.top,top);assert.equal(by('Select gear 6').getAttribute('aria-pressed'),'true');assert.equal(document.querySelector('.shift-gate').dataset.pending,'false');
+   assert.equal(knob.style.left,left);assert.equal(knob.style.top,top);assert.equal(by('Select gear 6').getAttribute('aria-current'),'true');assert.equal(document.querySelector('.shift-gate').getAttribute('aria-busy'),'false');
    assert.equal(by('Toggle TCS').getAttribute('aria-busy'),'false');assert.equal(by('VSC Sport').getAttribute('aria-busy'),'false');assert.equal(by('Parking brake').getAttribute('aria-busy'),'true');assert.equal(by('Parking brake').hasAttribute('data-pending'),false);
    assert.equal(unpackCockpit(input.getState().input.cockpit_mask).parkingStrength,2);assert.equal((input.getState().input.cockpit_mask>>>24)&15,3);
   });
   await t.test('first brake and assist requests preserve confirmed Neutral instead of defaulting to Drive',async()=>{
    await act(async()=>{input.getState().setInput({cockpit_mask:undefined});snapshot(64,0);input.getState().setCockpit({parking:true,parkingStrength:1},3);});
-   assert.equal(unpackCockpit(input.getState().input.cockpit_mask).gear,0);assert.equal(by('Select neutral').getAttribute('aria-pressed'),'true');
+   assert.equal(unpackCockpit(input.getState().input.cockpit_mask).gear,0);assert.equal(by('Select neutral').getAttribute('aria-current'),'true');
    await act(async()=>{input.getState().setInput({cockpit_mask:undefined});input.getState().setAssist(1,true);});assert.equal(unpackCockpit(input.getState().input.cockpit_mask).gear,0);
   });
   await t.test('acknowledged rejection cannot replay a Park request on a brake click',async()=>{
    const rejected=reviseCockpit(undefined,{gear:8},2),revision=unpackCockpit(rejected).revision;
    await act(async()=>{input.getState().setInput({cockpit_mask:rejected});snapshot((192|(revision<<16)|(2<<28))>>>0,3);input.getState().setCockpit({parking:true,parkingStrength:3},3);});
-   assert.equal(unpackCockpit(input.getState().input.cockpit_mask).gear,1);assert.equal(by('Select gear 3').getAttribute('aria-pressed'),'true');
+   assert.equal(unpackCockpit(input.getState().input.cockpit_mask).gear,1);assert.equal(by('Select gear 3').getAttribute('aria-current'),'true');
   });
   await t.test('genuine gear and assist requests retain their own acknowledgement feedback',async()=>{
    const gear=reviseCockpit(192,{gear:4},11),assist=reviseCockpit(192,{assist:1},1),brake=reviseCockpit(192,{parking:true},3);

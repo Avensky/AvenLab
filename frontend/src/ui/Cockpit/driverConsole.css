@@ -147,3 +147,33 @@ html[data-reduce-motion="true"] .stalk-actuator,html[data-reduce-motion="true"] 
 @media(max-height:450px){.driving-pedal{--pedal-icon-height:22px}}
 @media(max-height:320px){.driving-pedal{--pedal-icon-height:17px}}
 @media(max-height:400px){.drive-dock .driving-pedal{--pedal-icon-height:18px}}
+
+/* Research HUD: quiet controls, painted wheel hit regions, fixed pedal space. */
+.transmission-console .handbrake-lever,.transmission-console .handbrake-lever:is(:hover,:focus,:active,[aria-pressed="true"]){outline:0!important;border:0!important;box-shadow:none!important;background:transparent!important}
+.handbrake-lever:focus-visible .ebrake-indicator{text-decoration:underline;text-underline-offset:2px}
+:is(.drive-dock,.cockpit-panel) .mechanical-shifter .shift-slot:is(:hover,:focus,[aria-current="true"]){background:#090d12;border-color:#737a83;color:#dce4e9;outline:none;box-shadow:none}
+:is(.drive-dock,.cockpit-panel) .shift-slot:focus-visible{text-decoration:underline;text-underline-offset:3px}
+:is(.drive-dock,.cockpit-panel) .shift-slot:active{animation:gear-tap 120ms ease-out}
+@keyframes gear-tap{0%{color:#eaffff;border-color:#b6eaff}100%{color:#dce4e9;border-color:#737a83}}
+.drive-assists .assist-trac>.assist-trac-content{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;width:100%}
+.assist-trac-content>img{margin:0 auto}.assist-trac-content>span{text-align:center}
+.wheel-assembly>.column-stalks{z-index:1;pointer-events:none}
+.wheel-assembly>.steering-control{z-index:2;pointer-events:none;background:transparent;border:0;box-shadow:none}
+.wheel-assembly .wheel-rotor,.wheel-assembly .wheel-artwork{pointer-events:none}
+.wheel-artwork :is(path,circle,ellipse,rect,text){pointer-events:visiblePainted}
+.wheel-assembly .column-stalk-cap{width:8%;height:6.5%;font-size:4px;flex-direction:column;gap:0}
+.wheel-assembly .stalk-step{width:5%;height:6.5%;min-width:0;padding:0;z-index:auto;font-size:clamp(3.5px,.55vw,4px);white-space:nowrap}
+.wheel-assembly .column-stalk-rod{z-index:auto}
+.drive-dock{display:flex;flex-direction:column;overflow:visible}
+.dock-equipment{display:flex;flex-direction:column;gap:4px;min-height:0;overflow:auto;flex:0 1 auto}
+.drive-dock .pedal-hud{flex:0 0 auto;min-height:0}
+@media(prefers-reduced-motion:reduce){.shift-slot:active{animation:none!important}}
+html[data-reduce-motion="true"] .shift-slot:active{animation:none!important}
+
+.radio-transport{display:flex;gap:2px;align-items:center;padding:2px 0;min-width:0}
+:is(.drive-dock,.cockpit-panel) .radio-transport>button{flex:1;min-width:0;height:23px;min-height:23px;padding:1px;border-radius:50%;font:11px/1 monospace}
+.radio-volume-dial{flex:0 0 27px;width:27px;height:32px;margin-left:2px;padding-top:3px}
+.radio-volume-dial .climate-knob{width:25px;height:25px;border-width:1px}
+.radio-volume-dial .knob-title{display:none}.radio-volume-dial .knob-pointer:before{height:4px}
+.radio-volume-dial .climate-knob>button{position:absolute;inset:24%;padding:0;min-height:0;min-width:0;font-size:8px;border-radius:50%}
+.radio-volume-dial output{font-size:5px;bottom:-5px;left:0;right:0}

@@ -108,6 +108,23 @@ pub struct HudCalibration {
     pub critical_c: f32,
 }
 impl ResourceConfig {
+    pub fn effective_final_drive(self,wheel_radius:f32,top_speed:f32)->f32 {
+        if !top_speed.is_finite()||top_speed<=0.1||!wheel_radius.is_finite()||wheel_radius<=0.0{return self.final_drive;}
+        self.redline_rpm*0.82*std::f32::consts::TAU*wheel_radius/(60.0*top_speed*self.gear_ratios[5])
+    }
+    fn torque_factor(self,rpm:f32)->f32 {
+        let band=((rpm-self.idle_rpm)/(self.redline_rpm-self.idle_rpm).max(100.0)).clamp(0.0,1.0);
+        if band<0.35 {0.65+band} else if band>0.8 {1.0-(band-0.8)*0.5} else {1.0}
+    }
+    pub fn road_resistance(self,engine_force:f32,mass:f32,damping:f32,top_speed:f32,speed:f32,grounded:bool)->f32 {
+        let top=top_speed.max(1.0);
+        let rated=engine_force.max(0.0)*self.gear_ratios[5]/self.gear_ratios[0]*self.torque_factor(self.redline_rpm*0.82);
+        // Rolling resistance cannot consume a tracked vehicle's entire rated
+        // tractive effort. The remaining load is quadratic aerodynamic drag.
+        let rolling=(mass*9.81*0.012).min(rated*0.35);
+        let aero=(rated-mass*damping*top-rolling).max(0.0)/(top*top);
+        aero*speed*speed+if grounded {rolling*(speed/0.5).clamp(0.0,1.0)} else {0.0}
+    }
     pub fn hud(self) -> HudCalibration {
         HudCalibration {
             cockpit_controls: true,
@@ -147,6 +164,7 @@ pub struct Powertrain {
     pub boost_active: bool,
     pub power_multiplier: f32,
     pub drive_throttle: f32,
+    pub drive_ratio_multiplier: f32,
     pub direction_brake: f32,
     last_engine_request: bool,
     start_remaining_s: f32,
@@ -160,6 +178,7 @@ pub struct Demand {
     pub longitudinal_speed: f32,
     pub wheel_radius: f32,
     pub engine_force: f32,
+    pub top_speed: f32,
 }
 impl Powertrain {
     pub fn new(config: ResourceConfig) -> Self {
@@ -179,6 +198,7 @@ impl Powertrain {
             boost_active: false,
             power_multiplier: 1.0,
             drive_throttle: 0.0,
+            drive_ratio_multiplier: 0.0,
             direction_brake: 0.0,
             last_engine_request: true,
             start_remaining_s: 0.0,
@@ -188,7 +208,8 @@ impl Powertrain {
         }
     }
 
-    // A gear tap gives a brief override, then the normal automatic resumes.
+    // At idle a tap retains the chosen gear. Throttle starts a brief loaded
+    // trial before the automatic can select a more suitable ratio.
     pub fn request_forward_gear(&mut self, gear: u8) {
         if (1..=6).contains(&gear) { self.gear=gear as i32; self.shift_remaining_s=0.75; }
     }
@@ -208,7 +229,7 @@ impl Powertrain {
             0.0
         };
         let throttle = self.manual_gear.map(|gear| gear.signum() as f32 * requested_throttle.max(0.0)).unwrap_or(requested_throttle);
-        self.shift_remaining_s = (self.shift_remaining_s - dt).max(0.0);
+        if throttle.abs()>0.05 {self.shift_remaining_s = (self.shift_remaining_s - dt).max(0.0);}
         self.impact_cooldown_s = (self.impact_cooldown_s - dt).max(0.0);
         if self.temperature_c >= config.critical_c {
             self.heat_locked = true;
@@ -264,28 +285,33 @@ impl Powertrain {
                 0.0
             }
         };
-        let coupled = wheel_rpm * gear_ratio(self.gear) * config.final_drive;
-        if self.manual_gear.is_none() && self.running && self.gear > 0 && self.shift_remaining_s <= 0.0 {
+        // Calibrate road speed to the existing vehicle's configured maximum.
+        // Every ratio remains mechanical: top gear reaches 82% of redline at
+        // that speed, so all forward gears are usable for every vehicle class.
+        let final_drive=config.effective_final_drive(demand.wheel_radius,demand.top_speed);
+        let coupled = wheel_rpm * gear_ratio(self.gear) * final_drive;
+        let loaded=throttle.abs()>0.05;
+        if self.manual_gear.is_none() && self.running && self.gear > 0 && loaded && self.shift_remaining_s <= 0.0 {
             if coupled > config.redline_rpm * 0.90 && self.gear < 6 {
-                self.gear += 1;
-                self.shift_remaining_s = 0.4;
-            } else if self.gear > 1
-                && coupled < config.idle_rpm * 2.2
-                && wheel_rpm * gear_ratio(self.gear - 1) * config.final_drive
-                    < config.redline_rpm * 0.85
-            {
-                // Pick a safe ratio directly; a stopped automatic need not step
-                // through every intermediate gear before returning to first.
-                let mut chosen=self.gear;
-                for candidate in (1..self.gear).rev() {
-                    let rpm=wheel_rpm*gear_ratio(candidate)*config.final_drive;
-                    if rpm<config.redline_rpm*0.85 {chosen=candidate;if rpm>=config.idle_rpm*2.2 {break;}}
+                while self.gear<6 && wheel_rpm*gear_ratio(self.gear)*final_drive>config.redline_rpm*0.90 {self.gear+=1;}
+                self.shift_remaining_s = 0.35;
+            } else {
+                let floor=config.idle_rpm*2.2+(throttle.abs()-0.3).max(0.0)*config.redline_rpm*0.25;
+                if self.gear>1 && coupled<floor {
+                    let mut chosen=self.gear;
+                    for candidate in (1..self.gear).rev() {
+                        let rpm=wheel_rpm*gear_ratio(candidate)*final_drive;
+                        if rpm<config.redline_rpm*0.85 {chosen=candidate;if rpm>=floor {break;}}
+                    }
+                    if chosen!=self.gear {self.gear=chosen;self.shift_remaining_s=0.35;}
                 }
-                self.gear=chosen;
-                self.shift_remaining_s = 0.4;
             }
         }
-        let ratio = gear_ratio(self.gear) * config.final_drive;
+        let selected_ratio=gear_ratio(self.gear);
+        let ratio=selected_ratio*final_drive;
+        let coupled=wheel_rpm*ratio;
+        let limiter=(1.0-(coupled-config.redline_rpm)/(config.max_rpm-config.redline_rpm).max(100.0)).clamp(0.0,1.0);
+        self.drive_ratio_multiplier=selected_ratio/config.gear_ratios[0]*config.torque_factor(self.rpm)*limiter;
         let launch_rpm = config.idle_rpm
             + self.drive_throttle.abs()
                 * config.idle_rpm
@@ -326,7 +352,7 @@ impl Powertrain {
             0.0
         };
         let wheel_force =
-            demand.engine_force.max(0.0) * self.drive_throttle.abs() * self.power_multiplier;
+            demand.engine_force.max(0.0) * self.drive_throttle.abs() * self.power_multiplier * self.drive_ratio_multiplier;
         self.engine_torque_nm = if self.running && ratio > 0.0 {
             wheel_force * demand.wheel_radius / (ratio * 0.90)
         } else {
@@ -445,19 +471,47 @@ impl Powertrain {
 
 #[cfg(test)]
 mod tests {
+    #[test] fn an_idle_gear_tap_waits_for_throttle_before_automatic_takeover() {
+        let mut p=Powertrain::new(ROAD_RESOURCES);p.request_forward_gear(6);
+        let idle=Demand{throttle:0.0,longitudinal_speed:0.0,wheel_radius:0.33,engine_force:8500.0,top_speed:62.0};
+        for _ in 0..1200 {p.advance(ROAD_RESOURCES,idle,1.0/120.0);assert_eq!(p.gear,6);}
+        let load=Demand{throttle:1.0,..idle};
+        for _ in 0..60 {p.advance(ROAD_RESOURCES,load,1.0/120.0);assert_eq!(p.gear,6);}
+        for _ in 0..60 {p.advance(ROAD_RESOURCES,load,1.0/120.0);}
+        assert_eq!(p.gear,1);assert_eq!(p.manual_gear,None);
+    }
+    #[test] fn configured_vehicles_reach_top_gear_and_calibrated_top_speed() {
+        use crate::vehicle_setup::{AE86,GT86,BRZ,CAMARO,SUPRA,TANK};
+        for (name,cfg) in [("ae86",AE86),("gt86",GT86),("frs",BRZ),("camaro",CAMARO),("supra",SUPRA),("tank",TANK)] {
+            let mut p=Powertrain::new(cfg.resources);let mut speed=0.0;let dt=1.0/120.0;let mut highest=0;
+            // Isolate the healthy driveline from the intentionally accelerated
+            // fuel/heat game mechanics; existing resource tests cover those.
+            for _ in 0..120_000 {
+                p.fuel_liters=cfg.resources.fuel_capacity_liters;p.temperature_c=85.0;p.condition=1.0;
+                p.advance(cfg.resources,Demand{throttle:1.0,longitudinal_speed:speed,wheel_radius:cfg.wheel_radius,engine_force:cfg.engine_force,top_speed:cfg.max_speed},dt);
+                highest=highest.max(p.gear);
+                let grip=cfg.mass*9.81*0.5*cfg.mu_base*cfg.tcs_nx_limit;
+                let drive=(cfg.engine_force*p.power_multiplier*p.drive_ratio_multiplier).min(grip);
+                let resistance=cfg.resources.road_resistance(cfg.engine_force,cfg.mass,cfg.linear_damping,cfg.max_speed,speed,true);
+                speed=((speed+(drive-resistance)/cfg.mass*dt)/(1.0+cfg.linear_damping*dt)).max(0.0);
+            }
+            println!("{name}: gear={highest}, speed={speed:.3} m/s, configured={:.3}",cfg.max_speed);
+            assert_eq!(highest,6,"{name}");assert!((speed/cfg.max_speed-1.0).abs()<0.03,"{name}: {speed} vs {}",cfg.max_speed);
+        }
+    }
     #[test] fn stopped_automatic_returns_directly_from_sixth_to_first() {
         let mut p=Powertrain::new(ROAD_RESOURCES);p.gear=6;
-        p.advance(ROAD_RESOURCES,Demand{throttle:1.0,longitudinal_speed:0.0,wheel_radius:0.32,engine_force:4000.0},1.0/120.0);
+        p.advance(ROAD_RESOURCES,Demand{throttle:1.0,longitudinal_speed:0.0,wheel_radius:0.32,engine_force:4000.0,top_speed:62.0},1.0/120.0);
         assert_eq!(p.gear,1);assert_eq!(p.manual_gear,None);
         let mut moving=Powertrain::new(ROAD_RESOURCES);moving.gear=6;
-        moving.advance(ROAD_RESOURCES,Demand{throttle:1.0,longitudinal_speed:15.0,wheel_radius:0.32,engine_force:4000.0},1.0/120.0);
+        moving.advance(ROAD_RESOURCES,Demand{throttle:1.0,longitudinal_speed:15.0,wheel_radius:0.32,engine_force:4000.0,top_speed:62.0},1.0/120.0);
         let wheel_rpm=15.0/0.32*60.0/std::f32::consts::TAU;
-        let rpm=wheel_rpm*ROAD_RESOURCES.gear_ratios[moving.gear as usize-1]*ROAD_RESOURCES.final_drive;
+        let rpm=wheel_rpm*ROAD_RESOURCES.gear_ratios[moving.gear as usize-1]*ROAD_RESOURCES.effective_final_drive(0.32,62.0);
         assert!(rpm<ROAD_RESOURCES.redline_rpm*0.85,"selected downshift must remain below the safe RPM limit");
     }
     #[test] fn a_forward_gear_tap_expires_then_automatic_shifts_continue_under_throttle() {
         let mut p=Powertrain::new(ROAD_RESOURCES);
-        let demand=Demand {throttle:1.0,longitudinal_speed:8.0,wheel_radius:0.32,engine_force:4000.0};
+        let demand=Demand {throttle:1.0,longitudinal_speed:8.0,wheel_radius:0.32,engine_force:4000.0,top_speed:62.0};
         p.request_forward_gear(6);
         for _ in 0..60 {p.advance(ROAD_RESOURCES,demand,1.0/120.0);assert_eq!(p.gear,6);assert_eq!(p.manual_gear,None);}
         for _ in 0..120 {p.advance(ROAD_RESOURCES,demand,1.0/120.0);}
@@ -473,7 +527,7 @@ mod tests {
     #[test]
     fn assisted_manual_neutral_rev_and_reverse_use_selected_gear() {
         let mut p=Powertrain::new(ROAD_RESOURCES);
-        let demand=Demand{throttle:1.0,longitudinal_speed:0.0,wheel_radius:0.3,engine_force:7000.0};
+        let demand=Demand{throttle:1.0,longitudinal_speed:0.0,wheel_radius:0.3,engine_force:7000.0,top_speed:62.0};
         p.manual_gear=Some(0);p.advance(ROAD_RESOURCES,demand,1.0/120.0);
         assert_eq!(p.gear,0);assert_eq!(p.drive_throttle,0.0);assert!(p.rpm>ROAD_RESOURCES.idle_rpm);
         p.manual_gear=Some(-1);p.advance(ROAD_RESOURCES,demand,1.0/120.0);
@@ -483,7 +537,7 @@ mod tests {
     #[test]
     fn manual_reverse_cannot_reverse_propulsion_while_rolling_forward() {
         let mut p=Powertrain::new(ROAD_RESOURCES);p.manual_gear=Some(-1);
-        p.advance(ROAD_RESOURCES,Demand{throttle:1.0,longitudinal_speed:3.0,wheel_radius:0.3,engine_force:7000.0},1.0/120.0);
+        p.advance(ROAD_RESOURCES,Demand{throttle:1.0,longitudinal_speed:3.0,wheel_radius:0.3,engine_force:7000.0,top_speed:62.0},1.0/120.0);
         assert_eq!(p.drive_throttle,0.0);assert_eq!(p.direction_brake,1.0);
     }
     fn demand(throttle: f32, speed: f32) -> Demand {
@@ -491,7 +545,7 @@ mod tests {
             throttle,
             longitudinal_speed: speed,
             wheel_radius: 0.33,
-            engine_force: 8500.0,
+            engine_force: 8500.0, top_speed:62.0,
         }
     }
     fn run(state: &mut Powertrain, input: Demand, seconds: f32, hz: u32) {

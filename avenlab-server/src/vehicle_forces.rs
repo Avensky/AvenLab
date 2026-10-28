@@ -67,7 +67,7 @@ struct ImpulseAccumulator {
 }
 
 impl ImpulseAccumulator {
-    fn new() -> Self { Self { linear: vec![], at_points: vec![] } }
+    fn new() -> Self { Self { linear: Vec::with_capacity(8), at_points: Vec::with_capacity(8) } }
     fn apply(self, body: &mut RigidBody) {
         // This is the only custom impulse application point for a vehicle in
         // this substep. Each queued impulse is consumed exactly once.
@@ -93,7 +93,7 @@ impl PhysicsWorld {
             vehicle.vehicle_flags.set(VehicleStateFlags::TCS, vehicle.cockpit.tcs_enabled(vehicle.vehicle_flags.contains(VehicleStateFlags::TCS)));
             vehicle.powertrain.advance(vehicle.config.resources, Demand {
                 throttle, longitudinal_speed,
-                wheel_radius: vehicle.config.wheel_radius, engine_force: vehicle.config.engine_force,
+                wheel_radius: vehicle.config.wheel_radius, engine_force: vehicle.config.engine_force, top_speed:vehicle.config.max_speed,
             }, dt);
             vehicle.vehicle_flags.set(VehicleStateFlags::ENGINE_ON, vehicle.powertrain.running);
             vehicle.vehicle_flags.set(VehicleStateFlags::BOOST, vehicle.powertrain.boost_active);
@@ -106,8 +106,8 @@ impl PhysicsWorld {
             // N per wheel at the nominal equal-load state. Actual spring/ARB
             // loads below control grip; this reference is only a scaling basis.
             let fz_ref = body_mass * 9.81 / wheels.len() as f32;
-            let mut contacts = Vec::new();
-            let mut suspension_contacts: Vec<(WheelId, SuspensionContact)> = Vec::new();
+            let mut contacts = Vec::with_capacity(wheels.len());
+            let mut suspension_contacts: Vec<(WheelId, SuspensionContact)> = Vec::with_capacity(wheels.len());
             let mut compression = HashMap::new();
             let mut loads = HashMap::new();
 
@@ -228,7 +228,7 @@ impl PhysicsWorld {
 
             let ctx = SolveContext {
                 dt, mass: body_mass,
-                engine_force: vehicle.config.engine_force * vehicle.powertrain.power_multiplier, brake_force: vehicle.config.brake_force,
+                engine_force: vehicle.config.engine_force * vehicle.powertrain.power_multiplier * vehicle.powertrain.drive_ratio_multiplier, brake_force: vehicle.config.brake_force,
                 abs_enabled: vehicle.vehicle_flags.contains(VehicleStateFlags::ABS),
                 tcs_enabled: vehicle.vehicle_flags.contains(VehicleStateFlags::TCS),
                 abs_limit: vehicle.config.abs_nx_limit,
@@ -263,6 +263,12 @@ impl PhysicsWorld {
             }
             let body = self.bodies.get_mut(handle).unwrap();
             let velocity = *body.linvel();
+            let planar_speed=(velocity.x*velocity.x+velocity.z*velocity.z).sqrt();
+            if planar_speed>0.001 {
+                let force=vehicle.config.resources.road_resistance(vehicle.config.engine_force,body_mass,vehicle.config.linear_damping,vehicle.config.max_speed,planar_speed,contacts.iter().any(|p|p.grounded));
+                let impulse=(force*dt).min(body_mass*planar_speed);
+                impulses.linear.push(vector![-velocity.x/planar_speed*impulse,0.0,-velocity.z/planar_speed*impulse]);
+            }
             let speed = (velocity.x * velocity.x + velocity.z * velocity.z).sqrt();
             if control.brake.max(control.handbrake) > 0.8 && control.throttle.abs() < 0.001 && speed < 0.08 {
                 // A near-rest brake hold only removes planar drift/yaw. It does

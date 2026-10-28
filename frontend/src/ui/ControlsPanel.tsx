@@ -12,7 +12,7 @@ import { TouchStick } from "../controls/TouchControls";
 export default function ControlsPanel() {
  const expanded=usePreferencesStore(s=>s.showDriveControls),touch=usePreferencesStore(s=>s.showTouchControls),layout=usePreferencesStore(s=>s.touchLayout);
  return <aside className="drive-dock" data-expanded={expanded} aria-label="Drive controls">
-  {expanded&&<>
+  {expanded&&<div className="dock-equipment">
    <HudGroup id="display" title="VEHICLE DISPLAY"><ConsoleDisplay/></HudGroup>
    <HudGroup id="climate" title="CLIMATE"><ClimatePanel/></HudGroup>
    <div className="transmission-console hud-transmission" data-compact="true">
@@ -20,7 +20,7 @@ export default function ControlsPanel() {
     <HudGroup id="assists" title="DRIVING ASSISTS" className="hud-assists"><DriveAssists compact/></HudGroup>
     <HudGroup id="shifter" title="SHIFTER" className="hud-shifter"><DriveGearControl/></HudGroup>
    </div>
-  </>}
+  </div>}
   {touch&&<HudGroup id="pedals" title="PEDALS" className="pedal-hud">{layout==='pedals'?<Pedals/>:<><TouchStick axis="throttle"/><Pedals brakeOnly/></>}</HudGroup>}
  </aside>;
 }

@@ -84,6 +84,7 @@ test('cockpit requests use one packed input field and preserve menu/input owners
    assert.equal(button('Parking brake').disabled,false);
   });
   await t.test('controller tab navigation reaches stalks and emits their own modes, with B closing without handbrake leakage',async()=>{
+   await act(async()=>{const snap=network.getState().snapshot;network.getState().setSnapshot({tick:snap.tick+1,entities:snap.entities},performance.now());const {updateVehicleTelemetry}=await load('store/vehicleTelemetryStore.ts');updateVehicleTelemetry();});
    await act(async()=>routeMenuAction('next_tab'));assert.equal(ui.getState().cockpitTab,'lights');
    await act(async()=>button('Lights high').click());assert.equal(unpackCockpit(input.getState().input.cockpit_mask).lights,3);
    await act(async()=>routeMenuAction('next_tab'));assert.equal(ui.getState().cockpitTab,'wipers');

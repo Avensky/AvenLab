@@ -126,3 +126,8 @@ Current checks are recorded in the delivered patch's APPLY.md. Native browser
 and phone rendering remain unverified here; the interactive preview is provided
 for normal-browser review. No target-device FPS improvement is claimed. Existing
 Rust warnings and Vite's large-bundle advisory remain.
+
+The current driveline calibrates effective final reduction to each vehicle's
+configured maximum speed, applies gear-dependent drive force and one planar
+rolling/aerodynamic load, and retains idle gear taps until throttle starts the
+short automatic override. See COCKPIT_UI.md for validation and limits.

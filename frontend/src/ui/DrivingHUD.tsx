@@ -9,7 +9,6 @@ import { usePerformanceOverlayStore } from "../performance/performanceOverlaySto
 import { useCanDataStore } from "../store/canDataStore";
 import { startVehicleTelemetry } from "../store/vehicleTelemetryStore";
 import { HudGroup } from "./HudGroup";
-import { ChatDock } from "./ChatDock";
 import { IgnitionSwitch } from "./Cockpit/IgnitionSwitch";
 
 export function DrivingHUD() {
@@ -21,7 +20,6 @@ export function DrivingHUD() {
   const inspector=usePerformanceOverlayStore(s=>s.focused),command=useCanDataStore(s=>s.commandOpen);
   return <div className="driving-hud" data-driving-layout={drivingLayout} data-touch-visible={touch} data-drive-controls={dock} inert={inspector||command} onPointerDown={event=>event.stopPropagation()} onPointerMove={event=>event.stopPropagation()} onKeyDown={event=>{if(event.key===" "||event.key==="Enter")event.stopPropagation();}} onClick={event=>event.stopPropagation()}>
     <HudGroup id="gauges" title="INSTRUMENTS" className="instrument-hud"><Dashboard/></HudGroup>
-    <ChatDock/>
     {touch&&<HudGroup id="wheel" title="STEERING" className="wheel-hud"><div className="wheel-stage" style={{'--wheel-drop':drop} as CSSProperties}><Steering/></div></HudGroup>}
 
     {dock&&<HudGroup id="ignition" title="IGNITION" className="ignition-hud"><IgnitionSwitch/></HudGroup>}

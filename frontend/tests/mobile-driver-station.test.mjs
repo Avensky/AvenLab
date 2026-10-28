@@ -46,7 +46,7 @@ test('mobile HUD groups, assisted shifter and enlarged resource dials',async t=>
    const neutral=input.getState().input.cockpit_mask;await pointer(knob,'pointermove',290,154);assert.equal(input.getState().input.cockpit_mask,neutral,'crossing the same neutral band does not emit repeated shifts');await pointer(knob,'pointerup',290,154);assert.equal(input.getState().input.cockpit_mask,neutral);
    await pointer(knob,'pointerdown',172,125);await pointer(knob,'pointermove',272,178);await pointer(knob,'pointerup',272,178);
    const word=input.getState().input.cockpit_mask,state=unpackCockpit(word);assert.equal(state.gear,6);assert.equal(state.automatic,true);assert.equal((word>>>24)&15,11);assert.equal(state.parkingStrength,2);
-   await render(h(GearSelector,{automatic:true,gear:5,disabled:false,pending:false}));assert.equal(by('Select drive').getAttribute('aria-pressed'),'true');assert.equal(document.querySelector('.mechanical-shifter .cockpit-segments'),null);
+   await render(h(GearSelector,{automatic:true,gear:5,disabled:false,pending:false}));assert.equal(by('Select drive').getAttribute('aria-current'),'true');assert.equal(document.querySelector('.mechanical-shifter .cockpit-segments'),null);
   });
   await t.test('groups occupy separate HUD containers and hidden controls release only their source',async()=>{
    await act(async()=>prefs.getState().update({hudGroups:{...DEFAULT_HUD_GROUPS},showTouchControls:true,showDriveControls:true,steeringTravel:1.25}));await render(h(DrivingHUD));
@@ -77,8 +77,7 @@ test('mobile HUD groups, assisted shifter and enlarged resource dials',async t=>
     const needle=meter.querySelector('.gauge-needle path').getAttribute('d').match(/^M ([\d.]+) ([\d.]+)/);assert.ok(Math.hypot(+needle[1]-x,+needle[2]-y)>=60);
     for(const mark of meter.querySelectorAll('line'))for(const end of [1,2])assert.ok(Math.hypot(+mark.getAttribute(`x${end}`)-100,+mark.getAttribute(`y${end}`)-100)<95);
    }
-   await click('Expand chat');for(const channel of ['GAME','GENERAL','TEAM'])await act(async()=>[...document.querySelectorAll('.chat-dock nav button')].find(b=>b.textContent===channel).click());
-   assert.ok(by('team chat message').disabled);assert.equal(document.querySelector('.chat-messages').textContent,'CHAT NOT CONNECTED');
+   assert.equal(document.querySelector('.chat-dock'),null,'the disconnected chat shell is omitted');
   });
   await t.test('radio reuses a single audio player and hiding its panel does not interrupt playback',async()=>{
    const {loadRadioFile,toggleRadio,setRadioVolume,useRadioStore:radio}=await load('store/radioStore.ts');let players=0,revoked=0;

@@ -1,5 +1,5 @@
 import {useRef,useState,type PointerEvent} from "react";
-export function RotaryKnob({label,value,min,max,onChange,readout,action,onAction,active,disabled=false}:{label:string;value:number;min:number;max:number;onChange:(value:number)=>void;readout:string;action:string;onAction:()=>void;active:boolean;disabled?:boolean}) {
+export function RotaryKnob({label,value,min,max,onChange,readout,action,onAction,active,disabled=false,actionText}:{label:string;value:number;min:number;max:number;onChange:(value:number)=>void;readout:string;action:string;onAction:()=>void;active:boolean;disabled?:boolean;actionText?:string}) {
  const drag=useRef<{id:number;angle:number;value:number;moved:boolean}|null>(null),[turning,setTurning]=useState(false);
  const angle=(e:PointerEvent<HTMLDivElement>)=>{const r=e.currentTarget.getBoundingClientRect();return Math.atan2(e.clientY-r.y-r.height/2,e.clientX-r.x-r.width/2)*180/Math.PI;};
  const finish=(e:PointerEvent<HTMLDivElement>)=>{if(drag.current?.id!==e.pointerId)return;const moved=drag.current.moved;drag.current=null;setTurning(false);if(!moved&&!disabled)onChange(value>=max?min:value+1);};
@@ -9,6 +9,6 @@ export function RotaryKnob({label,value,min,max,onChange,readout,action,onAction
   onPointerUp={finish} onPointerCancel={()=>{drag.current=null;setTurning(false);}} onLostPointerCapture={()=>{drag.current=null;setTurning(false);}}
   onKeyDown={e=>{if(disabled)return;const step=['ArrowUp','ArrowRight'].includes(e.key)?1:['ArrowDown','ArrowLeft'].includes(e.key)?-1:0;if(step||['Home','End'].includes(e.key)){e.preventDefault();e.stopPropagation();onChange(e.key==='Home'?min:e.key==='End'?max:Math.max(min,Math.min(max,value+step)));}}}>
   <span className="knob-title">{label}</span><span className="knob-ring" aria-hidden="true"/><span className="knob-pointer" aria-hidden="true" style={{transform:`rotate(${-130+(value-min)/(max-min)*260}deg)`}}/>
-  <button type="button" disabled={disabled} aria-label={action} aria-pressed={active} onPointerDown={e=>e.stopPropagation()} onClick={onAction}>{action}</button><output>{readout}</output>
+  <button type="button" disabled={disabled} aria-label={action} aria-pressed={active} onPointerDown={e=>e.stopPropagation()} onClick={onAction}>{actionText??action}</button><output>{readout}</output>
  </div>;
 }

@@ -1,41 +1,27 @@
-import { create } from "zustand";
-import { PlayerFlags } from "./tools/inputMasks";
-import { useInputStore } from "./inputStore";
-
-type RadioState = { track: string; title:string; artist:string; station:string; playing: boolean; volume: number; muted: boolean; message: string };
-export const useRadioStore = create<RadioState>(() => ({ track: "NO SOURCE", title:"",artist:"",station:"LOCAL AUDIO", playing: false, volume: .6, muted: false, message: "" }));
-let audio: HTMLAudioElement | null = null, source: string | null = null;
-function player() {
-  if (!audio) {
-    audio = new Audio();
-    audio.onplay = () => { useRadioStore.setState({ playing: true, message: "" }); useInputStore.getState().setPlayerFlag(PlayerFlags.RADIO, true); };
-    audio.onpause = audio.onended = () => { if (audio?.paused || audio?.ended) { useRadioStore.setState({ playing: false }); useInputStore.getState().setPlayerFlag(PlayerFlags.RADIO, false); } };
-    audio.onerror = () => useRadioStore.setState({ playing: false, message: "AUDIO SOURCE UNAVAILABLE" });
-  }
-  return audio;
+import {create} from "zustand";
+import {PlayerFlags} from "./tools/inputMasks";
+import {useInputStore} from "./inputStore";
+type RadioState={track:string;title:string;artist:string;station:string;playing:boolean;volume:number;muted:boolean;message:string;trackCount:number;trackIndex:number};
+export const useRadioStore=create<RadioState>(()=>({track:'NO SOURCE',title:'',artist:'',station:'LOCAL AUDIO',playing:false,volume:.6,muted:false,message:'',trackCount:0,trackIndex:0}));
+let audio:HTMLAudioElement|null=null,source:string|null=null,queue:File[]=[],playAttempt=0;
+function playing(value:boolean){useRadioStore.setState({playing:value});useInputStore.getState().setPlayerFlag(PlayerFlags.RADIO,value);}
+function player(){
+ if(!audio){audio=new Audio();audio.onplay=()=>{playing(true);useRadioStore.setState({message:''});};audio.onpause=()=>{if(audio?.paused)playing(false);};audio.onended=()=>{if(!audio?.ended)return;playing(false);const i=useRadioStore.getState().trackIndex;if(i+1<queue.length)void selectTrack(i+1);};audio.onerror=()=>{playing(false);useRadioStore.setState({message:'AUDIO SOURCE UNAVAILABLE'});};}
+ return audio;
 }
-export function setRadioVolume(value: number) {
-  const volume = Math.max(0, Math.min(1, value)); useRadioStore.setState({ volume });
-  if (audio) audio.volume = useRadioStore.getState().muted ? 0 : volume;
+export function setRadioVolume(value:number){if(!Number.isFinite(value))return;const volume=Math.max(0,Math.min(1,value));useRadioStore.setState({volume});if(audio)audio.volume=useRadioStore.getState().muted?0:volume;}
+export function toggleRadioMute(){const s=useRadioStore.getState();useRadioStore.setState({muted:!s.muted});if(audio)audio.volume=!s.muted?0:s.volume;}
+export async function toggleRadio(){
+ if(!source){useRadioStore.setState({message:'CHOOSE LOCAL AUDIO FILES'});return;}
+ const element=player(),attempt=++playAttempt;if(element.paused){try{await element.play();if(attempt===playAttempt)playing(!element.paused);}catch{if(attempt===playAttempt){playing(false);useRadioStore.setState({message:'PRESS PLAY TO START AUDIO'});}}}else{element.pause();playing(false);}
 }
-export function toggleRadioMute() {
-  const state = useRadioStore.getState(); useRadioStore.setState({ muted: !state.muted });
-  if (audio) audio.volume = !state.muted ? 0 : state.volume;
+async function selectTrack(index:number){
+ if(!queue.length)return;const element=player(),i=(index+queue.length)%queue.length,file=queue[i];element.pause();if(source)URL.revokeObjectURL(source);source=URL.createObjectURL(file);element.src=source;
+ const state=useRadioStore.getState();element.volume=state.muted?0:state.volume;const parts=file.name.replace(/\.[^.]+$/,'').split(/\s+-\s+/,2);
+ useRadioStore.setState({title:parts.length===2?parts[1]:parts[0],artist:parts.length===2?parts[0]:'',track:file.name,playing:false,message:'',trackCount:queue.length,trackIndex:i});await toggleRadio();
 }
-export async function toggleRadio() {
-  if (!source) { useRadioStore.setState({ message: "CHOOSE A LOCAL AUDIO FILE" }); return; }
-  const element = player();
-  if (element.paused) {
-    try { await element.play(); useInputStore.getState().setPlayerFlag(PlayerFlags.RADIO, true); }
-    catch { useRadioStore.setState({ message: "PRESS PLAY TO START AUDIO" }); }
-  } else { element.pause(); useInputStore.getState().setPlayerFlag(PlayerFlags.RADIO, false); }
-}
-export async function loadRadioFile(file: File) {
-  const element = player(); element.pause();
-  if (source) URL.revokeObjectURL(source);
-  source = URL.createObjectURL(file); element.src = source;
-  const state = useRadioStore.getState(); element.volume = state.muted ? 0 : state.volume;
-  const parts=file.name.replace(/\.[^.]+$/, "").split(/\s+-\s+/,2);
-  useRadioStore.setState({ title:parts.length===2?parts[1]:parts[0],artist:parts.length===2?parts[0]:"",track: file.name, playing: false, message: "" });
-  await toggleRadio();
-}
+export async function loadRadioFiles(files:File[]){if(!files.length)return;queue=files.slice(0,100);await selectTrack(0);}
+export async function loadRadioFile(file:File){await loadRadioFiles([file]);}
+export async function nextRadioTrack(){if(queue.length>1)await selectTrack(useRadioStore.getState().trackIndex+1);}
+export function restartRadio(){if(audio&&source){try{audio.currentTime=0;}catch{useRadioStore.setState({message:'TRACK CANNOT SEEK'});}}}
+export async function previousRadioTrack(){if((audio?.currentTime??0)>3||queue.length<2)restartRadio();else await selectTrack(useRadioStore.getState().trackIndex-1);}

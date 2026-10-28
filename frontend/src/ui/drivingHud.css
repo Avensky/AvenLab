@@ -23,16 +23,16 @@
 .touch-stick-axis{white-space:pre;text-align:center;font:15px/2.2 ui-monospace,monospace;opacity:.5}
 .touch-stick-thumb{position:absolute;width:28px;height:28px;border:1px solid #9be7ee;border-radius:50%;background:#0b334d9c;pointer-events:none}
 .touch-stick-label{position:absolute;bottom:2px;font:7px ui-monospace,monospace;letter-spacing:.06em;pointer-events:none}.touch-stick:focus-visible{outline:2px solid #a2d8e8;outline-offset:2px}
-.chat-dock{position:absolute;left:max(12px,env(safe-area-inset-left));top:calc(max(10px,env(safe-area-inset-top)) + var(--instrument-size) * .4 + 38px);width:clamp(160px,25vw,280px)}
-.chat-dock nav{display:flex;gap:2px}.chat-dock nav button{flex:1;min-width:0;padding:4px 2px;background:#09121a58;border:1px solid #768c993d;color:#a7c0cc;font:7px monospace}.chat-dock nav button[aria-pressed="true"]{border-color:#9ed8e4;color:#e5f8ff}
-.chat-messages{height:clamp(48px,14vh,130px);max-height:calc(100dvh - 340px);min-height:28px;background:#07101935;display:grid;place-items:center;color:#6c8794;font:7px monospace}.chat-dock input{width:100%;box-sizing:border-box;padding:4px;border:1px solid #627c8740;background:#09121a50;color:#79909e;font:8px monospace}
+
+
+
 .ignition-hud{position:absolute;width:166px;left:50%;top:50%;bottom:auto;transform:translate(-50%,-50%)}
 .ignition-hud[data-collapsed="true"]{width:95px;top:auto;bottom:clamp(70px,26vh,190px);transform:translateX(-50%)}.ignition-hud .hud-group-body{padding:4px;background:#07101a38;border:1px solid #7589963d}.ignition-hud .ignition-system{height:95px}
 .hud-minimap-slot{position:absolute;top:max(10px,env(safe-area-inset-top));right:max(12px,env(safe-area-inset-right));width:clamp(72px,14vw,180px);aspect-ratio:1;pointer-events:none}
-@media(max-height:450px){.driving-hud{--wheel-size:180px;--instrument-size:clamp(235px,32vw,330px)}.instrument-hud{top:6px}.chat-dock{width:200px}.chat-messages{height:16px;min-height:16px;max-height:16px}.chat-dock input{display:none}.pedal-hud{width:146px;bottom:6px}.driving-pedal{width:42px;height:41px}.driving-pedal img{height:22px;max-width:22px}.ignition-hud[data-collapsed="true"]{bottom:100px}}
-@media(max-width:600px) and (orientation:portrait){.driving-hud{--wheel-size:190px;--instrument-size:clamp(208px,calc(100vw - 112px),330px)}.chat-dock{width:174px}.hud-minimap-slot{width:80px}.ignition-hud[data-collapsed="true"]{bottom:220px}.pedal-hud{width:154px}}
-@media(max-width:380px) and (orientation:portrait){.driving-hud{--wheel-size:165px;--instrument-size:calc(100vw - 98px)}.chat-dock{width:152px}.pedal-hud{width:136px}.driving-pedal{width:39px}.ignition-hud[data-collapsed="true"]{bottom:210px}}
-@media(max-height:320px){.driving-hud{--wheel-size:144px;--instrument-size:230px}.chat-dock{width:156px}.ignition-hud[data-collapsed="true"]{bottom:64px}.ignition-hud .ignition-system{height:80px}.pedal-hud .hud-group-body{min-height:32px}.driving-pedal{height:32px}.driving-pedal img{height:17px}.driving-pedal small{font-size:6px}}
+@media(max-height:450px){.driving-hud{--wheel-size:180px;--instrument-size:clamp(235px,32vw,330px)}.instrument-hud{top:6px}.pedal-hud{width:146px;bottom:6px}.driving-pedal{width:42px;height:41px}.driving-pedal img{height:22px;max-width:22px}.ignition-hud[data-collapsed="true"]{bottom:100px}}
+@media(max-width:600px) and (orientation:portrait){.driving-hud{--wheel-size:190px;--instrument-size:clamp(208px,calc(100vw - 112px),330px)}.hud-minimap-slot{width:80px}.ignition-hud[data-collapsed="true"]{bottom:220px}.pedal-hud{width:154px}}
+@media(max-width:380px) and (orientation:portrait){.driving-hud{--wheel-size:165px;--instrument-size:calc(100vw - 98px)}.pedal-hud{width:136px}.driving-pedal{width:39px}.ignition-hud[data-collapsed="true"]{bottom:210px}}
+@media(max-height:320px){.driving-hud{--wheel-size:144px;--instrument-size:230px}.ignition-hud[data-collapsed="true"]{bottom:64px}.ignition-hud .ignition-system{height:80px}.pedal-hud .hud-group-body{min-height:32px}.driving-pedal{height:32px}.driving-pedal img{height:17px}.driving-pedal small{font-size:6px}}
 html[data-high-contrast="true"] .driving-hud button,html[data-high-contrast="true"] .touch-stick-throttle{background:#020617f2;border-color:#cbd5e1}
 .drive-dock .hud-group-header button,.drive-dock .console-command-grid button,.drive-dock .console-display-tabs button,.drive-dock .radio-buttons button,.drive-dock .radio-volume button,.drive-dock .climate-controls button{touch-action:manipulation}
 
@@ -44,6 +44,14 @@ html[data-high-contrast="true"] .driving-hud button,html[data-high-contrast="tru
 .map-full{position:relative;inset:auto;width:min(100%,420px);margin:auto}.map-full .gps-map{max-height:65vh}.map-full .gps-controls button{font-size:9px;min-height:26px}
 @media(max-height:400px){.hud-minimap{width:112px}.hud-minimap[data-expanded="false"]{width:56px}}
 @media(max-width:600px) and (orientation:portrait){.hud-minimap{width:108px}.hud-minimap[data-expanded="false"]{width:56px}}
-.chat-minimize{width:auto;min-width:40px;padding:3px;background:#0a182188;border:1px solid #65829255;color:#b9d3df;font:7px monospace}
+
 .inspection-panel{position:absolute;left:50%;top:12px;transform:translateX(-50%);width:min(310px,50vw);display:grid;gap:5px;padding:8px;border:1px solid #6e91a8;background:#08131dea;color:#cbe3ef;font:8px monospace;pointer-events:auto}
 .inspection-panel>div{display:flex;gap:3px}.inspection-panel button{background:#173146;border:1px solid #7694a6;color:#d3eaf4;padding:5px;font:8px monospace}.inspection-panel span,.inspection-panel small{font-size:7px;color:#93b1c2}.inspection-panel label{display:flex;align-items:center;gap:6px}.inspection-panel input{min-width:0;flex:1}
+
+/* The map floats independently; a short viewport scrolls equipment, never pedals. */
+.hud-minimap:not(.map-full)[data-expanded="true"]{width:var(--wheel-size)}
+.hud-minimap:not(.map-full) .gps-map{aspect-ratio:auto;height:calc(var(--wheel-size) - 38px)}
+@media(max-height:500px){.hud-minimap:not(.map-full){right:calc(var(--console-width) + 22px)}.hud-minimap:not(.map-full)[data-expanded="true"]{width:var(--wheel-size)}}
+
+@media(max-height:500px) and (orientation:landscape){.ignition-hud{bottom:max(8px,env(safe-area-inset-bottom))}}
+@media(max-width:600px) and (orientation:portrait){.hud-minimap:not(.map-full){right:max(10px,env(safe-area-inset-right))}.hud-minimap:not(.map-full)[data-expanded="true"]{top:calc(var(--instrument-size) * .4 + 14px)}}

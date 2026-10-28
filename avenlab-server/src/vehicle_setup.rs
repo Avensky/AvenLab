@@ -193,7 +193,7 @@ pub const AE86: VehicleConfig = VehicleConfig {
     suspension_damping_ratio: 1.05,
 
     // Handling and damping
-    linear_damping: 0.08,
+    linear_damping: 0.006,
     angular_damping: 0.60,
     mu_base: 0.85,
     load_sensitivity: 0.15,
@@ -321,7 +321,7 @@ pub const SUPRA: VehicleConfig = VehicleConfig {
     suspension_damping_ratio: 1.08,
 
     // Handling and damping
-    linear_damping: 0.07,
+    linear_damping: 0.006,
     angular_damping: 0.62,
     mu_base: 0.95,
     load_sensitivity: 0.14,
@@ -372,7 +372,7 @@ pub const TANK: VehicleConfig = VehicleConfig {
     suspension_damping_ratio: 1.10,
 
     // Handling and damping
-    linear_damping: 0.15,
+    linear_damping: 0.003,
     angular_damping: 1.20,
     mu_base: 1.20,
     load_sensitivity: AE86.load_sensitivity,

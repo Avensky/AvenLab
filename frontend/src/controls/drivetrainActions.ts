@@ -4,8 +4,8 @@ import { useInputStore } from "../store/inputStore";
 import { unpackCockpit } from "../store/tools/cockpitMasks";
 
 // H-pattern is an input layout. Both layouts retain automatic forward shifts.
-export function selectDriveGear(gear:number, override=true) {
-  useInputStore.getState().setCockpit({automatic:true,gear},override&&gear>0&&gear<7?11:2);
+export function selectDriveGear(gear:number) {
+  useInputStore.getState().setCockpit({automatic:true,gear},gear>0&&gear<7?11:2);
 }
 export function stepManualGear(direction: 1 | -1): boolean {
   const network=useNetworkStore.getState(),me=network.getMe(),input=useInputStore.getState();
