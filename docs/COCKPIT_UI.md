@@ -2,7 +2,8 @@
 
 The instruments sit at top-left and the cropped steering wheel sits at bottom-left. Gas/brake/reverse controls are
 at bottom-right. The right-hand console has independent display, climate, shifter,
-parking-brake and assist groups. The ignition key is a separate center-screen pod.
+parking-brake and assist groups. The ignition key sits at bottom-center, with a
+hold-to-crank accent on its right.
 A collapsible top-right minimap plots the loaded authoritative roads and routes to a waypoint. It adds no second 3D render.
 Signal Recon never mounts the driving HUD.
 
@@ -39,14 +40,26 @@ player and continues when hidden. Local filenames in `Artist - Song.ext` form
 supply labels; this is not ID3 parsing or an online station service. Controls
 include lighting, signals, hazards, ABS/TRAC, CAN logging/live CAN, dyno, horn,
 NOS, recovery and single wipe. Apps open game menus, GPS and driving views.
-Ignition is a separate rotary circle between the vehicle and right stack and
-remains visible when running. The full Cockpit retains its Ignition tab.
+Ignition remains visible when running. The full Cockpit retains its Ignition tab.
 
 The disconnected chat shell has been removed from the HUD and Settings. Older
 saved chat visibility is discarded by preference validation. Equipment can scroll
 in a short viewport while the pedals retain a separate, nonshrinking bottom row.
-The expanded map uses the wheel's width. In short landscape viewports it sits
-beside the console; in portrait it opens below the instruments to avoid overlap.
+The expanded map stays in the safe-area top-right corner. It is smaller than the
+wheel (normally 96–176 px, 80 px on narrow portrait screens), capped by the right
+console's width. It paints above the console on short screens and never pushes
+pedals or other controls. The separate Cockpit GPS page retains a larger map.
+Mission title/objective and its optional waypoint live inside the map; tapping a
+supplied objective routes GPS there. `navigationStore.setMission` is a session-only
+adapter entry point, cleared by the mission owner on completion/exit. Today's
+sandbox has no active match objective and shows SANDBOX / FREE DRIVE instead.
+The optional server match clock is in the map header, including when minimized.
+
+Engine/resource and connection notices use the radio's existing subtitle line,
+including when minimized. A notice temporarily replaces artist/station text;
+the song title and transport remain visible. Clearing it restores the subtitle.
+There is no floating status label around the instruments. Notice subscriptions
+select only the resulting text, so position-only updates do not redraw the radio.
 
 ## Ignition and climate
 
@@ -65,6 +78,11 @@ a dragged key can be held in START. Release, blur, hidden page, menu transition,
 disconnect and unmount all release a held starter to ON. The displayed key follows
 confirmed telemetry. The old E/controller X/Square engine toggle still works.
 Legacy clients that never send a key command retain their existing engine behavior.
+The bottom-center HUD also has a right-hand START accent: hold with pointer,
+Space or Enter to insert the key and request START. Release, focus loss, pause,
+disconnect or a successful engine start releases the starter back to ON. It is
+disabled while the engine runs; the rotary key still provides OFF/ACC/ON controls.
+An aborted short hold does not bypass the server's normal 700 ms crank time.
 
 Expanded climate has three round knobs: airflow/recirculation, fan/rear
 defrost and temperature/A/C. Fan has OFF/1/2/3/4; airflow has FACE, FACE/FEET,
@@ -98,6 +116,10 @@ small tangent-labeled step targets, or focus and use arrow keys. The actuator
 springs to center for wipers/cruise. The turn signal holds Left / Off / Right;
 clockwise advances toward Right and counterclockwise toward Left, through Off.
 Labels are tightened along their tangent. Tap the center cap to rotate its mode.
+Cruise is at 292.5°, reaching 29% of wheel diameter (58% of its radius), midway between its
+previous 23% and 35% reaches. Its labels retain 11° spacing. The wheel's bottom
+inset reserves room for this lower lever at the default crop while preserving
+the saved wheel-drop adjustment and painted-wheel click-through behavior.
 
 | Stalk | Angle | Up / Down | Tap |
 | --- | --- | --- | --- |
@@ -148,12 +170,17 @@ cannot release its cable tension. P locks through its gear selection rather than
 raising the separate lever. The rest pose is tapered/foreshortened toward the
 background (projected -115°); full application rises toward -75°. These are screen
 projections of floor/up axes, not a claim that perpendicular 3D lines must appear
-90° apart in the image. Tap, drag or choose OFF / 33% / 67% / 100%. Keyboard B and
-controller B/Circle still supply momentary full cable force. The base ellipse
-leans with the receding OFF handle; level targets descend vertically from its top-right. The red BRAKE legend stays
-at top-left. Clicking the lever cycles the same detents as the level buttons;
-only the chosen level receives a toggle border. The lever has no focus/pressed
-box; keyboard focus underlines its legend. TRAC, ABS
+90° apart in the image. Hold the lever to build its three applied detents: the
+first after 250 ms, then one every 300 ms, reaching full at 850 ms. Release keeps
+the chosen tension; a quick tap releases it fully. Dragging and direct level
+targets remain available. Space/Enter holds work the same way, with no keyboard
+repeat dependence. Focus loss, pause, disconnect and unmount cancel the charging
+timer, retaining deliberate latched tension. Keyboard B and controller B/Circle
+still supply momentary full cable force. The base ellipse leans with the receding
+OFF handle. Blue crystal targets descend from the top-right; filled crystals show
+applied strength with dashed outlines while empty. There are no visible percentage
+numbers or BRAKE label on the lever: the dashboard owns that warning. The lever
+has no focus/pressed box; keyboard focus brightens the crystals. TRAC, ABS
 and VSC SPORT sit below the brake, in that order, left of the shifter. Rust takes the
 maximum of latched and momentary force and bypasses rear ABS for it.
 

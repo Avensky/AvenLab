@@ -9,7 +9,8 @@
 .hud-group[data-collapsed="true"]>.hud-group-header{margin-bottom:0}.hud-group-body{min-width:0;position:relative}
 .instrument-hud{position:absolute;top:max(10px,env(safe-area-inset-top));left:max(12px,env(safe-area-inset-left));width:var(--instrument-size);pointer-events:none}
 .instrument-hud .hud-group-header{pointer-events:auto}.instrument-hud .driving-dashboard{padding-top:10px}
-.wheel-hud{position:absolute;bottom:max(8px,env(safe-area-inset-bottom));left:max(12px,env(safe-area-inset-left));width:var(--wheel-size)}
+/* Keep the lower cruise cap reachable at the default wheel crop. */
+.wheel-hud{position:absolute;bottom:max(8px,calc(var(--wheel-size) * .105),env(safe-area-inset-bottom));left:max(12px,env(safe-area-inset-left));width:var(--wheel-size)}
 .wheel-stage{width:100%;height:calc(var(--wheel-size) * (1 - var(--wheel-drop,.28)));position:relative;pointer-events:none}
 .wheel-stage .wheel-assembly{position:absolute;inset:0 auto auto 0;width:100%;margin:0;max-width:none}
 .pedal-hud{position:absolute;right:max(12px,env(safe-area-inset-right));bottom:max(10px,env(safe-area-inset-bottom));width:156px}
@@ -36,22 +37,19 @@
 html[data-high-contrast="true"] .driving-hud button,html[data-high-contrast="true"] .touch-stick-throttle{background:#020617f2;border-color:#cbd5e1}
 .drive-dock .hud-group-header button,.drive-dock .console-command-grid button,.drive-dock .console-display-tabs button,.drive-dock .radio-buttons button,.drive-dock .radio-volume button,.drive-dock .climate-controls button{touch-action:manipulation}
 
-.instrument-hud .dashboard-signal{top:-1px;font-size:7px}
-.instrument-hud .driving-dashboard{padding-top:0}.instrument-hud .dashboard-signal{top:-9px}
-.hud-minimap{position:absolute;right:max(10px,env(safe-area-inset-right));top:max(8px,env(safe-area-inset-top));width:140px;pointer-events:auto;color:#c5dee9;font:8px monospace;z-index:2}
-.hud-minimap[data-expanded="false"]{width:56px}.map-toggle{width:100%;border:1px solid #69879788;background:#0a1821b8;color:#c8e4ee;padding:4px;font:7px monospace;cursor:pointer}.gps-map{display:block;width:100%;aspect-ratio:1;background:#07121ddd;border:1px solid #69879788;cursor:crosshair}.map-north{position:absolute;right:5px;top:25px;font:9px monospace;color:#b5e6ef}
+.instrument-hud .driving-dashboard{padding-top:0}
+.hud-minimap{position:absolute;right:max(10px,env(safe-area-inset-right));top:max(8px,env(safe-area-inset-top));width:min(var(--console-width,230px),clamp(96px,15vw,176px));pointer-events:auto;color:#c5dee9;font:8px monospace;z-index:5}
+.hud-minimap[data-expanded="false"]{width:56px}.map-heading{display:flex;align-items:center;background:#0a1821e8;border:1px solid #69879788}.map-toggle{flex:1;min-width:0;border:0;background:transparent;color:#c8e4ee;padding:4px;font:7px monospace;text-align:left;cursor:pointer}.map-heading .match-clock{padding-right:4px;white-space:nowrap;font-size:7px}
+.hud-minimap[data-expanded="false"]:has(.match-clock){width:96px}
+.map-viewport{position:relative;width:100%;aspect-ratio:1;overflow:hidden}.gps-map{display:block;width:100%;height:100%;background:#07121ddd;border:1px solid #69879788;cursor:crosshair}.map-north{position:absolute;right:5px;top:5px;font:9px monospace;color:#b5e6ef;pointer-events:none}
+.map-mission{position:absolute;left:1px;right:1px;bottom:1px;padding:12px 4px 4px;background:linear-gradient(transparent,#07121df5 40%);pointer-events:none;line-height:1.3}
+.map-mission strong,.map-mission span{display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.map-mission strong{color:#f4d69a;font-size:7px}.map-mission span{font-size:6px;color:#cee4ed}.map-mission button{display:block;width:100%;padding:0;border:0;background:none;text-align:left;color:inherit;font:inherit;pointer-events:auto}.map-mission button:focus-visible{outline:1px solid #a2d8e8}
 .gps-controls{display:flex;gap:2px;background:#07121dd9;padding:2px}.gps-controls button{flex:1;min-width:0;border:1px solid #7898a757;padding:3px 2px;background:#102432;color:#bedce8;font:6px monospace}.gps-status{display:block;text-align:center;padding:2px;background:#07121dd9;color:#a6d2df;font:6px monospace}
-.map-full{position:relative;inset:auto;width:min(100%,420px);margin:auto}.map-full .gps-map{max-height:65vh}.map-full .gps-controls button{font-size:9px;min-height:26px}
-@media(max-height:400px){.hud-minimap{width:112px}.hud-minimap[data-expanded="false"]{width:56px}}
-@media(max-width:600px) and (orientation:portrait){.hud-minimap{width:108px}.hud-minimap[data-expanded="false"]{width:56px}}
+.map-full{position:relative;inset:auto;width:min(100%,420px,60dvh);margin:auto}.map-full .gps-controls button{font-size:9px;min-height:26px}.map-full .map-mission strong{font-size:10px}.map-full .map-mission span{font-size:9px}
+@media(max-width:380px) and (orientation:portrait){.hud-minimap:not(.map-full)[data-expanded="true"]{width:80px}}
 
 .inspection-panel{position:absolute;left:50%;top:12px;transform:translateX(-50%);width:min(310px,50vw);display:grid;gap:5px;padding:8px;border:1px solid #6e91a8;background:#08131dea;color:#cbe3ef;font:8px monospace;pointer-events:auto}
 .inspection-panel>div{display:flex;gap:3px}.inspection-panel button{background:#173146;border:1px solid #7694a6;color:#d3eaf4;padding:5px;font:8px monospace}.inspection-panel span,.inspection-panel small{font-size:7px;color:#93b1c2}.inspection-panel label{display:flex;align-items:center;gap:6px}.inspection-panel input{min-width:0;flex:1}
 
-/* The map floats independently; a short viewport scrolls equipment, never pedals. */
-.hud-minimap:not(.map-full)[data-expanded="true"]{width:var(--wheel-size)}
-.hud-minimap:not(.map-full) .gps-map{aspect-ratio:auto;height:calc(var(--wheel-size) - 38px)}
-@media(max-height:500px){.hud-minimap:not(.map-full){right:calc(var(--console-width) + 22px)}.hud-minimap:not(.map-full)[data-expanded="true"]{width:var(--wheel-size)}}
-
+/* Map stays above the console in the corner; it never consumes pedal space. */
 @media(max-height:500px) and (orientation:landscape){.ignition-hud{bottom:max(8px,env(safe-area-inset-bottom))}}
-@media(max-width:600px) and (orientation:portrait){.hud-minimap:not(.map-full){right:max(10px,env(safe-area-inset-right))}.hud-minimap:not(.map-full)[data-expanded="true"]{top:calc(var(--instrument-size) * .4 + 14px)}}

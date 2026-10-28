@@ -1,8 +1,9 @@
-import { useEffect, useRef, type CSSProperties, type PointerEvent } from "react";
+import { useCallback, useEffect, useRef, type CSSProperties, type PointerEvent } from "react";
 import { selectDriveGear } from "../../controls/drivetrainActions";
 import { inNeutralLane,parkingLeverPose,shiftKnobRoute } from "./controlGeometry";
 import { usePreferencesStore } from "../../store/preferencesStore";
 import { useInputStore } from "../../store/inputStore";
+import { useControlRelease } from "../../controls/useControlRelease";
 
 const manual = [{gear:7,label:"R",x:12,y:25},{gear:1,label:"1",x:36,y:25},{gear:3,label:"3",x:61,y:25},{gear:5,label:"5",x:86,y:25},
   {gear:0,label:"N",x:61,y:51},{gear:2,label:"2",x:36,y:78},{gear:4,label:"4",x:61,y:78},{gear:6,label:"6",x:86,y:78}];
@@ -59,21 +60,27 @@ export function GearSelector({ automatic, gear, disabled, pending }: { automatic
 }
 
 export function HandbrakeLever({ strength, disabled, pending }: {strength:number;disabled:boolean;pending:boolean}) {
-  const handle=useRef<HTMLSpanElement>(null),start=useRef<{id:number;y:number;moved:boolean}|null>(null),suppressClick=useRef(false);
+  const handle=useRef<HTMLSpanElement>(null),start=useRef<{id:number|null;key:string|null;y:number;level:number;charged:boolean;moved:boolean}|null>(null),suppressClick=useRef(false),timer=useRef<number|null>(null);
   const pose=parkingLeverPose(strength);
-  const set=(level:number)=>useInputStore.getState().setCockpit({parking:level>0,parkingStrength:level},3);
+  const set=useCallback((level:number)=>useInputStore.getState().setCockpit({parking:level>0,parkingStrength:level},3),[]);
+  const clear=useCallback(()=>{if(timer.current!==null)window.clearTimeout(timer.current);timer.current=null;if(start.current)suppressClick.current=true;start.current=null;if(handle.current)handle.current.style.removeProperty('transform');},[]);
+  useControlRelease(clear);useEffect(()=>{if(disabled)clear();},[disabled,clear]);
+  const charge=()=>{const held=start.current;if(!held||held.moved)return;held.charged=true;const next=Math.min(3,held.level+1);if(next!==held.level){held.level=next;set(next);}timer.current=next<3?window.setTimeout(charge,300):null;};
+  const begin=(id:number|null,key:string|null,y=0)=>{if(disabled||start.current)return;suppressClick.current=false;start.current={id,key,y,level:strength,charged:false,moved:false};timer.current=window.setTimeout(charge,250);};
   const finish=(event:PointerEvent<HTMLButtonElement>,cancel=false)=>{
     const current=start.current;if(!current||current.id!==event.pointerId)return;start.current=null;
-    if(handle.current)handle.current.style.removeProperty('transform');
+    clear();suppressClick.current=cancel||current.charged||current.moved;
     if(event.currentTarget.hasPointerCapture?.(event.pointerId))event.currentTarget.releasePointerCapture(event.pointerId);
-    if(current.moved&&!cancel){suppressClick.current=true;set(Math.max(0,Math.min(3,strength+Math.round((current.y-event.clientY)/28))));}
+    if(current.moved&&!cancel)set(Math.max(0,Math.min(3,current.level+Math.round((current.y-event.clientY)/28))));
   };
-  return <section className="mechanical-handbrake" style={{'--parking-level':strength,'--parking-angle':`${pose.angle}deg`,'--parking-reach':pose.reach} as CSSProperties}><div className="parking-levels" role="group" aria-label="Parking brake levels">{[0,1,2,3].map(level=><button type="button" key={level} disabled={disabled} aria-label={`Parking brake ${Math.round(level/3*100)} percent`} aria-pressed={strength===level} onClick={()=>set(level)}>{level===0?'OFF':`${Math.round(level/3*100)}%`}</button>)}</div><button className="handbrake-lever" disabled={disabled} aria-label="Parking brake" aria-description={`${Math.round(strength/3*100)} percent; activate to increase one step`} aria-pressed={strength>0} data-active={strength>0} aria-busy={pending}
-    onClick={()=>{if(suppressClick.current){suppressClick.current=false;return;}set((strength+1)%4);}}
-    onPointerDown={event=>{if(event.button!==0||start.current)return;suppressClick.current=false;start.current={id:event.pointerId,y:event.clientY,moved:false};event.currentTarget.setPointerCapture?.(event.pointerId);}}
+  return <section className="mechanical-handbrake" style={{'--parking-level':strength,'--parking-angle':`${pose.angle}deg`,'--parking-reach':pose.reach} as CSSProperties}><div className="parking-levels" role="group" aria-label="Parking brake levels">{[0,1,2,3].map(level=><button type="button" key={level} disabled={disabled} aria-label={`Parking brake ${Math.round(level/3*100)} percent`} title={level===0?'Release parking brake':`Parking brake ${Math.round(level/3*100)} percent`} aria-pressed={strength===level} data-filled={level>0&&strength>=level} onClick={()=>set(level)}><svg className="parking-crystal" viewBox="0 0 22 12" aria-hidden="true"><path d="M5 1H17L21 6 17 11H5L1 6Z"/></svg></button>)}</div><button className="handbrake-lever" disabled={disabled} aria-label="Parking brake" aria-description={`${Math.round(strength/3*100)} percent; hold to increase brake strength, tap to release`} aria-pressed={strength>0} data-active={strength>0} aria-busy={pending}
+    onClick={()=>{if(suppressClick.current){suppressClick.current=false;return;}set(0);}}
+    onPointerDown={event=>{if(event.button!==0||start.current)return;begin(event.pointerId,null,event.clientY);event.currentTarget.setPointerCapture?.(event.pointerId);}}
     onPointerMove={event=>{const current=start.current;if(!current||current.id!==event.pointerId)return;const dy=current.y-event.clientY;current.moved ||= Math.abs(dy)>8;
-      if(current.moved&&handle.current){const next=parkingLeverPose(strength+dy/28);handle.current.style.transform=`rotate(${next.angle}deg) scaleX(${next.reach})`;}}}
-    onPointerUp={event=>finish(event)} onPointerCancel={event=>finish(event,true)} onLostPointerCapture={event=>finish(event,true)}>
-    <span className="ebrake-floor"/><span className="ebrake-base"/><span className="ebrake-handle" ref={handle}><i/></span><span className="ebrake-indicator">BRAKE</span>
+      if(current.moved){if(timer.current!==null)window.clearTimeout(timer.current);timer.current=null;if(handle.current){const next=parkingLeverPose(current.level+dy/28);handle.current.style.transform=`rotate(${next.angle}deg) scaleX(${next.reach})`;}}}}
+    onPointerUp={event=>finish(event)} onPointerCancel={event=>finish(event,true)} onLostPointerCapture={event=>finish(event,true)} onBlur={clear}
+    onKeyDown={event=>{if(event.code==='Space'||event.code==='Enter'){event.preventDefault();event.stopPropagation();if(!event.repeat)begin(null,event.code);}}}
+    onKeyUp={event=>{if(event.code==='Space'||event.code==='Enter'){event.preventDefault();event.stopPropagation();const held=start.current;if(held?.key===event.code){const charged=held.charged;clear();suppressClick.current=false;if(!charged)set(0);}}}}>
+    <span className="ebrake-floor"/><span className="ebrake-base"/><span className="ebrake-handle" ref={handle}><i/></span>
   </button><small>{pending?"BRAKE REQUESTED":"REAR PARKING BRAKE"}</small></section>;
 }

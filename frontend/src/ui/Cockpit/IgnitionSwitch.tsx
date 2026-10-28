@@ -1,11 +1,14 @@
-import {useCallback,useRef,type PointerEvent} from "react";
+import {useCallback,useRef,useState,type PointerEvent} from "react";
 import {useInputStore} from "../../store/inputStore";
 import {useCockpitState} from "./useCockpitState";
 import {useControlRelease} from "../../controls/useControlRelease";
+import {HoldButton} from "../../controls/TouchControls";
+import {useVehicleTelemetryStore} from "../../store/vehicleTelemetryStore";
 const IGNITION_ANGLES=[-135,-90,-45,0];
 const positions=['OFF','ACC','ON','START'];
-export function IgnitionSwitch() {
+export function IgnitionSwitch({starter=false}:{starter?:boolean}) {
  const {extended,confirmedCabin:state,cabinMask}=useCockpitState();
+ const running=useVehicleTelemetryStore(s=>s.data.engineOn===true),[holding,setHolding]=useState(false);
  const pulse=useRef<number|null>(null),drag=useRef<{id:number;angle:number;position:number;moved:boolean}|null>(null),suppress=useRef(false);
  const send=(position:number,inserted=state.keyInserted)=>useInputStore.getState().setIgnition(position,inserted,cabinMask??undefined);
  const release=useCallback(()=>{if(pulse.current!==null)window.clearTimeout(pulse.current);pulse.current=null;const s=useInputStore.getState();if(((s.input.cabin_mask??0)>>>10&3)===3)s.setIgnition(2,true);drag.current=null;},[]);
@@ -30,5 +33,7 @@ export function IgnitionSwitch() {
     {state.keyInserted&&<g className="radial-key" transform={`rotate(${IGNITION_ANGLES[state.ignition]} 60 60)`}><path d="M50 57h39v6H76l-4-3-4 3H50z" fill="#bcc8ce"/><rect x="36" y="50" width="24" height="20" rx="4" fill="#1a242e" stroke="#77858e"/><path d="M41 54h14v12H41z" fill="none" stroke="#3e4c57"/></g>}
    </svg>
   </button>
+  {starter&&<HoldButton className="starter-accent" aria-label="Hold to start engine" aria-description="Hold to crank. Release returns the key to On. A short press may not start the engine." aria-pressed={holding} disabled={!extended||running}
+   onHold={held=>{setHolding(held);if(held){release();send(3,true);}else release();}}><span aria-hidden="true">⏻</span><small>{running?'ON':'START'}</small></HoldButton>}
  </div>;
 }

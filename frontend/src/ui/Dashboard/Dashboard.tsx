@@ -5,7 +5,6 @@ import {usePreferencesStore} from "../../store/preferencesStore";
 import Speedometer from "./Speedometer";
 import Revolutions from "./Revolutions";
 import FuelTemp from "./FuelTemp";
-import {ResourceFlags} from "../../store/tools/resourceMasks";
 import {MPH_TO_KPH} from "./gaugeGeometry";
 import {displayPower} from "./dashboardModel";
 import {ResourceRing} from "./ResourceRings";
@@ -25,12 +24,7 @@ const FuelInstrument=memo(function FuelInstrument(){
  const d=useVehicleTelemetryStore(useShallow(s=>({fuel:s.data.fuelLiters,temp:s.data.tempC,config:s.data.config,cluster:s.data.clusterMask,resourceMask:s.data.resourceMask,engineOn:s.data.engineOn,signal:s.data.signal,cabinMask:s.data.cabinMask,abs:s.data.absEnabled,tcs:s.data.tcsEnabled,cockpit:s.data.cockpitMask,ultimate:s.data.ultimateFraction})));
  return <FuelTemp fuel={d.fuel} temp={d.temp} config={d.config} clusterMask={d.cluster} resourceMask={d.resourceMask} power={displayPower(d)} absEnabled={d.abs} tcsEnabled={d.tcs} live={d.signal==='live'} cockpitMask={d.cockpit} ultimate={d.ultimate}/>;
 });
-const InstrumentStatus=memo(function InstrumentStatus(){
- const signal=useVehicleTelemetryStore(s=>s.data.signal),mask=useVehicleTelemetryStore(s=>s.data.resourceMask);
- const warning=mask&ResourceFlags.STARVED?'FUEL EMPTY':mask&ResourceFlags.HEAT_LOCK?'COOL ENGINE':mask&ResourceFlags.HOT?'ENGINE HOT':mask&ResourceFlags.LOW_FUEL?'LOW FUEL':mask&ResourceFlags.DAMAGED?'REPAIR':mask&ResourceFlags.STARTING?'STARTING':'';
- return <span className="dashboard-signal" role="status">{signal==='live'?warning:signal==='offline'?'LINK LOST':signal==='stale'?'NO SIGNAL':'WAITING'}</span>;
-});
 export default function Dashboard(){
  const signal=useVehicleTelemetryStore(s=>s.data.signal);useEffect(startVehicleTelemetry,[]);
- return <section className="driving-dashboard" data-signal={signal} aria-label="Vehicle instruments"><InstrumentStatus/><div className="dashboard-cluster"><SpeedInstrument/><RpmInstrument/><FuelInstrument/></div></section>;
+ return <section className="driving-dashboard" data-signal={signal} aria-label="Vehicle instruments"><div className="dashboard-cluster"><SpeedInstrument/><RpmInstrument/><FuelInstrument/></div></section>;
 }

@@ -58,7 +58,7 @@ test('cockpit requests use one packed input field and preserve menu/input owners
   root=createRoot(document.getElementById('root'));await act(async()=>root.render(h(CockpitPanel)));
   const button=label=>document.querySelector(`[aria-label="${label}"]`);
   await t.test('physical parking-brake and Sport buttons emit distinct packed commands',async()=>{
-   await act(async()=>button('Parking brake').click());assert.equal(unpackCockpit(input.getState().input.cockpit_mask).parking,true);assert.equal((input.getState().input.cockpit_mask>>>24)&15,3);
+   await act(async()=>button('Parking brake 33 percent').click());assert.equal(unpackCockpit(input.getState().input.cockpit_mask).parking,true);assert.equal((input.getState().input.cockpit_mask>>>24)&15,3);
    await act(async()=>button('Parking brake 67 percent').click());assert.equal(unpackCockpit(input.getState().input.cockpit_mask).parkingStrength,2);
    await act(async()=>button('VSC Sport').click());assert.equal(unpackCockpit(input.getState().input.cockpit_mask).assist,1);assert.equal((input.getState().input.cockpit_mask>>>24)&15,1);
   });

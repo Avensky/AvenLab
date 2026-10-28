@@ -33,7 +33,7 @@ Event-driven stores have no fixed Hz.
 | `networkStore.ts` | Connection, identity, latest raw snapshot, local compatibility `physicsData`, RTT and debug envelope | Socket: normally 60 snapshots/s; requested debug at most once per published tick; RTT ping every 5 seconds; setup events | Session-local, reset on teardown. Raw rendering/interpolator, diagnostics, HUD sampler. |
 | `vehicleConfigStore.ts` | Gauge calibration by player ID, explicit telemetry availability | `vehicle_config` on spawn/change; no per-frame writes | Cleared with session. HUD sampler only. Bad config leaves previous valid data. |
 | `vehicleTelemetryStore.ts` | Local player's sanitized HUD readings, position/yaw and live/waiting/stale/offline state | One shared 20 Hz sampler only while HUD or cockpit mounted and tab visible; unchanged display values do not publish | Dashboard and Cockpit. No persistence or input/physics ownership. Stale after 500 ms without a fresh snapshot. |
-| `navigationStore.ts` | Local GPS destination; static road graph is derived from `worldStore.map` | User waypoint/clear actions only; no timer or sender | Session-local. Minimap only. |
+| `navigationStore.ts` | Local GPS destination and optional mission title/objective/target; static road graph is derived from `worldStore.map` | User waypoint/clear and mission adapter events; no timer or sender | Session-local. Minimap only. Sandbox has no mission; the future mission owner supplies and clears it. Setting mission data never replaces the user's waypoint. |
 | `inputStore.ts` / `inputRef` | Requested axes/masks and derived pedal signals, merged by source | Keyboard/touch events; gamepad polls at display refresh. Identical writes are ignored. Sender independently reads at 60 Hz | Runtime intent. Transient holds release on lifecycle/focus transitions. Confirmed values remain in network telemetry. |
 | `uiStore.ts` | Screen/overlay, selected menu rows, loading and selected recon mission | Navigation/loading/user events | Application/menu composition. No snapshot writes or persistence. |
 | `gameStore.ts` | Camera/editor controls and legacy game settings | Camera/editor actions; legacy RotatingCamera has a frame-rate angle writer when mounted/active | Camera/render helpers. Active routing is uiStore, pre-game selection is selectionStore. |
@@ -72,8 +72,7 @@ See [cockpit protocol](../../../docs/COCKPIT_UI.md). `radioStore` is event-drive
 and owns one local Audio element plus a bounded 100-file local queue; it sends no audio bytes to Rust and persists no
 selected file. Protocol v4 command 11 is a temporary forward gear override; the server resumes
 automatic shifts after 0.75 loaded seconds; idle gear taps wait for throttle. Presentation choices and hiding groups never write
-a gear or engine request. Chat is a disconnected channel shell, not another
-simulation/network store. v5 extends `cabin_mask` to u32 with airflow bits16–18
+a gear or engine request. The retired chat shell has been removed. v5 extends `cabin_mask` to u32 with airflow bits16–18
 and fan4 bit19; ambient °C comes once in vehicle configuration and displays °F.
 Inspection actions preserve/restore diagnostic state and release input; physical
 server tuning remains read-only. `cabinClock.ts` owns one visible-only 30-second local-clock timer shared by the

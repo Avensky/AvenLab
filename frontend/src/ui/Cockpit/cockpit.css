@@ -28,7 +28,6 @@
 .ebrake-handle:after{content:"";position:absolute;left:20%;top:12%;bottom:6%;border-left:1px dashed #aa3f3e}
 .ebrake-handle i{position:absolute;left:22%;top:-6%;width:55%;height:12%;border-radius:2px;background:linear-gradient(90deg,#656f79,#f0f3f3,#626c77)}
 .handbrake-lever[data-active="true"] .ebrake-handle{transform:rotate(-52deg)}
-.ebrake-indicator{position:absolute;bottom:2%;left:0;right:0;color:#8c4544;font-size:9px}.handbrake-lever[data-active="true"] .ebrake-indicator{color:#ff7369}.handbrake-lever[data-pending="true"] .ebrake-indicator{color:#e3c69a}
 .factory-assists{grid-column:1/-1;display:flex;justify-content:center;gap:5px;align-items:center;flex-wrap:wrap;border-top:1px solid #444953;padding-top:9px}
 .factory-assists button{flex:1;min-width:75px;position:relative;display:flex;align-items:center;gap:8px;justify-content:center;width:105px;height:48px;border:3px solid #999fa7;background:linear-gradient(#272c33,#131820)}
 .factory-assists img{width:23px;height:23px;filter:brightness(0) invert(1)}.factory-assists button span{font-size:10px;text-align:center}

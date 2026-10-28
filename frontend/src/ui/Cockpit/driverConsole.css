@@ -10,7 +10,6 @@
 .transmission-console .handbrake-lever[data-active="true"] .ebrake-handle{transform:rotate(calc(var(--parking-level,0)*-22deg))}
 .transmission-console .ebrake-handle:after{left:12%;right:9%;top:25%;height:0;bottom:auto;border-left:0;border-top:1px dashed #a13c3d}
 .transmission-console .ebrake-handle i{left:auto;right:-3%;top:26%;width:9%;height:48%;border-radius:2px}
-.transmission-console .ebrake-indicator{font-size:8px;bottom:1%}
 .transmission-console .parking-levels{display:flex;gap:2px}
 :is(.cockpit-panel,.drive-dock) .shift-slot{position:absolute;transform:translate(-50%,-50%);width:24px;height:24px;min-width:0;padding:0;background:#090d12;border:1px solid #737a83;border-radius:2px;z-index:1;font:10px monospace}
 :is(.cockpit-panel,.drive-dock) .shift-knob{position:absolute;transform:translate(-50%,-50%);width:43px;height:43px;min-width:0;padding:4px;border-radius:50%;border:4px solid #b8bec4;background:radial-gradient(circle at 30% 15%,#56595f,#191c22 70%);box-shadow:0 4px 5px #0008,inset 0 0 0 1px #13151a;z-index:2;touch-action:none}
@@ -130,15 +129,12 @@ html[data-reduce-motion="true"] .wheel-rotor,html[data-reduce-motion="true"] .ig
 @media(prefers-reduced-motion:reduce){.stalk-actuator,.radial-key{transition:none}}
 html[data-reduce-motion="true"] .stalk-actuator,html[data-reduce-motion="true"] .radial-key{transition:none}
 
-/* Ebrake polish: label upper-left; strength targets descend from upper-right. */
+/* Strength targets descend from the upper-right. */
 .transmission-console .mechanical-handbrake{position:relative}
 .drive-dock .hud-transmission .mechanical-handbrake{padding-top:0}
-.transmission-console .handbrake-lever .ebrake-indicator{top:3px;left:3px;right:auto;bottom:auto;text-align:left;color:#ff7369;pointer-events:none}
 .transmission-console .mechanical-handbrake .parking-levels{position:absolute;top:0;right:0;z-index:3;display:flex;flex-direction:column;align-items:stretch;width:24px;gap:2px}
 .transmission-console .mechanical-handbrake .parking-levels button{flex:none;min-height:14px;line-height:1;padding:2px 1px}
 
-/* Brake requests retain their own feedback; the printed red legend stays steady. */
-.transmission-console .handbrake-lever .ebrake-indicator{color:#ff7369;animation:none}
 .drive-assists .assist-trac{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
 .drive-assists .assist-trac img{display:block;flex:none;margin-inline:auto;object-fit:contain;object-position:center}
 .drive-assists .assist-trac span{width:100%;text-align:center}
@@ -150,7 +146,6 @@ html[data-reduce-motion="true"] .stalk-actuator,html[data-reduce-motion="true"] 
 
 /* Research HUD: quiet controls, painted wheel hit regions, fixed pedal space. */
 .transmission-console .handbrake-lever,.transmission-console .handbrake-lever:is(:hover,:focus,:active,[aria-pressed="true"]){outline:0!important;border:0!important;box-shadow:none!important;background:transparent!important}
-.handbrake-lever:focus-visible .ebrake-indicator{text-decoration:underline;text-underline-offset:2px}
 :is(.drive-dock,.cockpit-panel) .mechanical-shifter .shift-slot:is(:hover,:focus,[aria-current="true"]){background:#090d12;border-color:#737a83;color:#dce4e9;outline:none;box-shadow:none}
 :is(.drive-dock,.cockpit-panel) .shift-slot:focus-visible{text-decoration:underline;text-underline-offset:3px}
 :is(.drive-dock,.cockpit-panel) .shift-slot:active{animation:gear-tap 120ms ease-out}
@@ -177,3 +172,24 @@ html[data-reduce-motion="true"] .shift-slot:active{animation:none!important}
 .radio-volume-dial .knob-title{display:none}.radio-volume-dial .knob-pointer:before{height:4px}
 .radio-volume-dial .climate-knob>button{position:absolute;inset:24%;padding:0;min-height:0;min-width:0;font-size:8px;border-radius:50%}
 .radio-volume-dial output{font-size:5px;bottom:-5px;left:0;right:0}
+.radio-display .radio-vehicle-status[data-alert="true"]{color:#ffb76a;font-weight:700;letter-spacing:.02em}
+
+/* Bottom-center key with a separate right-hand starter accent. */
+.driving-hud .ignition-hud{left:50%;right:auto;top:auto;bottom:max(8px,env(safe-area-inset-bottom));width:122px;transform:translateX(-50%)}
+.ignition-hud .hud-group-body{padding:0;border:0;background:none}
+.ignition-hud .ignition-system{display:flex;align-items:center;gap:1px}
+.ignition-hud .ignition-cylinder{flex:0 0 88px;width:88px;height:88px}
+.ignition-hud .starter-accent{display:flex;flex:0 0 33px;flex-direction:column;align-items:center;justify-content:center;gap:4px;width:33px;height:54px;padding:3px;border:1px solid #7bcce87a;border-left:2px solid #8eddf1;border-radius:5px 20px 20px 5px;background:linear-gradient(90deg,#15394a80,#08131bcc);color:#a2def3;touch-action:none}
+.starter-accent>span{font:20px/1 sans-serif}.starter-accent>small{font:6px/1 monospace}
+.ignition-hud .starter-accent[aria-pressed="true"]{background:#1d7195a6;border-color:#cef5ff;color:#f0fbff;box-shadow:inset 0 0 8px #68d5ff40}
+.ignition-hud .starter-accent:disabled{opacity:.5}.ignition-hud .starter-accent:focus-visible{outline:1px solid #b1e7fa;outline-offset:2px}
+@media(max-width:600px) and (orientation:portrait){.driving-hud .ignition-hud{width:88px}.ignition-hud .ignition-cylinder{flex-basis:64px;width:64px;height:64px}.ignition-hud .starter-accent{flex-basis:23px;width:23px;height:44px}.starter-accent>span{font-size:16px}.starter-accent>small{font-size:5px}}
+@media(max-height:320px){.driving-hud .ignition-hud{width:105px}.ignition-hud .ignition-cylinder{flex-basis:76px;width:76px;height:76px}.ignition-hud .starter-accent{flex-basis:28px;width:28px;height:46px}}
+
+/* Strength is shown by filled blue crystals, never a focus box or percentage. */
+:is(.drive-dock,.cockpit-panel) .mechanical-handbrake .parking-levels button{border:0;outline:none;background:transparent;box-shadow:none;min-height:14px;padding:1px;line-height:0}
+.parking-crystal{display:block;width:22px;height:12px;opacity:.6}
+.parking-crystal path{fill:#10263466;stroke:#73c8e1;stroke-width:1;stroke-dasharray:2 1}
+[data-filled="true"]>.parking-crystal{opacity:1}[data-filled="true"]>.parking-crystal path{fill:#68c8f0;stroke:#b0eaff;stroke-dasharray:none}
+.parking-levels button:focus-visible .parking-crystal path{stroke:#fff;stroke-width:2}
+.mechanical-handbrake:has(.handbrake-lever:focus-visible) .parking-crystal path{stroke:#d7f4ff;stroke-width:1.5}

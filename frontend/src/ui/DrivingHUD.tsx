@@ -22,7 +22,7 @@ export function DrivingHUD() {
     <HudGroup id="gauges" title="INSTRUMENTS" className="instrument-hud"><Dashboard/></HudGroup>
     {touch&&<HudGroup id="wheel" title="STEERING" className="wheel-hud"><div className="wheel-stage" style={{'--wheel-drop':drop} as CSSProperties}><Steering/></div></HudGroup>}
 
-    {dock&&<HudGroup id="ignition" title="IGNITION" className="ignition-hud"><IgnitionSwitch/></HudGroup>}
+    {dock&&<HudGroup id="ignition" title="IGNITION" className="ignition-hud"><IgnitionSwitch starter/></HudGroup>}
     <ControlsPanel/>
     <Minimap/><InspectionPanel/>
   </div>;
