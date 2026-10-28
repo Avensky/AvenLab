@@ -2,6 +2,7 @@
 import { useNetworkStore, type PhysicsSnapshot } from "../store/networkStore";
 import { useInputStore } from "../store/inputStore";
 import { useWorldStore, type MapSnapshot } from "../store/worldStore";
+import { useVehicleConfigStore } from "../store/vehicleConfigStore";
 
 import { performanceRecorder as recorder } from "../performance/measurements";
 import { handlingSample } from "../performance/handling";
@@ -43,6 +44,30 @@ export function requestVehicleChange(vehicle: string): Promise<void> {
     } catch (error) {
       finish(error instanceof Error ? error : new Error("Unable to send the vehicle change."));
     }
+  });
+}
+
+export function requestSandboxService(): Promise<void> {
+  const connection = socket;
+  if (!connection || connection.readyState !== WebSocket.OPEN) return Promise.reject(new Error("Connect to the game server before servicing."));
+  const requestId = `service-${++vehicleChangeSequence}`;
+  return new Promise((resolve, reject) => {
+    const finish = (error?: Error) => {
+      clearTimeout(timeout); connection.removeEventListener("message", onMessage); connection.removeEventListener("close", onClose);
+      if (error) reject(error); else resolve();
+    };
+    const onMessage = (event: MessageEvent) => {
+      let message;
+      try { message = JSON.parse(event.data); } catch { return; }
+      if (message?.request_id !== requestId) return;
+      if (message.type === "vehicle_serviced") finish();
+      else if (message.type === "vehicle_service_error") finish(new Error(message.message || "Unable to service vehicle."));
+    };
+    const onClose = () => finish(new Error("Connection closed before service completed."));
+    const timeout = setTimeout(() => finish(new Error("The server did not confirm service. Rebuild/restart the updated Rust backend.")), 5000);
+    connection.addEventListener("message", onMessage); connection.addEventListener("close", onClose);
+    try { connection.send(JSON.stringify({ type: "service_vehicle_request", request_id: requestId })); }
+    catch (error) { finish(error instanceof Error ? error : new Error("Unable to send service request.")); }
   });
 }
 
@@ -115,6 +140,7 @@ function clearSession() {
   packetDiagnostics.snapshotChars = packetDiagnostics.debugChars = 0;
   packetDiagnostics.decodeMs = packetDiagnostics.worstDecodeMs = 0;
   useNetworkStore.getState().resetSession();
+  useVehicleConfigStore.getState().reset();
   useWorldStore.getState().setMap(null);
   useInputStore.getState().releaseControls();
 }
@@ -247,11 +273,15 @@ export function connectRustServer(): WebSocket {
         return;
       // Existing addEventListener consumers still receive these setup events.
       case "vehicle_config":
+        useVehicleConfigStore.getState().receive(message.data?.player_id, message.data?.config);
+        return;
       case "spawn_ok":
       case "spawn_ready":
       case "spawn_error":
       case "vehicle_changed":
       case "vehicle_change_error":
+      case "vehicle_serviced":
+      case "vehicle_service_error":
         return;
       default:
         console.warn("Unknown Rust message type:", message.type);

@@ -205,6 +205,13 @@ pub async fn start_websocket_server(
 
                         match spawn_result {
                             Ok((body_handle, newly_spawned, map_snapshot)) => {
+                                // Gauges need the same calibration on first spawn
+                                // as on Change Vehicle. Copy it before taking the
+                                // game lock; keep the physics -> game lock order.
+                                let vehicle_config = {
+                                    let phys = physics_clone.lock().await;
+                                    phys.vehicles.get(&player_id).map(|vehicle| vehicle.config)
+                                };
                                 let mut game = state_clone.lock().await;
                                 game.attach_body(&player_id, body_handle);
                                 // Only a newly created physics vehicle may set its
@@ -214,6 +221,13 @@ pub async fn start_websocket_server(
                                     game.set_vehicle_id(&player_id, &request.vehicle);
                                 }
                                 drop(game);
+
+                                if let Some(config) = vehicle_config {
+                                    let _ = tx.send(serde_json::json!({
+                                        "type": "vehicle_config",
+                                        "data": crate::state::VehicleConfigPayload::new(&player_id, config),
+                                    }).to_string());
+                                }
 
                                 println!(
                                     "✅ Spawn ready: player={} vehicle={} map={}",
@@ -253,6 +267,17 @@ pub async fn start_websocket_server(
                             }
                         }
 
+                        continue;
+                    }
+
+                    if message_type == "service_vehicle_request" {
+                        let request_id = value.get("request_id").and_then(Value::as_str).unwrap_or_default();
+                        let mut phys = physics_clone.lock().await;
+                        let response = match phys.service_vehicle_for_player(&player_id) {
+                            Ok(()) => serde_json::json!({ "type": "vehicle_serviced", "request_id": request_id }),
+                            Err(message) => serde_json::json!({ "type": "vehicle_service_error", "request_id": request_id, "message": message }),
+                        };
+                        let _ = tx.send(response.to_string());
                         continue;
                     }
 

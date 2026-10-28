@@ -11,6 +11,7 @@ mod vehicle_debug;
 mod vehicle_state;
 mod vehicle_setup;
 mod vehicle_forces;
+mod powertrain;
 
 use rapier3d::prelude::RigidBodyHandle;
 use crate::net::start_websocket_server;

@@ -140,7 +140,7 @@ pub fn solve_longitudinal(
     // =========================================================
     // TCS (traction control based on longitudinal usage)
     // =========================================================
-    if ctx.tcs_enabled && ctrl.throttle > 0.01 {
+    if ctx.tcs_enabled && ctrl.throttle.abs() > 0.01 {
         let nx = engine_jx / j_cap;
         if nx > ctx.tcs_limit {
             let s = (ctx.tcs_limit / nx).clamp(0.0, 1.0);
@@ -218,5 +218,31 @@ mod tests {
         assert!((total_force - ctx.engine_force * ctrl.throttle).abs() < 0.01);
         contact.grounded = false;
         assert_eq!(solve_longitudinal(&ctx, &ctrl, &contact, 0.17).impulse, [0.0; 3]);
+    }
+
+    #[test]
+    fn tcs_switch_changes_forward_and_reverse_drive_limits_without_changing_sign() {
+        let mut contact = patch(5.0); contact.drive = true;
+        let off = SolveContext { engine_force: 24_000.0, ..context() };
+        let on = SolveContext { tcs_enabled: true, ..off };
+        for throttle in [-1.0, 1.0] {
+            let input = ControlInput { throttle, ..ControlInput::default() };
+            let raw = solve_longitudinal(&off, &input, &contact, 0.17).impulse[2];
+            let limited = solve_longitudinal(&on, &input, &contact, 0.17).impulse[2];
+            assert!(raw * throttle > 0.0 && limited * throttle > 0.0);
+            assert!(limited.abs() < raw.abs());
+            assert!((limited.abs() / raw.abs() - on.tcs_limit).abs() < 0.001);
+        }
+    }
+
+    #[test]
+    fn abs_switch_limits_brake_usage_but_braking_always_opposes_motion() {
+        let contact = patch(10.0);
+        let off = SolveContext { brake_force: 100_000.0, ..context() };
+        let on = SolveContext { abs_enabled: true, ..off };
+        let input = ControlInput { brake: 1.0, ..ControlInput::default() };
+        let raw = solve_longitudinal(&off, &input, &contact, 0.33).impulse[2];
+        let limited = solve_longitudinal(&on, &input, &contact, 0.33).impulse[2];
+        assert!(raw < 0.0 && limited < 0.0); assert!(limited.abs() < raw.abs());
     }
 }

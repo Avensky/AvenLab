@@ -1,53 +1,20 @@
-import { useEffect, useRef } from 'react'
-import { addEffect } from '@react-three/fiber'
+import { useInputStore } from "../../store/inputStore";
+import { VehicleFlags, hasFlag } from "../../store/tools/inputMasks";
+import { HoldButton } from "../../controls/TouchControls";
+import { arcPath } from "./gaugeGeometry";
 
-import { maxBoost, mutation } from '../../store'
-
-const criticalLevel = 30
-const warningLevel = 60
-
-const getBlink = () => mutation.boost <= criticalLevel
-const getColor = () => (mutation.boost > warningLevel ? '#00FF00' : mutation.boost > criticalLevel ? '#FFE600' : '#FF0000')
-const getLength = () => (.22)
-// const getLength = () => `${(100 * (1 - mutation.boost / maxBoost)).toFixed()}%`
-
-export function Boost(): JSX.Element {
-  const ref = useRef<SVGPathElement>(null)
-
-  let blink = getBlink()
-  let stroke = getColor()
-  let strokeDashoffset = getLength()
-
-  useEffect(() =>
-    addEffect(() => {
-      if (!ref.current) return
-
-      blink = getBlink()
-      if (ref.current.classList.contains('blink') !== blink) {
-        ref.current.classList.toggle('blink', blink)
-      }
-
-      stroke = getColor()
-      if (ref.current.style.stroke !== stroke) {
-        ref.current.style.stroke = stroke
-      }
-
-      strokeDashoffset = getLength()
-      if (ref.current.style.strokeDashoffset !== strokeDashoffset) {
-        ref.current.style.strokeDashoffset = strokeDashoffset
-      }
-    }),
-  )
-
-  return (
-    <div className="boost-bar">
-      <svg width={90} height={25} viewBox="0 0 105 25" xmlns="http://www.w3.org/2000/svg">
-        <path className="boost-bg-path" d="M13,12 L90,12" />
-        <path className="boost-path" d="M15,12 L80,12" ref={ref} style={{ stroke, strokeDashoffset }} />
-        <text className="boost-text" x="0" y="17px">
-          <tspan>N</tspan>
-        </text>
-      </svg>
-    </div>
-  )
+export function Boost({ fraction, active }: { fraction: number | null; active: boolean }) {
+  const requested = useInputStore(s => hasFlag(s.input.vehicleMask, VehicleFlags.BOOST));
+  const path = arcPath(80, 80, 86, -4 * Math.PI / 3, 0);
+  return <div className="nos-ring" data-active={active} data-requested={requested}>
+    <svg viewBox="-9 -9 178 178" aria-hidden="true">
+      <path d={path} className="nos-track" pathLength="100" />
+      {fraction !== null && <path d={path} className="nos-fill" pathLength="100" strokeDasharray={`${fraction * 100} 100`} />}
+    </svg>
+    <HoldButton className="nos-button" disabled={fraction === null || fraction <= 0} aria-label="Hold NOS boost" aria-pressed={requested}
+      title={fraction === null ? "NOS unavailable for this vehicle" : "Hold NOS · Shift / LB"}
+      onHold={held => useInputStore.getState().setHeldVehicleFlag("touch-actions", VehicleFlags.BOOST, held)}>
+      <span>NOS</span><strong>{fraction === null ? "—" : `${Math.round(fraction * 100)}%`}</strong>
+    </HoldButton>
+  </div>;
 }

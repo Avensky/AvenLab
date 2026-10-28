@@ -11,6 +11,8 @@ import { useCaptureSettingsStore } from "../../performance/captureSettingsStore"
 import { useVisualAlignmentStore } from "../../store/visualAlignmentStore";
 import { usePerformanceReadout } from "../../performance/usePerformanceReadout";
 import { cityQualityControl, cityViewDistanceControl, cityPerformanceControl, interpolationControl } from "../menus/cityQualityControl";
+import { useState } from "react";
+import { requestSandboxService } from "../../net/rustSocket";
 
 const MODES: VisualMode[] = ["collider", "geometry", "glb", "hybrid", "hidden"];
 const DEBUG_OPTIONS = [
@@ -23,6 +25,14 @@ const ALL_DEBUG = DEBUG_OPTIONS.reduce((mask, [, flag]) => mask | flag, 0);
 const step = <T,>(values: readonly T[], value: T, dir: 1 | -1 = 1): T => values[(Math.max(0, values.indexOf(value)) + dir + values.length) % values.length];
 
 export function DebugMenu() {
+  const [serviceStatus, setServiceStatus] = useState("");
+  const [servicing, setServicing] = useState(false);
+  const service = () => {
+    setServicing(true); setServiceStatus("Requesting sandbox maintenance…");
+    void requestSandboxService().then(() => setServiceStatus("Vehicle repaired, refueled and cooled. Switch the engine on to drive."))
+      .catch(error => setServiceStatus(error instanceof Error ? error.message : "Service failed"))
+      .finally(() => setServicing(false));
+  };
   const settings = useRenderSettingsStore();
   const mode = useWorldStore((s) => s.mode);
   const mask = useWorldStore((s) => s.debugMask);
@@ -61,7 +71,7 @@ export function DebugMenu() {
       }),
     ];
   });
-  return <TabbedMenu title="Debugger" eyebrow="REDLINE VECTOR / ENGINE TOOLS" onBack={back} subtitle="Inspect physics, isolate visual cost and compare driving captures. Live latency stats appear in the performance overlay." tabs={[
+  return <TabbedMenu title="Debugger" eyebrow="REDLINE VECTOR / ENGINE TOOLS" onBack={back} status={serviceStatus} subtitle="Inspect physics, isolate visual cost and compare driving captures. Live latency stats appear in the performance overlay." tabs={[
     { id: "visualizers", label: "Visualizers", description: "Diagnostic streams are separate from model rendering. Disable streams you do not need to reduce debug traffic.", rows: [
       overlayRow,
       { id: "scope", label: "Diagnostic player scope", value: debug.playerScope.toUpperCase(), action: () => debug.togglePlayerScope() },
@@ -71,6 +81,7 @@ export function DebugMenu() {
     { id: "vehicles", label: "Vehicles & GLBs", description: "Choose each vehicle's representation independently. These options change the rendering, while collision and simulation stay authoritative on the server.", rows: [
       { id: "vehicle-default", label: "Vehicles default", value: mode.toUpperCase(), action: (dir) => { world.setMode(step(["collider", "geometry", "glb", "hybrid"] as const, mode, dir)); settings.update({ vehicleOverrides: {} }); } },
       { id: "alignment", label: "Automatic GLB alignment", value: settings.autoVehicleAlignment ? "On" : "Off", action: () => settings.update({ autoVehicleAlignment: !settings.autoVehicleAlignment }) },
+      { id: "sandbox-service", label: "Sandbox service: repair / refuel / cool", description: "Stop on the ground and switch the engine off. Training maintenance; match stations will have their own access and supply rules.", adjustable: false, disabled: servicing, action: service },
       ...(JSON.parse(rosterKey) as [string, string | null][]).map(([id, vehicle]): MenuRow => ({ id: `vehicle-${id}`, label: `Vehicle ${vehicle ?? "unknown"} · ${id.slice(0, 8)}`, value: (settings.vehicleOverrides[id] ?? mode).toUpperCase(), action: (dir) => settings.setVehicleMode(id, step(MODES, settings.vehicleOverrides[id] ?? mode, dir)) })),
     ], content: <VehicleAlignmentReadout /> },
     { id: "environment", label: "Environment", description: "Set a world default, override a chunk, or switch individual GLB assets. The list is populated from the server's selected map.", rows: [

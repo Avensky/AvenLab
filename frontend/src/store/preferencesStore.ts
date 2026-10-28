@@ -14,11 +14,13 @@ export type Preferences = {
   menuTextScale: number;
   bindings: Record<BindingAction, string>;
   favoriteVehicles: string[];
+  touchLayout: "pedals" | "sticks";
+  speedUnit: "kmh" | "mph";
 };
 export const DEFAULT_PREFERENCES: Preferences = {
   fov: 75, cameraSensitivity: 1, controllerDeadzone: 0.12, steeringSensitivity: 1,
   invertSteering: false, reducedMotion: false, highContrast: false, menuTextScale: 1,
-  bindings: DEFAULT_BINDINGS, favoriteVehicles: [],
+  bindings: DEFAULT_BINDINGS, favoriteVehicles: [], touchLayout: "pedals", speedUnit: "kmh",
 };
 // Fixed shortcuts remain available; rebinding movement must never steal them.
 export const RESERVED_KEYS = new Set(["F2", "F3", "F8", "Escape", "Enter", "Tab", "Backquote", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
@@ -40,6 +42,8 @@ export function sanitizePreferences(value: unknown): Preferences {
     highContrast: data.highContrast === true, invertSteering: data.invertSteering === true,
     bindings: validBindings ? proposed : { ...DEFAULT_BINDINGS },
     favoriteVehicles: Array.isArray(data.favoriteVehicles) ? data.favoriteVehicles.filter((id): id is string => typeof id === "string").slice(0, 100) : [],
+    touchLayout: data.touchLayout === "sticks" ? "sticks" : "pedals",
+    speedUnit: data.speedUnit === "mph" ? "mph" : "kmh",
   };
 }
 export const usePreferencesStore = create<Preferences & {

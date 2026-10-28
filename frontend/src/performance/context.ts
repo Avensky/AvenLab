@@ -10,6 +10,7 @@ import type { ExperimentContext } from "./measurements";
 import { playerLocation } from "./location";
 import { cityStreamingStats } from "../world/cityWorkQueue";
 import { resolveCityViewDistance } from "../world/cityViewDistance";
+import { useVehicleConfigStore } from "../store/vehicleConfigStore";
 
 export function experimentContext(): ExperimentContext {
   const s = useRenderSettingsStore.getState();
@@ -23,6 +24,7 @@ export function experimentContext(): ExperimentContext {
   const game = useGameStore.getState();
   const debug = useDebugViewStore.getState();
   const settings = { ...render, vehicleMode: world.mode, debugMask: world.debugMask,
+    vehicleHud: useVehicleConfigStore.getState().byPlayer[network.playerId] ?? null,
     interpolation: debug.interpolationEnabled, playerScope: debug.playerScope,
     camera: game.camera, editor: game.editor, map: world.map?.map_id,
     chunks: world.map?.chunks.map((c) => [c.x, c.z]),
@@ -37,7 +39,9 @@ export function experimentContext(): ExperimentContext {
         : useProgress.getState().errors.length > 0 ? "asset load failed; reload for a clean baseline"
           : useProgress.getState().active ? "assets loading" : cityStreamingStats().pending ? "city visuals preparing" : "";
   const me = network.snapshot?.entities.find((entity) => entity.id === network.playerId);
-  return { settings: { ...settings, alignment: useVisualAlignmentStore.getState().reports, playerPose: me ? { position: me.position, rotation: me.rotation, speed: me.speed } : null },
+  return { settings: { ...settings, alignment: useVisualAlignmentStore.getState().reports,
+    playerResources: me ? { fuelLiters: me.fuel, temperatureC: me.temp, condition: me.condition ?? null, boostFraction: me.boost_fraction ?? null, resourceMask: me.resource_mask ?? 0 } : null,
+    playerPose: me ? { position: me.position, rotation: me.rotation, speed: me.speed } : null },
     location: playerLocation(me, world.map),
     key: JSON.stringify(settings), ready: reason === "", reason };
 }

@@ -4,6 +4,12 @@
 AvenLab is a real-time vehicle simulation and ML engine powered by a Rust/Rappier physics core and a React Three Fiber frontend. It supports deterministic backend physics, multiplayer networking, dataset recording, and tools for autonomous control, reinforcement learning, and CAN-bus modeling.
 ```
 
+Current frontend architecture, stores and update rates are documented in
+[frontend/README.md](frontend/README.md) and [the store reference](frontend/src/store/README.md).
+The custom gauges and Rust fuel/heat/condition/NOS model are described in
+[VEHICLE_HUD.md](docs/VEHICLE_HUD.md); the folder audit is in
+[FRONTEND_AUDIT.md](docs/FRONTEND_AUDIT.md).
+
 ## Real-Time Vehicle Simulation, Machine Learning, and Autonomous Systems Research Platform
 
 ```t
@@ -37,7 +43,7 @@ AvenLab is a next-generation vehicle simulation and machine-learning engine desi
 
 - **Backend Physics:** Rust + Rappier
 - **Frontend Visualization:** React Three Fiber
-- **Networking:** Socket.IO (with optional WebRTC)
+- **Gameplay networking:** Native WebSocket with JSON snapshots and packed flags; CAN/ML tooling uses its separate data-service API
 - **ML Pipeline:** Python, PyTorch, custom datasets
 - **Deployment:** Node.js, Vite, Nginx, Docker
 

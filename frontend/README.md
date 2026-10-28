@@ -1,79 +1,68 @@
-# React + TypeScript + Vite
+# Redline Vector frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React / TypeScript / React Three Fiber UI for the Rust vehicle sandbox and the
+separate Signal Recon workspace. Rust owns simulation and resources. Stores
+separate received world state, outgoing intent, sampled HUD data and preferences.
 
-Currently, two official plugins are available:
+## Run and verify
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+From the repository root:
 
-```bash
-docker ps
+```sh
+npm --prefix frontend ci
+npm --prefix frontend run dev
+npm --prefix frontend run test:performance
+npm --prefix frontend run lint
+npm --prefix frontend run build
 ```
 
-## React Compiler
+Gameplay uses `src/net/rustSocket.ts`, a native WebSocket owner.
+`VITE_RUST_WS_URL` overrides the endpoint; dev defaults to port 9001 on the
+browser hostname, production to `/ws/`. CAN/ML uses its separate data-service
+API. The React compiler is enabled in Vite. Backend changes also require Cargo
+tests and a server rebuild; see the repository root scripts.
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
+## Folder map
 
-Note: This will impact Vite dev & build performances.
+| Folder | Owns |
+| --- | --- |
+| `src/game/` | Screen/mode composition and menu pages |
+| `src/game/modes/`, `src/game/preview/` | Mode workflows and garage staging |
+| `src/components/menus/` | Shared controls/tabs, logo, focus, menu styles/video |
+| `src/components/debugger/` | Debugger and physics visualizers |
+| `src/ui/`, `src/ui/Dashboard/` | In-game DOM HUD, touch widgets and custom gauge designs |
+| `src/controls/` | Keyboard/gamepad/touch lifecycle and input ownership |
+| `src/net/` | Socket lifecycle, validation and message routing |
+| `src/store/` | State ownership and display projection; [store reference](src/store/README.md) |
+| `src/hooks/` | Interpolation and visual alignment |
+| `src/world/`, `src/vehicles/`, `src/effects/` | World/model rendering and camera/effect code |
+| `src/performance/` | Bounded measurements, recorder, archive/export and overlay |
+| `public/models/`, `tests/` | Existing model assets and frontend verification |
 
-## Expanding the ESLint configuration
+Import specific stores directly. The legacy store/index barrel also imports
+vehicle selection/render components and is a poor boundary for transport/HUD.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Driving HUD
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+Enable **Settings → Display → Driving HUD & touch controls**. The restored
+custom speed, RPM and paired fuel/temperature dials sit at bottom right, with
+NOS outside RPM and a condition/repair meter. Pedals sit at bottom center;
+compact screens lift the cluster above the touch row. Display saves speed units
+and Pedals/Two joysticks. Joysticks steer left, gas/reverse right, brake center.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+ABS/TCS buttons display confirmed server state. Q/T toggle them while driving;
+Settings → Controller exposes the same requests to controller users. Rust now
+owns fuel usage, load/airflow-based heat, overheat/condition derating, collision
+damage, automatic driveline telemetry and finite NOS. Debugger → Vehicles & GLBs
+has stationary, engine-off Sandbox service. Gas stations and competitive supply
+rules are future systems.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+The HUD projects at 20 Hz, independent of 60 Hz snapshots/input sending and
+120 Hz physics substeps. Static SVG faces are memoized; short needle transitions
+honor Reduce motion. Unsupported readings from an old server show dashes. The
+driving HUD hides with modal menus and outside Sandbox.
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+- [Store responsibilities, authority, persistence and update rates](src/store/README.md)
+- [Folder audit and refactoring order](../docs/FRONTEND_AUDIT.md)
+- [HUD/resource model, tuning, wire protocol and shifter roadmap](../docs/VEHICLE_HUD.md)
+- [Menus](../docs/GAME_MENUS.md), [recorder](../docs/performance-recording.md), [city performance](../docs/CITY_PERFORMANCE.md)

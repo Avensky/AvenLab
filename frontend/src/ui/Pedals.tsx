@@ -1,55 +1,19 @@
-import React from "react";
-import { useInputStore } from "../store";
+import { useRef } from "react";
+import { useInputStore } from "../store/inputStore";
+import { HoldButton } from "../controls/TouchControls";
 
-const gear = "/images/gear-stick.svg";
-const brakes = "/images/brakePedal.png";
-const accelerator = "/images/gasPedal.png";
-
-function Pedals(): React.JSX.Element {
-    const throttle = useInputStore((s) => s.input.throttle);
-    const brake = useInputStore((s) => s.input.brake);
-    const setAnalog = useInputStore((s) => s.setAnalog);
-
-    return (
-        <div className="Pedals">
-            <div className="split">
-                {/* Reverse */}
-                <button
-                    style={{ backgroundImage: `url(${gear})` }}
-                    onContextMenu={(e) => e.preventDefault()}
-                    className={`backward pedal ${throttle < 0 ? "pressed" : ""}`}
-                    onPointerDown={() => setAnalog({ throttle: -1 })}
-                    onPointerUp={() => setAnalog({ throttle: 0 })}
-                    onPointerLeave={() => setAnalog({ throttle: 0 })}
-                    onPointerCancel={() => setAnalog({ throttle: 0 })}
-                />
-
-                {/* Brake */}
-                <button
-                    style={{ backgroundImage: `url(${brakes})` }}
-                    onContextMenu={(e) => e.preventDefault()}
-                    className={`pedal ${brake > 0 ? "pressed" : ""}`}
-                    onPointerDown={() => setAnalog({ brake: 1 })}
-                    onPointerUp={() => setAnalog({ brake: 0 })}
-                    onPointerLeave={() => setAnalog({ brake: 0 })}
-                    onPointerCancel={() => setAnalog({ brake: 0 })}
-                >
-                    <div className="footBrake" />
-                </button>
-
-                {/* Accelerator */}
-                <button
-                    style={{ backgroundImage: `url(${accelerator})` }}
-                    onContextMenu={(e) => e.preventDefault()}
-                    className={`pedal ${throttle > 0 ? "pressed" : ""}`}
-                    onPointerDown={() => setAnalog({ throttle: 1 })}
-                    onPointerUp={() => setAnalog({ throttle: 0 })}
-                    onPointerLeave={() => setAnalog({ throttle: 0 })}
-                    onPointerCancel={() => setAnalog({ throttle: 0 })}
-                />
-            </div>
-        </div>
-    );
+export default function Pedals({ brakeOnly = false }: { brakeOnly?: boolean }) {
+  const throttle = useInputStore(s => s.input.throttle), brake = useInputStore(s => s.input.brake);
+  const held = useRef({ forward: false, reverse: false, brake: false });
+  const press = (action: keyof typeof held.current, value: boolean) => {
+    held.current[action] = value;
+    useInputStore.getState().setAnalogFromSource("touch-pedals", {
+      ...(brakeOnly ? {} : { throttle: Number(held.current.forward) - Number(held.current.reverse) }), brake: Number(held.current.brake),
+    });
+  };
+  return <div className="driving-pedals" role="group" aria-label="Pedals">
+    {!brakeOnly && <HoldButton className="driving-pedal driving-reverse" aria-label="Reverse" aria-pressed={throttle < 0} onHold={value => press("reverse", value)}><span>R</span><small>REVERSE</small></HoldButton>}
+    <HoldButton className="driving-pedal driving-brake" aria-label="Brake" aria-pressed={brake > 0} onHold={value => press("brake", value)}><img src="/images/brakePedal.png" alt="" draggable={false} /><small>BRAKE</small></HoldButton>
+    {!brakeOnly && <HoldButton className="driving-pedal driving-gas" aria-label="Accelerate" aria-pressed={throttle > 0} onHold={value => press("forward", value)}><img src="/images/gasPedal.png" alt="" draggable={false} /><small>GAS</small></HoldButton>}
+  </div>;
 }
-
-export default Pedals;

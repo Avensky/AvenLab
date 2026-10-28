@@ -171,7 +171,7 @@ export class PerformanceRecorder {
     const id = this.nextId++;
     if (p.baseline) this.baselineId = id;
     this.runs.push({ id, label: p.label, baseline: p.baseline, startedAt: p.startedAt!, stoppedEarly: p.stoppedEarly ?? false,
-      durationMs: p.durationMs, settings: { ...p.settings, endPlayerPose: context.settings.playerPose }, metrics,
+      durationMs: p.durationMs, settings: { ...p.settings, endPlayerPose: context.settings.playerPose, endPlayerResources: context.settings.playerResources }, metrics,
       snapshotKiBps: p.snapshotBytes / 1024 / (p.durationMs / 1000), debugKiBps: p.debugBytes / 1024 / (p.durationMs / 1000),
       snapshotHz: p.snapshots / (p.durationMs / 1000), frameCount,
       slowFrames: (p.samples.frameMs ?? []).filter((v) => v > 1000 / 60 + 0.5).length,

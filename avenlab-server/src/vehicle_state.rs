@@ -3,9 +3,12 @@ use rapier3d::prelude::*;
 use serde::Serialize;
 use crate::aven_tire::state::TireState;
 use crate::aven_tire::steering::SteeringState;
+use crate::powertrain::{Powertrain, ResourceConfig};
 
 #[derive(Serialize, Clone, Copy, Debug)]
 pub struct VehicleConfig {
+    #[serde(skip)]
+    pub resources: ResourceConfig,
     pub mass: f32,              // kg
     pub engine_force: f32,      // N
     pub brake_force: f32,       // N
@@ -89,11 +92,7 @@ pub struct Vehicle {
     // ==========================================
     // Telemetry
     // ==========================================
-    pub rpm: f32,
-    pub gear: i32,
-    pub fuel: f32,
-    pub engine_temp: f32,
-    pub engine_torque: f32,
+    pub powertrain: Powertrain,
 }
 
 bitflags! {
@@ -106,6 +105,7 @@ bitflags! {
         const HAZARDS       = 1 << 4;
         const ABS           = 1 << 5;
         const TCS           = 1 << 6;
+        const BOOST         = 1 << 7;
     }
 }
 

@@ -23,11 +23,12 @@ export interface VehicleControlInput {
     handbrake: number;  // [0..1]
 }
 
-export type InputSource = "keyboard" | "gamepad";
+export type InputSource = "keyboard" | "gamepad" | "touch-steering" | "touch-throttle" | "touch-pedals" | "touch-actions";
 const neutralControls = (): VehicleControlInput => ({ throttle: 0, steer: 0, brake: 0, handbrake: 0 });
 // Device intent lives here, outside React. Only the merged packet goes to Rust.
 const analogSources: Record<InputSource, VehicleControlInput> = {
     keyboard: neutralControls(), gamepad: neutralControls(),
+    "touch-steering": neutralControls(), "touch-throttle": neutralControls(), "touch-pedals": neutralControls(), "touch-actions": neutralControls(),
 };
 const heldVehicleFlags = new Map<number, Set<InputSource>>();
 const heldPlayerFlags = new Map<number, Set<InputSource>>();
@@ -35,15 +36,14 @@ const clampControl = (value: number, min: number, max: number) =>
     Number.isFinite(value) && value !== 0 ? Math.max(min, Math.min(max, value)) : 0;
 
 function mergedAnalog(): VehicleControlInput {
-    const keyboard = analogSources.keyboard;
-    const gamepad = analogSources.gamepad;
-    // A pressed keyboard axis wins; an idle gamepad cannot erase it. Brakes
-    // combine by maximum so either device can stop the vehicle immediately.
+    const sources = [analogSources.keyboard, analogSources["touch-steering"], analogSources["touch-throttle"], analogSources["touch-pedals"], analogSources["touch-actions"], analogSources.gamepad];
+    // An idle producer cannot erase another device. Keyboard wins deliberate
+    // axis conflicts, then touch, then gamepad. Either device can apply brakes.
     return {
-        throttle: keyboard.throttle !== 0 ? keyboard.throttle : gamepad.throttle,
-        steer: keyboard.steer !== 0 ? keyboard.steer : gamepad.steer,
-        brake: Math.max(keyboard.brake, gamepad.brake),
-        handbrake: Math.max(keyboard.handbrake, gamepad.handbrake),
+        throttle: sources.find(source => source.throttle !== 0)?.throttle ?? 0,
+        steer: sources.find(source => source.steer !== 0)?.steer ?? 0,
+        brake: Math.max(...sources.map(source => source.brake)),
+        handbrake: Math.max(...sources.map(source => source.handbrake)),
     };
 }
 
@@ -179,8 +179,7 @@ export const useInputStore = create<InputState>((set, get) => ({
     },
     // Legacy callers can release axes alone; producers own their individual holds.
     releaseAnalog() {
-        analogSources.keyboard = neutralControls();
-        analogSources.gamepad = neutralControls();
+        for (const source of Object.keys(analogSources) as InputSource[]) analogSources[source] = neutralControls();
         get().setInput(neutralControls());
     },
     setHeldVehicleFlag(source, flag, enabled) {
@@ -208,8 +207,7 @@ export const useInputStore = create<InputState>((set, get) => ({
     // Blur, disconnect and sender teardown release transient intent. Engine,
     // ABS/TCS, lights and research display toggles remain deliberate settings.
     releaseControls() {
-        analogSources.keyboard = neutralControls();
-        analogSources.gamepad = neutralControls();
+        for (const source of Object.keys(analogSources) as InputSource[]) analogSources[source] = neutralControls();
         heldVehicleFlags.clear();
         heldPlayerFlags.clear();
         get().setInput({

@@ -4,7 +4,7 @@ import { VehiclePreview } from "./preview";
 import { MainMenu, ModeLoadingScreen, PauseMenu } from "./index";
 import { Sandbox, SandboxSetup, SignalRecon, SignalReconSetup, SignalReconMission } from "./modes";
 import { DebugMenu } from "../components/debugger/DebugMenu";
-import { ControlsPanel, Pedals, Steering } from "../ui";
+import { DrivingHUD } from "../ui/DrivingHUD";
 import { CommandLine } from "../ui/command/CommandLine";
 import { useEffect, useState } from "react";
 import { SettingsMenu } from "./SettingsMenu";
@@ -46,9 +46,7 @@ export function GameUI() {
     </FullCanvas>}
 
     {/* UI Overlay */}
-    {screen === "sandbox" && !overlay && hud && <ControlsPanel />}
-    {screen === "sandbox" && !overlay && hud && <Steering />}
-    {screen === "sandbox" && !overlay && hud && <Pedals />}
+    {screen === "sandbox" && !overlay && hud && <DrivingHUD />}
 
     {/* Game Screens */}
     {screen === "signal_recon" && (

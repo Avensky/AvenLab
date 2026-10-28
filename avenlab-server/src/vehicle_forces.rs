@@ -13,6 +13,9 @@ use crate::aven_tire::kinematics;
 use crate::aven_tire::anti_roll::apply_arb_load_transfer;
 use crate::vehicle_debug::{DebugChassis, DebugFlags, DebugRay, DebugSlipRay, DebugWheel};
 use crate::vehicle_state::{Vehicle, VehicleStateFlags};
+use crate::powertrain::Demand;
+#[cfg(test)]
+use crate::powertrain::Powertrain;
 
 static CONTACT_TRACE_ENABLED: OnceLock<bool> = OnceLock::new();
 static CONTACT_TRACE_TICK: AtomicU32 = AtomicU32::new(0);
@@ -82,6 +85,14 @@ impl PhysicsWorld {
             let Some(player_id) = self.body_to_player.get(&handle) else { continue };
             let Some(vehicle) = self.vehicles.get_mut(player_id) else { continue };
             if wheels.is_empty() { continue; }
+
+            let longitudinal_speed = (body_ro.rotation().inverse() * body_ro.linvel()).z;
+            vehicle.powertrain.advance(vehicle.config.resources, Demand {
+                throttle: vehicle.throttle, longitudinal_speed,
+                wheel_radius: vehicle.config.wheel_radius, engine_force: vehicle.config.engine_force,
+            }, dt);
+            vehicle.vehicle_flags.set(VehicleStateFlags::ENGINE_ON, vehicle.powertrain.running);
+            vehicle.vehicle_flags.set(VehicleStateFlags::BOOST, vehicle.powertrain.boost_active);
 
             let mut impulses = ImpulseAccumulator::new();
             let body_mass = body_ro.mass() as f32;
@@ -210,7 +221,7 @@ impl PhysicsWorld {
 
             let ctx = SolveContext {
                 dt, mass: body_mass,
-                engine_force: vehicle.config.engine_force, brake_force: vehicle.config.brake_force,
+                engine_force: vehicle.config.engine_force * vehicle.powertrain.power_multiplier, brake_force: vehicle.config.brake_force,
                 abs_enabled: vehicle.vehicle_flags.contains(VehicleStateFlags::ABS),
                 tcs_enabled: vehicle.vehicle_flags.contains(VehicleStateFlags::TCS),
                 abs_limit: vehicle.config.abs_nx_limit, tcs_limit: vehicle.config.tcs_nx_limit,
@@ -219,10 +230,8 @@ impl PhysicsWorld {
                 wheelbase: vehicle.config.wheelbase(), mu_base: vehicle.config.mu_base,
             };
             let control = ControlInput {
-                throttle: if vehicle.vehicle_flags.contains(VehicleStateFlags::ENGINE_ON) {
-                    vehicle.throttle
-                } else { 0.0 },
-                brake: vehicle.brake, steer: vehicle.steer,
+                throttle: vehicle.powertrain.drive_throttle,
+                brake: vehicle.brake.max(vehicle.powertrain.direction_brake), steer: vehicle.steer,
             };
             let tire_forces = solve_step(&ctx, &control, &mut contacts);
             // solve_step emits engine/brake at COM and lateral impulse at the
@@ -452,7 +461,7 @@ mod tests {
             steer_angle: 0.0, steer_rate: 0.0, steering: SteeringState::default(),
             rack_torque: 0.0, rack_torque_filtered: 0.0,
             vehicle_flags: VehicleStateFlags::ENGINE_ON, player_flags: 0,
-            rpm: 0.0, gear: 0, fuel: 0.0, engine_temp: 0.0, engine_torque: 0.0,
+            powertrain: Powertrain::new(BRZ.resources),
         });
         world.query_pipeline.update(&world.colliders);
         world.refresh_vehicle_wheel_snapshots();

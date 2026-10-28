@@ -3,6 +3,7 @@ use rapier3d::prelude::*;
 use crate::aven_tire::state::TireState;
 use crate::physics::PhysicsWorld;
 use crate::vehicle_state::{VehicleConfig, Wheel};
+use crate::powertrain::{ROAD_RESOURCES, MUSCLE_RESOURCES, SUPRA_RESOURCES, TANK_RESOURCES};
 
 // =============================================================================
 // VEHICLE LOOKUP
@@ -161,6 +162,7 @@ impl PhysicsWorld {
 // -----------------------------------------------------------------------------
 
 pub const AE86: VehicleConfig = VehicleConfig {
+    resources: ROAD_RESOURCES,
     // Performance and identity
     mass: 950.0,
     engine_force: 6_500.0,
@@ -257,6 +259,7 @@ pub const BRZ: VehicleConfig = VehicleConfig {
 // -----------------------------------------------------------------------------
 
 pub const CAMARO: VehicleConfig = VehicleConfig {
+    resources: MUSCLE_RESOURCES,
     // Performance and identity
     mass: 1_650.0,
     engine_force: 11_000.0,
@@ -284,6 +287,7 @@ pub const CAMARO: VehicleConfig = VehicleConfig {
 // -----------------------------------------------------------------------------
 
 pub const SUPRA: VehicleConfig = VehicleConfig {
+    resources: SUPRA_RESOURCES,
     // Performance and identity
     mass: 1_540.0,
     engine_force: 10_500.0,
@@ -338,6 +342,7 @@ pub const SUPRA: VehicleConfig = VehicleConfig {
 // -----------------------------------------------------------------------------
 
 pub const TANK: VehicleConfig = VehicleConfig {
+    resources: TANK_RESOURCES,
     // Performance and identity
     mass: 40_000.0,
     engine_force: 30_000.0,

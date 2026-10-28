@@ -1,0 +1,49 @@
+.driving-dashboard { position: absolute; right: max(12px, env(safe-area-inset-right)); bottom: max(14px, env(safe-area-inset-bottom)); width: clamp(260px, 30vw, 410px); padding-bottom: 26px; color: #f8fafc; pointer-events: none; font: 10px/1.2 ui-monospace, monospace; filter: drop-shadow(0 2px 4px #0008); }
+.dashboard-heading { display: flex; justify-content: space-between; align-items: center; padding: 0 10px 8px; color: #cbd5e1; font-weight: 700; letter-spacing: .16em; }
+.dashboard-signal { color: #fda4af; font-size: 9px; letter-spacing: .04em; }
+.dashboard-cluster { display: flex; align-items: center; }
+.speedometer-wrapper { width: 36%; flex-shrink: 0; }
+.dashboard-rpm { width: 40%; flex-shrink: 0; position: relative; z-index: 2; margin-left: -5%; margin-right: -4%; }
+.fuel-temp-wrapper { width: 34%; flex-shrink: 0; position: relative; }
+.dashboard-cluster svg { display: block; width: 100%; height: auto; overflow: visible; }
+.dashboard-cluster text { font: 700 12px ui-monospace, monospace; text-anchor: middle; dominant-baseline: middle; fill: #f1f5f9; }
+.dashboard-cluster .gauge-ticks-dark text { fill: #111827; }
+.gauge-disc { fill: rgb(3 7 18 / .78); stroke: rgb(148 163 184 / .28); stroke-width: 1; }
+.gauge-needle { transition: transform 70ms linear, opacity 100ms linear; }
+.gauge-needle path { fill: #c51935; stroke: #ff697e; stroke-width: .7; filter: drop-shadow(0 0 3px #f13b5b); }
+.gauge-hub { fill: #090c14; stroke: #ba263e; stroke-width: 1; filter: drop-shadow(0 0 3px #dd173e); }
+.dashboard-cluster .gauge-caption { font-size: 9px; font-weight: 500; letter-spacing: .06em; fill: #cbd5e1; }
+.dashboard-cluster .gauge-speed { font-size: 24px; font-weight: 700; fill: #f8fafc; }
+.gauge-lcd rect { fill: #ec9c28; stroke: #fbc76c; stroke-width: 1; }
+.dashboard-cluster .gauge-lcd text { fill: #301700; font-size: 23px; }
+.gauge-lcd-off { opacity: .6; }
+.dashboard-cluster .gauge-warning { fill: #ff758b; }
+.driving-dashboard:not([data-signal="live"]) .dashboard-cluster { opacity: .55; }
+.nos-ring { position: absolute; inset: 0; pointer-events: none; }
+.nos-ring > svg { position: absolute; width: 112%; height: 112%; inset: -6%; }
+.nos-track, .nos-fill { fill: none; stroke-width: 3; stroke-linecap: butt; }
+.nos-track { stroke: #42606c; stroke-dasharray: 3 1; }
+.nos-fill { stroke: #5ce6f2; transition: stroke-dasharray 80ms linear; }
+.nos-ring[data-active="true"] .nos-fill { stroke: #f8fafc; filter: drop-shadow(0 0 3px #67e8f9); }
+.nos-button { position: absolute; left: 3%; bottom: -24px; min-height: 22px; display: flex; align-items: center; gap: 4px; padding: 2px 6px; border: 1px solid #3f6f7e; border-radius: 1px; background: #07121aee; color: #c8f6fc; font: 9px ui-monospace, monospace; pointer-events: auto; touch-action: none; }
+.nos-button strong { font-size: 11px; color: #67e8f9; }
+.nos-button:disabled { color: #94a3b8; border-color: #334155; }
+.nos-button:disabled strong { color: #94a3b8; }
+.nos-button:hover:not(:disabled), .nos-button:focus-visible, .nos-ring[data-requested="true"] .nos-button { outline: 1px solid #67e8f9; background: #0e3543; }
+.dashboard-heading > div:first-child { display: flex; flex-direction: column; gap: 2px; }
+.dashboard-assists { display: flex; gap: 4px; pointer-events: auto; }
+.dashboard-assists button { display: flex; flex-direction: column; justify-content: center; gap: 1px; min-width: 34px; min-height: 25px; padding: 2px 4px; border: 1px solid #b28236; background: #342613d9; color: #fbc26e; font: 8px/1 ui-monospace, monospace; }
+.dashboard-assists button span { font-size: 7px; }
+.dashboard-assists button[data-enabled="true"] { border-color: #5b7685; background: #0c1d29d9; color: #dbe7ec; }
+.dashboard-assists button[aria-busy="true"] { border-style: dashed; }
+.dashboard-assists button:disabled { opacity: .5; cursor: default; }
+.repair-gauge { position: absolute; left: 5%; right: 0; bottom: -8px; display: grid; grid-template-columns: 1fr auto; gap: 2px 3px; color: #cbd5e1; font: 7px/1 ui-monospace, monospace; }
+.repair-gauge > span { grid-column: 1 / -1; letter-spacing: .04em; }
+.repair-gauge i { display: block; height: 3px; align-self: center; background: #334155; }
+.repair-gauge b { display: block; height: 100%; background: #89bfc6; }
+.repair-gauge strong { font-weight: 500; }
+.repair-gauge[data-damaged="true"] b { background: #fda46d; }
+@media (max-width: 900px) { .driving-dashboard { width: clamp(240px, 37vw, 310px); bottom: calc(max(8px, env(safe-area-inset-bottom)) + 92px); } }
+@media (max-height: 400px) and (min-width: 901px) { .driving-dashboard { width: 270px; } }
+@media (max-width: 380px) { .driving-dashboard { width: 216px; padding-bottom: 21px; } .dashboard-heading { padding-bottom: 5px; } .dashboard-assists button { min-height: 20px; } .nos-button { bottom: -19px; min-height: 18px; padding: 1px 4px; } }
+html[data-reduce-motion="true"] .gauge-needle, html[data-reduce-motion="true"] .nos-fill { transition: none; }

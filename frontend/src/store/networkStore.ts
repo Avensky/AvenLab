@@ -65,6 +65,13 @@ export interface PhysicsEntitySnapshot {
     temp: number;
     engine_torque: number;
 
+    // Optional availability contract for future drivetrain/resource models.
+    // Missing mask means RPM/gear/fuel/temp are legacy placeholders, not readings.
+    telemetry_mask?: number;
+    boost_fraction?: number;
+    condition?: number;
+    resource_mask?: number;
+
     vehicle_mask: number;
     player_mask: number;
     /** Optional acknowledgement from the completed backend simulation tick. */

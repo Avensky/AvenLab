@@ -34,6 +34,7 @@ use rapier3d::prelude::*;
 use crate::physics::{PhysicsWorld, SIMULATION_DT, SIMULATION_HZ};
 use crate::spawn::{PlayerSpawnInfo, SpawnManager, Team};
 use crate::vehicle_state::{Vehicle, VehicleConfig, PhysicsWheelSnapshot};
+use crate::powertrain::HudCalibration;
 // ============================================================================
 // Network Payloads (What the Frontend Sees)
 // ============================================================================
@@ -70,11 +71,14 @@ pub struct PhysicsEntitySnapshot {
 
     // --- Telemetry (per tick) ---
     pub speed: f32,          // m/s (planar or full magnitude)
-    pub rpm: f32,            // engine RPM (from drivetrain model later)
+    pub rpm: f32,            // engine RPM, server-owned automatic driveline
     pub gear: i32,           // current gear
     pub fuel: f32,           // remaining fuel
     pub temp: f32,           // engine temperature
     pub engine_torque: f32,  // Nm or equivalent
+    pub condition: f32,      // 0..1 mechanical/body condition; 1 = healthy
+    pub boost_fraction: Option<f32>, // 0..1; None when no NOS is fitted
+    pub resource_mask: u16,  // cranking/heat/fuel/damage status bits
 
     // --- Bitmasked state ---
     pub vehicle_mask: u16,
@@ -124,7 +128,18 @@ pub struct PhysicsFrame {
 #[derive(Debug, Clone, Serialize)]
 pub struct VehicleConfigPayload {
     pub player_id: String,
-    pub config: VehicleConfig,
+    pub config: VehicleConfigWithHud,
+}
+#[derive(Debug, Clone, Serialize)]
+pub struct VehicleConfigWithHud {
+    #[serde(flatten)]
+    pub physics: VehicleConfig,
+    pub hud: HudCalibration,
+}
+impl VehicleConfigPayload {
+    pub fn new(player_id: &str, config: VehicleConfig) -> Self {
+        Self { player_id: player_id.to_string(), config: VehicleConfigWithHud { physics: config, hud: config.resources.hud() } }
+    }
 }
 
 // ============================================================================
@@ -344,10 +359,7 @@ impl SharedGameState {
     ) {
         let payload = json!({
             "type": "vehicle_config",
-            "data": VehicleConfigPayload {
-                player_id: player_id.to_string(),
-                config: vehicle.config.clone(),
-            }
+            "data": VehicleConfigPayload::new(player_id, vehicle.config)
         });
 
         self.broadcast_json(payload);
@@ -434,20 +446,20 @@ impl SharedGameState {
             let linvel = body.linvel();
             let speed = (linvel.x * linvel.x + linvel.z * linvel.z).sqrt();
 
-            // NOTE:
-            // These fields should eventually come from drivetrain / engine model.
-            // For now they can be placeholders or derived estimates.
-            let rpm            = vehicle.rpm;             // add field when ready
-            let gear           = vehicle.gear;            // add field when ready
-            let fuel           = vehicle.fuel;            // add field when ready
-            let temp           = vehicle.engine_temp;     // add field when ready
-            let engine_torque  = vehicle.engine_torque;   // add field when ready
+            let rpm            = vehicle.powertrain.rpm;
+            let gear           = vehicle.powertrain.gear;
+            let fuel           = vehicle.powertrain.fuel_liters;
+            let temp           = vehicle.powertrain.temperature_c;
+            let engine_torque  = vehicle.powertrain.engine_torque_nm;
 
             let wheels_snapshot = Some(
                 physics.wheel_snapshots_for_body(ent.body_handle, vehicle.steer_angle)
             );
 
             entities_out.push(PhysicsEntitySnapshot {
+                condition: vehicle.powertrain.condition,
+                boost_fraction: vehicle.powertrain.boost_fraction(vehicle.config.resources),
+                resource_mask: vehicle.powertrain.resource_mask(vehicle.config.resources),
                 collider: VehicleColliderShape {
                     nominal_wheel_center_y: vehicle.config.nominal_wheel_center_y(),
                     chassis_half_extents: vehicle.config.chassis_half_extents,
@@ -496,6 +508,18 @@ impl SharedGameState {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn setup_calibration_advertises_only_supported_resource_readings() {
+        use crate::vehicle_setup::{BRZ, TANK};
+        let config = serde_json::to_value(VehicleConfigPayload::new("driver", BRZ)).unwrap();
+        assert_eq!(config["config"]["hud"]["telemetry_mask"], 63);
+        assert_eq!(config["config"]["hud"]["fuel_capacity_liters"], 50.0);
+        assert_eq!(config["config"]["max_speed"], BRZ.max_speed);
+        assert!(config["config"].get("resources").is_none(), "server tuning is not a repeated HUD payload");
+        let tank = serde_json::to_value(VehicleConfigPayload::new("driver", TANK)).unwrap();
+        assert_eq!(tank["config"]["hud"]["telemetry_mask"], 47);
+    }
 
     #[test]
     fn a_stalled_client_gets_the_latest_complete_frame_and_keeps_setup_messages() {

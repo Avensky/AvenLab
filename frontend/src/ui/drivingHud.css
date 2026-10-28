@@ -1,0 +1,30 @@
+.driving-hud { position: fixed; inset: 0; z-index: 20; pointer-events: none; user-select: none; }
+.driving-pedals, .driving-steering, .vehicle-actions, .touch-stick { position: absolute; pointer-events: auto; touch-action: none; }
+.driving-hud button { user-select: none; touch-action: none; -webkit-touch-callout: none; cursor: pointer; border-radius: 1px; }
+.driving-steering { left: max(12px, env(safe-area-inset-left)); bottom: max(12px, env(safe-area-inset-bottom)); display: flex; gap: 5px; }
+.driving-pedals { left: 50%; bottom: max(12px, env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; align-items: flex-end; gap: 5px; }
+.driving-pedal, .driving-steering button, .vehicle-actions button { display: flex; align-items: center; justify-content: center; border: 1px solid #829bab80; background: #040d17ad; color: #d9e5ee; box-shadow: 0 1px 3px #0004; }
+.driving-pedal { flex-direction: column; justify-content: space-between; width: 48px; height: 72px; padding: 6px 4px 3px; }
+.driving-pedal img { width: auto; max-width: 30px; height: 43px; object-fit: contain; opacity: .8; }
+.driving-pedal small { font: 8px ui-monospace, monospace; letter-spacing: .04em; }
+.driving-gas { height: 84px; }
+.driving-reverse { height: 60px; }
+.driving-reverse > span { font: 24px ui-monospace, monospace; }
+.driving-steering button { width: 56px; height: 56px; font: 42px/1 ui-monospace, monospace; }
+.vehicle-actions { top: max(64px, calc(env(safe-area-inset-top) + 48px)); left: max(12px, env(safe-area-inset-left)); display: grid; grid-template-columns: repeat(3, 32px); gap: 4px; }
+.vehicle-actions button { width: 32px; height: 32px; padding: 5px; font: 10px ui-monospace, monospace; }
+.vehicle-actions img { width: 20px; height: 20px; object-fit: contain; filter: brightness(0) invert(1); opacity: .9; pointer-events: none; }
+.driving-pedal[aria-pressed="true"], .driving-steering button[aria-pressed="true"], .vehicle-actions button[aria-pressed="true"], .driving-hud button:hover:not(:disabled), .driving-hud button:focus-visible { border-color: #67e8f9; background: #0f4353df; color: #ecfeff; outline: 1px solid #67e8f9; outline-offset: -2px; }
+.driving-brake[aria-pressed="true"] { border-color: #fda4af; background: #571829cf; outline-color: #fda4af; }
+.touch-stick { width: 88px; height: 88px; bottom: max(12px, env(safe-area-inset-bottom)); border: 1px solid #8cabb99c; border-radius: 50%; background: #040d1773; color: #d9e5ee; display: grid; place-items: center; }
+.touch-stick-steer { left: max(12px, env(safe-area-inset-left)); }
+.touch-stick-throttle { right: max(12px, env(safe-area-inset-right)); }
+.touch-stick-axis { white-space: pre; text-align: center; font: 19px/2.2 ui-monospace, monospace; opacity: .7; }
+.touch-stick-thumb { position: absolute; width: 32px; height: 32px; border: 1px solid #9be7ee; border-radius: 50%; background: #0b334de0; box-shadow: 0 1px 4px #0008; pointer-events: none; }
+.touch-stick-label { position: absolute; bottom: 2px; font: 8px ui-monospace, monospace; letter-spacing: .06em; pointer-events: none; }
+.touch-stick:focus-visible { outline: 2px solid #67e8f9; outline-offset: 2px; }
+@media (min-width: 901px) { .driving-hud[data-touch-layout="sticks"] .driving-dashboard { bottom: 120px; } }
+@media (max-width: 600px) { .driving-pedal { width: 40px; } .driving-steering button { width: 42px; height: 52px; } }
+@media (max-height: 330px) { .vehicle-actions { top: 54px; grid-template-columns: repeat(3, 28px); gap: 3px; } .vehicle-actions button { width: 28px; height: 28px; padding: 4px; } }
+@media (max-width: 380px) { .driving-steering button { width: 36px; } .vehicle-actions { grid-template-columns: repeat(3, 24px); gap: 3px; } .vehicle-actions button { width: 24px; height: 24px; padding: 3px; } .vehicle-actions img { width: 17px; height: 17px; } }
+html[data-high-contrast="true"] .driving-hud button, html[data-high-contrast="true"] .touch-stick { background: #020617f2; border-color: #cbd5e1; }

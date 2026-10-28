@@ -1,57 +1,15 @@
-import React, { useState } from "react";
-import { useInputStore } from "../store";
+import { useRef } from "react";
+import { useInputStore } from "../store/inputStore";
+import { HoldButton } from "../controls/TouchControls";
 
-const left = "/images/arrowleft.svg";
-const right = "/images/arrowright.svg";
-
-function Steering(): React.JSX.Element {
-    const steer = useInputStore((s) => s.input.steer);
-    const setAnalog = useInputStore((s) => s.setAnalog);
-
-    const [clickedBtn, setClickedBtn] = useState<string | null>(null);
-
-    function animateButton(id: string) {
-        setClickedBtn(id);
-        window.setTimeout(() => setClickedBtn(null), 300);
-    }
-
-    const setSteerLeft = (enabled: boolean) => {
-        setAnalog({ steer: enabled ? -1 : 0 });
-    };
-
-    const setSteerRight = (enabled: boolean) => {
-        setAnalog({ steer: enabled ? 1 : 0 });
-    };
-
-    return (
-        <div className="Steering">
-            <div className="split">
-                <button
-                    style={{ backgroundImage: `url(${left})` }}
-                    onContextMenu={(e) => e.preventDefault()}
-                    className={`left arrow ${steer < 0 ? "hold" : ""} ${clickedBtn === "leftArrow" ? "clicked" : ""
-                        }`}
-                    onClick={() => animateButton("leftArrow")}
-                    onPointerDown={() => setSteerLeft(true)}
-                    onPointerUp={() => setSteerLeft(false)}
-                    onPointerLeave={() => setSteerLeft(false)}
-                    onPointerCancel={() => setSteerLeft(false)}
-                />
-
-                <button
-                    style={{ backgroundImage: `url(${right})` }}
-                    onContextMenu={(e) => e.preventDefault()}
-                    className={`right arrow ${steer > 0 ? "hold" : ""} ${clickedBtn === "rightArrow" ? "clicked" : ""
-                        }`}
-                    onClick={() => animateButton("rightArrow")}
-                    onPointerDown={() => setSteerRight(true)}
-                    onPointerUp={() => setSteerRight(false)}
-                    onPointerLeave={() => setSteerRight(false)}
-                    onPointerCancel={() => setSteerRight(false)}
-                />
-            </div>
-        </div>
-    );
+export default function Steering() {
+  const steer = useInputStore(s => s.input.steer), held = useRef({ left: false, right: false });
+  const press = (action: "left" | "right", value: boolean) => {
+    held.current[action] = value;
+    useInputStore.getState().setAnalogFromSource("touch-steering", { steer: Number(held.current.right) - Number(held.current.left) });
+  };
+  return <div className="driving-steering" role="group" aria-label="Steering">
+    <HoldButton aria-label="Steer left" aria-pressed={steer < 0} onHold={value => press("left", value)}>‹</HoldButton>
+    <HoldButton aria-label="Steer right" aria-pressed={steer > 0} onHold={value => press("right", value)}>›</HoldButton>
+  </div>;
 }
-
-export default Steering;

@@ -17,6 +17,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use crate::aven_tire::steering::SteeringState;
 use crate::vehicle_state::{Vehicle, VehicleStateFlags, Wheel, PhysicsWheelSnapshot};
+use crate::powertrain::Powertrain;
 use crate::vehicle_setup::config_for_vehicle;
 use crate::state::InputPacket;
 use crate::vehicle_debug::{DebugOverlay, DebugFlags};
@@ -374,6 +375,7 @@ impl PhysicsWorld {
         player_id: &str,
         packet: InputPacket,
     ) {
+        let mut recover = false;
         if let Some(v) = self.vehicles.get_mut(player_id) {
 
             // analog
@@ -383,8 +385,42 @@ impl PhysicsWorld {
 
             // digital states
             v.vehicle_flags = VehicleStateFlags::from_bits_truncate(packet.vehicleMask);
+            v.powertrain.engine_requested = v.vehicle_flags.contains(VehicleStateFlags::ENGINE_ON);
+            v.powertrain.boost_requested = v.vehicle_flags.contains(VehicleStateFlags::BOOST);
+            recover = packet.playerMask & (1 << 5) != 0 && v.player_flags & (1 << 5) == 0;
             v.player_flags  = packet.playerMask;
         }
+        if recover { let _ = self.recover_vehicle_for_player(player_id); }
+    }
+
+    /// Sandbox recovery rights a car on clear road without repairing, cooling,
+    /// refilling or changing ownership. A held Reset input triggers only once.
+    pub fn recover_vehicle_for_player(&mut self, player_id: &str) -> Result<(), String> {
+        let vehicle = self.vehicles.get(player_id).ok_or("Spawn a vehicle first")?;
+        let handle = vehicle.body;
+        let config = vehicle.config;
+        let body = self.bodies.get(handle).ok_or("Vehicle body unavailable")?;
+        let forward = body.rotation() * Vector::z();
+        let mut pose = *body.position();
+        pose.rotation = Rotation::from_euler_angles(0.0, forward.x.atan2(forward.z), 0.0);
+        let road = self.active_map.as_ref().map(|map| map.surface.road_y).unwrap_or(0.0);
+        pose.translation.y = config.nominal_chassis_y(road)
+            .max(road + config.chassis_half_extents[1] - config.chassis_com_offset[1] + 0.05);
+        let [hx, hy, hz] = config.chassis_half_extents;
+        let [cx, cy, cz] = config.chassis_com_offset;
+        let shape = SharedShape::cuboid(hx, hy, hz);
+        self.query_pipeline.update(&self.colliders);
+        if self.query_pipeline.intersection_with_shape(&self.bodies, &self.colliders,
+            &(pose * Isometry::translation(cx, cy, cz)), &*shape,
+            QueryFilter::default().exclude_rigid_body(handle)).is_some() {
+            return Err("Recovery needs clear road around the vehicle".into());
+        }
+        let body = self.bodies.get_mut(handle).unwrap();
+        body.set_position(pose, true); body.set_linvel(Vector::zeros(), true);
+        body.set_angvel(Vector::zeros(), true); body.reset_forces(true); body.reset_torques(true);
+        self.bodies.propagate_modified_body_positions_to_colliders(&mut self.colliders);
+        self.query_pipeline.update(&self.colliders);
+        Ok(())
     }
 
 
@@ -553,11 +589,7 @@ impl PhysicsWorld {
                                 | VehicleStateFlags::ABS
                                 | VehicleStateFlags::TCS,
                 player_flags: 0,
-                rpm: 0.0,
-                gear: 0,
-                fuel: 0.0,
-                engine_temp: 0.0,
-                engine_torque: 0.0,
+                powertrain: Powertrain::new(config.resources),
             },
         );
 
@@ -623,6 +655,7 @@ impl PhysicsWorld {
         body.reset_torques(true);
 
         let vehicle = self.vehicles.get_mut(player_id).unwrap();
+        vehicle.powertrain.reconfigure(previous.resources, config.resources);
         vehicle.config = config;
         vehicle.throttle = 0.0;
         vehicle.steer = 0.0;
@@ -633,12 +666,26 @@ impl PhysicsWorld {
         vehicle.rack_torque = 0.0;
         vehicle.rack_torque_filtered = 0.0;
         vehicle.player_flags = 0;
-        vehicle.rpm = 0.0;
-        vehicle.gear = 0;
-        vehicle.engine_torque = 0.0;
         self.register_vehicle(handle, config);
         self.bodies.propagate_modified_body_positions_to_colliders(&mut self.colliders);
         self.query_pipeline.update(&self.colliders);
+        Ok(())
+    }
+
+    /// Sandbox maintenance helper. Identity comes from the connection, never
+    /// an arbitrary client-supplied player ID. Future match service must also
+    /// require an authorized station/cost; this is explicitly a debug action.
+    pub fn service_vehicle_for_player(&mut self, player_id: &str) -> Result<(), String> {
+        let vehicle = self.vehicles.get_mut(player_id).ok_or("Spawn a vehicle before servicing")?;
+        let body = self.bodies.get(vehicle.body).ok_or("Vehicle body unavailable")?;
+        if vehicle.powertrain.engine_requested || body.linvel().norm() > 0.5 {
+            return Err("Stop and switch the engine off before sandbox service".into());
+        }
+        if !self.wheels.get(&vehicle.body).is_some_and(|wheels| wheels.iter().any(|wheel| wheel.grounded)) {
+            return Err("Park on the ground before sandbox service".into());
+        }
+        vehicle.powertrain.service(vehicle.config.resources);
+        vehicle.vehicle_flags.remove(VehicleStateFlags::ENGINE_ON | VehicleStateFlags::BOOST);
         Ok(())
     }
 
@@ -702,6 +749,19 @@ impl PhysicsWorld {
             &hooks,
         );
 
+        // Collision normal impulses are Rapier's results, after integration.
+        // Inspect only each vehicle's contacts; never scan all city colliders.
+        for vehicle in self.vehicles.values_mut() {
+            let Some(body) = self.bodies.get(vehicle.body) else { continue; };
+            let mut impact_impulse = 0.0_f32;
+            for collider in body.colliders() {
+                for pair in self.narrow_phase.contact_pairs_with(*collider) {
+                    impact_impulse = impact_impulse.max(pair.total_impulse_magnitude());
+                }
+            }
+            vehicle.powertrain.impact(impact_impulse / body.mass().max(1.0), vehicle.config.resources);
+        }
+
 
         // Safety: prevent bodies from exploding to insane coordinates
         for (_, body) in self.bodies.iter_mut() {
@@ -732,6 +792,76 @@ impl PhysicsWorld {
 mod tests {
     use super::*;
     use crate::suspension_contact::cast_wheel_ground;
+
+    #[test]
+    fn fuel_starvation_removes_actual_propulsion_even_with_an_on_request() {
+        let mut world = flat_world();
+        let handle = world.spawn_vehicle_for_player("fuel-test".into(), [0.0; 3], "brz", "red").unwrap();
+        let vehicle = world.vehicles.get_mut("fuel-test").unwrap();
+        vehicle.powertrain.fuel_liters = 0.0; vehicle.throttle = 1.0;
+        for _ in 0..120 { world.step(SIMULATION_DT); }
+        let vehicle = &world.vehicles["fuel-test"];
+        assert!(!vehicle.vehicle_flags.contains(VehicleStateFlags::ENGINE_ON));
+        assert_eq!(vehicle.powertrain.power_multiplier, 0.0);
+        let velocity = world.bodies[handle].linvel();
+        assert!(velocity.x.abs() < 0.1 && velocity.z.abs() < 0.1);
+    }
+
+    #[test]
+    fn rapier_wall_impact_causes_condition_loss_but_standing_on_the_road_does_not() {
+        let mut world = flat_world();
+        let handle = world.spawn_vehicle_for_player("impact-test".into(), [0.0; 3], "brz", "red").unwrap();
+        world.vehicles.get_mut("impact-test").unwrap().powertrain.engine_requested = false;
+        for _ in 0..120 { world.step(SIMULATION_DT); }
+        assert_eq!(world.vehicles["impact-test"].powertrain.condition, 1.0);
+        let position = *world.bodies[handle].translation();
+        world.colliders.insert(ColliderBuilder::cuboid(10.0, 4.0, 0.3)
+            .translation(vector![position.x, 2.0, position.z + 8.0]).friction(0.0).build());
+        world.bodies[handle].set_linvel(vector![0.0, 0.0, 15.0], true);
+        for _ in 0..90 { world.step(SIMULATION_DT); }
+        assert!(world.vehicles["impact-test"].powertrain.condition < 0.98);
+        assert!(world.vehicles["impact-test"].powertrain.condition >= 0.0);
+    }
+
+    #[test]
+    fn sandbox_service_requires_a_parked_grounded_engine_off_vehicle() {
+        let mut world = flat_world();
+        let handle = world.spawn_vehicle_for_player("service-test".into(), [0.0; 3], "brz", "red").unwrap();
+        for _ in 0..120 { world.step(SIMULATION_DT); }
+        assert!(world.service_vehicle_for_player("service-test").is_err());
+        world.vehicles.get_mut("service-test").unwrap().powertrain.engine_requested = false;
+        world.bodies[handle].set_linvel(vector![0.0, 0.0, 2.0], true);
+        assert!(world.service_vehicle_for_player("service-test").is_err());
+        world.bodies[handle].set_linvel(Vector::zeros(), true);
+        let vehicle = world.vehicles.get_mut("service-test").unwrap();
+        vehicle.powertrain.fuel_liters = 3.0; vehicle.powertrain.condition = 0.3; vehicle.powertrain.temperature_c = 125.0;
+        let position = *world.bodies[handle].position();
+        world.service_vehicle_for_player("service-test").unwrap();
+        let vehicle = &world.vehicles["service-test"];
+        assert_eq!(vehicle.powertrain.fuel_liters, vehicle.config.resources.fuel_capacity_liters);
+        assert_eq!(vehicle.powertrain.condition, 1.0);
+        assert_eq!(vehicle.powertrain.temperature_c, vehicle.config.resources.initial_temp_c);
+        assert!(!vehicle.powertrain.engine_requested); assert!(!vehicle.powertrain.running);
+        assert_eq!(*world.bodies[handle].position(), position);
+    }
+
+    #[test]
+    fn recovery_is_edge_triggered_and_preserves_supplies_damage_and_temperature() {
+        let mut world = flat_world();
+        let handle = world.spawn_vehicle_for_player("recover-test".into(), [0.0; 3], "brz", "red").unwrap();
+        world.bodies[handle].set_rotation(Rotation::from_euler_angles(0.0, 0.4, 2.5), true);
+        let train = &mut world.vehicles.get_mut("recover-test").unwrap().powertrain;
+        train.fuel_liters = 12.0; train.condition = 0.6; train.temperature_c = 120.0; train.nos_remaining_s = 2.0;
+        let packet = InputPacket { r#type: "input".into(), seq: 1, dt: 1.0 / 60.0,
+            throttle: 0.0, steer: 0.0, brake: 0.0, handbrake: 0.0, vehicleMask: 97, playerMask: 1 << 5, debug_mask: Some(0) };
+        world.apply_player_input_packet("recover-test", packet.clone());
+        assert!((world.bodies[handle].rotation() * Vector::y()).y > 0.99);
+        world.bodies[handle].set_linvel(vector![1.0, 0.0, 0.0], true);
+        world.apply_player_input_packet("recover-test", packet);
+        assert_eq!(world.bodies[handle].linvel().x, 1.0, "a held reset cannot repeatedly freeze the car");
+        let train = &world.vehicles["recover-test"].powertrain;
+        assert_eq!(train.fuel_liters, 12.0); assert_eq!(train.condition, 0.6); assert_eq!(train.temperature_c, 120.0); assert_eq!(train.nos_remaining_s, 2.0);
+    }
 
     // Test the public spawn path against a minimal map using the actual loader's
     // Blender-to-Rapier collider conversion. No frontend height assumptions.
