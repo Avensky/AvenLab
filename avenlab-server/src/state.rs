@@ -77,6 +77,7 @@ pub struct PhysicsEntitySnapshot {
     pub temp: f32,           // engine temperature
     pub engine_torque: f32,  // Nm or equivalent
     pub condition: f32,      // 0..1 mechanical/body condition; 1 = healthy
+    pub ultimate_fraction: f32, // 0..1, earned by actual damage dealt to other vehicles
     pub boost_fraction: Option<f32>, // 0..1; None when no NOS is fitted
     pub resource_mask: u16,  // cranking/heat/fuel/damage status bits
     pub cockpit_mask: u32,
@@ -463,6 +464,7 @@ impl SharedGameState {
 
             entities_out.push(PhysicsEntitySnapshot {
                 condition: vehicle.powertrain.condition,
+                ultimate_fraction: vehicle.powertrain.ultimate_fraction,
                 boost_fraction: vehicle.powertrain.boost_fraction(vehicle.config.resources),
                 resource_mask: vehicle.powertrain.resource_mask(vehicle.config.resources),
                 cockpit_mask: vehicle.cockpit.snapshot(),
@@ -520,12 +522,13 @@ mod tests {
     fn setup_calibration_advertises_only_supported_resource_readings() {
         use crate::vehicle_setup::{BRZ, TANK};
         let config = serde_json::to_value(VehicleConfigPayload::new("driver", BRZ)).unwrap();
-        assert_eq!(config["config"]["hud"]["telemetry_mask"], 63);
+        assert_eq!(config["config"]["hud"]["telemetry_mask"], 127);
+        assert_eq!(config["config"]["hud"]["cockpit_version"], 2);
         assert_eq!(config["config"]["hud"]["fuel_capacity_liters"], 50.0);
         assert_eq!(config["config"]["max_speed"], BRZ.max_speed);
         assert!(config["config"].get("resources").is_none(), "server tuning is not a repeated HUD payload");
         let tank = serde_json::to_value(VehicleConfigPayload::new("driver", TANK)).unwrap();
-        assert_eq!(tank["config"]["hud"]["telemetry_mask"], 47);
+        assert_eq!(tank["config"]["hud"]["telemetry_mask"], 111);
     }
 
     #[test]

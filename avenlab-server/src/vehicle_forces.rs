@@ -88,7 +88,7 @@ impl PhysicsWorld {
 
             let longitudinal_speed = (body_ro.rotation().inverse() * body_ro.linvel()).z;
             let (throttle, brake) = vehicle.cockpit.advance(dt, longitudinal_speed, vehicle.throttle, vehicle.brake, vehicle.handbrake, vehicle.powertrain.running);
-            let handbrake = vehicle.handbrake.max(if vehicle.cockpit.parked() { 1.0 } else { 0.0 });
+            let handbrake = vehicle.handbrake.max(vehicle.cockpit.parking_force());
             vehicle.powertrain.manual_gear = vehicle.cockpit.manual_gear();
             vehicle.vehicle_flags.set(VehicleStateFlags::TCS, vehicle.cockpit.tcs_enabled(vehicle.vehicle_flags.contains(VehicleStateFlags::TCS)));
             vehicle.powertrain.advance(vehicle.config.resources, Demand {
@@ -231,7 +231,8 @@ impl PhysicsWorld {
                 engine_force: vehicle.config.engine_force * vehicle.powertrain.power_multiplier, brake_force: vehicle.config.brake_force,
                 abs_enabled: vehicle.vehicle_flags.contains(VehicleStateFlags::ABS),
                 tcs_enabled: vehicle.vehicle_flags.contains(VehicleStateFlags::TCS),
-                abs_limit: vehicle.config.abs_nx_limit, tcs_limit: vehicle.config.tcs_nx_limit,
+                abs_limit: vehicle.config.abs_nx_limit,
+                tcs_limit: vehicle.config.tcs_nx_limit * if vehicle.cockpit.enabled && vehicle.cockpit.assist == 1 { 1.15 } else { 1.0 },
                 driven_wheels: wheels.iter().filter(|wheel| wheel.drive).count().max(1) as f32,
                 base_front_bias: 0.66, bias_gain: 0.25,
                 wheelbase: vehicle.config.wheelbase(), mu_base: vehicle.config.mu_base,
@@ -241,8 +242,6 @@ impl PhysicsWorld {
                 brake: brake.max(vehicle.powertrain.direction_brake), handbrake, steer: vehicle.steer,
             };
             let driven = ctx.driven_wheels.max(1.0);
-            vehicle.cockpit.grip_limited = contacts.iter().any(|patch| patch.drive && patch.grounded
-                && ctx.engine_force * control.throttle.abs() / driven > patch.normal_force * patch.mu_long * 0.95);
             vehicle.cockpit.traction_active = ctx.tcs_enabled && contacts.iter().any(|patch| patch.drive && patch.grounded
                 && ctx.engine_force * control.throttle.abs() / driven > patch.normal_force * patch.mu_long * ctx.tcs_limit);
             let tire_forces = solve_step(&ctx, &control, &mut contacts);

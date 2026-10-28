@@ -70,6 +70,7 @@ export interface PhysicsEntitySnapshot {
     telemetry_mask?: number;
     boost_fraction?: number;
     condition?: number;
+    ultimate_fraction?: number;
     resource_mask?: number;
     /** Optional confirmed lamp states; absent means the adapter does not supply them. */
     cluster_mask?: number;

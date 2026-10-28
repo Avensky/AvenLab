@@ -15,12 +15,16 @@ export type Preferences = {
   bindings: Record<BindingAction, string>;
   favoriteVehicles: string[];
   touchLayout: "pedals" | "sticks";
+  drivingLayout: "standard" | "controller";
+  showTouchControls: boolean;
+  showDriveControls: boolean;
   speedUnit: "kmh" | "mph";
 };
 export const DEFAULT_PREFERENCES: Preferences = {
   fov: 75, cameraSensitivity: 1, controllerDeadzone: 0.12, steeringSensitivity: 1,
   invertSteering: false, reducedMotion: false, highContrast: false, menuTextScale: 1,
   bindings: DEFAULT_BINDINGS, favoriteVehicles: [], touchLayout: "pedals", speedUnit: "kmh",
+  drivingLayout: "standard", showTouchControls: true, showDriveControls: true,
 };
 // Fixed shortcuts remain available; rebinding movement must never steal them.
 export const RESERVED_KEYS = new Set(["F2", "F3", "F4", "F8", "Escape", "Enter", "Tab", "Backquote", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
@@ -43,6 +47,9 @@ export function sanitizePreferences(value: unknown): Preferences {
     bindings: validBindings ? proposed : { ...DEFAULT_BINDINGS },
     favoriteVehicles: Array.isArray(data.favoriteVehicles) ? data.favoriteVehicles.filter((id): id is string => typeof id === "string").slice(0, 100) : [],
     touchLayout: data.touchLayout === "sticks" ? "sticks" : "pedals",
+    drivingLayout: data.drivingLayout === "controller" ? "controller" : "standard",
+    showTouchControls: typeof data.showTouchControls === "boolean" ? data.showTouchControls : data.drivingLayout !== "controller",
+    showDriveControls: data.showDriveControls !== false,
     speedUnit: data.speedUnit === "mph" ? "mph" : "kmh",
   };
 }

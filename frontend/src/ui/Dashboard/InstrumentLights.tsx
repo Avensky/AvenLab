@@ -39,13 +39,15 @@ export const RpmLights = memo(function RpmLights({ vehicleMask, clusterMask }: {
   </div>;
 });
 
-export const ResourceLights = memo(function ResourceLights({ mask, fields, resourceMask, power, absEnabled, tcsEnabled, live }: {
+export const ResourceLights = memo(function ResourceLights({ mask, fields, resourceMask, power, absEnabled, tcsEnabled, live, cockpitMask }: {
   mask: number | null; fields: number; resourceMask: number; power: DisplayPower; absEnabled: boolean; tcsEnabled: boolean; live: boolean;
+  cockpitMask: number | null;
 }) {
   const checking = power === "cranking";
   const state = (flag: number) => Boolean(fields & flag) && clusterFlag(mask, flag);
   const supplied = (flag: number) => mask !== null && Boolean(fields & flag);
   const brake = state(ClusterFlags.PARK_BRAKE);
+  const assist = cockpitMask === null ? 0 : (cockpitMask >>> 4) & 3;
   return <div className="resource-lights" aria-label="Fuel and temperature telltales">
     <span className="gauge-brake" data-active={brake}>BRAKE</span>
     <Lamp name="Seatbelt" asset="seatBelt.svg" x={24} y={28} color="#ff4e48" active={state(ClusterFlags.SEATBELT)} supported={supplied(ClusterFlags.SEATBELT)} />
@@ -54,6 +56,7 @@ export const ResourceLights = memo(function ResourceLights({ mask, fields, resou
     <Lamp name="Check engine" asset="engine.svg" x={24} y={67} color="#ffb94c" active={checking || state(ClusterFlags.ENGINE_WARNING)} supported={checking || supplied(ClusterFlags.ENGINE_WARNING)} blink={checking} />
     <span className="gauge-abs-warning" data-active={checking || (live && !absEnabled)}>ABS</span>
     <span className="gauge-tcs-warning" data-active={live && !tcsEnabled}>TRAC OFF</span>
+    <span className="gauge-vsc-warning" data-active={live && (assist === 1 || assist === 3)}>{assist === 3 ? "VSC OFF" : "VSC SPORT"}</span>
     <Lamp name="Steering warning" asset="steering-warning.svg" x={80} y={50} color="#ffb94c" active={state(ClusterFlags.EPS_WARNING)} supported={supplied(ClusterFlags.EPS_WARNING)} />
     <Lamp name="Low fuel" asset="gas-station-low.svg" x={91} y={50} color="#ffb94c"
       active={state(ClusterFlags.LOW_FUEL) || (resourceMask & (ResourceFlags.LOW_FUEL | ResourceFlags.STARVED)) !== 0} supported={live} />

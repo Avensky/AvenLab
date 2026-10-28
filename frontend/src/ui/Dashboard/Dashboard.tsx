@@ -4,12 +4,11 @@ import { usePreferencesStore } from "../../store/preferencesStore";
 import Speedometer from "./Speedometer";
 import Revolutions from "./Revolutions";
 import FuelTemp from "./FuelTemp";
-import { Boost } from "./Boost";
 import { RepairGauge } from "./RepairGauge";
-import { AssistLights } from "./AssistLights";
 import { ResourceFlags } from "../../store/tools/resourceMasks";
 import { MPH_TO_KPH } from "./gaugeGeometry";
 import { displayPower } from "./dashboardModel";
+import { UltimateRing } from "./UltimateRing";
 import "./dashboard.css";
 
 export default function Dashboard() {
@@ -23,16 +22,16 @@ export default function Dashboard() {
   const warning = data.resourceMask & ResourceFlags.STARVED ? "FUEL EMPTY" : data.resourceMask & ResourceFlags.HEAT_LOCK ? "COOL ENGINE"
     : data.resourceMask & ResourceFlags.HOT ? "ENGINE HOT" : data.resourceMask & ResourceFlags.LOW_FUEL ? "LOW FUEL" : data.resourceMask & ResourceFlags.DAMAGED ? "REPAIR" : data.resourceMask & ResourceFlags.STARTING ? "STARTING" : "";
   return <section className="driving-dashboard" data-signal={data.signal} aria-label="Vehicle instruments">
-    <div className="dashboard-heading"><span className="dashboard-signal" role="status">{data.signal === "live" ? warning : data.signal === "offline" ? "LINK LOST" : data.signal === "stale" ? "NO SIGNAL" : "WAITING"}</span><AssistLights abs={data.absEnabled} tcs={data.tcsEnabled} live={data.signal === "live"} /></div>
+    <div className="dashboard-heading"><RepairGauge condition={data.conditionFraction} /><span className="dashboard-signal" role="status">{data.signal === "live" ? warning : data.signal === "offline" ? "LINK LOST" : data.signal === "stale" ? "NO SIGNAL" : "WAITING"}</span></div>
     <div className="dashboard-cluster">
       <Speedometer speedKph={data.speedKph} unit={unit} clusterMask={data.clusterMask} clusterFields={data.config.clusterFields} />
       <div className="dashboard-rpm">
         <Revolutions rpm={data.rpm} gear={data.gear} maxRpm={data.config.maxRpm} redlineRpm={data.config.redlineRpm}
           speed={speed} unit={unit} power={power} vehicleMask={data.vehicleMask} clusterMask={data.clusterMask} park={park} />
+        <UltimateRing fraction={data.ultimateFraction} />
       </div>
       <FuelTemp fuel={data.fuelLiters} temp={data.tempC} config={data.config} clusterMask={data.clusterMask}
-        resourceMask={data.resourceMask} power={power} absEnabled={data.absEnabled} tcsEnabled={data.tcsEnabled} live={data.signal === "live"} />
+        resourceMask={data.resourceMask} power={power} absEnabled={data.absEnabled} tcsEnabled={data.tcsEnabled} live={data.signal === "live"} cockpitMask={data.cockpitMask} />
     </div>
-    <div className="dashboard-footer"><Boost fraction={data.boostFraction} active={data.boostActive} /><RepairGauge condition={data.conditionFraction} /></div>
   </section>;
 }

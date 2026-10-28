@@ -384,7 +384,7 @@ impl PhysicsWorld {
             v.brake    = packet.brake.clamp(0.0, 1.0);
             v.handbrake = packet.handbrake.clamp(0.0, 1.0);
             let speed = self.bodies.get(v.body).map(|body| (body.rotation().inverse() * body.linvel()).z).unwrap_or(0.0);
-            v.cockpit.receive(packet.cockpit_mask, speed);
+            v.cockpit.receive(packet.cockpit_mask, speed, packet.vehicleMask & VehicleStateFlags::TCS.bits() != 0);
 
             // digital states
             v.vehicle_flags = VehicleStateFlags::from_bits_truncate(packet.vehicleMask);
@@ -548,7 +548,7 @@ impl PhysicsWorld {
             .translation(vector![cx, cy, cz])
             .collision_groups(InteractionGroups::new(
                 GROUP_CHASSIS,
-                GROUP_GROUND,
+                GROUP_GROUND | GROUP_CHASSIS,
             ))
             .active_events(ActiveEvents::empty())
             // The body above owns mass/COM/inertia. A second density-derived
@@ -732,6 +732,14 @@ impl PhysicsWorld {
         // Apply suspension + traction + tire forces exactly once per substep.
         self.apply_vehicle_forces(dt);
 
+        // Only multiplayer impacts can earn ultimate. Sample vehicle motion
+        // before Rapier resolves a collision, so a ram that stops the attacker
+        // still counts. Single-player driving allocates no attribution table.
+        let impact_motion: HashMap<_, _> = if self.vehicles.len() > 1 {
+            self.vehicles.values().filter_map(|vehicle| self.bodies.get(vehicle.body)
+                .map(|body| (vehicle.body, (*body.translation(), *body.linvel())))).collect()
+        } else { HashMap::new() };
+
         // Step physics
         let hooks = ();
         let mut events = ();
@@ -756,15 +764,38 @@ impl PhysicsWorld {
 
         // Collision normal impulses are Rapier's results, after integration.
         // Inspect only each vehicle's contacts; never scan all city colliders.
-        for vehicle in self.vehicles.values_mut() {
+        let mut damage_credits = Vec::new();
+        for (victim_id, vehicle) in &mut self.vehicles {
             let Some(body) = self.bodies.get(vehicle.body) else { continue; };
             let mut impact_impulse = 0.0_f32;
+            let mut impact_source = None;
             for collider in body.colliders() {
                 for pair in self.narrow_phase.contact_pairs_with(*collider) {
-                    impact_impulse = impact_impulse.max(pair.total_impulse_magnitude());
+                    let impulse = pair.total_impulse_magnitude();
+                    if impulse > impact_impulse {
+                        impact_impulse = impulse;
+                        let other = if pair.collider1 == *collider { pair.collider2 } else { pair.collider1 };
+                        impact_source = self.colliders.get(other).and_then(|collider| collider.parent());
+                    }
                 }
             }
+            let before = vehicle.powertrain.condition;
             vehicle.powertrain.impact(impact_impulse / body.mass().max(1.0), vehicle.config.resources);
+            let damage = before - vehicle.powertrain.condition;
+            if damage > 0.0 {
+                if let Some(source) = impact_source {
+                    if let (Some((source_pos, source_velocity)), Some((victim_pos, _)), Some(source_id)) =
+                        (impact_motion.get(&source), impact_motion.get(&vehicle.body), self.body_to_player.get(&source)) {
+                        let toward = victim_pos - source_pos;
+                        if source_id != victim_id && toward.norm() > 0.1 && source_velocity.dot(&toward.normalize()) > 1.0 {
+                            damage_credits.push((source_id.clone(), damage));
+                        }
+                    }
+                }
+            }
+        }
+        for (source, damage) in damage_credits {
+            if let Some(vehicle) = self.vehicles.get_mut(&source) { vehicle.powertrain.credit_damage_dealt(damage); }
         }
 
 
@@ -826,6 +857,27 @@ mod tests {
         for _ in 0..90 { world.step(SIMULATION_DT); }
         assert!(world.vehicles["impact-test"].powertrain.condition < 0.98);
         assert!(world.vehicles["impact-test"].powertrain.condition >= 0.0);
+        assert_eq!(world.vehicles["impact-test"].powertrain.ultimate_fraction,0.0,"scenery and self damage never earn charge");
+    }
+
+    #[test]
+    fn a_vehicle_ram_credits_only_actual_damage_dealt_not_damage_taken_or_parked_contact() {
+        let mut world = flat_world();
+        let attacker = world.spawn_vehicle_for_player("attacker".into(), [0.0;3], "brz", "red").unwrap();
+        let y = world.bodies[attacker].translation().y;
+        world.bodies[attacker].set_translation(vector![0.0,y,-12.0],true);
+        let target = world.spawn_vehicle_for_player("target".into(), [0.0;3], "brz", "red").unwrap();
+        for vehicle in world.vehicles.values_mut() { vehicle.powertrain.engine_requested = false; }
+        for _ in 0..120 { world.step(SIMULATION_DT); }
+        assert_eq!(world.vehicles["attacker"].powertrain.ultimate_fraction,0.0);
+        assert_eq!(world.vehicles["target"].powertrain.condition,1.0);
+        world.bodies[attacker].set_linvel(vector![0.0,0.0,18.0],true);
+        for _ in 0..100 { world.step(SIMULATION_DT); }
+        let dealt = 1.0 - world.vehicles["target"].powertrain.condition;
+        assert!(dealt>0.0001,"test needs a damaging ram: attacker={:?}, target={:?}, target condition={}",world.bodies[attacker].translation(),world.bodies[target].translation(),world.vehicles["target"].powertrain.condition);
+        assert!((world.vehicles["attacker"].powertrain.ultimate_fraction-dealt).abs()<1.0e-5);
+        assert_eq!(world.vehicles["target"].powertrain.ultimate_fraction,0.0);
+        assert_ne!(attacker,target);
     }
 
     #[test]

@@ -11,6 +11,7 @@ export type VehicleTelemetry = {
   speedKph: number | null; rpm: number | null; gear: number | null; fuelLiters: number | null;
   tempC: number | null; boostFraction: number | null; engineOn: boolean; boostActive: boolean;
   conditionFraction: number | null; resourceMask: number; absEnabled: boolean; tcsEnabled: boolean;
+  ultimateFraction: number | null;
   vehicleMask: number; clusterMask: number | null;
   cockpitMask: number | null;
   config: GaugeConfig;
@@ -22,7 +23,7 @@ export function projectVehicleTelemetry(entity: PhysicsEntitySnapshot | null | u
   const signal = !connected ? "offline" : !entity ? "waiting" : receivedMs === undefined || now - receivedMs > HUD_STALE_MS || now < receivedMs ? "stale" : "live";
   const valid = signal === "live";
   const advertised = entity?.telemetry_mask;
-  const mask = advertised === undefined ? config.telemetryMask : Number.isSafeInteger(advertised) && advertised >= 0 ? advertised & 63 : 0;
+  const mask = advertised === undefined ? config.telemetryMask : Number.isSafeInteger(advertised) && advertised >= 0 ? advertised & 127 : 0;
   const reading = (field: number, value: unknown, step: number, min: number, max: number) => valid && hasFlag(mask, field) && finite(value)
     ? rounded(Math.max(min, Math.min(max, value)), step) : null;
   const vehicleMask = entity?.vehicle_mask ?? 0;
@@ -39,6 +40,7 @@ export function projectVehicleTelemetry(entity: PhysicsEntitySnapshot | null | u
     tempC: reading(TelemetryFields.TEMPERATURE, entity?.temp, 0.1, -50, 300),
     boostFraction: reading(TelemetryFields.BOOST, entity?.boost_fraction, 0.01, 0, 1),
     conditionFraction: reading(TelemetryFields.CONDITION, entity?.condition, 0.01, 0, 1),
+    ultimateFraction: reading(TelemetryFields.ULTIMATE, entity?.ultimate_fraction, 0.01, 0, 1),
     resourceMask: valid && Number.isSafeInteger(entity?.resource_mask) && entity!.resource_mask! >= 0 && entity!.resource_mask! <= 0xffff ? entity!.resource_mask! : 0,
     absEnabled: valid && hasFlag(vehicleMask, VehicleFlags.ABS), tcsEnabled: valid && hasFlag(vehicleMask, VehicleFlags.TCS),
     engineOn: valid && hasFlag(vehicleMask, VehicleFlags.ENGINE_ON),

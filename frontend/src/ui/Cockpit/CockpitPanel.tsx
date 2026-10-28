@@ -7,6 +7,7 @@ import { VehicleFlags, hasFlag } from "../../store/tools/inputMasks";
 import { trapMenuFocus } from "../../components/menus/menuFocus";
 import type { MenuAction } from "../../store/tools/inputRouting";
 import { GearSelector, HandbrakeLever } from "./MechanicalControls";
+import { DriveAssists } from "./DriveAssists";
 import { loadRadioFile, setRadioVolume, toggleRadio, toggleRadioMute, useRadioStore } from "../../store/radioStore";
 import "./cockpit.css";
 
@@ -31,15 +32,13 @@ export function CockpitPanel() {
   useEffect(startVehicleTelemetry, []);
   const tab=useUIStore(s=>s.cockpitTab),requestedMask=useInputStore(s=>s.input.cockpit_mask);
   const vehicle=useInputStore(s=>s.input.vehicleMask),confirmedMask=useVehicleTelemetryStore(s=>s.data.cockpitMask);
-  const supported=useVehicleTelemetryStore(s=>s.data.signal==='live'&&s.data.config.cockpitControls);
+  const supported=useVehicleTelemetryStore(s=>s.data.signal==='live'&&s.data.config.cockpitVersion>=2);
   const actualGear=useVehicleTelemetryStore(s=>s.data.gear),speed=useVehicleTelemetryStore(s=>Math.round(s.data.speedKph??0));
-  const confirmedTcs=useVehicleTelemetryStore(s=>s.data.tcsEnabled);
   const requested=unpackCockpit(requestedMask??confirmedMask??undefined),confirmed=unpackCockpit(confirmedMask??undefined),status=cockpitStatus(confirmedMask);
   const pending=requestedMask!==undefined&&(confirmedMask===null||requested.revision!==confirmed.revision);
   const current=pending?requested:confirmed;
   const root=useRef<HTMLElement>(null),washerTimer=useRef<number|null>(null);
   const change=useInputStore.getState().setCockpit;
-  const mode=(assist:number)=>{if(assist===0)useInputStore.getState().setVehicleFlag(VehicleFlags.TCS,true);useInputStore.getState().setCockpit({assist},1);};
   const close=()=>useUIStore.getState().closeOverlay();
   const wash=()=>{if(washerTimer.current!==null)window.clearTimeout(washerTimer.current);change({washer:true},5);washerTimer.current=window.setTimeout(()=>{change({washer:false},5);washerTimer.current=null;},400);};
   useEffect(()=>()=>{if(washerTimer.current!==null){window.clearTimeout(washerTimer.current);useInputStore.getState().setCockpit({washer:false},5);}},[]);
@@ -70,15 +69,13 @@ export function CockpitPanel() {
     return()=>{window.removeEventListener('avenlab:panel-action',event);element?.removeEventListener('keydown',keyboard);};
   },[]);
   const route=(overlay:'settings'|'missions'|'debug_menu'|'vehicle_select')=>{useUIStore.getState().closeOverlay();useUIStore.getState().setOverlay(overlay);};
-  const rejection=status.rejection===2?'STOP BEFORE SELECTING PARK OR REVERSE':status.rejection===3?'CRUISE SET REQUIRES 30 KM/H':status.rejection?'SHIFT UNAVAILABLE':'';
+  const rejection=status.rejection===2?'STOP BEFORE SELECTING PARK OR REVERSE':status.rejection===3?'CRUISE SET REQUIRES 30 KM/H':status.rejection?'REQUEST UNAVAILABLE':'';
   return <div className="cockpit-overlay"><section className="cockpit-panel" ref={root} role="dialog" aria-modal="true" aria-labelledby="cockpit-title" onKeyDown={event=>{trapMenuFocus(event);if(event.key==='Enter'||event.key===' ')event.stopPropagation();}}>
     <header className="cockpit-header"><h1 id="cockpit-title">COCKPIT</h1><CabinClock/><button className="physical-hazard" aria-label="Hazards" aria-pressed={hasFlag(vehicle,VehicleFlags.HAZARDS)} onClick={()=>useInputStore.getState().toggleVehicleFlag(VehicleFlags.HAZARDS)}>△</button><button className="cockpit-back" onClick={close}><kbd>B</kbd> CLOSE</button></header>
     <nav className="cockpit-tabs" aria-label="Cockpit systems">{tabs.map(item=><button key={item.id} data-cockpit-tab={item.id} aria-pressed={tab===item.id} onClick={()=>useUIStore.getState().setCockpitTab(item.id)}>{item.label}</button>)}</nav>
     <div className="cockpit-content">
-      {tab==='drive'&&<div className="cockpit-drive-layout"><GearSelector automatic={current.automatic} gear={current.gear} actualGear={actualGear} disabled={!supported} pending={pending}/><HandbrakeLever active={status.parkingActive} disabled={!supported} pending={pending}/>
-        <div className="factory-assists"><button disabled={!supported} aria-label="Traction control off" aria-pressed={!confirmedTcs} onClick={()=>mode(confirmedTcs?2:0)}><img src="/images/traction-control.svg" alt=""/><span>TRAC OFF</span><i data-lit={!confirmedTcs}/></button>
-          <button disabled={!supported} aria-label="VSC Sport" aria-pressed={confirmed.assist===1} onClick={()=>mode(current.assist===1?0:1)}><span>VSC<br/>SPORT</span><i data-lit={confirmed.assist===1}/></button>
-          <small>{confirmed.assist===1?(status.tractionRearmed?'SPORT · TRACTION RE-ARMED':'SPORT · ONE LAUNCH'):confirmedTcs?'TRACTION ON':'TRACTION OFF'}</small></div></div>}
+      {tab==='drive'&&<div className="cockpit-drive-layout"><GearSelector automatic={current.automatic} gear={current.gear} actualGear={actualGear} disabled={!supported} pending={pending}/><HandbrakeLever strength={current.parkingStrength} disabled={!supported} pending={pending}/>
+        <DriveAssists /></div>}
       {tab==='lights'&&<div className="cockpit-system"><div className="control-stalk stalk-left"><span>◀ TURN ▶</span><i/><b>OFF · AUTO · LOW · HIGH</b></div>
         <div className="cockpit-segments">{['OFF','AUTO','LOW','HIGH'].map((label,index)=><button key={label} disabled={!supported} aria-label={`Lights ${label.toLowerCase()}`} aria-pressed={current.lights===index} onClick={()=>change({lights:index},6)}>{label}</button>)}</div>
         <div className="wheel-signals"><button aria-label="Left indicator" aria-pressed={hasFlag(vehicle,VehicleFlags.BLINKER_LEFT)} onClick={()=>useInputStore.getState().toggleVehicleFlag(VehicleFlags.BLINKER_LEFT)}>◀</button><div className="digital-wheel"><i/><b/></div><button aria-label="Right indicator" aria-pressed={hasFlag(vehicle,VehicleFlags.BLINKER_RIGHT)} onClick={()=>useInputStore.getState().toggleVehicleFlag(VehicleFlags.BLINKER_RIGHT)}>▶</button></div></div>}

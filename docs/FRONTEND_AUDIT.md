@@ -27,7 +27,7 @@ case-only collision. Existing paths remain stable for this integration.
 | --- | --- |
 | `game/`, `game/modes/`, `game/preview/` | Screen composition, mode workflows and garage staging |
 | `components/menus/`, `components/debugger/` | Shared menu primitives and debugger visualizers |
-| `ui/`, `ui/Dashboard/` | In-game DOM HUD, touch widgets and custom instruments |
+| `ui/`, `ui/Dashboard/`, `ui/Cockpit/` | In-game DOM HUD, touch widgets and custom instruments |
 | `controls/` | Keyboard/gamepad/touch lifecycle and input ownership |
 | `net/`, `store/` | Transport boundary and explicit state ownership |
 | `world/`, `vehicles/`, `hooks/` | City/model rendering, interpolation and alignment |
@@ -57,7 +57,7 @@ keep transient angles in local refs. The normal routing/settings fields remain
 event-driven. See [store reference](../frontend/src/store/README.md).
 
 The revised cockpit wires the rear cable brake, latched parking, assisted gear
-selection and game Sport traction policy. `radioStore` owns local Audio playback;
+selection and separate FR-S Sport/TRAC switch states. `radioStore` owns local Audio playback;
 older archived audio experiments remain separate. Factory VSC yaw control and
 model-specific wiper rigs remain future work. See [cockpit reference](COCKPIT_UI.md).
 Future lowercase folder renames should use a temporary git path so Windows

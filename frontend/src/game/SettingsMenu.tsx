@@ -5,8 +5,6 @@ import { useDebugViewStore } from "../store/debugViewStore";
 import { DEFAULT_BINDINGS, RESERVED_KEYS, usePreferencesStore, type BindingAction } from "../store/preferencesStore";
 import { useUIStore } from "../store/uiStore";
 import { cityQualityControl, cityViewDistanceControl, cityPerformanceControl, interpolationControl } from "../components/menus/cityQualityControl";
-import { useInputStore } from "../store/inputStore";
-import { VehicleFlags, hasFlag } from "../store/tools/inputMasks";
 
 const step = <T,>(values: readonly T[], value: T, dir: 1 | -1 = 1): T => values[(Math.max(0, values.indexOf(value)) + dir + values.length) % values.length];
 const keyLabel = (code: string) => code === "Space" ? "Space" : code.replace(/^Key|^Digit/, "");
@@ -16,7 +14,6 @@ export function SettingsMenu() {
   const render = useRenderSettingsStore();
   const debug = useDebugViewStore();
   const prefs = usePreferencesStore();
-  const requestedMask = useInputStore(s => s.input.vehicleMask);
   const back = useUIStore((s) => s.backToParentMenu);
   const [pendingBinding, setPendingBinding] = useState<BindingAction | null>(null);
   const [notice, setNotice] = useState("Changes apply immediately");
@@ -54,15 +51,24 @@ export function SettingsMenu() {
   },
 });
   const upcoming = (id: string, label: string, description: string): MenuRow => ({ id, label, description, value: "Planned", disabled: true });
+  const drivingRows: MenuRow[] = [
+    { id: "driving-layout", label: "Driving layout", value: prefs.drivingLayout === "controller" ? "Controller" : "Standard", action: () => {
+      const controller = prefs.drivingLayout !== "controller";
+      prefs.update({ drivingLayout: controller ? "controller" : "standard", showTouchControls: !controller, showDriveControls: !controller });
+    } },
+    { id: "touch-visible", label: "On-screen steering & pedals", description: "Optional in either layout. Keyboard and controller always work.", value: prefs.showTouchControls ? "Show" : "Hide", action: () => prefs.update({ showTouchControls: !prefs.showTouchControls }) },
+    { id: "drive-switches", label: "On-screen drive switches", description: "ABS, TRAC, VSC SPORT and parking brake. All remain available in Cockpit.", value: prefs.showDriveControls ? "Show" : "Hide", action: () => prefs.update({ showDriveControls: !prefs.showDriveControls }) },
+  ];
   return <>
     <TabbedMenu title="Settings" subtitle="Set up your driver station. Graphics, input and accessibility changes apply immediately." onBack={back} status={notice} tabs={[
       { id: "display", label: "Display", description: "Graphics preferences are saved on this device. Higher resolution, reflections and shadows can increase frame time.", rows: [
         { id: "resolution", label: "Resolution scale", value: `${render.dpr}×`, action: (dir) => render.update({ dpr: step([0.5, 0.75, 1, 1.5, 2], render.dpr, dir) }) },
         { id: "fov", label: "Field of view", value: `${prefs.fov}°`, action: (dir) => prefs.update({ fov: step([55, 65, 75, 85, 95, 110], prefs.fov, dir) }) },
         graphics("shadows", "Shadows"), graphics("reflections", "HDR reflections"), graphics("fog", "Distance fog"), graphics("stars", "Animated sky"),
-        graphics("vehicleLights", "Vehicle spotlights"), graphics("hud", "Driving HUD & touch controls"), graphics("overlay", "Performance overlay", "Frame timing, network latency and server diagnostics."),
+        graphics("vehicleLights", "Vehicle spotlights"), graphics("hud", "Driving instruments"), graphics("overlay", "Performance overlay", "Frame timing, network latency and server diagnostics."),
+        ...drivingRows,
         { id: "speed-unit", label: "Speed units", value: prefs.speedUnit === "mph" ? "MPH" : "KM/H", action: () => prefs.update({ speedUnit: prefs.speedUnit === "mph" ? "kmh" : "mph" }) },
-        { id: "touch-layout", label: "Touch controls", description: "Pedals: centered gas/brake/reverse. Joysticks: steering left, gas/reverse right, brake in the center.", value: prefs.touchLayout === "sticks" ? "Two joysticks" : "Pedals", action: () => prefs.update({ touchLayout: prefs.touchLayout === "sticks" ? "pedals" : "sticks" }) },
+        { id: "touch-layout", label: "Touch control style", value: prefs.touchLayout === "sticks" ? "Two joysticks" : "Compact pedals", action: () => prefs.update({ touchLayout: prefs.touchLayout === "sticks" ? "pedals" : "sticks" }) },
         cityQualityControl(render), cityViewDistanceControl(render), interpolationControl(debug), cityPerformanceControl(render),
         { id: "fullscreen", label: "Toggle fullscreen", description: "Requires browser support and a direct click or keyboard press.", action: () => {
           const request = document.fullscreenElement ? document.exitFullscreen?.() : document.documentElement.requestFullscreen?.();
@@ -80,11 +86,10 @@ export function SettingsMenu() {
         { id: "restore", label: "Restore default controls", action: () => { prefs.resetControls(); setNotice("Default keyboard and controller controls restored"); } },
       ], content: <p className="mt-1 text-xs leading-tight text-slate-400">F2 Debugger · F3 Latency overlay · F8 Start/stop capture · H Change vehicle · Shift+H Hazards · E Engine · L Lights · Z/X Indicators · Q ABS · T TCS · Shift Boost request · N Horn · R Reset · ` Terminal</p> },
       { id: "controller", label: "Controller", description: "Standard gamepad layout: RT accelerate · LT brake · Left stick steer · B handbrake · Start pause. In menus: A select, B back, LB/RB tabs. Release driving controls after closing a menu before driving again.", rows: [
+        ...drivingRows,
         { id: "deadzone", label: "Stick deadzone", value: `${Math.round(prefs.controllerDeadzone * 100)}%`, action: (dir) => prefs.update({ controllerDeadzone: step([0.05, 0.12, 0.2, 0.3, 0.4], prefs.controllerDeadzone, dir) }) },
         { id: "steering", label: "Steering sensitivity", value: `${prefs.steeringSensitivity}×`, action: (dir) => prefs.update({ steeringSensitivity: step([0.5, 0.75, 1, 1.25, 1.5], prefs.steeringSensitivity, dir) }) },
         { id: "invert", label: "Invert steering", value: prefs.invertSteering ? "On" : "Off", action: () => prefs.update({ invertSteering: !prefs.invertSteering }) },
-        { id: "assist-abs", label: "Anti-lock brakes (ABS)", description: "Q while driving. The instrument light shows server confirmation.", adjustable: false, value: hasFlag(requestedMask, VehicleFlags.ABS) ? "On" : "Off", action: () => useInputStore.getState().toggleVehicleFlag(VehicleFlags.ABS) },
-        { id: "assist-tcs", label: "Traction control (TCS)", description: "T while driving. Select here with A / Cross to request On or Off.", adjustable: false, value: hasFlag(requestedMask, VehicleFlags.TCS) ? "On" : "Off", action: () => useInputStore.getState().toggleVehicleFlag(VehicleFlags.TCS) },
         upcoming("vibration", "Controller vibration", "Available after force-feedback events are connected."),
       ] },
       { id: "social", label: "Social", description: "Party, team chat and matchmaking are planned for capture the flag. No communication or privacy service is connected yet.", rows: [

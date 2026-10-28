@@ -1,7 +1,7 @@
 //  inputStore.ts     ← controls/input packets
 import { create } from "zustand";
 import { deriveInputSignals } from "./tools/deriveInputSignals";
-import { reviseCockpit, type CockpitCommand, type CockpitRequest } from "./tools/cockpitMasks";
+import { reviseCockpit, unpackCockpit, type CockpitCommand, type CockpitRequest } from "./tools/cockpitMasks";
 import {
   VehicleFlags,
   PlayerFlags,
@@ -119,6 +119,7 @@ interface InputState {
     input: InputPacket;
     setInput: (partial: Partial<InputPacket>) => void;
     setCockpit: (patch: Partial<CockpitRequest>, command: CockpitCommand) => void;
+    setAssist: (assist: number, traction: boolean) => void;
 
     setAnalog: (partial: Partial<VehicleControlInput>) => void;
     releaseAnalog: () => void;
@@ -169,8 +170,13 @@ export const useInputStore = create<InputState>((set, get) => ({
 
     setCockpit(patch, command) {
         const current = inputRef.current;
-        const initial = current.cockpit_mask ?? reviseCockpit(undefined, { lights: hasFlag(current.vehicleMask, VehicleFlags.HEADLIGHTS) ? 2 : 0 }, 0);
+        const initial = current.cockpit_mask ?? reviseCockpit(undefined, { lights: hasFlag(current.vehicleMask, VehicleFlags.HEADLIGHTS) ? 2 : 0, assist: hasFlag(current.vehicleMask, VehicleFlags.TCS) ? 0 : 2 }, 0);
         get().setInput({ cockpit_mask: reviseCockpit(initial, patch, command) });
+    },
+    setAssist(assist, traction) {
+        const current = inputRef.current;
+        const initial = current.cockpit_mask ?? reviseCockpit(undefined, { lights: hasFlag(current.vehicleMask, VehicleFlags.HEADLIGHTS) ? 2 : 0 }, 0);
+        get().setInput({ vehicleMask: setFlag(current.vehicleMask, VehicleFlags.TCS, traction), cockpit_mask: reviseCockpit(initial, { assist }, 1) });
     },
     setAnalog(partial) {
             // Compatibility for single-writer callers. Mounted keyboard and
@@ -223,7 +229,7 @@ export const useInputStore = create<InputState>((set, get) => ({
         const stopCockpit = cockpit !== undefined && ((cockpit & (1 << 12)) !== 0 || ((cockpit >>> 14) & 3) !== 3);
         get().setInput({
             ...neutralControls(),
-            ...(stopCockpit ? { cockpit_mask: reviseCockpit(cockpit, { washer: false, cruiseAction: 3 }, 4) & ~(1 << 12) } : {}),
+            ...(stopCockpit ? { cockpit_mask: reviseCockpit(cockpit, { washer: false, cruiseAction: 3 }, 4) } : {}),
             vehicleMask: inputRef.current.vehicleMask & ~VehicleFlags.BOOST,
             playerMask: inputRef.current.playerMask & ~(PlayerFlags.HONK | PlayerFlags.RESET),
         });
@@ -235,7 +241,7 @@ export const useInputStore = create<InputState>((set, get) => ({
 
     const cockpit = inputRef.current.cockpit_mask;
     get().setInput({ vehicleMask, ...(cockpit === undefined ? {} : flag === VehicleFlags.TCS
-        ? { cockpit_mask: reviseCockpit(cockpit, { assist: 0 }, 1) }
+        ? { cockpit_mask: reviseCockpit(cockpit, { assist: unpackCockpit(cockpit).assist === 1 ? 1 : enabled ? 0 : 2 }, 1) }
         : flag === VehicleFlags.HEADLIGHTS ? { cockpit_mask: reviseCockpit(cockpit, { lights: enabled ? 2 : 0 }, 6) } : {}) });
     },
 

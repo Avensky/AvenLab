@@ -44,14 +44,14 @@ vehicle selection/render components and is a poor boundary for transport/HUD.
 
 ## Driving HUD
 
-Enable **Settings → Display → Driving HUD & touch controls**. The restored
-custom speed, RPM and paired fuel/temperature dials sit at bottom right, with
-NOS outside RPM and a condition/repair meter. Pedals sit at bottom center;
-compact screens lift the cluster above the touch row. Display saves speed units
-and Pedals/Two joysticks. Joysticks steer left, gas/reverse right, brake center.
+Enable **Settings → Display → Driving instruments**. The custom speed, RPM and
+paired fuel/coolant dials sit at bottom center, with condition above and ultimate
+charge around RPM. Standard and Controller layouts have independent options to
+show touch steering/pedals and the lower-right Drive console. Keyboard/gamepad
+remain active when touch controls are hidden. See [cockpit details](../docs/COCKPIT_UI.md).
 
 ABS/TCS buttons display confirmed server state. Q/T toggle them while driving;
-Settings → Controller exposes the same requests to controller users. Rust now
+Cockpit → Drive exposes the same requests to controller users. Rust now
 owns fuel usage, load/airflow-based heat, overheat/condition derating, collision
 damage, automatic driveline telemetry and finite NOS. Debugger → Vehicles & GLBs
 has stationary, engine-off Sandbox service. Gas stations and competitive supply

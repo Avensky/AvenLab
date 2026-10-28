@@ -10,6 +10,7 @@ pub const FUEL: u16 = 4;
 pub const TEMPERATURE: u16 = 8;
 pub const BOOST: u16 = 16;
 pub const CONDITION: u16 = 32;
+pub const ULTIMATE: u16 = 64;
 pub const STARTING: u16 = 1;
 pub const HOT: u16 = 2;
 pub const LOW_FUEL: u16 = 4;
@@ -95,6 +96,7 @@ pub const TANK_RESOURCES: ResourceConfig = ResourceConfig {
 #[derive(Clone, Copy, Debug, Serialize)]
 pub struct HudCalibration {
     pub cockpit_controls: bool,
+    pub cockpit_version: u8,
     pub cluster_fields: u16,
     pub telemetry_mask: u16,
     pub max_rpm: f32,
@@ -108,12 +110,14 @@ impl ResourceConfig {
     pub fn hud(self) -> HudCalibration {
         HudCalibration {
             cockpit_controls: true,
+            cockpit_version: 2,
             cluster_fields: (1 << 2) | (1 << 3) | (1 << 9) | (1 << 10),
             telemetry_mask: RPM
                 | GEAR
                 | FUEL
                 | TEMPERATURE
                 | CONDITION
+                | ULTIMATE
                 | if self.nos_seconds > 0.0 { BOOST } else { 0 },
             max_rpm: self.max_rpm,
             redline_rpm: self.redline_rpm,
@@ -137,6 +141,7 @@ pub struct Powertrain {
     pub temperature_c: f32,
     pub engine_torque_nm: f32,
     pub condition: f32,
+    pub ultimate_fraction: f32,
     pub nos_remaining_s: f32,
     pub boost_active: bool,
     pub power_multiplier: f32,
@@ -168,6 +173,7 @@ impl Powertrain {
             temperature_c: config.initial_temp_c,
             engine_torque_nm: 0.0,
             condition: 1.0,
+            ultimate_fraction: 0.0,
             nos_remaining_s: config.nos_seconds,
             boost_active: false,
             power_multiplier: 1.0,
@@ -375,6 +381,13 @@ impl Powertrain {
             .clamp(0.0, 1.0);
         self.impact_cooldown_s = 0.25;
     }
+    // Only authoritative damage attribution calls this. Never use own condition,
+    // throttle, elapsed time, or a client-reported charge value as damage dealt.
+    pub fn credit_damage_dealt(&mut self, condition_lost: f32) {
+        if condition_lost.is_finite() && condition_lost > 0.0 {
+            self.ultimate_fraction = (self.ultimate_fraction + condition_lost.min(1.0)).clamp(0.0, 1.0);
+        }
+    }
     pub fn resource_mask(&self, config: ResourceConfig) -> u16 {
         (if self.start_remaining_s > 0.0 && self.engine_requested {
             STARTING
@@ -406,7 +419,9 @@ impl Powertrain {
         self.boost_active = false;
     }
     pub fn service(&mut self, config: ResourceConfig) {
+        let charge = self.ultimate_fraction;
         *self = Self::new(config);
+        self.ultimate_fraction = charge;
         self.engine_requested = false;
         self.last_engine_request = false;
         self.running = false;
@@ -529,11 +544,22 @@ mod tests {
         state.condition = 0.5;
         state.temperature_c = 115.0;
         state.nos_remaining_s = 2.0;
+        state.ultimate_fraction = 0.4;
         state.reconfigure(ROAD_RESOURCES, MUSCLE_RESOURCES);
         assert_eq!(state.fuel_liters, 36.0);
         assert_eq!(state.condition, 0.5);
         assert_eq!(state.temperature_c, 115.0);
         assert_eq!(state.nos_remaining_s, 2.0);
+        assert_eq!(state.ultimate_fraction, 0.4);
+    }
+    #[test]
+    fn ultimate_only_accepts_finite_positive_authoritative_damage_and_service_cannot_refill_it() {
+        let mut state = Powertrain::new(ROAD_RESOURCES);
+        state.impact(15.0, ROAD_RESOURCES);assert_eq!(state.ultimate_fraction, 0.0);
+        for value in [f32::NAN, f32::INFINITY, -1.0, 0.0] { state.credit_damage_dealt(value); }
+        assert_eq!(state.ultimate_fraction, 0.0);
+        state.credit_damage_dealt(0.2);state.service(ROAD_RESOURCES);assert_eq!(state.ultimate_fraction,0.2);
+        state.credit_damage_dealt(0.9);assert_eq!(state.ultimate_fraction,1.0);
     }
     #[test]
     fn reverse_at_speed_brakes_before_selecting_reverse() {

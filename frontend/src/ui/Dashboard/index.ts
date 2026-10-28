@@ -4,4 +4,4 @@ export { default as Revolutions } from "./Revolutions";
 export { default as FuelTemp } from "./FuelTemp";
 export { default as FuelGauge } from "./FuelGauge";
 export { default as TempGauge } from "./TempGauge";
-export { Boost } from "./Boost";
+export { UltimateRing } from "./UltimateRing";

@@ -1,6 +1,6 @@
 .cockpit-overlay{position:fixed;inset:0;z-index:70;background:rgb(5 8 13/.97);color:#e4e9ed;font:12px/1.25 ui-monospace,monospace}
 .cockpit-panel{height:100%;width:100%;display:flex;flex-direction:column;min-height:0;background:radial-gradient(ellipse at 50% 20%,#23272e,#0c1016 70%)}
-.cockpit-panel button{border:1px solid #4b515c;border-radius:2px;background:linear-gradient(#242a32,#12171f);color:#e4e9ed;padding:7px 11px;font:700 10px/1.1 ui-monospace,monospace;cursor:pointer;touch-action:none}
+.cockpit-panel button{border:1px solid #4b515c;border-radius:2px;background:linear-gradient(#242a32,#12171f);color:#e4e9ed;padding:6px 9px;font:700 10px/1.1 ui-monospace,monospace;cursor:pointer;touch-action:none}
 .cockpit-panel button:hover:not(:disabled),.cockpit-panel button:focus-visible,.cockpit-panel button[aria-pressed="true"]{outline:1px solid #b0e1ea;outline-offset:1px;border-color:#b0e1ea;color:#effcff}
 .cockpit-panel button:disabled{opacity:.35;cursor:default}
 .cockpit-header{display:flex;align-items:center;gap:10px;min-height:39px;padding:5px 10px;border-bottom:1px solid #474e59}
@@ -11,7 +11,7 @@
 .cockpit-back{display:flex;align-items:center;gap:6px}.cockpit-back kbd{border:1px solid #8d99a7;padding:1px 3px;font:9px monospace}
 .cockpit-tabs{display:flex;gap:3px;padding:4px 8px;border-bottom:1px solid #343b46;flex-shrink:0;overflow-x:auto}
 .cockpit-tabs button{flex:1;min-width:52px;padding:6px 8px;white-space:nowrap}
-.cockpit-content{flex:1;min-height:0;overflow:auto;padding:12px;overscroll-behavior:contain}
+.cockpit-content{flex:1;min-height:0;overflow:auto;padding:8px;overscroll-behavior:contain}
 .cockpit-status{height:23px;flex-shrink:0;padding:5px 10px;border-top:1px solid #343b46;font:9px/1.2 monospace;color:#d5b484}
 .cockpit-drive-layout{display:grid;grid-template-columns:minmax(170px,1.5fr) minmax(90px,1fr);gap:10px;width:100%;max-width:510px;margin:auto}
 .cockpit-segments{display:flex;gap:4px;justify-content:center}.cockpit-segments button{flex:1;min-height:29px}
@@ -30,7 +30,7 @@
 .handbrake-lever[data-active="true"] .ebrake-handle{transform:rotate(-52deg)}
 .ebrake-indicator{position:absolute;bottom:2%;left:0;right:0;color:#8c4544;font-size:9px}.handbrake-lever[data-active="true"] .ebrake-indicator{color:#ff7369}.handbrake-lever[data-pending="true"] .ebrake-indicator{color:#e3c69a}
 .factory-assists{grid-column:1/-1;display:flex;justify-content:center;gap:5px;align-items:center;flex-wrap:wrap;border-top:1px solid #444953;padding-top:9px}
-.factory-assists button{position:relative;display:flex;align-items:center;gap:8px;justify-content:center;width:105px;height:48px;border:3px solid #999fa7;background:linear-gradient(#272c33,#131820)}
+.factory-assists button{flex:1;min-width:75px;position:relative;display:flex;align-items:center;gap:8px;justify-content:center;width:105px;height:48px;border:3px solid #999fa7;background:linear-gradient(#272c33,#131820)}
 .factory-assists img{width:23px;height:23px;filter:brightness(0) invert(1)}.factory-assists button span{font-size:10px;text-align:center}
 .factory-assists i{position:absolute;right:6px;top:5px;width:4px;height:4px;background:#493b27;border-radius:50%}.factory-assists i[data-lit="true"]{background:#ffb64b}
 .factory-assists small{width:100%;text-align:center;font-size:8px;color:#d1b383}
@@ -52,15 +52,15 @@
 .radio-display strong{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.radio-display small,.radio-display span{font-size:9px}
 .radio-buttons{display:flex;gap:8px;margin-top:10px}.radio-buttons button{flex:1}.radio-volume{display:flex;gap:12px;justify-content:center;align-items:center;margin-top:20px}.radio-volume button{border-radius:50%;width:38px;height:38px;font-size:20px}
 .headunit-apps{display:grid;grid-template-columns:repeat(3,minmax(80px,1fr));gap:8px;max-width:550px;margin:10px auto}.headunit-apps button{display:flex;flex-direction:column;align-items:center;gap:10px;padding:15px 8px;min-height:85px}.headunit-apps img{width:28px;height:28px;filter:brightness(0) invert(1)}
-.vehicle-actions.cockpit-launcher{display:block;width:104px;padding:4px;border:1px solid #66717e;border-radius:3px;background:linear-gradient(#252b34,#0e141c);box-shadow:0 2px 6px #0005}
-.mini-console-header{display:flex;align-items:center;justify-content:space-between;gap:4px;margin-bottom:4px}.mini-console-header .cabin-clock{font-size:12px;padding:3px}
-.vehicle-actions .mini-console-header .physical-hazard{width:25px;height:22px;padding:0;font-size:21px;color:#ff877a;background:#461d23}
-.mini-console-controls{display:grid;grid-template-columns:repeat(3,1fr);gap:3px}.vehicle-actions .mini-console-controls button{width:28px;height:27px;padding:4px;border-radius:1px}.vehicle-actions .mini-console-controls img{width:18px;height:18px}
-.vehicle-actions .mini-console-controls .engine-switch{border-radius:50%;border-color:#ab5655}
-.steering-wheel-display{position:absolute;bottom:58px;left:50%;width:34px;height:34px;transform-origin:center;pointer-events:none}
-.driving-steering .wheel-turn{position:absolute;bottom:63px;width:24px;height:24px;padding:0;font-size:16px;line-height:1;color:#b9e891}.wheel-turn-left{left:-6px}.wheel-turn-right{right:-6px}
+/* Optional driving switches: a compact console at the lower right. */
+.drive-dock{right:max(10px,env(safe-area-inset-right));bottom:max(10px,env(safe-area-inset-bottom));width:168px;color:#dbe4eb;font:9px/1.1 ui-monospace,monospace}
+.drive-dock-header{display:flex;justify-content:flex-end;gap:3px;margin-bottom:3px}.drive-dock-header button{height:25px;font:9px monospace;padding:3px 7px}.drive-dock-header .engine-switch{width:27px;padding:4px}.drive-dock img{width:16px;height:16px;filter:brightness(0) invert(1)}
+.drive-dock[data-expanded="false"]{width:108px}.drive-dock[data-expanded="false"] .drive-dock-header{margin:0}
+.drive-assists{display:flex;gap:3px}.drive-assists button{flex-direction:column}.drive-assists button span{display:block;font-size:8px}.drive-assists button[data-off="true"]{color:#efb064;border-color:#ac7c425e}.drive-assists button[aria-pressed="true"]{border-color:#9dccd6;color:#e3f6fa}.drive-assists button[aria-busy="true"]{border-style:dashed}
+.drive-assists-compact button{flex:1;gap:2px;height:36px;padding:3px;font:9px monospace}.drive-assists-compact button:nth-child(2){flex-direction:row}.drive-assists-compact img{width:17px;height:17px}.drive-assists-compact button:disabled,.drive-dock button:disabled{opacity:.35;cursor:default}
+.drive-dock .dock-parking{display:flex;gap:5px;justify-content:space-between;width:100%;height:25px;margin-top:3px;padding:3px 5px;font:7px monospace}.dock-parking strong{font:8px monospace;min-width:25px;text-align:right}.parking-steps{display:flex;gap:2px}.parking-steps i{display:block;width:6px;height:7px;border:1px solid #71838b80}.parking-steps i[data-lit="true"]{background:#efb064;border-color:#efb064}
+.parking-levels{display:flex;gap:2px}.cockpit-panel .parking-levels button{min-width:0;flex:1;font-size:8px;padding:5px 2px}.handbrake-lever .ebrake-handle,.handbrake-lever[data-active="true"] .ebrake-handle{transform:rotate(calc(-13deg - var(--parking-level,0)*13deg))}
 @media(max-width:400px){.cockpit-content{padding:8px}.cockpit-header{gap:6px;padding:4px 7px}.cockpit-header h1{font-size:12px}.cockpit-header .cabin-clock{font-size:13px}.cockpit-panel .cockpit-back{padding:5px;font-size:9px}.cockpit-tabs{gap:2px;padding:3px}.cockpit-tabs button{min-width:45px;font-size:8px;padding:6px 4px}.control-stalk{height:70px}.control-stalk span,.control-stalk b{font-size:8px}}
-@media(max-height:400px){.cockpit-header{min-height:32px;padding-top:3px;padding-bottom:3px}.cockpit-tabs{padding-top:3px;padding-bottom:3px}.cockpit-content{padding:7px}.shift-gate{height:120px}.cockpit-panel .shift-knob{width:35px;height:35px}.handbrake-lever{height:147px}.factory-assists{padding-top:5px}.factory-assists button{height:36px}.control-stalk{height:62px;margin:4px auto 10px}.wheel-signals{margin-top:10px}.digital-wheel{width:54px;height:54px;border-width:6px}.digital-wheel i{top:17px}.digital-wheel b{left:18px;top:23px}.wiper-window{height:60px;margin-bottom:10px}}
-@media(max-width:380px){.vehicle-actions.cockpit-launcher{width:78px;padding:3px}.vehicle-actions .mini-console-controls button{width:21px;height:23px;padding:3px}.vehicle-actions .mini-console-controls img{width:15px;height:15px}.mini-console-header .cabin-clock{font-size:9px;padding:2px}.vehicle-actions .mini-console-header .physical-hazard{width:18px;height:18px;font-size:17px}.driving-steering .wheel-turn{width:20px}.wheel-turn-left{left:-4px}.wheel-turn-right{right:-4px}.steering-wheel-display{width:28px;height:28px;bottom:59px}}
+@media(max-height:400px){.cockpit-header{min-height:32px;padding-top:3px;padding-bottom:3px}.cockpit-tabs{padding-top:3px;padding-bottom:3px}.cockpit-content{padding:7px}.shift-gate{height:120px}.cockpit-panel .shift-knob{width:35px;height:35px}.handbrake-lever{height:147px}.factory-assists{padding-top:5px}.factory-assists button{flex:1;min-width:75px;height:36px}.control-stalk{height:62px;margin:4px auto 10px}.wheel-signals{margin-top:10px}.digital-wheel{width:54px;height:54px;border-width:6px}.digital-wheel i{top:17px}.digital-wheel b{left:18px;top:23px}.wiper-window{height:60px;margin-bottom:10px}}
 html[data-reduce-motion="true"] .wiper-window span{animation:none}html[data-reduce-motion="true"] .ebrake-handle{transition:none}
 @media(prefers-reduced-motion:reduce){.wiper-window span{animation:none!important}.ebrake-handle{transition:none}}

@@ -32,13 +32,13 @@ Event-driven stores have no fixed Hz.
 | --- | --- | --- | --- |
 | `networkStore.ts` | Connection, identity, latest raw snapshot, local compatibility `physicsData`, RTT and debug envelope | Socket: normally 60 snapshots/s; requested debug at most once per published tick; RTT ping every 5 seconds; setup events | Session-local, reset on teardown. Raw rendering/interpolator, diagnostics, HUD sampler. |
 | `vehicleConfigStore.ts` | Gauge calibration by player ID, explicit telemetry availability | `vehicle_config` on spawn/change; no per-frame writes | Cleared with session. HUD sampler only. Bad config leaves previous valid data. |
-| `vehicleTelemetryStore.ts` | Local player's sanitized HUD readings and live/waiting/stale/offline state | One 20 Hz sampler only while HUD mounted and tab visible; unchanged display values do not publish | Dashboard only. No persistence or input/physics ownership. Stale after 500 ms without a fresh snapshot. |
+| `vehicleTelemetryStore.ts` | Local player's sanitized HUD readings and live/waiting/stale/offline state | One shared 20 Hz sampler only while HUD or cockpit mounted and tab visible; unchanged display values do not publish | Dashboard and Cockpit. No persistence or input/physics ownership. Stale after 500 ms without a fresh snapshot. |
 | `inputStore.ts` / `inputRef` | Requested axes/masks and derived pedal signals, merged by source | Keyboard/touch events; gamepad polls at display refresh. Identical writes are ignored. Sender independently reads at 60 Hz | Runtime intent. Transient holds release on lifecycle/focus transitions. Confirmed values remain in network telemetry. |
 | `uiStore.ts` | Screen/overlay, selected menu rows, loading and selected recon mission | Navigation/loading/user events | Application/menu composition. No snapshot writes or persistence. |
 | `gameStore.ts` | Camera/editor controls and legacy game settings | Camera/editor actions; legacy RotatingCamera has a frame-rate angle writer when mounted/active | Camera/render helpers. Active routing is uiStore, pre-game selection is selectionStore. |
 | `worldStore.ts` | Map/collider metadata, debug request mask, legacy render mode/switches | Map/setup events and debugger actions; sender reads debug mask each send | City/collider rendering and capture context. Static colliders are sent with map setup. |
 | `renderSettingsStore.ts` | Graphics quality/range/effects and per-object overrides | User presets/settings and sandbox entry | Renderers/menus. Validated display choices persist; session overrides do not. |
-| `preferencesStore.ts` | Key bindings, sensitivity/deadzone, accessibility, favorites, units and touch layout | User actions / validated local-storage hydration | Device-local persistence. No physics values. |
+| `preferencesStore.ts` | Key bindings, sensitivity/deadzone, accessibility, favorites, units, driving layout and optional touch/Drive controls | User actions / validated local-storage hydration | Device-local persistence. No physics values. |
 | `debugViewStore.ts` | Interpolation preference and diagnostic player scope | User actions | Interpolation persists (default On, 50 ms buffer); scope is session-local. |
 | `visualAlignmentStore.ts` | Measured GLB alignment reports | Model measurement/mount/unmount events | Rendering alignment and capture metadata. |
 | `selectionStore.ts` | Vehicle/map catalogs and selected indexes | Selector actions | Garage/setup. Catalog imports render components; avoid its barrel in hot or transport code. |
@@ -62,7 +62,7 @@ engine/light/assist settings. `setInput` / `setAnalog` remain compatibility APIs
 new producers use source-aware actions. Never mutate `inputRef`. The sender reads
 the latest merged intent and skips queued repeats when the socket is congested.
 The handbrake field now drives the rear cable brake in Rust. `cockpit_mask` adds
-latched parking, assisted gear selection, stalk modes, cruise and Sport requests
+stepped latched parking, assisted gear selection, stalk modes, cruise and FR-S assist requests
 without another socket writer. The open cockpit also owns the shared 20 Hz
 telemetry sampler, so acknowledgements continue while the driving HUD is hidden.
 See [cockpit protocol](../../../docs/COCKPIT_UI.md). `radioStore` is event-driven
@@ -71,14 +71,17 @@ selected file. The clock updates twice a minute and has no per-frame writer.
 
 Requested `vehicleMask` is not confirmed `vehicle_mask`. Dashboard ABS/TCS lights
 follow server snapshots; a dashed light means the requested bit awaits confirmation.
-Settings → Controller also exposes these assists for controller users. Their
-current choices are runtime input flags; units/touch layout persist separately.
+The optional lower-right Drive console and Cockpit → Drive share the same
+assist controls, including controller A/Cross access. Their current choices are
+runtime requests. Controller layout and the independent touch/Drive visibility
+preferences persist; changing either layout never disables keyboard/gamepad input.
 
 ## Units, flags and resource state
 
 Raw speed is m/s. The HUD projects `speedKph` once, then optionally displays MPH.
 RPM is revolutions/min, fuel liters, temperature Celsius, engine torque N·m,
-condition and NOS fractions 0..1. Rust owns all fuel, heat, wear and NOS changes.
+condition, NOS and ultimate fractions are 0..1. Rust owns fuel, heat, wear, NOS
+and damage-dealt ultimate charge. Ultimate never derives from own condition loss.
 The new `powertrain.rs` advances once per substep using seconds, not frame counts.
 
 There are three distinct mask domains:
@@ -86,7 +89,7 @@ There are three distinct mask domains:
 | Mask | Values / meaning |
 | --- | --- |
 | Vehicle/player input and confirmed state | Existing u16 flags; vehicle bits 0..7 are engine, headlights, left/right indicators, hazards, ABS, TCS, BOOST. Debug requests use u32. |
-| Setup `hud.telemetry_mask` | RPM=1, gear=2, fuel=4, temperature=8, NOS=16, condition=32. Availability, not an On/Off request. Road cars advertise 63; tank 47 (no NOS). |
+| Setup `hud.telemetry_mask` | RPM=1, gear=2, fuel=4, temperature=8, NOS=16, condition=32, ultimate=64. Availability, not an On/Off request. Road cars advertise 127; tank 111 (no NOS). |
 | Snapshot `resource_mask` | Starting=1, hot=2, low fuel=4, empty=8, damaged=16, overheat lock=32. Status from the server. |
 
 The wire is JSON with packed boolean flags, not a binary telemetry codec.

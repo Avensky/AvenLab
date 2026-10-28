@@ -4,7 +4,10 @@ import { useInputStore } from "../store/inputStore";
 import { isDrivingScreen, useUIStore } from "../store/uiStore";
 import { useCanDataStore } from "../store/canDataStore";
 import { useRenderSettingsStore } from "../store/renderSettingsStore";
-import { VehicleFlags, PlayerFlags } from "../store/tools/inputMasks";
+import { VehicleFlags, PlayerFlags, hasFlag } from "../store/tools/inputMasks";
+import { useNetworkStore } from "../store/networkStore";
+import { useVehicleConfigStore } from "../store/vehicleConfigStore";
+import { unpackCockpit } from "../store/tools/cockpitMasks";
 import { canDrive, canNavigateMenu, isTypingTarget, routeMenuAction, type MenuAction } from "../store/tools/inputRouting";
 import { togglePerformanceCapture } from "../performance/captureActions";
 import { closePerformanceOverlay, togglePerformanceDetails, usePerformanceOverlayStore } from "../performance/performanceOverlayStore";
@@ -105,6 +108,16 @@ export function Keyboard() {
       }
       keys.add(event.code);
       if (isAnalogKey(event.code)) { event.preventDefault(); updateAxes(); }
+      else if (event.code === "KeyT") {
+        // Shortcuts use the raw confirmed packet even when every HUD is hidden.
+        const network = useNetworkStore.getState(), confirmed = network.getMe();
+        const version = useVehicleConfigStore.getState().byPlayer[network.playerId]?.cockpitVersion ?? 0;
+        const age = performance.now() - (network.snapshot?.received_at_ms ?? -Infinity);
+        if (network.connected && confirmed && age >= 0 && age < 500 && version >= 2) {
+          const enabled = hasFlag(confirmed.vehicle_mask, VehicleFlags.TCS);
+          store.setAssist(unpackCockpit(confirmed.cockpit_mask).assist === 1 ? 1 : enabled ? 2 : 0, !enabled);
+        } else store.toggleVehicleFlag(VehicleFlags.TCS);
+      }
       else if (VEHICLE_TOGGLES[event.code] !== undefined) store.toggleVehicleFlag(VEHICLE_TOGGLES[event.code]);
       else if (PLAYER_TOGGLES[event.code] !== undefined) store.togglePlayerFlag(PLAYER_TOGGLES[event.code]);
       else if (event.code === "ShiftLeft") store.setHeldVehicleFlag("keyboard", VehicleFlags.BOOST, true);

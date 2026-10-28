@@ -40,7 +40,7 @@ export function experimentContext(): ExperimentContext {
           : useProgress.getState().active ? "assets loading" : cityStreamingStats().pending ? "city visuals preparing" : "";
   const me = network.snapshot?.entities.find((entity) => entity.id === network.playerId);
   return { settings: { ...settings, alignment: useVisualAlignmentStore.getState().reports,
-    playerResources: me ? { fuelLiters: me.fuel, temperatureC: me.temp, condition: me.condition ?? null, boostFraction: me.boost_fraction ?? null, resourceMask: me.resource_mask ?? 0 } : null,
+    playerResources: me ? { fuelLiters: me.fuel, temperatureC: me.temp, condition: me.condition ?? null, boostFraction: me.boost_fraction ?? null, ultimateFraction: me.ultimate_fraction ?? null, resourceMask: me.resource_mask ?? 0 } : null,
     playerPose: me ? { position: me.position, rotation: me.rotation, speed: me.speed } : null },
     location: playerLocation(me, world.map),
     key: JSON.stringify(settings), ready: reason === "", reason };

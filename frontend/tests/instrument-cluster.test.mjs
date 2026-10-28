@@ -64,6 +64,14 @@ test('instrument scales, confirmed warning lamps and display power states', asyn
     const publish=async overrides=>act(async()=>{network.getState().setSnapshot({tick:++tick,entities:[{...base,...overrides}]},performance.now());updateVehicleTelemetry();});
     await publish({});root=createRoot(document.getElementById('root'));await act(async()=>root.render(h(Dashboard)));
     const displays=()=>document.querySelector('.gauge-displays');
+    await t.test('RPM has the lowered label and a wider lower gear display in place of the odometer',()=>{
+      assert.equal(document.querySelector('.gauge-rpm-unit').textContent,'RPMx1000');
+      const gear=document.querySelector('[data-readout="gear"] rect'),speed=document.querySelector('[data-readout="speed"] rect');
+      assert.ok(+gear.getAttribute('y')>+speed.getAttribute('y')+ +speed.getAttribute('height'));
+      assert.ok(+gear.getAttribute('width')>+speed.getAttribute('width'));
+      assert.equal(document.querySelector('.dashboard-heading [aria-label="Vehicle condition"]')!==null,true);
+      assert.equal(document.querySelector('.dashboard-heading button'),null,'assists are in Drive, not on the instruments');
+    });
     await t.test('the DOM contains the exact mathematical scale and a two-door icon following the adjacent RPM rim',()=>{
       assert.equal(document.querySelectorAll('[data-scale="mph"] [data-tick]').length,33);
       assert.equal(document.querySelectorAll('[data-scale="kmh"] [data-tick]').length,53);
@@ -90,6 +98,33 @@ test('instrument scales, confirmed warning lamps and display power states', asyn
       assert.equal(inputs.getState().input.vehicleMask,before);
       await publish({cluster_mask:ClusterFlags.CRUISE_ON});assert.equal(document.querySelector('[data-lamp="Two-door open"]').dataset.active,'false');
       assert.equal(document.querySelector('[data-lamp="Cruise control"]').dataset.active,'true');
+    });
+    await t.test('engine-off needle parking does not overwrite fuel or coolant telemetry, and both hubs remain symmetric inside the rim',async()=>{
+      const fuel=()=>document.querySelector('[aria-label="Fuel"]'),temp=()=>document.querySelector('[aria-label="Coolant temperature"]');
+      await publish({vehicle_mask:96,resource_mask:0,fuel:25,temp:100});
+      assert.equal(fuel().getAttribute('aria-valuenow'),'25');assert.equal(temp().getAttribute('aria-valuenow'),'100');
+      assert.ok(parseFloat(fuel().querySelector('.gauge-needle').style.transform.match(/rotate\(([^d]+)/)[1])>0,'fuel parks below E');
+      assert.equal(temp().querySelector('.gauge-needle').style.transform,'rotate(45deg)');
+      const hubF=fuel().querySelector('.gauge-hub'),hubT=temp().querySelector('.gauge-hub');
+      assert.equal(hubF.getAttribute('cx'),hubT.getAttribute('cx'));
+      assert.equal(+hubF.getAttribute('cy')+ +hubT.getAttribute('cy'),200);
+      assert.equal(200- +hubF.getAttribute('cx'),+hubF.getAttribute('cy'),'fuel pivot has equal top/right inset');
+      await publish({vehicle_mask:97,fuel:50,temp:40});
+      assert.equal(fuel().querySelector('.gauge-needle').style.transform,'rotate(-90deg)');
+      assert.equal(temp().querySelector('.gauge-needle').style.transform,'rotate(90deg)');
+    });
+    await t.test('ultimate charge requires advertised server damage telemetry and never falls back to NOS or own condition loss',async()=>{
+      const config=parseGaugeConfig(calibrated);
+      const data={...base,condition:.2,boost_fraction:1,ultimate_fraction:.37};
+      assert.equal(projectVehicleTelemetry(data,true,1000,1001,config).ultimateFraction,null);
+      const capable={...config,telemetryMask:127};
+      for(const value of [undefined,NaN,Infinity])assert.equal(projectVehicleTelemetry({...data,ultimate_fraction:value},true,1000,1001,capable).ultimateFraction,null);
+      configs.getState().receive('me',{...calibrated,hud:{...calibrated.hud,telemetry_mask:127}});
+      await publish(data);
+      assert.equal(document.querySelector('[aria-label="Ultimate charge"]').getAttribute('aria-valuenow'),'37');
+      assert.equal(document.querySelector('.ultimate-fill').getAttribute('stroke-dashoffset'),'63');
+      await publish({...data,condition:.1});assert.equal(document.querySelector('[aria-label="Ultimate charge"]').getAttribute('aria-valuenow'),'37');
+      configs.getState().receive('me',calibrated);
     });
     await t.test('frequent speed/RPM updates never mutate or rebuild the static scale faces',async()=>{
       let changes=0;const observer=new dom.window.MutationObserver(records=>changes+=records.length);

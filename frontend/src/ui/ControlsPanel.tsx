@@ -1,21 +1,28 @@
 import { useInputStore } from "../store/inputStore";
 import { useUIStore } from "../store/uiStore";
-import { VehicleFlags, PlayerFlags, hasFlag } from "../store/tools/inputMasks";
-import { ActionButton, HoldButton } from "../controls/TouchControls";
-import { CabinClock } from "./Cockpit/CockpitPanel";
+import { VehicleFlags, hasFlag } from "../store/tools/inputMasks";
+import { ActionButton } from "../controls/TouchControls";
+import { usePreferencesStore } from "../store/preferencesStore";
+import { useVehicleTelemetryStore } from "../store/vehicleTelemetryStore";
+import { unpackCockpit } from "../store/tools/cockpitMasks";
+import { DriveAssists } from "./Cockpit/DriveAssists";
+import "./Cockpit/cockpit.css";
 
 export default function ControlsPanel() {
-  const vehicle=useInputStore(s=>s.input.vehicleMask),player=useInputStore(s=>s.input.playerMask);
+  const vehicle=useInputStore(s=>s.input.vehicleMask);
+  const expanded=usePreferencesStore(s=>s.showDriveControls);
+  const confirmed=useVehicleTelemetryStore(s=>s.data.cockpitMask);
+  const live=useVehicleTelemetryStore(s=>s.data.signal==='live'&&s.data.config.cockpitVersion>=2);
+  const strength=unpackCockpit(confirmed??undefined).parkingStrength;
   const store=useInputStore.getState();
-  return <div className="vehicle-actions cockpit-launcher" role="group" aria-label="Vehicle controls">
-    <div className="mini-console-header"><CabinClock/><ActionButton className="physical-hazard" aria-label="Hazards" aria-pressed={hasFlag(vehicle,VehicleFlags.HAZARDS)} onClick={()=>store.toggleVehicleFlag(VehicleFlags.HAZARDS)}>△</ActionButton></div>
-    <div className="mini-console-controls">
+  return <div className="drive-dock" data-expanded={expanded} role="group" aria-label="Drive controls">
+    <div className="drive-dock-header">
       <ActionButton className="engine-switch" aria-label="Engine" aria-pressed={hasFlag(vehicle,VehicleFlags.ENGINE_ON)} onClick={()=>store.toggleVehicleFlag(VehicleFlags.ENGINE_ON)}><img src="/images/onOff.svg" alt=""/></ActionButton>
-      <ActionButton aria-label="Open cockpit" title="Cockpit · F4" onClick={()=>useUIStore.getState().openCockpit()}><img src="/images/tv.svg" alt=""/></ActionButton>
-      <ActionButton aria-label="Headlights" aria-pressed={hasFlag(vehicle,VehicleFlags.HEADLIGHTS)} onClick={()=>store.toggleVehicleFlag(VehicleFlags.HEADLIGHTS)}><img src="/images/headlights.svg" alt=""/></ActionButton>
-      <ActionButton aria-label="Radio" onClick={()=>useUIStore.getState().openCockpit("radio")}><img src="/images/soundOn.svg" alt=""/></ActionButton>
-      <HoldButton aria-label="Horn" aria-pressed={hasFlag(player,PlayerFlags.HONK)} onHold={held=>store.setHeldPlayerFlag("touch-actions",PlayerFlags.HONK,held)}><img src="/images/hornCurve.svg" alt=""/></HoldButton>
-      <HoldButton aria-label="Reset vehicle" aria-pressed={hasFlag(player,PlayerFlags.RESET)} onHold={held=>store.setHeldPlayerFlag("touch-actions",PlayerFlags.RESET,held)}><img src="/images/reset.svg" alt=""/></HoldButton>
+      <ActionButton className="dock-open" aria-label="Open cockpit" title="Cockpit · F4 / Pause menu" onClick={()=>useUIStore.getState().openCockpit()}>COCKPIT</ActionButton>
     </div>
+    {expanded && <><DriveAssists compact /><ActionButton className="dock-parking" aria-label="Parking brake strength" disabled={!live} aria-pressed={strength>0}
+      onClick={()=>{const level=(strength+1)%4;store.setCockpit({parking:level>0,parkingStrength:level},3);}}>
+      <span>PARKING BRAKE</span><span className="parking-steps" aria-hidden="true">{[1,2,3].map(level=><i key={level} data-lit={strength>=level}/>)}</span><strong>{Math.round(strength/3*100)}%</strong>
+    </ActionButton></>}
   </div>;
 }

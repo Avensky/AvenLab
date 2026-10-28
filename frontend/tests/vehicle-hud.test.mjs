@@ -20,13 +20,13 @@ test('restored gauges consume Rust telemetry without inventing resource state or
     const {useVehicleConfigStore:configs,parseGaugeConfig,TelemetryFields,DEFAULT_GAUGE_CONFIG}=await load('store/vehicleConfigStore.ts');
     const {useVehicleTelemetryStore:telemetry,projectVehicleTelemetry,updateVehicleTelemetry,startVehicleTelemetry,HUD_UPDATE_HZ}=await load('store/vehicleTelemetryStore.ts');
     const {useInputStore:inputs,inputRef}=await load('store/inputStore.ts');
-    const {VehicleFlags,PlayerFlags}=await load('store/tools/inputMasks.ts');
+    const {VehicleFlags}=await load('store/tools/inputMasks.ts');
     const {useUIStore:ui}=await load('store/uiStore.ts');
     const {usePreferencesStore:prefs,sanitizePreferences}=await load('store/preferencesStore.ts');
     const {usePerformanceOverlayStore:inspector,togglePerformanceDetails}=await load('performance/performanceOverlayStore.ts');
     const {DrivingHUD}=await load('ui/DrivingHUD.tsx');
     const base={id:'me',vehicle_id:'brz',position:[0,1,0],rotation:[0,0,0,1],speed:10,rpm:0,gear:0,fuel:0,temp:0,vehicle_mask:VehicleFlags.ENGINE_ON,player_mask:0};
-    const calibrated={max_speed:80,hud:{telemetry_mask:31,max_rpm:9000,redline_rpm:7500,fuel_capacity_liters:50,min_temp_c:40,overheat_c:110,critical_c:130}};
+    const calibrated={max_speed:80,hud:{cockpit_controls:true,cockpit_version:2,telemetry_mask:31,max_rpm:9000,redline_rpm:7500,fuel_capacity_liters:50,min_temp_c:40,overheat_c:110,critical_c:130}};
     const live={...base,rpm:4250,gear:3,fuel:25,temp:90,boost_fraction:.75};
     let tick=0;
     const snapshot=entity=>network.getState().setSnapshot({tick:++tick,entities:[entity]},performance.now());
@@ -58,7 +58,7 @@ test('restored gauges consume Rust telemetry without inventing resource state or
     await t.test('invalid optional values and calibration cannot introduce NaN, infinite scales or a false warning',()=>{
       assert.equal(parseGaugeConfig(null),null);assert.equal(parseGaugeConfig({max_speed:NaN}),null);
       const config=parseGaugeConfig({max_speed:Infinity});assert.equal(config,null);
-      const bad=parseGaugeConfig({max_speed:20,hud:{telemetry_mask:31,max_rpm:0,redline_rpm:999999,fuel_capacity_liters:0,min_temp_c:100,overheat_c:0,critical_c:0}});
+      const bad=parseGaugeConfig({max_speed:20,hud:{cockpit_controls:true,cockpit_version:2,telemetry_mask:31,max_rpm:0,redline_rpm:999999,fuel_capacity_liters:0,min_temp_c:100,overheat_c:0,critical_c:0}});
       assert.ok(bad.maxRpm>0&&bad.redlineRpm<=bad.maxRpm);assert.ok(bad.minTempC<bad.overheatC&&bad.overheatC<bad.criticalC);assert.equal(bad.fuelCapacityLiters,null);
       const data=projectVehicleTelemetry({...live,speed:NaN,rpm:Infinity,gear:1.2,fuel:NaN,temp:undefined,boost_fraction:NaN},true,1000,1001,parseGaugeConfig(calibrated));
       for(const field of ['speedKph','rpm','gear','fuelLiters','tempC','boostFraction'])assert.equal(data[field],null,field);
@@ -105,9 +105,9 @@ test('restored gauges consume Rust telemetry without inventing resource state or
       network.getState().setConnected(true);network.getState().setPlayerId('me');snapshot(base);
       root=createRoot(document.getElementById('root'));
       await act(async()=>root.render(h(DrivingHUD)));
-      assert.equal(meter('Speed').getAttribute('aria-valuenow'),'36');assert.equal(meter('Engine RPM').getAttribute('aria-valuetext'),'Unavailable');assert.equal(control('Hold NOS boost').disabled,true);
+      assert.equal(meter('Speed').getAttribute('aria-valuenow'),'36');assert.equal(meter('Engine RPM').getAttribute('aria-valuetext'),'Unavailable');assert.equal(control('Hold NOS boost'),null);assert.equal(meter('Ultimate charge').getAttribute('aria-valuetext'),'Unavailable');
       await act(async()=>{configs.getState().receive('me',calibrated);snapshot(live);updateVehicleTelemetry();});
-      assert.equal(meter('Engine RPM').getAttribute('aria-valuenow'),'4250');assert.equal(meter('Fuel').getAttribute('aria-valuenow'),'25');assert.equal(meter('Coolant temperature').getAttribute('aria-valuenow'),'90');assert.equal(control('Hold NOS boost').disabled,false);
+      assert.equal(meter('Engine RPM').getAttribute('aria-valuenow'),'4250');assert.equal(meter('Fuel').getAttribute('aria-valuenow'),'25');assert.equal(meter('Coolant temperature').getAttribute('aria-valuenow'),'90');assert.equal(control('Hold NOS boost'),null);
       await act(async()=>prefs.getState().update({speedUnit:'mph'}));assert.ok(Math.abs(Number(meter('Speed').getAttribute('aria-valuenow'))-22.3694)<.001);assert.match(meter('Speed').getAttribute('aria-valuetext'),/MPH/);
       assert.equal(JSON.parse(localStorage.getItem('avenlab-preferences-v1')).state.speedUnit,'mph');
       assert.equal(sanitizePreferences({speedUnit:'knots',touchLayout:'bad'}).touchLayout,'pedals');
@@ -118,9 +118,9 @@ test('restored gauges consume Rust telemetry without inventing resource state or
       assert.equal(control('Toggle TCS').getAttribute('aria-pressed'),'true');
       await act(async()=>control('Toggle TCS').click());assert.equal(inputRef.current.vehicleMask&VehicleFlags.TCS,0);
       assert.equal(control('Toggle TCS').getAttribute('aria-pressed'),'true');assert.equal(control('Toggle TCS').getAttribute('aria-busy'),'true');
-      await act(async()=>{snapshot({...live,condition:.6,resource_mask:16,vehicle_mask:VehicleFlags.ENGINE_ON|VehicleFlags.ABS});updateVehicleTelemetry();});
+      await act(async()=>{snapshot({...live,condition:.6,resource_mask:16,vehicle_mask:VehicleFlags.ENGINE_ON|VehicleFlags.ABS,cockpit_mask:(inputRef.current.cockpit_mask&0xc0ffffff)>>>0});updateVehicleTelemetry();});
       assert.equal(control('Toggle TCS').getAttribute('aria-pressed'),'false');assert.equal(control('Toggle TCS').getAttribute('aria-busy'),'false');
-      await act(async()=>{control('Toggle TCS').dispatchEvent(new dom.window.KeyboardEvent('keydown',{code:'Space',bubbles:true,cancelable:true}));});
+      await act(async()=>{control('Toggle TCS').dispatchEvent(new dom.window.KeyboardEvent('keydown',{code:'Space',key:' ',bubbles:true,cancelable:true}));control('Toggle TCS').click();});
       assert.ok(inputRef.current.vehicleMask&VehicleFlags.TCS);assert.equal(inputRef.current.brake,0);
     });
     await t.test('simultaneous pedals and steering survive idle device polls and release independently',async()=>{
@@ -132,13 +132,28 @@ test('restored gauges consume Rust telemetry without inventing resource state or
       await pointer('Steer left','lostpointercapture',2);assert.equal(inputRef.current.steer,0);assert.equal(inputRef.current.brake,1);
       await pointer('Brake','pointercancel',3);assert.equal(inputRef.current.brake,0);
     });
-    await t.test('keyboard/gamepad/touch holds do not clear another device, and blur clears transient intent',async()=>{
+    await t.test('keyboard/gamepad/optional touch intent still has independent owners',async()=>{
       await act(async()=>inputs.getState().setAnalogFromSource('keyboard',{throttle:1}));await pointer('Reverse','pointerdown',1);assert.equal(inputRef.current.throttle,1);
       await act(async()=>inputs.getState().releaseInputSource('keyboard'));assert.equal(inputRef.current.throttle,-1);await pointer('Reverse','pointerup',1);
-      await act(async()=>inputs.getState().setHeldVehicleFlag('keyboard',VehicleFlags.BOOST,true));await pointer('Hold NOS boost','pointerdown',1);await pointer('Hold NOS boost','pointerup',1);assert.ok(inputRef.current.vehicleMask&VehicleFlags.BOOST);
+      await act(async()=>inputs.getState().setHeldVehicleFlag('keyboard',VehicleFlags.BOOST,true));await act(async()=>{inputs.getState().setHeldVehicleFlag('touch-actions',VehicleFlags.BOOST,true);inputs.getState().setHeldVehicleFlag('touch-actions',VehicleFlags.BOOST,false);});assert.ok(inputRef.current.vehicleMask&VehicleFlags.BOOST);
       await act(async()=>inputs.getState().releaseInputSource('keyboard'));assert.equal(inputRef.current.vehicleMask&VehicleFlags.BOOST,0);
-      await pointer('Horn','pointerdown',4);assert.ok(inputRef.current.playerMask&PlayerFlags.HONK);
-      await act(async()=>window.dispatchEvent(new Event('blur')));assert.equal(inputRef.current.playerMask&PlayerFlags.HONK,0);
+      await pointer('Accelerate','pointerdown',4);assert.equal(inputRef.current.throttle,1);
+      await act(async()=>window.dispatchEvent(new Event('blur')));assert.equal(inputRef.current.throttle,0);
+    });
+    await t.test('controller layout can hide every touch driving input without erasing keyboard/gamepad intent',async()=>{
+      await pointer('Accelerate','pointerdown',1);
+      await act(async()=>inputs.getState().setAnalogFromSource('keyboard',{steer:.5}));
+      await act(async()=>prefs.getState().update({drivingLayout:'controller',showTouchControls:false,showDriveControls:false}));
+      for(const name of ['Accelerate','Reverse','Brake','Steer left','Steering joystick','Toggle ABS','Toggle TCS'])assert.equal(control(name),null,name);
+      assert.equal(inputRef.current.throttle,0);assert.equal(inputRef.current.steer,.5);
+      await act(async()=>{inputs.getState().releaseInputSource('keyboard');inputs.getState().setAnalogFromSource('gamepad',{throttle:.6,steer:-.4});});
+      assert.equal(inputRef.current.throttle,.6);assert.equal(inputRef.current.steer,-.4);
+      assert.ok(meter('Engine RPM'));assert.ok(control('Open cockpit'));assert.equal(document.querySelector('.wheel-turn'),null);
+      assert.equal(sanitizePreferences({drivingLayout:'controller'}).showTouchControls,false);
+      assert.equal(sanitizePreferences({showTouchControls:'bad'}).showTouchControls,true);
+      assert.equal(JSON.parse(localStorage.getItem('avenlab-preferences-v1')).state.showTouchControls,false);
+      await act(async()=>{inputs.getState().releaseInputSource('gamepad');prefs.getState().update({drivingLayout:'standard',showTouchControls:true,showDriveControls:true});});
+      assert.ok(control('Accelerate'));assert.ok(control('Brake'));
     });
     await t.test('touch layout changes release the old controls and a released throttle stick cannot erase held brakes',async()=>{
       await pointer('Accelerate','pointerdown',1);await act(async()=>prefs.getState().update({touchLayout:'sticks'}));assert.equal(inputRef.current.throttle,0);assert.equal(control('Accelerate'),null);
@@ -161,6 +176,22 @@ test('restored gauges consume Rust telemetry without inventing resource state or
       await pointer('Steering joystick','pointerdown',1,{clientX:180,clientY:144});assert.equal(inputRef.current.steer,1);
       await act(async()=>network.getState().setConnected(false));assert.equal(inputRef.current.steer,0);
       await act(async()=>network.getState().setConnected(true));await pointer('Steering joystick','pointermove',1,{clientX:180,clientY:144});assert.equal(inputRef.current.steer,0);
+    });
+    await t.test('T disables confirmed traction after speed reactivation even if the old request still says off',async()=>{
+      const {Keyboard}=await load('controls/Keyboard.ts');
+      await act(async()=>root.render(h(Keyboard)));
+      await act(async()=>{
+        network.getState().setConnected(true);network.getState().setPlayerId('me');configs.getState().receive('me',calibrated);
+        inputs.getState().setAssist(2,false);
+        const revision=inputs.getState().input.cockpit_mask&0xff0000;
+        snapshot({...live,vehicle_mask:97,cockpit_mask:(192|(2<<4)|revision|(1<<25)|(1<<27))>>>0});
+        telemetry.setState({data:{...telemetry.getState().data,signal:'offline',tcsEnabled:false}});
+      });
+      assert.equal(network.getState().getMe().vehicle_mask&VehicleFlags.TCS,64);assert.equal(inputRef.current.vehicleMask&VehicleFlags.TCS,0);
+      await act(async()=>window.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'t',code:'KeyT',bubbles:true,cancelable:true})));
+      assert.equal(inputRef.current.vehicleMask&VehicleFlags.TCS,0);
+      assert.equal((inputRef.current.cockpit_mask>>>4)&3,2);
+      await act(async()=>window.dispatchEvent(new dom.window.KeyboardEvent('keyup',{key:'t',code:'KeyT',bubbles:true})));
     });
     assert.equal(TelemetryFields.BOOST,16);assert.equal(DEFAULT_GAUGE_CONFIG.telemetryMask,0);
   }finally{
