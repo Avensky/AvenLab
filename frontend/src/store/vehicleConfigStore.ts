@@ -7,13 +7,14 @@ export type GaugeConfig = {
   cockpitControls: boolean;
   cockpitVersion: number;
   clusterFields: number;
+  ambientTempC: number | null;
   speedMaxKph: number; maxRpm: number; redlineRpm: number; fuelCapacityLiters: number | null;
   minTempC: number; overheatC: number; criticalC: number; telemetryMask: number;
 };
 export const DEFAULT_GAUGE_CONFIG: GaugeConfig = {
   cockpitControls: false,
   cockpitVersion: 0,
-  clusterFields: 0,
+  clusterFields: 0, ambientTempC:null,
   speedMaxKph: 240, maxRpm: 9000, redlineRpm: 7500, fuelCapacityLiters: null,
   minTempC: 40, overheatC: 110, criticalC: 130, telemetryMask: 0,
 };
@@ -29,7 +30,8 @@ export function parseGaugeConfig(value: unknown): GaugeConfig | null {
   const overheatC = number("overheat_c", 110, minTempC + 1, 250);
   return {
     cockpitControls: hud.cockpit_controls === true,
-    cockpitVersion: hud.cockpit_controls === true ? number("cockpit_version", 1, 1, 4) : 0,
+    cockpitVersion: hud.cockpit_controls === true ? number("cockpit_version", 1, 1, 5) : 0,
+    ambientTempC:typeof hud.ambient_temp_c==="number"&&Number.isFinite(hud.ambient_temp_c)&&hud.ambient_temp_c>=-80&&hud.ambient_temp_c<=80?hud.ambient_temp_c:null,
     clusterFields: typeof hud.cluster_fields === "number" && Number.isInteger(hud.cluster_fields) && hud.cluster_fields >= 0 && hud.cluster_fields <= 0xffff ? hud.cluster_fields & 8191 : 0,
     // Rust max_speed is m/s. Round the face to readable 40 km/h major bands.
     speedMaxKph: Math.max(80, Math.min(800, Math.ceil(config.max_speed * 3.6 / 40) * 40)),

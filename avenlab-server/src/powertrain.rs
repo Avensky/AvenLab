@@ -103,6 +103,7 @@ pub struct HudCalibration {
     pub redline_rpm: f32,
     pub fuel_capacity_liters: f32,
     pub min_temp_c: f32,
+    pub ambient_temp_c: f32,
     pub overheat_c: f32,
     pub critical_c: f32,
 }
@@ -110,7 +111,7 @@ impl ResourceConfig {
     pub fn hud(self) -> HudCalibration {
         HudCalibration {
             cockpit_controls: true,
-            cockpit_version: 4,
+            cockpit_version: 5,
             cluster_fields: (1 << 2) | (1 << 3) | (1 << 9) | (1 << 10),
             telemetry_mask: RPM
                 | GEAR
@@ -122,7 +123,7 @@ impl ResourceConfig {
             max_rpm: self.max_rpm,
             redline_rpm: self.redline_rpm,
             fuel_capacity_liters: self.fuel_capacity_liters,
-            min_temp_c: 40.0,
+            min_temp_c: 40.0, ambient_temp_c:self.ambient_c,
             overheat_c: self.overheat_c,
             critical_c: self.critical_c,
         }
@@ -273,7 +274,14 @@ impl Powertrain {
                 && wheel_rpm * gear_ratio(self.gear - 1) * config.final_drive
                     < config.redline_rpm * 0.85
             {
-                self.gear -= 1;
+                // Pick a safe ratio directly; a stopped automatic need not step
+                // through every intermediate gear before returning to first.
+                let mut chosen=self.gear;
+                for candidate in (1..self.gear).rev() {
+                    let rpm=wheel_rpm*gear_ratio(candidate)*config.final_drive;
+                    if rpm<config.redline_rpm*0.85 {chosen=candidate;if rpm>=config.idle_rpm*2.2 {break;}}
+                }
+                self.gear=chosen;
                 self.shift_remaining_s = 0.4;
             }
         }
@@ -437,6 +445,16 @@ impl Powertrain {
 
 #[cfg(test)]
 mod tests {
+    #[test] fn stopped_automatic_returns_directly_from_sixth_to_first() {
+        let mut p=Powertrain::new(ROAD_RESOURCES);p.gear=6;
+        p.advance(ROAD_RESOURCES,Demand{throttle:1.0,longitudinal_speed:0.0,wheel_radius:0.32,engine_force:4000.0},1.0/120.0);
+        assert_eq!(p.gear,1);assert_eq!(p.manual_gear,None);
+        let mut moving=Powertrain::new(ROAD_RESOURCES);moving.gear=6;
+        moving.advance(ROAD_RESOURCES,Demand{throttle:1.0,longitudinal_speed:15.0,wheel_radius:0.32,engine_force:4000.0},1.0/120.0);
+        let wheel_rpm=15.0/0.32*60.0/std::f32::consts::TAU;
+        let rpm=wheel_rpm*ROAD_RESOURCES.gear_ratios[moving.gear as usize-1]*ROAD_RESOURCES.final_drive;
+        assert!(rpm<ROAD_RESOURCES.redline_rpm*0.85,"selected downshift must remain below the safe RPM limit");
+    }
     #[test] fn a_forward_gear_tap_expires_then_automatic_shifts_continue_under_throttle() {
         let mut p=Powertrain::new(ROAD_RESOURCES);
         let demand=Demand {throttle:1.0,longitudinal_speed:8.0,wheel_radius:0.32,engine_force:4000.0};

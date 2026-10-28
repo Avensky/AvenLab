@@ -79,7 +79,8 @@ max/redline RPM, fuel capacity and temperature limits. Road availability is 127;
 tank is 111. Bits: RPM=1, gear=2, fuel=4, temperature=8, NOS=16, condition=32,
 ultimate=64. Cockpit controls advertise `cockpit_version: 4`.
 Calibration is sent on first spawn and vehicle change, not repeated per tick.
-Optional v3 `cabin_mask` carries climate, key positions and temporary wipe state;
+Optional `cabin_mask` carries climate, key positions and temporary wipe state;
+v5 extends it to u32 for airflow and fan4, retaining all lower bits;
 `cruise_target_kph` carries a confirmed cruise target. Snapshot additions are `condition` (0..1), `boost_fraction` (0..1 or null when
 unfitted), `ultimate_fraction` (0..1), and `resource_mask`. Existing speed/RPM/gear/fuel/temp/torque fields now
 carry model values in m/s, RPM, -1/R 0/N or positive gear, liters, Celsius and N·m.

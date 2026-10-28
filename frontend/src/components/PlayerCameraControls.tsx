@@ -7,6 +7,7 @@ import { VehicleCameraFollower } from "../utils/cameraFollow";
 
 type PlayerCameraControlsProps = {
   playerId: string;
+  worldAligned?:boolean;
   offset?: [number, number, number];
   targetOffset?: [number, number, number];
   positionSpeed?: number;
@@ -19,7 +20,7 @@ type PlayerCameraControlsProps = {
 };
 
 export function PlayerCameraControls({
-  playerId, offset = [0, 2.2, -5.5], targetOffset = [0, 1, 5],
+  playerId, worldAligned=false, offset = [0, 2.2, -5.5], targetOffset = [0, 1, 5],
   positionSpeed = 7, targetSpeed = 10, enabled = true,
   lookSensitivity = 0.004, returnSpeed = 3.5,
   maxYaw = Math.PI * 0.65, maxPitch = 0.45,
@@ -95,7 +96,7 @@ export function PlayerCameraControls({
       orbitYaw.current = MathUtils.lerp(orbitYaw.current, 0, alpha);
       orbitPitch.current = MathUtils.lerp(orbitPitch.current, 0, alpha);
     }
-    follower.current!.update(pose, offset, targetOffset, orbitYaw.current, orbitPitch.current, positionSpeed, targetSpeed, delta);
+    follower.current!.update(pose, offset, targetOffset, orbitYaw.current, orbitPitch.current, positionSpeed, targetSpeed, delta,worldAligned);
     // Copy the shared displayed pose plus local view offsets. No extra world
     // lerp, velocity prediction, wheel compensation or raw-snapshot follow.
     camera.position.copy(follower.current!.position);

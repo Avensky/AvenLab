@@ -12,10 +12,11 @@ import { ConsoleDisplay } from "./ConsoleDisplay";
 import { ClimatePanel } from "./ClimatePanel";
 import { RadioPanel } from "./RadioPanel";
 import { IgnitionSwitch } from "./IgnitionSwitch";
+import {Minimap} from "../Minimap";
 import { CabinClock } from "./CabinClock";
 import "./cockpit.css";
 
-const tabs: {id:CockpitTab;label:string}[]=[{id:'drive',label:'DRIVE'},{id:'lights',label:'LIGHTS'},{id:'wipers',label:'WIPERS'},{id:'cruise',label:'CRUISE'},{id:'radio',label:'RADIO'},{id:'vehicle',label:'VEHICLE'},{id:'console',label:'CONSOLE'},{id:'ignition',label:'IGNITION'}];
+const tabs: {id:CockpitTab;label:string}[]=[{id:'drive',label:'DRIVE'},{id:'lights',label:'LIGHTS'},{id:'wipers',label:'WIPERS'},{id:'cruise',label:'CRUISE'},{id:'radio',label:'RADIO'},{id:'vehicle',label:'VEHICLE'},{id:'console',label:'CONSOLE'},{id:'ignition',label:'IGNITION'},{id:'navigation',label:'GPS'}];
 
 
 export function CockpitPanel() {
@@ -42,9 +43,10 @@ export function CockpitPanel() {
       if(action==='next_tab'||action==='previous_tab'){
         const state=useUIStore.getState(),index=tabs.findIndex(item=>item.id===state.cockpitTab);state.setCockpitTab(tabs[(index+(action==='next_tab'?1:-1)+tabs.length)%tabs.length].id);return;
       }
-      const buttons=Array.from(root.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')??[]).filter(button=>button.tabIndex>=0&&button.getClientRects().length>0);
-      const active=document.activeElement as HTMLButtonElement;
-      if(action==='activate'){if(buttons.includes(active))active.click();return;}
+      const buttons=Array.from(root.current?.querySelectorAll<HTMLElement>('button:not(:disabled),[role="slider"][aria-disabled="false"]')??[]).filter(button=>button.tabIndex>=0&&button.getClientRects().length>0);
+      const active=document.activeElement as HTMLElement;
+      if((active?.getAttribute('role')==='slider'||active?.getAttribute('aria-label')==='Ignition key')&&(action==='left'||action==='right')){active.dispatchEvent(new window.KeyboardEvent('keydown',{key:action==='left'?'ArrowLeft':'ArrowRight',bubbles:true,cancelable:true}));return;}
+      if(action==='activate'){if(buttons.includes(active)){if(active.getAttribute('role')==='slider')active.dispatchEvent(new window.KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true,cancelable:true}));else active.click();}return;}
       const index=buttons.indexOf(active),origin=active?.getBoundingClientRect();
       if(!origin){buttons[0]?.focus();return;}
       const horizontal=action==='left'||action==='right',direction=action==='left'||action==='up'?-1:1;
@@ -56,6 +58,7 @@ export function CockpitPanel() {
     const event=(e:Event)=>navigate((e as CustomEvent<MenuAction>).detail);
     window.addEventListener('avenlab:panel-action',event);
     const keyboard=(e:KeyboardEvent)=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();navigate('back');return;}
+      if(e.target instanceof HTMLElement&&(e.target.getAttribute('role')==='slider'||e.target.getAttribute('aria-label')==='Ignition key'))return;
       const action=({ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down'} as const)[e.key as 'ArrowLeft'];
       if(action){e.preventDefault();e.stopPropagation();navigate(action);}};
     const element=root.current;element?.addEventListener('keydown',keyboard);
@@ -79,6 +82,7 @@ export function CockpitPanel() {
         <div className="cockpit-segments"><button aria-label="Cruise speed down" disabled={!extended||!current.cruiseEnabled} onClick={()=>change({},9)}>− 1 MPH</button><button aria-label="Cruise speed up" disabled={!extended||!current.cruiseEnabled} onClick={()=>change({},8)}>+ 1 MPH</button></div>
         <small>{speed} KM/H{cruiseTarget!==null?` · SET ${Math.round(cruiseTarget)} KM/H`:''} · BRAKE CANCELS CRUISE</small></div>}
       {tab==='radio'&&<RadioPanel/>}
+      {tab==='navigation'&&<Minimap forceExpanded/>}
       {tab==='ignition'&&<div className="cockpit-ignition-page"><IgnitionSwitch/></div>}
       {tab==='vehicle'&&<div className="headunit-apps"><button onClick={()=>route('vehicle_select')}><img src="/images/car-sport.svg" alt=""/>VEHICLES</button><button onClick={()=>route('missions')}><img src="/images/mark2.svg" alt=""/>MISSIONS</button><button onClick={()=>route('settings')}><img src="/images/settings.svg" alt=""/>SETTINGS</button><button onClick={()=>useUIStore.getState().setCockpitTab('radio')}><img src="/images/soundOn.svg" alt=""/>RADIO</button><button onClick={()=>route('debug_menu')}><img src="/images/tools.svg" alt=""/>DEBUGGER</button><button onClick={close}><img src="/images/forward.svg" alt=""/>RESUME</button></div>}
     </div>

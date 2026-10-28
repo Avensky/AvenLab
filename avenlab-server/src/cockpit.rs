@@ -22,11 +22,11 @@ pub struct Cockpit {
     rejected: u8,
     last_request: Option<u32>,
     rejected_gear: Option<(u8, bool)>,
-    pub cabin_mask: u16,
+    pub cabin_mask: u32,
     key_override: bool,
     key_position: u8,
     key_inserted: bool,
-    last_cabin_request: Option<u16>,
+    last_cabin_request: Option<u32>,
     wipe_remaining_s: f32,
     forward_shift: Option<u8>,
 }
@@ -106,11 +106,11 @@ impl Cockpit {
         }
     }
 
-    pub fn receive_cabin(&mut self, packed: Option<u16>) {
+    pub fn receive_cabin(&mut self, packed: Option<u32>) {
         let Some(packed) = packed else { return; };
         if self.last_cabin_request == Some(packed) { return; }
         self.last_cabin_request = Some(packed);
-        self.cabin_mask = (packed & 0x3f0) | (packed & 15).min(14);
+        self.cabin_mask = (packed & 0x3f0) | (packed & 15).min(14) | (((packed>>16)&7).min(4)<<16) | (packed&(1<<19));
         // HVAC-only requests must never replay an old START or OFF command.
         if packed & (1 << 13) != 0 {
             self.key_override = true;
@@ -123,10 +123,10 @@ impl Cockpit {
         if !self.key_override { return legacy; }
         self.key_inserted && match self.key_position { 3 => true, 2 => running, _ => false }
     }
-    pub fn cabin_snapshot(&self, running: bool, requested: bool) -> u16 {
+    pub fn cabin_snapshot(&self, running: bool, requested: bool) -> u32 {
         let position = if self.key_override { self.key_position } else if running { 2 } else if requested { 3 } else { 0 };
-        self.cabin_mask | ((position as u16) << 10) | ((self.key_inserted as u16) << 12)
-            | ((self.key_override as u16) << 14) | (((self.wipe_remaining_s > 0.0) as u16) << 15)
+        self.cabin_mask | ((position as u32) << 10) | ((self.key_inserted as u32) << 12)
+            | ((self.key_override as u32) << 14) | (((self.wipe_remaining_s > 0.0) as u32) << 15)
     }
     pub fn cruise_target_kph(&self) -> Option<f32> { self.cruise_target.map(|speed|speed*3.6) }
 
@@ -184,6 +184,17 @@ impl Cockpit {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test] fn extended_airflow_and_fan_roundtrip_without_replaying_start() {
+        let mut c=Cockpit::default();let start=4|4096|8192|(3<<10);
+        c.receive_cabin(Some(start));assert!(c.engine_request(false,false));
+        c.advance(1.0/120.0,0.0,0.0,0.0,0.0,true);
+        c.receive_cabin(Some((start & !8192)|(4<<16)|(1<<19)));
+        let snapshot=c.cabin_snapshot(false,false);
+        assert_eq!((snapshot>>16)&7,4);assert_ne!(snapshot&(1<<19),0);
+        assert_eq!((snapshot>>10)&3,2);assert!(!c.engine_request(true,false));
+        c.receive_cabin(Some(4|(7<<16)));assert_eq!((c.cabin_mask>>16)&7,4);
+        assert_eq!(c.cabin_mask&(1<<19),0,"fan 4 clears when a lower mode is requested");
+    }
     fn packet(gear:u32, automatic:bool, assist:u32, command:u32, revision:u32) -> u32 {
         (gear << 7) | ((automatic as u32) << 6) | (assist << 4) | (command << 24) | (revision << 16)
     }

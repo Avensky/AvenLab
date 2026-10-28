@@ -14,11 +14,11 @@ export type MenuRow = {
 };
 export type MenuTab = { id: string; label: string; description?: string; rows: MenuRow[]; content?: ReactNode };
 
-export function TabbedMenu({ title, eyebrow = "REDLINE VECTOR", subtitle, tabs, onBack, backLabel = "Back", status }: {
-  title: string; eyebrow?: string; subtitle?: string; tabs: MenuTab[];
+export function TabbedMenu({ title, eyebrow = "REDLINE VECTOR", subtitle, tabs, onBack, backLabel = "Back", status,initialTab }: {
+  initialTab?:string; title: string; eyebrow?: string; subtitle?: string; tabs: MenuTab[];
   onBack: () => void; backLabel?: string; status?: string;
 }) {
-  const [selection, setSelection] = useState({ tab: tabs[0].id, row: "", focus: "row" });
+  const [selection, setSelection] = useState({ tab: tabs.find(tab=>tab.id===initialTab)?.id??tabs[0].id, row: "", focus: "row" });
   const tabIndex = Math.max(0, tabs.findIndex((tab) => tab.id === selection.tab));
   const tab = tabs[tabIndex];
   const rows = tab.rows.filter((row) => !row.disabled && row.action);

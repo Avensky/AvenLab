@@ -5,38 +5,31 @@ import { useControlRelease } from "../../controls/useControlRelease";
 import { useCockpitState } from "./useCockpitState";
 
 function Stalk({angle,label,mode,asset,onUp,onDown,onTurn,onCancel,disabled,repeat=false}:{
-  angle:number;label:string;mode:string;asset:string;onUp:()=>void;onDown:()=>void;onTurn:()=>void;onCancel?:()=>void;disabled:boolean;repeat?:boolean;
+ angle:number;label:string;mode:string;asset:string;onUp:()=>void;onDown:()=>void;onTurn:()=>void;onCancel?:()=>void;disabled:boolean;repeat?:boolean;
 }) {
-  const pointer=useRef<{id:number;y:number;action:-1|0|1}|null>(null),timer=useRef<number|null>(null),suppress=useRef(false);
-  const callbacks=useRef({onUp,onDown});useEffect(()=>{callbacks.current={onUp,onDown};},[onUp,onDown]);
-  const [pull,setPull]=useState(0);
-  const release=useCallback(()=>{pointer.current=null;setPull(0);if(timer.current!==null)window.clearTimeout(timer.current);timer.current=null;},[]);
-  useControlRelease(release);
-  const fire=(direction:-1|1)=>{(direction===-1?callbacks.current.onUp:callbacks.current.onDown)();
-    if(repeat)timer.current=window.setTimeout(()=>{if(pointer.current?.action===direction)fire(direction);},350);};
-  const finish=(event:PointerEvent<HTMLButtonElement>,cancel=false)=>{
-    const current=pointer.current;if(!current||current.id!==event.pointerId)return;
-    suppress.current=!cancel&&current.action!==0;release();
-    if(event.currentTarget.hasPointerCapture?.(event.pointerId))event.currentTarget.releasePointerCapture(event.pointerId);
-  };
-  const radians=angle*Math.PI/180,reach=angle===315?23:31;
-  return <>
-    <span className="column-stalk-rod" style={{'--stalk-angle':`${-angle}deg`,width:`${reach}%`} as CSSProperties} aria-hidden="true"><i/></span>
-    <button type="button" className="column-stalk-cap" disabled={disabled} aria-label={label} title={`${label} · drag up/down, tap to rotate`}
-      style={{left:`${50+reach*Math.cos(radians)}%`,top:`${50-reach*Math.sin(radians)}%`,'--stalk-pull':`${pull}px`} as CSSProperties}
-      onPointerDown={event=>{if(event.button!==0||pointer.current)return;suppress.current=false;pointer.current={id:event.pointerId,y:event.clientY,action:0};event.currentTarget.setPointerCapture?.(event.pointerId);}}
-      onPointerMove={event=>{const current=pointer.current;if(!current||current.id!==event.pointerId)return;const delta=event.clientY-current.y;
-        const direction=Math.abs(delta)<9?0:delta<0?-1:1;if(direction===current.action)return;
-        if(timer.current!==null)window.clearTimeout(timer.current);timer.current=null;current.action=direction;setPull(direction*5);
-        if(direction)fire(direction);}}
-      onPointerUp={event=>finish(event)} onPointerCancel={event=>finish(event,true)} onLostPointerCapture={event=>finish(event,true)}
-      onClick={()=>{if(suppress.current){suppress.current=false;return;}onTurn();}}
-      onKeyDown={event=>{if(event.key==='ArrowUp'||event.key==='ArrowDown'||event.key==='Escape'){
-        event.preventDefault();event.stopPropagation();if(event.key==='Escape')onCancel?.();else(event.key==='ArrowUp'?onUp:onDown)();
-      }else if(event.key===' '||event.key==='Enter')event.stopPropagation();}}>
-      <img src={`/images/${asset}`} alt=""/><span>{mode}</span>
-    </button>
-  </>;
+ const pointer=useRef<{id:number;angle:number;y:number;action:-1|0|1}|null>(null),timer=useRef<number|null>(null),suppress=useRef(false),[pull,setPull]=useState(0);
+ const callbacks=useRef({onUp,onDown});useEffect(()=>{callbacks.current={onUp,onDown};},[onUp,onDown]);
+ const release=useCallback(()=>{pointer.current=null;setPull(0);if(timer.current!==null)window.clearTimeout(timer.current);timer.current=null;},[]);useControlRelease(release);
+ const fire=(direction:-1|1)=>{(direction===1?callbacks.current.onUp:callbacks.current.onDown)();if(repeat&&pointer.current)timer.current=window.setTimeout(()=>{if(pointer.current?.action===direction)fire(direction);},350);};
+ const tap=(direction:-1|1)=>{release();setPull(direction);fire(direction);timer.current=window.setTimeout(release,150);};
+ const polar=(e:PointerEvent<HTMLButtonElement>)=>{const rect=e.currentTarget.closest('.wheel-assembly')?.getBoundingClientRect();return rect&&rect.width?Math.atan2(e.clientY-rect.y-rect.height/2,e.clientX-rect.x-rect.width/2)*180/Math.PI:NaN;};
+ const finish=(e:PointerEvent<HTMLButtonElement>,cancel=false)=>{const d=pointer.current;if(!d||d.id!==e.pointerId)return;suppress.current=!cancel&&d.action!==0;release();};
+ const reach=angle===315?23:31,point=(a:number)=>({left:`${50+reach*Math.cos(a*Math.PI/180)}%`,top:`${50-reach*Math.sin(a*Math.PI/180)}%`});
+ const words=angle===120?['R','L']:angle===60?['WASH','WIPE']:['RES+','SET−'];
+ return <>
+  <div className="stalk-actuator" style={{transform:`rotate(${pull*12}deg)`}}>
+   <span className="column-stalk-rod" style={{'--stalk-angle':`${-angle}deg`,width:`${reach}%`} as CSSProperties} aria-hidden="true"><i/></span>
+   <button type="button" className="column-stalk-cap" disabled={disabled} aria-label={label} title={`${label}: clockwise up, counterclockwise down; tap center to rotate mode`} style={{...point(angle),'--stalk-tangent':`${90-angle}deg`} as CSSProperties}
+    onContextMenu={e=>e.preventDefault()} onPointerDown={e=>{if(e.button!==0||pointer.current)return;suppress.current=false;pointer.current={id:e.pointerId,angle:polar(e),y:e.clientY,action:0};e.currentTarget.setPointerCapture?.(e.pointerId);}}
+    onPointerMove={e=>{const d=pointer.current;if(!d||d.id!==e.pointerId)return;const a=polar(e),delta=Number.isFinite(a)&&Number.isFinite(d.angle)?((a-d.angle+540)%360)-180:(d.y-e.clientY);const dir=Math.abs(delta)<9?0:delta>0?1:-1;if(dir===d.action)return;if(timer.current!==null)window.clearTimeout(timer.current);d.action=dir;setPull(dir);if(dir)fire(dir);}}
+    onPointerUp={e=>finish(e)} onPointerCancel={e=>finish(e,true)} onLostPointerCapture={e=>finish(e,true)}
+    onClick={()=>{if(suppress.current){suppress.current=false;return;}onTurn();}}
+    onKeyDown={e=>{if(['ArrowUp','ArrowDown','Escape'].includes(e.key)){e.preventDefault();e.stopPropagation();if(e.key==='Escape')onCancel?.();else tap(e.key==='ArrowUp'?1:-1);}}}>
+    <img src={`/images/${asset}`} alt=""/><span>{mode}</span>
+   </button>
+  </div>
+  {([1,-1] as const).map((dir,i)=>{const a=angle-dir*30;return <button key={dir} type="button" className="stalk-step" disabled={disabled} aria-label={`${label} ${dir===1?'up':'down'}`} style={{...point(a),transform:`translate(-50%,-50%) rotate(${90-a}deg)`}} onClick={()=>tap(dir)}>{words[i]}</button>;})}
+ </>;
 }
 
 export function ColumnStalks() {

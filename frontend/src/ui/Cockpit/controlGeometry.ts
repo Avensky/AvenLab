@@ -8,3 +8,7 @@ export function parkingLeverPose(level:number) {
   return {angle:Math.atan2(y,x)*180/Math.PI,reach:.72+.28*fraction};
 }
 export function inNeutralLane(y:number) { return Number.isFinite(y)&&Math.abs(y-51)<=12; }
+
+export function shiftKnobRoute(from:{x:number;y:number},to:{x:number;y:number},automatic:boolean) {
+ return automatic?[from,to]:[from,{x:from.x,y:51},{x:to.x,y:51},to];
+}

@@ -20,7 +20,7 @@ export class VehicleCameraFollower {
   reset() { this.initialized = false; }
 
   update(pose: Pose, offset: Vec3, targetOffset: Vec3, yaw: number, pitch: number,
-    positionSpeed: number, targetSpeed: number, delta: number) {
+    positionSpeed: number, targetSpeed: number, delta: number, worldAligned=false) {
     this.orbitRotation.setFromEuler(this.orbitEuler.set(pitch, yaw, 0, "YXZ"));
     this.desiredPosition.fromArray(offset).applyQuaternion(this.orbitRotation);
     this.desiredTarget.fromArray(targetOffset).applyQuaternion(this.orbitRotation);
@@ -36,7 +36,7 @@ export class VehicleCameraFollower {
       this.localTarget.lerp(this.desiredTarget, 1 - Math.exp(-Math.max(0, targetSpeed) * dt));
     }
     this.chassisPosition.fromArray(pose.position);
-    this.chassisRotation.fromArray(pose.rotation);
+    if(worldAligned)this.chassisRotation.identity();else this.chassisRotation.fromArray(pose.rotation);
     this.position.copy(this.localPosition).applyQuaternion(this.chassisRotation).add(this.chassisPosition);
     this.target.copy(this.localTarget).applyQuaternion(this.chassisRotation).add(this.chassisPosition);
   }

@@ -97,3 +97,53 @@ html[data-reduce-motion="true"] .wheel-rotor,html[data-reduce-motion="true"] .ig
 @media(max-height:450px){.drive-dock{bottom:78px;width:180px;max-height:calc(100dvh - 88px);gap:3px}.drive-dock .hud-transmission .shift-gate{height:75px}.drive-dock .hud-transmission .handbrake-lever{height:84px}.drive-dock .console-display-content{height:76px}}
 @media(max-width:600px) and (orientation:portrait){.drive-dock{width:166px;bottom:96px;max-height:calc(100dvh - 210px)}.drive-dock .hud-transmission{grid-template-columns:62px 1fr;gap:3px}.drive-dock .console-display-content{height:90px}.drive-dock[data-expanded="false"]{bottom:96px}}
 @media(max-height:320px){.drive-dock{width:154px;bottom:64px;max-height:calc(100dvh - 72px)}.drive-dock .hud-transmission{grid-template-columns:55px 1fr}.drive-dock .hud-transmission .shift-gate{height:57px}.drive-dock .hud-transmission .handbrake-lever{height:67px}.drive-dock .console-display-content{height:72px}}
+/* Compact FR-S console: equipment owns its minimize control; visibility is menu-only. */
+.driving-hud{--console-width:clamp(166px,19vw,230px)}
+.drive-dock{right:max(10px,env(safe-area-inset-right));bottom:max(8px,env(safe-area-inset-bottom));width:var(--console-width);max-height:calc(100dvh - 16px);gap:4px;overflow:auto}
+.drive-dock[data-expanded="false"]{width:146px}
+.drive-dock .pedal-hud{position:static;inset:auto;transform:none;width:100%;display:flex;justify-content:flex-end;gap:4px;align-items:flex-end}
+.drive-dock .hud-transmission{grid-template-columns:minmax(58px,.9fr) minmax(76px,1.1fr);grid-template-rows:auto auto;align-items:stretch;gap:3px}
+.hud-transmission>.hud-parking{grid-column:1;grid-row:1;align-self:stretch}.hud-transmission>.hud-assists{grid-column:1;grid-row:2;align-self:end}.hud-transmission>.hud-shifter{grid-column:2;grid-row:1/3;align-self:stretch}
+.drive-dock .hud-transmission .shift-gate{height:128px;margin:0}.drive-dock .hud-transmission .handbrake-lever{height:84px}.drive-dock .hud-transmission .mechanical-handbrake{position:relative;padding-top:12px}
+.hud-transmission .parking-levels{position:absolute;right:0;top:0;gap:1px}.drive-dock .hud-transmission .parking-levels button{font-size:5px;padding:2px 1px}
+.hud-transmission .drive-assists{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2px}.hud-transmission .drive-assists .assist-trac{grid-column:1;grid-row:1}.hud-transmission .drive-assists .assist-abs{grid-column:2;grid-row:1}.hud-transmission .drive-assists .assist-sport{grid-column:3;grid-row:1}
+.drive-dock .hud-transmission .drive-assists button{height:29px;min-width:0;padding:1px;font:6px/1 monospace}.drive-dock .hud-transmission .drive-assists button span{font-size:5px}.drive-dock .hud-transmission .drive-assists img{width:10px;height:10px}
+.transmission-console .ebrake-base{transform:rotate(25deg);left:22%;width:42%;top:80%}
+.transmission-console .handbrake-lever .ebrake-handle,.transmission-console .handbrake-lever[data-active="true"] .ebrake-handle{left:34%;top:79%;width:90%;clip-path:polygon(0 12%,72% 25%,100% 36%,100% 64%,72% 75%,0 88%)}
+.ignition-hud{left:auto;right:calc(var(--console-width) + 24px);top:auto;bottom:clamp(110px,30vh,230px);transform:none;width:100px}
+.ignition-system{display:block;height:auto!important}.ignition-cylinder,.ignition-hud .ignition-cylinder,.cockpit-ignition-page .ignition-cylinder{width:100px;height:100px;border:0;border-radius:50%;padding:0;background:none;display:block;touch-action:none}
+.ignition-cylinder svg{display:block;width:100%;height:100%;overflow:visible}.ignition-cylinder [data-key-position]{cursor:pointer;pointer-events:auto}.radial-key{transition:transform 100ms linear}
+.console-display{padding:3px;border-width:2px}.console-display .console-display-content{height:auto;max-height:none;overflow:visible;padding-top:3px}.console-display .console-display-tabs{flex-wrap:wrap;gap:2px;padding:2px 0}.console-display .console-display-tabs button{flex:1 1 29%;min-height:18px;font:6px monospace;padding:2px}
+.console-display .console-command-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.console-command-grid button{min-height:22px;font-size:6px}
+.cockpit-radio[data-compact="true"] .radio-display{position:relative;padding:2px 20px 2px 3px;min-height:26px;border:0;background:#091820;gap:1px;overflow:hidden}.cockpit-radio[data-compact="true"] .radio-display strong{font-size:8px;line-height:1.2}.cockpit-radio[data-compact="true"] .radio-display small{font-size:6px;line-height:1.2;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+.radio-display .component-minimize{position:absolute;right:1px;top:2px;width:18px;height:20px;padding:0}.component-minimize{background:transparent;border:1px solid #627e8c50;color:#bed7e0;font:10px monospace;cursor:pointer}
+.cockpit-radio[data-compact="true"] .radio-buttons{display:flex;gap:2px;margin-top:2px}.cockpit-radio[data-compact="true"] .radio-buttons button{height:17px;min-height:17px;padding:2px;font-size:6px}.radio-status{display:block;font-size:6px;color:#ddb780}.cockpit-radio[data-compact="true"] .radio-volume{margin:2px 0 0;gap:3px}
+.climate-panel{margin:0;padding:2px;border-width:1px}.console-clock-strip{display:flex;flex-wrap:nowrap;gap:3px;margin:0;min-height:22px}.console-clock-strip .cabin-clock{font-size:10px;padding:2px 3px}.console-clock-strip output{font:8px monospace;white-space:nowrap;color:#d8e9ef}.console-clock-strip .component-minimize{width:17px;height:20px;padding:0}.console-clock-strip .physical-hazard{margin-left:auto;width:22px;height:20px;min-height:20px;font-size:20px;padding:0}.console-clock-strip .match-clock{font-size:6px}
+.climate-three-knobs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;padding:9px 3px 5px}
+.climate-knob{aspect-ratio:1;position:relative;border:2px solid #8395a0;border-radius:50%;background:radial-gradient(circle at 35% 25%,#3a4650,#111a23 70%);box-shadow:0 2px 3px #0006;touch-action:none;cursor:grab}
+.climate-knob[aria-disabled="true"]{opacity:.4}.knob-title{position:absolute;top:-9px;left:0;right:0;text-align:center;font:5px/1 monospace;white-space:nowrap;color:#b1c3ce}.knob-ring{position:absolute;inset:-2px;border:2px solid transparent;border-top-color:#a6c7d6;border-right-color:#758e9d;border-radius:50%}.climate-knob:last-child .knob-ring{border-left-color:#6fbcff;border-right-color:#ef776b}
+.knob-pointer{position:absolute;inset:0;pointer-events:none}.knob-pointer:before{content:"";position:absolute;left:calc(50% - 1px);top:0;width:2px;height:7px;background:#eef8fc}
+.climate-three-knobs .climate-knob button{position:absolute;inset:27% 16% 25%;padding:0;min-height:0;border:1px solid #5e7079;border-radius:50%;background:#111e29;font:4px monospace;color:#dceaf1}.climate-knob button[aria-pressed="true"]{color:#ffbc53;border-color:#bd9051}.climate-knob output{position:absolute;bottom:-5px;left:-5px;right:-5px;text-align:center;font:5px/1 monospace;pointer-events:none;color:#dbeaf2;background:#07111b9c}
+.stalk-actuator{position:absolute;inset:0;pointer-events:none;transform-origin:50% 50%;transition:transform 100ms linear}.wheel-assembly .column-stalk-cap{width:19px;height:14px;transform:translate(-50%,-50%) rotate(var(--stalk-tangent));padding:1px;font-size:4px}.column-stalk-cap img{height:7px;width:8px}.column-stalk-cap span{font-size:4px}.column-stalk-rod{height:3%}
+.stalk-step{position:absolute;z-index:5;pointer-events:auto;min-width:16px;height:14px;border:0;border-radius:3px;background:#101b2480;color:#bcd7e2;padding:1px;font:4px/1 monospace;touch-action:manipulation}.stalk-step:focus-visible,.stalk-step:hover{outline:1px solid #a4d7e4}
+@media(max-height:400px){.driving-hud{--console-width:166px}.drive-dock .hud-transmission .shift-gate{height:100px}.drive-dock .hud-transmission .handbrake-lever{height:63px}.drive-dock .hud-transmission .drive-assists button{height:25px}.ignition-hud{width:86px;right:calc(var(--console-width) + 20px)}.ignition-hud .ignition-cylinder{width:86px;height:86px}.climate-three-knobs{gap:4px;padding-top:9px}.drive-dock .driving-pedal{height:34px;width:42px}.drive-dock .driving-pedal img{height:18px}.drive-dock .driving-pedal small{font-size:6px}}
+@media(prefers-reduced-motion:reduce){.stalk-actuator,.radial-key{transition:none}}
+html[data-reduce-motion="true"] .stalk-actuator,html[data-reduce-motion="true"] .radial-key{transition:none}
+
+/* Ebrake polish: label upper-left; strength targets descend from upper-right. */
+.transmission-console .mechanical-handbrake{position:relative}
+.drive-dock .hud-transmission .mechanical-handbrake{padding-top:0}
+.transmission-console .handbrake-lever .ebrake-indicator{top:3px;left:3px;right:auto;bottom:auto;text-align:left;color:#ff7369;pointer-events:none}
+.transmission-console .mechanical-handbrake .parking-levels{position:absolute;top:0;right:0;z-index:3;display:flex;flex-direction:column;align-items:stretch;width:24px;gap:2px}
+.transmission-console .mechanical-handbrake .parking-levels button{flex:none;min-height:14px;line-height:1;padding:2px 1px}
+
+/* Brake requests retain their own feedback; the printed red legend stays steady. */
+.transmission-console .handbrake-lever .ebrake-indicator{color:#ff7369;animation:none}
+.drive-assists .assist-trac{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.drive-assists .assist-trac img{display:block;flex:none;margin-inline:auto;object-fit:contain;object-position:center}
+.drive-assists .assist-trac span{width:100%;text-align:center}
+.driving-pedal{--pedal-icon-height:27px}
+.driving-pedal.driving-reverse>span{display:grid;place-items:center;flex:none;height:var(--pedal-icon-height);line-height:1;font-size:var(--pedal-icon-height)}
+@media(max-height:450px){.driving-pedal{--pedal-icon-height:22px}}
+@media(max-height:320px){.driving-pedal{--pedal-icon-height:17px}}
+@media(max-height:400px){.drive-dock .driving-pedal{--pedal-icon-height:18px}}

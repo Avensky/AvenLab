@@ -1,3 +1,5 @@
+import {leaveInspection,enterInspection} from "../store/inspectionActions";
+import {useGameStore} from "../store/gameStore";
 import { useEffect } from "react";
 import { usePreferencesStore } from "../store/preferencesStore";
 import { useInputStore } from "../store/inputStore";
@@ -51,6 +53,10 @@ export function Keyboard() {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.repeat || !focused || document.visibilityState === "hidden" || isTypingTarget(event.target)) return;
       const ui = useUIStore.getState();
+      if(ui.screen==='sandbox'&&ui.overlay===null&&!ui.isModeLoading&&['F6','F7'].includes(event.code)){
+        event.preventDefault();release();if(event.code==='F7'){if(useGameStore.getState().editor)leaveInspection();else enterInspection();}else{leaveInspection();useGameStore.getState().cycleCamera();}return;
+      }
+      if(event.code==='Escape'&&useGameStore.getState().editor&&ui.overlay===null){event.preventDefault();release();leaveInspection();return;}
       if (event.code === "F4" && !event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey
         && isDrivingScreen(ui.screen) && !ui.isModeLoading && !useCanDataStore.getState().commandOpen) {
         event.preventDefault(); release();
@@ -146,6 +152,7 @@ export function Keyboard() {
     const onFocusIn = (event: FocusEvent) => { if (isTypingTarget(event.target)) release(); };
     const releaseIfBlocked = () => { if (!canDrive()) release(); };
     // Clear physical key state at the transition, not on the next key press.
+    const unsubscribeGame=useGameStore.subscribe(releaseIfBlocked);
     const unsubscribeUI = useUIStore.subscribe(releaseIfBlocked);
     const unsubscribePerformance = usePerformanceOverlayStore.subscribe((state, previous) => {
       if (state.focused !== previous.focused) release();
@@ -166,7 +173,7 @@ export function Keyboard() {
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisibility);
       document.removeEventListener("focusin", onFocusIn);
-      unsubscribeUI(); unsubscribeCAN(); unsubscribePerformance(); release();
+      unsubscribeGame(); unsubscribeUI(); unsubscribeCAN(); unsubscribePerformance(); release();
     };
   }, []);
   return null;

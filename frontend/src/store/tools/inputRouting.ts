@@ -1,3 +1,4 @@
+import {useGameStore} from "../gameStore";
 import { isDrivingScreen, useUIStore } from "../uiStore";
 import { useCanDataStore } from "../canDataStore";
 import { performanceOverlayHasFocus } from "../../performance/performanceOverlayStore";
@@ -6,7 +7,7 @@ export type MenuAction = "up" | "down" | "left" | "right" | "activate" | "back" 
 
 export function canDrive() {
   const ui = useUIStore.getState();
-  return isDrivingScreen(ui.screen)
+  return !useGameStore.getState().editor && isDrivingScreen(ui.screen)
     && ui.overlay === null && !ui.isModeLoading
     && !useCanDataStore.getState().commandOpen && !performanceOverlayHasFocus();
 }

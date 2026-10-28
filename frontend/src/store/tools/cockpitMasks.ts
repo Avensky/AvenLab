@@ -6,6 +6,9 @@ export type CockpitRequest = {
   parking: boolean; parkingStrength: number; washer: boolean; cruiseEnabled: boolean; cruiseAction: number; revision: number;
 };
 export const DEFAULT_COCKPIT_MASK = (1 << 6) | (1 << 7); // automatic Drive
+export function cockpitCommandPending(request:number|undefined,confirmed:number|null,...commands:CockpitCommand[]) {
+  return request!==undefined && (confirmed===null || ((request>>>16)&255)!==((confirmed>>>16)&255)) && commands.includes(((request>>>24)&15) as CockpitCommand);
+}
 export function unpackCockpit(mask = DEFAULT_COCKPIT_MASK): CockpitRequest {
   return { lights: mask & 3, wipers: (mask >>> 2) & 3, assist: (mask >>> 4) & 3,
     automatic: Boolean(mask & (1 << 6)), gear: (mask >>> 7) & 15,

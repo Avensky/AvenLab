@@ -2,8 +2,8 @@ import { create } from "zustand";
 import { PlayerFlags } from "./tools/inputMasks";
 import { useInputStore } from "./inputStore";
 
-type RadioState = { track: string; playing: boolean; volume: number; muted: boolean; message: string };
-export const useRadioStore = create<RadioState>(() => ({ track: "NO SOURCE", playing: false, volume: .6, muted: false, message: "" }));
+type RadioState = { track: string; title:string; artist:string; station:string; playing: boolean; volume: number; muted: boolean; message: string };
+export const useRadioStore = create<RadioState>(() => ({ track: "NO SOURCE", title:"",artist:"",station:"LOCAL AUDIO", playing: false, volume: .6, muted: false, message: "" }));
 let audio: HTMLAudioElement | null = null, source: string | null = null;
 function player() {
   if (!audio) {
@@ -35,6 +35,7 @@ export async function loadRadioFile(file: File) {
   if (source) URL.revokeObjectURL(source);
   source = URL.createObjectURL(file); element.src = source;
   const state = useRadioStore.getState(); element.volume = state.muted ? 0 : state.volume;
-  useRadioStore.setState({ track: file.name, playing: false, message: "" });
+  const parts=file.name.replace(/\.[^.]+$/, "").split(/\s+-\s+/,2);
+  useRadioStore.setState({ title:parts.length===2?parts[1]:parts[0],artist:parts.length===2?parts[0]:"",track: file.name, playing: false, message: "" });
   await toggleRadio();
 }

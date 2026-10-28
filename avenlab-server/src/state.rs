@@ -81,7 +81,7 @@ pub struct PhysicsEntitySnapshot {
     pub boost_fraction: Option<f32>, // 0..1; None when no NOS is fitted
     pub resource_mask: u16,  // cranking/heat/fuel/damage status bits
     pub cockpit_mask: u32,
-    pub cabin_mask: u16,
+    pub cabin_mask: u32,
     pub cruise_target_kph: Option<f32>,
     pub cluster_mask: u16,
 
@@ -206,7 +206,7 @@ pub struct InputPacket {
     #[serde(default)]
     pub cockpit_mask: Option<u32>,
     #[serde(default)]
-    pub cabin_mask: Option<u16>,
+    pub cabin_mask: Option<u32>,
 
     pub vehicleMask: u16,
     pub playerMask: u16,
@@ -529,7 +529,7 @@ mod tests {
         use crate::vehicle_setup::{BRZ, TANK};
         let config = serde_json::to_value(VehicleConfigPayload::new("driver", BRZ)).unwrap();
         assert_eq!(config["config"]["hud"]["telemetry_mask"], 127);
-        assert_eq!(config["config"]["hud"]["cockpit_version"], 4);
+        assert_eq!(config["config"]["hud"]["cockpit_version"], 5);
         assert_eq!(config["config"]["hud"]["fuel_capacity_liters"], 50.0);
         assert_eq!(config["config"]["max_speed"], BRZ.max_speed);
         assert!(config["config"].get("resources").is_none(), "server tuning is not a repeated HUD payload");

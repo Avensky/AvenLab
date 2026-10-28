@@ -3,9 +3,9 @@ import { createJSONStorage, persist } from "zustand/middleware";
 
 export const DEFAULT_BINDINGS = { forward: "KeyW", reverse: "KeyS", left: "KeyA", right: "KeyD", brake: "Space", handbrake: "KeyB" };
 export type BindingAction = keyof typeof DEFAULT_BINDINGS;
-export const HUD_GROUPS = ["gauges", "wheel", "pedals", "ignition", "display", "climate", "shifter", "parking", "assists", "chat"] as const;
+export const HUD_GROUPS = ["gauges", "wheel", "pedals", "ignition", "display", "climate", "shifter", "parking", "assists", "chat", "minimap"] as const;
 export type HudGroupId = typeof HUD_GROUPS[number];
-export const DEFAULT_HUD_GROUPS: Record<HudGroupId, boolean> = {gauges:true,wheel:true,pedals:true,ignition:true,display:true,climate:true,shifter:true,parking:true,assists:true,chat:true};
+export const DEFAULT_HUD_GROUPS: Record<HudGroupId, boolean> = {gauges:true,wheel:true,pedals:true,ignition:true,display:true,climate:true,shifter:true,parking:true,assists:true,chat:true,minimap:true};
 export type Preferences = {
   fov: number;
   cameraSensitivity: number;

@@ -112,7 +112,6 @@ test('restored gauges consume Rust telemetry without inventing resource state or
       assert.equal(JSON.parse(localStorage.getItem('avenlab-preferences-v1')).state.speedUnit,'mph');
       assert.equal(sanitizePreferences({speedUnit:'knots',touchLayout:'bad'}).touchLayout,'pedals');
     });
-    await act(async()=>control('Expand driving assists').click());
     await t.test('condition warnings and ABS/TCS lights use confirmed snapshots, while clicks only change requests',async()=>{
       await act(async()=>{inputs.getState().setInput({vehicleMask:VehicleFlags.ENGINE_ON|VehicleFlags.ABS|VehicleFlags.TCS});configs.getState().receive('me',{...calibrated,hud:{...calibrated.hud,telemetry_mask:63}});snapshot({...live,condition:.6,resource_mask:16,vehicle_mask:VehicleFlags.ENGINE_ON|VehicleFlags.ABS|VehicleFlags.TCS});updateVehicleTelemetry();});
       assert.equal(meter('Vehicle condition').getAttribute('aria-valuenow'),'60');assert.ok(document.querySelector('.dashboard-signal').textContent.includes('REPAIR'));
@@ -150,7 +149,7 @@ test('restored gauges consume Rust telemetry without inventing resource state or
       assert.equal(inputRef.current.throttle,0);assert.equal(inputRef.current.steer,.5);
       await act(async()=>{inputs.getState().releaseInputSource('keyboard');inputs.getState().setAnalogFromSource('gamepad',{throttle:.6,steer:-.4});});
       assert.equal(inputRef.current.throttle,.6);assert.equal(inputRef.current.steer,-.4);
-      assert.ok(meter('Engine RPM'));assert.ok(control('Open cockpit'));assert.equal(document.querySelector('.wheel-turn'),null);
+      assert.ok(meter('Engine RPM'));assert.equal(document.querySelector('.drive-dock-header'),null);assert.equal(document.querySelector('.wheel-turn'),null);
       assert.equal(sanitizePreferences({drivingLayout:'controller'}).showTouchControls,false);
       assert.equal(sanitizePreferences({showTouchControls:'bad'}).showTouchControls,true);
       assert.equal(JSON.parse(localStorage.getItem('avenlab-preferences-v1')).state.showTouchControls,false);

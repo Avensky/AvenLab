@@ -1,5 +1,6 @@
 //  inputStore.ts     ← controls/input packets
 import { create } from "zustand";
+import { useNetworkStore } from "./networkStore";
 import { deriveInputSignals } from "./tools/deriveInputSignals";
 import { reviseCockpit, unpackCockpit, type CockpitCommand, type CockpitRequest } from "./tools/cockpitMasks";
 import { reviseCabin, unpackCabin, type CabinState } from "./tools/cabinMasks";
@@ -94,7 +95,7 @@ export interface InputPacket {
     playerMask: number;  // uint16
     debug_mask?: number; // uint32, optional
     cockpit_mask?: number; // optional packed cockpit request; absent keeps legacy controls
-    cabin_mask?: number; // optional climate/key request, cockpit protocol v3
+    cabin_mask?: number; // climate/key v3; airflow/fan4 bits extend to u32 in v5
 }
 const defaultVehicleMask = VehicleFlags.ENGINE_ON | VehicleFlags.ABS | VehicleFlags.TCS;
 const defaultPlayerMask = 0;
@@ -140,6 +141,13 @@ interface InputState {
     togglePlayerFlag: (flag: number) => void;
 }
 
+// Once acknowledged, confirmed selector state replaces stale request bits. A
+// brake/lighting request must not revive a rejected gear or leave Neutral/Park.
+function cockpitRequestBase(current:InputPacket) {
+    const network=useNetworkStore.getState(),confirmed=network.connected?network.getMe()?.cockpit_mask:undefined;
+    if(confirmed===undefined||!Number.isSafeInteger(confirmed)||confirmed<0||confirmed>0xffffffff)return current.cockpit_mask;
+    return current.cockpit_mask===undefined||unpackCockpit(current.cockpit_mask).revision===unpackCockpit(confirmed).revision?confirmed:current.cockpit_mask;
+}
 export const useInputStore = create<InputState>((set, get) => ({
     // Initial HUD state must include the default ABS/TCS bits too.
     controls: deriveInputSignals(inputRef.current),
@@ -159,7 +167,7 @@ export const useInputStore = create<InputState>((set, get) => ({
         nextInput.brake = clampControl(nextInput.brake, 0, 1);
         nextInput.handbrake = clampControl(nextInput.handbrake, 0, 1);
         if (nextInput.cockpit_mask !== undefined && (!Number.isSafeInteger(nextInput.cockpit_mask) || nextInput.cockpit_mask < 0 || nextInput.cockpit_mask > 0xffffffff)) nextInput.cockpit_mask = previous.cockpit_mask;
-        if (nextInput.cabin_mask !== undefined && (!Number.isSafeInteger(nextInput.cabin_mask) || nextInput.cabin_mask < 0 || nextInput.cabin_mask > 16383)) nextInput.cabin_mask = previous.cabin_mask;
+        if (nextInput.cabin_mask !== undefined && (!Number.isSafeInteger(nextInput.cabin_mask) || nextInput.cabin_mask < 0 || (nextInput.cabin_mask > 0xfffff || (nextInput.cabin_mask & 0xc000)!==0))) nextInput.cabin_mask = previous.cabin_mask;
         // Polling the same held button must not broadcast another React update.
         if ((Object.keys(nextInput) as (keyof InputPacket)[])
             .every((key) => Object.is(nextInput[key], previous[key]))) return;
@@ -175,12 +183,12 @@ export const useInputStore = create<InputState>((set, get) => ({
 
     setCockpit(patch, command) {
         const current = inputRef.current;
-        const initial = current.cockpit_mask ?? reviseCockpit(undefined, { lights: hasFlag(current.vehicleMask, VehicleFlags.HEADLIGHTS) ? 2 : 0, assist: hasFlag(current.vehicleMask, VehicleFlags.TCS) ? 0 : 2 }, 0);
+        const initial = cockpitRequestBase(current) ?? reviseCockpit(undefined, { lights: hasFlag(current.vehicleMask, VehicleFlags.HEADLIGHTS) ? 2 : 0, assist: hasFlag(current.vehicleMask, VehicleFlags.TCS) ? 0 : 2 }, 0);
         get().setInput({ cockpit_mask: reviseCockpit(initial, patch, command) });
     },
     setAssist(assist, traction) {
         const current = inputRef.current;
-        const initial = current.cockpit_mask ?? reviseCockpit(undefined, { lights: hasFlag(current.vehicleMask, VehicleFlags.HEADLIGHTS) ? 2 : 0 }, 0);
+        const initial = cockpitRequestBase(current) ?? reviseCockpit(undefined, { lights: hasFlag(current.vehicleMask, VehicleFlags.HEADLIGHTS) ? 2 : 0 }, 0);
         get().setInput({ vehicleMask: setFlag(current.vehicleMask, VehicleFlags.TCS, traction), cockpit_mask: reviseCockpit(initial, { assist }, 1) });
     },
     setCabin(patch, confirmed) {

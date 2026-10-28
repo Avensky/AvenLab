@@ -20,7 +20,7 @@ test('mobile HUD groups, assisted shifter and enlarged resource dials',async t=>
   const {DrivingHUD}=await load('ui/DrivingHUD.tsx'),{SettingsMenu}=await load('game/SettingsMenu.tsx');
   const {Keyboard}=await load('controls/Keyboard.ts'),{GearSelector,HandbrakeLever}=await load('ui/Cockpit/MechanicalControls.tsx');
   const {parkingLeverPose}=await load('ui/Cockpit/controlGeometry.ts');
-  network.getState().setConnected(true);network.getState().setPlayerId('me');configs.getState().receive('me',{max_speed:70,hud:{cockpit_controls:true,cockpit_version:4,telemetry_mask:127,cluster_fields:8191}});
+  network.getState().setConnected(true);network.getState().setPlayerId('me');configs.getState().receive('me',{max_speed:70,hud:{cockpit_controls:true,cockpit_version:5,telemetry_mask:127,cluster_fields:8191}});
   const car={id:'me',vehicle_id:'brz',position:[0,1,0],rotation:[0,0,0,1],speed:0,rpm:850,gear:1,fuel:30,temp:85,vehicle_mask:97,player_mask:0,cockpit_mask:192,cabin_mask:4|4096|16384|(2<<10)};let tick=0;
   const fresh=()=>{network.getState().setSnapshot({tick:++tick,entities:[{...car}]},performance.now());updateVehicleTelemetry();};fresh();ui.setState({screen:'sandbox',overlay:null,isModeLoading:false});
   root=createRoot(document.getElementById('root'));
@@ -51,18 +51,18 @@ test('mobile HUD groups, assisted shifter and enlarged resource dials',async t=>
   await t.test('groups occupy separate HUD containers and hidden controls release only their source',async()=>{
    await act(async()=>prefs.getState().update({hudGroups:{...DEFAULT_HUD_GROUPS},showTouchControls:true,showDriveControls:true,steeringTravel:1.25}));await render(h(DrivingHUD));
    assert.ok(by('Vehicle instruments').closest('.instrument-hud'));assert.ok(by('Steering wheel').closest('.wheel-hud'));assert.ok(by('Accelerate').closest('.pedal-hud'));
-   assert.equal(document.querySelector('[data-hud-slot="minimap"]').childElementCount,0);assert.equal(by('Ignition key'),null,'running engine initially collapses the separate key pod');
+   assert.ok(by('Open map'));assert.ok(by('Ignition key'));assert.equal(document.querySelector('.hud-group-bar'),null);
    const wheel=by('Steering wheel');wheel.getBoundingClientRect=()=>({x:100,y:100,width:100,height:100});await pointer(wheel,'pointerdown',203.75,150);assert.equal(input.getState().input.steer,1);assert.ok(parseFloat(document.querySelector('.touch-stick-thumb').style.left)>100);
-   await pointer(by('Accelerate'),'pointerdown',0,0,2);await act(async()=>input.getState().setAnalogFromSource('keyboard',{throttle:.6}));await click('Hide steering');assert.equal(input.getState().input.steer,0);assert.equal(input.getState().input.throttle,.6);
-   await act(async()=>input.getState().releaseInputSource('keyboard'));assert.equal(input.getState().input.throttle,1);await click('Hide pedals');assert.equal(input.getState().input.throttle,0);
-   await click('Expand ignition');assert.ok(by('Ignition key'));await click('Expand vehicle display');assert.ok(by('Radio source'));assert.equal(document.querySelector('.console-display [aria-label="Ignition key"]'),null);
-   await click('Hide parking brake');assert.equal(by('Parking brake'),null);assert.ok(by('Drag gear stick'));
+   await pointer(by('Accelerate'),'pointerdown',0,0,2);await act(async()=>input.getState().setAnalogFromSource('keyboard',{throttle:.6}));await act(async()=>prefs.getState().setHudGroup('wheel',false));assert.equal(input.getState().input.steer,0);assert.equal(input.getState().input.throttle,.6);
+   await act(async()=>input.getState().releaseInputSource('keyboard'));assert.equal(input.getState().input.throttle,1);await act(async()=>prefs.getState().setHudGroup('pedals',false));assert.equal(input.getState().input.throttle,0);
+   assert.ok(by('Ignition key'));assert.ok(by('Radio source'));assert.equal(document.querySelector('.console-display [aria-label="Ignition key"]'),null);
+   await act(async()=>prefs.getState().setHudGroup('parking',false));assert.equal(by('Parking brake'),null);assert.ok(by('Drag gear stick'));
   });
   await t.test('HUD button activation cannot add brake input, and all-hidden groups can be restored in Settings',async()=>{
    await act(async()=>input.getState().releaseControls());await render(h(Fragment,null,h(DrivingHUD),h(Keyboard)));
    const button=by('Expand climate');await act(async()=>button.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:' ',code:'Space',bubbles:true,cancelable:true})));assert.equal(input.getState().input.brake,0);
    await act(async()=>button.dispatchEvent(new dom.window.KeyboardEvent('keyup',{key:' ',code:'Space',bubbles:true,cancelable:true})));
-   await act(async()=>prefs.getState().update({hudGroups:Object.fromEntries(Object.keys(DEFAULT_HUD_GROUPS).map(id=>[id,false]))}));assert.ok(by('HUD settings'));assert.equal(document.querySelectorAll('[data-hud-group]').length,0);
+   await act(async()=>prefs.getState().update({hudGroups:Object.fromEntries(Object.keys(DEFAULT_HUD_GROUPS).map(id=>[id,false]))}));assert.equal(document.querySelectorAll('[data-hud-group]').length,0);assert.equal(document.querySelector('.hud-group-bar'),null);
    await render(h(SettingsMenu));const tab=name=>[...document.querySelectorAll('[role="tab"]')].find(b=>b.textContent===name),row=id=>document.querySelector(`[data-menu-row="${id}"]`);
    await act(async()=>tab('HUD').click());await act(async()=>row('restore-hud').click());assert.ok(Object.values(prefs.getState().hudGroups).every(Boolean));
    const before=input.getState().input.cockpit_mask;await act(async()=>tab('Drivetrain').click());await act(async()=>row('shift-layout').click());assert.equal(prefs.getState().shiftLayout,'automatic');assert.equal(input.getState().input.cockpit_mask,before,'a layout preference does not send an engine/gear command');
@@ -85,7 +85,7 @@ test('mobile HUD groups, assisted shifter and enlarged resource dials',async t=>
    const audio=Object.getOwnPropertyDescriptor(globalThis,'Audio'),create=URL.createObjectURL,revoke=URL.revokeObjectURL;
    class Player{paused=true;ended=false;volume=1;constructor(){players++;}pause(){this.paused=true;this.onpause?.();}async play(){this.paused=false;this.onplay?.();}}
    Object.defineProperty(globalThis,'Audio',{configurable:true,value:Player});URL.createObjectURL=()=>`blob:sample-${players}`;URL.revokeObjectURL=()=>revoked++;
-   try{await render(h(DrivingHUD));await click('Expand vehicle display');await act(async()=>loadRadioFile(new dom.window.File(['audio'],'track.ogg',{type:'audio/ogg'})));assert.equal(radio.getState().playing,true);await click('Hide vehicle display');assert.equal(radio.getState().playing,true);await act(async()=>loadRadioFile(new dom.window.File(['more'],'next.ogg')));assert.equal(players,1);assert.equal(revoked,1);await act(async()=>setRadioVolume(2));assert.equal(radio.getState().volume,1);await act(async()=>toggleRadio());assert.equal(radio.getState().playing,false);}finally{URL.createObjectURL=create;URL.revokeObjectURL=revoke;if(audio)Object.defineProperty(globalThis,'Audio',audio);else delete globalThis.Audio;}
+   try{await render(h(DrivingHUD));await act(async()=>loadRadioFile(new dom.window.File(['audio'],'track.ogg',{type:'audio/ogg'})));assert.equal(radio.getState().playing,true);await act(async()=>prefs.getState().setHudGroup('display',false));assert.equal(radio.getState().playing,true);await act(async()=>loadRadioFile(new dom.window.File(['more'],'next.ogg')));assert.equal(players,1);assert.equal(revoked,1);await act(async()=>setRadioVolume(2));assert.equal(radio.getState().volume,1);await act(async()=>toggleRadio());assert.equal(radio.getState().playing,false);}finally{URL.createObjectURL=create;URL.revokeObjectURL=revoke;if(audio)Object.defineProperty(globalThis,'Audio',audio);else delete globalThis.Audio;}
   });
   await t.test('hiding every telemetry group stops the shared display and clock timers',async()=>{
    await act(async()=>root.render(null));const interval=window.setInterval,clear=window.clearInterval,timers=new Map();let id=0;

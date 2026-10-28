@@ -1,119 +1,29 @@
-// import { OrthographicCamera as OrthographicCameraComponent, useFBO, useTexture } from '@react-three/drei'
-// import { createPortal, useFrame, useThree } from '@react-three/fiber'
-// import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-// import { Box3, Matrix4, Scene, Vector2, Vector3 } from 'three'
-
-// import type { OrthographicCamera, Sprite, WebGLRenderTarget } from 'three'
-
-// import { useStore, levelLayer } from '../store'
-
-// const m = new Matrix4()
-// const playerPosition = new Vector3()
-// const playerRotation = new Vector3()
-// const spriteRotation = new Vector2()
-// const v = new Vector3()
-
-// function useLevelGeometricProperties(): [Box3, Vector3, Vector3] {
-//   const [box] = useState(() => new Box3())
-//   const [center] = useState(() => new Vector3())
-//   const [dimensions] = useState(() => new Vector3())
-//   const level = useStore((state) => state.level)
-
-//   useLayoutEffect(() => {
-//     if (!level.current?.parent) return
-//     level.current.parent.updateWorldMatrix(false, false)
-//     box.setFromObject(level.current)
-//     box.getCenter(center)
-//     box.getSize(dimensions)
-//   }, [])
-
-//   return [box, center, dimensions]
-// }
-
-// function MinimapTexture({ buffer }: { buffer: WebGLRenderTarget }): JSX.Element {
-//   const camera = useRef<OrthographicCamera>(null)
-//   const gl = useThree((state) => state.gl)
-//   const scene = useThree((state) => state.scene)
-//   const [levelBox, levelCenter] = useLevelGeometricProperties()
-
-//   useEffect(() => {
-//     if (!camera.current) return
-//     gl.setRenderTarget(buffer)
-//     camera.current.bottom = levelBox.min.z - levelCenter.z
-//     camera.current.top = levelBox.max.z - levelCenter.z
-//     camera.current.left = levelBox.min.x - levelCenter.x
-//     camera.current.right = levelBox.max.x - levelCenter.x
-//     camera.current.position.set(levelCenter.x, levelCenter.y + levelBox.max.y, levelCenter.z)
-//     camera.current.updateProjectionMatrix()
-//     gl.render(scene, camera.current)
-//     gl.setRenderTarget(null)
-//   }, [levelBox, levelCenter])
-
-//   useLayoutEffect(() => {
-//     if (!camera.current) return
-//     camera.current.layers.disableAll()
-//     camera.current.layers.enable(levelLayer)
-//   }, [levelLayer])
-
-//   return <OrthographicCameraComponent ref={camera} makeDefault={false} rotation={[-Math.PI / 2, 0, 0]} near={20} far={500} />
-// }
-
-// export function Minimap({ size = 200 }): JSX.Element {
-//   const player = useRef<Sprite>(null)
-//   const miniMap = useRef<Sprite>(null)
-//   const miniMapCamera = useRef<OrthographicCamera>(null)
-//   const [virtualScene] = useState(() => new Scene())
-//   const mask = useTexture('textures/mask.svg')
-//   const cursor = useTexture('textures/cursor.svg')
-//   const buffer = useFBO(size * 2, size * 2)
-//   const {
-//     gl,
-//     camera,
-//     scene,
-//     size: { height, width },
-//   } = useThree()
-//   const [, levelCenter, levelDimensions] = useLevelGeometricProperties()
-//   const chassisBody = useStore((state) => state.chassisBody)
-//   const screenPosition = useMemo(() => new Vector3(width / -2 - size / -2 + 30, height / -2 - size / -2 + 30, 0), [height, width, size])
-
-//   useFrame(() => {
-//     if (!miniMap.current || !miniMapCamera.current) return
-//     gl.autoClear = true
-//     gl.render(scene, camera)
-//     gl.autoClear = false
-//     gl.clearDepth()
-
-//     m.copy(camera.matrix).invert()
-//     miniMap.current.quaternion.setFromRotationMatrix(m)
-
-//     if (chassisBody.current && player.current) {
-//       v.subVectors(chassisBody.current.getWorldPosition(playerPosition), levelCenter)
-//       player.current.quaternion.setFromRotationMatrix(m)
-//       player.current.position.set(screenPosition.x + (v.x / levelDimensions.x) * size, screenPosition.y - (v.z / levelDimensions.z) * size, 0)
-//       chassisBody.current.getWorldDirection(playerRotation)
-//       spriteRotation.set(playerRotation.x, playerRotation.z)
-//       player.current.material.rotation = Math.PI / 2 - spriteRotation.angle()
-//     }
-
-//     gl.render(virtualScene, miniMapCamera.current)
-//   }, 1)
-
-//   return (
-//     <>
-//       {createPortal(
-//         <>
-//           <ambientLight intensity={1} />
-//           <sprite ref={miniMap} position={screenPosition} scale={[size, size, 1]}>
-//             <spriteMaterial map={buffer.texture} alphaMap={mask} />
-//           </sprite>
-//           <sprite ref={player} position={screenPosition} scale={[size / 20, size / 20, 1]}>
-//             <spriteMaterial color="white" alphaMap={cursor} />
-//           </sprite>
-//         </>,
-//         virtualScene,
-//       )}
-//       <OrthographicCameraComponent ref={miniMapCamera} position={[0, 0, 0.1]} />
-//       <MinimapTexture buffer={buffer} />
-//     </>
-//   )
-// }
+import {memo,useEffect,useMemo,useState} from 'react';
+import {useWorldStore} from '../store/worldStore';
+import {useVehicleTelemetryStore,startVehicleTelemetry} from '../store/vehicleTelemetryStore';
+import {useNavigationStore} from '../store/navigationStore';
+import {usePreferencesStore} from '../store/preferencesStore';
+import {buildRoadGraph,nearestRoad,roadRoute,pathDistance} from '../navigation/roadNavigation';
+const RoadLayer=memo(function RoadLayer({roads}:{roads:ReturnType<typeof buildRoadGraph>['roads']}){return <>{roads.map((r,i)=><rect key={i} x={r.x-r.hx} y={r.z-r.hz} width={r.hx*2} height={r.hz*2} fill="#293e4b" stroke="#59717f" strokeWidth="1"/>)}</>;});
+function MapContent(){
+ useEffect(startVehicleTelemetry,[]);
+ const map=useWorldStore(s=>s.map),x=useVehicleTelemetryStore(s=>s.data.positionX),z=useVehicleTelemetryStore(s=>s.data.positionZ),yaw=useVehicleTelemetryStore(s=>s.data.yawDeg),mile=usePreferencesStore(s=>s.speedUnit==='mph');
+ const destination=useNavigationStore(s=>s.destination),set=useNavigationStore.getState().setDestination,[range,setRange]=useState(600),[notice,setNotice]=useState('');
+ const graph=useMemo(()=>buildRoadGraph((map?.collider_chunks??[]).flatMap(chunk=>chunk.boxes)),[map]);
+ const start=x!==null&&z!==null?nearestRoad(graph,{x,z}):null,end=destination?nearestRoad(graph,destination):null;
+ const si=start?.index??-1,ei=end?.index??-1;
+ const middle=useMemo(()=>roadRoute(graph,si,ei),[graph,si,ei]);
+ const route=start&&end&&middle&&start.distance<=80&&end.distance<=80?[start.point,...middle,end.point]:null,metres=route?pathDistance(route):null;
+ const units=metres===null?'NO ROUTE':metres<8?'ARRIVED':mile?(metres>=1609?`${(metres/1609.344).toFixed(1)} MI`:`${Math.round(metres*3.28084)} FT`):(metres>=1000?`${(metres/1000).toFixed(1)} KM`:`${Math.round(metres)} M`);
+ const px=x??0,pz=z??0;
+ return <><svg className="gps-map" viewBox={`${px-range/2} ${pz-range/2} ${range} ${range}`} role="img" aria-label="GPS road map; click a road to set a destination" onClick={e=>{const r=e.currentTarget.getBoundingClientRect();if(!r.width||!r.height)return;const p=nearestRoad(graph,{x:px-range/2+(e.clientX-r.left)/r.width*range,z:pz-range/2+(e.clientY-r.top)/r.height*range});if(p&&p.distance<=80){set(p.point);setNotice('');}else setNotice('SELECT A ROAD');}}>
+  <RoadLayer roads={graph.roads}/>{route&&<polyline points={route.map(p=>`${p.x},${p.z}`).join(' ')} stroke="#8ee7ff" strokeWidth={range/90} fill="none" strokeLinejoin="round"/>}
+  {destination&&<circle cx={destination.x} cy={destination.z} r={range/65} fill="#ffb75b"/>}
+  {x!==null&&z!==null&&<g transform={`translate(${x} ${z}) scale(${range/170}) rotate(${180-(yaw??0)})`}><path d="M0 -7L5 6 0 3-5 6z" fill="#e3fbff" stroke="#061019" strokeWidth="1.5"/></g>}
+ </svg><span className="map-north">N</span><div className="gps-controls"><button aria-label="GPS destination ahead" disabled={x===null||!graph.roads.length} onClick={()=>{const a=(yaw??0)*Math.PI/180,p=nearestRoad(graph,{x:px+Math.sin(a)*250,z:pz+Math.cos(a)*250});if(p)set(p.point);}}>GPS</button><button aria-label="Clear GPS destination" onClick={()=>set(null)}>CLEAR</button><button aria-label="Map zoom in" onClick={()=>setRange(Math.max(150,range/2))}>+</button><button aria-label="Map zoom out" onClick={()=>setRange(Math.min(1600,range*2))}>−</button></div><output className="gps-status">{notice||(!map?'MAP UNAVAILABLE':!graph.roads.length?'ROAD DATA UNAVAILABLE':x===null?'GPS UNAVAILABLE':destination?units:'SELECT DESTINATION')}</output></>;
+}
+export function Minimap({forceExpanded=false}:{forceExpanded?:boolean}) {
+ const visible=usePreferencesStore(s=>s.hudGroups.minimap),[expanded,setExpanded]=useState(forceExpanded);
+ if(!visible&&!forceExpanded)return null;
+ return <section className={`hud-minimap ${forceExpanded?'map-full':''}`} data-hud-group="minimap" data-expanded={expanded} aria-label="Minimap and GPS"><button type="button" className="map-toggle" aria-label={expanded?'Minimize map':'Open map'} aria-expanded={expanded} onClick={()=>setExpanded(!expanded)}>MAP {expanded?'⌄':'⌃'}</button>{expanded&&<MapContent/>}</section>;
+}

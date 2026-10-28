@@ -1,4 +1,6 @@
-import { PerspectiveCamera, OrthographicCamera, OrbitControls } from '@react-three/drei'
+import { PerspectiveCamera, OrbitControls } from '@react-three/drei'
+import {InspectionCameraControls} from "../components/InspectionCameraControls";
+import {specialCameraPreset} from "../utils/drivingViews";
 import { RotatingCamera } from './RotatingCamera'
 import { useEffect, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
@@ -94,16 +96,16 @@ export default function Cameras() {
   const playerVehicleId = useNetworkStore((state) =>
     state.snapshot?.entities.find((entity) => entity.id === state.playerId)?.vehicle_id ?? null
   );
-  const playerCameraPreset = cameraPresetForVehicle(playerVehicleId);
+  const playerCameraPreset = camMode==="FIRST_PERSON"||camMode==="BIRDS_EYE"?specialCameraPreset(camMode,playerVehicleId):{...cameraPresetForVehicle(playerVehicleId),worldAligned:false};
   const controlsRef = useRef<ThreeOrbitControls | null>(null);
   // Run before camera (-1) and model (0). Keep the frame clock alive in
   // editor mode too. Negative priority retains automatic R3F rendering.
   useFrame(() => beginVehicleRenderFrame(), -100);
   useEffect(() => releaseVehicleRenderFrameClock, []);
 
-  if (editor) {
+  if (editor && screen==="sandbox") {
     return (
-      <OrthographicCamera makeDefault position={[0, 50, 0]} zoom={20} />
+      <><PerspectiveCamera makeDefault fov={fov} near={.05}/><InspectionCameraControls playerId={playerId} enabled={overlay===null}/></>
     );
   }
 
@@ -117,11 +119,13 @@ export default function Cameras() {
   const isDriving =
     screen === "sandbox" &&
     !editor &&
-    camMode === "DEFAULT";
+    (camMode === "DEFAULT" || camMode === "FIRST_PERSON" || camMode === "BIRDS_EYE");
   return (
     <>
-      <PerspectiveCamera makeDefault fov={fov} position={[0, 7, 12]} />
+      <PerspectiveCamera makeDefault fov={fov} near={.05} position={[0, 7, 12]} />
       <PlayerCameraControls
+        worldAligned={playerCameraPreset.worldAligned}
+        maxYaw={camMode==="BIRDS_EYE"?0:Math.PI*.65} maxPitch={camMode==="BIRDS_EYE"?0:.45}
         playerId={playerId}
         enabled={isDriving && overlay === null}
         offset={playerCameraPreset.offset}

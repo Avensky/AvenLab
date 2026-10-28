@@ -14,7 +14,7 @@ export function useCockpitState() {
   const confirmed = unpackCockpit(confirmedMask??undefined), requested = unpackCockpit(request??undefined);
   const pending = request!==undefined && (confirmedMask===null || requested.revision!==confirmed.revision);
   return {confirmed,current:pending?requested:confirmed,pending,actualGear,status:cockpitStatus(confirmedMask),
-    supported:live&&version>=2,extended:live&&version>=3,drivetrain:live&&version>=4,version,cabinMask,tcs,
+    supported:live&&version>=2,extended:live&&version>=3,drivetrain:live&&version>=4,climate:live&&version>=5,version,cabinMask,tcs,
     cabin:unpackCabin(cabinRequest??cabinMask??undefined),confirmedCabin:unpackCabin(cabinMask??undefined),
-    cabinPending:cabinRequest!==undefined&&(cabinMask===null||(cabinRequest&1023)!==(cabinMask&1023))};
+    cabinPending:cabinRequest!==undefined&&(cabinMask===null||(cabinRequest&0xf03ff)!==(cabinMask&0xf03ff))};
 }

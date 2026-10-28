@@ -14,6 +14,7 @@ export function SettingsMenu() {
   const render = useRenderSettingsStore();
   const debug = useDebugViewStore();
   const prefs = usePreferencesStore();
+  const initialTab=useUIStore(s=>s.settingsTab);
   const back = useUIStore((s) => s.backToParentMenu);
   const [pendingBinding, setPendingBinding] = useState<BindingAction | null>(null);
   const [notice, setNotice] = useState("Changes apply immediately");
@@ -51,7 +52,7 @@ export function SettingsMenu() {
   },
 });
   const upcoming = (id: string, label: string, description: string): MenuRow => ({ id, label, description, value: "Planned", disabled: true });
-  const groupLabels = {gauges:"Instruments",wheel:"Steering wheel",pedals:"Pedals",ignition:"Ignition key",display:"Vehicle display",climate:"Climate / hazards / clock",shifter:"Shifter",parking:"Parking brake",assists:"Driving assists",chat:"Team / game / general chat"};
+  const groupLabels = {gauges:"Instruments",wheel:"Steering wheel",pedals:"Pedals",ignition:"Ignition key",display:"Vehicle display",climate:"Climate / hazards / clock",shifter:"Shifter",parking:"Parking brake",assists:"Driving assists",chat:"Team / game / general chat",minimap:"Minimap / GPS"};
   const drivingRows: MenuRow[] = [
     { id: "driving-layout", label: "Driving layout", value: prefs.drivingLayout === "controller" ? "Controller" : "Standard", action: () => {
       const controller = prefs.drivingLayout !== "controller";
@@ -61,7 +62,7 @@ export function SettingsMenu() {
     { id: "drive-switches", label: "On-screen drive switches", description: "ABS, TRAC, VSC SPORT and parking brake. All remain available in Cockpit.", value: prefs.showDriveControls ? "Show" : "Hide", action: () => prefs.update({ showDriveControls: !prefs.showDriveControls }) },
   ];
   return <>
-    <TabbedMenu title="Settings" subtitle="Set up your driver station. Graphics, input and accessibility changes apply immediately." onBack={back} status={notice} tabs={[
+    <TabbedMenu initialTab={initialTab} title="Settings" subtitle="Set up your driver station. Graphics, input and accessibility changes apply immediately." onBack={back} status={notice} tabs={[
       { id: "display", label: "Display", description: "Graphics preferences are saved on this device. Higher resolution, reflections and shadows can increase frame time.", rows: [
         { id: "resolution", label: "Resolution scale", value: `${render.dpr}×`, action: (dir) => render.update({ dpr: step([0.5, 0.75, 1, 1.5, 2], render.dpr, dir) }) },
         { id: "fov", label: "Field of view", value: `${prefs.fov}°`, action: (dir) => prefs.update({ fov: step([55, 65, 75, 85, 95, 110], prefs.fov, dir) }) },

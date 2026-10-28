@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useInputStore } from "../../store/inputStore";
 import { useVehicleTelemetryStore } from "../../store/vehicleTelemetryStore";
-import { unpackCockpit } from "../../store/tools/cockpitMasks";
+import { cockpitCommandPending, unpackCockpit } from "../../store/tools/cockpitMasks";
 import { VehicleFlags, hasFlag } from "../../store/tools/inputMasks";
 
 function requestAssist(assist: number, traction: boolean) {
@@ -18,8 +18,8 @@ export function DriveAssists({ compact = false }: { compact?: boolean }) {
   const moving = useVehicleTelemetryStore(s => (s.data.speedKph ?? Infinity) > 1.8);
   const requestedMask = useInputStore(s => s.input.cockpit_mask);
   const requestedVehicle = useInputStore(s => s.input.vehicleMask);
-  const confirmed = unpackCockpit(confirmedMask ?? undefined), requested = unpackCockpit(requestedMask ?? undefined);
-  const pending = requestedMask !== undefined && requested.revision !== (confirmedMask === null ? -1 : confirmed.revision);
+  const confirmed = unpackCockpit(confirmedMask ?? undefined);
+  const pending = cockpitCommandPending(requestedMask,confirmedMask,1);
   const timer = useRef<number | null>(null), held = useRef<number | null>(null), consumed = useRef(false);
   const stop = () => { if (timer.current !== null) window.clearTimeout(timer.current); timer.current = null; held.current = null; };
   useEffect(() => {
@@ -32,9 +32,9 @@ export function DriveAssists({ compact = false }: { compact?: boolean }) {
   const toggleTrac = () => requestAssist(confirmed.assist === 1 ? 1 : tcs ? 2 : 0, !tcs);
   return <div className={`drive-assists${compact ? " drive-assists-compact" : " factory-assists"}`} role="group" aria-label="Driving assists"
     onKeyDown={event => { if (event.key === ' ' || event.key === 'Enter') event.stopPropagation(); }} onKeyUp={event => { if (event.key === ' ' || event.key === 'Enter') event.stopPropagation(); }}>
-    <button type="button" aria-label="Toggle ABS" disabled={!live} aria-pressed={abs} aria-busy={live && hasFlag(requestedVehicle, VehicleFlags.ABS) !== abs}
+    <button type="button" className="assist-abs" aria-label="Toggle ABS" disabled={!live} aria-pressed={abs} aria-busy={live && hasFlag(requestedVehicle, VehicleFlags.ABS) !== abs}
       onClick={() => useInputStore.getState().toggleVehicleFlag(VehicleFlags.ABS)}>ABS<span>{abs ? "ON" : "OFF"}</span></button>
-    <button type="button" aria-label="Toggle TCS" title="TRAC OFF · tap to toggle; hold 3 seconds while stopped for TRAC + VSC OFF"
+    <button type="button" className="assist-trac" aria-label="Toggle TCS" title="TRAC OFF · tap to toggle; hold 3 seconds while stopped for TRAC + VSC OFF"
       disabled={!live || !supported} aria-pressed={tcs} aria-busy={pending} data-off={!tcs}
       onPointerDown={event => { if (event.button !== 0 || held.current !== null) return; consumed.current = false; held.current = event.pointerId;
         if (!moving) timer.current = window.setTimeout(() => {
@@ -44,7 +44,7 @@ export function DriveAssists({ compact = false }: { compact?: boolean }) {
       onPointerUp={event => { if (held.current === event.pointerId) stop(); }} onPointerCancel={() => { stop(); consumed.current = false; }} onPointerLeave={() => { stop(); consumed.current = false; }}
       onClick={() => { if (consumed.current) { consumed.current = false; return; } toggleTrac(); }}>
       <img src="/images/traction-control.svg" alt="" /><span>TRAC<br />{tcs ? "ON" : "OFF"}</span></button>
-    <button type="button" aria-label="VSC Sport" disabled={!live || !supported} aria-pressed={confirmed.assist === 1} aria-busy={pending}
+    <button type="button" className="assist-sport" aria-label="VSC Sport" disabled={!live || !supported} aria-pressed={confirmed.assist === 1} aria-busy={pending}
       onClick={() => requestAssist(confirmed.assist === 1 ? (tcs ? 0 : 2) : 1, tcs)}>VSC<span>SPORT</span></button>
     {!compact && <><button type="button" aria-label="TRAC and VSC off" disabled={!live || !supported || moving} aria-pressed={confirmed.assist === 3}
       onClick={fullOff}>TRAC + VSC<span>OFF · STOPPED</span></button>

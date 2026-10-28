@@ -1,13 +1,13 @@
 .driving-dashboard { position:relative;left:auto;right:auto;bottom:auto;width:100%;transform:none;color:#f8fafc;pointer-events:none;font:10px/1.2 ui-monospace,monospace; }
 .dashboard-signal { position:absolute;top:-12px;left:0;color:#ffba7c;font-size:8px;letter-spacing:.04em; }
 .dashboard-signal:empty { display:none; }
-.dashboard-speed { width:33%;flex-shrink:0;position:relative; }
+.dashboard-speed { width:36%;flex-shrink:0;position:relative; }
 .dashboard-speed .speedometer-wrapper { width:100%; }
 .dashboard-cluster { display: flex; align-items: center; }
 .speedometer-wrapper { position: relative; width: 36%; flex-shrink: 0; }
 .dashboard-rpm { width: 40%; flex-shrink: 0; position: relative; z-index: 2; margin-left: -5%; margin-right: -4%; }
 .revolutions-wrapper { position: relative; }
-.fuel-temp-wrapper { width: 36%; flex-shrink: 0; position: relative; }
+.fuel-temp-wrapper { width: 33%; flex-shrink: 0; position: relative; }
 .dashboard-cluster svg { display: block; width: 100%; height: auto; overflow: visible; }
 .dashboard-cluster text { font: 700 12px ui-monospace, monospace; text-anchor: middle; dominant-baseline: middle; fill: #eef1f4; }
 .dashboard-cluster .gauge-scale text { font-size: 12px; font-style: italic; }

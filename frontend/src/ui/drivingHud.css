@@ -37,3 +37,13 @@ html[data-high-contrast="true"] .driving-hud button,html[data-high-contrast="tru
 .drive-dock .hud-group-header button,.drive-dock .console-command-grid button,.drive-dock .console-display-tabs button,.drive-dock .radio-buttons button,.drive-dock .radio-volume button,.drive-dock .climate-controls button{touch-action:manipulation}
 
 .instrument-hud .dashboard-signal{top:-1px;font-size:7px}
+.instrument-hud .driving-dashboard{padding-top:0}.instrument-hud .dashboard-signal{top:-9px}
+.hud-minimap{position:absolute;right:max(10px,env(safe-area-inset-right));top:max(8px,env(safe-area-inset-top));width:140px;pointer-events:auto;color:#c5dee9;font:8px monospace;z-index:2}
+.hud-minimap[data-expanded="false"]{width:56px}.map-toggle{width:100%;border:1px solid #69879788;background:#0a1821b8;color:#c8e4ee;padding:4px;font:7px monospace;cursor:pointer}.gps-map{display:block;width:100%;aspect-ratio:1;background:#07121ddd;border:1px solid #69879788;cursor:crosshair}.map-north{position:absolute;right:5px;top:25px;font:9px monospace;color:#b5e6ef}
+.gps-controls{display:flex;gap:2px;background:#07121dd9;padding:2px}.gps-controls button{flex:1;min-width:0;border:1px solid #7898a757;padding:3px 2px;background:#102432;color:#bedce8;font:6px monospace}.gps-status{display:block;text-align:center;padding:2px;background:#07121dd9;color:#a6d2df;font:6px monospace}
+.map-full{position:relative;inset:auto;width:min(100%,420px);margin:auto}.map-full .gps-map{max-height:65vh}.map-full .gps-controls button{font-size:9px;min-height:26px}
+@media(max-height:400px){.hud-minimap{width:112px}.hud-minimap[data-expanded="false"]{width:56px}}
+@media(max-width:600px) and (orientation:portrait){.hud-minimap{width:108px}.hud-minimap[data-expanded="false"]{width:56px}}
+.chat-minimize{width:auto;min-width:40px;padding:3px;background:#0a182188;border:1px solid #65829255;color:#b9d3df;font:7px monospace}
+.inspection-panel{position:absolute;left:50%;top:12px;transform:translateX(-50%);width:min(310px,50vw);display:grid;gap:5px;padding:8px;border:1px solid #6e91a8;background:#08131dea;color:#cbe3ef;font:8px monospace;pointer-events:auto}
+.inspection-panel>div{display:flex;gap:3px}.inspection-panel button{background:#173146;border:1px solid #7694a6;color:#d3eaf4;padding:5px;font:8px monospace}.inspection-panel span,.inspection-panel small{font-size:7px;color:#93b1c2}.inspection-panel label{display:flex;align-items:center;gap:6px}.inspection-panel input{min-width:0;flex:1}

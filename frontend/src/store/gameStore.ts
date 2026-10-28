@@ -1,5 +1,6 @@
 // gameStore.ts ← low-frequency UI/game selection
 import { create } from "zustand";
+import {nextDrivingView} from "../utils/drivingViews";
 
 // export type GameMode = | "sandbox" | "vehicle_test" | "swarm_demo" | "signal_recon";
 
@@ -75,12 +76,7 @@ export const useGameStore = create<GameState>((set) => ({
     camera: cameras[0],
     setCamera: (camera) => set({ camera }),
 
-    cycleCamera: () =>
-        set((state) => {
-            const index = cameras.indexOf(state.camera)
-            const next = cameras[(index + 1) % cameras.length]
-            return { camera: next }
-        }),
+    cycleCamera: () => set(state=>({camera:nextDrivingView(state.camera)})),
 
     setEditor: (value) => set({ editor: value }),
     toggleEditor: () => set((state) => ({ editor: !state.editor })),

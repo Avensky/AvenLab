@@ -15,6 +15,7 @@ export type VehicleTelemetry = {
   vehicleMask: number; clusterMask: number | null;
   cockpitMask: number | null;
   cabinMask: number | null; cruiseTargetKph: number | null;
+  positionX:number|null; positionZ:number|null; yawDeg:number|null;
   config: GaugeConfig;
 };
 const finite = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
@@ -29,10 +30,13 @@ export function projectVehicleTelemetry(entity: PhysicsEntitySnapshot | null | u
     ? rounded(Math.max(min, Math.min(max, value)), step) : null;
   const vehicleMask = entity?.vehicle_mask ?? 0;
   return {
+    positionX:valid&&finite(entity?.position?.[0])?rounded(entity.position[0],.1):null,
+    positionZ:valid&&finite(entity?.position?.[2])?rounded(entity.position[2],.1):null,
+    yawDeg:valid&&entity?.rotation?.length===4&&entity.rotation.every(finite)?rounded(Math.atan2(2*(entity.rotation[3]*entity.rotation[1]+entity.rotation[0]*entity.rotation[2]),1-2*(entity.rotation[1]**2+entity.rotation[2]**2))*180/Math.PI,.5):null,
     signal, vehicleId: entity?.vehicle_id?.toUpperCase() ?? "VEHICLE",
     vehicleMask: valid ? vehicleMask : 0,
     cockpitMask: valid && Number.isSafeInteger(entity?.cockpit_mask) && entity!.cockpit_mask! >= 0 && entity!.cockpit_mask! <= 0xffffffff ? entity!.cockpit_mask! : null,
-    cabinMask: valid && config.cockpitVersion >= 3 && Number.isSafeInteger(entity?.cabin_mask) && entity!.cabin_mask! >= 0 && entity!.cabin_mask! <= 65535 ? entity!.cabin_mask! : null,
+    cabinMask: valid && config.cockpitVersion >= 3 && Number.isSafeInteger(entity?.cabin_mask) && entity!.cabin_mask! >= 0 && entity!.cabin_mask! <= 0xfffff ? entity!.cabin_mask! : null,
     cruiseTargetKph: valid && config.cockpitVersion >= 3 && finite(entity?.cruise_target_kph) ? rounded(Math.max(0,Math.min(200,entity.cruise_target_kph)),.1) : null,
     clusterMask: valid && Number.isSafeInteger(entity?.cluster_mask) && entity!.cluster_mask! >= 0 && entity!.cluster_mask! <= 0xffff
       ? entity!.cluster_mask! & CLUSTER_KNOWN_MASK : null,

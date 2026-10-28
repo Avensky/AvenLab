@@ -1,3 +1,5 @@
+import {useGameStore} from "../store/gameStore";
+import {leaveInspection} from "../store/inspectionActions";
 import { usePreferencesStore } from "../store/preferencesStore";
 import { useEffect } from "react";
 import { useInputStore } from "../store/inputStore";
@@ -52,6 +54,7 @@ export function GameController() {
       if (state.screen !== previous.screen || state.overlay !== previous.overlay || state.isModeLoading !== previous.isModeLoading) resetMenuInput();
       if (!canDrive()) release();
     };
+    const unsubscribeGame=useGameStore.subscribe(()=>release());
     const unsubscribeUI = useUIStore.subscribe(releaseIfBlocked);
     const unsubscribePerformance = usePerformanceOverlayStore.subscribe((state, previous) => {
       if (state.focused !== previous.focused) { resetMenuInput(); release(); }
@@ -81,7 +84,8 @@ export function GameController() {
       const ui = useUIStore.getState();
       const typing = isTypingTarget(document.activeElement);
       const recorderText = typing && document.activeElement instanceof HTMLElement && Boolean(document.activeElement.closest("[data-performance-overlay]"));
-      if (edges[8] && pressed(4) && canDrive() && !typing) { release(); ui.openCockpit('console'); return; }
+      if (useGameStore.getState().editor && ui.overlay===null && edges[1] && !typing) { release(); leaveInspection(); return; }
+      if (edges[8] && pressed(4) && (canDrive() || useGameStore.getState().editor && ui.screen==='sandbox' && ui.overlay===null) && !typing) { release(); ui.openCockpit('console'); return; }
       if (edges[8] && ui.screen === "sandbox" && ui.overlay === null && !ui.isModeLoading
         && (!typing || performanceOverlayHasFocus() || recorderText)) { release(); togglePerformanceDetails(); return; }
       if (typing) {
@@ -157,7 +161,7 @@ export function GameController() {
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisibility);
       document.removeEventListener("focusin", onFocusIn);
-      unsubscribeUI(); unsubscribeCAN(); unsubscribePerformance(); release();
+      unsubscribeGame(); unsubscribeUI(); unsubscribeCAN(); unsubscribePerformance(); release();
     };
   }, []);
   return null;

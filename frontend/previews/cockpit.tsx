@@ -7,25 +7,26 @@ import {SettingsMenu} from '../src/game/SettingsMenu';
 import '../src/components/menus/menus.css';
 import {useNetworkStore as network} from '../src/store/networkStore';
 import {useVehicleConfigStore as config} from '../src/store/vehicleConfigStore';
-import {usePreferencesStore as prefs,DEFAULT_PREFERENCES} from '../src/store/preferencesStore';
+import {usePreferencesStore as prefs,DEFAULT_PREFERENCES,DEFAULT_HUD_GROUPS} from '../src/store/preferencesStore';
 import {useRenderSettingsStore as rendering} from '../src/store/renderSettingsStore';
 import {useDebugViewStore as debugView} from '../src/store/debugViewStore';
 import {useUIStore as ui} from '../src/store/uiStore';
 import {useVehicleTelemetryStore as telemetry,updateVehicleTelemetry} from '../src/store/vehicleTelemetryStore';
+import {useWorldStore as world} from '../src/store/worldStore';
 import {useInputStore as input} from '../src/store/inputStore';
 import '../src/ui/drivingHud.css';
 
 let layout=!new URLSearchParams(location.search).has('instruments');
 document.body.className=layout?'layout-review':'instrument-review';
-const style=document.createElement('style');style.textContent=`*{box-sizing:border-box}body{margin:0;background:#090e16;color:#e2e8f0;font:11px ui-monospace,monospace}body.layout-review{height:100dvh;overflow:hidden;background:radial-gradient(ellipse at 50% 30%,#27364144,transparent 60%),linear-gradient(#0c121d,#111d2a)}#review-controls{position:fixed;right:12px;top:8px;z-index:100;max-width:min(460px,95vw);background:#09131ed9;border:1px solid #607b8d60;color:#b7ced8}#review-controls summary{cursor:pointer;text-align:right;font:8px monospace;padding:5px 7px;list-style:none}#review-controls:not([open]){width:82px}#review-controls .review-actions{display:flex;flex-wrap:wrap;align-items:center;gap:4px;padding:7px;width:min(460px,92vw)}#review-controls strong{width:100%;font-size:8px;color:#97b4c5}#review-controls button{padding:4px 6px;border:1px solid #63708377;background:#152231aa;color:#e2e8f0;font:8px monospace;cursor:pointer}#review-controls label{display:flex;align-items:center;gap:5px;font-size:8px}#review-controls input{width:70px}.instrument-review .driving-dashboard{position:relative;inset:auto;transform:none;width:min(1080px,96vw);margin:16px auto}.tabbed-menu{position:fixed;inset:0;z-index:70;background:#07101a;color:#e4eef4}.tabbed-menu-shell{height:100dvh;width:100%;display:flex;flex-direction:column;overflow:hidden}.tabbed-menu-content{flex:1;min-height:0;overflow:auto}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}`;document.head.append(style);
+const style=document.createElement('style');style.textContent=`*{box-sizing:border-box}body{margin:0;background:#090e16;color:#e2e8f0;font:11px ui-monospace,monospace}body.layout-review{height:100dvh;overflow:hidden;background:radial-gradient(ellipse at 50% 30%,#27364144,transparent 60%),linear-gradient(#0c121d,#111d2a)}#review-controls{position:fixed;right:76px;top:8px;z-index:100;max-width:min(460px,95vw);background:#09131ed9;border:1px solid #607b8d60;color:#b7ced8}#review-controls summary{cursor:pointer;text-align:right;font:8px monospace;padding:5px 7px;list-style:none}#review-controls:not([open]){width:82px}#review-controls .review-actions{display:flex;flex-wrap:wrap;align-items:center;gap:4px;padding:7px;width:min(460px,92vw)}#review-controls strong{width:100%;font-size:8px;color:#97b4c5}#review-controls button{padding:4px 6px;border:1px solid #63708377;background:#152231aa;color:#e2e8f0;font:8px monospace;cursor:pointer}#review-controls label{display:flex;align-items:center;gap:5px;font-size:8px}#review-controls input{width:70px}.instrument-review .driving-dashboard{position:relative;inset:auto;transform:none;width:min(1080px,96vw);margin:16px auto}.tabbed-menu{position:fixed;inset:0;z-index:70;background:#07101a;color:#e4eef4}.tabbed-menu-shell{height:100dvh;width:100%;display:flex;flex-direction:column;overflow:hidden}.tabbed-menu-content{flex:1;min-height:0;overflow:auto}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}`;document.head.append(style);
 let phase='running',tick=0,lamps=false,lastRequest:number|undefined,lastCabin:number|undefined;
 let cockpit=192,electrical=4|4096|16384|(2<<10),cruise=false,target=0,rejected=0,rearmed=false,requestedTcs=true,sampleUltimate=.37;
 let startAt=0,wipeUntil=0,hintGear=1,hintUntil=0;
-function setup(){network.getState().setConnected(true);network.getState().setPlayerId('review');config.getState().receive('review',{max_speed:70,hud:{telemetry_mask:127,cockpit_controls:true,cockpit_version:4,cluster_fields:8191,max_rpm:9000,redline_rpm:7500,fuel_capacity_liters:50,min_temp_c:40,overheat_c:110,critical_c:130}});}
+function setup(){network.getState().setConnected(true);network.getState().setPlayerId('review');config.getState().receive('review',{max_speed:70,hud:{telemetry_mask:127,cockpit_controls:true,cockpit_version:5,cluster_fields:8191,max_rpm:9000,redline_rpm:7500,fuel_capacity_liters:50,min_temp_c:40,overheat_c:110,critical_c:130,ambient_temp_c:25}});}
 function publish(){
  if(phase==='lost'){network.getState().setConnected(false);updateVehicleTelemetry();return;}
  const controls=input.getState().input,request=controls.cockpit_mask,key=controls.cabin_mask,now=performance.now();
- if(key!==undefined&&key!==lastCabin){lastCabin=key;electrical=(electrical&~1023)|(key&1023);
+ if(key!==undefined&&key!==lastCabin){lastCabin=key;electrical=(electrical&~0xf03ff)|(key&0xf03ff);
    if(key&8192){electrical=(electrical&~(3<<10|4096))|(key&(3<<10|4096));const stage=(electrical>>>10)&3;
      if(!(key&4096)||stage<2)phase='off';else if(stage===3){if(phase!=='running'&&phase!=='idle'){phase='cranking';startAt=now;}}else if(phase==='cranking')phase='off';}
  }
@@ -52,6 +53,7 @@ function publish(){
  speed:phase==='running'?128/3.6:0,rpm:on?(phase==='running'?3200:850):phase==='cranking'?350:0,gear,fuel:32.5,temp:85,boost_fraction:.72,condition:.82,ultimate_fraction:sampleUltimate,
  vehicle_mask:vehicleMask,player_mask:0,resource_mask:phase==='cranking'?1:0,cluster_mask:telltales,cockpit_mask:confirmed>>>0,cabin_mask:electrical|(now<wipeUntil?32768:0),cruise_target_kph:cruise?target:undefined}]},now);updateVehicleTelemetry();
 }
+world.getState().setMap({schema_version:1,map_id:'preview-roads',coordinate_system:{units:'meters',up_axis:'Y',forward_axis:'+Z'},cell:[400,400],surface:{road_y:0},layout:{kind:'fixed_grid',origin:[0,0],size:[1,1]},visuals:[],chunks:[],collider_chunks:[{x:0,z:0,boxes:[{id:'north-road',visual:'',kind:'road',center:[0,0,0],half_extents:[7,1,320]},{id:'east-road',visual:'',kind:'road',center:[0,0,150],half_extents:[320,1,7]},{id:'parallel-road',visual:'',kind:'road',center:[180,0,0],half_extents:[7,1,320]}]}]});
 setup();prefs.persist.setOptions({name:'avenlab-cockpit-preview-only'});rendering.persist.setOptions({name:'avenlab-preview-render-only'});debugView.persist.setOptions({name:'avenlab-preview-debug-only'});prefs.getState().update({...DEFAULT_PREFERENCES,speedUnit:'mph',showTouchControls:true,showDriveControls:true,shiftLayout:'h-pattern'});ui.setState({screen:'sandbox',overlay:null,isModeLoading:false});publish();
 export function PreviewApp(){const overlay=ui(s=>s.overlay);if(overlay==='cockpit')return <CockpitPanel/>;
  if(overlay==='settings')return <SettingsMenu/>;
@@ -65,7 +67,7 @@ document.getElementById('review-cockpit')!.onclick=()=>ui.getState().openCockpit
 document.getElementById('review-lamps')!.onclick=()=>api.setLamps(!lamps);
 document.getElementById('review-standard')!.onclick=()=>prefs.getState().update({drivingLayout:'standard',showTouchControls:true,showDriveControls:true});
 document.getElementById('review-settings')!.onclick=()=>ui.getState().setOverlay('settings');
-document.getElementById('review-restore')!.onclick=()=>prefs.getState().update({hudGroups:{gauges:true,wheel:true,pedals:true,ignition:true,display:true,climate:true,shifter:true,parking:true,assists:true,chat:true},showTouchControls:true,showDriveControls:true});
+document.getElementById('review-restore')!.onclick=()=>prefs.getState().update({hudGroups:{...DEFAULT_HUD_GROUPS},showTouchControls:true,showDriveControls:true});
 document.getElementById('review-controller')!.onclick=()=>prefs.getState().update({drivingLayout:'controller',showTouchControls:false,showDriveControls:false});
 document.getElementById('review-touch')!.onclick=()=>prefs.getState().update({showTouchControls:!prefs.getState().showTouchControls});
 document.getElementById('review-switches')!.onclick=()=>prefs.getState().update({showDriveControls:!prefs.getState().showDriveControls});
