@@ -292,7 +292,7 @@ test('mouse, keyboard and polled gamepad navigate the real menus and preferences
       for (const [screen, names] of [
         ['missions', ['Overview', 'Objectives', 'Logistics', 'Squad roles']],
         ['career', ['Statistics', 'History', 'Leaderboard', 'Favorites', 'Customize', 'Achievements']],
-        ['settings', ['Display', 'Audio', 'Keyboard', 'Controller', 'Social', 'Other', 'Accessibility']],
+        ['settings', ['Display', 'HUD', 'Drivetrain', 'Audio', 'Keyboard', 'Controller', 'Social', 'Other', 'Accessibility']],
       ]) {
         await reset(screen);
         const shell = document.querySelector('[role="dialog"]');
@@ -341,14 +341,14 @@ test('mouse, keyboard and polled gamepad navigate the real menus and preferences
       await button(0); assert.equal(ui.getState().screen, 'settings');
       assert.equal(tab('Display').getAttribute('aria-selected'), 'true');
       await button(15); assert.equal(rendering.getState().dpr, 1.5);
-      await button(5); assert.equal(tab('Audio').getAttribute('aria-selected'), 'true');
-      await button(5); assert.equal(tab('Keyboard').getAttribute('aria-selected'), 'true');
-      await button(4); assert.equal(tab('Audio').getAttribute('aria-selected'), 'true');
+      await button(5); assert.equal(tab('HUD').getAttribute('aria-selected'), 'true');
+      await button(5); assert.equal(tab('Drivetrain').getAttribute('aria-selected'), 'true');
+      await button(4); assert.equal(tab('HUD').getAttribute('aria-selected'), 'true');
       await button(1); assert.equal(ui.getState().screen, 'main');
     });
     await t.test('all settings categories open, key remapping is saved and driving remains blocked in menus', async () => {
       await reset('settings');
-      for (const name of ['Display', 'Audio', 'Keyboard', 'Controller', 'Social', 'Other', 'Accessibility']) { await click(tab(name)); assert.equal(tab(name).getAttribute('aria-selected'), 'true'); }
+      for (const name of ['Display', 'HUD', 'Drivetrain', 'Audio', 'Keyboard', 'Controller', 'Social', 'Other', 'Accessibility']) { await click(tab(name)); assert.equal(tab(name).getAttribute('aria-selected'), 'true'); }
       await click(tab('Keyboard')); await click(row('forward')); await key('KeyU', 'u');
       assert.equal(preferences.getState().bindings.forward, 'KeyU');
       assert.equal(JSON.parse(localStorage.getItem('avenlab-preferences-v1')).state.bindings.forward, 'KeyU');

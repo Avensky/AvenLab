@@ -10,21 +10,13 @@ import type { MenuAction } from "../../store/tools/inputRouting";
 import { DriveControls } from "./DriveControls";
 import { ConsoleDisplay } from "./ConsoleDisplay";
 import { ClimatePanel } from "./ClimatePanel";
-import { loadRadioFile, setRadioVolume, toggleRadio, toggleRadioMute, useRadioStore } from "../../store/radioStore";
+import { RadioPanel } from "./RadioPanel";
+import { IgnitionSwitch } from "./IgnitionSwitch";
 import { CabinClock } from "./CabinClock";
 import "./cockpit.css";
 
-const tabs: {id:CockpitTab;label:string}[]=[{id:'drive',label:'DRIVE'},{id:'lights',label:'LIGHTS'},{id:'wipers',label:'WIPERS'},{id:'cruise',label:'CRUISE'},{id:'radio',label:'RADIO'},{id:'vehicle',label:'VEHICLE'},{id:'console',label:'CONSOLE'}];
+const tabs: {id:CockpitTab;label:string}[]=[{id:'drive',label:'DRIVE'},{id:'lights',label:'LIGHTS'},{id:'wipers',label:'WIPERS'},{id:'cruise',label:'CRUISE'},{id:'radio',label:'RADIO'},{id:'vehicle',label:'VEHICLE'},{id:'console',label:'CONSOLE'},{id:'ignition',label:'IGNITION'}];
 
-function RadioPanel() {
-  const radio=useRadioStore(),file=useRef<HTMLInputElement>(null);
-  return <div className="cockpit-radio">
-    <div className="radio-display"><small>LOCAL AUDIO / AUX</small><strong>{radio.track}</strong><span>{radio.message|| (radio.playing?'PLAYING':'STOPPED')}</span></div>
-    <div className="radio-buttons"><button onClick={()=>void toggleRadio()} aria-pressed={radio.playing}>{radio.playing?'PAUSE':'PLAY'}</button><button onClick={()=>file.current?.click()}>SOURCE</button><button onClick={toggleRadioMute} aria-pressed={radio.muted}>{radio.muted?'UNMUTE':'MUTE'}</button></div>
-    <div className="radio-volume"><button aria-label="Radio volume down" onClick={()=>setRadioVolume(radio.volume-.05)}>−</button><output>VOL {Math.round(radio.volume*100)}</output><button aria-label="Radio volume up" onClick={()=>setRadioVolume(radio.volume+.05)}>+</button></div>
-    <input ref={file} type="file" accept="audio/*" hidden aria-label="Choose local audio" onChange={event=>{const chosen=event.target.files?.[0];if(chosen)void loadRadioFile(chosen);event.target.value='';}} />
-  </div>;
-}
 
 export function CockpitPanel() {
   useEffect(startVehicleTelemetry, []);
@@ -87,6 +79,7 @@ export function CockpitPanel() {
         <div className="cockpit-segments"><button aria-label="Cruise speed down" disabled={!extended||!current.cruiseEnabled} onClick={()=>change({},9)}>− 1 MPH</button><button aria-label="Cruise speed up" disabled={!extended||!current.cruiseEnabled} onClick={()=>change({},8)}>+ 1 MPH</button></div>
         <small>{speed} KM/H{cruiseTarget!==null?` · SET ${Math.round(cruiseTarget)} KM/H`:''} · BRAKE CANCELS CRUISE</small></div>}
       {tab==='radio'&&<RadioPanel/>}
+      {tab==='ignition'&&<div className="cockpit-ignition-page"><IgnitionSwitch/></div>}
       {tab==='vehicle'&&<div className="headunit-apps"><button onClick={()=>route('vehicle_select')}><img src="/images/car-sport.svg" alt=""/>VEHICLES</button><button onClick={()=>route('missions')}><img src="/images/mark2.svg" alt=""/>MISSIONS</button><button onClick={()=>route('settings')}><img src="/images/settings.svg" alt=""/>SETTINGS</button><button onClick={()=>useUIStore.getState().setCockpitTab('radio')}><img src="/images/soundOn.svg" alt=""/>RADIO</button><button onClick={()=>route('debug_menu')}><img src="/images/tools.svg" alt=""/>DEBUGGER</button><button onClick={close}><img src="/images/forward.svg" alt=""/>RESUME</button></div>}
     </div>
     <footer className="cockpit-status" role="status">{!supported&&tab!=='radio'&&tab!=='vehicle'?'UPDATED RUST SERVER REQUIRED':pending?'REQUESTING…':rejection||'REDLINE VECTOR'}</footer>

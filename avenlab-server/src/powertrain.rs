@@ -110,7 +110,7 @@ impl ResourceConfig {
     pub fn hud(self) -> HudCalibration {
         HudCalibration {
             cockpit_controls: true,
-            cockpit_version: 3,
+            cockpit_version: 4,
             cluster_fields: (1 << 2) | (1 << 3) | (1 << 9) | (1 << 10),
             telemetry_mask: RPM
                 | GEAR
@@ -185,6 +185,11 @@ impl Powertrain {
             heat_locked: false,
             impact_cooldown_s: 0.0,
         }
+    }
+
+    // A gear tap gives a brief override, then the normal automatic resumes.
+    pub fn request_forward_gear(&mut self, gear: u8) {
+        if (1..=6).contains(&gear) { self.gear=gear as i32; self.shift_remaining_s=0.75; }
     }
 
     pub fn advance(&mut self, config: ResourceConfig, demand: Demand, dt: f32) {
@@ -432,6 +437,19 @@ impl Powertrain {
 
 #[cfg(test)]
 mod tests {
+    #[test] fn a_forward_gear_tap_expires_then_automatic_shifts_continue_under_throttle() {
+        let mut p=Powertrain::new(ROAD_RESOURCES);
+        let demand=Demand {throttle:1.0,longitudinal_speed:8.0,wheel_radius:0.32,engine_force:4000.0};
+        p.request_forward_gear(6);
+        for _ in 0..60 {p.advance(ROAD_RESOURCES,demand,1.0/120.0);assert_eq!(p.gear,6);assert_eq!(p.manual_gear,None);}
+        for _ in 0..120 {p.advance(ROAD_RESOURCES,demand,1.0/120.0);}
+        assert!(p.gear<6,"low road speed resumes automatic downshifts");
+        p.request_forward_gear(1);
+        let fast=Demand {longitudinal_speed:60.0,..demand};
+        for _ in 0..60 {p.advance(ROAD_RESOURCES,fast,1.0/120.0);assert_eq!(p.gear,1);}
+        for _ in 0..120 {p.advance(ROAD_RESOURCES,fast,1.0/120.0);}
+        assert!(p.gear>1,"high road speed resumes automatic upshifts");
+    }
     use super::*;
 
     #[test]

@@ -386,6 +386,7 @@ impl PhysicsWorld {
             let speed = self.bodies.get(v.body).map(|body| (body.rotation().inverse() * body.linvel()).z).unwrap_or(0.0);
             v.cockpit.receive(packet.cockpit_mask, speed, packet.vehicleMask & VehicleStateFlags::TCS.bits() != 0);
             v.cockpit.receive_cabin(packet.cabin_mask);
+            if let Some(gear)=v.cockpit.take_forward_shift() { v.powertrain.request_forward_gear(gear); }
 
             // digital states
             v.vehicle_flags = VehicleStateFlags::from_bits_truncate(packet.vehicleMask);
@@ -919,6 +920,22 @@ mod tests {
         assert_eq!(world.bodies[handle].linvel().x, 1.0, "a held reset cannot repeatedly freeze the car");
         let train = &world.vehicles["recover-test"].powertrain;
         assert_eq!(train.fuel_liters, 12.0); assert_eq!(train.condition, 0.6); assert_eq!(train.temperature_c, 120.0); assert_eq!(train.nos_remaining_s, 2.0);
+    }
+
+    #[test]
+    fn repeating_gear_override_packets_do_not_lock_automatic_and_neutral_remains_explicit() {
+        let mut world=flat_world();world.spawn_vehicle_for_player("shift-test".into(),[0.0;3],"brz","red").unwrap();
+        let mut packet=InputPacket {r#type:"input".into(),seq:1,dt:1.0/60.0,throttle:1.0,steer:0.0,brake:0.0,handbrake:0.0,
+            cockpit_mask:Some((6<<7)|(1<<6)|(11<<24)|(1<<16)),cabin_mask:None,vehicleMask:97,playerMask:0,debug_mask:Some(0)};
+        for _ in 0..30 {world.apply_player_input_packet("shift-test",packet.clone());world.step(SIMULATION_DT);}
+        assert_eq!(world.vehicles["shift-test"].powertrain.manual_gear,None);assert_eq!(world.vehicles["shift-test"].powertrain.gear,6);
+        for _ in 0..90 {world.apply_player_input_packet("shift-test",packet.clone());world.step(SIMULATION_DT);}
+        assert!(world.vehicles["shift-test"].powertrain.gear<6,"held sender state cannot renew the brief override");
+        packet.cockpit_mask=Some((1<<6)|(2<<24)|(2<<16));
+        for _ in 0..60 {world.apply_player_input_packet("shift-test",packet.clone());world.step(SIMULATION_DT);}
+        let p=&world.vehicles["shift-test"].powertrain;assert_eq!(p.gear,0);assert_eq!(p.manual_gear,Some(0));assert_eq!(p.drive_throttle,0.0);
+        packet.cockpit_mask=Some((2<<7)|(1<<6)|(11<<24)|(3<<16));world.apply_player_input_packet("shift-test",packet);world.step(SIMULATION_DT);
+        assert_eq!(world.vehicles["shift-test"].powertrain.gear,2);assert_eq!(world.vehicles["shift-test"].powertrain.manual_gear,None);
     }
 
     #[test]

@@ -18,7 +18,7 @@ export type MenuScreen =
   | "missions";
 
 export type UIOverlay = null | "pause" | "debug_menu" | "settings" | "vehicle_select" | "career" | "missions" | "leave_game" | "cockpit";
-export type CockpitTab = "drive" | "lights" | "wipers" | "cruise" | "radio" | "vehicle" | "console";
+export type CockpitTab = "drive" | "lights" | "wipers" | "cruise" | "radio" | "vehicle" | "console" | "ignition";
 
 export type MenuId = "main" | "pause" | "settings" | "sandbox_setup" | "signal_recon_setup";
 

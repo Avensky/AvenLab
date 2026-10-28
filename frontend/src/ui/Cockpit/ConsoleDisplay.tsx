@@ -4,21 +4,21 @@ import { useInputStore } from "../../store/inputStore";
 import { VehicleFlags,PlayerFlags,hasFlag } from "../../store/tools/inputMasks";
 import { HoldButton } from "../../controls/TouchControls";
 import { useCockpitState } from "./useCockpitState";
-import { IgnitionSwitch } from "./IgnitionSwitch";
+import { RadioPanel } from "./RadioPanel";
 import { canDrive } from "../../store/tools/inputRouting";
 import { useCanDataStore } from "../../store/canDataStore";
 import { togglePerformanceDetails } from "../../performance/performanceOverlayStore";
 
 export function ConsoleDisplay() {
-  const [tab,setTab]=useState<'key'|'commands'|'apps'>('key');
+  const [tab,setTab]=useState<'radio'|'commands'|'apps'>('radio');
   const flags=useInputStore(s=>s.input.vehicleMask),player=useInputStore(s=>s.input.playerMask),store=useInputStore.getState();
   const state=useCockpitState();
   const driving=canDrive();
   const route=(overlay:'settings'|'missions'|'career'|'debug_menu')=>useUIStore.getState().setOverlay(overlay);
   return <section className="console-display" aria-label="Vehicle electronic display" onKeyDown={event=>{if(event.key===' '||event.key==='Enter')event.stopPropagation();}}>
-    <nav className="console-display-tabs" aria-label="Vehicle display tabs">{([['key','IGNITION'],['commands','CONTROLS'],['apps','APPS']] as const).map(([id,label])=><button key={id} type="button" aria-pressed={tab===id} onClick={()=>setTab(id)}>{label}</button>)}</nav>
+    <nav className="console-display-tabs" aria-label="Vehicle display tabs">{([['radio','RADIO'],['commands','CONTROLS'],['apps','APPS']] as const).map(([id,label])=><button key={id} type="button" aria-pressed={tab===id} onClick={()=>setTab(id)}>{label}</button>)}</nav>
     <div className="console-display-content">
-      {tab==='key'&&<IgnitionSwitch/>}
+      {tab==='radio'&&<RadioPanel compact/>}
       {tab==='commands'&&<div className="console-command-grid">
         {([[VehicleFlags.HEADLIGHTS,'LIGHTS'],[VehicleFlags.BLINKER_LEFT,'LEFT'],[VehicleFlags.BLINKER_RIGHT,'RIGHT'],[VehicleFlags.HAZARDS,'HAZARDS'],[VehicleFlags.ABS,'ABS']] as const).map(([flag,label])=><button type="button" key={flag} aria-pressed={hasFlag(flags,flag)} onClick={()=>store.toggleVehicleFlag(flag)}>{label}</button>)}
         <button type="button" disabled={!state.supported} onClick={()=>store.setAssist(state.confirmed.assist===1?1:state.tcs?2:0,!state.tcs)}>TRAC</button>

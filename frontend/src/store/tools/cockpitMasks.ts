@@ -1,6 +1,6 @@
 // One optional u32 alongside existing input. Top command bits are requests;
 // snapshots reuse them for confirmed status. Never interpret one as the other.
-export type CockpitCommand = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+export type CockpitCommand = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11;
 export type CockpitRequest = {
   lights: number; wipers: number; assist: number; automatic: boolean; gear: number;
   parking: boolean; parkingStrength: number; washer: boolean; cruiseEnabled: boolean; cruiseAction: number; revision: number;

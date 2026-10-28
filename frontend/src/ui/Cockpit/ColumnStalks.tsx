@@ -19,11 +19,11 @@ function Stalk({angle,label,mode,asset,onUp,onDown,onTurn,onCancel,disabled,repe
     suppress.current=!cancel&&current.action!==0;release();
     if(event.currentTarget.hasPointerCapture?.(event.pointerId))event.currentTarget.releasePointerCapture(event.pointerId);
   };
-  const radians=angle*Math.PI/180;
+  const radians=angle*Math.PI/180,reach=angle===315?23:31;
   return <>
-    <span className="column-stalk-rod" style={{'--stalk-angle':`${-angle}deg`} as CSSProperties} aria-hidden="true"><i/></span>
+    <span className="column-stalk-rod" style={{'--stalk-angle':`${-angle}deg`,width:`${reach}%`} as CSSProperties} aria-hidden="true"><i/></span>
     <button type="button" className="column-stalk-cap" disabled={disabled} aria-label={label} title={`${label} · drag up/down, tap to rotate`}
-      style={{left:`${50+62*Math.cos(radians)}%`,top:`${50-62*Math.sin(radians)}%`,'--stalk-pull':`${pull}px`} as CSSProperties}
+      style={{left:`${50+reach*Math.cos(radians)}%`,top:`${50-reach*Math.sin(radians)}%`,'--stalk-pull':`${pull}px`} as CSSProperties}
       onPointerDown={event=>{if(event.button!==0||pointer.current)return;suppress.current=false;pointer.current={id:event.pointerId,y:event.clientY,action:0};event.currentTarget.setPointerCapture?.(event.pointerId);}}
       onPointerMove={event=>{const current=pointer.current;if(!current||current.id!==event.pointerId)return;const delta=event.clientY-current.y;
         const direction=Math.abs(delta)<9?0:delta<0?-1:1;if(direction===current.action)return;

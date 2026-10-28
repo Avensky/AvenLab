@@ -28,6 +28,7 @@ pub struct Cockpit {
     key_inserted: bool,
     last_cabin_request: Option<u16>,
     wipe_remaining_s: f32,
+    forward_shift: Option<u8>,
 }
 impl Default for Cockpit {
     fn default() -> Self { Self { enabled:false, automatic:true, gear:1, parking:false, parking_strength:0,
@@ -35,7 +36,7 @@ impl Default for Cockpit {
         cruise_enabled:false, cruise_target:None, last_target:None, rearmed:false,
         revision:0, rejected:0, last_request:None, rejected_gear:None,
         cabin_mask:4, key_override:false, key_position:2, key_inserted:true,
-        last_cabin_request:None, wipe_remaining_s:0.0 } }
+        last_cabin_request:None, wipe_remaining_s:0.0, forward_shift:None } }
 }
 impl Cockpit {
     pub fn receive(&mut self, packed: Option<u32>, speed: f32, traction_requested: bool) {
@@ -60,12 +61,14 @@ impl Cockpit {
         let automatic = packed & (1 << 6) != 0;
         let gear = ((packed >> 7) & 15) as u8;
         let selection = (gear, automatic);
-        if first || command == 2 || (selection != (self.gear, self.automatic) && self.rejected_gear != Some(selection)) {
+        if first || command == 2 || command == 11 || (selection != (self.gear, self.automatic) && self.rejected_gear != Some(selection)) {
             if gear > 8 || (!automatic && gear == 8) { self.rejected = 1; self.rejected_gear = Some(selection); }
             else if (gear == 8 && speed.abs() > 0.5)
                 || (gear == 7 && speed > 0.6)
                 || (gear > 0 && gear < 7 && speed < -0.6) { self.rejected = 2; self.rejected_gear = Some(selection); }
-            else { self.gear = gear; self.automatic = automatic; self.rejected_gear = None; }
+            else { self.gear = gear; self.automatic = automatic; self.rejected_gear = None;
+                if command==11 && automatic && (1..=6).contains(&gear) { self.forward_shift=Some(gear); }
+            }
         }
         // A separate handbrake lever can latch at any speed; P itself is gated.
         if command == 3 || (self.rejected_gear != Some(selection) && self.rejected == 0) {
@@ -127,6 +130,8 @@ impl Cockpit {
     }
     pub fn cruise_target_kph(&self) -> Option<f32> { self.cruise_target.map(|speed|speed*3.6) }
 
+    pub fn take_forward_shift(&mut self) -> Option<u8> { self.forward_shift.take() }
+
     pub fn parked(&self) -> bool { self.enabled && (self.parking || self.gear == 8) }
     pub fn parking_force(&self) -> f32 {
         if !self.enabled { 0.0 } else if self.gear == 8 { 1.0 } else { self.parking_strength as f32 / 3.0 }
@@ -181,6 +186,23 @@ mod tests {
     use super::*;
     fn packet(gear:u32, automatic:bool, assist:u32, command:u32, revision:u32) -> u32 {
         (gear << 7) | ((automatic as u32) << 6) | (assist << 4) | (command << 24) | (revision << 16)
+    }
+    #[test] fn assisted_forward_shift_is_consumed_once_and_does_not_lock_the_automatic() {
+        let mut c=Cockpit::default();let p=packet(3,true,0,11,1);
+        c.receive(Some(p),10.0,true);assert_eq!(c.take_forward_shift(),Some(3));assert_eq!(c.manual_gear(),None);
+        c.receive(Some(p),10.0,true);assert_eq!(c.take_forward_shift(),None);
+        c.receive(Some(packet(3,true,0,7,2)),10.0,true);assert_eq!(c.take_forward_shift(),None);
+        c.receive(Some(packet(0,true,0,2,3)),10.0,true);assert_eq!(c.manual_gear(),Some(0));
+        c.receive(Some(packet(2,true,0,11,4)),10.0,true);assert_eq!(c.take_forward_shift(),Some(2));assert_eq!(c.manual_gear(),None);
+    }
+    #[test] fn rejected_forward_override_cannot_replay_later_or_clear_the_cable_brake() {
+        let mut c=Cockpit::default();let parking=(1<<11)|(2<<30);
+        c.receive(Some(packet(1,true,0,3,1)|parking),0.0,true);assert_eq!(c.parking_strength,2);
+        c.receive(Some(packet(4,true,0,11,2)|parking),-5.0,true);assert_eq!(c.take_forward_shift(),None);
+        assert_eq!(c.gear,1);assert_eq!(c.parking_strength,2);
+        c.receive(Some(packet(4,true,0,7,3)|parking),0.0,true);assert_eq!(c.take_forward_shift(),None);
+        c.receive(Some(packet(4,true,0,11,4)|parking),0.0,true);assert_eq!(c.take_forward_shift(),Some(4));
+        assert_eq!(c.parking_strength,2);
     }
     #[test] fn cabin_golden_word_and_hvac_do_not_replay_the_ignition() {
         let mut c=Cockpit::default();c.receive_cabin(Some(0x3ffe));

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ButtonHTMLAttributes, ty
 import { useInputStore, type InputSource } from "../store/inputStore";
 import { canDrive } from "../store/tools/inputRouting";
 import { useControlRelease } from "./useControlRelease";
+import { usePreferencesStore } from "../store/preferencesStore";
 import { wheelPoint } from "./wheelGeometry";
 
 
@@ -42,6 +43,7 @@ export function HoldButton({ onHold, disabled, ...props }: ButtonHTMLAttributes<
 }
 
 export function TouchStick({ axis, wheel = false, children }: { axis: "steer" | "throttle"; wheel?: boolean; children?: ReactNode }) {
+  const travel=usePreferencesStore(s=>s.steeringTravel);
   const [value, setValue] = useState(0), [point, setPoint] = useState({x:0,y:0}), pointer = useRef<number | null>(null);
   const source: InputSource = axis === "steer" ? "touch-steering" : "touch-throttle";
   const update = useCallback((next: number) => {
@@ -53,7 +55,7 @@ export function TouchStick({ axis, wheel = false, children }: { axis: "steer" | 
     event.preventDefault(); event.stopPropagation();
     const rect = event.currentTarget.getBoundingClientRect(), radius = Math.min(rect.width, rect.height) * .33;
     if (wheel) {
-      const next = wheelPoint(event.clientX - rect.x - rect.width / 2, event.clientY - rect.y - rect.height / 2, Math.min(rect.width,rect.height) * .43);
+      const next = wheelPoint(event.clientX - rect.x - rect.width / 2, event.clientY - rect.y - rect.height / 2, Math.min(rect.width,rect.height) * .43 * travel);
       setPoint(previous=>previous.x===next.x&&previous.y===next.y?previous:next);
       update(Math.abs(next.x)<.025?0:next.x);return;
     }
@@ -79,7 +81,7 @@ export function TouchStick({ axis, wheel = false, children }: { axis: "steer" | 
     onKeyUp={event => { if (event.code.startsWith("Arrow")) { event.preventDefault(); event.stopPropagation(); release(); } }} onBlur={() => { if (pointer.current === null) release(); }}>
     {children}
     {!wheel && <span className="touch-stick-axis" aria-hidden="true">{axis === "steer" ? "‹     ›" : "▲\n▼"}</span>}
-    <span className="touch-stick-thumb" aria-hidden="true" style={wheel?{left:`${50+point.x*43}%`,top:`${50+point.y*43}%`}:{ transform: `translate(${axis === "steer" ? value * 26 : 0}px, ${axis === "throttle" ? -value * 26 : 0}px)` }} />
+    <span className="touch-stick-thumb" aria-hidden="true" style={wheel?{left:`${50+point.x*43*travel}%`,top:`${50+point.y*43*travel}%`}:{ transform: `translate(${axis === "steer" ? value * 26 : 0}px, ${axis === "throttle" ? -value * 26 : 0}px)` }} />
     {!wheel && <span className="touch-stick-label">{axis === "steer" ? "STEER" : "GAS / R"}</span>}
   </div>;
 }

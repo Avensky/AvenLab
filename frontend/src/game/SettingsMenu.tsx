@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { TabbedMenu, type MenuRow } from "../components/menus/TabbedMenu";
 import { useRenderSettingsStore } from "../store/renderSettingsStore";
 import { useDebugViewStore } from "../store/debugViewStore";
-import { DEFAULT_BINDINGS, RESERVED_KEYS, usePreferencesStore, type BindingAction } from "../store/preferencesStore";
+import { DEFAULT_BINDINGS, DEFAULT_HUD_GROUPS, HUD_GROUPS, RESERVED_KEYS, usePreferencesStore, type BindingAction } from "../store/preferencesStore";
 import { useUIStore } from "../store/uiStore";
 import { cityQualityControl, cityViewDistanceControl, cityPerformanceControl, interpolationControl } from "../components/menus/cityQualityControl";
 
@@ -51,6 +51,7 @@ export function SettingsMenu() {
   },
 });
   const upcoming = (id: string, label: string, description: string): MenuRow => ({ id, label, description, value: "Planned", disabled: true });
+  const groupLabels = {gauges:"Instruments",wheel:"Steering wheel",pedals:"Pedals",ignition:"Ignition key",display:"Vehicle display",climate:"Climate / hazards / clock",shifter:"Shifter",parking:"Parking brake",assists:"Driving assists",chat:"Team / game / general chat"};
   const drivingRows: MenuRow[] = [
     { id: "driving-layout", label: "Driving layout", value: prefs.drivingLayout === "controller" ? "Controller" : "Standard", action: () => {
       const controller = prefs.drivingLayout !== "controller";
@@ -65,16 +66,26 @@ export function SettingsMenu() {
         { id: "resolution", label: "Resolution scale", value: `${render.dpr}×`, action: (dir) => render.update({ dpr: step([0.5, 0.75, 1, 1.5, 2], render.dpr, dir) }) },
         { id: "fov", label: "Field of view", value: `${prefs.fov}°`, action: (dir) => prefs.update({ fov: step([55, 65, 75, 85, 95, 110], prefs.fov, dir) }) },
         graphics("shadows", "Shadows"), graphics("reflections", "HDR reflections"), graphics("fog", "Distance fog"), graphics("stars", "Animated sky"),
-        graphics("vehicleLights", "Vehicle spotlights"), graphics("hud", "Driving instruments"), graphics("overlay", "Performance overlay", "Frame timing, network latency and server diagnostics."),
+        graphics("vehicleLights", "Vehicle spotlights"), graphics("hud", "Driving HUD"), graphics("overlay", "Performance overlay", "Frame timing, network latency and server diagnostics."),
         ...drivingRows,
         { id: "speed-unit", label: "Speed units", value: prefs.speedUnit === "mph" ? "MPH" : "KM/H", action: () => prefs.update({ speedUnit: prefs.speedUnit === "mph" ? "kmh" : "mph" }) },
-        { id: "touch-layout", label: "Touch control style", value: prefs.touchLayout === "sticks" ? "Two joysticks" : "Compact pedals", action: () => prefs.update({ touchLayout: prefs.touchLayout === "sticks" ? "pedals" : "sticks" }) },
+        { id: "touch-layout", label: "Touch control style", value: prefs.touchLayout === "sticks" ? "Wheel + throttle stick" : "Wheel + pedals", action: () => prefs.update({ touchLayout: prefs.touchLayout === "sticks" ? "pedals" : "sticks" }) },
         cityQualityControl(render), cityViewDistanceControl(render), interpolationControl(debug), cityPerformanceControl(render),
         { id: "fullscreen", label: "Toggle fullscreen", description: "Requires browser support and a direct click or keyboard press.", action: () => {
           const request = document.fullscreenElement ? document.exitFullscreen?.() : document.documentElement.requestFullscreen?.();
           if (!request) setNotice("Fullscreen is unavailable in this browser");
           else void request.catch(() => setNotice("Use the browser fullscreen command or click this row"));
         } },
+      ] },
+      { id: "hud", label: "HUD", description: "Hide or restore each group. Closing a group never disables keyboard or controller input. Chat space is reserved; a message service is not connected yet.", rows: [
+        ...drivingRows,
+        ...HUD_GROUPS.map((id):MenuRow=>({id:`hud-${id}`,label:groupLabels[id],value:prefs.hudGroups[id]?"Show":"Hide",action:()=>prefs.setHudGroup(id,!prefs.hudGroups[id])})),
+        {id:"wheel-drop",label:"Wheel below screen",value:`${Math.round(prefs.wheelDrop*100)}%`,action:dir=>prefs.update({wheelDrop:step([0,.15,.28,.4,.55],prefs.wheelDrop,dir)})},
+        {id:"wheel-travel",label:"Steering thumb travel",description:"Allows the thumb to move beyond the wheel rim. Horizontal travel still sets steering.",value:`${Math.round(prefs.steeringTravel*100)}%`,action:dir=>prefs.update({steeringTravel:step([.9,1,1.12,1.25,1.3],prefs.steeringTravel,dir)})},
+        {id:"restore-hud",label:"Restore all HUD groups",action:()=>{prefs.update({hudGroups:{...DEFAULT_HUD_GROUPS},showTouchControls:true,showDriveControls:true});render.update({hud:true});setNotice("All HUD groups restored");}},
+      ] },
+      { id: "drivetrain", label: "Drivetrain", description: "Choose the shifter layout. Forward driving stays automatic; gear taps briefly override it. Neutral and reverse remain explicit selections. No clutch is required.", rows: [
+        {id:"shift-layout",label:"Shifter layout",value:prefs.shiftLayout==="automatic"?"Automatic P/R/N/D":"H-pattern R/1–6",action:()=>prefs.update({shiftLayout:prefs.shiftLayout==="automatic"?"h-pattern":"automatic"})},
       ] },
       { id: "audio", label: "Audio", description: "The vehicle audio components in this build are inactive. Mixer controls will become available with engine, world and voice playback.", rows: [
         upcoming("master", "Master volume", "Volume for all playback."), upcoming("engine", "Vehicle & engine volume", "Engine, tires, horn and impacts."),

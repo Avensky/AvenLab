@@ -19,9 +19,11 @@ test('wheel and console share authoritative packed controls without additional s
   const {useVehicleConfigStore:configs,parseGaugeConfig}=await load('store/vehicleConfigStore.ts');
   const {projectVehicleTelemetry,updateVehicleTelemetry}=await load('store/vehicleTelemetryStore.ts');
   const {default:Steering}=await load('ui/Steering.tsx'),{ConsoleDisplay}=await load('ui/Cockpit/ConsoleDisplay.tsx');
+  const {IgnitionSwitch}=await load('ui/Cockpit/IgnitionSwitch.tsx');
+  const {usePreferencesStore:prefs}=await load('store/preferencesStore.ts');
   const {ClimatePanel}=await load('ui/Cockpit/ClimatePanel.tsx'),{GearSelector}=await load('ui/Cockpit/MechanicalControls.tsx');
   const {stepManualGear}=await load('controls/drivetrainActions.ts');
-  const calibration={max_speed:70,hud:{cockpit_controls:true,cockpit_version:3,telemetry_mask:127,cluster_fields:8191}};
+  const calibration={max_speed:70,hud:{cockpit_controls:true,cockpit_version:4,telemetry_mask:127,cluster_fields:8191}};
   const entity={id:'me',vehicle_id:'brz',position:[0,1,0],rotation:[0,0,0,1],speed:0,gear:1,rpm:0,fuel:25,temp:85,vehicle_mask:96,player_mask:0,cockpit_mask:192,cabin_mask:4|4096|16384,resource_mask:0};let tick=0;
   network.getState().setPlayerId('me');network.getState().setConnected(true);configs.getState().receive('me',calibration);ui.setState({screen:'sandbox',overlay:null,isModeLoading:false});
   const publish=async patch=>act(async()=>{Object.assign(entity,patch);network.getState().setSnapshot({tick:++tick,entities:[{...entity}]},performance.now());updateVehicleTelemetry();});
@@ -46,6 +48,7 @@ test('wheel and console share authoritative packed controls without additional s
    assert.equal(projectVehicleTelemetry(entity,true,1000,1501,cfg).cabinMask,null);assert.equal(projectVehicleTelemetry(entity,true,1000,1001,{...cfg,cockpitVersion:2}).cabinMask,null);
   });
   await t.test('circular thumb retains vertical travel, sends proportional X and releases on pause',async()=>{
+   await act(async()=>prefs.getState().update({steeringTravel:1}));
    const {wheelPoint}=await load('controls/wheelGeometry.ts');assert.deepEqual(wheelPoint(5,8,0),{x:0,y:0});assert.deepEqual(wheelPoint(NaN,0,1),{x:0,y:0});
    const edge=wheelPoint(43,43,43);assert.ok(Math.abs(Math.hypot(edge.x,edge.y)-1)<1e-9);
    input.getState().setInput({cabin_mask:undefined,cockpit_mask:undefined});await render(h(Steering));by('Steering wheel').getBoundingClientRect=()=>({x:100,y:100,width:100,height:100});
@@ -67,7 +70,7 @@ test('wheel and console share authoritative packed controls without additional s
    await key(cruise,'ArrowDown');assert.equal((input.getState().input.cockpit_mask>>>24)&15,9);
   });
   await t.test('key has separate OFF/ACC/ON/START requests, confirmed display and spring return',async()=>{
-   await act(async()=>input.getState().setInput({cabin_mask:undefined,vehicleMask:96}));await publish({cabin_mask:4|4096|16384});await render(h(ConsoleDisplay));
+   await act(async()=>input.getState().setInput({cabin_mask:undefined,vehicleMask:96}));await publish({cabin_mask:4|4096|16384});await render(h(IgnitionSwitch));
    await click('Ignition acc');assert.equal(unpackCabin(input.getState().input.cabin_mask).ignition,1);assert.equal(input.getState().input.vehicleMask&1,0);
    await click('Ignition on');assert.equal(unpackCabin(input.getState().input.cabin_mask).ignition,2);assert.equal(input.getState().input.vehicleMask&1,0);assert.equal(document.querySelector('.ignition-system').dataset.ignition,'OFF');
    await publish({cabin_mask:4|4096|16384|(2<<10)});assert.equal(document.querySelector('.ignition-system').dataset.ignition,'ON');
@@ -84,11 +87,11 @@ test('wheel and console share authoritative packed controls without additional s
    assert.equal(cabin.temperatureC,21);assert.equal(cabin.ac,true);assert.equal(cabin.fan,1);assert.equal(cabin.ignition,2);assert.equal(input.getState().input.cabin_mask&8192,0);assert.equal(by('Air conditioning').getAttribute('aria-pressed'),'false');
    await render(h(GearSelector,{automatic:false,gear:1,actualGear:1,disabled:false,pending:false}));assert.equal(document.querySelector('.shift-gate svg').getAttribute('preserveAspectRatio'),'none');assert.match(document.querySelector('.shift-gate path').getAttribute('d'),/M36 25V78/);assert.equal(by('Select gear 1').style.left,'36%');assert.equal(by('Select gear 2').style.top,'78%');
   });
-  await t.test('manual shifts and console applications use the shared stores and routing',async()=>{
+  await t.test('assisted shifts and console applications use the shared stores and routing',async()=>{
    await act(async()=>{input.getState().setInput({cockpit_mask:undefined});input.getState().setCockpit({automatic:false,gear:1},2);});await publish({cockpit_mask:input.getState().input.cockpit_mask&0xc0ffffff,gear:1});assert.equal(stepManualGear(1),true);assert.equal(unpackCockpit(input.getState().input.cockpit_mask).gear,2);assert.equal(stepManualGear(-1),true);assert.equal(unpackCockpit(input.getState().input.cockpit_mask).gear,1);
    await render(h(ConsoleDisplay));await act(async()=>document.querySelector('.console-display-tabs button:last-child').click());await act(async()=>ui.getState().openCockpit('console'));await act(async()=>[...document.querySelectorAll('button')].find(b=>b.textContent==='VEHICLES').click());assert.equal(ui.getState().overlay,'vehicle_select');await act(async()=>ui.setState({overlay:null}));
   });
-  await t.test('controller up/down shifts, recorder priority and LB plus View use rising edges',async()=>{
+  await t.test('controller assisted shifts, recorder priority and LB plus View use rising edges',async()=>{
    const {GameController}=await load('controls/GameController.ts');const {useRenderSettingsStore:rendering}=await load('store/renderSettingsStore.ts');
    await act(async()=>root.render(null));const raf=globalThis.requestAnimationFrame,caf=globalThis.cancelAnimationFrame,pads=navigator.getGamepads;
    const pending=new Map();let frame=0;globalThis.requestAnimationFrame=fn=>{pending.set(++frame,fn);return frame;};globalThis.cancelAnimationFrame=id=>pending.delete(id);

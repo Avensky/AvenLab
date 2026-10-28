@@ -38,7 +38,7 @@ Event-driven stores have no fixed Hz.
 | `gameStore.ts` | Camera/editor controls and legacy game settings | Camera/editor actions; legacy RotatingCamera has a frame-rate angle writer when mounted/active | Camera/render helpers. Active routing is uiStore, pre-game selection is selectionStore. |
 | `worldStore.ts` | Map/collider metadata, debug request mask, legacy render mode/switches | Map/setup events and debugger actions; sender reads debug mask each send | City/collider rendering and capture context. Static colliders are sent with map setup. |
 | `renderSettingsStore.ts` | Graphics quality/range/effects and per-object overrides | User presets/settings and sandbox entry | Renderers/menus. Validated display choices persist; session overrides do not. |
-| `preferencesStore.ts` | Key bindings, sensitivity/deadzone, accessibility, favorites, units, driving layout and optional touch/Drive controls | User actions / validated local-storage hydration | Device-local persistence. No physics values. |
+| `preferencesStore.ts` | Key bindings, sensitivity/deadzone, accessibility, favorites, units, driving layout, shifter presentation, independent HUD visibility and wheel crop/travel | User actions / validated local-storage hydration | Device-local persistence. No physics values. |
 | `debugViewStore.ts` | Interpolation preference and diagnostic player scope | User actions | Interpolation persists (default On, 50 ms buffer); scope is session-local. |
 | `visualAlignmentStore.ts` | Measured GLB alignment reports | Model measurement/mount/unmount events | Rendering alignment and capture metadata. |
 | `selectionStore.ts` | Vehicle/map catalogs and selected indexes | Selector actions | Garage/setup. Catalog imports render components; avoid its barrel in hot or transport code. |
@@ -69,13 +69,16 @@ START. Confirmed `cabin_mask` and `cruise_target_kph` use the same 20 Hz project
 telemetry sampler, so acknowledgements continue while the driving HUD is hidden.
 See [cockpit protocol](../../../docs/COCKPIT_UI.md). `radioStore` is event-driven
 and owns one local Audio element; it sends no audio bytes to Rust and persists no
-selected file. `cabinClock.ts` owns one visible-only 30-second local-clock timer shared by the
+selected file. Protocol v4 command 11 is a temporary forward gear override; the server resumes
+automatic shifts after 0.75 s. Presentation choices and hiding groups never write
+a gear or engine request. Chat is a disconnected channel shell, not another
+simulation/network store. `cabinClock.ts` owns one visible-only 30-second local-clock timer shared by the
 gear display and climate strip. It has no per-frame writer. A future server-owned
 `match_clock` is displayed separately when supplied; the client creates no match timer.
 
 Requested `vehicleMask` is not confirmed `vehicle_mask`. Dashboard ABS/TCS lights
 follow server snapshots; a dashed light means the requested bit awaits confirmation.
-The optional lower-right Drive console and Cockpit → Drive share the same
+The optional right-hand console and Cockpit → Drive share the same
 assist controls, including controller A/Cross access. Their current choices are
 runtime requests. Controller layout and the independent touch/Drive visibility
 preferences persist; changing either layout never disables keyboard/gamepad input.

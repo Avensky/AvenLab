@@ -1,30 +1,50 @@
-# Driver station and electronic console
+# Mobile driver station and optional controls
 
-The three instruments and the analogue steering wheel form the bottom-left
-driver station. The bottom-right stack is the electronic display, clock/hazards
-and climate strip, then the manual shifter, cable handbrake and assist switches.
-The full cockpit reuses these components. Signal Recon never mounts them.
+The instruments sit at top-left, a team/game/general chat area occupies middle-left,
+and the cropped steering wheel sits at bottom-left. Gas/brake/reverse controls are
+at bottom-right. The right-hand console has independent display, climate, shifter,
+parking-brake and assist groups. The ignition key is a separate center-screen pod.
+A top-right slot is prepared for a future minimap; no minimap is implemented yet.
+Signal Recon never mounts the driving HUD.
 
 ## Layout and access
 
-Settings → Display or Controller → **Driving layout** selects Standard or
-Controller. Standard supplies a wheel and gas/brake/reverse pedals. The Sticks
-option replaces the gas/reverse pedals with a throttle joystick and keeps a
-separate brake. Controller hides optional touch controls and the expanded console.
-Each visibility option is independent; keyboard/gamepad input remains available.
-Layout changes release the hidden touch source without erasing another device.
+Settings → **HUD** offers a saved Show/Hide choice for each of ten groups:
+instruments, wheel, pedals, ignition, display, climate, shifter, parking, assists
+and chat. Each HUD group also has Collapse/Expand and Hide buttons. Collapse is
+local to the mounted HUD; hiding persists on this device. Restore all HUD groups
+also restores the master HUD and optional controls. A small HUD settings/Cockpit
+shortcut remains available when groups are hidden.
 
-Open **Cockpit** from its small button, the pause menu, **F4**, or
-**LB/L1 + View/Select**. The controller shortcut opens the Console tab. View/Select
-alone retains its performance-overlay shortcut. In the full cockpit, shoulders
-switch tabs, D-pad navigates, A/Cross activates and B/Circle closes. Arrows, Tab,
-Enter and Space also work. Controls cannot leak driving input into a menu.
+Standard and Controller layouts retain their independent touch/console master
+choices. Hiding a touch source releases its held intent without clearing another
+pedal, keyboard or gamepad. Keyboard/controller driving never depends on a visible
+button. Optional equipment starts collapsed to preserve the road view. Panels
+scroll if the browser is too short to show every expanded group.
 
-The electronic display has fixed-height **IGNITION**, **CONTROLS** and **APPS**
-pages. Controls include lighting, blinkers, hazards, ABS/TRAC, CAN logging/live
-CAN, dyno, horn, NOS, recovery and a single wipe. Apps open Cockpit, Settings,
-Radio, Lights, Wipers, Cruise, Missions, Career, Debugger, Vehicles, Recorder,
-Terminal and Pause. Existing applications retain their existing behavior.
+The wheel starts 28% below the bottom edge; **Wheel below screen** adjusts 0–55%.
+**Steering thumb travel** adjusts the circular travel range from 90–130% (112%
+by default), allowing the thumb to pass the rim. Only X controls steering.
+Settings → Drivetrain chooses the H-pattern or automatic selector layout; both
+retain automatic forward driving and temporary gear overrides.
+
+Open **Cockpit** from its button, pause menu, **F4**, or
+**LB/L1 + View/Select** (Console tab). View/Select alone retains the performance
+shortcut. Shoulders switch cockpit tabs, D-pad navigates, A/Cross activates and
+B/Circle closes. Arrows, Tab, Enter and Space also work. HUD button activation
+cannot become a driving brake input.
+
+The electronic display now has fixed-height **RADIO**, **CONTROLS** and **APPS**
+pages. Radio reuses the local Audio player and continues playing if its panel is
+hidden. Controls include lighting, signals, hazards, ABS/TRAC, CAN logging/live
+CAN, dyno, horn, NOS, recovery and a single wipe. Apps open the existing game menus.
+The key appears separately, automatically expanded with the engine off and
+collapsed once a confirmed start succeeds. The full cockpit has an Ignition tab.
+
+The chat group has Team / Game / General channel tabs. It is a layout shell with
+a disabled composer and an explicit disconnected state; no message service or
+pretend delivery is implemented. This reserves space for the eventual transport
+without adding another fast store or network sender.
 
 ## Ignition and climate
 
@@ -56,12 +76,12 @@ a match timer, timeout, score or winner; the server match system remains future 
 The wheel is a memoized vector inspired by the FR-S reference: dark perforated
 rim, red stitching and silver lower spoke. Its entire circle is a joystick.
 Thumb travel is constrained to a circle; only horizontal position changes steer.
-The horizontal rim gives full ±1 input and vertical motion only moves the thumb.
+The horizontal travel limit gives full ±1 input and vertical motion only moves the thumb.
 Release centers the touch source. Keyboard/gamepad input also rotates the wheel,
 with a short CSS transition rather than a new animation loop. Visual lock is
 ±135°, a HUD choice rather than a claim about factory lock-to-lock geometry.
 
-Stalks stay fixed as the rim turns. Angles are measured counterclockwise from
+Stalks are smaller and stay inside the rim as it turns; their rods remain fixed. Angles are measured counterclockwise from
 3 o'clock. Drag up/down, or focus and use arrow keys. Tap rotates a mode.
 
 | Stalk | Angle | Up / Down | Tap |
@@ -88,22 +108,28 @@ https://assets.sia.toyota.com/publications/en/om-s/OM18027U/pdf/OM18027U.pdf
 
 ## Transmission and assist switches
 
-The manual H gate uses matching percentage coordinates for both lines and slots,
-including on a non-square screen. R/1/3/5 sit above N/2/4/6. Drag the knob or select
-a slot. Automatic P/R/N/D is always available. The expanded HUD initially selects
-manual on a v3 server if the player has not made a cockpit request. Hidden console
-and legacy clients retain automatic behavior. This remains an assisted selector;
-a clutch and full torque-curve model are separate work.
+The H-pattern and automatic choices belong only in Settings → Drivetrain;
+there are no mode toggles beside the knob. The H gate uses matching percentage
+coordinates for lines/slots, including on non-square screens. Dragging anywhere
+within the middle lane (y=39–63%) immediately selects N, without repeated requests
+while the thumb stays in that band. Dropping into another slot selects that gear.
 
-PageUp/PageDown or A/Cross and R3 shift a manual through N and 1–6. Reverse uses
-its explicit gated slot. When the recorder is visible, A/Cross retains recording
-priority. In automatic mode, R3 retains the existing dyno shortcut.
+Both layouts request automatic forward operation. A forward gear tap (H slot,
+PageUp/PageDown, A/Cross or R3) supplies a 0.75-second override, then the existing
+automatic up/downshift rules resume. No clutch or manually locked forward gear is
+required. Selecting N remains neutral under throttle until a driving gear is
+selected. P/R retain the existing speed gates. A visible recorder keeps A/Cross
+priority; the old dyno fallback remains when a gear-down action is unavailable.
+Legacy clients can still request the earlier locked manual mode explicitly.
 
-The handbrake sits left of the shifter. Its long lever starts horizontal and
-raises up to 66°. Tap, drag, or choose OFF / 33% / 67% / 100% cable tension.
-Keyboard B / controller B/Circle supplies momentary full cable force while driving.
-Rust takes the maximum of latched and momentary force and bypasses rear ABS for it.
-Park/reverse direction changes remain gated by actual speed.
+The parking brake remains independent of the gear selector: a forward gear tap
+cannot release its cable tension. P locks through its gear selection rather than
+raising the separate lever. The rest pose is tapered/foreshortened toward the
+background (projected -115°); full application rises toward -75°. These are screen
+projections of floor/up axes, not a claim that perpendicular 3D lines must appear
+90° apart in the image. Tap, drag or choose OFF / 33% / 67% / 100%. Keyboard B and
+controller B/Circle still supply momentary full cable force. Rust takes the
+maximum of latched and momentary force and bypasses rear ABS for it.
 
 ABS uses the existing tire-budget assist; Q remains its shortcut. T toggles TRAC.
 TRAC OFF rearms above 50 km/h and stays rearmed until explicitly disabled again.
@@ -121,8 +147,8 @@ and after the scale; the lowered label reads **RPMx1000**. The right LCD shows
 speed; the wider lower LCD shows gear and local time. OFF/unavailable blanks both,
 ON powers them and confirmed cranking pulses them. Reduced motion disables pulses.
 
-Fuel and coolant now use larger 52-unit quarter arcs and separate mirrored hubs
-at (130,70) and (130,130) in the 200-unit parent disc. All marks remain inside the
+Fuel and coolant use 64-unit quarter arcs, 60-unit needles and separate mirrored
+hubs at (121,79) and (121,121) in the 200-unit parent disc. Their parent also grows from 33% to 36% of the cluster. All marks remain inside the
 rim with equal top/right and bottom/right insets. Engine off parks fuel below E
 and temperature halfway across its scale without changing the physical values.
 
@@ -142,12 +168,16 @@ an activation/effect are future work. NOS remains separate and finite.
 `inputStore` owns requests, the existing 60 Hz sender owns transport, Rust owns
 accepted state, physics substeps remain 120 Hz and snapshots target 60 Hz. The
 HUD/full cockpit share one reference-counted, visible-only 20 Hz display sampler.
+The root mounts its shared sampler only when a wheel/cockpit group needs it;
+Dashboard owns its own reference while visible. All groups hidden stops both.
 Static gauge faces and wheel artwork are memoized. Rings update one stroke offset;
 there are no extra physics, network or per-gauge animation loops.
 
-Setup advertises `hud.cockpit_version: 3`; version 2 retains basic cockpit actions,
-with v3-only climate/key/stalk actions disabled. `cockpit_mask` keeps its existing
-u32 state/revision layout and adds commands 8=cruise up, 9=cruise down, 10=single wipe.
+Setup advertises `hud.cockpit_version: 4`; v4 enables assisted forward gear taps.
+Version 3 adds key/climate/timed-wipe controls and version 2 the basic physical
+controls. The UI disables actions missing from the server calibration. `cockpit_mask` keeps its existing
+u32 state/revision layout and adds commands 8=cruise up, 9=cruise down, 10=single wipe and 11=forward gear
+override. Unchanged repeated input packets cannot renew that override.
 
 Optional `cabin_mask` is a packed u16 in the existing JSON packet:
 
@@ -171,7 +201,8 @@ or an assertion of any manufacturer-specific CAN identifier mapping. See the
 
 `/previews/cockpit.html` and the standalone HTML use clearly labeled sample
 telemetry and simulated acknowledgements. They demonstrate key stages, rings,
-wheel/stalks, climate, shifter and optional layout controls without GLB downloads.
+wheel/stalks, climate, shifter, HUD visibility and real HUD/drivetrain settings without GLB downloads.
+Preview preferences use separate storage names and do not overwrite game settings.
 They are UI previews, not physics, CAN traces, controller polling or FPS benchmarks.
 
 Checks include the scale/power states, independent rings, wheel ownership/release,

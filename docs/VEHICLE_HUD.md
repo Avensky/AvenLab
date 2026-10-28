@@ -2,7 +2,7 @@
 
 The custom designs use memoized SVG geometry in `frontend/src/ui/Dashboard/`:
 dark speed face, white RPM band, red needles, stacked amber speed/gear LCDs and
-mirrored fuel/coolant dials. Instruments sit above the bottom-left wheel: NOS around RPM, condition around
+mirrored fuel/coolant dials. Instruments sit at top-left, above the middle-left chat slot and bottom-left wheel: NOS around RPM, condition around
 speed and blue ultimate around fuel/coolant. Engine-off needle parking is
 presentation only; confirmed physical telemetry remains intact.
 
@@ -77,7 +77,7 @@ empty/damaged/heat-lock into `resource_mask`, rather than adding six booleans.
 Vehicle setup config now contains a `hud` calibration block: availability mask,
 max/redline RPM, fuel capacity and temperature limits. Road availability is 127;
 tank is 111. Bits: RPM=1, gear=2, fuel=4, temperature=8, NOS=16, condition=32,
-ultimate=64. Cockpit controls advertise `cockpit_version: 3`.
+ultimate=64. Cockpit controls advertise `cockpit_version: 4`.
 Calibration is sent on first spawn and vehicle change, not repeated per tick.
 Optional v3 `cabin_mask` carries climate, key positions and temporary wipe state;
 `cruise_target_kph` carries a confirmed cruise target. Snapshot additions are `condition` (0..1), `boost_fraction` (0..1 or null when
@@ -108,8 +108,9 @@ multiplied fuel use by gear index and had several RPM writers using inconsistent
 fuel state. Its cooling path could read a missing speed field. The Rust version
 uses one clock and one state owner with explicit units and dt-based rates.
 
-The cockpit now has a draggable assisted manual selector with server-owned gear
-requests, plus automatic mode. A clutch and full torque-curve model remain further
+Settings → Drivetrain chooses H-pattern or P/R/N/D presentation. Forward gear
+taps briefly override the automatic, then automatic shifting resumes; the H gate
+does not require a clutch or lock the forward gears. Neutral remains explicit. A clutch and full torque-curve model remain further
 work. Sport now exposes separate Sport/TRAC switch states, rather than a one-launch
 rule. Factory VSC yaw control remains further work.
 

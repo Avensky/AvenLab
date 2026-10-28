@@ -45,9 +45,12 @@ vehicle selection/render components and is a poor boundary for transport/HUD.
 ## Driving HUD
 
 Enable **Settings → Display → Driving instruments**. The custom speed, RPM and
-paired fuel/coolant dials sit above the bottom-left analogue wheel. NOS surrounds
+paired fuel/coolant dials sit at top-left, with the wheel cropped at bottom-left. NOS surrounds
 RPM, condition surrounds speed and ultimate surrounds the fuel/coolant dial. Standard and Controller layouts have independent options to
-show touch steering/pedals and the lower-right display/climate/transmission stack. Keyboard/gamepad
+show touch controls and individually hideable display/climate/transmission groups.
+Settings → HUD restores groups and adjusts wheel crop/travel; Settings → Drivetrain
+chooses H-pattern or automatic presentation. Both retain automatic forward shifts.
+Pedals sit bottom-right and the ignition is separate at center. Keyboard/gamepad
 remain active when touch controls are hidden. See [cockpit details](../docs/COCKPIT_UI.md).
 
 ABS/TCS buttons display confirmed server state. Q/T toggle them while driving;
