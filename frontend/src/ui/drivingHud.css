@@ -10,7 +10,7 @@
 .instrument-hud{position:absolute;top:max(10px,env(safe-area-inset-top));left:max(12px,env(safe-area-inset-left));width:var(--instrument-size);pointer-events:none}
 .instrument-hud .hud-group-header{pointer-events:auto}.instrument-hud .driving-dashboard{padding-top:10px}
 /* Keep the lower cruise cap reachable at the default wheel crop. */
-.wheel-hud{position:absolute;bottom:max(8px,calc(var(--wheel-size) * .105),env(safe-area-inset-bottom));left:max(12px,env(safe-area-inset-left));width:var(--wheel-size)}
+.wheel-hud{position:absolute;bottom:max(8px,calc(var(--wheel-size) * .135),env(safe-area-inset-bottom));left:max(12px,env(safe-area-inset-left));width:var(--wheel-size)}
 .wheel-stage{width:100%;height:calc(var(--wheel-size) * (1 - var(--wheel-drop,.28)));position:relative;pointer-events:none}
 .wheel-stage .wheel-assembly{position:absolute;inset:0 auto auto 0;width:100%;margin:0;max-width:none}
 .pedal-hud{position:absolute;right:max(12px,env(safe-area-inset-right));bottom:max(10px,env(safe-area-inset-bottom));width:156px}
@@ -18,7 +18,7 @@
 .driving-pedals{display:flex;align-items:flex-end;gap:4px;pointer-events:auto;touch-action:none}
 .driving-pedal{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;width:45px;height:49px;padding:4px 3px;border:1px solid #829bab61;border-radius:1px;background:#080e1680;color:#d9e5ee}
 .driving-pedal img{max-width:23px;height:27px;object-fit:contain;opacity:.6}.driving-pedal small{font:7px ui-monospace,monospace;letter-spacing:.04em}.driving-reverse>span{font:22px ui-monospace,monospace}
-.driving-pedal[aria-pressed="true"],.driving-pedal:hover,.driving-pedal:focus-visible{border-color:#a2d8e8;background:#19323cbf;outline:1px solid #a2d8e8;outline-offset:-2px}
+.driving-pedal[aria-pressed="true"],.driving-pedal:focus-visible{border-color:#a2d8e8;background:#19323cbf;outline:1px solid #a2d8e8;outline-offset:-2px}
 .driving-brake[aria-pressed="true"]{border-color:#fda4af;background:#571829a0;outline-color:#fda4af}
 .touch-stick-throttle{position:relative;width:58px;height:66px;border:1px solid #8cabb970;border-radius:50%;background:#040d1759;color:#d9e5ee;display:grid;place-items:center;pointer-events:auto;touch-action:none}
 .touch-stick-axis{white-space:pre;text-align:center;font:15px/2.2 ui-monospace,monospace;opacity:.5}
@@ -53,3 +53,5 @@ html[data-high-contrast="true"] .driving-hud button,html[data-high-contrast="tru
 
 /* Map stays above the console in the corner; it never consumes pedal space. */
 @media(max-height:500px) and (orientation:landscape){.ignition-hud{bottom:max(8px,env(safe-area-inset-bottom))}}
+
+@media(hover:hover) and (pointer:fine){.driving-pedal:hover{border-color:#a2d8e8;background:#19323cbf;outline:1px solid #a2d8e8;outline-offset:-2px}}

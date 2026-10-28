@@ -58,10 +58,10 @@ test('mobile HUD groups, assisted shifter and enlarged resource dials',async t=>
    assert.ok(by('Ignition key'));assert.ok(by('Radio source'));assert.equal(document.querySelector('.console-display [aria-label="Ignition key"]'),null);
    await act(async()=>prefs.getState().setHudGroup('parking',false));assert.equal(by('Parking brake'),null);assert.ok(by('Drag gear stick'));
   });
-  await t.test('HUD button activation cannot add brake input, and all-hidden groups can be restored in Settings',async()=>{
+  await t.test('Space brakes while HUD has focus, and all-hidden groups can be restored in Settings',async()=>{
    await act(async()=>input.getState().releaseControls());await render(h(Fragment,null,h(DrivingHUD),h(Keyboard)));
-   const button=by('Expand climate');await act(async()=>button.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:' ',code:'Space',bubbles:true,cancelable:true})));assert.equal(input.getState().input.brake,0);
-   await act(async()=>button.dispatchEvent(new dom.window.KeyboardEvent('keyup',{key:' ',code:'Space',bubbles:true,cancelable:true})));
+   const button=by('Expand climate');await act(async()=>button.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:' ',code:'Space',bubbles:true,cancelable:true})));assert.equal(input.getState().input.brake,1);assert.equal(document.querySelector('.climate-three-knobs'),null);
+   await act(async()=>button.dispatchEvent(new dom.window.KeyboardEvent('keyup',{key:' ',code:'Space',bubbles:true,cancelable:true})));assert.equal(input.getState().input.brake,0);
    await act(async()=>prefs.getState().update({hudGroups:Object.fromEntries(Object.keys(DEFAULT_HUD_GROUPS).map(id=>[id,false]))}));assert.equal(document.querySelectorAll('[data-hud-group]').length,0);assert.equal(document.querySelector('.hud-group-bar'),null);
    await render(h(SettingsMenu));const tab=name=>[...document.querySelectorAll('[role="tab"]')].find(b=>b.textContent===name),row=id=>document.querySelector(`[data-menu-row="${id}"]`);
    await act(async()=>tab('HUD').click());await act(async()=>row('restore-hud').click());assert.ok(Object.values(prefs.getState().hudGroups).every(Boolean));

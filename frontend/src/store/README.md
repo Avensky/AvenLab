@@ -124,3 +124,8 @@ Position/yaw projections serve the map without invalidating those components.
 Steering axis updates only the rotor; stalk state is memoized separately. Chat's
 unused component and saved visibility option were removed. Radio transport and
 volume remain event-driven, with no new progress timer or network sender.
+
+HUD pointer activation prevents button focus; the driving brake binding is routed
+in capture phase before HUD button activation. Parking/ignition/stalk holds only
+write their packed commands and never synthesize throttle. Pointer ownership
+keeps pedal holds separate, and touch devices do not retain a desktop hover fill.

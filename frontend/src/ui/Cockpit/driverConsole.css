@@ -174,22 +174,28 @@ html[data-reduce-motion="true"] .shift-slot:active{animation:none!important}
 .radio-volume-dial output{font-size:5px;bottom:-5px;left:0;right:0}
 .radio-display .radio-vehicle-status[data-alert="true"]{color:#ffb76a;font-weight:700;letter-spacing:.02em}
 
-/* Bottom-center key with a separate right-hand starter accent. */
-.driving-hud .ignition-hud{left:50%;right:auto;top:auto;bottom:max(8px,env(safe-area-inset-bottom));width:122px;transform:translateX(-50%)}
+/* One rotary key beside the console, leaving the vehicle center clear. */
+.driving-hud .ignition-hud{left:auto;right:calc(var(--console-width) + 16px);top:auto;bottom:max(10px,env(safe-area-inset-bottom));width:80px;transform:none}
+.ignition-hud .ignition-system{display:block}
+.ignition-hud .ignition-cylinder{display:block;width:100%;height:auto;aspect-ratio:1}
+.ignition-cylinder [data-key-position]{pointer-events:none;cursor:inherit}
+.ignition-cylinder .key-travel{opacity:.3;transition:stroke-dashoffset 130ms linear;pointer-events:none}
+.ignition-system[data-holding="true"] .key-travel{opacity:1}
 .ignition-hud .hud-group-body{padding:0;border:0;background:none}
-.ignition-hud .ignition-system{display:flex;align-items:center;gap:1px}
-.ignition-hud .ignition-cylinder{flex:0 0 88px;width:88px;height:88px}
-.ignition-hud .starter-accent{display:flex;flex:0 0 33px;flex-direction:column;align-items:center;justify-content:center;gap:4px;width:33px;height:54px;padding:3px;border:1px solid #7bcce87a;border-left:2px solid #8eddf1;border-radius:5px 20px 20px 5px;background:linear-gradient(90deg,#15394a80,#08131bcc);color:#a2def3;touch-action:none}
-.starter-accent>span{font:20px/1 sans-serif}.starter-accent>small{font:6px/1 monospace}
-.ignition-hud .starter-accent[aria-pressed="true"]{background:#1d7195a6;border-color:#cef5ff;color:#f0fbff;box-shadow:inset 0 0 8px #68d5ff40}
-.ignition-hud .starter-accent:disabled{opacity:.5}.ignition-hud .starter-accent:focus-visible{outline:1px solid #b1e7fa;outline-offset:2px}
-@media(max-width:600px) and (orientation:portrait){.driving-hud .ignition-hud{width:88px}.ignition-hud .ignition-cylinder{flex-basis:64px;width:64px;height:64px}.ignition-hud .starter-accent{flex-basis:23px;width:23px;height:44px}.starter-accent>span{font-size:16px}.starter-accent>small{font-size:5px}}
-@media(max-height:320px){.driving-hud .ignition-hud{width:105px}.ignition-hud .ignition-cylinder{flex-basis:76px;width:76px;height:76px}.ignition-hud .starter-accent{flex-basis:28px;width:28px;height:46px}}
+@media(max-width:600px) and (orientation:portrait){.driving-hud .ignition-hud{width:58px;right:calc(var(--console-width) + 8px)}}
+@media(max-height:320px){.driving-hud .ignition-hud{width:64px}}
 
-/* Strength is shown by filled blue crystals, never a focus box or percentage. */
-:is(.drive-dock,.cockpit-panel) .mechanical-handbrake .parking-levels button{border:0;outline:none;background:transparent;box-shadow:none;min-height:14px;padding:1px;line-height:0}
-.parking-crystal{display:block;width:22px;height:12px;opacity:.6}
+/* Three narrow diamonds fill from bottom to top; Off is the empty stack. */
+.transmission-console .mechanical-handbrake .parking-levels{width:18px;gap:1px;top:2px;right:0}
+:is(.drive-dock,.cockpit-panel) .mechanical-handbrake .parking-levels button{display:grid;place-items:center;border:0;outline:none;background:transparent;box-shadow:none;height:18px;min-height:18px;padding:1px;line-height:0}
+.parking-crystal{display:block;width:9px;height:14px;opacity:.6;pointer-events:none}
 .parking-crystal path{fill:#10263466;stroke:#73c8e1;stroke-width:1;stroke-dasharray:2 1}
 [data-filled="true"]>.parking-crystal{opacity:1}[data-filled="true"]>.parking-crystal path{fill:#68c8f0;stroke:#b0eaff;stroke-dasharray:none}
 .parking-levels button:focus-visible .parking-crystal path{stroke:#fff;stroke-width:2}
 .mechanical-handbrake:has(.handbrake-lever:focus-visible) .parking-crystal path{stroke:#d7f4ff;stroke-width:1.5}
+.drive-dock .hud-transmission .handbrake-lever{height:99px}
+.transmission-console .handbrake-lever .ebrake-handle,.transmission-console .handbrake-lever[data-active="true"] .ebrake-handle{width:95%;height:9%;left:27%;top:82%}
+@media(max-height:400px){.drive-dock .hud-transmission .handbrake-lever{height:74px}}
+.driving-hud button{-webkit-tap-highlight-color:transparent}
+@media(prefers-reduced-motion:reduce){.key-travel{transition:none!important}}
+html[data-reduce-motion="true"] .key-travel{transition:none}

@@ -2,6 +2,7 @@ import React from 'react';
 import {createRoot} from 'react-dom/client';
 import Dashboard from '../src/ui/Dashboard/Dashboard';
 import {DrivingHUD} from '../src/ui/DrivingHUD';
+import {Keyboard} from '../src/controls/Keyboard';
 import {CockpitPanel} from '../src/ui/Cockpit/CockpitPanel';
 import {SettingsMenu} from '../src/game/SettingsMenu';
 import '../src/components/menus/menus.css';
@@ -60,7 +61,7 @@ setup();prefs.persist.setOptions({name:'avenlab-cockpit-preview-only'});renderin
 export function PreviewApp(){const overlay=ui(s=>s.overlay);if(overlay==='cockpit')return <CockpitPanel/>;
  if(overlay==='settings')return <SettingsMenu/>;
  if(overlay)return <div style={{padding:30}}><p>{overlay.toUpperCase()} OPENS IN THE RUNNING GAME</p><button onClick={()=>ui.getState().openCockpit('console')}>BACK TO CONSOLE</button><button onClick={()=>ui.getState().closeOverlay()}>CLOSE</button></div>;
- return layout?<DrivingHUD/>:<Dashboard/>;}
+ return layout?<><Keyboard/><DrivingHUD/></>:<Dashboard/>;}
 const root=createRoot(document.getElementById('root')!);root.render(<PreviewApp/>);setInterval(publish,100);
 const api={setResourceMask(value:number){sampleResourceMask=value;publish();},navigation,setUltimate(value:number){sampleUltimate=Math.max(0,Math.min(1,value));publish();},setPhase(value:string){phase=value;startAt=performance.now();electrical=(electrical&~(3<<10))|((value==='off'?0:value==='cranking'?3:2)<<10);input.getState().setInput({cabin_mask:undefined});lastCabin=undefined;setup();publish();},setLamps(value:boolean){lamps=value;publish();},input,prefs,telemetry,network,ui};
 Object.assign(window,{instrumentQa:api});

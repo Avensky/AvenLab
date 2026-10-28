@@ -26,7 +26,7 @@ export function HoldButton({ onHold, disabled, ...props }: ButtonHTMLAttributes<
   return <button {...props} type="button" disabled={disabled}
     onContextMenu={event => event.preventDefault()}
     onPointerDown={event => {
-      if (!canDrive() || event.button !== 0 || pointer.current !== null) return;
+      if (!canDrive() || event.button !== 0 || pointer.current !== null || ((event.target as Element | null)?.closest?.("button") !== event.currentTarget)) return;
       event.preventDefault(); event.stopPropagation(); pointer.current = event.pointerId;
       event.currentTarget.setPointerCapture?.(event.pointerId); emit();
     }}

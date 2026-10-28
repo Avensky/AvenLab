@@ -32,7 +32,7 @@ test('wheel and console share authoritative packed controls without additional s
   const by=label=>document.querySelector(`[aria-label="${label}"]`)??document.querySelector(`[data-key-position="${({'Ignition off':0,'Ignition acc':1,'Ignition on':2,'Ignition start':3})[label]}"]`);
   const click=async label=>act(async()=>by(label).dispatchEvent(new dom.window.MouseEvent('click',{bubbles:true,cancelable:true})));
   const pointer=async(label,type,y=100,x=150,id=1)=>act(async()=>{const e=new Event(type,{bubbles:true,cancelable:true});Object.assign(e,{pointerId:id,button:0,clientX:x,clientY:y});by(label).dispatchEvent(e);});
-  const key=async(label,key)=>act(async()=>by(label).dispatchEvent(new dom.window.KeyboardEvent('keydown',{key,code:key,bubbles:true,cancelable:true})));
+  const key=async(label,key,held=false)=>act(async()=>{by(label).dispatchEvent(new dom.window.KeyboardEvent('keydown',{key,code:key,bubbles:true,cancelable:true}));if(!held)by(label).dispatchEvent(new dom.window.KeyboardEvent('keyup',{key,code:key,bubbles:true,cancelable:true}));});
   await t.test('cabin golden word clamps HVAC, strips snapshot flags and preserves unrelated input',()=>{
    const word=reviseCabin(undefined,{temperatureC:30,fan:3,ac:true,recirculate:true,frontDefrost:true,rearDefrost:true,ignition:3,keyInserted:true},true);
    assert.equal(word,0x3ffe);assert.equal(unpackCabin(word).ignition,3);
@@ -63,7 +63,7 @@ test('wheel and console share authoritative packed controls without additional s
    await render(h(Steering));await act(async()=>input.getState().setInput({cockpit_mask:undefined}));const left='Lights and turn signal stalk',right='Wiper and washer stalk',cruise='Cruise control stalk';
    await pointer(left,'pointerdown');await pointer(left,'pointermove',80);assert.ok(input.getState().input.vehicleMask&F.BLINKER_RIGHT);assert.equal(input.getState().input.vehicleMask&F.BLINKER_LEFT,0);await pointer(left,'pointerup',80);await click(left);assert.equal(input.getState().input.cockpit_mask,undefined);
    await key(left,'ArrowDown');assert.equal(input.getState().input.vehicleMask&(F.BLINKER_LEFT|F.BLINKER_RIGHT),0);await key(left,'ArrowDown');assert.ok(input.getState().input.vehicleMask&F.BLINKER_LEFT);assert.equal(input.getState().input.vehicleMask&F.BLINKER_RIGHT,0);await click(left);assert.equal(unpackCockpit(input.getState().input.cockpit_mask).lights,1);
-   await key(right,'ArrowDown');assert.equal((input.getState().input.cockpit_mask>>>24)&15,10);await key(right,'ArrowUp');assert.equal(unpackCockpit(input.getState().input.cockpit_mask).washer,true);
+   await key(right,'ArrowDown');assert.equal((input.getState().input.cockpit_mask>>>24)&15,10);await key(right,'ArrowUp',true);assert.equal(unpackCockpit(input.getState().input.cockpit_mask).washer,true);
    await act(async()=>window.dispatchEvent(new Event('blur')));assert.equal(unpackCockpit(input.getState().input.cockpit_mask).washer,false);await click(cruise);assert.equal(unpackCockpit(input.getState().input.cockpit_mask).cruiseEnabled,true);
    const later=window.setTimeout,clear=window.clearTimeout,timers=new Map();let id=0;window.setTimeout=(fn,ms)=>{timers.set(++id,{fn,ms});return id;};window.clearTimeout=id=>timers.delete(id);
    try{await pointer(cruise,'pointerdown');await pointer(cruise,'pointermove',80);assert.equal((input.getState().input.cockpit_mask>>>24)&15,8);assert.equal([...timers.values()][0].ms,350);const revision=unpackCockpit(input.getState().input.cockpit_mask).revision;await act(async()=>[...timers.values()][0].fn());assert.notEqual(unpackCockpit(input.getState().input.cockpit_mask).revision,revision);timers.delete(1);await act(async()=>window.dispatchEvent(new Event('blur')));assert.equal(timers.size,0);}finally{window.setTimeout=later;window.clearTimeout=clear;}
@@ -71,16 +71,16 @@ test('wheel and console share authoritative packed controls without additional s
   });
   await t.test('key has separate OFF/ACC/ON/START requests, confirmed display and spring return',async()=>{
    await act(async()=>input.getState().setInput({cabin_mask:undefined,vehicleMask:96}));await publish({cabin_mask:4|4096|16384});await render(h(IgnitionSwitch));
-   await click('Ignition acc');assert.equal(unpackCabin(input.getState().input.cabin_mask).ignition,1);assert.equal(input.getState().input.vehicleMask&1,0);
-   await click('Ignition on');assert.equal(unpackCabin(input.getState().input.cabin_mask).ignition,2);assert.equal(input.getState().input.vehicleMask&1,0);assert.equal(document.querySelector('.ignition-system').dataset.ignition,'OFF');
+   await key('Ignition key','ArrowRight');assert.equal(unpackCabin(input.getState().input.cabin_mask).ignition,1);assert.equal(input.getState().input.vehicleMask&1,0);
+   await publish({cabin_mask:4|4096|16384|(1<<10)});await key('Ignition key','ArrowRight');assert.equal(unpackCabin(input.getState().input.cabin_mask).ignition,2);assert.equal(input.getState().input.vehicleMask&1,0);assert.equal(document.querySelector('.ignition-system').dataset.ignition,'ACC');
    await publish({cabin_mask:4|4096|16384|(2<<10)});assert.equal(document.querySelector('.ignition-system').dataset.ignition,'ON');
    const later=window.setTimeout,clear=window.clearTimeout,timers=new Map();let id=0;window.setTimeout=(fn,ms)=>{timers.set(++id,{fn,ms});return id;};window.clearTimeout=id=>timers.delete(id);
-   try{await click('Ignition start');assert.equal(unpackCabin(input.getState().input.cabin_mask).ignition,3);assert.equal(input.getState().input.vehicleMask&1,1);assert.equal([...timers.values()][0].ms,1000);await act(async()=>window.dispatchEvent(new Event('blur')));assert.equal(unpackCabin(input.getState().input.cabin_mask).ignition,2);assert.equal(timers.size,0);}finally{window.setTimeout=later;window.clearTimeout=clear;}
-   await click('Ignition off');await publish({cabin_mask:4|4096|16384});
+   try{await key('Ignition key','End');assert.equal(unpackCabin(input.getState().input.cabin_mask).ignition,3);assert.equal(input.getState().input.vehicleMask&1,1);assert.equal([...timers.values()][0].ms,1000);await act(async()=>window.dispatchEvent(new Event('blur')));assert.equal(unpackCabin(input.getState().input.cabin_mask).ignition,2);assert.equal(timers.size,0);}finally{window.setTimeout=later;window.clearTimeout=clear;}
+   await key('Ignition key','Home');await publish({cabin_mask:4|4096|16384});
    by('Ignition key').getBoundingClientRect=()=>({x:100,y:100,width:100,height:100});
    await pointer('Ignition key','pointerdown',114.64,114.64);await pointer('Ignition key','pointermove',150,200);assert.equal(unpackCabin(input.getState().input.cabin_mask).ignition,3);
    await pointer('Ignition key','pointerup',150,200);assert.equal(unpackCabin(input.getState().input.cabin_mask).ignition,2);
-   await click('Ignition off');await key('Ignition key','Delete');assert.equal(unpackCabin(input.getState().input.cabin_mask).keyInserted,false);await publish({cabin_mask:4|16384});assert.ok(by('Ignition key'));assert.equal(document.querySelector('.ignition-system').dataset.keyInserted,'false');
+   await key('Ignition key','Home');await key('Ignition key','Delete');assert.equal(unpackCabin(input.getState().input.cabin_mask).keyInserted,false);await publish({cabin_mask:4|16384});assert.ok(by('Ignition key'));assert.equal(document.querySelector('.ignition-system').dataset.keyInserted,'false');
   });
   await t.test('HVAC retains key state; non-square H gate matches the slot coordinates',async()=>{
    await act(async()=>input.getState().setInput({cabin_mask:undefined}));await publish({cabin_mask:4|4096|16384|(2<<10)});await render(h(ClimatePanel));await click('Expand climate');await key('TEMP','ArrowUp');await click('A/C');await key('FAN','ArrowUp');const cabin=unpackCabin(input.getState().input.cabin_mask);

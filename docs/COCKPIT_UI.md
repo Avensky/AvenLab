@@ -2,8 +2,8 @@
 
 The instruments sit at top-left and the cropped steering wheel sits at bottom-left. Gas/brake/reverse controls are
 at bottom-right. The right-hand console has independent display, climate, shifter,
-parking-brake and assist groups. The ignition key sits at bottom-center, with a
-hold-to-crank accent on its right.
+parking-brake and assist groups. One rotary ignition key sits low beside the right-hand console, leaving the
+vehicle center clear.
 A collapsible top-right minimap plots the loaded authoritative roads and routes to a waypoint. It adds no second 3D render.
 Signal Recon never mounts the driving HUD.
 
@@ -31,8 +31,10 @@ retain automatic forward driving and temporary gear overrides.
 Open **Cockpit** from the radio Apps page, pause menu, **F4**, or
 **LB/L1 + View/Select** (Console tab). View/Select alone retains the performance
 shortcut. Shoulders switch cockpit tabs, D-pad navigates, A/Cross activates and
-B/Circle closes. Arrows, Tab, Enter and Space also work. HUD button activation
-cannot become a driving brake input.
+B/Circle closes. Arrows, Tab, Enter and Space also work inside menus. Pointer
+interaction with HUD controls prevents browser focus rather than selecting a
+button. The configured driving brake key (Space by default) is intercepted before
+a focused HUD button can turn it into a click. Menu activation remains separate.
 
 The electronic display expands to **RADIO**, **CONTROLS** and **APPS**, plus
 shortcuts opening the actual Settings and Keyboard tabs. Radio reuses one Audio
@@ -70,19 +72,22 @@ select only the resulting text, so position-only updates do not redraw the radio
 | ON | Powers the instrument LCD and bulb check; keeps an already-running engine running, but cannot start a stopped engine. |
 | START | Requests the existing 700 ms crank. A successful start springs back to ON. Releasing before completion aborts the crank. |
 
-Drag the key clockwise through the detents, click it to advance, or choose a
-tangent-labeled mark. There are four 45° detents: OFF, ACC, ON and START,
-with no separate position buttons. Arrow keys choose a detent, Home selects OFF
-and Delete removes/inserts a key while OFF. START activation pulses for one second;
-a dragged key can be held in START. Release, blur, hidden page, menu transition,
-disconnect and unmount all release a held starter to ON. The displayed key follows
-confirmed telemetry. The old E/controller X/Square engine toggle still works.
+There are four 45° detents: OFF, ACC, ON and START, with tangent labels.
+The key follows confirmed telemetry when idle and the held position while turning.
+The old E/controller X/Square engine toggle still works.
 Legacy clients that never send a key command retain their existing engine behavior.
-The bottom-center HUD also has a right-hand START accent: hold with pointer,
-Space or Enter to insert the key and request START. Release, focus loss, pause,
-disconnect or a successful engine start releases the starter back to ON. It is
-disabled while the engine runs; the rotary key still provides OFF/ACC/ON controls.
-An aborted short hold does not bypass the server's normal 700 ms crank time.
+The HUD and full Cockpit use one key button, without a second starter or clickable
+position labels. Tap the key to switch OFF. Hold to advance at 250 ms to ACC,
+550 ms to ON and 850 ms to START, starting from the current position. START stays
+held until release, then springs back to ON. Release at ACC/ON retains that stage.
+The existing Rust 700 ms crank remains authoritative; a short START hold can abort
+before the engine starts. Holding while already running is permitted without
+forcing a shutdown/restart. A clockwise drag also selects the key's detents.
+Focus loss, pause, disconnect and unmount release START and cancel the hold timer.
+Inside menus Space/Enter can hold the key; in the driving HUD Space always brakes.
+Arrow/Home/Delete access remains, and an Arrow/End START action retains a bounded
+one-second pulse for controller menu navigation that supplies only an activation.
+
 
 Expanded climate has three round knobs: airflow/recirculation, fan/rear
 defrost and temperature/A/C. Fan has OFF/1/2/3/4; airflow has FACE, FACE/FEET,
@@ -116,10 +121,16 @@ small tangent-labeled step targets, or focus and use arrow keys. The actuator
 springs to center for wipers/cruise. The turn signal holds Left / Off / Right;
 clockwise advances toward Right and counterclockwise toward Left, through Off.
 Labels are tightened along their tangent. Tap the center cap to rotate its mode.
-Cruise is at 292.5°, reaching 29% of wheel diameter (58% of its radius), midway between its
-previous 23% and 35% reaches. Its labels retain 11° spacing. The wheel's bottom
-inset reserves room for this lower lever at the default crop while preserving
-the saved wheel-drop adjustment and painted-wheel click-through behavior.
+Cruise is at 305°, reaching 32% of wheel diameter. Its step targets are spaced
+18° each side (a 36° arc) so the lower target clears the painted lower wheel spoke.
+A small wheel bottom inset keeps the targets reachable at the default crop.
+Saved wheel drop and painted-wheel click-through remain. Direction buttons and
+cap drags hold their pulled position until pointer/key release. Cruise repeats
+adjustments every 350 ms while held. Washer stays requested for the full hold
+without a fixed cutoff; release, focus loss or a blocked UI clears it. Wipe-down
+requests one cycle while its lever remains pulled. Programmatic/controller clicks
+without a physical hold retain a short pulse. Turn signals continue to latch.
+
 
 | Stalk | Angle | Up / Down | Tap |
 | --- | --- | --- | --- |
@@ -173,14 +184,15 @@ projections of floor/up axes, not a claim that perpendicular 3D lines must appea
 90° apart in the image. Hold the lever to build its three applied detents: the
 first after 250 ms, then one every 300 ms, reaching full at 850 ms. Release keeps
 the chosen tension; a quick tap releases it fully. Dragging and direct level
-targets remain available. Space/Enter holds work the same way, with no keyboard
-repeat dependence. Focus loss, pause, disconnect and unmount cancel the charging
+targets remain available. Inside menus Space/Enter holds work the same way, with
+no keyboard repeat dependence; in the driving HUD Space always brakes. Focus loss, pause, disconnect and unmount cancel the charging
 timer, retaining deliberate latched tension. Keyboard B and controller B/Circle
 still supply momentary full cable force. The base ellipse leans with the receding
-OFF handle. Blue crystal targets descend from the top-right; filled crystals show
-applied strength with dashed outlines while empty. There are no visible percentage
+OFF handle. Three slim four-sided diamonds fill from bottom to top. The empty
+stack means Off; full strength fills every diamond. There is no permanently empty
+OFF diamond. Applied diamonds glow blue; empty diamonds have dashed outlines. There are no visible percentage
 numbers or BRAKE label on the lever: the dashboard owns that warning. The lever
-has no focus/pressed box; keyboard focus brightens the crystals. TRAC, ABS
+has no focus/pressed box; keyboard focus inside menus brightens the diamonds. TRAC, ABS
 and VSC SPORT sit below the brake, in that order, left of the shifter. Rust takes the
 maximum of latched and momentary force and bypasses rear ABS for it.
 

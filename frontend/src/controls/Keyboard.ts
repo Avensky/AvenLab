@@ -147,6 +147,12 @@ export function Keyboard() {
       if (event.code === "KeyN") useInputStore.getState().setHeldPlayerFlag("keyboard", PlayerFlags.HONK, false);
     };
     const onBlur = () => { focused = false; release(); };
+    // A HUD button may still have focus from Tab or a restored browser focus.
+    // The driving brake owns this key; consume it before button activation.
+    const hudBrakeTarget = (event: KeyboardEvent) => event.code === usePreferencesStore.getState().bindings.brake
+      && event.target instanceof HTMLElement && Boolean(event.target.closest('.driving-hud')) && !isTypingTarget(event.target) && canDrive();
+    const onHudBrakeDown = (event: KeyboardEvent) => { if (hudBrakeTarget(event)) { onKeyDown(event); event.preventDefault(); event.stopPropagation(); } };
+    const onHudBrakeUp = (event: KeyboardEvent) => { if (hudBrakeTarget(event)) { onKeyUp(event); event.preventDefault(); event.stopPropagation(); } };
     const onFocus = () => { focused = true; };
     const onVisibility = () => { if (document.visibilityState === "hidden") release(); };
     const onFocusIn = (event: FocusEvent) => { if (isTypingTarget(event.target)) release(); };
@@ -162,6 +168,8 @@ export function Keyboard() {
     });
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("keydown", onHudBrakeDown, true);
+    window.addEventListener("keyup", onHudBrakeUp, true);
     window.addEventListener("blur", onBlur);
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onVisibility);
@@ -169,6 +177,8 @@ export function Keyboard() {
     return () => {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("keydown", onHudBrakeDown, true);
+      window.removeEventListener("keyup", onHudBrakeUp, true);
       window.removeEventListener("blur", onBlur);
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisibility);

@@ -52,20 +52,53 @@ test('research controls keep input, display and audio updates independent',async
    const advance=async ms=>{const entry=[...timers].find(([,t])=>t.ms===ms);assert.ok(entry);timers.delete(entry[0]);await act(async()=>entry[1].fn());};
    const strength=()=>unpackCockpit(input.getState().input.cockpit_mask).parkingStrength;
    try{
-    await click('Parking brake 0 percent');const gear=unpackCockpit(input.getState().input.cockpit_mask).gear;await point('pointerdown');await advance(250);assert.equal(strength(),1);await advance(300);assert.equal(strength(),2);await advance(300);assert.equal(strength(),3);assert.equal(timers.size,0);
-    await point('pointerup');await click('Parking brake');assert.equal(strength(),3,'the post-hold click must not release the brake');assert.equal(unpackCockpit(input.getState().input.cockpit_mask).gear,gear);assert.equal(document.querySelectorAll('.parking-levels [data-filled="true"]').length,3);assert.equal(document.querySelector('.parking-levels').textContent,'');
+    await click('Parking brake');const gear=unpackCockpit(input.getState().input.cockpit_mask).gear;await point('pointerdown');await advance(250);assert.equal(strength(),1);await advance(300);assert.equal(strength(),2);await advance(300);assert.equal(strength(),3);assert.equal(timers.size,0);
+    await point('pointerup');await click('Parking brake');assert.equal(strength(),3,'the post-hold click must not release the brake');assert.equal(unpackCockpit(input.getState().input.cockpit_mask).gear,gear);assert.equal(document.querySelectorAll('.parking-levels [data-filled="true"]').length,3);assert.equal(document.querySelector('.parking-levels').textContent,'');assert.equal(document.querySelectorAll('.parking-crystal').length,3);assert.equal(by('Parking brake 0 percent'),null);assert.equal(input.getState().input.throttle,0);
     await click('Parking brake');assert.equal(strength(),0);assert.equal(document.querySelector('.ebrake-indicator'),null);
     await act(async()=>by('Parking brake').dispatchEvent(new dom.window.KeyboardEvent('keydown',{code:'Space',key:' ',bubbles:true,cancelable:true})));await advance(250);await act(async()=>by('Parking brake').dispatchEvent(new dom.window.KeyboardEvent('keyup',{code:'Space',key:' ',bubbles:true,cancelable:true})));assert.equal(strength(),1);assert.equal(timers.size,0);await click('Parking brake');assert.equal(strength(),0);
     await point('pointerdown');await advance(250);await act(async()=>window.dispatchEvent(new Event('blur')));assert.equal(timers.size,0);assert.equal(strength(),1,'focus loss stops charging but retains a deliberate latched brake');
    }finally{window.setTimeout=later;window.clearTimeout=clear;}
   });
-  await t.test('HUD starter holds START and returns to ON on release, pause and engine start',async()=>{
-   const {IgnitionSwitch}=await load('ui/Cockpit/IgnitionSwitch.tsx'),{unpackCabin}=await load('store/tools/cabinMasks.ts');entity.vehicle_mask=96;entity.cabin_mask=4|4096|(2<<10);await act(async()=>input.getState().setInput({cabin_mask:undefined}));await render(h(IgnitionSwitch,{starter:true}));
-   const point=async type=>act(async()=>{const e=new Event(type,{bubbles:true,cancelable:true});Object.assign(e,{pointerId:52,button:0});by('Hold to start engine').dispatchEvent(e);});
+  await t.test('one ignition key progresses while held, tap stops, and release/pause returns START to ON',async()=>{
+   const {IgnitionSwitch}=await load('ui/Cockpit/IgnitionSwitch.tsx'),{unpackCabin}=await load('store/tools/cabinMasks.ts');entity.vehicle_mask=96;entity.cabin_mask=4|4096;await act(async()=>input.getState().setInput({cabin_mask:undefined}));await render(h(IgnitionSwitch));
+   assert.equal(document.querySelectorAll('.ignition-system button').length,1);assert.equal(by('Hold to start engine'),null);
+   const point=async type=>act(async()=>{const e=new Event(type,{bubbles:true,cancelable:true});Object.assign(e,{pointerId:52,button:0,clientX:0,clientY:0});by('Ignition key').dispatchEvent(e);});
    const ignition=()=>unpackCabin(input.getState().input.cabin_mask).ignition;
-   await point('pointerdown');assert.equal(ignition(),3);assert.equal(by('Hold to start engine').getAttribute('aria-pressed'),'true');await point('pointerup');assert.equal(ignition(),2);assert.equal(by('Hold to start engine').getAttribute('aria-pressed'),'false');
-   await point('pointerdown');await act(async()=>ui.setState({overlay:'pause'}));assert.equal(ignition(),2);assert.equal(by('Hold to start engine').getAttribute('aria-pressed'),'false');await act(async()=>ui.setState({overlay:null}));
-   await point('pointerdown');await act(async()=>{entity.vehicle_mask=97;fresh();});assert.equal(by('Hold to start engine').disabled,true);assert.equal(ignition(),2,'successful start releases the starter without shutting down');
+   const later=window.setTimeout,clear=window.clearTimeout,timers=new Map();let id=0;window.setTimeout=(fn,ms)=>{timers.set(++id,{fn,ms});return id;};window.clearTimeout=id=>timers.delete(id);
+   const advance=async ms=>{const entry=[...timers].find(([,t])=>t.ms===ms);assert.ok(entry);timers.delete(entry[0]);await act(async()=>entry[1].fn());};
+   try{
+    await point('pointerdown');await advance(250);assert.equal(ignition(),1);await advance(300);assert.equal(ignition(),2);await advance(300);assert.equal(ignition(),3);assert.equal(document.querySelector('.ignition-system').dataset.ignition,'START');assert.equal(timers.size,0);
+    await point('pointerup');await click('Ignition key');assert.equal(ignition(),2);await point('pointerdown');await point('pointerup');await click('Ignition key');assert.equal(ignition(),0);assert.equal(input.getState().input.vehicleMask&1,0);
+    await point('pointerdown');await advance(250);await advance(300);await advance(300);await act(async()=>ui.setState({overlay:'pause'}));assert.equal(ignition(),2);assert.equal(timers.size,0);await act(async()=>ui.setState({overlay:null}));
+    await act(async()=>{entity.vehicle_mask=97;entity.cabin_mask=4|4096|(2<<10);fresh();});await point('pointerdown');await advance(250);assert.equal(ignition(),3,'running engine does not disable the key');await point('pointerup');await click('Ignition key');assert.equal(ignition(),2);
+   }finally{window.setTimeout=later;window.clearTimeout=clear;}
+  });
+  await t.test('HUD pointer controls never own the gas pedal and focused HUD cannot steal the driving brake key',async()=>{
+   const {DrivingHUD}=await load('ui/DrivingHUD.tsx'),{Keyboard}=await load('controls/Keyboard.ts');Object.defineProperty(document,'hasFocus',{configurable:true,value:()=>true});
+   await act(async()=>input.getState().releaseControls());await render(h('div',null,h(Keyboard),h(DrivingHUD)));
+   await act(async()=>by('Accelerate').focus());assert.equal(document.activeElement,by('Accelerate'));
+   await act(async()=>{const event=new Event('pointerdown',{bubbles:true,cancelable:true});Object.assign(event,{pointerId:71,button:0,clientY:100});by('Parking brake').dispatchEvent(event);assert.equal(event.defaultPrevented,true);});
+   assert.notEqual(document.activeElement,by('Accelerate'));assert.equal(input.getState().input.throttle,0);assert.equal(by('Accelerate').getAttribute('aria-pressed'),'false');
+   await act(async()=>{const event=new Event('pointerup',{bubbles:true,cancelable:true});Object.assign(event,{pointerId:71,button:0,clientY:100});by('Parking brake').dispatchEvent(event);by('Parking brake').click();});assert.equal(input.getState().input.throttle,0);
+   for(const label of ['Accelerate','Parking brake','Ignition key','Radio play or pause']){
+    await act(async()=>by(label).focus());const before=input.getState().input.cockpit_mask,key=input.getState().input.cabin_mask;
+    await act(async()=>by(label).dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:' ',code:'Space',bubbles:true,cancelable:true})));assert.equal(input.getState().input.brake,1,label);assert.equal(input.getState().input.throttle,0,label);assert.equal(input.getState().input.cockpit_mask,before);assert.equal(input.getState().input.cabin_mask,key);
+    await act(async()=>by(label).dispatchEvent(new dom.window.KeyboardEvent('keyup',{key:' ',code:'Space',bubbles:true,cancelable:true})));assert.equal(input.getState().input.brake,0);
+   }
+   await act(async()=>input.getState().setAnalogFromSource('keyboard',{throttle:.6}));await click('Parking brake 67 percent');assert.equal(input.getState().input.throttle,.6,'parking must preserve intentional accelerator input');await act(async()=>input.getState().releaseControls());
+  });
+  await t.test('cruise and washer direction targets remain pulled until release and cancel held actions on pause',async()=>{
+   const {ColumnStalks}=await load('ui/Cockpit/ColumnStalks.tsx');await render(h(ColumnStalks));
+   const point=async(label,type,id)=>act(async()=>{const e=new Event(type,{bubbles:true,cancelable:true});Object.assign(e,{pointerId:id,button:0,clientX:100,clientY:100});by(label).dispatchEvent(e);});
+   const later=window.setTimeout,clear=window.clearTimeout,timers=new Map();let id=0;window.setTimeout=(fn,ms)=>{timers.set(++id,{fn,ms});return id;};window.clearTimeout=id=>timers.delete(id);
+   try{
+    await point('Cruise control stalk up','pointerdown',81);const actuator=by('Cruise control stalk').closest('.stalk-actuator');assert.equal(actuator.dataset.detent,'1');const revision=unpackCockpit(input.getState().input.cockpit_mask).revision;
+    const [timerId,timer]=[...timers][0];assert.equal(timer.ms,350);timers.delete(timerId);await act(async()=>timer.fn());assert.notEqual(unpackCockpit(input.getState().input.cockpit_mask).revision,revision);assert.equal(actuator.dataset.detent,'1');
+    await point('Cruise control stalk up','pointerup',81);assert.equal(actuator.dataset.detent,'0');assert.equal(timers.size,0);
+    await point('Wiper and washer stalk up','pointerdown',82);assert.equal(unpackCockpit(input.getState().input.cockpit_mask).washer,true);assert.equal(by('Wiper and washer stalk').closest('.stalk-actuator').dataset.detent,'1');assert.equal(timers.size,0,'held washer needs no repeated timeout');
+    await point('Wiper and washer stalk up','pointerup',82);assert.equal(unpackCockpit(input.getState().input.cockpit_mask).washer,false);
+    await point('Wiper and washer stalk up','pointerdown',83);await act(async()=>ui.setState({overlay:'pause'}));assert.equal(unpackCockpit(input.getState().input.cockpit_mask).washer,false);assert.equal(by('Wiper and washer stalk').closest('.stalk-actuator').dataset.detent,'0');await act(async()=>ui.setState({overlay:null}));
+   }finally{window.setTimeout=later;window.clearTimeout=clear;}
   });
   await t.test('signal stalk latches through Left / Off / Right while cruise springs back',async()=>{
    const {ColumnStalks}=await load('ui/Cockpit/ColumnStalks.tsx'),{VehicleFlags:F}=await load('store/tools/inputMasks.ts');
@@ -80,7 +113,7 @@ test('research controls keep input, display and audio updates independent',async
    const {DriveGearControl,ParkingBrakeControl}=await load('ui/Cockpit/DriveControls.tsx');prefs.getState().update({shiftLayout:'h-pattern'});entity.cockpit_mask=192;entity.gear=3;await act(async()=>input.getState().setInput({cockpit_mask:undefined}));await render(h('div',null,h(DriveGearControl),h(ParkingBrakeControl)));
    await click('Select gear 6');assert.equal(unpackCockpit(input.getState().input.cockpit_mask).gear,6);assert.equal(document.querySelectorAll('.shift-slot[aria-pressed]').length,0);
    await act(async()=>{entity.cockpit_mask=(input.getState().input.cockpit_mask&0xc0ffffff)>>>0;entity.gear=2;fresh();});assert.equal(by('Drag gear stick').style.left,'36%');assert.equal(by('Drag gear stick').style.top,'78%');
-   await click('Parking brake 67 percent');assert.equal(by('Parking brake 67 percent').getAttribute('aria-pressed'),'true');await click('Parking brake');assert.equal(by('Parking brake 0 percent').getAttribute('aria-pressed'),'true');assert.equal(document.querySelectorAll('.shift-slot[aria-pressed]').length,0);
+   await click('Parking brake 67 percent');assert.equal(by('Parking brake 67 percent').getAttribute('aria-pressed'),'true');await click('Parking brake');assert.equal(document.querySelectorAll('.parking-levels [data-filled="true"]').length,0);assert.equal(document.querySelectorAll('.shift-slot[aria-pressed]').length,0);
    const {GearSelector}=await load('ui/Cockpit/MechanicalControls.tsx');await render(h(GearSelector,{automatic:true,gear:0,disabled:false,pending:false}));await click('Select drive');assert.equal((input.getState().input.cockpit_mask>>>24)&15,11,'Drive is also a temporary forward action and can engage first at idle');
   });
   await t.test('playlist skip/replay/restart and volume reuse one audio owner',async()=>{
