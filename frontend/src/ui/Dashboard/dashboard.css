@@ -1,11 +1,10 @@
 .driving-dashboard { position:relative;left:auto;right:auto;bottom:auto;width:100%;transform:none;color:#f8fafc;pointer-events:none;font:10px/1.2 ui-monospace,monospace; }
-.dashboard-speed { width:36%;flex-shrink:0;position:relative; }
+.dashboard-speed, .fuel-temp-wrapper { width:35%;flex-shrink:0;position:relative; }
 .dashboard-speed .speedometer-wrapper { width:100%; }
 .dashboard-cluster { display: flex; align-items: center; }
 .speedometer-wrapper { position: relative; width: 36%; flex-shrink: 0; }
-.dashboard-rpm { width: 40%; flex-shrink: 0; position: relative; z-index: 2; margin-left: -5%; margin-right: -4%; }
+.dashboard-rpm { width: 40%; flex-shrink: 0; position: relative; z-index: 2; margin-left: -5%; margin-right: -5%; }
 .revolutions-wrapper { position: relative; }
-.fuel-temp-wrapper { width: 33%; flex-shrink: 0; position: relative; }
 .dashboard-cluster svg { display: block; width: 100%; height: auto; overflow: visible; }
 .dashboard-cluster text { font: 700 12px ui-monospace, monospace; text-anchor: middle; dominant-baseline: middle; fill: #eef1f4; }
 .dashboard-cluster .gauge-scale text { font-size: 12px; font-style: italic; }
@@ -44,7 +43,7 @@
 .gauge-turn[data-active="true"] { opacity: 1; }
 @keyframes instrument-flash { 50% { opacity: .16; } }
 .gauge-brake, .gauge-abs-warning, .gauge-tcs-warning { position: absolute; transform: translate(-50%, -50%); font-size: clamp(4px, .65vw, 8px); color: #ffb94c; opacity: .1; }
-.gauge-brake { left: 29%; top: 12%; color: #ff4e48; }
+.gauge-brake { left: 36%; top: 12%; color: #ff4e48; }
 .gauge-abs-warning { left: 24%; top: 78%; }.gauge-tcs-warning { left: 29%; top: 88%; font-size: clamp(3px, .5vw, 6px); }
 .gauge-brake[data-active="true"], .gauge-abs-warning[data-active="true"], .gauge-tcs-warning[data-active="true"] { opacity: 1; }
 .gauge-vsc-warning { position: absolute; left: 47%; top: 78%; transform: translate(-50%, -50%); color: #ffb94c; font-size: clamp(3px, .5vw, 6px); opacity: .08; }

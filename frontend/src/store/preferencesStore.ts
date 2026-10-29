@@ -26,16 +26,17 @@ export type Preferences = {
   hudGroups: Record<HudGroupId, boolean>;
   wheelDrop: number;
   steeringTravel: number;
+  minimapScale: number;
 };
 export const DEFAULT_PREFERENCES: Preferences = {
   fov: 75, cameraSensitivity: 1, controllerDeadzone: 0.12, steeringSensitivity: 1,
   invertSteering: false, reducedMotion: false, highContrast: false, menuTextScale: 1,
   bindings: DEFAULT_BINDINGS, favoriteVehicles: [], touchLayout: "pedals", speedUnit: "kmh",
   drivingLayout: "standard", showTouchControls: true, showDriveControls: true,
-  shiftLayout: "h-pattern", hudGroups: DEFAULT_HUD_GROUPS, wheelDrop: .28, steeringTravel: 1.12,
+  shiftLayout: "h-pattern", hudGroups: DEFAULT_HUD_GROUPS, wheelDrop: .28, steeringTravel: 1.12, minimapScale: .75,
 };
 // Fixed shortcuts remain available; rebinding movement must never steal them.
-export const RESERVED_KEYS = new Set(["F2", "F3", "F4", "F8", "Escape", "Enter", "Tab", "Backquote", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
+export const RESERVED_KEYS = new Set(["F2", "F3", "F4", "F8", "F9", "Escape", "Enter", "Tab", "Backquote", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
   "KeyE", "KeyL", "KeyZ", "KeyX", "KeyH", "KeyQ", "KeyT", "KeyC", "KeyV", "KeyY", "KeyM", "KeyN", "KeyR", "ShiftLeft", "ShiftRight"]);
 
 // The persisted payload is treated as input, so old/corrupt settings cannot
@@ -52,6 +53,7 @@ export function sanitizePreferences(value: unknown): Preferences {
     shiftLayout: data.shiftLayout === "automatic" ? "automatic" : "h-pattern",
     hudGroups: Object.fromEntries(HUD_GROUPS.map(id=>[id,typeof visibility[id]==="boolean"?visibility[id]:true])) as Record<HudGroupId,boolean>,
     wheelDrop: numeric("wheelDrop",0,.55), steeringTravel: numeric("steeringTravel",.9,1.3),
+    minimapScale: numeric("minimapScale",.5,1.25),
     fov: numeric("fov", 55, 110), cameraSensitivity: numeric("cameraSensitivity", 0.25, 2),
     controllerDeadzone: numeric("controllerDeadzone", 0.05, 0.4), steeringSensitivity: numeric("steeringSensitivity", 0.5, 1.5),
     menuTextScale: numeric("menuTextScale", 1, 1.25), reducedMotion: data.reducedMotion === true,

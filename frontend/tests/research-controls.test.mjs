@@ -42,7 +42,7 @@ test('research controls keep input, display and audio updates independent',async
    await act(async()=>nav.getState().setMission(mission));assert.match(info().textContent,/Supply run.*Reach the depot/);assert.equal(nav.getState().destination,null);assert.ok(by('Mission objective marker'));
    await click('Navigate to mission objective');assert.deepEqual(nav.getState().destination,mission.target);
    nav.getState().setMission({...mission,target:{x:NaN,z:0}});assert.deepEqual(nav.getState().mission,mission,'invalid target cannot corrupt the objective');
-   await act(async()=>network.getState().setSnapshot({tick:++tick,match_clock:{remaining_s:65,phase:'regulation'},entities:[entity]},performance.now()));assert.equal(by('Server match clock').textContent,'1:05');assert.ok(document.querySelector('.map-heading').contains(by('Server match clock')));
+   await act(async()=>network.getState().setSnapshot({tick:++tick,match_clock:{remaining_s:65,phase:'regulation'},entities:[entity]},performance.now()));assert.equal(by('Server match clock').textContent,'1:05');assert.ok(document.querySelector('.map-rim').contains(by('Server match clock')));
    await act(async()=>nav.getState().setMission(null));assert.match(info().textContent,/REACH GPS DESTINATION/);assert.deepEqual(nav.getState().destination,mission.target,'ending a mission preserves the user waypoint');await act(async()=>nav.getState().setDestination(null));
   });
   await t.test('hold charges only the parking brake, release retains it and a tap clears it',async()=>{

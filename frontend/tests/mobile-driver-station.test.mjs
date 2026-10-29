@@ -28,9 +28,10 @@ test('mobile HUD groups, assisted shifter and enlarged resource dials',async t=>
   const by=label=>document.querySelector(`[aria-label="${label}"]`),click=async label=>act(async()=>by(label).click());
   const pointer=async(node,type,x,y,id=1)=>act(async()=>{const e=new Event(type,{bubbles:true,cancelable:true});Object.assign(e,{pointerId:id,button:0,clientX:x,clientY:y});node.dispatchEvent(e);});
   await t.test('saved visibility and wheel bounds survive corrupt/older preference payloads',()=>{
-   const cfg=sanitizePreferences({hudGroups:{wheel:false,parking:'bad'},wheelDrop:99,steeringTravel:-1,shiftLayout:'invalid'});
+   const cfg=sanitizePreferences({hudGroups:{wheel:false,parking:'bad'},wheelDrop:99,steeringTravel:-1,minimapScale:99,shiftLayout:'invalid'});
    assert.equal(cfg.hudGroups.wheel,false);assert.equal(cfg.hudGroups.parking,true);assert.equal(cfg.hudGroups.gauges,true);assert.equal(cfg.wheelDrop,.55);assert.equal(cfg.steeringTravel,.9);assert.equal(cfg.shiftLayout,'h-pattern');
    assert.equal(sanitizePreferences({wheelDrop:NaN,steeringTravel:Infinity}).wheelDrop,.28);
+   assert.equal(cfg.minimapScale,1.25);assert.equal(sanitizePreferences({minimapScale:-1}).minimapScale,.5);assert.equal(sanitizePreferences({minimapScale:NaN}).minimapScale,.75);assert.equal(sanitizePreferences({}).minimapScale,.75);
   });
   await t.test('parking brake recedes at rest and rises upright through the detents',async()=>{
    const rest=parkingLeverPose(0),raised=parkingLeverPose(3);assert.ok(Math.abs(rest.angle+115)<1e-9);assert.ok(Math.abs(raised.angle+75)<1e-9);assert.ok(rest.reach<raised.reach);
@@ -67,6 +68,19 @@ test('mobile HUD groups, assisted shifter and enlarged resource dials',async t=>
    await act(async()=>tab('HUD').click());await act(async()=>row('restore-hud').click());assert.ok(Object.values(prefs.getState().hudGroups).every(Boolean));
    const before=input.getState().input.cockpit_mask;await act(async()=>tab('Drivetrain').click());await act(async()=>row('shift-layout').click());assert.equal(prefs.getState().shiftLayout,'automatic');assert.equal(input.getState().input.cockpit_mask,before,'a layout preference does not send an engine/gear command');
    const saved=JSON.parse(localStorage.getItem('avenlab-preferences-v1')).state;assert.equal(saved.shiftLayout,'automatic');assert.equal(saved.hudGroups.parking,true);
+  });
+  await t.test('HUD map size applies live, persists, and supports pointer and controller menu actions',async()=>{
+   await act(async()=>prefs.getState().update({minimapScale:.75}));await render(h(SettingsMenu));
+   const hud=[...document.querySelectorAll('[role="tab"]')].find(node=>node.textContent==='HUD');await act(async()=>hud.click());
+   const row=()=>document.querySelector('[data-menu-row="minimap-size"]');assert.match(row().textContent,/75%/);
+   const mask=input.getState().input.cockpit_mask;
+   await act(async()=>row().focus());await act(async()=>row().click());assert.equal(prefs.getState().minimapScale,1);
+   await act(async()=>window.dispatchEvent(new CustomEvent('avenlab:panel-action',{detail:'left'})));assert.equal(prefs.getState().minimapScale,.75);
+   assert.equal(JSON.parse(localStorage.getItem('avenlab-preferences-v1')).state.minimapScale,.75);assert.equal(input.getState().input.cockpit_mask,mask);
+   await act(async()=>prefs.getState().setHudGroup('minimap',true));await render(h(DrivingHUD));await click('Open map');
+   const map=document.querySelector('.hud-minimap');assert.equal(map.style.getPropertyValue('--minimap-scale'),'0.75');
+   await act(async()=>prefs.getState().update({minimapScale:.5}));assert.equal(map.style.getPropertyValue('--minimap-scale'),'0.5');assert.ok(document.querySelector('.gps-map'));
+   await act(async()=>prefs.getState().update({minimapScale:.75}));
   });
   await t.test('larger fuel/temp arcs retain independent needles and keep every mark inside the parent rim',async()=>{
    await render(h(DrivingHUD));const fuel=by('Fuel'),temp=by('Coolant temperature');

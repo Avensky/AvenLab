@@ -418,3 +418,5 @@ FodyWeavers.xsd
 *.msp
 
 .venv
+# Regenerated from the Rust map definitions before frontend dev/build.
+/frontend/public/world-builder/

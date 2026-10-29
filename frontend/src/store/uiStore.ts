@@ -17,7 +17,7 @@ export type MenuScreen =
   | "career"
   | "missions";
 
-export type UIOverlay = null | "pause" | "debug_menu" | "settings" | "vehicle_select" | "career" | "missions" | "leave_game" | "cockpit";
+export type UIOverlay = null | "pause" | "debug_menu" | "settings" | "vehicle_select" | "career" | "missions" | "leave_game" | "cockpit" | "world_builder";
 export type CockpitTab = "drive" | "lights" | "wipers" | "cruise" | "radio" | "vehicle" | "console" | "ignition" | "navigation";
 
 export type MenuId = "main" | "pause" | "settings" | "sandbox_setup" | "signal_recon_setup";
@@ -127,7 +127,7 @@ export const useUIStore = create<UIState>((set, get) => ({
       return;
     }
     if (overlay === "vehicle_select") { get().openVehicleSelection(); return; }
-    if (overlay && ["pause", "debug_menu", "vehicle_select", "leave_game", "cockpit"].includes(overlay) && !isDrivingScreen(get().screen)) return;
+    if (overlay && ["pause", "debug_menu", "vehicle_select", "leave_game", "cockpit", "world_builder"].includes(overlay) && !isDrivingScreen(get().screen)) return;
     set({ overlay });
   },
   selectedMenuIndexById: {

@@ -1,3 +1,4 @@
+import {openWorldBuilder,closeWorldBuilder} from "../worldBuilder/builderActions";
 import {leaveInspection,enterInspection} from "../store/inspectionActions";
 import {useGameStore} from "../store/gameStore";
 import { useEffect } from "react";
@@ -53,6 +54,9 @@ export function Keyboard() {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.repeat || !focused || document.visibilityState === "hidden" || isTypingTarget(event.target)) return;
       const ui = useUIStore.getState();
+      if(event.code==='F9'&&!event.ctrlKey&&!event.altKey&&!event.metaKey&&!event.shiftKey&&ui.screen==='sandbox'&&!ui.isModeLoading&&!useCanDataStore.getState().commandOpen){
+        event.preventDefault();release();if(ui.overlay==='world_builder')closeWorldBuilder();else if(ui.overlay===null||ui.overlay==='pause'||ui.overlay==='debug_menu')void openWorldBuilder();return;
+      }
       if(ui.screen==='sandbox'&&ui.overlay===null&&!ui.isModeLoading&&['F6','F7'].includes(event.code)){
         event.preventDefault();release();if(event.code==='F7'){if(useGameStore.getState().editor)leaveInspection();else enterInspection();}else{leaveInspection();useGameStore.getState().cycleCamera();}return;
       }

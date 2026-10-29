@@ -7,7 +7,7 @@ import { DebugMenu } from "../components/debugger/DebugMenu";
 import { DrivingHUD } from "../ui/DrivingHUD";
 import { CockpitPanel } from "../ui/Cockpit/CockpitPanel";
 import { CommandLine } from "../ui/command/CommandLine";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { SettingsMenu } from "./SettingsMenu";
 import { CareerMenu } from "./CareerMenu";
 import { MissionsMenu } from "./MissionsMenu";
@@ -17,6 +17,9 @@ import { usePreferencesStore } from "../store/preferencesStore";
 import { Cameras } from "../effects";
 import { PerformanceOverlay } from "../performance/PerformanceOverlay";
 import { useRenderSettingsStore } from "../store/renderSettingsStore";
+
+const WorldBuilderPanel=lazy(()=>import('../worldBuilder/WorldBuilderPanel').then(m=>({default:m.WorldBuilderPanel})));
+const WorldBuilderScene=lazy(()=>import('../worldBuilder/WorldBuilderScene'));
 
 export function GameUI() {
   const hud = useRenderSettingsStore((s) => s.hud);
@@ -39,7 +42,7 @@ export function GameUI() {
     {/* Requires Canvas */}
     {needsCanvas && <FullCanvas>
       {screen === "sandbox_setup" && <VehiclePreview />}
-      {screen === "sandbox" && <Sandbox />}
+      {screen === "sandbox" && <><group visible={overlay!=="world_builder"}><Sandbox /></group>{overlay==="world_builder"&&<Suspense fallback={null}><WorldBuilderScene/></Suspense>}</>}
 
       {screen === "signal_recon_setup" && <VehiclePreview />}
       {/* {!needsCanvas && screen === "settings" && <Settings />} */}
@@ -71,6 +74,7 @@ export function GameUI() {
     {overlay === "vehicle_select" && <VehicleMenu />}
     {overlay === "leave_game" && <SessionMenu />}
     {screen === "sandbox" && overlay === "cockpit" && <CockpitPanel />}
+    {screen === "sandbox" && overlay === "world_builder" && <Suspense fallback={null}><WorldBuilderPanel/></Suspense>}
 
     {screen === "sandbox" && hud && !overlay && <CommandLine />}
     {screen === "sandbox" && <PerformanceOverlay />}

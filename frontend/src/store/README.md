@@ -39,7 +39,7 @@ Event-driven stores have no fixed Hz.
 | `gameStore.ts` | Camera/editor controls and legacy game settings | Camera/editor actions; legacy RotatingCamera has a frame-rate angle writer when mounted/active | Camera/render helpers. Active routing is uiStore, pre-game selection is selectionStore. |
 | `worldStore.ts` | Map/collider metadata, debug request mask, legacy render mode/switches | Map/setup events and debugger actions; sender reads debug mask each send | City/collider rendering and capture context. Static colliders are sent with map setup. |
 | `renderSettingsStore.ts` | Graphics quality/range/effects and per-object overrides | User presets/settings and sandbox entry | Renderers/menus. Validated display choices persist; session overrides do not. |
-| `preferencesStore.ts` | Key bindings, sensitivity/deadzone, accessibility, favorites, units, driving layout, shifter presentation, independent HUD visibility and wheel crop/travel | User actions / validated local-storage hydration | Device-local persistence. No physics values. |
+| `preferencesStore.ts` | Key bindings, sensitivity/deadzone, accessibility, favorites, units, driving layout, shifter presentation, independent HUD visibility, minimap scale and wheel crop/travel | User actions / validated local-storage hydration | Device-local persistence. No physics values. |
 | `debugViewStore.ts` | Interpolation preference and diagnostic player scope | User actions | Interpolation persists (default On, 50 ms buffer); scope is session-local. |
 | `visualAlignmentStore.ts` | Measured GLB alignment reports | Model measurement/mount/unmount events | Rendering alignment and capture metadata. |
 | `selectionStore.ts` | Vehicle/map catalogs and selected indexes | Selector actions | Garage/setup. Catalog imports render components; avoid its barrel in hot or transport code. |
@@ -129,3 +129,12 @@ HUD pointer activation prevents button focus; the driving brake binding is route
 in capture phase before HUD button activation. Parking/ignition/stalk holds only
 write their packed commands and never synthesize throttle. Pointer ownership
 keeps pedal holds separate, and touch devices do not retain a desktop hover fill.
+
+## World builder drafts
+
+`worldBuilder/builderStore.ts` owns the local map document, 32-entry undo/redo,
+selection and editor view settings. It updates on user actions; plan pointer
+motion changes only a temporary SVG outline and commits once on release. Browser
+storage is written only by Save, never at the network/physics tick rate. The live
+`worldStore.map` and server collisions are not modified by draft editing. See
+[world builder](../../../docs/WORLD_BUILDER.md) for source generation and export.

@@ -1,3 +1,4 @@
+import {openWorldBuilder} from "../../worldBuilder/builderActions";
 import { TabbedMenu, type MenuRow } from "../menus/TabbedMenu";
 import { useUIStore } from "../../store/uiStore";
 import { useWorldStore } from "../../store/worldStore";
@@ -85,6 +86,7 @@ export function DebugMenu() {
       ...(JSON.parse(rosterKey) as [string, string | null][]).map(([id, vehicle]): MenuRow => ({ id: `vehicle-${id}`, label: `Vehicle ${vehicle ?? "unknown"} · ${id.slice(0, 8)}`, value: (settings.vehicleOverrides[id] ?? mode).toUpperCase(), action: (dir) => settings.setVehicleMode(id, step(MODES, settings.vehicleOverrides[id] ?? mode, dir)) })),
     ], content: <VehicleAlignmentReadout /> },
     { id: "environment", label: "Environment", description: "Set a world default, override a chunk, or switch individual GLB assets. The list is populated from the server's selected map.", rows: [
+      {id:"world-builder",label:"World builder: collision template",value:"F9",adjustable:false,disabled:!map,action:()=>{void openWorldBuilder();}},
       { id: "environment-default", label: "Environment default", value: settings.environmentMode.toUpperCase(), action: (dir) => settings.update({ environmentMode: step(MODES, settings.environmentMode, dir), chunkOverrides: {}, assetGlbs: {} }) },
       cityQualityControl(settings),
       cityViewDistanceControl(settings),

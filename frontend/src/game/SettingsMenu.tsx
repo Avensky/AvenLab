@@ -81,6 +81,7 @@ export function SettingsMenu() {
       { id: "hud", label: "HUD", description: "Hide or restore each group. Closing a group never disables keyboard or controller input. Chat space is reserved; a message service is not connected yet.", rows: [
         ...drivingRows,
         ...HUD_GROUPS.map((id):MenuRow=>({id:`hud-${id}`,label:groupLabels[id],value:prefs.hudGroups[id]?"Show":"Hide",action:()=>prefs.setHudGroup(id,!prefs.hudGroups[id])})),
+        {id:"minimap-size",label:"Minimap size",description:"Resize the corner map. The full Cockpit GPS is unchanged.",value:`${Math.round(prefs.minimapScale*100)}%`,action:dir=>prefs.update({minimapScale:step([.5,.75,1,1.25],prefs.minimapScale,dir)})},
         {id:"wheel-drop",label:"Wheel below screen",value:`${Math.round(prefs.wheelDrop*100)}%`,action:dir=>prefs.update({wheelDrop:step([0,.15,.28,.4,.55],prefs.wheelDrop,dir)})},
         {id:"wheel-travel",label:"Steering thumb travel",description:"Allows the thumb to move beyond the wheel rim. Horizontal travel still sets steering.",value:`${Math.round(prefs.steeringTravel*100)}%`,action:dir=>prefs.update({steeringTravel:step([.9,1,1.12,1.25,1.3],prefs.steeringTravel,dir)})},
         {id:"restore-hud",label:"Restore all HUD groups",action:()=>{prefs.update({hudGroups:{...DEFAULT_HUD_GROUPS},showTouchControls:true,showDriveControls:true});render.update({hud:true});setNotice("All HUD groups restored");}},

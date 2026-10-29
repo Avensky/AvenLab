@@ -1,0 +1,18 @@
+import {createRoot} from 'react-dom/client';
+import {WorldBuilderPanel} from '../src/worldBuilder/WorldBuilderPanel';
+import {useBuilderStore,configurePreviewStorage} from '../src/worldBuilder/builderStore';
+import {editableBoxes,parseMapDocument} from '../src/worldBuilder/mapDocument';
+import {useWorldStore} from '../src/store/worldStore';
+import {useUIStore} from '../src/store/uiStore';
+import {Keyboard} from '../src/controls/Keyboard';
+import source from '../../avenlab-server/src/assets/blocks/streaming_endless_city_colliders.json';
+configurePreviewStorage();
+const doc=parseMapDocument(source);
+const style=document.createElement('style');style.textContent='body{margin:0;background:#07131d}#preview-exit{display:none;position:fixed;inset:0;place-items:center;color:#cce3ee;font:14px monospace}#preview-exit button{background:#10232f;color:#cce3ee;padding:12px;border:1px solid #6e9db2}';document.head.append(style);
+useWorldStore.getState().setMap({...doc,layout:{kind:'fixed_grid',origin:[0,0],size:[3,3]},chunks:[{x:0,z:0,origin:[0,0,0]}],collider_chunks:[{x:0,z:0,boxes:editableBoxes(doc).map(b=>({id:b.id,kind:b.kind,center:b.center,half_extents:b.half,visual:b.visual}))}]});
+useUIStore.setState({screen:'sandbox',overlay:'world_builder',isModeLoading:false});
+useBuilderStore.getState().load(doc,'OFFLINE PREVIEW · Real map definition · No GLBs or Rust simulation');
+const root=createRoot(document.getElementById('root')!);root.render(<><Keyboard/><WorldBuilderPanel planOnly/></>);
+const exit=document.createElement('div');exit.id='preview-exit';exit.innerHTML='<div>PREVIEW CLOSED · Draft kept in this tab<br><br><button>REOPEN WORLD BUILDER</button></div>';document.body.append(exit);exit.querySelector('button')!.onclick=()=>useUIStore.setState({overlay:'world_builder'});
+useUIStore.subscribe(s=>{const show=s.overlay==='world_builder';document.getElementById('root')!.style.display=show?'block':'none';exit.style.display=show?'none':'grid';});
+Object.assign(window,{worldBuilderQA:{builder:useBuilderStore,ui:useUIStore,world:useWorldStore}});

@@ -48,16 +48,19 @@ The disconnected chat shell has been removed from the HUD and Settings. Older
 saved chat visibility is discarded by preference validation. Equipment can scroll
 in a short viewport while the pedals retain a separate, nonshrinking bottom row.
 The expanded map stays in the safe-area top-right corner. It is smaller than the
-wheel (normally 112–230 px), capped by the right
-console's width. It paints above the console on short screens and never pushes
-pedals or other controls. The HUD plot is 16:9, wider and shorter than the former square; its SVG world
-view and road-click coordinates use the same proportions. The separate Cockpit
+wheel, with a 75% default scale (normally 72–173 px). Settings → HUD → Minimap
+size offers 50%, 75%, 100% and 125%, saved on this device. The map has a 72 px
+minimum; the unscaled base is capped at 32% of viewport height for short
+landscape screens. The final size is bounded by the viewport. It never pushes
+pedals or other controls. The HUD plot is circular; its SVG world view and
+road-click coordinates use equal horizontal and vertical spans. The separate Cockpit
 GPS page retains a larger square map.
 Mission title/objective and its optional waypoint live inside the map; tapping a
 supplied objective routes GPS there. `navigationStore.setMission` is a session-only
 adapter entry point, cleared by the mission owner on completion/exit. Today's
 sandbox has no active match objective and shows SANDBOX / FREE DRIVE instead.
-The optional server match clock is in the map header, including when minimized.
+The optional server match clock overlays the map near the top of the circle;
+when minimized it sits next to the small reopen icon.
 
 Engine/resource and connection notices use the radio's existing subtitle line,
 including when minimized. A notice temporarily replaces artist/station text;
@@ -340,3 +343,20 @@ retains its actual position without a selected ring. Ignition is inset slightly
 toward the vehicle between the center and right console. A brake tap clears on
 pointer release directly, without depending on a follow-up synthetic click.
 Holding at full strength keeps full tension and schedules no additional ramp.
+
+## Compact circular controls
+
+The HUD minimap is a circle with icon controls on its rim: expand/minimize,
+destination ahead, clear, and zoom. It has no MAP label or dedicated header/footer
+row. The mission readout, route status and server clock sit inside the circle.
+Road coordinates use equal horizontal/vertical spans; transparent corners ignore
+waypoint clicks. The full cockpit GPS page keeps its square map.
+
+The shifter gate is a fixed 90 px circle across viewport sizes, with the same
+26 px knob and 17 px gear targets. The three narrow parking-brake hexagons touch
+end to end and share the 58 px lever area. The 29 px assist-button row sits below
+them, separated by a 3 px gap; both rows fit beside the 90 px shifter.
+Tap-to-release and hold-to-charge behavior is unchanged. The dashboard BRAKE
+lamp is inset farther from the gauge's left rim. Speed and fuel/temp use equal
+35% container widths and the same
+97-unit rim radius; RPM stays larger with symmetric overlap.
