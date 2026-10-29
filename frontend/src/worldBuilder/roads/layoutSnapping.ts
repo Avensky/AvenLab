@@ -1,9 +1,11 @@
+import {modelAsset} from '../models/modelCatalog.ts';
 import {magneticSnap, frameCorners, type SnapLock} from '../roadKit/roadKitSnap.ts';
 import {roadAsset, roadBounds} from './roadCatalog.ts';
 import type {Bounds} from '../roadKit/roadKitCore.ts';
 import type {LayoutObject, V3} from '../layoutDocument.ts';
 export type LayoutSnapLock = {id: string; lock: SnapLock};
 export function localBounds(item: LayoutObject, basis: 'asphalt' | 'outer' = 'outer'): Bounds {
+  if(item.model){const a=modelAsset(item.model.asset)!,b=a.bounds;return {min:b.min.map((v,i)=>v*item.size[i]/a.size[i]) as V3,max:b.max.map((v,i)=>v*item.size[i]/a.size[i]) as V3};}
   if (!item.road) return {min: [-item.size[0]/2,0,-item.size[2]/2], max: [item.size[0]/2,item.size[1],item.size[2]/2]};
   const asset = roadAsset(item.road.asset)!, b = roadBounds(item.road, basis);
   return {min: b.min.map((v,i) => v*item.size[i]/asset.size[i]) as V3, max: b.max.map((v,i) => v*item.size[i]/asset.size[i]) as V3};

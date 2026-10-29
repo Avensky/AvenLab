@@ -71,10 +71,10 @@ export function withLayoutMap(doc: MapDocument, layout: WorldLayout): MapDocumen
  const points=layout.objects.flatMap(footprint),extent=(axis:number)=>Math.max(100,...points.map(p=>Math.abs(p[axis])+16))*2;
  const cell:[number,number]=[extent(0),extent(1)];
  if(cell.some(n=>n>10000))throw Error('Single district exceeds the 10 km map cell limit');
- const road=layout.objects.find(o=>o.solid&&o.road?.collision.surface);
+ const road=layout.objects.find(o=>o.solid&&(o.road?.collision.surface||(o.model?.collision.floor&&o.model.visible.floor)));
  if(!road)return {...result,cell,layout:{kind:'fixed_grid',origin:[0,0],size:[1,1]}};
- const a=road.yaw*Math.PI/180,c=Math.cos(a),s=Math.sin(a),offset=Math.min(10,road.size[2]*.1);
- const spawn=(direction:number)=>({chunk:[0,0],local:[road.position[0]+s*offset*direction,road.position[2]+c*offset*direction],yaw:a+(direction<0?Math.PI:0)});
+ const a=road.yaw*Math.PI/180,c=Math.cos(a),s=Math.sin(a),offset=road.model?1.4:Math.min(10,road.size[2]*.1);
+ const spawn=(direction:number)=>({chunk:[0,0],local:[road.position[0]+s*offset*direction,road.position[2]+c*offset*direction],yaw:a+(road.model?Math.PI/2:0)+(direction<0?Math.PI:0)});
  return {...result,cell,layout:{kind:'fixed_grid',origin:[0,0],size:[1,1]},surface:{road_y:road.position[1]},team_spawns:{red:[spawn(1)],blue:[spawn(-1)]}};
 }
 export function mapExport(doc:MapDocument){const authored=doc.authored_layout?parseLayout(doc.authored_layout,doc.map_id):null,result=parseMapDocument(authored?withLayoutMap(doc,authored):doc),meta=typeof result.metadata==='object'&&result.metadata!==null?result.metadata as Record<string,unknown>:{};result.metadata={...meta,building_collider_count:result.buildings.length,road_collider_count:result.roads.length};return JSON.stringify(result,null,2)+'\n';}

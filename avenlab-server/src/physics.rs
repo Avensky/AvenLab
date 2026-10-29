@@ -988,6 +988,20 @@ mod tests {
     }
 
     #[test]
+    fn workshop_garage_drives_through_its_open_bay_onto_the_road() {
+        let mut world=PhysicsWorld::new();world.select_map("workshop_yard").unwrap();
+        let handle=world.spawn_vehicle_for_player("garage-driver".into(),[0.0;3],"brz","red").unwrap();
+        for _ in 0..180 {world.step(SIMULATION_DT);}
+        assert!(world.wheels[&handle].iter().all(|w|w.grounded));
+        world.bodies[handle].set_linvel(vector![8.0,0.0,0.0],true);
+        let mut lost=0;
+        for _ in 0..240 {world.step(SIMULATION_DT);lost+=usize::from(world.wheels[&handle].iter().any(|w|!w.grounded));}
+        assert!(world.bodies[handle].translation().x>12.0,"car must leave the room and cross the explicit apron");
+        assert!(lost<8,"wheel contact lost on {lost} frames");
+        assert!(world.bodies[handle].translation().y>0.1);
+    }
+
+    #[test]
     fn measured_road_map_supports_real_vehicle_suspension_and_tile_seams() {
         let mut world=PhysicsWorld::new();world.select_map("road_precision").unwrap();
         let handle=world.spawn_vehicle_for_player("road-driver".into(),[0.0;3],"brz","red").unwrap();

@@ -137,6 +137,7 @@ export const mapCatalog: MapDefinition[] = [
     name: "Streaming Endless City",
     desc: "Large streamed city built from repeating detailed 2x2 chunks.",
   },
+  {id:"workshop_yard",name:"Workshop Yard",desc:"The selection garage placed in a drivable map, with measured walls and an open bay."},
   {id: "road_precision", name: "Road Precision Test", desc: "Measured GLB asphalt and curbs. Opposing carriageways, modular sidewalks, no hidden floor."},
 ];
 

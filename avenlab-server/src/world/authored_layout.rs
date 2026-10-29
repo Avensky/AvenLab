@@ -4,6 +4,7 @@ use std::collections::HashSet;
 use rapier3d::prelude::*;
 use serde::{Deserialize, Serialize};
 use super::road_colliders::RoadPlacement;
+use super::model_colliders::ModelPlacement;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AuthoredLayout {
@@ -35,6 +36,8 @@ pub struct LayoutObject {
     pub parts: Vec<LayoutPart>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub road: Option<RoadPlacement>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<ModelPlacement>,
 }
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct LayoutPart {
@@ -73,6 +76,12 @@ impl AuthoredLayout {
             anyhow::ensure!(identifier(&object.piece, 64) && !object.name.trim().is_empty() && object.name.chars().count() <= 80, "Invalid piece name");
             anyhow::ensure!(vector_ok(&object.position, -100000.0, 100000.0) && vector_ok(&object.size, 0.02, 512.0) && object.yaw.is_finite() && object.yaw.abs() <= 36000.0, "Invalid authored piece transform");
             anyhow::ensure!(color_ok(&object.color), "Invalid authored piece color");
+            anyhow::ensure!(object.model.is_none() || object.road.is_none(), "A piece cannot be a road and a prefab");
+            if let Some(model) = &object.model {
+                model.validate()?;
+                anyhow::ensure!(object.piece == format!("prefab-{}",model.asset) && object.parts.is_empty(), "Prefab requires its measured structural surfaces");
+                count += model.shape_count(); continue;
+            }
             if let Some(road) = &object.road {
                 road.validate()?;
                 anyhow::ensure!(object.piece == format!("glb-{}",road.asset) && object.parts.is_empty(), "Road must use its measured catalog, without extra guessed shapes");
@@ -93,6 +102,10 @@ impl AuthoredLayout {
     pub fn spawn(&self, bodies: &mut RigidBodySet, colliders: &mut ColliderSet, origin: [f32; 3], groups: InteractionGroups) -> Vec<RigidBodyHandle> {
         let mut handles = Vec::new();
         for object in &self.objects {
+            if let Some(model) = &object.model {
+                if let Some(handle) = model.spawn(object,bodies,colliders,origin,groups) { handles.push(handle); }
+                continue;
+            }
             if let Some(road) = &object.road {
                 if let Some(handle) = road.spawn(object,bodies,colliders,origin,groups) { handles.push(handle); }
                 continue;

@@ -75,9 +75,9 @@ impl RoadPlacement {
         Some(handle)
     }
 }
-type Shapes = Vec<(String,SharedShape)>;
+pub(super) type Shapes = Vec<(String,SharedShape)>;
 type ShapeKey = (String,[u32;3]);
-fn prepared_shapes(asset: &RoadAsset, size: [f32;3]) -> Shapes {
+pub(super) fn prepared_shapes(asset: &RoadAsset, size: [f32;3]) -> Shapes {
     static CACHE: OnceLock<Mutex<HashMap<ShapeKey,Shapes>>> = OnceLock::new();
     let mut cache = CACHE.get_or_init(|| Mutex::new(HashMap::new())).lock().expect("road shape cache");
     let key = (asset.id.clone(),size.map(f32::to_bits));

@@ -4,7 +4,7 @@ import {addPiece, degrees, duplicatePiece, emptyLayout, exampleLayout, layoutJSO
 type LayoutState = {
   doc: WorldLayout | null; saved: WorldLayout | null; past: WorldLayout[]; future: WorldLayout[];
   selected: string | null; placing: string | null; tool: 'select' | 'translate' | 'rotate' | 'scale';
-  view: '3d' | 'plan'; camera: 'iso' | 'top'; cameraRevision: number; snap: number; angleSnap: number;
+  focus: 'layout' | 'selected'; view: '3d' | 'plan'; camera: 'iso' | 'top'; cameraRevision: number; snap: number; angleSnap: number;
   magnet: boolean; snapBasis: 'outer' | 'asphalt'; magnetRadius: number;
   cursor: V3; placementYaw: number; reference: boolean; wireframe: boolean; status: string;
   initialize: (mapId: string, source?: unknown) => void; commit: (doc: WorldLayout, status?: string) => void;
@@ -21,7 +21,7 @@ const chosen = (doc: WorldLayout, selected: string | null) => doc.objects.some(o
 export const useLayoutStore = create<LayoutState>((set, get) => ({
   doc: null, saved: null, past: [], future: [], selected: null, placing: null, tool: 'select',
   magnet: true, snapBasis: 'outer', magnetRadius: 1.5,
-  view: '3d', camera: 'iso', cameraRevision: 0, snap: .5, angleSnap: 15, cursor: [0, 0, 0], placementYaw: 0,
+  focus:'layout', view: '3d', camera: 'iso', cameraRevision: 0, snap: .5, angleSnap: 15, cursor: [0, 0, 0], placementYaw: 0,
   reference: false, wireframe: false, status: 'Choose a piece, then click the ground to place it.',
   initialize: (mapId, source) => {
     if (get().doc?.map_id === mapId) return;

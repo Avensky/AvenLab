@@ -1,3 +1,5 @@
+import {EDITOR_THEMES,useEditorPreferences} from './editorPreferences';
+import {modelAsset,modelSolid} from './models/modelCatalog';
 import {localBounds, snapLayoutPosition, type LayoutSnapLock} from './roads/layoutSnapping';
 import {roadAsset, roleSolid, roleVisible} from './roads/roadCatalog';
 import {useCallback, useMemo, useRef, useState, type PointerEvent} from 'react';
@@ -13,6 +15,7 @@ function planFrame(objects: LayoutObject[]): PlanBounds {
 }
 const pointsFor = (o: LayoutObject) => footprint(o).map(p => p.join(',')).join(' ');
 function PieceFootprint({item, ghost = false, collisionOnly = false}: {item: LayoutObject; ghost?: boolean; collisionOnly?: boolean}) {
+  if(item.model){const a=modelAsset(item.model.asset)!;return <g transform={`translate(${item.position[0]} ${item.position[2]}) rotate(${-item.yaw}) scale(${item.size[0]/a.size[0]} ${item.size[2]/a.size[2]})`} opacity={ghost?.5:1}>{a.colliders.filter(c=>collisionOnly?item.solid&&modelSolid(c.role,item.model!):item.model!.visible[c.role]).map(c=><path key={c.role} d={c.indices.map(tri=>tri.map((index,k)=>`${k?'L':'M'}${c.vertices[index][0]} ${c.vertices[index][2]}`).join('')+'Z').join('')} fill={collisionOnly?'none':c.role==='floor'?'#385674':c.role==='roof'?'#91a7b1':'#61899c'} fillOpacity={c.role==='roof'?.25:1} stroke={collisionOnly?'#4ce2b0':'#0b1926'} strokeWidth=".6" vectorEffect="non-scaling-stroke"/>)}</g>;}
   if(item.road){
     const asset=roadAsset(item.road.asset)!,r=-item.yaw;
     return <g transform={`translate(${item.position[0]} ${item.position[2]}) rotate(${r}) scale(${item.size[0]/asset.size[0]} ${item.size[2]/asset.size[2]})`} opacity={ghost?.5:1}>
@@ -25,6 +28,7 @@ function PieceFootprint({item, ghost = false, collisionOnly = false}: {item: Lay
   })}{item.piece === 'ramp' && <path d={`M${item.position[0]} ${item.position[2] + item.size[2] * .3}v${-item.size[2] * .6}m-1 2 1-2 1 2`} transform={`rotate(${-item.yaw},${item.position[0]},${item.position[2]})`} fill="none" stroke="#f3edcf" strokeWidth="1.5" vectorEffect="non-scaling-stroke"/>}</g>;
 }
 export function LayoutPlan() {
+  const preferences=useEditorPreferences(),palette=EDITOR_THEMES[preferences.theme];
   const doc = useLayoutStore(s => s.doc), selected = useLayoutStore(s => s.selected), placing = useLayoutStore(s => s.placing),
     yaw = useLayoutStore(s => s.placementYaw), cursor = useLayoutStore(s => s.cursor), tool = useLayoutStore(s => s.tool), grid = useLayoutStore(s => s.snap);
   const wireframe=useLayoutStore(s=>s.wireframe);
@@ -37,7 +41,7 @@ export function LayoutPlan() {
   const cancel = useCallback(() => {drag.current = null; pan.current = null; magnetLock.current = null; selection.current?.removeAttribute('transform');}, []);
   useEffect(() => {const hidden = () => {if (document.visibilityState === 'hidden') cancel();}; const abort=(e:Event)=>{if(drag.current||pan.current){cancel();e.preventDefault();}};window.addEventListener('avenlab:cancel-authoring',abort); window.addEventListener('blur', cancel); document.addEventListener('visibilitychange', hidden); return () => {window.removeEventListener('avenlab:cancel-authoring',abort);window.removeEventListener('blur', cancel); document.removeEventListener('visibilitychange', hidden); cancel();};}, [cancel]);
   const piece = placing ? pieceById(placing) : undefined;
-  const phantom = piece ? {id: 'ghost', name: '', piece: piece.id, position: [0, 0, 0] as V3, size: piece.size, yaw, color: piece.color, locked: false, solid: true, parts: piece.parts, ...(piece.road ? {road:piece.road} : {})} : null;
+  const phantom = piece ? {id: 'ghost', name: '', piece: piece.id, position: [0, 0, 0] as V3, size: piece.size, yaw, color: piece.color, locked: false, solid: true, parts: piece.parts, ...(piece.road ? {road:piece.road} : {}), ...(piece.model?{model:piece.model}:{})} : null;
   const items = useMemo(() => doc?.objects ?? [], [doc]);
   const point = (e: PointerEvent<SVGSVGElement>) => planPoint(e.clientX, e.clientY, e.currentTarget.getBoundingClientRect(), view);
   const finish = (e: PointerEvent<SVGSVGElement>, abort = false) => {
@@ -67,9 +71,10 @@ export function LayoutPlan() {
         selection.current?.setAttribute('transform', `translate(${held.next[0] - held.item.position[0]} ${held.next[2] - held.item.position[2]})`);
       }
     }} onPointerUp={e => finish(e)} onPointerCancel={e => finish(e, true)} onLostPointerCapture={e => finish(e, true)}>
-    <defs><pattern id="layout-grid" width="5" height="5" patternUnits="userSpaceOnUse"><path d="M5 0H0V5" fill="none" stroke="#25475f" strokeWidth=".12"/></pattern></defs>
-    <rect x={view.x} y={view.z} width={view.width} height={view.depth} fill="#0e2031"/><rect x={view.x} y={view.z} width={view.width} height={view.depth} fill="url(#layout-grid)"/>
-    <path d={`M${view.x} 0h${view.width}M0 ${view.z}v${view.depth}`} stroke="#43e0ac" opacity=".3" strokeWidth="1" vectorEffect="non-scaling-stroke"/>
+    <defs><pattern id="layout-grid" width="5" height="5" patternUnits="userSpaceOnUse"><path d="M5 0H0V5" fill="none" stroke={palette.grid} strokeWidth=".12"/></pattern></defs>
+    <rect x={view.x} y={view.z} width={view.width} height={view.depth} fill={palette.background}/><rect x={view.x} y={view.z} width={view.width} height={view.depth} fill="url(#layout-grid)"/>
+    <path d={`M${view.x} 0h${view.width}M0 ${view.z}v${view.depth}`} stroke={palette.physical} opacity=".3" strokeWidth="1" vectorEffect="non-scaling-stroke"/>
+    {preferences.chunkGuide&&<g pointerEvents="none"><rect x="-100" y="-100" width="200" height="200" fill="none" stroke={palette.accent} strokeWidth="1.5" strokeDasharray="4 3" vectorEffect="non-scaling-stroke"/><path d="M-100 0H100M0 -100V100" fill="none" stroke={palette.accent} strokeWidth="1" vectorEffect="non-scaling-stroke"/>{([[-98,-96,'NW'],[2,-96,'NE'],[-98,6,'SW'],[2,6,'SE']] as const).map(([x,z,label])=><text key={label} x={x} y={z} fontSize="3" fill={palette.accent}>{label} · 100 × 100 m</text>)}</g>}
     {items.filter(o => o.id !== selected).map(item => <PieceFootprint key={item.id} item={item} collisionOnly={wireframe}/>)}
     <g ref={selection}>{items.filter(o => o.id === selected).map(item => <g key={item.id}><PieceFootprint item={item} collisionOnly={wireframe}/><polygon points={pointsFor(item)} fill="none" stroke="#55caff" strokeWidth="2" vectorEffect="non-scaling-stroke"/></g>)}</g>
     {phantom && <g ref={ghost} transform={`translate(${cursor[0]} ${cursor[2]})`} pointerEvents="none"><PieceFootprint item={phantom} ghost/></g>}

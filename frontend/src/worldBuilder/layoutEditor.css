@@ -18,3 +18,23 @@
 .le-header{background:#0b1b2bf7}.le-footer{background:#0a1b29f7}.le-brand-mark{color:#54c8ff;border-color:#54c8ff66;background:#2ca8ed12}.le-library h1 em{color:#53e2b0}
 .layout-editor .le-primary{background:#4ce2b0;border-color:#4ce2b0;color:#072c2b}.layout-editor .le-primary:hover{background:#85f0cd;border-color:#85f0cd}
 .le-save-dot,.le-status-dot{background:#4ce2b0}.le-section-title{color:#79b9dc}.le-road-settings{border-block:1px solid var(--le-line);margin-top:20px;padding:0 0 12px}.le-road-settings .le-check{margin:10px 0}.le-road-settings input[type=checkbox]{accent-color:#4ce2b0}.le-road-lod{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:10px;color:var(--le-muted);margin:14px 0}.le-road-lod select{max-width:155px;font-size:10px}.le-road-measure{font:8px/1.8 ui-monospace,monospace;color:#79b9dc;margin-top:13px}.le-road-pair{color:#4ce2b0!important;border-color:#4ce2b055!important}.le-project-controls>.le-number{margin-bottom:15px}
+/* Editor preferences affect the workspace only, never map materials or physics. */
+.layout-editor .le-header,.layout-editor .le-footer{background:var(--le-bg)}
+.layout-editor input,.layout-editor select,.layout-editor .le-search{background:var(--le-bg);color:var(--le-text)}
+.layout-editor .le-views,.layout-editor .le-tools,.layout-editor .le-grid-control,.layout-editor .le-camera,.layout-editor .le-modal{background:var(--le-panel)!important}
+.layout-editor .le-primary{background:var(--le-green);border-color:var(--le-green);color:var(--le-bg)}
+.layout-editor .le-primary:hover{background:var(--le-green);filter:brightness(1.15)}
+.layout-editor .le-brand-mark,.layout-editor .le-categories button[aria-pressed=true]{color:var(--le-green);border-color:var(--le-green)}
+.layout-editor .le-save-dot,.layout-editor .le-status-dot{background:var(--le-physical)}
+.layout-editor .le-tools button[aria-pressed=true]{background:var(--le-green);color:var(--le-bg)}
+.layout-editor .le-piece.is-current{border-color:var(--le-green)!important;background:var(--le-raised)!important}
+.le-piece-card{min-width:0;display:flex;flex-direction:column}.le-piece-card>.le-piece{width:100%;border-radius:7px 7px 0 0!important}
+.layout-editor .le-preview-button{width:100%;border-radius:0 0 7px 7px;padding:5px;font-size:9px;color:var(--le-green);background:var(--le-bg)}
+.le-model-settings{border-block:1px solid var(--le-line);padding-bottom:10px;margin-top:20px}.le-model-settings input[type=checkbox],.le-road-settings input[type=checkbox]{accent-color:var(--le-physical)}
+.le-piece-preview{width:min(760px,94vw);max-height:92svh;overflow:auto;display:flex;flex-direction:column;border:1px solid var(--le-line);border-radius:12px;background:var(--le-panel);box-shadow:0 24px 100px #0009;pointer-events:auto}
+.le-piece-preview>header{display:flex;align-items:center;justify-content:space-between;padding:17px 20px;border-bottom:1px solid var(--le-line)}.le-piece-preview h2{margin:3px 0 0;font-size:20px}.le-piece-preview>header>button{font-size:24px;border:0;padding:5px 12px}
+.le-piece-view{height:clamp(220px,46svh,460px);position:relative;background:var(--le-bg);flex:none}.le-preview-hint{position:absolute;bottom:10px;left:15px;font:9px ui-monospace,monospace;color:var(--le-muted);pointer-events:none}
+.le-preview-controls{display:flex;align-items:center;gap:18px;padding:0 20px;flex-wrap:wrap}.le-preview-controls>span{font:10px ui-monospace,monospace;color:var(--le-muted);margin-left:auto}
+.le-piece-preview>footer{display:flex;align-items:center;gap:20px;padding:12px 20px;border-top:1px solid var(--le-line)}.le-piece-preview>footer>p{flex:1;font-size:11px;color:var(--le-muted)}
+.le-chunk-label{white-space:nowrap;font:9px ui-monospace,monospace;letter-spacing:1px;padding:4px 6px;background:#07121bd9;color:#a6c3df;border:1px solid #65b3df40;border-radius:3px;pointer-events:none}
+@media(max-width:760px){.le-preview-controls{gap:7px;padding:0 12px}.le-piece-preview>header,.le-piece-preview>footer{padding:12px}.le-piece-preview>footer{align-items:flex-start;gap:8px}.le-piece-preview h2{font-size:16px}.le-preview-controls>span{font-size:9px;margin:0 0 8px}.le-piece-preview>footer>p{font-size:9px;margin:0}}

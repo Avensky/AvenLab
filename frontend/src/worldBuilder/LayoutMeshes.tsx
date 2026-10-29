@@ -1,3 +1,4 @@
+import {ModelMesh,ModelInstances} from './models/ModelMeshes';
 import {RoadModel, RoadInstances} from './roads/RoadMeshes';
 import {localBounds} from './roads/layoutSnapping';
 import {memo, useEffect, useLayoutEffect, useMemo, useRef} from 'react';
@@ -36,11 +37,11 @@ function ShapeInstances({items, shape, wireframe, onSelect}: {items: Instance[];
 export const LayoutInstances = memo(function LayoutInstances({objects, exclude = null, wireframe = false, collisionOnly = false, onSelect}: {
   objects: LayoutObject[]; exclude?: string | null; wireframe?: boolean; collisionOnly?: boolean; onSelect?: (id: string) => void;
 }) {
-  const items = useMemo(() => objects.filter(o => !o.road && o.id !== exclude && (!collisionOnly || o.solid)).flatMap(item =>
+  const items = useMemo(() => objects.filter(o => !o.road && !o.model && o.id !== exclude && (!collisionOnly || o.solid)).flatMap(item =>
     item.parts.filter(part => !collisionOnly || part.solid !== false).map(part => ({item, part}))), [objects, exclude, collisionOnly]);
   const boxes = useMemo(() => items.filter(i => i.part.shape === 'box'), [items]);
   const wedges = useMemo(() => items.filter(i => i.part.shape === 'wedge'), [items]);
-  return <><ShapeInstances items={boxes} shape="box" wireframe={wireframe} onSelect={onSelect}/><ShapeInstances items={wedges} shape="wedge" wireframe={wireframe} onSelect={onSelect}/><RoadInstances objects={objects} exclude={exclude} collisionOnly={collisionOnly} wireframe={wireframe} onSelect={onSelect}/></>;
+  return <><ShapeInstances items={boxes} shape="box" wireframe={wireframe} onSelect={onSelect}/><ShapeInstances items={wedges} shape="wedge" wireframe={wireframe} onSelect={onSelect}/><RoadInstances objects={objects} exclude={exclude} collisionOnly={collisionOnly} wireframe={wireframe} onSelect={onSelect}/><ModelInstances objects={objects} exclude={exclude} collisionOnly={collisionOnly} wireframe={wireframe} onSelect={onSelect}/></>;
 });
 
 // Normalized local geometry lets TransformControls resize a whole compound
@@ -49,6 +50,7 @@ export function PieceModel({item, ghost = false, selected = false, wireframe = f
   const geometries = useGeometries();
   const bounds = localBounds(item), center = bounds.min.map((n,i)=>(n+bounds.max[i])/2/item.size[i]) as [number,number,number], extent = bounds.min.map((n,i)=>(bounds.max[i]-n)/item.size[i]) as [number,number,number];
   return <>
+    {item.model && <ModelMesh item={item} ghost={ghost} wireframe={wireframe} collisionOnly={collisionOnly}/>}
     {item.road && <RoadModel item={item} collisionOnly={collisionOnly} wireframe={wireframe} ghost={ghost}/>}
     {item.parts.filter(part => !collisionOnly || (item.solid && part.solid !== false)).map((part, i) => <mesh key={i} geometry={geometries[part.shape]} position={part.position} scale={part.size}>
       <meshStandardMaterial color={ghost ? '#60e0bd' : part.color ?? item.color} roughness={.9} metalness={.025}

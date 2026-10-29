@@ -1,3 +1,4 @@
+import {MODEL_ASSETS, newModel, validateModel, modelAsset, modelSolid, type ModelPlacement} from './models/modelCatalog.ts';
 import {ROAD_ASSETS, newRoad, validateRoad, roadAsset, roleSolid, type RoadPlacement} from './roads/roadCatalog.ts';
 import {objectCorners} from './roads/layoutSnapping.ts';
 // Layouts use runtime metres and Y-up throughout. Unlike the legacy map boxes,
@@ -8,18 +9,19 @@ export type LayoutPart = {
 };
 export type LayoutObject = {
   id: string; name: string; piece: string; position: V3; size: V3;
-  yaw: number; color: string; locked: boolean; solid: boolean; parts: LayoutPart[]; road?: RoadPlacement;
+  yaw: number; color: string; locked: boolean; solid: boolean; parts: LayoutPart[]; road?: RoadPlacement; model?: ModelPlacement;
 };
 export type WorldLayout = {
   format: 'avenlab-world-layout'; version: 1; map_id: string; title: string; base: 'replace' | 'overlay'; ground?: boolean; repeat?: boolean; objects: LayoutObject[];
 };
 export type Piece = {
   id: string; label: string; category: 'roads' | 'structures' | 'props';
-  description: string; size: V3; color: string; parts: LayoutPart[]; road?: RoadPlacement;
+  description: string; size: V3; color: string; parts: LayoutPart[]; road?: RoadPlacement; model?: ModelPlacement;
 };
 const box = (position: V3 = [0, .5, 0], size: V3 = [1, 1, 1], color?: string, solid = true): LayoutPart =>
   ({shape: 'box', position, size, ...(color ? {color} : {}), ...(solid ? {} : {solid: false})});
 export const PIECES: Piece[] = [
+  ...MODEL_ASSETS.map(asset=>({id:`prefab-${asset.id}`,label:asset.label,category:'structures' as const,description:'The actual selection-screen garage · measured structure · open interior',size:asset.size,color:'#50769b',parts:[],model:newModel(asset)})),
   ...ROAD_ASSETS.map(asset => ({id: `glb-${asset.id}`, label: asset.label, category: 'roads' as const, description: 'Measured GLB · LOD0 collision surfaces · configurable sidewalks', size: asset.size, color: '#455466', parts: [], road: newRoad(asset)})),
   {id: 'road', label: 'Straight road', category: 'roads', description: '12 × 24 m · two lanes', size: [12, .2, 24], color: '#414e50', parts: [
     box(), box([0, 1.012, 0], [.012, .025, .96], '#e5c775', false),
@@ -76,8 +78,9 @@ export function parseLayout(value: unknown, mapId?: string): WorldLayout {
     if (typeof item.name !== 'string' || !item.name.trim() || item.name.length > 80 || typeof item.piece !== 'string' || !/^[\w-]{1,64}$/.test(item.piece)) throw Error('Invalid piece name');
     if (!vector(item.position, -100000, 100000) || !vector(item.size, .02, 512) || typeof item.yaw !== 'number' || !Number.isFinite(item.yaw) || Math.abs(item.yaw) > 36000) throw Error('Piece dimensions or position are out of range');
     if (!color(item.color) || typeof item.locked !== 'boolean' || typeof item.solid !== 'boolean') throw Error('Invalid piece appearance or collision setting');
+    if (item.model !== undefined) {validateModel(item.model);if(item.road!==undefined||item.piece!==`prefab-${item.model.asset}`)throw Error('Prefab piece and asset must agree');parts+=modelAsset(item.model.asset)!.colliders.filter(c=>modelSolid(c.role,item.model as ModelPlacement)).length;}
     if (item.road !== undefined) {validateRoad(item.road); if (item.piece !== `glb-${item.road.asset}`) throw Error('Road piece and asset must agree'); parts += roadAsset(item.road.asset)!.colliders.filter(c=>roleSolid(c.role,item.road as RoadPlacement)).length;}
-    if (!Array.isArray(item.parts) || (item.road ? item.parts.length !== 0 : !item.parts.length) || item.parts.length > 32) throw Error('Each piece needs 1–32 explicit shapes');
+    if (!Array.isArray(item.parts) || ((item.road || item.model) ? item.parts.length !== 0 : !item.parts.length) || item.parts.length > 32) throw Error('Each piece needs 1–32 explicit shapes');
     parts += item.parts.length;
     for (const entry of item.parts) {
       const part = object(entry);
@@ -96,9 +99,9 @@ export const emptyLayout = (mapId: string): WorldLayout => ({format: 'avenlab-wo
 export function addPiece(doc: WorldLayout, pieceId: string, position: V3, yaw = 0): WorldLayout {
   const piece = pieceById(pieceId); if (!piece) throw Error('Choose a piece from the library');
   const ids = new Set(doc.objects.map(o => o.id)); let n = 1; while (ids.has(`${pieceId}-${n}`)) n++;
-  return parseLayout({...doc, ...(piece.road && !doc.objects.length ? {ground: false, repeat: false} : {}), objects: [...doc.objects, {id: `${pieceId}-${n}`, name: `${piece.label} ${n}`, piece: pieceId, position, size: [...piece.size], yaw: degrees(yaw), color: piece.color, locked: false, solid: true, parts: structuredClone(piece.parts), ...(piece.road ? {road: structuredClone(piece.road)} : {})}]});
+  return parseLayout({...doc, ...((piece.road || piece.model) && !doc.objects.length ? {ground: false, repeat: false} : {}), objects: [...doc.objects, {id: `${pieceId}-${n}`, name: `${piece.label} ${n}`, piece: pieceId, position, size: [...piece.size], yaw: degrees(yaw), color: piece.color, locked: false, solid: true, parts: structuredClone(piece.parts), ...(piece.road ? {road: structuredClone(piece.road)} : {}), ...(piece.model ? {model:structuredClone(piece.model)} : {})}]});
 }
-export function updatePiece(doc: WorldLayout, id: string, changes: Partial<Pick<LayoutObject, 'name' | 'position' | 'size' | 'yaw' | 'color' | 'locked' | 'solid' | 'road'>>) {
+export function updatePiece(doc: WorldLayout, id: string, changes: Partial<Pick<LayoutObject, 'name' | 'position' | 'size' | 'yaw' | 'color' | 'locked' | 'solid' | 'road' | 'model'>>) {
   const selected = doc.objects.find(o => o.id === id);
   if (!selected) throw Error('Select a piece first');
   if (selected.locked && Object.keys(changes).some(key => key !== 'locked')) throw Error('Unlock this piece before editing');
