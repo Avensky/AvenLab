@@ -2,6 +2,7 @@
 import { create } from "zustand";
 import type { Quaternion, Vec3 } from "./types";
 import { DebugFlags, toggleDebugFlag } from "./tools/debugMasks";
+import type {WorldLayout} from '../worldBuilder/layoutDocument';
 
 export type StructureState = "intact" | "damaged" | "destroyed" | "removed"
 export type ColliderKind = "box"
@@ -67,6 +68,7 @@ export type LoadedChunkInstance = {
 };
 
 export type MapSnapshot = {
+  authored_layout?: WorldLayout;
   schema_version: number;
   map_id: string;
 

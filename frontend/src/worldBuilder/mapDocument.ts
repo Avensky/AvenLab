@@ -1,3 +1,4 @@
+import {parseLayout} from './layoutDocument.ts';
 export type Triple=[number,number,number];
 type Rotation=[number,number,number,number];
 export type ColliderRecord={id:string;kind:string;visual:string;pos:Triple;rot:Rotation;half_extents:Triple;collider:'box';[key:string]:unknown};
@@ -27,6 +28,7 @@ export function parseMapDocument(value:unknown,expectedMap?:string):MapDocument{
  const ids=new Set<string>();
  for(const item of [...roads,...buildings]){const b=record(item);if(!safeName(b.id)||ids.has(String(b.id))||!['road','intersection','building','block','prop'].includes(String(b.kind))||typeof b.visual!=='string'||b.visual.length>160||b.collider!=='box'||!tuple(b.pos,3)||!tuple(b.half_extents,3)||(b.half_extents as number[]).some(n=>n<.01||n>10000)||!tuple(b.rot,4))throw Error('Invalid or duplicate collider box');if((b.destructible!==undefined&&typeof b.destructible!=='boolean')||(b.state!==undefined&&!['intact','damaged','destroyed','removed'].includes(String(b.state))))throw Error('Invalid collider state');if((b.rot as number[]).some((n,i)=>Math.abs(n-(i===3?1:0))>.00001))throw Error('This first editor supports axis-aligned boxes only');ids.add(String(b.id));}
  if(d.team_spawns){const teams=record(d.team_spawns);for(const key of ['red','blue']){const entries=teams[key]??[];if(!Array.isArray(entries)||entries.length>256)throw Error('Invalid team spawn list');for(const value of entries){const p=record(value);if(!tuple(p.chunk,2)||!(p.chunk as number[]).every(Number.isInteger)||!tuple(p.local,2)||(p.yaw!==undefined&&!finite(p.yaw)))throw Error('Invalid team spawn');}}}
+ if(d.authored_layout!==undefined)parseLayout(d.authored_layout,d.map_id);
  return structuredClone({...d,roads,buildings}) as MapDocument;
 }
 export function parseMapText(text:string,expectedMap?:string){if(new TextEncoder().encode(text).length>MAX_JSON_BYTES)throw Error('Map JSON exceeds 2 MiB');return parseMapDocument(JSON.parse(text),expectedMap);}

@@ -4,6 +4,7 @@ import {useInputStore} from '../store/inputStore';
 import {leaveInspection} from '../store/inspectionActions';
 import {builderStorageKey,useBuilderStore} from './builderStore';
 import {editableBoxes,mapExport,parseMapText,type MapDocument} from './mapDocument';
+import {useLayoutStore} from './layoutStore';
 let request=0;
 export function compareLiveTemplate(doc:MapDocument,map:MapSnapshot){
  const chunk=map.chunks[0],live=chunk&&map.collider_chunks?.find(c=>c.x===chunk.x&&c.z===chunk.z);
@@ -26,5 +27,13 @@ export async function openWorldBuilder(){
   state.load(doc,`${saved?'Browser draft':'Server source'} · ${compareLiveTemplate(doc,map)}`,saved);
  }catch(error){if(!useBuilderStore.getState().doc&&token===request&&useUIStore.getState().overlay==='world_builder')useBuilderStore.setState({status:error instanceof Error?error.message:'Map definition unavailable'});}
 }
-export function closeWorldBuilder(){request++;useInputStore.getState().releaseControls();useUIStore.getState().setOverlay(useUIStore.getState().screen==='sandbox'?'pause':null);}
+export async function loadStandaloneBuilder(){
+ const token=++request;if(useBuilderStore.getState().doc)return;
+ try{const mapId=useWorldStore.getState().map?.map_id??'streaming_endless_city';if(!/^[a-zA-Z0-9_-]{1,96}$/.test(mapId))throw Error('Invalid map id');
+  const response=await fetch(`/world-builder/${mapId}_colliders.json`);if(!response.ok)throw Error('Map source unavailable. Run npm --prefix frontend run dev to refresh it.');
+  const doc=parseMapText(await response.text(),mapId);if(token!==request||useUIStore.getState().screen!=='world_builder')return;
+  useBuilderStore.getState().load(doc,'Bundled map source · Standalone authoring');
+ }catch(error){if(token===request)useBuilderStore.setState({status:error instanceof Error?error.message:'Map source unavailable'});}
+}
+export function closeWorldBuilder(){request++;const layout=useLayoutStore.getState();if(layout.doc&&layout.doc!==layout.saved)layout.save();useInputStore.getState().releaseControls();const ui=useUIStore.getState();if(ui.screen==='world_builder')ui.setScreen('main');else ui.setOverlay(ui.screen==='sandbox'?'pause':null);useBuilderStore.setState({workspace:'layout'});}
 export function exportBuilderMap(){const doc=useBuilderStore.getState().doc;if(!doc)return;const url=URL.createObjectURL(new Blob([mapExport(doc)],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download=`${doc.map_id}_colliders.json`;a.click();window.setTimeout(()=>URL.revokeObjectURL(url),0);useBuilderStore.setState({status:'Exported server map JSON · Install it and restart Rust to apply.'});}

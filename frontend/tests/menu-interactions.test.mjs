@@ -96,7 +96,7 @@ test('mouse, keyboard and polled gamepad navigate the real menus and preferences
     await t.test('every main-menu entry has the same selected theme for mouse and controller', async () => {
       await reset();
       let theme;
-      for (let index = 0; index < 6; index++) {
+      for (let index = 0; index < 7; index++) {
         const element = document.querySelectorAll('[role="button"]')[index];
         await act(async () => element.dispatchEvent(new dom.window.MouseEvent('pointerover', { bubbles: true })));
         assert.equal(ui.getState().getActiveMenuIndex(), index);
@@ -104,7 +104,7 @@ test('mouse, keyboard and polled gamepad navigate the real menus and preferences
         if (index === 0) theme = element.className;
         else assert.equal(element.className, theme, `row ${index} should use the Sandbox theme`);
       }
-      const swarm = document.querySelectorAll('[role="button"]')[5];
+      const swarm = document.querySelectorAll('[role="button"]')[6];
       assert.equal(swarm.getAttribute('aria-disabled'), 'true');
       await act(async () => swarm.dispatchEvent(new dom.window.MouseEvent('pointerup', { bubbles: true, button: 0 })));
       assert.equal(ui.getState().screen, 'main');
@@ -218,7 +218,7 @@ test('mouse, keyboard and polled gamepad navigate the real menus and preferences
     });
     await t.test('mouse enters Recon through vehicle/CAN setup and carries the selected identity, interface and mode', async () => {
       await resetRecon(); await reset();
-      await pointerPress(document.querySelectorAll('[role="button"]')[4]);
+      await pointerPress(document.querySelectorAll('[role="button"]')[5]);
       assert.equal(ui.getState().screen, 'signal_recon_setup');
       assert.ok(document.querySelector('[aria-label="Vehicle CAN profile"]'));
       await pointerPress(document.querySelector('[aria-label="Next vehicle"]'));
@@ -238,7 +238,7 @@ test('mouse, keyboard and polled gamepad navigate the real menus and preferences
     });
     await t.test('controller follows interface, mode, vehicle and Start in their displayed order without driving input', async () => {
       await resetRecon(); await reset();
-      await act(async () => ui.getState().setActiveMenuIndex(4));
+      await act(async () => ui.getState().setActiveMenuIndex(5));
       await button(0); assert.equal(ui.getState().screen, 'signal_recon_setup');
       assert.equal(document.activeElement.getAttribute('aria-label'), 'CAN interface: vcan0');
       await button(14); assert.equal(bus.getState().selectedInterface, 'can2');
@@ -316,7 +316,7 @@ test('mouse, keyboard and polled gamepad navigate the real menus and preferences
       }
     });
     await t.test('Settings and Leave hover/click select their actual pause rows', async () => {
-      for (const [index, target] of [[2, 'settings'], [7, 'leave_game']]) {
+      for (const [index, target] of [[3, 'settings'], [8, 'leave_game']]) {
         await reset('sandbox', 'pause');
         const element = document.querySelectorAll('[role="button"]')[index];
         await act(async () => element.dispatchEvent(new dom.window.MouseEvent('pointerover', { bubbles: true })));
@@ -329,15 +329,15 @@ test('mouse, keyboard and polled gamepad navigate the real menus and preferences
     });
     await t.test('keyboard focus tracks row navigation and Enter opens Settings once', async () => {
       await reset('sandbox', 'pause');
-      await key('ArrowDown', 'ArrowDown'); await key('ArrowDown', 'ArrowDown');
+      await key('ArrowDown', 'ArrowDown'); await key('ArrowDown', 'ArrowDown'); await key('ArrowDown', 'ArrowDown');
       assert.ok(document.activeElement.textContent.includes('Settings'));
       await key('Enter', 'Enter'); assert.equal(ui.getState().overlay, 'settings');
       assert.equal(rendering.getState().dpr, 1, 'entering Settings must not also adjust its first row');
     });
     await t.test('controller in a nonzero slot navigates rows, tabs, values and Back', async () => {
       await reset();
-      await button(13); await button(13); await button(13);
-      assert.equal(ui.getState().getActiveMenuIndex(), 3);
+      await button(13); await button(13); await button(13); await button(13);
+      assert.equal(ui.getState().getActiveMenuIndex(), 4);
       await button(0); assert.equal(ui.getState().screen, 'settings');
       assert.equal(tab('Display').getAttribute('aria-selected'), 'true');
       await button(15); assert.equal(rendering.getState().dpr, 1.5);
@@ -493,7 +493,7 @@ test('mouse, keyboard and polled gamepad navigate the real menus and preferences
         assert.ok(row('vehicle-brz'));
         await key('Escape', 'Escape'); assert.equal(ui.getState().overlay, null, 'H picker returns directly to driving');
         await reset('sandbox', 'pause');
-        await pointerPress(document.querySelectorAll('[role="button"]')[3]);
+        await pointerPress(document.querySelectorAll('[role="button"]')[4]);
         assert.equal(ui.getState().overlay, 'vehicle_select');
         assert.equal(connection.closed, false);
         await button(1); assert.equal(ui.getState().overlay, 'pause');

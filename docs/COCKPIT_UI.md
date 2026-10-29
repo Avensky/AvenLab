@@ -360,3 +360,20 @@ Tap-to-release and hold-to-charge behavior is unchanged. The dashboard BRAKE
 lamp is inset farther from the gauge's left rim. Speed and fuel/temp use equal
 35% container widths and the same
 97-unit rim radius; RPM stays larger with symmetric overlap.
+
+
+## Momentary console feedback
+
+Radio, climate and electronic-console buttons use one delegated contact-feedback
+owner per surface. Pointer down prevents browser focus; pointer/key release,
+cancellation, capture loss, pause, blur and disconnect remove the contact border.
+Hover and confirmed toggle state do not select a button. Expanded radio/climate
+units may keep a border on the unit itself. Playback, hazards, A/C, recirculation
+and defrost remain latched commands with truthful accessible on/off state; mute
+also changes its center glyph. Main menu navigation keeps its existing behavior.
+No feedback timer, network sender or per-pointer-move React render is added.
+
+The lower-right cruise stalk has a 28%-of-wheel-diameter stem versus 31% for the
+lights and wiper stalks. Its up/down targets retain the wider 32% radius and held
+repeat/release behavior so shortening the stem does not pull those targets behind
+the wheel. The traction-control buttons stay in the right-hand console.

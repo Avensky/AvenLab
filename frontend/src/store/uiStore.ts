@@ -6,6 +6,7 @@ import { MAIN_MENU_ITEMS, PAUSE_MENU_ITEMS } from "../game/menuItems";
 export type MenuScreen =
   | "loading"
   | "main"
+  | "world_builder"
   | "sandbox_setup"
   | "sandbox"
   | "signal_recon"

@@ -31,6 +31,7 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs;
 use serde::Serialize;
+use super::authored_layout::AuthoredLayout;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct CoordinateSystem {
@@ -106,6 +107,8 @@ pub struct DebugAabbBox {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct BlockColliderFile {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub authored_layout: Option<AuthoredLayout>,
     pub schema_version: u32,
     pub map_id: String,
 
@@ -179,6 +182,8 @@ pub struct ChunkColliderSnapshot {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct MapSnapshot {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub authored_layout: Option<AuthoredLayout>,
     // Static setup data: collider previews do not request BLOCKS every tick.
     pub collider_chunks: Vec<ChunkColliderSnapshot>,
     pub schema_version: u32,
@@ -255,6 +260,7 @@ impl BlockColliderFile {
         ).collect();
         collider_chunks.sort_by_key(|chunk| (chunk.z, chunk.x));
         MapSnapshot {
+            authored_layout: self.authored_layout.clone(),
             collider_chunks,
             schema_version: self.schema_version,
             map_id: self.map_id.clone(),
@@ -262,7 +268,7 @@ impl BlockColliderFile {
             cell: self.cell,
             surface: self.surface.clone(),
             layout: self.layout.clone(),
-            visuals: self.visuals.clone(),
+            visuals: if self.authored_layout.as_ref().is_some_and(|layout| layout.replaces_base()) { Vec::new() } else { self.visuals.clone() },
             chunks: world.chunk_instances(self.cell),
         }
     }
@@ -342,6 +348,7 @@ pub fn load_block_collider_file(
 ) -> anyhow::Result<BlockColliderFile> {
     let bytes = fs::read(&path)?;
     let file: BlockColliderFile = serde_json::from_slice(&bytes)?;
+    if let Some(layout) = &file.authored_layout { layout.validate(&file.map_id)?; }
 
     if file.map_id.trim().is_empty() {
         anyhow::bail!("Map definition has an empty map_id");
@@ -426,6 +433,19 @@ pub fn spawn_block_building_colliders(
     let mut boxes = Vec::new();
 
     let [tile_x, tile_z] = file.tile_size();
+    if let Some(layout) = &file.authored_layout {
+        // Standalone layouts need an explicit support surface: the physics
+        // world intentionally has no hidden global fallback plane.
+        if layout.replaces_base() {
+            let center = [bx as f32 * tile_x, file.surface.road_y - 0.25, by as f32 * tile_z];
+            let body = bodies.insert(RigidBodyBuilder::fixed().translation(vector![center[0], center[1], center[2]]).build());
+            colliders.insert_with_parent(ColliderBuilder::cuboid(tile_x / 2.0, 0.25, tile_z / 2.0).friction(1.2).collision_groups(groups).build(), body, bodies);
+            handles.push(body);
+            boxes.push(DebugAabbBox { id: "authored_ground".into(), center, half_extents: [tile_x / 2.0, 0.25, tile_z / 2.0], kind: "road".into(), visual: "Authored ground".into() });
+        }
+        handles.extend(layout.spawn(bodies, colliders, [bx as f32 * tile_x, 0.0, by as f32 * tile_z], groups));
+        if layout.replaces_base() { return (handles, boxes); }
+    }
 
     // ---- spawn buildings ----
     for b in &file.buildings {
@@ -511,4 +531,25 @@ pub fn spawn_block_building_colliders(
     }
 
     (handles, boxes)
+}
+
+#[cfg(test)]
+mod authored_map_tests {
+    use super::*;
+    #[test]
+    fn standalone_map_supplies_ground_and_omits_legacy_city_while_overlay_preserves_it() {
+        let mut file: BlockColliderFile = serde_json::from_str(include_str!("../assets/blocks/streaming_endless_city_colliders.json")).unwrap();
+        file.authored_layout = Some(serde_json::from_str(include_str!("../../../docs/examples/world-builder.layout.json")).unwrap());
+        file.authored_layout.as_ref().unwrap().validate(&file.map_id).unwrap();
+        let mut bodies = RigidBodySet::new(); let mut colliders = ColliderSet::new();
+        let (handles, boxes) = spawn_block_building_colliders(&mut bodies, &mut colliders, &file, 1, 2, InteractionGroups::all());
+        assert_eq!(handles.len(), 1 + file.authored_layout.as_ref().unwrap().objects.iter().filter(|o| o.solid).count());
+        assert_eq!(boxes.len(), 1); assert_eq!(boxes[0].id, "authored_ground");
+        assert!((boxes[0].center[1] + boxes[0].half_extents[1] - file.surface.road_y).abs() < 0.00001);
+        assert_eq!(boxes[0].center[0], file.cell[0]); assert_eq!(boxes[0].center[2], file.cell[1] * 2.0);
+        let snapshot = file.snapshot(&BlockColliderWorld::new());
+        assert!(snapshot.visuals.is_empty()); assert!(snapshot.authored_layout.is_some());
+        file.authored_layout.as_mut().unwrap().base = super::super::authored_layout::LayoutBase::Overlay;
+        assert_eq!(file.snapshot(&BlockColliderWorld::new()).visuals.len(), file.visuals.len());
+    }
 }

@@ -45,6 +45,25 @@ test('research controls keep input, display and audio updates independent',async
    await act(async()=>network.getState().setSnapshot({tick:++tick,match_clock:{remaining_s:65,phase:'regulation'},entities:[entity]},performance.now()));assert.equal(by('Server match clock').textContent,'1:05');assert.ok(document.querySelector('.map-rim').contains(by('Server match clock')));
    await act(async()=>nav.getState().setMission(null));assert.match(info().textContent,/REACH GPS DESTINATION/);assert.deepEqual(nav.getState().destination,mission.target,'ending a mission preserves the user waypoint');await act(async()=>nav.getState().setDestination(null));
   });
+  await t.test('radio and climate contact feedback releases independently of latched settings',async()=>{
+   const {ConsoleDisplay}=await load('ui/Cockpit/ConsoleDisplay.tsx'),{ClimatePanel}=await load('ui/Cockpit/ClimatePanel.tsx'),{useRadioStore:radio}=await load('store/radioStore.ts');
+   radio.setState({muted:false});await render(h('div',null,h(ConsoleDisplay),h(ClimatePanel)));
+   const point=async(label,type,id=501,target=by(label))=>act(async()=>{const event=new Event(type,{bubbles:true,cancelable:true});Object.assign(event,{pointerId:id,button:0,clientX:80,clientY:80});target.dispatchEvent(event);return event;});
+   await act(async()=>by('Radio mute').focus());await point('Radio mute','pointerdown');assert.notEqual(document.activeElement,by('Radio mute'));assert.equal(by('Radio mute').dataset.hudHeld,'true');
+   await point('Radio mute','pointerup');await click('Radio mute');assert.equal(radio.getState().muted,true);assert.equal(by('Radio mute').getAttribute('aria-pressed'),'true');assert.equal(by('Radio mute').hasAttribute('data-hud-held'),false);
+   await point('Expand radio','pointerdown');await point('Expand radio','pointerup');await click('Expand radio');assert.equal(document.querySelector('.console-display').dataset.expanded,'true');assert.equal(by('Minimize radio').hasAttribute('data-hud-held'),false);
+   await point('Expand climate','pointerdown');await point('Expand climate','pointerup');await click('Expand climate');assert.ok(document.querySelector('.climate-three-knobs'));assert.equal(by('Minimize climate').hasAttribute('data-hud-held'),false);
+   const {unpackCabin}=await load('store/tools/cabinMasks.ts');const before=unpackCabin(input.getState().input.cabin_mask??entity.cabin_mask);
+   await point('A/C','pointerdown');assert.equal(by('A/C').dataset.hudHeld,'true');assert.equal(by('TEMP').hasAttribute('data-hud-held'),false,'a center-button press is not a dial turn');await point('A/C','pointerup');await click('A/C');const after=unpackCabin(input.getState().input.cabin_mask);assert.notEqual(after.ac,before.ac);assert.equal(after.temperatureC,before.temperatureC);assert.equal(by('A/C').hasAttribute('data-hud-held'),false);
+   await point('Hazards','pointerdown');await point('Hazards','pointerup');await click('Hazards');assert.equal(by('Hazards').getAttribute('aria-pressed'),'true');assert.equal(by('Hazards').hasAttribute('data-hud-held'),false);
+   await point('A/C','pointerdown');await point('A/C','pointerup',502,window);assert.equal(by('A/C').dataset.hudHeld,'true','another pointer cannot release this hold');await point('A/C','pointerup',501,window);assert.equal(by('A/C').hasAttribute('data-hud-held'),false,'release outside the control clears its border');
+   for(const label of ['Radio mute','A/C']){
+    await point(label,'pointerdown');await point(label,'pointercancel');assert.equal(by(label).hasAttribute('data-hud-held'),false);
+    await point(label,'pointerdown');await act(async()=>window.dispatchEvent(new Event('blur')));assert.equal(by(label).hasAttribute('data-hud-held'),false);
+    await point(label,'pointerdown');await act(async()=>ui.setState({overlay:'pause'}));assert.equal(by(label).hasAttribute('data-hud-held'),false);await act(async()=>ui.setState({overlay:null}));
+   }
+   await act(async()=>by('Radio mute').dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Enter',code:'Enter',bubbles:true,cancelable:true})));assert.equal(by('Radio mute').dataset.hudHeld,'true');await act(async()=>window.dispatchEvent(new dom.window.KeyboardEvent('keyup',{key:'Enter',code:'Enter',bubbles:true,cancelable:true})));assert.equal(by('Radio mute').hasAttribute('data-hud-held'),false);assert.equal(radio.getState().muted,true);assert.equal(input.getState().input.throttle,0);await act(async()=>radio.setState({muted:false}));
+  });
   await t.test('hold charges only the parking brake, release retains it and a tap clears it',async()=>{
    const {ParkingBrakeControl}=await load('ui/Cockpit/DriveControls.tsx');await act(async()=>input.getState().setInput({cockpit_mask:undefined}));await render(h(ParkingBrakeControl));
    const later=window.setTimeout,clear=window.clearTimeout,timers=new Map();let id=0;window.setTimeout=(fn,ms)=>{timers.set(++id,{fn,ms});return id;};window.clearTimeout=id=>timers.delete(id);
@@ -76,6 +95,7 @@ test('research controls keep input, display and audio updates independent',async
   });
   await t.test('stalk center feedback ends on release and cancellation without selecting the button',async()=>{
    const {ColumnStalks}=await load('ui/Cockpit/ColumnStalks.tsx');await render(h(ColumnStalks));
+   const cruise=by('Cruise control stalk').closest('.stalk-actuator');assert.equal(cruise.querySelector('.column-stalk-rod').style.width,'28%');assert.equal(by('Lights and turn signal stalk').closest('.stalk-actuator').querySelector('.column-stalk-rod').style.width,'31%');for(const label of ['Cruise control stalk up','Cruise control stalk down']){const button=by(label);assert.ok(Math.abs(Math.hypot(parseFloat(button.style.left)-50,parseFloat(button.style.top)-50)-32)<1e-8,'direction targets keep their reachable radius');}
    const point=async(label,type,id)=>act(async()=>{const e=new Event(type,{bubbles:true,cancelable:true});Object.assign(e,{pointerId:id,button:0,clientX:100,clientY:100});by(label).dispatchEvent(e);});
    for(const [i,label] of ['Lights and turn signal stalk','Wiper and washer stalk','Cruise control stalk'].entries()){
     await point(label,'pointerdown',100+i);assert.equal(by(label).dataset.held,'true');await point(label,'pointerup',100+i);await click(label);assert.equal(by(label).dataset.held,'false');

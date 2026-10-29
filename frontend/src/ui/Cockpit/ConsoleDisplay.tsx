@@ -1,3 +1,4 @@
+import {useMomentaryFeedback} from "./useMomentaryFeedback";
 import {useGameStore} from "../../store/gameStore";
 import {enterInspection,leaveInspection} from "../../store/inspectionActions";
 import { useState } from "react";
@@ -18,7 +19,8 @@ export function ConsoleDisplay() {
   const state=useCockpitState();
   const driving=canDrive();
   const route=(overlay:'settings'|'missions'|'career'|'debug_menu')=>useUIStore.getState().setOverlay(overlay);
-  return <section className="console-display" aria-label="Vehicle electronic display" onKeyDown={event=>{if(event.key===' '||event.key==='Enter')event.stopPropagation();}}>
+  const feedback=useMomentaryFeedback();
+  return <section {...feedback} className="console-display" data-expanded={!minimized} aria-label="Vehicle electronic display" onKeyDown={event=>{if(event.key===' '||event.key==='Enter')event.stopPropagation();}}>
     <RadioPanel compact minimized={minimized} onMinimize={()=>setMinimized(!minimized)}/>
     {!minimized&&<><nav className="console-display-tabs" aria-label="Vehicle display tabs">{([['radio','RADIO'],['commands','CONTROLS'],['apps','APPS']] as const).map(([id,label])=><button key={id} type="button" aria-pressed={tab===id} onClick={()=>setTab(id)}>{label}</button>)}<button type="button" onClick={()=>useUIStore.getState().openSettings("display")}>SETTINGS</button><button type="button" onClick={()=>useUIStore.getState().openSettings("keyboard")}>KEYBINDS</button></nav>
     {tab!=="radio"&&<div className="console-display-content">

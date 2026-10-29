@@ -103,8 +103,6 @@ export default function Cameras() {
   useFrame(() => beginVehicleRenderFrame(), -100);
   useEffect(() => releaseVehicleRenderFrameClock, []);
 
-  if(overlay==="world_builder")return null;
-
   if (editor && screen==="sandbox") {
     return (
       <><PerspectiveCamera makeDefault fov={fov} near={.05}/><InspectionCameraControls playerId={playerId} enabled={overlay===null}/></>

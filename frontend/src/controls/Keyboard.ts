@@ -54,6 +54,7 @@ export function Keyboard() {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.repeat || !focused || document.visibilityState === "hidden" || isTypingTarget(event.target)) return;
       const ui = useUIStore.getState();
+      if(event.code==='F9'&&ui.screen==='world_builder'){event.preventDefault();release();closeWorldBuilder();return;}
       if(event.code==='F9'&&!event.ctrlKey&&!event.altKey&&!event.metaKey&&!event.shiftKey&&ui.screen==='sandbox'&&!ui.isModeLoading&&!useCanDataStore.getState().commandOpen){
         event.preventDefault();release();if(ui.overlay==='world_builder')closeWorldBuilder();else if(ui.overlay===null||ui.overlay==='pause'||ui.overlay==='debug_menu')void openWorldBuilder();return;
       }

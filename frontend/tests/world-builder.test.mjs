@@ -35,7 +35,7 @@ test('world builder edits drafts without changing live physics or stealing drivi
  try{
   const load=path=>server.ssrLoadModule('/src/'+path),{useBuilderStore:builder}=await load('worldBuilder/builderStore.ts'),actions=await load('worldBuilder/builderActions.ts');
   const {useUIStore:ui}=await load('store/uiStore.ts'),{useWorldStore:world}=await load('store/worldStore.ts'),{useInputStore:input}=await load('store/inputStore.ts');
-  const {canDrive,canNavigateMenu,routeMenuAction}=await load('store/tools/inputRouting.ts'),{WorldBuilderPanel}=await load('worldBuilder/WorldBuilderPanel.tsx'),{Keyboard}=await load('controls/Keyboard.ts');
+  const {canDrive,canNavigateMenu,routeMenuAction}=await load('store/tools/inputRouting.ts'),{CollisionBuilderPanel:WorldBuilderPanel}=await load('worldBuilder/CollisionBuilderPanel.tsx'),{Keyboard}=await load('controls/Keyboard.ts');
   const doc=parseMapDocument(source),live={...source,chunks:[{x:0,z:0,origin:[0,0,0]}],collider_chunks:[{x:0,z:0,boxes:editableBoxes(doc).map(b=>({id:b.id,kind:b.kind,center:b.center,half_extents:b.half,visual:b.visual}))}]};
   world.getState().setMap(live);ui.setState({screen:'sandbox',overlay:null,isModeLoading:false});
   root=createRoot(document.getElementById('root'));const render=async()=>act(async()=>root.render(h('div',null,h(Keyboard),h(WorldBuilderPanel))));

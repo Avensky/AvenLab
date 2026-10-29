@@ -25,7 +25,7 @@ export function GameUI() {
   const hud = useRenderSettingsStore((s) => s.hud);
   const screen = useUIStore((s) => s.screen);
   const overlay = useUIStore((s) => s.overlay);
-  const needsCanvas = screen === "sandbox" || screen === "sandbox_setup" || screen === "signal_recon_setup";
+  const needsCanvas = screen === "sandbox" || screen === "sandbox_setup" || screen === "signal_recon_setup" || screen === "world_builder";
   const reducedMotion = usePreferencesStore((s) => s.reducedMotion);
   const highContrast = usePreferencesStore((s) => s.highContrast);
   const textScale = usePreferencesStore((s) => s.menuTextScale);
@@ -42,6 +42,7 @@ export function GameUI() {
     {/* Requires Canvas */}
     {needsCanvas && <FullCanvas>
       {screen === "sandbox_setup" && <VehiclePreview />}
+      {screen === "world_builder" && <Suspense fallback={null}><WorldBuilderScene/></Suspense>}
       {screen === "sandbox" && <><group visible={overlay!=="world_builder"}><Sandbox /></group>{overlay==="world_builder"&&<Suspense fallback={null}><WorldBuilderScene/></Suspense>}</>}
 
       {screen === "signal_recon_setup" && <VehiclePreview />}
@@ -74,7 +75,7 @@ export function GameUI() {
     {overlay === "vehicle_select" && <VehicleMenu />}
     {overlay === "leave_game" && <SessionMenu />}
     {screen === "sandbox" && overlay === "cockpit" && <CockpitPanel />}
-    {screen === "sandbox" && overlay === "world_builder" && <Suspense fallback={null}><WorldBuilderPanel/></Suspense>}
+    {(screen === "world_builder" || (screen === "sandbox" && overlay === "world_builder")) && <Suspense fallback={null}><WorldBuilderPanel/></Suspense>}
 
     {screen === "sandbox" && hud && !overlay && <CommandLine />}
     {screen === "sandbox" && <PerformanceOverlay />}

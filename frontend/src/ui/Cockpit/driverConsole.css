@@ -219,3 +219,13 @@ html[data-reduce-motion="true"] .key-travel{transition:none}
 .drive-dock .hud-transmission>.hud-parking{grid-column:1;grid-row:1}
 .drive-dock .hud-transmission>.hud-assists{padding-right:0;z-index:1}
 .transmission-console .mechanical-handbrake .handbrake-lever{height:100%;padding-right:18px}
+
+/* Confirmed function state is separate from contact feedback on console controls. */
+[data-momentary-controls] button{border-color:var(--contact-border,#626e7a88)!important;background:var(--contact-surface,linear-gradient(#262c34b8,#0c1219c4))!important;color:var(--contact-ink,#dce4e9)!important;outline:0!important;box-shadow:none!important;-webkit-tap-highlight-color:transparent}
+[data-momentary-controls] .component-minimize{--contact-border:#627e8c50;--contact-surface:transparent;--contact-ink:#bed7e0}
+[data-momentary-controls] .physical-hazard{--contact-border:#934143;--contact-surface:linear-gradient(#611e20,#351416);--contact-ink:#ff8079}
+[data-momentary-controls] .console-display-tabs button{--contact-border:#3e5967;--contact-surface:#10212c;--contact-ink:#a8bfc9}
+[data-momentary-controls] .climate-knob>button{--contact-border:#5e7079;--contact-surface:#111e29;--contact-ink:#dceaf1}
+[data-momentary-controls] button[data-hud-held="true"]{border-color:#a7dbe9!important;background:#1e3b49!important;color:#effbff!important;outline:1px solid #a7dbe9!important;outline-offset:-2px}
+[data-momentary-controls] .climate-knob[data-hud-held="true"]{border-color:#a7dbe9;box-shadow:0 0 0 1px #a7dbe9}
+.console-display[data-expanded="true"],.climate-panel[data-expanded="true"]{border-color:#8eb5c4}

@@ -12,8 +12,8 @@ before(async () => {
 });
 after(async () => { delete globalThis.window; await server?.close(); });
 
-test('every pause row routes correctly and navigation wraps across all eight items', () => {
-  [null, 'debug_menu', 'settings', 'vehicle_select', 'cockpit', 'missions', 'career', 'leave_game'].forEach((target, index) => {
+test('every pause row routes correctly and navigation wraps across all nine items', () => {
+  [null, 'debug_menu', 'world_builder', 'settings', 'vehicle_select', 'cockpit', 'missions', 'career', 'leave_game'].forEach((target, index) => {
     ui.setState({ screen: 'sandbox', overlay: 'pause', isModeLoading: false });
     ui.getState().setActiveMenuIndex(index); route('activate');
     assert.equal(ui.getState().overlay, target, `pause row ${index}`);
@@ -21,12 +21,12 @@ test('every pause row routes correctly and navigation wraps across all eight ite
   });
   ui.setState({ overlay: 'pause' });
   ui.getState().setActiveMenuIndex(0); route('up');
-  assert.equal(ui.getState().getActiveMenuIndex(), 7);
+  assert.equal(ui.getState().getActiveMenuIndex(), 8);
   route('down'); assert.equal(ui.getState().getActiveMenuIndex(), 0);
 });
 
 test('main menu controller routes match mouse destinations and Swarm stays planned', () => {
-  ['sandbox_setup', 'missions', 'career', 'settings', 'signal_recon_setup', 'main'].forEach((screen, index) => {
+  ['sandbox_setup', 'world_builder', 'missions', 'career', 'settings', 'signal_recon_setup', 'main'].forEach((screen, index) => {
     ui.setState({ screen: 'main', overlay: null, isModeLoading: false });
     ui.getState().setActiveMenuIndex(index); route('activate');
     assert.equal(ui.getState().screen, screen);

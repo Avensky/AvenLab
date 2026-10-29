@@ -52,7 +52,7 @@ export function SettingsMenu() {
   },
 });
   const upcoming = (id: string, label: string, description: string): MenuRow => ({ id, label, description, value: "Planned", disabled: true });
-  const groupLabels = {gauges:"Instruments",wheel:"Steering wheel",pedals:"Pedals",ignition:"Ignition key",display:"Vehicle display",climate:"Climate / hazards / clock",shifter:"Shifter",parking:"Parking brake",assists:"Driving assists",minimap:"Minimap / GPS"};
+  const groupLabels = {gauges:"Instruments",wheel:"Steering wheel",pedals:"Pedals",ignition:"Ignition key",display:"Vehicle display",climate:"Climate / hazards / clock",shifter:"Shifter",parking:"Parking brake",assists:"Driving assists",minimap:"Minimap / GPS",chat:"Chat (planned)"};
   const drivingRows: MenuRow[] = [
     { id: "driving-layout", label: "Driving layout", value: prefs.drivingLayout === "controller" ? "Controller" : "Standard", action: () => {
       const controller = prefs.drivingLayout !== "controller";

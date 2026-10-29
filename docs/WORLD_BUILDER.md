@@ -1,7 +1,12 @@
-# World builder — collision authoring, first patch
+# World builder — legacy collision template
+
+The default World builder is now the modular **World workshop**. Open it from
+the main menu, Pause menu or F9. See [WORLD_WORKSHOP.md](WORLD_WORKSHOP.md) for
+piece placement, ramps, compound structures, saving and server-map export.
+Use **Open original collision template** to access the workflow below.
 
 Open a Sandbox, then press **F9**, or use Debugger → Environment →
-**World builder: collision template**. This patch works with the existing 2×2
+**World builder**, then **Open original collision template**. This works with the existing 2×2
 city GLBs and roads. No prop library is required.
 
 The builder edits a **local draft** of the server's map definition. Plan view
@@ -78,11 +83,11 @@ Although map metadata declares runtime Y-up, schema 2's `roads`/`buildings`
 records contain legacy Blender-space positions and sizes. The existing Rust
 loader explicitly converts them. The editor follows that contract:
 
-| Value | Stored schema 2 | Editor/runtime |
-| --- | --- | --- |
-| Center | `[x, depth, up]` | `[x, up, -depth]` |
-| Half extents | `[width/2, depth/2, height/2]` | `[width/2, height/2, depth/2]` |
-| Visual transform | Already runtime Y-up | Preserved without conversion |
+| Value            | Stored schema 2                | Editor/runtime                 |
+| ---------------- | ------------------------------ | ------------------------------ |
+| Center           | `[x, depth, up]`               | `[x, up, -depth]`              |
+| Half extents     | `[width/2, depth/2, height/2]` | `[width/2, height/2, depth/2]` |
+| Visual transform | Already runtime Y-up           | Preserved without conversion   |
 
 Export performs the inverse conversion exactly once. This avoids the double
 axis swaps or guessed offsets that would move the collision geometry away from
@@ -92,7 +97,7 @@ subsequent server-format extension.
 
 ## Source freshness and performance
 
-`scripts/sync-world-builder-map.mjs` runs before `frontend` dev/build. It copies
+`V` runs before `frontend` dev/build. It copies
 schema 2 definitions directly from the Rust source folder into the generated
 `frontend/public/world-builder/` folder and writes source hashes in a catalog.
 Do not edit generated copies. The backend JSON remains the source of truth.

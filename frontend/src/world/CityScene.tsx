@@ -8,6 +8,7 @@ import { DebugColliders } from "../components/debugger/DebugColliders";
 import { CityChunk } from "./CityChunk";
 import { AssetBoundary } from "../components/debugger/AssetBoundary";
 import { CityStreaming, CityReflectionEnvironment } from "./CityStreaming";
+import {AuthoredWorld} from './AuthoredWorld';
 
 export function CityScene() {
   const map = useWorldStore((s) => s.map);
@@ -27,6 +28,7 @@ export function CityScene() {
       const mode = settings.chunkOverrides[key] ?? settings.environmentMode;
       const boxes = map.collider_chunks?.find((c) => c.x === chunk.x && c.z === chunk.z)?.boxes ?? [];
       return <group key={key} name={`city-chunk-${key}`}>
+        {map.authored_layout && <group position={chunk.origin}><AuthoredWorld layout={map.authored_layout} mode={mode} cell={map.cell} surface={map.surface.road_y}/></group>}
         {(mode === "collider" || mode === "geometry" || mode === "hybrid") &&
           <DebugColliders boxes={boxes} solid={mode === "geometry"} />}
         {map.visuals.map((visual) => {

@@ -5,7 +5,7 @@ import {useControlRelease} from '../../controls/useControlRelease';
 import {useCockpitState} from './useCockpitState';
 type Direction=-1|1;
 type Gesture={id:number|null;key:string|null;kind:'cap'|'step';angle:number;y:number;action:-1|0|1};
-function Stalk({angle,reach=31,spacing=12.5,label,mode,asset,words,onUp,onDown,onTurn,onCancel,onRelease,disabled,repeat=false,detent=0,latched=false}:{angle:number;reach?:number;spacing?:number;label:string;mode:string;asset:string;words:[string,string];onUp:()=>void;onDown:()=>void;onTurn:()=>void;onCancel?:()=>void;onRelease?:(direction:Direction)=>void;disabled:boolean;repeat?:boolean;detent?:number;latched?:boolean}){
+function Stalk({angle,reach=31,stepReach=reach,spacing=12.5,label,mode,asset,words,onUp,onDown,onTurn,onCancel,onRelease,disabled,repeat=false,detent=0,latched=false}:{angle:number;reach?:number;stepReach?:number;spacing?:number;label:string;mode:string;asset:string;words:[string,string];onUp:()=>void;onDown:()=>void;onTurn:()=>void;onCancel?:()=>void;onRelease?:(direction:Direction)=>void;disabled:boolean;repeat?:boolean;detent?:number;latched?:boolean}){
  const gesture=useRef<Gesture|null>(null),timer=useRef<number|null>(null),active=useRef<-1|0|1>(0),suppress=useRef(false),[pull,setPull]=useState(0);
  const [heldTarget,setHeldTarget]=useState<'cap'|Direction|null>(null);
  const callbacks=useRef({onUp,onDown,onTurn,onRelease});useEffect(()=>{callbacks.current={onUp,onDown,onTurn,onRelease};},[onUp,onDown,onTurn,onRelease]);
@@ -39,7 +39,7 @@ function Stalk({angle,reach=31,spacing=12.5,label,mode,asset,words,onUp,onDown,o
   gesture.current={id:null,key:e.key,kind:'step',angle:0,y:0,action:direction};setHeldTarget(step??'cap');if(!latched)setPull(direction);fire(direction);
  };
  const keyUp=(e:React.KeyboardEvent<HTMLButtonElement>)=>{if(gesture.current?.key!==e.key)return;e.preventDefault();e.stopPropagation();release();suppress.current=false;};
- const point=(a:number)=>({left:`${50+reach*Math.cos(a*Math.PI/180)}%`,top:`${50-reach*Math.sin(a*Math.PI/180)}%`});
+ const point=(a:number,r=reach)=>({left:`${50+r*Math.cos(a*Math.PI/180)}%`,top:`${50-r*Math.sin(a*Math.PI/180)}%`});
  return <div className="stalk-actuator" data-latched={latched} data-detent={latched?detent:pull} style={{transform:`rotate(${(latched?detent:pull)*12}deg)`}}>
   <span className="column-stalk-rod" style={{'--stalk-angle':`${-angle}deg`,width:`${reach}%`} as CSSProperties} aria-hidden="true"><i/></span>
   <button type="button" className="column-stalk-cap" disabled={disabled} data-held={heldTarget==='cap'} aria-label={label} title={`${label}: hold a direction or drag; center changes mode`} style={{...point(angle),'--stalk-tangent':`${90-angle}deg`} as CSSProperties}
@@ -50,7 +50,7 @@ function Stalk({angle,reach=31,spacing=12.5,label,mode,asset,words,onUp,onDown,o
    onClick={()=>{if(suppress.current){suppress.current=false;return;}onTurn();}} onKeyDown={e=>keyDown(e)} onKeyUp={keyUp}>
    <img src={`/images/${asset}`} alt=""/><span>{mode}</span>
   </button>
-  {([1,-1] as const).map((direction,i)=>{const a=angle-direction*spacing;return <button key={direction} type="button" className="stalk-step" disabled={disabled} data-held={heldTarget===direction} aria-label={`${label} ${direction===1?'up':'down'}`} style={{...point(a),transform:`translate(-50%,-50%) rotate(${90-a}deg)`}}
+  {([1,-1] as const).map((direction,i)=>{const a=angle-direction*spacing;return <button key={direction} type="button" className="stalk-step" disabled={disabled} data-held={heldTarget===direction} aria-label={`${label} ${direction===1?'up':'down'}`} style={{...point(a,stepReach),transform:`translate(-50%,-50%) rotate(${90-a}deg)`}}
    onContextMenu={e=>e.preventDefault()} onPointerDown={e=>begin(e,direction)} onPointerUp={e=>finish(e)} onPointerCancel={e=>finish(e,true)} onLostPointerCapture={e=>finish(e,true)} onBlur={release}
    onKeyDown={e=>keyDown(e,direction)} onKeyUp={keyUp} onClick={()=>{if(suppress.current){suppress.current=false;return;}tap(direction);}}>{words[i]}</button>;})}
  </div>;
@@ -64,6 +64,6 @@ export const ColumnStalks=memo(function ColumnStalks(){
  return <div className="column-stalks" role="group" aria-label="Steering column controls">
   <Stalk angle={120} label="Lights and turn signal stalk" words={['R','L']} asset="headlights.svg" mode={['OFF','AUTO','ON','HIGH'][state.confirmed.lights]} disabled={!state.supported} latched detent={detent} onUp={()=>turn(1)} onDown={()=>turn(-1)} onTurn={()=>change({lights:(state.current.lights+1)%3},6)} onCancel={()=>useInputStore.getState().setInput({vehicleMask:flags&~(VehicleFlags.BLINKER_LEFT|VehicleFlags.BLINKER_RIGHT)})}/>
   <Stalk angle={60} label="Wiper and washer stalk" words={['WASH','WIPE']} asset="windshield-wiper.svg" mode={['OFF','SLOW','MID','HIGH'][state.confirmed.wipers]} disabled={!state.extended} onUp={()=>change({washer:true},5)} onDown={()=>change({},10)} onRelease={direction=>{if(direction===1)clearWasher();}} onTurn={()=>change({wipers:(state.current.wipers+1)%4},7)}/>
-  <Stalk angle={305} reach={32} spacing={18} label="Cruise control stalk" words={['RES+','SET−']} asset="cruise-control.svg" mode={state.confirmed.cruiseEnabled?'ON':'OFF'} disabled={!state.extended} repeat onUp={()=>change({},8)} onDown={()=>change({},9)} onTurn={()=>change({cruiseEnabled:!state.current.cruiseEnabled,cruiseAction:0},4)} onCancel={()=>change({cruiseAction:3},4)}/>
+  <Stalk angle={305} reach={28} stepReach={32} spacing={18} label="Cruise control stalk" words={['RES+','SET−']} asset="cruise-control.svg" mode={state.confirmed.cruiseEnabled?'ON':'OFF'} disabled={!state.extended} repeat onUp={()=>change({},8)} onDown={()=>change({},9)} onTurn={()=>change({cruiseEnabled:!state.current.cruiseEnabled,cruiseAction:0},4)} onCancel={()=>change({cruiseAction:3},4)}/>
  </div>;
 });

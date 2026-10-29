@@ -129,12 +129,3 @@ HUD pointer activation prevents button focus; the driving brake binding is route
 in capture phase before HUD button activation. Parking/ignition/stalk holds only
 write their packed commands and never synthesize throttle. Pointer ownership
 keeps pedal holds separate, and touch devices do not retain a desktop hover fill.
-
-## World builder drafts
-
-`worldBuilder/builderStore.ts` owns the local map document, 32-entry undo/redo,
-selection and editor view settings. It updates on user actions; plan pointer
-motion changes only a temporary SVG outline and commits once on release. Browser
-storage is written only by Save, never at the network/physics tick rate. The live
-`worldStore.map` and server collisions are not modified by draft editing. See
-[world builder](../../../docs/WORLD_BUILDER.md) for source generation and export.
