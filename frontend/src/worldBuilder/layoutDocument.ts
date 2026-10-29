@@ -1,3 +1,5 @@
+import {ROAD_ASSETS, newRoad, validateRoad, roadAsset, roleSolid, type RoadPlacement} from './roads/roadCatalog.ts';
+import {objectCorners} from './roads/layoutSnapping.ts';
 // Layouts use runtime metres and Y-up throughout. Unlike the legacy map boxes,
 // these transforms never pass through the Blender-axis conversion.
 export type V3 = [number, number, number];
@@ -6,18 +8,19 @@ export type LayoutPart = {
 };
 export type LayoutObject = {
   id: string; name: string; piece: string; position: V3; size: V3;
-  yaw: number; color: string; locked: boolean; solid: boolean; parts: LayoutPart[];
+  yaw: number; color: string; locked: boolean; solid: boolean; parts: LayoutPart[]; road?: RoadPlacement;
 };
 export type WorldLayout = {
-  format: 'avenlab-world-layout'; version: 1; map_id: string; title: string; base: 'replace' | 'overlay'; objects: LayoutObject[];
+  format: 'avenlab-world-layout'; version: 1; map_id: string; title: string; base: 'replace' | 'overlay'; ground?: boolean; repeat?: boolean; objects: LayoutObject[];
 };
 export type Piece = {
   id: string; label: string; category: 'roads' | 'structures' | 'props';
-  description: string; size: V3; color: string; parts: LayoutPart[];
+  description: string; size: V3; color: string; parts: LayoutPart[]; road?: RoadPlacement;
 };
 const box = (position: V3 = [0, .5, 0], size: V3 = [1, 1, 1], color?: string, solid = true): LayoutPart =>
   ({shape: 'box', position, size, ...(color ? {color} : {}), ...(solid ? {} : {solid: false})});
 export const PIECES: Piece[] = [
+  ...ROAD_ASSETS.map(asset => ({id: `glb-${asset.id}`, label: asset.label, category: 'roads' as const, description: 'Measured GLB · LOD0 collision surfaces · configurable sidewalks', size: asset.size, color: '#455466', parts: [], road: newRoad(asset)})),
   {id: 'road', label: 'Straight road', category: 'roads', description: '12 × 24 m · two lanes', size: [12, .2, 24], color: '#414e50', parts: [
     box(), box([0, 1.012, 0], [.012, .025, .96], '#e5c775', false),
     box([-.46, 1.012, 0], [.012, .025, .96], '#d6dfd9', false), box([.46, 1.012, 0], [.012, .025, .96], '#d6dfd9', false),
@@ -62,6 +65,8 @@ export function parseLayout(value: unknown, mapId?: string): WorldLayout {
   if (typeof doc.map_id !== 'string' || !/^[\w-]{1,96}$/.test(doc.map_id) || (mapId && doc.map_id !== mapId)) throw Error('Layout belongs to a different map');
   if (typeof doc.title !== 'string' || !doc.title.trim() || doc.title.length > 80) throw Error('Use a layout name of 1–80 characters');
   if (doc.base !== 'replace' && doc.base !== 'overlay') throw Error('Choose a standalone layout or a city overlay');
+  if (doc.repeat !== undefined && typeof doc.repeat !== 'boolean') throw Error('Invalid tile repetition setting');
+  if (doc.ground !== undefined && typeof doc.ground !== 'boolean') throw Error('Invalid support ground setting');
   if (!Array.isArray(doc.objects) || doc.objects.length > MAX_LAYOUT_OBJECTS) throw Error(`Layout limit: ${MAX_LAYOUT_OBJECTS} pieces`);
   let parts = 0; const ids = new Set<string>();
   for (const entry of doc.objects) {
@@ -71,7 +76,8 @@ export function parseLayout(value: unknown, mapId?: string): WorldLayout {
     if (typeof item.name !== 'string' || !item.name.trim() || item.name.length > 80 || typeof item.piece !== 'string' || !/^[\w-]{1,64}$/.test(item.piece)) throw Error('Invalid piece name');
     if (!vector(item.position, -100000, 100000) || !vector(item.size, .02, 512) || typeof item.yaw !== 'number' || !Number.isFinite(item.yaw) || Math.abs(item.yaw) > 36000) throw Error('Piece dimensions or position are out of range');
     if (!color(item.color) || typeof item.locked !== 'boolean' || typeof item.solid !== 'boolean') throw Error('Invalid piece appearance or collision setting');
-    if (!Array.isArray(item.parts) || !item.parts.length || item.parts.length > 32) throw Error('Each piece needs 1–32 explicit shapes');
+    if (item.road !== undefined) {validateRoad(item.road); if (item.piece !== `glb-${item.road.asset}`) throw Error('Road piece and asset must agree'); parts += roadAsset(item.road.asset)!.colliders.filter(c=>roleSolid(c.role,item.road as RoadPlacement)).length;}
+    if (!Array.isArray(item.parts) || (item.road ? item.parts.length !== 0 : !item.parts.length) || item.parts.length > 32) throw Error('Each piece needs 1–32 explicit shapes');
     parts += item.parts.length;
     for (const entry of item.parts) {
       const part = object(entry);
@@ -90,9 +96,9 @@ export const emptyLayout = (mapId: string): WorldLayout => ({format: 'avenlab-wo
 export function addPiece(doc: WorldLayout, pieceId: string, position: V3, yaw = 0): WorldLayout {
   const piece = pieceById(pieceId); if (!piece) throw Error('Choose a piece from the library');
   const ids = new Set(doc.objects.map(o => o.id)); let n = 1; while (ids.has(`${pieceId}-${n}`)) n++;
-  return parseLayout({...doc, objects: [...doc.objects, {id: `${pieceId}-${n}`, name: `${piece.label} ${n}`, piece: pieceId, position, size: [...piece.size], yaw: degrees(yaw), color: piece.color, locked: false, solid: true, parts: structuredClone(piece.parts)}]});
+  return parseLayout({...doc, ...(piece.road && !doc.objects.length ? {ground: false, repeat: false} : {}), objects: [...doc.objects, {id: `${pieceId}-${n}`, name: `${piece.label} ${n}`, piece: pieceId, position, size: [...piece.size], yaw: degrees(yaw), color: piece.color, locked: false, solid: true, parts: structuredClone(piece.parts), ...(piece.road ? {road: structuredClone(piece.road)} : {})}]});
 }
-export function updatePiece(doc: WorldLayout, id: string, changes: Partial<Pick<LayoutObject, 'name' | 'position' | 'size' | 'yaw' | 'color' | 'locked' | 'solid'>>) {
+export function updatePiece(doc: WorldLayout, id: string, changes: Partial<Pick<LayoutObject, 'name' | 'position' | 'size' | 'yaw' | 'color' | 'locked' | 'solid' | 'road'>>) {
   const selected = doc.objects.find(o => o.id === id);
   if (!selected) throw Error('Select a piece first');
   if (selected.locked && Object.keys(changes).some(key => key !== 'locked')) throw Error('Unlock this piece before editing');
@@ -114,9 +120,7 @@ export function partTransform(item: LayoutObject, part: LayoutPart): {position: 
   return {position: [item.position[0] + c * p[0] + s * p[2], item.position[1] + p[1], item.position[2] - s * p[0] + c * p[2]], size: part.size.map((n, i) => n * item.size[i]) as V3, yaw: angle};
 }
 export function footprint(item: LayoutObject): [number, number][] {
-  const angle = item.yaw * Math.PI / 180, c = Math.cos(angle), s = Math.sin(angle);
-  return ([[-.5, -.5], [.5, -.5], [.5, .5], [-.5, .5]] as const).map(([x, z]) =>
-    [item.position[0] + c * x * item.size[0] + s * z * item.size[2], item.position[2] - s * x * item.size[0] + c * z * item.size[2]]);
+  return objectCorners(item);
 }
 export function exampleLayout(mapId: string, surface = 0) {
   let doc = emptyLayout(mapId);

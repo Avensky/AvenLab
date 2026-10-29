@@ -1,9 +1,11 @@
 import {create} from 'zustand';
+import {snapLayoutPosition} from './roads/layoutSnapping';
 import {addPiece, degrees, duplicatePiece, emptyLayout, exampleLayout, layoutJSON, parseLayout, parseLayoutText, removePiece, updatePiece, type LayoutObject, type V3, type WorldLayout} from './layoutDocument';
 type LayoutState = {
   doc: WorldLayout | null; saved: WorldLayout | null; past: WorldLayout[]; future: WorldLayout[];
   selected: string | null; placing: string | null; tool: 'select' | 'translate' | 'rotate' | 'scale';
   view: '3d' | 'plan'; camera: 'iso' | 'top'; cameraRevision: number; snap: number; angleSnap: number;
+  magnet: boolean; snapBasis: 'outer' | 'asphalt'; magnetRadius: number;
   cursor: V3; placementYaw: number; reference: boolean; wireframe: boolean; status: string;
   initialize: (mapId: string, source?: unknown) => void; commit: (doc: WorldLayout, status?: string) => void;
   select: (id: string | null) => void; cycle: (dir: number) => void;
@@ -18,6 +20,7 @@ export const layoutStorageKey = (mapId: string) => `${prefix}:${mapId}`;
 const chosen = (doc: WorldLayout, selected: string | null) => doc.objects.some(o => o.id === selected) ? selected : null;
 export const useLayoutStore = create<LayoutState>((set, get) => ({
   doc: null, saved: null, past: [], future: [], selected: null, placing: null, tool: 'select',
+  magnet: true, snapBasis: 'outer', magnetRadius: 1.5,
   view: '3d', camera: 'iso', cameraRevision: 0, snap: .5, angleSnap: 15, cursor: [0, 0, 0], placementYaw: 0,
   reference: false, wireframe: false, status: 'Choose a piece, then click the ground to place it.',
   initialize: (mapId, source) => {
@@ -33,7 +36,7 @@ export const useLayoutStore = create<LayoutState>((set, get) => ({
   },
   select: selected => set({selected, placing: null}),
   cycle: dir => {const s = get(), objects = s.doc?.objects ?? []; if (!objects.length) return; const index = objects.findIndex(o => o.id === s.selected); set({selected: objects[(index + dir + objects.length) % objects.length].id, placing: null});},
-  place: position => {const s = get(); if (!s.doc || !s.placing) return; const doc = addPiece(s.doc, s.placing, position, s.placementYaw); s.commit(doc, 'Piece placed. Click again to place another; Esc finishes.'); set({selected: doc.objects.at(-1)!.id, cursor: position});},
+  place: position => {const s = get(); if (!s.doc || !s.placing) return; let doc = addPiece(s.doc, s.placing, position, s.placementYaw); const placed = doc.objects.at(-1)!; if (s.magnet) {const result=snapLayoutPosition(placed,position,s.doc.objects,s.snapBasis,s.magnetRadius); placed.position=result.position; doc=parseLayout(doc);} s.commit(doc, 'Piece placed. Click again to place another; Esc finishes.'); set({selected: doc.objects.at(-1)!.id, cursor: position});},
   update: changes => {const s = get(); if (s.doc && s.selected) s.commit(updatePiece(s.doc, s.selected, changes));},
   duplicate: () => {const s = get(); if (!s.doc || !s.selected) return; const doc = duplicatePiece(s.doc, s.selected, Math.max(s.snap, 1)); s.commit(doc, 'Duplicate created.'); set({selected: doc.objects.at(-1)!.id, placing: null, tool: 'translate'});},
   remove: () => {const s = get(); if (s.doc && s.selected) s.commit(removePiece(s.doc, s.selected), 'Piece removed.');},

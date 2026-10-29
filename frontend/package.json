@@ -4,14 +4,15 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "predev": "node ../scripts/sync-world-builder-map.mjs",
-    "prebuild": "node ../scripts/sync-world-builder-map.mjs",
+    "predev": "node ../scripts/build-road-colliders.mjs --check && node ../scripts/sync-world-builder-map.mjs",
+    "prebuild": "node ../scripts/build-road-colliders.mjs --check && node ../scripts/sync-world-builder-map.mjs",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
-    "test:performance": "node --test tests/*.test.mjs"
+    "test:performance": "node --test tests/*.test.mjs",
+    "build:roads": "node ../scripts/build-road-colliders.mjs && node ../scripts/build-road-test-map.mjs"
   },
   "dependencies": {
     "@react-three/drei": "10.7.7",

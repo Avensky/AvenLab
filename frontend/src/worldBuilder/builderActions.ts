@@ -1,5 +1,6 @@
 import {useUIStore} from '../store/uiStore';
 import {useWorldStore,type MapSnapshot} from '../store/worldStore';
+import {useSelectionStore} from '../store/selectionStore';
 import {useInputStore} from '../store/inputStore';
 import {leaveInspection} from '../store/inspectionActions';
 import {builderStorageKey,useBuilderStore} from './builderStore';
@@ -28,8 +29,8 @@ export async function openWorldBuilder(){
  }catch(error){if(!useBuilderStore.getState().doc&&token===request&&useUIStore.getState().overlay==='world_builder')useBuilderStore.setState({status:error instanceof Error?error.message:'Map definition unavailable'});}
 }
 export async function loadStandaloneBuilder(){
- const token=++request;if(useBuilderStore.getState().doc)return;
- try{const mapId=useWorldStore.getState().map?.map_id??'streaming_endless_city';if(!/^[a-zA-Z0-9_-]{1,96}$/.test(mapId))throw Error('Invalid map id');
+ const token=++request;
+ try{const mapId=useWorldStore.getState().map?.map_id??useSelectionStore.getState().getSelectedMap?.()?.id??'streaming_endless_city';if(!/^[a-zA-Z0-9_-]{1,96}$/.test(mapId))throw Error('Invalid map id');if(useBuilderStore.getState().doc?.map_id===mapId)return;useBuilderStore.setState({doc:null,status:'Loading map definition…'});
   const response=await fetch(`/world-builder/${mapId}_colliders.json`);if(!response.ok)throw Error('Map source unavailable. Run npm --prefix frontend run dev to refresh it.');
   const doc=parseMapText(await response.text(),mapId);if(token!==request||useUIStore.getState().screen!=='world_builder')return;
   useBuilderStore.getState().load(doc,'Bundled map source · Standalone authoring');

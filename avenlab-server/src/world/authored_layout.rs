@@ -3,6 +3,7 @@
 use std::collections::HashSet;
 use rapier3d::prelude::*;
 use serde::{Deserialize, Serialize};
+use super::road_colliders::RoadPlacement;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AuthoredLayout {
@@ -12,6 +13,10 @@ pub struct AuthoredLayout {
     pub title: String,
     pub base: LayoutBase,
     pub objects: Vec<LayoutObject>,
+    #[serde(default = "default_solid")]
+    pub ground: bool,
+    #[serde(default = "default_solid")]
+    pub repeat: bool,
 }
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
@@ -28,6 +33,8 @@ pub struct LayoutObject {
     pub locked: bool,
     pub solid: bool,
     pub parts: Vec<LayoutPart>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub road: Option<RoadPlacement>,
 }
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct LayoutPart {
@@ -66,6 +73,12 @@ impl AuthoredLayout {
             anyhow::ensure!(identifier(&object.piece, 64) && !object.name.trim().is_empty() && object.name.chars().count() <= 80, "Invalid piece name");
             anyhow::ensure!(vector_ok(&object.position, -100000.0, 100000.0) && vector_ok(&object.size, 0.02, 512.0) && object.yaw.is_finite() && object.yaw.abs() <= 36000.0, "Invalid authored piece transform");
             anyhow::ensure!(color_ok(&object.color), "Invalid authored piece color");
+            if let Some(road) = &object.road {
+                road.validate()?;
+                anyhow::ensure!(object.piece == format!("glb-{}",road.asset) && object.parts.is_empty(), "Road must use its measured catalog, without extra guessed shapes");
+                count += road.shape_count();
+                continue;
+            }
             anyhow::ensure!(!object.parts.is_empty() && object.parts.len() <= 32, "Piece must have 1-32 shapes");
             count += object.parts.len();
             for part in &object.parts {
@@ -80,6 +93,10 @@ impl AuthoredLayout {
     pub fn spawn(&self, bodies: &mut RigidBodySet, colliders: &mut ColliderSet, origin: [f32; 3], groups: InteractionGroups) -> Vec<RigidBodyHandle> {
         let mut handles = Vec::new();
         for object in &self.objects {
+            if let Some(road) = &object.road {
+                if let Some(handle) = road.spawn(object,bodies,colliders,origin,groups) { handles.push(handle); }
+                continue;
+            }
             if !object.solid || !object.parts.iter().any(|p| p.solid) { continue; }
             let root = RigidBodyBuilder::fixed()
                 .translation(vector![origin[0] + object.position[0], origin[1] + object.position[1], origin[2] + object.position[2]])

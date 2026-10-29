@@ -988,6 +988,27 @@ mod tests {
     }
 
     #[test]
+    fn measured_road_map_supports_real_vehicle_suspension_and_tile_seams() {
+        let mut world=PhysicsWorld::new();world.select_map("road_precision").unwrap();
+        let handle=world.spawn_vehicle_for_player("road-driver".into(),[0.0;3],"brz","red").unwrap();
+        for _ in 0..180 {world.step(SIMULATION_DT);}
+        let parked=*world.bodies[handle].translation();
+        assert!(parked.y>0.1 && parked.y<2.0,"suspension must settle on the measured asphalt");
+        assert!(world.wheels[&handle].iter().all(|w|w.grounded));
+        world.bodies[handle].set_linvel(vector![0.0,0.0,-8.0],true);
+        let mut max_vertical_speed=0.0_f32;let mut lost=0;
+        for _ in 0..240 {
+            world.step(SIMULATION_DT);
+            max_vertical_speed=max_vertical_speed.max(world.bodies[handle].linvel().y.abs());
+            lost+=usize::from(world.wheels[&handle].iter().any(|w|!w.grounded));
+        }
+        let moved=(world.bodies[handle].translation().z-parked.z).abs();
+        assert!(moved>10.0,"vehicle must cross multiple source road tile joins");
+        assert!(lost<5,"contact lost on {lost} frames");
+        assert!(max_vertical_speed<0.5,"unexpected triangle seam kick: {max_vertical_speed}");
+    }
+
+    #[test]
     fn healthy_frs_reaches_sixth_and_its_configured_speed_in_the_real_tire_solver() {
         let mut world=flat_world();let handle=world.spawn_vehicle_for_player("top-speed".into(),[0.0;3],"frs","red").unwrap();
         for _ in 0..120 {world.step(SIMULATION_DT);}

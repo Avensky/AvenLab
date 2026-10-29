@@ -1,3 +1,5 @@
+> The integrated World workshop and Rust road path is now available. See [ROAD_PHYSICS_INTEGRATION.md](ROAD_PHYSICS_INTEGRATION.md) for the current LOD assets, server map export, collision masks, and Road Precision Test map. This document describes the earlier standalone geometry study.
+
 # Road kit foundation — source meshes, groups and snapping
 
 This is the focused road-authoring workbench built from the three supplied GLBs.

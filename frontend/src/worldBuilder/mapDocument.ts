@@ -1,4 +1,4 @@
-import {parseLayout} from './layoutDocument.ts';
+import {footprint, parseLayout, type WorldLayout} from './layoutDocument.ts';
 export type Triple=[number,number,number];
 type Rotation=[number,number,number,number];
 export type ColliderRecord={id:string;kind:string;visual:string;pos:Triple;rot:Rotation;half_extents:Triple;collider:'box';[key:string]:unknown};
@@ -63,4 +63,18 @@ export function planPoint(x:number,y:number,rect:{left:number;top:number;width:n
 }
 export function pickBox(boxes:EditableBox[],x:number,z:number){return boxes.filter(b=>Math.abs(x-b.center[0])<=b.half[0]&&Math.abs(z-b.center[2])<=b.half[2]).sort((a,b)=>a.half[0]*a.half[2]-b.half[0]*b.half[2])[0]??null;}
 export function colliderPath(boxes:EditableBox[]){return boxes.map(b=>`M${b.center[0]-b.half[0]} ${b.center[2]-b.half[2]}h${b.half[0]*2}v${b.half[2]*2}h${-b.half[0]*2}Z`).join('');}
-export function mapExport(doc:MapDocument){const result=parseMapDocument(doc),meta=typeof result.metadata==='object'&&result.metadata!==null?result.metadata as Record<string,unknown>:{};result.metadata={...meta,building_collider_count:result.buildings.length,road_collider_count:result.roads.length};return JSON.stringify(result,null,2)+'\n';}
+// Finite districts export once: a 240 m road must not silently repeat every
+// 200 m city tile. Legacy layouts retain their existing repetition behavior.
+export function withLayoutMap(doc: MapDocument, layout: WorldLayout): MapDocument {
+ const result={...doc,authored_layout:layout};
+ if(layout.base!=='replace'||layout.repeat!==false)return result;
+ const points=layout.objects.flatMap(footprint),extent=(axis:number)=>Math.max(100,...points.map(p=>Math.abs(p[axis])+16))*2;
+ const cell:[number,number]=[extent(0),extent(1)];
+ if(cell.some(n=>n>10000))throw Error('Single district exceeds the 10 km map cell limit');
+ const road=layout.objects.find(o=>o.solid&&o.road?.collision.surface);
+ if(!road)return {...result,cell,layout:{kind:'fixed_grid',origin:[0,0],size:[1,1]}};
+ const a=road.yaw*Math.PI/180,c=Math.cos(a),s=Math.sin(a),offset=Math.min(10,road.size[2]*.1);
+ const spawn=(direction:number)=>({chunk:[0,0],local:[road.position[0]+s*offset*direction,road.position[2]+c*offset*direction],yaw:a+(direction<0?Math.PI:0)});
+ return {...result,cell,layout:{kind:'fixed_grid',origin:[0,0],size:[1,1]},surface:{road_y:road.position[1]},team_spawns:{red:[spawn(1)],blue:[spawn(-1)]}};
+}
+export function mapExport(doc:MapDocument){const authored=doc.authored_layout?parseLayout(doc.authored_layout,doc.map_id):null,result=parseMapDocument(authored?withLayoutMap(doc,authored):doc),meta=typeof result.metadata==='object'&&result.metadata!==null?result.metadata as Record<string,unknown>:{};result.metadata={...meta,building_collider_count:result.buildings.length,road_collider_count:result.roads.length};return JSON.stringify(result,null,2)+'\n';}

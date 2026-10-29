@@ -348,7 +348,12 @@ pub fn load_block_collider_file(
 ) -> anyhow::Result<BlockColliderFile> {
     let bytes = fs::read(&path)?;
     let file: BlockColliderFile = serde_json::from_slice(&bytes)?;
-    if let Some(layout) = &file.authored_layout { layout.validate(&file.map_id)?; }
+    if let Some(layout) = &file.authored_layout {
+        layout.validate(&file.map_id)?;
+        if layout.replaces_base() && !layout.repeat {
+            anyhow::ensure!(matches!(file.layout, MapLayout::FixedGrid { origin: [0,0], size: [1,1] }), "A single authored district must use one fixed map tile");
+        }
+    }
 
     if file.map_id.trim().is_empty() {
         anyhow::bail!("Map definition has an empty map_id");
@@ -436,7 +441,7 @@ pub fn spawn_block_building_colliders(
     if let Some(layout) = &file.authored_layout {
         // Standalone layouts need an explicit support surface: the physics
         // world intentionally has no hidden global fallback plane.
-        if layout.replaces_base() {
+        if layout.replaces_base() && layout.ground {
             let center = [bx as f32 * tile_x, file.surface.road_y - 0.25, by as f32 * tile_z];
             let body = bodies.insert(RigidBodyBuilder::fixed().translation(vector![center[0], center[1], center[2]]).build());
             colliders.insert_with_parent(ColliderBuilder::cuboid(tile_x / 2.0, 0.25, tile_z / 2.0).friction(1.2).collision_groups(groups).build(), body, bodies);
