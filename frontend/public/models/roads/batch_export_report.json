@@ -1,0 +1,86 @@
+{
+  "exporter": "1.0.0",
+  "assets": [
+    {
+      "source": "Road_Intersection.blend",
+      "status": "ok",
+      "levels": [
+        {
+          "lod": 0,
+          "file": "Road_Intersection_LOD0.glb",
+          "triangles": 3812,
+          "bytes": 1080784,
+          "reduction_percent": 0.0
+        },
+        {
+          "lod": 1,
+          "file": "Road_Intersection_LOD1.glb",
+          "triangles": 3500,
+          "bytes": 505732,
+          "reduction_percent": 8.18
+        },
+        {
+          "lod": 2,
+          "file": "Road_Intersection_LOD2.glb",
+          "triangles": 3044,
+          "bytes": 188296,
+          "reduction_percent": 20.15
+        }
+      ]
+    },
+    {
+      "source": "Road_Narrow_Oneway.blend",
+      "status": "ok",
+      "levels": [
+        {
+          "lod": 0,
+          "file": "Road_Narrow_Oneway_LOD0.glb",
+          "triangles": 8116,
+          "bytes": 1234984,
+          "reduction_percent": 0.0
+        },
+        {
+          "lod": 1,
+          "file": "Road_Narrow_Oneway_LOD1.glb",
+          "triangles": 4650,
+          "bytes": 577592,
+          "reduction_percent": 42.71
+        },
+        {
+          "lod": 2,
+          "file": "Road_Narrow_Oneway_LOD2.glb",
+          "triangles": 4010,
+          "bytes": 252000,
+          "reduction_percent": 50.59
+        }
+      ]
+    },
+    {
+      "source": "Road_Wide_Twoway.blend",
+      "status": "ok",
+      "levels": [
+        {
+          "lod": 0,
+          "file": "Road_Wide_Twoway_LOD0.glb",
+          "triangles": 6016,
+          "bytes": 875652,
+          "reduction_percent": 0.0
+        },
+        {
+          "lod": 1,
+          "file": "Road_Wide_Twoway_LOD1.glb",
+          "triangles": 3792,
+          "bytes": 394088,
+          "reduction_percent": 36.97
+        },
+        {
+          "lod": 2,
+          "file": "Road_Wide_Twoway_LOD2.glb",
+          "triangles": 3792,
+          "bytes": 236684,
+          "reduction_percent": 36.97
+        }
+      ]
+    }
+  ]
+}

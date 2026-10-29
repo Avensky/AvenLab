@@ -1,0 +1,479 @@
+{
+  "exporter": "1.0.0",
+  "blender": "5.1.2",
+  "source_file": "Road_Intersection.blend",
+  "asset": "Road_Intersection",
+  "coordinates": "glTF +Y up; source world positions and origins retained",
+  "collision": "Visual exports only. Keep one authoritative collider definition for all LODs.",
+  "options": {
+    "medium_angle": 1.0,
+    "low_angle": 5.0,
+    "medium_texture": 1024,
+    "low_texture": 512,
+    "drop_low_details": true,
+    "tolerance": 1e-05
+  },
+  "source_meshes": 3,
+  "levels": [
+    {
+      "lod": 0,
+      "label": "high",
+      "file": "Road_Intersection_LOD0.glb",
+      "objects": [
+        {
+          "before": 768,
+          "after": 768,
+          "status": "unchanged",
+          "name": "Road_Details",
+          "bounds_blender_local": [
+            [
+              -14844.697265625,
+              -8022.09765625,
+              -6.895732402801514
+            ],
+            [
+              -14313.1728515625,
+              -7533.0087890625,
+              -4.670251846313477
+            ]
+          ]
+        },
+        {
+          "before": 1416,
+          "after": 1416,
+          "status": "unchanged",
+          "name": "Road_Intersection",
+          "bounds_blender_local": [
+            [
+              -15177.0,
+              -8486.423828125,
+              -5.892082214355469
+            ],
+            [
+              -14064.8759765625,
+              -7030.99658203125,
+              -1.9027414321899414
+            ]
+          ]
+        },
+        {
+          "before": 1628,
+          "after": 1628,
+          "status": "unchanged",
+          "name": "Road_Surface",
+          "bounds_blender_local": [
+            [
+              -15192.0,
+              -8483.5732421875,
+              -5.920732498168945
+            ],
+            [
+              -14042.03515625,
+              -7033.57080078125,
+              -5.870732307434082
+            ]
+          ]
+        }
+      ],
+      "omitted_details": [],
+      "warnings": [],
+      "images": [
+        {
+          "name": "Sewers_01_BC",
+          "before": [
+            4096,
+            4096
+          ],
+          "after": [
+            4096,
+            4096
+          ]
+        },
+        {
+          "name": "Sewers_01_R",
+          "before": [
+            2048,
+            2048
+          ],
+          "after": [
+            2048,
+            2048
+          ]
+        },
+        {
+          "name": "Sidewalk_02_BC",
+          "before": [
+            2048,
+            2048
+          ],
+          "after": [
+            2048,
+            2048
+          ]
+        },
+        {
+          "name": "Sidewalk_01_R",
+          "before": [
+            2048,
+            2048
+          ],
+          "after": [
+            2048,
+            2048
+          ]
+        },
+        {
+          "name": "Sidewalk_01_BC",
+          "before": [
+            2048,
+            2048
+          ],
+          "after": [
+            2048,
+            2048
+          ]
+        },
+        {
+          "name": "asphalt_01_BC",
+          "before": [
+            2048,
+            2048
+          ],
+          "after": [
+            2048,
+            2048
+          ]
+        },
+        {
+          "name": "asphalt_01_R",
+          "before": [
+            2048,
+            2048
+          ],
+          "after": [
+            2048,
+            2048
+          ]
+        },
+        {
+          "name": "MarkingRoad_BC",
+          "before": [
+            4096,
+            4096
+          ],
+          "after": [
+            4096,
+            4096
+          ]
+        }
+      ],
+      "triangles": 3812,
+      "mesh_primitives": 5,
+      "node_names": [
+        "Road_Details",
+        "Road_Surface",
+        "Road_Intersection",
+        "Road_Intersection_LOD_ROOT"
+      ],
+      "bytes": 1080784,
+      "reduction_percent": 0.0
+    },
+    {
+      "lod": 1,
+      "label": "medium",
+      "file": "Road_Intersection_LOD1.glb",
+      "objects": [
+        {
+          "before": 768,
+          "after": 456,
+          "status": "simplified",
+          "name": "Road_Details",
+          "bounds_blender_local": [
+            [
+              -14844.697265625,
+              -8022.09765625,
+              -6.895732402801514
+            ],
+            [
+              -14313.1728515625,
+              -7533.0087890625,
+              -4.670251846313477
+            ]
+          ]
+        },
+        {
+          "before": 1416,
+          "after": 1416,
+          "status": "kept_original",
+          "reason": "a boundary or curb profile changed",
+          "name": "Road_Intersection",
+          "bounds_blender_local": [
+            [
+              -15177.0,
+              -8486.423828125,
+              -5.892082214355469
+            ],
+            [
+              -14064.8759765625,
+              -7030.99658203125,
+              -1.9027414321899414
+            ]
+          ]
+        },
+        {
+          "before": 1628,
+          "after": 1628,
+          "status": "kept_original",
+          "reason": "a boundary or curb profile changed",
+          "name": "Road_Surface",
+          "bounds_blender_local": [
+            [
+              -15192.0,
+              -8483.5732421875,
+              -5.920732498168945
+            ],
+            [
+              -14042.03515625,
+              -7033.57080078125,
+              -5.870732307434082
+            ]
+          ]
+        }
+      ],
+      "omitted_details": [],
+      "warnings": [
+        "Road_Intersection: a boundary or curb profile changed; retained full geometry.",
+        "Road_Surface: a boundary or curb profile changed; retained full geometry."
+      ],
+      "images": [
+        {
+          "name": "Sewers_01_BC",
+          "before": [
+            4096,
+            4096
+          ],
+          "after": [
+            1024,
+            1024
+          ]
+        },
+        {
+          "name": "Sewers_01_R",
+          "before": [
+            2048,
+            2048
+          ],
+          "after": [
+            1024,
+            1024
+          ]
+        },
+        {
+          "name": "Sidewalk_02_BC",
+          "before": [
+            2048,
+            2048
+          ],
+          "after": [
+            1024,
+            1024
+          ]
+        },
+        {
+          "name": "Sidewalk_01_R",
+          "before": [
+            2048,
+            2048
+          ],
+          "after": [
+            1024,
+            1024
+          ]
+        },
+        {
+          "name": "Sidewalk_01_BC",
+          "before": [
+            2048,
+            2048
+          ],
+          "after": [
+            1024,
+            1024
+          ]
+        },
+        {
+          "name": "asphalt_01_BC",
+          "before": [
+            2048,
+            2048
+          ],
+          "after": [
+            1024,
+            1024
+          ]
+        },
+        {
+          "name": "asphalt_01_R",
+          "before": [
+            2048,
+            2048
+          ],
+          "after": [
+            1024,
+            1024
+          ]
+        },
+        {
+          "name": "MarkingRoad_BC",
+          "before": [
+            4096,
+            4096
+          ],
+          "after": [
+            1024,
+            1024
+          ]
+        }
+      ],
+      "triangles": 3500,
+      "mesh_primitives": 5,
+      "node_names": [
+        "Road_Details",
+        "Road_Surface",
+        "Road_Intersection",
+        "Road_Intersection_LOD_ROOT"
+      ],
+      "bytes": 505732,
+      "reduction_percent": 8.18
+    },
+    {
+      "lod": 2,
+      "label": "low",
+      "file": "Road_Intersection_LOD2.glb",
+      "objects": [
+        {
+          "before": 1416,
+          "after": 1416,
+          "status": "kept_original",
+          "reason": "a boundary or curb profile changed",
+          "name": "Road_Intersection",
+          "bounds_blender_local": [
+            [
+              -15177.0,
+              -8486.423828125,
+              -5.892082214355469
+            ],
+            [
+              -14064.8759765625,
+              -7030.99658203125,
+              -1.9027414321899414
+            ]
+          ]
+        },
+        {
+          "before": 1628,
+          "after": 1628,
+          "status": "kept_original",
+          "reason": "a boundary or curb profile changed",
+          "name": "Road_Surface",
+          "bounds_blender_local": [
+            [
+              -15192.0,
+              -8483.5732421875,
+              -5.920732498168945
+            ],
+            [
+              -14042.03515625,
+              -7033.57080078125,
+              -5.870732307434082
+            ]
+          ]
+        }
+      ],
+      "omitted_details": [
+        "Road_Details"
+      ],
+      "warnings": [
+        "Road_Intersection: a boundary or curb profile changed; retained full geometry.",
+        "Road_Surface: a boundary or curb profile changed; retained full geometry."
+      ],
+      "images": [
+        {
+          "name": "Sidewalk_02_BC",
+          "before": [
+            2048,
+            2048
+          ],
+          "after": [
+            512,
+            512
+          ]
+        },
+        {
+          "name": "Sidewalk_01_R",
+          "before": [
+            2048,
+            2048
+          ],
+          "after": [
+            512,
+            512
+          ]
+        },
+        {
+          "name": "Sidewalk_01_BC",
+          "before": [
+            2048,
+            2048
+          ],
+          "after": [
+            512,
+            512
+          ]
+        },
+        {
+          "name": "asphalt_01_BC",
+          "before": [
+            2048,
+            2048
+          ],
+          "after": [
+            512,
+            512
+          ]
+        },
+        {
+          "name": "asphalt_01_R",
+          "before": [
+            2048,
+            2048
+          ],
+          "after": [
+            512,
+            512
+          ]
+        },
+        {
+          "name": "MarkingRoad_BC",
+          "before": [
+            4096,
+            4096
+          ],
+          "after": [
+            512,
+            512
+          ]
+        }
+      ],
+      "triangles": 3044,
+      "mesh_primitives": 4,
+      "node_names": [
+        "Road_Surface",
+        "Road_Intersection",
+        "Road_Intersection_LOD_ROOT"
+      ],
+      "bytes": 188296,
+      "reduction_percent": 20.15
+    }
+  ]
+}

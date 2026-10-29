@@ -1,0 +1,506 @@
+{
+  "exporter": "1.0.0",
+  "blender": "5.1.2",
+  "source_file": "Road_Wide_Twoway.blend",
+  "asset": "Road_Wide_Twoway",
+  "coordinates": "glTF +Y up; source world positions and origins retained",
+  "collision": "Visual exports only. Keep one authoritative collider definition for all LODs.",
+  "options": {
+    "medium_angle": 1.0,
+    "low_angle": 5.0,
+    "medium_texture": 1024,
+    "low_texture": 512,
+    "drop_low_details": true,
+    "tolerance": 1e-05
+  },
+  "source_meshes": 4,
+  "levels": [
+    {
+      "lod": 0,
+      "label": "high",
+      "file": "Road_Wide_Twoway_LOD0.glb",
+      "objects": [
+        {
+          "before": 1600,
+          "after": 1600,
+          "status": "unchanged",
+          "name": "Road_Surface",
+          "bounds_blender_local": [
+            [
+              -59.87518310546875,
+              -22.218505859375,
+              -0.2947867214679718
+            ],
+            [
+              60.12579345703125,
+              21.96923828125,
+              -0.2947867214679718
+            ]
+          ]
+        },
+        {
+          "before": 3616,
+          "after": 3616,
+          "status": "unchanged",
+          "name": "Road_Wide_Twoway",
+          "bounds_blender_local": [
+            [
+              -59.87518310546875,
+              -20.939441680908203,
+              -0.29453667998313904
+            ],
+            [
+              60.125,
+              20.68988037109375,
+              -0.2820405066013336
+            ]
+          ]
+        },
+        {
+          "before": 400,
+          "after": 400,
+          "status": "unchanged",
+          "name": "Sidewalk_Bottom",
+          "bounds_blender_local": [
+            [
+              -60.35809326171875,
+              -36.37443542480469,
+              -0.2947866916656494
+            ],
+            [
+              60.3580322265625,
+              -21.40142822265625,
+              -0.0951441302895546
+            ]
+          ]
+        },
+        {
+          "before": 400,
+          "after": 400,
+          "status": "unchanged",
+          "name": "Sidewalk_Top",
+          "bounds_blender_local": [
+            [
+              -60.37371826171875,
+              21.027376174926758,
+              -0.2947866916656494
+            ],
+            [
+              60.1236572265625,
+              36.00030517578125,
+              -0.0951441302895546
+            ]
+          ]
+        }
+      ],
+      "omitted_details": [],
+      "warnings": [],
+      "images": [
+        {
+          "name": "asphalt_01_BC",
+          "before": [
+            2048,
+            2048
+          ],
+          "after": [
+            2048,
+            2048
+          ]
+        },
+        {
+          "name": "asphalt_01_R",
+          "before": [
+            2048,
+            2048
+          ],
+          "after": [
+            2048,
+            2048
+          ]
+        },
+        {
+          "name": "MarkingRoad_BC",
+          "before": [
+            4096,
+            4096
+          ],
+          "after": [
+            4096,
+            4096
+          ]
+        },
+        {
+          "name": "Sidewalk_02_BC",
+          "before": [
+            2048,
+            2048
+          ],
+          "after": [
+            2048,
+            2048
+          ]
+        },
+        {
+          "name": "Sidewalk_01_R",
+          "before": [
+            2048,
+            2048
+          ],
+          "after": [
+            2048,
+            2048
+          ]
+        },
+        {
+          "name": "Sidewalk_01_BC",
+          "before": [
+            2048,
+            2048
+          ],
+          "after": [
+            2048,
+            2048
+          ]
+        }
+      ],
+      "triangles": 6016,
+      "mesh_primitives": 6,
+      "node_names": [
+        "Road_Surface",
+        "Sidewalk_Bottom",
+        "Sidewalk_Top",
+        "Road_Wide_Twoway",
+        "Road_Wide_Twoway_LOD_ROOT"
+      ],
+      "bytes": 875652,
+      "reduction_percent": 0.0
+    },
+    {
+      "lod": 1,
+      "label": "medium",
+      "file": "Road_Wide_Twoway_LOD1.glb",
+      "objects": [
+        {
+          "before": 1600,
+          "after": 16,
+          "status": "simplified",
+          "name": "Road_Surface",
+          "bounds_blender_local": [
+            [
+              -59.87518310546875,
+              -22.218505859375,
+              -0.2947867214679718
+            ],
+            [
+              60.12579345703125,
+              21.96923828125,
+              -0.2947867214679718
+            ]
+          ]
+        },
+        {
+          "before": 3616,
+          "after": 3616,
+          "status": "kept_original",
+          "reason": "a boundary or curb profile changed",
+          "name": "Road_Wide_Twoway",
+          "bounds_blender_local": [
+            [
+              -59.87518310546875,
+              -20.939441680908203,
+              -0.29453667998313904
+            ],
+            [
+              60.125,
+              20.68988037109375,
+              -0.2820405066013336
+            ]
+          ]
+        },
+        {
+          "before": 400,
+          "after": 80,
+          "status": "simplified",
+          "name": "Sidewalk_Bottom",
+          "bounds_blender_local": [
+            [
+              -60.35809326171875,
+              -36.37443542480469,
+              -0.2947866916656494
+            ],
+            [
+              60.3580322265625,
+              -21.40142822265625,
+              -0.0951441302895546
+            ]
+          ]
+        },
+        {
+          "before": 400,
+          "after": 80,
+          "status": "simplified",
+          "name": "Sidewalk_Top",
+          "bounds_blender_local": [
+            [
+              -60.37371826171875,
+              21.027376174926758,
+              -0.2947866916656494
+            ],
+            [
+              60.1236572265625,
+              36.00030517578125,
+              -0.0951441302895546
+            ]
+          ]
+        }
+      ],
+      "omitted_details": [],
+      "warnings": [
+        "Road_Wide_Twoway: a boundary or curb profile changed; retained full geometry."
+      ],
+      "images": [
+        {
+          "name": "asphalt_01_BC",
+          "before": [
+            2048,
+            2048
+          ],
+          "after": [
+            1024,
+            1024
+          ]
+        },
+        {
+          "name": "asphalt_01_R",
+          "before": [
+            2048,
+            2048
+          ],
+          "after": [
+            1024,
+            1024
+          ]
+        },
+        {
+          "name": "MarkingRoad_BC",
+          "before": [
+            4096,
+            4096
+          ],
+          "after": [
+            1024,
+            1024
+          ]
+        },
+        {
+          "name": "Sidewalk_02_BC",
+          "before": [
+            2048,
+            2048
+          ],
+          "after": [
+            1024,
+            1024
+          ]
+        },
+        {
+          "name": "Sidewalk_01_R",
+          "before": [
+            2048,
+            2048
+          ],
+          "after": [
+            1024,
+            1024
+          ]
+        },
+        {
+          "name": "Sidewalk_01_BC",
+          "before": [
+            2048,
+            2048
+          ],
+          "after": [
+            1024,
+            1024
+          ]
+        }
+      ],
+      "triangles": 3792,
+      "mesh_primitives": 6,
+      "node_names": [
+        "Road_Surface",
+        "Sidewalk_Bottom",
+        "Sidewalk_Top",
+        "Road_Wide_Twoway",
+        "Road_Wide_Twoway_LOD_ROOT"
+      ],
+      "bytes": 394088,
+      "reduction_percent": 36.97
+    },
+    {
+      "lod": 2,
+      "label": "low",
+      "file": "Road_Wide_Twoway_LOD2.glb",
+      "objects": [
+        {
+          "before": 1600,
+          "after": 16,
+          "status": "simplified",
+          "name": "Road_Surface",
+          "bounds_blender_local": [
+            [
+              -59.87518310546875,
+              -22.218505859375,
+              -0.2947867214679718
+            ],
+            [
+              60.12579345703125,
+              21.96923828125,
+              -0.2947867214679718
+            ]
+          ]
+        },
+        {
+          "before": 3616,
+          "after": 3616,
+          "status": "kept_original",
+          "reason": "a boundary or curb profile changed",
+          "name": "Road_Wide_Twoway",
+          "bounds_blender_local": [
+            [
+              -59.87518310546875,
+              -20.939441680908203,
+              -0.29453667998313904
+            ],
+            [
+              60.125,
+              20.68988037109375,
+              -0.2820405066013336
+            ]
+          ]
+        },
+        {
+          "before": 400,
+          "after": 80,
+          "status": "simplified",
+          "name": "Sidewalk_Bottom",
+          "bounds_blender_local": [
+            [
+              -60.35809326171875,
+              -36.37443542480469,
+              -0.2947866916656494
+            ],
+            [
+              60.3580322265625,
+              -21.40142822265625,
+              -0.0951441302895546
+            ]
+          ]
+        },
+        {
+          "before": 400,
+          "after": 80,
+          "status": "simplified",
+          "name": "Sidewalk_Top",
+          "bounds_blender_local": [
+            [
+              -60.37371826171875,
+              21.027376174926758,
+              -0.2947866916656494
+            ],
+            [
+              60.1236572265625,
+              36.00030517578125,
+              -0.0951441302895546
+            ]
+          ]
+        }
+      ],
+      "omitted_details": [],
+      "warnings": [
+        "Road_Wide_Twoway: a boundary or curb profile changed; retained full geometry.",
+        "Geometry could not be reduced further within the boundary safeguards; texture LOD still applies."
+      ],
+      "images": [
+        {
+          "name": "asphalt_01_BC",
+          "before": [
+            2048,
+            2048
+          ],
+          "after": [
+            512,
+            512
+          ]
+        },
+        {
+          "name": "asphalt_01_R",
+          "before": [
+            2048,
+            2048
+          ],
+          "after": [
+            512,
+            512
+          ]
+        },
+        {
+          "name": "MarkingRoad_BC",
+          "before": [
+            4096,
+            4096
+          ],
+          "after": [
+            512,
+            512
+          ]
+        },
+        {
+          "name": "Sidewalk_02_BC",
+          "before": [
+            2048,
+            2048
+          ],
+          "after": [
+            512,
+            512
+          ]
+        },
+        {
+          "name": "Sidewalk_01_R",
+          "before": [
+            2048,
+            2048
+          ],
+          "after": [
+            512,
+            512
+          ]
+        },
+        {
+          "name": "Sidewalk_01_BC",
+          "before": [
+            2048,
+            2048
+          ],
+          "after": [
+            512,
+            512
+          ]
+        }
+      ],
+      "triangles": 3792,
+      "mesh_primitives": 6,
+      "node_names": [
+        "Road_Surface",
+        "Sidewalk_Bottom",
+        "Sidewalk_Top",
+        "Road_Wide_Twoway",
+        "Road_Wide_Twoway_LOD_ROOT"
+      ],
+      "bytes": 236684,
+      "reduction_percent": 36.97
+    }
+  ]
+}
