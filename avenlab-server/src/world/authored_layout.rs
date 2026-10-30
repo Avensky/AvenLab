@@ -5,6 +5,7 @@ use rapier3d::prelude::*;
 use serde::{Deserialize, Serialize};
 use super::road_colliders::RoadPlacement;
 use super::model_colliders::ModelPlacement;
+use super::background_vehicles::VehiclePlacement;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AuthoredLayout {
@@ -38,6 +39,8 @@ pub struct LayoutObject {
     pub road: Option<RoadPlacement>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model: Option<ModelPlacement>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub vehicle: Option<VehiclePlacement>,
 }
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct LayoutPart {
@@ -76,7 +79,11 @@ impl AuthoredLayout {
             anyhow::ensure!(identifier(&object.piece, 64) && !object.name.trim().is_empty() && object.name.chars().count() <= 80, "Invalid piece name");
             anyhow::ensure!(vector_ok(&object.position, -100000.0, 100000.0) && vector_ok(&object.size, 0.02, 512.0) && object.yaw.is_finite() && object.yaw.abs() <= 36000.0, "Invalid authored piece transform");
             anyhow::ensure!(color_ok(&object.color), "Invalid authored piece color");
-            anyhow::ensure!(object.model.is_none() || object.road.is_none(), "A piece cannot be a road and a prefab");
+            anyhow::ensure!([object.model.is_some(),object.road.is_some(),object.vehicle.is_some()].iter().filter(|v| **v).count() <= 1, "A piece has one asset type");
+            if let Some(vehicle) = &object.vehicle {
+                anyhow::ensure!(object.piece == format!("vehicle-{}",vehicle.asset.id()) && object.parts.is_empty() && !object.solid, "Background vehicles must be decorative approved assets");
+                continue;
+            }
             if let Some(model) = &object.model {
                 model.validate()?;
                 anyhow::ensure!(object.piece == format!("prefab-{}",model.asset) && object.parts.is_empty(), "Prefab requires its measured structural surfaces");
@@ -102,6 +109,7 @@ impl AuthoredLayout {
     pub fn spawn(&self, bodies: &mut RigidBodySet, colliders: &mut ColliderSet, origin: [f32; 3], groups: InteractionGroups) -> Vec<RigidBodyHandle> {
         let mut handles = Vec::new();
         for object in &self.objects {
+            if object.vehicle.is_some() { continue; }
             if let Some(model) = &object.model {
                 if let Some(handle) = model.spawn(object,bodies,colliders,origin,groups) { handles.push(handle); }
                 continue;
@@ -143,6 +151,21 @@ impl LayoutPart {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn background_vehicle_survives_snapshot_without_a_physics_body() {
+        let mut value=serde_json::to_value(sample()).unwrap();
+        let vehicle=serde_json::json!({"id":"parked-brz","name":"Parked BRZ","piece":"vehicle-brz","position":[4,2,7],"size":[1.9,1.35,4.3],"yaw":90,"color":"#5f9fd8","solid":false,"locked":false,"parts":[],"vehicle":{"asset":"brz","lod":"auto"}});
+        value["objects"].as_array_mut().unwrap().push(vehicle.clone());
+        let doc:AuthoredLayout=serde_json::from_value(value.clone()).unwrap();doc.validate("test").unwrap();
+        let snapshot=serde_json::to_value(&doc).unwrap();assert_eq!(snapshot["objects"][1]["vehicle"],vehicle["vehicle"]);
+        let mut bodies=RigidBodySet::new();let mut colliders=ColliderSet::new();
+        assert_eq!(doc.spawn(&mut bodies,&mut colliders,[0.0;3],InteractionGroups::all()).len(),1);
+        assert_eq!(bodies.len(),1);assert_eq!(colliders.len(),1);
+        value["objects"][1]["solid"]=serde_json::json!(true);
+        assert!(serde_json::from_value::<AuthoredLayout>(value.clone()).unwrap().validate("test").is_err());
+        value["objects"][1]["solid"]=serde_json::json!(false);value["objects"][1]["vehicle"]["asset"]=serde_json::json!("unknown");
+        assert!(serde_json::from_value::<AuthoredLayout>(value).is_err());
+    }
     fn sample() -> AuthoredLayout {
         serde_json::from_value(serde_json::json!({"format":"avenlab-world-layout","version":1,"map_id":"test","title":"Test","base":"replace","objects":[
             {"id":"ramp-1","name":"Ramp","piece":"ramp","position":[10,2,20],"size":[8,4,16],"yaw":90,"color":"#c2a879","solid":true,"locked":false,"parts":[{"shape":"wedge","position":[0,0.5,0],"size":[1,1,1]}]}

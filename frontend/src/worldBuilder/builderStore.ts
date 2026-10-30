@@ -2,7 +2,7 @@ import {create} from 'zustand';
 import {addBox,editableBoxes,editBox,mapExport,parseMapText,planBounds,removeBox,type MapDocument,type PlanBounds,type Triple} from './mapDocument';
 type BuilderState={
  workspace:'layout'|'colliders';
- doc:MapDocument|null;saved:MapDocument|null;past:MapDocument[];future:MapDocument[];selected:string|null;bounds:PlanBounds|null;
+ doc:MapDocument|null;saved:MapDocument|null;past:MapDocument[];future:MapDocument[];selected:string|null;bounds:PlanBounds|null;loadingMap:string|null;
  view:'plan'|'3d';tool:'select'|'move';preset:'iso'|'top';zoom:number;snap:number;status:string;source:string;
  load:(doc:MapDocument,source:string,saved?:boolean)=>void;commit:(doc:MapDocument)=>void;select:(id:string|null)=>void;cycle:(direction:number)=>void;
  edit:(center:Triple,half:Triple)=>void;add:(kind:'road'|'building')=>void;remove:()=>void;undo:()=>void;redo:()=>void;save:()=>void;restore:()=>void;fit:()=>void;
@@ -11,7 +11,7 @@ let storagePrefix="avenlab-world-builder-v1";
 export const configurePreviewStorage=()=>{storagePrefix="avenlab-world-builder-preview-v1";};
 export const builderStorageKey=(map:string)=>`${storagePrefix}:${map}`;
 export const useBuilderStore=create<BuilderState>((set,get)=>({
- workspace:'layout',doc:null,saved:null,past:[],future:[],selected:null,bounds:null,view:'plan',tool:'select',preset:'iso',zoom:1,snap:.5,status:'Loading map definition…',source:'',
+ workspace:'layout',doc:null,saved:null,past:[],future:[],selected:null,bounds:null,loadingMap:null,view:'plan',tool:'select',preset:'iso',zoom:1,snap:.5,status:'Loading map definition…',source:'',
  load:(doc,source,saved=false)=>set({doc,saved:saved?doc:null,past:[],future:[],selected:editableBoxes(doc)[0]?.id??null,bounds:planBounds(doc),view:'plan',tool:'select',zoom:1,source,status:'LOCAL DRAFT · Edits affect the shared tile template, not the running server.'}),
  commit:doc=>{const s=get();if(!s.doc)return;set({doc,past:[...s.past,s.doc].slice(-32),future:[],selected:editableBoxes(doc).some(b=>b.id===s.selected)?s.selected:editableBoxes(doc)[0]?.id??null,status:'Unsaved draft · Export and restart the server to apply collisions.'});},
  select:selected=>set({selected}),

@@ -1,6 +1,8 @@
-import {Suspense,useMemo} from 'react';
-import {useLoader} from '@react-three/fiber';
-import {BufferGeometry,DoubleSide,Float32BufferAttribute,Matrix4,Mesh,Vector3,type Material,type Object3D} from 'three';
+import {Suspense,useMemo,useRef,useState} from 'react';
+import {useFrame,useLoader} from '@react-three/fiber';
+import {BufferGeometry,DoubleSide,Float32BufferAttribute,Group,Matrix4,Mesh,Vector3,type Material,type Object3D} from 'three';
+import {useEditorPreferences} from '../editorPreferences';
+import {useRenderSettingsStore} from '../../store/renderSettingsStore';
 import {AssetBoundary} from '../../components/debugger/AssetBoundary';
 import {prepareGarageDisplay} from '../../game/preview/prepareGarageDisplay';
 import {GarageGLTFLoader} from './garageLoader';
@@ -39,10 +41,23 @@ export function ModelCollision({item,wireframe=true,ghost=false}:{item:LayoutObj
   <meshStandardMaterial color={d.role==='floor'?'#55caff':'#4ce2b0'} side={DoubleSide} wireframe={wireframe} depthTest={!wireframe} transparent={ghost} opacity={ghost?.4:1}/>
  </mesh>)}</group>;
 }
-export function ModelMesh({item,ghost=false,wireframe=false,collisionOnly=false}:{item:LayoutObject;ghost?:boolean;wireframe?:boolean;collisionOnly?:boolean}){
+function ModelProxy({item,ghost=false}:{item:LayoutObject;ghost?:boolean}){
+ const a=modelAsset(item.model!.asset)!;
+ return <group name="garage-structural-lod" dispose={null}>{collisionDraws(a).filter(d=>item.model!.visible[d.role]).map(d=><mesh key={d.role} geometry={d.geometry}><meshStandardMaterial color={d.role==='floor'?'#42546a':'#8396a7'} side={DoubleSide} transparent={ghost} opacity={ghost?.4:1}/></mesh>)}</group>;
+}
+export function ModelMesh({item,ghost=false,wireframe=false,collisionOnly=false,proxy=false}:{item:LayoutObject;ghost?:boolean;wireframe?:boolean;collisionOnly?:boolean;proxy?:boolean}){
  if(collisionOnly)return <ModelCollision item={item} wireframe={wireframe} ghost={ghost}/>;
- return <AssetBoundary fallback={<ModelCollision item={item}/>}><Suspense fallback={<ModelCollision item={item}/>}><GarageVisual item={item} ghost={ghost}/></Suspense></AssetBoundary>;
+ if(proxy||ghost)return <ModelProxy item={item} ghost={ghost}/>;
+ return <AssetBoundary fallback={<ModelProxy item={item}/>}><Suspense fallback={<ModelProxy item={item}/>}><GarageVisual item={item} ghost={ghost}/></Suspense></AssetBoundary>;
 }
 export function ModelInstances({objects,exclude,onSelect,wireframe,collisionOnly}:{objects:LayoutObject[];exclude:string|null;wireframe:boolean;collisionOnly:boolean;onSelect?:(id:string)=>void}){
- return <>{objects.filter(o=>o.model&&o.id!==exclude).map(item=><group key={item.id} name={`prefab-${item.id}`} position={item.position} rotation={[0,item.yaw*Math.PI/180,0]} scale={item.size} onClick={onSelect?e=>{if(e.button===0&&e.delta<5){e.stopPropagation();onSelect(item.id);}}:undefined}><ModelMesh item={item} wireframe={wireframe} collisionOnly={collisionOnly}/></group>)}</>;
+ const root=useRef<Group>(null),frame=useRef(0),point=useMemo(()=>new Vector3(),[]),[full,setFull]=useState<string[]>([]),detail=useEditorPreferences(s=>s.detail),quality=useRenderSettingsStore(s=>s.cityQuality);
+ const items=useMemo(()=>objects.filter(o=>o.model&&o.id!==exclude),[objects,exclude]);
+ useFrame(({camera})=>{
+  if(!root.current||collisionOnly||frame.current++%15)return;
+  const local=root.current.worldToLocal(camera.getWorldPosition(point)),range=detail==='high'?250:135,limit=detail==='low'?0:detail==='high'?6:quality==='fast'?1:2;
+  const next=items.map(o=>({id:o.id,distance:local.distanceTo(new Vector3(...o.position))})).filter(o=>o.distance<range*(full.includes(o.id)?1.25:1)).sort((a,b)=>a.distance-b.distance||a.id.localeCompare(b.id)).slice(0,limit).map(o=>o.id);
+  if(next.join('|')!==full.join('|'))setFull(next);
+ });
+ return <group ref={root}>{items.map(item=><group key={item.id} name={`prefab-${item.id}`} position={item.position} rotation={[0,item.yaw*Math.PI/180,0]} scale={item.size} onClick={onSelect?e=>{if(e.button===0&&e.delta<5){e.stopPropagation();onSelect(item.id);}}:undefined}><ModelMesh item={item} wireframe={wireframe} collisionOnly={collisionOnly} proxy={!full.includes(item.id)}/></group>)}</group>;
 }

@@ -1,0 +1,27 @@
+import {Suspense} from 'react';
+import {createRoot} from 'react-dom/client';
+import {Canvas} from '@react-three/fiber';
+import {WorldBuilderPanel} from '../src/worldBuilder/WorldBuilderPanel';
+import WorldBuilderScene from '../src/worldBuilder/WorldBuilderScene';
+import {configurePreviewStorage,useBuilderStore} from '../src/worldBuilder/builderStore';
+import {configureLayoutPreview,useLayoutStore} from '../src/worldBuilder/layoutStore';
+import {configureBuilderMapSources} from '../src/worldBuilder/builderActions';
+import {parseMapDocument} from '../src/worldBuilder/mapDocument';
+import {useUIStore} from '../src/store/uiStore';
+import {useWorldStore} from '../src/store/worldStore';
+import {useEditorPreferences} from '../src/worldBuilder/editorPreferences';
+import {Keyboard} from '../src/controls/Keyboard';
+import city from '../../avenlab-server/src/assets/blocks/streaming_endless_city_colliders.json';
+import jump from '../../avenlab-server/src/assets/blocks/road_jump_lab_colliders.json';
+import yard from '../../avenlab-server/src/assets/blocks/workshop_yard_colliders.json';
+import road from '../../avenlab-server/src/assets/blocks/road_precision_colliders.json';
+
+configurePreviewStorage();configureLayoutPreview();
+configureBuilderMapSources([city,jump,yard,road].map(v=>parseMapDocument(v)));
+const source=parseMapDocument(yard);
+useUIStore.setState({screen:'world_builder',overlay:null,isModeLoading:false});
+useBuilderStore.getState().load(source,'Authoring preview · physics runs in Rust');
+useLayoutStore.getState().initialize(source.map_id,source.authored_layout);
+const style=document.createElement('style');style.textContent='html,body,#root{margin:0;width:100%;height:100%;overflow:hidden;background:#050c18}.preview-canvas{position:fixed;inset:0}';document.head.append(style);
+createRoot(document.getElementById('root')!).render(<><div className="preview-canvas"><Canvas dpr={[1,1.5]} gl={{antialias:true}} onCreated={({gl,scene,camera})=>Object.assign(window,{editorRenderQA:{gl,scene,camera}})}><Suspense fallback={null}><WorldBuilderScene/></Suspense></Canvas></div><Keyboard/><WorldBuilderPanel modelReference={false}/></>);
+Object.assign(window,{worldBuilderQA:{builder:useBuilderStore,layout:useLayoutStore,ui:useUIStore,world:useWorldStore,preferences:useEditorPreferences}});

@@ -1,3 +1,4 @@
+import {useEditorPreferences} from '../editorPreferences';
 import {Suspense, useMemo, useRef, useState} from 'react';
 import {useFrame} from '@react-three/fiber';
 import {useGLTF} from '@react-three/drei';
@@ -65,7 +66,7 @@ export function RoadCollision({item,wireframe=true,ghost=false}: {item:LayoutObj
   </mesh>)}</group>;
 }
 export function RoadModel({item,collisionOnly=false,wireframe=false,ghost=false}: {item:LayoutObject;collisionOnly?:boolean;wireframe?:boolean;ghost?:boolean}) {
-  const quality=useRenderSettingsStore(s=>s.cityQuality);
+  const quality=useRenderSettingsStore(s=>s.cityQuality),detail=useEditorPreferences(s=>s.detail);
   const group=useRef<Group>(null),[autoLod,setAutoLod]=useState<number|null>(null),counter=useRef(0),center=useMemo(()=>new Vector3(),[]);
   useFrame(({camera})=>{
     if(item.road!.lod!=='auto'||collisionOnly||!group.current)return;
@@ -76,7 +77,7 @@ export function RoadModel({item,collisionOnly=false,wireframe=false,ghost=false}
     if(chosen!==autoLod)setAutoLod(chosen);
   });
   if(collisionOnly)return <RoadCollision item={item} wireframe={wireframe} ghost={ghost}/>;
-  const lod=item.road!.lod==='auto'?autoLod:item.road!.lod;
+  const lod=detail==='low'?2:detail==='high'?0:item.road!.lod==='auto'?autoLod:item.road!.lod;
   return <group ref={group}>{lod===null?<RoadCollision item={item} wireframe/>:<AssetBoundary key={`${item.road!.asset}-${lod}`} fallback={<RoadCollision item={item} wireframe/>}>
     <Suspense fallback={<RoadCollision item={item} wireframe/>}><RoadVisual item={item} lod={lod} ghost={ghost}/></Suspense>
   </AssetBoundary>}</group>;

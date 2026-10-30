@@ -1,21 +1,20 @@
+import {WorldReference} from './WorldReference';
 import {ChunkGuide} from './ChunkGuide';
 import {EDITOR_THEMES,useEditorPreferences} from './editorPreferences';
 import {localBounds, snapLayoutPosition, type LayoutSnapLock} from './roads/layoutSnapping';
-import {Suspense, useCallback, useEffect, useMemo, useRef, useState} from 'react';
-import {Html, OrbitControls, PerspectiveCamera, TransformControls} from '@react-three/drei';
+import { useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import { OrbitControls, PerspectiveCamera, TransformControls} from '@react-three/drei';
 import {Group} from 'three';
 import type {TransformControls as TransformControlsImpl} from 'three-stdlib';
 import {useLayoutStore, layoutAction} from './layoutStore';
 import {footprint, pieceById, snap, type LayoutObject, type V3} from './layoutDocument';
 import {LayoutInstances, PieceModel} from './LayoutMeshes';
 import {useBuilderStore} from './builderStore';
-import {CityChunk} from '../world/CityChunk';
-import {AssetBoundary} from '../components/debugger/AssetBoundary';
 
-function layoutFrame(objects: LayoutObject[], tight=false) {
+function layoutFrame(objects: LayoutObject[], tight=false, cell?:[number,number]) {
   const points=objects.flatMap(footprint),xs=points.map(p=>p[0]),zs=points.map(p=>p[1]);
-  const minX=tight&&points.length?Math.min(...xs):Math.min(-20,...xs),maxX=tight&&points.length?Math.max(...xs):Math.max(20,...xs);
-  const minZ=tight&&points.length?Math.min(...zs):Math.min(-20,...zs),maxZ=tight&&points.length?Math.max(...zs):Math.max(20,...zs);
+  const minX=tight&&points.length?Math.min(...xs):Math.min(cell?-cell[0]/2:-20,...xs),maxX=tight&&points.length?Math.max(...xs):Math.max(cell?cell[0]/2:20,...xs);
+  const minZ=tight&&points.length?Math.min(...zs):Math.min(cell?-cell[1]/2:-20,...zs),maxZ=tight&&points.length?Math.max(...zs):Math.max(cell?cell[1]/2:20,...zs);
   const lows=objects.map(o=>o.position[1]+localBounds(o).min[1]),highs=objects.map(o=>o.position[1]+localBounds(o).max[1]);
   const minY=tight&&objects.length?Math.min(...lows):Math.min(0,...lows),maxY=tight&&objects.length?Math.max(...highs):Math.max(0,...highs);
   return {center:[(minX+maxX)/2,(minY+maxY)*(tight?.5:.25),(minZ+maxZ)/2] as V3,span:Math.max(tight?10:65,maxX-minX,maxZ-minZ,(maxY-minY)*1.5)*(tight?2.4:1.65)};
@@ -70,9 +69,9 @@ export default function LayoutScene() {
     camera = useLayoutStore(s => s.camera), reference = useLayoutStore(s => s.reference), wireframe = useLayoutStore(s => s.wireframe);
   const focus=useLayoutStore(s=>s.focus);
   const source = useBuilderStore(s => s.doc), ghost = useRef<Group>(null);
-  const [frame] = useState(() => reference && source && focus!=='selected' ? {center: [0, source.surface.road_y, 0] as V3, span: Math.max(...source.cell) * 1.2} : layoutFrame(focus==='selected'&&selected?doc?.objects.filter(o=>o.id===selected)??[]:doc?.objects??[],focus==='selected'));
+  const [frame] = useState(() => layoutFrame(focus==='selected'&&selected?doc?.objects.filter(o=>o.id===selected)??[]:doc?.objects??[],focus==='selected',(reference||doc?.base==='overlay')&&source&&focus!=='selected'?source.cell:undefined));
   const selectedObject = doc?.objects.find(o => o.id === selected), piece = placing ? pieceById(placing) : undefined;
-  const phantom = useMemo<LayoutObject | null>(() => piece ? ({id: 'preview', name: piece.label, piece: piece.id, position: cursor, size: piece.size, yaw, color: piece.color, locked: false, solid: true, parts: piece.parts, ...(piece.road ? {road: piece.road} : {}), ...(piece.model?{model:piece.model}:{})}) : null, [piece, cursor, yaw]);
+  const phantom = useMemo<LayoutObject | null>(() => piece ? ({id: 'preview', name: piece.label, piece: piece.id, position: cursor, size: piece.size, yaw, color: piece.color, locked: false, solid: piece.solid!==false, parts: piece.parts, ...(piece.road ? {road: piece.road} : {}), ...(piece.model?{model:piece.model}:{}),...(piece.vehicle?{vehicle:piece.vehicle}:{})}) : null, [piece, cursor, yaw]);
   const hoverLock=useRef<LayoutSnapLock|null>(null);
   const previewPosition=(position:V3)=>{const state=useLayoutStore.getState(); if(!phantom||!state.magnet)return position; const result=snapLayoutPosition(phantom,position,state.doc?.objects??[],state.snapBasis,state.magnetRadius,hoverLock.current);hoverLock.current=result.lock;return result.position;};
   const select = useCallback((id: string | null) => useLayoutStore.getState().select(id), []);
@@ -90,9 +89,7 @@ export default function LayoutScene() {
     {doc?.ground !== false && <mesh rotation={[-Math.PI/2,0,0]} position={[0,floor-.15,0]}><planeGeometry args={source?source.cell:[200,200]}/><meshStandardMaterial color={palette.floor} roughness={1}/></mesh>}
     <gridHelper args={[1000,200,palette.axis,palette.grid]} position={[0, floor-.125, 0]}/>
     <ChunkGuide floor={floor}/>
-    {source && reference && source.visuals.map(visual => <AssetBoundary key={visual.id} fallback={<Html center><span className="layout-reference-error">Reference model unavailable: {visual.id}</span></Html>}>
-      <Suspense fallback={null}><CityChunk path={visual.asset} position={visual.position} quaternion={visual.rotation} scale={visual.scale}/></Suspense>
-    </AssetBoundary>)}
+    {source && (reference||doc?.base==='overlay') && <WorldReference source={source} full={reference}/>}
     {doc && <LayoutInstances objects={doc.objects} exclude={placing ? null : selected} onSelect={placing ? undefined : select} wireframe={wireframe} collisionOnly={wireframe}/>}
     {selectedObject && !placing && <SelectedObject key={selectedObject.id} item={selectedObject}/>}
     {phantom && <group ref={ghost} position={cursor} rotation={[0, yaw * Math.PI / 180, 0]} scale={phantom.size}><PieceModel item={phantom} ghost/></group>}
