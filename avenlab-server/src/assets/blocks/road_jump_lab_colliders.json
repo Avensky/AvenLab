@@ -1,0 +1,749 @@
+{
+  "schema_version": 2,
+  "map_id": "road_jump_lab",
+  "coordinate_system": {
+    "units": "meters",
+    "up_axis": "y",
+    "forward_axis": "-z"
+  },
+  "cell": [
+    424.4996032714844,
+    992.2494659423828
+  ],
+  "surface": {
+    "road_y": 0
+  },
+  "layout": {
+    "kind": "fixed_grid",
+    "origin": [
+      0,
+      0
+    ],
+    "size": [
+      1,
+      1
+    ]
+  },
+  "team_spawns": {
+    "red": [
+      {
+        "chunk": [
+          0,
+          0
+        ],
+        "local": [
+          -1.2246467991473533e-15,
+          109.9998664855957
+        ],
+        "yaw": -3.141592653589793
+      }
+    ],
+    "blue": [
+      {
+        "chunk": [
+          0,
+          0
+        ],
+        "local": [
+          1.2246467991473533e-15,
+          129.9998664855957
+        ],
+        "yaw": 0
+      }
+    ]
+  },
+  "visuals": [
+    {
+      "id": "blocks",
+      "asset": "/models/chuncks/chunck_0,0_2x2_blocks_centered.glb",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "roads",
+      "asset": "/models/chuncks/chunck_0,0_2x2_roads.glb",
+      "position": [
+        0,
+        1.445989914,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    }
+  ],
+  "roads": [],
+  "buildings": [],
+  "metadata": {
+    "source_chunk": "Chunck_0,0",
+    "asset_scale": 0.004,
+    "road_surface_y": 0.32,
+    "road_collider_thickness": 0.1,
+    "center_blender": [
+      -64.675781,
+      -71.984375
+    ],
+    "building_collider_count": 0,
+    "road_collider_count": 0,
+    "warnings": []
+  },
+  "authored_layout": {
+    "format": "avenlab-world-layout",
+    "version": 1,
+    "map_id": "road_jump_lab",
+    "title": "Road & Jump Lab",
+    "base": "replace",
+    "objects": [
+      {
+        "id": "jump-approach",
+        "name": "jump-approach",
+        "piece": "glb-road_narrow",
+        "position": [
+          0,
+          0,
+          119.9998664855957
+        ],
+        "size": [
+          55.24967956542969,
+          0.1996425911784172,
+          240.125
+        ],
+        "yaw": -180,
+        "color": "#455466",
+        "locked": false,
+        "solid": true,
+        "parts": [],
+        "road": {
+          "asset": "road_narrow",
+          "source_sha256": "ec46d4ea0adbab800e6793e0812807a9a11066b87ecb24f0ab24aafb168b1e0c",
+          "variant": {
+            "left": false,
+            "right": true,
+            "nw": true,
+            "ne": true,
+            "sw": true,
+            "se": true,
+            "markings": true,
+            "details": true,
+            "flow": "source"
+          },
+          "collision": {
+            "surface": true,
+            "curbs": true,
+            "paving": true
+          },
+          "lod": "auto"
+        }
+      },
+      {
+        "id": "end-to-end-road",
+        "name": "end-to-end-road",
+        "piece": "glb-road_narrow",
+        "position": [
+          0,
+          0,
+          359.9995994567871
+        ],
+        "size": [
+          55.24967956542969,
+          0.1996425911784172,
+          240.125
+        ],
+        "yaw": 0,
+        "color": "#455466",
+        "locked": false,
+        "solid": true,
+        "parts": [],
+        "road": {
+          "asset": "road_narrow",
+          "source_sha256": "ec46d4ea0adbab800e6793e0812807a9a11066b87ecb24f0ab24aafb168b1e0c",
+          "variant": {
+            "left": true,
+            "right": true,
+            "nw": true,
+            "ne": true,
+            "sw": true,
+            "se": true,
+            "markings": true,
+            "details": true,
+            "flow": "source"
+          },
+          "collision": {
+            "surface": true,
+            "curbs": true,
+            "paving": true
+          },
+          "lod": "auto"
+        }
+      },
+      {
+        "id": "launch-ramp",
+        "name": "launch-ramp",
+        "piece": "ramp",
+        "position": [
+          0,
+          0,
+          -8
+        ],
+        "size": [
+          8,
+          4,
+          16
+        ],
+        "yaw": 0,
+        "color": "#c2a879",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "wedge",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "landing-roof",
+        "name": "landing-roof",
+        "piece": "floor",
+        "position": [
+          0,
+          1.6,
+          -64
+        ],
+        "size": [
+          40,
+          0.4,
+          80
+        ],
+        "yaw": 0,
+        "color": "#a4ae9d",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "height-limit",
+        "name": "height-limit",
+        "piece": "building",
+        "position": [
+          50,
+          0,
+          -64
+        ],
+        "size": [
+          16,
+          24,
+          24
+        ],
+        "yaw": 0,
+        "color": "#84958e",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.48,
+              0
+            ],
+            "size": [
+              0.965,
+              0.96,
+              0.965
+            ]
+          },
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.98,
+              0
+            ],
+            "size": [
+              1,
+              0.04,
+              1
+            ],
+            "color": "#bac0ae"
+          },
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.65,
+              0.485
+            ],
+            "size": [
+              0.84,
+              0.045,
+              0.006
+            ],
+            "color": "#314a48",
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.35,
+              0.485
+            ],
+            "size": [
+              0.84,
+              0.045,
+              0.006
+            ],
+            "color": "#314a48",
+            "solid": false
+          }
+        ]
+      },
+      {
+        "id": "bypass-entry",
+        "name": "bypass-entry",
+        "piece": "floor",
+        "position": [
+          20,
+          -0.4,
+          30
+        ],
+        "size": [
+          40,
+          0.4,
+          20
+        ],
+        "yaw": 0,
+        "color": "#a4ae9d",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "ground-bypass",
+        "name": "ground-bypass",
+        "piece": "floor",
+        "position": [
+          30,
+          -0.4,
+          -42
+        ],
+        "size": [
+          20,
+          0.4,
+          164
+        ],
+        "yaw": 0,
+        "color": "#a4ae9d",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "return-cross-lane",
+        "name": "return-cross-lane",
+        "piece": "floor",
+        "position": [
+          10,
+          -0.4,
+          -124
+        ],
+        "size": [
+          60,
+          0.4,
+          8
+        ],
+        "yaw": 0,
+        "color": "#a4ae9d",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "roof-return-ramp",
+        "name": "roof-return-ramp",
+        "piece": "ramp",
+        "position": [
+          16,
+          0,
+          -112
+        ],
+        "size": [
+          8,
+          2,
+          16
+        ],
+        "yaw": -180,
+        "color": "#c2a879",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "wedge",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "launch-left",
+        "name": "launch-left",
+        "piece": "barrier",
+        "position": [
+          -5,
+          0,
+          -8
+        ],
+        "size": [
+          0.6,
+          1,
+          16
+        ],
+        "yaw": 0,
+        "color": "#d9aa61",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0.503
+            ],
+            "size": [
+              0.16,
+              0.7,
+              0.01
+            ],
+            "color": "#4c554f",
+            "solid": false
+          }
+        ]
+      },
+      {
+        "id": "launch-right",
+        "name": "launch-right",
+        "piece": "barrier",
+        "position": [
+          5,
+          0,
+          -8
+        ],
+        "size": [
+          0.6,
+          1,
+          16
+        ],
+        "yaw": 0,
+        "color": "#d9aa61",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0.503
+            ],
+            "size": [
+              0.16,
+              0.7,
+              0.01
+            ],
+            "color": "#4c554f",
+            "solid": false
+          }
+        ]
+      },
+      {
+        "id": "opposing-source",
+        "name": "opposing-source",
+        "piece": "glb-road_narrow",
+        "position": [
+          -160,
+          0,
+          119.9998664855957
+        ],
+        "size": [
+          55.24967956542969,
+          0.1996425911784172,
+          240.125
+        ],
+        "yaw": 0,
+        "color": "#455466",
+        "locked": false,
+        "solid": true,
+        "parts": [],
+        "road": {
+          "asset": "road_narrow",
+          "source_sha256": "ec46d4ea0adbab800e6793e0812807a9a11066b87ecb24f0ab24aafb168b1e0c",
+          "variant": {
+            "left": true,
+            "right": false,
+            "nw": true,
+            "ne": true,
+            "sw": true,
+            "se": true,
+            "markings": true,
+            "details": true,
+            "flow": "one-way-forward"
+          },
+          "collision": {
+            "surface": true,
+            "curbs": true,
+            "paving": true
+          },
+          "lod": "auto"
+        }
+      },
+      {
+        "id": "opposing-return",
+        "name": "Opposing carriageway",
+        "piece": "glb-road_narrow",
+        "position": [
+          -134.7998046875,
+          0,
+          119.9998664855957
+        ],
+        "size": [
+          55.24967956542969,
+          0.1996425911784172,
+          240.125
+        ],
+        "yaw": -180,
+        "color": "#455466",
+        "locked": false,
+        "solid": true,
+        "parts": [],
+        "road": {
+          "asset": "road_narrow",
+          "source_sha256": "ec46d4ea0adbab800e6793e0812807a9a11066b87ecb24f0ab24aafb168b1e0c",
+          "variant": {
+            "left": true,
+            "right": false,
+            "nw": true,
+            "ne": true,
+            "sw": true,
+            "se": true,
+            "markings": true,
+            "details": true,
+            "flow": "one-way-forward"
+          },
+          "collision": {
+            "surface": true,
+            "curbs": true,
+            "paving": true
+          },
+          "lod": "auto"
+        }
+      },
+      {
+        "id": "wide-station",
+        "name": "wide-station",
+        "piece": "glb-road_wide",
+        "position": [
+          160,
+          0,
+          119.9998664855957
+        ],
+        "size": [
+          72.37474060058594,
+          0.1996425911784172,
+          120.73175048828125
+        ],
+        "yaw": 0,
+        "color": "#455466",
+        "locked": false,
+        "solid": true,
+        "parts": [],
+        "road": {
+          "asset": "road_wide",
+          "source_sha256": "daa1e25b773ea4e917b400555a00c7a950ce41acff93284dd9a9d52e69a71976",
+          "variant": {
+            "left": true,
+            "right": true,
+            "nw": true,
+            "ne": true,
+            "sw": true,
+            "se": true,
+            "markings": true,
+            "details": true,
+            "flow": "source"
+          },
+          "collision": {
+            "surface": true,
+            "curbs": true,
+            "paving": true
+          },
+          "lod": "auto"
+        }
+      },
+      {
+        "id": "junction-station",
+        "name": "junction-station",
+        "piece": "glb-intersection",
+        "position": [
+          160,
+          0,
+          23.74930852650141
+        ],
+        "size": [
+          57.4982558961492,
+          0.20089960119713623,
+          72.7713796547323
+        ],
+        "yaw": 0,
+        "color": "#455466",
+        "locked": false,
+        "solid": true,
+        "parts": [],
+        "road": {
+          "asset": "intersection",
+          "source_sha256": "64d27dd63b8512d0056ebb15ade9eab0d4eadf1703ee0c1097ece86c53e40c5a",
+          "variant": {
+            "left": true,
+            "right": true,
+            "nw": true,
+            "ne": true,
+            "sw": true,
+            "se": true,
+            "markings": true,
+            "details": true,
+            "flow": "source"
+          },
+          "collision": {
+            "surface": true,
+            "curbs": true,
+            "paving": true
+          },
+          "lod": "auto"
+        }
+      }
+    ],
+    "ground": false,
+    "repeat": false
+  }
+}

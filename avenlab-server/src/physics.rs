@@ -988,6 +988,80 @@ mod tests {
     }
 
     #[test]
+    fn road_jump_lab_brz_crosses_the_measured_join_and_ground_bypass() {
+        for (x,z,direction,distance) in [(0.0,220.0,1.0,30.0),(30.0,10.0,-1.0,100.0)] {
+            let mut world=PhysicsWorld::new();world.select_map("road_jump_lab").unwrap();
+            let h=world.spawn_vehicle_for_player("seam-driver".into(),[0.0;3],"brz","red").unwrap();
+            world.bodies[h].set_translation(vector![x,0.895,z],true);
+            for _ in 0..180 {world.step(SIMULATION_DT);}
+            assert!(world.wheels[&h].iter().all(|w|w.grounded));
+            world.bodies[h].set_linvel(vector![0.0,0.0,direction*8.0],true);
+            let mut lost=0;let mut max_vertical=0.0_f32;
+            for _ in 0..1200 {
+                world.step(SIMULATION_DT);
+                lost+=usize::from(world.wheels[&h].iter().any(|w|!w.grounded));
+                max_vertical=max_vertical.max(world.bodies[h].linvel().y.abs());
+                if (world.bodies[h].translation().z-z)*direction>distance {break;}
+            }
+            let moved=(world.bodies[h].translation().z-z)*direction;
+            println!("LAB ground x={x}: moved={moved:.3} m lost={lost} max-vy={max_vertical:.3}");
+            assert!(moved>distance && lost<5 && max_vertical<0.5);
+        }
+    }
+
+    #[test]
+    fn road_jump_lab_brz_climbs_the_return_ramp_onto_the_roof() {
+        let mut world=PhysicsWorld::new();world.select_map("road_jump_lab").unwrap();
+        let h=world.spawn_vehicle_for_player("return-driver".into(),[0.0;3],"brz","red").unwrap();
+        world.bodies[h].set_translation(vector![16.0,0.895,-124.0],true);
+        world.bodies[h].set_rotation(Rotation::identity(),true);
+        for _ in 0..180 {world.step(SIMULATION_DT);}
+        let mut on_roof=false;
+        for _ in 0..600 {
+            world.vehicles.get_mut("return-driver").unwrap().throttle=0.3;
+            world.step(SIMULATION_DT);
+            let p=world.bodies[h].translation();
+            if p.z> -100.0 && p.y>2.0 && world.wheels[&h].iter().all(|w|w.grounded) {on_roof=true;break;}
+        }
+        println!("LAB return ramp: on-roof={on_roof} final={:?}",world.bodies[h].translation());
+        assert!(on_roof,"the lower bypass must connect back to the landing roof through a drivable ramp");
+    }
+
+    // Real BRZ on the installed fixture: accelerate with the existing powertrain,
+    // then observe suspension takeoff and roof contact. No scripted launch force.
+    #[test]
+    fn road_jump_lab_brz_proves_takeoff_landing_and_an_open_gap() {
+        for (label, throttle, boost) in [("unboosted",1.0,false),("nos",1.0,true),("slow",0.12,false)] {
+            let mut world=PhysicsWorld::new();world.select_map("road_jump_lab").unwrap();
+            let h=world.spawn_vehicle_for_player("jump-driver".into(),[0.0;3],"brz","red").unwrap();
+            for _ in 0..180 {world.step(SIMULATION_DT);}
+            let mut airborne=0;let mut landed=false;let mut fell=false;let mut launch_speed=0.0_f32;
+            let mut last_z=world.bodies[h].translation().z;
+            let mut supported=0;let mut first_contact=0.0_f32;
+            for _ in 0..2400 {
+                let v=world.vehicles.get_mut("jump-driver").unwrap();v.throttle=throttle;
+                v.powertrain.boost_requested=boost && last_z<60.0;
+                if supported>0 {v.throttle=0.0;v.brake=1.0;}
+                world.step(SIMULATION_DT);
+                let p=*world.bodies[h].translation();let speed=world.bodies[h].linvel().norm();
+                if last_z>=-16.0 && p.z< -16.0 {launch_speed=speed;}
+                last_z=p.z;
+                let grounded=world.wheels[&h].iter().any(|w|w.grounded);
+                if p.z< -18.0 && !grounded {airborne+=1;}
+                if p.z< -26.0 && p.z> -102.0 && p.y>2.0 && p.y<4.0 && grounded && airborne>5 {
+                    if first_contact==0.0 {first_contact=p.z;}
+                    if world.wheels[&h].iter().all(|w|w.grounded) {supported+=1;} else {supported=0;}
+                    if supported>=30 {landed=true;break;}
+                } else {supported=0;}
+                if p.y< -3.0 {fell=true;break;}
+            }
+            println!("JUMP {label}: launch={launch_speed:.3} m/s airborne={airborne} landed={landed} roof-contact-z={first_contact:.3} fell={fell} final={:?} nos={:.3}",world.bodies[h].translation(),world.vehicles["jump-driver"].powertrain.nos_remaining_s);
+            if label=="slow" {assert!(fell && !landed,"slow approach must fall into the open gap");}
+            else {assert!(launch_speed>0.0 && airborne>5 && landed,"powered approach must take off and land on the roof");}
+        }
+    }
+
+    #[test]
     fn workshop_garage_drives_through_its_open_bay_onto_the_road() {
         let mut world=PhysicsWorld::new();world.select_map("workshop_yard").unwrap();
         let handle=world.spawn_vehicle_for_player("garage-driver".into(),[0.0;3],"brz","red").unwrap();

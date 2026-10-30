@@ -149,6 +149,28 @@ mod tests {
         ]})).unwrap()
     }
     #[test]
+    fn road_jump_lab_has_explicit_surfaces_and_no_support_across_the_gap() {
+        let file: serde_json::Value=serde_json::from_str(include_str!("../assets/blocks/road_jump_lab_colliders.json")).unwrap();
+        let doc: AuthoredLayout=serde_json::from_value(file["authored_layout"].clone()).unwrap();
+        doc.validate("road_jump_lab").unwrap();
+        assert!(!doc.ground && !doc.repeat && doc.replaces_base());
+        let mut bodies=RigidBodySet::new();let mut colliders=ColliderSet::new();
+        doc.spawn(&mut bodies,&mut colliders,[0.0;3],InteractionGroups::all());
+        let height=|x:f32,z:f32| {
+            let ray=Ray::new(point![x,100.0,z],vector![0.0,-1.0,0.0]);
+            colliders.iter().filter_map(|(_,c)|c.shape().cast_ray(c.position(),&ray,200.0,true))
+                .min_by(f32::total_cmp).map(|distance|100.0-distance)
+        };
+        for (x,z,y) in [(0.0,1.0,0.0),(0.0,-8.0,2.0),(0.0,-40.0,2.0),
+                         (30.0,-20.0,0.0),(16.0,-112.0,1.0),(50.0,-64.0,24.0)] {
+            assert!((height(x,z).unwrap()-y).abs()<0.001,"surface at {x},{z}");
+        }
+        for (x,z) in [(0.0,-20.0),(18.0,100.0),(0.0,1200.0)] {
+            assert!(height(x,z).is_none(),"gap, masked sidewalk and out-of-map air must stay empty at {x},{z}");
+        }
+    }
+
+    #[test]
     fn wedge_raycast_matches_slope_and_rotates_once() {
         let doc = sample(); doc.validate("test").unwrap();
         let mut bodies = RigidBodySet::new(); let mut colliders = ColliderSet::new();
