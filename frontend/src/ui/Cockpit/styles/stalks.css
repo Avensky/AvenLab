@@ -22,7 +22,7 @@
   position: absolute;
   left: 50%;
   top: 50%;
-  height: 3%;
+  height: calc(3% * var(--stalk-scale, 1));
   transform-origin: 0 50%;
   transform: translateY(-50%) rotate(var(--stalk-angle));
   border: 1px solid #525a61;
@@ -41,8 +41,8 @@
 }
 .wheel-assembly .column-stalk-cap {
   position: absolute;
-  width: 8%;
-  height: 6.5%;
+  width: calc(8% * var(--stalk-scale, 1));
+  height: calc(6.5% * var(--stalk-scale, 1));
   min-width: 0;
   min-height: 0;
   padding: 1px;
@@ -59,8 +59,9 @@
   font: 4px/1 monospace;
 }
 .column-stalk-cap img {
-  width: 8px;
-  height: 7px;
+  width: calc(8px * var(--stalk-scale, 1));
+  height: calc(7px * var(--stalk-scale, 1));
+  filter: brightness(0) invert(1);
   object-fit: contain;
   pointer-events: none;
 }
@@ -69,8 +70,8 @@
 }
 .wheel-assembly .stalk-step {
   position: absolute;
-  width: 5.4%;
-  height: 6.5%;
+  width: calc(5.4% * var(--stalk-scale, 1));
+  height: calc(6.5% * var(--stalk-scale, 1));
   min-width: 0;
   min-height: 0;
   padding: 0;
@@ -99,4 +100,17 @@
 }
 html[data-reduce-motion="true"] .stalk-actuator {
   transition: none;
+}
+
+/* Lever displacement is the feedback. Never flash the button border, including
+   pointer hover, active clicks or a still-focused keyboard target. */
+.wheel-assembly .column-stalks button,
+.wheel-assembly
+  .column-stalks
+  button:is(:hover, :focus, :active, [data-held="true"]) {
+  border-color: #58646e !important;
+  background: #15202b !important;
+  color: #dfe7e9 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
 }

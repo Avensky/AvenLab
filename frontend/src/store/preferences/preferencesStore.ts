@@ -33,6 +33,8 @@ export type Preferences = {
   climateHudSize: "compact" | "full";
   parkingCrystals: boolean;
   parkingBrakeStyle: "lever" | "button";
+  /** Three HUD switches by default; keep the expanded bank as a saved option. */
+  assistHudLayout: "three" | "extended";
   fov: number;
   cameraSensitivity: number;
   controllerDeadzone: number;
@@ -61,6 +63,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   climateHudSize: "compact",
   parkingCrystals: false,
   parkingBrakeStyle: "lever",
+  assistHudLayout: "three",
   fov: 75,
   cameraSensitivity: 1,
   controllerDeadzone: 0.12,
@@ -155,6 +158,7 @@ export function sanitizePreferences(value: unknown): Preferences {
     climateHudSize: data.climateHudSize === "full" ? "full" : "compact",
     parkingCrystals: data.parkingCrystals === true,
     parkingBrakeStyle: data.parkingBrakeStyle === "button" ? "button" : "lever",
+    assistHudLayout: data.assistHudLayout === "extended" ? "extended" : "three",
     shiftLayout: data.shiftLayout === "automatic" ? "automatic" : "h-pattern",
     hudGroups: Object.fromEntries(
       HUD_GROUPS.map((id) => [

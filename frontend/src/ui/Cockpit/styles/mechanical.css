@@ -107,7 +107,7 @@
 .mechanical-handbrake .ebrake-base {
   position: absolute;
   left: 14%;
-  top: 76%;
+  top: 81%;
   width: 70%;
   height: 19%;
   transform: none;
@@ -124,12 +124,13 @@
 .mechanical-handbrake .handbrake-lever .ebrake-handle {
   position: absolute;
   left: 43%;
-  top: 82%;
-  width: min(65%, 64px);
+  top: 89.5%;
+  width: var(--parking-control-height, 128px);
   height: 11%;
   transform-origin: 5% 50%;
-  transform: rotate(var(--parking-angle, -115deg))
-    scaleX(var(--parking-reach, 0.72));
+  transition: transform 50ms linear;
+  transform: rotate(var(--parking-angle, -180deg))
+    scaleX(var(--parking-reach, 0.5));
   border: 0;
   border-radius: 0;
   clip-path: none;
@@ -154,17 +155,6 @@
   stroke-width: 0.8;
   stroke-dasharray: 2 2;
 }
-.handbrake-lever[data-hud-held="true"] .ebrake-handle {
-  filter: drop-shadow(0 0 2px var(--app-accent, #9ae6ff));
-}
-.parking-pull-label {
-  position: absolute;
-  left: 2px;
-  bottom: 1px;
-  color: var(--app-muted, #aab8c2);
-  font: 6px/1 monospace;
-  letter-spacing: 0.06em;
-}
 .parking-simple-face {
   display: none;
   position: absolute;
@@ -184,12 +174,6 @@
 [data-parking-style="button"] :is(.ebrake-floor, .ebrake-base, .ebrake-handle) {
   display: none;
 }
-[data-parking-style="button"]
-  .handbrake-lever[data-hud-held="true"]
-  .parking-simple-face {
-  stroke: var(--app-accent, #9ae6ff);
-  filter: drop-shadow(0 0 2px var(--app-accent, #9ae6ff));
-}
 /* Crystals are optional. Plain 1/2/3 detents retain the same explicit latch API. */
 .mechanical-handbrake .parking-levels {
   position: absolute;
@@ -199,7 +183,7 @@
   z-index: 3;
   width: 17px;
   display: grid;
-  grid-template-rows: repeat(3, minmax(0, 1fr));
+  grid-template-rows: 1.4fr 1fr 0.7fr;
   gap: 2px;
   --contact-surface: transparent;
   --contact-border: transparent;
@@ -314,4 +298,64 @@
 .drive-dock .hud-assists .drive-assists img {
   width: 8px;
   height: 7px;
+}
+
+/* Angle and extension represent cable pressure; no contact glow is painted.
+   Transparent artwork gaps pass through to the wheel on narrow screens. */
+.mechanical-handbrake .handbrake-lever {
+  pointer-events: none;
+}
+.mechanical-handbrake :is(.ebrake-handle, .ebrake-base, .parking-simple-face) {
+  pointer-events: auto;
+}
+:is(.drive-dock, .cockpit-panel)
+  .mechanical-handbrake
+  button:is([data-hud-held], :hover, :focus, :active) {
+  border-color: transparent !important;
+  background: transparent !important;
+  color: var(--app-muted, #aab8c2) !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+}
+.mechanical-handbrake :is(.ebrake-handle, .parking-simple-face) {
+  filter: none !important;
+}
+.parking-simple-travel {
+  fill: none;
+  stroke: #d3d9df;
+  stroke-width: 2.5;
+  stroke-dasharray: 145;
+  stroke-dashoffset: calc(145 - 145 * var(--parking-fraction, 0));
+  transform-origin: 30px 30px;
+  transform: rotate(-90deg);
+}
+.parking-levels [data-level="3"] .parking-crystal {
+  width: 14px;
+  max-height: 40px;
+}
+.parking-levels [data-level="2"] .parking-crystal {
+  width: 11px;
+  max-height: 30px;
+}
+.parking-levels [data-level="1"] .parking-crystal {
+  width: 8px;
+  max-height: 22px;
+}
+.drive-assists[data-layout="three"] {
+  grid-template-rows: 1fr;
+}
+@media (max-width: 600px) {
+  .drive-dock .hud-assists .drive-assists[data-layout="three"] {
+    width: 30px;
+    height: 49px;
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(3, minmax(0, 1fr));
+    gap: 1px;
+  }
+  .drive-dock .hud-assists .drive-assists[data-layout="three"] img {
+    display: none;
+  }
+  .drive-dock .hud-assists .drive-assists[data-layout="three"] button {
+    font-size: 5px;
+  }
 }

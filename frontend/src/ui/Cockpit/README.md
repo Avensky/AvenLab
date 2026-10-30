@@ -3,7 +3,7 @@
 Use `index.ts` for public components. The root shell composes focused feature folders and one shared preference/input/telemetry ownership model.
 
 - [stalks](stalks/README.md): one circular layout for each lever and its adjacent buttons; held cap flash.
-- [mechanical](mechanical/README.md): shifter, parking latch, immediate drift pull, appearances and optional crystals.
+- [mechanical](mechanical/README.md): shifter and a shared continuous parking latch, appearances and optional crystals.
 - [ignition](ignition/README.md): key artwork and complete light ring outside its labels.
 - [panels](panels/README.md): cockpit tabs, climate size/visibility, Research controls and common navigation.
 - [styles](styles/README.md): readable CSS sections with one shared entry and editing boundaries.
@@ -15,8 +15,8 @@ Use `index.ts` for public components. The root shell composes focused feature fo
 | DriveControls.tsx / DriveAssists.tsx | Confirmed selector/brake adapters and deliberate ABS/TCS/Sport requests |
 | MechanicalControls.tsx / controlGeometry.ts | Stable compatibility entries; new code uses mechanical/index.ts |
 | IgnitionSwitch.tsx / starterRelayAudio.ts | Key input lifetime and confirmed starter clicking; no engine simulation |
-| ClimatePanel.tsx / RotaryKnob.tsx | Three cabin knobs; compact/full is chosen in the Climate page |
-| HazardButton.tsx | Shared centered triangular emergency switch; not duplicated in the header |
+| ClimatePanel.tsx / RotaryKnob.tsx | Full-size knobs or compact clock/hazard strip; live preview on Climate |
+| HazardButton.tsx | Shared emergency switch; round in the climate strip, no header duplicate |
 | ConsoleDisplay.tsx / RadioPanel.tsx / MissionApps.tsx | Media and mission information; no general menu tool duplication |
 | DrivingIgnition.tsx | Fade policy while driving; the full ignition page stays available |
 | useCockpitState.ts | Requested versus confirmed protocol projections |

@@ -2,7 +2,7 @@ import { useInputStore } from "../../store/input/inputStore";
 import { cockpitCommandPending } from "../../store/input/protocol/cockpitMasks";
 import { usePreferencesStore } from "../../store/preferences/preferencesStore";
 import { useVehicleTelemetryStore } from "../../store/telemetry/vehicleTelemetryStore";
-import { DriveAssists } from "./DriveAssists";
+import { DriveAssists, AssistPreferences } from "./DriveAssists";
 import { GearSelector, HandbrakeLever } from "./MechanicalControls";
 import { useCockpitState } from "./useCockpitState";
 import { DriftBrakeLever, ParkingAppearance } from "./mechanical/index";
@@ -29,8 +29,8 @@ export function DriveGearControl() {
     />
   );
 }
-/** The HUD uses a momentary drift pull. The full cockpit keeps the mechanical
- * latch gesture; both expose the same confirmed cable detents and gear-safe API. */
+/** HUD and cockpit use one progressive cable latch. The requested fraction is
+ * shown while pending; Rust confirms it independently of the current gear. */
 export function ParkingBrakeControl({ drift = false }: { drift?: boolean }) {
   const state = useCockpitState();
   const request = useInputStore((s) => s.input.cockpit_mask),
@@ -39,6 +39,8 @@ export function ParkingBrakeControl({ drift = false }: { drift?: boolean }) {
   return (
     <Lever
       strength={state.current.parkingStrength}
+      fraction={state.parkingFraction}
+      precise={state.progressive}
       disabled={!state.supported}
       pending={cockpitCommandPending(request, confirmed, 3)}
     />
@@ -53,6 +55,7 @@ export function DriveControls({ compact = false }: { compact?: boolean }) {
         <DriveAssists compact={compact} />
       </div>
       {!compact && <ParkingAppearance />}
+      {!compact && <AssistPreferences />}
     </section>
   );
 }

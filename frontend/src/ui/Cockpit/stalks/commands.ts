@@ -19,6 +19,14 @@ function signalDirection() {
 export function requestTurnSignal(direction: -1 | 0 | 1) {
   const store = useInputStore.getState(),
     flags = store.input.vehicleMask;
+  if (
+    signalDirection() === direction &&
+    !(
+      hasFlag(flags, VehicleFlags.BLINKER_LEFT) &&
+      hasFlag(flags, VehicleFlags.BLINKER_RIGHT)
+    )
+  )
+    return;
   store.setInput({
     vehicleMask: setFlag(
       setFlag(flags, VehicleFlags.BLINKER_LEFT, direction === -1),

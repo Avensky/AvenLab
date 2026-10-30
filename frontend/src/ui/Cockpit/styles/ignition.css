@@ -71,6 +71,7 @@
   }
 }
 .driving-hud .ignition-hud {
+  pointer-events: none;
   left: auto;
   right: calc(var(--console-width) + clamp(24px, 5vw, 72px));
   top: auto;
@@ -79,6 +80,7 @@
   transform: none;
 }
 .ignition-hud .ignition-cylinder {
+  pointer-events: auto;
   width: 100%;
   height: auto;
   aspect-ratio: 1;

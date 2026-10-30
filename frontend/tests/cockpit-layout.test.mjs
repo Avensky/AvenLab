@@ -17,6 +17,17 @@ import {
   ignitionViewBox,
 } from "../src/ui/Cockpit/ignition/geometry.ts";
 
+import { parkingPressureAfterHold } from "../src/ui/Cockpit/mechanical/pressure.ts";
+
+test("parking pressure grows with held time, retains the starting tension and clamps at full", () => {
+  assert.equal(parkingPressureAfterHold(0, 300), 0.25);
+  assert.equal(parkingPressureAfterHold(0.37, 120), 0.47);
+  assert.equal(parkingPressureAfterHold(0.8, 1200), 1);
+  assert.equal(parkingPressureAfterHold(0.8, 0), 0.8);
+  assert.equal(parkingPressureAfterHold(0.8, -100), 0.8);
+  assert.equal(parkingPressureAfterHold(NaN, NaN), 0);
+});
+
 test("a lever and both adjacent controls share one radius and mirrored up/down placement", () => {
   for (const c of Object.values(STALK_LAYOUTS))
     for (const d of [-1, 1]) {
@@ -127,7 +138,7 @@ test("cockpit layout preferences preserve electronics and physical source owners
         max_speed: 70,
         hud: {
           cockpit_controls: true,
-          cockpit_version: 6,
+          cockpit_version: 7,
           telemetry_mask: 127,
           ambient_temp_c: 25,
         },
@@ -179,6 +190,7 @@ test("cockpit layout preferences preserve electronics and physical source owners
         input.getState().releaseControls();
         input.getState().setInput({
           cockpit_mask: undefined,
+          parking_brake: undefined,
           cabin_mask: undefined,
           vehicleMask: 97,
         });
@@ -258,35 +270,50 @@ test("cockpit layout preferences preserve electronics and physical source owners
         assert.equal(document.querySelector(".ignition-system"), null);
         assert.equal(document.querySelector(".hud-minimap"), null);
         assert.equal(
-          document.querySelectorAll(".hud-hazards .physical-hazard").length,
+          document.querySelectorAll(".hud-climate .physical-hazard").length,
           1,
         );
         assert.ok(document.querySelector(".climate-panel"));
       },
     );
     await t.test(
-      "the dedicated Climate page chooses compact/full HUD controls without expand arrows",
+      "Climate size choices update the live preview and driving HUD; compact hides dials and restores hazards",
       async () => {
         const { ClimatePage } = await load("ui/Cockpit/panels/index.ts"),
           { DrivingHUD } = await load("ui/DrivingHUD.tsx");
         await render(h(ClimatePage));
         assert.equal(
           document.querySelectorAll(".climate-panel .climate-knob").length,
-          3,
+          0,
         );
         await text("FULL HUD");
+        assert.equal(
+          document.querySelectorAll(".climate-panel .climate-knob").length,
+          3,
+        );
         await click("Climate controls on driving HUD");
+        await text("COMPACT HUD");
+        assert.equal(prefs.getState().hudGroups.hazards, true);
+        assert.equal(
+          document.querySelectorAll(".climate-panel .climate-knob").length,
+          0,
+        );
+        assert.equal(by("Hazards").dataset.shape, "round");
         await render(h(DrivingHUD));
         assert.equal(
           document.querySelector(".climate-panel").dataset.size,
-          "full",
-        );
-        await act(async () =>
-          prefs.getState().update({ climateHudSize: "compact" }),
+          "compact",
         );
         assert.equal(
-          document.querySelector(".climate-panel").dataset.size,
-          "compact",
+          document.querySelectorAll(".climate-panel .climate-knob").length,
+          0,
+        );
+        assert.equal(
+          by("Hazards").closest(".console-clock-strip") !== null,
+          true,
+        );
+        await act(async () =>
+          prefs.getState().update({ climateHudSize: "full" }),
         );
         assert.equal(
           document.querySelectorAll(".climate-panel .climate-knob").length,
@@ -298,6 +325,79 @@ test("cockpit layout preferences preserve electronics and physical source owners
           ),
           null,
         );
+      },
+    );
+    await t.test(
+      "three assist switches are the default and saved visibility/layout never changes vehicle functions",
+      async () => {
+        const { AssistPreferences } = await load("ui/Cockpit/DriveAssists.tsx"),
+          { DrivingHUD } = await load("ui/DrivingHUD.tsx");
+        await render(h("div", null, h(AssistPreferences), h(DrivingHUD)));
+        const count = () =>
+          document.querySelectorAll(".hud-assists .drive-assists > button")
+            .length;
+        const before = input.getState().input.vehicleMask;
+        assert.equal(prefs.getState().assistHudLayout, "three");
+        assert.equal(count(), 3);
+        await text("EXPANDED BANK");
+        assert.equal(count(), 5);
+        await click("Traction controls on driving HUD");
+        assert.equal(count(), 0);
+        await click("Traction controls on driving HUD");
+        assert.equal(count(), 5);
+        await text("3 SWITCHES");
+        assert.equal(count(), 3);
+        assert.equal(input.getState().input.vehicleMask, before);
+        assert.equal(
+          sanitizePreferences({ assistHudLayout: "invalid" }).assistHudLayout,
+          "three",
+        );
+      },
+    );
+    await t.test(
+      "precise pressure is bounded and preserves gear/assists through unrelated commands",
+      async () => {
+        await act(async () => input.getState().setParkingBrake(2 / 3));
+        assert.equal(input.getState().input.parking_brake, 0.667);
+        assert.equal(
+          unpackCockpit(input.getState().input.cockpit_mask).parkingStrength,
+          2,
+        );
+        await act(async () => input.getState().setAssist(1, true));
+        assert.equal(input.getState().input.parking_brake, 0.667);
+        await act(async () => input.getState().setParkingBrake(NaN));
+        assert.equal(input.getState().input.parking_brake, 0.667);
+        await act(async () => input.getState().setParkingBrake(9));
+        assert.equal(input.getState().input.parking_brake, 1);
+        await act(async () => input.getState().setParkingBrake(-9));
+        assert.equal(input.getState().input.parking_brake, 0);
+      },
+    );
+    await t.test(
+      "a held signal advances across neutral while fixed buttons also support two clicks",
+      async () => {
+        const { ColumnStalks } = await load("ui/Cockpit/ColumnStalks.tsx"),
+          { requestTurnSignal } = await load("ui/Cockpit/stalks/index.ts");
+        await render(h(ColumnStalks));
+        await act(async () => requestTurnSignal(-1));
+        const button = by("Lights and turn signal stalk up"),
+          position = button.getAttribute("style");
+        await point("pointerdown", "Lights and turn signal stalk up");
+        assert.equal(input.getState().input.vehicleMask & 12, 0);
+        await act(
+          async () => new Promise((resolve) => setTimeout(resolve, 370)),
+        );
+        assert.equal(input.getState().input.vehicleMask & 12, 8);
+        assert.equal(button.getAttribute("style"), position);
+        await point("pointerup", "Lights and turn signal stalk up");
+        // Browsers dispatch a click after pointerup; it must not apply a third step.
+        await click("Lights and turn signal stalk up");
+        assert.equal(input.getState().input.vehicleMask & 12, 8);
+        await click("Lights and turn signal stalk down");
+        assert.equal(input.getState().input.vehicleMask & 12, 0);
+        await click("Lights and turn signal stalk down");
+        assert.equal(input.getState().input.vehicleMask & 12, 4);
+        assert.equal(document.querySelector('[data-hud-held="true"]'), null);
       },
     );
     await t.test(
@@ -331,30 +431,27 @@ test("cockpit layout preferences preserve electronics and physical source owners
       },
     );
     await t.test(
-      "drift pull is immediate and release/hide preserves another device and the parking latch",
+      "partial cable pressure survives release/hide and another device keeps its own momentary brake",
       async () => {
         const { DrivingHUD } = await load("ui/DrivingHUD.tsx");
         await render(h(DrivingHUD));
         await act(async () => {
           input.getState().setAnalogFromSource("keyboard", { handbrake: 0.4 });
-          input.getState().setCockpit({ parking: true, parkingStrength: 2 }, 3);
+          input.getState().setParkingBrake(0.37);
         });
-        const request = input.getState().input.cockpit_mask;
         await point("pointerdown", "Parking brake");
-        assert.equal(input.getState().input.handbrake, 1);
-        assert.equal(input.getState().input.throttle, 0);
+        assert.equal(input.getState().input.handbrake, 0.4);
         await point("pointerup", "Parking brake");
         assert.equal(input.getState().input.handbrake, 0.4);
-        assert.equal(input.getState().input.cockpit_mask, request);
+        assert.ok(input.getState().input.parking_brake >= 0.37);
+        const partial = input.getState().input.parking_brake;
         await point("pointerdown", "Parking brake");
         await act(async () => prefs.getState().setHudGroup("parking", false));
         assert.equal(input.getState().input.handbrake, 0.4);
+        assert.equal(input.getState().input.parking_brake, partial);
         await act(async () => input.getState().releaseInputSource("keyboard"));
         assert.equal(input.getState().input.handbrake, 0);
-        assert.equal(
-          unpackCockpit(input.getState().input.cockpit_mask).parkingStrength,
-          2,
-        );
+        assert.equal(input.getState().input.parking_brake, partial);
       },
     );
     await t.test(
@@ -389,7 +486,11 @@ test("cockpit layout preferences preserve electronics and physical source owners
         await point("pointerdown", "Brake");
         await act(async () => ui.getState().openPause());
         assert.equal(document.querySelector('[data-hud-held="true"]'), null);
-        assert.equal(input.getState().input.brake, 1, "pause owns its safety brake");
+        assert.equal(
+          input.getState().input.brake,
+          1,
+          "pause owns its safety brake",
+        );
         await act(async () => ui.getState().closeOverlay());
         assert.equal(input.getState().input.brake, 0);
       },

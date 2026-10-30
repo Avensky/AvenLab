@@ -384,7 +384,7 @@ impl PhysicsWorld {
             v.brake    = packet.brake.clamp(0.0, 1.0);
             v.handbrake = packet.handbrake.clamp(0.0, 1.0);
             let speed = self.bodies.get(v.body).map(|body| (body.rotation().inverse() * body.linvel()).z).unwrap_or(0.0);
-            v.cockpit.receive(packet.cockpit_mask, speed, packet.vehicleMask & VehicleStateFlags::TCS.bits() != 0);
+            v.cockpit.receive_with_parking(packet.cockpit_mask, packet.parking_brake, speed, packet.vehicleMask & VehicleStateFlags::TCS.bits() != 0);
             v.cockpit.receive_cabin(packet.cabin_mask);
             if let Some(gear)=v.cockpit.take_forward_shift() { v.powertrain.request_forward_gear(gear); }
 
@@ -912,7 +912,7 @@ mod tests {
         let train = &mut world.vehicles.get_mut("recover-test").unwrap().powertrain;
         train.fuel_liters = 12.0; train.condition = 0.6; train.temperature_c = 120.0; train.nos_remaining_s = 2.0;
         let packet = InputPacket { r#type: "input".into(), seq: 1, dt: 1.0 / 60.0,
-            throttle: 0.0, steer: 0.0, brake: 0.0, handbrake: 0.0, cockpit_mask: None, cabin_mask: None, vehicleMask: 97, playerMask: 1 << 5, debug_mask: Some(0) };
+            throttle: 0.0, steer: 0.0, brake: 0.0, handbrake: 0.0, cockpit_mask: None,  parking_brake:None, cabin_mask: None, vehicleMask: 97, playerMask: 1 << 5, debug_mask: Some(0) };
         world.apply_player_input_packet("recover-test", packet.clone());
         assert!((world.bodies[handle].rotation() * Vector::y()).y > 0.99);
         world.bodies[handle].set_linvel(vector![1.0, 0.0, 0.0], true);
@@ -926,7 +926,7 @@ mod tests {
     fn repeating_gear_override_packets_do_not_lock_automatic_and_neutral_remains_explicit() {
         let mut world=flat_world();world.spawn_vehicle_for_player("shift-test".into(),[0.0;3],"brz","red").unwrap();
         let mut packet=InputPacket {r#type:"input".into(),seq:1,dt:1.0/60.0,throttle:1.0,steer:0.0,brake:0.0,handbrake:0.0,
-            cockpit_mask:Some((6<<7)|(1<<6)|(11<<24)|(1<<16)),cabin_mask:None,vehicleMask:97,playerMask:0,debug_mask:Some(0)};
+            cockpit_mask:Some((6<<7)|(1<<6)|(11<<24)|(1<<16)), parking_brake:None, cabin_mask:None,vehicleMask:97,playerMask:0,debug_mask:Some(0)};
         for _ in 0..30 {world.apply_player_input_packet("shift-test",packet.clone());world.step(SIMULATION_DT);}
         assert_eq!(world.vehicles["shift-test"].powertrain.manual_gear,None);assert_eq!(world.vehicles["shift-test"].powertrain.gear,6);
         for _ in 0..90 {world.apply_player_input_packet("shift-test",packet.clone());world.step(SIMULATION_DT);}
@@ -944,7 +944,7 @@ mod tests {
         world.spawn_vehicle_for_player("flash-test".into(), [0.0;3], "brz", "red").unwrap();
         let mut packet = InputPacket { r#type:"input".into(), seq:1, dt:1.0/60.0,
             throttle:0.0, steer:0.0, brake:0.0, handbrake:0.0, cockpit_mask:None,
-            cabin_mask:Some(4|4096|8192|(2<<10)), vehicleMask:96, playerMask:0, debug_mask:Some(0) };
+             parking_brake:None, cabin_mask:Some(4|4096|8192|(2<<10)), vehicleMask:96, playerMask:0, debug_mask:Some(0) };
         for mode in 0..=3 {
             packet.cockpit_mask = Some(mode | (1<<6) | (1<<7) | ((mode+1)<<16) | (6<<24));
             packet.cabin_mask = Some(4|4096|(2<<10)|(1<<20));
@@ -962,10 +962,30 @@ mod tests {
     }
 
     #[test]
+    fn input_pipeline_keeps_fractional_cable_force_independent_of_service_and_momentary_brakes() {
+        let mut world=flat_world();
+        world.spawn_vehicle_for_player("pressure-test".into(),[0.0;3],"brz","red").unwrap();
+        let mut packet=InputPacket {r#type:"input".into(),seq:1,dt:1.0/60.0,
+            throttle:0.0,steer:0.0,brake:0.0,handbrake:0.8,
+            cockpit_mask:Some((1<<6)|(1<<7)|(3<<24)|(1<<16)),parking_brake:Some(0.173),
+            cabin_mask:None,vehicleMask:97,playerMask:0,debug_mask:Some(0)};
+        world.apply_player_input_packet("pressure-test",packet.clone());world.step(SIMULATION_DT);
+        let v=&world.vehicles["pressure-test"];
+        assert!((v.cockpit.parking_force()-0.173).abs()<0.00001);assert_eq!(v.handbrake,0.8);
+        packet.handbrake=0.0;packet.brake=0.4;
+        world.apply_player_input_packet("pressure-test",packet.clone());world.step(SIMULATION_DT);
+        let v=&world.vehicles["pressure-test"];
+        assert_eq!(v.handbrake,0.0);assert!((v.cockpit.parking_force()-0.173).abs()<0.00001);
+        packet.parking_brake=Some(0.0);
+        world.apply_player_input_packet("pressure-test",packet);world.step(SIMULATION_DT);
+        assert_eq!(world.vehicles["pressure-test"].cockpit.parking_force(),0.0);
+    }
+
+    #[test]
     fn ignition_packets_power_the_cluster_without_starting_until_the_starter_is_held() {
         let mut world=flat_world();world.spawn_vehicle_for_player("key-test".into(),[0.0;3],"brz","red").unwrap();
         let mut packet=InputPacket { r#type:"input".into(),seq:1,dt:1.0/60.0,throttle:0.0,steer:0.0,brake:0.0,handbrake:0.0,
-            cockpit_mask:None,cabin_mask:Some(4|4096|8192),vehicleMask:97,playerMask:0,debug_mask:Some(0) };
+            cockpit_mask:None, parking_brake:None, cabin_mask:Some(4|4096|8192),vehicleMask:97,playerMask:0,debug_mask:Some(0) };
         world.apply_player_input_packet("key-test",packet.clone());world.step(SIMULATION_DT);
         assert!(!world.vehicles["key-test"].powertrain.running);
         for stage in [1,2] {

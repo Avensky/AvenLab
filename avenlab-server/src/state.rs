@@ -81,6 +81,7 @@ pub struct PhysicsEntitySnapshot {
     pub boost_fraction: Option<f32>, // 0..1; None when no NOS is fitted
     pub resource_mask: u16,  // cranking/heat/fuel/damage status bits
     pub cockpit_mask: u32,
+    pub parking_brake: f32, // confirmed cable fraction, excluding transmission P
     pub cabin_mask: u32,
     pub cruise_target_kph: Option<f32>,
     pub cluster_mask: u16,
@@ -205,6 +206,8 @@ pub struct InputPacket {
 
     #[serde(default)]
     pub cockpit_mask: Option<u32>,
+    #[serde(default)]
+    pub parking_brake: Option<f32>, // v7 latched cable state; independent of the packed command
     #[serde(default)]
     pub cabin_mask: Option<u32>,
 
@@ -472,6 +475,7 @@ impl SharedGameState {
                 boost_fraction: vehicle.powertrain.boost_fraction(vehicle.config.resources),
                 resource_mask: vehicle.powertrain.resource_mask(vehicle.config.resources),
                 cockpit_mask: vehicle.cockpit.snapshot(),
+                parking_brake: vehicle.cockpit.parking_fraction,
                 cabin_mask: vehicle.cockpit.cabin_snapshot(vehicle.powertrain.running,vehicle.powertrain.engine_requested),
                 cruise_target_kph: vehicle.cockpit.cruise_target_kph(),
                 cluster_mask: vehicle.cockpit.cluster_mask(vehicle.handbrake),
@@ -529,7 +533,7 @@ mod tests {
         use crate::vehicle_setup::{BRZ, TANK};
         let config = serde_json::to_value(VehicleConfigPayload::new("driver", BRZ)).unwrap();
         assert_eq!(config["config"]["hud"]["telemetry_mask"], 127);
-        assert_eq!(config["config"]["hud"]["cockpit_version"], 6);
+        assert_eq!(config["config"]["hud"]["cockpit_version"], 7);
         assert_eq!(config["config"]["hud"]["fuel_capacity_liters"], 50.0);
         assert_eq!(config["config"]["max_speed"], BRZ.max_speed);
         assert!(config["config"].get("resources").is_none(), "server tuning is not a repeated HUD payload");
@@ -577,7 +581,7 @@ mod tests {
             game.add_entity(id, EntityType::Vehicle);
             input_tx.send_replace(Some(InputPacket {
                 r#type: "input".into(), seq: 1, dt: 1.0 / 60.0,
-                throttle: 0.0, steer: 0.0, brake: 0.0, handbrake: 0.0, cockpit_mask: None, cabin_mask: None,
+                throttle: 0.0, steer: 0.0, brake: 0.0, handbrake: 0.0, cockpit_mask: None,  parking_brake:None, cabin_mask: None,
                 vehicleMask: 0, playerMask: 0, debug_mask: Some(mask),
             }));
             game.collect_input_packets();
@@ -606,7 +610,7 @@ mod tests {
                 r#type: "input".into(), seq, dt: 1.0 / 60.0,
                 throttle: if seq == 119 { 0.0 } else { 1.0 },
                 steer: 0.0, brake: if seq == 119 { 1.0 } else { 0.0 },
-                handbrake: 0.0, cockpit_mask: None, cabin_mask: None, vehicleMask: 97, playerMask: 0, debug_mask: Some(0),
+                handbrake: 0.0, cockpit_mask: None,  parking_brake:None, cabin_mask: None, vehicleMask: 97, playerMask: 0, debug_mask: Some(0),
             }));
         }
         game.collect_input_packets();

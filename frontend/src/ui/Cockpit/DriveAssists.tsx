@@ -7,6 +7,7 @@ import {
 import { VehicleFlags, hasFlag } from "../../store/input/protocol/inputMasks";
 import { useVehicleTelemetryStore } from "../../store/telemetry/vehicleTelemetryStore";
 import { useMomentaryFeedback } from "./useMomentaryFeedback";
+import { usePreferencesStore } from "../../store/preferences/index";
 
 function requestAssist(assist: number, traction: boolean) {
   useInputStore.getState().setAssist(assist, traction);
@@ -15,6 +16,8 @@ function requestAssist(assist: number, traction: boolean) {
 // The same switches live in the optional drive dock and full cockpit. Indicators
 // always follow confirmed telemetry; requests never paint a successful state.
 export function DriveAssists({ compact = false }: { compact?: boolean }) {
+  const layout = usePreferencesStore((s) => s.assistHudLayout);
+  const extended = !compact || layout === "extended";
   const contact = useMomentaryFeedback();
   const live = useVehicleTelemetryStore((s) => s.data.signal === "live");
   const supported = useVehicleTelemetryStore(
@@ -91,6 +94,7 @@ export function DriveAssists({ compact = false }: { compact?: boolean }) {
       className={`drive-assists${compact ? " drive-assists-compact" : " factory-assists"}`}
       role="group"
       aria-label="Driving assists"
+      data-layout={extended ? "extended" : "three"}
       onKeyDown={(event) => {
         if (event.key === " " || event.key === "Enter") event.stopPropagation();
       }}
@@ -175,7 +179,7 @@ export function DriveAssists({ compact = false }: { compact?: boolean }) {
       >
         VSC<span>SPORT</span>
       </button>
-      {
+      {extended && (
         <>
           <button
             type="button"
@@ -204,7 +208,44 @@ export function DriveAssists({ compact = false }: { compact?: boolean }) {
                 : `NORMAL · TRAC ${tcs ? "ON" : "OFF"}`}
           </small>
         </>
-      }
+      )}
     </div>
+  );
+}
+
+/** HUD appearance and visibility share the same saved state as Research and
+ * Settings. This changes the interface, never ABS/TRAC/VSC function state. */
+export function AssistPreferences() {
+  const visible = usePreferencesStore((s) => s.hudGroups.assists);
+  const layout = usePreferencesStore((s) => s.assistHudLayout);
+  return (
+    <fieldset className="assist-preferences">
+      <legend>DRIVING ASSISTS HUD</legend>
+      <div>
+        <button
+          type="button"
+          role="switch"
+          aria-label="Traction controls on driving HUD"
+          aria-checked={visible}
+          onClick={() =>
+            usePreferencesStore.getState().setHudGroup("assists", !visible)
+          }
+        >
+          HUD: {visible ? "SHOW" : "HIDE"}
+        </button>
+        {(["three", "extended"] as const).map((value) => (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={layout === value}
+            onClick={() =>
+              usePreferencesStore.getState().update({ assistHudLayout: value })
+            }
+          >
+            {value === "three" ? "3 SWITCHES" : "EXPANDED BANK"}
+          </button>
+        ))}
+      </div>
+    </fieldset>
   );
 }

@@ -23,11 +23,12 @@ export function ParkingDetents({
         <button
           type="button"
           key={level}
+          data-level={level}
           disabled={disabled}
           aria-label={`Parking brake ${Math.round((level / 3) * 100)} percent`}
           title={`Parking brake ${Math.round((level / 3) * 100)} percent`}
-          aria-pressed={strength === level}
-          data-filled={strength >= level}
+          aria-pressed={Math.abs(strength - level) < 0.002}
+          data-filled={strength >= level - 0.002}
           onClick={() => onSelect(level)}
         >
           {crystals ? (
@@ -66,6 +67,7 @@ export function ParkingLeverArtwork({
         aria-hidden="true"
       >
         <circle cx="30" cy="30" r="23" />
+        <circle className="parking-simple-travel" cx="30" cy="30" r="23" />
         <path d="M23 43V17h9c14 0 14 16 0 16h-9m-9-17c-8 9-8 20 0 29m32-29c8 9 8 20 0 29" />
       </svg>
       <span className="ebrake-floor" />

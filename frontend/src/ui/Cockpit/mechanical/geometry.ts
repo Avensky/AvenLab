@@ -1,22 +1,15 @@
 /** Pure screen geometry for the mechanical console. Coordinates are normalized
  * so the same gate/lever proportions work on the compact HUD and large cockpit. */
-// Project perpendicular floor/up axes into a receding camera view. Their screen
-// angles need not be 90 degrees apart: idle points away, applied rises upright.
+// Rest points toward the floor horizon; full cable force is upright. Reach and
+// angle grow monotonically so the 100% grip occupies the shifter's full height.
 export function parkingLeverPose(level: number) {
   const fraction = Math.max(
     0,
     Math.min(1, Number.isFinite(level) ? level / 3 : 0),
   );
-  const lift = (fraction * Math.PI) / 2;
-  const x =
-    Math.cos((-115 * Math.PI) / 180) * Math.cos(lift) +
-    Math.cos((-75 * Math.PI) / 180) * Math.sin(lift);
-  const y =
-    Math.sin((-115 * Math.PI) / 180) * Math.cos(lift) +
-    Math.sin((-75 * Math.PI) / 180) * Math.sin(lift);
   return {
-    angle: (Math.atan2(y, x) * 180) / Math.PI,
-    reach: 0.72 + 0.28 * fraction,
+    angle: -180 + 90 * fraction,
+    reach: 0.5 + 0.5 * fraction,
   };
 }
 export function inNeutralLane(y: number) {

@@ -5,3 +5,7 @@ export { DriftBrakeLever } from "./DriftBrakeLever";
 export { ParkingAppearance } from "./ParkingAppearance";
 export { requestParkingStrength } from "./commands";
 export { parkingLeverPose, inNeutralLane, shiftKnobRoute } from "./geometry";
+
+export { ProgressiveParking } from "./ProgressiveParking";
+export { parkingPressureAfterHold, PARKING_PULL_MS } from "./pressure";
+export { requestParkingFraction } from "./commands";

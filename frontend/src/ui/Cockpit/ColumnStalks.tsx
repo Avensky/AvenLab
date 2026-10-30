@@ -5,7 +5,6 @@ import { useControlRelease } from "../../controls/useControlRelease";
 import { useInputStore } from "../../store/input/inputStore";
 import { VehicleFlags, hasFlag } from "../../store/input/protocol/inputMasks";
 import { useCockpitState } from "./useCockpitState";
-import { useMomentaryFeedback } from "./useMomentaryFeedback";
 import {
   Stalk,
   STALK_LAYOUTS,
@@ -13,7 +12,6 @@ import {
   stepTurnSignal,
 } from "./stalks/index";
 export const ColumnStalks = memo(function ColumnStalks() {
-  const contact = useMomentaryFeedback();
   const state = useCockpitState(),
     flags = useInputStore((s) => s.input.vehicleMask);
   const clearWasher = useCallback(() => {
@@ -29,7 +27,6 @@ export const ColumnStalks = memo(function ColumnStalks() {
   const change = useInputStore.getState().setCockpit;
   return (
     <div
-      {...contact}
       className="column-stalks"
       role="group"
       aria-label="Steering column controls"
@@ -42,6 +39,7 @@ export const ColumnStalks = memo(function ColumnStalks() {
         mode={["OFF", "AUTO", "ON", "HIGH"][state.confirmed.lights]}
         disabled={!state.supported}
         latched
+        repeat
         onHold={
           state.version >= 6
             ? (held) =>

@@ -6,7 +6,6 @@ import "./Cockpit/cockpit.css";
 import { usePreferencesStore } from "../store/preferences/index";
 import { ConsoleDisplay } from "./Cockpit/ConsoleDisplay";
 import { ClimatePanel } from "./Cockpit/ClimatePanel";
-import { HazardButton } from "./Cockpit/HazardButton";
 import { DriveGearControl, ParkingBrakeControl } from "./Cockpit/DriveControls";
 import { DriveAssists } from "./Cockpit/DriveAssists";
 import { HudGroup } from "./HudGroup";
@@ -14,6 +13,8 @@ import Pedals from "./Pedals";
 import { TouchStick } from "../controls/TouchControls";
 
 export default function ControlsPanel() {
+  const climateVisible = usePreferencesStore((s) => s.hudGroups.climate),
+    hazardsVisible = usePreferencesStore((s) => s.hudGroups.hazards);
   const climateSize = usePreferencesStore((s) => s.climateHudSize);
   const expanded = usePreferencesStore((s) => s.showDriveControls),
     touch = usePreferencesStore((s) => s.showTouchControls),
@@ -29,16 +30,19 @@ export default function ControlsPanel() {
           <HudGroup id="display" title="VEHICLE DISPLAY">
             <ConsoleDisplay />
           </HudGroup>
-          <HudGroup id="climate" title="CLIMATE">
-            <ClimatePanel size={climateSize} />
-          </HudGroup>
-          <HudGroup
-            id="hazards"
-            title="EMERGENCY LIGHTS"
-            className="hud-hazards"
-          >
-            <HazardButton />
-          </HudGroup>
+          {(climateVisible || hazardsVisible) && (
+            <HudGroup
+              id={climateVisible ? "climate" : "hazards"}
+              title="CLIMATE"
+              className="hud-climate"
+            >
+              <ClimatePanel
+                size={climateSize}
+                showHazards={hazardsVisible}
+                controlsVisible={climateVisible}
+              />
+            </HudGroup>
+          )}
           <div
             className="transmission-console hud-transmission"
             data-compact="true"

@@ -62,7 +62,7 @@ export function parseGaugeConfig(value: unknown): GaugeConfig | null {
   return {
     cockpitControls: hud.cockpit_controls === true,
     cockpitVersion:
-      hud.cockpit_controls === true ? number("cockpit_version", 1, 1, 6) : 0,
+      hud.cockpit_controls === true ? number("cockpit_version", 1, 1, 7) : 0,
     ambientTempC:
       typeof hud.ambient_temp_c === "number" &&
       Number.isFinite(hud.ambient_temp_c) &&

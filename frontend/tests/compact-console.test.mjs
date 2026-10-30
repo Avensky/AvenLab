@@ -193,6 +193,10 @@ test("compact cockpit, GPS and inspection preserve authoritative state", async (
           4,
         );
         assert.equal(by("Ambient temperature").textContent, "77°F");
+        assert.equal(document.querySelector(".climate-three-knobs"), null);
+        await act(async () =>
+          prefs.getState().update({ climateHudSize: "full" }),
+        );
         assert.ok(document.querySelector(".climate-three-knobs"));
         assert.equal(document.querySelector(".console-display-tabs"), null);
         const dock = document.querySelector(".drive-dock");
@@ -317,6 +321,12 @@ test("compact cockpit, GPS and inspection preserve authoritative state", async (
         assert.equal(document.querySelector(".gps-map"), null);
         await click("Open map");
         assert.equal(document.querySelectorAll(".gps-map rect").length, 2);
+        // Map pose is intentionally sampled at 10 Hz. Allow its first tick after
+        // mounting, rather than racing a previously stale/null map projection.
+        await act(async () => {
+          await new Promise((resolve) => setTimeout(resolve, 110));
+          fresh();
+        });
         await click("GPS destination ahead");
         assert.ok(nav.getState().destination);
         assert.ok(document.querySelector(".gps-map polyline"));

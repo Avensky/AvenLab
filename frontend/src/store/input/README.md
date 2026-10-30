@@ -20,4 +20,4 @@ mask limit together when adding a protocol capability.
 
 See [all state owners](../README.md) and the [project guide](../../../../docs/PROJECT_GUIDE.md).
 
-`touch-parking` is the driving-only rear-brake pull source. It merges with keyboard/controller handbrake force using the existing maximum rule; release clears only that source. The deliberate parking latch remains cockpit command 3, separate from analog drift force and automatic P.
+`setParkingBrake(fraction)` validates a 0–1 deliberate cable latch for cockpit v7. It writes `parking_brake` independently of other packed commands, using the existing sender. releaseControls clears transient input while preserving this latch. The HUD and cockpit use the same progressive control; explicit zero releases it. `touch-parking` remains an available analog source for older/experimental momentary controls. Keyboard/controller analog handbrake still merges separately using maximum force.

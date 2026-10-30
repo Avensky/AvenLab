@@ -1,7 +1,7 @@
 export { ClimatePanel } from "./ClimatePanel";
 export { CockpitPanel } from "./CockpitPanel";
 export { ConsoleDisplay } from "./ConsoleDisplay";
-export { DriveAssists } from "./DriveAssists";
+export { DriveAssists, AssistPreferences } from "./DriveAssists";
 export {
   DriveControls,
   DriveGearControl,
@@ -21,4 +21,5 @@ export {
   DriftBrakeLever,
   ParkingAppearance,
   requestParkingStrength,
+  requestParkingFraction,
 } from "./mechanical/index";

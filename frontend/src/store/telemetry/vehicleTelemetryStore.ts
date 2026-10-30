@@ -34,6 +34,7 @@ export type VehicleTelemetry = {
   vehicleMask: number;
   clusterMask: number | null;
   cockpitMask: number | null;
+  parkingFraction: number | null;
   cabinMask: number | null;
   cruiseTargetKph: number | null;
   positionX: number | null;
@@ -120,6 +121,10 @@ export function projectVehicleTelemetry(
       entity!.cabin_mask! >= 0 &&
       entity!.cabin_mask! <= (config.cockpitVersion >= 6 ? 0x1fffff : 0xfffff)
         ? entity!.cabin_mask!
+        : null,
+    parkingFraction:
+      valid && config.cockpitVersion >= 7 && finite(entity?.parking_brake)
+        ? rounded(Math.max(0, Math.min(1, entity.parking_brake)), 0.001)
         : null,
     cruiseTargetKph:
       valid && config.cockpitVersion >= 3 && finite(entity?.cruise_target_kph)

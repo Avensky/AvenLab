@@ -8,6 +8,8 @@ pub struct Cockpit {
     pub gear: u8, // 0=N, 1..6, 7=R, 8=P (automatic only)
     pub parking: bool,
     pub parking_strength: u8, // 0 / 1 / 2 / 3 cable detents
+    pub parking_fraction: f32, // v7 continuous cable latch; independent of transmission P
+    precise_parking: bool,
     pub lights: u8, // 0=off, 1=auto running lights, 2=low, 3=high
     pub wipers: u8, // off/low/mid/high, exposed to a vehicle's visual/CAN adapter
     pub washer: bool,
@@ -31,7 +33,7 @@ pub struct Cockpit {
     forward_shift: Option<u8>,
 }
 impl Default for Cockpit {
-    fn default() -> Self { Self { enabled:false, automatic:true, gear:1, parking:false, parking_strength:0,
+    fn default() -> Self { Self { enabled:false, automatic:true, gear:1, parking:false, parking_strength:0, parking_fraction:0.0, precise_parking:false,
         lights:0, wipers:0, washer:false, assist:0, traction_active:false, traction_requested:true,
         cruise_enabled:false, cruise_target:None, last_target:None, rearmed:false,
         revision:0, rejected:0, last_request:None, rejected_gear:None,
@@ -40,7 +42,21 @@ impl Default for Cockpit {
 }
 impl Cockpit {
     pub fn receive(&mut self, packed: Option<u32>, speed: f32, traction_requested: bool) {
+        self.receive_with_parking(packed, None, speed, traction_requested);
+    }
+    /// Precise pressure is independent state in the existing input packet. It
+    /// survives another command written before the next 60 Hz send; those
+    /// commands must not quantize a partial latch to one-third detents.
+    pub fn receive_with_parking(&mut self, packed: Option<u32>, parking_fraction: Option<f32>, speed: f32, traction_requested: bool) {
         let Some(packed) = packed else { return };
+        let precise = parking_fraction.filter(|value| value.is_finite()).map(|value| value.clamp(0.0, 1.0));
+        if let Some(fraction) = precise {
+            self.precise_parking = true;
+            self.parking_fraction = fraction;
+            self.parking = fraction > 0.0;
+            // Match the client's 0.1% rounding without promoting 0.667 to detent 3.
+            self.parking_strength = if fraction > 0.0 { ((fraction * 3.0 - 0.0015).ceil() as u8).max(1) } else { 0 };
+        }
         if self.last_request == Some(packed) { return; }
         let first = !self.enabled;
         self.last_request = Some(packed);
@@ -71,12 +87,14 @@ impl Cockpit {
             }
         }
         // A separate handbrake lever can latch at any speed; P itself is gated.
-        if command == 3 || (self.rejected_gear != Some(selection) && self.rejected == 0) {
+        if precise.is_none() && (command == 3 || (!self.precise_parking && self.rejected_gear != Some(selection) && self.rejected == 0)) {
+            self.precise_parking = false;
             self.parking = packed & (1 << 11) != 0;
             // Old boolean clients imply full tension. New clients send detents
             // in the two high bits, shared with confirmed snapshots.
             self.parking_strength = if self.parking { ((packed >> 30) as u8).max(1) } else { 0 };
             if self.parking && packed >> 30 == 0 { self.parking_strength = 3; }
+            self.parking_fraction = self.parking_strength as f32 / 3.0;
         }
         let cruise_enabled = packed & (1 << 13) != 0;
         if !cruise_enabled { self.cruise_target = None; self.last_target = None; }
@@ -140,7 +158,7 @@ impl Cockpit {
 
     pub fn parked(&self) -> bool { self.enabled && (self.parking || self.gear == 8) }
     pub fn parking_force(&self) -> f32 {
-        if !self.enabled { 0.0 } else if self.gear == 8 { 1.0 } else { self.parking_strength as f32 / 3.0 }
+        if !self.enabled { 0.0 } else if self.gear == 8 { 1.0 } else { self.parking_fraction }
     }
     pub fn manual_gear(&self) -> Option<i32> {
         if !self.enabled || (self.automatic && self.gear > 0 && self.gear < 7) { None }
@@ -227,6 +245,39 @@ mod tests {
     }
     fn packet(gear:u32, automatic:bool, assist:u32, command:u32, revision:u32) -> u32 {
         (gear << 7) | ((automatic as u32) << 6) | (assist << 4) | (command << 24) | (revision << 16)
+    }
+    #[test] fn precise_pressure_is_continuous_and_survives_other_commands_and_released_momentary_input() {
+        let mut c=Cockpit::default();
+        for (index, force) in [0.012, 0.137, 0.381, 0.678, 1.0].into_iter().enumerate() {
+            c.receive_with_parking(Some(packet(1,true,0,3,index as u32+1)),Some(force),0.0,true);
+            assert!((c.parking_force()-force).abs()<0.00001);
+            assert_eq!(c.parking_strength,(force*3.0).ceil() as u8);
+        }
+        c.receive_with_parking(Some(packet(1,true,0,3,6)),Some(0.667),0.0,true);
+        assert_eq!(c.snapshot()>>30,2,"rounded two-thirds must remain detent two");
+        let gear=Some(packet(2,true,0,11,8));
+        c.receive_with_parking(gear,Some(0.427),0.0,true);
+        assert!((c.parking_force()-0.427).abs()<0.00001);
+        c.receive_with_parking(gear,Some(0.431),0.0,true);
+        assert!((c.parking_force()-0.431).abs()<0.00001,"precise state survives a reused packed word");
+        c.advance(1.0/120.0,0.0,0.0,0.0,0.0,true);
+        assert!((c.parking_force()-0.431).abs()<0.00001,"release keeps the cable latch");
+        c.receive(Some(packet(2,true,0,6,9)),0.0,true);
+        assert!((c.parking_force()-0.431).abs()<0.00001,"legacy light action cannot quantize pressure");
+        c.receive_with_parking(Some(packet(2,true,0,3,10)),Some(0.0),0.0,true);
+        assert_eq!(c.parking_force(),0.0);assert!(!c.parking);
+    }
+    #[test] fn precise_pressure_is_bounded_and_transmission_park_remains_independent() {
+        let mut c=Cockpit::default();
+        c.receive_with_parking(None,Some(0.9),0.0,true);assert!(!c.enabled);
+        c.receive_with_parking(Some(packet(1,true,0,3,1)),Some(9.0),0.0,true);
+        assert_eq!(c.parking_force(),1.0);
+        c.receive_with_parking(Some(packet(1,true,0,3,2)),Some(-1.0),0.0,true);
+        assert_eq!(c.parking_force(),0.0);
+        c.receive_with_parking(Some(packet(1,true,0,3,3)|(1<<11)|(2<<30)),Some(f32::NAN),0.0,true);
+        assert!((c.parking_force()-2.0/3.0).abs()<0.00001);
+        c.receive_with_parking(Some(packet(8,true,0,2,4)),Some(0.0),0.0,true);
+        assert_eq!(c.parking_fraction,0.0);assert_eq!(c.parking_force(),1.0);
     }
     #[test] fn assisted_forward_shift_is_consumed_once_and_does_not_lock_the_automatic() {
         let mut c=Cockpit::default();let p=packet(3,true,0,11,1);

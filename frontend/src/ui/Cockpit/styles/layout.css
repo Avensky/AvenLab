@@ -1,7 +1,7 @@
 /* The parking lever and shifter share a row. A 72px assist bank fits next to
    pedals on wide screens and wraps above them on a narrow phone. */
 .transmission-console {
-  --shifter-size: 90px;
+  --shifter-size: 128px;
   --parking-control-height: var(--shifter-size);
   display: grid;
   grid-template-columns: minmax(60px, 1fr) var(--shifter-size);
@@ -9,7 +9,7 @@
   gap: 5px;
   align-items: start;
   width: 100%;
-  max-width: 220px;
+  max-width: 280px;
   margin: auto;
 }
 .transmission-console > .mechanical-handbrake,
@@ -31,7 +31,7 @@
 }
 .console-foot-controls {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: flex-end;
   align-items: flex-end;
   gap: 4px;
@@ -55,11 +55,64 @@
   justify-self: end;
 }
 .drive-dock .hud-transmission:not(:has(> .hud-shifter)) > .hud-parking {
-  max-width: 90px;
+  max-width: 128px;
   justify-self: end;
 }
 .hud-hazards {
   display: flex;
   justify-content: center;
   align-items: center;
+}
+
+/* The compact three-switch bank stays left of the pedals. It becomes a narrow
+   vertical bank on phones; the larger optional development bank can wrap. */
+.driving-hud {
+  --console-width: clamp(270px, 21vw, 300px);
+}
+.drive-dock {
+  max-width: calc(100vw - 20px);
+}
+.console-foot-controls {
+  gap: 5px;
+}
+@media (max-width: 600px) {
+  .drive-dock .console-foot-controls .hud-assists {
+    flex-basis: 30px;
+    width: 30px;
+  }
+  .drive-dock .console-foot-controls:has([data-layout="extended"]) {
+    flex-wrap: wrap;
+  }
+  .drive-dock
+    .console-foot-controls
+    .hud-assists:has([data-layout="extended"]) {
+    flex-basis: 72px;
+    width: 72px;
+  }
+}
+@media (max-width: 380px) {
+  .driving-hud {
+    --console-width: 236px;
+  }
+  .driving-hud .wheel-hud {
+    bottom: max(65px, env(safe-area-inset-bottom));
+  }
+  .drive-dock .driving-pedal {
+    width: 35px;
+  }
+}
+
+/* A large brake/shifter row sits above the wheel on narrow portrait screens;
+   the pedal/assist row stays at the bottom. This keeps the moving grip out of
+   the steering hit area instead of painting it across the wheel hub. */
+@media (max-width: 460px) and (orientation: portrait) {
+  .drive-dock .dock-equipment {
+    padding-bottom: 110px;
+    max-height: calc(100dvh - 160px);
+  }
+}
+@media (max-width: 380px) and (orientation: portrait) {
+  .drive-dock .dock-equipment {
+    padding-bottom: 140px;
+  }
 }

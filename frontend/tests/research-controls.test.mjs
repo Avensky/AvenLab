@@ -57,7 +57,7 @@ test("research controls keep input, display and audio updates independent", asyn
     config.getState().receive("me", {
       max_speed: 62,
       hud: {
-        cockpit_version: 5,
+        cockpit_version: 7,
         cockpit_controls: true,
         telemetry_mask: 127,
         fuel_capacity_liters: 50,
@@ -366,15 +366,15 @@ test("research controls keep input, display and audio updates independent", asyn
       },
     );
     await t.test(
-      "hold charges only the parking brake, release retains it and a tap clears it",
-      async () => {
+      "continuous holds retain partial pressure, shorter pulls add force and zero releases explicitly",
+      async (t) => {
         const { ParkingBrakeControl } = await load(
           "ui/Cockpit/DriveControls.tsx",
         );
-        await act(async () =>
-          input.getState().setInput({ cockpit_mask: undefined }),
-        );
+        await act(async () => input.getState().setParkingBrake(0));
         await render(h(ParkingBrakeControl));
+        let clock = performance.now();
+        t.mock.method(performance, "now", () => clock);
         const later = window.setTimeout,
           clear = window.clearTimeout,
           timers = new Map();
@@ -386,36 +386,45 @@ test("research controls keep input, display and audio updates independent", asyn
         window.clearTimeout = (id) => timers.delete(id);
         const point = async (type) =>
           act(async () => {
-            const e = new Event(type, { bubbles: true, cancelable: true });
-            Object.assign(e, { pointerId: 41, button: 0, clientY: 100 });
-            by("Parking brake").dispatchEvent(e);
+            const event = new Event(type, { bubbles: true, cancelable: true });
+            Object.assign(event, { pointerId: 41, button: 0, clientY: 100 });
+            by("Parking brake").dispatchEvent(event);
           });
         const advance = async (ms) => {
-          const entry = [...timers].find(([, t]) => t.ms === ms);
+          const entry = [...timers].find(([, value]) => value.ms === 50);
           assert.ok(entry);
           timers.delete(entry[0]);
-          await act(async () => entry[1].fn());
+          clock += ms;
+          await act(async () => {
+            fresh();
+            entry[1].fn();
+          });
         };
-        const strength = () =>
-          unpackCockpit(input.getState().input.cockpit_mask).parkingStrength;
         try {
-          await click("Parking brake");
           const gear = unpackCockpit(input.getState().input.cockpit_mask).gear;
           await point("pointerdown");
-          await advance(250);
-          assert.equal(strength(), 1);
           await advance(300);
-          assert.equal(strength(), 2);
-          await advance(300);
-          assert.equal(strength(), 3);
-          assert.equal(timers.size, 0);
+          assert.equal(input.getState().input.parking_brake, 0.25);
           await point("pointerup");
           await click("Parking brake");
           assert.equal(
-            strength(),
-            3,
-            "the post-hold click must not release the brake",
+            input.getState().input.parking_brake,
+            0.25,
+            "post-release click cannot clear pressure",
           );
+          await point("pointerdown");
+          await advance(120);
+          await point("pointerup");
+          assert.equal(
+            input.getState().input.parking_brake,
+            0.35,
+            "a short pull adds pressure",
+          );
+          await point("pointerdown");
+          await advance(1200);
+          await point("pointerup");
+          assert.equal(input.getState().input.parking_brake, 1);
+          assert.equal(timers.size, 0);
           assert.equal(
             unpackCockpit(input.getState().input.cockpit_mask).gear,
             gear,
@@ -425,77 +434,46 @@ test("research controls keep input, display and audio updates independent", asyn
               .length,
             3,
           );
-          assert.equal(
-            document.querySelector(".parking-levels").textContent,
-            "321",
-          );
           assert.equal(document.querySelectorAll(".parking-crystal").length, 0);
           await act(async () =>
             prefs.getState().update({ parkingCrystals: true }),
           );
           assert.equal(document.querySelectorAll(".parking-crystal").length, 3);
-          assert.equal(
-            strength(),
-            3,
-            "changing crystals cannot alter cable tension",
-          );
-          assert.equal(by("Parking brake 0 percent"), null);
-          assert.equal(input.getState().input.throttle, 0);
+          assert.equal(document.querySelector(".parking-pull-label"), null);
+          assert.equal(input.getState().input.parking_brake, 1);
           await point("pointerdown");
-          await advance(250);
-          assert.equal(strength(), 3);
-          assert.equal(
-            timers.size,
-            0,
-            "holding max must stop scheduling and never wrap",
-          );
-          await point("pointerup");
-          await click("Parking brake");
-          assert.equal(strength(), 3);
-          await point("pointerdown");
+          clock += 1;
           await point("pointerup");
           assert.equal(
-            strength(),
-            0,
-            "a single tap clears on release even without a browser click",
+            input.getState().input.parking_brake,
+            1,
+            "even a very short pull keeps full pressure",
           );
-          await click("Parking brake");
-          assert.equal(strength(), 0);
-          assert.equal(document.querySelector(".ebrake-indicator"), null);
-          await act(async () =>
-            by("Parking brake").dispatchEvent(
-              new dom.window.KeyboardEvent("keydown", {
-                code: "Space",
-                key: " ",
-                bubbles: true,
-                cancelable: true,
-              }),
-            ),
-          );
-          await advance(250);
-          await act(async () =>
-            by("Parking brake").dispatchEvent(
-              new dom.window.KeyboardEvent("keyup", {
-                code: "Space",
-                key: " ",
-                bubbles: true,
-                cancelable: true,
-              }),
-            ),
-          );
-          assert.equal(strength(), 1);
+          await click("Release parked brake");
+          assert.equal(input.getState().input.parking_brake, 0);
+          const key = (type) =>
+            act(async () =>
+              by("Parking brake").dispatchEvent(
+                new dom.window.KeyboardEvent(type, {
+                  code: "Space",
+                  key: " ",
+                  bubbles: true,
+                  cancelable: true,
+                }),
+              ),
+            );
+          await key("keydown");
+          await advance(120);
+          await key("keyup");
+          assert.equal(input.getState().input.parking_brake, 0.1);
           assert.equal(timers.size, 0);
-          await click("Parking brake");
-          assert.equal(strength(), 0);
           await point("pointerdown");
-          await advance(250);
+          await advance(120);
           await act(async () => window.dispatchEvent(new Event("blur")));
           assert.equal(timers.size, 0);
-          assert.equal(
-            strength(),
-            1,
-            "focus loss stops charging but retains a deliberate latched brake",
-          );
+          assert.equal(input.getState().input.parking_brake, 0.2);
+          assert.equal(document.querySelector('[data-hud-held="true"]'), null);
+          assert.equal(input.getState().input.throttle, 0);
         } finally {
           window.setTimeout = later;
           window.clearTimeout = clear;
@@ -911,7 +889,7 @@ test("research controls keep input, display and audio updates independent", asyn
           by("Parking brake 67 percent").getAttribute("aria-pressed"),
           "true",
         );
-        await click("Parking brake");
+        await click("Release parked brake");
         assert.equal(
           document.querySelectorAll('.parking-levels [data-filled="true"]')
             .length,

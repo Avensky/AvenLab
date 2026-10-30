@@ -59,7 +59,7 @@ function setup() {
     hud: {
       telemetry_mask: 127,
       cockpit_controls: true,
-      cockpit_version: 6,
+      cockpit_version: 7,
       cluster_fields: 8191,
       max_rpm: 9000,
       redline_rpm: 7500,
@@ -238,6 +238,9 @@ function publish() {
           resource_mask: phase === "cranking" ? 1 : sampleResourceMask,
           cluster_mask: telltales,
           cockpit_mask: confirmed >>> 0,
+          parking_brake:
+            controls.parking_brake ??
+            (cockpit & 2048 ? (cockpit >>> 30 || 3) / 3 : 0),
           cabin_mask: electrical | (now < wipeUntil ? 32768 : 0),
           cruise_target_kph: cruise ? target : undefined,
         },

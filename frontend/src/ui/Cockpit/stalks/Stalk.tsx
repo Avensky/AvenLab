@@ -24,6 +24,7 @@ export function Stalk({
   angle,
   reach = 31,
   spacing = 12.5,
+  scale = 1,
   label,
   mode,
   asset,
@@ -42,6 +43,7 @@ export function Stalk({
   angle: number;
   reach?: number;
   spacing?: number;
+  scale?: number;
   label: string;
   mode: string;
   asset: string;
@@ -224,18 +226,29 @@ export function Stalk({
     if (tap) callbacks.current.onTurn();
   };
   const point = (a: number, r = reach) => stalkPoint(a, r);
+  // Direction buttons remain fixed for repeated clicks. Only the cap/rod
+  // follows the pulled detent; base configuration still moves the whole set.
+  const position = latched ? detent : pull;
+  const actuatorAngle =
+    position === 0
+      ? angle
+      : stalkStepAngle(angle, position > 0 ? 1 : -1, Math.abs(position) * 7);
   return (
     <div
       className="stalk-actuator"
       data-latched={latched}
       data-detent={latched ? detent : pull}
-      style={{ transform: `rotate(${(latched ? detent : pull) * 12}deg)` }}
+      style={
+        {
+          "--stalk-scale": scale,
+        } as CSSProperties
+      }
     >
       <span
         className="column-stalk-rod"
         style={
           {
-            "--stalk-angle": `${-angle}deg`,
+            "--stalk-angle": `${-actuatorAngle}deg`,
             width: `${reach}%`,
           } as CSSProperties
         }
@@ -256,8 +269,8 @@ export function Stalk({
         }
         style={
           {
-            ...point(angle),
-            "--stalk-tangent": `${stalkTangent(angle)}deg`,
+            ...point(actuatorAngle),
+            "--stalk-tangent": `${stalkTangent(actuatorAngle)}deg`,
           } as CSSProperties
         }
         onContextMenu={(e) => e.preventDefault()}

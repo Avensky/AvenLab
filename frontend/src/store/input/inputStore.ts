@@ -142,6 +142,7 @@ export interface InputPacket {
   playerMask: number; // uint16
   debug_mask?: number; // uint32, optional
   cockpit_mask?: number; // optional packed cockpit request; absent keeps legacy controls
+  parking_brake?: number; // v7 continuous latched cable fraction; command 3 owns it
   cabin_mask?: number; // climate/key v3, airflow/fan4 v5, held headlight flash v6
 }
 const defaultVehicleMask =
@@ -171,6 +172,7 @@ interface InputState {
   input: InputPacket;
   setInput: (partial: Partial<InputPacket>) => void;
   setCockpit: (patch: Partial<CockpitRequest>, command: CockpitCommand) => void;
+  setParkingBrake: (fraction: number) => void;
   setAssist: (assist: number, traction: boolean) => void;
   setCabin: (patch: Partial<CabinState>, confirmed?: number) => void;
   setHeadlightFlash: (
@@ -253,6 +255,10 @@ export const useInputStore = create<InputState>((set, get) => ({
     nextInput.steer = clampControl(nextInput.steer, -1, 1);
     nextInput.brake = clampControl(nextInput.brake, 0, 1);
     nextInput.handbrake = clampControl(nextInput.handbrake, 0, 1);
+    if (nextInput.parking_brake !== undefined)
+      nextInput.parking_brake = Number.isFinite(nextInput.parking_brake)
+        ? Math.max(0, Math.min(1, nextInput.parking_brake))
+        : previous.parking_brake;
     if (menuBrake) {
       nextInput.throttle = 0;
       nextInput.steer = 0;
@@ -302,7 +308,43 @@ export const useInputStore = create<InputState>((set, get) => ({
         },
         0,
       );
-    get().setInput({ cockpit_mask: reviseCockpit(initial, patch, command) });
+    const revised = reviseCockpit(initial, patch, command);
+    get().setInput({
+      cockpit_mask: revised,
+      // A legacy detent command must replace an earlier precise fraction too.
+      ...(command === 3
+        ? { parking_brake: unpackCockpit(revised).parkingStrength / 3 }
+        : {}),
+    });
+  },
+  setParkingBrake(fraction) {
+    if (!Number.isFinite(fraction)) return;
+    const value = Math.round(Math.max(0, Math.min(1, fraction)) * 1000) / 1000;
+    const current = inputRef.current;
+    if (current.parking_brake === value) return;
+    const initial =
+      cockpitRequestBase(current) ??
+      reviseCockpit(
+        undefined,
+        {
+          lights: hasFlag(current.vehicleMask, VehicleFlags.HEADLIGHTS) ? 2 : 0,
+          assist: hasFlag(current.vehicleMask, VehicleFlags.TCS) ? 0 : 2,
+        },
+        0,
+      );
+    get().setInput({
+      cockpit_mask: reviseCockpit(
+        initial,
+        // Preserve the 1/3 and 2/3 presets after rounding to 0.1% precision.
+        {
+          parking: value > 0,
+          parkingStrength:
+            value > 0 ? Math.max(1, Math.ceil(value * 3 - 0.0015)) : 0,
+        },
+        3,
+      ),
+      parking_brake: value,
+    });
   },
   setAssist(assist, traction) {
     const current = inputRef.current;

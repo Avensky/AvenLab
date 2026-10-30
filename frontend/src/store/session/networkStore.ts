@@ -79,6 +79,7 @@ export interface PhysicsEntitySnapshot {
   /** Optional confirmed lamp states; absent means the adapter does not supply them. */
   cluster_mask?: number;
   cockpit_mask?: number;
+  parking_brake?: number; // v7 confirmed continuous cable latch, independent of P
   cabin_mask?: number;
   cruise_target_kph?: number | null;
 

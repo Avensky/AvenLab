@@ -17,16 +17,18 @@ its own input source. Keyboard/gamepad input and another held source remain inta
 
 The lower-right stack is radio, optional climate, optional centered emergency
 lights, a parking-brake/shifter row, then the assist/pedal row. The parking lever
-and shifter are peers with the same 90 px height. The assist bank uses three
-columns and two rows; its buttons are about half a pedal in each dimension.
-On narrow displays the rows wrap within the viewport. The radio keeps its
+and shifter are peers with the same 128 px height. The HUD defaults to three silver assist switches left of the pedals. A saved
+expanded bank remains available from Cockpit Drive.
+On narrow portrait displays the enlarged mechanical row clears the wheel,
+while assists and pedals retain one bottom row. The radio keeps its
 existing expand control; climate has no expand/collapse arrows.
 
 Cockpit → **Climate** contains all HVAC controls, a **COMPACT HUD / FULL HUD**
-choice and a driving-HUD visibility switch. Climate and the separate emergency
-light widget default to hidden. The full cockpit pages remain available when
-those widgets are hidden. The optional emergency button is a centered triangle,
-including its hit area; the cockpit header has no hazard-button duplicate.
+choice, a live preview and driving-HUD visibility switches. Compact removes
+the dials and restores the round emergency-light switch in the clock strip. Climate and the separate emergency
+light widget default to hidden. The cockpit Climate page remains available when
+its driving widget is hidden. Its emergency switch is centered and round; the
+radio and climate unit share a silver frame. The header has no hazard duplicate.
 
 Standard and Controller layouts retain independent touch/console master choices.
 Radio playback continues when its widget is hidden. Ignition, gauges, wheel and
@@ -135,8 +137,10 @@ with a short CSS transition rather than a new animation loop. Visual lock is
 
 The cap and both neighboring buttons use one polar layout in
 `ui/Cockpit/stalks/geometry.ts`. Angles are measured counterclockwise from
-3 o'clock. Every target uses a 34.5%-of-wheel-width radius and ±13° spacing.
-Change the complete layout entry to move all three together. Labels are tangent
+3 o'clock. Lights/wipers use a 31%-of-wheel-width radius, ±11.5° spacing and 0.9 face scale.
+Cruise uses a 27% radius, ±10.5° spacing and 0.75 scale.
+Change the complete layout entry to move all three together. Direction targets
+stay fixed during gestures; only the cap and rod follow the pulled detent. Labels are tangent
 to the wheel; the right-side cruise direction placement is mirrored so RES/+ is
 above SET/−. The full cockpit cruise diagram is mirrored in the same way.
 
@@ -157,7 +161,8 @@ Direction targets and drags keep their pulled pose until release. Wipers and
 cruise spring back to center; turn signals latch. Up advances Right through Off,
 down advances Left through Off. Cockpit Lights uses vertical ▲ right / ▼ left
 buttons and the same mutually exclusive turn-signal commands. Hazards remain a
-separate command. Cruise repeats every 350 ms while held. Washer stays requested
+separate command. Cruise and signal directions repeat every 350 ms while held. Signals step
+through left/off/right in order, with the same result from two clicks. Washer stays requested
 for the hold; programmatic clicks retain a short pulse.
 
 Escape cancels the selected turn signal or cruise. The full cockpit retains
@@ -198,26 +203,33 @@ selected. P/R retain the existing speed gates. A visible recorder keeps A/Cross
 priority; the old dyno fallback remains when a gear-down action is unavailable.
 Legacy clients can still request the earlier locked manual mode explicitly.
 
-The parking brake remains independent of the gear selector: selecting a forward
-gear cannot release its cable tension, and P locks through its gear selection.
-The driving HUD requests immediate momentary cable force while its lever or
-simple P button is held. Release removes only the `touch-parking` analog source;
-a simultaneous keyboard/controller pull and deliberate latched tension survive.
-The nearby 1/2/3 detents set a parking latch, and 0 releases that latch. Rust
-continues to take the maximum of latched and momentary force and bypass rear ABS.
+The parking cable remains independent of gear selection and the momentary
+keyboard/controller handbrake. HUD and cockpit now share a continuous control:
+hold increases the current pressure over a 1200 ms full pull; release keeps it.
+Short pulls add pressure instead of releasing it. The explicit 0 target clears
+the latch. Arrow keys adjust 5%, Home releases and End applies full pressure;
+dragging directly adjusts force. Interruption stops the active timer and retains
+the last deliberate value. A pull runs a 20 Hz timer only while pressure grows.
 
-The full Cockpit Drive page retains the slower parking ratchet: hold to build
-three detents (250 ms, then every 300 ms), release to keep that tension, tap to
-release. Dragging and direct level targets remain available. Pause/blur/unmount
-cancel its timer without discarding an intentional latch. This distinction keeps
-a fast drifting control on the driving HUD and a deliberate parking control in
-the menu. Mechanical wear/cable failure is not added by this interface patch;
-that requires an explicit authoritative Rust model.
+The resting grip points horizontally toward the floor horizon (−180°); full
+pressure raises it to −90° with maximum reach. At full force its vertical height
+matches the 128 px shifter module. Level 3 is the largest optional crystal. There
+is no PULL label or contact glow/border flash. Angle and reach show pressure;
+the simple P appearance uses a pressure arc. The normal slider/key focus locator
+remains available without painting a held switch face.
 
-Cockpit → **Drive** saves **REALISTIC LEVER / SIMPLE BUTTON** and **Parking brake
-crystals** preferences. Crystals default off and numeric detents remain available.
-Changing the artwork never changes tension, gear or assist state. The stitched
-grip and boot are SVG artwork in `mechanical/ParkingArtwork.tsx`.
+Cockpit Drive saves REALISTIC LEVER / SIMPLE BUTTON, optional crystals, and
+**Traction controls on driving HUD**. Three assist switches are the default; the
+expanded bank is a saved option. These preferences never alter vehicle function
+state. The silver faces and black text/icons retain temporary contact feedback.
+
+Precise pressure requires cockpit v7: optional `parking_brake` in input and
+snapshot carries the 0–1 latch independently of packed commands. The client
+rounds to 0.1% and keeps legacy detents stable at one-third/two-thirds boundaries.
+Rust applies this exact cable fraction through the existing rear-brake solver,
+combining it with momentary handbrake force by maximum. Transmission P remains
+independent. Other actions written before a send retain the fraction. Older
+servers use the existing three detents until rebuilt with v7.
 
 ABS uses the existing tire-budget assist; Q remains its shortcut. T toggles TRAC.
 TRAC OFF rearms above 50 km/h and stays rearmed until explicitly disabled again.
@@ -266,7 +278,8 @@ updates. A React Profiler regression checks 20 position projections with zero
 extra dashboard commits. Rings update one stroke offset;
 there are no extra physics, network or per-gauge animation loops.
 
-Setup advertises `hud.cockpit_version: 6`; v6 adds a held headlight flash, v5 enables airflow/fan4 and v4
+Setup advertises `hud.cockpit_version: 7`; v7 adds the optional precise cable
+fraction in input/snapshot. v6 adds a held headlight flash, v5 enables airflow/fan4 and v4
 enables assisted forward gear taps.
 Version 3 adds key/climate/timed-wipe controls and version 2 the basic physical
 controls. The UI disables actions missing from the server calibration. `cockpit_mask` keeps its existing
@@ -367,7 +380,7 @@ Checks cover independent arcs, knob/key packing, source release, H-lane animatio
 GPS intersections/disconnected routes, camera transforms, inspection restoration
 and existing input routing. Rust tests and a live optimized-server WebSocket
 check cover real start/abort/stop, extended climate, wiping and gear overrides.
-Chromium checks cover desktop and a 390 × 844 mobile viewport, hit targets,
+Chromium checks cover desktop and 390/320 × 844 mobile viewports, hit targets,
 held/released commands, all seven themes and zero browser errors. These checks
 do not measure gameplay FPS or establish physical-phone behavior. Rebuild and
 restart Rust when applying the cumulative update. Current patch validation is
@@ -389,12 +402,15 @@ row. The mission readout, route status and server clock sit inside the circle.
 Road coordinates use equal horizontal/vertical spans; transparent corners ignore
 waypoint clicks. The full cockpit GPS page keeps its square map.
 
-The shifter gate is a fixed 90 px circle with a 26 px knob and 17 px gear
-targets. Its parking-brake sibling shares the same height. The compact 3 × 2
-assist bank sits beside the pedals when space permits and wraps above them on
-narrow screens. Optional crystals occupy the parking-detent column; numeric
-detents replace them when hidden. The dashboard BRAKE lamp reports accepted
-brake state independently of the physical button's contact highlight.
+The shifter gate is a 128 px circle. Its progressive parking-brake sibling has
+the same height, and the fully raised grip spans that height. Three switches
+sit left of the pedals; phones use a narrow vertical bank at the same baseline.
+The expanded bank remains a saved choice. Optional crystals grow from level 1
+to level 3; numeric presets remain available when crystals are hidden.
+
+Engine-off-only dimming follows the confirmed engine flag on Dashboard's
+`data-engine-on` attribute. Running brightness is unchanged. High contrast
+retains full instrument gain. Dimming creates no additional telemetry timer.
 
 ## Momentary console feedback
 

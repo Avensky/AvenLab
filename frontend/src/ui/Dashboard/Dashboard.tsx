@@ -119,11 +119,13 @@ const FuelInstrument = memo(function FuelInstrument() {
 });
 export default function Dashboard() {
   const signal = useVehicleTelemetryStore((s) => s.data.signal);
+  const engineOn = useVehicleTelemetryStore((s) => s.data.engineOn);
   useEffect(startVehicleTelemetry, []);
   return (
     <section
       className="driving-dashboard"
       data-signal={signal}
+      data-engine-on={engineOn}
       aria-label="Vehicle instruments"
     >
       <div className="dashboard-cluster">

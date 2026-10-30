@@ -4,7 +4,13 @@ import { useMomentaryFeedback } from "./useMomentaryFeedback";
 
 /** Shared emergency-light switch. This changes the vehicle flag; its visibility
  * is a separate preference. Press glow releases even while hazards stay on. */
-export function HazardButton({ text = false }: { text?: boolean }) {
+export function HazardButton({
+  text = false,
+  round = false,
+}: {
+  text?: boolean;
+  round?: boolean;
+}) {
   const flags = useInputStore((s) => s.input.vehicleMask),
     contact = useMomentaryFeedback();
   return (
@@ -12,6 +18,7 @@ export function HazardButton({ text = false }: { text?: boolean }) {
       {...contact}
       type="button"
       className="physical-hazard"
+      data-shape={round ? "round" : "triangle"}
       aria-label="Hazards"
       aria-pressed={hasFlag(flags, VehicleFlags.HAZARDS)}
       onClick={() =>

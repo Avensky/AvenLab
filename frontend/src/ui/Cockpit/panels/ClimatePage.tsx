@@ -1,9 +1,10 @@
 import { usePreferencesStore } from "../../../store/preferences/index";
 import { ClimatePanel } from "../ClimatePanel";
 
-/** Full-size cabin controls stay on their own page. The size choice configures
- * the driving widget, replacing the old cluster of expand/collapse arrows. */
+/** Saved size controls both the live preview and driving widget. Choosing
+ * compact restores emergency-light visibility and actually removes the dials. */
 export function ClimatePage() {
+  const hazards = usePreferencesStore((s) => s.hudGroups.hazards);
   const size = usePreferencesStore((s) => s.climateHudSize),
     visible = usePreferencesStore((s) => s.hudGroups.climate);
   return (
@@ -19,7 +20,17 @@ export function ClimatePage() {
             type="button"
             aria-pressed={size === value}
             onClick={() =>
-              usePreferencesStore.getState().update({ climateHudSize: value })
+              usePreferencesStore.getState().update({
+                climateHudSize: value,
+                ...(value === "compact"
+                  ? {
+                      hudGroups: {
+                        ...usePreferencesStore.getState().hudGroups,
+                        hazards: true,
+                      },
+                    }
+                  : {}),
+              })
             }
           >
             {value === "compact" ? "COMPACT HUD" : "FULL HUD"}
@@ -36,8 +47,19 @@ export function ClimatePage() {
         >
           {visible ? "HUD: SHOW" : "HUD: HIDE"}
         </button>
+        <button
+          type="button"
+          role="switch"
+          aria-label="Emergency lights on driving HUD"
+          aria-checked={hazards}
+          onClick={() =>
+            usePreferencesStore.getState().setHudGroup("hazards", !hazards)
+          }
+        >
+          EMERGENCY LIGHTS: {hazards ? "SHOW" : "HIDE"}
+        </button>
       </div>
-      <ClimatePanel size="full" />
+      <ClimatePanel size={size} />
     </div>
   );
 }
