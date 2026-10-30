@@ -226,8 +226,9 @@ export function Stalk({
     if (tap) callbacks.current.onTurn();
   };
   const point = (a: number, r = reach) => stalkPoint(a, r);
-  // Direction buttons remain fixed for repeated clicks. Only the cap/rod
-  // follows the pulled detent; base configuration still moves the whole set.
+  // Rotate one rigid assembly: cap, rod and both neighboring buttons retain
+  // their spacing and turn together. Pointer capture keeps a held target owned
+  // even while its painted face moves away from the original contact point.
   const position = latched ? detent : pull;
   const actuatorAngle =
     position === 0
@@ -241,6 +242,7 @@ export function Stalk({
       style={
         {
           "--stalk-scale": scale,
+          transform: `rotate(${angle - actuatorAngle}deg)`,
         } as CSSProperties
       }
     >
@@ -248,7 +250,7 @@ export function Stalk({
         className="column-stalk-rod"
         style={
           {
-            "--stalk-angle": `${-actuatorAngle}deg`,
+            "--stalk-angle": `${-angle}deg`,
             width: `${reach}%`,
           } as CSSProperties
         }
@@ -269,8 +271,8 @@ export function Stalk({
         }
         style={
           {
-            ...point(actuatorAngle),
-            "--stalk-tangent": `${stalkTangent(actuatorAngle)}deg`,
+            ...point(angle),
+            "--stalk-tangent": `${stalkTangent(angle)}deg`,
           } as CSSProperties
         }
         onContextMenu={(e) => e.preventDefault()}

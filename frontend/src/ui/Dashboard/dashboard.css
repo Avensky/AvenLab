@@ -368,11 +368,5 @@ html[data-reduce-motion="true"] .hero-ready-bolt {
   }
 }
 
-/* Static instrument dimming leaves the opaque gauge artwork intact and adds no
-   telemetry/render timer. High contrast retains the original readable gain. */
-.driving-dashboard[data-engine-on="false"] .dashboard-cluster {
-  filter: brightness(0.42);
-}
-html[data-high-contrast="true"] .driving-dashboard .dashboard-cluster {
-  filter: none;
-}
+/* Dashboard.tsx combines saved gain and confirmed engine-off dimming into one
+   static filter. The same instrument component is previewed in the cockpit. */

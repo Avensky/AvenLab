@@ -263,20 +263,32 @@ export function SettingsMenu() {
                     ),
                   }),
               },
-              {
-                id: "research-hud",
-                label: "Research cabin strip",
-                description:
-                  "A/C and CAN masks remain available in Cockpit → Research.",
-                value: prefs.researchHud ? "Show" : "Hide",
-                action: () => prefs.update({ researchHud: !prefs.researchHud }),
-              },
-              ...HUD_GROUPS.map((id): MenuRow => ({
-                id: `hud-${id}`,
-                label: groupLabels[id],
-                value: prefs.hudGroups[id] ? "Show" : "Hide",
-                action: () => prefs.setHudGroup(id, !prefs.hudGroups[id]),
-              })),
+              // Climate owns its hazard-button option. One row hides the whole
+              // unit; no second cabin-strip gate can leave a hidden strip live.
+              ...HUD_GROUPS.filter((id) => id !== "hazards").map(
+                (id): MenuRow => ({
+                  id: `hud-${id}`,
+                  label: groupLabels[id],
+                  value:
+                    prefs.hudGroups[id] &&
+                    (id !== "ignition" || prefs.ignitionVisibility !== "hidden")
+                      ? "Show"
+                      : "Hide",
+                  action: () => {
+                    const shown =
+                      prefs.hudGroups[id] &&
+                      (id !== "ignition" ||
+                        prefs.ignitionVisibility !== "hidden");
+                    prefs.setHudGroup(id, !shown);
+                    if (
+                      id === "ignition" &&
+                      !shown &&
+                      prefs.ignitionVisibility === "hidden"
+                    )
+                      prefs.update({ ignitionVisibility: "auto" });
+                  },
+                }),
+              ),
               {
                 id: "minimap-size",
                 label: "Minimap size",

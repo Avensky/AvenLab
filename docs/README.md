@@ -5,3 +5,5 @@ Start with PROJECT_GUIDE.md for feature/state ownership, REPO_AUDIT.md for findi
 COCKPIT_REFACTOR_UPDATE.md maps the current cockpit pages, controls, state owners and validation. COCKPIT_UI.md retains the detailed interaction/protocol guide.
 
 PROGRESSIVE_COCKPIT_UPDATE.md documents the current continuous brake, compact climate, engine-off dimming and three-switch HUD update.
+
+- [INTUITIVE_COCKPIT_UPDATE.md](INTUITIVE_COCKPIT_UPDATE.md): climate master visibility, wheel-based system selection, canonical Research links and Settings return routing.

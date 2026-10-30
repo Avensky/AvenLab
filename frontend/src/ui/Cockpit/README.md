@@ -5,13 +5,14 @@ Use `index.ts` for public components. The root shell composes focused feature fo
 - [stalks](stalks/README.md): one circular layout for each lever and its adjacent buttons; held cap flash.
 - [mechanical](mechanical/README.md): shifter and a shared continuous parking latch, appearances and optional crystals.
 - [ignition](ignition/README.md): key artwork and complete light ring outside its labels.
-- [panels](panels/README.md): cockpit tabs, climate size/visibility, Research controls and common navigation.
+- [panels](panels/README.md): cockpit tabs, climate size/visibility, canonical Research shortcuts, shared steering-wheel selection and common navigation.
 - [styles](styles/README.md): readable CSS sections with one shared entry and editing boundaries.
 
 | Root module | Responsibility |
 | --- | --- |
 | CockpitPanel.tsx | Shared menu header/theme, physical controller press bridge, selected page and confirmed footer |
 | ColumnStalks.tsx | Stable lever composition and input command wiring |
+| ResearchControls.tsx | CAN-only instrumentation; other options link to their owning pages |
 | DriveControls.tsx / DriveAssists.tsx | Confirmed selector/brake adapters and deliberate ABS/TCS/Sport requests |
 | MechanicalControls.tsx / controlGeometry.ts | Stable compatibility entries; new code uses mechanical/index.ts |
 | IgnitionSwitch.tsx / starterRelayAudio.ts | Key input lifetime and confirmed starter clicking; no engine simulation |

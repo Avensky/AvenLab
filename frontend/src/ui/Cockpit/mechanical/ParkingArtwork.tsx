@@ -1,8 +1,8 @@
 import type { Ref } from "react";
 import { usePreferencesStore } from "../../../store/preferences/index";
 
-/** Optional crystal readout. Plain detent buttons use the same cable requests;
- * choosing a visual never changes the latch or the drift force. */
+/** Optional crystal presets. The realistic default has no numbered controls;
+ * hiding the crystals never changes the latch or the drift force. */
 export function ParkingDetents({
   strength,
   disabled,
@@ -13,6 +13,7 @@ export function ParkingDetents({
   onSelect: (level: number) => void;
 }) {
   const crystals = usePreferencesStore((s) => s.parkingCrystals);
+  if (!crystals) return null;
   return (
     <div
       className="parking-levels"
@@ -31,21 +32,17 @@ export function ParkingDetents({
           data-filled={strength >= level - 0.002}
           onClick={() => onSelect(level)}
         >
-          {crystals ? (
-            <svg
-              className="parking-crystal"
-              viewBox="0 0 12 16"
-              preserveAspectRatio="none"
-              aria-hidden="true"
-            >
-              <path
-                d="M6 0L11.5 3 11.5 13 6 16 .5 13 .5 3Z"
-                vectorEffect="non-scaling-stroke"
-              />
-            </svg>
-          ) : (
-            <span className="parking-detent-value">{level}</span>
-          )}
+          <svg
+            className="parking-crystal"
+            viewBox="0 0 12 16"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            <path
+              d="M6 0L11.5 3 11.5 13 6 16 .5 13 .5 3Z"
+              vectorEffect="non-scaling-stroke"
+            />
+          </svg>
         </button>
       ))}
     </div>
@@ -83,7 +80,6 @@ export function ParkingLeverArtwork({
           <path d="M1 6 18 4 30 2H91Q99 2 99 10T91 18H30L18 16H1Z" />
           <path className="parking-grip" d="M33 3H88Q94 3 94 10T88 17H33Z" />
           <path className="parking-stitch" d="M35 7H89" />
-          <rect x="95" y="6" width="5" height="8" rx="2" />
         </svg>
       </span>
     </>

@@ -59,42 +59,38 @@ test("parking brake requests cannot move the selector or mark other controls pen
     const { useUIStore: ui } = await load("store/menus/uiStore.ts");
     network.getState().setConnected(true);
     network.getState().setPlayerId("me");
-    configs
-      .getState()
-      .receive("me", {
-        max_speed: 70,
-        hud: {
-          telemetry_mask: 127,
-          cockpit_controls: true,
-          cockpit_version: 5,
-        },
-      });
+    configs.getState().receive("me", {
+      max_speed: 70,
+      hud: {
+        telemetry_mask: 127,
+        cockpit_controls: true,
+        cockpit_version: 5,
+      },
+    });
     ui.setState({ screen: "sandbox", overlay: null, isModeLoading: false });
     prefs.getState().update({ shiftLayout: "h-pattern" });
     let tick = 0;
     const snapshot = (mask, gear = 6) => {
-      network
-        .getState()
-        .setSnapshot(
-          {
-            tick: ++tick,
-            entities: [
-              {
-                id: "me",
-                vehicle_id: "brz",
-                position: [0, 1, 0],
-                rotation: [0, 0, 0, 1],
-                speed: 0,
-                rpm: 850,
-                gear,
-                vehicle_mask: 97,
-                player_mask: 0,
-                cockpit_mask: mask,
-              },
-            ],
-          },
-          performance.now(),
-        );
+      network.getState().setSnapshot(
+        {
+          tick: ++tick,
+          entities: [
+            {
+              id: "me",
+              vehicle_id: "brz",
+              position: [0, 1, 0],
+              rotation: [0, 0, 0, 1],
+              speed: 0,
+              rpm: 850,
+              gear,
+              vehicle_mask: 97,
+              player_mask: 0,
+              cockpit_mask: mask,
+            },
+          ],
+        },
+        performance.now(),
+      );
       updateVehicleTelemetry();
     };
     root = createRoot(document.getElementById("root"));
@@ -102,6 +98,11 @@ test("parking brake requests cannot move the selector or mark other controls pen
     await t.test(
       "unacknowledged brake changes leave sixth gear and assist indicators alone",
       async () => {
+        // Preset controls are now an opt-in crystal appearance; the realistic
+        // default uses a timed pull and an unlabelled release cap.
+        await act(async () =>
+          prefs.getState().update({ parkingCrystals: true }),
+        );
         await act(async () => {
           input
             .getState()

@@ -366,7 +366,7 @@ test("research controls keep input, display and audio updates independent", asyn
       },
     );
     await t.test(
-      "continuous holds retain partial pressure, shorter pulls add force and zero releases explicitly",
+      "holds add retained pressure, quick taps release for drifting, and the metal cap releases explicitly",
       async (t) => {
         const { ParkingBrakeControl } = await load(
           "ui/Cockpit/DriveControls.tsx",
@@ -391,7 +391,9 @@ test("research controls keep input, display and audio updates independent", asyn
             by("Parking brake").dispatchEvent(event);
           });
         const advance = async (ms) => {
-          const entry = [...timers].find(([, value]) => value.ms === 50);
+          const entry = [...timers].find(
+            ([, value]) => value.ms === 50 || value.ms === 230,
+          );
           assert.ok(entry);
           timers.delete(entry[0]);
           clock += ms;
@@ -403,7 +405,7 @@ test("research controls keep input, display and audio updates independent", asyn
         try {
           const gear = unpackCockpit(input.getState().input.cockpit_mask).gear;
           await point("pointerdown");
-          await advance(300);
+          await advance(330);
           assert.equal(input.getState().input.parking_brake, 0.25);
           await point("pointerup");
           await click("Parking brake");
@@ -413,7 +415,7 @@ test("research controls keep input, display and audio updates independent", asyn
             "post-release click cannot clear pressure",
           );
           await point("pointerdown");
-          await advance(120);
+          await advance(240);
           await point("pointerup");
           assert.equal(
             input.getState().input.parking_brake,
@@ -421,7 +423,7 @@ test("research controls keep input, display and audio updates independent", asyn
             "a short pull adds pressure",
           );
           await point("pointerdown");
-          await advance(1200);
+          await advance(780);
           await point("pointerup");
           assert.equal(input.getState().input.parking_brake, 1);
           assert.equal(timers.size, 0);
@@ -432,13 +434,18 @@ test("research controls keep input, display and audio updates independent", asyn
           assert.equal(
             document.querySelectorAll('.parking-levels [data-filled="true"]')
               .length,
-            3,
+            0,
           );
           assert.equal(document.querySelectorAll(".parking-crystal").length, 0);
           await act(async () =>
             prefs.getState().update({ parkingCrystals: true }),
           );
           assert.equal(document.querySelectorAll(".parking-crystal").length, 3);
+          assert.equal(
+            document.querySelectorAll('.parking-levels [data-filled="true"]')
+              .length,
+            3,
+          );
           assert.equal(document.querySelector(".parking-pull-label"), null);
           assert.equal(input.getState().input.parking_brake, 1);
           await point("pointerdown");
@@ -446,9 +453,10 @@ test("research controls keep input, display and audio updates independent", asyn
           await point("pointerup");
           assert.equal(
             input.getState().input.parking_brake,
-            1,
-            "even a very short pull keeps full pressure",
+            0,
+            "a quick tap releases full pressure for drifting",
           );
+          await act(async () => input.getState().setParkingBrake(0.6));
           await click("Release parked brake");
           assert.equal(input.getState().input.parking_brake, 0);
           const key = (type) =>
@@ -463,12 +471,12 @@ test("research controls keep input, display and audio updates independent", asyn
               ),
             );
           await key("keydown");
-          await advance(120);
+          await advance(240);
           await key("keyup");
           assert.equal(input.getState().input.parking_brake, 0.1);
           assert.equal(timers.size, 0);
           await point("pointerdown");
-          await advance(120);
+          await advance(240);
           await act(async () => window.dispatchEvent(new Event("blur")));
           assert.equal(timers.size, 0);
           assert.equal(input.getState().input.parking_brake, 0.2);

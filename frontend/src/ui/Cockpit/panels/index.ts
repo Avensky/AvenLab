@@ -7,3 +7,8 @@ export { HudVisibilityPanel } from "./HudVisibilityPanel";
 export { useCockpitNavigation } from "./useCockpitNavigation";
 export { COCKPIT_TABS } from "./tabs";
 export { ClimatePage } from "./ClimatePage";
+export { BrightnessPage } from "./BrightnessPage";
+export {
+  SteeringSystemPicker,
+  type SteeringSystem,
+} from "./SteeringSystemPicker";

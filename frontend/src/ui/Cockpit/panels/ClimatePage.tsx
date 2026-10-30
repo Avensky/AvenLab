@@ -1,8 +1,9 @@
 import { usePreferencesStore } from "../../../store/preferences/index";
 import { ClimatePanel } from "../ClimatePanel";
 
-/** Saved size controls both the live preview and driving widget. Choosing
- * compact restores emergency-light visibility and actually removes the dials. */
+/** Climate is the master visibility gate for the entire clock/hazard/HVAC unit.
+ * Size and hazard preferences survive hiding it; none of these edits send a
+ * cabin command. Cockpit controls remain available while the driving HUD hides. */
 export function ClimatePage() {
   const hazards = usePreferencesStore((s) => s.hudGroups.hazards);
   const size = usePreferencesStore((s) => s.climateHudSize),
@@ -18,6 +19,7 @@ export function ClimatePage() {
           <button
             key={value}
             type="button"
+            aria-label={value === "compact" ? "COMPACT HUD" : "FULL HUD"}
             aria-pressed={size === value}
             onClick={() =>
               usePreferencesStore.getState().update({
@@ -45,7 +47,7 @@ export function ClimatePage() {
             usePreferencesStore.getState().setHudGroup("climate", !visible)
           }
         >
-          {visible ? "HUD: SHOW" : "HUD: HIDE"}
+          {visible ? "HIDE HUD" : "SHOW HUD"}
         </button>
         <button
           type="button"
@@ -56,10 +58,15 @@ export function ClimatePage() {
             usePreferencesStore.getState().setHudGroup("hazards", !hazards)
           }
         >
-          EMERGENCY LIGHTS: {hazards ? "SHOW" : "HIDE"}
+          {hazards ? "HIDE HAZARD BUTTON" : "SHOW HAZARD BUTTON"}
         </button>
       </div>
-      <ClimatePanel size={size} />
+      <div
+        className="climate-cockpit-controls"
+        aria-label="Cockpit climate controls"
+      >
+        <ClimatePanel size={size} showHazards={hazards} />
+      </div>
     </div>
   );
 }

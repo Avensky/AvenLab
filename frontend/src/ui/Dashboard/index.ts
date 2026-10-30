@@ -5,3 +5,4 @@ export { default as FuelTemp } from "./FuelTemp";
 export { default as FuelGauge } from "./FuelGauge";
 export { default as TempGauge } from "./TempGauge";
 export { ResourceRing } from "./ResourceRings";
+export { instrumentBrightness } from "./dashboardModel";

@@ -157,7 +157,7 @@ test("mobile HUD groups, assisted shifter and enlarged resource dials", async (t
       async () => {
         const rest = parkingLeverPose(0),
           raised = parkingLeverPose(3);
-        assert.ok(Math.abs(rest.angle + 180) < 1e-9);
+        assert.ok(Math.abs(rest.angle + 145) < 1e-9);
         assert.ok(Math.abs(raised.angle + 90) < 1e-9);
         assert.ok(rest.reach < raised.reach);
         let angle = rest.angle;
@@ -177,8 +177,11 @@ test("mobile HUD groups, assisted shifter and enlarged resource dials", async (t
               document
                 .querySelector(".mechanical-handbrake")
                 .style.getPropertyValue("--parking-angle"),
-            ) + 180,
+            ) + 145,
           ) < 1e-9,
+        );
+        await act(async () =>
+          prefs.getState().update({ parkingCrystals: true }),
         );
         await click("Parking brake 67 percent");
         assert.equal(

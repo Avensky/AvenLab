@@ -8,8 +8,13 @@ export { isDrivingScreen } from "./types";
 export const useUIStore = create<UIState>()((set, get, api) => ({
   ...createMenuActions(set, get, api),
   settingsTab: "display",
+  settingsParent: null,
   openSettings: (settingsTab = "display") =>
-    set({ overlay: "settings", settingsTab }),
+    set({
+      overlay: "settings",
+      settingsTab,
+      settingsParent: get().overlay === "cockpit" ? "cockpit" : null,
+    }),
   cockpitTab: "drive",
   setCockpitTab: (cockpitTab) => set({ cockpitTab }),
   openCockpit: (cockpitTab = "drive") => {
@@ -18,7 +23,12 @@ export const useUIStore = create<UIState>()((set, get, api) => ({
   },
   screen: "main",
   setScreen: (screen) => {
-    set({ screen, overlay: null, vehicleSelectionParent: null });
+    set({
+      screen,
+      overlay: null,
+      vehicleSelectionParent: null,
+      settingsParent: null,
+    });
   },
   overlay: null,
   debugMenuParent: "pause",
@@ -106,10 +116,12 @@ export const useUIStore = create<UIState>()((set, get, api) => ({
     set({ overlay: "pause" });
   },
   closeOverlay: () => {
-    set({ overlay: null, vehicleSelectionParent: null });
+    set({ overlay: null, vehicleSelectionParent: null, settingsParent: null });
   },
   backToParentMenu: () => {
-    if (get().overlay === "debug_menu")
+    if (get().overlay === "settings" && get().settingsParent === "cockpit")
+      set({ overlay: "cockpit", settingsParent: null });
+    else if (get().overlay === "debug_menu")
       set({ overlay: get().debugMenuParent, debugMenuParent: "pause" });
     else if (get().overlay === "vehicle_select")
       set({

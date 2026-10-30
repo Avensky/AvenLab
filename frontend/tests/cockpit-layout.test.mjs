@@ -20,8 +20,9 @@ import {
 import { parkingPressureAfterHold } from "../src/ui/Cockpit/mechanical/pressure.ts";
 
 test("parking pressure grows with held time, retains the starting tension and clamps at full", () => {
-  assert.equal(parkingPressureAfterHold(0, 300), 0.25);
-  assert.equal(parkingPressureAfterHold(0.37, 120), 0.47);
+  assert.equal(parkingPressureAfterHold(0, 150), 0.25);
+  assert.equal(parkingPressureAfterHold(0.37, 60), 0.47);
+  assert.equal(parkingPressureAfterHold(0, 600), 1);
   assert.equal(parkingPressureAfterHold(0.8, 1200), 1);
   assert.equal(parkingPressureAfterHold(0.8, 0), 0.8);
   assert.equal(parkingPressureAfterHold(0.8, -100), 0.8);
@@ -84,6 +85,10 @@ test("cockpit layout preferences preserve electronics and physical source owners
     });
   }
   dom.window.HTMLElement.prototype.scrollIntoView = () => {};
+  // React is imported before this test installs JSDOM; its legacy input-event
+  // fallback needs these shims when the real brightness range receives focus.
+  dom.window.HTMLElement.prototype.attachEvent = () => {};
+  dom.window.HTMLElement.prototype.detachEvent = () => {};
   const server = await createServer({
       server: { middlewareMode: true, hmr: false, ws: false },
       appType: "custom",
@@ -218,6 +223,7 @@ test("cockpit layout preferences preserve electronics and physical source owners
           i.IgnitionArtwork,
           p.ClimatePage,
           p.HudVisibilityPanel,
+          p.BrightnessPage,
         ])
           assert.equal(typeof value, "function");
       },
@@ -245,35 +251,146 @@ test("cockpit layout preferences preserve electronics and physical source owners
       },
     );
     await t.test(
-      "Research restores climate/hazards and hides levers/key/GPS without sending commands",
+      "Research links to canonical controls and one HUD layout menu, with Back returning to the cockpit",
       async () => {
-        const { ResearchPanel } = await load("ui/Cockpit/panels/index.ts"),
-          { DrivingHUD } = await load("ui/DrivingHUD.tsx");
-        await render(h(ResearchPanel));
-        const before = {
-          v: input.getState().input.vehicleMask,
-          c: input.getState().input.cabin_mask,
-        };
-        for (const label of [
-          "CLIMATE CONTROLS",
-          "EMERGENCY LIGHTS",
-          "WHEEL LEVERS",
-          "IGNITION KEY",
-          "GPS / MINIMAP",
-        ])
-          await click(label);
-        assert.equal(input.getState().input.vehicleMask, before.v);
-        assert.equal(input.getState().input.cabin_mask, before.c);
-        await render(h(DrivingHUD));
-        assert.equal(document.querySelector(".column-stalks"), null);
-        assert.ok(document.querySelector(".wheel-artwork"));
-        assert.equal(document.querySelector(".ignition-system"), null);
-        assert.equal(document.querySelector(".hud-minimap"), null);
+        const { CockpitPanel } = await load("ui/Cockpit/CockpitPanel.tsx");
+        const { SettingsMenu } = await load("game/menus/SettingsMenu.tsx");
+        const { COCKPIT_TABS } = await load("ui/Cockpit/panels/index.ts");
+        await act(async () => ui.getState().openCockpit("research"));
+        await render(h(CockpitPanel));
         assert.equal(
-          document.querySelectorAll(".hud-climate .physical-hazard").length,
+          document.querySelectorAll('.cockpit-research-page [role="switch"]')
+            .length,
+          0,
+        );
+        assert.equal(
+          document.querySelectorAll(".research-instrumentation button").length,
+          3,
+        );
+        const before = {
+          vehicle: input.getState().input.vehicleMask,
+          cabin: input.getState().input.cabin_mask,
+          cockpit: input.getState().input.cockpit_mask,
+        };
+        for (const item of COCKPIT_TABS.filter(
+          (item) => item.id !== "research",
+        )) {
+          await click(`Open ${item.label.toLowerCase()} controls`);
+          assert.equal(ui.getState().cockpitTab, item.id);
+          await act(async () => ui.getState().setCockpitTab("research"));
+        }
+        assert.deepEqual(
+          {
+            vehicle: input.getState().input.vehicleMask,
+            cabin: input.getState().input.cabin_mask,
+            cockpit: input.getState().input.cockpit_mask,
+          },
+          before,
+        );
+        const player = input.getState().input.playerMask;
+        await text("CAN LOG");
+        assert.notEqual(input.getState().input.playerMask, player);
+        await click("Open HUD layout settings");
+        assert.equal(ui.getState().overlay, "settings");
+        assert.equal(ui.getState().settingsTab, "hud");
+        await render(h(SettingsMenu));
+        assert.equal(
+          document.querySelectorAll('[data-menu-row="hud-climate"]').length,
           1,
         );
-        assert.ok(document.querySelector(".climate-panel"));
+        assert.equal(
+          document.querySelector('[data-menu-row="research-hud"]'),
+          null,
+        );
+        assert.equal(
+          document.querySelector('[data-menu-row="hud-hazards"]'),
+          null,
+        );
+        await act(async () => ui.getState().backToParentMenu());
+        assert.equal(ui.getState().overlay, "cockpit");
+        assert.equal(ui.getState().cockpitTab, "research");
+      },
+    );
+    await t.test(
+      "the shared wheel selects every column page without sending a vehicle command",
+      async () => {
+        const { CockpitPanel } = await load("ui/Cockpit/CockpitPanel.tsx");
+        await act(async () => ui.getState().openCockpit("lights"));
+        await render(h(CockpitPanel));
+        const before = { ...input.getState().input };
+        for (const id of ["wipers", "cruise", "lights"]) {
+          await click(`Select ${id} stalk`);
+          assert.equal(ui.getState().cockpitTab, id);
+          assert.equal(
+            by(`Select ${id} stalk`).getAttribute("aria-current"),
+            "page",
+          );
+          assert.equal(
+            document.querySelectorAll(".cockpit-wheel-picker button").length,
+            3,
+          );
+          assert.ok(
+            document.querySelector(".cockpit-wheel-picker .wheel-artwork"),
+          );
+        }
+        assert.ok(parseFloat(by("Select cruise stalk").style.left) > 50);
+        assert.deepEqual(input.getState().input, before);
+      },
+    );
+    await t.test(
+      "hiding climate always removes its entire HUD while retaining hazards, size and electronics",
+      async () => {
+        const { ClimatePage } = await load("ui/Cockpit/panels/index.ts");
+        const { DrivingHUD } = await load("ui/DrivingHUD.tsx");
+        await render(h("div", null, h(ClimatePage), h(DrivingHUD)));
+        const before = { ...input.getState().input };
+        for (const size of ["compact", "full"])
+          for (const hazards of [true, false]) {
+            await act(async () =>
+              prefs.getState().update({
+                climateHudSize: size,
+                hudGroups: {
+                  ...prefs.getState().hudGroups,
+                  climate: true,
+                  hazards,
+                },
+              }),
+            );
+            assert.equal(
+              document.querySelectorAll(".driving-hud .hud-climate").length,
+              1,
+            );
+            await click("Climate controls on driving HUD");
+            assert.equal(
+              document.querySelector(".driving-hud .hud-climate"),
+              null,
+            );
+            assert.equal(
+              document.querySelector(".driving-hud .climate-panel"),
+              null,
+            );
+            assert.equal(prefs.getState().hudGroups.hazards, hazards);
+            assert.equal(prefs.getState().climateHudSize, size);
+            assert.equal(prefs.getState().researchHud, false);
+            assert.equal(
+              by("Climate controls on driving HUD").textContent.trim(),
+              "SHOW HUD",
+            );
+            await click("Climate controls on driving HUD");
+            assert.equal(
+              document.querySelectorAll(".driving-hud .hud-climate").length,
+              1,
+            );
+          }
+        await click("Climate controls on driving HUD");
+        await text("COMPACT HUD");
+        assert.equal(prefs.getState().hudGroups.hazards, true);
+        assert.equal(
+          document.querySelector(".driving-hud .hud-climate"),
+          null,
+          "size must not unhide the unit through its child hazard option",
+        );
+        assert.deepEqual(input.getState().input, before);
       },
     );
     await t.test(
@@ -328,6 +445,101 @@ test("cockpit layout preferences preserve electronics and physical source owners
       },
     );
     await t.test(
+      "cockpit brightness previews real instruments, persists gain and supports controller adjustment without vehicle requests",
+      async () => {
+        const { CockpitPanel } = await load("ui/Cockpit/CockpitPanel.tsx");
+        const { default: Dashboard } = await load("ui/Dashboard/Dashboard.tsx");
+        await act(async () => ui.getState().openCockpit("brightness"));
+        await render(h(CockpitPanel));
+        assert.ok(
+          document.querySelector(
+            '.cockpit-tabs [data-cockpit-tab="brightness"]',
+          ),
+        );
+        assert.ok(
+          document.querySelector(".dashboard-preview .dashboard-cluster"),
+        );
+        const before = { ...input.getState().input };
+        const slider = by("Dashboard brightness");
+        await act(async () => slider.focus());
+        await act(async () =>
+          slider.dispatchEvent(
+            new window.KeyboardEvent("keydown", {
+              key: "ArrowLeft",
+              code: "ArrowLeft",
+              bubbles: true,
+              cancelable: true,
+            }),
+          ),
+        );
+        assert.equal(prefs.getState().dashboardBrightness, 0.95);
+        await act(async () =>
+          window.dispatchEvent(
+            new CustomEvent("avenlab:panel-action", { detail: "left" }),
+          ),
+        );
+        assert.equal(prefs.getState().dashboardBrightness, 0.9);
+        assert.equal(
+          document.querySelector(".dashboard-preview .dashboard-cluster").style
+            .filter,
+          "brightness(0.9)",
+        );
+        assert.equal(
+          JSON.parse(localStorage.getItem("avenlab-preferences-v1")).state
+            .dashboardBrightness,
+          0.9,
+        );
+        await click("Dashboard on driving HUD");
+        assert.equal(prefs.getState().hudGroups.gauges, false);
+        assert.ok(
+          document.querySelector(".dashboard-preview .dashboard-cluster"),
+          "hidden HUD still has a preview",
+        );
+        await text("RESET BRIGHTNESS");
+        assert.equal(prefs.getState().dashboardBrightness, 1);
+        assert.deepEqual(input.getState().input, before);
+        assert.equal(
+          sanitizePreferences({ dashboardBrightness: -8 }).dashboardBrightness,
+          0.1,
+        );
+        assert.equal(
+          sanitizePreferences({ dashboardBrightness: 8 }).dashboardBrightness,
+          1,
+        );
+        assert.equal(
+          sanitizePreferences({ dashboardBrightness: NaN }).dashboardBrightness,
+          1,
+        );
+        await act(async () =>
+          prefs.getState().update({ dashboardBrightness: 0.5 }),
+        );
+        await render(h(Dashboard));
+        assert.equal(
+          document.querySelector(".dashboard-cluster").style.filter,
+          "brightness(0.5)",
+        );
+        try {
+          await act(async () => {
+            entity.vehicle_mask = 96;
+            fresh();
+          });
+          assert.equal(
+            document.querySelector(".dashboard-cluster").style.filter,
+            "brightness(0.21)",
+          );
+          await act(async () =>
+            prefs.getState().update({ highContrast: true }),
+          );
+          assert.equal(
+            document.querySelector(".dashboard-cluster").style.filter,
+            "brightness(0.5)",
+          );
+        } finally {
+          entity.vehicle_mask = 97;
+        }
+      },
+    );
+    await t.test(
       "three assist switches are the default and saved visibility/layout never changes vehicle functions",
       async () => {
         const { AssistPreferences } = await load("ui/Cockpit/DriveAssists.tsx"),
@@ -374,21 +586,30 @@ test("cockpit layout preferences preserve electronics and physical source owners
       },
     );
     await t.test(
-      "a held signal advances across neutral while fixed buttons also support two clicks",
+      "a held signal advances across neutral and the complete assembly rotates while supporting two clicks",
       async () => {
         const { ColumnStalks } = await load("ui/Cockpit/ColumnStalks.tsx"),
           { requestTurnSignal } = await load("ui/Cockpit/stalks/index.ts");
         await render(h(ColumnStalks));
         await act(async () => requestTurnSignal(-1));
         const button = by("Lights and turn signal stalk up"),
-          position = button.getAttribute("style");
+          assembly = button.closest(".stalk-actuator"),
+          position = assembly.style.transform;
+        const targets = [...assembly.querySelectorAll("button")];
+        assert.equal(targets.length, 3);
         await point("pointerdown", "Lights and turn signal stalk up");
         assert.equal(input.getState().input.vehicleMask & 12, 0);
         await act(
           async () => new Promise((resolve) => setTimeout(resolve, 370)),
         );
         assert.equal(input.getState().input.vehicleMask & 12, 8);
-        assert.equal(button.getAttribute("style"), position);
+        assert.notEqual(assembly.style.transform, position);
+        assert.equal(assembly.style.transform, "rotate(7deg)");
+        assert.ok(
+          targets.every(
+            (target) => target.closest(".stalk-actuator") === assembly,
+          ),
+        );
         await point("pointerup", "Lights and turn signal stalk up");
         // Browsers dispatch a click after pointerup; it must not apply a third step.
         await click("Lights and turn signal stalk up");
@@ -408,9 +629,13 @@ test("cockpit layout preferences preserve electronics and physical source owners
         assert.equal(document.querySelectorAll(".parking-crystal").length, 0);
         assert.equal(
           document.querySelectorAll(".parking-detent-value").length,
-          3,
+          0,
         );
-        await click("Parking brake 67 percent");
+        assert.equal(
+          document.querySelector(".mechanical-handbrake").textContent.trim(),
+          "",
+        );
+        await act(async () => input.getState().setParkingBrake(2 / 3));
         const request = input.getState().input.cockpit_mask;
         await click("Parking brake crystals");
         assert.equal(document.querySelectorAll(".parking-crystal").length, 3);
@@ -431,7 +656,7 @@ test("cockpit layout preferences preserve electronics and physical source owners
       },
     );
     await t.test(
-      "partial cable pressure survives release/hide and another device keeps its own momentary brake",
+      "a quick tap releases cable pressure, hiding retains it, and another device keeps its momentary brake",
       async () => {
         const { DrivingHUD } = await load("ui/DrivingHUD.tsx");
         await render(h(DrivingHUD));
@@ -443,7 +668,8 @@ test("cockpit layout preferences preserve electronics and physical source owners
         assert.equal(input.getState().input.handbrake, 0.4);
         await point("pointerup", "Parking brake");
         assert.equal(input.getState().input.handbrake, 0.4);
-        assert.ok(input.getState().input.parking_brake >= 0.37);
+        assert.equal(input.getState().input.parking_brake, 0);
+        await act(async () => input.getState().setParkingBrake(0.37));
         const partial = input.getState().input.parking_brake;
         await point("pointerdown", "Parking brake");
         await act(async () => prefs.getState().setHudGroup("parking", false));
@@ -514,10 +740,7 @@ test("cockpit layout preferences preserve electronics and physical source owners
         assert.equal(input.getState().input.vehicleMask & 4, 4);
         assert.equal(input.getState().input.vehicleMask & 8, 0);
         await act(async () => ui.getState().setCockpitTab("cruise"));
-        assert.equal(
-          document.querySelector(".cruise-stalk").dataset.side,
-          "right",
-        );
+        assert.ok(parseFloat(by("Select cruise stalk").style.left) > 50);
         await act(async () => ui.getState().setCockpitTab("climate"));
         assert.ok(document.querySelector(".cockpit-climate-page"));
       },

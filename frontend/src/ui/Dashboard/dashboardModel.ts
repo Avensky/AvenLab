@@ -1,6 +1,17 @@
 import { ResourceFlags } from "../../store/telemetry/resourceMasks";
 import type { VehicleTelemetry } from "../../store/telemetry/vehicleTelemetryStore";
 
+/** Preferences own the user's gain; confirmed engine state owns automatic
+ * dimming. High contrast bypasses automatic dimming but honors manual choice. */
+export function instrumentBrightness(
+  level: number,
+  engineOn: boolean,
+  highContrast: boolean,
+) {
+  const gain = Number.isFinite(level) ? Math.max(0.1, Math.min(1, level)) : 1;
+  return gain * (engineOn || highContrast ? 1 : 0.42);
+}
+
 export type DisplayPower =
   "off" | "on" | "cranking" | "running" | "unavailable";
 export function displayPower(

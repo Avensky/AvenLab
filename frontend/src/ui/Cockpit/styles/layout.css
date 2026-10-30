@@ -1,12 +1,14 @@
-/* The parking lever and shifter share a row. A 72px assist bank fits next to
-   pedals on wide screens and wraps above them on a narrow phone. */
+/* One height aligns the brake and shifter parents; brake artwork uses 85%. The assist bank
+   stays left of the pedals; neither layout stretches individual switches. */
 .transmission-console {
-  --shifter-size: 128px;
+  --shifter-size: 140px;
   --parking-control-height: var(--shifter-size);
   display: grid;
   grid-template-columns: minmax(60px, 1fr) var(--shifter-size);
   grid-template-rows: auto;
   gap: 5px;
+  /* The cockpit's shifter has a caption below its gate; align the artwork,
+     rather than moving the brake down to the caption's baseline. */
   align-items: start;
   width: 100%;
   max-width: 280px;
@@ -64,8 +66,7 @@
   align-items: center;
 }
 
-/* The compact three-switch bank stays left of the pedals. It becomes a narrow
-   vertical bank on phones; the larger optional development bank can wrap. */
+/* Both assist layouts retain the same switch dimensions at every viewport. */
 .driving-hud {
   --console-width: clamp(270px, 21vw, 300px);
 }
@@ -74,21 +75,6 @@
 }
 .console-foot-controls {
   gap: 5px;
-}
-@media (max-width: 600px) {
-  .drive-dock .console-foot-controls .hud-assists {
-    flex-basis: 30px;
-    width: 30px;
-  }
-  .drive-dock .console-foot-controls:has([data-layout="extended"]) {
-    flex-wrap: wrap;
-  }
-  .drive-dock
-    .console-foot-controls
-    .hud-assists:has([data-layout="extended"]) {
-    flex-basis: 72px;
-    width: 72px;
-  }
 }
 @media (max-width: 380px) {
   .driving-hud {

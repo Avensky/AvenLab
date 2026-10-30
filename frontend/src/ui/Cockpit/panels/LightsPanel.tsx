@@ -13,11 +13,6 @@ export function LightsPanel() {
     change = useInputStore.getState().setCockpit;
   return (
     <div className="cockpit-system">
-      <div className="control-stalk stalk-left">
-        <span>▲ TURN ▼</span>
-        <i />
-        <b>OFF · AUTO · LOW · HIGH</b>
-      </div>
       <div className="cockpit-segments">
         {["OFF", "AUTO", "LOW", "HIGH"].map((label, index) => (
           <button
@@ -39,10 +34,6 @@ export function LightsPanel() {
         >
           ▲
         </button>
-        <div className="digital-wheel">
-          <i />
-          <b />
-        </div>
         <button
           aria-label="Left indicator"
           aria-pressed={hasFlag(vehicle, VehicleFlags.BLINKER_LEFT)}

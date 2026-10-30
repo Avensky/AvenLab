@@ -30,11 +30,6 @@ export function WipersPanel() {
   );
   return (
     <div className="cockpit-system">
-      <div className="control-stalk stalk-right" data-side="right">
-        <span>WASH ↗</span>
-        <i />
-        <b>OFF · LOW · MID · HIGH</b>
-      </div>
       <div
         className="wiper-window"
         data-speed={confirmed.wipers || (cycle ? 1 : 0)}

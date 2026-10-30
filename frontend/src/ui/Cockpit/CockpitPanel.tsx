@@ -33,7 +33,9 @@ import {
   WipersPanel,
   CruisePanel,
   ClimatePage,
+  BrightnessPage,
   ResearchPanel,
+  SteeringSystemPicker,
 } from "./panels/index";
 
 export function CockpitPanel() {
@@ -117,10 +119,16 @@ export function CockpitPanel() {
           )}
           {tab === "missions" && <MissionApps />}
           {(tab === "research" || tab === "vehicle") && <ResearchPanel />}
-          {tab === "lights" && <LightsPanel />}
-          {tab === "wipers" && <WipersPanel />}
-          {tab === "cruise" && <CruisePanel />}
+          {(tab === "lights" || tab === "wipers" || tab === "cruise") && (
+            <div className="cockpit-column-page">
+              <SteeringSystemPicker selected={tab} />
+              {tab === "lights" && <LightsPanel />}
+              {tab === "wipers" && <WipersPanel />}
+              {tab === "cruise" && <CruisePanel />}
+            </div>
+          )}
           {tab === "climate" && <ClimatePage />}
+          {tab === "brightness" && <BrightnessPage />}
           {tab === "radio" && <RadioPanel />}
           {tab === "navigation" && <Minimap forceExpanded />}
           {tab === "ignition" && (
@@ -133,7 +141,13 @@ export function CockpitPanel() {
           <MenuShortcuts hold />
           <span role="status">
             {!supported &&
-            !["radio", "missions", "navigation", "console"].includes(tab)
+            ![
+              "radio",
+              "missions",
+              "navigation",
+              "console",
+              "brightness",
+            ].includes(tab)
               ? "UPDATED RUST SERVER REQUIRED"
               : pending
                 ? "REQUESTING…"

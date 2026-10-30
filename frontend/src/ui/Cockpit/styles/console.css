@@ -784,20 +784,36 @@ html[data-reduce-motion="true"] .wheel-rotor {
 }
 
 .radio-transport {
+  --radio-key-size: 23px;
   display: flex;
+  justify-content: space-between;
   gap: 2px;
   align-items: center;
   padding: 2px 0;
   min-width: 0;
 }
-:is(.drive-dock, .cockpit-panel) .radio-transport > button {
-  flex: 1;
-  min-width: 0;
-  height: 23px;
-  min-height: 23px;
+:is(.drive-dock, .cockpit-panel) .cockpit-radio .radio-transport > button {
+  box-sizing: border-box;
+  flex: 0 0 var(--radio-key-size);
+  width: var(--radio-key-size);
+  min-width: var(--radio-key-size);
+  height: var(--radio-key-size);
+  min-height: var(--radio-key-size);
+  aspect-ratio: 1;
   padding: 1px;
   border-radius: 50%;
   font: 11px/1 monospace;
+}
+.cockpit-panel .cockpit-radio[data-compact="false"] .radio-transport {
+  --radio-key-size: 32px;
+  gap: 4px;
+  margin-top: 8px;
+}
+.cockpit-panel .cockpit-radio[data-compact="false"] .radio-transport svg {
+  display: block;
+  margin: auto;
+  width: 16px;
+  height: 16px;
 }
 .radio-volume-dial {
   flex: 0 0 27px;
@@ -817,7 +833,7 @@ html[data-reduce-motion="true"] .wheel-rotor {
 .radio-volume-dial .knob-pointer:before {
   height: 4px;
 }
-.radio-volume-dial .climate-knob > button {
+.cockpit-radio .radio-volume-dial .climate-knob > button {
   position: absolute;
   inset: 24%;
   padding: 0;
@@ -825,6 +841,18 @@ html[data-reduce-motion="true"] .wheel-rotor {
   min-width: 0;
   font-size: 8px;
   border-radius: 50%;
+}
+.cockpit-panel .cockpit-radio[data-compact="false"] .radio-volume-dial {
+  flex: 0 0 58px;
+  width: 58px;
+  height: 49px;
+}
+.cockpit-panel
+  .cockpit-radio[data-compact="false"]
+  .radio-volume-dial
+  .climate-knob {
+  width: 42px;
+  height: 42px;
 }
 .radio-volume-dial output {
   font-size: 5px;

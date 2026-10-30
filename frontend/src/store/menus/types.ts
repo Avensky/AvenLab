@@ -25,6 +25,7 @@ export type UIOverlay =
   | "cockpit"
   | "world_builder";
 export type CockpitTab =
+  | "brightness"
   | "climate"
   | "drive"
   | "lights"
@@ -53,6 +54,7 @@ export type SignalMission = {
 
 export type UIState = {
   settingsTab: string;
+  settingsParent: "cockpit" | null;
   openSettings: (tab?: string) => void;
   cockpitTab: CockpitTab;
   setCockpitTab: (tab: CockpitTab) => void;

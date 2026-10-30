@@ -7,6 +7,7 @@ export const COCKPIT_TABS: { id: CockpitTab; label: string }[] = [
   { id: "wipers", label: "WIPERS" },
   { id: "cruise", label: "CRUISE" },
   { id: "climate", label: "CLIMATE" },
+  { id: "brightness", label: "BRIGHTNESS" },
   { id: "radio", label: "RADIO" },
   { id: "missions", label: "MISSIONS" },
   { id: "research", label: "RESEARCH" },

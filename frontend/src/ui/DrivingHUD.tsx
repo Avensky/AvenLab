@@ -17,13 +17,12 @@ export function DrivingHUD() {
     dock = usePreferencesStore((s) => s.showDriveControls),
     drop = usePreferencesStore((s) => s.wheelDrop);
   const groups = usePreferencesStore((s) => s.hudGroups);
-  const research = usePreferencesStore((s) => s.researchHud);
   const needsTelemetry =
     (touch && groups.wheel) ||
     (dock &&
       (groups.ignition ||
         groups.display ||
-        (research && groups.climate) ||
+        groups.climate ||
         groups.shifter ||
         groups.parking ||
         groups.assists));

@@ -194,33 +194,8 @@ html[data-reduce-motion="true"] :is(.cockpit-panel, .driving-hud) * {
     display: none;
   }
 }
-html[data-ui-theme] .cockpit-panel .radio-transport {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-top: 8px;
-}
-html[data-ui-theme] .cockpit-panel .radio-transport > button {
-  flex: 1;
-  min-width: 32px;
-  min-height: 34px;
-  background: var(--app-panel);
-  color: var(--app-text);
-}
-html[data-ui-theme] .cockpit-panel .radio-transport svg {
-  display: block;
-  margin: auto;
-  width: 16px;
-  height: 16px;
-}
-html[data-ui-theme] .cockpit-panel .radio-volume-dial {
-  flex: 0 0 58px;
-  width: 58px;
-}
-html[data-ui-theme] .cockpit-panel .radio-volume-dial .climate-knob {
-  width: 42px;
-  height: 42px;
-}
+/* Radio geometry belongs to Cockpit/styles/console.css. Palette rules above
+   supply its colors; they must not stretch round transport/mute controls. */
 html[data-ui-theme] .cockpit-panel .physical-hazard {
   color: #ff9292;
   background: #481b23;

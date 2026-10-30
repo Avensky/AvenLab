@@ -126,27 +126,23 @@ test("cockpit requests use one packed input field and preserve menu/input owners
     await t.test(
       "cockpit changes cannot erase steering/pedals, and release clears momentary washer/cruise while retaining parking",
       () => {
-        input
-          .getState()
-          .setInput({
-            cockpit_mask: undefined,
-            throttle: 0.7,
-            steer: -0.3,
-            brake: 0.2,
-            handbrake: 0,
-          });
-        input
-          .getState()
-          .setCockpit(
-            {
-              automatic: false,
-              gear: 4,
-              parking: true,
-              washer: true,
-              cruiseEnabled: true,
-            },
-            2,
-          );
+        input.getState().setInput({
+          cockpit_mask: undefined,
+          throttle: 0.7,
+          steer: -0.3,
+          brake: 0.2,
+          handbrake: 0,
+        });
+        input.getState().setCockpit(
+          {
+            automatic: false,
+            gear: 4,
+            parking: true,
+            washer: true,
+            cruiseEnabled: true,
+          },
+          2,
+        );
         assert.equal(input.getState().input.throttle, 0.7);
         assert.equal(input.getState().input.steer, -0.3);
         assert.equal(input.getState().input.brake, 0.2);
@@ -230,32 +226,36 @@ test("cockpit requests use one packed input field and preserve menu/input owners
     network.getState().setConnected(true);
     network.getState().setPlayerId("me");
     configs.getState().receive("me", calibrated);
-    network
-      .getState()
-      .setSnapshot(
-        {
-          tick: 1,
-          entities: [
-            {
-              id: "me",
-              vehicle_mask: 97,
-              cockpit_mask: 192,
-              cluster_mask: 0,
-              speed: 0,
-              rpm: 850,
-              gear: 0,
-              vehicle_id: "brz",
-            },
-          ],
-        },
-        performance.now(),
-      );
+    network.getState().setSnapshot(
+      {
+        tick: 1,
+        entities: [
+          {
+            id: "me",
+            vehicle_mask: 97,
+            cockpit_mask: 192,
+            cluster_mask: 0,
+            speed: 0,
+            rpm: 850,
+            gear: 0,
+            vehicle_id: "brz",
+          },
+        ],
+      },
+      performance.now(),
+    );
     root = createRoot(document.getElementById("root"));
     await act(async () => root.render(h(CockpitPanel)));
     const button = (label) => document.querySelector(`[aria-label="${label}"]`);
     await t.test(
       "physical parking-brake and Sport buttons emit distinct packed commands",
       async () => {
+        const { usePreferencesStore } = await load(
+          "store/preferences/index.ts",
+        );
+        await act(async () =>
+          usePreferencesStore.getState().update({ parkingCrystals: true }),
+        );
         await act(async () => button("Parking brake 33 percent").click());
         assert.equal(
           unpackCockpit(input.getState().input.cockpit_mask).parking,
@@ -331,12 +331,10 @@ test("cockpit requests use one packed input field and preserve menu/input owners
       "old cockpit calibration cannot silently turn a fractional brake request into full braking",
       async () => {
         await act(async () => {
-          configs
-            .getState()
-            .receive("me", {
-              ...calibrated,
-              hud: { ...calibrated.hud, cockpit_version: 1 },
-            });
+          configs.getState().receive("me", {
+            ...calibrated,
+            hud: { ...calibrated.hud, cockpit_version: 1 },
+          });
           const { updateVehicleTelemetry } = await load(
             "store/telemetry/vehicleTelemetryStore.ts",
           );

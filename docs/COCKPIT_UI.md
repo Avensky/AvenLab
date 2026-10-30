@@ -9,15 +9,15 @@ Signal Recon never mounts the driving HUD.
 
 ## Layout and access
 
-Settings → **HUD** and Cockpit → **Research** share the same saved visibility
-state. Research exposes climate, emergency lights, wheel levers, ignition,
-GPS/minimap and mechanical groups. Showing a group changes the interface only;
+Settings → **HUD** owns the visibility list. Cockpit → **Research** links to it
+and to every existing cockpit page; its only direct controls are CAN LOG, LIVE
+CAN and DYNO. Returning from HUD settings restores the Research page. Showing a group changes the interface only;
 it does not activate that vehicle system. Hiding a held touch control releases
 its own input source. Keyboard/gamepad input and another held source remain intact.
 
-The lower-right stack is radio, optional climate, optional centered emergency
-lights, a parking-brake/shifter row, then the assist/pedal row. The parking lever
-and shifter are peers with the same 128 px height. The HUD defaults to three silver assist switches left of the pedals. A saved
+The lower-right stack is radio, the optional climate unit with its centered
+emergency button, a parking-brake/shifter row, then the assist/pedal row. The parking lever
+and shifter are peers with the same 140 px height. The HUD defaults to three silver assist switches left of the pedals. A saved
 expanded bank remains available from Cockpit Drive.
 On narrow portrait displays the enlarged mechanical row clears the wheel,
 while assists and pedals retain one bottom row. The radio keeps its
@@ -25,9 +25,10 @@ existing expand control; climate has no expand/collapse arrows.
 
 Cockpit → **Climate** contains all HVAC controls, a **COMPACT HUD / FULL HUD**
 choice, a live preview and driving-HUD visibility switches. Compact removes
-the dials and restores the round emergency-light switch in the clock strip. Climate and the separate emergency
-light widget default to hidden. The cockpit Climate page remains available when
-its driving widget is hidden. Its emergency switch is centered and round; the
+the dials and restores the round emergency-light switch in the clock strip.
+The entire unit defaults hidden. Climate Show/Hide controls the clock, hazard
+button and knobs together; the inner hazard preference cannot reopen it. The cockpit Climate page remains available when
+its driving widget is hidden. Its emergency switch is centered, round and 24 px (80% of the previous size); the
 radio and climate unit share a silver frame. The header has no hazard duplicate.
 
 Standard and Controller layouts retain independent touch/console master choices.
@@ -40,7 +41,7 @@ by default), allowing the thumb to pass the rim. Only X controls steering.
 Settings → Drivetrain chooses the H-pattern or automatic selector layout; both
 retain automatic forward driving and temporary gear overrides.
 
-Open **Cockpit** from the radio Apps page, pause menu, **F4**, or
+Open **Cockpit** from the pause menu, **F4**, or
 **LB/L1 + View/Select** (Console tab). View/Select alone retains the performance
 shortcut. Shoulders switch cockpit tabs, D-pad navigates, A/Cross activates and
 B/Circle closes. Arrows, Tab, Enter and Space also work inside menus. Pointer
@@ -205,15 +206,15 @@ Legacy clients can still request the earlier locked manual mode explicitly.
 
 The parking cable remains independent of gear selection and the momentary
 keyboard/controller handbrake. HUD and cockpit now share a continuous control:
-hold increases the current pressure over a 1200 ms full pull; release keeps it.
-Short pulls add pressure instead of releasing it. The explicit 0 target clears
-the latch. Arrow keys adjust 5%, Home releases and End applies full pressure;
+a quick click (up to 180 ms) releases the cable to zero for drifting. Holding
+past that tap window increases current pressure over a 600 ms full pull (780 ms total);
+release after a hold keeps it. The unlabelled metal tip also releases the latch. Arrow keys adjust 5%, Home releases and End applies full pressure;
 dragging directly adjusts force. Interruption stops the active timer and retains
 the last deliberate value. A pull runs a 20 Hz timer only while pressure grows.
 
-The resting grip points horizontally toward the floor horizon (−180°); full
+The resting grip starts at −145°; full
 pressure raises it to −90° with maximum reach. At full force its vertical height
-matches the 128 px shifter module. Level 3 is the largest optional crystal. There
+is 119 px (85% of the aligned 140 px parent module), leaving whitespace above it. Its pivot sits at 75% of the panel width, and pressing anywhere in the parent area operates the lever. Level 3 is the largest optional crystal; the realistic default has no 0–3 labels. There
 is no PULL label or contact glow/border flash. Angle and reach show pressure;
 the simple P appearance uses a pressure arc. The normal slider/key focus locator
 remains available without painting a held switch face.
@@ -402,11 +403,11 @@ row. The mission readout, route status and server clock sit inside the circle.
 Road coordinates use equal horizontal/vertical spans; transparent corners ignore
 waypoint clicks. The full cockpit GPS page keeps its square map.
 
-The shifter gate is a 128 px circle. Its progressive parking-brake sibling has
-the same height, and the fully raised grip spans that height. Three switches
-sit left of the pedals; phones use a narrow vertical bank at the same baseline.
-The expanded bank remains a saved choice. Optional crystals grow from level 1
-to level 3; numeric presets remain available when crystals are hidden.
+The shifter gate and brake parent are 140 px tall. The brake artwork reaches
+85% of that height at full force, sits toward the right at 75% panel width, and
+accepts contact throughout the parent area. Three switches sit left of the
+pedals, retaining the same individual size as the expanded bank on phones.
+Optional crystals grow from level 1 to level 3; the default has no numeric presets.
 
 Engine-off-only dimming follows the confirmed engine flag on Dashboard's
 `data-engine-on` attribute. Running brightness is unchanged. High contrast
@@ -444,3 +445,5 @@ clears on release/cancel even with the cursor still over the face. Hover, focus
 and merged `aria-pressed` state cannot retain a depressed border. Assist faces
 use silver gradients and black text/icons in every theme. Keyboard focus keeps
 a thin underline so navigation remains visible without a press glow.
+
+Cockpit → **Brightness** includes the live dashboard, a saved 10–100% brightness range and dashboard HUD visibility. Confirmed engine-off state multiplies the chosen gain by 0.42; high contrast bypasses that automatic dimming. Range arrows and controller left/right adjust 5%, with Home/End and a reset action. Both assist layouts keep identical individual switch dimensions, and each stalk rotates its cap and adjacent buttons together. Radio transport controls retain square bounds and circular borders; the ignition HUD sits slightly further right.

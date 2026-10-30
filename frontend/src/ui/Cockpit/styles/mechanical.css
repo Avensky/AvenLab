@@ -72,9 +72,10 @@
 .hud-transmission .mechanical-shifter > small {
   display: none;
 }
-/* A rear-brake pull is as tall as the shifter, with a subtle stitched grip and
-   metal release cap. Simple mode swaps only artwork, not control behavior. */
+/* The parent stays aligned with the shifter; artwork occupies its bottom 85%.
+   The entire transparent parent is a press target, including the whitespace. */
 .transmission-console .mechanical-handbrake {
+  --parking-art-height: calc(var(--parking-control-height, 140px) * 0.85);
   position: relative;
   height: var(--parking-control-height, 90px);
   width: 100%;
@@ -85,7 +86,7 @@
   width: 100%;
   height: 100%;
   min-height: 0;
-  padding: 0 18px 0 0;
+  padding: 0;
   border: 0 !important;
   outline: 0 !important;
   background: transparent !important;
@@ -95,10 +96,18 @@
 .mechanical-handbrake > small {
   display: none;
 }
+.parking-artwork {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--parking-art-height, 119px);
+  pointer-events: none;
+}
 .ebrake-floor {
   position: absolute;
-  left: 14%;
-  right: 18%;
+  left: 50%;
+  right: 0;
   bottom: 3%;
   height: 9%;
   border-radius: 50%;
@@ -106,9 +115,9 @@
 }
 .mechanical-handbrake .ebrake-base {
   position: absolute;
-  left: 14%;
+  left: 50%;
   top: 81%;
-  width: 70%;
+  width: 50%;
   height: 19%;
   transform: none;
   border: 0;
@@ -121,15 +130,18 @@
   stroke: #66717a;
   stroke-width: 1.5;
 }
-.mechanical-handbrake .handbrake-lever .ebrake-handle {
+.mechanical-handbrake .handbrake-lever .ebrake-handle,
+.mechanical-handbrake .parking-release-arm {
   position: absolute;
-  left: 43%;
+  /* Halfway from the panel center to its right edge. Grip and metal cap
+     share this transform, so the release target stays attached while pulling. */
+  left: calc(75% - var(--parking-art-height, 119px) * 0.05);
   top: 89.5%;
-  width: var(--parking-control-height, 128px);
+  width: var(--parking-art-height, 119px);
   height: 11%;
   transform-origin: 5% 50%;
   transition: transform 50ms linear;
-  transform: rotate(var(--parking-angle, -180deg))
+  transform: rotate(var(--parking-angle, -145deg))
     scaleX(var(--parking-reach, 0.5));
   border: 0;
   border-radius: 0;
@@ -158,8 +170,8 @@
 .parking-simple-face {
   display: none;
   position: absolute;
-  inset: 14% 19% 14% 0;
-  width: 74%;
+  inset: 14% 0 14% 50%;
+  width: 50%;
   height: 72%;
   fill: #101a24;
   stroke: #a6bacb;
@@ -174,7 +186,8 @@
 [data-parking-style="button"] :is(.ebrake-floor, .ebrake-base, .ebrake-handle) {
   display: none;
 }
-/* Crystals are optional. Plain 1/2/3 detents retain the same explicit latch API. */
+/* Crystals are optional presets. With them hidden, no numbered bank occupies
+   space beside the realistic grip. The metal tip remains the release target. */
 .mechanical-handbrake .parking-levels {
   position: absolute;
   top: 0;
@@ -223,24 +236,49 @@
   stroke: #b0eaff;
   stroke-dasharray: none;
 }
-.parking-detent-value {
-  color: var(--app-muted, #97a6b2);
-  font: 7px monospace;
-}
-[data-filled="true"] > .parking-detent-value {
-  color: var(--app-accent, #9ae6ff);
-  text-decoration: underline;
+.parking-release-arm {
+  z-index: 2;
+  pointer-events: none;
 }
 :is(.cockpit-panel, .drive-dock) .mechanical-handbrake .parking-release {
   position: absolute;
-  right: 0;
-  bottom: 0;
-  z-index: 3;
-  width: 17px;
-  height: 15px;
+  right: -4px;
+  top: -4px;
+  bottom: -4px;
+  width: 16%;
+  height: auto;
   min-height: 0;
+  min-width: 0;
   padding: 0;
-  font: 7px monospace;
+  border: 0;
+  background: none;
+  pointer-events: auto;
+  touch-action: none;
+}
+.parking-release::after {
+  content: "";
+  position: absolute;
+  right: 4px;
+  top: calc(30% + 2px);
+  width: 40%;
+  height: 40%;
+  border: 1px solid #3b454f;
+  border-radius: 2px;
+  background: linear-gradient(#e0e4e7, #8d969d);
+}
+[data-parking-style="button"] .parking-release-arm {
+  left: 64%;
+  top: 72%;
+  width: 22%;
+  height: 12%;
+  transform: none;
+}
+[data-parking-style="button"] .parking-release-arm .parking-release {
+  right: 0;
+  width: 100%;
+}
+[data-parking-style="button"] .parking-release::after {
+  width: 75%;
 }
 /* Five assist switches occupy a 3x2 bank. In the HUD each switch is around half
    a pedal's width/height; the empty sixth cell is intentional, not a fake action. */
@@ -300,12 +338,9 @@
   height: 7px;
 }
 
-/* Angle and extension represent cable pressure; no contact glow is painted.
-   Transparent artwork gaps pass through to the wheel on narrow screens. */
+/* Angle represents pressure. The full implied button owns contact, while its
+   decorative SVG spans pass pointer events to that parent. No glow is painted. */
 .mechanical-handbrake .handbrake-lever {
-  pointer-events: none;
-}
-.mechanical-handbrake :is(.ebrake-handle, .ebrake-base, .parking-simple-face) {
   pointer-events: auto;
 }
 :is(.drive-dock, .cockpit-panel)
@@ -344,18 +379,7 @@
 .drive-assists[data-layout="three"] {
   grid-template-rows: 1fr;
 }
-@media (max-width: 600px) {
-  .drive-dock .hud-assists .drive-assists[data-layout="three"] {
-    width: 30px;
-    height: 49px;
-    grid-template-columns: 1fr;
-    grid-template-rows: repeat(3, minmax(0, 1fr));
-    gap: 1px;
-  }
-  .drive-dock .hud-assists .drive-assists[data-layout="three"] img {
-    display: none;
-  }
-  .drive-dock .hud-assists .drive-assists[data-layout="three"] button {
-    font-size: 5px;
-  }
+.drive-dock .hud-assists .drive-assists[data-layout="three"] {
+  /* (49px - 2px gap) / 2: exactly one row from the expanded HUD bank. */
+  height: 23.5px;
 }

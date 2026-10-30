@@ -1,8 +1,8 @@
 import { useInputStore } from "../../../store/input/inputStore";
 import { useCockpitState } from "../useCockpitState";
 import { useVehicleTelemetryStore } from "../../../store/telemetry/vehicleTelemetryStore";
-/** Speed/target updates are local to this mounted page, never the radio/menu
- * shell. The mirrored diagram attaches to the wheel on its left-hand end. */
+/** Speed/target updates stay local to this page. The shared wheel picker owns
+ * its right-mounted lever diagram and navigation; these buttons own requests. */
 export function CruisePanel() {
   const { current, confirmed, status, supported, extended } = useCockpitState(),
     change = useInputStore.getState().setCockpit;
@@ -12,13 +12,6 @@ export function CruisePanel() {
     cruiseTarget = useVehicleTelemetryStore((s) => s.data.cruiseTargetKph);
   return (
     <div className="cockpit-system">
-      <div className="control-stalk cruise-stalk" data-side="right">
-        <span>CANCEL ↗</span>
-        <i />
-        <b>
-          + RES ▲<br />− SET ▼
-        </b>
-      </div>
       <div className="cruise-readout" data-active={status.cruiseActive}>
         {status.cruiseActive
           ? "CRUISE SET"

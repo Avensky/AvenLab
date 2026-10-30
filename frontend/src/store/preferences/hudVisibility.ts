@@ -24,7 +24,8 @@ export const DEFAULT_HUD_GROUPS: Record<HudGroupId, boolean> = {
   ignition: true,
   display: true,
   climate: false,
-  hazards: false,
+  // A child option, never a second HUD visibility gate. Climate starts hidden.
+  hazards: true,
   shifter: true,
   parking: true,
   assists: true,
@@ -40,7 +41,7 @@ export const HUD_GROUP_LABELS: Record<HudGroupId, string> = {
   pedals: "PEDALS",
   ignition: "IGNITION KEY",
   display: "RADIO / MISSIONS",
-  climate: "CLIMATE CONTROLS",
+  climate: "CLIMATE / HAZARDS",
   hazards: "EMERGENCY LIGHTS",
   shifter: "SHIFTER",
   parking: "PARKING BRAKE",

@@ -11,7 +11,7 @@ import { usePreferencesStore } from "../../../store/preferences/index";
 import { requestParkingFraction, requestParkingStrength } from "./commands";
 import { ParkingDetents, ParkingLeverArtwork } from "./ParkingArtwork";
 import { parkingLeverPose } from "./geometry";
-import { parkingPressureAfterHold } from "./pressure";
+import { PARKING_TAP_MS, parkingPressureAfterHold } from "./pressure";
 
 type Pull = {
   pointer: number | null;
@@ -24,7 +24,8 @@ type Pull = {
 
 /** One cable control for HUD and cockpit. Only an active pull runs a 20 Hz
  * timer; the existing sender transports pressure and Rust owns the latch.
- * Release keeps pressure. The explicit 0 target releases it. Pose is feedback;
+ * A tap releases pressure; release after a hold keeps it. The metal tip also
+ * releases the cable. Pose is feedback;
  * neither the button nor its artwork needs a held border or glow. */
 export function ProgressiveParking({
   strength,
@@ -78,7 +79,7 @@ export function ProgressiveParking({
     if (!held || held.drag) return;
     const next = parkingPressureAfterHold(
       held.initial,
-      performance.now() - held.began,
+      performance.now() - held.began - PARKING_TAP_MS,
     );
     change(next);
     timer.current = next < 1 ? window.setTimeout(tick, 50) : null;
@@ -94,14 +95,19 @@ export function ProgressiveParking({
       initial: value.current,
       drag: false,
     };
-    timer.current = window.setTimeout(tick, 50);
+    // Do not apply extra force while deciding whether this is a release tap.
+    timer.current = window.setTimeout(tick, PARKING_TAP_MS + 50);
   };
   const finish = (cancel = false) => {
     const held = pull.current;
-    if (held && !cancel && !held.drag)
+    if (held && !cancel && !held.drag) {
+      const elapsed = performance.now() - held.began;
       change(
-        parkingPressureAfterHold(held.initial, performance.now() - held.began),
+        elapsed <= PARKING_TAP_MS
+          ? 0
+          : parkingPressureAfterHold(held.initial, elapsed - PARKING_TAP_MS),
       );
+    }
     clear();
   };
   const pose = parkingLeverPose(Math.max(drawn, momentary) * 3);
@@ -133,7 +139,7 @@ export function ProgressiveParking({
         aria-label="Parking brake"
         aria-busy={pending}
         aria-pressed={drawn > 0 || momentary > 0}
-        aria-description={`${Math.round(drawn * 100)} percent; hold to increase pressure, release to keep it. The zero button releases the latch. Drag or use arrow keys to adjust.`}
+        aria-description={`${Math.round(drawn * 100)} percent; click to release, hold to increase pressure, then release to keep it. The metal tip releases the latch. Drag or use arrow keys to adjust.`}
         onContextMenu={(e) => e.preventDefault()}
         onPointerDown={(e) => {
           if (e.button !== 0 || disabled || pull.current) return;
@@ -200,24 +206,28 @@ export function ProgressiveParking({
             suppressClick.current = false;
             return;
           }
-          // Screen-reader/controller click activation has no measurable hold.
-          change(value.current + 0.05);
-        }}
-      >
-        <ParkingLeverArtwork />
-      </button>
-      <button
-        type="button"
-        className="parking-release"
-        aria-label="Release parked brake"
-        disabled={disabled || drawn === 0}
-        onClick={() => {
-          clear();
+          // Screen-reader/controller click activation is the same release tap.
           change(0);
         }}
       >
-        0
+        <span className="parking-artwork">
+          <ParkingLeverArtwork />
+        </span>
       </button>
+      <span className="parking-artwork parking-release-track">
+        <span className="parking-release-arm">
+          <button
+            type="button"
+            className="parking-release"
+            aria-label="Release parked brake"
+            disabled={disabled || drawn === 0}
+            onClick={() => {
+              clear();
+              change(0);
+            }}
+          />
+        </span>
+      </span>
     </section>
   );
 }

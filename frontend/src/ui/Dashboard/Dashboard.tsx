@@ -9,7 +9,7 @@ import Speedometer from "./Speedometer";
 import Revolutions from "./Revolutions";
 import FuelTemp from "./FuelTemp";
 import { MPH_TO_KPH } from "./gaugeGeometry";
-import { displayPower } from "./dashboardModel";
+import { displayPower, instrumentBrightness } from "./dashboardModel";
 import { ResourceRing } from "./ResourceRings";
 import "./dashboard.css";
 
@@ -120,6 +120,9 @@ const FuelInstrument = memo(function FuelInstrument() {
 export default function Dashboard() {
   const signal = useVehicleTelemetryStore((s) => s.data.signal);
   const engineOn = useVehicleTelemetryStore((s) => s.data.engineOn);
+  const level = usePreferencesStore((s) => s.dashboardBrightness);
+  const highContrast = usePreferencesStore((s) => s.highContrast);
+  const brightness = instrumentBrightness(level, engineOn, highContrast);
   useEffect(startVehicleTelemetry, []);
   return (
     <section
@@ -128,7 +131,12 @@ export default function Dashboard() {
       data-engine-on={engineOn}
       aria-label="Vehicle instruments"
     >
-      <div className="dashboard-cluster">
+      <div
+        className="dashboard-cluster"
+        style={{
+          filter: brightness === 1 ? "none" : `brightness(${brightness})`,
+        }}
+      >
         <SpeedInstrument />
         <RpmInstrument />
         <FuelInstrument />

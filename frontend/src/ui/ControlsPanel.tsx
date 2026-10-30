@@ -30,17 +30,9 @@ export default function ControlsPanel() {
           <HudGroup id="display" title="VEHICLE DISPLAY">
             <ConsoleDisplay />
           </HudGroup>
-          {(climateVisible || hazardsVisible) && (
-            <HudGroup
-              id={climateVisible ? "climate" : "hazards"}
-              title="CLIMATE"
-              className="hud-climate"
-            >
-              <ClimatePanel
-                size={climateSize}
-                showHazards={hazardsVisible}
-                controlsVisible={climateVisible}
-              />
+          {climateVisible && (
+            <HudGroup id="climate" title="CLIMATE" className="hud-climate">
+              <ClimatePanel size={climateSize} showHazards={hazardsVisible} />
             </HudGroup>
           )}
           <div

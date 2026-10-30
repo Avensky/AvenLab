@@ -1,14 +1,14 @@
 /** Pure screen geometry for the mechanical console. Coordinates are normalized
  * so the same gate/lever proportions work on the compact HUD and large cockpit. */
-// Rest points toward the floor horizon; full cable force is upright. Reach and
-// angle grow monotonically so the 100% grip occupies the shifter's full height.
+// Rest rises 35 degrees from the horizon (145 degrees); full force is upright.
+// CSS reserves 15% height above the artwork and places its pivot at 75% width.
 export function parkingLeverPose(level: number) {
   const fraction = Math.max(
     0,
     Math.min(1, Number.isFinite(level) ? level / 3 : 0),
   );
   return {
-    angle: -180 + 90 * fraction,
+    angle: -145 + 55 * fraction,
     reach: 0.5 + 0.5 * fraction,
   };
 }

@@ -13,3 +13,5 @@ Import the public API from `store/menus/index.ts`. Modules inside this section u
 Add a route to types.ts and composition in game/GameUI.tsx. Add menu rows in game/menus/menuItems.ts. Main/pause menus, pointer actions, keyboard and controller share these same actions. Do not duplicate route flags in another store.
 
 See [all state owners](../README.md) and the [project guide](../../../../docs/PROJECT_GUIDE.md).
+
+`openSettings` remembers a cockpit parent in `settingsParent`. HUD-layout shortcuts and the cockpit header open the existing Settings pages; Back returns to the same cockpit tab. Other Settings entry points keep their existing pause/main return behavior. `closeOverlay` and screen changes clear the parent.

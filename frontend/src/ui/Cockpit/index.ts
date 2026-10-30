@@ -16,7 +16,12 @@ export { useCockpitState } from "./useCockpitState";
 
 export { ColumnStalks } from "./ColumnStalks";
 export { HazardButton } from "./HazardButton";
-export { ClimatePage, HudVisibilityPanel } from "./panels/index";
+export {
+  ClimatePage,
+  BrightnessPage,
+  SteeringSystemPicker,
+  HudVisibilityPanel,
+} from "./panels/index";
 export {
   DriftBrakeLever,
   ParkingAppearance,

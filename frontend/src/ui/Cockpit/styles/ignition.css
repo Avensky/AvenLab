@@ -73,7 +73,7 @@
 .driving-hud .ignition-hud {
   pointer-events: none;
   left: auto;
-  right: calc(var(--console-width) + clamp(24px, 5vw, 72px));
+  right: calc(var(--console-width) + clamp(14px, 4vw, 58px));
   top: auto;
   bottom: max(10px, env(safe-area-inset-bottom));
   width: 84px;
@@ -109,7 +109,7 @@ html[data-reduce-motion="true"] :is(.radial-key, .key-travel) {
 }
 @media (max-width: 600px) and (orientation: portrait) {
   .driving-hud .ignition-hud {
-    right: calc(var(--console-width) + 16px);
+    right: calc(var(--console-width) + 8px);
     bottom: 184px;
     width: 54px;
   }
