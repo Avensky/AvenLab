@@ -1,8 +1,8 @@
 import fs from 'node:fs';
 import {fileURLToPath} from 'node:url';
-import {emptyLayout,addPiece} from '../frontend/src/worldBuilder/layoutDocument.ts';
+import {emptyLayout,addPiece} from '../frontend/src/worldBuilder/document/layoutDocument.ts';
 import {opposingRoadPair} from '../frontend/src/worldBuilder/roads/roadPair.ts';
-import {mapExport} from '../frontend/src/worldBuilder/mapDocument.ts';
+import {mapExport} from '../frontend/src/worldBuilder/document/mapDocument.ts';
 const source=JSON.parse(fs.readFileSync(new URL('../avenlab-server/src/assets/blocks/streaming_endless_city_colliders.json',import.meta.url),'utf8'));
 let doc=addPiece(emptyLayout('road_precision'),'glb-road_narrow',[0,0,0]);
 doc=opposingRoadPair(doc,doc.objects[0].id);

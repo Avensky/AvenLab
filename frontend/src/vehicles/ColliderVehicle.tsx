@@ -1,15 +1,27 @@
 import { memo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import type { Group, MeshBasicMaterial } from "three";
-import { useNetworkStore, type VehicleColliderShape } from "../store/networkStore";
-import { useWorldStore } from "../store/worldStore";
-import { useDebugViewStore } from "../store/debugViewStore";
+import {
+  useNetworkStore,
+  type VehicleColliderShape,
+} from "../store/session/networkStore";
+import { useWorldStore } from "../store/world/worldStore";
+import { useDebugViewStore } from "../store/presentation/debugViewStore";
 import { useVehiclePhysicsInterpolator } from "../hooks/usePhysicsInterpolator";
-import { applyColliderWheelPose, colliderPreviewParts } from "./tools/colliderPreview";
+import {
+  applyColliderWheelPose,
+  colliderPreviewParts,
+} from "./tools/colliderPreview";
 
 // Shapes and all transforms come from Rust. This preview requests no debug data.
-export const ColliderVehicle = memo(function ColliderVehicle({ id, shape, solid = false }: {
-  id: string; shape: VehicleColliderShape; solid?: boolean;
+export const ColliderVehicle = memo(function ColliderVehicle({
+  id,
+  shape,
+  solid = false,
+}: {
+  id: string;
+  shape: VehicleColliderShape;
+  solid?: boolean;
 }) {
   const localPlayerId = useNetworkStore((s) => s.playerId);
   const scope = useDebugViewStore((s) => s.playerScope);
@@ -35,26 +47,69 @@ export const ColliderVehicle = memo(function ColliderVehicle({ id, shape, solid 
       const carrier = wheels.current[index];
       if (!carrier) continue;
       angles.current[index] = applyColliderWheelPose(
-        carrier, spins.current[index], materials.current[index], wheel, angles.current[index] ?? 0, delta,
+        carrier,
+        spins.current[index],
+        materials.current[index],
+        wheel,
+        angles.current[index] ?? 0,
+        delta,
       );
     }
   });
-  return <group name={`collider-vehicle-${id}`}>
-    {parts.chassis && <group ref={chassis} name={`preview-chassis-${id}`}>
-      <mesh position={shape.chassis_offset} scale={shape.chassis_half_extents.map((v) => v * 2) as [number, number, number]}>
-        <boxGeometry />
-        <meshBasicMaterial color="#38bdf8" wireframe={!solid} />
-      </mesh>
-    </group>}
-    {parts.wheels && Array.from({ length: shape.wheel_count }, (_, index) => <group key={index}
-      name={`preview-wheel-${id}-${index}`} ref={(node) => { wheels.current[index] = node; }}>
-      <group ref={(node) => { spins.current[index] = node; }}>
-        {/* Cylinder axle Y -> backend local X is the fixed mesh basis. */}
-        <mesh rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[shape.wheel_radius, shape.wheel_radius, shape.wheel_radius * 0.6, 12]} />
-          <meshBasicMaterial ref={(material) => { materials.current[index] = material; }} color="#fbbf24" wireframe={!solid} />
-        </mesh>
-      </group>
-    </group>)}
-  </group>;
+  return (
+    <group name={`collider-vehicle-${id}`}>
+      {parts.chassis && (
+        <group ref={chassis} name={`preview-chassis-${id}`}>
+          <mesh
+            position={shape.chassis_offset}
+            scale={
+              shape.chassis_half_extents.map((v) => v * 2) as [
+                number,
+                number,
+                number,
+              ]
+            }
+          >
+            <boxGeometry />
+            <meshBasicMaterial color="#38bdf8" wireframe={!solid} />
+          </mesh>
+        </group>
+      )}
+      {parts.wheels &&
+        Array.from({ length: shape.wheel_count }, (_, index) => (
+          <group
+            key={index}
+            name={`preview-wheel-${id}-${index}`}
+            ref={(node) => {
+              wheels.current[index] = node;
+            }}
+          >
+            <group
+              ref={(node) => {
+                spins.current[index] = node;
+              }}
+            >
+              {/* Cylinder axle Y -> backend local X is the fixed mesh basis. */}
+              <mesh rotation={[0, 0, Math.PI / 2]}>
+                <cylinderGeometry
+                  args={[
+                    shape.wheel_radius,
+                    shape.wheel_radius,
+                    shape.wheel_radius * 0.6,
+                    12,
+                  ]}
+                />
+                <meshBasicMaterial
+                  ref={(material) => {
+                    materials.current[index] = material;
+                  }}
+                  color="#fbbf24"
+                  wireframe={!solid}
+                />
+              </mesh>
+            </group>
+          </group>
+        ))}
+    </group>
+  );
 });

@@ -1,3 +1,7 @@
+# Editing the frontend
+
+Start with [source features](src/README.md) and [state ownership](src/store/README.md). Each feature exposes index.ts and explains editing recipes in README.md.
+
 # Redline Vector frontend
 
 React / TypeScript / React Three Fiber UI for the Rust vehicle sandbox and the

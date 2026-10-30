@@ -5,205 +5,154 @@ import { DebugChassisPose } from "../components/debugger/DebugChassisPose";
 import { DebugAntiRollBarVisualizer } from "../components/debugger/DebugAntiRollBarVisualizer";
 import { DebugSlipAngleVisualizer } from "../components/debugger/DebugSlipAngleVisualizer";
 import { DebugSpringVisualizer } from "../components/debugger/DebugSpringVisualizer";
-import { DebugFlags, hasDebugFlag } from "../store/tools/debugMasks";
+import { DebugFlags, hasDebugFlag } from "../store/world/debugMasks";
 import { useNetworkStore, useWorldStore } from "../store";
-import { useDebugViewStore } from "../store/debugViewStore";
+import { useDebugViewStore } from "../store/presentation/debugViewStore";
 import { VehicleRoster } from "./VehicleRoster";
 
 export function VehicleScene() {
-    const mask = useWorldStore((s) => s.debugMask);
-    return <><VehicleRoster />{mask !== 0 && <VehicleDiagnostics />}</>;
+  const mask = useWorldStore((s) => s.debugMask);
+  return (
+    <>
+      <VehicleRoster />
+      {mask !== 0 && <VehicleDiagnostics />}
+    </>
+  );
 }
 
 function VehicleDiagnostics() {
-    // Membership/diagnostics may rerender; poses belong to frame callbacks.
-    const hasSnapshot = useNetworkStore((s) => s.snapshot !== null);
-    const playerId = useNetworkStore((s) => s.playerId);
-    // Force/ray diagnostics stay raw. Chassis and wheel poses now share
-    // the GLB/camera timeline; OFF exposes raw poses for contact inspection.
-    const debug = useNetworkStore((s) => s.debugOverlay);
+  // Membership/diagnostics may rerender; poses belong to frame callbacks.
+  const hasSnapshot = useNetworkStore((s) => s.snapshot !== null);
+  const playerId = useNetworkStore((s) => s.playerId);
+  // Force/ray diagnostics stay raw. Chassis and wheel poses now share
+  // the GLB/camera timeline; OFF exposes raw poses for contact inspection.
+  const debug = useNetworkStore((s) => s.debugOverlay);
 
-    const playerScope = useDebugViewStore((s) => s.playerScope);
+  const playerScope = useDebugViewStore((s) => s.playerScope);
 
-    const debugMask = useWorldStore((s) => s.debugMask);
+  const debugMask = useWorldStore((s) => s.debugMask);
 
-    const showChassis = hasDebugFlag(
-        debugMask,
-        DebugFlags.CHASSIS
-    );
-    const showWheels = hasDebugFlag(
-        debugMask,
-        DebugFlags.WHEELS
-    );
-    const showLoadBars = hasDebugFlag(
-        debugMask,
-        DebugFlags.LOAD_BARS
-    );
-    const showAntiRollBars = hasDebugFlag(
-        debugMask,
-        DebugFlags.ARB
-    );
-    const showSlipAngles = hasDebugFlag(
-        debugMask,
-        DebugFlags.SLIP
-    );
-    const showSprings = hasDebugFlag(
-        debugMask,
-        DebugFlags.RAYS
-    );
+  const showChassis = hasDebugFlag(debugMask, DebugFlags.CHASSIS);
+  const showWheels = hasDebugFlag(debugMask, DebugFlags.WHEELS);
+  const showLoadBars = hasDebugFlag(debugMask, DebugFlags.LOAD_BARS);
+  const showAntiRollBars = hasDebugFlag(debugMask, DebugFlags.ARB);
+  const showSlipAngles = hasDebugFlag(debugMask, DebugFlags.SLIP);
+  const showSprings = hasDebugFlag(debugMask, DebugFlags.RAYS);
 
-    if (!hasSnapshot || !playerId) return null;
+  if (!hasSnapshot || !playerId) return null;
 
-    const isVisiblePlayer = (debugPlayerId: string) =>
-        playerScope === "all" || debugPlayerId === playerId;
+  const isVisiblePlayer = (debugPlayerId: string) =>
+    playerScope === "all" || debugPlayerId === playerId;
 
-    const chassis = (debug?.chassis ?? []).filter((item) =>
-        isVisiblePlayer(item.player_id)
-    );
+  const chassis = (debug?.chassis ?? []).filter((item) =>
+    isVisiblePlayer(item.player_id),
+  );
 
-    const wheels = (debug?.wheels ?? []).filter((item) =>
-        isVisiblePlayer(item.player_id)
-    );
+  const wheels = (debug?.wheels ?? []).filter((item) =>
+    isVisiblePlayer(item.player_id),
+  );
 
-    const suspensionRays = (
-        showSprings ? debug?.suspension_rays ?? [] : []
-    ).filter((item) => isVisiblePlayer(item.player_id));
+  const suspensionRays = (
+    showSprings ? (debug?.suspension_rays ?? []) : []
+  ).filter((item) => isVisiblePlayer(item.player_id));
 
-    const slipVectors = (
-        debug?.slip_vectors ?? []
-    ).filter((item) => isVisiblePlayer(item.player_id));
+  const slipVectors = (debug?.slip_vectors ?? []).filter((item) =>
+    isVisiblePlayer(item.player_id),
+  );
 
-    const loadBars = (debug?.load_bars ?? []).filter(
-        (item) => isVisiblePlayer(item.player_id)
-    );
+  const loadBars = (debug?.load_bars ?? []).filter((item) =>
+    isVisiblePlayer(item.player_id),
+  );
 
-    const arbLinks = (debug?.arb_links ?? []).filter(
-        (item) => isVisiblePlayer(item.player_id)
-    );
+  const arbLinks = (debug?.arb_links ?? []).filter((item) =>
+    isVisiblePlayer(item.player_id),
+  );
 
-    /*
-     * Keep wheel/ray pairing separate for each player.
-     * A global wheels[index] lookup can connect player two's
-     * spring to player one's wheel.
-     */
-    const wheelsByPlayer = new Map<string, typeof wheels>();
+  /*
+   * Keep wheel/ray pairing separate for each player.
+   * A global wheels[index] lookup can connect player two's
+   * spring to player one's wheel.
+   */
+  const wheelsByPlayer = new Map<string, typeof wheels>();
 
-    for (const wheel of wheels) {
-        const playerWheels =
-            wheelsByPlayer.get(wheel.player_id) ?? [];
+  for (const wheel of wheels) {
+    const playerWheels = wheelsByPlayer.get(wheel.player_id) ?? [];
 
-        playerWheels.push(wheel);
-        wheelsByPlayer.set(wheel.player_id, playerWheels);
+    playerWheels.push(wheel);
+    wheelsByPlayer.set(wheel.player_id, playerWheels);
+  }
+
+  const nextRayIndexByPlayer = new Map<string, number>();
+
+  const springs = suspensionRays.flatMap((ray) => {
+    const wheelIndex = nextRayIndexByPlayer.get(ray.player_id) ?? 0;
+
+    nextRayIndexByPlayer.set(ray.player_id, wheelIndex + 1);
+
+    const wheel = wheelsByPlayer.get(ray.player_id)?.[wheelIndex];
+
+    if (!ray.hit || !wheel) {
+      return [];
     }
 
-    const nextRayIndexByPlayer = new Map<string, number>();
+    const start = new THREE.Vector3(...ray.origin);
+    const end = new THREE.Vector3(...wheel.center);
 
-    const springs = suspensionRays.flatMap((ray) => {
-        const wheelIndex =
-            nextRayIndexByPlayer.get(ray.player_id) ?? 0;
+    const direction = new THREE.Vector3(...ray.direction).normalize();
 
-        nextRayIndexByPlayer.set(
-            ray.player_id,
-            wheelIndex + 1
-        );
+    // This reference is ray reach minus tire radius (full droop plus the
+    // server's contact tolerance); it is not the spring's rest length.
+    const maximumSpringLength = Math.max(ray.length - wheel.radius, 0.001);
 
-        const wheel =
-            wheelsByPlayer.get(ray.player_id)?.[wheelIndex];
+    // The server measures compression against suspension travel. Ray
+    // reach includes full droop and contact tolerance, so it cannot supply
+    // a second, equivalent compression formula. Use the backend result.
+    const ratio = THREE.MathUtils.clamp(wheel.compression_ratio, 0, 1);
 
-        if (!ray.hit || !wheel) {
-            return [];
-        }
+    const restEnd = start
+      .clone()
+      .addScaledVector(direction, maximumSpringLength);
 
-        const start = new THREE.Vector3(...ray.origin);
-        const end = new THREE.Vector3(...wheel.center);
+    return [
+      {
+        start: start.toArray() as [number, number, number],
+        end: end.toArray() as [number, number, number],
+        restEnd: restEnd.toArray() as [number, number, number],
+        ratio,
+      },
+    ];
+  });
 
-        const direction = new THREE.Vector3(
-            ...ray.direction
-        ).normalize();
+  return (
+    <>
+      {showLoadBars && <DebugAntiRollBarVisualizer links={loadBars} />}
 
-        // This reference is ray reach minus tire radius (full droop plus the
-        // server's contact tolerance); it is not the spring's rest length.
-        const maximumSpringLength = Math.max(
-            ray.length - wheel.radius,
-            0.001
-        );
+      {showAntiRollBars && <DebugAntiRollBarVisualizer links={arbLinks} />}
 
-        // The server measures compression against suspension travel. Ray
-        // reach includes full droop and contact tolerance, so it cannot supply
-        // a second, equivalent compression formula. Use the backend result.
-        const ratio = THREE.MathUtils.clamp(wheel.compression_ratio, 0, 1);
+      {showSlipAngles && <DebugSlipAngleVisualizer slips={slipVectors} />}
 
-        const restEnd = start
-            .clone()
-            .addScaledVector(
-                direction,
-                maximumSpringLength
-            );
+      {showSprings && (
+        <DebugSpringVisualizer
+          springs={springs}
+          opacity1={0.8}
+          opacity2={0.3}
+        />
+      )}
 
-        return [
-            {
-                start: start.toArray() as [
-                    number,
-                    number,
-                    number,
-                ],
-                end: end.toArray() as [
-                    number,
-                    number,
-                    number,
-                ],
-                restEnd: restEnd.toArray() as [
-                    number,
-                    number,
-                    number,
-                ],
-                ratio,
-            },
-        ];
-    });
-
-    return (
+      {
         <>
-            {showLoadBars && (
-                <DebugAntiRollBarVisualizer
-                    links={loadBars}
-                />
-            )}
+          {showWheels && <DebugWheelVisualizer wheels={wheels} />}
 
-            {showAntiRollBars && (
-                <DebugAntiRollBarVisualizer
-                    links={arbLinks}
-                />
-            )}
-
-            {showSlipAngles && (
-                <DebugSlipAngleVisualizer
-                    slips={slipVectors}
-                />
-            )}
-
-            {showSprings && (
-                <DebugSpringVisualizer
-                    springs={springs}
-                    opacity1={0.8}
-                    opacity2={0.3}
-                />
-            )}
-
-            {(
-                <>
-                    {showWheels && (
-                        <DebugWheelVisualizer
-                            wheels={wheels}
-                        />
-                    )}
-
-                    {showChassis &&
-                        chassis.map((item) => (
-                            <DebugChassisPose key={item.player_id} chassis={item} mode="collider" />
-                        ))}
-                </>
-            )}
+          {showChassis &&
+            chassis.map((item) => (
+              <DebugChassisPose
+                key={item.player_id}
+                chassis={item}
+                mode="collider"
+              />
+            ))}
         </>
-    );
+      }
+    </>
+  );
 }

@@ -1,6 +1,6 @@
 import fs from 'node:fs';
-import {addPiece,emptyLayout,updatePiece} from '../frontend/src/worldBuilder/layoutDocument.ts';
-import {mapExport} from '../frontend/src/worldBuilder/mapDocument.ts';
+import {addPiece,emptyLayout,updatePiece} from '../frontend/src/worldBuilder/document/layoutDocument.ts';
+import {mapExport} from '../frontend/src/worldBuilder/document/mapDocument.ts';
 const source=JSON.parse(fs.readFileSync(new URL('../avenlab-server/src/assets/blocks/streaming_endless_city_colliders.json',import.meta.url),'utf8'));
 let layout=addPiece(emptyLayout('workshop_yard'),'prefab-selection_garage',[0,0,0]);
 layout=addPiece(layout,'glb-road_narrow',[23,0,0]);

@@ -1,0 +1,228 @@
+/* Surfaces share tokens; gauge art, warning lamps and controller colors retain
+   their semantic colors. Theme changes require no canvas rerender or textures. */
+:root {
+  --app-background: #050c18;
+  --app-panel: #0b1729;
+  --app-raised: #142b46;
+  --app-line: #54749a;
+  --app-text: #e6efff;
+  --app-muted: #a6b9d3;
+  --app-accent: #82b7ff;
+  --app-physical: #58e0b0;
+}
+html[data-ui-theme] :is(.menu-surface, .cockpit-overlay, .cockpit-panel) {
+  color: var(--app-text);
+  --menu-idle: var(--app-panel);
+  --menu-active: var(--app-raised);
+  font-size: calc(12px * var(--menu-text-scale, 1));
+}
+html[data-ui-theme]
+  :is(
+    .tabbed-menu,
+    .tabbed-menu-shell,
+    .menu-shell,
+    .cockpit-overlay,
+    .cockpit-panel,
+    .pause-menu,
+    .menu-bind-card
+  ) {
+  background: var(--app-background);
+}
+html[data-ui-theme]
+  :is(
+    .menu-control,
+    .menu-row,
+    .menu-tab,
+    .cockpit-panel button,
+    .theme-choice select
+  ) {
+  background: var(--app-panel);
+  color: var(--app-text);
+  border-color: var(--app-line);
+  border-radius: 0;
+  box-shadow: none;
+}
+html[data-ui-theme]
+  :is(.menu-control, .menu-row, .menu-tab, .cockpit-panel button):is(
+    :hover,
+    :focus-visible,
+    [aria-pressed="true"],
+    [aria-selected="true"],
+    [data-selected="true"]
+  ):not(:disabled) {
+  background: var(--app-raised);
+  border-color: var(--app-accent);
+  color: var(--app-text);
+  outline-color: var(--app-accent);
+}
+html[data-ui-theme]
+  :is(
+    .menu-heading-title,
+    .menu-row-label,
+    .menu-row-value,
+    .cockpit-header h1,
+    .cockpit-status,
+    .headunit-apps button
+  ) {
+  color: var(--app-text);
+}
+html[data-ui-theme]
+  :is(
+    .menu-heading-eyebrow,
+    .menu-description,
+    .menu-row-description,
+    .menu-control-note,
+    .tabbed-menu-footer,
+    .cockpit-system > small
+  ) {
+  color: var(--app-muted);
+}
+html[data-ui-theme]
+  :is(
+    .tabbed-menu-header,
+    .tabbed-menu-tabs,
+    .tabbed-menu-footer,
+    .cockpit-header,
+    .cockpit-tabs,
+    .cockpit-status,
+    .menu-row
+  ) {
+  border-color: var(--app-line);
+}
+html[data-ui-theme] .cockpit-content {
+  background: var(--app-background);
+  font-size: calc(12px * var(--menu-text-scale, 1));
+}
+html[data-ui-theme] .cockpit-panel button {
+  font-size: calc(10px * var(--menu-text-scale, 1));
+  min-height: 30px;
+  touch-action: manipulation;
+}
+html[data-ui-theme] .cockpit-radio .radio-display {
+  background: var(--app-panel);
+  color: var(--app-text);
+  border-color: var(--app-line);
+  box-shadow: none;
+}
+html[data-ui-theme] .cockpit-radio .radio-vehicle-status {
+  color: var(--app-muted);
+}
+html[data-ui-theme] .cockpit-radio [data-alert="true"] {
+  color: var(--app-accent);
+}
+html[data-ui-theme] .theme-choice {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--app-muted);
+  font-size: 10px;
+  flex-shrink: 0;
+}
+html[data-ui-theme] .theme-choice select {
+  max-width: 150px;
+  padding: 5px;
+  font: inherit;
+}
+html[data-ui-theme] .cockpit-header {
+  flex-wrap: wrap;
+  height: auto;
+  min-height: 42px;
+}
+html[data-ui-theme] .cockpit-header h1 {
+  letter-spacing: 0.05em;
+}
+html[data-ui-theme] .cockpit-panel .cockpit-shortcuts {
+  height: auto;
+  min-height: 30px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+html[data-ui-theme] .main-menu {
+  background: var(--app-background);
+}
+html[data-ui-theme] .main-menu .menu-home-content {
+  color: var(--app-text);
+}
+html[data-ui-theme] .menu-home .menu-action {
+  text-shadow: none;
+}
+html[data-ui-theme="white"] .menu-video-background,
+html[data-ui-theme="pastel-purple"] .menu-video-background,
+html[data-ui-theme="strawberry"] .menu-video-background {
+  opacity: 0.15;
+}
+html[data-high-contrast="true"]
+  :is(.menu-surface, .cockpit-panel, .cockpit-overlay) {
+  --app-text: #fff;
+  --app-muted: #eee;
+  --app-background: #000;
+  --app-panel: #070707;
+  --app-raised: #272727;
+  --app-line: #ccc;
+  --app-accent: #fff;
+}
+html[data-high-contrast="true"] :is(.menu-control, .cockpit-panel button) {
+  border-width: 2px;
+}
+html[data-reduce-motion="true"] :is(.cockpit-panel, .driving-hud) * {
+  animation: none !important;
+  transition: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cockpit-panel *,
+  .driving-hud * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+@media (max-width: 600px) {
+  html[data-ui-theme] .cockpit-header {
+    gap: 6px;
+  }
+  html[data-ui-theme] .cockpit-header h1 {
+    font-size: 12px;
+  }
+  html[data-ui-theme] .theme-choice {
+    margin-left: auto;
+  }
+  html[data-ui-theme] .theme-choice select {
+    max-width: 112px;
+  }
+  .cockpit-header .cabin-clock {
+    display: none;
+  }
+}
+html[data-ui-theme] .cockpit-panel .radio-transport {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+}
+html[data-ui-theme] .cockpit-panel .radio-transport > button {
+  flex: 1;
+  min-width: 32px;
+  min-height: 34px;
+  background: var(--app-panel);
+  color: var(--app-text);
+}
+html[data-ui-theme] .cockpit-panel .radio-transport svg {
+  display: block;
+  margin: auto;
+  width: 16px;
+  height: 16px;
+}
+html[data-ui-theme] .cockpit-panel .radio-volume-dial {
+  flex: 0 0 58px;
+  width: 58px;
+}
+html[data-ui-theme] .cockpit-panel .radio-volume-dial .climate-knob {
+  width: 42px;
+  height: 42px;
+}
+html[data-ui-theme] .cockpit-panel .physical-hazard {
+  color: #ff9292;
+  background: #481b23;
+  border-color: #ad5965;
+}

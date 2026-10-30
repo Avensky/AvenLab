@@ -1,17 +1,19 @@
-import { PerspectiveCamera, OrbitControls } from '@react-three/drei'
-import {InspectionCameraControls} from "../components/InspectionCameraControls";
-import {specialCameraPreset} from "../utils/drivingViews";
-import { RotatingCamera } from './RotatingCamera'
-import { useEffect, useRef } from 'react';
-import { useFrame } from '@react-three/fiber';
-import { OrbitControls as ThreeOrbitControls } from 'three-stdlib';
-import { usePreferencesStore } from "../store/preferencesStore";
-import { useGameStore } from '../store/gameStore';
-import { useUIStore } from '../store/uiStore';
-import { useNetworkStore } from '../store/networkStore';
+import { PerspectiveCamera, OrbitControls } from "@react-three/drei";
+import { InspectionCameraControls } from "../components/InspectionCameraControls";
+import { specialCameraPreset } from "../utils/drivingViews";
+import { RotatingCamera } from "./RotatingCamera";
+import { useEffect, useRef } from "react";
+import { useFrame } from "@react-three/fiber";
+import { OrbitControls as ThreeOrbitControls } from "three-stdlib";
+import { usePreferencesStore } from "../store/preferences/preferencesStore";
+import { useGameStore } from "../store/presentation/gameStore";
+import { useUIStore } from "../store/menus/uiStore";
+import { useNetworkStore } from "../store/session/networkStore";
 import { PlayerCameraControls } from "../components/PlayerCameraControls";
-import { beginVehicleRenderFrame, releaseVehicleRenderFrameClock } from "../hooks/usePhysicsInterpolator";
-
+import {
+  beginVehicleRenderFrame,
+  releaseVehicleRenderFrameClock,
+} from "../hooks/usePhysicsInterpolator";
 
 type VehicleCameraPreset = {
   offset: [number, number, number];
@@ -70,15 +72,28 @@ function normalizeVehicleId(vehicleId?: string | null) {
   return vehicleId?.trim().toLowerCase().replaceAll("_", "-") ?? "";
 }
 
-function cameraPresetForVehicle(vehicleId?: string | null): VehicleCameraPreset {
+function cameraPresetForVehicle(
+  vehicleId?: string | null,
+): VehicleCameraPreset {
   const id = normalizeVehicleId(vehicleId);
 
   if (id === "toyota-ae86") return VEHICLE_CAMERA_PRESETS.ae86;
-  if (["subaru-brz", "fr-s", "scion-frs", "scion-fr-s", "gt86", "toyota-gt86"].includes(id)) {
+  if (
+    [
+      "subaru-brz",
+      "fr-s",
+      "scion-frs",
+      "scion-fr-s",
+      "gt86",
+      "toyota-gt86",
+    ].includes(id)
+  ) {
     return VEHICLE_CAMERA_PRESETS.brz;
   }
   if (id === "camaro-2017") return VEHICLE_CAMERA_PRESETS.camaro;
-  if (["supra-2020", "gr-supra", "toyota-supra", "a90", "toyota-a90"].includes(id)) {
+  if (
+    ["supra-2020", "gr-supra", "toyota-supra", "a90", "toyota-a90"].includes(id)
+  ) {
     return VEHICLE_CAMERA_PRESETS.supra;
   }
 
@@ -93,39 +108,55 @@ export default function Cameras() {
   const camMode = useGameStore((state) => state.camera);
   const editor = useGameStore((state) => state.editor);
   const playerId = useNetworkStore((state) => state.playerId);
-  const playerVehicleId = useNetworkStore((state) =>
-    state.snapshot?.entities.find((entity) => entity.id === state.playerId)?.vehicle_id ?? null
+  const playerVehicleId = useNetworkStore(
+    (state) =>
+      state.snapshot?.entities.find((entity) => entity.id === state.playerId)
+        ?.vehicle_id ?? null,
   );
-  const playerCameraPreset = camMode==="FIRST_PERSON"||camMode==="BIRDS_EYE"?specialCameraPreset(camMode,playerVehicleId):{...cameraPresetForVehicle(playerVehicleId),worldAligned:false};
+  const playerCameraPreset =
+    camMode === "FIRST_PERSON" || camMode === "BIRDS_EYE"
+      ? specialCameraPreset(camMode, playerVehicleId)
+      : { ...cameraPresetForVehicle(playerVehicleId), worldAligned: false };
   const controlsRef = useRef<ThreeOrbitControls | null>(null);
   // Run before camera (-1) and model (0). Keep the frame clock alive in
   // editor mode too. Negative priority retains automatic R3F rendering.
   useFrame(() => beginVehicleRenderFrame(), -100);
   useEffect(() => releaseVehicleRenderFrameClock, []);
 
-  if (editor && screen==="sandbox") {
+  if (editor && screen === "sandbox") {
     return (
-      <><PerspectiveCamera makeDefault fov={fov} near={.05}/><InspectionCameraControls playerId={playerId} enabled={overlay===null}/></>
+      <>
+        <PerspectiveCamera makeDefault fov={fov} near={0.05} />
+        <InspectionCameraControls
+          playerId={playerId}
+          enabled={overlay === null}
+        />
+      </>
     );
   }
 
   const isGallery =
     camMode === "GALLERY" &&
-    (
-        screen === "sandbox_setup" ||
-        screen === "signal_recon_setup"
-    );
+    (screen === "sandbox_setup" || screen === "signal_recon_setup");
 
   const isDriving =
     screen === "sandbox" &&
     !editor &&
-    (camMode === "DEFAULT" || camMode === "FIRST_PERSON" || camMode === "BIRDS_EYE");
+    (camMode === "DEFAULT" ||
+      camMode === "FIRST_PERSON" ||
+      camMode === "BIRDS_EYE");
   return (
     <>
-      <PerspectiveCamera makeDefault fov={fov} near={.05} position={[0, 7, 12]} />
+      <PerspectiveCamera
+        makeDefault
+        fov={fov}
+        near={0.05}
+        position={[0, 7, 12]}
+      />
       <PlayerCameraControls
         worldAligned={playerCameraPreset.worldAligned}
-        maxYaw={camMode==="BIRDS_EYE"?0:Math.PI*.65} maxPitch={camMode==="BIRDS_EYE"?0:.45}
+        maxYaw={camMode === "BIRDS_EYE" ? 0 : Math.PI * 0.65}
+        maxPitch={camMode === "BIRDS_EYE" ? 0 : 0.45}
         playerId={playerId}
         enabled={isDriving && overlay === null}
         offset={playerCameraPreset.offset}
@@ -136,15 +167,14 @@ export default function Cameras() {
       <OrbitControls
         ref={controlsRef}
         makeDefault
-        enabled={isGallery}        
+        enabled={isGallery}
         maxPolarAngle={Math.PI / 2 - 0.05}
         minPolarAngle={0}
         enableZoom
         minDistance={3}
         maxDistance={13}
       />
-      {
-        (isGallery && !reducedMotion) && (
+      {isGallery && !reducedMotion && (
         <RotatingCamera
           orbitRef={controlsRef}
           radius={4.5}

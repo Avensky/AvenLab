@@ -1,10 +1,9 @@
-
 import { useWorldStore } from "../store";
 import { CityChunk } from "./CityChunk";
 import type {
   LoadedChunkInstance,
   VisualAsset,
-} from "../store/worldStore";
+} from "../store/world/worldStore";
 
 function CityChunkInstance({
   chunk,
@@ -17,21 +16,13 @@ function CityChunkInstance({
     // Apply the backend chunk origin exactly once to every asset in it.
     <group position={chunk.origin}>
       {visuals.map((visual) => (
-        <MapVisual
-          key={visual.id}
-          visual={visual}
-        />
+        <MapVisual key={visual.id} visual={visual} />
       ))}
     </group>
   );
 }
 
-
-function MapVisual({
-  visual,
-}: {
-  visual: VisualAsset;
-}) {
+function MapVisual({ visual }: { visual: VisualAsset }) {
   return (
     <CityChunk
       path={visual.asset}
@@ -42,10 +33,8 @@ function MapVisual({
   );
 }
 
-
 export function CityGeometry() {
   const map = useWorldStore((state) => state.map);
-
 
   if (!map) {
     return null;

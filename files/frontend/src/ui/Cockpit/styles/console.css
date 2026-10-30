@@ -1,0 +1,900 @@
+/* Radio, climate and wheel artwork. Physical-control sizing/geometry is owned
+   by the focused styles imported after this base. See README.md. */
+/* Physical controls shared by the HUD and full cockpit. */
+.cockpit-drive-layout {
+  display: block;
+  max-width: 520px;
+}
+.cockpit-console-page {
+  width: min(100%, 400px);
+  margin: auto;
+  display: grid;
+  gap: 5px;
+}
+/* The in-game center console has a fixed glass screen over physical HVAC. */
+.drive-dock {
+  position: absolute;
+  right: max(10px, env(safe-area-inset-right));
+  bottom: max(10px, env(safe-area-inset-bottom));
+  width: clamp(190px, 20vw, 270px);
+  pointer-events: auto;
+  font:
+    9px/1.15 ui-monospace,
+    monospace;
+  color: #dce4e9;
+  touch-action: none;
+}
+.drive-dock[data-expanded="false"] {
+  width: 108px;
+}
+.drive-dock-header {
+  display: flex;
+  justify-content: flex-end;
+  gap: 3px;
+  margin-bottom: 4px;
+}
+.drive-dock .drive-dock-header button {
+  height: 21px;
+  min-height: 21px;
+  padding: 3px 6px;
+  font: 8px monospace;
+}
+.drive-dock .drive-dock-header .engine-switch {
+  width: 25px;
+  padding: 3px;
+}
+.drive-dock button {
+  cursor: pointer;
+  border: 1px solid #626e7a88;
+  border-radius: 1px;
+  background: linear-gradient(#262c34b8, #0c1219c4);
+  color: #dce4e9;
+  font:
+    8px/1.1 ui-monospace,
+    monospace;
+  padding: 4px 5px;
+  touch-action: none;
+}
+.drive-dock button:hover:not(:disabled),
+.drive-dock button:focus-visible,
+.console-display button:hover:not(:disabled),
+.console-display button:focus-visible,
+.climate-panel button:hover:not(:disabled),
+.climate-panel button:focus-visible {
+  border-color: #a7dbe9;
+  outline: 1px solid #a7dbe9;
+  outline-offset: -2px;
+  color: #effbff;
+}
+.drive-dock button:disabled,
+.console-display button:disabled,
+.climate-panel button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.drive-dock img {
+  width: 15px;
+  height: 15px;
+  filter: brightness(0) invert(1);
+  pointer-events: none;
+}
+/* Tabbed head unit: content scrolls, its height does not change with tabs. */
+.console-display {
+  padding: 3px;
+  border: 3px solid #737d87;
+  border-radius: 3px;
+  background: #060e15;
+  box-shadow: inset 0 0 0 1px #05070b;
+  color: #b9dce4;
+  font: 9px monospace;
+}
+.console-display .console-display-tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid #42606c;
+  padding-bottom: 3px;
+}
+.console-display .console-display-tabs button {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 2px;
+  background: #10212c;
+  border: 1px solid #3e5967;
+  color: #a8bfc9;
+  font: 7px monospace;
+}
+.console-display button[aria-pressed="true"] {
+  color: #e7faff;
+  border-color: #a5d8e6;
+  background: #1b3441;
+}
+.console-display-content {
+  height: 96px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding-top: 3px;
+  scrollbar-width: thin;
+}
+.console-command-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 3px;
+}
+.console-command-grid button {
+  min-height: 25px;
+  padding: 4px 2px;
+  font: 7px monospace;
+  overflow-wrap: anywhere;
+}
+/* Clock / hazards is shared with the full cockpit and separate from match time. */
+.climate-panel {
+  margin-top: 4px;
+  padding: 3px;
+  background: linear-gradient(#242b34b8, #0a1017b8);
+  border: 1px solid #74818b80;
+  border-radius: 2px;
+}
+.console-clock-strip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 3px;
+  min-height: 20px;
+}
+.console-clock-strip .cabin-clock {
+  font-size: 12px;
+  padding: 2px 5px;
+}
+.console-clock-strip .physical-hazard {
+  margin-left: auto;
+  width: 29px;
+  height: 20px;
+  min-height: 20px;
+  padding: 0;
+  font-size: 21px;
+  color: #ff8079;
+}
+.match-clock {
+  font: 9px monospace;
+  color: #9ed9e7;
+}
+.match-clock[data-phase="overtime"] {
+  color: #ffad58;
+}
+.climate-controls {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 0.8fr;
+  gap: 3px;
+  align-items: center;
+}
+.climate-controls button {
+  min-height: 21px;
+  padding: 3px;
+  font: 7px monospace;
+}
+.climate-controls button[aria-pressed="true"] {
+  border-color: #a6d7e5;
+  color: #e6faff;
+  background: #15333c;
+}
+.climate-temperature {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  border-bottom: 2px solid transparent;
+  border-image: linear-gradient(90deg, #7bcfff, #f06654) 1;
+  min-width: 0;
+}
+.climate-temperature button {
+  min-width: 18px;
+  padding: 2px;
+}
+.climate-temperature output {
+  flex: 1;
+  text-align: center;
+  font: 10px monospace;
+  color: #e4eaf0;
+}
+.climate-fan {
+  font-size: 7px;
+}
+.climate-fan b {
+  color: #f2f6f7;
+  font-weight: 400;
+}
+/* Wheel is a vector face over the existing single input owner. Stalks stay fixed. */
+.wheel-assembly {
+  position: relative;
+  aspect-ratio: 1;
+  width: min(88%, 46vh);
+  margin: 18px auto 0;
+  pointer-events: none;
+  isolation: isolate;
+}
+.wheel-assembly .steering-control {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  display: block;
+  pointer-events: auto;
+  touch-action: none;
+  z-index: 1;
+}
+.wheel-rotor {
+  position: absolute;
+  inset: 0;
+  transition: transform 130ms linear;
+  will-change: transform;
+  pointer-events: none;
+}
+.wheel-artwork {
+  display: block;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 3px 2px #0006);
+}
+.wheel-assembly .touch-stick-thumb {
+  position: absolute;
+  width: 15px;
+  height: 15px;
+  transform: translate(-50%, -50%);
+  border: 1px solid #b6e2ed;
+  background: #7abec842;
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+  box-shadow: 0 0 0 4px #a5dbe712;
+}
+.wheel-assembly [data-active="true"] .touch-stick-thumb {
+  opacity: 0.7;
+}
+@media (max-height: 400px) {
+  .drive-dock {
+    width: 200px;
+  }
+  .console-display-content {
+    height: 80px;
+  }
+  .climate-controls button {
+    min-height: 18px;
+    font-size: 6px;
+  }
+  .climate-temperature output {
+    font-size: 9px;
+  }
+  .console-clock-strip {
+    min-height: 18px;
+  }
+  .console-clock-strip .cabin-clock {
+    font-size: 10px;
+  }
+  .drive-dock .drive-dock-header button {
+    height: 18px;
+    min-height: 18px;
+  }
+  .wheel-assembly {
+    width: min(85%, 44vh);
+    margin-top: 16px;
+  }
+}
+@media (max-width: 600px) {
+  .drive-dock {
+    width: 166px;
+  }
+  .drive-dock .console-display-content {
+    height: 82px;
+  }
+  .console-display .console-display-tabs button {
+    font-size: 6px;
+  }
+  .drive-dock .climate-controls button {
+    font-size: 6px;
+  }
+  .drive-dock .climate-temperature output {
+    font-size: 9px;
+  }
+}
+html[data-reduce-motion="true"] .wheel-rotor {
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .wheel-rotor {
+    transition: none;
+  }
+}
+
+@media (max-height: 350px) {
+  .drive-dock .console-display-content {
+    height: 62px;
+  }
+  .drive-dock .console-clock-strip {
+    min-height: 16px;
+    margin-bottom: 2px;
+  }
+  .drive-dock .console-clock-strip .physical-hazard {
+    height: 16px;
+    min-height: 16px;
+    font-size: 17px;
+  }
+  .drive-dock .climate-panel {
+    padding: 2px;
+  }
+  .drive-dock .climate-controls {
+    gap: 2px;
+  }
+  .drive-dock .climate-controls button {
+    min-height: 16px;
+    padding: 2px;
+  }
+}
+@media (max-width: 480px) and (max-height: 350px) {
+  .drive-dock {
+    right: 6px;
+    bottom: 8px;
+    width: 128px;
+  }
+  .drive-dock .console-display {
+    border-width: 2px;
+    padding: 2px;
+  }
+  .drive-dock .console-display-tabs button {
+    font-size: 5px;
+    padding: 2px 1px;
+  }
+  .drive-dock .console-display-content {
+    height: 52px;
+  }
+  .drive-dock .console-display .key-insert {
+    font-size: 4px !important;
+  }
+  .drive-dock .climate-controls button {
+    min-height: 14px;
+    font-size: 5px;
+  }
+  .drive-dock .climate-temperature output {
+    font-size: 7px;
+  }
+  .drive-dock .climate-temperature button {
+    min-width: 11px;
+  }
+  .drive-dock .console-clock-strip .cabin-clock {
+    font-size: 9px;
+    padding: 1px 3px;
+  }
+}
+.drive-dock {
+  max-height: calc(100dvh - 20px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+/* Independent mobile HUD groups; optional equipment starts collapsed. */
+.drive-dock {
+  bottom: 90px;
+  width: clamp(166px, 19vw, 250px);
+  max-height: calc(100dvh - 106px);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  touch-action: pan-y;
+}
+.drive-dock[data-expanded="false"] {
+  width: 126px;
+}
+.drive-dock .drive-dock-header {
+  margin-bottom: 0;
+  flex: none;
+}
+.drive-dock .hud-group {
+  flex: none;
+}
+.drive-dock .hud-group-header button {
+  padding: 2px 4px;
+  min-height: 17px;
+  height: 17px;
+  font: 7px/1.1 monospace;
+  background: #07101a38;
+}
+.drive-dock .hud-group-header .hud-group-hide {
+  padding: 0;
+  font-size: 12px;
+}
+.cockpit-radio[data-compact="true"] {
+  margin: 0;
+}
+.cockpit-radio[data-compact="true"] .radio-display {
+  border-width: 1px;
+  min-height: 30px;
+  padding: 3px;
+  gap: 1px;
+}
+.cockpit-radio[data-compact="true"] .radio-display strong {
+  font-size: 8px;
+}
+.cockpit-radio[data-compact="true"] .radio-display small,
+.cockpit-radio[data-compact="true"] .radio-display span {
+  font-size: 6px;
+}
+.cockpit-radio[data-compact="true"] .radio-buttons {
+  gap: 2px;
+  margin-top: 3px;
+}
+.cockpit-radio[data-compact="true"] .radio-buttons button {
+  min-height: 19px;
+  padding: 2px;
+  font-size: 6px;
+}
+.cockpit-radio[data-compact="true"] .radio-volume {
+  margin-top: 3px;
+  gap: 3px;
+  align-items: center;
+  font-size: 7px;
+}
+.cockpit-radio[data-compact="true"] .radio-volume button {
+  min-height: 17px;
+  padding: 2px 8px;
+  font-size: 8px;
+}
+.cockpit-ignition-page {
+  width: 220px;
+  height: 130px;
+  margin: 20px auto;
+}
+@media (max-height: 450px) {
+  .drive-dock {
+    bottom: 78px;
+    width: 180px;
+    max-height: calc(100dvh - 88px);
+    gap: 3px;
+  }
+  .drive-dock .console-display-content {
+    height: 76px;
+  }
+}
+@media (max-width: 600px) and (orientation: portrait) {
+  .drive-dock {
+    width: 166px;
+    bottom: 96px;
+    max-height: calc(100dvh - 210px);
+  }
+  .drive-dock .console-display-content {
+    height: 90px;
+  }
+  .drive-dock[data-expanded="false"] {
+    bottom: 96px;
+  }
+}
+@media (max-height: 320px) {
+  .drive-dock {
+    width: 154px;
+    bottom: 64px;
+    max-height: calc(100dvh - 72px);
+  }
+  .drive-dock .console-display-content {
+    height: 72px;
+  }
+}
+/* Compact FR-S console: equipment owns its minimize control; visibility is menu-only. */
+.driving-hud {
+  --console-width: clamp(166px, 19vw, 230px);
+}
+.drive-dock {
+  right: max(10px, env(safe-area-inset-right));
+  bottom: max(8px, env(safe-area-inset-bottom));
+  width: var(--console-width);
+  max-height: calc(100dvh - 16px);
+  gap: 4px;
+  overflow: auto;
+}
+.drive-dock[data-expanded="false"] {
+  width: 146px;
+}
+.drive-dock .pedal-hud {
+  position: static;
+  inset: auto;
+  transform: none;
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+  align-items: flex-end;
+}
+.console-display {
+  padding: 3px;
+  border-width: 2px;
+}
+.console-display .console-display-content {
+  height: auto;
+  max-height: none;
+  overflow: visible;
+  padding-top: 3px;
+}
+.console-display .console-display-tabs {
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 2px 0;
+}
+.console-display .console-display-tabs button {
+  flex: 1 1 29%;
+  min-height: 18px;
+  font: 6px monospace;
+  padding: 2px;
+}
+.console-display .console-command-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.console-command-grid button {
+  min-height: 22px;
+  font-size: 6px;
+}
+.cockpit-radio[data-compact="true"] .radio-display {
+  position: relative;
+  padding: 2px 20px 2px 3px;
+  min-height: 26px;
+  border: 0;
+  background: #091820;
+  gap: 1px;
+  overflow: hidden;
+}
+.cockpit-radio[data-compact="true"] .radio-display strong {
+  font-size: 8px;
+  line-height: 1.2;
+}
+.cockpit-radio[data-compact="true"] .radio-display small {
+  font-size: 6px;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+.radio-display .component-minimize {
+  position: absolute;
+  right: 1px;
+  top: 2px;
+  width: 18px;
+  height: 20px;
+  padding: 0;
+}
+.component-minimize {
+  background: transparent;
+  border: 1px solid #627e8c50;
+  color: #bed7e0;
+  font: 10px monospace;
+  cursor: pointer;
+}
+.cockpit-radio[data-compact="true"] .radio-buttons {
+  display: flex;
+  gap: 2px;
+  margin-top: 2px;
+}
+.cockpit-radio[data-compact="true"] .radio-buttons button {
+  height: 17px;
+  min-height: 17px;
+  padding: 2px;
+  font-size: 6px;
+}
+.radio-status {
+  display: block;
+  font-size: 6px;
+  color: #ddb780;
+}
+.cockpit-radio[data-compact="true"] .radio-volume {
+  margin: 2px 0 0;
+  gap: 3px;
+}
+.climate-panel {
+  margin: 0;
+  padding: 2px;
+  border-width: 1px;
+}
+.console-clock-strip {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 3px;
+  margin: 0;
+  min-height: 22px;
+}
+.console-clock-strip .cabin-clock {
+  font-size: 10px;
+  padding: 2px 3px;
+}
+.console-clock-strip output {
+  font: 8px monospace;
+  white-space: nowrap;
+  color: #d8e9ef;
+}
+.console-clock-strip .component-minimize {
+  width: 17px;
+  height: 20px;
+  padding: 0;
+}
+.console-clock-strip .physical-hazard {
+  margin-left: auto;
+  width: 22px;
+  height: 20px;
+  min-height: 20px;
+  font-size: 20px;
+  padding: 0;
+}
+.console-clock-strip .match-clock {
+  font-size: 6px;
+}
+.climate-three-knobs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  padding: 9px 3px 5px;
+}
+.climate-knob {
+  aspect-ratio: 1;
+  position: relative;
+  border: 2px solid #8395a0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 25%, #3a4650, #111a23 70%);
+  box-shadow: 0 2px 3px #0006;
+  touch-action: none;
+  cursor: grab;
+}
+.climate-knob[aria-disabled="true"] {
+  opacity: 0.4;
+}
+.knob-title {
+  position: absolute;
+  top: -9px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font: 5px/1 monospace;
+  white-space: nowrap;
+  color: #b1c3ce;
+}
+.knob-ring {
+  position: absolute;
+  inset: -2px;
+  border: 2px solid transparent;
+  border-top-color: #a6c7d6;
+  border-right-color: #758e9d;
+  border-radius: 50%;
+}
+.climate-knob:last-child .knob-ring {
+  border-left-color: #6fbcff;
+  border-right-color: #ef776b;
+}
+.knob-pointer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.knob-pointer:before {
+  content: "";
+  position: absolute;
+  left: calc(50% - 1px);
+  top: 0;
+  width: 2px;
+  height: 7px;
+  background: #eef8fc;
+}
+.climate-three-knobs .climate-knob button {
+  position: absolute;
+  inset: 27% 16% 25%;
+  padding: 0;
+  min-height: 0;
+  border: 1px solid #5e7079;
+  border-radius: 50%;
+  background: #111e29;
+  font: 4px monospace;
+  color: #dceaf1;
+}
+.climate-knob button[aria-pressed="true"] {
+  color: #ffbc53;
+  border-color: #bd9051;
+}
+.climate-knob output {
+  position: absolute;
+  bottom: -5px;
+  left: -5px;
+  right: -5px;
+  text-align: center;
+  font: 5px/1 monospace;
+  pointer-events: none;
+  color: #dbeaf2;
+  background: #07111b9c;
+}
+@media (max-height: 400px) {
+  .driving-hud {
+    --console-width: 166px;
+  }
+  .climate-three-knobs {
+    gap: 4px;
+    padding-top: 9px;
+  }
+  .drive-dock .driving-pedal {
+    height: 34px;
+    width: 42px;
+  }
+  .drive-dock .driving-pedal img {
+    height: 18px;
+  }
+  .drive-dock .driving-pedal small {
+    font-size: 6px;
+  }
+}
+.driving-pedal {
+  --pedal-icon-height: 27px;
+}
+.driving-pedal.driving-reverse > span {
+  display: grid;
+  place-items: center;
+  flex: none;
+  height: var(--pedal-icon-height);
+  line-height: 1;
+  font-size: var(--pedal-icon-height);
+}
+@media (max-height: 450px) {
+  .driving-pedal {
+    --pedal-icon-height: 22px;
+  }
+}
+@media (max-height: 320px) {
+  .driving-pedal {
+    --pedal-icon-height: 17px;
+  }
+}
+@media (max-height: 400px) {
+  .drive-dock .driving-pedal {
+    --pedal-icon-height: 18px;
+  }
+}
+
+/* Research HUD: quiet controls, painted wheel hit regions, fixed pedal space. */
+.wheel-assembly > .steering-control {
+  z-index: 2;
+  pointer-events: none;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+.wheel-assembly .wheel-rotor,
+.wheel-assembly .wheel-artwork {
+  pointer-events: none;
+}
+.wheel-artwork :is(path, circle, ellipse, rect, text) {
+  pointer-events: visiblePainted;
+}
+.drive-dock {
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+}
+.dock-equipment {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 0;
+  overflow: auto;
+  flex: 0 1 auto;
+}
+.drive-dock .pedal-hud {
+  flex: 0 0 auto;
+  min-height: 0;
+}
+
+.radio-transport {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  padding: 2px 0;
+  min-width: 0;
+}
+:is(.drive-dock, .cockpit-panel) .radio-transport > button {
+  flex: 1;
+  min-width: 0;
+  height: 23px;
+  min-height: 23px;
+  padding: 1px;
+  border-radius: 50%;
+  font: 11px/1 monospace;
+}
+.radio-volume-dial {
+  flex: 0 0 27px;
+  width: 27px;
+  height: 32px;
+  margin-left: 2px;
+  padding-top: 3px;
+}
+.radio-volume-dial .climate-knob {
+  width: 25px;
+  height: 25px;
+  border-width: 1px;
+}
+.radio-volume-dial .knob-title {
+  display: none;
+}
+.radio-volume-dial .knob-pointer:before {
+  height: 4px;
+}
+.radio-volume-dial .climate-knob > button {
+  position: absolute;
+  inset: 24%;
+  padding: 0;
+  min-height: 0;
+  min-width: 0;
+  font-size: 8px;
+  border-radius: 50%;
+}
+.radio-volume-dial output {
+  font-size: 5px;
+  bottom: -5px;
+  left: 0;
+  right: 0;
+}
+.radio-display .radio-vehicle-status[data-alert="true"] {
+  color: #ffb76a;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* One rotary key beside the console, leaving the vehicle center clear. */
+.driving-hud button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Stalk feedback follows the physical hold, never hover or retained focus. */
+
+/* Confirmed function state is separate from contact feedback on console controls. */
+:is([data-momentary-controls] button, button[data-momentary-controls]) {
+  border-color: var(--contact-border, var(--app-line, #626e7a88)) !important;
+  background: var(--contact-surface, var(--app-panel, #111a24)) !important;
+  color: var(--contact-ink, var(--app-text, #dce4e9)) !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  -webkit-tap-highlight-color: transparent;
+}
+[data-momentary-controls] .component-minimize {
+  --contact-border: #627e8c50;
+  --contact-surface: transparent;
+  --contact-ink: #bed7e0;
+}
+[data-momentary-controls] .physical-hazard {
+  --contact-border: #934143;
+  --contact-surface: linear-gradient(#611e20, #351416);
+  --contact-ink: #ff8079;
+}
+[data-momentary-controls] .console-display-tabs button {
+  --contact-border: #3e5967;
+  --contact-surface: #10212c;
+  --contact-ink: #a8bfc9;
+}
+[data-momentary-controls] .climate-knob > button {
+  --contact-border: #5e7079;
+  --contact-surface: #111e29;
+  --contact-ink: #dceaf1;
+}
+:is(
+  [data-momentary-controls] button,
+  button[data-momentary-controls]
+)[data-hud-held="true"] {
+  border-color: var(--app-accent, #a7dbe9) !important;
+  background: var(--app-raised, #1e3b49) !important;
+  color: var(--app-text, #effbff) !important;
+  outline: 1px solid var(--app-accent, #a7dbe9) !important;
+  outline-offset: -2px;
+}
+[data-momentary-controls] .climate-knob[data-hud-held="true"] {
+  border-color: #a7dbe9;
+  box-shadow: 0 0 0 1px #a7dbe9;
+}
+.console-display[data-expanded="true"],
+.climate-panel[data-expanded="true"] {
+  border-color: #8eb5c4;
+}
+
+/* Keyboard focus is a thin locator, never a depressed switch face. */
+[data-momentary-controls] button:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}

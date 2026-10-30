@@ -33,7 +33,7 @@ Build one finite test map from the existing measured road modules and explicit w
 
 Set `base: 'replace'`, `ground: false`, and `repeat: false` explicitly. Create support only where it is intended. Start with the BRZ already used in the physics integration tests. Test an unboosted approach and the existing vehicle NOS separately; record actual launch speed, ramp dimensions, gap, landing height and outcome. Treat any suggested dimensions as a draft until driven with the real solver.
 
-Use the current installed-map workflow for this slice. A new map requires its schema 2 fixture in `avenlab-server/src/assets/blocks/` and its selection entry in `frontend/src/store/selectionStore.ts`; normal frontend prebuild refreshes the authoring catalog. Do not turn this first map into a new terrain or physics system.
+Use the current installed-map workflow for this slice. A new map requires its schema 2 fixture in `avenlab-server/src/assets/blocks/` and its selection entry in `frontend/src/store/selection/selectionStore.ts`; normal frontend prebuild refreshes the authoring catalog. Do not turn this first map into a new terrain or physics system.
 
 Acceptance for this slice:
 
@@ -92,7 +92,7 @@ Current layout limits are 512 objects, a 4,096 part/collider-group budget and 2 
 
 | Area | Existing starting point |
 | --- | --- |
-| Procedural pieces and layout validation | `frontend/src/worldBuilder/layoutDocument.ts` |
+| Procedural pieces and layout validation | `frontend/src/worldBuilder/document/layoutDocument.ts` |
 | Road catalog, masks, frames and snapping | `frontend/src/worldBuilder/roads/` and `roadKit/` |
 | Selection, history and placement UI | `layoutStore.ts`, `WorldBuilderPanel.tsx`, `LayoutScene.tsx`, `LayoutPlan.tsx` |
 | Shared primitive visual transforms | `LayoutMeshes.tsx` |

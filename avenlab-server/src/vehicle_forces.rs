@@ -97,7 +97,7 @@ impl PhysicsWorld {
             }, dt);
             vehicle.vehicle_flags.set(VehicleStateFlags::ENGINE_ON, vehicle.powertrain.running);
             vehicle.vehicle_flags.set(VehicleStateFlags::BOOST, vehicle.powertrain.boost_active);
-            if vehicle.cockpit.enabled {
+            if vehicle.cockpit.enabled || vehicle.cockpit.flashing() {
                 vehicle.vehicle_flags.set(VehicleStateFlags::HEADLIGHTS, vehicle.cockpit.headlights(vehicle.powertrain.running));
             }
 

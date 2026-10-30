@@ -4,14 +4,25 @@ import { useFrame } from "@react-three/fiber";
 import { useVehiclePhysicsInterpolator } from "../hooks/usePhysicsInterpolator";
 import type { ReactNode } from "react";
 
-import { useNetworkStore, type VehicleColliderShape } from "../store/networkStore";
-import { useWorldStore } from "../store/worldStore";
-import { useRenderSettingsStore, type VisualMode } from "../store/renderSettingsStore";
+import {
+  useNetworkStore,
+  type VehicleColliderShape,
+} from "../store/session/networkStore";
+import { useWorldStore } from "../store/world/worldStore";
+import {
+  useRenderSettingsStore,
+  type VisualMode,
+} from "../store/presentation/renderSettingsStore";
 import { ColliderVehicle } from "./ColliderVehicle";
 import { AssetBoundary } from "../components/debugger/AssetBoundary";
 
 // Only roster metadata belongs in React; positions are sampled per frame.
-type RosterEntity = { id: string; vehicle_id?: string | null; team?: string; collider?: VehicleColliderShape };
+type RosterEntity = {
+  id: string;
+  vehicle_id?: string | null;
+  team?: string;
+  collider?: VehicleColliderShape;
+};
 import { Ae86 } from "./Ae86";
 import { Brz } from "./Brz";
 import { Camaro } from "./Camaro";
@@ -38,17 +49,10 @@ function VehicleFallback({
     root.current.quaternion.fromArray(pose.rotation);
   });
   const team = String(entity.team ?? "").toLowerCase();
-  const color = loading
-    ? "#334155"
-    : team === "red"
-      ? "#7f1d1d"
-      : "#1e3a8a";
+  const color = loading ? "#334155" : team === "red" ? "#7f1d1d" : "#1e3a8a";
 
   return (
-    <group
-      name={`vehicle-fallback-${entity.id}`}
-      ref={root}
-    >
+    <group name={`vehicle-fallback-${entity.id}`} ref={root}>
       <mesh position={[0, 0.35, 0]}>
         <boxGeometry args={[1.8, 0.7, 4.2]} />
         <meshStandardMaterial color={color} roughness={0.8} />
@@ -57,17 +61,33 @@ function VehicleFallback({
   );
 }
 
-function NetworkVehicle({ entity, mode }: { entity: RosterEntity; mode: VisualMode }) {
+function NetworkVehicle({
+  entity,
+  mode,
+}: {
+  entity: RosterEntity;
+  mode: VisualMode;
+}) {
   if (mode === "hidden") return null;
   if (mode === "collider" || mode === "geometry") {
-    return entity.collider
-      ? <ColliderVehicle id={entity.id} shape={entity.collider} solid={mode === "geometry"} />
-      : <VehicleFallback entity={entity} loading />;
+    return entity.collider ? (
+      <ColliderVehicle
+        id={entity.id}
+        shape={entity.collider}
+        solid={mode === "geometry"}
+      />
+    ) : (
+      <VehicleFallback entity={entity} loading />
+    );
   }
-  return <>
-    <GlbVehicle entity={entity} />
-    {mode === "hybrid" && entity.collider && <ColliderVehicle id={entity.id} shape={entity.collider} />}
-  </>;
+  return (
+    <>
+      <GlbVehicle entity={entity} />
+      {mode === "hybrid" && entity.collider && (
+        <ColliderVehicle id={entity.id} shape={entity.collider} />
+      )}
+    </>
+  );
 }
 
 function GlbVehicle({ entity }: { entity: RosterEntity }) {
@@ -115,8 +135,24 @@ function GlbVehicle({ entity }: { entity: RosterEntity }) {
   }
 
   return (
-    <AssetBoundary fallback={entity.collider ? <ColliderVehicle id={entity.id} shape={entity.collider} /> : <VehicleFallback entity={entity} loading />}>
-      <Suspense fallback={entity.collider ? <ColliderVehicle id={entity.id} shape={entity.collider} /> : <VehicleFallback entity={entity} loading />}>
+    <AssetBoundary
+      fallback={
+        entity.collider ? (
+          <ColliderVehicle id={entity.id} shape={entity.collider} />
+        ) : (
+          <VehicleFallback entity={entity} loading />
+        )
+      }
+    >
+      <Suspense
+        fallback={
+          entity.collider ? (
+            <ColliderVehicle id={entity.id} shape={entity.collider} />
+          ) : (
+            <VehicleFallback entity={entity} loading />
+          )
+        }
+      >
         {model}
       </Suspense>
     </AssetBoundary>
@@ -128,17 +164,29 @@ export const VehicleRoster = memo(function VehicleRoster() {
   const overrides = useRenderSettingsStore((s) => s.vehicleOverrides);
   // A stable scalar selector avoids rerendering all loaded GLBs on every
   // snapshot/debug packet. Joins, model changes and team changes still update.
-  const rosterKey = useNetworkStore((state) => JSON.stringify(
-    (state.snapshot?.entities ?? []).map((entity) => ({
-      id: entity.id, vehicle_id: entity.vehicle_id, team: entity.team, collider: entity.collider,
-    })),
-  ));
-  const entities = useMemo(() => JSON.parse(rosterKey) as RosterEntity[], [rosterKey]);
+  const rosterKey = useNetworkStore((state) =>
+    JSON.stringify(
+      (state.snapshot?.entities ?? []).map((entity) => ({
+        id: entity.id,
+        vehicle_id: entity.vehicle_id,
+        team: entity.team,
+        collider: entity.collider,
+      })),
+    ),
+  );
+  const entities = useMemo(
+    () => JSON.parse(rosterKey) as RosterEntity[],
+    [rosterKey],
+  );
 
   return (
     <group name="network-vehicle-roster">
       {entities.map((entity) => (
-        <NetworkVehicle key={entity.id} entity={entity} mode={overrides[entity.id] ?? mode} />
+        <NetworkVehicle
+          key={entity.id}
+          entity={entity}
+          mode={overrides[entity.id] ?? mode}
+        />
       ))}
     </group>
   );

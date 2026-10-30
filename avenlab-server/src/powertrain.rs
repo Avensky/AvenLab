@@ -128,7 +128,7 @@ impl ResourceConfig {
     pub fn hud(self) -> HudCalibration {
         HudCalibration {
             cockpit_controls: true,
-            cockpit_version: 5,
+            cockpit_version: 6,
             cluster_fields: (1 << 2) | (1 << 3) | (1 << 9) | (1 << 10),
             telemetry_mask: RPM
                 | GEAR

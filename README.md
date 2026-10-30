@@ -1,3 +1,7 @@
+# Editing this project
+
+Start with [Project guide](docs/PROJECT_GUIDE.md), [repo audit](docs/REPO_AUDIT.md), and the README in the feature you want to change. State owners and public index.ts entry points are documented under [frontend/src/store](frontend/src/store/README.md).
+
 # AvensLab
 
 ```t

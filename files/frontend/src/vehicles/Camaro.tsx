@@ -1,0 +1,546 @@
+import { applyHeadlightBeam } from "./tools/headlightBeam";
+import { useVehicleVisualAlignment } from "../hooks/useVehicleVisualAlignment";
+import { useRenderSettingsStore } from "../store/presentation/renderSettingsStore";
+// Camaro.tsx
+
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+} from "react";
+import type { PropsWithChildren } from "react";
+import { useGLTF } from "@react-three/drei";
+import { Group, MathUtils, Matrix4, Mesh, SpotLight } from "three";
+import {
+  CAMARO_GLASS_PARTS as GLASS_PARTS,
+  createVehicleMaterial,
+} from "./tools/vehicleMaterials";
+import type { Object3D } from "three";
+import { useFrame } from "@react-three/fiber";
+import { setupVehicleParts } from "./tools/setupVehicleParts";
+import { useNetworkStore, useInputStore, useUIStore } from "../store";
+import { useVehiclePhysicsInterpolator } from "../hooks/usePhysicsInterpolator";
+import { hasFlag, VehicleFlags } from "../store/input/protocol/inputMasks";
+
+const MODEL_PATH = "/models/vehicles/camaro.glb";
+
+// Chassis and wheel placement use backend poses; map data owns road alignment.
+const DYNAMIC_WHEEL_GROUPS = new Set([
+  "FL_WHEEL",
+  "FR_WHEEL",
+  "RL_WHEEL",
+  "RR_WHEEL",
+]);
+
+type CamaroProps = PropsWithChildren<{
+  entityId?: string;
+}>;
+
+type WheelVisualRig = {
+  carrier: Group;
+  steer: Group;
+  spin: Group;
+  previewMatrix: Matrix4;
+};
+
+function configureObjectMaterials(root: Object3D, isGlass: boolean) {
+  root.traverse((object) => {
+    if (!(object instanceof Mesh)) return;
+
+    object.material = Array.isArray(object.material)
+      ? object.material.map((material) =>
+          createVehicleMaterial(material, isGlass, "camaro"),
+        )
+      : createVehicleMaterial(object.material, isGlass, "camaro");
+  });
+}
+
+export const Camaro = forwardRef<Group, CamaroProps>(function Camaro(
+  { children, entityId },
+  ref,
+) {
+  // Load the car model
+  const vehicleLights = useRenderSettingsStore((s) => s.vehicleLights);
+  const { scene } = useGLTF(MODEL_PATH);
+
+  // Refs for car group
+  const vehicleGroupRef = useRef<Group>(null!);
+  const vehicleVisualGroupRef = useRef<Group>(null!);
+
+  const isVehiclePreview = useUIStore(
+    (state) =>
+      state.screen === "sandbox_setup" || state.screen === "signal_recon_setup",
+  );
+
+  // Allow parent components to access the car group ref
+  useImperativeHandle(ref, () => vehicleGroupRef.current, []);
+
+  // Simulate hazard lights
+  const blinkTimer = useRef(0);
+  const blinkState = useRef(false);
+
+  // Refs for individual lights
+  const leftLightRef = useRef<SpotLight | null>(null);
+  const rightLightRef = useRef<SpotLight | null>(null);
+  const leftTailRef = useRef<SpotLight | null>(null);
+  const rightTailRef = useRef<SpotLight | null>(null);
+  const flBlinkerRef = useRef<SpotLight | null>(null);
+  const frBlinkerRef = useRef<SpotLight | null>(null);
+  const rlBlinkerRef = useRef<SpotLight | null>(null);
+  const rrBlinkerRef = useRef<SpotLight | null>(null);
+
+  // One completed backend timeline drives both the body and world-space wheels.
+  const { getInterpolated } = useVehiclePhysicsInterpolator(entityId);
+
+  const { clonesByGroup, renderedGroups } = useMemo(() => {
+    const setup = setupVehicleParts({
+      scene,
+      groups: [
+        {
+          name: "BODY",
+          parts: [
+            "SUNROOF",
+            "SUNROOF_window",
+            "FRONT_windows",
+            "WINDSHIELD",
+            "REAR_WINDOW",
+            "RIGHT_QUARTER_WINDOW",
+            "LEFT_QUARTER_WINDOW",
+            "HEADLIGHT_LENS_LEFT",
+            "HEADLIGHT_LENS_RIGHT",
+            "TAILLIGHT_LENS_LEFT",
+            "TAILLIGHT_LENS_RIGHT",
+            "BODY",
+            "REARVIEW_MIRROR",
+            "GRILL",
+            "GRILL_2",
+            "CHASSIS",
+            "FRONT_BUMPER",
+            "FRONT_BUMPER_2",
+            "HEADLIGHTS",
+            "HEADLIGHTS_OFFSET",
+            "BODY_badges",
+            "BODY_DOOR_FRAMES",
+            "REAR_BRAKES_LEFT",
+            "REAR_BRAKES_RIGHT",
+            "REAR_CAB",
+            "REARBUMPER_badges",
+            "REARBUMPER",
+            "REARBUMPER_2",
+            "REARBUMPER_lights",
+            "REARBUMPER_LIP",
+            "INTERIOR",
+            "INTERIOR_2",
+            "SEATS",
+            "SEATS_2",
+            "SEATS_3",
+            "FRONT_CADDY",
+            "DASHBOARD",
+            "DASHBOARD_2",
+            "NEEDLE_RPM",
+            "NEEDLE_SPEED",
+            "MUFFLERS",
+            "EMPTY",
+          ],
+        },
+        {
+          name: "HOOD",
+          parts: ["HOOD_VENT", "HOOD", "HOOD_2", "HOOD_3"],
+        },
+        {
+          name: "TRUNK",
+          parts: [
+            "TRUNK",
+            "TRUNK_WING",
+            "CENTER_BREAK_LIGHT",
+            "CHEVY_EMBLEM",
+            "REAR_BRAKES_BOOT",
+          ],
+        },
+        {
+          name: "DOOR_LEFT",
+          parts: [
+            "DOOR_LEFT_LED",
+            "DOOR_LEFT",
+            "DOOR_LEFT_2",
+            "DOOR_LEFT_3",
+            "DOOR_LEFT_4",
+            "DOOR_LEFT_5",
+            "DOOR_LEFT_6",
+            "DOOR_LEFT_7",
+            "MIRROR_LEFT_GLASS",
+            "MIRROR_LEFT",
+            "MIRROR_LEFT_2",
+            "MIRROR_LEFT_3",
+            "LEFT_WINDOW",
+          ],
+        },
+        {
+          name: "DOOR_RIGHT",
+          parts: [
+            "DOOR_RIGHT_LED",
+            "DOOR_RIGHT",
+            "DOOR_RIGHT_2",
+            "DOOR_RIGHT_3",
+            "DOOR_RIGHT_4",
+            "DOOR_RIGHT_5",
+            "DOOR_RIGHT_6",
+            "DOOR_RIGHT_7",
+            "MIRROR_RIGHT",
+            "MIRROR_RIGHT_2",
+            "MIRROR_RIGHT_3",
+            "MIRROR_RIGHT_GLASS",
+            "RIGHT_WINDOWS",
+          ],
+        },
+        {
+          name: "FL_WHEEL",
+          parts: ["FL_TIRE", "FL_RIM", "FL_ROTOR"],
+        },
+        {
+          name: "FR_WHEEL",
+          parts: ["FR_TIRE", "FR_RIM", "FR_ROTOR"],
+        },
+        {
+          name: "RL_WHEEL",
+          parts: ["RL_TIRE", "RL_RIM", "RL_ROTOR"],
+        },
+        {
+          name: "RR_WHEEL",
+          parts: ["RR_TIRE", "RR_RIM", "RR_ROTOR"],
+        },
+        {
+          name: "STEERING_WHEEL",
+          parts: [
+            "STEERING_WHEEL_CENTER",
+            "STEERING_WHEEL_SIDES",
+            "STEERING_WHEEL_INSIDE",
+            "STEERING_WHEEL_BOTTOM",
+          ],
+        },
+      ],
+    });
+
+    // Clone materials per part so windows can remain transparent without
+    // making the body transparent or mutating another Camaro instance.
+    Object.values(setup.clonesByGroup).forEach((group) => {
+      Object.entries(group as Record<string, Object3D>).forEach(
+        ([partName, object]) => {
+          configureObjectMaterials(object, GLASS_PARTS.has(partName));
+        },
+      );
+    });
+
+    return setup;
+  }, [scene]);
+
+  useEffect(() => {
+    if (!vehicleLights) return;
+    const visualGroup = vehicleVisualGroupRef.current;
+    if (!visualGroup) return;
+
+    const addSpot = (
+      refObj: { current: SpotLight | null },
+      color: number,
+      intensity: number,
+      distance: number,
+      position: [number, number, number],
+      target: [number, number, number],
+    ) => {
+      const light = new SpotLight(color, intensity, distance, Math.PI / 6, 0.2);
+      // Match the model's 180-degree rotation around the vertical Y axis.
+      // Rotate both the mounting position and beam target: (x, y, z) -> (-x, y, -z).
+      light.position.set(-position[0], position[1], -position[2]);
+      light.target.position.set(-target[0], target[1], -target[2]);
+      light.visible = false;
+      refObj.current = light;
+
+      visualGroup.add(light);
+      visualGroup.add(light.target);
+    };
+
+    addSpot(leftLightRef, 0xffffff, 5, 40, [-0.5, 0.7, -1.8], [-0.4, -0.6, -5]);
+    addSpot(rightLightRef, 0xffffff, 5, 40, [0.55, 0.7, -1.8], [0.4, -0.6, -5]);
+
+    addSpot(leftTailRef, 0xff0000, 3, 8, [-0.5, 0.6, 1.9], [-0.5, 0.5, 3]);
+    addSpot(rightTailRef, 0xff0000, 3, 8, [0.57, 0.6, 1.8], [0.57, 0.5, 3]);
+
+    addSpot(
+      flBlinkerRef,
+      0xffa500,
+      12,
+      16,
+      [-0.7, 0.6, -1.9],
+      [-0.85, 0.6, -3],
+    );
+    addSpot(frBlinkerRef, 0xffa500, 12, 16, [0.7, 0.6, -1.9], [0.9, 0.6, -3]);
+    addSpot(rlBlinkerRef, 0xffa500, 12, 16, [-0.5, 0.6, 1.9], [-0.9, 0.6, 3]);
+    addSpot(rrBlinkerRef, 0xffa500, 12, 16, [0.5, 0.6, 1.9], [0.9, 0.6, 3]);
+
+    return () => {
+      [
+        leftLightRef,
+        rightLightRef,
+        leftTailRef,
+        rightTailRef,
+        flBlinkerRef,
+        frBlinkerRef,
+        rlBlinkerRef,
+        rrBlinkerRef,
+      ].forEach((lightRef) => {
+        const light = lightRef.current;
+        if (!light) return;
+
+        light.parent?.remove(light);
+        light.target.parent?.remove(light.target);
+        light.dispose();
+        lightRef.current = null;
+      });
+    };
+  }, [vehicleLights]);
+
+  const wheelRigs = useMemo<WheelVisualRig[]>(() => {
+    return [
+      clonesByGroup["FL_WHEEL"],
+      clonesByGroup["FR_WHEEL"],
+      clonesByGroup["RL_WHEEL"],
+      clonesByGroup["RR_WHEEL"],
+    ].map((parts, index) => {
+      const carrier = new Group();
+      const steer = new Group();
+      const spin = new Group();
+
+      carrier.add(steer);
+      steer.add(spin);
+
+      Object.values(parts).forEach((object: Object3D) => {
+        spin.add(object);
+      });
+
+      // Calipers have different origins from tires in this GLB.
+      // Preserve their authored relationship using full matrices, and
+      // map it into the existing (already working) tire clone frame.
+      const prefix = ["FL", "FR", "RL", "RR"][index];
+      const sourceTire = scene.getObjectByName(`${prefix}_TIRE`);
+      const sourceCaliper = scene.getObjectByName(`${prefix}_BRAKE_CALIPER`);
+      const clonedTire = parts[`${prefix}_TIRE`] as Object3D | undefined;
+
+      // Restore the authored tire placement in the preview. The clone
+      // may have been recentered by setupVehicleParts, so account for
+      // its local matrix rather than copying only the Empty position.
+      const previewMatrix = new Matrix4();
+      if (sourceTire && clonedTire) {
+        sourceTire.updateWorldMatrix(true, false);
+        clonedTire.updateMatrix();
+        previewMatrix
+          .copy(sourceTire.matrixWorld)
+          .multiply(clonedTire.matrix.clone().invert());
+      }
+
+      if (sourceTire && sourceCaliper && clonedTire) {
+        sourceTire.updateWorldMatrix(true, false);
+        sourceCaliper.updateWorldMatrix(true, false);
+        clonedTire.updateMatrix();
+
+        const caliper = sourceCaliper.clone(true);
+        const caliperInWheel = clonedTire.matrix
+          .clone()
+          .multiply(sourceTire.matrixWorld.clone().invert())
+          .multiply(sourceCaliper.matrixWorld);
+
+        caliper.matrix.copy(caliperInWheel);
+        caliper.matrix.decompose(
+          caliper.position,
+          caliper.quaternion,
+          caliper.scale,
+        );
+        caliper.matrixAutoUpdate = false;
+        configureObjectMaterials(caliper, false);
+        steer.add(caliper);
+      } else {
+        console.warn(`[Camaro] Missing tire/caliper for ${prefix}`);
+      }
+
+      return { carrier, steer, spin, previewMatrix };
+    });
+  }, [clonesByGroup, scene]);
+
+  // Rolling and steering must use separate pivots or one transform will
+  // overwrite the other.
+  const wheelSpinAngles = useRef([0, 0, 0, 0]);
+
+  useLayoutEffect(() => {
+    for (const rig of wheelRigs) {
+      // Restore the authored rest pose before the alignment layout
+      // effect measures wheel centers. The first physics frame replaces
+      // position/rotation with backend poses, as before.
+      rig.previewMatrix.decompose(
+        rig.carrier.position,
+        rig.carrier.quaternion,
+        rig.carrier.scale,
+      );
+      if (isVehiclePreview) {
+        rig.steer.rotation.set(0, 0, 0);
+        rig.spin.rotation.set(0, 0, 0);
+      } else {
+        // Runtime position/rotation come from backend world data.
+        rig.carrier.scale.set(1, 1, 1);
+      }
+    }
+    if (isVehiclePreview) {
+      wheelSpinAngles.current.fill(0);
+    }
+  }, [isVehiclePreview, wheelRigs]);
+
+  const alignmentWheels = useMemo(
+    () => wheelRigs.map((rig) => rig.carrier),
+    [wheelRigs],
+  );
+  useVehicleVisualAlignment(
+    "camaro",
+    entityId,
+    vehicleVisualGroupRef,
+    alignmentWheels,
+    isVehiclePreview,
+  );
+
+  useFrame((_, delta) => {
+    // Selection previews keep the transforms imported from Blender.
+    if (isVehiclePreview) return;
+
+    // get state on frame
+    const inputState = useInputStore.getState();
+    const networkState = useNetworkStore.getState();
+    const localPlayerId = networkState.playerId;
+    const id = entityId ?? localPlayerId;
+
+    if (!id) return;
+
+    const isLocalPlayer = id === localPlayerId;
+
+    const interp = getInterpolated(id);
+    if (!interp) return;
+
+    // Pose and wheel_speed come from the same buffered backend sample.
+    // Mixing the newest raw wheels with a delayed body creates two clocks.
+    const animatedWheels = interp.wheels ?? [];
+
+    const controls = inputState.controls;
+    const input = inputState.input;
+    const group = vehicleGroupRef.current;
+
+    // Update blink state every 0.5s
+    blinkTimer.current += delta;
+    if (blinkTimer.current >= 0.5) {
+      blinkTimer.current = 0;
+      blinkState.current = !blinkState.current;
+    }
+
+    // Determine which lights should be on based on input state
+    const vehicleMask = isLocalPlayer
+      ? input.vehicleMask
+      : ((interp as { vehicle_mask?: number }).vehicle_mask ?? 0);
+
+    const headlights = hasFlag(
+      interp.vehicle_mask ?? vehicleMask,
+      VehicleFlags.HEADLIGHTS,
+    );
+    const highBeam = Boolean((interp.cluster_mask ?? 0) & (1 << 3));
+    const hazards = hasFlag(vehicleMask, VehicleFlags.HAZARDS);
+    const blinkerLeft =
+      hasFlag(vehicleMask, VehicleFlags.BLINKER_LEFT) && !hazards;
+    const blinkerRight =
+      hasFlag(vehicleMask, VehicleFlags.BLINKER_RIGHT) && !hazards;
+
+    const blinkOn = blinkState.current;
+
+    // Lights visibility
+    applyHeadlightBeam(leftLightRef.current, headlights, highBeam);
+    applyHeadlightBeam(rightLightRef.current, headlights, highBeam);
+    const braking = isLocalPlayer && controls.braking;
+    if (leftTailRef.current) leftTailRef.current.visible = braking;
+    if (rightTailRef.current) rightTailRef.current.visible = braking;
+
+    if (flBlinkerRef.current)
+      flBlinkerRef.current.visible = (hazards || blinkerLeft) && blinkOn;
+    if (frBlinkerRef.current)
+      frBlinkerRef.current.visible = (hazards || blinkerRight) && blinkOn;
+    if (rlBlinkerRef.current)
+      rlBlinkerRef.current.visible = (hazards || blinkerLeft) && blinkOn;
+    if (rrBlinkerRef.current)
+      rrBlinkerRef.current.visible = (hazards || blinkerRight) && blinkOn;
+
+    // Update vehicle body
+    group.position.set(...interp.position);
+    group.quaternion.set(...interp.rotation);
+
+    const indexById = {
+      fl: 0,
+      fr: 1,
+      rl: 2,
+      rr: 3,
+    } as const;
+
+    // Avoid a large spin jump after a slow frame or returning to the tab.
+    const wheelDelta = Math.min(delta, 0.05);
+
+    animatedWheels.forEach((wheel) => {
+      const wheelId = wheel.id.toLowerCase() as keyof typeof indexById;
+      const index = indexById[wheelId];
+      if (index === undefined) return;
+
+      const rig = wheelRigs[index];
+      if (!rig) return;
+
+      const wheelSpeed = wheel.wheel_speed ?? 0;
+
+      rig.carrier.position.set(...wheel.position);
+      rig.carrier.quaternion.set(...wheel.rotation);
+      rig.steer.rotation.y = 0;
+
+      wheelSpinAngles.current[index] = MathUtils.euclideanModulo(
+        wheelSpinAngles.current[index] + wheelSpeed * wheelDelta,
+        Math.PI * 2,
+      );
+      rig.spin.rotation.x = wheelSpinAngles.current[index];
+    });
+  });
+
+  {
+    /* <Dust /> */
+  }
+  {
+    /* <Skid /> */
+  }
+  return (
+    <>
+      <group ref={vehicleGroupRef}>
+        <group ref={vehicleVisualGroupRef}>
+          {Object.entries(renderedGroups)
+            .filter(([groupName]) => !DYNAMIC_WHEEL_GROUPS.has(groupName))
+            .map(([, renderedGroup]) => renderedGroup)}
+        </group>
+
+        {isVehiclePreview &&
+          wheelRigs.map((rig, index) => (
+            <primitive
+              key={`camaro-preview-wheel-${index}`}
+              object={rig.carrier}
+            />
+          ))}
+
+        {children}
+      </group>
+
+      {!isVehiclePreview &&
+        wheelRigs.map((rig, index) => (
+          <primitive key={`camaro-wheel-${index}`} object={rig.carrier} />
+        ))}
+    </>
+  );
+});
+
+export default Camaro;

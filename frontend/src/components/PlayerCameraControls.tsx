@@ -1,4 +1,4 @@
-import { usePreferencesStore } from "../store/preferencesStore";
+import { usePreferencesStore } from "../store/preferences/preferencesStore";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
 import { MathUtils } from "three";
@@ -7,7 +7,7 @@ import { VehicleCameraFollower } from "../utils/cameraFollow";
 
 type PlayerCameraControlsProps = {
   playerId: string;
-  worldAligned?:boolean;
+  worldAligned?: boolean;
   offset?: [number, number, number];
   targetOffset?: [number, number, number];
   positionSpeed?: number;
@@ -20,10 +20,17 @@ type PlayerCameraControlsProps = {
 };
 
 export function PlayerCameraControls({
-  playerId, worldAligned=false, offset = [0, 2.2, -5.5], targetOffset = [0, 1, 5],
-  positionSpeed = 7, targetSpeed = 10, enabled = true,
-  lookSensitivity = 0.004, returnSpeed = 3.5,
-  maxYaw = Math.PI * 0.65, maxPitch = 0.45,
+  playerId,
+  worldAligned = false,
+  offset = [0, 2.2, -5.5],
+  targetOffset = [0, 1, 5],
+  positionSpeed = 7,
+  targetSpeed = 10,
+  enabled = true,
+  lookSensitivity = 0.004,
+  returnSpeed = 3.5,
+  maxYaw = Math.PI * 0.65,
+  maxPitch = 0.45,
 }: PlayerCameraControlsProps) {
   const sensitivity = usePreferencesStore((s) => s.cameraSensitivity);
   const { camera, gl } = useThree();
@@ -36,7 +43,9 @@ export function PlayerCameraControls({
   const activePointer = useRef<number | null>(null);
   const previousPointer = useRef({ x: 0, y: 0 });
 
-  useEffect(() => { follower.current!.reset(); }, [playerId, enabled, camera]);
+  useEffect(() => {
+    follower.current!.reset();
+  }, [playerId, enabled, camera]);
   useEffect(() => {
     if (!enabled) return;
     const element = gl.domElement;
@@ -44,7 +53,8 @@ export function PlayerCameraControls({
       const pointer = activePointer.current;
       looking.current = false;
       activePointer.current = null;
-      if (pointer !== null && element.hasPointerCapture?.(pointer)) element.releasePointerCapture(pointer);
+      if (pointer !== null && element.hasPointerCapture?.(pointer))
+        element.releasePointerCapture(pointer);
     };
     const onDown = (event: PointerEvent) => {
       if (event.pointerType === "mouse" && event.button !== 2) return;
@@ -62,11 +72,38 @@ export function PlayerCameraControls({
       // Preserve precise short drags and the existing faster long-drag curve.
       const yawCurve = MathUtils.clamp(Math.abs(dx) / 30, 0, 1) ** 2;
       const pitchCurve = MathUtils.clamp(Math.abs(dy) / 30, 0, 1) ** 2;
-      orbitYaw.current = MathUtils.clamp(orbitYaw.current - dx * sensitivity * MathUtils.lerp(lookSensitivity * 0.2, lookSensitivity * 1.75, yawCurve), -maxYaw, maxYaw);
-      orbitPitch.current = MathUtils.clamp(orbitPitch.current - dy * sensitivity * MathUtils.lerp(lookSensitivity * 0.2, lookSensitivity * 1.35, pitchCurve), -maxPitch, maxPitch);
+      orbitYaw.current = MathUtils.clamp(
+        orbitYaw.current -
+          dx *
+            sensitivity *
+            MathUtils.lerp(
+              lookSensitivity * 0.2,
+              lookSensitivity * 1.75,
+              yawCurve,
+            ),
+        -maxYaw,
+        maxYaw,
+      );
+      orbitPitch.current = MathUtils.clamp(
+        orbitPitch.current -
+          dy *
+            sensitivity *
+            MathUtils.lerp(
+              lookSensitivity * 0.2,
+              lookSensitivity * 1.35,
+              pitchCurve,
+            ),
+        -maxPitch,
+        maxPitch,
+      );
     };
-    const onUp = (event: PointerEvent) => { if (activePointer.current === event.pointerId) releasePointer(); };
-    const onLostCapture = () => { looking.current = false; activePointer.current = null; };
+    const onUp = (event: PointerEvent) => {
+      if (activePointer.current === event.pointerId) releasePointer();
+    };
+    const onLostCapture = () => {
+      looking.current = false;
+      activePointer.current = null;
+    };
     const onContextMenu = (event: MouseEvent) => event.preventDefault();
     element.addEventListener("pointerdown", onDown);
     element.addEventListener("pointermove", onMove);
@@ -83,20 +120,35 @@ export function PlayerCameraControls({
       element.removeEventListener("lostpointercapture", onLostCapture);
       element.removeEventListener("contextmenu", onContextMenu);
       window.removeEventListener("blur", releasePointer);
-      releasePointer(); orbitYaw.current = orbitPitch.current = 0;
+      releasePointer();
+      orbitYaw.current = orbitPitch.current = 0;
     };
   }, [enabled, gl, playerId, sensitivity, lookSensitivity, maxYaw, maxPitch]);
 
   useFrame((_, delta) => {
     if (!enabled) return;
     const pose = getInterpolated(playerId);
-    if (!pose) { follower.current!.reset(); return; }
+    if (!pose) {
+      follower.current!.reset();
+      return;
+    }
     if (!looking.current) {
-      const alpha = 1 - Math.exp(-Math.max(0, returnSpeed) * Math.max(0, delta));
+      const alpha =
+        1 - Math.exp(-Math.max(0, returnSpeed) * Math.max(0, delta));
       orbitYaw.current = MathUtils.lerp(orbitYaw.current, 0, alpha);
       orbitPitch.current = MathUtils.lerp(orbitPitch.current, 0, alpha);
     }
-    follower.current!.update(pose, offset, targetOffset, orbitYaw.current, orbitPitch.current, positionSpeed, targetSpeed, delta,worldAligned);
+    follower.current!.update(
+      pose,
+      offset,
+      targetOffset,
+      orbitYaw.current,
+      orbitPitch.current,
+      positionSpeed,
+      targetSpeed,
+      delta,
+      worldAligned,
+    );
     // Copy the shared displayed pose plus local view offsets. No extra world
     // lerp, velocity prediction, wheel compensation or raw-snapshot follow.
     camera.position.copy(follower.current!.position);

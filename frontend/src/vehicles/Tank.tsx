@@ -1,10 +1,17 @@
-import { forwardRef, useImperativeHandle, useLayoutEffect, useMemo, useRef, type PropsWithChildren } from "react";
+import {
+  forwardRef,
+  useImperativeHandle,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  type PropsWithChildren,
+} from "react";
 import { Group } from "three";
 import { useFrame } from "@react-three/fiber";
 import { useGLTF } from "@react-three/drei";
 import { getTankParts } from "./tools/getTankParts";
-import { useNetworkStore } from "../store/networkStore";
-import { useUIStore } from "../store/uiStore";
+import { useNetworkStore } from "../store/session/networkStore";
+import { useUIStore } from "../store/menus/uiStore";
 import { useVehiclePhysicsInterpolator } from "../hooks/usePhysicsInterpolator";
 import { useVehicleVisualAlignment } from "../hooks/useVehicleVisualAlignment";
 
@@ -14,7 +21,10 @@ interface TankProps extends PropsWithChildren {
   cannonElevation?: number;
 }
 const MODEL_PATH = "/models/vehicles/tank.glb";
-export const Tank = forwardRef<Group, TankProps>(function Tank({ children, entityId, turretRotation = 0, cannonElevation = 0 }, ref) {
+export const Tank = forwardRef<Group, TankProps>(function Tank(
+  { children, entityId, turretRotation = 0, cannonElevation = 0 },
+  ref,
+) {
   const { scene } = useGLTF(MODEL_PATH);
   const root = useRef<Group>(null!);
   const visual = useRef<Group>(null!);
@@ -22,13 +32,23 @@ export const Tank = forwardRef<Group, TankProps>(function Tank({ children, entit
   const cannon = useRef<Group | null>(null);
   useImperativeHandle(ref, () => root.current, []);
   const localId = useNetworkStore((s) => s.playerId);
-  const preview = useUIStore((s) => s.screen === "sandbox_setup" || s.screen === "signal_recon_setup");
+  const preview = useUIStore(
+    (s) => s.screen === "sandbox_setup" || s.screen === "signal_recon_setup",
+  );
   const { model, parts, turretY, cannonX } = useMemo(() => {
     const model = scene.clone(true);
     const parts = getTankParts(model);
-    return { model, parts, turretY: parts.turret?.rotation.y ?? 0, cannonX: parts.cannon?.rotation.x ?? 0 };
+    return {
+      model,
+      parts,
+      turretY: parts.turret?.rotation.y ?? 0,
+      cannonX: parts.cannon?.rotation.x ?? 0,
+    };
   }, [scene]);
-  useLayoutEffect(() => { turret.current = parts.turret; cannon.current = parts.cannon; }, [parts]);
+  useLayoutEffect(() => {
+    turret.current = parts.turret;
+    cannon.current = parts.cannon;
+  }, [parts]);
   useVehicleVisualAlignment("tank", entityId, visual, parts.wheels, preview);
   const { getInterpolated } = useVehiclePhysicsInterpolator(entityId);
   useFrame(() => {
@@ -40,6 +60,13 @@ export const Tank = forwardRef<Group, TankProps>(function Tank({ children, entit
     if (turret.current) turret.current.rotation.y = turretY + turretRotation;
     if (cannon.current) cannon.current.rotation.x = cannonX + cannonElevation;
   });
-  return <group ref={root}><group ref={visual}><primitive object={model} /></group>{children}</group>;
+  return (
+    <group ref={root}>
+      <group ref={visual}>
+        <primitive object={model} />
+      </group>
+      {children}
+    </group>
+  );
 });
 export default Tank;

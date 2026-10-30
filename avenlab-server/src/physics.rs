@@ -513,7 +513,7 @@ impl PhysicsWorld {
                 spawn_x,
                 spawn_z,
                 spawn.yaw,
-                map.surface.road_y,
+                spawn.surface_y.unwrap_or(map.surface.road_y),
             )
         };
 
@@ -939,6 +939,29 @@ mod tests {
     }
 
     #[test]
+    fn held_flash_sets_authoritative_lamps_and_releases_to_the_selected_mode() {
+        let mut world = flat_world();
+        world.spawn_vehicle_for_player("flash-test".into(), [0.0;3], "brz", "red").unwrap();
+        let mut packet = InputPacket { r#type:"input".into(), seq:1, dt:1.0/60.0,
+            throttle:0.0, steer:0.0, brake:0.0, handbrake:0.0, cockpit_mask:None,
+            cabin_mask:Some(4|4096|8192|(2<<10)), vehicleMask:96, playerMask:0, debug_mask:Some(0) };
+        for mode in 0..=3 {
+            packet.cockpit_mask = Some(mode | (1<<6) | (1<<7) | ((mode+1)<<16) | (6<<24));
+            packet.cabin_mask = Some(4|4096|(2<<10)|(1<<20));
+            world.apply_player_input_packet("flash-test", packet.clone()); world.step(SIMULATION_DT);
+            let vehicle = &world.vehicles["flash-test"];
+            assert!(vehicle.vehicle_flags.contains(VehicleStateFlags::HEADLIGHTS));
+            assert_ne!(vehicle.cockpit.cluster_mask(0.0) & 8, 0);
+            packet.cabin_mask = Some(4|4096|(2<<10));
+            world.apply_player_input_packet("flash-test", packet.clone()); world.step(SIMULATION_DT);
+            let vehicle = &world.vehicles["flash-test"];
+            assert_eq!(vehicle.vehicle_flags.contains(VehicleStateFlags::HEADLIGHTS), mode >= 2);
+            assert_eq!(vehicle.cockpit.cluster_mask(0.0) & 8 != 0, mode == 3);
+            assert_eq!(vehicle.cockpit.lights, mode as u8);
+        }
+    }
+
+    #[test]
     fn ignition_packets_power_the_cluster_without_starting_until_the_starter_is_held() {
         let mut world=flat_world();world.spawn_vehicle_for_player("key-test".into(),[0.0;3],"brz","red").unwrap();
         let mut packet=InputPacket { r#type:"input".into(),seq:1,dt:1.0/60.0,throttle:0.0,steer:0.0,brake:0.0,handbrake:0.0,
@@ -953,11 +976,16 @@ mod tests {
         packet.cabin_mask=Some(4|4096|8192|(3<<10));
         for _ in 0..10 {world.apply_player_input_packet("key-test",packet.clone());world.step(SIMULATION_DT);}
         assert!(!world.vehicles["key-test"].powertrain.running);
+        let vehicle = &world.vehicles["key-test"];
+        assert_ne!(vehicle.powertrain.resource_mask(vehicle.config.resources) & crate::powertrain::STARTING, 0);
         packet.cabin_mask=Some(4|4096|8192|(2<<10));world.apply_player_input_packet("key-test",packet.clone());world.step(SIMULATION_DT);
         assert!(!world.vehicles["key-test"].powertrain.running,"early release aborts cranking");
         packet.cabin_mask=Some(4|4096|8192|(3<<10));
         for _ in 0..60 {world.apply_player_input_packet("key-test",packet.clone());world.step(SIMULATION_DT);}
         assert!(world.vehicles["key-test"].powertrain.running);
+        let vehicle = &world.vehicles["key-test"];
+        assert_eq!(vehicle.powertrain.resource_mask(vehicle.config.resources) & crate::powertrain::STARTING, 0);
+        assert!(vehicle.vehicle_flags.contains(VehicleStateFlags::ENGINE_ON));
         assert_eq!((world.vehicles["key-test"].cockpit.cabin_snapshot(true,true)>>10)&3,2);
         packet.cabin_mask=Some(4|4096|8192|(2<<10));world.apply_player_input_packet("key-test",packet.clone());world.step(SIMULATION_DT);
         assert!(world.vehicles["key-test"].powertrain.running,"release to ON keeps the engine running");
@@ -985,6 +1013,26 @@ mod tests {
         world.active_map = Some(Arc::new(map));
         world.update_loaded_blocks_around_players();
         world
+    }
+
+    #[test]
+    fn authored_spawn_uses_saved_location_heading_and_surface_elevation() {
+        let mut baseline = flat_world();
+        let original = baseline.spawn_vehicle_for_player("ground".into(), [0.0; 3], "brz", "red").unwrap();
+        let ground_y = baseline.bodies[original].translation().y;
+        let mut world = flat_world();
+        let map = Arc::make_mut(world.active_map.as_mut().unwrap());
+        let point = &mut map.team_spawns.red[0];
+        point.local = [17.0, -23.0];
+        point.yaw = std::f32::consts::FRAC_PI_2;
+        point.surface_y = Some(12.5);
+        let handle = world.spawn_vehicle_for_player("roof".into(), [0.0; 3], "brz", "red").unwrap();
+        let body = &world.bodies[handle];
+        assert!((body.translation().x - 17.0).abs() < 0.0001);
+        assert!((body.translation().z + 23.0).abs() < 0.0001);
+        assert!((body.translation().y - ground_y - (12.5 - 0.32)).abs() < 0.0001);
+        let forward = body.rotation() * vector![0.0, 0.0, 1.0];
+        assert!(forward.x > 0.999 && forward.z.abs() < 0.0001);
     }
 
     #[test]

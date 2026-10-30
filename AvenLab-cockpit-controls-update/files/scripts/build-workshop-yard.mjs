@@ -1,0 +1,12 @@
+import fs from 'node:fs';
+import {addPiece,emptyLayout,updatePiece} from '../frontend/src/worldBuilder/document/layoutDocument.ts';
+import {mapExport} from '../frontend/src/worldBuilder/document/mapDocument.ts';
+const source=JSON.parse(fs.readFileSync(new URL('../avenlab-server/src/assets/blocks/streaming_endless_city_colliders.json',import.meta.url),'utf8'));
+let layout=addPiece(emptyLayout('workshop_yard'),'prefab-selection_garage',[0,0,0]);
+layout=addPiece(layout,'glb-road_narrow',[23,0,0]);
+let road=layout.objects.at(-1);layout=updatePiece(layout,road.id,{road:{...road.road,variant:{...road.road.variant,left:false}}});
+layout=addPiece(layout,'floor',[9.5,-.12,0]);layout=updatePiece(layout,layout.objects.at(-1).id,{name:'Open bay apron',size:[2.2,.12,8],color:'#616a72'});
+layout.title='Workshop Yard';layout.ground=false;layout.repeat=false;
+const text=mapExport({...source,map_id:'workshop_yard',authored_layout:layout}),out=new URL('../avenlab-server/src/assets/blocks/workshop_yard_colliders.json',import.meta.url);
+if(process.argv.includes('--check')){if(fs.readFileSync(out,'utf8')!==text)throw Error('Workshop Yard fixture is stale');}else fs.writeFileSync(out,text);
+console.log('Workshop Yard: garage, explicit bay apron, and one-way road; no hidden ground');

@@ -1,0 +1,34 @@
+/* Pedals and assist switches share contact feedback. The delegated owner clears
+   data-hud-held on release/cancel/blur/pause, even while the cursor stays here.
+   aria-pressed still exposes function state; it never selects a switch face. */
+.driving-pedals {
+  --switch-surface: #080e1680;
+  --switch-edge: #829bab61;
+  --switch-ink: #d9e5ee;
+  --switch-held-surface: #19323cbf;
+}
+.drive-assists {
+  --switch-surface: linear-gradient(165deg, #edf0f2, #a6adb5);
+  --switch-edge: #777f87;
+  --switch-ink: #080a0d;
+  --switch-held-surface: linear-gradient(165deg, #a8afb7, #d9dee3);
+}
+:is(.driving-pedals, .drive-assists) button {
+  --contact-surface: var(--switch-surface);
+  --contact-border: var(--switch-edge);
+  --contact-ink: var(--switch-ink);
+  border-radius: 1px;
+}
+:is(.driving-pedals, .drive-assists) button[data-hud-held="true"] {
+  border-color: var(--app-accent, #a7dbe9) !important;
+  background: var(--switch-held-surface) !important;
+  color: var(--switch-ink) !important;
+  outline: 1px solid var(--app-accent, #a7dbe9) !important;
+  outline-offset: -2px;
+}
+/* Black symbols stay readable on the silver FR-S-inspired assist faces in every
+   theme. Focus uses the common underline rather than a retained press border. */
+.drive-assists img {
+  filter: brightness(0);
+  opacity: 1;
+}

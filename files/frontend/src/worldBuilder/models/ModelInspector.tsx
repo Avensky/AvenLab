@@ -1,0 +1,69 @@
+import type { LayoutObject } from "../document/layoutDocument";
+import { layoutAction, useLayoutStore } from "../state/layoutStore";
+export function ModelInspector({ item }: { item: LayoutObject }) {
+  const m = item.model!,
+    update = useLayoutStore((s) => s.update);
+  return (
+    <section className="le-model-settings" aria-label="Prefab surfaces">
+      <h3>Visible structure</h3>
+      {(["floor", "walls", "roof", "details"] as const).map((key) => (
+        <label className="le-check" key={key}>
+          <input
+            type="checkbox"
+            aria-label={`Show garage ${key}`}
+            disabled={item.locked}
+            checked={m.visible[key]}
+            onChange={(e) =>
+              layoutAction(() =>
+                update({
+                  model: {
+                    ...m,
+                    visible: { ...m.visible, [key]: e.target.checked },
+                  },
+                }),
+              )
+            }
+          />
+          <span>
+            {key === "details"
+              ? "Decorative fixtures"
+              : key === "roof"
+                ? "Roof and ceiling"
+                : key[0].toUpperCase() + key.slice(1)}
+          </span>
+        </label>
+      ))}
+      <h3>Physical surfaces</h3>
+      {(["floor", "walls", "roof"] as const).map((key) => (
+        <label className="le-check" key={key}>
+          <input
+            type="checkbox"
+            aria-label={`Garage ${key} collision`}
+            disabled={item.locked || !item.solid}
+            checked={m.collision[key]}
+            onChange={(e) =>
+              layoutAction(() =>
+                update({
+                  model: {
+                    ...m,
+                    collision: { ...m.collision, [key]: e.target.checked },
+                  },
+                }),
+              )
+            }
+          />
+          <span>
+            {key === "walls"
+              ? "Walls and pillars"
+              : key[0].toUpperCase() + key.slice(1)}
+          </span>
+        </label>
+      ))}
+      <p className="le-tip">
+        The selection garage keeps its open interior. Lights, signs, tubes and
+        tile dressing stay decorative. The pivot sits on the display pad;
+        foundations extend below it.
+      </p>
+    </section>
+  );
+}

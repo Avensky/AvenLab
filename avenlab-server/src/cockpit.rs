@@ -107,10 +107,16 @@ impl Cockpit {
     }
 
     pub fn receive_cabin(&mut self, packed: Option<u32>) {
-        let Some(packed) = packed else { return; };
+        let Some(packed) = packed else {
+            // A legacy packet cannot keep a momentary beam held by an earlier
+            // producer. HVAC and the selected key position remain untouched.
+            self.cabin_mask &= !(1 << 20);
+            self.last_cabin_request = None;
+            return;
+        };
         if self.last_cabin_request == Some(packed) { return; }
         self.last_cabin_request = Some(packed);
-        self.cabin_mask = (packed & 0x3f0) | (packed & 15).min(14) | (((packed>>16)&7).min(4)<<16) | (packed&(1<<19));
+        self.cabin_mask = (packed & 0x3f0) | (packed & 15).min(14) | (((packed>>16)&7).min(4)<<16) | (packed&((1<<19)|(1<<20)));
         // HVAC-only requests must never replay an old START or OFF command.
         if packed & (1 << 13) != 0 {
             self.key_override = true;
@@ -163,9 +169,10 @@ impl Cockpit {
         }
         (throttle, brake)
     }
-    pub fn headlights(&self, running: bool) -> bool { self.lights >= 2 || (self.lights == 1 && running) }
+    pub fn flashing(&self) -> bool { self.cabin_mask & (1 << 20) != 0 }
+    pub fn headlights(&self, running: bool) -> bool { self.flashing() || self.lights >= 2 || (self.lights == 1 && running) }
     pub fn cluster_mask(&self, handbrake: f32) -> u16 {
-        (if self.enabled && self.lights == 3 { 1 << 3 } else { 0 })
+        (if self.flashing() || (self.enabled && self.lights == 3) { 1 << 3 } else { 0 })
             | (if self.cruise_enabled { 1 << 2 } else { 0 })
             | (if self.parked() || handbrake > 0.05 { 1 << 9 } else { 0 })
             | (if self.traction_active { 1 << 10 } else { 0 })
@@ -184,6 +191,29 @@ impl Cockpit {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test] fn held_beam_restores_the_rotary_mode_and_does_not_replay_start() {
+        let mut c = Cockpit::default();
+        let key_on = 4 | 4096 | 8192 | (2 << 10);
+        c.receive_cabin(Some(key_on));
+        for mode in 0..=3 {
+            c.receive(Some(packet(1, true, 0, 6, mode + 1) | mode), 0.0, true);
+            c.receive_cabin(Some((key_on & !8192) | (1 << 20)));
+            assert!(c.headlights(false));
+            assert_ne!(c.cluster_mask(0.0) & 8, 0);
+            assert_eq!(c.lights, mode as u8);
+            assert_ne!(c.cabin_snapshot(false, false) & (1 << 20), 0);
+            assert!(!c.engine_request(false, false));
+            c.receive_cabin(Some(key_on & !8192));
+            assert_eq!(c.headlights(false), mode >= 2);
+            assert_eq!(c.headlights(true), mode >= 1);
+            assert_eq!(c.cluster_mask(0.0) & 8 != 0, mode == 3);
+        }
+        c.receive_cabin(Some((key_on & !8192) | (1 << 20)));
+        c.receive_cabin(None);
+        assert!(!c.flashing(), "legacy packets release the temporary beam");
+        c.receive_cabin(Some((key_on & !8192) | (1 << 20)));
+        assert!(c.flashing(), "a new producer may hold the same word again");
+    }
     #[test] fn extended_airflow_and_fan_roundtrip_without_replaying_start() {
         let mut c=Cockpit::default();let start=4|4096|8192|(3<<10);
         c.receive_cabin(Some(start));assert!(c.engine_request(false,false));

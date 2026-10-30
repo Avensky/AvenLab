@@ -9,18 +9,28 @@ Signal Recon never mounts the driving HUD.
 
 ## Layout and access
 
-Settings → **HUD** offers saved Show/Hide choices for ten groups, including
-minimap. Visibility and Restore HUD remain in the menu; no generic close/title
-bars appear over the road. Radio, climate and map have their own compact
-minimize controls. Instruments, wheel, pedals and ignition have no close bar.
+Settings → **HUD** and Cockpit → **Research** share the same saved visibility
+state. Research exposes climate, emergency lights, wheel levers, ignition,
+GPS/minimap and mechanical groups. Showing a group changes the interface only;
+it does not activate that vehicle system. Hiding a held touch control releases
+its own input source. Keyboard/gamepad input and another held source remain intact.
+
+The lower-right stack is radio, optional climate, optional centered emergency
+lights, a parking-brake/shifter row, then the assist/pedal row. The parking lever
+and shifter are peers with the same 90 px height. The assist bank uses three
+columns and two rows; its buttons are about half a pedal in each dimension.
+On narrow displays the rows wrap within the viewport. The radio keeps its
+existing expand control; climate has no expand/collapse arrows.
+
+Cockpit → **Climate** contains all HVAC controls, a **COMPACT HUD / FULL HUD**
+choice and a driving-HUD visibility switch. Climate and the separate emergency
+light widget default to hidden. The full cockpit pages remain available when
+those widgets are hidden. The optional emergency button is a centered triangle,
+including its hit area; the cockpit header has no hazard-button duplicate.
 
 Standard and Controller layouts retain independent touch/console master choices.
-Hiding a touch source releases its held intent without clearing another pedal,
-keyboard or gamepad. Keyboard/controller driving never depends on a visible
-button. The right stack is radio, climate, parking/assists beside the full-height
-shifter, then pedals at the bottom. Collapsed radio is a label row plus controls;
-collapsed climate is a single clock/hazards/ambient-temperature row. The basic
-radio never requires scrolling.
+Radio playback continues when its widget is hidden. Ignition, gauges, wheel and
+pedals do not add title bars over the driving view.
 
 The wheel starts 28% below the bottom edge; **Wheel below screen** adjusts 0–55%.
 **Steering thumb travel** adjusts the circular travel range from 90–130% (112%
@@ -90,11 +100,14 @@ before the engine starts. Holding while already running is permitted without
 forcing a shutdown/restart. A clockwise drag also selects the key's detents.
 Focus loss, pause, disconnect and unmount release START and cancel the hold timer.
 Inside menus Space/Enter can hold the key; in the driving HUD Space always brakes.
-Arrow/Home/Delete access remains, and an Arrow/End START action retains a bounded
-one-second pulse for controller menu navigation that supplies only an activation.
+Arrow keys select OFF/ACC/ON; Home switches off and Delete removes a key while
+off. End holds START until its keyup. In the cockpit, controller A holds the
+focused physical control until release; disconnect/cancel springs START to ON.
+There is no latched one-second START pulse. Ordinary menu rows still activate
+on their existing rising edge.
 
 
-Expanded climate has three round knobs: airflow/recirculation, fan/rear
+Climate has three round knobs: airflow/recirculation, fan/rear
 defrost and temperature/A/C. Fan has OFF/1/2/3/4; airflow has FACE, FACE/FEET,
 FEET, FEET/DEF and DEFROST. Defrost airflow requests outside air. All temperature
 labels use Fahrenheit; packed cabin temperature remains 16–30°C. Ambient comes
@@ -120,28 +133,32 @@ so axis input cannot redraw the stalk controls. Keyboard/gamepad input also rota
 with a short CSS transition rather than a new animation loop. Visual lock is
 ±135°, a HUD choice rather than a claim about factory lock-to-lock geometry.
 
-Stalks are smaller and stay inside the rim as it turns; their rods remain fixed. Angles are measured counterclockwise from
-3 o'clock. Drag clockwise for up and counterclockwise for down, use the
-small tangent-labeled step targets, or focus and use arrow keys. The actuator
-springs to center for wipers/cruise. The turn signal holds Left / Off / Right;
-clockwise advances toward Right and counterclockwise toward Left, through Off.
-Labels are tightened along their tangent. Tap the center cap to rotate its mode.
-Cruise is at 305°, reaching 32% of wheel diameter. Its step targets are spaced
-18° each side (a 36° arc) so the lower target clears the painted lower wheel spoke.
-A small wheel bottom inset keeps the targets reachable at the default crop.
-Saved wheel drop and painted-wheel click-through remain. Direction buttons and
-cap drags hold their pulled position until pointer/key release. Cruise repeats
-adjustments every 350 ms while held. Washer stays requested for the full hold
-without a fixed cutoff; release, focus loss or a blocked UI clears it. Wipe-down
-requests one cycle while its lever remains pulled. Programmatic/controller clicks
-without a physical hold retain a short pulse. Turn signals continue to latch.
+The cap and both neighboring buttons use one polar layout in
+`ui/Cockpit/stalks/geometry.ts`. Angles are measured counterclockwise from
+3 o'clock. Every target uses a 34.5%-of-wheel-width radius and ±13° spacing.
+Change the complete layout entry to move all three together. Labels are tangent
+to the wheel; the right-side cruise direction placement is mirrored so RES/+ is
+above SET/−. The full cockpit cruise diagram is mirrored in the same way.
 
-
-| Stalk | Angle | Up / Down | Tap |
+| Stalk | Angle | Up / Down | Short cap tap |
 | --- | --- | --- | --- |
 | Left lights/signals | 120° | Right blinker / left blinker | OFF → AUTO → ON |
-| Right wipers | 60° | 400 ms washer / one timed wipe | OFF → SLOW → MID → HIGH |
-| Lower-right cruise | 340°, 35% reach | RES/+ / SET/−; holding repeats | Cruise ON/OFF |
+| Right wipers | 60° | Washer while held / single wipe | OFF → SLOW → MID → HIGH |
+| Lower-right cruise | 326° | RES/+ / SET/−; holding repeats | Cruise ON/OFF |
+
+Holding the lights cap for 220 ms requests the existing v6 high-beam flash.
+Release restores the selected rotary mode without cycling it. There is no
+separate FLASH target. Dragging also consumes a cap tap. Pointer/key release,
+cancel, blur, pause, disconnect, hiding the levers and unmount all release flash.
+A capability downgrade releases the original owner too.
+
+Drag the cap around its arc, use its adjacent buttons, or focus and use arrow keys.
+Direction targets and drags keep their pulled pose until release. Wipers and
+cruise spring back to center; turn signals latch. Up advances Right through Off,
+down advances Left through Off. Cockpit Lights uses vertical ▲ right / ▼ left
+buttons and the same mutually exclusive turn-signal commands. Hazards remain a
+separate command. Cruise repeats every 350 ms while held. Washer stays requested
+for the hold; programmatic clicks retain a short pulse.
 
 Escape cancels the selected turn signal or cruise. The full cockpit retains
 explicit HIGH beam, wipe and cruise actions for controller access. Single wipes
@@ -181,25 +198,26 @@ selected. P/R retain the existing speed gates. A visible recorder keeps A/Cross
 priority; the old dyno fallback remains when a gear-down action is unavailable.
 Legacy clients can still request the earlier locked manual mode explicitly.
 
-The parking brake remains independent of the gear selector: a forward gear tap
-cannot release its cable tension. P locks through its gear selection rather than
-raising the separate lever. The rest pose is tapered/foreshortened toward the
-background (projected -115°); full application rises toward -75°. These are screen
-projections of floor/up axes, not a claim that perpendicular 3D lines must appear
-90° apart in the image. Hold the lever to build its three applied detents: the
-first after 250 ms, then one every 300 ms, reaching full at 850 ms. Release keeps
-the chosen tension; a quick tap releases it fully. Dragging and direct level
-targets remain available. Inside menus Space/Enter holds work the same way, with
-no keyboard repeat dependence; in the driving HUD Space always brakes. Focus loss, pause, disconnect and unmount cancel the charging
-timer, retaining deliberate latched tension. Keyboard B and controller B/Circle
-still supply momentary full cable force. The base ellipse leans with the receding
-OFF handle. Three slim, vertically stretched hexagons fill from bottom to top. The empty
-stack means Off; full strength fills every hexagon. There is no permanently empty
-OFF indicator. Applied hexagons glow blue; empty hexagons have dashed outlines. There are no visible percentage
-numbers or BRAKE label on the lever: the dashboard owns that warning. The lever
-has no focus/pressed box; keyboard focus inside menus brightens the hexagons. TRAC, ABS
-and VSC SPORT sit below the brake, in that order, left of the shifter. Rust takes the
-maximum of latched and momentary force and bypasses rear ABS for it.
+The parking brake remains independent of the gear selector: selecting a forward
+gear cannot release its cable tension, and P locks through its gear selection.
+The driving HUD requests immediate momentary cable force while its lever or
+simple P button is held. Release removes only the `touch-parking` analog source;
+a simultaneous keyboard/controller pull and deliberate latched tension survive.
+The nearby 1/2/3 detents set a parking latch, and 0 releases that latch. Rust
+continues to take the maximum of latched and momentary force and bypass rear ABS.
+
+The full Cockpit Drive page retains the slower parking ratchet: hold to build
+three detents (250 ms, then every 300 ms), release to keep that tension, tap to
+release. Dragging and direct level targets remain available. Pause/blur/unmount
+cancel its timer without discarding an intentional latch. This distinction keeps
+a fast drifting control on the driving HUD and a deliberate parking control in
+the menu. Mechanical wear/cable failure is not added by this interface patch;
+that requires an explicit authoritative Rust model.
+
+Cockpit → **Drive** saves **REALISTIC LEVER / SIMPLE BUTTON** and **Parking brake
+crystals** preferences. Crystals default off and numeric detents remain available.
+Changing the artwork never changes tension, gear or assist state. The stitched
+grip and boot are SVG artwork in `mechanical/ParkingArtwork.tsx`.
 
 ABS uses the existing tire-budget assist; Q remains its shortcut. T toggles TRAC.
 TRAC OFF rearms above 50 km/h and stays rearmed until explicitly disabled again.
@@ -248,7 +266,7 @@ updates. A React Profiler regression checks 20 position projections with zero
 extra dashboard commits. Rings update one stroke offset;
 there are no extra physics, network or per-gauge animation loops.
 
-Setup advertises `hud.cockpit_version: 5`; v5 enables airflow/fan4 and v4
+Setup advertises `hud.cockpit_version: 6`; v6 adds a held headlight flash, v5 enables airflow/fan4 and v4
 enables assisted forward gear taps.
 Version 3 adds key/climate/timed-wipe controls and version 2 the basic physical
 controls. The UI disables actions missing from the server calibration. `cockpit_mask` keeps its existing
@@ -269,6 +287,22 @@ Optional `cabin_mask` is a packed u32 (v5 extends the earlier u16) in the existi
 | 15 | Snapshot only: temporary wipe cycle active |
 | 16–18 | Airflow 0–4 (v5) |
 | 19 | Fan 4 flag; bits 4–5 retain lower fan modes (v5) |
+| 20 | Held high-beam flash (v6); release restores the rotary light mode |
+
+Flash is a level input, independent of rotary mode and explicit key commands.
+Frontend source ownership releases it on pointer/key release, cancellation, blur,
+pause, disconnect or unmount. Rust returns confirmed flash in `cabin_mask`,
+headlights in `vehicle_mask` and high beam in `cluster_mask`. All four car models
+raise their existing light targets; AE86 pop-ups open faster while flashing.
+
+Switch face feedback uses `data-hud-held`, independent of `aria-pressed` system
+status. Pointer clicks do not retain button focus, so Space remains a driving
+brake. Keyboard focus uses an underline. The ignition ring sits outside the complete OFF/ACC/ON/START label radius. A
+held sweep turns around that outer ring; its glow brightens during a hold and
+flickers only with confirmed
+`resource_mask.STARTING`; reduced motion makes it steady. `starterRelayAudio.ts`
+plays quiet synthesized clicks during an acknowledged held start, and stops on
+release, running, stale signal or teardown. No engine-cranking sample is loaded.
 
 Snapshots also add optional `cruise_target_kph`. Older input packets remain valid.
 JSON numbers plus packed flags are retained; this is not a binary telemetry codec
@@ -333,8 +367,11 @@ Checks cover independent arcs, knob/key packing, source release, H-lane animatio
 GPS intersections/disconnected routes, camera transforms, inspection restoration
 and existing input routing. Rust tests and a live optimized-server WebSocket
 check cover real start/abort/stop, extended climate, wiping and gear overrides.
-Native browser/phone rendering remains unverified in this environment. Rebuild
-and restart Rust together with the frontend. Validation totals are in APPLY.md.
+Chromium checks cover desktop and a 390 × 844 mobile viewport, hit targets,
+held/released commands, all seven themes and zero browser errors. These checks
+do not measure gameplay FPS or establish physical-phone behavior. Rebuild and
+restart Rust when applying the cumulative update. Current patch validation is
+recorded in the package README.
 
 Stalk center/direction highlights reflect physical holds only. Release, cancel,
 blur and blocked input restore the idle style even while hover/focus remains.
@@ -352,28 +389,42 @@ row. The mission readout, route status and server clock sit inside the circle.
 Road coordinates use equal horizontal/vertical spans; transparent corners ignore
 waypoint clicks. The full cockpit GPS page keeps its square map.
 
-The shifter gate is a fixed 90 px circle across viewport sizes, with the same
-26 px knob and 17 px gear targets. The three narrow parking-brake hexagons touch
-end to end and share the 58 px lever area. The 29 px assist-button row sits below
-them, separated by a 3 px gap; both rows fit beside the 90 px shifter.
-Tap-to-release and hold-to-charge behavior is unchanged. The dashboard BRAKE
-lamp is inset farther from the gauge's left rim. Speed and fuel/temp use equal
-35% container widths and the same
-97-unit rim radius; RPM stays larger with symmetric overlap.
-
+The shifter gate is a fixed 90 px circle with a 26 px knob and 17 px gear
+targets. Its parking-brake sibling shares the same height. The compact 3 × 2
+assist bank sits beside the pedals when space permits and wraps above them on
+narrow screens. Optional crystals occupy the parking-detent column; numeric
+detents replace them when hidden. The dashboard BRAKE lamp reports accepted
+brake state independently of the physical button's contact highlight.
 
 ## Momentary console feedback
 
 Radio, climate and electronic-console buttons use one delegated contact-feedback
 owner per surface. Pointer down prevents browser focus; pointer/key release,
 cancellation, capture loss, pause, blur and disconnect remove the contact border.
-Hover and confirmed toggle state do not select a button. Expanded radio/climate
+Hover and confirmed toggle state do not select a button. Radio/climate
 units may keep a border on the unit itself. Playback, hazards, A/C, recirculation
 and defrost remain latched commands with truthful accessible on/off state; mute
 also changes its center glyph. Main menu navigation keeps its existing behavior.
 No feedback timer, network sender or per-pointer-move React render is added.
 
-The lower-right cruise stalk has a 28%-of-wheel-diameter stem versus 31% for the
-lights and wiper stalks. Its up/down targets retain the wider 32% radius and held
-repeat/release behavior so shortening the stem does not pull those targets behind
-the wheel. The traction-control buttons stay in the right-hand console.
+## Editing and state ownership
+
+Start at `ui/Cockpit/README.md`. The `stalks`, `mechanical`, `ignition` and
+`panels` folders each provide `index.ts` and a README listing files, functions
+and editing recipes. `styles/index.css` composes the focused CSS files; legacy
+CSS entry files import that barrel. Do not reintroduce physical HUD rules in
+`cockpit.css`, where a later duplicate can silently override the shared styles.
+
+`store/preferences/index.ts` owns local appearance/visibility preferences;
+`store/menus` owns the selected cockpit tab. `store/input/index.ts` owns merged
+intent and packed request helpers. `useCockpitState` reads confirmed telemetry;
+Rust owns accepted vehicle state. Menu navigation lives in
+`panels/useCockpitNavigation.ts`. Feature barrels expose reusable functions,
+while the existing flat entry files keep older imports working.
+
+Pedals and assist switches share `styles/switches.css` contact styling. Pedals
+use the same delegated feedback owner as radio and assist controls; their border
+clears on release/cancel even with the cursor still over the face. Hover, focus
+and merged `aria-pressed` state cannot retain a depressed border. Assist faces
+use silver gradients and black text/icons in every theme. Keyboard focus keeps
+a thin underline so navigation remains visible without a press glow.

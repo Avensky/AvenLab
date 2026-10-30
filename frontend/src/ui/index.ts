@@ -1,7 +1,9 @@
-export { default as Steering } from './Steering'
-export { default as Pedals } from './Pedals'
-export { default as ControlsPanel } from './ControlsPanel'
-// export { default as Menu } from './Menu'
-// export { default as Help } from './Help'
-// export { default as CommandLine } from './CommandLine/CommandLine'
-// export { default as Dashboard } from './Dashboard/Dashboard'
+// Public driving UI. Internals import leaf components to keep ownership clear.
+export {default as Steering} from './Steering';
+export {default as Pedals} from './Pedals';
+export {default as ControlsPanel} from './ControlsPanel';
+export {DrivingHUD} from './DrivingHUD';
+export {HudGroup} from './HudGroup';
+export {CockpitPanel} from './Cockpit';
+export {Minimap} from './Minimap';
+export * from './Dashboard';

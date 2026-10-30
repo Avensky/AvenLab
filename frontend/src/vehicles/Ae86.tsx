@@ -1,14 +1,28 @@
+import { applyHeadlightBeam } from "./tools/headlightBeam";
 import { useVehicleVisualAlignment } from "../hooks/useVehicleVisualAlignment";
-import { useRenderSettingsStore } from "../store/renderSettingsStore";
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, } from "react";
+import { useRenderSettingsStore } from "../store/presentation/renderSettingsStore";
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+} from "react";
 import type { PropsWithChildren } from "react";
-import { Group, MathUtils, Object3D, Quaternion, SpotLight, Vector3 } from "three";
+import {
+  Group,
+  MathUtils,
+  Object3D,
+  Quaternion,
+  SpotLight,
+  Vector3,
+} from "three";
 import { useFrame } from "@react-three/fiber";
 import { useGLTF } from "@react-three/drei";
 
 import { useNetworkStore, useInputStore, useUIStore } from "../store";
 import { useVehiclePhysicsInterpolator } from "../hooks/usePhysicsInterpolator";
-import { hasFlag, VehicleFlags } from "../store/tools/inputMasks";
+import { hasFlag, VehicleFlags } from "../store/input/protocol/inputMasks";
 import { setupVehicleParts } from "./tools/setupVehicleParts";
 
 const MODEL_PATH = "/models/vehicles/ae86.glb";
@@ -49,23 +63,21 @@ type Ae86Props = PropsWithChildren<{
 
 export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
   { children, entityId },
-  ref: React.Ref<Group>
+  ref: React.Ref<Group>,
 ) {
   const vehicleLights = useRenderSettingsStore((s) => s.vehicleLights);
-  const { scene } = useGLTF(MODEL_PATH);            //load the model and get the scene
+  const { scene } = useGLTF(MODEL_PATH); //load the model and get the scene
   const isVehiclePreview = useUIStore(
     (state) =>
-      state.screen === "sandbox_setup" ||
-      state.screen === "signal_recon_setup"
+      state.screen === "sandbox_setup" || state.screen === "signal_recon_setup",
   );
-
 
   const vehicleGroupRef = useRef<Group>(null!);
   const vehicleVisualRef = useRef<Group>(null!);
   const headlightRef = useRef<Object3D | null>(null);
 
   // Allow parent components to access the car group ref
-  useImperativeHandle(ref, () => vehicleGroupRef.current, [])
+  useImperativeHandle(ref, () => vehicleGroupRef.current, []);
 
   // Headlight animation state
   const headlightRotation = useRef(0);
@@ -110,7 +122,7 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
             PARTS.lightLenses,
             PARTS.headlightLenses,
           ],
-          opacity: .9,
+          opacity: 0.9,
         },
         {
           name: "WHEEL_FL",
@@ -141,7 +153,13 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
     ];
   }, [clonesByGroup]);
 
-  useVehicleVisualAlignment("ae86", entityId, vehicleVisualRef, wheels, isVehiclePreview);
+  useVehicleVisualAlignment(
+    "ae86",
+    entityId,
+    vehicleVisualRef,
+    wheels,
+    isVehiclePreview,
+  );
 
   // Log the body parts and headlights when they are available
   useEffect(() => {
@@ -162,7 +180,7 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
       intensity: number,
       distance: number,
       position: [number, number, number],
-      target: [number, number, number]
+      target: [number, number, number],
     ) => {
       if (!vehicleGroup) return;
 
@@ -176,24 +194,38 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
       vehicleGroup.add(light.target);
     };
 
-    // addSpot( SpotLight, color, intensity, distance, 
+    // addSpot( SpotLight, color, intensity, distance,
     // position: [X, Y, Z],
     // target: [X, Y, Z])
 
     // Add headlights
-    addSpot(leftLightRef, 0xffffff, 12, 40, [0.5, 0.7, 1.9], [0.4, -0.6, 4]);       // FL
-    addSpot(rightLightRef, 0xffffff, 12, 40, [-0.55, 0.7, 1.9], [-0.4, -0.6, 4]);   // FR
+    addSpot(leftLightRef, 0xffffff, 12, 40, [0.5, 0.7, 1.9], [0.4, -0.6, 4]); // FL
+    addSpot(
+      rightLightRef,
+      0xffffff,
+      12,
+      40,
+      [-0.55, 0.7, 1.9],
+      [-0.4, -0.6, 4],
+    ); // FR
 
     // Add tail lights
-    addSpot(leftTailRef, 0xff0000, 7, 8, [0.5, 0.6, -1.9], [0.5, -0.5, -3]);        // RL
-    addSpot(rightTailRef, 0xff0000, 7, 8, [-0.55, 0.6, -1.9], [-0.5, -0.5, -3]);    // RR
+    addSpot(leftTailRef, 0xff0000, 7, 8, [0.5, 0.6, -1.9], [0.5, -0.5, -3]); // RL
+    addSpot(rightTailRef, 0xff0000, 7, 8, [-0.55, 0.6, -1.9], [-0.5, -0.5, -3]); // RR
 
     // Add blinkers
-    addSpot(flBlinkerRef, 0xffa500, 12, 16, [0.7, 0.6, 1.9], [0.9, -0.6, 3]);       // FL
-    addSpot(frBlinkerRef, 0xffa500, 12, 16, [-0.7, 0.6, 1.9], [-0.9, -0.6, 3]);     // FR
+    addSpot(flBlinkerRef, 0xffa500, 12, 16, [0.7, 0.6, 1.9], [0.9, -0.6, 3]); // FL
+    addSpot(frBlinkerRef, 0xffa500, 12, 16, [-0.7, 0.6, 1.9], [-0.9, -0.6, 3]); // FR
 
-    addSpot(rlBlinkerRef, 0xffa500, 12, 16, [0.5, 0.6, -1.9], [0.9, -0.6, -3]);     // RL
-    addSpot(rrBlinkerRef, 0xffa500, 12, 16, [-0.5, 0.6, -1.9], [-0.9, -0.6, -3]);   // RR
+    addSpot(rlBlinkerRef, 0xffa500, 12, 16, [0.5, 0.6, -1.9], [0.9, -0.6, -3]); // RL
+    addSpot(
+      rrBlinkerRef,
+      0xffa500,
+      12,
+      16,
+      [-0.5, 0.6, -1.9],
+      [-0.9, -0.6, -3],
+    ); // RR
 
     return () => {
       [
@@ -225,7 +257,7 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
   // Store the initial wheel rotations for later use
   const wheelRestRotations = useMemo(
     () => wheels.map((wheel) => wheel?.quaternion.clone() ?? null),
-    [wheels]
+    [wheels],
   );
 
   // Backend wheel_speed is radians/second. Keep a continuous angle locally so
@@ -277,7 +309,6 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
     const wheelDelta = Math.min(delta, 0.05);
 
     interp.wheels?.forEach((wheel) => {
-
       const wheelId = wheel.id.toLowerCase() as keyof typeof indexById;
       const index = indexById[wheelId];
       const wheelObject = wheels[index];
@@ -288,16 +319,15 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
       wheelObject.position.set(...wheel.position);
 
       wheelSpinAngles.current[index] = MathUtils.euclideanModulo(
-        wheelSpinAngles.current[index]
-          + (wheel.wheel_speed ?? 0) * wheelDelta,
-        Math.PI * 2
+        wheelSpinAngles.current[index] + (wheel.wheel_speed ?? 0) * wheelDelta,
+        Math.PI * 2,
       );
 
       // Backend owns wheel position and steering orientation.
       wheelBaseQuaternion.current.set(...wheel.rotation);
       wheelSpinQuaternion.current.setFromAxisAngle(
         wheelAxle.current,
-        wheelSpinAngles.current[index]
+        wheelSpinAngles.current[index],
       );
 
       wheelObject.quaternion
@@ -306,14 +336,19 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
         .multiply(restRotation);
     });
 
-
     const vehicleMask = isLocalPlayer
       ? input.vehicleMask
-      : (interp as { vehicle_mask?: number }).vehicle_mask ?? 0;
-    const headlights = hasFlag(vehicleMask, VehicleFlags.HEADLIGHTS);
+      : ((interp as { vehicle_mask?: number }).vehicle_mask ?? 0);
+    const headlights = hasFlag(
+      interp.vehicle_mask ?? vehicleMask,
+      VehicleFlags.HEADLIGHTS,
+    );
+    const highBeam = Boolean((interp.cluster_mask ?? 0) & (1 << 3));
     const hazards = hasFlag(vehicleMask, VehicleFlags.HAZARDS);
-    const blinkerLeft = hasFlag(vehicleMask, VehicleFlags.BLINKER_LEFT) && !hazards;
-    const blinkerRight = hasFlag(vehicleMask, VehicleFlags.BLINKER_RIGHT) && !hazards;
+    const blinkerLeft =
+      hasFlag(vehicleMask, VehicleFlags.BLINKER_LEFT) && !hazards;
+    const blinkerRight =
+      hasFlag(vehicleMask, VehicleFlags.BLINKER_RIGHT) && !hazards;
 
     // Animate headlights opening/closing based on input
     const openRotation = -Math.PI / 3;
@@ -323,7 +358,7 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
     headlightRotation.current = MathUtils.lerp(
       headlightRotation.current,
       targetRotation,
-      5 * delta
+      1 - Math.exp(-(highBeam ? 22 : 5) * Math.max(0, delta)),
     );
 
     if (headlightRef.current) {
@@ -338,38 +373,38 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
 
     const blinkOn = blinkState.current;
 
-
-    if (leftLightRef.current) leftLightRef.current.visible = headlights;
-    if (rightLightRef.current) rightLightRef.current.visible = headlights;
+    applyHeadlightBeam(leftLightRef.current, headlights, highBeam);
+    applyHeadlightBeam(rightLightRef.current, headlights, highBeam);
 
     const braking = isLocalPlayer && controls.braking;
     if (leftTailRef.current) leftTailRef.current.visible = braking;
     if (rightTailRef.current) rightTailRef.current.visible = braking;
 
-    if (flBlinkerRef.current) flBlinkerRef.current.visible = (hazards || blinkerLeft) && blinkOn;
-    if (frBlinkerRef.current) frBlinkerRef.current.visible = (hazards || blinkerRight) && blinkOn;
-    if (rlBlinkerRef.current) rlBlinkerRef.current.visible = (hazards || blinkerLeft) && blinkOn;
-    if (rrBlinkerRef.current) rrBlinkerRef.current.visible = (hazards || blinkerRight) && blinkOn;
-
+    if (flBlinkerRef.current)
+      flBlinkerRef.current.visible = (hazards || blinkerLeft) && blinkOn;
+    if (frBlinkerRef.current)
+      frBlinkerRef.current.visible = (hazards || blinkerRight) && blinkOn;
+    if (rlBlinkerRef.current)
+      rlBlinkerRef.current.visible = (hazards || blinkerLeft) && blinkOn;
+    if (rrBlinkerRef.current)
+      rrBlinkerRef.current.visible = (hazards || blinkerRight) && blinkOn;
   });
 
   return (
     <>
       <group ref={vehicleGroupRef}>
-          <group ref={vehicleVisualRef}>
-            {renderedGroups.BODY}
-          </group>
+        <group ref={vehicleVisualRef}>{renderedGroups.BODY}</group>
         {isVehiclePreview &&
           wheels.map((wheel, i) =>
             wheel ? (
               <primitive key={`ae86-preview-wheel-${i}`} object={wheel} />
-            ) : null
+            ) : null,
           )}
         {children}
       </group>
       {!isVehiclePreview &&
         wheels.map((wheel, i) =>
-          wheel ? <primitive key={`ae86-wheel-${i}`} object={wheel} /> : null
+          wheel ? <primitive key={`ae86-wheel-${i}`} object={wheel} /> : null,
         )}
     </>
   );

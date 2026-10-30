@@ -1,30 +1,11 @@
-// world/block_colliders.rs
-// ==============================================================================
-// block_colliders.rs — SINGLE-BLOCK SCENE DEFINITION + COLLIDER LOADING
-// ------------------------------------------------------------------------------
-// Defines the serialized layout for one city block.
-//
-// This file is the source of truth for:
-// - static road collider placement
-// - static building collider placement
-// - object transforms used by debug visualization
-// - future visual asset lookup by object id / visual key
-// - future destruction state for building entities
-//
-// Current scope:
-// - focus on loading exactly one block correctly
-// - keep roads and buildings aligned to one shared coordinate system
-// - support collider-first frontend visualization
-//
-// Out of scope for now:
-// - streaming multiple blocks
-// - procedural city expansion
-// - runtime destruction physics
-//
-// Design rule:
-// - one building entry in JSON should map to one building entity in runtime
-// - later, each building entity can map to an intact/damaged/destroyed GLB
-// ==============================================================================
+//! Map setup, streaming chunk instances and static collision ownership.
+//!
+//! Legacy schema-2 road/building boxes store Blender XYZ; conversion helpers
+//! below change them to runtime X/Y/Z once. Authored layouts, road catalogs,
+//! model catalogs and spawn points already use runtime metres and Y-up.
+//! This module loads map JSON and builds setup snapshots. Physics owns dynamic
+//! vehicles; visual detail and editor colors never alter these collision bodies.
+//! See README.md for asset generators, validation and editing recipes.
 
 use rapier3d::prelude::*;
 use serde::Deserialize;
@@ -56,6 +37,10 @@ pub struct MapSpawnPoint {
     /// Vehicle heading in radians.
     #[serde(default)]
     pub yaw: f32,
+    /// Optional support surface elevation in runtime metres. Old maps use
+    /// surface.road_y; authored rooftop / garage spawns can choose their floor.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub surface_y: Option<f32>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
@@ -182,6 +167,7 @@ pub struct ChunkColliderSnapshot {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct MapSnapshot {
+    pub team_spawns: TeamSpawnPoints,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub authored_layout: Option<AuthoredLayout>,
     // Static setup data: collider previews do not request BLOCKS every tick.
@@ -260,6 +246,7 @@ impl BlockColliderFile {
         ).collect();
         collider_chunks.sort_by_key(|chunk| (chunk.z, chunk.x));
         MapSnapshot {
+            team_spawns: self.team_spawns.clone(),
             authored_layout: self.authored_layout.clone(),
             collider_chunks,
             schema_version: self.schema_version,
@@ -352,6 +339,15 @@ pub fn load_block_collider_file(
         layout.validate(&file.map_id)?;
         if layout.replaces_base() && !layout.repeat {
             anyhow::ensure!(matches!(file.layout, MapLayout::FixedGrid { origin: [0,0], size: [1,1] }), "A single authored district must use one fixed map tile");
+        }
+    }
+
+    for points in [&file.team_spawns.red, &file.team_spawns.blue] {
+        anyhow::ensure!(points.len() <= 256, "Too many team spawn points");
+        for point in points {
+            anyhow::ensure!(point.local.iter().all(|v| v.is_finite() && v.abs() <= 100000.0)
+                && point.yaw.is_finite() && point.yaw.abs() <= 1000000.0
+                && point.surface_y.is_none_or(|v| v.is_finite() && v.abs() <= 100000.0), "Invalid spawn transform");
         }
     }
 
@@ -496,10 +492,10 @@ pub fn spawn_block_building_colliders(
 
     // ---- spawn roads/intersections ----
     for road in &file.roads {
-        // ignore road.pos; we place it in the gap based on id
+        // Road boxes carry their own exported Blender-local positions.
         let local = road.pos;
 
-        // auto-size so everything is flush
+        // Use measured/exported half extents without resizing the road.
         let he_blender = road.half_extents;
 
         let [wx, wy, wz] = blender_local_to_world(bx, by,  tile_x, tile_z, local);

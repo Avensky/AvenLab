@@ -4,7 +4,7 @@ Main, Pause and the tabbed panels share the compact cyan menu theme for pointer,
 
 Missions, Career, Settings and the other tabbed panels fill the dynamic viewport. The shell does not shrink around short tabs; the header, tabs and footer remain outside the scrolling content. Tab changes reset content scrolling and keep the active tab visible on mobile.
 
-The pause menu previously mapped Settings hover to Debugger and Leave hover to Settings. Menu labels, item counts and routes now share `frontend/src/game/menuItems.ts`. Mouse actions explicitly activate the clicked row; keyboard focus follows controller selection.
+The pause menu previously mapped Settings hover to Debugger and Leave hover to Settings. Menu labels, item counts and routes now share `frontend/src/game/menus/menuItems.ts`. Mouse actions explicitly activate the clicked row; keyboard focus follows controller selection.
 
 ## Browser menu layout conventions
 

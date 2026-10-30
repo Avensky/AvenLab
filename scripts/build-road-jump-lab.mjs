@@ -1,8 +1,8 @@
 import fs from 'node:fs';
-import {addPiece,emptyLayout,updatePiece} from '../frontend/src/worldBuilder/layoutDocument.ts';
+import {addPiece,emptyLayout,updatePiece} from '../frontend/src/worldBuilder/document/layoutDocument.ts';
 import {roadAsset} from '../frontend/src/worldBuilder/roads/roadCatalog.ts';
 import {opposingRoadPair} from '../frontend/src/worldBuilder/roads/roadPair.ts';
-import {mapExport} from '../frontend/src/worldBuilder/mapDocument.ts';
+import {mapExport} from '../frontend/src/worldBuilder/document/mapDocument.ts';
 
 // Source asphalt bounds are the seam authority. Never resize imported roads.
 export function roadJumpLab(source) {

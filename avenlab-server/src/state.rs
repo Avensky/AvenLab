@@ -529,7 +529,7 @@ mod tests {
         use crate::vehicle_setup::{BRZ, TANK};
         let config = serde_json::to_value(VehicleConfigPayload::new("driver", BRZ)).unwrap();
         assert_eq!(config["config"]["hud"]["telemetry_mask"], 127);
-        assert_eq!(config["config"]["hud"]["cockpit_version"], 5);
+        assert_eq!(config["config"]["hud"]["cockpit_version"], 6);
         assert_eq!(config["config"]["hud"]["fuel_capacity_liters"], 50.0);
         assert_eq!(config["config"]["max_speed"], BRZ.max_speed);
         assert!(config["config"].get("resources").is_none(), "server tuning is not a repeated HUD payload");

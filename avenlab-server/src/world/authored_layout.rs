@@ -15,10 +15,20 @@ pub struct AuthoredLayout {
     pub title: String,
     pub base: LayoutBase,
     pub objects: Vec<LayoutObject>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub spawns: Option<Vec<LayoutSpawn>>,
     #[serde(default = "default_solid")]
     pub ground: bool,
     #[serde(default = "default_solid")]
     pub repeat: bool,
+}
+/// Editor marker only; the exported team_spawns table owns runtime spawning.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct LayoutSpawn {
+    pub id: String,
+    pub team: String,
+    pub position: [f32; 3],
+    pub yaw: f32,
 }
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
@@ -72,6 +82,16 @@ impl AuthoredLayout {
         anyhow::ensure!(self.map_id == map_id && identifier(&self.map_id, 96), "Authored layout map ID mismatch");
         anyhow::ensure!(!self.title.trim().is_empty() && self.title.chars().count() <= 80, "Invalid layout title");
         anyhow::ensure!(self.objects.len() <= 512, "Authored layout exceeds 512 pieces");
+        if let Some(spawns) = &self.spawns {
+            let mut ids = HashSet::new();
+            for team in ["red", "blue"] {
+                anyhow::ensure!(spawns.iter().filter(|p| p.team == team).count() <= 256, "Too many team spawns");
+            }
+            for point in spawns {
+                anyhow::ensure!(identifier(&point.id, 86) && point.id.starts_with("spawn-") && ids.insert(&point.id), "Invalid spawn ID");
+                anyhow::ensure!(["red", "blue"].contains(&point.team.as_str()) && vector_ok(&point.position, -100000.0, 100000.0) && point.yaw.is_finite() && point.yaw.abs() <= 36000.0, "Invalid authored spawn");
+            }
+        }
         let mut ids = HashSet::new();
         let mut count = 0;
         for object in &self.objects {

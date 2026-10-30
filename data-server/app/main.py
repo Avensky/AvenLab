@@ -6,8 +6,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from app.can.can_ai_router import router as can_ai_router
-from app.can.can_router import APP_ENV, IS_PRODUCTION, RUNTIME_ENV, router as can_router
+from app.can.analysis import router as can_ai_router
+from app.can.capture import APP_ENV, IS_PRODUCTION, RUNTIME_ENV, router as can_router
 from app.can.status import get_can_status
 from app.db import check_database, close_db, fetch, fetchrow, jsonb_dumps, smoke_test_database
 from app.services.ollama_client import OLLAMA_URL, ask_question, embed_text

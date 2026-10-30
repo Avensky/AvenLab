@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import * as THREE from "three";
-import type { DebugWheel } from "../../store/networkStore";
+import type { DebugWheel } from "../../store/session/networkStore";
 import { useFrame } from "@react-three/fiber";
 import { useVehiclePhysicsInterpolator } from "../../hooks/usePhysicsInterpolator";
 
@@ -10,7 +10,7 @@ function wheelColor(wheel: DebugWheel) {
   if (!wheel.grounded) return "#ef4444";
   if (Math.abs(wheel.slip_ratio) > 0.15) return "#d946ef";
   if (Math.abs(wheel.slip_angle) > 0.21) return "#f97316";
-  if (Math.abs(wheel.slip_angle) > 0.10) return "#facc15";
+  if (Math.abs(wheel.slip_angle) > 0.1) return "#facc15";
   return "#22c55e";
 }
 
@@ -21,8 +21,12 @@ function DebugWheelPose({ wheel }: { wheel: DebugWheel }) {
   const { getInterpolated } = useVehiclePhysicsInterpolator(wheel.player_id);
   useFrame((_, dt) => {
     const pose = getInterpolated(wheel.player_id);
-    const sample = wheel.id === undefined ? undefined
-      : pose?.wheels?.find((item) => item.id.toLowerCase() === wheel.id!.toLowerCase());
+    const sample =
+      wheel.id === undefined
+        ? undefined
+        : pose?.wheels?.find(
+            (item) => item.id.toLowerCase() === wheel.id!.toLowerCase(),
+          );
     // All wheel carriers and chassis read the camera's cached frame pose.
     // Backend rotation already includes steering; add visual spin once only.
     if (root.current) {
@@ -31,17 +35,30 @@ function DebugWheelPose({ wheel }: { wheel: DebugWheel }) {
     }
     if (spin.current) {
       angle.current = THREE.MathUtils.euclideanModulo(
-        angle.current + (sample?.wheel_speed ?? wheel.wheel_speed) * Math.max(0, Math.min(dt, 0.05)), Math.PI * 2,
+        angle.current +
+          (sample?.wheel_speed ?? wheel.wheel_speed) *
+            Math.max(0, Math.min(dt, 0.05)),
+        Math.PI * 2,
       );
       spin.current.rotation.x = angle.current;
     }
   });
   return (
-    <group ref={root} name={`debug-wheel-${wheel.player_id}-${wheel.id ?? "legacy"}`} position={wheel.center} quaternion={wheel.rotation}>
-      <group ref={spin} name={`debug-wheel-spin-${wheel.player_id}-${wheel.id ?? "legacy"}`}>
+    <group
+      ref={root}
+      name={`debug-wheel-${wheel.player_id}-${wheel.id ?? "legacy"}`}
+      position={wheel.center}
+      quaternion={wheel.rotation}
+    >
+      <group
+        ref={spin}
+        name={`debug-wheel-spin-${wheel.player_id}-${wheel.id ?? "legacy"}`}
+      >
         {/* Cylinder axle Y -> local X is a fixed geometry basis, not steering. */}
         <mesh rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[wheel.radius, wheel.radius, wheel.radius * 0.6, 20]} />
+          <cylinderGeometry
+            args={[wheel.radius, wheel.radius, wheel.radius * 0.6, 20]}
+          />
           <meshStandardMaterial color={wheelColor(wheel)} wireframe />
         </mesh>
       </group>
@@ -50,6 +67,14 @@ function DebugWheelPose({ wheel }: { wheel: DebugWheel }) {
 }
 
 export function DebugWheelVisualizer({ wheels }: { wheels: DebugWheel[] }) {
-  return <>{wheels.map((wheel, index) =>
-    <DebugWheelPose key={`${wheel.player_id}:${wheel.id ?? index}`} wheel={wheel} />)}</>;
+  return (
+    <>
+      {wheels.map((wheel, index) => (
+        <DebugWheelPose
+          key={`${wheel.player_id}:${wheel.id ?? index}`}
+          wheel={wheel}
+        />
+      ))}
+    </>
+  );
 }
