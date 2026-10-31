@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { trapMenuFocus } from "../../components/menus/menuFocus";
 import { connectRustServer, disconnectRustServer } from "../../net/rustSocket";
+import { requestSocial } from "../../net/socialClient";
+import { useSocialStore } from "../../store/social/socialStore";
 import { useUIStore } from "../../store/menus/uiStore";
 import type { MenuAction } from "../../controls/inputRouting";
 
@@ -8,17 +10,38 @@ export function SessionMenu() {
   const [selected, setSelected] = useState<"confirm" | "cancel">("cancel");
   const buttons = useRef(new Map<string, HTMLButtonElement>());
   const id = useId();
+  const pending = useRef(false);
+  const [busy, setBusy] = useState(false),
+    [error, setError] = useState("");
   const cancel = useUIStore((s) => s.backToParentMenu);
   const confirm = useCallback(() => {
-    disconnectRustServer();
-    useUIStore.getState().setScreen("main");
-    connectRustServer();
+    if (pending.current) return;
+    pending.current = true;
+    setBusy(true);
+    setError("");
+    void (async () => {
+      try {
+        // Explicit leave releases the seat before reconnect; a network drop
+        // instead receives the server's reconnect reservation.
+        if (useSocialStore.getState().available)
+          await requestSocial("mode_cancel");
+        disconnectRustServer();
+        useUIStore.getState().setScreen("main");
+        connectRustServer();
+      } catch (reason) {
+        setError((reason as Error).message);
+      } finally {
+        pending.current = false;
+        setBusy(false);
+      }
+    })();
   }, []);
   useEffect(() => {
     buttons.current.get(selected)?.focus({ preventScroll: true });
   }, [selected]);
   useEffect(() => {
     const handle = (event: Event) => {
+      if (pending.current) return;
       const action = (event as CustomEvent<MenuAction>).detail;
       if (action === "back") cancel();
       else if (action === "left") setSelected("confirm");
@@ -49,11 +72,13 @@ export function SessionMenu() {
         </header>
         <div className="menu-confirm-body">
           <p id={`${id}-message`}>Are you sure you want to leave game?</p>
+          {error && <p role="status">{error}</p>}
         </div>
         <nav className="menu-confirm-actions" aria-label="Leave game actions">
           {(["confirm", "cancel"] as const).map((action) => (
             <button
               key={action}
+              disabled={busy}
               type="button"
               ref={(element) => {
                 if (element) buttons.current.set(action, element);

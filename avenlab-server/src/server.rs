@@ -24,6 +24,7 @@ pub struct Connection {
 }
 pub struct Server {
     operations: Mutex<()>,
+    pub alpha: Mutex<crate::alpha::AlphaState>,
     pub data: Mutex<SocialData>,
     pub connections: Mutex<HashMap<String, Connection>>,
     pub runtimes: Mutex<HashMap<usize, Runtime>>,
@@ -39,6 +40,11 @@ impl Server {
                 PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("runtime/social.json")
             });
         let data = SocialData::load(&path)?;
+        let managed_worlds = data
+            .worlds
+            .iter()
+            .filter_map(|(id, w)| w.mode.map(|mode| (*id, mode)))
+            .collect();
         let limit = |name: &str, default: usize, max: usize| {
             std::env::var(name)
                 .ok()
@@ -48,12 +54,23 @@ impl Server {
         };
         Ok(Self {
             operations: Mutex::new(()),
+            alpha: Mutex::new(crate::alpha::AlphaState {
+                worlds: managed_worlds,
+                enforce_roles: std::env::var("AVENLAB_ROLE_LIMITS").as_deref() != Ok("0"),
+                enabled: std::env::var("AVENLAB_ALPHA_LIMITS").as_deref() != Ok("0"),
+                grace_seconds: std::env::var("AVENLAB_RECONNECT_GRACE_SECONDS")
+                    .ok()
+                    .and_then(|v| v.parse().ok())
+                    .unwrap_or(30)
+                    .clamp(1, 120),
+                ..Default::default()
+            }),
             data: Mutex::new(data),
             connections: Mutex::new(HashMap::new()),
             runtimes: Mutex::new(HashMap::new()),
             path,
-            max_active_worlds: limit("AVENLAB_MAX_ACTIVE_WORLDS", 1, 16),
-            max_players: limit("AVENLAB_MAX_PLAYERS", 10, 160),
+            max_active_worlds: limit("AVENLAB_MAX_ACTIVE_WORLDS", 3, 16),
+            max_players: limit("AVENLAB_MAX_PLAYERS", 12, 160),
         })
     }
     async fn save(&self) -> Result<(), String> {
@@ -89,7 +106,7 @@ impl Server {
     pub async fn register(&self, id: String, connection: Connection) -> Result<(), String> {
         let _operation = self.operations.lock().await;
         let mut clients = self.connections.lock().await;
-        if clients.len() >= 64 {
+        if clients.len() >= 96 {
             return Err("The server connection limit has been reached.".into());
         }
         clients.insert(id, connection);
@@ -119,6 +136,7 @@ impl Server {
             .ok_or_else(|| "Choose a player profile first.".into())
     }
     async fn leave_inner(&self, player: &str) {
+        self.alpha.lock().await.members.remove(player);
         let connection = self.connections.lock().await.get(player).cloned();
         let Some(client) = connection else { return };
         if let Some(world) = client.world_id {
@@ -135,7 +153,14 @@ impl Server {
                 .await
                 .values()
                 .any(|connection| connection.world_id == Some(world));
-            if !occupied {
+            let reserved = self
+                .alpha
+                .lock()
+                .await
+                .reservations
+                .values()
+                .any(|entry| entry.member.world == world && entry.expires > timestamp());
+            if !occupied && !reserved {
                 self.runtimes.lock().await.remove(&world);
             }
         }
@@ -147,7 +172,13 @@ impl Server {
     }
     pub async fn disconnect(&self, player: &str) {
         let _operation = self.operations.lock().await;
+        self.reserve_disconnect(player).await;
         self.leave_inner(player).await;
+        self.alpha
+            .lock()
+            .await
+            .queue
+            .retain(|ticket| ticket.player != player);
         self.connections.lock().await.remove(player);
         self.publish().await;
     }
@@ -182,10 +213,14 @@ impl Server {
                 && invite.world_id == world_id
                 && invite.expires > timestamp()
         });
-        if !world.listed && !owner && !invited && code != world.invite_code {
+        let restoring = self.alpha.lock().await.restoring.contains(player);
+        if !world.listed && !restoring && !owner && !invited && code != world.invite_code {
             return Err("A valid world invite or invite code is required.".into());
         }
-        if !owner && let Some(hash) = world.password_hash.clone() {
+        if !owner
+            && !restoring
+            && let Some(hash) = world.password_hash.clone()
+        {
             let accepted =
                 tokio::task::spawn_blocking(move || security::password_matches(&password, &hash))
                     .await
@@ -234,6 +269,15 @@ impl Server {
         });
         drop(data);
         drop(clients);
+        self.check_alpha_admission(player, world_id).await?;
+        let preferred = self
+            .alpha
+            .lock()
+            .await
+            .pending_team
+            .get(player)
+            .copied()
+            .or(preferred);
         let existing = self.runtimes.lock().await.get(&world_id).cloned();
         let runtime = if let Some(runtime) = existing {
             runtime
@@ -311,6 +355,7 @@ impl Server {
                 data.worlds.insert(
                     world_id,
                     World {
+                        mode: None,
                         id: world_id,
                         name: format!("Public {}", map.replace('_', " ")),
                         map: map.into(),
@@ -326,6 +371,7 @@ impl Server {
             drop(data);
             self.join_inner(player, world_id, "", String::new()).await?;
         }
+        self.validate_alpha_vehicle(player, vehicle).await?;
         let runtime = self.runtime(player).await?;
         runtime.lock().await.spawn(player, vehicle)?;
         self.publish().await;
@@ -345,6 +391,9 @@ impl Server {
                 .to_string()
         };
         let result = match action {
+            "mode_join" | "mode_cancel" | "hero_select" | "skin_redeem" | "skin_equip"
+            | "editor_apply" => self.handle_alpha(player, &value).await?,
+
             "identify" => {
                 let previous = self.data.lock().await.clone();
                 let token = value.get("token").and_then(Value::as_str);
@@ -359,6 +408,24 @@ impl Server {
                     *self.data.lock().await = previous;
                     return Err("This player profile is already connected in another tab.".into());
                 }
+                let connection = self.connections.lock().await.get(player).cloned();
+                let queued = self
+                    .alpha
+                    .lock()
+                    .await
+                    .queue
+                    .iter()
+                    .any(|ticket| ticket.player == player);
+                if connection.as_ref().is_some_and(|client| {
+                    client
+                        .profile_id
+                        .as_ref()
+                        .is_some_and(|id| id != &profile_id)
+                        && (client.world_id.is_some() || queued)
+                }) {
+                    *self.data.lock().await = previous;
+                    return Err("Leave your current session before switching profiles.".into());
+                }
                 self.commit(previous).await?;
                 self.connections
                     .lock()
@@ -366,6 +433,7 @@ impl Server {
                     .get_mut(player)
                     .ok_or("The connection closed.")?
                     .profile_id = Some(profile_id.clone());
+                self.restore_reservation(player, &profile_id).await;
                 json!({"profile_id":profile_id,"token":new_token})
             }
             "refresh" => json!({}),
@@ -404,6 +472,7 @@ impl Server {
                 data.worlds.insert(
                     world_id,
                     World {
+                        mode: None,
                         id: world_id,
                         name,
                         map,
@@ -485,6 +554,7 @@ impl Server {
     }
 }
 
+mod alpha_sessions;
 #[cfg(test)]
 mod tests;
 mod views;

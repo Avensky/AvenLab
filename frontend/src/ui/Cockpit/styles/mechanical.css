@@ -242,7 +242,7 @@
 }
 :is(.cockpit-panel, .drive-dock) .mechanical-handbrake .parking-release {
   position: absolute;
-  right: -4px;
+  right: 2%;
   top: -4px;
   bottom: -4px;
   width: 16%;
@@ -258,8 +258,9 @@
 .parking-release::after {
   content: "";
   position: absolute;
-  right: 4px;
-  top: calc(30% + 2px);
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
   width: 40%;
   height: 40%;
   border: 1px solid #3b454f;
@@ -382,4 +383,35 @@
 .drive-dock .hud-assists .drive-assists[data-layout="three"] {
   /* (49px - 2px gap) / 2: exactly one row from the expanded HUD bank. */
   height: 23.5px;
+}
+
+/* Printed gate stays centered inside the moving knob at every HUD size. */
+:is(.cockpit-panel, .drive-dock) .mechanical-shifter .shift-knob {
+  width: clamp(27px, calc(var(--shifter-size, 90px) * 0.3), 42px);
+  height: clamp(27px, calc(var(--shifter-size, 90px) * 0.3), 42px);
+  padding: 3px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.shift-knob-pattern {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+}
+.shift-knob-pattern path {
+  fill: none;
+  stroke: #d0d9e3;
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+.shift-knob-pattern text {
+  fill: #e9f3ff;
+  stroke: none;
+  text-anchor: middle;
+  font:
+    18px ui-monospace,
+    monospace;
 }

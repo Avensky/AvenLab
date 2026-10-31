@@ -335,6 +335,11 @@ pub fn load_block_collider_file(
 ) -> anyhow::Result<BlockColliderFile> {
     let bytes = fs::read(&path)?;
     let file: BlockColliderFile = serde_json::from_slice(&bytes)?;
+    validate_block_collider_file(file)
+}
+
+/// Shared validation for disk maps and bounded live-editor documents.
+pub fn validate_block_collider_file(file: BlockColliderFile) -> anyhow::Result<BlockColliderFile> {
     if let Some(layout) = &file.authored_layout {
         layout.validate(&file.map_id)?;
         if layout.replaces_base() && !layout.repeat {

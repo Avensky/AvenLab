@@ -1,3 +1,4 @@
+import { UtilityToggle } from "../hud/UtilityToggle";
 import { HazardButton } from "./HazardButton";
 import { useInputStore } from "../../store/input/inputStore";
 import { useVehicleTelemetryStore } from "../../store/telemetry/vehicleTelemetryStore";
@@ -12,10 +13,12 @@ export function ClimatePanel({
   size = "full",
   showHazards = true,
   controlsVisible = true,
+  onMinimize,
 }: {
   size?: "compact" | "full";
   showHazards?: boolean;
   controlsVisible?: boolean;
+  onMinimize?: () => void;
 }) {
   const { cabin, confirmedCabin, extended, climate, cabinMask, cabinPending } =
     useCockpitState();
@@ -34,6 +37,9 @@ export function ClimatePanel({
       data-size={size}
       data-controls-visible={controlsVisible}
     >
+      {onMinimize && (
+        <UtilityToggle panel="climate" open={true} onClick={onMinimize} />
+      )}
       <div className="console-clock-strip">
         <CabinClock />
         {showHazards && <HazardButton round />}

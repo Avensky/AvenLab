@@ -1,3 +1,4 @@
+import { useAlphaStore } from "../alpha/alphaStore";
 import type { StateCreator } from "zustand";
 import { MAIN_MENU_ITEMS, PAUSE_MENU_ITEMS } from "../../game/menus/menuItems";
 import {
@@ -97,7 +98,10 @@ export const createMenuActions: StateCreator<
 
     if (activeMenu === "main") {
       const item = MAIN_MENU_ITEMS[index];
-      if (item?.available) set({ screen: item.screen, overlay: null });
+      if (item?.available) {
+        if ("mode" in item) useAlphaStore.getState().chooseMode(item.mode);
+        set({ screen: item.screen, overlay: null });
+      }
       return;
     }
 

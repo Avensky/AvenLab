@@ -8,6 +8,8 @@ siblings so public barrels do not create circular initialization.
 | Desired change | Feature / source of truth | State or server owner |
 | --- | --- | --- |
 | Main/pause rows, screens, back behavior | [game menus](../frontend/src/game/menus/README.md) | [store/menus](../frontend/src/store/menus/README.md) |
+| Alpha modes, hero wall, queues and progression | [alpha UI](../frontend/src/game/alpha/README.md) | Rust alpha/ + server/alpha_sessions.rs |
+| HUD radio/map/climate minimization | ui/hud/UtilityDock.tsx | [HUD layout state](../frontend/src/store/hud/README.md) |
 | Teammates, social groups and private worlds | [social menus](../frontend/src/game/social/README.md) | Rust server.rs + social/; frontend net/socialClient.ts |
 | Assisted controller/touch text entry | components/text | [text store](../frontend/src/store/text/README.md); keyboard routing precedes menus |
 | Themes, contrast, text size, reduced motion | [shared theme](../frontend/src/theme/README.md) | [store/preferences](../frontend/src/store/preferences/README.md) |

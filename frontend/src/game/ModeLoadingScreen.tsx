@@ -33,7 +33,13 @@ export function ModeLoadingScreen() {
 
   // Selection already has an immediate native grid showroom while its assets
   // load. Keep the readiness gate, without covering it with a second loader.
-  if (!isModeLoading || screen === "sandbox_setup" || screen === "signal_recon_setup") return null;
+  if (
+    !isModeLoading ||
+    screen === "sandbox_setup" ||
+    screen === "hero_select" ||
+    screen === "signal_recon_setup"
+  )
+    return null;
 
   return (
     <div className="fixed inset-0 z-[99999] flex items-center justify-center overflow-hidden bg-black text-cyan-100">
@@ -60,7 +66,9 @@ export function ModeLoadingScreen() {
         </div>
 
         <div className="mt-3 flex justify-between font-mono text-xs text-slate-400">
-          <span>{total > 0 ? `${loaded}/${total} files` : "preparing mode"}</span>
+          <span>
+            {total > 0 ? `${loaded}/${total} files` : "preparing mode"}
+          </span>
           <span>{Math.round(shownProgress)}%</span>
         </div>
       </div>

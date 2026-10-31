@@ -1,3 +1,4 @@
+import { EditorTestAction } from "../../game/alpha/EditorTestAction";
 import { mapCatalog } from "../../store/selection/worldCatalog";
 import { switchBuilderWorld } from "../state/builderActions";
 import { useBuilderStore } from "../state/builderStore";
@@ -42,6 +43,7 @@ export function EditorWorldControls({
           ))}
         </select>
       </label>
+      <EditorTestAction />
       {!compact && (
         <>
           <label className="le-header-field">

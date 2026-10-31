@@ -2,26 +2,28 @@ import { memo, useState } from "react";
 import { useUIStore } from "../../store/menus";
 import { MissionApps } from "./MissionApps";
 import { RadioPanel } from "./RadioPanel";
+import { usePreferencesStore } from "../../store/preferences/preferencesStore";
 import { useMomentaryFeedback } from "./useMomentaryFeedback";
 /** The driving head unit contains media and mission tools. Settings and research
  * live in their own menu, so idle cabin masks never subscribe this whole panel. */
-export const ConsoleDisplay = memo(function ConsoleDisplay() {
-  const [minimized, setMinimized] = useState(true),
-    [tab, setTab] = useState<"radio" | "missions">("radio");
+export const ConsoleDisplay = memo(function ConsoleDisplay({
+  onMinimize,
+}: {
+  onMinimize?: () => void;
+}) {
+  const style = usePreferencesStore((s) => s.radioHudStyle);
+  const [tab, setTab] = useState<"radio" | "missions">("radio");
   const feedback = useMomentaryFeedback();
   return (
     <section
       {...feedback}
       className="console-display"
-      data-expanded={!minimized}
+      data-expanded="true"
+      data-radio-style={style}
       aria-label="Vehicle electronic display"
     >
-      <RadioPanel
-        compact
-        minimized={minimized}
-        onMinimize={() => setMinimized(!minimized)}
-      />
-      {!minimized && (
+      <RadioPanel compact onMinimize={onMinimize} />
+      {
         <>
           <nav
             className="console-display-tabs"
@@ -54,7 +56,7 @@ export const ConsoleDisplay = memo(function ConsoleDisplay() {
             </div>
           )}
         </>
-      )}
+      }
     </section>
   );
 });

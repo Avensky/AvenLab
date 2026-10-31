@@ -1,3 +1,4 @@
+import { useAlphaFlow } from "./alpha/useAlphaFlow";
 import { useAppTheme } from "../theme";
 import "../theme/theme.css";
 import { FullCanvas } from "../FullCanvas";
@@ -23,6 +24,13 @@ import { VehicleMenu } from "./menus/VehicleMenu";
 import { Cameras } from "../effects";
 import { PerformanceOverlay } from "../performance/PerformanceOverlay";
 import { useRenderSettingsStore } from "../store/presentation/renderSettingsStore";
+
+const HeroSelection = lazy(() =>
+  import("./alpha/HeroSelection").then((m) => ({ default: m.HeroSelection })),
+);
+const QueueScreen = lazy(() =>
+  import("./alpha/QueueScreen").then((m) => ({ default: m.QueueScreen })),
+);
 
 const WorldBuilderPanel = lazy(() =>
   import("../worldBuilder/panels/WorldBuilderPanel").then((m) => ({
@@ -54,6 +62,7 @@ const SignalReconMission = lazy(() =>
 
 export function GameUI() {
   useAppTheme();
+  useAlphaFlow();
   const hud = useRenderSettingsStore((s) => s.hud);
   const screen = useUIStore((s) => s.screen);
   const overlay = useUIStore((s) => s.overlay);
@@ -70,6 +79,7 @@ export function GameUI() {
   const needsCanvas =
     screen === "sandbox" ||
     screen === "sandbox_setup" ||
+    screen === "hero_select" ||
     screen === "signal_recon_setup" ||
     screen === "world_builder";
   const [collapsed, setCollapsed] = useState(false);
@@ -80,7 +90,9 @@ export function GameUI() {
       {/* Requires Canvas */}
       {needsCanvas && (
         <FullCanvas>
-          {screen === "sandbox_setup" && <VehiclePreview />}
+          {(screen === "sandbox_setup" || screen === "hero_select") && (
+            <VehiclePreview />
+          )}
           {screen === "world_builder" && (
             <Suspense fallback={null}>
               <WorldBuilderScene />
@@ -128,6 +140,8 @@ export function GameUI() {
             setCollapsed={setCollapsed}
           />
         )}
+        {screen === "hero_select" && <HeroSelection />}
+        {screen === "queue" && <QueueScreen />}
         {screen === "sandbox_setup" && (
           <SandboxSetup collapsed={collapsed} setCollapsed={setCollapsed} />
         )}

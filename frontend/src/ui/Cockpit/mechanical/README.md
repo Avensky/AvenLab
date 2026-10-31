@@ -23,3 +23,8 @@ Clicking releases the cable to zero for drifting. A press held beyond the 180 ms
 `inputStore.setParkingBrake` writes optional `parking_brake` plus a packed command-3 revision into the existing 60 Hz input packet. Rust cockpit v7 confirms `parking_brake`, applies the exact force through the existing rear-brake solver and retains coarse mask detents for older consumers. Other commands cannot quantize an accepted fraction; P and the keyboard/controller momentary handbrake remain independent. The sender carries the fraction with subsequent commands so composing a light request before a send cannot lose the last pressure update. Older servers use the three coarse detents until rebuilt with v7.
 
 The three-switch HUD bank is left of the pedals. Its switches keep the same width and 23.5 px height as each switch in the expanded 3×2 bank, including on phones. Cockpit Drive saves its visibility and `assistHudLayout` (three/extended). Silver/black contact faces live in `styles/switches.css`; positioning lives in `styles/layout.css`. Do not implement mechanical wear or failure in artwork: Rust must own any future model.
+
+Quick contact on the shared progressive lever now owns `ebrake-pull`, a separate
+momentary input source. Pointer release/cancel clears that source without touching
+keyboard/gamepad braking. A longer hold transitions to the existing parking latch.
+The manual knob prints its H-pattern as SVG instead of spaced text.

@@ -1,7 +1,6 @@
 import { useEffect, type CSSProperties } from "react";
 import { usePreferencesStore } from "../store/preferences/preferencesStore";
 import { InspectionPanel } from "./InspectionPanel";
-import { Minimap } from "./Minimap/Minimap";
 import ControlsPanel from "./ControlsPanel";
 import Steering from "./Steering";
 import Dashboard from "./Dashboard/Dashboard";
@@ -84,7 +83,6 @@ export function DrivingHUD() {
 
       {dock && <DrivingIgnition />}
       <ControlsPanel />
-      <Minimap />
       <InspectionPanel />
     </div>
   );

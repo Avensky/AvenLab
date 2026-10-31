@@ -79,8 +79,8 @@ items. A skin-only business model still pays hosting costs for every active user
 
 ## Practical phases for AvenLab
 
-1. Prototype now: one approximately $20 VM, one active world/ten total players as
-   the configurable starting limit. Benchmark the actual machine; retain backups.
+1. Prototype now: one approximately $20 VM, three alpha slots (10 match players, one editor tester and one practice player)
+   as the configured ceiling. Benchmark the actual machine; retain backups.
 2. Before taking payments: durable accounts and database, purchase verification,
    entitlement checks, observability and tested restore/recovery. Services may
    initially share a machine while keeping separate responsibilities and data.

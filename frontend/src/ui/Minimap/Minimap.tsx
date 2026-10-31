@@ -1,3 +1,4 @@
+import { useHudPanelsStore } from "../../store/hud/hudPanelsStore";
 import { useMapTelemetryStore } from "../../store/telemetry";
 import { memo, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useWorldStore } from "../../store/world/worldStore";
@@ -245,8 +246,8 @@ export function Minimap({
 }: {
   forceExpanded?: boolean;
 }) {
-  const visible = usePreferencesStore((s) => s.hudGroups.minimap),
-    [expanded, setExpanded] = useState(false);
+  const visible = usePreferencesStore((s) => s.hudGroups.minimap);
+  const expanded = useHudPanelsStore((s) => s.map);
   const scale = usePreferencesStore((s) => s.minimapScale);
   const open = forceExpanded || expanded;
   if (!visible && !forceExpanded) return null;
@@ -270,7 +271,7 @@ export function Minimap({
             title={open ? "Minimize map" : "Open map"}
             aria-label={open ? "Minimize map" : "Open map"}
             aria-expanded={open}
-            onClick={() => setExpanded(!expanded)}
+            onClick={() => useHudPanelsStore.getState().toggle("map")}
           >
             <svg
               viewBox="0 0 24 24"

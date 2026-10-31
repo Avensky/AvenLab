@@ -18,8 +18,17 @@ pub fn run() -> anyhow::Result<()> {
             .unwrap_or(default)
             .clamp(1, max)
     };
-    let count = number("--worlds", 1, 16);
-    let players = number("--players", 10, 10);
+    let plan = if let Some(csv) = value("--players-per-world") {
+        let plan: Vec<usize> = csv.split(',').map(str::parse).collect::<Result<_, _>>()?;
+        anyhow::ensure!(
+            !plan.is_empty() && plan.len() <= 16 && plan.iter().all(|n| (1..=10).contains(n)),
+            "Use 1–16 world populations, each between 1 and 10"
+        );
+        plan
+    } else {
+        vec![number("--players", 10, 10); number("--worlds", 1, 16)]
+    };
+    let count = plan.len();
     let ticks = number("--ticks", 1200, 10000);
     let map = value("--map").unwrap_or_else(|| "streaming_endless_city".into());
     let mut worlds = Vec::new();
@@ -27,7 +36,7 @@ pub fn run() -> anyhow::Result<()> {
     let mut receivers = Vec::new();
     for n in 0..count {
         let mut room = WorldRuntime::new(n + 1, &map).map_err(anyhow::Error::msg)?;
-        for player in 0..players {
+        for player in 0..plan[n] {
             let id = format!("benchmark-{n}-{player}");
             let (tx, rx) = mpsc::unbounded_channel();
             let (frame, frame_rx) = watch::channel(None);
@@ -76,7 +85,7 @@ pub fn run() -> anyhow::Result<()> {
     }
     times.sort_by(f64::total_cmp);
     let p = |fraction: f64| times[((times.len() - 1) as f64 * fraction).ceil() as usize];
-    let result = json!({"worlds":count,"players_per_world":players,"total_players":count*players,"map":map,"ticks":ticks,"tick_budget_ms":1000.0/60.0,"p50_ms":p(0.5),"p95_ms":p(0.95),"p99_ms":p(0.99),"max_ms":times.last(),"p95_under_12ms":p(0.95)<12.0,"scope":"CPU physics and snapshot serialization; no socket traffic, target-client rendering, shared-host contention, or capacity guarantee"});
+    let result = json!({"worlds":count,"players_per_world":plan,"total_players":plan.iter().sum::<usize>(),"map":map,"ticks":ticks,"tick_budget_ms":1000.0/60.0,"p50_ms":p(0.5),"p95_ms":p(0.95),"p99_ms":p(0.99),"max_ms":times.last(),"p95_under_12ms":p(0.95)<12.0,"scope":"CPU physics and snapshot serialization; no socket traffic, target-client rendering, shared-host contention, or capacity guarantee"});
     let bytes = serde_json::to_string_pretty(&result)?;
     if let Some(output) = value("--output") {
         std::fs::write(output, bytes + "\n")?;

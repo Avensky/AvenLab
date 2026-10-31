@@ -80,6 +80,7 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
       },
     });
     const { MainMenu } = await load("game/menus/MainMenu.tsx");
+    const { MAIN_MENU_ITEMS } = await load("game/menus/menuItems.ts");
     const { PauseMenu } = await load("game/menus/PauseMenu.tsx");
     const { SettingsMenu } = await load("game/menus/SettingsMenu.tsx");
     const { CareerMenu } = await load("game/menus/CareerMenu.tsx");
@@ -205,7 +206,7 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
         );
         assert.equal(document.querySelector(".main-menu video"), null);
         await key("Enter", "Enter");
-        assert.equal(ui.getState().screen, "sandbox_setup");
+        assert.equal(ui.getState().screen, "hero_select");
         await reset();
         await act(async () =>
           preferences.getState().update({ reducedMotion: true }),
@@ -224,7 +225,7 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
       async () => {
         await reset();
         let theme;
-        for (let index = 0; index < 7; index++) {
+        for (let index = 0; index < MAIN_MENU_ITEMS.length; index++) {
           const element = document.querySelectorAll('[role="button"]')[index];
           await act(async () =>
             element.dispatchEvent(
@@ -241,7 +242,10 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
               `row ${index} should use the Sandbox theme`,
             );
         }
-        const swarm = document.querySelectorAll('[role="button"]')[6];
+        const swarm =
+          document.querySelectorAll('[role="button"]')[
+            MAIN_MENU_ITEMS.findIndex((item) => item.id === "swarm")
+          ];
         assert.equal(swarm.getAttribute("aria-disabled"), "true");
         await act(async () =>
           swarm.dispatchEvent(
@@ -492,7 +496,11 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
       async () => {
         await resetRecon();
         await reset();
-        await pointerPress(document.querySelectorAll('[role="button"]')[5]);
+        await pointerPress(
+          document.querySelectorAll('[role="button"]')[
+            MAIN_MENU_ITEMS.findIndex((item) => item.id === "recon")
+          ],
+        );
         assert.equal(ui.getState().screen, "signal_recon_setup");
         assert.ok(document.querySelector('[aria-label="Vehicle CAN profile"]'));
         await pointerPress(
@@ -529,7 +537,13 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
       async () => {
         await resetRecon();
         await reset();
-        await act(async () => ui.getState().setActiveMenuIndex(5));
+        await act(async () =>
+          ui
+            .getState()
+            .setActiveMenuIndex(
+              MAIN_MENU_ITEMS.findIndex((item) => item.id === "recon"),
+            ),
+        );
         await button(0);
         assert.equal(ui.getState().screen, "signal_recon_setup");
         assert.equal(
@@ -756,11 +770,11 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
       "controller in a nonzero slot navigates rows, tabs, values and Back",
       async () => {
         await reset();
-        await button(13);
-        await button(13);
-        await button(13);
-        await button(13);
-        assert.equal(ui.getState().getActiveMenuIndex(), 4);
+        const settingsIndex = MAIN_MENU_ITEMS.findIndex(
+          (item) => item.id === "settings",
+        );
+        for (let index = 0; index < settingsIndex; index++) await button(13);
+        assert.equal(ui.getState().getActiveMenuIndex(), settingsIndex);
         await button(0);
         assert.equal(ui.getState().screen, "settings");
         assert.equal(tab("Display").getAttribute("aria-selected"), "true");

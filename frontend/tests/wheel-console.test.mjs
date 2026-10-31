@@ -522,7 +522,7 @@ test("wheel and console share authoritative packed controls without additional s
           1,
         );
         await render(h(ConsoleDisplay));
-        await click("Expand radio");
+        assert.ok(document.querySelector(".console-display-tabs"));
         await act(async () =>
           [...document.querySelectorAll(".console-display-tabs button")]
             .find((b) => b.textContent === "MISSIONS")

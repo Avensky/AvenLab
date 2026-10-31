@@ -187,11 +187,34 @@ export function GearSelector({
           onPointerCancel={(event) => finish(event, true)}
           onLostPointerCapture={(event) => finish(event, true)}
         >
-          <span>
-            {automatic ? position.label : "R 1 3 5"}
-            <br />
-            {automatic ? "AUTO" : "  2 4 6"}
-          </span>
+          {automatic ? (
+            <span>
+              {position.label}
+              <br />
+              AUTO
+            </span>
+          ) : (
+            <svg
+              className="shift-knob-pattern"
+              viewBox="0 0 100 100"
+              aria-hidden="true"
+            >
+              <path d="M14 38v15h72M38 38v28M62 38v28M86 38v28" />
+              {[
+                { x: 14, y: 30, t: "R" },
+                { x: 38, y: 30, t: "1" },
+                { x: 62, y: 30, t: "3" },
+                { x: 86, y: 30, t: "5" },
+                { x: 38, y: 84, t: "2" },
+                { x: 62, y: 84, t: "4" },
+                { x: 86, y: 84, t: "6" },
+              ].map((item) => (
+                <text key={item.t} x={item.x} y={item.y}>
+                  {item.t}
+                </text>
+              ))}
+            </svg>
+          )}
         </button>
       </div>
       <small>

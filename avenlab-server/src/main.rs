@@ -14,6 +14,7 @@ mod vehicle_setup;
 mod vehicle_state;
 mod world;
 
+mod alpha;
 mod capacity_bench;
 mod server;
 mod social;
@@ -34,6 +35,15 @@ async fn main() -> anyhow::Result<()> {
         server.max_active_worlds, server.max_players
     );
     tokio::spawn(net::start_websocket_server(Arc::clone(&server)));
+    let admission = Arc::clone(&server);
+    tokio::spawn(async move {
+        let mut timer = interval(Duration::from_millis(500));
+        timer.set_missed_tick_behavior(MissedTickBehavior::Skip);
+        loop {
+            timer.tick().await;
+            admission.maintain_alpha().await;
+        }
+    });
     let mut ticker = interval(Duration::from_secs_f64(1.0 / SIMULATION_HZ));
     ticker.set_missed_tick_behavior(MissedTickBehavior::Skip);
     let trace = vehicle_forces::contact_trace_enabled();

@@ -1,3 +1,4 @@
+import type { AlphaView, Progression, GameMode } from "../alpha/alphaStore";
 import { create } from "zustand";
 
 export type SocialPerson = {
@@ -15,6 +16,7 @@ export type SocialGroup = {
   invited: SocialPerson[];
 };
 export type SocialWorld = {
+  mode?: GameMode | null;
   id: number;
   name: string;
   map: string;
@@ -42,7 +44,8 @@ export type WorldInvitation = {
   expires: number;
 };
 export type SocialView = {
-  profile: { id: string; name: string };
+  profile: { id: string; name: string; progression?: Progression };
+  alpha?: AlphaView;
   players: SocialPerson[];
   teammates: SocialPerson[];
   requests: { player: SocialPerson; incoming: boolean }[];
@@ -98,6 +101,18 @@ export const useSocialStore = create<{
       typeof view.profile.name !== "string" ||
       !view.limits ||
       !Number.isSafeInteger(view.limits.max_active_worlds)
+    )
+      return;
+    if (
+      view.alpha &&
+      (!Array.isArray(view.alpha.roster) ||
+        !Array.isArray(view.alpha.skins) ||
+        view.alpha.roster.some(
+          (member) =>
+            !member ||
+            typeof member.name !== "string" ||
+            typeof member.hero !== "string",
+        ))
     )
       return;
     for (const key of [

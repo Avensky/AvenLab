@@ -61,8 +61,8 @@ pub async fn start_websocket_server(server: Arc<Server>) {
         let server = Arc::clone(&server);
         tokio::spawn(async move {
             let config = WebSocketConfig {
-                max_message_size: Some(16 * 1024),
-                max_frame_size: Some(16 * 1024),
+                max_message_size: Some(1024 * 1024),
+                max_frame_size: Some(1024 * 1024),
                 ..Default::default()
             };
             let Ok(socket) = accept_async_with_config(stream, Some(config)).await else {
@@ -126,7 +126,7 @@ pub async fn start_websocket_server(server: Arc<Server>) {
             let mut passwords = RateLimit::new(4, 30);
             let mut pings = RateLimit::new(2, 1);
             loop {
-                let next = tokio::select! {next=read.next()=>next,_=&mut writer=>break};
+                let next = tokio::select! {next=tokio::time::timeout(Duration::from_secs(30),read.next())=>match next{Ok(value)=>value,Err(_)=>break},_=&mut writer=>break};
                 let Some(Ok(Message::Text(text))) = next else {
                     if next.is_none()
                         || next.is_some_and(|message| {
@@ -154,6 +154,12 @@ pub async fn start_websocket_server(server: Arc<Server>) {
                     if pings.allow() {
                         let _ = tx.send(json!({"type":"pong"}).to_string());
                     }
+                    continue;
+                }
+                if text.len() > 16 * 1024
+                    && !(message_type == "social_request"
+                        && value.get("action").and_then(Value::as_str) == Some("editor_apply"))
+                {
                     continue;
                 }
                 if message_type == "input" {
@@ -215,7 +221,10 @@ pub async fn start_websocket_server(server: Arc<Server>) {
                         let result = match server.runtime(&player).await {
                             Ok(runtime) => {
                                 let mut room = runtime.lock().await;
-                                match room.physics.change_vehicle_for_player(&player, vehicle) {
+                                let allowed = server.validate_alpha_vehicle(&player, vehicle).await;
+                                match allowed.and_then(|_| {
+                                    room.physics.change_vehicle_for_player(&player, vehicle)
+                                }) {
                                     Ok(()) => {
                                         room.game.set_vehicle_id(&player, vehicle);
                                         if let Some(entity) = room.game.entities.get_mut(&player) {

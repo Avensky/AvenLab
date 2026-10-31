@@ -45,9 +45,13 @@ export function ProgressiveParking({
   const [drawn, setDrawn] = useState(fraction);
   const value = useRef(fraction),
     pull = useRef<Pull | null>(null);
+  const pulse = useRef<number | null>(null);
   const timer = useRef<number | null>(null),
     suppressClick = useRef(false);
   const clear = useCallback(() => {
+    if (pulse.current !== null) window.clearTimeout(pulse.current);
+    pulse.current = null;
+    useInputStore.getState().releaseInputSource("ebrake-pull");
     if (timer.current !== null) window.clearTimeout(timer.current);
     timer.current = null;
     if (pull.current && pull.current.pointer !== null)
@@ -77,6 +81,7 @@ export function ProgressiveParking({
   const tick = () => {
     const held = pull.current;
     if (!held || held.drag) return;
+    useInputStore.getState().releaseInputSource("ebrake-pull");
     const next = parkingPressureAfterHold(
       held.initial,
       performance.now() - held.began - PARKING_TAP_MS,
@@ -95,7 +100,12 @@ export function ProgressiveParking({
       initial: value.current,
       drag: false,
     };
-    // Do not apply extra force while deciding whether this is a release tap.
+    // One quick contact pulls immediately and releases with its pointer.
+    // A longer hold switches to the existing progressive parking latch.
+    if (value.current === 0)
+      useInputStore
+        .getState()
+        .setAnalogFromSource("ebrake-pull", { handbrake: 1 });
     timer.current = window.setTimeout(tick, PARKING_TAP_MS + 50);
   };
   const finish = (cancel = false) => {
@@ -139,7 +149,7 @@ export function ProgressiveParking({
         aria-label="Parking brake"
         aria-busy={pending}
         aria-pressed={drawn > 0 || momentary > 0}
-        aria-description={`${Math.round(drawn * 100)} percent; click to release, hold to increase pressure, then release to keep it. The metal tip releases the latch. Drag or use arrow keys to adjust.`}
+        aria-description={`${Math.round(drawn * 100)} percent; quick press pulls and releases the e-brake. Tap to release a parked latch; hold to increase parking pressure. The metal tip releases the latch.`}
         onContextMenu={(e) => e.preventDefault()}
         onPointerDown={(e) => {
           if (e.button !== 0 || disabled || pull.current) return;
@@ -154,6 +164,7 @@ export function ProgressiveParking({
           const delta = held.y - e.clientY;
           if (!held.drag && Math.abs(delta) < 8) return;
           held.drag = true;
+          useInputStore.getState().releaseInputSource("ebrake-pull");
           if (timer.current !== null) window.clearTimeout(timer.current);
           timer.current = null;
           change(
@@ -206,8 +217,19 @@ export function ProgressiveParking({
             suppressClick.current = false;
             return;
           }
-          // Screen-reader/controller click activation is the same release tap.
+          // Click-only assistive activation pulses once; pointerup suppresses
+          // its synthesized click so a physical quick pull cannot repeat.
+          const wasParked = value.current > 0;
           change(0);
+          if (!wasParked) {
+            useInputStore
+              .getState()
+              .setAnalogFromSource("ebrake-pull", { handbrake: 1 });
+            pulse.current = window.setTimeout(() => {
+              pulse.current = null;
+              useInputStore.getState().releaseInputSource("ebrake-pull");
+            }, 100);
+          }
         }}
       >
         <span className="parking-artwork">

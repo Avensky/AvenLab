@@ -40,6 +40,8 @@ pub struct Profile {
     // Device guest credential, never included in any social-state response.
     pub token_hash: String,
     pub friends: BTreeSet<String>,
+    #[serde(default)]
+    pub progression: crate::alpha::progression::Progression,
 }
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Group {
@@ -51,6 +53,8 @@ pub struct Group {
 }
 #[derive(Clone, Serialize, Deserialize)]
 pub struct World {
+    #[serde(default)]
+    pub mode: Option<crate::alpha::Mode>,
     pub id: usize,
     pub name: String,
     pub map: String,
@@ -80,6 +84,8 @@ pub struct SocialData {
     pub groups: BTreeMap<String, Group>,
     pub worlds: BTreeMap<usize, World>,
     pub world_invites: Vec<WorldInvite>,
+    #[serde(default)]
+    pub completed_results: BTreeSet<String>,
 }
 impl Default for SocialData {
     fn default() -> Self {
@@ -92,6 +98,7 @@ impl Default for SocialData {
             groups: BTreeMap::new(),
             worlds: BTreeMap::new(),
             world_invites: Vec::new(),
+            completed_results: BTreeSet::new(),
         }
     }
 }
@@ -167,6 +174,7 @@ impl SocialData {
                 name,
                 token_hash: super::security::token_hash(&token),
                 friends: BTreeSet::new(),
+                progression: Default::default(),
             },
         );
         Ok((profile_id, Some(token)))

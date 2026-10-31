@@ -35,9 +35,13 @@ be exported/installed and Rust restarted before editor changes affect driving.
 metadata and authorization. `world_sessions.rs` owns isolated per-world physics.
 `capacity_bench.rs` supplies `--capacity-bench` for testing the rented instance.
 
-Defaults are **one active world and ten total joined players**. Set
+Defaults are **three alpha world slots and twelve active players**: one shared
+5v5 Quickplay/Competitive world, one editor test world, and one solo/practice world. Set
 `AVENLAB_MAX_ACTIVE_WORLDS` and `AVENLAB_MAX_PLAYERS` before starting to change them.
 The last departure unloads an occupied world. Saved metadata remains at
 `runtime/social.json` (override `AVENLAB_SOCIAL_PATH`); back up this private file.
 Rebuild/restart Rust and frontend together. See `../docs/SOCIAL_WORLDS.md` for
 keyboard behavior, passwords, invite rules, guest identity and hosting checks.
+
+See `../docs/ALPHA_UI_AND_LOBBIES.md` for FIFO admission, reconnect grace, hero
+roles, live editor apply/test, progression accounting and the exact 10,1,1 benchmark.

@@ -1,3 +1,5 @@
+import { useAlphaStore } from "../../store/alpha/alphaStore";
+import { useUIStore } from "../../store/menus/uiStore";
 import { useState } from "react";
 import { AssistedInput } from "../../components/text/AssistedInput";
 import { mapCatalog } from "../../store/selection/selectionStore";
@@ -273,10 +275,17 @@ export function WorldsPage({
                   onClick={() =>
                     world.id === current?.id
                       ? enterWorld({ map: world.map })
-                      : void join(world)
+                      : world.mode
+                        ? (useAlphaStore.getState().chooseMode(world.mode),
+                          useUIStore.getState().setScreen("hero_select"))
+                        : void join(world)
                   }
                 >
-                  {world.id === current?.id ? "CONTINUE" : "JOIN"}
+                  {world.id === current?.id
+                    ? "CONTINUE"
+                    : world.mode
+                      ? "OPEN LOBBY"
+                      : "JOIN"}
                 </button>
                 {world.invite_code && (
                   <button

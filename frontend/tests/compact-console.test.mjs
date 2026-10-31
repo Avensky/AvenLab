@@ -198,7 +198,7 @@ test("compact cockpit, GPS and inspection preserve authoritative state", async (
           prefs.getState().update({ climateHudSize: "full" }),
         );
         assert.ok(document.querySelector(".climate-three-knobs"));
-        assert.equal(document.querySelector(".console-display-tabs"), null);
+        assert.ok(document.querySelector(".console-display-tabs"));
         const dock = document.querySelector(".drive-dock");
         assert.ok(
           dock
@@ -227,8 +227,8 @@ test("compact cockpit, GPS and inspection preserve authoritative state", async (
           document.querySelector(".climate-panel").dataset.size,
           "full",
         );
-        assert.equal(by("Minimize climate"), null);
-        await click("Expand radio");
+        assert.ok(by("Minimize climate controls"));
+        assert.ok(by("Minimize radio"));
         assert.equal(
           [...document.querySelectorAll(".console-display-tabs button")].some(
             (b) => b.textContent === "KEYBINDS",

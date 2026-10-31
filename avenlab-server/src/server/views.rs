@@ -7,7 +7,8 @@ impl Server {
         let data = self.data.lock().await;
         let clients = self.connections.lock().await;
         let runtimes = self.runtimes.lock().await;
-        for client in clients.values() {
+        let alpha = self.alpha.lock().await;
+        for (player, client) in clients.iter() {
             let Some(actor) = client.profile_id.as_ref() else {
                 continue;
             };
@@ -33,9 +34,9 @@ impl Server {
             let worlds:Vec<Value>=data.worlds.values().filter(|world|world.listed || world.owner_id.as_ref()==Some(actor) || client.world_id==Some(world.id) || data.world_invites.iter().any(|invite|invite.to==*actor && invite.world_id==world.id && invite.expires>timestamp())).map(|world|{
                 let members:Vec<Value>=clients.iter().filter(|(_,peer)|peer.world_id==Some(world.id)).map(|(player_id,peer)|json!({"player_id":player_id,"profile_id":peer.profile_id,"name":peer.profile_id.as_ref().and_then(|id|data.profiles.get(id)).map(|p|p.name.as_str()).unwrap_or("GUEST"),"team":peer.team.as_str()})).collect();
                 let can_share=world.owner_id.as_ref()==Some(actor)||client.world_id==Some(world.id);
-                json!({"id":world.id,"name":world.name,"map":world.map,"owner_id":world.owner_id,"listed":world.listed,"max_players":world.max_players,"players":members.len(),"active":runtimes.contains_key(&world.id),"locked":world.password_hash.is_some(),"invite_code":if can_share{Some(&world.invite_code)}else{None},"members":if can_share{members}else{vec![]}})
+                json!({"id":world.id,"name":world.name,"map":world.map,"owner_id":world.owner_id,"listed":world.listed,"mode":world.mode,"max_players":if alpha.enabled&&world.mode.is_none(){1}else{world.max_players},"players":members.len(),"active":runtimes.contains_key(&world.id),"locked":world.password_hash.is_some(),"invite_code":if can_share{Some(&world.invite_code)}else{None},"members":if can_share{members}else{vec![]}})
             }).collect();
-            let view=json!({"type":"social_state","data":{"profile":{"id":profile.id,"name":profile.name},"players":players,"teammates":teammates,"requests":requests,"groups":groups,"worlds":worlds,"world_invites":invitations,"current_world_id":client.world_id,"limits":{"active_worlds":runtimes.len(),"max_active_worlds":self.max_active_worlds,"active_players":clients.values().filter(|peer|peer.world_id.is_some()).count(),"max_players":self.max_players},"maps":MAP_IDS}}).to_string();
+            let view=json!({"type":"social_state","data":{"profile":{"id":profile.id,"name":profile.name,"progression":profile.progression.view()},"alpha":Self::alpha_view(&alpha,actor,player,&clients,&data),"players":players,"teammates":teammates,"requests":requests,"groups":groups,"worlds":worlds,"world_invites":invitations,"current_world_id":client.world_id,"limits":{"active_worlds":runtimes.len(),"max_active_worlds":self.max_active_worlds,"active_players":clients.values().filter(|peer|peer.world_id.is_some()).count(),"max_players":self.max_players},"maps":MAP_IDS}}).to_string();
             client.social.send_if_modified(|current| {
                 if current.as_ref() == Some(&view) {
                     false

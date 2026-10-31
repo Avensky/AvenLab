@@ -251,8 +251,15 @@ test("research controls keep input, display and audio updates independent", asyn
           { ClimatePanel } = await load("ui/Cockpit/ClimatePanel.tsx"),
           { useRadioStore: radio } = await load("store/radio/radioStore.ts");
         radio.setState({ muted: false });
+        let minimizeCalls = 0;
         await render(
-          h("div", null, h(ConsoleDisplay), h(ClimatePanel), h(HazardButton)),
+          h(
+            "div",
+            null,
+            h(ConsoleDisplay, { onMinimize: () => minimizeCalls++ }),
+            h(ClimatePanel),
+            h(HazardButton),
+          ),
         );
         const point = async (label, type, id = 501, target = by(label)) =>
           act(async () => {
@@ -275,9 +282,10 @@ test("research controls keep input, display and audio updates independent", asyn
         assert.equal(radio.getState().muted, true);
         assert.equal(by("Radio mute").getAttribute("aria-pressed"), "true");
         assert.equal(by("Radio mute").hasAttribute("data-hud-held"), false);
-        await point("Expand radio", "pointerdown");
-        await point("Expand radio", "pointerup");
-        await click("Expand radio");
+        await point("Minimize radio", "pointerdown");
+        await point("Minimize radio", "pointerup");
+        await click("Minimize radio");
+        assert.equal(minimizeCalls, 1);
         assert.equal(
           document.querySelector(".console-display").dataset.expanded,
           "true",
@@ -976,14 +984,28 @@ test("research controls keep input, display and audio updates independent", asyn
           element.currentTime = 17;
           await click("Radio power");
           assert.equal(by("Radio power").getAttribute("aria-checked"), "false");
-          assert.equal(document.querySelector(".radio-display strong").textContent, "RADIO OFF");
+          assert.equal(
+            document.querySelector(".radio-display strong").textContent,
+            "RADIO OFF",
+          );
           assert.equal(element.paused, true);
           assert.equal(radio.useRadioStore.getState().playing, false);
           assert.equal(radio.useRadioStore.getState().trackCount, 3);
-          assert.equal(element.currentTime, 17, "power-off keeps the playback position");
+          assert.equal(
+            element.currentTime,
+            17,
+            "power-off keeps the playback position",
+          );
           assert.equal(by("Radio play or pause").disabled, true);
-          assert.equal(by("Radio source").disabled, false, "files can be queued with power off");
-          assert.equal(localStorage.getItem("avenlab.radio.powered.v1"), "false");
+          assert.equal(
+            by("Radio source").disabled,
+            false,
+            "files can be queued with power off",
+          );
+          assert.equal(
+            localStorage.getItem("avenlab.radio.powered.v1"),
+            "false",
+          );
           await act(async () => {
             element.paused = false;
             element.onplay();
@@ -992,7 +1014,11 @@ test("research controls keep input, display and audio updates independent", asyn
             await radio.toggleRadio();
             await radio.nextRadioTrack();
           });
-          assert.equal(element.paused, true, "late play events cannot restart an off radio");
+          assert.equal(
+            element.paused,
+            true,
+            "late play events cannot restart an off radio",
+          );
           assert.equal(radio.useRadioStore.getState().title, "Two");
           element.ended = false;
           element.play = Player.prototype.play;
@@ -1000,7 +1026,10 @@ test("research controls keep input, display and audio updates independent", asyn
           assert.equal(element.currentTime, 17);
           assert.equal(radio.useRadioStore.getState().playing, true);
           assert.equal(by("Radio power").getAttribute("aria-checked"), "true");
-          assert.equal(localStorage.getItem("avenlab.radio.powered.v1"), "true");
+          assert.equal(
+            localStorage.getItem("avenlab.radio.powered.v1"),
+            "true",
+          );
           element.currentTime = 12;
           await act(async () => radio.previousRadioTrack());
           assert.equal(element.currentTime, 0);
@@ -1044,17 +1073,26 @@ test("research controls keep input, display and audio updates independent", asyn
           // Off while play() is pending must invalidate both promise completion
           // and a delayed media event, without dropping the local source queue.
           let opening;
-          await act(async () => { opening = radio.nextRadioTrack(); });
+          await act(async () => {
+            opening = radio.nextRadioTrack();
+          });
           const last = pending.at(-1);
           await act(async () => radio.setRadioPower(false));
-          await act(async () => { last.resolve(); await opening; });
+          await act(async () => {
+            last.resolve();
+            await opening;
+          });
           assert.equal(radio.useRadioStore.getState().playing, false);
           assert.equal(element.paused, true);
           assert.equal(radio.useRadioStore.getState().message, "");
           await act(async () => radio.loadRadioFiles(files));
           assert.equal(radio.useRadioStore.getState().powered, false);
           assert.equal(radio.useRadioStore.getState().title, "One");
-          assert.equal(element.paused, true, "loading files must not restore power");
+          assert.equal(
+            element.paused,
+            true,
+            "loading files must not restore power",
+          );
           element.play = Player.prototype.play;
           await act(async () => radio.setRadioPower(true));
           assert.equal(radio.useRadioStore.getState().playing, true);

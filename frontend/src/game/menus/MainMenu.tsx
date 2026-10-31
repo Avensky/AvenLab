@@ -1,3 +1,4 @@
+import { ProgressBadge } from "../alpha/ProgressBadge";
 import { MenuShortcuts } from "../../components/controller";
 import { useUIStore } from "../../store";
 import { GameButton } from "../../components/GameButton";
@@ -43,6 +44,7 @@ export function MainMenu() {
           </div>
         </header>
 
+        <ProgressBadge />
         <div className="menu-action-list">
           {MAIN_MENU_ITEMS.map((item, index) => (
             <GameButton

@@ -318,7 +318,7 @@ test("mobile HUD groups, assisted shifter and enlarged resource dials", async (t
       async () => {
         await act(async () => input.getState().releaseControls());
         await render(h(Fragment, null, h(DrivingHUD), h(Keyboard)));
-        const button = by("Expand radio");
+        const button = by("Minimize radio");
         await act(async () =>
           button.dispatchEvent(
             new dom.window.KeyboardEvent("keydown", {

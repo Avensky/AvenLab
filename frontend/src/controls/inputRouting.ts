@@ -45,6 +45,8 @@ export function canNavigateMenu() {
         "cockpit",
         "world_builder",
         "social",
+        "hero_select",
+        "queue",
       ].includes(panel))
   );
 }
@@ -90,6 +92,8 @@ export function routeMenuAction(action: MenuAction) {
       "cockpit",
       "world_builder",
       "social",
+      "hero_select",
+      "queue",
     ].includes(panel)
   ) {
     window.dispatchEvent(

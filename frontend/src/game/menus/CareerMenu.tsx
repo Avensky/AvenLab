@@ -1,3 +1,7 @@
+import { useRef, useState } from "react";
+import { useSocialStore } from "../../store/social/socialStore";
+import { requestSocial } from "../../net/socialClient";
+import { ProgressBadge } from "../alpha/ProgressBadge";
 import { TabbedMenu, type MenuRow } from "../../components/menus/TabbedMenu";
 import { vehicleCatalog } from "../../store/selection/selectionStore";
 import { usePreferencesStore } from "../../store/preferences/preferencesStore";
@@ -11,36 +15,72 @@ const planned = (id: string, label: string, description: string): MenuRow => ({
   disabled: true,
 });
 export function CareerMenu() {
+  const view = useSocialStore((s) => s.view),
+    p = view?.profile.progression;
+  const [status, setStatus] = useState("");
+  const pending = useRef(false);
+  const skinAction = async (action: string, skin: string) => {
+    if (pending.current) return;
+    pending.current = true;
+    try {
+      await requestSocial(action, { skin });
+      setStatus(
+        action === "skin_redeem"
+          ? "Skin voucher redeemed"
+          : "Skin selection saved",
+      );
+    } catch (error) {
+      setStatus((error as Error).message);
+    } finally {
+      pending.current = false;
+    }
+  };
   const back = useUIStore((s) => s.backToParentMenu);
   const favorites = usePreferencesStore((s) => s.favoriteVehicles);
   const toggleFavorite = usePreferencesStore((s) => s.toggleFavorite);
   return (
     <TabbedMenu
       title="Career"
-      subtitle="Your driver record and vehicle collection. Favorites are saved on this device."
+      subtitle="Win tiers and prestige levels are separate. Alpha cosmetics use milestone credits."
+      status={status}
       onBack={back}
       tabs={[
         {
           id: "statistics",
           label: "Statistics",
           description:
-            "Career tracking has not been connected. This page will show your actual match and driving data when it is available.",
+            "Competitive wins advance the tier ladder. Levels run 1–100, then restart at prestige with a new color and higher XP costs. Rewards require verified match results; test worlds grant none.",
+          content: <ProgressBadge />,
           rows: [
-            planned(
-              "matches",
-              "Matches & win rate",
-              "Wins, losses, captures and team contribution.",
-            ),
-            planned(
-              "driving",
-              "Driving record",
-              "Distance, fuel economy, time driving and vehicle usage.",
-            ),
-            planned(
-              "logistics",
-              "Logistics record",
-              "Resupplies, heat management and successful returns to base.",
-            ),
+            {
+              id: "tier",
+              label: "Competitive tier",
+              value: p
+                ? `${p.tier} · ${p.competitive_wins} WINS`
+                : "CONNECT TO SERVER",
+            },
+            {
+              id: "level",
+              label: "Driver level / prestige",
+              value: p ? `LV ${p.level}/100 · PRESTIGE ${p.prestige}` : "—",
+            },
+            {
+              id: "xp",
+              label: "Next level",
+              value: p ? `${p.xp} / ${p.required_xp} XP` : "—",
+            },
+            {
+              id: "wins",
+              label: "Quickplay wins",
+              value: p ? String(p.quickplay_wins) : "—",
+            },
+            {
+              id: "credits",
+              label: "Milestone credits",
+              value: p
+                ? `${p.credits} · NEXT MILESTONE LV ${p.next_milestone}`
+                : "—",
+            },
           ],
         },
         {
@@ -76,32 +116,29 @@ export function CareerMenu() {
           id: "customize",
           label: "Customize",
           description:
-            "Vehicles will fill the hero roles in your squad. Cosmetic and upgrade systems are planned; nothing can be purchased or equipped in this build.",
-          rows: [
-            {
-              id: "heroes",
-              label: "Vehicle / hero loadouts",
-              description: "Roles, paint, cosmetics and saved equipment.",
-              value: "Planned",
-              disabled: true,
-            },
-            {
-              id: "upgrades",
-              label: "Upgrades & inventory",
-              description:
-                "Cooling, range, traction and cargo tradeoffs for each mission.",
-              value: "Planned",
-              disabled: true,
-            },
-            {
-              id: "wallet",
-              label: "Loot & currency",
-              description:
-                "Server-validated rewards, ownership and upgrade costs.",
-              value: "Planned",
-              disabled: true,
-            },
-          ],
+            "Redeem milestone credits for alpha skin vouchers. Ownership and the chosen voucher are saved on the server; vehicle paint/skin assets will use these IDs in the cosmetics update.",
+          rows: (view?.alpha?.skins ?? []).map((skin) => ({
+            id: skin.id,
+            label: skin.name,
+            description: p?.owned.includes(skin.id)
+              ? "Owned voucher · choose for your future loadout"
+              : `${skin.cost} milestone credits`,
+            value:
+              p?.equipped === skin.id
+                ? "SELECTED"
+                : p?.owned.includes(skin.id)
+                  ? "CHOOSE"
+                  : `${skin.cost} CREDITS`,
+            disabled:
+              !p ||
+              p.equipped === skin.id ||
+              (!p.owned.includes(skin.id) && p.credits < skin.cost),
+            action: () =>
+              void skinAction(
+                p?.owned.includes(skin.id) ? "skin_equip" : "skin_redeem",
+                skin.id,
+              ),
+          })),
         },
         {
           id: "achievements",

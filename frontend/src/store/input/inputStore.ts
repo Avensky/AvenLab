@@ -44,7 +44,8 @@ export type InputSource =
   | "touch-throttle"
   | "touch-pedals"
   | "touch-actions"
-  | "touch-parking";
+  | "touch-parking"
+  | "ebrake-pull";
 const neutralControls = (): VehicleControlInput => ({
   throttle: 0,
   steer: 0,
@@ -63,6 +64,7 @@ const analogSources: Record<InputSource, VehicleControlInput> = {
   "touch-pedals": neutralControls(),
   "touch-actions": neutralControls(),
   "touch-parking": neutralControls(),
+  "ebrake-pull": neutralControls(),
 };
 const heldVehicleFlags = new Map<number, Set<InputSource>>();
 const heldPlayerFlags = new Map<number, Set<InputSource>>();
@@ -80,6 +82,7 @@ function mergedAnalog(): VehicleControlInput {
     analogSources["touch-pedals"],
     analogSources["touch-actions"],
     analogSources["touch-parking"],
+    analogSources["ebrake-pull"],
     analogSources.gamepad,
   ];
   // An idle producer cannot erase another device. Keyboard wins deliberate

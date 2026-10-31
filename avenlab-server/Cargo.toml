@@ -19,8 +19,7 @@ bitflags = "2"
 argon2 = "0.5.3"
 sha2 = "0.10"
 
-# Keep the application in one release codegen unit. This also avoids cross-unit
-# serde monomorphization/linkage failures observed with the current toolchain.
-# Dependency packages retain their normal parallel build settings.
-[profile.release.package.avenlab-server]
+# A single release codegen unit avoids cross-unit serde linkage failures and
+# empty optimized physics objects observed with the current Rust toolchain.
+[profile.release]
 codegen-units = 1

@@ -13,8 +13,10 @@ function subscribeMotion(listener: () => void) {
 // Shared by Main and the mode loader. Media readiness never gates menu input.
 export function MenuVideoBackground({
   loading = false,
+  cycle = false,
 }: {
   loading?: boolean;
+  cycle?: boolean;
 }) {
   const reducedMotion = usePreferencesStore((s) => s.reducedMotion);
   const systemMotion = useSyncExternalStore(
@@ -23,6 +25,7 @@ export function MenuVideoBackground({
     () => false,
   );
   const [failed, setFailed] = useState(false);
+  const [index, setIndex] = useState(0);
   const video = useRef<HTMLVideoElement>(null);
   const enabled = !reducedMotion && !systemMotion && !failed;
 
@@ -46,7 +49,7 @@ export function MenuVideoBackground({
       window.removeEventListener("pointerdown", play);
       window.removeEventListener("keydown", play);
     };
-  }, [enabled]);
+  }, [enabled, index]);
 
   return (
     <div
@@ -56,10 +59,18 @@ export function MenuVideoBackground({
       {enabled && (
         <video
           ref={video}
-          src="/videos/NIWC-Pacific.mp4"
+          key={index}
+          src={
+            index === 0
+              ? "/videos/NIWC-Pacific.mp4"
+              : "/videos/SEA-STRIKE-2043.mp4"
+          }
           autoPlay
           muted
-          loop
+          loop={!cycle}
+          onEnded={() => {
+            if (cycle) setIndex((value) => (value + 1) % 2);
+          }}
           playsInline
           preload="metadata"
           tabIndex={-1}

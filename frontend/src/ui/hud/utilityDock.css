@@ -1,0 +1,365 @@
+.hud-utilities {
+  --utility-width: clamp(170px, 24vw, 230px);
+  --utility-map-size: min(
+    calc(100dvw - 24px),
+    calc(100dvh - 40px),
+    max(
+      72px,
+      calc(min(var(--utility-width), 32dvh) * var(--minimap-scale, 0.75))
+    )
+  );
+  position: absolute;
+  top: max(8px, env(safe-area-inset-top));
+  right: max(10px, env(safe-area-inset-right));
+  width: var(--utility-width);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  z-index: 6;
+  pointer-events: none;
+  max-height: calc(100dvh - 24px);
+  font:
+    9px/1.3 ui-monospace,
+    monospace;
+}
+.utility-map-row {
+  position: relative;
+  display: flex;
+  justify-content: flex-end;
+  min-height: 28px;
+  gap: 6px;
+  flex: none;
+}
+.hud-utilities[data-map-open="true"] .utility-map-row {
+  height: var(--utility-map-size);
+  margin-bottom: 5px;
+}
+.hud-utilities .hud-minimap {
+  position: relative;
+  inset: auto;
+  width: var(--utility-map-size);
+  flex: none;
+}
+.hud-utilities .hud-minimap[data-expanded="false"] {
+  width: 28px;
+  height: 28px;
+  order: 2;
+}
+.hud-utilities .hud-minimap .map-toggle {
+  width: 28px;
+  height: 28px;
+  padding: 5px;
+}
+.utility-launchers {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  align-items: flex-start;
+  order: 1;
+}
+.utility-launchers[data-on-rim="true"] {
+  position: absolute;
+  inset: 0 0 auto auto;
+  width: var(--utility-map-size);
+  height: var(--utility-map-size);
+  pointer-events: none;
+}
+.utility-launchers[data-on-rim="true"] .utility-toggle {
+  position: absolute;
+  left: 14.64%;
+  top: 85.36%;
+  transform: translate(-50%, -50%);
+}
+.utility-launchers[data-on-rim="true"] .utility-toggle + .utility-toggle {
+  left: 85.36%;
+  top: 85.36%;
+}
+.utility-toggle {
+  box-sizing: border-box;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
+  min-width: 28px;
+  border: 1px solid #698797aa;
+  border-radius: 50%;
+  background: #0a1821ec;
+  color: #d8eaf2;
+  padding: 5px;
+  display: grid;
+  place-items: center;
+  pointer-events: auto;
+  cursor: pointer;
+}
+.utility-toggle svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+.utility-toggle:hover,
+.utility-toggle:focus-visible {
+  outline: 1px solid #b6e7fa;
+  outline-offset: 1px;
+}
+.utility-radio,
+.utility-climate {
+  pointer-events: auto;
+  min-width: 0;
+  animation: utility-drop 0.18s ease-out;
+}
+.hud-utilities .console-display {
+  margin: 0;
+  border: 1px solid #5873838c;
+  background: #08111bd9;
+  max-height: min(65dvh, 380px);
+  overflow: auto;
+  scrollbar-width: none;
+}
+.hud-utilities .cockpit-radio {
+  margin: 0;
+  max-width: none;
+}
+.hud-utilities .radio-display {
+  border: 0;
+  min-height: 28px;
+  padding: 5px 62px 5px 7px;
+  gap: 2px;
+}
+.hud-utilities .radio-display strong {
+  font-size: 10px;
+  line-height: 1.2;
+}
+.hud-utilities .radio-display small {
+  font-size: 7px;
+  line-height: 1.2;
+}
+.hud-utilities .radio-display .component-minimize {
+  right: 3px;
+  top: 3px;
+  width: 23px;
+  height: 23px;
+  min-height: 23px;
+  padding: 4px;
+  border-radius: 50%;
+}
+.hud-utilities .radio-display .radio-power {
+  right: 31px;
+  top: 3px;
+  width: 23px;
+  height: 23px;
+  min-width: 23px;
+  min-height: 23px;
+}
+.hud-utilities .radio-transport {
+  padding: 4px;
+  --radio-key-size: 23px;
+}
+.hud-utilities .cockpit-radio .radio-transport > button {
+  flex: 0 0 23px;
+  width: 23px;
+  height: 23px;
+  min-height: 23px;
+  min-width: 23px;
+  padding: 2px;
+  border-radius: 50%;
+  background: #101f2b;
+  color: #c9dfed;
+  border: 1px solid #456477;
+}
+.hud-utilities .radio-transport > button svg {
+  display: block;
+  width: 15px;
+  height: 15px;
+  margin: auto;
+}
+.hud-utilities .radio-status {
+  padding: 2px 5px;
+}
+.hud-utilities .console-display-tabs {
+  display: flex;
+  border-top: 1px solid #45647760;
+  padding: 0;
+  gap: 0;
+}
+.hud-utilities .console-display-tabs button {
+  flex: 1;
+  min-height: 24px;
+  background: #09151e;
+  border: 0;
+  border-right: 1px solid #45647760;
+  color: #b7cedd;
+  font: 8px monospace;
+  padding: 3px;
+}
+.hud-utilities .console-display-tabs button[aria-pressed="true"] {
+  color: #edfaff;
+  box-shadow: inset 0 -1px #9ae8ff;
+}
+.hud-utilities .console-display-content {
+  animation: utility-drop 0.18s ease-out;
+  transform-origin: top;
+  padding: 5px;
+  max-height: 180px;
+  overflow: auto;
+  scrollbar-width: none;
+}
+.utility-climate .climate-panel {
+  position: relative;
+  margin: 0;
+  border: 1px solid #5873838c;
+  background: #08111bd9;
+  padding: 4px;
+}
+.utility-climate .console-clock-strip {
+  padding-right: 26px;
+  min-height: 26px;
+}
+.utility-climate .utility-toggle {
+  position: absolute;
+  right: 3px;
+  top: 3px;
+  width: 23px;
+  height: 23px;
+  min-width: 23px;
+  min-height: 23px;
+  padding: 4px;
+  z-index: 2;
+}
+.utility-climate .climate-three-knobs {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  padding: 3px 0 7px;
+}
+.utility-climate .climate-knob {
+  width: 35px;
+  height: 35px;
+  margin: 6px auto;
+}
+.utility-climate .climate-knob output {
+  font-size: 6px;
+}
+.utility-climate .knob-title {
+  font-size: 6px;
+  top: -8px;
+}
+.utility-climate .climate-knob button {
+  font-size: 5px;
+  min-height: 0;
+  padding: 1px;
+}
+.console-display[data-radio-style="streamlined"] .radio-transport {
+  display: none;
+}
+@keyframes utility-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  .hud-utilities {
+    --utility-width: 176px;
+    gap: 4px;
+  }
+  .hud-utilities .radio-volume-dial {
+    height: 24px;
+    width: 22px;
+    flex-basis: 22px;
+    padding-top: 0;
+  }
+  .hud-utilities .radio-volume-dial .climate-knob {
+    width: 21px;
+    height: 21px;
+  }
+  .utility-climate .climate-three-knobs {
+    padding-bottom: 3px;
+  }
+  .utility-climate .climate-knob {
+    width: 29px;
+    height: 29px;
+  }
+  .hud-utilities .radio-transport {
+    --radio-key-size: 20px;
+  }
+  .hud-utilities .cockpit-radio .radio-transport > button {
+    width: 20px;
+    height: 20px;
+    min-height: 20px;
+    min-width: 20px;
+    flex-basis: 20px;
+  }
+  .hud-utilities .console-display-content {
+    max-height: 95px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .utility-radio,
+  .utility-climate,
+  .hud-utilities .console-display-content {
+    animation: none;
+  }
+}
+[data-reduced-motion="true"]
+  :is(.utility-radio, .utility-climate, .console-display-content) {
+  animation: none;
+}
+/* Expanded media starts at the top edge; minimized launchers float beside it.
+   An expanded map returns to flow and pushes the head units down. */
+.hud-utilities[data-map-open="false"]:has(.utility-radio, .utility-climate)
+  .utility-map-row {
+  position: absolute;
+  top: 0;
+  right: calc(100% + 6px);
+  width: max-content;
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  .hud-utilities {
+    --utility-map-size: max(
+      72px,
+      calc(min(var(--utility-width), 28dvh) * var(--minimap-scale, 0.75))
+    );
+  }
+  .hud-utilities:has(.utility-radio):has(.utility-climate) {
+    width: calc(2 * var(--utility-width) + 6px);
+    display: grid;
+    grid-template-columns: repeat(2, var(--utility-width));
+    gap: 4px;
+  }
+  .hud-utilities:has(.utility-radio):has(.utility-climate) .utility-map-row {
+    grid-column: 1/-1;
+    grid-row: 1;
+  }
+  .hud-utilities:has(.utility-radio):has(.utility-climate) .utility-radio {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .hud-utilities:has(.utility-radio):has(.utility-climate) .utility-climate {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .hud-utilities[data-map-open="false"]:has(.utility-radio):has(
+      .utility-climate
+    )
+    :is(.utility-radio, .utility-climate) {
+    grid-row: 1;
+  }
+}
+
+.utility-launchers {
+  z-index: 8;
+}
+/* Portrait keeps the full instrument cluster readable. Open utility panels start
+   below it; the fully minimized launchers still occupy the top-right corner. */
+@media (max-width: 600px) and (orientation: portrait) {
+  .hud-utilities:has(.utility-radio, .utility-climate),
+  .hud-utilities[data-map-open="true"] {
+    top: max(126px, calc(env(safe-area-inset-top) + 126px));
+  }
+}

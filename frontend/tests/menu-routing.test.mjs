@@ -54,8 +54,10 @@ test("every pause row routes correctly and navigation wraps across all ten items
 
 test("main menu controller routes match mouse destinations and Swarm stays planned", () => {
   [
-    "sandbox_setup",
-    "world_builder",
+    "hero_select",
+    "hero_select",
+    "hero_select",
+    "hero_select",
     "missions",
     "career",
     "settings",

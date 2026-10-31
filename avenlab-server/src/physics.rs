@@ -90,6 +90,12 @@ impl PhysicsWorld {
         Some(map.snapshot(&self.block_world))
     }
 
+    /// Fresh isolated editor physics, constructed before replacing its old runtime.
+    pub fn from_editor_document(file: crate::world::block_colliders::BlockColliderFile) -> anyhow::Result<Self> {
+        let file=crate::world::block_colliders::validate_block_collider_file(file)?;
+        let mut world=Self::new();world.block_world.tile_size=Some(file.cell);world.active_map=Some(Arc::new(file));world.update_loaded_blocks_around_players();Ok(world)
+    }
+
     /// Load the collider set selected by the frontend before spawning a car.
     pub fn select_map(&mut self, map_id: &str) -> anyhow::Result<()> {
         // Already selected.

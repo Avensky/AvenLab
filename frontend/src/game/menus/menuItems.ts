@@ -1,17 +1,35 @@
 // Labels, routing and controller item counts share the same source of truth.
 export const MAIN_MENU_ITEMS = [
   {
+    id: "quickplay",
+    label: "Quickplay",
+    description: "Casual 5v5 · alpha lobby",
+    screen: "hero_select",
+    mode: "quickplay",
+    available: true,
+  },
+  {
+    id: "competitive",
+    label: "Competitive",
+    description: "Ranked 5v5 · alpha lobby",
+    screen: "hero_select",
+    mode: "competitive",
+    available: true,
+  },
+  {
     id: "sandbox",
-    label: "Sandbox",
-    description: "Explore the city. Learn your vehicle. Plan your route.",
-    screen: "sandbox_setup",
+    label: "Sandbox / practice",
+    description: "Solo testing · choose environment",
+    screen: "hero_select",
+    mode: "sandbox",
     available: true,
   },
   {
     id: "world_builder",
     label: "World builder",
-    description: "Build roads, alleys, garages and ramps piece by piece.",
-    screen: "world_builder",
+    description: "One live editor world · build and test",
+    screen: "hero_select",
+    mode: "editor",
     available: true,
   },
   {

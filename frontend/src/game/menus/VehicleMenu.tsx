@@ -1,3 +1,5 @@
+import { lazy, Suspense } from "react";
+import { useSocialStore } from "../../store/social/socialStore";
 import { ControllerButton } from "../../components/controller";
 import { useEffect, useId, useRef, useState } from "react";
 import { trapMenuFocus } from "../../components/menus/menuFocus";
@@ -10,7 +12,22 @@ import {
 import { useUIStore } from "../../store/menus/uiStore";
 import type { MenuAction } from "../../controls/inputRouting";
 
+const AlphaHeroPicker = lazy(() =>
+  import("../alpha/HeroSelection").then((module) => ({
+    default: module.HeroSelection,
+  })),
+);
 export function VehicleMenu() {
+  const active = useSocialStore((state) => state.view?.alpha?.active);
+  return active ? (
+    <Suspense fallback={<div role="status">Opening hero selection…</div>}>
+      <AlphaHeroPicker overlay />
+    </Suspense>
+  ) : (
+    <LegacyVehicleMenu />
+  );
+}
+function LegacyVehicleMenu() {
   const current = useNetworkStore((s) => s.getMe()?.vehicle_id ?? "");
   const [selected, setSelected] = useState(() =>
     Math.max(

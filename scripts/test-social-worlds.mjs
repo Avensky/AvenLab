@@ -14,7 +14,7 @@ const binary=process.env.AVENLAB_SERVER_BIN??path.join(repo,"avenlab-server/targ
 if(!fs.existsSync(binary))throw new Error("Build the Rust server first: cargo build --manifest-path avenlab-server/Cargo.toml");
 const directory=fs.mkdtempSync(path.join(os.tmpdir(),"avenlab-social-e2e-"));
 const reserve=net.createServer();await new Promise(resolve=>reserve.listen(0,"127.0.0.1",resolve));const port=reserve.address().port;await new Promise(resolve=>reserve.close(resolve));
-const child=spawn(binary,[],{cwd:path.join(repo,"avenlab-server"),env:{...process.env,AVENLAB_BIND:`127.0.0.1:${port}`,AVENLAB_SOCIAL_PATH:path.join(directory,"social.json"),AVENLAB_MAX_ACTIVE_WORLDS:"2",AVENLAB_MAX_PLAYERS:"10"},stdio:["ignore","pipe","pipe"]});
+const child=spawn(binary,[],{cwd:path.join(repo,"avenlab-server"),env:{...process.env,AVENLAB_ALPHA_LIMITS:"0",AVENLAB_BIND:`127.0.0.1:${port}`,AVENLAB_SOCIAL_PATH:path.join(directory,"social.json"),AVENLAB_MAX_ACTIVE_WORLDS:"2",AVENLAB_MAX_PLAYERS:"10"},stdio:["ignore","pipe","pipe"]});
 let output="";for(const stream of [child.stdout,child.stderr])stream.on("data",data=>{output=(output+data.toString()).slice(-64000);});
 const started=new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error("Local server startup timed out. "+output.slice(-1000))),15000);child.stdout.on("data",data=>{if(data.toString().includes("WebSocket listening")){clearTimeout(timer);resolve();}});child.once("error",reject);child.once("exit",code=>{clearTimeout(timer);if(code)reject(new Error("Local server exited: "+code));});});
 

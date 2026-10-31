@@ -1,5 +1,8 @@
 # Teammates, social groups and private worlds
 
+The alpha UI update adds admission categories and changes the occupied-world
+defaults below. See ALPHA_UI_AND_LOBBIES.md for current queue and role policy.
+
 This update adds server-owned social profiles and isolated multiplayer sessions.
 Open **Worlds & social** from Main, Pause or Settings → Social. Existing Sandbox
 Start also joins a shared public session for the chosen map.
@@ -60,8 +63,8 @@ cargo run --release --locked
 | --- | --- | --- |
 | `AVENLAB_BIND` | `0.0.0.0:9001` | WebSocket listener |
 | `AVENLAB_SOCIAL_PATH` | `avenlab-server/runtime/social.json` | Persistent profile/group/world metadata file |
-| `AVENLAB_MAX_ACTIVE_WORLDS` | `1` | Occupied runtime worlds, clamped 1–16 |
-| `AVENLAB_MAX_PLAYERS` | `10` | Total joined players across worlds, clamped 1–160 |
+| `AVENLAB_MAX_ACTIVE_WORLDS` | `3` | Occupied runtime worlds, clamped 1–16 |
+| `AVENLAB_MAX_PLAYERS` | `12` | Total joined players across worlds, clamped 1–160 |
 | `VITE_RUST_WS_URL` | existing host-based fallback | Frontend WebSocket override, set at build time |
 
 Use HTTPS/WSS through your normal reverse proxy for internet deployment. The
@@ -87,8 +90,8 @@ membership does not force current players to switch sides.
 
 ## Around $20 per month
 
-Start at **one active world and 10 total players**. This is a conservative operator
-limit, not a measured hosting guarantee. The city now has ten non-overlapping
+The alpha configuration permits **one 5v5 match, one editor player and one
+practice player**. These are operator limits, not a measured hosting guarantee. The city now has ten non-overlapping
 spawn bays; small test maps have fewer bays, so a parked car may need to move away
 before another can spawn. More worlds duplicate map physics and reduce CPU and
 memory headroom. Empty saved worlds are much cheaper than occupied worlds.

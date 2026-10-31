@@ -84,8 +84,12 @@ export function RadioPanel({
       data-powered={radio.powered}
     >
       <div className="radio-display">
-        <strong>{radio.powered ? radio.title || radio.track : "RADIO OFF"}</strong>
-        {radio.powered && <RadioStatus fallback={radio.artist || radio.station} />}
+        <strong>
+          {radio.powered ? radio.title || radio.track : "RADIO OFF"}
+        </strong>
+        {radio.powered && (
+          <RadioStatus fallback={radio.artist || radio.station} />
+        )}
         <button
           type="button"
           className="radio-power"
@@ -105,7 +109,15 @@ export function RadioPanel({
             aria-expanded={!minimized}
             onClick={onMinimize}
           >
-            {minimized ? "⌃" : "⌄"}
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              aria-hidden="true"
+            >
+              <path d={minimized ? "M12 5v14M5 12h14" : "M5 12h14"} />
+            </svg>
           </button>
         )}
       </div>
