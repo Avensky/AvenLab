@@ -7,3 +7,5 @@ COCKPIT_REFACTOR_UPDATE.md maps the current cockpit pages, controls, state owner
 PROGRESSIVE_COCKPIT_UPDATE.md documents the current continuous brake, compact climate, engine-off dimming and three-switch HUD update.
 
 - [INTUITIVE_COCKPIT_UPDATE.md](INTUITIVE_COCKPIT_UPDATE.md): climate master visibility, wheel-based system selection, canonical Research links and Settings return routing.
+
+- [Hero portraits, chat and parking controls](HERO_PORTRAITS_AND_CHAT.md) — direct selection, authenticated chat, and tap/hold behavior.

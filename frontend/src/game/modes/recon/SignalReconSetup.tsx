@@ -1,3 +1,4 @@
+import { reconSetupParent } from "../../../store/alpha/alphaStore";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useUIStore } from "../../../store/menus/uiStore";
 import { useSelectionStore } from "../../../store/selection/selectionStore";
@@ -85,7 +86,7 @@ export function SignalReconSetup({
         collapsed={collapsed}
         setCollapsed={setCollapsed}
         exitLabel="BACK"
-        onExit={() => setScreen("main")}
+        onExit={() => setScreen(reconSetupParent())}
       />
       {startAttempted && !canStart && (
         <div className="pointer-events-none relative z-40">
@@ -179,7 +180,7 @@ export function SignalReconSetup({
             selected={selectedIndex === 4}
             variant="neutral"
             onFocus={() => setIndex(4)}
-            onPress={() => setScreen("main")}
+            onPress={() => setScreen(reconSetupParent())}
             className="flex justify-center border-0 text-red-100"
           >
             B&nbsp;&nbsp;BACK

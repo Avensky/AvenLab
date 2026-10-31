@@ -8,6 +8,9 @@ import { experimentContext } from "./context";
 import { performanceRecorder as recorder } from "./measurements";
 import { initializeCaptureArchive } from "./captureActions";
 import { cityStreamingStats } from "../world/cityWorkQueue";
+import { usePreferencesStore } from "../store/preferences/preferencesStore";
+import { useHudPanelsStore } from "../store/hud/hudPanelsStore";
+import { sampleHudFrame, resetHudFrames } from "./frameReadout";
 
 export function PerformanceProbe() {
   const gl = useThree((s) => s.gl);
@@ -24,6 +27,21 @@ export function PerformanceProbe() {
     let started = 0;
     const before = addEffect(() => {
       started = performance.now();
+      const preferences = usePreferencesStore.getState();
+      const driving =
+        document.visibilityState === "visible" &&
+        useUIStore.getState().screen === "sandbox";
+      if (
+        driving &&
+        useUIStore.getState().overlay === null &&
+        useRenderSettingsStore.getState().hud &&
+        preferences.showDriveControls &&
+        preferences.hudGroups.climate &&
+        preferences.climateHudSize === "compact" &&
+        useHudPanelsStore.getState().climate
+      )
+        sampleHudFrame(started);
+      else resetHudFrames();
       if (
         (!recorder.enabled && !recorder.capturing) ||
         document.visibilityState !== "visible" ||
@@ -58,6 +76,7 @@ export function PerformanceProbe() {
     }, 100);
     const hidden = () => {
       previous = null;
+      resetHudFrames();
       if (document.visibilityState !== "visible" && recorder.capturing)
         recorder.cancel("Discarded: tab hidden");
     };
@@ -78,6 +97,7 @@ export function PerformanceProbe() {
     return () => {
       before();
       after();
+      resetHudFrames();
       observer?.disconnect();
       clearInterval(timer);
       document.removeEventListener("visibilitychange", hidden);

@@ -1,4 +1,4 @@
-import { useAlphaStore } from "../alpha/alphaStore";
+import { reconSetupParent } from "../alpha/alphaStore";
 import type { StateCreator } from "zustand";
 import { MAIN_MENU_ITEMS, PAUSE_MENU_ITEMS } from "../../game/menus/menuItems";
 import {
@@ -99,7 +99,6 @@ export const createMenuActions: StateCreator<
     if (activeMenu === "main") {
       const item = MAIN_MENU_ITEMS[index];
       if (item?.available) {
-        if ("mode" in item) useAlphaStore.getState().chooseMode(item.mode);
         set({ screen: item.screen, overlay: null });
       }
       return;
@@ -116,7 +115,7 @@ export const createMenuActions: StateCreator<
       // The setup component owns validation and copying the selected CAN identity.
       else if (index === 3)
         window.dispatchEvent(new Event("avenlab:signal-recon-start"));
-      else if (index === 4) get().setScreen("main");
+      else if (index === 4) get().setScreen(reconSetupParent());
       return;
     }
 

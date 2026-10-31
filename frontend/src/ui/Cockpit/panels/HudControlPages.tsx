@@ -11,25 +11,43 @@ export function RadioPage() {
     <div className="cockpit-radio-page">
       <div className="cockpit-hud-options">
         <HudVisibilityToggle id="display" label="Radio on driving HUD" />
-        <label>
-          RADIO STYLE{" "}
-          <select
-            aria-label="Radio HUD style"
-            value={style}
-            onChange={(event) =>
-              usePreferencesStore
-                .getState()
-                .update({
-                  radioHudStyle: event.currentTarget.value as
-                    | "classic"
-                    | "streamlined",
-                })
-            }
-          >
-            <option value="classic">CLASSIC · TRANSPORT CONTROLS</option>
-            <option value="streamlined">STREAMLINED · TITLE & STATUS</option>
-          </select>
-        </label>
+        <div
+          className="radio-style-buttons"
+          role="group"
+          aria-label="Radio HUD style"
+        >
+          {(
+            [
+              [
+                "streamlined",
+                "MINIMIZED",
+                "Title, power and missions; no transport dials or tab bar",
+              ],
+              [
+                "classic",
+                "WITH DIALS",
+                "Transport controls, volume dial and Radio/Missions tabs",
+              ],
+              [
+                "no-tabs",
+                "NO TAB BAR",
+                "Transport controls and volume dial; open missions beside power",
+              ],
+            ] as const
+          ).map(([value, label, title]) => (
+            <button
+              key={value}
+              type="button"
+              title={title}
+              aria-pressed={style === value}
+              onClick={() =>
+                usePreferencesStore.getState().update({ radioHudStyle: value })
+              }
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
       <RadioPanel />
     </div>

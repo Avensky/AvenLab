@@ -31,47 +31,51 @@ export function MainMenu() {
     <div className="game-ui menu-surface menu-home main-menu relative z-30">
       <MenuVideoBackground />
       <div className="menu-home-content">
-        <header className="menu-brand menu-brand-main">
-          <MenuLogo />
-          <div className="menu-brand-copy">
-            <p className="menu-brand-eyebrow">
-              CYBERSECURITY SCIENCE &amp; TECHNOLOGY
-            </p>
+        <section className="main-menu-identity" aria-label="Redline Vector">
+          <header className="menu-brand menu-brand-main">
+            <MenuLogo />
+            <div className="menu-brand-copy">
+              <p className="menu-brand-eyebrow">
+                CYBERSECURITY SCIENCE &amp; TECHNOLOGY
+              </p>
 
-            <h1 className="menu-brand-title">REDLINE VECTOR</h1>
+              <h1 className="menu-brand-title">REDLINE VECTOR</h1>
 
-            <p className="menu-brand-tagline">Land. Air. Sea. Signal.</p>
+              <p className="menu-brand-tagline">Land. Air. Sea. Signal.</p>
+            </div>
+          </header>
+
+          <ProgressBadge />
+        </section>
+        <section className="main-menu-actions" aria-label="Main menu">
+          <div className="menu-action-list">
+            {MAIN_MENU_ITEMS.map((item, index) => (
+              <GameButton
+                key={item.id}
+                ref={(el) => {
+                  itemRefs.current[index] = el;
+                }}
+                selected={selectedIndex === index}
+                variant="menu"
+                aria-disabled={!item.available}
+                onPress={() => {
+                  setActiveMenuIndex(index);
+                  activate();
+                }}
+                onFocus={() => setActiveMenuIndex(index)}
+                className="menu-row menu-action"
+              >
+                {item.label}
+                {!item.available && (
+                  <span className="menu-control-note">Planned</span>
+                )}
+              </GameButton>
+            ))}
           </div>
-        </header>
-
-        <ProgressBadge />
-        <div className="menu-action-list">
-          {MAIN_MENU_ITEMS.map((item, index) => (
-            <GameButton
-              key={item.id}
-              ref={(el) => {
-                itemRefs.current[index] = el;
-              }}
-              selected={selectedIndex === index}
-              variant="menu"
-              aria-disabled={!item.available}
-              onPress={() => {
-                setActiveMenuIndex(index);
-                activate();
-              }}
-              onFocus={() => setActiveMenuIndex(index)}
-              className="menu-row menu-action"
-            >
-              {item.label}
-              {!item.available && (
-                <span className="menu-control-note">Planned</span>
-              )}
-            </GameButton>
-          ))}
-        </div>
-        <footer className="menu-home-shortcuts">
-          <MenuShortcuts back={false} tabs={false} />
-        </footer>
+          <footer className="menu-home-shortcuts">
+            <MenuShortcuts back={false} tabs={false} />
+          </footer>
+        </section>
       </div>
     </div>
   );

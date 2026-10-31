@@ -604,9 +604,13 @@ impl Server {
             .values()
             .map(|r| r.member.world)
             .collect();
+        let mut unloaded = Vec::new();
         self.runtimes.lock().await.retain(|id, _| {
-            reserved.contains(id) || clients.values().any(|c| c.world_id == Some(*id))
+            let keep = reserved.contains(id) || clients.values().any(|c| c.world_id == Some(*id));
+            if !keep { unloaded.push(*id); }
+            keep
         });
+        for world in unloaded { self.chat.lock().await.clear_world(world); }
         let tickets: Vec<_> = self.alpha.lock().await.queue.iter().cloned().collect();
         let mut blocked = HashSet::new();
         for ticket in tickets {

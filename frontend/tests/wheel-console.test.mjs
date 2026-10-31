@@ -522,11 +522,9 @@ test("wheel and console share authoritative packed controls without additional s
           1,
         );
         await render(h(ConsoleDisplay));
-        assert.ok(document.querySelector(".console-display-tabs"));
+        assert.equal(document.querySelector(".console-display-tabs"), null);
         await act(async () =>
-          [...document.querySelectorAll(".console-display-tabs button")]
-            .find((b) => b.textContent === "MISSIONS")
-            .click(),
+          document.querySelector('[aria-label="Toggle missions"]').click(),
         );
         assert.ok(document.querySelector('[aria-label="Mission radio apps"]'));
         assert.equal(

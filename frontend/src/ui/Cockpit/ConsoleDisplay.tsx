@@ -1,5 +1,4 @@
 import { memo, useState } from "react";
-import { useUIStore } from "../../store/menus";
 import { MissionApps } from "./MissionApps";
 import { RadioPanel } from "./RadioPanel";
 import { usePreferencesStore } from "../../store/preferences/preferencesStore";
@@ -22,9 +21,17 @@ export const ConsoleDisplay = memo(function ConsoleDisplay({
       data-radio-style={style}
       aria-label="Vehicle electronic display"
     >
-      <RadioPanel compact onMinimize={onMinimize} />
-      {
-        <>
+      <RadioPanel
+        compact
+        transportVisible={style !== "streamlined"}
+        onMinimize={onMinimize}
+        missionsOpen={tab === "missions"}
+        onMissionsToggle={() =>
+          setTab((current) => (current === "missions" ? "radio" : "missions"))
+        }
+      />
+      <>
+        {style === "classic" && (
           <nav
             className="console-display-tabs"
             aria-label="Vehicle display tabs"
@@ -43,20 +50,14 @@ export const ConsoleDisplay = memo(function ConsoleDisplay({
             >
               MISSIONS
             </button>
-            <button
-              type="button"
-              onClick={() => useUIStore.getState().openCockpit("navigation")}
-            >
-              GPS
-            </button>
           </nav>
-          {tab === "missions" && (
-            <div className="console-display-content">
-              <MissionApps />
-            </div>
-          )}
-        </>
-      }
+        )}
+        {tab === "missions" && (
+          <div className="console-display-content">
+            <MissionApps />
+          </div>
+        )}
+      </>
     </section>
   );
 });

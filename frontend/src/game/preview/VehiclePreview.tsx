@@ -11,7 +11,9 @@ import { GarageEnvironment } from "./GarageEnvironment";
 import { PreviewTurntable } from "./PreviewTurntable";
 import { DEFAULT_PREVIEW_PLATFORM } from "./previewPlacement";
 
-export function VehiclePreview() {
+export function VehiclePreview({
+  heroLayout = false,
+}: { heroLayout?: boolean } = {}) {
   const vehicleId = useSelectionStore((s) => s.getSelectedVehicle().id);
   const reducedMotion = usePreferencesStore((s) => s.reducedMotion);
   const size = useThree((s) => s.size);
@@ -42,11 +44,15 @@ export function VehiclePreview() {
         position={[radius * 0.75, 3.2, radius * 0.66]}
         near={0.1}
         onUpdate={(camera) => {
-          const offsetY = Math.min(40, size.height * 0.06);
+          const portrait = aspect < 1;
+          const offsetY =
+            heroLayout && portrait
+              ? -size.height * 0.1
+              : Math.min(40, size.height * 0.06);
           camera.setViewOffset(
             size.width,
             size.height,
-            0,
+            heroLayout ? size.width * (portrait ? 0.08 : 0.12) : 0,
             offsetY,
             size.width,
             size.height,

@@ -3,6 +3,7 @@ import { isDrivingScreen, useUIStore } from "../store/menus/uiStore";
 import { useCanDataStore } from "../store/recon/canDataStore";
 import { performanceOverlayHasFocus } from "../performance/performanceOverlayStore";
 import { useTextKeyboardStore } from "../store/text/keyboardStore";
+import { reconSetupParent } from "../store/alpha/alphaStore";
 
 export type MenuAction =
   | "up"
@@ -110,6 +111,6 @@ export function routeMenuAction(action: MenuAction) {
   else if (ui.overlay !== null) ui.closeOverlay();
   else if (ui.screen === "sandbox_setup")
     window.dispatchEvent(new Event("avenlab:sandbox-exit"));
-  else if (ui.screen === "settings" || ui.screen === "signal_recon_setup")
-    ui.setScreen("main");
+  else if (ui.screen === "signal_recon_setup") ui.setScreen(reconSetupParent());
+  else if (ui.screen === "settings") ui.setScreen("main");
 }

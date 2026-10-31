@@ -67,6 +67,7 @@ export function UtilityDock() {
           aria-label="CLIMATE group"
         >
           <ClimatePanel
+            performanceReadout
             size={climateSize}
             showHazards={groups.hazards}
             onMinimize={() => toggle("climate")}

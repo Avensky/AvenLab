@@ -10,6 +10,8 @@ import { useRenderSettingsStore } from "../../store/presentation/renderSettingsS
 
 export async function joinSelectedMode() {
   const state = useAlphaStore.getState();
+  if (state.mode === "signal_recon" || state.mode === "swarm")
+    throw Error("Select a driving mode before joining the alpha queue.");
   const result = await requestSocial("mode_join", {
     mode: state.mode,
     hero: state.hero,
@@ -86,9 +88,8 @@ export async function deploySelectedHero() {
     useGameStore.setState({ camera: "DEFAULT" });
     useUIStore.getState().setScreen("sandbox");
     if (active?.mode === "editor") {
-      const { openWorldBuilder } = await import(
-        "../../worldBuilder/state/builderActions"
-      );
+      const { openWorldBuilder } =
+        await import("../../worldBuilder/state/builderActions");
       await openWorldBuilder();
     }
   } finally {

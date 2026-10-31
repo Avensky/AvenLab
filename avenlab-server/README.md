@@ -45,3 +45,17 @@ keyboard behavior, passwords, invite rules, guest identity and hosting checks.
 
 See `../docs/ALPHA_UI_AND_LOBBIES.md` for FIFO admission, reconnect grace, hero
 roles, live editor apply/test, progression accounting and the exact 10,1,1 benchmark.
+
+## Hero-selection chat
+
+`server/chat.rs` owns bounded, in-memory Lobby/Team history and message throttles.
+Both actions use the existing authenticated `social_request` connection. Team
+membership, sender name and recipients are derived from the current connection;
+client-provided identity/audience fields are ignored. Chat does not save social
+profiles, lock physics worlds or start a simulation loop. See
+`../docs/HERO_PORTRAITS_AND_CHAT.md` for limits and protocol details.
+
+After building Rust, run `node scripts/test-hero-chat.mjs` from the repository
+root (or set `AVENLAB_SERVER_BIN` to the release executable). It creates a local
+server and disposable profiles, checks real recipient isolation and removes its
+temporary social file.

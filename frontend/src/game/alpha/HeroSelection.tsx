@@ -4,21 +4,22 @@ import {
   useAlphaStore,
   GAME_MODES,
   HEROES,
-  type HeroRole,
+  HERO_FILTERS,
+  type HeroFilter,
 } from "../../store/alpha/alphaStore";
 import { useSocialStore } from "../../store/social/socialStore";
-import {
-  useSelectionStore,
-  mapCatalog,
-} from "../../store/selection/selectionStore";
+import { useSelectionStore } from "../../store/selection/selectionStore";
+import { MapSelector } from "../modes/MapSelector";
 import { useNetworkStore } from "../../store/session/networkStore";
 import { useUIStore } from "../../store/menus/uiStore";
 import { requestSocial } from "../../net/socialClient";
 import { useFormNavigation } from "../social/useFormNavigation";
 import { joinSelectedMode, deploySelectedHero } from "./sessionActions";
 import { ProgressBadge } from "./ProgressBadge";
-import "./alpha.css";
-const ROLES: HeroRole[] = ["tank", "dps", "support"];
+import { HeroRoster, HeroFolderTabs } from "./HeroRoster";
+import { HeroPortrait } from "./HeroPortrait";
+import { LobbyChat } from "./LobbyChat";
+import "./heroSelection.css";
 export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
   const selectedMode = useAlphaStore((s) => s.mode),
     heroId = useAlphaStore((s) => s.hero);
@@ -28,21 +29,15 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
   const active = view?.alpha?.active;
   const mode = overlay && active ? active.mode : selectedMode;
   const map = useSelectionStore((s) => s.getSelectedMap());
-  const [role, setRole] = useState<HeroRole>(
-    () =>
-      HEROES.find(
-        (h) =>
-          h.id ===
-          (overlay || active?.mode === mode
-            ? (active?.hero ?? heroId)
-            : heroId),
-      )?.role ?? "dps",
-  );
+  const [role, setRole] = useState<HeroFilter>("all");
   const [status, setStatus] = useState(""),
     [busy, setBusy] = useState(false);
   const pending = useRef(false),
     root = useRef<HTMLElement>(null);
   const inMode = active?.mode === mode;
+  const research = mode === "signal_recon";
+  const planned = mode === "swarm";
+  const match = mode === "quickplay" || mode === "competitive";
   const customWorld = Boolean(world && !active);
   // Restore the server's locked hero after reconnect or development refresh.
   useEffect(() => {
@@ -71,7 +66,13 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
   }, [overlay]);
   const tab = useCallback(
     (dir: number) =>
-      setRole((current) => ROLES[(ROLES.indexOf(current) + dir + 3) % 3]),
+      setRole(
+        (current) =>
+          HERO_FILTERS[
+            (HERO_FILTERS.indexOf(current) + dir + HERO_FILTERS.length) %
+              HERO_FILTERS.length
+          ],
+      ),
     [],
   );
   useFormNavigation(root, back, tab);
@@ -105,12 +106,15 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
     }
   };
   const start = async () => {
-    if (pending.current) return;
+    if (pending.current || planned) return;
     pending.current = true;
     setBusy(true);
     setStatus("");
     try {
-      if (overlay) {
+      if (research) {
+        if (active || customWorld) await requestSocial("mode_cancel");
+        useUIStore.getState().setScreen("signal_recon_setup");
+      } else if (overlay) {
         useUIStore.getState().closeOverlay();
       } else if (inMode || customWorld) await deploySelectedHero();
       else {
@@ -142,7 +146,7 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
   return (
     <section
       ref={root}
-      className="game-ui menu-surface alpha-selection"
+      className="game-ui menu-surface alpha-selection hero-selection"
       data-controller-form
       aria-label={overlay ? "Change hero" : "Mode and hero selection"}
       style={overlay ? { zIndex: 50 } : undefined}
@@ -150,7 +154,7 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
       <header className="alpha-header">
         <div>
           <small>REDLINE VECTOR · ALPHA</small>
-          <h1>{overlay ? "CHANGE HERO" : "CHOOSE YOUR MODE & HERO"}</h1>
+          <h1>{overlay ? "CHANGE HERO" : "MODE & HERO"}</h1>
         </div>
         <ProgressBadge />
         <button type="button" className="menu-control" onClick={back}>
@@ -164,6 +168,7 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
               key={item.id}
               type="button"
               className="menu-control"
+              aria-label={item.label}
               aria-pressed={mode === item.id}
               disabled={busy}
               onClick={() => {
@@ -172,18 +177,45 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
               }}
             >
               {item.label}
+              {item.id === "swarm" && (
+                <small className="alpha-mode-planned" aria-hidden="true">
+                  PLANNED
+                </small>
+              )}
             </button>
           ))}
         </nav>
       )}
-      <div className="alpha-squad-bar" aria-label="Teammate hero selections">
-        <span>
-          {mode === "quickplay" || mode === "competitive"
-            ? `${inMode ? ownTeam.toUpperCase() + " TEAM" : "LIVE ALPHA ROSTER"} · 5v5`
-            : `${mode === "editor" ? "EDITOR" : "SOLO"} TEST · ANY ROLE`}
-        </span>
-        {(mode === "quickplay" || mode === "competitive") &&
-          Array.from({ length: 5 }, (_, index) => {
+      <div className="hero-selection-stage">
+        <HeroRoster
+          selected={heroId}
+          filter={role}
+          busy={busy}
+          onChoose={(id) => void choose(id)}
+        />
+        <div className="hero-left-panel">
+          <section
+            className="hero-summary"
+            aria-label="Selected hero"
+            data-role={selected.role}
+          >
+            <small>{selected.role.toUpperCase()}</small>
+            <h2>{selected.name}</h2>
+            {status && (
+              <p className="alpha-status" role="status">
+                {status}
+              </p>
+            )}
+          </section>
+          <LobbyChat />
+        </div>
+      </div>
+      {match && (
+        <div
+          className="alpha-squad-bar hero-team-strip"
+          aria-label="Teammate hero selections"
+        >
+          {Array.from({ length: 5 }, (_, index) => {
             const member = teammates[index],
               hero = HEROES.find((h) => h.id === member?.hero);
             return (
@@ -192,125 +224,60 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
                 className="alpha-squad-seat"
                 data-role={hero?.role}
               >
-                <strong>{hero?.name ?? "OPEN SLOT"}</strong>
-                <small>
-                  {member
-                    ? member.name +
-                      (member.reconnecting ? " · RECONNECTING" : "")
-                    : "WAITING FOR TEAMMATE"}
-                </small>
+                <HeroPortrait
+                  key={member?.hero ?? "empty"}
+                  hero={member?.hero ?? null}
+                />
+                <div>
+                  <strong>{hero?.name ?? "OPEN SLOT"}</strong>
+                  <small>
+                    {member
+                      ? member.name +
+                        (member.reconnecting ? " · RECONNECTING" : "")
+                      : "WAITING"}
+                  </small>
+                </div>
               </div>
             );
           })}
-      </div>
-      <div className="alpha-model-space" aria-hidden="true" />
-      <div className="alpha-hero-workbench">
-        <div className="alpha-hero-tools">
-          <nav role="tablist" aria-label="Hero role">
-            {ROLES.map((item) => (
-              <button
-                key={item}
-                type="button"
-                role="tab"
-                aria-selected={role === item}
-                className="menu-control"
-                onClick={() => setRole(item)}
-              >
-                {item.toUpperCase()}
-              </button>
-            ))}
-          </nav>
-          {(mode === "sandbox" || mode === "editor") &&
-          !inMode &&
-          !customWorld ? (
-            <label>
-              ENVIRONMENT{" "}
-              <select
-                aria-label="Practice environment"
-                value={map.id}
-                onChange={(event) =>
-                  useSelectionStore.setState({
-                    mapIndex: mapCatalog.findIndex(
-                      (m) => m.id === event.currentTarget.value,
-                    ),
-                  })
-                }
-              >
-                {mapCatalog.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : (
-            <span className="alpha-map-label">
-              {world ?? "STREAMING ENDLESS CITY · ALPHA TEST"}
-            </span>
-          )}
         </div>
-        <div
-          className="alpha-hero-wall"
-          role="group"
-          aria-label={`${role.toUpperCase()} heroes`}
-        >
-          {HEROES.filter((h) => h.role === role).map((hero) => (
-            <button
-              type="button"
-              key={hero.id}
-              data-hero={hero.id}
-              data-role={hero.role}
-              className="menu-control alpha-hero"
-              disabled={busy}
-              aria-pressed={heroId === hero.id}
-              onClick={() => void choose(hero.id)}
-            >
-              <svg viewBox="0 0 100 48" aria-hidden="true">
-                <path
-                  d={
-                    hero.role === "tank"
-                      ? "M10 27h80v12H10zM25 17h50v10H25zM48 9h35v5H48zM8 39h84"
-                      : "M10 28l14-4 12-13h31l14 13 9 4v11H10zM32 24h39M20 39a6 6 0 1 0 12 0M68 39a6 6 0 1 0 12 0"
-                  }
-                />
-                {hero.role === "support" && <path d="M50 18v16M42 26h16" />}
-              </svg>
-              <strong>{hero.name}</strong>
-              <small>{hero.role.toUpperCase()}</small>
-            </button>
-          ))}
+      )}
+      <section className="hero-vehicle-bar" aria-label="Vehicle selection">
+        <HeroFolderTabs filter={role} onFilter={setRole} />
+        <div className="hero-current-vehicle">
+          <small>VEHICLE</small>
+          <strong>{selected.name}</strong>
         </div>
-        <p className="alpha-hero-caption">
-          {selected.note} ·{" "}
-          {mode === "quickplay" || mode === "competitive"
-            ? view?.alpha?.role_limits === false
-              ? "FLEX TEST · ANY COMBINATION"
-              : "TEAM RULE: 1 TANK · 2–3 DPS · 1–2 SUPPORT"
-            : "TESTING: ANY COMBINATION"}
-        </p>
-        <p className="alpha-status" role="status">
-          {status ||
-            (!connected
-              ? "CONNECTING TO ALPHA SERVER…"
-              : GAME_MODES.find((item) => item.id === mode)?.description)}
-        </p>
-      </div>
+        {(mode === "sandbox" || mode === "editor") && (
+          <MapSelector
+            formNavigation
+            translucent
+            showDesc={false}
+            disabled={busy || inMode || customWorld}
+            title={inMode || customWorld ? (world ?? map.name) : map.name}
+          />
+        )}
+      </section>
       <footer className="alpha-selection-footer">
         <MenuShortcuts />
         <button
           type="button"
           className="menu-control alpha-deploy"
-          disabled={busy || !connected || !view}
+          disabled={busy || planned || (!research && (!connected || !view))}
           onClick={() => void start()}
         >
           <ControllerButton button="A" />
           {busy
             ? "PLEASE WAIT…"
-            : overlay
-              ? "RETURN TO GAME"
-              : inMode || customWorld
-                ? "DEPLOY"
-                : "JOIN LOBBY / QUEUE"}
+            : planned
+              ? "COMING LATER"
+              : research
+                ? "OPEN SIGNAL RECON"
+                : overlay
+                  ? "RETURN TO GAME"
+                  : inMode || customWorld
+                    ? "DEPLOY"
+                    : "JOIN LOBBY / QUEUE"}
         </button>
       </footer>
     </section>

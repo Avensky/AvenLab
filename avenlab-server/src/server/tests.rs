@@ -3,6 +3,7 @@ use super::*;
 fn server(active: usize, players: usize) -> Server {
     Server {
         operations: Mutex::new(()),
+        chat: Mutex::new(Default::default()),
         alpha: Mutex::new(crate::alpha::AlphaState::disabled()),
         data: Mutex::new(SocialData::default()),
         connections: Mutex::new(HashMap::new()),
@@ -393,5 +394,42 @@ async fn flex_testing_allows_any_combination_and_cannot_grant_competitive_reward
             .values()
             .all(|p| p.progression.matches == 0)
     );
+    cleanup(s).await;
+}
+
+#[tokio::test]
+async fn chat_derives_identity_and_team_audience_and_drops_unloaded_world_history() {
+    let s = server(3, 12);
+    let (a, identity, _) = client(&s, "Driver A").await;
+    let (b, _, _) = client(&s, "Driver B").await;
+    let (c, _, _) = client(&s, "Driver C").await;
+    let (d, _, _) = client(&s, "Other world").await;
+    assert!(s.handle(&a, json!({"action":"chat_send","channel":"team","text":"hello"})).await.is_err());
+    assert!(s.handle("unknown", json!({"action":"chat_history","channel":"lobby"})).await.is_err());
+    let one = world(&s, &a, "One", "", true).await;
+    let two = world(&s, &d, "Two", "", true).await;
+    for player in [&a,&b,&c] { s.handle(player,json!({"action":"world_join","world_id":one})).await.unwrap(); }
+    s.handle(&d,json!({"action":"world_join","world_id":two})).await.unwrap();
+    let a_team = s.connections.lock().await[&a].team;
+    s.connections.lock().await.get_mut(&c).unwrap().team = a_team;
+    s.connections.lock().await.get_mut(&b).unwrap().team = if a_team == Team::Red {Team::Blue} else {Team::Red};
+    let sent = s.handle(&a,json!({"action":"chat_send","channel":"team","text":"  TEAM SECRET  ","author_id":"forged","name":"Forged"})).await.unwrap();
+    assert_eq!(sent["message"]["name"],"Driver A");
+    assert_eq!(sent["message"]["author_id"],identity["profile_id"]);
+    assert_eq!(sent["message"]["text"],"TEAM SECRET");
+    for (player,count) in [(&c,1),(&b,0),(&d,0)] {
+        let history=s.handle(player,json!({"action":"chat_history","channel":"team","world_id":one,"team":a_team.as_str()})).await.unwrap();
+        assert_eq!(history["messages"].as_array().unwrap().len(),count);
+    }
+    assert!(s.handle(&a,json!({"action":"chat_send","channel":"lobby","text":"x".repeat(281)})).await.is_err());
+    assert!(s.handle(&a,json!({"action":"chat_send","channel":"lobby","text":"\n\t"})).await.is_err());
+    s.handle(&a,json!({"action":"chat_send","channel":"lobby","text":"<b>plain text</b>"})).await.unwrap();
+    assert_eq!(s.handle(&d,json!({"action":"chat_history","channel":"lobby"})).await.unwrap()["messages"].as_array().unwrap().len(),1);
+    s.handle(&a,json!({"action":"chat_send","channel":"lobby","text":"third"})).await.unwrap();
+    assert!(s.handle(&a,json!({"action":"chat_send","channel":"lobby","text":"fourth"})).await.is_err());
+    assert!(!serde_json::to_string(&*s.data.lock().await).unwrap().contains("TEAM SECRET"));
+    for player in [&a,&b,&c] { s.handle(player,json!({"action":"world_leave"})).await.unwrap(); }
+    s.handle(&a,json!({"action":"world_join","world_id":one})).await.unwrap();
+    assert!(s.handle(&a,json!({"action":"chat_history","channel":"team"})).await.unwrap()["messages"].as_array().unwrap().is_empty());
     cleanup(s).await;
 }

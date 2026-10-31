@@ -128,11 +128,11 @@ test("alpha selection, queue and HUD route to their own state owners", async (t)
         assert.equal(canDrive(), false);
         assert.equal(
           document.querySelectorAll(".alpha-mode-tabs button").length,
-          4,
+          6,
         );
         assert.equal(document.querySelectorAll(".alpha-squad-seat").length, 5);
         await click("SUPPORT", "tab");
-        await click("MECHANICSUPPORT");
+        await click("MECHANIC · SUPPORT");
         const command = sent.at(-1);
         assert.equal(command.action, "hero_select");
         assert.equal(command.hero, "mechanic");
@@ -151,10 +151,208 @@ test("alpha selection, queue and HUD route to their own state owners", async (t)
       },
     );
     await t.test(
+      "the portrait garage shows every hero, keeps the world bar and keeps research out of mode_join",
+      async () => {
+        const { HeroSelection } = await load("game/alpha/HeroSelection.tsx");
+        const { useSelectionStore: selection, vehicleCatalog } = await load(
+          "store/selection/selectionStore.ts",
+        );
+        const { joinSelectedMode } = await load("game/alpha/sessionActions.ts");
+        await act(async () => {
+          social
+            .getState()
+            .receive({
+              ...view,
+              current_world_id: null,
+              alpha: { ...view.alpha, active: null },
+            });
+          network.setState({
+            connected: false,
+            worldName: null,
+            worldMap: null,
+          });
+          alpha.setState({ mode: "sandbox", hero: "ae86" });
+        });
+        await render(HeroSelection);
+        const index = selection.getState().mapIndex;
+        await click("Next map");
+        assert.notEqual(selection.getState().mapIndex, index);
+        await click("Previous map");
+        assert.equal(selection.getState().mapIndex, index);
+        assert.equal(document.querySelectorAll("[data-hero]").length, 7);
+        assert.equal(document.querySelector('[aria-label="Next vehicle"]'), null);
+        await click("BRZ · DPS");
+        assert.equal(alpha.getState().hero, "brz");
+        assert.equal(
+          vehicleCatalog[selection.getState().vehicleIndex].id,
+          "brz",
+        );
+        await click("WORLD EDITOR");
+        assert.ok(document.querySelector('[aria-label="Next map"]'));
+        await click("COMPETITIVE");
+        assert.equal(document.querySelector('[aria-label="Next map"]'), null);
+        await click("SWARM COMMAND");
+        assert.equal(document.querySelector(".alpha-deploy").disabled, true);
+        await click("SIGNAL RECON");
+        const before = sent.length;
+        await assert.rejects(joinSelectedMode(), /driving mode/);
+        await act(async () => document.querySelector(".alpha-deploy").click());
+        assert.equal(ui.getState().screen, "signal_recon_setup");
+        assert.equal(
+          sent.length,
+          before,
+          "offline research entry does not request a game seat",
+        );
+        await act(async () => route("back"));
+        assert.equal(ui.getState().screen, "hero_select");
+      },
+    );
+    await t.test(
+      "radio style buttons remove GPS, missions opens beside power, and compact climate reads only measured stats",
+      async () => {
+        const { RadioPage } = await load(
+          "ui/Cockpit/panels/HudControlPages.tsx",
+        );
+        const { UtilityDock } = await load("ui/hud/UtilityDock.tsx");
+        const { usePreferencesStore: prefs, sanitizePreferences } = await load(
+          "store/preferences/preferencesStore.ts",
+        );
+        const { useHudPanelsStore: panels } = await load(
+          "store/hud/hudPanelsStore.ts",
+        );
+        const frames = await load("performance/frameReadout.ts");
+        await render(RadioPage);
+        assert.equal(
+          document.querySelector('select[aria-label="Radio HUD style"]'),
+          null,
+        );
+        await click("NO TAB BAR");
+        assert.equal(
+          sanitizePreferences({ radioHudStyle: "no-tabs" }).radioHudStyle,
+          "no-tabs",
+        );
+        assert.equal(
+          sanitizePreferences({ radioHudStyle: "classic" }).radioHudStyle,
+          "classic",
+        );
+        await act(async () => {
+          prefs
+            .getState()
+            .update({
+              showDriveControls: true,
+              climateHudSize: "compact",
+              hudGroups: { display: true, climate: true },
+            });
+          panels.setState({ radio: true, climate: true, map: false });
+          network.setState({ connected: true, pingMs: 42 });
+          frames.resetHudFrames();
+        });
+        await render(UtilityDock);
+        assert.equal(document.querySelector(".console-display-tabs"), null);
+        assert.equal(
+          [...document.querySelectorAll("button")].some(
+            (n) => n.textContent === "GPS",
+          ),
+          false,
+        );
+        await click("Toggle missions");
+        assert.ok(document.querySelector(".console-display-content"));
+        await click("Toggle missions");
+        assert.equal(document.querySelector(".console-display-content"), null);
+        assert.match(
+          document.querySelector('[aria-label="Network round trip"]')
+            .textContent,
+          /42/,
+        );
+        assert.match(
+          document.querySelector('[aria-label="Frames per second"]')
+            .textContent,
+          /—/,
+        );
+        await act(async () => {
+          for (let tick = 0; tick <= 30; tick++)
+            frames.sampleHudFrame(tick * 20);
+        });
+        assert.equal(frames.useFrameReadout.getState().fps, 50);
+        assert.match(
+          document.querySelector('[aria-label="Frame time"]').textContent,
+          /20.0/,
+        );
+        await act(async () => {
+          frames.resetHudFrames();
+          network.setState({ connected: false });
+        });
+        assert.match(
+          document.querySelector('[aria-label="Frames per second"]')
+            .textContent,
+          /—/,
+        );
+        assert.match(
+          document.querySelector('[aria-label="Network round trip"]')
+            .textContent,
+          /—/,
+        );
+        await act(async () =>
+          prefs.getState().update({ radioHudStyle: "streamlined" }),
+        );
+        assert.equal(document.querySelector(".console-display-tabs"), null);
+        await click("Toggle missions");
+        assert.ok(document.querySelector(".console-display-content"));
+      },
+    );
+    await t.test("chat uses confirmed socket identity, deduplicates acknowledgements and discards old-team history", async () => {
+      const { useChatStore: chat } = await load("store/chat/chatStore.ts");
+      const { sendChat, loadChatHistory } = await load("net/chatClient.ts");
+      const { LobbyChat } = await load("game/alpha/LobbyChat.tsx");
+      await act(async () => {
+        network.setState({ connected: true });
+        client.receiveSocialState(view);
+      });
+      await render(LobbyChat);
+      let packet = sent.at(-1);
+      assert.equal(packet.action, "chat_history");
+      await act(async () => client.receiveSocialResult({ request_id: packet.request_id, ok: true, data: {context:"lobby",messages:[]} }));
+      await click("TEAM");
+      packet = sent.at(-1);
+      await act(async () => client.receiveSocialResult({ request_id: packet.request_id, ok: true, data: {context:"team:1:red",messages:[]} }));
+      let pending;
+      await act(async () => { pending = sendChat("team", "<b>hello</b>"); });
+      packet = sent.at(-1);
+      assert.equal(packet.action,"chat_send");
+      assert.equal(packet.channel,"team");
+      assert.equal(packet.author_id,undefined);
+      const message={id:1,channel:"team",context:"team:1:red",author_id:"me",name:"Driver",text:"<b>hello</b>",sent_at:1234};
+      await act(async () => {
+        chat.getState().receive(message);
+        client.receiveSocialResult({request_id:packet.request_id,ok:true,data:{message}});
+      });
+      await pending;
+      assert.equal(chat.getState().history["team:1:red"].length,1);
+      assert.match(document.querySelector(".chat-lines").textContent,/<b>hello<\/b>/);
+      assert.equal(document.querySelector(".chat-lines b"),null,"chat is text, not HTML");
+      await act(async () => { for(let id=2;id<=80;id++) chat.getState().receive({...message,id}); });
+      assert.equal(chat.getState().history["team:1:red"].length,50);
+      let historyPending;
+      await act(async () => { historyPending = loadChatHistory("team"); });
+      const historyPacket=sent.at(-1);
+      await act(async () => client.receiveSocialState({...view,current_world_id:2,alpha:{...view.alpha,active:{...view.alpha.active,world_id:2,team:"blue"}}}));
+      await act(async () => client.receiveSocialResult({request_id:historyPacket.request_id,ok:true,data:{context:"team:1:red",messages:[message]}}));
+      await historyPending;
+      assert.equal(chat.getState().history["team:1:red"],undefined);
+      await act(async () => chat.getState().membership("me",null,null));
+      const before=sent.length;
+      await assert.rejects(sendChat("team","no world"),/Join a world/);
+      assert.equal(sent.length,before);
+      await act(async () => client.setSocialConnection(null));
+      assert.deepEqual(chat.getState().history,{});
+      client.setSocialConnection(socket);
+    });
+    await t.test(
       "queue shows the server position, cycles supplied videos and B cancels the actual ticket",
       async () => {
         const { QueueScreen } = await load("game/alpha/QueueScreen.tsx");
         await act(async () => {
+          network.setState({ connected: true });
           social.getState().receive({
             ...view,
             alpha: {
@@ -214,6 +412,7 @@ test("alpha selection, queue and HUD route to their own state owners", async (t)
         await act(async () => {
           prefs.getState().update({
             showDriveControls: true,
+            radioHudStyle: "classic",
             hudGroups: { minimap: true, display: true, climate: true },
           });
           panels.setState({ map: false, radio: true, climate: true });
@@ -280,16 +479,27 @@ test("alpha selection, queue and HUD route to their own state owners", async (t)
             button.dispatchEvent(event);
           });
         await point("pointerdown");
-        assert.equal(input.getState().input.handbrake, 1);
+        assert.equal(input.getState().input.handbrake, 0.4, "contact waits to distinguish a parking hold from a drift tap");
         await point("pointerup");
-        assert.equal(input.getState().input.handbrake, 0.4);
+        assert.equal(input.getState().input.handbrake, 1);
         await act(async () => button.click());
+        assert.equal(input.getState().input.handbrake, 1, "synthesized click cannot repeat the pulse");
+        await act(async () => new Promise(resolve => setTimeout(resolve, 140)));
         assert.equal(input.getState().input.handbrake, 0.4);
         await point("pointerdown");
         await point("pointercancel");
         assert.equal(input.getState().input.handbrake, 0.4);
         await act(async () => input.getState().releaseInputSource("keyboard"));
         assert.equal(input.getState().input.handbrake, 0);
+        await point("pointerdown");
+        assert.equal(input.getState().input.handbrake, 0);
+        await act(async () => new Promise(resolve => setTimeout(resolve, 420)));
+        assert.equal(input.getState().input.handbrake, 0, "parking hold never produces a drift burst");
+        assert.ok(input.getState().input.parking_brake > 0);
+        await point("pointerup");
+        await act(async () => button.click());
+        assert.equal(input.getState().input.handbrake, 0);
+        assert.ok(input.getState().input.parking_brake > 0, "hold retains its parking latch");
       },
     );
   } finally {

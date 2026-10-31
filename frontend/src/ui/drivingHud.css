@@ -675,3 +675,9 @@ html[data-high-contrast="true"] .touch-stick-throttle {
 .mission-radio-history strong {
   font-size: 10px;
 }
+
+/* The reverse glyph and caption share the short pedal's content box. Explicit
+   line heights avoid font leading pushing REVERSE below its border. */
+.driving-pedal.driving-reverse { gap:0; padding-block:2px; }
+.driving-reverse > span { flex:none; font-size:20px; line-height:1; }
+.driving-reverse > small { flex:none; line-height:1; white-space:nowrap; }

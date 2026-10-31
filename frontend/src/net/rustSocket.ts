@@ -15,6 +15,7 @@ import {
 
 import { performanceRecorder as recorder } from "../performance/measurements";
 import { handlingSample } from "../performance/handling";
+import { useChatStore } from "../store/chat/chatStore";
 const packetEncoder = new TextEncoder();
 
 let socket: WebSocket | null = null;
@@ -386,6 +387,9 @@ export function connectRustServer(): WebSocket {
         return;
       case "social_state":
         receiveSocialState(message.data);
+        return;
+      case "chat_message":
+        useChatStore.getState().receive(message.data);
         return;
       case "social_error":
         console.warn(message.message || "Social connection unavailable");

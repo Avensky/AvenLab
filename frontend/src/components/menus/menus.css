@@ -65,6 +65,12 @@
   justify-content: center;
 }
 .menu-home.main-menu {
+  position: fixed;
+  inset: 0;
+  width: 100dvw;
+  height: 100dvh;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+    env(safe-area-inset-bottom) env(safe-area-inset-left);
   isolation: isolate;
   background: #020617;
   backdrop-filter: none;
@@ -601,4 +607,81 @@ html[data-reduce-motion="true"] .menu-surface * {
 .menu-home-shortcuts {
   margin-top: 15px;
   max-width: min(90vw, 400px);
+}
+
+/* Brand/level on the left, primary actions on the right in wide screens. */
+.main-menu .menu-home-content {
+  max-width: none;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  justify-content: center;
+  margin: 0;
+  gap: 12px;
+}
+.main-menu-identity,
+.main-menu-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  width: 100%;
+  gap: 12px;
+}
+.main-menu-identity .menu-brand {
+  flex-direction: column;
+  text-align: center;
+}
+.main-menu-identity .alpha-progress {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  border-left: 0;
+  padding: 0;
+  font-size: 10px;
+}
+.main-menu-actions .menu-action-list {
+  width: min(92%, 28rem);
+}
+.main-menu-actions .menu-action {
+  min-height: 36px;
+}
+.main-menu .menu-home-shortcuts {
+  margin: 0;
+}
+@media (orientation: landscape) and (min-width: 640px) {
+  .main-menu .menu-home-content {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0;
+  }
+  .main-menu-identity {
+    height: 100%;
+  }
+  .main-menu-actions {
+    height: 100%;
+  }
+  .main-menu .menu-brand-main {
+    gap: 6px;
+  }
+  .main-menu .menu-brand-title {
+    font-size: clamp(24px, 3.3vw, 48px);
+  }
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  .main-menu-identity,
+  .main-menu-actions {
+    gap: 8px;
+  }
+  .main-menu .menu-logo {
+    width: 88px;
+    height: 88px;
+  }
+  .main-menu-actions .menu-action {
+    min-height: 32px;
+  }
+  .main-menu .menu-brand-eyebrow {
+    font-size: 7px;
+  }
 }

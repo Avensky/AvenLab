@@ -68,10 +68,16 @@ export function RadioPanel({
   compact = false,
   minimized = false,
   onMinimize,
+  onMissionsToggle,
+  missionsOpen = false,
+  transportVisible = true,
 }: {
   compact?: boolean;
   minimized?: boolean;
   onMinimize?: () => void;
+  onMissionsToggle?: () => void;
+  missionsOpen?: boolean;
+  transportVisible?: boolean;
 }) {
   const radio = useRadioStore(),
     file = useRef<HTMLInputElement>(null);
@@ -101,6 +107,26 @@ export function RadioPanel({
         >
           <RadioIcon name="power" />
         </button>
+        {onMissionsToggle && (
+          <button
+            type="button"
+            className="radio-missions"
+            aria-label="Toggle missions"
+            aria-expanded={missionsOpen}
+            title="Missions"
+            onClick={onMissionsToggle}
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              aria-hidden="true"
+            >
+              <path d="M6 21V3m0 1h12l-3 5 3 5H6" />
+            </svg>
+          </button>
+        )}
         {onMinimize && (
           <button
             type="button"
@@ -121,67 +147,69 @@ export function RadioPanel({
           </button>
         )}
       </div>
-      <div className="radio-transport">
-        <button
-          type="button"
-          aria-label="Radio previous track"
-          title="Previous / replay"
-          disabled={!radio.powered || !radio.trackCount}
-          onClick={() => void previousRadioTrack()}
-        >
-          <RadioIcon name="previous" />
-        </button>
-        <button
-          type="button"
-          aria-label="Radio play or pause"
-          disabled={!radio.powered}
-          onClick={() => void toggleRadio()}
-          aria-pressed={radio.playing}
-        >
-          <RadioIcon name={radio.playing ? "pause" : "play"} />
-        </button>
-        <button
-          type="button"
-          aria-label="Radio next track"
-          title="Next track"
-          disabled={!radio.powered || radio.trackCount < 2}
-          onClick={() => void nextRadioTrack()}
-        >
-          <RadioIcon name="next" />
-        </button>
-        <button
-          type="button"
-          aria-label="Radio restart track"
-          title="Start from beginning"
-          disabled={!radio.powered || !radio.trackCount}
-          onClick={restartRadio}
-        >
-          <RadioIcon name="restart" />
-        </button>
-        <button
-          type="button"
-          aria-label="Radio source"
-          title="Select audio files"
-          onClick={() => file.current?.click()}
-        >
-          <RadioIcon name="source" />
-        </button>
-        <div className="radio-volume-dial">
-          <RotaryKnob
-            label="Radio volume"
+      {transportVisible && (
+        <div className="radio-transport">
+          <button
+            type="button"
+            aria-label="Radio previous track"
+            title="Previous / replay"
+            disabled={!radio.powered || !radio.trackCount}
+            onClick={() => void previousRadioTrack()}
+          >
+            <RadioIcon name="previous" />
+          </button>
+          <button
+            type="button"
+            aria-label="Radio play or pause"
             disabled={!radio.powered}
-            min={0}
-            max={20}
-            value={Math.round(radio.volume * 20)}
-            readout={String(Math.round(radio.volume * 100))}
-            onChange={(v) => setRadioVolume(v / 20)}
-            action="Radio mute"
-            actionText={radio.muted ? "×" : "♪"}
-            active={radio.muted}
-            onAction={toggleRadioMute}
-          />
+            onClick={() => void toggleRadio()}
+            aria-pressed={radio.playing}
+          >
+            <RadioIcon name={radio.playing ? "pause" : "play"} />
+          </button>
+          <button
+            type="button"
+            aria-label="Radio next track"
+            title="Next track"
+            disabled={!radio.powered || radio.trackCount < 2}
+            onClick={() => void nextRadioTrack()}
+          >
+            <RadioIcon name="next" />
+          </button>
+          <button
+            type="button"
+            aria-label="Radio restart track"
+            title="Start from beginning"
+            disabled={!radio.powered || !radio.trackCount}
+            onClick={restartRadio}
+          >
+            <RadioIcon name="restart" />
+          </button>
+          <button
+            type="button"
+            aria-label="Radio source"
+            title="Select audio files"
+            onClick={() => file.current?.click()}
+          >
+            <RadioIcon name="source" />
+          </button>
+          <div className="radio-volume-dial">
+            <RotaryKnob
+              label="Radio volume"
+              disabled={!radio.powered}
+              min={0}
+              max={20}
+              value={Math.round(radio.volume * 20)}
+              readout={String(Math.round(radio.volume * 100))}
+              onChange={(v) => setRadioVolume(v / 20)}
+              action="Radio mute"
+              actionText={radio.muted ? "×" : "♪"}
+              active={radio.muted}
+              onAction={toggleRadioMute}
+            />
+          </div>
         </div>
-      </div>
+      )}
       {radio.powered && radio.message && (
         <span className="radio-status" role="status">
           {radio.message}

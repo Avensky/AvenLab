@@ -1,4 +1,5 @@
 import { UtilityToggle } from "../hud/UtilityToggle";
+import { CabinPerformance } from "../hud/CabinPerformance";
 import { HazardButton } from "./HazardButton";
 import { useInputStore } from "../../store/input/inputStore";
 import { useVehicleTelemetryStore } from "../../store/telemetry/vehicleTelemetryStore";
@@ -14,11 +15,13 @@ export function ClimatePanel({
   showHazards = true,
   controlsVisible = true,
   onMinimize,
+  performanceReadout = false,
 }: {
   size?: "compact" | "full";
   showHazards?: boolean;
   controlsVisible?: boolean;
   onMinimize?: () => void;
+  performanceReadout?: boolean;
 }) {
   const { cabin, confirmedCabin, extended, climate, cabinMask, cabinPending } =
     useCockpitState();
@@ -47,6 +50,7 @@ export function ClimatePanel({
           {ambient === null ? "—" : Math.round((ambient * 9) / 5 + 32)}°F
         </output>
       </div>
+      {performanceReadout && size === "compact" && <CabinPerformance />}
       {controlsVisible && size === "full" && (
         <div className="climate-three-knobs">
           <RotaryKnob

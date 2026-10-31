@@ -363,3 +363,19 @@ button.physical-hazard[data-hud-held="true"] {
     justify-self: center;
   }
 }
+
+/* Saved radio presentation is chosen directly; no nested select on a gamepad. */
+.radio-style-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.radio-style-buttons button {
+  flex: 1;
+  min-width: 100px;
+}
+.radio-style-buttons button[aria-pressed="true"] {
+  border-color: #b1e2ed;
+  color: #fff;
+  background: #173140;
+}

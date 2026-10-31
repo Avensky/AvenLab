@@ -24,7 +24,8 @@ type Pull = {
 
 /** One cable control for HUD and cockpit. Only an active pull runs a 20 Hz
  * timer; the existing sender transports pressure and Rust owns the latch.
- * A tap releases pressure; release after a hold keeps it. The metal tip also
+ * A completed tap from zero pulses the drift brake; a tap on a parked latch
+ * releases it. Release after a hold keeps cable pressure. The metal tip also
  * releases the cable. Pose is feedback;
  * neither the button nor its artwork needs a held border or glow. */
 export function ProgressiveParking({
@@ -43,12 +44,14 @@ export function ProgressiveParking({
   const appearance = usePreferencesStore((s) => s.parkingBrakeStyle);
   const momentary = useInputStore((s) => s.input.handbrake);
   const [drawn, setDrawn] = useState(fraction);
+  const [contact, setContact] = useState(false);
   const value = useRef(fraction),
     pull = useRef<Pull | null>(null);
   const pulse = useRef<number | null>(null);
   const timer = useRef<number | null>(null),
     suppressClick = useRef(false);
   const clear = useCallback(() => {
+    setContact(false);
     if (pulse.current !== null) window.clearTimeout(pulse.current);
     pulse.current = null;
     useInputStore.getState().releaseInputSource("ebrake-pull");
@@ -89,9 +92,21 @@ export function ProgressiveParking({
     change(next);
     timer.current = next < 1 ? window.setTimeout(tick, 50) : null;
   };
+  const driftPulse = () => {
+    if (pulse.current !== null) window.clearTimeout(pulse.current);
+    useInputStore.getState().setAnalogFromSource("ebrake-pull", { handbrake: 1 });
+    pulse.current = window.setTimeout(() => {
+      pulse.current = null;
+      useInputStore.getState().releaseInputSource("ebrake-pull");
+    }, 100);
+  };
   const begin = (pointer: number | null, key: string | null, y = 0) => {
     if (disabled || pull.current) return;
     suppressClick.current = false;
+    if (pulse.current !== null) window.clearTimeout(pulse.current);
+    pulse.current = null;
+    useInputStore.getState().releaseInputSource("ebrake-pull");
+    setContact(true);
     pull.current = {
       pointer,
       key,
@@ -100,18 +115,16 @@ export function ProgressiveParking({
       initial: value.current,
       drag: false,
     };
-    // One quick contact pulls immediately and releases with its pointer.
-    // A longer hold switches to the existing progressive parking latch.
-    if (value.current === 0)
-      useInputStore
-        .getState()
-        .setAnalogFromSource("ebrake-pull", { handbrake: 1 });
+    // Determine tap versus hold first. A parking hold must never begin with
+    // a full-force drift burst; only a completed quick tap pulses the e-brake.
     timer.current = window.setTimeout(tick, PARKING_TAP_MS + 50);
   };
   const finish = (cancel = false) => {
     const held = pull.current;
+    let quickDrift = false;
     if (held && !cancel && !held.drag) {
       const elapsed = performance.now() - held.began;
+      quickDrift = elapsed <= PARKING_TAP_MS && held.initial === 0;
       change(
         elapsed <= PARKING_TAP_MS
           ? 0
@@ -119,12 +132,14 @@ export function ProgressiveParking({
       );
     }
     clear();
+    if (quickDrift) driftPulse();
   };
   const pose = parkingLeverPose(Math.max(drawn, momentary) * 3);
   return (
     <section
       className="mechanical-handbrake drift-parking progressive-parking"
       data-parking-style={appearance}
+      data-pulling={contact}
       data-parking-fraction={drawn}
       style={
         {
@@ -149,7 +164,7 @@ export function ProgressiveParking({
         aria-label="Parking brake"
         aria-busy={pending}
         aria-pressed={drawn > 0 || momentary > 0}
-        aria-description={`${Math.round(drawn * 100)} percent; quick press pulls and releases the e-brake. Tap to release a parked latch; hold to increase parking pressure. The metal tip releases the latch.`}
+        aria-description={`${Math.round(drawn * 100)} percent; a completed quick tap pulls and releases the e-brake. Hold to increase parking pressure without a drift pulse. Tap a parked latch or press the metal tip to release it.`}
         onContextMenu={(e) => e.preventDefault()}
         onPointerDown={(e) => {
           if (e.button !== 0 || disabled || pull.current) return;
@@ -222,13 +237,7 @@ export function ProgressiveParking({
           const wasParked = value.current > 0;
           change(0);
           if (!wasParked) {
-            useInputStore
-              .getState()
-              .setAnalogFromSource("ebrake-pull", { handbrake: 1 });
-            pulse.current = window.setTimeout(() => {
-              pulse.current = null;
-              useInputStore.getState().releaseInputSource("ebrake-pull");
-            }, 100);
+            driftPulse();
           }
         }}
       >

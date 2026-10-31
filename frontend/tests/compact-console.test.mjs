@@ -198,7 +198,8 @@ test("compact cockpit, GPS and inspection preserve authoritative state", async (
           prefs.getState().update({ climateHudSize: "full" }),
         );
         assert.ok(document.querySelector(".climate-three-knobs"));
-        assert.ok(document.querySelector(".console-display-tabs"));
+        assert.equal(document.querySelector(".console-display-tabs"), null);
+        assert.ok(by("Toggle missions"));
         const dock = document.querySelector(".drive-dock");
         assert.ok(
           dock
@@ -235,11 +236,7 @@ test("compact cockpit, GPS and inspection preserve authoritative state", async (
           ),
           false,
         );
-        assert.ok(
-          [...document.querySelectorAll(".console-display-tabs button")].some(
-            (b) => b.textContent === "MISSIONS",
-          ),
-        );
+        assert.ok(by("Toggle missions"));
         assert.equal(ui.getState().overlay, null);
       },
     );

@@ -26,7 +26,7 @@ export {
   type HudGroupId,
 } from "./hudVisibility";
 export type Preferences = {
-  radioHudStyle: "classic" | "streamlined";
+  radioHudStyle: "classic" | "streamlined" | "no-tabs";
   theme: UITheme;
   ignitionVisibility: "auto" | "always" | "hidden";
   /** Compatibility alias for hudGroups.climate; actions keep both synchronized. */
@@ -65,7 +65,7 @@ export type PreferenceUpdate = Omit<Partial<Preferences>, "hudGroups"> & {
   hudGroups?: Partial<Record<HudGroupId, boolean>>;
 };
 export const DEFAULT_PREFERENCES: Preferences = {
-  radioHudStyle: "classic",
+  radioHudStyle: "no-tabs",
   theme: "navy",
   ignitionVisibility: "auto",
   researchHud: false,
@@ -159,7 +159,9 @@ export function sanitizePreferences(value: unknown): Preferences {
       : visibility.climate === true;
   return {
     radioHudStyle:
-      data.radioHudStyle === "streamlined" ? "streamlined" : "classic",
+      data.radioHudStyle === "streamlined" || data.radioHudStyle === "classic"
+        ? data.radioHudStyle
+        : "no-tabs",
     theme: isUITheme(data.theme) ? data.theme : "navy",
     ignitionVisibility:
       data.ignitionVisibility === "always" ||

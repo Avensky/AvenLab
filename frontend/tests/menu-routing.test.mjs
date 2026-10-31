@@ -52,19 +52,8 @@ test("every pause row routes correctly and navigation wraps across all ten items
   assert.equal(ui.getState().getActiveMenuIndex(), 0);
 });
 
-test("main menu controller routes match mouse destinations and Swarm stays planned", () => {
-  [
-    "hero_select",
-    "hero_select",
-    "hero_select",
-    "hero_select",
-    "missions",
-    "career",
-    "settings",
-    "signal_recon_setup",
-    "main",
-    "social",
-  ].forEach((screen, index) => {
+test("Play opens the shared garage and the remaining main entries keep their destinations", () => {
+  ["hero_select", "career", "social", "settings"].forEach((screen, index) => {
     ui.setState({ screen: "main", overlay: null, isModeLoading: false });
     ui.getState().setActiveMenuIndex(index);
     route("activate");

@@ -1,9 +1,13 @@
 import { create } from "zustand";
 import { useSelectionStore, vehicleCatalog } from "../selection/selectionStore";
 export type GameMode = "quickplay" | "competitive" | "sandbox" | "editor";
+/** Research/planned modes are garage destinations, never server mode_join IDs. */
+export type PlayMode = GameMode | "signal_recon" | "swarm";
 export type HeroRole = "tank" | "dps" | "support";
+export type HeroFilter = HeroRole | "all";
+export const HERO_FILTERS: HeroFilter[] = ["all", "tank", "dps", "support"];
 export const GAME_MODES: {
-  id: GameMode;
+  id: PlayMode;
   label: string;
   description: string;
 }[] = [
@@ -24,8 +28,18 @@ export const GAME_MODES: {
   },
   {
     id: "editor",
-    label: "WORLD BUILDER",
+    label: "WORLD EDITOR",
     description: "One live editor slot · build and test ramps",
+  },
+  {
+    id: "signal_recon",
+    label: "SIGNAL RECON",
+    description: "Choose an interface and CAN research mode",
+  },
+  {
+    id: "swarm",
+    label: "SWARM COMMAND",
+    description: "PLANNED · Multi-domain vehicle orchestration",
   },
 ];
 export const HEROES: {
@@ -129,9 +143,9 @@ export type AlphaView = {
   skins: { id: string; name: string; cost: number; color: string }[];
 };
 export const useAlphaStore = create<{
-  mode: GameMode;
+  mode: PlayMode;
   hero: string;
-  chooseMode: (mode: GameMode) => void;
+  chooseMode: (mode: PlayMode) => void;
   chooseHero: (id: string) => void;
 }>((set) => ({
   mode: "quickplay",
@@ -149,3 +163,10 @@ export const useAlphaStore = create<{
     set({ hero: id });
   },
 }));
+
+/** Mouse, keyboard and controller Back share the same research setup parent. */
+export function reconSetupParent(): "hero_select" | "main" {
+  return useAlphaStore.getState().mode === "signal_recon"
+    ? "hero_select"
+    : "main";
+}

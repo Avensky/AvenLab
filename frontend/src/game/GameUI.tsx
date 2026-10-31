@@ -91,7 +91,7 @@ export function GameUI() {
       {needsCanvas && (
         <FullCanvas>
           {(screen === "sandbox_setup" || screen === "hero_select") && (
-            <VehiclePreview />
+            <VehiclePreview heroLayout={screen === "hero_select"} />
           )}
           {screen === "world_builder" && (
             <Suspense fallback={null}>

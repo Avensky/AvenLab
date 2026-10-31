@@ -34,6 +34,24 @@ export function useFormNavigation(
         else controls[0]?.focus();
         return;
       }
+      // Portrait grids navigate spatially without selecting a hero on focus.
+      // At an edge, normal form navigation can reach chat/footer controls.
+      const grid = active?.closest<HTMLElement>("[data-controller-grid]");
+      if (grid && (action === "up" || action === "down")) {
+        const items = Array.from(
+          grid.querySelectorAll<HTMLElement>("[data-grid-item]"),
+        ).filter((node) => !node.matches(":disabled"));
+        const columns = Math.max(
+          1,
+          Number(grid.dataset.controllerColumns) || 1,
+        );
+        const target =
+          items.indexOf(active) + (action === "up" ? -columns : columns);
+        if (target >= 0 && target < items.length) {
+          items[target].focus({ preventScroll: true });
+          return;
+        }
+      }
       if (
         active instanceof HTMLSelectElement &&
         (action === "left" || action === "right")

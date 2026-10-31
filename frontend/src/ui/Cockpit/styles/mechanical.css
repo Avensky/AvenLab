@@ -242,7 +242,7 @@
 }
 :is(.cockpit-panel, .drive-dock) .mechanical-handbrake .parking-release {
   position: absolute;
-  right: 2%;
+  right: 0;
   top: -4px;
   bottom: -4px;
   width: 16%;
@@ -258,14 +258,19 @@
 .parking-release::after {
   content: "";
   position: absolute;
-  right: 8px;
+  left: 100%;
+  right: auto;
   top: 50%;
-  transform: translateY(-50%);
+  transform: translate(-50%, -50%);
   width: 40%;
   height: 40%;
   border: 1px solid #3b454f;
   border-radius: 2px;
   background: linear-gradient(#e0e4e7, #8d969d);
+}
+.progressive-parking[data-pulling="true"] .parking-release::after,
+.parking-release:active::after {
+  transform: translate(calc(-50% - 2px), -50%);
 }
 [data-parking-style="button"] .parking-release-arm {
   left: 64%;

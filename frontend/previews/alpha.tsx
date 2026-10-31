@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { MainMenu } from "../src/game/menus/MainMenu";
+import { SignalReconSetup } from "../src/game/modes/recon/SignalReconSetup";
 import { HeroSelection } from "../src/game/alpha/HeroSelection";
 import { QueueScreen } from "../src/game/alpha/QueueScreen";
 import { CareerMenu } from "../src/game/menus/CareerMenu";
@@ -43,6 +44,8 @@ export function AlphaPreview() {
         <QueueScreen />
       ) : screen === "hero_select" ? (
         <HeroSelection />
+      ) : screen === "signal_recon_setup" ? (
+        <SignalReconSetup collapsed={false} setCollapsed={() => {}} />
       ) : screen === "career" ? (
         <CareerMenu />
       ) : (

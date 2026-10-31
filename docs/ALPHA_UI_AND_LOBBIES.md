@@ -6,10 +6,16 @@ patches. Rebuild and restart **Rust and frontend together**.
 
 ## Main and hero selection
 
-Main offers Quickplay, Competitive, Sandbox/Practice and World Builder. The first
-two share the single match slot. Selection uses the existing 3D garage, with mode
-tabs, real teammate picks, Tank/DPS/Support hero tabs and the shared controller
-legend. A confirmed join reserves a seat; Deploy waits for Rust's spawn response.
+Main offers Play, Career, Worlds & Social and Settings. Play opens the existing
+3D garage with Quickplay, Competitive, Sandbox, World Editor, Signal Recon and
+planned Swarm Command. Quickplay/Competitive share the single match slot. The
+selection screen keeps real teammate picks and the controller legend. Seven direct-select
+portrait/name cards appear at the top right. Folder-style role filters sit above a
+slim vehicle/environment bar directly against the footer; the old match-rule
+strip and bottom quick-card wall are removed. The selected vehicle still rotates
+in the existing garage. Lobby/Team chat uses the existing authenticated socket;
+see `HERO_PORTRAITS_AND_CHAT.md`. Signal Recon opens its existing CAN
+interface setup without joining a driving queue. A confirmed join reserves a seat; Deploy waits for Rust's spawn response.
 H / Change Vehicle uses this same hero picker during a managed session and returns
 to the current game without releasing its seat. Legacy sessions retain their
 existing vehicle menu. Server-rejected picks retain the previous locked hero.
@@ -141,10 +147,13 @@ Vouchers are a server-owned inventory foundation, not a paid shop.
   circles; minimized media/climate buttons move to free positions on the map rim.
 - Radio's circular minimize control replaces its former expand arrow. Its tabs
   remain visible while open, and Missions drops below them. Cockpit → Radio saves
-  Classic or Streamlined display style. Minimizing never turns off playback.
+  Minimized, With Dials or No Tab Bar using buttons. A flag button beside radio
+  power opens missions directly; GPS stays on the minimap. Minimized presentation
+  removes transport controls while retaining title/power/missions. The circular
+  minimizer collapses the entire widget. Neither turns off playback.
 - Climate has a matching circular minimize button. Its requested HVAC state and
-  hazard settings survive minimization. In short landscape views, open media and
-  HVAC sit side by side to preserve room for the physical controls below.
+  hazard settings survive minimization. HVAC stays below radio at every size, including short landscape. Compact HVAC
+  includes FPS, frame time and ping from existing render/connection measurements.
 - Manual knob labels use a centered SVG H-pattern inside the knob. The metal
   e-brake tip is centered on the grip's top. Quick contact pulls the e-brake and
   releases with that pointer; holding changes to the existing progressive parking
@@ -170,3 +179,6 @@ physics and snapshot serialization. It excludes socket egress, client rendering,
 real hero mix, arbitrary editor geometry and shared-host contention. Run actual
 clients and check RSS, CPU, tick deadlines and latency before increasing limits.
 The included validation records local results only. No cloud server was rented.
+
+See `UI_LAYOUT_REFRESH.md` for the current edge layout, style choices and sampling
+rules. The frontend layout refresh does not change these server capacities.

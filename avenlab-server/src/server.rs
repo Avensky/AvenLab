@@ -24,6 +24,7 @@ pub struct Connection {
 }
 pub struct Server {
     operations: Mutex<()>,
+    chat: Mutex<chat::ChatState>,
     pub alpha: Mutex<crate::alpha::AlphaState>,
     pub data: Mutex<SocialData>,
     pub connections: Mutex<HashMap<String, Connection>>,
@@ -54,6 +55,7 @@ impl Server {
         };
         Ok(Self {
             operations: Mutex::new(()),
+            chat: Mutex::new(Default::default()),
             alpha: Mutex::new(crate::alpha::AlphaState {
                 worlds: managed_worlds,
                 enforce_roles: std::env::var("AVENLAB_ROLE_LIMITS").as_deref() != Ok("0"),
@@ -162,6 +164,7 @@ impl Server {
                 .any(|entry| entry.member.world == world && entry.expires > timestamp());
             if !occupied && !reserved {
                 self.runtimes.lock().await.remove(&world);
+                self.chat.lock().await.clear_world(world);
             }
         }
         client.input_tx.send_replace(None);
@@ -383,6 +386,10 @@ impl Server {
             .get("action")
             .and_then(Value::as_str)
             .ok_or("Choose a social action.")?;
+        // Chat does not serialize profiles, republish social views or touch physics.
+        if matches!(action, "chat_send" | "chat_history") {
+            return self.handle_chat(player, &value).await;
+        }
         let string = |key: &str| {
             value
                 .get(key)
@@ -555,6 +562,7 @@ impl Server {
 }
 
 mod alpha_sessions;
+mod chat;
 #[cfg(test)]
 mod tests;
 mod views;

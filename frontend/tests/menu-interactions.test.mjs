@@ -80,6 +80,8 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
       },
     });
     const { MainMenu } = await load("game/menus/MainMenu.tsx");
+    const { HeroSelection } = await load("game/alpha/HeroSelection.tsx");
+    const { useAlphaStore: alpha } = await load("store/alpha/alphaStore.ts");
     const { MAIN_MENU_ITEMS } = await load("game/menus/menuItems.ts");
     const { PauseMenu } = await load("game/menus/PauseMenu.tsx");
     const { SettingsMenu } = await load("game/menus/SettingsMenu.tsx");
@@ -99,6 +101,7 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
       const panel = overlay ?? screen;
       const Component = {
         main: MainMenu,
+        hero_select: HeroSelection,
         sandbox_setup: SandboxSetup,
         signal_recon_setup: SignalReconSetup,
         pause: PauseMenu,
@@ -242,22 +245,10 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
               `row ${index} should use the Sandbox theme`,
             );
         }
-        const swarm =
-          document.querySelectorAll('[role="button"]')[
-            MAIN_MENU_ITEMS.findIndex((item) => item.id === "swarm")
-          ];
-        assert.equal(swarm.getAttribute("aria-disabled"), "true");
-        await act(async () =>
-          swarm.dispatchEvent(
-            new dom.window.MouseEvent("pointerup", {
-              bubbles: true,
-              button: 0,
-            }),
-          ),
+        assert.deepEqual(
+          MAIN_MENU_ITEMS.map((item) => item.id),
+          ["play", "career", "social", "settings"],
         );
-        assert.equal(ui.getState().screen, "main");
-        await button(0);
-        assert.equal(ui.getState().screen, "main");
         await button(12);
         assert.equal(
           document.querySelector('[data-selected="true"]').className,
@@ -498,9 +489,16 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
         await reset();
         await pointerPress(
           document.querySelectorAll('[role="button"]')[
-            MAIN_MENU_ITEMS.findIndex((item) => item.id === "recon")
+            MAIN_MENU_ITEMS.findIndex((item) => item.id === "play")
           ],
         );
+        assert.equal(ui.getState().screen, "hero_select");
+        await click(
+          [...document.querySelectorAll(".alpha-mode-tabs button")].find(
+            (n) => n.textContent === "SIGNAL RECON",
+          ),
+        );
+        await click(document.querySelector(".alpha-deploy"));
         assert.equal(ui.getState().screen, "signal_recon_setup");
         assert.ok(document.querySelector('[aria-label="Vehicle CAN profile"]'));
         await pointerPress(
@@ -541,9 +539,18 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
           ui
             .getState()
             .setActiveMenuIndex(
-              MAIN_MENU_ITEMS.findIndex((item) => item.id === "recon"),
+              MAIN_MENU_ITEMS.findIndex((item) => item.id === "play"),
             ),
         );
+        await button(0);
+        assert.equal(ui.getState().screen, "hero_select");
+        await act(async () =>
+          [...document.querySelectorAll(".alpha-mode-tabs button")]
+            .find((n) => n.textContent === "SIGNAL RECON")
+            .focus(),
+        );
+        await button(0);
+        await act(async () => document.querySelector(".alpha-deploy").focus());
         await button(0);
         assert.equal(ui.getState().screen, "signal_recon_setup");
         assert.equal(
@@ -654,6 +661,7 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
     await t.test(
       "Recon setup Back returns to the main menu before opening analysis",
       async () => {
+        alpha.getState().chooseMode("quickplay");
         await resetRecon();
         await reset("signal_recon_setup");
         await key("Escape", "Escape");
