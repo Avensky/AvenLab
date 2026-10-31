@@ -1,5 +1,7 @@
 # Repository audit and organization update
 
+Latest focused cockpit audit: [HUD visibility, brightness and performance](HUD_VISIBILITY_PERFORMANCE_UPDATE.md).
+
 Base: `fc9e460a63430198a4c53e9278b3e9a54050d801` (added world editor).
 This is a source/ownership and hot-path audit with behavior validation. It is not
 a claim that every possible gameplay, device, database or network path was run.

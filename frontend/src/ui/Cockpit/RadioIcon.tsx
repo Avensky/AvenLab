@@ -1,4 +1,11 @@
-type Transport = "previous" | "next" | "play" | "pause" | "restart" | "source";
+type Transport =
+  | "previous"
+  | "next"
+  | "play"
+  | "pause"
+  | "restart"
+  | "source"
+  | "power";
 /** Vector transport icons render consistently without an emoji/font dependency. */
 export function RadioIcon({ name }: { name: Transport }) {
   return (
@@ -31,6 +38,11 @@ export function RadioIcon({ name }: { name: Transport }) {
         <>
           <path d="M5 8a8 8 0 1 1-1 8" />
           <path d="M4 3v6h6" />
+        </>
+      ) : name === "power" ? (
+        <>
+          <path d="M12 3v9" />
+          <path d="M6.3 5.7a8 8 0 1 0 11.4 0" />
         </>
       ) : (
         <path d="M12 4v16M4 12h16" />

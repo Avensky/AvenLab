@@ -1,5 +1,5 @@
 /** Driving console composition. Each group has its own persisted visibility;
- * the two physical levers are peers and the assist bank wraps beside the pedals.
+ * the two physical levers are peers and the assist bank sits beside the pedals.
  * Components own requests, preferences own layout, Rust owns actual vehicle state. */
 import "./Cockpit/driverConsole.css";
 import "./Cockpit/cockpit.css";
@@ -52,7 +52,7 @@ export default function ControlsPanel() {
           </div>
         </div>
       )}
-      {/* Wrap on narrow screens rather than overlap the steering wheel. */}
+      {/* This row defines the shared radio/HVAC width in styles/layout.css. */}
       <div className="console-foot-controls">
         {expanded && (
           <HudGroup

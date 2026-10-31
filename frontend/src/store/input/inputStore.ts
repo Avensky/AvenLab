@@ -194,6 +194,7 @@ interface InputState {
   ) => void;
   releaseInputSource: (source: InputSource) => void;
   releaseControls: () => void;
+  resetWorldControls: () => void;
   setHeldVehicleFlag: (
     source: InputSource,
     flag: number,
@@ -456,6 +457,17 @@ export const useInputStore = create<InputState>((set, get) => ({
   },
   // Blur, disconnect and sender teardown release transient intent. Engine,
   // ABS/TCS, lights and research display toggles remain deliberate settings.
+  resetWorldControls() {
+    get().releaseControls();
+    // A new world creates a new vehicle. Do not replay the previous key,
+    // selector revision or parking cable command against that fresh entity.
+    get().setInput({
+      cockpit_mask: undefined,
+      cabin_mask: undefined,
+      parking_brake: undefined,
+      vehicleMask: defaultVehicleMask,
+    });
+  },
   releaseControls() {
     for (const source of Object.keys(analogSources) as InputSource[])
       analogSources[source] = neutralControls();

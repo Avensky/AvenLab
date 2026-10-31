@@ -422,12 +422,10 @@ test("restored gauges consume Rust telemetry without inventing resource state or
         assert.equal(before.key, after.key);
         assert.equal(after.settings.playerResources.fuelLiters, 20);
         assert.equal(after.settings.playerResources.condition, 0.8);
-        configs
-          .getState()
-          .receive("me", {
-            ...calibrated,
-            hud: { ...calibrated.hud, fuel_capacity_liters: 60 },
-          });
+        configs.getState().receive("me", {
+          ...calibrated,
+          hud: { ...calibrated.hud, fuel_capacity_liters: 60 },
+        });
         assert.notEqual(experimentContext().key, after.key);
         configs.getState().reset();
       },
@@ -450,7 +448,11 @@ test("restored gauges consume Rust telemetry without inventing resource state or
       });
     await t.test(
       "the three gauge faces show the local player and unit preference without the retired mutation store",
-      async () => {
+      async (t) => {
+        // Cold JSX compilation/mounting may exceed the real 500 ms freshness
+        // window on a busy test host. Freshness itself has explicit-time tests
+        // above; keep this rendering assertion independent of host CPU speed.
+        t.mock.method(performance, "now", () => 10_000);
         network.getState().setConnected(true);
         network.getState().setPlayerId("me");
         snapshot(base);
@@ -501,18 +503,14 @@ test("restored gauges consume Rust telemetry without inventing resource state or
       "condition warnings and ABS/TCS lights use confirmed snapshots, while clicks only change requests",
       async () => {
         await act(async () => {
-          inputs
-            .getState()
-            .setInput({
-              vehicleMask:
-                VehicleFlags.ENGINE_ON | VehicleFlags.ABS | VehicleFlags.TCS,
-            });
-          configs
-            .getState()
-            .receive("me", {
-              ...calibrated,
-              hud: { ...calibrated.hud, telemetry_mask: 63 },
-            });
+          inputs.getState().setInput({
+            vehicleMask:
+              VehicleFlags.ENGINE_ON | VehicleFlags.ABS | VehicleFlags.TCS,
+          });
+          configs.getState().receive("me", {
+            ...calibrated,
+            hud: { ...calibrated.hud, telemetry_mask: 63 },
+          });
           snapshot({
             ...live,
             condition: 0.6,
@@ -591,13 +589,11 @@ test("restored gauges consume Rust telemetry without inventing resource state or
         assert.equal(inputRef.current.steer, -1);
         assert.equal(inputRef.current.brake, 1);
         await act(async () =>
-          inputs
-            .getState()
-            .setAnalogFromSource("gamepad", {
-              throttle: 0,
-              steer: 0,
-              brake: 0,
-            }),
+          inputs.getState().setAnalogFromSource("gamepad", {
+            throttle: 0,
+            steer: 0,
+            brake: 0,
+          }),
         );
         assert.equal(inputRef.current.throttle, 1);
         assert.equal(inputRef.current.steer, -1);
@@ -659,13 +655,11 @@ test("restored gauges consume Rust telemetry without inventing resource state or
           inputs.getState().setAnalogFromSource("keyboard", { steer: 0.5 }),
         );
         await act(async () =>
-          prefs
-            .getState()
-            .update({
-              drivingLayout: "controller",
-              showTouchControls: false,
-              showDriveControls: false,
-            }),
+          prefs.getState().update({
+            drivingLayout: "controller",
+            showTouchControls: false,
+            showDriveControls: false,
+          }),
         );
         for (const name of [
           "Accelerate",
@@ -705,13 +699,11 @@ test("restored gauges consume Rust telemetry without inventing resource state or
         );
         await act(async () => {
           inputs.getState().releaseInputSource("gamepad");
-          prefs
-            .getState()
-            .update({
-              drivingLayout: "standard",
-              showTouchControls: true,
-              showDriveControls: true,
-            });
+          prefs.getState().update({
+            drivingLayout: "standard",
+            showTouchControls: true,
+            showDriveControls: true,
+          });
         });
         assert.ok(control("Accelerate"));
         assert.ok(control("Brake"));

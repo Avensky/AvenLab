@@ -1,12 +1,12 @@
 import { usePreferencesStore } from "../../../store/preferences/index";
 import Dashboard from "../../Dashboard/Dashboard";
+import { HudVisibilityToggle } from "./HudVisibilityToggle";
 
 /** Display settings use the same saved preferences as the driving HUD. The
  * preview mounts the real instruments, so color, engine dimming and brightness
  * cannot drift into a separate mock. No vehicle command is sent here. */
 export function BrightnessPage() {
   const level = usePreferencesStore((s) => s.dashboardBrightness);
-  const visible = usePreferencesStore((s) => s.hudGroups.gauges);
   const percent = Math.round(level * 100);
   const change = (value: number) =>
     usePreferencesStore.getState().update({
@@ -59,17 +59,7 @@ export function BrightnessPage() {
           <button type="button" onClick={() => change(100)}>
             RESET BRIGHTNESS
           </button>
-          <button
-            type="button"
-            role="switch"
-            aria-label="Dashboard on driving HUD"
-            aria-checked={visible}
-            onClick={() =>
-              usePreferencesStore.getState().setHudGroup("gauges", !visible)
-            }
-          >
-            DASHBOARD: {visible ? "SHOW" : "HIDE"}
-          </button>
+          <HudVisibilityToggle id="gauges" label="Dashboard on driving HUD" />
         </div>
       </fieldset>
       <div className="dashboard-preview" aria-label="Dashboard preview">

@@ -2,6 +2,7 @@
  * elsewhere; this store owns only what the user sees and how input is mapped. */
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import { shallow } from "zustand/shallow";
 import { isUITheme, type UITheme } from "../../theme/catalog";
 
 export const DEFAULT_BINDINGS = {
@@ -57,6 +58,10 @@ export type Preferences = {
   wheelDrop: number;
   steeringTravel: number;
   minimapScale: number;
+};
+/** A page edits only the HUD switches it owns; the store merges saved siblings. */
+export type PreferenceUpdate = Omit<Partial<Preferences>, "hudGroups"> & {
+  hudGroups?: Partial<Record<HudGroupId, boolean>>;
 };
 export const DEFAULT_PREFERENCES: Preferences = {
   theme: "navy",
@@ -167,11 +172,13 @@ export function sanitizePreferences(value: unknown): Preferences {
     hudGroups: Object.fromEntries(
       HUD_GROUPS.map((id) => [
         id,
-        id === "climate"
-          ? climateVisible
-          : typeof visibility[id] === "boolean"
-            ? visibility[id]
-            : DEFAULT_HUD_GROUPS[id],
+        id === "ignition" && data.ignitionVisibility === "hidden"
+          ? false
+          : id === "climate"
+            ? climateVisible
+            : typeof visibility[id] === "boolean"
+              ? visibility[id]
+              : DEFAULT_HUD_GROUPS[id],
       ]),
     ) as Record<HudGroupId, boolean>,
     wheelDrop: numeric("wheelDrop", 0, 0.55),
@@ -204,35 +211,49 @@ export function sanitizePreferences(value: unknown): Preferences {
 }
 export const usePreferencesStore = create<
   Preferences & {
-    update: (patch: Partial<Preferences>) => void;
+    update: (patch: PreferenceUpdate) => void;
     setHudGroup: (id: HudGroupId, visible: boolean) => void;
     toggleFavorite: (id: string) => void;
     resetControls: () => void;
   }
 >()(
   persist(
-    (set) => ({
+    (set, get) => ({
       ...DEFAULT_PREFERENCES,
       // Visibility edits merge the group map and synchronize the old climate
       // alias, so Settings and Research cannot disagree about what is shown.
-      update: (patch) =>
-        set((state) => {
-          const groups = { ...state.hudGroups, ...patch.hudGroups };
-          const climate = patch.researchHud ?? patch.hudGroups?.climate;
-          return sanitizePreferences({
-            ...state,
-            ...patch,
-            hudGroups: groups,
-            ...(climate === undefined
-              ? {}
-              : { researchHud: climate, hudGroups: { ...groups, climate } }),
-          });
-        }),
+      update: (patch) => {
+        const state = get();
+        const groups = { ...state.hudGroups, ...patch.hudGroups };
+        const climate = patch.researchHud ?? patch.hudGroups?.climate;
+        // Legacy "hidden" policies share the same visibility switch. Showing
+        // the key again restores AUTO; AUTO/ALWAYS edits also reveal it.
+        const ignitionVisibility =
+          patch.hudGroups?.ignition === true &&
+          patch.ignitionVisibility === undefined &&
+          state.ignitionVisibility === "hidden"
+            ? "auto"
+            : (patch.ignitionVisibility ?? state.ignitionVisibility);
+        if (patch.ignitionVisibility !== undefined)
+          groups.ignition = ignitionVisibility !== "hidden";
+        const clean = sanitizePreferences({
+          ...state,
+          ...patch,
+          ignitionVisibility,
+          hudGroups: groups,
+          ...(climate === undefined
+            ? {}
+            : { researchHud: climate, hudGroups: { ...groups, climate } }),
+        });
+        // Sanitizing creates new maps/arrays. Retain unchanged references so
+        // a brightness drag cannot redraw the wheel, radio and entire HUD.
+        const changed = Object.entries(clean).filter(
+          ([key, value]) => !shallow(state[key as keyof Preferences], value),
+        );
+        if (changed.length) set(Object.fromEntries(changed));
+      },
       setHudGroup: (id, visible) =>
-        set((s) => ({
-          hudGroups: { ...s.hudGroups, [id]: visible },
-          ...(id === "climate" ? { researchHud: visible } : {}),
-        })),
+        get().update({ hudGroups: { [id]: visible } }),
       toggleFavorite: (id) =>
         set((s) => ({
           favoriteVehicles: s.favoriteVehicles.includes(id)

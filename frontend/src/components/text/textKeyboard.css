@@ -1,0 +1,91 @@
+.assisted-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  font-size: 11px;
+}
+.assisted-input-row {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+}
+.assisted-input-row input {
+  min-width: 0;
+  flex: 1;
+  width: 100%;
+  padding: 9px;
+  background: var(--app-panel, #0b1725);
+  color: var(--app-text, #e4eef4);
+  border: 1px solid var(--app-line, #456079);
+  border-radius: 0;
+  user-select: text;
+}
+.text-keyboard-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: #020617b8;
+}
+.text-keyboard {
+  width: min(100%, 680px);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  background: var(--app-panel, #0b1725);
+  border: 1px solid var(--app-accent, #9ae6ff);
+  color: var(--app-text, #e4eef4);
+}
+.text-keyboard header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.text-keyboard-preview {
+  display: block;
+  min-height: 34px;
+  padding: 8px;
+  background: #030912;
+  border: 1px solid var(--app-line, #456079);
+  font: 16px monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.text-keyboard-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.text-keyboard-row {
+  display: grid;
+  gap: 4px;
+}
+.text-keyboard .menu-control {
+  min-width: 0;
+  min-height: 37px;
+  padding: 5px;
+  font-size: 11px;
+}
+.text-keyboard small {
+  font-size: 9px;
+  color: var(--app-muted, #a4b6c8);
+}
+@media (max-height: 400px) {
+  .text-keyboard {
+    gap: 5px;
+    padding: 7px;
+  }
+  .text-keyboard .menu-control {
+    min-height: 30px;
+  }
+  .text-keyboard-preview {
+    min-height: 28px;
+    padding: 5px;
+  }
+}

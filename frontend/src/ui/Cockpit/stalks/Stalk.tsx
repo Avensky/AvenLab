@@ -25,6 +25,7 @@ export function Stalk({
   reach = 31,
   spacing = 12.5,
   scale = 1,
+  travel = 7,
   label,
   mode,
   asset,
@@ -44,6 +45,7 @@ export function Stalk({
   reach?: number;
   spacing?: number;
   scale?: number;
+  travel?: number;
   label: string;
   mode: string;
   asset: string;
@@ -233,7 +235,7 @@ export function Stalk({
   const actuatorAngle =
     position === 0
       ? angle
-      : stalkStepAngle(angle, position > 0 ? 1 : -1, Math.abs(position) * 7);
+      : stalkStepAngle(angle, position > 0 ? 1 : -1, Math.abs(position) * travel);
   return (
     <div
       className="stalk-actuator"

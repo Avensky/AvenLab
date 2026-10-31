@@ -5,6 +5,7 @@ import { connectRustServer } from "./net/rustSocket";
 import { startInputSender, stopInputSender } from "./net/inputSender";
 import "./App.css";
 import { GameUI } from "./game/GameUI";
+import { OnScreenKeyboard } from "./components/text/OnScreenKeyboard";
 
 export default function App() {
   // The HTML logo is visible before JavaScript loads. Clear it after React
@@ -34,6 +35,7 @@ export default function App() {
       <GameUI />
       <Keyboard />
       <GameController />
+      <OnScreenKeyboard />
     </div>
   );
 }

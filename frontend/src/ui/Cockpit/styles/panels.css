@@ -103,22 +103,6 @@
   width: min(100%, 420px);
   margin: auto;
 }
-.climate-panel .climate-three-knobs {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  justify-items: center;
-}
-.climate-panel .climate-knob {
-  width: 100%;
-  max-width: 72px;
-}
-.drive-dock .climate-panel[data-size="compact"] .climate-knob {
-  width: 31px;
-}
-.drive-dock .climate-panel[data-size="full"] .climate-knob {
-  width: 100%;
-  max-width: 58px;
-}
 .cockpit-panel .climate-three-knobs .climate-knob > button {
   min-height: 0;
   font-size: 7px;
@@ -172,57 +156,6 @@ button.physical-hazard[data-hud-held="true"] {
   margin-left: 5px;
   color: var(--app-accent);
 }
-/* Emergency lights belong to the HVAC unit, centered between clock and ambient
-   temperature. The emergency-only view uses the same compact strip. */
-.climate-panel .console-clock-strip {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 4px;
-}
-.climate-panel .console-clock-strip > :last-child {
-  grid-column: 3;
-  justify-self: end;
-}
-.climate-panel .console-clock-strip > .physical-hazard {
-  grid-column: 2;
-  width: 24px;
-  height: 24px;
-}
-.climate-panel[data-controls-visible="false"] {
-  padding-block: 3px;
-}
-
-/* HVAC and radio share one physical frame at either climate size. */
-:is(.drive-dock, .cockpit-panel) :is(.console-display, .climate-panel) {
-  border: 2px solid #737d87;
-  border-radius: 3px;
-  background: #060e15;
-  box-shadow: inset 0 0 0 1px #05070b;
-}
-.climate-panel .console-clock-strip > .physical-hazard[data-shape="round"] {
-  position: relative;
-  width: 24px;
-  height: 24px;
-  min-height: 24px;
-  margin: 0;
-  padding: 2px !important;
-  border: 1px solid #934143 !important;
-  border-radius: 50%;
-  clip-path: none;
-  background: linear-gradient(#611e20, #351416) !important;
-}
-.climate-panel .physical-hazard[data-shape="round"]::before {
-  content: "";
-  position: absolute;
-  inset: -5px;
-  border-radius: 50%;
-}
-.climate-panel .physical-hazard[data-shape="round"] svg {
-  width: 100%;
-  height: 100%;
-}
-
 /* The instrument preview participates in page layout instead of using the
    driving HUD's anchored position. Controls inherit the shared menu theme. */
 .cockpit-brightness-page {
@@ -397,5 +330,36 @@ button.physical-hazard[data-hud-held="true"] {
   }
   .cockpit-wheel-picker {
     width: min(100%, 250px);
+  }
+}
+
+.cockpit-radio-page {
+  width: min(100%, 420px);
+  margin: auto;
+}
+.cockpit-hud-options {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
+/* Short landscape screens need controls beside the preview; stacking a full
+   instrument cluster below the range pushes its lower half under the footer. */
+@media (max-height: 520px) and (orientation: landscape) {
+  .cockpit-brightness-page {
+    display: grid;
+    grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.2fr);
+    align-items: center;
+    gap: 12px;
+    width: min(100%, 940px);
+  }
+  .cockpit-brightness-page .dashboard-preferences {
+    min-width: 0;
+    margin: 0;
+  }
+  .cockpit-brightness-page .dashboard-preview {
+    min-width: 0;
+    width: min(100%, calc((100dvh - 120px) * 2.2));
+    justify-self: center;
   }
 }

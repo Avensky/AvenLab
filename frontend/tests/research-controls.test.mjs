@@ -971,6 +971,36 @@ test("research controls keep input, display and audio updates independent", asyn
           assert.equal(radio.useRadioStore.getState().trackCount, 3);
           await act(async () => radio.nextRadioTrack());
           assert.equal(radio.useRadioStore.getState().title, "Two");
+          const { RadioPanel } = await load("ui/Cockpit/RadioPanel.tsx");
+          await render(h(RadioPanel, { compact: true }));
+          element.currentTime = 17;
+          await click("Radio power");
+          assert.equal(by("Radio power").getAttribute("aria-checked"), "false");
+          assert.equal(document.querySelector(".radio-display strong").textContent, "RADIO OFF");
+          assert.equal(element.paused, true);
+          assert.equal(radio.useRadioStore.getState().playing, false);
+          assert.equal(radio.useRadioStore.getState().trackCount, 3);
+          assert.equal(element.currentTime, 17, "power-off keeps the playback position");
+          assert.equal(by("Radio play or pause").disabled, true);
+          assert.equal(by("Radio source").disabled, false, "files can be queued with power off");
+          assert.equal(localStorage.getItem("avenlab.radio.powered.v1"), "false");
+          await act(async () => {
+            element.paused = false;
+            element.onplay();
+            element.ended = true;
+            element.onended();
+            await radio.toggleRadio();
+            await radio.nextRadioTrack();
+          });
+          assert.equal(element.paused, true, "late play events cannot restart an off radio");
+          assert.equal(radio.useRadioStore.getState().title, "Two");
+          element.ended = false;
+          element.play = Player.prototype.play;
+          await click("Radio power");
+          assert.equal(element.currentTime, 17);
+          assert.equal(radio.useRadioStore.getState().playing, true);
+          assert.equal(by("Radio power").getAttribute("aria-checked"), "true");
+          assert.equal(localStorage.getItem("avenlab.radio.powered.v1"), "true");
           element.currentTime = 12;
           await act(async () => radio.previousRadioTrack());
           assert.equal(element.currentTime, 0);
@@ -1011,6 +1041,24 @@ test("research controls keep input, display and audio updates independent", asyn
           assert.equal(radio.useRadioStore.getState().playing, true);
           assert.equal(radio.useRadioStore.getState().message, "");
           assert.equal(radio.useRadioStore.getState().title, "Two");
+          // Off while play() is pending must invalidate both promise completion
+          // and a delayed media event, without dropping the local source queue.
+          let opening;
+          await act(async () => { opening = radio.nextRadioTrack(); });
+          const last = pending.at(-1);
+          await act(async () => radio.setRadioPower(false));
+          await act(async () => { last.resolve(); await opening; });
+          assert.equal(radio.useRadioStore.getState().playing, false);
+          assert.equal(element.paused, true);
+          assert.equal(radio.useRadioStore.getState().message, "");
+          await act(async () => radio.loadRadioFiles(files));
+          assert.equal(radio.useRadioStore.getState().powered, false);
+          assert.equal(radio.useRadioStore.getState().title, "One");
+          assert.equal(element.paused, true, "loading files must not restore power");
+          element.play = Player.prototype.play;
+          await act(async () => radio.setRadioPower(true));
+          assert.equal(radio.useRadioStore.getState().playing, true);
+          assert.equal(count, 1, "power cycling reuses the same Audio owner");
         } finally {
           URL.createObjectURL = create;
           URL.revokeObjectURL = revoke;

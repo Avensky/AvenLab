@@ -2,6 +2,8 @@
 
 Use `index.ts` for public components. The root shell composes focused feature folders and one shared preference/input/telemetry ownership model.
 
+Radio and Ignition have page-local Show/Hide HUD shortcuts; Brightness and Climate use the same shared switch. All four retain cockpit access while their driving widgets are hidden. Brightness gain does not change visibility. `IgnitionSwitch` subscribes only to key bits, capability and engine state; it reads the latest complete cabin mask when sending a command, preserving unrelated HVAC values without rerendering for them.
+
 - [stalks](stalks/README.md): one circular layout for each lever and its adjacent buttons; held cap flash.
 - [mechanical](mechanical/README.md): shifter and a shared continuous parking latch, appearances and optional crystals.
 - [ignition](ignition/README.md): key artwork and complete light ring outside its labels.
@@ -25,3 +27,5 @@ Use `index.ts` for public components. The root shell composes focused feature fo
 | CabinClock.tsx / RadioIcon.tsx / WheelArtwork.tsx | Shared display artwork and bounded clock presentation |
 
 Change device visibility/style in store/preferences; change requests in store/input; confirm actual state in Rust cockpit/powertrain/vehicle_forces. Hiding an on-screen control never turns off its system. Keep wheel/gauge artwork separate from shared menu theme tokens. See [the protocol guide](../../../../docs/COCKPIT_UI.md).
+
+The compact landscape update is documented in [COMPACT_LANDSCAPE_COCKPIT_UPDATE.md](../../../../docs/COMPACT_LANDSCAPE_COCKPIT_UPDATE.md). For size changes, start with `styles/layout.css`; for radio power, start with `store/radio/radioStore.ts`.

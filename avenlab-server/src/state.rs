@@ -222,6 +222,7 @@ pub struct InputPacket {
 // Shared Game State
 // ============================================================================
 pub struct SharedGameState {
+    pub room_id: usize,
     /// Authoritative simulation tick counter
     pub tick: u64,
     pub server_timing: ServerTiming,
@@ -247,6 +248,7 @@ impl SharedGameState {
     // ------------------------------------------------------------------------
     pub fn new() -> Self {
         Self {
+            room_id: 0,
             tick: 0,
             server_timing: ServerTiming::default(),
             entities: HashMap::new(),
@@ -391,9 +393,9 @@ impl SharedGameState {
         // Serialize diagnostics only when requested. Collider previews use normal
         // pose/shape snapshots and static map metadata instead of this stream.
         let frame = Arc::new(PhysicsFrame {
-            snapshot: json!({ "type": "snapshot", "data": self.build_snapshot(physics) }).to_string(),
+            snapshot: json!({ "type": "snapshot", "world_id": self.room_id, "data": self.build_snapshot(physics) }).to_string(),
             debug: if any_debug {
-                json!({ "type": "debug", "tick": self.tick, "data": &physics.debug_overlay }).to_string()
+                json!({ "type": "debug", "world_id": self.room_id, "tick": self.tick, "data": &physics.debug_overlay }).to_string()
             } else { String::new() },
         });
         // One client's diagnostics must not add JSON/traffic to everybody else.

@@ -12,7 +12,9 @@ import { DebugMenu } from "../components/debugger/DebugMenu";
 import { DrivingHUD } from "../ui/DrivingHUD";
 import { CockpitPanel } from "../ui/Cockpit/CockpitPanel";
 import { CommandLine } from "../ui/command/CommandLine";
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
+import { useSocialStore } from "../store/social/socialStore";
+import { inviteCodeFromUrl } from "./social/invitationLinks";
 import { SettingsMenu } from "./menus/SettingsMenu";
 import { CareerMenu } from "./menus/CareerMenu";
 import { MissionsMenu } from "./menus/MissionsMenu";
@@ -25,6 +27,11 @@ import { useRenderSettingsStore } from "../store/presentation/renderSettingsStor
 const WorldBuilderPanel = lazy(() =>
   import("../worldBuilder/panels/WorldBuilderPanel").then((m) => ({
     default: m.WorldBuilderPanel,
+  })),
+);
+const SocialPanel = lazy(() =>
+  import("./social/SocialPanel").then((module) => ({
+    default: module.SocialPanel,
   })),
 );
 const WorldBuilderScene = lazy(
@@ -50,6 +57,16 @@ export function GameUI() {
   const hud = useRenderSettingsStore((s) => s.hud);
   const screen = useUIStore((s) => s.screen);
   const overlay = useUIStore((s) => s.overlay);
+  const socialReady = useSocialStore((s) => Boolean(s.view));
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const code = inviteCodeFromUrl(url.href);
+    if (!socialReady || !code) return;
+    useSocialStore.setState({ entryCode: code });
+    url.searchParams.delete("world_invite");
+    window.history.replaceState(null, "", url);
+    useUIStore.getState().setScreen("social");
+  }, [socialReady]);
   const needsCanvas =
     screen === "sandbox" ||
     screen === "sandbox_setup" ||
@@ -133,6 +150,17 @@ export function GameUI() {
       )}
       {overlay === "vehicle_select" && <VehicleMenu />}
       {overlay === "leave_game" && <SessionMenu />}
+      {(screen === "social" || overlay === "social") && (
+        <Suspense
+          fallback={
+            <div role="status" className="menu-loading">
+              Opening worlds and social…
+            </div>
+          }
+        >
+          <SocialPanel />
+        </Suspense>
+      )}
       {screen === "sandbox" && overlay === "cockpit" && <CockpitPanel />}
       {(screen === "world_builder" ||
         (screen === "sandbox" && overlay === "world_builder")) && (

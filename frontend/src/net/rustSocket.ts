@@ -6,6 +6,12 @@ import {
 import { useInputStore } from "../store/input/inputStore";
 import { useWorldStore, type MapSnapshot } from "../store/world/worldStore";
 import { useVehicleConfigStore } from "../store/session/vehicleConfigStore";
+import {
+  beginSocialSession,
+  receiveSocialResult,
+  receiveSocialState,
+  setSocialConnection,
+} from "./socialClient";
 
 import { performanceRecorder as recorder } from "../performance/measurements";
 import { handlingSample } from "../performance/handling";
@@ -219,6 +225,7 @@ function clearTimers() {
 }
 
 function clearSession() {
+  setSocialConnection(null);
   pendingInputTimes.clear();
   acknowledgedInputSeq = inputAckMs = null;
   packetDiagnostics.snapshotChars = packetDiagnostics.debugChars = 0;
@@ -301,6 +308,7 @@ export function connectRustServer(): WebSocket {
   connection.onopen = () => {
     if (!isCurrent()) return;
     useNetworkStore.getState().setConnected(true);
+    setSocialConnection(connection);
     heartbeatTimer = setInterval(() => {
       if (
         !isCurrent() ||
@@ -371,8 +379,37 @@ export function connectRustServer(): WebSocket {
             : null,
           spawn: finiteTuple(message.spawn, 3) ? message.spawn : null,
         });
+        if (message.social_version === 1) beginSocialSession(message.server_id);
+        return;
+      case "social_result":
+        receiveSocialResult(message);
+        return;
+      case "social_state":
+        receiveSocialState(message.data);
+        return;
+      case "social_error":
+        console.warn(message.message || "Social connection unavailable");
+        return;
+      case "world_changed":
+        state.resetWorld();
+        useVehicleConfigStore.getState().reset();
+        useWorldStore.getState().setMap(null);
+        useInputStore.getState().resetWorldControls();
+        pendingInputTimes.clear();
+        acknowledgedInputSeq = inputAckMs = null;
+        useNetworkStore.setState({
+          room_id: message.world?.id ?? null,
+          worldMap: message.world?.map ?? null,
+          worldName: message.world?.name ?? null,
+          team: message.world?.team === "red" ? "red" : "blue",
+        });
         return;
       case "snapshot":
+        if (
+          message.world_id !== undefined &&
+          message.world_id !== state.room_id
+        )
+          return;
         // Preserve simulation_time_s/tick_dt_s instead of rebuilding tick/entities only.
         if (isSnapshot(message.data)) {
           packetDiagnostics.snapshotChars =
@@ -428,6 +465,11 @@ export function connectRustServer(): WebSocket {
         if (message.data) state.setPhysicsData(message.data);
         return;
       case "debug":
+        if (
+          message.world_id !== undefined &&
+          message.world_id !== state.room_id
+        )
+          return;
         packetDiagnostics.debugChars =
           typeof event.data === "string" ? event.data.length : 0;
         if (

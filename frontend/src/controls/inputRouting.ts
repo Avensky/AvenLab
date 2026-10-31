@@ -2,6 +2,7 @@ import { useGameStore } from "../store/presentation/gameStore";
 import { isDrivingScreen, useUIStore } from "../store/menus/uiStore";
 import { useCanDataStore } from "../store/recon/canDataStore";
 import { performanceOverlayHasFocus } from "../performance/performanceOverlayStore";
+import { useTextKeyboardStore } from "../store/text/keyboardStore";
 
 export type MenuAction =
   | "up"
@@ -16,6 +17,7 @@ export type MenuAction =
 export function canDrive() {
   const ui = useUIStore.getState();
   return (
+    !useTextKeyboardStore.getState().session &&
     !useGameStore.getState().editor &&
     isDrivingScreen(ui.screen) &&
     ui.overlay === null &&
@@ -26,6 +28,7 @@ export function canDrive() {
 }
 
 export function canNavigateMenu() {
+  if (useTextKeyboardStore.getState().session) return true;
   if (performanceOverlayHasFocus()) return true;
   const ui = useUIStore.getState();
   const panel = ui.overlay ?? ui.screen;
@@ -41,6 +44,7 @@ export function canNavigateMenu() {
         "leave_game",
         "cockpit",
         "world_builder",
+        "social",
       ].includes(panel))
   );
 }
@@ -56,6 +60,14 @@ export function isTypingTarget(target: EventTarget | null) {
 }
 
 export function routeMenuAction(action: MenuAction) {
+  if (useTextKeyboardStore.getState().session) {
+    window.dispatchEvent(
+      new CustomEvent<MenuAction>("avenlab:keyboard-action", {
+        detail: action,
+      }),
+    );
+    return;
+  }
   if (performanceOverlayHasFocus()) {
     window.dispatchEvent(
       new CustomEvent<MenuAction>("avenlab:performance-action", {
@@ -77,6 +89,7 @@ export function routeMenuAction(action: MenuAction) {
       "leave_game",
       "cockpit",
       "world_builder",
+      "social",
     ].includes(panel)
   ) {
     window.dispatchEvent(

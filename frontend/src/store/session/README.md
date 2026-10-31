@@ -13,3 +13,8 @@ Import the public API from `store/session/index.ts`. Modules inside this section
 To add a server field, extend the Rust snapshot in state.rs, validate it in net/rustSocket.ts, then project it in store/telemetry. Do not write simulation values from a gauge. Session data is cleared on disconnect; it is not a saved preference.
 
 See [all state owners](../README.md) and the [project guide](../../../../docs/PROJECT_GUIDE.md).
+
+World migration uses resetWorld to clear old ticks/poses/diagnostics while keeping
+the socket and player identity. rustSocket filters world-tagged snapshots and
+resets vehicle setup, map and old packed controls before accepting a new world.
+Social metadata belongs to store/social and does not follow physics updates.

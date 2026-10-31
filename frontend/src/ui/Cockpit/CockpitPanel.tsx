@@ -21,9 +21,7 @@ import "./cockpit.css";
 import { ConsoleDisplay } from "./ConsoleDisplay";
 import { DriveControls } from "./DriveControls";
 import "./driverConsole.css";
-import { IgnitionSwitch } from "./IgnitionSwitch";
 import { MissionApps } from "./MissionApps";
-import { RadioPanel } from "./RadioPanel";
 import { useMomentaryFeedback } from "./useMomentaryFeedback";
 import { usePhysicalMenuPress } from "../../controls/physicalMenuPress";
 import {
@@ -36,6 +34,8 @@ import {
   BrightnessPage,
   ResearchPanel,
   SteeringSystemPicker,
+  IgnitionPage,
+  RadioPage,
 } from "./panels/index";
 
 export function CockpitPanel() {
@@ -129,13 +129,9 @@ export function CockpitPanel() {
           )}
           {tab === "climate" && <ClimatePage />}
           {tab === "brightness" && <BrightnessPage />}
-          {tab === "radio" && <RadioPanel />}
+          {tab === "radio" && <RadioPage />}
           {tab === "navigation" && <Minimap forceExpanded />}
-          {tab === "ignition" && (
-            <div className="cockpit-ignition-page">
-              <IgnitionSwitch />
-            </div>
-          )}
+          {tab === "ignition" && <IgnitionPage />}
         </div>
         <footer className="cockpit-status cockpit-shortcuts">
           <MenuShortcuts hold />

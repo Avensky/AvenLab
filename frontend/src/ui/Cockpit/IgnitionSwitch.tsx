@@ -6,11 +6,12 @@ import {
   useId,
   useRef,
   useState,
+  memo,
   type PointerEvent,
 } from "react";
 import { useControlRelease } from "../../controls/useControlRelease";
 import { useInputStore } from "../../store/input/inputStore";
-import { useCockpitState } from "./useCockpitState";
+import { unpackCabin } from "../../store/input/protocol/cabinMasks";
 import { useVehicleTelemetryStore } from "../../store/telemetry/vehicleTelemetryStore";
 import { ResourceFlags } from "../../store/telemetry/resourceMasks";
 import { starterRelayAudio } from "./starterRelayAudio";
@@ -29,9 +30,17 @@ type Press = {
   dragged: boolean;
 };
 
-export function IgnitionSwitch() {
+export const IgnitionSwitch = memo(function IgnitionSwitch() {
   const contact = useMomentaryFeedback();
-  const { extended, confirmedCabin: state, cabinMask } = useCockpitState();
+  const extended = useVehicleTelemetryStore(
+    (s) => s.data.signal === "live" && s.data.config.cockpitVersion >= 3,
+  );
+  // Only key detents/insertion affect this artwork. Gear, HVAC, traction and
+  // parking changes must not redraw both the HUD key and cockpit preview.
+  const keyMask = useVehicleTelemetryStore(
+    (s) => (s.data.cabinMask ?? 0) & 0x1c00,
+  );
+  const state = unpackCabin(keyMask);
   const engineState = useVehicleTelemetryStore((s) =>
     s.data.signal !== "live"
       ? "unavailable"
@@ -74,7 +83,11 @@ export function IgnitionSwitch() {
   const send = (phase: number, inserted = true) =>
     useInputStore
       .getState()
-      .setIgnition(phase, inserted, cabinMask ?? undefined);
+      .setIgnition(
+        phase,
+        inserted,
+        useVehicleTelemetryStore.getState().data.cabinMask ?? undefined,
+      );
   const off = () => {
     release();
     send(0);
@@ -249,4 +262,4 @@ export function IgnitionSwitch() {
       </button>
     </div>
   );
-}
+});

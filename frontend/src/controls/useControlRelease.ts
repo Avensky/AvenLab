@@ -5,6 +5,7 @@ import { useCanDataStore } from "../store/recon/canDataStore";
 import { useNetworkStore } from "../store/session/networkStore";
 import { usePerformanceOverlayStore } from "../performance/performanceOverlayStore";
 import { canDrive } from "./inputRouting";
+import { useTextKeyboardStore } from "../store/text/keyboardStore";
 
 export function useControlRelease(release: () => void) {
   useEffect(() => {
@@ -15,6 +16,7 @@ export function useControlRelease(release: () => void) {
       if (document.visibilityState === "hidden") release();
     };
     const game = useGameStore.subscribe(blocked);
+    const keyboard = useTextKeyboardStore.subscribe(blocked);
     const ui = useUIStore.subscribe(blocked),
       can = useCanDataStore.subscribe(blocked),
       inspector = usePerformanceOverlayStore.subscribe(blocked);
@@ -25,6 +27,7 @@ export function useControlRelease(release: () => void) {
     document.addEventListener("visibilitychange", hidden);
     return () => {
       game();
+      keyboard();
       ui();
       can();
       inspector();

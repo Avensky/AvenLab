@@ -25,7 +25,7 @@ after(async () => {
   await server?.close();
 });
 
-test("every pause row routes correctly and navigation wraps across all nine items", () => {
+test("every pause row routes correctly and navigation wraps across all ten items", () => {
   [
     null,
     "debug_menu",
@@ -36,6 +36,7 @@ test("every pause row routes correctly and navigation wraps across all nine item
     "missions",
     "career",
     "leave_game",
+    "social",
   ].forEach((target, index) => {
     ui.setState({ screen: "sandbox", overlay: "pause", isModeLoading: false });
     ui.getState().setActiveMenuIndex(index);
@@ -46,7 +47,7 @@ test("every pause row routes correctly and navigation wraps across all nine item
   ui.setState({ overlay: "pause" });
   ui.getState().setActiveMenuIndex(0);
   route("up");
-  assert.equal(ui.getState().getActiveMenuIndex(), 8);
+  assert.equal(ui.getState().getActiveMenuIndex(), 9);
   route("down");
   assert.equal(ui.getState().getActiveMenuIndex(), 0);
 });
@@ -60,6 +61,7 @@ test("main menu controller routes match mouse destinations and Swarm stays plann
     "settings",
     "signal_recon_setup",
     "main",
+    "social",
   ].forEach((screen, index) => {
     ui.setState({ screen: "main", overlay: null, isModeLoading: false });
     ui.getState().setActiveMenuIndex(index);

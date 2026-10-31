@@ -1,0 +1,62 @@
+/* Wheel is a vector face over the existing single input owner. Stalks stay fixed. */
+.wheel-assembly {
+  position: relative;
+  aspect-ratio: 1;
+  width: min(88%, 46vh);
+  margin: 18px auto 0;
+  pointer-events: none;
+  isolation: isolate;
+}
+.wheel-assembly .steering-control {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  display: block;
+  pointer-events: none;
+  touch-action: none;
+  z-index: 2;
+}
+.wheel-rotor {
+  position: absolute;
+  inset: 0;
+  transition: transform 130ms linear;
+  will-change: transform;
+  pointer-events: none;
+}
+.wheel-artwork {
+  display: block;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 3px 2px #0006);
+}
+.wheel-assembly .touch-stick-thumb {
+  position: absolute;
+  width: 15px;
+  height: 15px;
+  transform: translate(-50%, -50%);
+  border: 1px solid #b6e2ed;
+  background: #7abec842;
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+  box-shadow: 0 0 0 4px #a5dbe712;
+}
+.wheel-assembly [data-active="true"] .touch-stick-thumb {
+  opacity: 0.7;
+}
+html[data-reduce-motion="true"] .wheel-rotor {
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .wheel-rotor {
+    transition: none;
+  }
+}
+
+.wheel-artwork :is(path, circle, ellipse, rect, text) {
+  pointer-events: visiblePainted;
+}

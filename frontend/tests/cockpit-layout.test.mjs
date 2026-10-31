@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { JSDOM } from "jsdom";
 import { createServer } from "vite";
-import { act, createElement as h } from "react";
+import { act, createElement as h, Profiler } from "react";
 import { createRoot } from "react-dom/client";
 import {
   STALK_LAYOUTS,
@@ -180,14 +180,16 @@ test("cockpit layout preferences preserve electronics and physical source owners
       });
     const point = async (type, label) =>
       act(async () => {
-        const e = new Event(type, { bubbles: true, cancelable: true });
-        Object.assign(e, {
-          pointerId: 42,
-          button: 0,
-          clientX: 100,
-          clientY: 100,
-        });
-        by(label).dispatchEvent(e);
+        for (const eventType of Array.isArray(type) ? type : [type]) {
+          const e = new Event(eventType, { bubbles: true, cancelable: true });
+          Object.assign(e, {
+            pointerId: 42,
+            button: 0,
+            clientX: 100,
+            clientY: 100,
+          });
+          by(label).dispatchEvent(e);
+        }
       });
     t.beforeEach(async () =>
       act(async () => {
@@ -540,6 +542,164 @@ test("cockpit layout preferences preserve electronics and physical source owners
       },
     );
     await t.test(
+      "radio and ignition pages hide only their driving widgets, retain playback/commands and share Settings state",
+      async () => {
+        const { CockpitPanel } = await load("ui/Cockpit/CockpitPanel.tsx"),
+          { default: ControlsPanel } = await load("ui/ControlsPanel.tsx"),
+          { DrivingIgnition } = await load("ui/Cockpit/DrivingIgnition.tsx"),
+          { useRadioStore: radio } = await load("store/radio/radioStore.ts");
+        const before = { ...input.getState().input };
+        radio.setState({ powered: true, playing: true, title: "Keep playing" });
+        await act(async () => ui.getState().openCockpit("radio"));
+        await render(
+          h("div", null, h(CockpitPanel), h(ControlsPanel), h(DrivingIgnition)),
+        );
+        await click("Radio on driving HUD");
+        assert.equal(
+          document.querySelector('[data-hud-group="display"]'),
+          null,
+        );
+        assert.ok(document.querySelector(".cockpit-radio-page .cockpit-radio"));
+        assert.equal(radio.getState().powered, true);
+        assert.equal(radio.getState().playing, true);
+        assert.equal(
+          by("Radio on driving HUD").getAttribute("aria-checked"),
+          "false",
+        );
+        await act(async () => prefs.getState().setHudGroup("display", true));
+        assert.ok(document.querySelector('[data-hud-group="display"]'));
+        assert.equal(
+          by("Radio on driving HUD").getAttribute("aria-checked"),
+          "true",
+        );
+        await act(async () => ui.getState().setCockpitTab("ignition"));
+        await click("Ignition on driving HUD");
+        assert.equal(
+          document.querySelector('[data-hud-group="ignition"]'),
+          null,
+        );
+        assert.ok(
+          document.querySelector(".cockpit-ignition-page .ignition-system"),
+        );
+        await act(async () =>
+          prefs.getState().update({ ignitionVisibility: "hidden" }),
+        );
+        await click("Ignition on driving HUD");
+        assert.equal(prefs.getState().ignitionVisibility, "auto");
+        assert.ok(document.querySelector('[data-hud-group="ignition"]'));
+        await click("Ignition on driving HUD");
+        assert.equal(
+          JSON.parse(localStorage.getItem("avenlab-preferences-v1")).state
+            .hudGroups.ignition,
+          false,
+        );
+        assert.equal(
+          sanitizePreferences({ ignitionVisibility: "hidden" }).hudGroups
+            .ignition,
+          false,
+        );
+        assert.deepEqual(input.getState().input, before);
+        await act(async () => radio.setState({ playing: false }));
+      },
+    );
+    await t.test(
+      "brightness accepts native pointer input, keeps HUD visibility and does not notify unrelated preference selectors",
+      async () => {
+        const { CockpitPanel } = await load("ui/Cockpit/CockpitPanel.tsx");
+        await act(async () => ui.getState().openCockpit("brightness"));
+        await render(h(CockpitPanel));
+        const slider = by("Dashboard brightness");
+        for (const type of ["pointerdown", "mousedown"]) {
+          const event = new Event(type, { bubbles: true, cancelable: true });
+          Object.assign(event, { button: 0, pointerId: 81 });
+          await act(async () => slider.dispatchEvent(event));
+          assert.equal(
+            event.defaultPrevented,
+            false,
+            "native range owns pointer defaults",
+          );
+        }
+        const before = prefs.getState(),
+          commands = { ...input.getState().input };
+        let groupNotifications = 0;
+        const unsubscribe = prefs.subscribe((state, previous) => {
+          if (state.hudGroups !== previous.hudGroups) groupNotifications++;
+        });
+        try {
+          for (let percent = 10; percent <= 100; percent += 5)
+            await act(async () =>
+              prefs.getState().update({ dashboardBrightness: percent / 100 }),
+            );
+          assert.equal(groupNotifications, 0);
+          for (const key of ["hudGroups", "bindings", "favoriteVehicles"])
+            assert.equal(prefs.getState()[key], before[key]);
+          await click("Dashboard on driving HUD");
+          assert.equal(prefs.getState().hudGroups.gauges, false);
+          await act(async () => {
+            fresh();
+            prefs.getState().update({ dashboardBrightness: 0.55 });
+          });
+          assert.equal(
+            prefs.getState().hudGroups.gauges,
+            false,
+            "brightness preserves an explicitly hidden HUD",
+          );
+          assert.equal(
+            document.querySelector(".dashboard-cluster").style.filter,
+            "brightness(0.55)",
+          );
+          assert.deepEqual(input.getState().input, commands);
+        } finally {
+          unsubscribe();
+        }
+      },
+    );
+    await t.test(
+      "twenty unrelated gear, HVAC, parking and traction updates cause zero ignition commits",
+      async () => {
+        const { IgnitionSwitch } = await load("ui/Cockpit/IgnitionSwitch.tsx");
+        const original = { ...entity };
+        let commits = 0;
+        await render(
+          h(
+            Profiler,
+            { id: "ignition", onRender: () => commits++ },
+            h(IgnitionSwitch),
+          ),
+        );
+        commits = 0;
+        try {
+          for (let i = 0; i < 20; i++)
+            await act(async () => {
+              entity.gear = 1 + (i % 5);
+              entity.cabin_mask ^= 64;
+              entity.cockpit_mask ^= 1 << 20;
+              entity.parking_brake = i / 20;
+              entity.vehicle_mask ^= 32;
+              input
+                .getState()
+                .setInput({
+                  cockpit_mask: entity.cockpit_mask,
+                  parking_brake: i / 20,
+                });
+              fresh();
+            });
+          assert.equal(commits, 0);
+          await act(async () => {
+            entity.cabin_mask ^= 1 << 10;
+            fresh();
+          });
+          assert.ok(commits > 0, "key detents still render confirmed changes");
+          console.log(
+            "Ignition profile: 20 unrelated updates, 0 additional commits.",
+          );
+        } finally {
+          delete entity.parking_brake;
+          Object.assign(entity, original);
+        }
+      },
+    );
+    await t.test(
       "three assist switches are the default and saved visibility/layout never changes vehicle functions",
       async () => {
         const { AssistPreferences } = await load("ui/Cockpit/DriveAssists.tsx"),
@@ -664,9 +824,9 @@ test("cockpit layout preferences preserve electronics and physical source owners
           input.getState().setAnalogFromSource("keyboard", { handbrake: 0.4 });
           input.getState().setParkingBrake(0.37);
         });
-        await point("pointerdown", "Parking brake");
-        assert.equal(input.getState().input.handbrake, 0.4);
-        await point("pointerup", "Parking brake");
+        // Dispatch a quick contact together: waiting for React between these
+        // events can turn a tap into a real hold on a busy test machine.
+        await point(["pointerdown", "pointerup"], "Parking brake");
         assert.equal(input.getState().input.handbrake, 0.4);
         assert.equal(input.getState().input.parking_brake, 0);
         await act(async () => input.getState().setParkingBrake(0.37));

@@ -20,4 +20,8 @@ See [all state owners](../README.md) and the [project guide](../../../../docs/PR
 
 `dashboardBrightness` is a validated 0.1–1 gain (default 1), saved under the existing storage key and edited on Cockpit → Brightness. It controls both the dashboard preview and driving instruments without sending physics commands. `hudGroups.gauges` is the shared dashboard visibility switch.
 
+Cockpit → Radio and Ignition now expose the same Show/Hide HUD switches as Settings. Radio keeps its stable `hudGroups.display` ID, including the head unit's mission tools; its saved power/playback state is independent. `setHudGroup("ignition", true)` also clears a legacy hidden ignition policy to AUTO. Selecting AUTO/ALWAYS in Settings reveals the key, and Restore HUD resets its policy to AUTO. Saved hidden policies normalize the corresponding group to false.
+
+`PreferenceUpdate` accepts partial HUD maps. `update` validates a merged preference snapshot, then publishes only changed top-level values using shallow equality. Unchanged HUD maps, bindings and favorite arrays retain their references, and a repeated identical edit does not notify subscribers or write storage. This prevents brightness edits from rerendering the entire driving HUD. Every visibility shortcut uses the same action so compatibility aliases stay synchronized.
+
 `assistHudLayout` defaults to `three`; `extended` keeps the larger bank as a saved option for later work. Cockpit Drive owns the switch and `hudGroups.assists` visibility control, sharing state with Research/Settings. `climateHudSize=compact` hides dials; choosing it in Climate enables the inner hazard button while leaving the master visibility unchanged. Full restores knobs, and the cockpit preview follows the selected size immediately.

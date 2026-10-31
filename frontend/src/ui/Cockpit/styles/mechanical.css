@@ -323,7 +323,7 @@
   display: none;
 }
 .drive-dock .hud-assists .drive-assists {
-  width: 72px;
+  width: var(--hud-assist-width, 72px);
   height: 49px;
 }
 .drive-dock .hud-assists .drive-assists button {

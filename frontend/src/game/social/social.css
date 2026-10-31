@@ -1,0 +1,251 @@
+.social-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: var(--app-bg, #06101b);
+  color: var(--app-text, #e4eef4);
+  font:
+    12px/1.4 ui-monospace,
+    monospace;
+}
+.social-panel {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.social-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--app-line, #456079);
+}
+.social-header h1 {
+  margin: 0;
+  flex: 1;
+  font-size: 17px;
+}
+.social-header > span {
+  font-size: 11px;
+  color: var(--app-muted, #a4b6c8);
+}
+.social-server-budget {
+  margin: 0;
+  padding: 4px 12px;
+  font-size: 10px;
+  color: var(--app-muted, #a4b6c8);
+  border-bottom: 1px solid var(--app-line, #456079);
+}
+.social-tabs {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--app-line, #456079);
+}
+.social-scroll {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+.social-body {
+  min-width: 0;
+  margin: 0;
+  padding: 12px;
+  border: 0;
+}
+.social-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 12px;
+  max-width: 1120px;
+  margin: auto;
+}
+.social-card {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--app-line, #456079);
+  background: var(--app-panel, #0b1725);
+}
+.social-card h2 {
+  margin: 0 0 12px;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
+.social-wide {
+  grid-column: 1/-1;
+}
+.social-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 12px 0;
+}
+.social-card label:not(.assisted-field) {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  font-size: 11px;
+}
+.social-card select {
+  width: 100%;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--app-line, #456079);
+  border-radius: 0;
+  background: var(--app-bg, #06101b);
+  color: var(--app-text, #e4eef4);
+}
+.social-form-row {
+  display: grid;
+  grid-template-columns: minmax(90px, 0.5fr) minmax(0, 1fr);
+  gap: 10px;
+  align-items: end;
+}
+.social-card .social-check {
+  display: flex;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+}
+.social-code {
+  padding: 8px;
+  border: 1px dashed var(--app-line, #456079);
+  overflow-wrap: anywhere;
+  user-select: text;
+  font-size: 11px;
+}
+.social-hint {
+  color: var(--app-muted, #a4b6c8);
+  font-size: 10px;
+  line-height: 1.5;
+}
+.social-person,
+.social-world-list article {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--app-line, #456079);
+  min-width: 0;
+}
+.social-person > div:first-child,
+.social-world-list article > div:first-child {
+  min-width: 0;
+  flex: 1;
+}
+.social-person strong,
+.social-world-list strong {
+  overflow-wrap: anywhere;
+}
+.social-person small,
+.social-world-list small {
+  display: block;
+  color: var(--app-muted, #a4b6c8);
+  font-size: 10px;
+}
+.social-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+}
+.social-person .social-actions {
+  justify-content: flex-end;
+}
+.social-invitation {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--app-line, #456079);
+}
+.social-invitation .assisted-field {
+  margin: 10px 0;
+}
+.social-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-top: 1px solid var(--app-line, #456079);
+  padding: 6px 10px;
+}
+.social-footer > p {
+  flex: 1;
+  margin: 0;
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+.social-footer > .menu-shortcuts {
+  flex-shrink: 0;
+}
+.social-panel .menu-control {
+  border-radius: 0;
+  font-size: 10px;
+  min-height: 32px;
+  padding: 6px 9px;
+}
+@media (max-width: 650px) {
+  .social-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .social-wide {
+    grid-column: auto;
+  }
+  .social-body {
+    padding: 7px;
+  }
+  .social-header {
+    gap: 6px;
+    padding: 6px 8px;
+  }
+  .social-header h1 {
+    font-size: 13px;
+  }
+  .social-header > span {
+    max-width: 25%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .social-tabs {
+    gap: 3px;
+    padding: 4px;
+  }
+  .social-tabs .menu-control {
+    padding: 5px 2px;
+    font-size: 9px;
+  }
+  .social-footer .menu-shortcuts {
+    display: none;
+  }
+  .social-world-list article {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+@media (max-height: 420px) {
+  .social-header {
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+  .social-tabs {
+    padding-top: 3px;
+    padding-bottom: 3px;
+  }
+  .social-footer {
+    padding: 3px 8px;
+  }
+  .social-body {
+    padding: 7px;
+  }
+  .social-card {
+    padding: 9px;
+  }
+}

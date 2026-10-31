@@ -1,368 +1,277 @@
-use std::sync::Arc;
-use uuid::Uuid;
-use tokio::net::TcpListener;
-use tokio::sync::{Mutex, mpsc, watch};
-use futures::{StreamExt, SinkExt};
-use tokio_tungstenite::{accept_async, tungstenite::Message};
-use serde::Deserialize;
-use serde_json::Value;
-use crate::state::{SharedGameState, EntityType, InputPacket, PhysicsFrame};
-use crate::physics::PhysicsWorld;
+//! Socket transport only. Server owns social authorization/room admission;
+//! WorldRuntime owns the room's physics. Inputs remain replaceable mailboxes.
+use crate::{
+    server::{Connection, Server},
+    spawn::Team,
+    state::{InputPacket, PhysicsFrame},
+};
+use futures::{SinkExt, StreamExt};
+use serde_json::{Value, json};
+use std::{
+    collections::VecDeque,
+    sync::Arc,
+    time::{Duration, Instant},
+};
+use tokio::{
+    net::TcpListener,
+    sync::{mpsc, watch},
+};
+use tokio_tungstenite::{
+    accept_async_with_config,
+    tungstenite::{Message, protocol::WebSocketConfig},
+};
 
-// The map config lists ten slots; the occupancy check can block nearby slots.
-// Enforce the limit on the authoritative server, not in the renderer.
-const MAX_SANDBOX_PLAYERS: usize = 10;
-
-#[derive(Debug, Deserialize)]
-struct SpawnRequest {
-    vehicle: String,
-    map: String,
+struct RateLimit {
+    received: VecDeque<Instant>,
+    limit: usize,
+    window: Duration,
+}
+impl RateLimit {
+    fn new(limit: usize, seconds: u64) -> Self {
+        Self {
+            received: VecDeque::new(),
+            limit,
+            window: Duration::from_secs(seconds),
+        }
+    }
+    fn allow(&mut self) -> bool {
+        let now = Instant::now();
+        while self
+            .received
+            .front()
+            .is_some_and(|time| now.duration_since(*time) >= self.window)
+        {
+            self.received.pop_front();
+        }
+        if self.received.len() >= self.limit {
+            return false;
+        }
+        self.received.push_back(now);
+        true
+    }
 }
 
-#[derive(Debug, Deserialize)]
-struct VehicleChangeRequest {
-    vehicle: String,
-    request_id: String,
-}
-
-pub async fn start_websocket_server(
-    state: Arc<Mutex<SharedGameState>>,
-    physics: Arc<Mutex<PhysicsWorld>>,
-) {
-    let listener = TcpListener::bind("0.0.0.0:9001")
+pub async fn start_websocket_server(server: Arc<Server>) {
+    let address = std::env::var("AVENLAB_BIND").unwrap_or_else(|_| "0.0.0.0:9001".into());
+    let listener = TcpListener::bind(&address)
         .await
-        .expect("Failed to bind WebSocket port");
-
-    println!("🌐 WebSocket listening on ws://localhost:9001");
-
-    while let Ok((raw_stream, _addr)) = listener.accept().await {
-
-        let state_clone: Arc<Mutex<SharedGameState>> = Arc::clone(&state);
-        let physics_clone: Arc<Mutex<PhysicsWorld>> = Arc::clone(&physics);
-
+        .expect("Failed to bind WebSocket listener");
+    println!("WebSocket listening on {address}");
+    while let Ok((stream, _peer)) = listener.accept().await {
+        let server = Arc::clone(&server);
         tokio::spawn(async move {
-
-            let ws_stream = accept_async(raw_stream).await.unwrap();
-            let (write, mut read) = ws_stream.split();
-
-            // Setup/config/pong messages must survive in FIFO order. Physics is
-            // replaceable state, so it has a separate single-value watch channel.
+            let config = WebSocketConfig {
+                max_message_size: Some(16 * 1024),
+                max_frame_size: Some(16 * 1024),
+                ..Default::default()
+            };
+            let Ok(socket) = accept_async_with_config(stream, Some(config)).await else {
+                return;
+            };
+            let (write, mut read) = socket.split();
             let (tx, mut rx) = mpsc::unbounded_channel::<String>();
             let (frame_tx, mut frame_rx) = watch::channel::<Option<Arc<PhysicsFrame>>>(None);
-            // Input is held state too. Receiving a packet must not wait for
-            // physics/game locks while older packets accumulate in the socket.
+            let (social_tx, mut social_rx) = watch::channel::<Option<String>>(None);
             let (input_tx, input_rx) = watch::channel::<Option<InputPacket>>(None);
-
-            // Only this task writes to the socket. It never holds physics/game
-            // locks while awaiting network I/O, so a slow client cannot stall dt.
-            let writer_task = tokio::spawn(async move {
-                let mut ws_write = write;
+            // A stalled socket cannot hold any game lock. Five-second send
+            // deadlines also terminate its reader and remove its world slot.
+            let mut writer = tokio::spawn(async move {
+                let mut write = write;
                 loop {
-                    tokio::select! {
-                        // Give pending setup events priority over replaceable state.
+                    let messages = tokio::select! {
                         biased;
-                        msg = rx.recv() => {
-                            let Some(msg) = msg else { break; };
-                            if ws_write.send(Message::Text(msg)).await.is_err() { break; }
+                        message=rx.recv()=>{let Some(message)=message else{break};vec![message]}
+                        changed=social_rx.changed()=>{
+                            if changed.is_err(){break;}social_rx.borrow_and_update().clone().into_iter().collect()
                         }
-                        changed = frame_rx.changed() => {
-                            if changed.is_err() { break; }
-                            // Clone the Arc and drop the watch borrow BEFORE await.
-                            // A held borrow would block publication of the next tick.
-                            let frame = frame_rx.borrow_and_update().clone();
-                            let Some(frame) = frame else { continue; };
-                            // This pair stays on one tick even if a newer frame is
-                            // published while the first socket send is in flight.
-                            if ws_write.send(Message::Text(frame.snapshot.clone())).await.is_err() { break; }
-                            if !frame.debug.is_empty() && ws_write.send(Message::Text(frame.debug.clone())).await.is_err() { break; }
+                        changed=frame_rx.changed()=>{
+                            if changed.is_err(){break;}let frame=frame_rx.borrow_and_update().clone();
+                            let Some(frame)=frame else{continue};
+                            if frame.debug.is_empty(){vec![frame.snapshot.clone()]}else{vec![frame.snapshot.clone(),frame.debug.clone()]}
+                        }
+                    };
+                    for message in messages {
+                        if !matches!(
+                            tokio::time::timeout(
+                                Duration::from_secs(5),
+                                write.send(Message::Text(message))
+                            )
+                            .await,
+                            Ok(Ok(()))
+                        ) {
+                            return;
                         }
                     }
                 }
             });
-
-            // ---------- 1) Create player_id ----------
-            let player_id = Uuid::new_v4().to_string();
-
-            // ---------- 2) Register client for snapshots ----------
-            {
-                let mut game = state_clone.lock().await;
-                game.register_client(player_id.clone(), tx.clone(), frame_tx, input_rx);
-            }
-
-            // ---------- 3) Ask SpawnManager for spawn info ----------
-            let spawn_info = {
-                let mut game = state_clone.lock().await;
-                game.spawns.allocate_spawn(player_id.clone())
+            let player = uuid::Uuid::new_v4().to_string();
+            let connection = Connection {
+                tx: tx.clone(),
+                frame: frame_tx,
+                social: social_tx,
+                input: input_rx,
+                input_tx: input_tx.clone(),
+                profile_id: None,
+                world_id: None,
+                team: Team::Blue,
             };
-
-            let room_id = spawn_info.room_id;
-            let room_id_u32: u32 = room_id.try_into().unwrap_or(u32::MAX);
-            let team = spawn_info.team;
-
-            // ---------- 4) Add entity in game state ----------
-            {
-                let mut game = state_clone.lock().await;
-                game.add_entity(&player_id, EntityType::Vehicle);
-                game.apply_spawn_info(&spawn_info);
-
+            if let Err(error) = server.register(player.clone(), connection).await {
+                let _ = tx.send(json!({"type":"social_error","message":error}).to_string());
+                writer.abort();
+                return;
             }
-
-            let welcome = serde_json::json!({
-                "type": "welcome",
-                "player_id": player_id,
-                "room_id": room_id_u32,
-                "team": team.as_str(),
-                "spawned": false,
-            }).to_string();
-
-            let _ = tx.send(welcome);
-
-            // ---------- 8) Read loop: pings + input ----------
-            while let Some(Ok(msg)) = read.next().await {
-                if let Message::Text(text) = msg {
-                    let text = text.trim();
-
-                    // --------------------------------------------------
-                    // Heartbeat (plain text or JSON-safe)
-                    // --------------------------------------------------
-                    if text == "ping" {
-                        let _ = tx.send(r#"{"type":"pong"}"#.to_string());
-                        continue;
+            let server_id = server.data.lock().await.server_id.clone();
+            let _=tx.send(json!({"type":"welcome","player_id":player,"room_id":0,"team":"blue","spawned":false,"social_version":1,"server_id":server_id}).to_string());
+            let mut commands = RateLimit::new(12, 10);
+            let mut passwords = RateLimit::new(4, 30);
+            let mut pings = RateLimit::new(2, 1);
+            loop {
+                let next = tokio::select! {next=read.next()=>next,_=&mut writer=>break};
+                let Some(Ok(Message::Text(text))) = next else {
+                    if next.is_none()
+                        || next.is_some_and(|message| {
+                            message.is_err() || matches!(message, Ok(Message::Close(_)))
+                        })
+                    {
+                        break;
                     }
-
-                    let value: Value = match serde_json::from_str(text) {
-                        Ok(value) => value,
-                        Err(error) => {
-                            eprintln!("⚠️ Bad JSON from client: {error}");
-                            continue;
-                        }
-                    };
-
-                    let message_type = value
-                        .get("type")
-                        .and_then(Value::as_str)
-                        .unwrap_or_default();
-
-                    // --------------------------------------------------
-                    // Map-selected spawn request
-                    // --------------------------------------------------
-                    if message_type == "spawn_request" {
-                        let request: SpawnRequest = match serde_json::from_value(value) {
-                            Ok(request) => request,
-                            Err(error) => {
-                                let _ = tx.send(serde_json::json!({
-                                    "type": "spawn_error",
-                                    "message": format!("Invalid spawn request: {error}"),
-                                }).to_string());
-                                continue;
-                            }
+                    continue;
+                };
+                if text.trim() == "ping" {
+                    if pings.allow() {
+                        let _ = tx.send(json!({"type":"pong"}).to_string());
+                    }
+                    continue;
+                }
+                let Ok(value) = serde_json::from_str::<Value>(&text) else {
+                    continue;
+                };
+                let message_type = value
+                    .get("type")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default();
+                if message_type == "ping" {
+                    if pings.allow() {
+                        let _ = tx.send(json!({"type":"pong"}).to_string());
+                    }
+                    continue;
+                }
+                if message_type == "input" {
+                    if let Ok(packet) = serde_json::from_value::<InputPacket>(value) {
+                        input_tx.send_replace(Some(packet));
+                    }
+                    continue;
+                }
+                let request_id = value
+                    .get("request_id")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .chars()
+                    .take(64)
+                    .collect::<String>();
+                if !commands.allow() {
+                    let _=tx.send(json!({"type":"social_result","request_id":request_id,"ok":false,"message":"Too many requests. Wait a few seconds and try again."}).to_string());
+                    continue;
+                }
+                match message_type {
+                    "social_request" => {
+                        let password_action = matches!(
+                            value.get("action").and_then(Value::as_str),
+                            Some("world_join" | "world_create")
+                        );
+                        let result = if password_action && !passwords.allow() {
+                            Err("Too many world access attempts. Wait 30 seconds.".into())
+                        } else {
+                            server.handle(&player, value).await
                         };
-
-                        let spawn_result = {
-                            let mut phys = physics_clone.lock().await;
-
-                            match phys.select_map(&request.map) {
-                                Err(error) => Err(error.to_string()),
-                                Ok(()) => {
-                                    if let Some(map_snapshot) = phys.map_snapshot() {
-                                        if let Some(vehicle) = phys.vehicles.get(&player_id) {
-                                            Ok((
-                                                vehicle.body,
-                                                false,
-                                                map_snapshot,
-                                            ))
-                                        } else if phys.vehicles.len() >= MAX_SANDBOX_PLAYERS {
-                                            Err(format!(
-                                                "Sandbox is full ({MAX_SANDBOX_PLAYERS}/{MAX_SANDBOX_PLAYERS} players)"
-                                            ))
-                                        } else {
-                                            phys.spawn_vehicle_for_player(
-                                                player_id.clone(),
-                                                spawn_info.position,
-                                                &request.vehicle,
-                                                team.as_str(),
-                                            )
-                                            .map(|body_handle| {
-                                                (
-                                                    body_handle,
-                                                    true,
-                                                    map_snapshot,
-                                                )
-                                            })
-                                            .map_err(|error| {
-                                                format!("Vehicle spawn failed: {error}")
-                                            })
-                                        }
-                                    } else {
-                                        Err(
-                                            "Map selected but no authoritative map snapshot exists"
-                                                .to_string()
-                                        )
-                                    }
-                                }
-                            }
-                        };
-
-                        match spawn_result {
-                            Ok((body_handle, newly_spawned, map_snapshot)) => {
-                                // Gauges need the same calibration on first spawn
-                                // as on Change Vehicle. Copy it before taking the
-                                // game lock; keep the physics -> game lock order.
-                                let vehicle_config = {
-                                    let phys = physics_clone.lock().await;
-                                    phys.vehicles.get(&player_id).map(|vehicle| vehicle.config)
-                                };
-                                let mut game = state_clone.lock().await;
-                                game.attach_body(&player_id, body_handle);
-                                // Only a newly created physics vehicle may set its
-                                // visual model id. A duplicate spawn request must
-                                // not change the model without changing physics.
-                                if newly_spawned {
-                                    game.set_vehicle_id(&player_id, &request.vehicle);
-                                }
-                                drop(game);
-
-                                if let Some(config) = vehicle_config {
-                                    let _ = tx.send(serde_json::json!({
-                                        "type": "vehicle_config",
-                                        "data": crate::state::VehicleConfigPayload::new(&player_id, config),
-                                    }).to_string());
-                                }
-
-                                println!(
-                                    "✅ Spawn ready: player={} vehicle={} map={}",
-                                    player_id,
-                                    request.vehicle,
-                                    request.map,
-                                );
-
-                                let _ = tx.send(
-                                    serde_json::json!({
-                                        "type": "map_snapshot",
-                                        "data": map_snapshot,
-                                    })
-                                    .to_string()
-                                );
-
-                                let _ = tx.send(serde_json::json!({
-                                    "type": "spawn_ready",
-                                    "player_id": player_id,
-                                    "vehicle": request.vehicle,
-                                    "map": request.map,
-                                    "newly_spawned": newly_spawned,
-                                }).to_string());
+                        let response = match result {
+                            Ok(data) => {
+                                json!({"type":"social_result","request_id":request_id,"ok":true,"data":data})
                             }
                             Err(message) => {
-                                eprintln!(
-                                    "⚠️ Spawn rejected for player {}: {}",
-                                    player_id,
-                                    message,
-                                );
-
-                                let _ = tx.send(serde_json::json!({
-                                    "type": "spawn_error",
-                                    "map": request.map,
-                                    "message": message,
-                                }).to_string());
+                                json!({"type":"social_result","request_id":request_id,"ok":false,"message":message})
                             }
-                        }
-
-                        continue;
-                    }
-
-                    if message_type == "service_vehicle_request" {
-                        let request_id = value.get("request_id").and_then(Value::as_str).unwrap_or_default();
-                        let mut phys = physics_clone.lock().await;
-                        let response = match phys.service_vehicle_for_player(&player_id) {
-                            Ok(()) => serde_json::json!({ "type": "vehicle_serviced", "request_id": request_id }),
-                            Err(message) => serde_json::json!({ "type": "vehicle_service_error", "request_id": request_id, "message": message }),
                         };
                         let _ = tx.send(response.to_string());
-                        continue;
                     }
-
-                    if message_type == "change_vehicle_request" {
-                        let request_id = value.get("request_id").and_then(Value::as_str)
-                            .unwrap_or_default().to_string();
-                        let request: VehicleChangeRequest = match serde_json::from_value(value) {
-                            Ok(request) => request,
-                            Err(error) => {
-                                let _ = tx.send(serde_json::json!({
-                                    "type": "vehicle_change_error", "request_id": request_id,
-                                    "message": format!("Invalid vehicle change request: {error}"),
-                                }).to_string());
-                                continue;
+                    "spawn_request" => {
+                        let vehicle = value
+                            .get("vehicle")
+                            .and_then(Value::as_str)
+                            .unwrap_or_default();
+                        let map = value.get("map").and_then(Value::as_str).unwrap_or_default();
+                        if let Err(message) = server.spawn(&player, map, vehicle).await {
+                            let _ = tx.send(
+                                json!({"type":"spawn_error","map":map,"message":message})
+                                    .to_string(),
+                            );
+                        }
+                    }
+                    "change_vehicle_request" => {
+                        let vehicle = value
+                            .get("vehicle")
+                            .and_then(Value::as_str)
+                            .unwrap_or_default();
+                        let result = match server.runtime(&player).await {
+                            Ok(runtime) => {
+                                let mut room = runtime.lock().await;
+                                match room.physics.change_vehicle_for_player(&player, vehicle) {
+                                    Ok(()) => {
+                                        room.game.set_vehicle_id(&player, vehicle);
+                                        if let Some(entity) = room.game.entities.get_mut(&player) {
+                                            entity.last_packet = None;
+                                        }
+                                        input_tx.send_replace(None);
+                                        let config = room
+                                            .physics
+                                            .vehicles
+                                            .get(&player)
+                                            .map(|vehicle| vehicle.config);
+                                        if let Some(config) = config {
+                                            let payload=json!({"type":"vehicle_config","data":crate::state::VehicleConfigPayload::new(&player,config)}).to_string();
+                                            for sender in room.game.clients.values() {
+                                                let _ = sender.send(payload.clone());
+                                            }
+                                        }
+                                        Ok(())
+                                    }
+                                    Err(error) => Err(error.to_string()),
+                                }
                             }
+                            Err(error) => Err(error),
                         };
-                        // Same lock order as the simulation. The connection's
-                        // player_id owns this request; clients cannot pick an owner.
-                        let mut phys = physics_clone.lock().await;
-                        let mut game = state_clone.lock().await;
-                        match phys.change_vehicle_for_player(&player_id, &request.vehicle) {
+                        let response = match result {
                             Ok(()) => {
-                                game.set_vehicle_id(&player_id, &request.vehicle);
-                                if let Some(entity) = game.entities.get_mut(&player_id) {
-                                    entity.last_packet = None;
-                                }
-                                let _ = input_tx.send_replace(None);
-                                if let Some(vehicle) = phys.vehicles.get(&player_id) {
-                                    game.broadcast_vehicle_config(&player_id, vehicle);
-                                }
-                                let _ = tx.send(serde_json::json!({
-                                    "type": "vehicle_changed", "request_id": request.request_id,
-                                    "vehicle": request.vehicle, "player_id": player_id,
-                                }).to_string());
+                                json!({"type":"vehicle_changed","request_id":request_id,"vehicle":vehicle,"player_id":player})
                             }
                             Err(message) => {
-                                let _ = tx.send(serde_json::json!({
-                                    "type": "vehicle_change_error", "request_id": request.request_id,
-                                    "message": message,
-                                }).to_string());
-                            }
-                        }
-                        continue;
-                    }
-
-                    // --------------------------------------------------
-                    // Input packets are accepted before spawning, but main.rs
-                    // skips entities whose body handle is still invalid.
-                    // --------------------------------------------------
-                    if message_type == "input" {
-                        let packet: InputPacket = match serde_json::from_value(value) {
-                            Ok(packet) => packet,
-                            Err(error) => {
-                                eprintln!("⚠️ Invalid input packet: {error}");
-                                continue;
+                                json!({"type":"vehicle_change_error","request_id":request_id,"message":message})
                             }
                         };
-
-                        // Replace the newest intent immediately. Main alone
-                        // applies it and its debug request on the next tick.
-                        let _ = input_tx.send_replace(Some(packet));
+                        let _ = tx.send(response.to_string());
                     }
+                    "service_vehicle_request" => {
+                        let result = match server.runtime(&player).await {
+                            Ok(runtime) => runtime
+                                .lock()
+                                .await
+                                .physics
+                                .service_vehicle_for_player(&player),
+                            Err(error) => Err(error),
+                        };
+                        let response = match result {
+                            Ok(()) => json!({"type":"vehicle_serviced","request_id":request_id}),
+                            Err(message) => {
+                                json!({"type":"vehicle_service_error","request_id":request_id,"message":message})
+                            }
+                        };
+                        let _ = tx.send(response.to_string());
+                    }
+                    _ => {}
                 }
             }
-
-            // ---------- 9) Cleanup on disconnect ----------
-
-            {
-                // 1) Remove physics FIRST
-                let mut phys = physics_clone.lock().await;
-                phys.despawn_vehicle_for_player(&player_id);
-            }
-
-
-            {
-                // 2) Remove game entity
-                let mut game = state_clone.lock().await;
-                game.unregister_client(&player_id);
-                game.remove_entity(&player_id);
-                // (optional) also remove from clients if you track per-player
-            }
-
-            println!("🔴 Player disconnected: {}", player_id);
-            // End a writer stuck in socket I/O after the read side has closed.
-            writer_task.abort();
+            server.disconnect(&player).await;
+            writer.abort();
         });
     }
 }

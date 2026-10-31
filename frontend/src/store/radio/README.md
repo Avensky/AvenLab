@@ -1,13 +1,11 @@
 # Local media playback
 
-Import the public API from `store/radio/index.ts`. Modules inside this section use direct sibling imports to avoid cycles.
+Import the public API from `store/radio/index.ts`; internal modules use concrete sibling imports to avoid cycles.
 
-| File | Owns |
-| --- | --- |
-| [radioStore.ts](radioStore.ts) | One local Audio element, bounded 100-file queue, volume, mute and event-driven transport. |
+`radioStore.ts` owns one local Audio element, a bounded 100-file queue, playback, volume, mute and power. `ui/Cockpit/RadioPanel.tsx` renders the same owner in the driving HUD and cockpit page.
 
-## Editing recipe
+`setRadioPower(false)` pauses playback, invalidates pending play promises, clears the RADIO input flag and saves power-off locally. It keeps the playlist, current position, volume and mute setting. Explicit power-on resumes the selected source; source selection while off prepares a queue without starting it. Media events cannot restore power. Play/pause and mute remain separate actions.
 
-Add station/media behavior here; transport UI belongs to ui/Cockpit/RadioPanel.tsx. Keep playback independent from a panel mount so hiding the radio does not stop a track. No progress polling timer or audio upload is introduced. Mission bulletins are in store/missions.
+Hiding a panel changes visibility only and does not stop audio. Turning the radio off is the playback action. No media progress polling, upload, extra Audio instance or simulation command is introduced. `startRadio` and `stopRadio` are the single shared paths for transport and power so cancellation stays consistent. Tests exercise normal playback, late events, pending promises and power cycling through the rendered switch.
 
 See [all state owners](../README.md) and the [project guide](../../../../docs/PROJECT_GUIDE.md).

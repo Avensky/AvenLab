@@ -27,3 +27,17 @@ brake arrives through the existing input packet, so the online world keeps ticki
 Run `cargo test --locked` from this directory. New spawn surface_y values preserve
 vehicle-specific suspension clearance; old maps use surface.road_y. Map JSON must
 be exported/installed and Rust restarted before editor changes affect driving.
+
+## Social sessions and capacity
+
+`server.rs` owns persistent social data, admission limits and occupied worlds;
+`server/views.rs` builds personalized views; `social/` owns profile/group/world
+metadata and authorization. `world_sessions.rs` owns isolated per-world physics.
+`capacity_bench.rs` supplies `--capacity-bench` for testing the rented instance.
+
+Defaults are **one active world and ten total joined players**. Set
+`AVENLAB_MAX_ACTIVE_WORLDS` and `AVENLAB_MAX_PLAYERS` before starting to change them.
+The last departure unloads an occupied world. Saved metadata remains at
+`runtime/social.json` (override `AVENLAB_SOCIAL_PATH`); back up this private file.
+Rebuild/restart Rust and frontend together. See `../docs/SOCIAL_WORLDS.md` for
+keyboard behavior, passwords, invite rules, guest identity and hosting checks.

@@ -170,6 +170,7 @@ export interface NetworkState {
   connected: boolean;
   setConnected: (v: boolean) => void;
   resetSession: () => void;
+  resetWorld: () => void;
 
   snapshot: PhysicsSnapshot | null;
   setSnapshot: (snap: PhysicsSnapshot, receivedMs?: number) => void;
@@ -189,6 +190,8 @@ export interface NetworkState {
   team: Team;
   kind: string | null;
   room_id: number | null;
+  worldMap: string | null;
+  worldName: string | null;
   spawn: [number, number, number] | null;
   x: number | null;
   y: number | null;
@@ -231,6 +234,8 @@ const emptySession = {
   team: "blue" as Team,
   kind: null,
   room_id: null,
+  worldMap: null,
+  worldName: null,
   spawn: null,
   x: null,
   y: null,
@@ -245,6 +250,18 @@ const emptySession = {
 export const useNetworkStore = create<NetworkState>((set, get) => ({
   ...emptySession,
   resetSession: () => set({ ...emptySession }),
+  // World ticks restart independently. Retain this socket/player identity while
+  // discarding poses, diagnostics and acknowledgements from the previous world.
+  resetWorld: () =>
+    set({
+      snapshot: null,
+      physicsData: null,
+      tick: null,
+      debugOverlay: null,
+      debugTick: null,
+      spawn: null,
+      snapshotIntervalMs: null,
+    }),
   setConnected: (connected) => {
     if (!connected) {
       get().resetSession();

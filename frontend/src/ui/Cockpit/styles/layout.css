@@ -1,14 +1,54 @@
-/* One height aligns the brake and shifter parents; brake artwork uses 85%. The assist bank
-   stays left of the pedals; neither layout stretches individual switches. */
+/* The lower pedal/assist row owns the console width. Keep all equipment inside
+   that same footprint; changing vehicle UI must not push it into the road view. */
+.driving-hud {
+  --hud-pedal-width: 45px;
+  --hud-assist-width: 72px;
+  --hud-pedal-gap: 4px;
+  --hud-foot-gap: 5px;
+  --console-width: calc(3 * var(--hud-pedal-width) + 2 * var(--hud-pedal-gap) + var(--hud-assist-width) + var(--hud-foot-gap));
+  --hud-shifter-size: 112px;
+  --hud-knob-size: 42px;
+}
+.drive-dock {
+  position: absolute;
+  right: max(10px, env(safe-area-inset-right));
+  bottom: max(8px, env(safe-area-inset-bottom));
+  width: var(--console-width);
+  max-width: calc(100dvw - 20px);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  pointer-events: none;
+  color: #dce4e9;
+  font: 9px/1.15 ui-monospace, monospace;
+  /* Fit geometry instead of introducing a scroll surface over driving inputs. */
+  overflow: visible;
+}
+.drive-dock .hud-group {
+  flex: none;
+  min-width: 0;
+}
+.dock-equipment {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  flex: none;
+  min-width: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+.drive-dock :is(.console-display, .climate-panel) {
+  width: 100%;
+  box-sizing: border-box;
+}
 .transmission-console {
   --shifter-size: 140px;
   --parking-control-height: var(--shifter-size);
   display: grid;
   grid-template-columns: minmax(60px, 1fr) var(--shifter-size);
-  grid-template-rows: auto;
   gap: 5px;
-  /* The cockpit's shifter has a caption below its gate; align the artwork,
-     rather than moving the brake down to the caption's baseline. */
   align-items: start;
   width: 100%;
   max-width: 280px;
@@ -29,24 +69,36 @@
   grid-row: 2;
 }
 .drive-dock .hud-transmission {
-  margin-top: 3px;
+  --shifter-size: var(--hud-shifter-size);
+  margin-top: 0;
 }
 .console-foot-controls {
   display: flex;
   flex-wrap: nowrap;
   justify-content: flex-end;
   align-items: flex-end;
-  gap: 4px;
-  flex: 0 0 auto;
+  gap: var(--hud-foot-gap);
+  flex: none;
+  pointer-events: none;
 }
 .drive-dock .console-foot-controls .hud-assists {
-  flex: 0 0 72px;
-  width: 72px;
+  flex: 0 0 var(--hud-assist-width);
+  width: var(--hud-assist-width);
 }
 .drive-dock .console-foot-controls .pedal-hud {
+  position: static;
+  inset: auto;
+  transform: none;
   display: block;
-  flex: 0 0 auto;
+  flex: none;
   width: auto;
+  min-height: 0;
+}
+.drive-dock .driving-pedals {
+  gap: var(--hud-pedal-gap);
+}
+.drive-dock .driving-pedal {
+  width: var(--hud-pedal-width);
 }
 .drive-dock .hud-transmission:not(:has(> .hud-parking)),
 .drive-dock .hud-transmission:not(:has(> .hud-shifter)) {
@@ -57,7 +109,7 @@
   justify-self: end;
 }
 .drive-dock .hud-transmission:not(:has(> .hud-shifter)) > .hud-parking {
-  max-width: 128px;
+  max-width: 100px;
   justify-self: end;
 }
 .hud-hazards {
@@ -65,40 +117,130 @@
   justify-content: center;
   align-items: center;
 }
+.drive-dock .climate-panel[data-size="full"] .climate-knob {
+  max-width: var(--hud-knob-size);
+}
+/* Menus retain touch/wheel/keyboard scrolling with invisible scrollbar chrome. */
+:is(.cockpit-panel, .driving-hud) * {
+  scrollbar-width: none;
+}
+:is(.cockpit-panel, .driving-hud) *::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
 
-/* Both assist layouts retain the same switch dimensions at every viewport. */
-.driving-hud {
-  --console-width: clamp(270px, 21vw, 300px);
-}
-.drive-dock {
-  max-width: calc(100vw - 20px);
-}
-.console-foot-controls {
-  gap: 5px;
+/* Full-size menus keep the larger gate. Only the driving HUD compacts to fit
+   GPS + radio + full HVAC + both mechanical controls + pedals in landscape. */
+@media (max-height: 500px) and (orientation: landscape) {
+  .driving-hud {
+    --hud-pedal-width: 42px;
+    --hud-shifter-size: clamp(64px, calc(28dvh - 26px), 112px);
+    --hud-knob-size: clamp(22px, 7dvh, 34px);
+  }
+  .drive-dock, .dock-equipment {
+    gap: 3px;
+  }
+  .drive-dock .cockpit-radio[data-compact="true"] .radio-display {
+    min-height: 20px;
+    padding-block: 1px;
+  }
+  .drive-dock .radio-transport {
+    --radio-key-size: 20px;
+    padding: 1px 0;
+  }
+  .drive-dock .radio-volume-dial {
+    flex-basis: 22px;
+    width: 22px;
+    height: 22px;
+    padding-top: 0;
+    margin-left: 0;
+  }
+  .drive-dock .radio-volume-dial .climate-knob {
+    width: 22px;
+    height: 22px;
+  }
+  .drive-dock .radio-volume-dial output {
+    display: none;
+  }
+  .drive-dock .climate-three-knobs {
+    gap: 4px;
+    padding: 8px 2px 5px;
+  }
+  .drive-dock .driving-pedal {
+    height: 34px;
+    --pedal-icon-height: 18px;
+  }
+  .drive-dock .driving-pedal img {
+    height: var(--pedal-icon-height);
+  }
+  .drive-dock .driving-pedal small {
+    font-size: 6px;
+  }
+  /* Gate targets scale with the gate so smaller artwork cannot overlap slots. */
+  .drive-dock .mechanical-shifter .shift-slot {
+    width: clamp(10px, calc(var(--shifter-size) * .15), 17px);
+    height: clamp(10px, calc(var(--shifter-size) * .15), 17px);
+    font-size: 6px;
+  }
+  .drive-dock .mechanical-shifter .shift-knob {
+    width: clamp(18px, calc(var(--shifter-size) * .24), 26px);
+    height: clamp(18px, calc(var(--shifter-size) * .24), 26px);
+  }
+  .drive-dock .transmission-console .shift-gate {
+    border-width: 3px;
+  }
 }
 @media (max-width: 380px) {
   .driving-hud {
-    --console-width: 236px;
+    --hud-pedal-width: 35px;
   }
   .driving-hud .wheel-hud {
     bottom: max(65px, env(safe-area-inset-bottom));
   }
-  .drive-dock .driving-pedal {
-    width: 35px;
-  }
 }
-
-/* A large brake/shifter row sits above the wheel on narrow portrait screens;
-   the pedal/assist row stays at the bottom. This keeps the moving grip out of
-   the steering hit area instead of painting it across the wheel hub. */
+/* Reserve wheel clearance only in portrait; landscape uses the compact stack. */
 @media (max-width: 460px) and (orientation: portrait) {
   .drive-dock .dock-equipment {
     padding-bottom: 110px;
-    max-height: calc(100dvh - 160px);
   }
 }
 @media (max-width: 380px) and (orientation: portrait) {
   .drive-dock .dock-equipment {
     padding-bottom: 140px;
+  }
+}
+/* Very short phones keep the full set visible; shrink decoration before the
+   map/console gap disappears. Buttons retain their circular aspect ratio. */
+@media (max-height: 340px) and (orientation: landscape) {
+  .driving-hud {
+    --hud-knob-size: 22px;
+  }
+  .drive-dock .climate-three-knobs {
+    padding-top: 7px;
+    padding-bottom: 2px;
+  }
+  .drive-dock .cockpit-radio[data-compact="true"] .radio-display {
+    min-height: 20px;
+    padding-block: 0;
+  }
+  .drive-dock .cockpit-radio[data-compact="true"] .radio-display strong {
+    font-size: 7px;
+  }
+  .drive-dock .radio-transport {
+    --radio-key-size: 18px;
+    padding: 0;
+  }
+  .drive-dock .radio-volume-dial {
+    flex-basis: 20px;
+    width: 20px;
+    height: 20px;
+  }
+  .drive-dock .radio-volume-dial .climate-knob {
+    width: 20px;
+    height: 20px;
+  }
+  .drive-dock, .dock-equipment {
+    gap: 2px;
   }
 }

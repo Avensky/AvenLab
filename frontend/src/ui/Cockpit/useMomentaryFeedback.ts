@@ -48,6 +48,9 @@ export function useMomentaryFeedback() {
     const node = (event.target as Element).closest?.<HTMLElement>(
       'button,[role="slider"]',
     );
+    // Native ranges own focus, dragging and their input/change events. Cancelling
+    // pointerdown/mousedown here prevents the brightness thumb from moving.
+    if (node?.matches('input[type="range"]')) return null;
     return node &&
       node.closest("[data-momentary-controls]") === event.currentTarget &&
       !node.matches(':disabled,[aria-disabled="true"]')

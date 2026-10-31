@@ -49,6 +49,13 @@ export const MAIN_MENU_ITEMS = [
     screen: "swarm",
     available: false,
   },
+  {
+    id: "social",
+    label: "Worlds & social",
+    description: "Private worlds, teammates, groups and invitations.",
+    screen: "social",
+    available: true,
+  },
 ] as const;
 
 export const PAUSE_MENU_ITEMS = [
@@ -96,5 +103,10 @@ export const PAUSE_MENU_ITEMS = [
     id: "leave_game",
     label: "Leave game",
     description: "Return to the main menu.",
+  },
+  {
+    id: "social",
+    label: "Worlds & social",
+    description: "Your current world, teammates and invitations.",
   },
 ] as const;

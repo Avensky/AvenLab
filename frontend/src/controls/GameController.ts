@@ -1,6 +1,7 @@
 import { useGameStore } from "../store/presentation/gameStore";
 import { leaveInspection } from "../store/presentation/inspectionActions";
 import { usePreferencesStore } from "../store/preferences/preferencesStore";
+import { useTextKeyboardStore } from "../store/text/keyboardStore";
 import { useEffect } from "react";
 import { useInputStore } from "../store/input/inputStore";
 import { useUIStore } from "../store/menus/uiStore";
@@ -165,7 +166,14 @@ export function GameController() {
       }
       if (panelPressHeld && !pressed(0)) releasePanelPress(false);
       const ui = useUIStore.getState();
-      const typing = isTypingTarget(document.activeElement);
+      // Controller forms route A/D-pad to their focused fields. Their assisted
+      // input opens our keyboard; physical typing remains a normal text edit.
+      const typing =
+        isTypingTarget(document.activeElement) &&
+        !(
+          document.activeElement instanceof HTMLElement &&
+          document.activeElement.closest("[data-controller-form]")
+        );
       const recorderText =
         typing &&
         document.activeElement instanceof HTMLElement &&
@@ -212,6 +220,10 @@ export function GameController() {
       }
       if (edges[9]) {
         release();
+        if (useTextKeyboardStore.getState().session) {
+          useTextKeyboardStore.getState().close();
+          return;
+        }
         useUIStore.getState().togglePauseMenu();
         return;
       }

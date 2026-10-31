@@ -40,7 +40,9 @@ export function DrivingHUD() {
       data-drive-controls={dock}
       inert={inspector || command}
       onPointerDownCapture={(event) => {
-        if ((event.target as Element).closest('button,[role="slider"]')) {
+        if (
+          (event.target as Element).closest('button,[role="slider"]:not(input)')
+        ) {
           event.preventDefault();
           const focused = document.activeElement;
           if (
@@ -51,7 +53,9 @@ export function DrivingHUD() {
         }
       }}
       onMouseDownCapture={(event) => {
-        if ((event.target as Element).closest('button,[role="slider"]'))
+        if (
+          (event.target as Element).closest('button,[role="slider"]:not(input)')
+        )
           event.preventDefault();
       }}
       onPointerDown={(event) => event.stopPropagation()}

@@ -11,7 +11,8 @@ export type MenuScreen =
   | "settings"
   | "vehicle_select"
   | "career"
-  | "missions";
+  | "missions"
+  | "social";
 
 export type UIOverlay =
   | null
@@ -23,7 +24,8 @@ export type UIOverlay =
   | "missions"
   | "leave_game"
   | "cockpit"
-  | "world_builder";
+  | "world_builder"
+  | "social";
 export type CockpitTab =
   | "brightness"
   | "climate"
@@ -40,7 +42,11 @@ export type CockpitTab =
   | "research";
 
 export type MenuId =
-  "main" | "pause" | "settings" | "sandbox_setup" | "signal_recon_setup";
+  | "main"
+  | "pause"
+  | "settings"
+  | "sandbox_setup"
+  | "signal_recon_setup";
 
 // Only Sandbox owns driving controls and the in-game pause stack.
 export const isDrivingScreen = (screen: MenuScreen) => screen === "sandbox";

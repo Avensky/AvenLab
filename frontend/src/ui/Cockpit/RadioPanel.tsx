@@ -7,6 +7,7 @@ import {
   previousRadioTrack,
   restartRadio,
   setRadioVolume,
+  setRadioPower,
   toggleRadio,
   toggleRadioMute,
   useRadioStore,
@@ -76,10 +77,26 @@ export function RadioPanel({
     file = useRef<HTMLInputElement>(null);
   const feedback = useMomentaryFeedback();
   return (
-    <div {...feedback} className="cockpit-radio" data-compact={compact}>
+    <div
+      {...feedback}
+      className="cockpit-radio"
+      data-compact={compact}
+      data-powered={radio.powered}
+    >
       <div className="radio-display">
-        <strong>{radio.title || radio.track}</strong>
-        <RadioStatus fallback={radio.artist || radio.station} />
+        <strong>{radio.powered ? radio.title || radio.track : "RADIO OFF"}</strong>
+        {radio.powered && <RadioStatus fallback={radio.artist || radio.station} />}
+        <button
+          type="button"
+          className="radio-power"
+          aria-label="Radio power"
+          role="switch"
+          aria-checked={radio.powered}
+          title={radio.powered ? "Turn radio off" : "Turn radio on"}
+          onClick={() => void setRadioPower(!radio.powered)}
+        >
+          <RadioIcon name="power" />
+        </button>
         {onMinimize && (
           <button
             type="button"
@@ -97,7 +114,7 @@ export function RadioPanel({
           type="button"
           aria-label="Radio previous track"
           title="Previous / replay"
-          disabled={!radio.trackCount}
+          disabled={!radio.powered || !radio.trackCount}
           onClick={() => void previousRadioTrack()}
         >
           <RadioIcon name="previous" />
@@ -105,6 +122,7 @@ export function RadioPanel({
         <button
           type="button"
           aria-label="Radio play or pause"
+          disabled={!radio.powered}
           onClick={() => void toggleRadio()}
           aria-pressed={radio.playing}
         >
@@ -114,7 +132,7 @@ export function RadioPanel({
           type="button"
           aria-label="Radio next track"
           title="Next track"
-          disabled={radio.trackCount < 2}
+          disabled={!radio.powered || radio.trackCount < 2}
           onClick={() => void nextRadioTrack()}
         >
           <RadioIcon name="next" />
@@ -123,7 +141,7 @@ export function RadioPanel({
           type="button"
           aria-label="Radio restart track"
           title="Start from beginning"
-          disabled={!radio.trackCount}
+          disabled={!radio.powered || !radio.trackCount}
           onClick={restartRadio}
         >
           <RadioIcon name="restart" />
@@ -139,6 +157,7 @@ export function RadioPanel({
         <div className="radio-volume-dial">
           <RotaryKnob
             label="Radio volume"
+            disabled={!radio.powered}
             min={0}
             max={20}
             value={Math.round(radio.volume * 20)}
@@ -151,7 +170,7 @@ export function RadioPanel({
           />
         </div>
       </div>
-      {radio.message && (
+      {radio.powered && radio.message && (
         <span className="radio-status" role="status">
           {radio.message}
         </span>

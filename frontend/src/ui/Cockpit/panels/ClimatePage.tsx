@@ -1,13 +1,13 @@
 import { usePreferencesStore } from "../../../store/preferences/index";
 import { ClimatePanel } from "../ClimatePanel";
+import { HudVisibilityToggle } from "./HudVisibilityToggle";
 
 /** Climate is the master visibility gate for the entire clock/hazard/HVAC unit.
  * Size and hazard preferences survive hiding it; none of these edits send a
  * cabin command. Cockpit controls remain available while the driving HUD hides. */
 export function ClimatePage() {
   const hazards = usePreferencesStore((s) => s.hudGroups.hazards);
-  const size = usePreferencesStore((s) => s.climateHudSize),
-    visible = usePreferencesStore((s) => s.hudGroups.climate);
+  const size = usePreferencesStore((s) => s.climateHudSize);
   return (
     <div className="cockpit-climate-page">
       <div
@@ -26,10 +26,7 @@ export function ClimatePage() {
                 climateHudSize: value,
                 ...(value === "compact"
                   ? {
-                      hudGroups: {
-                        ...usePreferencesStore.getState().hudGroups,
-                        hazards: true,
-                      },
+                      hudGroups: { hazards: true },
                     }
                   : {}),
               })
@@ -38,17 +35,10 @@ export function ClimatePage() {
             {value === "compact" ? "COMPACT HUD" : "FULL HUD"}
           </button>
         ))}
-        <button
-          type="button"
-          role="switch"
-          aria-label="Climate controls on driving HUD"
-          aria-checked={visible}
-          onClick={() =>
-            usePreferencesStore.getState().setHudGroup("climate", !visible)
-          }
-        >
-          {visible ? "HIDE HUD" : "SHOW HUD"}
-        </button>
+        <HudVisibilityToggle
+          id="climate"
+          label="Climate controls on driving HUD"
+        />
         <button
           type="button"
           role="switch"

@@ -22,7 +22,8 @@
   position: absolute;
   left: 50%;
   top: 50%;
-  height: calc(3% * var(--stalk-scale, 1));
+  /* Radial thickness grows without moving the approved cap radius/angle. */
+  height: calc(4.6% * var(--stalk-scale, 1));
   transform-origin: 0 50%;
   transform: translateY(-50%) rotate(var(--stalk-angle));
   border: 1px solid #525a61;
@@ -42,7 +43,7 @@
 .wheel-assembly .column-stalk-cap {
   position: absolute;
   width: calc(8% * var(--stalk-scale, 1));
-  height: calc(6.5% * var(--stalk-scale, 1));
+  height: calc(8% * var(--stalk-scale, 1));
   min-width: 0;
   min-height: 0;
   padding: 1px;
@@ -71,7 +72,7 @@
 .wheel-assembly .stalk-step {
   position: absolute;
   width: calc(5.4% * var(--stalk-scale, 1));
-  height: calc(6.5% * var(--stalk-scale, 1));
+  height: calc(8% * var(--stalk-scale, 1));
   min-width: 0;
   min-height: 0;
   padding: 0;

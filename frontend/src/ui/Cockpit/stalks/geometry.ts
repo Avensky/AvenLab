@@ -3,7 +3,8 @@
 export const STALK_LAYOUTS = {
   lights: { angle: 120, reach: 31, spacing: 11.5, scale: 0.9 },
   wipers: { angle: 60, reach: 31, spacing: 11.5, scale: 0.9 },
-  cruise: { angle: 326, reach: 27, spacing: 10.5, scale: 0.75 },
+  // Keep the approved mount/buttons; shorten only the held cruise sweep.
+  cruise: { angle: 326, reach: 27, spacing: 10.5, scale: 0.75, travel: 4 },
 } as const;
 
 /** Screen Y points down; a positive polar angle therefore subtracts from Y. */

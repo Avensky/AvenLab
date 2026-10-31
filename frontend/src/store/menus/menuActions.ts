@@ -6,6 +6,7 @@ import {
   useCanBusStore,
 } from "../recon/canBusStore";
 import { useSelectionStore } from "../selection/selectionStore";
+import { useNetworkStore } from "../session/networkStore";
 
 import {
   isDrivingScreen,
@@ -122,6 +123,7 @@ export const createMenuActions: StateCreator<
       }
 
       if (index === 1) {
+        if (useNetworkStore.getState().worldMap) return;
         useSelectionStore.getState().nextMap();
         return;
       }
@@ -183,6 +185,7 @@ export const createMenuActions: StateCreator<
       }
 
       if (index === 1) {
+        if (useNetworkStore.getState().worldMap) return;
         // dir === 1 ? selection.nextMap() : selection.nextMap();
         if (dir === 1) {
           selection.nextMap();

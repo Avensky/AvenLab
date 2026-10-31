@@ -15,6 +15,10 @@ import {
 } from "../../store/preferences/preferencesStore";
 import { useUIStore } from "../../store/menus/uiStore";
 import {
+  useTextKeyboardStore,
+  type KeyboardAssist,
+} from "../../store/text/keyboardStore";
+import {
   cityQualityControl,
   cityViewDistanceControl,
   cityPerformanceControl,
@@ -37,6 +41,7 @@ const BINDING_LABELS: Record<BindingAction, string> = {
 };
 
 export function SettingsMenu() {
+  const keyboardAssist = useTextKeyboardStore((s) => s.mode);
   const render = useRenderSettingsStore();
   const debug = useDebugViewStore();
   const prefs = usePreferencesStore();
@@ -269,24 +274,8 @@ export function SettingsMenu() {
                 (id): MenuRow => ({
                   id: `hud-${id}`,
                   label: groupLabels[id],
-                  value:
-                    prefs.hudGroups[id] &&
-                    (id !== "ignition" || prefs.ignitionVisibility !== "hidden")
-                      ? "Show"
-                      : "Hide",
-                  action: () => {
-                    const shown =
-                      prefs.hudGroups[id] &&
-                      (id !== "ignition" ||
-                        prefs.ignitionVisibility !== "hidden");
-                    prefs.setHudGroup(id, !shown);
-                    if (
-                      id === "ignition" &&
-                      !shown &&
-                      prefs.ignitionVisibility === "hidden"
-                    )
-                      prefs.update({ ignitionVisibility: "auto" });
-                  },
+                  value: prefs.hudGroups[id] ? "Show" : "Hide",
+                  action: () => prefs.setHudGroup(id, !prefs.hudGroups[id]),
                 }),
               ),
               {
@@ -338,6 +327,7 @@ export function SettingsMenu() {
                 action: () => {
                   prefs.update({
                     hudGroups: { ...DEFAULT_HUD_GROUPS },
+                    ignitionVisibility: "auto",
                     showTouchControls: true,
                     showDriveControls: true,
                   });
@@ -495,13 +485,18 @@ export function SettingsMenu() {
             id: "social",
             label: "Social",
             description:
-              "Party, team chat and matchmaking are planned for capture the flag. No communication or privacy service is connected yet.",
+              "Manage teammates, social groups, private worlds and invitations. Team chat and matchmaking are planned.",
             rows: [
-              upcoming(
-                "party",
-                "Party & invites",
-                "Form a squad and coordinate roles.",
-              ),
+              {
+                id: "social-hub",
+                label: "Worlds, teammates & groups",
+                description: "Create private worlds and manage invitations.",
+                action: () => {
+                  const ui = useUIStore.getState();
+                  if (ui.screen === "sandbox") ui.setOverlay("social");
+                  else ui.setScreen("social");
+                },
+              },
               upcoming(
                 "teamchat",
                 "Team / server chat",
@@ -552,6 +547,23 @@ export function SettingsMenu() {
             description:
               "Menus use text labels as well as color. These preferences are saved on this device.",
             rows: [
+              {
+                id: "keyboard-assist",
+                label: "Keyboard assist",
+                description:
+                  "AUTO learns from physical typing. ON always offers the on-screen keyboard.",
+                value: keyboardAssist.toUpperCase(),
+                action: (dir) =>
+                  useTextKeyboardStore
+                    .getState()
+                    .setMode(
+                      step<KeyboardAssist>(
+                        ["auto", "on", "off"],
+                        keyboardAssist,
+                        dir,
+                      ),
+                    ),
+              },
               {
                 id: "theme",
                 label: "Interface theme",

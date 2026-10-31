@@ -15,6 +15,7 @@ type Sandbox = {
 
 export function SandboxSetup({ collapsed, setCollapsed }: Sandbox) {
   const connected = useNetworkStore((s) => s.connected);
+  const joinedWorld = useNetworkStore((s) => s.worldName);
   const [spawnError, setSpawnError] = useState("");
   const setScreen = useUIStore((s) => s.setScreen);
 
@@ -130,7 +131,13 @@ export function SandboxSetup({ collapsed, setCollapsed }: Sandbox) {
           className="outline-none"
           onFocus={() => setActiveMenuIndex(1)}
         >
-          <MapSelector menuId="sandbox_setup" menuIndex={1} translucent />
+          {joinedWorld ? (
+            <div className="garage-selection-status px-4 py-2 text-center">
+              WORLD: {joinedWorld} · MAP: {map.name}
+            </div>
+          ) : (
+            <MapSelector menuId="sandbox_setup" menuIndex={1} translucent />
+          )}
         </div>
 
         <div className="relative grid grid-cols-2 border border-cyan-400/30">
