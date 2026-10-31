@@ -111,7 +111,7 @@ test("alpha selection, queue and HUD route to their own state owners", async (t)
       },
     };
     await t.test(
-      "role wall changes the existing preview chassis and a denied server pick keeps the locked hero",
+      "portrait and arrow picks share server role validation and keep a denied hero locked",
       async () => {
         const { HeroSelection } = await load("game/alpha/HeroSelection.tsx");
         await act(async () => {
@@ -132,7 +132,7 @@ test("alpha selection, queue and HUD route to their own state owners", async (t)
         );
         assert.equal(document.querySelectorAll(".alpha-squad-seat").length, 5);
         await click("SUPPORT", "tab");
-        await click("MECHANIC · SUPPORT");
+        await click("Next vehicle");
         const command = sent.at(-1);
         assert.equal(command.action, "hero_select");
         assert.equal(command.hero, "mechanic");
@@ -159,13 +159,11 @@ test("alpha selection, queue and HUD route to their own state owners", async (t)
         );
         const { joinSelectedMode } = await load("game/alpha/sessionActions.ts");
         await act(async () => {
-          social
-            .getState()
-            .receive({
-              ...view,
-              current_world_id: null,
-              alpha: { ...view.alpha, active: null },
-            });
+          social.getState().receive({
+            ...view,
+            current_world_id: null,
+            alpha: { ...view.alpha, active: null },
+          });
           network.setState({
             connected: false,
             worldName: null,
@@ -180,13 +178,67 @@ test("alpha selection, queue and HUD route to their own state owners", async (t)
         await click("Previous map");
         assert.equal(selection.getState().mapIndex, index);
         assert.equal(document.querySelectorAll("[data-hero]").length, 7);
-        assert.equal(document.querySelector('[aria-label="Next vehicle"]'), null);
+        assert.ok(document.querySelector('[aria-label="Next vehicle"]'));
+        assert.equal(
+          document.querySelectorAll(".hero-portrait-name").length,
+          0,
+        );
         await click("BRZ · DPS");
         assert.equal(alpha.getState().hero, "brz");
         assert.equal(
           vehicleCatalog[selection.getState().vehicleIndex].id,
           "brz",
         );
+        await click("Next vehicle");
+        assert.equal(alpha.getState().hero, "camaro");
+        await click("Previous vehicle");
+        assert.equal(alpha.getState().hero, "brz");
+        const arrow = document.querySelector('[aria-label="Next vehicle"]');
+        await act(async () => {
+          arrow.focus();
+          route("right");
+        });
+        assert.equal(alpha.getState().hero, "camaro");
+        assert.equal(
+          document.activeElement,
+          arrow,
+          "cycling keeps the strip focused",
+        );
+        await act(async () =>
+          document.activeElement.dispatchEvent(
+            new dom.window.KeyboardEvent("keydown", {
+              key: "ArrowLeft",
+              code: "ArrowLeft",
+              bubbles: true,
+              cancelable: true,
+            }),
+          ),
+        );
+        assert.equal(alpha.getState().hero, "brz");
+        await click("SUPPORT", "tab");
+        await click("Next vehicle");
+        assert.equal(alpha.getState().hero, "mechanic");
+        await click("Next vehicle");
+        assert.equal(alpha.getState().hero, "logistics");
+        assert.equal(
+          vehicleCatalog[selection.getState().vehicleIndex].id,
+          "ae86",
+        );
+        await click("Next vehicle");
+        assert.equal(
+          alpha.getState().hero,
+          "mechanic",
+          "role cycling wraps without losing the support identity",
+        );
+        const mapArrow = document.querySelector('[aria-label="Next map"]');
+        await act(async () => {
+          mapArrow.focus();
+          route("right");
+        });
+        assert.notEqual(selection.getState().mapIndex, index);
+        await act(async () => route("left"));
+        assert.equal(selection.getState().mapIndex, index);
+        await click("ALL", "tab");
         await click("WORLD EDITOR");
         assert.ok(document.querySelector('[aria-label="Next map"]'));
         await click("COMPETITIVE");
@@ -236,13 +288,11 @@ test("alpha selection, queue and HUD route to their own state owners", async (t)
           "classic",
         );
         await act(async () => {
-          prefs
-            .getState()
-            .update({
-              showDriveControls: true,
-              climateHudSize: "compact",
-              hudGroups: { display: true, climate: true },
-            });
+          prefs.getState().update({
+            showDriveControls: true,
+            climateHudSize: "compact",
+            hudGroups: { display: true, climate: true },
+          });
           panels.setState({ radio: true, climate: true, map: false });
           network.setState({ connected: true, pingMs: 42 });
           frames.resetHudFrames();
@@ -300,53 +350,109 @@ test("alpha selection, queue and HUD route to their own state owners", async (t)
         assert.ok(document.querySelector(".console-display-content"));
       },
     );
-    await t.test("chat uses confirmed socket identity, deduplicates acknowledgements and discards old-team history", async () => {
-      const { useChatStore: chat } = await load("store/chat/chatStore.ts");
-      const { sendChat, loadChatHistory } = await load("net/chatClient.ts");
-      const { LobbyChat } = await load("game/alpha/LobbyChat.tsx");
-      await act(async () => {
-        network.setState({ connected: true });
-        client.receiveSocialState(view);
-      });
-      await render(LobbyChat);
-      let packet = sent.at(-1);
-      assert.equal(packet.action, "chat_history");
-      await act(async () => client.receiveSocialResult({ request_id: packet.request_id, ok: true, data: {context:"lobby",messages:[]} }));
-      await click("TEAM");
-      packet = sent.at(-1);
-      await act(async () => client.receiveSocialResult({ request_id: packet.request_id, ok: true, data: {context:"team:1:red",messages:[]} }));
-      let pending;
-      await act(async () => { pending = sendChat("team", "<b>hello</b>"); });
-      packet = sent.at(-1);
-      assert.equal(packet.action,"chat_send");
-      assert.equal(packet.channel,"team");
-      assert.equal(packet.author_id,undefined);
-      const message={id:1,channel:"team",context:"team:1:red",author_id:"me",name:"Driver",text:"<b>hello</b>",sent_at:1234};
-      await act(async () => {
-        chat.getState().receive(message);
-        client.receiveSocialResult({request_id:packet.request_id,ok:true,data:{message}});
-      });
-      await pending;
-      assert.equal(chat.getState().history["team:1:red"].length,1);
-      assert.match(document.querySelector(".chat-lines").textContent,/<b>hello<\/b>/);
-      assert.equal(document.querySelector(".chat-lines b"),null,"chat is text, not HTML");
-      await act(async () => { for(let id=2;id<=80;id++) chat.getState().receive({...message,id}); });
-      assert.equal(chat.getState().history["team:1:red"].length,50);
-      let historyPending;
-      await act(async () => { historyPending = loadChatHistory("team"); });
-      const historyPacket=sent.at(-1);
-      await act(async () => client.receiveSocialState({...view,current_world_id:2,alpha:{...view.alpha,active:{...view.alpha.active,world_id:2,team:"blue"}}}));
-      await act(async () => client.receiveSocialResult({request_id:historyPacket.request_id,ok:true,data:{context:"team:1:red",messages:[message]}}));
-      await historyPending;
-      assert.equal(chat.getState().history["team:1:red"],undefined);
-      await act(async () => chat.getState().membership("me",null,null));
-      const before=sent.length;
-      await assert.rejects(sendChat("team","no world"),/Join a world/);
-      assert.equal(sent.length,before);
-      await act(async () => client.setSocialConnection(null));
-      assert.deepEqual(chat.getState().history,{});
-      client.setSocialConnection(socket);
-    });
+    await t.test(
+      "chat uses confirmed socket identity, deduplicates acknowledgements and discards old-team history",
+      async () => {
+        const { useChatStore: chat } = await load("store/chat/chatStore.ts");
+        const { sendChat, loadChatHistory } = await load("net/chatClient.ts");
+        const { LobbyChat } = await load("game/alpha/LobbyChat.tsx");
+        await act(async () => {
+          network.setState({ connected: true });
+          client.receiveSocialState(view);
+        });
+        await render(LobbyChat);
+        let packet = sent.at(-1);
+        assert.equal(packet.action, "chat_history");
+        await act(async () =>
+          client.receiveSocialResult({
+            request_id: packet.request_id,
+            ok: true,
+            data: { context: "lobby", messages: [] },
+          }),
+        );
+        await click("TEAM");
+        packet = sent.at(-1);
+        await act(async () =>
+          client.receiveSocialResult({
+            request_id: packet.request_id,
+            ok: true,
+            data: { context: "team:1:red", messages: [] },
+          }),
+        );
+        let pending;
+        await act(async () => {
+          pending = sendChat("team", "<b>hello</b>");
+        });
+        packet = sent.at(-1);
+        assert.equal(packet.action, "chat_send");
+        assert.equal(packet.channel, "team");
+        assert.equal(packet.author_id, undefined);
+        const message = {
+          id: 1,
+          channel: "team",
+          context: "team:1:red",
+          author_id: "me",
+          name: "Driver",
+          text: "<b>hello</b>",
+          sent_at: 1234,
+        };
+        await act(async () => {
+          chat.getState().receive(message);
+          client.receiveSocialResult({
+            request_id: packet.request_id,
+            ok: true,
+            data: { message },
+          });
+        });
+        await pending;
+        assert.equal(chat.getState().history["team:1:red"].length, 1);
+        assert.match(
+          document.querySelector(".chat-lines").textContent,
+          /<b>hello<\/b>/,
+        );
+        assert.equal(
+          document.querySelector(".chat-lines b"),
+          null,
+          "chat is text, not HTML",
+        );
+        await act(async () => {
+          for (let id = 2; id <= 80; id++)
+            chat.getState().receive({ ...message, id });
+        });
+        assert.equal(chat.getState().history["team:1:red"].length, 50);
+        let historyPending;
+        await act(async () => {
+          historyPending = loadChatHistory("team");
+        });
+        const historyPacket = sent.at(-1);
+        await act(async () =>
+          client.receiveSocialState({
+            ...view,
+            current_world_id: 2,
+            alpha: {
+              ...view.alpha,
+              active: { ...view.alpha.active, world_id: 2, team: "blue" },
+            },
+          }),
+        );
+        await act(async () =>
+          client.receiveSocialResult({
+            request_id: historyPacket.request_id,
+            ok: true,
+            data: { context: "team:1:red", messages: [message] },
+          }),
+        );
+        await historyPending;
+        assert.equal(chat.getState().history["team:1:red"], undefined);
+        await act(async () => chat.getState().membership("me", null, null));
+        const before = sent.length;
+        await assert.rejects(sendChat("team", "no world"), /Join a world/);
+        assert.equal(sent.length, before);
+        await act(async () => client.setSocialConnection(null));
+        assert.deepEqual(chat.getState().history, {});
+        client.setSocialConnection(socket);
+      },
+    );
     await t.test(
       "queue shows the server position, cycles supplied videos and B cancels the actual ticket",
       async () => {
@@ -479,12 +585,22 @@ test("alpha selection, queue and HUD route to their own state owners", async (t)
             button.dispatchEvent(event);
           });
         await point("pointerdown");
-        assert.equal(input.getState().input.handbrake, 0.4, "contact waits to distinguish a parking hold from a drift tap");
+        assert.equal(
+          input.getState().input.handbrake,
+          0.4,
+          "contact waits to distinguish a parking hold from a drift tap",
+        );
         await point("pointerup");
         assert.equal(input.getState().input.handbrake, 1);
         await act(async () => button.click());
-        assert.equal(input.getState().input.handbrake, 1, "synthesized click cannot repeat the pulse");
-        await act(async () => new Promise(resolve => setTimeout(resolve, 140)));
+        assert.equal(
+          input.getState().input.handbrake,
+          1,
+          "synthesized click cannot repeat the pulse",
+        );
+        await act(
+          async () => new Promise((resolve) => setTimeout(resolve, 140)),
+        );
         assert.equal(input.getState().input.handbrake, 0.4);
         await point("pointerdown");
         await point("pointercancel");
@@ -493,13 +609,22 @@ test("alpha selection, queue and HUD route to their own state owners", async (t)
         assert.equal(input.getState().input.handbrake, 0);
         await point("pointerdown");
         assert.equal(input.getState().input.handbrake, 0);
-        await act(async () => new Promise(resolve => setTimeout(resolve, 420)));
-        assert.equal(input.getState().input.handbrake, 0, "parking hold never produces a drift burst");
+        await act(
+          async () => new Promise((resolve) => setTimeout(resolve, 420)),
+        );
+        assert.equal(
+          input.getState().input.handbrake,
+          0,
+          "parking hold never produces a drift burst",
+        );
         assert.ok(input.getState().input.parking_brake > 0);
         await point("pointerup");
         await act(async () => button.click());
         assert.equal(input.getState().input.handbrake, 0);
-        assert.ok(input.getState().input.parking_brake > 0, "hold retains its parking latch");
+        assert.ok(
+          input.getState().input.parking_brake > 0,
+          "hold retains its parking latch",
+        );
       },
     );
   } finally {

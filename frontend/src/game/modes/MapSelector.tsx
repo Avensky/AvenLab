@@ -39,6 +39,7 @@ export function MapSelector({
   return (
     <div
       className={`selection-strip border-t transition-[background,border-color,box-shadow] duration-200 ${getSelectionClasses(selected, translucent)}`}
+      data-controller-selector={formNavigation || undefined}
       onPointerEnter={() => {
         if (!formNavigation) setActiveMenuIndex(menuIndex);
       }}

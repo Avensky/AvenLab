@@ -23,6 +23,7 @@ export function SelectorArrow({
       type="button"
       className="menu-control selection-strip-arrow"
       aria-label={label}
+      data-selector-direction={direction}
       disabled={disabled}
       onClick={onPress}
       onKeyDown={(event) => {

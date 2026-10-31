@@ -41,12 +41,12 @@ export function HeroRoster({
               data-role={hero.role}
               data-grid-item
               aria-label={`${hero.name} · ${hero.role.toUpperCase()}`}
+              title={`${hero.name} · ${hero.role.toUpperCase()}`}
               aria-pressed={selected === hero.id}
               disabled={busy}
               onClick={() => onChoose(hero.id)}
             >
               <HeroPortrait hero={hero.id} />
-              <span className="hero-portrait-name">{hero.name}</span>
             </button>
           ),
         )}
@@ -55,8 +55,8 @@ export function HeroRoster({
   );
 }
 
-/** Transparent rail: only the individual folder tabs sit above the vehicle bar. */
-export function HeroFolderTabs({
+/** One contiguous role rail above the shared translucent selector row. */
+export function HeroRoleTabs({
   filter,
   onFilter,
 }: {
@@ -64,7 +64,7 @@ export function HeroFolderTabs({
   onFilter: (filter: HeroFilter) => void;
 }) {
   return (
-    <nav className="hero-folder-tabs" role="tablist" aria-label="Hero role">
+    <nav className="hero-role-tabs" role="tablist" aria-label="Hero role">
       {HERO_FILTERS.map((role) => (
         <button
           key={role}

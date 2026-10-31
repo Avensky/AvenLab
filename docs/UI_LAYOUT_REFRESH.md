@@ -44,18 +44,22 @@ CAN/interface setup; Back returns to this garage. It opens without a Rust drivin
 server and cannot be submitted as a mode_join request.
 
 Seven real vehicle portraits appear in the top-right grid, all visible by default.
-Each card shows only its portrait and name; clicking selects directly. The existing
-single 3D vehicle remains on the rotating garage pad. All/Tank/DPS/Support filter
-buttons protrude above the slim vehicle bar like folder tabs, with no filled rail
-behind them. The bar sits directly against the existing controller footer; the
-old match-rule strip and bottom quick-card wall are removed.
+Cards omit name bands and the enclosing box, while the selected name/role appears
+in large type at the upper left below the compact teammate row. Teammates align
+left on mobile and center on wide desktops. The mode row is flush with the header.
 
-Sandbox/World Editor keep the environment arrow bar in the same slim vehicle row.
-Environment changes lock after admission to preserve the current world; leave its
-lobby to choose another. Real teammate portraits/names remain above the bar during
-Quickplay/Competitive. Server role validation still owns admitted picks.
+Square All/Tank/DPS/Support filters adjoin above the restored translucent vehicle
+arrow bar. The bar sits directly against the existing controller footer. Arrows
+and portraits share validated hero selection, including role filtering and support
+identities. Left/right changes a focused strip; up/down leaves it. Grid direction
+keys keep their focus-navigation behavior.
 
-Lobby/Team chat sits at the lower left with assisted keyboard support. See
+Sandbox/World Editor keep the environment arrow bar with identical styling in the
+same row. Environment changes lock after admission. The selected vehicle stays on
+the existing single rotating garage pad, visible behind the translucent controls.
+
+Lobby/Team chat sits at the lower left with assisted keyboard support and fades
+after four seconds without interaction; hover or an assisted keyboard keeps it solid. See
 [HERO_PORTRAITS_AND_CHAT.md](HERO_PORTRAITS_AND_CHAT.md) for behavior, protocol,
 performance bounds and the parking-brake corrections.
 

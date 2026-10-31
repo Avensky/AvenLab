@@ -19,6 +19,27 @@ export function LobbyChat() {
     [draft, setDraft] = useState("");
   const [notice, setNotice] = useState(""),
     [busy, setBusy] = useState(false);
+  const [awake, setAwake] = useState(false);
+  const composing = useTextKeyboardStore(
+    (s) => s.session?.label === "Chat message",
+  );
+  const idleTimer = useRef<number | null>(null);
+  // No idle polling: one timer after interaction; typing and the assisted
+  // keyboard keep the panel solid even when that short grace period expires.
+  const wake = useCallback(() => {
+    setAwake(true);
+    if (idleTimer.current !== null) window.clearTimeout(idleTimer.current);
+    idleTimer.current = window.setTimeout(() => {
+      idleTimer.current = null;
+      setAwake(false);
+    }, 4000);
+  }, []);
+  useEffect(
+    () => () => {
+      if (idleTimer.current !== null) window.clearTimeout(idleTimer.current);
+    },
+    [],
+  );
   const root = useRef<HTMLElement>(null),
     log = useRef<HTMLDivElement>(null),
     sending = useRef(false);
@@ -86,6 +107,10 @@ export function LobbyChat() {
       ref={root}
       aria-label="Lobby and team chat"
       data-expanded={expanded}
+      data-active={awake || composing}
+      onPointerDownCapture={wake}
+      onKeyDownCapture={wake}
+      onFocusCapture={wake}
     >
       <header>
         <button type="button" className="chat-focus" onClick={focus}>

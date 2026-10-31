@@ -5,19 +5,29 @@ mobile cockpit and HUD layout updates. Rebuild and restart **Rust and frontend**
 
 ## Selection layout and input
 
-- The top-right grid displays all seven current heroes with a portrait and name.
-  Click a card, focus it and press Enter, or use controller directions and A.
-  Up/down moves one grid row. Focusing a card does not select it.
-- The same selected vehicle remains in the existing 3D garage and keeps rotating
-  while waiting. Reduced-motion preference pauses the turntable as before.
-- All/Tank/DPS/Support buttons protrude above the vehicle bar like folder tabs.
-  Only the individual tabs have backgrounds; the full-width vehicle row is flush
-  with the preserved controller footer. There is no match-rules strip below it.
-- Sandbox and World Editor retain environment arrows in that same vehicle row.
-  Admission locks environment changes. Confirmed server picks and denied role
-  choices retain their previous behavior. Teammate seats show real portraits and
-  player names; unoccupied seats remain marked waiting.
-- Main keeps the wide-screen left/right arrangement, with the divider removed.
+- The mode row touches the header without a gutter. Five compact teammate cards
+  sit directly below it, aligned left on phones and centered on wide desktops.
+  The selected hero's large name and role sit at the upper left below those cards.
+- The top-right grid displays all seven current portraits. Name bands and the
+  enclosing box are removed, keeping the same image footprint in shorter cards.
+  Names remain in accessible button labels and hover tooltips. The large selected
+  name and teammate cards still identify each hero.
+- Select a portrait directly, or use the restored translucent vehicle arrow bar.
+  Both routes use the same server-validated hero action. Arrows respect the current
+  role filter and preserve support identities when their chassis is shared.
+- All/Tank/DPS/Support form one square, fully bordered rail with adjoining edges.
+  It sits above the selector bar without the former folder cutouts or gaps.
+- Keyboard/controller left/right changes a focused vehicle/environment strip;
+  up/down leaves it. Inside the portrait grid directions move focus, with up/down
+  jumping one row. Enter or controller A selects the focused portrait.
+- Sandbox and World Editor use the same translucent styling for environment
+  arrows beside the vehicle row. World admission still locks map changes.
+- The vehicle bar remains flush against the existing controller footer, allowing
+  the garage/player to show through. The existing one-canvas turntable continues
+  rotating while waiting, unless reduced motion is enabled.
+- Main keeps its left/right arrangement without the former divider.
+
+See `HERO_SELECTION_POLISH.md` for the follow-up layout and chat fade behavior.
 
 ## Portrait assets and cost
 
@@ -34,7 +44,11 @@ uses the project's existing assets and licenses.
 
 ## Lobby and Team chat
 
-Chat sits at the lower left and can be minimized. T focuses the message field;
+Chat sits at the lower left and can be minimized. It fades when idle; a tap, focus
+or keyboard interaction restores opacity for four seconds. Pointer hover on a
+mouse device or the open assisted keyboard keeps it solid. Incoming messages do
+not wake it. One owned timer is cleared on unmount; there is no idle polling.
+T focuses the message field;
 Enter sends. Native typing remains in the field instead of selecting heroes or
 sending driving controls. The existing assisted keyboard is available, and its
 hardware-keyboard detection/preferences remain in charge. Team becomes available

@@ -9,6 +9,7 @@ import {
 } from "../../store/alpha/alphaStore";
 import { useSocialStore } from "../../store/social/socialStore";
 import { useSelectionStore } from "../../store/selection/selectionStore";
+import { VehicleSelector } from "../modes/VehicleSelector";
 import { MapSelector } from "../modes/MapSelector";
 import { useNetworkStore } from "../../store/session/networkStore";
 import { useUIStore } from "../../store/menus/uiStore";
@@ -16,7 +17,7 @@ import { requestSocial } from "../../net/socialClient";
 import { useFormNavigation } from "../social/useFormNavigation";
 import { joinSelectedMode, deploySelectedHero } from "./sessionActions";
 import { ProgressBadge } from "./ProgressBadge";
-import { HeroRoster, HeroFolderTabs } from "./HeroRoster";
+import { HeroRoster, HeroRoleTabs } from "./HeroRoster";
 import { HeroPortrait } from "./HeroPortrait";
 import { LobbyChat } from "./LobbyChat";
 import "./heroSelection.css";
@@ -105,6 +106,21 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
       setBusy(false);
     }
   };
+  // Arrows and portraits share one validated selection path, including support
+  // heroes that reuse a chassis. Cycle only within the current role filter.
+  const cycleHero = (direction: number) => {
+    const heroes = HEROES.filter(
+      (hero) => role === "all" || hero.role === role,
+    );
+    const index = heroes.findIndex((hero) => hero.id === heroId);
+    const next =
+      index < 0
+        ? direction > 0
+          ? 0
+          : heroes.length - 1
+        : (index + direction + heroes.length) % heroes.length;
+    void choose(heroes[next].id);
+  };
   const start = async () => {
     if (pending.current || planned) return;
     pending.current = true;
@@ -186,30 +202,6 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
           ))}
         </nav>
       )}
-      <div className="hero-selection-stage">
-        <HeroRoster
-          selected={heroId}
-          filter={role}
-          busy={busy}
-          onChoose={(id) => void choose(id)}
-        />
-        <div className="hero-left-panel">
-          <section
-            className="hero-summary"
-            aria-label="Selected hero"
-            data-role={selected.role}
-          >
-            <small>{selected.role.toUpperCase()}</small>
-            <h2>{selected.name}</h2>
-            {status && (
-              <p className="alpha-status" role="status">
-                {status}
-              </p>
-            )}
-          </section>
-          <LobbyChat />
-        </div>
-      </div>
       {match && (
         <div
           className="alpha-squad-bar hero-team-strip"
@@ -223,6 +215,11 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
                 key={member?.id ?? index}
                 className="alpha-squad-seat"
                 data-role={hero?.role}
+                title={
+                  member
+                    ? `${hero?.name ?? "Hero"} · ${member.name}`
+                    : "Waiting for player"
+                }
               >
                 <HeroPortrait
                   key={member?.hero ?? "empty"}
@@ -242,12 +239,43 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
           })}
         </div>
       )}
-      <section className="hero-vehicle-bar" aria-label="Vehicle selection">
-        <HeroFolderTabs filter={role} onFilter={setRole} />
-        <div className="hero-current-vehicle">
-          <small>VEHICLE</small>
-          <strong>{selected.name}</strong>
+      <div className="hero-selection-stage">
+        <HeroRoster
+          selected={heroId}
+          filter={role}
+          busy={busy}
+          onChoose={(id) => void choose(id)}
+        />
+        <section
+          className="hero-summary"
+          aria-label="Selected hero"
+          data-role={selected.role}
+        >
+          <small>{selected.role.toUpperCase()}</small>
+          <h2>{selected.name}</h2>
+          {status && (
+            <p className="alpha-status" role="status">
+              {status}
+            </p>
+          )}
+        </section>
+        <div className="hero-chat-panel">
+          <LobbyChat />
         </div>
+      </div>
+      <section className="hero-vehicle-bar" aria-label="Vehicle selection">
+        <HeroRoleTabs filter={role} onFilter={setRole} />
+        <VehicleSelector
+          formNavigation
+          translucent
+          showRole={false}
+          showCanSlug={false}
+          showNotes={false}
+          disabled={busy}
+          title={selected.name}
+          onPrevious={() => cycleHero(-1)}
+          onNext={() => cycleHero(1)}
+        />
         {(mode === "sandbox" || mode === "editor") && (
           <MapSelector
             formNavigation

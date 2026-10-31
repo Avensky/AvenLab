@@ -46,6 +46,7 @@ export function VehicleSelector({
   return (
     <div
       className={`selection-strip border-t transition-[background,border-color,box-shadow] duration-200 ${background}`}
+      data-controller-selector={formNavigation || undefined}
       onPointerEnter={() => {
         if (!formNavigation) setActiveMenuIndex(menuIndex);
       }}

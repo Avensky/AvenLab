@@ -34,6 +34,19 @@ export function useFormNavigation(
         else controls[0]?.focus();
         return;
       }
+      // Left/right changes the focused vehicle/environment strip in place;
+      // up/down still leaves it. Portrait arrows keep spatial focus navigation.
+      const selector = active?.closest<HTMLElement>(
+        "[data-controller-selector]",
+      );
+      if (selector && (action === "left" || action === "right")) {
+        selector
+          .querySelector<HTMLButtonElement>(
+            `[data-selector-direction="${action === "left" ? "previous" : "next"}"]:not(:disabled)`,
+          )
+          ?.click();
+        return;
+      }
       // Portrait grids navigate spatially without selecting a hero on focus.
       // At an edge, normal form navigation can reach chat/footer controls.
       const grid = active?.closest<HTMLElement>("[data-controller-grid]");

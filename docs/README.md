@@ -9,3 +9,5 @@ PROGRESSIVE_COCKPIT_UPDATE.md documents the current continuous brake, compact cl
 - [INTUITIVE_COCKPIT_UPDATE.md](INTUITIVE_COCKPIT_UPDATE.md): climate master visibility, wheel-based system selection, canonical Research links and Settings return routing.
 
 - [Hero portraits, chat and parking controls](HERO_PORTRAITS_AND_CHAT.md) — direct selection, authenticated chat, and tap/hold behavior.
+
+- [Hero selection layout polish](HERO_SELECTION_POLISH.md) — compact upper player/title area, translucent arrow bars, adjoining role filters and idle chat.
