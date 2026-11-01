@@ -32,6 +32,7 @@ export function MenuShortcuts({
   chat = false,
   directions = "vertical",
   secondaryTabs = false,
+  selectLabel,
 }: {
   back?: boolean;
   tabs?: boolean;
@@ -39,6 +40,7 @@ export function MenuShortcuts({
   chat?: boolean;
   directions?: "vertical" | "both";
   secondaryTabs?: boolean;
+  selectLabel?: string;
 } = {}) {
   return (
     <div className="controller-shortcuts" aria-label="Menu shortcuts">
@@ -47,7 +49,7 @@ export function MenuShortcuts({
         <kbd>{directions === "both" ? "↑↓ ←→" : "↑↓"}</kbd>
       </span>
       <span>
-        <ControllerButton button="A" /> {hold ? "Select / hold" : "Select"}{" "}
+        <ControllerButton button="A" /> {selectLabel ?? (hold ? "Select / hold" : "Select")}{" "}
         <kbd>Enter</kbd>
       </span>
       {tabs && (

@@ -5,6 +5,6 @@ import { ProgressBadge } from "./ProgressBadge";
 export function SelectionHeader({title,onBack,busy=false}:{title:string;onBack:()=>void;busy?:boolean}) {
  return <header className="alpha-header"><div><small>REDLINE VECTOR · ALPHA</small><h1>{title}</h1></div><ProgressBadge/><button type="button" className="menu-control controller-action" disabled={busy} onClick={onBack}><ControllerButton button="B"/> BACK</button></header>;
 }
-export function SelectionFooter({children,chat=false,secondaryTabs=false}:{children:ReactNode;chat?:boolean;secondaryTabs?:boolean}) {
- return <footer className="alpha-selection-footer" data-controller-row><MenuShortcuts chat={chat} directions="both" secondaryTabs={secondaryTabs}/>{children}</footer>;
+export function SelectionFooter({children,chat=false,secondaryTabs=false,selectLabel}:{children:ReactNode;chat?:boolean;secondaryTabs?:boolean;selectLabel?:string}) {
+ return <footer className="alpha-selection-footer" data-controller-row><MenuShortcuts chat={chat} directions="both" secondaryTabs={secondaryTabs} selectLabel={selectLabel}/>{children}</footer>;
 }

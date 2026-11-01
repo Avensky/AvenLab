@@ -3,10 +3,12 @@ import {
   HERO_FILTERS,
   type HeroFilter,
 } from "../../store/alpha/alphaStore";
+import { ControllerButton } from "../../components/controller";
 import { HeroPortrait } from "./HeroPortrait";
 
 export function HeroRoster({
   selected,
+  main,
   filter,
   busy,
   onChoose,
@@ -14,6 +16,7 @@ export function HeroRoster({
   onFilter,
 }: {
   selected: string | null;
+  main?: string | null;
   filter: HeroFilter;
   busy: boolean;
   onChoose: (hero: string) => void;
@@ -51,6 +54,7 @@ export function HeroRoster({
               onClick={() => onChoose(hero.id)}
             >
               <HeroPortrait hero={hero.id} />
+              {main===hero.id&&<span className="hero-main-portrait-badge"><ControllerButton button="X"/> MAIN</span>}
             </button>
           ),
         )}

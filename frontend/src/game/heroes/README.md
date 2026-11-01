@@ -1,6 +1,8 @@
 # Personal hero collection
 
-Heroes and Play share SelectionHeader/SelectionFooter, app theme tokens and Xbox Back/A/LB/RB hints. Hero portrait assets come from the same HeroPortrait component as game selection. Focus/hover and LB/RB preview a vehicle. Click/A or Set As Main chooses the profile's default hero. Editing a style never chooses a different main.
+Heroes and Play share SelectionHeader/SelectionFooter, app theme tokens and Xbox Back/A/LB/RB hints. Heroes uses the same HeroRoster component and portrait assets as game selection. Settings stay closed until Click/A selects a portrait. Hover previews only; LB/RB browses the filtered roster and closes settings. B closes settings before leaving Heroes.
+
+Only a complete 1,200 ms hold of Xbox X, keyboard X, or the on-screen X button chooses the profile default hero. A circular arc and rotating halo track progress; the confirmed main keeps its glow and X MAIN portrait badge. Early release, pointer cancellation, focus loss, disconnect, navigation, or a vehicle change cancels an incomplete hold. Settings must be open before a hold can start. Editing a style never chooses a different main. The existing controller polling loop owns gamepad input; no second poller is installed. Reduced motion and high contrast keep progress readable without the moving halo.
 
 Appearance changes preview immediately and enter HeroSaveQueue. The queue coalesces rapid edits per vehicle, serializes requests and preserves the latest main choice. Back drains it before leaving. Failed requests retain the edit and show NOT SAVED / Retry. Pending asset work remains visibly labelled rather than presented as complete.
 

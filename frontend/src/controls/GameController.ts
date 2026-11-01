@@ -53,7 +53,13 @@ export function GameController() {
     let lastVertical = -Infinity;
     let lastHorizontal = -Infinity;
     let panelPressHeld = false;
+    let heroMainHeld = false;
+    const releaseHeroMain = (cancelled=true) => {
+      if(!heroMainHeld)return;heroMainHeld=false;
+      window.dispatchEvent(new CustomEvent("avenlab:hero-main-hold",{detail:{pressed:false,cancelled}}));
+    };
     const releasePanelPress = (cancelled = true) => {
+      releaseHeroMain();
       if (!panelPressHeld) return;
       panelPressHeld = false;
       routePhysicalMenuPress(false, cancelled);
@@ -161,6 +167,7 @@ export function GameController() {
         return;
       }
       if (useCanDataStore.getState().commandOpen) {
+        releaseHeroMain();
         release();
         return;
       }
@@ -169,6 +176,11 @@ export function GameController() {
       // Menu X and driving RB+View open the same chat without changing the
       // existing engine (X) or performance (View) actions during normal driving.
       const keyboardOpen = Boolean(useTextKeyboardStore.getState().session);
+      const heroHoldAllowed=ui.screen==="heroes"&&ui.overlay===null&&!ui.isModeLoading&&!keyboardOpen&&menuArmed&&canNavigateMenu();
+      if(!heroHoldAllowed||!pressed(2))releaseHeroMain(!heroHoldAllowed);
+      else if(edges[2]&&!heroMainHeld){heroMainHeld=true;window.dispatchEvent(new CustomEvent("avenlab:hero-main-hold",{detail:{pressed:true}}));}
+      if(heroMainHeld){if(edges[1]){releaseHeroMain();routeMenuAction("back");}return;}
+
       if (
         !keyboardOpen &&
         !ui.isModeLoading &&

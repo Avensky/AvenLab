@@ -1,0 +1,7 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {HoldToConfirm,MAIN_HERO_HOLD_MS} from '../src/game/heroes/holdToConfirm.ts';
+test('only a full uninterrupted rotation completes and it fires once',()=>{const h=new HoldToConfirm();assert(h.begin('X',0));assert.equal(h.sample(MAIN_HERO_HOLD_MS/2).progress,.5);assert.equal(h.sample(MAIN_HERO_HOLD_MS-1).justCompleted,false);assert.equal(h.sample(MAIN_HERO_HOLD_MS).justCompleted,true);assert.equal(h.sample(MAIN_HERO_HOLD_MS+100).justCompleted,false);h.release('X');assert.equal(h.sample(5000).progress,1);assert.equal(h.begin('X',5000),false);});
+test('short taps and release/repress cannot accumulate progress',()=>{const h=new HoldToConfirm();h.begin('pointer',0);assert.equal(h.sample(600).progress,.5);h.release('pointer');assert.equal(h.sample(800).progress,0);h.begin('pointer',1000);assert.equal(h.sample(1500).justCompleted,false);});
+test('unrelated key releases cannot cancel another input source',()=>{const h=new HoldToConfirm();h.begin('pointer',0);assert.equal(h.begin('gamepad',100),false);assert.equal(h.release('gamepad'),false);assert.equal(h.sample(1200).justCompleted,true);});
+test('focus loss, disconnect or a different selected hero reset the gesture',()=>{const h=new HoldToConfirm();h.begin('X',0);h.sample(1100);h.cancel();assert.equal(h.sample(1300).justCompleted,false);assert.equal(h.sample(1300).progress,0);h.begin('X',1400);assert.equal(h.sample(2000).progress,.5);});

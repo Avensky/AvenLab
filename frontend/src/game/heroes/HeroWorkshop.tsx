@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { HEROES, useAlphaStore } from "../../store/alpha/alphaStore";
+import { HEROES, useAlphaStore, type HeroFilter } from "../../store/alpha/alphaStore";
 import { useUIStore } from "../../store/menus/uiStore";
 import { useSocialStore } from "../../store/social/socialStore";
 import { requestSocial } from "../../net/socialClient";
@@ -8,7 +8,8 @@ import { useSelectionNavigation } from "../alpha/useSelectionNavigation";
 import { navigateFormRows } from "../social/formRows";
 import { UI_THEMES } from "../../theme/catalog";
 import { usePreferencesStore } from "../../store/preferences/preferencesStore";
-import { HeroPortrait } from "../alpha/HeroPortrait";
+import { HeroRoster } from "../alpha/HeroRoster";
+import { HoldMainButton } from "./HoldMainButton";
 import { SelectionHeader, SelectionFooter } from "../alpha/SelectionChrome";
 import { ControllerButton } from "../../components/controller";
 import { HeroSaveQueue, type HeroSaveStatus } from "./HeroSaveQueue";
@@ -30,6 +31,8 @@ export function HeroWorkshop() {
  const skins=useSocialStore(s=>s.view?.alpha?.skins);
  const owned=useSocialStore(s=>s.view?.profile.progression?.owned??NO_OWNED_SKINS);
  const [hero,setHero]=useState(()=>useSocialStore.getState().view?.profile.progression?.default_hero??"brz");
+ const [editing,setEditing]=useState(false);
+ const [role,setRole]=useState<HeroFilter>("all");
  const definition=HEROES.find(h=>h.id===hero)??HEROES[0];
  const [appearance,setAppearance]=useState<HeroAppearance>(()=>useSocialStore.getState().view?.profile.progression?.hero_loadouts?.[definition.vehicle]??{...FACTORY_APPEARANCE});
  const [status,setStatus]=useState<HeroSaveStatus>("idle"),[message,setMessage]=useState("");
@@ -46,20 +49,24 @@ export function HeroWorkshop() {
  useEffect(()=>{useAlphaStore.getState().preview(definition.id);},[definition.id]);
  useEffect(()=>{useHeroLoadouts.setState({draft:{vehicle:definition.vehicle,appearance}});return()=>{useHeroLoadouts.setState({draft:null});};},[definition.vehicle,appearance]);
  const preview=(id:string)=>{const h=HEROES.find(h=>h.id===id)!;setHero(id);setAppearance(drafts.current[h.vehicle]??useHeroLoadouts.getState().loadouts[h.vehicle]??{...FACTORY_APPEARANCE});};
- const mainChoice=(id=hero)=>{const h=HEROES.find(h=>h.id===id)!;const style=id===hero?appearance:drafts.current[h.vehicle]??useHeroLoadouts.getState().loadouts[h.vehicle]??{...FACTORY_APPEARANCE};if(id!==hero)preview(id);queue.enqueue({hero:id,vehicle:h.vehicle,appearance:style,makeDefault:true});};
+ const openHero=(id=hero)=>{preview(id);setEditing(true);};
+ const mainChoice=(id=hero)=>{const h=HEROES.find(h=>h.id===id)!;const style=id===hero?appearance:drafts.current[h.vehicle]??useHeroLoadouts.getState().loadouts[h.vehicle]??{...FACTORY_APPEARANCE};if(!editing)return;queue.enqueue({hero:id,vehicle:h.vehicle,appearance:style,makeDefault:true});};
  const edit=(patch:Partial<HeroAppearance>)=>{const next={...appearance,...patch};drafts.current[definition.vehicle]=next;setAppearance(next);queue.enqueue({hero,vehicle:definition.vehicle,appearance:next,makeDefault:false});};
- const back=async()=>{if(leaving.current)return;leaving.current=true;try{if(await queue.flush())useUIStore.getState().setScreen("main");}finally{leaving.current=false;}};
- useSelectionNavigation(root,{confirm:()=>{const active=document.activeElement as HTMLElement;if(active===root.current)mainChoice();else active?.click();},back:()=>void back(),direction:a=>{
+ const back=async()=>{if(editing){setEditing(false);return;}if(leaving.current)return;leaving.current=true;try{if(await queue.flush())useUIStore.getState().setScreen("main");}finally{leaving.current=false;}};
+ useSelectionNavigation(root,{confirm:()=>{const active=document.activeElement as HTMLElement;if(active===root.current)openHero();else active?.click();},back:()=>void back(),direction:a=>{
   const active=document.activeElement;
   if(active instanceof HTMLSelectElement&&(a==="left"||a==="right")){active.selectedIndex=(active.selectedIndex+(a==="left"?-1:1)+active.options.length)%active.options.length;active.dispatchEvent(new Event("change",{bubbles:true}));}
   else if(root.current)navigateFormRows(root.current,active as HTMLElement,a,remembered.current);
- },tab:dir=>preview(HEROES[(HEROES.findIndex(h=>h.id===hero)+dir+HEROES.length)%HEROES.length].id)});
+ },tab:dir=>{const visible=HEROES.filter(h=>role==="all"||h.role===role);const index=visible.findIndex(h=>h.id===hero);setEditing(false);preview(visible[(index+dir+visible.length)%visible.length].id);}});
  const unlocked=(skins??[]).filter(s=>owned.includes(s.id));
  return <section ref={root} className="game-ui menu-surface alpha-selection hero-selection hero-workshop" tabIndex={-1} aria-label="Hero modifications" data-controller-form data-controller-rows>
   <SelectionHeader title="HEROES" onBack={()=>void back()}/>
   <div className="hero-workshop-body">
-   <nav data-controller-row data-controller-columns="2" className="hero-workshop-roster" aria-label="Heroes">{HEROES.map(h=><button className="menu-control hero-collection-tile" aria-label={`${h.name} · ${h.role}${main===h.id?" · Main":""}`} aria-pressed={main===h.id} data-preview={hero===h.id} key={h.id} disabled={!owner} onFocus={()=>preview(h.id)} onPointerEnter={()=>preview(h.id)} onClick={()=>mainChoice(h.id)}><HeroPortrait hero={h.id}/><strong>{h.name}</strong><small>{main===h.id?"MAIN HERO":h.role.toUpperCase()}</small></button>)}</nav>
-   <aside data-controller-row data-controller-columns="1" className="hero-modifications"><h2>{definition.name}</h2><p>YOUR STYLE · ONLY THIS VEHICLE</p>
+   <div className="hero-workshop-collection"><HeroRoster selected={editing?hero:null} main={main} filter={role} busy={!owner} onChoose={openHero} onPreview={id=>{if(!editing)preview(id);}} onFilter={filter=>{setRole(filter);setEditing(false);const visible=HEROES.filter(h=>filter==="all"||h.role===filter);if(!visible.some(h=>h.id===hero))preview(visible[0].id);}}/>
+    <p className="hero-workshop-hint">Select a portrait to customize. Hold X to choose your main.</p>
+    {!editing&&status!=="idle"&&<div className="hero-collection-save-status" role="status">{status==="error"?`NOT SAVED · ${message}`:status==="saved"?"SAVED TO YOUR PLAYER":"SAVING YOUR STYLE…"}{status==="error"&&<button className="menu-control" onClick={()=>void queue.flush()}>RETRY SAVE</button>}</div>}
+   </div>
+   {editing && <aside data-controller-row data-controller-columns="1" className="hero-modifications"><h2>{definition.name}</h2><p>YOUR STYLE · ONLY THIS VEHICLE</p>
     <label>UNLOCKED SKIN<select aria-label="Unlocked hero skin" disabled={!owner} value={appearance.skin} onChange={e=>{const skin=unlocked.find(s=>s.id===e.target.value);edit({skin:e.target.value,body:skin&&skin.id!=="factory"?skin.color:"factory"});}}><option value="factory">Factory</option>{unlocked.filter(s=>s.id!=="factory").map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
     <label>BODY PAINT<select aria-label="Hero body paint" disabled={!owner||definition.vehicle==="tank"} value={appearance.body} onChange={e=>edit({body:e.target.value})}>
      <option value="factory">Factory</option><option value="#f4f5f7">Clean white</option><option value="#ed258d">Hot pink</option><option value="#ed9dcc">Pastel pink</option><option value="#161a22">Midnight black</option><option value={UI_THEMES[theme]["scene-tint"]}>Current theme color · this car</option>
@@ -73,8 +80,11 @@ export function HeroWorkshop() {
     <button className="menu-control" disabled>EMOTES · INCOMING / NEEDS TESTING</button><button className="menu-control" disabled>SECRET RARE BUNDLES · LOCKED</button>
     <p role="status" aria-live="polite">{!owner?"CONNECT YOUR PLAYER PROFILE":status==="pending"||status==="saving"?"SAVING YOUR STYLE…":status==="error"?`NOT SAVED · ${message}`:status==="saved"?"SAVED TO YOUR PLAYER · SHARED IN GAME":"Changes save automatically for this vehicle."}</p>
     {status==="error"&&<button className="menu-control" onClick={()=>void queue.flush()}>RETRY SAVE</button>}
-   </aside>
+   </aside>}
   </div>
-  <SelectionFooter><button type="button" className="menu-control controller-action alpha-deploy" disabled={!owner} onClick={()=>mainChoice()}><ControllerButton button="A"/>{main===hero?"YOUR MAIN HERO":"SET AS MAIN"}</button></SelectionFooter>
+  <SelectionFooter selectLabel="Customize"><div className="hero-workshop-actions">
+   {!editing&&<button type="button" className="menu-control controller-action" disabled={!owner} onClick={()=>openHero()}><ControllerButton button="A"/> CUSTOMIZE</button>}
+   <HoldMainButton key={`${owner}:${hero}:${editing}:${main===hero}:${status==="error"}`} disabled={!owner||!editing||status==="error"} selected={editing&&main===hero} onComplete={()=>mainChoice()}/>
+  </div></SelectionFooter>
  </section>;
 }
