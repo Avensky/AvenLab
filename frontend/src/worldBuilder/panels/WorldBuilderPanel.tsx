@@ -6,9 +6,9 @@ import {
   useMemo,
   useRef,
   useState,
-  type CSSProperties,
 } from "react";
 import { useShallow } from "zustand/react/shallow";
+import { usePreferencesStore } from "../../store/preferences";
 import { ControllerButton } from "../../components/controller";
 import "../../components/menus/menus.css";
 import { isTypingTarget, type MenuAction } from "../../controls/inputRouting";
@@ -34,6 +34,7 @@ import {
 } from "../state/builderActions";
 import { useBuilderStore } from "../state/builderStore";
 import {
+  editorPaletteCSS,
   useEditorPalette,
   useEditorPreferences,
 } from "../state/editorPreferences";
@@ -109,6 +110,11 @@ function LayoutPanel({
   );
   const preferences = useEditorPreferences(),
     palette = useEditorPalette();
+  const appTheme = usePreferencesStore(s => s.theme);
+  const [toolsOpen, setToolsOpen] = useState(false);
+  useEffect(() => {
+    if (toolsOpen) root.current?.querySelector<HTMLButtonElement>(".le-tool-drawer button")?.focus();
+  }, [toolsOpen]);
   const [preview, setPreview] = useState<string | null>(null);
   const dirty = Boolean(s.doc && s.doc !== s.saved);
   useEffect(() => {
@@ -149,6 +155,8 @@ function LayoutPanel({
   const navigate = useCallback((action: MenuAction) => {
     const state = useLayoutStore.getState();
     if (action === "back") {
+      const drawer = root.current?.querySelector<HTMLButtonElement>('[aria-label="Close world tools"]');
+      if (drawer) { drawer.click(); return; }
       const dialog =
         root.current?.querySelector<HTMLElement>('[role="dialog"]');
       if (dialog) {
@@ -174,6 +182,7 @@ function LayoutPanel({
     }
     const area =
       root.current?.querySelector('[role="dialog"]') ??
+      root.current?.querySelector(".le-tool-drawer") ??
       (useBuilderStore.getState().loadingMap
         ? root.current?.querySelector(".le-header")
         : root.current);
@@ -181,7 +190,7 @@ function LayoutPanel({
         ...(area?.querySelectorAll<HTMLElement>(
           "button:not(:disabled),input:not(:disabled):not([hidden]),select:not(:disabled)",
         ) ?? []),
-      ],
+      ].filter(element => element.getClientRects().length > 0),
       current = buttons.indexOf(document.activeElement as HTMLElement),
       active = buttons[current];
     if (
@@ -330,19 +339,9 @@ function LayoutPanel({
       ref={root}
       className={`layout-editor menu-surface${presentation === "hud" ? " layout-editor--hud" : ""}`}
       data-inspector={presentation === "hud" ? "hidden" : preferences.inspector}
-      data-editor-theme={preferences.theme}
-      style={
-        {
-          "--le-bg": palette.background,
-          "--le-panel": palette.panel,
-          "--le-raised": palette.raised,
-          "--le-line": palette.line,
-          "--le-text": palette.text,
-          "--le-muted": palette.muted,
-          "--le-green": palette.accent,
-          "--le-physical": palette.physical,
-        } as CSSProperties
-      }
+      data-editor-theme={appTheme}
+      data-library={preferences.libraryVisible ? "open" : "hidden"}
+      style={editorPaletteCSS(palette)}
       aria-label="World layout editor"
       onKeyDown={(e) => {
         if (isTypingTarget(e.target)) return;
@@ -368,7 +367,6 @@ function LayoutPanel({
           </span>
           <strong>World editor</strong>
         </div>
-        <EditorWorldControls compact={presentation === "hud"} />
 
         <div className="le-project">
           <span className={`le-save-dot ${dirty ? "is-dirty" : ""}`} />
@@ -380,6 +378,19 @@ function LayoutPanel({
           </span>
         </div>
         <div className="le-header-actions">
+          <button className="le-library-toggle" aria-controls="world-prefab-sidebar" aria-expanded={preferences.libraryVisible} onClick={preferences.toggleLibrary}>
+            {preferences.libraryVisible ? "HIDE PREFABS" : "SHOW PREFABS"}
+          </button>
+          <button className="le-tool-toggle" aria-controls="world-tool-drawer" aria-expanded={toolsOpen} onClick={() => setToolsOpen(v => !v)}>TOOLS</button>
+          <button className="le-close" aria-label="Close world builder" onClick={closeWorldBuilder}><ControllerButton button="B" /> Exit</button>
+        </div>
+      </header>
+      {toolsOpen && <aside id="world-tool-drawer" className="le-tool-drawer" aria-label="World editor tools" inert={Boolean(confirm || preview)}>
+        <div className="le-drawer-title"><strong>WORLD TOOLS</strong><button aria-label="Close world tools" onClick={() => { setToolsOpen(false); root.current?.querySelector<HTMLButtonElement>(".le-tool-toggle")?.focus(); }}>CLOSE</button></div>
+        <h3>World, vehicle & test</h3>
+        <EditorWorldControls />
+        <h3>Workspace & files</h3>
+        <div className="le-drawer-actions">
         <button className="le-presentation-toggle" onClick={() => {
           const hud = presentation !== "hud";
           useBuilderStore.setState({presentation:hud ? "hud" : "workspace"});
@@ -441,21 +452,13 @@ function LayoutPanel({
             <Icon name="export" />
             Export map
           </button>
-          <button
-            className="le-close"
-            aria-label="Close world builder"
-            onClick={closeWorldBuilder}
-          >
-            <ControllerButton button="B" />
-            Exit
-          </button>
         </div>
-      </header>
+      </aside>}
       <div
         className="le-body"
         inert={Boolean(confirm || preview || loadingMap)}
       >
-        <aside className="le-library">
+        <aside className="le-library" id="world-prefab-sidebar" hidden={!preferences.libraryVisible}>
           <div className="le-section-title">
             <span>PREFAB LIBRARY</span>
             <span>

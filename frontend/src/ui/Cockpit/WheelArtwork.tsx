@@ -51,7 +51,7 @@ export const WheelArtwork = memo(function WheelArtwork() {
       <path
         d="M28 77a100 100 0 0 0 0 85M212 77a100 100 0 0 1 0 85"
         fill="none"
-        stroke="#a13c3d"
+        stroke="var(--vehicle-accent, #a13c3d)"
         strokeWidth="1"
         strokeDasharray="2 2.5"
       />

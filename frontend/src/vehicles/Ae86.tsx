@@ -102,6 +102,7 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
   const { clonesByGroup, renderedGroups } = useMemo(() => {
     return setupVehicleParts({
       scene,
+      model: "ae86",
       groups: [
         {
           name: "BODY",

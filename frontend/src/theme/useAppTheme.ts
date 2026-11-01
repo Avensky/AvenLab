@@ -1,3 +1,4 @@
+import { COSMETIC_BUNDLES } from "../vehicles/cosmetics/catalog";
 import { useEffect } from "react";
 import { usePreferencesStore } from "../store/preferences";
 import { applyUITheme } from "./catalog";
@@ -8,12 +9,16 @@ export function useAppTheme() {
   const theme = usePreferencesStore((s) => s.theme),
     motion = usePreferencesStore((s) => s.reducedMotion),
     contrast = usePreferencesStore((s) => s.highContrast),
-    scale = usePreferencesStore((s) => s.menuTextScale);
+    scale = usePreferencesStore((s) => s.menuTextScale),
+    cosmetics = usePreferencesStore((s) => s.vehicleCosmetics);
   useEffect(() => {
     applyUITheme(theme);
     const root = document.documentElement;
+    const accent = COSMETIC_BUNDLES[cosmetics.bundle].accent;
+    root.style.setProperty("--vehicle-accent", cosmetics.matchCockpit ? (accent && accent !== "theme" ? accent : "var(--app-accent)") : "#a13c3d");
+    root.dataset.matchCockpit = String(cosmetics.matchCockpit);
     root.dataset.reduceMotion = String(motion);
     root.dataset.highContrast = String(contrast);
     root.style.setProperty("--menu-text-scale", String(scale));
-  }, [theme, motion, contrast, scale]);
+  }, [theme, motion, contrast, scale, cosmetics]);
 }

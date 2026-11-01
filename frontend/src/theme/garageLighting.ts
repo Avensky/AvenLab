@@ -5,6 +5,8 @@ import type { UITheme } from "./catalog";
  * whose dark text accents would otherwise make poor luminous fixtures. */
 export const GARAGE_LIGHT_COLORS: Record<UITheme, string> = {
   navy: "#4484ff",
+  "hacker-blue": "#30d5ff",
+  forest: "#82b887",
   hacker: "#5bff35",
   black: "#e5cb70",
   "deep-purple": "#7185ff",

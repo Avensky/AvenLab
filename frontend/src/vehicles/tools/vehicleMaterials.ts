@@ -1,3 +1,4 @@
+import { repairAe86Material, repairSupraHighlights } from "./assetMaterialRepairs.ts";
 import { Color, DoubleSide, Group, Material, MathUtils, Mesh, MeshPhysicalMaterial, type Object3D } from "three";
 import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils.js";
 
@@ -34,6 +35,7 @@ export function createVehicleMaterial(source: Material, glass: boolean, model: M
   material.opacity = glass ? 0.6 : 1;
   material.depthWrite = !glass;
   material.alphaTest = 0;
+  if(model === "supra" && !glass) repairSupraHighlights(material);
   material.needsUpdate = true;
   return material;
 }
@@ -71,6 +73,7 @@ export function prepareVehicleVisual(scene: Group, model: string) {
         let material = cache.get(source);
         if (!material) {
           material = source.clone();
+          if(model === "ae86") repairAe86Material(material);
           cache.set(source, material);
           materials.add(material);
         }

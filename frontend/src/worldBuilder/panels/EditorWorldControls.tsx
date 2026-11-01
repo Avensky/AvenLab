@@ -2,11 +2,7 @@ import { EditorTestAction } from "../../game/alpha/EditorTestAction";
 import { mapCatalog } from "../../store/selection/worldCatalog";
 import { switchBuilderWorld } from "../state/builderActions";
 import { useBuilderStore } from "../state/builderStore";
-import {
-  EDITOR_THEMES,
-  useEditorPreferences,
-  type EditorTheme,
-} from "../state/editorPreferences";
+import { useEditorPreferences } from "../state/editorPreferences";
 import type { DetailPreference } from "../vehicles/vehicleCatalog";
 
 export function EditorWorldControls({
@@ -47,23 +43,6 @@ export function EditorWorldControls({
       <EditorTestAction />
       {!compact && (
         <>
-          <label className="le-header-field">
-            <span>Editor style</span>
-            <select
-              aria-label="Editor theme"
-              value={preferences.theme}
-              onChange={(e) =>
-                preferences.setTheme(e.target.value as EditorTheme)
-              }
-            >
-              <option value="shared">Use app theme</option>
-              {Object.entries(EDITOR_THEMES).map(([key, value]) => (
-                <option key={key} value={key}>
-                  {value.label}
-                </option>
-              ))}
-            </select>
-          </label>
           <label className="le-header-field le-detail-field">
             <span>Detail / LOD</span>
             <select

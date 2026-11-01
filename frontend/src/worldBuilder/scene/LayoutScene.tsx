@@ -1,9 +1,9 @@
+import { useThree } from "@react-three/fiber";
 import {
   OrbitControls,
   PerspectiveCamera,
   TransformControls,
 } from "@react-three/drei";
-import { useThree } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Group } from "three";
 import type { TransformControls as TransformControlsImpl } from "three-stdlib";
@@ -21,7 +21,7 @@ import {
   type LayoutSnapLock,
 } from "../roads/layoutSnapping";
 import { useBuilderStore } from "../state/builderStore";
-import { useEditorPalette } from "../state/editorPreferences";
+import { useEditorScenePalette } from "./useEditorScenePalette";
 import { layoutAction, useLayoutStore } from "../state/layoutStore";
 import { ChunkGuide } from "./ChunkGuide";
 import { LayoutInstances, PieceModel } from "./LayoutMeshes";
@@ -208,7 +208,7 @@ function SelectedObject({ item }: { item: LayoutObject }) {
 }
 export default function LayoutScene() {
   const invalidate = useThree((s) => s.invalidate);
-  const palette = useEditorPalette();
+  const palette = useEditorScenePalette();
   const doc = useLayoutStore((s) => s.doc),
     selected = useLayoutStore((s) => s.selected),
     placing = useLayoutStore((s) => s.placing),
@@ -281,13 +281,11 @@ export default function LayoutScene() {
   const floor = source?.surface.road_y ?? 0;
   return (
     <group name="layout-authoring-scene">
-      <color attach="background" args={[palette.background]} />
-      <fog attach="fog" args={[palette.background, 320, 950]} />
-      <hemisphereLight args={["#d5eaf8", "#102535", 2]} />
+      <hemisphereLight args={["#ffffff", palette.floor, 1.6]} />
       <directionalLight
         position={[-60, 100, 40]}
         intensity={2.8}
-        color="#edf6ff"
+        color="#ffffff"
       />
       <PerspectiveCamera
         makeDefault

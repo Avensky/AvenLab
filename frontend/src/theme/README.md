@@ -1,6 +1,6 @@
 # Shared themes and accessibility
 
-catalog.ts defines the seven base palettes and root token application. ThemePreferences.tsx selects the persisted store preference. theme.css applies palettes to menus/debugger/cockpit. Editor Shared style follows this preference.
+catalog.ts defines the shared base palettes and root token application. ThemePreferences.tsx selects the persisted store preference. theme.css applies palettes to menus/debugger/cockpit. The editor always follows this preference; it has no separate theme selector or persisted theme.
 
 ## How to edit
 
@@ -25,6 +25,26 @@ focus ring. The same radius/surface tokens are available to HUD/cockpit tools;
 physical instrument shapes and Xbox button colors keep their semantics.
 
 Garage showroom paint is optional and local: Factory / Hot pink / Pastel pink.
-Only known AE86, BRZ and Supra body materials are recolored on owned preview
+Only known AE86, BRZ, Camaro and Supra body materials are recolored on owned preview
 clones. It does not recolor glass or cached models and does not claim an earned
 or networked gameplay skin.
+
+Editor surfaces use `--le-*` palette tokens, including toolbar ink, disabled
+undo/redo, category chips, thumbnail tiles and grid/angle controls. Coordinate
+labels rendered into Drei Html portals receive explicit palette colors because
+they do not inherit the editor panel's inline CSS variables. Editor lighting is
+neutral so a light-colored board does not pick up a fixed blue hemisphere tint.
+
+Mode/role summaries remain transparent over scenery with scene-readable ink;
+mode and vehicle filter tabs keep square corners. Settings still use the shared
+rounded surface language.
+
+Prefab visibility is saved independently of the document. Layout/collider
+panels share editorPaletteCSS; floating controls and the 3D coordinate portal
+use the same Settings-owned app palette.
+
+AE86 fallback colors repair only untextured, default-white tire/rim/interior
+materials on owned clones, in both showroom and the driving rig. Supra opaque
+materials get bounded specular energy and a small roughness floor. Settings > Appearance owns coordinated body paint, shared finish and custom
+highlight softness across showroom vehicles. Camaro exterior paint multiplies its retained texture;
+glass, badges and interior materials are not recolored. Tank keeps factory paint.

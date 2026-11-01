@@ -27,7 +27,7 @@ export function ChunkGuide({ floor }: { floor: number }) {
           center
           style={{ pointerEvents: "none" }}
         >
-          <span className="le-chunk-label">{label} · 100 × 100 m</span>
+          <span className="le-chunk-label" style={{background:p.panel,color:p.text,borderColor:p.line}}>{label} · 100 × 100 m</span>
         </Html>
       ))}
     </group>

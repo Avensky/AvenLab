@@ -247,11 +247,14 @@ html[data-ui-theme] .hero-selection :is(.alpha-mode-tabs,.hero-role-tabs) [aria-
   background: var(--app-raised);color:var(--app-text);border-color:var(--app-accent);
   box-shadow:inset 0 -2px var(--app-accent);
 }
-html[data-ui-theme] .hero-selection :is(.hero-summary,.hero-roster>header,.alpha-squad-seat) {
+html[data-ui-theme] .hero-selection :is(.hero-roster>header,.alpha-squad-seat) {
   color:var(--app-text);background:color-mix(in srgb,var(--app-panel) 96%,transparent);
   text-shadow:none;border-color:var(--app-line);
 }
-html[data-ui-theme] .hero-selection .hero-summary {padding:10px 14px;border-radius:var(--app-radius);width:max-content;max-width:42vw;}
+html[data-ui-theme] .hero-selection .hero-summary {background:transparent;padding:0;border:0;border-radius:0;}
+html[data-ui-theme] .hero-selection .hero-summary h2 {color:#f3f6ff;text-shadow:0 2px 6px #000,0 0 2px #000;}
+html[data-ui-theme] .hero-selection .hero-summary > small {color:#d8e2f2;text-shadow:0 1px 4px #000;}
+html[data-ui-theme] .hero-selection :is(.alpha-mode-tabs,.hero-role-tabs) .menu-control {border-radius:0;}
 html[data-ui-theme] .hero-selection .hero-roster>header {padding:6px;border-radius:var(--app-radius-sm);}
 
 /* Shared modern surface language: settings, research tabs and cockpit tools
@@ -297,11 +300,14 @@ html[data-ui-theme] .alpha-queue {background:var(--app-background);}
 html[data-ui-theme] .alpha-queue-card {background:var(--app-panel);color:var(--app-text);border-color:var(--app-line);border-radius:var(--app-radius);}
 html[data-ui-theme] .alpha-queue-card :is(h2,.alpha-queue-note) {color:var(--app-muted);}
 html[data-ui-theme] .alpha-queue-position {color:var(--app-accent);}
-/* Tool palettes keep the same surface language while respecting an explicit
-   editor palette when the user chooses one instead of the shared app theme. */
+/* Editor controls consume the same Settings-owned app palette. */
 .layout-editor :is(.le-header,.le-footer,.le-library,.le-inspector) {background:var(--le-panel);color:var(--le-text);}
 .layout-editor :is(.le-section-title,.le-stage-help,.le-stage-message p) {color:var(--le-muted);}
 .layout-editor :is(.le-search,input,select) {background:var(--le-bg);color:var(--le-text);border-color:var(--le-line);}
 .layout-editor :is(button,input,select,.le-search) {border-radius:var(--app-radius-sm,10px);}
 .layout-editor .le-categories .menu-tab {border:0;background:transparent;box-shadow:none;}
 .layout-editor .le-categories .menu-tab[aria-selected="true"] {background:var(--le-raised);color:var(--le-text);box-shadow:inset 0 -2px var(--le-green);}
+
+html[data-match-cockpit="true"] :is(.cockpit-panel,.driving-hud) {--cockpit-accent:var(--vehicle-accent,var(--app-accent));}
+html[data-match-cockpit="true"] .cockpit-header {border-bottom-color:var(--vehicle-accent);}
+html[data-match-cockpit="true"] .wheel-artwork {--wheel-stitch:var(--vehicle-accent);}

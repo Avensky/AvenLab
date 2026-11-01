@@ -1,3 +1,4 @@
+import { repairAe86Material } from "./assetMaterialRepairs.ts";
 // setupVehicleParts.tsx
 import React from 'react'
 import * as THREE from 'three'
@@ -18,10 +19,12 @@ export interface VehiclePartGroup {
 export function setupVehicleParts({
     scene,
     groups,
+    model,
     // camMode,
 }: {
     scene: THREE.Group | THREE.Scene
     groups: VehiclePartGroup[]
+    model?: string
     // camMode: 'GALLERY' | 'DEFAULT' | 'FIRST_PERSON' | 'BIRD_EYE'
 }): {
     clonesByGroup: Record<string, Record<string, THREE.Object3D>>
@@ -80,6 +83,7 @@ export function setupVehicleParts({
                         if (isPartTransparent) return sharedGlassMaterial;
 
                         const clonedMat = sourceMat.clone?.() ?? sourceMat;
+                        if(model === "ae86") repairAe86Material(clonedMat);
                         clonedMat.transparent = false;
                         clonedMat.opacity = 1;
                         clonedMat.depthWrite = true;

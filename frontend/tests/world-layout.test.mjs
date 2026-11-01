@@ -110,6 +110,8 @@ test("layout UI places, edits, locks, undoes, saves and routes controller action
   }
   document.hasFocus = () => true;
   dom.window.HTMLElement.prototype.scrollIntoView = () => {};
+  // JSDOM has no layout engine; model visible controls for controller routing.
+  dom.window.HTMLElement.prototype.getClientRects = function () { return this.closest('[hidden]') ? [] : [{}]; };
   dom.window.HTMLElement.prototype.attachEvent = () => {};
   dom.window.HTMLElement.prototype.detachEvent = () => {};
   const server = await createServer({
@@ -170,7 +172,12 @@ test("layout UI places, edits, locks, undoes, saves and routes controller action
     assert.equal(layout.getState().doc.objects.length, 1);
     await click(by("Redo layout edit"));
     assert.equal(layout.getState().doc.objects.length, 2);
+    await click(button("TOOLS"));
+    assert.ok(by("World editor tools"));
     await click(button("Save"));
+    await act(async () => routeMenuAction("back"));
+    assert.equal(by("World editor tools"), null);
+    assert.equal(ui.getState().screen, "world_builder");
     assert.equal(
       JSON.parse(localStorage.getItem(`avenlab-layout-v1:${source.map_id}`))
         .objects.length,

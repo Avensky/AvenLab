@@ -567,8 +567,8 @@ export function LayoutPlan() {
               y={b.center[2] - b.half[2]}
               width={b.half[0] * 2}
               height={b.half[2] * 2}
-              fill={b.collection === "roads" ? "#26394d" : "#527897"}
-              stroke="#76a3c3"
+              fill={b.collection === "roads" ? palette.raised : palette.muted}
+              stroke={palette.line}
               strokeWidth=".5"
               vectorEffect="non-scaling-stroke"
             />

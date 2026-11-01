@@ -152,7 +152,7 @@ export function ColliderPlan() {
         y={bounds.z}
         width={bounds.width}
         height={bounds.depth}
-        fill="#07131d"
+        fill="var(--le-bg, #07131d)"
       />
       <rect
         x={-doc.cell[0] / 2}

@@ -1,6 +1,6 @@
 import { HUD_GROUP_LABELS } from "../../store/preferences/index";
 import { ControllerGuide } from "../../components/controller";
-import { UI_THEMES, type UITheme } from "../../theme";
+import { appearanceSettingsRows } from "./appearanceSettingsRows";
 import { useEffect, useState } from "react";
 import { TabbedMenu, type MenuRow } from "../../components/menus/TabbedMenu";
 import { useRenderSettingsStore } from "../../store/presentation/renderSettingsStore";
@@ -565,21 +565,6 @@ export function SettingsMenu() {
                     ),
               },
               {
-                id: "theme",
-                label: "Interface theme",
-                description:
-                  "Shared by menus, cockpit, editor and garage lighting. Base palettes are always available.",
-                value: UI_THEMES[prefs.theme].label,
-                action: (dir) =>
-                  prefs.update({
-                    theme: step(
-                      Object.keys(UI_THEMES) as UITheme[],
-                      prefs.theme,
-                      dir,
-                    ),
-                  }),
-              },
-              {
                 id: "contrast",
                 label: "High contrast menus",
                 value: prefs.highContrast ? "On" : "Off",
@@ -614,6 +599,11 @@ export function SettingsMenu() {
                 "Available when voiced content is added.",
               ),
             ],
+          },
+          {
+            id: "appearance", label: "Appearance",
+            description: "Global theme and coordinated cosmetic previews. Local previews do not grant live unlocks.",
+            rows: appearanceSettingsRows(prefs, prefs.update),
           },
           {
             id: "garage",

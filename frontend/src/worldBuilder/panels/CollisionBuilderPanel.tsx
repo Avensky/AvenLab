@@ -17,7 +17,7 @@ import {
   exportBuilderMap,
 } from "../state/builderActions";
 import { useBuilderStore } from "../state/builderStore";
-import { useEditorPreferences } from "../state/editorPreferences";
+import { editorPaletteCSS, useEditorPalette, useEditorPreferences } from "../state/editorPreferences";
 import "../worldBuilder.css";
 import { EditorWorldControls } from "./EditorWorldControls";
 
@@ -79,6 +79,7 @@ export function CollisionBuilderPanel({
   planOnly?: boolean;
 }) {
   const preferences = useEditorPreferences();
+  const palette = useEditorPalette();
   const state = useBuilderStore(),
     root = useRef<HTMLElement>(null),
     file = useRef<HTMLInputElement>(null),
@@ -202,6 +203,7 @@ export function CollisionBuilderPanel({
       ref={root}
       className={`world-builder ${state.view === "plan" ? "wb-plan-mode" : ""}`}
       data-inspector={preferences.inspector}
+      style={editorPaletteCSS(palette)}
       aria-label="World builder"
       onKeyDown={(e) => {
         if (isTypingTarget(e.target)) return;

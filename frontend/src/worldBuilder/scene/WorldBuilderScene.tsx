@@ -4,6 +4,7 @@ import { Color, InstancedMesh, Object3D } from "three";
 import { AssetBoundary } from "../../components/debugger/AssetBoundary";
 import { CityChunk } from "../../world/CityChunk";
 import { editableBoxes } from "../document/mapDocument";
+import { useEditorScenePalette } from "./useEditorScenePalette";
 import { useBuilderStore } from "../state/builderStore";
 import { useLayoutStore } from "../state/layoutStore";
 import LayoutScene from "./LayoutScene";
@@ -59,6 +60,7 @@ function BoxReference() {
   ) : null;
 }
 function CollisionBuilderScene() {
+  const palette = useEditorScenePalette();
   const doc = useBuilderStore((s) => s.doc),
     view = useBuilderStore((s) => s.view),
     preset = useBuilderStore((s) => s.preset),
@@ -71,8 +73,7 @@ function CollisionBuilderScene() {
         : [span * 0.8 * zoom, span * 0.9 * zoom, -span * 0.8 * zoom];
   return (
     <group name="world-builder-reference">
-      <color attach="background" args={["#08121c"]} />
-      <hemisphereLight args={["#b8d6f1", "#1f2937", 1.3]} />
+      <hemisphereLight args={["#ffffff", palette.floor, 1.3]} />
       <directionalLight position={[100, 200, -80]} intensity={2} />
       <PerspectiveCamera
         key={preset}
@@ -92,7 +93,7 @@ function CollisionBuilderScene() {
         maxDistance={span * 5}
       />
       <gridHelper
-        args={[Math.max(...doc.cell) * 1.4, 40, "#6b8498", "#1f3547"]}
+        args={[Math.max(...doc.cell) * 1.4, 40, palette.axis, palette.grid]}
         position={[0, doc.surface.road_y, 0]}
       />
       {doc.visuals.map((visual) => (

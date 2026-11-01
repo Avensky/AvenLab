@@ -1,3 +1,4 @@
+import { DEFAULT_VEHICLE_COSMETICS, sanitizeVehicleCosmetics, type VehicleCosmetics } from "../../vehicles/cosmetics/catalog";
 /** Persisted device/accessibility preferences. Requests and vehicle physics live
  * elsewhere; this store owns only what the user sees and how input is mapped. */
 import { create } from "zustand";
@@ -33,6 +34,7 @@ export {
 export type Preferences = {
   radioHudStyle: "classic" | "streamlined" | "no-tabs";
   theme: UITheme;
+  vehicleCosmetics: VehicleCosmetics;
   garageEffects: GarageEffects;
   ignitionVisibility: "auto" | "always" | "hidden";
   /** Compatibility alias for hudGroups.climate; actions keep both synchronized. */
@@ -69,14 +71,16 @@ export type Preferences = {
 /** A page edits only the HUD switches it owns; the store merges saved siblings. */
 export type PreferenceUpdate = Omit<
   Partial<Preferences>,
-  "hudGroups" | "garageEffects"
+  "hudGroups" | "garageEffects" | "vehicleCosmetics"
 > & {
   hudGroups?: Partial<Record<HudGroupId, boolean>>;
   garageEffects?: Partial<GarageEffects>;
+  vehicleCosmetics?: Partial<VehicleCosmetics>;
 };
 export const DEFAULT_PREFERENCES: Preferences = {
   radioHudStyle: "no-tabs",
   theme: "navy",
+  vehicleCosmetics: DEFAULT_VEHICLE_COSMETICS,
   garageEffects: DEFAULT_GARAGE_EFFECTS,
   ignitionVisibility: "auto",
   researchHud: false,
@@ -174,6 +178,7 @@ export function sanitizePreferences(value: unknown): Preferences {
         ? data.radioHudStyle
         : "no-tabs",
     theme: isUITheme(data.theme) ? data.theme : "navy",
+    vehicleCosmetics: sanitizeVehicleCosmetics(data.vehicleCosmetics),
     garageEffects: sanitizeGarageEffects(data.garageEffects),
     ignitionVisibility:
       data.ignitionVisibility === "always" ||
@@ -260,6 +265,7 @@ export const usePreferencesStore = create<
           ignitionVisibility,
           hudGroups: groups,
           garageEffects: { ...state.garageEffects, ...patch.garageEffects },
+          vehicleCosmetics: { ...state.vehicleCosmetics, ...patch.vehicleCosmetics },
           ...(climate === undefined
             ? {}
             : { researchHud: climate, hudGroups: { ...groups, climate } }),

@@ -16,6 +16,18 @@ export const UI_THEMES = {
     floor: "#10213a",
     "scene-tint": "#4484ff",
   },
+  "hacker-blue": {
+    label: "Hacker blue", scheme: "dark", background: "#04151d",
+    panel: "#092531", raised: "#0c3542", line: "#448998", text: "#d8f6ff",
+    muted: "#a1c6d1", accent: "#30d5ff", physical: "#39eea6", grid: "#19485a",
+    axis: "#38a8ba", floor: "#0d3040", "scene-tint": "#30d5ff",
+  },
+  forest: {
+    label: "Forest", scheme: "dark", background: "#101c16", panel: "#1a2e24",
+    raised: "#233f30", line: "#688a70", text: "#e7edda", muted: "#b8cbb1",
+    accent: "#b8d49e", physical: "#65dfb0", grid: "#304c39", axis: "#8ba879",
+    floor: "#23382b", "scene-tint": "#82b887",
+  },
   hacker: {
     label: "Hacker green",
     scheme: "dark",

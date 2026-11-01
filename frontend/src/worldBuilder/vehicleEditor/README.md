@@ -49,3 +49,9 @@ as the full editor, with an unobstructed center for selecting/placing prefabs in
 3D. Apply & Test Drive remains the explicit physics rebuild. Bridge span and a
 raised canal channel are placeholder prefabs; the channel is a visual water
 strip with concrete banks, not terrain excavation or simulated water.
+
+The full editor and compact build HUD both expose HIDE PREFABS / SHOW PREFABS.
+Visibility is a saved editor preference and does not modify the map, current
+selection, active placement or undo history. Hiding it releases its grid column.
+
+The layout header now keeps only Prefabs, Tools and Exit. Tools opens a scrollable sidebar with world selection, vehicle editing, apply/test, detail, workspace, inspector and file actions. Escape/controller Back closes the sidebar before exiting. Its controls consume the Settings palette; there is no editor-specific theme state or selector.

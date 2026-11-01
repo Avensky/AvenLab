@@ -1,3 +1,5 @@
+import { UI_THEMES } from "../../theme/catalog";
+import { COSMETIC_BUNDLES } from "../../vehicles/cosmetics/catalog";
 import { useEffect, useMemo } from "react";
 import { useGLTF } from "@react-three/drei";
 import { prepareVehicleVisual } from "../../vehicles/tools/vehicleMaterials";
@@ -10,7 +12,7 @@ import { fitPreviewToPlatform, measurePreviewBounds } from "./previewPlacement";
 import { PreviewContactShadow } from "./PreviewContactShadow";
 import { previewMaterialState, setPreviewGhost } from "./previewGhost";
 import { usePreferencesStore } from "../../store/preferences/preferencesStore";
-import { applyShowroomPaint } from "./garageVehiclePaint";
+import { applyShowroomHighlights, applyShowroomPaint } from "./garageVehiclePaint";
 import { prepareGarageVehiclePaint } from "./garageVehiclePaint";
 
 // Selection is always the complete GLB, independent of in-game debug modes.
@@ -47,6 +49,9 @@ function PreviewAsset({
   ghost: boolean;
 }) {
   const paint = usePreferencesStore(s => s.garageEffects.paint);
+  const softness = usePreferencesStore(s => s.garageEffects.paintSoftness);
+  const cosmetics = usePreferencesStore(s => s.vehicleCosmetics);
+  const theme = usePreferencesStore(s => s.theme);
   const { scene } = useGLTF(path, "/draco/");
   const prepared = useMemo(
     () => {
@@ -57,7 +62,13 @@ function PreviewAsset({
     [scene, model],
   );
   useEffect(() => () => prepared.dispose(), [prepared]);
-  useEffect(() => { applyShowroomPaint(prepared.root, model, paint); }, [prepared, model, paint]);
+  useEffect(() => {
+    const body = COSMETIC_BUNDLES[cosmetics.bundle].body;
+    applyShowroomPaint(prepared.root, model, paint, body === "theme" ? UI_THEMES[theme]["scene-tint"] : body ?? undefined);
+  }, [prepared, model, paint, cosmetics.bundle, theme]);
+  useEffect(() => {
+    applyShowroomHighlights(prepared.root, softness, cosmetics.finish);
+  }, [prepared, softness, cosmetics.finish]);
   const materials = useMemo(
     () => previewMaterialState(prepared.root),
     [prepared],

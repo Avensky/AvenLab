@@ -588,3 +588,65 @@
  .layout-editor--hud .le-world-controls {min-width:0;flex-wrap:wrap;}
  .layout-editor--hud .le-world-field select {min-width:100px;}
 }
+
+/* Every editor control pairs ink with its own palette surface, including
+   overlays floating over the canvas. Disabled icons remain discernible. */
+.layout-editor .le-categories {background:var(--le-panel);border-color:var(--le-line);}
+.layout-editor .le-categories .menu-tab {background:transparent;color:var(--le-text);border-color:var(--le-line);}
+.layout-editor :is(.le-views,.le-tools,.le-grid-control,.le-camera,.le-modal,.le-palette .le-piece) {color:var(--le-text);background:var(--le-panel);border-color:var(--le-line);}
+.layout-editor :is(.le-views button,.le-tools button,.le-grid-control>span,.le-grid-control select,.le-piece>small,.le-piece-add,.le-stage-tag) {color:var(--le-text);}
+.layout-editor .le-views button[aria-pressed="true"] {background:var(--le-raised);color:var(--le-text);}
+.layout-editor button:disabled {opacity:1;color:var(--le-muted);background:var(--le-bg);cursor:default;}
+.layout-editor .le-stage-tag {background:var(--le-panel);padding:4px 7px;border-radius:4px;text-shadow:none;}
+.layout-editor .le-stage-help kbd {background:var(--le-panel);color:var(--le-text);border-color:var(--le-line);}
+.layout-editor .le-header-actions .le-close {color:var(--le-text);}
+.layout-editor .le-search input::placeholder {color:var(--le-muted);}
+.layout-editor .le-library[hidden] {display:none;}
+.layout-editor[data-library="hidden"] .le-body {grid-template-columns:minmax(0,1fr) 272px;}
+.layout-editor[data-library="hidden"][data-inspector="compact"] .le-body {grid-template-columns:minmax(0,1fr) 190px;}
+.layout-editor[data-library="hidden"][data-inspector="hidden"] .le-body {grid-template-columns:minmax(0,1fr);}
+.layout-editor--hud .le-header-actions > button.le-library-toggle {display:inline-flex;}
+.layout-editor--hud[data-library="hidden"] .le-stage {grid-column:1;}
+@media(max-width:760px) {
+ .layout-editor[data-library="hidden"] .le-body {grid-template-columns:minmax(0,1fr);}
+ .layout-editor[data-library="hidden"] .le-stage {grid-column:1;grid-row:1;}
+ .layout-editor[data-library="hidden"] .le-inspector {grid-column:1;grid-row:2;}
+ .layout-editor[data-library="hidden"][data-inspector="hidden"] .le-body {grid-template-rows:minmax(0,1fr);}
+ .layout-editor .le-header-actions .le-library-toggle {font-size:8px;padding-inline:4px;}
+}
+.world-builder {color:var(--le-text);}
+.world-builder :is(.wb-header,.wb-toolbar,.wb-inspector,footer,.wb-view-note) {background:var(--le-panel);color:var(--le-text);border-color:var(--le-line);}
+.world-builder :is(button,input,select,.le-header-field select) {background:var(--le-bg);color:var(--le-text);border-color:var(--le-line);}
+.world-builder :is(small,p,.wb-fields label,.wb-inspector h2) {color:var(--le-muted);}
+.world-builder.wb-plan-mode .wb-viewport {background:var(--le-bg);}
+.layout-editor .le-tools button:disabled {background:var(--le-panel);color:var(--le-muted);opacity:1;}
+/* Palette switches update foreground/background together; fading only the
+   background briefly pairs light-theme ink with the previous dark surface. */
+.layout-editor :is(button,input,select) {transition:border-color 120ms;}
+/* A small stable header; secondary controls live in a scrollable tool drawer. */
+.layout-editor .le-header {grid-template-columns:auto minmax(0,1fr) auto;height:48px;min-height:48px;gap:8px;padding:4px 8px;}
+.layout-editor .le-header .le-project {display:flex;min-width:0;overflow:hidden;}
+.layout-editor .le-header .le-project>span:last-child {overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.layout-editor .le-header-actions {display:flex;flex-wrap:nowrap;}
+.layout-editor .le-header-actions>button {display:inline-flex;min-height:32px;white-space:nowrap;}
+.layout-editor .le-tool-drawer {position:absolute;z-index:35;right:8px;top:52px;bottom:30px;width:min(340px,calc(100% - 16px));overflow:auto;padding:12px;background:var(--le-panel);color:var(--le-text);border:1px solid var(--le-line);box-shadow:0 8px 28px #0003;}
+.layout-editor .le-drawer-title {display:flex;justify-content:space-between;align-items:center;gap:8px;}
+.layout-editor .le-tool-drawer h3 {font-size:11px;margin:18px 0 8px;color:var(--le-muted);}
+.layout-editor .le-tool-drawer :is(.le-world-controls,.le-drawer-actions) {display:flex;flex-direction:column;align-items:stretch;gap:8px;}
+.layout-editor .le-tool-drawer :is(button,select) {min-height:40px;width:100%;background:var(--le-bg);color:var(--le-text);border:1px solid var(--le-line);font-size:11px;}
+.layout-editor .le-tool-drawer .le-drawer-title button {width:auto;}
+.layout-editor .le-tool-drawer .le-header-field {display:flex;}
+.layout-editor .le-tool-drawer .le-live-test {display:block;}
+.layout-editor .le-tool-drawer .le-live-test span {display:block;white-space:normal;color:var(--le-text);}
+.layout-editor--hud .le-header {display:grid;grid-template-columns:auto minmax(0,1fr) auto;}
+.layout-editor--hud .le-header-actions>button {display:inline-flex;}
+@media(max-width:600px),(max-height:500px) {
+ .layout-editor .le-header {height:44px;min-height:44px;grid-template-columns:minmax(0,1fr) auto;gap:4px;}
+ .layout-editor .le-header .le-project {display:none;}
+ .layout-editor .le-brand strong {font-size:10px;}
+ .layout-editor .le-brand-mark {display:none;}
+ .layout-editor .le-header-actions>button {padding:4px 6px;font-size:9px;min-height:34px;}
+ .layout-editor .le-tool-drawer {top:48px;}
+}
+.layout-editor .le-tool-drawer {pointer-events:auto;}
+.layout-editor--hud .le-header-actions>button:is(.le-tool-toggle,.le-close) {display:inline-flex;}
