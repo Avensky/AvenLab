@@ -1,5 +1,6 @@
+import { useHeroLoadouts } from "../../vehicles/cosmetics/heroLoadouts";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ControllerButton, MenuShortcuts } from "../../components/controller";
+import { ControllerButton } from "../../components/controller";
 import {
   GAME_MODES,
   useAlphaStore,
@@ -19,7 +20,7 @@ import { useSelectionNavigation } from "./useSelectionNavigation";
 import { useSelectionStore } from "../../store/selection/selectionStore";
 import type { MenuAction } from "../../controls/inputRouting";
 import { joinSelectedMode } from "./sessionActions";
-import { ProgressBadge } from "./ProgressBadge";
+import { SelectionHeader, SelectionFooter } from "./SelectionChrome";
 import { LobbyChat } from "./LobbyChat";
 import "./heroSelection.css";
 
@@ -27,6 +28,7 @@ import "./heroSelection.css";
  * next stage; matchmaking and the portrait picker cannot race each other. */
 export function ModeSelection() {
   const mode = useAlphaStore((s) => s.mode);
+  const defaultHero = useHeroLoadouts(s=>s.defaultHero);
   const connected = useNetworkStore((s) => s.connected);
   const root = useRef<HTMLElement>(null),
     pending = useRef(false);
@@ -56,7 +58,7 @@ export function ModeSelection() {
   }, []);
   useEffect(() => {
     showFavoriteHero();
-  }, []);
+  }, [defaultHero]);
   useEffect(() => {
     if (research) void useCanBusStore.getState().refreshStatus();
   }, [research]);
@@ -124,21 +126,7 @@ export function ModeSelection() {
       tabIndex={-1}
       aria-label="Game mode selection"
     >
-      <header className="alpha-header">
-        <div>
-          <small>REDLINE VECTOR · ALPHA</small>
-          <h1>PLAY</h1>
-        </div>
-        <ProgressBadge />
-        <button
-          type="button"
-          className="menu-control controller-action"
-          disabled={busy}
-          onClick={back}
-        >
-          <ControllerButton button="B" /> BACK
-        </button>
-      </header>
+      <SelectionHeader title="PLAY" onBack={back} busy={busy}/>
       <nav
         className="alpha-mode-tabs"
         role="tablist"
@@ -206,8 +194,7 @@ export function ModeSelection() {
           )}
         </div>
       )}
-      <footer className="alpha-selection-footer" data-controller-row>
-        <MenuShortcuts chat directions="both" secondaryTabs={research} />
+      <SelectionFooter chat secondaryTabs={research}>
         <button
           type="button"
           className="menu-control controller-action alpha-deploy"
@@ -217,7 +204,7 @@ export function ModeSelection() {
           <ControllerButton button="A" />
           {busy ? "FINDING SERVER…" : planned ? "COMING LATER" : "CONTINUE"}
         </button>
-      </footer>
+      </SelectionFooter>
     </section>
   );
 }

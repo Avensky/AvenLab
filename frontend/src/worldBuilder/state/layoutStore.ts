@@ -28,6 +28,7 @@ type LayoutState = {
   removeSpawn: () => void;
   selected: string | null;
   placing: string | null;
+  navigation: "orbit" | "pan";
   tool: "select" | "translate" | "rotate" | "scale";
   focus: "layout" | "selected";
   view: "3d" | "plan";
@@ -113,6 +114,7 @@ export const useLayoutStore = create<LayoutState>((set, get) => ({
   selected: null,
   placing: null,
   tool: "select",
+  navigation: "orbit",
   magnet: true,
   snapBasis: "outer",
   magnetRadius: 1.5,

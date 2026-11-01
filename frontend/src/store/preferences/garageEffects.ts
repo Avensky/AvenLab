@@ -1,7 +1,5 @@
 /** Presentation for the selection garage only. Driving keeps its own renderer. */
 export type GarageEffects = {
-  paint: "factory" | "hot-pink" | "pastel-pink";
-  paintSoftness: number;
   bloom: boolean;
   bloomStrength: number;
   bloomRadius: number;
@@ -15,8 +13,6 @@ export type GarageEffects = {
 };
 
 export const DEFAULT_GARAGE_EFFECTS: GarageEffects = {
-  paint: "factory",
-  paintSoftness: .45,
   bloom: true,
   bloomStrength: 0.5,
   bloomRadius: 0.25,
@@ -41,8 +37,6 @@ export function sanitizeGarageEffects(value: unknown): GarageEffects {
       ? (data[key] as boolean)
       : (DEFAULT_GARAGE_EFFECTS[key] as boolean);
   return {
-    paint: data.paint === "hot-pink" || data.paint === "pastel-pink" ? data.paint : "factory",
-    paintSoftness: number("paintSoftness",0,1),
     bloom: flag("bloom"),
     bloomStrength: number("bloomStrength", 0, 1.5),
     bloomRadius: number("bloomRadius", 0, 1),

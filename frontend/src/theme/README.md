@@ -27,7 +27,7 @@ physical instrument shapes and Xbox button colors keep their semantics.
 Main menu → Heroes owns equipped body paint and finishes. Settings → Appearance
 keeps the global interface palette and cockpit matching. Saved hero loadouts
 are validated by the server and rendered by other clients; old showroom paint
-preferences are only a fallback for vehicles with no saved loadout.
+preferences are ignored. Vehicles with no saved loadout use factory paint.
 
 Editor surfaces use `--le-*` palette tokens, including toolbar ink, disabled
 undo/redo, category chips, thumbnail tiles and grid/angle controls. Coordinate

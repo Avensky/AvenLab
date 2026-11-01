@@ -152,6 +152,11 @@ test("layout UI places, edits, locks, undoes, saves and routes controller action
         ),
       by = (label) => document.querySelector(`[aria-label="${label}"]`);
     const click = async (node) => act(async () => node.click());
+    const revision=layout.getState().cameraRevision;
+    await click(by("Fit layout"));assert.equal(layout.getState().cameraRevision,revision+1);
+    await click(by("Pan view"));assert.equal(layout.getState().navigation,"pan");
+    await click(by("Move tool"));assert.equal(layout.getState().navigation,"orbit");assert.equal(layout.getState().tool,"translate");
+    await click(by("Select tool"));
     await click(by("Place Open garage"));
     await click(button("+ Place at cursor"));
     assert.equal(layout.getState().doc.objects.length, 1);

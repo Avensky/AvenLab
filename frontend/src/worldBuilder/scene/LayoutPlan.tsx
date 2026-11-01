@@ -249,6 +249,7 @@ export function LayoutPlan() {
     cursor = useLayoutStore((s) => s.cursor),
     tool = useLayoutStore((s) => s.tool),
     grid = useLayoutStore((s) => s.snap);
+  const navigation = useLayoutStore(s=>s.navigation);
   const wireframe = useLayoutStore((s) => s.wireframe),
     focus = useLayoutStore((s) => s.focus),
     selectedSpawn = useLayoutStore((s) => s.selectedSpawn);
@@ -387,7 +388,7 @@ export function LayoutPlan() {
         if (drag.current || pan.current || !doc) return;
         const p = point(e);
         if (!p) return;
-        if (e.button === 1 || e.button === 2) {
+        if (e.button === 1 || e.button === 2 || navigation === "pan") {
           e.preventDefault();
           pan.current = { pointer: e.pointerId, start: p, view };
           e.currentTarget.setPointerCapture?.(e.pointerId);

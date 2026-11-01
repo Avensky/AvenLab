@@ -5,7 +5,7 @@ import {
   TransformControls,
 } from "@react-three/drei";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Group } from "three";
+import { Group, MOUSE, TOUCH } from "three";
 import type { TransformControls as TransformControlsImpl } from "three-stdlib";
 import {
   footprint,
@@ -88,11 +88,12 @@ function SelectedObject({ item }: { item: LayoutObject }) {
     grid = useLayoutStore((s) => s.snap),
     angle = useLayoutStore((s) => s.angleSnap),
     wireframe = useLayoutStore((s) => s.wireframe);
+  const navigation = useLayoutStore(s=>s.navigation);
   const target = useRef<Group>(null),
     controls = useRef<TransformControlsImpl>(null);
   const magnetLock = useRef<LayoutSnapLock | null>(null);
   const held = useRef<{ doc: unknown; id: string } | null>(null),
-    enabled = !item.locked && mode !== "select";
+    enabled = !item.locked && mode !== "select" && navigation !== "pan";
   const cancel = useCallback(() => {
     if (!held.current) return false;
     held.current = null;
@@ -209,6 +210,7 @@ function SelectedObject({ item }: { item: LayoutObject }) {
 export default function LayoutScene() {
   const invalidate = useThree((s) => s.invalidate);
   const palette = useEditorScenePalette();
+  const navigation = useLayoutStore(s=>s.navigation);
   const doc = useLayoutStore((s) => s.doc),
     selected = useLayoutStore((s) => s.selected),
     placing = useLayoutStore((s) => s.placing),
@@ -309,7 +311,11 @@ export default function LayoutScene() {
       <OrbitControls
         makeDefault
         target={frame.center}
-        enableRotate={camera !== "top"}
+        enableRotate={camera !== "top" && navigation !== "pan"}
+        enablePan
+        screenSpacePanning
+        mouseButtons={{LEFT:camera === "top" || navigation === "pan" ? MOUSE.PAN : MOUSE.ROTATE,MIDDLE:MOUSE.DOLLY,RIGHT:MOUSE.PAN}}
+        touches={{ONE:camera === "top" || navigation === "pan" ? TOUCH.PAN : TOUCH.ROTATE,TWO:TOUCH.DOLLY_PAN}}
         maxPolarAngle={Math.PI / 2 - 0.015}
         minDistance={3}
         maxDistance={Math.max(1800, frame.span * 4)}
@@ -331,7 +337,7 @@ export default function LayoutScene() {
           }
         }}
         onClick={(e) => {
-          if (e.delta >= 5 || e.button !== 0) return;
+          if (e.delta >= 5 || e.button !== 0 || navigation === "pan") return;
           e.stopPropagation();
           if (placing)
             layoutAction(() =>

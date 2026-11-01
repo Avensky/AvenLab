@@ -86,13 +86,14 @@ export function GameUI() {
     screen === "queue" ||
     screen === "signal_recon_setup" ||
     screen === "world_builder";
+  const heroOwner = useSocialStore(s=>s.view?.profile.id??"guest");
   const [collapsed, setCollapsed] = useState(false);
   const [reconSidebarHidden, setReconSidebarHidden] = useState(false);
 
   return (
     <div className="relative game-wrapper">
       <HeroLoadoutSync />
-      {screen === "heroes" && <HeroWorkshop />}
+      {screen === "heroes" && <HeroWorkshop key={heroOwner} />}
       {/* Requires Canvas */}
       {needsCanvas && (
         <FullCanvas

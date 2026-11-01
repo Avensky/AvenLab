@@ -29,8 +29,8 @@ test('pink showroom paint restores calibrated factory color and never touches gl
  applyShowroomPaint(root,'ae86','hot-pink');assert(!paint.color.equals(factory));assert(glass.color.equals(windowColor));
  const hot=paint.color.clone();applyShowroomPaint(root,'ae86','pastel-pink');assert(!paint.color.equals(hot));
  applyShowroomPaint(root,'ae86','factory');assert(paint.color.equals(factory));
- assert.equal(sanitizeGarageEffects({paint:'bogus'}).paint,'factory');
- assert.equal(sanitizeGarageEffects({paint:'hot-pink'}).paint,'hot-pink');
+ assert.equal('paint' in sanitizeGarageEffects({paint:'hot-pink'}),false);
+ assert.equal('paintSoftness' in sanitizeGarageEffects({paintSoftness:.9}),false);
  geometry.dispose();paint.dispose();glass.dispose();
 });
 

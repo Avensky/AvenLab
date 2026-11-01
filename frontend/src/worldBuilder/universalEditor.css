@@ -650,3 +650,10 @@
 }
 .layout-editor .le-tool-drawer {pointer-events:auto;}
 .layout-editor--hud .le-header-actions>button:is(.le-tool-toggle,.le-close) {display:inline-flex;}
+/* Keep the navigation strip entirely out of the left tool column at every
+   height; the vertical bank scrolls instead of overlapping bottom controls. */
+.layout-editor .le-stage-bottom {left:auto;right:12px;bottom:18px;max-width:calc(100% - 80px);justify-content:flex-end;flex-wrap:wrap;gap:6px;}
+.layout-editor .le-tools {max-height:calc(100% - 105px);overflow-y:auto;scrollbar-width:none;}
+.layout-editor .le-stage-help {bottom:2px;left:72px;font-size:8px;}
+.layout-editor .le-grid-control {flex-wrap:wrap;background:var(--le-panel);}
+@media(max-width:760px),(max-height:500px){.layout-editor .le-stage-bottom{right:8px;bottom:8px;max-width:calc(100% - 66px);}.layout-editor .le-tools{max-height:calc(100% - 68px);}.layout-editor .le-stage-help{display:none;}}

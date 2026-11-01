@@ -1,5 +1,4 @@
 import { Color, MeshPhysicalMaterial } from "three";
-import type { GarageEffects } from "../../store/preferences/garageEffects";
 import { Mesh, MeshStandardMaterial, type Object3D } from "three";
 
 /** The AE86 exports pure-white, fairly polished paint. Under HDR garage lamps
@@ -31,7 +30,7 @@ export function prepareGarageVehiclePaint(root: Object3D, model: string) {
 
 /** Paint only explicitly identified body materials on instance-owned clones.
  * Texture atlases, glass, lights, trim and cached GLBs are never recolored. */
-export function applyShowroomPaint(root: Object3D, model: string, finish: GarageEffects["paint"], overrideColor?: string) {
+export function applyShowroomPaint(root: Object3D, model: string, finish: "factory" | "hot-pink" | "pastel-pink", overrideColor?: string) {
   const names: Record<string, RegExp> = {ae86:/^Primary(?:\.\d+)?$/,brz:/^body$/,camaro:/^ext(?:\.\d+)?$/,supra:/PaintTNR_Material1$/};
   const allowed=names[model]; if(!allowed) return;
   const seen=new Set<MeshStandardMaterial>();

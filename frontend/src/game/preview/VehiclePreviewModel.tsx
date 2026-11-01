@@ -1,6 +1,4 @@
-import { useHeroLoadouts } from "../../vehicles/cosmetics/heroLoadouts";
-import { UI_THEMES } from "../../theme/catalog";
-import { COSMETIC_BUNDLES } from "../../vehicles/cosmetics/catalog";
+import { FACTORY_APPEARANCE, useHeroLoadouts } from "../../vehicles/cosmetics/heroLoadouts";
 import { useEffect, useMemo } from "react";
 import { useGLTF } from "@react-three/drei";
 import { prepareVehicleVisual } from "../../vehicles/tools/vehicleMaterials";
@@ -12,7 +10,6 @@ import {
 import { fitPreviewToPlatform, measurePreviewBounds } from "./previewPlacement";
 import { PreviewContactShadow } from "./PreviewContactShadow";
 import { previewMaterialState, setPreviewGhost } from "./previewGhost";
-import { usePreferencesStore } from "../../store/preferences/preferencesStore";
 import { applyShowroomHighlights, applyShowroomPaint } from "./garageVehiclePaint";
 import { prepareGarageVehiclePaint } from "./garageVehiclePaint";
 
@@ -50,10 +47,6 @@ function PreviewAsset({
   ghost: boolean;
 }) {
   const savedAppearance = useHeroLoadouts(s => s.draft?.vehicle === model ? s.draft.appearance : s.loadouts[model]);
-  const paint = usePreferencesStore(s => s.garageEffects.paint);
-  const softness = usePreferencesStore(s => s.garageEffects.paintSoftness);
-  const cosmetics = usePreferencesStore(s => s.vehicleCosmetics);
-  const theme = usePreferencesStore(s => s.theme);
   const { scene } = useGLTF(path, "/draco/");
   const prepared = useMemo(
     () => {
@@ -65,13 +58,10 @@ function PreviewAsset({
   );
   useEffect(() => () => prepared.dispose(), [prepared]);
   useEffect(() => {
-    const body = COSMETIC_BUNDLES[cosmetics.bundle].body;
-    applyShowroomPaint(prepared.root, model, savedAppearance ? "factory" : paint,
-      savedAppearance ? (savedAppearance.body === "factory" ? undefined : savedAppearance.body) : body === "theme" ? UI_THEMES[theme]["scene-tint"] : body ?? undefined);
-  }, [prepared, model, paint, cosmetics.bundle, theme, savedAppearance]);
-  useEffect(() => {
-    applyShowroomHighlights(prepared.root, softness, savedAppearance?.finish ?? cosmetics.finish);
-  }, [prepared, softness, cosmetics.finish, savedAppearance]);
+    const appearance = savedAppearance ?? FACTORY_APPEARANCE;
+    applyShowroomPaint(prepared.root, model, "factory", appearance.body === "factory" ? undefined : appearance.body);
+    applyShowroomHighlights(prepared.root, .45, appearance.finish);
+  }, [prepared, model, savedAppearance]);
   const materials = useMemo(
     () => previewMaterialState(prepared.root),
     [prepared],

@@ -1,6 +1,6 @@
 # Vehicle appearance slots and loadouts
 
-Main menu → Heroes owns paint, finish and default-hero selection. Server profiles persist validated vehicle-keyed loadouts; snapshots carry equipped appearance to every player. The local store caches saved choices and keeps an unsaved draft for garage previews. Existing Settings paint fields are retained only for legacy unsaved previews.
+Main menu → Heroes owns paint, finish and default-hero selection; edits autosave without changing the main hero. Server profiles persist validated vehicle-keyed loadouts; snapshots carry equipped appearance to every player. The account-scoped local cache holds server choices and one garage draft. Old global paint fields are ignored by every preview; unsaved cars use factory paint.
 
 | Slot | Current behavior | Asset work remaining |
 | --- | --- | --- |

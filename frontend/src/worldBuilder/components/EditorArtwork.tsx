@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { Piece } from "../document/layoutDocument";
 export function Icon({ name }: { name: string }) {
   const paths: Record<string, ReactNode> = {
+    pan: <path d="M7 11V5a1 1 0 0 1 2 0v5-7a1 1 0 0 1 2 0v7-6a1 1 0 0 1 2 0v6-4a1 1 0 0 1 2 0v6c0 4-2 6-5 6H9c-2 0-3-1-4-3l-2-4a1.2 1.2 0 0 1 2-1l2 2" />,
     select: <path d="m4 3 12 8-6 1-3 6Z" />,
     translate: (
       <path d="M10 2v16M2 10h16m-11-5 3-3 3 3m0 10-3 3-3-3M5 7l-3 3 3 3m10 0 3-3-3-3" />

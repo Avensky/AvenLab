@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { HEROES, useAlphaStore } from "../../store/alpha/alphaStore";
 import { useUIStore } from "../../store/menus/uiStore";
 import { useSocialStore } from "../../store/social/socialStore";
@@ -8,52 +8,73 @@ import { useSelectionNavigation } from "../alpha/useSelectionNavigation";
 import { navigateFormRows } from "../social/formRows";
 import { UI_THEMES } from "../../theme/catalog";
 import { usePreferencesStore } from "../../store/preferences/preferencesStore";
+import { HeroPortrait } from "../alpha/HeroPortrait";
+import { SelectionHeader, SelectionFooter } from "../alpha/SelectionChrome";
+import { ControllerButton } from "../../components/controller";
+import { HeroSaveQueue, type HeroSaveStatus } from "./HeroSaveQueue";
+import "../alpha/heroSelection.css";
 import "./heroWorkshop.css";
 
+const NO_OWNED_SKINS: string[] = [];
+
 export function HeroLoadoutSync() {
- const progression=useSocialStore(s=>s.view?.profile.progression);
- useEffect(()=>{if(!progression)return;
-  useHeroLoadouts.setState({defaultHero:progression.default_hero??"brz",loadouts:progression.hero_loadouts??{}});
- },[progression]);return null;
+ const profile=useSocialStore(s=>s.view?.profile);
+ useEffect(()=>{useHeroLoadouts.getState().adopt(profile?.id??null,profile?.progression?.default_hero,profile?.progression?.hero_loadouts);},[profile]);
+ return null;
 }
-/** Garage and play use the same model owner. Editing changes a local draft;
- * Save is acknowledged by the server before becoming the equipped loadout. */
+/** Focus previews; click/A chooses your main. Appearance edits auto-save to
+ * the authenticated actor only, in order, without choosing a different main. */
 export function HeroWorkshop() {
- const [hero,setHero]=useState(()=>useHeroLoadouts.getState().defaultHero);
+ const owner=useSocialStore(s=>s.view?.profile.id??null);
+ const main=useHeroLoadouts(s=>s.defaultHero);
+ const skins=useSocialStore(s=>s.view?.alpha?.skins);
+ const owned=useSocialStore(s=>s.view?.profile.progression?.owned??NO_OWNED_SKINS);
+ const [hero,setHero]=useState(()=>useSocialStore.getState().view?.profile.progression?.default_hero??"brz");
  const definition=HEROES.find(h=>h.id===hero)??HEROES[0];
- const [appearance,setAppearance]=useState<HeroAppearance>(()=>useHeroLoadouts.getState().loadouts[definition.vehicle]??{...FACTORY_APPEARANCE});
- const [status,setStatus]=useState(""),[busy,setBusy]=useState(false);
- const pending=useRef(false),root=useRef<HTMLElement>(null),remembered=useRef(new WeakMap<HTMLElement,number>());
+ const [appearance,setAppearance]=useState<HeroAppearance>(()=>useSocialStore.getState().view?.profile.progression?.hero_loadouts?.[definition.vehicle]??{...FACTORY_APPEARANCE});
+ const [status,setStatus]=useState<HeroSaveStatus>("idle"),[message,setMessage]=useState("");
+ const root=useRef<HTMLElement>(null),remembered=useRef(new WeakMap<HTMLElement,number>());
+ const leaving=useRef(false);
+ const drafts=useRef<Record<string,HeroAppearance>>({});
  const theme=usePreferencesStore(s=>s.theme);
+ const queue=useMemo(()=>new HeroSaveQueue(async job=>{
+  if(!owner||useSocialStore.getState().view?.profile.id!==owner)throw Error("Connect with your player profile to save.");
+  await requestSocial("hero_loadout_save",{hero:job.hero,appearance:job.appearance,make_default:job.makeDefault});
+ },job=>{if(useHeroLoadouts.getState().ownerId===owner)useHeroLoadouts.getState().save(job.hero,job.vehicle,job.appearance,job.makeDefault);},(next,error)=>{setStatus(next);setMessage(error??"");}),[owner]);
+ useEffect(()=>()=>queue.dispose(),[queue]);
  useEffect(()=>{root.current?.focus();},[]);
  useEffect(()=>{useAlphaStore.getState().preview(definition.id);},[definition.id]);
  useEffect(()=>{useHeroLoadouts.setState({draft:{vehicle:definition.vehicle,appearance}});return()=>{useHeroLoadouts.setState({draft:null});};},[definition.vehicle,appearance]);
- const choose=(id:string)=>{if(pending.current)return;const h=HEROES.find(h=>h.id===id)!;setHero(id);setAppearance(useHeroLoadouts.getState().loadouts[h.vehicle]??{...FACTORY_APPEARANCE});setStatus("");};
- const save=async()=>{if(pending.current)return;pending.current=true;setBusy(true);setStatus("");try{
-  await requestSocial("hero_loadout_save",{hero:definition.id,appearance,make_default:true});
-  useHeroLoadouts.getState().save(definition.id,definition.vehicle,appearance);setStatus("DEFAULT HERO & LOADOUT SAVED");
- }catch(e){setStatus((e as Error).message);}finally{pending.current=false;setBusy(false);}};
- const back=()=>{if(!pending.current)useUIStore.getState().setScreen("main");};
- useSelectionNavigation(root,{confirm:()=>{if(document.activeElement===root.current)void save();else (document.activeElement as HTMLElement)?.click();},back,direction:a=>{const active=document.activeElement;
-  if(active instanceof HTMLSelectElement&&(a==="left"||a==="right")) {active.selectedIndex=(active.selectedIndex+(a==="left"?-1:1)+active.options.length)%active.options.length;active.dispatchEvent(new Event("change",{bubbles:true}));}
+ const preview=(id:string)=>{const h=HEROES.find(h=>h.id===id)!;setHero(id);setAppearance(drafts.current[h.vehicle]??useHeroLoadouts.getState().loadouts[h.vehicle]??{...FACTORY_APPEARANCE});};
+ const mainChoice=(id=hero)=>{const h=HEROES.find(h=>h.id===id)!;const style=id===hero?appearance:drafts.current[h.vehicle]??useHeroLoadouts.getState().loadouts[h.vehicle]??{...FACTORY_APPEARANCE};if(id!==hero)preview(id);queue.enqueue({hero:id,vehicle:h.vehicle,appearance:style,makeDefault:true});};
+ const edit=(patch:Partial<HeroAppearance>)=>{const next={...appearance,...patch};drafts.current[definition.vehicle]=next;setAppearance(next);queue.enqueue({hero,vehicle:definition.vehicle,appearance:next,makeDefault:false});};
+ const back=async()=>{if(leaving.current)return;leaving.current=true;try{if(await queue.flush())useUIStore.getState().setScreen("main");}finally{leaving.current=false;}};
+ useSelectionNavigation(root,{confirm:()=>{const active=document.activeElement as HTMLElement;if(active===root.current)mainChoice();else active?.click();},back:()=>void back(),direction:a=>{
+  const active=document.activeElement;
+  if(active instanceof HTMLSelectElement&&(a==="left"||a==="right")){active.selectedIndex=(active.selectedIndex+(a==="left"?-1:1)+active.options.length)%active.options.length;active.dispatchEvent(new Event("change",{bubbles:true}));}
   else if(root.current)navigateFormRows(root.current,active as HTMLElement,a,remembered.current);
- },tab:dir=>choose(HEROES[(HEROES.findIndex(h=>h.id===hero)+dir+HEROES.length)%HEROES.length].id)});
- return <section ref={root} className="game-ui menu-surface hero-workshop" tabIndex={-1} aria-label="Hero modifications" data-controller-form data-controller-rows>
-  <header data-controller-row><div><small>YOUR COLLECTION</small><h1>HEROES</h1></div><button className="menu-control" disabled={busy} onClick={back}>BACK</button></header>
-  <nav data-controller-row data-controller-columns="1" className="hero-workshop-roster" aria-label="Heroes">{HEROES.map(h=><button className="menu-control" aria-pressed={hero===h.id} key={h.id} disabled={busy} onClick={()=>choose(h.id)}>{h.name}<small>{h.role}</small></button>)}</nav>
-  <aside data-controller-row data-controller-columns="1" className="hero-modifications"><h2>{definition.name}</h2><p>{definition.note}</p>
-   <label>BODY PAINT<select aria-label="Hero body paint" disabled={busy||definition.vehicle==="tank"} value={appearance.body} onChange={e=>setAppearance({...appearance,body:e.target.value})}>
-    <option value="factory">Factory</option><option value="#f4f5f7">Clean white</option><option value="#ed258d">Hot pink</option><option value="#ed9dcc">Pastel pink</option><option value="#161a22">Midnight black</option><option value={UI_THEMES[theme]["scene-tint"]}>Current theme color</option>
-    {!["factory","#f4f5f7","#ed258d","#ed9dcc","#161a22",UI_THEMES[theme]["scene-tint"]].includes(appearance.body)&&<option value={appearance.body}>Custom {appearance.body}</option>}
-   </select></label>
-   <label>CUSTOM BODY COLOR<input aria-label="Custom hero body color" type="color" disabled={busy||definition.vehicle==="tank"} value={appearance.body==="factory"?"#f4f5f7":appearance.body} onChange={e=>setAppearance({...appearance,body:e.target.value})}/></label>
-   <label>HIGHLIGHT FINISH<select aria-label="Hero highlight finish" disabled={busy} value={appearance.finish} onChange={e=>setAppearance({...appearance,finish:e.target.value as HeroAppearance["finish"]})}><option value="factory">Factory</option><option value="frs">FR-S reference</option><option value="soft">Soft</option></select></label>
-   <label>SEAT COLOR REQUEST<select aria-label="Hero seat color request" disabled={busy||definition.vehicle!=="brz"} value={appearance.seats} onChange={e=>setAppearance({...appearance,seats:e.target.value as HeroAppearance["seats"]})}><option value="factory">Factory</option><option value="black">Black · asset mapping pending</option><option value="red">Red · asset mapping pending</option></select></label>
-   {definition.vehicle==="tank"&&<p>Tank paint atlas mapping is pending.</p>}
-   <p>Seat colors, stitching, calipers and stripes need per-car material mappings. Seat choices are saved for that integration.</p>
-   <button className="menu-control" disabled>EMOTES · COMING LATER</button><button className="menu-control" disabled>SECRET RARE BUNDLES · LOCKED</button>
-   <button className="menu-control hero-save" disabled={busy} onClick={()=>void save()}>{busy?"SAVING…":"SAVE & SET DEFAULT HERO"}</button>
-   <p role="status">{status}</p>
-  </aside>
+ },tab:dir=>preview(HEROES[(HEROES.findIndex(h=>h.id===hero)+dir+HEROES.length)%HEROES.length].id)});
+ const unlocked=(skins??[]).filter(s=>owned.includes(s.id));
+ return <section ref={root} className="game-ui menu-surface alpha-selection hero-selection hero-workshop" tabIndex={-1} aria-label="Hero modifications" data-controller-form data-controller-rows>
+  <SelectionHeader title="HEROES" onBack={()=>void back()}/>
+  <div className="hero-workshop-body">
+   <nav data-controller-row data-controller-columns="2" className="hero-workshop-roster" aria-label="Heroes">{HEROES.map(h=><button className="menu-control hero-collection-tile" aria-label={`${h.name} · ${h.role}${main===h.id?" · Main":""}`} aria-pressed={main===h.id} data-preview={hero===h.id} key={h.id} disabled={!owner} onFocus={()=>preview(h.id)} onPointerEnter={()=>preview(h.id)} onClick={()=>mainChoice(h.id)}><HeroPortrait hero={h.id}/><strong>{h.name}</strong><small>{main===h.id?"MAIN HERO":h.role.toUpperCase()}</small></button>)}</nav>
+   <aside data-controller-row data-controller-columns="1" className="hero-modifications"><h2>{definition.name}</h2><p>YOUR STYLE · ONLY THIS VEHICLE</p>
+    <label>UNLOCKED SKIN<select aria-label="Unlocked hero skin" disabled={!owner} value={appearance.skin} onChange={e=>{const skin=unlocked.find(s=>s.id===e.target.value);edit({skin:e.target.value,body:skin&&skin.id!=="factory"?skin.color:"factory"});}}><option value="factory">Factory</option>{unlocked.filter(s=>s.id!=="factory").map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+    <label>BODY PAINT<select aria-label="Hero body paint" disabled={!owner||definition.vehicle==="tank"} value={appearance.body} onChange={e=>edit({body:e.target.value})}>
+     <option value="factory">Factory</option><option value="#f4f5f7">Clean white</option><option value="#ed258d">Hot pink</option><option value="#ed9dcc">Pastel pink</option><option value="#161a22">Midnight black</option><option value={UI_THEMES[theme]["scene-tint"]}>Current theme color · this car</option>
+     {!["factory","#f4f5f7","#ed258d","#ed9dcc","#161a22",UI_THEMES[theme]["scene-tint"]].includes(appearance.body)&&<option value={appearance.body}>Custom {appearance.body}</option>}
+    </select></label>
+    <label>CUSTOM BODY COLOR<input aria-label="Custom hero body color" type="color" disabled={!owner||definition.vehicle==="tank"} value={appearance.body==="factory"?"#f4f5f7":appearance.body} onChange={e=>edit({body:e.target.value})}/></label>
+    <label>HIGHLIGHT FINISH<select aria-label="Hero highlight finish" disabled={!owner} value={appearance.finish} onChange={e=>edit({finish:e.target.value as HeroAppearance["finish"]})}><option value="factory">Factory</option><option value="frs">FR-S reference</option><option value="soft">Soft</option></select></label>
+    <label>SEAT COLOR REQUEST<select aria-label="Hero seat color request" disabled={!owner||definition.vehicle!=="brz"} value={appearance.seats} onChange={e=>edit({seats:e.target.value as HeroAppearance["seats"]})}><option value="factory">Factory</option><option value="black">Black · pending asset mapping</option><option value="red">Red · pending asset mapping</option></select></label>
+    <p className="hero-pending-note">PENDING · Seat materials, stitching, calipers and stripes need asset mapping and your visual feedback. Seat requests save now; their colors are not rendered yet.</p>
+    {definition.vehicle==="tank"&&<p>PENDING · Tank paint atlas mapping.</p>}
+    <button className="menu-control" disabled>EMOTES · INCOMING / NEEDS TESTING</button><button className="menu-control" disabled>SECRET RARE BUNDLES · LOCKED</button>
+    <p role="status" aria-live="polite">{!owner?"CONNECT YOUR PLAYER PROFILE":status==="pending"||status==="saving"?"SAVING YOUR STYLE…":status==="error"?`NOT SAVED · ${message}`:status==="saved"?"SAVED TO YOUR PLAYER · SHARED IN GAME":"Changes save automatically for this vehicle."}</p>
+    {status==="error"&&<button className="menu-control" onClick={()=>void queue.flush()}>RETRY SAVE</button>}
+   </aside>
+  </div>
+  <SelectionFooter><button type="button" className="menu-control controller-action alpha-deploy" disabled={!owner} onClick={()=>mainChoice()}><ControllerButton button="A"/>{main===hero?"YOUR MAIN HERO":"SET AS MAIN"}</button></SelectionFooter>
  </section>;
 }

@@ -34,7 +34,7 @@ export {
 export type Preferences = {
   radioHudStyle: "classic" | "streamlined" | "no-tabs";
   theme: UITheme;
-  vehicleCosmetics: VehicleCosmetics;
+  vehicleCosmetics: Pick<VehicleCosmetics,"matchCockpit">;
   garageEffects: GarageEffects;
   ignitionVisibility: "auto" | "always" | "hidden";
   /** Compatibility alias for hudGroups.climate; actions keep both synchronized. */
@@ -75,12 +75,12 @@ export type PreferenceUpdate = Omit<
 > & {
   hudGroups?: Partial<Record<HudGroupId, boolean>>;
   garageEffects?: Partial<GarageEffects>;
-  vehicleCosmetics?: Partial<VehicleCosmetics>;
+  vehicleCosmetics?: Partial<Pick<VehicleCosmetics,"matchCockpit">>;
 };
 export const DEFAULT_PREFERENCES: Preferences = {
   radioHudStyle: "no-tabs",
   theme: "navy",
-  vehicleCosmetics: DEFAULT_VEHICLE_COSMETICS,
+  vehicleCosmetics: {matchCockpit:DEFAULT_VEHICLE_COSMETICS.matchCockpit},
   garageEffects: DEFAULT_GARAGE_EFFECTS,
   ignitionVisibility: "auto",
   researchHud: false,
@@ -178,7 +178,7 @@ export function sanitizePreferences(value: unknown): Preferences {
         ? data.radioHudStyle
         : "no-tabs",
     theme: isUITheme(data.theme) ? data.theme : "navy",
-    vehicleCosmetics: sanitizeVehicleCosmetics(data.vehicleCosmetics),
+    vehicleCosmetics: {matchCockpit:sanitizeVehicleCosmetics(data.vehicleCosmetics).matchCockpit},
     garageEffects: sanitizeGarageEffects(data.garageEffects),
     ignitionVisibility:
       data.ignitionVisibility === "always" ||

@@ -73,6 +73,7 @@ function LayoutPanel({
         placing: s.placing,
         view: s.view,
         tool: s.tool,
+        navigation: s.navigation,
         past: s.past,
         future: s.future,
         snap: s.snap,
@@ -261,6 +262,7 @@ function LayoutPanel({
           action = () =>
             useLayoutStore.setState({
               placing: null,
+              navigation: "orbit",
               tool: (
                 {
                   KeyV: "select",
@@ -321,6 +323,7 @@ function LayoutPanel({
     const floor = source?.surface.road_y ?? 0;
     useLayoutStore.setState({
       placing: piece.id,
+      navigation: "orbit",
       selected: null,
       cursor: [
         useLayoutStore.getState().cursor[0],
@@ -536,15 +539,16 @@ function LayoutPanel({
             </div>
           </div>
           <div className="le-tools" role="toolbar" aria-label="Edit tools">
+            <button aria-label="Pan view" title="Pan view · left drag or one finger; right drag always pans" aria-pressed={s.navigation === "pan"} onClick={()=>useLayoutStore.setState({navigation:s.navigation === "pan"?"orbit":"pan",placing:null})}><Icon name="pan"/></button>
             {(["select", "translate", "rotate", "scale"] as const).map(
               (tool, i) => (
                 <button
                   key={tool}
                   aria-label={`${tool === "translate" ? "Move" : tool[0].toUpperCase() + tool.slice(1)} tool`}
                   title={`${tool} · ${["V", "W", "R", "S"][i]}`}
-                  aria-pressed={!s.placing && s.tool === tool}
+                  aria-pressed={!s.placing && s.navigation !== "pan" && s.tool === tool}
                   onClick={() =>
-                    useLayoutStore.setState({ tool, placing: null })
+                    useLayoutStore.setState({ tool, placing: null, navigation:"orbit" })
                   }
                 >
                   <Icon name={tool} />
