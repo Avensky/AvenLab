@@ -1,4 +1,5 @@
-export function UtilityToggle({
+import { memo } from "react";
+export const UtilityToggle = memo(function UtilityToggle({
   panel,
   open,
   onClick,
@@ -35,4 +36,4 @@ export function UtilityToggle({
       )}
     </button>
   );
-}
+});

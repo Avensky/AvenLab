@@ -43,25 +43,15 @@ Swarm is marked planned and cannot launch. Signal Recon opens its existing
 CAN/interface setup; Back returns to this garage. It opens without a Rust driving
 server and cannot be submitted as a mode_join request.
 
-Seven real vehicle portraits appear in the top-right grid, all visible by default.
-Cards omit name bands and the enclosing box, while the selected name/role appears
-in large type at the upper left below the compact teammate row. Teammates align
-left on mobile and center on wide desktops. The mode row is flush with the header.
+The current garage has role filters above its portrait grid and environment or
+Recon CAN controls below it. Teammate cards are centered above the footer; the
+selected name/role remains at upper left. The vehicle arrow bar is removed.
+Navigation follows visible rows. Chat rests as a launcher and opens for direct
+interaction or new messages/player activity. Signal Recon enters its workspace
+directly with the selected CAN settings and vehicle profile.
 
-Square All/Tank/DPS/Support filters adjoin above the restored translucent vehicle
-arrow bar. The bar sits directly against the existing controller footer. Arrows
-and portraits share validated hero selection, including role filtering and support
-identities. Left/right changes a focused strip; up/down leaves it. Grid direction
-keys keep their focus-navigation behavior.
-
-Sandbox/World Editor keep the environment arrow bar with identical styling in the
-same row. Environment changes lock after admission. The selected vehicle stays on
-the existing single rotating garage pad, visible behind the translucent controls.
-
-Lobby/Team chat sits at the lower left with assisted keyboard support and fades
-after four seconds without interaction; hover or an assisted keyboard keeps it solid. See
-[HERO_PORTRAITS_AND_CHAT.md](HERO_PORTRAITS_AND_CHAT.md) for behavior, protocol,
-performance bounds and the parking-brake corrections.
+See `MENU_NAVIGATION_AND_CHAT.md` for the current layout, Xbox action chrome,
+minimap stability audit, chat lifetime and direct Recon flow.
 
 ## Checks
 

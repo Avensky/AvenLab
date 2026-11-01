@@ -25,7 +25,12 @@ export function SelectorArrow({
       aria-label={label}
       data-selector-direction={direction}
       disabled={disabled}
-      onClick={onPress}
+      tabIndex={-1}
+      onPointerDown={(event) => event.preventDefault()}
+      onClick={(event) => {
+        event.currentTarget.closest<HTMLElement>("[data-controller-selector]")?.focus({ preventScroll: true });
+        onPress();
+      }}
       onKeyDown={(event) => {
         if (event.code === "Enter" || event.code === "Space")
           event.stopPropagation();

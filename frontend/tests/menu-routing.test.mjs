@@ -53,7 +53,7 @@ test("every pause row routes correctly and navigation wraps across all ten items
 });
 
 test("Play opens the shared garage and the remaining main entries keep their destinations", () => {
-  ["hero_select", "career", "social", "settings"].forEach((screen, index) => {
+  ["mode_select", "career", "social", "settings"].forEach((screen, index) => {
     ui.setState({ screen: "main", overlay: null, isModeLoading: false });
     ui.getState().setActiveMenuIndex(index);
     route("activate");

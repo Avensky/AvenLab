@@ -398,16 +398,23 @@ html[data-high-contrast="true"] .touch-stick-throttle {
 }
 .hud-minimap[data-expanded="false"] {
   width: 28px;
+  height: 28px;
 }
 .hud-minimap[data-expanded="false"] .map-toggle {
-  left: 50%;
-  top: 50%;
+  left: 0;
+  top: 0;
+  transform: none;
+  width: 28px;
+  height: 28px;
+  padding: 5px;
 }
+/* Put the clock below the collapsed hub, away from radio/climate launchers. */
 .hud-minimap[data-expanded="false"] .match-clock {
   left: auto;
-  right: 32px;
-  top: 50%;
-  transform: translateY(-50%);
+  right: 0;
+  top: calc(100% + 4px);
+  transform: none;
+  font-variant-numeric: tabular-nums;
 }
 .map-viewport {
   position: relative;

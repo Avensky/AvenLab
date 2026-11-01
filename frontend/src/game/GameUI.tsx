@@ -28,6 +28,9 @@ import { useRenderSettingsStore } from "../store/presentation/renderSettingsStor
 const HeroSelection = lazy(() =>
   import("./alpha/HeroSelection").then((m) => ({ default: m.HeroSelection })),
 );
+const ModeSelection = lazy(() =>
+  import("./alpha/ModeSelection").then((m) => ({ default: m.ModeSelection })),
+);
 const QueueScreen = lazy(() =>
   import("./alpha/QueueScreen").then((m) => ({ default: m.QueueScreen })),
 );
@@ -80,6 +83,7 @@ export function GameUI() {
     screen === "sandbox" ||
     screen === "sandbox_setup" ||
     screen === "hero_select" ||
+    screen === "mode_select" ||
     screen === "signal_recon_setup" ||
     screen === "world_builder";
   const [collapsed, setCollapsed] = useState(false);
@@ -90,8 +94,8 @@ export function GameUI() {
       {/* Requires Canvas */}
       {needsCanvas && (
         <FullCanvas>
-          {(screen === "sandbox_setup" || screen === "hero_select") && (
-            <VehiclePreview heroLayout={screen === "hero_select"} />
+          {(screen === "sandbox_setup" || screen === "hero_select" || screen === "mode_select") && (
+            <VehiclePreview heroLayout={screen !== "sandbox_setup"} awaitingHero={screen === "hero_select"} />
           )}
           {screen === "world_builder" && (
             <Suspense fallback={null}>
@@ -141,6 +145,7 @@ export function GameUI() {
           />
         )}
         {screen === "hero_select" && <HeroSelection />}
+        {screen === "mode_select" && <ModeSelection />}
         {screen === "queue" && <QueueScreen />}
         {screen === "sandbox_setup" && (
           <SandboxSetup collapsed={collapsed} setCollapsed={setCollapsed} />

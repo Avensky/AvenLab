@@ -10,21 +10,21 @@ export function HeroRoster({
   filter,
   busy,
   onChoose,
+  onFilter,
 }: {
-  selected: string;
+  selected: string | null;
   filter: HeroFilter;
   busy: boolean;
   onChoose: (hero: string) => void;
+  onFilter: (filter: HeroFilter) => void;
 }) {
   return (
     <aside className="hero-roster" aria-label="Hero portraits">
-      <header>
-        <h2>CHOOSE YOUR HERO</h2>
-        <span>{HEROES.length} HEROES</span>
-      </header>
+      <HeroRoleTabs filter={filter} onFilter={onFilter} />
       <div
         className="hero-roster-grid"
         data-controller-grid
+        data-controller-row
         data-controller-columns="3"
         role="group"
         aria-label={
@@ -64,15 +64,27 @@ export function HeroRoleTabs({
   onFilter: (filter: HeroFilter) => void;
 }) {
   return (
-    <nav className="hero-role-tabs" role="tablist" aria-label="Hero role">
+    <nav
+      className="hero-role-tabs"
+      role="tablist"
+      aria-label="Hero role"
+      data-controller-row
+      data-controller-tab-only
+    >
       {HERO_FILTERS.map((role) => (
         <button
           key={role}
           type="button"
           role="tab"
+          data-role-filter
           className="menu-control"
           aria-selected={filter === role}
-          onClick={() => onFilter(role)}
+          tabIndex={filter === role ? 0 : -1}
+          onFocus={() => onFilter(role)}
+          onClick={(event) => {
+            event.currentTarget.focus({ preventScroll: true });
+            onFilter(role);
+          }}
         >
           {role.toUpperCase()}
         </button>

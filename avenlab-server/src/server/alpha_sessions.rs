@@ -116,7 +116,7 @@ impl Server {
         hero: &str,
         except: Option<&str>,
     ) -> Result<Team, String> {
-        let candidate = policy::hero(hero)?;
+        let candidate = if hero.is_empty() { None } else { Some(policy::hero(hero)?) };
         let a = self.alpha.lock().await.clone();
         let clients = self.connections.lock().await.clone();
         let now = timestamp();
@@ -141,29 +141,21 @@ impl Server {
         drop(data);
         let mut options = Vec::new();
         for team in [Team::Red, Team::Blue] {
-            let roles: Vec<Role> = a
-                .members
-                .iter()
-                .filter(|(id, m)| {
-                    Some(id.as_str()) != except
-                        && m.world == world
-                        && m.team == team
-                        && clients.contains_key(*id)
-                })
-                .filter_map(|(_, m)| policy::hero(&m.hero).ok().map(|h| h.role))
-                .chain(
-                    a.reservations
-                        .values()
-                        .filter(|r| {
-                            r.expires > now && r.member.world == world && r.member.team == team
-                        })
-                        .filter_map(|r| policy::hero(&r.member.hero).ok().map(|h| h.role)),
-                )
+            // Unpicked seats count toward capacity but do not claim a role.
+            // Reconnect reservations retain both their seat and any locked role.
+            let seated: Vec<&Member> = a.members.iter()
+                .filter(|(id, m)| Some(id.as_str()) != except && m.world == world
+                    && m.team == team && clients.contains_key(*id))
+                .map(|(_, m)| m)
+                .chain(a.reservations.values()
+                    .filter(|r| r.expires > now && r.member.world == world && r.member.team == team)
+                    .map(|r| &r.member))
                 .collect();
-            if (a.enforce_roles && policy::role_fits(&roles, candidate.role))
-                || (!a.enforce_roles && roles.len() < 5)
-            {
-                options.push((roles.len(), team));
+            let roles: Vec<Role> = seated.iter()
+                .filter_map(|m| policy::hero(&m.hero).ok().map(|h| h.role)).collect();
+            if seated.len() < 5 && candidate.is_none_or(|hero|
+                !a.enforce_roles || policy::role_fits(&roles, hero.role)) {
+                options.push((seated.len(), team));
             }
         }
         options.sort_by_key(|(count, team)| (usize::from(Some(*team) != preferred), *count));
@@ -173,7 +165,7 @@ impl Server {
             .ok_or_else(|| "Both teams have filled the available slots for this role.".into())
     }
     async fn admit_mode(&self, ticket: &Ticket) -> Result<Value, String> {
-        policy::hero(&ticket.hero)?;
+        if !ticket.hero.is_empty() { policy::hero(&ticket.hero)?; }
         if !MAP_IDS.contains(&ticket.map.as_str()) {
             return Err("Choose an installed environment.".into());
         }
@@ -274,8 +266,8 @@ impl Server {
     async fn join_mode(&self, player: &str, value: &Value) -> Result<Value, String> {
         let profile = self.actor(player).await?;
         let mode = Mode::parse(value["mode"].as_str().unwrap_or("sandbox"))?;
-        let hero = value["hero"].as_str().unwrap_or("ae86").to_string();
-        policy::hero(&hero)?;
+        let hero = value["hero"].as_str().unwrap_or("").to_string();
+        if !hero.is_empty() { policy::hero(&hero)?; }
         let map = if mode.bucket() == 0 {
             "streaming_endless_city".to_string()
         } else {
@@ -363,6 +355,7 @@ impl Server {
     pub async fn validate_alpha_vehicle(&self, player: &str, vehicle: &str) -> Result<(), String> {
         let a = self.alpha.lock().await;
         if let Some(member) = a.members.get(player) {
+            if member.hero.is_empty() { return Err("Choose a hero before deploying.".into()); }
             if policy::hero(&member.hero)?.vehicle != vehicle {
                 return Err("Choose this vehicle's hero in the lobby first.".into());
             }

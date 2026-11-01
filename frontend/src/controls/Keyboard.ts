@@ -38,12 +38,16 @@ import {
 
 const MENU_KEYS: Record<string, MenuAction> = {
   ArrowUp: "up",
+  Numpad8: "up",
   KeyW: "up",
   ArrowDown: "down",
+  Numpad2: "down",
   KeyS: "down",
   ArrowLeft: "left",
+  Numpad4: "left",
   KeyA: "left",
   ArrowRight: "right",
+  Numpad6: "right",
   KeyD: "right",
   Enter: "activate",
   Space: "activate",
@@ -103,6 +107,14 @@ export function Keyboard() {
       )
         return;
       const ui = useUIStore.getState();
+      if (event.code === "Tab" && !event.ctrlKey && !event.altKey && !event.metaKey &&
+        (["mode_select", "hero_select"].includes(ui.screen) || ui.overlay === "vehicle_select") &&
+        (ui.overlay === null || ui.overlay === "vehicle_select")) {
+        event.preventDefault();
+        release();
+        routeMenuAction(event.shiftKey ? "previous_tab" : "next_tab");
+        return;
+      }
       if (event.code === "F9" && ui.screen === "world_builder") {
         event.preventDefault();
         release();

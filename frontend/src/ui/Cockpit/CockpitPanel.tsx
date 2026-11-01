@@ -89,7 +89,7 @@ export function CockpitPanel() {
             SETTINGS
           </button>
           <CabinClock />
-          <button className="cockpit-back" onClick={close}>
+          <button className="cockpit-back controller-action" onClick={close}>
             <ControllerButton button="B" /> CLOSE
           </button>
         </header>

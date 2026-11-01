@@ -191,6 +191,50 @@ fn alpha_server() -> Server {
     s.alpha.try_lock().unwrap().enabled = true;
     s
 }
+#[tokio::test]
+async fn matchmaking_reserves_ten_unpicked_seats_and_locks_roles_only_after_selection() {
+    let s = alpha_server();
+    let mut players = Vec::new();
+    for index in 0..10 {
+        let (player, _, _) = client(&s, &format!("Unpicked {index}")).await;
+        let result = mode(&s, &player, "quickplay", "").await;
+        assert_eq!(result["status"], "joined");
+        assert_eq!(result["hero"], "");
+        assert!(s.validate_alpha_vehicle(&player, "ae86").await.is_err());
+        players.push(player);
+    }
+    let a = s.alpha.lock().await.clone();
+    assert_eq!(a.members.values().filter(|m| m.team == Team::Red).count(), 5);
+    assert_eq!(a.members.values().filter(|m| m.team == Team::Blue).count(), 5);
+    assert!(a.members.values().all(|m| m.hero.is_empty()));
+    let team = a.members[&players[0]].team;
+    let same_team = players.iter().find(|p| *p != &players[0] && a.members[*p].team == team).unwrap();
+    s.handle(&players[0], json!({"action":"hero_select","hero":"tank"})).await.unwrap();
+    assert!(s.handle(same_team, json!({"action":"hero_select","hero":"tank"})).await.is_err());
+    s.handle(same_team, json!({"action":"hero_select","hero":"mechanic"})).await.unwrap();
+    let (waiter, _, _) = client(&s, "Eleventh").await;
+    assert_eq!(mode(&s, &waiter, "quickplay", "").await["status"], "queued");
+    s.handle(&players[0], json!({"action":"mode_cancel"})).await.unwrap();
+    s.maintain_alpha().await;
+    assert!(s.alpha.lock().await.members[&waiter].hero.is_empty());
+    assert_eq!(s.alpha.lock().await.members.len(), 10);
+    cleanup(s).await;
+}
+#[tokio::test]
+async fn sandbox_can_reserve_each_installed_editor_environment_without_preselecting_a_hero() {
+    let s = alpha_server();
+    let (player, _, _) = client(&s, "Map tester").await;
+    for map in MAP_IDS {
+        let result = s.handle(&player, json!({"action":"mode_join","mode":"sandbox","hero":"","map":map})).await.unwrap();
+        assert_eq!(result["status"], "joined");
+        assert_eq!(result["map"], *map);
+        let world = result["world_id"].as_u64().unwrap() as usize;
+        assert_eq!(s.data.lock().await.worlds[&world].map, *map);
+        assert!(s.alpha.lock().await.members[&player].hero.is_empty());
+    }
+    assert!(s.handle(&player, json!({"action":"hero_select","hero":"fake"})).await.is_err());
+    cleanup(s).await;
+}
 async fn mode(server: &Server, player: &str, mode: &str, hero: &str) -> Value {
     server
         .handle(

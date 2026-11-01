@@ -11,3 +11,5 @@ PROGRESSIVE_COCKPIT_UPDATE.md documents the current continuous brake, compact cl
 - [Hero portraits, chat and parking controls](HERO_PORTRAITS_AND_CHAT.md) — direct selection, authenticated chat, and tap/hold behavior.
 
 - [Hero selection layout polish](HERO_SELECTION_POLISH.md) — compact upper player/title area, translucent arrow bars, adjoining role filters and idle chat.
+
+- [Current menu navigation, chat and direct Recon entry](MENU_NAVIGATION_AND_CHAT.md) — Xbox action chrome, spatial row navigation, minimized-map audit, presence notices and shared CAN controls.

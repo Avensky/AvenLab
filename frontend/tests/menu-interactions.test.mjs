@@ -81,6 +81,7 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
     });
     const { MainMenu } = await load("game/menus/MainMenu.tsx");
     const { HeroSelection } = await load("game/alpha/HeroSelection.tsx");
+    const { ModeSelection } = await load("game/alpha/ModeSelection.tsx");
     const { useAlphaStore: alpha } = await load("store/alpha/alphaStore.ts");
     const { MAIN_MENU_ITEMS } = await load("game/menus/menuItems.ts");
     const { PauseMenu } = await load("game/menus/PauseMenu.tsx");
@@ -102,6 +103,7 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
       const Component = {
         main: MainMenu,
         hero_select: HeroSelection,
+        mode_select: ModeSelection,
         sandbox_setup: SandboxSetup,
         signal_recon_setup: SignalReconSetup,
         pause: PauseMenu,
@@ -209,7 +211,7 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
         );
         assert.equal(document.querySelector(".main-menu video"), null);
         await key("Enter", "Enter");
-        assert.equal(ui.getState().screen, "hero_select");
+        assert.equal(ui.getState().screen, "mode_select");
         await reset();
         await act(async () =>
           preferences.getState().update({ reducedMotion: true }),
@@ -482,111 +484,61 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
         assert.equal(ui.getState().screen, "main");
       },
     );
-    await t.test(
-      "mouse enters Recon through vehicle/CAN setup and carries the selected identity, interface and mode",
-      async () => {
-        await resetRecon();
-        await reset();
-        await pointerPress(
-          document.querySelectorAll('[role="button"]')[
-            MAIN_MENU_ITEMS.findIndex((item) => item.id === "play")
-          ],
-        );
-        assert.equal(ui.getState().screen, "hero_select");
-        await click(
-          [...document.querySelectorAll(".alpha-mode-tabs button")].find(
-            (n) => n.textContent === "SIGNAL RECON",
-          ),
-        );
-        await click(document.querySelector(".alpha-deploy"));
-        assert.equal(ui.getState().screen, "signal_recon_setup");
-        assert.ok(document.querySelector('[aria-label="Vehicle CAN profile"]'));
-        await pointerPress(
-          document.querySelector('[aria-label="Next vehicle"]'),
-        );
-        const selectedVehicle = selection.getState().getSelectedVehicle();
-        for (let i = 0; i < 3; i++)
-          await pointerPress(document.querySelector('[data-recon-choice="0"]'));
-        assert.equal(bus.getState().selectedInterface, "can2");
-        await pointerPress(document.querySelector('[data-recon-choice="1"]'));
-        await pointerPress(document.querySelector('[data-recon-choice="1"]'));
-        assert.equal(bus.getState().selectedMode, "listen-only");
-        await pointerPress(document.querySelector('[data-recon-choice="3"]'));
-        assert.equal(ui.getState().screen, "signal_recon");
-        assert.equal(
-          recon.getState().vehicleSlug,
-          selectedVehicle.canIdentity.slug,
-        );
-        assert.equal(
-          recon.getState().vehicleIdentity.make,
-          selectedVehicle.canIdentity.make,
-        );
-        assert.equal(bus.getState().selectedInterface, "can2");
-        assert.equal(bus.getState().selectedMode, "listen-only");
-        assert.equal(
-          network.getState().connected,
-          false,
-          "analysis entry does not require a driving server",
-        );
-      },
-    );
-    await t.test(
-      "controller follows interface, mode, vehicle and Start in their displayed order without driving input",
-      async () => {
-        await resetRecon();
-        await reset();
-        await act(async () =>
-          ui
-            .getState()
-            .setActiveMenuIndex(
-              MAIN_MENU_ITEMS.findIndex((item) => item.id === "play"),
-            ),
-        );
-        await button(0);
-        assert.equal(ui.getState().screen, "hero_select");
-        await act(async () =>
-          [...document.querySelectorAll(".alpha-mode-tabs button")]
-            .find((n) => n.textContent === "SIGNAL RECON")
-            .focus(),
-        );
-        await button(0);
-        await act(async () => document.querySelector(".alpha-deploy").focus());
-        await button(0);
-        assert.equal(ui.getState().screen, "signal_recon_setup");
-        assert.equal(
-          document.activeElement.getAttribute("aria-label"),
-          "CAN interface: vcan0",
-        );
-        await button(14);
-        assert.equal(bus.getState().selectedInterface, "can2");
-        await button(13);
-        await button(15);
-        assert.equal(bus.getState().selectedMode, "live");
-        assert.equal(
-          document.activeElement.getAttribute("aria-label"),
-          "Capture mode: live",
-        );
-        await button(13);
-        await button(15);
-        assert.equal(selection.getState().vehicleIndex, 1);
-        assert.equal(
-          document.activeElement.getAttribute("aria-label"),
-          "Vehicle CAN profile",
-        );
-        await button(13);
-        assert.equal(ui.getState().getActiveMenuIndex(), 3);
-        await button(0);
-        assert.equal(ui.getState().screen, "signal_recon");
-        assert.equal(
-          recon.getState().vehicleSlug,
-          selection.getState().getSelectedVehicle().canIdentity.slug,
-        );
-        assert.equal(inputs.getState().input.throttle, 0);
-        assert.equal(inputs.getState().input.brake, 0);
-        await button(9);
-        assert.equal(ui.getState().overlay, null);
-      },
-    );
+    await t.test("mouse configures Recon before choosing a fresh hero", async () => {
+      await resetRecon(); await reset("mode_select");
+      await click([...document.querySelectorAll(".alpha-mode-tabs button")].find(n => n.textContent === "SIGNAL RECON"));
+      assert.equal(document.querySelector("[data-hero]"), null);
+      for (let i = 0; i < 3; i++) await click(document.querySelector('[data-can-field="0"]'));
+      await click(document.querySelector('[data-can-field="1"]'));
+      await click(document.querySelector('[data-can-field="1"]'));
+      assert.equal(bus.getState().selectedInterface, "can2");
+      assert.equal(bus.getState().selectedMode, "listen-only");
+      await click(document.querySelector(".alpha-deploy"));
+      assert.equal(ui.getState().screen, "hero_select");
+      assert.equal(alpha.getState().hero, null);
+      assert.equal(document.querySelector("[data-can-field]"), null);
+      await click(document.querySelector('[data-hero="brz"]'));
+      await click(document.querySelector(".alpha-deploy"));
+      assert.equal(ui.getState().screen, "signal_recon");
+      assert.equal(recon.getState().vehicleSlug, selection.getState().getSelectedVehicle().canIdentity.slug);
+      assert.equal(bus.getState().selectedInterface, "can2");
+    });
+    await t.test("controller tabs select modes and filters while both sticks navigate portraits", async () => {
+      await resetRecon(); await act(async () => alpha.setState({ mode: "editor" }));
+      await reset("mode_select"); await button(5);
+      assert.equal(alpha.getState().mode, "signal_recon");
+      await act(async () => document.querySelector('[data-can-field="0"]').focus());
+      await button(15); assert.match(document.activeElement.getAttribute("aria-label"), /Capture mode/);
+      await button(13); await button(0);
+      assert.equal(ui.getState().screen, "hero_select");
+      assert.equal(alpha.getState().hero, null);
+      await button(15); assert.equal(document.activeElement.dataset.hero, "ae86");
+      await button(13); assert.equal(document.activeElement.dataset.hero, "supra");
+      await button(0); assert.equal(alpha.getState().hero, "supra");
+      await button(5); assert.equal(document.querySelectorAll("[data-hero]").length, 1);
+      await button(5); assert.equal(document.querySelectorAll("[data-hero]").length, 4);
+      await act(async () => { document.querySelector('[data-hero="brz"]').focus(); });
+      await button(0); await button(13); await button(13); await button(0);
+      assert.equal(ui.getState().screen, "signal_recon");
+      assert.equal(inputs.getState().input.throttle, 0);
+      assert.equal(inputs.getState().input.brake, 0);
+    });
+    await t.test("a down CAN interface blocks mode continuation; Simulation still requires a hero pick", async () => {
+      await resetRecon({ active: null, mode: "offline", can2: { exists: true, up: false, state: "DOWN" } }, "live");
+      await act(async () => alpha.setState({ mode: "signal_recon" }));
+      await reset("mode_select");
+      await act(async () => bus.getState().setSelectedInterface("can2"));
+      await click(document.querySelector(".alpha-deploy"));
+      assert.equal(ui.getState().screen, "mode_select");
+      assert.match(document.querySelector('[role="status"]').textContent, /can2.*down/);
+      await act(async () => bus.getState().setSelectedMode("simulation"));
+      await click(document.querySelector(".alpha-deploy"));
+      assert.equal(ui.getState().screen, "hero_select");
+      assert.equal(document.querySelector(".alpha-deploy").disabled, true);
+      await click(document.querySelector('[data-hero="brz"]'));
+      await click(document.querySelector(".alpha-deploy"));
+      assert.equal(ui.getState().screen, "signal_recon");
+    });
     await t.test(
       "live CAN readiness is checked for mouse and controller; simulation works without hardware",
       async () => {

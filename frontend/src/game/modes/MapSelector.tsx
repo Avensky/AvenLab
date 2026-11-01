@@ -13,6 +13,7 @@ type MapSelectorProps = {
   onPrevious?: () => void;
   onNext?: () => void;
   title?: string;
+  onConfirm?: () => void;
 };
 
 export function MapSelector({
@@ -26,6 +27,7 @@ export function MapSelector({
   onPrevious,
   onNext,
   title,
+  onConfirm,
 }: MapSelectorProps) {
   const map = useSelectionStore((s) => s.getSelectedMap());
   const previousMap = useSelectionStore((s) => s.prevMap);
@@ -34,12 +36,21 @@ export function MapSelector({
   const selectedIndex = useUIStore((s) => s.selectedMenuIndexById[menuId]);
   const setActiveMenuIndex = useUIStore((s) => s.setActiveMenuIndex);
 
-  const selected = selectedIndex === menuIndex;
+  const selected = !formNavigation && selectedIndex === menuIndex;
 
   return (
     <div
       className={`selection-strip border-t transition-[background,border-color,box-shadow] duration-200 ${getSelectionClasses(selected, translucent)}`}
       data-controller-selector={formNavigation || undefined}
+      tabIndex={formNavigation && !disabled ? 0 : undefined}
+      role={formNavigation ? "group" : undefined}
+      aria-label={
+        formNavigation ? `Environment: ${title ?? map.name}` : undefined
+      }
+      aria-disabled={disabled || undefined}
+      onClick={(event) => {
+        if (event.target === event.currentTarget && !disabled) onConfirm?.();
+      }}
       onPointerEnter={() => {
         if (!formNavigation) setActiveMenuIndex(menuIndex);
       }}

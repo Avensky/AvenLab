@@ -8,13 +8,16 @@ import {
 } from "../../vehicles/tools/vehicleModelPaths";
 import { fitPreviewToPlatform, measurePreviewBounds } from "./previewPlacement";
 import { PreviewContactShadow } from "./PreviewContactShadow";
+import { previewMaterialState, setPreviewGhost } from "./previewGhost";
 
 // Selection is always the complete GLB, independent of in-game debug modes.
 // Shared material preparation retains the TSX fixes without runtime network poses.
 export function VehiclePreviewModel({
   platform,
+  ghost = false,
 }: {
   platform: readonly [number, number];
+  ghost?: boolean;
 }) {
   const vehicleId = useSelectionStore(
     (s) => s.getSelectedVehicle().id,
@@ -25,6 +28,7 @@ export function VehiclePreviewModel({
       model={vehicleId}
       path={VEHICLE_MODEL_PATHS[vehicleId]}
       platform={platform}
+      ghost={ghost}
     />
   );
 }
@@ -32,10 +36,12 @@ function PreviewAsset({
   path,
   model,
   platform,
+  ghost,
 }: {
   path: string;
   model: VehicleModelId;
   platform: readonly [number, number];
+  ghost: boolean;
 }) {
   const { scene } = useGLTF(path, "/draco/");
   const prepared = useMemo(
@@ -43,6 +49,15 @@ function PreviewAsset({
     [scene, model],
   );
   useEffect(() => () => prepared.dispose(), [prepared]);
+  const materials = useMemo(
+    () => previewMaterialState(prepared.root),
+    [prepared],
+  );
+  useEffect(() => {
+    // These are the existing preview's owned clones, never the cached GLB or a
+    // live vehicle material. A fresh hero stage has an unmistakable ghost.
+    setPreviewGhost(materials, ghost);
+  }, [materials, ghost]);
   // Keep the original measurements when the garage finishes loading; re-reading
   // a mounted model would measure its already-scaled parent a second time.
   const measurements = useMemo(

@@ -10,10 +10,13 @@ import { usePreferencesStore } from "../../store/preferences/preferencesStore";
 import { GarageEnvironment } from "./GarageEnvironment";
 import { PreviewTurntable } from "./PreviewTurntable";
 import { DEFAULT_PREVIEW_PLATFORM } from "./previewPlacement";
+import { useAlphaStore } from "../../store/alpha/alphaStore";
 
 export function VehiclePreview({
   heroLayout = false,
-}: { heroLayout?: boolean } = {}) {
+  awaitingHero = false,
+}: { heroLayout?: boolean; awaitingHero?: boolean } = {}) {
+  const unselected = useAlphaStore((s) => s.hero === null);
   const vehicleId = useSelectionStore((s) => s.getSelectedVehicle().id);
   const reducedMotion = usePreferencesStore((s) => s.reducedMotion);
   const size = useThree((s) => s.size);
@@ -74,7 +77,7 @@ export function VehiclePreview({
         >
           <Suspense fallback={null}>
             <group rotation={[0, Math.PI / 2, 0]}>
-              <VehiclePreviewModel platform={platform} />
+              <VehiclePreviewModel platform={platform} ghost={awaitingHero && unselected} />
             </group>
           </Suspense>
         </AssetBoundary>

@@ -23,3 +23,7 @@ sha2 = "0.10"
 # empty optimized physics objects observed with the current Rust toolchain.
 [profile.release]
 codegen-units = 1
+
+# Match the existing single-unit release workaround for generic serde linkage.
+[profile.test]
+codegen-units = 1

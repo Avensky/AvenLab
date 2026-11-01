@@ -1,8 +1,11 @@
+import { CanCaptureSelectors } from "./CanCaptureSelectors";
+import {
+  captureReady,
+  prepareReconSelection,
+} from "../../../store/recon/captureSetup";
 import { reconSetupParent } from "../../../store/alpha/alphaStore";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useUIStore } from "../../../store/menus/uiStore";
-import { useSelectionStore } from "../../../store/selection/selectionStore";
-import { useSignalReconStore } from "../../../store/recon/store";
 import { useCanBusStore } from "../../../store/recon/canBusStore";
 import { GameButton } from "../../../components/GameButton";
 import { VehicleSelector } from "../VehicleSelector";
@@ -22,9 +25,6 @@ export function SignalReconSetup({
     (s) => s.selectedMenuIndexById.signal_recon_setup,
   );
   const setIndex = useUIStore((s) => s.setActiveMenuIndex);
-  const adjust = useUIStore((s) => s.moveActiveMenuHorizontal);
-  const vehicle = useSelectionStore((s) => s.getSelectedVehicle());
-  const setVehicleIdentity = useSignalReconStore((s) => s.setVehicleIdentity);
   const canStatus = useCanBusStore((s) => s.status);
   const selectedInterface = useCanBusStore((s) => s.selectedInterface);
   const selectedMode = useCanBusStore((s) => s.selectedMode);
@@ -32,18 +32,7 @@ export function SignalReconSetup({
   const choices = useRef<HTMLDivElement>(null);
   const [startAttempted, setStartAttempted] = useState(false);
   const interfaceStatus = canStatus?.[selectedInterface];
-  const captureKind =
-    selectedMode === "simulation" || selectedInterface === "vcan0"
-      ? "simulation"
-      : "live";
-  const canStart =
-    captureKind === "simulation" ||
-    Boolean(interfaceStatus?.exists && interfaceStatus.up);
-  const interfaceLabel = interfaceStatus?.exists
-    ? interfaceStatus.up
-      ? "UP"
-      : "DOWN"
-    : "UNAVAILABLE";
+  const canStart = captureReady(selectedInterface, selectedMode, canStatus);
 
   const startSignalRecon = useCallback(() => {
     if (!canStart) {
@@ -53,9 +42,9 @@ export function SignalReconSetup({
     }
     // This mode uses the selected vehicle as a CAN/data profile. Starting the
     // workspace does not spawn a drivable entity or depend on the Rust socket.
-    setVehicleIdentity(vehicle.canIdentity);
+    prepareReconSelection();
     setScreen("signal_recon");
-  }, [canStart, refreshCanStatus, setScreen, setVehicleIdentity, vehicle]);
+  }, [canStart, refreshCanStatus, setScreen]);
 
   useEffect(() => {
     setIndex(0);
@@ -104,50 +93,7 @@ export function SignalReconSetup({
         ref={choices}
         className="garage-selection-controls absolute bottom-0 left-0 z-20 max-h-[65svh] w-full overflow-y-auto"
       >
-        <div
-          className="grid grid-cols-2"
-          role="group"
-          aria-label="CAN capture controls"
-        >
-          <GameButton
-            data-recon-choice={0}
-            variant="neutral"
-            selected={selectedIndex === 0}
-            onFocus={() => setIndex(0)}
-            onPress={() => {
-              setIndex(0);
-              adjust(1);
-            }}
-            className="flex min-h-11 min-w-0 flex-col items-start justify-center px-3 py-1 text-xs"
-            aria-label={`CAN interface: ${selectedInterface}`}
-          >
-            <span className="text-[10px] uppercase tracking-wide text-cyan-200/70">
-              CAN interface
-            </span>
-            <span className="max-w-full truncate font-mono">
-              {selectedInterface} · {interfaceLabel}
-            </span>
-          </GameButton>
-          <GameButton
-            data-recon-choice={1}
-            variant="neutral"
-            selected={selectedIndex === 1}
-            onFocus={() => setIndex(1)}
-            onPress={() => {
-              setIndex(1);
-              adjust(1);
-            }}
-            className="flex min-h-11 min-w-0 flex-col items-start justify-center px-3 py-1 text-xs"
-            aria-label={`Capture mode: ${selectedMode}`}
-          >
-            <span className="text-[10px] uppercase tracking-wide text-cyan-200/70">
-              Capture mode
-            </span>
-            <span className="max-w-full truncate font-mono uppercase">
-              {selectedMode}
-            </span>
-          </GameButton>
-        </div>
+        <CanCaptureSelectors selectedIndex={selectedIndex} onFocus={setIndex} />
         <div
           data-recon-choice={2}
           tabIndex={0}

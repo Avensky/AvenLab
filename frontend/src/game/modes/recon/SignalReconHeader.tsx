@@ -1,17 +1,13 @@
-import { useMemo, type ReactNode } from "react";
+import { CanCaptureDropdowns } from "./CanCaptureSelectors";
+import { ControllerButton } from "../../../components/controller";
+import { type ReactNode } from "react";
 import { GameButton } from "../../../components/GameButton";
 import {
   ReconWorkspaceHeader,
   type ReconHeaderTheme,
 } from "./ReconWorkspaceHeader";
 import { useSelectionStore, useSignalReconStore } from "../../../store";
-import {
-  useCanBusStore,
-  CAN_INTERFACE_OPTIONS,
-  CAN_MODE_OPTIONS,
-  type CanInterface,
-  type CanMode,
-} from "../../../store/recon/canBusStore";
+import { useCanBusStore, type CanMode } from "../../../store/recon/canBusStore";
 import type { MissionRunSummary } from "./SignalRecon";
 
 const THEME_CLASSES: Record<
@@ -104,30 +100,13 @@ export default function SignalReconHeader({
 }: SignalReconHeaderProps) {
   const theme = "cyan" as const;
   const tone = THEME_CLASSES[theme];
-  const canStatus = useCanBusStore((state) => state.status);
-  const selectedInterface = useCanBusStore((state) => state.selectedInterface);
   const selectedMode = useCanBusStore((state) => state.selectedMode);
-  const setSelectedInterface = useCanBusStore(
-    (state) => state.setSelectedInterface,
-  );
-  const setSelectedMode = useCanBusStore((state) => state.setSelectedMode);
 
   const selectedVehicle = useSelectionStore((state) =>
     state.getSelectedVehicle(),
   );
   const activeSessionId = useSignalReconStore((state) => state.activeSessionId);
   const activePhase = useSignalReconStore((state) => state.activePhase);
-
-  const availableInterfaces = useMemo(() => {
-    if (!canStatus) return [...CAN_INTERFACE_OPTIONS];
-
-    const available = CAN_INTERFACE_OPTIONS.filter((iface) => {
-      const interfaceStatus = canStatus[iface];
-      return interfaceStatus?.exists || iface === selectedInterface;
-    });
-
-    return available.length ? available : [...CAN_INTERFACE_OPTIONS];
-  }, [canStatus, selectedInterface]);
 
   const databaseRunCount = missionProgressByCode
     ? Object.keys(missionProgressByCode).length
@@ -165,52 +144,7 @@ export default function SignalReconHeader({
       actions={
         <div className="grid col-1 space-y-0.5">
           {showCanControls && (
-            <>
-              <label className="flex h-4 min-w-0 items-center rounded-sm border border-cyan-400/25 bg-slate-950 px-1 py-0.5">
-                <span className="mr-1 text-[8px] tracking-[0.18em] text-slate-500">
-                  IFACE
-                </span>
-                <select
-                  value={selectedInterface}
-                  disabled={controlsDisabled}
-                  onChange={(event) =>
-                    setSelectedInterface(event.target.value as CanInterface)
-                  }
-                  className="min-w-0 bg-slate-950 font-mono text-[9px] font-bold uppercase text-green-100 outline-none disabled:opacity-40"
-                >
-                  {availableInterfaces.map((iface) => {
-                    const interfaceStatus = canStatus?.[iface];
-                    const label =
-                      interfaceStatus?.up === false ? `${iface} · DOWN` : iface;
-                    return (
-                      <option key={iface} value={iface}>
-                        {label}
-                      </option>
-                    );
-                  })}
-                </select>
-              </label>
-
-              <label className="flex h-4 min-w-0 items-center rounded-sm border border-cyan-400/25 bg-slate-950 px-1 py-0.5">
-                <span className="mr-1 text-[8px] tracking-[0.18em] text-slate-500">
-                  MODE
-                </span>
-                <select
-                  value={selectedMode}
-                  disabled={controlsDisabled}
-                  onChange={(event) =>
-                    setSelectedMode(event.target.value as CanMode)
-                  }
-                  className="min-w-0 bg-slate-950 font-mono text-[9px] font-bold text-green-100 outline-none disabled:opacity-40"
-                >
-                  {CAN_MODE_OPTIONS.map((mode) => (
-                    <option key={mode} value={mode}>
-                      {mode.toUpperCase()}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </>
+            <CanCaptureDropdowns disabled={controlsDisabled} />
           )}
 
           {actions}
@@ -221,9 +155,9 @@ export default function SignalReconHeader({
                 variant={exitVariant}
                 disabled={exitDisabled}
                 onPress={onExit}
-                className={`rounded-sm border flex items-center justify-center text-[9px] font-black ${exitVariant === "danger" ? "border-red-300/40" : ""}`}
+                className="controller-action text-[9px] font-black"
               >
-                {exitLabel}
+                <ControllerButton button="B" /> {exitLabel}
               </GameButton>
             ) : null}
             {collapsible ? (

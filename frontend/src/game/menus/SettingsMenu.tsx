@@ -50,7 +50,7 @@ export function SettingsMenu() {
   const [pendingBinding, setPendingBinding] = useState<BindingAction | null>(
     null,
   );
-  const [notice, setNotice] = useState("Changes apply immediately");
+  const [notice, setNotice] = useState("");
   useEffect(() => {
     if (!pendingBinding) return;
     const capture = (event: KeyboardEvent) => {
@@ -161,7 +161,6 @@ export function SettingsMenu() {
       <TabbedMenu
         initialTab={initialTab}
         title="Settings"
-        subtitle="Set up your driver station. Graphics, input and accessibility changes apply immediately."
         onBack={back}
         status={notice}
         tabs={[

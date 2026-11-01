@@ -122,7 +122,7 @@ function LegacyVehicleMenu() {
           </h1>
           <button
             type="button"
-            className="menu-control menu-back"
+            className="menu-control menu-back controller-action"
             onClick={back}
             onKeyDown={(event) => {
               if (event.code === "Enter" || event.code === "Space") {

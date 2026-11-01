@@ -1,0 +1,212 @@
+/* Idle chat unmounts to one launcher. Live activity opens a temporary panel. */
+.lobby-chat {
+  border: 0;
+  background: transparent;
+  color: #d6e6ef;
+  pointer-events: auto;
+}
+.lobby-chat[data-expanded="true"] {
+  background: #06121bb8;
+}
+.lobby-chat header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px;
+}
+.lobby-chat header button,
+.chat-send {
+  padding: 3px 5px;
+  min-height: 22px;
+  border: 1px solid #69899a44;
+  border-radius: 0;
+  background: #0b1f2c70;
+  color: #b9d1df;
+  font: 8px/1.2 monospace;
+  cursor: pointer;
+}
+.lobby-chat .chat-focus {
+  margin-right: auto;
+  border-color: transparent;
+  background: none;
+}
+.lobby-chat kbd {
+  font-size: 7px;
+  border: 1px solid #7493a377;
+  padding: 1px 3px;
+}
+.lobby-chat nav {
+  display: flex;
+  gap: 0;
+}
+.lobby-chat nav [aria-pressed="true"] {
+  color: #ffed93;
+  border-color: #e4cb6c;
+}
+.lobby-chat button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.lobby-chat .chat-collapse {
+  width: 24px;
+}
+.chat-lines {
+  height: 66px;
+  overflow: auto;
+  scrollbar-width: none;
+  padding: 4px 5px;
+  overflow-wrap: anywhere;
+}
+.chat-lines::-webkit-scrollbar {
+  display: none;
+}
+.chat-lines p {
+  display: flex;
+  gap: 5px;
+  margin: 2px 0;
+  font-size: 9px;
+  line-height: 1.35;
+}
+.chat-lines strong {
+  color: #9cd9eb;
+  flex: none;
+  max-width: 90px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.chat-lines .chat-empty {
+  color: #8fa9b9;
+  font-size: 8px;
+}
+.lobby-chat form {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px;
+}
+.lobby-chat .assisted-field {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  gap: 0;
+}
+.lobby-chat .assisted-field > span:first-child {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.lobby-chat .assisted-input-row {
+  display: flex;
+  min-width: 0;
+  gap: 2px;
+}
+.lobby-chat input {
+  width: 100%;
+  min-width: 0;
+  min-height: 25px;
+  padding: 4px;
+  border: 1px solid #6b8a9b88;
+  border-radius: 0;
+  background: #06131b66;
+  color: #e8f3f8;
+  font: 9px monospace;
+}
+.lobby-chat .assisted-input-row .menu-control {
+  padding: 2px 3px;
+  min-height: 25px;
+  font-size: 6px;
+}
+.chat-send {
+  min-height: 25px;
+  color: #ffe694;
+}
+.chat-notice {
+  margin: 0;
+  padding: 3px 5px;
+  color: #edc281;
+  font-size: 8px;
+}
+
+.chat-launcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  padding: 2px 4px;
+  min-height: 24px;
+  color: #c5dce8;
+  background: transparent;
+  font: 9px monospace;
+  cursor: pointer;
+  opacity: 0.75;
+}
+.chat-launcher:is(:hover, :focus-visible) {
+  opacity: 1;
+  outline: none;
+  text-decoration: underline;
+}
+.chat-system {
+  color: #bdc6a6;
+  font-style: italic;
+}
+.lobby-chat[data-expanded="false"] {
+  width: max-content;
+}
+.driving-chat {
+  position: absolute;
+  left: max(8px, env(safe-area-inset-left));
+  top: max(190px, calc(env(safe-area-inset-top) + 190px));
+  width: min(330px, calc(100vw - 24px));
+  z-index: 10;
+  pointer-events: none;
+}
+
+.lobby-chat .controller-key {
+  min-width: 17px;
+  height: 17px;
+  font-size: 7px;
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  .chat-lines {
+    height: 48px;
+    padding: 2px 4px;
+  }
+  .chat-lines p {
+    margin: 1px 0;
+    font-size: 7px;
+  }
+  .lobby-chat header button {
+    min-height: 18px;
+    padding: 2px 4px;
+    font-size: 7px;
+  }
+  .lobby-chat input,
+  .chat-send,
+  .lobby-chat .assisted-input-row .menu-control {
+    min-height: 21px;
+    font-size: 7px;
+    padding: 2px;
+  }
+  .lobby-chat .assisted-input-row .menu-control {
+    font-size: 5px;
+  }
+  .driving-chat {
+    top: auto;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    left: calc(var(--wheel-size, 190px) + 16px);
+    width: min(230px, calc(100vw - var(--wheel-size, 190px) - 220px));
+  }
+}
+
+.lobby-chat
+  .controller-key:is(
+    [data-controller-key="A"],
+    [data-controller-key="B"],
+    [data-controller-key="X"],
+    [data-controller-key="Y"]
+  ) {
+  width: 17px;
+  min-width: 17px;
+}

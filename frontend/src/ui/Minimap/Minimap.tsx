@@ -241,7 +241,7 @@ function MapContent({ circular = false }: { circular?: boolean }) {
     </>
   );
 }
-export function Minimap({
+export const Minimap = memo(function Minimap({
   forceExpanded = false,
 }: {
   forceExpanded?: boolean;
@@ -296,4 +296,4 @@ export function Minimap({
       {open && <MapContent circular={!forceExpanded} />}
     </section>
   );
-}
+});

@@ -1,3 +1,4 @@
+import { ChatDock } from "./ChatDock";
 import { useEffect, type CSSProperties } from "react";
 import { usePreferencesStore } from "../store/preferences/preferencesStore";
 import { InspectionPanel } from "./InspectionPanel";
@@ -84,6 +85,7 @@ export function DrivingHUD() {
       {dock && <DrivingIgnition />}
       <ControlsPanel />
       <InspectionPanel />
+      <ChatDock />
     </div>
   );
 }

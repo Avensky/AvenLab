@@ -14,10 +14,12 @@ export async function joinSelectedMode() {
     throw Error("Select a driving mode before joining the alpha queue.");
   const result = await requestSocial("mode_join", {
     mode: state.mode,
-    hero: state.hero,
+    // Reserve capacity first. A role is claimed only by an explicit portrait pick.
+    hero: "",
     map: useSelectionStore.getState().getSelectedMap().id,
   });
-  if (result.status === "queued") useUIStore.getState().setScreen("queue");
+  if (result.status === "queued" || result.status === "joined")
+    useUIStore.getState().setScreen("queue");
   return result;
 }
 let spawning = false;
@@ -29,7 +31,8 @@ export async function deploySelectedHero() {
   if (!connection || connection.readyState !== WebSocket.OPEN)
     throw Error("Reconnect to the game server first.");
   const selected = useAlphaStore.getState();
-  const hero = HEROES.find((h) => h.id === selected.hero)!;
+  const hero = HEROES.find((h) => h.id === selected.hero);
+  if (!hero) throw Error("Choose a hero before deploying.");
   const active = useSocialStore.getState().view?.alpha?.active;
   if (active && active.hero !== hero.id)
     await requestSocial("hero_select", { hero: hero.id });

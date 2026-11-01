@@ -111,7 +111,7 @@ test("alpha selection, queue and HUD route to their own state owners", async (t)
       },
     };
     await t.test(
-      "portrait and arrow picks share server role validation and keep a denied hero locked",
+      "portrait picks preserve server role validation and keep a denied hero locked",
       async () => {
         const { HeroSelection } = await load("game/alpha/HeroSelection.tsx");
         await act(async () => {
@@ -128,11 +128,11 @@ test("alpha selection, queue and HUD route to their own state owners", async (t)
         assert.equal(canDrive(), false);
         assert.equal(
           document.querySelectorAll(".alpha-mode-tabs button").length,
-          6,
+          0,
         );
         assert.equal(document.querySelectorAll(".alpha-squad-seat").length, 5);
         await click("SUPPORT", "tab");
-        await click("Next vehicle");
+        await click("MECHANIC · SUPPORT");
         const command = sent.at(-1);
         assert.equal(command.action, "hero_select");
         assert.equal(command.hero, "mechanic");
@@ -151,112 +151,261 @@ test("alpha selection, queue and HUD route to their own state owners", async (t)
       },
     );
     await t.test(
-      "the portrait garage shows every hero, keeps the world bar and keeps research out of mode_join",
+      "mode tabs select immediately while directions own the bottom environment bar",
       async () => {
-        const { HeroSelection } = await load("game/alpha/HeroSelection.tsx");
-        const { useSelectionStore: selection, vehicleCatalog } = await load(
+        const { ModeSelection } = await load("game/alpha/ModeSelection.tsx");
+        const { useSelectionStore: selection, mapCatalog } = await load(
           "store/selection/selectionStore.ts",
         );
-        const { joinSelectedMode } = await load("game/alpha/sessionActions.ts");
+        const { usePreferencesStore: prefs } = await load(
+          "store/preferences/preferencesStore.ts",
+        );
         await act(async () => {
-          social.getState().receive({
-            ...view,
-            current_world_id: null,
-            alpha: { ...view.alpha, active: null },
-          });
+          social
+            .getState()
+            .receive({
+              ...view,
+              current_world_id: null,
+              alpha: { ...view.alpha, active: null },
+            });
           network.setState({
-            connected: false,
+            connected: true,
             worldName: null,
             worldMap: null,
           });
-          alpha.setState({ mode: "sandbox", hero: "ae86" });
+          prefs.getState().update({ favoriteVehicles: ["brz"] });
+          alpha.setState({ mode: "sandbox", hero: null });
+          ui.setState({ screen: "mode_select", overlay: null });
         });
-        await render(HeroSelection);
-        const index = selection.getState().mapIndex;
-        await click("Next map");
-        assert.notEqual(selection.getState().mapIndex, index);
-        await click("Previous map");
-        assert.equal(selection.getState().mapIndex, index);
-        assert.equal(document.querySelectorAll("[data-hero]").length, 7);
-        assert.ok(document.querySelector('[aria-label="Next vehicle"]'));
+        await render(ModeSelection);
+        assert.equal(selection.getState().getSelectedVehicle().id, "brz");
         assert.equal(
-          document.querySelectorAll(".hero-portrait-name").length,
+          alpha.getState().hero,
+          null,
+          "favorite showcase is not a match pick",
+        );
+        assert.equal(
+          document.querySelectorAll("[data-hero], .alpha-squad-seat").length,
           0,
         );
-        await click("BRZ · DPS");
-        assert.equal(alpha.getState().hero, "brz");
-        assert.equal(
-          vehicleCatalog[selection.getState().vehicleIndex].id,
-          "brz",
-        );
-        await click("Next vehicle");
-        assert.equal(alpha.getState().hero, "camaro");
-        await click("Previous vehicle");
-        assert.equal(alpha.getState().hero, "brz");
-        const arrow = document.querySelector('[aria-label="Next vehicle"]');
-        await act(async () => {
-          arrow.focus();
-          route("right");
-        });
-        assert.equal(alpha.getState().hero, "camaro");
+        const field = document.querySelector("[data-controller-selector]");
+        assert.equal(document.activeElement, field);
+        const start = selection.getState().mapIndex;
+        await act(async () => route("right"));
         assert.equal(
           document.activeElement,
-          arrow,
-          "cycling keeps the strip focused",
+          field,
+          "the entire environment stays focused",
+        );
+        assert.equal(
+          selection.getState().mapIndex,
+          (start + 1) % mapCatalog.length,
+        );
+        for (let i = 1; i < mapCatalog.length; i++)
+          await act(async () => route("right"));
+        assert.equal(selection.getState().mapIndex, start);
+        assert.equal(
+          alpha.getState().mode,
+          "sandbox",
+          "directions never change mode",
+        );
+        await act(async () => route("next_tab"));
+        assert.equal(
+          alpha.getState().mode,
+          "editor",
+          "shoulder selects without A",
         );
         await act(async () =>
           document.activeElement.dispatchEvent(
             new dom.window.KeyboardEvent("keydown", {
-              key: "ArrowLeft",
-              code: "ArrowLeft",
+              code: "Tab",
+              key: "Tab",
               bubbles: true,
               cancelable: true,
             }),
           ),
         );
-        assert.equal(alpha.getState().hero, "brz");
-        await click("SUPPORT", "tab");
-        await click("Next vehicle");
-        assert.equal(alpha.getState().hero, "mechanic");
-        await click("Next vehicle");
-        assert.equal(alpha.getState().hero, "logistics");
+        assert.equal(alpha.getState().mode, "signal_recon");
+        assert.equal(document.querySelectorAll("[data-can-field]").length, 2);
         assert.equal(
-          vehicleCatalog[selection.getState().vehicleIndex].id,
-          "ae86",
+          document.querySelector("[data-controller-selector]"),
+          null,
         );
-        await click("Next vehicle");
         assert.equal(
-          alpha.getState().hero,
-          "mechanic",
-          "role cycling wraps without losing the support identity",
+          document.querySelectorAll("[data-hero], .alpha-squad-seat").length,
+          0,
         );
-        const mapArrow = document.querySelector('[aria-label="Next map"]');
+      },
+    );
+    await t.test(
+      "fresh hero stage has no configuration, spatial directions and tab-only filters",
+      async () => {
+        const { HeroSelection } = await load("game/alpha/HeroSelection.tsx");
+        const { useSelectionStore: selection } = await load(
+          "store/selection/selectionStore.ts",
+        );
+        const { useCanBusStore: bus } = await load(
+          "store/recon/canBusStore.ts",
+        );
+        bus.setState({ selectedMode: "simulation" });
         await act(async () => {
-          mapArrow.focus();
-          route("right");
+          alpha.setState({ mode: "signal_recon", hero: null });
+          ui.setState({ screen: "hero_select" });
         });
-        assert.notEqual(selection.getState().mapIndex, index);
-        await act(async () => route("left"));
-        assert.equal(selection.getState().mapIndex, index);
-        await click("ALL", "tab");
-        await click("WORLD EDITOR");
-        assert.ok(document.querySelector('[aria-label="Next map"]'));
-        await click("COMPETITIVE");
-        assert.equal(document.querySelector('[aria-label="Next map"]'), null);
-        await click("SWARM COMMAND");
+        await render(HeroSelection);
+        assert.equal(document.querySelectorAll("[data-hero]").length, 7);
+        assert.equal(
+          document.querySelectorAll(
+            ".alpha-mode-tabs,[data-can-field],[data-controller-selector]",
+          ).length,
+          0,
+        );
         assert.equal(document.querySelector(".alpha-deploy").disabled, true);
-        await click("SIGNAL RECON");
+        assert.equal(
+          document.querySelector('[data-hero][aria-pressed="true"]'),
+          null,
+        );
+        assert.equal(document.activeElement.dataset.hero, "tank");
+        await act(async () => route("right"));
+        assert.equal(document.activeElement.dataset.hero, "ae86");
+        await act(async () => route("down"));
+        assert.equal(document.activeElement.dataset.hero, "supra");
+        await act(async () =>
+          document.activeElement.dispatchEvent(
+            new dom.window.KeyboardEvent("keydown", {
+              code: "Numpad4",
+              key: "4",
+              bubbles: true,
+              cancelable: true,
+            }),
+          ),
+        );
+        assert.equal(document.activeElement.dataset.hero, "camaro");
+        assert.equal(
+          document.querySelector('[data-role-filter][aria-selected="true"]')
+            .textContent,
+          "ALL",
+        );
+        await click("SUPPORT", "tab");
+        await act(async () => route("right"));
+        assert.equal(
+          document.querySelectorAll("[data-hero]").length,
+          2,
+          "direction did not change filter",
+        );
+        assert.equal(document.activeElement.dataset.hero, "mechanic");
+        await act(async () => route("right"));
+        assert.equal(document.activeElement.dataset.hero, "logistics");
+        await act(async () => route("activate"));
+        assert.equal(alpha.getState().hero, "logistics");
+        assert.equal(selection.getState().getSelectedVehicle().id, "ae86");
+        await act(async () => route("previous_tab"));
+        assert.equal(
+          document.querySelector('[data-role-filter][aria-selected="true"]')
+            .textContent,
+          "DPS",
+        );
+        assert.equal(document.activeElement.dataset.hero, "ae86");
+        await click("BRZ · DPS");
+        assert.equal(alpha.getState().hero, "brz");
         const before = sent.length;
-        await assert.rejects(joinSelectedMode(), /driving mode/);
         await act(async () => document.querySelector(".alpha-deploy").click());
-        assert.equal(ui.getState().screen, "signal_recon_setup");
+        assert.equal(ui.getState().screen, "signal_recon");
         assert.equal(
           sent.length,
           before,
-          "offline research entry does not request a game seat",
+          "offline research needs no game seat",
         );
-        await act(async () => route("back"));
+      },
+    );
+    await t.test(
+      "matchmaking reserves an unpicked seat before displaying portraits or team cards",
+      async () => {
+        const { ModeSelection } = await load("game/alpha/ModeSelection.tsx");
+        const { HeroSelection } = await load("game/alpha/HeroSelection.tsx");
+        const { QueueScreen } = await load("game/alpha/QueueScreen.tsx");
+        const { useAlphaFlow } = await load("game/alpha/useAlphaFlow.ts");
+        function Flow() {
+          useAlphaFlow();
+          const screen = ui((s) => s.screen);
+          return h(
+            screen === "mode_select"
+              ? ModeSelection
+              : screen === "queue"
+                ? QueueScreen
+                : HeroSelection,
+          );
+        }
+        await act(async () => {
+          alpha.setState({ mode: "quickplay", hero: "brz" });
+          social
+            .getState()
+            .receive({
+              ...view,
+              current_world_id: null,
+              alpha: { ...view.alpha, active: null },
+            });
+          ui.setState({ screen: "mode_select" });
+        });
+        await render(Flow);
+        await act(async () => document.querySelector(".alpha-deploy").click());
+        const command = sent.at(-1);
+        assert.equal(command.action, "mode_join");
+        assert.equal(command.hero, "");
+        assert.equal(
+          document.querySelectorAll("[data-hero], .alpha-squad-seat").length,
+          0,
+        );
+        await act(async () => {
+          social
+            .getState()
+            .receive({
+              ...view,
+              current_world_id: null,
+              alpha: {
+                ...view.alpha,
+                active: null,
+                queue: {
+                  mode: "quickplay",
+                  position: 1,
+                  size: 1,
+                  joined: 0,
+                  reason: "Full",
+                },
+              },
+            });
+          client.receiveSocialResult({
+            request_id: command.request_id,
+            ok: true,
+            data: { status: "queued" },
+          });
+        });
+        assert.equal(ui.getState().screen, "queue");
+        assert.equal(
+          document.querySelectorAll("[data-hero], .alpha-squad-seat").length,
+          0,
+        );
+        await act(async () =>
+          social
+            .getState()
+            .receive({
+              ...view,
+              alpha: {
+                ...view.alpha,
+                active: { ...view.alpha.active, hero: "" },
+                roster: [{ ...view.alpha.roster[0], hero: "" }],
+              },
+            }),
+        );
         assert.equal(ui.getState().screen, "hero_select");
+        assert.equal(alpha.getState().hero, null);
+        assert.equal(document.querySelectorAll("[data-hero]").length, 7);
+        assert.equal(document.querySelectorAll(".alpha-squad-seat").length, 5);
+        assert.equal(
+          document.querySelector('[data-hero][aria-pressed="true"]'),
+          null,
+        );
+        assert.equal(document.querySelector(".alpha-deploy").disabled, true);
       },
     );
     await t.test(
@@ -360,7 +509,17 @@ test("alpha selection, queue and HUD route to their own state owners", async (t)
           network.setState({ connected: true });
           client.receiveSocialState(view);
         });
+        const { useTextKeyboardStore: keyboard } = await load(
+          "store/text/keyboardStore.ts",
+        );
+        await act(async () => keyboard.getState().setMode("off"));
         await render(LobbyChat);
+        assert.equal(
+          document.querySelector(".chat-lines"),
+          null,
+          "idle chat has only its launcher",
+        );
+        await click("Open chat");
         let packet = sent.at(-1);
         assert.equal(packet.action, "chat_history");
         await act(async () =>
@@ -420,6 +579,39 @@ test("alpha selection, queue and HUD route to their own state owners", async (t)
             chat.getState().receive({ ...message, id });
         });
         assert.equal(chat.getState().history["team:1:red"].length, 50);
+        await click("Minimize chat");
+        const incoming = {
+          ...message,
+          id: 81,
+          author_id: "friend",
+          name: "Friend",
+          text: "Incoming team message",
+        };
+        await act(async () => chat.getState().receive(incoming));
+        assert.match(
+          document.querySelector(".chat-lines").textContent,
+          /Incoming team message/,
+        );
+        assert.notEqual(
+          document.activeElement?.tagName,
+          "INPUT",
+          "incoming chat never steals focus",
+        );
+        await click("Minimize chat");
+        await act(async () => chat.getState().receive(incoming));
+        assert.equal(
+          document.querySelector(".chat-lines"),
+          null,
+          "duplicate broadcasts do not reopen chat",
+        );
+        await act(async () =>
+          chat.getState().mergeHistory("team:1:red", [{ ...incoming, id: 82 }]),
+        );
+        assert.equal(
+          document.querySelector(".chat-lines"),
+          null,
+          "history snapshots do not reopen chat",
+        );
         let historyPending;
         await act(async () => {
           historyPending = loadChatHistory("team");
@@ -450,6 +642,145 @@ test("alpha selection, queue and HUD route to their own state owners", async (t)
         assert.equal(sent.length, before);
         await act(async () => client.setSocialConnection(null));
         assert.deepEqual(chat.getState().history, {});
+        client.setSocialConnection(socket);
+      },
+    );
+    await t.test(
+      "presence notices follow validated current-world views, avoid baseline/repeat noise and stay bounded",
+      async () => {
+        const { usePresenceStore: presence } = await load(
+          "store/chat/presenceStore.ts",
+        );
+        const { useChatStore: chat } = await load("store/chat/chatStore.ts");
+        const { LobbyChat } = await load("game/alpha/LobbyChat.tsx");
+        const me = {
+          player_id: "p-me",
+          profile_id: "me",
+          name: "Driver",
+          team: "red",
+        };
+        const alex = {
+          player_id: "p-alex",
+          profile_id: "alex",
+          name: "Alex",
+          team: "blue",
+        };
+        const person = { id: "alex", name: "Alex", online: true, team: "blue" };
+        const world = {
+          id: 1,
+          name: "Match",
+          map: "road_precision",
+          owner_id: null,
+          listed: true,
+          max_players: 10,
+          players: 2,
+          active: true,
+          locked: false,
+          invite_code: null,
+          members: [me, alex],
+        };
+        const state = (members, players = [person], roster = []) => ({
+          ...view,
+          players,
+          worlds: [{ ...world, members, players: members.length }],
+          alpha: { ...view.alpha, roster },
+        });
+        await act(async () => {
+          client.setSocialConnection(socket);
+          client.receiveSocialState(state([me, alex]));
+        });
+        assert.equal(
+          presence.getState().events.length,
+          0,
+          "first server view establishes a baseline",
+        );
+        await render(LobbyChat);
+        await act(async () => client.receiveSocialState(state([me])));
+        assert.match(
+          presence.getState().events.at(-1).text,
+          /Alex left the world/,
+        );
+        assert.ok(
+          document.querySelector(".chat-system"),
+          "new world activity opens the timeline without focusing the message field",
+        );
+        assert.notEqual(document.activeElement?.tagName, "INPUT");
+        await click("Minimize chat");
+        const count = presence.getState().events.length;
+        await act(async () => client.receiveSocialState(state([me])));
+        assert.equal(presence.getState().events.length, count);
+        assert.equal(document.querySelector(".chat-lines"), null);
+        await act(async () => client.receiveSocialState(state([me, alex])));
+        assert.match(
+          presence.getState().events.at(-1).text,
+          /Alex joined the world/,
+        );
+        await act(async () =>
+          client.receiveSocialState(
+            state(
+              [me],
+              [],
+              [
+                {
+                  id: "alex",
+                  name: "Alex",
+                  mode: "quickplay",
+                  team: "blue",
+                  hero: "brz",
+                  reconnecting: true,
+                },
+              ],
+            ),
+          ),
+        );
+        assert.match(
+          presence.getState().events.at(-1).text,
+          /Alex disconnected/,
+        );
+        await act(async () => client.receiveSocialState(state([me, alex])));
+        assert.match(
+          presence.getState().events.at(-1).text,
+          /Alex reconnected/,
+        );
+        const before = presence.getState().events.length;
+        await act(async () =>
+          client.receiveSocialState({
+            ...state([me, alex]),
+            worlds: [
+              world,
+              {
+                ...world,
+                id: 2,
+                name: "Other world",
+                members: [
+                  { ...alex, profile_id: "elsewhere", name: "Elsewhere" },
+                ],
+              },
+            ],
+          }),
+        );
+        assert.equal(
+          presence.getState().events.length,
+          before,
+          "another world's changes cannot create local notices",
+        );
+        await act(async () => {
+          for (let n = 0; n < 80; n++)
+            client.receiveSocialState(
+              state(
+                [me, { ...alex, profile_id: `guest-${n}`, name: `Guest ${n}` }],
+                [{ ...person, id: `guest-${n}`, name: `Guest ${n}` }],
+              ),
+            );
+        });
+        assert.equal(presence.getState().events.length, 50);
+        assert.equal(
+          Object.values(chat.getState().history).flat().length,
+          0,
+          "presence notices never impersonate network chat messages",
+        );
+        await act(async () => client.setSocialConnection(null));
+        assert.equal(presence.getState().events.length, 0);
         client.setSocialConnection(socket);
       },
     );
@@ -496,7 +827,7 @@ test("alpha selection, queue and HUD route to their own state owners", async (t)
             data: {},
           }),
         );
-        assert.equal(ui.getState().screen, "main");
+        assert.equal(ui.getState().screen, "mode_select");
       },
     );
     await t.test(

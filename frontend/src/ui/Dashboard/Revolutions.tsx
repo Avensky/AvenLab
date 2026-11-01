@@ -40,9 +40,10 @@ const DigitalReadouts = memo(function DigitalReadouts({ gear, speed, unit, power
   </g>;
 });
 
-export default memo(function Revolutions({ rpm, gear, maxRpm, redlineRpm, speed, unit, power, vehicleMask, clusterMask, park }: {
+export default memo(function Revolutions({ rpm, gear, maxRpm, redlineRpm, speed, unit, power, vehicleMask, clusterMask, park, cockpitMask = null, live = false }: {
   rpm: number | null; gear: number | null; maxRpm: number; redlineRpm: number; speed: number | null;
   unit: "MPH" | "KM/H"; power: DisplayPower; vehicleMask: number; clusterMask: number | null; park: boolean;
+  cockpitMask?: number | null; live?: boolean;
 }) {
   const max = Math.max(9000, Math.ceil(maxRpm / 1000) * 1000);
   const ratio = Math.max(0, Math.min(1, (rpm ?? 0) / max));
@@ -53,6 +54,6 @@ export default memo(function Revolutions({ rpm, gear, maxRpm, redlineRpm, speed,
       <DigitalReadouts gear={gear} speed={speed} unit={unit} power={power} park={park} />
       <Needle angle={start + ratio * (end - start)} visible={rpm !== null} x={100} y={100} length={87} /><Hub x={100} y={100} />
     </svg>
-    <RpmLights vehicleMask={vehicleMask} clusterMask={clusterMask} />
+    <RpmLights vehicleMask={vehicleMask} clusterMask={clusterMask} cockpitMask={cockpitMask} live={live} />
   </div>;
 });

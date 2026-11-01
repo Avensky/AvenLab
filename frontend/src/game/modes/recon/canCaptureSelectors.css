@@ -1,0 +1,54 @@
+.can-capture-selectors {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+}
+.can-capture-field {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  min-width: 0;
+  min-height: 42px;
+  padding: 4px 8px;
+  text-align: left;
+}
+.can-selector-label {
+  font:
+    8px/1.2 ui-monospace,
+    monospace;
+  text-transform: uppercase;
+  color: #96bfc5;
+}
+.can-selector-value {
+  text-transform: uppercase;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font:
+    700 10px/1.5 ui-monospace,
+    monospace;
+  color: #ccf2e0;
+}
+.hero-recon-selectors {
+  flex: none;
+  background: #0a3a2f80;
+  border: 1px solid #82c7b86b;
+}
+.hero-recon-selectors .can-capture-field {
+  padding: 3px 4px;
+  min-height: 36px;
+  border: 0;
+  background: transparent;
+}
+.hero-recon-selectors .can-capture-field + .can-capture-field {
+  border-left: 1px solid #82c7b84a;
+}
+.hero-recon-selectors .can-selector-label {
+  font-size: 6px;
+}
+.hero-recon-selectors .can-selector-value {
+  text-transform: uppercase;
+  font-size: 8px;
+}

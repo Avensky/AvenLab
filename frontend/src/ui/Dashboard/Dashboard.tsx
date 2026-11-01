@@ -79,6 +79,8 @@ const RpmInstrument = memo(function RpmInstrument() {
         vehicleMask={d.vehicleMask}
         clusterMask={d.clusterMask}
         park={park}
+        cockpitMask={d.cockpitMask}
+        live={d.signal === "live"}
       />
       <ResourceRing kind="rpm" fraction={d.boost} active={d.boostActive} />
     </div>

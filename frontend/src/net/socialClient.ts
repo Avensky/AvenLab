@@ -1,3 +1,4 @@
+import { usePresenceStore } from "../store/chat/presenceStore";
 import { useSocialStore } from "../store/social/socialStore";
 import { useChatStore } from "../store/chat/chatStore";
 import { useNetworkStore } from "../store/session/networkStore";
@@ -57,6 +58,7 @@ export function setSocialConnection(next: WebSocket | null) {
   identityKey = "";
   useSocialStore.getState().reset();
   useChatStore.getState().reset();
+  usePresenceStore.getState().reset();
 }
 export function requestSocial(
   action: string,
@@ -136,8 +138,14 @@ export function beginSocialSession(serverId: unknown) {
 export function receiveSocialState(value: unknown) {
   useSocialStore.getState().receive(value);
   const view = useSocialStore.getState().view;
-  useChatStore.getState().membership(view?.profile.id ?? null, view?.current_world_id ?? null,
-    view?.alpha?.active?.team ?? useNetworkStore.getState().team);
+  useChatStore
+    .getState()
+    .membership(
+      view?.profile.id ?? null,
+      view?.current_world_id ?? null,
+      view?.alpha?.active?.team ?? useNetworkStore.getState().team,
+    );
+  if (view) usePresenceStore.getState().observe(view);
   const profile = useSocialStore.getState().view?.profile;
   const identity = pageIdentity ?? readIdentity();
   if (

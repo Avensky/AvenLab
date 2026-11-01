@@ -35,7 +35,7 @@ function trigger(value = 0) {
 function menuNeutral(pad: Gamepad) {
   return (
     pad.axes.slice(0, 4).every((value) => axis(value, 0.5) === 0) &&
-    [0, 1, 4, 5, 8, 9, 12, 13, 14, 15].every(
+    [0, 1, 2, 4, 5, 8, 9, 12, 13, 14, 15].every(
       (index) => !pad.buttons[index]?.pressed,
     )
   );
@@ -166,6 +166,32 @@ export function GameController() {
       }
       if (panelPressHeld && !pressed(0)) releasePanelPress(false);
       const ui = useUIStore.getState();
+      // Menu X and driving RB+View open the same chat without changing the
+      // existing engine (X) or performance (View) actions during normal driving.
+      const keyboardOpen = Boolean(useTextKeyboardStore.getState().session);
+      if (
+        !keyboardOpen &&
+        !ui.isModeLoading &&
+        ((edges[2] && ["mode_select", "hero_select"].includes(ui.screen)) ||
+          (edges[8] &&
+            pressed(5) &&
+            ui.screen === "sandbox" &&
+            ui.overlay === null &&
+            !performanceOverlayHasFocus()))
+      ) {
+        release();
+        window.dispatchEvent(new Event("avenlab:chat-toggle"));
+        return;
+      }
+      if (
+        !keyboardOpen &&
+        edges[1] &&
+        document.activeElement?.closest('.lobby-chat[data-expanded="true"]')
+      ) {
+        release();
+        window.dispatchEvent(new Event("avenlab:chat-close"));
+        return;
+      }
       // Controller forms route A/D-pad to their focused fields. Their assisted
       // input opens our keyboard; physical typing remains a normal text edit.
       const typing =

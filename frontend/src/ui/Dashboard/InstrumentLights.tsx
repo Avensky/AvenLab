@@ -53,7 +53,7 @@ export const SpeedometerLights = memo(function SpeedometerLights({
   fields: number;
 }) {
   const lamps = [
-    ["High beam", "headlights2.svg", "#69b6ff", ClusterFlags.HIGH_BEAM],
+    ["High beam", "headlights2.svg", "#006bff", ClusterFlags.HIGH_BEAM],
     ["Two-door open", "door-open-coupe.svg", "#ff4e48", ClusterFlags.DOOR_OPEN],
     ["Cruise control", "cruise-control.svg", "#a8ef63", ClusterFlags.CRUISE_ON],
     [
@@ -84,13 +84,23 @@ export const SpeedometerLights = memo(function SpeedometerLights({
 export const RpmLights = memo(function RpmLights({
   vehicleMask,
   clusterMask,
+  cockpitMask = null,
+  live = false,
 }: {
   vehicleMask: number;
   clusterMask: number | null;
+  cockpitMask?: number | null;
+  live?: boolean;
 }) {
   const hazards = hasFlag(vehicleMask, VehicleFlags.HAZARDS);
+  const assist = cockpitMask === null ? 0 : (cockpitMask >>> 4) & 3;
   return (
     <div className="rpm-lights" aria-label="RPM telltales">
+      <span className="gauge-vsc-warning" data-lamp="VSC mode" data-sport={assist === 1}
+        data-active={live && (assist === 1 || assist === 3)}
+        aria-label={`VSC ${assist === 3 ? "OFF" : "SPORT"}: ${live && (assist === 1 || assist === 3) ? "on" : "off"}`}>
+        VSC<br />{assist === 3 ? "OFF" : "SPORT"}
+      </span>
       <Lamp
         name="Hazards"
         asset="hazard-triangle.svg"
@@ -135,7 +145,6 @@ export const ResourceLights = memo(function ResourceLights({
   absEnabled,
   tcsEnabled,
   live,
-  cockpitMask,
 }: {
   mask: number | null;
   fields: number;
@@ -152,7 +161,6 @@ export const ResourceLights = memo(function ResourceLights({
     Boolean(fields & flag) && clusterFlag(mask, flag);
   const supplied = (flag: number) => mask !== null && Boolean(fields & flag);
   const brake = state(ClusterFlags.PARK_BRAKE);
-  const assist = cockpitMask === null ? 0 : (cockpitMask >>> 4) & 3;
   return (
     <div
       className="resource-lights"
@@ -208,12 +216,6 @@ export const ResourceLights = memo(function ResourceLights({
       </span>
       <span className="gauge-tcs-warning" data-active={live && !tcsEnabled}>
         TRAC OFF
-      </span>
-      <span
-        className="gauge-vsc-warning"
-        data-active={live && (assist === 1 || assist === 3)}
-      >
-        {assist === 3 ? "VSC OFF" : "VSC SPORT"}
       </span>
       <Lamp
         name="Steering warning"

@@ -24,10 +24,13 @@ export const KPH_TICKS = linearTicks(SPEED_MAX_KPH, 5, 20, speedAngle);
 
 // Follow the left outer edge of the neighboring RPM circle, not the speed hub.
 // Matches the 36% / 40% cluster layout and its 5% overlap.
-export const SPEED_LAMP_POSITIONS = [205, 190, 175, 160].map(angle => ({
+export const SPEED_LAMP_POSITIONS = [
+  // FR-S reference: blue high beam is right of the speed hub, level with it.
+  { x: 154, y: 108 },
+  ...[190, 175, 160].map(angle => ({
   x: 283 + 130 * Math.cos(angle * Math.PI / 180),
   y: 100 + 130 * Math.sin(angle * Math.PI / 180),
-}));
+}))];
 
 export function arcPath(x: number, y: number, radius: number, start: number, end: number) {
   return `M ${x + radius * Math.cos(start)} ${y + radius * Math.sin(start)} A ${radius} ${radius} 0 ${end - start > Math.PI ? 1 : 0} 1 ${x + radius * Math.cos(end)} ${y + radius * Math.sin(end)}`;

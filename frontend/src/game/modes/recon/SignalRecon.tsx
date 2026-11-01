@@ -1,3 +1,5 @@
+import { ControllerButton } from "../../../components/controller";
+import { useAlphaStore } from "../../../store/alpha/alphaStore";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSelectionStore, useUIStore } from "../../../store";
 import { SignalReconMission } from "./SignalReconMission";
@@ -531,7 +533,8 @@ export function SignalRecon({
     }
 
     setSidebarHidden(false);
-    setScreen("signal_recon_setup");
+    useAlphaStore.getState().chooseMode("signal_recon");
+    setScreen("hero_select");
   };
 
   const handleMaximizeQueue = () => {
@@ -617,9 +620,9 @@ export function SignalRecon({
                   variant="danger"
                   disabled={busy || runActive}
                   onPress={() => void handleExit()}
-                  className=" rounded-sm border flex justify-center  border-red-300/40 px-1.5 text-[9px] font-black"
+                  className="controller-action text-[9px] font-black"
                 >
-                  BACK
+                  <ControllerButton button="B" /> BACK
                 </GameButton>
 
                 <button

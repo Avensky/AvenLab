@@ -19,13 +19,13 @@ export function QueueScreen() {
   const cancel = useCallback(() => {
     if (pending.current) return;
     if (!useNetworkStore.getState().connected) {
-      useUIStore.getState().setScreen("main");
+      useUIStore.getState().setScreen("mode_select");
       return;
     }
     pending.current = true;
     setBusy(true);
     void requestSocial("mode_cancel")
-      .then(() => useUIStore.getState().setScreen("main"))
+      .then(() => useUIStore.getState().setScreen("mode_select"))
       .catch((reason) => setError((reason as Error).message))
       .finally(() => {
         pending.current = false;
@@ -56,7 +56,7 @@ export function QueueScreen() {
       <MenuVideoBackground loading cycle />
       <section className="alpha-queue-card" aria-label="Alpha waiting line">
         <small>REDLINE VECTOR · LIMITED ALPHA</small>
-        <h1>YOU’RE IN LINE</h1>
+        <h1>{queue ? "YOU’RE IN LINE" : "FINDING A SERVER"}</h1>
         <h2>
           {GAME_MODES.find((m) => m.id === queue?.mode)?.label ??
             (connected ? "REJOIN AVAILABLE" : "RECONNECTING")}
@@ -95,7 +95,7 @@ export function QueueScreen() {
         )}
         <button
           type="button"
-          className="menu-control"
+          className="menu-control controller-action"
           disabled={busy}
           onClick={cancel}
         >

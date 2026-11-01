@@ -182,7 +182,7 @@ export function TabbedMenu({
               if (event.key === "Enter" || event.key === " ")
                 event.stopPropagation();
             }}
-            className="menu-control menu-back"
+            className="menu-control menu-back controller-action"
           >
             <ControllerButton button="B" />
             {backLabel}

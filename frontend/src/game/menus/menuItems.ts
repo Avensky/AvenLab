@@ -4,7 +4,7 @@ export const MAIN_MENU_ITEMS = [
     id: "play",
     label: "Play",
     description: "Choose a game mode and vehicle.",
-    screen: "hero_select",
+    screen: "mode_select",
     available: true,
   },
   {

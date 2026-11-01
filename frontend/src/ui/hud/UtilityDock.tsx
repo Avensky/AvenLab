@@ -1,5 +1,5 @@
 import { UtilityToggle } from "./UtilityToggle";
-import type { CSSProperties } from "react";
+import { memo, type CSSProperties } from "react";
 import { usePreferencesStore } from "../../store/preferences/preferencesStore";
 import { useHudPanelsStore } from "../../store/hud/hudPanelsStore";
 import { Minimap } from "../Minimap/Minimap";
@@ -9,7 +9,7 @@ import "./utilityDock.css";
 
 /** One layout owner packs GPS, media and HVAC. The map's height is a real grid
  * row, so media always drops below an open map and rises when it minimizes. */
-export function UtilityDock() {
+export const UtilityDock = memo(function UtilityDock() {
   const reduced = usePreferencesStore((state) => state.reducedMotion);
   const groups = usePreferencesStore((state) => state.hudGroups);
   const enabled = usePreferencesStore((state) => state.showDriveControls);
@@ -30,6 +30,7 @@ export function UtilityDock() {
       aria-label="Navigation and cabin widgets"
       data-map-open={mapOpen}
       data-radio-open={showRadio && radio}
+      data-panels-open={(showRadio && radio) || (showClimate && climate)}
       style={{ "--minimap-scale": scale } as CSSProperties}
     >
       <div className="utility-map-row">
@@ -37,6 +38,7 @@ export function UtilityDock() {
         <div className="utility-launchers" data-on-rim={mapOpen}>
           {showRadio && !radio && (
             <UtilityToggle
+              key="radio-launcher"
               panel="radio"
               open={false}
               onClick={() => toggle("radio")}
@@ -44,6 +46,7 @@ export function UtilityDock() {
           )}
           {showClimate && !climate && (
             <UtilityToggle
+              key="climate-launcher"
               panel="climate"
               open={false}
               onClick={() => toggle("climate")}
@@ -76,4 +79,4 @@ export function UtilityDock() {
       )}
     </aside>
   );
-}
+});

@@ -1,23 +1,20 @@
+import { prepareReconSelection } from "../../store/recon/captureSetup";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ControllerButton, MenuShortcuts } from "../../components/controller";
 import {
   useAlphaStore,
-  GAME_MODES,
   HEROES,
   HERO_FILTERS,
   type HeroFilter,
 } from "../../store/alpha/alphaStore";
 import { useSocialStore } from "../../store/social/socialStore";
-import { useSelectionStore } from "../../store/selection/selectionStore";
-import { VehicleSelector } from "../modes/VehicleSelector";
-import { MapSelector } from "../modes/MapSelector";
 import { useNetworkStore } from "../../store/session/networkStore";
 import { useUIStore } from "../../store/menus/uiStore";
 import { requestSocial } from "../../net/socialClient";
 import { useFormNavigation } from "../social/useFormNavigation";
-import { joinSelectedMode, deploySelectedHero } from "./sessionActions";
+import { deploySelectedHero } from "./sessionActions";
 import { ProgressBadge } from "./ProgressBadge";
-import { HeroRoster, HeroRoleTabs } from "./HeroRoster";
+import { HeroRoster } from "./HeroRoster";
 import { HeroPortrait } from "./HeroPortrait";
 import { LobbyChat } from "./LobbyChat";
 import "./heroSelection.css";
@@ -29,7 +26,6 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
     world = useNetworkStore((s) => s.worldName);
   const active = view?.alpha?.active;
   const mode = overlay && active ? active.mode : selectedMode;
-  const map = useSelectionStore((s) => s.getSelectedMap());
   const [role, setRole] = useState<HeroFilter>("all");
   const [status, setStatus] = useState(""),
     [busy, setBusy] = useState(false);
@@ -52,13 +48,13 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
       return;
     }
     if (!useNetworkStore.getState().connected) {
-      useUIStore.getState().setScreen("main");
+      useUIStore.getState().setScreen("mode_select");
       return;
     }
     pending.current = true;
     setBusy(true);
     void requestSocial("mode_cancel")
-      .then(() => useUIStore.getState().setScreen("main"))
+      .then(() => useUIStore.getState().setScreen("mode_select"))
       .catch((reason) => setStatus((reason as Error).message))
       .finally(() => {
         pending.current = false;
@@ -76,14 +72,21 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
       ),
     [],
   );
-  useFormNavigation(root, back, tab);
+  useFormNavigation(root, back, tab, true);
   useEffect(() => {
-    const selected = root.current?.querySelector<HTMLElement>(
-      `[data-hero="${useAlphaStore.getState().hero}"]`,
-    );
-    (
-      selected ?? root.current?.querySelector<HTMLElement>("[data-hero]")
-    )?.focus({ preventScroll: true });
+    root.current
+      ?.querySelector<HTMLElement>(
+        '[data-controller-grid] [aria-pressed="true"], [data-controller-grid] button',
+      )
+      ?.focus({ preventScroll: true });
+  }, []);
+  useEffect(() => {
+    // A filter can remove the focused card. Keep the directional owner in the
+    // new portrait grid instead of moving it to the role tab rail.
+    if (!root.current?.contains(document.activeElement))
+      root.current
+        ?.querySelector<HTMLElement>("[data-controller-grid] button")
+        ?.focus({ preventScroll: true });
   }, [role]);
   const choose = async (id: string) => {
     if (pending.current) return;
@@ -106,38 +109,20 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
       setBusy(false);
     }
   };
-  // Arrows and portraits share one validated selection path, including support
-  // heroes that reuse a chassis. Cycle only within the current role filter.
-  const cycleHero = (direction: number) => {
-    const heroes = HEROES.filter(
-      (hero) => role === "all" || hero.role === role,
-    );
-    const index = heroes.findIndex((hero) => hero.id === heroId);
-    const next =
-      index < 0
-        ? direction > 0
-          ? 0
-          : heroes.length - 1
-        : (index + direction + heroes.length) % heroes.length;
-    void choose(heroes[next].id);
-  };
   const start = async () => {
-    if (pending.current || planned) return;
+    if (pending.current || planned || !heroId) return;
     pending.current = true;
     setBusy(true);
     setStatus("");
     try {
       if (research) {
+        prepareReconSelection();
         if (active || customWorld) await requestSocial("mode_cancel");
-        useUIStore.getState().setScreen("signal_recon_setup");
+        useUIStore.getState().setScreen("signal_recon");
       } else if (overlay) {
         useUIStore.getState().closeOverlay();
       } else if (inMode || customWorld) await deploySelectedHero();
-      else {
-        const joined = await joinSelectedMode();
-        if (joined.status === "joined")
-          setStatus("SEAT RESERVED · CHOOSE YOUR HERO, THEN DEPLOY");
-      }
+      else throw Error("Return to mode selection to find a server first.");
     } catch (e) {
       setStatus((e as Error).message);
     } finally {
@@ -158,51 +143,62 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
           ? 1
           : a.name.localeCompare(b.name),
     );
-  const selected = HEROES.find((h) => h.id === heroId)!;
+  const selected = HEROES.find((h) => h.id === heroId);
   return (
     <section
       ref={root}
       className="game-ui menu-surface alpha-selection hero-selection"
       data-controller-form
-      aria-label={overlay ? "Change hero" : "Mode and hero selection"}
+      data-controller-rows
+      aria-label={overlay ? "Change hero" : "Hero selection"}
       style={overlay ? { zIndex: 50 } : undefined}
     >
       <header className="alpha-header">
         <div>
           <small>REDLINE VECTOR · ALPHA</small>
-          <h1>{overlay ? "CHANGE HERO" : "MODE & HERO"}</h1>
+          <h1>
+            {overlay
+              ? "CHANGE HERO"
+              : `${mode.replaceAll("_", " ").toUpperCase()} · CHOOSE HERO`}
+          </h1>
         </div>
         <ProgressBadge />
-        <button type="button" className="menu-control" onClick={back}>
+        <button
+          type="button"
+          className="menu-control controller-action"
+          onClick={back}
+        >
           <ControllerButton button="B" /> BACK
         </button>
       </header>
-      {!overlay && (
-        <nav className="alpha-mode-tabs" aria-label="Game mode">
-          {GAME_MODES.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className="menu-control"
-              aria-label={item.label}
-              aria-pressed={mode === item.id}
-              disabled={busy}
-              onClick={() => {
-                useAlphaStore.getState().chooseMode(item.id);
-                setStatus("");
-              }}
-            >
-              {item.label}
-              {item.id === "swarm" && (
-                <small className="alpha-mode-planned" aria-hidden="true">
-                  PLANNED
-                </small>
-              )}
-            </button>
-          ))}
-        </nav>
-      )}
-      {match && (
+      <div className="hero-selection-stage">
+        {(!match || inMode || overlay) && (
+          <HeroRoster
+            selected={heroId}
+            filter={role}
+            busy={busy}
+            onFilter={setRole}
+            onChoose={(id) => void choose(id)}
+          />
+        )}
+        <section
+          className="hero-summary"
+          aria-label="Selected hero"
+          data-role={selected?.role}
+        >
+          <small>{selected?.role.toUpperCase() ?? "CHOOSE YOUR HERO"}</small>
+          <h2>{selected?.name ?? "AWAITING PICK"}</h2>
+          {status && (
+            <p className="alpha-status" role="status">
+              {status}
+            </p>
+          )}
+        </section>
+        <div className="hero-chat-panel">
+          <LobbyChat />
+        </div>
+      </div>
+      {match && inMode && (
         <div
           className="alpha-squad-bar hero-team-strip"
           aria-label="Teammate hero selections"
@@ -239,59 +235,17 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
           })}
         </div>
       )}
-      <div className="hero-selection-stage">
-        <HeroRoster
-          selected={heroId}
-          filter={role}
-          busy={busy}
-          onChoose={(id) => void choose(id)}
-        />
-        <section
-          className="hero-summary"
-          aria-label="Selected hero"
-          data-role={selected.role}
-        >
-          <small>{selected.role.toUpperCase()}</small>
-          <h2>{selected.name}</h2>
-          {status && (
-            <p className="alpha-status" role="status">
-              {status}
-            </p>
-          )}
-        </section>
-        <div className="hero-chat-panel">
-          <LobbyChat />
-        </div>
-      </div>
-      <section className="hero-vehicle-bar" aria-label="Vehicle selection">
-        <HeroRoleTabs filter={role} onFilter={setRole} />
-        <VehicleSelector
-          formNavigation
-          translucent
-          showRole={false}
-          showCanSlug={false}
-          showNotes={false}
-          disabled={busy}
-          title={selected.name}
-          onPrevious={() => cycleHero(-1)}
-          onNext={() => cycleHero(1)}
-        />
-        {(mode === "sandbox" || mode === "editor") && (
-          <MapSelector
-            formNavigation
-            translucent
-            showDesc={false}
-            disabled={busy || inMode || customWorld}
-            title={inMode || customWorld ? (world ?? map.name) : map.name}
-          />
-        )}
-      </section>
-      <footer className="alpha-selection-footer">
-        <MenuShortcuts />
+      <footer className="alpha-selection-footer" data-controller-row>
+        <MenuShortcuts chat directions="both" tabKey />
         <button
           type="button"
-          className="menu-control alpha-deploy"
-          disabled={busy || planned || (!research && (!connected || !view))}
+          className="menu-control controller-action alpha-deploy"
+          disabled={
+            busy ||
+            planned ||
+            !selected ||
+            (!research && (!connected || !view || (!inMode && !customWorld)))
+          }
           onClick={() => void start()}
         >
           <ControllerButton button="A" />
@@ -300,12 +254,12 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
             : planned
               ? "COMING LATER"
               : research
-                ? "OPEN SIGNAL RECON"
+                ? "ENTER SIGNAL RECON"
                 : overlay
                   ? "RETURN TO GAME"
                   : inMode || customWorld
                     ? "DEPLOY"
-                    : "JOIN LOBBY / QUEUE"}
+                    : "CHOOSE A HERO"}
         </button>
       </footer>
     </section>

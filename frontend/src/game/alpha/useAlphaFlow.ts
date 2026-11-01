@@ -12,7 +12,8 @@ export function useAlphaFlow() {
   useEffect(() => {
     if (screen !== "queue" || !alpha?.active || alpha.queue) return;
     useAlphaStore.getState().chooseMode(alpha.active.mode);
-    useAlphaStore.getState().chooseHero(alpha.active.hero);
+    if (alpha.active.hero) useAlphaStore.getState().chooseHero(alpha.active.hero);
+    else useAlphaStore.getState().clearHero();
     const map = mapCatalog.findIndex(
       (m) =>
         m.id ===

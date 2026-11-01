@@ -29,11 +29,22 @@ export function MenuShortcuts({
   back = true,
   tabs = true,
   hold = false,
-}: { back?: boolean; tabs?: boolean; hold?: boolean } = {}) {
+  chat = false,
+  directions = "vertical",
+  tabKey = false,
+}: {
+  back?: boolean;
+  tabs?: boolean;
+  hold?: boolean;
+  chat?: boolean;
+  directions?: "vertical" | "both";
+  tabKey?: boolean;
+} = {}) {
   return (
     <div className="controller-shortcuts" aria-label="Menu shortcuts">
       <span>
-        <ControllerButton button="D-PAD" /> Navigate <kbd>↑↓</kbd>
+        <ControllerButton button="D-PAD" /> Navigate{" "}
+        <kbd>{directions === "both" ? "↑↓ ←→" : "↑↓"}</kbd>
       </span>
       <span>
         <ControllerButton button="A" /> {hold ? "Select / hold" : "Select"}{" "}
@@ -42,7 +53,12 @@ export function MenuShortcuts({
       {tabs && (
         <span>
           <ControllerButton button="LB" />
-          <ControllerButton button="RB" /> Tabs <kbd>Q / E</kbd>
+          <ControllerButton button="RB" /> Tabs <kbd>{tabKey ? "Q / E · Tab" : "Q / E"}</kbd>
+        </span>
+      )}
+      {chat && (
+        <span>
+          <ControllerButton button="X" /> Chat <kbd>T</kbd>
         </span>
       )}
       {back && (

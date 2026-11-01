@@ -47,6 +47,7 @@ export function canNavigateMenu() {
         "world_builder",
         "social",
         "hero_select",
+        "mode_select",
         "queue",
       ].includes(panel))
   );
@@ -94,6 +95,7 @@ export function routeMenuAction(action: MenuAction) {
       "world_builder",
       "social",
       "hero_select",
+      "mode_select",
       "queue",
     ].includes(panel)
   ) {

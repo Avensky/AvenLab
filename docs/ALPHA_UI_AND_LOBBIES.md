@@ -9,16 +9,15 @@ patches. Rebuild and restart **Rust and frontend together**.
 Main offers Play, Career, Worlds & Social and Settings. Play opens the existing
 3D garage with Quickplay, Competitive, Sandbox, World Editor, Signal Recon and
 planned Swarm Command. Quickplay/Competitive share the single match slot. The
-selection screen keeps real teammate picks in a compact top row and preserves the
-controller legend. Seven portraits appear at the top right; the selected name and
-role sit at the top left below the player row. Square adjoining role filters sit
-above the restored translucent vehicle/environment arrow bars, directly against
-the footer. Portraits and arrows share server validation and role filtering. The
-selected vehicle still rotates in the garage. Lobby/Team chat uses the existing
-authenticated socket and fades when idle; see `HERO_PORTRAITS_AND_CHAT.md` and
-`HERO_SELECTION_POLISH.md`.
-Signal Recon opens its existing CAN
-interface setup without joining a driving queue. A confirmed join reserves a seat; Deploy waits for Rust's spawn response.
+selection screen keeps real teammate picks centered above the footer and the
+controller legend. Role filters sit above the top-right portrait grid, with the
+selected name/role at upper left. Environment or Recon CAN controls sit below
+the grid; the vehicle strip is removed. Row-based navigation preserves server
+validation. Signal Recon enters analysis directly using the selected CAN settings
+and vehicle profile, without requesting a driving seat. Its Back action returns
+to this garage. Chat uses the existing authenticated socket and opens from a
+small launcher for interaction or validated player activity; see
+`MENU_NAVIGATION_AND_CHAT.md`.
 H / Change Vehicle uses this same hero picker during a managed session and returns
 to the current game without releasing its seat. Legacy sessions retain their
 existing vehicle menu. Server-rejected picks retain the previous locked hero.

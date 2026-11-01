@@ -8,7 +8,7 @@
       calc(min(var(--utility-width), 32dvh) * var(--minimap-scale, 0.75))
     )
   );
-  position: absolute;
+  position: fixed;
   top: max(8px, env(safe-area-inset-top));
   right: max(10px, env(safe-area-inset-right));
   width: var(--utility-width);
@@ -309,7 +309,7 @@
 }
 /* Expanded media starts at the top edge; minimized launchers float beside it.
    An expanded map returns to flow and pushes the head units down. */
-.hud-utilities[data-map-open="false"]:has(.utility-radio, .utility-climate)
+.hud-utilities[data-map-open="false"][data-panels-open="true"]
   .utility-map-row {
   position: absolute;
   top: 0;
@@ -331,7 +331,7 @@
 /* Portrait keeps the full instrument cluster readable. Open utility panels start
    below it; the fully minimized launchers still occupy the top-right corner. */
 @media (max-width: 600px) and (orientation: portrait) {
-  .hud-utilities:has(.utility-radio, .utility-climate),
+  .hud-utilities[data-panels-open="true"],
   .hud-utilities[data-map-open="true"] {
     top: max(126px, calc(env(safe-area-inset-top) + 126px));
   }
@@ -385,3 +385,42 @@
   font-size: 5px;
   color: #9fb6c7;
 }
+
+/* Collapsed launchers are fixed-size controls, with no fractional transform or
+   entry animation. Layout follows the same state commit as the panel bodies. */
+.utility-map-row .map-toggle,
+.utility-launchers .utility-toggle {
+  box-sizing: border-box;
+  touch-action: manipulation;
+  animation: none;
+  transition: none;
+}
+.utility-launchers[data-on-rim="false"] .utility-toggle {
+  position: static;
+  transform: none;
+}
+
+/* One isolated HUD layer sits above the moving WebGL scene. Opaque launcher
+   faces avoid Safari repeatedly blending tiny translucent SVG surfaces. Do not
+   promote each icon or sample telemetry here; the clock/map own their updates. */
+.hud-utilities {
+  isolation: isolate;
+  contain: layout style;
+  transform: translate3d(0, 0, 0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+.utility-map-row :is(.utility-toggle, .map-toggle) {
+  background: #0a1821;
+  opacity: 1;
+  filter: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.utility-map-row :is(.utility-toggle, .map-toggle),
+.utility-map-row :is(.utility-toggle, .map-toggle) * {
+  animation: none !important;
+  transition: none !important;
+}
+.utility-toggle svg { display: block; }
+.hud-utilities .match-clock { min-width: 5.5em; text-align: center; }

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { useSelectionStore, vehicleCatalog } from "../selection/selectionStore";
+import { usePreferencesStore } from "../preferences/preferencesStore";
 export type GameMode = "quickplay" | "competitive" | "sandbox" | "editor";
 /** Research/planned modes are garage destinations, never server mode_join IDs. */
 export type PlayMode = GameMode | "signal_recon" | "swarm";
@@ -144,13 +145,15 @@ export type AlphaView = {
 };
 export const useAlphaStore = create<{
   mode: PlayMode;
-  hero: string;
+  hero: string | null;
   chooseMode: (mode: PlayMode) => void;
   chooseHero: (id: string) => void;
+  clearHero: () => void;
 }>((set) => ({
   mode: "quickplay",
-  hero: "ae86",
+  hero: null,
   chooseMode: (mode) => set({ mode }),
+  clearHero: () => set({ hero: null }),
   chooseHero: (id) => {
     const hero = HEROES.find((h) => h.id === id);
     if (!hero) return;
@@ -163,6 +166,17 @@ export const useAlphaStore = create<{
     set({ hero: id });
   },
 }));
+
+/** A showcase is a preference, never a submitted match pick. Both stages use
+ * the same garage and animation owner; only chooseHero confirms a loadout. */
+export function showFavoriteHero() {
+  const favorites = usePreferencesStore.getState().favoriteVehicles;
+  const vehicle = favorites.find((id) => vehicleCatalog.some((v) => v.id === id));
+  if (vehicle)
+    useSelectionStore.setState({
+      vehicleIndex: vehicleCatalog.findIndex((v) => v.id === vehicle),
+    });
+}
 
 /** Mouse, keyboard and controller Back share the same research setup parent. */
 export function reconSetupParent(): "hero_select" | "main" {

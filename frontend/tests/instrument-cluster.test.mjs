@@ -244,6 +244,20 @@ test("instrument scales, confirmed warning lamps and display power states", asyn
     root = createRoot(document.getElementById("root"));
     await act(async () => root.render(h(Dashboard)));
     const displays = () => document.querySelector(".gauge-displays");
+    await t.test("FR-S high beam is blue beside the speed hub and VSC SPORT belongs to the center gauge", async () => {
+      const beam = document.querySelector('[data-lamp="High beam"]');
+      assert.equal(beam.style.left, "77%");
+      assert.equal(beam.style.top, "54%");
+      assert.equal(beam.style.color, "rgb(0, 107, 255)");
+      const { RpmLights } = await load("ui/Dashboard/InstrumentLights.tsx");
+      await act(async () => root.render(h(RpmLights, { vehicleMask: 0, clusterMask: 0, cockpitMask: 16, live: true })));
+      const vsc = document.querySelector('.rpm-lights [data-lamp="VSC mode"]');
+      assert.ok(vsc); assert.equal(vsc.dataset.active, "true"); assert.equal(vsc.dataset.sport, "true");
+      assert.match(vsc.textContent, /VSCSPORT/);
+      await act(async () => root.render(h(RpmLights, { vehicleMask: 0, clusterMask: null, cockpitMask: 16, live: false })));
+      assert.equal(document.querySelector('[data-lamp="VSC mode"]').dataset.active, "false");
+      await act(async () => root.render(h(Dashboard)));
+    });
     await t.test(
       "RPM has the lowered label and a wider lower gear display in place of the odometer",
       () => {

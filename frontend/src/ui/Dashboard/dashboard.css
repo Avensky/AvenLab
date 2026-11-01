@@ -256,15 +256,20 @@
 }
 .gauge-vsc-warning {
   position: absolute;
-  left: 47%;
-  top: 78%;
+  left: 36%;
+  top: 56%;
   transform: translate(-50%, -50%);
   color: #ffb94c;
   font-size: clamp(3px, 0.5vw, 6px);
+  line-height: 1;
+  text-align: center;
   opacity: 0.08;
 }
 .gauge-vsc-warning[data-active="true"] {
   opacity: 1;
+}
+.gauge-vsc-warning[data-sport="true"] {
+  color: #b4ee42;
 }
 .resource-ring {
   position: absolute;

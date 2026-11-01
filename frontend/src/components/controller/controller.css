@@ -96,3 +96,29 @@
   align-items: center;
   gap: 7px;
 }
+
+/* The Xbox face glyph is the button face: no surrounding rectangular plate. */
+.controller-action,
+.menu-surface .controller-action,
+.cockpit-panel .controller-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 3px 6px;
+  border: 0 !important;
+  outline: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--app-text, #d7e8f1);
+  cursor: pointer;
+}
+.controller-action:is(:hover, :focus-visible) {
+  outline: none;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.hero-selection .controller-action.alpha-deploy {
+  color: #83e79d;
+}

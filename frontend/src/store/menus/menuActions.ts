@@ -1,11 +1,7 @@
 import { reconSetupParent } from "../alpha/alphaStore";
 import type { StateCreator } from "zustand";
 import { MAIN_MENU_ITEMS, PAUSE_MENU_ITEMS } from "../../game/menus/menuItems";
-import {
-  CAN_INTERFACE_OPTIONS,
-  CAN_MODE_OPTIONS,
-  useCanBusStore,
-} from "../recon/canBusStore";
+import { cycleCanInterface, cycleCaptureMode } from "../recon/captureSetup";
 import { useSelectionStore } from "../selection/selectionStore";
 import { useNetworkStore } from "../session/networkStore";
 
@@ -151,22 +147,10 @@ export const createMenuActions: StateCreator<
 
     if (activeMenu === "signal_recon_setup") {
       const selection = useSelectionStore.getState();
-      const bus = useCanBusStore.getState();
       if (index === 0) {
-        const current = CAN_INTERFACE_OPTIONS.indexOf(bus.selectedInterface);
-        bus.setSelectedInterface(
-          CAN_INTERFACE_OPTIONS[
-            (current + dir + CAN_INTERFACE_OPTIONS.length) %
-              CAN_INTERFACE_OPTIONS.length
-          ],
-        );
+        cycleCanInterface(dir);
       } else if (index === 1) {
-        const current = CAN_MODE_OPTIONS.indexOf(bus.selectedMode);
-        bus.setSelectedMode(
-          CAN_MODE_OPTIONS[
-            (current + dir + CAN_MODE_OPTIONS.length) % CAN_MODE_OPTIONS.length
-          ],
-        );
+        cycleCaptureMode(dir);
       } else if (index === 2) {
         if (dir === 1) selection.nextVehicle();
         else selection.prevVehicle();

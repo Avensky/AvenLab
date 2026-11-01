@@ -33,6 +33,7 @@ export function parseChatMessage(value: unknown): ChatMessage | null {
 /** Ephemeral current-session text only. Never persist team chat or subscribe to
  * physics ticks. A context change discards the previous team's history. */
 export const useChatStore = create<{
+  activity: { serial: number; channel: ChatChannel; author: string } | null;
   profile: string | null;
   teamContext: string | null;
   history: Record<string, ChatMessage[]>;
@@ -45,10 +46,12 @@ export const useChatStore = create<{
   receive: (value: unknown) => void;
   mergeHistory: (context: string, values: unknown[]) => void;
 }>((set, get) => ({
+  activity: null,
   profile: null,
   teamContext: null,
   history: {},
-  reset: () => set({ profile: null, teamContext: null, history: {} }),
+  reset: () =>
+    set({ profile: null, teamContext: null, history: {}, activity: null }),
   membership: (profile, world, team) => {
     const context =
       world !== null && (team === "red" || team === "blue")
@@ -59,6 +62,7 @@ export const useChatStore = create<{
     set({
       profile,
       teamContext: context,
+      activity: null,
       history:
         profile !== old.profile
           ? {}
@@ -81,6 +85,11 @@ export const useChatStore = create<{
     const old = state.history[m.context] ?? [];
     if (old.some((line) => line.id === m.id)) return;
     set({
+      activity: {
+        serial: (state.activity?.serial ?? 0) + 1,
+        channel: m.channel,
+        author: m.author_id,
+      },
       history: {
         ...state.history,
         [m.context]: [...old, m].sort((a, b) => a.id - b.id).slice(-50),

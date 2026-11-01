@@ -68,7 +68,7 @@
 .hero-selection .alpha-mode-tabs .menu-control + .menu-control {
   border-left: 0;
 }
-.hero-selection .alpha-mode-tabs [aria-pressed="true"] {
+.hero-selection .alpha-mode-tabs [aria-selected="true"] {
   border-color: #e3f4ff;
   box-shadow: inset 0 -2px #b0e6f7;
 }
@@ -146,10 +146,27 @@
   cursor: pointer;
   overflow: hidden;
 }
-.hero-portrait-card:is(:hover, :focus-visible) {
-  border-color: #f4faff;
-  outline: 1px solid #f4faff;
-  outline-offset: -2px;
+.hero-portrait-card:is(:hover, :focus) {
+  z-index: 2;
+  border-color: var(--hero-color, #a7e5ff);
+  outline: 0;
+  box-shadow: 0 0 10px
+    color-mix(in srgb, var(--hero-color, #a7e5ff) 65%, transparent);
+  background: radial-gradient(ellipse, #61839e90, #10253585 72%);
+}
+.hero-portrait-card .hero-portrait-art img {
+  transition:
+    transform 120ms ease-out,
+    filter 120ms ease-out;
+}
+.hero-portrait-card:is(:hover, :focus) .hero-portrait-art img {
+  transform: scale(1.13);
+  filter: drop-shadow(0 0 5px var(--hero-color, #a7e5ff));
+}
+.hero-portrait-card[aria-pressed="true"]:focus {
+  box-shadow:
+    inset 0 0 0 2px #ffe66d,
+    0 0 12px var(--hero-color, #a7e5ff);
 }
 .hero-portrait-card[aria-pressed="true"] {
   border-color: #ffe66d;
@@ -231,10 +248,10 @@
 .hero-team-strip {
   display: flex;
   flex-shrink: 0;
-  justify-content: flex-start;
+  justify-content: center;
   gap: 3px;
   margin: 0;
-  padding: 4px 4px 0;
+  padding: 3px 4px;
 }
 .hero-team-strip .alpha-squad-seat {
   display: flex;
@@ -274,77 +291,6 @@
   width: clamp(230px, 29vw, 360px);
 }
 /* Vehicle and environment share precisely the same translucent row treatment. */
-.hero-vehicle-bar {
-  position: relative;
-  display: flex;
-  align-items: stretch;
-  flex-shrink: 0;
-  min-height: 34px;
-  margin-top: 22px;
-  background: none;
-  border: 0;
-}
-.hero-vehicle-bar > .selection-strip {
-  flex: 1;
-  min-width: 0;
-  padding: 1px 3px;
-  background: #05101938;
-  border-top: 1px solid #6d92a588;
-  border-bottom: 1px solid #6d92a588;
-  box-shadow: none;
-}
-.hero-vehicle-bar > .selection-strip + .selection-strip {
-  border-left: 1px solid #7696a766;
-}
-.hero-vehicle-bar .selection-strip-layout {
-  height: 100%;
-  gap: 3px;
-}
-.hero-vehicle-bar .selection-strip-label {
-  font-size: 6px;
-}
-.hero-vehicle-bar .selection-strip-title {
-  font-size: 11px;
-}
-.hero-vehicle-bar .selection-strip-arrow {
-  width: 30px;
-  min-height: 28px;
-  padding: 1px;
-  justify-content: center;
-  background: transparent;
-  border-color: #6d92a55c;
-}
-.hero-vehicle-bar .selection-strip-arrow:is(:hover, :focus-visible) {
-  background: #75d8f51c;
-  border-color: #c1f0ff;
-}
-.hero-role-tabs {
-  position: absolute;
-  left: 0;
-  bottom: 100%;
-  display: flex;
-  gap: 0;
-  background: none;
-}
-.hero-role-tabs .menu-control {
-  min-height: 22px;
-  padding: 3px 10px;
-  font-size: 8px;
-  border: 1px solid #6d92a588;
-  border-radius: 0;
-  background: #0b1c2959;
-  clip-path: none;
-}
-.hero-role-tabs .menu-control + .menu-control {
-  margin-left: -1px;
-}
-.hero-role-tabs [aria-selected="true"] {
-  background: #19384bb3;
-  border-color: #d0f0ff;
-  color: #fff;
-  box-shadow: none;
-  z-index: 1;
-}
 .hero-selection .alpha-selection-footer {
   display: flex;
   align-items: center;
@@ -367,148 +313,6 @@
   gap: 6px;
   font-size: 10px;
   border-color: #a1c7d7;
-}
-/* Inactive chat is visible but recedes into the scene. Focus, an assisted
-   keyboard, or a recent tap restores it; incoming messages do not wake it. */
-.lobby-chat {
-  border: 0;
-  background: transparent;
-  opacity: 0.35;
-  color: #d6e6ef;
-  pointer-events: auto;
-  transition:
-    opacity 220ms ease,
-    background-color 220ms ease;
-}
-.lobby-chat[data-active="true"] {
-  opacity: 1;
-  background: #06121bb8;
-}
-@media (hover: hover) and (pointer: fine) {
-  .lobby-chat:hover {
-    opacity: 1;
-    background: #06121bb8;
-  }
-}
-.lobby-chat header {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px;
-}
-.lobby-chat header button,
-.chat-send {
-  padding: 3px 5px;
-  min-height: 22px;
-  border: 1px solid #69899a44;
-  border-radius: 0;
-  background: #0b1f2c70;
-  color: #b9d1df;
-  font: 8px/1.2 monospace;
-  cursor: pointer;
-}
-.lobby-chat .chat-focus {
-  margin-right: auto;
-  border-color: transparent;
-  background: none;
-}
-.lobby-chat kbd {
-  font-size: 7px;
-  border: 1px solid #7493a377;
-  padding: 1px 3px;
-}
-.lobby-chat nav {
-  display: flex;
-  gap: 0;
-}
-.lobby-chat nav [aria-pressed="true"] {
-  color: #ffed93;
-  border-color: #e4cb6c;
-}
-.lobby-chat button:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-.lobby-chat .chat-collapse {
-  width: 24px;
-}
-.chat-lines {
-  height: 66px;
-  overflow: auto;
-  scrollbar-width: none;
-  padding: 4px 5px;
-  overflow-wrap: anywhere;
-}
-.chat-lines::-webkit-scrollbar {
-  display: none;
-}
-.chat-lines p {
-  display: flex;
-  gap: 5px;
-  margin: 2px 0;
-  font-size: 9px;
-  line-height: 1.35;
-}
-.chat-lines strong {
-  color: #9cd9eb;
-  flex: none;
-  max-width: 90px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.chat-lines .chat-empty {
-  color: #8fa9b9;
-  font-size: 8px;
-}
-.lobby-chat form {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  padding: 3px;
-}
-.lobby-chat .assisted-field {
-  flex: 1;
-  min-width: 0;
-  margin: 0;
-  gap: 0;
-}
-.lobby-chat .assisted-field > span:first-child {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-}
-.lobby-chat .assisted-input-row {
-  display: flex;
-  min-width: 0;
-  gap: 2px;
-}
-.lobby-chat input {
-  width: 100%;
-  min-width: 0;
-  min-height: 25px;
-  padding: 4px;
-  border: 1px solid #6b8a9b88;
-  border-radius: 0;
-  background: #06131b66;
-  color: #e8f3f8;
-  font: 9px monospace;
-}
-.lobby-chat .assisted-input-row .menu-control {
-  padding: 2px 3px;
-  min-height: 25px;
-  font-size: 6px;
-}
-.chat-send {
-  min-height: 25px;
-  color: #ffe694;
-}
-.chat-notice {
-  margin: 0;
-  padding: 3px 5px;
-  color: #edc281;
-  font-size: 8px;
 }
 @media (min-width: 1200px) and (orientation: landscape) {
   .hero-team-strip {
@@ -547,7 +351,7 @@
   }
   .hero-team-strip {
     gap: 2px;
-    padding: 3px 3px 0;
+    padding: 3px;
   }
   .hero-team-strip .alpha-squad-seat {
     flex-direction: column;
@@ -579,9 +383,6 @@
     min-height: 28px;
     min-width: 160px;
     font-size: 9px;
-  }
-  .hero-vehicle-bar .selection-strip-title {
-    font-size: 10px;
   }
 }
 @media (max-height: 500px) and (orientation: landscape) {
@@ -639,29 +440,6 @@
     width: 230px;
     bottom: 2px;
   }
-  .chat-lines {
-    height: 35px;
-    padding: 2px 4px;
-  }
-  .chat-lines p {
-    margin: 1px 0;
-    font-size: 7px;
-  }
-  .lobby-chat header button {
-    min-height: 18px;
-    padding: 2px 4px;
-    font-size: 7px;
-  }
-  .lobby-chat input,
-  .chat-send,
-  .lobby-chat .assisted-input-row .menu-control {
-    min-height: 21px;
-    font-size: 7px;
-    padding: 2px;
-  }
-  .lobby-chat .assisted-input-row .menu-control {
-    font-size: 5px;
-  }
   .hero-team-strip .hero-portrait-art {
     width: 32px;
   }
@@ -670,15 +448,6 @@
   }
   .hero-team-strip small {
     font-size: 6px;
-  }
-  .hero-vehicle-bar {
-    min-height: 29px;
-  }
-  .hero-vehicle-bar .selection-strip-arrow {
-    min-height: 25px;
-  }
-  .hero-vehicle-bar .selection-strip-title {
-    font-size: 8px;
   }
   .hero-selection .alpha-selection-footer {
     padding: 2px 4px;
@@ -692,4 +461,144 @@
     min-width: 160px;
     font-size: 9px;
   }
+}
+
+/* Portrait controls form the second and third navigation rows. Environment
+   selection belongs immediately below the grid, without a vehicle strip. */
+.hero-role-tabs {
+  position: static;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  flex: none;
+  gap: 0;
+  width: 100%;
+  background: none;
+}
+.hero-role-tabs .menu-control {
+  min-height: 24px;
+  justify-content: center;
+  padding: 3px 4px;
+  font-size: 8px;
+  border: 1px solid #6d92a588;
+  border-radius: 0;
+  background: #0b1c2959;
+}
+.hero-role-tabs .menu-control + .menu-control {
+  border-left: 0;
+}
+.hero-role-tabs [aria-selected="true"] {
+  background: #19384bb3;
+  border-color: #d0f0ff;
+  color: #fff;
+  box-shadow: inset 0 -1px #d0f0ff;
+}
+.hero-roster-grid {
+  margin: 3px -5px;
+  padding: 5px;
+}
+.hero-environment {
+  flex: none;
+}
+.hero-environment .selection-strip {
+  padding: 2px 3px;
+  background: #0a3a2f80;
+  border: 1px solid #82c7b86b;
+  box-shadow: none;
+}
+.hero-environment .selection-strip-layout {
+  gap: 3px;
+}
+.hero-environment .selection-strip-label {
+  font-size: 6px;
+}
+.hero-environment .selection-strip-title {
+  font-size: 9px;
+}
+.hero-environment .selection-strip-arrow {
+  width: 25px;
+  min-height: 28px;
+  padding: 1px;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  .hero-role-tabs .menu-control {
+    min-height: 21px;
+    font-size: 7px;
+  }
+  .hero-environment .selection-strip-arrow {
+    min-height: 24px;
+  }
+  .hero-environment .selection-strip-title {
+    font-size: 8px;
+  }
+}
+
+/* Stage one owns all configuration. The bottom strips touch the footer and
+   share one full-width focus surface; stage two contains portraits only. */
+.mode-selection .hero-summary {
+  width: min(70%, 650px);
+  max-width: none;
+}
+.mode-config-bar {
+  flex: none;
+  pointer-events: auto;
+}
+.mode-config-bar .selection-strip {
+  margin: 0;
+  padding: 3px 5px;
+  background: #0a3a2f92;
+  border: 1px solid #82c7b86b;
+  box-shadow: none;
+}
+.mode-config-bar .selection-strip-layout {
+  gap: 5px;
+}
+.mode-config-bar .selection-strip-title {
+  font-size: 13px;
+}
+.mode-config-bar .selection-strip-label {
+  font-size: 7px;
+}
+.mode-config-bar .selection-strip-arrow {
+  width: 36px;
+  min-height: 30px;
+  padding: 2px;
+  border: 0;
+  background: transparent;
+  justify-content: center;
+  outline: 0;
+  box-shadow: none;
+}
+.mode-config-bar [data-controller-selector]:is(:focus, :focus-within) {
+  outline: 0;
+  border-color: #b7f5df;
+  background: #145743bb;
+  box-shadow: inset 0 0 0 1px #b7f5df;
+}
+.mode-config-bar .can-capture-selectors {
+  width: 100%;
+}
+.mode-config-bar .can-capture-field {
+  min-height: 39px;
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  .mode-config-bar .selection-strip-title {
+    font-size: 10px;
+  }
+  .mode-config-bar .selection-strip-arrow {
+    min-height: 25px;
+  }
+  .mode-config-bar .can-capture-field {
+    min-height: 31px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-portrait-card .hero-portrait-art img {
+    transition: none;
+  }
+}
+html[data-reduce-motion="true"] .hero-portrait-card .hero-portrait-art img {
+  transition: none;
 }

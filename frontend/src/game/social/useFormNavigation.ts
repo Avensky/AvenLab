@@ -1,4 +1,5 @@
-import { useEffect, type RefObject } from "react";
+import { navigateFormRows } from "./formRows";
+import { useEffect, useRef, type RefObject } from "react";
 import type { MenuAction } from "../../controls/inputRouting";
 
 /** Native typing stays with inputs. Controller actions move through visible
@@ -7,10 +8,19 @@ export function useFormNavigation(
   root: RefObject<HTMLElement | null>,
   back: () => void,
   cycleTab: (direction: number) => void,
+  tabKeyCycles = false,
 ) {
+  const remembered = useRef(new WeakMap<HTMLElement, number>());
   useEffect(() => {
+    const closeChat = () => {
+      if (!document.activeElement?.closest('.lobby-chat[data-expanded="true"]'))
+        return false;
+      window.dispatchEvent(new Event("avenlab:chat-close"));
+      return true;
+    };
     const navigate = (action: MenuAction) => {
       if (action === "back") {
+        if (closeChat()) return;
         back();
         return;
       }
@@ -20,7 +30,7 @@ export function useFormNavigation(
       }
       const controls = Array.from(
         root.current?.querySelectorAll<HTMLElement>(
-          'button,input:not([type="hidden"]),select,textarea',
+          'button,input:not([type="hidden"]),select,textarea,[data-controller-selector][tabindex]',
         ) ?? [],
       ).filter(
         (node) =>
@@ -34,6 +44,11 @@ export function useFormNavigation(
         else controls[0]?.focus();
         return;
       }
+      if (
+        root.current &&
+        navigateFormRows(root.current, active, action, remembered.current)
+      )
+        return;
       // Left/right changes the focused vehicle/environment strip in place;
       // up/down still leaves it. Portrait arrows keep spatial focus navigation.
       const selector = active?.closest<HTMLElement>(
@@ -87,10 +102,24 @@ export function useFormNavigation(
     const panel = (event: Event) =>
       navigate((event as CustomEvent<MenuAction>).detail);
     const keyboard = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      if (
+        tabKeyCycles &&
+        event.code === "Tab" &&
+        !event.ctrlKey &&
+        !event.altKey &&
+        !event.metaKey &&
+        !(event.target as HTMLElement).closest(".lobby-chat")
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+        cycleTab(event.shiftKey ? -1 : 1);
+        return;
+      }
       if (event.key === "Escape") {
         event.preventDefault();
         event.stopPropagation();
-        back();
+        if (!closeChat()) back();
         return;
       }
       if ((event.target as HTMLElement).matches("input,textarea,select"))
@@ -101,8 +130,14 @@ export function useFormNavigation(
           ArrowDown: "down",
           ArrowLeft: "left",
           ArrowRight: "right",
+          Numpad8: "up",
+          Numpad2: "down",
+          Numpad4: "left",
+          Numpad6: "right",
         } as const
-      )[event.key as "ArrowUp"];
+      )[
+        (event.code.startsWith("Numpad") ? event.code : event.key) as "ArrowUp"
+      ];
       if (action) {
         event.preventDefault();
         event.stopPropagation();
@@ -116,5 +151,5 @@ export function useFormNavigation(
       window.removeEventListener("avenlab:panel-action", panel);
       element?.removeEventListener("keydown", keyboard);
     };
-  }, [root, back, cycleTab]);
+  }, [root, back, cycleTab, tabKeyCycles]);
 }
