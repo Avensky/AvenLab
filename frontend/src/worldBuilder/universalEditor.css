@@ -563,3 +563,28 @@
     font-size: 11px;
   }
 }
+
+/* Compact build palette reuses the full editor's document, snapping, ghosts,
+   undo and placement handlers. The open center passes input to the 3D scene. */
+.layout-editor--hud {background:transparent;backdrop-filter:none;}
+.layout-editor--hud .le-header {display:flex;height:auto;min-height:44px;flex-wrap:wrap;padding:6px 10px;gap:8px;background:var(--le-panel);}
+.layout-editor--hud .le-brand,.layout-editor--hud .le-project {display:none;}
+.layout-editor--hud .le-header-actions {display:flex;}
+.layout-editor--hud .le-header-actions > button:not(.le-presentation-toggle) {display:none;}
+.layout-editor--hud .le-world-controls {flex:1;min-width:220px;}
+.layout-editor--hud .le-body {display:grid;grid-template-columns:min(230px,34vw) minmax(0,1fr);grid-template-rows:minmax(0,1fr);background:transparent;}
+.layout-editor--hud .le-library {grid-column:1;grid-row:1;padding:10px;background:var(--le-panel);border-radius:0 0 var(--app-radius,16px) 0;scrollbar-width:none;}
+.layout-editor--hud .le-stage {grid-column:2;grid-row:1;background:transparent;pointer-events:none;}
+.layout-editor--hud .le-palette {grid-template-columns:repeat(2,minmax(0,1fr));}
+.layout-editor--hud .le-piece-card .le-preview-button {display:none;}
+.layout-editor--hud .le-palette .le-piece {min-height:76px;padding:5px;}
+.layout-editor--hud .le-thumbnail {height:38px;}
+.layout-editor--hud .le-stage-top,.layout-editor--hud .le-stage-tag {display:none;}
+.layout-editor--hud .le-footer {background:var(--le-panel);}
+@media(max-width:600px) {
+ .layout-editor--hud .le-body {grid-template-columns:126px minmax(0,1fr);}
+ .layout-editor--hud .le-library {padding:6px;}
+ .layout-editor--hud .le-palette {grid-template-columns:1fr;}
+ .layout-editor--hud .le-world-controls {min-width:0;flex-wrap:wrap;}
+ .layout-editor--hud .le-world-field select {min-width:100px;}
+}

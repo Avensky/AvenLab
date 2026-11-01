@@ -1,3 +1,7 @@
+import { useBuilderStore } from "../worldBuilder/state/builderStore";
+import { useVehicleEditorStore } from "../worldBuilder/vehicleEditor/vehicleEditorStore";
+import { VehicleCameraRig } from "../worldBuilder/vehicleEditor/VehicleCameraRig";
+import { useSocialStore } from "../store/social/socialStore";
 import { PerspectiveCamera, OrbitControls } from "@react-three/drei";
 import { InspectionCameraControls } from "../components/InspectionCameraControls";
 import { specialCameraPreset } from "../utils/drivingViews";
@@ -117,16 +121,29 @@ export default function Cameras() {
     camMode === "FIRST_PERSON" || camMode === "BIRDS_EYE"
       ? specialCameraPreset(camMode, playerVehicleId)
       : { ...cameraPresetForVehicle(playerVehicleId), worldAligned: false };
+  const workspace = useBuilderStore(s => s.workspace);
+  const cameraView = useVehicleEditorStore(s => s.view);
+  const profile = useVehicleEditorStore(s => s.cameras[playerVehicleId ?? ""]);
+  const editorSession = useSocialStore(s => s.view?.alpha?.active?.mode === "editor");
+  const cameraEditing = editorSession && workspace === "vehicle" && overlay === "world_builder";
+  const expectedMode = cameraView === "bird" ? "BIRDS_EYE" : "FIRST_PERSON";
+  const rigActive = editorSession && (overlay === null || cameraEditing) && cameraView !== "chase" && camMode === expectedMode;
+  if (profile && camMode === "FIRST_PERSON") {
+    const yaw = profile.yaw * Math.PI / 180, pitch = profile.pitch * Math.PI / 180;
+    playerCameraPreset.offset = [profile.x, profile.y, profile.z];
+    playerCameraPreset.targetOffset = [profile.x + Math.sin(yaw)*Math.cos(pitch)*20,
+      profile.y + Math.sin(pitch)*20, profile.z + Math.cos(yaw)*Math.cos(pitch)*20];
+  }
   const controlsRef = useRef<ThreeOrbitControls | null>(null);
   // Run before camera (-1) and model (0). Keep the frame clock alive in
   // editor mode too. Negative priority retains automatic R3F rendering.
   useFrame(() => beginVehicleRenderFrame(), -100);
   useEffect(() => releaseVehicleRenderFrameClock, []);
 
-  if (editor && screen === "sandbox") {
+  if (editor && screen === "sandbox" && !cameraEditing) {
     return (
       <>
-        <PerspectiveCamera makeDefault fov={fov} near={0.05} />
+        <PerspectiveCamera makeDefault fov={profile && (camMode === "FIRST_PERSON" || rigActive) ? profile.fov : fov} near={0.05} />
         <InspectionCameraControls
           playerId={playerId}
           enabled={overlay === null}
@@ -149,7 +166,7 @@ export default function Cameras() {
     <>
       <PerspectiveCamera
         makeDefault
-        fov={fov}
+        fov={profile && (camMode === "FIRST_PERSON" || rigActive) ? profile.fov : fov}
         near={0.05}
         position={[0, 7, 12]}
       />
@@ -158,12 +175,13 @@ export default function Cameras() {
         maxYaw={camMode === "BIRDS_EYE" ? 0 : Math.PI * 0.65}
         maxPitch={camMode === "BIRDS_EYE" ? 0 : 0.45}
         playerId={playerId}
-        enabled={isDriving && overlay === null}
+        enabled={isDriving && (overlay === null || cameraEditing) && !rigActive}
         offset={playerCameraPreset.offset}
         targetOffset={playerCameraPreset.targetOffset}
         positionSpeed={playerCameraPreset.positionSpeed}
         targetSpeed={playerCameraPreset.targetSpeed}
       />
+      <VehicleCameraRig playerId={playerId} vehicleId={playerVehicleId ?? ""} enabled={rigActive} reducedMotion={reducedMotion} showMarker={cameraEditing && (cameraView === "chase" || cameraView === "bird")} />
       <OrbitControls
         ref={controlsRef}
         makeDefault

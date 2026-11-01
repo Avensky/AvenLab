@@ -100,6 +100,8 @@ export async function switchBuilderWorld(mapId: string) {
   )
     throw Error("Unknown editor world");
   const token = ++request;
+  const selection = mapCatalog.findIndex(m => m.id === mapId);
+  if (selection >= 0) useSelectionStore.setState({ mapIndex: selection });
   if (useBuilderStore.getState().doc?.map_id === mapId) {
     useBuilderStore.setState({ loadingMap: null });
     return;
@@ -241,7 +243,6 @@ export async function openWorldBuilder() {
 export async function loadStandaloneBuilder() {
   if (useBuilderStore.getState().loadingMap) return;
   const mapId =
-    useBuilderStore.getState().doc?.map_id ??
     useSelectionStore.getState().getSelectedMap?.()?.id ??
     "streaming_endless_city";
   await switchBuilderWorld(mapId);

@@ -96,6 +96,26 @@ const arrow: LayoutPart[] = [
   box([0, 0.5, -0.4], [0.2, 1, 0.14], undefined, false),
 ];
 export const EXTRA_PIECES: Piece[] = [
+  ...(['fuel-station', 'repair-shop', 'service-center'] as const).map((id): Piece => ({
+    id, label: id === 'fuel-station' ? 'Fuel station' : id === 'repair-shop' ? 'Repair shop' : 'Service center',
+    category: 'garages',
+    description: 'Drive into the open bay and stop for gradual service. Placeholder geometry; GLB-ready.',
+    size: [14, 5, 16], color: id === 'fuel-station' ? '#c4a46a' : id === 'repair-shop' ? '#6ba5b0' : '#8ca480',
+    parts: [
+      box([-.48,.5,0],[.04,1,1]), box([.48,.5,0],[.04,1,1]),
+      box([0,.5,-.48],[1,1,.04]), box([0,.97,0],[1,.06,1]),
+      box([0,.004,0],[.6,.008,.65], '#82b3a0', false),
+      box([0,.87,.48],[.7,.12,.025]),
+    ],
+  })),
+  {
+    id:"bridge-span",label:"Bridge span",category:"jumps",description:"Modular concrete bridge · deck 5 m above its base",size:[12,5.6,30],color:"#8297ac",
+    parts:[box([0,.93,0],[1,.1,1]),box([-.47,1.04,0],[.05,.15,1]),box([.47,1.04,0],[.05,.15,1]),box([0,.44,-.38],[.6,.88,.08]),box([0,.44,.38],[.6,.88,.08])],
+  },
+  {
+    id:"canal-section",label:"Canal section",category:"props",description:"Raised concrete channel with a visual water strip · no terrain excavation or water physics",size:[16,2,30],color:"#8398a9",
+    parts:[box([-.44,.5,0],[.12,1,1]),box([.44,.5,0],[.12,1,1]),box([0,.04,0],[.8,.08,1]),box([0,.28,0],[.75,.02,1],"#28657b",false)],
+  },
   chunk(2),
   chunk(3),
   {

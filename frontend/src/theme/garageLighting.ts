@@ -7,9 +7,9 @@ export const GARAGE_LIGHT_COLORS: Record<UITheme, string> = {
   navy: "#4484ff",
   hacker: "#5bff35",
   black: "#e5cb70",
-  "deep-purple": "#a05aff",
-  "pastel-purple": "#d7b5ff",
-  strawberry: "#ff648c",
+  "deep-purple": "#7185ff",
+  "pastel-purple": "#b49ade",
+  strawberry: "#ff3caf",
   white: "#eff5ff",
 };
 export function tagGarageAccent(

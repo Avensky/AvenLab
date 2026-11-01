@@ -83,7 +83,7 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
     const { HeroSelection } = await load("game/alpha/HeroSelection.tsx");
     const { ModeSelection } = await load("game/alpha/ModeSelection.tsx");
     const { useAlphaStore: alpha } = await load("store/alpha/alphaStore.ts");
-    const { MAIN_MENU_ITEMS } = await load("game/menus/menuItems.ts");
+    const { MAIN_MENU_ITEMS, PAUSE_MENU_ITEMS } = await load("game/menus/menuItems.ts");
     const { PauseMenu } = await load("game/menus/PauseMenu.tsx");
     const { SettingsMenu } = await load("game/menus/SettingsMenu.tsx");
     const { CareerMenu } = await load("game/menus/CareerMenu.tsx");
@@ -764,8 +764,8 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
       "Settings and Leave hover/click select their actual pause rows",
       async () => {
         for (const [index, target] of [
-          [3, "settings"],
-          [8, "leave_game"],
+          [PAUSE_MENU_ITEMS.findIndex(i => i.id === "settings"), "settings"],
+          [PAUSE_MENU_ITEMS.findIndex(i => i.id === "leave_game"), "leave_game"],
         ]) {
           await reset("sandbox", "pause");
           const element = document.querySelectorAll('[role="button"]')[index];
@@ -794,9 +794,8 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
       "keyboard focus tracks row navigation and Enter opens Settings once",
       async () => {
         await reset("sandbox", "pause");
-        await key("ArrowDown", "ArrowDown");
-        await key("ArrowDown", "ArrowDown");
-        await key("ArrowDown", "ArrowDown");
+        for(let i=0;i<PAUSE_MENU_ITEMS.findIndex(item => item.id === "settings");i++)
+          await key("ArrowDown", "ArrowDown");
         assert.ok(document.activeElement.textContent.includes("Settings"));
         await key("Enter", "Enter");
         assert.equal(ui.getState().overlay, "settings");
@@ -1293,7 +1292,7 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
             "H picker returns directly to driving",
           );
           await reset("sandbox", "pause");
-          await pointerPress(document.querySelectorAll('[role="button"]')[4]);
+          await pointerPress(document.querySelectorAll('[role="button"]')[PAUSE_MENU_ITEMS.findIndex(item=>item.id==='vehicle_select')]);
           assert.equal(ui.getState().overlay, "vehicle_select");
           assert.equal(connection.closed, false);
           await button(1);

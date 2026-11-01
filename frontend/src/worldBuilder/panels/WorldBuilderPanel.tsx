@@ -42,6 +42,7 @@ import "../universalEditor.css";
 import { CollisionBuilderPanel } from "./CollisionBuilderPanel";
 import { EditorWorldControls } from "./EditorWorldControls";
 import { LayoutInspector } from "./LayoutInspector";
+import { VehicleEditorPanel } from "../vehicleEditor/VehicleEditorPanel";
 import { LibraryTabs } from "./LibraryTabs";
 
 const PiecePreview = lazy(() => import("./PiecePreview"));
@@ -88,6 +89,7 @@ function LayoutPanel({
     source = useBuilderStore((state) => state.doc),
     sourceStatus = useBuilderStore((state) => state.status),
     loadingMap = useBuilderStore((state) => state.loadingMap);
+  const presentation = useBuilderStore((state) => state.presentation);
   const root = useRef<HTMLElement>(null),
     importSequence = useRef(0);
   const [category, setCategory] = useState<LibraryTab>("all"),
@@ -326,8 +328,8 @@ function LayoutPanel({
   return (
     <section
       ref={root}
-      className="layout-editor menu-surface"
-      data-inspector={preferences.inspector}
+      className={`layout-editor menu-surface${presentation === "hud" ? " layout-editor--hud" : ""}`}
+      data-inspector={presentation === "hud" ? "hidden" : preferences.inspector}
       data-editor-theme={preferences.theme}
       style={
         {
@@ -366,7 +368,8 @@ function LayoutPanel({
           </span>
           <strong>World editor</strong>
         </div>
-        <EditorWorldControls />
+        <EditorWorldControls compact={presentation === "hud"} />
+
         <div className="le-project">
           <span className={`le-save-dot ${dirty ? "is-dirty" : ""}`} />
           <span title={s.doc?.title}>
@@ -377,6 +380,11 @@ function LayoutPanel({
           </span>
         </div>
         <div className="le-header-actions">
+        <button className="le-presentation-toggle" onClick={() => {
+          const hud = presentation !== "hud";
+          useBuilderStore.setState({presentation:hud ? "hud" : "workspace"});
+          if(hud) useLayoutStore.setState({view:"3d"});
+        }}>{presentation === "hud" ? "FULL EDITOR" : "BUILD IN WORLD"}</button>
           <button
             aria-controls="world-inspector"
             aria-expanded={preferences.inspector !== "hidden"}
@@ -659,7 +667,7 @@ function LayoutPanel({
             )}
           </div>
         </main>
-        {preferences.inspector !== "hidden" && (
+        {presentation !== "hud" && preferences.inspector !== "hidden" && (
           <LayoutInspector
             planOnly={planOnly}
             modelReference={modelReference}
@@ -742,6 +750,7 @@ export function WorldBuilderPanel({
   modelReference?: boolean;
 }) {
   const workspace = useBuilderStore((s) => s.workspace);
+  if (workspace === "vehicle") return <VehicleEditorPanel />;
   return workspace === "colliders" ? (
     <CollisionBuilderPanel planOnly={planOnly || !modelReference} />
   ) : (

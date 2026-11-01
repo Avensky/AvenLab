@@ -37,6 +37,12 @@ export function garageSettingsRows(
   const glowOff = contrast || !settings.bloom;
   return [
     {
+      id: "garage-paint", label: "Showroom paint", value: settings.paint.replaceAll("-", " "),
+      description: "Factory, hot pink or pastel pink preview for AE86, BRZ and Supra. Gameplay paint is unchanged.",
+      action: (dir = 1) => { const paints = ["factory", "hot-pink", "pastel-pink"] as const;
+        update({paint:paints[(paints.indexOf(settings.paint)+dir+paints.length)%paints.length]}); },
+    },
+    {
       id: "garage-bloom",
       label: "Bloom glow",
       value: contrast ? "Off · high contrast" : settings.bloom ? "On" : "Off",

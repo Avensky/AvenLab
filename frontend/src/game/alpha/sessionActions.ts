@@ -2,7 +2,7 @@ import { socket } from "../../net/rustSocket";
 import { requestSocial } from "../../net/socialClient";
 import { useSocialStore } from "../../store/social/socialStore";
 import { useAlphaStore, HEROES } from "../../store/alpha/alphaStore";
-import { useSelectionStore } from "../../store/selection/selectionStore";
+import { mapCatalog, useSelectionStore } from "../../store/selection/selectionStore";
 import { useNetworkStore } from "../../store/session/networkStore";
 import { useUIStore } from "../../store/menus/uiStore";
 import { useGameStore } from "../../store/presentation/gameStore";
@@ -95,12 +95,17 @@ export async function deploySelectedHero() {
     });
     useRenderSettingsStore.getState().startSandbox();
     useGameStore.setState({ camera: "DEFAULT" });
-    useUIStore.getState().setScreen("sandbox");
-    if (active?.mode === "editor") {
+    if (selected.mode === "editor") {
+      const { useBuilderStore } = await import("../../worldBuilder/state/builderStore");
+      const selectedMap = mapCatalog.findIndex(item => item.id === map);
+      if(selectedMap >= 0) useSelectionStore.setState({mapIndex:selectedMap});
+      useBuilderStore.setState({workspace:"layout",presentation:"workspace"});
+      // Enter authoring atomically: never expose a driving frame underneath.
+      useUIStore.setState({ screen: "sandbox", overlay: "world_builder" });
       const { openWorldBuilder } =
         await import("../../worldBuilder/state/builderActions");
       await openWorldBuilder();
-    }
+    } else useUIStore.getState().setScreen("sandbox");
   } finally {
     spawning = false;
   }

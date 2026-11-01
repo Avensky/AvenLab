@@ -9,6 +9,8 @@ import {
 import { fitPreviewToPlatform, measurePreviewBounds } from "./previewPlacement";
 import { PreviewContactShadow } from "./PreviewContactShadow";
 import { previewMaterialState, setPreviewGhost } from "./previewGhost";
+import { usePreferencesStore } from "../../store/preferences/preferencesStore";
+import { applyShowroomPaint } from "./garageVehiclePaint";
 import { prepareGarageVehiclePaint } from "./garageVehiclePaint";
 
 // Selection is always the complete GLB, independent of in-game debug modes.
@@ -44,6 +46,7 @@ function PreviewAsset({
   platform: readonly [number, number];
   ghost: boolean;
 }) {
+  const paint = usePreferencesStore(s => s.garageEffects.paint);
   const { scene } = useGLTF(path, "/draco/");
   const prepared = useMemo(
     () => {
@@ -54,6 +57,7 @@ function PreviewAsset({
     [scene, model],
   );
   useEffect(() => () => prepared.dispose(), [prepared]);
+  useEffect(() => { applyShowroomPaint(prepared.root, model, paint); }, [prepared, model, paint]);
   const materials = useMemo(
     () => previewMaterialState(prepared.root),
     [prepared],

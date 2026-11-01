@@ -399,7 +399,7 @@ impl Server {
         };
         let result = match action {
             "mode_join" | "mode_cancel" | "hero_select" | "skin_redeem" | "skin_equip"
-            | "editor_apply" => self.handle_alpha(player, &value).await?,
+            | "editor_apply" | "editor_vehicle_get" | "editor_vehicle_apply" => self.handle_alpha(player, &value).await?,
 
             "identify" => {
                 let previous = self.data.lock().await.clone();

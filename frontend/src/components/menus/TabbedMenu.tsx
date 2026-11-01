@@ -277,7 +277,10 @@ export function TabbedMenu({
                   )}
                 </span>
                 {row.value && (
-                  <span className="menu-row-value">{row.value}</span>
+                  <span className="menu-row-value" data-toggle={
+                    /^(on|show|enabled)$/i.test(row.value) ? "on" :
+                    /^(off|hide|disabled)$/i.test(row.value) ? "off" : undefined
+                  }>{row.value}</span>
                 )}
               </button>
             ))}

@@ -330,6 +330,7 @@ impl Server {
                     .await
             }
             "editor_apply" => self.apply_editor_document(player, value).await,
+            "editor_vehicle_get" | "editor_vehicle_apply" => self.edit_vehicle(player, value).await,
             "skin_redeem" | "skin_equip" => {
                 let actor = self.actor(player).await?;
                 let previous = self.data.lock().await.clone();
@@ -439,6 +440,28 @@ impl Server {
         }
         Ok(json!({"hero":id,"vehicle":selected.vehicle}))
     }
+    async fn edit_vehicle(&self, player: &str, value: &Value) -> Result<Value, String> {
+        let member = self.alpha.lock().await.members.get(player).cloned()
+            .ok_or("Reserve the editor slot first.")?;
+        if member.mode != Mode::Editor { return Err("Vehicle tuning is available only in World Editor.".into()); }
+        let vehicle_id = policy::hero(&member.hero)?.vehicle;
+        let factory = crate::vehicle_setup::config_for_vehicle(vehicle_id).ok_or("Unknown vehicle.")?;
+        let runtime = self.runtime(player).await?;
+        let mut room = runtime.lock().await;
+        if value["action"] == "editor_vehicle_apply" {
+            let patch = value["tuning"].as_object().ok_or("Supply a tuning object.")?;
+            let config = crate::vehicle_tuning::validated_config(factory, patch)?;
+            room.physics.configure_vehicle_for_player(player, config)?;
+            if let Some(entity) = room.game.entities.get_mut(player) { entity.last_packet = None; }
+            if let Some(connection) = self.connections.lock().await.get(player) {
+                connection.input_tx.send_replace(None);
+            }
+            let packet = json!({"type":"vehicle_config","data":crate::state::VehicleConfigPayload::new(player,config)}).to_string();
+            for tx in room.game.clients.values() { let _ = tx.send(packet.clone()); }
+        }
+        let current = room.physics.vehicles.get(player).ok_or("Deploy a test vehicle first.")?.config;
+        Ok(json!({"vehicle":vehicle_id,"factory":factory,"current":current}))
+    }
     async fn apply_editor_document(&self, player: &str, value: &Value) -> Result<Value, String> {
         let member = self
             .alpha
@@ -531,11 +554,11 @@ impl Server {
             .get(&member.world)
             .cloned()
             .ok_or("Editor world closed.")?;
-        if file.map_id != world.map {
-            return Err(
-                "Choose the matching editor environment before applying this draft.".into(),
-            );
-        }
+        if !MAP_IDS.contains(&file.map_id.as_str()) { return Err("Unknown editor environment.".into()); }
+        let mut world = world;
+        world.map = file.map_id.clone();
+        let old_runtime = self.runtime(player).await?;
+        let previous_config = old_runtime.lock().await.physics.vehicles.get(player).map(|v|v.config);
         let connection = self
             .connections
             .lock()
@@ -556,6 +579,7 @@ impl Server {
             vehicle,
             member.team.as_str(),
         )?;
+        if let Some(config) = previous_config { physics.configure_vehicle_for_player(player, config)?; }
         let mut game = crate::state::SharedGameState::new();
         game.room_id = member.world;
         let spawn = game
@@ -574,6 +598,8 @@ impl Server {
         let room = WorldRuntime { game, physics };
         let map = room.physics.map_snapshot();
         let runtime = Arc::new(Mutex::new(room));
+        // Environment switches update this editor slot only, after successful validation.
+        if let Some(record) = self.data.lock().await.worlds.get_mut(&member.world) { record.map = world.map.clone(); }
         // Only the editor slot is replaced, and only after the full build succeeded.
         self.runtimes
             .lock()

@@ -25,11 +25,10 @@ after(async () => {
   await server?.close();
 });
 
-test("every pause row routes correctly and navigation wraps across all ten items", () => {
+test("every pause row routes correctly and navigation wraps across all nine items", () => {
   [
     null,
     "debug_menu",
-    "world_builder",
     "settings",
     "vehicle_select",
     "cockpit",
@@ -47,7 +46,7 @@ test("every pause row routes correctly and navigation wraps across all ten items
   ui.setState({ overlay: "pause" });
   ui.getState().setActiveMenuIndex(0);
   route("up");
-  assert.equal(ui.getState().getActiveMenuIndex(), 9);
+  assert.equal(ui.getState().getActiveMenuIndex(), 8);
   route("down");
   assert.equal(ui.getState().getActiveMenuIndex(), 0);
 });

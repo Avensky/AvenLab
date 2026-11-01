@@ -12,7 +12,8 @@ import {
   type Triple,
 } from "../document/mapDocument";
 type BuilderState = {
-  workspace: "layout" | "colliders";
+  workspace: "layout" | "colliders" | "vehicle";
+  presentation: "workspace" | "hud";
   doc: MapDocument | null;
   saved: MapDocument | null;
   past: MapDocument[];
@@ -47,6 +48,7 @@ export const configurePreviewStorage = () => {
 export const builderStorageKey = (map: string) => `${storagePrefix}:${map}`;
 export const useBuilderStore = create<BuilderState>((set, get) => ({
   workspace: "layout",
+  presentation: "workspace",
   doc: null,
   saved: null,
   past: [],

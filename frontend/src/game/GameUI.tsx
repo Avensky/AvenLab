@@ -26,6 +26,8 @@ import { PerformanceOverlay } from "../performance/PerformanceOverlay";
 import { useRenderSettingsStore } from "../store/presentation/renderSettingsStore";
 import { HeroSelection } from "./alpha/HeroSelection";
 import { ModeSelection } from "./alpha/ModeSelection";
+import { useBuilderStore } from "../worldBuilder/state/builderStore";
+import { EditorDriveBar } from "../worldBuilder/vehicleEditor/EditorDriveBar";
 import { QueueScreen } from "./alpha/QueueScreen";
 
 const WorldBuilderPanel = lazy(() =>
@@ -59,9 +61,11 @@ const SignalReconMission = lazy(() =>
 export function GameUI() {
   useAppTheme();
   useAlphaFlow();
+  const workspace = useBuilderStore((s) => s.workspace);
   const hud = useRenderSettingsStore((s) => s.hud);
   const screen = useUIStore((s) => s.screen);
   const overlay = useUIStore((s) => s.overlay);
+  const vehicleAuthoring = workspace === "vehicle" && overlay === "world_builder";
   const socialReady = useSocialStore((s) => Boolean(s.view));
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -113,8 +117,8 @@ export function GameUI() {
           )}
           {screen === "sandbox" && (
             <>
-              {overlay !== "world_builder" && <Sandbox />}
-              {overlay === "world_builder" && (
+              {(overlay !== "world_builder" || vehicleAuthoring) && <Sandbox />}
+              {overlay === "world_builder" && !vehicleAuthoring && (
                 <Suspense fallback={null}>
                   <WorldBuilderScene />
                 </Suspense>
@@ -124,7 +128,7 @@ export function GameUI() {
 
           {screen === "signal_recon_setup" && <VehiclePreview />}
           {/* {!needsCanvas && screen === "settings" && <Settings />} */}
-          {screen === "sandbox" && overlay !== "world_builder" && <Cameras />}
+          {screen === "sandbox" && (overlay !== "world_builder" || vehicleAuthoring) && <Cameras />}
         </FullCanvas>
       )}
 
@@ -198,7 +202,8 @@ export function GameUI() {
       )}
 
       {screen === "sandbox" && hud && !overlay && <CommandLine />}
-      {screen === "sandbox" && <PerformanceOverlay />}
+      {screen === "sandbox" && !overlay && <PerformanceOverlay />}
+      {screen === "sandbox" && !overlay && <EditorDriveBar />}
       <ModeLoadingScreen />
     </div>
   );

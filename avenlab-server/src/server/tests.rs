@@ -496,3 +496,33 @@ async fn chat_derives_identity_and_team_audience_and_drops_unloaded_world_histor
     assert!(s.handle(&a,json!({"action":"chat_history","channel":"team"})).await.unwrap()["messages"].as_array().unwrap().is_empty());
     cleanup(s).await;
 }
+
+#[tokio::test]
+async fn editor_tuning_is_isolated_validated_and_survives_environment_apply() {
+    let s = alpha_server();
+    let (e, _, _) = client(&s,"Tuner").await;
+    let (p, _, _) = client(&s,"Practice").await;
+    mode(&s,&e,"editor","brz").await;
+    mode(&s,&p,"sandbox","brz").await;
+    let runtime=s.runtime(&e).await.unwrap();
+    runtime.lock().await.spawn(&e,"brz").unwrap();
+    assert!(s.handle(&p,json!({"action":"editor_vehicle_apply","tuning":{"mass":1600}})).await.is_err());
+    let factory=s.handle(&e,json!({"action":"editor_vehicle_get"})).await.unwrap();
+    let old_mass=factory["current"]["mass"].as_f64().unwrap();
+    assert!(s.handle(&e,json!({"action":"editor_vehicle_apply","tuning":{"mass":0}})).await.is_err());
+    assert_eq!(runtime.lock().await.physics.vehicles[&e].config.mass as f64,old_mass);
+    s.handle(&e,json!({"action":"editor_vehicle_apply","tuning":{"mass":1600}})).await.unwrap();
+    {
+        let room=runtime.lock().await;
+        let v=&room.physics.vehicles[&e];
+        assert_eq!(v.config.mass,1600.0);
+        assert!((room.physics.bodies[v.body].mass()-1600.0).abs()<0.1);
+    }
+    let doc:Value=serde_json::from_str(include_str!("../assets/blocks/road_jump_lab_colliders.json")).unwrap();
+    s.handle(&e,json!({"action":"editor_apply","document":doc})).await.unwrap();
+    let room=s.runtime(&e).await.unwrap();
+    assert_eq!(room.lock().await.physics.active_map_id(),Some("road_jump_lab"));
+    assert_eq!(room.lock().await.physics.vehicles[&e].config.mass,1600.0);
+    assert_eq!(s.data.lock().await.worlds[&s.alpha.lock().await.members[&e].world].map,"road_jump_lab");
+    cleanup(s).await;
+}

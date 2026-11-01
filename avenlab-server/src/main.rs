@@ -12,6 +12,7 @@ mod vehicle_debug;
 mod vehicle_forces;
 mod vehicle_setup;
 mod vehicle_state;
+mod vehicle_tuning;
 mod world;
 
 mod alpha;

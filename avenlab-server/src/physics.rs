@@ -619,6 +619,11 @@ impl PhysicsWorld {
     pub fn change_vehicle_for_player(&mut self, player_id: &str, vehicle_id: &str) -> Result<(), String> {
         let config = config_for_vehicle(vehicle_id)
             .ok_or_else(|| format!("Unknown vehicle id '{vehicle_id}'"))?;
+        self.configure_vehicle_for_player(player_id, config)
+    }
+
+    /// Editor tuning uses the same validated body/wheel rebuild as model swaps.
+    pub fn configure_vehicle_for_player(&mut self, player_id: &str, config: crate::vehicle_state::VehicleConfig) -> Result<(), String> {
         let current = self.vehicles.get(player_id)
             .ok_or_else(|| "Spawn a vehicle before changing cars".to_string())?;
         let previous = current.config;
@@ -702,7 +707,35 @@ impl PhysicsWorld {
         Ok(())
     }
 
+    /// Authored service bays use their local footprint, including rotation.
+    /// A stopped vehicle receives fuel and/or repairs gradually; no client can
+    /// request arbitrary healing. Supply/destruction economics are a later layer.
+    fn service_authored_bays(&mut self, dt: Real) {
+        let Some(layout) = self.active_map.as_ref().and_then(|map|map.authored_layout.as_ref()) else { return; };
+        let tile = self.block_world.tile_size.unwrap_or([1.0, 1.0]);
+        'vehicle: for vehicle in self.vehicles.values_mut() {
+            let Some(body) = self.bodies.get(vehicle.body) else { continue; };
+            if body.linvel().norm() > 0.5 { continue; }
+            let p=body.translation();
+            for &(bx, bz) in self.block_world.loaded.keys() {
+            for bay in &layout.objects {
+                if !["fuel-station","repair-shop","service-center"].contains(&bay.piece.as_str()) { continue; }
+                let dx=p.x-bay.position[0]-bx as f32*tile[0]; let dz=p.z-bay.position[2]-bz as f32*tile[1];
+                let yaw=bay.yaw.to_radians();
+                let x=dx*yaw.cos()-dz*yaw.sin(); let z=dx*yaw.sin()+dz*yaw.cos();
+                if x.abs()>bay.size[0]*0.3 || z.abs()>bay.size[2]*0.325
+                    || p.y<bay.position[1] || p.y>bay.position[1]+bay.size[1] { continue; }
+                let state=&mut vehicle.powertrain;
+                if bay.piece!="repair-shop" { state.fuel_liters=(state.fuel_liters+dt*3.0).min(vehicle.config.resources.fuel_capacity_liters); }
+                if bay.piece!="fuel-station" { state.condition=(state.condition+dt*0.06).min(1.0); }
+                continue 'vehicle; // Overlapping bays cannot multiply the service rate.
+            }
+            }
+        }
+    }
+
     pub fn step(&mut self, dt: Real) {
+        if dt.is_finite() && dt > 0.0 { self.service_authored_bays(dt.min(0.1)); }
         if !dt.is_finite() || dt <= 0.0 {
             return;
         }
@@ -1404,5 +1437,38 @@ mod tests {
         assert!((world.bodies[handle].linvel().x - damping_only).abs() < 0.02);
         assert!((world.bodies[handle].translation().y
             - (0.32 + config.chassis_half_extents[1] - config.chassis_com_offset[1])).abs() < 0.03);
+    }
+}
+
+#[cfg(test)]
+mod editor_service_tests {
+    use super::*;
+    #[test]
+    fn authored_bays_service_only_their_resource_and_require_a_stopped_vehicle() {
+        for kind in ["fuel-station", "repair-shop", "service-center"] {
+            let mut value:serde_json::Value=serde_json::from_str(include_str!("assets/blocks/road_precision_colliders.json")).unwrap();
+            value["authored_layout"]=serde_json::json!({"format":"avenlab-world-layout","version":1,"map_id":"road_precision","title":"Service test","base":"replace","ground":true,"repeat":false,"objects":[{
+                "id":"test-bay","name":"Service bay","piece":kind,"position":[0,0,0],"size":[14,5,16],"yaw":90,"color":"#82b3a0","locked":false,"solid":false,"parts":[{"shape":"box","position":[0,0,0],"size":[1,1,1],"solid":false}]
+            }]});
+            let mut world=PhysicsWorld::from_editor_document(serde_json::from_value(value).unwrap()).unwrap();
+            let handle=world.spawn_vehicle_for_player("test".into(),[0.0;3],"brz","red").unwrap();
+            world.bodies[handle].set_translation(vector![0.0,1.0,0.0],true);
+            let state=&mut world.vehicles.get_mut("test").unwrap().powertrain;
+            state.fuel_liters=1.0; state.condition=0.5;
+            world.service_authored_bays(1.0);
+            let state=&world.vehicles["test"].powertrain;
+            assert_eq!(state.fuel_liters,if kind=="repair-shop" {1.0} else {4.0});
+            assert!((state.condition-if kind=="fuel-station" {0.5} else {0.56}).abs()<0.0001);
+            let fuel=state.fuel_liters; let condition=state.condition;
+            world.bodies[handle].set_linvel(vector![1.0,0.0,0.0],true);
+            world.service_authored_bays(1.0);
+            assert_eq!(world.vehicles["test"].powertrain.fuel_liters,fuel);
+            assert_eq!(world.vehicles["test"].powertrain.condition,condition);
+            world.bodies[handle].set_linvel(Vector::zeros(),true);
+            world.bodies[handle].set_translation(vector![50.0,1.0,0.0],true);
+            world.service_authored_bays(1.0);
+            assert_eq!(world.vehicles["test"].powertrain.fuel_liters,fuel);
+            assert_eq!(world.vehicles["test"].powertrain.condition,condition);
+        }
     }
 }

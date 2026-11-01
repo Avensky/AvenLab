@@ -43,6 +43,7 @@ export function EditorWorldControls({
           ))}
         </select>
       </label>
+      <button type="button" onClick={() => useBuilderStore.setState({ workspace: "vehicle" })}>EDIT VEHICLE</button>
       <EditorTestAction />
       {!compact && (
         <>

@@ -42,11 +42,6 @@ export const PAUSE_MENU_ITEMS = [
     description: "Visualizers, models and performance captures.",
   },
   {
-    id: "world_builder",
-    label: "World builder",
-    description: "Author a district. Shortcut: F9.",
-  },
-  {
     id: "settings",
     label: "Settings",
     description: "Tune display, controls and accessibility.",
