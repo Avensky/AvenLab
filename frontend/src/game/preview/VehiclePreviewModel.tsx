@@ -9,6 +9,7 @@ import {
 import { fitPreviewToPlatform, measurePreviewBounds } from "./previewPlacement";
 import { PreviewContactShadow } from "./PreviewContactShadow";
 import { previewMaterialState, setPreviewGhost } from "./previewGhost";
+import { prepareGarageVehiclePaint } from "./garageVehiclePaint";
 
 // Selection is always the complete GLB, independent of in-game debug modes.
 // Shared material preparation retains the TSX fixes without runtime network poses.
@@ -45,7 +46,11 @@ function PreviewAsset({
 }) {
   const { scene } = useGLTF(path, "/draco/");
   const prepared = useMemo(
-    () => prepareVehicleVisual(scene, model),
+    () => {
+      const visual = prepareVehicleVisual(scene, model);
+      prepareGarageVehiclePaint(visual.root, model);
+      return visual;
+    },
     [scene, model],
   );
   useEffect(() => () => prepared.dispose(), [prepared]);

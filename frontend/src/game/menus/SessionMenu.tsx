@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { trapMenuFocus } from "../../components/menus/menuFocus";
+import { ControllerButton } from "../../components/controller";
 import { connectRustServer, disconnectRustServer } from "../../net/rustSocket";
 import { requestSocial } from "../../net/socialClient";
 import { useSocialStore } from "../../store/social/socialStore";
@@ -7,13 +7,14 @@ import { useUIStore } from "../../store/menus/uiStore";
 import type { MenuAction } from "../../controls/inputRouting";
 
 export function SessionMenu() {
-  const [selected, setSelected] = useState<"confirm" | "cancel">("cancel");
-  const buttons = useRef(new Map<string, HTMLButtonElement>());
+  const dialog = useRef<HTMLElement>(null);
   const id = useId();
   const pending = useRef(false);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
-  const cancel = useUIStore((s) => s.backToParentMenu);
+  const cancel = useCallback(() => {
+    if (!pending.current) useUIStore.getState().backToParentMenu();
+  }, []);
   const confirm = useCallback(() => {
     if (pending.current) return;
     pending.current = true;
@@ -37,34 +38,41 @@ export function SessionMenu() {
     })();
   }, []);
   useEffect(() => {
-    buttons.current.get(selected)?.focus({ preventScroll: true });
-  }, [selected]);
+    dialog.current?.focus({ preventScroll: true });
+  }, []);
   useEffect(() => {
     const handle = (event: Event) => {
       if (pending.current) return;
       const action = (event as CustomEvent<MenuAction>).detail;
       if (action === "back") cancel();
-      else if (action === "left") setSelected("confirm");
-      else if (action === "right") setSelected("cancel");
-      else if (action === "up" || action === "down")
-        setSelected((value) => (value === "confirm" ? "cancel" : "confirm"));
-      else if (action === "activate") {
-        if (selected === "confirm") confirm();
-        else cancel();
-      }
+      else if (action === "activate") confirm();
     };
     window.addEventListener("avenlab:panel-action", handle);
     return () => window.removeEventListener("avenlab:panel-action", handle);
-  }, [cancel, confirm, selected]);
+  }, [cancel, confirm]);
 
   return (
     <div className="game-ui menu-surface menu-confirm-overlay fixed inset-0 z-50">
       <section
+        ref={dialog}
         role="alertdialog"
+        tabIndex={-1}
         aria-modal="true"
         aria-labelledby={`${id}-title`}
         aria-describedby={`${id}-message`}
-        onKeyDown={trapMenuFocus}
+        onKeyDownCapture={(event) => {
+          // This modal has two explicit shortcuts, not a movable selection.
+          // Consume native button activation before the shared keyboard owner
+          // so Enter/A cannot change meaning when the pointer focuses Cancel.
+          const key = event.code || event.key;
+          if (!["Enter", "NumpadEnter", "Space", "Escape", "Tab"].includes(key))
+            return;
+          event.preventDefault();
+          event.stopPropagation();
+          if (event.repeat || key === "Tab") return;
+          if (key === "Escape") cancel();
+          else confirm();
+        }}
         className="menu-confirm-card"
       >
         <header>
@@ -80,28 +88,13 @@ export function SessionMenu() {
               key={action}
               disabled={busy}
               type="button"
-              ref={(element) => {
-                if (element) buttons.current.set(action, element);
-                else buttons.current.delete(action);
-              }}
               data-menu-row={action}
-              data-selected={selected === action}
-              className="menu-control menu-action"
-              onFocus={() => setSelected(action)}
-              onPointerEnter={() => setSelected(action)}
+              className="menu-control controller-action"
               onClick={action === "confirm" ? confirm : cancel}
-              onKeyDown={(event) => {
-                if (event.code === "Enter" || event.code === "Space") {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  if (!event.repeat) {
-                    if (action === "confirm") confirm();
-                    else cancel();
-                  }
-                }
-              }}
             >
+              <ControllerButton button={action === "confirm" ? "A" : "B"} />
               {action.toUpperCase()}
+              <kbd>{action === "confirm" ? "Enter" : "Esc"}</kbd>
             </button>
           ))}
         </nav>

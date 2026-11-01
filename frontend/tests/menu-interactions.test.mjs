@@ -1203,9 +1203,12 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
       "directional input cannot confirm leave or launch an available mission",
       async () => {
         await reset("sandbox", "leave_game");
+        const dialog = document.activeElement;
+        assert.equal(dialog.getAttribute("role"), "alertdialog");
         await button(13);
-        assert.equal(document.activeElement.dataset.menuRow, "confirm");
         await button(14);
+        assert.equal(document.activeElement, dialog);
+        assert.equal(document.querySelector("[data-selected]"), null);
         assert.equal(ui.getState().overlay, "leave_game");
         await button(1);
         assert.equal(ui.getState().overlay, "pause");
@@ -1366,7 +1369,7 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
       },
     );
     await t.test(
-      "Leave is a two-button dialog: Cancel/Enter, B and Escape keep the connection and Confirm is explicit",
+      "Leave shows Xbox A/Enter and B/Escape actions; cancel shortcuts and pointer cancel never leave",
       async () => {
         await reset("sandbox", "leave_game");
         assert.ok(document.querySelector('[role="alertdialog"]'));
@@ -1376,13 +1379,21 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
           document.querySelector(".menu-confirm-body").textContent,
           /Are you sure you want to leave game\?/,
         );
-        assert.equal(document.activeElement.dataset.menuRow, "cancel");
-        await key("Enter", "Enter");
-        assert.equal(ui.getState().overlay, "pause");
-        await reset("sandbox", "leave_game");
+        assert.equal(document.activeElement.getAttribute("role"), "alertdialog");
+        assert.equal(row("confirm").querySelector("[data-controller-key]").dataset.controllerKey, "A");
+        assert.equal(row("cancel").querySelector("[data-controller-key]").dataset.controllerKey, "B");
+        assert.match(row("confirm").textContent, /CONFIRMEnter/);
+        assert.match(row("cancel").textContent, /CANCELEsc/);
+        const dialog = document.activeElement;
+        await key("Tab", "Tab");
+        assert.equal(document.activeElement, dialog);
+        await key("Enter", "Enter", { repeat: true });
+        assert.equal(ui.getState().overlay, "leave_game", "a held opening key cannot confirm");
+        await act(async () => row("confirm").focus());
         await button(1);
         assert.equal(ui.getState().overlay, "pause");
         await reset("sandbox", "leave_game");
+        await act(async () => row("confirm").focus());
         await key("Escape", "Escape");
         assert.equal(ui.getState().overlay, "pause");
         await reset("sandbox", "leave_game");
@@ -1391,7 +1402,7 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
       },
     );
     await t.test(
-      "confirmed Leave closes the old session before reconnecting to the main menu",
+      "A, Enter, numpad Enter, Space and pointer Confirm leave once, independent of Cancel focus",
       async () => {
         const original = globalThis.WebSocket;
         class FakeSocket {
@@ -1410,12 +1421,19 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
         globalThis.WebSocket = FakeSocket;
         const transport = await load("net/rustSocket.ts");
         try {
-          for (const [overlay, screen] of [["leave_game", "main"]]) {
+          for (const activate of [
+            () => key("Enter", "Enter"),
+            () => key("NumpadEnter", "Enter"),
+            () => key("Space", " "),
+            () => button(0),
+            () => click(row("confirm")),
+          ]) {
             const old = transport.connectRustServer();
-            await reset("sandbox", overlay);
-            await click(row("confirm"));
+            await reset("sandbox", "leave_game");
+            await act(async () => row("cancel").focus());
+            await activate();
             assert.equal(old.closed, true);
-            assert.equal(ui.getState().screen, screen);
+            assert.equal(ui.getState().screen, "main");
             assert.equal(ui.getState().overlay, null);
             assert.notEqual(transport.socket, old);
           }

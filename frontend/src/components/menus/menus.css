@@ -505,15 +505,15 @@
   min-height: 5.5rem;
   max-height: calc(100dvh - 1rem);
   flex-direction: column;
-  border-block: 1px solid rgb(103 232 249 / 0.4);
-  background: rgb(2 6 23 / 0.96);
-  color: #cffafe;
+  border-block: 1px solid var(--app-line, #54749a);
+  background: var(--app-background, #050c18);
+  color: var(--app-text, #e6efff);
 }
 .menu-confirm-card > header {
   flex-shrink: 0;
   padding: 0.25rem max(0.5rem, env(safe-area-inset-right)) 0.25rem
     max(0.5rem, env(safe-area-inset-left));
-  border-bottom: 1px solid #1e293b;
+  border-bottom: 1px solid var(--app-line, #54749a);
 }
 .menu-confirm-card h1 {
   margin: 0;
@@ -539,13 +539,17 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   flex-shrink: 0;
-  border-top: 1px solid rgb(103 232 249 / 0.3);
+  border-top: 1px solid var(--app-line, #54749a);
 }
 .menu-confirm-actions .menu-control {
   border: 0;
 }
-.menu-confirm-actions .menu-control + .menu-control {
-  border-left: 1px solid rgb(103 232 249 / 0.4);
+.menu-confirm-actions kbd:not(.controller-key) {
+  color: var(--app-muted, #a6b9d3);
+  font-size: 10px;
+}
+.menu-confirm-card:focus {
+  outline: 0;
 }
 .menu-vehicle-card {
   width: 100%;
