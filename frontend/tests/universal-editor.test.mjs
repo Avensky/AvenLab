@@ -243,10 +243,11 @@ test("universal editor switches independent world drafts, rejects stale loads an
         [...document.querySelectorAll('[role="tab"]')].find(
           (b) => b.textContent === text,
         );
+    await click(button("TOOLS"));
     assert.equal(by("Editing world").value, source.map_id);
     assert.equal(by("Editing world").options.length, 4);
-    assert.ok(by("Editor theme").closest("header"));
-    assert.ok(by("Editor detail").closest("header"));
+    assert.equal(by("Editor theme"), null, "theme comes from global settings");
+    assert.ok(by("Editor detail").closest("#world-tool-drawer"));
     assert.doesNotMatch(
       document.body.textContent,
       /playground|Make a place worth exploring|Make room/,

@@ -1,0 +1,2186 @@
+{
+  "format": "avenlab-world-layout",
+  "version": 1,
+  "map_id": "streaming_endless_city",
+  "title": "Coastal district · seed 1",
+  "base": "replace",
+  "ground": false,
+  "repeat": false,
+  "spawns": [
+    {
+      "id": "spawn-coast-red-1",
+      "team": "red",
+      "position": [
+        -60,
+        0.08,
+        -123
+      ],
+      "yaw": 0
+    },
+    {
+      "id": "spawn-coast-red-2",
+      "team": "red",
+      "position": [
+        -60,
+        0.08,
+        -115
+      ],
+      "yaw": 0
+    },
+    {
+      "id": "spawn-coast-red-3",
+      "team": "red",
+      "position": [
+        -60,
+        0.08,
+        -107
+      ],
+      "yaw": 0
+    },
+    {
+      "id": "spawn-coast-blue-1",
+      "team": "blue",
+      "position": [
+        60,
+        0.08,
+        107
+      ],
+      "yaw": 180
+    },
+    {
+      "id": "spawn-coast-blue-2",
+      "team": "blue",
+      "position": [
+        60,
+        0.08,
+        115
+      ],
+      "yaw": 180
+    },
+    {
+      "id": "spawn-coast-blue-3",
+      "team": "blue",
+      "position": [
+        60,
+        0.08,
+        123
+      ],
+      "yaw": 180
+    }
+  ],
+  "objects": [
+    {
+      "id": "coast-1",
+      "name": "Harbor water · visual only",
+      "piece": "coastal-water-visual",
+      "position": [
+        230,
+        -5,
+        0
+      ],
+      "size": [
+        180,
+        0.04,
+        360
+      ],
+      "yaw": 0,
+      "color": "#266b85",
+      "solid": false,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-2",
+      "name": "North–south canal · visual only",
+      "piece": "coastal-water-visual",
+      "position": [
+        0,
+        -5,
+        0
+      ],
+      "size": [
+        40,
+        0.04,
+        300
+      ],
+      "yaw": 0,
+      "color": "#266b85",
+      "solid": false,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-3",
+      "name": "West canal · visual only",
+      "piece": "coastal-water-visual",
+      "position": [
+        -100,
+        -5,
+        0
+      ],
+      "size": [
+        160,
+        0.04,
+        32
+      ],
+      "yaw": 0,
+      "color": "#266b85",
+      "solid": false,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-4",
+      "name": "East canal to harbor · visual only",
+      "piece": "coastal-water-visual",
+      "position": [
+        80,
+        -5,
+        0
+      ],
+      "size": [
+        120,
+        0.04,
+        32
+      ],
+      "yaw": 0,
+      "color": "#266b85",
+      "solid": false,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-5",
+      "name": "Raised coastal district",
+      "piece": "coastal-land",
+      "position": [
+        -100,
+        -8,
+        -83
+      ],
+      "size": [
+        160,
+        8,
+        134
+      ],
+      "yaw": 0,
+      "color": "#697b7b",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-6",
+      "name": "Raised coastal district",
+      "piece": "coastal-land",
+      "position": [
+        -100,
+        -8,
+        83
+      ],
+      "size": [
+        160,
+        8,
+        134
+      ],
+      "yaw": 0,
+      "color": "#697b7b",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-7",
+      "name": "Raised coastal district",
+      "piece": "coastal-land",
+      "position": [
+        80,
+        -8,
+        -83
+      ],
+      "size": [
+        120,
+        8,
+        134
+      ],
+      "yaw": 0,
+      "color": "#697b7b",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-8",
+      "name": "Raised coastal district",
+      "piece": "coastal-land",
+      "position": [
+        80,
+        -8,
+        83
+      ],
+      "size": [
+        120,
+        8,
+        134
+      ],
+      "yaw": 0,
+      "color": "#697b7b",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-9",
+      "name": "Canal avenue",
+      "piece": "coastal-road",
+      "position": [
+        -60,
+        -0.21999999999999997,
+        -83
+      ],
+      "size": [
+        14,
+        0.3,
+        134
+      ],
+      "yaw": 0,
+      "color": "#394a5a",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-10",
+      "name": "Canal avenue",
+      "piece": "coastal-road",
+      "position": [
+        -60,
+        -0.21999999999999997,
+        83
+      ],
+      "size": [
+        14,
+        0.3,
+        134
+      ],
+      "yaw": 0,
+      "color": "#394a5a",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-11",
+      "name": "Canal avenue",
+      "piece": "coastal-road",
+      "position": [
+        60,
+        -0.21999999999999997,
+        -83
+      ],
+      "size": [
+        14,
+        0.3,
+        134
+      ],
+      "yaw": 0,
+      "color": "#394a5a",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-12",
+      "name": "Canal avenue",
+      "piece": "coastal-road",
+      "position": [
+        60,
+        -0.21999999999999997,
+        83
+      ],
+      "size": [
+        14,
+        0.3,
+        134
+      ],
+      "yaw": 0,
+      "color": "#394a5a",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-13",
+      "name": "West waterfront road",
+      "piece": "coastal-road",
+      "position": [
+        -100,
+        -0.21999999999999997,
+        -80
+      ],
+      "size": [
+        160,
+        0.3,
+        14
+      ],
+      "yaw": 0,
+      "color": "#394a5a",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-14",
+      "name": "East waterfront road",
+      "piece": "coastal-road",
+      "position": [
+        80,
+        -0.21999999999999997,
+        -80
+      ],
+      "size": [
+        120,
+        0.3,
+        14
+      ],
+      "yaw": 0,
+      "color": "#394a5a",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-15",
+      "name": "Intact canal bridge",
+      "piece": "coastal-bridge",
+      "position": [
+        0,
+        -0.52,
+        -80
+      ],
+      "size": [
+        40,
+        0.6,
+        14
+      ],
+      "yaw": 0,
+      "color": "#a0a9ae",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-16",
+      "name": "Bridge parapet",
+      "piece": "coastal-wall",
+      "position": [
+        0,
+        0.08,
+        -87.2
+      ],
+      "size": [
+        40,
+        1,
+        0.4
+      ],
+      "yaw": 0,
+      "color": "#7d8994",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-17",
+      "name": "Bridge parapet",
+      "piece": "coastal-wall",
+      "position": [
+        0,
+        0.08,
+        -72.8
+      ],
+      "size": [
+        40,
+        1,
+        0.4
+      ],
+      "yaw": 0,
+      "color": "#7d8994",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-18",
+      "name": "West waterfront road",
+      "piece": "coastal-road",
+      "position": [
+        -100,
+        -0.21999999999999997,
+        80
+      ],
+      "size": [
+        160,
+        0.3,
+        14
+      ],
+      "yaw": 0,
+      "color": "#394a5a",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-19",
+      "name": "East waterfront road",
+      "piece": "coastal-road",
+      "position": [
+        80,
+        -0.21999999999999997,
+        80
+      ],
+      "size": [
+        120,
+        0.3,
+        14
+      ],
+      "yaw": 0,
+      "color": "#394a5a",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-20",
+      "name": "Intact canal bridge",
+      "piece": "coastal-bridge",
+      "position": [
+        0,
+        -0.52,
+        80
+      ],
+      "size": [
+        40,
+        0.6,
+        14
+      ],
+      "yaw": 0,
+      "color": "#a0a9ae",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-21",
+      "name": "Bridge parapet",
+      "piece": "coastal-wall",
+      "position": [
+        0,
+        0.08,
+        72.8
+      ],
+      "size": [
+        40,
+        1,
+        0.4
+      ],
+      "yaw": 0,
+      "color": "#7d8994",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-22",
+      "name": "Bridge parapet",
+      "piece": "coastal-wall",
+      "position": [
+        0,
+        0.08,
+        87.2
+      ],
+      "size": [
+        40,
+        1,
+        0.4
+      ],
+      "yaw": 0,
+      "color": "#7d8994",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-23",
+      "name": "South canal crossing",
+      "piece": "coastal-bridge",
+      "position": [
+        60,
+        -0.52,
+        0
+      ],
+      "size": [
+        14,
+        0.6,
+        32
+      ],
+      "yaw": 0,
+      "color": "#a0a9ae",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-24",
+      "name": "Damaged bridge approach",
+      "piece": "coastal-broken-bridge",
+      "position": [
+        -60,
+        -0.52,
+        -11
+      ],
+      "size": [
+        14,
+        0.6,
+        10
+      ],
+      "yaw": 0,
+      "color": "#9a9083",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-25",
+      "name": "Damaged bridge approach",
+      "piece": "coastal-broken-bridge",
+      "position": [
+        -60,
+        -0.52,
+        11
+      ],
+      "size": [
+        14,
+        0.6,
+        10
+      ],
+      "yaw": 0,
+      "color": "#9a9083",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-26",
+      "name": "Crossing parapet",
+      "piece": "coastal-wall",
+      "position": [
+        52.8,
+        0.08,
+        0
+      ],
+      "size": [
+        0.4,
+        1,
+        32
+      ],
+      "yaw": 0,
+      "color": "#7d8994",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-27",
+      "name": "Crossing parapet",
+      "piece": "coastal-wall",
+      "position": [
+        67.2,
+        0.08,
+        0
+      ],
+      "size": [
+        0.4,
+        1,
+        32
+      ],
+      "yaw": 0,
+      "color": "#7d8994",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-28",
+      "name": "Damage warning · static",
+      "piece": "coastal-warning",
+      "position": [
+        -65.5,
+        0.08,
+        -18
+      ],
+      "size": [
+        2.5,
+        1.2,
+        0.6
+      ],
+      "yaw": 0,
+      "color": "#d3a459",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-29",
+      "name": "Damage warning · static",
+      "piece": "coastal-warning",
+      "position": [
+        -54.5,
+        0.08,
+        -18
+      ],
+      "size": [
+        2.5,
+        1.2,
+        0.6
+      ],
+      "yaw": 0,
+      "color": "#d3a459",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-30",
+      "name": "Damage warning · static",
+      "piece": "coastal-warning",
+      "position": [
+        -65.5,
+        0.08,
+        18
+      ],
+      "size": [
+        2.5,
+        1.2,
+        0.6
+      ],
+      "yaw": 0,
+      "color": "#d3a459",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-31",
+      "name": "Damage warning · static",
+      "piece": "coastal-warning",
+      "position": [
+        -54.5,
+        0.08,
+        18
+      ],
+      "size": [
+        2.5,
+        1.2,
+        0.6
+      ],
+      "yaw": 0,
+      "color": "#d3a459",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-32",
+      "name": "Waterfront building",
+      "piece": "coastal-building",
+      "position": [
+        -145,
+        0,
+        -125
+      ],
+      "size": [
+        20,
+        12,
+        22
+      ],
+      "yaw": 0,
+      "color": "#778c9c",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-33",
+      "name": "Waterfront building",
+      "piece": "coastal-building",
+      "position": [
+        -145,
+        0,
+        -40
+      ],
+      "size": [
+        20,
+        20,
+        22
+      ],
+      "yaw": 0,
+      "color": "#8c9695",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-34",
+      "name": "Waterfront building",
+      "piece": "coastal-building",
+      "position": [
+        -145,
+        0,
+        40
+      ],
+      "size": [
+        20,
+        8,
+        22
+      ],
+      "yaw": 0,
+      "color": "#778c9c",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-35",
+      "name": "Waterfront building",
+      "piece": "coastal-building",
+      "position": [
+        -145,
+        0,
+        125
+      ],
+      "size": [
+        20,
+        28,
+        22
+      ],
+      "yaw": 0,
+      "color": "#8c9695",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-36",
+      "name": "Waterfront building",
+      "piece": "coastal-building",
+      "position": [
+        -110,
+        0,
+        -125
+      ],
+      "size": [
+        20,
+        8,
+        22
+      ],
+      "yaw": 0,
+      "color": "#8c9695",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-37",
+      "name": "Waterfront building",
+      "piece": "coastal-building",
+      "position": [
+        -110,
+        0,
+        -40
+      ],
+      "size": [
+        20,
+        12,
+        22
+      ],
+      "yaw": 0,
+      "color": "#778c9c",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-38",
+      "name": "Waterfront building",
+      "piece": "coastal-building",
+      "position": [
+        -110,
+        0,
+        40
+      ],
+      "size": [
+        20,
+        7.5,
+        22
+      ],
+      "yaw": 0,
+      "color": "#8c9695",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-39",
+      "name": "Waterfront building",
+      "piece": "coastal-building",
+      "position": [
+        -110,
+        0,
+        125
+      ],
+      "size": [
+        20,
+        12,
+        22
+      ],
+      "yaw": 0,
+      "color": "#8c9695",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-40",
+      "name": "Waterfront building",
+      "piece": "coastal-building",
+      "position": [
+        100,
+        0,
+        -125
+      ],
+      "size": [
+        20,
+        32,
+        22
+      ],
+      "yaw": 0,
+      "color": "#778c9c",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-41",
+      "name": "Waterfront building",
+      "piece": "coastal-building",
+      "position": [
+        100,
+        0,
+        -40
+      ],
+      "size": [
+        20,
+        24,
+        22
+      ],
+      "yaw": 0,
+      "color": "#8c9695",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-43",
+      "name": "Waterfront building",
+      "piece": "coastal-building",
+      "position": [
+        100,
+        0,
+        125
+      ],
+      "size": [
+        20,
+        8,
+        22
+      ],
+      "yaw": 0,
+      "color": "#778c9c",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-44",
+      "name": "Harbor warehouse",
+      "piece": "coastal-warehouse",
+      "position": [
+        105,
+        0,
+        45
+      ],
+      "size": [
+        28,
+        10,
+        26
+      ],
+      "yaw": 0,
+      "color": "#7d8994",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            -0.48,
+            0.5,
+            0
+          ],
+          "size": [
+            0.04,
+            1,
+            1
+          ]
+        },
+        {
+          "shape": "box",
+          "position": [
+            0.48,
+            0.5,
+            0
+          ],
+          "size": [
+            0.04,
+            1,
+            1
+          ]
+        },
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            -0.48
+          ],
+          "size": [
+            1,
+            1,
+            0.04
+          ]
+        },
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.98,
+            0
+          ],
+          "size": [
+            1,
+            0.04,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-45",
+      "name": "Rooftop ramp",
+      "piece": "coastal-ramp",
+      "position": [
+        -110,
+        0,
+        63
+      ],
+      "size": [
+        10,
+        8,
+        24
+      ],
+      "yaw": 0,
+      "color": "#b09a78",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "wedge",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-46",
+      "name": "Rooftop landing",
+      "piece": "coastal-landing",
+      "position": [
+        -110,
+        7.5,
+        40
+      ],
+      "size": [
+        24,
+        0.5,
+        22
+      ],
+      "yaw": 0,
+      "color": "#9faaa6",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-47",
+      "name": "Harbor approach road",
+      "piece": "coastal-road",
+      "position": [
+        100,
+        -0.21999999999999997,
+        100
+      ],
+      "size": [
+        80,
+        0.3,
+        14
+      ],
+      "yaw": 0,
+      "color": "#394a5a",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-48",
+      "name": "Harbor turn",
+      "piece": "coastal-road",
+      "position": [
+        133,
+        -0.21999999999999997,
+        109
+      ],
+      "size": [
+        14,
+        0.3,
+        32
+      ],
+      "yaw": 0,
+      "color": "#394a5a",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-49",
+      "name": "Harbor pier",
+      "piece": "coastal-pier",
+      "position": [
+        170,
+        -1.92,
+        118
+      ],
+      "size": [
+        60,
+        2,
+        18
+      ],
+      "yaw": 0,
+      "color": "#879397",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-50",
+      "name": "Carrier deck · static prototype",
+      "piece": "fleet-static-deck",
+      "position": [
+        245,
+        -4.92,
+        0
+      ],
+      "size": [
+        42,
+        7,
+        170
+      ],
+      "yaw": 0,
+      "color": "#596e80",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-51",
+      "name": "Carrier access ramp",
+      "piece": "coastal-ramp",
+      "position": [
+        245,
+        0.08,
+        97
+      ],
+      "size": [
+        14,
+        2,
+        24
+      ],
+      "yaw": 0,
+      "color": "#85939d",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "wedge",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-52",
+      "name": "Carrier access pier",
+      "piece": "coastal-pier",
+      "position": [
+        226,
+        -1.92,
+        118
+      ],
+      "size": [
+        52,
+        2,
+        18
+      ],
+      "yaw": 0,
+      "color": "#879397",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-53",
+      "name": "Carrier island",
+      "piece": "fleet-static-building",
+      "position": [
+        259,
+        2.08,
+        10
+      ],
+      "size": [
+        10,
+        16,
+        24
+      ],
+      "yaw": 0,
+      "color": "#82929e",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-54",
+      "name": "Flight deck marking",
+      "piece": "fleet-marking",
+      "position": [
+        239,
+        2.08,
+        -42
+      ],
+      "size": [
+        1,
+        0.025,
+        18
+      ],
+      "yaw": 0,
+      "color": "#e2d8aa",
+      "solid": false,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-55",
+      "name": "Flight deck marking",
+      "piece": "fleet-marking",
+      "position": [
+        239,
+        2.08,
+        0
+      ],
+      "size": [
+        1,
+        0.025,
+        18
+      ],
+      "yaw": 0,
+      "color": "#e2d8aa",
+      "solid": false,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-56",
+      "name": "Flight deck marking",
+      "piece": "fleet-marking",
+      "position": [
+        239,
+        2.08,
+        42
+      ],
+      "size": [
+        1,
+        0.025,
+        18
+      ],
+      "yaw": 0,
+      "color": "#e2d8aa",
+      "solid": false,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-57",
+      "name": "Escort deck · static prototype",
+      "piece": "fleet-static-deck",
+      "position": [
+        184,
+        -4.8,
+        -80
+      ],
+      "size": [
+        16,
+        6,
+        48
+      ],
+      "yaw": 0,
+      "color": "#61798b",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-58",
+      "name": "Escort superstructure",
+      "piece": "fleet-static-building",
+      "position": [
+        184,
+        1.2,
+        -80
+      ],
+      "size": [
+        8,
+        7,
+        14.399999999999999
+      ],
+      "yaw": 0,
+      "color": "#8d9ca5",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-59",
+      "name": "Escort deck · static prototype",
+      "piece": "fleet-static-deck",
+      "position": [
+        294,
+        -4.8,
+        -45
+      ],
+      "size": [
+        18,
+        6,
+        62
+      ],
+      "yaw": 0,
+      "color": "#61798b",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-60",
+      "name": "Escort superstructure",
+      "piece": "fleet-static-building",
+      "position": [
+        294,
+        1.2,
+        -45
+      ],
+      "size": [
+        9,
+        7,
+        18.599999999999998
+      ],
+      "yaw": 0,
+      "color": "#8d9ca5",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-61",
+      "name": "Escort deck · static prototype",
+      "piece": "fleet-static-deck",
+      "position": [
+        294,
+        -4.8,
+        50
+      ],
+      "size": [
+        18,
+        6,
+        54
+      ],
+      "yaw": 0,
+      "color": "#61798b",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-62",
+      "name": "Escort superstructure",
+      "piece": "fleet-static-building",
+      "position": [
+        294,
+        1.2,
+        50
+      ],
+      "size": [
+        9,
+        7,
+        16.2
+      ],
+      "yaw": 0,
+      "color": "#8d9ca5",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    }
+  ]
+}

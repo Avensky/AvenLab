@@ -11,6 +11,7 @@ import { useBuilderStore } from "../state/builderStore";
 import { useEditorPreferences } from "../state/editorPreferences";
 import { layoutAction, useLayoutStore } from "../state/layoutStore";
 import { SpawnInspector } from "./SpawnInspector";
+import { CoastalGenerator } from "./CoastalGenerator";
 export function LayoutInspector({
   planOnly,
   modelReference,
@@ -611,6 +612,7 @@ export function LayoutInspector({
           )}
           {tab === "files" && (
             <>
+              <CoastalGenerator />
               <label className="le-title-label">
                 Export title
                 <input
