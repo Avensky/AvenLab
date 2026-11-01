@@ -146,15 +146,22 @@ export type AlphaView = {
 export const useAlphaStore = create<{
   mode: PlayMode;
   hero: string | null;
+  previewHero: string | null;
+  /** An explicit empty admission is known state, not a reconnect to hydrate. */
+  selectionInitialized: boolean;
   chooseMode: (mode: PlayMode) => void;
   chooseHero: (id: string) => void;
+  preview: (id: string) => void;
   clearHero: () => void;
 }>((set) => ({
   mode: "quickplay",
   hero: null,
+  previewHero: null,
+  selectionInitialized: false,
   chooseMode: (mode) => set({ mode }),
-  clearHero: () => set({ hero: null }),
-  chooseHero: (id) => {
+  clearHero: () =>
+    set({ hero: null, previewHero: null, selectionInitialized: true }),
+  preview: (id) => {
     const hero = HEROES.find((h) => h.id === id);
     if (!hero) return;
     useSelectionStore.setState({
@@ -163,7 +170,12 @@ export const useAlphaStore = create<{
         vehicleCatalog.findIndex((v) => v.id === hero.vehicle),
       ),
     });
-    set({ hero: id });
+    set({ previewHero: id });
+  },
+  chooseHero: (id) => {
+    if (!HEROES.some((h) => h.id === id)) return;
+    useAlphaStore.getState().preview(id);
+    set({ hero: id, selectionInitialized: true });
   },
 }));
 
@@ -171,7 +183,9 @@ export const useAlphaStore = create<{
  * the same garage and animation owner; only chooseHero confirms a loadout. */
 export function showFavoriteHero() {
   const favorites = usePreferencesStore.getState().favoriteVehicles;
-  const vehicle = favorites.find((id) => vehicleCatalog.some((v) => v.id === id));
+  const vehicle = favorites.find((id) =>
+    vehicleCatalog.some((v) => v.id === id),
+  );
   if (vehicle)
     useSelectionStore.setState({
       vehicleIndex: vehicleCatalog.findIndex((v) => v.id === vehicle),

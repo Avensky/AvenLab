@@ -20,7 +20,7 @@ import {
 } from "../store/input/protocol/inputMasks";
 import { useNetworkStore } from "../store/session/networkStore";
 import { useVehicleConfigStore } from "../store/session/vehicleConfigStore";
-import { unpackCockpit } from "../store/input/protocol/cockpitMasks";
+import { cockpitStatus, unpackCockpit } from "../store/input/protocol/cockpitMasks";
 import { stepManualGear } from "./drivetrainActions";
 import {
   canDrive,
@@ -56,6 +56,10 @@ const MENU_KEYS: Record<string, MenuAction> = {
   KeyE: "next_tab",
   PageUp: "previous_tab",
   PageDown: "next_tab",
+  Digit1: "previous_option",
+  Digit3: "next_option",
+  Numpad1: "previous_option",
+  Numpad3: "next_option",
 };
 const VEHICLE_TOGGLES: Record<string, number> = {
   KeyE: VehicleFlags.ENGINE_ON,
@@ -77,8 +81,11 @@ export function Keyboard() {
     const keys = new Set<string>();
     let focused = document.hasFocus();
     let resetTimer: number | null = null;
+    let tractionHold: number | null = null;
     const release = () => {
       keys.clear();
+      if (tractionHold !== null) window.clearTimeout(tractionHold);
+      tractionHold = null;
       if (resetTimer !== null) window.clearTimeout(resetTimer);
       resetTimer = null;
       useInputStore.getState().releaseInputSource("keyboard");
@@ -107,14 +114,6 @@ export function Keyboard() {
       )
         return;
       const ui = useUIStore.getState();
-      if (event.code === "Tab" && !event.ctrlKey && !event.altKey && !event.metaKey &&
-        (["mode_select", "hero_select"].includes(ui.screen) || ui.overlay === "vehicle_select") &&
-        (ui.overlay === null || ui.overlay === "vehicle_select")) {
-        event.preventDefault();
-        release();
-        routeMenuAction(event.shiftKey ? "previous_tab" : "next_tab");
-        return;
-      }
       if (event.code === "F9" && ui.screen === "world_builder") {
         event.preventDefault();
         release();
@@ -310,6 +309,7 @@ export function Keyboard() {
           age < 500 &&
           version >= 2
         ) {
+          if (cockpitStatus(confirmed.cockpit_mask ?? null).tractionLatchedOff || unpackCockpit(confirmed.cockpit_mask).assist === 3) return;
           const enabled = hasFlag(confirmed.vehicle_mask, VehicleFlags.TCS);
           store.setAssist(
             unpackCockpit(confirmed.cockpit_mask).assist === 1
@@ -319,6 +319,13 @@ export function Keyboard() {
                 : 0,
             !enabled,
           );
+          tractionHold = window.setTimeout(() => {
+            tractionHold = null;
+            const current = useNetworkStore.getState(), me = current.getMe();
+            const age = performance.now() - (current.snapshot?.received_at_ms ?? -Infinity);
+            if (keys.has("KeyT") && canDrive() && current.connected && me && age >= 0 && age < 500 && Math.abs(me.speed ?? Infinity) <= 0.5)
+              useInputStore.getState().setAssist(3, false);
+          }, 3100);
         } else store.toggleVehicleFlag(VehicleFlags.TCS);
       } else if (VEHICLE_TOGGLES[event.code] !== undefined)
         store.toggleVehicleFlag(VEHICLE_TOGGLES[event.code]);
@@ -341,6 +348,7 @@ export function Keyboard() {
     };
     const onKeyUp = (event: KeyboardEvent) => {
       // Release a key even if focus moved into an input after its keydown.
+      if (event.code === "KeyT" && tractionHold !== null) { window.clearTimeout(tractionHold); tractionHold = null; }
       const owned = keys.delete(event.code);
       if (owned && isAnalogKey(event.code)) updateAxes();
       if (event.code === "ShiftLeft")
@@ -401,6 +409,12 @@ export function Keyboard() {
     const unsubscribeCAN = useCanDataStore.subscribe((state, previous) => {
       if (state.commandOpen && !previous.commandOpen) release();
     });
+    const blockTab = (event: KeyboardEvent) => {
+      if (event.code === "Tab" && !event.ctrlKey && !event.altKey && !event.metaKey) {
+        event.preventDefault(); event.stopPropagation();
+      }
+    };
+    window.addEventListener("keydown", blockTab, true);
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
     window.addEventListener("keydown", onHudBrakeDown, true);
@@ -410,6 +424,7 @@ export function Keyboard() {
     document.addEventListener("visibilitychange", onVisibility);
     document.addEventListener("focusin", onFocusIn);
     return () => {
+      window.removeEventListener("keydown", blockTab, true);
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("keydown", onHudBrakeDown, true);

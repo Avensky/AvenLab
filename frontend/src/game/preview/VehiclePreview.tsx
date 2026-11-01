@@ -16,7 +16,7 @@ export function VehiclePreview({
   heroLayout = false,
   awaitingHero = false,
 }: { heroLayout?: boolean; awaitingHero?: boolean } = {}) {
-  const unselected = useAlphaStore((s) => s.hero === null);
+  const unselected = useAlphaStore((s) => s.previewHero === null);
   const vehicleId = useSelectionStore((s) => s.getSelectedVehicle().id);
   const reducedMotion = usePreferencesStore((s) => s.reducedMotion);
   const size = useThree((s) => s.size);

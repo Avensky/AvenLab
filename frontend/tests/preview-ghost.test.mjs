@@ -5,6 +5,7 @@ import {
   previewMaterialState,
   setPreviewGhost,
 } from "../src/game/preview/previewGhost.ts";
+import { prepareVehicleVisual } from "../src/vehicles/tools/vehicleMaterials.ts";
 
 test("an unpicked preview dims only its owned materials and restores authored glass exactly", () => {
   const cached = new MeshBasicMaterial({
@@ -42,4 +43,41 @@ test("an unpicked preview dims only its owned materials and restores authored gl
   cached.dispose();
   glass.dispose();
   body.dispose();
+});
+
+test("BRZ, AE86 and Tank ghosts cannot contaminate later full previews or gameplay", () => {
+  for (const model of ["brz", "ae86", "tank"]) {
+    const cached = new Group(),
+      geometry = new BoxGeometry();
+    const body = new MeshBasicMaterial(),
+      glass = new MeshBasicMaterial({
+        opacity: 0.4,
+        transparent: true,
+        depthWrite: false,
+      });
+    cached.add(new Mesh(geometry, [body, glass]), new Mesh(geometry, body));
+    const ghost = prepareVehicleVisual(cached, model);
+    setPreviewGhost(previewMaterialState(ghost.root), true);
+    assert.equal(body.opacity, 1, model + " source body stays opaque");
+    assert.equal(glass.opacity, 0.4);
+    const full = prepareVehicleVisual(cached, model),
+      runtime = prepareVehicleVisual(cached, model);
+    assert.equal(full.root.children[0].material[0].opacity, 1);
+    assert.equal(runtime.root.children[0].material[0].opacity, 1);
+    assert.equal(
+      full.root.children[0].material[1].opacity,
+      0.4,
+      "authored glass remains glass",
+    );
+    assert.notEqual(
+      full.root.children[0].material[0],
+      runtime.root.children[0].material[0],
+    );
+    ghost.dispose();
+    full.dispose();
+    runtime.dispose();
+    geometry.dispose();
+    body.dispose();
+    glass.dispose();
+  }
 });

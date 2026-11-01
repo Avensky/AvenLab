@@ -3,6 +3,7 @@ import { ClusterFlags, clusterFlag } from "../../store/telemetry/clusterMasks";
 import { VehicleFlags, hasFlag } from "../../store/input/protocol/inputMasks";
 import { ResourceFlags } from "../../store/telemetry/resourceMasks";
 import { SPEED_LAMP_POSITIONS } from "./gaugeGeometry";
+import { cockpitStatus } from "../../store/input/protocol/cockpitMasks";
 import type { DisplayPower } from "./dashboardModel";
 
 const Lamp = memo(function Lamp({
@@ -84,23 +85,13 @@ export const SpeedometerLights = memo(function SpeedometerLights({
 export const RpmLights = memo(function RpmLights({
   vehicleMask,
   clusterMask,
-  cockpitMask = null,
-  live = false,
 }: {
   vehicleMask: number;
   clusterMask: number | null;
-  cockpitMask?: number | null;
-  live?: boolean;
 }) {
   const hazards = hasFlag(vehicleMask, VehicleFlags.HAZARDS);
-  const assist = cockpitMask === null ? 0 : (cockpitMask >>> 4) & 3;
   return (
     <div className="rpm-lights" aria-label="RPM telltales">
-      <span className="gauge-vsc-warning" data-lamp="VSC mode" data-sport={assist === 1}
-        data-active={live && (assist === 1 || assist === 3)}
-        aria-label={`VSC ${assist === 3 ? "OFF" : "SPORT"}: ${live && (assist === 1 || assist === 3) ? "on" : "off"}`}>
-        VSC<br />{assist === 3 ? "OFF" : "SPORT"}
-      </span>
       <Lamp
         name="Hazards"
         asset="hazard-triangle.svg"
@@ -145,6 +136,7 @@ export const ResourceLights = memo(function ResourceLights({
   absEnabled,
   tcsEnabled,
   live,
+  cockpitMask,
 }: {
   mask: number | null;
   fields: number;
@@ -155,6 +147,10 @@ export const ResourceLights = memo(function ResourceLights({
   live: boolean;
   cockpitMask: number | null;
 }) {
+  const assist = cockpitMask === null ? 0 : (cockpitMask >>> 4) & 3;
+  const traction = cockpitStatus(cockpitMask);
+  const latched = traction.tractionLatchedOff || assist === 3;
+  const temporarilyOff = traction.launchOff || (!latched && !tcsEnabled && (assist === 1 || assist === 2));
   const checking = power === "cranking";
   const bulbCheck = checking || power === "on";
   const state = (flag: number) =>
@@ -214,8 +210,17 @@ export const ResourceLights = memo(function ResourceLights({
       >
         ABS
       </span>
-      <span className="gauge-tcs-warning" data-active={live && !tcsEnabled}>
-        TRAC OFF
+      <span className="gauge-tcs-warning" data-lamp="TRAC OFF" data-active={live && latched && !tcsEnabled}
+        aria-label={`Latched traction off: ${live && latched && !tcsEnabled ? "on" : "off"}`}>
+        TRAC<br />OFF
+      </span>
+      <span className="gauge-launch-warning" data-lamp="Launch traction off" data-active={live && (latched || temporarilyOff) && !tcsEnabled}
+        aria-label={`Traction off symbol: ${live && (latched || temporarilyOff) && !tcsEnabled ? "on" : "off"}`}>
+        <span className="gauge-skid-icon" aria-hidden="true" />OFF
+      </span>
+      <span className="gauge-vsc-warning" data-lamp="VSC mode" data-sport={assist === 1}
+        data-active={live && assist === 1} aria-label={`VSC SPORT: ${live && assist === 1 ? "on" : "off"}`}>
+        VSC<br />SPORT
       </span>
       <Lamp
         name="Steering warning"

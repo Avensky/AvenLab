@@ -1,4 +1,4 @@
-import { memo, useEffect } from "react";
+import { memo, useEffect, useLayoutEffect, useRef } from "react";
 import { useShallow } from "zustand/react/shallow";
 import {
   startVehicleTelemetry,
@@ -11,6 +11,7 @@ import FuelTemp from "./FuelTemp";
 import { MPH_TO_KPH } from "./gaugeGeometry";
 import { displayPower, instrumentBrightness } from "./dashboardModel";
 import { ResourceRing } from "./ResourceRings";
+import { syncStarterPulse } from "../engineDisplayState";
 import "./dashboard.css";
 
 // Position/yaw and unrelated controls must not redraw all three instrument faces.
@@ -79,8 +80,6 @@ const RpmInstrument = memo(function RpmInstrument() {
         vehicleMask={d.vehicleMask}
         clusterMask={d.clusterMask}
         park={park}
-        cockpitMask={d.cockpitMask}
-        live={d.signal === "live"}
       />
       <ResourceRing kind="rpm" fraction={d.boost} active={d.boostActive} />
     </div>
@@ -120,17 +119,32 @@ const FuelInstrument = memo(function FuelInstrument() {
   );
 });
 export default function Dashboard() {
-  const signal = useVehicleTelemetryStore((s) => s.data.signal);
-  const engineOn = useVehicleTelemetryStore((s) => s.data.engineOn);
+  const { signal, engineOn, power } = useVehicleTelemetryStore(
+    useShallow((s) => ({
+      signal: s.data.signal,
+      engineOn: s.data.engineOn,
+      power: displayPower(s.data),
+    })),
+  );
+  const root = useRef<HTMLElement>(null);
   const level = usePreferencesStore((s) => s.dashboardBrightness);
   const highContrast = usePreferencesStore((s) => s.highContrast);
-  const brightness = instrumentBrightness(level, engineOn, highContrast);
+  const brightness = instrumentBrightness(
+    level,
+    power === "running" || power === "cranking" || power === "on",
+    highContrast,
+  );
+  useLayoutEffect(() => {
+    syncStarterPulse(root.current);
+  }, [power]);
   useEffect(startVehicleTelemetry, []);
   return (
     <section
+      ref={root}
       className="driving-dashboard"
       data-signal={signal}
       data-engine-on={engineOn}
+      data-power={power}
       aria-label="Vehicle instruments"
     >
       <div

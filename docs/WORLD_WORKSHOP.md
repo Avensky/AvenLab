@@ -39,7 +39,7 @@ floors and the garage when you need accessible spaces.
 | Turn preview or selected piece | Q / E | Turn left/right buttons |
 | Place without aiming a pointer | Cursor fields + Place at cursor | Use the fields' −/+ buttons, then Place at cursor |
 | Cycle objects | Scene list | LB / RB |
-| Navigate controls | Arrows / Tab | D-pad; left/right cycles a focused dropdown |
+| Navigate controls | Arrows / click | D-pad; left/right cycles a focused dropdown |
 | Duplicate | Ctrl/Cmd+D | Duplicate button |
 | Undo / redo | Ctrl/Cmd+Z / Shift+Z, or Ctrl/Cmd+Y | Undo / Redo buttons |
 | Save | Ctrl/Cmd+S | Save button |

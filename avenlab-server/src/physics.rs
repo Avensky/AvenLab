@@ -838,6 +838,40 @@ mod tests {
     use crate::suspension_contact::cast_wheel_ground;
 
     #[test]
+    fn launch_assist_rearms_after_actual_drive_demand_returns_below_grip() {
+        let mut world = flat_world();
+        world.spawn_vehicle_for_player("launch-test".into(), [0.0;3], "brz", "red").unwrap();
+        world.vehicles.get_mut("launch-test").unwrap().powertrain.engine_requested=true;
+        for _ in 0..150 { world.step(SIMULATION_DT); }
+        assert!(world.vehicles["launch-test"].powertrain.running);
+        {
+            let v=world.vehicles.get_mut("launch-test").unwrap();
+            v.powertrain.engine_requested=true;
+            // A proving fixture requests more drive than the grounded tires
+            // can transmit. The production solver still owns all final forces.
+            v.config.engine_force *= 3.0;
+            v.throttle=1.0;
+            v.cockpit.receive(Some((1<<6)|(1<<7)|(2<<4)|(1<<16)|(1<<24)),0.0,false);
+        }
+        let mut saturated=false;
+        for _ in 0..20 {
+            world.step(SIMULATION_DT);
+            let v=&world.vehicles["launch-test"];
+            let wheels=&world.wheels[&v.body];
+            let driven=wheels.iter().filter(|w|w.drive).count().max(1) as f32;
+            let force=v.config.engine_force*v.powertrain.power_multiplier*v.powertrain.drive_ratio_multiplier*v.powertrain.drive_throttle.abs()/driven;
+            saturated |= wheels.iter().any(|w|w.drive && w.normal_force>=50.0 && force>w.normal_force*v.config.mu_base);
+            assert!(v.cockpit.launch_off(),"launch mode must remain armed while drive exceeds grip");
+        }
+        assert!(saturated,"the running vehicle must actually exhaust grounded drive grip");
+        assert!(!world.vehicles["launch-test"].vehicle_flags.contains(VehicleStateFlags::TCS));
+        world.vehicles.get_mut("launch-test").unwrap().throttle=0.0;
+        for _ in 0..40 {world.step(SIMULATION_DT);}
+        assert!(world.vehicles["launch-test"].vehicle_flags.contains(VehicleStateFlags::TCS));
+        assert!(!world.vehicles["launch-test"].cockpit.launch_off());
+    }
+
+    #[test]
     fn fuel_starvation_removes_actual_propulsion_even_with_an_on_request() {
         let mut world = flat_world();
         let handle = world.spawn_vehicle_for_player("fuel-test".into(), [0.0; 3], "brz", "red").unwrap();

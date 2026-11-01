@@ -4,6 +4,11 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { shallow } from "zustand/shallow";
 import { isUITheme, type UITheme } from "../../theme/catalog";
+import {
+  DEFAULT_GARAGE_EFFECTS,
+  sanitizeGarageEffects,
+  type GarageEffects,
+} from "./garageEffects";
 
 export const DEFAULT_BINDINGS = {
   forward: "KeyW",
@@ -28,6 +33,7 @@ export {
 export type Preferences = {
   radioHudStyle: "classic" | "streamlined" | "no-tabs";
   theme: UITheme;
+  garageEffects: GarageEffects;
   ignitionVisibility: "auto" | "always" | "hidden";
   /** Compatibility alias for hudGroups.climate; actions keep both synchronized. */
   researchHud: boolean;
@@ -61,12 +67,17 @@ export type Preferences = {
   minimapScale: number;
 };
 /** A page edits only the HUD switches it owns; the store merges saved siblings. */
-export type PreferenceUpdate = Omit<Partial<Preferences>, "hudGroups"> & {
+export type PreferenceUpdate = Omit<
+  Partial<Preferences>,
+  "hudGroups" | "garageEffects"
+> & {
   hudGroups?: Partial<Record<HudGroupId, boolean>>;
+  garageEffects?: Partial<GarageEffects>;
 };
 export const DEFAULT_PREFERENCES: Preferences = {
   radioHudStyle: "no-tabs",
   theme: "navy",
+  garageEffects: DEFAULT_GARAGE_EFFECTS,
   ignitionVisibility: "auto",
   researchHud: false,
   climateHudSize: "compact",
@@ -163,6 +174,7 @@ export function sanitizePreferences(value: unknown): Preferences {
         ? data.radioHudStyle
         : "no-tabs",
     theme: isUITheme(data.theme) ? data.theme : "navy",
+    garageEffects: sanitizeGarageEffects(data.garageEffects),
     ignitionVisibility:
       data.ignitionVisibility === "always" ||
       data.ignitionVisibility === "hidden"
@@ -247,6 +259,7 @@ export const usePreferencesStore = create<
           ...patch,
           ignitionVisibility,
           hudGroups: groups,
+          garageEffects: { ...state.garageEffects, ...patch.garageEffects },
           ...(climate === undefined
             ? {}
             : { researchHud: climate, hudGroups: { ...groups, climate } }),

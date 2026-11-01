@@ -24,7 +24,7 @@ export function VehiclePreviewModel({
   ) as VehicleModelId;
   return (
     <PreviewAsset
-      key={vehicleId}
+      key={`${vehicleId}:${ghost ? "unpicked" : "preview"}`}
       model={vehicleId}
       path={VEHICLE_MODEL_PATHS[vehicleId]}
       platform={platform}

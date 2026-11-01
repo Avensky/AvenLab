@@ -31,14 +31,14 @@ export function MenuShortcuts({
   hold = false,
   chat = false,
   directions = "vertical",
-  tabKey = false,
+  secondaryTabs = false,
 }: {
   back?: boolean;
   tabs?: boolean;
   hold?: boolean;
   chat?: boolean;
   directions?: "vertical" | "both";
-  tabKey?: boolean;
+  secondaryTabs?: boolean;
 } = {}) {
   return (
     <div className="controller-shortcuts" aria-label="Menu shortcuts">
@@ -53,9 +53,10 @@ export function MenuShortcuts({
       {tabs && (
         <span>
           <ControllerButton button="LB" />
-          <ControllerButton button="RB" /> Tabs <kbd>{tabKey ? "Q / E · Tab" : "Q / E"}</kbd>
+          <ControllerButton button="RB" /> Tabs <kbd>Q / E</kbd>
         </span>
       )}
+      {secondaryTabs && <span><ControllerButton button="LT" /><ControllerButton button="RT" /> Field <kbd>1 / 3</kbd></span>}
       {chat && (
         <span>
           <ControllerButton button="X" /> Chat <kbd>T</kbd>

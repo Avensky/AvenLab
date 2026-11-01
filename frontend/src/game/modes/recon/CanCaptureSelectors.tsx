@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { SelectorArrow } from "../SelectorArrow";
 import { GameButton } from "../../../components/GameButton";
 import {
   useCanBusStore,
@@ -13,8 +14,9 @@ import {
 } from "../../../store/recon/captureSetup";
 import "./canCaptureSelectors.css";
 
-/** Same store/actions as the original setup bars. Garage fields form one
- * horizontal row: Left/Right changes focus and A/Enter/click cycles a value. */
+/** The garage's second tab rail uses LT/RT to choose its active field.
+ * Left/Right edits that field; A belongs to the screen's primary action.
+ * Legacy setup keeps its original GameButton owner. */
 export function CanCaptureSelectors({
   formNavigation = false,
   selectedIndex = 0,
@@ -58,8 +60,12 @@ export function CanCaptureSelectors({
       ].map((field, index) => {
         const copy = (
           <>
-            <span className="can-selector-label">{field.label}</span>
-            <span className="can-selector-value">{field.value}</span>
+            <span className="can-selector-label selection-strip-label">
+              {field.label}
+            </span>
+            <span className="can-selector-value selection-strip-title">
+              {field.value}
+            </span>
           </>
         );
         const change = () => {
@@ -68,21 +74,49 @@ export function CanCaptureSelectors({
           onChange?.();
         };
         return formNavigation ? (
-          <button
+          <div
             key={field.label}
-            type="button"
-            className="menu-control can-capture-field"
+            className="selection-strip can-capture-field"
             data-can-field={index}
+            data-active={selectedIndex === index}
+            data-controller-selector
+            tabIndex={-1}
+            aria-current={selectedIndex === index ? "true" : undefined}
+            role="group"
             aria-label={field.aria}
-            disabled={disabled}
-            onClick={change}
-            onKeyDown={(event) => {
-              if (event.code === "Enter" || event.code === "Space")
-                event.stopPropagation();
-            }}
+            aria-disabled={disabled}
+            onPointerDownCapture={() => onFocus?.(index)}
+            onFocusCapture={() => onFocus?.(index)}
+            onClick={() => onFocus?.(index)}
           >
-            {copy}
-          </button>
+            <div className="selection-strip-layout">
+              <SelectorArrow
+                formNavigation
+                disabled={disabled}
+                direction="previous"
+                label={`Previous ${field.label.toLowerCase()}`}
+                variant="neutral"
+                onPress={() => {
+                  onFocus?.(index);
+                  field.action(-1);
+                  onChange?.();
+                }}
+              />
+              <div className="can-selector-copy">{copy}</div>
+              <SelectorArrow
+                formNavigation
+                disabled={disabled}
+                direction="next"
+                label={`Next ${field.label.toLowerCase()}`}
+                variant="neutral"
+                onPress={() => {
+                  onFocus?.(index);
+                  field.action(1);
+                  onChange?.();
+                }}
+              />
+            </div>
+          </div>
         ) : (
           <GameButton
             key={field.label}

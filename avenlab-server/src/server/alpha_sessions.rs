@@ -363,6 +363,18 @@ impl Server {
         Ok(())
     }
     async fn select_hero(&self, player: &str, id: &str) -> Result<Value, String> {
+        if id.is_empty() {
+            // Back may clear a pre-deployment choice without releasing its
+            // seat. A live vehicle must keep its validated role/loadout.
+            let runtime = self.runtime(player).await?;
+            if runtime.lock().await.physics.vehicles.contains_key(player) {
+                return Err("A deployed hero cannot be cleared; use Change vehicle.".into());
+            }
+            let mut alpha = self.alpha.lock().await;
+            let member = alpha.members.get_mut(player).ok_or("Join a mode before choosing a hero.")?;
+            member.hero.clear();
+            return Ok(json!({"hero":""}));
+        }
         let selected = policy::hero(id)?;
         let member = self
             .alpha

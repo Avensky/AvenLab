@@ -6,6 +6,9 @@ import { act, createElement as h } from "react";
 import { createRoot } from "react-dom/client";
 
 test("instrument scales, confirmed warning lamps and display power states", async (t) => {
+  // Rendering fixtures stay live independently of host CPU/compilation time.
+  // Explicit-time projection checks still cover the real 500ms stale boundary.
+  t.mock.method(performance, "now", () => 1000);
   const dom = new JSDOM('<div id="root"></div>', {
     url: "http://localhost/",
     pretendToBeVisual: true,
@@ -153,6 +156,26 @@ test("instrument scales, confirmed warning lamps and display power states", asyn
     const { useVehicleConfigStore: configs, parseGaugeConfig } = await load(
       "store/session/vehicleConfigStore.ts",
     );
+    await t.test(
+      "key and dashboard agree that confirmed running wins over a leftover startup bit",
+      async () => {
+        const { engineDisplayState, syncStarterPulse } = await load(
+          "ui/engineDisplayState.ts",
+        );
+        const data = { signal: "live", engineOn: true, resourceMask: 1 };
+        assert.equal(engineDisplayState(data), "running");
+        assert.equal(displayPower(data), "running");
+        const a = document.createElement("div"),
+          b = document.createElement("div");
+        syncStarterPulse(a, 1000);
+        syncStarterPulse(b, 1000);
+        assert.equal(
+          a.style.getPropertyValue("--starter-phase"),
+          b.style.getPropertyValue("--starter-phase"),
+        );
+        assert.equal(a.style.getPropertyValue("--starter-period"), "230ms");
+      },
+    );
     const {
       useVehicleTelemetryStore: telemetry,
       updateVehicleTelemetry,
@@ -161,6 +184,9 @@ test("instrument scales, confirmed warning lamps and display power states", asyn
     const { ClusterFlags } = await load("store/telemetry/clusterMasks.ts");
     const { default: Dashboard } = await load("ui/Dashboard/Dashboard.tsx");
     const { useInputStore: inputs } = await load("store/input/inputStore.ts");
+    const { usePreferencesStore: prefs } = await load(
+      "store/preferences/preferencesStore.ts",
+    );
     const base = {
       id: "me",
       vehicle_id: "brz",
@@ -244,20 +270,85 @@ test("instrument scales, confirmed warning lamps and display power states", asyn
     root = createRoot(document.getElementById("root"));
     await act(async () => root.render(h(Dashboard)));
     const displays = () => document.querySelector(".gauge-displays");
-    await t.test("FR-S high beam is blue beside the speed hub and VSC SPORT belongs to the center gauge", async () => {
-      const beam = document.querySelector('[data-lamp="High beam"]');
-      assert.equal(beam.style.left, "77%");
-      assert.equal(beam.style.top, "54%");
-      assert.equal(beam.style.color, "rgb(0, 107, 255)");
-      const { RpmLights } = await load("ui/Dashboard/InstrumentLights.tsx");
-      await act(async () => root.render(h(RpmLights, { vehicleMask: 0, clusterMask: 0, cockpitMask: 16, live: true })));
-      const vsc = document.querySelector('.rpm-lights [data-lamp="VSC mode"]');
-      assert.ok(vsc); assert.equal(vsc.dataset.active, "true"); assert.equal(vsc.dataset.sport, "true");
-      assert.match(vsc.textContent, /VSCSPORT/);
-      await act(async () => root.render(h(RpmLights, { vehicleMask: 0, clusterMask: null, cockpitMask: 16, live: false })));
-      assert.equal(document.querySelector('[data-lamp="VSC mode"]').dataset.active, "false");
-      await act(async () => root.render(h(Dashboard)));
-    });
+    await t.test(
+      "FR-S launch icon, latched TRAC OFF and Sport are separate fuel/temp telltales",
+      async () => {
+        const beam = document.querySelector('[data-lamp="High beam"]');
+        assert.equal(beam.style.left, "77%");
+        assert.equal(beam.style.top, "54%");
+        assert.equal(beam.style.color, "rgb(0, 107, 255)");
+        const { ResourceLights } = await load(
+          "ui/Dashboard/InstrumentLights.tsx",
+        );
+        const props = {
+          mask: 0,
+          fields: 8191,
+          resourceMask: 0,
+          power: "running",
+          absEnabled: true,
+          tcsEnabled: false,
+          live: true,
+        };
+        try {
+          await act(async () =>
+            root.render(
+              h(ResourceLights, { ...props, cockpitMask: 16 | (1 << 14) }),
+            ),
+          );
+          assert.equal(
+            document.querySelector('[data-lamp="Launch traction off"]').dataset
+              .active,
+            "true",
+          );
+          assert.equal(
+            document.querySelector('[data-lamp="TRAC OFF"]').dataset.active,
+            "false",
+          );
+          assert.equal(
+            document.querySelector('.resource-lights [data-lamp="VSC mode"]')
+              .dataset.active,
+            "true",
+          );
+          await act(async () =>
+            root.render(
+              h(ResourceLights, { ...props, cockpitMask: 16 | (1 << 15) }),
+            ),
+          );
+          assert.equal(
+            document.querySelector('[data-lamp="TRAC OFF"]').dataset.active,
+            "true",
+          );
+          assert.equal(
+            document.querySelector('[data-lamp="Launch traction off"]').dataset
+              .active,
+            "true",
+          );
+          assert.equal(
+            document
+              .querySelector('[data-lamp="TRAC OFF"]')
+              .querySelectorAll("br").length,
+            1,
+          );
+          await act(async () =>
+            root.render(
+              h(ResourceLights, {
+                ...props,
+                tcsEnabled: true,
+                live: false,
+                cockpitMask: 16 | (1 << 15),
+              }),
+            ),
+          );
+          for (const name of ["TRAC OFF", "Launch traction off", "VSC mode"])
+            assert.equal(
+              document.querySelector(`[data-lamp="${name}"]`).dataset.active,
+              "false",
+            );
+        } finally {
+          await act(async () => root.render(h(Dashboard)));
+        }
+      },
+    );
     await t.test(
       "RPM has the lowered label and a wider lower gear display in place of the odometer",
       () => {
@@ -360,6 +451,39 @@ test("instrument scales, confirmed warning lamps and display power states", asyn
         network.getState().setConnected(true);
         network.getState().setPlayerId("me");
         configs.getState().receive("me", calibrated);
+      },
+    );
+    await t.test(
+      "dashboard uses saved brightness during cranking and returns to steady running even with a trailing STARTING bit",
+      async () => {
+        await act(async () =>
+          prefs.getState().update({ dashboardBrightness: 0.65 }),
+        );
+        await publish({ vehicle_mask: 96, resource_mask: 1 });
+        const dashboard = document.querySelector(".driving-dashboard");
+        const gain = () =>
+          Number(
+            document
+              .querySelector(".dashboard-cluster")
+              .style.filter.match(/brightness\(([^)]+)\)/)[1],
+          );
+        assert.equal(dashboard.dataset.power, "cranking");
+        assert.equal(gain(), 0.65);
+        await publish({ vehicle_mask: 97, resource_mask: 1 });
+        assert.equal(dashboard.dataset.power, "running");
+        assert.equal(gain(), 0.65);
+        await publish({ vehicle_mask: 96, resource_mask: 0 });
+        assert.equal(dashboard.dataset.power, "off");
+        assert.ok(Math.abs(gain() - 0.273) < 1e-12);
+        await act(async () =>
+          prefs.getState().update({ dashboardBrightness: 1 }),
+        );
+        await publish({});
+        assert.equal(dashboard.dataset.power, "running");
+        assert.equal(
+          document.querySelector(".dashboard-cluster").style.filter,
+          "none",
+        );
       },
     );
     await t.test(
@@ -466,12 +590,10 @@ test("instrument scales, confirmed warning lamps and display power states", asyn
             ).ultimateFraction,
             null,
           );
-        configs
-          .getState()
-          .receive("me", {
-            ...calibrated,
-            hud: { ...calibrated.hud, telemetry_mask: 127 },
-          });
+        configs.getState().receive("me", {
+          ...calibrated,
+          hud: { ...calibrated.hud, telemetry_mask: 127 },
+        });
         await publish(data);
         assert.equal(
           document

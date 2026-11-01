@@ -14,6 +14,7 @@ type MapSelectorProps = {
   onNext?: () => void;
   title?: string;
   onConfirm?: () => void;
+  quiet?: boolean;
 };
 
 export function MapSelector({
@@ -28,6 +29,7 @@ export function MapSelector({
   onNext,
   title,
   onConfirm,
+  quiet = false,
 }: MapSelectorProps) {
   const map = useSelectionStore((s) => s.getSelectedMap());
   const previousMap = useSelectionStore((s) => s.prevMap);
@@ -42,6 +44,7 @@ export function MapSelector({
     <div
       className={`selection-strip border-t transition-[background,border-color,box-shadow] duration-200 ${getSelectionClasses(selected, translucent)}`}
       data-controller-selector={formNavigation || undefined}
+      data-quiet={quiet || undefined}
       tabIndex={formNavigation && !disabled ? 0 : undefined}
       role={formNavigation ? "group" : undefined}
       aria-label={

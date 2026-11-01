@@ -1,3 +1,4 @@
+@import "../starterPulse.css";
 .driving-dashboard {
   position: relative;
   left: auto;
@@ -134,17 +135,10 @@
 .gauge-displays[data-power="unavailable"] .gauge-lcd-illumination {
   opacity: 0;
 }
-.gauge-displays[data-power="cranking"] .gauge-lcd-illumination {
-  animation: gauge-crank-pulse 520ms ease-in-out infinite;
-}
-@keyframes gauge-crank-pulse {
-  0%,
-  100% {
-    opacity: 0.28;
-  }
-  50% {
-    opacity: 1;
-  }
+.driving-dashboard[data-power="cranking"] .dashboard-cluster {
+  animation: vehicle-starter-pulse var(--starter-period, 230ms) steps(2, end)
+    infinite;
+  animation-delay: var(--starter-phase, 0ms);
 }
 .driving-dashboard:not([data-signal="live"]) .dashboard-cluster {
   opacity: 0.55;
@@ -245,8 +239,8 @@
   top: 78%;
 }
 .gauge-tcs-warning {
-  left: 29%;
-  top: 88%;
+  left: 48%;
+  top: 30%;
   font-size: clamp(3px, 0.5vw, 6px);
 }
 .gauge-brake[data-active="true"],
@@ -256,8 +250,8 @@
 }
 .gauge-vsc-warning {
   position: absolute;
-  left: 36%;
-  top: 56%;
+  left: 48%;
+  top: 72%;
   transform: translate(-50%, -50%);
   color: #ffb94c;
   font-size: clamp(3px, 0.5vw, 6px);
@@ -348,11 +342,15 @@ html[data-reduce-motion="true"] .gauge-turn {
   animation: none;
 }
 html[data-reduce-motion="true"]
-  .gauge-displays[data-power="cranking"]
-  .gauge-lcd-illumination {
-  opacity: 0.8;
+  .driving-dashboard[data-power="cranking"]
+  .dashboard-cluster {
+  opacity: 1;
+  animation: none;
 }
 @media (prefers-reduced-motion: reduce) {
+  .driving-dashboard[data-power="cranking"] .dashboard-cluster {
+    animation: none;
+  }
   .gauge-needle,
   .resource-ring-fill {
     transition: none;
@@ -375,3 +373,32 @@ html[data-reduce-motion="true"] .hero-ready-bolt {
 
 /* Dashboard.tsx combines saved gain and confirmed engine-off dimming into one
    static filter. The same instrument component is previewed in the cockpit. */
+
+/* FR-S telltales form a vertical stack just left of the fuel/temp needles. */
+.gauge-tcs-warning,
+.gauge-launch-warning,
+.gauge-vsc-warning {
+  font-weight: 800;
+  text-align: center;
+  line-height: 1;
+}
+.gauge-launch-warning {
+  position: absolute;
+  left: 48%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  color: #ffb94c;
+  font-size: clamp(3px, 0.5vw, 6px);
+  opacity: 0.08;
+}
+.gauge-launch-warning[data-active="true"] {
+  opacity: 1;
+}
+.gauge-skid-icon {
+  display: block;
+  width: clamp(9px, 1.3vw, 17px);
+  aspect-ratio: 1;
+  background: currentColor;
+  margin: 0 auto 1px;
+  mask: url("/images/traction-control.svg") center / contain no-repeat;
+}

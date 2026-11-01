@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useId,
   useRef,
   useState,
@@ -13,7 +14,7 @@ import { useControlRelease } from "../../controls/useControlRelease";
 import { useInputStore } from "../../store/input/inputStore";
 import { unpackCabin } from "../../store/input/protocol/cabinMasks";
 import { useVehicleTelemetryStore } from "../../store/telemetry/vehicleTelemetryStore";
-import { ResourceFlags } from "../../store/telemetry/resourceMasks";
+import { engineDisplayState, syncStarterPulse } from "../engineDisplayState";
 import { starterRelayAudio } from "./starterRelayAudio";
 import { useMomentaryFeedback } from "./useMomentaryFeedback";
 import {
@@ -42,14 +43,12 @@ export const IgnitionSwitch = memo(function IgnitionSwitch() {
   );
   const state = unpackCabin(keyMask);
   const engineState = useVehicleTelemetryStore((s) =>
-    s.data.signal !== "live"
-      ? "unavailable"
-      : s.data.engineOn
-        ? "running"
-        : (s.data.resourceMask ?? 0) & ResourceFlags.STARTING
-          ? "cranking"
-          : "off",
+    engineDisplayState(s.data),
   );
+  const root = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    syncStarterPulse(root.current);
+  }, [engineState]);
   const audioOwner = useRef(Symbol("ignition"));
   const gradient = useId().replaceAll(":", ""),
     press = useRef<Press | null>(null),
@@ -146,6 +145,7 @@ export const IgnitionSwitch = memo(function IgnitionSwitch() {
   const shown = heldPhase ?? state.ignition;
   return (
     <div
+      ref={root}
       {...contact}
       className="ignition-system"
       data-engine-state={engineState}

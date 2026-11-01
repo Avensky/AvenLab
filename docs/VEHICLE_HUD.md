@@ -112,8 +112,9 @@ uses one clock and one state owner with explicit units and dt-based rates.
 Settings → Drivetrain chooses H-pattern or P/R/N/D presentation. Forward gear
 taps briefly override the automatic, then automatic shifting resumes; the H gate
 does not require a clutch or lock the forward gears. Neutral remains explicit. A clutch and full torque-curve model remain further
-work. Sport now exposes separate Sport/TRAC switch states, rather than a one-launch
-rule. Factory VSC yaw control remains further work.
+work. Sport exposes separate Sport/TRAC switch states. Tap TRAC arms a one-launch
+off state that ends after grounded grip recovery; a stopped 3.1-second hold latches
+traction off until engine shutdown. Factory VSC yaw control remains further work.
 
 Tests cover fuel/thermal rates, timestep independence, heat/fuel cutoffs, NOS,
 impact damage, actual Rapier collisions, service gates, assist limits and HUD/

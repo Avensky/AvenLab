@@ -35,6 +35,8 @@ export function ModeLoadingScreen() {
   // load. Keep the readiness gate, without covering it with a second loader.
   if (
     !isModeLoading ||
+    screen === "mode_select" ||
+    screen === "queue" ||
     screen === "sandbox_setup" ||
     screen === "hero_select" ||
     screen === "signal_recon_setup"

@@ -1,13 +1,16 @@
 import { Material, Mesh, MeshStandardMaterial, type Object3D } from "three";
+import { tagGarageAccent } from "../../theme/garageLighting.ts";
 
 // Presentation edits from the source model's Sketchfab viewer are absent from
-// its Blender GLB. Keep the source hues but temper their emission for this
-// dark showroom. Values below are linear RGB, not CSS/sRGB colors.
+// its Blender GLB. Prepare owned fixtures for the selected theme; radiance and
+// postprocessing have separate garage preferences. Values below are linear RGB.
 // https://sketchfab.com/3d-models/garage-followers-special-71b1b4d569ec4c9788c76f4c3d56b461
 export function prepareGarageDisplay(scene: Object3D) {
   const root = scene.clone(true);
   for (const child of [...root.children]) {
-    const name = String(child.userData.name ?? child.name).toLowerCase().replace(/[^a-z0-9]/g, "");
+    const name = String(child.userData.name ?? child.name)
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
     if (name === "lambotm") child.removeFromParent();
   }
   const materials = new Map<Material, Material>();
@@ -80,16 +83,34 @@ export function prepareGarageDisplay(scene: Object3D) {
         material.envMapIntensity = 0.9;
         break;
     }
+    const greenBase =
+      material.color.g > 0.02 &&
+      material.color.g > material.color.r * 2 &&
+      material.color.g > material.color.b * 2;
+    if (
+      ["BLACK METAL", "LIGHT", "SDC", "PST"].includes(material.name.trim()) ||
+      greenBase ||
+      (material.emissive.g > 0.02 &&
+        material.emissive.g > material.emissive.r * 2 &&
+        material.emissive.g > material.emissive.b * 2)
+    )
+      tagGarageAccent(material, greenBase || material.name.trim() === "SDC");
     return material;
   };
-  root.traverse(object => {
+  root.traverse((object) => {
     // The authored four-corner fixture stays in the GLB; the rotating display
     // and its reflection probe omit it. Never hide or edit the cached source.
-    if (String(object.userData.name ?? object.name) === "4*4") object.visible = false;
+    if (String(object.userData.name ?? object.name) === "4*4")
+      object.visible = false;
     if (!(object instanceof Mesh)) return;
-    object.material = Array.isArray(object.material) ? object.material.map(prepare) : prepare(object.material);
+    object.material = Array.isArray(object.material)
+      ? object.material.map(prepare)
+      : prepare(object.material);
   });
   // Geometry and textures still belong to useGLTF's cache. Only our material
   // copies are owned by this display, including on selection-screen remounts.
-  return { root, dispose: () => materials.forEach(material => material.dispose()) };
+  return {
+    root,
+    dispose: () => materials.forEach((material) => material.dispose()),
+  };
 }

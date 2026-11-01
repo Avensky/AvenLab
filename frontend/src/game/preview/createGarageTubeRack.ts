@@ -1,4 +1,5 @@
 import { Box3, BoxGeometry, CylinderGeometry, Group, InstancedMesh, Matrix4, MeshStandardMaterial, Quaternion, Vector3 } from "three";
+import { tagGarageAccent } from "../../theme/garageLighting.ts";
 
 // Complete the freestanding white light rack shown in the reference.
 // Bounds supply the authored width/location; the feet sit on the display floor.
@@ -18,6 +19,7 @@ export function createGarageTubeRack(bounds: Box3) {
   const white = new MeshStandardMaterial({ metalness: 0.35, roughness: 0.3, envMapIntensity: 1 });
   white.color.setRGB(0.7, 0.74, 0.8);
   const green = new MeshStandardMaterial({ color: "#10230b", emissive: "#5bff24", emissiveIntensity: 2.2, roughness: 0.3 });
+  tagGarageAccent(green, true);
   const clamp = new MeshStandardMaterial({ color: "#3a4147", metalness: 0.4, roughness: 0.4 });
   const pipes: Matrix4[] = [], bars: Matrix4[] = [], clamps: Matrix4[] = [], feet: Matrix4[] = [];
   const up = new Vector3(0, 1, 0);

@@ -10,8 +10,14 @@ import { useNetworkStore } from "../../store/session/networkStore";
 import { useCanBusStore } from "../../store/recon/canBusStore";
 import { captureReady } from "../../store/recon/captureSetup";
 import { CanCaptureSelectors } from "../modes/recon/CanCaptureSelectors";
+import {
+  cycleCanInterface,
+  cycleCaptureMode,
+} from "../../store/recon/captureSetup";
 import { MapSelector } from "../modes/MapSelector";
-import { useFormNavigation } from "../social/useFormNavigation";
+import { useSelectionNavigation } from "./useSelectionNavigation";
+import { useSelectionStore } from "../../store/selection/selectionStore";
+import type { MenuAction } from "../../controls/inputRouting";
 import { joinSelectedMode } from "./sessionActions";
 import { ProgressBadge } from "./ProgressBadge";
 import { LobbyChat } from "./LobbyChat";
@@ -26,6 +32,7 @@ export function ModeSelection() {
     pending = useRef(false);
   const [busy, setBusy] = useState(false),
     [status, setStatus] = useState("");
+  const [canField, setCanField] = useState(0);
   const research = mode === "signal_recon",
     planned = mode === "swarm";
   const item = GAME_MODES.find((m) => m.id === mode)!;
@@ -47,7 +54,6 @@ export function ModeSelection() {
       );
     setStatus("");
   }, []);
-  useFormNavigation(root, back, tab, true);
   useEffect(() => {
     showFavoriteHero();
   }, []);
@@ -55,16 +61,10 @@ export function ModeSelection() {
     if (research) void useCanBusStore.getState().refreshStatus();
   }, [research]);
   useEffect(() => {
-    // Directional navigation starts with configuration, not the mode tab rail.
-    // Shoulders/Q/E/Tab select a mode immediately without an extra A press.
-    if (!root.current?.contains(document.activeElement))
-      root.current
-        ?.querySelector<HTMLElement>(
-          "[data-mode-config] [data-controller-selector], [data-mode-config] button, .alpha-deploy:not(:disabled)",
-        )
-        ?.focus({ preventScroll: true });
+    root.current?.focus({ preventScroll: true });
+    setCanField(0);
   }, [mode]);
-  const next = async () => {
+  const next = useCallback(async () => {
     if (pending.current || planned) return;
     pending.current = true;
     setBusy(true);
@@ -88,13 +88,40 @@ export function ModeSelection() {
       pending.current = false;
       setBusy(false);
     }
-  };
+  }, [research, planned]);
+  const direction = useCallback(
+    (action: MenuAction) => {
+      if (pending.current || (action !== "left" && action !== "right")) return;
+      const step = action === "left" ? -1 : 1;
+      if (research)
+        (canField === 0 ? cycleCanInterface : cycleCaptureMode)(step);
+      else if (mode === "sandbox" || mode === "editor")
+        useSelectionStore.getState()[step < 0 ? "prevMap" : "nextMap"]();
+      setStatus("");
+    },
+    [research, canField, mode],
+  );
+  const option = useCallback(
+    (step: number) => {
+      if (research && !pending.current)
+        setCanField((current) => (current + step + 2) % 2);
+    },
+    [research],
+  );
+  useEffect(() => {
+    if (research)
+      root.current
+        ?.querySelector<HTMLElement>(`[data-can-field="${canField}"]`)
+        ?.focus({ preventScroll: true });
+  }, [research, canField]);
+  useSelectionNavigation(root, { back, tab, direction, option, confirm: next });
   return (
     <section
       ref={root}
       className="game-ui menu-surface alpha-selection hero-selection mode-selection"
       data-controller-form
       data-controller-rows
+      tabIndex={-1}
       aria-label="Game mode selection"
     >
       <header className="alpha-header">
@@ -163,6 +190,8 @@ export function ModeSelection() {
             <CanCaptureSelectors
               formNavigation
               disabled={busy}
+              selectedIndex={canField}
+              onFocus={setCanField}
               onChange={() => setStatus("")}
             />
           ) : (
@@ -172,12 +201,13 @@ export function ModeSelection() {
               showDesc={false}
               disabled={busy}
               onConfirm={() => void next()}
+              quiet
             />
           )}
         </div>
       )}
       <footer className="alpha-selection-footer" data-controller-row>
-        <MenuShortcuts chat directions="both" tabKey />
+        <MenuShortcuts chat directions="both" secondaryTabs={research} />
         <button
           type="button"
           className="menu-control controller-action alpha-deploy"

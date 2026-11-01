@@ -1,7 +1,45 @@
 @import "./components/menus/menus.css";
 @import "./ui/drivingHud.css";
 
-.game-canvas { touch-action: none; }
-.game-ui { touch-action: auto; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-canvas { position: relative; z-index: 0; }
-.MainMenu, .PauseMenu, .SettingsMenu, .Overlay, .GameOverlay { z-index: 100; }
+.game-canvas {
+  touch-action: none;
+}
+.game-ui {
+  touch-action: auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+canvas {
+  position: relative;
+  z-index: 0;
+}
+.game-wrapper {
+  min-height: 100svh;
+  background: radial-gradient(
+    ellipse at 55% 42%,
+    var(--app-raised, #142b46),
+    var(--app-background, #050c18) 75%
+  );
+}
+.garage-canvas canvas {
+  opacity: 0;
+  transition: opacity 160ms ease-out;
+}
+.garage-canvas canvas[data-preview-ready="true"] {
+  opacity: 1;
+}
+html[data-reduce-motion="true"] .garage-canvas canvas {
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .garage-canvas canvas {
+    transition: none;
+  }
+}
+.MainMenu,
+.PauseMenu,
+.SettingsMenu,
+.Overlay,
+.GameOverlay {
+  z-index: 100;
+}

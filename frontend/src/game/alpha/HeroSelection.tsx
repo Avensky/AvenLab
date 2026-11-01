@@ -11,7 +11,9 @@ import { useSocialStore } from "../../store/social/socialStore";
 import { useNetworkStore } from "../../store/session/networkStore";
 import { useUIStore } from "../../store/menus/uiStore";
 import { requestSocial } from "../../net/socialClient";
-import { useFormNavigation } from "../social/useFormNavigation";
+import { useSelectionNavigation } from "./useSelectionNavigation";
+import { navigateFormRows } from "../social/formRows";
+import type { MenuAction } from "../../controls/inputRouting";
 import { deploySelectedHero } from "./sessionActions";
 import { ProgressBadge } from "./ProgressBadge";
 import { HeroRoster } from "./HeroRoster";
@@ -20,7 +22,8 @@ import { LobbyChat } from "./LobbyChat";
 import "./heroSelection.css";
 export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
   const selectedMode = useAlphaStore((s) => s.mode),
-    heroId = useAlphaStore((s) => s.hero);
+    heroId = useAlphaStore((s) => s.hero),
+    previewId = useAlphaStore((s) => s.previewHero);
   const view = useSocialStore((s) => s.view),
     connected = useNetworkStore((s) => s.connected),
     world = useNetworkStore((s) => s.worldName);
@@ -36,100 +39,148 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
   const planned = mode === "swarm";
   const match = mode === "quickplay" || mode === "competitive";
   const customWorld = Boolean(world && !active);
-  // Restore the server's locked hero after reconnect or development refresh.
+  // Hydrate an existing pick once per admission, including reconnect/refresh.
+  // Replaceable lobby views can trail request acknowledgements; an old view
+  // must not overwrite a newer local preview or restore a choice after Back.
   useEffect(() => {
-    if (inMode && active?.hero)
-      useAlphaStore.getState().chooseHero(active.hero);
-  }, [inMode, active?.hero]);
-  const back = useCallback(() => {
+    if (!inMode || !active || useAlphaStore.getState().selectionInitialized)
+      return;
+    if (active.hero) useAlphaStore.getState().chooseHero(active.hero);
+    else useAlphaStore.setState({ selectionInitialized: true });
+  }, [inMode, active]);
+  const remembered = useRef(new WeakMap<HTMLElement, number>());
+  const preview = useCallback((id: string) => {
+    if (!pending.current) {
+      if (useAlphaStore.getState().previewHero !== id) setStatus("");
+      useAlphaStore.getState().preview(id);
+    }
+  }, []);
+  const filter = useCallback((next: HeroFilter) => {
+    if (pending.current) return;
+    setRole(next);
+    const state = useAlphaStore.getState();
+    const visible = HEROES.filter((h) => next === "all" || h.role === next);
+    state.preview(
+      visible.find((h) => h.id === state.previewHero)?.id ?? visible[0].id,
+    );
+  }, []);
+  const tab = useCallback(
+    (step: number) => {
+      filter(
+        HERO_FILTERS[
+          (HERO_FILTERS.indexOf(role) + step + HERO_FILTERS.length) %
+            HERO_FILTERS.length
+        ],
+      );
+    },
+    [filter, role],
+  );
+  const direction = useCallback((action: MenuAction) => {
+    if (pending.current || !root.current) return;
+    navigateFormRows(
+      root.current,
+      document.activeElement as HTMLElement,
+      action,
+      remembered.current,
+    );
+  }, []);
+  useEffect(() => {
+    root.current?.focus({ preventScroll: true });
+  }, []);
+  useEffect(() => {
+    const id = useAlphaStore.getState().previewHero;
+    if (id)
+      root.current
+        ?.querySelector<HTMLElement>(`[data-hero="${id}"]`)
+        ?.focus({ preventScroll: true });
+  }, [role]);
+  const back = useCallback(async () => {
     if (pending.current) return;
     if (overlay) {
       useUIStore.getState().backToParentMenu();
       return;
     }
-    if (!useNetworkStore.getState().connected) {
+    const selection = useAlphaStore.getState();
+    const current = useSocialStore.getState().view?.alpha?.active;
+    if (selection.hero || selection.previewHero) {
+      pending.current = true;
+      setBusy(true);
+      try {
+        if (selection.hero && current)
+          await requestSocial("hero_select", { hero: "" });
+        selection.clearHero();
+        setStatus("");
+        root.current?.focus({ preventScroll: true });
+      } catch (error) {
+        setStatus((error as Error).message);
+      } finally {
+        pending.current = false;
+        setBusy(false);
+      }
+      return;
+    }
+    if (
+      !useNetworkStore.getState().connected ||
+      (!current && !useNetworkStore.getState().worldName)
+    ) {
       useUIStore.getState().setScreen("mode_select");
       return;
     }
     pending.current = true;
     setBusy(true);
-    void requestSocial("mode_cancel")
-      .then(() => useUIStore.getState().setScreen("mode_select"))
-      .catch((reason) => setStatus((reason as Error).message))
-      .finally(() => {
+    try {
+      await requestSocial("mode_cancel");
+      useUIStore.getState().setScreen("mode_select");
+    } catch (error) {
+      setStatus((error as Error).message);
+    } finally {
+      pending.current = false;
+      setBusy(false);
+    }
+  }, [overlay]);
+  const choose = useCallback(
+    async (id: string) => {
+      if (pending.current || planned) return;
+      if (!research && (!connected || !view || (!inMode && !customWorld)))
+        return;
+      const hero = HEROES.find((h) => h.id === id);
+      if (!hero) return;
+      pending.current = true;
+      setBusy(true);
+      setStatus("");
+      try {
+        const state = useAlphaStore.getState();
+        if (state.hero === id) {
+          // The second A applies only to the exact confirmed preview. Changing
+          // focus never deploys an older locked hero behind a different model.
+          if (research) {
+            prepareReconSelection();
+            if (active || customWorld) await requestSocial("mode_cancel");
+            useUIStore.getState().setScreen("signal_recon");
+          } else if (overlay) useUIStore.getState().closeOverlay();
+          else if (inMode || customWorld) await deploySelectedHero();
+          else throw Error("Return to mode selection to find a server first.");
+        } else {
+          if (inMode) await requestSocial("hero_select", { hero: id });
+          useAlphaStore.getState().chooseHero(id);
+          setStatus("");
+        }
+      } catch (error) {
+        setStatus((error as Error).message);
+      } finally {
         pending.current = false;
         setBusy(false);
-      });
-  }, [overlay]);
-  const tab = useCallback(
-    (dir: number) =>
-      setRole(
-        (current) =>
-          HERO_FILTERS[
-            (HERO_FILTERS.indexOf(current) + dir + HERO_FILTERS.length) %
-              HERO_FILTERS.length
-          ],
-      ),
-    [],
+      }
+    },
+    [planned, research, active, customWorld, overlay, inMode, connected, view],
   );
-  useFormNavigation(root, back, tab, true);
-  useEffect(() => {
-    root.current
-      ?.querySelector<HTMLElement>(
-        '[data-controller-grid] [aria-pressed="true"], [data-controller-grid] button',
-      )
-      ?.focus({ preventScroll: true });
-  }, []);
-  useEffect(() => {
-    // A filter can remove the focused card. Keep the directional owner in the
-    // new portrait grid instead of moving it to the role tab rail.
-    if (!root.current?.contains(document.activeElement))
-      root.current
-        ?.querySelector<HTMLElement>("[data-controller-grid] button")
-        ?.focus({ preventScroll: true });
-  }, [role]);
-  const choose = async (id: string) => {
-    if (pending.current) return;
-    const hero = HEROES.find((h) => h.id === id)!;
-    if (!inMode) {
-      useAlphaStore.getState().chooseHero(id);
-      setStatus("");
-      return;
-    }
-    pending.current = true;
-    setBusy(true);
-    try {
-      await requestSocial("hero_select", { hero: id });
-      useAlphaStore.getState().chooseHero(id);
-      setStatus(`${hero.name} LOCKED`);
-    } catch (e) {
-      setStatus((e as Error).message);
-    } finally {
-      pending.current = false;
-      setBusy(false);
-    }
-  };
-  const start = async () => {
-    if (pending.current || planned || !heroId) return;
-    pending.current = true;
-    setBusy(true);
-    setStatus("");
-    try {
-      if (research) {
-        prepareReconSelection();
-        if (active || customWorld) await requestSocial("mode_cancel");
-        useUIStore.getState().setScreen("signal_recon");
-      } else if (overlay) {
-        useUIStore.getState().closeOverlay();
-      } else if (inMode || customWorld) await deploySelectedHero();
-      else throw Error("Return to mode selection to find a server first.");
-    } catch (e) {
-      setStatus((e as Error).message);
-    } finally {
-      pending.current = false;
-      setBusy(false);
-    }
-  };
+  const confirm = useCallback(() => {
+    const id =
+      useAlphaStore.getState().previewHero ??
+      HEROES.find((h) => role === "all" || h.role === role)!.id;
+    void choose(id);
+  }, [choose, role]);
+  useSelectionNavigation(root, { confirm, back, direction, tab });
   const roster = (view?.alpha?.roster ?? []).filter(
     (member) => member.mode === mode,
   );
@@ -143,13 +194,14 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
           ? 1
           : a.name.localeCompare(b.name),
     );
-  const selected = HEROES.find((h) => h.id === heroId);
+  const selected = HEROES.find((h) => h.id === previewId);
   return (
     <section
       ref={root}
       className="game-ui menu-surface alpha-selection hero-selection"
       data-controller-form
       data-controller-rows
+      tabIndex={-1}
       aria-label={overlay ? "Change hero" : "Hero selection"}
       style={overlay ? { zIndex: 50 } : undefined}
     >
@@ -177,7 +229,8 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
             selected={heroId}
             filter={role}
             busy={busy}
-            onFilter={setRole}
+            onFilter={filter}
+            onPreview={preview}
             onChoose={(id) => void choose(id)}
           />
         )}
@@ -235,31 +288,32 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
           })}
         </div>
       )}
-      <footer className="alpha-selection-footer" data-controller-row>
-        <MenuShortcuts chat directions="both" tabKey />
+      <footer className="alpha-selection-footer">
+        <MenuShortcuts chat directions="both" />
         <button
           type="button"
           className="menu-control controller-action alpha-deploy"
           disabled={
             busy ||
             planned ||
-            !selected ||
             (!research && (!connected || !view || (!inMode && !customWorld)))
           }
-          onClick={() => void start()}
+          onClick={confirm}
         >
           <ControllerButton button="A" />
           {busy
             ? "PLEASE WAIT…"
             : planned
               ? "COMING LATER"
-              : research
-                ? "ENTER SIGNAL RECON"
-                : overlay
-                  ? "RETURN TO GAME"
-                  : inMode || customWorld
-                    ? "DEPLOY"
-                    : "CHOOSE A HERO"}
+              : !heroId || heroId !== previewId
+                ? "SELECT HERO"
+                : research
+                  ? "ENTER SIGNAL RECON"
+                  : overlay
+                    ? "RETURN TO GAME"
+                    : inMode || customWorld
+                      ? "DEPLOY"
+                      : "CHOOSE A HERO"}
         </button>
       </footer>
     </section>

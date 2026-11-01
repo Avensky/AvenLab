@@ -18,7 +18,13 @@ export async function joinSelectedMode() {
     hero: "",
     map: useSelectionStore.getState().getSelectedMap().id,
   });
-  if (result.status === "queued" || result.status === "joined")
+  if (result.status === "joined") {
+    // An admitted seat needs no one-frame trip through the video/queue screen.
+    if (typeof result.hero === "string" && result.hero)
+      state.chooseHero(result.hero);
+    else state.clearHero();
+    useUIStore.getState().setScreen("hero_select");
+  } else if (result.status === "queued")
     useUIStore.getState().setScreen("queue");
   return result;
 }

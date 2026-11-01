@@ -61,6 +61,23 @@ export function prepareVehicleVisual(scene: Group, model: string) {
       };
       object.material = Array.isArray(object.material) ? object.material.map(repair) : repair(object.material);
     });
+  } else {
+    // A cloned scene still shares its GLTF materials. Preview ghosts and a
+    // vehicle's instance effects must never alter the loader cache/gameplay.
+    const cache = new Map<Material, Material>();
+    root.traverse(object => {
+      if (!(object instanceof Mesh)) return;
+      const own = (source: Material) => {
+        let material = cache.get(source);
+        if (!material) {
+          material = source.clone();
+          cache.set(source, material);
+          materials.add(material);
+        }
+        return material;
+      };
+      object.material = Array.isArray(object.material) ? object.material.map(own) : own(object.material);
+    });
   }
   return { root, materials, glassMaterials, dispose: () => { for (const material of materials) material.dispose(); } };
 }

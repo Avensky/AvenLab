@@ -72,6 +72,8 @@ export function reviseCockpit(
 }
 export function cockpitStatus(mask: number | null) {
   return {
+    launchOff: mask !== null && Boolean(mask & (1 << 14)),
+    tractionLatchedOff: mask !== null && Boolean(mask & (1 << 15)),
     cruiseActive: mask !== null && Boolean(mask & (1 << 24)),
     tractionRearmed: mask !== null && Boolean(mask & (1 << 25)),
     parkingActive: mask !== null && Boolean(mask & (1 << 26)),

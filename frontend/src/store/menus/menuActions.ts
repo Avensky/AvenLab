@@ -95,7 +95,7 @@ export const createMenuActions: StateCreator<
     if (activeMenu === "main") {
       const item = MAIN_MENU_ITEMS[index];
       if (item?.available) {
-        set({ screen: item.screen, overlay: null });
+        get().setScreen(item.screen);
       }
       return;
     }

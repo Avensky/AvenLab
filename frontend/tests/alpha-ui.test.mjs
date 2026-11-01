@@ -151,105 +151,110 @@ test("alpha selection, queue and HUD route to their own state owners", async (t)
       },
     );
     await t.test(
-      "mode tabs select immediately while directions own the bottom environment bar",
+      "one mode owner edits the environment, ignores Tab, and A continues without footer focus",
       async () => {
         const { ModeSelection } = await load("game/alpha/ModeSelection.tsx");
         const { useSelectionStore: selection, mapCatalog } = await load(
           "store/selection/selectionStore.ts",
         );
+        const { useCanBusStore: bus } = await load(
+          "store/recon/canBusStore.ts",
+        );
         const { usePreferencesStore: prefs } = await load(
           "store/preferences/preferencesStore.ts",
         );
         await act(async () => {
-          social
-            .getState()
-            .receive({
-              ...view,
-              current_world_id: null,
-              alpha: { ...view.alpha, active: null },
-            });
+          social.getState().receive({
+            ...view,
+            current_world_id: null,
+            alpha: { ...view.alpha, active: null },
+          });
           network.setState({
             connected: true,
             worldName: null,
             worldMap: null,
           });
           prefs.getState().update({ favoriteVehicles: ["brz"] });
-          alpha.setState({ mode: "sandbox", hero: null });
+          alpha.getState().clearHero();
+          alpha.getState().chooseMode("sandbox");
           ui.setState({ screen: "mode_select", overlay: null });
         });
         await render(ModeSelection);
         assert.equal(selection.getState().getSelectedVehicle().id, "brz");
-        assert.equal(
-          alpha.getState().hero,
-          null,
-          "favorite showcase is not a match pick",
-        );
+        assert.equal(alpha.getState().hero, null);
         assert.equal(
           document.querySelectorAll("[data-hero], .alpha-squad-seat").length,
           0,
         );
-        const field = document.querySelector("[data-controller-selector]");
-        assert.equal(document.activeElement, field);
+        assert.ok(
+          document.activeElement.matches('[aria-label="Game mode selection"]'),
+        );
+        assert.equal(
+          document.querySelector("[data-controller-selector]").dataset.quiet,
+          "true",
+        );
         const start = selection.getState().mapIndex;
         await act(async () => route("right"));
-        assert.equal(
-          document.activeElement,
-          field,
-          "the entire environment stays focused",
-        );
         assert.equal(
           selection.getState().mapIndex,
           (start + 1) % mapCatalog.length,
         );
+        await act(async () => {
+          route("down");
+          route("up");
+        });
+        assert.ok(
+          document.activeElement.matches('[aria-label="Game mode selection"]'),
+        );
         for (let i = 1; i < mapCatalog.length; i++)
           await act(async () => route("right"));
         assert.equal(selection.getState().mapIndex, start);
-        assert.equal(
-          alpha.getState().mode,
-          "sandbox",
-          "directions never change mode",
-        );
+        const event = new dom.window.KeyboardEvent("keydown", {
+          code: "Tab",
+          key: "Tab",
+          bubbles: true,
+          cancelable: true,
+        });
+        await act(async () => document.activeElement.dispatchEvent(event));
+        assert.equal(event.defaultPrevented, true);
+        assert.equal(alpha.getState().mode, "sandbox");
         await act(async () => route("next_tab"));
-        assert.equal(
-          alpha.getState().mode,
-          "editor",
-          "shoulder selects without A",
-        );
-        await act(async () =>
-          document.activeElement.dispatchEvent(
-            new dom.window.KeyboardEvent("keydown", {
-              code: "Tab",
-              key: "Tab",
-              bubbles: true,
-              cancelable: true,
-            }),
-          ),
-        );
+        assert.equal(alpha.getState().mode, "editor");
+        await act(async () => route("next_tab"));
         assert.equal(alpha.getState().mode, "signal_recon");
-        assert.equal(document.querySelectorAll("[data-can-field]").length, 2);
         assert.equal(
-          document.querySelector("[data-controller-selector]"),
-          null,
+          document.querySelector('[data-can-field="0"]').dataset.active,
+          "true",
         );
+        const iface = bus.getState().selectedInterface;
+        await act(async () => route("right"));
+        assert.notEqual(bus.getState().selectedInterface, iface);
+        await act(async () => route("left"));
+        assert.equal(bus.getState().selectedInterface, iface);
+        await act(async () => route("next_option"));
         assert.equal(
-          document.querySelectorAll("[data-hero], .alpha-squad-seat").length,
-          0,
+          document.querySelector('[data-can-field="1"]').dataset.active,
+          "true",
         );
+        await act(async () => route("right"));
+        assert.equal(bus.getState().selectedMode, "live");
+        await act(async () => route("left"));
+        assert.equal(bus.getState().selectedMode, "simulation");
+        await act(async () => route("activate"));
+        assert.equal(ui.getState().screen, "hero_select");
+        assert.equal(alpha.getState().hero, null);
       },
     );
     await t.test(
-      "fresh hero stage has no configuration, spatial directions and tab-only filters",
+      "highlight previews independently; A locks, a different highlight reselects, and a second A advances",
       async () => {
         const { HeroSelection } = await load("game/alpha/HeroSelection.tsx");
         const { useSelectionStore: selection } = await load(
           "store/selection/selectionStore.ts",
         );
-        const { useCanBusStore: bus } = await load(
-          "store/recon/canBusStore.ts",
-        );
-        bus.setState({ selectedMode: "simulation" });
         await act(async () => {
-          alpha.setState({ mode: "signal_recon", hero: null });
+          alpha.getState().clearHero();
+          alpha.getState().chooseMode("signal_recon");
           ui.setState({ screen: "hero_select" });
         });
         await render(HeroSelection);
@@ -260,14 +265,12 @@ test("alpha selection, queue and HUD route to their own state owners", async (t)
           ).length,
           0,
         );
-        assert.equal(document.querySelector(".alpha-deploy").disabled, true);
-        assert.equal(
-          document.querySelector('[data-hero][aria-pressed="true"]'),
-          null,
-        );
-        assert.equal(document.activeElement.dataset.hero, "tank");
+        assert.equal(alpha.getState().previewHero, null);
         await act(async () => route("right"));
-        assert.equal(document.activeElement.dataset.hero, "ae86");
+        assert.equal(document.activeElement.dataset.hero, "tank");
+        assert.equal(alpha.getState().previewHero, "tank");
+        assert.equal(alpha.getState().hero, null);
+        await act(async () => route("right"));
         await act(async () => route("down"));
         assert.equal(document.activeElement.dataset.hero, "supra");
         await act(async () =>
@@ -281,45 +284,148 @@ test("alpha selection, queue and HUD route to their own state owners", async (t)
           ),
         );
         assert.equal(document.activeElement.dataset.hero, "camaro");
-        assert.equal(
-          document.querySelector('[data-role-filter][aria-selected="true"]')
-            .textContent,
-          "ALL",
-        );
-        await click("SUPPORT", "tab");
-        await act(async () => route("right"));
-        assert.equal(
-          document.querySelectorAll("[data-hero]").length,
-          2,
-          "direction did not change filter",
-        );
-        assert.equal(document.activeElement.dataset.hero, "mechanic");
-        await act(async () => route("right"));
-        assert.equal(document.activeElement.dataset.hero, "logistics");
         await act(async () => route("activate"));
-        assert.equal(alpha.getState().hero, "logistics");
-        assert.equal(selection.getState().getSelectedVehicle().id, "ae86");
-        await act(async () => route("previous_tab"));
-        assert.equal(
-          document.querySelector('[data-role-filter][aria-selected="true"]')
-            .textContent,
-          "DPS",
+        assert.equal(alpha.getState().hero, "camaro");
+        assert.equal(ui.getState().screen, "hero_select");
+        await act(async () =>
+          document.querySelector('[data-hero="brz"]').focus(),
         );
-        assert.equal(document.activeElement.dataset.hero, "ae86");
-        await click("BRZ · DPS");
+        assert.equal(alpha.getState().previewHero, "brz");
+        assert.equal(alpha.getState().hero, "camaro");
+        assert.equal(selection.getState().getSelectedVehicle().id, "brz");
+        await act(async () => route("activate"));
         assert.equal(alpha.getState().hero, "brz");
+        assert.equal(ui.getState().screen, "hero_select");
         const before = sent.length;
-        await act(async () => document.querySelector(".alpha-deploy").click());
+        await act(async () => route("activate"));
         assert.equal(ui.getState().screen, "signal_recon");
-        assert.equal(
-          sent.length,
-          before,
-          "offline research needs no game seat",
-        );
+        assert.equal(sent.length, before);
       },
     );
     await t.test(
-      "matchmaking reserves an unpicked seat before displaying portraits or team cards",
+      "Back clears a preview/pick to the empty ghost stage before returning to modes",
+      async () => {
+        const { HeroSelection } = await load("game/alpha/HeroSelection.tsx");
+        await act(async () => {
+          alpha.getState().chooseMode("signal_recon");
+          alpha.getState().chooseHero("brz");
+          ui.setState({ screen: "hero_select" });
+        });
+        await render(HeroSelection);
+        await act(async () => route("back"));
+        assert.equal(alpha.getState().hero, null);
+        assert.equal(alpha.getState().previewHero, null);
+        assert.equal(ui.getState().screen, "hero_select");
+        assert.equal(
+          document.querySelector('[data-hero][aria-pressed="true"]'),
+          null,
+        );
+        await act(async () => route("back"));
+        assert.equal(ui.getState().screen, "mode_select");
+      },
+    );
+    await t.test(
+      "delayed lobby picks cannot undo a newer Back clear after its acknowledgement",
+      async () => {
+        const { HeroSelection } = await load("game/alpha/HeroSelection.tsx");
+        const unpicked = {
+          ...view,
+          alpha: { ...view.alpha, active: { ...view.alpha.active, hero: "" } },
+        };
+        await act(async () => {
+          alpha.getState().chooseMode("quickplay");
+          alpha.getState().clearHero();
+          social.getState().receive(unpicked);
+          ui.setState({ screen: "hero_select" });
+        });
+        await render(HeroSelection);
+        await act(async () =>
+          document.querySelector('[data-hero="brz"]').focus(),
+        );
+        await act(async () => route("activate"));
+        const pick = sent.at(-1);
+        assert.equal(pick.hero, "brz");
+        await act(async () =>
+          client.receiveSocialResult({
+            request_id: pick.request_id,
+            ok: true,
+            data: { hero: "brz" },
+          }),
+        );
+        assert.equal(alpha.getState().hero, "brz");
+        await act(async () => route("back"));
+        const clear = sent.at(-1);
+        assert.equal(clear.hero, "");
+        await act(async () =>
+          client.receiveSocialResult({
+            request_id: clear.request_id,
+            ok: true,
+            data: { hero: "" },
+          }),
+        );
+        await act(async () =>
+          social.getState().receive({
+            ...view,
+            alpha: {
+              ...view.alpha,
+              active: { ...view.alpha.active, hero: "brz" },
+            },
+          }),
+        );
+        assert.equal(alpha.getState().hero, null);
+        assert.equal(alpha.getState().previewHero, null);
+        await act(async () => social.getState().receive(unpicked));
+        assert.equal(alpha.getState().hero, null);
+        assert.equal(ui.getState().screen, "hero_select");
+      },
+    );
+    await t.test(
+      "an immediately admitted mode goes straight to heroes without the black queue transition or a stale loading gate",
+      async () => {
+        const { ModeSelection } = await load("game/alpha/ModeSelection.tsx");
+        await act(async () => {
+          alpha.getState().chooseMode("sandbox");
+          alpha.getState().clearHero();
+          network.setState({ connected: true, worldName: null });
+          social.getState().receive({
+            ...view,
+            alpha: { ...view.alpha, active: { ...view.alpha.active, mode: "sandbox", hero: "tank" }, queue: null },
+          });
+          ui.setState({ isModeLoading: true });
+          ui.getState().setScreen("mode_select");
+        });
+        assert.equal(ui.getState().isModeLoading, false);
+        await render(ModeSelection);
+        const screens = [];
+        const stop = ui.subscribe((state) => screens.push(state.screen));
+        try {
+          await act(async () => route("activate"));
+          const command = sent.at(-1);
+          assert.equal(command.action, "mode_join");
+          await act(async () =>
+            client.receiveSocialResult({
+              request_id: command.request_id,
+              ok: true,
+              data: { status: "joined", hero: "" },
+            }),
+          );
+          assert.equal(ui.getState().screen, "hero_select");
+          assert.ok(!screens.includes("queue"));
+          assert.equal(alpha.getState().hero, null);
+          const { HeroSelection } = await load("game/alpha/HeroSelection.tsx");
+          await render(HeroSelection);
+          assert.equal(
+            alpha.getState().hero,
+            null,
+            "an older server view cannot select a fresh admission",
+          );
+        } finally {
+          stop();
+        }
+      },
+    );
+    await t.test(
+      "matchmaking still reserves an unpicked seat before portraits and team cards appear",
       async () => {
         const { ModeSelection } = await load("game/alpha/ModeSelection.tsx");
         const { HeroSelection } = await load("game/alpha/HeroSelection.tsx");
@@ -337,43 +443,40 @@ test("alpha selection, queue and HUD route to their own state owners", async (t)
           );
         }
         await act(async () => {
-          alpha.setState({ mode: "quickplay", hero: "brz" });
-          social
-            .getState()
-            .receive({
-              ...view,
-              current_world_id: null,
-              alpha: { ...view.alpha, active: null },
-            });
+          alpha.getState().clearHero();
+          alpha.getState().chooseMode("quickplay");
+          social.getState().receive({
+            ...view,
+            current_world_id: null,
+            alpha: { ...view.alpha, active: null },
+          });
           ui.setState({ screen: "mode_select" });
         });
         await render(Flow);
-        await act(async () => document.querySelector(".alpha-deploy").click());
+        await act(async () => route("activate"));
         const command = sent.at(-1);
         assert.equal(command.action, "mode_join");
         assert.equal(command.hero, "");
         assert.equal(
-          document.querySelectorAll("[data-hero], .alpha-squad-seat").length,
+          document.querySelectorAll("[data-hero],.alpha-squad-seat").length,
           0,
         );
         await act(async () => {
-          social
-            .getState()
-            .receive({
-              ...view,
-              current_world_id: null,
-              alpha: {
-                ...view.alpha,
-                active: null,
-                queue: {
-                  mode: "quickplay",
-                  position: 1,
-                  size: 1,
-                  joined: 0,
-                  reason: "Full",
-                },
+          social.getState().receive({
+            ...view,
+            current_world_id: null,
+            alpha: {
+              ...view.alpha,
+              active: null,
+              queue: {
+                mode: "quickplay",
+                position: 1,
+                size: 1,
+                joined: 0,
+                reason: "Full",
               },
-            });
+            },
+          });
           client.receiveSocialResult({
             request_id: command.request_id,
             ok: true,
@@ -382,30 +485,28 @@ test("alpha selection, queue and HUD route to their own state owners", async (t)
         });
         assert.equal(ui.getState().screen, "queue");
         assert.equal(
-          document.querySelectorAll("[data-hero], .alpha-squad-seat").length,
+          document.querySelectorAll("[data-hero],.alpha-squad-seat").length,
           0,
         );
         await act(async () =>
-          social
-            .getState()
-            .receive({
-              ...view,
-              alpha: {
-                ...view.alpha,
-                active: { ...view.alpha.active, hero: "" },
-                roster: [{ ...view.alpha.roster[0], hero: "" }],
-              },
-            }),
+          social.getState().receive({
+            ...view,
+            alpha: {
+              ...view.alpha,
+              active: { ...view.alpha.active, hero: "" },
+              roster: [{ ...view.alpha.roster[0], hero: "" }],
+            },
+          }),
         );
         assert.equal(ui.getState().screen, "hero_select");
         assert.equal(alpha.getState().hero, null);
+        assert.equal(alpha.getState().previewHero, null);
         assert.equal(document.querySelectorAll("[data-hero]").length, 7);
         assert.equal(document.querySelectorAll(".alpha-squad-seat").length, 5);
-        assert.equal(
-          document.querySelector('[data-hero][aria-pressed="true"]'),
-          null,
+        assert.match(
+          document.querySelector(".alpha-deploy").textContent,
+          /SELECT HERO/,
         );
-        assert.equal(document.querySelector(".alpha-deploy").disabled, true);
       },
     );
     await t.test(

@@ -18,7 +18,7 @@
     8px/1.2 ui-monospace,
     monospace;
   text-transform: uppercase;
-  color: #96bfc5;
+  color: var(--app-muted, #a6b9d3);
 }
 .can-selector-value {
   text-transform: uppercase;
@@ -29,12 +29,13 @@
   font:
     700 10px/1.5 ui-monospace,
     monospace;
-  color: #ccf2e0;
+  color: var(--app-text, #e6efff);
 }
 .hero-recon-selectors {
   flex: none;
-  background: #0a3a2f80;
-  border: 1px solid #82c7b86b;
+  background: color-mix(in srgb, var(--app-panel, #0b1729) 78%, transparent);
+  border: 1px solid
+    color-mix(in srgb, var(--app-line, #54749a) 70%, transparent);
 }
 .hero-recon-selectors .can-capture-field {
   padding: 3px 4px;
@@ -43,7 +44,8 @@
   background: transparent;
 }
 .hero-recon-selectors .can-capture-field + .can-capture-field {
-  border-left: 1px solid #82c7b84a;
+  border-left: 1px solid
+    color-mix(in srgb, var(--app-line, #54749a) 40%, transparent);
 }
 .hero-recon-selectors .can-selector-label {
   font-size: 6px;

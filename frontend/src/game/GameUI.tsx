@@ -24,16 +24,9 @@ import { VehicleMenu } from "./menus/VehicleMenu";
 import { Cameras } from "../effects";
 import { PerformanceOverlay } from "../performance/PerformanceOverlay";
 import { useRenderSettingsStore } from "../store/presentation/renderSettingsStore";
-
-const HeroSelection = lazy(() =>
-  import("./alpha/HeroSelection").then((m) => ({ default: m.HeroSelection })),
-);
-const ModeSelection = lazy(() =>
-  import("./alpha/ModeSelection").then((m) => ({ default: m.ModeSelection })),
-);
-const QueueScreen = lazy(() =>
-  import("./alpha/QueueScreen").then((m) => ({ default: m.QueueScreen })),
-);
+import { HeroSelection } from "./alpha/HeroSelection";
+import { ModeSelection } from "./alpha/ModeSelection";
+import { QueueScreen } from "./alpha/QueueScreen";
 
 const WorldBuilderPanel = lazy(() =>
   import("../worldBuilder/panels/WorldBuilderPanel").then((m) => ({
@@ -84,6 +77,7 @@ export function GameUI() {
     screen === "sandbox_setup" ||
     screen === "hero_select" ||
     screen === "mode_select" ||
+    screen === "queue" ||
     screen === "signal_recon_setup" ||
     screen === "world_builder";
   const [collapsed, setCollapsed] = useState(false);
@@ -93,9 +87,24 @@ export function GameUI() {
     <div className="relative game-wrapper">
       {/* Requires Canvas */}
       {needsCanvas && (
-        <FullCanvas>
-          {(screen === "sandbox_setup" || screen === "hero_select" || screen === "mode_select") && (
-            <VehiclePreview heroLayout={screen !== "sandbox_setup"} awaitingHero={screen === "hero_select"} />
+        <FullCanvas
+          paused={screen === "queue"}
+          preview={
+            screen === "sandbox_setup" ||
+            screen === "hero_select" ||
+            screen === "mode_select" ||
+            screen === "queue" ||
+            screen === "signal_recon_setup"
+          }
+        >
+          {(screen === "sandbox_setup" ||
+            screen === "hero_select" ||
+            screen === "mode_select" ||
+            screen === "queue") && (
+            <VehiclePreview
+              heroLayout={screen !== "sandbox_setup"}
+              awaitingHero={screen === "hero_select"}
+            />
           )}
           {screen === "world_builder" && (
             <Suspense fallback={null}>

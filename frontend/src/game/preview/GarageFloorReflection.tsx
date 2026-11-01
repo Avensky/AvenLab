@@ -1,7 +1,21 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import { LinearMipmapLinearFilter, PlaneGeometry, ShaderMaterial, UniformsLib, Vector2, Vector4, type Box3, type Group } from "three";
+import {
+  LinearMipmapLinearFilter,
+  PlaneGeometry,
+  ShaderMaterial,
+  UniformsLib,
+  Vector2,
+  Vector4,
+  type Box3,
+  type Group,
+} from "three";
 import { Reflector } from "three/addons/objects/Reflector.js";
+import { usePreferencesStore } from "../../store/preferences/preferencesStore";
+import {
+  configureGarageFloor,
+  gateGarageFloorCapture,
+} from "./garageFloorEffects";
 
 // One shared planar capture avoids recursive floor/platform mirror renders.
 // World-space square tiles stay fixed; only the softer platform finish rotates.
@@ -9,13 +23,18 @@ const floorShader = {
   name: "GarageBlackTiles",
   uniforms: {
     ...UniformsLib.fog,
-    color: { value: null }, tDiffuse: { value: null }, textureMatrix: { value: null },
-    platformHalfSize: { value: new Vector2() }, platformAngle: { value: 0 },
+    color: { value: null },
+    tDiffuse: { value: null },
+    textureMatrix: { value: null },
+    platformHalfSize: { value: new Vector2() },
+    platformAngle: { value: 0 },
     reflectionTexel: { value: new Vector2(1 / 768, 1 / 768) },
-    greenDesaturation: { value: 0.18 },
-    perimeterBounds: { value: new Vector4() }, showPerimeter: { value: 0 },
+    reflectionStrength: { value: 1 },
+    reflectionBlur: { value: 0.25 },
+    perimeterBounds: { value: new Vector4() },
+    showPerimeter: { value: 0 },
   },
-  vertexShader: /* glsl */`
+  vertexShader: /* glsl */ `
     uniform mat4 textureMatrix;
     varying vec4 vReflection;
     varying vec2 vFloor;
@@ -29,12 +48,13 @@ const floorShader = {
       #include <fog_vertex>
     }
   `,
-  fragmentShader: /* glsl */`
+  fragmentShader: /* glsl */ `
     uniform sampler2D tDiffuse;
     uniform vec2 platformHalfSize;
     uniform float platformAngle;
     uniform vec2 reflectionTexel;
-    uniform float greenDesaturation;
+    uniform float reflectionStrength;
+    uniform float reflectionBlur;
     uniform vec4 perimeterBounds;
     uniform float showPerimeter;
     varying vec4 vReflection;
@@ -52,8 +72,8 @@ const floorShader = {
       float edgeValue = max(edge.x, edge.y);
       float edgeAA = max(fwidth(edgeValue), 0.015);
       float platform = 1.0 - smoothstep(-edgeAA, edgeAA, edgeValue);
-      vec3 reflection = texture2D(tDiffuse, uv).rgb;
-      if (platform > 0.001) {
+      vec3 reflection = reflectionStrength > 0.001 ? texture2D(tDiffuse, uv).rgb : vec3(0.0);
+      if (platform > 0.001 && reflectionStrength > 0.001 && reflectionBlur > 0.001) {
         // Adjacent texels give one continuous blur instead of widely spaced
         // copies of bright fixtures that sparkle as the platform turns.
         vec2 d = reflectionTexel;
@@ -64,14 +84,9 @@ const floorShader = {
           }
         }
         // Keep the pad mainly reflective, with just a little softened detail.
-        reflection = mix(reflection, soft, platform * 0.25);
+        reflection = mix(reflection, soft, platform * reflectionBlur);
       }
-      // Dark glossy surfaces otherwise make green cores appear more saturated
-      // than their source. Gently neutralize only green-dominant reflections;
-      // keep their luminance and the neutral vehicle/ceiling highlights.
-      float greenDominance = clamp((reflection.g - max(reflection.r, reflection.b)) / max(reflection.g, 0.001), 0.0, 1.0);
-      float reflectedLuminance = dot(reflection, vec3(0.2126, 0.7152, 0.0722));
-      reflection = mix(reflection, vec3(reflectedLuminance), greenDominance * greenDesaturation);
+      reflection *= reflectionStrength;
       // Equal world units on X/Z produce square tiles at every aspect ratio.
       vec2 tile = vFloor / 0.4;
       vec2 grid = abs(fract(tile + 0.5) - 0.5);
@@ -106,7 +121,18 @@ const floorShader = {
   `,
 };
 
-export function GarageFloorReflection({ width, depth, turntable, perimeter }: { width: number; depth: number; turntable: Group | null; perimeter: Box3 | null }) {
+export function GarageFloorReflection({
+  width,
+  depth,
+  turntable,
+  perimeter,
+}: {
+  width: number;
+  depth: number;
+  turntable: Group | null;
+  perimeter: Box3 | null;
+}) {
+  const settings = usePreferencesStore((s) => s.garageEffects);
   const floorRef = useRef<Reflector>(null);
   const floor = useMemo(() => {
     // Continue the floor past the model's cropped edge so it fills the screen.
@@ -114,9 +140,14 @@ export function GarageFloorReflection({ width, depth, turntable, perimeter }: { 
       // A positive clip bias admitted the opaque pad below the mirror into the
       // capture, hiding the vehicle/ceiling behind its underside. The mirror is
       // already raised 3mm; clip exactly there to keep that underlay excluded.
-      shader: floorShader, textureWidth: 768, textureHeight: 768, multisample: 0, clipBias: 0,
+      shader: floorShader,
+      textureWidth: 768,
+      textureHeight: 768,
+      multisample: 0,
+      clipBias: 0,
     });
     object.name = "garage-floor-reflection";
+    gateGarageFloorCapture(object);
     object.rotation.x = -Math.PI / 2;
     object.position.y = 0.003;
     const material = object.material as ShaderMaterial;
@@ -132,15 +163,30 @@ export function GarageFloorReflection({ width, depth, turntable, perimeter }: { 
     texture.minFilter = LinearMipmapLinearFilter;
     material.uniforms.platformHalfSize.value.set(width / 2, depth / 2);
     if (perimeter && !perimeter.isEmpty()) {
-      material.uniforms.perimeterBounds.value.set(perimeter.min.x, perimeter.min.z, perimeter.max.x, perimeter.max.z);
+      material.uniforms.perimeterBounds.value.set(
+        perimeter.min.x,
+        perimeter.min.z,
+        perimeter.max.x,
+        perimeter.max.z,
+      );
       material.uniforms.showPerimeter.value = 1;
     }
     return object;
   }, [width, depth, perimeter]);
+  useLayoutEffect(() => {
+    configureGarageFloor(floor, settings);
+  }, [floor, settings]);
   useFrame(() => {
     const material = floorRef.current?.material as ShaderMaterial | undefined;
-    if (material) material.uniforms.platformAngle.value = turntable?.rotation.y ?? 0;
+    if (material)
+      material.uniforms.platformAngle.value = turntable?.rotation.y ?? 0;
   });
-  useEffect(() => () => { floor.dispose(); floor.geometry.dispose(); }, [floor]);
+  useEffect(
+    () => () => {
+      floor.dispose();
+      floor.geometry.dispose();
+    },
+    [floor],
+  );
   return <primitive ref={floorRef} object={floor} dispose={null} />;
 }

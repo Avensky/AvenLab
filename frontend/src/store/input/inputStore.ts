@@ -231,7 +231,8 @@ function cockpitRequestBase(current: InputPacket) {
   return current.cockpit_mask === undefined ||
     unpackCockpit(current.cockpit_mask).revision ===
       unpackCockpit(confirmed).revision
-    ? confirmed
+    // Snapshot v8 bits 14/15 are traction status, not a cruise request.
+    ? (confirmed & ~(3 << 14)) >>> 0
     : current.cockpit_mask;
 }
 export const useInputStore = create<InputState>((set, get) => ({

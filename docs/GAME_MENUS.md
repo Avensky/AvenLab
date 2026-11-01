@@ -30,7 +30,7 @@ Sandbox and Signal Recon load `/models/world/garage_special.glb` for vehicle sel
 
 The display clone removes the embedded `Lambo T M` demo vehicle, uses a uniform 0.06 display scale, and centers the selection on the `Plane_PISTE` floor. A downward ray finds the pad's highest horizontal surface, including its double-sided reversed winding; the roof is excluded from grounding. The garage's cached geometry, materials and authored source poses remain unchanged. The scale is for this display stage, not a gameplay or physical-world conversion. An explicit `VEHICLE_ANCHOR` or `GARAGE_ANCHOR` floor-level marker takes priority if supplied by a future export.
 
-The source [Garage followers special! by Ahad4940, based on SDC's original](https://sketchfab.com/3d-models/garage-followers-special-71b1b4d569ec4c9788c76f4c3d56b461) uses Sketchfab material edits that are absent from the Blender GLB. Display-only material copies retain controlled green emission, charcoal glossy walls, lighter grey columns and aluminum/white tubing. Neutral ambient fill and two soft vehicle spotlights lift the scene without a broad green wash. HDR bloom runs before tone mapping and color conversion, at no more than 1× CSS-pixel resolution. A generated 128px environment contains a static copy of the completed garage and neutral highlights, so glossy materials reflect its fixtures without an HDRI download or a per-frame cube capture.
+The source [Garage followers special! by Ahad4940, based on SDC's original](https://sketchfab.com/3d-models/garage-followers-special-71b1b4d569ec4c9788c76f4c3d56b461) uses Sketchfab material edits that are absent from the Blender GLB. Display-only material copies follow the selected color theme with controlled emission, charcoal glossy walls, lighter grey columns and aluminum/white tubing. Neutral ambient fill and two soft vehicle spotlights lift the scene without a broad green wash. HDR bloom runs before tone mapping and color conversion, at no more than 1× CSS-pixel resolution. A generated 128px environment contains a static copy of the completed garage and neutral highlights, so glossy materials reflect its fixtures without an HDRI download or a per-frame cube capture.
 
 The supplied Blender source is now exported with evaluated Mirror/Array/Bevel geometry. The native GLB includes the complete 9x13 ceiling lattice, the 12-section mirrored upper trusses, the full light rack and stand feet. It is about 1.3 MB with Draco compression and omits the embedded demo car. Its `avenlabGarageComplete` scene marker keeps the original geometry and skips the legacy reconstruction helper. The native four-corner green fixture is hidden on the display clone, and the procedural corner-lamp fallback is omitted. The platform keeps its black/orange safety border. Scene lighting and bloom are unchanged. See [the source export workflow](GARAGE_ASSET_EXPORT.md) for the repeatable Blender script.
 
@@ -50,7 +50,7 @@ Draco decoders are served by the app from `/draco/` rather than an external CDN.
 ## Available now
 
 - Pause: Resume game, Debugger, Settings, Change vehicle, View missions, Career, Leave game.
-- Settings: Display, Audio, Keyboard, Controller, Social, Other, Accessibility.
+- Settings: Display, HUD, Drivetrain, Audio, Keyboard, Controller, Social, Other, Accessibility and Garage. Garage owns selection-only bloom, radiance, exposure and reflection preferences; see [the garage guide](GARAGE_LIGHTING_EFFECTS.md).
 - Working display controls: resolution scale, field of view, shadows, reflections, fog, sky, vehicle lights, HUD and performance overlay. Graphics preferences survive a new sandbox session.
 - Working input controls: driving-key remapping, mouse-look sensitivity, gamepad stick deadzone, steering sensitivity and invert steering. Reserved shortcuts and duplicate bindings are rejected.
 - Accessibility: larger menu text, high contrast and reduced motion. Reduced motion stops the vehicle turntable and menu transitions.
@@ -88,7 +88,8 @@ Plain F2/F3 ignore key repeats, modified keys, text editing, loading, terminal
 input and non-Sandbox screens; Shift+F3 is the explicit inspector shortcut.
 See `performance-recording.md` for partial Stop and export behavior.
 
-Focused text inputs retain editing keys. Native Tab navigation and visible focus outlines remain available. Opening menus releases held driving inputs; the gamepad must return to neutral before driving resumes. The online simulation continues while a menu is open.
+Focused text inputs retain editing keys. Plain Tab/Shift+Tab does not navigate UI. Approved directional/tab controls and
+visible focus cues remain available. Opening menus releases held driving inputs; the gamepad must return to neutral before driving resumes. The online simulation continues while a menu is open.
 
 Change vehicle opens an in-game picker over the current scene. H opens the same picker; Back returns to driving or Pause according to where it opened. Selecting another model sends a validated request to the Rust server and waits for acknowledgement. The server retains the connection, player identity, map, position in X/Z and rotation, adjusts ride height, rebuilds the vehicle collider/mass/wheels and stops its motion. A larger vehicle is rejected if it would overlap an obstacle; errors appear in the picker. The interpolation buffer resets when the model changes. Rebuild and restart the Rust server with this frontend update.
 

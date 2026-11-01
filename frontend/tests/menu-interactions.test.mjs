@@ -484,61 +484,141 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
         assert.equal(ui.getState().screen, "main");
       },
     );
-    await t.test("mouse configures Recon before choosing a fresh hero", async () => {
-      await resetRecon(); await reset("mode_select");
-      await click([...document.querySelectorAll(".alpha-mode-tabs button")].find(n => n.textContent === "SIGNAL RECON"));
-      assert.equal(document.querySelector("[data-hero]"), null);
-      for (let i = 0; i < 3; i++) await click(document.querySelector('[data-can-field="0"]'));
-      await click(document.querySelector('[data-can-field="1"]'));
-      await click(document.querySelector('[data-can-field="1"]'));
-      assert.equal(bus.getState().selectedInterface, "can2");
-      assert.equal(bus.getState().selectedMode, "listen-only");
-      await click(document.querySelector(".alpha-deploy"));
-      assert.equal(ui.getState().screen, "hero_select");
-      assert.equal(alpha.getState().hero, null);
-      assert.equal(document.querySelector("[data-can-field]"), null);
-      await click(document.querySelector('[data-hero="brz"]'));
-      await click(document.querySelector(".alpha-deploy"));
-      assert.equal(ui.getState().screen, "signal_recon");
-      assert.equal(recon.getState().vehicleSlug, selection.getState().getSelectedVehicle().canIdentity.slug);
-      assert.equal(bus.getState().selectedInterface, "can2");
-    });
-    await t.test("controller tabs select modes and filters while both sticks navigate portraits", async () => {
-      await resetRecon(); await act(async () => alpha.setState({ mode: "editor" }));
-      await reset("mode_select"); await button(5);
-      assert.equal(alpha.getState().mode, "signal_recon");
-      await act(async () => document.querySelector('[data-can-field="0"]').focus());
-      await button(15); assert.match(document.activeElement.getAttribute("aria-label"), /Capture mode/);
-      await button(13); await button(0);
-      assert.equal(ui.getState().screen, "hero_select");
-      assert.equal(alpha.getState().hero, null);
-      await button(15); assert.equal(document.activeElement.dataset.hero, "ae86");
-      await button(13); assert.equal(document.activeElement.dataset.hero, "supra");
-      await button(0); assert.equal(alpha.getState().hero, "supra");
-      await button(5); assert.equal(document.querySelectorAll("[data-hero]").length, 1);
-      await button(5); assert.equal(document.querySelectorAll("[data-hero]").length, 4);
-      await act(async () => { document.querySelector('[data-hero="brz"]').focus(); });
-      await button(0); await button(13); await button(13); await button(0);
-      assert.equal(ui.getState().screen, "signal_recon");
-      assert.equal(inputs.getState().input.throttle, 0);
-      assert.equal(inputs.getState().input.brake, 0);
-    });
-    await t.test("a down CAN interface blocks mode continuation; Simulation still requires a hero pick", async () => {
-      await resetRecon({ active: null, mode: "offline", can2: { exists: true, up: false, state: "DOWN" } }, "live");
-      await act(async () => alpha.setState({ mode: "signal_recon" }));
-      await reset("mode_select");
-      await act(async () => bus.getState().setSelectedInterface("can2"));
-      await click(document.querySelector(".alpha-deploy"));
-      assert.equal(ui.getState().screen, "mode_select");
-      assert.match(document.querySelector('[role="status"]').textContent, /can2.*down/);
-      await act(async () => bus.getState().setSelectedMode("simulation"));
-      await click(document.querySelector(".alpha-deploy"));
-      assert.equal(ui.getState().screen, "hero_select");
-      assert.equal(document.querySelector(".alpha-deploy").disabled, true);
-      await click(document.querySelector('[data-hero="brz"]'));
-      await click(document.querySelector(".alpha-deploy"));
-      assert.equal(ui.getState().screen, "signal_recon");
-    });
+    await t.test(
+      "mouse chooses CAN fields/arrow values; A locks a preview then advances without footer focus",
+      async () => {
+        await resetRecon();
+        await reset("mode_select");
+        await click(
+          [...document.querySelectorAll(".alpha-mode-tabs button")].find(
+            (n) => n.textContent === "SIGNAL RECON",
+          ),
+        );
+        assert.equal(document.querySelector("[data-hero]"), null);
+        for (let i = 0; i < 3; i++)
+          await click(
+            document.querySelector('[aria-label="Next can interface"]'),
+          );
+        for (let i = 0; i < 2; i++)
+          await click(
+            document.querySelector('[aria-label="Next capture mode"]'),
+          );
+        assert.equal(bus.getState().selectedInterface, "can2");
+        assert.equal(bus.getState().selectedMode, "listen-only");
+        await key("Enter", "Enter");
+        assert.equal(ui.getState().screen, "hero_select");
+        assert.equal(alpha.getState().hero, null);
+        await act(async () =>
+          document.querySelector('[data-hero="brz"]').focus(),
+        );
+        assert.equal(alpha.getState().previewHero, "brz");
+        assert.equal(alpha.getState().hero, null);
+        await key("Enter", "Enter");
+        assert.equal(alpha.getState().hero, "brz");
+        assert.equal(ui.getState().screen, "hero_select");
+        await key("Enter", "Enter");
+        assert.equal(ui.getState().screen, "signal_recon");
+        assert.equal(
+          recon.getState().vehicleSlug,
+          selection.getState().getSelectedVehicle().canIdentity.slug,
+        );
+        assert.equal(bus.getState().selectedInterface, "can2");
+      },
+    );
+    await t.test(
+      "LT/RT switches the second Recon tab rail, both sticks edit/navigate, and Tab cannot select UI",
+      async () => {
+        await resetRecon();
+        await act(async () => alpha.setState({ mode: "editor" }));
+        await reset("mode_select");
+        await button(5);
+        assert.equal(alpha.getState().mode, "signal_recon");
+        await button(7);
+        assert.equal(
+          document.querySelector('[data-can-field="1"]').dataset.active,
+          "true",
+        );
+        await button(15);
+        assert.equal(bus.getState().selectedMode, "live");
+        await button(14);
+        assert.equal(bus.getState().selectedMode, "simulation");
+        await button(6);
+        assert.equal(
+          document.querySelector('[data-can-field="0"]').dataset.active,
+          "true",
+        );
+        await key("Digit3", "3");
+        assert.equal(
+          document.querySelector('[data-can-field="1"]').dataset.active,
+          "true",
+        );
+        const mode = alpha.getState().mode,
+          focus = document.activeElement;
+        await key("Tab", "Tab");
+        assert.equal(alpha.getState().mode, mode);
+        assert.ok(document.activeElement === focus);
+        await button(0);
+        assert.equal(ui.getState().screen, "hero_select");
+        assert.equal(alpha.getState().hero, null);
+        await button(15);
+        assert.equal(document.activeElement.dataset.hero, "tank");
+        await button(15);
+        assert.equal(document.activeElement.dataset.hero, "ae86");
+        await button(13);
+        assert.equal(document.activeElement.dataset.hero, "supra");
+        assert.equal(alpha.getState().previewHero, "supra");
+        assert.equal(alpha.getState().hero, null);
+        await button(0);
+        assert.equal(alpha.getState().hero, "supra");
+        assert.equal(ui.getState().screen, "hero_select");
+        await act(async () =>
+          document.querySelector('[data-hero="brz"]').focus(),
+        );
+        await button(0);
+        assert.equal(alpha.getState().hero, "brz");
+        assert.equal(ui.getState().screen, "hero_select");
+        await button(0);
+        assert.equal(ui.getState().screen, "signal_recon");
+        assert.equal(inputs.getState().input.throttle, 0);
+        assert.equal(inputs.getState().input.brake, 0);
+      },
+    );
+    await t.test(
+      "down CAN remains blocked; Simulation enters a previewable unpicked stage and Back clears it",
+      async () => {
+        await resetRecon(
+          {
+            active: null,
+            mode: "offline",
+            can2: { exists: true, up: false, state: "DOWN" },
+          },
+          "live",
+        );
+        await act(async () => alpha.setState({ mode: "signal_recon" }));
+        await reset("mode_select");
+        await act(async () => bus.getState().setSelectedInterface("can2"));
+        await key("Enter", "Enter");
+        assert.equal(ui.getState().screen, "mode_select");
+        assert.match(
+          document.querySelector('[role="status"]').textContent,
+          /can2.*down/,
+        );
+        await act(async () => bus.getState().setSelectedMode("simulation"));
+        await button(0);
+        assert.equal(ui.getState().screen, "hero_select");
+        await act(async () =>
+          document.querySelector('[data-hero="brz"]').focus(),
+        );
+        await button(0);
+        assert.equal(alpha.getState().hero, "brz");
+        await button(1);
+        assert.equal(ui.getState().screen, "hero_select");
+        assert.equal(alpha.getState().hero, null);
+        assert.equal(alpha.getState().previewHero, null);
+        await button(1);
+        assert.equal(ui.getState().screen, "mode_select");
+      },
+    );
     await t.test(
       "live CAN readiness is checked for mouse and controller; simulation works without hardware",
       async () => {
@@ -654,6 +734,7 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
               "Social",
               "Other",
               "Accessibility",
+              "Garage",
             ],
           ],
         ]) {
@@ -764,6 +845,7 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
           "Social",
           "Other",
           "Accessibility",
+          "Garage",
         ]) {
           await click(tab(name));
           assert.equal(tab(name).getAttribute("aria-selected"), "true");
@@ -788,6 +870,71 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
         const savedDpr = rendering.getState().dpr;
         await act(async () => rendering.getState().startSandbox());
         assert.equal(rendering.getState().dpr, savedDpr);
+      },
+    );
+    await t.test(
+      "garage effects support mouse, keyboard and controller, persist partial edits and leave driving graphics alone",
+      async () => {
+        const { DEFAULT_GARAGE_EFFECTS } = await load(
+          "store/preferences/garageEffects.ts",
+        );
+        const { sanitizePreferences } = await load(
+          "store/preferences/preferencesStore.ts",
+        );
+        assert.deepEqual(
+          sanitizePreferences({}).garageEffects,
+          DEFAULT_GARAGE_EFFECTS,
+        );
+        await act(async () =>
+          preferences.getState().update({
+            highContrast: false,
+            garageEffects: { ...DEFAULT_GARAGE_EFFECTS },
+          }),
+        );
+        const drivingGraphics = rendering.getState(),
+          theme = preferences.getState().theme;
+        await reset("settings");
+        await click(tab("Garage"));
+        await act(async () => row("garage-bloomStrength").focus());
+        await key("ArrowRight");
+        assert.equal(preferences.getState().garageEffects.bloomStrength, 0.75);
+        await button(15);
+        assert.equal(preferences.getState().garageEffects.bloomStrength, 1);
+        await button(14);
+        assert.equal(preferences.getState().garageEffects.bloomStrength, 0.75);
+        await click(row("garage-accentBrightness"));
+        assert.equal(
+          preferences.getState().garageEffects.accentBrightness,
+          1.5,
+        );
+        assert.equal(
+          preferences.getState().garageEffects.bloomStrength,
+          0.75,
+          "editing one field preserves the rest",
+        );
+        const saved = JSON.parse(localStorage.getItem("avenlab-preferences-v1"))
+          .state.garageEffects;
+        assert.equal(saved.accentBrightness, 1.5);
+        assert.equal(saved.bloomStrength, 0.75);
+        await act(async () => preferences.persist.rehydrate());
+        assert.deepEqual(preferences.getState().garageEffects, saved);
+        await click(row("garage-bloom"));
+        assert.equal(preferences.getState().garageEffects.bloom, false);
+        assert.equal(row("garage-bloomStrength").disabled, true);
+        await click(row("garage-reset"));
+        assert.deepEqual(
+          preferences.getState().garageEffects,
+          DEFAULT_GARAGE_EFFECTS,
+        );
+        await act(async () =>
+          preferences.getState().update({ highContrast: true }),
+        );
+        assert.equal(row("garage-bloom").disabled, true);
+        await act(async () =>
+          preferences.getState().update({ highContrast: false }),
+        );
+        assert.equal(preferences.getState().theme, theme);
+        assert.deepEqual(rendering.getState(), drivingGraphics);
       },
     );
     await t.test(

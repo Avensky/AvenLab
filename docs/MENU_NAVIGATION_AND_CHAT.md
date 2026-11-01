@@ -17,28 +17,28 @@ results still appear when relevant.
 
 Mode and hero selection have separate directional owners:
 
-| Screen / row | Left / Right | Tab / LB / RB |
+| Screen / row | Left / Right | LB / RB, Q / E, Page Up / Down |
 | --- | --- | --- |
-| Mode screen | Environment value or CAN field focus | Select a game mode immediately |
+| Mode screen | Environment value or active CAN field value | Select a game mode immediately |
 | Hero portrait grid | Move within the current three-column line | Change All / Tank / DPS / Support filter |
-| Footer | Move within available footer controls | Retain the current screen's tab owner |
 
-Up/Down changes portrait lines or moves between configuration and the footer.
-Numpad 8/2/4/6, arrows and either stick share this spatial path. A / Enter / click
-activates the focused choice. Admitted picks await server role validation. Role
-filters are excluded from directional rows; filtering away a focused card moves
-focus into the new grid. Native text fields retain normal cursor keys.
+Up/Down changes portrait lines. The mode screen ignores Up/Down; its footer is
+clickable but never required for A/Enter. Numpad 8/2/4/6, arrows and either stick
+share this path. First A locks the preview; the next A advances. Role filters are
+excluded from directional rows. Plain Tab/Shift+Tab never navigates UI; focused
+text fields retain editing keys. See the current
+[controls guide](SELECTION_CONTROLS_AND_GARAGE.md).
 
 There is no vehicle arrow strip. Filters sit above portraits on the second screen;
 configuration stays on the first screen's bottom edge. Only an assigned match's
 hero screen displays team cards above the footer. A fresh mode starts unpicked,
-with a dimmed showroom vehicle. The selected name/role remains at upper left.
+with an initial ghost that becomes full opacity as soon as a portrait is previewed. The selected name/role remains at upper left.
 
 ## Signal Recon without an intermediate setup screen
 
 Signal Recon shows the existing CAN interface/capture-mode bar controls at the
-bottom of the mode screen. A / Enter / click cycles the focused field; Left/Right moves to the
-other field. The garage, legacy setup bars and workspace dropdowns use the same
+bottom of the mode screen. LT/RT or 1/3 changes the highlighted field; Left/Right
+edits its value. A/Enter always continues with the current options. The garage, legacy setup bars and workspace dropdowns use the same
 CAN store and option order. Shared captureSetup helpers own cycling/readiness.
 
 Continue checks interface readiness and opens an unpicked hero screen. After a

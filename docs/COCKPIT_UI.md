@@ -44,7 +44,8 @@ retain automatic forward driving and temporary gear overrides.
 Open **Cockpit** from the pause menu, **F4**, or
 **LB/L1 + View/Select** (Console tab). View/Select alone retains the performance
 shortcut. Shoulders switch cockpit tabs, D-pad navigates, A/Cross activates and
-B/Circle closes. Arrows, Tab, Enter and Space also work inside menus. Pointer
+B/Circle closes. Arrows, Enter and Space also work inside menus; Q/E and shoulders switch tabs.
+Plain Tab/Shift+Tab does not navigate UI. Pointer
 interaction with HUD controls prevents browser focus rather than selecting a
 button. The configured driving brake key (Space by default) is intercepted before
 a focused HUD button can turn it into a click. Menu activation remains separate.
@@ -232,14 +233,17 @@ combining it with momentary handbrake force by maximum. Transmission P remains
 independent. Other actions written before a send retain the fraction. Older
 servers use the existing three detents until rebuilt with v7.
 
-ABS uses the existing tire-budget assist; Q remains its shortcut. T toggles TRAC.
-TRAC OFF rearms above 50 km/h and stays rearmed until explicitly disabled again.
-VSC SPORT is separate and retains the chosen TRAC state, with a 15% more permissive
-traction threshold. Holding TRAC for over 3 seconds while stopped requests TRAC +
-VSC OFF; an explicit cockpit action supplies controller access. Rust rejects it
-above 0.5 m/s. Engine stop restores Normal. This is not factory selective-wheel yaw
-stabilization; no such physical VSC model is implemented. The TRAC icon and label
-share one vertically stacked content wrapper.
+ABS uses the existing tire-budget assist; Q remains its shortcut. Tap TRAC or T
+to arm one-launch traction off. The skid-car OFF lamp alone shows this temporary
+state. Rust observes grounded drive demand above grip plus the existing tire
+Slide state; after the first event, 120 ms of grounded grip recovery rearms TCS.
+Speed or time without slip cannot rearm it. Holding TRAC/T for 3.1 seconds while
+stopped requests persistent traction off (rejected above 0.5 m/s). It shows both
+TRAC / OFF and skid-car / OFF and resets only when the engine shuts down. Sport
+can coexist with either traction state and keeps its 15% more permissive assist
+threshold. Factory selective-wheel VSC yaw stabilization is not implemented.
+The three lamps sit in the fuel/temp gauge left of its needle hubs. See the
+[selection/traction guide](SELECTION_CONTROLS_AND_GARAGE.md) for protocol and layout.
 
 ## Instruments and resource rings
 
@@ -279,8 +283,10 @@ updates. A React Profiler regression checks 20 position projections with zero
 extra dashboard commits. Rings update one stroke offset;
 there are no extra physics, network or per-gauge animation loops.
 
-Setup advertises `hud.cockpit_version: 7`; v7 adds the optional precise cable
-fraction in input/snapshot. v6 adds a held headlight flash, v5 enables airflow/fan4 and v4
+Setup advertises `hud.cockpit_version: 8`; v8 adds snapshot bits 14=launch-off
+and 15=persistent traction-off in `cockpit_mask`. Requests keep the existing
+cruise command bits 14–15; request assembly clears these snapshot-only statuses.
+v7 adds the optional precise cable fraction in input/snapshot. v6 adds a held headlight flash, v5 enables airflow/fan4 and v4
 enables assisted forward gear taps.
 Version 3 adds key/climate/timed-wipe controls and version 2 the basic physical
 controls. The UI disables actions missing from the server calibration. `cockpit_mask` keeps its existing

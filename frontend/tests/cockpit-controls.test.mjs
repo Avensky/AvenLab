@@ -213,6 +213,18 @@ test("cockpit requests use one packed input field and preserve menu/input owners
         assert.equal(canNavigateMenu(), true);
       },
     );
+    await t.test("snapshot traction status bits cannot become cruise action requests", () => {
+      input.getState().resetWorldControls();
+      network.setState({ connected:true, playerId:"status-driver", snapshot:{tick:1,received_at_ms:performance.now(),entities:[{id:"status-driver",cockpit_mask:(1<<6)|(1<<7)|(1<<14)|(1<<15)}]} });
+      input.getState().setCockpit({ lights:2 },6);
+      const request=unpackCockpit(input.getState().input.cockpit_mask);
+      assert.equal(request.cruiseAction,0);
+      assert.equal(request.lights,2);
+      assert.equal(cockpitStatus((1<<14)|(1<<15)).launchOff,true);
+      assert.equal(cockpitStatus((1<<14)|(1<<15)).tractionLatchedOff,true);
+      network.setState({connected:false,playerId:"",snapshot:null});
+      input.getState().resetWorldControls();
+    });
     const calibrated = {
       max_speed: 70,
       hud: {

@@ -52,7 +52,7 @@ Its geometry, transforms, materials and model files are unchanged by this patch.
 
 Keyboard/controller menu routing remains separate from driving. Arrow keys or
 D-pad navigate buttons, A/Enter activates, LB/RB cycles colliders, and B/Escape
-returns to pause. Native Tab can reach numeric fields. Enter commits a field;
+returns to pause. Use directional controls or click to reach numeric fields; native Tab navigation is disabled. Enter commits a field;
 Escape cancels its text. Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z or Ctrl/Cmd+Y undo/redo;
 Delete removes the selected box when not editing text. F6/F7 vehicle cameras and
 inspection retain their existing shortcuts.

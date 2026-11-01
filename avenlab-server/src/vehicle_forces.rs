@@ -242,9 +242,20 @@ impl PhysicsWorld {
                 brake: brake.max(vehicle.powertrain.direction_brake), handbrake, steer: vehicle.steer,
             };
             let driven = ctx.driven_wheels.max(1.0);
+            // The longitudinal solver caps impulse at grip before its combined
+            // Slide/Grip classification. Preserve pre-clamp drive saturation
+            // as a launch-slip signal, using the same final contact loads.
+            let drive_demand = ctx.engine_force * control.throttle.abs() / driven;
+            let drive_saturated = contacts.iter().any(|patch| patch.drive && patch.grounded
+                && patch.normal_force >= 50.0 && drive_demand > patch.normal_force * patch.mu_long);
             vehicle.cockpit.traction_active = ctx.tcs_enabled && contacts.iter().any(|patch| patch.drive && patch.grounded
-                && ctx.engine_force * control.throttle.abs() / driven > patch.normal_force * patch.mu_long * ctx.tcs_limit);
+                && drive_demand > patch.normal_force * patch.mu_long * ctx.tcs_limit);
             let tire_forces = solve_step(&ctx, &control, &mut contacts);
+            let grounded_drive = contacts.iter().any(|patch| patch.drive && patch.grounded);
+            let slipping_drive = drive_saturated || contacts.iter().any(|patch| patch.drive && patch.grounded
+                && patch.tire_state == crate::aven_tire::state::TireState::Slide);
+            vehicle.cockpit.observe_traction(dt, grounded_drive, slipping_drive, vehicle.powertrain.running);
+            vehicle.vehicle_flags.set(VehicleStateFlags::TCS, vehicle.cockpit.tcs_enabled(ctx.tcs_enabled));
             // solve_step emits engine/brake at COM and lateral impulse at the
             // patch. Contact application already produces yaw and roll torque;
             // adding artificial turn torque would duplicate the steering effect.

@@ -1,4 +1,5 @@
 import { Group, InstancedMesh, Matrix4, MeshStandardMaterial, Quaternion, Shape, ShapeGeometry, Vector3, type Object3D } from "three";
+import { tagGarageAccent } from "../../theme/garageLighting.ts";
 
 // Seven-segment order: top, upper-right, lower-right, bottom,
 // lower-left, upper-left, middle. "y" is the display's readable Y form.
@@ -31,6 +32,7 @@ export function createGarageWallSign(root: Object3D) {
   const geometry = new ShapeGeometry(shape);
   const on = new MeshStandardMaterial({ color: 0x273321, roughness: 0.4, metalness: 0.1 });
   on.emissive.setRGB(0.02350918, 0.95040749, 0.00495542); on.emissiveIntensity = 2.4;
+  tagGarageAccent(on, true);
   const off = new MeshStandardMaterial({ color: 0x101512, roughness: 0.5, metalness: 0.1 });
   const litCount = PLAY_SEGMENTS.reduce((count, segments) => count + segments.length, 0);
   const lit = new InstancedMesh(geometry, on, litCount), dark = new InstancedMesh(geometry, off, 28 - litCount);

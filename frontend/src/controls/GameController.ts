@@ -35,7 +35,7 @@ function trigger(value = 0) {
 function menuNeutral(pad: Gamepad) {
   return (
     pad.axes.slice(0, 4).every((value) => axis(value, 0.5) === 0) &&
-    [0, 1, 2, 4, 5, 8, 9, 12, 13, 14, 15].every(
+    [0, 1, 2, 4, 5, 6, 7, 8, 9, 12, 13, 14, 15].every(
       (index) => !pad.buttons[index]?.pressed,
     )
   );
@@ -303,6 +303,10 @@ export function GameController() {
         }
         if (edges[4] || edges[5]) {
           routeMenuAction(edges[4] ? "previous_tab" : "next_tab");
+          return;
+        }
+        if ((edges[6] || edges[7]) && ui.screen === "mode_select" && ui.overlay === null) {
+          routeMenuAction(edges[6] ? "previous_option" : "next_option");
           return;
         }
         if (edges[0]) {

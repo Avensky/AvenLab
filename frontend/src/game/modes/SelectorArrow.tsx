@@ -31,10 +31,6 @@ export function SelectorArrow({
         event.currentTarget.closest<HTMLElement>("[data-controller-selector]")?.focus({ preventScroll: true });
         onPress();
       }}
-      onKeyDown={(event) => {
-        if (event.code === "Enter" || event.code === "Space")
-          event.stopPropagation();
-      }}
     >
       {glyph}
     </button>

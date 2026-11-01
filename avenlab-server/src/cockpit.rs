@@ -20,6 +20,9 @@ pub struct Cockpit {
     cruise_target: Option<f32>,
     last_target: Option<f32>,
     rearmed: bool,
+    traction_latched_off: bool,
+    launch_slip_seen: bool,
+    launch_clear_s: f32,
     revision: u8,
     rejected: u8,
     last_request: Option<u32>,
@@ -35,7 +38,7 @@ pub struct Cockpit {
 impl Default for Cockpit {
     fn default() -> Self { Self { enabled:false, automatic:true, gear:1, parking:false, parking_strength:0, parking_fraction:0.0, precise_parking:false,
         lights:0, wipers:0, washer:false, assist:0, traction_active:false, traction_requested:true,
-        cruise_enabled:false, cruise_target:None, last_target:None, rearmed:false,
+        cruise_enabled:false, cruise_target:None, last_target:None, rearmed:false, traction_latched_off:false, launch_slip_seen:false, launch_clear_s:0.0,
         revision:0, rejected:0, last_request:None, rejected_gear:None,
         cabin_mask:4, key_override:false, key_position:2, key_inserted:true,
         last_cabin_request:None, wipe_remaining_s:0.0, forward_shift:None } }
@@ -67,7 +70,16 @@ impl Cockpit {
         let assist = ((packed >> 4) & 3) as u8;
         if first || command == 1 {
             if assist == 3 && speed.abs() > 0.5 { self.rejected = 1; }
-            else { self.assist = assist; self.rearmed = false; self.traction_requested = traction_requested; }
+            else {
+                if assist == 3 { self.traction_latched_off = true; }
+                // Sport and persistent TRAC off are independent. An unrelated
+                // selector or later tap cannot clear the engine-session latch.
+                self.assist = if assist == 3 && self.assist == 1 { 1 } else { assist };
+                self.rearmed = false;
+                self.traction_requested = traction_requested;
+                self.launch_slip_seen = false;
+                self.launch_clear_s = 0.0;
+            }
         }
         self.lights = (packed & 3) as u8;
         self.wipers = ((packed >> 2) & 3) as u8;
@@ -166,6 +178,7 @@ impl Cockpit {
     }
     pub fn tcs_enabled(&self, requested: bool) -> bool {
         if !self.enabled { return requested; }
+        if self.traction_latched_off { return false; }
         match self.assist { 1 => self.traction_requested || self.rearmed, 2 => self.rearmed, 3 => false, _ => true }
     }
     pub fn advance(&mut self, dt: f32, speed: f32, throttle: f32, brake: f32, handbrake: f32, running: bool) -> (f32, f32) {
@@ -175,9 +188,9 @@ impl Cockpit {
         if !running || brake > 0.01 || handbrake > 0.01 || self.parked() || throttle < -0.01 || speed < 32.0/3.6 {
             self.cruise_target = None;
         }
-        if !running { self.last_target = None; self.assist = 0; self.traction_requested = true; self.rearmed = false; }
-        if dt.is_finite() && dt > 0.0 && dt <= 0.1 {
-            if (self.assist == 2 || (self.assist == 1 && !self.traction_requested)) && speed.abs() > 50.0 / 3.6 { self.rearmed = true; }
+        if !running {
+            self.last_target = None; self.assist = 0; self.traction_requested = true; self.rearmed = false;
+            self.traction_latched_off = false; self.launch_slip_seen = false; self.launch_clear_s = 0.0;
         }
         if self.gear == 8 { return (0.0, brake); }
         if let Some(target) = self.cruise_target {
@@ -186,6 +199,26 @@ impl Cockpit {
             return ((0.04 + error * 0.18).clamp(0.0, 1.0), if error < -1.0 { (-error * 0.1).clamp(0.0, 0.45) } else { brake });
         }
         (throttle, brake)
+    }
+    pub fn launch_off(&self) -> bool {
+        self.enabled && !self.traction_latched_off && !self.rearmed
+            && (self.assist == 2 || (self.assist == 1 && !self.traction_requested))
+    }
+    /// Consume grounded drive saturation and the existing tire solver's slip state.
+    /// Airborne frames cannot pretend that grip recovered; no speed timer,
+    /// force, second physics step or client-authored wheelspin is introduced.
+    pub fn observe_traction(&mut self, dt: f32, grounded: bool, slipping: bool, running: bool) {
+        if !self.launch_off() || !running || !dt.is_finite() || dt <= 0.0 || dt > 0.1 { return; }
+        if !grounded { self.launch_clear_s = 0.0; return; }
+        if slipping { self.launch_slip_seen = true; self.launch_clear_s = 0.0; }
+        else if self.launch_slip_seen {
+            self.launch_clear_s += dt;
+            if self.launch_clear_s >= 0.12 {
+                self.rearmed = true; self.traction_requested = true;
+                if self.assist == 2 { self.assist = 0; }
+                self.launch_slip_seen = false; self.launch_clear_s = 0.0;
+            }
+        }
     }
     pub fn flashing(&self) -> bool { self.cabin_mask & (1 << 20) != 0 }
     pub fn headlights(&self, running: bool) -> bool { self.flashing() || self.lights >= 2 || (self.lights == 1 && running) }
@@ -198,7 +231,9 @@ impl Cockpit {
     pub fn snapshot(&self) -> u32 {
         (self.lights as u32) | ((self.wipers as u32) << 2) | ((self.assist as u32) << 4)
             | ((self.automatic as u32) << 6) | ((self.gear as u32) << 7) | ((self.parking as u32) << 11)
-            | ((self.washer as u32) << 12) | ((self.cruise_enabled as u32) << 13) | ((self.revision as u32) << 16)
+            | ((self.washer as u32) << 12) | ((self.cruise_enabled as u32) << 13)
+            | ((self.launch_off() as u32) << 14) | ((self.traction_latched_off as u32) << 15)
+            | ((self.revision as u32) << 16)
             | ((self.cruise_target.is_some() as u32) << 24) | ((self.rearmed as u32) << 25)
             | ((self.parked() as u32) << 26) | ((self.rejected as u32) << 28)
             | ((self.enabled as u32) << 27)
@@ -379,20 +414,45 @@ mod tests {
         c.receive(packet(7,false,0,2,3).into(),10.0,true);assert_eq!(c.gear,8);
         c.receive(packet(7,false,0,2,4).into(),0.0,true);assert_eq!(c.manual_gear(),Some(-1));
     }
-    #[test] fn sport_preserves_independent_trac_setting_instead_of_disabling_it_for_one_launch() {
-        let mut c=Cockpit::default();c.receive(packet(1,true,1,1,1).into(),0.0,true);
-        for _ in 0..120 { c.advance(1.0/120.0,1.0,1.0,0.0,0.0,true);assert!(c.tcs_enabled(false)); }
-        c.receive(packet(1,true,1,1,2).into(),0.0,false);assert!(!c.tcs_enabled(true));assert_eq!(c.assist,1);
-        c.advance(1.0/120.0,14.0,0.4,0.0,0.0,true);assert!(c.tcs_enabled(false));assert_eq!(c.assist,1);
-        c.advance(1.0/120.0,1.0,0.4,0.0,0.0,true);assert!(c.tcs_enabled(false));
-    }
-    #[test] fn traction_off_rearms_at_fifty_kmh_but_full_off_requires_stop_and_does_not_rearm_at_speed() {
+    #[test] fn launch_off_waits_for_a_grounded_slip_event_and_grip_recovery() {
         let mut c=Cockpit::default();c.receive(packet(1,true,2,1,1).into(),0.0,false);
-        c.advance(1.0/120.0,13.8,0.4,0.0,0.0,true);assert!(!c.tcs_enabled(true));
-        c.advance(1.0/120.0,14.0,0.4,0.0,0.0,true);assert!(c.tcs_enabled(false));
-        c.receive(packet(1,true,3,1,2).into(),4.0,false);assert_eq!(c.assist,2);assert_eq!((c.snapshot()>>28)&3,1);
-        c.receive(packet(1,true,3,1,3).into(),0.0,false);assert!(!c.tcs_enabled(true));
-        c.advance(1.0/120.0,20.0,0.4,0.0,0.0,true);assert!(!c.tcs_enabled(true));
+        assert!(c.launch_off()); assert!(!c.tcs_enabled(true));
+        for _ in 0..240 { c.advance(1.0/120.0,30.0,1.0,0.0,0.0,true);c.observe_traction(1.0/120.0,true,false,true); }
+        assert!(!c.tcs_enabled(true), "speed and time alone cannot end launch mode");
+        c.observe_traction(1.0/120.0,true,true,true);
+        for _ in 0..40 { c.observe_traction(1.0/120.0,false,false,true); }
+        assert!(!c.tcs_enabled(true), "airborne is not recovered traction");
+        for _ in 0..10 { c.observe_traction(1.0/120.0,true,false,true); }
+        assert!(!c.tcs_enabled(true), "one short grip sample cannot rearm");
+        c.observe_traction(1.0/120.0,true,true,true);
+        for _ in 0..15 { c.observe_traction(1.0/120.0,true,false,true); }
+        assert!(c.tcs_enabled(false)); assert!(!c.launch_off()); assert_eq!(c.assist,0);
+        c.receive(packet(1,true,2,1,1).into(),0.0,false);
+        assert!(c.tcs_enabled(false), "an identical held packet cannot replay a launch");
+        c.receive(packet(1,true,2,1,2).into(),0.0,false);
+        assert!(c.launch_off(), "a new explicit tap arms a new launch");
+    }
+    #[test] fn launch_recovery_preserves_sport_and_engine_off_resets_all_off_states() {
+        let mut c=Cockpit::default();c.receive(packet(1,true,1,1,1).into(),0.0,false);
+        assert!(!c.tcs_enabled(true));assert_eq!(c.assist,1);
+        c.observe_traction(0.02,true,true,true);
+        for _ in 0..10 {c.observe_traction(0.02,true,false,true);}
+        assert!(c.tcs_enabled(false));assert_eq!(c.assist,1);
+        c.receive(packet(1,true,3,1,2).into(),0.0,false);
+        assert_eq!(c.assist,1);assert!(!c.tcs_enabled(true));assert_ne!(c.snapshot()&(1<<15),0);
+        for _ in 0..20 {c.observe_traction(0.02,true,false,true);}
+        c.receive(packet(1,true,0,1,3).into(),0.0,true);
+        assert!(!c.tcs_enabled(true), "the engine-session latch survives taps and normal selector requests");
+        c.advance(0.01,0.0,0.0,0.0,0.0,false);
+        assert!(c.tcs_enabled(false));assert_eq!(c.snapshot()&((1<<14)|(1<<15)),0);
+    }
+    #[test] fn persistent_off_still_requires_a_stop_and_ignores_slip_and_speed_rearm() {
+        let mut c=Cockpit::default();c.receive(packet(1,true,2,1,1).into(),0.0,false);
+        c.receive(packet(1,true,3,1,2).into(),4.0,false);
+        assert_eq!((c.snapshot()>>28)&3,1);assert_eq!(c.snapshot()&(1<<15),0);
+        c.receive(packet(1,true,3,1,3).into(),0.0,false);
+        for _ in 0..120 {c.advance(1.0/120.0,30.0,0.4,0.0,0.0,true);c.observe_traction(1.0/120.0,true,false,true);}
+        assert!(!c.tcs_enabled(true));assert_ne!(c.snapshot()&(1<<15),0);assert!(!c.launch_off());
     }
     #[test] fn ignition_off_restores_normal_assists_and_unrelated_stale_requests_do_not_reenable_sport() {
         let mut c=Cockpit::default();c.receive(packet(1,true,3,1,1).into(),0.0,false);

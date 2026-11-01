@@ -1,0 +1,12 @@
+@keyframes vehicle-starter-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  45% {
+    opacity: 0.55;
+  }
+  70% {
+    opacity: 0.85;
+  }
+}

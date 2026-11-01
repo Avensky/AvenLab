@@ -1,3 +1,4 @@
+@import "../../starterPulse.css";
 /* Ring radius 61 is outside the radius-54 labels. The key gesture controls the
    progress arc;
    only confirmed Rust STARTING controls crank flicker/audio. */
@@ -57,19 +58,9 @@
   opacity: 1;
 }
 .ignition-system[data-cranking="true"] .ignition-ring {
-  animation: starter-ring-click 230ms steps(2, end) infinite;
-}
-@keyframes starter-ring-click {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  45% {
-    opacity: 0.55;
-  }
-  70% {
-    opacity: 0.85;
-  }
+  animation: vehicle-starter-pulse var(--starter-period, 230ms) steps(2, end)
+    infinite;
+  animation-delay: var(--starter-phase, 0ms);
 }
 .driving-hud .ignition-hud {
   pointer-events: none;

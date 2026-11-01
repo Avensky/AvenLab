@@ -221,6 +221,25 @@ async fn matchmaking_reserves_ten_unpicked_seats_and_locks_roles_only_after_sele
     cleanup(s).await;
 }
 #[tokio::test]
+async fn back_can_clear_a_pick_without_releasing_its_seat_and_role() {
+    let s = alpha_server();
+    let (player, _, _) = client(&s, "Preview driver").await;
+    let joined = mode(&s, &player, "quickplay", "").await;
+    s.handle(&player, json!({"action":"hero_select","hero":"tank"})).await.unwrap();
+    assert_eq!(s.alpha.lock().await.members[&player].hero, "tank");
+    s.handle(&player, json!({"action":"hero_select","hero":""})).await.unwrap();
+    assert_eq!(s.alpha.lock().await.members[&player].hero, "");
+    assert_eq!(s.connections.lock().await[&player].world_id, Some(joined["world_id"].as_u64().unwrap() as usize));
+    assert!(s.validate_alpha_vehicle(&player, "tank").await.is_err());
+    s.handle(&player, json!({"action":"hero_select","hero":"brz"})).await.unwrap();
+    assert!(s.validate_alpha_vehicle(&player, "brz").await.is_ok());
+    let map = joined["map"].as_str().unwrap();
+    s.spawn(&player, map, "brz").await.unwrap();
+    assert!(s.handle(&player, json!({"action":"hero_select","hero":""})).await.is_err());
+    assert_eq!(s.alpha.lock().await.members[&player].hero, "brz");
+    cleanup(s).await;
+}
+#[tokio::test]
 async fn sandbox_can_reserve_each_installed_editor_environment_without_preselecting_a_hero() {
     let s = alpha_server();
     let (player, _, _) = client(&s, "Map tester").await;

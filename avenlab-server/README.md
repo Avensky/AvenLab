@@ -59,3 +59,13 @@ After building Rust, run `node scripts/test-hero-chat.mjs` from the repository
 root (or set `AVENLAB_SERVER_BIN` to the release executable). It creates a local
 server and disposable profiles, checks real recipient isolation and removes its
 temporary social file.
+
+## Current selection and traction controls
+
+Setup advertises cockpit v8: `cockpit_mask` snapshot bits 14/15 identify one-launch
+and persistent traction off. Request bits 14/15 retain cruise-command meaning.
+Launch recovery observes final grounded contact grip and tire slide, not speed.
+`hero_select` with an empty hero clears only a pre-deployment choice while keeping
+the assigned seat; deployed members cannot clear a live pick. See
+`../docs/SELECTION_CONTROLS_AND_GARAGE.md` for the current input flow and rebuild
+requirements.

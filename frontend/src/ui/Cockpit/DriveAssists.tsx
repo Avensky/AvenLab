@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useInputStore } from "../../store/input/inputStore";
 import {
   cockpitCommandPending,
+  cockpitStatus,
   unpackCockpit,
 } from "../../store/input/protocol/cockpitMasks";
 import { VehicleFlags, hasFlag } from "../../store/input/protocol/inputMasks";
@@ -32,6 +33,7 @@ export function DriveAssists({ compact = false }: { compact?: boolean }) {
   const requestedMask = useInputStore((s) => s.input.cockpit_mask);
   const requestedVehicle = useInputStore((s) => s.input.vehicleMask);
   const confirmed = unpackCockpit(confirmedMask ?? undefined);
+  const latched = cockpitStatus(confirmedMask).tractionLatchedOff || confirmed.assist === 3;
   const pending = cockpitCommandPending(requestedMask, confirmedMask, 1);
   const timer = useRef<number | null>(null),
     held = useRef<number | null>(null),
@@ -61,7 +63,7 @@ export function DriveAssists({ compact = false }: { compact?: boolean }) {
   }, []);
   const fullOff = () => requestAssist(3, false);
   const toggleTrac = () =>
-    requestAssist(confirmed.assist === 1 ? 1 : tcs ? 2 : 0, !tcs);
+    !latched && requestAssist(confirmed.assist === 1 ? 1 : tcs ? 2 : 0, !tcs);
   const beginTrac = (id: number) => {
     if (held.current !== null) return;
     consumed.current = false;
@@ -119,7 +121,7 @@ export function DriveAssists({ compact = false }: { compact?: boolean }) {
         type="button"
         className="assist-trac"
         aria-label="Toggle TCS"
-        title="TRAC OFF · tap to toggle; hold 3 seconds while stopped for TRAC + VSC OFF"
+        title="Tap: one-launch traction off. Hold 3 seconds while stopped: latched TRAC off until engine shutdown."
         disabled={!live || !supported}
         aria-pressed={tcs}
         aria-busy={pending}
@@ -195,7 +197,8 @@ export function DriveAssists({ compact = false }: { compact?: boolean }) {
             type="button"
             className="assist-normal"
             aria-label="Restore normal driving assists"
-            disabled={!live || !supported}
+            title={latched ? "Switch the engine off to reset latched TRAC OFF" : "Restore normal driving assists"}
+            disabled={!live || !supported || latched}
             onClick={() => requestAssist(0, true)}
           >
             NORMAL

@@ -8,7 +8,6 @@ export function useFormNavigation(
   root: RefObject<HTMLElement | null>,
   back: () => void,
   cycleTab: (direction: number) => void,
-  tabKeyCycles = false,
 ) {
   const remembered = useRef(new WeakMap<HTMLElement, number>());
   useEffect(() => {
@@ -103,19 +102,6 @@ export function useFormNavigation(
       navigate((event as CustomEvent<MenuAction>).detail);
     const keyboard = (event: KeyboardEvent) => {
       if (event.defaultPrevented) return;
-      if (
-        tabKeyCycles &&
-        event.code === "Tab" &&
-        !event.ctrlKey &&
-        !event.altKey &&
-        !event.metaKey &&
-        !(event.target as HTMLElement).closest(".lobby-chat")
-      ) {
-        event.preventDefault();
-        event.stopPropagation();
-        cycleTab(event.shiftKey ? -1 : 1);
-        return;
-      }
       if (event.key === "Escape") {
         event.preventDefault();
         event.stopPropagation();
@@ -151,5 +137,5 @@ export function useFormNavigation(
       window.removeEventListener("avenlab:panel-action", panel);
       element?.removeEventListener("keydown", keyboard);
     };
-  }, [root, back, cycleTab, tabKeyCycles]);
+  }, [root, back, cycleTab]);
 }

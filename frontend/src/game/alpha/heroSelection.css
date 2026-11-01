@@ -138,8 +138,7 @@
   display: block;
   min-width: 0;
   padding: 0;
-  border: 1px solid #6d899b;
-  border-bottom-color: var(--hero-color);
+  border: 1px solid #6d899b44;
   border-radius: 0;
   background: #0a18256b;
   color: #d8e7ee;
@@ -148,7 +147,7 @@
 }
 .hero-portrait-card:is(:hover, :focus) {
   z-index: 2;
-  border-color: var(--hero-color, #a7e5ff);
+  border-color: #ffffff44;
   outline: 0;
   box-shadow: 0 0 10px
     color-mix(in srgb, var(--hero-color, #a7e5ff) 65%, transparent);
@@ -163,14 +162,10 @@
   transform: scale(1.13);
   filter: drop-shadow(0 0 5px var(--hero-color, #a7e5ff));
 }
-.hero-portrait-card[aria-pressed="true"]:focus {
-  box-shadow:
-    inset 0 0 0 2px #ffe66d,
-    0 0 12px var(--hero-color, #a7e5ff);
-}
 .hero-portrait-card[aria-pressed="true"] {
-  border-color: #ffe66d;
-  box-shadow: inset 0 0 0 2px #ffe66d;
+  border-color: #ffffff44;
+  background: radial-gradient(ellipse, #ecf7ff35, #10253585 75%);
+  box-shadow: 0 0 10px #e6f4ff88;
 }
 .hero-portrait-card[aria-pressed="true"]::after {
   content: "";
@@ -179,7 +174,7 @@
   right: 3px;
   width: 6px;
   height: 6px;
-  background: #ffe66d;
+  background: #fff;
   transform: rotate(45deg);
 }
 .hero-portrait-card:disabled {
@@ -501,8 +496,9 @@
 }
 .hero-environment .selection-strip {
   padding: 2px 3px;
-  background: #0a3a2f80;
-  border: 1px solid #82c7b86b;
+  background: color-mix(in srgb, var(--app-panel, #0b1729) 78%, transparent);
+  border: 1px solid
+    color-mix(in srgb, var(--app-line, #54749a) 70%, transparent);
   box-shadow: none;
 }
 .hero-environment .selection-strip-layout {
@@ -548,8 +544,9 @@
 .mode-config-bar .selection-strip {
   margin: 0;
   padding: 3px 5px;
-  background: #0a3a2f92;
-  border: 1px solid #82c7b86b;
+  background: color-mix(in srgb, var(--app-panel, #0b1729) 82%, transparent);
+  border: 1px solid
+    color-mix(in srgb, var(--app-line, #54749a) 70%, transparent);
   box-shadow: none;
 }
 .mode-config-bar .selection-strip-layout {
@@ -573,9 +570,9 @@
 }
 .mode-config-bar [data-controller-selector]:is(:focus, :focus-within) {
   outline: 0;
-  border-color: #b7f5df;
-  background: #145743bb;
-  box-shadow: inset 0 0 0 1px #b7f5df;
+  border-color: var(--app-accent, #82b7ff);
+  background: color-mix(in srgb, var(--app-raised, #142b46) 88%, transparent);
+  box-shadow: inset 0 0 0 1px var(--app-accent, #82b7ff);
 }
 .mode-config-bar .can-capture-selectors {
   width: 100%;
@@ -601,4 +598,62 @@
 }
 html[data-reduce-motion="true"] .hero-portrait-card .hero-portrait-art img {
   transition: none;
+}
+
+.hero-selection:focus {
+  outline: 0;
+}
+/* Sandbox/editor have only one configuration owner. It does not need an
+   active-control treatment; A always confirms the screen's current options. */
+.mode-config-bar
+  [data-controller-selector][data-quiet]:is(:focus, :focus-within) {
+  border-color: color-mix(in srgb, var(--app-line, #54749a) 70%, transparent);
+  background: color-mix(in srgb, var(--app-panel, #0b1729) 82%, transparent);
+  box-shadow: none;
+  outline: 0;
+}
+.mode-config-bar .can-capture-field {
+  padding: 3px 5px;
+  border: 1px solid
+    color-mix(in srgb, var(--app-line, #54749a) 70%, transparent);
+  background: color-mix(in srgb, var(--app-panel, #0b1729) 82%, transparent);
+}
+.mode-config-bar .can-capture-field .selection-strip-layout {
+  width: 100%;
+}
+.can-selector-copy {
+  min-width: 0;
+  flex: 1;
+  text-align: center;
+}
+.can-selector-copy > span {
+  display: block;
+}
+.mode-config-bar .can-capture-field[data-active="true"] {
+  border-color: var(--app-accent, #82b7ff);
+  background: color-mix(in srgb, var(--app-raised, #142b46) 88%, transparent);
+  box-shadow: inset 0 0 0 1px var(--app-accent, #82b7ff);
+}
+.mode-config-bar
+  .can-capture-field:not([data-active="true"]):is(:focus, :focus-within) {
+  border-color: color-mix(in srgb, var(--app-line, #54749a) 70%, transparent);
+  background: color-mix(in srgb, var(--app-panel, #0b1729) 82%, transparent);
+  box-shadow: none;
+  outline: 0;
+}
+.mode-config-bar
+  [data-controller-selector][data-quiet]:is(:hover, :focus, :focus-within),
+.mode-config-bar [data-controller-selector][data-quiet] {
+  border-color: color-mix(in srgb, var(--app-line, #54749a) 70%, transparent);
+  background: color-mix(in srgb, var(--app-panel, #0b1729) 82%, transparent);
+  box-shadow: none;
+  outline: 0;
+}
+.mode-config-bar
+  [data-quiet]
+  .selection-strip-arrow:is(:hover, :focus, :focus-visible) {
+  background: transparent;
+  border: 0;
+  outline: 0;
+  box-shadow: none;
 }

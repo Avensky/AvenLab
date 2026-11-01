@@ -1,15 +1,15 @@
-import { ResourceFlags } from "../../store/telemetry/resourceMasks";
+import { engineDisplayState } from "../engineDisplayState";
 import type { VehicleTelemetry } from "../../store/telemetry/vehicleTelemetryStore";
 
-/** Preferences own the user's gain; confirmed engine state owns automatic
+/** Preferences own the user's gain; confirmed display power owns automatic
  * dimming. High contrast bypasses automatic dimming but honors manual choice. */
 export function instrumentBrightness(
   level: number,
-  engineOn: boolean,
+  powered: boolean,
   highContrast: boolean,
 ) {
   const gain = Number.isFinite(level) ? Math.max(0.1, Math.min(1, level)) : 1;
-  return gain * (engineOn || highContrast ? 1 : 0.42);
+  return gain * (powered || highContrast ? 1 : 0.42);
 }
 
 export type DisplayPower =
@@ -18,8 +18,8 @@ export function displayPower(
   data: Pick<VehicleTelemetry, "signal" | "engineOn" | "resourceMask"> &
     Partial<Pick<VehicleTelemetry, "cabinMask">>,
 ): DisplayPower {
-  if (data.signal !== "live") return "unavailable";
-  if (data.resourceMask & ResourceFlags.STARTING) return "cranking";
+  const state = engineDisplayState(data);
+  if (state !== "off") return state;
   if (
     !data.engineOn &&
     data.cabinMask !== null &&
@@ -28,5 +28,5 @@ export function displayPower(
     ((data.cabinMask >>> 10) & 3) === 2
   )
     return "on";
-  return data.engineOn ? "running" : "off";
+  return "off";
 }

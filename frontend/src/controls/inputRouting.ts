@@ -13,7 +13,9 @@ export type MenuAction =
   | "activate"
   | "back"
   | "previous_tab"
-  | "next_tab";
+  | "next_tab"
+  | "previous_option"
+  | "next_option";
 
 export function canDrive() {
   const ui = useUIStore.getState();
@@ -64,6 +66,10 @@ export function isTypingTarget(target: EventTarget | null) {
 }
 
 export function routeMenuAction(action: MenuAction) {
+  if (action === "previous_option" || action === "next_option") {
+    const ui = useUIStore.getState();
+    if (ui.screen !== "mode_select" || ui.overlay !== null || useTextKeyboardStore.getState().session) return;
+  }
   if (useTextKeyboardStore.getState().session) {
     window.dispatchEvent(
       new CustomEvent<MenuAction>("avenlab:keyboard-action", {

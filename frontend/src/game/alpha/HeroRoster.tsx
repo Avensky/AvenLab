@@ -10,12 +10,14 @@ export function HeroRoster({
   filter,
   busy,
   onChoose,
+  onPreview,
   onFilter,
 }: {
   selected: string | null;
   filter: HeroFilter;
   busy: boolean;
   onChoose: (hero: string) => void;
+  onPreview: (hero: string) => void;
   onFilter: (filter: HeroFilter) => void;
 }) {
   return (
@@ -44,6 +46,8 @@ export function HeroRoster({
               title={`${hero.name} · ${hero.role.toUpperCase()}`}
               aria-pressed={selected === hero.id}
               disabled={busy}
+              onFocus={() => onPreview(hero.id)}
+              onPointerEnter={() => onPreview(hero.id)}
               onClick={() => onChoose(hero.id)}
             >
               <HeroPortrait hero={hero.id} />

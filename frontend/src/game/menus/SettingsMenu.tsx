@@ -24,6 +24,7 @@ import {
   cityPerformanceControl,
   interpolationControl,
 } from "../../components/menus/cityQualityControl";
+import { garageSettingsRows } from "./garageSettingsRows";
 
 const step = <T,>(values: readonly T[], value: T, dir: 1 | -1 = 1): T =>
   values[
@@ -567,7 +568,7 @@ export function SettingsMenu() {
                 id: "theme",
                 label: "Interface theme",
                 description:
-                  "Shared by menus, debugger and cockpit. Base palettes are always available.",
+                  "Shared by menus, cockpit, editor and garage lighting. Base palettes are always available.",
                 value: UI_THEMES[prefs.theme].label,
                 action: (dir) =>
                   prefs.update({
@@ -613,6 +614,17 @@ export function SettingsMenu() {
                 "Available when voiced content is added.",
               ),
             ],
+          },
+          {
+            id: "garage",
+            label: "Garage",
+            description:
+              "Lighting, glow and reflections for the selection garage. Colors follow your interface theme.",
+            rows: garageSettingsRows(
+              prefs.garageEffects,
+              prefs.highContrast,
+              (garageEffects) => prefs.update({ garageEffects }),
+            ),
           },
         ]}
       />
