@@ -218,6 +218,7 @@ pub async fn start_websocket_server(server: Arc<Server>) {
                             .get("vehicle")
                             .and_then(Value::as_str)
                             .unwrap_or_default();
+                        let appearance=server.saved_appearance(&player,vehicle).await;
                         let result = match server.runtime(&player).await {
                             Ok(runtime) => {
                                 let mut room = runtime.lock().await;
@@ -227,6 +228,7 @@ pub async fn start_websocket_server(server: Arc<Server>) {
                                 }) {
                                     Ok(()) => {
                                         room.game.set_vehicle_id(&player, vehicle);
+                                        if let Some(entity)=room.game.entities.get_mut(&player) { entity.appearance=appearance; }
                                         if let Some(entity) = room.game.entities.get_mut(&player) {
                                             entity.last_packet = None;
                                         }

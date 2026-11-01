@@ -249,7 +249,7 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
         }
         assert.deepEqual(
           MAIN_MENU_ITEMS.map((item) => item.id),
-          ["play", "career", "social", "settings"],
+          ["play", "heroes", "career", "social", "settings"],
         );
         await button(12);
         assert.equal(

@@ -1,3 +1,4 @@
+import { useLiveAppearance } from "./cosmetics/useLiveAppearance";
 import { applyHeadlightBeam } from "./tools/headlightBeam";
 import { useVehicleVisualAlignment } from "../hooks/useVehicleVisualAlignment";
 import { useRenderSettingsStore } from "../store/presentation/renderSettingsStore";
@@ -76,6 +77,7 @@ export const Camaro = forwardRef<Group, CamaroProps>(function Camaro(
   );
 
   // Allow parent components to access the car group ref
+  useLiveAppearance(vehicleVisualGroupRef, "camaro", entityId);
   useImperativeHandle(ref, () => vehicleGroupRef.current, []);
 
   // Simulate hazard lights

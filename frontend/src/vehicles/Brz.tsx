@@ -1,3 +1,4 @@
+import { useLiveAppearance } from "./cosmetics/useLiveAppearance";
 import { applyHeadlightBeam } from "./tools/headlightBeam";
 import { useVehicleVisualAlignment } from "../hooks/useVehicleVisualAlignment";
 import { useRenderSettingsStore } from "../store/presentation/renderSettingsStore";
@@ -110,6 +111,7 @@ export const Brz = forwardRef<Group, BrzProps>(function Brz(
   const visualGroupRef = useRef<Group>(null!);
 
   // Allow parent components to access the car group ref
+  useLiveAppearance(visualGroupRef, "brz", entityId);
   useImperativeHandle(ref, () => vehicleGroupRef.current, []);
 
   // Simulate hazard lights

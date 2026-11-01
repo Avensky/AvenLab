@@ -14,6 +14,8 @@ pub struct Progression {
     pub credits: u32,
     pub owned: BTreeSet<String>,
     pub equipped: String,
+    pub default_hero: String,
+    pub hero_loadouts: std::collections::BTreeMap<String, super::appearance::HeroAppearance>,
 }
 impl Default for Progression {
     fn default() -> Self {
@@ -27,6 +29,7 @@ impl Default for Progression {
             credits: 0,
             owned: BTreeSet::from(["factory".into()]),
             equipped: "factory".into(),
+            default_hero: "brz".into(), hero_loadouts: Default::default(),
         }
     }
 }
@@ -104,7 +107,7 @@ impl Progression {
         Ok(())
     }
     pub fn view(&self) -> serde_json::Value {
-        serde_json::json!({"level":self.level,"prestige":self.prestige,"xp":self.xp,"required_xp":self.required_xp(),"tier":self.tier(),"competitive_wins":self.competitive_wins,"quickplay_wins":self.quickplay_wins,"matches":self.matches,"credits":self.credits,"owned":self.owned,"equipped":self.equipped,"color":self.color(),"next_milestone":if self.level<100{((self.level/10)+1)*10}else{100}})
+        serde_json::json!({"default_hero":self.default_hero,"hero_loadouts":self.hero_loadouts,"level":self.level,"prestige":self.prestige,"xp":self.xp,"required_xp":self.required_xp(),"tier":self.tier(),"competitive_wins":self.competitive_wins,"quickplay_wins":self.quickplay_wins,"matches":self.matches,"credits":self.credits,"owned":self.owned,"equipped":self.equipped,"color":self.color(),"next_milestone":if self.level<100{((self.level/10)+1)*10}else{100}})
     }
 }
 #[cfg(test)]

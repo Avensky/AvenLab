@@ -1,3 +1,4 @@
+import { useLiveAppearance } from "./cosmetics/useLiveAppearance";
 import { applyHeadlightBeam } from "./tools/headlightBeam";
 import { useVehicleVisualAlignment } from "../hooks/useVehicleVisualAlignment";
 import { useRenderSettingsStore } from "../store/presentation/renderSettingsStore";
@@ -77,6 +78,7 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
   const headlightRef = useRef<Object3D | null>(null);
 
   // Allow parent components to access the car group ref
+  useLiveAppearance(vehicleVisualRef, "ae86", entityId);
   useImperativeHandle(ref, () => vehicleGroupRef.current, []);
 
   // Headlight animation state

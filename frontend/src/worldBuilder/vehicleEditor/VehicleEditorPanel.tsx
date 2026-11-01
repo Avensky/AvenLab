@@ -144,9 +144,15 @@ export function VehicleEditorPanel() {
                     editor.setView('chase');
                 });
             }}>{HEROES.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}</select></label>
-      <nav aria-label="Vehicle settings">{['Body', 'Power', 'Suspension', 'Wheels', 'Steering', 'Camera'].map(name => <button aria-pressed={tab === name} key={name} onClick={() => setTab(name)}>{name}</button>)}</nav>
+      <nav aria-label="Vehicle settings">{['Body', 'Power', 'Suspension', 'Wheels', 'Steering', 'Camera', 'Materials'].map(name => <button aria-pressed={tab === name} key={name} onClick={() => setTab(name)}>{name}</button>)}</nav>
       <div className="ve-fields">
-      {tab === 'Camera' ? <>
+      {tab === 'Materials' ? <>
+        <h3>MATERIAL SLOT CHECKLIST · {vehicle.toUpperCase()}</h3>
+        <p>Body paint is equipped in Main menu → Heroes and shared with other players. This page reserves the per-car asset mapping work.</p>
+        <p>Body: known paint slot. Seats: BRZ yellow bucket material not yet verified. Front seat named nodes contain no mesh data in the current export.</p>
+        <p>TODO: assign dedicated seat fabric, stitching, caliper, stripe mask and steering-wheel accent materials. Avoid renaming unrelated meshes; add stable material slot names when updating each GLB.</p>
+        <p>Requested naming: Paint_Body, Fabric_Seat, Thread_Seat, Paint_Caliper, Decal_Stripe, Leather_Wheel, Thread_Wheel.</p>
+      </> : tab === 'Camera' ? <>
         <p>Driver-eye coordinates are relative to the chassis: +Y up, +Z forward. Fine-tune each vehicle while previewing the driver view.</p>
         {([['x', 'Eye left / right (m)', -4, 4, .01], ['y', 'Eye height (m)', -2, 5, .01], ['z', 'Eye forward / back (m)', -6, 6, .01], ['yaw', 'Look yaw (degrees)', -180, 180, 1], ['pitch', 'Look pitch (degrees)', -80, 80, 1], ['fov', 'Field of view', 30, 110, 1], ['duration', 'Approach duration (s)', 1, 12, .25]] as const).map(([key, label, min, max, step]) => <label key={key}>{label}<NumberInput min={min} max={max} step={step} value={camera[key]} onValue={v => { if (v >= min && v <= max)
                 cameraChange(key, v); }}/></label>)}

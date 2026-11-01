@@ -1,5 +1,6 @@
 //! Alpha capacity and lobby policy. Only Server's serialized control plane may
 //! mutate this state. Inputs and physics never acquire it. No client can grant XP.
+pub mod appearance;
 pub mod policy;
 pub mod progression;
 use crate::spawn::Team;

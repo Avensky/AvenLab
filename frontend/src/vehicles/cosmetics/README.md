@@ -1,17 +1,20 @@
-# Coordinated appearance foundation
+# Vehicle appearance slots and loadouts
 
-Settings → Appearance owns the app palette, showroom bundle preview, shared body finish and cockpit accent matching. The editor consumes that same preferencesStore.theme; old editor theme payloads are ignored. Hacker Blue and Forest are now in the shared theme catalog.
+Main menu → Heroes owns paint, finish and default-hero selection. Server profiles persist validated vehicle-keyed loadouts; snapshots carry equipped appearance to every player. The local store caches saved choices and keeps an unsaved draft for garage previews. Existing Settings paint fields are retained only for legacy unsaved previews.
 
-Bundles reference stable individual cosmetic IDs. Base UI themes remain free and independent of cosmetics. All cosmetic records here are preview-only. For live commerce, implement a server entitlement/equip endpoint and replicate validated slot IDs; do not trust localStorage, prices or client-owned booleans. No checkout, inventory, ownership grant or network cosmetic replication is implemented in this patch.
-
-| Slot | Current implementation | Remaining asset work |
+| Slot | Current behavior | Asset work remaining |
 | --- | --- | --- |
-| Body | AE86 Primary, BRZ body, Camaro ext.001 atlas tint, Supra PaintTNR | White Camaro retains atlas shading/details |
-| Camaro stripes | Reserved individual item and white/red bundle | Exterior UV stripe mask/decal, authored with atlas alignment |
-| FR-S seats | Reserved black-seat item | Confirm mesh/material assignment before tinting; never guess generic Color_* materials |
-| FR-S stitching | Reserved red-stitch item | Stitch mask or dedicated material/geometry |
-| Steering | HUD wheel stitching and cockpit accent CSS variable | Physical GLB wheel material mapping per car |
+| Body | Saved and replicated AE86 Primary, BRZ body, Camaro ext.001 atlas tint, Supra PaintTNR | Tank atlas isolation |
+| Camaro stripes | Reserved individual item | Aligned exterior stripe mask/decal |
+| FR-S seats | Saved color request, not applied | Verify actual seat fabric material; named seat nodes are empty |
+| Stitching | Reserved item and color concept | Dedicated thread material/mask |
+| Steering | HUD accent follows equipped body when matching is on | Physical GLB wheel material mapping |
+| Calipers | Materials checklist | Verified per-car paint slot |
 
-The FR-S reference uses BRZ body roughness 0.20529644 and clearcoat roughness 0.04. Shared finish is a showroom body-material adjustment, not a particle emitter. Factory restores prepared authored roughness (including the Supra safety repair); Soft uses Appearance's custom softness value. Lighting, UVs and geometry still affect highlight shape. Garage bloom remains separately adjustable.
+HeroAppearance on the Rust server validates color format, finish/seat enum values and skin ownership before persistence. hero_loadout_save cannot award inventory, credits or rare skins. Generic alpha body colors are currently editable; future paid item equips need a server entitlement mapping per slot. The preview-only item/bundle catalog reserves those IDs without granting them. Base UI palettes remain free.
 
-Local preview colors/finishes do not change physics, cached GLBs, other players, or live vehicle paint. Hook future validated appearance into instance-owned gameplay material clones, never cached useGLTF materials. Keep unreadable cosmetic accents out of normal UI text.
+Live material application waits for the first ready R3F frame, clones only known body materials on that instance, and then runs only when the appearance changes. Cleanup restores original assignments and disposes the owned clones. Cached GLBs and other players' material instances are never edited.
+
+FR-S reference uses BRZ body roughness 0.20529644 and clearcoat roughness 0.04; Soft broadens reflections. This is material reflection control, not a sparkle particle emitter. Geometry, environment and lighting still influence individual highlights.
+
+See game/heroes/README.md for the save/default/preview flow. Vehicle Editor → Materials owns the unresolved per-car checklist. Do not guess generic Color_* or red1 mappings or mass-rename the GLBs.

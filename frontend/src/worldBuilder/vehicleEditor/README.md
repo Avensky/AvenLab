@@ -55,3 +55,5 @@ Visibility is a saved editor preference and does not modify the map, current
 selection, active placement or undo history. Hiding it releases its grid column.
 
 The layout header now keeps only Prefabs, Tools and Exit. Tools opens a scrollable sidebar with world selection, vehicle editing, apply/test, detail, workspace, inspector and file actions. Escape/controller Back closes the sidebar before exiting. Its controls consume the Settings palette; there is no editor-specific theme state or selector.
+
+Authoring disables distance fog while mounted and restores the scene fog on exit. Camera far/max-distance bounds scale with the fitted layout. Materials is a per-car mapping checklist; unresolved BRZ seat materials are explicitly pending, not guessed. Reset and sustained fall recovery use the server-recorded authored spawn instead of righting the car above its current X/Z.

@@ -52,7 +52,7 @@ test("every pause row routes correctly and navigation wraps across all nine item
 });
 
 test("Play opens the shared garage and the remaining main entries keep their destinations", () => {
-  ["mode_select", "career", "social", "settings"].forEach((screen, index) => {
+  ["mode_select", "heroes", "career", "social", "settings"].forEach((screen, index) => {
     ui.setState({ screen: "main", overlay: null, isModeLoading: false });
     ui.getState().setActiveMenuIndex(index);
     route("activate");
@@ -231,4 +231,13 @@ test("Signal Recon setup has five selections and only Start requests workspace e
   } finally {
     window.removeEventListener("avenlab:signal-recon-start", start);
   }
+});
+
+test("Heroes routes controller actions to its own panel and cannot drive or activate Main behind it", () => {
+  ui.setState({screen:"heroes",overlay:null,isModeLoading:false});
+  let count=0;const listener=()=>count++;
+  window.addEventListener("avenlab:panel-action",listener);
+  route("activate");route("back");
+  window.removeEventListener("avenlab:panel-action",listener);
+  assert.equal(count,2);assert.equal(ui.getState().screen,"heroes");assert.equal(canDrive(),false);
 });

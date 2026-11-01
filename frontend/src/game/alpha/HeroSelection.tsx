@@ -203,7 +203,7 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
       data-controller-rows
       tabIndex={-1}
       aria-label={overlay ? "Change hero" : "Hero selection"}
-      style={overlay ? { zIndex: 50 } : undefined}
+      style={overlay ? { zIndex: 50, background:"transparent", backdropFilter:"none" } : undefined}
     >
       <header className="alpha-header">
         <div>

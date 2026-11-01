@@ -1,3 +1,4 @@
+import { HeroWorkshop, HeroLoadoutSync } from "./heroes/HeroWorkshop";
 import { useAlphaFlow } from "./alpha/useAlphaFlow";
 import { useAppTheme } from "../theme";
 import "../theme/theme.css";
@@ -79,6 +80,7 @@ export function GameUI() {
   const needsCanvas =
     screen === "sandbox" ||
     screen === "sandbox_setup" ||
+    screen === "heroes" ||
     screen === "hero_select" ||
     screen === "mode_select" ||
     screen === "queue" ||
@@ -89,12 +91,15 @@ export function GameUI() {
 
   return (
     <div className="relative game-wrapper">
+      <HeroLoadoutSync />
+      {screen === "heroes" && <HeroWorkshop />}
       {/* Requires Canvas */}
       {needsCanvas && (
         <FullCanvas
           paused={screen === "queue"}
           preview={
             screen === "sandbox_setup" ||
+            screen === "heroes" ||
             screen === "hero_select" ||
             screen === "mode_select" ||
             screen === "queue" ||
@@ -102,6 +107,7 @@ export function GameUI() {
           }
         >
           {(screen === "sandbox_setup" ||
+            screen === "heroes" ||
             screen === "hero_select" ||
             screen === "mode_select" ||
             screen === "queue") && (

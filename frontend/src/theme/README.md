@@ -24,10 +24,10 @@ lines, rounded category pills, inline value/toggle indicators and a visible
 focus ring. The same radius/surface tokens are available to HUD/cockpit tools;
 physical instrument shapes and Xbox button colors keep their semantics.
 
-Garage showroom paint is optional and local: Factory / Hot pink / Pastel pink.
-Only known AE86, BRZ, Camaro and Supra body materials are recolored on owned preview
-clones. It does not recolor glass or cached models and does not claim an earned
-or networked gameplay skin.
+Main menu → Heroes owns equipped body paint and finishes. Settings → Appearance
+keeps the global interface palette and cockpit matching. Saved hero loadouts
+are validated by the server and rendered by other clients; old showroom paint
+preferences are only a fallback for vehicles with no saved loadout.
 
 Editor surfaces use `--le-*` palette tokens, including toolbar ink, disabled
 undo/redo, category chips, thumbnail tiles and grid/angle controls. Coordinate
@@ -45,6 +45,5 @@ use the same Settings-owned app palette.
 
 AE86 fallback colors repair only untextured, default-white tire/rim/interior
 materials on owned clones, in both showroom and the driving rig. Supra opaque
-materials get bounded specular energy and a small roughness floor. Settings > Appearance owns coordinated body paint, shared finish and custom
-highlight softness across showroom vehicles. Camaro exterior paint multiplies its retained texture;
+materials get bounded specular energy and a small roughness floor. Main menu > Heroes owns body paint and shared finish presets. Camaro exterior paint multiplies its retained texture;
 glass, badges and interior materials are not recolored. Tank keeps factory paint.

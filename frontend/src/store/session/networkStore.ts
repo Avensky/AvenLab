@@ -54,6 +54,7 @@ export interface PhysicsEntitySnapshot {
   kind: VehicleKind;
   /** Canonical selected model id, such as ae86, brz, camaro, or supra. */
   vehicle_id?: string | null;
+  appearance?: import("../../vehicles/cosmetics/heroLoadouts").HeroAppearance;
   team?: Team;
   room_id: number;
 

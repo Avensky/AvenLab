@@ -140,7 +140,7 @@ export default function Cameras() {
   useFrame(() => beginVehicleRenderFrame(), -100);
   useEffect(() => releaseVehicleRenderFrameClock, []);
 
-  if (editor && screen === "sandbox" && !cameraEditing) {
+  if (editor && screen === "sandbox" && !cameraEditing && overlay !== "vehicle_select") {
     return (
       <>
         <PerspectiveCamera makeDefault fov={profile && (camMode === "FIRST_PERSON" || rigActive) ? profile.fov : fov} near={0.05} />
@@ -156,6 +156,7 @@ export default function Cameras() {
     camMode === "GALLERY" &&
     (screen === "sandbox_setup" || screen === "signal_recon_setup");
 
+  const isChanging = screen === "sandbox" && overlay === "vehicle_select";
   const isDriving =
     screen === "sandbox" &&
     !editor &&
@@ -175,9 +176,9 @@ export default function Cameras() {
         maxYaw={camMode === "BIRDS_EYE" ? 0 : Math.PI * 0.65}
         maxPitch={camMode === "BIRDS_EYE" ? 0 : 0.45}
         playerId={playerId}
-        enabled={isDriving && (overlay === null || cameraEditing) && !rigActive}
-        offset={playerCameraPreset.offset}
-        targetOffset={playerCameraPreset.targetOffset}
+        enabled={(isChanging || (isDriving && (overlay === null || cameraEditing))) && !rigActive}
+        offset={isChanging ? [7, 3.5, -8] : playerCameraPreset.offset}
+        targetOffset={isChanging ? [0, .5, 0] : playerCameraPreset.targetOffset}
         positionSpeed={playerCameraPreset.positionSpeed}
         targetSpeed={playerCameraPreset.targetSpeed}
       />

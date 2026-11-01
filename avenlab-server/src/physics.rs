@@ -56,6 +56,8 @@ pub struct PhysicsWorld {
     pub body_to_player: HashMap<RigidBodyHandle, String>, // body handle → playerId
     pub debug_overlay: DebugOverlay,// for debug visualization
     pub debug_flags: DebugFlags,
+    spawn_poses: HashMap<String, (Isometry<Real>, Real)>,
+    falling_seconds: HashMap<String, Real>,
 }
 
 impl PhysicsWorld {
@@ -307,6 +309,7 @@ impl PhysicsWorld {
 
 
     pub fn despawn_vehicle_for_player(&mut self, player_id: &str) {
+        self.spawn_poses.remove(player_id); self.falling_seconds.remove(player_id);
         let Some(vehicle) = self.vehicles.remove(player_id) else {
             return;
         };
@@ -369,6 +372,7 @@ impl PhysicsWorld {
                 block_boxes: Vec::new(),
             },
             debug_flags: DebugFlags::NONE,
+            spawn_poses: HashMap::new(), falling_seconds: HashMap::new(),
         }
     }
 
@@ -404,17 +408,15 @@ impl PhysicsWorld {
         if recover { let _ = self.recover_vehicle_for_player(player_id); }
     }
 
-    /// Sandbox recovery rights a car on clear road without repairing, cooling,
+    /// Recovery returns a car to its recorded map spawn without repairing, cooling,
     /// refilling or changing ownership. A held Reset input triggers only once.
     pub fn recover_vehicle_for_player(&mut self, player_id: &str) -> Result<(), String> {
         let vehicle = self.vehicles.get(player_id).ok_or("Spawn a vehicle first")?;
         let handle = vehicle.body;
         let config = vehicle.config;
         let body = self.bodies.get(handle).ok_or("Vehicle body unavailable")?;
-        let forward = body.rotation() * Vector::z();
-        let mut pose = *body.position();
-        pose.rotation = Rotation::from_euler_angles(0.0, forward.x.atan2(forward.z), 0.0);
-        let road = self.active_map.as_ref().map(|map| map.surface.road_y).unwrap_or(0.0);
+        let (mut pose, road) = self.spawn_poses.get(player_id).copied()
+            .unwrap_or((*body.position(), self.active_map.as_ref().map(|map| map.surface.road_y).unwrap_or(0.0)));
         pose.translation.y = config.nominal_chassis_y(road)
             .max(road + config.chassis_half_extents[1] - config.chassis_com_offset[1] + 0.05);
         let [hx, hy, hz] = config.chassis_half_extents;
@@ -424,7 +426,7 @@ impl PhysicsWorld {
         if self.query_pipeline.intersection_with_shape(&self.bodies, &self.colliders,
             &(pose * Isometry::translation(cx, cy, cz)), &*shape,
             QueryFilter::default().exclude_rigid_body(handle)).is_some() {
-            return Err("Recovery needs clear road around the vehicle".into());
+            return Err("Spawn is occupied. Wait for the area to clear and reset again.".into());
         }
         let body = self.bodies.get_mut(handle).unwrap();
         body.set_position(pose, true); body.set_linvel(Vector::zeros(), true);
@@ -539,6 +541,7 @@ impl PhysicsWorld {
         let spawn_y =
             suspension_spawn_y.max(minimum_chassis_y);
 
+        self.spawn_poses.insert(id.to_string(), (Isometry::new(vector![spawn_x, spawn_y, spawn_z], vector![0.0, spawn_yaw, 0.0]), road_surface_y));
         // Rigid body
         let rb = RigidBodyBuilder::dynamic()
             .translation(vector![spawn_x, spawn_y, spawn_z])
@@ -619,6 +622,9 @@ impl PhysicsWorld {
     pub fn change_vehicle_for_player(&mut self, player_id: &str, vehicle_id: &str) -> Result<(), String> {
         let config = config_for_vehicle(vehicle_id)
             .ok_or_else(|| format!("Unknown vehicle id '{vehicle_id}'"))?;
+        if self.vehicles.get(player_id).and_then(|v|self.bodies.get(v.body)).is_some_and(|b| b.translation().y < self.active_map.as_ref().map(|m|m.surface.road_y).unwrap_or(0.0)-20.0) {
+            self.recover_vehicle_for_player(player_id)?;
+        }
         self.configure_vehicle_for_player(player_id, config)
     }
 
@@ -840,6 +846,22 @@ impl PhysicsWorld {
         }
 
 
+        // Recovery is server-owned and independent of menus or held input.
+        // Allow a brief fall before resetting to the authored spawn, not origin.
+        let mut recover = Vec::new();
+        for (id, vehicle) in &self.vehicles {
+            let Some(body) = self.bodies.get(vehicle.body) else { continue; };
+            let road = self.spawn_poses.get(id).map(|s|s.1).unwrap_or(0.0);
+            let p = body.translation();
+            let elapsed = self.falling_seconds.entry(id.clone()).or_default();
+            if !p.iter().all(|v|v.is_finite()) { recover.push(id.clone()); }
+            else if p.y < road - 20.0 {
+                *elapsed += dt;
+                if *elapsed >= 2.0 { recover.push(id.clone()); }
+            } else { *elapsed = 0.0; }
+        }
+        for id in recover { if self.recover_vehicle_for_player(&id).is_ok() { self.falling_seconds.remove(&id); } }
+
         // Safety: prevent bodies from exploding to insane coordinates
         for (_, body) in self.bodies.iter_mut() {
             let mut pos = *body.translation();
@@ -975,6 +997,26 @@ mod tests {
         assert_eq!(vehicle.powertrain.temperature_c, vehicle.config.resources.initial_temp_c);
         assert!(!vehicle.powertrain.engine_requested); assert!(!vehicle.powertrain.running);
         assert_eq!(*world.bodies[handle].position(), position);
+    }
+
+    #[test]
+    fn reset_and_fall_recovery_return_to_recorded_spawn() {
+        let mut world=flat_world();
+        let handle=world.spawn_vehicle_for_player("fall-test".into(),[0.0;3],"brz","red").unwrap();
+        let spawn=*world.bodies[handle].translation();
+        world.bodies[handle].set_translation(vector![45.0,10.0,65.0],true);
+        world.recover_vehicle_for_player("fall-test").unwrap();
+        assert!((*world.bodies[handle].translation()-spawn).norm()<0.01);
+        world.bodies[handle].set_translation(vector![45.0,-40.0,65.0],true);
+        for _ in 0..60 { world.step(SIMULATION_DT); }
+        assert!(world.bodies[handle].translation().y < -20.0,"brief fall should be visible");
+        for _ in 0..65 { world.step(SIMULATION_DT); }
+        assert!((world.bodies[handle].translation().x-spawn.x).abs()<0.01);
+        assert!(world.bodies[handle].translation().y > -1.0);
+        world.bodies[handle].set_translation(vector![45.0,-40.0,65.0],true);
+        world.change_vehicle_for_player("fall-test","ae86").unwrap();
+        assert!((world.bodies[handle].translation().x-spawn.x).abs()<0.01);
+        assert!(world.bodies[handle].translation().y > 0.0);
     }
 
     #[test]

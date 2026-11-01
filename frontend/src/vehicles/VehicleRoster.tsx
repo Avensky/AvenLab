@@ -1,3 +1,5 @@
+import { useUIStore } from "../store/menus/uiStore";
+import { useSelectionStore } from "../store/selection/selectionStore";
 import { Suspense, memo, useMemo, useRef } from "react";
 import type { Group } from "three";
 import { useFrame } from "@react-three/fiber";
@@ -161,6 +163,9 @@ function GlbVehicle({ entity }: { entity: RosterEntity }) {
 
 export const VehicleRoster = memo(function VehicleRoster() {
   const mode = useWorldStore((s) => s.mode);
+  const overlay=useUIStore(s=>s.overlay);
+  const local=useNetworkStore(s=>s.playerId);
+  const preview=useSelectionStore(s=>s.getSelectedVehicle().id);
   const overrides = useRenderSettingsStore((s) => s.vehicleOverrides);
   // A stable scalar selector avoids rerendering all loaded GLBs on every
   // snapshot/debug packet. Joins, model changes and team changes still update.
@@ -184,8 +189,8 @@ export const VehicleRoster = memo(function VehicleRoster() {
       {entities.map((entity) => (
         <NetworkVehicle
           key={entity.id}
-          entity={entity}
-          mode={overrides[entity.id] ?? mode}
+          entity={overlay === "vehicle_select" && entity.id === local ? {...entity,vehicle_id:preview} : entity}
+          mode={overlay === "vehicle_select" && entity.id === local ? "glb" : overrides[entity.id] ?? mode}
         />
       ))}
     </group>

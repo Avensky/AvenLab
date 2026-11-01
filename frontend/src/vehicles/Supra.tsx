@@ -1,3 +1,4 @@
+import { useLiveAppearance } from "./cosmetics/useLiveAppearance";
 import { applyHeadlightBeam } from "./tools/headlightBeam";
 import { useVehicleVisualAlignment } from "../hooks/useVehicleVisualAlignment";
 import { useRenderSettingsStore } from "../store/presentation/renderSettingsStore";
@@ -42,6 +43,7 @@ export const Supra = forwardRef<Group, SupraProps>(function Supra(
   const { scene } = useGLTF(MODEL_PATH);
   const vehicleGroupRef = useRef<Group>(null!);
   const vehicleVisualGroupRef = useRef<Group>(null!);
+  useLiveAppearance(vehicleVisualGroupRef, "supra", entityId);
   useImperativeHandle(ref, () => vehicleGroupRef.current, []);
 
   const isVehiclePreview = useUIStore(

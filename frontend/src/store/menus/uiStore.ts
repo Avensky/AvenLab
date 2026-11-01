@@ -28,7 +28,7 @@ export const useUIStore = create<UIState>()((set, get, api) => ({
       overlay: null,
       vehicleSelectionParent: null,
       settingsParent: null,
-      ...(["mode_select", "hero_select", "queue"].includes(screen)
+      ...(["mode_select", "hero_select", "heroes", "queue"].includes(screen)
         ? { isModeLoading: false, loadingProgress: 100 }
         : {}),
     });

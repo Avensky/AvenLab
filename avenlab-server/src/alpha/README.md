@@ -15,3 +15,5 @@ New fields have serde defaults for existing social files. Back up runtime/social
 privately before upgrades. This remains a single-process alpha store; commercial
 accounts, database-backed result rosters, payment and skin rendering are separate
 future work. See docs/ALPHA_UI_AND_LOBBIES.md.
+
+Hero loadouts: hero_loadout_save validates the policy hero, hex/factory body color, finish and seat request, and checks skin ownership. It persists the default hero and vehicle-keyed loadout in progression. Spawn, hero/model changes and editor rebuilds attach the matching appearance to entity snapshots. Body paint is editable alpha customization; no rare-item grant or purchase API is introduced.

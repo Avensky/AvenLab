@@ -1,3 +1,4 @@
+import { useHeroLoadouts, type HeroAppearance } from "../../vehicles/cosmetics/heroLoadouts";
 import { create } from "zustand";
 import { useSelectionStore, vehicleCatalog } from "../selection/selectionStore";
 import { usePreferencesStore } from "../preferences/preferencesStore";
@@ -101,6 +102,8 @@ export const HEROES: {
   },
 ];
 export type Progression = {
+  default_hero?: string;
+  hero_loadouts?: Record<string,HeroAppearance>;
   level: number;
   prestige: number;
   xp: number;
@@ -182,14 +185,10 @@ export const useAlphaStore = create<{
 /** A showcase is a preference, never a submitted match pick. Both stages use
  * the same garage and animation owner; only chooseHero confirms a loadout. */
 export function showFavoriteHero() {
-  const favorites = usePreferencesStore.getState().favoriteVehicles;
-  const vehicle = favorites.find((id) =>
-    vehicleCatalog.some((v) => v.id === id),
-  );
-  if (vehicle)
-    useSelectionStore.setState({
-      vehicleIndex: vehicleCatalog.findIndex((v) => v.id === vehicle),
-    });
+  const hero=HEROES.find(h=>h.id===useHeroLoadouts.getState().defaultHero);
+  const vehicle=hero?.vehicle??usePreferencesStore.getState().favoriteVehicles[0];
+  const index=vehicleCatalog.findIndex(v=>v.id===vehicle);
+  if(index>=0)useSelectionStore.setState({vehicleIndex:index});
 }
 
 /** Mouse, keyboard and controller Back share the same research setup parent. */

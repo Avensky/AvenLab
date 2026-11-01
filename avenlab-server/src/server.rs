@@ -321,6 +321,11 @@ impl Server {
         room.send_existing_configs(&client.tx);
         Ok(json!({"world_id":world_id,"map":world.map}))
     }
+    pub async fn saved_appearance(&self, player: &str, vehicle: &str) -> crate::alpha::appearance::HeroAppearance {
+        let profile = self.connections.lock().await.get(player).and_then(|c|c.profile_id.clone());
+        let data = self.data.lock().await;
+        profile.and_then(|id|data.profiles.get(&id)).and_then(|p|p.progression.hero_loadouts.get(vehicle)).cloned().unwrap_or_default()
+    }
     pub async fn spawn(&self, player: &str, map: &str, vehicle: &str) -> Result<(), String> {
         let _operation = self.operations.lock().await;
         let current = self
@@ -376,7 +381,11 @@ impl Server {
         }
         self.validate_alpha_vehicle(player, vehicle).await?;
         let runtime = self.runtime(player).await?;
-        runtime.lock().await.spawn(player, vehicle)?;
+        let appearance = self.saved_appearance(player, vehicle).await;
+        let mut room = runtime.lock().await;
+        room.spawn(player, vehicle)?;
+        if let Some(entity)=room.game.entities.get_mut(player) { entity.appearance=appearance; }
+        drop(room);
         self.publish().await;
         Ok(())
     }
@@ -399,7 +408,7 @@ impl Server {
         };
         let result = match action {
             "mode_join" | "mode_cancel" | "hero_select" | "skin_redeem" | "skin_equip"
-            | "editor_apply" | "editor_vehicle_get" | "editor_vehicle_apply" => self.handle_alpha(player, &value).await?,
+            | "hero_loadout_save" | "editor_apply" | "editor_vehicle_get" | "editor_vehicle_apply" => self.handle_alpha(player, &value).await?,
 
             "identify" => {
                 let previous = self.data.lock().await.clone();

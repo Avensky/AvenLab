@@ -62,6 +62,7 @@ pub struct PhysicsEntitySnapshot {
     pub kind: String,
     /// Canonical model id selected at spawn (ae86, brz, camaro, supra, ...).
     pub vehicle_id: Option<String>,
+    pub appearance: crate::alpha::appearance::HeroAppearance,
     pub room_id: usize,
     pub team: String,
 
@@ -184,6 +185,7 @@ pub struct EntityState {
     pub kind: EntityType,
     /// Selected model id used by every client to render this entity.
     pub vehicle_id: Option<String>,
+    pub appearance: crate::alpha::appearance::HeroAppearance,
     pub room_id: usize,
     pub team: Team,
     pub body_handle: RigidBodyHandle,
@@ -302,6 +304,7 @@ impl SharedGameState {
             id: id.to_string(),
             kind,
             vehicle_id: None,
+            appearance: Default::default(),
             room_id: 0, // overwritten later
             team: Team::Red, // overwritten later
             body_handle: RigidBodyHandle::invalid(),
@@ -492,6 +495,7 @@ impl SharedGameState {
                 id: ent.id.clone(),
                 kind: ent.kind.as_str().to_string(),
                 vehicle_id: ent.vehicle_id.clone(),
+                appearance: ent.appearance.clone(),
                 room_id: ent.room_id,
                 team: ent.team.as_str().to_string(),
 

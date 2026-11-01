@@ -602,7 +602,7 @@ export function SettingsMenu() {
           },
           {
             id: "appearance", label: "Appearance",
-            description: "Global theme and coordinated cosmetic previews. Local previews do not grant live unlocks.",
+            description: "Global interface theme and cockpit matching. Paint and equipped hero loadouts are in Main menu → Heroes.",
             rows: appearanceSettingsRows(prefs, prefs.update),
           },
           {

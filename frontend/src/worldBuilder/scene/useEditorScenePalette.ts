@@ -1,12 +1,13 @@
 import { useThree } from "@react-three/fiber";
 import { useLayoutEffect } from "react";
-import { Color, Fog, type Scene } from "three";
+import { Color, type Scene } from "three";
 import { useEditorPalette } from "../state/editorPreferences";
 
 function applyScenePalette(scene: Scene, backgroundColor: string, invalidate: () => void) {
   const background = scene.background, fog = scene.fog;
   scene.background = new Color(backgroundColor);
-  scene.fog = new Fog(backgroundColor, 320, 950);
+  // Authoring must stay visible at the fit-to-world camera distance.
+  scene.fog = null;
   invalidate();
   return () => { scene.background = background; scene.fog = fog; invalidate(); };
 }

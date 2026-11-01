@@ -1,6 +1,7 @@
 export type MenuScreen =
   | "loading"
   | "main"
+  | "heroes"
   | "mode_select"
   | "hero_select"
   | "queue"

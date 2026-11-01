@@ -1,0 +1,11 @@
+.hero-workshop {position:fixed;inset:0;z-index:35;pointer-events:none;padding:16px;display:grid;grid-template-columns:minmax(100px,180px) 1fr minmax(250px,320px);grid-template-rows:58px minmax(0,1fr);gap:12px;background:transparent!important;}
+.hero-workshop header {grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;pointer-events:auto;color:var(--app-text);background:var(--app-panel);padding:8px 12px;}
+.hero-workshop h1 {margin:0;font-size:20px;}.hero-workshop h2{font-size:17px;margin:0;}
+.hero-workshop-roster {display:flex;flex-direction:column;gap:7px;overflow:auto;pointer-events:auto;}
+.hero-workshop-roster button{min-height:46px;flex-shrink:0;}.hero-workshop-roster small{display:block;color:var(--app-muted);}
+.hero-modifications {grid-column:3;overflow:auto;background:var(--app-panel);color:var(--app-text);padding:14px;pointer-events:auto;display:flex;flex-direction:column;gap:10px;}
+.hero-modifications label{display:flex;flex-direction:column;gap:5px;font-size:11px;}.hero-modifications select,.hero-modifications input{width:100%;min-height:36px;background:var(--app-raised);color:var(--app-text);border:1px solid var(--app-line);}
+.hero-modifications p{font-size:11px;color:var(--app-muted);margin:0;}.hero-modifications button{min-height:40px;flex-shrink:0;}.hero-modifications button:disabled{opacity:.7;}.hero-save{border-color:var(--app-accent)!important;}
+.menu-world-vehicle-overlay {background:transparent!important;backdrop-filter:none!important;display:flex;align-items:center;justify-content:flex-end;padding:12px;pointer-events:none;}.menu-world-vehicle-overlay .menu-vehicle-card{pointer-events:auto;width:min(340px,42vw);max-height:90vh;overflow:auto;background:var(--app-panel);}
+@media(max-width:700px){.hero-workshop{padding:6px;gap:6px;grid-template-columns:minmax(70px,100px) 1fr minmax(180px,42vw);grid-template-rows:46px minmax(0,1fr);}.hero-modifications{padding:8px;}.hero-workshop header{padding:4px 8px;}}
+@media(max-width:500px) and (orientation:portrait){.hero-workshop{grid-template-columns:1fr;grid-template-rows:46px 52px minmax(120px,1fr) minmax(170px,38vh);}.hero-workshop-roster{grid-row:2;flex-direction:row;}.hero-workshop-roster button{min-width:88px;}.hero-modifications{grid-column:1;grid-row:4;}.hero-workshop header{grid-column:1;}}

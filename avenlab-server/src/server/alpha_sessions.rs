@@ -331,6 +331,26 @@ impl Server {
             }
             "editor_apply" => self.apply_editor_document(player, value).await,
             "editor_vehicle_get" | "editor_vehicle_apply" => self.edit_vehicle(player, value).await,
+            "hero_loadout_save" => {
+                let actor=self.actor(player).await?;
+                let hero=value["hero"].as_str().ok_or("Choose a hero.")?;
+                let selected=policy::hero(hero)?;
+                let appearance: crate::alpha::appearance::HeroAppearance=serde_json::from_value(value["appearance"].clone()).map_err(|_|"Invalid appearance payload.")?;
+                let previous=self.data.lock().await.clone();
+                let mut data=self.data.lock().await;
+                let p=&mut data.profiles.get_mut(&actor).ok_or("Profile unavailable.")?.progression;
+                appearance.validate(&p.owned)?;
+                p.hero_loadouts.insert(selected.vehicle.into(),appearance.clone());
+                if value["make_default"].as_bool()==Some(true) { p.default_hero=hero.into(); }
+                drop(data);self.commit(previous).await?;
+                if let Ok(runtime)=self.runtime(player).await {
+                    let mut room=runtime.lock().await;
+                    if let Some(entity)=room.game.entities.get_mut(player) {
+                        if entity.vehicle_id.as_deref()==Some(selected.vehicle) { entity.appearance=appearance; }
+                    }
+                }
+                Ok(json!({}))
+            }
             "skin_redeem" | "skin_equip" => {
                 let actor = self.actor(player).await?;
                 let previous = self.data.lock().await.clone();
@@ -410,11 +430,13 @@ impl Server {
             }
         }
         let runtime = self.runtime(player).await?;
+        let appearance=self.saved_appearance(player,selected.vehicle).await;
         let mut room = runtime.lock().await;
         if room.physics.vehicles.contains_key(player) {
             room.physics
                 .change_vehicle_for_player(player, selected.vehicle)?;
             room.game.set_vehicle_id(player, selected.vehicle);
+            if let Some(entity)=room.game.entities.get_mut(player) { entity.appearance=appearance; }
             if let Some(entity) = room.game.entities.get_mut(player) {
                 entity.last_packet = None;
             }
@@ -595,6 +617,7 @@ impl Server {
         game.apply_spawn_info(&spawn);
         game.attach_body(player, handle);
         game.set_vehicle_id(player, vehicle);
+        if let Some(entity)=game.entities.get_mut(player) { entity.appearance=self.saved_appearance(player,vehicle).await; }
         let room = WorldRuntime { game, physics };
         let map = room.physics.map_snapshot();
         let runtime = Arc::new(Mutex::new(room));

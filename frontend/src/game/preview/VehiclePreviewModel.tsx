@@ -1,3 +1,4 @@
+import { useHeroLoadouts } from "../../vehicles/cosmetics/heroLoadouts";
 import { UI_THEMES } from "../../theme/catalog";
 import { COSMETIC_BUNDLES } from "../../vehicles/cosmetics/catalog";
 import { useEffect, useMemo } from "react";
@@ -48,6 +49,7 @@ function PreviewAsset({
   platform: readonly [number, number];
   ghost: boolean;
 }) {
+  const savedAppearance = useHeroLoadouts(s => s.draft?.vehicle === model ? s.draft.appearance : s.loadouts[model]);
   const paint = usePreferencesStore(s => s.garageEffects.paint);
   const softness = usePreferencesStore(s => s.garageEffects.paintSoftness);
   const cosmetics = usePreferencesStore(s => s.vehicleCosmetics);
@@ -64,11 +66,12 @@ function PreviewAsset({
   useEffect(() => () => prepared.dispose(), [prepared]);
   useEffect(() => {
     const body = COSMETIC_BUNDLES[cosmetics.bundle].body;
-    applyShowroomPaint(prepared.root, model, paint, body === "theme" ? UI_THEMES[theme]["scene-tint"] : body ?? undefined);
-  }, [prepared, model, paint, cosmetics.bundle, theme]);
+    applyShowroomPaint(prepared.root, model, savedAppearance ? "factory" : paint,
+      savedAppearance ? (savedAppearance.body === "factory" ? undefined : savedAppearance.body) : body === "theme" ? UI_THEMES[theme]["scene-tint"] : body ?? undefined);
+  }, [prepared, model, paint, cosmetics.bundle, theme, savedAppearance]);
   useEffect(() => {
-    applyShowroomHighlights(prepared.root, softness, cosmetics.finish);
-  }, [prepared, softness, cosmetics.finish]);
+    applyShowroomHighlights(prepared.root, softness, savedAppearance?.finish ?? cosmetics.finish);
+  }, [prepared, softness, cosmetics.finish, savedAppearance]);
   const materials = useMemo(
     () => previewMaterialState(prepared.root),
     [prepared],

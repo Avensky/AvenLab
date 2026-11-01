@@ -304,7 +304,7 @@ export default function LayoutScene() {
         }
         fov={42}
         near={1}
-        far={3000}
+        far={Math.max(3000, frame.span * 10)}
       />
       <OrbitControls
         makeDefault
@@ -312,7 +312,7 @@ export default function LayoutScene() {
         enableRotate={camera !== "top"}
         maxPolarAngle={Math.PI / 2 - 0.015}
         minDistance={3}
-        maxDistance={1800}
+        maxDistance={Math.max(1800, frame.span * 4)}
       />
       <mesh
         rotation={[-Math.PI / 2, 0, 0]}

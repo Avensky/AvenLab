@@ -42,6 +42,7 @@ function LegacyVehicleMenu() {
   const buttons = useRef<Array<HTMLButtonElement | null>>([]);
   const id = useId();
   const back = useUIStore((s) => s.backToParentMenu);
+  useEffect(()=>{useSelectionStore.setState({vehicleIndex:selected});},[selected]);
 
   useEffect(() => {
     mounted.current = true;
@@ -108,7 +109,7 @@ function LegacyVehicleMenu() {
   });
 
   return (
-    <div className="game-ui menu-surface menu-confirm-overlay fixed inset-0 z-50">
+    <div className="game-ui menu-surface menu-world-vehicle-overlay fixed inset-0 z-50">
       <section
         role="dialog"
         aria-modal="true"
