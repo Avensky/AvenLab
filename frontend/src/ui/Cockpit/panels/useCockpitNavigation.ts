@@ -1,7 +1,7 @@
 import { useEffect, type RefObject } from "react";
 import { useUIStore, type CockpitTab } from "../../../store/menus/uiStore";
 import type { MenuAction } from "../../../controls/inputRouting";
-import { COCKPIT_TABS } from "./tabs";
+import { COCKPIT_TABS, cockpitParent } from "./tabs";
 /** One keyboard/controller navigation owner for every cockpit page. Synthetic
  * slider/key steps always include keyup, so contact feedback cannot linger. */
 export function useCockpitNavigation(
@@ -10,7 +10,7 @@ export function useCockpitNavigation(
 ) {
   useEffect(() => {
     root.current
-      ?.querySelector<HTMLButtonElement>(`[data-cockpit-tab="${tab}"]`)
+      ?.querySelector<HTMLButtonElement>(`[data-cockpit-tab="${cockpitParent(tab)}"]`)
       ?.focus({ preventScroll: true });
   }, [tab, root]);
   useEffect(() => {
@@ -33,7 +33,7 @@ export function useCockpitNavigation(
       if (action === "next_tab" || action === "previous_tab") {
         const state = useUIStore.getState(),
           index = COCKPIT_TABS.findIndex(
-            (item) => item.id === state.cockpitTab,
+            (item) => item.id === cockpitParent(state.cockpitTab),
           );
         state.setCockpitTab(
           COCKPIT_TABS[

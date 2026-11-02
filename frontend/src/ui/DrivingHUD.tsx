@@ -1,3 +1,4 @@
+import { TurretJoystick } from "../combat/TurretJoystick";
 import { ChatDock } from "./ChatDock";
 import { useEffect, type CSSProperties } from "react";
 import { usePreferencesStore } from "../store/preferences/preferencesStore";
@@ -78,6 +79,7 @@ export function DrivingHUD() {
             style={{ "--wheel-drop": drop } as CSSProperties}
           >
             <Steering />
+            <div className="turret-mobile-slot"><TurretJoystick /></div>
           </div>
         </HudGroup>
       )}

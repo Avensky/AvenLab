@@ -199,6 +199,9 @@ pub struct EntityState {
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct CombatPose {
+    #[serde(default)] pub shot:u32,
+    #[serde(default)] pub ammo:u8,
+    #[serde(default)] pub reload:f32,
     #[serde(default)] pub enabled: bool,
     #[serde(default)] pub fire: bool,
     #[serde(default)] pub yaw: f32,
@@ -211,7 +214,7 @@ pub struct CombatPose {
 impl CombatPose {
     pub fn bounded(&self) -> Self {
         let finite = |v:f32, lo:f32, hi:f32| if v.is_finite() {v.clamp(lo,hi)} else {0.0};
-        Self {enabled:self.enabled,fire:self.fire,yaw:finite(self.yaw,-std::f32::consts::PI,std::f32::consts::PI),pitch:finite(self.pitch,-0.7854,0.7854),x:finite(self.x,-3.0,3.0),y:finite(self.y,-3.0,3.0),z:finite(self.z,-3.0,3.0),role:if ["assault","support","medic"].contains(&self.role.as_str()){self.role.clone()}else{"assault".into()}}
+        Self {shot:self.shot,ammo:self.ammo,reload:self.reload,enabled:self.enabled,fire:self.fire,yaw:finite(self.yaw,-std::f32::consts::PI,std::f32::consts::PI),pitch:finite(self.pitch,-0.7854,0.7854),x:finite(self.x,-3.0,3.0),y:finite(self.y,-3.0,3.0),z:finite(self.z,-3.0,3.0),role:if ["assault","support","medic"].contains(&self.role.as_str()){self.role.clone()}else{"assault".into()}}
     }
 }
 
@@ -497,7 +500,7 @@ impl SharedGameState {
             );
 
             entities_out.push(PhysicsEntitySnapshot {
-                combat: ent.last_packet.as_ref().and_then(|p|p.combat.as_ref()).map(|c|c.bounded()).unwrap_or_default(),
+                combat: physics.combat_poses.get(&ent.id).cloned().unwrap_or_default(),
                 condition: vehicle.powertrain.condition,
                 ultimate_fraction: vehicle.powertrain.ultimate_fraction,
                 boost_fraction: vehicle.powertrain.boost_fraction(vehicle.config.resources),

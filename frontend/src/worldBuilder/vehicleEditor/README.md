@@ -61,3 +61,5 @@ Authoring disables distance fog while mounted and restores the scene fog on exit
 The scene toolbar has a dedicated Pan View mode. Perspective uses left-drag orbit by default; Pan View uses left/one-finger pan, and top view always pans on left drag. Right drag pans, wheel zooms, and two-finger touch pans/zooms. Plan view also supports the Pan tool. Selecting transform tools exits Pan; placement exits Pan. Bottom Grid/Angle/camera controls sit to the right of the left tool bank, whose height is bounded on short screens.
 
 Weapons tab: choose assault/support/medic placeholder and adjust XYZ chassis mount offsets. Presets are local per vehicle; the equipped mount is sent with combat input and replicated as a bounded world-oriented turret pose. Combat Test remains opt-in from the driving HUD.
+
+Tank uses factory GLB yaw/elevation pivots and hull/turret collision proxies; its barrel is a query sensor. Weapons contains explicit Test/Stop controls. Bearing/reload moved into the instruments; instructions are in Cockpit -> Missions. See docs/TANK-AND-COCKPIT.md.

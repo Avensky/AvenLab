@@ -2,3 +2,18 @@
 .ve-panel header,.ve-panel nav,.ve-actions,.ve-drive-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.ve-panel header strong{flex:1}.ve-panel button,.ve-drive-bar button{padding:8px 10px;border:1px solid currentColor;background:transparent;color:inherit;font-size:11px;cursor:pointer}.ve-panel button:disabled{opacity:.4;cursor:default}.ve-panel button:hover:not(:disabled),.ve-panel button[aria-pressed=true]{background:var(--app-accent,#426486)}.ve-fields{flex:1}.ve-panel label{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 0}.ve-panel input[type=number]{width:105px}.ve-panel input,.ve-panel select{background:#172436;color:inherit;border:1px solid #60738b;padding:6px;min-width:0}.ve-panel p{font-size:12px;line-height:1.5;opacity:.8}.ve-panel output{color:#e7bc75;white-space:pre-wrap}.ve-drive-bar{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:40;background:#101b2be8;color:#e5edf5;padding:8px;max-width:95vw;font:11px system-ui}.ve-panel :focus-visible{outline:2px solid var(--app-accent,#69ccee);outline-offset:2px}@media(max-height:550px){.ve-panel{gap:6px;padding:10px}.ve-panel label{padding:4px 0}.ve-panel p{margin:4px 0}}
 .ve-drive-bar {background:var(--app-panel,#101b2b);color:var(--app-text,#e5edf5);border:0;box-shadow:0 8px 26px #0003;}
 .ve-panel input,.ve-panel select {background:var(--app-raised,#172436);color:var(--app-text,#e5edf5);border-color:var(--app-line,#60738b);border-radius:var(--app-radius-sm,10px);}
+
+/* Compact field grids and scoped scrolling keep actions visible on phones. */
+.ve-panel{width:clamp(310px,37vw,520px);padding:10px;gap:6px;overflow:hidden}
+.ve-panel nav{gap:3px}.ve-panel nav button{flex:1 0 auto;padding:7px 8px}
+.ve-fields{min-height:0;overflow-y:auto;overscroll-behavior:contain;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-content:start;gap:4px 10px}
+.ve-fields>p,.ve-fields>h3,.ve-fields>.ve-weapon-toolbar,.ve-fields>.ve-actions{grid-column:1/-1;margin:4px 0}
+.ve-fields label{display:flex;flex-wrap:wrap;gap:4px;padding:4px 0;align-content:start;font-size:11px}.ve-fields input[type=number]{width:82px}.ve-fields label small{font-size:9px}
+.ve-panel footer{gap:4px}.ve-panel footer button{flex:1 0 28%;padding:7px 5px}
+.ve-weapon-toolbar{display:flex;gap:5px;align-items:center;flex-wrap:wrap}.ve-weapon-toolbar button{flex:1}
+.ve-panel output:empty{display:none}
+@media(max-width:480px){.ve-panel{inset:6px;width:auto;padding:8px}.ve-fields{gap:3px 8px}.ve-panel header button{padding:7px 5px}.ve-panel header strong{font-size:11px}}
+
+.ve-panel{bottom:auto;max-height:calc(100dvh - 24px)}.ve-fields{flex:0 1 auto}.ve-panel header,.ve-panel nav,.ve-panel footer{flex-shrink:0}@media(max-width:480px){.ve-panel{bottom:auto;max-height:calc(100dvh - 12px)}}
+
+.ve-panel{box-sizing:border-box}.ve-fields>*{min-width:0}.ve-panel input,.ve-panel select{box-sizing:border-box;max-width:100%}

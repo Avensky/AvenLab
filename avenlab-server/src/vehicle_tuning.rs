@@ -4,6 +4,7 @@ use crate::vehicle_state::VehicleConfig;
 use serde_json::{Map, Value};
 
 pub fn validated_config(mut c: VehicleConfig, patch: &Map<String, Value>) -> Result<VehicleConfig, String> {
+    let tracked=c.tracked;
     for (key, value) in patch {
         if key == "abs_enabled" || key == "tcs_enabled" {
             let enabled = value.as_bool().ok_or("Assist values must be boolean.")?;
@@ -19,7 +20,7 @@ pub fn validated_config(mut c: VehicleConfig, patch: &Map<String, Value>) -> Res
             "angular_damping" => (&mut c.angular_damping, 0.0, 10.0),
             "mu_base" => (&mut c.mu_base, 0.1, 3.0),
             "load_sensitivity" => (&mut c.load_sensitivity, 0.0, 1.0),
-            "max_steer_angle" => (&mut c.max_steer_angle, 0.05, 1.2),
+            "max_steer_angle" => (&mut c.max_steer_angle, if tracked {0.0}else{0.05}, 1.2),
             "ackermann" => (&mut c.ackermann, 0.0, 1.0),
             "wheel_radius" => (&mut c.wheel_radius, 0.15, 1.5),
             "suspension_rest_length" => (&mut c.suspension_rest_length, 0.01, 1.5),
@@ -37,6 +38,7 @@ pub fn validated_config(mut c: VehicleConfig, patch: &Map<String, Value>) -> Res
         }
         *target = n as f32;
     }
+    if tracked {c.max_steer_angle=0.0;c.ackermann=0.0;}
     if c.suspension_sag >= c.suspension_max_length {
         return Err("Suspension sag must be smaller than suspension travel.".into());
     }

@@ -129,8 +129,8 @@ impl PhysicsWorld {
         // snapshots are serialized, preserving the current correct visual sides.
         // This implementation registers four wheels for every current config.
         let wheels = vec![
-            make_wheel(-half_front_track, front_z, false, true, "FL"),
-            make_wheel(half_front_track, front_z, false, true, "FR"),
+            make_wheel(-half_front_track, front_z, config.tracked, !config.tracked, "FL"),
+            make_wheel(half_front_track, front_z, config.tracked, !config.tracked, "FR"),
             make_wheel(-half_rear_track, rear_z, true, false, "RL"),
             make_wheel(half_rear_track, rear_z, true, false, "RR"),
         ];
@@ -162,6 +162,7 @@ impl PhysicsWorld {
 // -----------------------------------------------------------------------------
 
 pub const AE86: VehicleConfig = VehicleConfig {
+    tracked: false,
     resources: ROAD_RESOURCES,
     // Performance and identity
     mass: 950.0,
@@ -214,6 +215,7 @@ pub const AE86: VehicleConfig = VehicleConfig {
 // -----------------------------------------------------------------------------
 
 pub const GT86: VehicleConfig = VehicleConfig {
+    tracked: false,
     // Performance and identity
     mass: 1_270.0,
     engine_force: 8_000.0,
@@ -233,6 +235,7 @@ pub const GT86: VehicleConfig = VehicleConfig {
 };
 
 pub const BRZ: VehicleConfig = VehicleConfig {
+    tracked: false,
     // Performance and identity
     mass: 1_280.0,
     engine_force: 8_500.0,
@@ -259,6 +262,7 @@ pub const BRZ: VehicleConfig = VehicleConfig {
 // -----------------------------------------------------------------------------
 
 pub const CAMARO: VehicleConfig = VehicleConfig {
+    tracked: false,
     resources: MUSCLE_RESOURCES,
     // Performance and identity
     mass: 1_650.0,
@@ -287,6 +291,7 @@ pub const CAMARO: VehicleConfig = VehicleConfig {
 // -----------------------------------------------------------------------------
 
 pub const SUPRA: VehicleConfig = VehicleConfig {
+    tracked: false,
     resources: SUPRA_RESOURCES,
     // Performance and identity
     mass: 1_540.0,
@@ -342,22 +347,23 @@ pub const SUPRA: VehicleConfig = VehicleConfig {
 // -----------------------------------------------------------------------------
 
 pub const TANK: VehicleConfig = VehicleConfig {
+    tracked: true,
     resources: TANK_RESOURCES,
     // Performance and identity
     mass: 40_000.0,
-    engine_force: 30_000.0,
-    brake_force: 30_000.0,
+    engine_force: 90_000.0,
+    brake_force: 150_000.0,
     max_speed: 18.0,
 
     // Physical dimensions
-    chassis_half_extents: [1.50, 0.80, 3.00],
-    chassis_com_offset: [0.0, -0.25, 0.0],
-    center_of_mass_height: 1.30, // Preserve the tracked vehicle's existing mass height.
-    front_axle_z: 2.33,
-    rear_axle_z: -2.17,
-    front_track_width: 3.20,
-    rear_track_width: 3.20,
-    wheel_radius: 0.50,
+    chassis_half_extents: [1.38, 0.60, 2.80],
+    chassis_com_offset: [-0.005, -0.03, -0.04],
+    center_of_mass_height: 0.85, // Preserve the tracked vehicle's existing mass height.
+    front_axle_z: 1.694,
+    rear_axle_z: -1.720,
+    front_track_width: 2.216,
+    rear_track_width: 2.216,
+    wheel_radius: 0.416,
     wheel_y: -0.35,
 
     // Steering and wheel layout

@@ -31,6 +31,7 @@ export type UIOverlay =
   | "world_builder"
   | "social";
 export type CockpitTab =
+  | "turret"
   | "brightness"
   | "climate"
   | "drive"

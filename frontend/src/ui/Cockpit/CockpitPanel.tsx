@@ -1,3 +1,5 @@
+import { TurretPage } from "./panels/TurretPage";
+import { cockpitParent } from "./panels/tabs";
 /** Cockpit shell: shared header/theme, focused pages and confirmed footer.
  * Pages subscribe only while mounted; tabs/navigation and page APIs live in panels/. */
 import { useEffect, useRef } from "react";
@@ -33,7 +35,6 @@ import {
   ClimatePage,
   BrightnessPage,
   ResearchPanel,
-  SteeringSystemPicker,
   IgnitionPage,
   RadioPage,
 } from "./panels/index";
@@ -98,7 +99,7 @@ export function CockpitPanel() {
             <button
               key={item.id}
               data-cockpit-tab={item.id}
-              aria-pressed={tab === item.id}
+              aria-pressed={cockpitParent(tab) === item.id}
               onClick={() => useUIStore.getState().setCockpitTab(item.id)}
             >
               {item.label}
@@ -121,15 +122,16 @@ export function CockpitPanel() {
           {(tab === "research" || tab === "vehicle") && <ResearchPanel />}
           {(tab === "lights" || tab === "wipers" || tab === "cruise") && (
             <div className="cockpit-column-page">
-              <SteeringSystemPicker selected={tab} />
+              <nav className="cockpit-subtabs" aria-label="Column levers">{([['lights','LIGHTS'],['wipers','WIPERS'],['cruise','CRUISE']] as const).map(([id,label])=><button key={id} aria-label={`Select ${id} stalk`} aria-current={tab===id?"page":undefined} aria-pressed={tab===id} onClick={()=>useUIStore.getState().setCockpitTab(id)}>{label}</button>)}</nav>
               {tab === "lights" && <LightsPanel />}
               {tab === "wipers" && <WipersPanel />}
               {tab === "cruise" && <CruisePanel />}
             </div>
           )}
-          {tab === "climate" && <ClimatePage />}
+          {(tab === "climate" || tab === "radio") && <section><nav className="cockpit-subtabs" aria-label="Center console">{([['radio','RADIO'],['climate','CLIMATE']] as const).map(([id,label])=><button key={id} aria-pressed={tab===id} onClick={()=>useUIStore.getState().setCockpitTab(id)}>{label}</button>)}</nav>{tab==='radio'?<RadioPage/>:<ClimatePage/>}</section>}
+          {tab === "turret" && <TurretPage />}
           {tab === "brightness" && <BrightnessPage />}
-          {tab === "radio" && <RadioPage />}
+
           {tab === "navigation" && <Minimap forceExpanded />}
           {tab === "ignition" && <IgnitionPage />}
         </div>

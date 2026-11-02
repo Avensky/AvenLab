@@ -1,3 +1,4 @@
+import { TurretInstruments } from "../../combat/TurretInstruments";
 import { memo, useEffect, useLayoutEffect, useRef } from "react";
 import { useShallow } from "zustand/react/shallow";
 import {
@@ -157,6 +158,7 @@ export default function Dashboard() {
         <RpmInstrument />
         <FuelInstrument />
       </div>
+      <TurretInstruments />
     </section>
   );
 }

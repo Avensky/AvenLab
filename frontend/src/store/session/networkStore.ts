@@ -50,7 +50,7 @@ export interface VehicleColliderShape {
 }
 
 export interface PhysicsEntitySnapshot {
-  combat?: {enabled:boolean;yaw:number;pitch:number;x:number;y:number;z:number;role:string};
+  combat?: {shot?:number;ammo?:number;reload?:number;fire?:boolean;enabled:boolean;yaw:number;pitch:number;x:number;y:number;z:number;role:string};
   collider?: VehicleColliderShape;
   id: string;
   kind: VehicleKind;

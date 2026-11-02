@@ -3,7 +3,7 @@
 ## Live aiming and first structure test
 
 Vehicle Editor -> Weapons now saves a local per-chassis weapon/mount preset.
-Enable Combat Test in the driving HUD. Mouse motion over the canvas, controller
+Enable controls in Vehicle Editor -> Weapons -> Test Turret Controls. Mouse motion over the canvas, controller
 right stick, or the right touchpad changes world turret yaw/pitch; left-stick /
 existing touch steering remains independent. Right trigger still accelerates;
 RB fires instead of honking in combat mode. Mouse/touch can hold the HUD Fire
@@ -13,8 +13,7 @@ no longer doubles as throttle while combat is enabled.
 
 Pose travels in the existing input/snapshot stream. Rust clamps mount offsets,
 yaw and pitch and accepts only known role names. Shared placeholder turrets are
-world-oriented, with mount offsets attached to the chassis. They do not replace
-named turret nodes in existing tank GLBs. Mount presets stay local per vehicle,
+world-oriented, with mount offsets attached to the chassis. Non-tank vehicles use placeholders; the tank now articulates its original GLB parts. Mount presets stay local per vehicle,
 and the equipped mount is replicated while the player is connected.
 
 For the first destructive test: place a spawn, Inspector -> combat -> Add
@@ -31,12 +30,14 @@ Scope: only explicit standalone non-repeating authored box/wedge structures
 currently take damage. GLB/model/road prefab damage, repeated chunks, vehicle
 hits, cannon/bomb blasts, medic healing, buffs, ammo/reloads, rotation-speed
 limits, camera-to-crosshair convergence, automatic acceleration, rubble and full
-building/bridge collapse still need implementation. All roles currently use
-20-base-damage structure test shots; medic fires more slowly but does not heal.
+building/bridge collapse still need implementation. Non-tank roles use 20-base-damage structure test shots; medic fires more slowly but does not heal. The tank uses its factory cannon profile.
 The HUD labels unlimited test ammo and pending abilities. Damage does not earn
 progression rewards. This is an opt-in combat test, not balanced matchmaking.
 
-Rust source includes a practice-wall collision-removal regression test. It has
-not been compiled/run in this environment because the Rust toolchain is absent.
+Rust source includes practice-wall and tracked tank regression tests. Compilation, backend tests and local two-client WebSocket tests now pass; see the latest validation.json.
 
 Next: server-owned ammo/reload and rotation limits; camera convergence and mobile ergonomics; vehicle damage and medic ally healing; then cannon/bomb falloff, protected-route checks and bounded rubble.
+
+## Tank update
+
+The tank now uses its factory GLB turret/cannon, tracked movement, server-owned traverse/elevation limits, a one-shell reload and physical/barrel recoil. Combat Test floating UI was removed. Use Vehicle Editor -> Weapons Test/Stop, or Cockpit -> Turret. See TANK-AND-COCKPIT.md for current behavior and remaining scope. Rust has now been compiled and tested, superseding the earlier toolchain limitation. Other roles remain prototypes.

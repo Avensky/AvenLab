@@ -147,7 +147,7 @@ export function VehicleEditorPanel() {
             }}>{HEROES.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}</select></label>
       <nav aria-label="Vehicle settings">{['Body', 'Power', 'Suspension', 'Wheels', 'Steering', 'Camera', 'Materials', 'Weapons'].map(name => <button aria-pressed={tab === name} key={name} onClick={() => setTab(name)}>{name}</button>)}</nav>
       <div className="ve-fields">
-      {tab === 'Weapons' ? <WeaponEditor vehicle={vehicle}/> : tab === 'Materials' ? <>
+      {tab === 'Weapons' ? <WeaponEditor vehicle={vehicle} onTest={test}/> : tab === 'Materials' ? <>
         <h3>MATERIAL SLOT CHECKLIST · {vehicle.toUpperCase()}</h3>
         <p>Body paint is equipped in Main menu → Heroes and shared with other players. This page reserves the per-car asset mapping work.</p>
         <p>Body: known paint slot. Seats: BRZ yellow bucket material not yet verified. Front seat named nodes contain no mesh data in the current export.</p>
@@ -164,15 +164,16 @@ export function VehicleEditorPanel() {
         <button onClick={() => editor.setCamera(vehicle, { ...DEFAULT_DRIVER })}>RESET CAMERA</button>
         <p>Camera edits preview immediately and save locally per vehicle. Interior quality depends on the installed model.</p>
       </> : <>
-        {TUNING_FIELDS.filter(f => f[6] === tab).map(([key, label, unit, min, max, step]) => {
+        {TUNING_FIELDS.filter(f => f[6] === tab && !(vehicle==='tank' && ['max_steer_angle','ackermann'].includes(f[0]))).map(([key, label, unit, min, max, step]) => {
                     const factor = key === 'max_speed' ? 3.6 : 1;
                     return <label key={key}>{label} <small>{unit}</small><NumberInput disabled={!reply || busy} min={min * factor} max={max * factor} step={step} value={typeof draft[key] === 'number' ? Number((Number(draft[key]) * factor).toFixed(3)) : ''} onValue={v => change(key, v / factor)}/></label>;
                 })}
+        {tab === 'Steering' && vehicle==='tank' && <p>Differential tracks steer and pivot the hull. Road-wheel steering angle and Ackermann do not apply.</p>}
         {tab === 'Steering' && ['abs_enabled', 'tcs_enabled'].map(key => <label key={key}>{key === 'abs_enabled' ? 'ABS' : 'Traction control'}<input type="checkbox" disabled={!reply || busy} checked={Boolean(draft[key])} onChange={e => change(key, e.target.checked)}/></label>)}
         {tab === 'Suspension' && <p>Ride height follows suspension length, travel, and sag. Spring stiffness is derived from mass and sag by the existing solver.</p>}
       </>}
       </div>
-      <footer className="ve-actions">
+      {!['Weapons','Camera','Materials'].includes(tab) && <footer className="ve-actions">
         <button disabled={!reply || busy} onClick={() => void apply()}>{busy ? 'WORKING…' : 'APPLY PHYSICS'}</button>
         <button disabled={!history.current.length || busy} onClick={() => { const previous = history.current.pop(); if (previous)
             setDraft(previous); }}>UNDO</button>
@@ -180,8 +181,8 @@ export function VehicleEditorPanel() {
         <button disabled={!reply || busy} onClick={() => { history.current.push(draft); setDraft(tuningOnly(reply!.factory)); }}>FACTORY PHYSICS</button>
         <button disabled={!reply || busy} onClick={() => { editor.save(vehicle, draft); setStatus('Preset saved in this browser. Apply physics to activate it.'); }}>SAVE PRESET</button>
         <button disabled={!editor.presets[vehicle] || busy} onClick={() => { const p = editor.presets[vehicle]; history.current.push(draft); setDraft({ ...p.tuning }); editor.setCamera(vehicle, { ...p.camera }); }}>LOAD PRESET</button>
-      </footer>
-      <p>Changes apply only to your isolated editor vehicle. Factory/reset and saved presets require Apply.</p>
+      </footer>}
+      {!['Weapons','Camera','Materials'].includes(tab) && <p>Changes apply only to your isolated editor vehicle. Factory/reset and saved presets require Apply.</p>}
     </>}
     <output role="status">{status}</output>
   </section>;

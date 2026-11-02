@@ -1,26 +1,27 @@
-// utils/getTankParts.ts
-import type { GLTF } from 'three-stdlib';
-import { Group, Object3D } from 'three';
+import { Box3, Group, Object3D, Vector3 } from 'three';
 
-export interface TankParts {
-    turret: Group | null;
-    cannon: Group | null;
-    wheels: Object3D[];
-}
-export function getTankParts(scene: GLTF['scene']) {
-    const wheelNames = [
-        'Roaadwheel_L3', 'Roaadwheel_L4', 'Roaadwheel_L5',
-        'Roaadwheel_R3', 'Roaadwheel_R4', 'Roaadwheel_R5',
-    ];
-
-    const wheels = wheelNames
-        .map(name => scene.getObjectByName(name.replace('Roaadwheel', 'Roadwheel')) ?? scene.getObjectByName(name))
-        .filter((obj): obj is Object3D => !!obj);
-
-    return {
-        hull: scene.getObjectByName('Hull') as Group,
-        turret: scene.getObjectByName('Turret') as Group,
-        cannon: scene.getObjectByName('Cannon') as Group,
-        wheels, // if you have a group for wheels
-    };
+/** Uploaded modular tank has baked vertex positions and sibling meshes.
+ * Preserve their world transforms while adding real yaw/elevation pivots.
+ * The non-modular export is a duplicate whole tank, not the collision hull. */
+export function getTankParts(scene: Group) {
+  for (const name of ['Tank_Body_Non_Modular','Hatch_Front_Hatch_Hull','Empty']) {
+    const mesh=scene.getObjectByName(name);if(mesh)mesh.visible=false;
+  }
+  scene.updateMatrixWorld(true);
+  const turret=new Group();turret.name='Tank_TurretYaw';turret.position.set(0,1.30,.10);scene.add(turret);
+  scene.updateMatrixWorld(true);
+  for(const name of ['Turret','TurretBasket','Interior_TurretBasket','Hatch_Small','Hatch_Small2']) {
+    const mesh=scene.getObjectByName(name);if(mesh)turret.attach(mesh);
+  }
+  const cannon=new Group();cannon.name='Tank_CannonPitch';cannon.position.set(0,.35,.95);turret.add(cannon);
+  const recoil=new Group();recoil.name='Tank_CannonRecoil';cannon.add(recoil);
+  scene.updateMatrixWorld(true);
+  for(const name of ['Cannon','Breech']){const mesh=scene.getObjectByName(name);if(mesh)recoil.attach(mesh);}
+  const wheels: Object3D[]=[];
+  for(const name of ['Roadwheel_R5','Roadwheel_L5','Roadwheel_R4','Roadwheel_L4','Roadwheel_R3','Roadwheel_L3','Roadwheel_L2_R2','Roadwheel_L1_R1']) {
+    const mesh=scene.getObjectByName(name);if(!mesh)continue;
+    const center=new Box3().setFromObject(mesh).getCenter(new Vector3());
+    const pivot=new Group();pivot.name=`${name}_Axle`;pivot.position.copy(center);scene.add(pivot);scene.updateMatrixWorld(true);pivot.attach(mesh);wheels.push(pivot);
+  }
+  return {hull:scene.getObjectByName('Hull'),turret,cannon,recoil,wheels};
 }

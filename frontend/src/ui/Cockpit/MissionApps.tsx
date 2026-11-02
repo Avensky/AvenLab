@@ -6,6 +6,7 @@ export function MissionApps() {
     history = useMissionRadioStore((s) => s.history);
   return (
     <section className="mission-apps" aria-label="Mission radio apps">
+      <details><summary>Tank / turret controls</summary><p>Vehicle Editor → Weapons enables or disables the test. Steer with the left stick; aim with the right stick; RB fires. Mobile uses the AIM joystick next to steering. The tank has a single shell and automatic reload; recoil rocks the hull. Permanent land bridges ignore damage.</p></details>
       <h2>{mission?.title ?? "Free drive"}</h2>
       <p>
         {mission?.objective ??

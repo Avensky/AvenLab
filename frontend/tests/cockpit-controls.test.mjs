@@ -388,6 +388,9 @@ test("cockpit requests use one packed input field and preserve menu/input owners
           3,
         );
         await act(async () => routeMenuAction("next_tab"));
+        assert.equal(ui.getState().cockpitTab, "brightness");
+        await act(async () => routeMenuAction("previous_tab"));
+        await act(async () => button("Select wipers stalk").click());
         assert.equal(ui.getState().cockpitTab, "wipers");
         await act(async () => button("Wipers mid").click());
         assert.equal(

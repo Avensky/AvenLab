@@ -10,6 +10,7 @@ mod state;
 mod suspension_contact;
 mod vehicle_debug;
 mod vehicle_forces;
+mod tracked_drive;
 mod vehicle_setup;
 mod vehicle_state;
 mod vehicle_tuning;
@@ -72,3 +73,6 @@ async fn main() -> anyhow::Result<()> {
         }
     }
 }
+
+#[cfg(test)]
+mod tank_tests;

@@ -314,7 +314,7 @@ test("cockpit layout preferences preserve electronics and physical source owners
       },
     );
     await t.test(
-      "the shared wheel selects every column page without sending a vehicle command",
+      "the compact column subtabs select every page without sending a vehicle command",
       async () => {
         const { CockpitPanel } = await load("ui/Cockpit/CockpitPanel.tsx");
         await act(async () => ui.getState().openCockpit("lights"));
@@ -328,14 +328,12 @@ test("cockpit layout preferences preserve electronics and physical source owners
             "page",
           );
           assert.equal(
-            document.querySelectorAll(".cockpit-wheel-picker button").length,
+            document.querySelectorAll('[aria-label="Column levers"] button').length,
             3,
           );
-          assert.ok(
-            document.querySelector(".cockpit-wheel-picker .wheel-artwork"),
-          );
+          assert.equal(document.querySelector(".cockpit-wheel-picker"),null);
         }
-        assert.ok(parseFloat(by("Select cruise stalk").style.left) > 50);
+        assert.ok(by("Select cruise stalk").closest(".cockpit-subtabs"));
         assert.deepEqual(input.getState().input, before);
       },
     );
@@ -900,7 +898,7 @@ test("cockpit layout preferences preserve electronics and physical source owners
         assert.equal(input.getState().input.vehicleMask & 4, 4);
         assert.equal(input.getState().input.vehicleMask & 8, 0);
         await act(async () => ui.getState().setCockpitTab("cruise"));
-        assert.ok(parseFloat(by("Select cruise stalk").style.left) > 50);
+        assert.ok(by("Select cruise stalk").closest(".cockpit-subtabs"));
         await act(async () => ui.getState().setCockpitTab("climate"));
         assert.ok(document.querySelector(".cockpit-climate-page"));
       },

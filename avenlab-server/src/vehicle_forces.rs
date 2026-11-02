@@ -91,8 +91,12 @@ impl PhysicsWorld {
             let handbrake = vehicle.handbrake.max(vehicle.cockpit.parking_force());
             vehicle.powertrain.manual_gear = vehicle.cockpit.manual_gear();
             vehicle.vehicle_flags.set(VehicleStateFlags::TCS, vehicle.cockpit.tcs_enabled(vehicle.vehicle_flags.contains(VehicleStateFlags::TCS)));
+            // A stationary skid turn loads the engine even with no travel pedal.
+            // Keep this engine demand separate from the actual belt travel command.
+            let pivot_demand=vehicle.config.tracked && throttle.abs()<0.01 && vehicle.steer.abs()>0.01 && vehicle.cockpit.manual_gear()!=Some(0);
+            let engine_throttle=if pivot_demand {vehicle.steer.abs()*0.35}else{throttle};
             vehicle.powertrain.advance(vehicle.config.resources, Demand {
-                throttle, longitudinal_speed,
+                throttle:engine_throttle, longitudinal_speed,
                 wheel_radius: vehicle.config.wheel_radius, engine_force: vehicle.config.engine_force, top_speed:vehicle.config.max_speed,
             }, dt);
             vehicle.vehicle_flags.set(VehicleStateFlags::ENGINE_ON, vehicle.powertrain.running);
@@ -112,7 +116,7 @@ impl PhysicsWorld {
             let mut loads = HashMap::new();
 
             let cfg = steering_config(vehicle);
-            let target = vehicle.steer * cfg.max_steer_angle;
+            let target = if vehicle.config.tracked {0.0}else{vehicle.steer * cfg.max_steer_angle};
             // One active steering strategy: a 0.10 s exponential response.
             // The legacy torque rack is not called. Ackermann below is geometry,
             // not another smoothing pass; positive input turns toward local -X.
@@ -238,7 +242,7 @@ impl PhysicsWorld {
                 wheelbase: vehicle.config.wheelbase(), mu_base: vehicle.config.mu_base,
             };
             let control = ControlInput {
-                throttle: vehicle.powertrain.drive_throttle,
+                throttle: if pivot_demand {0.0}else{vehicle.powertrain.drive_throttle},
                 brake: brake.max(vehicle.powertrain.direction_brake), handbrake, steer: vehicle.steer,
             };
             let driven = ctx.driven_wheels.max(1.0);
@@ -250,7 +254,9 @@ impl PhysicsWorld {
                 && patch.normal_force >= 50.0 && drive_demand > patch.normal_force * patch.mu_long);
             vehicle.cockpit.traction_active = ctx.tcs_enabled && contacts.iter().any(|patch| patch.drive && patch.grounded
                 && drive_demand > patch.normal_force * patch.mu_long * ctx.tcs_limit);
-            let tire_forces = solve_step(&ctx, &control, &mut contacts);
+            let tire_impulses = if vehicle.config.tracked {
+                crate::tracked_drive::solve(&ctx,control.throttle,vehicle.steer,control.brake.max(control.handbrake),vehicle.config.max_speed,&contacts)
+            } else {solve_step(&ctx, &control, &mut contacts).impulses};
             let grounded_drive = contacts.iter().any(|patch| patch.drive && patch.grounded);
             let slipping_drive = drive_saturated || contacts.iter().any(|patch| patch.drive && patch.grounded
                 && patch.tire_state == crate::aven_tire::state::TireState::Slide);
@@ -265,7 +271,7 @@ impl PhysicsWorld {
                     wheel.tire_state = patch.tire_state;
                 }
             }
-            for impulse in tire_forces.impulses {
+            for impulse in tire_impulses {
                 let j: Vector<Real> = impulse.impulse.into();
                 match impulse.at_point {
                     Some(point) => impulses.at_points.push((j, Point::from(point))),

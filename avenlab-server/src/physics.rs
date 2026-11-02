@@ -39,6 +39,8 @@ const MAX_PHYSICS_SUBSTEPS: usize = 8;
 
 pub struct PhysicsWorld {
     pub asset_health: HashMap<String,f32>,
+    pub combat_poses: HashMap<String,crate::state::CombatPose>,
+    tank_colliders: HashMap<String,(ColliderHandle,ColliderHandle)>,
     combat_sequences: HashMap<String,(u32,std::time::Instant)>,
     combat_cooldowns: HashMap<String,f32>,
     pub gravity: Vector<Real>, // gravity vector
@@ -147,7 +149,7 @@ impl PhysicsWorld {
         }
 
         self.block_world.tile_size = Some(requested.cell);
-        self.asset_health.clear(); self.combat_cooldowns.clear(); self.combat_sequences.clear();
+        self.asset_health.clear(); self.combat_cooldowns.clear(); self.combat_sequences.clear(); self.combat_poses.clear(); self.tank_colliders.clear();
         self.active_map = Some(requested);
 
         self.update_loaded_blocks_around_players();
@@ -349,6 +351,7 @@ impl PhysicsWorld {
         // create duplicate contacts/jitter.
 
         Self {
+            combat_poses: HashMap::new(),tank_colliders: HashMap::new(),
             asset_health: HashMap::new(), combat_sequences: HashMap::new(), combat_cooldowns: HashMap::new(),
             gravity,
             pipeline: PhysicsPipeline::new(),
@@ -381,36 +384,73 @@ impl PhysicsWorld {
         }
     }
 
-    /// Initial hitscan slice: explicit standalone authored box/wedge structures.
-    /// Server owns cadence, damage and nearest-hit collision; clients supply aim only.
+    /// Server-owned turret state, firing cadence and direct-hit structure damage.
     pub fn combat_tick(&mut self, player: &str, seq:u32, intent: Option<&crate::state::CombatPose>) {
+        let Some(vehicle)=self.vehicles.get(player) else {return;};
+        let body_handle=vehicle.body;let config=vehicle.config;
+        let Some(body)=self.bodies.get(body_handle) else {return;};
+        let hull=*body.position();
+        let forward=hull.rotation*Vector::z();let hull_yaw=forward.x.atan2(forward.z);
         let entry=self.combat_sequences.entry(player.to_owned()).or_insert((seq,std::time::Instant::now()));
         if entry.0!=seq {*entry=(seq,std::time::Instant::now());}
-        if entry.1.elapsed().as_millis()>250 {return;}
-        let cooldown = self.combat_cooldowns.entry(player.to_owned()).or_insert(0.0);
-        *cooldown = (*cooldown - SIMULATION_DT).max(0.0);
-        let Some(c) = intent.filter(|c| c.enabled && c.fire).map(|c|c.bounded()) else {return;};
-        if *cooldown > 0.0 {return;}
-        *cooldown = if c.role == "medic" {0.6} else {0.1};
-        let Some(v) = self.vehicles.get(player) else {return;};
-        let Some(body) = self.bodies.get(v.body) else {return;};
-        let origin = body.position().transform_point(&point![c.x,c.y,c.z]);
-        let direction = vector![-c.yaw.sin()*c.pitch.cos(),c.pitch.sin(),-c.yaw.cos()*c.pitch.cos()];
-        self.query_pipeline.update(&self.colliders);
-        let Some((handle,_)) = self.query_pipeline.cast_ray(&self.bodies,&self.colliders,&Ray::new(origin,direction),200.0,true,QueryFilter::default().exclude_rigid_body(v.body)) else {return;};
-        let Some(parent) = self.colliders[handle].parent() else {return;};
-        let index = self.bodies[parent].user_data as usize;
-        if index == 0 {return;}
-        let Some(layout) = self.active_map.as_ref().and_then(|m|m.authored_layout.as_ref()).filter(|l| !l.repeat) else {return;};
-        let Some(object) = layout.objects.get(index-1) else {return;};
-        if ["coastal-land","coastal-land-bridge"].contains(&object.piece.as_str()) {return;}
-        let Some(d) = object.destruction.as_ref().filter(|d|d.enabled && d.hp.is_finite() && d.hp>0.0 && d.hp<=1000000.0 && d.small_arms.is_finite() && d.small_arms>=0.0 && d.small_arms<=10.0) else {return;};
-        let hp = self.asset_health.entry(object.id.clone()).or_insert(d.hp);
-        *hp = (*hp - 20.0*d.small_arms).max(0.0);
-        if *hp == 0.0 {
-            for h in self.bodies[parent].colliders().to_vec() { if let Some(collider)=self.colliders.get_mut(h){collider.set_enabled(false);} }
-            self.query_pipeline.update(&self.colliders);
+        let fresh=entry.1.elapsed().as_millis()<=250;
+        let target=intent.map(|c|c.bounded()).unwrap_or_default();
+        let mut c=self.combat_poses.get(player).cloned().unwrap_or_else(||crate::state::CombatPose{yaw:hull_yaw+std::f32::consts::PI,ammo:1,..Default::default()});
+        c.enabled=target.enabled&&fresh;c.fire=target.fire&&c.enabled;
+        if c.enabled {
+            let delta=(target.yaw-c.yaw).sin().atan2((target.yaw-c.yaw).cos());
+            let rate=if config.tracked {1.5}else{3.0};
+            c.yaw+=delta.clamp(-rate*SIMULATION_DT,rate*SIMULATION_DT);
+            c.pitch+=(target.pitch-c.pitch).clamp(-0.8*SIMULATION_DT,0.8*SIMULATION_DT);
         }
+        c.yaw=c.yaw.sin().atan2(c.yaw.cos());
+        c.role=if config.tracked {"tank".into()}else{target.role.clone()};
+        let mut direction=vector![-c.yaw.sin()*c.pitch.cos(),c.pitch.sin(),-c.yaw.cos()*c.pitch.cos()];
+        if config.tracked {
+            let local=hull.rotation.inverse()*direction;
+            let yaw=local.x.atan2(local.z);
+            let elevation=local.y.atan2((local.x*local.x+local.z*local.z).sqrt()).clamp(-0.174533,0.349066);
+            direction=hull.rotation*vector![yaw.sin()*elevation.cos(),elevation.sin(),yaw.cos()*elevation.cos()];
+            c.yaw=(-direction.x).atan2(-direction.z);c.pitch=direction.y.clamp(-1.0,1.0).asin();
+            c.x=0.0;c.y=config.nominal_wheel_center_y()-config.wheel_radius-0.0130596+1.65;c.z=1.05;
+            self.update_tank_collision(player,body_handle,&hull,yaw,elevation,config.nominal_wheel_center_y()-config.wheel_radius-0.0130596);
+        }else{c.x=target.x;c.y=target.y;c.z=target.z;}
+        let cooldown=self.combat_cooldowns.entry(player.to_owned()).or_insert(0.0);
+        *cooldown=(*cooldown-SIMULATION_DT).max(0.0);
+        let shoot=c.fire&&*cooldown<=0.0;
+        if shoot {*cooldown=if config.tracked {3.0}else if c.role=="medic" {0.6}else{0.1};c.shot=c.shot.wrapping_add(1);}
+        c.reload=if config.tracked {*cooldown}else{0.0};c.ammo=if config.tracked {u8::from(*cooldown<=0.0)}else{255};
+        let origin=hull.transform_point(&point![c.x,c.y,c.z]);
+        self.combat_poses.insert(player.to_owned(),c);
+        if !shoot {return;}
+        if config.tracked {if let Some(body)=self.bodies.get_mut(body_handle){body.apply_impulse_at_point(-direction*12000.0,origin,true);}}
+        self.query_pipeline.update(&self.colliders);
+        let Some((handle,_))=self.query_pipeline.cast_ray(&self.bodies,&self.colliders,&Ray::new(origin,direction),if config.tracked {500.0}else{200.0},true,QueryFilter::default().exclude_rigid_body(body_handle)) else {return;};
+        let Some(parent)=self.colliders[handle].parent() else {return;};
+        let index=self.bodies[parent].user_data as usize;if index==0{return;}
+        let Some(layout)=self.active_map.as_ref().and_then(|m|m.authored_layout.as_ref()).filter(|l|!l.repeat) else{return;};
+        let Some(object)=layout.objects.get(index-1) else{return;};
+        if ["coastal-land","coastal-land-bridge"].contains(&object.piece.as_str()){return;}
+        let Some(d)=object.destruction.as_ref().filter(|d|d.enabled) else{return;};
+        let multiplier=if config.tracked {d.cannon}else{d.small_arms};
+        let hp=self.asset_health.entry(object.id.clone()).or_insert(d.hp);
+        *hp=(*hp-if config.tracked {300.0*multiplier}else{20.0*multiplier}).max(0.0);
+        if *hp==0.0 {for h in self.bodies[parent].colliders().to_vec(){if let Some(c)=self.colliders.get_mut(h){c.set_enabled(false);}}self.query_pipeline.update(&self.colliders);}
+    }
+    fn update_tank_collision(&mut self,player:&str,body:RigidBodyHandle,_hull:&Isometry<Real>,yaw:f32,elevation:f32,visual_y:f32){
+        let existing=self.tank_colliders.get(player).copied().filter(|(a,b)|self.colliders.contains(*a)&&self.colliders.contains(*b));
+        let (turret,barrel)=existing.unwrap_or_else(||{
+            let groups=self.bodies[body].colliders().first().map(|h|self.colliders[*h].collision_groups()).unwrap_or(InteractionGroups::all());
+            let a=self.colliders.insert_with_parent(ColliderBuilder::cuboid(1.05,0.45,1.1).density(0.0).collision_groups(groups).build(),body,&mut self.bodies);
+            // Query sensor: hittable barrel without snagging narrow bridges or levering the hull.
+            let b=self.colliders.insert_with_parent(ColliderBuilder::cuboid(0.13,0.13,2.0).density(0.0).sensor(true).collision_groups(groups).build(),body,&mut self.bodies);
+            self.tank_colliders.insert(player.to_owned(),(a,b));(a,b)
+        });
+        let yaw_q=Rotation::from_axis_angle(&Vector::y_axis(),yaw);
+        self.colliders[turret].set_position_wrt_parent(Isometry::from_parts(Translation::from(vector![0.0,visual_y+1.75,0.10]),yaw_q));
+        let gun_q=yaw_q*Rotation::from_axis_angle(&Vector::x_axis(),-elevation);
+        let pivot=vector![0.0,visual_y+1.30,0.10]+yaw_q*vector![0.0,0.35,0.95];
+        self.colliders[barrel].set_position_wrt_parent(Isometry::from_parts(Translation::from(pivot+gun_q*vector![0.0,0.0,2.0]),gun_q));
     }
 
     // ===========================================================================
@@ -1570,8 +1610,8 @@ mod combat_structure_tests {
         value["authored_layout"]=serde_json::json!({"format":"avenlab-world-layout","version":1,"map_id":"coastal_district","title":"Combat test","base":"replace","ground":true,"repeat":false,"objects":[{"id":"test-wall","name":"Practice wall","piece":"wall","position":[0,0,-20],"size":[8,4,0.5],"yaw":0,"color":"#888888","locked":false,"solid":true,"parts":[{"shape":"box","position":[0,0.5,0],"size":[1,1,1],"solid":true}],"destruction":{"enabled":true,"hp":40,"smallArms":1,"cannon":1,"bomb":1.5,"rubble":"clear"}}]});
         let mut physics=PhysicsWorld::from_editor_document(serde_json::from_value(value).unwrap()).unwrap();
         physics.spawn_vehicle_for_player("shooter".into(),[0.0;3],"brz","red").unwrap();
-        let pose=crate::state::CombatPose{enabled:true,fire:true,yaw:0.0,pitch:0.0,x:0.0,y:1.0,z:0.0,role:"assault".into()};
-        for seq in 0..30 {physics.combat_tick("shooter",seq,Some(&pose));}
+        let pose=crate::state::CombatPose{enabled:true,fire:true,yaw:0.0,pitch:0.0,x:0.0,y:1.0,z:0.0,role:"assault".into(),..Default::default()};
+        for seq in 0..300 {physics.combat_tick("shooter",seq,Some(&pose));}
         assert_eq!(physics.asset_health.get("test-wall"),Some(&0.0));
         for (_,body) in physics.bodies.iter().filter(|(_,body)|body.user_data==1) {
             assert!(body.colliders().iter().all(|h|!physics.colliders[*h].is_enabled()));

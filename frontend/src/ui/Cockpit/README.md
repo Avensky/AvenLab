@@ -29,3 +29,5 @@ Radio and Ignition have page-local Show/Hide HUD shortcuts; Brightness and Clima
 Change device visibility/style in store/preferences; change requests in store/input; confirm actual state in Rust cockpit/powertrain/vehicle_forces. Hiding an on-screen control never turns off its system. Keep wheel/gauge artwork separate from shared menu theme tokens. See [the protocol guide](../../../../docs/COCKPIT_UI.md).
 
 The compact landscape update is documented in [COMPACT_LANDSCAPE_COCKPIT_UPDATE.md](../../../../docs/COMPACT_LANDSCAPE_COCKPIT_UPDATE.md). For size changes, start with `styles/layout.css`; for radio power, start with `store/radio/radioStore.ts`.
+
+Parent systems: COLUMN (Lights/Wipers/Cruise), DASHBOARD (brightness/instruments), CONSOLE (Radio/Climate), and TURRET (stationary aim and enable/disable). Legacy child IDs remain valid; parent navigation uses cockpitParent. Mobile AIM lives next to steering, not over the right console.

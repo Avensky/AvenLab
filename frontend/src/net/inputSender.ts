@@ -1,3 +1,4 @@
+import {canAimTurret} from "../combat/turretControls";
 import { combatIntent,DEFAULT_MOUNT,useCombatStore } from "../combat/combatStore";
 import { useNetworkStore } from "../store/session/networkStore";
 import { useUIStore } from "../store/menus/uiStore";
@@ -37,7 +38,7 @@ function transmitInput(allowQueuedNeutral = false) {
   const dt = Math.max(0, Math.min((now - lastSendTime) / 1000, 0.1));
   const packet = {
     ...inputRef.current,
-    combat: (()=>{const ui=useUIStore.getState(),me=useNetworkStore.getState().getMe();return {...combatIntent,fire:combatIntent.fire||combatIntent.gamepadFire,enabled:combatIntent.enabled&&ui.screen==='sandbox'&&!ui.overlay&&document.visibilityState!=='hidden',...(useCombatStore.getState().mounts[me?.vehicle_id??'']??DEFAULT_MOUNT)};})(),
+    combat: (()=>{const ui=useUIStore.getState(),me=useNetworkStore.getState().getMe();return {...combatIntent,fire:ui.overlay===null&&(combatIntent.fire||combatIntent.gamepadFire),enabled:combatIntent.enabled&&canAimTurret()&&document.visibilityState!=='hidden',...(useCombatStore.getState().mounts[me?.vehicle_id??'']??DEFAULT_MOUNT)};})(),
     type: "input",
     seq,
     dt, // Transport timing only; Rust retains its fixed simulation timestep.
