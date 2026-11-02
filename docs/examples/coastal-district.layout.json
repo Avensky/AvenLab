@@ -1,8 +1,8 @@
 {
   "format": "avenlab-world-layout",
   "version": 1,
-  "map_id": "streaming_endless_city",
-  "title": "Coastal district · seed 1",
+  "map_id": "coastal_district",
+  "title": "Coastal district \u00b7 chunk \u00b7 seed 1",
   "base": "replace",
   "ground": false,
   "repeat": false,
@@ -11,77 +11,77 @@
       "id": "spawn-coast-red-1",
       "team": "red",
       "position": [
-        -60,
+        -86.66666666666667,
         0.08,
-        -123
+        -194.33333333333334
       ],
-      "yaw": 0
+      "yaw": 180
     },
     {
       "id": "spawn-coast-red-2",
       "team": "red",
       "position": [
-        -60,
+        -86.66666666666667,
         0.08,
-        -115
+        -181
       ],
-      "yaw": 0
+      "yaw": 180
     },
     {
       "id": "spawn-coast-red-3",
       "team": "red",
       "position": [
-        -60,
+        -86.66666666666667,
         0.08,
-        -107
+        -167.66666666666669
       ],
-      "yaw": 0
+      "yaw": 180
     },
     {
       "id": "spawn-coast-blue-1",
       "team": "blue",
       "position": [
-        60,
+        86.66666666666667,
         0.08,
-        107
+        167.66666666666669
       ],
-      "yaw": 180
+      "yaw": 0
     },
     {
       "id": "spawn-coast-blue-2",
       "team": "blue",
       "position": [
-        60,
+        86.66666666666667,
         0.08,
-        115
+        181
       ],
-      "yaw": 180
+      "yaw": 0
     },
     {
       "id": "spawn-coast-blue-3",
       "team": "blue",
       "position": [
-        60,
+        86.66666666666667,
         0.08,
-        123
+        194.33333333333334
       ],
-      "yaw": 180
+      "yaw": 0
     }
   ],
   "objects": [
     {
-      "id": "coast-1",
-      "name": "Harbor water · visual only",
+      "id": "coast-1-tile-0-0",
+      "name": "Harbor water \u00b7 visual only",
       "piece": "coastal-water-visual",
       "position": [
-        230,
+        370,
         -5,
-        0
+        -144.66666666666669
       ],
       "size": [
-        180,
+        300,
         0.04,
-        360
+        289.33333333333337
       ],
       "yaw": 0,
       "color": "#266b85",
@@ -104,18 +104,52 @@
       ]
     },
     {
-      "id": "coast-2",
-      "name": "North–south canal · visual only",
+      "id": "coast-2-tile-0-0",
+      "name": "Harbor water \u00b7 visual only",
+      "piece": "coastal-water-visual",
+      "position": [
+        370,
+        -5,
+        144.66666666666669
+      ],
+      "size": [
+        300,
+        0.04,
+        289.33333333333337
+      ],
+      "yaw": 0,
+      "color": "#266b85",
+      "solid": false,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-3-tile-0-0",
+      "name": "North\u2013south canal \u00b7 visual only",
       "piece": "coastal-water-visual",
       "position": [
         0,
         -5,
-        0
+        -119.66666666666667
       ],
       "size": [
         40,
         0.04,
-        300
+        239.33333333333334
       ],
       "yaw": 0,
       "color": "#266b85",
@@ -138,16 +172,50 @@
       ]
     },
     {
-      "id": "coast-3",
-      "name": "West canal · visual only",
+      "id": "coast-4-tile-0-0",
+      "name": "North\u2013south canal \u00b7 visual only",
       "piece": "coastal-water-visual",
       "position": [
-        -100,
+        0,
+        -5,
+        119.66666666666667
+      ],
+      "size": [
+        40,
+        0.04,
+        239.33333333333334
+      ],
+      "yaw": 0,
+      "color": "#266b85",
+      "solid": false,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-5-tile-0-0",
+      "name": "West canal \u00b7 visual only",
+      "piece": "coastal-water-visual",
+      "position": [
+        -153.33333333333334,
         -5,
         0
       ],
       "size": [
-        160,
+        266.6666666666667,
         0.04,
         32
       ],
@@ -172,16 +240,16 @@
       ]
     },
     {
-      "id": "coast-4",
-      "name": "East canal to harbor · visual only",
+      "id": "coast-6-tile-0-0",
+      "name": "East canal to harbor \u00b7 visual only",
       "piece": "coastal-water-visual",
       "position": [
-        80,
+        120,
         -5,
         0
       ],
       "size": [
-        120,
+        200,
         0.04,
         32
       ],
@@ -206,18 +274,18 @@
       ]
     },
     {
-      "id": "coast-5",
+      "id": "coast-7-tile-0-0",
       "name": "Raised coastal district",
       "piece": "coastal-land",
       "position": [
-        -100,
+        -153.33333333333334,
         -8,
-        -83
+        -127.66666666666667
       ],
       "size": [
-        160,
+        266.6666666666667,
         8,
-        134
+        223.33333333333334
       ],
       "yaw": 0,
       "color": "#697b7b",
@@ -240,18 +308,18 @@
       ]
     },
     {
-      "id": "coast-6",
+      "id": "coast-8-tile-0-0",
       "name": "Raised coastal district",
       "piece": "coastal-land",
       "position": [
-        -100,
+        -153.33333333333334,
         -8,
-        83
+        127.66666666666667
       ],
       "size": [
-        160,
+        266.6666666666667,
         8,
-        134
+        223.33333333333334
       ],
       "yaw": 0,
       "color": "#697b7b",
@@ -274,18 +342,18 @@
       ]
     },
     {
-      "id": "coast-7",
+      "id": "coast-9-tile-0-0",
       "name": "Raised coastal district",
       "piece": "coastal-land",
       "position": [
-        80,
-        -8,
-        -83
-      ],
-      "size": [
         120,
+        -8,
+        -127.66666666666667
+      ],
+      "size": [
+        200,
         8,
-        134
+        223.33333333333334
       ],
       "yaw": 0,
       "color": "#697b7b",
@@ -308,18 +376,18 @@
       ]
     },
     {
-      "id": "coast-8",
+      "id": "coast-10-tile-0-0",
       "name": "Raised coastal district",
       "piece": "coastal-land",
       "position": [
-        80,
+        120,
         -8,
-        83
+        127.66666666666667
       ],
       "size": [
-        120,
+        200,
         8,
-        134
+        223.33333333333334
       ],
       "yaw": 0,
       "color": "#697b7b",
@@ -342,18 +410,18 @@
       ]
     },
     {
-      "id": "coast-9",
+      "id": "coast-11-tile-0-0",
       "name": "Canal avenue",
       "piece": "coastal-road",
       "position": [
-        -60,
+        -86.66666666666667,
         -0.21999999999999997,
-        -83
+        -127.66666666666667
       ],
       "size": [
-        14,
+        23.333333333333343,
         0.3,
-        134
+        223.33333333333334
       ],
       "yaw": 0,
       "color": "#394a5a",
@@ -376,18 +444,18 @@
       ]
     },
     {
-      "id": "coast-10",
+      "id": "coast-12-tile-0-0",
       "name": "Canal avenue",
       "piece": "coastal-road",
       "position": [
-        -60,
+        -86.66666666666667,
         -0.21999999999999997,
-        83
+        127.66666666666667
       ],
       "size": [
-        14,
+        23.333333333333343,
         0.3,
-        134
+        223.33333333333334
       ],
       "yaw": 0,
       "color": "#394a5a",
@@ -410,18 +478,18 @@
       ]
     },
     {
-      "id": "coast-11",
+      "id": "coast-13-tile-0-0",
       "name": "Canal avenue",
       "piece": "coastal-road",
       "position": [
-        60,
+        86.66666666666667,
         -0.21999999999999997,
-        -83
+        -127.66666666666667
       ],
       "size": [
-        14,
+        23.333333333333343,
         0.3,
-        134
+        223.33333333333334
       ],
       "yaw": 0,
       "color": "#394a5a",
@@ -444,18 +512,18 @@
       ]
     },
     {
-      "id": "coast-12",
+      "id": "coast-14-tile-0-0",
       "name": "Canal avenue",
       "piece": "coastal-road",
       "position": [
-        60,
+        86.66666666666667,
         -0.21999999999999997,
-        83
+        127.66666666666667
       ],
       "size": [
-        14,
+        23.333333333333343,
         0.3,
-        134
+        223.33333333333334
       ],
       "yaw": 0,
       "color": "#394a5a",
@@ -478,18 +546,18 @@
       ]
     },
     {
-      "id": "coast-13",
+      "id": "coast-15-tile-0-0",
       "name": "West waterfront road",
       "piece": "coastal-road",
       "position": [
-        -100,
+        -153.33333333333334,
         -0.21999999999999997,
-        -80
+        -122.66666666666667
       ],
       "size": [
-        160,
+        266.6666666666667,
         0.3,
-        14
+        23.333333333333343
       ],
       "yaw": 0,
       "color": "#394a5a",
@@ -512,18 +580,18 @@
       ]
     },
     {
-      "id": "coast-14",
+      "id": "coast-16-tile-0-0",
       "name": "East waterfront road",
       "piece": "coastal-road",
       "position": [
-        80,
+        120,
         -0.21999999999999997,
-        -80
+        -122.66666666666667
       ],
       "size": [
-        120,
+        200,
         0.3,
-        14
+        23.333333333333343
       ],
       "yaw": 0,
       "color": "#394a5a",
@@ -546,18 +614,18 @@
       ]
     },
     {
-      "id": "coast-15",
+      "id": "coast-17-tile-0-0",
       "name": "Intact canal bridge",
       "piece": "coastal-bridge",
       "position": [
         0,
         -0.52,
-        -80
+        -122.66666666666667
       ],
       "size": [
         40,
         0.6,
-        14
+        23.333333333333343
       ],
       "yaw": 0,
       "color": "#a0a9ae",
@@ -580,18 +648,18 @@
       ]
     },
     {
-      "id": "coast-16",
+      "id": "coast-18-tile-0-0",
       "name": "Bridge parapet",
       "piece": "coastal-wall",
       "position": [
         0,
         0.08,
-        -87.2
+        -134.66666666666669
       ],
       "size": [
         40,
         1,
-        0.4
+        0.6666666666666572
       ],
       "yaw": 0,
       "color": "#7d8994",
@@ -614,18 +682,18 @@
       ]
     },
     {
-      "id": "coast-17",
+      "id": "coast-19-tile-0-0",
       "name": "Bridge parapet",
       "piece": "coastal-wall",
       "position": [
         0,
         0.08,
-        -72.8
+        -110.66666666666666
       ],
       "size": [
         40,
         1,
-        0.4
+        0.6666666666666714
       ],
       "yaw": 0,
       "color": "#7d8994",
@@ -648,18 +716,18 @@
       ]
     },
     {
-      "id": "coast-18",
+      "id": "coast-20-tile-0-0",
       "name": "West waterfront road",
       "piece": "coastal-road",
       "position": [
-        -100,
+        -153.33333333333334,
         -0.21999999999999997,
-        80
+        122.66666666666667
       ],
       "size": [
-        160,
+        266.6666666666667,
         0.3,
-        14
+        23.333333333333343
       ],
       "yaw": 0,
       "color": "#394a5a",
@@ -682,18 +750,18 @@
       ]
     },
     {
-      "id": "coast-19",
+      "id": "coast-21-tile-0-0",
       "name": "East waterfront road",
       "piece": "coastal-road",
       "position": [
-        80,
+        120,
         -0.21999999999999997,
-        80
+        122.66666666666667
       ],
       "size": [
-        120,
+        200,
         0.3,
-        14
+        23.333333333333343
       ],
       "yaw": 0,
       "color": "#394a5a",
@@ -716,18 +784,18 @@
       ]
     },
     {
-      "id": "coast-20",
-      "name": "Intact canal bridge",
-      "piece": "coastal-bridge",
+      "id": "coast-22-tile-0-0",
+      "name": "Permanent land bridge",
+      "piece": "coastal-land-bridge",
       "position": [
         0,
-        -0.52,
-        80
+        -7.92,
+        122.66666666666667
       ],
       "size": [
         40,
-        0.6,
-        14
+        8,
+        23.333333333333343
       ],
       "yaw": 0,
       "color": "#a0a9ae",
@@ -750,18 +818,18 @@
       ]
     },
     {
-      "id": "coast-21",
+      "id": "coast-23-tile-0-0",
       "name": "Bridge parapet",
       "piece": "coastal-wall",
       "position": [
         0,
         0.08,
-        72.8
+        110.66666666666666
       ],
       "size": [
         40,
         1,
-        0.4
+        0.6666666666666714
       ],
       "yaw": 0,
       "color": "#7d8994",
@@ -784,18 +852,18 @@
       ]
     },
     {
-      "id": "coast-22",
+      "id": "coast-24-tile-0-0",
       "name": "Bridge parapet",
       "piece": "coastal-wall",
       "position": [
         0,
         0.08,
-        87.2
+        134.66666666666669
       ],
       "size": [
         40,
         1,
-        0.4
+        0.6666666666666572
       ],
       "yaw": 0,
       "color": "#7d8994",
@@ -818,16 +886,16 @@
       ]
     },
     {
-      "id": "coast-23",
+      "id": "coast-25-tile-0-0",
       "name": "South canal crossing",
       "piece": "coastal-bridge",
       "position": [
-        60,
+        86.66666666666667,
         -0.52,
         0
       ],
       "size": [
-        14,
+        23.333333333333343,
         0.6,
         32
       ],
@@ -852,16 +920,16 @@
       ]
     },
     {
-      "id": "coast-24",
+      "id": "coast-26-tile-0-0",
       "name": "Damaged bridge approach",
       "piece": "coastal-broken-bridge",
       "position": [
-        -60,
+        -86.66666666666667,
         -0.52,
         -11
       ],
       "size": [
-        14,
+        23.333333333333343,
         0.6,
         10
       ],
@@ -886,16 +954,16 @@
       ]
     },
     {
-      "id": "coast-25",
+      "id": "coast-27-tile-0-0",
       "name": "Damaged bridge approach",
       "piece": "coastal-broken-bridge",
       "position": [
-        -60,
+        -86.66666666666667,
         -0.52,
         11
       ],
       "size": [
-        14,
+        23.333333333333343,
         0.6,
         10
       ],
@@ -920,16 +988,16 @@
       ]
     },
     {
-      "id": "coast-26",
+      "id": "coast-28-tile-0-0",
       "name": "Crossing parapet",
       "piece": "coastal-wall",
       "position": [
-        52.8,
+        74.66666666666666,
         0.08,
         0
       ],
       "size": [
-        0.4,
+        0.6666666666666714,
         1,
         32
       ],
@@ -954,16 +1022,16 @@
       ]
     },
     {
-      "id": "coast-27",
+      "id": "coast-29-tile-0-0",
       "name": "Crossing parapet",
       "piece": "coastal-wall",
       "position": [
-        67.2,
+        98.66666666666669,
         0.08,
         0
       ],
       "size": [
-        0.4,
+        0.6666666666666714,
         1,
         32
       ],
@@ -988,18 +1056,18 @@
       ]
     },
     {
-      "id": "coast-28",
-      "name": "Damage warning · static",
+      "id": "coast-30-tile-0-0",
+      "name": "Damage warning \u00b7 static",
       "piece": "coastal-warning",
       "position": [
-        -65.5,
+        -95.83333333333334,
         0.08,
-        -18
+        -19.333333333333336
       ],
       "size": [
-        2.5,
+        4.166666666666671,
         1.2,
-        0.6
+        1.0000000000000036
       ],
       "yaw": 0,
       "color": "#d3a459",
@@ -1022,18 +1090,18 @@
       ]
     },
     {
-      "id": "coast-29",
-      "name": "Damage warning · static",
+      "id": "coast-31-tile-0-0",
+      "name": "Damage warning \u00b7 static",
       "piece": "coastal-warning",
       "position": [
-        -54.5,
+        -77.5,
         0.08,
-        -18
+        -19.333333333333336
       ],
       "size": [
-        2.5,
+        4.166666666666671,
         1.2,
-        0.6
+        1.0000000000000036
       ],
       "yaw": 0,
       "color": "#d3a459",
@@ -1056,18 +1124,18 @@
       ]
     },
     {
-      "id": "coast-30",
-      "name": "Damage warning · static",
+      "id": "coast-32-tile-0-0",
+      "name": "Damage warning \u00b7 static",
       "piece": "coastal-warning",
       "position": [
-        -65.5,
+        -95.83333333333334,
         0.08,
-        18
+        19.333333333333336
       ],
       "size": [
-        2.5,
+        4.166666666666671,
         1.2,
-        0.6
+        1.0000000000000036
       ],
       "yaw": 0,
       "color": "#d3a459",
@@ -1090,18 +1158,18 @@
       ]
     },
     {
-      "id": "coast-31",
-      "name": "Damage warning · static",
+      "id": "coast-33-tile-0-0",
+      "name": "Damage warning \u00b7 static",
       "piece": "coastal-warning",
       "position": [
-        -54.5,
+        -77.5,
         0.08,
-        18
+        19.333333333333336
       ],
       "size": [
-        2.5,
+        4.166666666666671,
         1.2,
-        0.6
+        1.0000000000000036
       ],
       "yaw": 0,
       "color": "#d3a459",
@@ -1124,18 +1192,18 @@
       ]
     },
     {
-      "id": "coast-32",
+      "id": "coast-34-tile-0-0",
       "name": "Waterfront building",
       "piece": "coastal-building",
       "position": [
-        -145,
+        -228.33333333333334,
         0,
-        -125
+        -197.66666666666669
       ],
       "size": [
-        20,
+        33.333333333333314,
         12,
-        22
+        36.66666666666666
       ],
       "yaw": 0,
       "color": "#778c9c",
@@ -1158,18 +1226,18 @@
       ]
     },
     {
-      "id": "coast-33",
+      "id": "coast-35-tile-0-0",
       "name": "Waterfront building",
       "piece": "coastal-building",
       "position": [
-        -145,
+        -228.33333333333334,
         0,
-        -40
+        -56.00000000000001
       ],
       "size": [
+        33.333333333333314,
         20,
-        20,
-        22
+        36.66666666666667
       ],
       "yaw": 0,
       "color": "#8c9695",
@@ -1192,18 +1260,18 @@
       ]
     },
     {
-      "id": "coast-34",
+      "id": "coast-36-tile-0-0",
       "name": "Waterfront building",
       "piece": "coastal-building",
       "position": [
-        -145,
+        -228.33333333333334,
         0,
-        40
+        56.00000000000001
       ],
       "size": [
-        20,
+        33.333333333333314,
         8,
-        22
+        36.66666666666667
       ],
       "yaw": 0,
       "color": "#778c9c",
@@ -1226,18 +1294,18 @@
       ]
     },
     {
-      "id": "coast-35",
+      "id": "coast-37-tile-0-0",
       "name": "Waterfront building",
       "piece": "coastal-building",
       "position": [
-        -145,
+        -228.33333333333334,
         0,
-        125
+        197.66666666666669
       ],
       "size": [
-        20,
+        33.333333333333314,
         28,
-        22
+        36.66666666666666
       ],
       "yaw": 0,
       "color": "#8c9695",
@@ -1260,18 +1328,18 @@
       ]
     },
     {
-      "id": "coast-36",
+      "id": "coast-38-tile-0-0",
       "name": "Waterfront building",
       "piece": "coastal-building",
       "position": [
-        -110,
+        -170,
         0,
-        -125
+        -197.66666666666669
       ],
       "size": [
-        20,
+        33.33333333333334,
         8,
-        22
+        36.66666666666666
       ],
       "yaw": 0,
       "color": "#8c9695",
@@ -1294,18 +1362,18 @@
       ]
     },
     {
-      "id": "coast-37",
+      "id": "coast-39-tile-0-0",
       "name": "Waterfront building",
       "piece": "coastal-building",
       "position": [
-        -110,
+        -170,
         0,
-        -40
+        -56.00000000000001
       ],
       "size": [
-        20,
+        33.33333333333334,
         12,
-        22
+        36.66666666666667
       ],
       "yaw": 0,
       "color": "#778c9c",
@@ -1328,18 +1396,18 @@
       ]
     },
     {
-      "id": "coast-38",
+      "id": "coast-40-tile-0-0",
       "name": "Waterfront building",
       "piece": "coastal-building",
       "position": [
-        -110,
+        -170,
         0,
-        40
+        56.00000000000001
       ],
       "size": [
-        20,
+        33.33333333333334,
         7.5,
-        22
+        36.66666666666667
       ],
       "yaw": 0,
       "color": "#8c9695",
@@ -1362,18 +1430,18 @@
       ]
     },
     {
-      "id": "coast-39",
+      "id": "coast-41-tile-0-0",
       "name": "Waterfront building",
       "piece": "coastal-building",
       "position": [
-        -110,
+        -170,
         0,
-        125
+        197.66666666666669
       ],
       "size": [
-        20,
+        33.33333333333334,
         12,
-        22
+        36.66666666666666
       ],
       "yaw": 0,
       "color": "#8c9695",
@@ -1396,18 +1464,18 @@
       ]
     },
     {
-      "id": "coast-40",
+      "id": "coast-42-tile-0-0",
       "name": "Waterfront building",
       "piece": "coastal-building",
       "position": [
-        100,
+        153.33333333333334,
         0,
-        -125
+        -197.66666666666669
       ],
       "size": [
-        20,
+        33.333333333333314,
         32,
-        22
+        36.66666666666666
       ],
       "yaw": 0,
       "color": "#778c9c",
@@ -1430,18 +1498,18 @@
       ]
     },
     {
-      "id": "coast-41",
+      "id": "coast-43-tile-0-0",
       "name": "Waterfront building",
       "piece": "coastal-building",
       "position": [
-        100,
+        153.33333333333334,
         0,
-        -40
+        -56.00000000000001
       ],
       "size": [
-        20,
+        33.333333333333314,
         24,
-        22
+        36.66666666666667
       ],
       "yaw": 0,
       "color": "#8c9695",
@@ -1464,18 +1532,18 @@
       ]
     },
     {
-      "id": "coast-43",
+      "id": "coast-45-tile-0-0",
       "name": "Waterfront building",
       "piece": "coastal-building",
       "position": [
-        100,
+        153.33333333333334,
         0,
-        125
+        197.66666666666669
       ],
       "size": [
-        20,
+        33.333333333333314,
         8,
-        22
+        36.66666666666666
       ],
       "yaw": 0,
       "color": "#778c9c",
@@ -1498,18 +1566,18 @@
       ]
     },
     {
-      "id": "coast-44",
+      "id": "coast-46-tile-0-0",
       "name": "Harbor warehouse",
       "piece": "coastal-warehouse",
       "position": [
-        105,
+        161.66666666666669,
         0,
-        45
+        64.33333333333334
       ],
       "size": [
-        28,
+        46.66666666666666,
         10,
-        26
+        43.33333333333333
       ],
       "yaw": 0,
       "color": "#7d8994",
@@ -1571,18 +1639,18 @@
       ]
     },
     {
-      "id": "coast-45",
+      "id": "coast-47-tile-0-0",
       "name": "Rooftop ramp",
       "piece": "coastal-ramp",
       "position": [
-        -110,
+        -170,
         0,
-        63
+        94.33333333333334
       ],
       "size": [
-        10,
+        16.666666666666657,
         8,
-        24
+        40
       ],
       "yaw": 0,
       "color": "#b09a78",
@@ -1605,18 +1673,18 @@
       ]
     },
     {
-      "id": "coast-46",
+      "id": "coast-48-tile-0-0",
       "name": "Rooftop landing",
       "piece": "coastal-landing",
       "position": [
-        -110,
+        -170,
         7.5,
-        40
+        56.00000000000001
       ],
       "size": [
-        24,
+        40,
         0.5,
-        22
+        36.66666666666667
       ],
       "yaw": 0,
       "color": "#9faaa6",
@@ -1639,18 +1707,18 @@
       ]
     },
     {
-      "id": "coast-47",
+      "id": "coast-49-tile-0-0",
       "name": "Harbor approach road",
       "piece": "coastal-road",
       "position": [
-        100,
+        153.33333333333334,
         -0.21999999999999997,
-        100
+        156
       ],
       "size": [
-        80,
+        133.33333333333331,
         0.3,
-        14
+        23.333333333333343
       ],
       "yaw": 0,
       "color": "#394a5a",
@@ -1673,18 +1741,18 @@
       ]
     },
     {
-      "id": "coast-48",
+      "id": "coast-50-tile-0-0",
       "name": "Harbor turn",
       "piece": "coastal-road",
       "position": [
-        133,
+        208.33333333333334,
         -0.21999999999999997,
-        109
+        171
       ],
       "size": [
-        14,
+        23.333333333333314,
         0.3,
-        32
+        53.33333333333334
       ],
       "yaw": 0,
       "color": "#394a5a",
@@ -1707,18 +1775,18 @@
       ]
     },
     {
-      "id": "coast-49",
+      "id": "coast-51-tile-0-0",
       "name": "Harbor pier",
       "piece": "coastal-pier",
       "position": [
-        170,
+        270,
         -1.92,
-        118
+        186
       ],
       "size": [
-        60,
+        100,
         2,
-        18
+        30
       ],
       "yaw": 0,
       "color": "#879397",
@@ -1741,18 +1809,18 @@
       ]
     },
     {
-      "id": "coast-50",
-      "name": "Carrier deck · static prototype",
+      "id": "coast-52-tile-0-0",
+      "name": "Carrier deck \u00b7 static prototype",
       "piece": "fleet-static-deck",
       "position": [
-        245,
+        395,
         -4.92,
         0
       ],
       "size": [
-        42,
+        70,
         7,
-        170
+        262
       ],
       "yaw": 0,
       "color": "#596e80",
@@ -1775,18 +1843,18 @@
       ]
     },
     {
-      "id": "coast-51",
+      "id": "coast-53-tile-0-0",
       "name": "Carrier access ramp",
       "piece": "coastal-ramp",
       "position": [
-        245,
+        395,
         0.08,
-        97
+        151
       ],
       "size": [
-        14,
+        23.333333333333314,
         2,
-        24
+        40
       ],
       "yaw": 0,
       "color": "#85939d",
@@ -1809,18 +1877,18 @@
       ]
     },
     {
-      "id": "coast-52",
+      "id": "coast-54-tile-0-0",
       "name": "Carrier access pier",
       "piece": "coastal-pier",
       "position": [
-        226,
+        363.33333333333337,
         -1.92,
-        118
+        186
       ],
       "size": [
-        52,
+        86.66666666666669,
         2,
-        18
+        30
       ],
       "yaw": 0,
       "color": "#879397",
@@ -1843,18 +1911,18 @@
       ]
     },
     {
-      "id": "coast-53",
+      "id": "coast-55-tile-0-0",
       "name": "Carrier island",
       "piece": "fleet-static-building",
       "position": [
-        259,
+        418.33333333333337,
         2.08,
-        10
+        12
       ],
       "size": [
-        10,
+        16.666666666666686,
         16,
-        24
+        28
       ],
       "yaw": 0,
       "color": "#82929e",
@@ -1877,18 +1945,18 @@
       ]
     },
     {
-      "id": "coast-54",
+      "id": "coast-56-tile-0-0",
       "name": "Flight deck marking",
       "piece": "fleet-marking",
       "position": [
-        239,
+        385,
         2.08,
-        -42
+        -59.33333333333334
       ],
       "size": [
-        1,
+        1.6666666666666856,
         0.025,
-        18
+        30.000000000000007
       ],
       "yaw": 0,
       "color": "#e2d8aa",
@@ -1911,16 +1979,16 @@
       ]
     },
     {
-      "id": "coast-55",
+      "id": "coast-57-tile-0-0",
       "name": "Flight deck marking",
       "piece": "fleet-marking",
       "position": [
-        239,
+        385,
         2.08,
         0
       ],
       "size": [
-        1,
+        1.6666666666666856,
         0.025,
         18
       ],
@@ -1945,18 +2013,18 @@
       ]
     },
     {
-      "id": "coast-56",
+      "id": "coast-58-tile-0-0",
       "name": "Flight deck marking",
       "piece": "fleet-marking",
       "position": [
-        239,
+        385,
         2.08,
-        42
+        59.33333333333334
       ],
       "size": [
-        1,
+        1.6666666666666856,
         0.025,
-        18
+        30.000000000000007
       ],
       "yaw": 0,
       "color": "#e2d8aa",
@@ -1979,18 +2047,18 @@
       ]
     },
     {
-      "id": "coast-57",
-      "name": "Escort deck · static prototype",
+      "id": "coast-59-tile-0-0",
+      "name": "Escort deck \u00b7 static prototype",
       "piece": "fleet-static-deck",
       "position": [
-        184,
+        293.33333333333337,
         -4.8,
-        -80
+        -122.66666666666669
       ],
       "size": [
-        16,
+        26.666666666666686,
         6,
-        48
+        80.00000000000001
       ],
       "yaw": 0,
       "color": "#61798b",
@@ -2013,18 +2081,18 @@
       ]
     },
     {
-      "id": "coast-58",
+      "id": "coast-60-tile-0-0",
       "name": "Escort superstructure",
       "piece": "fleet-static-building",
       "position": [
-        184,
+        293.33333333333337,
         1.2,
-        -80
+        -122.66666666666669
       ],
       "size": [
-        8,
+        13.333333333333314,
         7,
-        14.399999999999999
+        24.000000000000014
       ],
       "yaw": 0,
       "color": "#8d9ca5",
@@ -2047,18 +2115,18 @@
       ]
     },
     {
-      "id": "coast-59",
-      "name": "Escort deck · static prototype",
+      "id": "coast-61-tile-0-0",
+      "name": "Escort deck \u00b7 static prototype",
       "piece": "fleet-static-deck",
       "position": [
-        294,
+        476.6666666666667,
         -4.8,
-        -45
+        -65
       ],
       "size": [
-        18,
+        30,
         6,
-        62
+        102
       ],
       "yaw": 0,
       "color": "#61798b",
@@ -2081,18 +2149,18 @@
       ]
     },
     {
-      "id": "coast-60",
+      "id": "coast-62-tile-0-0",
       "name": "Escort superstructure",
       "piece": "fleet-static-building",
       "position": [
-        294,
+        476.6666666666667,
         1.2,
-        -45
+        -64.33333333333334
       ],
       "size": [
-        9,
+        15,
         7,
-        18.599999999999998
+        30.999999999999986
       ],
       "yaw": 0,
       "color": "#8d9ca5",
@@ -2115,21 +2183,89 @@
       ]
     },
     {
-      "id": "coast-61",
-      "name": "Escort deck · static prototype",
+      "id": "coast-63-tile-0-0",
+      "name": "Escort deck \u00b7 static prototype",
       "piece": "fleet-static-deck",
       "position": [
-        294,
+        476.6666666666667,
         -4.8,
+        72.66666666666667
+      ],
+      "size": [
+        30,
+        6,
+        90
+      ],
+      "yaw": 0,
+      "color": "#61798b",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-64-tile-0-0",
+      "name": "Escort superstructure",
+      "piece": "fleet-static-building",
+      "position": [
+        476.6666666666667,
+        1.2,
+        72.66666666666667
+      ],
+      "size": [
+        15,
+        7,
+        27.000000000000007
+      ],
+      "yaw": 0,
+      "color": "#8d9ca5",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-65-tile-0-0",
+      "name": "Team starting zone",
+      "piece": "coastal-start",
+      "position": [
+        -86.66666666666667,
+        -0.21999999999999997,
+        -181
+      ],
+      "size": [
+        36.66666666666666,
+        0.3,
         50
       ],
-      "size": [
-        18,
-        6,
-        54
-      ],
       "yaw": 0,
-      "color": "#61798b",
+      "color": "#55758c",
       "solid": true,
       "locked": false,
       "parts": [
@@ -2149,21 +2285,21 @@
       ]
     },
     {
-      "id": "coast-62",
-      "name": "Escort superstructure",
-      "piece": "fleet-static-building",
+      "id": "coast-66-tile-0-0",
+      "name": "Team starting zone",
+      "piece": "coastal-start",
       "position": [
-        294,
-        1.2,
-        50
+        86.66666666666667,
+        -0.21999999999999997,
+        181
       ],
       "size": [
-        9,
-        7,
-        16.2
+        36.66666666666666,
+        0.3,
+        50
       ],
       "yaw": 0,
-      "color": "#8d9ca5",
+      "color": "#88636c",
       "solid": true,
       "locked": false,
       "parts": [
@@ -2178,6 +2314,377 @@
             1,
             1,
             1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-67-tile-0-0",
+      "name": "Damaged crossing takeoff",
+      "piece": "coastal-ramp",
+      "position": [
+        -86.66666666666667,
+        0.08,
+        36.66666666666667
+      ],
+      "size": [
+        20,
+        2,
+        45.333333333333336
+      ],
+      "yaw": 0,
+      "color": "#b09a78",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "wedge",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coast-68-tile-0-0",
+      "name": "Damaged crossing landing",
+      "piece": "coastal-landing",
+      "position": [
+        -86.66666666666667,
+        -0.42,
+        -26.666666666666668
+      ],
+      "size": [
+        23.333333333333343,
+        0.5,
+        25.333333333333336
+      ],
+      "yaw": 0,
+      "color": "#9a9083",
+      "solid": true,
+      "locked": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fuel-station-1-tile-0-0",
+      "name": "Fuel station 1",
+      "piece": "fuel-station",
+      "position": [
+        -128.33333333333334,
+        0.08,
+        -64.33333333333334
+      ],
+      "size": [
+        14,
+        5,
+        16
+      ],
+      "yaw": 0,
+      "color": "#c4a46a",
+      "locked": false,
+      "solid": true,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            -0.48,
+            0.5,
+            0
+          ],
+          "size": [
+            0.04,
+            1,
+            1
+          ]
+        },
+        {
+          "shape": "box",
+          "position": [
+            0.48,
+            0.5,
+            0
+          ],
+          "size": [
+            0.04,
+            1,
+            1
+          ]
+        },
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            -0.48
+          ],
+          "size": [
+            1,
+            1,
+            0.04
+          ]
+        },
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.97,
+            0
+          ],
+          "size": [
+            1,
+            0.06,
+            1
+          ]
+        },
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.004,
+            0
+          ],
+          "size": [
+            0.6,
+            0.008,
+            0.65
+          ],
+          "color": "#82b3a0",
+          "solid": false
+        },
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.87,
+            0.48
+          ],
+          "size": [
+            0.7,
+            0.12,
+            0.025
+          ]
+        }
+      ]
+    },
+    {
+      "id": "repair-shop-1-tile-0-0",
+      "name": "Repair shop 1",
+      "piece": "repair-shop",
+      "position": [
+        -128.33333333333334,
+        0.08,
+        64.33333333333334
+      ],
+      "size": [
+        14,
+        5,
+        16
+      ],
+      "yaw": 0,
+      "color": "#6ba5b0",
+      "locked": false,
+      "solid": true,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            -0.48,
+            0.5,
+            0
+          ],
+          "size": [
+            0.04,
+            1,
+            1
+          ]
+        },
+        {
+          "shape": "box",
+          "position": [
+            0.48,
+            0.5,
+            0
+          ],
+          "size": [
+            0.04,
+            1,
+            1
+          ]
+        },
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            -0.48
+          ],
+          "size": [
+            1,
+            1,
+            0.04
+          ]
+        },
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.97,
+            0
+          ],
+          "size": [
+            1,
+            0.06,
+            1
+          ]
+        },
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.004,
+            0
+          ],
+          "size": [
+            0.6,
+            0.008,
+            0.65
+          ],
+          "color": "#82b3a0",
+          "solid": false
+        },
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.87,
+            0.48
+          ],
+          "size": [
+            0.7,
+            0.12,
+            0.025
+          ]
+        }
+      ]
+    },
+    {
+      "id": "service-center-1-tile-0-0",
+      "name": "Service center 1",
+      "piece": "service-center",
+      "position": [
+        136.66666666666669,
+        0.08,
+        164.33333333333334
+      ],
+      "size": [
+        14,
+        5,
+        16
+      ],
+      "yaw": 0,
+      "color": "#8ca480",
+      "locked": false,
+      "solid": true,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            -0.48,
+            0.5,
+            0
+          ],
+          "size": [
+            0.04,
+            1,
+            1
+          ]
+        },
+        {
+          "shape": "box",
+          "position": [
+            0.48,
+            0.5,
+            0
+          ],
+          "size": [
+            0.04,
+            1,
+            1
+          ]
+        },
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            -0.48
+          ],
+          "size": [
+            1,
+            1,
+            0.04
+          ]
+        },
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.97,
+            0
+          ],
+          "size": [
+            1,
+            0.06,
+            1
+          ]
+        },
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.004,
+            0
+          ],
+          "size": [
+            0.6,
+            0.008,
+            0.65
+          ],
+          "color": "#82b3a0",
+          "solid": false
+        },
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.87,
+            0.48
+          ],
+          "size": [
+            0.7,
+            0.12,
+            0.025
           ]
         }
       ]

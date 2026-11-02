@@ -1,8 +1,7 @@
 import { useRef, useState } from "react";
 import { useSocialStore } from "../../store/social/socialStore";
 import { useBuilderStore } from "../../worldBuilder/state/builderStore";
-import { useLayoutStore } from "../../worldBuilder/state/layoutStore";
-import { mapExport } from "../../worldBuilder/document/mapDocument";
+import { applyEditorDraft } from "./applyEditorDraft";
 import { closeWorldBuilder } from "../../worldBuilder/state/builderActions";
 import { useUIStore } from "../../store/menus/uiStore";
 import { useAlphaStore } from "../../store/alpha/alphaStore";
@@ -10,7 +9,6 @@ import {
   useSelectionStore,
   mapCatalog,
 } from "../../store/selection/selectionStore";
-import { requestSocial } from "../../net/socialClient";
 
 /** Explicit apply, not pointer-move uploads. Rust validates/builds a complete
  * replacement before swapping only the editor runtime and resetting its car. */
@@ -34,17 +32,7 @@ export function EditorTestAction() {
     setBusy(true);
     setStatus("");
     try {
-      const layout = useLayoutStore.getState().doc;
-      if (!source) throw Error("Load an editor world first.");
-      const document = JSON.parse(
-        mapExport({
-          ...source,
-          ...(layout?.map_id === source.map_id
-            ? { authored_layout: layout }
-            : {}),
-        }),
-      );
-      await requestSocial("editor_apply", { document });
+      await applyEditorDraft();
       closeWorldBuilder();
       useUIStore.getState().closeOverlay();
     } catch (e) {

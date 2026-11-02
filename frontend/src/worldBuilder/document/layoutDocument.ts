@@ -1,3 +1,4 @@
+import { validateDestruction, type DestructionSettings } from "../../combat/destruction.ts";
 import {
   MODEL_ASSETS,
   modelAsset,
@@ -43,6 +44,7 @@ export type LayoutObject = {
   locked: boolean;
   solid: boolean;
   parts: LayoutPart[];
+  destruction?: DestructionSettings;
   road?: RoadPlacement;
   model?: ModelPlacement;
   vehicle?: VehiclePlacement;
@@ -319,6 +321,10 @@ export function parseLayout(value: unknown, mapId?: string): WorldLayout {
     )
       throw Error("Invalid or duplicate piece ID");
     ids.add(item.id);
+    if (item.destruction !== undefined) {
+      validateDestruction(item.destruction);
+      if (["coastal-land", "coastal-land-bridge"].includes(String(item.piece)) && item.destruction.enabled) throw Error("Permanent land bridges cannot be destructible");
+    }
     if (
       typeof item.name !== "string" ||
       !item.name.trim() ||
@@ -467,6 +473,7 @@ export function updatePiece(
       | "solid"
       | "road"
       | "model"
+      | "destruction"
       | "vehicle"
     >
   >,

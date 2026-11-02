@@ -18,19 +18,20 @@ import {
   initialMapLayout,
   layoutJSON,
   MAX_LAYOUT_BYTES,
-  parseLayoutText,
   pieceById,
   PIECES,
   type Piece,
 } from "../document/layoutDocument";
 import { inLibraryTab, type LibraryTab } from "../document/libraryCatalog";
 import { mapExport } from "../document/mapDocument";
+import { COASTAL_MAP_ID, parseDistrictImport } from "../generation/coastalMap";
 import { sourceSpawns } from "../document/spawnDocument";
 import "../layoutEditor.css";
 import { LayoutPlan } from "../scene/LayoutPlan";
 import {
   closeWorldBuilder,
   loadStandaloneBuilder,
+  openCoastalDistrict,
 } from "../state/builderActions";
 import { useBuilderStore } from "../state/builderStore";
 import {
@@ -289,16 +290,17 @@ function LayoutPanel({
   }, [navigate]);
   const importFile = async (selected: File) => {
     const token = ++importSequence.current,
-      mapId = s.doc?.map_id;
+      originalMap = s.doc?.map_id;
+    let mapId = originalMap;
     try {
       if (selected.size > MAX_LAYOUT_BYTES)
         throw Error("Layout JSON exceeds 2 MiB");
-      const text = await selected.text(),
-        value = JSON.parse(text),
-        doc = parseLayoutText(
-          value.authored_layout ? JSON.stringify(value.authored_layout) : text,
-          mapId,
-        );
+      const { layout: doc, coastal } = parseDistrictImport(await selected.text(), mapId);
+      if (token !== importSequence.current || useLayoutStore.getState().doc?.map_id !== originalMap) return;
+      if (coastal && mapId !== COASTAL_MAP_ID) {
+        await openCoastalDistrict();
+        mapId = COASTAL_MAP_ID;
+      }
       if (
         token !== importSequence.current ||
         useLayoutStore.getState().doc?.map_id !== mapId
@@ -306,7 +308,7 @@ function LayoutPanel({
         return;
       useLayoutStore
         .getState()
-        .commit(doc, "Layout imported. Undo is available.");
+        .commit(doc, coastal ? "Coastal layout imported into its own world. Save, then Apply & Test Drive to rebuild/reset at its spawns. Original map draft retained; Undo is available." : "Layout imported. Undo is available.");
       useLayoutStore.setState({
         selected: null,
         placing: null,
@@ -446,7 +448,7 @@ function LayoutPanel({
                   );
                   useLayoutStore.setState({
                     status:
-                      "Server map exported. Install it in avenlab-server/src/assets/blocks and restart Rust.",
+                      "Server map exported. Install in avenlab-server/src/assets/blocks, run scripts/sync-world-builder-map.mjs, rebuild the frontend and restart Rust.",
                   });
                 }
               })

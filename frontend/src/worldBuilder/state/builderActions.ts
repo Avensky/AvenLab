@@ -4,7 +4,9 @@ import { leaveInspection } from "../../store/presentation/inspectionActions";
 import { useSelectionStore } from "../../store/selection/selectionStore";
 import { mapCatalog } from "../../store/selection/worldCatalog";
 import { useWorldStore, type MapSnapshot } from "../../store/world/worldStore";
-import { initialMapLayout } from "../document/layoutDocument";
+import type { DistrictSize } from "../generation/coastalDistrict";
+import { coastalMap, COASTAL_MAP_ID } from "../generation/coastalMap";
+import { initialMapLayout, parseLayout } from "../document/layoutDocument";
 import {
   editableBoxes,
   mapExport,
@@ -272,4 +274,24 @@ export function exportBuilderMap() {
   useBuilderStore.setState({
     status: "Exported server map JSON · Install it and restart Rust to apply.",
   });
+}
+
+/** Generation has its own identity and save keys; the source world is retained. */
+export async function openCoastalDistrict() {
+  await switchBuilderWorld(COASTAL_MAP_ID);
+  if (useBuilderStore.getState().doc?.map_id !== COASTAL_MAP_ID)
+    throw Error("Could not open Coastal District. Refresh the frontend map definitions first.");
+}
+export function replaceCoastalDistrict(seed: number, size: DistrictSize = "chunk", landBridge = true) {
+  if (useBuilderStore.getState().doc?.map_id !== COASTAL_MAP_ID)
+    throw Error("Open Coastal District before generating.");
+  const doc = coastalMap(seed, size, landBridge);
+  useLayoutStore.getState().commit(parseLayout(doc.authored_layout, COASTAL_MAP_ID),
+    "Coastal District generated · independent browser draft. Apply & Test Drive rebuilds the live editor.");
+  useLayoutStore.setState({ selected: null, selectedSpawn: null, placing: null, reference: false,
+    focus: "layout", cameraRevision: useLayoutStore.getState().cameraRevision + 1 });
+  // Persist the complete source as well as the editable layout under the new ID.
+  useBuilderStore.getState().load(doc, "Coastal District · generated source");
+  useBuilderStore.getState().save();
+  useLayoutStore.getState().save();
 }

@@ -347,7 +347,7 @@ impl Server {
                 return Err("Your joined world uses a different map. Leave that world before selecting another.".into());
             }
         } else {
-            if !MAP_IDS.contains(&map) {
+            if !map_available(map) {
                 return Err("This map is unavailable.".into());
             }
             let mut data = self.data.lock().await;
@@ -456,7 +456,7 @@ impl Server {
             "world_create" => {
                 let actor = self.actor(player).await?;
                 let map = string("map");
-                if !MAP_IDS.contains(&map.as_str()) {
+                if !map_available(&map) {
                     return Err("Choose an available map.".into());
                 }
                 let name = valid_name(&string("name"), 40)?;

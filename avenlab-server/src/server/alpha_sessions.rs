@@ -166,7 +166,7 @@ impl Server {
     }
     async fn admit_mode(&self, ticket: &Ticket) -> Result<Value, String> {
         if !ticket.hero.is_empty() { policy::hero(&ticket.hero)?; }
-        if !MAP_IDS.contains(&ticket.map.as_str()) {
+        if !map_available(&ticket.map) {
             return Err("Choose an installed environment.".into());
         }
         let a = self.alpha.lock().await.clone();
@@ -276,7 +276,7 @@ impl Server {
                 .unwrap_or("streaming_endless_city")
                 .to_string()
         };
-        if !MAP_IDS.contains(&map.as_str()) {
+        if !map_available(&map) {
             return Err("Choose an installed environment.".into());
         }
         {
@@ -576,7 +576,7 @@ impl Server {
             .get(&member.world)
             .cloned()
             .ok_or("Editor world closed.")?;
-        if !MAP_IDS.contains(&file.map_id.as_str()) { return Err("Unknown editor environment.".into()); }
+        if !map_available(&file.map_id) { return Err("Unknown editor environment.".into()); }
         let mut world = world;
         world.map = file.map_id.clone();
         let old_runtime = self.runtime(player).await?;

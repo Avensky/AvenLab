@@ -1,0 +1,27 @@
+[
+  {
+    "id": "coastal_district",
+    "name": "Coastal District",
+    "desc": "Editable coastal chase world"
+  },
+  {
+    "id": "road_jump_lab",
+    "name": "Road & Jump Lab",
+    "desc": "Installed server environment"
+  },
+  {
+    "id": "road_precision",
+    "name": "Road precision test",
+    "desc": "Installed server environment"
+  },
+  {
+    "id": "streaming_endless_city",
+    "name": "Streaming Endless City",
+    "desc": "Installed server environment"
+  },
+  {
+    "id": "workshop_yard",
+    "name": "Workshop Yard",
+    "desc": "Installed server environment"
+  }
+]

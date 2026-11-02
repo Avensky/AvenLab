@@ -1,3 +1,4 @@
+import { aimCombat, combatIntent } from "../combat/combatStore";
 import { useGameStore } from "../store/presentation/gameStore";
 import { leaveInspection } from "../store/presentation/inspectionActions";
 import { usePreferencesStore } from "../store/preferences/preferencesStore";
@@ -59,6 +60,7 @@ export function GameController() {
       window.dispatchEvent(new CustomEvent("avenlab:hero-main-hold",{detail:{pressed:false,cancelled}}));
     };
     const releasePanelPress = (cancelled = true) => {
+      combatIntent.gamepadFire=false;
       releaseHeroMain();
       if (!panelPressHeld) return;
       panelPressHeld = false;
@@ -338,9 +340,9 @@ export function GameController() {
             (preferences.invertSteering ? -1 : 1),
         ),
       );
-      const throttle =
-        trigger(pad.buttons[7]?.value) ||
-        -axis(pad.axes[3], preferences.controllerDeadzone);
+      if (combatIntent.enabled) { combatIntent.gamepadFire=armed&&pressed(5); }
+      if (combatIntent.enabled && armed) aimCombat(axis(pad.axes[2], preferences.controllerDeadzone)*0.035, axis(pad.axes[3], preferences.controllerDeadzone)*0.035);
+      const throttle = trigger(pad.buttons[7]?.value) || (combatIntent.enabled ? 0 : -axis(pad.axes[3], preferences.controllerDeadzone));
       const brake = trigger(pad.buttons[6]?.value);
       const handbrake = Number(pressed(1));
       // After menu/focus/device changes, release and re-engage drive controls.
@@ -374,7 +376,7 @@ export function GameController() {
         handbrake,
       });
       store.setHeldVehicleFlag("gamepad", VehicleFlags.BOOST, pressed(4));
-      store.setHeldPlayerFlag("gamepad", PlayerFlags.HONK, pressed(5));
+      store.setHeldPlayerFlag("gamepad", PlayerFlags.HONK, !combatIntent.enabled && pressed(5));
       if (edges[2]) store.toggleVehicleFlag(VehicleFlags.ENGINE_ON);
       if (edges[3]) store.toggleVehicleFlag(VehicleFlags.HEADLIGHTS);
       if (edges[12]) store.toggleVehicleFlag(VehicleFlags.HAZARDS);

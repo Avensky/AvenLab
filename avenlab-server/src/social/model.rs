@@ -2,12 +2,25 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use uuid::Uuid;
 
-pub const MAP_IDS: [&str; 4] = [
-    "streaming_endless_city",
-    "road_jump_lab",
-    "workshop_yard",
-    "road_precision",
-];
+/// Discover installed maps on demand: no environment allow-list to maintain.
+pub fn available_maps() -> Vec<String> {
+    let directory = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/assets/blocks");
+    let mut maps = Vec::new();
+    if let Ok(files) = std::fs::read_dir(directory) {
+        for entry in files.flatten() {
+            let path = entry.path();
+            let Some(name) = path.file_name().and_then(|v| v.to_str()) else { continue; };
+            let Some(id) = name.strip_suffix("_colliders.json") else { continue; };
+            if id.is_empty() || !id.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-') { continue; }
+            if let Ok(file) = crate::world::block_colliders::load_block_collider_file(path.to_string_lossy().into_owned()) {
+                if file.schema_version == 2 && file.map_id == id { maps.push(id.to_owned()); }
+            }
+        }
+    }
+    maps.sort();
+    maps
+}
+pub fn map_available(id: &str) -> bool { available_maps().iter().any(|map| map == id) }
 pub const MAX_WORLD_PLAYERS: usize = 10;
 pub const MAX_PROFILES: usize = 1024;
 pub const MAX_FRIENDS: usize = 100;

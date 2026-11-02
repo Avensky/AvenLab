@@ -1,3 +1,4 @@
+import { WeaponEditor } from "../../combat/WeaponEditor";
 import type { MenuAction } from "../../controls/inputRouting";
 import { useEffect, useRef, useState } from 'react';
 import { requestSocial } from '../../net/socialClient';
@@ -144,9 +145,9 @@ export function VehicleEditorPanel() {
                     editor.setView('chase');
                 });
             }}>{HEROES.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}</select></label>
-      <nav aria-label="Vehicle settings">{['Body', 'Power', 'Suspension', 'Wheels', 'Steering', 'Camera', 'Materials'].map(name => <button aria-pressed={tab === name} key={name} onClick={() => setTab(name)}>{name}</button>)}</nav>
+      <nav aria-label="Vehicle settings">{['Body', 'Power', 'Suspension', 'Wheels', 'Steering', 'Camera', 'Materials', 'Weapons'].map(name => <button aria-pressed={tab === name} key={name} onClick={() => setTab(name)}>{name}</button>)}</nav>
       <div className="ve-fields">
-      {tab === 'Materials' ? <>
+      {tab === 'Weapons' ? <WeaponEditor vehicle={vehicle}/> : tab === 'Materials' ? <>
         <h3>MATERIAL SLOT CHECKLIST · {vehicle.toUpperCase()}</h3>
         <p>Body paint is equipped in Main menu → Heroes and shared with other players. This page reserves the per-car asset mapping work.</p>
         <p>Body: known paint slot. Seats: BRZ yellow bucket material not yet verified. Front seat named nodes contain no mesh data in the current export.</p>

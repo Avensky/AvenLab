@@ -1,3 +1,4 @@
+import { NetworkWeapons } from "../combat/NetworkWeapons";
 // src/vehicles/VehicleScene.tsx
 import * as THREE from "three";
 import { DebugWheelVisualizer } from "../components/debugger/DebugWheelVisualizer";
@@ -15,6 +16,7 @@ export function VehicleScene() {
   return (
     <>
       <VehicleRoster />
+      <NetworkWeapons />
       {mask !== 0 && <VehicleDiagnostics />}
     </>
   );

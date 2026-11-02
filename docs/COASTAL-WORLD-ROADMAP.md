@@ -4,23 +4,44 @@ The goal is a multiplayer simulation where players can drive, fly and operate
 watercraft in connected cities and fleets, later directed by a headless World
 Director. Keep server-authoritative physics and mobile performance central.
 
-## Delivered in this patch
+## Current coastal district patch
 
-World Editor → Inspector → Files → Generate coastal district.
+Coastal District is a separately registered environment (`coastal_district`) in
+both the environment selector and the editor dropdown. Its server map lives at
+`avenlab-server/src/assets/blocks/coastal_district_colliders.json`. Renaming an
+export file or changing the display title does not register arbitrary new map
+IDs; a general named-world library and server publish API are still pending.
 
-This finite greybox recipe creates four land districts around intersecting
-canals, two east/west bridges, a safe north/south crossing, a damaged bridge
-with a 12 m missing center, rooftop ramp, open warehouse, harbor approaches,
-and a static carrier with three escort decks. Six team spawn points sit on
-clear road surfaces. All solids are explicit box/wedge colliders; visual and
-collider transforms use the existing shared layout format. GLBs are optional.
+Generate coastal district opens this independent world first, preserving the
+previous world's browser draft. Confirm before regenerating an existing coast.
+Generation updates the active editor document/selection, saves under its own
+keys, and, when an editor session is reserved, applies the full map to that
+isolated runtime. The server resets the test vehicle using explicit team spawns.
+A failed live apply leaves the draft intact and reports Retry via Apply & Test
+Drive; standalone authoring still needs Reserve Live Editor and Apply & Test Drive.
+Undo restores the authored layout only; apply again to update live physics.
 
-Seed changes building heights/colors while keeping the road plan fixed. This
-is a first automated recipe, not a general procedural geography system. The
-same seed produces the same editable layout. Generation is one undoable edit;
-existing work requires an inline replacement confirmation. Save/export uses
-the normal editor workflow. Apply & Test Drive uses the existing isolated
-editor server session, or export/install the server map and restart Rust.
+Four land pieces now range from 300–400 m wide and are 335 m deep. Longitudinal
+run-up distances expand 2.5 times while the primary 40 m / 32 m canal widths
+stay narrow. Land/road/bridge edges share the same coordinate transform to keep
+connections intact. Designated open staging pads contain six separated team
+spawns facing into the district. The damaged crossing has a takeoff ramp and
+landing; intact crossings remain safe alternate routes. Existing fuel-only,
+repair-only and combined service prefabs sit off the chase avenues. Their
+existing gradual service logic is reused; they are not destructible yet.
+
+For an older coastal export incorrectly identified as Road Precision, use the
+editor's Files import. A validated layout containing coastal-land pieces is
+retargeted into Coastal District; the original test-world draft is preserved.
+Its geometry and saved spawn points remain as exported. Regenerate with this
+version for the expanded islands and staging pads. Export map keeps the stable
+`coastal_district_colliders.json` filename regardless of display title.
+
+Permanent installation: export the complete map, back up and replace the same
+file in `avenlab-server/src/assets/blocks/`, run
+`node scripts/sync-world-builder-map.mjs`, rebuild the frontend, and restart
+Rust. This patch changes Rust's allowed environments too: rebuild/restart Rust
+when installing it initially. Browser Save and live Apply are not disk publishing.
 
 Water surfaces are decorative and non-solid. There is no global support floor
 beneath canals. A car can fall through, but this patch does not add water entry,
@@ -28,6 +49,23 @@ drowning, flotation or a water-specific recovery timer. The merged Heroes
 update supplies manual reset to map/team spawn and automatic recovery after
 falling more than 20 m below the spawn surface for 2 seconds. Use reset during
 testing; water entry is not itself detected. Warning blocks and all fleet decks are static.
+
+## Immediate world-builder pathway
+
+1. Drive-test this larger district: both staging areas, intact bridge loops,
+   damaged crossing jump, rooftop route, service-bay access and carrier approach.
+   Tune launch/landing lengths from recorded vehicle speed and suspension behavior.
+2. Add editable water hazard volumes and slow sinking/recovery, then authoritative
+   breakable roadside barriers. These mechanics need server state, not only visuals.
+3. Add hill/slope connectors, road junction graph and automated route validation:
+   two safe paths between team bases, optional risky shortcuts and protected
+   spawn/landing footprints for every seed. Keep hand-editing each generated piece.
+4. Add a real named-world library and Save to Server / Publish workflow, with
+   validated unique IDs, ownership and a shared server-fed catalog. This replaces
+   manual file installation; it is not supplied by the current browser Save.
+5. Expand deterministic recipes with blocks, bridges, canals, resource sites and
+   eventual objectives. Destructible fuel storage/economy changes follow the
+   authoritative breakable lifecycle. Avoid adding all mechanics in one patch.
 
 ## Next implementation batches
 
@@ -54,7 +92,7 @@ testing; water entry is not itself detected. Warning blocks and all fleet decks 
    Give vessels routes, service bays, landing zones and useful interiors.
    Prove stationary decks first, then one moving vessel with vehicles supported
    on its deck, then several vessels with boarding/launch/recovery.
-8. General world automation: named district recipes, road/navigation graph,
+8. General world automation: persistent named-world registry/server publishing, named district recipes, road/navigation graph,
    bridge clearance by vessel class, guaranteed routes and spawn safety,
    bounded streaming chunks, handcrafted landmarks and saved generation inputs.
 9. Gameplay and scale: Tank/DPS/Support, CTF objectives, service/damage loops,
@@ -74,7 +112,27 @@ Automated tests cover deterministic generation, bounds, import/export, real
 collision gaps, continuous bridge/carrier approaches, spawn elevations,
 replacement/cancel behavior, undo, and isolation from the live world store.
 Geometry probes do not prove suspension clearance, maximum ramp speed,
-contact stability or multiplayer behavior. A Rust toolchain is unavailable in the merge
-environment; the Heroes source patch records its own prior backend validation,
-but this merge does not rerun it. Coastal live Rapier driving and physical
-handling remain manual validation work. No new backend physics is claimed in this patch.
+contact stability or multiplayer behavior. Runtime driving with the actual assets,
+launch speeds and landing suspension response still require user feedback.
+The current environment has no Rust toolchain, so the updated allowed-map list
+has not been compiled here. No new buoyancy or breakage physics is claimed.
+
+## Automatic catalog and footprint update
+
+The source of selectable worlds is now `avenlab-server/src/assets/blocks/`.
+Install schema-2 maps as `<map_id>_colliders.json`, with matching IDs inside the
+map and authored layout. Rust discovers valid files on demand. The frontend
+sync script validates/copies these files and generates the shared selection
+catalog; both selectors import it. npm dev/build refresh the catalog first;
+Vite watches map additions, changes and removals during development. Deployed
+static frontends need rebuilding/redeploying to receive new map definitions.
+Browser Save remains local; Export map remains the server installation workflow.
+
+District footprints: Block ≈100–133 m wide, Chunk ≈200–267 m, Massive ≈600–800 m.
+The massive footprint is approximately 3×3 standard 2×2 chunk areas per island.
+These are connected greybox land areas, not nine expensive GLB chunks. Large
+flat shapes are subdivided to stay inside collider size limits. Canals and
+bridges connect the areas. The optional permanent land bridge is a deep solid
+causeway on the safe loop. It has its own piece type, reserved for exclusion
+from future destruction. Currently all crossings are static/indestructible;
+no breakage mechanic is claimed here. Live driving still needs validation.

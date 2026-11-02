@@ -57,7 +57,7 @@ pub fn run() -> anyhow::Result<()> {
     }
     for tick in 0..ticks {
         for (sender, player) in &input_senders {
-            sender.send_replace(Some(InputPacket {
+            sender.send_replace(Some(InputPacket { combat: None,
                 r#type: "input".into(),
                 seq: tick as u32,
                 dt: 1.0 / 60.0,

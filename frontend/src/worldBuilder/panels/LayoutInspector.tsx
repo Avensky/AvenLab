@@ -1,3 +1,4 @@
+import { CombatAuthoringPanel } from "../../combat/CombatAuthoringPanel";
 import { useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { Icon, Thumbnail } from "../components/EditorArtwork";
@@ -55,7 +56,7 @@ export function LayoutInspector({
     })),
   );
   const [tab, setTab] = useState<
-    "selection" | "world" | "spawns" | "scene" | "snapping" | "files"
+    "selection" | "world" | "spawns" | "scene" | "snapping" | "files" | "combat"
   >(() => (s.selectedSpawn ? "spawns" : "selection"));
   useEffect(
     () =>
@@ -103,6 +104,7 @@ export function LayoutInspector({
             "scene",
             "snapping",
             "files",
+            "combat",
           ] as const
         ).map((id) => (
           <button key={id} aria-pressed={tab === id} onClick={() => setTab(id)}>
@@ -497,6 +499,7 @@ export function LayoutInspector({
           )}
         </>
       )}
+      {tab === "combat" && <CombatAuthoringPanel />}
       {tab === "spawns" && <SpawnInspector />}
       {tab === "scene" && (
         <div className="le-scene-section">
@@ -614,7 +617,7 @@ export function LayoutInspector({
             <>
               <CoastalGenerator />
               <label className="le-title-label">
-                Export title
+                District display title
                 <input
                   aria-label="Layout export title"
                   key={s.doc?.title}
@@ -628,6 +631,7 @@ export function LayoutInspector({
                   }
                 />
               </label>
+              <small>Map ID: {s.doc?.map_id} · Title does not create a new environment. Save is browser-local; Export map creates the server file.</small>
               <div className="le-twin">
                 <button disabled={!s.doc} onClick={() => projectAction("new")}>
                   New layout

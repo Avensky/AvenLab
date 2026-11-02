@@ -243,12 +243,12 @@ async fn back_can_clear_a_pick_without_releasing_its_seat_and_role() {
 async fn sandbox_can_reserve_each_installed_editor_environment_without_preselecting_a_hero() {
     let s = alpha_server();
     let (player, _, _) = client(&s, "Map tester").await;
-    for map in MAP_IDS {
+    for map in available_maps() {
         let result = s.handle(&player, json!({"action":"mode_join","mode":"sandbox","hero":"","map":map})).await.unwrap();
         assert_eq!(result["status"], "joined");
-        assert_eq!(result["map"], *map);
+        assert_eq!(result["map"], map.as_str());
         let world = result["world_id"].as_u64().unwrap() as usize;
-        assert_eq!(s.data.lock().await.worlds[&world].map, *map);
+        assert_eq!(s.data.lock().await.worlds[&world].map, map);
         assert!(s.alpha.lock().await.members[&player].hero.is_empty());
     }
     assert!(s.handle(&player, json!({"action":"hero_select","hero":"fake"})).await.is_err());

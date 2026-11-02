@@ -3,6 +3,7 @@ import { create } from "zustand";
 import type { Team, VehicleKind } from "./types";
 
 export interface PhysicsSnapshot {
+  asset_health?: Record<string,number>;
   match_clock?: {
     remaining_s: number;
     phase: "regulation" | "overtime" | "ended";
@@ -49,6 +50,7 @@ export interface VehicleColliderShape {
 }
 
 export interface PhysicsEntitySnapshot {
+  combat?: {enabled:boolean;yaw:number;pitch:number;x:number;y:number;z:number;role:string};
   collider?: VehicleColliderShape;
   id: string;
   kind: VehicleKind;

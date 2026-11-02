@@ -56,6 +56,7 @@ pub struct VehicleColliderShape {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct PhysicsEntitySnapshot {
+    pub combat: CombatPose,
     // Collider preview metadata is independent of expensive force diagnostics.
     pub collider: VehicleColliderShape,
     pub id: String,
@@ -110,6 +111,7 @@ pub struct ServerTiming {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct PhysicsSnapshot {
+    pub asset_health: HashMap<String,f32>,
     pub server_timing: ServerTiming,
     pub tick: u64,
     // Simulation time is independent of socket arrival time. Clients may use
@@ -195,6 +197,24 @@ pub struct EntityState {
 // Player Input
 // ============================================================================
 
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+pub struct CombatPose {
+    #[serde(default)] pub enabled: bool,
+    #[serde(default)] pub fire: bool,
+    #[serde(default)] pub yaw: f32,
+    #[serde(default)] pub pitch: f32,
+    #[serde(default)] pub x: f32,
+    #[serde(default)] pub y: f32,
+    #[serde(default)] pub z: f32,
+    #[serde(default)] pub role: String,
+}
+impl CombatPose {
+    pub fn bounded(&self) -> Self {
+        let finite = |v:f32, lo:f32, hi:f32| if v.is_finite() {v.clamp(lo,hi)} else {0.0};
+        Self {enabled:self.enabled,fire:self.fire,yaw:finite(self.yaw,-std::f32::consts::PI,std::f32::consts::PI),pitch:finite(self.pitch,-0.7854,0.7854),x:finite(self.x,-3.0,3.0),y:finite(self.y,-3.0,3.0),z:finite(self.z,-3.0,3.0),role:if ["assault","support","medic"].contains(&self.role.as_str()){self.role.clone()}else{"assault".into()}}
+    }
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct InputPacket {
     pub r#type: String,
@@ -218,6 +238,8 @@ pub struct InputPacket {
 
     #[serde(default)]
     pub debug_mask: Option<u32>,
+    #[serde(default)]
+    pub combat: Option<CombatPose>,
 }
 
 // ============================================================================
@@ -475,6 +497,7 @@ impl SharedGameState {
             );
 
             entities_out.push(PhysicsEntitySnapshot {
+                combat: ent.last_packet.as_ref().and_then(|p|p.combat.as_ref()).map(|c|c.bounded()).unwrap_or_default(),
                 condition: vehicle.powertrain.condition,
                 ultimate_fraction: vehicle.powertrain.ultimate_fraction,
                 boost_fraction: vehicle.powertrain.boost_fraction(vehicle.config.resources),
@@ -526,6 +549,7 @@ impl SharedGameState {
             simulation_time_s: self.tick as f64 / SIMULATION_HZ,
             tick_dt_s: SIMULATION_DT,
             entities: entities_out,
+            asset_health: physics.asset_health.clone(),
         }
     }
 }
@@ -585,7 +609,7 @@ mod tests {
             let (input_tx, input_rx) = watch::channel(None);
             game.register_client(id.into(), reliable_tx, frame_tx, input_rx);
             game.add_entity(id, EntityType::Vehicle);
-            input_tx.send_replace(Some(InputPacket {
+            input_tx.send_replace(Some(InputPacket { combat: None,
                 r#type: "input".into(), seq: 1, dt: 1.0 / 60.0,
                 throttle: 0.0, steer: 0.0, brake: 0.0, handbrake: 0.0, cockpit_mask: None,  parking_brake:None, cabin_mask: None,
                 vehicleMask: 0, playerMask: 0, debug_mask: Some(mask),
@@ -612,7 +636,7 @@ mod tests {
         game.register_client("driver".into(), reliable_tx, frame_tx, input_rx);
         game.add_entity("driver", EntityType::Vehicle);
         for seq in 0..120 {
-            input_tx.send_replace(Some(InputPacket {
+            input_tx.send_replace(Some(InputPacket { combat: None,
                 r#type: "input".into(), seq, dt: 1.0 / 60.0,
                 throttle: if seq == 119 { 0.0 } else { 1.0 },
                 steer: 0.0, brake: if seq == 119 { 1.0 } else { 0.0 },

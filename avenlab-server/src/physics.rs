@@ -38,6 +38,9 @@ const MAX_PHYSICS_SUBSTEP: Real = 1.0 / 120.0;
 const MAX_PHYSICS_SUBSTEPS: usize = 8;
 
 pub struct PhysicsWorld {
+    pub asset_health: HashMap<String,f32>,
+    combat_sequences: HashMap<String,(u32,std::time::Instant)>,
+    combat_cooldowns: HashMap<String,f32>,
     pub gravity: Vector<Real>, // gravity vector
     pub pipeline: PhysicsPipeline, // physics pipeline
     pub island_manager: IslandManager, // manages islands of bodies
@@ -144,6 +147,7 @@ impl PhysicsWorld {
         }
 
         self.block_world.tile_size = Some(requested.cell);
+        self.asset_health.clear(); self.combat_cooldowns.clear(); self.combat_sequences.clear();
         self.active_map = Some(requested);
 
         self.update_loaded_blocks_around_players();
@@ -345,6 +349,7 @@ impl PhysicsWorld {
         // create duplicate contacts/jitter.
 
         Self {
+            asset_health: HashMap::new(), combat_sequences: HashMap::new(), combat_cooldowns: HashMap::new(),
             gravity,
             pipeline: PhysicsPipeline::new(),
             island_manager: IslandManager::new(),
@@ -373,6 +378,38 @@ impl PhysicsWorld {
             },
             debug_flags: DebugFlags::NONE,
             spawn_poses: HashMap::new(), falling_seconds: HashMap::new(),
+        }
+    }
+
+    /// Initial hitscan slice: explicit standalone authored box/wedge structures.
+    /// Server owns cadence, damage and nearest-hit collision; clients supply aim only.
+    pub fn combat_tick(&mut self, player: &str, seq:u32, intent: Option<&crate::state::CombatPose>) {
+        let entry=self.combat_sequences.entry(player.to_owned()).or_insert((seq,std::time::Instant::now()));
+        if entry.0!=seq {*entry=(seq,std::time::Instant::now());}
+        if entry.1.elapsed().as_millis()>250 {return;}
+        let cooldown = self.combat_cooldowns.entry(player.to_owned()).or_insert(0.0);
+        *cooldown = (*cooldown - SIMULATION_DT).max(0.0);
+        let Some(c) = intent.filter(|c| c.enabled && c.fire).map(|c|c.bounded()) else {return;};
+        if *cooldown > 0.0 {return;}
+        *cooldown = if c.role == "medic" {0.6} else {0.1};
+        let Some(v) = self.vehicles.get(player) else {return;};
+        let Some(body) = self.bodies.get(v.body) else {return;};
+        let origin = body.position().transform_point(&point![c.x,c.y,c.z]);
+        let direction = vector![-c.yaw.sin()*c.pitch.cos(),c.pitch.sin(),-c.yaw.cos()*c.pitch.cos()];
+        self.query_pipeline.update(&self.colliders);
+        let Some((handle,_)) = self.query_pipeline.cast_ray(&self.bodies,&self.colliders,&Ray::new(origin,direction),200.0,true,QueryFilter::default().exclude_rigid_body(v.body)) else {return;};
+        let Some(parent) = self.colliders[handle].parent() else {return;};
+        let index = self.bodies[parent].user_data as usize;
+        if index == 0 {return;}
+        let Some(layout) = self.active_map.as_ref().and_then(|m|m.authored_layout.as_ref()).filter(|l| !l.repeat) else {return;};
+        let Some(object) = layout.objects.get(index-1) else {return;};
+        if ["coastal-land","coastal-land-bridge"].contains(&object.piece.as_str()) {return;}
+        let Some(d) = object.destruction.as_ref().filter(|d|d.enabled && d.hp.is_finite() && d.hp>0.0 && d.hp<=1000000.0 && d.small_arms.is_finite() && d.small_arms>=0.0 && d.small_arms<=10.0) else {return;};
+        let hp = self.asset_health.entry(object.id.clone()).or_insert(d.hp);
+        *hp = (*hp - 20.0*d.small_arms).max(0.0);
+        if *hp == 0.0 {
+            for h in self.bodies[parent].colliders().to_vec() { if let Some(collider)=self.colliders.get_mut(h){collider.set_enabled(false);} }
+            self.query_pipeline.update(&self.colliders);
         }
     }
 
@@ -751,6 +788,14 @@ impl PhysicsWorld {
         // Rapier keeps this query pipeline current between substeps.
         self.debug_overlay.clear();
         self.update_loaded_blocks_around_players();
+        // Reloaded tiles must not resurrect invisible collision for destroyed assets.
+        if !self.asset_health.is_empty() {
+            if let Some(layout)=self.active_map.as_ref().and_then(|m|m.authored_layout.as_ref()).filter(|l|!l.repeat) {
+                let disabled:Vec<_>=self.bodies.iter().filter(|(_,b)| b.user_data>0 && layout.objects.get(b.user_data as usize-1).is_some_and(|o|self.asset_health.get(&o.id)==Some(&0.0))).flat_map(|(_,b)|b.colliders().to_vec()).collect();
+                for h in disabled {if let Some(c)=self.colliders.get_mut(h){c.set_enabled(false);}}
+            }
+        }
+
         self.query_pipeline.update(&self.colliders);
 
         // Recompute custom contacts and forces for each small integration step.
@@ -1026,7 +1071,7 @@ mod tests {
         world.bodies[handle].set_rotation(Rotation::from_euler_angles(0.0, 0.4, 2.5), true);
         let train = &mut world.vehicles.get_mut("recover-test").unwrap().powertrain;
         train.fuel_liters = 12.0; train.condition = 0.6; train.temperature_c = 120.0; train.nos_remaining_s = 2.0;
-        let packet = InputPacket { r#type: "input".into(), seq: 1, dt: 1.0 / 60.0,
+        let packet = InputPacket { combat: None, r#type: "input".into(), seq: 1, dt: 1.0 / 60.0,
             throttle: 0.0, steer: 0.0, brake: 0.0, handbrake: 0.0, cockpit_mask: None,  parking_brake:None, cabin_mask: None, vehicleMask: 97, playerMask: 1 << 5, debug_mask: Some(0) };
         world.apply_player_input_packet("recover-test", packet.clone());
         assert!((world.bodies[handle].rotation() * Vector::y()).y > 0.99);
@@ -1040,7 +1085,7 @@ mod tests {
     #[test]
     fn repeating_gear_override_packets_do_not_lock_automatic_and_neutral_remains_explicit() {
         let mut world=flat_world();world.spawn_vehicle_for_player("shift-test".into(),[0.0;3],"brz","red").unwrap();
-        let mut packet=InputPacket {r#type:"input".into(),seq:1,dt:1.0/60.0,throttle:1.0,steer:0.0,brake:0.0,handbrake:0.0,
+        let mut packet=InputPacket { combat: None,r#type:"input".into(),seq:1,dt:1.0/60.0,throttle:1.0,steer:0.0,brake:0.0,handbrake:0.0,
             cockpit_mask:Some((6<<7)|(1<<6)|(11<<24)|(1<<16)), parking_brake:None, cabin_mask:None,vehicleMask:97,playerMask:0,debug_mask:Some(0)};
         for _ in 0..30 {world.apply_player_input_packet("shift-test",packet.clone());world.step(SIMULATION_DT);}
         assert_eq!(world.vehicles["shift-test"].powertrain.manual_gear,None);assert_eq!(world.vehicles["shift-test"].powertrain.gear,6);
@@ -1057,7 +1102,7 @@ mod tests {
     fn held_flash_sets_authoritative_lamps_and_releases_to_the_selected_mode() {
         let mut world = flat_world();
         world.spawn_vehicle_for_player("flash-test".into(), [0.0;3], "brz", "red").unwrap();
-        let mut packet = InputPacket { r#type:"input".into(), seq:1, dt:1.0/60.0,
+        let mut packet = InputPacket { combat: None, r#type:"input".into(), seq:1, dt:1.0/60.0,
             throttle:0.0, steer:0.0, brake:0.0, handbrake:0.0, cockpit_mask:None,
              parking_brake:None, cabin_mask:Some(4|4096|8192|(2<<10)), vehicleMask:96, playerMask:0, debug_mask:Some(0) };
         for mode in 0..=3 {
@@ -1080,7 +1125,7 @@ mod tests {
     fn input_pipeline_keeps_fractional_cable_force_independent_of_service_and_momentary_brakes() {
         let mut world=flat_world();
         world.spawn_vehicle_for_player("pressure-test".into(),[0.0;3],"brz","red").unwrap();
-        let mut packet=InputPacket {r#type:"input".into(),seq:1,dt:1.0/60.0,
+        let mut packet=InputPacket { combat: None,r#type:"input".into(),seq:1,dt:1.0/60.0,
             throttle:0.0,steer:0.0,brake:0.0,handbrake:0.8,
             cockpit_mask:Some((1<<6)|(1<<7)|(3<<24)|(1<<16)),parking_brake:Some(0.173),
             cabin_mask:None,vehicleMask:97,playerMask:0,debug_mask:Some(0)};
@@ -1099,7 +1144,7 @@ mod tests {
     #[test]
     fn ignition_packets_power_the_cluster_without_starting_until_the_starter_is_held() {
         let mut world=flat_world();world.spawn_vehicle_for_player("key-test".into(),[0.0;3],"brz","red").unwrap();
-        let mut packet=InputPacket { r#type:"input".into(),seq:1,dt:1.0/60.0,throttle:0.0,steer:0.0,brake:0.0,handbrake:0.0,
+        let mut packet=InputPacket { combat: None, r#type:"input".into(),seq:1,dt:1.0/60.0,throttle:0.0,steer:0.0,brake:0.0,handbrake:0.0,
             cockpit_mask:None, parking_brake:None, cabin_mask:Some(4|4096|8192),vehicleMask:97,playerMask:0,debug_mask:Some(0) };
         world.apply_player_input_packet("key-test",packet.clone());world.step(SIMULATION_DT);
         assert!(!world.vehicles["key-test"].powertrain.running);
@@ -1511,6 +1556,25 @@ mod editor_service_tests {
             world.service_authored_bays(1.0);
             assert_eq!(world.vehicles["test"].powertrain.fuel_liters,fuel);
             assert_eq!(world.vehicles["test"].powertrain.condition,condition);
+        }
+    }
+}
+
+#[cfg(test)]
+mod combat_structure_tests {
+    use super::*;
+    #[test]
+    fn practice_wall_loses_health_and_collision_after_server_hits() {
+        let mut value:serde_json::Value=serde_json::from_str(include_str!("assets/blocks/coastal_district_colliders.json")).unwrap();
+        value["team_spawns"]=serde_json::json!({"red":[{"chunk":[0,0],"local":[0,0],"yaw":0,"surface_y":0}],"blue":[{"chunk":[0,0],"local":[10,0],"yaw":0,"surface_y":0}]});
+        value["authored_layout"]=serde_json::json!({"format":"avenlab-world-layout","version":1,"map_id":"coastal_district","title":"Combat test","base":"replace","ground":true,"repeat":false,"objects":[{"id":"test-wall","name":"Practice wall","piece":"wall","position":[0,0,-20],"size":[8,4,0.5],"yaw":0,"color":"#888888","locked":false,"solid":true,"parts":[{"shape":"box","position":[0,0.5,0],"size":[1,1,1],"solid":true}],"destruction":{"enabled":true,"hp":40,"smallArms":1,"cannon":1,"bomb":1.5,"rubble":"clear"}}]});
+        let mut physics=PhysicsWorld::from_editor_document(serde_json::from_value(value).unwrap()).unwrap();
+        physics.spawn_vehicle_for_player("shooter".into(),[0.0;3],"brz","red").unwrap();
+        let pose=crate::state::CombatPose{enabled:true,fire:true,yaw:0.0,pitch:0.0,x:0.0,y:1.0,z:0.0,role:"assault".into()};
+        for seq in 0..30 {physics.combat_tick("shooter",seq,Some(&pose));}
+        assert_eq!(physics.asset_health.get("test-wall"),Some(&0.0));
+        for (_,body) in physics.bodies.iter().filter(|(_,body)|body.user_data==1) {
+            assert!(body.colliders().iter().all(|h|!physics.colliders[*h].is_enabled()));
         }
     }
 }

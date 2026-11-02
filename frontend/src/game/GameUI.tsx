@@ -1,3 +1,4 @@
+import { CombatHUD } from "../combat/CombatHUD";
 import { HeroWorkshop, HeroLoadoutSync } from "./heroes/HeroWorkshop";
 import { useAlphaFlow } from "./alpha/useAlphaFlow";
 import { useAppTheme } from "../theme";
@@ -140,7 +141,7 @@ export function GameUI() {
       )}
 
       {/* UI Overlay */}
-      {screen === "sandbox" && !overlay && hud && <DrivingHUD />}
+      {screen === "sandbox" && !overlay && hud && <><DrivingHUD /><CombatHUD /></>}
 
       {/* Research pages load only when opened; keep the canvas mounted. */}
       <Suspense

@@ -105,6 +105,7 @@ impl WorldRuntime {
                 debug |= DebugFlags::from_bits_truncate(packet.debug_mask.unwrap_or(0));
                 self.physics
                     .apply_player_input_packet(&entity.id, packet.clone());
+                self.physics.combat_tick(&entity.id,packet.seq,packet.combat.as_ref());
             }
         }
         self.physics.set_debug_flags(debug);

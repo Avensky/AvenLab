@@ -34,7 +34,10 @@ pub struct LayoutSpawn {
 #[serde(rename_all = "snake_case")]
 pub enum LayoutBase { Replace, Overlay }
 #[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct DestructionSettings { pub enabled: bool, pub hp:f32, #[serde(rename="smallArms")] pub small_arms:f32, pub cannon:f32, pub bomb:f32, pub rubble:String }
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct LayoutObject {
+    #[serde(default, skip_serializing_if="Option::is_none")] pub destruction: Option<DestructionSettings>,
     pub id: String,
     pub name: String,
     pub piece: String,
@@ -95,6 +98,10 @@ impl AuthoredLayout {
         let mut ids = HashSet::new();
         let mut count = 0;
         for object in &self.objects {
+            if let Some(d)=&object.destruction {
+                anyhow::ensure!(d.hp.is_finite() && d.hp>=1.0 && d.hp<=1000000.0 && [d.small_arms,d.cannon,d.bomb].iter().all(|n|n.is_finite()&&*n>=0.0&&*n<=10.0) && ["clear","cover"].contains(&d.rubble.as_str()), "Invalid destruction profile");
+                anyhow::ensure!(!d.enabled || !["coastal-land","coastal-land-bridge"].contains(&object.piece.as_str()), "Permanent land cannot be destructible");
+            }
             anyhow::ensure!(identifier(&object.id, 96) && ids.insert(object.id.clone()), "Invalid or duplicate authored piece ID");
             anyhow::ensure!(identifier(&object.piece, 64) && !object.name.trim().is_empty() && object.name.chars().count() <= 80, "Invalid piece name");
             anyhow::ensure!(vector_ok(&object.position, -100000.0, 100000.0) && vector_ok(&object.size, 0.02, 512.0) && object.yaw.is_finite() && object.yaw.abs() <= 36000.0, "Invalid authored piece transform");
@@ -128,7 +135,7 @@ impl AuthoredLayout {
     }
     pub fn spawn(&self, bodies: &mut RigidBodySet, colliders: &mut ColliderSet, origin: [f32; 3], groups: InteractionGroups) -> Vec<RigidBodyHandle> {
         let mut handles = Vec::new();
-        for object in &self.objects {
+        for (object_index, object) in self.objects.iter().enumerate() {
             if object.vehicle.is_some() { continue; }
             if let Some(model) = &object.model {
                 if let Some(handle) = model.spawn(object,bodies,colliders,origin,groups) { handles.push(handle); }
@@ -139,7 +146,7 @@ impl AuthoredLayout {
                 continue;
             }
             if !object.solid || !object.parts.iter().any(|p| p.solid) { continue; }
-            let root = RigidBodyBuilder::fixed()
+            let root = RigidBodyBuilder::fixed().user_data((object_index+1) as u128)
                 .translation(vector![origin[0] + object.position[0], origin[1] + object.position[1], origin[2] + object.position[2]])
                 .rotation(vector![0.0, object.yaw.to_radians(), 0.0]).build();
             let handle = bodies.insert(root);

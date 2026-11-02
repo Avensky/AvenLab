@@ -1,10 +1,15 @@
-import { parseLayout, type LayoutObject, type V3, type WorldLayout } from "../document/layoutDocument.ts";
+import { addPiece, parseLayout, type LayoutObject, type V3, type WorldLayout } from "../document/layoutDocument.ts";
+
+/** Expand land and run-up distances while preserving the narrow canal widths. */
+export const coastalCoordinate = (value: number, halfCanal: number) =>
+  Math.abs(value) <= halfCanal ? value : Math.sign(value) * (halfCanal + (Math.abs(value) - halfCanal) * (5 / 3));
 
 /** A finite greybox, using the same explicit shapes as hand-authored pieces.
  * Land is split around channels: there is no hidden floor under the water.
  * Version 1 deliberately emits static geometry, not buoyancy or water triggers.
  */
-export function coastalDistrict(mapId: string, seed = 1, surface = 0): WorldLayout {
+export type DistrictSize = "block" | "chunk" | "massive";
+export function coastalDistrict(mapId: string, seed = 1, surface = 0, districtSize: DistrictSize = "chunk", landBridge = true): WorldLayout {
   if (!Number.isInteger(seed) || seed < 0 || seed > 0xffffffff)
     throw Error("Use a whole-number seed from 0 to 4294967295");
   if (!Number.isFinite(surface) || Math.abs(surface) > 10000)
@@ -29,8 +34,11 @@ export function coastalDistrict(mapId: string, seed = 1, surface = 0): WorldLayo
   };
   const slab = (name: string, x: number, z: number, width: number, depth: number, top = 0, thickness = 0.3, color = "#394a5a", piece = "coastal-road") =>
     shape(name, piece, [x, top - thickness, z], [width, thickness, depth], color);
-  const water = (name: string, x: number, z: number, width: number, depth: number) =>
-    shape(name, "coastal-water-visual", [x, -5, z], [width, 0.04, depth], "#266b85", false);
+  const water = (name: string, x: number, z: number, width: number, depth: number) => {
+    const nx = Math.ceil(width / 200), nz = Math.ceil(depth / 200);
+    for (let ix = 0; ix < nx; ix++) for (let iz = 0; iz < nz; iz++)
+      shape(name, "coastal-water-visual", [x - width / 2 + (ix + 0.5) * width / nx, -5, z - depth / 2 + (iz + 0.5) * depth / nz], [width / nx, 0.04, depth / nz], "#266b85", false);
+  };
 
   water("Harbor water · visual only", 230, 0, 180, 360);
   water("North–south canal · visual only", 0, 0, 40, 300);
@@ -49,7 +57,8 @@ export function coastalDistrict(mapId: string, seed = 1, surface = 0): WorldLayo
   for (const z of [-80, 80]) {
     slab("West waterfront road", -100, z, 160, 14, 0.08);
     slab("East waterfront road", 80, z, 120, 14, 0.08);
-    slab("Intact canal bridge", 0, z, 40, 14, 0.08, 0.6, "#a0a9ae", "coastal-bridge");
+    slab(z === 80 && landBridge ? "Permanent land bridge" : "Intact canal bridge", 0, z, 40, 14, 0.08,
+      z === 80 && landBridge ? 8 : 0.6, "#a0a9ae", z === 80 && landBridge ? "coastal-land-bridge" : "coastal-bridge");
     for (const edge of [-7.2, 7.2])
       shape("Bridge parapet", "coastal-wall", [0, 0.08, z + edge], [40, 1, 0.4]);
   }
@@ -106,15 +115,55 @@ export function coastalDistrict(mapId: string, seed = 1, surface = 0): WorldLayo
     slab("Escort deck · static prototype", x, z, width, depth, 1.2, 6, "#61798b", "fleet-static-deck");
     shape("Escort superstructure", "fleet-static-building", [x, 1.2, z], [width * 0.5, 7, depth * 0.3], "#8d9ca5");
   }
-  return parseLayout({
+  // Designated staging pads are obstacle-free, with enough room for both teams.
+  for (const [x, z, color] of [[-60, -115, "#55758c"], [60, 115, "#88636c"]] as const)
+    slab("Team starting zone", x, z, 22, 30, 0.08, 0.3, color, "coastal-start");
+  // A risky shortcut has a takeoff ramp, a real open center and a level landing.
+  // It complements the intact crossings; the bridge is never mandatory.
+  shape("Damaged crossing takeoff", "coastal-ramp", [-60, 0.08, 28], [12, 2, 28], "#b09a78", true, true);
+  slab("Damaged crossing landing", -60, -22, 14, 16, 0.08, 0.5, "#9a9083", "coastal-landing");
+  // Stretch footprints by their edges, so roads, bridge joints and ramp ends stay joined.
+  for (const o of objects) {
+    for (const [axis, bank] of [[0, 20], [2, 16]] as const) {
+      const low = coastalCoordinate(o.position[axis] - o.size[axis] / 2, bank);
+      const high = coastalCoordinate(o.position[axis] + o.size[axis] / 2, bank);
+      o.position[axis] = (low + high) / 2;
+      o.size[axis] = high - low;
+    }
+  }
+  let district = parseLayout({
     format: "avenlab-world-layout", version: 1, map_id: mapId,
     title: `Coastal district · seed ${seed}`, base: "replace", ground: false, repeat: false,
     spawns: (["red", "blue"] as const).flatMap((team, index) =>
       [-4, 0, 4].map((offset, i) => ({
         id: `spawn-coast-${team}-${i + 1}`, team,
-        position: [index ? 60 : -60, surface + 0.08, (index ? 115 : -115) + offset * 2] as V3,
-        yaw: index ? 180 : 0,
+        position: [coastalCoordinate(index ? 60 : -60, 20), surface + 0.08, coastalCoordinate((index ? 115 : -115) + offset * 2, 16)] as V3,
+        yaw: index ? 0 : 180,
       }))),
     objects,
   });
+  // Reuse existing open-bay service prefabs rather than introducing a second
+  // service implementation. Keep them beside, never across, the chase avenues.
+  for (const [piece, x, z] of [["fuel-station", -85, -45], ["repair-shop", -85, 45], ["service-center", 90, 105]] as const)
+    district = addPiece(district, piece, [coastalCoordinate(x, 20), surface + 0.08, coastalCoordinate(z, 16)]);
+  const scale = { block: 0.5, chunk: 1, massive: 3 }[districtSize];
+  if (!scale) throw Error("Choose a valid district size");
+  const scaled: LayoutObject[] = [];
+  for (const original of district.objects) {
+    const o = structuredClone(original);
+    for (const axis of [0, 2] as const) { o.position[axis] *= scale; o.size[axis] *= scale; }
+    const nx = Math.ceil(o.size[0] / 500), nz = Math.ceil(o.size[2] / 500);
+    if (nx * nz > 1 && !(o.parts.length === 1 && o.parts[0].shape === "box"))
+      throw Error("Large compound piece needs subdivision");
+    for (let ix = 0; ix < nx; ix++) for (let iz = 0; iz < nz; iz++) {
+      const part = structuredClone(o);
+      part.id = `${o.id}-tile-${ix}-${iz}`;
+      part.position[0] += -o.size[0]/2 + (ix+0.5)*o.size[0]/nx;
+      part.position[2] += -o.size[2]/2 + (iz+0.5)*o.size[2]/nz;
+      part.size[0] /= nx; part.size[2] /= nz;
+      scaled.push(part);
+    }
+  }
+  return parseLayout({ ...district, title: `Coastal district · ${districtSize} · seed ${seed}`, objects: scaled,
+    spawns: district.spawns?.map(p => ({ ...p, position: [p.position[0]*scale, p.position[1], p.position[2]*scale] })) });
 }

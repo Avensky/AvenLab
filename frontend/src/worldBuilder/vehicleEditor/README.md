@@ -59,3 +59,5 @@ The layout header now keeps only Prefabs, Tools and Exit. Tools opens a scrollab
 Authoring disables distance fog while mounted and restores the scene fog on exit. Camera far/max-distance bounds scale with the fitted layout. Materials is a per-car mapping checklist; unresolved BRZ seat materials are explicitly pending, not guessed. Reset and sustained fall recovery use the server-recorded authored spawn instead of righting the car above its current X/Z.
 
 The scene toolbar has a dedicated Pan View mode. Perspective uses left-drag orbit by default; Pan View uses left/one-finger pan, and top view always pans on left drag. Right drag pans, wheel zooms, and two-finger touch pans/zooms. Plan view also supports the Pan tool. Selecting transform tools exits Pan; placement exits Pan. Bottom Grid/Angle/camera controls sit to the right of the left tool bank, whose height is bounded on short screens.
+
+Weapons tab: choose assault/support/medic placeholder and adjust XYZ chassis mount offsets. Presets are local per vehicle; the equipped mount is sent with combat input and replicated as a bounded world-oriented turret pose. Combat Test remains opt-in from the driving HUD.

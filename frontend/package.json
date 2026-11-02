@@ -4,8 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "predev": "node ../scripts/build-road-colliders.mjs --check && node ../scripts/build-placement-colliders.mjs --check && node ../scripts/sync-world-builder-map.mjs",
-    "prebuild": "node ../scripts/build-road-colliders.mjs --check && node ../scripts/build-placement-colliders.mjs --check && node ../scripts/sync-world-builder-map.mjs",
+    "predev": "node ../scripts/sync-world-builder-map.mjs && node ../scripts/build-road-colliders.mjs --check && node ../scripts/build-placement-colliders.mjs --check",
+    "prebuild": "node ../scripts/sync-world-builder-map.mjs && node ../scripts/build-road-colliders.mjs --check && node ../scripts/build-placement-colliders.mjs --check",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",

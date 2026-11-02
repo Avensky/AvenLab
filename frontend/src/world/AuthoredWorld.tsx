@@ -1,3 +1,5 @@
+import {useMemo} from "react";
+import {useNetworkStore} from "../store/session/networkStore";
 import { LayoutInstances } from "../worldBuilder/scene/LayoutMeshes";
 import type { WorldLayout } from "../worldBuilder/document/layoutDocument";
 import type { RenderMode } from "../store/world/worldStore";
@@ -14,6 +16,8 @@ export function AuthoredWorld({
   cell: [number, number];
   surface: number;
 }) {
+  const destroyed=useNetworkStore(s=>Object.entries(s.snapshot?.asset_health??{}).filter(([,hp])=>hp===0).map(([id])=>id).sort().join("|"));
+  const objects=useMemo(()=>{const ids=new Set(destroyed.split("|"));return layout.objects.filter(o=>!ids.has(o.id));},[layout, destroyed]);
   if (mode === "hidden") return null;
   return (
     <group name="authored-world">
@@ -26,12 +30,12 @@ export function AuthoredWorld({
           </mesh>
         )}
       <LayoutInstances
-        objects={layout.objects}
+        objects={objects}
         wireframe={mode === "collider"}
         collisionOnly={mode === "collider" || mode === "geometry"}
       />
       {mode === "hybrid" && (
-        <LayoutInstances objects={layout.objects} wireframe collisionOnly />
+        <LayoutInstances objects={objects} wireframe collisionOnly />
       )}
     </group>
   );
