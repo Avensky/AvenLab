@@ -86,13 +86,14 @@
 .column-stalks button:disabled {
   opacity: 0.35;
 }
-/* Hover/focus is not a held lever. Keyboard focus still has an underline. */
+/* Hover/focus is not a held lever. Keyboard focus uses a theme outline. */
 .column-stalks button:is(:hover, :focus, :active) {
   box-shadow: none;
   outline: none;
 }
 .column-stalks button:focus-visible {
-  text-decoration: underline;
+  text-decoration: none;
+  outline:1px solid var(--app-accent,#82b7ff);outline-offset:2px;
 }
 @media (prefers-reduced-motion: reduce) {
   .stalk-actuator {

@@ -87,17 +87,25 @@ impl PhysicsWorld {
             if wheels.is_empty() { continue; }
 
             let longitudinal_speed = (body_ro.rotation().inverse() * body_ro.linvel()).z;
-            let (throttle, brake) = vehicle.cockpit.advance(dt, longitudinal_speed, vehicle.throttle, vehicle.brake, vehicle.handbrake, vehicle.powertrain.running);
-            let handbrake = vehicle.handbrake.max(vehicle.cockpit.parking_force());
+            let (mut throttle, mut brake) = vehicle.cockpit.advance(dt, longitudinal_speed, vehicle.throttle, vehicle.brake, vehicle.handbrake, vehicle.powertrain.running);
+            let stunned=vehicle.ram.stun_remaining>0.0;
+            let steer_input=if stunned {0.0}else{vehicle.steer};
+            if stunned{throttle=0.0;brake=0.0;}
+            let ram_speed=vehicle.ram.speed_multiplier();
+            let ram_force=vehicle.ram.force_multiplier();
+            if vehicle.ram.charging()&&!stunned{throttle=1.0;}
+            let handbrake = (if stunned {0.0}else{vehicle.handbrake}).max(vehicle.cockpit.parking_force());
             vehicle.powertrain.manual_gear = vehicle.cockpit.manual_gear();
             vehicle.vehicle_flags.set(VehicleStateFlags::TCS, vehicle.cockpit.tcs_enabled(vehicle.vehicle_flags.contains(VehicleStateFlags::TCS)));
             // A stationary skid turn loads the engine even with no travel pedal.
             // Keep this engine demand separate from the actual belt travel command.
-            let pivot_demand=vehicle.config.tracked && throttle.abs()<0.01 && vehicle.steer.abs()>0.01 && vehicle.cockpit.manual_gear()!=Some(0);
-            let engine_throttle=if pivot_demand {vehicle.steer.abs()*0.35}else{throttle};
-            vehicle.powertrain.advance(vehicle.config.resources, Demand {
+            let pivot_demand=vehicle.config.tracked && throttle.abs()<0.01 && steer_input.abs()>0.01 && vehicle.cockpit.manual_gear()!=Some(0);
+            let engine_throttle=if pivot_demand {steer_input.abs()*0.85}else{throttle};
+            let mut engine_resources=vehicle.config.resources;
+            if vehicle.ram.active(){engine_resources.heat_gameplay_multiplier*=0.15;}
+            vehicle.powertrain.advance(engine_resources, Demand {
                 throttle:engine_throttle, longitudinal_speed,
-                wheel_radius: vehicle.config.wheel_radius, engine_force: vehicle.config.engine_force, top_speed:vehicle.config.max_speed,
+                wheel_radius: vehicle.config.wheel_radius, engine_force: vehicle.config.engine_force, top_speed:vehicle.config.max_speed*ram_speed,
             }, dt);
             vehicle.vehicle_flags.set(VehicleStateFlags::ENGINE_ON, vehicle.powertrain.running);
             vehicle.vehicle_flags.set(VehicleStateFlags::BOOST, vehicle.powertrain.boost_active);
@@ -116,7 +124,7 @@ impl PhysicsWorld {
             let mut loads = HashMap::new();
 
             let cfg = steering_config(vehicle);
-            let target = if vehicle.config.tracked {0.0}else{vehicle.steer * cfg.max_steer_angle};
+            let target = if vehicle.config.tracked {0.0}else{steer_input * cfg.max_steer_angle};
             // One active steering strategy: a 0.10 s exponential response.
             // The legacy torque rack is not called. Ackermann below is geometry,
             // not another smoothing pass; positive input turns toward local -X.
@@ -232,7 +240,7 @@ impl PhysicsWorld {
 
             let ctx = SolveContext {
                 dt, mass: body_mass,
-                engine_force: vehicle.config.engine_force * vehicle.powertrain.power_multiplier * vehicle.powertrain.drive_ratio_multiplier, brake_force: vehicle.config.brake_force,
+                engine_force: vehicle.config.engine_force * ram_force * vehicle.powertrain.power_multiplier * if vehicle.config.tracked && vehicle.powertrain.gear!=0 {vehicle.powertrain.drive_ratio_multiplier.max(steer_input.abs()*0.85)}else{vehicle.powertrain.drive_ratio_multiplier}, brake_force: vehicle.config.brake_force,
                 abs_enabled: vehicle.vehicle_flags.contains(VehicleStateFlags::ABS),
                 tcs_enabled: vehicle.vehicle_flags.contains(VehicleStateFlags::TCS),
                 abs_limit: vehicle.config.abs_nx_limit,
@@ -243,7 +251,7 @@ impl PhysicsWorld {
             };
             let control = ControlInput {
                 throttle: if pivot_demand {0.0}else{vehicle.powertrain.drive_throttle},
-                brake: brake.max(vehicle.powertrain.direction_brake), handbrake, steer: vehicle.steer,
+                brake: brake.max(vehicle.powertrain.direction_brake), handbrake, steer: steer_input,
             };
             let driven = ctx.driven_wheels.max(1.0);
             // The longitudinal solver caps impulse at grip before its combined
@@ -255,16 +263,16 @@ impl PhysicsWorld {
             vehicle.cockpit.traction_active = ctx.tcs_enabled && contacts.iter().any(|patch| patch.drive && patch.grounded
                 && drive_demand > patch.normal_force * patch.mu_long * ctx.tcs_limit);
             let tire_impulses = if vehicle.config.tracked {
-                crate::tracked_drive::solve(&ctx,control.throttle,vehicle.steer,control.brake.max(control.handbrake),vehicle.config.max_speed,&contacts)
+                crate::tracked_drive::solve(&ctx,control.throttle,steer_input,control.brake.max(control.handbrake),vehicle.config.max_speed*ram_speed,&contacts)
             } else {solve_step(&ctx, &control, &mut contacts).impulses};
             let grounded_drive = contacts.iter().any(|patch| patch.drive && patch.grounded);
             let slipping_drive = drive_saturated || contacts.iter().any(|patch| patch.drive && patch.grounded
                 && patch.tire_state == crate::aven_tire::state::TireState::Slide);
             vehicle.cockpit.observe_traction(dt, grounded_drive, slipping_drive, vehicle.powertrain.running);
             vehicle.vehicle_flags.set(VehicleStateFlags::TCS, vehicle.cockpit.tcs_enabled(ctx.tcs_enabled));
-            // solve_step emits engine/brake at COM and lateral impulse at the
-            // patch. Contact application already produces yaw and roll torque;
-            // adding artificial turn torque would duplicate the steering effect.
+            // Cars turn through contact forces only. Tracked vehicles retain
+            // those forces and add the bounded ground-only yaw assist below;
+            // neither path snaps rotation or supplies airborne steering.
             for patch in &contacts {
                 if let Some(wheel) = wheels.iter_mut()
                     .find(|wheel| WheelId::from_debug(&wheel.debug_id) == patch.wheel) {
@@ -279,10 +287,21 @@ impl PhysicsWorld {
                 }
             }
             let body = self.bodies.get_mut(handle).unwrap();
+            if vehicle.config.tracked && vehicle.config.engine_force>0.0 && vehicle.powertrain.running && vehicle.powertrain.gear != 0
+                && contacts.iter().filter(|p|p.grounded && p.normal_force>0.0).count()>=2 {
+                let brake=control.brake.max(control.handbrake).clamp(0.0,1.0);
+                let up=body.rotation()*Vector::y();
+                let speed=(body.rotation().inverse()*body.linvel()).z.abs();
+                let desired=-steer_input*(1.85/(1.0+speed/22.0))*(1.0-brake);
+                let current=body.angvel().dot(&up);
+                let inertia=body_mass*(vehicle.config.chassis_half_extents[0].powi(2)+vehicle.config.chassis_half_extents[2].powi(2))/3.0;
+                let torque=((desired-current)*inertia/0.20).clamp(-inertia*7.0,inertia*7.0);
+                body.apply_torque_impulse(up*torque*dt,true);
+            }
             let velocity = *body.linvel();
             let planar_speed=(velocity.x*velocity.x+velocity.z*velocity.z).sqrt();
             if planar_speed>0.001 {
-                let force=vehicle.config.resources.road_resistance(vehicle.config.engine_force,body_mass,vehicle.config.linear_damping,vehicle.config.max_speed,planar_speed,contacts.iter().any(|p|p.grounded));
+                let force=vehicle.config.resources.road_resistance(vehicle.config.engine_force,body_mass,vehicle.config.linear_damping,vehicle.config.max_speed*ram_speed,planar_speed,contacts.iter().any(|p|p.grounded));
                 let impulse=(force*dt).min(body_mass*planar_speed);
                 impulses.linear.push(vector![-velocity.x/planar_speed*impulse,0.0,-velocity.z/planar_speed*impulse]);
             }
@@ -490,7 +509,7 @@ mod tests {
         world.register_vehicle(handle, BRZ);
         world.body_to_player.insert(handle, "test".into());
         world.vehicles.insert("test".into(), Vehicle {
-            body: handle, config: BRZ, throttle: 0.0, steer: 0.0, brake: 0.0, handbrake: 0.0,
+                ram:crate::ram::RamState::default(),team:"red".into(),            body: handle, config: BRZ, throttle: 0.0, steer: 0.0, brake: 0.0, handbrake: 0.0,
             pitch: 0.0, yaw: 0.0, roll: 0.0, ascend: 0.0,
             steer_angle: 0.0, steer_rate: 0.0, steering: SteeringState::default(),
             rack_torque: 0.0, rack_torque_filtered: 0.0,

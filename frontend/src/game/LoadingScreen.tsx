@@ -1,7 +1,7 @@
 import { useProgress } from "@react-three/drei";
 import { useEffect } from "react";
 import { useUIStore } from "../store";
-import { GameButton } from "../components/GameButton";
+import { ControllerAction } from "../components/controller";
 
 export function LoadingScreen() {
   const { progress, active } = useProgress();
@@ -22,7 +22,7 @@ export function LoadingScreen() {
       </div>
 
       {progress >= 100 && (
-        <GameButton onPress={() => setScreen("main")}>Continue</GameButton>
+        <ControllerAction button="A" onClick={() => setScreen("main")}>CONTINUE</ControllerAction>
       )}
     </div>
   );

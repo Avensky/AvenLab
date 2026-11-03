@@ -1,6 +1,7 @@
+import { unavailableHeroes } from "./heroAvailability";
 import { prepareReconSelection } from "../../store/recon/captureSetup";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ControllerButton, MenuShortcuts } from "../../components/controller";
+import { MenuShortcuts, ControllerAction } from "../../components/controller";
 import {
   useAlphaStore,
   HEROES,
@@ -49,20 +50,10 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
     else useAlphaStore.setState({ selectionInitialized: true });
   }, [inMode, active]);
   const remembered = useRef(new WeakMap<HTMLElement, number>());
-  const preview = useCallback((id: string) => {
-    if (!pending.current) {
-      if (useAlphaStore.getState().previewHero !== id) setStatus("");
-      useAlphaStore.getState().preview(id);
-    }
-  }, []);
   const filter = useCallback((next: HeroFilter) => {
     if (pending.current) return;
     setRole(next);
-    const state = useAlphaStore.getState();
-    const visible = HEROES.filter((h) => next === "all" || h.role === next);
-    state.preview(
-      visible.find((h) => h.id === state.previewHero)?.id ?? visible[0].id,
-    );
+
   }, []);
   const tab = useCallback(
     (step: number) => {
@@ -145,6 +136,8 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
         return;
       const hero = HEROES.find((h) => h.id === id);
       if (!hero) return;
+      const unavailable = unavailableHeroes(useSocialStore.getState().view?.alpha, mode, useSocialStore.getState().view?.profile.id);
+      if (unavailable[id]) { setStatus(unavailable[id]); return; }
       pending.current = true;
       setBusy(true);
       setStatus("");
@@ -172,10 +165,11 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
         setBusy(false);
       }
     },
-    [planned, research, active, customWorld, overlay, inMode, connected, view],
+    [planned, research, active, customWorld, overlay, inMode, connected, view, mode],
   );
   const confirm = useCallback(() => {
-    const id =
+    const focused = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>("[data-hero]");
+    const id = focused?.dataset.hero ??
       useAlphaStore.getState().previewHero ??
       HEROES.find((h) => role === "all" || h.role === role)!.id;
     void choose(id);
@@ -215,13 +209,13 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
           </h1>
         </div>
         <ProgressBadge />
-        <button
+        <ControllerAction button="B"
           type="button"
-          className="menu-control controller-action"
+          className="menu-control"
           onClick={back}
         >
-          <ControllerButton button="B" /> BACK
-        </button>
+           BACK
+        </ControllerAction>
       </header>
       <div className="hero-selection-stage">
         {(!match || inMode || overlay) && (
@@ -230,7 +224,7 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
             filter={role}
             busy={busy}
             onFilter={filter}
-            onPreview={preview}
+            unavailable={unavailableHeroes(view?.alpha, mode, view?.profile.id)}
             onChoose={(id) => void choose(id)}
           />
         )}
@@ -258,7 +252,7 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
         >
           {Array.from({ length: 5 }, (_, index) => {
             const member = teammates[index],
-              hero = HEROES.find((h) => h.id === member?.hero);
+              hero = HEROES.find((h) => h.id === (member?.hero||member?.showcase_hero));
             return (
               <div
                 key={member?.id ?? index}
@@ -271,15 +265,16 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
                 }
               >
                 <HeroPortrait
-                  key={member?.hero ?? "empty"}
-                  hero={member?.hero ?? null}
+                  key={member?.hero||member?.showcase_hero||"empty"}
+                  hero={member?.hero||member?.showcase_hero||null}
+                  appearance={member?.appearance ?? (member?.id===view?.profile.id&&hero ? view?.profile.progression?.hero_loadouts?.[hero.vehicle] : null)}
                 />
                 <div>
                   <strong>{hero?.name ?? "OPEN SLOT"}</strong>
                   <small>
                     {member
                       ? member.name +
-                        (member.reconnecting ? " · RECONNECTING" : "")
+                        (member.reconnecting ? " · RECONNECTING" : !member.hero ? " · CHOOSING" : "")
                       : "WAITING"}
                   </small>
                 </div>
@@ -290,9 +285,9 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
       )}
       <footer className="alpha-selection-footer">
         <MenuShortcuts chat directions="both" />
-        <button
+        <ControllerAction button="A"
           type="button"
-          className="menu-control controller-action alpha-deploy"
+          className="menu-control  alpha-deploy"
           disabled={
             busy ||
             planned ||
@@ -300,7 +295,7 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
           }
           onClick={confirm}
         >
-          <ControllerButton button="A" />
+
           {busy
             ? "PLEASE WAIT…"
             : planned
@@ -314,7 +309,7 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
                     : inMode || customWorld
                       ? "DEPLOY"
                       : "CHOOSE A HERO"}
-        </button>
+        </ControllerAction>
       </footer>
     </section>
   );

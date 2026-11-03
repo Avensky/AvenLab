@@ -7,7 +7,7 @@ import {
 } from "../../store/text/keyboardStore";
 import { requestSocial, identifySocial } from "../../net/socialClient";
 import { AssistedInput } from "../../components/text/AssistedInput";
-import { ControllerButton, MenuShortcuts } from "../../components/controller";
+import { MenuShortcuts, ControllerAction } from "../../components/controller";
 import { trapMenuFocus } from "../../components/menus/menuFocus";
 import { WorldsPage } from "./WorldsPage";
 import { TeammatesPage, GroupsPage } from "./PeoplePages";
@@ -215,13 +215,13 @@ export function SocialPanel() {
         <header className="social-header">
           <h1 id="social-title">WORLDS & SOCIAL</h1>
           <span>{view?.profile.name ?? "PLAYER PROFILE"}</span>
-          <button
+          <ControllerAction button="B"
             type="button"
-            className="menu-control controller-action"
+            className="menu-control"
             onClick={back}
           >
-            <ControllerButton button="B" /> BACK
-          </button>
+             BACK
+          </ControllerAction>
         </header>
         {view && (
           <p className="social-server-budget">

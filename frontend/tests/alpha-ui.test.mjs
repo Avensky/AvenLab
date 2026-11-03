@@ -246,7 +246,7 @@ test("alpha selection, queue and HUD route to their own state owners", async (t)
       },
     );
     await t.test(
-      "highlight previews independently; A locks, a different highlight reselects, and a second A advances",
+      "focus leaves preview unchanged; A selects the focused portrait and a second A advances",
       async () => {
         const { HeroSelection } = await load("game/alpha/HeroSelection.tsx");
         const { useSelectionStore: selection } = await load(
@@ -268,7 +268,7 @@ test("alpha selection, queue and HUD route to their own state owners", async (t)
         assert.equal(alpha.getState().previewHero, null);
         await act(async () => route("right"));
         assert.equal(document.activeElement.dataset.hero, "tank");
-        assert.equal(alpha.getState().previewHero, "tank");
+        assert.equal(alpha.getState().previewHero, null);
         assert.equal(alpha.getState().hero, null);
         await act(async () => route("right"));
         await act(async () => route("down"));
@@ -290,9 +290,9 @@ test("alpha selection, queue and HUD route to their own state owners", async (t)
         await act(async () =>
           document.querySelector('[data-hero="brz"]').focus(),
         );
-        assert.equal(alpha.getState().previewHero, "brz");
+        assert.equal(alpha.getState().previewHero, "camaro");
         assert.equal(alpha.getState().hero, "camaro");
-        assert.equal(selection.getState().getSelectedVehicle().id, "brz");
+        assert.equal(selection.getState().getSelectedVehicle().id, "camaro");
         await act(async () => route("activate"));
         assert.equal(alpha.getState().hero, "brz");
         assert.equal(ui.getState().screen, "hero_select");

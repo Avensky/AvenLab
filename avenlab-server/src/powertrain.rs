@@ -32,6 +32,7 @@ pub struct ResourceConfig {
     pub fuel_gameplay_multiplier: f32,
     pub heat_gameplay_multiplier: f32,
     pub thermal_capacity_kj_per_c: f32,
+    pub cooling_multiplier:f32,
     pub ambient_c: f32,
     pub initial_temp_c: f32,
     pub overheat_c: f32,
@@ -54,6 +55,7 @@ pub const ROAD_RESOURCES: ResourceConfig = ResourceConfig {
     fuel_gameplay_multiplier: 12.0,
     heat_gameplay_multiplier: 1.35,
     thermal_capacity_kj_per_c: 160.0,
+    cooling_multiplier:1.0,
     ambient_c: 25.0,
     initial_temp_c: 85.0,
     overheat_c: 110.0,
@@ -78,8 +80,8 @@ pub const SUPRA_RESOURCES: ResourceConfig = ResourceConfig {
 pub const TANK_RESOURCES: ResourceConfig = ResourceConfig {
     fuel_capacity_liters: 1100.0,
     idle_rpm: 600.0,
-    max_rpm: 3200.0,
-    redline_rpm: 2900.0,
+    max_rpm: 4200.0,
+    redline_rpm: 3800.0,
     final_drive: 7.0,
     gear_ratios: [4.5, 3.2, 2.4, 1.8, 1.3, 1.0],
     idle_liters_per_hour: 5.0,
@@ -88,6 +90,7 @@ pub const TANK_RESOURCES: ResourceConfig = ResourceConfig {
     fuel_gameplay_multiplier: 22.0,
     heat_gameplay_multiplier: 1.5,
     thermal_capacity_kj_per_c: 500.0,
+    cooling_multiplier:16.0, // Heavy radiator sized for the fictional high-output engine.
     nos_seconds: 0.0,
     impact_damage_multiplier: 0.3,
     ..ROAD_RESOURCES
@@ -95,6 +98,7 @@ pub const TANK_RESOURCES: ResourceConfig = ResourceConfig {
 
 #[derive(Clone, Copy, Debug, Serialize)]
 pub struct HudCalibration {
+    pub forward_gears:u8,
     pub cockpit_controls: bool,
     pub cockpit_version: u8,
     pub cluster_fields: u16,
@@ -127,6 +131,7 @@ impl ResourceConfig {
     }
     pub fn hud(self) -> HudCalibration {
         HudCalibration {
+            forward_gears:self.gear_ratios.len() as u8,
             cockpit_controls: true,
             cockpit_version: 8,
             cluster_fields: (1 << 2) | (1 << 3) | (1 << 9) | (1 << 10),
@@ -378,7 +383,7 @@ impl Powertrain {
         }
         let thermostat = ((self.temperature_c - 75.0) / 15.0).clamp(0.0, 1.0);
         let cooling_kw_c =
-            0.025 + thermostat * (if self.running { 0.35 } else { 0.06 } + speed.abs() * 0.015);
+            0.025 + thermostat * config.cooling_multiplier * (if self.running { 0.35 } else { 0.06 } + speed.abs() * 0.015);
         let cooling_kw = cooling_kw_c
             * (self.temperature_c - config.ambient_c).max(0.0)
             * (0.45 + self.condition * 0.55);

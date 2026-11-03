@@ -1,6 +1,7 @@
+import {useSocialStore} from '../../store/social/socialStore';
 import { useHeroLoadouts } from "../../vehicles/cosmetics/heroLoadouts";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ControllerButton } from "../../components/controller";
+import { ControllerAction } from "../../components/controller";
 import {
   GAME_MODES,
   useAlphaStore,
@@ -27,6 +28,7 @@ import "./heroSelection.css";
 /** Mode configuration never selects a hero. A real seat assignment opens the
  * next stage; matchmaking and the portrait picker cannot race each other. */
 export function ModeSelection() {
+  const recoveryNotice=useSocialStore(s=>s.recoveryMessage);
   const mode = useAlphaStore((s) => s.mode);
   const defaultHero = useHeroLoadouts(s=>s.defaultHero);
   const connected = useNetworkStore((s) => s.connected);
@@ -70,6 +72,7 @@ export function ModeSelection() {
     if (pending.current || planned) return;
     pending.current = true;
     setBusy(true);
+    useSocialStore.setState({recoveryMessage:undefined});
     setStatus("");
     try {
       if (research) {
@@ -162,9 +165,9 @@ export function ModeSelection() {
         <section className="hero-summary" aria-label="Selected game mode">
           <small>GAME MODE</small>
           <h2>{item.label}</h2>
-          {status && (
+          {(status||recoveryNotice) && (
             <p className="alpha-status" role="status">
-              {status}
+              {status||recoveryNotice}
             </p>
           )}
         </section>
@@ -195,15 +198,15 @@ export function ModeSelection() {
         </div>
       )}
       <SelectionFooter chat secondaryTabs={research}>
-        <button
+        <ControllerAction button="A"
           type="button"
-          className="menu-control controller-action alpha-deploy"
+          className="menu-control  alpha-deploy"
           disabled={busy || planned || (!research && !connected)}
           onClick={() => void next()}
         >
-          <ControllerButton button="A" />
+
           {busy ? "FINDING SERVER…" : planned ? "COMING LATER" : "CONTINUE"}
-        </button>
+        </ControllerAction>
       </SelectionFooter>
     </section>
   );

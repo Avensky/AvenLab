@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { ControllerButton } from "../../components/controller";
+import { ControllerAction } from "../../components/controller";
 import type { MenuAction } from "../../controls/inputRouting";
 import { isTypingTarget } from "../../controls/inputRouting";
 import { useUIStore } from "../../store/menus/uiStore";
@@ -248,9 +248,9 @@ export function CollisionBuilderPanel({
         >
           Inspector
         </button>
-        <button onClick={closeWorldBuilder}>
-          <ControllerButton button="B" /> EXIT
-        </button>
+        <ControllerAction button="B" onClick={closeWorldBuilder}>
+           EXIT
+        </ControllerAction>
       </header>
       <div className="wb-toolbar">
         <button

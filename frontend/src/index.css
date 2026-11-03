@@ -49,3 +49,6 @@ button,
    touch, wheel and keyboard input; the driving HUD fits without scrolling. */
 * { scrollbar-width: none !important; }
 *::-webkit-scrollbar { display: none; width: 0; height: 0; }
+
+/* App controls use game-style focus/hover feedback, never link underlines. */
+:is(button,[role="button"],.menu-control,.controller-action):is(:hover,:focus-visible),:is(button,[role="button"],.menu-control,.controller-action):is(:hover,:focus-visible) *{text-decoration:none!important;}

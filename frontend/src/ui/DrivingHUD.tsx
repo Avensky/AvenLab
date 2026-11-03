@@ -1,4 +1,7 @@
-import { TurretJoystick } from "../combat/TurretJoystick";
+import {useNetworkStore} from '../store/session/networkStore';
+import {useCombatStore} from '../combat/combatStore';
+import {EditorDriveBar} from '../worldBuilder/vehicleEditor/EditorDriveBar';
+import { WeaponSelector } from '../combat/WeaponSelector';
 import { ChatDock } from "./ChatDock";
 import { useEffect, type CSSProperties } from "react";
 import { usePreferencesStore } from "../store/preferences/preferencesStore";
@@ -13,6 +16,8 @@ import { HudGroup } from "./HudGroup";
 import { DrivingIgnition } from "./Cockpit/DrivingIgnition";
 
 export function DrivingHUD() {
+  const tank=useNetworkStore(s=>s.getMe()?.vehicle_id==='tank');
+  const scoped=useCombatStore(s=>s.scope&&s.enabled);
   const drivingLayout = usePreferencesStore((s) => s.drivingLayout);
   const touch = usePreferencesStore((s) => s.showTouchControls),
     dock = usePreferencesStore((s) => s.showDriveControls),
@@ -36,6 +41,8 @@ export function DrivingHUD() {
   return (
     <div
       className="driving-hud"
+      style={{"--wheel-drop":drop} as CSSProperties}
+      data-scoped={scoped}
       data-driving-layout={drivingLayout}
       data-touch-visible={touch}
       data-drive-controls={dock}
@@ -79,15 +86,16 @@ export function DrivingHUD() {
             style={{ "--wheel-drop": drop } as CSSProperties}
           >
             <Steering />
-            <div className="turret-mobile-slot"><TurretJoystick /></div>
           </div>
         </HudGroup>
       )}
 
-      {dock && <DrivingIgnition />}
+      {dock && !tank && <DrivingIgnition />}
+      <EditorDriveBar />
+      <WeaponSelector />
       <ControlsPanel />
       <InspectionPanel />
-      <ChatDock />
+      {groups.chat && <ChatDock />}
     </div>
   );
 }

@@ -199,6 +199,21 @@ pub struct EntityState {
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct CombatPose {
+    #[serde(default)] pub impact:Option<[f32;3]>,
+    #[serde(default)] pub impact_time:f32,
+    #[serde(default)] pub hull_locked:bool,
+    #[serde(default)] pub lock_yaw:f32,
+    #[serde(default)] pub lock_pitch:f32,
+    #[serde(default)] pub ram:bool,
+    #[serde(default)] pub ram_blocked:String,
+    #[serde(default)] pub ram_remaining:f32,
+    #[serde(default)] pub ram_charge_remaining:f32,
+    #[serde(default)] pub stun_remaining:f32,
+    #[serde(default)] pub ram_cooldown:f32,
+    #[serde(default)] pub cannon_reload:f32,
+    #[serde(default)] pub coax_reload:f32,
+    #[serde(default)] pub weapon:String,
+    #[serde(default)] pub cannon_shot:u32,
     #[serde(default)] pub shot:u32,
     #[serde(default)] pub ammo:u8,
     #[serde(default)] pub reload:f32,
@@ -214,7 +229,7 @@ pub struct CombatPose {
 impl CombatPose {
     pub fn bounded(&self) -> Self {
         let finite = |v:f32, lo:f32, hi:f32| if v.is_finite() {v.clamp(lo,hi)} else {0.0};
-        Self {shot:self.shot,ammo:self.ammo,reload:self.reload,enabled:self.enabled,fire:self.fire,yaw:finite(self.yaw,-std::f32::consts::PI,std::f32::consts::PI),pitch:finite(self.pitch,-0.7854,0.7854),x:finite(self.x,-3.0,3.0),y:finite(self.y,-3.0,3.0),z:finite(self.z,-3.0,3.0),role:if ["assault","support","medic"].contains(&self.role.as_str()){self.role.clone()}else{"assault".into()}}
+        Self {ram_charge_remaining:0.0,stun_remaining:0.0,ram_blocked:String::new(),impact:None,impact_time:0.0,lock_yaw:0.0,lock_pitch:0.0,hull_locked:self.hull_locked,ram:self.ram,ram_remaining:0.0,ram_cooldown:0.0,cannon_reload:0.0,coax_reload:0.0,cannon_shot:self.cannon_shot,weapon:if self.weapon=="coax" {"coax".into()}else{"cannon".into()},shot:self.shot,ammo:self.ammo,reload:self.reload,enabled:self.enabled,fire:self.fire,yaw:finite(self.yaw,-std::f32::consts::PI,std::f32::consts::PI),pitch:finite(self.pitch,-0.7854,0.7854),x:finite(self.x,-3.0,3.0),y:finite(self.y,-3.0,3.0),z:finite(self.z,-3.0,3.0),role:if ["assault","support","medic"].contains(&self.role.as_str()){self.role.clone()}else{"assault".into()}}
     }
 }
 
@@ -500,7 +515,7 @@ impl SharedGameState {
             );
 
             entities_out.push(PhysicsEntitySnapshot {
-                combat: physics.combat_poses.get(&ent.id).cloned().unwrap_or_default(),
+                combat: {let mut c=physics.combat_poses.get(&ent.id).cloned().unwrap_or_default();c.ram_remaining=vehicle.ram.remaining;c.ram_charge_remaining=vehicle.ram.charge_remaining();c.stun_remaining=vehicle.ram.stun_remaining;c.ram_cooldown=vehicle.ram.cooldown;c.ram_blocked=vehicle.ram.blocked.into();c},
                 condition: vehicle.powertrain.condition,
                 ultimate_fraction: vehicle.powertrain.ultimate_fraction,
                 boost_fraction: vehicle.powertrain.boost_fraction(vehicle.config.resources),

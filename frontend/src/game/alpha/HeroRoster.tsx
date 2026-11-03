@@ -12,7 +12,7 @@ export function HeroRoster({
   filter,
   busy,
   onChoose,
-  onPreview,
+  unavailable = {},
   onFilter,
 }: {
   selected: string | null;
@@ -20,7 +20,7 @@ export function HeroRoster({
   filter: HeroFilter;
   busy: boolean;
   onChoose: (hero: string) => void;
-  onPreview: (hero: string) => void;
+  unavailable?: Record<string, string>;
   onFilter: (filter: HeroFilter) => void;
 }) {
   return (
@@ -45,15 +45,15 @@ export function HeroRoster({
               data-hero={hero.id}
               data-role={hero.role}
               data-grid-item
-              aria-label={`${hero.name} · ${hero.role.toUpperCase()}`}
-              title={`${hero.name} · ${hero.role.toUpperCase()}`}
+              aria-label={`${hero.name} · ${hero.role.toUpperCase()}${unavailable[hero.id] ? ` · ${unavailable[hero.id]}` : ""}`}
+              title={unavailable[hero.id] ?? `${hero.name} · ${hero.role.toUpperCase()}`}
               aria-pressed={selected === hero.id}
-              disabled={busy}
-              onFocus={() => onPreview(hero.id)}
-              onPointerEnter={() => onPreview(hero.id)}
+              disabled={busy || Boolean(unavailable[hero.id])}
+              data-unavailable={Boolean(unavailable[hero.id])}
               onClick={() => onChoose(hero.id)}
             >
               <HeroPortrait hero={hero.id} />
+              {unavailable[hero.id] && <span className="hero-role-full">ROLE FULL</span>}
               {main===hero.id&&<span className="hero-main-portrait-badge"><ControllerButton button="X"/> MAIN</span>}
             </button>
           ),

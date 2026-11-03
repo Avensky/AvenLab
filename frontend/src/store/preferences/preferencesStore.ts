@@ -11,15 +11,10 @@ import {
   type GarageEffects,
 } from "./garageEffects";
 
-export const DEFAULT_BINDINGS = {
-  forward: "KeyW",
-  reverse: "KeyS",
-  left: "KeyA",
-  right: "KeyD",
-  brake: "Space",
-  handbrake: "KeyB",
-};
-export type BindingAction = keyof typeof DEFAULT_BINDINGS;
+import {DEFAULT_BINDINGS,sanitizeBindings} from './keyBindings';
+import type {BindingAction} from './keyBindings';
+export {DEFAULT_BINDINGS,RESERVED_KEYS,isBindingKey} from './keyBindings';
+export type {BindingAction} from './keyBindings';
 import {
   HUD_GROUPS,
   DEFAULT_HUD_GROUPS,
@@ -49,6 +44,8 @@ export type Preferences = {
   dashboardBrightness: number;
   fov: number;
   cameraSensitivity: number;
+  turretYawSensitivity:number;
+  turretPitchSensitivity:number;
   controllerDeadzone: number;
   steeringSensitivity: number;
   invertSteering: boolean;
@@ -91,6 +88,8 @@ export const DEFAULT_PREFERENCES: Preferences = {
   dashboardBrightness: 1,
   fov: 75,
   cameraSensitivity: 1,
+  turretYawSensitivity:1,
+  turretPitchSensitivity:1,
   controllerDeadzone: 0.12,
   steeringSensitivity: 1,
   invertSteering: false,
@@ -111,37 +110,6 @@ export const DEFAULT_PREFERENCES: Preferences = {
   minimapScale: 0.75,
 };
 // Fixed shortcuts remain available; rebinding movement must never steal them.
-export const RESERVED_KEYS = new Set([
-  "F2",
-  "F3",
-  "F4",
-  "F8",
-  "F9",
-  "Escape",
-  "Enter",
-  "Tab",
-  "Backquote",
-  "ArrowUp",
-  "ArrowDown",
-  "ArrowLeft",
-  "ArrowRight",
-  "KeyE",
-  "KeyL",
-  "KeyZ",
-  "KeyX",
-  "KeyH",
-  "KeyQ",
-  "KeyT",
-  "KeyC",
-  "KeyV",
-  "KeyY",
-  "KeyM",
-  "KeyN",
-  "KeyR",
-  "ShiftLeft",
-  "ShiftRight",
-]);
-
 // The persisted payload is treated as input, so old/corrupt settings cannot
 // disable steering or inject an unbounded menu scale after a reload.
 export function sanitizePreferences(value: unknown): Preferences {
@@ -151,17 +119,7 @@ export function sanitizePreferences(value: unknown): Preferences {
     typeof data[key] === "number" && Number.isFinite(data[key])
       ? Math.min(max, Math.max(min, data[key] as number))
       : (DEFAULT_PREFERENCES[key] as number);
-  const proposed = { ...DEFAULT_BINDINGS, ...data.bindings };
-  const keys = Object.values(proposed);
-  const validBindings =
-    keys.length === 6 &&
-    new Set(keys).size === 6 &&
-    keys.every(
-      (code) =>
-        typeof code === "string" &&
-        /^(Key[A-Z]|Digit[0-9]|Space)$/.test(code) &&
-        !RESERVED_KEYS.has(code),
-    );
+  const bindings=sanitizeBindings(data.bindings);
   const visibility =
     data.hudGroups && typeof data.hudGroups === "object"
       ? data.hudGroups
@@ -209,13 +167,15 @@ export function sanitizePreferences(value: unknown): Preferences {
     minimapScale: numeric("minimapScale", 0.5, 1.25),
     fov: numeric("fov", 55, 110),
     cameraSensitivity: numeric("cameraSensitivity", 0.25, 2),
+    turretYawSensitivity:numeric("turretYawSensitivity",0.25,3),
+    turretPitchSensitivity:numeric("turretPitchSensitivity",0.25,3),
     controllerDeadzone: numeric("controllerDeadzone", 0.05, 0.4),
     steeringSensitivity: numeric("steeringSensitivity", 0.5, 1.5),
     menuTextScale: numeric("menuTextScale", 1, 1.25),
     reducedMotion: data.reducedMotion === true,
     highContrast: data.highContrast === true,
     invertSteering: data.invertSteering === true,
-    bindings: validBindings ? proposed : { ...DEFAULT_BINDINGS },
+    bindings,
     favoriteVehicles: Array.isArray(data.favoriteVehicles)
       ? data.favoriteVehicles
           .filter((id): id is string => typeof id === "string")
@@ -292,6 +252,8 @@ export const usePreferencesStore = create<
           steeringSensitivity: 1,
           invertSteering: false,
           cameraSensitivity: 1,
+          turretYawSensitivity:1,
+          turretPitchSensitivity:1,
         }),
     }),
     {

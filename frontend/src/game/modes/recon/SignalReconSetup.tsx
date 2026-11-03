@@ -7,7 +7,7 @@ import { reconSetupParent } from "../../../store/alpha/alphaStore";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useUIStore } from "../../../store/menus/uiStore";
 import { useCanBusStore } from "../../../store/recon/canBusStore";
-import { GameButton } from "../../../components/GameButton";
+import { ControllerAction } from "../../../components/controller";
 import { VehicleSelector } from "../VehicleSelector";
 import SignalReconHeader from "./SignalReconHeader";
 
@@ -110,27 +110,27 @@ export function SignalReconSetup({
           />
         </div>
         <div className="relative grid grid-cols-2 border border-cyan-400/30">
-          <GameButton
+          <ControllerAction button="A"
             data-recon-choice={3}
-            variant="neutral"
-            selected={selectedIndex === 3}
+
+            data-selected={selectedIndex === 3}
             aria-disabled={!canStart}
             onFocus={() => setIndex(3)}
-            onPress={startSignalRecon}
+            onClick={startSignalRecon}
             className={`flex justify-center border-0 ${canStart ? "" : "opacity-50"}`}
           >
-            A&nbsp;&nbsp;START
-          </GameButton>
-          <GameButton
+            START
+          </ControllerAction>
+          <ControllerAction button="B"
             data-recon-choice={4}
-            selected={selectedIndex === 4}
-            variant="neutral"
+            data-selected={selectedIndex === 4}
+
             onFocus={() => setIndex(4)}
-            onPress={() => setScreen(reconSetupParent())}
+            onClick={() => setScreen(reconSetupParent())}
             className="flex justify-center border-0 text-red-100"
           >
-            B&nbsp;&nbsp;BACK
-          </GameButton>
+            BACK
+          </ControllerAction>
           <span
             aria-hidden="true"
             className="pointer-events-none absolute inset-y-0 left-1/2 z-10 border-l border-cyan-300/60"

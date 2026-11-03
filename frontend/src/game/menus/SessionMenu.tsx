@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { ControllerButton } from "../../components/controller";
+import { ControllerAction } from "../../components/controller";
 import { connectRustServer, disconnectRustServer } from "../../net/rustSocket";
 import { requestSocial } from "../../net/socialClient";
 import { useSocialStore } from "../../store/social/socialStore";
@@ -84,18 +84,18 @@ export function SessionMenu() {
         </div>
         <nav className="menu-confirm-actions" aria-label="Leave game actions">
           {(["confirm", "cancel"] as const).map((action) => (
-            <button
+            <ControllerAction button={action === "confirm" ? "A" : "B"}
               key={action}
               disabled={busy}
               type="button"
               data-menu-row={action}
-              className="menu-control controller-action"
+              className="menu-control"
               onClick={action === "confirm" ? confirm : cancel}
             >
-              <ControllerButton button={action === "confirm" ? "A" : "B"} />
+
               {action.toUpperCase()}
               <kbd>{action === "confirm" ? "Enter" : "Esc"}</kbd>
-            </button>
+            </ControllerAction>
           ))}
         </nav>
       </section>

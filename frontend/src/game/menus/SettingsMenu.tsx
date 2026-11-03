@@ -9,7 +9,7 @@ import {
   DEFAULT_BINDINGS,
   DEFAULT_HUD_GROUPS,
   HUD_GROUPS,
-  RESERVED_KEYS,
+  isBindingKey,
   usePreferencesStore,
   type BindingAction,
 } from "../../store/preferences/preferencesStore";
@@ -39,6 +39,10 @@ const BINDING_LABELS: Record<BindingAction, string> = {
   right: "Steer right",
   brake: "Brake",
   handbrake: "Handbrake",
+  fire:"Fire weapon (hold)",
+  nextWeapon:"Next weapon",
+  previousWeapon:"Previous weapon",
+  scope: "Tank scope",
 };
 
 export function SettingsMenu() {
@@ -64,8 +68,7 @@ export function SettingsMenu() {
         return;
       }
       if (
-        !/^(Key[A-Z]|Digit[0-9]|Space)$/.test(event.code) ||
-        RESERVED_KEYS.has(event.code)
+        !isBindingKey(pendingBinding,event.code)
       ) {
         setNotice("That key is reserved. Choose a letter, number or Space.");
         return;
@@ -124,6 +127,10 @@ export function SettingsMenu() {
     description: string,
   ): MenuRow => ({ id, label, description, value: "Planned", disabled: true });
   const groupLabels = HUD_GROUP_LABELS;
+  const turretRows:MenuRow[] = ([['turretYawSensitivity','Turret turning sensitivity'],['turretPitchSensitivity','Turret elevation sensitivity']] as const).map(([id,label])=>({
+    id,label,description:'Shared by the on-screen aiming stick and controller right stick.',value:`${prefs[id]}×`,
+    action:dir=>prefs.update({[id]:step([0.25,0.5,0.75,1,1.25,1.5,2,2.5,3],prefs[id],dir)}),
+  }));
   const drivingRows: MenuRow[] = [
     {
       id: "driving-layout",
@@ -384,8 +391,9 @@ export function SettingsMenu() {
             id: "keyboard",
             label: "Keyboard",
             description:
-              "Select a driving action, then press a key. Fixed shortcuts remain reserved. Menu navigation always uses arrows / WASD, Enter and Escape.",
+              "Select a driving or combat action, then press a key. Hold the Fire binding to shoot while driving. Fixed shortcuts remain reserved. Menu navigation always uses arrows / WASD, Enter and Escape.",
             rows: [
+              ...turretRows,
               ...(Object.keys(DEFAULT_BINDINGS) as BindingAction[]).map(
                 (action): MenuRow => ({
                   id: action,
@@ -428,7 +436,7 @@ export function SettingsMenu() {
               <p className="mt-1 text-xs leading-tight text-slate-400">
                 F2 Debugger · F3 Latency overlay · F8 Start/stop capture · H
                 Change vehicle · Shift+H Hazards · E Engine · L Lights · Z/X
-                Indicators · Q ABS · T TCS · Shift Boost request · N Horn · R
+                Indicators · Q ABS · T TCS · Shift Tank Ram / car boost · weapon keys listed above · N Horn · R
                 Reset · ` Terminal
               </p>
             ),
@@ -437,9 +445,10 @@ export function SettingsMenu() {
             id: "controller",
             label: "Controller",
             description:
-              "Standard gamepad layout: RT accelerate · LT brake · Left stick steer · B handbrake · Start pause. In menus: A select, B back, LB/RB tabs. Release driving controls after closing a menu before driving again.",
+              "Standard gamepad layout: RT accelerate · LT brake · Left stick steer · B handbrake · Start pause. Armed tank: Right stick aim · RB fire · LB charge · Y weapon cycle · R3 angle lock. In menus: A select, B back, LB/RB tabs. Release driving controls after closing a menu before driving again.",
             rows: [
               ...drivingRows,
+              ...turretRows,
               {
                 id: "deadzone",
                 label: "Stick deadzone",

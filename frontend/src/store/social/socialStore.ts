@@ -78,6 +78,7 @@ export const useSocialStore = create<{
   available: boolean;
   view: SocialView | null;
   message: string;
+  recoveryMessage?:string;
   entryCode: string;
   reset: () => void;
   receive: (value: unknown) => void;

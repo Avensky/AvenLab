@@ -145,7 +145,8 @@
 .chat-launcher:is(:hover, :focus-visible) {
   opacity: 1;
   outline: none;
-  text-decoration: underline;
+  text-decoration: none;
+  outline:1px solid var(--app-accent,#82b7ff);outline-offset:2px;
 }
 .chat-system {
   color: #bdc6a6;
@@ -155,13 +156,17 @@
   width: max-content;
 }
 .driving-chat {
-  position: absolute;
-  left: max(8px, env(safe-area-inset-left));
-  top: max(190px, calc(env(safe-area-inset-top) + 190px));
-  width: min(330px, calc(100vw - 24px));
-  z-index: 10;
-  pointer-events: none;
+  position:absolute;
+  left:max(8px,env(safe-area-inset-left));
+  top:50%;transform:translateY(-50%);
+  width:min(300px,calc(100dvw - 24px));
+  height:clamp(110px,22dvh,180px);
+  display:flex;align-items:flex-end;
+  z-index:10;pointer-events:none;
 }
+.driving-chat .lobby-chat[data-expanded=true]{width:100%;height:100%;box-sizing:border-box;display:flex;flex-direction:column;background:var(--app-panel,#06121bb8)}
+.driving-chat .lobby-chat .chat-lines{flex:1;min-height:20px;height:auto}
+.driving-chat .lobby-chat[data-expanded=false]{align-self:flex-end}
 
 .lobby-chat .controller-key {
   min-width: 17px;
@@ -193,10 +198,8 @@
     font-size: 5px;
   }
   .driving-chat {
-    top: auto;
-    bottom: max(8px, env(safe-area-inset-bottom));
-    left: calc(var(--wheel-size, 190px) + 16px);
-    width: min(230px, calc(100vw - var(--wheel-size, 190px) - 220px));
+    top:45%;bottom:auto;left:max(8px,env(safe-area-inset-left));
+    width:min(280px,38dvw);height:clamp(90px,24dvh,120px);
   }
 }
 

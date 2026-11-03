@@ -1,6 +1,7 @@
 use crate::{physics::{PhysicsWorld,SIMULATION_DT},state::CombatPose,vehicle_state::VehicleStateFlags};
-fn range()->PhysicsWorld {
- let map=serde_json::from_value(serde_json::json!({"schema_version":2,"map_id":"tank_test","coordinate_system":{"units":"meters","up_axis":"y","forward_axis":"-z"},"cell":[200,200],"surface":{"road_y":0},"layout":{"kind":"fixed_grid","origin":[0,0],"size":[1,1]},"visuals":[{"id":"placeholder","asset":"/models/world/garage.glb","position":[0,0,0],"rotation":[0,0,0,1],"scale":[1,1,1]}],"roads":[],"buildings":[],"team_spawns":{"red":[{"chunk":[0,0],"local":[0,0],"yaw":0}],"blue":[]},"authored_layout":{"format":"avenlab-world-layout","version":1,"map_id":"tank_test","title":"Tank physics range","base":"replace","ground":true,"repeat":false,"objects":[]}})).unwrap();
+fn range()->PhysicsWorld {range_size(200.0)}
+fn range_size(side:f32)->PhysicsWorld {
+ let map=serde_json::from_value(serde_json::json!({"schema_version":2,"map_id":"tank_test","coordinate_system":{"units":"meters","up_axis":"y","forward_axis":"-z"},"cell":[side,side],"surface":{"road_y":0},"layout":{"kind":"fixed_grid","origin":[0,0],"size":[1,1]},"visuals":[{"id":"placeholder","asset":"/models/world/garage.glb","position":[0,0,0],"rotation":[0,0,0,1],"scale":[1,1,1]}],"roads":[],"buildings":[],"team_spawns":{"red":[{"chunk":[0,0],"local":[0,0],"yaw":0}],"blue":[]},"authored_layout":{"format":"avenlab-world-layout","version":1,"map_id":"tank_test","title":"Tank physics range","base":"replace","ground":true,"repeat":false,"objects":[]}})).unwrap();
  let mut world=PhysicsWorld::from_editor_document(map).unwrap();world.spawn_vehicle_for_player("tank".into(),[0.0;3],"tank","red").unwrap();
  let tank=world.vehicles.get_mut("tank").unwrap();tank.powertrain.engine_requested=true;tank.vehicle_flags.insert(VehicleStateFlags::ENGINE_ON);
  for _ in 0..180 {world.step(SIMULATION_DT);}world
@@ -8,10 +9,10 @@ fn range()->PhysicsWorld {
 #[test] fn tank_pivots_through_ground_contacts_and_can_drive_reverse(){
  let mut world=range();let h=world.vehicles["tank"].body;let start=*world.bodies[h].translation();
  world.vehicles.get_mut("tank").unwrap().steer=1.0;
- for _ in 0..180 {world.step(SIMULATION_DT);}
- let yaw=world.bodies[h].rotation().euler_angles().1;
+ let mut yaw=0.0;
+ for _ in 0..180 {world.step(SIMULATION_DT);yaw+=world.bodies[h].angvel().y*SIMULATION_DT;}
  let p=*world.bodies[h].translation();
- assert!(yaw.abs()>0.2,"tank should pivot: {yaw}, displacement {:?}",p-start);
+ assert!(yaw.abs()>2.5,"tank should pivot: {yaw}, displacement {:?}",p-start);
  assert!((p-start).norm()<4.0,"pivot must not propel the tank down the road");
  let mut world=range();let h=world.vehicles["tank"].body;let start=*world.bodies[h].translation();world.vehicles.get_mut("tank").unwrap().throttle=-1.0;
  for _ in 0..240{world.step(SIMULATION_DT);}
@@ -41,4 +42,172 @@ fn range()->PhysicsWorld {
  let mut world=range();let h=world.vehicles["tank"].body;
  {let t=world.vehicles.get_mut("tank").unwrap();t.powertrain.engine_requested=false;t.steer=1.0;}
  for _ in 0..180{world.step(SIMULATION_DT);}assert!(world.bodies[h].angvel().y.abs()<0.02);
+}
+
+#[test] fn tank_turns_responsively_while_pivoting_driving_and_reversing(){
+ for throttle in [0.0,1.0,-1.0] {for steer in [-1.0,1.0] {
+  let mut world=range();let h=world.vehicles["tank"].body;
+  if throttle!=0.0 {world.vehicles.get_mut("tank").unwrap().throttle=throttle;for _ in 0..180 {world.step(SIMULATION_DT);}}
+  let start=*world.bodies[h].translation();world.vehicles.get_mut("tank").unwrap().steer=steer;
+  for _ in 0..60 {world.step(SIMULATION_DT);}
+  let body=&world.bodies[h];let yaw=body.angvel().y;
+  assert!(yaw*steer< -0.5,"one-second steering response must exceed 29 deg/s: throttle={throttle}, steer={steer}, yaw={yaw}");
+  assert!(yaw.abs()<5.0,"turning must stay bounded");
+  assert!((body.rotation()*rapier3d::math::Vector::y()).y>0.94,"flat-ground turn must stay upright");
+  if throttle==0.0 {assert!((body.translation()-start).norm()<0.25,"pivot should not translate the hull");}
+  else {assert!(body.linvel().norm()>1.0,"steering should preserve useful travel speed");}
+ }}
+}
+
+#[test] fn switching_tank_weapons_preserves_cannon_reload_and_is_server_validated(){
+ let mut world=range();let h=world.vehicles["tank"].body;
+ let mut intent=CombatPose{enabled:true,fire:true,yaw:std::f32::consts::PI,..Default::default()};
+ world.combat_tick("tank",1,Some(&intent));assert_eq!(world.combat_poses["tank"].cannon_shot,1);
+ world.bodies[h].set_linvel(rapier3d::math::Vector::zeros(),true);
+ intent.weapon="coax".into();world.combat_tick("tank",2,Some(&intent));
+ let c=&world.combat_poses["tank"];assert!(c.cannon_reload>2.9);assert!(c.coax_reload>0.0&&c.coax_reload<=0.11);assert_eq!(c.weapon,"coax");assert_eq!(c.shot,2);assert_eq!(c.cannon_shot,1);assert!(c.reload<=0.11);
+ assert!(world.bodies[h].linvel().norm()<0.001,"MG must not kick like a cannon");
+ for seq in 3..30 {world.combat_tick("tank",seq,Some(&intent));}
+ let shots=world.combat_poses["tank"].shot;assert!(shots>2 && shots<8,"coax uses a bounded automatic cadence");
+ intent.weapon="cannon".into();world.combat_tick("tank",30,Some(&intent));
+ let c=&world.combat_poses["tank"];assert_eq!(c.shot,shots);assert!(c.reload>2.4);assert_eq!(c.ammo,0);
+ intent.fire=false;intent.weapon="unlimited-bombs".into();world.combat_tick("tank",31,Some(&intent));assert_eq!(world.combat_poses["tank"].weapon,"cannon");
+ intent.weapon="coax".into();for seq in 32..190 {world.combat_tick("tank",seq,Some(&intent));}
+ intent.weapon="cannon".into();intent.fire=true;world.combat_tick("tank",190,Some(&intent));assert_eq!(world.combat_poses["tank"].cannon_shot,2,"holstered cannon reload continues");
+}
+
+#[test] fn fictional_tank_calibration_matches_six_gears_and_actual_speed(){
+ let mut world=range_size(20000.0);let h=world.vehicles["tank"].body;
+ let cfg=world.vehicles["tank"].config;let hud=cfg.resources.hud();
+ assert_eq!(hud.forward_gears,6);assert_eq!(hud.max_rpm,4200.0);assert_eq!(hud.redline_rpm,3800.0);assert_eq!(cfg.max_speed,30.0);
+ world.vehicles.get_mut("tank").unwrap().throttle=1.0;
+ for _ in 0..3600{world.step(SIMULATION_DT);}
+ let tank=&world.vehicles["tank"];
+ assert_eq!(tank.powertrain.gear,6,"tank must reach its advertised top gear");
+ assert!(world.bodies[h].linvel().norm()>25.0,"fictional tank must reach over 90 km/h in the actual contact solver");
+ assert!(tank.powertrain.rpm<=hud.max_rpm);
+}
+
+#[test]fn tank_angle_lock_preserves_sideways_bearing_and_elevation_through_hull_turns(){
+ let mut world=range();let h=world.vehicles["tank"].body;
+ let mut intent=CombatPose{enabled:true,yaw:std::f32::consts::FRAC_PI_2,pitch:0.15,..Default::default()};
+ for seq in 0..120{world.combat_tick("tank",seq,Some(&intent));}
+ intent.hull_locked=true;world.combat_tick("tank",121,Some(&intent));
+ let before=world.combat_poses["tank"].clone();
+ world.bodies[h].set_rotation(rapier3d::math::Rotation::from_axis_angle(&rapier3d::math::Vector::y_axis(),1.0),true);
+ intent.yaw=0.0;intent.pitch=-0.1;
+ for seq in 122..180{world.combat_tick("tank",seq,Some(&intent));}
+ let c=&world.combat_poses["tank"];let dir=rapier3d::math::Vector::new(-c.yaw.sin()*c.pitch.cos(),c.pitch.sin(),-c.yaw.cos()*c.pitch.cos());
+ let local=world.bodies[h].rotation().inverse()*dir;
+ assert!((local.x.atan2(local.z)-before.lock_yaw).abs()<0.001);
+ assert!((local.y.asin()-before.lock_pitch).abs()<0.001);
+ assert!(local.x.abs()>0.9,"lock must not reset sideways turret to forward");
+}
+
+#[test]fn ram_is_a_contact_driven_burst_with_brake_cancel_and_persistent_cooldown(){
+ let mut world=range_size(20000.0);let h=world.vehicles["tank"].body;
+ world.vehicles.get_mut("tank").unwrap().throttle=1.0;
+ for _ in 0..120{world.step(SIMULATION_DT);}
+ let start=world.bodies[h].linvel().norm();world.vehicles.get_mut("tank").unwrap().ram.requested=true;
+ world.step(SIMULATION_DT);assert!(world.vehicles["tank"].ram.active());assert_eq!(world.vehicles["tank"].ram.cooldown,crate::ram::COOLDOWN);
+ world.vehicles.get_mut("tank").unwrap().ram.requested=false;
+ for _ in 0..120{world.step(SIMULATION_DT);}
+ assert!(world.bodies[h].linvel().norm()>start+5.0,"ram must feel substantially faster within two seconds");
+ world.vehicles.get_mut("tank").unwrap().brake=1.0;world.step(SIMULATION_DT);
+ assert!(!world.vehicles["tank"].ram.active());assert!(world.vehicles["tank"].ram.cooldown>13.0);
+ let cooldown=world.vehicles["tank"].ram.cooldown;world.change_vehicle_for_player("tank","brz").unwrap();assert!(!world.vehicles["tank"].ram.active());assert_eq!(world.vehicles["tank"].ram.cooldown,cooldown);
+}
+
+#[test]fn ram_bonus_hits_enemy_once_and_does_not_bonus_friendly_contact(){
+ fn hit(team:&str,ram:bool)->(f32,usize,f32,f32){
+  let mut w=range();let h=w.vehicles["tank"].body;let y=w.bodies[h].translation().y;
+  w.bodies[h].set_translation(rapier3d::math::Vector::new(0.0,y,-15.0),true);
+  let target=w.spawn_vehicle_for_player("target".into(),[0.0;3],"tank","red").unwrap();w.vehicles.get_mut("target").unwrap().team=team.into();
+  w.bodies[h].set_translation(rapier3d::math::Vector::new(0.0,y,-8.0),true);w.bodies[h].set_linvel(rapier3d::math::Vector::new(0.0,0.0,12.0),true);
+  {let t=w.vehicles.get_mut("tank").unwrap();t.powertrain.gear=1;t.throttle=1.0;if ram{t.ram.remaining=crate::ram::DURATION;t.ram.cooldown=crate::ram::COOLDOWN;}}
+  let mut peak=0.0_f32;let mut stun=0.0_f32;for _ in 0..90{w.step(SIMULATION_DT);peak=peak.max(w.bodies[target].linvel().norm());stun=stun.max(w.vehicles["target"].ram.stun_remaining);}
+  (w.vehicles["target"].powertrain.condition,usize::from(w.vehicles["tank"].ram.hits.contains(&target)),peak,stun)
+ }
+ let (ordinary,_,normal_peak,normal_stun)=hit("blue",false);let (enemy,hits,enemy_peak,enemy_stun)=hit("blue",true);let (friendly,_,friendly_peak,friendly_stun)=hit("red",true);assert_eq!(normal_stun,0.0);assert_eq!(friendly_stun,0.0);assert_eq!(enemy_stun,1.0);
+ assert!(enemy_peak>normal_peak+2.0 && friendly_peak>normal_peak+2.0,"Ram physically knocks both teams back: normal={normal_peak}, enemy={enemy_peak}, friendly={friendly_peak}");
+ assert!(enemy<ordinary-0.02,"charge adds damage beyond a normal impact: enemy={enemy}, normal={ordinary}");assert_eq!(hits,1);assert!(friendly>enemy+0.02,"friendly contacts receive no ability bonus");
+}
+
+#[test] fn pivot_is_an_arcade_turn_and_ram_launches_from_rest(){
+ let mut world=range();let h=world.vehicles["tank"].body;
+ world.vehicles.get_mut("tank").unwrap().steer=1.0;
+ let mut angle=0.0;for _ in 0..75{world.step(SIMULATION_DT);angle+=world.bodies[h].angvel().y*SIMULATION_DT;}
+ assert!(angle.abs()>1.3,"pivot should turn over 75 degrees in 1.25 seconds: {angle}");
+ let mut world=range();let h=world.vehicles["tank"].body;
+ world.vehicles.get_mut("tank").unwrap().ram.requested=true;world.step(SIMULATION_DT);
+ assert!(world.bodies[h].linvel().z>11.0,"Ram needs an immediate visible launch from rest");
+ assert_eq!(world.vehicles["tank"].ram.cooldown,crate::ram::COOLDOWN);
+}
+
+#[test] fn ballistic_cannon_records_ground_hit_and_cannot_shoot_through_a_near_wall(){
+ let mut world=range_size(2000.0);
+ let intent=CombatPose{enabled:true,fire:true,yaw:std::f32::consts::PI,..Default::default()};
+ world.combat_tick("tank",1,Some(&intent));
+ let c=&world.combat_poses["tank"];assert!(c.impact.is_some());let p=c.impact.unwrap();assert!(p[2]>40.0&&p[2]<220.0,"level cannon must fall onto the ground, not use a horizontal hitscan: {:?}",p);assert!(c.impact_time>0.1);
+ let mut world=range();let wall=world.bodies.insert(rapier3d::prelude::RigidBodyBuilder::fixed().translation(rapier3d::math::Vector::new(0.0,2.0,3.0)).build());
+ world.colliders.insert_with_parent(rapier3d::prelude::ColliderBuilder::cuboid(5.0,3.0,0.1).build(),wall,&mut world.bodies);
+ world.combat_tick("tank",1,Some(&intent));let c=&world.combat_poses["tank"];assert!(c.impact.unwrap()[2]<3.1);assert_eq!(c.impact_time,0.0);
+}
+
+#[test]fn full_throttle_turn_changes_the_driving_path_and_sheds_speed(){
+ for steer in [-1.0,1.0]{
+  let mut world=range_size(2000.0);let h=world.vehicles["tank"].body;
+  world.vehicles.get_mut("tank").unwrap().throttle=1.0;
+  for _ in 0..240{world.step(SIMULATION_DT);}
+  let start=*world.bodies[h].translation();let speed=world.bodies[h].linvel().norm();
+  world.vehicles.get_mut("tank").unwrap().steer=steer;
+  for _ in 0..150{world.step(SIMULATION_DT);}
+  let body=&world.bodies[h];let delta=body.translation()-start;
+  println!("turn {steer}: speed {speed} -> {}, displacement {:?}",body.linvel().norm(),delta);
+  assert!(delta.x*steer< -3.0,"steering must curve the travel path, not merely rotate the model: {:?}",delta);
+  assert!(body.linvel().norm()<speed*0.85,"full steering should slow forward travel into a tighter turn");
+  assert!((body.rotation()*rapier3d::math::Vector::y()).y>0.90);
+ }
+}
+
+#[test]fn reverse_request_brakes_then_backs_up_and_cancels_ram(){
+ let mut world=range_size(2000.0);let h=world.vehicles["tank"].body;
+ world.vehicles.get_mut("tank").unwrap().throttle=1.0;
+ for _ in 0..180{world.step(SIMULATION_DT);}
+ world.vehicles.get_mut("tank").unwrap().throttle=-1.0;
+ world.step(SIMULATION_DT);assert!(world.vehicles["tank"].powertrain.direction_brake>0.9);
+ assert!(world.bodies[h].linvel().z>0.0,"direction cannot reverse instantly");
+ for _ in 0..480{world.step(SIMULATION_DT);}
+ assert!(world.bodies[h].linvel().z< -1.0);assert_eq!(world.vehicles["tank"].powertrain.gear,-1);
+ {let v=world.vehicles.get_mut("tank").unwrap();v.ram.remaining=crate::ram::DURATION;v.ram.cooldown=crate::ram::COOLDOWN;}
+ world.step(SIMULATION_DT);assert!(!world.vehicles["tank"].ram.active());
+}
+
+#[test]fn ram_finishes_without_disabling_engine_or_steering_and_pays_its_cost_once(){
+ let mut world=range_size(20000.0);let h=world.vehicles["tank"].body;
+ let fuel=world.vehicles["tank"].powertrain.fuel_liters;
+ let condition=world.vehicles["tank"].powertrain.condition;
+ {let t=world.vehicles.get_mut("tank").unwrap();t.ram.requested=true;t.throttle=1.0;t.steer=0.15;}
+ world.step(SIMULATION_DT);
+ assert!(world.vehicles["tank"].ram.charging());
+ assert!(world.vehicles["tank"].powertrain.fuel_liters<fuel-9.9);
+ for _ in 0..185{world.step(SIMULATION_DT);}
+ assert!(world.vehicles["tank"].ram.active()&&!world.vehicles["tank"].ram.charging());
+ for _ in 0..245{world.step(SIMULATION_DT);}
+ let tank=&world.vehicles["tank"];
+ assert!(!tank.ram.active());assert!(tank.ram.cooldown>52.0);
+ assert!(tank.powertrain.condition<=condition-crate::ram::CONDITION_COST+0.001);
+ assert!(tank.vehicle_flags.contains(VehicleStateFlags::ENGINE_ON),"Ram must not shut down a healthy engine: {:?}",tank.powertrain);
+ assert!(!tank.ram.cost_due);
+ {let t=world.vehicles.get_mut("tank").unwrap();t.throttle=0.0;t.steer=1.0;}
+ for _ in 0..60{world.step(SIMULATION_DT);}
+ assert!(world.bodies[h].angvel().y.abs()>0.5,"post-Ram steering remains available");
+}
+#[test]fn stunned_tank_cannot_fire_and_recovers_after_one_second(){
+ let mut world=range();world.vehicles.get_mut("tank").unwrap().ram.stun_remaining=crate::ram::STUN_SECONDS;
+ let intent=CombatPose{enabled:true,fire:true,..Default::default()};
+ world.combat_tick("tank",1,Some(&intent));assert_eq!(world.combat_poses["tank"].shot,0);
+ for _ in 0..61{world.step(SIMULATION_DT);}
+ assert_eq!(world.vehicles["tank"].ram.stun_remaining,0.0);
+ world.combat_tick("tank",2,Some(&intent));assert_eq!(world.combat_poses["tank"].shot,1);
 }

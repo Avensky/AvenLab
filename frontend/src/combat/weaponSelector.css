@@ -1,0 +1,5 @@
+.weapon-selector{position:absolute;left:50%;transform:translateX(-50%);bottom:max(8px,env(safe-area-inset-bottom));width:300px;padding:5px;background:var(--app-panel);color:var(--app-text);border-radius:var(--app-radius-sm,10px);pointer-events:auto;font:10px/1.2 system-ui}
+.weapon-slots{display:flex;gap:5px}.weapon-slots button{flex:1;min-height:48px;min-width:0;display:flex;align-items:center;justify-content:center;gap:5px;border:1px solid transparent;border-radius:4px;background:var(--app-raised);color:var(--app-text);font:600 9px system-ui}
+.weapon-slots button[aria-pressed=true]{border-color:var(--app-accent)}.weapon-slots button:focus-visible{outline:2px solid var(--app-accent)}
+.weapon-selector-footer{display:flex;justify-content:space-between;gap:5px;padding:4px 2px 0;font-size:8px;color:var(--app-muted)}
+.ram-attack[data-active=true]{color:var(--app-accent);filter:drop-shadow(0 0 7px var(--app-accent))}

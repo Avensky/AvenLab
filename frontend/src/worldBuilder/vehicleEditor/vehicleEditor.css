@@ -17,3 +17,6 @@
 .ve-panel{bottom:auto;max-height:calc(100dvh - 24px)}.ve-fields{flex:0 1 auto}.ve-panel header,.ve-panel nav,.ve-panel footer{flex-shrink:0}@media(max-width:480px){.ve-panel{bottom:auto;max-height:calc(100dvh - 12px)}}
 
 .ve-panel{box-sizing:border-box}.ve-fields>*{min-width:0}.ve-panel input,.ve-panel select{box-sizing:border-box;max-width:100%}
+.world-edit-tools{position:absolute;top:calc(18px + var(--instrument-size)*.45);left:max(8px,env(safe-area-inset-left));display:flex;gap:4px;pointer-events:auto;z-index:12}
+.world-edit-tools button{min-height:44px;padding:5px 8px;border:1px solid var(--app-line);border-radius:4px;color:var(--app-text);background:var(--app-panel);font:9px system-ui}
+.world-edit-tool-menu{position:absolute;left:0;top:calc(100% + 4px);display:flex;flex-direction:column;gap:4px;padding:4px;background:var(--app-panel);min-width:155px}

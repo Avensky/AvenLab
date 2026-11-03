@@ -1,9 +1,10 @@
+import {SteeringSystemPicker} from './panels/SteeringSystemPicker';
 import { TurretPage } from "./panels/TurretPage";
 import { cockpitParent } from "./panels/tabs";
 /** Cockpit shell: shared header/theme, focused pages and confirmed footer.
  * Pages subscribe only while mounted; tabs/navigation and page APIs live in panels/. */
 import { useEffect, useRef } from "react";
-import { ControllerButton, MenuShortcuts } from "../../components/controller";
+import { MenuShortcuts, ControllerAction } from "../../components/controller";
 import { trapMenuFocus } from "../../components/menus/menuFocus";
 import { useInputStore } from "../../store/input/inputStore";
 import {
@@ -90,9 +91,9 @@ export function CockpitPanel() {
             SETTINGS
           </button>
           <CabinClock />
-          <button className="cockpit-back controller-action" onClick={close}>
-            <ControllerButton button="B" /> CLOSE
-          </button>
+          <ControllerAction button="B" className="cockpit-back" onClick={close}>
+             CLOSE
+          </ControllerAction>
         </header>
         <nav className="cockpit-tabs" aria-label="Cockpit systems">
           {COCKPIT_TABS.map((item) => (
@@ -106,6 +107,7 @@ export function CockpitPanel() {
             </button>
           ))}
         </nav>
+        {(tab==='lights'||tab==='wipers'||tab==='cruise')&&<nav className="cockpit-subtabs cockpit-column-tabs" aria-label="Column levers">{([['lights','LIGHTS'],['wipers','WIPERS'],['cruise','CRUISE']] as const).map(([id,label])=><button key={id} aria-pressed={tab===id} onClick={()=>useUIStore.getState().setCockpitTab(id)}>{label}</button>)}</nav>}
         <div {...contact} className="cockpit-content">
           {tab === "drive" && (
             <div className="cockpit-drive-layout">
@@ -122,10 +124,13 @@ export function CockpitPanel() {
           {(tab === "research" || tab === "vehicle") && <ResearchPanel />}
           {(tab === "lights" || tab === "wipers" || tab === "cruise") && (
             <div className="cockpit-column-page">
-              <nav className="cockpit-subtabs" aria-label="Column levers">{([['lights','LIGHTS'],['wipers','WIPERS'],['cruise','CRUISE']] as const).map(([id,label])=><button key={id} aria-label={`Select ${id} stalk`} aria-current={tab===id?"page":undefined} aria-pressed={tab===id} onClick={()=>useUIStore.getState().setCockpitTab(id)}>{label}</button>)}</nav>
+              <SteeringSystemPicker selected={tab}/>
+              <div className="cockpit-column-options">
+
               {tab === "lights" && <LightsPanel />}
               {tab === "wipers" && <WipersPanel />}
               {tab === "cruise" && <CruisePanel />}
+              </div>
             </div>
           )}
           {(tab === "climate" || tab === "radio") && <section><nav className="cockpit-subtabs" aria-label="Center console">{([['radio','RADIO'],['climate','CLIMATE']] as const).map(([id,label])=><button key={id} aria-pressed={tab===id} onClick={()=>useUIStore.getState().setCockpitTab(id)}>{label}</button>)}</nav>{tab==='radio'?<RadioPage/>:<ClimatePage/>}</section>}

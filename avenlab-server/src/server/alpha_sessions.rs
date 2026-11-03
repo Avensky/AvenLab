@@ -763,7 +763,27 @@ impl Server {
         let active = a.members.get(player).map(
             |m| json!({"mode":m.mode,"world_id":m.world,"hero":m.hero,"team":m.team.as_str()}),
         );
-        let roster:Vec<_>=a.members.iter().filter(|(_,m)|m.mode.bucket()==0).filter_map(|(id,m)|clients.get(id).and_then(|c|c.profile_id.as_ref()).and_then(|id|data.profiles.get(id)).map(|p|json!({"id":p.id,"name":p.name,"team":m.team.as_str(),"hero":m.hero,"mode":m.mode,"reconnecting":false}))).chain(a.reservations.iter().filter(|(_,r)|r.expires>timestamp()&&r.member.mode.bucket()==0).filter_map(|(id,r)|data.profiles.get(id).map(|p|json!({"id":p.id,"name":p.name,"team":r.member.team.as_str(),"hero":r.member.hero,"mode":r.member.mode,"reconnecting":true})))).collect();
+        // Public cards expose only the equipped vehicle appearance, never the
+        // profile's credentials, inventory or other vehicle loadouts.
+        let card = |profile: &Profile, member: &Member, reconnecting: bool| {
+            let showcase=if member.hero.is_empty(){profile.progression.default_hero.as_str()}else{member.hero.as_str()};
+            let appearance = policy::hero(showcase).ok()
+                .and_then(|hero| profile.progression.hero_loadouts.get(hero.vehicle))
+                .cloned().unwrap_or_default();
+            json!({"id":profile.id,"name":profile.name,"team":member.team.as_str(),
+                "hero":member.hero,"showcase_hero":showcase,"mode":member.mode,"world_id":member.world,
+                "reconnecting":reconnecting,"appearance":appearance})
+        };
+        let roster: Vec<_> = a.members.iter().filter(|(_, m)| m.mode.bucket() == 0)
+            .filter_map(|(id, member)| clients.get(id)
+                .and_then(|c| c.profile_id.as_ref())
+                .and_then(|id| data.profiles.get(id))
+                .map(|profile| card(profile, member, false)))
+            .chain(a.reservations.iter()
+                .filter(|(_, r)| r.expires > timestamp() && r.member.mode.bucket() == 0)
+                .filter_map(|(id, r)| data.profiles.get(id)
+                    .map(|profile| card(profile, &r.member, true))))
+            .collect();
         json!({"enabled":a.enabled,"role_limits":a.enforce_roles,"queue":queue,"active":active,"roster":roster,"reconnect_grace_seconds":a.grace_seconds,"reserved_players":a.reservations.len(),"limits":{"match_worlds":1,"editor_worlds":1,"practice_worlds":1,"match_players":10,"editor_players":1,"practice_players":1},"skins":SKINS.iter().map(|s|json!({"id":s.0,"name":s.1,"cost":s.2,"color":s.3})).collect::<Vec<_>>()})
     }
 }

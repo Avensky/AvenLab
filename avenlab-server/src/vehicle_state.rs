@@ -58,6 +58,8 @@ pub struct VehicleConfig {
 }
 
 pub struct Vehicle {
+    pub ram:crate::ram::RamState,
+    pub team:String,
     // ==========================================
     // Physics
     // ==========================================

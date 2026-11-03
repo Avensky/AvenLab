@@ -1,4 +1,4 @@
-import { ControllerButton, MenuShortcuts } from "../controller";
+import { MenuShortcuts, ControllerAction } from "../controller";
 import { trapMenuFocus } from "./menuFocus";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import type { MenuAction } from "../../controls/inputRouting";
@@ -175,18 +175,18 @@ export function TabbedMenu({
               {subtitle}
             </p>
           )}
-          <button
+          <ControllerAction button="B"
             type="button"
             onClick={onBack}
             onKeyDown={(event) => {
               if (event.key === "Enter" || event.key === " ")
                 event.stopPropagation();
             }}
-            className="menu-control menu-back controller-action"
+            className="menu-control menu-back"
           >
-            <ControllerButton button="B" />
+
             {backLabel}
-          </button>
+          </ControllerAction>
         </header>
         <div
           role="tablist"

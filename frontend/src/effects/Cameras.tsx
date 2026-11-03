@@ -1,3 +1,5 @@
+import {TankScopeRig} from '../combat/TankScope';
+import {useCombatStore} from '../combat/combatStore';
 import { useBuilderStore } from "../worldBuilder/state/builderStore";
 import { useVehicleEditorStore } from "../worldBuilder/vehicleEditor/vehicleEditorStore";
 import { VehicleCameraRig } from "../worldBuilder/vehicleEditor/VehicleCameraRig";
@@ -105,6 +107,7 @@ function cameraPresetForVehicle(
 }
 
 export default function Cameras() {
+  const scope=useCombatStore(s=>s.scope&&s.enabled);
   const fov = usePreferencesStore((s) => s.fov);
   const reducedMotion = usePreferencesStore((s) => s.reducedMotion);
   const overlay = useUIStore((s) => s.overlay);
@@ -139,6 +142,8 @@ export default function Cameras() {
   // editor mode too. Negative priority retains automatic R3F rendering.
   useFrame(() => beginVehicleRenderFrame(), -100);
   useEffect(() => releaseVehicleRenderFrameClock, []);
+
+  if(scope&&screen==='sandbox'&&overlay===null&&playerVehicleId==='tank')return <TankScopeRig playerId={playerId}/>;
 
   if (editor && screen === "sandbox" && !cameraEditing && overlay !== "vehicle_select") {
     return (

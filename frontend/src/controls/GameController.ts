@@ -1,3 +1,7 @@
+import {controllerDrive} from "./controllerDrive";
+import {unpackCockpit} from "../store/input/protocol/cockpitMasks";
+import {useNetworkStore} from '../store/session/networkStore';
+import {toggleTankScope,resetTurretOrientation,cycleTankWeapon,toggleTurretOrientationLock} from '../combat/turretControls';
 import { aimCombat, combatIntent } from "../combat/combatStore";
 import { useGameStore } from "../store/presentation/gameStore";
 import { leaveInspection } from "../store/presentation/inspectionActions";
@@ -46,6 +50,8 @@ export function GameController() {
   useEffect(() => {
     let frameId = 0;
     let focused = document.hasFocus();
+    let weaponFireArmed=true;
+    let lastWeapon=combatIntent.weapon;
     let previousButtons: boolean[] = [];
     let padKey: string | null = null;
     let armed = false;
@@ -60,13 +66,14 @@ export function GameController() {
       window.dispatchEvent(new CustomEvent("avenlab:hero-main-hold",{detail:{pressed:false,cancelled}}));
     };
     const releasePanelPress = (cancelled = true) => {
-      combatIntent.gamepadFire=false;
+      combatIntent.gamepadFire=false;combatIntent.gamepadRam=false;
       releaseHeroMain();
       if (!panelPressHeld) return;
       panelPressHeld = false;
       routePhysicalMenuPress(false, cancelled);
     };
     const release = () => {
+      combatIntent.gamepadRam=false;combatIntent.gamepadFire=false;
       armed = false;
       if (resetTimer !== null) window.clearTimeout(resetTimer);
       resetTimer = null;
@@ -340,10 +347,17 @@ export function GameController() {
             (preferences.invertSteering ? -1 : 1),
         ),
       );
-      if (combatIntent.enabled) { combatIntent.gamepadFire=armed&&pressed(5); }
+      if(lastWeapon!==combatIntent.weapon){weaponFireArmed=false;lastWeapon=combatIntent.weapon;}
+      if(!pressed(5))weaponFireArmed=true;
+      if (combatIntent.enabled) { combatIntent.gamepadFire=armed&&weaponFireArmed&&pressed(5); }
       if (combatIntent.enabled && armed) aimCombat(axis(pad.axes[2], preferences.controllerDeadzone)*0.035, axis(pad.axes[3], preferences.controllerDeadzone)*0.035);
-      const throttle = trigger(pad.buttons[7]?.value) || (combatIntent.enabled ? 0 : -axis(pad.axes[3], preferences.controllerDeadzone));
-      const brake = trigger(pad.buttons[6]?.value);
+      const me=useNetworkStore.getState().getMe();
+      const transmission=unpackCockpit(me?.cockpit_mask);
+      const {throttle,brake}=controllerDrive(
+        trigger(pad.buttons[7]?.value),trigger(pad.buttons[6]?.value),
+        combatIntent.enabled ? 0 : -axis(pad.axes[3],preferences.controllerDeadzone),
+        transmission.automatic&&transmission.gear>=1&&transmission.gear<=6,
+      );
       const handbrake = Number(pressed(1));
       // After menu/focus/device changes, release and re-engage drive controls.
       // B used to leave a menu must not immediately become a held handbrake.
@@ -375,16 +389,18 @@ export function GameController() {
         brake,
         handbrake,
       });
-      store.setHeldVehicleFlag("gamepad", VehicleFlags.BOOST, pressed(4));
+      const tank=useNetworkStore.getState().getMe()?.vehicle_id==='tank';
+      combatIntent.gamepadRam=tank&&combatIntent.enabled&&armed&&pressed(4);
+      store.setHeldVehicleFlag("gamepad", VehicleFlags.BOOST, !tank&&pressed(4));
       store.setHeldPlayerFlag("gamepad", PlayerFlags.HONK, !combatIntent.enabled && pressed(5));
       if (edges[2]) store.toggleVehicleFlag(VehicleFlags.ENGINE_ON);
-      if (edges[3]) store.toggleVehicleFlag(VehicleFlags.HEADLIGHTS);
-      if (edges[12]) store.toggleVehicleFlag(VehicleFlags.HAZARDS);
+      if (edges[3]) {if(cycleTankWeapon())weaponFireArmed=false;else store.toggleVehicleFlag(VehicleFlags.HEADLIGHTS);}
+      if (edges[12]) {if(!tank||!resetTurretOrientation())store.toggleVehicleFlag(VehicleFlags.HAZARDS);}
       if (edges[14]) store.toggleVehicleFlag(VehicleFlags.BLINKER_LEFT);
       if (edges[15]) store.toggleVehicleFlag(VehicleFlags.BLINKER_RIGHT);
-      if (edges[11] && !stepManualGear(-1))
+      if (edges[11] && !(combatIntent.enabled&&toggleTurretOrientationLock()) && !stepManualGear(-1))
         store.togglePlayerFlag(PlayerFlags.DYNO);
-      if (edges[13]) store.togglePlayerFlag(PlayerFlags.RADIO);
+      if (edges[13]) {if(!tank||!toggleTankScope())store.togglePlayerFlag(PlayerFlags.RADIO);}
       if (edges[10]) {
         if (resetTimer !== null) window.clearTimeout(resetTimer);
         store.setHeldPlayerFlag("gamepad", PlayerFlags.RESET, true);

@@ -1,6 +1,6 @@
 import { lazy, Suspense } from "react";
 import { useSocialStore } from "../../store/social/socialStore";
-import { ControllerButton } from "../../components/controller";
+import { ControllerAction } from "../../components/controller";
 import { useEffect, useId, useRef, useState } from "react";
 import { trapMenuFocus } from "../../components/menus/menuFocus";
 import { requestVehicleChange } from "../../net/rustSocket";
@@ -121,9 +121,9 @@ function LegacyVehicleMenu() {
           <h1 id={`${id}-title`} className="menu-heading-title">
             CHANGE VEHICLE
           </h1>
-          <button
+          <ControllerAction button="B"
             type="button"
-            className="menu-control menu-back controller-action"
+            className="menu-control menu-back"
             onClick={back}
             onKeyDown={(event) => {
               if (event.code === "Enter" || event.code === "Space") {
@@ -133,9 +133,9 @@ function LegacyVehicleMenu() {
               }
             }}
           >
-            <ControllerButton button="B" />
+
             BACK
-          </button>
+          </ControllerAction>
         </header>
         <div className="menu-vehicle-list">
           {vehicleCatalog.map((vehicle, index) => (

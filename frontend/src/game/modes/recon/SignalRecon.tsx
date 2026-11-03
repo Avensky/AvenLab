@@ -1,4 +1,4 @@
-import { ControllerButton } from "../../../components/controller";
+import { ControllerAction } from "../../../components/controller";
 import { useAlphaStore } from "../../../store/alpha/alphaStore";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSelectionStore, useUIStore } from "../../../store";
@@ -616,14 +616,13 @@ export function SignalRecon({
                 TERMINAL
               </GameButton>
               <div className="flex gap-0.5 justify-end">
-                <GameButton
-                  variant="danger"
+                <ControllerAction button="B"
                   disabled={busy || runActive}
-                  onPress={() => void handleExit()}
-                  className="controller-action text-[9px] font-black"
+                  onClick={() => void handleExit()}
+                  className="text-[9px] font-black"
                 >
-                  <ControllerButton button="B" /> BACK
-                </GameButton>
+                  BACK
+                </ControllerAction>
 
                 <button
                   type="button"

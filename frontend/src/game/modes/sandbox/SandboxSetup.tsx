@@ -1,6 +1,6 @@
 import { useGameStore, useSelectionStore, useUIStore } from "../../../store";
 import { useRenderSettingsStore } from "../../../store/presentation/renderSettingsStore";
-import { GameButton } from "../../../components/GameButton";
+import { ControllerAction } from "../../../components/controller";
 import { socket } from "../../../net/rustSocket";
 import { useNetworkStore } from "../../../store/session/networkStore";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -88,7 +88,6 @@ export function SandboxSetup({ collapsed, setCollapsed }: Sandbox) {
         collapsed={collapsed}
         setCollapsed={setCollapsed}
         exitLabel="BACK"
-        exitVariant="neutral"
         showCanControls={false}
         showStatus={false}
         exitDisabled={false}
@@ -141,28 +140,28 @@ export function SandboxSetup({ collapsed, setCollapsed }: Sandbox) {
         </div>
 
         <div className="relative grid grid-cols-2 border border-cyan-400/30">
-          <GameButton
+          <ControllerAction button="A"
             data-sandbox-choice={2}
-            variant="neutral"
-            selected={selectedIndex === 2}
+
+            data-selected={selectedIndex === 2}
             aria-disabled={!connected}
             onFocus={() => setActiveMenuIndex(2)}
-            onPress={startSandbox}
+            onClick={startSandbox}
             className={`flex justify-center border-0 ${connected ? "" : "opacity-50"}`}
           >
-            A&nbsp;&nbsp;START
-          </GameButton>
+            START
+          </ControllerAction>
 
-          <GameButton
+          <ControllerAction button="B"
             data-sandbox-choice={3}
-            variant="neutral"
-            selected={selectedIndex === 3}
+
+            data-selected={selectedIndex === 3}
             onFocus={() => setActiveMenuIndex(3)}
-            onPress={exitSandboxSetup}
+            onClick={exitSandboxSetup}
             className="flex justify-center border-0"
           >
-            B&nbsp;&nbsp;EXIT
-          </GameButton>
+            EXIT
+          </ControllerAction>
           <span
             aria-hidden="true"
             className="pointer-events-none absolute inset-y-0 left-1/2 z-10 border-l border-cyan-300/60"

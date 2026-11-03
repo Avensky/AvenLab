@@ -97,7 +97,7 @@
   gap: 7px;
 }
 
-/* The Xbox face glyph is the button face: no surrounding rectangular plate. */
+/* One clickable action surface for every A/Continue and B/Back menu action. */
 .controller-action,
 .menu-surface .controller-action,
 .cockpit-panel .controller-action {
@@ -112,13 +112,19 @@
   background: transparent !important;
   box-shadow: none !important;
   color: var(--app-text, #d7e8f1);
+  text-decoration: none !important;
   cursor: pointer;
+  transition: filter 120ms ease, text-shadow 120ms ease;
 }
-.controller-action:is(:hover, :focus-visible) {
-  outline: none;
-  text-decoration: underline;
-  text-underline-offset: 4px;
+.controller-action:not(:disabled):is(:hover, :focus-visible) {
+  text-decoration: none !important;
+  text-shadow: 0 0 8px color-mix(in srgb, var(--app-accent, #82b7ff) 65%, transparent);
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--app-accent, #82b7ff) 55%, transparent));
 }
-.hero-selection .controller-action.alpha-deploy {
-  color: #83e79d;
+.controller-action:focus-visible .controller-key {
+  outline: 2px solid var(--app-accent, #82b7ff);
+  outline-offset: 3px;
 }
+.controller-action:disabled { opacity: .45; cursor: default; }
+@media (prefers-reduced-motion: reduce) { .controller-action { transition: none; } }
+html[data-reduce-motion="true"] .controller-action { transition: none; }

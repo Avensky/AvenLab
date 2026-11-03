@@ -146,6 +146,7 @@
 }
 /* Keyboard focus is a thin locator, never a depressed switch face. */
 [data-momentary-controls] button:focus-visible {
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  text-decoration: none;
+  outline:1px solid var(--app-accent,#82b7ff);outline-offset:2px;
+
 }

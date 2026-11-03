@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { MenuVideoBackground } from "../../components/menus/MenuVideoBackground";
-import { ControllerButton, MenuShortcuts } from "../../components/controller";
+import { MenuShortcuts, ControllerAction } from "../../components/controller";
 import { useSocialStore } from "../../store/social/socialStore";
 import { useNetworkStore } from "../../store/session/networkStore";
 import { useUIStore } from "../../store/menus/uiStore";
@@ -93,14 +93,14 @@ export function QueueScreen() {
             REJOIN QUEUE
           </button>
         )}
-        <button
+        <ControllerAction button="B"
           type="button"
-          className="menu-control controller-action"
+          className="menu-control"
           disabled={busy}
           onClick={cancel}
         >
-          <ControllerButton button="B" /> LEAVE QUEUE
-        </button>
+           LEAVE QUEUE
+        </ControllerAction>
         <MenuShortcuts tabs={false} />
       </section>
     </main>

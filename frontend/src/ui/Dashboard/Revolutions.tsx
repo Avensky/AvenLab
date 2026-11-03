@@ -44,7 +44,7 @@ export default memo(function Revolutions({ rpm, gear, maxRpm, redlineRpm, speed,
   rpm: number | null; gear: number | null; maxRpm: number; redlineRpm: number; speed: number | null;
   unit: "MPH" | "KM/H"; power: DisplayPower; vehicleMask: number; clusterMask: number | null; park: boolean;
 }) {
-  const max = Math.max(9000, Math.ceil(maxRpm / 1000) * 1000);
+  const max = Math.max(1000, Math.ceil(maxRpm / 500) * 500);
   const ratio = Math.max(0, Math.min(1, (rpm ?? 0) / max));
   return <div className="revolutions-wrapper" role="meter" aria-label="Engine RPM" aria-valuemin={0} aria-valuemax={max}
     aria-valuenow={rpm ?? undefined} aria-valuetext={rpm === null ? "Unavailable" : `${rpm} RPM`}>

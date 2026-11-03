@@ -145,37 +145,24 @@
   cursor: pointer;
   overflow: hidden;
 }
-.hero-portrait-card:is(:hover, :focus) {
+.hero-portrait-card:focus-visible {
+  outline: 2px solid var(--app-accent, #82b7ff);
+  outline-offset: 1px;
   z-index: 2;
-  border-color: #ffffff44;
-  outline: 0;
-  box-shadow: 0 0 10px
-    color-mix(in srgb, var(--hero-color, #a7e5ff) 65%, transparent);
-  background: radial-gradient(ellipse, #61839e90, #10253585 72%);
 }
 .hero-portrait-card .hero-portrait-art img {
   transition:
     transform 120ms ease-out,
     filter 120ms ease-out;
 }
-.hero-portrait-card:is(:hover, :focus) .hero-portrait-art img {
+.hero-portrait-card[aria-pressed="true"]:not([data-unavailable="true"]) .hero-portrait-art img {
   transform: scale(1.13);
   filter: drop-shadow(0 0 5px var(--hero-color, #a7e5ff));
 }
-.hero-portrait-card[aria-pressed="true"] {
+.hero-portrait-card[aria-pressed="true"]:not([data-unavailable="true"]) {
   border-color: #ffffff44;
   background: radial-gradient(ellipse, #ecf7ff35, #10253585 75%);
   box-shadow: 0 0 10px #e6f4ff88;
-}
-.hero-portrait-card[aria-pressed="true"]::after {
-  content: "";
-  position: absolute;
-  top: 3px;
-  right: 3px;
-  width: 6px;
-  height: 6px;
-  background: #fff;
-  transform: rotate(45deg);
 }
 .hero-portrait-card:disabled {
   cursor: wait;
@@ -657,3 +644,12 @@ html[data-reduce-motion="true"] .hero-portrait-card .hero-portrait-art img {
   outline: 0;
   box-shadow: none;
 }
+
+/* Capacity is a team rule, independent of a player's selected paint. */
+.hero-portrait-card[data-unavailable="true"] { background: #030507; border-color: #26303a; opacity: 1; cursor: not-allowed; box-shadow: none; }
+.hero-portrait-card[data-unavailable="true"] .hero-portrait-art { background: #030507; }
+.hero-portrait-card[data-unavailable="true"] .hero-portrait-art img { filter: grayscale(1) brightness(.13); transform: none; }
+.hero-portrait-card[data-unavailable="true"]::after { display: none; }
+.hero-role-full { position: absolute; inset: auto 0 4px; color: #bdc6ce; font: 800 8px/1.2 system-ui; text-align: center; letter-spacing: .08em; }
+.hero-portrait-style-status { position: absolute; inset: auto 2px 2px; display: flex; align-items: center; justify-content: center; gap: 3px; padding: 2px; background: #030507dc; color: #e3e9ef; font: 700 6px/1.2 system-ui; }
+.hero-portrait-style-status i { width: 7px; height: 7px; background: var(--portrait-paint); border: 1px solid #ffffff80; }

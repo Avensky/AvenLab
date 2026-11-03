@@ -7,14 +7,14 @@ import { IgnitionSwitch } from "./IgnitionSwitch";
 export function DrivingIgnition() {
   const policy = usePreferencesStore((s) => s.ignitionVisibility),
     moving = useVehicleTelemetryStore(
-      (s) => (s.data.speedKph ?? 0) > 5 && s.data.engineOn,
+      (s) => s.data.engineOn,
     );
   if (policy === "hidden") return null;
   return (
     <HudGroup
       id="ignition"
       title="IGNITION"
-      className={`ignition-hud${policy === "auto" && moving ? " ignition-quiet" : ""}`}
+      className={`ignition-hud${moving ? " ignition-quiet" : ""}`}
     >
       <IgnitionSwitch />
     </HudGroup>

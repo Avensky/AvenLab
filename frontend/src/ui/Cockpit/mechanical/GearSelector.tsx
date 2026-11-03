@@ -1,3 +1,5 @@
+import {manualShiftPattern,manualShiftGate} from './shiftPattern';
+import {useMemo} from 'react';
 /** H/automatic selector visuals and drag intent. Rust chooses/gates actual gears;
  * slot geometry and routed knob motion live in geometry.ts. */
 import { useEffect, useRef, type PointerEvent } from "react";
@@ -6,16 +8,6 @@ import { usePreferencesStore } from "../../../store/preferences/preferencesStore
 import { inNeutralLane, shiftKnobRoute } from "./geometry";
 import { useMomentaryFeedback } from "../useMomentaryFeedback";
 
-const manual = [
-  { gear: 7, label: "R", x: 12, y: 25 },
-  { gear: 1, label: "1", x: 36, y: 25 },
-  { gear: 3, label: "3", x: 61, y: 25 },
-  { gear: 5, label: "5", x: 86, y: 25 },
-  { gear: 0, label: "N", x: 61, y: 51 },
-  { gear: 2, label: "2", x: 36, y: 78 },
-  { gear: 4, label: "4", x: 61, y: 78 },
-  { gear: 6, label: "6", x: 86, y: 78 },
-];
 const automaticSlots = [
   { gear: 8, label: "P", x: 50, y: 17 },
   { gear: 7, label: "R", x: 50, y: 39 },
@@ -28,15 +20,19 @@ export function GearSelector({
   gear,
   disabled,
   pending,
+  gearCount=6,
 }: {
   automatic: boolean;
   gear: number;
   disabled: boolean;
   pending: boolean;
+  gearCount?:number;
 }) {
   const contact = useMomentaryFeedback();
   const reduced = usePreferencesStore((s) => s.reducedMotion);
   const animation = useRef<Animation | null>(null);
+  const manual=useMemo(()=>manualShiftPattern(gearCount),[gearCount]);
+  const gatePath=useMemo(()=>manualShiftGate(manual),[manual]);
   const slots = automatic ? automaticSlots : manual;
   const selection = automatic && gear > 0 && gear < 7 ? 1 : gear;
   const position = slots.find((slot) => slot.gear === selection) ?? slots[0];
@@ -113,6 +109,7 @@ export function GearSelector({
       {...contact}
       className="mechanical-shifter"
       aria-label="Gear selector"
+      data-forward-gears={gearCount}
     >
       <div
         className="shift-gate"
@@ -130,7 +127,7 @@ export function GearSelector({
             d={
               automatic
                 ? "M50 17V83"
-                : "M12 25V51H86M36 25V78M61 25V78M86 25V78"
+                : gatePath
             }
           />
         </svg>
@@ -199,20 +196,8 @@ export function GearSelector({
               viewBox="0 0 100 100"
               aria-hidden="true"
             >
-              <path d="M14 38v15h72M38 38v28M62 38v28M86 38v28" />
-              {[
-                { x: 14, y: 30, t: "R" },
-                { x: 38, y: 30, t: "1" },
-                { x: 62, y: 30, t: "3" },
-                { x: 86, y: 30, t: "5" },
-                { x: 38, y: 84, t: "2" },
-                { x: 62, y: 84, t: "4" },
-                { x: 86, y: 84, t: "6" },
-              ].map((item) => (
-                <text key={item.t} x={item.x} y={item.y}>
-                  {item.t}
-                </text>
-              ))}
+              <path d={gatePath} />
+              {manual.filter(slot=>slot.gear!==0).map(slot=><text key={slot.gear} x={slot.x} y={slot.y===25?17:95}>{slot.label}</text>)}
             </svg>
           )}
         </button>

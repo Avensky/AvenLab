@@ -1,5 +1,7 @@
 # Tracked tank and cockpit controls
 
+Steering calibration and the secondary-weapon status below are superseded by [TANK-HANDLING-AND-WEAPONS.md](TANK-HANDLING-AND-WEAPONS.md). Cannon / Coax MG selection is now implemented.
+
 ## Tank model and collision
 
 Uses the supplied, original `frontend/public/models/vehicles/tank.glb`.

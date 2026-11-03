@@ -5,6 +5,9 @@ import { unpackCockpit } from "../store/input/protocol/cockpitMasks";
 
 // H-pattern is an input layout. Both layouts retain automatic forward shifts.
 export function selectDriveGear(gear: number) {
+  const network=useNetworkStore.getState();
+  const count=useVehicleConfigStore.getState().byPlayer[network.playerId]?.forwardGears??6;
+  if(!Number.isInteger(gear)||gear<0||gear>8||(gear>count&&gear<7))return;
   useInputStore
     .getState()
     .setCockpit({ automatic: true, gear }, gear > 0 && gear < 7 ? 11 : 2);
@@ -20,14 +23,15 @@ export function stepManualGear(direction: 1 | -1): boolean {
     performance.now() - (network.snapshot?.received_at_ms ?? -Infinity);
   if (!network.connected || !me || version < 4 || age < 0 || age > 500)
     return false;
+  const count=useVehicleConfigStore.getState().byPlayer[network.playerId]?.forwardGears??6;
   const requested = unpackCockpit(input.input.cockpit_mask ?? me.cockpit_mask),
     confirmed = unpackCockpit(me.cockpit_mask);
   if (requested.gear > 6) return false;
   const selected =
     requested.revision === confirmed.revision
-      ? Math.max(0, Math.min(6, me.gear))
+      ? Math.max(0, Math.min(count, me.gear))
       : requested.gear;
-  const next = Math.max(0, Math.min(6, selected + direction));
+  const next = Math.max(0, Math.min(count, selected + direction));
   if (next !== selected) selectDriveGear(next);
   return true;
 }

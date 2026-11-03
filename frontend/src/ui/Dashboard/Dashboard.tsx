@@ -1,4 +1,4 @@
-import { TurretInstruments } from "../../combat/TurretInstruments";
+import {useNetworkStore} from '../../store/session/networkStore';
 import { memo, useEffect, useLayoutEffect, useRef } from "react";
 import { useShallow } from "zustand/react/shallow";
 import {
@@ -17,11 +17,14 @@ import "./dashboard.css";
 
 // Position/yaw and unrelated controls must not redraw all three instrument faces.
 const SpeedInstrument = memo(function SpeedInstrument() {
+  const tank=useNetworkStore(s=>s.getMe()?.vehicle_id==='tank');
+  const ram=useNetworkStore(s=>(s.getMe()?.combat?.ram_remaining??0)>0);
   const d = useVehicleTelemetryStore(
       useShallow((s) => ({
         speed: s.data.speedKph,
         cluster: s.data.clusterMask,
         fields: s.data.config.clusterFields,
+        maxSpeed:s.data.config.speedMaxKph,
         condition: s.data.conditionFraction,
       })),
     ),
@@ -30,6 +33,7 @@ const SpeedInstrument = memo(function SpeedInstrument() {
     <div className="dashboard-speed">
       <Speedometer
         speedKph={d.speed}
+        maxKph={tank&&(ram||(d.speed??0)>d.maxSpeed)?d.maxSpeed*2.5:d.maxSpeed}
         unit={units === "mph" ? "MPH" : "KM/H"}
         clusterMask={d.cluster}
         clusterFields={d.fields}
@@ -158,7 +162,6 @@ export default function Dashboard() {
         <RpmInstrument />
         <FuelInstrument />
       </div>
-      <TurretInstruments />
     </section>
   );
 }

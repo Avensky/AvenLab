@@ -1,7 +1,6 @@
 import { CanCaptureDropdowns } from "./CanCaptureSelectors";
-import { ControllerButton } from "../../../components/controller";
+import { ControllerAction } from "../../../components/controller";
 import { type ReactNode } from "react";
-import { GameButton } from "../../../components/GameButton";
 import {
   ReconWorkspaceHeader,
   type ReconHeaderTheme,
@@ -66,7 +65,6 @@ export type SignalReconHeaderProps = {
   exitDisabled?: boolean;
   showExit?: boolean;
   exitLabel?: string;
-  exitVariant?: "danger" | "neutral";
   onExit?: () => void;
   actions?: ReactNode;
   className?: string;
@@ -93,7 +91,6 @@ export default function SignalReconHeader({
   exitDisabled = false,
   showExit = true,
   exitLabel = "EXIT",
-  exitVariant = "danger",
   onExit,
   actions,
   className = "",
@@ -151,14 +148,13 @@ export default function SignalReconHeader({
 
           <div className="flex justify-end gap-0.5">
             {showExit && onExit ? (
-              <GameButton
-                variant={exitVariant}
+              <ControllerAction button="B"
                 disabled={exitDisabled}
-                onPress={onExit}
-                className="controller-action text-[9px] font-black"
+                onClick={onExit}
+                className="text-[9px] font-black"
               >
-                <ControllerButton button="B" /> {exitLabel}
-              </GameButton>
+                {exitLabel}
+              </ControllerAction>
             ) : null}
             {collapsible ? (
               <button

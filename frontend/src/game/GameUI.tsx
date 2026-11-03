@@ -29,7 +29,6 @@ import { useRenderSettingsStore } from "../store/presentation/renderSettingsStor
 import { HeroSelection } from "./alpha/HeroSelection";
 import { ModeSelection } from "./alpha/ModeSelection";
 import { useBuilderStore } from "../worldBuilder/state/builderStore";
-import { EditorDriveBar } from "../worldBuilder/vehicleEditor/EditorDriveBar";
 import { QueueScreen } from "./alpha/QueueScreen";
 
 const WorldBuilderPanel = lazy(() =>
@@ -141,7 +140,8 @@ export function GameUI() {
       )}
 
       {/* UI Overlay */}
-      {screen === "sandbox" && !overlay && hud && <><DrivingHUD /><CombatHUD /></>}
+      {screen === "sandbox" && !overlay && hud && <DrivingHUD />}
+      {screen === "sandbox" && <CombatHUD />}
 
       {/* Research pages load only when opened; keep the canvas mounted. */}
       <Suspense
@@ -211,7 +211,6 @@ export function GameUI() {
 
       {screen === "sandbox" && hud && !overlay && <CommandLine />}
       {screen === "sandbox" && !overlay && <PerformanceOverlay />}
-      {screen === "sandbox" && !overlay && <EditorDriveBar />}
       <ModeLoadingScreen />
     </div>
   );

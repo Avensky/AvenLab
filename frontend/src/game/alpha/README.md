@@ -19,3 +19,7 @@ form navigation, retaining legacy setup-row behavior elsewhere. Vehicle arrows
 use the same server-validated hero chooser as the wall. Map arrows lock once a
 world is admitted. Headers, mode/roster rows and the bottom workbench use the full
 safe viewport width; the main menu has brand/progress left and actions right.
+
+HeroRoster never previews on hover or focus. Click/A selects; only aria-pressed cards grow/glow. heroAvailability.ts mirrors Rust role_fits with the local prior pick excluded, live/reconnecting teammates included, and world/team scope respected. Full-role portraits are disabled black silhouettes; testing/flex modes skip limits. Rust remains authoritative for racing selections.
+
+HeroPortrait uses account-scoped saved styles (or the open garage draft) for the local roster, and explicit equipped appearances for peer squad cards. heroPortraitCache serializes/debounces custom image generation, deduplicates appearance keys and bounds the cache. It reuses showroom body/finish mapping via bakeHeroPortrait; factory cards remain static WebPs. Missing WebGL/assets show a labelled fallback, never a fake whole-image color tint. Pending seats/stripes match the showroom limitations.

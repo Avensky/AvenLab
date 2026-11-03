@@ -10,6 +10,7 @@ export const HUD_GROUPS = [
   "climate",
   "hazards",
   "shifter",
+  "turret",
   "parking",
   "assists",
   "minimap",
@@ -27,6 +28,7 @@ export const DEFAULT_HUD_GROUPS: Record<HudGroupId, boolean> = {
   // A child option, never a second HUD visibility gate. Climate starts hidden.
   hazards: true,
   shifter: true,
+  turret: true,
   parking: true,
   assists: true,
   minimap: true,
@@ -44,6 +46,7 @@ export const HUD_GROUP_LABELS: Record<HudGroupId, string> = {
   climate: "CLIMATE / HAZARDS",
   hazards: "EMERGENCY LIGHTS",
   shifter: "SHIFTER",
+  turret: "TURRET AIM / FIRE",
   parking: "PARKING BRAKE",
   assists: "DRIVING ASSISTS",
   minimap: "GPS / MINIMAP",
@@ -58,5 +61,6 @@ export const RESEARCH_HUD_GROUPS = [
   "parking",
   "assists",
   "shifter",
+  "turret",
   "pedals",
 ] as const;

@@ -1,11 +1,29 @@
-import {useUIStore} from "../store/menus/uiStore";
-import {useNetworkStore} from "../store/session/networkStore";
+import {useUIStore} from '../store/menus/uiStore';
+import {useNetworkStore} from '../store/session/networkStore';
 import {useEffect} from 'react';
-import {aimCombat,combatIntent,useCombatStore} from './combatStore';
-import {canAimTurret} from './turretControls';
-/** Input lifecycle only. No floating diagnostic panel over the instruments. */
+import {combatIntent,useCombatStore} from './combatStore';
+import {TankScopeHUD} from './TankScope';
+import {setTurretEnabled} from './turretControls';
+let autoVehicle='';
+/** Input lifecycle only. Canvas mouse/trackpad gestures belong to the camera. */
 export function CombatHUD(){
- const enabled=useCombatStore(s=>s.enabled);
- useEffect(()=>{const stop=()=>{combatIntent.fire=false;combatIntent.gamepadFire=false;};const move=(e:MouseEvent)=>{if(enabled&&canAimTurret()&&e.buttons===0&&e.target instanceof HTMLCanvasElement)aimCombat(e.movementX*.003,e.movementY*.003);};const unsubscribe=useNetworkStore.subscribe((next,previous)=>{if(previous.connected&&!next.connected)useCombatStore.getState().setEnabled(false);});window.addEventListener('mousemove',move);window.addEventListener('blur',stop);document.addEventListener('visibilitychange',stop);return()=>{unsubscribe();stop();if(useUIStore.getState().screen!=='sandbox')useCombatStore.getState().setEnabled(false);window.removeEventListener('mousemove',move);window.removeEventListener('blur',stop);document.removeEventListener('visibilitychange',stop);};},[enabled]);
- return null;
+ useEffect(()=>{
+  const auto=()=>{
+   const network=useNetworkStore.getState(),me=network.getMe();
+   const key=network.connected&&me?`${network.playerId}:${me.vehicle_id}`:'';
+   if(key===autoVehicle)return;
+   const wasTank=autoVehicle.endsWith(':tank');autoVehicle=key;
+   if(me?.vehicle_id==='tank'&&network.connected){useCombatStore.getState().selectWeapon('cannon');setTurretEnabled(true);}
+   else if(wasTank||!network.connected)useCombatStore.getState().setEnabled(false);
+  };
+  // A fresh tank spawn must re-enable controls even if the previous tank was stopped.
+  const entered=(event:Event)=>{const detail=(event as CustomEvent<{vehicle?:string}>).detail;if(detail?.vehicle==='tank'){autoVehicle='';setTurretEnabled(true);auto();}};
+  auto();const unsubscribe=useNetworkStore.subscribe(auto);
+  window.addEventListener('avenlab:vehicle-entered',entered);
+  const stop=()=>{combatIntent.ramPulseUntil=0;useCombatStore.getState().setScope(false);combatIntent.fire=false;combatIntent.keyboardFire=false;combatIntent.gamepadFire=false;combatIntent.ram=false;combatIntent.gamepadRam=false;combatIntent.keyboardRam=false;};
+  window.addEventListener('blur',stop);document.addEventListener('visibilitychange',stop);
+  const uiRelease=useUIStore.subscribe(()=>{const ui=useUIStore.getState();if(ui.screen!=='sandbox'||ui.overlay!==null||ui.isModeLoading)stop();});
+  return()=>{unsubscribe();uiRelease();stop();window.removeEventListener('avenlab:vehicle-entered',entered);window.removeEventListener('blur',stop);document.removeEventListener('visibilitychange',stop);if(useUIStore.getState().screen!=='sandbox'){autoVehicle='';useCombatStore.getState().setEnabled(false);}};
+ },[]);
+ return <TankScopeHUD/>;
 }

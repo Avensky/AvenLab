@@ -1,5 +1,5 @@
-/** Development-only portrait export. Production uses static WebP cards and
- * keeps just the existing selected-vehicle canvas. No per-card WebGL contexts. */
+/** One-shot personalized portrait using the same materials as the showroom.
+ * Requests are serialized/cached by heroPortraitCache; no per-card canvases. */
 import {
   AmbientLight,
   Box3,
@@ -19,13 +19,15 @@ import {
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
+import { FACTORY_APPEARANCE, type HeroAppearance } from "../../vehicles/cosmetics/heroLoadouts";
+import { prepareGarageVehiclePaint, applyShowroomPaint, applyShowroomHighlights } from "./garageVehiclePaint";
 import { prepareVehicleVisual } from "../../vehicles/tools/vehicleMaterials";
 import {
   VEHICLE_MODEL_PATHS,
   type VehicleModelId,
 } from "../../vehicles/tools/vehicleModelPaths";
 
-export async function bakeHeroPortrait(model: VehicleModelId): Promise<string> {
+export async function bakeHeroPortrait(model: VehicleModelId, appearance: HeroAppearance = FACTORY_APPEARANCE): Promise<string> {
   const renderer = new WebGLRenderer({
     antialias: true,
     alpha: true,
@@ -39,8 +41,14 @@ export async function bakeHeroPortrait(model: VehicleModelId): Promise<string> {
   renderer.setClearColor(new Color(0x06111d), 0);
   const decoder = new DRACOLoader().setDecoderPath("/draco/");
   const loader = new GLTFLoader().setDRACOLoader(decoder);
-  const gltf = await loader.loadAsync(VEHICLE_MODEL_PATHS[model]);
+  // A missing/LFS-pointer model must not leak a WebGL context on failure.
+  let gltf;
+  try { gltf = await loader.loadAsync(VEHICLE_MODEL_PATHS[model]); }
+  catch (error) { decoder.dispose(); renderer.dispose(); renderer.forceContextLoss(); throw error; }
   const prepared = prepareVehicleVisual(gltf.scene, model);
+  prepareGarageVehiclePaint(prepared.root, model);
+  applyShowroomPaint(prepared.root, model, "factory", appearance.body === "factory" ? undefined : appearance.body);
+  applyShowroomHighlights(prepared.root, .45, appearance.finish);
   const scene = new Scene();
   const pmrem = new PMREMGenerator(renderer);
   const room = new RoomEnvironment();
@@ -72,6 +80,7 @@ export async function bakeHeroPortrait(model: VehicleModelId): Promise<string> {
   camera.lookAt(0, 0, 0);
   renderer.render(scene, camera);
   const data = renderer.domElement.toDataURL("image/webp", 0.88);
+  const textures = new Set<import("three").Texture>();
   prepared.dispose();
   gltf.scene.traverse((object) => {
     if (!(object instanceof Mesh)) return;
@@ -79,8 +88,14 @@ export async function bakeHeroPortrait(model: VehicleModelId): Promise<string> {
     for (const material of Array.isArray(object.material)
       ? object.material
       : [object.material])
-      material.dispose();
+      {
+        for (const value of Object.values(material)) {
+          if (value && typeof value === "object" && "isTexture" in value && value.isTexture) textures.add(value as import("three").Texture);
+        }
+        material.dispose();
+      }
   });
+  for (const texture of textures) texture.dispose();
   room.dispose();
   environment.dispose();
   pmrem.dispose();

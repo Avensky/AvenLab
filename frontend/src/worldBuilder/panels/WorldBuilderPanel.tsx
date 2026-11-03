@@ -9,7 +9,7 @@ import {
 } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { usePreferencesStore } from "../../store/preferences";
-import { ControllerButton } from "../../components/controller";
+import { ControllerAction } from "../../components/controller";
 import "../../components/menus/menus.css";
 import { isTypingTarget, type MenuAction } from "../../controls/inputRouting";
 import { useUIStore } from "../../store/menus/uiStore";
@@ -387,7 +387,7 @@ function LayoutPanel({
             {preferences.libraryVisible ? "HIDE PREFABS" : "SHOW PREFABS"}
           </button>
           <button className="le-tool-toggle" aria-controls="world-tool-drawer" aria-expanded={toolsOpen} onClick={() => setToolsOpen(v => !v)}>TOOLS</button>
-          <button className="le-close" aria-label="Close world builder" onClick={closeWorldBuilder}><ControllerButton button="B" /> Exit</button>
+          <ControllerAction button="B" className="le-close" aria-label="Close world builder" onClick={closeWorldBuilder}> Exit</ControllerAction>
         </div>
       </header>
       {toolsOpen && <aside id="world-tool-drawer" className="le-tool-drawer" aria-label="World editor tools" inert={Boolean(confirm || preview)}>

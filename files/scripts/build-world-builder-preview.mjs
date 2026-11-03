@@ -1,7 +1,0 @@
-import fs from 'node:fs';
-import path from 'node:path';
-const base=path.resolve(process.argv[2]||'frontend'),output=path.resolve(process.argv[3]||'AvenLab-world-builder-preview.html');
-const {build}=await import(path.join(base,'node_modules/vite/dist/node/index.js')),{default:react}=await import(path.join(base,'node_modules/@vitejs/plugin-react/dist/index.js'));
-const result=await build({root:base,configFile:false,logLevel:'error',define:{'process.env.NODE_ENV':'"production"'},plugins:[{name:'preview-selection-data',load(id){if(path.normalize(id)===path.join(base,'src/store/selection/selectionStore.ts'))return `import {create} from 'zustand';export const useSelectionStore=create(()=>({nextVehicle(){},nextMap(){},vehicleIndex:0,mapIndex:0}));`;}},react()],build:{write:false,minify:true,cssCodeSplit:false,rollupOptions:{input:path.join(base,'previews/world-builder.tsx'),output:{inlineDynamicImports:true,format:'iife',name:'WorldBuilderPreview'}}}});
-let css='',js='';for(const item of result.output){if(item.type==='chunk')js+=item.code;else if(item.fileName.endsWith('.css'))css+=item.source;}
-let html=fs.readFileSync(path.join(base,'previews/world-builder.html'),'utf8');html=html.replace('</head>',()=>`<style>${css}</style></head>`).replace(/<script type="module"[^>]*><\/script>/,()=>`<script>${js.replace(/<\/script/gi,'<\\/script')}</script>`);fs.writeFileSync(output,html);console.log(`World builder standalone preview: ${Buffer.byteLength(html)} bytes`);

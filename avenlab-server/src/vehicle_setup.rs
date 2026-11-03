@@ -351,9 +351,9 @@ pub const TANK: VehicleConfig = VehicleConfig {
     resources: TANK_RESOURCES,
     // Performance and identity
     mass: 40_000.0,
-    engine_force: 90_000.0,
-    brake_force: 150_000.0,
-    max_speed: 18.0,
+    engine_force: 200_000.0,
+    brake_force: 240_000.0,
+    max_speed: 30.0,
 
     // Physical dimensions
     chassis_half_extents: [1.38, 0.60, 2.80],
@@ -379,7 +379,7 @@ pub const TANK: VehicleConfig = VehicleConfig {
 
     // Handling and damping
     linear_damping: 0.003,
-    angular_damping: 1.20,
+    angular_damping: 0.32,
     mu_base: 1.20,
     load_sensitivity: AE86.load_sensitivity,
 

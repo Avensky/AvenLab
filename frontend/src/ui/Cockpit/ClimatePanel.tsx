@@ -1,3 +1,4 @@
+import {TurretInstruments} from '../../combat/TurretInstruments';
 import { UtilityToggle } from "../hud/UtilityToggle";
 import { CabinPerformance } from "../hud/CabinPerformance";
 import { HazardButton } from "./HazardButton";
@@ -50,6 +51,7 @@ export function ClimatePanel({
           {ambient === null ? "—" : Math.round((ambient * 9) / 5 + 32)}°F
         </output>
       </div>
+      <TurretInstruments />
       {performanceReadout && size === "compact" && <CabinPerformance />}
       {controlsVisible && size === "full" && (
         <div className="climate-three-knobs">

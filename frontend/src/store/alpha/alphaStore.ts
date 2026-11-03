@@ -141,6 +141,9 @@ export type AlphaView = {
     hero: string;
     mode: GameMode;
     reconnecting: boolean;
+    world_id?: number;
+    appearance?: HeroAppearance;
+    showcase_hero?:string;
   }[];
   reconnect_grace_seconds: number;
   reserved_players: number;

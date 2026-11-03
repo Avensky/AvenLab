@@ -285,6 +285,8 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
         element.dispatchEvent(
           new dom.window.MouseEvent("pointerup", { bubbles: true, button: 0 }),
         );
+        // Native shared actions receive the browser click after pointer-up.
+        if (element.tagName === "BUTTON") { element.focus(); element.click(); }
       });
     };
     const readyBus = {
@@ -511,7 +513,7 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
         await act(async () =>
           document.querySelector('[data-hero="brz"]').focus(),
         );
-        assert.equal(alpha.getState().previewHero, "brz");
+        assert.equal(alpha.getState().previewHero, null);
         assert.equal(alpha.getState().hero, null);
         await key("Enter", "Enter");
         assert.equal(alpha.getState().hero, "brz");
@@ -566,7 +568,7 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
         assert.equal(document.activeElement.dataset.hero, "ae86");
         await button(13);
         assert.equal(document.activeElement.dataset.hero, "supra");
-        assert.equal(alpha.getState().previewHero, "supra");
+        assert.equal(alpha.getState().previewHero, null);
         assert.equal(alpha.getState().hero, null);
         await button(0);
         assert.equal(alpha.getState().hero, "supra");

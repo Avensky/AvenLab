@@ -526,3 +526,39 @@ async fn editor_tuning_is_isolated_validated_and_survives_environment_apply() {
     assert_eq!(s.data.lock().await.worlds[&s.alpha.lock().await.members[&e].world].map,"road_jump_lab");
     cleanup(s).await;
 }
+
+#[tokio::test]
+async fn roster_portraits_publish_only_equipped_styles_for_live_and_reserved_players() {
+    use crate::alpha::{AlphaState, Member, Mode, Reservation};
+    let server = server(1, 10);
+    let (player, _, _) = client(&server, "Styled driver").await;
+    let profile_id = server.connections.lock().await[&player].profile_id.clone().unwrap();
+    let mut data = server.data.lock().await;
+    let profile = data.profiles.get_mut(&profile_id).unwrap();
+    let mut appearance = crate::alpha::appearance::HeroAppearance::default();
+    appearance.body = "#ed258d".into();
+    appearance.finish = "soft".into();
+    profile.progression.hero_loadouts.insert("brz".into(), appearance.clone());
+    let mut alpha = AlphaState::default();
+    alpha.members.insert(player.clone(), Member { mode: Mode::Quickplay, world: 7, hero: "mechanic".into(), team: Team::Red });
+    let clients = server.connections.lock().await;
+    let view = Server::alpha_view(&alpha, &profile_id, &player, &clients, &data);
+    let card = &view["roster"][0];
+    assert_eq!(card["appearance"]["body"], "#ed258d");
+    assert_eq!(card["appearance"]["finish"], "soft");
+    assert_eq!(card["world_id"], 7);
+    assert!(card.get("token_hash").is_none());
+    assert!(card.get("hero_loadouts").is_none());
+    let member = alpha.members.remove(&player).unwrap();
+    alpha.reservations.insert(profile_id.clone(), Reservation { member, expires: timestamp() + 30 });
+    let reserved = Server::alpha_view(&alpha, &profile_id, &player, &clients, &data);
+    assert_eq!(reserved["roster"][0]["appearance"], card["appearance"]);
+    assert_eq!(reserved["roster"][0]["reconnecting"], true);
+    assert_eq!(reserved["roster"][0]["world_id"], 7);
+    alpha.reservations.get_mut(&profile_id).unwrap().member.hero = "tank".into();
+    let factory = Server::alpha_view(&alpha, &profile_id, &player, &clients, &data);
+    assert_eq!(factory["roster"][0]["appearance"]["body"], "factory");
+    drop(clients);
+    drop(data);
+    cleanup(server).await;
+}

@@ -1,3 +1,4 @@
+import { ControllerAction } from "../../components/controller";
 import { useAlphaStore } from "../../store/alpha/alphaStore";
 import { useUIStore } from "../../store/menus/uiStore";
 import { useState } from "react";
@@ -112,13 +113,13 @@ export function WorldsPage({
               {current.map.replaceAll("_", " ")}
             </p>
             <div className="social-actions">
-              <button
+              <ControllerAction button="A"
                 type="button"
                 className="menu-control"
                 onClick={() => enterWorld({ map: current.map })}
               >
                 CONTINUE TO GARAGE
-              </button>
+              </ControllerAction>
               <button
                 type="button"
                 className="menu-control"
@@ -265,7 +266,7 @@ export function WorldsPage({
                 </small>
               </div>
               <div className="social-actions">
-                <button
+                <ControllerAction button="A"
                   type="button"
                   className="menu-control"
                   disabled={
@@ -286,7 +287,7 @@ export function WorldsPage({
                     : world.mode
                       ? "OPEN LOBBY"
                       : "JOIN"}
-                </button>
+                </ControllerAction>
                 {world.invite_code && (
                   <button
                     type="button"

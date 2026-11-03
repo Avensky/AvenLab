@@ -36,6 +36,7 @@ export const Tank = forwardRef<Group, TankProps>(function Tank(
   const preview = useUIStore(
     (s) => s.screen === "sandbox_setup" || s.screen === "signal_recon_setup",
   );
+  const muzzleFlash=useRef<Group>(null),impactFlash=useRef<Group>(null);
   const shot=useRef({number:-1,time:-100});
   const lastPosition=useRef<Vector3 | null>(null);
   const { model, parts, turretY, cannonX } = useMemo(() => {
@@ -65,14 +66,24 @@ export const Tank = forwardRef<Group, TankProps>(function Tank(
     const combat=entity?.combat;
     if(combat?.role==='tank'){
       const local=new Vector3(-Math.sin(combat.yaw)*Math.cos(combat.pitch),Math.sin(combat.pitch),-Math.cos(combat.yaw)*Math.cos(combat.pitch)).applyQuaternion(root.current.quaternion.clone().invert());
-      if(turret.current)turret.current.rotation.y=Math.atan2(local.x,local.z);
-      if(cannon.current)cannon.current.rotation.x=-Math.atan2(local.y,Math.hypot(local.x,local.z));
+      const locked=combat.hull_locked&&combat.lock_yaw!==undefined;
+      if(turret.current)turret.current.rotation.y=locked?combat.lock_yaw!:Math.atan2(local.x,local.z);
+      if(cannon.current)cannon.current.rotation.x=locked?-(combat.lock_pitch??0):-Math.atan2(local.y,Math.hypot(local.x,local.z));
     }else{
       if(turret.current)turret.current.rotation.y=turretY+turretRotation;
       if(cannon.current)cannon.current.rotation.x=cannonX+cannonElevation;
     }
-    if(combat && combat.shot!==undefined && combat.shot!==shot.current.number){shot.current={number:combat.shot,time:shot.current.number<0?-100:clock.elapsedTime};}
-    if(recoil.current)recoil.current.position.z=-.24*Math.exp(-(clock.elapsedTime-shot.current.time)/.12);
+    const cannonShot=combat?.cannon_shot??combat?.shot;
+    if(cannonShot!==undefined && cannonShot!==shot.current.number){shot.current={number:cannonShot,time:shot.current.number<0?-100:clock.elapsedTime};}
+    const age=clock.elapsedTime-shot.current.time;
+    if(muzzleFlash.current&&combat){
+      const d=new Vector3(-Math.sin(combat.yaw)*Math.cos(combat.pitch),Math.sin(combat.pitch),-Math.cos(combat.yaw)*Math.cos(combat.pitch)).applyQuaternion(root.current.quaternion.clone().invert());
+      if(combat.hull_locked&&combat.lock_yaw!==undefined){const yaw=combat.lock_yaw,pitch=combat.lock_pitch??0;d.set(Math.sin(yaw)*Math.cos(pitch),Math.sin(pitch),Math.cos(yaw)*Math.cos(pitch));}
+      muzzleFlash.current.position.set(combat.x,combat.y,combat.z).addScaledVector(d,4.1);
+      muzzleFlash.current.visible=age>=0&&age<.11;muzzleFlash.current.scale.setScalar(.8+age*8);
+    }
+    if(impactFlash.current){impactFlash.current.visible=Boolean(combat?.impact&&age>=0&&age<.25);if(combat?.impact)impactFlash.current.position.fromArray(combat.impact).sub(root.current.position).applyQuaternion(root.current.quaternion.clone().invert());impactFlash.current.scale.setScalar(1+Math.max(0,age)*10);}
+    if(recoil.current)recoil.current.position.z=-.48*Math.exp(-(clock.elapsedTime-shot.current.time)/.12);
     if(lastPosition.current && dt>0 && dt<.1){
       const forward=new Vector3(0,0,1).applyQuaternion(root.current.quaternion);
       const distance=root.current.position.clone().sub(lastPosition.current).dot(forward);
@@ -85,6 +96,8 @@ export const Tank = forwardRef<Group, TankProps>(function Tank(
       <group ref={visual}>
         <primitive object={model} />
       </group>
+      <group ref={muzzleFlash} visible={false}><mesh><sphereGeometry args={[.28,8,6]}/><meshBasicMaterial color="#ffe8a6" toneMapped={false}/></mesh><pointLight color="#ffac49" intensity={18} distance={8}/></group>
+      <group ref={impactFlash} visible={false}><mesh><sphereGeometry args={[.30,10,8]}/><meshBasicMaterial color="#ff9c38" transparent opacity={.55} depthWrite={false}/></mesh></group>
       {children}
     </group>
   );

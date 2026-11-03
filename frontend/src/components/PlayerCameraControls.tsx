@@ -1,3 +1,4 @@
+import {useNetworkStore} from "../store/session/networkStore";
 import { usePreferencesStore } from "../store/preferences/preferencesStore";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
@@ -32,6 +33,8 @@ export function PlayerCameraControls({
   maxYaw = Math.PI * 0.65,
   maxPitch = 0.45,
 }: PlayerCameraControlsProps) {
+  const reducedMotion=usePreferencesStore(s=>s.reducedMotion);
+  const recoil=useRef({shot:-1,kick:0});
   const sensitivity = usePreferencesStore((s) => s.cameraSensitivity);
   const { camera, gl } = useThree();
   const { getInterpolated } = useVehiclePhysicsInterpolator(playerId);
@@ -153,6 +156,10 @@ export function PlayerCameraControls({
     // lerp, velocity prediction, wheel compensation or raw-snapshot follow.
     camera.position.copy(follower.current!.position);
     camera.lookAt(follower.current!.target);
+    const shell=useNetworkStore.getState().getMe()?.combat?.cannon_shot;
+    if(shell!==undefined){if(recoil.current.shot>=0&&shell!==recoil.current.shot)recoil.current.kick=1;recoil.current.shot=shell;}
+    recoil.current.kick=Math.max(0,recoil.current.kick-delta*4);
+    if(!reducedMotion)camera.rotateX(recoil.current.kick*.035);
   }, -1);
   return null;
 }

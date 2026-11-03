@@ -30,7 +30,7 @@ class Peer{
   }
   wait(predicate){
     const previous=this.messages.findLast(predicate);if(previous)return Promise.resolve(previous);
-    return new Promise((resolve,reject)=>{const waiter={predicate,resolve,timer:setTimeout(()=>{this.waiters.splice(this.waiters.indexOf(waiter),1);reject(new Error("Expected local packet did not arrive. "+output.slice(-500)));},12000)};this.waiters.push(waiter);});
+    return new Promise((resolve,reject)=>{const waiter={predicate,resolve,timer:setTimeout(()=>{this.waiters.splice(this.waiters.indexOf(waiter),1);reject(new Error("Expected local packet did not arrive during "+phase+". Sent combat: "+JSON.stringify(lastIntent?.combat)+". Latest telemetry: "+JSON.stringify(this.messages.findLast(m=>m.type==="snapshot")?.data.entities.map(e=>({vehicle:e.vehicle_id,speed:e.speed,combat:e.combat})))+" "+output.slice(-500)));},12000)};this.waiters.push(waiter);});
   }
   async ready(name){const welcome=await this.wait(message=>message.type==="welcome");this.player=welcome.player_id;this.identity=await this.command("identify",{name});return this;}
   async command(action,fields={}){
@@ -42,16 +42,34 @@ class Peer{
   async spawn(map,vehicle="tank"){const result=this.wait(message=>message.type==="spawn_ready"&&message.map===map);this.socket.send(JSON.stringify({type:"spawn_request",vehicle,map,mode:"sandbox"}));await result;}
   close(){for(const waiter of this.waiters)clearTimeout(waiter.timer);this.waiters=[];this.socket.close();}
 }
-const peers=[];let timer;
+const peers=[];let timer;let phase="startup";let lastIntent=null;
 try {
  await started;const a=await new Peer().ready('Tank test');peers.push(a);
  const world=(await a.command('world_create',{name:'Tank range',map:'coastal_district',listed:true,max_players:2})).world_id;
  await a.command('world_join',{world_id:world});await a.spawn('coastal_district');
- let seq=0,fire=false;timer=setInterval(()=>a.socket.send(JSON.stringify({type:'input',seq:++seq,dt:1/60,throttle:0,steer:0,brake:0,handbrake:0,vehicleMask:0,playerMask:0,combat:{enabled:true,fire,yaw:0,pitch:1,x:99,y:99,z:99,role:'medic'}})),16);
+ let seq=0,fire=false,weapon='cannon',ram=false,locked=false,brake=0;timer=setInterval(()=>a.socket.send(JSON.stringify(lastIntent={type:'input',seq:++seq,dt:1/60,throttle:0,steer:0,brake,handbrake:0,vehicleMask:1,playerMask:0,combat:{weapon,ram,hull_locked:locked,ram_remaining:999,ram_cooldown:0,enabled:true,fire,yaw:0,pitch:1,x:99,y:99,z:99,role:'medic'}})),16);
  const first=await a.wait(m=>m.type==='snapshot'&&m.data.entities.some(e=>e.id===a.player&&e.combat?.enabled));const tank=first.data.entities.find(e=>e.id===a.player);assert.equal(tank.vehicle_id,'tank');assert.equal(tank.combat.role,'tank');assert.equal(tank.combat.x,0);assert(tank.combat.y<2);
+ const setup=await a.wait(m=>m.type==='vehicle_config'&&m.data.player_id===a.player);assert.equal(setup.data.config.hud.forward_gears,6);assert.equal(setup.data.config.hud.max_rpm,4200);assert.equal(setup.data.config.max_speed,30);
  const b=await new Peer().ready('Observer');peers.push(b);await b.command('world_join',{world_id:world});await b.spawn('coastal_district','brz');
- fire=true;const fired=await b.wait(m=>m.type==='snapshot'&&m.data.entities.some(e=>e.id===a.player&&e.combat?.shot===1));let pose=fired.data.entities.find(e=>e.id===a.player).combat;assert.equal(pose.ammo,0);assert(pose.reload>2.5);assert(pose.pitch<=0.36);
+ phase='cannon';fire=true;const fired=await b.wait(m=>m.type==='snapshot'&&m.data.entities.some(e=>e.id===a.player&&e.combat?.shot===1));let pose=fired.data.entities.find(e=>e.id===a.player).combat;assert.equal(pose.ammo,0);assert(pose.reload>2.5);assert(pose.cannon_reload>2.5);assert.equal(pose.coax_reload,0);assert(pose.pitch<=0.36);
  const later=await b.wait(m=>m.type==='snapshot'&&m.data.tick>fired.data.tick+30);pose=later.data.entities.find(e=>e.id===a.player).combat;assert.equal(pose.shot,1);assert(pose.reload<3);
- clearInterval(timer);timer=null;const stopped=await b.wait(m=>m.type==='snapshot'&&m.data.tick>later.data.tick+30);assert.equal(stopped.data.entities.find(e=>e.id===a.player).combat.fire,false);
- console.log(JSON.stringify({passed:['real tank spawn uses factory turret role/mount','observer receives independent turret pose and bounded elevation','one shell fires and reload blocks repeated shots','stale held fire cancels over real WebSocket'],failures:0},null,2));
+ phase='coax';weapon='coax';const mg=await b.wait(m=>m.type==='snapshot'&&m.data.tick>later.data.tick&&m.data.entities.some(e=>e.id===a.player&&e.combat?.weapon==='coax'&&e.combat?.shot>1));pose=mg.data.entities.find(e=>e.id===a.player).combat;assert.equal(pose.cannon_shot,1);assert.equal(pose.ammo,255);assert(pose.cannon_reload>0);assert(pose.coax_reload>=0&&pose.coax_reload<=.11);
+ phase='weapon switch';weapon='cannon';fire=false;const selected=await b.wait(m=>m.type==='snapshot'&&m.data.tick>mg.data.tick&&m.data.entities.some(e=>e.id===a.player&&e.combat?.weapon==='cannon'));pose=selected.data.entities.find(e=>e.id===a.player).combat;assert.equal(pose.cannon_shot,1);assert(pose.reload>0);assert.equal(pose.ammo,0);
+ fire=true;const blocked=await b.wait(m=>m.type==='snapshot'&&m.data.tick>selected.data.tick+10);assert.equal(blocked.data.entities.find(e=>e.id===a.player).combat.cannon_shot,1);
+ phase='angle lock';fire=false;locked=true;
+ const lockedFrame=await b.wait(m=>m.type==='snapshot'&&m.data.tick>blocked.data.tick&&m.data.entities.some(e=>e.id===a.player&&e.combat?.hull_locked));
+ const aligned=lockedFrame.data.entities.find(e=>e.id===a.player);const c=aligned.combat;
+ assert(Number.isFinite(c.lock_yaw)&&Number.isFinite(c.lock_pitch));
+ const held=await b.wait(m=>m.type==='snapshot'&&m.data.tick>lockedFrame.data.tick+12);
+ const heldPose=held.data.entities.find(e=>e.id===a.player).combat;
+ assert(Math.abs(heldPose.lock_yaw-c.lock_yaw)<.001);assert(Math.abs(heldPose.lock_pitch-c.lock_pitch)<.001);
+ phase='Ram readiness';await b.wait(m=>m.type==='snapshot'&&m.data.tick>held.data.tick&&m.data.entities.some(e=>e.id===a.player&&e.combat?.ram_blocked===''));
+ phase='ram launch';ram=true;const charge=await b.wait(m=>m.type==='snapshot'&&m.data.entities.some(e=>e.id===a.player&&e.combat?.ram_remaining>3));
+ assert(charge.data.entities.find(e=>e.id===a.player).speed>8,'Ram launches immediately over the real socket');
+ phase='ram sustain';ram=false;const charging=await b.wait(m=>m.type==='snapshot'&&m.data.tick>charge.data.tick+25);pose=charging.data.entities.find(e=>e.id===a.player).combat;assert(pose.ram_remaining>5&&pose.ram_remaining<7);assert(pose.ram_cooldown>58&&pose.ram_cooldown<=60);
+ phase='ram brake cancel';brake=1;const cancelled=await b.wait(m=>m.type==='snapshot'&&m.data.tick>charging.data.tick&&m.data.entities.some(e=>e.id===a.player&&e.combat?.ram_remaining===0));assert(cancelled.data.entities.find(e=>e.id===a.player).combat.ram_cooldown>0);
+ phase='ram cooldown';ram=true;const denied=await b.wait(m=>m.type==='snapshot'&&m.data.tick>cancelled.data.tick+10);assert.equal(denied.data.entities.find(e=>e.id===a.player).combat.ram_remaining,0);
+ phase='fire after ram';fire=true;const lastFire=await b.wait(m=>m.type==='snapshot'&&m.data.tick>denied.data.tick&&m.data.entities.some(e=>e.id===a.player&&e.combat?.fire));
+ clearInterval(timer);timer=null;const stopped=await b.wait(m=>m.type==='snapshot'&&m.data.tick>lastFire.data.tick+30);assert.equal(stopped.data.entities.find(e=>e.id===a.player).combat.fire,false);
+ console.log(JSON.stringify({passed:['real tank spawn uses factory turret role/mount','tank config publishes six gears, 4200 RPM and 108 km/h','observer receives both weapon cooldown timers','observer receives independent turret pose and bounded elevation','one shell fires and reload blocks repeated shots','coax selection and fire replicate to an observer','switching preserves cannon reload and blocks another shell','server angle lock retains both captured local axes','Ram immediately launches from rest over the real socket','three-second charge, seven-second total boost and sixty-second cooldown replicate from server-owned timers','braking cancels Ram without resetting its cooldown','Ram cannot be restarted while cooling down','stale held fire cancels over real WebSocket'],failures:0},null,2));
 }finally{if(timer)clearInterval(timer);for(const p of peers)p.close();child.kill();await new Promise(resolve=>{if(child.exitCode!==null)resolve();else child.once('exit',resolve);});fs.rmSync(directory,{recursive:true,force:true});}

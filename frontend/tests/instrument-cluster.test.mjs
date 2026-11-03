@@ -381,11 +381,11 @@ test("instrument scales, confirmed warning lamps and display power states", asyn
       () => {
         assert.equal(
           document.querySelectorAll('[data-scale="mph"] [data-tick]').length,
-          33,
+          Math.floor(parseGaugeConfig(calibrated).speedMaxKph / 1.609344 / 5) + 1,
         );
         assert.equal(
           document.querySelectorAll('[data-scale="kmh"] [data-tick]').length,
-          53,
+          parseGaugeConfig(calibrated).speedMaxKph / 5 + 1,
         );
         assert.equal(
           document.querySelector('[data-scale="kmh"] circle'),

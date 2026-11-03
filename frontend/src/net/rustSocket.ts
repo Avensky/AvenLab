@@ -10,12 +10,16 @@ import {
   beginSocialSession,
   receiveSocialResult,
   receiveSocialState,
+  requestSocial,
   setSocialConnection,
 } from "./socialClient";
 
 import { performanceRecorder as recorder } from "../performance/measurements";
 import { handlingSample } from "../performance/handling";
 import { useChatStore } from "../store/chat/chatStore";
+import {useSocialStore} from '../store/social/socialStore';
+import {useUIStore} from '../store/menus/uiStore';
+import {useAlphaStore} from '../store/alpha/alphaStore';
 const packetEncoder = new TextEncoder();
 
 let socket: WebSocket | null = null;
@@ -24,6 +28,45 @@ let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let reconnectEnabled = false;
 let pingSentMs: number | null = null;
 let vehicleChangeSequence = 0;
+
+// Preserve only an already-deployed session; authentication and world permissions
+// are rechecked by the server. Explicit leave/menu navigation cancels recovery.
+let resumeIntent: {profile:string;world:number;vehicle:string;map:string;mode:string;joining:boolean;sent:boolean}|null=null;
+let recoveryTimer:ReturnType<typeof setTimeout>|null=null;
+let lastPacketMs=0;
+function forgetRecovery(){resumeIntent=null;if(recoveryTimer!==null)clearTimeout(recoveryTimer);recoveryTimer=null;}
+function failRecovery(message:string){forgetRecovery();if(useUIStore.getState().screen==='sandbox'){useUIStore.getState().setScreen('mode_select');useSocialStore.setState({message,recoveryMessage:message});}}
+function rememberDeployment(){
+ if(resumeIntent)return;
+ const net=useNetworkStore.getState(),view=useSocialStore.getState().view,me=net.getMe();
+ if(useUIStore.getState().screen!=='sandbox'||!me?.vehicle_id||!view||net.room_id===null||!net.worldMap)return;
+ resumeIntent={profile:view.profile.id,world:net.room_id,vehicle:me.vehicle_id,map:net.worldMap,mode:useAlphaStore.getState().mode,joining:false,sent:false};
+}
+function resumeDeployment(){
+ const intent=resumeIntent,view=useSocialStore.getState().view,net=useNetworkStore.getState();
+ if(!intent)return;
+ if(useUIStore.getState().screen!=='sandbox'){forgetRecovery();return;}
+ if(!view)return;
+ if(view.profile.id!==intent.profile){failRecovery('Your player profile changed. Select a world to continue.');return;}
+ if(view.current_world_id!==intent.world){
+  if(intent.joining)return;
+  intent.joining=true;
+  const connection=socket;
+  void requestSocial('world_join',{world_id:intent.world}).then(()=>{if(socket===connection&&resumeIntent===intent)resumeDeployment();}).catch(()=>{if(socket===connection&&resumeIntent===intent)failRecovery('Your previous world is no longer available. Select a world to continue.');});
+  return;
+ }
+ if(intent.sent||net.room_id!==intent.world||!useWorldStore.getState().map||!socket||socket.readyState!==WebSocket.OPEN)return;
+ intent.sent=true;
+ socket.send(JSON.stringify({type:'spawn_request',vehicle:intent.vehicle,map:net.worldMap??intent.map,mode:intent.mode}));
+ recoveryTimer=setTimeout(()=>{if(resumeIntent===intent)failRecovery('The server could not restore your vehicle. Select a world to deploy again.');},12000);
+}
+function foregroundRecovery(){
+ if(document.visibilityState==='hidden')return;
+ useInputStore.getState().releaseControls();
+ if(socket?.readyState===WebSocket.OPEN&&performance.now()-lastPacketMs>8000)socket.close();
+ else if(!socket&&reconnectEnabled)connectRustServer();
+}
+if(typeof window!=='undefined'){window.addEventListener('focus',foregroundRecovery);document.addEventListener('visibilitychange',foregroundRecovery);}
 
 export function requestVehicleChange(vehicle: string): Promise<void> {
   const connection = socket;
@@ -326,6 +369,9 @@ export function connectRustServer(): WebSocket {
 
   connection.onclose = () => {
     if (!isCurrent()) return;
+    rememberDeployment();
+    if(resumeIntent){resumeIntent.sent=false;resumeIntent.joining=false;}
+    if(recoveryTimer!==null)clearTimeout(recoveryTimer);recoveryTimer=null;
     clearTimers();
     socket = null;
     clearSession();
@@ -341,6 +387,7 @@ export function connectRustServer(): WebSocket {
   connection.onmessage = (event) => {
     if (!isCurrent()) return;
     const receivedMs = performance.now();
+    lastPacketMs=receivedMs;
     let message;
     try {
       message = JSON.parse(event.data);
@@ -387,6 +434,7 @@ export function connectRustServer(): WebSocket {
         return;
       case "social_state":
         receiveSocialState(message.data);
+        resumeDeployment();
         return;
       case "chat_message":
         useChatStore.getState().receive(message.data);
@@ -454,6 +502,7 @@ export function connectRustServer(): WebSocket {
               receivedMs,
             );
           }
+          if(me&&resumeIntent?.sent)forgetRecovery();
           acknowledgeInput(me?.last_input_seq, performance.now());
         }
         return;
@@ -461,6 +510,7 @@ export function connectRustServer(): WebSocket {
         const map = message.data as MapSnapshot | undefined;
         if (map && Array.isArray(map.chunks) && Array.isArray(map.visuals)) {
           useWorldStore.getState().setMap(map);
+          resumeDeployment();
         }
         return;
       }
@@ -492,8 +542,12 @@ export function connectRustServer(): WebSocket {
         return;
       case "spawn_ok":
       case "spawn_ready":
-      case "spawn_error":
       case "vehicle_changed":
+        if(message.player_id===state.playerId)window.dispatchEvent(new CustomEvent('avenlab:vehicle-entered',{detail:{vehicle:message.vehicle}}));
+        return;
+      case "spawn_error":
+        if(resumeIntent?.sent)failRecovery(message.message||"Vehicle recovery failed. Select a world to continue.");
+        return;
       case "vehicle_change_error":
       case "vehicle_serviced":
       case "vehicle_service_error":
@@ -507,6 +561,7 @@ export function connectRustServer(): WebSocket {
 
 // App teardown must cancel retry timers as well as closing the live connection.
 export function disconnectRustServer() {
+  forgetRecovery();
   reconnectEnabled = false;
   clearTimers();
   const previous = socket;
@@ -515,5 +570,5 @@ export function disconnectRustServer() {
   clearSession();
 }
 
-if (import.meta.hot) import.meta.hot.dispose(disconnectRustServer);
+if (import.meta.hot) import.meta.hot.dispose(()=>{window.removeEventListener('focus',foregroundRecovery);document.removeEventListener('visibilitychange',foregroundRecovery);disconnectRustServer();});
 export { socket };

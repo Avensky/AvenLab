@@ -207,6 +207,7 @@ export function LobbyChat({ driving = false }: { driving?: boolean }) {
       ref={root}
       aria-label="Lobby and team chat"
       data-expanded={expanded}
+      data-driving={driving}
       onPointerDownCapture={wake}
       onKeyDownCapture={wake}
       onFocusCapture={wake}

@@ -1,3 +1,6 @@
+import {DRIVING_ACTIONS} from '../store/preferences/keyBindings';
+import {combatIntent} from '../combat/combatStore';
+import {cycleTankWeapon,toggleTankScope} from '../combat/turretControls';
 import {
   openWorldBuilder,
   closeWorldBuilder,
@@ -80,9 +83,11 @@ export function Keyboard() {
   useEffect(() => {
     const keys = new Set<string>();
     let focused = document.hasFocus();
+    let fireKey:string|null=null;
     let resetTimer: number | null = null;
     let tractionHold: number | null = null;
     const release = () => {
+      combatIntent.keyboardRam=false;combatIntent.keyboardFire=false;fireKey=null;
       keys.clear();
       if (tractionHold !== null) window.clearTimeout(tractionHold);
       tractionHold = null;
@@ -102,8 +107,7 @@ export function Keyboard() {
         handbrake: Number(keys.has(bindings.handbrake)),
       });
     };
-    const isAnalogKey = (code: string) =>
-      Object.values(usePreferencesStore.getState().bindings).includes(code);
+    const isAnalogKey=(code:string)=>DRIVING_ACTIONS.some(a=>usePreferencesStore.getState().bindings[a]===code);
     const onKeyDown = (event: KeyboardEvent) => {
       if (
         event.defaultPrevented ||
@@ -281,6 +285,11 @@ export function Keyboard() {
         return;
       }
       const store = useInputStore.getState();
+      const combatKeys=usePreferencesStore.getState().bindings;
+      if(combatIntent.enabled&&event.code===combatKeys.scope){if(!event.repeat)toggleTankScope();event.preventDefault();return;}
+      if(combatIntent.enabled&&event.code===combatKeys.fire){combatIntent.keyboardFire=true;fireKey=event.code;event.preventDefault();return;}
+      if(combatIntent.enabled&&event.code===combatKeys.nextWeapon){cycleTankWeapon(1);event.preventDefault();return;}
+      if(combatIntent.enabled&&event.code===combatKeys.previousWeapon){cycleTankWeapon(-1);event.preventDefault();return;}
       if (event.code === "Escape") {
         event.preventDefault();
         ui.togglePauseMenu();
@@ -331,8 +340,10 @@ export function Keyboard() {
         store.toggleVehicleFlag(VEHICLE_TOGGLES[event.code]);
       else if (PLAYER_TOGGLES[event.code] !== undefined)
         store.togglePlayerFlag(PLAYER_TOGGLES[event.code]);
-      else if (event.code === "ShiftLeft")
-        store.setHeldVehicleFlag("keyboard", VehicleFlags.BOOST, true);
+      else if (event.code === "ShiftLeft"){
+        if(useNetworkStore.getState().getMe()?.vehicle_id==='tank'&&combatIntent.enabled)combatIntent.keyboardRam=true;
+        else store.setHeldVehicleFlag("keyboard", VehicleFlags.BOOST, true);
+      }
       else if (event.code === "KeyN")
         store.setHeldPlayerFlag("keyboard", PlayerFlags.HONK, true);
       else if (event.code === "KeyR") {
@@ -347,10 +358,12 @@ export function Keyboard() {
       }
     };
     const onKeyUp = (event: KeyboardEvent) => {
+      if(event.code===fireKey){combatIntent.keyboardFire=false;fireKey=null;}
       // Release a key even if focus moved into an input after its keydown.
       if (event.code === "KeyT" && tractionHold !== null) { window.clearTimeout(tractionHold); tractionHold = null; }
       const owned = keys.delete(event.code);
       if (owned && isAnalogKey(event.code)) updateAxes();
+      if(event.code === "ShiftLeft")combatIntent.keyboardRam=false;
       if (event.code === "ShiftLeft")
         useInputStore
           .getState()

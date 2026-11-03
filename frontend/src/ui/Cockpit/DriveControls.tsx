@@ -8,6 +8,7 @@ import { useCockpitState } from "./useCockpitState";
 import { DriftBrakeLever, ParkingAppearance } from "./mechanical/index";
 
 export function DriveGearControl() {
+  const gearCount=useVehicleTelemetryStore(s=>s.data.config.forwardGears);
   const state = useCockpitState(),
     automatic = usePreferencesStore((s) => s.shiftLayout === "automatic");
   const request = useInputStore((s) => s.input.cockpit_mask),
@@ -22,6 +23,7 @@ export function DriveGearControl() {
         : (state.actualGear ?? selector);
   return (
     <GearSelector
+      gearCount={gearCount}
       automatic={automatic}
       gear={selected}
       disabled={!state.drivetrain}

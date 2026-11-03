@@ -1,16 +1,16 @@
 import { ControllerButton, type ControllerKey } from "./ControllerButton";
 const controls: [ControllerKey, string][] = [
   ["RT", "Accelerate"],
-  ["LT", "Brake"],
+  ["LT", "Auto Drive: brake to stop, then reverse · release RT"],
   ["LS", "Steer · press to reset"],
-  ["RS", "Press to shift down / dyno"],
+  ["RS", "Aim while armed · press angle lock; otherwise downshift / dyno"],
   ["A", "Shift up · record when recorder is visible"],
   ["B", "Handbrake"],
   ["X", "Engine"],
-  ["Y", "Lights"],
-  ["LB", "NOS boost"],
-  ["RB", "Horn"],
-  ["D-PAD", "Left/right indicators · up hazards · down radio"],
+  ["Y", "Cycle tank weapons while armed · otherwise lights"],
+  ["LB", "Tank Ram while armed · NOS boost on cars"],
+  ["RB", "Fire while armed · otherwise horn"],
+  ["D-PAD", "Tank: up reset turret, down scope · cars: up hazards, down radio"],
   ["START", "Pause / resume"],
   ["VIEW", "Performance details · LB + View cockpit"],
 ];

@@ -41,3 +41,7 @@ Next: server-owned ammo/reload and rotation limits; camera convergence and mobil
 ## Tank update
 
 The tank now uses its factory GLB turret/cannon, tracked movement, server-owned traverse/elevation limits, a one-shell reload and physical/barrel recoil. Combat Test floating UI was removed. Use Vehicle Editor -> Weapons Test/Stop, or Cockpit -> Turret. See TANK-AND-COCKPIT.md for current behavior and remaining scope. Rust has now been compiled and tested, superseding the earlier toolchain limitation. Other roles remain prototypes.
+
+## Steering and weapon selection update
+
+Tracked steering now reserves differential force under throttle, pivots faster and preserves contact-driven motion. The armed tank has bottom-center Cannon / Coax MG slots, controller Y and keyboard V cycling, independent server cooldowns and replicated selection. See TANK-HANDLING-AND-WEAPONS.md for controls, measured response and pending vehicle damage / presentation.

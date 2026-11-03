@@ -12,6 +12,7 @@ export const TelemetryFields = {
   ULTIMATE: 1 << 6,
 } as const;
 export type GaugeConfig = {
+  forwardGears:number;
   cockpitControls: boolean;
   cockpitVersion: number;
   clusterFields: number;
@@ -26,6 +27,7 @@ export type GaugeConfig = {
   telemetryMask: number;
 };
 export const DEFAULT_GAUGE_CONFIG: GaugeConfig = {
+  forwardGears:6,
   cockpitControls: false,
   cockpitVersion: 0,
   clusterFields: 0,
@@ -60,6 +62,7 @@ export function parseGaugeConfig(value: unknown): GaugeConfig | null {
   const minTempC = number("min_temp_c", 40, -50, 100);
   const overheatC = number("overheat_c", 110, minTempC + 1, 250);
   return {
+    forwardGears:Math.round(number("forward_gears",6,1,6)),
     cockpitControls: hud.cockpit_controls === true,
     cockpitVersion:
       hud.cockpit_controls === true ? number("cockpit_version", 1, 1, 8) : 0,

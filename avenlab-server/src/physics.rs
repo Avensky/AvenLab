@@ -395,11 +395,23 @@ impl PhysicsWorld {
         if entry.0!=seq {*entry=(seq,std::time::Instant::now());}
         let fresh=entry.1.elapsed().as_millis()<=250;
         let target=intent.map(|c|c.bounded()).unwrap_or_default();
+        if let Some(vehicle)=self.vehicles.get_mut(player){
+            vehicle.ram.requested=target.ram&&fresh&&target.enabled;
+            if !fresh||!target.enabled{vehicle.ram.cancel();}
+        }
         let mut c=self.combat_poses.get(player).cloned().unwrap_or_else(||crate::state::CombatPose{yaw:hull_yaw+std::f32::consts::PI,ammo:1,..Default::default()});
-        c.enabled=target.enabled&&fresh;c.fire=target.fire&&c.enabled;
-        if c.enabled {
+        let locking = config.tracked && target.hull_locked && !c.hull_locked;
+        if locking {
+            let current = vector![-c.yaw.sin()*c.pitch.cos(), c.pitch.sin(), -c.yaw.cos()*c.pitch.cos()];
+            let local = hull.rotation.inverse()*current;
+            c.lock_yaw = local.x.atan2(local.z);
+            c.lock_pitch = local.y.atan2((local.x*local.x+local.z*local.z).sqrt()).clamp(-0.174533,0.349066);
+        }
+        c.hull_locked=config.tracked&&target.hull_locked;
+        c.enabled=target.enabled&&fresh&&self.vehicles.get(player).is_some_and(|v|v.ram.stun_remaining<=0.0);c.fire=target.fire&&c.enabled;c.ram=target.ram&&c.enabled;
+        if c.enabled && !c.hull_locked {
             let delta=(target.yaw-c.yaw).sin().atan2((target.yaw-c.yaw).cos());
-            let rate=if config.tracked {1.5}else{3.0};
+            let rate=if config.tracked {2.6}else{3.0};
             c.yaw+=delta.clamp(-rate*SIMULATION_DT,rate*SIMULATION_DT);
             c.pitch+=(target.pitch-c.pitch).clamp(-0.8*SIMULATION_DT,0.8*SIMULATION_DT);
         }
@@ -408,33 +420,54 @@ impl PhysicsWorld {
         let mut direction=vector![-c.yaw.sin()*c.pitch.cos(),c.pitch.sin(),-c.yaw.cos()*c.pitch.cos()];
         if config.tracked {
             let local=hull.rotation.inverse()*direction;
-            let yaw=local.x.atan2(local.z);
-            let elevation=local.y.atan2((local.x*local.x+local.z*local.z).sqrt()).clamp(-0.174533,0.349066);
+            let yaw=if c.hull_locked {c.lock_yaw}else{local.x.atan2(local.z)};
+            let elevation=if c.hull_locked {c.lock_pitch}else{local.y.atan2((local.x*local.x+local.z*local.z).sqrt()).clamp(-0.174533,0.349066)};
             direction=hull.rotation*vector![yaw.sin()*elevation.cos(),elevation.sin(),yaw.cos()*elevation.cos()];
             c.yaw=(-direction.x).atan2(-direction.z);c.pitch=direction.y.clamp(-1.0,1.0).asin();
             c.x=0.0;c.y=config.nominal_wheel_center_y()-config.wheel_radius-0.0130596+1.65;c.z=1.05;
             self.update_tank_collision(player,body_handle,&hull,yaw,elevation,config.nominal_wheel_center_y()-config.wheel_radius-0.0130596);
         }else{c.x=target.x;c.y=target.y;c.z=target.z;}
-        let cooldown=self.combat_cooldowns.entry(player.to_owned()).or_insert(0.0);
-        *cooldown=(*cooldown-SIMULATION_DT).max(0.0);
+        c.weapon=if config.tracked {target.weapon.clone()}else{"primary".into()};
+        let cannon=config.tracked && c.weapon!="coax";
+        // Both timers advance while holstered: switching never resets a reload.
+        for key in [player.to_owned(),format!("{player}:coax")] {
+            if let Some(t)=self.combat_cooldowns.get_mut(&key){*t=(*t-SIMULATION_DT).max(0.0);}
+        }
+        let key=if config.tracked && !cannon {format!("{player}:coax")}else{player.to_owned()};
+        let cooldown=self.combat_cooldowns.entry(key).or_insert(0.0);
         let shoot=c.fire&&*cooldown<=0.0;
-        if shoot {*cooldown=if config.tracked {3.0}else if c.role=="medic" {0.6}else{0.1};c.shot=c.shot.wrapping_add(1);}
-        c.reload=if config.tracked {*cooldown}else{0.0};c.ammo=if config.tracked {u8::from(*cooldown<=0.0)}else{255};
-        let origin=hull.transform_point(&point![c.x,c.y,c.z]);
+        if shoot {*cooldown=if cannon {3.0}else if c.role=="medic" {0.6}else{0.1};c.shot=c.shot.wrapping_add(1);if cannon {c.cannon_shot=c.cannon_shot.wrapping_add(1);}}
+        c.reload=*cooldown;c.ammo=if cannon {u8::from(*cooldown<=0.0)}else{255};
+        c.cannon_reload=*self.combat_cooldowns.get(player).unwrap_or(&0.0);
+        c.coax_reload=*self.combat_cooldowns.get(&format!("{player}:coax")).unwrap_or(&0.0);
+        let breech=hull.transform_point(&point![c.x,c.y,c.z]);
+        let origin=breech+if config.tracked {direction*4.1}else{Vector::zeros()};
         self.combat_poses.insert(player.to_owned(),c);
         if !shoot {return;}
-        if config.tracked {if let Some(body)=self.bodies.get_mut(body_handle){body.apply_impulse_at_point(-direction*12000.0,origin,true);}}
+        if cannon {if let Some(body)=self.bodies.get_mut(body_handle){body.apply_impulse_at_point(-direction*36000.0,origin,true);}}
         self.query_pipeline.update(&self.colliders);
-        let Some((handle,_))=self.query_pipeline.cast_ray(&self.bodies,&self.colliders,&Ray::new(origin,direction),if config.tracked {500.0}else{200.0},true,QueryFilter::default().exclude_rigid_body(body_handle)) else {return;};
+        let obstruction=if config.tracked {self.query_pipeline.cast_ray(&self.bodies,&self.colliders,&Ray::new(breech,direction),4.1,true,QueryFilter::default().exclude_rigid_body(body_handle)).map(|(h,d)|(h,breech+direction*d,0.0))}else{None};
+        let hit=if obstruction.is_some(){obstruction}else if cannon {
+            crate::ballistics::trace(origin,direction,body_handle,&self.bodies,&self.colliders,&self.query_pipeline)
+        }else{
+            self.query_pipeline.cast_ray(&self.bodies,&self.colliders,&Ray::new(origin,direction),if config.tracked {800.0}else{200.0},true,QueryFilter::default().exclude_rigid_body(body_handle))
+                .map(|(h,d)|(h,origin+direction*d,0.0))
+        };
+        if let Some(c)=self.combat_poses.get_mut(player){c.impact=hit.map(|(_,p,_)|[p.x,p.y,p.z]);c.impact_time=hit.map(|(_,_,t)|t).unwrap_or(crate::ballistics::MAX_TIME);}
+        let Some((handle,impact,_))=hit else {return;};
         let Some(parent)=self.colliders[handle].parent() else {return;};
+        if cannon && self.bodies[parent].is_dynamic(){
+            let mass=self.bodies[parent].mass();
+            self.bodies[parent].apply_impulse_at_point(direction*(mass*2.8).min(80000.0),impact,true);
+        }
         let index=self.bodies[parent].user_data as usize;if index==0{return;}
         let Some(layout)=self.active_map.as_ref().and_then(|m|m.authored_layout.as_ref()).filter(|l|!l.repeat) else{return;};
         let Some(object)=layout.objects.get(index-1) else{return;};
         if ["coastal-land","coastal-land-bridge"].contains(&object.piece.as_str()){return;}
         let Some(d)=object.destruction.as_ref().filter(|d|d.enabled) else{return;};
-        let multiplier=if config.tracked {d.cannon}else{d.small_arms};
+        let multiplier=if cannon {d.cannon}else{d.small_arms};
         let hp=self.asset_health.entry(object.id.clone()).or_insert(d.hp);
-        *hp=(*hp-if config.tracked {300.0*multiplier}else{20.0*multiplier}).max(0.0);
+        *hp=(*hp-if cannon {300.0*multiplier}else{20.0*multiplier}).max(0.0);
         if *hp==0.0 {for h in self.bodies[parent].colliders().to_vec(){if let Some(c)=self.colliders.get_mut(h){c.set_enabled(false);}}self.query_pipeline.update(&self.colliders);}
     }
     fn update_tank_collision(&mut self,player:&str,body:RigidBodyHandle,_hull:&Isometry<Real>,yaw:f32,elevation:f32,visual_y:f32){
@@ -510,6 +543,7 @@ impl PhysicsWorld {
         body.set_angvel(Vector::zeros(), true); body.reset_forces(true); body.reset_torques(true);
         self.bodies.propagate_modified_body_positions_to_colliders(&mut self.colliders);
         self.query_pipeline.update(&self.colliders);
+        if let Some(v)=self.vehicles.get_mut(player_id){v.ram.cancel();}
         Ok(())
     }
 
@@ -662,6 +696,7 @@ impl PhysicsWorld {
         self.vehicles.insert(
             id.clone(),
             Vehicle {
+                ram:crate::ram::RamState::default(),team:team.into(),
                 body: handle,
                 config,
                 throttle: 0.0,
@@ -757,6 +792,7 @@ impl PhysicsWorld {
 
         let vehicle = self.vehicles.get_mut(player_id).unwrap();
         vehicle.powertrain.reconfigure(previous.resources, config.resources);
+        vehicle.ram.cancel();
         vehicle.config = config;
         vehicle.throttle = 0.0;
         vehicle.steer = 0.0;
@@ -824,6 +860,40 @@ impl PhysicsWorld {
         }
 
         let step_started = std::time::Instant::now();
+        for vehicle in self.vehicles.values_mut(){
+            vehicle.ram.stun_remaining=(vehicle.ram.stun_remaining-dt.min(0.066667)).max(0.0);
+            let grounded=self.wheels.get(&vehicle.body).is_some_and(|ws|ws.iter().filter(|w|w.grounded).count()>=2);
+            let forward_speed=self.bodies.get(vehicle.body).map(|b|(b.rotation().inverse()*b.linvel()).z).unwrap_or(-1.0);
+            vehicle.ram.blocked=if !vehicle.config.tracked {"TANK ONLY"}
+                else if vehicle.ram.stun_remaining>0.0 {"STUNNED"}
+                else if !vehicle.powertrain.running || vehicle.config.engine_force<=0.0 {"ENGINE OFF"}
+                else if !vehicle.ram.active() && vehicle.powertrain.temperature_c>=vehicle.config.resources.overheat_c {"COOL ENGINE"}
+                else if !vehicle.ram.active() && vehicle.powertrain.condition<0.12 {"NEEDS REPAIR"}
+                else if !vehicle.ram.active() && vehicle.powertrain.fuel_liters<crate::ram::FUEL_COST+1.0 {"LOW FUEL"}
+                else if !vehicle.cockpit.manual_gear().map(|g|g>0).unwrap_or(true) {"DRIVE GEAR"}
+                else if vehicle.cockpit.parking_force()>=0.2 {"PARKED"}
+                else if vehicle.brake>=0.2 || vehicle.handbrake>=0.2 {"BRAKES"}
+                else if !grounded {"AIRBORNE"}
+                else if vehicle.throttle< -0.05 || forward_speed< -0.5 {"REVERSING"}else{""};
+            let allowed=vehicle.ram.blocked.is_empty();
+            let started = vehicle.ram.advance(dt.min(0.066667),allowed);
+            if started {
+                vehicle.powertrain.fuel_liters=(vehicle.powertrain.fuel_liters-crate::ram::FUEL_COST).max(0.0);
+                if let Some(body) = self.bodies.get_mut(vehicle.body) {
+                    // Ability-powered launch, once per activation, only grounded.
+                    let forward = body.rotation()*Vector::z();
+                    let speed = body.linvel().dot(&forward);
+                    let delta = (vehicle.config.max_speed*crate::ram::SPEED_MULTIPLIER-speed).clamp(0.0,12.0);
+                    body.apply_impulse(forward*(body.mass()*delta),true);
+                }
+            }
+            if !vehicle.ram.active() && vehicle.ram.cost_due {
+                vehicle.ram.cost_due=false;
+                vehicle.powertrain.condition=(vehicle.powertrain.condition-crate::ram::CONDITION_COST).max(0.0);
+                let heat=vehicle.powertrain.temperature_c;
+                vehicle.powertrain.temperature_c=heat.max((heat+crate::ram::HEAT_DEBT).min(vehicle.config.resources.critical_c-5.0));
+            }
+        }
         // Map maintenance and debug allocation belong to the outer tick.
         // Rapier keeps this query pipeline current between substeps.
         self.debug_overlay.clear();
@@ -856,6 +926,56 @@ impl PhysicsWorld {
         }
     }
 
+    fn apply_ram_bonus(&mut self,motion:&HashMap<RigidBodyHandle,(Vector<Real>,Vector<Real>)>){
+        let mut hits=Vec::new();
+        for (id,attacker) in &self.vehicles{
+            if !attacker.ram.charging(){continue;}
+            let Some(body)=self.bodies.get(attacker.body)else{continue;};
+            let (position,velocity)=motion.get(&attacker.body).copied().unwrap_or((*body.translation(),*body.linvel()));
+            let forward=body.rotation()*Vector::z();
+            for collider in body.colliders(){for pair in self.narrow_phase.contact_pairs_with(*collider){
+                if pair.total_impulse_magnitude()<1000.0 {continue;}
+                let other=if pair.collider1==*collider{pair.collider2}else{pair.collider1};
+                let Some(target)=self.colliders.get(other).and_then(|c|c.parent())else{continue;};
+                if target==attacker.body||attacker.ram.hits.contains(&target){continue;}
+                let Some(target_body)=self.bodies.get(target)else{continue;};
+                let (target_pos,target_velocity)=motion.get(&target).copied().unwrap_or((*target_body.translation(),*target_body.linvel()));
+                let toward=target_pos-position;
+                if toward.norm()<0.1||toward.normalize().dot(&forward)<0.35{continue;}
+                let closing=(velocity-target_velocity).dot(&toward.normalize());
+                if closing>3.5 {hits.push((id.clone(),target,closing));}
+            }}
+        }
+        for (source,target,closing) in hits{
+            let Some(attacker)=self.vehicles.get_mut(&source)else{continue;};
+            if !attacker.ram.hits.insert(target){continue;}let team=attacker.team.clone();
+            if let Some(victim_id)=self.body_to_player.get(&target).cloned(){
+                // Physical knockback affects any dynamic vehicle in the path.
+                // Friendly vehicles retain ordinary collision damage only.
+                if let Some(body)=self.bodies.get_mut(target) {
+                    let direction=motion.get(&attacker.body).map(|(p,_)|(*body.translation()-*p).normalize()).unwrap_or(Vector::z());
+                    let kick=(closing*0.8).clamp(6.0,18.0);
+                    body.apply_impulse((direction*kick+Vector::y()*0.8)*body.mass(),true);
+                }
+                let mut dealt=0.0;
+                if let Some(victim)=self.vehicles.get_mut(&victim_id){
+                    if victim.team==team{continue;}
+                    victim.ram.stun_remaining=victim.ram.stun_remaining.max(crate::ram::STUN_SECONDS);
+                    let bonus=((closing-3.5)*0.015).clamp(0.03,0.25);
+                    let before=victim.powertrain.condition;victim.powertrain.condition=(before-bonus).max(0.0);dealt=before-victim.powertrain.condition;
+                }
+                if let Some(attacker)=self.vehicles.get_mut(&source){attacker.powertrain.credit_damage_dealt(dealt);}
+            }else{
+                let index=self.bodies[target].user_data as usize;
+                let Some(object)=self.active_map.as_ref().and_then(|m|m.authored_layout.as_ref()).filter(|l|!l.repeat).and_then(|l|index.checked_sub(1).and_then(|i|l.objects.get(i)))else{continue;};
+                if ["coastal-land","coastal-land-bridge"].contains(&object.piece.as_str()){continue;}
+                let Some(d)=object.destruction.as_ref().filter(|d|d.enabled)else{continue;};
+                let hp=self.asset_health.entry(object.id.clone()).or_insert(d.hp);*hp=(*hp-150.0*d.cannon).max(0.0);
+                if *hp==0.0 {for h in self.bodies[target].colliders().to_vec(){if let Some(c)=self.colliders.get_mut(h){c.set_enabled(false);}}}
+            }
+        }
+    }
+
     fn step_substep(&mut self, dt: Real) {
 
         // Inputs were clamped once when attached to the vehicle. Steering
@@ -866,8 +986,9 @@ impl PhysicsWorld {
 
         // Only multiplayer impacts can earn ultimate. Sample vehicle motion
         // before Rapier resolves a collision, so a ram that stops the attacker
-        // still counts. Single-player driving allocates no attribution table.
-        let impact_motion: HashMap<_, _> = if self.vehicles.len() > 1 {
+        // still counts. Ordinary solo driving allocates no attribution table;
+        // active Ram also samples pre-contact motion for authored structures.
+        let impact_motion: HashMap<_, _> = if self.vehicles.len() > 1 || self.vehicles.values().any(|v|v.ram.active()) {
             self.vehicles.values().filter_map(|vehicle| self.bodies.get(vehicle.body)
                 .map(|body| (vehicle.body, (*body.translation(), *body.linvel())))).collect()
         } else { HashMap::new() };
@@ -930,6 +1051,8 @@ impl PhysicsWorld {
             if let Some(vehicle) = self.vehicles.get_mut(&source) { vehicle.powertrain.credit_damage_dealt(damage); }
         }
 
+
+        self.apply_ram_bonus(&impact_motion);
 
         // Recovery is server-owned and independent of menus or held input.
         // Allow a brief fall before resetting to the authored spawn, not origin.
@@ -1617,4 +1740,24 @@ mod combat_structure_tests {
             assert!(body.colliders().iter().all(|h|!physics.colliders[*h].is_enabled()));
         }
     }
+}
+
+#[cfg(test)]mod ram_structure_tests{
+ use super::*;
+ #[test]fn ram_damages_destructible_walls_once_and_protects_permanent_land(){
+  fn charge(piece:&str,enabled:bool)->Option<f32>{
+   let mut value:serde_json::Value=serde_json::from_str(include_str!("assets/blocks/coastal_district_colliders.json")).unwrap();
+   value["team_spawns"]=serde_json::json!({"red":[{"chunk":[0,0],"local":[0,0],"yaw":0,"surface_y":0}],"blue":[]});
+   value["authored_layout"]=serde_json::json!({"format":"avenlab-world-layout","version":1,"map_id":"coastal_district","title":"Ram range","base":"replace","ground":true,"repeat":false,"objects":[{"id":"ram-wall","name":"Ram wall","piece":piece,"position":[0,0,10],"size":[8,4,0.5],"yaw":0,"color":"#888888","locked":false,"solid":true,"parts":[{"shape":"box","position":[0,0.5,0],"size":[1,1,1],"solid":true}],"destruction":{"enabled":enabled,"hp":200,"smallArms":1,"cannon":1,"bomb":1.5,"rubble":"clear"}}]});
+   let mut w=PhysicsWorld::from_editor_document(serde_json::from_value(value).unwrap()).unwrap();w.spawn_vehicle_for_player("tank".into(),[0.0;3],"tank","red").unwrap();
+   w.vehicles.get_mut("tank").unwrap().powertrain.engine_requested=true;
+   for _ in 0..180{w.step(SIMULATION_DT);}
+   {let v=w.vehicles.get_mut("tank").unwrap();v.powertrain.gear=1;v.ram.remaining=crate::ram::DURATION;v.ram.cooldown=crate::ram::COOLDOWN;}
+   for _ in 0..180{w.step(SIMULATION_DT);}
+   w.asset_health.get("ram-wall").copied()
+  }
+  assert_eq!(charge("wall",true),Some(50.0));
+  assert_eq!(charge("wall",false),None);
+  assert_eq!(charge("coastal-land-bridge",false),None);
+ }
 }

@@ -1,4 +1,4 @@
-import {canAimTurret} from "../combat/turretControls";
+import {canAimTurret,syncTurretOrientation} from "../combat/turretControls";
 import { combatIntent,DEFAULT_MOUNT,useCombatStore } from "../combat/combatStore";
 import { useNetworkStore } from "../store/session/networkStore";
 import { useUIStore } from "../store/menus/uiStore";
@@ -36,9 +36,11 @@ function transmitInput(allowQueuedNeutral = false) {
   if (document.visibilityState === "hidden")
     useInputStore.getState().releaseControls();
   const dt = Math.max(0, Math.min((now - lastSendTime) / 1000, 0.1));
+  const turretVehicle=useNetworkStore.getState().getMe();
+  syncTurretOrientation(turretVehicle?.rotation);
   const packet = {
     ...inputRef.current,
-    combat: (()=>{const ui=useUIStore.getState(),me=useNetworkStore.getState().getMe();return {...combatIntent,fire:ui.overlay===null&&(combatIntent.fire||combatIntent.gamepadFire),enabled:combatIntent.enabled&&canAimTurret()&&document.visibilityState!=='hidden',...(useCombatStore.getState().mounts[me?.vehicle_id??'']??DEFAULT_MOUNT)};})(),
+    combat: (()=>{const ui=useUIStore.getState(),me=useNetworkStore.getState().getMe();return {...combatIntent,hull_locked:combatIntent.orientationLocked,ram:ui.overlay===null&&(combatIntent.ram||combatIntent.gamepadRam||combatIntent.keyboardRam||performance.now()<combatIntent.ramPulseUntil),fire:ui.overlay===null&&(combatIntent.fire||combatIntent.keyboardFire||combatIntent.gamepadFire),enabled:combatIntent.enabled&&canAimTurret()&&document.visibilityState!=='hidden',...(useCombatStore.getState().mounts[me?.vehicle_id??'']??DEFAULT_MOUNT)};})(),
     type: "input",
     seq,
     dt, // Transport timing only; Rust retains its fixed simulation timestep.
