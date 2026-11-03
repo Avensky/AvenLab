@@ -16,7 +16,8 @@ pub const HOT: u16 = 2;
 pub const LOW_FUEL: u16 = 4;
 pub const STARVED: u16 = 8;
 pub const DAMAGED: u16 = 16;
-pub const HEAT_LOCK: u16 = 32;
+pub const HEAT_LOCK: u16 = 32; // Legacy protocol bit; heat no longer disables the engine.
+pub const THERMAL_RECOVERY:u16=64;
 
 #[derive(Clone, Copy, Debug)]
 pub struct ResourceConfig {
@@ -31,13 +32,13 @@ pub struct ResourceConfig {
     pub bsfc_grams_per_kwh: f32,
     pub fuel_gameplay_multiplier: f32,
     pub heat_gameplay_multiplier: f32,
+    pub max_heat_rise_c_s:f32,
     pub thermal_capacity_kj_per_c: f32,
     pub cooling_multiplier:f32,
     pub ambient_c: f32,
     pub initial_temp_c: f32,
     pub overheat_c: f32,
     pub critical_c: f32,
-    pub restart_c: f32,
     pub nos_seconds: f32,
     pub impact_damage_multiplier: f32,
 }
@@ -54,13 +55,13 @@ pub const ROAD_RESOURCES: ResourceConfig = ResourceConfig {
     bsfc_grams_per_kwh: 300.0,
     fuel_gameplay_multiplier: 12.0,
     heat_gameplay_multiplier: 1.35,
+    max_heat_rise_c_s:f32::INFINITY,
     thermal_capacity_kj_per_c: 160.0,
     cooling_multiplier:1.0,
     ambient_c: 25.0,
     initial_temp_c: 85.0,
     overheat_c: 110.0,
     critical_c: 135.0,
-    restart_c: 100.0,
     nos_seconds: 10.0,
     impact_damage_multiplier: 1.0,
 };
@@ -91,7 +92,8 @@ pub const TANK_RESOURCES: ResourceConfig = ResourceConfig {
     heat_gameplay_multiplier: 1.5,
     thermal_capacity_kj_per_c: 500.0,
     cooling_multiplier:16.0, // Heavy radiator sized for the fictional high-output engine.
-    nos_seconds: 0.0,
+    nos_seconds: 21.0,
+    max_heat_rise_c_s:0.3,
     impact_damage_multiplier: 0.3,
     ..ROAD_RESOURCES
 };
@@ -158,6 +160,7 @@ pub struct Powertrain {
     pub engine_requested: bool,
     pub boost_requested: bool,
     pub running: bool,
+    pub thermal_recovery:bool,
     pub rpm: f32,
     pub gear: i32,
     pub fuel_liters: f32,
@@ -174,7 +177,6 @@ pub struct Powertrain {
     last_engine_request: bool,
     start_remaining_s: f32,
     shift_remaining_s: f32,
-    heat_locked: bool,
     impact_cooldown_s: f32,
 }
 #[derive(Clone, Copy)]
@@ -191,7 +193,7 @@ impl Powertrain {
             manual_gear: None,
             engine_requested: true,
             boost_requested: false,
-            running: true,
+            running: true,thermal_recovery:false,
             rpm: config.idle_rpm,
             gear: 0,
             fuel_liters: config.fuel_capacity_liters,
@@ -208,7 +210,6 @@ impl Powertrain {
             last_engine_request: true,
             start_remaining_s: 0.0,
             shift_remaining_s: 0.0,
-            heat_locked: false,
             impact_cooldown_s: 0.0,
         }
     }
@@ -236,12 +237,9 @@ impl Powertrain {
         let throttle = self.manual_gear.map(|gear| gear.signum() as f32 * requested_throttle.max(0.0)).unwrap_or(requested_throttle);
         if throttle.abs()>0.05 {self.shift_remaining_s = (self.shift_remaining_s - dt).max(0.0);}
         self.impact_cooldown_s = (self.impact_cooldown_s - dt).max(0.0);
-        if self.temperature_c >= config.critical_c {
-            self.heat_locked = true;
-        }
-        if self.temperature_c <= config.restart_c {
-            self.heat_locked = false;
-        }
+        // Overreaching costs power and speed, never an unavoidable heat stall.
+        if self.temperature_c>=config.overheat_c{self.thermal_recovery=true;}
+        if self.temperature_c<=config.initial_temp_c+10.0{self.thermal_recovery=false;}
         if self.engine_requested && !self.last_engine_request {
             self.start_remaining_s = 0.7;
         }
@@ -251,8 +249,7 @@ impl Powertrain {
         self.last_engine_request = self.engine_requested;
         let can_run = self.engine_requested
             && self.fuel_liters > 0.0
-            && self.condition > 0.05
-            && !self.heat_locked;
+            && self.condition > 0.05;
         if can_run {
             self.start_remaining_s = (self.start_remaining_s - dt).max(0.0);
         }
@@ -342,6 +339,7 @@ impl Powertrain {
         let condition_loss = ((0.75 - self.condition) / 0.75).clamp(0.0, 1.0);
         let boost_weight = if self.running
             && self.boost_requested
+            && !self.thermal_recovery
             && self.drive_throttle > 0.1
             && self.nos_remaining_s > 0.0
         {
@@ -352,7 +350,7 @@ impl Powertrain {
         self.boost_active = boost_weight > 0.0;
         self.nos_remaining_s = (self.nos_remaining_s - boost_weight * dt).max(0.0);
         self.power_multiplier = if self.running {
-            (1.0 - heat_loss * 0.65) * (1.0 - condition_loss * 0.65) * (1.0 + boost_weight * 0.25)
+            (1.0 - heat_loss * 0.65) * (1.0 - condition_loss * 0.65) * (1.0 + boost_weight * 0.25)*if self.thermal_recovery{0.30}else{1.0}
         } else {
             0.0
         };
@@ -392,20 +390,22 @@ impl Powertrain {
         } else {
             0.0
         };
+        let net_heat=(heating_kw-cooling_kw)/config.thermal_capacity_kj_per_c;
+        // The debuff reduces heat production: crawl toward service while cooling,
+        // or stop the engine to cool faster. Neither option waits on a heat latch.
+        let heat_rate=if self.thermal_recovery{net_heat.min(if self.running{-0.6}else{-2.0})}else{net_heat};
         self.temperature_c = (self.temperature_c
-            + (heating_kw - cooling_kw) / config.thermal_capacity_kj_per_c * dt)
+            + heat_rate.min(config.max_heat_rise_c_s) * dt)
             .clamp(config.ambient_c, config.critical_c + 30.0);
         let exposure = ((self.temperature_c - config.overheat_c)
             / (config.critical_c - config.overheat_c))
             .clamp(0.0, 2.0);
-        self.condition = (self.condition - exposure * 0.0015 * dt).clamp(0.0, 1.0);
-        if self.fuel_liters <= 0.0
-            || self.condition <= 0.05
-            || self.temperature_c >= config.critical_c
-        {
-            if self.temperature_c >= config.critical_c {
-                self.heat_locked = true;
-            }
+        // Heat wear cannot destroy propulsion by itself; collision/weapon damage
+        // and an empty fuel tank still have their existing consequences.
+        let thermal_floor=self.condition.min(0.1);
+        self.condition=(self.condition-exposure*0.0015*dt).clamp(thermal_floor,1.0);
+        if self.fuel_liters <= 0.0 || self.condition <= 0.05 {
+
             self.running = false;
             self.boost_active = false;
             self.power_multiplier = 0.0;
@@ -447,7 +447,7 @@ impl Powertrain {
             0
         }) | (if self.fuel_liters <= 0.0 { STARVED } else { 0 })
             | (if self.condition < 0.75 { DAMAGED } else { 0 })
-            | (if self.heat_locked { HEAT_LOCK } else { 0 })
+            | (if self.thermal_recovery {THERMAL_RECOVERY}else{0})
     }
     pub fn boost_fraction(&self, config: ResourceConfig) -> Option<f32> {
         (config.nos_seconds > 0.0)
@@ -589,20 +589,11 @@ mod tests {
         assert_eq!(state.power_multiplier, 0.0);
     }
     #[test]
-    fn empty_fuel_and_critical_heat_gate_propulsion_with_cooldown_hysteresis() {
-        let mut state = Powertrain::new(ROAD_RESOURCES);
-        state.fuel_liters = 0.0;
-        run(&mut state, demand(1.0, 10.0), 1.0, 120);
-        assert!(!state.running);
-        assert_eq!(state.power_multiplier, 0.0);
-        let mut state = Powertrain::new(ROAD_RESOURCES);
-        state.temperature_c = 140.0;
-        run(&mut state, demand(1.0, 0.0), 1.0, 120);
-        assert!(!state.running);
-        assert_ne!(state.resource_mask(ROAD_RESOURCES) & HEAT_LOCK, 0);
-        state.temperature_c = ROAD_RESOURCES.restart_c - 1.0;
-        run(&mut state, demand(0.0, 0.0), 1.0, 120);
-        assert!(state.running);
+    fn empty_fuel_gates_propulsion_while_heat_reduces_power_without_stalling() {
+        let mut state=Powertrain::new(ROAD_RESOURCES);state.fuel_liters=0.0;
+        run(&mut state,demand(1.0,10.0),1.0,120);assert!(!state.running);assert_eq!(state.power_multiplier,0.0);
+        let mut state=Powertrain::new(ROAD_RESOURCES);state.temperature_c=140.0;
+        run(&mut state,demand(1.0,0.0),1.0,120);assert!(state.running);assert!(state.thermal_recovery);assert!(state.power_multiplier>0.0&&state.power_multiplier<=0.30);assert!(state.temperature_c<140.0);assert_eq!(state.resource_mask(ROAD_RESOURCES)&HEAT_LOCK,0);
     }
     #[test]
     fn nos_has_a_real_limited_reserve_and_no_free_recharge() {
@@ -667,4 +658,27 @@ mod tests {
         assert_eq!(state.gear, -1);
         assert_eq!(state.drive_throttle, -1.0);
     }
+}
+
+#[cfg(test)]mod thermal_recovery_tests{
+ use super::*;
+ #[test]fn overheating_is_a_cooling_limp_debuff_and_hot_engines_can_restart(){
+  for config in [ROAD_RESOURCES,TANK_RESOURCES]{
+   let mut p=Powertrain::new(config);p.temperature_c=config.critical_c+1.0;p.engine_requested=false;
+   let d=Demand{throttle:1.0,longitudinal_speed:0.0,wheel_radius:0.35,engine_force:200_000.0,top_speed:30.0};
+   p.advance(config,d,1.0/120.0);assert!(!p.running);assert!(p.thermal_recovery);let hot=p.temperature_c;
+   p.engine_requested=true;p.boost_requested=true;
+   for _ in 0..120{p.advance(config,d,1.0/120.0);}
+   assert!(p.running,"heat cannot prevent a fresh START request");assert!(p.drive_throttle>0.0);assert!(p.power_multiplier>0.0&&p.power_multiplier<=0.30);assert!(!p.boost_active);assert!(p.temperature_c<hot);
+   p.engine_requested=false;for _ in 0..1800{p.advance(config,d,1.0/120.0);}
+   assert!(p.temperature_c<config.overheat_c,"stopping must offer faster cooling");
+   p.temperature_c=config.initial_temp_c;p.advance(config,d,1.0/120.0);assert!(!p.thermal_recovery);
+  }
+ }
+ #[test]fn thermal_wear_does_not_turn_a_limping_engine_into_a_permanent_stall(){
+  let mut p=Powertrain::new(ROAD_RESOURCES);p.temperature_c=150.0;p.condition=0.11;
+  let d=Demand{throttle:1.0,longitudinal_speed:2.0,wheel_radius:0.35,engine_force:8500.0,top_speed:62.0};
+  for _ in 0..12000{p.advance(ROAD_RESOURCES,d,1.0/120.0);assert!(p.running);}
+  assert!(p.condition>=0.1);assert!(p.temperature_c<150.0);
+ }
 }

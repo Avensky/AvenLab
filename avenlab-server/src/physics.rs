@@ -38,6 +38,7 @@ const MAX_PHYSICS_SUBSTEP: Real = 1.0 / 120.0;
 const MAX_PHYSICS_SUBSTEPS: usize = 8;
 
 pub struct PhysicsWorld {
+    barrier_impacts:HashMap<(RigidBodyHandle,RigidBodyHandle),f32>,
     pub asset_health: HashMap<String,f32>,
     pub combat_poses: HashMap<String,crate::state::CombatPose>,
     tank_colliders: HashMap<String,(ColliderHandle,ColliderHandle)>,
@@ -149,7 +150,7 @@ impl PhysicsWorld {
         }
 
         self.block_world.tile_size = Some(requested.cell);
-        self.asset_health.clear(); self.combat_cooldowns.clear(); self.combat_sequences.clear(); self.combat_poses.clear(); self.tank_colliders.clear();
+        self.barrier_impacts.clear();self.asset_health.clear(); self.combat_cooldowns.clear(); self.combat_sequences.clear(); self.combat_poses.clear(); self.tank_colliders.clear();
         self.active_map = Some(requested);
 
         self.update_loaded_blocks_around_players();
@@ -314,6 +315,19 @@ impl PhysicsWorld {
     }
 
 
+    /// Rebind an authenticated practice lease without recreating its Rapier body.
+    pub fn reassign_player(&mut self,old:&str,new:&str)->bool {
+        let Some(mut vehicle)=self.vehicles.remove(old) else{return false};
+        vehicle.throttle=0.0;vehicle.steer=0.0;vehicle.brake=0.0;vehicle.handbrake=0.0;
+        self.body_to_player.insert(vehicle.body,new.into());self.vehicles.insert(new.into(),vehicle);
+        if let Some(v)=self.combat_poses.remove(old){self.combat_poses.insert(new.into(),v);}
+        if let Some(v)=self.tank_colliders.remove(old){self.tank_colliders.insert(new.into(),v);}
+        if let Some(v)=self.combat_cooldowns.remove(old){self.combat_cooldowns.insert(new.into(),v);}
+        if let Some(v)=self.spawn_poses.remove(old){self.spawn_poses.insert(new.into(),v);}
+        if let Some(v)=self.falling_seconds.remove(old){self.falling_seconds.insert(new.into(),v);}
+        self.combat_sequences.remove(old);true
+    }
+
     pub fn despawn_vehicle_for_player(&mut self, player_id: &str) {
         self.spawn_poses.remove(player_id); self.falling_seconds.remove(player_id);
         let Some(vehicle) = self.vehicles.remove(player_id) else {
@@ -352,7 +366,7 @@ impl PhysicsWorld {
 
         Self {
             combat_poses: HashMap::new(),tank_colliders: HashMap::new(),
-            asset_health: HashMap::new(), combat_sequences: HashMap::new(), combat_cooldowns: HashMap::new(),
+            barrier_impacts:HashMap::new(),asset_health: HashMap::new(), combat_sequences: HashMap::new(), combat_cooldowns: HashMap::new(),
             gravity,
             pipeline: PhysicsPipeline::new(),
             island_manager: IslandManager::new(),
@@ -839,6 +853,7 @@ impl PhysicsWorld {
             for &(bx, bz) in self.block_world.loaded.keys() {
             for bay in &layout.objects {
                 if !["fuel-station","repair-shop","service-center"].contains(&bay.piece.as_str()) { continue; }
+                if self.asset_health.get(&bay.id)==Some(&0.0){continue;}
                 let dx=p.x-bay.position[0]-bx as f32*tile[0]; let dz=p.z-bay.position[2]-bz as f32*tile[1];
                 let yaw=bay.yaw.to_radians();
                 let x=dx*yaw.cos()-dz*yaw.sin(); let z=dx*yaw.sin()+dz*yaw.cos();
@@ -846,7 +861,8 @@ impl PhysicsWorld {
                     || p.y<bay.position[1] || p.y>bay.position[1]+bay.size[1] { continue; }
                 let state=&mut vehicle.powertrain;
                 if bay.piece!="repair-shop" { state.fuel_liters=(state.fuel_liters+dt*3.0).min(vehicle.config.resources.fuel_capacity_liters); }
-                if bay.piece!="fuel-station" { state.condition=(state.condition+dt*0.06).min(1.0); }
+                if bay.piece!="repair-shop" {state.nos_remaining_s=(state.nos_remaining_s+dt*1.5).min(vehicle.config.resources.nos_seconds);}
+                if bay.piece!="fuel-station" { state.condition=(state.condition+dt*0.06).min(1.0);state.temperature_c=(state.temperature_c-dt*3.0).max(vehicle.config.resources.initial_temp_c); }
                 continue 'vehicle; // Overlapping bays cannot multiply the service rate.
             }
             }
@@ -867,8 +883,9 @@ impl PhysicsWorld {
             vehicle.ram.blocked=if !vehicle.config.tracked {"TANK ONLY"}
                 else if vehicle.ram.stun_remaining>0.0 {"STUNNED"}
                 else if !vehicle.powertrain.running || vehicle.config.engine_force<=0.0 {"ENGINE OFF"}
-                else if !vehicle.ram.active() && vehicle.powertrain.temperature_c>=vehicle.config.resources.overheat_c {"COOL ENGINE"}
+                else if vehicle.powertrain.thermal_recovery || (!vehicle.ram.active() && vehicle.powertrain.temperature_c>=vehicle.config.resources.overheat_c) {"COOL ENGINE"}
                 else if !vehicle.ram.active() && vehicle.powertrain.condition<0.12 {"NEEDS REPAIR"}
+                else if !vehicle.ram.active() && vehicle.powertrain.nos_remaining_s+0.01<crate::ram::DURATION {"REFILL NOS"}
                 else if !vehicle.ram.active() && vehicle.powertrain.fuel_liters<crate::ram::FUEL_COST+1.0 {"LOW FUEL"}
                 else if !vehicle.cockpit.manual_gear().map(|g|g>0).unwrap_or(true) {"DRIVE GEAR"}
                 else if vehicle.cockpit.parking_force()>=0.2 {"PARKED"}
@@ -923,6 +940,34 @@ impl PhysicsWorld {
             println!("[physics] substeps={} step_ms={:.2} debug_boxes={}",
                 count, step_started.elapsed().as_secs_f64() * 1000.0,
                 self.debug_overlay.block_boxes.len());
+        }
+    }
+
+    /// Only authored, destructible rail/barrier pieces use mass-based impacts.
+    /// No broad city collider scan and no damage from merely resting against one.
+    fn apply_barrier_impacts(&mut self,motion:&HashMap<RigidBodyHandle,(Vector<Real>,Vector<Real>)>,dt:f32){
+        self.barrier_impacts.retain(|_,t|{*t-=dt;*t>0.0});
+        let Some(layout)=self.active_map.as_ref().and_then(|m|m.authored_layout.as_ref()).filter(|l|!l.repeat)else{return};
+        let mut hits=HashMap::new();
+        for v in self.vehicles.values(){
+            let Some(body)=self.bodies.get(v.body)else{continue};
+            let speed=motion.get(&v.body).map(|(_,velocity)|velocity.norm()).unwrap_or_else(||body.linvel().norm());
+            if speed<3.0{continue;}
+            for collider in body.colliders(){for pair in self.narrow_phase.contact_pairs_with(*collider){
+                if pair.total_impulse_magnitude()<1000.0{continue;}
+                let other=if pair.collider1==*collider{pair.collider2}else{pair.collider1};
+                let Some(target)=self.colliders.get(other).and_then(|c|c.parent())else{continue};
+                if self.barrier_impacts.contains_key(&(v.body,target)){continue;}
+                let Some(object)=self.bodies[target].user_data.checked_sub(1).and_then(|i|layout.objects.get(i as usize)).filter(|o|o.piece=="barrier")else{continue};
+                let Some(d)=object.destruction.as_ref().filter(|d|d.enabled)else{continue};
+                let damage=(0.5*body.mass()*speed*speed/5000.0).clamp(0.0,400.0);
+                hits.insert((v.body,target),(object.id.clone(),d.hp,damage));
+            }}
+        }
+        for ((source,target),(id,max_hp,damage)) in hits{
+            self.barrier_impacts.insert((source,target),0.4);
+            let hp=self.asset_health.entry(id).or_insert(max_hp);*hp=(*hp-damage).max(0.0);
+            if *hp==0.0{for h in self.bodies[target].colliders().to_vec(){if let Some(c)=self.colliders.get_mut(h){c.set_enabled(false);}}}
         }
     }
 
@@ -988,7 +1033,7 @@ impl PhysicsWorld {
         // before Rapier resolves a collision, so a ram that stops the attacker
         // still counts. Ordinary solo driving allocates no attribution table;
         // active Ram also samples pre-contact motion for authored structures.
-        let impact_motion: HashMap<_, _> = if self.vehicles.len() > 1 || self.vehicles.values().any(|v|v.ram.active()) {
+        let impact_motion: HashMap<_, _> = if self.vehicles.len() > 1 || self.vehicles.values().any(|v|v.ram.active()) || self.active_map.as_ref().and_then(|m|m.authored_layout.as_ref()).is_some_and(|l|!l.repeat&&l.objects.iter().any(|o|o.piece=="barrier")) {
             self.vehicles.values().filter_map(|vehicle| self.bodies.get(vehicle.body)
                 .map(|body| (vehicle.body, (*body.translation(), *body.linvel())))).collect()
         } else { HashMap::new() };
@@ -1052,6 +1097,7 @@ impl PhysicsWorld {
         }
 
 
+        self.apply_barrier_impacts(&impact_motion,dt);
         self.apply_ram_bonus(&impact_motion);
 
         // Recovery is server-owned and independent of menus or held input.
@@ -1704,10 +1750,11 @@ mod editor_service_tests {
             let handle=world.spawn_vehicle_for_player("test".into(),[0.0;3],"brz","red").unwrap();
             world.bodies[handle].set_translation(vector![0.0,1.0,0.0],true);
             let state=&mut world.vehicles.get_mut("test").unwrap().powertrain;
-            state.fuel_liters=1.0; state.condition=0.5;
+            state.fuel_liters=1.0; state.condition=0.5;state.nos_remaining_s=0.0;
             world.service_authored_bays(1.0);
             let state=&world.vehicles["test"].powertrain;
             assert_eq!(state.fuel_liters,if kind=="repair-shop" {1.0} else {4.0});
+            assert_eq!(state.nos_remaining_s,if kind=="repair-shop" {0.0}else{1.5});
             assert!((state.condition-if kind=="fuel-station" {0.5} else {0.56}).abs()<0.0001);
             let fuel=state.fuel_liters; let condition=state.condition;
             world.bodies[handle].set_linvel(vector![1.0,0.0,0.0],true);
@@ -1715,6 +1762,9 @@ mod editor_service_tests {
             assert_eq!(world.vehicles["test"].powertrain.fuel_liters,fuel);
             assert_eq!(world.vehicles["test"].powertrain.condition,condition);
             world.bodies[handle].set_linvel(Vector::zeros(),true);
+            world.asset_health.insert("test-bay".into(),0.0);
+            world.service_authored_bays(1.0);
+            assert_eq!(world.vehicles["test"].powertrain.nos_remaining_s,if kind=="repair-shop"{0.0}else{1.5});
             world.bodies[handle].set_translation(vector![50.0,1.0,0.0],true);
             world.service_authored_bays(1.0);
             assert_eq!(world.vehicles["test"].powertrain.fuel_liters,fuel);
@@ -1759,5 +1809,27 @@ mod combat_structure_tests {
   assert_eq!(charge("wall",true),Some(50.0));
   assert_eq!(charge("wall",false),None);
   assert_eq!(charge("coastal-land-bridge",false),None);
+ }
+}
+
+#[cfg(test)]mod barrier_weight_tests{
+ use super::*;
+ fn impact(vehicle:&str,destructible:bool,speed:f32)->Option<f32>{
+  let mut value:serde_json::Value=serde_json::from_str(include_str!("assets/blocks/coastal_district_colliders.json")).unwrap();
+  value["team_spawns"]=serde_json::json!({"red":[{"chunk":[0,0],"local":[0,0],"yaw":0,"surface_y":0}],"blue":[]});
+  value["authored_layout"]=serde_json::json!({"format":"avenlab-world-layout","version":1,"map_id":"coastal_district","title":"Rail impact range","base":"replace","ground":true,"repeat":false,"objects":[{"id":"edge-rail","name":"Bridge edge rail","piece":"barrier","position":[0,0,8],"size":[16,2,0.5],"yaw":0,"color":"#888888","locked":false,"solid":true,"parts":[{"shape":"box","position":[0,0.5,0],"size":[1,1,1],"solid":true}],"destruction":{"enabled":destructible,"hp":100,"smallArms":1,"cannon":1,"bomb":1.5,"rubble":"clear"}}]});
+  let mut w=PhysicsWorld::from_editor_document(serde_json::from_value(value).unwrap()).unwrap();let body=w.spawn_vehicle_for_player("driver".into(),[0.0;3],vehicle,"red").unwrap();
+  for _ in 0..180{w.step(SIMULATION_DT);}
+  w.bodies[body].set_linvel(Vector::new(0.0,0.0,speed),true);
+  for _ in 0..120{w.step(SIMULATION_DT);}
+  let hp=w.asset_health.get("edge-rail").copied();
+  if hp==Some(0.0){assert!(w.bodies.iter().filter(|(_,b)|b.user_data==1).all(|(_,b)|b.colliders().iter().all(|h|!w.colliders[*h].is_enabled())));}
+  hp
+ }
+ #[test]fn heavy_tank_breaks_an_authored_edge_rail_without_ram_while_light_car_does_less(){
+  assert_eq!(impact("tank",true,10.0),Some(0.0));
+  assert!(impact("brz",true,10.0).unwrap_or(100.0)>50.0);
+  assert_eq!(impact("tank",false,10.0),None);
+  assert_eq!(impact("tank",true,0.0),None);
  }
 }

@@ -1,3 +1,5 @@
+import {useSelectionStore as useWorldSelection} from '../../store/selection/selectionStore';
+import {WorldPortraitCard} from '../preview/WorldPortraitCard';
 import {useSocialStore} from '../../store/social/socialStore';
 import { useHeroLoadouts } from "../../vehicles/cosmetics/heroLoadouts";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -29,6 +31,7 @@ import "./heroSelection.css";
  * next stage; matchmaking and the portrait picker cannot race each other. */
 export function ModeSelection() {
   const recoveryNotice=useSocialStore(s=>s.recoveryMessage);
+  const selectedWorld=useWorldSelection(s=>s.getSelectedMap());
   const mode = useAlphaStore((s) => s.mode);
   const defaultHero = useHeroLoadouts(s=>s.defaultHero);
   const connected = useNetworkStore((s) => s.connected);
@@ -162,6 +165,7 @@ export function ModeSelection() {
         ))}
       </nav>
       <div className="hero-selection-stage">
+        {(mode==='sandbox'||mode==='editor')&&<WorldPortraitCard map={selectedWorld}/>}
         <section className="hero-summary" aria-label="Selected game mode">
           <small>GAME MODE</small>
           <h2>{item.label}</h2>

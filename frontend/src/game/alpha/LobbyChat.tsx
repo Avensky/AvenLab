@@ -16,6 +16,7 @@ export function LobbyChat({ driving = false }: { driving?: boolean }) {
     team = useChatStore((s) => s.teamContext);
   const connected = useNetworkStore((s) => s.connected),
     activity = useChatStore((s) => s.activity);
+  const notices=useChatStore(s=>s.notices);
   const events = usePresenceStore((s) => s.events),
     presenceActivity = usePresenceStore((s) => s.activity);
   const [channel, setChannel] = useState<ChatChannel>("lobby");
@@ -127,6 +128,7 @@ export function LobbyChat({ driving = false }: { driving?: boolean }) {
       cancelled = true;
     };
   }, [connected, profile, expanded, context, effective]);
+  useEffect(()=>{if(notices.length){setExpanded(true);wake();}},[notices,wake]);
   const timeline = useMemo(
     () =>
       [
@@ -137,6 +139,7 @@ export function LobbyChat({ driving = false }: { driving?: boolean }) {
           time: line.sent_at,
           system: false,
         })),
+        ...notices.map(n=>({id:`local:${n.id}`,name:'SYSTEM',text:n.text,time:n.sent_at,system:true})),
         ...events.map((event) => ({
           id: `event:${event.id}`,
           name: "WORLD",
@@ -147,7 +150,7 @@ export function LobbyChat({ driving = false }: { driving?: boolean }) {
       ]
         .sort((a, b) => a.time - b.time)
         .slice(-50),
-    [lines, events],
+    [lines, events,notices],
   );
   useEffect(() => {
     if (log.current) log.current.scrollTop = log.current.scrollHeight;

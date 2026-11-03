@@ -67,47 +67,61 @@ impl Server {
         Ok(())
     }
     pub(super) async fn reserve_disconnect(&self, player: &str) {
-        let connection = self.connections.lock().await.get(player).cloned();
-        let Some(client) = connection else { return };
-        let (Some(profile), Some(world)) = (client.profile_id, client.world_id) else {
-            return;
-        };
-        let mut a = self.alpha.lock().await;
-        if !a.enabled {
-            return;
-        }
-        let member = a.members.get(player).cloned().unwrap_or(Member {
-            mode: Mode::Sandbox,
-            world,
-            hero: "ae86".into(),
-            team: client.team,
-        });
-        let expires = timestamp() + a.grace_seconds;
-        a.reservations
-            .insert(profile, Reservation { member, expires });
+        let connection=self.connections.lock().await.get(player).cloned();
+        let Some(client)=connection else{return};
+        let (Some(profile),Some(world))=(client.profile_id,client.world_id) else{return};
+        let mode=self.data.lock().await.worlds.get(&world).and_then(|w|w.mode).unwrap_or(Mode::Sandbox);
+        let practice=matches!(mode,Mode::Sandbox|Mode::Editor);
+        let runtime=self.runtimes.lock().await.get(&world).cloned();
+        let has_body=if let Some(runtime)=runtime{runtime.lock().await.physics.vehicles.contains_key(player)}else{false};
+        let mut a=self.alpha.lock().await;
+        if !a.enabled&&!(practice&&has_body){return;}
+        let member=a.members.get(player).cloned().unwrap_or(Member{mode,world,hero:String::new(),team:client.team});
+        let expires=timestamp()+if practice{600}else{a.grace_seconds};
+        a.reservations.insert(profile,Reservation{member,expires,retained_player:(practice&&has_body).then(||player.into())});
     }
     pub(super) async fn restore_reservation(&self, player: &str, profile: &str) {
-        let lease = self.alpha.lock().await.reservations.remove(profile);
-        let Some(lease) = lease else { return };
-        if lease.expires <= timestamp() {
-            return;
+        let lease=self.alpha.lock().await.reservations.remove(profile);
+        let Some(lease)=lease else{self.recovery_result(player,false,"NO_RESERVATION").await;return};
+        if lease.expires<=timestamp(){
+            self.release_retained(&lease).await;self.recovery_result(player,false,"EXPIRED").await;return;
         }
         self.alpha.lock().await.restoring.insert(player.into());
-        self.alpha
-            .lock()
-            .await
-            .pending_team
-            .insert(player.into(), lease.member.team);
-        let joined = self
-            .join_inner(player, lease.member.world, "", String::new())
-            .await;
-        let mut a = self.alpha.lock().await;
-        a.pending_team.remove(player);
-        a.restoring.remove(player);
-        if joined.is_ok() {
-            a.members.insert(player.into(), lease.member);
-        } else {
-            a.reservations.insert(profile.into(), lease);
+        self.alpha.lock().await.pending_team.insert(player.into(),lease.member.team);
+        let joined=self.join_inner(player,lease.member.world,"",String::new()).await;
+        {let mut a=self.alpha.lock().await;a.pending_team.remove(player);a.restoring.remove(player);}
+        if joined.is_ok(){
+            let mut preserved=false;
+            if let Some(old)=&lease.retained_player{
+                let runtime=self.runtimes.lock().await.get(&lease.member.world).cloned();
+                let client=self.connections.lock().await.get(player).cloned();
+                if let (Some(runtime),Some(client))=(runtime,client){
+                    let mut room=runtime.lock().await;preserved=room.resume(old,player,&client);
+                    if preserved{let vehicle=room.game.entities[player].vehicle_id.clone().unwrap_or_else(||"ae86".into());let _=room.spawn(player,&vehicle);}
+                    else{room.leave(old);}
+                    drop(room);
+                    if preserved{
+                        if let Some(connection)=self.connections.lock().await.get_mut(player){connection.team=lease.member.team;}
+                        let _=client.tx.send(json!({"type":"welcome","player_id":player,"room_id":lease.member.world,"team":lease.member.team.as_str(),"spawned":true}).to_string());
+                    }
+                }
+            }
+            if self.data.lock().await.worlds.get(&lease.member.world).is_some_and(|w|w.mode.is_some()){
+                self.alpha.lock().await.members.insert(player.into(),lease.member);
+            }
+            self.recovery_result(player,preserved,if preserved{"PRESERVED"}else{"REDEPLOY"}).await;
+        }else{
+            self.alpha.lock().await.reservations.insert(profile.into(),lease);
+            self.recovery_result(player,false,"WORLD_UNAVAILABLE").await;
+        }
+    }
+    async fn recovery_result(&self,player:&str,preserved:bool,reason:&str){
+        if let Some(c)=self.connections.lock().await.get(player){let _=c.tx.send(json!({"type":"session_restored","preserved":preserved,"reason":reason}).to_string());}
+    }
+    async fn release_retained(&self,lease:&Reservation){
+        if let Some(old)=&lease.retained_player{
+            let runtime=self.runtimes.lock().await.get(&lease.member.world).cloned();
+            if let Some(runtime)=runtime{runtime.lock().await.leave(old);}
         }
     }
     async fn team_for_hero(
@@ -279,11 +293,8 @@ impl Server {
         if !map_available(&map) {
             return Err("Choose an installed environment.".into());
         }
-        {
-            let mut a = self.alpha.lock().await;
-            a.queue.retain(|ticket| ticket.profile != profile);
-            a.reservations.remove(&profile);
-        }
+        let released={let mut a=self.alpha.lock().await;a.queue.retain(|ticket|ticket.profile!=profile);a.reservations.remove(&profile)};
+        if let Some(lease)=released{self.release_retained(&lease).await;}
         self.leave_inner(player).await;
         let ticket = Ticket {
             player: player.into(),
@@ -320,8 +331,9 @@ impl Server {
                 let profile = self.actor(player).await?;
                 let mut a = self.alpha.lock().await;
                 a.queue.retain(|t| t.profile != profile);
-                a.reservations.remove(&profile);
+                let released=a.reservations.remove(&profile);
                 drop(a);
+                if let Some(lease)=released{self.release_retained(&lease).await;}
                 self.leave_inner(player).await;
                 Ok(json!({}))
             }
@@ -642,13 +654,9 @@ impl Server {
             return;
         };
         let now = timestamp();
-        let before = self.alpha.lock().await.reservations.len();
-        self.alpha
-            .lock()
-            .await
-            .reservations
-            .retain(|_, r| r.expires > now);
-        let mut changed = before != self.alpha.lock().await.reservations.len();
+        let expired:Vec<_>={let mut alpha=self.alpha.lock().await;let keys:Vec<_>=alpha.reservations.iter().filter(|(_,r)|r.expires<=now).map(|(id,_)|id.clone()).collect();keys.into_iter().filter_map(|id|alpha.reservations.remove(&id)).collect()};
+        for lease in &expired{self.release_retained(lease).await;}
+        let mut changed=!expired.is_empty();
         let clients = self.connections.lock().await.clone();
         let reserved: HashSet<_> = self
             .alpha

@@ -5,7 +5,7 @@ import {persist} from 'zustand/middleware';
 export type WeaponMount={role:'assault'|'support'|'medic';x:number;y:number;z:number};
 export type TankWeapon='cannon'|'coax';
 export const DEFAULT_MOUNT:WeaponMount={role:'assault',x:0,y:1.1,z:0};
-export const combatIntent={ramPulseUntil:0,orientationLocked:false,ram:false,gamepadRam:false,keyboardRam:false,weapon:'cannon' as TankWeapon,enabled:false,yaw:0,pitch:0,fire:false,keyboardFire:false,gamepadFire:false};
+export const combatIntent={ramPulseUntil:0,orientationLocked:true,ram:false,gamepadRam:false,keyboardRam:false,weapon:'cannon' as TankWeapon,enabled:false,yaw:0,pitch:0,fire:false,keyboardFire:false,gamepadFire:false};
 type CombatState={
   enabled:boolean;
   scope:boolean;
@@ -22,8 +22,8 @@ type CombatState={
 };
 export const useCombatStore=create<CombatState>()(persist((set)=>({
   scopeZoom:2,setScopeZoom:scopeZoom=>set({scopeZoom}),
-  scope:false,setScope:scope=>set({scope}),
-  enabled:false,orientationLocked:false,weapon:'cannon',mounts:{},
+  scope:false,setScope:scope=>{if(scope){combatIntent.orientationLocked=false;set({scope,orientationLocked:false});}else set({scope});},
+  enabled:false,orientationLocked:true,weapon:'cannon',mounts:{},
   setOrientationLocked:orientationLocked=>{combatIntent.orientationLocked=orientationLocked;set({orientationLocked});},
   selectWeapon:weapon=>{
     if(weapon!=='cannon'&&weapon!=='coax')return;

@@ -1,3 +1,4 @@
+import {ResourceFlags} from '../../store/telemetry/resourceMasks';
 import { memo } from "react";
 import type { GaugeConfig } from "../../store/session/vehicleConfigStore";
 import FuelGauge from "./FuelGauge";
@@ -52,6 +53,7 @@ export default memo(function FuelTemp({
           critical={config.criticalC}
           power={power}
         />
+        {live&&(resourceMask&ResourceFlags.THERMAL_RECOVERY)!==0&&<text className="engine-thermal-notice" x="100" y="104" textAnchor="middle" fill="#e5b15d" fontSize="8" aria-label="Engine heat recovery">{power==='running'?'LIMP HOME':temp!==null&&temp>=config.overheatC?'COOLING':'RESTART READY'}</text>}
       </svg>
       <ResourceLights
         mask={clusterMask}

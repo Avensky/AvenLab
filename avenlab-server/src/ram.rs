@@ -10,7 +10,7 @@ pub const FORCE_MULTIPLIER:f32=3.0;
 pub const STUN_SECONDS:f32=1.0;
 pub const FUEL_COST:f32=10.0;
 pub const CONDITION_COST:f32=0.04;
-pub const HEAT_DEBT:f32=6.0;
+pub const HEAT_DEBT:f32=2.0;
 #[derive(Default)]
 pub struct RamState{
  pub blocked:&'static str,pub remaining:f32,pub cooldown:f32,pub requested:bool,
@@ -20,7 +20,7 @@ pub struct RamState{
 impl RamState{
  pub fn advance(&mut self,dt:f32,allowed:bool)->bool{
   let mut started=false;
-  self.remaining=(self.remaining-dt).max(0.0);self.cooldown=(self.cooldown-dt).max(0.0);
+  self.remaining=(self.remaining-dt).max(0.0);if self.remaining<0.0001{self.remaining=0.0;}self.cooldown=(self.cooldown-dt).max(0.0);
   if !allowed&&self.blocked!="AIRBORNE"{self.remaining=0.0;}
   if self.requested&&!self.held&&self.cooldown<=0.0&&allowed{
    self.remaining=DURATION;self.cooldown=COOLDOWN;self.hits.clear();self.cost_due=true;started=true;

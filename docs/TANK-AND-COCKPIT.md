@@ -1,3 +1,5 @@
+> Current update: [Original Hero fill, shared HUD, limp-home and retained practice](ORIGINAL-HERO-FILL-AND-PRACTICE-RETENTION.md). Earlier tuning below is historical.
+
 # Tracked tank and cockpit controls
 
 Steering calibration and the secondary-weapon status below are superseded by [TANK-HANDLING-AND-WEAPONS.md](TANK-HANDLING-AND-WEAPONS.md). Cannon / Coax MG selection is now implemented.

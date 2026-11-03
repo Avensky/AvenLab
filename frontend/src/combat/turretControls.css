@@ -8,7 +8,7 @@
 .turret-actions button{width:44px;height:48px;min-width:44px;min-height:44px;border:0!important;border-radius:50%;background:transparent!important;box-shadow:none!important;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:0;color:var(--app-text);touch-action:none;font:700 7px/1 system-ui}
 .turret-actions button>span:not(.action-progress-orbit){font-size:6px;line-height:1;white-space:nowrap}
 .attack-label{display:flex;flex-direction:column;align-items:center}.attack-label small{font-size:6px}
-.cooldown-clock{--action-orbit-size:34px;width:34px;height:34px;flex:none;color:var(--app-accent,#82b7ff)}
+.cooldown-clock{--action-orbit-size:34px;--orbit-scale:.68;width:34px;height:34px;flex:none;color:var(--app-accent,#82b7ff)}
 .attack-icon{width:19px;height:19px;position:relative!important;inset:auto!important;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;fill:none}
 .action-progress-orbit>.attack-icon{width:19px;height:19px}
 .turret-actions button[aria-pressed=true] .cooldown-clock{color:var(--app-text);filter:drop-shadow(0 0 4px var(--app-accent))}
@@ -18,18 +18,24 @@
 .cockpit-subtabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px}.cockpit-subtabs button{flex:1;min-width:64px}
 .hud-drive-turret-stack{grid-column:2;grid-row:1;display:flex;flex-direction:column;align-items:center;gap:4px;pointer-events:none}
 .hud-drive-turret-stack:not(:has(.hud-group)){display:none}.hud-drive-turret-stack>.hud-shifter{width:var(--shifter-size)}
-.drive-dock[data-tank-controls=true] .tank-control-deck{--shifter-size:var(--hud-shifter-size);max-width:none;width:max-content;grid-template-columns:var(--shifter-size) 54px var(--shifter-size);gap:6px;align-self:flex-end;position:relative;left:calc(var(--console-width) - (2 * var(--shifter-size) + 66px));margin:0}
-.tank-control-deck .hud-drive-turret-stack,.tank-control-deck .hud-turret,.tank-control-deck .turret-touch-controls,.tank-control-deck .turret-orbit{display:contents}
-.drive-dock .tank-control-deck>.hud-parking{grid-column:2;grid-row:1;height:var(--shifter-size)}
-.tank-control-deck .hud-shifter{grid-column:1;grid-row:1}.tank-control-deck .turret-joystick{grid-column:3;grid-row:1}
-.tank-control-deck .turret-actions{grid-column:1/-1;grid-row:2;justify-content:end;justify-self:end;width:max-content;min-width:0}
-.drive-dock[data-tank-controls=true] .dock-equipment{padding-bottom:0}
+.drive-dock[data-aim-controls=true] .ability-control-deck{--shifter-size:var(--hud-shifter-size);max-width:none;width:max-content;grid-template-columns:var(--shifter-size) 54px var(--shifter-size);gap:6px;align-self:flex-end;position:relative;left:calc(var(--console-width) - (2 * var(--shifter-size) + 66px));margin:0}
+.ability-control-deck .hud-drive-turret-stack,.ability-control-deck .hud-turret,.ability-control-deck .turret-touch-controls,.ability-control-deck .turret-orbit{display:contents}
+.drive-dock .ability-control-deck>.hud-parking{grid-column:2;grid-row:1;height:var(--shifter-size)}
+.ability-control-deck .hud-shifter{grid-column:1;grid-row:1}.ability-control-deck .turret-joystick{grid-column:3;grid-row:1}
+.ability-control-deck .turret-actions{grid-column:1/-1;grid-row:2;justify-content:end;justify-self:end;width:max-content;min-width:0}
+.drive-dock[data-aim-controls=true] .dock-equipment{padding-bottom:0}
 .console-foot-controls .ignition-hud{position:static!important;inset:auto!important;transform:none!important;flex:0 0 48px;width:48px;height:48px;pointer-events:auto}
 .ignition-quiet{opacity:.3!important;transition:opacity .2s}.ignition-quiet:focus-within,.ignition-quiet:has([data-holding=true]),.ignition-quiet:active{opacity:1!important}
 @media(hover:hover){.ignition-quiet:hover{opacity:1!important}}
 @media(max-width:600px) and (orientation:portrait){
- .driving-hud:has(.turret-joystick){--wheel-size:110px}.driving-hud:has(.turret-joystick) .wheel-hud{bottom:calc(72px + var(--wheel-size)*var(--wheel-drop,.28))}
- .drive-dock[data-tank-controls=true] .tank-control-deck{grid-template-columns:54px var(--shifter-size);gap:5px;left:0}
- .tank-control-deck .hud-shifter{grid-column:2;grid-row:1}.drive-dock .tank-control-deck>.hud-parking{grid-column:1;grid-row:2}.tank-control-deck .turret-joystick{grid-column:2;grid-row:2}.tank-control-deck .turret-actions{grid-row:3;grid-template-columns:repeat(4,44px)}
- .tank-control-deck:not(:has(.hud-shifter)) .turret-joystick,.drive-dock .tank-control-deck:not(:has(.hud-shifter))>.hud-parking{grid-row:1}.tank-control-deck:not(:has(.hud-shifter)) .turret-actions{grid-row:2}
+ .driving-hud[data-drive-controls=true]{--wheel-size:clamp(110px,31vw,160px)}.driving-hud[data-drive-controls=true] .wheel-hud{bottom:calc(72px + var(--wheel-size)*var(--wheel-drop,.28))}
+ .drive-dock[data-aim-controls=true] .ability-control-deck{grid-template-columns:54px var(--shifter-size);gap:5px;left:0}
+ .ability-control-deck .hud-shifter{grid-column:2;grid-row:1}.drive-dock .ability-control-deck>.hud-parking{grid-column:1;grid-row:2}.ability-control-deck .turret-joystick{grid-column:2;grid-row:2}.ability-control-deck .turret-actions{grid-row:3;grid-template-columns:repeat(4,44px)}
+ .ability-control-deck:not(:has(.hud-shifter)) .turret-joystick,.drive-dock .ability-control-deck:not(:has(.hud-shifter))>.hud-parking{grid-row:1}.ability-control-deck:not(:has(.hud-shifter)) .turret-actions{grid-row:2}
 }
+
+/* All vehicles share the ignition footprint; constrain the actual cylinder as
+   well as its wrapper so the 128px cockpit artwork cannot spill below the HUD. */
+.drive-dock .console-foot-controls .ignition-hud{align-self:center;min-height:48px;margin-bottom:6px}
+.drive-dock .console-foot-controls .ignition-cylinder{width:48px!important;height:48px!important;min-width:48px;min-height:48px}
+.drive-dock .console-foot-controls .ignition-system{width:48px;height:48px}

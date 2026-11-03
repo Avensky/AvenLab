@@ -402,3 +402,5 @@ html[data-reduce-motion="true"] .hero-ready-bolt {
   margin: 0 auto 1px;
   mask: url("/images/traction-control.svg") center / contain no-repeat;
 }
+
+.dashboard-cluster text.engine-thermal-notice{font-size:8px;fill:#e5b15d}

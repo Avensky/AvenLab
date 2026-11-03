@@ -1,3 +1,4 @@
+import {ColumnStalks} from './ColumnStalks';
 import {SteeringSystemPicker} from './panels/SteeringSystemPicker';
 import { TurretPage } from "./panels/TurretPage";
 import { cockpitParent } from "./panels/tabs";
@@ -125,7 +126,7 @@ export function CockpitPanel() {
           {(tab === "lights" || tab === "wipers" || tab === "cruise") && (
             <div className="cockpit-column-page">
               <SteeringSystemPicker selected={tab}/>
-              <div className="cockpit-column-options">
+              <div className="cockpit-column-options"><div className="wheel-assembly cockpit-detail-lever" aria-label={`Large ${tab} lever`}><ColumnStalks system={tab} detailed/></div>
 
               {tab === "lights" && <LightsPanel />}
               {tab === "wipers" && <WipersPanel />}

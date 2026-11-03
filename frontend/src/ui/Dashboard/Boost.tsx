@@ -1,3 +1,5 @@
+import {useNetworkStore} from '../../store/session/networkStore';
+import {triggerRam} from '../../combat/turretControls';
 import { useInputStore } from "../../store/input/inputStore";
 import { VehicleFlags, hasFlag } from "../../store/input/protocol/inputMasks";
 import { HoldButton } from "../../controls/TouchControls";
@@ -9,6 +11,7 @@ export function Boost({
   fraction: number | null;
   active: boolean;
 }) {
+  const tank=useNetworkStore(s=>s.getMe()?.vehicle_id==='tank');
   const requested = useInputStore((s) =>
     hasFlag(s.input.vehicleMask, VehicleFlags.BOOST),
   );
@@ -17,17 +20,17 @@ export function Boost({
       <HoldButton
         className="nos-button resource-line"
         disabled={fraction === null || fraction <= 0}
-        aria-label="Hold NOS boost"
+        aria-label={tank?"Ram nitrous reserve":"Hold NOS boost"}
         aria-pressed={requested}
         title={
           fraction === null
             ? "NOS unavailable for this vehicle"
-            : "Hold NOS · Shift / LB"
+            : tank?"Ram reserve · refill at a fuel/service station":"Hold NOS · Shift / LB"
         }
-        onHold={(held) =>
+        onHold={(held) =>{if(tank){if(held)triggerRam();return;}
           useInputStore
             .getState()
-            .setHeldVehicleFlag("touch-actions", VehicleFlags.BOOST, held)
+            .setHeldVehicleFlag("touch-actions", VehicleFlags.BOOST, held);}
         }
       >
         <span>NOS</span>

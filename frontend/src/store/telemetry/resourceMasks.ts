@@ -6,4 +6,5 @@ export const ResourceFlags = {
   STARVED: 8,
   DAMAGED: 16,
   HEAT_LOCK: 32,
+  THERMAL_RECOVERY:64,
 } as const;

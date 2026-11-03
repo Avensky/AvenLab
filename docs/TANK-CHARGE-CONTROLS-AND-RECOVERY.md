@@ -1,3 +1,5 @@
+> Current update: [Original Hero fill, shared HUD, limp-home and retained practice](ORIGINAL-HERO-FILL-AND-PRACTICE-RETENTION.md). Earlier tuning below is historical.
+
 # Tank charge, controls and recovery
 
 This is the current tank behavior. Earlier release notes describe historical tuning.

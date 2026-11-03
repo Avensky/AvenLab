@@ -586,7 +586,7 @@ mod tests {
         assert_eq!(config["config"]["max_speed"], BRZ.max_speed);
         assert!(config["config"].get("resources").is_none(), "server tuning is not a repeated HUD payload");
         let tank = serde_json::to_value(VehicleConfigPayload::new("driver", TANK)).unwrap();
-        assert_eq!(tank["config"]["hud"]["telemetry_mask"], 111);
+        assert_eq!(tank["config"]["hud"]["telemetry_mask"], 127);
     }
 
     #[test]

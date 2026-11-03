@@ -62,6 +62,7 @@ pub struct Ticket {
 }
 #[derive(Clone, Debug)]
 pub struct Reservation {
+    pub retained_player:Option<String>,
     pub member: Member,
     pub expires: u64,
 }

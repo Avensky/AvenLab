@@ -11,7 +11,7 @@ import {
   requestTurnSignal,
   stepTurnSignal,
 } from "./stalks/index";
-export const ColumnStalks = memo(function ColumnStalks() {
+export const ColumnStalks = memo(function ColumnStalks({system,detailed=false}:{system?:"lights"|"wipers"|"cruise";detailed?:boolean}={}) {
   const state = useCockpitState(),
     flags = useInputStore((s) => s.input.vehicleMask);
   const clearWasher = useCallback(() => {
@@ -31,8 +31,9 @@ export const ColumnStalks = memo(function ColumnStalks() {
       role="group"
       aria-label="Steering column controls"
     >
-      <Stalk
+      {(!system||system==="lights")&&<Stalk
         {...STALK_LAYOUTS.lights}
+        {...(detailed?{scale:1.6,spacing:64,reach:40}: {})}
         label="Lights and turn signal stalk"
         words={["R", "L"]}
         asset="headlights.svg"
@@ -57,9 +58,10 @@ export const ColumnStalks = memo(function ColumnStalks() {
         onDown={() => stepTurnSignal(-1)}
         onTurn={() => change({ lights: (state.current.lights + 1) % 3 }, 6)}
         onCancel={() => requestTurnSignal(0)}
-      />
-      <Stalk
+      />}
+      {(!system||system==="wipers")&&<Stalk
         {...STALK_LAYOUTS.wipers}
+        {...(detailed?{scale:1.6,spacing:64,reach:40}: {})}
         label="Wiper and washer stalk"
         words={["WASH", "WIPE"]}
         asset="windshield-wiper.svg"
@@ -71,9 +73,10 @@ export const ColumnStalks = memo(function ColumnStalks() {
           if (direction === 1) clearWasher();
         }}
         onTurn={() => change({ wipers: (state.current.wipers + 1) % 4 }, 7)}
-      />
-      <Stalk
+      />}
+      {(!system||system==="cruise")&&<Stalk
         {...STALK_LAYOUTS.cruise}
+        {...(detailed?{scale:1.6,spacing:64,reach:40}: {})}
         label="Cruise control stalk"
         words={["RES+", "SET−"]}
         asset="cruise-control.svg"
@@ -89,7 +92,7 @@ export const ColumnStalks = memo(function ColumnStalks() {
           )
         }
         onCancel={() => change({ cruiseAction: 3 }, 4)}
-      />
+      />}
     </div>
   );
 });

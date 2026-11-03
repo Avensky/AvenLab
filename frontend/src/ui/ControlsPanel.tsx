@@ -1,7 +1,6 @@
 import {DrivingIgnition} from './Cockpit/DrivingIgnition';
 import {useCombatStore} from '../combat/combatStore';
-import {useNetworkStore} from '../store/session/networkStore';
-import {TurretJoystick} from '../combat/TurretJoystick';
+import {VehicleAimControls} from '../combat/TurretJoystick';
 /** Driving console composition. Each group has its own persisted visibility;
  * the two physical levers are peers and the assist bank sits beside the pedals.
  * Components own requests, preferences own layout, Rust owns actual vehicle state. */
@@ -16,26 +15,25 @@ import Pedals from "./Pedals";
 import { TouchStick } from "../controls/TouchControls";
 
 export default function ControlsPanel() {
-  const tank=useNetworkStore(s=>s.getMe()?.vehicle_id==='tank');
   const armed=useCombatStore(s=>s.enabled);
   const turret=usePreferencesStore(s=>s.hudGroups.turret);
   const expanded = usePreferencesStore((s) => s.showDriveControls),
     touch = usePreferencesStore((s) => s.showTouchControls),
     layout = usePreferencesStore((s) => s.touchLayout);
-  const tankControls=tank&&armed&&touch&&turret;
+  const aimControls=armed&&touch&&turret;
   return (
     <>
       <UtilityDock />
       <aside
         className="drive-dock"
         data-expanded={expanded}
-        data-tank-controls={tankControls}
+        data-aim-controls={aimControls}
         aria-label="Drive controls"
       >
-        {(expanded||tankControls) && (
+        {(expanded||aimControls) && (
           <div className="dock-equipment">
             <div
-              className={`transmission-console hud-transmission${tankControls?" tank-control-deck":""}`}
+              className={`transmission-console hud-transmission${aimControls?" ability-control-deck":""}`}
               data-compact="true"
             >
               {expanded&&<HudGroup
@@ -47,14 +45,14 @@ export default function ControlsPanel() {
               </HudGroup>}
               <div className="hud-drive-turret-stack">
                 {expanded&&<HudGroup id="shifter" title="SHIFTER" className="hud-shifter"><DriveGearControl /></HudGroup>}
-                {tankControls&&<HudGroup id="turret" title="TURRET" className="hud-turret"><TurretJoystick/></HudGroup>}
+                {aimControls&&<HudGroup id="turret" title="TURRET" className="hud-turret"><VehicleAimControls/></HudGroup>}
               </div>
             </div>
           </div>
         )}
         {/* This row defines the shared radio/HVAC width in styles/layout.css. */}
         <div className="console-foot-controls">
-          {tank&&expanded&&<DrivingIgnition/>}
+          {expanded&&<DrivingIgnition/>}
           {expanded && (
             <HudGroup
               id="assists"

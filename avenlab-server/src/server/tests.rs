@@ -550,7 +550,7 @@ async fn roster_portraits_publish_only_equipped_styles_for_live_and_reserved_pla
     assert!(card.get("token_hash").is_none());
     assert!(card.get("hero_loadouts").is_none());
     let member = alpha.members.remove(&player).unwrap();
-    alpha.reservations.insert(profile_id.clone(), Reservation { member, expires: timestamp() + 30 });
+    alpha.reservations.insert(profile_id.clone(), Reservation { retained_player:None, member, expires: timestamp() + 30 });
     let reserved = Server::alpha_view(&alpha, &profile_id, &player, &clients, &data);
     assert_eq!(reserved["roster"][0]["appearance"], card["appearance"]);
     assert_eq!(reserved["roster"][0]["reconnecting"], true);
@@ -561,4 +561,33 @@ async fn roster_portraits_publish_only_equipped_styles_for_live_and_reserved_pla
     drop(clients);
     drop(data);
     cleanup(server).await;
+}
+
+#[tokio::test]
+async fn practice_disconnect_keeps_the_same_body_map_resources_and_authorized_owner(){
+ for mode_name in ["sandbox","editor"]{
+  let s=alpha_server();let (player,identity,_)=client(&s,"Practice owner").await;
+  let world_id=mode(&s,&player,mode_name,"tank").await["world_id"].as_u64().unwrap() as usize;
+  s.spawn(&player,"road_precision","tank").await.unwrap();
+  let runtime=s.runtimes.lock().await[&world_id].clone();
+  let handle;let position;
+  {let mut room=runtime.lock().await;handle=room.physics.vehicles[&player].body;room.physics.vehicles.get_mut(&player).unwrap().powertrain.nos_remaining_s=12.0;room.physics.asset_health.insert("saved-destruction".into(),25.0);position=*room.physics.bodies[handle].translation();}
+  s.disconnect(&player).await;
+  {let mut room=runtime.lock().await;assert!(room.physics.vehicles.contains_key(&player));assert!(!room.game.clients.contains_key(&player));assert_eq!(room.tick(0.0),0);}
+  let lease=s.alpha.lock().await.reservations[identity["profile_id"].as_str().unwrap()].clone();assert_eq!(lease.retained_player.as_deref(),Some(player.as_str()));assert!(lease.expires>=timestamp()+590);
+  let (next,_,_)=client(&s,"Temporary").await;
+  s.handle(&next,json!({"action":"identify","name":"Practice owner","token":identity["token"]})).await.unwrap();
+  assert_eq!(s.connections.lock().await[&next].world_id,Some(world_id));
+  assert_eq!(s.connections.lock().await[&next].team,lease.member.team);
+  {let room=runtime.lock().await;assert_eq!(room.physics.vehicles[&next].body,handle);assert_eq!(*room.physics.bodies[handle].translation(),position);assert_eq!(room.physics.vehicles[&next].powertrain.nos_remaining_s,12.0);assert_eq!(room.physics.asset_health["saved-destruction"],25.0);assert!(!room.physics.vehicles.contains_key(&player));assert!(!room.game.entities.contains_key(&player));assert_eq!(room.physics.body_to_player[&handle],next);}
+  s.handle(&next,json!({"action":"world_leave"})).await.unwrap();assert!(s.runtimes.lock().await.is_empty());cleanup(s).await;
+ }
+}
+#[tokio::test]
+async fn expired_practice_body_is_removed_before_world_capacity_is_reused(){
+ let s=alpha_server();let (player,_,_)=client(&s,"Expiring").await;
+ let world=mode(&s,&player,"sandbox","tank").await["world_id"].as_u64().unwrap() as usize;s.spawn(&player,"road_precision","tank").await.unwrap();
+ let runtime=s.runtimes.lock().await[&world].clone();s.disconnect(&player).await;
+ for lease in s.alpha.lock().await.reservations.values_mut(){lease.expires=timestamp()-1;}
+ s.maintain_alpha().await;assert!(runtime.lock().await.physics.vehicles.is_empty());assert!(s.runtimes.lock().await.is_empty());cleanup(s).await;
 }

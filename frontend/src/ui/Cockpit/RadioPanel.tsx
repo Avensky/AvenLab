@@ -38,8 +38,10 @@ const RadioStatus = memo(function RadioStatus({
             ? "WAITING"
             : mask & ResourceFlags.STARVED
               ? "FUEL EMPTY"
-              : mask & ResourceFlags.HEAT_LOCK
-                ? "COOL ENGINE"
+              : mask & ResourceFlags.THERMAL_RECOVERY
+                ? "LIMP HOME"
+                : mask & ResourceFlags.HEAT_LOCK
+                  ? "COOL ENGINE"
                 : mask & ResourceFlags.HOT
                   ? "ENGINE HOT"
                   : mask & ResourceFlags.LOW_FUEL

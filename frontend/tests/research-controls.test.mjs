@@ -164,6 +164,8 @@ test("research controls keep input, display and audio updates independent", asyn
         for (const [mask, text] of [
           [2, "ENGINE HOT"],
           [34, "COOL ENGINE"],
+          [64, "LIMP HOME"],
+          [66, "LIMP HOME"],
           [8, "FUEL EMPTY"],
           [4, "LOW FUEL"],
           [16, "REPAIR"],

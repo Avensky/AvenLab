@@ -176,7 +176,12 @@ impl Server {
     pub async fn disconnect(&self, player: &str) {
         let _operation = self.operations.lock().await;
         self.reserve_disconnect(player).await;
-        self.leave_inner(player).await;
+        let client=self.connections.lock().await.get(player).cloned();
+        let retained={let a=self.alpha.lock().await;client.as_ref().and_then(|c|c.profile_id.as_ref()).and_then(|p|a.reservations.get(p)).is_some_and(|r|r.retained_player.as_deref()==Some(player))};
+        if retained{
+            if let Some(world)=client.and_then(|c|c.world_id){let runtime=self.runtimes.lock().await.get(&world).cloned();if let Some(runtime)=runtime{runtime.lock().await.detach(player);}}
+            self.alpha.lock().await.members.remove(player);
+        }else{self.leave_inner(player).await;}
         self.alpha
             .lock()
             .await
@@ -232,11 +237,12 @@ impl Server {
                 return Err("The world password is incorrect.".into());
             }
         }
+        let (held_world,held_total)={let alpha=self.alpha.lock().await;let now=timestamp();(alpha.reservations.values().filter(|r|r.expires>now&&r.member.world==world_id).count(),alpha.reservations.values().filter(|r|r.expires>now).count())};
         let clients = self.connections.lock().await;
         if clients
             .values()
             .filter(|member| member.world_id == Some(world_id))
-            .count()
+            .count()+held_world
             >= world.max_players
         {
             return Err("This world is full.".into());
@@ -245,7 +251,7 @@ impl Server {
             .values()
             .filter(|member| member.world_id.is_some())
             .count();
-        if client.world_id.is_none() && total >= self.max_players {
+        if client.world_id.is_none() && total+held_total >= self.max_players {
             return Err("This server's active-player limit has been reached.".into());
         }
         let replacing = client.world_id.is_some_and(|old| {
@@ -319,6 +325,7 @@ impl Server {
         let _=client.tx.send(json!({"type":"world_changed","world":{"id":world_id,"name":world.name,"map":world.map,"team":team.as_str()}}).to_string());
         let _=client.tx.send(json!({"type":"welcome","player_id":player,"room_id":world_id,"team":team.as_str(),"spawned":false}).to_string());
         room.send_existing_configs(&client.tx);
+        let _=client.tx.send(json!({"type":"map_snapshot","world_id":world_id,"data":room.physics.map_snapshot()}).to_string());
         Ok(json!({"world_id":world_id,"map":world.map}))
     }
     pub async fn saved_appearance(&self, player: &str, vehicle: &str) -> crate::alpha::appearance::HeroAppearance {

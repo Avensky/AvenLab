@@ -33,6 +33,8 @@ export function parseChatMessage(value: unknown): ChatMessage | null {
 /** Ephemeral current-session text only. Never persist team chat or subscribe to
  * physics ticks. A context change discards the previous team's history. */
 export const useChatStore = create<{
+  notices:{id:number;text:string;sent_at:number}[];
+  notify:(text:string)=>void;
   activity: { serial: number; channel: ChatChannel; author: string } | null;
   profile: string | null;
   teamContext: string | null;
@@ -46,6 +48,8 @@ export const useChatStore = create<{
   receive: (value: unknown) => void;
   mergeHistory: (context: string, values: unknown[]) => void;
 }>((set, get) => ({
+  notices:[],
+  notify:text=>set(s=>({notices:[...s.notices,{id:Date.now(),text,sent_at:Date.now()/1000}].slice(-5)})),
   activity: null,
   profile: null,
   teamContext: null,

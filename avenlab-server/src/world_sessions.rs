@@ -50,6 +50,21 @@ impl WorldRuntime {
         self.game.apply_spawn_info(&spawn);
         spawn.team
     }
+    /// No transport remains for a leased practice body. Clear all held intent.
+    pub fn detach(&mut self,id:&str){
+        self.game.unregister_client(id);
+        if let Some(e)=self.game.entities.get_mut(id){e.last_packet=None;}
+        if let Some(v)=self.physics.vehicles.get_mut(id){v.throttle=0.0;v.steer=0.0;v.brake=1.0;v.handbrake=0.0;v.ram.cancel();}
+        if let Some(c)=self.physics.combat_poses.get_mut(id){c.fire=false;c.ram=false;}
+    }
+    pub fn resume(&mut self,old:&str,new:&str,connection:&crate::server::Connection)->bool{
+        if !self.game.entities.contains_key(old)||!self.physics.vehicles.contains_key(old){return false;}
+        self.leave(new); // Release the temporary admission entity, not the leased body.
+        if !self.physics.reassign_player(old,new){return false;}
+        let mut entity=self.game.entities.remove(old).unwrap();entity.id=new.into();entity.last_packet=None;
+        self.game.entities.insert(new.into(),entity);
+        self.game.register_client(new.into(),connection.tx.clone(),connection.frame.clone(),connection.input.clone());true
+    }
     pub fn leave(&mut self, id: &str) {
         self.physics.despawn_vehicle_for_player(id);
         if let Some(entity) = self.game.entities.get(id) {
@@ -91,7 +106,7 @@ impl WorldRuntime {
         }
     }
     pub fn tick(&mut self, lock_ms: f64) -> usize {
-        if self.physics.vehicles.is_empty() {
+        if self.physics.vehicles.is_empty() || self.game.clients.is_empty() {
             return 0;
         }
         let started = std::time::Instant::now();

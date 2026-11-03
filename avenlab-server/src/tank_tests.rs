@@ -211,3 +211,19 @@ fn range_size(side:f32)->PhysicsWorld {
  assert_eq!(world.vehicles["tank"].ram.stun_remaining,0.0);
  world.combat_tick("tank",2,Some(&intent));assert_eq!(world.combat_poses["tank"].shot,1);
 }
+
+#[test]fn ram_consumes_nitrous_without_a_thermal_spike_and_requires_a_refill(){
+ let mut w=range_size(20000.0);let fuel=w.vehicles["tank"].powertrain.fuel_liters;let heat=w.vehicles["tank"].powertrain.temperature_c;
+ {let v=w.vehicles.get_mut("tank").unwrap();v.throttle=1.0;v.ram.requested=true;v.powertrain.boost_requested=true;}
+ for _ in 0..420{w.step(SIMULATION_DT);}
+ let v=&w.vehicles["tank"];assert!(v.powertrain.nos_remaining_s>13.9&&v.powertrain.nos_remaining_s<14.1);assert!(v.powertrain.temperature_c<=heat+3.5);assert!(v.powertrain.fuel_liters<fuel-9.9);assert!(v.powertrain.running);
+ {let v=w.vehicles.get_mut("tank").unwrap();v.ram.cancel();v.ram.cooldown=0.0;v.ram.requested=false;v.powertrain.nos_remaining_s=6.9;}
+ w.step(SIMULATION_DT);w.vehicles.get_mut("tank").unwrap().ram.requested=true;w.step(SIMULATION_DT);assert!(!w.vehicles["tank"].ram.active());assert_eq!(w.vehicles["tank"].ram.blocked,"REFILL NOS");
+}
+
+#[test]fn an_overheated_tank_can_physically_crawl_and_turn_toward_a_service_bay(){
+ let mut w=range_size(20000.0);let h=w.vehicles["tank"].body;let start=*w.bodies[h].translation();
+ {let v=w.vehicles.get_mut("tank").unwrap();v.powertrain.temperature_c=145.0;v.throttle=1.0;v.steer=0.15;}
+ for _ in 0..240{w.step(SIMULATION_DT);assert!(w.vehicles["tank"].powertrain.running,"heat must not stall the tank");}
+ let tank=&w.vehicles["tank"];assert!(tank.powertrain.thermal_recovery);assert!(tank.powertrain.temperature_c<145.0);assert!((w.bodies[h].translation()-start).norm()>0.5);assert!(w.bodies[h].linvel().norm()>0.2);assert!(w.bodies[h].angvel().y.abs()>0.01);assert_eq!(tank.ram.blocked,"COOL ENGINE");
+}

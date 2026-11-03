@@ -1,4 +1,3 @@
-import {useNetworkStore} from '../store/session/networkStore';
 import {useCombatStore} from '../combat/combatStore';
 import {EditorDriveBar} from '../worldBuilder/vehicleEditor/EditorDriveBar';
 import { WeaponSelector } from '../combat/WeaponSelector';
@@ -13,10 +12,8 @@ import { usePerformanceOverlayStore } from "../performance/performanceOverlaySto
 import { useCanDataStore } from "../store/recon/canDataStore";
 import { startVehicleTelemetry } from "../store/telemetry/vehicleTelemetryStore";
 import { HudGroup } from "./HudGroup";
-import { DrivingIgnition } from "./Cockpit/DrivingIgnition";
 
 export function DrivingHUD() {
-  const tank=useNetworkStore(s=>s.getMe()?.vehicle_id==='tank');
   const scoped=useCombatStore(s=>s.scope&&s.enabled);
   const drivingLayout = usePreferencesStore((s) => s.drivingLayout);
   const touch = usePreferencesStore((s) => s.showTouchControls),
@@ -90,7 +87,6 @@ export function DrivingHUD() {
         </HudGroup>
       )}
 
-      {dock && !tank && <DrivingIgnition />}
       <EditorDriveBar />
       <WeaponSelector />
       <ControlsPanel />

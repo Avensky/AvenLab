@@ -126,7 +126,7 @@ pub async fn start_websocket_server(server: Arc<Server>) {
             let mut passwords = RateLimit::new(4, 30);
             let mut pings = RateLimit::new(2, 1);
             loop {
-                let next = tokio::select! {next=tokio::time::timeout(Duration::from_secs(30),read.next())=>match next{Ok(value)=>value,Err(_)=>break},_=&mut writer=>break};
+                let next = tokio::select! {next=tokio::time::timeout(Duration::from_secs(120),read.next())=>match next{Ok(value)=>value,Err(_)=>break},_=&mut writer=>break};
                 let Some(Ok(Message::Text(text))) = next else {
                     if next.is_none()
                         || next.is_some_and(|message| {

@@ -13,6 +13,7 @@ export function CombatHUD(){
    const key=network.connected&&me?`${network.playerId}:${me.vehicle_id}`:'';
    if(key===autoVehicle)return;
    const wasTank=autoVehicle.endsWith(':tank');autoVehicle=key;
+   if(me&&network.connected)useCombatStore.getState().setOrientationLocked(true);
    if(me?.vehicle_id==='tank'&&network.connected){useCombatStore.getState().selectWeapon('cannon');setTurretEnabled(true);}
    else if(wasTank||!network.connected)useCombatStore.getState().setEnabled(false);
   };

@@ -17,7 +17,7 @@
 @media(max-width:900px),(max-height:500px){.hero-modifications{padding:8px;gap:8px;}}
 .hero-workshop .hero-portrait-art {background:var(--app-raised);}
 .hero-workshop-actions{display:flex;align-items:center;gap:6px;min-height:28px}
-.hero-main-hold{--action-orbit-size:24px;--orbit-color:#75adff;min-height:28px!important;height:28px;padding:3px 6px!important;gap:6px!important;font:inherit;touch-action:none;user-select:none}
+.hero-main-hold{--action-orbit-size:28px;--orbit-scale:.56;--orbit-color:#438eff;min-height:28px!important;height:28px;padding:3px 6px!important;gap:6px!important;font:inherit;touch-action:none;user-select:none}
 .hero-hold-accessible{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
 .hero-collection-save-status {font-size:10px;background:var(--app-panel);color:var(--app-text);padding:6px;pointer-events:auto;}
 @media(prefers-reduced-motion:reduce){.hero-main-halo{transform:none;}}

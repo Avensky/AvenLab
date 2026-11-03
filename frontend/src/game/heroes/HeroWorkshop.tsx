@@ -51,7 +51,7 @@ export function HeroWorkshop() {
  useEffect(()=>{useHeroLoadouts.setState({draft:{vehicle:definition.vehicle,appearance}});return()=>{useHeroLoadouts.setState({draft:null});};},[definition.vehicle,appearance]);
  const preview=(id:string)=>{const h=HEROES.find(h=>h.id===id)!;setHero(id);setAppearance(drafts.current[h.vehicle]??useHeroLoadouts.getState().loadouts[h.vehicle]??{...FACTORY_APPEARANCE});};
  const openHero=(id=hero)=>{preview(id);setEditing(true);};
- const mainChoice=(id=hero)=>{const h=HEROES.find(h=>h.id===id)!;const style=id===hero?appearance:drafts.current[h.vehicle]??useHeroLoadouts.getState().loadouts[h.vehicle]??{...FACTORY_APPEARANCE};if(!editing)return;queue.enqueue({hero:id,vehicle:h.vehicle,appearance:style,makeDefault:true});};
+ const mainChoice=(id=hero)=>{const h=HEROES.find(h=>h.id===id)!;const style=id===hero?appearance:drafts.current[h.vehicle]??useHeroLoadouts.getState().loadouts[h.vehicle]??{...FACTORY_APPEARANCE};queue.enqueue({hero:id,vehicle:h.vehicle,appearance:style,makeDefault:true});};
  const edit=(patch:Partial<HeroAppearance>)=>{const next={...appearance,...patch};drafts.current[definition.vehicle]=next;setAppearance(next);queue.enqueue({hero,vehicle:definition.vehicle,appearance:next,makeDefault:false});};
  const back=async()=>{if(editing){setEditing(false);return;}if(leaving.current)return;leaving.current=true;try{if(await queue.flush())useUIStore.getState().setScreen("main");}finally{leaving.current=false;}};
  useSelectionNavigation(root,{confirm:()=>{const active=document.activeElement as HTMLElement;if(active===root.current)openHero();else active?.click();},back:()=>void back(),direction:a=>{
@@ -85,8 +85,8 @@ export function HeroWorkshop() {
    </aside>}
   </div>
   <SelectionFooter selectLabel={editing?"Edit style":"Customize"}><div className="hero-workshop-actions">
-   {!editing&&<ControllerAction button="A" type="button" className="menu-control" disabled={!owner} onClick={()=>openHero()}> CUSTOMIZE</ControllerAction>}
-   {editing&&<HoldMainButton key={`${owner}:${hero}:${editing}:${main===hero}:${status==="error"}`} disabled={!owner||!editing||status==="error"} selected={editing&&main===hero} onComplete={()=>mainChoice()}/>}
+   {<ControllerAction button="A" type="button" className="menu-control" disabled={!owner} onClick={()=>editing?root.current?.querySelector<HTMLElement>(".hero-modifications select")?.focus():openHero()}> {editing?"EDIT STYLE":"CUSTOMIZE"}</ControllerAction>}
+   {<HoldMainButton key={`${owner}:${hero}:${editing}:${main===hero}:${status==="error"}`} disabled={!owner||status==="error"} selected={main===hero} onComplete={()=>mainChoice()}/>}
   </div></SelectionFooter>
  </section>;
 }

@@ -102,17 +102,24 @@ impl PhysicsWorld {
             let pivot_demand=vehicle.config.tracked && throttle.abs()<0.01 && steer_input.abs()>0.01 && vehicle.cockpit.manual_gear()!=Some(0);
             let engine_throttle=if pivot_demand {steer_input.abs()*0.85}else{throttle};
             let mut engine_resources=vehicle.config.resources;
-            if vehicle.ram.active(){engine_resources.heat_gameplay_multiplier*=0.15;}
+            if vehicle.config.tracked{vehicle.powertrain.boost_requested=false;}
+            if vehicle.ram.active(){engine_resources.heat_gameplay_multiplier*=0.02;engine_resources.max_heat_rise_c_s=0.2;}
             vehicle.powertrain.advance(engine_resources, Demand {
                 throttle:engine_throttle, longitudinal_speed,
-                wheel_radius: vehicle.config.wheel_radius, engine_force: vehicle.config.engine_force, top_speed:vehicle.config.max_speed*ram_speed,
+                wheel_radius: vehicle.config.wheel_radius, engine_force: vehicle.config.engine_force, top_speed:if vehicle.powertrain.thermal_recovery{(vehicle.config.max_speed*0.35).min(8.0)}else{vehicle.config.max_speed*ram_speed},
             }, dt);
+            if vehicle.config.tracked{
+                let consuming=vehicle.ram.active()&&vehicle.powertrain.running&&!vehicle.powertrain.thermal_recovery;
+                if consuming{vehicle.powertrain.nos_remaining_s=(vehicle.powertrain.nos_remaining_s-dt).max(0.0);}
+                vehicle.powertrain.boost_active=consuming;
+            }
             vehicle.vehicle_flags.set(VehicleStateFlags::ENGINE_ON, vehicle.powertrain.running);
             vehicle.vehicle_flags.set(VehicleStateFlags::BOOST, vehicle.powertrain.boost_active);
             if vehicle.cockpit.enabled || vehicle.cockpit.flashing() {
                 vehicle.vehicle_flags.set(VehicleStateFlags::HEADLIGHTS, vehicle.cockpit.headlights(vehicle.powertrain.running));
             }
 
+            let drive_top_speed=if vehicle.powertrain.thermal_recovery{(vehicle.config.max_speed*0.35).min(8.0)}else{vehicle.config.max_speed*ram_speed};
             let mut impulses = ImpulseAccumulator::new();
             let body_mass = body_ro.mass() as f32;
             // N per wheel at the nominal equal-load state. Actual spring/ARB
@@ -263,7 +270,7 @@ impl PhysicsWorld {
             vehicle.cockpit.traction_active = ctx.tcs_enabled && contacts.iter().any(|patch| patch.drive && patch.grounded
                 && drive_demand > patch.normal_force * patch.mu_long * ctx.tcs_limit);
             let tire_impulses = if vehicle.config.tracked {
-                crate::tracked_drive::solve(&ctx,control.throttle,steer_input,control.brake.max(control.handbrake),vehicle.config.max_speed*ram_speed,&contacts)
+                crate::tracked_drive::solve(&ctx,control.throttle,steer_input,control.brake.max(control.handbrake),drive_top_speed,&contacts)
             } else {solve_step(&ctx, &control, &mut contacts).impulses};
             let grounded_drive = contacts.iter().any(|patch| patch.drive && patch.grounded);
             let slipping_drive = drive_saturated || contacts.iter().any(|patch| patch.drive && patch.grounded
