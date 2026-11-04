@@ -566,6 +566,43 @@ async fn roster_portraits_publish_only_equipped_styles_for_live_and_reserved_pla
 }
 
 #[tokio::test]
+async fn enemy_lobby_picks_are_hidden_until_their_exact_world_has_started() {
+    use crate::alpha::{AlphaState,Member,Mode,Reservation};
+    use crate::ctf::CtfPhase;
+    let s=server(3,24);
+    let (me,identity,_)=client(&s,"Local driver").await;
+    let (ally,ally_identity,_)=client(&s,"Ally driver").await;
+    let (enemy,enemy_identity,_)=client(&s,"Enemy driver").await;
+    let profile=identity["profile_id"].as_str().unwrap();
+    let ally_profile=ally_identity["profile_id"].as_str().unwrap();
+    let enemy_profile=enemy_identity["profile_id"].as_str().unwrap();
+    let mut a=AlphaState::default();
+    for (id,hero,team) in [(&me,"tank",Team::Red),(&ally,"brz",Team::Red),(&enemy,"mechanic",Team::Blue)] {
+        a.members.insert(id.clone(),Member{mode:Mode::Competitive,team_size:3,world:7,hero:hero.into(),team});
+    }
+    let mut data=s.data.lock().await;
+    let mut paint=crate::alpha::appearance::HeroAppearance::default();paint.body="#ed258d".into();
+    data.profiles.get_mut(enemy_profile).unwrap().progression.hero_loadouts.insert("brz".into(),paint);
+    let clients=s.connections.lock().await;
+    let mut phases=HashMap::from([(7,("round-seven".into(),CtfPhase::Waiting)),(8,("other-round".into(),CtfPhase::Running))]);
+    let view=Server::alpha_view_for_phases(&a,profile,&me,&clients,&data,3,&phases);
+    assert_eq!(view["active"]["match_id"],"round-seven");assert_eq!(view["active"]["match_phase"],"waiting");
+    let card=|view:&Value,id:&str|view["roster"].as_array().unwrap().iter().find(|card|card["id"]==id).unwrap().clone();
+    let hidden=card(&view,enemy_profile);
+    assert_eq!(hidden["hero_hidden"],true);assert_eq!(hidden["hero"],"");assert_eq!(hidden["showcase_hero"],"");assert!(hidden["appearance"].is_null());
+    assert_eq!(card(&view,ally_profile)["hero"],"brz");assert_eq!(card(&view,profile)["hero"],"tank");
+    let member=a.members.remove(&enemy).unwrap();a.reservations.insert(enemy_profile.into(),Reservation{member,expires:timestamp()+30,retained_player:None});
+    let reserved=Server::alpha_view_for_phases(&a,profile,&me,&clients,&data,3,&phases);
+    assert_eq!(card(&reserved,enemy_profile)["hero_hidden"],true);assert_eq!(card(&reserved,enemy_profile)["reconnecting"],true);
+    for phase in [CtfPhase::Running,CtfPhase::Ended] {
+        phases.insert(7,("round-seven".into(),phase));
+        let started=Server::alpha_view_for_phases(&a,profile,&me,&clients,&data,3,&phases);
+        let revealed=card(&started,enemy_profile);assert_eq!(revealed["hero_hidden"],false);assert_eq!(revealed["hero"],"mechanic");assert_eq!(revealed["appearance"]["body"],"#ed258d");
+    }
+    drop(clients);drop(data);cleanup(s).await;
+}
+
+#[tokio::test]
 async fn practice_disconnect_keeps_the_same_body_map_resources_and_authorized_owner(){
  for mode_name in ["sandbox","editor"]{
   let s=alpha_server();let (player,identity,_)=client(&s,"Practice owner").await;

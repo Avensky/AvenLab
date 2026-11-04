@@ -9,7 +9,8 @@ export const MATCH_MODE_PORTRAITS = [
 export type PortraitMatchMode = typeof MATCH_MODE_PORTRAITS[number]["id"];
 
 /** Existing vehicle portrait assets share a lightweight scene illustration.
- * Selecting a format never joins a queue until the player presses Continue. */
+ * Activation selects the format and uses the screen's guarded admission flow;
+ * focusing or hovering the card never starts matchmaking. */
 export const ModePortraitCard = memo(function ModePortraitCard({mode, selected, disabled, onSelect}: {
   mode: typeof MATCH_MODE_PORTRAITS[number]; selected: boolean; disabled: boolean;
   onSelect:(size: MatchTeamSize)=>void;

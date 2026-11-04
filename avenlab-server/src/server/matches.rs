@@ -257,6 +257,7 @@ impl Server {
     }
     pub(super) async fn maintain_matches_inner(&self) {
         let runtimes = self.runtimes.lock().await.clone();
+        let mut round_started=false;
         for (world, runtime) in &runtimes {
             let alpha = self.alpha.lock().await.clone();
             let info = self.data.lock().await.worlds.get(world).cloned();
@@ -269,7 +270,7 @@ impl Server {
                 let members: Vec<_> = alpha.members.iter().filter(|(_, m)| m.world == *world).collect();
                 if Self::valid_start(format, &members, &room, alpha.enforce_roles) {
                     if let Err(error) = room.start_round() { eprintln!("[career] Could not start round: {error}"); }
-                    else { self.reset_revival_cooldowns(*world).await; }
+                    else { round_started=true;self.reset_revival_cooldowns(*world).await; }
                 }
             }
             let running = room.round.as_ref().is_some_and(|r| r.phase == CtfPhase::Running);
@@ -300,6 +301,9 @@ impl Server {
             let reserved = alpha.reservations.values().any(|r| r.member.world == *world && r.expires > timestamp());
             if !occupied && !reserved { self.finish_empty_activity(*world).await; }
         }
+        // The scheduler can be the owner that starts this round. Publish its
+        // reveal immediately rather than waiting for a client refresh.
+        if round_started { self.publish().await; }
         let pending: Vec<_> = self.matches.lock().await.pending.values().cloned().collect();
         for record in pending {
             if self.persist_record(&record).await.is_ok() { self.matches.lock().await.pending.remove(&record.match_id); }

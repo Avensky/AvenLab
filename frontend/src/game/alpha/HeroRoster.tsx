@@ -1,3 +1,4 @@
+import {MenuTabButton} from "../../components/menus/MenuTabButton";
 import {
   HEROES,
   HERO_FILTERS,
@@ -80,13 +81,10 @@ export function HeroRoleTabs({
       data-controller-tab-only
     >
       {HERO_FILTERS.map((role) => (
-        <button
+        <MenuTabButton
           key={role}
-          type="button"
-          role="tab"
           data-role-filter
-          className="menu-control"
-          aria-selected={filter === role}
+          selected={filter === role}
           tabIndex={filter === role ? 0 : -1}
           onFocus={() => onFilter(role)}
           onClick={(event) => {
@@ -95,7 +93,7 @@ export function HeroRoleTabs({
           }}
         >
           {role.toUpperCase()}
-        </button>
+        </MenuTabButton>
       ))}
     </nav>
   );

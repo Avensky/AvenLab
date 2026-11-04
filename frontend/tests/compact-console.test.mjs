@@ -53,6 +53,7 @@ test("compact cockpit, GPS and inspection preserve authoritative state", async (
       { useUIStore: ui } = await load("store/menus/uiStore.ts");
     const { useWorldStore: world } = await load("store/world/worldStore.ts"),
       { useGameStore: game } = await load("store/presentation/gameStore.ts");
+    const { useHudPanelsStore: panels } = await load("store/hud/hudPanelsStore.ts");
     network.getState().setConnected(true);
     network.getState().setPlayerId("me");
     config.getState().receive("me", {
@@ -293,7 +294,7 @@ test("compact cockpit, GPS and inspection preserve authoritative state", async (
           { useNavigationStore: nav } = await load(
             "store/world/navigationStore.ts",
           );
-        world.getState().setMap({
+        await act(async () => world.getState().setMap({
           schema_version: 1,
           map_id: "test",
           coordinate_system: {
@@ -313,9 +314,13 @@ test("compact cockpit, GPS and inspection preserve authoritative state", async (
               boxes: [box("a", 0, 0, 5, 300), box("b", 80, 150, 100, 5)],
             },
           ],
-        });
+        }));
+        // The production minimap now starts expanded. This case specifically
+        // exercises opening it from its minimized state, independent of earlier
+        // HUD renders or a saved session's panel state.
+        await act(async () => panels.setState({ map: false }));
         await render(h(Minimap));
-        assert.equal(document.querySelector(".gps-map"), null);
+        assert.equal(document.querySelector(".gps-map") === null, true);
         await click("Open map");
         assert.equal(document.querySelectorAll(".gps-map rect").length, 2);
         // Map pose is intentionally sampled at 10 Hz. Allow its first tick after
@@ -344,6 +349,7 @@ test("compact cockpit, GPS and inspection preserve authoritative state", async (
           { useNavigationStore: nav } = await load(
             "store/world/navigationStore.ts",
           );
+        await act(async () => panels.setState({ map: false }));
         await render(h(Minimap));
         assert.equal(by("Open map").textContent, "");
         assert.ok(by("Open map").querySelector("svg"));

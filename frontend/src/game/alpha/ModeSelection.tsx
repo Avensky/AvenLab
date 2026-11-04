@@ -1,3 +1,4 @@
+import {MenuTabButton} from "../../components/menus/MenuTabButton";
 import {MatchModePortraits} from "./ModePortraitCard";
 import {useSelectionStore as useWorldSelection} from '../../store/selection/selectionStore';
 import {WorldPortraitCard} from '../preview/WorldPortraitCard';
@@ -88,13 +89,16 @@ export function ModeSelection() {
     if(pending.current)return;
     useAlphaStore.getState().chooseTeamSize(next);setStatus("");
   }, []);
-  const next = useCallback(async () => {
+  const next = useCallback(async (requestedSize?: MatchTeamSize) => {
     if (pending.current || planned) return;
     const focusedSize=Number((document.activeElement as HTMLElement|null)?.closest<HTMLElement>("[data-match-size]")?.dataset.matchSize);
-    if(isMatchMode(useAlphaStore.getState().mode)&&(focusedSize===3||focusedSize===5)&&focusedSize!==useAlphaStore.getState().teamSize){selectMatchSize(focusedSize);return;}
+    const size=requestedSize??focusedSize;
+    // Activating a size is the primary action: commit it before the shared
+    // profile/admission checks, without a second Continue press.
+    if(isMatchMode(useAlphaStore.getState().mode)&&(size===3||size===5))selectMatchSize(size);
     if(!research&&!profileReady){
       const active=document.activeElement as HTMLButtonElement|null;
-      if(active?.matches('[data-profile-action]:not(:disabled)'))active.click();
+      if(requestedSize===undefined&&active?.matches('[data-profile-action]:not(:disabled)'))active.click();
       else root.current?.querySelector<HTMLButtonElement>('[data-profile-action]:not(:disabled)')?.focus();
       return;
     }
@@ -186,12 +190,9 @@ export function ModeSelection() {
         data-controller-tab-only
       >
         {destinations.map((entry) => (
-          <button
+          <MenuTabButton
             key={entry.id}
-            type="button"
-            role="tab"
-            className="menu-control"
-            aria-selected={mode === entry.id}
+            selected={mode === entry.id}
             tabIndex={mode === entry.id ? 0 : -1}
             disabled={busy}
             onFocus={() => {
@@ -207,12 +208,12 @@ export function ModeSelection() {
             {entry.id === "swarm" && (
               <small className="alpha-mode-planned">PLANNED</small>
             )}
-          </button>
+          </MenuTabButton>
         ))}
       </nav>
       <div className="hero-selection-stage">
         {(mode==='sandbox'||mode==='editor')&&<WorldPortraitCard map={selectedWorld}/>}
-        {isMatchMode(mode)&&<MatchModePortraits selected={teamSize} disabled={busy} onSelect={selectMatchSize}/>}
+        {isMatchMode(mode)&&<MatchModePortraits selected={teamSize} disabled={busy} onSelect={size=>void next(size)}/>}
         <section className="hero-summary" aria-label="Selected game mode">
           <small>GAME MODE</small>
           <h2>{item.label}</h2>
@@ -265,7 +266,7 @@ export function ModeSelection() {
           type="button"
           className="menu-control  alpha-deploy"
           disabled={busy || planned || (!research && (!connected||!profileReady))}
-          onClick={() => void next()}
+          onClick={() => void next(isMatchMode(mode)?useAlphaStore.getState().teamSize:undefined)}
         >
 
           {busy ? !research&&!profileReady?"PREPARING PLAYER…":"FINDING SERVER…" : planned ? "COMING LATER" : "CONTINUE"}

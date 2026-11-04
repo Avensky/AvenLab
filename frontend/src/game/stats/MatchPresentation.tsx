@@ -10,12 +10,13 @@ type PresentationProps={players:ScoreboardPlayer[];selectedId?:string|null;onSel
 const sides=['red','blue',null] as const;
 const label=(side:ScoreboardPlayer['team'])=>side?`${side.toUpperCase()} TEAM`:'UNASSIGNED';
 function playerStatus(player:ScoreboardPlayer){
+ if(player.heroHidden)return 'HIDDEN UNTIL MATCH START';
  if(player.status)return {selecting:'CHOOSING',ready:'HERO SELECTED',active:'DEPLOYED',defeated:'DEFEATED',reconnecting:'RECONNECTING',completed:'MATCH COMPLETE'}[player.status];
  return player.waiting?'AWAITING VEHICLE':player.defeated?'DEFEATED':'DEPLOYED';
 }
-export function MatchViewTabs({view,onChange}:{view:MatchView;onChange:(view:MatchView)=>void}){
- return <nav className="match-view-tabs" role="tablist" aria-label="Match view" data-controller-row>
-  {(['composition','table'] as const).map((item,index)=><button key={item} type="button" role="tab" className="menu-control" aria-selected={view===item} data-match-view={item} onClick={()=>onChange(item)} onKeyDown={event=>{
+export function MatchViewTabs({view,onChange,integrated=false,panelId}:{view:MatchView;onChange:(view:MatchView)=>void;integrated?:boolean;panelId?:string}){
+ return <nav className="match-view-tabs" role="tablist" aria-label="Match view" data-controller-row={integrated?undefined:true}>
+  {(['composition','table'] as const).map((item,index)=><button key={item} type="button" role="tab" className="menu-control" aria-selected={view===item} aria-controls={panelId} data-match-view={item} onClick={()=>onChange(item)} onKeyDown={event=>{
    if(event.key==='ArrowLeft'||event.key==='ArrowRight'){event.preventDefault();event.stopPropagation();const next=item==='table'?'composition':'table';onChange(next);event.currentTarget.parentElement?.querySelector<HTMLButtonElement>(`[data-match-view="${next}"]`)?.focus();}
   }}><span aria-hidden="true">{index===0?'◫':'▤'}</span>{index===0?'TEAM':'STATS'}</button>)}
  </nav>;
@@ -42,12 +43,12 @@ export const MatchTeamComposition=memo(function MatchTeamComposition({players,se
    const slots=side===null?rows:Array.from({length:teamSize},(_,index)=>rows[index]);
    return <section className="scoreboard-team match-composition-team" data-team={side??'unknown'} key={side??'unknown'} aria-label={`${label(side)} composition`}>
     <h3>{label(side)}<span>{rows.length}{side===null?'':` / ${teamSize}`}</span></h3>
-    <div className="match-composition-row" data-controller-row data-controller-columns={compact?teamSize:2} style={compact?{gridTemplateColumns:`repeat(${teamSize},minmax(164px,1fr))`,minWidth:teamSize*164+(teamSize-1)*5}:undefined}>
+    <div className="match-composition-row" data-controller-row data-controller-columns={compact?teamSize:2} style={compact?{gridTemplateColumns:`repeat(${teamSize},minmax(132px,1fr))`,minWidth:teamSize*132+(teamSize-1)*4}:undefined}>
      {slots.map((player,index)=>{
       if(!player)return <div className="match-composition-seat match-composition-empty" key={`open:${index}`} aria-label={`${label(side)} open slot`}><span aria-hidden="true">+</span><strong>OPEN SLOT</strong></div>;
-      const hero=HEROES.find(hero=>hero.id===player.hero);
-      const content=<><div className="match-composition-art"><HeroPortrait hero={player.hero} appearance={player.appearance}/><span className="match-player-level" title="Confirmed profile level">{player.level===null?'LV —':`LV ${formatStat(player.level)}`}</span>{player.self&&<span className="match-player-you">YOU</span>}</div><div className="match-composition-info"><strong>{player.name}</strong><small>{hero?.name??'AWAITING HERO'}</small><span className="match-composition-role">{hero?.role.toUpperCase()??'—'}</span><span className="match-player-status">{playerStatus(player)}</span></div></>;
-      const props={className:'match-composition-seat','data-player-id':player.id,'data-result-player':onSelect?player.id:undefined,'data-self':player.self,'data-status':player.status??(player.defeated?'defeated':'active'),'data-selected':player.id===selectedId,'aria-label':`${player.name} · ${hero?.name??'Awaiting hero'} · ${playerStatus(player)}`};
+      const hero=HEROES.find(hero=>hero.id===player.hero),heroLabel=player.heroHidden?'MYSTERY HERO':hero?.name??'AWAITING HERO';
+      const content=<><div className="match-composition-art"><HeroPortrait hero={player.hero} appearance={player.appearance}/><span className="match-player-level" title="Confirmed profile level">{player.level===null?'LV —':`LV ${formatStat(player.level)}`}</span>{player.self&&<span className="match-player-you">YOU</span>}</div><div className="match-composition-info"><strong>{player.name}</strong><small>{heroLabel}</small><span className="match-composition-role">{player.heroHidden?'?':hero?.role.toUpperCase()??'—'}</span><span className="match-player-status">{playerStatus(player)}</span></div></>;
+      const props={className:'match-composition-seat','data-player-id':player.id,'data-result-player':onSelect?player.id:undefined,'data-self':player.self,'data-status':player.heroHidden?'mystery':player.status??(player.defeated?'defeated':'active'),'data-selected':player.id===selectedId,'aria-label':`${player.name} · ${heroLabel} · ${playerStatus(player)}`};
       return onSelect?<button {...props} type="button" key={player.id} aria-pressed={player.id===selectedId} onClick={()=>onSelect(player.id)} onFocus={event=>event.currentTarget.scrollIntoView?.({block:'nearest',inline:'nearest'})}>{content}</button>:<article {...props} key={player.id}>{content}</article>;
      })}
     </div>
@@ -64,7 +65,7 @@ export const MatchStatsTable=memo(function MatchStatsTable({players,selectedId,o
    return <section className="scoreboard-team" data-team={side??'unknown'} key={side??'unknown'} aria-label={`${label(side)} statistics`}>
     <h3>{label(side)}<span>{rows.length} PLAYER{rows.length===1?'':'S'}</span></h3>
     <table><thead><tr><th scope="col">PLAYER / VEHICLE</th><th scope="col" title="Killing blows">K</th><th scope="col" title="Kill assists">A</th><th scope="col" title="Deaths">D</th><th scope="col">DAMAGE</th><th scope="col">HEALING</th></tr></thead>
-     <tbody>{rows.map(player=>{const hero=HEROES.find(hero=>hero.id===player.hero),identity=<><HeroPortrait hero={player.hero} appearance={player.appearance} className="scoreboard-table-portrait"/><span><strong>{player.name}{player.self&&<em>YOU</em>}</strong><small>{hero?.name??'VEHICLE'} · {playerStatus(player)}</small></span></>;
+     <tbody>{rows.map(player=>{const hero=HEROES.find(hero=>hero.id===player.hero),identity=<><HeroPortrait hero={player.hero} appearance={player.appearance} className="scoreboard-table-portrait"/><span><strong>{player.name}{player.self&&<em>YOU</em>}</strong><small>{player.heroHidden?'MYSTERY HERO':hero?.name??'VEHICLE'} · {playerStatus(player)}</small></span></>;
       return <tr key={player.id} data-player-id={player.id} data-self={player.self} data-selected={selectedId===player.id} data-status={player.status}>
        <th scope="row">{onSelect?<button type="button" className="scoreboard-table-player" data-result-player={player.id} aria-label={`View ${player.name} statistics`} aria-pressed={selectedId===player.id} onClick={()=>onSelect(player.id)}>{identity}</button>:<div className="scoreboard-table-player">{identity}</div>}</th>
        <td>{formatStat(player.kills)}</td><td>{formatStat(player.stats?.assists??null)}</td><td>{formatStat(player.deaths)}</td><td>{formatStat(player.stats?.damage_dealt??null)}</td><td>{formatStat(player.stats?.healing_done??null)}</td>
@@ -83,7 +84,7 @@ export const MatchPlayerDetails=memo(function MatchPlayerDetails({player}:{playe
  const hero=HEROES.find(hero=>hero.id===player.hero),stats=player.stats;
  const streaks=stats as (typeof stats&{current_kill_streak?:number;best_kill_streak?:number});
  return <article className="scoreboard-player-card scoreboard-player-details" data-team={player.team??'unknown'} data-self={player.self} aria-label={`${player.name}${player.self?' · You':''} statistics`}>
-  <div className="scoreboard-player-identity"><HeroPortrait hero={player.hero} appearance={player.appearance} className="scoreboard-player-portrait"/><div><h3>{player.name}{player.self&&<span>YOU</span>}</h3><p>{hero?.name??'VEHICLE'} · {hero?.role.toUpperCase()??'—'}</p><p>{playerStatus(player)}</p></div><div className="scoreboard-level"><small>LEVEL</small><strong>{formatStat(player.level)}</strong></div></div>
+  <div className="scoreboard-player-identity"><HeroPortrait hero={player.hero} appearance={player.appearance} className="scoreboard-player-portrait"/><div><h3>{player.name}{player.self&&<span>YOU</span>}</h3><p>{player.heroHidden?'MYSTERY HERO':hero?.name??'VEHICLE'} · {player.heroHidden?'?':hero?.role.toUpperCase()??'—'}</p><p>{playerStatus(player)}</p></div><div className="scoreboard-level"><small>LEVEL</small><strong>{formatStat(player.level)}</strong></div></div>
   <dl className="scoreboard-player-stats">
    <Stat label="KILLING BLOWS" value={formatStat(player.kills)} title="Final lethal hits confirmed by the server."/>
    <Stat label="DEATHS" value={formatStat(player.deaths)}/>

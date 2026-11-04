@@ -67,7 +67,10 @@ impl WorldRuntime {
         if ![Team::Red,Team::Blue].iter().all(|team|observations.iter().any(|p|p.team==*team&&p.alive)){return Err("Both teams need a spawned vehicle.".into());}
         self.physics.prepare_ctf_round()?;self.game.clear_round_inputs();
         let observations=self.round_observations();self.round.as_mut().unwrap().start(&observations)?;
-        self.round_players.clear();self.round_completion=None;self.completion_captured=false;self.capture_round_players();self.game.match_state=self.round_view();Ok(())
+        self.round_players.clear();self.round_completion=None;self.completion_captured=false;self.capture_round_players();self.game.match_state=self.round_view();
+        // Enemies did not receive chassis-specific setup during selection.
+        for (id,vehicle) in &self.physics.vehicles {self.game.broadcast_vehicle_config(id,vehicle);}
+        Ok(())
     }
     fn capture_round_player(&mut self,id:&str) {
         let Some(entity)=self.game.entities.get(id)else{return;};let Some(health)=self.physics.vehicle_health.get(id)else{return;};
@@ -169,8 +172,9 @@ impl WorldRuntime {
         let _=tx.send(json!({"type":"spawn_ready","player_id":id,"vehicle":vehicle,"map":self.physics.active_map_id(),"newly_spawned":newly_spawned}).to_string());
         Ok(())
     }
-    pub fn send_existing_configs(&self, tx: &UnboundedSender<String>) {
+    pub fn send_existing_configs(&self, viewer:&str, tx: &UnboundedSender<String>) {
         for (id, vehicle) in &self.physics.vehicles {
+            if !self.game.can_receive_vehicle_identity(viewer,id){continue;}
             let _=tx.send(json!({"type":"vehicle_config","data":VehicleConfigPayload::new(id,vehicle.config)}).to_string());
         }
     }
@@ -218,6 +222,43 @@ impl WorldRuntime {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn waiting_rounds_share_private_team_frames_and_reveal_configs_only_on_start() {
+        let mut world=WorldRuntime::new(7,"streaming_endless_city").unwrap();
+        let mut receivers=Vec::new();
+        for (id,team) in [("red-one",Team::Red),("red-two",Team::Red),("blue",Team::Blue)] {
+            let(tx,rx)=tokio::sync::mpsc::unbounded_channel::<String>();let(frame,frames)=watch::channel(None);let(_input,inputs)=watch::channel(None);
+            world.join(id,tx,frame,inputs,Some(team),10);receivers.push((id,rx,frames));
+        }
+        world.configure_round(crate::alpha::Mode::Quickplay,true).unwrap();
+        world.spawn("red-one","tank").unwrap();world.spawn("red-two","brz").unwrap();world.spawn("blue","brz").unwrap();
+        for (id,_,_) in &receivers {world.send_existing_configs(id,&world.game.clients[*id]);}
+        for (id,rx,_) in &mut receivers {
+            while let Ok(message)=rx.try_recv() {
+                let message:serde_json::Value=serde_json::from_str(&message).unwrap();
+                if message["type"]=="vehicle_config" {
+                    let source=message["data"]["player_id"].as_str().unwrap();
+                    assert_eq!(world.game.entities[source].team,world.game.entities[*id].team,"opposing configuration cannot reveal a warm-up chassis");
+                }
+            }
+        }
+        world.tick(0.0);
+        let red=receivers[0].2.borrow().clone().unwrap();let ally=receivers[1].2.borrow().clone().unwrap();let blue=receivers[2].2.borrow().clone().unwrap();
+        assert!(Arc::ptr_eq(&red,&ally),"same-team sockets share one serialized frame");assert!(red.debug.is_empty()&&blue.debug.is_empty());
+        for (frame,team,count) in [(&red,"red",2),(&blue,"blue",1)] {
+            let message:serde_json::Value=serde_json::from_str(&frame.snapshot).unwrap();
+            let entities=message["data"]["entities"].as_array().unwrap();assert_eq!(entities.len(),count);assert!(entities.iter().all(|entity|entity["team"]==team));
+            assert_eq!(message["data"]["match_state"]["phase"],"waiting");
+        }
+        world.start_round().unwrap();world.tick(0.0);
+        for (_,rx,frames) in &mut receivers {
+            let mut configs=std::collections::HashSet::new();
+            while let Ok(message)=rx.try_recv(){let value:serde_json::Value=serde_json::from_str(&message).unwrap();if value["type"]=="vehicle_config"{configs.insert(value["data"]["player_id"].as_str().unwrap().to_owned());}}
+            assert_eq!(configs.len(),3,"starting reveals every chassis config once");
+            let frame=frames.borrow().clone().unwrap();let value:serde_json::Value=serde_json::from_str(&frame.snapshot).unwrap();
+            assert_eq!(value["data"]["match_state"]["phase"],"running");assert_eq!(value["data"]["entities"].as_array().unwrap().len(),3);
+        }
+    }
     fn two_team_round() -> (WorldRuntime,watch::Sender<Option<InputPacket>>) {
         let mut world=WorldRuntime::new(1,"road_precision").unwrap();let mut control=None;
         for (id,team) in [("red",Team::Red),("blue",Team::Blue)]{

@@ -239,10 +239,8 @@ pub async fn start_websocket_server(server: Arc<Server>) {
                                             .get(&player)
                                             .map(|vehicle| vehicle.config);
                                         if let Some(config) = config {
-                                            let payload=json!({"type":"vehicle_config","data":crate::state::VehicleConfigPayload::new(&player,config)}).to_string();
-                                            for sender in room.game.clients.values() {
-                                                let _ = sender.send(payload.clone());
-                                            }
+                                            let payload=json!({"type":"vehicle_config","data":crate::state::VehicleConfigPayload::new(&player,config)});
+                                            room.game.broadcast_vehicle_config_json(&player,payload);
                                         }
                                         Ok(())
                                     }

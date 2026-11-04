@@ -1,3 +1,4 @@
+import {MenuTabButton} from "../../components/menus/MenuTabButton";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSocialStore } from "../../store/social/socialStore";
 import { useUIStore } from "../../store/menus/uiStore";
@@ -236,18 +237,15 @@ export function SocialPanel() {
           aria-label="Worlds and social sections"
         >
           {TABS.map((value) => (
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === value}
+            <MenuTabButton
+              selected={tab === value}
               data-social-tab={value}
-              className="menu-control"
               key={value}
               onClick={() => setTab(value)}
             >
               {value}
               {value === "INVITES" && incoming > 0 ? ` (${incoming})` : ""}
-            </button>
+            </MenuTabButton>
           ))}
         </nav>
         <div className="social-scroll menu-frame-content">

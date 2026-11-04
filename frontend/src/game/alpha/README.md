@@ -13,7 +13,9 @@ See docs/ALPHA_UI_AND_LOBBIES.md for scope and alpha balancing values.
 
 Play enters this garage with only Quickplay and Competitive tabs. The two portrait
 cards select 3v3 or 5v5 independently; the combined `mode` and `team_size` travel in
-one server-validated `mode_join`. Selecting or focusing a size never joins a queue.
+one server-validated `mode_join`. Activating a size selects and requests admission
+in one action; focusing or hovering alone never joins. Profile recovery, pending
+request guards and server-confirmed Hero/Queue routing remain shared with Continue.
 `teamSize` retains the format while changing category; authoritative admission and
 queue views restore it after reconnect/promotion. Role limits, teammate slots,
 results and Play Again use the server's confirmed size. Legacy `skirmish` records

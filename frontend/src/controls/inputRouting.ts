@@ -74,7 +74,8 @@ export function isTypingTarget(target: EventTarget | null) {
 export function routeMenuAction(action: MenuAction) {
   if (action === "previous_option" || action === "next_option") {
     const ui = useUIStore.getState();
-    if (!((ui.screen === "mode_select" && ui.overlay === null) || ui.overlay === "match_results") || useTextKeyboardStore.getState().session) return;
+    const preview=ui.screen==='hero_select'&&ui.overlay===null&&document.activeElement?.closest('[data-match-preview]');
+    if (!((ui.screen === "mode_select" && ui.overlay === null) || ui.overlay === "match_results" || preview) || useTextKeyboardStore.getState().session) return;
   }
   if (useTextKeyboardStore.getState().session) {
     window.dispatchEvent(

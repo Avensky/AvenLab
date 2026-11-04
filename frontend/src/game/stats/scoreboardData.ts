@@ -9,6 +9,8 @@ export type ScoreboardPlayer={
  hero:string|null;appearance:HeroAppearance|null;waiting:boolean;defeated:boolean;
  kills:number|null;deaths:number|null;stats:SessionCombatStats|null;level:number|null;
  status?:'selecting'|'ready'|'active'|'defeated'|'reconnecting'|'completed';
+ /** A generic mystery card must not derive artwork, role or pick status. */
+ heroHidden?:boolean;
 };
 const nonnegative=(value:unknown):number|null=>typeof value==='number'&&Number.isFinite(value)&&value>=0?value:null;
 const count=(value:unknown):number|null=>{const n=nonnegative(value);return n===null?null:Math.floor(n);};
@@ -49,20 +51,20 @@ export function scoreboardPlayers(snapshot:PhysicsSnapshot|null,playerId:string,
   const profileId=self?view?.profile.id??member?.profile_id??null:member?.profile_id??null;
   if(profileId)seenProfiles.add(profileId);
   const card=profileId?roster.find(item=>item.id===profileId):undefined;
-  const desired=self?view?.alpha?.active?.hero:card?.hero;
-  const hero=HEROES.find(item=>item.id===desired&&item.vehicle===entity.vehicle_id)??HEROES.find(item=>item.id===entity.vehicle_id);
+  const hidden=card?.hero_hidden===true,desired=self?view?.alpha?.active?.hero:card?.hero;
+  const hero=hidden?undefined:HEROES.find(item=>item.id===desired&&item.vehicle===entity.vehicle_id)??HEROES.find(item=>item.id===entity.vehicle_id);
   const ownStyle=self&&hero?view?.profile.progression?.hero_loadouts?.[hero.vehicle]:undefined;
   return {id:entity.id,profileId,name:self?view?.profile.name??member?.name??'YOU':member?.name??card?.name??'UNKNOWN PLAYER',team:team(entity.team),self,
-   hero:hero?.id??null,appearance:entity.appearance??card?.appearance??ownStyle??null,
-   waiting:false,defeated:entity.health?.defeated===true,status:card?.reconnecting?'reconnecting':entity.health?.defeated===true?'defeated':'active',kills:count(entity.health?.kills),deaths:count(entity.health?.deaths),stats:readStats(entity),
+   hero:hero?.id??null,appearance:hidden?null:entity.appearance??card?.appearance??ownStyle??null,heroHidden:hidden,
+   waiting:false,defeated:entity.health?.defeated===true,status:hidden?undefined:card?.reconnecting?'reconnecting':entity.health?.defeated===true?'defeated':'active',kills:hidden?null:count(entity.health?.kills),deaths:hidden?null:count(entity.health?.deaths),stats:hidden?null:readStats(entity),
    level:self?count(view?.profile.progression?.level):count(member?.level)} satisfies ScoreboardPlayer;
  });
  // A known teammate may still be choosing a hero or reconnecting. Their card is
  // useful, but absent vehicle totals remain unknown until a snapshot confirms.
  for(const card of roster){
   if(seenProfiles.has(card.id)||rows.some(row=>row.self&&view?.profile.id===card.id))continue;
-  const self=card.id===view?.profile.id,hero=HEROES.find(item=>item.id===(card.hero||card.showcase_hero)),member=members.find(item=>item.profile_id===card.id);
-  rows.push({id:`profile:${card.id}`,profileId:card.id,name:card.name,team:team(card.team),self,hero:hero?.id??null,appearance:card.appearance??(self&&hero?view?.profile.progression?.hero_loadouts?.[hero.vehicle]:null)??null,waiting:true,defeated:false,status:card.reconnecting?'reconnecting':card.hero?'ready':'selecting',kills:null,deaths:null,stats:null,level:self?count(view?.profile.progression?.level):count(member?.level)});
+  const self=card.id===view?.profile.id,hidden=card.hero_hidden===true,hero=hidden?undefined:HEROES.find(item=>item.id===(card.hero||card.showcase_hero)),member=members.find(item=>item.profile_id===card.id);
+  rows.push({id:`profile:${card.id}`,profileId:card.id,name:card.name,team:team(card.team),self,hero:hero?.id??null,appearance:hidden?null:card.appearance??(self&&hero?view?.profile.progression?.hero_loadouts?.[hero.vehicle]:null)??null,heroHidden:hidden,waiting:true,defeated:false,status:hidden?undefined:card.reconnecting?'reconnecting':card.hero?'ready':'selecting',kills:null,deaths:null,stats:null,level:self?count(view?.profile.progression?.level):count(member?.level)});
  }
  // Guarantee our own card survives a malformed/overfull peer list. Stable sort
  // avoids place changes for pose-only snapshots and does not rank by score.
@@ -71,11 +73,25 @@ export function scoreboardPlayers(snapshot:PhysicsSnapshot|null,playerId:string,
 
 /** Admission is the sole roster boundary before a physics body exists. A
  * showcase supplies artwork, never a confirmed pick or permission to deploy. */
-export function preMatchPlayers(view:SocialView|null):ScoreboardPlayer[]{
+export function preMatchEnemiesRevealed(view:SocialView|null,connected:boolean):boolean{
+ const active=view?.alpha?.active;
+ // The server publishes phase and round ID from the viewer's exact world.
+ // A snapshot from another world/round is never reveal evidence here.
+ return !!active&&connected&&Number.isSafeInteger(active.world_id)&&active.world_id>0&&
+  (view.current_world_id===null||view.current_world_id===active.world_id)&&
+  typeof active.match_id==='string'&&active.match_id.length>0&&
+  ['running','overtime','ended'].includes(active.match_phase??'');
+}
+
+export function preMatchPlayers(view:SocialView|null,revealEnemies=false):ScoreboardPlayer[]{
  const active=view?.alpha?.active;
  if(!active)return [];
  return scoreboardPlayers(null,'',{...view,current_world_id:active.world_id}).filter(row=>{
   const card=view.alpha?.roster.find(member=>member.id===row.profileId);
   return card?.mode===active.mode;
+ }).map(row=>{
+  const card=view.alpha?.roster.find(member=>member.id===row.profileId);
+  if(card?.hero_hidden||row.team!==active.team&&!revealEnemies)return {...row,hero:null,appearance:null,status:undefined,heroHidden:true,kills:null,deaths:null,stats:null};
+  return row;
  });
 }

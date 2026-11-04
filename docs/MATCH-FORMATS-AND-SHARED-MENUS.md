@@ -2,7 +2,7 @@
 
 ## Play flow
 
-The Play screen separates queue category from match size. Its top tabs select Quickplay or Competitive. The two portrait cards select only 3v3 or 5v5; selecting a card does not change the category or enter matchmaking. Continue joins the selected combination, then server admission opens hero selection.
+The Play screen separates queue category from match size. Its top tabs select Quickplay or Competitive. Activating a 3v3 or 5v5 portrait selects that size and immediately requests the combined format; it keeps the chosen category. Mouse, touch, keyboard and controller use this same flow. Hover/focus and category tabbing do not join. The server then opens Hero selection for an admitted seat or Queue when capacity is reserved. Continue remains available for the selected combination.
 
 | Category tab | Size card | Team format |
 | --- | --- | --- |

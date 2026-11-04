@@ -351,7 +351,7 @@ impl Server {
         }
         let _=client.tx.send(json!({"type":"world_changed","world":{"id":world_id,"name":world.name,"map":world.map,"team":team.as_str()}}).to_string());
         let _=client.tx.send(json!({"type":"welcome","player_id":player,"room_id":world_id,"team":team.as_str(),"spawned":false}).to_string());
-        room.send_existing_configs(&client.tx);
+        room.send_existing_configs(player,&client.tx);
         let _=client.tx.send(json!({"type":"map_snapshot","world_id":world_id,"data":room.physics.map_snapshot()}).to_string());
         Ok(json!({"world_id":world_id,"map":world.map}))
     }

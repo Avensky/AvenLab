@@ -1,3 +1,4 @@
+import {MenuTabButton} from "./MenuTabButton";
 import {MenuFrame,MenuFrameHeader,MenuFrameFooter} from "./MenuFrame";
 import { trapMenuFocus } from "./menuFocus";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
@@ -173,12 +174,10 @@ export function TabbedMenu({
           className="tabbed-menu-tabs menu-frame-tabs"
         >
           {tabs.map((item, index) => (
-            <button
-              type="button"
+            <MenuTabButton
               key={item.id}
               id={`${panelId}-${item.id}-tab`}
-              role="tab"
-              aria-selected={tab.id === item.id}
+              selected={tab.id === item.id}
               data-selected={tab.id === item.id}
               aria-controls={`${panelId}-${item.id}-panel`}
               tabIndex={tab.id === item.id ? 0 : -1}
@@ -203,10 +202,10 @@ export function TabbedMenu({
                   selectTab(next, "tab");
                 }
               }}
-              className="menu-control menu-tab"
+              className="menu-tab"
             >
               {item.label}
-            </button>
+            </MenuTabButton>
           ))}
         </div>
         <div

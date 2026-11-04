@@ -4,9 +4,17 @@ impl Server {
     /// A replaceable, personalized view. Password hashes and guest credentials
     /// stay inside SocialData; private worlds appear only to authorized viewers.
     pub async fn publish(&self) {
+        // Read room phases before acquiring the control-plane data locks. A
+        // room may checkpoint a match through those locks while it is held.
+        let runtimes = self.runtimes.lock().await.clone();
+        let mut phases = HashMap::new();
+        for (world, runtime) in &runtimes {
+            if let Some(round) = runtime.lock().await.round.as_ref() {
+                phases.insert(*world, (round.match_id.clone(), round.phase));
+            }
+        }
         let data = self.data.lock().await;
         let clients = self.connections.lock().await;
-        let runtimes = self.runtimes.lock().await;
         let alpha = self.alpha.lock().await;
         for (player, client) in clients.iter() {
             let Some(actor) = client.profile_id.as_ref() else {
@@ -36,7 +44,7 @@ impl Server {
                 let can_share=world.owner_id.as_ref()==Some(actor)||client.world_id==Some(world.id);
                 json!({"id":world.id,"name":world.name,"map":world.map,"owner_id":world.owner_id,"listed":world.listed,"mode":world.mode,"team_size":world.mode.map(|mode|crate::alpha::MatchFormat::for_world(mode,world.max_players).team_size),"max_players":if alpha.enabled&&world.mode.is_none(){1}else{world.max_players},"players":members.len(),"active":runtimes.contains_key(&world.id),"locked":world.password_hash.is_some(),"invite_code":if can_share{Some(&world.invite_code)}else{None},"members":if can_share{members}else{vec![]}})
             }).collect();
-            let view=json!({"type":"social_state","data":{"profile":{"id":profile.id,"name":profile.name,"progression":profile.progression.view()},"alpha":Self::alpha_view(&alpha,actor,player,&clients,&data,self.max_active_worlds),"players":players,"teammates":teammates,"requests":requests,"groups":groups,"worlds":worlds,"world_invites":invitations,"current_world_id":client.world_id,"limits":{"active_worlds":runtimes.len(),"max_active_worlds":self.max_active_worlds,"active_players":clients.values().filter(|peer|peer.world_id.is_some()).count(),"max_players":self.max_players},"maps":available_maps()}}).to_string();
+            let view=json!({"type":"social_state","data":{"profile":{"id":profile.id,"name":profile.name,"progression":profile.progression.view()},"alpha":Self::alpha_view_for_phases(&alpha,actor,player,&clients,&data,self.max_active_worlds,&phases),"players":players,"teammates":teammates,"requests":requests,"groups":groups,"worlds":worlds,"world_invites":invitations,"current_world_id":client.world_id,"limits":{"active_worlds":runtimes.len(),"max_active_worlds":self.max_active_worlds,"active_players":clients.values().filter(|peer|peer.world_id.is_some()).count(),"max_players":self.max_players},"maps":available_maps()}}).to_string();
             client.social.send_if_modified(|current| {
                 if current.as_ref() == Some(&view) {
                     false

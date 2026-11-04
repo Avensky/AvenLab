@@ -358,7 +358,7 @@ export function GameController() {
           routeMenuAction(edges[4] ? "previous_tab" : "next_tab");
           return;
         }
-        if ((edges[6] || edges[7]) && ((ui.screen === "mode_select" && ui.overlay === null) || ui.overlay === "match_results")) {
+        if ((edges[6] || edges[7]) && ((ui.screen === "mode_select" && ui.overlay === null) || ui.overlay === "match_results" || (ui.screen==='hero_select'&&ui.overlay===null&&document.activeElement?.closest('[data-match-preview]')))) {
           routeMenuAction(edges[6] ? "previous_option" : "next_option");
           return;
         }

@@ -93,7 +93,9 @@ try{
 
  phase='five vehicles remain in warmup';
  for(const peer of seated.slice(0,5))await peer.deploy(peer.vehicle);
- const waiting=(await seated[0].wait(message=>message.type==='snapshot'&&message.data.entities.length===5&&message.data.match_state?.phase==='waiting')).data;
+ const visibleWaiting=seated.slice(0,5).filter(peer=>peer.team===seated[0].team).length;
+ const waiting=(await seated[0].wait(message=>message.type==='snapshot'&&message.data.entities.length===visibleWaiting&&message.data.match_state?.phase==='waiting')).data;
+ assert(waiting.entities.every(entity=>entity.team===seated[0].team),'waiting opponents retain their mystery picks');
  assert.equal(waiting.match_state.mode,'skirmish');assert.equal(waiting.match_state.training,false);
  checks.push('Five deployed vehicles cannot start a scored 3v3 round');
  phase='sixth vehicle starts the round';

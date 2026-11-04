@@ -140,6 +140,9 @@ export type AlphaView = {
     role_caps?: Record<HeroRole, number>;
     role_minimums?: Record<HeroRole, number>;
     world_id: number;
+    /** Exact active-world round metadata; missing older-server values stay private. */
+    match_id?: string | null;
+    match_phase?: "waiting" | "running" | "overtime" | "ended" | null;
     hero: string;
     team: "red" | "blue";
   } | null;
@@ -151,8 +154,9 @@ export type AlphaView = {
     mode: GameMode;
     reconnecting: boolean;
     world_id?: number;
-    appearance?: HeroAppearance;
+    appearance?: HeroAppearance | null;
     showcase_hero?:string;
+    hero_hidden?:boolean;
   }[];
   reconnect_grace_seconds: number;
   reserved_players: number;

@@ -447,7 +447,7 @@
 .utility-climate .climate-panel:is([data-size=compact],[data-size=single]) .cabin-performance small{font-size:6px}
 .utility-climate .climate-panel[data-size=compact] .cabin-performance output[aria-label="Frame time"]{display:none}
 .utility-climate .climate-panel:is([data-size=compact],[data-size=single]) .console-clock-strip .cabin-clock{min-width:60px;font-size:12px;padding:4px 12px 4px 6px}
-.utility-climate .climate-panel:is([data-size=compact],[data-size=single]) .console-clock-strip output{font-size:11px;color:var(--app-text)}
+.utility-climate .climate-panel:is([data-size=compact],[data-size=single]) .console-clock-strip output{font-size:11px;color:var(--cabin-lcd-ink,#ffad55)}
 .utility-climate .climate-panel:is([data-size=compact],[data-size=single]) .physical-hazard{flex:none;width:24px;height:24px;min-width:24px;min-height:24px}
 /* The bearing is supplemental telemetry; hover/focus reveals its full text
    while its compact glyph shares the same row as the cabin strip. */

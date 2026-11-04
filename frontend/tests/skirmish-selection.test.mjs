@@ -24,26 +24,45 @@ test('match category and size select independently through real admission and au
   await t.test('metadata removes the duplicate size mode and normalizes legacy3v3 admissions',()=>{
    assert.equal(GAME_MODES.filter(m=>m.id==='skirmish').length,0);assert.equal(gameModeLabel('skirmish'),'QUICKPLAY');assert.equal(matchModeLabel('competitive',3),'COMPETITIVE · 3V3');assert.equal(isMatchMode('skirmish'),true);assert.equal(isMatchMode('editor'),false);assert.equal(modeTeamSize('skirmish'),3);assert.equal(modeTeamSize('quickplay'),5);assert.equal(modeTeamSize('quickplay',3),3);assert.equal(modeTeamSize('skirmish',99),3);alpha.getState().chooseMode('skirmish');assert.equal(alpha.getState().mode,'quickplay');assert.equal(alpha.getState().teamSize,3);
   });
-  await t.test('two size-only portraits select on click/A while category stays unchanged',async()=>{
+  await t.test('one activation selects a focused size and continues while category stays unchanged',async()=>{
    const {ModeSelection}=await load('game/alpha/ModeSelection.tsx');
    await act(async()=>{alpha.setState({mode:'quickplay',teamSize:5,hero:null,previewHero:null});social.setState({view,profileStatus:'ready'});network.setState({connected:true});ui.setState({screen:'mode_select',overlay:null,isModeLoading:false});});await render(ModeSelection);
    const cards=[...document.querySelectorAll('[data-match-size]')];assert.equal(cards.length,2);assert(cards.every(card=>card.querySelector('img')),'real portrait assets are visible');assert.deepEqual(cards.map(card=>card.textContent),['3V3','5V5']);assert.deepEqual([...document.querySelectorAll('.alpha-mode-tabs [role=tab]')].map(tab=>tab.textContent),['QUICKPLAY','COMPETITIVE']);
    const small=document.querySelector('[data-match-size="3"]');await act(async()=>{small.dispatchEvent(new Event('pointerenter'));small.focus();});assert.equal(alpha.getState().mode,'quickplay');assert.equal(alpha.getState().teamSize,5);assert.equal(sent.length,0);
-   await act(async()=>route('activate'));assert.equal(alpha.getState().mode,'quickplay');assert.equal(alpha.getState().teamSize,3);assert.equal(sent.length,0,'first A previews a different format');
+   await act(async()=>route('activate'));assert.equal(alpha.getState().mode,'quickplay');assert.equal(alpha.getState().teamSize,3);assert.equal(sent.length,1,'first A selects and requests the format');
    assert.equal(document.querySelector('[data-match-size="3"]').getAttribute('aria-pressed'),'true');assert.match(document.querySelector('[aria-label="Selected game mode"]').textContent,/3 VS 3/);
-   await act(async()=>route('activate'));const request=sent.at(-1);assert.equal(request.action,'mode_join');assert.equal(request.mode,'quickplay');assert.equal(request.team_size,3);assert.equal(request.hero,'','format selection does not claim a role');
+   const request=sent.at(-1);assert.equal(request.action,'mode_join');assert.equal(request.mode,'quickplay');assert.equal(request.team_size,3);assert.equal(request.hero,'','format selection does not claim a role');
    await act(async()=>client.receiveSocialResult({request_id:request.request_id,ok:true,data:{status:'joined',mode:'quickplay',team_size:3,hero:''}}));assert.equal(ui.getState().screen,'hero_select');assert.equal(alpha.getState().mode,'quickplay');assert.equal(alpha.getState().teamSize,3);
   });
   await t.test('both categories join either size and controller tabs cannot overwrite the format',async()=>{
    const {ModeSelection}=await load('game/alpha/ModeSelection.tsx');
    for(const mode of ['quickplay','competitive'])for(const teamSize of [3,5]){
     await act(async()=>{alpha.setState({mode,teamSize:teamSize===3?5:3});social.setState({view,profileStatus:'ready'});ui.setState({screen:'mode_select',overlay:null});});await render(ModeSelection);
-    await act(async()=>document.querySelector(`[data-match-size="${teamSize}"]`).click());assert.equal(alpha.getState().mode,mode);assert.equal(alpha.getState().teamSize,teamSize);
-    await act(async()=>route('next_tab'));assert.equal(alpha.getState().mode,mode==='quickplay'?'competitive':'quickplay');assert.equal(alpha.getState().teamSize,teamSize);
+    const before=sent.length,previousSize=alpha.getState().teamSize;
+    await act(async()=>route('next_tab'));assert.equal(alpha.getState().mode,mode==='quickplay'?'competitive':'quickplay');assert.equal(alpha.getState().teamSize,previousSize);assert.equal(sent.length,before,'category tabs do not enter matchmaking');
     await act(async()=>route('previous_tab'));assert.equal(alpha.getState().mode,mode);
-    await act(async()=>route('activate'));const request=sent.at(-1);assert.equal(request.action,'mode_join');assert.equal(request.mode,mode);assert.equal(request.team_size,teamSize);
+    await act(async()=>document.querySelector(`[data-match-size="${teamSize}"]`).click());assert.equal(alpha.getState().mode,mode);assert.equal(alpha.getState().teamSize,teamSize);assert.equal(sent.length,before+1,'one click selects and requests admission');
+    const request=sent.at(-1);assert.equal(request.action,'mode_join');assert.equal(request.mode,mode);assert.equal(request.team_size,teamSize);assert.equal(ui.getState().screen,'mode_select','the server must acknowledge admission before navigation');
+    await act(async()=>{document.querySelector(`[data-match-size="${teamSize}"]`).click();route('activate');route('next_tab');});assert.equal(sent.length,before+1,'rapid clicks and A cannot duplicate a pending request');assert.equal(alpha.getState().mode,mode);
     await act(async()=>client.receiveSocialResult({request_id:request.request_id,ok:true,data:{status:'queued',mode,team_size:teamSize}}));assert.equal(ui.getState().screen,'queue');
    }
+  });
+  await t.test('size activation preserves profile recovery and never creates a profile or joins before identity is ready',async()=>{
+   const {ModeSelection}=await load('game/alpha/ModeSelection.tsx'),before=sent.length;
+   await act(async()=>{alpha.setState({mode:'competitive',teamSize:5});social.setState({view:null,profileStatus:'idle'});network.setState({connected:true});ui.setState({screen:'mode_select',overlay:null});});await render(ModeSelection);
+   await act(async()=>document.querySelector('[data-profile-action]').focus());
+   await act(async()=>document.querySelector('[data-match-size="3"]').click());assert.equal(alpha.getState().teamSize,3);assert.equal(alpha.getState().mode,'competitive');assert.equal(sent.length,before,'a size click cannot submit the previously focused profile action');assert.equal(ui.getState().screen,'mode_select');assert(document.activeElement.matches('[data-profile-action]'));
+   await act(async()=>social.setState({view,profileStatus:'restoring'}));await act(async()=>document.querySelector('[data-match-size="5"]').click());assert.equal(alpha.getState().teamSize,5);assert.equal(sent.length,before);assert.equal(ui.getState().screen,'mode_select');
+  });
+  await t.test('rejected and offline size requests stay on Play, while the footer continues the selected format',async()=>{
+   const {ModeSelection}=await load('game/alpha/ModeSelection.tsx');
+   await act(async()=>{alpha.setState({mode:'quickplay',teamSize:5});social.setState({view,profileStatus:'ready'});network.setState({connected:true});ui.setState({screen:'mode_select',overlay:null});});await render(ModeSelection);
+   await act(async()=>document.querySelector('[data-match-size="3"]').click());let request=sent.at(-1);await act(async()=>client.receiveSocialResult({request_id:request.request_id,ok:false,message:'Room unavailable'}));assert.equal(ui.getState().screen,'mode_select');assert.match(document.body.textContent,/Room unavailable/);assert.equal(alpha.getState().teamSize,3);
+   await act(async()=>document.querySelector('[data-match-size="5"]').focus());
+   await act(async()=>document.querySelector('.alpha-selection-footer .alpha-deploy').click());request=sent.at(-1);assert.equal(request.team_size,3,'the footer continues the selected format even if another card kept focus');await act(async()=>client.receiveSocialResult({request_id:request.request_id,ok:true,data:{status:'joined',mode:'quickplay',team_size:3,hero:''}}));assert.equal(ui.getState().screen,'hero_select');
+   await act(async()=>{client.setSocialConnection(null);social.setState({view,profileStatus:'ready'});network.setState({connected:false});ui.setState({screen:'mode_select',overlay:null});});await render(ModeSelection);const before=sent.length;
+   await act(async()=>document.querySelector('[data-match-size="5"]').click());assert.equal(sent.length,before);assert.equal(ui.getState().screen,'mode_select');assert.match(document.body.textContent,/Connect to the game server first/);
+   await act(async()=>{client.setSocialConnection({readyState:WebSocket.OPEN,send:body=>sent.push(JSON.parse(body))});social.setState({view,profileStatus:'ready'});network.setState({connected:true});});
   });
   await t.test('Explore & Build keeps tools accessible and Play restores the match category and size',async()=>{
    const {MAIN_MENU_ITEMS}=await load('game/menus/menuItems.ts'),{ModeSelection}=await load('game/alpha/ModeSelection.tsx');

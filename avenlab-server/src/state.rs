@@ -438,7 +438,21 @@ impl SharedGameState {
             "data": VehicleConfigPayload::new(player_id, vehicle.config)
         });
 
-        self.broadcast_json(payload);
+        self.broadcast_vehicle_config_json(player_id,payload);
+    }
+
+    /// Warm-up opponents have no model/config stream until the round starts.
+    pub fn broadcast_vehicle_config_json(&self,player_id:&str,payload:serde_json::Value){
+        let message=payload.to_string();
+        for (id,tx) in &self.clients {
+            if self.can_receive_vehicle_identity(id,player_id){
+                let _=tx.send(message.clone());
+            }
+        }
+    }
+    pub fn can_receive_vehicle_identity(&self,viewer:&str,source:&str)->bool{
+        !self.match_state.as_ref().is_some_and(|round|round.phase==crate::ctf::CtfPhase::Waiting)||
+            self.entities.get(source).zip(self.entities.get(viewer)).is_some_and(|(source,viewer)|source.team==viewer.team)
     }
 
 
@@ -447,6 +461,22 @@ impl SharedGameState {
     // ------------------------------------------------------------------------
     pub fn publish_physics_frame(&self, physics: &PhysicsWorld) -> usize {
         if self.frame_clients.is_empty() { return 0; }
+        // Waiting rooms share at most two team-specific frames. Omitting the
+        // enemy entity also withholds model, collider, paint and weapon data;
+        // a null model alone would still leak the selected chassis via shape.
+        if self.match_state.as_ref().is_some_and(|round|round.phase==crate::ctf::CtfPhase::Waiting){
+            let snapshot=self.build_snapshot(physics);
+            let mut bytes=0;
+            for team in [Team::Red,Team::Blue] {
+                let viewers:Vec<_>=self.frame_clients.iter().filter(|(id,_)|self.entities.get(*id).is_some_and(|entity|entity.team==team)).collect();
+                if viewers.is_empty(){continue;}
+                let mut visible=snapshot.clone();visible.entities.retain(|entity|entity.team==team.as_str());
+                let frame=Arc::new(PhysicsFrame{snapshot:json!({"type":"snapshot","world_id":self.room_id,"data":visible}).to_string(),debug:String::new()});
+                bytes+=frame.snapshot.len();
+                for (_,tx) in viewers {let _=tx.send_replace(Some(Arc::clone(&frame)));}
+            }
+            return bytes;
+        }
         let wants_debug = |id: &String| self.entities.get(id)
             .and_then(|entity| entity.last_packet.as_ref())
             .and_then(|packet| packet.debug_mask).unwrap_or(0) != 0;

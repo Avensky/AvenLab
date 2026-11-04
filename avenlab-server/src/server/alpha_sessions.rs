@@ -434,10 +434,8 @@ impl Server {
             connection.input_tx.send_replace(None);
             let config = room.physics.vehicles.get(player).map(|v| v.config);
             if let Some(config) = config {
-                let packet=json!({"type":"vehicle_config","data":crate::state::VehicleConfigPayload::new(player,config)}).to_string();
-                for tx in room.game.clients.values() {
-                    let _ = tx.send(packet.clone());
-                }
+                let packet=json!({"type":"vehicle_config","data":crate::state::VehicleConfigPayload::new(player,config)});
+                room.game.broadcast_vehicle_config_json(player,packet);
             }
         }
         room.physics.set_assigned_hero(player,id);
@@ -621,7 +619,7 @@ impl Server {
         connection.input_tx.send_replace(None);
         connection.frame.send_replace(None);
         let _=connection.tx.send(json!({"type":"world_changed","world":{"id":world.id,"name":world.name,"map":world.map,"team":member.team.as_str()}}).to_string());
-        runtime.lock().await.send_existing_configs(&connection.tx);
+        runtime.lock().await.send_existing_configs(player,&connection.tx);
         let _ = connection
             .tx
             .send(json!({"type":"map_snapshot","world_id":world.id,"data":map}).to_string());
@@ -721,6 +719,7 @@ impl Server {
         };
         self.persist_record(&record).await
     }
+    #[cfg(test)]
     pub(super) fn alpha_view(
         a: &AlphaState,
         actor: &str,
@@ -729,21 +728,37 @@ impl Server {
         data: &SocialData,
         max_active_worlds:usize,
     ) -> Value {
+        Self::alpha_view_for_phases(a,actor,player,clients,data,max_active_worlds,&HashMap::new())
+    }
+    pub(super) fn alpha_view_for_phases(
+        a:&AlphaState,actor:&str,player:&str,clients:&HashMap<String,Connection>,data:&SocialData,
+        max_active_worlds:usize,phases:&HashMap<usize,(String,crate::ctf::CtfPhase)>,
+    )->Value {
         let ticket = a.queue.iter().find(|ticket| ticket.profile == actor);
         let queue=ticket.map(|ticket|json!({"mode":ticket.mode,"team_size":ticket.team_size,"capacity":ticket.format().capacity(),"position":a.queue.iter().take_while(|t|t.profile!=actor).filter(|t|t.format()==ticket.format()).count()+1,"joined":ticket.joined,"size":a.queue.iter().filter(|t|t.format()==ticket.format()).count(),"reason":"Waiting for this mode and match size, a compatible role, or server world/player capacity. Reconnect seats are held briefly."}));
         let active = a.members.get(player).map(
             |m| { let caps=m.format().role_caps(); let minimums=m.format().role_minimums(); json!({"mode":m.mode,"world_id":m.world,"hero":m.hero,"team":m.team.as_str(),"team_size":m.team_size,"capacity":m.format().capacity(),"role_caps":{"tank":caps[0],"dps":caps[1],"support":caps[2]},"role_minimums":{"tank":minimums[0],"dps":minimums[1],"support":minimums[2]}}) },
         );
+        let mut active=active;
+        if let Some(value)=active.as_mut() {
+            let phase=a.members.get(player).and_then(|m|phases.get(&m.world));
+            value["match_id"]=phase.map(|(id,_)|json!(id)).unwrap_or(Value::Null);
+            value["match_phase"]=phase.map(|(_,phase)|json!(phase)).unwrap_or(Value::Null);
+        }
+        let viewer=a.members.get(player).or_else(||a.reservations.get(actor).filter(|r|r.expires>timestamp()).map(|r|&r.member));
         // Public cards expose only the equipped vehicle appearance, never the
         // profile's credentials, inventory or other vehicle loadouts.
         let card = |profile: &Profile, member: &Member, reconnecting: bool| {
+            let teammate=viewer.is_some_and(|viewer|viewer.world==member.world&&viewer.team==member.team);
+            let started=phases.get(&member.world).is_some_and(|(_,phase)|*phase!=crate::ctf::CtfPhase::Waiting);
+            let hidden=profile.id!=actor&&!teammate&&!started;
             let showcase=if member.hero.is_empty(){profile.progression.default_hero.as_str()}else{member.hero.as_str()};
             let appearance = policy::hero(showcase).ok()
                 .and_then(|hero| profile.progression.hero_loadouts.get(hero.vehicle))
                 .cloned().unwrap_or_default();
             json!({"id":profile.id,"name":profile.name,"team":member.team.as_str(),
-                "hero":member.hero,"showcase_hero":showcase,"mode":member.mode,"team_size":member.team_size,"world_id":member.world,
-                "reconnecting":reconnecting,"appearance":appearance})
+                "hero":if hidden{""}else{&member.hero},"showcase_hero":if hidden{""}else{showcase},"hero_hidden":hidden,"mode":member.mode,"team_size":member.team_size,"world_id":member.world,
+                "reconnecting":reconnecting,"appearance":if hidden{Value::Null}else{json!(appearance)}})
         };
         let roster: Vec<_> = a.members.iter().filter(|(_, m)| m.mode.bucket() == 0)
             .filter_map(|(id, member)| clients.get(id)

@@ -17,7 +17,7 @@
 @media(max-width:900px),(max-height:500px){.hero-modifications{padding:8px;gap:8px;}}
 .hero-workshop .hero-portrait-art {background:var(--app-raised);}
 .hero-workshop-actions{display:flex;align-items:center;gap:6px;min-height:28px}
-.hero-main-hold{--action-orbit-size:28px;--orbit-scale:.56;--orbit-color:#438eff;min-height:28px!important;height:28px;padding:3px 6px!important;gap:6px!important;font:inherit;touch-action:none;user-select:none}
+.hero-main-hold{box-sizing:border-box;--action-orbit-size:28px;--orbit-scale:.56;--orbit-color:#438eff;min-height:28px!important;height:28px;padding:3px 6px!important;gap:6px!important;font:inherit;touch-action:none;user-select:none}
 .hero-hold-accessible{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
 .hero-collection-save-status {font-size:10px;background:var(--app-panel);color:var(--app-text);padding:6px;pointer-events:auto;}
 @media(prefers-reduced-motion:reduce){.hero-main-halo{transform:none;}}
@@ -53,9 +53,9 @@
 .hero-modifications .hero-style-section .hero-pending-note{font-size:9px;border-left:2px solid var(--app-accent);padding:7px;background:var(--app-raised)}
 .hero-modifications .hero-style-section button{white-space:normal;font-size:9px;min-height:34px}
 .hero-style-save-status{padding:8px 2px 0;border-top:1px solid var(--app-line)}
-.hero-workshop .hero-workshop-actions>.controller-action:not(.hero-main-hold){min-height:34px;padding:6px 8px;gap:6px;font-size:11px;white-space:nowrap}
+.hero-workshop .hero-workshop-actions>.controller-action:not(.hero-main-hold){min-height:var(--menu-action-height,32px);padding:var(--menu-action-y,4px) 8px;gap:6px;font-size:11px;white-space:nowrap}
 .hero-workshop[data-has-selection=false] .hero-summary h2{font-size:clamp(18px,3vw,30px)}
-@media(max-width:600px){.hero-modifications{width:min(80vw,320px);padding:9px}.hero-modifications .hero-style-section{padding:9px}.hero-workshop .hero-workshop-actions>.controller-action:not(.hero-main-hold){font-size:10px;padding:5px 4px;min-height:32px}.hero-workshop-actions{gap:4px}}
+@media(max-width:600px){.hero-modifications{width:min(80vw,320px);padding:9px}.hero-modifications .hero-style-section{padding:9px}.hero-workshop .hero-workshop-actions>.controller-action:not(.hero-main-hold){font-size:10px;padding:var(--menu-action-y,4px) 4px;min-height:var(--menu-action-height,32px)}.hero-workshop-actions{gap:4px}}
 
 /* Keep drafts and save ownership mounted beneath sibling modal screens while
    hiding their UI; only the garage scene may show through a guide backdrop. */
@@ -69,5 +69,5 @@
  .hero-workshop .menu-frame-footer .controller-shortcuts{display:none}
  .hero-workshop-actions{width:100%;justify-content:space-between;gap:5px}
  .hero-workshop .hero-main-hold{font-size:9px}
- .hero-workshop .hero-workshop-actions>.controller-action:not(.hero-main-hold){font-size:10px;min-height:32px;padding:5px 4px}
+ .hero-workshop .hero-workshop-actions>.controller-action:not(.hero-main-hold){font-size:10px;min-height:var(--menu-action-height,32px);padding:var(--menu-action-y,4px) 4px}
 }

@@ -143,7 +143,9 @@ try {
     for (let index = 0; index < 3; index++) {team[index].hero = ['tank', 'brz', 'mechanic'][index]; team[index].vehicle = index === 0 ? 'tank' : 'brz';}
   }
   for (const peer of first.slice(0, 5)) await peer.deploy(peer.vehicle);
-  const waiting = (await q3.wait(m => m.type === 'snapshot' && m.data.entities?.length === 5 && m.data.match_state?.phase === 'waiting')).data;
+  const visibleWaiting = first.slice(0,5).filter(peer=>peer.team===q3.team).length;
+  const waiting = (await q3.wait(m => m.type === 'snapshot' && m.data.entities?.length === visibleWaiting && m.data.match_state?.phase === 'waiting')).data;
+  assert(waiting.entities.every(entity=>entity.team===q3.team),'warm-up frames preserve opposing hero mystery');
   assert.equal(waiting.match_state.mode, 'quickplay'); assert.equal(waiting.match_state.team_size, 3);
   await first[5].deploy(first[5].vehicle);
   const running = (await q3.wait(m => m.type === 'snapshot' && m.data.entities?.length === 6 && m.data.match_state?.phase === 'running')).data;

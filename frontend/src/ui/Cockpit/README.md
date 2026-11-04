@@ -31,3 +31,9 @@ Change device visibility/style in store/preferences; change requests in store/in
 The compact landscape update is documented in [COMPACT_LANDSCAPE_COCKPIT_UPDATE.md](../../../../docs/COMPACT_LANDSCAPE_COCKPIT_UPDATE.md). For size changes, start with `styles/layout.css`; for radio power, start with `store/radio/radioStore.ts`.
 
 Parent systems: COLUMN (Lights/Wipers/Cruise), DASHBOARD (brightness/instruments), CONSOLE (Radio/Climate), and TURRET (stationary aim and enable/disable). Legacy child IDs remain valid; parent navigation uses cockpitParent. Mobile AIM lives next to steering, not over the right console.
+
+Climate time and ambient temperature share the physical amber LCD tokens in
+`styles/climate.css`, across Single, Compact and Full. The dark inset keeps
+orange digits readable in every app palette; the outer frame still follows the
+global theme. Header/local clocks outside the climate strip and the CTF clock
+keep their existing styles. The hazard switch remains a separate red control.

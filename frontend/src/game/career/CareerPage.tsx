@@ -1,3 +1,4 @@
+import {MenuTabButton} from "../../components/menus/MenuTabButton";
 import {useEffect,useId,useRef} from 'react';
 import {HEROES} from '../../store/alpha/alphaStore';
 import {useSocialStore} from '../../store/social/socialStore';
@@ -34,7 +35,7 @@ export function CareerPage(){
  }});
  return <MenuFrame ref={root} className="game-ui menu-surface tabbed-menu career-page h-full w-full" role="dialog" aria-modal="true" aria-label="Career" tabIndex={-1} data-controller-rows>
   <MenuFrameHeader title="CAREER" onBack={back}/>
-  <nav role="tablist" aria-label="Career categories" className="career-tabs menu-frame-tabs" data-controller-row>{CAREER_TABS.map(item=><button type="button" role="tab" key={item.id} id={`${id}-${item.id}`} aria-selected={tab===item.id} aria-controls={`${id}-panel`} tabIndex={tab===item.id?0:-1} className="menu-control" onClick={()=>changeTab(item.id)}>{item.label}</button>)}</nav>
+  <nav role="tablist" aria-label="Career categories" className="career-tabs menu-frame-tabs" data-controller-row>{CAREER_TABS.map(item=><MenuTabButton key={item.id} id={`${id}-${item.id}`} selected={tab===item.id} aria-controls={`${id}-panel`} tabIndex={tab===item.id?0:-1} onClick={()=>changeTab(item.id)}>{item.label}</MenuTabButton>)}</nav>
   <div className="career-profile-strip"><span className="career-profile-mark" aria-hidden="true">{profile?.name.slice(0,1).toUpperCase()??'?'}</span><div><h2>{profile?.name??'YOUR CAREER'}</h2><p>{profile?.progression?`LEVEL ${profile.progression.level} · PRESTIGE ${profile.progression.prestige}`:'Connect your player profile'}<span> PLAYER RECORD</span></p></div><span className="career-alpha-tag">ALPHA</span></div>
   {hasFilters&&<div className="career-filters" data-controller-row><label>MODE<select aria-label="Career mode" value={mode} onChange={event=>setMode(event.target.value)}>{CAREER_MODES.map(([value,label])=><option value={value} key={value}>{label}</option>)}</select></label><label>HERO<select aria-label="Career hero" value={hero} onChange={event=>setHero(event.target.value)}><option value="all">All heroes</option>{HEROES.map(item=><option value={item.id} key={item.id}>{item.name}</option>)}</select></label><span>YOUR STATS. YOUR STYLE.</span></div>}
   <div ref={content} className="career-content menu-frame-content" role="tabpanel" id={`${id}-panel`} aria-labelledby={`${id}-${tab}`} tabIndex={0}>
