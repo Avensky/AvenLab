@@ -79,6 +79,18 @@ mod tests {
     }
     async fn cleanup(server:Server){let _=tokio::fs::remove_dir_all(server.path.parent().unwrap()).await;}
     #[tokio::test]
+    async fn barrage_rejects_forged_charge_and_tuning_and_spends_charge_only_once(){
+        let(s,actor,_)=fixture("tank").await;
+        let request=json!({"action":"tank_barrage","ultimate_fraction":1.0,"duration":9999,"damage":99999,"targets":["ally"]});
+        assert!(s.handle(&actor,request.clone()).await.is_err());
+        let runtime=s.runtimes.lock().await[&WORLD].clone();
+        runtime.lock().await.physics.vehicles.get_mut(&actor).unwrap().powertrain.ultimate_fraction=1.0;
+        assert!(s.handle(&actor,request.clone()).await.is_ok());
+        assert!(s.handle(&actor,request).await.is_err());
+        assert_eq!(runtime.lock().await.physics.barrages[&actor].ticks_left,300);
+        cleanup(s).await;
+    }
+    #[tokio::test]
     async fn guard_rpc_requires_actual_selected_hero_and_ignores_client_tuning(){
         let(s,actor,_)=fixture("mechanic").await;
         let request=json!({"action":"dps_guard_boost","hero":"brz","shield_hp":999999,"cooldown_s":0});

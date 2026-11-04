@@ -50,6 +50,7 @@ const BINDING_LABELS: Record<BindingAction, string> = {
   barrier: "Tank barrier / CX-30 dive shield",
   healthBars: "Cycle health bars",
   headlights: "Headlights",
+  ultimate: "Vehicle ultimate",
 };
 
 export function SettingsMenu() {

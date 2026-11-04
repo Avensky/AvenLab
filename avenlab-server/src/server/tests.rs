@@ -683,11 +683,16 @@ fn place_ctf_body(room: &mut WorldRuntime, player: &str, point: [f32;3]) {
     body.set_linvel(Vector::zeros(), true);
 }
 fn travel_ctf_body(room: &mut WorldRuntime, player: &str, target: [f32;3]) {
+    // Cap fixture travel so a regression reports its last pose instead of
+    // keeping the entire server suite alive indefinitely.
+    let mut steps = 0;
     loop {
         let pos = room.physics.bodies[room.physics.vehicles[player].body].translation();
         let delta = [target[0]-pos.x,target[1]-pos.y,target[2]-pos.z];
         let distance = (delta.iter().map(|v| v*v).sum::<f32>()).sqrt();
         if distance < 0.001 { break; }
+        steps += 1;
+        assert!(steps < 1024, "CTF travel stalled at {pos:?}, heading for {target:?}");
         let amount = (4.0 / distance).min(1.0);
         let next = [pos.x+delta[0]*amount,pos.y+delta[1]*amount,pos.z+delta[2]*amount];
         place_ctf_body(room, player, next);

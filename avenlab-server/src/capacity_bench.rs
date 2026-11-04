@@ -28,6 +28,8 @@ pub fn run() -> anyhow::Result<()> {
     } else {
         vec![number("--players", 10, 10); number("--worlds", 1, 16)]
     };
+    let combat = args.iter().any(|arg| arg == "--combat");
+    let chassis = ["tank", "brz", "cx30", "sierra", "landcruiser", "mini"];
     let count = plan.len();
     let ticks = number("--ticks", 1200, 10000);
     let map = value("--map").unwrap_or_else(|| "streaming_endless_city".into());
@@ -42,7 +44,11 @@ pub fn run() -> anyhow::Result<()> {
             let (frame, frame_rx) = watch::channel(None);
             let (input, input_rx) = watch::channel(None);
             room.join(&id, tx, frame, input_rx, None, 10);
-            room.spawn(&id, "brz").map_err(anyhow::Error::msg)?;
+            let model = if combat { chassis[player % chassis.len()] } else { "brz" };
+            room.spawn(&id, model).map_err(anyhow::Error::msg)?;
+            if combat {
+                room.physics.set_assigned_hero(&id, model);
+            }
             input_senders.push((input, player));
             receivers.push((rx, frame_rx));
         }
@@ -58,7 +64,12 @@ pub fn run() -> anyhow::Result<()> {
     let mut encoded_bytes = 0usize;
     for tick in 0..ticks {
         for (sender, player) in &input_senders {
-            sender.send_replace(Some(InputPacket { combat: None,
+            sender.send_replace(Some(InputPacket { combat: combat.then(|| crate::state::CombatPose {
+                    enabled: true, fire: true, yaw: (tick as f32 * 0.004) + *player as f32, pitch: 0.0,
+                    weapon: if (tick / 120) % 2 == 0 { "cannon" } else { "coax" }.into(),
+                    role: if player % chassis.len() == 0 { "tank" } else { "dps" }.into(),
+                    ..Default::default()
+                }),
                 r#type: "input".into(),
                 seq: tick as u32,
                 dt: 1.0 / 60.0,
@@ -86,7 +97,7 @@ pub fn run() -> anyhow::Result<()> {
     }
     times.sort_by(f64::total_cmp);
     let p = |fraction: f64| times[((times.len() - 1) as f64 * fraction).ceil() as usize];
-    let result = json!({"worlds":count,"players_per_world":plan,"total_players":plan.iter().sum::<usize>(),"map":map,"ticks":ticks,"mean_encoded_bytes_per_world_tick":encoded_bytes as f64 / (count * ticks) as f64,"tick_budget_ms":1000.0/60.0,"p50_ms":p(0.5),"p95_ms":p(0.95),"p99_ms":p(0.99),"max_ms":times.last(),"p95_under_12ms":p(0.95)<12.0,"scope":"CPU physics and snapshot serialization; no socket traffic, target-client rendering, shared-host contention, or capacity guarantee"});
+    let result = json!({"worlds":count,"players_per_world":plan,"total_players":plan.iter().sum::<usize>(),"map":map,"ticks":ticks,"mean_encoded_bytes_per_world_tick":encoded_bytes as f64 / (count * ticks) as f64,"combat":combat,"over_budget_ticks":times.iter().filter(|v| **v>1000.0/60.0).count(),"tick_budget_ms":1000.0/60.0,"p50_ms":p(0.5),"p95_ms":p(0.95),"p99_ms":p(0.99),"max_ms":times.last(),"p95_under_12ms":p(0.95)<12.0,"scope":"CPU physics and snapshot serialization; no socket traffic, target-client rendering, shared-host contention, or capacity guarantee"});
     let bytes = serde_json::to_string_pretty(&result)?;
     if let Some(output) = value("--output") {
         std::fs::write(output, bytes + "\n")?;

@@ -1,3 +1,4 @@
+import { streetProps } from "../props/streetPropCatalog.ts";
 import { validateDestruction, type DestructionSettings } from "../../combat/destruction.ts";
 import {
   MODEL_ASSETS,
@@ -98,6 +99,7 @@ const box = (
 });
 export const PIECES: Piece[] = [
   ...EXTRA_PIECES,
+  ...streetProps,
   ...VEHICLE_ASSETS.map((a) => ({
     id: `vehicle-${a.id}`,
     label: `${a.label} background`,

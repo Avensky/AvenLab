@@ -35,6 +35,15 @@ test('fixed tank cannon and swappable secondaries keep device ownership, driving
   await press(4,true);assert.equal(combatIntent.gamepadRam,true,'LB keeps Ram');await press(4,false);assert.equal(combatIntent.gamepadRam,false);await key('ShiftLeft');assert.equal(combatIntent.keyboardRam,false);
   const resetFlags=input.getState().input.vehicleMask;await press(12,true);const resetDeadline=combat.getState().turretResetReadyAt;assert(resetDeadline>performance.now());await press(12,false);combatIntent.yaw=.7;await press(12,true);assert.equal(combat.getState().turretResetReadyAt,resetDeadline);assert.equal(combatIntent.yaw,.7);assert.equal(input.getState().input.vehicleMask,resetFlags);await press(12,false);
   await act(async()=>combat.setState({turretResetReadyAt:performance.now()-1}));await press(12,true);assert(Math.abs(Math.abs(combatIntent.yaw)-Math.PI)<.001);await press(12,false);
+  const {setSocialConnection,receiveSocialResult}=await load('net/socialClient.ts');
+  const actions=[];
+  setSocialConnection({readyState:1,send:body=>{const packet=JSON.parse(body);actions.push(packet.action);queueMicrotask(()=>receiveSocialResult({request_id:packet.request_id,ok:true,data:{activated:true}}));}});
+  await act(async()=>network.setState({snapshot:{entities:[{...entity,ultimate_fraction:1}]}}));
+  await press(15,true);assert(fire.gamepad.secondary);await press(15,false);assert.deepEqual(actions,[],'firing the secondary preserves the Ultimate');
+  await act(async()=>combat.setState({turretResetReadyAt:0}));await press(12,true);assert.equal(combat.getState().turretResetReadyAt,0);
+  await press(12,false);assert(combat.getState().turretResetReadyAt>performance.now());assert.deepEqual(actions,[]);
+  await press(12,true);await new Promise(resolve=>setTimeout(resolve,625));await poll();await poll();await press(12,false);
+  assert.deepEqual(actions,['tank_barrage'],'a held D-pad Up spends charge exactly once');
   const locked=combat.getState().orientationLocked;await press(11,true);assert.equal(combat.getState().orientationLocked,!locked);await press(11,false);const lockDeadline=combat.getState().turretLockReadyAt;await press(11,true);assert.equal(combat.getState().orientationLocked,!locked);assert.equal(combat.getState().turretLockReadyAt,lockDeadline);await press(11,false);
   await act(async()=>ui.setState({overlay:'pause'}));assert.equal(document.querySelector('.weapon-selector'),null);assert.equal(cycleTankWeapon(),false);await act(async()=>ui.setState({overlay:null}));await poll();await act(async()=>combat.getState().setEnabled(false));const before=input.getState().input.vehicleMask;await press(3,true);assert.notEqual(input.getState().input.vehicleMask,before);await press(3,false);
   await act(async()=>{combat.getState().setEnabled(true);network.setState({snapshot:{entities:[{...entity,vehicle_id:'brz'}]}});});assert.equal(document.querySelector('.weapon-selector'),null);assert.equal(cycleTankWeapon(),false);await press(15,true);assert(input.getState().input.vehicleMask&32,'cars retain right blinker');await press(15,false);

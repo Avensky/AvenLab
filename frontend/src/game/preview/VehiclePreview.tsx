@@ -14,7 +14,7 @@ import { usePreferencesStore } from "../../store/preferences/preferencesStore";
 import { GarageEnvironment } from "./GarageEnvironment";
 import { PreviewTurntable } from "./PreviewTurntable";
 import { DEFAULT_PREVIEW_PLATFORM } from "./previewPlacement";
-import { useAlphaStore } from "../../store/alpha/alphaStore";
+import { HEROES, useAlphaStore } from "../../store/alpha/alphaStore";
 
 export function VehiclePreview({
   heroLayout = false,
@@ -27,8 +27,9 @@ export function VehiclePreview({
   const staging=screen==="hero_select"||screen==="heroes"||screen==="queue";
   const selectionAccent=staging && (teamAccent??GARAGE_LIGHT_COLORS[theme])===GARAGE_LIGHT_COLORS.scarlet
     ? SELECTION_CRIMSON : teamAccent;
-  const unselected = useAlphaStore((s) => s.previewHero === null);
-  const vehicleId = useSelectionStore((s) => s.getSelectedVehicle().id);
+  const picked = useAlphaStore(s => screen === "heroes" ? s.previewHero : s.hero);
+  const favorite = useSelectionStore(s => s.getSelectedVehicle().id);
+  const vehicleId = awaitingHero ? HEROES.find(hero => hero.id === picked)?.vehicle : favorite;
   const reducedMotion = usePreferencesStore((s) => s.reducedMotion);
   const size = useThree((s) => s.size);
   const [turntable, setTurntable] = useState<Group | null>(null);
@@ -75,7 +76,7 @@ export function VehiclePreview({
       />
 
       <PreviewTurntable onReady={setTurntable}>
-        <AssetBoundary
+        {vehicleId && <AssetBoundary
           key={vehicleId}
           fallback={
             <Html center>
@@ -88,10 +89,10 @@ export function VehiclePreview({
         >
           <Suspense fallback={null}>
             <group rotation={[0, Math.PI / 2, 0]}>
-              <VehiclePreviewModel platform={platform} ghost={awaitingHero && unselected} />
+              <VehiclePreviewModel platform={platform} model={vehicleId} />
             </group>
           </Suspense>
-        </AssetBoundary>
+        </AssetBoundary>}
       </PreviewTurntable>
 
       <OrbitControls

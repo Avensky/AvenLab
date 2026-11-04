@@ -12,29 +12,31 @@ import { FACTORY_APPEARANCE, type HeroAppearance } from "./heroLoadouts";
  * never recolor cached GLTF materials or another player's vehicle. */
 export function useLiveAppearance(ref: RefObject<Object3D|null>, model:string, entityId?:string) {
  const lowDetail=useRenderSettingsStore(s=>s.lowDetail);
+ const inFleet=useNetworkStore(s=>(s.snapshot?.entities.length??0)>=3);
+ const simplifyTransmission=lowDetail||inFleet;
  const changing=useUIStore(s=>s.overlay === "vehicle_select");
  const local=useNetworkStore(s=>s.playerId);
  const preview=useHeroLoadouts(s=>s.loadouts[model]);
  const confirmed=useNetworkStore(useShallow(s=>snapshotEntity(s.snapshot,entityId??s.playerId)?.appearance??FACTORY_APPEARANCE));
  const appearance=changing && (!entityId || entityId===local) ? preview??FACTORY_APPEARANCE : confirmed;
- const applied=useRef<{root:Object3D;lowDetail:boolean;appearance:HeroAppearance;restore:()=>void}|null>(null);
+ const applied=useRef<{root:Object3D;simplifyTransmission:boolean;appearance:HeroAppearance;restore:()=>void}|null>(null);
  useEffect(()=>{const state=applied;return()=>{state.current?.restore();state.current=null;};},[]);
  // R3F may attach the owned primitive after React layout effects. Apply once
  // on the first ready frame, then only when the authoritative loadout changes.
  useFrame(()=>{
   const root=ref.current;if(!root)return;
-  if(applied.current?.root===root&&applied.current.appearance===appearance&&applied.current.lowDetail===lowDetail)return;
+  if(applied.current?.root===root&&applied.current.appearance===appearance&&applied.current.simplifyTransmission===simplifyTransmission)return;
   applied.current?.restore();
   const originals=new Map<Mesh,Material|Material[]>(),owned=new Map<Material,Material>();
   const own=(material:Material)=>{
    if(!(material instanceof MeshStandardMaterial))return material;
-   const simpleGlass=lowDetail&&material instanceof MeshPhysicalMaterial&&material.transmission>0;
+   const simpleGlass=simplifyTransmission&&material instanceof MeshPhysicalMaterial&&material.transmission>0;
    if(!simpleGlass&&!hasVehicleFinish(material.name))return material;
    const existing=owned.get(material);if(existing)return existing;
    const clone=material.clone();
    if(simpleGlass&&clone instanceof MeshPhysicalMaterial){
     // Transmission asks Three to render the opaque scene into a second target.
-    // A tinted pane keeps windows readable without that scene pass on Low.
+    // Tinted glass keeps the local cockpit transparent in a crowded fight.
     if(/glass|lens|window|windshield/i.test(clone.name)){
      clone.transparent=true;clone.opacity=Math.min(clone.opacity,.42);clone.depthWrite=false;clone.forceSinglePass=true;
     }
@@ -51,6 +53,6 @@ export function useLiveAppearance(ref: RefObject<Object3D|null>, model:string, e
   });
   applyShowroomPaint(root,model,"factory",appearance.body==="factory"?undefined:appearance.body);
   applyShowroomHighlights(root,.45,appearance.finish);
-  applied.current={root,lowDetail,appearance,restore:()=>{for(const [mesh,material]of originals)mesh.material=material;for(const m of owned.values())m.dispose();}};
+  applied.current={root,simplifyTransmission,appearance,restore:()=>{for(const [mesh,material]of originals)mesh.material=material;for(const m of owned.values())m.dispose();}};
  });
 }

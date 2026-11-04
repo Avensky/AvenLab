@@ -64,7 +64,7 @@ export function prepareVehicleVisual(scene: Group, model: string) {
       object.material = Array.isArray(object.material) ? object.material.map(repair) : repair(object.material);
     });
   } else {
-    // A cloned scene still shares its GLTF materials. Preview ghosts and a
+    // A cloned scene still shares its GLTF materials. Showroom paint and a
     // vehicle's instance effects must never alter the loader cache/gameplay.
     const cache = new Map<Material, Material>();
     root.traverse(object => {

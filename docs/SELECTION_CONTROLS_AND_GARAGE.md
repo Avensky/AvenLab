@@ -27,30 +27,22 @@ submit a hero while chat owns input. No extra gamepad polling loop was added.
 
 ## Preview and confirmed hero
 
-Fresh admission starts with both `hero` and `previewHero` empty. The initial
-showroom model is a 23% opacity ghost only on that unpicked hero screen. Mode
-selection and gameplay use authored full-opacity body materials; authored glass
-keeps its original transparency.
+Fresh admission leaves the turntable empty. Browsing the hero grid sets the candidate and updates the portrait UI. The garage requests the normal vehicle model when the player confirms a hero. Clearing the selection removes the vehicle and its contact shadow. Authored glass keeps its transparency.
 
-Portrait focus, pointer hover and directional movement set only `previewHero`.
-They load a fresh full-opacity clone immediately, without sending `hero_select`.
 First A/click locks that hero through server validation. A again on the same
 preview deploys (or opens configured Recon). If another portrait is previewed,
 A selects it instead of deploying the old pick; another A advances. Focused
 portraits retain grow/role glow; the confirmed hero retains soft white glow and
 a white top-right diamond without a duplicate colored selection border.
 
-Back first clears preview/confirmation and returns to the ghost while keeping
+Back first clears preview/confirmation and returns to the empty turntable while keeping
 the admitted seat. `hero_select` with an empty hero clears a pre-deployment pick
 on Rust without releasing the seat. A second Back cancels admission and returns
 to game modes. Clearing a deployed alpha member is rejected by Rust. Reconnect hydration runs
 once per admission, so a delayed lobby view cannot restore a choice after Back. An in-game
 Change Hero overlay's Back simply returns to the running game.
 
-All five vehicle models now own their cloned materials, including BRZ, AE86 and
-Tank. Ghost changes and disposal cannot mutate the GLTF loader cache or a live
-vehicle. Ghost-to-full transitions replace the preview clone; geometry and
-textures still use the existing shared assets.
+Each selected preview owns its materials and shares the cached geometry and textures.
 
 ## Garage lighting
 

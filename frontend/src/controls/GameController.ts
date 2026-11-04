@@ -1,3 +1,4 @@
+import {barrageReady, requestTankBarrage} from "../combat/tankBarrage";
 import {requestNearestRevive,isMechanicPlayer} from '../combat/reviveTargets';
 import {isGuardDpsPlayer,requestGuardBoost,requestTankBarrier,requestDiveShield,isDiveShieldPlayer} from '../combat/guardBoost';
 import {useScoreboardStore} from "../store/hud/scoreboardStore";
@@ -54,6 +55,7 @@ export function GameController() {
     let frameId = 0;
     let focused = document.hasFocus();
     let secondaryFireArmed=true;
+    let barragePressStarted: number | null = null;
     let lastSecondary=useCombatStore.getState().secondaryWeapon;
     let previousButtons: boolean[] = [];
     let padKey: string | null = null;
@@ -76,6 +78,7 @@ export function GameController() {
       routePhysicalMenuPress(false, cancelled);
     };
     const release = () => {
+      barragePressStarted = null;
       releaseWeaponSource("gamepad");combatIntent.gamepadRam=false;combatIntent.gamepadFire=false;
       armed = false;
       if (resetTimer !== null) window.clearTimeout(resetTimer);
@@ -440,7 +443,21 @@ export function GameController() {
       store.setHeldPlayerFlag("gamepad", PlayerFlags.HONK, !combatIntent.enabled&&!mechanic && pressed(5));
       if (edges[2]) store.toggleVehicleFlag(VehicleFlags.ENGINE_ON);
       if (edges[3]) {if(cycleTankWeapon())secondaryFireArmed=false;else store.toggleVehicleFlag(VehicleFlags.HEADLIGHTS);}
-      if (edges[12]) {if(tank)resetTurretOrientation();else store.toggleVehicleFlag(VehicleFlags.HAZARDS);}
+      if (edges[12]) {
+        if (!tank) store.toggleVehicleFlag(VehicleFlags.HAZARDS);
+        else if (combatIntent.enabled && barrageReady(useNetworkStore.getState())) barragePressStarted = performance.now();
+        else resetTurretOrientation();
+      }
+      if (barragePressStarted !== null) {
+        if (!tank || !combatIntent.enabled) barragePressStarted = null;
+        else if (!pressed(12)) {
+          barragePressStarted = null;
+          resetTurretOrientation();
+        } else if (performance.now() - barragePressStarted >= 600) {
+          barragePressStarted = null;
+          void requestTankBarrage();
+        }
+      }
       if (edges[14]) {if(tank)void requestTankBarrier();else if(isDiveShieldPlayer()&&combatIntent.enabled)void requestDiveShield();else store.toggleVehicleFlag(VehicleFlags.BLINKER_LEFT);}
       if (edges[15]&&!(tank&&combatIntent.enabled)) store.toggleVehicleFlag(VehicleFlags.BLINKER_RIGHT);
       if (edges[11]) {

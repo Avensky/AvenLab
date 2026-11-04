@@ -40,4 +40,4 @@ Ultimate charge is a server resource: connected, living, enabled bodies gain
 HP restoration add normalized target-health fractions. Passive charge does not
 use browser/wall-clock or packet dt, grants no XP, and stops for detached/downed
 bodies and ended rounds. Refueling, service and self-healing never award charge.
-Round start resets the resource. The ultimate action itself remains pending.
+Round start resets the resource. At full charge, Vanguard can activate Barrage for five seconds. The room server selects exposed enemies within 45 m and resolves the cannon, machine guns and shield hits.

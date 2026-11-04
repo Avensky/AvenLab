@@ -125,7 +125,9 @@ export interface GuardSnapshot {
   break_seq: number;
 }
 
+export type TankBarrage = { ticks_left:number; pulse:number; traces:{from:[number,number,number];to:[number,number,number];cannon:boolean}[] };
 export interface PhysicsEntitySnapshot {
+  barrage?: TankBarrage;
   support?: SupportSnapshot;
   guard?: GuardSnapshot;
   /** Server-owned combat HP is separate from mechanical condition. */

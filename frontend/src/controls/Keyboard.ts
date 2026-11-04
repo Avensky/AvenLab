@@ -1,3 +1,4 @@
+import {requestTankBarrage} from "../combat/tankBarrage";
 import {useSocialStore} from '../store/social/socialStore';
 import {isMatchMode} from '../store/alpha/alphaStore';
 import {requestNearestRevive,isMechanicPlayer} from '../combat/reviveTargets';
@@ -328,6 +329,7 @@ export function Keyboard() {
       }
       const store = useInputStore.getState();
       const combatKeys=usePreferencesStore.getState().bindings;
+      if(event.code===combatKeys.ultimate){if(!event.repeat)void requestTankBarrage();event.preventDefault();return;}
       if(event.code===combatKeys.headlights && !event.ctrlKey && !event.altKey && !event.metaKey){event.preventDefault();store.toggleVehicleFlag(VehicleFlags.HEADLIGHTS);return;}
       if(event.code===combatKeys.revive&&isMechanicPlayer()){event.preventDefault();void requestNearestRevive();return;}
       if(event.code===combatKeys.barrier&&isDiveShieldPlayer()){event.preventDefault();if(!event.repeat)void requestDiveShield();return;}

@@ -1,3 +1,4 @@
+import type {VehicleModelId} from "../../vehicles/tools/vehicleModelPaths";
 import { useHeroLoadouts, type HeroAppearance } from "../../vehicles/cosmetics/heroLoadouts";
 import { create } from "zustand";
 import { useSelectionStore, vehicleCatalog } from "../selection/selectionStore";
@@ -49,7 +50,7 @@ export const GAME_MODES: {
 export const HEROES: {
   id: string;
   name: string;
-  vehicle: string;
+  vehicle: VehicleModelId;
   role: HeroRole;
   note: string;
 }[] = [

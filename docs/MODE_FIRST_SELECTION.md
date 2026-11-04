@@ -21,8 +21,7 @@ vehicle preview and turntable stay mounted between them.
    current alpha host's admission service, not a new multi-host server directory.
 4. **Hero selection:** after admission, the next screen contains the portrait
    grid and role filters, with no mode/configuration controls. A fresh admission
-   has an empty hero. The favorite preview initially becomes a ghost; portrait focus/hover immediately
-   loads a fresh full-opacity preview without confirming a hero. Only an assigned Quickplay/Competitive
+   has an empty hero. The turntable stays empty while the player browses portraits and shows the selected vehicle after confirmation. Only an assigned Quickplay/Competitive
    match displays the team strip above the footer. Reconnects retain an already
    locked hero; a fresh mode admission does not.
 5. **Deployment:** click/A/Enter confirms a portrait through the existing

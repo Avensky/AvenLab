@@ -1,3 +1,5 @@
+import { streetProp } from "../props/streetPropCatalog";
+import { StreetPropInstances, StreetPropPreview } from "../props/StreetPropMeshes";
 import { memo, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { BoxGeometry, Color, InstancedMesh, Object3D } from "three";
 import {
@@ -97,11 +99,15 @@ export const LayoutInstances = memo(function LayoutInstances({
   collisionOnly?: boolean;
   onSelect?: (id: string) => void;
 }) {
+  const props = useMemo(() => collisionOnly || wireframe ? [] :
+    objects.filter(o => o.id !== exclude && streetProp(o.piece)), [objects, exclude, collisionOnly, wireframe]);
+  const propFallback = useMemo(() => props.flatMap(item => item.parts.map(part => ({item,part}))), [props]);
   const items = useMemo(
     () =>
       objects
         .filter(
           (o) =>
+            (collisionOnly || wireframe || !streetProp(o.piece)) &&
             !o.road &&
             !o.model &&
             !o.vehicle &&
@@ -113,7 +119,7 @@ export const LayoutInstances = memo(function LayoutInstances({
             .filter((part) => !collisionOnly || part.solid !== false)
             .map((part) => ({ item, part })),
         ),
-    [objects, exclude, collisionOnly],
+    [objects, exclude, collisionOnly, wireframe],
   );
   const boxes = useMemo(
     () => items.filter((i) => i.part.shape === "box"),
@@ -137,6 +143,7 @@ export const LayoutInstances = memo(function LayoutInstances({
         wireframe={wireframe}
         onSelect={onSelect}
       />
+      <StreetPropInstances objects={props} onSelect={onSelect} fallback={<ShapeInstances items={propFallback} shape="box" wireframe={false} onSelect={onSelect}/>}/>
       <RoadInstances
         objects={objects}
         exclude={exclude}
@@ -189,6 +196,28 @@ export function PieceModel({
       number,
       number,
     ];
+  const parts = item.parts
+        .filter(
+          (part) => !collisionOnly || (item.solid && part.solid !== false),
+        )
+        .map((part, i) => (
+          <mesh
+            key={i}
+            geometry={geometries[part.shape]}
+            position={part.position}
+            scale={part.size}
+          >
+            <meshStandardMaterial
+              color={ghost ? "#60e0bd" : (part.color ?? item.color)}
+              roughness={0.9}
+              metalness={0.025}
+              transparent={ghost}
+              opacity={ghost ? 0.48 : 1}
+              depthWrite={!ghost}
+              wireframe={wireframe}
+            />
+          </mesh>
+        ));
   return (
     <>
       {item.vehicle && (
@@ -216,28 +245,8 @@ export function PieceModel({
           ghost={ghost}
         />
       )}
-      {item.parts
-        .filter(
-          (part) => !collisionOnly || (item.solid && part.solid !== false),
-        )
-        .map((part, i) => (
-          <mesh
-            key={i}
-            geometry={geometries[part.shape]}
-            position={part.position}
-            scale={part.size}
-          >
-            <meshStandardMaterial
-              color={ghost ? "#60e0bd" : (part.color ?? item.color)}
-              roughness={0.9}
-              metalness={0.025}
-              transparent={ghost}
-              opacity={ghost ? 0.48 : 1}
-              depthWrite={!ghost}
-              wireframe={wireframe}
-            />
-          </mesh>
-        ))}
+      {streetProp(item.piece) && !collisionOnly && !wireframe && !ghost ?
+        <StreetPropPreview piece={item.piece} fallback={parts}/> : parts}
       {selected && (
         <mesh position={center} scale={extent} renderOrder={10}>
           <boxGeometry args={[1.025, 1.025, 1.025]} />

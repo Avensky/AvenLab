@@ -17,6 +17,7 @@ export type Capture = {
   snapshotKiBps: number; debugKiBps: number; snapshotHz: number;
   slowFrames: number; frameCount: number; baselineId: number | null;
   startLocation?: PlayerLocation | null; endLocation?: PlayerLocation | null;
+  stalls?: {count:number;longestFrameMs:number;timeInStallsMs:number};
   frameSamplesMs?: number[]; timeline?: CapturePoint[];
   stoppedEarly?: boolean;
 };
@@ -168,9 +169,14 @@ export class PerformanceRecorder {
     if (frameCount < 30 || p.snapshots === 0) { this.cancel("Discarded: insufficient frames or snapshots"); return; }
     const metrics: Summaries = {};
     for (const metric of METRICS) metrics[metric] = summarize(p.samples[metric] ?? []);
+    const stalls={count:0,longestFrameMs:0,timeInStallsMs:0};
+    for(const ms of p.samples.frameMs ?? []){
+      stalls.longestFrameMs=Math.max(stalls.longestFrameMs,ms);
+      if(ms>=100){stalls.count++;stalls.timeInStallsMs+=ms;}
+    }
     const id = this.nextId++;
     if (p.baseline) this.baselineId = id;
-    this.runs.push({ id, label: p.label, baseline: p.baseline, startedAt: p.startedAt!, stoppedEarly: p.stoppedEarly ?? false,
+    this.runs.push({ id, stalls, label: p.label, baseline: p.baseline, startedAt: p.startedAt!, stoppedEarly: p.stoppedEarly ?? false,
       durationMs: p.durationMs, settings: { ...p.settings, endPlayerPose: context.settings.playerPose, endPlayerResources: context.settings.playerResources }, metrics,
       snapshotKiBps: p.snapshotBytes / 1024 / (p.durationMs / 1000), debugKiBps: p.debugBytes / 1024 / (p.durationMs / 1000),
       snapshotHz: p.snapshots / (p.durationMs / 1000), frameCount,
@@ -195,7 +201,7 @@ export function capturesCsv(runs: Capture[]) {
     return `"${s.replaceAll('"', '""')}"`;
   };
   const header = ["id", "label", "started_at", "is_baseline", "baseline_id", "delta_baseline_ms", "delta_previous_ms", "delta_baseline_percent",
-    "duration_ms", "stopped_early", "snapshot_KiB_s", "debug_KiB_s", "snapshot_Hz", "frame_count", "frames_over_17.17ms",
+    "duration_ms", "stopped_early", "snapshot_KiB_s", "debug_KiB_s", "snapshot_Hz", "frame_count", "frames_over_17.17ms", "frames_at_least_100ms", "time_in_100ms_frames_ms", "longest_frame_ms",
     ...METRICS.flatMap((m) => [`${m}_mean`, `${m}_p50`, `${m}_p95`, `${m}_p99`, `${m}_stddev`, `${m}_samples`]), "settings"];
   const rows = runs.map((r, index) => {
     const baseline = runs.find((b) => b.id === r.baselineId);
@@ -204,7 +210,7 @@ export function capturesCsv(runs: Capture[]) {
     return [r.id, r.label, r.startedAt, r.baseline, r.baselineId, delta,
       difference(r.metrics.frameMs?.mean, runs[index - 1]?.metrics.frameMs?.mean),
       delta !== null && baseMean ? 100 * delta / baseMean : null,
-      r.durationMs, r.stoppedEarly ?? false, r.snapshotKiBps, r.debugKiBps, r.snapshotHz, r.frameCount, r.slowFrames,
+      r.durationMs, r.stoppedEarly ?? false, r.snapshotKiBps, r.debugKiBps, r.snapshotHz, r.frameCount, r.slowFrames, r.stalls?.count, r.stalls?.timeInStallsMs, r.stalls?.longestFrameMs,
       ...METRICS.flatMap((m) => [r.metrics[m]?.mean, r.metrics[m]?.p50, r.metrics[m]?.p95,
         r.metrics[m]?.p99, r.metrics[m]?.stddev, r.metrics[m]?.count]), JSON.stringify(r.settings)];
   });

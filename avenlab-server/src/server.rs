@@ -352,7 +352,7 @@ impl Server {
         let _=client.tx.send(json!({"type":"world_changed","world":{"id":world_id,"name":world.name,"map":world.map,"team":team.as_str()}}).to_string());
         let _=client.tx.send(json!({"type":"welcome","player_id":player,"room_id":world_id,"team":team.as_str(),"spawned":false}).to_string());
         room.send_existing_configs(player,&client.tx);
-        let _=client.tx.send(json!({"type":"map_snapshot","world_id":world_id,"data":room.physics.map_snapshot()}).to_string());
+        let _=client.tx.send(room.physics.map_snapshot_packet(world_id));
         Ok(json!({"world_id":world_id,"map":world.map}))
     }
     pub async fn saved_appearance(&self, player: &str, vehicle: &str) -> crate::alpha::appearance::HeroAppearance {
@@ -479,6 +479,16 @@ impl Server {
             "vehicle_revive" => self.handle_vehicle_revive(player, &value).await?,
             "vehicle_heal_pack" => self.handle_vehicle_heal_pack(player, &value).await?,
             "dive_shield" | "dps_guard_boost" => self.handle_dps_guard_boost(player, &value).await?,
+            "tank_barrage" => {
+                let runtime=self.runtime(player).await?;
+                let mut room=runtime.lock().await;
+                if !room.game.clients.contains_key(player) || !room.game.entities.get(player).is_some_and(|e|e.vehicle_id.as_deref()==Some("tank")) {
+                    return Err("Deploy Vanguard before using Barrage.".into());
+                }
+                if room.round.as_ref().is_some_and(|r|r.phase!=crate::ctf::CtfPhase::Running) { return Err("Barrage is available during a live round.".into()); }
+                room.physics.start_barrage(player)?;
+                json!({"activated":true})
+            }
             "tank_barrier" => self.handle_tank_barrier(player, &value).await?,
 
             "identify" => {

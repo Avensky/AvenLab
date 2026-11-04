@@ -1,3 +1,5 @@
+import { RemoteFleet, VehicleExterior } from "./RemoteFleet";
+import { vehicleAsset } from "../worldBuilder/vehicles/vehicleCatalog";
 import { useUIStore } from "../store/menus/uiStore";
 import { useSelectionStore } from "../store/selection/selectionStore";
 import { Suspense, memo, useMemo, useRef } from "react";
@@ -8,7 +10,6 @@ import type { ReactNode } from "react";
 
 import {
   useNetworkStore,
-  type VehicleColliderShape,
 } from "../store/session/networkStore";
 import { useWorldStore } from "../store/world/worldStore";
 import {
@@ -18,13 +19,7 @@ import {
 import { ColliderVehicle } from "./ColliderVehicle";
 import { AssetBoundary } from "../components/debugger/AssetBoundary";
 
-// Only roster metadata belongs in React; positions are sampled per frame.
-type RosterEntity = {
-  id: string;
-  vehicle_id?: string | null;
-  team?: string;
-  collider?: VehicleColliderShape;
-};
+import { createRosterSelector, type RosterEntity } from "./rosterSelector";
 import { Ae86 } from "./Ae86";
 import { SocketCar } from "./SocketCar";
 import { Cx30 } from "./Cx30";
@@ -148,29 +143,8 @@ function GlbVehicle({ entity }: { entity: RosterEntity }) {
       return <VehicleFallback entity={entity} />;
   }
 
-  return (
-    <AssetBoundary
-      fallback={
-        entity.collider ? (
-          <ColliderVehicle id={entity.id} shape={entity.collider} />
-        ) : (
-          <VehicleFallback entity={entity} loading />
-        )
-      }
-    >
-      <Suspense
-        fallback={
-          entity.collider ? (
-            <ColliderVehicle id={entity.id} shape={entity.collider} />
-          ) : (
-            <VehicleFallback entity={entity} loading />
-          )
-        }
-      >
-        {model}
-      </Suspense>
-    </AssetBoundary>
-  );
+  const loading = <VehicleExterior entity={{...entity,vehicle_id:vehicleId}}/>;
+  return <AssetBoundary fallback={loading}><Suspense fallback={loading}>{model}</Suspense></AssetBoundary>;
 }
 
 export const VehicleRoster = memo(function VehicleRoster() {
@@ -179,26 +153,21 @@ export const VehicleRoster = memo(function VehicleRoster() {
   const local=useNetworkStore(s=>s.playerId);
   const preview=useSelectionStore(s=>s.getSelectedVehicle().id);
   const overrides = useRenderSettingsStore((s) => s.vehicleOverrides);
-  // A stable scalar selector avoids rerendering all loaded GLBs on every
-  // snapshot/debug packet. Joins, model changes and team changes still update.
-  const rosterKey = useNetworkStore((state) =>
-    JSON.stringify(
-      (state.snapshot?.entities ?? []).map((entity) => ({
-        id: entity.id,
-        vehicle_id: entity.vehicle_id,
-        team: entity.team,
-        collider: entity.collider,
-      })),
-    ),
-  );
-  const entities = useMemo(
-    () => JSON.parse(rosterKey) as RosterEntity[],
-    [rosterKey],
-  );
+  const selectRoster = useMemo(createRosterSelector, []);
+  const entities = useNetworkStore(selectRoster);
 
+  const {regular,remote}=useMemo(()=>{
+    const regular:RosterEntity[]=[],remote:RosterEntity[]=[];
+    for(const entity of entities){
+      if(entity.id!==local && (overrides[entity.id]??mode)==='glb' && vehicleAsset(entity.vehicle_id??''))remote.push(entity);
+      else regular.push(entity);
+    }
+    return {regular,remote};
+  },[entities,local,mode,overrides]);
   return (
     <group name="network-vehicle-roster">
-      {entities.map((entity) => (
+      {!!remote.length && <RemoteFleet cars={remote}/>}
+      {regular.map((entity) => (
         <NetworkVehicle
           key={entity.id}
           entity={overlay === "vehicle_select" && entity.id === local ? {...entity,vehicle_id:preview} : entity}

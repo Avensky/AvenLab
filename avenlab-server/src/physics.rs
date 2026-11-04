@@ -38,6 +38,7 @@ const MAX_PHYSICS_SUBSTEP: Real = 1.0 / 120.0;
 const MAX_PHYSICS_SUBSTEPS: usize = 8;
 
 pub struct PhysicsWorld {
+    pub barrages: HashMap<String,crate::tank_barrage::Barrage>,
     pub trusted_heroes: HashMap<String,String>,
     pub guard_boosts: HashMap<String,crate::guard_boost::GuardBoostState>,
     pub(crate) guard_impact_directions: HashMap<String,Vector<Real>>,
@@ -60,6 +61,14 @@ pub struct PhysicsWorld {
     pub bodies: RigidBodySet, // for rigid bodies
     pub colliders: ColliderSet, // for collision shapes
     pub block_world: BlockColliderWorld, // for block-based colliders
+    chunks_ready: bool,
+    query_topology_changed: bool,
+    indexed_collider_count: usize,
+    steps_since_query_rebuild: u16,
+    moved_weapon_colliders: Vec<ColliderHandle>,
+    service_bays: Vec<usize>,
+    has_impact_barriers: bool,
+    map_json: std::sync::OnceLock<String>,
     active_map: Option<Arc<BlockColliderFile>>, // currently active map
     pub joints: ImpulseJointSet, // for constraints
     pub multibody_joints: MultibodyJointSet,// for articulated bodies
@@ -102,10 +111,60 @@ impl PhysicsWorld {
         )
     }
 
+    fn install_map(&mut self, map: Arc<BlockColliderFile>) {
+        self.service_bays.clear();
+        self.has_impact_barriers = false;
+        if let Some(layout) = &map.authored_layout {
+            for (index, object) in layout.objects.iter().enumerate() {
+                if matches!(object.piece.as_str(), "fuel-station" | "repair-shop" | "service-center") {
+                    self.service_bays.push(index);
+                }
+                self.has_impact_barriers |= !layout.repeat && object.piece == "barrier";
+            }
+        }
+        self.active_map = Some(map);
+        self.query_topology_changed = true;
+    }
+
+    /// Rapier refits moving bodies in both simulation substeps. Before an
+    /// out-of-step raycast, update only changes made since the last step.
+    fn synchronize_queries(&mut self, before_shot: bool) {
+        let count = self.colliders.len();
+        // Substep refits are cheap, but vehicles moving across many city blocks
+        // can gradually degrade the tree. Compact it once per simulated second.
+        if self.query_topology_changed || self.indexed_collider_count != count || self.steps_since_query_rebuild >= 60 {
+            self.query_pipeline.update(&self.colliders);
+            self.query_topology_changed = false;
+            self.indexed_collider_count = count;
+            self.steps_since_query_rebuild = 0;
+        } else {
+            // A reset, revive or reposition may have moved a chassis between
+            // substeps. Refresh the small dynamic roster before a weapon query.
+            if before_shot {
+                for handle in self.body_to_player.keys() {
+                    if let Some(body) = self.bodies.get(*handle) {
+                        self.moved_weapon_colliders.extend_from_slice(body.colliders());
+                    }
+                }
+            }
+            if !self.moved_weapon_colliders.is_empty() {
+                self.query_pipeline.update_incremental(&self.colliders, &self.moved_weapon_colliders, &[], true);
+            }
+        }
+        self.moved_weapon_colliders.clear();
+    }
+
     pub fn active_map_id(&self) -> Option<&str> {
         self.active_map
             .as_ref()
             .map(|map| map.map_id.as_str())
+    }
+
+    /// Map data is identical for peers joining the same tile set. Only the
+    /// room envelope is per delivery, including after an editor replacement.
+    pub fn map_snapshot_packet(&self, room_id: usize) -> String {
+        let data = self.map_json.get_or_init(|| serde_json::json!(self.map_snapshot()).to_string());
+        format!(r#"{{"type":"map_snapshot","world_id":{room_id},"data":{data}}}"#)
     }
 
     pub fn map_snapshot(&self) -> Option<MapSnapshot> {
@@ -172,7 +231,7 @@ impl PhysicsWorld {
             let (handle,config) = (v.body,v.config);
             self.register_vehicle(handle,config);
         }
-        self.guard_boosts.clear();self.guard_impact_directions.clear();self.support.reset();
+        self.barrages.clear();self.guard_boosts.clear();self.guard_impact_directions.clear();self.support.reset();
         self.combat_poses.clear();self.combat_sequences.clear();self.combat_cooldowns.clear();self.ctf_carriers.clear();self.dislodged_carriers.clear();self.ctf_reset_players.clear();self.falling_seconds.clear();
         self.update_loaded_blocks_around_players();
         self.refresh_vehicle_wheel_snapshots();
@@ -182,7 +241,7 @@ impl PhysicsWorld {
     /// Fresh isolated editor physics, constructed before replacing its old runtime.
     pub fn from_editor_document(file: crate::world::block_colliders::BlockColliderFile) -> anyhow::Result<Self> {
         let file=crate::world::block_colliders::validate_block_collider_file(file)?;
-        let mut world=Self::new();world.block_world.tile_size=Some(file.cell);world.active_map=Some(Arc::new(file));world.update_loaded_blocks_around_players();Ok(world)
+        let mut world=Self::new();world.block_world.tile_size=Some(file.cell);world.install_map(Arc::new(file));world.update_loaded_blocks_around_players();Ok(world)
     }
 
     /// Load the collider set selected by the frontend before spawning a car.
@@ -232,7 +291,10 @@ impl PhysicsWorld {
 
         self.block_world.tile_size = Some(requested.cell);
         self.barrier_impacts.clear();self.asset_health.clear(); self.combat_cooldowns.clear(); self.combat_sequences.clear(); self.combat_poses.clear(); self.tank_colliders.clear();
-        self.active_map = Some(requested);
+        self.barrages.clear();
+        self.map_json.take();
+        self.chunks_ready = false;
+        self.install_map(requested);
 
         self.update_loaded_blocks_around_players();
 
@@ -301,6 +363,9 @@ impl PhysicsWorld {
     }
 
     pub fn update_loaded_blocks_around_players(&mut self) {
+        // Both current layout modes use a fixed initial tile set. Reconcile only
+        // after loading a map or explicitly adding/removing a tile.
+        if self.chunks_ready { return; }
         let wanted = match self.active_map.as_ref() {
             Some(map) => map.initial_chunks(),
             None => return,
@@ -315,13 +380,16 @@ impl PhysicsWorld {
             }
         }
 
+        let mut ready = true;
         for (bx, bz) in wanted {
             if let Err(error) = self.load_block(bx, bz) {
+                ready = false;
                 eprintln!(
                     "⚠️ Failed to load map chunk ({bx},{bz}): {error}"
                 );
             }
         }
+        self.chunks_ready = ready;
     }
 
     pub fn load_block(
@@ -354,6 +422,19 @@ impl PhysicsWorld {
             groups,
         );
 
+        // Restore destruction only for newly created bodies, before their first tick.
+        if let Some(layout) = file.authored_layout.as_ref().filter(|layout| !layout.repeat && !self.asset_health.is_empty()) {
+            for handle in &handles {
+                let body = &self.bodies[*handle];
+                let object = body.user_data.checked_sub(1).and_then(|i| layout.objects.get(i as usize));
+                if object.is_some_and(|o| self.asset_health.get(&o.id) == Some(&0.0)) {
+                    for collider in body.colliders() { self.colliders[*collider].set_enabled(false); }
+                }
+            }
+        }
+        self.query_topology_changed = true;
+        self.map_json.take();
+        self.chunks_ready = false;
         self.block_world.loaded.insert((bx, bz), handles);
         self.block_world.debug_boxes.insert((bx, bz), boxes);
 
@@ -368,6 +449,9 @@ impl PhysicsWorld {
     }
 
     pub fn unload_block(&mut self, bx: i32, by: i32) {
+        self.query_topology_changed = true;
+        self.map_json.take();
+        self.chunks_ready = false;
         self.block_world.unload(
             &mut self.bodies,
             &mut self.colliders,
@@ -403,6 +487,7 @@ impl PhysicsWorld {
         let Some(mut vehicle)=self.vehicles.remove(old) else{return false};
         vehicle.throttle=0.0;vehicle.steer=0.0;vehicle.brake=0.0;vehicle.handbrake=0.0;
         self.body_to_player.insert(vehicle.body,new.into());self.vehicles.insert(new.into(),vehicle);
+        self.barrages.remove(old);
         if let Some(v)=self.trusted_heroes.remove(old){self.trusted_heroes.insert(new.into(),v);}
         if let Some(mut v)=self.guard_boosts.remove(old){v.remaining=0.0;v.dive_remaining=0.0;if v.kind!="tank_barrier"{v.shield_hp=0.0;}self.guard_boosts.insert(new.into(),v);}
         self.guard_impact_directions.remove(old);self.support.reassign(old,new);
@@ -421,7 +506,8 @@ impl PhysicsWorld {
     }
 
     pub fn despawn_vehicle_for_player(&mut self, player_id: &str) {
-        self.trusted_heroes.remove(player_id);self.guard_boosts.remove(player_id);self.guard_impact_directions.remove(player_id);self.support.clear_player(player_id);
+        self.query_topology_changed = true;
+        self.barrages.remove(player_id);self.trusted_heroes.remove(player_id);self.guard_boosts.remove(player_id);self.guard_impact_directions.remove(player_id);self.support.clear_player(player_id);
         self.ctf_carriers.remove(player_id);self.dislodged_carriers.remove(player_id);self.ctf_reset_players.remove(player_id);
         self.vehicle_health.remove(player_id);
         for health in self.vehicle_health.values_mut(){health.remove_contributor(player_id);}
@@ -465,7 +551,7 @@ impl PhysicsWorld {
         // create duplicate contacts/jitter.
 
         Self {
-            trusted_heroes: HashMap::new(), guard_boosts: HashMap::new(), guard_impact_directions: HashMap::new(), support: Default::default(),
+            barrages: HashMap::new(),trusted_heroes: HashMap::new(), guard_boosts: HashMap::new(), guard_impact_directions: HashMap::new(), support: Default::default(),
             ctf_carriers: HashSet::new(), dislodged_carriers: HashSet::new(), ctf_reset_players: HashSet::new(),
             combat_poses: HashMap::new(),tank_colliders: HashMap::new(),
             barrier_impacts:HashMap::new(),asset_health: HashMap::new(), combat_sequences: HashMap::new(), combat_cooldowns: HashMap::new(),
@@ -477,6 +563,14 @@ impl PhysicsWorld {
             bodies,
             colliders,
             block_world: BlockColliderWorld::new(),
+            chunks_ready: false,
+            query_topology_changed: true,
+            indexed_collider_count: 0,
+            steps_since_query_rebuild: 0,
+            moved_weapon_colliders: Vec::new(),
+            service_bays: Vec::new(),
+            has_impact_barriers: false,
+            map_json: Default::default(),
             active_map: None,
             joints: ImpulseJointSet::new(),
             multibody_joints: MultibodyJointSet::new(),
@@ -520,6 +614,11 @@ impl PhysicsWorld {
             if !fresh||!target.enabled{vehicle.ram.cancel();}
         }
         let mut c=self.combat_poses.get(player).cloned().unwrap_or_else(||crate::state::CombatPose{yaw:hull_yaw+std::f32::consts::PI,ammo:1,..Default::default()});
+        let barraging=self.barrages.contains_key(player);
+        if barraging {
+            target.fire=false;target.hull_locked=false;
+            target.yaw=c.yaw;target.pitch=c.pitch;target.enabled=true;
+        }
         let manual_lock=target.hull_locked && target.lock_target.is_some();
         let forward_assist=self.assigned_hero(player)==Some("brz");
         let hull_lock=target.hull_locked && (manual_lock || (!spray && !forward_assist));
@@ -628,7 +727,7 @@ impl PhysicsWorld {
         self.combat_poses.insert(player.to_owned(),c);
         if !shoot {return;}
         if cannon {if let Some(body)=self.bodies.get_mut(body_handle){body.apply_impulse_at_point(-direction*36000.0,origin,true);}}
-        self.query_pipeline.update(&self.colliders);
+        self.synchronize_queries(true);
         if spray {self.fire_support_spray(player,origin,direction);return;}
         let obstruction=if config.tracked {self.query_pipeline.cast_ray_and_get_normal(&self.bodies,&self.colliders,&Ray::new(shot_breech,barrel_delta/barrel_length),barrel_length,true,QueryFilter::default().groups(vehicle_collision_groups(false)).exclude_rigid_body(body_handle)).map(|(h,i)|(h,shot_breech+(barrel_delta/barrel_length)*i.time_of_impact,0.0,i.normal))}else{None};
         let hit=if obstruction.is_some(){obstruction}else if cannon {
@@ -694,7 +793,7 @@ impl PhysicsWorld {
                 let front=pose.rotation*Vector::z();front.x.atan2(front.z)
             })
     }
-    fn update_tank_collision(&mut self,player:&str,body:RigidBodyHandle,_hull:&Isometry<Real>,yaw:f32,elevation:f32,visual_y:f32){
+    fn update_tank_collision(&mut self,player:&str,body:RigidBodyHandle,hull:&Isometry<Real>,yaw:f32,elevation:f32,visual_y:f32){
         let existing=self.tank_colliders.get(player).copied().filter(|(a,b)|self.colliders.contains(*a)&&self.colliders.contains(*b));
         let (turret,barrel)=existing.unwrap_or_else(||{
             let groups=self.bodies[body].colliders().first().map(|h|self.colliders[*h].collision_groups()).unwrap_or(InteractionGroups::all());
@@ -704,10 +803,18 @@ impl PhysicsWorld {
             self.tank_colliders.insert(player.to_owned(),(a,b));(a,b)
         });
         let yaw_q=Rotation::from_axis_angle(&Vector::y_axis(),yaw);
-        self.colliders[turret].set_position_wrt_parent(Isometry::from_parts(Translation::from(vector![0.0,visual_y+1.75,0.10]),yaw_q));
+        let turret_pose=Isometry::from_parts(Translation::from(vector![0.0,visual_y+1.75,0.10]),yaw_q);
         let gun_q=yaw_q*Rotation::from_axis_angle(&Vector::x_axis(),-elevation);
         let pivot=vector![0.0,visual_y+1.30,0.10]+yaw_q*vector![0.0,0.35,0.95];
-        self.colliders[barrel].set_position_wrt_parent(Isometry::from_parts(Translation::from(pivot+gun_q*vector![0.0,0.0,2.0]),gun_q));
+        let barrel_pose=Isometry::from_parts(Translation::from(pivot+gun_q*vector![0.0,0.0,2.0]),gun_q);
+        for (handle, pose) in [(turret, turret_pose), (barrel, barrel_pose)] {
+            if self.colliders[handle].position_wrt_parent() != Some(&pose) {
+                let collider = &mut self.colliders[handle];
+                collider.set_position_wrt_parent(pose);
+                collider.set_position(hull * pose);
+                self.moved_weapon_colliders.push(handle);
+            }
+        }
     }
 
     // ===========================================================================
@@ -1116,6 +1223,7 @@ impl PhysicsWorld {
     /// A stopped vehicle receives fuel and/or repairs gradually; no client can
     /// request arbitrary healing. Supply/destruction economics are a later layer.
     fn service_authored_bays(&mut self, dt: Real) {
+        if self.service_bays.is_empty() { return; }
         let Some(layout) = self.active_map.as_ref().and_then(|map|map.authored_layout.as_ref()) else { return; };
         let tile = self.block_world.tile_size.unwrap_or([1.0, 1.0]);
         'vehicle: for (player,vehicle) in self.vehicles.iter_mut() {
@@ -1124,8 +1232,8 @@ impl PhysicsWorld {
             if body.linvel().norm() > 0.5 { continue; }
             let p=body.translation();
             for &(bx, bz) in self.block_world.loaded.keys() {
-            for bay in &layout.objects {
-                if !["fuel-station","repair-shop","service-center"].contains(&bay.piece.as_str()) { continue; }
+            for &index in &self.service_bays {
+                let bay = &layout.objects[index];
                 if self.asset_health.get(&bay.id)==Some(&0.0){continue;}
                 let dx=p.x-bay.position[0]-bx as f32*tile[0]; let dz=p.z-bay.position[2]-bz as f32*tile[1];
                 let yaw=bay.yaw.to_radians();
@@ -1200,15 +1308,8 @@ impl PhysicsWorld {
         // Rapier keeps this query pipeline current between substeps.
         self.debug_overlay.clear();
         self.update_loaded_blocks_around_players();
-        // Reloaded tiles must not resurrect invisible collision for destroyed assets.
-        if !self.asset_health.is_empty() {
-            if let Some(layout)=self.active_map.as_ref().and_then(|m|m.authored_layout.as_ref()).filter(|l|!l.repeat) {
-                let disabled:Vec<_>=self.bodies.iter().filter(|(_,b)| b.user_data>0 && layout.objects.get(b.user_data as usize-1).is_some_and(|o|self.asset_health.get(&o.id)==Some(&0.0))).flat_map(|(_,b)|b.colliders().to_vec()).collect();
-                for h in disabled {if let Some(c)=self.colliders.get_mut(h){c.set_enabled(false);}}
-            }
-        }
-
-        self.query_pipeline.update(&self.colliders);
+        self.steps_since_query_rebuild += 1;
+        self.synchronize_queries(false);
 
         // Recompute custom contacts and forces for each small integration step.
         // Bound catch-up work after a stall as well as the spring integration dt.
@@ -1323,7 +1424,7 @@ impl PhysicsWorld {
         // before Rapier resolves a collision, so a ram that stops the attacker
         // still counts. Ordinary solo driving allocates no attribution table;
         // active Ram also samples pre-contact motion for authored structures.
-        let impact_motion: HashMap<_, _> = if self.vehicles.len() > 1 || self.vehicles.values().any(|v|v.ram.active()) || self.active_map.as_ref().and_then(|m|m.authored_layout.as_ref()).is_some_and(|l|!l.repeat&&l.objects.iter().any(|o|o.piece=="barrier")) {
+        let impact_motion: HashMap<_, _> = if self.vehicles.len() > 1 || self.vehicles.values().any(|v|v.ram.active()) || self.has_impact_barriers {
             self.vehicles.values().filter_map(|vehicle| self.bodies.get(vehicle.body)
                 .map(|body| (vehicle.body, (*body.translation(), *body.linvel())))).collect()
         } else { HashMap::new() };
@@ -1490,6 +1591,30 @@ impl PhysicsWorld {
 mod tests {
     use super::*;
     use crate::suspension_contact::cast_wheel_ground;
+
+    #[test]
+    fn peer_setup_reuses_the_map_and_invalidates_after_tile_changes() {
+        let mut world = PhysicsWorld::new();
+        world.select_map("streaming_endless_city").unwrap();
+        let before = world.map_snapshot_packet(7);
+        let cached = world.map_json.get().unwrap().as_ptr();
+        for _ in 0..6 {
+            world.update_loaded_blocks_around_players();
+            assert_eq!(world.map_snapshot_packet(7), before);
+            assert_eq!(world.map_json.get().unwrap().as_ptr(), cached);
+        }
+        let full: serde_json::Value = serde_json::from_str(&before).unwrap();
+        let legacy = serde_json::json!({"type":"map_snapshot","world_id":7,"data":world.map_snapshot()}).to_string();
+        assert_eq!(full, serde_json::from_str::<serde_json::Value>(&legacy).unwrap());
+        let tile = *world.block_world.loaded.keys().next().unwrap();
+        world.unload_block(tile.0,tile.1);
+        assert!(world.map_json.get().is_none());
+        let partial: serde_json::Value = serde_json::from_str(&world.map_snapshot_packet(8)).unwrap();
+        assert_eq!(partial["world_id"], 8);
+        assert_eq!(partial["data"]["chunks"].as_array().unwrap().len()+1, full["data"]["chunks"].as_array().unwrap().len());
+        world.update_loaded_blocks_around_players();
+        assert_eq!(world.map_snapshot_packet(7), before);
+    }
 
     #[test]
     fn launch_assist_rearms_after_actual_drive_demand_returns_below_grip() {
@@ -1812,7 +1937,7 @@ mod tests {
                 "collider": "box", "destructible": false, "state": "intact"}],
             "buildings": []
         })).unwrap();
-        world.active_map = Some(Arc::new(map));
+        world.install_map(Arc::new(map));
         world.update_loaded_blocks_around_players();
         world
     }
@@ -2214,6 +2339,10 @@ mod combat_structure_tests {
         for (_,body) in physics.bodies.iter().filter(|(_,body)|body.user_data==1) {
             assert!(body.colliders().iter().all(|h|!physics.colliders[*h].is_enabled()));
         }
+        physics.unload_block(0, 0);
+        physics.update_loaded_blocks_around_players();
+        let wall = physics.bodies.iter().find(|(_, body)| body.user_data == 1).unwrap().1;
+        assert!(wall.colliders().iter().all(|h| !physics.colliders[*h].is_enabled()));
     }
 }
 

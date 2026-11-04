@@ -609,7 +609,7 @@ impl Server {
         game.set_vehicle_id(player, vehicle);
         if let Some(entity)=game.entities.get_mut(player) { entity.appearance=self.saved_appearance(player,vehicle).await; }
         let room = WorldRuntime::from_parts(game, physics);
-        let map = room.physics.map_snapshot();
+        let packet = room.physics.map_snapshot_packet(world.id);
         let runtime = Arc::new(Mutex::new(room));
         // Environment switches update this editor slot only, after successful validation.
         if let Some(record) = self.data.lock().await.worlds.get_mut(&member.world) { record.map = world.map.clone(); }
@@ -624,7 +624,7 @@ impl Server {
         runtime.lock().await.send_existing_configs(player,&connection.tx);
         let _ = connection
             .tx
-            .send(json!({"type":"map_snapshot","world_id":world.id,"data":map}).to_string());
+            .send(packet);
         Ok(json!({"world_id":world.id,"map":world.map,"applied":true}))
     }
     pub async fn maintain_alpha(&self) {

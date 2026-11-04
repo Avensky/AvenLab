@@ -78,8 +78,9 @@ function slerpQuat(
   b: [number, number, number, number],
   t: number,
 ): [number, number, number, number] {
-  const q = new Quaternion(...a).slerp(new Quaternion(...b), t);
-  return [q.x, q.y, q.z, q.w];
+  const result: [number, number, number, number] = [0, 0, 0, 1];
+  Quaternion.slerpFlat(result, 0, a, 0, b, 0, t);
+  return result;
 }
 
 function lerpNumber(a: number | undefined, b: number | undefined, t: number) {
@@ -227,6 +228,7 @@ export class PhysicsInterpolationBuffer {
     // prediction, wheel height correction, or later snap-back is introduced.
     if (targetMs >= b.timeMs) return b.pose;
     const t = (targetMs - a.timeMs) / (b.timeMs - a.timeMs);
+    let wheels: InterpolatedWheelSnapshot[] | undefined;
     return {
       ...b.pose,
       position: lerpVec3(a.pose.position, b.pose.position, t),
@@ -235,7 +237,9 @@ export class PhysicsInterpolationBuffer {
       guard: a.pose.guard?.panel_yaw !== undefined && b.pose.guard?.panel_yaw !== undefined
         ? {...b.pose.guard, panel_yaw:blendYaw(a.pose.guard.panel_yaw,b.pose.guard.panel_yaw,t)}
         : b.pose.guard,
-      wheels: interpolateWheels(a.pose.wheels, b.pose.wheels, t),
+      // Batched exteriors and aim markers read only the chassis. The local rig
+      // and wheel debugger still share a fully interpolated set when requested.
+      get wheels() { return wheels ??= interpolateWheels(a.pose.wheels, b.pose.wheels, t); },
     };
   }
 
@@ -358,6 +362,36 @@ function retainVehicleTimeline() {
   };
 }
 
+function framePose(requestedId:string,delayMs=DEFAULT_INTERPOLATION_DELAY_MS):InterpolatedPhysicsSnapshot|null {
+  const state = useNetworkStore.getState();
+  if (
+    !state.connected ||
+    state.snapshot === blockedSnapshot
+  )
+    return null;
+  // GLB, collider and geometry poses share the selected timeline and camera.
+  // Force/ray diagnostics remain raw backend results; OFF exposes raw poses.
+  const raw = !useDebugViewStore.getState().interpolationEnabled;
+  const key = (raw ? "raw:" : "") + delayMs + ":" + requestedId;
+  if (renderTimeMs !== null && framePoses.has(key))
+    return framePoses.get(key)!;
+  const pose = raw
+    ? (snapshotEntity(state.snapshot, requestedId) ?? null)
+    : vehicleBuffer.getInterpolated(
+        requestedId,
+        delayMs,
+        renderTimeMs ?? performance.now(),
+      );
+  if (renderTimeMs !== null) framePoses.set(key, pose);
+  return pose;
+}
+
+/** Instanced fleet draws share the very same frame pose as markers and weapons. */
+export function useFleetPoseReader(){
+  useEffect(retainVehicleTimeline,[]);
+  return framePose;
+}
+
 export function useVehiclePhysicsInterpolator(
   entityId?: string,
   delayMs = DEFAULT_INTERPOLATION_DELAY_MS,
@@ -366,35 +400,8 @@ export function useVehiclePhysicsInterpolator(
   const id = entityId ?? playerId;
   useEffect(retainVehicleTimeline, []);
 
-  const frameKey=JSON.stringify([id,delayMs]);
-  const getInterpolated = useCallback(
-    (requestedId: string): InterpolatedPhysicsSnapshot | null => {
-      const state = useNetworkStore.getState();
-      if (
-        !state.connected ||
-        requestedId !== id ||
-        state.snapshot === blockedSnapshot
-      )
-        return null;
-      // GLB, collider and geometry poses share the selected timeline and camera.
-      // Force/ray diagnostics remain raw backend results; OFF exposes raw poses.
-      const raw = !useDebugViewStore.getState().interpolationEnabled;
-      const key = raw ? "raw"+frameKey : frameKey;
-      if (renderTimeMs !== null && framePoses.has(key))
-        return framePoses.get(key)!;
-      const pose = raw
-        ? (snapshotEntity(state.snapshot, requestedId) ?? null)
-        : vehicleBuffer.getInterpolated(
-            requestedId,
-            delayMs,
-            renderTimeMs ?? performance.now(),
-          );
-      if (renderTimeMs !== null) framePoses.set(key, pose);
-      return pose;
-    },
-    [id, delayMs, frameKey],
-  );
-  // Compatibility actions remain available; mounted models only need sampling.
+  const getInterpolated=useCallback((requestedId:string)=>requestedId===id ? framePose(id,delayMs) : null,[id,delayMs]);
+
   const setSnapshot = useCallback(
     (entity: string, pose: PhysicsEntitySnapshot, timing?: SnapshotTiming) => {
       vehicleBuffer.setSnapshot(entity, pose, timing);

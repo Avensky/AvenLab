@@ -18,9 +18,11 @@
   --cut: polygon(0 8px,8px 0,calc(100% - 8px) 0,100% 8px,100% calc(100% - 8px),calc(100% - 8px) 100%,8px 100%,0 calc(100% - 8px));
 }
 .futuristic-hud {
+  --instrument-row:clamp(13px,2.9cqw,19px);
+  --instrument-row-gap:3px;
   --portrait: clamp(52px,15cqw,94px);
   isolation:isolate; position:relative; box-sizing:border-box;
-  display:grid; grid-template-columns:auto minmax(0,1fr) repeat(3,auto);
+  display:grid; grid-template-columns:auto minmax(0,1fr) auto clamp(36px,8.2cqw,52px) auto;
   align-items:center; column-gap:clamp(2px,1cqw,8px); padding:6px 9px;
   background:var(--rail,var(--app-accent)); clip-path:var(--cut);
   color:#f4f8fc; font:650 clamp(8px,1.8cqw,12px)/1.1 system-ui,sans-serif;
@@ -46,12 +48,12 @@
 .future-identity[data-charged=true] .charge-outer {filter:drop-shadow(0 0 2px var(--app-accent));}
 .ultimate-gauge strong {position:absolute;bottom:2px;right:4px;padding:1px 3px;color:#f6f8fa;background:#111920;
   border-radius:2px;font:750 clamp(7px,1.65cqw,11px)/1 system-ui;font-variant-numeric:tabular-nums;}
-.future-resources {grid-column:2;display:grid;gap:3px;min-width:0;}
+.future-resources {grid-column:2;display:grid;gap:var(--instrument-row-gap);min-width:0;}
 .future-resource {--fill:#8ce567;min-width:0;}
 .future-resource[data-kind=fuel] {--fill:#f2bd52;}
 .future-resource[data-kind=nitrous] {--fill:#3cceff;}
 .future-resource[data-kind=health][data-low=true] {--fill:#ff6872;}
-.future-track {position:relative;box-sizing:border-box;height:clamp(13px,2.9cqw,19px);border:1px solid #647383;background:linear-gradient(#111720,#242933);overflow:hidden;transform:skewX(-5deg);}
+.future-track {position:relative;box-sizing:border-box;height:var(--instrument-row);border:1px solid #647383;background:linear-gradient(#111720,#242933);overflow:hidden;transform:skewX(-5deg);}
 .future-track i {display:block;height:100%;background:linear-gradient(0deg,color-mix(in srgb,var(--fill) 65%,#050911),var(--fill));}
 .future-resource[data-kind=nitrous] i {background:repeating-linear-gradient(105deg,transparent 0 2px,var(--fill) 2px 13px);}
 .future-readout {position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;gap:1px;padding:0 4px;transform:skewX(5deg);white-space:nowrap;color:#fff;text-shadow:0 1px 2px #000,1px 0 2px #000,-1px 0 2px #000;}
@@ -65,8 +67,8 @@
 .future-engine[data-heat=warm] {color:#ffd168;}
 .future-engine[data-heat=hot] {color:#ff994d;}
 .future-engine[data-heat=critical] {color:#ff565d;border-color:currentColor;}
-.futuristic-hud .future-assists {grid-column:3;align-self:stretch;pointer-events:auto;}
-.futuristic-hud .future-assists .drive-assists {display:grid;grid-template-rows:repeat(3,1fr);grid-template-columns:1fr;gap:2px;height:100%;width:clamp(27px,7.5cqw,47px);}
+.futuristic-hud .future-assists {grid-column:3;align-self:center;pointer-events:auto;}
+.futuristic-hud .future-assists .drive-assists {display:grid;grid-template-rows:repeat(3,var(--instrument-row));grid-template-columns:1fr;gap:var(--instrument-row-gap);height:auto;width:clamp(27px,7.5cqw,47px);}
 .futuristic-hud .future-assists button {
   --switch-surface:linear-gradient(#51555b,#272b30);--switch-edge:#747a81;--switch-ink:#fff;--switch-held-surface:#414e5a;
   display:flex;align-items:center;justify-content:center;gap:3px;margin:0;padding:0 2px;min-height:0;min-width:0;
@@ -75,7 +77,7 @@
 .futuristic-hud .future-assists button[data-hud-held=true] {border-color:var(--rail);}
 .futuristic-hud .future-assists :is(.assist-abs > span,.assist-sport > span,.assist-trac-content img) {display:none;}
 .futuristic-hud .future-assists button span {font:inherit;}
-.future-driving {grid-column:4;display:grid;text-align:center;white-space:nowrap;align-content:center;border-left:1px solid #546574;padding-left:4px;}
+.future-driving {grid-column:4;box-sizing:border-box;width:100%;min-width:0;display:grid;text-align:center;white-space:nowrap;align-content:center;border-left:1px solid #546574;padding-left:4px;}
 .future-driving strong {font-size:clamp(16px,4.3cqw,30px);font-weight:550;line-height:1;}
 .future-driving small,.future-driving span {font-size:.78em;}
 .future-driving b {font-size:1.25em;}
@@ -214,14 +216,20 @@
   padding:0 6px;list-style:none;
 }
 .driving-hud[data-futuristic=true] .active-effects .active-effect-button {
-  display:flex;align-items:center;gap:2px;width:auto;height:22px;padding:1px 4px;border-radius:3px 3px 0 0;
-  background:#141b21ed!important;border:1px solid #59646d!important;border-bottom:0!important;
+  height:clamp(29px,5dvh,40px);width:clamp(29px,5dvh,40px);padding:0;
 }
-.driving-hud[data-futuristic=true] .active-effect-button .action-progress-orbit {--action-orbit-size:18px;--orbit-art-size:18px;filter:none;}
-.driving-hud[data-futuristic=true] .active-effect-button .attack-icon {width:10px;height:10px;}
-.driving-hud[data-futuristic=true] .active-effect-time {position:static;transform:none;font:650 8px/1 system-ui;color:#e1e8ed;}
+.driving-hud[data-futuristic=true] .active-effect-button .action-progress-orbit {
+  --action-orbit-size:clamp(25px,4.4dvh,35px);--orbit-art-size:var(--action-orbit-size);
+}
+.driving-hud[data-futuristic=true] .active-effect-item:not([data-inspecting=true]) :is(.action-progress-orbit,.action-orbit-fill,.action-orbit-inner-fill) {filter:none;}
+.driving-hud[data-futuristic=true] .active-effect-item:not([data-inspecting=true]) .action-orbit-halo {visibility:hidden;}
 .driving-hud[data-futuristic=true] .active-effects .active-effect-description {inset:auto auto 100% 0;transform:none;}
 
 .driving-hud[data-futuristic=true] .active-effect-item[data-kind=debuff] {order:1;margin-inline-start:auto;}
 .driving-hud[data-futuristic=true] .active-effect-item[data-kind=debuff]~.active-effect-item[data-kind=debuff] {margin-inline-start:0;}
 .driving-hud[data-futuristic=true] .active-effect-item[data-kind=debuff] .active-effect-description {left:auto;right:0;}
+
+.future-identity .barrage-trigger {position:absolute;inset:0;z-index:1;background:transparent;border:0;padding:0;cursor:pointer;pointer-events:auto;}
+.future-identity .barrage-trigger:focus-visible {outline:2px solid #fff;outline-offset:-3px;}
+.future-identity .barrage-trigger:disabled {pointer-events:none;}
+.barrage-time {position:absolute;top:6%;left:6%;padding:1px 3px;color:white;background:#171d24;font:700 10px/1 system-ui;}

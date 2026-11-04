@@ -164,7 +164,7 @@ impl PhysicsWorld {
         if !amount.is_finite() || amount <= 0.0 { return amount; }
         // Tank projectiles cross the spatial screen during tracing. A hit from
         // inside or around that screen must not be absorbed again at the hull.
-        if matches!(kind, "cannon" | "machine-gun") && self.guard_boosts.get(victim).is_some_and(|g|g.kind=="tank_barrier") {return amount;}
+        if matches!(kind, "cannon" | "machine-gun" | "barrage-cannon" | "barrage-mg") && self.guard_boosts.get(victim).is_some_and(|g|g.kind=="tank_barrier") {return amount;}
         let impact_direction = (kind == "impact").then(|| self.guard_impact_directions.get(victim).copied()).flatten();
         let direction = impact_direction.or_else(|| attacker.and_then(|id| self.vehicles.get(id).and_then(|v| self.bodies.get(v.body)))
             .zip(self.vehicles.get(victim).and_then(|v| self.bodies.get(v.body)))

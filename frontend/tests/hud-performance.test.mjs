@@ -104,3 +104,22 @@ test('nearby allies do not churn the HUD layout, bake live portraits or toggle i
   });
  }finally{await act(async()=>root.unmount());await vite.close();dom.window.close();for(const[k,v]of original){if(v)Object.defineProperty(globalThis,k,v);else delete globalThis[k];}}
 });
+
+test('vehicle roster ignores pose packets but notices collider and model changes', async () => {
+ const {createRosterSelector}=await import('../src/vehicles/rosterSelector.ts');
+ for(const count of [6,10]){
+  const select=createRosterSelector();
+  const entities=Array.from({length:count},(_,i)=>({id:'p'+i,team:i%2?'blue':'red',vehicle_id:'mini',collider:{chassis_offset:[0,1,0],chassis_half_extents:[1,1,2],wheel_count:4,wheel_radius:.3},position:[i,0,0]}));
+  const rows=select({snapshot:{entities}});
+  for(let tick=1;tick<=100;tick++){
+   const frame=structuredClone(entities);
+   frame.forEach((e,i)=>{e.position=[i,tick,0];});
+   assert.equal(select({snapshot:{entities:frame}}),rows);
+  }
+  const updated=structuredClone(entities);updated[0].collider.wheel_radius=.4;
+  const calibrated=select({snapshot:{entities:updated}});assert.notEqual(calibrated,rows);
+  const swapped=updated.map((e,i)=>i?e:{...e,vehicle_id:'tank'});
+  assert.equal(select({snapshot:{entities:swapped}})[0].vehicle_id,'tank');
+  assert.deepEqual(select({snapshot:null}),[]);
+ }
+});

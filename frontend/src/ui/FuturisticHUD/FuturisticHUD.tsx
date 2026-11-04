@@ -1,3 +1,4 @@
+import {BarrageTrigger} from "../../combat/BarrageTrigger";
 import { DrivingIgnition } from '../Cockpit/DrivingIgnition';
 import { DriveAssists } from '../Cockpit/DriveAssists';
 import { HudGroup } from '../HudGroup';
@@ -46,6 +47,7 @@ export function FuturisticHUD() {
   return <section className="futuristic-hud" aria-label="Futuristic vehicle instruments" data-signal={data.signal} data-defeated={health?.defeated ?? false}>
     <div className="future-identity" data-charged={charge===1}>
       <HeroPortrait hero={me.hero} appearance={me.appearance} cacheOnly showStyleStatus={false} />
+      {me.hero==="tank" && <BarrageTrigger/>}
       <div className="ultimate-gauge" role="meter" aria-label="Ultimate charge" title="Ultimate charge"
         aria-valuemin={0} aria-valuemax={100} aria-valuenow={charge===null?undefined:Math.round(charge*100)}
         aria-valuetext={chargeText}>

@@ -32,7 +32,9 @@ impl PhysicsWorld {
         if let Some(source)=attacker {health.note_contributor(source);}
         let assists=if defeated {health.take_assist_candidates(attacker)}else{Vec::new()};
         if let Some(source)=attacker {
-            if let Some(vehicle)=self.vehicles.get_mut(source){vehicle.powertrain.credit_damage_dealt(dealt/maximum);}
+            if !matches!(kind,"barrage-cannon"|"barrage-mg") {
+                if let Some(vehicle)=self.vehicles.get_mut(source){vehicle.powertrain.credit_damage_dealt(dealt/maximum);}
+            }
             if let Some(health)=self.vehicle_health.get_mut(source){
                 health.note_damage_dealt(dealt);
                 if defeated {health.credit_kill();}
@@ -47,6 +49,7 @@ impl PhysicsWorld {
     }
 
     fn disable_vehicle_controls(&mut self,player:&str){
+        self.barrages.remove(player);
         self.suspend_shields(player);
         if let Some(vehicle)=self.vehicles.get_mut(player){
             vehicle.throttle=0.0;vehicle.steer=0.0;vehicle.brake=0.0;vehicle.handbrake=0.0;
@@ -158,6 +161,7 @@ impl PhysicsWorld {
     pub(crate) fn advance_passive_ultimates<'a>(&mut self, dt:f32, active:impl Iterator<Item=&'a str>) {
         if !dt.is_finite() || dt <= 0.0 || dt > 0.1 { return; }
         for id in active {
+            if self.barrages.contains_key(id){continue;}
             if !self.vehicle_health.get(id).is_some_and(|h| !h.defeated && h.hp > 0.0) { continue; }
             let Some(vehicle) = self.vehicles.get_mut(id) else { continue; };
             if self.bodies.get(vehicle.body).is_some_and(|body| body.is_enabled()) {

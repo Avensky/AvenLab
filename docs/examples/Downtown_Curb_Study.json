@@ -1,0 +1,487 @@
+{
+  "format": "avenlab-world-layout",
+  "version": 1,
+  "map_id": "road_precision",
+  "title": "Downtown curb and roadwork study",
+  "base": "replace",
+  "objects": [
+    {
+      "id": "downtown-signal-post-1",
+      "name": "Traffic signal post 1",
+      "piece": "downtown-signal-post",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        2.358,
+        7,
+        0.309
+      ],
+      "yaw": 0,
+      "color": "#6d7679",
+      "locked": false,
+      "solid": true,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            -0.443,
+            0.49,
+            0
+          ],
+          "size": [
+            0.115,
+            0.98,
+            0.89
+          ]
+        }
+      ]
+    },
+    {
+      "id": "downtown-signal-head-1",
+      "name": "Traffic signal head 1",
+      "piece": "downtown-signal-head",
+      "position": [
+        0.95,
+        6.18,
+        0
+      ],
+      "size": [
+        0.239,
+        0.74,
+        0.332
+      ],
+      "yaw": 0,
+      "color": "#54595e",
+      "locked": false,
+      "solid": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "downtown-signal-post-2",
+      "name": "Traffic signal post 2",
+      "piece": "downtown-signal-post",
+      "position": [
+        6.4,
+        0,
+        -14.8
+      ],
+      "size": [
+        2.358,
+        7,
+        0.309
+      ],
+      "yaw": -180,
+      "color": "#6d7679",
+      "locked": false,
+      "solid": true,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            -0.443,
+            0.49,
+            0
+          ],
+          "size": [
+            0.115,
+            0.98,
+            0.89
+          ]
+        }
+      ]
+    },
+    {
+      "id": "downtown-signal-head-2",
+      "name": "Traffic signal head 2",
+      "piece": "downtown-signal-head",
+      "position": [
+        5.45,
+        6.18,
+        -14.8
+      ],
+      "size": [
+        0.239,
+        0.74,
+        0.332
+      ],
+      "yaw": -180,
+      "color": "#54595e",
+      "locked": false,
+      "solid": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "downtown-signal-post-3",
+      "name": "Traffic signal post 3",
+      "piece": "downtown-signal-post",
+      "position": [
+        6.4,
+        0,
+        12.5
+      ],
+      "size": [
+        2.358,
+        7,
+        0.309
+      ],
+      "yaw": -180,
+      "color": "#6d7679",
+      "locked": false,
+      "solid": true,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            -0.443,
+            0.49,
+            0
+          ],
+          "size": [
+            0.115,
+            0.98,
+            0.89
+          ]
+        }
+      ]
+    },
+    {
+      "id": "downtown-signal-head-3",
+      "name": "Traffic signal head 3",
+      "piece": "downtown-signal-head",
+      "position": [
+        5.45,
+        6.18,
+        12.5
+      ],
+      "size": [
+        0.239,
+        0.74,
+        0.332
+      ],
+      "yaw": -180,
+      "color": "#54595e",
+      "locked": false,
+      "solid": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "downtown-metal-barrier-1",
+      "name": "Metal crowd barrier 1",
+      "piece": "downtown-metal-barrier",
+      "position": [
+        -4,
+        0,
+        18
+      ],
+      "size": [
+        1.894,
+        1,
+        0.479
+      ],
+      "yaw": 2,
+      "color": "#88939c",
+      "locked": false,
+      "solid": true,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "downtown-metal-barrier-2",
+      "name": "Metal crowd barrier 2",
+      "piece": "downtown-metal-barrier",
+      "position": [
+        -2.02,
+        0,
+        17.95
+      ],
+      "size": [
+        1.894,
+        1,
+        0.479
+      ],
+      "yaw": 2,
+      "color": "#88939c",
+      "locked": false,
+      "solid": true,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "downtown-metal-barrier-3",
+      "name": "Metal crowd barrier 3",
+      "piece": "downtown-metal-barrier",
+      "position": [
+        -0.040000000000000036,
+        0,
+        17.9
+      ],
+      "size": [
+        1.894,
+        1,
+        0.479
+      ],
+      "yaw": 2,
+      "color": "#88939c",
+      "locked": false,
+      "solid": true,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "downtown-cone-1",
+      "name": "Traffic cone 1",
+      "piece": "downtown-cone",
+      "position": [
+        -3,
+        0,
+        9
+      ],
+      "size": [
+        0.329,
+        0.72,
+        0.329
+      ],
+      "yaw": 0,
+      "color": "#e88042",
+      "locked": false,
+      "solid": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "downtown-cone-2",
+      "name": "Traffic cone 2",
+      "piece": "downtown-cone",
+      "position": [
+        -2.35,
+        0,
+        10.8
+      ],
+      "size": [
+        0.329,
+        0.72,
+        0.329
+      ],
+      "yaw": 0,
+      "color": "#e88042",
+      "locked": false,
+      "solid": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "downtown-cone-3",
+      "name": "Traffic cone 3",
+      "piece": "downtown-cone",
+      "position": [
+        -1.7,
+        0,
+        12.6
+      ],
+      "size": [
+        0.329,
+        0.72,
+        0.329
+      ],
+      "yaw": 0,
+      "color": "#e88042",
+      "locked": false,
+      "solid": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "downtown-cone-4",
+      "name": "Traffic cone 4",
+      "piece": "downtown-cone",
+      "position": [
+        -1.0499999999999998,
+        0,
+        14.4
+      ],
+      "size": [
+        0.329,
+        0.72,
+        0.329
+      ],
+      "yaw": 0,
+      "color": "#e88042",
+      "locked": false,
+      "solid": false,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "downtown-plastic-barrier-1",
+      "name": "Plastic roadblock 1",
+      "piece": "downtown-plastic-barrier",
+      "position": [
+        -3.5,
+        0,
+        15.7
+      ],
+      "size": [
+        1.968,
+        1,
+        0.762
+      ],
+      "yaw": 12,
+      "color": "#c06e45",
+      "locked": false,
+      "solid": true,
+      "parts": [
+        {
+          "shape": "box",
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    }
+  ],
+  "ground": true,
+  "repeat": false
+}

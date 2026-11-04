@@ -7,6 +7,7 @@ mod ballistics;
 mod ram;
 mod guard_boost;
 mod team_barrier;
+mod tank_barrage;
 mod forward_assist;
 mod support_spray;
 mod support;

@@ -174,7 +174,7 @@ impl WorldRuntime {
             self.game.broadcast_vehicle_config(id, current);
         }
         let tx = self.game.clients.get(id).ok_or("The connection closed.")?;
-        let _=tx.send(json!({"type":"map_snapshot","world_id":self.game.room_id,"data":self.physics.map_snapshot()}).to_string());
+        let _=tx.send(self.physics.map_snapshot_packet(self.game.room_id));
         let _=tx.send(json!({"type":"spawn_ready","player_id":id,"vehicle":vehicle,"map":self.physics.active_map_id(),"newly_spawned":newly_spawned}).to_string());
         Ok(())
     }
@@ -186,9 +186,10 @@ impl WorldRuntime {
     }
     pub fn tick(&mut self, lock_ms: f64) -> usize {
         if self.round.as_ref().is_some_and(|r|r.phase==crate::ctf::CtfPhase::Ended){
-            self.game.clear_round_inputs();self.game.match_state=self.round_view();return self.game.publish_physics_frame(&self.physics);
+            self.physics.barrages.clear();self.game.clear_round_inputs();self.game.match_state=self.round_view();return self.game.publish_physics_frame(&self.physics);
         }
         if self.physics.vehicles.is_empty() || self.game.clients.is_empty() {
+            self.physics.barrages.clear();
             self.advance_round();return 0;
         }
         let started = std::time::Instant::now();
@@ -212,6 +213,9 @@ impl WorldRuntime {
         let physics_started = std::time::Instant::now();
         self.physics.step(SIMULATION_DT);
         self.physics.advance_guard_boosts(SIMULATION_DT, self.game.clients.keys().map(String::as_str));
+        if self.round.as_ref().is_none_or(|r| r.phase==crate::ctf::CtfPhase::Running) {
+            self.physics.advance_barrages(|id|self.game.clients.contains_key(id));
+        } else { self.physics.barrages.clear(); }
         self.physics.advance_health_packs(SIMULATION_DT, self.game.clients.keys().map(String::as_str));
         self.physics.advance_passive_ultimates(SIMULATION_DT, self.game.clients.keys().map(String::as_str));
         self.advance_round();

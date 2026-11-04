@@ -56,6 +56,8 @@ pub struct VehicleColliderShape {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct PhysicsEntitySnapshot {
+    #[serde(skip_serializing_if="Option::is_none")]
+    pub barrage:Option<crate::tank_barrage::Barrage>,
     pub guard:crate::guard_boost::GuardView,
     pub support:crate::support::SupportView,
     pub health:crate::vehicle_health::VehicleHealth,
@@ -587,6 +589,7 @@ impl SharedGameState {
             );
 
             entities_out.push(PhysicsEntitySnapshot {
+                barrage:physics.barrages.get(&ent.id).cloned(),
                 guard:physics.guard_view(&ent.id), support:physics.support.view(&ent.id),
                 health:physics.vehicle_health.get(&ent.id).cloned().unwrap_or_else(||crate::vehicle_health::VehicleHealth::new(vehicle.config.hull_hp)),
                 combat: {let mut c=physics.combat_poses.get(&ent.id).cloned().unwrap_or_default();c.ram_remaining=vehicle.ram.remaining;c.ram_charge_remaining=vehicle.ram.charge_remaining();c.stun_remaining=vehicle.ram.stun_remaining;c.ram_cooldown=vehicle.ram.cooldown;c.ram_blocked=vehicle.ram.blocked.into();c},

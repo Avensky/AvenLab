@@ -19,7 +19,7 @@ export function readEffectSignals(entity:PhysicsEntitySnapshot|null|undefined){
   charge:time(entity?.combat?.ram_charge_remaining,3),
   ram:time(entity?.combat?.ram_remaining,7),
   stun:time(entity?.combat?.stun_remaining,1),
-  resource:Number.isSafeInteger(resource)&&resource!>=0&&resource!<=0xffff?resource!:0,
+  resource:Number.isSafeInteger(resource)&&resource!>=0&&resource!<=0xffff?resource! & (ResourceFlags.THERMAL_RECOVERY|ResourceFlags.HOT|ResourceFlags.DAMAGED):0,
   boost:Boolean((entity?.telemetry_mask??0)&TelemetryFields.BOOST)&&Boolean((entity?.vehicle_mask??0)&VehicleFlags.BOOST),
   dive:time(guard?.dive_remaining_s,DIVE_DURATION_S),
   guard:time(guard?.remaining_s,GUARD_DURATION_S),

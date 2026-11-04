@@ -32,7 +32,7 @@ text fields retain editing keys. See the current
 There is no vehicle arrow strip. Filters sit above portraits on the second screen;
 configuration stays on the first screen's bottom edge. Only an assigned match's
 hero screen displays team cards above the footer. A fresh mode starts unpicked,
-with an initial ghost that becomes full opacity as soon as a portrait is previewed. The selected name/role remains at upper left.
+with an empty garage until a hero is selected. The selected name/role remains at upper left.
 
 ## Signal Recon without an intermediate setup screen
 

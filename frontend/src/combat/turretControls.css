@@ -121,8 +121,8 @@
   padding:2px 3px 0;box-sizing:border-box;border-top:1px solid #7e99a044;
 }
 .drive-dock[data-futuristic=true] .turret-actions .attack-icon {width:78%;height:78%;stroke-width:1.8;color:#dceaf1;}
-.driving-hud[data-futuristic=true] .action-progress-orbit[data-layered=true] .action-orbit-halo {opacity:calc(var(--orbit-progress) * .16);filter:blur(1px);}
-.driving-hud[data-futuristic=true] .action-progress-orbit[data-layered=true] .action-orbit-fill {filter:none;}
+.driving-hud[data-futuristic=true] :is(.turret-actions,.turret-aim-module) .action-progress-orbit[data-layered=true] .action-orbit-halo {opacity:calc(var(--orbit-progress) * .16);filter:blur(1px);}
+.driving-hud[data-futuristic=true] :is(.turret-actions,.turret-aim-module) .action-progress-orbit[data-layered=true] .action-orbit-fill {filter:none;}
 .drive-dock[data-futuristic=true] .turret-actions button:focus-visible {outline:2px solid white;outline-offset:-3px;}
 .drive-dock[data-futuristic=true] .turret-actions > div:empty {visibility:hidden;}
 .turret-cycle-label {display:none;}

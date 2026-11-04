@@ -1,3 +1,4 @@
+import type {VehicleModelId} from "../../vehicles/tools/vehicleModelPaths";
 import type { CanVehicleIdentity } from "../recon/types";
 
 // Data only: model components are registered under src/vehicles.
@@ -6,7 +7,7 @@ export type VehicleRole = "tank" | "dps" | "healer" | "utility";
 export type CanDatasetKind = "live" | "practice" | "simulation";
 
 export type VehicleDefinition = {
-  id: string;
+  id: VehicleModelId;
   name: string;
   role: VehicleRole;
   description: string;

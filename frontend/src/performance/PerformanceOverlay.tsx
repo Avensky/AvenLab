@@ -609,6 +609,7 @@ function Readout() {
                   <p className="perf-info">
                     LAST: {last.label}
                     {last.stoppedEarly ? " · STOPPED EARLY" : ""}
+                    {last.stalls && ` · ${last.stalls.count} stalls ≥100 ms · ${format(last.stalls.timeInStallsMs/1000,2)} s in stalls · longest frame ${format(last.stalls.longestFrameMs,0)} ms`}
                     {delta !== null &&
                       ` · Δ ${delta >= 0 ? "+" : ""}${format(delta)} ms`}
                   </p>
