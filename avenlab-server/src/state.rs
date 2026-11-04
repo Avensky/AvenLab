@@ -125,6 +125,21 @@ pub struct PhysicsSnapshot {
     pub entities: Vec<PhysicsEntitySnapshot>,
 }
 
+// Serialize directly from typed physics data. An intermediate JSON Value
+// allocates a tree and promotes every wheel and chassis f32 to a wider number.
+#[derive(Serialize)]
+struct FrameEnvelope<'a, T> {
+    #[serde(rename = "type")] kind: &'static str,
+    world_id: usize,
+    #[serde(skip_serializing_if = "Option::is_none")] tick: Option<u64>,
+    data: &'a T,
+}
+impl<T: Serialize> FrameEnvelope<'_, T> {
+    fn encode(&self) -> String {
+        serde_json::to_string(self).expect("physics frame is JSON serializable")
+    }
+}
+
 /// An internal pair of existing wire messages, sampled from one completed tick.
 /// watch keeps ONE unsent pair per client. Already written TCP bytes cannot be
 /// recalled, but we no longer add every old physics tick to an application FIFO.
@@ -211,6 +226,8 @@ pub struct CombatPose {
     #[serde(default)] pub shot_weapon:String,
     #[serde(default)] pub impact:Option<[f32;3]>,
     #[serde(default)] pub impact_time:f32,
+    /// Requested hull-relative bearing/elevation. Only confirmed angles are broadcast.
+    #[serde(default,skip_serializing)] pub lock_target:Option<[f32;2]>,
     #[serde(default)] pub hull_locked:bool,
     #[serde(default)] pub lock_yaw:f32,
     #[serde(default)] pub lock_pitch:f32,
@@ -240,7 +257,10 @@ pub struct CombatPose {
 impl CombatPose {
     pub fn bounded(&self) -> Self {
         let finite = |v:f32, lo:f32, hi:f32| if v.is_finite() {v.clamp(lo,hi)} else {0.0};
-        Self {assisted_target:None,shot_origin:None,impact_normal:None,impact_static:false,shot_weapon:String::new(),ram_charge_remaining:0.0,stun_remaining:0.0,ram_blocked:String::new(),impact:None,impact_time:0.0,lock_yaw:0.0,lock_pitch:0.0,hull_locked:self.hull_locked,ram:self.ram,ram_remaining:0.0,ram_cooldown:0.0,cannon_reload:0.0,coax_reload:0.0,basket_reload:0.0,cannon_shot:self.cannon_shot,weapon:match self.weapon.as_str(){"coax"=>"coax".into(),"basket"=>"basket".into(),_=>"cannon".into()},shot:self.shot,ammo:self.ammo,reload:self.reload,enabled:self.enabled,fire:self.fire,yaw:finite(self.yaw,-std::f32::consts::PI,std::f32::consts::PI),pitch:finite(self.pitch,-0.7854,0.7854),x:finite(self.x,-3.0,3.0),y:finite(self.y,-3.0,3.0),z:finite(self.z,-3.0,3.0),role:if ["assault","support","medic"].contains(&self.role.as_str()){self.role.clone()}else{"assault".into()}}
+        let lock_target=self.lock_target.filter(|a|a.iter().all(|v|v.is_finite())).map(|[yaw,pitch]|[
+            yaw.sin().atan2(yaw.cos()), pitch.clamp(-std::f32::consts::FRAC_PI_4,std::f32::consts::FRAC_PI_4),
+        ]);
+        Self {lock_target,assisted_target:None,shot_origin:None,impact_normal:None,impact_static:false,shot_weapon:String::new(),ram_charge_remaining:0.0,stun_remaining:0.0,ram_blocked:String::new(),impact:None,impact_time:0.0,lock_yaw:0.0,lock_pitch:0.0,hull_locked:self.hull_locked,ram:self.ram,ram_remaining:0.0,ram_cooldown:0.0,cannon_reload:0.0,coax_reload:0.0,basket_reload:0.0,cannon_shot:self.cannon_shot,weapon:match self.weapon.as_str(){"coax"=>"coax".into(),"basket"=>"basket".into(),_=>"cannon".into()},shot:self.shot,ammo:self.ammo,reload:self.reload,enabled:self.enabled,fire:self.fire,yaw:finite(self.yaw,-std::f32::consts::PI,std::f32::consts::PI),pitch:finite(self.pitch,-0.7854,0.7854),x:finite(self.x,-3.0,3.0),y:finite(self.y,-3.0,3.0),z:finite(self.z,-3.0,3.0),role:if ["assault","support","medic"].contains(&self.role.as_str()){self.role.clone()}else{"assault".into()}}
     }
 }
 
@@ -467,13 +487,15 @@ impl SharedGameState {
         // enemy entity also withholds model, collider, paint and weapon data;
         // a null model alone would still leak the selected chassis via shape.
         if self.match_state.as_ref().is_some_and(|round|round.phase==crate::ctf::CtfPhase::Waiting){
-            let snapshot=self.build_snapshot(physics);
+            let mut snapshot=self.build_snapshot(physics);
+            let (red, blue): (Vec<_>, Vec<_>) = std::mem::take(&mut snapshot.entities)
+                .into_iter().partition(|entity| entity.team == Team::Red.as_str());
             let mut bytes=0;
-            for team in [Team::Red,Team::Blue] {
+            for (team, entities) in [(Team::Red, red),(Team::Blue, blue)] {
                 let viewers:Vec<_>=self.frame_clients.iter().filter(|(id,_)|self.entities.get(*id).is_some_and(|entity|entity.team==team)).collect();
                 if viewers.is_empty(){continue;}
-                let mut visible=snapshot.clone();visible.entities.retain(|entity|entity.team==team.as_str());
-                let frame=Arc::new(PhysicsFrame{snapshot:json!({"type":"snapshot","world_id":self.room_id,"data":visible}).to_string(),debug:String::new()});
+                snapshot.entities = entities;
+                let frame=Arc::new(PhysicsFrame{snapshot:FrameEnvelope{kind:"snapshot",world_id:self.room_id,tick:None,data:&snapshot}.encode(),debug:String::new()});
                 bytes+=frame.snapshot.len();
                 for (_,tx) in viewers {let _=tx.send_replace(Some(Arc::clone(&frame)));}
             }
@@ -486,9 +508,9 @@ impl SharedGameState {
         // Serialize diagnostics only when requested. Collider previews use normal
         // pose/shape snapshots and static map metadata instead of this stream.
         let frame = Arc::new(PhysicsFrame {
-            snapshot: json!({ "type": "snapshot", "world_id": self.room_id, "data": self.build_snapshot(physics) }).to_string(),
+            snapshot: FrameEnvelope{kind:"snapshot",world_id:self.room_id,tick:None,data:&self.build_snapshot(physics)}.encode(),
             debug: if any_debug {
-                json!({ "type": "debug", "world_id": self.room_id, "tick": self.tick, "data": &physics.debug_overlay }).to_string()
+                FrameEnvelope{kind:"debug",world_id:self.room_id,tick:Some(self.tick),data:&physics.debug_overlay}.encode()
             } else { String::new() },
         });
         // One client's diagnostics must not add JSON/traffic to everybody else.
@@ -516,7 +538,7 @@ impl SharedGameState {
     fn build_snapshot(&self, physics: &PhysicsWorld) -> PhysicsSnapshot {
         // PhysicsWorld owns the single wheel-ID mapping and final wheel poses.
         // This function reads them; it never steers, spins or raycasts again.
-        let mut entities_out: Vec<PhysicsEntitySnapshot> = Vec::new();
+        let mut entities_out = Vec::with_capacity(self.entities.len());
 
 
         for ent in self.entities.values() {
@@ -628,6 +650,34 @@ impl SharedGameState {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    #[ignore = "repeatable encoder benchmark"]
+    fn benchmark_snapshot_encoder() {
+        use std::{hint::black_box,time::Instant};
+        for players in [6,10] {
+            let mut room=crate::world_sessions::WorldRuntime::new(1,"streaming_endless_city").unwrap();
+            for i in 0..players {
+                let id=format!("encoder-{i}");
+                let (tx,_)=tokio::sync::mpsc::unbounded_channel();let (frames,_)=watch::channel(None);let (_,input)=watch::channel(None);
+                room.join(&id,tx,frames,input,None,10);room.spawn(&id,"brz").unwrap();
+            }
+            for _ in 0..60 {room.tick(0.0);}
+            let snap=room.game.build_snapshot(&room.physics);
+            let count=300;
+            for typed in [false,true,false,true] {
+                let start=Instant::now();
+                let mut bytes=0;
+                for _ in 0..count {
+                    let data=black_box(&snap);
+                    let packet=if typed {FrameEnvelope{kind:"snapshot",world_id:1,tick:None,data}.encode()}
+                        else {json!({"type":"snapshot","world_id":1,"data":data}).to_string()};
+                    bytes=black_box(packet.len());
+                }
+                println!("wire-bench players={players} typed={typed} bytes={bytes} us={:.2}",start.elapsed().as_secs_f64()*1e6/count as f64);
+            }
+        }
+    }
 
     #[test]
     fn setup_calibration_advertises_only_supported_resource_readings() {

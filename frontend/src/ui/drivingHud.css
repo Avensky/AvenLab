@@ -653,14 +653,6 @@ html[data-high-contrast="true"] .touch-stick-throttle {
   }
 }
 
-.ignition-quiet {
-  opacity: 0.18;
-  transition: opacity 180ms linear;
-}
-.ignition-quiet:hover,
-.ignition-quiet:focus-within {
-  opacity: 1;
-}
 .cockpit-research-page,
 .mission-apps {
   max-width: 680px;

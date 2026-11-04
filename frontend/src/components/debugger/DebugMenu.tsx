@@ -22,12 +22,6 @@ import {
 import { useCaptureSettingsStore } from "../../performance/captureSettingsStore";
 import { useVisualAlignmentStore } from "../../store/presentation/visualAlignmentStore";
 import { usePerformanceReadout } from "../../performance/usePerformanceReadout";
-import {
-  cityQualityControl,
-  cityViewDistanceControl,
-  cityPerformanceControl,
-  interpolationControl,
-} from "../menus/cityQualityControl";
 import { useState } from "react";
 import { requestSandboxService } from "../../net/rustSocket";
 
@@ -97,21 +91,6 @@ export function DebugMenu() {
       if (!settings.overlay) useUIStore.getState().closeOverlay();
     },
   };
-  const renderToggles = (
-    ["shadows", "reflections", "stars", "fog", "vehicleLights", "hud"] as const
-  ).map((key): MenuRow => ({
-    id: key,
-    label: {
-      shadows: "Shadows",
-      reflections: "HDR reflections",
-      stars: "Animated stars",
-      fog: "Fog",
-      vehicleLights: "Vehicle spotlights",
-      hud: "Driving HUD + terminal",
-    }[key],
-    value: settings[key] ? "On" : "Off",
-    action: () => settings.update({ [key]: !settings[key] }),
-  }));
   const environmentRows = (map?.chunks ?? []).flatMap((chunk): MenuRow[] => {
     const key = chunkKey(chunk.x, chunk.z);
     const chunkMode = settings.chunkOverrides[key] ?? settings.environmentMode;
@@ -151,7 +130,6 @@ export function DebugMenu() {
           description:
             "Diagnostic streams are separate from model rendering. Disable streams you do not need to reduce debug traffic.",
           rows: [
-            overlayRow,
             {
               id: "scope",
               label: "Diagnostic player scope",
@@ -260,9 +238,6 @@ export function DebugMenu() {
                   assetGlbs: {},
                 }),
             },
-            cityQualityControl(settings),
-            cityViewDistanceControl(settings),
-            cityPerformanceControl(settings),
             {
               id: "opaque-city",
               label: "Opaque city materials (Original A/B)",
@@ -290,28 +265,9 @@ export function DebugMenu() {
         {
           id: "rendering",
           label: "Rendering",
-          description:
-            "These controls share the same settings as Display. Captures can help compare the cost of one effect at a time.",
+          description: "Display owns graphics profiles, resolution, distance and effects. Captures and collision visualizers stay in Debugger.",
           rows: [
-            interpolationControl(debug),
-            {
-              id: "dpr",
-              label: "Resolution scale",
-              value: `${settings.dpr}×`,
-              action: (dir) =>
-                settings.update({
-                  dpr: step([0.5, 0.75, 1, 1.5, 2], settings.dpr, dir),
-                }),
-            },
-            cityQualityControl(settings),
-            cityViewDistanceControl(settings),
-            ...renderToggles,
-            {
-              id: "overlay",
-              label: "Performance overlay",
-              value: settings.overlay ? "On" : "Off",
-              action: () => settings.update({ overlay: !settings.overlay }),
-            },
+            {id:"display-settings",label:"Open display settings",adjustable:false,action:()=>useUIStore.getState().openSettings("display")},
           ],
         },
         {

@@ -111,3 +111,10 @@ html[data-reduce-motion="true"] :is(.radial-key, .key-travel) {
     width: 54px;
   }
 }
+
+/* Power-state light is steady. The existing START animation owns cranking. */
+.driving-hud .ignition-system:not([data-ignition=ON],[data-engine-state=running],[data-holding=true],[data-cranking=true]) .ignition-ring {stroke:#91a0ab;filter:none;}
+
+.driving-hud .ignition-system:is([data-ignition=ON],[data-engine-state=running]):not([data-cranking=true]) .ignition-ring {
+  opacity:1;stroke:var(--app-accent);filter:drop-shadow(0 0 2px var(--app-accent));
+}

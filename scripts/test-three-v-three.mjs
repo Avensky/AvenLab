@@ -105,12 +105,25 @@ try{
  const running=(await seated[0].wait(message=>message.type==='snapshot'&&message.data.entities.length===6&&message.data.match_state?.phase==='running')).data;
  assert.equal(running.match_state.mode,'skirmish');assert.equal(running.match_state.training,false);
  assert.equal(running.match_state.captures_to_win,3);
+ const roomMap=m=>m.type==='map_snapshot' && m.world_id===world && m.data?.sky;
+ const maps=await Promise.all(seated.map(peer=>peer.wait(roomMap)));
+ const roomSky=maps[0].data.sky;
+ assert(['starry_night','foggy_day'].includes(roomSky));
+ assert(maps.every(m=>m.data.sky===roomSky && m.data.map_id===maps[0].data.map_id));
+ checks.push('Both teams received the same map and sky preset from their room');
  for(const team of ['red','blue'])assert.equal(running.entities.filter(entity=>entity.team===team).length,3);
  const pickup=running.entities.find(entity=>entity.vehicle_id==='sierra');
  assert(pickup);assert.equal(pickup.health.max_hp,900);
  assert(running.entities.some(entity=>entity.vehicle_id==='fortuner'));
  assert(running.entities.some(entity=>entity.vehicle_id==='landcruiser'));
- checks.push('The sixth real deployment starts server-owned 3v3 CTF with first-to-three scoring');
+ for(const team of ['red','blue']){
+  const home=running.match_state.flags.find(flag=>flag.team===team).base;
+  const cars=running.entities.filter(entity=>entity.team===team);
+  assert.equal(cars.length,3);
+  assert(cars.every(car=>Math.hypot(car.position[0]-home[0],car.position[2]-home[2])<40),'each car starts near its own home flag');
+  assert(cars.every((car,index)=>cars.slice(index+1).every(other=>Math.hypot(car.position[0]-other.position[0],car.position[2]-other.position[2])>6)),'separate home pads');
+ }
+ checks.push('The sixth real deployment starts CTF and the first running snapshot shows each team on separate home pads');
 
  phase='server-owned passive ultimate and forged input';
  const initialCharge=running.entities.find(entity=>entity.id===seated[0].player).ultimate_fraction;
@@ -122,6 +135,19 @@ try{
  checks.push('Idle living vehicles gain slow server-owned ultimate charge while forged charge and elapsed-time input fields are ignored');
 
 
+ phase='mixed packed and legacy driving inputs';
+ const vectors=JSON.parse(fs.readFileSync(path.join(repo,'avenlab-server/tests/fixtures/packed-input-v1.json'),'utf8'));
+ const packed=Buffer.from(vectors[0].hex,'hex');
+ seated[0].socket.send(packed);
+ seated[1].socket.send(JSON.stringify({...vectors[0].input,seq:425}));
+ const acknowledges=message=>message.type==='snapshot' &&
+   message.data.entities.some(e=>e.id===seated[0].player&&e.last_input_seq===65538) &&
+   message.data.entities.some(e=>e.id===seated[1].player&&e.last_input_seq===425);
+ await Promise.all([seated[0].wait(acknowledges,true),seated[1].wait(acknowledges,true)]);
+ const malformed=Buffer.from(packed);malformed[2]=99;malformed.writeUInt32LE(65539,4);seated[0].socket.send(malformed);
+ const check=await seated[1].wait(acknowledges,true);
+ assert.equal(check.data.entities.find(e=>e.id===seated[0].player).last_input_seq,65538);
+ checks.push('Packed and JSON drivers share sequence acknowledgements in the same 3v3 match');
  phase='disconnect preserves the sixth seat';
  const original=seated[0],identity=original.identity,team=original.team;
  await original.disconnect();
@@ -136,6 +162,7 @@ try{
  assert.equal(current.alpha.active.world_id,world);assert.equal(current.alpha.active.team,team);assert.equal(current.alpha.active.hero,original.vehicle);assert.equal(current.alpha.active.team_size,3);
  assert.equal(current.alpha.roster.filter(row=>row.id===identity.profile_id).length,1);
  await resumed.deploy(original.vehicle);
+ assert.equal((await resumed.wait(roomMap)).data.sky,roomSky);
  await resumed.wait(message=>message.type==='snapshot'&&message.data.entities.some(entity=>entity.id===resumed.player&&entity.team===team)&&message.data.match_state?.mode==='skirmish');
  checks.push('Token reconnect restores the same 3v3 world, team and hero, with one roster card and a valid redeployed body');
  console.log(JSON.stringify({checks,failures:0},null,2));

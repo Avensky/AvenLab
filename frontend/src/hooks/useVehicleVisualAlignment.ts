@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, type RefObject } from "react";
 import type { Group, Object3D } from "three";
-import { useNetworkStore } from "../store/session/networkStore";
+import { snapshotEntity, useNetworkStore } from "../store/session/networkStore";
 import { useRenderSettingsStore } from "../store/presentation/renderSettingsStore";
 import { useVisualAlignmentStore } from "../store/presentation/visualAlignmentStore";
 import {
@@ -21,7 +21,7 @@ export function useVehicleVisualAlignment(
   const enabled = useRenderSettingsStore((s) => s.autoVehicleAlignment);
   // Stable scalar metadata prevents this hook from rerendering on every pose.
   const colliderKey = useNetworkStore((s) => {
-    const shape = s.snapshot?.entities.find((e) => e.id === id)?.collider;
+    const shape = snapshotEntity(s.snapshot, id)?.collider;
     return shape
       ? JSON.stringify([shape.chassis_offset, shape.nominal_wheel_center_y])
       : "";

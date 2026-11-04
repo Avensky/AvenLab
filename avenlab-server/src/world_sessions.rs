@@ -63,8 +63,7 @@ impl WorldRuntime {
     }
     pub fn start_round(&mut self) -> Result<(),String> {
         if self.round.as_ref().is_none_or(|r|r.phase!=crate::ctf::CtfPhase::Waiting){return Err("Prepare a waiting round first.".into());}
-        let observations=self.round_observations();
-        if ![Team::Red,Team::Blue].iter().all(|team|observations.iter().any(|p|p.team==*team&&p.alive)){return Err("Both teams need a spawned vehicle.".into());}
+        if ![Team::Red,Team::Blue].iter().all(|team|self.game.entities.values().any(|e|e.team==*team && self.game.clients.contains_key(&e.id) && self.physics.vehicles.contains_key(&e.id))){return Err("Both teams need a spawned vehicle.".into());}
         self.physics.prepare_ctf_round()?;self.game.clear_round_inputs();
         let observations=self.round_observations();self.round.as_mut().unwrap().start(&observations)?;
         self.round_players.clear();self.round_completion=None;self.completion_captured=false;self.capture_round_players();self.game.match_state=self.round_view();
@@ -83,11 +82,17 @@ impl WorldRuntime {
         let carriers=self.round.as_ref().unwrap().carriers();
         for id in carriers.difference(&self.physics.ctf_carriers){if let Some(h)=self.physics.vehicle_health.get_mut(id){h.spawn_protection_s=0.0;}}
         self.physics.ctf_carriers=carriers;
-        if self.round.as_ref().is_some_and(|r|r.phase==crate::ctf::CtfPhase::Running){self.capture_round_players();}
-        if !self.completion_captured {if let Some(result)=self.round.as_ref().unwrap().completion(){
-            let mut players:Vec<_>=self.round_players.values().cloned().collect();players.sort_by(|a,b|a.player_id.cmp(&b.player_id));
-            self.round_completion=Some(CompletedRound{result:result.clone(),players});self.completion_captured=true;
-        }}
+        if !self.completion_captured && self.round.as_ref().is_some_and(|r|r.phase==crate::ctf::CtfPhase::Ended) {
+            // Leaving drivers are saved on departure. Take the remaining totals
+            // on the scoring tick so the final hit or capture is included.
+            self.capture_round_players();
+            if let Some(result)=self.round.as_ref().unwrap().completion() {
+                let mut players:Vec<_>=self.round_players.values().cloned().collect();
+                players.sort_by(|a,b|a.player_id.cmp(&b.player_id));
+                self.round_completion=Some(CompletedRound{result:result.clone(),players});
+                self.completion_captured=true;
+            }
+        }
         self.game.match_state=self.round_view();
     }
     pub fn take_round_completion(&mut self) -> Option<CompletedRound>{self.round_completion.take()}
@@ -131,6 +136,7 @@ impl WorldRuntime {
         if !self.game.entities.contains_key(old)||!self.physics.vehicles.contains_key(old){return false;}
         self.leave(new); // Release the temporary admission entity, not the leased body.
         if !self.physics.reassign_player(old,new){return false;}
+        self.round_players.remove(old); // the resumed driver now has the replacement connection ID
         let mut entity=self.game.entities.remove(old).unwrap();entity.id=new.into();entity.last_packet=None;
         self.game.entities.insert(new.into(),entity);
         self.game.register_client(new.into(),connection.tx.clone(),connection.frame.clone(),connection.input.clone());true
@@ -198,7 +204,7 @@ impl WorldRuntime {
             if let Some(packet) = &entity.last_packet {
                 debug |= DebugFlags::from_bits_truncate(packet.debug_mask.unwrap_or(0));
                 self.physics
-                    .apply_player_input_packet(&entity.id, packet.clone());
+                    .apply_player_input_packet(&entity.id, packet);
                 self.physics.combat_tick(&entity.id,packet.seq,packet.combat.as_ref());
             }
         }
@@ -384,6 +390,45 @@ mod tests {
         assert!(!world.physics.combat_poses.get("driver").is_some_and(|c|c.fire||c.shot>0));
         input.send_replace(Some(serde_json::from_value(json!({"type":"input","seq":2,"dt":1.0/60.0,"throttle":1,"steer":0,"brake":0,"handbrake":0,"vehicleMask":1,"playerMask":0})).unwrap()));
         world.tick(0.0);assert_eq!(world.physics.vehicles["driver"].throttle,1.0);
+    }
+    #[test]
+    fn kickoff_reassigns_reused_warmup_pads_and_stops_every_car_once() {
+        use rapier3d::prelude::Vector;
+        let mut world = WorldRuntime::new(1, "streaming_endless_city").unwrap();
+        world.configure_round(crate::alpha::Mode::Skirmish, true).unwrap();
+        let mut first_pad = None;
+        for (id, team) in [("red-one", Team::Red), ("red-two", Team::Red), ("blue", Team::Blue)] {
+            let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
+            let (frame, _frames) = watch::channel(None);
+            let (_input, inputs) = watch::channel(None);
+            world.join(id, tx, frame, inputs, Some(team), 6);
+            world.spawn(id, "brz").unwrap();
+            let handle = world.physics.vehicles[id].body;
+            let body = &mut world.physics.bodies[handle];
+            let pad = *body.translation();
+            if id == "red-one" { first_pad = Some(pad); }
+            if id == "red-two" { assert_eq!(first_pad, Some(pad)); }
+            body.set_translation(pad + Vector::new(50.0, 0.0, 0.0), true);
+            body.set_linvel(Vector::new(13.0, 0.0, 1.0), true);
+        }
+        world.physics.vehicle_health.get_mut("blue").unwrap().defeated = true;
+        let map = world.physics.map_snapshot().unwrap();
+        assert_eq!(serde_json::to_value(&map).unwrap()["sky"], "starry_night");
+        world.start_round().unwrap();
+        for (id, pad) in [("red-one", &map.team_spawns.red[0]), ("red-two", &map.team_spawns.red[1]), ("blue", &map.team_spawns.blue[0])] {
+            let body = &world.physics.bodies[world.physics.vehicles[id].body];
+            assert_eq!([body.translation().x, body.translation().z], pad.world_xz(map.cell));
+            assert_eq!(body.linvel().norm_squared(), 0.0);
+            assert_eq!(body.angvel().norm_squared(), 0.0);
+            assert!(!world.physics.is_defeated(id));
+        }
+        assert!(world.start_round().is_err());
+    }
+
+    #[test]
+    fn coastal_map_sends_fog_to_every_joiner() {
+        let world = WorldRuntime::new(1, "coastal_district").unwrap();
+        assert_eq!(serde_json::to_value(world.physics.map_snapshot().unwrap()).unwrap()["sky"], "foggy_day");
     }
     #[test]
     fn ten_city_players_can_spawn_without_waiting_for_parked_cars_to_move() {

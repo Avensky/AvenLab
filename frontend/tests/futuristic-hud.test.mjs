@@ -27,11 +27,19 @@ test('futuristic HUD mixes with classic gauges and filters teammate resources',a
   const meter=label=>document.querySelector(`[aria-label="${label}"][role="meter"]`);
   assert(document.getElementById('classic-test'));assert(document.querySelector('.futuristic-hud'));assert.equal(meter('HULL HP').getAttribute('aria-valuetext'),'850 / 1200','HP stays separate from condition');assert.equal(meter('FUEL').getAttribute('aria-valuenow'),'50');assert.equal(meter('NITROUS').getAttribute('aria-valuenow'),'75');assert.equal(document.querySelector('.vehicle-health-hud'),null,'no duplicate self HP');
   assert.equal(document.querySelector('.future-condition'),null);
+  assert.equal(document.querySelector('.future-engine b').textContent,'194°F');
+  assert.equal(document.querySelectorAll('.future-assists button .assist-bulb').length,3);
   assert.equal(document.querySelector('.future-assists').querySelectorAll('button').length,3);
   assert(document.querySelector('.future-fuel-row').contains(meter('FUEL')));
   assert.equal(meter('NITROUS').querySelector('output').textContent,'75%');
   assert.equal(document.querySelectorAll('.teammate-hud li').length,1);assert(document.querySelector('.teammate-hud img').getAttribute('src').endsWith('ae86.webp'));
   await act(async()=>prefs.getState().update({hudGroups:{gauges:false}}));assert.equal(document.getElementById('classic-test'),null);assert(meter('HULL HP'));
+  for(const [value,text,ready] of [[0,'0%',false],[.72,'72%',false],[.999,'99%',false],[1,'100%',true]]) {
+   await act(async()=>{me.ultimate_fraction=value;send();});
+   const charge=meter('Ultimate charge');assert.equal(charge.getAttribute('aria-valuetext'),text);
+   assert.equal(charge.parentElement.dataset.charged,String(ready));
+   assert(Math.abs(Number(charge.querySelector('.charge-outer').getAttribute('stroke-dashoffset'))-(1-parseInt(text,10)/100))<1e-6);
+  }
   await act(async()=>prefs.getState().update({healthBars:'none'}));assert.equal(meter('HULL HP'),null);assert.equal(document.querySelector('.teammate-health'),null);assert(meter('FUEL'));
   await act(async()=>prefs.getState().update({healthBars:'all',speedUnit:'mph'}));assert.equal(document.querySelector('.future-driving strong').textContent,'45');
   await act(async()=>{me.health={...health,hp:0,defeated:true,respawn_remaining_s:3};send();});assert(document.querySelector('.vehicle-defeated-banner'));assert.match(document.querySelector('.future-status').textContent,/DISABLED/);

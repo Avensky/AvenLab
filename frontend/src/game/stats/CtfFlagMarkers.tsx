@@ -33,8 +33,12 @@ const CarriedFlag=memo(function CarriedFlag({carrier,color}:{carrier:string;colo
    nextLabel.current=clock.elapsedTime+.2;
    const me=useNetworkStore.getState().getMe();
    const distance=me&&pose?Math.round(Math.hypot(pose.position[0]-me.position[0],pose.position[1]-me.position[1],pose.position[2]-me.position[2])):0;
-   marker.current.hidden=distance<40;
-   marker.current.textContent='⚑ '+distance+' m';
+   const hidden=distance<40;
+   if(marker.current.hidden!==hidden)marker.current.hidden=hidden;
+   if(!hidden){
+    const text='⚑ '+distance+' m';
+    if(marker.current.textContent!==text)marker.current.textContent=text;
+   }
   }
  },-2);
  return <group ref={root} name={`carried-flag-${carrier}`} visible={false}>
@@ -60,21 +64,24 @@ function BaseZone({flag,color,captureState}:{flag:CtfFlag;color:string;captureSt
 /** Authored base/drop positions are authoritative. Carried flags follow the
  * rendered vehicle; neither a mesh nor a label sends pickup/capture requests. */
 export function CtfFlagMarkers(){
- const flagsKey=useNetworkStore(s=>JSON.stringify(s.snapshot?.match_state?.flags.map(flag=>({...flag,position:flag.status==='carried'?flag.base:flag.position}))??[]));
- const visibleKey=useNetworkStore(s=>JSON.stringify([s.playerId,...minimapContacts(s.snapshot,s.playerId).map(contact=>contact.id)]));
+ const flagsKey=useNetworkStore(s=>JSON.stringify(s.snapshot?.match_state?.flags.map(flag=>({...flag,return_remaining_s:Math.ceil(flag.return_remaining_s??0),position:flag.status==='carried'?flag.base:flag.position}))??[]));
+ const visibleKey=useNetworkStore(s=>{
+  if (!s.snapshot?.match_state?.flags.some(flag=>flag.status==='carried')) return '';
+  return JSON.stringify([s.playerId,...minimapContacts(s.snapshot,s.playerId).map(contact=>contact.id)]);
+ });
  const captureKey=useNetworkStore(s=>{
   const match=s.snapshot?.match_state,objective=match?getCtfCaptureObjective(match,s.getMe()??undefined):null;
   return objective?`${objective.team}:${objective.state}`:'';
  });
  const flags=useMemo(()=>JSON.parse(flagsKey) as CtfFlag[],[flagsKey]);
- const visibleCarriers=useMemo(()=>new Set(JSON.parse(visibleKey) as string[]),[visibleKey]);
+ const visibleCarriers=useMemo(()=>new Set(visibleKey ? JSON.parse(visibleKey) as string[] : []),[visibleKey]);
  return <group name="ctf-flag-markers">{flags.map(flag=>{
   const color=flag.team==='red'?MATCH_TEAM_COLORS.red.glow:'#4bc9ff';
   return <group key={flag.team}>
    <BaseZone flag={flag} color={color} captureState={captureKey.startsWith(flag.team+':')?captureKey.slice(flag.team.length+1):''}/>
    {flag.status==='carried' ? flag.carrier&&visibleCarriers.has(flag.carrier)&&<CarriedFlag carrier={flag.carrier} color={color}/> : <group position={[flag.position[0],flag.position[1]+1.1,flag.position[2]]}>
     <FlagArtwork color={color}/>
-    <Html position={[0,2.8,0]} center distanceFactor={65} style={{pointerEvents:'none',color,whiteSpace:'nowrap',font:'bold 11px system-ui',textShadow:'0 1px 3px #000'}}>{flag.team.toUpperCase()} FLAG · {flag.status.toUpperCase()}</Html>
+    <Html position={[0,2.8,0]} center distanceFactor={65} style={{pointerEvents:'none',color,whiteSpace:'nowrap',font:'bold 11px system-ui',textShadow:'0 1px 3px #000'}}>{flag.team.toUpperCase()} FLAG · {flag.status.toUpperCase()}{flag.status==='dropped' && flag.return_remaining_s>0 ? ` · ${flag.return_remaining_s}s` : ''}</Html>
    </group>}
   </group>;
  })}</group>;

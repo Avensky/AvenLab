@@ -18,6 +18,7 @@ import { useCanDataStore } from "../store/recon/canDataStore";
 import { startVehicleTelemetry } from "../store/telemetry/vehicleTelemetryStore";
 import { HudGroup } from "./HudGroup";
 import { useNetworkStore } from "../store/session/networkStore";
+import { useRenderSettingsStore } from "../store/presentation/renderSettingsStore";
 
 export function DrivingHUD() {
   const ctf = useNetworkStore((s) => Boolean(s.snapshot?.match_state));
@@ -27,6 +28,7 @@ export function DrivingHUD() {
     dock = usePreferencesStore((s) => s.showDriveControls),
     drop = usePreferencesStore((s) => s.wheelDrop);
   const groups = usePreferencesStore((s) => s.hudGroups);
+  const lowDetail = useRenderSettingsStore(s => s.lowDetail);
   const needsTelemetry =
     groups.wheel || groups.stalks ||
       (groups.ignition ||
@@ -51,6 +53,7 @@ export function DrivingHUD() {
       data-drive-controls={dock}
       data-ctf-match={ctf}
       data-futuristic={groups.futuristic}
+      data-low-detail={lowDetail}
       inert={inspector || command}
       onPointerDownCapture={(event) => {
         if (
@@ -101,8 +104,8 @@ export function DrivingHUD() {
       <EditorDriveBar />
       <CenterCombatDock>
         <ActiveEffectsBar />
-        {groups.futuristic && <FuturisticHUD />}
         <WeaponSelector />
+        {groups.futuristic && <FuturisticHUD />}
       </CenterCombatDock>
       <VehicleHealthHUD />
       <ControlsPanel />

@@ -280,4 +280,3 @@ html[data-ui-theme] .alpha-queue-position {color:var(--app-accent);}
 
 html[data-match-cockpit="true"] :is(.cockpit-panel,.driving-hud) {--cockpit-accent:var(--vehicle-accent,var(--app-accent));}
 html[data-match-cockpit="true"] .cockpit-header {border-bottom-color:var(--vehicle-accent);}
-html[data-match-cockpit="true"] .wheel-artwork {--wheel-stitch:var(--vehicle-accent);}

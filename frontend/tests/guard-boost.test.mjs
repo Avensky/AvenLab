@@ -31,7 +31,7 @@ test('BRZ guarded boost uses confirmed hero, resources, cooldown and shield stat
    stage();await act(async()=>root.render(h(GuardBoostAction)));const button=document.querySelector('[aria-label="Guard boost"]');assert(button&&!button.disabled);let pending;
    await act(async()=>{pending=actions.requestGuardBoost();});assert.equal(sent.at(-1).action,'dps_guard_boost');assert.equal(Object.hasOwn(sent.at(-1),'shield_hp'),false);assert(button.disabled);assert.equal(await actions.requestGuardBoost(),false);
    await act(async()=>client.receiveSocialResult({request_id:sent.at(-1).request_id,ok:true,data:{}}));assert.equal(await pending,true);assert.equal(network.getState().getMe().guard.remaining_s,0,'no optimistic shield or HP mutation');
-   await act(async()=>stage('brz',3,'driver',{guard:{...guard,remaining_s:3,cooldown_s:10,shield_hp:175}}));assert(button.disabled);assert.equal(button.dataset.active,'true');assert.match(button.textContent,/SHIELD 175 HP/);assert.equal(button.querySelector('.cooldown-clock').dataset.progress,'0.5');
+   await act(async()=>stage('brz',3,'driver',{guard:{...guard,remaining_s:3,cooldown_s:10,shield_hp:175}}));assert(button.disabled);assert.equal(button.dataset.active,'true');assert.match(button.textContent,/SHIELD 175 HP/);assert.equal(button.querySelector('.cooldown-clock').dataset.progress,'0.75','active boost drains over four seconds');
    await act(async()=>stage('brz',3,'driver',{guard:{...guard,remaining_s:2,cooldown_s:9,shield_hp:0,break_seq:1}}));assert.match(button.textContent,/STABILITY/);assert.equal(await actions.requestGuardBoost(),false);
    await act(async()=>stage('mechanic'));assert.equal(document.querySelector('[aria-label="Guard boost"]'),null);
   });
@@ -56,8 +56,10 @@ test('BRZ guarded boost uses confirmed hero, resources, cooldown and shield stat
    await act(async()=>{pending=actions.requestTankBarrier();});assert.equal(sent.at(-1).action,'tank_barrier');assert.equal(Object.hasOwn(sent.at(-1),'shield_hp'),false);assert.equal(button.disabled,true);
    await act(async()=>client.receiveSocialResult({request_id:sent.at(-1).request_id,ok:true,data:{}}));assert.equal(await pending,true);
    await act(async()=>stage('tank',3,'tank-driver',{vehicle_id:'tank',guard:{...tankGuard,remaining_s:0,cooldown_s:7.5,shield_hp:420}}));
-   assert.match(button.textContent,/BARRIER 420 HP/);assert.equal(button.querySelector('.cooldown-clock').dataset.progress,'0.5');
+   assert.match(button.textContent,/BARRIER 420 HP/);assert.equal(button.querySelector('.cooldown-clock').dataset.progress,'0.84','active barrier shows surviving shield');
    const tankBuffs=effects(read(network.getState().getMe()));assert.deepEqual(tankBuffs.map(buff=>buff.id),['tank-barrier']);assert.equal(tankBuffs[0].duration,null);assert.equal(tankBuffs[0].nature,'defense');
+   await act(async()=>stage('tank',3,'tank-driver',{vehicle_id:'tank',guard:{...tankGuard,shield_hp:0,cooldown_s:7.5}}));
+   assert.equal(button.querySelector('.cooldown-clock').dataset.progress,'0.5','broken barrier refills over its cooldown');
    await act(async()=>stage('brz'));assert.equal(document.querySelector('[aria-label="Tank barrier"]'),null);assert.equal(await actions.requestTankBarrier(),false);
   });
   await t.test('confirmed breaks pulse once and initial/reconnected snapshots do not replay an old break',()=>{

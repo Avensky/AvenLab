@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {JSDOM} from 'jsdom';
 import {createServer} from 'vite';
-import {act, createElement as h} from 'react';
+import {act, createElement as h, Profiler} from 'react';
 import {createRoot} from 'react-dom/client';
 
 test('HUD widgets compose independently and old parent gates migrate once', async t => {
@@ -52,7 +52,9 @@ test('HUD widgets compose independently and old parent gates migrate once', asyn
       await setOnly('climate');await act(async()=>{prefs.getState().update({climateHudSize:'single'});root.render(h(UtilityDock));});
       assert.equal(document.querySelector('.climate-panel').dataset.size,'single');assert.equal(document.querySelector('.cabin-performance'),null);assert.equal(document.querySelector('.climate-three-knobs'),null);assert.equal(document.querySelector('.cockpit-radio'),null);assert.equal(document.querySelector('.hud-minimap'),null);
       await setOnly('performance');assert(document.querySelector('.cabin-performance'));assert.equal(document.querySelector('.climate-panel'),null);assert.equal(document.querySelector('.cockpit-radio'),null);
-      await setOnly('climate','performance');assert(document.querySelector('.climate-panel'));assert(document.querySelector('.utility-readouts .cabin-performance'),'explicit combination retains the single climate bar and separate readout');
+      await setOnly('climate','performance');assert(document.querySelector('.climate-panel'));assert.equal(document.querySelector('.cabin-performance'),null,'one-line mode has no second readout');
+      await act(async()=>document.querySelector('[aria-label="Show two-line climate dash"]').click());
+      assert(document.querySelector('.climate-status-row .cabin-performance'),'the second line restores the performance readout');
     });
     await t.test('radio, Missions and hazards each work without their former parent',async()=>{
       await setOnly('missions');assert(document.querySelector('.mission-apps'));assert.equal(document.querySelector('.cockpit-radio'),null);assert(document.querySelector('[aria-label="Minimize missions"]'));
@@ -64,6 +66,21 @@ test('HUD widgets compose independently and old parent gates migrate once', asyn
       await setOnly('pedals');assert(document.querySelector('.pedal-hud'));assert.equal(document.querySelector('.hud-shifter'),null);assert.equal(document.querySelector('.hud-assists'),null);
       await setOnly('stalks');await act(async()=>root.render(h(Steering)));assert(document.querySelector('.column-stalks'));assert.equal(document.querySelector('.wheel-rotor'),null);
       await setOnly('wheel');assert(document.querySelector('.wheel-rotor'));assert.equal(document.querySelector('.column-stalks'),null);
+    });
+    await t.test('drivetrain telemetry leaves the climate strip idle and ambient changes still reach it',async()=>{
+      const {ClimatePanel}=await load('ui/Cockpit/ClimatePanel.tsx');
+      const {useVehicleTelemetryStore:telemetry}=await load('store/telemetry/vehicleTelemetryStore.ts');
+      const previous=telemetry.getState().data;
+      let commits=0;
+      await act(async()=>root.render(h(Profiler,{id:'hvac',onRender:()=>commits++},h(ClimatePanel,{size:'compact'}))));
+      const mounted=commits;
+      for(let i=0;i<10;i++){
+        await act(async()=>telemetry.setState({data:{...previous,gear:i%6,parkingFraction:i/10}}));
+      }
+      assert.equal(commits,mounted);
+      await act(async()=>telemetry.setState({data:{...previous,config:{...previous.config,ambientTempC:35}}}));
+      assert.equal(document.querySelector('[aria-label="Ambient temperature"]').textContent,'95°F');
+      await act(async()=>{root.render(null);telemetry.setState({data:previous});});
     });
     await t.test('single bar preset and independent performance switch change no vehicle input',async()=>{
       await setOnly('climate','performance');const before=structuredClone(input.getState().input);

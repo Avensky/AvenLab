@@ -46,6 +46,10 @@ export function applyShowroomPaint(root: Object3D, model: string, finish: "facto
   });
 }
 
+export function hasVehicleFinish(name: string) {
+  return /^(Primary(?:\.\d+)?|body|ext(?:\.\d+)?|chassis(?:\.\d+)?)$|PaintTNR_Material1$/.test(name);
+}
+
 /** All showroom body paints share a low-glare finish control. Zero is glossy,
  * one is satin. Store the authored finish so repeated updates never drift. */
 export function applyShowroomHighlights(root: Object3D, softness: number, finish: "factory" | "frs" | "soft" = "soft") {
@@ -55,7 +59,7 @@ export function applyShowroomHighlights(root: Object3D, softness: number, finish
     if(!(object instanceof Mesh))return;
     for(const material of Array.isArray(object.material)?object.material:[object.material]) {
       if(!(material instanceof MeshStandardMaterial)||seen.has(material)||
-          !/^(Primary(?:\.\d+)?|body|ext(?:\.\d+)?|chassis(?:\.\d+)?)$|PaintTNR_Material1$/.test(material.name))continue;
+          !hasVehicleFinish(material.name))continue;
       seen.add(material);
       if(typeof material.userData.showroomFactoryRoughness!=="number")material.userData.showroomFactoryRoughness=material.roughness;
       const authored = material.userData.showroomFactoryRoughness as number;

@@ -19,7 +19,7 @@ impl PhysicsWorld {
             if dot < 0.9781 {continue;} // 12-degree half cone
             let rank=dot-0.008*distance/120.0+if previous==Some(id.as_str()){0.004}else{0.0};
             if best.as_ref().is_some_and(|(score,other,_)| *score>rank || (*score==rank && other<=&id)) {continue;}
-            let hit=self.query_pipeline.cast_ray(&self.bodies,&self.colliders,&Ray::new(origin,direction),distance+0.15,true,QueryFilter::default().exclude_rigid_body(source.body));
+            let hit=self.query_pipeline.cast_ray(&self.bodies,&self.colliders,&Ray::new(origin,direction),distance+0.15,true,QueryFilter::default().groups(crate::physics::vehicle_collision_groups(false)).exclude_rigid_body(source.body));
             if hit.and_then(|(handle,_)|self.colliders[handle].parent())==Some(vehicle.body) {
                 best=Some((rank,id,direction));
             }

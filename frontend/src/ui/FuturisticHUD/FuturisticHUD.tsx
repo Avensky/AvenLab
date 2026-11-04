@@ -1,7 +1,6 @@
 import { DrivingIgnition } from '../Cockpit/DrivingIgnition';
 import { DriveAssists } from '../Cockpit/DriveAssists';
 import { HudGroup } from '../HudGroup';
-import type { CSSProperties } from 'react';
 import { memo, useEffect } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { HeroPortrait } from '../../game/alpha/HeroPortrait';
@@ -12,6 +11,7 @@ import { startVehicleTelemetry, useVehicleTelemetryStore } from '../../store/tel
 import { combatHealth, resourceReadings, engineHeatBand } from './resourceModel';
 import './futuristicHUD.css';
 
+const chargePerimeter = 'M50 3H91L97 9V91L91 97H9L3 91V9L9 3Z';
 const percent = (value: number | null) => value === null ? '—' : `${Math.round(value * 100)}%`;
 const ResourceBar = memo(function ResourceBar({ label, value, text, kind }: {
   label: string; value: number | null; text?: string; kind: string;
@@ -36,18 +36,28 @@ export function FuturisticHUD() {
   const mode = usePreferencesStore(s => s.healthBars), units = usePreferencesStore(s => s.speedUnit);
   // Only these readings are consumed; resourceReadings deliberately needs no pose.
   const readings = resourceReadings(data);
+  const charge = readings.ultimate;
+  const chargeText = percent(charge);
   const heat = engineHeatBand(readings.temperature, data.config);
   const health = data.signal === 'live' && me.hp !== null && me.max !== null ? {hp: me.hp, max: me.max, defeated: me.defeated, protection: me.protection} : null;
   const showHP = showVehicleHealthBar(mode, me.team, true);
   const park = data.signal === 'live' && data.cockpitMask !== null && Boolean(data.cockpitMask & 64) && ((data.cockpitMask >>> 7) & 15) === 8;
   const speed = readings.speed === null ? '—' : Math.round(readings.speed / (units === 'mph' ? 1.609344 : 1));
   return <section className="futuristic-hud" aria-label="Futuristic vehicle instruments" data-signal={data.signal} data-defeated={health?.defeated ?? false}>
-    <div className="future-identity" role="meter" aria-label="Ultimate charge" aria-valuemin={0} aria-valuemax={100}
-      aria-valuenow={readings.ultimate === null ? undefined : Math.round(readings.ultimate*100)}
-      aria-valuetext={percent(readings.ultimate)} data-ready={readings.ultimate === 1} data-team={me.team}
-      style={{'--charge': (readings.ultimate ?? 0) * 100 + '%'} as CSSProperties}>
-      <HeroPortrait hero={me.hero} appearance={me.appearance} cacheOnly />
-      <strong title="Ultimate charge">ϟ {percent(readings.ultimate)}</strong>
+    <div className="future-identity" data-charged={charge===1}>
+      <HeroPortrait hero={me.hero} appearance={me.appearance} cacheOnly showStyleStatus={false} />
+      <div className="ultimate-gauge" role="meter" aria-label="Ultimate charge" title="Ultimate charge"
+        aria-valuemin={0} aria-valuemax={100} aria-valuenow={charge===null?undefined:Math.round(charge*100)}
+        aria-valuetext={chargeText}>
+        <svg viewBox="0 0 100 100" aria-hidden="true">
+          <path className="charge-track" d={chargePerimeter}/>
+          <path className="charge-outer" d={chargePerimeter} pathLength="1"
+            strokeDasharray="1" strokeDashoffset={1-(charge??0)} />
+          <path className="charge-inner" d="M50 7H11L7 11V89L11 93H89L93 89V11L89 7Z" pathLength="1"
+            strokeDasharray="1" strokeDashoffset={1-(charge??0)} />
+        </svg>
+        <strong>{chargeText}</strong>
+      </div>
     </div>
     <div className="future-resources">
       {showHP && <ResourceBar label="HULL HP" kind="health" value={health ? health.hp / health.max : null} text={health ? `${Math.ceil(health.hp)} / ${Math.ceil(health.max)}` : '—'} />}
@@ -55,7 +65,7 @@ export function FuturisticHUD() {
         <ResourceBar label="FUEL" kind="fuel" value={readings.fuel} />
         <span className="future-engine" data-heat={heat}
           title={`Engine temperature · ${heat}`}>
-          <abbr title="Engine temperature">ENG</abbr> <b>{readings.temperature === null ? '—' : `${Math.round(readings.temperature)}°C`}</b>
+          <abbr title="Engine temperature">ENG</abbr> <b>{readings.temperature === null ? '—' : `${Math.round(readings.temperature * 9 / 5 + 32)}°F`}</b>
         </span>
       </div>
       <ResourceBar label="NITROUS" kind="nitrous" value={readings.nitrous} />

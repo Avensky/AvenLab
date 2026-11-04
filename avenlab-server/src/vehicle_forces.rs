@@ -84,11 +84,11 @@ impl PhysicsWorld {
             let Some(body_ro) = self.bodies.get(handle) else { continue };
             let Some(player_id) = self.body_to_player.get(&handle) else { continue };
             let Some(vehicle) = self.vehicles.get_mut(player_id) else { continue };
-            if self.vehicle_health.get(player_id).is_some_and(|h|h.defeated){continue;}
+            let disabled = self.vehicle_health.get(player_id).is_some_and(|h|h.defeated);
             if wheels.is_empty() { continue; }
 
             let longitudinal_speed = (body_ro.rotation().inverse() * body_ro.linvel()).z;
-            let (mut throttle, mut brake) = vehicle.cockpit.advance(dt, longitudinal_speed, vehicle.throttle, vehicle.brake, vehicle.handbrake, vehicle.powertrain.running);
+            let (mut throttle, mut brake) = if disabled { (0.0,0.0) } else { vehicle.cockpit.advance(dt, longitudinal_speed, vehicle.throttle, vehicle.brake, vehicle.handbrake, vehicle.powertrain.running) };
             let stunned=vehicle.ram.stun_remaining>0.0;
             let steer_input=if stunned {0.0}else{vehicle.steer};
             if stunned{throttle=0.0;brake=0.0;}
@@ -97,7 +97,7 @@ impl PhysicsWorld {
             let ram_speed=vehicle.ram.speed_multiplier()*carrier_speed*if guarding {crate::guard_boost::GUARD_SPEED_MULTIPLIER}else{1.0};
             let ram_force=vehicle.ram.force_multiplier()*if guarding {crate::guard_boost::GUARD_FORCE_MULTIPLIER}else{1.0};
             if vehicle.ram.charging()&&!stunned{throttle=1.0;}
-            let handbrake = (if stunned {0.0}else{vehicle.handbrake}).max(vehicle.cockpit.parking_force());
+            let handbrake = if disabled { 0.0 } else { (if stunned {0.0}else{vehicle.handbrake}).max(vehicle.cockpit.parking_force()) };
             vehicle.powertrain.manual_gear = vehicle.cockpit.manual_gear();
             vehicle.vehicle_flags.set(VehicleStateFlags::TCS, vehicle.cockpit.tcs_enabled(vehicle.vehicle_flags.contains(VehicleStateFlags::TCS)));
             // A stationary skid turn loads the engine even with no travel pedal.
@@ -112,10 +112,10 @@ impl PhysicsWorld {
                 engine_resources.min_running_heat_rise_c_s=crate::ram::MIN_HEAT_RISE_C_S;
                 engine_resources.max_heat_rise_c_s=crate::ram::MAX_HEAT_RISE_C_S;
             }
-            vehicle.powertrain.advance(engine_resources, Demand {
+            if !disabled { vehicle.powertrain.advance(engine_resources, Demand {
                 throttle:engine_throttle, longitudinal_speed,
                 wheel_radius: vehicle.config.wheel_radius, engine_force: vehicle.config.engine_force, top_speed:if vehicle.powertrain.thermal_recovery{(vehicle.config.max_speed*0.35).min(8.0)}else{vehicle.config.max_speed*ram_speed},
-            }, dt);
+            }, dt); }
             if vehicle.config.tracked{
                 let consuming=vehicle.ram.active()&&vehicle.powertrain.running&&!vehicle.powertrain.thermal_recovery;
                 if consuming{vehicle.powertrain.nos_remaining_s=(vehicle.powertrain.nos_remaining_s-dt).max(0.0);}

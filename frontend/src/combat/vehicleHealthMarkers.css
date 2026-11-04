@@ -20,11 +20,48 @@ html[data-reduce-motion=true] .vehicle-health-marker-track>span{transition:none}
   --health-marker-color:var(--team-red,#ff6570); width:68px; padding:2px 3px;
   border:0; border-radius:1px; background:#07101ac9;
 }
-.vehicle-health-marker[data-relation=enemy][data-focused=false]:not([data-defeated=true]) small {display:none;}
+.vehicle-health-marker:not([data-modern=true])[data-relation=enemy][data-focused=false]:not([data-defeated=true]) small {display:none;}
 .vehicle-health-marker[data-relation=enemy] .vehicle-health-marker-track {height:3px; margin:2px 0;}
-.vehicle-health-marker[data-relation=enemy][data-focused=true] {
+.vehicle-health-marker:not([data-modern=true])[data-relation=enemy][data-focused=true] {
   width:90px; padding:4px 6px; background:linear-gradient(var(--health-marker-color),var(--health-marker-color)) left top / 10px 2px no-repeat,
   linear-gradient(var(--health-marker-color),var(--health-marker-color)) right bottom / 10px 2px no-repeat,#0a0f18ea;
   border-inline:1px solid var(--health-marker-color);
 }
 .vehicle-health-marker[data-focused=true]::after {content:attr(data-range);margin-left:5px;color:#fff;}
+
+/* Marks follow the projected hull. The transparent center leaves the vehicle
+   visible; these four corners share the nameplate's existing sight test. */
+.vehicle-health-marker {position:relative;}
+.assist-target-frame {
+ position:absolute;left:50%;top:50%;box-sizing:border-box;pointer-events:none;
+ --corner:linear-gradient(#e9f7ff,#e9f7ff);
+ background:var(--corner) left top/7px 1.5px,var(--corner) left top/1.5px 7px,
+   var(--corner) right top/7px 1.5px,var(--corner) right top/1.5px 7px,
+   var(--corner) left bottom/7px 1.5px,var(--corner) left bottom/1.5px 7px,
+   var(--corner) right bottom/7px 1.5px,var(--corner) right bottom/1.5px 7px;
+ background-repeat:no-repeat;
+}
+.vehicle-health-marker[data-modern=true],.vehicle-health-marker[data-show-hp=false]:not([data-defeated=true]) {
+ min-width:0;width:max-content;max-width:122px;border:0;padding:0;background:transparent;
+ border-radius:0;box-shadow:none;overflow:visible;
+}
+.vehicle-health-marker[data-modern=true][data-focused=true]::after,.vehicle-health-marker[data-show-hp=false]::after {content:none;}
+.vehicle-health-marker[data-modern=true] .contact-tag {display:inline-flex;align-items:center;gap:3px;padding:2px 5px 2px 3px;
+ background:linear-gradient(120deg,#20272fed,#0b1018d9);border-bottom:1px solid #62717e;font:730 8px/1 system-ui;white-space:nowrap;}
+.contact-tag i {width:7px;height:7px;box-sizing:border-box;border:1.5px solid var(--health-marker-color);border-radius:50%;}
+[data-relation=enemy] .contact-tag i {border-radius:1px;transform:rotate(45deg);}
+.contact-tag em {font-style:normal;font-variant-numeric:tabular-nums;}
+.contact-tag strong {font:700 6px/1 system-ui;color:#a3e6f5;}
+.vehicle-health-marker[data-modern=true] .contact-health {display:grid;grid-template-columns:minmax(0,1fr) auto;gap:1px 5px;align-items:end;
+ width:100%;min-width:54px;box-sizing:border-box;padding:2px 3px;background:#0b101bcf;color:#edf3f5;font:650 6px/1.1 system-ui;}
+.contact-name {text-align:left;overflow:hidden;text-overflow:ellipsis;}
+.vehicle-health-marker[data-modern=true] .contact-health small {display:block;font:inherit;}
+.vehicle-health-marker[data-modern=true] .vehicle-health-marker-track {grid-column:1/-1;height:3px;margin:0;border:0;background:#323b44;transform:skewX(-12deg);}
+.vehicle-health-marker[data-modern=true][data-relation=ally] .vehicle-health-marker-track>span {background:#8ee759;}
+.vehicle-health-marker[data-modern=true][data-relation=enemy] .vehicle-health-marker-track>span {background:#f26865;}
+.vehicle-health-marker[data-modern=true][data-relation][data-focused] {width:max-content;background:transparent;border:0;padding:0;box-shadow:none;}
+
+.vehicle-health-marker[data-modern=true][data-focused=true]:not([data-defeated=true]) .contact-info {
+ position:absolute;left:50%;top:calc(50% + var(--contact-top,-4px));width:max-content;
+ transform:translate(-50%,-100%);
+}

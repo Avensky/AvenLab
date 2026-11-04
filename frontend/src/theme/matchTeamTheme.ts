@@ -43,7 +43,7 @@ export function applyTeamIdentityColors(root: HTMLElement, scheme: "dark" | "lig
 }
 
 /** App-theme tokens are never replaced. Transient tokens drive explicit team
- * glows only; vehicle paints and saved stitching resume when this scope clears. */
+ * glows only. The app theme owns the cockpit stitching. */
 export function applyMatchTeamTheme(root: HTMLElement, team: MatchTeam | null, scheme: "dark" | "light") {
   applyTeamIdentityColors(root, scheme);
   if (!team) {

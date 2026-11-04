@@ -71,6 +71,31 @@ test('minimap team radio shows allies and only enemies detected by living teamma
    await act(async()=>network.setState({snapshot:{tick:4,entities:[ally]}}));assert.equal(document.querySelectorAll('[data-player-id]').length,0,'local body removal clears immediately');
    await act(async()=>network.setState({snapshot:null}));assert.equal(document.querySelectorAll('[data-player-id]').length,0);
   });
+  await t.test('GPS follows position, updates a changed destination and clears an out-of-range route',async()=>{
+   const {useWorldStore:world}=await load('store/world/worldStore.ts');
+   const {useNavigationStore:nav}=await load('store/world/navigationStore.ts');
+   await act(async()=>root.render(null));
+   const oldInterval=window.setInterval;window.setInterval=()=>0;
+   try {
+   await act(async()=>root.render(h(Minimap,{forceExpanded:true})));
+   const road={id:'straight',kind:'road',center:[0,0,0],half_extents:[200,1,10]};
+   await act(async()=>{
+    world.setState({map:{collider_chunks:[{boxes:[road]}]}});
+    pose.setState({x:0,z:0,yaw:0});
+    nav.getState().setDestination({x:100,z:0});
+   });
+   const path=()=>document.querySelector('.gps-map polyline')?.getAttribute('points')??null;
+   assert.equal(path(),'0,0 100,0');
+   await act(async()=>pose.setState({yaw:90}));assert.equal(path(),'0,0 100,0');
+   await act(async()=>pose.setState({x:20}));assert.equal(path(),'20,0 100,0');
+   await act(async()=>nav.getState().setDestination({x:-60,z:0}));assert.equal(path(),'20,0 -60,0');
+   await act(async()=>pose.setState({z:90}));assert.equal(path(),null);
+   await act(async()=>{pose.setState({z:0});nav.getState().setDestination(null);});assert.equal(path(),null);
+   } finally {
+    await act(async()=>{root.render(null);world.setState({map:null});nav.getState().setDestination(null);});
+    window.setInterval=oldInterval;
+   }
+  });
   await t.test('map opens once per deployment and round, preserving later collapse and saved size',async()=>{
    const {useHudPanelsStore:panels}=await load('store/hud/hudPanelsStore.ts'),{MinimapSessionLifecycle}=await load('ui/Minimap/MinimapSessionLifecycle.tsx'),{useUIStore:ui}=await load('store/menus/uiStore.ts'),{usePreferencesStore:prefs}=await load('store/preferences/preferencesStore.ts');
    const size=prefs.getState().minimapScale;

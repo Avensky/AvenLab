@@ -44,8 +44,6 @@
 .turret-aim-module .cooldown-clock>.attack-icon{width:calc(var(--aim-utility-size) * .42);height:calc(var(--aim-utility-size) * .42)}
 .drive-dock[data-aim-controls=true] .dock-equipment{padding-bottom:0}
 .console-foot-controls .ignition-hud{position:static!important;inset:auto!important;transform:none!important;flex:0 0 var(--hud-ignition-size);width:var(--hud-ignition-size);height:var(--hud-ignition-size);pointer-events:auto}
-.ignition-quiet{opacity:.3!important;transition:opacity .2s}.ignition-quiet:focus-within,.ignition-quiet:has([data-holding=true]),.ignition-quiet:active{opacity:1!important}
-@media(hover:hover){.ignition-quiet:hover{opacity:1!important}}
 @media(max-width:600px) and (orientation:portrait){
  .driving-hud[data-drive-controls=true]{--wheel-size:clamp(110px,31vw,160px)}.driving-hud[data-drive-controls=true] .wheel-hud{bottom:calc(98px + var(--wheel-size)*var(--wheel-drop,.28))}
  .drive-dock[data-aim-controls=true] .hud-transmission.ability-control-deck{grid-template-columns:54px var(--shifter-size) calc(var(--shifter-size,112px) * 2 / 3);gap:8px 2px;left:0}
@@ -92,15 +90,87 @@
  .drive-dock[data-futuristic=true] .hud-parking {width:calc(var(--hud-shifter-size)*.48);height:var(--hud-shifter-size);}
  .drive-dock[data-futuristic=true] .hud-shifter {width:var(--hud-shifter-size);}
  .drive-dock[data-futuristic=true] .turret-actions {
-   --ability-cell-size:clamp(27px,5.6dvh,43px);
-   position:absolute; right:0; bottom:calc(var(--hud-foot-height) + var(--controls-gap));
-   width:max(100px,calc(3 * var(--hud-pedal-width))); height:auto; grid-template-columns:repeat(3,minmax(0,1fr));
+   --ability-cell-size:clamp(32px,6.6dvh,53px);
+   position:absolute; right:0; bottom:calc(var(--hud-foot-height) + 8px + var(--controls-gap));
+   width:var(--drive-bank-width); height:auto; grid-template-columns:repeat(3,minmax(0,1fr));
    grid-template-rows:none; grid-auto-rows:var(--ability-cell-size); gap:2px;
  }
- .drive-dock[data-futuristic=true] .turret-actions>div {grid-area:auto;border:1px solid var(--app-line);background:var(--app-panel);}
- .drive-dock[data-futuristic=true] .turret-aim-module {
-   position:absolute; right:var(--aim-right,25px); bottom:var(--aim-bottom,145px);
-   width:clamp(54px,10dvh,94px); height:auto; aspect-ratio:1;
- }
- .drive-dock[data-futuristic=true] .turret-joystick {width:100%;height:100%;}
+ .drive-dock[data-futuristic=true] .turret-actions>div {grid-area:auto;}
+
 }
+
+/* Each ability gets its own beveled face, with space for both the dial and its name. */
+.drive-dock[data-futuristic=true] .turret-actions > div {
+  position:relative;isolation:isolate;overflow:hidden;
+  --tile:polygon(0 6px,6px 0,100% 0,100% calc(100% - 5px),calc(100% - 5px) 100%,0 100%);
+  clip-path:var(--tile);background:color-mix(in srgb,var(--rail) 65%,#485666);
+}
+.drive-dock[data-futuristic=true] .turret-actions > div::before {
+  content:'';position:absolute;inset:1px;z-index:-1;clip-path:var(--tile);
+  background:linear-gradient(160deg,#31404a,#101a22 45%,#090e14 78%,#243440);
+}
+.drive-dock[data-futuristic=true] .turret-actions button {
+  border-radius:0;color:#e8f3f8;gap:1px;padding:2px;
+}
+.drive-dock[data-futuristic=true] .turret-actions .cooldown-clock {
+  --action-orbit-size:calc(var(--ability-cell-size) * .56);--orbit-art-size:var(--action-orbit-size);
+}
+.drive-dock[data-futuristic=true] .turret-actions button > span:not(.action-progress-orbit) {
+  position:static;clip-path:none;width:auto;height:auto;max-width:100%;
+  font:650 clamp(6px,1.12dvh,10px)/1.1 system-ui;color:#e9f3fa;
+  padding:2px 3px 0;box-sizing:border-box;border-top:1px solid #7e99a044;
+}
+.drive-dock[data-futuristic=true] .turret-actions .attack-icon {width:78%;height:78%;stroke-width:1.8;color:#dceaf1;}
+.driving-hud[data-futuristic=true] .action-progress-orbit[data-layered=true] .action-orbit-halo {opacity:calc(var(--orbit-progress) * .16);filter:blur(1px);}
+.driving-hud[data-futuristic=true] .action-progress-orbit[data-layered=true] .action-orbit-fill {filter:none;}
+.drive-dock[data-futuristic=true] .turret-actions button:focus-visible {outline:2px solid white;outline-offset:-3px;}
+.drive-dock[data-futuristic=true] .turret-actions > div:empty {visibility:hidden;}
+.turret-cycle-label {display:none;}
+.drive-dock[data-futuristic=true] .turret-actions .turret-cycle-label {display:inline;}
+.drive-dock[data-futuristic=true] .turret-actions :is(.turret-mount-label,button > span > small) {display:none;}
+
+.turret-actions button[data-trial=true] {color:#d3dce3;}
+.turret-actions button[data-trial=true] > small {font:650 6px/1 system-ui;letter-spacing:.04em;color:#bac3cd;}
+.drive-dock[data-futuristic=true] .turret-actions button[data-trial=true] > .attack-icon {width:28%;height:31%;color:#98a4b0;}
+.drive-dock .turret-actions button[data-preview-active=true] {outline:1px solid #dcebf3;outline-offset:-3px;}
+.driving-hud[data-futuristic=true] .turret-aim-module .cooldown-clock {--orbit-color:#b4bec6;--orbit-outer-color:#85919b;--orbit-inner-color:#c1cbd4;}
+
+/* The gate fixes both the diameter and centerline, including its vacant slot. */
+.drive-dock[data-futuristic=true][data-aim-controls=true] .hud-drive-turret-stack {
+  position:relative;display:block;width:var(--hud-shifter-size);height:var(--hud-shifter-size);flex:none;
+}
+.drive-dock[data-futuristic=true] .ability-control-deck .turret-aim-module {
+  position:absolute;inset:auto 0 0;width:100%;height:100%;
+}
+.drive-dock[data-futuristic=true] .hud-drive-turret-stack:has(.hud-shifter) .turret-aim-module {bottom:calc(100% + 12px);}
+.drive-dock[data-futuristic=true] .turret-joystick {box-sizing:border-box;width:100%;height:100%;}
+@media (orientation:portrait) {
+  .drive-dock[data-futuristic=true][data-aim-controls=true] .hud-transmission.ability-control-deck {
+    display:flex;align-items:flex-end;gap:4px;margin:0;align-self:flex-end;width:auto;
+  }
+  .drive-dock[data-futuristic=true] .ability-control-deck > .hud-parking {width:38px;transform:none;}
+  .drive-dock[data-futuristic=true] {--portrait-cell:clamp(31px,8vw,40px);}
+  .drive-dock[data-futuristic=true]:has(> .turret-actions) .dock-equipment {margin-bottom:calc(2 * var(--portrait-cell) + 8px);}
+  .drive-dock[data-futuristic=true] > .turret-actions {
+    position:absolute;right:0;bottom:calc(var(--hud-foot-height) + 12px);
+    --ability-cell-size:var(--portrait-cell);width:var(--drive-bank-width);height:auto;
+    grid-template:repeat(2,var(--portrait-cell))/repeat(3,minmax(0,1fr));gap:2px;
+  }
+  .drive-dock[data-futuristic=true]:not(:has(.pedal-hud)) > .turret-actions {bottom:0;}
+  .drive-dock[data-futuristic=true] > .turret-actions > div {grid-area:auto;}
+}
+.driving-hud[data-futuristic=true] .turret-actions .cooldown-clock,
+.driving-hud[data-futuristic=true] .turret-aim-module .cooldown-clock {
+  --orbit-outer-color:#849199;--orbit-inner-color:#b8c3ca;--orbit-halo-color:transparent;
+}
+.driving-hud[data-futuristic=true] .cooldown-clock[data-ready=false]:not([data-progress=unknown]),
+.driving-hud[data-futuristic=true] [data-preview-active=true] .cooldown-clock {
+  --orbit-outer-color:var(--ability-signal,var(--app-accent));--orbit-inner-color:color-mix(in srgb,var(--ability-signal,var(--app-accent)) 46%,white);
+}
+.driving-hud[data-futuristic=true] .cooldown-clock .action-orbit-white-border {opacity:.18;}
+.driving-hud[data-futuristic=true] .cooldown-clock .action-orbit-inner-fill {stroke-width:3;filter:none;}
+.driving-hud[data-futuristic=true] .cooldown-clock .action-orbit-fill {stroke-width:3.6;filter:none;}
+.driving-hud[data-futuristic=true] .turret-actions .cooldown-clock > .attack-icon {width:47%;height:47%;}
+.driving-hud[data-futuristic=true] .turret-actions button[data-ready=false] {opacity:.86;}
+:is(.heal-pack-action,.revive-action,[data-healing=true]) {--ability-signal:#69e6ab;}
+.driving-hud .turret-actions :is(.heal-pack-action,.revive-action,[data-healing=true]) .attack-icon {color:#99edc2;}

@@ -22,7 +22,15 @@ export function observeHudLayout(
     targets = next;
     if (changed) schedule();
   };
-  const mutation = new window.MutationObserver(refresh);
+  // Replacing a text node cannot add or remove a layout target. A genuine
+  // size change caused by longer text still reaches the ResizeObserver.
+  const hasElement = (nodes: NodeList) => {
+    for (const node of nodes) if (node.nodeType === 1) return true;
+    return false;
+  };
+  const mutation = new window.MutationObserver(records => {
+    if (records.some(record => hasElement(record.addedNodes) || hasElement(record.removedNodes))) refresh();
+  });
   mutation.observe(mutationRoot, {childList: true, subtree: true});
   refresh();
   window.addEventListener('resize', schedule);

@@ -1,3 +1,4 @@
+import {shallow} from 'zustand/vanilla/shallow';
 import {HEROES,heroForVehicle} from '../../store/alpha/alphaStore';
 import type {PhysicsEntitySnapshot,PhysicsSnapshot,VehicleSessionStats} from '../../store/session/networkStore';
 import type {SocialView} from '../../store/social/socialStore';
@@ -94,4 +95,21 @@ export function preMatchPlayers(view:SocialView|null,revealEnemies=false):Scoreb
   if(card?.hero_hidden||row.team!==active.team&&!revealEnemies)return {...row,hero:null,appearance:null,status:undefined,heroHidden:true,kills:null,deaths:null,stats:null};
   return row;
  });
+}
+
+/** Keep row and list identities when only world poses have changed. Appearance
+ * and totals arrive as fresh objects on each decoded network snapshot. */
+export function retainScoreboardPlayers(previous:ScoreboardPlayer[],next:ScoreboardPlayer[]) {
+ const byId=new Map(previous.map(player=>[player.id,player]));
+ let same=previous.length===next.length;
+ for(let i=0;i<next.length;i++){
+  const row=next[i],old=byId.get(row.id);
+  if(old){
+   if(shallow(row.appearance,old.appearance))row.appearance=old.appearance;
+   if(shallow(row.stats,old.stats))row.stats=old.stats;
+   if(shallow(row,old))next[i]=old;
+  }
+  if(next[i]!==previous[i])same=false;
+ }
+ return same?previous:next;
 }

@@ -40,7 +40,7 @@ export type Preferences = {
   theme: UITheme;
   vehicleCosmetics: Pick<VehicleCosmetics,"matchCockpit">;
   garageEffects: GarageEffects;
-  ignitionVisibility: "auto" | "always" | "hidden";
+  ignitionVisibility: "always" | "hidden";
   /** Compatibility alias for hudGroups.climate; actions keep both synchronized. */
   researchHud: boolean;
   /** Compact/full HVAC affects the driving widget; its cockpit page stays usable. */
@@ -90,7 +90,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   theme: "navy",
   vehicleCosmetics: {matchCockpit:DEFAULT_VEHICLE_COSMETICS.matchCockpit},
   garageEffects: DEFAULT_GARAGE_EFFECTS,
-  ignitionVisibility: "auto",
+  ignitionVisibility: "always",
   researchHud: false,
   climateHudSize: "compact",
   parkingCrystals: false,
@@ -171,11 +171,7 @@ export function sanitizePreferences(value: unknown): Preferences {
     theme: isUITheme(data.theme) ? data.theme : "navy",
     vehicleCosmetics: {matchCockpit:sanitizeVehicleCosmetics(data.vehicleCosmetics).matchCockpit},
     garageEffects: sanitizeGarageEffects(data.garageEffects),
-    ignitionVisibility:
-      data.ignitionVisibility === "always" ||
-      data.ignitionVisibility === "hidden"
-        ? data.ignitionVisibility
-        : "auto",
+    ignitionVisibility: data.ignitionVisibility === "hidden" ? "hidden" : "always",
     researchHud: hudGroups.climate,
     climateHudSize: data.climateHudSize === "full" || data.climateHudSize === "single" ? data.climateHudSize : "compact",
     parkingCrystals: data.parkingCrystals === true,
@@ -240,7 +236,7 @@ export const usePreferencesStore = create<
           (patch.hudGroups?.ignition === true || patch.showDriveControls === true) &&
           patch.ignitionVisibility === undefined &&
           state.ignitionVisibility === "hidden"
-            ? "auto"
+            ? "always"
             : (patch.ignitionVisibility ?? state.ignitionVisibility);
         if (patch.ignitionVisibility !== undefined)
           groups.ignition = ignitionVisibility !== "hidden";

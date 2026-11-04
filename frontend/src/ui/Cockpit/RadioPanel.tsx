@@ -27,6 +27,7 @@ const RadioStatus = memo(function RadioStatus({
   fallback: string;
 }) {
   useEffect(startVehicleTelemetry, []);
+  const equipment = useRadioStore((s) => s.equipmentNotice);
   const bulletin = useMissionRadioStore((s) => s.current);
   const notice = useVehicleTelemetryStore(
     ({ data: { signal, resourceMask: mask } }) =>
@@ -56,10 +57,11 @@ const RadioStatus = memo(function RadioStatus({
     <small
       className="radio-vehicle-status"
       data-alert={Boolean(notice)}
-      role={notice ? "status" : undefined}
-      title={notice || bulletin?.message || fallback}
+      data-equipment={Boolean(equipment && !notice)}
+      role={notice || equipment ? "status" : undefined}
+      title={notice || equipment || bulletin?.message || fallback}
     >
-      {notice ||
+      {notice || equipment ||
         (bulletin
           ? `${bulletin.kind === "complete" ? "MISSION COMPLETE · " : ""}${bulletin.title}`
           : fallback)}
@@ -88,7 +90,7 @@ export function RadioPanel({
   const feedback = useMomentaryFeedback();
   if (singleRow) return <div {...feedback} className="cockpit-radio radio-single-row" data-compact="true" data-powered={radio.powered}>
     <button type="button" aria-label="Radio power" role="switch" aria-checked={radio.powered} title={radio.powered ? "Turn radio off" : "Turn radio on"} onClick={() => void setRadioPower(!radio.powered)}><RadioIcon name="power" /></button>
-    <button type="button" className="radio-track-name" aria-label="Radio source" title={`${radio.powered ? radio.title || radio.track : 'RADIO OFF'} · click to choose audio files; full controls in Cockpit`} onClick={() => file.current?.click()}>{radio.powered ? <RadioStatus fallback={radio.title || radio.track || 'AUDIO'} /> : 'RADIO OFF'}</button>
+    <button type="button" className="radio-track-name" aria-label="Radio source" title={`${radio.powered ? radio.title || radio.track : 'RADIO OFF'} · click to choose audio files; full controls in Cockpit`} onClick={() => file.current?.click()}>{radio.powered ? <RadioStatus fallback={radio.title || radio.track || 'AUDIO'} /> : radio.equipmentNotice || 'RADIO OFF'}</button>
     <button type="button" aria-label="Radio play or pause" aria-pressed={radio.playing} disabled={!radio.powered} onClick={() => void toggleRadio()}><RadioIcon name={radio.playing ? 'pause' : 'play'} /></button>
     <button type="button" aria-label="Radio next track" disabled={!radio.powered || radio.trackCount < 2} onClick={() => void nextRadioTrack()}><RadioIcon name="next" /></button>
     <div className="radio-volume-dial"><RotaryKnob label="Radio volume" disabled={!radio.powered} min={0} max={20} value={Math.round(radio.volume * 20)} readout={String(Math.round(radio.volume * 100))} onChange={v => setRadioVolume(v / 20)} action="Radio mute" actionText={radio.muted ? '×' : '♪'} active={radio.muted} onAction={toggleRadioMute} /></div>
@@ -108,9 +110,8 @@ export function RadioPanel({
         <strong>
           {radio.powered ? radio.title || radio.track : "RADIO OFF"}
         </strong>
-        {radio.powered && (
-          <RadioStatus fallback={radio.artist || radio.station} />
-        )}
+        {radio.powered ? <RadioStatus fallback={radio.artist || radio.station} /> :
+          radio.equipmentNotice && <small className="radio-vehicle-status" role="status">{radio.equipmentNotice}</small>}
         <button
           type="button"
           className="radio-power"

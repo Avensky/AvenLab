@@ -11,6 +11,7 @@ type RadioState = {
   volume: number;
   muted: boolean;
   message: string;
+  equipmentNotice: string;
   trackCount: number;
   trackIndex: number;
 };
@@ -32,9 +33,16 @@ export const useRadioStore = create<RadioState>(() => ({
   volume: 0.6,
   muted: false,
   message: "",
+  equipmentNotice: "",
   trackCount: 0,
   trackIndex: 0,
 }));
+let equipmentTimer: ReturnType<typeof setTimeout> | undefined;
+export function announceRadioEquipment(equipmentNotice: string) {
+  clearTimeout(equipmentTimer);
+  useRadioStore.setState({ equipmentNotice });
+  equipmentTimer = setTimeout(() => useRadioStore.setState({ equipmentNotice: "" }), 3000);
+}
 let audio: HTMLAudioElement | null = null,
   source: string | null = null,
   queue: File[] = [],

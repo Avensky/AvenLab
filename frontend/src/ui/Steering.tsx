@@ -20,12 +20,11 @@ const WheelRotor = memo(function WheelRotor() {
   );
 });
 export default function Steering() {
-  const futuristic = usePreferencesStore(s => s.hudGroups.futuristic);
   const levers = usePreferencesStore((s) => s.hudGroups.stalks);
   const wheel = usePreferencesStore((s) => s.hudGroups.wheel);
   return (
     <div className="wheel-assembly" aria-label="Driver steering wheel" data-wheel-visible={wheel}>
-      {levers && <ColumnStalks wide={futuristic} />}
+      {levers && <ColumnStalks />}
       {wheel && <TouchStick axis="steer" wheel>
         <WheelRotor />
       </TouchStick>}

@@ -132,7 +132,9 @@ pub(crate) fn cast_wheel_ground(
     let full_droop = wheel.full_droop_length();
     // Self and sensors are excluded. The road/building shapes in Rapier, not a
     // frontend ground plane or a second fallback floor, determine the hit height.
-    let filter = QueryFilter::default()
+    let groups = body.colliders().first().and_then(|h| colliders.get(*h))
+        .map(|c| c.collision_groups()).unwrap_or_else(|| crate::physics::vehicle_collision_groups(false));
+    let filter = QueryFilter::default().groups(groups)
         .exclude_rigid_body(handle)
         .exclude_sensors();
     let (_, toi) = query.cast_ray(

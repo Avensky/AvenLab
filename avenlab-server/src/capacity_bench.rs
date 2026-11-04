@@ -55,6 +55,7 @@ pub fn run() -> anyhow::Result<()> {
             world.tick(0.0);
         }
     }
+    let mut encoded_bytes = 0usize;
     for tick in 0..ticks {
         for (sender, player) in &input_senders {
             sender.send_replace(Some(InputPacket { combat: None,
@@ -79,13 +80,13 @@ pub fn run() -> anyhow::Result<()> {
         }
         let started = std::time::Instant::now();
         for world in &mut worlds {
-            world.tick(0.0);
+            encoded_bytes += world.tick(0.0);
         }
         times.push(started.elapsed().as_secs_f64() * 1000.0);
     }
     times.sort_by(f64::total_cmp);
     let p = |fraction: f64| times[((times.len() - 1) as f64 * fraction).ceil() as usize];
-    let result = json!({"worlds":count,"players_per_world":plan,"total_players":plan.iter().sum::<usize>(),"map":map,"ticks":ticks,"tick_budget_ms":1000.0/60.0,"p50_ms":p(0.5),"p95_ms":p(0.95),"p99_ms":p(0.99),"max_ms":times.last(),"p95_under_12ms":p(0.95)<12.0,"scope":"CPU physics and snapshot serialization; no socket traffic, target-client rendering, shared-host contention, or capacity guarantee"});
+    let result = json!({"worlds":count,"players_per_world":plan,"total_players":plan.iter().sum::<usize>(),"map":map,"ticks":ticks,"mean_encoded_bytes_per_world_tick":encoded_bytes as f64 / (count * ticks) as f64,"tick_budget_ms":1000.0/60.0,"p50_ms":p(0.5),"p95_ms":p(0.95),"p99_ms":p(0.99),"max_ms":times.last(),"p95_under_12ms":p(0.95)<12.0,"scope":"CPU physics and snapshot serialization; no socket traffic, target-client rendering, shared-host contention, or capacity guarantee"});
     let bytes = serde_json::to_string_pretty(&result)?;
     if let Some(output) = value("--output") {
         std::fs::write(output, bytes + "\n")?;

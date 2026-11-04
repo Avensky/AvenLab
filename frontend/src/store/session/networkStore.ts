@@ -348,6 +348,20 @@ const emptySession = {
   pingMs: null,
 };
 
+// Each received frame is immutable. HUD, camera, shields and vehicle visuals
+// share this lookup; old frames and their indices are collected together.
+const entityIndices = new WeakMap<PhysicsSnapshot, Map<string, PhysicsEntitySnapshot>>();
+export function snapshotEntity(snapshot: PhysicsSnapshot | null | undefined, id: string | null | undefined) {
+  if (!snapshot || !id) return undefined;
+  let index = entityIndices.get(snapshot);
+  if (!index) {
+    index = new Map();
+    for (const entity of snapshot.entities) if (!index.has(entity.id)) index.set(entity.id, entity);
+    entityIndices.set(snapshot, index);
+  }
+  return index.get(id);
+}
+
 export const useNetworkStore = create<NetworkState>((set, get) => ({
   ...emptySession,
   resetSession: () => set({ ...emptySession }),
@@ -377,9 +391,10 @@ export const useNetworkStore = create<NetworkState>((set, get) => ({
     if (!Number.isSafeInteger(snap.tick) || snap.tick < 0) return;
     if (state.tick !== null && snap.tick <= state.tick) return;
     const previousReceipt = state.snapshot?.received_at_ms;
-    const me = snap.entities.find((entity) => entity.id === state.playerId);
+    const received = { ...snap, received_at_ms: receivedMs };
+    const me = snapshotEntity(received, state.playerId);
     set({
-      snapshot: { ...snap, received_at_ms: receivedMs },
+      snapshot: received,
       tick: snap.tick,
       snapshotIntervalMs:
         previousReceipt === undefined ? null : receivedMs - previousReceipt,
@@ -393,17 +408,13 @@ export const useNetworkStore = create<NetworkState>((set, get) => ({
   },
   setPingMs: (pingMs) => set({ pingMs }),
   setPlayerId: (playerId) => {
-    const me = get().snapshot?.entities.find(
-      (entity) => entity.id === playerId,
-    );
+    const me = snapshotEntity(get().snapshot, playerId);
     set({ playerId, physicsData: telemetry(me) });
   },
 
   getMe() {
-    const snap = get().snapshot;
-    const id = get().playerId;
-    if (!snap || !id) return null;
-    return snap.entities.find((e) => e.id === id) ?? null;
+    const state = get();
+    return snapshotEntity(state.snapshot, state.playerId) ?? null;
   },
   getOthers() {
     const snap = get().snapshot;

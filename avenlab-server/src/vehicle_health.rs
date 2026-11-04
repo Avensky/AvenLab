@@ -75,6 +75,8 @@ pub struct VehicleHealth {
     pub revive_cooldown_s: f32,
     #[serde(skip)]
     pub(crate) downed_position: Option<[f32; 3]>,
+    #[serde(skip)]
+    pub(crate) friendly_shove_s: f32,
     pub spawn_protection_s: f32,
     pub damage_seq: u32,
     pub last_attacker: Option<String>,
@@ -105,6 +107,7 @@ impl VehicleHealth {
             recovery_window_s: RESPAWN_SECONDS,
             revive_cooldown_s: 0.0,
             downed_position: None,
+            friendly_shove_s: 0.0,
             spawn_protection_s: SPAWN_PROTECTION_SECONDS,
             damage_seq: 0,
             last_attacker: None,
@@ -202,7 +205,7 @@ impl VehicleHealth {
     }
 
     /// Fuel depletion opens the same rescue window, without damage, death or
-    /// killer credit. The world performs the physical freeze/drop transition.
+    /// killer credit. The world performs the engine shutdown and flag drop.
     pub(crate) fn disable_for_fuel(&mut self) -> bool {
         if self.defeated { return false; }
         self.defeated = true;
@@ -223,6 +226,7 @@ impl VehicleHealth {
         self.disabled_reason.clear();
         self.respawn_remaining_s = 0.0;
         self.downed_position = None;
+        self.friendly_shove_s = 0.0;
         self.spawn_protection_s = REVIVE_PROTECTION_SECONDS;
         self.last_attacker = None;
         self.last_damage = 0.0;
@@ -256,6 +260,7 @@ impl VehicleHealth {
         self.defeated = false;
         self.disabled_reason.clear();
         self.downed_position = None;
+        self.friendly_shove_s = 0.0;
         self.respawn_remaining_s = 0.0;
         self.spawn_protection_s = SPAWN_PROTECTION_SECONDS;
         self.last_attacker = None;

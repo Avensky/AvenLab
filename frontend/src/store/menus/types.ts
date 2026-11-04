@@ -66,8 +66,9 @@ export type SignalMission = {
 };
 
 export type UIState = {
+  missionLogParent: "cockpit" | "pause" | null;
   settingsTab: string;
-  settingsParent: "cockpit" | null;
+  settingsParent: "cockpit" | "debug_menu" | null;
   openSettings: (tab?: string) => void;
   cockpitTab: CockpitTab;
   setCockpitTab: (tab: CockpitTab) => void;

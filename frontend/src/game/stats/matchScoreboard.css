@@ -56,3 +56,74 @@
 .prematch-team-preview [data-status=mystery] .hero-portrait-fallback{color:var(--app-muted);font-size:22px}
 @media(max-width:700px){.prematch-team-preview{--prematch-content-height:60px;padding-inline:6px}.prematch-team-preview .match-composition-seat:not(.match-composition-empty){grid-template-columns:53px minmax(0,1fr)}}
 @media(orientation:landscape) and (max-height:450px){.prematch-team-preview{--prematch-content-height:48px;--prematch-control-height:24px}.prematch-team-preview .match-composition-seat:not(.match-composition-empty){grid-template-columns:49px minmax(0,1fr)}.prematch-team-preview .match-composition-info>strong{font-size:8px}.prematch-team-preview .match-composition-info>small{font-size:7px}}
+
+/* The in-match board owns the viewport. Results and pre-match embeds keep
+   their own presentation. Keep the two team lists in view while inspecting. */
+section.match-scoreboard {
+  inset:0; margin:0; width:100%; max-width:none; height:100dvh;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  border:0; box-shadow:none; background:var(--app-panel,#0b1628);
+}
+.match-scoreboard .match-scoreboard-header {padding:8px 12px 4px;gap:6px;}
+.match-scoreboard .match-scoreboard-header h2 {font-size:clamp(15px,2.4dvh,22px);margin:0;}
+.match-scoreboard .match-scoreboard-header small {font-size:9px;}
+.scoreboard-toolbar {display:flex;align-items:center;justify-content:space-between;gap:4px;padding:2px 12px 6px;}
+.scoreboard-toolbar .match-scoreboard-status {padding:0;display:grid;gap:2px;font-size:9px;}
+.scoreboard-toolbar .match-view-tabs .menu-control {min-height:26px;padding:3px 8px;}
+.match-scoreboard .match-scoreboard-body {display:grid;grid-template-columns:minmax(0,1fr) minmax(205px,22%);grid-template-rows:minmax(0,1fr);gap:10px;padding:0 10px 6px;overflow:hidden;}
+.match-scoreboard .match-scoreboard-main,.scoreboard-inspector {min-height:0;overflow:auto;overscroll-behavior:contain;}
+.match-scoreboard .match-stats-table {grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:8px;}
+.match-scoreboard .scoreboard-team>h3 {padding:4px 6px;}
+.match-scoreboard .match-stats-table thead th {padding:4px 3px;font-size:9px;}
+.match-scoreboard .match-stats-table thead th:first-child {width:43%;}
+.match-scoreboard .match-stats-table th:nth-last-child(-n+2) {width:16%;}
+.match-scoreboard .scoreboard-table-player {min-height:clamp(32px,7dvh,58px);padding:2px 4px;gap:4px;}
+.match-scoreboard .scoreboard-table-player strong {font-size:clamp(10px,1.8dvh,15px);}
+.match-scoreboard .scoreboard-table-player small {font-size:clamp(8px,1.2dvh,11px);margin-top:0;}
+.match-scoreboard .scoreboard-table-portrait.hero-portrait-art {width:clamp(28px,5.4dvh,46px);height:clamp(21px,3.8dvh,34px);}
+.match-scoreboard .match-stats-table tbody td {padding:2px 3px;font-size:clamp(10px,1.9dvh,15px);}
+.match-scoreboard .match-scoreboard-footer {padding:4px 10px;}
+.scoreboard-back {display:none;}
+@media (max-width:1000px), (max-height:520px) {
+ .match-scoreboard .match-scoreboard-body {grid-template-columns:minmax(0,1fr);gap:0;}
+ .match-scoreboard .scoreboard-inspector {display:none;}
+ .match-scoreboard[data-inspecting=true] .scoreboard-inspector {display:block;grid-row:1;}
+ .match-scoreboard[data-inspecting=true] .match-scoreboard-main {display:none;}
+ .match-scoreboard[data-inspecting=true] .scoreboard-back {display:inline-block;background:var(--app-panel);color:var(--app-text);border:1px solid var(--app-line);padding:6px 10px;margin-bottom:4px;}
+ .match-scoreboard .scoreboard-player-stats {grid-template-columns:repeat(auto-fit,minmax(86px,1fr));gap:8px;}
+ .match-scoreboard .scoreboard-player-identity {display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+ .match-scoreboard .scoreboard-player-identity>.hero-portrait-art {width:66px;height:42px;flex:none;}
+ .match-scoreboard .scoreboard-level {margin-left:auto;}
+ .match-scoreboard .scoreboard-player-details {padding:6px;}
+ .match-scoreboard .match-team-composition {gap:5px;}
+ .match-scoreboard .match-composition-row {grid-template-columns:repeat(5,minmax(0,1fr));gap:3px;padding:3px 0;}
+ .match-scoreboard .match-composition-art .hero-portrait-art {height:clamp(26px,8dvh,50px);aspect-ratio:auto;}
+}
+@media (orientation:portrait) and (max-width:700px) {
+ .match-scoreboard .match-stats-table {grid-template-columns:1fr;gap:6px;}
+ .match-scoreboard .scoreboard-table-player {min-height:clamp(28px,5dvh,44px);}
+ .match-scoreboard .match-scoreboard-header {padding:5px 6px 2px;}
+ .scoreboard-toolbar {padding:3px 6px;}
+ .scoreboard-toolbar .match-scoreboard-status span,.match-scoreboard .match-scoreboard-footer span:first-child {display:none;}
+ .match-scoreboard .match-scoreboard-body {padding-inline:5px;}
+}
+@media (max-height:500px) {
+ .match-scoreboard .match-scoreboard-header {padding-block:3px;}
+ .match-scoreboard .match-scoreboard-header h2 {font-size:15px;}
+ .match-scoreboard .match-scoreboard-tools .menu-control {min-height:24px;padding:3px 7px;}
+ .scoreboard-toolbar {padding:0 10px 3px;}
+ .scoreboard-toolbar .match-scoreboard-status {display:block;}
+ .scoreboard-toolbar .match-scoreboard-status span {display:none;}
+ .match-scoreboard .match-scoreboard-footer {padding-block:2px;}
+}
+.match-scoreboard .scoreboard-table-player {
+  min-height:clamp(32px,calc((100dvh - 144px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) / var(--team-size,5)),76px);
+}
+.match-scoreboard .scoreboard-table-player strong,.match-scoreboard .match-stats-table tbody td {
+  font-size:clamp(11px,2.9dvh,16px);
+}
+@media (orientation:portrait) and (max-width:700px) {
+ .match-scoreboard .scoreboard-table-player {
+   min-height:clamp(28px,calc((100dvh - 216px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) / (2 * var(--team-size,5))),72px);
+ }
+}

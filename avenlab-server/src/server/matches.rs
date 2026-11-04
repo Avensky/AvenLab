@@ -242,11 +242,12 @@ impl Server {
     }
     fn valid_start(format: MatchFormat, members: &[(&String, &crate::alpha::Member)], room: &WorldRuntime, strict: bool) -> bool {
         let deployed: Vec<_> = members.iter().filter(|(id, m)|
-            room.physics.vehicles.contains_key(*id) && !m.hero.is_empty()).collect();
-        if !strict { return [Team::Red, Team::Blue].iter().all(|t| deployed.iter().any(|(_, m)| m.team == *t)); }
+            room.game.clients.contains_key(*id) && room.physics.vehicles.contains_key(*id) && !m.hero.is_empty()).collect();
         if deployed.len() != format.capacity() || deployed.iter().any(|(_, member)| member.format() != format) { return false; }
         [Team::Red, Team::Blue].iter().all(|team| {
-            let heroes: Vec<_> = deployed.iter().filter(|(_, m)| m.team == *team)
+            let team_members = deployed.iter().filter(|(_, m)| m.team == *team);
+            if !strict { return team_members.count() == format.team_size; }
+            let heroes: Vec<_> = team_members
                 .filter_map(|(_, m)| policy::hero(&m.hero).ok()).collect();
             policy::complete_team_format(format, &heroes.iter().map(|hero| hero.role).collect::<Vec<_>>())
         })

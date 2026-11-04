@@ -2,6 +2,12 @@
 
 This update extends the alpha combat foundation. Install both frontend and Rust sources: the new gun, session statistics and remote levels require the rebuilt server.
 
+## Six-slot cockpit playtest
+
+Every playable vehicle deploys with its own turret and six action buttons. Scope opens a 2× or 4× view on all ten chassis. The Vanguard also shows its ballistic trajectory and research readout. Aiming with the touch stick or controller right stick while Angle Lock is selected changes the stored hull-relative bearing and elevation. The server applies the turret’s turn rate and pitch limits. Releasing the stick holds the new angle as the chassis turns.
+
+The Sierra’s test bank reads Scope, Anchor, Tow Line, Winch, Brace and Fire. Buttons marked **TEST** respond to a press with a brief **TESTED** label. They send no gameplay request. The Fortuner’s primary remains the assisted health pack, and the CX-30 retains its pressure spray.
+
 ## Controls
 
 | Action | Keyboard | Xbox controller / touch |

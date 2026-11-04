@@ -18,9 +18,12 @@ test('tank slots request independent factory weapons, while unavailable guns and
   const {useCombatStore:combat,tankFireInputs:fire}=await load('combat/combatStore.ts'),{useNetworkStore:network}=await load('store/session/networkStore.ts'),{useUIStore:ui}=await load('store/menus/uiStore.ts'),actions=await load('combat/turretControls.ts');
   const entity={id:'tank',vehicle_id:'tank',rotation:[0,0,0,1],combat:{weapon:'cannon',yaw:1,pitch:.1,cannon_reload:0,coax_reload:0,basket_reload:0},health:{defeated:false}};
   network.setState({connected:true,playerId:'tank',snapshot:{entities:[entity]}});ui.setState({screen:'sandbox',overlay:null,isModeLoading:false});combat.getState().setEnabled(true);combat.getState().selectSecondary('roof-mg');
+  const {useChatStore:chat}=await load('store/chat/chatStore.ts');
+  const {useRadioStore:radio}=await load('store/radio/radioStore.ts');
   await t.test('secondary swaps clear only secondary requests; both small arms keep the fixed cannon usable',()=>{
    assert(actions.setWeaponHeld('keyboard','primary',true));assert(actions.setWeaponHeld('gamepad','secondary',true));
-   assert(actions.cycleTankWeapon());assert.equal(combat.getState().secondaryWeapon,'forward-mg');assert(fire.keyboard.primary);assert(!fire.gamepad.secondary);assert.equal(fire.gamepad.secondaryPulseUntil,0);
+   const notices=chat.getState().notices;
+   assert(actions.cycleTankWeapon());assert.equal(chat.getState().notices,notices);assert.equal(radio.getState().equipmentNotice,'COAX MG · 200 m');assert.equal(combat.getState().secondaryWeapon,'forward-mg');assert(fire.keyboard.primary);assert(!fire.gamepad.secondary);assert.equal(fire.gamepad.secondaryPulseUntil,0);
    assert.equal(actions.requestSecondaryFire(),true);assert.equal(actions.requestPrimaryFire(),true);
    assert.equal(sampleTankFire(fire,'unavailable',performance.now(),0).weapon,'cannon');
    actions.releaseWeaponSource('keyboard');assert.equal(fire.keyboard.primaryPulseUntil,0);actions.releaseWeaponSource('pointer');

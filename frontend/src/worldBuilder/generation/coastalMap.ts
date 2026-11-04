@@ -6,7 +6,7 @@ export const COASTAL_MAP_ID = "coastal_district";
 /** An independent schema-2 world, never a renamed Road Precision source. */
 export function coastalMap(seed = 1, size: DistrictSize = "chunk", landBridge = true): MapDocument {
   return parseMapText(mapExport({
-    schema_version: 2, map_id: COASTAL_MAP_ID,
+    schema_version: 2, map_id: COASTAL_MAP_ID, sky: "foggy_day",
     coordinate_system: { units: "meters", up_axis: "y", forward_axis: "-z" },
     cell: [2000, 2000], surface: { road_y: 0 },
     layout: { kind: "fixed_grid", origin: [0, 0], size: [1, 1] },

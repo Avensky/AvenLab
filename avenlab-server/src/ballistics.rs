@@ -13,7 +13,7 @@ pub fn trace(origin:Point<Real>,direction:Vector<Real>,body:RigidBodyHandle,bodi
     for step in 1..=(MAX_TIME/SEGMENT_DT) as u32 {
         let time=step as f32*SEGMENT_DT;
         let next=position(origin,direction,time);let delta=next-previous;let length=delta.norm();
-        if let Some((handle,intersection))=queries.cast_ray_and_get_normal(bodies,colliders,&Ray::new(previous,delta/length),length,true,QueryFilter::default().exclude_rigid_body(body)){
+        if let Some((handle,intersection))=queries.cast_ray_and_get_normal(bodies,colliders,&Ray::new(previous,delta/length),length,true,QueryFilter::default().groups(crate::physics::vehicle_collision_groups(false)).exclude_rigid_body(body)){
             let toi=intersection.time_of_impact;
             return Some((handle,previous+delta*(toi/length),time-SEGMENT_DT+SEGMENT_DT*toi/length,intersection.normal));
         }

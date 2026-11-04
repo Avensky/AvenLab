@@ -13,7 +13,7 @@ export function CenterCombatDock({children}: {children: ReactNode}) {
   const armed = useCombatStore(s => s.enabled);
   const match = useNetworkStore(s => Boolean(s.snapshot?.match_state));
   useLayoutEffect(() => {
-    const element = root.current, hud = element?.closest('.driving-hud');
+    const element = root.current, hud = element?.closest<HTMLElement>('.driving-hud');
     if (!element || !hud) return;
     const selector = '.wheel-hud,.drive-dock .hud-parking,.drive-dock .hud-shifter,.turret-aim-module,.drive-dock .turret-actions,.console-foot-controls > .hud-group,.console-foot-controls > .ignition-hud,.driving-chat,.hud-top-left,.instrument-hud,.hud-utilities';
     // Combat fallbacks are siblings of the driving HUD, not its descendants.
@@ -28,6 +28,31 @@ export function CenterCombatDock({children}: {children: ReactNode}) {
       // this; a wider desktop panel still yields to the existing free lanes.
       const preferred = Number.parseFloat(window.getComputedStyle(element).maxWidth);
       const maximum = Math.min(Number.isFinite(preferred) ? preferred : width - margin * 2, width - margin * 2), minimum = Math.min(220, maximum);
+      if (groups.futuristic) {
+        // The cluster always touches the sill. When it cannot fit between the
+        // physical controls, give it a separate bottom row and lift those controls.
+        const wheel = hud.querySelector('.wheel-hud')?.getBoundingClientRect();
+        const rightControls = Array.from(hud.querySelectorAll('.drive-dock .hud-parking,.drive-dock .hud-shifter,.drive-dock:not(:has(.hud-shifter)) .turret-aim-module,.console-foot-controls > .hud-group'))
+          .map(node => node.getBoundingClientRect()).filter(rect => rect.width && rect.height);
+        const left = wheel?.width ? wheel.right + gap : margin;
+        const right = Math.min(width - margin, ...rightControls.map(rect => rect.left - gap));
+        const stacked = right - left < 315;
+        // On short phones the wheel can sit above the instruments. Keeping the
+        // pedal bank on the sill leaves its upper lane free for the radio/HVAC.
+        const split = stacked && width>height && height<=500 && rightControls.length>0 && right-margin>=280;
+        const available = split ? Math.min(520,maximum,right-margin) :
+          stacked ? Math.min(520,maximum) : Math.min(maximum,right-left);
+        const x = split ? right-available :
+          stacked ? (width-available)/2 : Math.max(left,Math.min((width-available)/2,right-available));
+        setHudStyle(element, 'width', `${available}px`);
+        setHudStyle(element, 'left', `${x}px`);
+        setHudStyle(element, 'bottom', '0px');
+        setHudStyle(element, 'transform', 'none');
+        const lift=stacked ? `${Math.ceil(element.getBoundingClientRect().height)+3}px` : '0px';
+        setHudStyle(hud,'--station-lift',lift);
+        setHudStyle(hud,'--right-station-lift',split?'0px':lift);
+        return;
+      }
       const occupied = obstacles().map(node => node.getBoundingClientRect()).filter(rect => rect.width > 0 && rect.height > 0);
       if (!element.style.width) setHudStyle(element, 'width', `${maximum}px`);
       // A narrow free lane can change the strip's height. Two layout passes
@@ -56,7 +81,14 @@ export function CenterCombatDock({children}: {children: ReactNode}) {
         }
       }
     };
-    return observeHudLayout(hud, readTargets, measure, hud.parentElement ?? hud);
+    measure();
+    const stop = observeHudLayout(hud, readTargets, measure, hud.parentElement ?? hud);
+    return () => {
+      stop();
+      hud.style.removeProperty('--station-lift');
+      hud.style.removeProperty('--right-station-lift');
+      for (const key of ['width', 'left', 'bottom', 'transform']) element.style.removeProperty(key);
+    };
   }, [groups, touch, drive, drop, armed, match]);
   return <div ref={root} className="center-combat-dock">{children}</div>;
 }

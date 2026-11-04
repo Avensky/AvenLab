@@ -86,10 +86,13 @@ export function cityPerformanceControl(
 ): MenuRow {
   return {
     id: "city-performance",
-    label: "Apply mobile performance preset",
-    adjustable: false,
-    description:
-      "Nearby models, a simpler skyline, distance fog and expensive effects off. Keeps your input and HUD choices.",
-    action: () => settings.cityPerformancePreset(),
+    label: "Graphics profile",
+    value: settings.lowDetail ? "Low detail" : settings.beforeBenchmark ? "Collider benchmark" : "Full HD · saved",
+    description: "Full detail uses your saved display settings. Low caps resolution at 0.75× and uses a 250 m city range and simpler instruments. Editing a graphics option restores full detail.",
+    action: () => {
+      const current=useRenderSettingsStore.getState();
+      if(current.savedDetail)current.restoreFullDetail();
+      else current.cityPerformancePreset();
+    },
   };
 }

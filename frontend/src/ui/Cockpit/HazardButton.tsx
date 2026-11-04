@@ -11,7 +11,7 @@ export function HazardButton({
   text?: boolean;
   round?: boolean;
 }) {
-  const flags = useInputStore((s) => s.input.vehicleMask),
+  const active = useInputStore((s) => hasFlag(s.input.vehicleMask, VehicleFlags.HAZARDS)),
     contact = useMomentaryFeedback();
   return (
     <button
@@ -20,7 +20,7 @@ export function HazardButton({
       className="physical-hazard"
       data-shape={round ? "round" : "triangle"}
       aria-label="Hazards"
-      aria-pressed={hasFlag(flags, VehicleFlags.HAZARDS)}
+      aria-pressed={active}
       onClick={() =>
         useInputStore.getState().toggleVehicleFlag(VehicleFlags.HAZARDS)
       }

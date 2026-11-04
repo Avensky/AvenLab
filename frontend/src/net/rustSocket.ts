@@ -25,6 +25,8 @@ import {useAlphaStore} from '../store/alpha/alphaStore';
 const packetEncoder = new TextEncoder();
 
 let socket: WebSocket | null = null;
+const packedInputPeers = new WeakSet<WebSocket>();
+export function supportsPackedInput(peer: WebSocket) {return packedInputPeers.has(peer);}
 let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let reconnectEnabled = false;
@@ -433,6 +435,7 @@ export function connectRustServer(): WebSocket {
         return;
       case "welcome":
         if (typeof message.player_id !== "string") return;
+        if (message.packed_input_version === 1) packedInputPeers.add(connection);
         state.setPlayerId(message.player_id);
         useNetworkStore.setState({
           team: message.team === "red" ? "red" : "blue",

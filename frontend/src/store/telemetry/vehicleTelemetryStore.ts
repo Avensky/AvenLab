@@ -183,7 +183,8 @@ export function projectVehicleTelemetry(
       entity?.ultimate_fraction,
       0.01,
       0,
-      1,
+      // Reserve the ready indication for a confirmed full charge.
+      (entity?.ultimate_fraction ?? 0) >= 1 ? 1 : 0.99,
     ),
     resourceMask:
       valid &&

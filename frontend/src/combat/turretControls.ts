@@ -1,4 +1,4 @@
-import {useChatStore} from '../store/chat/chatStore';
+import {announceRadioEquipment} from '../store/radio/radioStore';
 import {isMechanicPlayer} from './reviveTargets';
 import {requestAssistedHealPack} from './healPackTargets';
 import {TANK_SECONDARIES,secondaryDefinition,clearTankFireInputs,type TankFireSource,type TankFireSlot} from './tankLoadout';
@@ -7,7 +7,7 @@ import {canDrive} from "../controls/inputRouting";
 import {useTextKeyboardStore} from "../store/text/keyboardStore";
 import {useUIStore} from '../store/menus/uiStore';
 import {useNetworkStore} from '../store/session/networkStore';
-import {combatIntent,tankFireInputs,useCombatStore,TURRET_RESET_COOLDOWN_MS,TURRET_LOCK_COOLDOWN_MS,type TankWeapon} from './combatStore';
+import {combatIntent,confirmedLocalAim,tankFireInputs,useCombatStore,TURRET_RESET_COOLDOWN_MS,TURRET_LOCK_COOLDOWN_MS,type TankWeapon} from './combatStore';
 export function canAimTurret(){if(useNetworkStore.getState().getMe()?.health?.defeated||useNetworkStore.getState().snapshot?.match_state?.phase==='ended')return false;const ui=useUIStore.getState();return canDrive() || (ui.screen==='sandbox'&&!ui.isModeLoading&&!useTextKeyboardStore.getState().session&&ui.overlay==='cockpit'&&ui.cockpitTab==='turret');}
 export function setTurretEnabled(enabled:boolean){
   if(enabled){combatIntent.scopeRelockPending=false;relative.set(0,0,1);const q=useNetworkStore.getState().getMe()?.rotation;if(q){const yaw=Math.atan2(2*(q[3]*q[1]+q[0]*q[2]),1-2*(q[1]*q[1]+q[0]*q[0]))+Math.PI;combatIntent.yaw=Math.atan2(Math.sin(yaw),Math.cos(yaw));}combatIntent.pitch=0;}
@@ -21,15 +21,15 @@ export function cycleTankWeapon(direction=1){
   const index=slots.findIndex(item=>item.id===useCombatStore.getState().secondaryWeapon);
   const next=slots[(index+direction%slots.length+slots.length)%slots.length];
   useCombatStore.getState().selectSecondary(next.id);
-  useChatStore.getState().notify(`Secondary: ${next.label}${next.planned?' · PLANNED':''}`);
+  announceRadioEquipment(`${next.label} · ${next.rangeMeters} m`);
   return true;
 }
 
 /** Capture the current relative pose; the server holds both axes authoritatively. */
-const relative=new Vector3(0,0,1);
+const relative=new Vector3(0,0,1), aimDirection=new Vector3(), hullRotation=new Quaternion();
 export function syncTurretOrientation(rotation:readonly number[]|undefined,now=performance.now()){
  if(combatIntent.resetRelockAt>0&&combatIntent.enabled&&rotation?.length===4&&rotation.every(Number.isFinite)){
-  const direction=new Vector3(0,0,1).applyQuaternion(new Quaternion(...rotation).normalize());
+  const direction=aimDirection.set(0,0,1).applyQuaternion(hullRotation.fromArray(rotation).normalize());
   combatIntent.yaw=Math.atan2(-direction.x,-direction.z);combatIntent.pitch=Math.asin(Math.max(-1,Math.min(1,direction.y)));
   const confirmed=useNetworkStore.getState().getMe()?.combat;
   // The server slews at a bounded rate. Wait for its forward pose instead of
@@ -43,28 +43,27 @@ export function syncTurretOrientation(rotation:readonly number[]|undefined,now=p
  if(!combatIntent.enabled||!combatIntent.orientationLocked||!rotation||rotation.length!==4||!rotation.every(Number.isFinite))return;
  const network=useNetworkStore.getState().getMe();
  if(combatIntent.scopeRelockPending){
-  const yaw=network?.combat?.yaw??combatIntent.yaw,pitch=network?.combat?.pitch??combatIntent.pitch;
-  relative.set(-Math.sin(yaw)*Math.cos(pitch),Math.sin(pitch),-Math.cos(yaw)*Math.cos(pitch)).applyQuaternion(new Quaternion(...rotation).invert());
+  combatIntent.lock_target??=confirmedLocalAim();
   combatIntent.scopeRelockPending=false;
  }
- if(network?.combat?.hull_locked&&network.combat.lock_yaw!==undefined){
-  const yaw=network.combat.lock_yaw,pitch=network.combat.lock_pitch??0;
+ const confirmed=network?.combat;
+ const yaw=combatIntent.lock_target?.[0]??(confirmed?.hull_locked?confirmed.lock_yaw:undefined);
+ if(yaw!==undefined){
+  const pitch=combatIntent.lock_target?.[1]??confirmed?.lock_pitch??0;
   relative.set(Math.sin(yaw)*Math.cos(pitch),Math.sin(pitch),Math.cos(yaw)*Math.cos(pitch));
  }
- const direction=relative.clone().applyQuaternion(new Quaternion(...rotation).normalize());
+ const direction=aimDirection.copy(relative).applyQuaternion(hullRotation.fromArray(rotation).normalize());
  combatIntent.yaw=Math.atan2(-direction.x,-direction.z);combatIntent.pitch=Math.asin(Math.max(-1,Math.min(1,direction.y)));
 }
 export function toggleTurretOrientationLock(){
  const now=performance.now();
  if(!combatIntent.enabled||!canAimTurret()||useCombatStore.getState().scope||now<useCombatStore.getState().turretLockReadyAt)return false;
- if(!combatIntent.orientationLocked){
-  const me=useNetworkStore.getState().getMe(),c=me?.combat;
-  const yaw=c?.yaw??combatIntent.yaw,pitch=c?.pitch??combatIntent.pitch;
-  relative.set(-Math.sin(yaw)*Math.cos(pitch),Math.sin(pitch),-Math.cos(yaw)*Math.cos(pitch));
-  if(me)relative.applyQuaternion(new Quaternion(...me.rotation).invert());
- }
+ const lock=!combatIntent.orientationLocked;
+ const captured=lock?confirmedLocalAim():undefined;
  useCombatStore.setState({turretLockReadyAt:now+TURRET_LOCK_COOLDOWN_MS});
- useCombatStore.getState().setOrientationLocked(!combatIntent.orientationLocked);return true;
+ useCombatStore.getState().setOrientationLocked(lock);
+ combatIntent.lock_target=captured;
+ return true;
 }
 export function resetTurretOrientation(){
  const now=performance.now();
@@ -78,7 +77,7 @@ export function resetTurretOrientation(){
  combatIntent.yaw=Math.atan2(-direction.x,-direction.z);combatIntent.pitch=Math.asin(Math.max(-1,Math.min(1,direction.y)));return true;
 }
 export function toggleTankScope(){
- if(!canDrive()||!combatIntent.enabled||useNetworkStore.getState().getMe()?.vehicle_id!=='tank')return false;
+ if(!canDrive()||!combatIntent.enabled||!useNetworkStore.getState().getMe()?.vehicle_id)return false;
  const store=useCombatStore.getState();store.setScope(!store.scope);return true;
 }
 export function triggerRam(){
@@ -99,7 +98,7 @@ export function requestWeaponFire(weapon?:TankWeapon){
 function requestSlotFire(slot:TankFireSlot,source:TankFireSource='pointer'){
  if(!canDrive()||!combatIntent.enabled||useNetworkStore.getState().getMe()?.vehicle_id!=='tank')return false;
  if(slot==='secondary'&&secondaryDefinition(useCombatStore.getState().secondaryWeapon).planned){
-  useChatStore.getState().notify('Secondary mount unavailable. Select an available machine gun.');return false;
+  announceRadioEquipment('SECONDARY MOUNT UNAVAILABLE');return false;
  }
  tankFireInputs[source][slot==='primary'?'primaryPulseUntil':'secondaryPulseUntil']=performance.now()+120;
  return true;

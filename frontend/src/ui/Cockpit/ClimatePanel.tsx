@@ -6,7 +6,7 @@ import { useInputStore } from "../../store/input/inputStore";
 import { useVehicleTelemetryStore } from "../../store/telemetry/vehicleTelemetryStore";
 import { CabinClock } from "./CabinClock";
 import { RotaryKnob } from "./RotaryKnob";
-import { useCockpitState } from "./useCockpitState";
+import { useCabinState } from "./useCockpitState";
 import { useMomentaryFeedback } from "./useMomentaryFeedback";
 const outlets = ["FACE", "FACE / FEET", "FEET", "FEET / DEF", "DEFROST"];
 /** One framed radio-style HVAC unit. Full shows cabin knobs; compact shows its
@@ -27,7 +27,7 @@ export function ClimatePanel({
   onToggleDensity?: () => void;
 }) {
   const { cabin, confirmedCabin, extended, climate, cabinMask, cabinPending } =
-    useCockpitState();
+    useCabinState();
   const ambient = useVehicleTelemetryStore((s) => s.data.config.ambientTempC),
     set = useInputStore.getState().setCabin;
   const change = (patch: Parameters<typeof set>[0]) =>

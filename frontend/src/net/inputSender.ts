@@ -9,9 +9,11 @@ import { inputRef, useInputStore } from "../store/input/inputStore";
 import { useWorldStore } from "../store/world/worldStore";
 import {
   socket,
+  supportsPackedInput,
   inputSenderDiagnostics,
   recordInputPacketSent,
 } from "./rustSocket";
+import {encodePackedInput} from './packedInput';
 export { getInputSenderStats } from "./rustSocket";
 
 let seq = 0;
@@ -44,7 +46,7 @@ function transmitInput(allowQueuedNeutral = false) {
   const packet = {
     ...inputRef.current,
     combat: (()=>{
-      const ui=useUIStore.getState(),me=useNetworkStore.getState().getMe(),state=useCombatStore.getState();
+      const ui=useUIStore.getState(),me=turretVehicle,state=useCombatStore.getState();
       const enabled=combatIntent.enabled&&canAimTurret()&&document.visibilityState!=='hidden';
       const firing=me?.vehicle_id==='tank'?sampleTankFire(tankFireInputs,state.secondaryWeapon,now,me.combat?.cannon_reload):{
         weapon:combatIntent.weapon,
@@ -58,17 +60,19 @@ function transmitInput(allowQueuedNeutral = false) {
       // assisted projectile through the server adapter, never a damaging ray.
       if(healer&&firing.fire&&ui.overlay===null&&document.visibilityState!=='hidden')void requestAssistedHealPack();
       combatIntent.weapon=firing.weapon;
-      return {...combatIntent,hull_locked:combatIntent.orientationLocked,
+      // Device holds, debounce deadlines and scope state stay local.
+      return {yaw:combatIntent.yaw,pitch:combatIntent.pitch,hull_locked:combatIntent.orientationLocked,
+        lock_target:combatIntent.orientationLocked?combatIntent.lock_target:undefined,
         ram:ui.overlay===null&&(combatIntent.ram||combatIntent.gamepadRam||combatIntent.keyboardRam||now<combatIntent.ramPulseUntil),
-        weapon:firing.weapon,fire:!healer&&supported&&enabled&&ui.overlay===null&&firing.fire,enabled:!healer&&enabled,
+        weapon:firing.weapon,fire:!healer&&supported&&enabled&&ui.overlay===null&&firing.fire,enabled,
         ...(state.mounts[me?.vehicle_id??'']??DEFAULT_MOUNT)};
     })(),
-    type: "input",
+    type: "input" as const,
     seq,
     dt, // Transport timing only; Rust retains its fixed simulation timestep.
     debug_mask: useWorldStore.getState().debugMask, // Single owner of debug requests.
   };
-  connection.send(JSON.stringify(packet));
+  connection.send(supportsPackedInput(connection) ? encodePackedInput(packet) : JSON.stringify(packet));
   recordInputPacketSent(seq, now);
   seq = (seq + 1) >>> 0; // Rust seq is u32; increment only on actual sends.
   lastSendTime = now;

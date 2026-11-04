@@ -68,7 +68,6 @@ test("starting Sandbox clears object overrides while retaining display preferenc
       .getState()
       .update({
         environmentMode: "glb",
-        stars: true,
         reflections: true,
         vehicleOverrides: { me: "collider" },
       });
@@ -76,7 +75,7 @@ test("starting Sandbox clears object overrides while retaining display preferenc
     const state = useRenderSettingsStore.getState();
     assert.equal(useWorldStore.getState().mode, "glb");
     assert.equal(state.environmentMode, "glb");
-    assert.equal(state.stars, true);
+    assert.equal("stars" in state, false);
     assert.equal(state.reflections, true);
     assert.equal(state.autoVehicleAlignment, true);
     assert.deepEqual(state.vehicleOverrides, {});
@@ -119,10 +118,12 @@ test("mobile city preset enables visual chunks and preserves HUD and interpolati
     assert.equal(s.cityQuality, "fast");
     assert.equal(s.environmentMode, "glb");
     assert.equal(world.getState().mode, "glb");
-    assert.equal(s.dpr, 1);
+    assert.equal(s.dpr, 0.75);
+    assert.equal(s.cityViewDistance,250);
+    assert.equal(s.lowDetail,true);
     assert.equal(s.shadows, false);
     assert.equal(s.reflections, false);
-    assert.equal(s.fog, true);
+    assert.equal("fog" in s, false);
     assert.deepEqual(s.chunkOverrides, {});
     assert.deepEqual(s.assetGlbs, {});
     assert.equal(s.hud, false);

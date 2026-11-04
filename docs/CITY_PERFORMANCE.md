@@ -6,7 +6,7 @@ The centered building GLB contains 1,035,438 triangles and 273 mesh primitives. 
 
 ## Controls
 
-Use **Settings → Display → Apply mobile performance preset**, or the same action under **Debugger → Environment**. It enables Fast city detail, DPR 1 and distance fog, and disables shadows, reflections, stars and vehicle lights. It clears per-chunk/asset overrides and debug visualizers. HUD, controller, input and interpolation preferences are preserved.
+Choose **Settings → Display → Graphics profile → Low detail**. It uses Fast city detail, a 250 m model range and a resolution scale of at most 0.75×. Shadows, reflections and vehicle spotlights switch off. Navigation, driving controls, team information and the shared world sky remain available. Select **Full HD · saved** to restore the display settings saved on this device.
 
 The **City detail** row supports mouse, keyboard and the existing controller menu navigation:
 

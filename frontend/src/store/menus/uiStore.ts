@@ -7,14 +7,15 @@ export type * from "./types";
 export { isDrivingScreen } from "./types";
 export const useUIStore = create<UIState>()((set, get, api) => ({
   ...createMenuActions(set, get, api),
+  missionLogParent: null,
   settingsTab: "display",
   settingsParent: null,
   openSettings: (settingsTab = "display") =>
-    set({
+    set(s=>({
       overlay: "settings",
       settingsTab,
-      settingsParent: get().overlay === "cockpit" ? "cockpit" : null,
-    }),
+      settingsParent: s.overlay === "cockpit" || s.overlay === "debug_menu" ? s.overlay : null,
+    })),
   cockpitTab: "drive",
   setCockpitTab: (cockpitTab) => set({ cockpitTab }),
   openCockpit: (cockpitTab = "drive") => {
@@ -54,6 +55,11 @@ export const useUIStore = create<UIState>()((set, get, api) => ({
     set({ overlay: "vehicle_select", vehicleSelectionParent: state.overlay });
   },
   setOverlay: (overlay) => {
+    if(overlay==="missions"){
+      const parent=get().overlay;
+      set({overlay,missionLogParent:parent==="cockpit"||parent==="pause"?parent:null});
+      return;
+    }
     if (overlay === "debug_menu") {
       const state = get();
       if (!isDrivingScreen(state.screen)) return;
@@ -120,12 +126,16 @@ export const useUIStore = create<UIState>()((set, get, api) => ({
   },
   closeOverlay: () => {
     if(get().overlay === "match_results") return;
-    set({ overlay: null, vehicleSelectionParent: null, settingsParent: null });
+    set({ overlay:null, missionLogParent:null, vehicleSelectionParent:null, settingsParent:null });
   },
   backToParentMenu: () => {
     if(get().overlay === "match_results") return;
-    if (get().overlay === "settings" && get().settingsParent === "cockpit")
-      set({ overlay: "cockpit", settingsParent: null });
+    if(get().overlay==="missions"){
+      set({overlay:get().missionLogParent,missionLogParent:null});
+      return;
+    }
+    if (get().overlay === "settings" && get().settingsParent)
+      set({ overlay: get().settingsParent, settingsParent: null });
     else if (get().overlay === "debug_menu")
       set({ overlay: get().debugMenuParent, debugMenuParent: "pause" });
     else if (get().overlay === "vehicle_select")

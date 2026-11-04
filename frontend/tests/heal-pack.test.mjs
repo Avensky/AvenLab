@@ -48,9 +48,9 @@ test('Mechanic assisted packs use primary fire without aiming and never author d
    assert(request);assert.equal(request.target,undefined);assert.equal(request.hp,undefined);assert.equal(request.healing,undefined);assert.equal(await actions.requestAssistedHealPack(),false,'in-flight request is deduplicated');
    await reply(request);assert.equal(await pending,true);assert.equal(network.getState().snapshot.entities[1].health.hp,250);assert.equal(await actions.requestAssistedHealPack(),false,'ACK cannot race a still-zero cooldown snapshot');
   });
-  await t.test('primary keyboard and RB routes heal without turret enable; damaging wire fire stays false',async()=>{
+  await t.test('keyboard and RB send assisted packs while the mounted turret can aim',async()=>{
    await act(async()=>{stage('keyboard');root.render(h('div',null,h(Keyboard),h(GameController),h(CombatHUD)));});await poll();
-   const before=requestPackets().length;await key('keydown',prefs.getState().bindings.fire);assert.equal(combatIntent.keyboardFire,true);sendInputPacket();assert.equal(requestPackets().length,before+1);assert.equal(socket.sent.at(-1).combat.fire,false);assert.equal(socket.sent.at(-1).combat.enabled,false);await reply(requestPackets().at(-1));await key('keyup',prefs.getState().bindings.fire);assert.equal(combatIntent.keyboardFire,false);
+   const before=requestPackets().length;await key('keydown',prefs.getState().bindings.fire);assert.equal(combatIntent.keyboardFire,true);sendInputPacket();assert.equal(requestPackets().length,before+1);assert.equal(socket.sent.at(-1).combat.fire,false);assert.equal(socket.sent.at(-1).combat.enabled,true);await reply(requestPackets().at(-1));await key('keyup',prefs.getState().bindings.fire);assert.equal(combatIntent.keyboardFire,false);
    await act(async()=>stage('gamepad'));await poll();const count=requestPackets().length;await press(5,true);assert.equal(combatIntent.gamepadFire,true);sendInputPacket();assert.equal(requestPackets().length,count+1);assert.equal(socket.sent.at(-1).combat.fire,false);assert.equal(input.getState().input.playerMask&1,0,'RB does not also honk');await reply(requestPackets().at(-1));await press(5,false);assert.equal(combatIntent.gamepadFire,false);
    await act(async()=>stage('tap'));assert.equal(requestWeaponFire(),true);const tap=requestPackets().at(-1);assert(tap);await reply(tap);
   });

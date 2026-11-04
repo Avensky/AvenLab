@@ -42,24 +42,28 @@ impl PhysicsWorld {
             let enemy=self.vehicles.get(&assistant).zip(self.vehicles.get(victim)).is_some_and(|(source,target)|assistant!=victim&&!source.team.eq_ignore_ascii_case(&target.team));
             if enemy {if let Some(h)=self.vehicle_health.get_mut(&assistant){h.stats.assists=h.stats.assists.saturating_add(1);}}
         }
-        if defeated {self.freeze_disabled_vehicle(victim);}
+        if defeated {self.disable_vehicle_controls(victim);}
         defeated
     }
 
-    fn freeze_disabled_vehicle(&mut self,player:&str){
+    fn disable_vehicle_controls(&mut self,player:&str){
         self.suspend_shields(player);
         if let Some(vehicle)=self.vehicles.get_mut(player){
             vehicle.throttle=0.0;vehicle.steer=0.0;vehicle.brake=0.0;vehicle.handbrake=0.0;
             vehicle.pitch=0.0;vehicle.yaw=0.0;vehicle.roll=0.0;vehicle.ascend=0.0;vehicle.player_flags=0;
             vehicle.ram.cancel();vehicle.ram.requested=false;
             vehicle.powertrain.boost_requested=false;vehicle.powertrain.boost_active=false;vehicle.powertrain.running=false;
+            vehicle.powertrain.engine_requested=false;vehicle.powertrain.drive_throttle=0.0;vehicle.powertrain.direction_brake=0.0;
             vehicle.powertrain.rpm=0.0;vehicle.powertrain.engine_torque_nm=0.0;vehicle.powertrain.power_multiplier=0.0;
             vehicle.vehicle_flags.remove(VehicleStateFlags::BOOST|VehicleStateFlags::ENGINE_ON);
             if let Some(body)=self.bodies.get_mut(vehicle.body){
                 if let Some(health)=self.vehicle_health.get_mut(player){health.downed_position=Some([body.translation().x,body.translation().y,body.translation().z]);}
-                body.set_linvel(rapier3d::prelude::Vector::zeros(),false);body.set_angvel(rapier3d::prelude::Vector::zeros(),false);
-                body.reset_forces(false);body.reset_torques(false);body.set_enabled(false);
-                for handle in body.colliders(){if let Some(c)=self.colliders.get_mut(*handle){c.set_enabled(false);}}
+                // Drop input forces while preserving integrated crash momentum.
+                // Rapier and passive wheel contacts keep publishing the wreck pose.
+                body.reset_forces(false);body.reset_torques(false);
+                for handle in body.colliders() {
+                    if let Some(c)=self.colliders.get_mut(*handle) {c.set_collision_groups(crate::physics::vehicle_collision_groups(true));}
+                }
             }
         }
         if let Some(combat)=self.combat_poses.get_mut(player){combat.enabled=false;combat.fire=false;combat.ram=false;}
@@ -83,7 +87,7 @@ impl PhysicsWorld {
             let body=self.bodies.get_mut(body).ok_or("Vehicle body unavailable")?;
             body.set_translation(rapier3d::prelude::Vector::new(position[0],position[1],position[2]),false);
         }
-        self.freeze_disabled_vehicle(player);
+        self.disable_vehicle_controls(player);
         // A fresh-body factory tank must not erase the fuel-empty cause while
         // its retained recovery window is still pending.
         if state.disabled_reason=="fuel" {self.vehicles.get_mut(player).unwrap().powertrain.fuel_liters=0.0;}
@@ -128,7 +132,7 @@ impl PhysicsWorld {
         health.stats.healing_done=(health.stats.healing_done+healed).min(f32::MAX);
         if combat {health.stats.resurrections=health.stats.resurrections.saturating_add(1);}
         if let Some(vehicle)=self.vehicles.get_mut(actor){vehicle.powertrain.credit_teammate_healing(healed,maximum_hp);}
-        if let Some(body)=self.bodies.get_mut(handle){body.set_enabled(true);body.set_linvel(rapier3d::prelude::Vector::zeros(),true);body.set_angvel(rapier3d::prelude::Vector::zeros(),true);for h in body.colliders(){if let Some(c)=self.colliders.get_mut(*h){c.set_enabled(true);}}}
+        if let Some(body)=self.bodies.get_mut(handle){body.set_enabled(true);for h in body.colliders(){if let Some(c)=self.colliders.get_mut(*h){c.set_collision_groups(crate::physics::vehicle_collision_groups(false));c.set_enabled(true);}}}
         self.combat_poses.remove(target);self.combat_sequences.remove(target);
         self.bodies.propagate_modified_body_positions_to_colliders(&mut self.colliders);self.query_pipeline.update(&self.colliders);
         Ok(())
@@ -165,10 +169,18 @@ impl PhysicsWorld {
     pub(crate) fn advance_vehicle_lives(&mut self,dt:f32){
         if !dt.is_finite()||dt<=0.0{return;}
         let empty:Vec<_>=self.vehicles.iter().filter(|(id,v)|!self.is_defeated(id)&&v.config.resources.fuel_capacity_liters.is_finite()&&v.config.resources.fuel_capacity_liters>0.0&&v.powertrain.fuel_liters.is_finite()&&v.powertrain.fuel_liters<=0.0).map(|(id,_)|id.clone()).collect();
-        for id in empty {if self.vehicle_health.get_mut(&id).is_some_and(|health|health.disable_for_fuel()){self.freeze_disabled_vehicle(&id);}}
+        for id in empty {if self.vehicle_health.get_mut(&id).is_some_and(|health|health.disable_for_fuel()){self.disable_vehicle_controls(&id);}}
         let mut ready=Vec::new();
         for (id,health) in &mut self.vehicle_health {
-            if health.defeated {if let Some(vehicle)=self.vehicles.get_mut(id){vehicle.ram.cooldown=(vehicle.ram.cooldown-dt).max(0.0);}}
+            if health.defeated {
+                if let Some(vehicle)=self.vehicles.get_mut(id) {
+                    vehicle.ram.cooldown=(vehicle.ram.cooldown-dt).max(0.0);
+                    if let Some(body)=self.bodies.get(vehicle.body) {
+                        let p=body.translation();
+                        if p.iter().all(|v|v.is_finite()) { health.downed_position=Some([p.x,p.y,p.z]); }
+                    }
+                }
+            }
             if health.advance(dt){ready.push(id.clone());}
         }
         for id in ready {
@@ -183,7 +195,7 @@ impl PhysicsWorld {
             vehicle.throttle=0.0;vehicle.steer=0.0;vehicle.brake=0.0;vehicle.handbrake=0.0;vehicle.player_flags=0;
             vehicle.vehicle_flags.insert(VehicleStateFlags::ENGINE_ON);
             vehicle.vehicle_flags.remove(VehicleStateFlags::BOOST);
-            if let Some(body)=self.bodies.get_mut(vehicle.body){body.set_enabled(true);for handle in body.colliders(){if let Some(c)=self.colliders.get_mut(*handle){c.set_enabled(true);}}}
+            if let Some(body)=self.bodies.get_mut(vehicle.body){body.set_enabled(true);for handle in body.colliders(){if let Some(c)=self.colliders.get_mut(*handle){c.set_collision_groups(crate::physics::vehicle_collision_groups(false));c.set_enabled(true);}}}
             if let Some(health)=self.vehicle_health.get_mut(&id){health.respawn();}
             self.combat_poses.remove(&id);
             self.combat_cooldowns.remove(&id);

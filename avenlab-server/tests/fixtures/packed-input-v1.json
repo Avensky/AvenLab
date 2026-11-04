@@ -1,0 +1,51 @@
+[
+  {
+    "input": {
+      "type": "input",
+      "seq": 65538,
+      "dt": 0.015625,
+      "throttle": 0.5,
+      "steer": -0.25,
+      "brake": 0.125,
+      "handbrake": 0.75,
+      "vehicleMask": 97,
+      "playerMask": 16385
+    },
+    "hex": "41490100020001000000803c0000003f000080be0000003e0000403f61000140"
+  },
+  {
+    "input": {
+      "type": "input",
+      "seq": 65538,
+      "dt": 0.015625,
+      "throttle": 0.5,
+      "steer": -0.25,
+      "brake": 0.125,
+      "handbrake": 0.75,
+      "vehicleMask": 97,
+      "playerMask": 16385,
+      "cockpit_mask": 0,
+      "parking_brake": 0.375,
+      "cabin_mask": 2147483650,
+      "debug_mask": 0,
+      "combat": {
+        "enabled": true,
+        "fire": true,
+        "ram": false,
+        "hull_locked": true,
+        "weapon": "basket",
+        "role": "medic",
+        "yaw": 0.25,
+        "pitch": -0.125,
+        "x": 1.5,
+        "y": 1.25,
+        "z": -2.0,
+        "lock_target": [
+          0.5,
+          -0.25
+        ]
+      }
+    },
+    "hex": "4149011f020001000000803c0000003f000080be0000003e0000403f61000140000000000000c03e02000080000000001b0a0000803e000000be0000c03f0000a03f000000c00000003f000080be"
+  }
+]

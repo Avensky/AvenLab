@@ -3,6 +3,7 @@ import { Hub, Needle } from "./Gauge";
 import { arcPath } from "./gaugeGeometry";
 import type { DisplayPower } from "./dashboardModel";
 
+const fahrenheit = (c: number) => c * 9 / 5 + 32;
 const TempFace = memo(function TempFace({ min, overheat, critical }: { min: number; overheat: number; critical: number }) {
   const warningAngle = (1 - (overheat - min) / (critical - min)) * Math.PI / 2;
   return <g className="temperature-face">
@@ -16,8 +17,8 @@ const TempFace = memo(function TempFace({ min, overheat, critical }: { min: numb
 
 export default memo(function TempGauge({ temp, min, overheat, critical, power }: { temp: number | null; min: number; overheat: number; critical: number; power: DisplayPower }) {
   const ratio = temp === null ? null : Math.max(0, Math.min(1, (temp - min) / (critical - min)));
-  return <g role="meter" aria-label="Coolant temperature" aria-valuemin={min} aria-valuemax={critical} aria-valuenow={temp === null ? undefined : Math.max(min, Math.min(critical, temp))}
-    aria-valuetext={temp === null ? "Unavailable" : `${temp.toFixed(1)} degrees Celsius${power === "off" ? " · engine off, needle centered" : ""}`} data-power={power}>
+  return <g role="meter" aria-label="Coolant temperature" aria-valuemin={fahrenheit(min)} aria-valuemax={fahrenheit(critical)} aria-valuenow={temp === null ? undefined : fahrenheit(Math.max(min, Math.min(critical, temp)))}
+    aria-valuetext={temp === null ? "Unavailable" : `${fahrenheit(temp).toFixed(1)} degrees Fahrenheit${power === "off" ? " · engine off, needle centered" : ""}`} data-power={power}>
     <TempFace min={min} overheat={overheat} critical={critical} />
     <Needle angle={power === "off" ? Math.PI / 4 : (1 - (ratio ?? 0)) * Math.PI / 2} visible={ratio !== null} x={121} y={121} length={60} /><Hub x={121} y={121} />
   </g>;

@@ -64,10 +64,18 @@ fn team_and_spawn_shield_policy_prevent_damage_but_firing_ends_own_shield() {
 fn defeated_vehicle_is_nonblocking_and_public_actions_cannot_revive_it() {
     let mut w=world();vulnerable(&mut w);let handle=w.vehicles["target"].body;
     let config=w.vehicles["target"].config;
+    let start=*w.bodies[handle].translation();
+    let velocity=vector![2.0,1.0,11.0];
+    let spin=vector![0.2,0.4,0.0];
+    w.bodies[handle].set_linvel(velocity,true);w.bodies[handle].set_angvel(spin,true);
     w.combat_tick("target",0,Some(&fire()));
     assert!(w.damage_vehicle("target",Some("shooter"),9999.0,"cannon"));
-    assert!(!w.bodies[handle].is_enabled());
-    assert!(w.bodies[handle].colliders().iter().all(|h|!w.colliders[*h].is_enabled()));
+    assert_eq!(*w.bodies[handle].linvel(),velocity);assert_eq!(*w.bodies[handle].angvel(),spin);
+    assert!(w.bodies[handle].is_enabled());
+    assert!(w.bodies[handle].colliders().iter().all(|h|w.colliders[*h].collision_groups()==crate::physics::vehicle_collision_groups(true)));
+    for _ in 0..10 {w.step(SIMULATION_DT);}
+    assert!(w.bodies[handle].translation().z > start.z+0.75);
+    assert!(!w.vehicles["target"].powertrain.running);
     let packet=InputPacket{r#type:"input".into(),seq:1,dt:SIMULATION_DT,throttle:1.0,steer:1.0,brake:1.0,handbrake:1.0,
         cockpit_mask:None,parking_brake:None,cabin_mask:None,vehicleMask:VehicleStateFlags::BOOST.bits(),playerMask:1<<5,debug_mask:None,combat:Some(fire())};
     w.apply_player_input_packet("target",packet);w.combat_tick("target",1,Some(&fire()));
@@ -144,10 +152,10 @@ fn practice_reassignment_preserves_health_and_despawn_cleans_life_and_cooldowns(
 fn worn_out_mechanics_still_accept_impact_damage_at_the_existing_cadence() {
     let mut powertrain=crate::powertrain::Powertrain::new(crate::powertrain::ROAD_RESOURCES);
     powertrain.condition=0.0;
-    let damage=powertrain.impact(12.0,crate::powertrain::ROAD_RESOURCES);
+    let damage=powertrain.impact(12.0,crate::powertrain::ROAD_RESOURCES,1.0);
     assert!(damage>0.0,"impact severity must not disappear when condition is already zero");
     assert_eq!(powertrain.condition,0.0);
-    assert_eq!(powertrain.impact(12.0,crate::powertrain::ROAD_RESOURCES),0.0,"one collision cannot charge twice during its cooldown");
+    assert_eq!(powertrain.impact(12.0,crate::powertrain::ROAD_RESOURCES,1.0),0.0,"one collision cannot charge twice during its cooldown");
 }
 
 #[test]
@@ -348,7 +356,7 @@ fn fuel_empty_opens_rescue_window_without_damage_death_or_kill_credit(){
     assert!(health.defeated);assert_eq!(health.disabled_reason,"fuel");assert_eq!(health.hp,300.0);
     assert_eq!(health.deaths,0);assert_eq!(health.damage_seq,0);assert_eq!(w.vehicle_health["shooter"].kills,0);
     assert!(health.respawn_remaining_s>11.9&&health.respawn_remaining_s<12.0);assert_eq!(health.recovery_window_s,12.0);
-    assert!(!w.bodies[body].is_enabled());assert!(!w.vehicles["target"].powertrain.running);
+    assert!(w.bodies[body].is_enabled());assert!(!w.vehicles["target"].powertrain.running);
     assert!(w.recover_vehicle_for_player("target").is_err());assert!(w.service_vehicle_for_player("target").is_err());
 }
 #[test]
@@ -433,7 +441,7 @@ fn retained_downed_lifecycle_restores_window_position_but_never_repeats_old_stat
     let mut lifecycle=w.vehicle_health["target"].downed_lifecycle().unwrap();lifecycle.remaining_s-=3.0;let point=lifecycle.position.unwrap();
     w.despawn_vehicle_for_player("target");w.spawn_vehicle_for_player("returning".into(),[0.0;3],"brz","blue").unwrap();w.restore_downed_lifecycle("returning",&lifecycle).unwrap();
     let health=&w.vehicle_health["returning"];assert!(health.defeated);assert_eq!(health.respawn_remaining_s,7.0);assert_eq!(health.spawn_protection_s,0.0);assert_eq!(health.deaths,0);assert_eq!(health.stats.damage_dealt,0.0);
-    let body=w.vehicles["returning"].body;assert_eq!(*w.bodies[body].translation(),Vector::new(point[0],point[1],point[2]));assert!(!w.bodies[body].is_enabled());
+    let body=w.vehicles["returning"].body;assert_eq!(*w.bodies[body].translation(),Vector::new(point[0],point[1],point[2]));assert!(w.bodies[body].is_enabled());
     assert!(w.recover_vehicle_for_player("returning").is_err());assert!(w.restore_downed_lifecycle("returning",&lifecycle).is_err());
 }
 

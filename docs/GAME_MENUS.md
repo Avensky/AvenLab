@@ -56,7 +56,7 @@ Draco decoders are served by the app from `/draco/` rather than an external CDN.
 - Accessibility: larger menu text, high contrast and reduced motion. Reduced motion stops the vehicle turntable and menu transitions.
 - Career: Statistics, History, Leaderboard, Favorites, Customize and Achievements. Vehicle favorites persist locally. Other career tabs show empty or planned states, without invented match results, wallet balances or earned rewards.
 - Mission board: sandbox entry plus CTF objective, logistics and squad-role briefings. CTF is not playable yet.
-- Debugger: Visualizers, Vehicles & GLBs, Environment, Rendering and Captures. **Open performance overlay** is the first action in Visualizers and Captures; it resumes gameplay with live stats without starting a recording. Close it with F3 or its × button. Per-vehicle/chunk/asset rendering remains independent. Timing and transport readouts live in the performance overlay.
+- Debugger has Visualizers, Vehicles & GLBs, Environment, Rendering and Captures. Rendering opens the main Display settings. Back returns to Debugger. Captures owns the F3 performance-overlay shortcut and benchmark actions. Visualizers owns diagnostic streams, and the vehicle and environment tabs own inspection overrides.
 
 Display/input/accessibility preferences and favorites are stored in browser local storage. They are device-local, not an account profile. Labeled performance captures are saved in this browser; JSON/CSV downloads make them shareable. See `docs/performance-recording.md` for countdowns, position/yaw, Copy Spawn and the centered-city material comparison. Audio and social controls are marked planned because their runtime services are not active.
 

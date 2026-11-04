@@ -86,17 +86,17 @@ test('nearby allies do not churn the HUD layout, bake live portraits or toggle i
 
   await t.test('telemetry DOM replacements do not reconnect resize observers or cause layout passes',async()=>{
    await act(async()=>root.render(null));const oldResize=Object.getOwnPropertyDescriptor(globalThis,'ResizeObserver');
-   let observed=0,unobserved=0,measurements=0,frames=0;const queue=new Map();let frameId=0;
+   let scans=0,observed=0,unobserved=0,measurements=0,frames=0;const queue=new Map();let frameId=0;
    class Resize {constructor(callback){this.callback=callback;}observe(){observed++;this.callback([]);}unobserve(){unobserved++;}disconnect(){}}
    Object.defineProperty(globalThis,'ResizeObserver',{value:Resize,configurable:true,writable:true});const oldFrame=window.requestAnimationFrame,oldCancel=window.cancelAnimationFrame;
    window.requestAnimationFrame=fn=>{frames++;const id=++frameId;queue.set(id,fn);return id;};window.cancelAnimationFrame=id=>queue.delete(id);
    const host=document.createElement('div'),card=document.createElement('div'),value=document.createElement('span');card.className='card';card.append(value);host.append(card);document.body.append(host);
-   const {observeHudLayout}=await load('ui/hud/observeHudLayout.ts');const stop=observeHudLayout(host,()=>[...host.querySelectorAll('.card'),...document.querySelectorAll('.support-test-fallback')],()=>measurements++,document.body);
+   const {observeHudLayout}=await load('ui/hud/observeHudLayout.ts');const stop=observeHudLayout(host,()=>{scans++;return [...host.querySelectorAll('.card'),...document.querySelectorAll('.support-test-fallback')];},()=>measurements++,document.body);
    let fallback;
    try{
-    const flush=()=>{const work=[...queue.values()];queue.clear();for(const fn of work)fn();};flush();const initialObserved=observed,initialFrames=frames,initialMeasures=measurements;
+    const flush=()=>{const work=[...queue.values()];queue.clear();for(const fn of work)fn();};flush();const initialScans=scans,initialObserved=observed,initialFrames=frames,initialMeasures=measurements;
     for(let i=0;i<100;i++){value.replaceChildren(document.createTextNode('HP '+i));await Promise.resolve();flush();}
-    assert.equal(observed,initialObserved,'no repeated observe() initial notifications');assert.equal(unobserved,0);assert.equal(frames,initialFrames);assert.equal(measurements,initialMeasures,'no forced layout per changing status/value');
+    assert.equal(scans,initialScans,'text-only changes never search the HUD tree');assert.equal(observed,initialObserved,'no repeated observe() initial notifications');assert.equal(unobserved,0);assert.equal(frames,initialFrames);assert.equal(measurements,initialMeasures,'no forced layout per changing status/value');
     const newCard=document.createElement('div');newCard.className='card';host.append(newCard);await Promise.resolve();flush();assert.equal(observed,initialObserved+1);assert.equal(measurements,initialMeasures+1,'actual layout root mount measures once');
     fallback=document.createElement('aside');fallback.className='support-test-fallback';document.body.append(fallback);await Promise.resolve();flush();assert.equal(observed,initialObserved+2);assert.equal(measurements,initialMeasures+2,'a sibling support control also reserves screen space');
     fallback.remove();await Promise.resolve();flush();assert.equal(unobserved,1,'removing a sibling does not reconnect existing observers');assert.equal(measurements,initialMeasures+3);

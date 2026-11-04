@@ -1,5 +1,4 @@
 import { Suspense } from "react";
-import { Environment, Stars } from "@react-three/drei";
 import { useWorldStore } from "../store/world/worldStore";
 import { useNetworkStore } from "../store/session/networkStore";
 import {
@@ -11,8 +10,10 @@ import { DebugFlags, hasDebugFlag } from "../store/world/debugMasks";
 import { DebugColliders } from "../components/debugger/DebugColliders";
 import { CityChunk } from "./CityChunk";
 import { AssetBoundary } from "../components/debugger/AssetBoundary";
-import { CityStreaming, CityReflectionEnvironment } from "./CityStreaming";
+import { CityStreaming } from "./CityStreaming";
 import { AuthoredWorld } from "./AuthoredWorld";
+
+import { WorldAtmosphere } from "./WorldAtmosphere";
 
 export function CityScene() {
   const map = useWorldStore((s) => s.map);
@@ -23,37 +24,7 @@ export function CityScene() {
   // Only the explicit diagnostics switch subscribes to per-tick block data.
   return (
     <group name="city-scene">
-      <color attach="background" args={["#02040a"]} />
-      {settings.stars && (
-        <Stars
-          radius={500}
-          depth={80}
-          count={1200}
-          factor={3}
-          saturation={0.1}
-          fade
-          speed={0.15}
-        />
-      )}
-      {settings.fog && <fog attach="fog" args={["#050914", 250, 1100]} />}
-      {settings.reflections && (
-        <AssetBoundary fallback={null}>
-          <Suspense fallback={null}>
-            {streamed ? (
-              <CityReflectionEnvironment />
-            ) : (
-              <Environment preset="night" background={false} />
-            )}
-          </Suspense>
-        </AssetBoundary>
-      )}
-      <hemisphereLight args={["#526889", "#08090c", 0.45]} />
-      <directionalLight
-        color="#9fbfff"
-        intensity={1.8}
-        position={[-120, 180, -80]}
-        castShadow={settings.shadows}
-      />
+      {map && <WorldAtmosphere preset={map.sky ?? "starry_night"} shadows={settings.shadows} detailedReflections={settings.reflections} />}
       {map?.chunks.map((chunk) => {
         const key = chunkKey(chunk.x, chunk.z);
         const mode = settings.chunkOverrides[key] ?? settings.environmentMode;

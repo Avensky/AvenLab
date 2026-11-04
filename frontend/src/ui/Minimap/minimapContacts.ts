@@ -1,4 +1,4 @@
-import type {PhysicsEntitySnapshot,PhysicsSnapshot} from '../../store/session/networkStore';
+import {snapshotEntity, type PhysicsEntitySnapshot, type PhysicsSnapshot} from '../../store/session/networkStore';
 
 /** Shared team radio spots contacts by proximity in the horizontal world plane.
  * This is minimap presentation, not line of sight or network entity culling. */
@@ -17,12 +17,12 @@ export function carriedFlag(snapshot:PhysicsSnapshot|null,playerId:string):'red'
  return flag?.team;
 }
 export function localCarriedFlag(snapshot:PhysicsSnapshot|null,playerId:string):'red'|'blue'|undefined {
- const me=snapshot?.entities.find(entity=>entity.id===playerId);
+ const me=snapshotEntity(snapshot,playerId);
  return me&&positionValid(me)&&teamValid(me.team)&&living(me)?carriedFlag(snapshot,playerId):undefined;
 }
 
 export function minimapContacts(snapshot:PhysicsSnapshot|null,playerId:string,detectionRange=MINIMAP_DETECTION_RANGE_M):MinimapContact[]{
- const me=snapshot?.entities.find(entity=>entity.id===playerId);
+ const me=snapshotEntity(snapshot,playerId);
  if(!me||!teamValid(me.team)||!Number.isSafeInteger(me.room_id)||me.room_id<0||!positionValid(me))return [];
  const entities=snapshot!.entities.filter(entity=>entity.room_id===me.room_id&&teamValid(entity.team)&&positionValid(entity));
  const detectors=entities.filter(entity=>entity.team===me.team&&living(entity));

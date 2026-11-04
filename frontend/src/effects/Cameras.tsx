@@ -14,7 +14,7 @@ import { OrbitControls as ThreeOrbitControls } from "three-stdlib";
 import { usePreferencesStore } from "../store/preferences/preferencesStore";
 import { useGameStore } from "../store/presentation/gameStore";
 import { useUIStore } from "../store/menus/uiStore";
-import { useNetworkStore } from "../store/session/networkStore";
+import { snapshotEntity, useNetworkStore } from "../store/session/networkStore";
 import { PlayerCameraControls } from "../components/PlayerCameraControls";
 import {
   beginVehicleRenderFrame,
@@ -129,7 +129,7 @@ export default function Cameras() {
   const playerId = useNetworkStore((state) => state.playerId);
   const playerVehicleId = useNetworkStore(
     (state) =>
-      state.snapshot?.entities.find((entity) => entity.id === state.playerId)
+      snapshotEntity(state.snapshot, state.playerId)
         ?.vehicle_id ?? null,
   );
   const playerCameraPreset =
@@ -160,7 +160,7 @@ export default function Cameras() {
   useFrame(() => beginVehicleRenderFrame(), -100);
   useEffect(() => releaseVehicleRenderFrameClock, []);
 
-  if(scope&&screen==='sandbox'&&overlay===null&&playerVehicleId==='tank')return <TankScopeRig playerId={playerId}/>;
+  if(scope&&screen==='sandbox'&&overlay===null&&playerVehicleId)return <TankScopeRig playerId={playerId}/>;
 
   if (editor && screen === "sandbox" && !cameraEditing && overlay !== "vehicle_select") {
     return (

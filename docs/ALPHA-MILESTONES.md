@@ -5,7 +5,15 @@
 This patch implements the vehicle-health foundation with automated integration and abuse checks. Physical multiplayer playtests and reconnect/latency acceptance must pass before the combat milestone is considered complete. Initial tuning and policies are in `ALPHA-COMBAT-HEALTH.md`. Checkboxes below describe release gates, not merely the presence of code or a menu button.
 
 
-Current follow-up: health-bar visibility, separate tab profiles, primary/secondary tank controls, authoritative session statistics, and the hero ability guide are documented in `PLAYER-STATS-AND-COMBAT-CONTROLS.md`. The subsequent career/results patch implements the server-owned CTF loop and persistent records; see `CAREER-RESULTS-AND-MATCH-LOOP.md`. The recovery follow-up adds the live Mechanic recovery ability, a 12-second downed window, nearest safe home/central-road respawn and contact-only flag returns; see `RECOVERY-AND-FLAG-CONTROLS.md`. MMR, other hero abilities, a usable ultimate and replay video remain pending.
+Current follow-up: health-bar visibility, separate tab profiles, primary/secondary tank controls, authoritative session statistics, and the hero ability guide are documented in `PLAYER-STATS-AND-COMBAT-CONTROLS.md`. The subsequent career/results patch implements the server-owned CTF loop and persistent records; see `CAREER-RESULTS-AND-MATCH-LOOP.md`. The recovery follow-up adds the live Mechanic recovery ability, a 12-second downed window, nearest safe home/central-road respawn and touch returns and a ten-second dropped-flag timeout; see `RECOVERY-AND-FLAG-CONTROLS.md`. MMR, other hero abilities, a usable ultimate and replay video remain pending.
+
+## Next closed-alpha playtests
+
+1. Run a full six-player CTF match with keyboard, controller and touch. Check all six action positions, 2×/4× scope entry and exit, and adjusting a locked turret while the driver turns. Record which vehicles benefit from a scope.
+2. Playtest the objective and recovery loop. Include a handoff, a defender returning their own flag, a timed return, a teammate shove, a moving wreck, a Mechanic recovery and an occupied respawn.
+3. Record six- and ten-player runs on the target phone. Compare frame time, FPS, network timing and dropped inputs with the scoreboard closed, open and while scoping. Include vehicles firing simultaneously.
+4. Pick the first preview ability to implement from those sessions. Give it server validation, resource cost, cooldown, counterplay and a clear HUD state. Verify base routes, repair points and spawn safety on one candidate coastal map.
+5. Rehearse reconnect and match completion, verify progression after server restart, then tag a clean, installable build with a version identifier, capture instructions and known issues for invited testers.
 
 ## 1. Authoritative vehicle combat — current patch
 

@@ -156,13 +156,18 @@ test("distance and interpolation preferences hydrate safely, survive sessions, a
     assert.equal(debug.getState().interpolationEnabled, false);
     await debug.persist.rehydrate();
     assert.equal(debug.getState().interpolationEnabled, false);
+    render.getState().cityPerformancePreset();
+    await render.persist.rehydrate();
+    assert.equal(render.getState().lowDetail,true);assert.equal(render.getState().cityViewDistance,250);
+    render.getState().restoreFullDetail();
+    assert.equal(render.getState().cityViewDistance,1000,'Full HD survives a reload while Low is active');
     for (const value of [false, true]) {
       debug.getState().setInterpolationEnabled(value);
       render.getState().baseline();
       assert.equal(debug.getState().interpolationEnabled, value);
       render.getState().cityPerformancePreset();
       assert.equal(debug.getState().interpolationEnabled, value);
-      assert.equal(render.getState().cityViewDistance, "auto");
+      assert.equal(render.getState().cityViewDistance, 250);
     }
     data.set(
       "avenlab-display-v1",

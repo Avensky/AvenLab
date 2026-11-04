@@ -4,7 +4,7 @@ import { blendCombatAim, blendYaw } from '../combat/turretPresentation';
 import { Quaternion } from "three";
 import { useDebugViewStore } from "../store/presentation/debugViewStore";
 import {
-  useNetworkStore,
+  snapshotEntity, useNetworkStore,
   type PhysicsSnapshot,
   type PhysicsEntitySnapshot,
   type WheelSnapshot,
@@ -95,9 +95,11 @@ function interpolateWheels(
 ): InterpolatedWheelSnapshot[] | undefined {
   if (!b) return undefined;
   if (!a) return b;
-  const previous = new Map(a.map((wheel) => [wheel.id.toLowerCase(), wheel]));
-  return b.map((wheel) => {
-    const prev = previous.get(wheel.id.toLowerCase());
+  // Rust sends stable wheel order. Match by ID only if a legacy snapshot
+  // changes casing, reorders axles or supplies a different wheel count.
+  return b.map((wheel,index) => {
+    const prior = a[index];
+    const prev = prior?.id === wheel.id ? prior : a.find(item=>item.id.toLowerCase()===wheel.id.toLowerCase());
     if (!prev) return wheel;
     return {
       ...wheel,
@@ -321,6 +323,10 @@ function ingestVehicles() {
     return;
   }
   if (snapshot === blockedSnapshot || snapshot === lastSnapshot) return;
+  const before = lastSnapshot?.match_state, after = snapshot.match_state;
+  if (after?.phase === "running" && (before?.phase !== "running" || before.match_id !== after.match_id)) {
+    clearVehicleHistory();
+  }
   lastSnapshot = snapshot;
   const nextIds = new Set<string>();
   for (const entity of snapshot.entities) {
@@ -377,9 +383,7 @@ export function useVehiclePhysicsInterpolator(
       if (renderTimeMs !== null && framePoses.has(key))
         return framePoses.get(key)!;
       const pose = raw
-        ? (state.snapshot?.entities.find(
-            (entity) => entity.id === requestedId,
-          ) ?? null)
+        ? (snapshotEntity(state.snapshot, requestedId) ?? null)
         : vehicleBuffer.getInterpolated(
             requestedId,
             delayMs,

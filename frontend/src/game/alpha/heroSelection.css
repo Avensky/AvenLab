@@ -582,3 +582,10 @@ html[data-reduce-motion="true"] .hero-portrait-card .hero-portrait-art img {
   background:color-mix(in srgb,var(--app-panel) 55%,transparent);
   border:1px dashed color-mix(in srgb,var(--app-line) 55%,transparent);
 }
+
+/* Crimson stays on the selection and focus marks. Larger surfaces are graphite. */
+html[data-ui-theme=scarlet]:not([data-high-contrast=true]) .hero-selection:not(.mode-selection) {
+  --app-background:#11151a;--app-panel:#181d23;--app-raised:#282d34;--app-line:#51555c;
+  --app-accent:#d9828a;--app-accent-soft:#35292e;--app-text:#f1eff0;--app-muted:#bec2c8;
+  --menu-chrome-surface:#181b21;
+}

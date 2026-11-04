@@ -19,9 +19,9 @@ These are starting values for playtesting, not final balance. The cannon uses th
 
 ## Server rules
 
-Combat HP and mechanical condition are separate. Heat, fuel, nitrous and engine wear retain their previous mechanics; weapon hits reduce HP. Accepted crash severity also reduces HP, even when mechanical condition is already exhausted. Friendly weapon/Ram HP damage is disabled for alpha, while physical collisions and world-impact penalties still resolve. Actual enemy HP damage earns ultimate credit; a lethal hit earns one kill and one death.
+Combat HP and mechanical condition are separate. Heat, fuel, nitrous and engine wear retain their previous mechanics; weapon hits reduce HP. Accepted crash severity also reduces HP, even when mechanical condition is already exhausted. Ordinary teammate collisions apply 20% of enemy crash damage to HP and mechanical condition. A substantial incoming shove also reduces a wall impact for 0.45 seconds. Friendly contact preserves its full physical impulse. Weapon hits and the Ram ability bonus remain enemy-only. Actual enemy HP damage earns ultimate credit; a lethal hit earns one kill and one death.
 
-Defeat clears driving and attack intent, cancels Ram and disables body/colliders so the corpse does not block movement or shots. Entity/body identity stays stable. The server advances the countdown without waiting for player inputs. It retries the recorded map spawn when occupied; HP stays zero until safe placement succeeds. A successful respawn restores HP and mechanical resources, preserves session K/D and remaining Ram cooldown, and grants brief protection. Cached dead inputs are discarded, so an old held packet cannot launch another attack after respawn.
+Defeat clears driving and attack intent and cancels Ram. The disabled body coasts, spins and settles on terrain while live traffic and shots pass through it. Entity/body identity stays stable. The server advances the countdown without waiting for player inputs. It retries the recorded map spawn when occupied; HP stays zero until safe placement succeeds. A successful respawn restores HP and mechanical resources, preserves session K/D and remaining Ram cooldown, and grants brief protection. Cached dead inputs are discarded, so an old held packet cannot launch another attack after respawn.
 
 Reset and vehicle swapping preserve HP damage and do not refresh protection. Defeated players cannot reset, swap, fire, Ram or self-service. Browser/transport clients never provide HP, damage or kill totals. The existing debug mechanical service command does not restore combat HP. Repair bays restore HP; fuel-only bays do not. Destroyed service bays stop servicing both teams.
 
@@ -29,7 +29,7 @@ Practice/editor reconnect uses the retained body and migrates its health under t
 
 ## Feedback and controls
 
-The passive health readout shows server HP, K/D, protection, damage flash and defeat countdown. It distinguishes an occupied spawn from a running countdown and hides stale telemetry. Defeat blocks driving/aiming and clears held attacks/scope until an alive snapshot returns. Protection also appears in the shared circular buff row. Remote vehicles have compact health markers, with staggered 100-millisecond scene line-of-sight checks and a 120-meter display limit; a ten-vehicle performance soak remains an alpha gate.
+The passive health readout shows server HP, K/D, protection, damage flash and defeat countdown. It distinguishes an occupied spawn from a running countdown and hides stale telemetry. Defeat blocks driving/aiming and clears held attacks/scope until an alive snapshot returns. Protection also appears in the shared circular buff row. Remote vehicles have compact health markers, with a shared budget of 20 scene sight checks per second and a 120-meter display limit; a ten-vehicle performance soak remains an alpha gate.
 
 ## Player acceptance still required
 

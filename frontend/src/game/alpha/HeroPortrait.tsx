@@ -5,13 +5,14 @@ import type { VehicleModelId } from "../../vehicles/tools/vehicleModelPaths";
 import { getStyledPortrait, needsStyledPortrait, peekStyledPortrait, portraitStyleKey, subscribeStyledPortraits } from "./heroPortraitCache";
 import { isDrivingScreen, useUIStore } from "../../store/menus/uiStore";
 
-export const HeroPortrait = memo(function HeroPortrait({ hero, className = "", appearance, cacheOnly = false }: {
+export const HeroPortrait = memo(function HeroPortrait({ hero, className = "", appearance, cacheOnly = false, showStyleStatus = true }: {
   hero: string | null;
   className?: string;
   /** Undefined uses this player's style; null is an unknown peer's factory. */
   appearance?: HeroAppearance | null;
   /** Driving HUDs reuse finished images; expensive custom bakes belong in menus. */
   cacheOnly?: boolean;
+  showStyleStatus?: boolean;
 }) {
   // Shared portraits also appear in the live Tab table, details and hero guide.
   // Guard the expensive path centrally so those callers cannot accidentally
@@ -45,7 +46,7 @@ export const HeroPortrait = memo(function HeroPortrait({ hero, className = "", a
   return (
     <span className={`hero-portrait-art ${className}`} data-role={item?.role} data-cache-only={deferred} data-style={custom ? ready ? "ready" : deferred ? "deferred" : image.key === key ? "unavailable" : "loading" : "factory"} style={{ "--portrait-paint": style.body === "factory" ? "#bac5cf" : style.body === "theme" ? "var(--app-accent)" : style.body } as CSSProperties}>
       {item && src !== failedSrc ? <img src={src} width="320" height="216" alt="" decoding="async" draggable={false} onError={() => setFailedSrc(src)} /> : <span className="hero-portrait-fallback" aria-hidden="true">{item?.name.slice(0, 2) ?? "?"}</span>}
-      {custom && !ready && <span className="hero-portrait-style-status"><i aria-hidden="true" />{deferred ? "SAVED STYLE" : image.key === key ? "STYLE PREVIEW UNAVAILABLE" : "LOADING SAVED STYLE"}</span>}
+      {showStyleStatus && custom && !ready && <span className="hero-portrait-style-status"><i aria-hidden="true" />{deferred ? "SAVED STYLE" : image.key === key ? "STYLE PREVIEW UNAVAILABLE" : "LOADING SAVED STYLE"}</span>}
     </span>
   );
 });

@@ -325,3 +325,27 @@ fn basket_range_is_two_hundred_meters_while_roof_gun_keeps_eight_hundred() {
  assert!(w.combat_poses["tank"].impact.is_some_and(|p|p[2]>99.0&&p[2]<101.0),"same basket gun hits cover in its real range");
  assert_eq!(w.combat_poses["tank"].shot_weapon,"basket");
 }
+
+#[test]
+fn manual_aim_slews_under_lock_and_holds_the_new_angle_through_a_hull_turn() {
+    use rapier3d::prelude::{Rotation,Vector};
+    for (chassis,hero) in [("tank","tank"),("mini","mini"),("cx30","cx30"),("brz","brz"),("fortuner","mechanic")] {
+        let mut w=range();
+        w.despawn_vehicle_for_player("tank");
+        let h=w.spawn_vehicle_for_player("driver".into(),[0.0;3],chassis,"red").unwrap();
+        w.set_assigned_hero("driver",hero);
+        let aim=CombatPose{enabled:true,hull_locked:true,lock_target:Some([1.25,0.18]),..Default::default()};
+        w.combat_tick("driver",1,Some(&aim));
+        let first=&w.combat_poses["driver"];
+        assert!(first.hull_locked && first.lock_yaw>0.0 && first.lock_yaw<0.06,"{chassis} must slew");
+        for seq in 2..100 {w.combat_tick("driver",seq,Some(&aim));}
+        let yaw=w.combat_poses["driver"].yaw;
+        w.bodies[h].set_rotation(Rotation::from_axis_angle(&Vector::y_axis(),0.8),true);
+        w.combat_tick("driver",101,Some(&aim));
+        let c=&w.combat_poses["driver"];
+        assert!((c.lock_yaw-1.25).abs()<0.001 && (c.lock_pitch-0.18).abs()<0.001);
+        assert!(((c.yaw-yaw).sin()-0.8_f32.sin()).abs()<0.001,"{chassis} must turn with the hull");
+        assert!(c.assisted_target.is_none());
+        assert_eq!(c.shot,0);
+    }
+}

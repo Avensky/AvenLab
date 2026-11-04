@@ -4,6 +4,8 @@ import { useRef, type ReactNode } from "react";
 import { useRenderSettingsStore } from "./store/presentation/renderSettingsStore";
 import { PerformanceProbe } from "./performance/PerformanceProbe";
 
+import { ScoreboardSceneCover } from "./game/stats/ScoreboardSceneCover";
+
 function RevealPreview() {
   const shown = useRef(false);
   useFrame(({ gl }) => {
@@ -66,6 +68,7 @@ export function FullCanvas({
                     <meshStandardMaterial color="#222" />
                 </mesh> */}
 
+        <ScoreboardSceneCover />
         <PerformanceProbe />
         {children}
       </Canvas>

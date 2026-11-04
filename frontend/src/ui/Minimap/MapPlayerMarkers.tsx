@@ -1,5 +1,5 @@
 import {useEffect,useState} from 'react';
-import {useNetworkStore} from '../../store/session/networkStore';
+import {snapshotEntity,useNetworkStore} from '../../store/session/networkStore';
 import {MAP_UPDATE_HZ} from '../../store/telemetry/mapTelemetry';
 import {minimapContacts,localCarriedFlag,projectMinimapContact,MINIMAP_ALLY_COLOR,MINIMAP_ENEMY_COLOR} from './minimapContacts';
 
@@ -9,6 +9,15 @@ function readContacts(){
  return {contacts:minimapContacts(network.snapshot,network.playerId),selfFlag:localCarriedFlag(network.snapshot,network.playerId)};
 }
 
+function sameMarkers(a:ReturnType<typeof readContacts>, b:ReturnType<typeof readContacts>){
+ return a.selfFlag===b.selfFlag && a.contacts.length===b.contacts.length &&
+  a.contacts.every((p,i)=>{
+   const q=b.contacts[i];
+   return p.id===q.id && p.x===q.x && p.z===q.z && p.side===q.side &&
+    p.defeated===q.defeated && p.carryingFlag===q.carryingFlag;
+  });
+}
+
 /** Only this small layer observes snapshots. Project at the map's display rate,
  * keeping raw network updates away from road geometry and route searches. */
 export function MapPlayerMarkers({x,z,range,circular}:{x:number;z:number;range:number;circular:boolean}){
@@ -16,13 +25,14 @@ export function MapPlayerMarkers({x,z,range,circular}:{x:number;z:number;range:n
  useEffect(()=>{
   let last=-Infinity;
   return useNetworkStore.subscribe((state,previous)=>{
-   const identityChanged=state.playerId!==previous.playerId||state.connected!==previous.connected||state.room_id!==previous.room_id||state.snapshot===null||!state.snapshot.entities.some(entity=>entity.id===state.playerId);
-   if(!identityChanged&&state.snapshot===previous.snapshot)return;
+   const sessionChanged=state.playerId!==previous.playerId||state.connected!==previous.connected||state.room_id!==previous.room_id;
+   if(!sessionChanged&&state.snapshot===previous.snapshot)return;
+   const identityChanged=sessionChanged||!snapshotEntity(state.snapshot,state.playerId);
    const now=performance.now();
    if(!identityChanged&&now-last<1000/MAP_UPDATE_HZ)return;
    last=now;
    const next=readContacts();
-   setMarkers(current=>JSON.stringify(current)===JSON.stringify(next)?current:next);
+   setMarkers(current=>sameMarkers(current,next)?current:next);
   });
  },[]);
  return <g className="map-player-contacts" pointerEvents="none" aria-label="Team radio contacts">{markers.selfFlag&&<CarrierRing id="self" x={x} z={z} range={range} self flag={markers.selfFlag}/>} {markers.contacts.map(contact=>{

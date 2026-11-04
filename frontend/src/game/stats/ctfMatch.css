@@ -2,7 +2,7 @@
 .ctf-score-line{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--app-panel);border-bottom:2px solid var(--app-accent);padding:4px 10px}
 .ctf-team-indicator{display:none}
 .ctf-score-line strong[data-team=blue]{color:color-mix(in srgb,var(--app-text) 70%,#4bc9ff)}.ctf-score-line strong[data-team=red]{color:var(--team-red,#ff675b)}.ctf-match-hud small{display:block;font-size:8px;padding:3px 5px;background:var(--app-panel)}.ctf-flag-status{display:block;font-size:7px;padding-top:2px}
-@media(max-width:600px){.ctf-match-hud{width:58vw;font-size:9px}.ctf-score-line{padding:3px 5px;gap:3px}.ctf-match-hud small,.ctf-flag-status{font-size:6px}}
+@media(max-width:600px){.ctf-match-hud{width:min(280px,58vw);font-size:9px}.ctf-score-line{padding:3px 5px;gap:3px}.ctf-match-hud small,.ctf-flag-status{font-size:6px}}
 .ctf-capture-cue{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:5px;padding:5px 9px;color:var(--app-text);background:var(--app-panel);border-left:3px solid var(--app-accent);font-size:9px;line-height:1.3;text-shadow:none}
 .ctf-capture-cue>span:first-child{font-size:18px;line-height:1;color:var(--app-accent)}
 .ctf-capture-cue[data-state=blocked]{border-left-color:#e5aa35}.ctf-capture-cue[data-state=blocked]>span:first-child{color:#e5aa35}

@@ -13,11 +13,12 @@
 /* The accent is the metal edge. Dark inset glass keeps the resource colors
    readable in light palettes too. Optional instruments take no empty columns. */
 .driving-hud[data-futuristic=true] {
-  --rail: var(--app-accent, #38d6ff);
+  --rail: #63707a;
+  --drive-bank-width:calc(3 * var(--hud-pedal-width) + 12px);
   --cut: polygon(0 8px,8px 0,calc(100% - 8px) 0,100% 8px,100% calc(100% - 8px),calc(100% - 8px) 100%,8px 100%,0 calc(100% - 8px));
 }
 .futuristic-hud {
-  --portrait: clamp(25px,9cqw,56px);
+  --portrait: clamp(52px,15cqw,94px);
   isolation:isolate; position:relative; box-sizing:border-box;
   display:grid; grid-template-columns:auto minmax(0,1fr) repeat(3,auto);
   align-items:center; column-gap:clamp(2px,1cqw,8px); padding:6px 9px;
@@ -29,13 +30,22 @@
   content:''; position:absolute; inset:1.5px; clip-path:var(--cut); z-index:-1;
   background:linear-gradient(166deg,#25313e,#0a1018 38%,#090c10 75%,#202b37);
 }
-.future-identity {grid-column:1;position:relative; width:var(--portrait); padding:2px; box-sizing:border-box; border-radius:5px 1px; background:conic-gradient(from -90deg,var(--rail) var(--charge),#475365 0);}
-.future-identity[data-ready=true] {background:#ffcc4c;}
-.future-identity .hero-portrait-art,.teammate-hud .hero-portrait-art {display:block;position:relative;overflow:hidden;background:#0c1118;}
-.future-identity .hero-portrait-art {aspect-ratio:1.08;}
-.future-identity img,.teammate-hud img {display:block;width:100%;height:100%;object-fit:contain;}
-.future-identity .hero-portrait-style-status,.teammate-hud .hero-portrait-style-status {display:none;}
-.future-identity strong {position:absolute;bottom:1px;right:1px;padding:2px;color:#adf4ff;background:#07111bee;font-size:.83em;}
+/* Transparent vehicle artwork sits inside the beveled perimeter meter. */
+.future-identity {grid-column:1;position:relative;width:var(--portrait);height:var(--portrait);}
+.future-identity .hero-portrait-art {position:absolute;inset:3% 4% 6%;width:auto;aspect-ratio:auto;overflow:visible;background:none;}
+.future-identity .hero-portrait-art img {display:block;width:100%;height:100%;object-fit:contain;transform:scale(1.17);}
+.teammate-hud .hero-portrait-art {display:block;position:relative;overflow:hidden;background:transparent;}
+.teammate-hud img {display:block;width:100%;height:100%;object-fit:contain;}
+.teammate-hud .hero-portrait-style-status {display:none;}
+.ultimate-gauge {position:absolute;inset:0;pointer-events:none;}
+.ultimate-gauge svg {display:block;width:100%;height:100%;overflow:visible;fill:none;}
+.ultimate-gauge path {vector-effect:non-scaling-stroke;stroke-linejoin:round;}
+.charge-track {stroke:#56636e;stroke-width:1.4;}
+.charge-outer {stroke:var(--app-accent);stroke-width:2;}
+.charge-inner {stroke:color-mix(in srgb,var(--app-accent) 42%,#eef3f5);stroke-width:1;}
+.future-identity[data-charged=true] .charge-outer {filter:drop-shadow(0 0 2px var(--app-accent));}
+.ultimate-gauge strong {position:absolute;bottom:2px;right:4px;padding:1px 3px;color:#f6f8fa;background:#111920;
+  border-radius:2px;font:750 clamp(7px,1.65cqw,11px)/1 system-ui;font-variant-numeric:tabular-nums;}
 .future-resources {grid-column:2;display:grid;gap:3px;min-width:0;}
 .future-resource {--fill:#8ce567;min-width:0;}
 .future-resource[data-kind=fuel] {--fill:#f2bd52;}
@@ -62,8 +72,6 @@
   display:flex;align-items:center;justify-content:center;gap:3px;margin:0;padding:0 2px;min-height:0;min-width:0;
   border:1px solid var(--switch-edge);border-radius:2px;background:var(--switch-surface);color:#fff;font:700 .84em/1 system-ui;
 }
-.futuristic-hud .future-assists button::before {content:'';width:4px;height:4px;border-radius:50%;background:#747a80;}
-.futuristic-hud .future-assists button[aria-pressed=true]::before {background:#dce4e7;}
 .futuristic-hud .future-assists button[data-hud-held=true] {border-color:var(--rail);}
 .futuristic-hud .future-assists :is(.assist-abs > span,.assist-sport > span,.assist-trac-content img) {display:none;}
 .futuristic-hud .future-assists button span {font:inherit;}
@@ -71,31 +79,48 @@
 .future-driving strong {font-size:clamp(16px,4.3cqw,30px);font-weight:550;line-height:1;}
 .future-driving small,.future-driving span {font-size:.78em;}
 .future-driving b {font-size:1.25em;}
-.driving-hud .futuristic-hud .ignition-hud {grid-column:5;position:static;inset:auto;transform:none;width:clamp(26px,8cqw,57px);height:auto;pointer-events:auto;}
+.driving-hud .futuristic-hud .ignition-hud {grid-column:5;position:static;inset:auto;transform:none;width:clamp(42px,13cqw,82px);height:auto;pointer-events:auto;}
 .future-status {grid-column:1/-1;text-align:center;color:#ffc86d;font-size:9px;}
 .future-status:empty {display:none;}
 .futuristic-hud[data-defeated=true] {background:#ff616c;}
 .teammate-hud {width:min(100%,clamp(104px,12vw,158px));color:#eff5fd;font:650 10px/1.1 system-ui;pointer-events:none;}
 .teammate-hud ul {display:grid;grid-template-columns:minmax(0,1fr);gap:3px;list-style:none;padding:0;margin:0;}
-.teammate-hud li {box-sizing:border-box;display:grid;grid-template-columns:28% minmax(0,1fr);align-items:center;gap:4px;padding:2px 5px 2px 3px;clip-path:polygon(4px 0,100% 0,100% calc(100% - 4px),calc(100% - 4px) 100%,0 100%,0 4px);background:linear-gradient(115deg,#202e3bee,#090d14f2);border:1px solid var(--rail,var(--app-accent));border-left:2px solid var(--team-blue-glow,#4484ff);}
-.teammate-hud li[data-team=red] {border-left-color:var(--team-red-glow,#ff3b30);}
+.teammate-hud li {box-sizing:border-box;display:grid;grid-template-columns:33% minmax(0,1fr);align-items:center;gap:4px;padding:2px 5px 2px 3px;clip-path:polygon(4px 0,100% 0,100% calc(100% - 4px),calc(100% - 4px) 100%,0 100%,0 4px);background:linear-gradient(115deg,#202e3bee,#090d14f2);border:1px solid var(--team-edge,#687783);border-left-width:2px;}
+.teammate-hud li[data-team=red] {--team-edge:#b65860;}
+.teammate-hud li[data-team=blue] {--team-edge:#4b8ac0;}
 .teammate-hud li[data-defeated=true] {opacity:.65;}
-.teammate-hud .hero-portrait-art {width:100%;height:25px;}
+.teammate-hud .hero-portrait-art {width:100%;height:29px;}
 .teammate-hud li > div {min-width:0;display:grid;gap:1px;}
 .teammate-hud strong,.teammate-hud small {overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
 .teammate-hud strong {font-size:9px;}.teammate-hud small {color:#c2ccd7;font-size:7px;}
 .teammate-health {height:3px;background:#343e46;overflow:hidden;}
 .teammate-health i {display:block;height:100%;background:#88e563;}
 .teammate-hud .hero-portrait-art[data-style=deferred]::after {content:'';position:absolute;inset:auto 1px 1px;height:2px;background:var(--portrait-paint,#bac5cf);}
-.driving-hud[data-futuristic=true] .wheel-hud {left:max(calc(var(--wheel-size)*.12),env(safe-area-inset-left));}
-.driving-hud[data-futuristic=true]::after {content:'';position:absolute;inset:auto 0 0;height:1px;pointer-events:none;background:linear-gradient(90deg,transparent,var(--rail),transparent);}
+.driving-hud[data-futuristic=true] {--normal-wheel-size:var(--wheel-size);}
+.driving-hud[data-futuristic=true] .wheel-hud {--wheel-size:calc(var(--normal-wheel-size)*.82);left:max(8px,env(safe-area-inset-left));}
+.driving-hud[data-futuristic=true] .wheel-hud {translate:0 calc(-1 * var(--station-lift,0px));}
+.driving-hud[data-futuristic=true] .drive-dock {translate:0 calc(-1 * var(--right-station-lift,0px));}
+.driving-hud[data-futuristic=true] .futuristic-hud {
+  --cut:polygon(0 9px,9px 0,calc(100% - 9px) 0,100% 9px,100% 100%,0 100%);
+  padding-bottom:max(5px,env(safe-area-inset-bottom));
+}
+.driving-hud .futuristic-hud .ignition-cylinder {width:100%;height:auto;aspect-ratio:1;}
+.driving-hud .future-assists button::before {display:none;}
+.driving-hud .future-assists .assist-bulb {
+  display:block;flex:0 0 6px;height:6px;border-radius:50%;border:1px solid #182028;
+  background:radial-gradient(circle at 32% 28%,#a3a8ab,#475057 50%,#20262a 85%);
+}
+.driving-hud .future-assists button[aria-pressed=true] .assist-bulb {
+  background:radial-gradient(circle at 32% 28%,white,#a8f3fa 40%,var(--rail) 64%,#2c4551);
+}
+
 .driving-hud[data-futuristic=true] :is(.hud-utilities .console-display,.hud-utilities .climate-panel,.turret-actions button) {border-color:color-mix(in srgb,var(--rail) 65%,#222b35);background:linear-gradient(160deg,#1d2933,#0a1019 62%);color:#eef7ff;}
 @media (min-width:601px) {.hud-top-left {width:min(var(--instrument-size),26vw);}}
 @media (max-width:600px) and (orientation:portrait) {
  .hud-top-left {width:calc(100dvw - clamp(170px,24vw,230px) - 34px);}
  .hud-top-left .instrument-hud {order:-1;width:var(--instrument-size);}
 }
-@media (orientation:landscape) {.driving-hud[data-futuristic=true] .center-combat-dock {max-width:min(620px,52vw);}}
+.driving-hud[data-futuristic=true] .center-combat-dock {max-width:620px;}
 @container combat-dock (max-width:330px) {
  .futuristic-hud {padding:4px;column-gap:2px;}
  .future-readout {padding:0 1px;}.future-readout > * {padding:0 1px;}
@@ -103,7 +128,6 @@
 }
 
 /* Mechanical faces are decoration on the existing inputs, including Reverse. */
-html[data-ui-theme=navy] .driving-hud[data-futuristic=true] {--rail:#42c9f2;}
 .driving-hud[data-futuristic=true] .driving-pedals {
   padding:3px; gap:2px; border:1px solid var(--rail); border-radius:5px 1px;
   background:linear-gradient(145deg,#192731,#070b11 70%);
@@ -113,23 +137,91 @@ html[data-ui-theme=navy] .driving-hud[data-futuristic=true] {--rail:#42c9f2;}
   color:#e5ebf0; border-color:var(--switch-edge); background:var(--switch-surface);
 }
 .driving-hud[data-futuristic=true] :is(.driving-gas,.driving-brake) img {display:none;}
-.driving-hud[data-futuristic=true] :is(.driving-gas,.driving-brake)::before {
-  content:''; display:block; box-sizing:border-box; width:50%; height:52%; min-height:10px;
-  background:radial-gradient(ellipse,#15191c 24%,#697680 27%,transparent 33%) 1px 1px / 7px 7px,
-             linear-gradient(110deg,#f2f5f6,#87949c 47%,#c9d2d7 78%,#69737e);
-  border:1px solid #97a4ac; border-radius:3px; box-shadow:inset 1px 1px #fff9,1px 2px 1px #0009;
+.pedal-face,.pedal-modern-name {display:none;}
+.driving-hud[data-futuristic=true] .pedal-classic-name {display:none;}
+.driving-hud[data-futuristic=true] .pedal-modern-name {display:inline;}
+.driving-hud[data-futuristic=true] .driving-reverse > span {display:none;}
+.driving-hud[data-futuristic=true] .pedal-face {
+  display:block;width:90%;height:74%;max-height:54px;min-height:0;pointer-events:none;
+  filter:drop-shadow(1px 2px 1px #000);
 }
-.driving-hud[data-futuristic=true] .driving-gas::before {width:34%;height:60%;transform:skew(-5deg);}
-.driving-hud[data-futuristic=true] .driving-reverse > span {color:#dce4ea;text-shadow:0 1px 1px #000;}
+.driving-hud[data-futuristic=true] .driving-pedal {overflow:hidden;gap:1px;padding:2px;justify-content:center;}
+.driving-hud[data-futuristic=true] .driving-pedal small {
+  padding:2px 5px;border:1px solid color-mix(in srgb,var(--rail) 54%,#27363e);border-radius:3px 1px;background:#0a1015;
+  color:#f1f7ff;font:650 clamp(6px,.9dvh,9px)/1 system-ui;
+}
+.driving-hud[data-futuristic=true] .driving-pedal[aria-pressed=true] .pedal-face {transform:translateY(2px);}
 .driving-hud[data-futuristic=true] .turret-joystick {
   border:1px solid var(--rail);color:#eff7fc;
   background:radial-gradient(circle,#15252d 38%,#10191e 40%,#28353c 67%,#071016 69%,#111e26 73%);
 }
 .driving-hud[data-futuristic=true] .turret-stick-knob {
   color:var(--rail);border:1px solid #a2b7bf;
-  background:radial-gradient(circle,#12232c 32%,#65b3c7 36%,#12202b 42%,#49606a 64%,#1a252c 70%);
+  background:radial-gradient(circle,#161b20 32%,#aab6bc 36%,#20282e 42%,#526169 64%,#20282e 70%);
+}
+/* Thread follows the padded lip and the thumb grip. The metal rails stay bare. */
+@media (forced-colors: none) {
+  html:not([data-high-contrast=true]) .driving-hud[data-futuristic=true][data-low-detail=false] {
+    --trim-thread: color-mix(in srgb,var(--app-accent) 45%,#4f5155);
+  }
+  .driving-hud[data-futuristic=true][data-low-detail=false] .futuristic-hud::after {
+    content:'';position:absolute;inset:3px 13px auto;height:1px;pointer-events:none;
+    --seam:repeating-linear-gradient(to right,var(--trim-thread,transparent) 0 3px,transparent 3px 6px);
+    background:var(--seam) left / min(12%,54px) 1px no-repeat,
+               var(--seam) right / min(12%,54px) 1px no-repeat;
+  }
+  .driving-hud[data-futuristic=true][data-low-detail=false] .turret-stick-knob::after {
+    content:'';position:absolute;inset:3px;border-radius:50%;pointer-events:none;
+    border:1px dashed var(--trim-thread,transparent);border-block-color:transparent;
+  }
 }
 .driving-hud[data-futuristic=true] .turret-joystick small {inset:5% 0 auto;text-align:center;font:700 7px/1 system-ui;}
 .driving-hud[data-futuristic=true] .radio-single-row > button:not(:focus-visible,:active,[data-hud-held=true]) {
   background:transparent; border-color:transparent; border-inline-end:1px solid #77909644;
 }
+
+@media (orientation:landscape) {
+  .driving-hud[data-futuristic=true] {--hud-pedal-width:clamp(34px,5.1vw,79px);}
+}
+
+.driving-hud[data-futuristic=true] .turret-joystick:is(:active,:focus-visible) .turret-stick-knob {
+  color:var(--app-accent);border-color:var(--app-accent);
+}
+
+.driving-hud[data-futuristic=true] .teammate-hud li {
+  clip-path:polygon(5px 0,100% 0,100% calc(100% - 5px),calc(100% - 5px) 100%,0 100%,0 5px);
+  background:linear-gradient(135deg,#253039f2,#0a0e13f7 67%);padding:2px 5px 3px 3px;
+  border:1px solid var(--team-edge);border-left-width:2px;
+}
+.driving-hud[data-futuristic=true] .teammate-hud li>div {display:grid;grid-template-areas:"driver" "vehicle" "health";gap:1px;}
+.driving-hud[data-futuristic=true] .teammate-hud li strong {grid-area:driver;}
+.driving-hud[data-futuristic=true] .teammate-hud li small {grid-area:vehicle;}
+.driving-hud[data-futuristic=true] .teammate-health {grid-area:health;height:4px;background:#303841;transform:skewX(-12deg);}
+.driving-hud[data-futuristic=true] .teammate-health i {background:linear-gradient(90deg,#4fae46,#a5ed67);}
+
+.driving-hud[data-futuristic=true] .teammate-hud .hero-portrait-art {background:none;}
+.driving-hud[data-futuristic=true] .teammate-hud img {transform:scale(1.12);}
+
+/* Both rows meet at the console lip, including the fallback weapons layout. */
+.driving-hud[data-futuristic=true] .center-combat-dock {gap:0;}
+.driving-hud[data-futuristic=true] .center-combat-dock>.weapon-selector {order:-2;}
+.driving-hud[data-futuristic=true] .center-combat-dock>.active-effects {
+  order:-1;align-self:stretch;position:relative;inset:auto;transform:none;max-width:100%;
+  color:#e5edf2;
+}
+.driving-hud[data-futuristic=true] .active-effects ul {
+  display:flex;gap:2px;flex-wrap:wrap;align-items:end;justify-content:flex-start;
+  padding:0 6px;list-style:none;
+}
+.driving-hud[data-futuristic=true] .active-effects .active-effect-button {
+  display:flex;align-items:center;gap:2px;width:auto;height:22px;padding:1px 4px;border-radius:3px 3px 0 0;
+  background:#141b21ed!important;border:1px solid #59646d!important;border-bottom:0!important;
+}
+.driving-hud[data-futuristic=true] .active-effect-button .action-progress-orbit {--action-orbit-size:18px;--orbit-art-size:18px;filter:none;}
+.driving-hud[data-futuristic=true] .active-effect-button .attack-icon {width:10px;height:10px;}
+.driving-hud[data-futuristic=true] .active-effect-time {position:static;transform:none;font:650 8px/1 system-ui;color:#e1e8ed;}
+.driving-hud[data-futuristic=true] .active-effects .active-effect-description {inset:auto auto 100% 0;transform:none;}
+
+.driving-hud[data-futuristic=true] .active-effect-item[data-kind=debuff] {order:1;margin-inline-start:auto;}
+.driving-hud[data-futuristic=true] .active-effect-item[data-kind=debuff]~.active-effect-item[data-kind=debuff] {margin-inline-start:0;}
+.driving-hud[data-futuristic=true] .active-effect-item[data-kind=debuff] .active-effect-description {left:auto;right:0;}

@@ -1,5 +1,6 @@
 import {DrivingIgnition} from './Cockpit/DrivingIgnition';
 import {useCombatStore} from '../combat/combatStore';
+import {VehicleAbilityActions} from '../combat/VehicleAbilityActions';
 import {VehicleAimControls} from '../combat/TurretJoystick';
 /** Driving console composition. Each group has its own persisted visibility;
  * the two physical levers are peers and the assist bank sits beside the pedals.
@@ -45,11 +46,12 @@ export default function ControlsPanel() {
               </HudGroup>}
               <div className="hud-drive-turret-stack">
                 {<HudGroup id="shifter" title="SHIFTER" className="hud-shifter"><DriveGearControl /></HudGroup>}
-                {aimControls&&<HudGroup id="turret" title="TURRET" className="hud-turret"><VehicleAimControls/></HudGroup>}
+                {aimControls&&<HudGroup id="turret" title="TURRET" className="hud-turret"><VehicleAimControls showActions={!groups.futuristic}/></HudGroup>}
               </div>
             </div>
           </div>
         )}
+        {groups.futuristic && aimControls && <VehicleAbilityActions/>}
         {/* This row defines the shared radio/HVAC width in styles/layout.css. */}
         <div className="console-foot-controls">
           {!groups.futuristic && <DrivingIgnition/>}

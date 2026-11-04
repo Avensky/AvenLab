@@ -74,6 +74,14 @@ pub struct PhysicsWorld {
     falling_seconds: HashMap<String, Real>,
 }
 
+pub(crate) fn vehicle_collision_groups(downed: bool) -> InteractionGroups {
+    InteractionGroups::new(GROUP_CHASSIS, if downed { GROUP_GROUND } else { GROUP_GROUND | GROUP_CHASSIS })
+}
+
+// Playtest tuning for hull and mechanical wear. Rapier resolves the full shove.
+const FRIENDLY_CRASH_DAMAGE_FACTOR: f32 = 0.20;
+const FRIENDLY_SHOVE_WINDOW_S: f32 = 0.45;
+
 impl PhysicsWorld {
 
     fn map_definition_path(map_id: &str) -> anyhow::Result<PathBuf> {
@@ -115,25 +123,59 @@ impl PhysicsWorld {
         };
         Ok([point(&map.team_spawns.red)?,point(&map.team_spawns.blue)?])
     }
+    /// Claim each authored home pad once, independently of where a car drove
+    /// during warmup. Validate the entire formation before touching any body.
+    fn kickoff_formation(&self) -> Result<Vec<(String, Isometry<Real>, Real)>, String> {
+        let map = self.active_map.as_ref().ok_or("No CTF map selected")?;
+        let mut drivers: Vec<_> = self.vehicles.iter().collect();
+        drivers.sort_unstable_by_key(|(id, _)| id.as_str());
+        let mut pads = [map.team_spawns.red.iter(), map.team_spawns.blue.iter()];
+        let mut formation = Vec::with_capacity(drivers.len());
+        for (id, vehicle) in drivers {
+            if !self.bodies.contains(vehicle.body) { return Err(format!("Missing body for {id}")); }
+            let team = match vehicle.team.as_str() {
+                "red" => 0, "blue" => 1, _ => return Err("Unknown CTF team".into()),
+            };
+            let pad = pads[team].next().ok_or_else(|| format!("Too few {} home pads", vehicle.team))?;
+            let road = pad.surface_y.unwrap_or(map.surface.road_y);
+            let config = vehicle.config;
+            let y = config.spawn_height(road);
+            let [x,z] = pad.world_xz(map.cell);
+            let pose = Isometry::new(vector![x,y,z], vector![0.0,pad.yaw,0.0]);
+            formation.push((id.clone(),pose,road));
+        }
+        Ok(formation)
+    }
+
     /// Start is a single world transition: no warm-up health, fuel or held inputs
-    /// survive into the scored round. Recorded assigned pads retain separation.
+    /// survive into the scored round. Each car begins on a separate pad at its own base.
     pub fn prepare_ctf_round(&mut self) -> Result<(), String> {
         if self.vehicles.is_empty(){return Err("Spawn both teams before starting.".into());}
-        if self.vehicles.values().any(|v|!self.bodies.contains(v.body)){return Err("A vehicle body is unavailable.".into());}
-        for (id,v) in &mut self.vehicles {
-            if let Some((mut pose,road))=self.spawn_poses.get(id).copied(){
-                pose.translation.y=v.config.nominal_chassis_y(road).max(road+v.config.chassis_half_extents[1]-v.config.chassis_com_offset[1]+0.05);
-                let body=self.bodies.get_mut(v.body).unwrap();body.set_enabled(true);body.set_position(pose,true);
-                body.set_linvel(Vector::zeros(),true);body.set_angvel(Vector::zeros(),true);body.reset_forces(true);body.reset_torques(true);
-                for handle in body.colliders(){if let Some(c)=self.colliders.get_mut(*handle){c.set_enabled(true);}}
+        let formation = self.kickoff_formation()?;
+        for (id,pose,road) in formation {
+            let v = self.vehicles.get_mut(&id).unwrap();
+            self.spawn_poses.insert(id.clone(), (pose,road));
+            let body = self.bodies.get_mut(v.body).unwrap();
+            body.set_enabled(true);
+            body.set_position(pose,true);
+            body.set_linvel(Vector::zeros(),true);
+            body.set_angvel(Vector::zeros(),true);
+            body.reset_forces(true);
+            body.reset_torques(true);
+            for handle in body.colliders() {
+                if let Some(collider) = self.colliders.get_mut(*handle) { collider.set_collision_groups(vehicle_collision_groups(false)); collider.set_enabled(true); }
             }
             v.powertrain=Powertrain::new(v.config.resources);v.cockpit=crate::cockpit::Cockpit::default();v.ram=crate::ram::RamState::default();
             v.throttle=0.0;v.steer=0.0;v.brake=0.0;v.handbrake=0.0;v.pitch=0.0;v.yaw=0.0;v.roll=0.0;v.ascend=0.0;
             v.player_flags=0;v.vehicle_flags=VehicleStateFlags::ENGINE_ON;v.steer_angle=0.0;v.steer_rate=0.0;v.steering=SteeringState::default();
-            self.vehicle_health.insert(id.clone(),crate::vehicle_health::VehicleHealth::new(v.config.hull_hp));
+            self.vehicle_health.insert(id,crate::vehicle_health::VehicleHealth::new(v.config.hull_hp));
+            let (handle,config) = (v.body,v.config);
+            self.register_vehicle(handle,config);
         }
         self.guard_boosts.clear();self.guard_impact_directions.clear();self.support.reset();
         self.combat_poses.clear();self.combat_sequences.clear();self.combat_cooldowns.clear();self.ctf_carriers.clear();self.dislodged_carriers.clear();self.ctf_reset_players.clear();self.falling_seconds.clear();
+        self.update_loaded_blocks_around_players();
+        self.refresh_vehicle_wheel_snapshots();
         self.bodies.propagate_modified_body_positions_to_colliders(&mut self.colliders);self.query_pipeline.update(&self.colliders);Ok(())
     }
 
@@ -478,17 +520,23 @@ impl PhysicsWorld {
             if !fresh||!target.enabled{vehicle.ram.cancel();}
         }
         let mut c=self.combat_poses.get(player).cloned().unwrap_or_else(||crate::state::CombatPose{yaw:hull_yaw+std::f32::consts::PI,ammo:1,..Default::default()});
-        let locking = config.tracked && target.hull_locked && !c.hull_locked;
+        let manual_lock=target.hull_locked && target.lock_target.is_some();
+        let forward_assist=self.assigned_hero(player)==Some("brz");
+        let hull_lock=target.hull_locked && (manual_lock || (!spray && !forward_assist));
+        let (min_pitch,max_pitch)=if config.tracked {(-0.174533,0.349066)} else {
+            (-std::f32::consts::FRAC_PI_4,std::f32::consts::FRAC_PI_4)
+        };
+        let locking = hull_lock && !c.hull_locked;
         if locking {
             let current = vector![-c.yaw.sin()*c.pitch.cos(), c.pitch.sin(), -c.yaw.cos()*c.pitch.cos()];
             let local = hull.rotation.inverse()*current;
             c.lock_yaw = local.x.atan2(local.z);
-            c.lock_pitch = local.y.atan2((local.x*local.x+local.z*local.z).sqrt()).clamp(-0.174533,0.349066);
+            c.lock_pitch = local.y.atan2(local.x.hypot(local.z)).clamp(min_pitch,max_pitch);
         }
-        c.hull_locked=config.tracked&&target.hull_locked;
+        c.hull_locked=hull_lock;
         c.enabled=target.enabled&&fresh&&self.vehicles.get(player).is_some_and(|v|v.ram.stun_remaining<=0.0);c.fire=target.fire&&c.enabled;c.ram=target.ram&&c.enabled;
         let previous_target=c.assisted_target.take();
-        if c.enabled && target.hull_locked && self.assigned_hero(player)==Some("brz") {
+        if c.enabled && target.hull_locked && !manual_lock && forward_assist {
             let muzzle=hull*point![0.0,config.chassis_com_offset[1]+config.chassis_half_extents[1]+0.05,0.0];
             if let Some((id,aim))=self.forward_target(player,previous_target.as_deref(),muzzle,forward) {
                 target.yaw=(-aim.x).atan2(-aim.z);target.pitch=aim.y.clamp(-1.0,1.0).asin();
@@ -504,6 +552,17 @@ impl PhysicsWorld {
         c.yaw=c.yaw.sin().atan2(c.yaw.cos());
         c.role=if config.tracked {"tank".into()}else{target.role.clone()};
         let mut direction=vector![-c.yaw.sin()*c.pitch.cos(),c.pitch.sin(),-c.yaw.cos()*c.pitch.cos()];
+        if c.hull_locked {
+            if let Some([yaw,pitch])=target.lock_target.filter(|_|c.enabled) {
+                let slew=if config.tracked {2.6}else{3.0}*SIMULATION_DT;
+                let delta=yaw-c.lock_yaw;
+                c.lock_yaw+=delta.sin().atan2(delta.cos()).clamp(-slew,slew);
+                c.lock_yaw=c.lock_yaw.sin().atan2(c.lock_yaw.cos());
+                c.lock_pitch+=(pitch.clamp(min_pitch,max_pitch)-c.lock_pitch).clamp(-0.8*SIMULATION_DT,0.8*SIMULATION_DT);
+            }
+            direction=hull.rotation*vector![c.lock_yaw.sin()*c.lock_pitch.cos(),c.lock_pitch.sin(),c.lock_yaw.cos()*c.lock_pitch.cos()];
+            c.yaw=(-direction.x).atan2(-direction.z);c.pitch=direction.y.clamp(-1.0,1.0).asin();
+        }
         if config.tracked {
             let local=hull.rotation.inverse()*direction;
             let yaw=if c.hull_locked {c.lock_yaw}else{local.x.atan2(local.z)};
@@ -517,7 +576,7 @@ impl PhysicsWorld {
             // client/editor mount offset must never move a shot across cover.
             c.x=0.0;c.y=config.chassis_com_offset[1]+config.chassis_half_extents[1]+0.05;c.z=0.0;
         }
-        if spray && target.hull_locked {direction=forward;c.yaw=(-forward.x).atan2(-forward.z);c.pitch=forward.y.clamp(-1.0,1.0).asin();}
+        if spray && target.hull_locked && !manual_lock {direction=forward;c.yaw=(-forward.x).atan2(-forward.z);c.pitch=forward.y.clamp(-1.0,1.0).asin();}
         c.weapon=if config.tracked {target.weapon.clone()}else if spray {"spray".into()}else{"primary".into()};
         let cannon=config.tracked && c.weapon=="cannon";
         let small_arms_range=if config.tracked&&c.weapon=="coax"{800.0}else{200.0};
@@ -571,11 +630,11 @@ impl PhysicsWorld {
         if cannon {if let Some(body)=self.bodies.get_mut(body_handle){body.apply_impulse_at_point(-direction*36000.0,origin,true);}}
         self.query_pipeline.update(&self.colliders);
         if spray {self.fire_support_spray(player,origin,direction);return;}
-        let obstruction=if config.tracked {self.query_pipeline.cast_ray_and_get_normal(&self.bodies,&self.colliders,&Ray::new(shot_breech,barrel_delta/barrel_length),barrel_length,true,QueryFilter::default().exclude_rigid_body(body_handle)).map(|(h,i)|(h,shot_breech+(barrel_delta/barrel_length)*i.time_of_impact,0.0,i.normal))}else{None};
+        let obstruction=if config.tracked {self.query_pipeline.cast_ray_and_get_normal(&self.bodies,&self.colliders,&Ray::new(shot_breech,barrel_delta/barrel_length),barrel_length,true,QueryFilter::default().groups(vehicle_collision_groups(false)).exclude_rigid_body(body_handle)).map(|(h,i)|(h,shot_breech+(barrel_delta/barrel_length)*i.time_of_impact,0.0,i.normal))}else{None};
         let hit=if obstruction.is_some(){obstruction}else if cannon {
             crate::ballistics::trace(origin,direction,body_handle,&self.bodies,&self.colliders,&self.query_pipeline)
         }else{
-            self.query_pipeline.cast_ray_and_get_normal(&self.bodies,&self.colliders,&Ray::new(origin,direction),small_arms_range,true,QueryFilter::default().exclude_rigid_body(body_handle))
+            self.query_pipeline.cast_ray_and_get_normal(&self.bodies,&self.colliders,&Ray::new(origin,direction),small_arms_range,true,QueryFilter::default().groups(vehicle_collision_groups(false)).exclude_rigid_body(body_handle))
                 .map(|(h,i)|(h,origin+direction*i.time_of_impact,0.0,i.normal))
         };
         let base_damage=if cannon {crate::vehicle_health::CANNON_DAMAGE} else {crate::vehicle_health::COAX_DAMAGE};
@@ -658,8 +717,9 @@ impl PhysicsWorld {
     pub fn apply_player_input_packet(
         &mut self,
         player_id: &str,
-        packet: InputPacket,
+        packet: impl std::borrow::Borrow<InputPacket>,
     ) {
+        let packet = packet.borrow();
         if self.is_defeated(player_id){return;}
         let mut recover = false;
         if let Some(v) = self.vehicles.get_mut(player_id) {
@@ -706,7 +766,7 @@ impl PhysicsWorld {
         self.query_pipeline.update(&self.colliders);
         if self.query_pipeline.intersection_with_shape(&self.bodies, &self.colliders,
             &(pose * Isometry::translation(cx, cy, cz)), &*shape,
-            QueryFilter::default().exclude_rigid_body(handle)).is_some() {
+            QueryFilter::default().groups(vehicle_collision_groups(false)).exclude_rigid_body(handle)).is_some() {
             return Err("Spawn is occupied. Wait for the area to clear and reset again.".into());
         }
         let body = self.bodies.get_mut(handle).unwrap();
@@ -762,7 +822,7 @@ impl PhysicsWorld {
 
     fn vehicle_pose_clear(&self,handle:RigidBodyHandle,config:crate::vehicle_state::VehicleConfig,pose:Isometry<Real>)->bool {
         let [hx,hy,hz]=config.chassis_half_extents;let [cx,cy,cz]=config.chassis_com_offset;
-        self.query_pipeline.intersection_with_shape(&self.bodies,&self.colliders,&(pose*Isometry::translation(cx,cy,cz)),&*SharedShape::cuboid(hx,hy,hz),QueryFilter::default().exclude_rigid_body(handle)).is_none()
+        self.query_pipeline.intersection_with_shape(&self.bodies,&self.colliders,&(pose*Isometry::translation(cx,cy,cz)),&*SharedShape::cuboid(hx,hy,hz),QueryFilter::default().groups(vehicle_collision_groups(false)).exclude_rigid_body(handle)).is_none()
     }
 
     fn vehicle_recovery_support(&self,config:crate::vehicle_state::VehicleConfig,pose:Isometry<Real>,road:f32)->bool {
@@ -772,7 +832,7 @@ impl PhysicsWorld {
         })
     }
 
-    /// A medic cannot revive a frozen body inside another vehicle/wall, below
+    /// A medic cannot revive a disabled vehicle inside another vehicle/wall, below
     /// the map or suspended high above support. No teleport or healing occurs
     /// on a failed validation.
     pub(crate) fn validate_revive_placement(&mut self,player_id:&str)->Result<(),String>{
@@ -804,7 +864,7 @@ impl PhysicsWorld {
             format!("Unknown vehicle id '{vehicle_id}'")
         })?;
         let [hx, hy, hz] = config.chassis_half_extents;
-        let [_cx, cy, _cz] = config.chassis_com_offset;
+
 
         let (spawn_x, spawn_z, spawn_yaw, road_surface_y) = {
             let map = self.active_map
@@ -830,14 +890,7 @@ impl PhysicsWorld {
             let spawn = spawns
                 .iter()
                 .find(|spawn| {
-                    let candidate_x =
-                        spawn.chunk[0] as f32 * map.cell[0]
-                        + spawn.local[0];
-
-                    let candidate_z =
-                        spawn.chunk[1] as f32 * map.cell[1]
-                        + spawn.local[1];
-
+                    let [candidate_x,candidate_z] = spawn.world_xz(map.cell);
                     self.vehicles.values().all(|vehicle| {
                         self.bodies
                             .get(vehicle.body)
@@ -860,14 +913,7 @@ impl PhysicsWorld {
                     )
                 })?;
 
-            let spawn_x =
-                spawn.chunk[0] as f32 * map.cell[0]
-                + spawn.local[0];
-
-            let spawn_z =
-                spawn.chunk[1] as f32 * map.cell[1]
-                + spawn.local[1];
-
+            let [spawn_x,spawn_z] = spawn.world_xz(map.cell);
             (
                 spawn_x,
                 spawn_z,
@@ -880,17 +926,7 @@ impl PhysicsWorld {
         // wheel_y locates the mount below the body origin. Subtract it exactly
         // once when solving body height; omitting it starts the springs bottomed
         // out and launches the chassis toward the actual equilibrium height.
-        let suspension_spawn_y = config.nominal_chassis_y(road_surface_y);
-        // The translated collider bottom is body_y + cy - hy. Keep it clear of
-        // the road at creation without adding a second suspension/visual offset.
-        let minimum_chassis_y =
-            road_surface_y
-            + hy
-            - cy
-            + 0.05;
-
-        let spawn_y =
-            suspension_spawn_y.max(minimum_chassis_y);
+        let spawn_y = config.spawn_height(road_surface_y);
 
         self.spawn_poses.insert(id.to_string(), (Isometry::new(vector![spawn_x, spawn_y, spawn_z], vector![0.0, spawn_yaw, 0.0]), road_surface_y));
         // Rigid body
@@ -908,10 +944,7 @@ impl PhysicsWorld {
 
         let collider = ColliderBuilder::cuboid(hx, hy, hz)
             .translation(vector![cx, cy, cz])
-            .collision_groups(InteractionGroups::new(
-                GROUP_CHASSIS,
-                GROUP_GROUND | GROUP_CHASSIS,
-            ))
+            .collision_groups(vehicle_collision_groups(false))
             .active_events(ActiveEvents::empty())
             // The body above owns mass/COM/inertia. A second density-derived
             // mass here would raise the COM again and double the vehicle mass.
@@ -1011,7 +1044,7 @@ impl PhysicsWorld {
         self.query_pipeline.update(&self.colliders);
         if self.query_pipeline.intersection_with_shape(
             &self.bodies, &self.colliders, &collider_pose, &*shape,
-            QueryFilter::default().exclude_rigid_body(handle),
+            QueryFilter::default().groups(vehicle_collision_groups(false)).exclude_rigid_body(handle),
         ).is_some() {
             return Err("Not enough room for this vehicle. Move to an open area and try again.".to_string());
         }
@@ -1320,23 +1353,44 @@ impl PhysicsWorld {
         // Collision normal impulses are Rapier's results, after integration.
         // Inspect only each vehicle's contacts; never scan all city colliders.
         let mut impact_damage = Vec::new();
-        for (victim_id, vehicle) in &mut self.vehicles {
-            if self.vehicle_health.get(victim_id).is_some_and(|h|h.defeated){continue;}
-            let Some(body) = self.bodies.get(vehicle.body) else { continue; };
+        for (handle, victim_id) in &self.body_to_player {
+            let Some(health) = self.vehicle_health.get_mut(victim_id) else {continue};
+            if health.defeated {continue;}
+            health.friendly_shove_s = (health.friendly_shove_s-dt).max(0.0);
+            let Some(body) = self.bodies.get(*handle) else {continue};
+            let Some(target) = self.vehicles.get(victim_id) else {continue};
             let mut impact_impulse = 0.0_f32;
             let mut impact_source = None;
             let mut impact_direction = Vector::zeros();
             for collider in body.colliders() {
                 for pair in self.narrow_phase.contact_pairs_with(*collider) {
                     let impulse = pair.total_impulse_magnitude();
+                    let other = if pair.collider1 == *collider { pair.collider2 } else { pair.collider1 };
+                    let other_body = self.colliders.get(other).and_then(|collider| collider.parent());
+                    // A genuine incoming ally shove also softens an immediate wall
+                    // impact. Mere side-by-side contact cannot grant protection.
+                    if impulse > body.mass()*3.5 {
+                        if let Some((id,(pos,velocity))) = other_body.and_then(|h| self.body_to_player.get(&h).zip(impact_motion.get(&h))) {
+                            let incoming = body.translation()-pos;
+                            if self.vehicles.get(id).is_some_and(|v|v.team.eq_ignore_ascii_case(&target.team)) &&
+                               velocity.dot(&incoming) > incoming.norm().max(0.1) {
+                                health.friendly_shove_s = FRIENDLY_SHOVE_WINDOW_S;
+                            }
+                        }
+                    }
                     if impulse > impact_impulse {
                         impact_impulse = impulse;
-                        let other = if pair.collider1 == *collider { pair.collider2 } else { pair.collider1 };
-                        impact_source = self.colliders.get(other).and_then(|collider| collider.parent());
+                        impact_source = other_body;
                         impact_direction = pair.manifolds.first().map(|m|if pair.collider1==*collider {m.data.normal}else{-m.data.normal}).unwrap_or(Vector::zeros());
                     }
                 }
             }
+            let contact_player = impact_source.and_then(|h|self.body_to_player.get(&h));
+            let friendly = contact_player.and_then(|id|self.vehicles.get(id))
+                .is_some_and(|v|v.team.eq_ignore_ascii_case(&target.team));
+            let softened = friendly || (contact_player.is_none() && health.friendly_shove_s > 0.0);
+            let scale = if softened { FRIENDLY_CRASH_DAMAGE_FACTOR } else { 1.0 };
+            let vehicle = self.vehicles.get_mut(victim_id).unwrap();
             // Only an intact frontal guard braces impact wear. Its HP pool is
             // spent below; a second impact after a break receives normal wear.
             let mut forward=body.rotation()*Vector::z();forward.y=0.0;
@@ -1347,10 +1401,10 @@ impl PhysicsWorld {
             let delta_v=impact_impulse/body.mass().max(1.0);
             let guarded_wear=frontal_shield&&self.guard_boosts.get(victim_id).is_some_and(|g|g.mobility_active());
             let dive=self.guard_boosts.get(victim_id).is_some_and(|g|g.dive_remaining>0.0);
-            let damage = if dive {0.0} else {vehicle.powertrain.impact(if guarded_wear {crate::guard_boost::guarded_impact_delta_v(delta_v)}else{delta_v}, vehicle.config.resources)};
+            let damage = if dive {0.0} else {vehicle.powertrain.impact(if guarded_wear {crate::guard_boost::guarded_impact_delta_v(delta_v)}else{delta_v}, vehicle.config.resources, scale)};
             if frontal_shield {self.guard_impact_directions.insert(victim_id.clone(),impact_direction);}
             if damage > 0.0 {
-                let attacker=impact_source.and_then(|source|{
+                let attacker=impact_source.filter(|_|!friendly).and_then(|source|{
                     let (source_pos,source_velocity)=impact_motion.get(&source)?;
                     let (victim_pos,_)=impact_motion.get(&vehicle.body)?;
                     let toward=victim_pos-source_pos;
@@ -1531,6 +1585,63 @@ mod tests {
         assert!((world.vehicles["attacker"].powertrain.ultimate_fraction-dealt).abs()<1.0e-5);
         assert_eq!(world.vehicles["target"].powertrain.ultimate_fraction,0.0);
         assert_ne!(attacker,target);
+    }
+
+    #[test]
+    fn friendly_contact_keeps_the_push_and_scales_crash_wear_on_both_cars() {
+        let crash = |team: &str, target_hp: f32| {
+            let mut w=flat_world();
+            let a=w.spawn_vehicle_for_player("a".into(),[0.0;3],"brz","red").unwrap();
+            let y=w.bodies[a].translation().y;
+            w.bodies[a].set_translation(vector![0.0,y,-12.0],true);
+            let b=w.spawn_vehicle_for_player("b".into(),[0.0;3],"brz","red").unwrap();
+            w.vehicles.get_mut("b").unwrap().team=team.into();
+            for _ in 0..120 { w.step(SIMULATION_DT); }
+            for h in w.vehicle_health.values_mut(){h.spawn_protection_s=0.0;}
+            w.vehicle_health.get_mut("b").unwrap().hp=target_hp;
+            w.bodies[a].set_linvel(vector![0.0,0.0,27.0],true);
+            for _ in 0..100 {
+                w.step(SIMULATION_DT);
+                if w.vehicle_health["b"].hp<target_hp {break;}
+            }
+            let wear=[1.0-w.vehicles["a"].powertrain.condition,1.0-w.vehicles["b"].powertrain.condition];
+            (w.bodies[b].linvel().z, target_hp-w.vehicle_health["b"].hp,
+             wear,w.vehicle_health["a"].stats.damage_dealt,w.vehicle_health["a"].kills)
+        };
+        let enemy=crash("blue",500.0);
+        let ally=crash("red",500.0);
+        assert!(enemy.0>1.0 && enemy.1>1.0 && enemy.3>0.0);
+        assert!((ally.0-enemy.0).abs()<0.01,"impact impulse must be preserved");
+        assert!((ally.1-enemy.1*FRIENDLY_CRASH_DAMAGE_FACTOR).abs()<0.05);
+        for i in 0..2 {assert!((ally.2[i]-enemy.2[i]*FRIENDLY_CRASH_DAMAGE_FACTOR).abs()<0.001);}
+        assert_eq!(ally.3,0.0);
+        let low=crash("red",1.0);
+        assert_eq!(low.1,1.0);assert_eq!(low.4,0);
+    }
+
+    #[test]
+    fn only_recent_friendly_shoves_reduce_wall_damage() {
+        fn hit_wall(shove_remaining: f32) -> f32 {
+            let mut w=flat_world();
+            let h=w.spawn_vehicle_for_player("driver".into(),[0.0;3],"brz","red").unwrap();
+            for _ in 0..120 {w.step(SIMULATION_DT);}
+            let p=*w.bodies[h].translation();
+            w.colliders.insert(ColliderBuilder::cuboid(8.0,4.0,0.2)
+                .translation(vector![p.x,2.0,p.z+4.0]).friction(0.0).build());
+            let health=w.vehicle_health.get_mut("driver").unwrap();
+            health.spawn_protection_s=0.0;health.friendly_shove_s=shove_remaining;
+            let start=health.hp;
+            w.bodies[h].set_linvel(vector![0.0,0.0,24.0],true);
+            for _ in 0..60 {
+                w.step(SIMULATION_DT);
+                if w.vehicle_health["driver"].hp<start {break;}
+            }
+            start-w.vehicle_health["driver"].hp
+        }
+        let ordinary=hit_wall(0.0);
+        assert!(ordinary>10.0);
+        assert!((hit_wall(FRIENDLY_SHOVE_WINDOW_S)-ordinary*FRIENDLY_CRASH_DAMAGE_FACTOR).abs()<0.2);
+        assert!((hit_wall(0.01)-ordinary).abs()<0.2);
     }
 
     #[test]

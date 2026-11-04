@@ -14,13 +14,21 @@ import {isMechanicPlayer,nearestReviveTarget,requestNearestRevive,REVIVE_COOLDOW
 import './reviveAction.css';
 
 export function ReviveAction(){
- const snapshot=useNetworkStore(state=>state.snapshot),playerId=useNetworkStore(state=>state.playerId);
  const view=useSocialStore(state=>state.view);
- const request=useReviveRequestStore(),requestKey=`${view?.profile.id??''}:${playerId}:${snapshot?.entities.find(entity=>entity.id===playerId)?.room_id??''}`,busy=request.busy&&request.key===requestKey;
+ const eligible=useNetworkStore(state=>isMechanicPlayer(state,view));
  const visible=useUIStore(state=>state.screen==='sandbox'&&state.overlay===null&&!state.isModeLoading);
+ return visible && eligible ? <MechanicReviveSwitch profile={view?.profile.id??''}/> : null;
+}
+function MechanicReviveSwitch({profile}:{profile:string}){
+ const request=useReviveRequestStore();
+ const requestKey=useNetworkStore(state=>`${profile}:${state.playerId}:${state.getMe()?.room_id??''}`);
+ const target=useNetworkStore(state=>nearestReviveTarget(state.snapshot,state.playerId)?.id??null);
+ const cooldown=useNetworkStore(state=>{
+  const value=state.getMe()?.health?.revive_cooldown_s;
+  return value===undefined?undefined:Math.ceil(value*10)/10;
+ });
+ const busy=request.busy&&request.key===requestKey;
  const key=usePreferencesStore(state=>state.bindings.revive);
- if(!visible||!isMechanicPlayer(useNetworkStore.getState(),view))return null;
- const me=snapshot?.entities.find(entity=>entity.id===playerId),target=nearestReviveTarget(snapshot,playerId),cooldown=me?.health?.revive_cooldown_s;
  const ready=typeof cooldown==='number'&&Number.isFinite(cooldown)&&cooldown===0;
  const status=busy?'REQUESTING':cooldown===undefined?'SERVER UPDATE REQUIRED':!canDrive()?'DISABLED':!ready?'COOLDOWN':target?'RECOVER ALLY':'MOVE NEAR ALLY';
  return <button type="button" className="revive-action" aria-label="Revive nearby teammate" disabled={busy||!canDrive()||!ready||!target} data-ready={ready&&!!target} title={`Mechanic recovery · ${combatKeyLabel(key)} / LB · 8m · stop near a disabled teammate · ${status}`} onClick={()=>void requestNearestRevive()}>

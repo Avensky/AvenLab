@@ -422,14 +422,14 @@ impl Powertrain {
     // Rapier collision impulse / mass is a normal delta-v. Threshold removes
     // standing load and gentle scrapes; cooldown avoids charging one impact
     // repeatedly across its contact solver's substeps.
-    pub fn impact(&mut self, delta_v: f32, config: ResourceConfig) -> f32 {
+    pub fn impact(&mut self, delta_v: f32, config: ResourceConfig, damage_scale: f32) -> f32 {
         if !delta_v.is_finite() || delta_v <= 3.5 || self.impact_cooldown_s > 0.0 {
             return 0.0;
         }
         // HP damage uses the accepted impact severity, independently of how
         // much mechanical condition was left before this collision.
         let damage = ((delta_v - 3.5).powi(2) * 0.0025 * config.impact_damage_multiplier)
-            .clamp(0.0, 1.0);
+            .clamp(0.0, 1.0) * damage_scale;
         self.condition = (self.condition - damage).clamp(0.0, 1.0);
         self.impact_cooldown_s = 0.25;
         damage
@@ -638,15 +638,15 @@ mod tests {
     #[test]
     fn impact_damage_ignores_standing_support_and_is_not_counted_per_contact_substep() {
         let mut state = Powertrain::new(ROAD_RESOURCES);
-        state.impact(0.08, ROAD_RESOURCES);
+        state.impact(0.08, ROAD_RESOURCES, 1.0);
         assert_eq!(state.condition, 1.0);
-        state.impact(10.0, ROAD_RESOURCES);
+        state.impact(10.0, ROAD_RESOURCES, 1.0);
         let condition = state.condition;
         assert!(condition < 1.0);
-        state.impact(10.0, ROAD_RESOURCES);
+        state.impact(10.0, ROAD_RESOURCES, 1.0);
         assert_eq!(state.condition, condition);
         run(&mut state, demand(0.0, 0.0), 0.3, 120);
-        state.impact(10.0, ROAD_RESOURCES);
+        state.impact(10.0, ROAD_RESOURCES, 1.0);
         assert!(state.condition < condition);
     }
     #[test]
@@ -667,7 +667,7 @@ mod tests {
     #[test]
     fn ultimate_only_accepts_finite_positive_authoritative_damage_and_service_cannot_refill_it() {
         let mut state = Powertrain::new(ROAD_RESOURCES);
-        state.impact(15.0, ROAD_RESOURCES);assert_eq!(state.ultimate_fraction, 0.0);
+        state.impact(15.0, ROAD_RESOURCES, 1.0);assert_eq!(state.ultimate_fraction, 0.0);
         for value in [f32::NAN, f32::INFINITY, -1.0, 0.0] { state.credit_damage_dealt(value); }
         assert_eq!(state.ultimate_fraction, 0.0);
         state.credit_damage_dealt(0.2);state.service(ROAD_RESOURCES);assert_eq!(state.ultimate_fraction,0.2);

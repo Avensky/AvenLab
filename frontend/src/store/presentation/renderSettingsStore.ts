@@ -18,8 +18,6 @@ export type RenderSettings = {
   dpr: number;
   shadows: boolean;
   reflections: boolean;
-  stars: boolean;
-  fog: boolean;
   vehicleLights: boolean;
   hud: boolean;
   overlay: boolean;
@@ -39,8 +37,6 @@ export const BASELINE_SETTINGS: RenderSettings = {
   dpr: 1,
   shadows: false,
   reflections: false,
-  stars: false,
-  fog: false,
   vehicleLights: false,
   hud: false,
   overlay: false,
@@ -48,7 +44,22 @@ export const BASELINE_SETTINGS: RenderSettings = {
   opaqueCityMaterials: false,
 };
 
+const detailKeys = ["cityQuality","cityViewDistance","environmentMode","dpr","shadows","reflections","vehicleLights"] as const;
+type DetailSettings = Pick<RenderSettings, typeof detailKeys[number]>;
+function detailSettings(s: RenderSettings): DetailSettings {
+  const {cityQuality,cityViewDistance,environmentMode,dpr,shadows,reflections,vehicleLights}=s;
+  return {cityQuality,cityViewDistance,environmentMode,dpr,shadows,reflections,vehicleLights};
+}
+const LOW_DETAIL: DetailSettings = {
+  cityQuality:"fast",cityViewDistance:250,environmentMode:"glb",dpr:0.75,
+  shadows:false,reflections:false,vehicleLights:false,
+};
+
 type State = RenderSettings & {
+  lowDetail: boolean;
+  savedDetail: DetailSettings | null;
+  beforeBenchmark: (Pick<RenderSettings,"hud"|"overlay"|"autoVehicleAlignment"|"opaqueCityMaterials"> & {mode:RenderMode}) | null;
+  restoreFullDetail: () => void;
   update: (settings: Partial<RenderSettings>) => void;
   setVehicleMode: (id: string, mode: VisualMode) => void;
   setChunkMode: (key: string, mode: VisualMode) => void;
@@ -59,9 +70,24 @@ type State = RenderSettings & {
 };
 export const useRenderSettingsStore = create<State>()(
   persist(
-    (set) => ({
+    (set,get) => ({
       ...BASELINE_SETTINGS,
-      update: (settings) => set(settings),
+      lowDetail:false, savedDetail:null, beforeBenchmark:null,
+      restoreFullDetail: () => {
+        const {savedDetail,beforeBenchmark}=get();
+        if(!savedDetail)return;
+        if(beforeBenchmark){
+          const {mode,...options}=beforeBenchmark;
+          useWorldStore.getState().setMode(mode);
+          set({...options,...savedDetail,lowDetail:false,savedDetail:null,beforeBenchmark:null});
+        }else set({...savedDetail,lowDetail:false,savedDetail:null});
+      },
+      update: (patch) => {
+        const saved=get().savedDetail;
+        // Editing a quality option explicitly resumes the user's full profile.
+        if(saved && detailKeys.some(key=>key in patch))get().restoreFullDetail();
+        set(patch);
+      },
       setVehicleMode: (id, mode) =>
         set((s) => ({
           vehicleOverrides: { ...s.vehicleOverrides, [id]: mode },
@@ -81,18 +107,8 @@ export const useRenderSettingsStore = create<State>()(
         useWorldStore.getState().setMode("glb");
         useWorldStore.getState().setDebugMask(0);
         set({
-          cityQuality: "fast",
-          cityViewDistance: "auto",
-          environmentMode: "glb",
-          chunkOverrides: {},
-          assetGlbs: {},
-          vehicleOverrides: {},
-          dpr: 1,
-          shadows: false,
-          reflections: false,
-          stars: false,
-          fog: true,
-          vehicleLights: false,
+          ...LOW_DETAIL, dpr:Math.min(LOW_DETAIL.dpr,get().dpr), lowDetail:true, savedDetail:get().savedDetail??detailSettings(get()),
+          chunkOverrides:{},assetGlbs:{},vehicleOverrides:{},
         });
       },
       startSandbox: () => {
@@ -102,10 +118,13 @@ export const useRenderSettingsStore = create<State>()(
         set({ vehicleOverrides: {}, chunkOverrides: {}, assetGlbs: {} });
       },
       baseline: () => {
+        const s=get();
+        const beforeBenchmark=s.beforeBenchmark??{mode:useWorldStore.getState().mode,hud:s.hud,overlay:s.overlay,
+          autoVehicleAlignment:s.autoVehicleAlignment,opaqueCityMaterials:s.opaqueCityMaterials};
         useWorldStore.getState().setMode("collider");
         useWorldStore.getState().setDebugMask(0);
         // A graphics comparison must not overwrite the driver's smoothing choice.
-        set({ ...BASELINE_SETTINGS, overlay: true });
+        set({ ...BASELINE_SETTINGS, overlay:true, lowDetail:false, savedDetail:s.savedDetail??detailSettings(s), beforeBenchmark });
       },
     }),
     {
@@ -118,21 +137,22 @@ export const useRenderSettingsStore = create<State>()(
         dpr: state.dpr,
         shadows: state.shadows,
         reflections: state.reflections,
-        stars: state.stars,
-        fog: state.fog,
         vehicleLights: state.vehicleLights,
-        hud: state.hud,
-        overlay: state.overlay,
-        autoVehicleAlignment: state.autoVehicleAlignment,
-        opaqueCityMaterials: state.opaqueCityMaterials,
+        hud: state.beforeBenchmark?.hud??state.hud,
+        overlay: state.beforeBenchmark?.overlay??state.overlay,
+        autoVehicleAlignment: state.beforeBenchmark?.autoVehicleAlignment??state.autoVehicleAlignment,
+        opaqueCityMaterials: state.beforeBenchmark?.opaqueCityMaterials??state.opaqueCityMaterials,
         environmentMode: state.environmentMode,
+        // Store the original profile in the existing, validated v1 fields.
+        ...state.savedDetail, lowDetail:state.lowDetail,
       }),
       merge: (persisted, current) => {
         const data =
           persisted && typeof persisted === "object"
-            ? (persisted as Partial<RenderSettings>)
+            ? (persisted as Partial<RenderSettings> & {lowDetail?:boolean})
             : {};
-        const merged = { ...current };
+        const merged: State = { ...current, ...detailSettings(BASELINE_SETTINGS),
+          lowDetail:false, savedDetail:null, beforeBenchmark:null };
         if (
           data.cityQuality &&
           ["fast", "balanced", "original"].includes(data.cityQuality)
@@ -143,8 +163,6 @@ export const useRenderSettingsStore = create<State>()(
         for (const key of [
           "shadows",
           "reflections",
-          "stars",
-          "fog",
           "vehicleLights",
           "hud",
           "overlay",
@@ -162,7 +180,7 @@ export const useRenderSettingsStore = create<State>()(
           )
         )
           merged.environmentMode = data.environmentMode;
-        return merged;
+        return data.lowDetail===true ? {...merged,...LOW_DETAIL,dpr:Math.min(LOW_DETAIL.dpr,merged.dpr),lowDetail:true,savedDetail:detailSettings(merged)} : merged;
       },
     },
   ),

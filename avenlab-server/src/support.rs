@@ -205,7 +205,7 @@ impl PhysicsWorld {
         if distance < 0.001 { return true; }
         self.query_pipeline.cast_ray(&self.bodies, &self.colliders,
             &Ray::new(Point::new(from[0],from[1],from[2]), delta/distance), distance, true,
-            QueryFilter::default().exclude_rigid_body(source.body).exclude_sensors())
+            QueryFilter::default().groups(crate::physics::vehicle_collision_groups(false)).exclude_rigid_body(source.body).exclude_sensors())
             .is_none_or(|(collider,_)| self.colliders[collider].parent() == Some(victim.body))
     }
     pub(crate) fn health_pack_line_of_sight(&self, actor: &str, target: &str) -> bool {

@@ -115,6 +115,7 @@ export function DriveAssists({ compact = false, instrument = false }: { compact?
           useInputStore.getState().toggleVehicleFlag(VehicleFlags.ABS)
         }
       >
+        {instrument && <i className="assist-bulb" aria-hidden="true" />}
         ABS<span>{abs ? "ON" : "OFF"}</span>
       </button>
       <button
@@ -159,6 +160,7 @@ export function DriveAssists({ compact = false, instrument = false }: { compact?
         }}
         onClick={activateTrac}
       >
+        {instrument && <i className="assist-bulb" aria-hidden="true" />}
         <span className="assist-trac-content">
           <img src="/images/traction-control.svg" alt="" />
           <span>
@@ -178,6 +180,7 @@ export function DriveAssists({ compact = false, instrument = false }: { compact?
           requestAssist(confirmed.assist === 1 ? (tcs ? 0 : 2) : 1, tcs)
         }
       >
+        {instrument && <i className="assist-bulb" aria-hidden="true" />}
         VSC<span>SPORT</span>
       </button>
       {extended && (

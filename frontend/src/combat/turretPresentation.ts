@@ -36,7 +36,10 @@ export function placeRoofTurret(mount: Group, pivot: Group, gun: Group, pose: Mo
   mount.position.fromArray(pose.position);
   mount.quaternion.fromArray(pose.rotation);
   pivot.position.set(combat.x,combat.y,combat.z);
-  worldAim(direction,combat.yaw,combat.pitch).applyQuaternion(inverse.copy(mount.quaternion).invert());
+  if(combat.hull_locked && combat.lock_yaw!==undefined){
+    const pitch=combat.lock_pitch??0;
+    direction.set(Math.sin(combat.lock_yaw)*Math.cos(pitch),Math.sin(pitch),Math.cos(combat.lock_yaw)*Math.cos(pitch));
+  }else worldAim(direction,combat.yaw,combat.pitch).applyQuaternion(inverse.copy(mount.quaternion).invert());
   pivot.rotation.y=Math.atan2(-direction.x,-direction.z);
   gun.rotation.x=Math.atan2(direction.y, Math.hypot(direction.x,direction.z));
 }

@@ -43,6 +43,13 @@ pub struct MapSpawnPoint {
     pub surface_y: Option<f32>,
 }
 
+impl MapSpawnPoint {
+    pub fn world_xz(&self, cell: [f32; 2]) -> [f32; 2] {
+        [self.chunk[0] as f32 * cell[0] + self.local[0],
+         self.chunk[1] as f32 * cell[1] + self.local[1]]
+    }
+}
+
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct TeamSpawnPoints {
     #[serde(default)]
@@ -90,8 +97,18 @@ pub struct DebugAabbBox {
     pub visual: String,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum WorldSky {
+    #[default]
+    StarryNight,
+    FoggyDay,
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct BlockColliderFile {
+    #[serde(default)]
+    pub sky: WorldSky,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub authored_layout: Option<AuthoredLayout>,
     pub schema_version: u32,
@@ -167,6 +184,7 @@ pub struct ChunkColliderSnapshot {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct MapSnapshot {
+    pub sky: WorldSky,
     pub team_spawns: TeamSpawnPoints,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub authored_layout: Option<AuthoredLayout>,
@@ -246,6 +264,7 @@ impl BlockColliderFile {
         ).collect();
         collider_chunks.sort_by_key(|chunk| (chunk.z, chunk.x));
         MapSnapshot {
+            sky: self.sky,
             team_spawns: self.team_spawns.clone(),
             authored_layout: self.authored_layout.clone(),
             collider_chunks,

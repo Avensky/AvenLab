@@ -1,15 +1,40 @@
+import {useMissionRadioStore} from "../../store/missions";
+import {useNavigationStore} from "../../store/world";
+import {useNetworkStore} from "../../store/session/networkStore";
+import {ctfObjectiveLine,getCtfCaptureObjective} from "../stats/ctfObjective";
 import { TabbedMenu } from "../../components/menus/TabbedMenu";
 import { useUIStore } from "../../store/menus/uiStore";
 
+function LiveMissionLog() {
+  const objective=useNetworkStore(ctfObjectiveLine);
+  const guidance=useNetworkStore(s=>{
+    const match=s.snapshot?.match_state;
+    const returnTrip=match&&getCtfCaptureObjective(match,s.getMe()??undefined);
+    if(!returnTrip)return null;
+    const distance=Math.ceil(returnTrip.distance);
+    return returnTrip.state==='blocked'?`Your flag is away. Recover it before scoring at the home ring (${distance} m).`:`Your home-base ring is ${distance} m away.`;
+  });
+  const mission=useNavigationStore(s=>s.mission);
+  const history=useMissionRadioStore(s=>s.history);
+  return <section className="mission-log-content" aria-label="Current mission details">
+    <h2>{objective??mission?.title??"Free drive"}</h2>
+    <p>{objective ? "Take the enemy flag to your home-base ring. Your own flag must be home to score. Drive over your dropped flag to return it. A dropped flag returns automatically after ten seconds." : mission?.objective??"No active mission."}</p>
+    {guidance&&<p>{guidance}</p>}
+    <h3>Radio history</h3>
+    {history.length ? <ol>{history.map(item=><li key={item.id}><strong>{item.title}</strong><p>{item.message}</p></li>)}</ol> : <p>No bulletins yet.</p>}
+  </section>;
+}
 export function MissionsMenu() {
   const back = useUIStore((s) => s.backToParentMenu);
+  const target=useNavigationStore(s=>s.mission?.target);
   const inGame = useUIStore((s) => s.overlay !== null);
   return (
     <TabbedMenu
-      title="Mission board"
+      title={inGame?"Mission log":"Mission board"}
       subtitle="Win the objective. Bring enough to get home."
       onBack={back}
       tabs={[
+        ...(inGame ? [{id:"log",label:"Log",rows:target?[{id:"track",label:"Track objective",adjustable:false,action:()=>useNavigationStore.getState().setDestination(target)}]:[],content:<LiveMissionLog/>}] : []),
         {
           id: "overview",
           label: "Overview",

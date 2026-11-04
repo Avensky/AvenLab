@@ -3,6 +3,7 @@ import type { UITheme } from "./catalog";
 
 /** Scene emission colors follow the saved UI theme, including light palettes
  * whose dark text accents would otherwise make poor luminous fixtures. */
+export const SELECTION_CRIMSON = "#af5360";
 export const GARAGE_LIGHT_COLORS: Record<UITheme, string> = {
   navy: "#4484ff",
   "hacker-blue": "#30d5ff",
@@ -43,7 +44,7 @@ export function applyGarageLighting(
   // Match perceived fixture brightness without desaturating the selected hue.
   const luminance = color.r * 0.2126 + color.g * 0.7152 + color.b * 0.0722;
   const redFixture = (accentOverride ?? GARAGE_LIGHT_COLORS[theme]) === GARAGE_LIGHT_COLORS.scarlet;
-  const gain = contrast ? 0.3 : Math.min(redFixture ? 1.5 : 4, 0.72 / Math.max(0.01, luminance));
+  const gain = contrast ? 0.3 : accentOverride === SELECTION_CRIMSON ? 0.95 : Math.min(redFixture ? 1.5 : 4, 0.72 / Math.max(0.01, luminance));
   const visited = new Set<MeshStandardMaterial>();
   root.traverse((node) => {
     if (!(node instanceof Mesh)) return;

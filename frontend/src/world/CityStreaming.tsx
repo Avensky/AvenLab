@@ -7,7 +7,7 @@ import {
   useState,
 } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { Environment, Lightformer, useGLTF } from "@react-three/drei";
+import { useGLTF } from "@react-three/drei";
 import { Frustum, Matrix4, Vector3, type Object3D } from "three";
 import type { MapSnapshot, VisualAsset } from "../store/world/worldStore";
 import { useNetworkStore } from "../store/session/networkStore";
@@ -45,27 +45,6 @@ const cityLoader = (loader: {
 }) => {
   queueMicrotask(() => loader.dracoLoader?.setWorkerLimit(2));
 };
-export function CityReflectionEnvironment() {
-  // Local generated night highlights instead of a network HDRI on first entry.
-  return (
-    <Environment resolution={64} frames={1}>
-      <Lightformer
-        intensity={0.75}
-        color="#8299c2"
-        position={[0, 8, 0]}
-        rotation={[Math.PI / 2, 0, 0]}
-        scale={[12, 12, 1]}
-      />
-      <Lightformer
-        intensity={0.4}
-        color="#c3d1e8"
-        position={[6, 3, -4]}
-        scale={[4, 6, 1]}
-      />
-    </Environment>
-  );
-}
-
 export function CityStreaming({
   map,
   settings,
@@ -276,7 +255,7 @@ export function CityStreaming({
         .filter((plan) => plan.placements.length)
         .map((plan) => (
           <AssetBoundary
-            key={`${plan.visual.id}/${plan.visual.asset}/${settings.cityQuality}/${settings.shadows}/${settings.reflections}/${map.chunks.length}/${plan.blockLod}`}
+            key={`${plan.visual.id}/${plan.visual.asset}/${settings.cityQuality}/${settings.shadows}/${map.chunks.length}/${plan.blockLod}`}
             fallback={null}
           >
             <Suspense fallback={null}>

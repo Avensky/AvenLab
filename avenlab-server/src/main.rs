@@ -15,6 +15,7 @@ mod support;
 mod aven_tire;
 mod cockpit;
 mod net;
+mod packed_input;
 mod physics;
 mod powertrain;
 mod spawn;

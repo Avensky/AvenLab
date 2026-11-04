@@ -7,6 +7,7 @@ use std::collections::{HashMap, HashSet};
 pub const ROUND_DURATION_S: f32 = 15.0 * 60.0;
 pub const CAPTURES_TO_WIN: u32 = 3;
 pub const FLAG_RADIUS: f32 = 3.0;
+pub const FLAG_RECOVERY_SECONDS: f32 = 10.0;
 pub const CARRIER_SPEED_FACTOR: f32 = 0.8;
 pub const CARRIER_DAMAGE_FACTOR: f32 = 1.2;
 /// A short event tail survives snapshot coalescing without unbounded payloads.
@@ -35,7 +36,7 @@ pub struct CtfFlag {
 impl CtfFlag {
     fn home(team:Team,base:[f32;3])->Self {Self{team,base,position:base,status:FlagStatus::Home,carrier:None,return_remaining_s:0.0}}
     fn return_home(&mut self){self.position=self.base;self.status=FlagStatus::Home;self.carrier=None;self.return_remaining_s=0.0;}
-    fn drop(&mut self){self.status=FlagStatus::Dropped;self.carrier=None;self.return_remaining_s=0.0;}
+    fn drop(&mut self){self.status=FlagStatus::Dropped;self.carrier=None;self.return_remaining_s=FLAG_RECOVERY_SECONDS;}
 }
 #[derive(Debug, Clone)]
 pub struct CtfPlayer {pub player_id:String,pub team:Team,pub position:[f32;3],pub alive:bool,pub resetting:bool,pub grounded:bool,pub vehicle_id:Option<String>}
@@ -154,6 +155,7 @@ impl CtfRound {
             else if p.grounded{self.last_safe.insert(p.player_id.clone(),p.position);}
         }
         let mut dropped=Vec::new();
+        let already_dropped = self.flags.each_ref().map(|flag| flag.status == FlagStatus::Dropped);
         let mut released=[false;2];
         for (i,flag) in self.flags.iter_mut().enumerate(){
             if let Some(id)=flag.carrier.as_ref().filter(|id|dislodged.contains(*id)).cloned(){
@@ -163,8 +165,6 @@ impl CtfRound {
                 dropped.push((flag.team,id));
                 released[i]=true;
             }
-            // A dropped objective waits for physical contact. Returning a flag
-            // on an unattended timer would bypass the rescue/defend contest.
             if let Some(id)=flag.carrier.clone(){
                 if let Some(p)=ordered.iter().find(|p|p.player_id==id).filter(|_|!invalid.contains(&id)){
                     flag.position=p.position;
@@ -189,7 +189,9 @@ impl CtfRound {
                 if self.pickup_lock[flag_index].as_ref()==Some(&p.player_id)||invalid.contains(&p.player_id)||(p.team==flag.team&&flag.status!=FlagStatus::Dropped)||
                     (p.team!=flag.team&&self.flags.iter().any(|f|f.carrier.as_deref()==Some(&p.player_id))){return None;}
                 let previous=self.previous.get(&p.player_id).map(|p|p.position).unwrap_or(p.position);
-                contact_time(previous,p.position,flag.position).map(|time|(time,*p))
+                contact_time(previous,p.position,flag.position)
+                    .filter(|&time| !already_dropped[flag_index] || time*dt <= flag.return_remaining_s + 0.0001)
+                    .map(|time|(time,*p))
             }).collect();
             // Interpolate first entry during this simulation step. UUID is only
             // a deterministic tie-break for genuinely simultaneous contact.
@@ -205,6 +207,19 @@ impl CtfRound {
             }
             let team=flag.team;let kind=if player.team==team{CtfFlagEventKind::Returned}else{CtfFlagEventKind::PickedUp};
             self.record_flag_event(kind,team,Some(player.player_id.clone()));
+        }
+        // Give a swept contact at the deadline precedence. A new drop gets a
+        // full window, and an automatic return earns no player's return credit.
+        for (i, was_dropped) in already_dropped.into_iter().enumerate() {
+            let flag = &mut self.flags[i];
+            if !was_dropped || flag.status != FlagStatus::Dropped { continue; }
+            flag.return_remaining_s = (flag.return_remaining_s - dt).max(0.0);
+            if flag.return_remaining_s <= 0.0001 {
+                let team = flag.team;
+                flag.return_home();
+                self.pickup_lock[i] = None;
+                self.record_flag_event(CtfFlagEventKind::Returned, team, None);
+            }
         }
         if scored{for p in &ordered{
             let own=index(p.team);let enemy=1-own;
@@ -240,8 +255,46 @@ mod tests{
     }
     #[test]fn captures_three_then_completion_is_immutable(){let(mut r,mut p)=setup();p[1].position[2]=10.0;for _ in 0..3{move_to(&mut r,&mut p,0,30.0);assert_eq!(r.flags[1].carrier.as_deref(),Some("r"));move_to(&mut r,&mut p,0,0.0);}assert_eq!(r.phase,CtfPhase::Ended);assert_eq!(r.completion().unwrap().winner,Some(Team::Red));let end=r.elapsed_s;r.tick(0.1,&p);assert_eq!(r.elapsed_s,end);assert_eq!(r.scores.red,3);assert_eq!(r.completion().unwrap().objectives["r"].captures,3);}
     #[test]fn death_reset_model_change_and_teleport_drop_without_capture(){for cause in 0..4{let(mut r,mut p)=setup();p[1].position[2]=10.0;move_to(&mut r,&mut p,0,30.0);match cause{0=>p[0].alive=false,1=>p[0].resetting=true,2=>p[0].vehicle_id=Some("tank".into()),_=>p[0].position=[0.0,1.0,0.0]};r.tick(0.1,&p);assert_eq!(r.flags[1].status,FlagStatus::Dropped);assert_eq!(r.flags[1].position[0],30.0);assert_eq!(r.scores.red,0);}}
-    #[test]fn friendly_touch_returns_but_unattended_drop_waits(){let(mut r,mut p)=setup();p[1].position[2]=10.0;move_to(&mut r,&mut p,0,30.0);move_to(&mut r,&mut p,0,20.0);r.remove_player("r");assert_eq!(r.flags[1].status,FlagStatus::Dropped);p.remove(0);p[0].position=[20.0,1.0,5.0];r.tick(0.1,&p);p[0].position=[20.0,1.0,0.0];r.tick(0.1,&p);assert_eq!(r.flags[1].status,FlagStatus::Home);assert_eq!(r.objectives["b"].flag_returns,1);
-        p[0].position=[0.0,1.0,0.0];r.tick(0.1,&p);r.tick(0.1,&p);assert_eq!(r.flags[0].status,FlagStatus::Carried);r.remove_player("b");for _ in 0..301{r.tick(0.1,&[]);}assert_eq!(r.flags[0].status,FlagStatus::Dropped);assert_eq!(r.flags[0].return_remaining_s,0.0);}
+    #[test]fn friendly_touch_or_expiry_returns_a_dropped_flag(){let(mut r,mut p)=setup();p[1].position[2]=10.0;move_to(&mut r,&mut p,0,30.0);move_to(&mut r,&mut p,0,20.0);r.remove_player("r");assert_eq!(r.flags[1].status,FlagStatus::Dropped);p.remove(0);p[0].position=[20.0,1.0,5.0];r.tick(0.1,&p);p[0].position=[20.0,1.0,0.0];r.tick(0.1,&p);assert_eq!(r.flags[1].status,FlagStatus::Home);assert_eq!(r.objectives["b"].flag_returns,1);
+        p[0].position=[0.0,1.0,0.0];r.tick(0.1,&p);r.tick(0.1,&p);assert_eq!(r.flags[0].status,FlagStatus::Carried);r.remove_player("b");for _ in 0..99{r.tick(0.1,&[]);}assert_eq!(r.flags[0].status,FlagStatus::Dropped);r.tick(0.1,&[]);assert_eq!(r.flags[0].status,FlagStatus::Home);assert!(r.events.last().unwrap().player_id.is_none());assert_eq!(r.flags[0].return_remaining_s,0.0);}
+    #[test]
+    fn teammate_can_continue_the_run_but_a_defender_returns_the_flag_home() {
+        for (rescuer, expected) in [(Team::Red,FlagStatus::Carried),(Team::Blue,FlagStatus::Home)] {
+            let (mut round,mut players)=setup();
+            players[1].position[2]=10.0;
+            move_to(&mut round,&mut players,0,30.0);
+            move_to(&mut round,&mut players,0,20.0);
+            players[0].alive=false;
+            round.tick(0.1,&players);
+            assert_eq!(round.flags[1].return_remaining_s,FLAG_RECOVERY_SECONDS);
+            for _ in 0..99 {round.tick(0.1,&[]);}
+            round.tick(0.1,&[player("next",rescuer,20.0)]);
+            let flag=&round.flags[1];
+            assert_eq!(flag.status,expected);
+            assert_eq!(flag.return_remaining_s,0.0);
+            if rescuer==Team::Red {
+                assert_eq!(flag.carrier.as_deref(),Some("next"));
+            } else {
+                assert_eq!(flag.position,flag.base);
+                assert_eq!(round.objectives["next"].flag_returns,1);
+            }
+        }
+    }
+
+    #[test]
+    fn swept_pickup_after_the_deadline_cannot_steal_a_returned_flag() {
+        let (mut round,mut players)=setup();
+        round.flags[1].position=[15.0,1.0,0.0];
+        round.flags[1].drop();
+        players[0].position=[10.0,1.0,0.0];players[1].position[2]=10.0;
+        round.previous.clear();round.tick(0.1,&players);
+        round.flags[1].return_remaining_s=0.025;
+        players[0].position=[15.0,1.0,0.0]; // Reaches the pickup radius at t=0.04s.
+        round.tick(0.1,&players);
+        assert_eq!(round.flags[1].status,FlagStatus::Home);
+        assert!(round.events.last().unwrap().player_id.is_none());
+    }
+
     #[test]fn cannot_capture_with_own_flag_away(){let(mut r,mut p)=setup();move_to(&mut r,&mut p,0,30.0);move_to(&mut r,&mut p,1,0.0);move_to(&mut r,&mut p,0,0.0);assert_eq!(r.scores.red,0);assert_eq!(r.flags[1].carrier.as_deref(),Some("r"));}
     #[test]
     fn capture_requires_contact_with_own_base_not_the_enemy_base_or_its_approach(){
@@ -331,7 +384,7 @@ mod tests{
         let(mut round,mut players)=setup();players[1].position[2]=10.0;move_to(&mut round,&mut players,0,30.0);move_to(&mut round,&mut players,0,20.0);
         players[0].grounded=false;players[0].position=[18.0,-10.0,0.0];round.tick(0.1,&players);
         assert_eq!(round.flags[1].status,FlagStatus::Dropped);assert_eq!(round.flags[1].position,[20.0,1.0,0.0]);
-        for _ in 0..301{round.tick(0.1,&[]);}assert_eq!(round.flags[1].status,FlagStatus::Dropped);
+        for _ in 0..70{round.tick(0.1,&[]);}assert_eq!(round.flags[1].status,FlagStatus::Dropped);
         players[1].position=[23.001,1.0,0.0];round.tick(0.1,&players);assert_eq!(round.flags[1].status,FlagStatus::Dropped);
         players[1].position=[23.0,1.0,0.0];round.tick(0.1,&players);assert_eq!(round.flags[1].status,FlagStatus::Home);assert_eq!(round.objectives["b"].flag_returns,1);
     }

@@ -30,8 +30,12 @@ test('tank console uses authoritative gauges, gear slots, cooldowns and shared H
    await act(async()=>prefs.getState().setHudGroup('turret',false));assert.equal(document.querySelector('.drive-dock .turret-touch-controls'),null);assert(document.querySelector('.hud-shifter'));
    await act(async()=>{prefs.getState().setHudGroup('turret',true);prefs.getState().setHudGroup('shifter',false);});assert.equal(document.querySelector('.hud-shifter'),null);assert(document.querySelector('.drive-dock .turret-touch-controls'));
   });
-  await t.test('climate owns turret status in compact and full modes',async()=>{
-   for(const size of ['compact','full']){await act(async()=>root.render(h(ClimatePanel,{size})));assert.match(document.querySelector('.climate-panel .turret-instruments').textContent,/TURRET.*ELEV.*LOAD/);}
+  await t.test('full climate exposes turret instruments while compact fits the driving readouts',async()=>{
+   await act(async()=>root.render(h(ClimatePanel,{size:'compact',performanceReadout:true})));
+   assert.equal(document.querySelector('.climate-panel .turret-instruments'),null);
+   assert(document.querySelector('.climate-status-row .cabin-performance'));
+   await act(async()=>root.render(h(ClimatePanel,{size:'full'})));
+   assert.match(document.querySelector('.climate-panel .turret-instruments').textContent,/TURRET.*ELEV.*LOAD/);
   });
   await t.test('both weapon clocks reflect server cooldown while holstered',async()=>{
    assert.equal(cooldownProgress(1.5,3),.5);assert.equal(cooldownProgress(undefined,3),null);

@@ -74,7 +74,9 @@ export type MapSpawnPoint = {
   surface_y?: number;
 };
 
+export type WorldSkyPreset = "starry_night" | "foggy_day";
 export type MapSnapshot = {
+  sky?: WorldSkyPreset;
   team_spawns?: { red: MapSpawnPoint[]; blue: MapSpawnPoint[] };
   authored_layout?: WorldLayout;
   schema_version: number;

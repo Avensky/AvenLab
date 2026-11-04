@@ -1,5 +1,6 @@
 import {useUIStore} from "../../store/menus/uiStore";
 import {useSocialStore} from "../../store/social/socialStore";
+import {GARAGE_LIGHT_COLORS,SELECTION_CRIMSON} from "../../theme/garageLighting";
 import {garageTeamAccent} from "./garageTeamAccent";
 import { Suspense, useState } from "react";
 import { Group } from "three";
@@ -21,7 +22,11 @@ export function VehiclePreview({
 }: { heroLayout?: boolean; awaitingHero?: boolean } = {}) {
   const screen=useUIStore(s=>s.screen);
   const active=useSocialStore(s=>s.view?.alpha?.active);
+  const theme=usePreferencesStore(s=>s.theme);
   const teamAccent=garageTeamAccent(screen,active);
+  const staging=screen==="hero_select"||screen==="heroes"||screen==="queue";
+  const selectionAccent=staging && (teamAccent??GARAGE_LIGHT_COLORS[theme])===GARAGE_LIGHT_COLORS.scarlet
+    ? SELECTION_CRIMSON : teamAccent;
   const unselected = useAlphaStore((s) => s.previewHero === null);
   const vehicleId = useSelectionStore((s) => s.getSelectedVehicle().id);
   const reducedMotion = usePreferencesStore((s) => s.reducedMotion);
@@ -46,7 +51,7 @@ export function VehiclePreview({
   const targetY = 1.8;
   return (
     <>
-      <GarageEnvironment turntable={turntable} onPlatformReady={setPlatform} accentOverride={teamAccent} />
+      <GarageEnvironment turntable={turntable} onPlatformReady={setPlatform} accentOverride={selectionAccent} />
       <PerspectiveCamera
         makeDefault
         fov={fov}

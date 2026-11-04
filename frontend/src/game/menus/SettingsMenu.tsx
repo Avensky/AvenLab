@@ -45,10 +45,11 @@ const BINDING_LABELS: Record<BindingAction, string> = {
   secondaryFire:"Fire secondary weapon (hold)",
   nextWeapon:"Next secondary weapon",
   previousWeapon:"Previous secondary weapon",
-  scope: "Tank scope",
+  scope: "Turret scope",
   revive: "Mechanic revive nearby teammate",
   barrier: "Tank barrier / CX-30 dive shield",
   healthBars: "Cycle health bars",
+  headlights: "Headlights",
 };
 
 export function SettingsMenu() {
@@ -110,8 +111,6 @@ export function SettingsMenu() {
     key:
       | "shadows"
       | "reflections"
-      | "stars"
-      | "fog"
       | "vehicleLights"
       | "hud"
       | "overlay",
@@ -184,6 +183,7 @@ export function SettingsMenu() {
             description:
               "Graphics preferences are saved on this device. Higher resolution, reflections and shadows can increase frame time.",
             rows: [
+              cityPerformanceControl(render),
               {
                 id: "resolution",
                 label: "Resolution scale",
@@ -203,17 +203,13 @@ export function SettingsMenu() {
                   }),
               },
               graphics("shadows", "Shadows"),
-              graphics("reflections", "HDR reflections"),
-              graphics("fog", "Distance fog"),
-              graphics("stars", "Animated sky"),
+              graphics("reflections", "High-detail sky reflections", "Sharpens reflections on paint and glass. The room controls sky brightness and fog."),
               graphics("vehicleLights", "Vehicle spotlights"),
-              graphics("hud", "Driving HUD"),
               graphics(
                 "overlay",
                 "Performance overlay",
                 "Frame timing, network latency and server diagnostics.",
               ),
-              ...drivingRows,
               {
                 id: "speed-unit",
                 label: "Speed units",
@@ -239,7 +235,6 @@ export function SettingsMenu() {
               cityQualityControl(render),
               cityViewDistanceControl(render),
               interpolationControl(debug),
-              cityPerformanceControl(render),
               {
                 id: "fullscreen",
                 label: "Toggle fullscreen",
@@ -267,6 +262,7 @@ export function SettingsMenu() {
             description:
               "Mix any HUD components individually. Presets are shortcuts; each switch below controls its own component. Keyboard and controller inputs remain available.",
             rows: [
+              graphics("hud", "Driving HUD"),
               ...drivingRows,
               {
                 id: "instrument-preset",
@@ -285,19 +281,6 @@ export function SettingsMenu() {
                 value: HEALTH_BAR_LABELS[prefs.healthBars],
                 description: `Cycle with ${keyLabel(prefs.bindings.healthBars)}. Team filters include your own team. Defeat and damage feedback remain visible. Rebind in Keyboard.`,
                 action: (dir) => prefs.update({healthBars:cycleHealthBarMode(prefs.healthBars,dir)}),
-              },
-              {
-                id: "ignition-visibility",
-                label: "Ignition while driving",
-                value: prefs.ignitionVisibility.toUpperCase(),
-                action: (dir) =>
-                  prefs.update({
-                    ignitionVisibility: step(
-                      ["auto", "always", "hidden"] as const,
-                      prefs.ignitionVisibility,
-                      dir,
-                    ),
-                  }),
               },
               {
                 id: "climate-size",
@@ -367,7 +350,7 @@ export function SettingsMenu() {
                   prefs.update({
                     hudGroups: { ...DEFAULT_HUD_GROUPS },
                     healthBars: "all",
-                    ignitionVisibility: "auto",
+                    ignitionVisibility: "always",
                     showTouchControls: true,
                     showDriveControls: true,
                   });
@@ -426,7 +409,7 @@ export function SettingsMenu() {
             description:
               "Select a driving or combat action, then press a key. Hold the primary or secondary fire binding to shoot while driving. Fixed shortcuts remain reserved. Menu navigation always uses arrows / WASD, Enter and Escape.",
             rows: [
-              ...turretRows,
+
               ...(Object.keys(DEFAULT_BINDINGS) as BindingAction[]).map(
                 (action): MenuRow => ({
                   id: action,
@@ -480,7 +463,6 @@ export function SettingsMenu() {
             description:
               "Standard gamepad layout: RT accelerate · LT brake · Left stick steer · B handbrake · Start pause. Armed tank: Right stick aim · RB fire · LB charge · Y weapon cycle · R3 angle lock. In menus: A select, B back, LB/RB tabs. Release driving controls after closing a menu before driving again.",
             rows: [
-              ...drivingRows,
               ...turretRows,
               {
                 id: "deadzone",

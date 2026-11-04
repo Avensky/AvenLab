@@ -2,25 +2,26 @@ import {useRef} from 'react';
 import {useFrame} from '@react-three/fiber';
 import {DoubleSide,type Group,type Mesh,type MeshBasicMaterial} from 'three';
 import {useVehiclePhysicsInterpolator} from '../hooks/usePhysicsInterpolator';
-import {useNetworkStore} from '../store/session/networkStore';
+import {snapshotEntity, useNetworkStore} from '../store/session/networkStore';
 import {readGuardBoost,guardActionKind} from './guardBoostState';
 import {GUARD_ARC_HALF_ANGLE,guardShieldTransform,sampleGuardBreak,type GuardBreakState} from './guardShieldVisual';
 
 function GuardShield({player}:{player:string}){
  const root=useRef<Group>(null),sheet=useRef<Mesh>(null),material=useRef<MeshBasicMaterial>(null);
- const panel=useNetworkStore(s=>s.snapshot?.entities.find(entity=>entity.id===player)?.guard?.panel?.length===4);
+ const panel=useNetworkStore(s=>snapshotEntity(s.snapshot, player)?.guard?.panel?.length===4);
  const bubble=useRef<Mesh>(null);
  const broken=useRef<GuardBreakState>({sequence:null,at:-Infinity});
  const {getInterpolated}=useVehiclePhysicsInterpolator(player);
  useFrame(({clock})=>{
-  const network=useNetworkStore.getState(),entity=network.snapshot?.entities.find(item=>item.id===player),guard=readGuardBoost(entity);
+  const network=useNetworkStore.getState(),entity=snapshotEntity(network.snapshot, player),guard=readGuardBoost(entity);
   const group=root.current,mesh=sheet.current,paint=material.current;
   if(!group||!mesh||!paint)return;
   const received=network.snapshot?.received_at_ms;
   if(!network.connected||!entity||entity.health?.defeated||!guard||received===undefined||performance.now()-received>1000){group.visible=false;return;}
   const flash=sampleGuardBreak(broken.current,guard.break_seq,clock.elapsedTime),active=(guardActionKind(entity,guard)==='tank_barrier'||guard.remaining_s>0)&&guard.shield_hp>0;
-  const pose=getInterpolated(player);
   const diving=(guard.dive_remaining_s??0)>0;
+  if(!active && !diving && flash<=0){group.visible=false;return;}
+  const pose=getInterpolated(player);
   group.visible=!!pose&&(active||flash>0||diving);
   if(!group.visible||!pose)return;
   group.position.fromArray(pose.position);group.quaternion.fromArray(pose.rotation);

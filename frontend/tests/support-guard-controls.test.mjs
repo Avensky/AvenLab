@@ -26,9 +26,9 @@ test('hero support abilities route through confirmed roles without stealing driv
   const reply=async()=>act(async()=>client.receiveSocialResult({request_id:sent.at(-1).request_id,ok:true,data:{}}));
   await act(async()=>{stage();combat.getState().setEnabled(false);root=createRoot(document.getElementById('root'));root.render(h('div',null,h(Keyboard),h(GameController)));});await poll();
   await t.test('new collision-free barrier binding preserves all saved prior bindings',()=>{
-   assert.equal(DEFAULT_BINDINGS.barrier,'KeyP');
+   assert.equal(DEFAULT_BINDINGS.barrier,'KeyP');assert.equal(DEFAULT_BINDINGS.headlights,'KeyK');
    const oldBindings={...DEFAULT_BINDINGS,fire:'KeyP',forward:'KeyK'};delete oldBindings.barrier;
-   const migrated=sanitizeBindings(oldBindings);assert.equal(migrated.fire,'KeyP');assert.equal(migrated.forward,'KeyK');assert.notEqual(migrated.barrier,'KeyP');assert.equal(new Set(Object.values(migrated)).size,Object.keys(DEFAULT_BINDINGS).length);
+   const migrated=sanitizeBindings(oldBindings);assert.equal(migrated.fire,'KeyP');assert.equal(migrated.forward,'KeyK');assert.notEqual(migrated.headlights,'KeyK','an existing custom driving key wins');assert.notEqual(migrated.barrier,'KeyP');assert.equal(new Set(Object.values(migrated)).size,Object.keys(DEFAULT_BINDINGS).length);
   });
   await t.test('P requests Tank barrier without enabling aim, repeating fire or authoring shield HP',async()=>{
    await key('keydown',prefs.getState().bindings.barrier);assert.equal(sent.at(-1).action,'tank_barrier');assert.equal(Object.hasOwn(sent.at(-1),'shield_hp'),false);assert.equal(combatIntent.enabled,false);assert.equal(combatIntent.keyboardFire,false);const count=sent.length;await key('keydown',prefs.getState().bindings.barrier,{repeat:true});assert.equal(sent.length,count);await reply();await key('keyup',prefs.getState().bindings.barrier);

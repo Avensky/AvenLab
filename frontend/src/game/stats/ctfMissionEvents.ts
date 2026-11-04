@@ -51,6 +51,6 @@ export function flagEventNotice(event: ObservedFlagEvent, playerId: string): Mis
   const flag = `${event.flag_team.toUpperCase()} FLAG`;
   const actor = event.player_id === playerId ? "You" : "A player";
   const title = event.kind === "picked_up" ? `${flag} PICKED UP` : event.kind === "dropped" ? `${flag} DROPPED` : event.kind === "returned" ? `${flag} RETURNED` : `${otherTeam(event.flag_team).toUpperCase()} CAPTURE CONFIRMED`;
-  const message = event.kind === "picked_up" ? `${actor} picked up the ${event.flag_team} flag. Bring it to your home base while your own flag is home.` : event.kind === "dropped" ? `The ${event.flag_team} flag is on the ground. Touch it to recover or steal it.` : event.kind === "returned" ? `The ${event.flag_team} flag is back at its home base.` : `${otherTeam(event.flag_team).toUpperCase()} delivered the enemy flag home. The server confirmed the capture.`;
+  const message = event.kind === "picked_up" ? `${actor} picked up the ${event.flag_team} flag. Bring it to your home base while your own flag is home.` : event.kind === "dropped" ? `The ${event.flag_team} flag is on the ground. Touch it within 10 seconds to recover or steal it before it returns home.` : event.kind === "returned" ? `The ${event.flag_team} flag is back at its home base.` : `${otherTeam(event.flag_team).toUpperCase()} delivered the enemy flag home. The server confirmed the capture.`;
   return { id: event.id, title, message: `${event.warmup ? "WARMUP · No scoring. " : ""}${message}`, kind: "update", source: "ctf" };
 }

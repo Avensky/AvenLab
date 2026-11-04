@@ -15,8 +15,8 @@ export function recoveryStatus(health:RecoveryHealth|undefined):RecoveryStatus|n
 
 /** Downed vehicles, including self, retain critical recovery feedback even
  * when the player hides ordinary HP bars. Other rooms never contribute. */
-export function healthMarkerIds(snapshot:PhysicsSnapshot|null,playerId:string,mode:HealthBarMode):string[]{
+export function healthMarkerIds(snapshot:PhysicsSnapshot|null,playerId:string,mode:HealthBarMode,targetId?:string|null):string[]{
  const me=snapshot?.entities.find(entity=>entity.id===playerId);
  if(!me)return [];
- return (snapshot?.entities??[]).filter(entity=>entity.health&&entity.room_id===me.room_id&&(entity.health.defeated||(entity.id!==playerId&&showVehicleHealthBar(mode,entity.team,false)))).slice(0,10).map(entity=>entity.id);
+ return (snapshot?.entities??[]).filter(entity=>entity.health&&entity.room_id===me.room_id&&(entity.health.defeated||(entity.id!==playerId&&(entity.id===(targetId??me.combat?.assisted_target)||showVehicleHealthBar(mode,entity.team,false))))).slice(0,10).map(entity=>entity.id);
 }

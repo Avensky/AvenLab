@@ -392,7 +392,7 @@ export function GameController() {
           combatIntent.gamepadFire=false;
         }else combatIntent.gamepadFire=armed&&pressed(5);
       }else combatIntent.gamepadFire=false;
-      if (combatIntent.enabled && !mechanic && armed) aimCombat(axis(pad.axes[2], preferences.controllerDeadzone)*0.035, axis(pad.axes[3], preferences.controllerDeadzone)*0.035);
+      if (combatIntent.enabled && armed) aimCombat(axis(pad.axes[2], preferences.controllerDeadzone)*0.035, axis(pad.axes[3], preferences.controllerDeadzone)*0.035);
       const me=useNetworkStore.getState().getMe();
       const transmission=unpackCockpit(me?.cockpit_mask);
       const {throttle,brake}=controllerDrive(
@@ -447,7 +447,7 @@ export function GameController() {
         if(combatIntent.enabled)toggleTurretOrientationLock();
         else if(!stepManualGear(-1))store.togglePlayerFlag(PlayerFlags.DYNO);
       }
-      if (edges[13]) {if(!tank||!toggleTankScope())store.togglePlayerFlag(PlayerFlags.RADIO);}
+      if (edges[13]) {if(!toggleTankScope())store.togglePlayerFlag(PlayerFlags.RADIO);}
       if (edges[10]) {
         if (resetTimer !== null) window.clearTimeout(resetTimer);
         store.setHeldPlayerFlag("gamepad", PlayerFlags.RESET, true);

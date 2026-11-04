@@ -119,3 +119,39 @@ standard gamepad navigation, real CSV/JSON downloads, Copy Spawn and layouts at
 320×240, 568×320, 390×844 and 844×390. UI checks use synthetic snapshots and metric
 samples; they are not game FPS measurements. No renderer, model, dependency or
 Rust physics changes are introduced by the compact-recorder follow-up.
+
+## Multiplayer benchmark and wire format
+
+The November 4 build was compared with cockpit revision `e2bd3f4` using optimized Rust builds on the same host. Each run used one streaming city, BRZ drivers, 120 warm-up ticks and 900 measured ticks. The run order was reversed for the second pair. The table reports the mean of the two runs’ 95th-percentile tick times. Each byte count is the average size of one room snapshot before WebSocket framing.
+
+| Drivers | Previous p95 tick | Updated p95 tick | Previous snapshot | Updated snapshot |
+| --- | ---: | ---: | ---: | ---: |
+| 6 | 1.44 ms | 0.98 ms | 19,482 B | 16,363 B |
+| 10 | 1.96 ms | 1.27 ms | 32,290 B | 27,105 B |
+
+The tick measurement includes physics and snapshot serialization. Internet round-trip time, phone frame time and socket transmission are outside this benchmark. An isolated WebGL check of ten flying health packs went from four draws and 360 triangles to two draws and 20 triangles. The idle effect went from one empty draw to zero. In a vehicle-material test, Low detail also removed the off-screen opaque-scene pass requested by transmissive vehicle materials. Restoring Full HD restored the authored materials.
+
+The driving client selects binary input only after the initial welcome advertises `packed_input_version: 1`. Each input message stands alone. A dropped or coalesced input does not depend on a preceding delta. Invalid frames do not replace the last valid input. An older peer can still use JSON. World snapshots, chat, social actions and reconnect use their existing messages.
+
+| AI v1 field | Encoding |
+| --- | --- |
+| Header | ASCII `AI`, one version byte and one presence byte |
+| Fixed controls | Little-endian u32 sequence, five f32 values for dt, throttle, steering and the two brakes, then u16 vehicle and player masks |
+| Optional fields | Presence bits 0–3 select cockpit u32, parking f32, cabin u32 and debug u32 in that order. A present zero is a command |
+| Combat | Presence bit 4 adds an action byte, a mount byte, and five f32 values for yaw, pitch and mount position |
+| Action byte | Bits 0–4 mean enabled, fire, ram, hull lock and lock target. A lock target appends two f32 angles |
+| Mount byte | Bits 0–1 select cannon, coax or basket. Bits 2–3 select assault, support or medic |
+
+The compact and fully populated fixtures use 32 and 78 bytes. The same samples serialized by the browser as JSON use 138 and 394 bytes. Rust and browser tests share the same fixture file. The server continues to own simulation time, damage, healing and targeting.
+
+To reproduce the server measurement, run the following from the repository root. Repeat with `--players 10`. Use the F3 recorder on a physical phone for an end-to-end frame-time and RTT comparison on the same route.
+
+```sh
+(cd avenlab-server && cargo run --release -- --capacity-bench --players 6 --ticks 900 --map streaming_endless_city)
+cargo test --manifest-path avenlab-server/Cargo.toml benchmark_snapshot_encoder -- --ignored --nocapture
+AVENLAB_SERVER_BIN="$PWD/avenlab-server/target/release/avenlab-server" node scripts/test-three-v-three.mjs
+```
+
+Settings → Display owns graphics profiles, quality and draw distance. Full HD uses this device’s saved settings. Low detail caps the resolution scale at 0.75×, uses a 250 m detailed-city range and skips decorative HUD layers. Debugger → Rendering opens the same Display controls. Debugger retains the world and vehicle inspection tools and the collider benchmark.
+
+The mixed-client 3v3 check covered team privacy, reliable messages and token reconnect. In a separate ten-client streaming-city run, five binary senders and five JSON senders all observed all ten sequence acknowledgements on the same server tick. Coastal District has three authored red and three blue home spawns. With all six occupied, the seventh vehicle received a spawn error. A simultaneous 5v5 start on that map needs two additional clear home positions per side.

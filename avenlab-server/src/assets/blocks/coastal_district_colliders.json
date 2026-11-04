@@ -1,6 +1,7 @@
 {
   "schema_version": 2,
   "map_id": "coastal_district",
+  "sky": "foggy_day",
   "coordinate_system": {
     "units": "meters",
     "up_axis": "y",
@@ -58,6 +59,7 @@
     "format": "avenlab-world-layout",
     "version": 1,
     "map_id": "coastal_district",
+  "sky": "foggy_day",
     "title": "Coastal district · chunk · seed 1",
     "base": "replace",
     "ground": false,

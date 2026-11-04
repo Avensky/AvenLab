@@ -1,5 +1,3 @@
-import {isGuardDpsPlayer,isDiveShieldPlayer} from './guardBoost';
-import {useSocialStore} from '../store/social/socialStore';
 import {ReviveActionFallback} from './ReviveAction';
 import {GuardBoostFallback} from './GuardBoostAction';
 import {useCanDataStore} from '../store/recon/canDataStore';
@@ -16,31 +14,26 @@ export function CombatHUD(){
  useEffect(()=>{
   const auto=()=>{
    const network=useNetworkStore.getState(),me=network.getMe();
-   if(me?.health?.defeated){
-    clearTankFireInputs(tankFireInputs);
-    combatIntent.firePulseUntil=0;combatIntent.directWeaponHeld=null;combatIntent.ramPulseUntil=0;
-    combatIntent.fire=false;combatIntent.keyboardFire=false;combatIntent.gamepadFire=false;
-    combatIntent.ram=false;combatIntent.gamepadRam=false;combatIntent.keyboardRam=false;
-    useCombatStore.getState().setScope(false);
-   }
-   const dps=isGuardDpsPlayer(network),suv=isDiveShieldPlayer(network);
-   const key=network.connected&&me?`${network.playerId}:${dps?'brz-dps':suv?'cx30-rescue':me.vehicle_id}`:'';
+   const live=network.connected && me?.vehicle_id && !me.health?.defeated;
+   const key=live?`${network.playerId}:${me.room_id}:${me.vehicle_id}`:'';
    if(key===autoVehicle)return;
-   const wasArmed=autoVehicle.endsWith(':tank')||autoVehicle.endsWith(':brz-dps')||autoVehicle.endsWith(':cx30-rescue')||autoVehicle.endsWith(':sierra');autoVehicle=key;
-   if(me&&network.connected)useCombatStore.getState().setOrientationLocked(true);
-   if(me?.vehicle_id==='tank'&&network.connected){useCombatStore.getState().selectWeapon('cannon');setTurretEnabled(true);}
-   else if(dps||suv||(network.connected&&me?.vehicle_id==='sierra'))setTurretEnabled(true);
-   else if(wasArmed||!network.connected)useCombatStore.getState().setEnabled(false);
+   autoVehicle=key;
+   const controls=useCombatStore.getState();
+   controls.setScope(false);
+   if(live){
+    controls.setOrientationLocked(true);
+    if(me.vehicle_id==='tank')controls.selectWeapon('cannon');
+   }
+   setTurretEnabled(Boolean(live));
   };
-  // A fresh tank spawn must re-enable controls even if the previous tank was stopped.
-  const entered=(event:Event)=>{const detail=(event as CustomEvent<{vehicle?:string}>).detail;if(detail?.vehicle==='tank'){autoVehicle='';setTurretEnabled(true);auto();}};
-  auto();const unsubscribe=useNetworkStore.subscribe(auto),stopSocial=useSocialStore.subscribe(auto);
+  const entered=()=>{autoVehicle='';auto();};
+  auto();const unsubscribe=useNetworkStore.subscribe(auto);
   window.addEventListener('avenlab:vehicle-entered',entered);
   const stop=()=>{clearTankFireInputs(tankFireInputs);combatIntent.firePulseUntil=0;combatIntent.directWeaponHeld=null;combatIntent.ramPulseUntil=0;useCombatStore.getState().setScope(false);combatIntent.fire=false;combatIntent.keyboardFire=false;combatIntent.gamepadFire=false;combatIntent.ram=false;combatIntent.gamepadRam=false;combatIntent.keyboardRam=false;};
   window.addEventListener('blur',stop);document.addEventListener('visibilitychange',stop);
   const canRelease=useCanDataStore.subscribe(state=>{if(state.commandOpen)stop();});
   const uiRelease=useUIStore.subscribe(()=>{const ui=useUIStore.getState();if(ui.screen!=='sandbox'||ui.overlay!==null||ui.isModeLoading)stop();});
-  return()=>{unsubscribe();stopSocial();uiRelease();canRelease();stop();window.removeEventListener('avenlab:vehicle-entered',entered);window.removeEventListener('blur',stop);document.removeEventListener('visibilitychange',stop);if(useUIStore.getState().screen!=='sandbox'){autoVehicle='';useCombatStore.getState().setEnabled(false);}};
+  return()=>{unsubscribe();uiRelease();canRelease();stop();window.removeEventListener('avenlab:vehicle-entered',entered);window.removeEventListener('blur',stop);document.removeEventListener('visibilitychange',stop);if(useUIStore.getState().screen!=='sandbox'){autoVehicle='';useCombatStore.getState().setEnabled(false);}};
  },[]);
  return <><TankScopeHUD/><ReviveActionFallback/><GuardBoostFallback/></>;
 }

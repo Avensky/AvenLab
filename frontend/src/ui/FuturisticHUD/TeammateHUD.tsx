@@ -1,4 +1,5 @@
 import { memo, useEffect, useState } from 'react';
+import {HEROES,heroForVehicle} from '../../store/alpha/alphaStore';
 import { HeroPortrait } from '../../game/alpha/HeroPortrait';
 import { useNetworkStore } from '../../store/session/networkStore';
 import { usePreferencesStore } from '../../store/preferences/preferencesStore';
@@ -7,11 +8,16 @@ import { readTeammates, retainTeammateCards, type TeammateCard } from './teammat
 import './futuristicHUD.css';
 
 const TeammateRow = memo(function TeammateRow({player, mode}: {player: TeammateCard; mode: HealthBarMode}) {
+  const modern=usePreferencesStore(s=>s.hudGroups.futuristic);
+  const hero=HEROES.find(h=>h.id===player.hero)??heroForVehicle(player.hero);
+  const vehicle=hero?.name??player.hero?.toUpperCase()??'UNKNOWN VEHICLE';
+  const status=player.status==='reconnecting'?'RECONNECTING':player.status==='delayed'?'SIGNAL DELAY':
+    player.waiting?'SELECTING HERO':player.health?.defeated?'DEFEATED':player.health&&player.health.protection>0?'PROTECTED':'';
   return <li data-team={player.team} data-defeated={player.health?.defeated ?? false}>
     <HeroPortrait hero={player.hero} appearance={player.appearance} cacheOnly />
-    <div><strong>{player.name}</strong>
+    <div title={vehicle+' · '+player.name+(status?' · '+status:'')}><strong>{modern?vehicle:player.name}</strong>
       {showVehicleHealthBar(mode, player.team, false) && <div className="teammate-health" role="meter" aria-label={`${player.name} health`} aria-valuemin={0} aria-valuemax={player.health?.max ?? 100} aria-valuenow={player.health?.hp} aria-valuetext={player.health ? `${Math.ceil(player.health.hp)} / ${Math.ceil(player.health.max)}` : 'Unavailable'}><i style={{width: `${player.health ? player.health.hp / player.health.max * 100 : 0}%`}}/></div>}
-      <small>{player.status === 'reconnecting' ? 'RECONNECTING' : player.status === 'delayed' ? 'SIGNAL DELAY' : player.waiting ? 'SELECTING HERO' : player.health?.defeated ? 'DEFEATED' : player.health && player.health.protection > 0 ? 'PROTECTED' : player.hero?.toUpperCase() ?? 'UNKNOWN HERO'}</small>
+      <small>{modern?player.name+(status?' · '+status:''):status||vehicle}</small>
     </div>
   </li>;
 });

@@ -659,7 +659,7 @@ async fn world_member_levels_use_authenticated_profiles_and_do_not_publish_inven
 async fn deployed_ctf(strict: bool) -> (Server, usize, Vec<(String, Value)>) {
     let s = alpha_server();
     s.alpha.lock().await.enforce_roles = strict;
-    let picks: Vec<_> = if strict { vec!["tank","tank","ae86","ae86","brz","brz","cx30","cx30","camaro","camaro"] } else { vec!["brz","brz"] };
+    let picks: Vec<_> = if strict { vec!["tank","tank","ae86","ae86","brz","brz","cx30","cx30","camaro","camaro"] } else { vec!["brz"; 10] };
     let mut roster = Vec::new();
     let mut world = 0;
     for (index, hero) in picks.iter().enumerate() {
@@ -1016,11 +1016,14 @@ async fn skirmish_verified_rewards_are_nonranked_and_cannot_be_duplicated() {
 async fn skirmish_flexible_composition_remains_training_without_progression() {
     let s = alpha_server(); s.alpha.lock().await.enforce_roles = false;
     let mut world = 0;
-    for index in 0..2 {
+    for index in 0..6 {
         let (player, _, _) = client(&s, &format!("3v3 training {index}")).await;
         let joined = mode(&s, &player, "skirmish", "tank").await;
         assert_eq!(joined["status"], "joined"); world = joined["world_id"].as_u64().unwrap() as usize;
         s.spawn(&player, "streaming_endless_city", "tank").await.unwrap();
+        if index < 5 {
+            assert_eq!(s.runtimes.lock().await[&world].lock().await.round.as_ref().unwrap().phase,crate::ctf::CtfPhase::Waiting);
+        }
     }
     let runtime = s.runtimes.lock().await[&world].clone();
     {
@@ -1034,7 +1037,7 @@ async fn skirmish_flexible_composition_remains_training_without_progression() {
     assert_eq!(data.completed_results.len(), 1);
     assert_eq!(data.profiles.values().map(|p| p.progression.matches).sum::<u32>(), 0);
     assert!(data.profiles.values().all(|p| !p.progression.career.by_mode.contains_key("skirmish")));
-    assert_eq!(data.profiles.values().map(|p| p.progression.career.by_mode["training"].matches).sum::<u64>(), 2);
+    assert_eq!(data.profiles.values().map(|p| p.progression.career.by_mode["training"].matches).sum::<u64>(), 6);
     drop(data); cleanup(s).await;
 }
 

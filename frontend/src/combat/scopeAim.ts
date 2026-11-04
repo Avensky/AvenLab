@@ -19,7 +19,7 @@ export function bindScopedAimDrag(canvas:HTMLCanvasElement){
  return bindCameraDrag(canvas,{
   canDrag:()=>{
    const ui=useUIStore.getState(),combat=useCombatStore.getState(),network=useNetworkStore.getState();
-   return network.connected&&network.getMe()?.vehicle_id==='tank'&&combat.enabled&&combat.scope&&ui.screen==='sandbox'&&ui.overlay===null&&!ui.isModeLoading&&canAimTurret();
+   return network.connected&&!!network.getMe()?.vehicle_id&&combat.enabled&&combat.scope&&ui.screen==='sandbox'&&ui.overlay===null&&!ui.isModeLoading&&canAimTurret();
   },
   onActiveChange:()=>{},
   onDelta:(dx,dy)=>{

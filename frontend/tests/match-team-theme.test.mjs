@@ -89,7 +89,7 @@ test('live team scope restores on leave and nearby snapshots do not rewrite the 
   assert.equal(html.style.getPropertyValue('--match-team-glow'),MATCH_TEAM_COLORS.red.glow);
   assert.equal(html.style.getPropertyValue('--app-accent'),UI_THEMES.strawberry.accent,'the saved app palette is still authoritative');
   assert.equal(html.style.getPropertyValue('--vehicle-accent'),'#ffffff','paint/stitch preference is preserved outside the scoped wheel override');
-  assert(document.querySelector('.wheel-artwork path[stroke="var(--wheel-stitch, var(--vehicle-accent, #a13c3d))"]'));
+  assert(document.querySelector('.wheel-artwork path[stroke="var(--app-accent, #82b7ff)"]'));
   const before=renders;
   await act(async()=>{for(let i=0;i<30;i++)send();});
   assert.equal(renders,before,'position-only teammate packets do not rerender the theme owner');

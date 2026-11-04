@@ -135,3 +135,14 @@ network egress, client FPS, arbitrary maps, prolonged play or shared-host conten
   routing. Browser checks also exercised touch, physical typing and gamepad polling.
 - The cumulative package retains the prior HUD visibility/brightness fixes. See
   `HUD_VISIBILITY_PERFORMANCE_UPDATE.md` for their audit.
+
+## First hosted 3v3 playtest
+
+Use one streaming-city world and six invited drivers. A private source repository limits who can read the project. Configure tester access separately on the host for both the web client and the WebSocket upgrade.
+
+1. Prepare a gameplay-only tester build with Quickplay, vehicle selection, driving, chat, stats and the mission log. Exclude the research screens, CAN capture and editor entry points from this distribution. Keep the research backend off the test host.
+2. Build the frontend with `VITE_RUST_WS_URL=wss://<tester-host>/ws/`. Serve its production assets over HTTPS. On the same host, run the release Rust server with `AVENLAB_BIND=127.0.0.1:9001`, `AVENLAB_MAX_ACTIVE_WORLDS=1` and `AVENLAB_MAX_PLAYERS=6`. Set `AVENLAB_SOCIAL_PATH` to a persistent writable file path outside the web root. Route the protected `/ws/` endpoint to the loopback listener.
+3. Verify that an uninvited device cannot load the client or connect directly to the game socket. Then play a full 3v3 round with desktop, controller and phone users through the same endpoint. Have one driver disconnect and reclaim their seat. Verify the final score and saved result after restarting the service.
+4. Record frame time and round-trip time on the physical phone during combat and a flag handoff. Keep the first pilot at 3v3 until those measurements and the reconnect check pass.
+
+The Rust service already supports isolated local checks. From the repository root, build it with `cargo build --release --locked --manifest-path avenlab-server/Cargo.toml`, then run `AVENLAB_SERVER_BIN="$PWD/avenlab-server/target/release/avenlab-server" node scripts/test-three-v-three.mjs` on Linux. This creates a temporary server and test profiles. The hosted endpoint and gameplay-only distribution are separate release steps.

@@ -1,3 +1,4 @@
+import {useRenderSettingsStore} from '../../store/presentation/renderSettingsStore';
 import {MapPlayerMarkers} from "./MapPlayerMarkers";
 import { useHudPanelsStore } from "../../store/hud/hudPanelsStore";
 import { useMapTelemetryStore } from "../../store/telemetry";
@@ -14,6 +15,8 @@ import {
   roadRoute,
   pathDistance,
 } from "../../navigation/roadNavigation";
+import { useNetworkStore, type DebugAabbBox } from "../../store/session/networkStore";
+
 const RoadLayer = memo(function RoadLayer({
   roads,
 }: {
@@ -28,18 +31,32 @@ const RoadLayer = memo(function RoadLayer({
           y={r.z - r.hz}
           width={r.hx * 2}
           height={r.hz * 2}
-          fill="#293e4b"
-          stroke="#59717f"
+          fill="var(--gps-road, #293e4b)"
+          stroke="var(--gps-road-edge, #59717f)"
           strokeWidth="1"
         />
       ))}
     </>
   );
 });
+// The city uses a shared road slab per chunk. Its actual building footprints
+// supply the cross streets and blocks at minimap scale.
+const BlockLayer = memo(function BlockLayer({ boxes, x, z, radius }: {
+  boxes: DebugAabbBox[]; x: number; z: number; radius: number;
+}) {
+  return <g className="gps-blocks" aria-hidden="true">{boxes.map(box => {
+    const [bx, , bz] = box.center, [hx, , hz] = box.half_extents;
+    if (Math.abs(bx - x) > radius + hx || Math.abs(bz - z) > radius + hz) return null;
+    return <rect key={`${box.id}/${bx}/${bz}`} x={bx - hx} y={bz - hz} width={hx * 2} height={hz * 2}
+      fill="#263138" stroke="#627075" strokeWidth=".5" vectorEffect="non-scaling-stroke" />;
+  })}</g>;
+});
 const MissionReadout = memo(function MissionReadout() {
   const mission = useNavigationStore((s) => s.mission),
     hasDestination = useNavigationStore((s) => s.destination !== null),
     sandbox = useUIStore((s) => s.screen === "sandbox");
+  const match = useNetworkStore(s => Boolean(s.snapshot?.match_state));
+  if (match && !mission && !hasDestination) return null;
   const title = mission?.title ?? (sandbox ? "SANDBOX" : "NAVIGATION"),
     objective =
       mission?.objective ??
@@ -81,23 +98,27 @@ function MapContent({ circular = false }: { circular?: boolean }) {
     [range, setRange] = useState(600),
     [notice, setNotice] = useState("");
   const objective = useNavigationStore((s) => s.mission?.target);
-  const graph = useMemo(
-    () =>
-      buildRoadGraph(
-        (map?.collider_chunks ?? []).flatMap((chunk) => chunk.boxes),
-      ),
-    [map],
+  const modern = usePreferencesStore(s => s.hudGroups.futuristic);
+  const boxes = useMemo(() => (map?.collider_chunks ?? []).flatMap(chunk => chunk.boxes), [map]);
+  const graph = useMemo(() => buildRoadGraph(boxes), [boxes]);
+  const lowDetail = useRenderSettingsStore(s => s.lowDetail);
+  const showBuildings=modern && circular && !lowDetail;
+  const buildings = useMemo(() => showBuildings ? boxes.filter(box => box.kind === "building") : [], [boxes,showBuildings]);
+  const navigating = destination !== null;
+  const start = useMemo(
+    () => navigating && x !== null && z !== null ? nearestRoad(graph, { x, z }) : null,
+    [graph, navigating, x, z],
   );
-  const start = x !== null && z !== null ? nearestRoad(graph, { x, z }) : null,
-    end = destination ? nearestRoad(graph, destination) : null;
+  const end = useMemo(() => destination ? nearestRoad(graph, destination) : null, [graph, destination]);
   const si = start?.index ?? -1,
     ei = end?.index ?? -1;
   const middle = useMemo(() => roadRoute(graph, si, ei), [graph, si, ei]);
-  const route =
-      start && end && middle && start.distance <= 80 && end.distance <= 80
-        ? [start.point, ...middle, end.point]
-        : null,
-    metres = route ? pathDistance(route) : null;
+  const route = useMemo(() => {
+    if (!start || !end || !middle || start.distance > 80 || end.distance > 80) return null;
+    const points = [start.point, ...middle, end.point];
+    return { points: points.map(p => `${p.x},${p.z}`).join(" "), metres: pathDistance(points) };
+  }, [start, end, middle]);
+  const metres = route?.metres ?? null;
   const units =
     metres === null
       ? "NO ROUTE"
@@ -125,6 +146,7 @@ function MapContent({ circular = false }: { circular?: boolean }) {
       ),
     [graph, cx, cz, cell, range],
   );
+  const idlePrompt = modern && circular && map && graph.roads.length > 0 && x !== null && !destination && !notice;
   return (
     <>
       <div className="map-viewport" data-circular={circular}>
@@ -150,9 +172,10 @@ function MapContent({ circular = false }: { circular?: boolean }) {
           }}
         >
           <RoadLayer roads={visibleRoads} />
+          {showBuildings && <BlockLayer boxes={buildings} x={(cx + .5) * cell} z={(cz + .5) * cell} radius={range} />}
           {route && (
             <polyline
-              points={route.map((p) => `${p.x},${p.z}`).join(" ")}
+              points={route.points}
               stroke="#8ee7ff"
               strokeWidth={range / 90}
               fill="none"
@@ -187,7 +210,7 @@ function MapContent({ circular = false }: { circular?: boolean }) {
             >
               <path
                 d="M0 -7L5 6 0 3-5 6z"
-                fill="#e3fbff"
+                fill="var(--gps-self, #e3fbff)"
                 stroke="#061019"
                 strokeWidth="1.5"
               />
@@ -228,7 +251,7 @@ function MapContent({ circular = false }: { circular?: boolean }) {
           −
         </button>
       </div>
-      <output className="gps-status">
+      {!idlePrompt && <output className="gps-status">
         {notice ||
           (!map
             ? "MAP UNAVAILABLE"
@@ -239,7 +262,7 @@ function MapContent({ circular = false }: { circular?: boolean }) {
                 : destination
                   ? units
                   : "SELECT DESTINATION")}
-      </output>
+      </output>}
     </>
   );
 }

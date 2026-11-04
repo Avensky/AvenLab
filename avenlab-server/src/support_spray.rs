@@ -23,7 +23,7 @@ impl PhysicsWorld {
             let aim=delta/distance;
             if direction.dot(&aim)<0.92388 {continue;} // ±22.5° around the muzzle
             let ray=Ray::new(origin,aim);
-            let hit=self.query_pipeline.cast_ray(&self.bodies,&self.colliders,&ray,distance+0.1,true,QueryFilter::default().exclude_rigid_body(source.body));
+            let hit=self.query_pipeline.cast_ray(&self.bodies,&self.colliders,&ray,distance+0.1,true,QueryFilter::default().groups(crate::physics::vehicle_collision_groups(false)).exclude_rigid_body(source.body));
             if let Some((_,t))=hit.filter(|(h,_)| self.colliders[*h].parent()==Some(v.body)){
                 hits.push((t,id.clone(),ray.point_at(t)));
             }

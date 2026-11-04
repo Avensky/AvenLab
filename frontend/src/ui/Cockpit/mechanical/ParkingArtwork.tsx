@@ -79,7 +79,7 @@ export function ParkingLeverArtwork({
         <svg viewBox="0 0 100 20" preserveAspectRatio="none" aria-hidden="true">
           <path d="M1 6 18 4 30 2H91Q99 2 99 10T91 18H30L18 16H1Z" />
           <path className="parking-grip" d="M33 3H88Q94 3 94 10T88 17H33Z" />
-          <path className="parking-stitch" d="M35 7H89" />
+          <path className="parking-stitch" d="M35 5H86Q91 5 91 9M35 15H86Q91 15 91 11" />
         </svg>
       </span>
     </>

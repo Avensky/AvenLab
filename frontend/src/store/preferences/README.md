@@ -16,7 +16,7 @@ See [all state owners](../README.md) and the [project guide](../../../../docs/PR
 
 `hudVisibility.ts` is the shared component-ID/default/label catalog. Settings → HUD owns the full visibility list; Cockpit → Research links there. `hudGroups.stalks` hides levers. `hudGroups.climate` is the single master for the entire clock/hazard/HVAC unit; `hudGroups.hazards` only selects the button inside it. The hazard option defaults on inside the initially hidden climate unit and cannot make that unit visible by itself. Climate visibility and the old `researchHud` flag are synchronized by every store action, preserving older saved layouts that had climate=true but researchHud=false.
 
-`climateHudSize` selects compact/full in the Climate tab; `parkingCrystals` defaults off, and `parkingBrakeStyle` selects a realistic lever or simple P button on Drive. `ignitionVisibility` retains its auto/always/hidden policy. These are presentation preferences only: no physics, brake repair, weather simulation, or electronics commands belong here.
+`climateHudSize` selects compact/full in the Climate tab; `parkingCrystals` defaults off, and `parkingBrakeStyle` selects a realistic lever or simple P button on Drive. `ignitionVisibility` supports always/hidden and upgrades saved auto to always. These are presentation preferences only: no physics, brake repair, weather simulation, or electronics commands belong here.
 
 `dashboardBrightness` is a validated 0.1–1 gain (default 1), saved under the existing storage key and edited on Cockpit → Brightness. It controls both the dashboard preview and driving instruments without sending physics commands. `hudGroups.gauges` is the shared dashboard visibility switch.
 

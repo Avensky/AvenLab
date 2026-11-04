@@ -590,7 +590,7 @@ test("cockpit layout preferences preserve electronics and physical source owners
           prefs.getState().update({ ignitionVisibility: "hidden" }),
         );
         await click("Ignition on driving HUD");
-        assert.equal(prefs.getState().ignitionVisibility, "auto");
+        assert.equal(prefs.getState().ignitionVisibility, "always");
         assert.ok(document.querySelector('[data-hud-group="ignition"]'));
         await click("Ignition on driving HUD");
         assert.equal(

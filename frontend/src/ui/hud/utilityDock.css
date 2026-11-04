@@ -481,3 +481,101 @@
 .utility-climate .cabin-performance output {font-size:9px; gap:2px; white-space:nowrap;}
 
 .utility-climate .climate-density {padding:0 2px; min-width:18px; min-height:19px; border:0; background:transparent; color:var(--cabin-lcd-ink); font:12px/1 system-ui; cursor:pointer;}
+
+/* Instrument glass, a thin compass bezel and the same edge finish as the dash. */
+.driving-hud[data-futuristic=true] .utility-map-row {
+  --gps-road:#424e54;
+  --gps-road-edge:#465158;
+  --gps-self:#70d8f8;
+  --map-edge:color-mix(in srgb,var(--rail) 68%,#66757d);
+}
+.driving-hud[data-futuristic=true] .hud-minimap:not(.map-full) .map-viewport {
+  border:2px solid var(--map-edge);
+  box-shadow:0 0 0 2px #10171d,0 2px 4px #0008;
+  background:#121b21;
+}
+.driving-hud[data-futuristic=true] .map-viewport::after {
+  content:'';position:absolute;inset:2px;pointer-events:none;border-radius:50%;
+  background:repeating-conic-gradient(from -1deg,#d3dde4a6 0deg 1.5deg,transparent 1.5deg 30deg);
+  mask-image:radial-gradient(closest-side,transparent calc(100% - 4px),black calc(100% - 3px));
+}
+.driving-hud[data-futuristic=true] .gps-map {background:radial-gradient(ellipse at 45% 35%,#2c383e,#12191f);}
+.driving-hud[data-futuristic=true] .map-north {font:800 9px/1 system-ui;color:#fff;text-shadow:0 1px 2px #000;}
+.driving-hud[data-futuristic=true] .utility-map-row :is(.map-toggle,.gps-controls button,.utility-toggle) {
+  border:1px solid var(--map-edge);color:#e4edf1;background:linear-gradient(#2d3c45,#10181d 72%);
+  box-shadow:inset 0 1px 0 #a3bbc322;
+}
+.driving-hud[data-futuristic=true] .utility-map-row button:focus-visible {outline:2px solid white;outline-offset:1px;}
+.driving-hud[data-futuristic=true] .utility-map-row :is(.gps-status,.map-rim .match-clock,.map-mission) {
+  color:#e8f3f5;background:#0a1018db;border-radius:2px;
+}
+.driving-hud[data-futuristic=true] .map-mission strong {color:color-mix(in srgb,var(--rail) 55%,white);}
+
+/* Instrument shells retain the same steel and glass under every player palette.
+   Functional GPS markers, the hazard lamp and temperature retain their own ink. */
+.driving-hud[data-futuristic=true] .hud-utilities {
+  --app-panel:#14191e;--app-raised:#242c32;--app-line:#56636c;--app-text:#edf2f5;--app-muted:#b5c0c7;
+  --app-accent-soft:#38424a;--map-edge:#66747d;
+}
+.driving-hud[data-futuristic=true] .hud-utilities :is(.console-display,.climate-panel,.radio-display,.cockpit-radio) {
+  color:#edf2f5;background:#14191e;border-color:#59666f;
+}
+.driving-hud[data-futuristic=true] .hud-utilities :is(.utility-toggle,.radio-missions,.radio-power,.component-minimize) {
+  --contact-border:#5d6a73;--contact-surface:#151b20;--contact-ink:#e7edf1;
+}
+
+.driving-hud[data-futuristic=true] .hud-utilities {
+  --utility-width:var(--drive-bank-width);
+  --utility-map-size:min(var(--utility-width),max(72px,calc(min(var(--utility-width),32dvh) * var(--minimap-scale,.75))));
+}
+.driving-hud[data-futuristic=true] .utility-radio {container:radio-bank / inline-size;}
+@container radio-bank (max-width:165px) {
+  .hud-utilities .radio-single-row {gap:1px;padding:2px;}
+  .hud-utilities .radio-single-row > button {flex-basis:18px;width:18px;min-width:18px;height:23px;min-height:23px;padding:2px;}
+  .hud-utilities .radio-single-row > .radio-track-name {flex:1 1 0;width:auto;min-width:0;}
+  .hud-utilities .radio-single-row :is(.radio-volume-dial,button[aria-label="Radio next track"]) {display:none;}
+}
+/* The GPS always shares the radio centerline, including its collapsed launcher. */
+.driving-hud[data-futuristic=true] .hud-utilities .utility-map-row {
+  position:relative;inset:auto;width:100%;justify-content:center;
+}
+.driving-hud[data-futuristic=true] .utility-launchers[data-on-rim=true] {
+  right:50%;transform:translateX(50%);
+}
+.driving-hud[data-futuristic=true] .utility-map-row:has(.hud-minimap[data-expanded=false] .match-clock) {padding-bottom:14px;}
+.driving-hud[data-futuristic=true] .hud-utilities[data-panels-open=true] .utility-map-row:has(.hud-minimap[data-expanded=false]) .utility-launchers {
+  position:absolute;left:calc(50% + 17px);top:0;
+}
+.driving-hud[data-futuristic=true] .utility-map-row:not(:has(.hud-minimap,.utility-toggle)) {display:none;}
+@media (max-width:600px) and (orientation:portrait) {
+  /* UtilityDock already measures the score and gauges. Start at the safe area
+     so a phone without either panel can use the room above its controls. */
+  .driving-hud[data-futuristic=true] .hud-utilities {top:max(8px,env(safe-area-inset-top));}
+}
+@media (max-width:380px) and (orientation:portrait) {
+  .driving-hud[data-futuristic=true] .drive-dock {--hud-shifter-size:clamp(80px,25vw,95px);}
+}
+
+/* Borrow the unused skip slot for a weapon readout when only one audio source
+   is available. Active transport controls keep their hit targets. */
+.hud-utilities .radio-single-row:has([data-equipment=true]) > button[aria-label="Radio next track"]:disabled {display:none;}
+.hud-utilities .radio-single-row .radio-track-name small[data-equipment=true] {white-space:normal;line-height:1.15;}
+
+.mission-apps.mission-summary {display:grid;gap:1px;margin:0;padding:2px 4px;list-style:none;min-width:0;color:#e1e7eb;font:650 9px/1.2 system-ui;}
+.mission-summary li {min-width:0;padding:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mission-summary li+li {border-top:1px solid #68757e33;}
+.mission-summary button {width:100%;display:flex;align-items:center;justify-content:space-between;min-height:18px;padding:1px 3px;font:inherit;}
+.mission-summary kbd {padding:0 3px;border:1px solid #677580;border-radius:2px;}
+.mission-log-content {padding:8px 12px;max-width:70ch;color:var(--app-text);}
+.mission-log-content :is(p,li) {margin:4px 0 9px;}
+.mission-log-content ol {padding-left:1.4em;}
+@media (orientation:landscape) and (max-height:450px) and (max-width:740px) {
+  .driving-hud[data-futuristic=true] .hud-utilities[data-map-open=true][data-panels-open=true] {
+    --utility-map-size:clamp(44px,9vw,64px);
+  }
+}
+
+@media (orientation:portrait) and (max-width:380px) and (max-height:730px) {
+  .driving-hud[data-futuristic=true] .hud-utilities[data-map-open=true][data-panels-open=true] {--utility-map-size:clamp(60px,21vw,78px);}
+}
+.mission-summary button span {min-width:0;overflow:hidden;text-overflow:ellipsis;}

@@ -76,7 +76,6 @@ const MENU_KEYS: Record<string, MenuAction> = {
 };
 const VEHICLE_TOGGLES: Record<string, number> = {
   KeyE: VehicleFlags.ENGINE_ON,
-  KeyL: VehicleFlags.HEADLIGHTS,
   KeyZ: VehicleFlags.BLINKER_LEFT,
   KeyX: VehicleFlags.BLINKER_RIGHT,
   KeyQ: VehicleFlags.ABS,
@@ -131,6 +130,13 @@ export function Keyboard() {
       )
         return;
       const ui = useUIStore.getState();
+      if(event.code==='KeyL' && !event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey &&
+        ui.screen==='sandbox' && !ui.isModeLoading && !useCanDataStore.getState().commandOpen &&
+        !useTextKeyboardStore.getState().session && (ui.overlay==='missions'||(ui.overlay===null&&canDrive()))){
+        event.preventDefault();release();
+        if(ui.overlay==='missions')ui.backToParentMenu();else ui.setOverlay('missions');
+        return;
+      }
       if(event.code==='F1' && !event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey &&
          !ui.isModeLoading && !useCanDataStore.getState().commandOpen && !useTextKeyboardStore.getState().session &&
          (ui.overlay==='hero_abilities' || (ui.overlay===null &&
@@ -322,6 +328,7 @@ export function Keyboard() {
       }
       const store = useInputStore.getState();
       const combatKeys=usePreferencesStore.getState().bindings;
+      if(event.code===combatKeys.headlights && !event.ctrlKey && !event.altKey && !event.metaKey){event.preventDefault();store.toggleVehicleFlag(VehicleFlags.HEADLIGHTS);return;}
       if(event.code===combatKeys.revive&&isMechanicPlayer()){event.preventDefault();void requestNearestRevive();return;}
       if(event.code===combatKeys.barrier&&isDiveShieldPlayer()){event.preventDefault();if(!event.repeat)void requestDiveShield();return;}
       if(event.code===combatKeys.barrier&&isTankBarrierPlayer()){event.preventDefault();if(!event.repeat)void requestTankBarrier();return;}

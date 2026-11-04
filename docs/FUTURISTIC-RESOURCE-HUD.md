@@ -47,3 +47,9 @@ asset prebuild: this checkout contains Git LFS pointers for the road GLBs.
 Physical mobile touch sizing, both-display clearance with all optional controls,
 and portrait/landscape appearance still need in-game review. Browser visual
 inspection could not access the local preview in this environment.
+
+## Portrait, status strip and right-side consoles
+
+Ultimate charge traces the beveled square around the transparent portrait. The two paths travel in opposite directions and the percentage stays in the lower-right corner. A full server reading lights the frame. Buffs sit at the left end of the console lip and debuffs sit at the right. Tap a badge for its existing timer and description.
+
+The radio, climate panel, ability bank and pedals share a width and right edge. On short screens the map can sit beside the console bank. The dashboard Missions tab shows the objective and most recent bulletin. Press **L** or tap the objective to open the mission log with full details and history. **K** is the default headlight key and can be changed in Keyboard settings.

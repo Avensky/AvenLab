@@ -379,7 +379,7 @@ mod tests {
             assert_eq!(vehicle.powertrain.condition, 0.4);
             assert_eq!(vehicle.powertrain.ultimate_fraction, 0.7);
             assert_eq!(*room.physics.bodies[vehicle.body].translation(), original_position);
-            assert!(!room.physics.bodies[vehicle.body].is_enabled());
+            assert!(room.physics.bodies[vehicle.body].is_enabled());
             assert_eq!(room.physics.vehicle_health[&mechanic].stats.resurrections, 0);
         }
         assert!(!s.revivals.lock().await.downed.contains_key(&profile));

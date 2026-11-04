@@ -155,6 +155,11 @@ pub struct Wheel {
 }
 
 impl VehicleConfig {
+    pub fn spawn_height(&self, road_y: Real) -> Real {
+        self.nominal_chassis_y(road_y)
+            .max(road_y + self.chassis_half_extents[1] - self.chassis_com_offset[1] + 0.05)
+    }
+
     /// Handling mass is independent of collision/visual origins. The cuboid
     /// inertia is a finite approximation about this COM, not a rotation lock.
     pub fn mass_properties(&self) -> MassProperties {

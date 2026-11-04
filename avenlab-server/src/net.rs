@@ -121,21 +121,22 @@ pub async fn start_websocket_server(server: Arc<Server>) {
                 return;
             }
             let server_id = server.data.lock().await.server_id.clone();
-            let _=tx.send(json!({"type":"welcome","player_id":player,"room_id":0,"team":"blue","spawned":false,"social_version":1,"server_id":server_id}).to_string());
+            let _=tx.send(json!({"type":"welcome","player_id":player,"room_id":0,"team":"blue","spawned":false,"social_version":1,"packed_input_version":1,"server_id":server_id}).to_string());
             let mut commands = RateLimit::new(12, 10);
             let mut passwords = RateLimit::new(4, 30);
             let mut pings = RateLimit::new(2, 1);
             loop {
                 let next = tokio::select! {next=tokio::time::timeout(Duration::from_secs(120),read.next())=>match next{Ok(value)=>value,Err(_)=>break},_=&mut writer=>break};
-                let Some(Ok(Message::Text(text))) = next else {
-                    if next.is_none()
-                        || next.is_some_and(|message| {
-                            message.is_err() || matches!(message, Ok(Message::Close(_)))
-                        })
-                    {
-                        break;
+                let text = match next {
+                    Some(Ok(Message::Text(text))) => text,
+                    Some(Ok(Message::Binary(bytes))) => {
+                        if let Some(packet) = crate::packed_input::decode(&bytes) {
+                            input_tx.send_replace(Some(packet));
+                        }
+                        continue;
                     }
-                    continue;
+                    None | Some(Err(_)) | Some(Ok(Message::Close(_))) => break,
+                    _ => continue,
                 };
                 if text.trim() == "ping" {
                     if pings.allow() {

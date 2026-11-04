@@ -11,7 +11,7 @@ import {AttackIcon} from './AttackIcon';
 import {CooldownDial} from './CooldownClock';
 import {cooldownProgress} from './weaponCooldown';
 import {GUARD_COOLDOWN_S,TANK_BARRIER_COOLDOWN_S,guardBoostBlockReason,tankBarrierBlockReason,isGuardDpsPlayer,isTankBarrierPlayer,readGuardBoost,requestGuardBoost,requestTankBarrier,guardRequestKey,useGuardBoostRequestStore} from './guardBoost';
-import {DIVE_COOLDOWN_S} from './guardBoostState';
+import {DIVE_COOLDOWN_S,DIVE_DURATION_S,GUARD_DURATION_S} from './guardBoostState';
 import {diveShieldBlockReason,isDiveShieldPlayer,requestDiveShield,type ShieldAction} from './guardBoost';
 import './guardBoost.css';
 
@@ -23,16 +23,18 @@ export function GuardAbilityAction({kind}:{kind:ShieldAction}){
  const status=useNetworkStore(useShallow(state=>{
   const me=state.getMe(),guard=readGuardBoost(me);
   return {player:state.playerId,room:me?.room_id,eligible:dive?isDiveShieldPlayer(state,view):tank?isTankBarrierPlayer(state,view):isGuardDpsPlayer(state,view),blocked:dive?diveShieldBlockReason(me,guard):tank?tankBarrierBlockReason(me,guard):guardBoostBlockReason(me,guard),
-   cooldown:guard?Math.ceil((dive?(guard.dive_cooldown_s??0):guard.cooldown_s)*10)/10:undefined,remaining:guard?Math.ceil((dive?(guard.dive_remaining_s??0):guard.remaining_s)*10)/10:0,shield:guard?Math.ceil(guard.shield_hp):0};
+   cooldown:guard?Math.ceil((dive?(guard.dive_cooldown_s??0):guard.cooldown_s)*10)/10:undefined,remaining:guard?Math.ceil((dive?(guard.dive_remaining_s??0):guard.remaining_s)*10)/10:0,shield:guard?Math.ceil(guard.shield_hp):0,maxShield:guard?.shield_max_hp??1};
  }));
  if(!visible||!status.eligible)return null;
  const busy=request.busy&&request.key===guardRequestKey(kind);
  const allowed=canDrive(),active=tank?status.shield>0:status.remaining>0,ready=!busy&&allowed&&status.blocked==='';
  const name=dive?'Dive shield':tank?'Tank barrier':'Guard boost',controls=tank||dive?`${combatKeyLabel(barrierKey??'KeyP')} · DPAD LEFT`:'LB · SHIFT';
  const label=dive?(active?'DIVE ACTIVE':status.blocked||'DIVE SHIELD'):active?(status.shield>0?`${tank?'BARRIER':'SHIELD'} ${status.shield} HP`:tank?'BARRIER BROKEN':'STABILITY'):busy?'REQUESTING':status.blocked||(tank?'BARRIER':'GUARD BOOST');
+ const recharge=cooldownProgress(status.cooldown,dive?DIVE_COOLDOWN_S:tank?TANK_BARRIER_COOLDOWN_S:GUARD_COOLDOWN_S);
+ const remaining=tank?status.shield/status.maxShield:status.remaining/(dive?DIVE_DURATION_S:GUARD_DURATION_S);
  const description=dive?'Two seconds of all-angle damage protection. Fire normally. 18 second cooldown.':tank?'10 m turret-facing team barrier · 500 HP · lasts until broken · 1 L fuel':'4 seconds · 200 HP front shield · 20 second cooldown · costs 3 L fuel and 4 seconds nitrous · stabilized steering, controlled drift and 60 HP frontal rush contact once per enemy; side/rear remain vulnerable';
  return <button type="button" className="guard-boost-action" aria-label={name} data-ready={ready} data-active={active} data-guard-kind={kind} disabled={!ready} title={`${name} · ${controls} · ${description} · ${label}`} onClick={()=>void (dive?requestDiveShield():tank?requestTankBarrier():requestGuardBoost())}>
-  <CooldownDial progress={cooldownProgress(status.cooldown,dive?DIVE_COOLDOWN_S:tank?TANK_BARRIER_COOLDOWN_S:GUARD_COOLDOWN_S)} label={status.cooldown===undefined?`${name} unavailable`:status.cooldown>0?`${name} cooldown ${Math.ceil(status.cooldown)} seconds`:`${name} ready`}><AttackIcon kind={!tank&&!dive&&active&&status.shield===0?'boost':'shield'}/></CooldownDial>
+  <CooldownDial progress={active?Math.min(1,remaining):recharge} label={active?label:status.cooldown===undefined?`${name} unavailable`:status.cooldown>0?`${name} cooldown ${Math.ceil(status.cooldown)} seconds`:`${name} ready`}><AttackIcon kind={!tank&&!dive&&active&&status.shield===0?'boost':'shield'}/></CooldownDial>
   <span>{label}<small>{active?(tank?'HOLDING':`${status.remaining.toFixed(1)}s`):controls}</small></span>
  </button>;
 }
