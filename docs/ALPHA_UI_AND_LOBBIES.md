@@ -54,22 +54,23 @@ starting to adjust them. These bounds permit multiple matches; they are not a
 measured capacity guarantee for a hosting tier. Saved metadata and waiting
 profiles do not consume another running physics world.
 
-Tickets are FIFO within the exact requested mode and size. A blocked 3v3 pool
-does not prevent another format's available waiting lobby from filling. Running
-and ended rounds do not accept new profiles; reserved reconnects retain their
-original world. If no compatible waiting lobby or server capacity is available,
-the queue preserves the requested format and displays its actual position.
+Tickets are considered in arrival order within each mode and size. A live
+match gets first chance to fill an available seat with a compatible player,
+followed by waiting lobbies. Once a round ends, new players wait for another
+round. Reserved seats count toward team, role and server capacity.
 It cycles the existing NIWC-Pacific and SEA-STRIKE videos, muted and inline;
 reduced-motion and unavailable-media cases use a static background.
 No wait-time estimate is invented. If a waiting player's connection is lost, its
 ticket ends; Rejoin Queue requests a new place when connected again.
 
 Explicit Leave/Cancel releases a seat immediately. An unexpected disconnect
-holds it for **30 seconds** by default; only the authenticated guest profile can
-restore it. Vehicles are despawned during that absence. After expiry the server
-unloads an otherwise empty runtime and promotes a queued player. A silent network
-failure can take up to 30 seconds to detect before the grace window begins.
-The frontend already sends application heartbeats every five seconds. There are
+reserves the player's team and hero for **30 seconds** by default. A disconnected
+match vehicle despawns. The same authenticated profile can redeploy its hero
+automatically in the same match during the reservation. After expiry, the next
+eligible player can take that side and pick an available hero. The score and
+clock continue. An otherwise empty runtime unloads after its last reservation.
+The server sends a WebSocket ping every eight seconds and detects silent peers
+after 20 seconds without inbound traffic, then starts the grace period. There are
 at most 96 connected sockets and 64 waiting tickets per process.
 
 ### Configuration

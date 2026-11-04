@@ -884,21 +884,55 @@ async fn result_capacity_is_preflighted_and_existing_pending_archives_do_not_blo
 }
 
 #[tokio::test]
-async fn running_round_cannot_backfill_new_profiles_but_preserves_verified_reconnects() {
-    let (mut s, world, roster)=deployed_ctf(false).await;s.max_active_worlds=1;
-    // Even a truly vacant side cannot turn a running round into another lobby.
-    s.handle(&roster[1].0,json!({"action":"mode_leave"})).await.unwrap();
-    let (waiting,_,_)=client(&s,"Next round driver").await;
-    assert_eq!(mode(&s,&waiting,"competitive","brz").await["status"],"queued");
-    let (old,identity)=&roster[0];
+async fn live_match_reserves_reconnects_then_backfills_the_vacant_side() {
+    let (mut s, world, roster) = deployed_ctf(true).await;
+    s.max_active_worlds = 1;
+    let (old, identity) = &roster[0];
+    let seat = s.alpha.lock().await.members[old].clone();
+    let runtime = s.runtimes.lock().await[&world].clone();
+    let match_id = runtime.lock().await.round.as_ref().unwrap().match_id.clone();
+    let (waiting, _, _) = client(&s, "Replacement").await;
+    assert_eq!(mode(&s, &waiting, "competitive", "").await["status"], "queued");
     s.disconnect(old).await;
-    let (resumed,_,_)=client(&s,"Resumed driver").await;
-    s.handle(&resumed,json!({"action":"identify","name":"Career driver 0","token":identity["token"]})).await.unwrap();
-    assert_eq!(s.connections.lock().await[&resumed].world_id,Some(world));
-    s.spawn(&resumed,"streaming_endless_city","brz").await.unwrap();
-    assert!(s.alpha.lock().await.members.contains_key(&resumed));
-    assert!(s.alpha.lock().await.queue.iter().any(|t| t.player==waiting));
-    assert!(s.participant_slot_available(world,Some(identity["profile_id"].as_str().unwrap())).await);
+    s.maintain_alpha().await;
+    assert!(s.connections.lock().await[&waiting].world_id.is_none());
+
+    let (resumed, _, _) = client(&s, "Returning driver").await;
+    s.handle(&resumed, json!({"action":"identify","token":identity["token"]})).await.unwrap();
+    let restored = s.alpha.lock().await.members[&resumed].clone();
+    assert_eq!((restored.world, restored.team, &restored.hero), (world, seat.team, &seat.hero));
+    s.spawn(&resumed, "streaming_endless_city", "tank").await.unwrap();
+    s.disconnect(&resumed).await;
+    let profile = identity["profile_id"].as_str().unwrap();
+    s.alpha.lock().await.reservations.get_mut(profile).unwrap().expires = timestamp();
+    s.maintain_alpha().await;
+    let replacement = s.alpha.lock().await.members[&waiting].clone();
+    assert_eq!((replacement.world, replacement.team), (world, seat.team));
+    assert!(replacement.hero.is_empty());
+    assert!(s.handle(&waiting, json!({"action":"hero_select","hero":"brz"})).await.is_err());
+    s.handle(&waiting, json!({"action":"hero_select","hero":"tank"})).await.unwrap();
+    assert!(s.handle(&waiting, json!({"action":"hero_select","hero":"ae86"})).await.is_err());
+    s.spawn(&waiting, "streaming_endless_city", "tank").await.unwrap();
+    assert_eq!(runtime.lock().await.round.as_ref().unwrap().match_id, match_id);
+
+    let (late, _, _) = client(&s, "Late return").await;
+    s.handle(&late, json!({"action":"identify","token":identity["token"]})).await.unwrap();
+    assert!(s.connections.lock().await[&late].world_id.is_none());
+    assert_eq!(mode(&s, &late, "competitive", "").await["status"], "queued");
+    // Leaving voluntarily releases the seat. A former participant waiting at
+    // the head of the queue cannot change sides or block the next eligible driver.
+    let (next, _, _) = client(&s, "Next replacement").await;
+    assert_eq!(mode(&s, &next, "competitive", "").await["status"], "queued");
+    s.handle(&waiting, json!({"action":"mode_leave"})).await.unwrap();
+    s.maintain_alpha().await;
+    assert_eq!(s.connections.lock().await[&next].world_id, Some(world));
+    assert!(s.connections.lock().await[&late].world_id.is_none());
+    runtime.lock().await.round.as_mut().unwrap().phase = crate::ctf::CtfPhase::Ended;
+    s.handle(&next, json!({"action":"mode_leave"})).await.unwrap();
+    let (postgame, _, _) = client(&s, "Postgame").await;
+    assert_eq!(mode(&s, &postgame, "competitive", "").await["status"], "queued");
+    s.maintain_alpha().await;
+    assert!(s.connections.lock().await[&postgame].world_id.is_none());
     cleanup(s).await;
 }
 

@@ -21,7 +21,7 @@ import { useChatStore } from "../store/chat/chatStore";
 import {useSocialStore} from '../store/social/socialStore';
 import {useUIStore} from '../store/menus/uiStore';
 import {mapCatalog,useSelectionStore} from '../store/selection/selectionStore';
-import {useAlphaStore} from '../store/alpha/alphaStore';
+import {heroForVehicle, isMatchMode, useAlphaStore} from '../store/alpha/alphaStore';
 const packetEncoder = new TextEncoder();
 
 let socket: WebSocket | null = null;
@@ -35,7 +35,7 @@ let vehicleChangeSequence = 0;
 
 // Preserve only an already-deployed session; authentication and world permissions
 // are rechecked by the server. Explicit leave/menu navigation cancels recovery.
-let resumeIntent: {profile:string;world:number;vehicle:string;map:string;mode:ReturnType<typeof useAlphaStore.getState>['mode'];teamSize:3|5;preserved:boolean}|null=null;
+let resumeIntent: {profile:string;world:number;vehicle:string;map:string;mode:ReturnType<typeof useAlphaStore.getState>['mode'];teamSize:3|5;matchId?:string;step:"waiting"|"retained"|"redeploy"|"requested"}|null=null;
 let recoveryTimer:ReturnType<typeof setTimeout>|null=null;
 let foregroundTimer:ReturnType<typeof setTimeout>|null=null;
 let lastPacketMs=0,lastLocalBodyMs=0,foregroundGraceUntil=0,hadLocalBody=false,missingBodySince:number|null=null;
@@ -46,15 +46,22 @@ function failRecovery(message:string){
  if(intent){useAlphaStore.getState().restoreMode(intent.mode,intent.teamSize);const mapIndex=mapCatalog.findIndex(m=>m.id===intent.map);if(mapIndex>=0)useSelectionStore.setState({mapIndex});}
  useChatStore.getState().notify(message);useSocialStore.setState({message,recoveryMessage:message});useUIStore.getState().setScreen('mode_select');
 }
-function armRecoveryTimeout(){
+function armRecoveryTimeout(seconds:number){
  if(recoveryTimer!==null)clearTimeout(recoveryTimer);
- recoveryTimer=setTimeout(()=>failRecovery('Connection recovery timed out. Your previous game mode is selected; reconnect and deploy when ready.'),20000);
+ recoveryTimer=setTimeout(()=>failRecovery('Connection recovery timed out. Your previous game mode is selected; reconnect and deploy when ready.'),seconds*1000);
 }
 function rememberDeployment(){
  if(resumeIntent)return;
  const net=useNetworkStore.getState(),view=useSocialStore.getState().view,me=net.getMe();
  if(useUIStore.getState().screen!=='sandbox'||!me?.vehicle_id||!view||net.room_id===null||!net.worldMap)return;
- resumeIntent={profile:view.profile.id,world:net.room_id,vehicle:me.vehicle_id,map:net.worldMap,mode:useAlphaStore.getState().mode,teamSize:useAlphaStore.getState().teamSize,preserved:false};armRecoveryTimeout();
+ const active=view.alpha?.active;
+ const mode=active?.mode??useAlphaStore.getState().mode;
+ resumeIntent={profile:view.profile.id,world:net.room_id,vehicle:me.vehicle_id,map:net.worldMap,mode,
+  teamSize:active?.team_size===3?3:active?.team_size===5?5:useAlphaStore.getState().teamSize,
+  matchId:active?.match_id??undefined,step:"waiting"};
+ // The server starts its lease after detecting a dead socket. Allow for its
+ // 20-second silent-peer deadline before timing out locally.
+ armRecoveryTimeout(isMatchMode(mode)?(view.alpha?.reconnect_grace_seconds??30)+20:20);
 }
 function resumeDeployment(){
  const intent=resumeIntent,view=useSocialStore.getState().view,net=useNetworkStore.getState();
@@ -62,9 +69,21 @@ function resumeDeployment(){
  if(useUIStore.getState().screen!=='sandbox'){forgetRecovery();return;}
  if(!view)return;
  if(view.profile.id!==intent.profile){failRecovery('Your player profile changed. Choose a world to continue.');return;}
- // Never silently create a new body when the retained deployment is gone.
- if(intent.preserved&&net.room_id===intent.world&&net.getMe()&&useWorldStore.getState().map){
-  forgetRecovery();useChatStore.getState().notify('Practice session restored: your vehicle and physics world were retained.');
+ if(net.room_id!==intent.world||net.worldMap!==intent.map||!useWorldStore.getState().map)return;
+ const active=view.alpha?.active;
+ if(intent.step==="redeploy"){
+  if(!active||active.world_id!==intent.world||!socket||socket.readyState!==WebSocket.OPEN)return;
+  if(active.match_phase==='ended'){forgetRecovery();return;}
+  if(active.mode!==intent.mode||!isMatchMode(active.mode)||active.hero!==heroForVehicle(intent.vehicle)?.id||
+    (intent.matchId&&active.match_id!==intent.matchId)){
+   failRecovery('Your previous match deployment is no longer available.');return;
+  }
+  intent.step="requested";
+  socket.send(JSON.stringify({type:"spawn_request",map:intent.map,vehicle:intent.vehicle}));
+ }
+ if((intent.step==="retained"||intent.step==="requested")&&net.getMe()?.vehicle_id===intent.vehicle){
+  forgetRecovery();
+  useChatStore.getState().notify(intent.step==="retained"?'Practice session restored: your vehicle and physics world were retained.':'Reconnected to your match on the same team.');
  }
 }
 function foregroundRecovery(){
@@ -359,8 +378,24 @@ export function connectRustServer(): WebSocket {
   clearSession();
   const connection = new WebSocket(getRustWsUrl());
   socket = connection;
+  let pendingResult: unknown;
   // Old callbacks cannot clear or close the replacement session.
   const isCurrent = () => socket === connection && reconnectEnabled;
+
+  const handleLoss = () => {
+    if (!isCurrent()) return;
+    rememberDeployment();
+    if(resumeIntent)resumeIntent.step="waiting";
+    clearTimers();
+    socket = null;
+    clearSession();
+    scheduleReconnect();
+  };
+  const retrySocket = () => {
+    if (!isCurrent()) return;
+    handleLoss();
+    connection.close();
+  };
 
   connection.onopen = () => {
     if (!isCurrent()) return;
@@ -369,7 +404,8 @@ export function connectRustServer(): WebSocket {
     heartbeatTimer = setInterval(() => {
       const now=performance.now();
       if(isCurrent()&&document.visibilityState!=='hidden'&&now>foregroundGraceUntil&&hadLocalBody&&!resumeIntent&&useUIStore.getState().screen==='sandbox'&&!useUIStore.getState().isModeLoading&&now-lastLocalBodyMs>8000){
-        failRecovery('Physics updates stopped. Your previous game mode is selected; reconnect and deploy when ready.');
+        retrySocket();
+        return;
       }
       if (
         !isCurrent() ||
@@ -384,15 +420,7 @@ export function connectRustServer(): WebSocket {
     }, 5000);
   };
 
-  connection.onclose = () => {
-    if (!isCurrent()) return;
-    rememberDeployment();
-    if(resumeIntent)resumeIntent.preserved=false;
-    clearTimers();
-    socket = null;
-    clearSession();
-    scheduleReconnect();
-  };
+  connection.onclose = handleLoss;
 
   connection.onerror = () => {
     if (!isCurrent()) return;
@@ -444,16 +472,24 @@ export function connectRustServer(): WebSocket {
             : null,
           spawn: finiteTuple(message.spawn, 3) ? message.spawn : null,
         });
-        if (message.social_version === 1) beginSocialSession(message.server_id);
+        if (message.social_version === 1) beginSocialSession(message.server_id, () => {
+          // A half-open old socket may still own the profile. Retry only while
+          // this tab is recovering a deployment, within its original deadline.
+          if(resumeIntent)retrySocket();
+        });
         return;
       case "match_result":
-        receiveMatchResult(message.data);
+        if(!receiveMatchResult(message.data)&&!useSocialStore.getState().view)pendingResult=message.data;
         break;
       case "social_result":
         receiveSocialResult(message);
         return;
       case "social_state":
         receiveSocialState(message.data);
+        if(pendingResult&&useSocialStore.getState().view){
+          receiveMatchResult(pendingResult);
+          pendingResult=undefined;
+        }
         resumeDeployment();
         return;
       case "chat_message":
@@ -463,7 +499,17 @@ export function connectRustServer(): WebSocket {
         console.warn(message.message || "Social connection unavailable");
         return;
       case "session_restored":
-        if(resumeIntent){if(message.preserved===true){resumeIntent.preserved=true;resumeDeployment();}else failRecovery(message.reason==='EXPIRED'?'Your reconnect reservation expired. Your previous game mode is selected; deploy when ready.':'Your previous physics body could not be retained. Your game mode is selected; deploy when ready.');}
+        if(resumeIntent&&resumeIntent.step==="waiting"){
+          if(message.preserved===true)resumeIntent.step="retained";
+          else if(message.reason==="REDEPLOY"&&isMatchMode(resumeIntent.mode))resumeIntent.step="redeploy";
+          else {
+            failRecovery(message.reason==='EXPIRED'||message.reason==='NO_RESERVATION'
+              ?'Your reconnect reservation expired. Join the queue to play again.'
+              :'Your previous deployment could not be restored. Choose a mode to continue.');
+            return;
+          }
+          resumeDeployment();
+        }
         return;
       case "world_changed":
         if(!message.world&&hadLocalBody&&!resumeIntent&&useUIStore.getState().screen==='sandbox'&&!['leave_game','match_results'].includes(useUIStore.getState().overlay??''))failRecovery('The server closed your physics world. Your previous game mode is selected; deploy when ready.');

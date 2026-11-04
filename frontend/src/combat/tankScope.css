@@ -11,3 +11,6 @@
 
 /* Scope prioritizes the reticle/research; input controls remain available. */
 .driving-hud[data-scoped=true] :is(.instrument-hud,.world-edit-tools,.ignition-hud){visibility:hidden;pointer-events:none}
+.tank-scope-reticle[data-cue=attack]{stroke:#ff7978}
+.tank-scope-reticle[data-cue=ally]{stroke:#7bcdff}
+.tank-scope-reticle[data-cue=heal]{stroke:#89eda5}

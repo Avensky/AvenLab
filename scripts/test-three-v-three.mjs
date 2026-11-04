@@ -17,7 +17,7 @@ const reserve=net.createServer();
 await new Promise(resolve=>reserve.listen(0,'127.0.0.1',resolve));
 const port=reserve.address().port;
 await new Promise(resolve=>reserve.close(resolve));
-const server=spawn(binary,[],{cwd:path.join(repo,'avenlab-server'),env:{...process.env,AVENLAB_BIND:`127.0.0.1:${port}`,AVENLAB_SOCIAL_PATH:path.join(directory,'social.json'),AVENLAB_ALPHA_LIMITS:'1',AVENLAB_ROLE_LIMITS:'1',AVENLAB_MAX_ACTIVE_WORLDS:'1',AVENLAB_MAX_PLAYERS:'12'},stdio:['ignore','pipe','pipe']});
+const server=spawn(binary,[],{cwd:path.join(repo,'avenlab-server'),env:{...process.env,AVENLAB_HIDE_WARMUP_ENEMIES:'0',AVENLAB_BIND:`127.0.0.1:${port}`,AVENLAB_SOCIAL_PATH:path.join(directory,'social.json'),AVENLAB_ALPHA_LIMITS:'1',AVENLAB_ROLE_LIMITS:'1',AVENLAB_MAX_ACTIVE_WORLDS:'1',AVENLAB_MAX_PLAYERS:'12'},stdio:['ignore','pipe','pipe']});
 let output='',phase='startup';
 for(const stream of [server.stdout,server.stderr])stream.on('data',bytes=>output=(output+bytes.toString()).slice(-20000));
 const started=new Promise((resolve,reject)=>{
@@ -95,9 +95,9 @@ try{
 
  phase='five vehicles remain in warmup';
  for(const peer of seated.slice(0,5))await peer.deploy(peer.vehicle);
- const visibleWaiting=seated.slice(0,5).filter(peer=>peer.team===seated[0].team).length;
+ const visibleWaiting=5;
  const waiting=(await seated[0].wait(message=>message.type==='snapshot'&&message.data.entities.length===visibleWaiting&&message.data.match_state?.phase==='waiting')).data;
- assert(waiting.entities.every(entity=>entity.team===seated[0].team),'waiting opponents retain their mystery picks');
+ assert.equal(new Set(waiting.entities.map(entity=>entity.team)).size,2,'deployed opponents are visible during playtest warmup');
  assert.equal(waiting.match_state.mode,'skirmish');assert.equal(waiting.match_state.training,false);
  checks.push('Five deployed vehicles cannot start a scored 3v3 round');
  phase='sixth vehicle starts the round';

@@ -122,8 +122,11 @@ impl PhysicsWorld {
         Ok(())
     }
     pub fn start_dive_shield(&mut self, player:&str)->Result<(),String> {
-        if self.assigned_hero(player)!=Some("cx30") || self.is_defeated(player) {return Err("Deploy a living CX-30 Support SUV first.".into());}
-        let car=self.vehicles.get(player).ok_or("Deploy your CX-30 first.")?;
+        if !self.vehicle_health.get(player).is_some_and(|h| !h.defeated && h.hp>0.0) {
+            return Err("Deploy a living vehicle first.".into());
+        }
+        if matches!(self.assigned_hero(player), Some("tank" | "brz")) {return Err("Use this vehicle's dedicated shield.".into());}
+        let car=self.vehicles.get(player).ok_or("Deploy your vehicle first.")?;
         if !car.powertrain.running || !self.bodies[car.body].is_enabled() {return Err("Start the engine first.".into());}
         let guard=self.guard_boosts.entry(player.into()).or_default();
         if guard.dive_cooldown>0.0 {return Err("Dive Shield is cooling down.".into());}
@@ -135,18 +138,17 @@ impl PhysicsWorld {
     pub fn dive_protected(&self, player:&str)->bool {
         self.guard_boosts.get(player).is_some_and(|g|g.dive_remaining>0.0)
     }
-    pub fn advance_guard_boosts<'a>(&mut self, dt: f32, active: impl Iterator<Item = &'a str>) {
+    pub fn advance_guard_boosts(&mut self, dt: f32, connected: impl Fn(&str) -> bool) {
         if !dt.is_finite() || dt <= 0.0 || dt > 0.1 { return; }
-        let connected: std::collections::HashSet<_> = active.collect();
         for (id, guard) in &mut self.guard_boosts {
             guard.cooldown = (guard.cooldown - dt).max(0.0);
             guard.dive_cooldown=(guard.dive_cooldown-dt).max(0.0);
             guard.dive_remaining=(guard.dive_remaining-dt).max(0.0);
             let living = self.vehicle_health.get(id).is_some_and(|h| !h.defeated && h.hp > 0.0);
             let enabled = self.vehicles.get(id).is_some_and(|v| (guard.kind=="tank_barrier" || (v.powertrain.running && !v.powertrain.thermal_recovery)) && self.bodies.get(v.body).is_some_and(|b| b.is_enabled()));
-            if !living || !enabled || !connected.contains(id.as_str()) { guard.suspend(); }
+            if !living || !enabled || !connected(id) { guard.suspend(); }
             else if guard.kind=="tank_barrier" {guard.suspended=false;}
-            else if guard.kind!="tank_barrier" { guard.remaining = (guard.remaining - dt).max(0.0); if !guard.active() { guard.shield_hp = 0.0; } }
+            else { guard.remaining = (guard.remaining - dt).max(0.0); if !guard.active() { guard.shield_hp = 0.0; } }
         }
     }
     pub fn guard_covers_direction(&self, player: &str, toward: Vector<Real>) -> bool {
@@ -249,7 +251,7 @@ mod tests {
         assert_eq!(w.guard_view("guard").kind,"brz_guard");assert!(w.start_guard_boost("guard").is_err());
         assert!(!w.vehicles["guard"].config.tracked);
         w.cancel_guard("guard");assert_eq!(w.guard_view("guard").remaining_s,0.0);assert_eq!(w.guard_view("guard").cooldown_s,GUARD_COOLDOWN);
-        for _ in 0..1300 {w.advance_guard_boosts(SIMULATION_DT,["guard","enemy"].into_iter());}
+        for _ in 0..1300 {w.advance_guard_boosts(SIMULATION_DT,|id| matches!(id,"guard"|"enemy"));}
         w.vehicles.get_mut("guard").unwrap().powertrain.nos_remaining_s=0.0;
         assert!(w.start_guard_boost("guard").unwrap_err().contains("nitrous"));
         w.vehicles.get_mut("guard").unwrap().powertrain.nos_remaining_s=GUARD_NOS_SECONDS;
@@ -286,7 +288,7 @@ mod tests {
         assert_eq!(w.guard_view("guard").shield_hp,0.0);assert_eq!(w.guard_view("guard").break_seq,1);
         assert_eq!(w.vehicle_health["guard"].hp,w.vehicle_health["guard"].max_hp-50.0);
         assert!(w.start_tank_barrier("guard").is_err());
-        for _ in 0..301 {w.advance_guard_boosts(SIMULATION_DT,["guard","enemy"].into_iter());}
+        for _ in 0..301 {w.advance_guard_boosts(SIMULATION_DT,|id| matches!(id,"guard"|"enemy"));}
         assert_eq!(w.guard_view("guard").remaining_s,0.0);assert!(w.guard_view("guard").cooldown_s>9.0);
         w.set_assigned_hero("guard","brz");assert!(w.start_tank_barrier("guard").is_err());
     }
@@ -329,7 +331,7 @@ mod tests {
         for seq in 1..180 {w.combat_tick("guard",seq,Some(&intent));}
         assert!((w.guard_view("guard").panel_yaw-std::f32::consts::FRAC_PI_2).abs()<0.05);
         w.vehicles.get_mut("guard").unwrap().powertrain.running=false;
-        for _ in 0..1800 {w.advance_guard_boosts(SIMULATION_DT,["guard","enemy"].into_iter());}
+        for _ in 0..1800 {w.advance_guard_boosts(SIMULATION_DT,|id| matches!(id,"guard"|"enemy"));}
         assert_eq!(w.guard_view("guard").shield_hp,BARRIER_HP);
         assert!(w.start_tank_barrier("guard").is_err());
         let mut damage=75.0;
@@ -349,17 +351,17 @@ mod tests {
         }
         assert_eq!(w.guard_view("guard").shield_hp,0.0);
         assert!(w.start_dive_shield("guard").is_err());
-        for _ in 0..130 {w.advance_guard_boosts(SIMULATION_DT,["guard","enemy"].into_iter());}
+        for _ in 0..130 {w.advance_guard_boosts(SIMULATION_DT,|id| matches!(id,"guard"|"enemy"));}
         assert!(!w.dive_protected("guard"));assert!(w.guard_view("guard").dive_cooldown_s>15.0);
         w.damage_vehicle("guard",Some("enemy"),250.0,"cannon");assert!(w.vehicle_health["guard"].hp<hp);
     }
     #[test]
     fn guard_expiration_and_disconnect_never_refund_cost_or_cooldown(){
         let mut w=range("brz","brz");w.start_guard_boost("guard").unwrap();
-        for _ in 0..241 {w.advance_guard_boosts(SIMULATION_DT,["guard","enemy"].into_iter());}
+        for _ in 0..241 {w.advance_guard_boosts(SIMULATION_DT,|id| matches!(id,"guard"|"enemy"));}
         assert_eq!(w.guard_view("guard").remaining_s,0.0);assert_eq!(w.guard_view("guard").shield_hp,0.0);assert!(w.guard_view("guard").cooldown_s>15.9);
         w.guard_boosts.get_mut("guard").unwrap().remaining=4.0;
-        w.advance_guard_boosts(SIMULATION_DT,["enemy"].into_iter());assert_eq!(w.guard_view("guard").remaining_s,0.0);
+        w.advance_guard_boosts(SIMULATION_DT,|id| id=="enemy");assert_eq!(w.guard_view("guard").remaining_s,0.0);
         w.reassign_player("guard","reconnected");assert_eq!(w.assigned_hero("reconnected"),Some("brz"));assert!(w.guard_view("reconnected").cooldown_s>15.0);
         assert!(w.start_guard_boost("reconnected").is_err());
     }
@@ -369,7 +371,7 @@ mod tests {
             let mut w=range("brz","brz");w.start_guard_boost("guard").unwrap();let body=w.vehicles["guard"].body;
             w.bodies[body].set_linvel(vector![0.0,0.0,18.0],true);
             let v=w.vehicles.get_mut("guard").unwrap();v.throttle=0.75;v.steer=steering;v.handbrake=0.3;
-            for _ in 0..20 {w.step(SIMULATION_DT);w.advance_guard_boosts(SIMULATION_DT,["guard","enemy"].into_iter());}
+            for _ in 0..20 {w.step(SIMULATION_DT);w.advance_guard_boosts(SIMULATION_DT,|id| matches!(id,"guard"|"enemy"));}
             let v=&w.vehicles["guard"];
             assert!(v.steer_angle.signum()==steering.signum()&&v.steer_angle.abs()>0.1);
             assert!(w.bodies[body].angvel().y*steering< -0.05,"guard drift must retain steering: {:?}",w.bodies[body].angvel());

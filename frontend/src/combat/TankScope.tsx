@@ -1,3 +1,4 @@
+import {useSightCue} from './sightCue';
 import {ScopeAimControls} from './ScopeAimControls';
 import {useEffect,useMemo,useRef,useState} from 'react';
 import {useFrame,useThree} from '@react-three/fiber';
@@ -29,6 +30,7 @@ function readScope(tank:boolean){
   reload:Math.ceil((tank?c.cannon_reload??c.reload??0:c.reload??0)*10)/10};
 }
 function ScopeInstruments({tank}:{tank:boolean}){
+ const cue=useSightCue(s=>s.tone);
  const zoom=useCombatStore(s=>s.scopeZoom);
  const [research,setResearch]=useState(false),[reference,setReference]=useState(250);
  const [sample,setSample]=useState(()=>readScope(tank));
@@ -44,7 +46,7 @@ function ScopeInstruments({tank}:{tank:boolean}){
  const time=reference/Math.max(.01,CANNON_SPEED*Math.cos(pitch)),drop=.5*GRAVITY*time*time;
  return <section className="tank-scope-overlay" aria-label={tank?'Tank scope view':'Turret scope view'}>
   <div className="tank-scope-vignette"/>
-  <svg className="tank-scope-reticle" viewBox="0 0 600 600" aria-hidden="true"><circle cx="300" cy="300" r="225"/><path d="M180 300h100m40 0h100M300 245v35m0 40v105M250 310v-20m-30 20v-20m130 20v-20m30 20v-20M290 340h20m-25 35h30m-35 35h40"/><circle cx="300" cy="300" r="3"/></svg>
+  <svg data-cue={cue??undefined} className="tank-scope-reticle" viewBox="0 0 600 600" aria-hidden="true"><circle cx="300" cy="300" r="225"/><path d="M180 300h100m40 0h100M300 245v35m0 40v105M250 310v-20m-30 20v-20m130 20v-20m30 20v-20M290 340h20m-25 35h30m-35 35h40"/><circle cx="300" cy="300" r="3"/></svg>
   <div className="scope-top-controls"><button onClick={()=>useCombatStore.getState().setScopeZoom(useCombatStore.getState().scopeZoom===2?4:2)} aria-label="Scope magnification">{zoom}×</button>{tank&&<button onClick={()=>setResearch(!research)} aria-expanded={research}>RESEARCH</button>}<button onClick={toggleTankScope}>EXIT SCOPE</button></div>
   <output className="scope-range-readout">ELEV {sample.pitch.toFixed(1)}° · {sample.reload>0?`LOAD ${sample.reload.toFixed(1)}s`:'READY'}{flight&&<><br/>DATUM y=0 · RANGE {Math.round(flight.range)}m{flight.capped?' +':''} · {flight.time.toFixed(2)}s</>}</output>
   {research&&<aside className="scope-research" aria-label="Ballistics research"><h2>CANNON · GRAVITY LAB</h2><div className="scope-reference"><button aria-label="Decrease reference range" onClick={()=>setReference(Math.max(50,reference-50))}>−</button><span>REFERENCE {reference} m</span><button aria-label="Increase reference range" onClick={()=>setReference(Math.min(1400,reference+50))}>+</button></div><p>v₀ = {CANNON_SPEED} m/s · g = {GRAVITY} m/s²</p><p>x(t) = v₀ cos(θ)t<br/>y(t) = y₀ + v₀ sin(θ)t − ½gt²</p><p>At {reference}m: {time.toFixed(2)}s, gravity drop {drop.toFixed(1)}m.<br/>Required elevation to datum: {required===null?'unreachable':`${(required*180/Math.PI).toFixed(2)}°`}.</p><p>Arc is a y=0 datum estimate, not terrain-aware or target tracking. No drag, wind or vehicle-velocity inheritance. Server checks obstacles along the same gravity arc at firing time; hits resolve instantly.</p></aside>}

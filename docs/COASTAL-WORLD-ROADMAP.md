@@ -4,6 +4,14 @@ The goal is a multiplayer simulation where players can drive, fly and operate
 watercraft in connected cities and fleets, later directed by a headless World
 Director. Keep server-authoritative physics and mobile performance central.
 
+## Endless City fleet playtest
+
+The nine city tiles share one ocean perimeter and a moored carrier east of the central city block. Drive out over the service pier and ramp. The marked service bay uses the existing server fuel and repair rules. The two deck markings reserve space for aircraft launch lanes. The sea surface has no road collider. Vehicles that leave the city or deck use the existing falling recovery.
+
+For the next water-physics test, define one room-owned sea level, then sample submersion at four hull points in the fixed Rapier step. Start with buoyancy proportional to displaced volume and damp vertical velocity at each point. Test rest, heel recovery and a car sinking off the pier. Replicate the hull pose through the existing entity stream. Clients can animate small ripples from the room clock independently of collision.
+
+Move the carrier only after takeoff and touchdown work on the moored deck. Give an aircraft its deck-relative launch velocity plus the carrier's linear and angular velocity at the launch point. The first fleet-to-shore mission can use the existing service bay as the pickup and a land base as the delivery destination.
+
 ## Current coastal district patch
 
 Coastal District is a separately registered environment (`coastal_district`) in

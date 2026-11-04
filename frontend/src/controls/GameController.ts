@@ -444,15 +444,16 @@ export function GameController() {
       if (edges[2]) store.toggleVehicleFlag(VehicleFlags.ENGINE_ON);
       if (edges[3]) {if(cycleTankWeapon())secondaryFireArmed=false;else store.toggleVehicleFlag(VehicleFlags.HEADLIGHTS);}
       if (edges[12]) {
-        if (!tank) store.toggleVehicleFlag(VehicleFlags.HAZARDS);
-        else if (combatIntent.enabled && barrageReady(useNetworkStore.getState())) barragePressStarted = performance.now();
-        else resetTurretOrientation();
+        if (combatIntent.enabled && barrageReady(useNetworkStore.getState())) barragePressStarted = performance.now();
+        else if(tank) resetTurretOrientation();
+        else store.toggleVehicleFlag(VehicleFlags.HAZARDS);
       }
       if (barragePressStarted !== null) {
-        if (!tank || !combatIntent.enabled) barragePressStarted = null;
+        if (!combatIntent.enabled) barragePressStarted = null;
         else if (!pressed(12)) {
           barragePressStarted = null;
-          resetTurretOrientation();
+          if(tank) resetTurretOrientation();
+          else store.toggleVehicleFlag(VehicleFlags.HAZARDS);
         } else if (performance.now() - barragePressStarted >= 600) {
           barragePressStarted = null;
           void requestTankBarrage();

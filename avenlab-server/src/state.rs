@@ -297,6 +297,7 @@ pub struct InputPacket {
 // Shared Game State
 // ============================================================================
 pub struct SharedGameState {
+    pub(crate) hide_warmup_enemies: bool,
     pub match_state: Option<crate::ctf::CtfView>,
     pub room_id: usize,
     /// Authoritative simulation tick counter
@@ -325,6 +326,7 @@ impl SharedGameState {
     pub fn new() -> Self {
         Self {
             match_state: None,
+            hide_warmup_enemies: std::env::var("AVENLAB_HIDE_WARMUP_ENEMIES").is_ok_and(|v| v == "1" || v.eq_ignore_ascii_case("true")),
             room_id: 0,
             tick: 0,
             server_timing: ServerTiming::default(),
@@ -474,8 +476,12 @@ impl SharedGameState {
             }
         }
     }
+    fn private_warmup(&self) -> bool {
+        self.hide_warmup_enemies && self.match_state.as_ref().is_some_and(|r| r.phase == crate::ctf::CtfPhase::Waiting)
+    }
+
     pub fn can_receive_vehicle_identity(&self,viewer:&str,source:&str)->bool{
-        !self.match_state.as_ref().is_some_and(|round|round.phase==crate::ctf::CtfPhase::Waiting)||
+        !self.private_warmup()||
             self.entities.get(source).zip(self.entities.get(viewer)).is_some_and(|(source,viewer)|source.team==viewer.team)
     }
 
@@ -488,7 +494,7 @@ impl SharedGameState {
         // Waiting rooms share at most two team-specific frames. Omitting the
         // enemy entity also withholds model, collider, paint and weapon data;
         // a null model alone would still leak the selected chassis via shape.
-        if self.match_state.as_ref().is_some_and(|round|round.phase==crate::ctf::CtfPhase::Waiting){
+        if self.private_warmup(){
             let mut snapshot=self.build_snapshot(physics);
             let (red, blue): (Vec<_>, Vec<_>) = std::mem::take(&mut snapshot.entities)
                 .into_iter().partition(|entity| entity.team == Team::Red.as_str());

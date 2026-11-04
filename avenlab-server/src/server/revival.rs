@@ -31,8 +31,13 @@ pub(super) struct DownedLease {
 }
 impl RevivalState {
     pub(super) fn ability_remaining(&mut self, profile: &str, ability: &'static str) -> f32 {
-        let now=Instant::now();self.ability_deadlines.retain(|_,ready|*ready>now);
-        self.ability_deadlines.get(&(profile.into(),ability)).map(|ready|ready.duration_since(now).as_secs_f32()).unwrap_or(0.0)
+        self.ability_cooldowns(profile,[ability])[0]
+    }
+    pub(super) fn ability_cooldowns<const N:usize>(&mut self, profile:&str, keys:[&'static str;N])->[f32;N] {
+        let now=Instant::now();
+        self.ability_deadlines.retain(|_,ready|*ready>now);
+        keys.map(|key|self.ability_deadlines.get(&(profile.into(),key))
+            .map(|ready|ready.duration_since(now).as_secs_f32()).unwrap_or(0.0))
     }
     pub(super) fn ability_used(&mut self, profile: String, ability: &'static str, cooldown:f32) {
         if cooldown.is_finite()&&cooldown>0.0&&cooldown<=300.0 {self.ability_deadlines.insert((profile,ability),Instant::now()+Duration::from_secs_f32(cooldown));}

@@ -34,7 +34,7 @@ html[data-reduce-motion=true] .vehicle-health-marker-track>span{transition:none}
 .vehicle-health-marker {position:relative;}
 .assist-target-frame {
  position:absolute;left:50%;top:50%;box-sizing:border-box;pointer-events:none;
- --corner:linear-gradient(#e9f7ff,#e9f7ff);
+ --corner:linear-gradient(var(--aim-tint,#e9f7ff),var(--aim-tint,#e9f7ff));
  background:var(--corner) left top/7px 1.5px,var(--corner) left top/1.5px 7px,
    var(--corner) right top/7px 1.5px,var(--corner) right top/1.5px 7px,
    var(--corner) left bottom/7px 1.5px,var(--corner) left bottom/1.5px 7px,
@@ -65,3 +65,8 @@ html[data-reduce-motion=true] .vehicle-health-marker-track>span{transition:none}
  position:absolute;left:50%;top:calc(50% + var(--contact-top,-4px));width:max-content;
  transform:translate(-50%,-100%);
 }
+
+.vehicle-health-marker[data-focused=true][data-relation=enemy] {--aim-tint:#ff7978;}
+.vehicle-health-marker[data-focused=true][data-relation=ally] {--aim-tint:#7bcdff;}
+.vehicle-health-marker[data-focused=true][data-healing=true] {--aim-tint:#89eda5;}
+.vehicle-health-marker[data-focused=true] .contact-tag strong {color:var(--aim-tint);}

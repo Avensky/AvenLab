@@ -17,11 +17,11 @@ Admission results, active seats, queue tickets, roster cards, public managed-wor
 
 Competitive continues to be an alpha mode. Ranked MMR is still pending; choosing Competitive does not enable an unfinished rating system.
 
-With `AVENLAB_ROLE_LIMITS=0`, training can start once both teams have a deployed vehicle; it does not require the full scored roster. That running training round also stops accepting new profiles. Later arrivals fill or create another waiting world within the same resource budget. Training results do not grant competitive progression.
+With `AVENLAB_ROLE_LIMITS=0`, a full deployed roster can start a training round with flexible roles. Training results do not grant competitive progression.
 
 ## Bounded simultaneous games
 
-Matchmaking first fills an eligible waiting world with the same mode and team size. A full or running game cannot absorb a new profile. When there is no suitable waiting room, the server may start another isolated game if the configured active-world and player limits permit it. A new game uses its own world, physics state, teams, CTF round, reconnect reservations and career result.
+Matchmaking fills open seats in running games first, then occupied waiting rooms of the same mode, map and team size. When all compatible seats are occupied or reserved, the server can open another world within its limits. Explicit departure releases the seat immediately. A connection loss reserves it for the authenticated player for 30 seconds by default. A replacement chooses from the roles available on the short-handed team and joins the existing round with their own statistics. Ended games accept no replacements.
 
 When the budget is full, players retain their requested mode and size in the queue. A blocked queue for one format does not prevent an available waiting room of another format from filling. Freeing a world lets a queued format create its next game. Reconnect restores the original reservation rather than matchmaking the returning player into a different game.
 
@@ -29,6 +29,6 @@ When the budget is full, players retain their requested mode and size in the que
 
 ## Verification and player acceptance
 
-`scripts/test-match-formats.mjs` uses an isolated disposable server and real authenticated WebSocket profiles. It checks all four mode/size combinations, same-format filling, malformed size rejection, budget queuing, a second simultaneous game, role enforcement, scored six-vehicle CTF start, late-arrival isolation and token reconnect. It uses only normal production admission and deployment messages, with no test-only teleport, damage, result or HP endpoints.
+`scripts/test-match-formats.mjs` uses an isolated disposable server and real authenticated WebSocket profiles. It checks all four mode/size combinations, same-format filling, malformed size rejection, budget queuing, a second simultaneous game, role enforcement, scored six-vehicle CTF start, live replacements, reconnect expiry and token reconnect. It uses only normal production admission and deployment messages, with no test-only teleport, damage, result or HP endpoints.
 
 The default world budget may permit fewer than four formats to be active at once; queued selections are expected when that budget is occupied. Increase limits only after measuring the intended host with multiple active matches. Physical controller/mobile menu comfort and full-map concurrent physics/rendering performance still require playtesting.

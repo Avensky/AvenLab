@@ -1,3 +1,7 @@
+import {publishSightCue} from './sightCue';
+import {useSocialStore} from '../store/social/socialStore';
+import {isMechanicPlayer} from './reviveTargets';
+import {nearestHealPackTarget} from './healPackTargets';
 import {projectAssistFrame,sightedTarget,MARKER_RANGE} from './assistFrame';
 import {RecoveryCountdown} from './RecoveryCountdown';
 import {recoveryStatus,healthMarkerIds} from './recoveryStatus';
@@ -21,7 +25,7 @@ const LOS_INTERVAL_MS=100;
 
 /** Snapshot health belongs to React; interpolated movement only touches the
  * scene group and DOM visibility. Markers never capture steering/aim pointers. */
-const VehicleHealthMarker=memo(function VehicleHealthMarker({id,budget,focused}:{id:string;budget:MarkerSightBudget;focused:boolean}){
+const VehicleHealthMarker=memo(function VehicleHealthMarker({id,budget,focused,healing}:{id:string;budget:MarkerSightBudget;focused:boolean;healing:boolean}){
  const root=useRef<Group>(null),card=useRef<HTMLDivElement>(null),projected=useRef(new Vector3());
  const ray=useRef(new Raycaster()),rayOrigin=useRef(new Vector3()),rayDirection=useRef(new Vector3()),worldPosition=useRef(new Vector3());
  const occluded=useRef(true),nextCheck=useRef(-1);
@@ -29,6 +33,7 @@ const VehicleHealthMarker=memo(function VehicleHealthMarker({id,budget,focused}:
  const nextRange=useRef(0);
  const modern=usePreferencesStore(s=>s.hudGroups.futuristic);
  useEffect(()=>()=>budget.forget(id),[id,budget]);
+ useEffect(()=>()=>{if(focused)publishSightCue(id,null);},[id,focused]);
  const {getInterpolated}=useVehiclePhysicsInterpolator(id);
  const mode=usePreferencesStore(s=>s.healthBars);
  const data=useNetworkStore(useShallow(s=>{
@@ -42,10 +47,10 @@ const VehicleHealthMarker=memo(function VehicleHealthMarker({id,budget,focused}:
    height:entity?.vehicle_id==='tank'?3.2:Math.max(1.15,(entity?.collider?.chassis_half_extents[1]??.5)+(entity?.collider?.chassis_offset[1]??0)+.7)};
  }));
  useFrame(({camera,scene,size})=>{
-  const group=root.current,node=card.current;if(!group||!node){budget.forget(id);return;}
+  const group=root.current,node=card.current;if(!group||!node){budget.forget(id);if(focused)publishSightCue(id,null);return;}
   const network=useNetworkStore.getState(),pose=getInterpolated(id),received=network.snapshot?.received_at_ms;
   if(!pose||!network.connected||(received!==undefined&&performance.now()-received>1000)){
-   budget.forget(id);occluded.current=true;node.style.visibility='hidden';return;
+   budget.forget(id);occluded.current=true;node.style.visibility='hidden';if(focused)publishSightCue(id,null);return;
   }
   group.position.set(pose.position[0],pose.position[1]+data.height,pose.position[2]);
   group.getWorldPosition(worldPosition.current);camera.getWorldPosition(rayOrigin.current);
@@ -65,6 +70,7 @@ const VehicleHealthMarker=memo(function VehicleHealthMarker({id,budget,focused}:
    }
   } else { budget.forget(id);occluded.current=true; }
   const shown=visible&&!occluded.current;
+  if(focused)publishSightCue(id,shown&&!data.defeated?(healing?'heal':data.relation==='enemy'?'attack':data.relation==='ally'?'ally':null):null);
   const visibility=shown?'visible':'hidden';
   if(node.style.visibility!==visibility)node.style.visibility=visibility;
   if(!shown)return;
@@ -96,16 +102,17 @@ const VehicleHealthMarker=memo(function VehicleHealthMarker({id,budget,focused}:
  });
  if(data.max===0)return null;
  const status=recoveryStatus({defeated:data.defeated,respawn_remaining_s:data.remaining,recovery_window_s:data.window,disabled_reason:data.reason});
- const label=focused?(data.assisted?'ASSIST':'TARGET'):data.defeated?data.reason==='fuel'?'FUEL EMPTY':status?.revivable?'AWAITING MECHANIC':'DEFEATED':data.protected?'SPAWN SHIELD':data.relation.toUpperCase();
+ const cue=healing?'+ HEAL':data.relation==='ally'?'ALLY':data.assisted?'ATTACK ASSIST':'ATTACK';
+ const label=focused?cue:data.defeated?data.reason==='fuel'?'FUEL EMPTY':status?.revivable?'AWAITING MECHANIC':'DEFEATED':data.protected?'SPAWN SHIELD':data.relation.toUpperCase();
  return <group ref={root} name={`vehicle-health-marker-${id}`}>
   <Html center zIndexRange={[4,0]} style={{pointerEvents:'none'}}>
-   <div ref={card} className="vehicle-health-marker" data-modern={modern} data-show-hp={data.showHp} data-focused={focused} data-relation={data.relation} data-defeated={data.defeated} data-protected={!data.defeated&&data.protected}>
+   <div ref={card} className="vehicle-health-marker" data-modern={modern} data-show-hp={data.showHp} data-focused={focused} data-healing={healing} data-relation={data.relation} data-defeated={data.defeated} data-protected={!data.defeated&&data.protected}>
     {status&&<RecoveryCountdown status={status}/>}
-    {focused&&!data.defeated&&<i ref={brackets} hidden className="assist-target-frame" role="img" aria-label={data.assisted?'Assisted target':'Target under aim'}/>}
+    {focused&&!data.defeated&&<i ref={brackets} hidden className="assist-target-frame" role="img" aria-label={cue}/>}
     {modern&&data.showHp&&<div className="contact-info">
       <div className="contact-tag" title={data.label}>
         <i aria-hidden="true"/><b>{data.relation.toUpperCase()}</b><span>·</span><em ref={distanceText}>— m</em>
-        {focused&&<strong>{data.assisted?'ASSIST':'TARGET'}</strong>}
+        {focused&&<strong>{cue}</strong>}
       </div>
       <div className="contact-health">
         <span className="contact-name">{data.protected?'SHIELD':data.label}</span>
@@ -134,8 +141,10 @@ export function VehicleHealthMarkers(){
  const budget=useMemo(()=>new MarkerSightBudget(),[]);
  const visible=useUIStore(s=>s.screen==='sandbox'&&s.overlay===null&&!s.isModeLoading);
  const modern=usePreferencesStore(s=>s.hudGroups.futuristic);
- const target=useNetworkStore(s=>visible&&!covered&&s.connected?(modern?sightedTarget(s.snapshot,s.getMe()):s.getMe()?.combat?.assisted_target??null):null);
+ const social=useSocialStore(s=>s.view?.alpha?.active);
+ const healingTarget=useNetworkStore(s=>visible&&!covered&&social?.hero==='mechanic'&&isMechanicPlayer(s)?nearestHealPackTarget(s.snapshot,s.playerId)?.id??null:null);
+ const target=useNetworkStore(s=>healingTarget??(visible&&!covered&&s.connected?(modern?sightedTarget(s.snapshot,s.getMe()):s.getMe()?.combat?.assisted_target??null):null));
  const ids=useNetworkStore(useShallow(s=>visible&&!covered&&s.connected&&s.playerId?healthMarkerIds(s.snapshot,s.playerId,mode,target):[]));
  if(!visible||covered)return null;
- return <group name="remote-vehicle-health-markers">{ids.map(id=><VehicleHealthMarker key={id} id={id} budget={budget} focused={target===id}/>)}</group>;
+ return <group name="remote-vehicle-health-markers">{ids.map(id=><VehicleHealthMarker key={id} id={id} budget={budget} focused={target===id} healing={healingTarget===id}/>)}</group>;
 }

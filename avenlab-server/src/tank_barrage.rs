@@ -1,4 +1,4 @@
-//! Server-clocked Vanguard Ultimate. Targets and hit segments never come from input.
+//! Server-clocked shared Ultimate. Targets and hit segments never come from input.
 use crate::physics::{vehicle_collision_groups, PhysicsWorld};
 use rapier3d::prelude::*;
 use serde::Serialize;
@@ -19,10 +19,10 @@ pub struct Barrage {
 
 impl PhysicsWorld {
     pub fn start_barrage(&mut self, player: &str) -> Result<(),String> {
-        let vehicle=self.vehicles.get_mut(player).ok_or("Deploy your tank first.")?;
-        let health=self.vehicle_health.get_mut(player).ok_or("Deploy your tank first.")?;
-        if !vehicle.config.tracked || health.defeated || health.hp <= 0.0 || !self.bodies.get(vehicle.body).is_some_and(|body|body.is_enabled()) {
-            return Err("Barrage requires a living Vanguard.".into());
+        let vehicle=self.vehicles.get_mut(player).ok_or("Deploy a vehicle first.")?;
+        let health=self.vehicle_health.get_mut(player).ok_or("Deploy a vehicle first.")?;
+        if health.defeated || health.hp <= 0.0 || !self.bodies.get(vehicle.body).is_some_and(|body|body.is_enabled()) {
+            return Err("Barrage requires a living vehicle.".into());
         }
         if self.barrages.contains_key(player) || vehicle.powertrain.ultimate_fraction != 1.0 {
             return Err("Barrage requires full Ultimate charge.".into());
@@ -38,7 +38,7 @@ impl PhysicsWorld {
         let mut active=std::mem::take(&mut self.barrages);
         active.retain(|player,barrage| {
             if !online(player) || self.is_defeated(player) ||
-                !self.vehicles.get(player).is_some_and(|v|v.config.tracked && self.bodies[v.body].is_enabled()) {return false}
+                !self.vehicles.get(player).is_some_and(|v|self.bodies[v.body].is_enabled()) {return false}
             if (TICKS-barrage.ticks_left)%PULSE_TICKS==0 {self.barrage_pulse(player,barrage,&online);}
             barrage.ticks_left-=1;
             barrage.ticks_left>0
@@ -50,7 +50,9 @@ impl PhysicsWorld {
         let tank=&self.vehicles[player];
         let hull=*self.bodies[tank.body].position();
         let chassis=tank.body;
-        let height=tank.config.nominal_wheel_center_y()-tank.config.wheel_radius+1.65;
+        let tracked=tank.config.tracked;
+        let height=if tracked {tank.config.nominal_wheel_center_y()-tank.config.wheel_radius+1.65}
+            else {tank.config.chassis_com_offset[1]+tank.config.chassis_half_extents[1]+0.05};
         let origin=hull*point![0.0,height,0.10];
         let filter=QueryFilter::default().groups(vehicle_collision_groups(false)).exclude_rigid_body(chassis);
         let visible=|world:&PhysicsWorld,start:Point<Real>,end:Point<Real>,target:RigidBodyHandle|{
@@ -79,19 +81,22 @@ impl PhysicsWorld {
             if cannon && !cannon_ready {continue}
             let (id,handle,center,distance)=&targets[b.cursor%targets.len()];b.cursor=b.cursor.wrapping_add(1);
             let start=hull*point![offset,height+if offset<0.0{0.22}else{0.0},0.10];
-            if self.is_defeated(id) || !visible(self,start,*center,*handle){continue}
+            // The centered cannon uses the same ray already accepted during acquisition.
+            if self.is_defeated(id) || (!cannon && !visible(self,start,*center,*handle)){continue}
             let direction=(*center-start).normalize();
             let mut damage=(if cannon {100.0}else{19.0})*(1.0+0.25*(1.0-distance/RANGE));
             let end=if let Some((hit,_,_))=self.screen_segment(player,start,*center,&mut damage){hit}else{*center};
             if damage>0.0 { self.damage_vehicle(id,Some(player),damage,if cannon{"barrage-cannon"}else{"barrage-mg"}); }
-            let reach:f32=if cannon{4.0}else{0.8};
+            let reach:f32=if cannon && tracked{4.0}else{0.8};
             let muzzle=start+direction*reach.min((end-start).norm()*0.8);
             b.traces.push(BarrageTrace{from:muzzle.into(),to:end.into(),cannon});
             if aim.is_none(){aim=Some(direction);}
         }
         if let Some(dir)=aim{
             let pose=self.combat_poses.entry(player.to_owned()).or_default();
-            pose.enabled=true;pose.role="tank".into();pose.hull_locked=false;
+            pose.enabled=true;
+            if tracked {pose.role="tank".into();}
+            pose.hull_locked=false;
             pose.yaw=(-dir.x).atan2(-dir.z);pose.pitch=dir.y.clamp(-1.0,1.0).asin();
             if b.traces.iter().any(|trace|trace.cannon){pose.cannon_shot=pose.cannon_shot.wrapping_add(1);}
         }

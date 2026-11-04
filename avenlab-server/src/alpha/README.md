@@ -23,10 +23,11 @@ Quickplay and Competitive now accept an independent `team_size` of 3 or 5
 five-player teams retain the established role policy. The old `skirmish` ID is
 accepted as a separate compatibility-only 3v3 pool, without a new UI mode.
 
-Matching fills a compatible waiting lobby before creating another game. Running
-and ended rounds accept reserved reconnects only; an ordinary late arrival opens
-another lobby or queues. FIFO blocking and queue positions are scoped to the
-requested mode + size, so a full 3v3 does not block a waiting 5v5. Multiple match
+Matching prefers an available seat in a compatible running round, then a waiting
+lobby. A disconnected match player has a 30-second reservation by default.
+Explicit Leave releases the seat immediately. Replacements choose an available
+role on the vacant side. Ended rounds stay closed to new profiles. Queue order
+applies among eligible tickets for the requested mode and size. Multiple match
 rooms share the configured server budget: defaults are three active worlds and
 24 players; editor and practice still allow one occupied world per category.
 Active/queue/roster/world/CTF/result views carry authoritative `team_size`.
@@ -40,4 +41,6 @@ Ultimate charge is a server resource: connected, living, enabled bodies gain
 HP restoration add normalized target-health fractions. Passive charge does not
 use browser/wall-clock or packet dt, grants no XP, and stops for detached/downed
 bodies and ended rounds. Refueling, service and self-healing never award charge.
-Round start resets the resource. At full charge, Vanguard can activate Barrage for five seconds. The room server selects exposed enemies within 45 m and resolves the cannon, machine guns and shield hits.
+Round start resets the resource. At full charge, any deployed vehicle can activate Barrage for five seconds. The room server selects exposed enemies within 45 m and resolves the cannon, machine guns and shield hits.
+
+Playtest warmup publishes deployed vehicles and their configurations to both teams. Set `AVENLAB_HIDE_WARMUP_ENEMIES=1` before starting the server to restore team-private warmup frames. Undeployed hero picks remain private. All vehicles have one shield. Vanguard uses its directional barrier, BRZ uses Guard Boost, and the other vehicles use the two-second personal shield on an 18-second cooldown.

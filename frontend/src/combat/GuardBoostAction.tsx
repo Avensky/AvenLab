@@ -10,9 +10,9 @@ import {useCombatStore} from './combatStore';
 import {AttackIcon} from './AttackIcon';
 import {CooldownDial} from './CooldownClock';
 import {cooldownProgress} from './weaponCooldown';
-import {GUARD_COOLDOWN_S,TANK_BARRIER_COOLDOWN_S,guardBoostBlockReason,tankBarrierBlockReason,isGuardDpsPlayer,isTankBarrierPlayer,readGuardBoost,requestGuardBoost,requestTankBarrier,guardRequestKey,useGuardBoostRequestStore} from './guardBoost';
+import {GUARD_COOLDOWN_S,TANK_BARRIER_COOLDOWN_S,guardBoostBlockReason,tankBarrierBlockReason,playerShield,readGuardBoost,requestGuardBoost,requestTankBarrier,guardRequestKey,useGuardBoostRequestStore} from './guardBoost';
 import {DIVE_COOLDOWN_S,DIVE_DURATION_S,GUARD_DURATION_S} from './guardBoostState';
-import {diveShieldBlockReason,isDiveShieldPlayer,requestDiveShield,type ShieldAction} from './guardBoost';
+import {diveShieldBlockReason,requestDiveShield,type ShieldAction} from './guardBoost';
 import './guardBoost.css';
 
 export function GuardAbilityAction({kind}:{kind:ShieldAction}){
@@ -22,7 +22,7 @@ export function GuardAbilityAction({kind}:{kind:ShieldAction}){
  const visible=useUIStore(state=>state.screen==='sandbox'&&state.overlay===null&&!state.isModeLoading);
  const status=useNetworkStore(useShallow(state=>{
   const me=state.getMe(),guard=readGuardBoost(me);
-  return {player:state.playerId,room:me?.room_id,eligible:dive?isDiveShieldPlayer(state,view):tank?isTankBarrierPlayer(state,view):isGuardDpsPlayer(state,view),blocked:dive?diveShieldBlockReason(me,guard):tank?tankBarrierBlockReason(me,guard):guardBoostBlockReason(me,guard),
+  return {player:state.playerId,room:me?.room_id,eligible:playerShield(state,view)===kind,blocked:dive?diveShieldBlockReason(me,guard):tank?tankBarrierBlockReason(me,guard):guardBoostBlockReason(me,guard),
    cooldown:guard?Math.ceil((dive?(guard.dive_cooldown_s??0):guard.cooldown_s)*10)/10:undefined,remaining:guard?Math.ceil((dive?(guard.dive_remaining_s??0):guard.remaining_s)*10)/10:0,shield:guard?Math.ceil(guard.shield_hp):0,maxShield:guard?.shield_max_hp??1};
  }));
  if(!visible||!status.eligible)return null;
@@ -45,6 +45,7 @@ export function GuardBoostAction(){return <GuardAbilityAction kind="brz_guard"/>
 export function GuardBoostFallback(){
  const enabled=useCombatStore(state=>state.enabled),hud=useRenderSettingsStore(state=>state.hud);
  const deck=usePreferencesStore(state=>state.hudGroups.turret);
- const tank=useNetworkStore(state=>state.getMe()?.vehicle_id==='tank');
- return hud&&!(enabled&&deck)?<aside className="guard-boost-fallback"><GuardAbilityAction kind={tank?'tank_barrier':'brz_guard'}/>{!tank&&<GuardAbilityAction kind="dive_shield"/>}</aside>:null;
+ const view=useSocialStore(s=>s.view);
+ const kind=useNetworkStore(s=>playerShield(s,view));
+ return hud&&!(enabled&&deck)&&kind?<aside className="guard-boost-fallback"><GuardAbilityAction kind={kind}/></aside>:null;
 }

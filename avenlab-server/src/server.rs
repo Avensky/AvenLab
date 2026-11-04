@@ -335,6 +335,10 @@ impl Server {
             .await
             .insert(world_id, Arc::clone(&runtime));
         let mut room = runtime.lock().await;
+        // Physics may finish the round between matchmaking and this lock.
+        if !restoring && room.round.as_ref().is_some_and(|r| r.phase == crate::ctf::CtfPhase::Ended) {
+            return Err("This match has ended.".into());
+        }
         let team = room.join(
             player,
             client.tx.clone(),
@@ -425,10 +429,10 @@ impl Server {
         let appearance = self.saved_appearance(player, vehicle).await;
         let revive_cooldown = self.revival_cooldown(player).await;
         let assigned = self.alpha.lock().await.members.get(player).filter(|m|Some(m.world)==joined_world).map(|m|m.hero.clone()).unwrap_or_default();
-        let guard_ability=if assigned=="tank" {"tank_barrier"}else{"guard_boost"};
-        let dive_cooldown=self.ability_cooldown(player,"dive_shield").await;
-        let guard_cooldown = self.ability_cooldown(player,guard_ability).await;
-        let heal_cooldown = self.ability_cooldown(player,"heal_pack").await;
+        let guard_ability=if assigned=="tank" || (assigned.is_empty() && vehicle=="tank") {"tank_barrier"}else{"guard_boost"};
+        let [dive_cooldown,guard_cooldown,heal_cooldown]=if let Some(profile)=profile.as_deref() {
+            self.revivals.lock().await.ability_cooldowns(profile,["dive_shield",guard_ability,"heal_pack"])
+        } else {[0.0;3]};
         let mut room = runtime.lock().await;
         if room.round.as_ref().is_some_and(|r| r.phase == crate::ctf::CtfPhase::Ended) {
             return Err("This match has ended. Start another match to deploy.".into());
@@ -436,8 +440,8 @@ impl Server {
         room.spawn(player, vehicle)?;
         room.physics.set_assigned_hero(player,&assigned);
         let retained_guard_cooldown=room.physics.guard_view(player).cooldown_s.max(guard_cooldown);
-        room.physics.guard_boosts.entry(player.into()).or_default().cooldown=retained_guard_cooldown;
         let guard=room.physics.guard_boosts.entry(player.into()).or_default();
+        guard.cooldown=retained_guard_cooldown;
         guard.dive_cooldown=guard.dive_cooldown.max(dive_cooldown);
         room.physics.support.ensure_cooldown(player,heal_cooldown);
         let round_id = room.round.as_ref().map(|round| round.match_id.clone());
@@ -477,19 +481,19 @@ impl Server {
 
             "career_history" | "career_match" => self.handle_career(player, &value).await?,
             "vehicle_revive" => self.handle_vehicle_revive(player, &value).await?,
-            "vehicle_heal_pack" => self.handle_vehicle_heal_pack(player, &value).await?,
-            "dive_shield" | "dps_guard_boost" => self.handle_dps_guard_boost(player, &value).await?,
-            "tank_barrage" => {
+            // Gameplay snapshots already carry these effects; recasting the social lobby for each shot stalls unrelated peers.
+            "vehicle_heal_pack" => return self.handle_vehicle_heal_pack(player, &value).await,
+            "dive_shield" | "dps_guard_boost" | "tank_barrier" => return self.handle_vehicle_shield(player, action).await,
+            "tank_barrage" | "barrage" => {
                 let runtime=self.runtime(player).await?;
                 let mut room=runtime.lock().await;
-                if !room.game.clients.contains_key(player) || !room.game.entities.get(player).is_some_and(|e|e.vehicle_id.as_deref()==Some("tank")) {
-                    return Err("Deploy Vanguard before using Barrage.".into());
+                if !room.game.clients.contains_key(player) || !room.game.entities.get(player).is_some_and(|e|e.vehicle_id.is_some()) {
+                    return Err("Deploy a vehicle before using Barrage.".into());
                 }
                 if room.round.as_ref().is_some_and(|r|r.phase!=crate::ctf::CtfPhase::Running) { return Err("Barrage is available during a live round.".into()); }
                 room.physics.start_barrage(player)?;
-                json!({"activated":true})
+                return Ok(json!({"activated":true}));
             }
-            "tank_barrier" => self.handle_tank_barrier(player, &value).await?,
 
             "identify" => {
                 let previous = self.data.lock().await.clone();

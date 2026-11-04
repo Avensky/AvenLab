@@ -221,6 +221,12 @@ fn default_state() -> StructureState {
 
 
 impl BlockColliderFile {
+    /// Non-repeating overlays are authored once relative to the grid origin.
+    pub fn includes_authored_tile(&self, x:i32, z:i32) -> bool {
+        let anchor=match self.layout {MapLayout::FixedGrid{origin,..}=>origin,MapLayout::Streamed{..}=>[0,0]};
+        self.authored_layout.as_ref().is_some_and(|layout|layout.repeat || [x,z]==anchor)
+    }
+
      pub fn tile_size(&self) -> [f32; 2] {
         self.cell
     }
@@ -458,7 +464,7 @@ pub fn spawn_block_building_colliders(
     let mut boxes = Vec::new();
 
     let [tile_x, tile_z] = file.tile_size();
-    if let Some(layout) = &file.authored_layout {
+    if let Some(layout) = file.authored_layout.as_ref().filter(|_|file.includes_authored_tile(bx,by)) {
         // Standalone layouts need an explicit support surface: the physics
         // world intentionally has no hidden global fallback plane.
         if layout.replaces_base() && layout.ground {
@@ -561,6 +567,17 @@ pub fn spawn_block_building_colliders(
 #[cfg(test)]
 mod authored_map_tests {
     use super::*;
+    #[test]
+    fn endless_city_has_one_solid_carrier_and_no_water_floor() {
+        let file:BlockColliderFile=serde_json::from_str(include_str!("../assets/blocks/streaming_endless_city_colliders.json")).unwrap();
+        let file=validate_block_collider_file(file).unwrap();
+        let layout=file.authored_layout.as_ref().unwrap();
+        assert_eq!(file.initial_chunks().into_iter().filter(|&(x,z)|file.includes_authored_tile(x,z)).count(),1);
+        let water:Vec<_>=layout.objects.iter().filter(|o|o.piece=="coastal-water-visual").collect();
+        assert!(!water.is_empty() && water.iter().all(|o|!o.solid && o.parts.iter().all(|p|!p.solid)));
+        assert!(layout.objects.iter().any(|o|o.piece=="fleet-static-deck" && o.solid));
+        assert!(layout.objects.iter().any(|o|o.piece=="service-center"));
+    }
     #[test]
     fn standalone_map_supplies_ground_and_omits_legacy_city_while_overlay_preserves_it() {
         let mut file: BlockColliderFile = serde_json::from_str(include_str!("../assets/blocks/streaming_endless_city_colliders.json")).unwrap();

@@ -20,17 +20,19 @@ impl Server {
         }
         let clients = self.connections.lock().await.clone();
         let mode = a.worlds.get(&world_id).copied().unwrap_or(Mode::Sandbox.into());
-        if self.match_ended(world_id).await && !a.restoring.contains(player) {
-            return Err("This match has ended. Waiting for its result screen to close.".into());
-        }
-        if mode.bucket()==0 && !a.restoring.contains(player) && !self.match_accepts_new_players(world_id).await {
-            return Err("This round has started. Join a new match through its queue.".into());
-        }
         if mode.bucket() == 0 && !a.pending_team.contains_key(player) {
             return Err("Join a match through its hero selection queue.".into());
         }
         let now = timestamp();
         let own = clients.get(player).and_then(|c| c.profile_id.as_ref());
+        if mode.bucket() == 0 && !a.restoring.contains(player) {
+            match self.match_phase(world_id).await {
+                Some(crate::ctf::CtfPhase::Ended) => return Err("This match has ended.".into()),
+                Some(crate::ctf::CtfPhase::Running) if self.played_in_round(world_id, own).await =>
+                    return Err("Your previous seat in this match was released.".into()),
+                _ => {}
+            }
+        }
         if mode.bucket() == 0 && !self.participant_slot_available(world_id, own.map(String::as_str)).await {
             return Err("This round has reached its participant history limit. Wait for the next match.".into());
         }
@@ -85,7 +87,7 @@ impl Server {
         let runtime=self.runtimes.lock().await.get(&world).cloned();
         let has_body=if let Some(runtime)=runtime{runtime.lock().await.physics.vehicles.contains_key(player)}else{false};
         let mut a=self.alpha.lock().await;
-        if !a.enabled&&!(practice&&has_body){return;}
+        if !a.enabled && !a.members.contains_key(player) && !(practice && has_body) { return; }
         let member=a.members.get(player).cloned().unwrap_or(Member{mode,team_size:format.team_size,world,hero:String::new(),team:client.team});
         let expires=timestamp()+if practice{600}else{a.grace_seconds};
         a.reservations.insert(profile,Reservation{member,expires,retained_player:(practice&&has_body).then(||player.into())});
@@ -192,28 +194,51 @@ impl Server {
             .map(|(_, team)| *team)
             .ok_or_else(|| "Both teams have filled the available slots for this role.".into())
     }
-    /// Try compatible waiting rooms before allocating another bounded world.
-    /// Running rounds accept their reserved reconnects only, never backfill.
+    /// Prefer a short-handed live match, then occupied lobbies, then idle worlds.
     async fn admit_mode(&self, ticket: &Ticket) -> Result<Value, String> {
         if !ticket.hero.is_empty() { policy::hero(&ticket.hero)?; }
         if !map_available(&ticket.map) { return Err("Choose an installed environment.".into()); }
         let format=ticket.format();
-        let a=self.alpha.lock().await.clone();
-        let clients=self.connections.lock().await.clone();
-        let now=timestamp();
-        let reserved:Vec<_>=a.reservations.values().filter(|r|r.expires>now).collect();
-        let occupied:HashSet<_>=clients.values().filter_map(|c|c.world_id).chain(reserved.iter().map(|r|r.member.world)).collect();
-        let total=clients.values().filter(|c|c.world_id.is_some()).count()+reserved.len();
-        if total>=self.max_players {return Err("The server active-player budget is full. Waiting for a seat.".into());}
-        if format.bucket()!=0 && occupied.iter().any(|world|a.worlds.get(world).is_some_and(|f|f.bucket()==format.bucket())) {
-            return Err("The requested editor/practice world slot is busy.".into());
+        // Admission only needs populations here. Do not clone every connection,
+        // ticket and reservation for every waiting player on every queue sweep.
+        let mut populations = HashMap::new();
+        for world in self.connections.lock().await.values().filter_map(|c| c.world_id) {
+            *populations.entry(world).or_insert(0usize) += 1;
         }
-        let data=self.data.lock().await.clone();
-        let mut candidates:Vec<_>=a.worlds.iter().filter(|(world,f)|**f==format&&data.worlds.get(world).is_some_and(|w|w.map==ticket.map)).map(|(world,_)|*world).collect();
-        // Fill an occupied compatible lobby first; reuse empty saved rooms next.
-        candidates.sort_by_key(|world|(!occupied.contains(world),*world));
-        for world in candidates {
-            if format.bucket()==0 && !self.match_accepts_new_players(world).await {continue;}
+        let now = timestamp();
+        let formats = {
+            let alpha = self.alpha.lock().await;
+            for lease in alpha.reservations.values().filter(|lease| lease.expires > now) {
+                *populations.entry(lease.member.world).or_default() += 1;
+            }
+            if populations.values().sum::<usize>() >= self.max_players {
+                return Err("The server active-player budget is full. Waiting for a seat.".into());
+            }
+            if format.bucket() != 0 && populations.keys().any(|world|
+                alpha.worlds.get(world).is_some_and(|f| f.bucket() == format.bucket())) {
+                return Err("The requested editor/practice world slot is busy.".into());
+            }
+            alpha.worlds.iter().filter_map(|(&id, &f)| (f == format).then_some(id)).collect::<Vec<_>>()
+        };
+        let worlds: Vec<_> = {
+            let data = self.data.lock().await;
+            formats.into_iter().filter(|world| data.worlds.get(world)
+                .is_some_and(|w| w.map == ticket.map)).collect()
+        };
+        let mut candidates = Vec::new();
+        for world in worlds {
+            let seats = populations.get(&world).copied().unwrap_or(0);
+            if seats >= format.capacity() { continue; }
+            let priority = match self.match_phase(world).await {
+                Some(crate::ctf::CtfPhase::Ended) => continue,
+                Some(crate::ctf::CtfPhase::Running) => 0,
+                _ if seats > 0 => 1,
+                _ => 2,
+            };
+            candidates.push((priority, world));
+        }
+        candidates.sort_unstable();
+        for (_, world) in candidates {
             if let Ok(result)=self.admit_ticket_to_world(ticket,world).await {return Ok(result);}
         }
         if self.runtimes.lock().await.len()>=self.max_active_worlds {return Err("The active-world budget is full. Waiting for a matching lobby or a free world.".into());}
@@ -360,12 +385,22 @@ impl Server {
     async fn select_hero(&self, player: &str, id: &str) -> Result<Value, String> {
         if let Ok(runtime) = self.runtime(player).await {
             let room = runtime.lock().await;
-            if room.round.as_ref().is_some_and(|r| r.phase != crate::ctf::CtfPhase::Waiting) {
-                let current = self.alpha.lock().await.members.get(player).map(|m| m.hero.clone());
-                if current.as_deref() != Some(id) {
-                    return Err("Your hero is locked for this CTF round. Choose a different hero for the next match.".into());
+            if let Some(round) = &room.round {
+                if round.phase == crate::ctf::CtfPhase::Ended {
+                    return Err("This match has ended.".into());
                 }
-                return Ok(json!({"hero":id,"vehicle":policy::hero(id)?.vehicle}));
+                if round.phase == crate::ctf::CtfPhase::Running {
+                    let alpha = self.alpha.lock().await;
+                    let member = alpha.members.get(player).ok_or("Join a mode before choosing a hero.")?;
+                    // A replacement arrives without a pick. Its first selection goes
+                    // through the same role checks as a waiting-room selection.
+                    if !member.hero.is_empty() {
+                        if member.hero != id {
+                            return Err("Your hero is locked for this CTF round. Choose a different hero for the next match.".into());
+                        }
+                        return Ok(json!({"hero":id,"vehicle":policy::hero(id)?.vehicle}));
+                    }
+                }
             }
         }
         if id.is_empty() {
@@ -655,12 +690,12 @@ impl Server {
             self.finish_empty_activity(world).await;
             self.chat.lock().await.clear_world(world);
         }
-        let tickets: Vec<_> = self.alpha.lock().await.queue.iter().cloned().collect();
-        let mut blocked = HashSet::new();
+        let (tickets, held) = {
+            let alpha = self.alpha.lock().await;
+            (alpha.queue.iter().cloned().collect::<Vec<_>>(), alpha.reservations.len())
+        };
+        let mut free = self.max_players.saturating_sub(held + clients.values().filter(|c| c.world_id.is_some()).count());
         for ticket in tickets {
-            if blocked.contains(&ticket.format()) {
-                continue;
-            }
             if !clients.contains_key(&ticket.player) {
                 self.alpha
                     .lock()
@@ -670,15 +705,15 @@ impl Server {
                 changed = true;
                 continue;
             }
+            if free == 0 { break; }
             if self.admit_mode(&ticket).await.is_ok() {
+                free -= 1;
                 self.alpha
                     .lock()
                     .await
                     .queue
                     .retain(|t| t.player != ticket.player);
                 changed = true;
-            } else {
-                blocked.insert(ticket.format());
             }
         }
         if changed {

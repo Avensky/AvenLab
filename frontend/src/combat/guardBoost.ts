@@ -1,4 +1,5 @@
 import {create} from 'zustand';
+import {heroForVehicle} from '../store/alpha/alphaStore';
 import {requestSocial} from '../net/socialClient';
 import {canDrive} from '../controls/inputRouting';
 import {useNetworkStore,type PhysicsEntitySnapshot} from '../store/session/networkStore';
@@ -8,22 +9,17 @@ import {GUARD_FUEL_LITERS,TANK_BARRIER_FUEL_LITERS,readGuardBoost,type GuardActi
 export {GUARD_DURATION_S,GUARD_COOLDOWN_S,GUARD_SHIELD_HP,GUARD_FUEL_LITERS,TANK_BARRIER_COOLDOWN_S,TANK_BARRIER_HP,readGuardBoost} from './guardBoostState';
 const finite=(value:unknown):value is number=>typeof value==='number'&&Number.isFinite(value);
 
-/** Only the admitted BRZ DPS hero on its own chassis owns this
- * action. The server repeats this identity, world and team check. */
-export function isGuardDpsPlayer(network=useNetworkStore.getState(),view:SocialView|null=useSocialStore.getState().view){
- const me=network.getMe(),active=view?.alpha?.active;
- return Boolean(network.connected&&me?.vehicle_id==='brz'&&active?.hero==='brz'&&active.world_id===me.room_id&&(network.room_id===null||network.room_id===me.room_id)&&active.team===me.team);
+/** Validate the deployed chassis once for the deck, hotkeys and fallback HUD. */
+export function playerShield(network=useNetworkStore.getState(),view:SocialView|null=useSocialStore.getState().view):ShieldAction|null{
+ const me=network.getMe();
+ if(!network.connected||!me?.vehicle_id||(network.room_id!==null && me.room_id!==network.room_id))return null;
+ const hero=heroForVehicle(me.vehicle_id),seat=view?.alpha?.active;
+ if(!hero || (seat ? seat.world_id!==me.room_id || seat.team!==me.team || seat.hero!==hero.id : !!network.snapshot?.match_state))return null;
+ return hero.id==='tank'?'tank_barrier':hero.id==='brz'?'brz_guard':'dive_shield';
 }
-
-export function isDiveShieldPlayer(network=useNetworkStore.getState(),view:SocialView|null=useSocialStore.getState().view){
- const me=network.getMe(),active=view?.alpha?.active;
- return Boolean(network.connected && me?.vehicle_id==='cx30' && active?.hero==='cx30' &&
-  active.world_id===me.room_id && (network.room_id===null||network.room_id===me.room_id) && active.team===me.team);
-}
-export function isTankBarrierPlayer(network=useNetworkStore.getState(),view:SocialView|null=useSocialStore.getState().view){
- const me=network.getMe(),active=view?.alpha?.active;
- return Boolean(network.connected&&me?.vehicle_id==='tank'&&active?.hero==='tank'&&active.world_id===me.room_id&&(network.room_id===null||network.room_id===me.room_id)&&active.team===me.team);
-}
+export function isGuardDpsPlayer(network=useNetworkStore.getState(),view=useSocialStore.getState().view){return playerShield(network,view)==='brz_guard';}
+export function isDiveShieldPlayer(network=useNetworkStore.getState(),view=useSocialStore.getState().view){return playerShield(network,view)==='dive_shield';}
+export function isTankBarrierPlayer(network=useNetworkStore.getState(),view=useSocialStore.getState().view){return playerShield(network,view)==='tank_barrier';}
 
 export function guardBoostBlockReason(me:PhysicsEntitySnapshot|null|undefined,guard=readGuardBoost(me)){
  if(!guard)return 'SERVER UPDATE REQUIRED';
@@ -59,7 +55,7 @@ export const useGuardBoostRequestStore=create<{key:string|null;busy:boolean}>(()
 export function guardRequestKey(kind:ShieldAction){const network=useNetworkStore.getState(),view=useSocialStore.getState().view,me=network.getMe();return `${view?.profile.id??''}:${network.playerId}:${me?.room_id??''}:${me?.vehicle_id??''}:${view?.alpha?.active?.hero??''}:${kind}`;}
 async function requestGuardAction(kind:ShieldAction):Promise<boolean>{
  const network=useNetworkStore.getState(),me=network.getMe(),guard=readGuardBoost(me);
- const eligible=kind==='dive_shield'?isDiveShieldPlayer():kind==='tank_barrier'?isTankBarrierPlayer():isGuardDpsPlayer();
+ const eligible=playerShield(network)===kind;
  const blocked=kind==='dive_shield'?diveShieldBlockReason(me,guard):kind==='tank_barrier'?tankBarrierBlockReason(me,guard):guardBoostBlockReason(me,guard);
  if(!canDrive()||!eligible||blocked)return false;
  const key=guardRequestKey(kind),pending=useGuardBoostRequestStore.getState();

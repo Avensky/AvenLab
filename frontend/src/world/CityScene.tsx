@@ -21,6 +21,7 @@ export function CityScene() {
   const settings = useRenderSettingsStore();
   const streamed =
     settings.cityQuality !== "original" && Boolean(map?.collider_chunks);
+  const anchor=map?.layout.kind==="fixed_grid"?map.layout.origin:[0,0];
   // Only the explicit diagnostics switch subscribes to per-tick block data.
   return (
     <group name="city-scene">
@@ -33,7 +34,7 @@ export function CityScene() {
             ?.boxes ?? [];
         return (
           <group key={key} name={`city-chunk-${key}`}>
-            {map.authored_layout && (
+            {map.authored_layout && (map.authored_layout.repeat!==false || (chunk.x===anchor[0] && chunk.z===anchor[1])) && (
               <group position={chunk.origin}>
                 <AuthoredWorld
                   layout={map.authored_layout}

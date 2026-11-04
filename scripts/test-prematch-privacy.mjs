@@ -17,7 +17,7 @@ const directory=fs.mkdtempSync(path.join(os.tmpdir(),'avenlab-prematch-privacy-'
 const reservation=net.createServer();
 await new Promise(resolve=>reservation.listen(0,'127.0.0.1',resolve));
 const port=reservation.address().port;await new Promise(resolve=>reservation.close(resolve));
-const server=spawn(binary,[],{cwd:path.join(repo,'avenlab-server'),env:{...process.env,AVENLAB_BIND:`127.0.0.1:${port}`,AVENLAB_SOCIAL_PATH:path.join(directory,'social.json'),AVENLAB_ALPHA_LIMITS:'1',AVENLAB_ROLE_LIMITS:'1',AVENLAB_MAX_ACTIVE_WORLDS:'1',AVENLAB_MAX_PLAYERS:'6'},stdio:['ignore','pipe','pipe']});
+const server=spawn(binary,[],{cwd:path.join(repo,'avenlab-server'),env:{...process.env,AVENLAB_HIDE_WARMUP_ENEMIES:'1',AVENLAB_BIND:`127.0.0.1:${port}`,AVENLAB_SOCIAL_PATH:path.join(directory,'social.json'),AVENLAB_ALPHA_LIMITS:'1',AVENLAB_ROLE_LIMITS:'1',AVENLAB_MAX_ACTIVE_WORLDS:'1',AVENLAB_MAX_PLAYERS:'6'},stdio:['ignore','pipe','pipe']});
 let output='',phase='startup';
 const peers=[],checks=[];
 for(const stream of [server.stdout,server.stderr])stream.on('data',bytes=>output=(output+bytes.toString()).slice(-24000));

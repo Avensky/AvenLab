@@ -1,5 +1,4 @@
 import {BarrageTrigger} from "../../combat/BarrageTrigger";
-import { DrivingIgnition } from '../Cockpit/DrivingIgnition';
 import { DriveAssists } from '../Cockpit/DriveAssists';
 import { HudGroup } from '../HudGroup';
 import { memo, useEffect } from 'react';
@@ -44,10 +43,10 @@ export function FuturisticHUD() {
   const showHP = showVehicleHealthBar(mode, me.team, true);
   const park = data.signal === 'live' && data.cockpitMask !== null && Boolean(data.cockpitMask & 64) && ((data.cockpitMask >>> 7) & 15) === 8;
   const speed = readings.speed === null ? '—' : Math.round(readings.speed / (units === 'mph' ? 1.609344 : 1));
-  return <section className="futuristic-hud" aria-label="Futuristic vehicle instruments" data-signal={data.signal} data-defeated={health?.defeated ?? false}>
+  return <><section className="futuristic-hud" aria-label="Futuristic vehicle instruments" data-signal={data.signal} data-defeated={health?.defeated ?? false}>
     <div className="future-identity" data-charged={charge===1}>
       <HeroPortrait hero={me.hero} appearance={me.appearance} cacheOnly showStyleStatus={false} />
-      {me.hero==="tank" && <BarrageTrigger/>}
+      <BarrageTrigger/>
       <div className="ultimate-gauge" role="meter" aria-label="Ultimate charge" title="Ultimate charge"
         aria-valuemin={0} aria-valuemax={100} aria-valuenow={charge===null?undefined:Math.round(charge*100)}
         aria-valuetext={chargeText}>
@@ -74,7 +73,7 @@ export function FuturisticHUD() {
     </div>
     <HudGroup id="assists" title="Driving assists" className="future-assists"><DriveAssists compact instrument /></HudGroup>
     <div className="future-driving"><strong>{speed}</strong><small>{units === 'mph' ? 'MPH' : 'KM/H'}</small><span>GEAR <b>{readings.gear === null ? '—' : park ? 'P' : readings.gear === -1 ? 'R' : readings.gear === 0 ? 'N' : readings.gear}</b></span></div>
-    <DrivingIgnition />
+  </section>
     <div className="future-status" role="status">{data.signal !== 'live' ? data.signal.toUpperCase() : health?.defeated ? 'VEHICLE DISABLED' : health && health.protection > 0 ? `SPAWN PROTECTION ${health.protection.toFixed(1)}s` : ''}</div>
-  </section>;
+  </>;
 }

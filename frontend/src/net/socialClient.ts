@@ -154,7 +154,7 @@ export function identifySocial(name?:string,newProfile=false) {
 export function createTabProfile() {
   return identifyProfile("DRIVER 2",true,true);
 }
-export function beginSocialSession(serverId: unknown) {
+export function beginSocialSession(serverId: unknown, onFailure?: () => void) {
   if (initialized || typeof serverId !== "string") return;
   initialized = true;
   identityKey = `avenlab-social-profile-v1:${serverId}`;
@@ -163,7 +163,7 @@ export function beginSocialSession(serverId: unknown) {
     profileStatus: "restoring",
     message: "Restoring your player profile…",
   });
-  void identifySocial().catch(() => { /* The identity owner reports its own current-session error. */ });
+  void identifySocial().catch(() => onFailure?.());
 }
 export function receiveSocialState(value: unknown) {
   useSocialStore.getState().receive(value);

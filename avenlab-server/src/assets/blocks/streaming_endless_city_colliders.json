@@ -953,5 +953,822 @@
     "building_collider_count": 34,
     "road_collider_count": 1,
     "warnings": []
+  },
+  "authored_layout": {
+    "format": "avenlab-world-layout",
+    "version": 1,
+    "map_id": "streaming_endless_city",
+    "title": "Endless City harbor",
+    "base": "overlay",
+    "repeat": false,
+    "ground": false,
+    "objects": [
+      {
+        "id": "ocean-w-0-0",
+        "name": "Open water",
+        "piece": "coastal-water-visual",
+        "position": [
+          -378.945,
+          -4.05,
+          0
+        ],
+        "size": [
+          500,
+          0.05,
+          439.4487
+        ],
+        "yaw": 0,
+        "color": "#28566a",
+        "locked": true,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ],
+            "solid": false
+          }
+        ]
+      },
+      {
+        "id": "ocean-w-0-1",
+        "name": "Open water",
+        "piece": "coastal-water-visual",
+        "position": [
+          -378.945,
+          -4.05,
+          439.4487
+        ],
+        "size": [
+          500,
+          0.05,
+          439.4487
+        ],
+        "yaw": 0,
+        "color": "#28566a",
+        "locked": true,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ],
+            "solid": false
+          }
+        ]
+      },
+      {
+        "id": "ocean-w-0-2",
+        "name": "Open water",
+        "piece": "coastal-water-visual",
+        "position": [
+          -378.945,
+          -4.05,
+          878.8974
+        ],
+        "size": [
+          500,
+          0.05,
+          439.4487
+        ],
+        "yaw": 0,
+        "color": "#28566a",
+        "locked": true,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ],
+            "solid": false
+          }
+        ]
+      },
+      {
+        "id": "ocean-e-0-0",
+        "name": "Open water",
+        "piece": "coastal-water-visual",
+        "position": [
+          894.7248,
+          -4.05,
+          0
+        ],
+        "size": [
+          500,
+          0.05,
+          439.4487
+        ],
+        "yaw": 0,
+        "color": "#28566a",
+        "locked": true,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ],
+            "solid": false
+          }
+        ]
+      },
+      {
+        "id": "ocean-e-0-1",
+        "name": "Open water",
+        "piece": "coastal-water-visual",
+        "position": [
+          894.7248,
+          -4.05,
+          439.4487
+        ],
+        "size": [
+          500,
+          0.05,
+          439.4487
+        ],
+        "yaw": 0,
+        "color": "#28566a",
+        "locked": true,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ],
+            "solid": false
+          }
+        ]
+      },
+      {
+        "id": "ocean-e-0-2",
+        "name": "Open water",
+        "piece": "coastal-water-visual",
+        "position": [
+          894.7248,
+          -4.05,
+          878.8974
+        ],
+        "size": [
+          500,
+          0.05,
+          439.4487
+        ],
+        "yaw": 0,
+        "color": "#28566a",
+        "locked": true,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ],
+            "solid": false
+          }
+        ]
+      },
+      {
+        "id": "ocean-n-0-0",
+        "name": "Open water",
+        "piece": "coastal-water-visual",
+        "position": [
+          -407.2362,
+          -4.05,
+          -469.7243
+        ],
+        "size": [
+          443.4174,
+          0.05,
+          500
+        ],
+        "yaw": 0,
+        "color": "#28566a",
+        "locked": true,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ],
+            "solid": false
+          }
+        ]
+      },
+      {
+        "id": "ocean-n-1-0",
+        "name": "Open water",
+        "piece": "coastal-water-visual",
+        "position": [
+          36.1812,
+          -4.05,
+          -469.7243
+        ],
+        "size": [
+          443.4174,
+          0.05,
+          500
+        ],
+        "yaw": 0,
+        "color": "#28566a",
+        "locked": true,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ],
+            "solid": false
+          }
+        ]
+      },
+      {
+        "id": "ocean-n-2-0",
+        "name": "Open water",
+        "piece": "coastal-water-visual",
+        "position": [
+          479.5986,
+          -4.05,
+          -469.7243
+        ],
+        "size": [
+          443.4174,
+          0.05,
+          500
+        ],
+        "yaw": 0,
+        "color": "#28566a",
+        "locked": true,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ],
+            "solid": false
+          }
+        ]
+      },
+      {
+        "id": "ocean-n-3-0",
+        "name": "Open water",
+        "piece": "coastal-water-visual",
+        "position": [
+          923.0161,
+          -4.05,
+          -469.7243
+        ],
+        "size": [
+          443.4174,
+          0.05,
+          500
+        ],
+        "yaw": 0,
+        "color": "#28566a",
+        "locked": true,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ],
+            "solid": false
+          }
+        ]
+      },
+      {
+        "id": "ocean-s-0-0",
+        "name": "Open water",
+        "piece": "coastal-water-visual",
+        "position": [
+          -407.2362,
+          -4.05,
+          1348.6218
+        ],
+        "size": [
+          443.4174,
+          0.05,
+          500
+        ],
+        "yaw": 0,
+        "color": "#28566a",
+        "locked": true,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ],
+            "solid": false
+          }
+        ]
+      },
+      {
+        "id": "ocean-s-1-0",
+        "name": "Open water",
+        "piece": "coastal-water-visual",
+        "position": [
+          36.1812,
+          -4.05,
+          1348.6218
+        ],
+        "size": [
+          443.4174,
+          0.05,
+          500
+        ],
+        "yaw": 0,
+        "color": "#28566a",
+        "locked": true,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ],
+            "solid": false
+          }
+        ]
+      },
+      {
+        "id": "ocean-s-2-0",
+        "name": "Open water",
+        "piece": "coastal-water-visual",
+        "position": [
+          479.5986,
+          -4.05,
+          1348.6218
+        ],
+        "size": [
+          443.4174,
+          0.05,
+          500
+        ],
+        "yaw": 0,
+        "color": "#28566a",
+        "locked": true,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ],
+            "solid": false
+          }
+        ]
+      },
+      {
+        "id": "ocean-s-3-0",
+        "name": "Open water",
+        "piece": "coastal-water-visual",
+        "position": [
+          923.0161,
+          -4.05,
+          1348.6218
+        ],
+        "size": [
+          443.4174,
+          0.05,
+          500
+        ],
+        "yaw": 0,
+        "color": "#28566a",
+        "locked": true,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ],
+            "solid": false
+          }
+        ]
+      },
+      {
+        "id": "east-pier",
+        "name": "Fleet service pier",
+        "piece": "coastal-pier",
+        "position": [
+          669.7248,
+          -2,
+          439.4487
+        ],
+        "size": [
+          50,
+          2.32,
+          15
+        ],
+        "yaw": 0,
+        "color": "#66767c",
+        "locked": true,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ],
+            "solid": true
+          }
+        ]
+      },
+      {
+        "id": "carrier-ramp",
+        "name": "Boarding ramp",
+        "piece": "coastal-ramp",
+        "position": [
+          704.7248,
+          0.32,
+          439.4487
+        ],
+        "size": [
+          15,
+          3,
+          20
+        ],
+        "yaw": -90,
+        "color": "#69737a",
+        "locked": true,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "wedge",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ],
+            "solid": true
+          }
+        ]
+      },
+      {
+        "id": "carrier-hull",
+        "name": "Moored carrier hull",
+        "piece": "fleet-static-hull",
+        "position": [
+          738.7248,
+          -6,
+          439.4487
+        ],
+        "size": [
+          43,
+          8.32,
+          164
+        ],
+        "yaw": 0,
+        "color": "#424f54",
+        "locked": true,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ],
+            "solid": true
+          }
+        ]
+      },
+      {
+        "id": "carrier-deck",
+        "name": "Flight deck",
+        "piece": "fleet-static-deck",
+        "position": [
+          738.7248,
+          2.32,
+          439.4487
+        ],
+        "size": [
+          48,
+          1,
+          172
+        ],
+        "yaw": 0,
+        "color": "#515b63",
+        "locked": true,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ],
+            "solid": true
+          }
+        ]
+      },
+      {
+        "id": "carrier-island",
+        "name": "Bridge island",
+        "piece": "fleet-static-building",
+        "position": [
+          753.7248,
+          3.32,
+          452.4487
+        ],
+        "size": [
+          11,
+          12,
+          25
+        ],
+        "yaw": 0,
+        "color": "#839096",
+        "locked": true,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ],
+            "solid": true
+          }
+        ]
+      },
+      {
+        "id": "carrier-bridge",
+        "name": "Flight control",
+        "piece": "fleet-static-building",
+        "position": [
+          753.7248,
+          15.32,
+          450.4487
+        ],
+        "size": [
+          13,
+          4,
+          15
+        ],
+        "yaw": 0,
+        "color": "#586a73",
+        "locked": true,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ],
+            "solid": true
+          }
+        ]
+      },
+      {
+        "id": "carrier-launch-port",
+        "name": "Forward launch lane",
+        "piece": "fleet-launch-lane",
+        "position": [
+          729.7248,
+          3.325,
+          388.4487
+        ],
+        "size": [
+          0.65,
+          0.03,
+          56
+        ],
+        "yaw": 0,
+        "color": "#dfbc69",
+        "locked": true,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ],
+            "solid": false
+          }
+        ]
+      },
+      {
+        "id": "carrier-launch-starboard",
+        "name": "Forward launch lane",
+        "piece": "fleet-launch-lane",
+        "position": [
+          737.7248,
+          3.325,
+          388.4487
+        ],
+        "size": [
+          0.65,
+          0.03,
+          56
+        ],
+        "yaw": 0,
+        "color": "#dfbc69",
+        "locked": true,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ],
+            "solid": false
+          }
+        ]
+      },
+      {
+        "id": "carrier-service",
+        "name": "Deck refuel and repair",
+        "piece": "service-center",
+        "position": [
+          742.7248,
+          3.32,
+          480.4487
+        ],
+        "size": [
+          22,
+          4,
+          27
+        ],
+        "yaw": 0,
+        "color": "#83a38e",
+        "locked": true,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.005,
+              0
+            ],
+            "size": [
+              1,
+              0.01,
+              1
+            ],
+            "color": "#637e76",
+            "solid": false
+          }
+        ]
+      }
+    ]
   }
 }

@@ -212,7 +212,7 @@ impl WorldRuntime {
         self.physics.set_debug_flags(debug);
         let physics_started = std::time::Instant::now();
         self.physics.step(SIMULATION_DT);
-        self.physics.advance_guard_boosts(SIMULATION_DT, self.game.clients.keys().map(String::as_str));
+        self.physics.advance_guard_boosts(SIMULATION_DT, |id| self.game.clients.contains_key(id));
         if self.round.as_ref().is_none_or(|r| r.phase==crate::ctf::CtfPhase::Running) {
             self.physics.advance_barrages(|id|self.game.clients.contains_key(id));
         } else { self.physics.barrages.clear(); }
@@ -235,6 +235,7 @@ mod tests {
     #[test]
     fn waiting_rounds_share_private_team_frames_and_reveal_configs_only_on_start() {
         let mut world=WorldRuntime::new(7,"streaming_endless_city").unwrap();
+        world.game.hide_warmup_enemies=true;
         let mut receivers=Vec::new();
         for (id,team) in [("red-one",Team::Red),("red-two",Team::Red),("blue",Team::Blue)] {
             let(tx,rx)=tokio::sync::mpsc::unbounded_channel::<String>();let(frame,frames)=watch::channel(None);let(_input,inputs)=watch::channel(None);
@@ -260,6 +261,14 @@ mod tests {
             let entities=message["data"]["entities"].as_array().unwrap();assert_eq!(entities.len(),count);assert!(entities.iter().all(|entity|entity["team"]==team));
             assert_eq!(message["data"]["match_state"]["phase"],"waiting");
         }
+        world.game.hide_warmup_enemies=false;
+        world.tick(0.0);
+        let open_red=receivers[0].2.borrow().clone().unwrap();
+        let open_blue=receivers[2].2.borrow().clone().unwrap();
+        assert!(Arc::ptr_eq(&open_red,&open_blue));
+        let open:serde_json::Value=serde_json::from_str(&open_red.snapshot).unwrap();
+        assert_eq!(open["data"]["entities"].as_array().unwrap().len(),3);
+        assert!(world.game.can_receive_vehicle_identity("blue","red-one"));
         world.start_round().unwrap();world.tick(0.0);
         for (_,rx,frames) in &mut receivers {
             let mut configs=std::collections::HashSet::new();

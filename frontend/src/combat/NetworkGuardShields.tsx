@@ -59,7 +59,7 @@ function GuardShield({player}:{player:string}){
 export function NetworkGuardShields(){
  const ids=useNetworkStore(state=>{
   const room=state.getMe()?.room_id??state.room_id;
-  return state.connected?(state.snapshot?.entities??[]).filter(entity=>entity.room_id===room&&(entity.vehicle_id==='brz'||entity.vehicle_id==='tank'||entity.vehicle_id==='cx30')).map(entity=>entity.id).sort().join('\0'):'';
+  return state.connected?(state.snapshot?.entities??[]).filter(entity=>entity.room_id===room&&(entity.vehicle_id==='brz'||entity.vehicle_id==='tank'||(entity.guard?.dive_remaining_s??0)>0)).map(entity=>entity.id).sort().join('\0'):'';
  });
  return <group name="Confirmed front shields">{ids&&ids.split('\0').map(id=><GuardShield key={id} player={id}/>)}</group>;
 }

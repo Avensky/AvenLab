@@ -39,7 +39,7 @@ export function sightedTarget(snapshot:PhysicsSnapshot|null,me:PhysicsEntitySnap
  worldAim(direction,combat.yaw,combat.pitch);
  let best=MARKER_RANGE,id:string|null=null;
  for(const other of snapshot.entities){
-  if(other.room_id!==me.room_id||other.id===me.id||!other.team||other.team===me.team||!other.health||other.health.defeated)continue;
+  if(other.room_id!==me.room_id||other.id===me.id||!other.team||!other.health||other.health.defeated)continue;
   const half=other.collider?.chassis_half_extents??defaultHalf,offset=other.collider?.chassis_offset??defaultOffset;
   localRay.origin.copy(muzzle).sub(point.fromArray(other.position));
   if(localRay.origin.lengthSq()>(best+Math.max(...half)+2)**2)continue;

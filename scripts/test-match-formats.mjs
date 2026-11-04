@@ -19,7 +19,7 @@ const port = reservation.address().port;
 await new Promise(resolve => reservation.close(resolve));
 const server = spawn(binary, [], {
   cwd: path.join(repo, 'avenlab-server'),
-  env: {...process.env, AVENLAB_BIND: `127.0.0.1:${port}`, AVENLAB_SOCIAL_PATH: path.join(directory, 'social.json'), AVENLAB_ALPHA_LIMITS: '1', AVENLAB_ROLE_LIMITS: '1', AVENLAB_MAX_ACTIVE_WORLDS: '4', AVENLAB_MAX_PLAYERS: '40'},
+  env: {...process.env, AVENLAB_BIND: `127.0.0.1:${port}`, AVENLAB_SOCIAL_PATH: path.join(directory, 'social.json'), AVENLAB_ALPHA_LIMITS: '1', AVENLAB_ROLE_LIMITS: '1', AVENLAB_MAX_ACTIVE_WORLDS: '4', AVENLAB_MAX_PLAYERS: '40', AVENLAB_RECONNECT_GRACE_SECONDS: '4'},
   stdio: ['ignore', 'pipe', 'pipe']
 });
 let output = '', phase = 'startup';
@@ -143,9 +143,7 @@ try {
     for (let index = 0; index < 3; index++) {team[index].hero = ['tank', 'brz', 'cx30'][index]; team[index].vehicle = team[index].hero;}
   }
   for (const peer of first.slice(0, 5)) await peer.deploy(peer.vehicle);
-  const visibleWaiting = first.slice(0,5).filter(peer=>peer.team===q3.team).length;
-  const waiting = (await q3.wait(m => m.type === 'snapshot' && m.data.entities?.length === visibleWaiting && m.data.match_state?.phase === 'waiting')).data;
-  assert(waiting.entities.every(entity=>entity.team===q3.team),'warm-up frames preserve opposing hero mystery');
+  const waiting = (await q3.wait(m => m.type === 'snapshot' && m.data.entities?.length === 5 && m.data.match_state?.phase === 'waiting')).data;
   assert.equal(waiting.match_state.mode, 'quickplay'); assert.equal(waiting.match_state.team_size, 3);
   await first[5].deploy(first[5].vehicle);
   const running = (await q3.wait(m => m.type === 'snapshot' && m.data.entities?.length === 6 && m.data.match_state?.phase === 'running')).data;
@@ -153,7 +151,7 @@ try {
   assert.equal(running.match_state.captures_to_win, 3);
   checks.push('The modern Quickplay 3v3 format enforces one of each role, waits for six actual deployments, and starts a scored CTF snapshot with independent mode/team_size');
 
-  phase = 'late arrivals never enter a running round';
+  phase = 'late arrivals cannot enter a full round';
   const late = await newPeer('QP3 late driver');
   const admitted = await join(late, 'quickplay', 3); assert.equal(admitted.status, 'joined'); assert.equal(admitted.world_id, secondActive.world_id);
   assert.notEqual(admitted.world_id, q3.world);
@@ -175,15 +173,36 @@ try {
   assert.equal(resumed.view.alpha.roster.filter(row => row.id === identity.profile_id).length, 1);
   checks.push('Token reconnect returns to the same running Quickplay 3v3 world, team and Tank hero without duplicate roster cards');
 
-  phase = 'a vacant running seat cannot admit a new profile';
+  phase = 'a replacement joins the vacant side of the same running round';
   await teams.blue[2].command('mode_leave');
   const vacant = (await resumed.wait(m => m.type === 'snapshot' && m.data.match_state?.phase === 'running' && m.data.entities?.length === 5, true)).data;
   assert(vacant.entities.every(entity => entity.id !== teams.blue[2].player));
   const replacement = await newPeer('QP3 after departure');
   const replacementSeat = await join(replacement, 'quickplay', 3);
-  assert.equal(replacementSeat.status, 'joined'); assert.equal(replacementSeat.world_id, secondActive.world_id);
-  assert.notEqual(replacementSeat.world_id, q3.world);
-  checks.push('Even after an explicit leave frees a running seat, a new profile enters the waiting game rather than joining the scored round in progress');
+  assert.equal(replacementSeat.status, 'joined'); assert.equal(replacementSeat.world_id, q3.world);
+  assert.equal((await replacement.active(a=>a.world_id===q3.world)).team,'blue');
+  assert.equal((await replacement.request('hero_select',{hero:'tank'})).ok,false);
+  await replacement.command('hero_select',{hero:'cx30'});
+  await replacement.deploy('cx30');
+  const backfilled = (await resumed.wait(m=>m.type==='snapshot'&&m.data.entities?.some(e=>e.id===replacement.player))).data;
+  assert.equal(backfilled.entities.length,6); assert.equal(backfilled.match_state.match_id,running.match_state.match_id);
+  checks.push('Explicit leave opens the vacant side of a running 3v3 ahead of another lobby. A new profile chooses the available role and joins the same six-player round.');
+  phase = 'expired reservation opens a live seat';
+  await replacement.disconnect();
+  const reservedRow = m => m.type === 'social_state' && m.data.alpha?.roster.find(row=>row.id===replacement.identity.profile_id && row.reconnecting);
+  await resumed.wait(reservedRow);
+  const reservedArrival = await newPeer('Before timeout');
+  assert.equal((await join(reservedArrival,'quickplay',3)).world_id,secondActive.world_id);
+  await resumed.wait(m=>m.type==='social_state'&&!m.data.alpha?.roster.some(row=>row.id===replacement.identity.profile_id),true);
+  const afterExpiry = await newPeer('After timeout');
+  assert.equal((await join(afterExpiry,'quickplay',3)).world_id,q3.world);
+  await afterExpiry.command('hero_select',{hero:'cx30'}); await afterExpiry.deploy('cx30');
+  const lateReturn = await newPeer();
+  await lateReturn.command('identify',{name:'Late return',token:replacement.identity.token});
+  await lateReturn.wait(m=>m.type==='social_state'&&m.data.profile.id===replacement.identity.profile_id&&!m.data.alpha?.active);
+  const final = (await resumed.wait(m=>m.type==='snapshot'&&m.data.entities?.some(e=>e.id===afterExpiry.player))).data;
+  assert.equal(final.match_state.match_id,running.match_state.match_id); assert.equal(final.entities.length,6);
+  checks.push('A dropped seat stays reserved until the configured deadline. After expiry, a new driver fills that side and the old token cannot displace them.');
   console.log(JSON.stringify({checks, failures: 0}, null, 2));
 } finally {
   for (const peer of peers) peer.close(); server.kill();

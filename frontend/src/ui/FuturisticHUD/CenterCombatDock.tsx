@@ -15,7 +15,7 @@ export function CenterCombatDock({children}: {children: ReactNode}) {
   useLayoutEffect(() => {
     const element = root.current, hud = element?.closest<HTMLElement>('.driving-hud');
     if (!element || !hud) return;
-    const selector = '.wheel-hud,.drive-dock .hud-parking,.drive-dock .hud-shifter,.turret-aim-module,.drive-dock .turret-actions,.console-foot-controls > .hud-group,.console-foot-controls > .ignition-hud,.driving-chat,.hud-top-left,.instrument-hud,.hud-utilities';
+    const selector = '.wheel-hud,.wheel-ignition-station,.drive-dock .hud-parking,.drive-dock .hud-shifter,.turret-aim-module,.drive-dock .turret-actions,.console-foot-controls > .hud-group,.console-foot-controls > .ignition-hud,.driving-chat,.hud-top-left,.instrument-hud,.hud-utilities';
     // Combat fallbacks are siblings of the driving HUD, not its descendants.
     // They still own screen space, including when the optional aim deck is off.
     const externalSelector = '.ctf-match-hud,.revive-action-fallback,.guard-boost-fallback,.vehicle-defeated-banner';
@@ -34,12 +34,22 @@ export function CenterCombatDock({children}: {children: ReactNode}) {
         const wheel = hud.querySelector('.wheel-hud')?.getBoundingClientRect();
         const rightControls = Array.from(hud.querySelectorAll('.drive-dock .hud-parking,.drive-dock .hud-shifter,.drive-dock:not(:has(.hud-shifter)) .turret-aim-module,.console-foot-controls > .hud-group'))
           .map(node => node.getBoundingClientRect()).filter(rect => rect.width && rect.height);
-        const left = wheel?.width ? wheel.right + gap : margin;
+        const keyWidth=hud.querySelector('.wheel-ignition-station')?.getBoundingClientRect().width??0;
+        const keyLeft=wheel?.width?wheel.right+gap:margin;
+        const left=keyLeft+(keyWidth?keyWidth+gap:0);
+        setHudStyle(hud,'--key-left',keyLeft+'px');
         const right = Math.min(width - margin, ...rightControls.map(rect => rect.left - gap));
         const stacked = right - left < 315;
+
         // On short phones the wheel can sit above the instruments. Keeping the
         // pedal bank on the sill leaves its upper lane free for the radio/HVAC.
         const split = stacked && width>height && height<=500 && rightControls.length>0 && right-margin>=280;
+        const keyOverlapsRight=keyWidth>0 && keyLeft+keyWidth>right;
+        const lowestClearY=Math.min(height,...rightControls.filter(r=>r.right>keyLeft && r.left<keyLeft+keyWidth).map(r=>r.top));
+        // Moving both stations together must not feed their translated positions back into the measurement.
+        const previousRightLift=parseFloat(hud.style.getPropertyValue('--right-station-lift'))||0;
+        const keyLift=keyOverlapsRight && !split ? Math.max(0,height-lowestClearY-previousRightLift+gap) : 0;
+        setHudStyle(hud,'--key-lift',keyLift+'px');
         const available = split ? Math.min(520,maximum,right-margin) :
           stacked ? Math.min(520,maximum) : Math.min(maximum,right-left);
         const x = split ? right-available :
@@ -85,6 +95,7 @@ export function CenterCombatDock({children}: {children: ReactNode}) {
     const stop = observeHudLayout(hud, readTargets, measure, hud.parentElement ?? hud);
     return () => {
       stop();
+      hud.style.removeProperty('--key-left');hud.style.removeProperty('--key-lift');
       hud.style.removeProperty('--station-lift');
       hud.style.removeProperty('--right-station-lift');
       for (const key of ['width', 'left', 'bottom', 'transform']) element.style.removeProperty(key);

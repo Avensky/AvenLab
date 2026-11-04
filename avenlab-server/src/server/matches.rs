@@ -197,17 +197,13 @@ impl Server {
             }
         }
     }
-    pub(super) async fn match_accepts_new_players(&self,world:usize)->bool {
-        let runtime=self.runtimes.lock().await.get(&world).cloned();
-        if let Some(runtime)=runtime {return runtime.lock().await.round.as_ref().is_none_or(|r|r.phase==CtfPhase::Waiting);}
-        true
+    pub(super) async fn match_phase(&self, world: usize) -> Option<CtfPhase> {
+        let runtime = self.runtimes.lock().await.get(&world).cloned()?;
+        runtime.lock().await.round.as_ref().map(|round| round.phase)
     }
-    pub(super) async fn match_ended(&self, world: usize) -> bool {
-        let runtime = self.runtimes.lock().await.get(&world).cloned();
-        if let Some(runtime) = runtime {
-            return runtime.lock().await.round.as_ref().is_some_and(|r| r.phase == CtfPhase::Ended);
-        }
-        false
+    pub(super) async fn played_in_round(&self, world: usize, profile: Option<&String>) -> bool {
+        self.matches.lock().await.journals.get(&world)
+            .is_some_and(|journal| profile.is_some_and(|id| journal.people.contains_key(id)))
     }
     async fn samples(&self, world: usize, room: &WorldRuntime) -> Vec<Sample> {
         let clients = self.connections.lock().await.clone();

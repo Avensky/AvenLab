@@ -1,3 +1,4 @@
+import { DrivingIgnition } from './Cockpit/DrivingIgnition';
 import { FuturisticHUD } from "./FuturisticHUD/FuturisticHUD";
 import { TeammateHUD } from "./FuturisticHUD/TeammateHUD";
 import { CenterCombatDock } from "./FuturisticHUD/CenterCombatDock";
@@ -101,6 +102,7 @@ export function DrivingHUD() {
         </section>
       )}
 
+      {groups.futuristic && groups.ignition && <div className="wheel-ignition-station"><DrivingIgnition/></div>}
       <EditorDriveBar />
       <CenterCombatDock>
         <ActiveEffectsBar />

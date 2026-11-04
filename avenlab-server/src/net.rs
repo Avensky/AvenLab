@@ -77,9 +77,17 @@ pub async fn start_websocket_server(server: Arc<Server>) {
             // deadlines also terminate its reader and remove its world slot.
             let mut writer = tokio::spawn(async move {
                 let mut write = write;
+                // Browsers answer protocol pings even when background JS timers are throttled.
+                let mut heartbeat = tokio::time::interval(Duration::from_secs(8));
+                heartbeat.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
                 loop {
                     let messages = tokio::select! {
                         biased;
+                        _ = heartbeat.tick() => {
+                            if !matches!(tokio::time::timeout(Duration::from_secs(5),
+                                write.send(Message::Ping(Vec::new()))).await, Ok(Ok(()))) { return; }
+                            continue;
+                        }
                         message=rx.recv()=>{let Some(message)=message else{break};vec![message]}
                         changed=social_rx.changed()=>{
                             if changed.is_err(){break;}social_rx.borrow_and_update().clone().into_iter().collect()
@@ -126,7 +134,7 @@ pub async fn start_websocket_server(server: Arc<Server>) {
             let mut passwords = RateLimit::new(4, 30);
             let mut pings = RateLimit::new(2, 1);
             loop {
-                let next = tokio::select! {next=tokio::time::timeout(Duration::from_secs(120),read.next())=>match next{Ok(value)=>value,Err(_)=>break},_=&mut writer=>break};
+                let next = tokio::select! {next=tokio::time::timeout(Duration::from_secs(20),read.next())=>match next{Ok(value)=>value,Err(_)=>break},_=&mut writer=>break};
                 let text = match next {
                     Some(Ok(Message::Text(text))) => text,
                     Some(Ok(Message::Binary(bytes))) => {

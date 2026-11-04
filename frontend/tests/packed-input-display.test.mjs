@@ -22,12 +22,13 @@ test('packed controls, full-detail restore and bore-sight target',async t=>{
    s.restoreFullDetail();assert.equal(display.getState().dpr,1.5);assert.equal(display.getState().shadows,true);
    s.baseline();s.restoreFullDetail();assert.equal(display.getState().cityViewDistance,750);assert.equal(display.getState().hud,true);
   });
-  await t.test('manual brackets choose the nearest intersected opponent and follow the hull in screen pixels',async()=>{
+  await t.test('manual brackets choose the nearest intersected vehicle and follow the hull in screen pixels',async()=>{
    const {sightedTarget,projectAssistFrame}=await load('combat/assistFrame.ts');
    const me={id:'me',team:'blue',room_id:1,position:[0,0,0],rotation:[0,0,0,1],health:{hp:500},combat:{enabled:true,x:0,y:.4,z:0,yaw:0,pitch:0}};
    const foe={...me,id:'foe',team:'red',position:[0,0,-15]};
-   const entities=[me,{...foe,id:'far',position:[0,0,-24]},{...foe,id:'peer',team:'blue'},foe];
-   assert.equal(sightedTarget({entities},me),'foe');
+   const entities=[me,{...foe,id:'far',position:[0,0,-24]},{...foe,id:'peer',team:'blue',position:[0,0,-8]},foe];
+   assert.equal(sightedTarget({entities},me),'peer');
+   assert.equal(sightedTarget({entities:[me,foe]},me),'foe');
    assert.equal(sightedTarget({entities}, {...me,combat:{...me.combat,yaw:Math.PI/2}}),null);
    assert.equal(sightedTarget({entities},{...me,combat:{...me.combat,assisted_target:'far'}}),'far');
    const camera=new PerspectiveCamera(60,2,.1,150);camera.updateMatrixWorld();

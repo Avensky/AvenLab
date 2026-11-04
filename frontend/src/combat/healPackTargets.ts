@@ -18,9 +18,13 @@ const living=(entity:PhysicsEntitySnapshot)=>entity.health?.defeated===false&&Nu
 export function nearestHealPackTarget(snapshot:PhysicsSnapshot|null,playerId:string):PhysicsEntitySnapshot|null{
  const me=snapshot?.entities.find(entity=>entity.id===playerId);
  if(!me||!positionValid(me)||!living(me)||!['red','blue'].includes(me.team??'')||snapshot?.match_state?.phase==='ended')return null;
- const distance=(entity:PhysicsEntitySnapshot)=>Math.hypot(entity.position[0]-me.position[0],entity.position[2]-me.position[2]);
- return (snapshot?.entities??[]).filter(entity=>entity.id!==playerId&&entity.room_id===me.room_id&&entity.team===me.team&&positionValid(entity)&&living(entity)&&Number.isFinite(entity.health?.max_hp)&&entity.health!.max_hp>entity.health!.hp&&Math.abs(entity.position[1]-me.position[1])<=6&&distance(entity)<=HEAL_PACK_RANGE_M)
-  .sort((a,b)=>distance(a)-distance(b)||a.id.localeCompare(b.id))[0]??null;
+ let best:PhysicsEntitySnapshot|null=null,bestDistance=HEAL_PACK_RANGE_M**2;
+ for(const ally of snapshot?.entities??[]){
+  if(ally.id===playerId||ally.room_id!==me.room_id||ally.team!==me.team||!positionValid(ally)||!living(ally)||!Number.isFinite(ally.health?.max_hp)||ally.health!.hp>=ally.health!.max_hp||Math.abs(ally.position[1]-me.position[1])>6)continue;
+  const distance=(ally.position[0]-me.position[0])**2+(ally.position[2]-me.position[2])**2;
+  if(distance<bestDistance||(distance===bestDistance&&(!best||ally.id.localeCompare(best.id)<0))){best=ally;bestDistance=distance;}
+ }
+ return best;
 }
 
 export const useHealPackRequestStore=create<{key:string|null;busy:boolean}>(()=>({key:null,busy:false}));
@@ -34,7 +38,7 @@ export async function requestAssistedHealPack():Promise<boolean>{
  const now=performance.now(),network=useNetworkStore.getState(),me=network.getMe(),key=actorKey();
  if(key!==attemptKey){attemptKey=key;nextAttempt=0;}
  const age=now-(network.snapshot?.received_at_ms??-Infinity),cooldown=me?.support?.cooldown_s;
- if(document.visibilityState==='hidden'||!canDrive()||!isMechanicPlayer()||!me||age<0||age>1000||cooldown===undefined||!Number.isFinite(cooldown)||cooldown!==0||!Number.isFinite(me.fuel)||me.fuel<HEAL_PACK_FUEL_L||!nearestHealPackTarget(network.snapshot,network.playerId)||now<nextAttempt)return false;
+ if(document.visibilityState==='hidden'||!canDrive()||!isMechanicPlayer()||!me||age<0||age>1000||cooldown===undefined||!Number.isFinite(cooldown)||cooldown!==0||!Number.isFinite(me.fuel)||me.fuel<HEAL_PACK_FUEL_L||now<nextAttempt||!nearestHealPackTarget(network.snapshot,network.playerId))return false;
  if(useHealPackRequestStore.getState().key===key&&useHealPackRequestStore.getState().busy)return false;
  nextAttempt=now+250;
  useHealPackRequestStore.setState({key,busy:true});

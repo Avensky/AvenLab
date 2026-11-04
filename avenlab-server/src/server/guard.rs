@@ -1,49 +1,51 @@
-//! Serialized BRZ hero authority and reconnect-safe ability cooldown.
+//! Serialized vehicle shield authority and reconnect-safe ability cooldown.
 use super::*;
 impl Server {
     pub(super) async fn ability_cooldown(&self, player: &str, ability: &'static str) -> f32 {
         let profile = self.connections.lock().await.get(player).and_then(|c| c.profile_id.clone());
         if let Some(profile) = profile { self.revivals.lock().await.ability_remaining(&profile, ability) } else { 0.0 }
     }
-    pub(super) async fn handle_dps_guard_boost(&self, player: &str, value: &Value) -> Result<Value, String> {
+    pub(super) async fn handle_vehicle_shield(&self, player: &str, action: &str) -> Result<Value, String> {
         let profile = self.actor(player).await?;
         let connection = self.connections.lock().await.get(player).cloned().ok_or("The connection closed.")?;
-        let world = connection.world_id.ok_or("Join a world before using abilities.")?;
-        let dive=value.get("action").and_then(Value::as_str)==Some("dive_shield");
-        let hero=if dive {"cx30"}else{"brz"};
-        let member = self.alpha.lock().await.members.get(player).cloned()
-            .filter(|m| m.world == world && m.hero == hero && m.team == connection.team)
-            .ok_or(if dive {"Select the CX-30 Support SUV."}else{"Select the BRZ DPS hero to use Guard Boost."})?;
-        let ability=if dive {"dive_shield"}else{"guard_boost"};
-        let remaining = self.revivals.lock().await.ability_remaining(&profile, ability);
-        if remaining > 0.0 { return Err(format!("Shield ability is cooling down ({remaining:.1}s).")); }
-        let runtime = self.runtime(player).await?; let mut room = runtime.lock().await;
-        if room.round.as_ref().is_some_and(|r| r.phase == crate::ctf::CtfPhase::Ended) { return Err("This match has ended.".into()); }
-        let entity = room.game.entities.get(player).filter(|e| e.room_id == world && e.team == member.team && e.vehicle_id.as_deref() == Some(hero))
-            .ok_or("Deploy the vehicle for your selected hero.")?;
-        let _ = entity;
-        room.physics.set_assigned_hero(player, hero);
-        if dive {room.physics.start_dive_shield(player)?;} else {room.physics.start_guard_boost(player)?;}
-        let view = room.physics.guard_view(player); drop(room);
-        self.revivals.lock().await.ability_used(profile, ability, if dive {crate::guard_boost::DIVE_COOLDOWN}else{crate::guard_boost::GUARD_COOLDOWN});
-        Ok(json!({"activated":true,"guard":view}))
-    }
-    pub(super) async fn handle_tank_barrier(&self,player:&str,_value:&Value)->Result<Value,String> {
-        let profile=self.actor(player).await?;
-        let connection=self.connections.lock().await.get(player).cloned().ok_or("The connection closed.")?;
-        let world=connection.world_id.ok_or("Join a world before using abilities.")?;
-        let member=self.alpha.lock().await.members.get(player).cloned()
-            .filter(|m|m.world==world&&m.hero=="tank"&&m.team==connection.team)
-            .ok_or("Select the Tank hero to use its frontal barrier.")?;
-        let remaining=self.revivals.lock().await.ability_remaining(&profile,"tank_barrier");
-        if remaining>0.0 {return Err(format!("The frontal barrier is cooling down ({remaining:.1}s)."));}
-        let runtime=self.runtime(player).await?;let mut room=runtime.lock().await;
-        if room.round.as_ref().is_some_and(|r|r.phase==crate::ctf::CtfPhase::Ended) {return Err("This match has ended.".into());}
-        if !room.game.entities.get(player).is_some_and(|e|e.room_id==world&&e.team==member.team&&e.vehicle_id.as_deref()==Some("tank")) {return Err("Deploy your assigned Tank first.".into());}
-        room.physics.set_assigned_hero(player,"tank");room.physics.start_tank_barrier(player)?;
-        let view=room.physics.guard_view(player);drop(room);
-        self.revivals.lock().await.ability_used(profile,"tank_barrier",crate::guard_boost::BARRIER_COOLDOWN);
-        Ok(json!({"activated":true,"guard":view}))
+        let world = connection.world_id.ok_or("Join a world before using a shield.")?;
+        let member = self.alpha.lock().await.members.get(player).cloned();
+        let (key, cooldown) = match action {
+            "tank_barrier" => ("tank_barrier", crate::guard_boost::BARRIER_COOLDOWN),
+            "dps_guard_boost" => ("guard_boost", crate::guard_boost::GUARD_COOLDOWN),
+            "dive_shield" => ("dive_shield", crate::guard_boost::DIVE_COOLDOWN),
+            _ => return Err("Unknown shield.".into()),
+        };
+        let remaining = self.revivals.lock().await.ability_remaining(&profile, key);
+        let runtime = self.runtime(player).await?;
+        let mut room = runtime.lock().await;
+        if room.round.as_ref().is_some_and(|r| r.phase == crate::ctf::CtfPhase::Ended) {
+            return Err("This match has ended.".into());
+        }
+        let chassis = room.game.entities.get(player)
+            .filter(|e| e.room_id == world && e.team == connection.team)
+            .and_then(|e| e.vehicle_id.as_deref());
+        let hero = match &member {
+            Some(m) if m.world == world && m.team == connection.team => crate::alpha::policy::hero(&m.hero)?,
+            None if room.round.is_none() => crate::alpha::policy::HEROES.iter()
+                .find(|h| Some(h.vehicle) == chassis).copied().ok_or("Unknown vehicle.")?,
+            _ => return Err("Deploy your assigned hero first.".into()),
+        };
+        if action=="dps_guard_boost" && hero.id!="brz" {return Err("Select the BRZ DPS hero to use Guard Boost.".into());}
+        let expected = match hero.id { "tank" => "tank_barrier", "brz" => "dps_guard_boost", _ => "dive_shield" };
+        if action != expected {return Err("Use the shield for your deployed hero.".into());}
+        if remaining > 0.0 {return Err(format!("Shield is cooling down ({remaining:.1}s)."));}
+        if chassis != Some(hero.vehicle) {return Err("Deploy your assigned vehicle first.".into());}
+        room.physics.set_assigned_hero(player,hero.id);
+        match action {
+            "tank_barrier" => room.physics.start_tank_barrier(player)?,
+            "dps_guard_boost" => room.physics.start_guard_boost(player)?,
+            _ => room.physics.start_dive_shield(player)?,
+        }
+        let guard=room.physics.guard_view(player);
+        drop(room);
+        self.revivals.lock().await.ability_used(profile,key,cooldown);
+        Ok(json!({"activated":true,"guard":guard}))
     }
 
 }
@@ -71,7 +73,7 @@ mod tests {
         let mut game=SharedGameState::new();game.room_id=WORLD;
         let mut room=WorldRuntime::from_parts(game,crate::support::tests::blank_world());
         let connection=server.connections.lock().await[&actor].clone();room.join(&actor,connection.tx,connection.frame,connection.input,Some(Team::Red),10);server.connections.lock().await.get_mut(&actor).unwrap().world_id=Some(WORLD);
-        room.spawn(&actor,if hero=="tank" || hero=="cx30" {hero}else{"brz"}).unwrap();room.physics.set_assigned_hero(&actor,hero);
+        room.spawn(&actor,if hero=="mechanic" {"brz"} else {crate::alpha::policy::hero(hero).unwrap().vehicle}).unwrap();room.physics.set_assigned_hero(&actor,hero);
         for _ in 0..90 {room.physics.step(crate::physics::SIMULATION_DT);}
         room.physics.vehicles.get_mut(&actor).unwrap().powertrain.gear=1;
         server.runtimes.lock().await.insert(WORLD,Arc::new(Mutex::new(room)));
@@ -101,6 +103,19 @@ mod tests {
         let runtime=s.runtimes.lock().await[&WORLD].clone();runtime.lock().await.physics.guard_boosts.clear();
         assert!(s.handle(&actor,request).await.unwrap_err().contains("cooling down"),"resetting physics does not erase profile deadline");
         cleanup(s).await;
+    }
+    #[tokio::test]
+    async fn road_vehicle_has_both_a_personal_shield_and_the_full_barrage() {
+        let (server, player, _) = fixture("mini").await;
+        let guard=server.handle(&player,json!({"action":"dive_shield"})).await.unwrap();
+        assert_eq!(guard["guard"]["dive_remaining_s"],2.0);
+        let runtime=server.runtimes.lock().await[&WORLD].clone();
+        runtime.lock().await.physics.vehicles.get_mut(&player).unwrap().powertrain.ultimate_fraction=1.0;
+        server.handle(&player,json!({"action":"barrage"})).await.unwrap();
+        let mut room=runtime.lock().await;
+        room.physics.advance_barrages(|_|true);
+        assert_eq!(room.physics.barrages[&player].ticks_left,299);
+        drop(room);cleanup(server).await;
     }
     #[tokio::test]
     async fn dive_shield_uses_its_own_server_timer_and_keeps_the_spray_gun(){

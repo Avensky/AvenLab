@@ -20,7 +20,7 @@ test('hero support abilities route through confirmed roles without stealing driv
   const {useCombatStore:combat,combatIntent,tankFireInputs}=await load('combat/combatStore.ts'),{useInputStore:input}=await load('store/input/inputStore.ts'),{VehicleFlags}=await load('store/input/protocol/inputMasks.ts');
   const {Keyboard}=await load('controls/Keyboard.ts'),{GameController}=await load('controls/GameController.ts'),{DEFAULT_BINDINGS,sanitizeBindings}=await load('store/preferences/keyBindings.ts');
   client=await load('net/socialClient.ts');const sent=[];client.setSocialConnection({readyState:WebSocket.OPEN,send:body=>sent.push(JSON.parse(body))});
-  const guard={kind:'tank_barrier',remaining_s:0,cooldown_s:0,shield_hp:0,shield_max_hp:500,break_seq:0};let tick=0;
+  const guard={kind:'tank_barrier',remaining_s:0,cooldown_s:0,shield_hp:0,shield_max_hp:500,break_seq:0,dive_remaining_s:0,dive_cooldown_s:0};let tick=0;
   const stage=(hero='tank',patch={})=>{const model=hero==='mechanic'?'fortuner':hero==='tank'?'tank':'brz';social.setState({view:{profile:{id:'profile',name:'Driver'},worlds:[],alpha:{active:{hero,world_id:1,team:'blue'}}}});network.setState({connected:true,playerId:'me',room_id:1,snapshot:{tick:++tick,received_at_ms:performance.now(),entities:[{id:'me',kind:'vehicle',vehicle_id:model,team:'blue',room_id:1,position:[0,1,0],rotation:[0,0,0,1],speed:0,gear:1,fuel:20,vehicle_mask:1,player_mask:0,wheels:[{grounded:true},{grounded:true}],health:{hp:500,max_hp:500,defeated:false},guard:hero==='tank'?guard:{...guard,kind:'brz_guard',shield_max_hp:200},combat:{enabled:true,cannon_reload:0,coax_reload:0,basket_reload:0},...patch}]}});ui.setState({screen:'sandbox',overlay:null,isModeLoading:false});};
   const key=async(type,code,extra={})=>act(async()=>(document.activeElement?.tagName==='INPUT'?document.activeElement:window).dispatchEvent(new window.KeyboardEvent(type,{code,bubbles:true,cancelable:true,...extra})));
   const reply=async()=>act(async()=>client.receiveSocialResult({request_id:sent.at(-1).request_id,ok:true,data:{}}));
@@ -40,11 +40,11 @@ test('hero support abilities route through confirmed roles without stealing driv
    await act(async()=>ui.setState({overlay:'pause'}));await poll();await press(14,true);await act(async()=>ui.setState({overlay:null}));await poll();await poll();assert.equal(sent.length,count+1,'held menu button cannot become a shield');await press(14,false);await press(14,true);assert.equal(sent.length,count+2);await reply();await press(14,false);
    assert(Object.values(tankFireInputs).every(source=>!source.primary&&!source.secondary));
   });
-  await t.test('BRZ keeps left blinker and LB/Shift guard; Mechanic cannot borrow either shield',async()=>{
+  await t.test('BRZ keeps its blinker and Guard Boost; Mechanic can use its personal shield',async()=>{
    await act(async()=>stage('brz'));await poll();const count=sent.length;await press(14,true);assert.equal(sent.length,count);assert.notEqual(input.getState().input.vehicleMask&VehicleFlags.BLINKER_LEFT,0);await press(14,false);
    await press(4,true);assert.equal(sent.length,count+1);assert.equal(sent.at(-1).action,'dps_guard_boost');assert.equal(input.getState().input.vehicleMask&VehicleFlags.BOOST,0);await reply();await press(4,false);
    await key('keydown','ShiftLeft');assert.equal(sent.length,count+2);assert.equal(sent.at(-1).action,'dps_guard_boost');assert.equal(input.getState().input.vehicleMask&VehicleFlags.BOOST,0);await reply();await key('keyup','ShiftLeft');
-   await act(async()=>stage('mechanic'));await poll();await key('keydown',prefs.getState().bindings.barrier);await key('keyup',prefs.getState().bindings.barrier);assert.equal(sent.length,count+2,'shared BRZ model does not grant shield');
+   await act(async()=>stage('mechanic'));await poll();await key('keydown',prefs.getState().bindings.barrier);await key('keyup',prefs.getState().bindings.barrier);assert.equal(sent.length,count+3);assert.equal(sent.at(-1).action,'dive_shield');await reply();
   });
   await t.test('loading, menus and typing never request Tank barrier',async()=>{
    await act(async()=>{stage();ui.setState({overlay:'pause'});});const count=sent.length;await key('keydown',prefs.getState().bindings.barrier);await key('keyup',prefs.getState().bindings.barrier);assert.equal(sent.length,count);

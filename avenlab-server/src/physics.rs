@@ -1224,7 +1224,8 @@ impl PhysicsWorld {
     /// request arbitrary healing. Supply/destruction economics are a later layer.
     fn service_authored_bays(&mut self, dt: Real) {
         if self.service_bays.is_empty() { return; }
-        let Some(layout) = self.active_map.as_ref().and_then(|map|map.authored_layout.as_ref()) else { return; };
+        let Some(map) = self.active_map.as_ref() else {return;};
+        let Some(layout) = &map.authored_layout else {return;};
         let tile = self.block_world.tile_size.unwrap_or([1.0, 1.0]);
         'vehicle: for (player,vehicle) in self.vehicles.iter_mut() {
             if self.vehicle_health.get(player).is_some_and(|h|h.defeated){continue;}
@@ -1232,6 +1233,7 @@ impl PhysicsWorld {
             if body.linvel().norm() > 0.5 { continue; }
             let p=body.translation();
             for &(bx, bz) in self.block_world.loaded.keys() {
+            if !map.includes_authored_tile(bx,bz) {continue;}
             for &index in &self.service_bays {
                 let bay = &layout.objects[index];
                 if self.asset_health.get(&bay.id)==Some(&0.0){continue;}
@@ -1337,6 +1339,7 @@ impl PhysicsWorld {
     /// Only authored, destructible rail/barrier pieces use mass-based impacts.
     /// No broad city collider scan and no damage from merely resting against one.
     fn apply_barrier_impacts(&mut self,motion:&HashMap<RigidBodyHandle,(Vector<Real>,Vector<Real>)>,dt:f32){
+        if !self.has_impact_barriers {return;}
         self.barrier_impacts.retain(|_,t|{*t-=dt;*t>0.0});
         let Some(layout)=self.active_map.as_ref().and_then(|m|m.authored_layout.as_ref()).filter(|l|!l.repeat)else{return};
         let mut hits=HashMap::new();

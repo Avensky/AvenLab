@@ -1,3 +1,4 @@
+import {BarrageTrigger} from './BarrageTrigger';
 import {ReviveAction} from './ReviveAction';
 import {HealPackAction} from './HealPackAction';
 import {GuardBoostAction,GuardAbilityAction} from './GuardBoostAction';
@@ -33,7 +34,7 @@ export function VehicleAbilityActions(){
  const seat=useSocialStore(s=>s.view?.alpha?.active);
  const room=useNetworkStore(s=>s.getMe()?.room_id),team=useNetworkStore(s=>s.getMe()?.team);
  const admitted=seat && room===seat.world_id && team===seat.team ? seat.hero : null;
- const mechanic=vehicle==='fortuner'&&admitted==='mechanic',guardDps=vehicle==='brz'&&admitted==='brz',rescue=vehicle==='cx30'&&admitted==='cx30';
+ const mechanic=vehicle==='fortuner'&&admitted==='mechanic',rescue=vehicle==='cx30'&&admitted==='cx30';
  const pressure=useNetworkStore(s=>s.getMe()?.vehicle_id==='cx30'?s.getMe()?.combat?.ammo:undefined);
  const cooling=useNetworkStore(s=>(s.getMe()?.combat?.reload??0)>0);
  const scope=useCombatStore(s=>s.scope),secondary=useCombatStore(s=>s.secondaryWeapon);
@@ -47,20 +48,20 @@ export function VehicleAbilityActions(){
  if(vehicle==='tank')actions.push(
  {id:'ram',face:<RamAttack/>},
  {id:'machine-gun',face:<button type="button" className="secondary-choice" data-equipped={true} aria-label={`Cycle secondary weapon: ${secondary==='roof-mg'?'roof machine gun':'forward coax machine gun'} selected`} disabled={!canDrive()} title={`Cycle secondary machine gun · ${secondary === 'roof-mg' ? '800 m' : '200 m'} · Y / weapon-cycle keys · cannon stays primary`} onClick={()=>cycleTankWeapon(1)}><CooldownDial progress={1} label={secondary==='roof-mg'?'Roof MG selected':'Coax MG selected'}><AttackIcon kind={secondary==='roof-mg'?'roof-gun':'forward-gun'}/></CooldownDial><span><span className="turret-mount-label">{secondary==='roof-mg'?'ROOF MG · 800m':'COAX MG · 200m'}</span><span className="turret-cycle-label">CYCLE MG</span></span></button>},
- {id:'barrier',face:admitted==='tank'?<TankBarrierAction/>:<TrialButton ability={kit.abilities[1]}/>},
+ {id:'barrier',face:<TankBarrierAction/>},
  {id:'primary',face:<WeaponChoiceButton weapon="cannon"/>},
  {id:'secondary',face:<WeaponChoiceButton weapon="coax"/>});
  else {
   const liveAbility=(ability:HeroAbility)=>{
    if(ability.id==='revive' && mechanic)return <ReviveAction/>;
-   if(ability.id==='guard-boost' && guardDps)return <GuardBoostAction/>;
-   if(ability.id==='dive-shield' && rescue)return <GuardAbilityAction kind="dive_shield"/>;
+   if(ability.id==='guard-boost')return <GuardBoostAction/>;
+   if(ability.id==='dive-shield')return <GuardAbilityAction kind="dive_shield"/>;
    return <TrialButton ability={ability}/>;
   };
   const [one,two]=kit.abilities;
   actions.push({id:one.id,face:liveAbility(one)},{id:two.id,face:liveAbility(two)},
    {id:kit.trialAccessory!.id,face:<TrialButton ability={kit.trialAccessory!}/>},
-   {id:'ultimate',face:<TrialButton ability={kit.ultimate}/>});
+   {id:'ultimate',face:<BarrageTrigger tile/>});
   if(mechanic)actions.push({id:'health-pack',face:<HealPackAction/>});
   else actions.push({id:'fire',face:<HoldButton data-ready={!cooling} aria-label="FIRE" className="turret-fire" disabled={!canDrive()}
    onHold={held=>{if(held)requestWeaponFire();combatIntent.fire=held;}} onClick={e=>{if(e.detail===0)requestWeaponFire();}}>
