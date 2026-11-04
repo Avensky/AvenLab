@@ -55,7 +55,8 @@ test('minimap team radio shows allies and only enemies detected by living teamma
    const data={tick:3,received_at_ms:performance.now(),entities:[me,ally,enemy,hidden],match_state:flags([['red','hidden'],['blue','ally']])};
    const found=contacts(data,'me');assert.equal(found.find(c=>c.id==='ally').carryingFlag,'blue');assert.equal(found.find(c=>c.id==='hidden'),undefined);
    await act(async()=>{network.setState({connected:false});network.setState({connected:true,snapshot:data});});
-   assert(document.querySelector('[data-carrier-id="ally"]'));assert.equal(document.querySelector('[data-carrier-id="hidden"]'),null,'flag metadata must not reveal a distant enemy');
+   const allyCarrier=document.querySelector('[data-carrier-id="ally"]');assert(allyCarrier);assert.equal(document.querySelector('[data-carrier-id="hidden"]'),null,'flag metadata must not reveal a distant enemy');
+   const ring=allyCarrier.querySelector('.map-carrier-ring'),dot=document.querySelector('[data-player-id="ally"]');assert(ring);assert.equal(ring.getAttribute('cx'),dot.getAttribute('cx'));assert.equal(ring.getAttribute('cy'),dot.getAttribute('cy'));assert.equal(allyCarrier.querySelector('path,rect'),null,'carrier decoration is circular, without an offset box-shaped glyph');assert.equal(dot.getAttribute('fill'),blue,'objective ring preserves relationship colour');
    await act(async()=>{network.setState({connected:false});network.setState({connected:true,snapshot:{...data,match_state:flags([['red','enemy'],['blue','me']])}});});
    assert(document.querySelector('[data-carrier-id="enemy"]'));assert(document.querySelector('[data-self-carrier="true"]'));
    assert.equal(document.querySelector('[data-player-id="me"]'),null,'self has a ring, not a duplicate relationship dot');

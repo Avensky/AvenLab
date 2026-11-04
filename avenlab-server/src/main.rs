@@ -5,6 +5,8 @@ mod vehicle_life;
 mod vehicle_life_tests;
 mod ballistics;
 mod ram;
+mod guard_boost;
+mod support;
 // Outer tick owner: input -> physics substeps -> one completed network frame.
 // Do not apply forces, smooth steering or clear debug data again in this file.
 mod aven_tire;

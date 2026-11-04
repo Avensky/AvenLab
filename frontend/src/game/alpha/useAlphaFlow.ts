@@ -10,8 +10,12 @@ export function useAlphaFlow() {
   const alpha = useSocialStore((s) => s.view?.alpha),
     screen = useUIStore((s) => s.screen);
   useEffect(() => {
+    if(screen==='queue'&&alpha?.queue){
+      useAlphaStore.getState().restoreMode(alpha.queue.mode,alpha.queue.team_size);
+      return;
+    }
     if (screen !== "queue" || !alpha?.active || alpha.queue) return;
-    useAlphaStore.getState().chooseMode(alpha.active.mode);
+    useAlphaStore.getState().restoreMode(alpha.active.mode,alpha.active.team_size);
     if (alpha.active.hero) useAlphaStore.getState().chooseHero(alpha.active.hero);
     else useAlphaStore.getState().clearHero();
     const map = mapCatalog.findIndex(

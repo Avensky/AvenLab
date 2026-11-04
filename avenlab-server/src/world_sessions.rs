@@ -45,9 +45,13 @@ impl WorldRuntime {
     }
     /// Server admission owns eligibility and calls start only after its roster gate.
     pub fn configure_round(&mut self, mode: crate::alpha::Mode, training: bool) -> Result<(),String> {
+        self.configure_round_format(mode.into(),training)
+    }
+    pub fn configure_round_format(&mut self, format:crate::alpha::MatchFormat, training:bool)->Result<(),String>{
         if self.round.is_some(){return Ok(());}
-        let mode=match mode {crate::alpha::Mode::Quickplay=>"quickplay",crate::alpha::Mode::Competitive=>"competitive",_=>return Err("Only matchmaking worlds run CTF rounds.".into())};
+        let mode=match format.mode {crate::alpha::Mode::Quickplay=>"quickplay",crate::alpha::Mode::Competitive=>"competitive",crate::alpha::Mode::Skirmish=>"skirmish",_=>return Err("Only matchmaking worlds run CTF rounds.".into())};
         self.round=Some(crate::ctf::CtfRound::new(mode,training,self.physics.ctf_bases()?)?);
+        self.round.as_mut().unwrap().team_size=format.team_size;
         self.game.match_state=self.round_view();Ok(())
     }
     pub fn round_view(&self) -> Option<crate::ctf::CtfView> {self.round.as_ref().map(|r|r.view())}
@@ -115,6 +119,7 @@ impl WorldRuntime {
     /// No transport remains for a leased practice body. Clear all held intent.
     pub fn detach(&mut self,id:&str){
         self.game.unregister_client(id);
+        self.physics.cancel_guard(id);
         if let Some(e)=self.game.entities.get_mut(id){e.last_packet=None;}
         if let Some(v)=self.physics.vehicles.get_mut(id){v.throttle=0.0;v.steer=0.0;v.brake=1.0;v.handbrake=0.0;v.ram.cancel();}
         if let Some(c)=self.physics.combat_poses.get_mut(id){c.fire=false;c.ram=false;}
@@ -196,6 +201,9 @@ impl WorldRuntime {
         self.physics.set_debug_flags(debug);
         let physics_started = std::time::Instant::now();
         self.physics.step(SIMULATION_DT);
+        self.physics.advance_guard_boosts(SIMULATION_DT, self.game.clients.keys().map(String::as_str));
+        self.physics.advance_health_packs(SIMULATION_DT, self.game.clients.keys().map(String::as_str));
+        self.physics.advance_passive_ultimates(SIMULATION_DT, self.game.clients.keys().map(String::as_str));
         self.advance_round();
         self.game.server_timing = crate::state::ServerTiming {
             lock_ms,
@@ -217,6 +225,29 @@ mod tests {
             world.join(id,tx,frame,inputs,Some(team),10);world.spawn(id,"brz").unwrap();if id=="red"{control=Some(input);}
         }
         world.configure_round(crate::alpha::Mode::Quickplay,true).unwrap();(world,control.unwrap())
+    }
+    #[test]
+    fn passive_ultimate_advances_only_connected_living_simulation_and_ignores_packet_claims() {
+        let (mut world, input) = two_team_round();
+        input.send_replace(Some(serde_json::from_value(json!({"type":"input","seq":1,"dt":1000000.0,"throttle":0,"steer":0,"brake":1,"handbrake":0,"vehicleMask":1,"playerMask":0,"ultimate_fraction":1.0,"ultimate":1.0,"health":{"ultimate_fraction":1.0}})).unwrap()));
+        for _ in 0..60 { world.tick(0.0); }
+        let charge = world.physics.vehicles["red"].powertrain.ultimate_fraction;
+        assert!((charge - 1.0/crate::powertrain::PASSIVE_ULTIMATE_SECONDS).abs() < 0.000001);
+        assert_eq!(world.physics.vehicles["red"].throttle, 0.0);
+        world.detach("red");
+        let blue = world.physics.vehicles["blue"].powertrain.ultimate_fraction;
+        for _ in 0..60 { world.tick(0.0); }
+        assert_eq!(world.physics.vehicles["red"].powertrain.ultimate_fraction, charge);
+        assert!(world.physics.vehicles["blue"].powertrain.ultimate_fraction > blue);
+        world.physics.vehicle_health.get_mut("blue").unwrap().spawn_protection_s=0.0;
+        world.physics.damage_vehicle("blue", None, 9999.0, "impact");
+        let downed = world.physics.vehicles["blue"].powertrain.ultimate_fraction;
+        for _ in 0..60 { world.tick(0.0); }
+        assert_eq!(world.physics.vehicles["blue"].powertrain.ultimate_fraction, downed);
+        world.detach("blue");
+        world.tick(999999.0);
+        assert_eq!(world.physics.vehicles["red"].powertrain.ultimate_fraction, charge);
+        assert_eq!(world.physics.vehicles["blue"].powertrain.ultimate_fraction, downed);
     }
     #[test]
     fn ctf_first_entrant_can_collect_during_waiting_without_producing_result() {
@@ -265,9 +296,11 @@ mod tests {
         let(mut world,input)=two_team_round();
         world.physics.vehicle_health.get_mut("red").unwrap().kills=9;
         world.physics.vehicles.get_mut("red").unwrap().powertrain.fuel_liters=1.0;
+        world.physics.vehicles.get_mut("red").unwrap().powertrain.ultimate_fraction=0.8;
         input.send_replace(Some(serde_json::from_value(json!({"type":"input","seq":1,"dt":1.0/60.0,"throttle":1,"steer":1,"brake":0,"handbrake":0,"vehicleMask":1,"playerMask":0})).unwrap()));
         world.game.collect_input_packets();assert!(world.game.entities["red"].last_packet.is_some());
-        world.start_round().unwrap();world.tick(0.0);
+        world.start_round().unwrap();assert_eq!(world.physics.vehicles["red"].powertrain.ultimate_fraction,0.0);world.tick(0.0);
+        assert!((world.physics.vehicles["red"].powertrain.ultimate_fraction-SIMULATION_DT/crate::powertrain::PASSIVE_ULTIMATE_SECONDS).abs()<0.000001);
         assert_eq!(world.physics.vehicle_health["red"].kills,0);assert!(world.physics.vehicles["red"].powertrain.fuel_liters>10.0);
         assert!(world.game.entities["red"].last_packet.is_none());assert_eq!(world.physics.vehicles["red"].throttle,0.0);
         assert_eq!(world.game.match_state.as_ref().unwrap().phase,crate::ctf::CtfPhase::Running);

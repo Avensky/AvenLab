@@ -1,0 +1,16 @@
+/* The player's app palette owns HUD surfaces, text and control accents.
+   Team identity adds a few transient glows; it never substitutes app tokens. */
+html[data-match-team] :is(.driving-hud,.cockpit-panel) .wheel-artwork {
+  --wheel-stitch:var(--match-team-glow);
+}
+html[data-match-team] .ctf-score-line {
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--match-team-glow) 32%,transparent),0 2px 12px color-mix(in srgb,var(--match-team-glow) 25%,transparent);
+}
+html[data-match-team] tr[data-self=true] .scoreboard-table-player {
+  box-shadow:inset 3px 0 var(--match-team-glow),0 0 8px color-mix(in srgb,var(--match-team-glow) 15%,transparent);
+}
+html[data-match-team=red] .ctf-score-line [data-team=red] .ctf-team-indicator,
+html[data-match-team=blue] .ctf-score-line [data-team=blue] .ctf-team-indicator {
+  display:inline-block;color:var(--match-team-glow);font-size:7px;vertical-align:middle;
+  filter:drop-shadow(0 0 3px var(--match-team-glow));
+}

@@ -6,7 +6,7 @@ import {HeroPortrait} from '../alpha/HeroPortrait';
 import {formatStat,killDeathRatio,type ScoreboardPlayer} from './scoreboardData';
 import './matchScoreboard.css';
 
-type PresentationProps={players:ScoreboardPlayer[];selectedId?:string|null;onSelect?:(id:string)=>void;compact?:boolean;teamFilter?:MatchTeamFilter};
+type PresentationProps={players:ScoreboardPlayer[];selectedId?:string|null;onSelect?:(id:string)=>void;compact?:boolean;teamFilter?:MatchTeamFilter;teamSize?:3|5};
 const sides=['red','blue',null] as const;
 const label=(side:ScoreboardPlayer['team'])=>side?`${side.toUpperCase()} TEAM`:'UNASSIGNED';
 function playerStatus(player:ScoreboardPlayer){
@@ -34,15 +34,15 @@ export function MatchTeamFilterTabs({filter,onChange}:{filter:MatchTeamFilter;on
 
 /** Pure presentation: live admissions and saved results supply the same rows.
  * A portrait click inspects a player; it cannot change a hero or team. */
-export const MatchTeamComposition=memo(function MatchTeamComposition({players,selectedId,onSelect,compact=false,teamFilter='all'}:PresentationProps){
+export const MatchTeamComposition=memo(function MatchTeamComposition({players,selectedId,onSelect,compact=false,teamFilter='all',teamSize=5}:PresentationProps){
  return <div className="match-team-composition" data-compact={compact}>
   {sides.filter(side=>teamFilter==='all'||side===teamFilter).map(side=>{
-   const rows=players.filter(player=>player.team===side).slice(0,side===null?10:5);
+   const rows=players.filter(player=>player.team===side).slice(0,side===null?teamSize*2:teamSize);
    if(side===null&&!rows.length)return null;
-   const slots=side===null?rows:Array.from({length:5},(_,index)=>rows[index]);
+   const slots=side===null?rows:Array.from({length:teamSize},(_,index)=>rows[index]);
    return <section className="scoreboard-team match-composition-team" data-team={side??'unknown'} key={side??'unknown'} aria-label={`${label(side)} composition`}>
-    <h3>{label(side)}<span>{rows.length}{side===null?'':' / 5'}</span></h3>
-    <div className="match-composition-row" data-controller-row data-controller-columns={compact?5:2}>
+    <h3>{label(side)}<span>{rows.length}{side===null?'':` / ${teamSize}`}</span></h3>
+    <div className="match-composition-row" data-controller-row data-controller-columns={compact?teamSize:2} style={compact?{gridTemplateColumns:`repeat(${teamSize},minmax(164px,1fr))`,minWidth:teamSize*164+(teamSize-1)*5}:undefined}>
      {slots.map((player,index)=>{
       if(!player)return <div className="match-composition-seat match-composition-empty" key={`open:${index}`} aria-label={`${label(side)} open slot`}><span aria-hidden="true">+</span><strong>OPEN SLOT</strong></div>;
       const hero=HEROES.find(hero=>hero.id===player.hero);
@@ -56,10 +56,10 @@ export const MatchTeamComposition=memo(function MatchTeamComposition({players,se
  </div>;
 });
 
-export const MatchStatsTable=memo(function MatchStatsTable({players,selectedId,onSelect,compact=false,teamFilter='all'}:PresentationProps){
+export const MatchStatsTable=memo(function MatchStatsTable({players,selectedId,onSelect,compact=false,teamFilter='all',teamSize=5}:PresentationProps){
  return <div className="match-stats-table" data-compact={compact}>
   {sides.filter(side=>teamFilter==='all'||side===teamFilter).map(side=>{
-   const rows=players.filter(player=>player.team===side).slice(0,side===null?10:5);
+   const rows=players.filter(player=>player.team===side).slice(0,side===null?teamSize*2:teamSize);
    if(side===null&&!rows.length)return null;
    return <section className="scoreboard-team" data-team={side??'unknown'} key={side??'unknown'} aria-label={`${label(side)} statistics`}>
     <h3>{label(side)}<span>{rows.length} PLAYER{rows.length===1?'':'S'}</span></h3>

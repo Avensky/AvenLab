@@ -5,6 +5,7 @@ import {usePreferencesStore} from '../store/preferences/preferencesStore';
 import {useRenderSettingsStore} from '../store/presentation/renderSettingsStore';
 import {combatKeyLabel} from '../store/preferences/keyBindings';
 import {useCombatStore} from './combatStore';
+import {HealPackAction} from './HealPackAction';
 import {canDrive} from '../controls/inputRouting';
 import {AttackIcon} from './AttackIcon';
 import {CooldownDial} from './CooldownClock';
@@ -29,6 +30,6 @@ export function ReviveAction(){
 /** The ability remains accessible when optional aim/touch controls are hidden. */
 export function ReviveActionFallback(){
  const enabled=useCombatStore(state=>state.enabled),hud=useRenderSettingsStore(state=>state.hud);
- const deck=usePreferencesStore(state=>state.showTouchControls&&state.hudGroups.turret);
- return hud&&!(enabled&&deck)?<aside className="revive-action-fallback"><ReviveAction/></aside>:null;
+ const deck=usePreferencesStore(state=>state.hudGroups.turret);
+ return hud&&!(enabled&&deck)?<aside className="revive-action-fallback" data-mechanic-support={true}><ReviveAction/><HealPackAction/></aside>:null;
 }

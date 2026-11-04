@@ -8,6 +8,8 @@ import {
 import { requestSocial, identifySocial } from "../../net/socialClient";
 import { AssistedInput } from "../../components/text/AssistedInput";
 import {MenuFrame,MenuFrameHeader,MenuFrameFooter} from "../../components/menus/MenuFrame";
+import {ControllerAction} from "../../components/controller";
+import {isTypingTarget} from "../../controls/inputRouting";
 import { trapMenuFocus } from "../../components/menus/menuFocus";
 import { WorldsPage } from "./WorldsPage";
 import { TeammatesPage, GroupsPage } from "./PeoplePages";
@@ -144,6 +146,7 @@ function ProfilePage({
 }
 
 export function SocialPanel() {
+  const loading = useUIStore((s) => s.isModeLoading);
   const view = useSocialStore((s) => s.view),
     available = useSocialStore((s) => s.available),
     connectionMessage = useSocialStore((s) => s.message);
@@ -210,7 +213,14 @@ export function SocialPanel() {
         aria-labelledby="social-title"
         data-controller-form
         className="social-panel"
-        onKeyDown={trapMenuFocus}
+        onKeyDown={event=>{
+          trapMenuFocus(event);
+          // The keyboard counterpart to the footer's Xbox X action never
+          // intercepts text entry, assisted keyboards or modified shortcuts.
+          if(event.defaultPrevented||event.repeat||event.code!=="KeyX"||event.ctrlKey||event.altKey||event.metaKey||event.shiftKey||isTypingTarget(event.target)||useTextKeyboardStore.getState().session||useUIStore.getState().isModeLoading)return;
+          event.preventDefault();event.stopPropagation();
+          root.current?.querySelector<HTMLButtonElement>('[data-social-refresh]:not(:disabled)')?.click();
+        }}
       >
         <MenuFrameHeader title="WORLDS & SOCIAL" titleId="social-title" onBack={back} className="social-header"/>
         {view && (
@@ -279,14 +289,16 @@ export function SocialPanel() {
           </fieldset>
         </div>
         <MenuFrameFooter className="social-footer" status={status || connectionMessage}>
-          <button
-            type="button"
+          <ControllerAction
+            button="X"
             className="menu-control"
-            disabled={busy || !available}
+            data-social-refresh
+            aria-label="Refresh worlds and social"
+            disabled={busy || !available || loading}
             onClick={() => void command("refresh", {}, "Refreshed")}
           >
             REFRESH
-          </button>
+          </ControllerAction>
         </MenuFrameFooter>
       </MenuFrame>
     </div>

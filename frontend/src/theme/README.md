@@ -39,6 +39,19 @@ Mode/role summaries remain transparent over scenery with scene-readable ink;
 mode and vehicle filter tabs keep square corners. Settings still use the shared
 rounded surface language.
 
+## Match identity
+
+The selected app palette owns HUD surfaces, text and control accents on either
+team. `matchTeamTheme` adds transient team glows, a matching score marker and
+steering-wheel stitching; it never replaces `--app-*` or `--cockpit-accent`.
+Warm Red and Blue identity tokens also supply semantic team labels and staging
+lights. Strawberry remains a separate pink palette. Leaving/disconnecting
+clears the match treatment, and saved hero paint is untouched.
+
+The center resource HUD uses the same palette tokens, with semantic HP/fuel/NOS
+colors. Its CSS maximum width is measured by the existing layout observer;
+snapshot updates never poll geometry or allocate another portrait renderer.
+
 Prefab visibility is saved independently of the document. Layout/collider
 panels share editorPaletteCSS; floating controls and the 3D coordinate portal
 use the same Settings-owned app palette.

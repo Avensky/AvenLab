@@ -18,7 +18,7 @@ export function ClimatePanel({
   onMinimize,
   performanceReadout = false,
 }: {
-  size?: "compact" | "full";
+  size?: "single" | "compact" | "full";
   showHazards?: boolean;
   controlsVisible?: boolean;
   onMinimize?: () => void;

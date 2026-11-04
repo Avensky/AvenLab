@@ -21,7 +21,7 @@ test('saved health visibility, keyboard cycling and defeat feedback share one po
    const collision=sanitizeBindings({...DEFAULT_BINDINGS,forward:'KeyJ'});assert.equal(collision.forward,'KeyJ');assert.notEqual(collision.healthBars,'KeyJ');assert.equal(new Set(Object.values(collision)).size,Object.keys(DEFAULT_BINDINGS).length);
    await setMode('others');assert.equal(document.querySelector('.vehicle-health-hud'),null);assert.equal(JSON.parse(localStorage.getItem('avenlab-preferences-v1')).state.healthBars,'others');
    const saved=localStorage.getItem('avenlab-preferences-v1');await act(async()=>{prefs.setState({healthBars:'all'});localStorage.setItem('avenlab-preferences-v1',saved);await prefs.persist.rehydrate();});assert.equal(prefs.getState().healthBars,'others');
-   await setMode('red');assert(document.querySelector('.vehicle-health-hud'));await setMode('blue');assert.equal(document.querySelector('.vehicle-health-hud'),null);
+   await setMode('red');assert.equal(document.querySelector('.vehicle-health-hud'),null,'standalone hull overlay is retired');await setMode('blue');assert.equal(document.querySelector('.vehicle-health-hud'),null);
   });
   await t.test('nonrepeating gameplay key cycles five modes and uses the saved binding',async()=>{
    await setMode('all');for(const expected of ['red','blue','none','others','all']){send();await press('KeyJ');assert.equal(prefs.getState().healthBars,expected);}assert.match(chat.getState().notices.at(-1).text,/Health bars: Show all/);
@@ -36,7 +36,7 @@ test('saved health visibility, keyboard cycling and defeat feedback share one po
   });
   await t.test('hidden HP preserves damage feedback and countdown and hotkey works while defeated',async()=>{
    await setMode('none');entity.health={...entity.health,hp:0,defeated:true,respawn_remaining_s:3.2,damage_seq:2,last_damage:1200};await act(async()=>send());assert.equal(document.querySelector('.vehicle-health-hud'),null);assert.match(document.querySelector('.vehicle-defeated-banner').textContent,/RESPAWN IN 3.2s/);assert(document.querySelector('.vehicle-damage-flash'));
-   await setMode('others');assert.equal(document.querySelector('.vehicle-health-hud'),null);assert(document.querySelector('.vehicle-defeated-banner'));send();await press('KeyK');assert.equal(prefs.getState().healthBars,'all');assert(document.querySelector('.vehicle-health-hud'));
+   await setMode('others');assert.equal(document.querySelector('.vehicle-health-hud'),null);assert(document.querySelector('.vehicle-defeated-banner'));send();await press('KeyK');assert.equal(prefs.getState().healthBars,'all');assert.equal(document.querySelector('.vehicle-health-hud'),null,'standalone hull overlay is retired');
   });
   await t.test('settings expose health policy, restore HUD defaults and capture a new key',async()=>{
    await act(async()=>ui.setState({overlay:'settings',settingsTab:'hud'}));await act(async()=>root.render(h(SettingsMenu)));

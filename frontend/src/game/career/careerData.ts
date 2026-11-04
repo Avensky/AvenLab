@@ -1,6 +1,6 @@
 import type {CareerBucket, CareerHistoryEntry, CareerStats, CareerSummary} from './careerTypes';
 
-export const CAREER_MODES=[['all','All modes'],['quickplay','Quickplay'],['competitive','Competitive'],['training','Training'],['sandbox','Sandbox'],['editor','World editor']] as const;
+export const CAREER_MODES=[['all','All modes'],['quickplay','Quickplay'],['competitive','Competitive'],['skirmish','3v3 CTF'],['training','Training'],['sandbox','Sandbox'],['editor','World editor']] as const;
 export const CAREER_STATS: {key:keyof CareerStats;label:string;kind?:'liters'|'duration'|'maximum'}[]=[
  {key:'kills',label:'Eliminations'},{key:'deaths',label:'Deaths'},{key:'assists',label:'Assists'},
  {key:'damage_dealt',label:'Damage dealt'},{key:'healing_done',label:'Healing done'},{key:'self_healing',label:'Self healing'},
@@ -42,7 +42,8 @@ export function careerAverage(bucket:CareerBucket|undefined,key:keyof CareerStat
 export function historyMatchesFilters(entry:CareerHistoryEntry,mode:string,hero:string) {
  return (mode==='all'||(mode==='training'?entry.training:entry.mode===mode&&!entry.training))&&(hero==='all'||entry.hero===hero);
 }
-export function careerModeLabel(mode:string,training=false) {
- return training?'Training':CAREER_MODES.find(([id])=>id===mode)?.[1]??mode.replaceAll('_',' ');
+export function careerModeLabel(mode:string,training=false,teamSize?:number|null) {
+ const label=training?'Training':CAREER_MODES.find(([id])=>id===mode)?.[1]??mode.replaceAll('_',' ');
+ return !training&&(mode==='quickplay'||mode==='competitive')&&(teamSize===3||teamSize===5)?`${label} · ${teamSize}v${teamSize}`:label;
 }
 export const CAREER_AWARD_LABELS={mvp:'MVP',svp:'SVP',play_of_the_game:'Play of the game',top_support:'Top support'} as const;

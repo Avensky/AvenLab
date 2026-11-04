@@ -140,7 +140,7 @@
     infinite;
   animation-delay: var(--starter-phase, 0ms);
 }
-.driving-dashboard:not([data-signal="live"]) .dashboard-cluster {
+.driving-dashboard[data-power="unavailable"] .dashboard-cluster {
   opacity: 0.55;
 }
 .gauge-symbol {

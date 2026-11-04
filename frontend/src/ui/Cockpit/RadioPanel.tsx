@@ -68,6 +68,7 @@ const RadioStatus = memo(function RadioStatus({
 });
 export function RadioPanel({
   compact = false,
+  singleRow = false,
   minimized = false,
   onMinimize,
   onMissionsToggle,
@@ -75,6 +76,7 @@ export function RadioPanel({
   transportVisible = true,
 }: {
   compact?: boolean;
+  singleRow?: boolean;
   minimized?: boolean;
   onMinimize?: () => void;
   onMissionsToggle?: () => void;
@@ -84,6 +86,17 @@ export function RadioPanel({
   const radio = useRadioStore(),
     file = useRef<HTMLInputElement>(null);
   const feedback = useMomentaryFeedback();
+  if (singleRow) return <div {...feedback} className="cockpit-radio radio-single-row" data-compact="true" data-powered={radio.powered}>
+    <button type="button" aria-label="Radio power" role="switch" aria-checked={radio.powered} title={radio.powered ? "Turn radio off" : "Turn radio on"} onClick={() => void setRadioPower(!radio.powered)}><RadioIcon name="power" /></button>
+    <button type="button" className="radio-track-name" aria-label="Radio source" title={`${radio.powered ? radio.title || radio.track : 'RADIO OFF'} · click to choose audio files; full controls in Cockpit`} onClick={() => file.current?.click()}>{radio.powered ? <RadioStatus fallback={radio.title || radio.track || 'AUDIO'} /> : 'RADIO OFF'}</button>
+    <button type="button" aria-label="Radio play or pause" aria-pressed={radio.playing} disabled={!radio.powered} onClick={() => void toggleRadio()}><RadioIcon name={radio.playing ? 'pause' : 'play'} /></button>
+    <button type="button" aria-label="Radio next track" disabled={!radio.powered || radio.trackCount < 2} onClick={() => void nextRadioTrack()}><RadioIcon name="next" /></button>
+    <div className="radio-volume-dial"><RotaryKnob label="Radio volume" disabled={!radio.powered} min={0} max={20} value={Math.round(radio.volume * 20)} readout={String(Math.round(radio.volume * 100))} onChange={v => setRadioVolume(v / 20)} action="Radio mute" actionText={radio.muted ? '×' : '♪'} active={radio.muted} onAction={toggleRadioMute} /></div>
+    {onMissionsToggle && <button type="button" aria-label="Toggle missions" aria-expanded={missionsOpen} title="Missions" onClick={onMissionsToggle}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M6 21V3m0 1h12l-3 5 3 5H6" /></svg></button>}
+    {onMinimize && <button type="button" aria-label="Minimize radio" aria-expanded="true" onClick={onMinimize}>−</button>}
+    {radio.message && <span className="radio-single-notice" role="status">{radio.message}</span>}
+    <input ref={file} type="file" accept="audio/*" multiple hidden aria-label="Choose local audio" onChange={event => {const files = Array.from(event.target.files ?? []);if (files.length) void loadRadioFiles(files);event.target.value = '';}} />
+  </div>;
   return (
     <div
       {...feedback}

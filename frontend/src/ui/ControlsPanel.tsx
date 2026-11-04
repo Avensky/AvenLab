@@ -16,11 +16,10 @@ import { TouchStick } from "../controls/TouchControls";
 
 export default function ControlsPanel() {
   const armed=useCombatStore(s=>s.enabled);
-  const turret=usePreferencesStore(s=>s.hudGroups.turret);
-  const expanded = usePreferencesStore((s) => s.showDriveControls),
-    touch = usePreferencesStore((s) => s.showTouchControls),
-    layout = usePreferencesStore((s) => s.touchLayout);
-  const aimControls=armed&&touch&&turret;
+  const groups = usePreferencesStore(s=>s.hudGroups);
+  const layout = usePreferencesStore((s) => s.touchLayout);
+  const aimControls=armed&&groups.turret;
+  const expanded=groups.parking||groups.shifter||groups.ignition||groups.assists;
   return (
     <>
       <UtilityDock />
@@ -36,7 +35,7 @@ export default function ControlsPanel() {
               className={`transmission-console hud-transmission${aimControls?" ability-control-deck":""}`}
               data-compact="true"
             >
-              {expanded&&<HudGroup
+              {<HudGroup
                 id="parking"
                 title="PARKING BRAKE"
                 className="hud-parking"
@@ -44,7 +43,7 @@ export default function ControlsPanel() {
                 <ParkingBrakeControl drift />
               </HudGroup>}
               <div className="hud-drive-turret-stack">
-                {expanded&&<HudGroup id="shifter" title="SHIFTER" className="hud-shifter"><DriveGearControl /></HudGroup>}
+                {<HudGroup id="shifter" title="SHIFTER" className="hud-shifter"><DriveGearControl /></HudGroup>}
                 {aimControls&&<HudGroup id="turret" title="TURRET" className="hud-turret"><VehicleAimControls/></HudGroup>}
               </div>
             </div>
@@ -52,8 +51,8 @@ export default function ControlsPanel() {
         )}
         {/* This row defines the shared radio/HVAC width in styles/layout.css. */}
         <div className="console-foot-controls">
-          {expanded&&<DrivingIgnition/>}
-          {expanded && (
+          <DrivingIgnition/>
+          {(
             <HudGroup
               id="assists"
               title="DRIVING ASSISTS"
@@ -62,7 +61,7 @@ export default function ControlsPanel() {
               <DriveAssists compact />
             </HudGroup>
           )}
-          {touch && (
+          {(
             <HudGroup id="pedals" title="PEDALS" className="pedal-hud">
               {layout === "pedals" ? (
                 <Pedals />

@@ -5,12 +5,12 @@ export const UtilityToggle = memo(function UtilityToggle({
   onClick,
   className = "",
 }: {
-  panel: "radio" | "climate";
+  panel: "radio" | "missions" | "climate";
   open: boolean;
   onClick: () => void;
   className?: string;
 }) {
-  const label = panel === "radio" ? "radio" : "climate controls";
+  const label = panel === "radio" ? "radio" : panel === "missions" ? "missions" : "climate controls";
   return (
     <button
       type="button"
@@ -24,7 +24,7 @@ export const UtilityToggle = memo(function UtilityToggle({
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M5 12h14" />
         </svg>
-      ) : panel === "radio" ? (
+      ) : panel === "radio" || panel === "missions" ? (
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M5 8h14v11H5zM7 5l10-3M8 12h5M8 15h3" />
           <circle cx="16" cy="15" r="1.5" />

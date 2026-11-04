@@ -56,6 +56,8 @@ pub struct VehicleColliderShape {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct PhysicsEntitySnapshot {
+    pub guard:crate::guard_boost::GuardView,
+    pub support:crate::support::SupportView,
     pub health:crate::vehicle_health::VehicleHealth,
     pub combat: CombatPose,
     // Collider preview metadata is independent of expensive force diagnostics.
@@ -80,7 +82,7 @@ pub struct PhysicsEntitySnapshot {
     pub temp: f32,           // engine temperature
     pub engine_torque: f32,  // Nm or equivalent
     pub condition: f32,      // 0..1 mechanical/body condition; 1 = healthy
-    pub ultimate_fraction: f32, // 0..1, earned by actual damage dealt to other vehicles
+    pub ultimate_fraction: f32, // 0..1, server-owned passive time, enemy damage and actual teammate healing
     pub boost_fraction: Option<f32>, // 0..1; None when no NOS is fitted
     pub resource_mask: u16,  // cranking/heat/fuel/damage status bits
     pub cockpit_mask: u32,
@@ -531,6 +533,7 @@ impl SharedGameState {
             );
 
             entities_out.push(PhysicsEntitySnapshot {
+                guard:physics.guard_view(&ent.id), support:physics.support.view(&ent.id),
                 health:physics.vehicle_health.get(&ent.id).cloned().unwrap_or_else(||crate::vehicle_health::VehicleHealth::new(vehicle.config.tracked)),
                 combat: {let mut c=physics.combat_poses.get(&ent.id).cloned().unwrap_or_default();c.ram_remaining=vehicle.ram.remaining;c.ram_charge_remaining=vehicle.ram.charge_remaining();c.stun_remaining=vehicle.ram.stun_remaining;c.ram_cooldown=vehicle.ram.cooldown;c.ram_blocked=vehicle.ram.blocked.into();c},
                 condition: vehicle.powertrain.condition,

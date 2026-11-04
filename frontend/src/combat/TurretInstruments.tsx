@@ -19,5 +19,5 @@ export function TurretInstruments() {
       : turret.reload && turret.reload > 0 ? `${turret.weapon==='coax'||turret.weapon==='basket'?'CYCLE':'LOAD'} ${turret.reload.toFixed(1)}s` : 'READY';
     return `TURRET ${bearing}° · ELEV ${elevation}°${turret.role === 'tank' ? ` · ${ready}` : ''}`;
   });
-  return value ? <div className="turret-instruments" aria-label="Turret instruments">{value}</div> : null;
+  return value ? <div className="turret-instruments" aria-label="Turret instruments" title={value}>{value}</div> : null;
 }

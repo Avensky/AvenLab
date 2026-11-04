@@ -33,7 +33,7 @@ let vehicleChangeSequence = 0;
 
 // Preserve only an already-deployed session; authentication and world permissions
 // are rechecked by the server. Explicit leave/menu navigation cancels recovery.
-let resumeIntent: {profile:string;world:number;vehicle:string;map:string;mode:ReturnType<typeof useAlphaStore.getState>['mode'];preserved:boolean}|null=null;
+let resumeIntent: {profile:string;world:number;vehicle:string;map:string;mode:ReturnType<typeof useAlphaStore.getState>['mode'];teamSize:3|5;preserved:boolean}|null=null;
 let recoveryTimer:ReturnType<typeof setTimeout>|null=null;
 let foregroundTimer:ReturnType<typeof setTimeout>|null=null;
 let lastPacketMs=0,lastLocalBodyMs=0,foregroundGraceUntil=0,hadLocalBody=false,missingBodySince:number|null=null;
@@ -41,7 +41,7 @@ function forgetRecovery(){resumeIntent=null;if(recoveryTimer!==null)clearTimeout
 function failRecovery(message:string){
  const intent=resumeIntent;forgetRecovery();hadLocalBody=false;missingBodySince=null;
  if(useUIStore.getState().screen!=='sandbox')return;
- if(intent){useAlphaStore.getState().chooseMode(intent.mode);const mapIndex=mapCatalog.findIndex(m=>m.id===intent.map);if(mapIndex>=0)useSelectionStore.setState({mapIndex});}
+ if(intent){useAlphaStore.getState().restoreMode(intent.mode,intent.teamSize);const mapIndex=mapCatalog.findIndex(m=>m.id===intent.map);if(mapIndex>=0)useSelectionStore.setState({mapIndex});}
  useChatStore.getState().notify(message);useSocialStore.setState({message,recoveryMessage:message});useUIStore.getState().setScreen('mode_select');
 }
 function armRecoveryTimeout(){
@@ -52,7 +52,7 @@ function rememberDeployment(){
  if(resumeIntent)return;
  const net=useNetworkStore.getState(),view=useSocialStore.getState().view,me=net.getMe();
  if(useUIStore.getState().screen!=='sandbox'||!me?.vehicle_id||!view||net.room_id===null||!net.worldMap)return;
- resumeIntent={profile:view.profile.id,world:net.room_id,vehicle:me.vehicle_id,map:net.worldMap,mode:useAlphaStore.getState().mode,preserved:false};armRecoveryTimeout();
+ resumeIntent={profile:view.profile.id,world:net.room_id,vehicle:me.vehicle_id,map:net.worldMap,mode:useAlphaStore.getState().mode,teamSize:useAlphaStore.getState().teamSize,preserved:false};armRecoveryTimeout();
 }
 function resumeDeployment(){
  const intent=resumeIntent,view=useSocialStore.getState().view,net=useNetworkStore.getState();

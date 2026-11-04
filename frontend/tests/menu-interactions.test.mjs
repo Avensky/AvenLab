@@ -249,7 +249,7 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
         }
         assert.deepEqual(
           MAIN_MENU_ITEMS.map((item) => item.id),
-          ["play", "heroes", "career", "social", "settings"],
+          ["play", "explore", "heroes", "career", "social", "settings"],
         );
         await button(12);
         assert.equal(
@@ -490,6 +490,7 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
       "mouse chooses CAN fields/arrow values; A locks a preview then advances without footer focus",
       async () => {
         await resetRecon();
+        await act(async()=>alpha.getState().chooseMode('sandbox'));
         await reset("mode_select");
         await click(
           [...document.querySelectorAll(".alpha-mode-tabs button")].find(

@@ -1,4 +1,4 @@
-/* Career, Settings and Worlds/Social use one theme-driven screen frame. */
+/* One theme-driven frame; scene menus reuse its chrome without its opaque shell. */
 .menu-frame {
  position:fixed;inset:0;z-index:55;display:flex;flex-direction:column;
  box-sizing:border-box;width:100%;height:100dvh;min-width:0;min-height:0;overflow:hidden;outline:none;
@@ -12,11 +12,11 @@ html[data-ui-theme] .menu-frame[role=dialog]{background:var(--app-panel);color:v
 .menu-frame :is(button,select):focus-visible{outline:2px solid var(--app-accent);outline-offset:-2px}
 .menu-frame button{cursor:pointer}.menu-frame button:disabled{cursor:default;opacity:.5}
 .menu-frame :is(button,select):hover{text-decoration:none!important}
-.menu-frame .menu-frame-header{display:flex;align-items:center;gap:18px;padding:12px var(--menu-gutter);flex-shrink:0;border-bottom:1px solid var(--app-line);background:var(--app-panel)}
+.menu-frame-header{box-sizing:border-box;pointer-events:auto;color:var(--app-text);font:calc(12px * var(--menu-text-scale,1))/1.45 ui-sans-serif,system-ui,sans-serif;display:flex;align-items:center;gap:18px;padding:12px var(--menu-gutter);flex-shrink:0;border-bottom:1px solid var(--app-line);background:var(--app-panel)}
 .menu-frame-header>div:first-child{flex:1;min-width:0}
-.menu-frame .menu-frame-header small{margin:0;color:var(--app-accent);font-size:10px;font-weight:750;letter-spacing:.16em}
-.menu-frame .menu-frame-header h1{margin:0;font-size:clamp(20px,2.6vw,32px);font-style:italic;font-weight:850;line-height:1.1;letter-spacing:.04em;text-transform:uppercase}
-.menu-frame .menu-frame-header .alpha-progress{margin:0}
+.menu-frame-header small{margin:0;color:var(--app-accent);font-size:10px;font-weight:750;letter-spacing:.16em}
+.menu-frame-header h1{margin:0;font-size:clamp(20px,2.6vw,32px);font-style:italic;font-weight:850;line-height:1.1;letter-spacing:.04em;text-transform:uppercase}
+.menu-frame-header .alpha-progress{margin:0}
 .menu-frame .menu-control{min-height:34px;padding:7px 13px;border-radius:4px;background:var(--app-raised);border:1px solid var(--app-line);color:var(--app-text);box-shadow:none}
 .menu-frame .menu-control:hover{border-color:var(--app-accent);box-shadow:0 0 12px color-mix(in srgb,var(--app-accent) 18%,transparent)}
 .menu-frame .menu-frame-tabs{display:flex;flex-shrink:0;overflow-x:auto;min-height:0;border-bottom:1px solid var(--app-line);padding:0 var(--menu-gutter);gap:0;scrollbar-width:none;background:transparent}
@@ -24,17 +24,14 @@ html[data-ui-theme] .menu-frame[role=dialog]{background:var(--app-panel);color:v
 .menu-frame .menu-frame-tabs .menu-control[aria-selected=true]{color:var(--app-accent);border-bottom-color:var(--app-accent);background:color-mix(in srgb,var(--app-accent) 8%,transparent);outline:0;box-shadow:none}
 .menu-frame .menu-frame-content{flex:1;min-width:0;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:none;padding:14px var(--menu-gutter) 22px;outline:none}
 .menu-frame ::-webkit-scrollbar{display:none}
-.menu-frame .menu-frame-footer{display:flex;align-items:center;flex-shrink:0;gap:16px;border-top:1px solid var(--app-line);padding:9px var(--menu-gutter);background:var(--app-panel);min-height:53px}
+.menu-frame-footer{box-sizing:border-box;pointer-events:auto;color:var(--app-text);font:calc(12px * var(--menu-text-scale,1))/1.45 ui-sans-serif,system-ui,sans-serif;display:flex;align-items:center;flex-shrink:0;gap:16px;border-top:1px solid var(--app-line);padding:9px var(--menu-gutter);background:var(--app-panel);min-height:53px}
 .menu-frame-footer .controller-shortcuts{margin-right:auto;color:var(--app-muted)}
 .menu-frame .menu-frame-status{min-width:0;margin:0;color:var(--app-muted);font-size:9px;line-height:1.4;overflow-wrap:anywhere}
 /* Scoped frame rules take precedence over generic menu utility styles. */
-html[data-ui-theme] .menu-frame .menu-frame-header{padding:12px var(--menu-gutter);border-bottom:1px solid var(--app-line);background:var(--app-panel)}
 html[data-ui-theme] .menu-frame .menu-frame-tabs{padding:0 var(--menu-gutter);gap:0;border-bottom:1px solid var(--app-line)}
 html[data-ui-theme] .menu-frame .menu-frame-tabs .menu-tab{border-radius:0;background:transparent}
 html[data-ui-theme] .menu-frame .menu-frame-tabs [aria-selected=true]{background:color-mix(in srgb,var(--app-accent) 8%,transparent);color:var(--app-accent)}
 html[data-ui-theme] .menu-frame .menu-frame-content{padding:14px var(--menu-gutter) 22px}
-html[data-ui-theme] .menu-frame .menu-frame-footer{padding:9px var(--menu-gutter);border-top:1px solid var(--app-line);background:var(--app-panel)}
-html[data-ui-theme] .menu-frame .menu-back{border:1px solid var(--app-line);border-radius:4px;min-height:34px;padding:7px 13px;background:var(--app-raised)}
 html[data-ui-theme] .menu-frame .menu-row-list{background:transparent;border-radius:0;padding:0;gap:0;overflow:visible}
 html[data-ui-theme] .menu-frame .menu-row{min-height:58px;border:0;border-bottom:1px solid var(--app-line);border-radius:0;padding:14px 16px;background:transparent;box-shadow:none;gap:18px}
 html[data-ui-theme] .menu-frame .menu-row:nth-child(odd){background:color-mix(in srgb,var(--app-raised) 65%,transparent)}
@@ -42,23 +39,35 @@ html[data-ui-theme] .menu-frame .menu-row:is(:hover,:focus-visible,[data-selecte
 html[data-ui-theme] .menu-frame .menu-row-label{font-weight:700;font-size:calc(13px * var(--menu-text-scale,1))}
 html[data-ui-theme] .menu-frame .menu-row-description{color:var(--app-muted);font-size:calc(10px * var(--menu-text-scale,1))}
 @media(max-width:760px){
- .menu-frame{--menu-gutter:16px}
- .menu-frame .menu-frame-header,html[data-ui-theme] .menu-frame .menu-frame-header{gap:10px;padding-top:8px;padding-bottom:8px}
- .menu-frame .menu-frame-header small{font-size:7px}.menu-frame .menu-frame-header .alpha-progress{display:none}
+ :is(.menu-frame,.hero-selection){--menu-gutter:16px}
+ .menu-frame-header{gap:10px;padding-top:8px;padding-bottom:8px}
+ .menu-frame-header small{font-size:7px}.menu-frame-header .alpha-progress{display:none}
  .menu-frame .menu-frame-tabs,html[data-ui-theme] .menu-frame .menu-frame-tabs{padding:0 6px}
  .menu-frame .menu-frame-tabs .menu-control{min-height:39px;padding:9px 12px;font-size:10px}
- .menu-frame .menu-frame-footer,html[data-ui-theme] .menu-frame .menu-frame-footer{min-height:48px;padding-top:6px;padding-bottom:6px;gap:8px}
+ .menu-frame-footer{min-height:48px;padding-top:6px;padding-bottom:6px;gap:8px}
  .menu-frame-footer .controller-shortcuts{font-size:9px;gap:8px}
- .menu-frame .menu-frame-footer .menu-control{min-height:32px;font-size:10px;padding:6px 9px}
+ .menu-frame-footer .menu-control{min-height:32px;font-size:10px;padding:6px 9px}
  .menu-frame .menu-frame-status{font-size:8px;max-width:40%}
  html[data-ui-theme] .menu-frame .menu-row{min-height:48px;padding:12px 10px}
 }
 @media(max-height:480px) and (min-width:560px){
- .menu-frame{--menu-gutter:15px}
- .menu-frame .menu-frame-header,html[data-ui-theme] .menu-frame .menu-frame-header{padding-top:5px;padding-bottom:5px}
- .menu-frame .menu-frame-header h1{font-size:20px}.menu-frame .menu-frame-header small,.menu-frame .menu-frame-header .alpha-progress{display:none}
+ :is(.menu-frame,.hero-selection){--menu-gutter:15px}
+ .menu-frame-header{padding-top:5px;padding-bottom:5px}
+ .menu-frame-header h1{font-size:20px}.menu-frame-header small,.menu-frame-header .alpha-progress{display:none}
  .menu-frame .menu-frame-tabs .menu-control{min-height:31px;padding:6px 10px}
- .menu-frame .menu-frame-footer,html[data-ui-theme] .menu-frame .menu-frame-footer{min-height:41px;padding-top:4px;padding-bottom:4px}
+ .menu-frame-footer{min-height:41px;padding-top:4px;padding-bottom:4px}
 }
 .menu-frame-footer .controller-shortcuts{flex:1 1 auto;min-width:0}
 @media(max-width:760px){.menu-frame-footer .controller-shortcuts>span>kbd:not(.controller-key){display:none}}
+/* Keep a single mobile footer row: Back is already in the header, and a
+   clickable A action does not need a second A hint alongside it. */
+@media(max-width:650px){
+ .menu-frame-footer .controller-shortcuts>span:first-child,.menu-frame-footer .controller-shortcuts>span:last-child{display:none}
+ .menu-frame-footer:has(>.controller-action>[data-controller-key=A]) .controller-shortcuts>span:nth-child(2){display:none}
+}
+
+/* Scene variants keep the existing palette and the open garage between bars. */
+.menu-frame-header[data-menu-chrome=scene],.menu-frame-footer[data-menu-chrome=scene]{background:color-mix(in srgb,var(--app-panel) 97%,transparent)}
+.menu-frame-header .menu-control,.menu-frame-footer>.controller-action{min-height:34px;padding:7px 13px;font:700 11px/1.3 system-ui;white-space:nowrap}
+.menu-frame-header :is(button,button:hover),.menu-frame-footer :is(button,button:hover){text-decoration:none!important}
+@media(max-width:760px){.menu-frame-header .menu-control,.menu-frame-footer>.controller-action{min-height:32px;padding:6px 9px;font-size:10px}}

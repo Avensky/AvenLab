@@ -13,6 +13,7 @@ export interface CtfFlag {
 export interface CtfMatchState {
   match_id: string;
   mode: string;
+  team_size?: 1 | 3 | 5;
   training: boolean;
   phase: "waiting" | "running" | "ended";
   elapsed_s: number;
@@ -22,6 +23,15 @@ export interface CtfMatchState {
   scores: { red: number; blue: number };
   flags: [CtfFlag, CtfFlag];
   winner: Team | null;
+  /** Bounded authoritative objective history; optional for older servers. */
+  events?: CtfFlagEvent[];
+}
+export interface CtfFlagEvent {
+  seq: number;
+  kind: "picked_up" | "dropped" | "returned" | "captured";
+  flag_team: Team;
+  player_id: string | null;
+  elapsed_s: number;
 }
 export interface PhysicsSnapshot {
   match_state?: CtfMatchState | null;
@@ -84,7 +94,36 @@ export interface VehicleSessionStats {
   respawns: number;
 }
 
+/** Authoritative support projectile state. A client only requests a launch;
+ * target choice, flight, HP and cooldown all remain on the server. */
+export interface HealthPackSnapshot {
+  seq: number;
+  target: string;
+  origin: [number, number, number];
+  position: [number, number, number];
+  target_position: [number, number, number];
+  remaining_s: number;
+  duration_s: number;
+  state: "flying" | "hit" | "missed";
+  healed_hp: number;
+}
+export interface SupportSnapshot {
+  cooldown_s: number;
+  sequence: number;
+  pack: HealthPackSnapshot | null;
+}
+export interface GuardSnapshot {
+  kind?: "" | "brz_guard" | "tank_barrier";
+  remaining_s: number;
+  cooldown_s: number;
+  shield_hp: number;
+  shield_max_hp: number;
+  break_seq: number;
+}
+
 export interface PhysicsEntitySnapshot {
+  support?: SupportSnapshot;
+  guard?: GuardSnapshot;
   /** Server-owned combat HP is separate from mechanical condition. */
   health?: {
     hp: number;

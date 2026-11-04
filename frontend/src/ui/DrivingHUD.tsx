@@ -1,3 +1,6 @@
+import { FuturisticHUD } from "./FuturisticHUD/FuturisticHUD";
+import { TeammateHUD } from "./FuturisticHUD/TeammateHUD";
+import { CenterCombatDock } from "./FuturisticHUD/CenterCombatDock";
 import {VehicleHealthHUD} from '../combat/VehicleHealthHUD';
 import {ActiveEffectsBar} from '../combat/ActiveEffectsBar';
 import {useCombatStore} from '../combat/combatStore';
@@ -14,8 +17,10 @@ import { usePerformanceOverlayStore } from "../performance/performanceOverlaySto
 import { useCanDataStore } from "../store/recon/canDataStore";
 import { startVehicleTelemetry } from "../store/telemetry/vehicleTelemetryStore";
 import { HudGroup } from "./HudGroup";
+import { useNetworkStore } from "../store/session/networkStore";
 
 export function DrivingHUD() {
+  const ctf = useNetworkStore((s) => Boolean(s.snapshot?.match_state));
   const scoped=useCombatStore(s=>s.scope&&s.enabled);
   const drivingLayout = usePreferencesStore((s) => s.drivingLayout);
   const touch = usePreferencesStore((s) => s.showTouchControls),
@@ -23,14 +28,13 @@ export function DrivingHUD() {
     drop = usePreferencesStore((s) => s.wheelDrop);
   const groups = usePreferencesStore((s) => s.hudGroups);
   const needsTelemetry =
-    (touch && groups.wheel) ||
-    (dock &&
+    groups.wheel || groups.stalks ||
       (groups.ignition ||
-        groups.display ||
+        groups.display || groups.missions ||
         groups.climate ||
         groups.shifter ||
         groups.parking ||
-        groups.assists));
+        groups.assists);
   useEffect(
     () => (needsTelemetry ? startVehicleTelemetry() : undefined),
     [needsTelemetry],
@@ -45,6 +49,7 @@ export function DrivingHUD() {
       data-driving-layout={drivingLayout}
       data-touch-visible={touch}
       data-drive-controls={dock}
+      data-ctf-match={ctf}
       inert={inspector || command}
       onPointerDownCapture={(event) => {
         if (
@@ -75,23 +80,29 @@ export function DrivingHUD() {
       }}
       onClick={(event) => event.stopPropagation()}
     >
+      <div className="hud-top-left">
       <HudGroup id="gauges" title="INSTRUMENTS" className="instrument-hud">
         <Dashboard />
       </HudGroup>
-      {touch && (
-        <HudGroup id="wheel" title="STEERING" className="wheel-hud">
+      {groups.teammates && <TeammateHUD />}
+      </div>
+      {(groups.wheel || groups.stalks) && (
+        <section className="hud-group wheel-hud" data-hud-group={groups.wheel ? "wheel" : "stalks"} aria-label={groups.wheel ? "STEERING group" : "WHEEL LEVERS group"}>
           <div
             className="wheel-stage"
             style={{ "--wheel-drop": drop } as CSSProperties}
           >
             <Steering />
           </div>
-        </HudGroup>
+        </section>
       )}
 
       <EditorDriveBar />
-      <WeaponSelector />
-      <ActiveEffectsBar />
+      <CenterCombatDock>
+        <ActiveEffectsBar />
+        {groups.futuristic && <FuturisticHUD />}
+        <WeaponSelector />
+      </CenterCombatDock>
       <VehicleHealthHUD />
       <ControlsPanel />
       <InspectionPanel />

@@ -1,4 +1,5 @@
 import {ReviveActionFallback} from './ReviveAction';
+import {GuardBoostFallback} from './GuardBoostAction';
 import {useCanDataStore} from '../store/recon/canDataStore';
 import {clearTankFireInputs} from './tankLoadout';
 import {useUIStore} from '../store/menus/uiStore';
@@ -37,5 +38,5 @@ export function CombatHUD(){
   const uiRelease=useUIStore.subscribe(()=>{const ui=useUIStore.getState();if(ui.screen!=='sandbox'||ui.overlay!==null||ui.isModeLoading)stop();});
   return()=>{unsubscribe();uiRelease();canRelease();stop();window.removeEventListener('avenlab:vehicle-entered',entered);window.removeEventListener('blur',stop);document.removeEventListener('visibilitychange',stop);if(useUIStore.getState().screen!=='sandbox'){autoVehicle='';useCombatStore.getState().setEnabled(false);}};
  },[]);
- return <><TankScopeHUD/><ReviveActionFallback/></>;
+ return <><TankScopeHUD/><ReviveActionFallback/><GuardBoostFallback/></>;
 }

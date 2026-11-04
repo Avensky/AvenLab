@@ -305,8 +305,9 @@ test("cockpit layout preferences preserve electronics and physical source owners
           null,
         );
         assert.equal(
-          document.querySelector('[data-menu-row="hud-hazards"]'),
-          null,
+          document.querySelectorAll('[data-menu-row="hud-hazards"]').length,
+          1,
+          "hazards now has an independent HUD switch",
         );
         await act(async () => ui.getState().backToParentMenu());
         assert.equal(ui.getState().overlay, "cockpit");

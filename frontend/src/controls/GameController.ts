@@ -1,4 +1,5 @@
 import {requestNearestRevive,isMechanicPlayer} from '../combat/reviveTargets';
+import {isGuardDpsPlayer,requestGuardBoost,requestTankBarrier} from '../combat/guardBoost';
 import {useScoreboardStore} from "../store/hud/scoreboardStore";
 import {controllerDrive} from "./controllerDrive";
 import {unpackCockpit} from "../store/input/protocol/cockpitMasks";
@@ -203,6 +204,13 @@ export function GameController() {
       // Menu X and driving RB+View open the same chat without changing the
       // existing engine (X) or performance (View) actions during normal driving.
       const keyboardOpen = Boolean(useTextKeyboardStore.getState().session);
+      if(edges[2]&&(ui.overlay??ui.screen)==='social'&&!keyboardOpen&&!ui.isModeLoading&&menuArmed&&canNavigateMenu()&&!performanceOverlayHasFocus()&&!isTypingTarget(document.activeElement)){
+        // A contextual X action shares the clickable footer control, including
+        // its pending/offline guards. Held presses cannot repeat a refresh.
+        releasePanelPress();release();
+        document.querySelector<HTMLButtonElement>('[data-social-refresh]:not(:disabled)')?.click();
+        return;
+      }
       if(edges[3]&&ui.screen==='heroes'&&(ui.overlay===null||ui.overlay==='hero_abilities')&&
         !keyboardOpen&&!ui.isModeLoading&&menuArmed&&canNavigateMenu()&&
         !(isTypingTarget(document.activeElement)&&!document.activeElement?.closest('[data-controller-form]'))){
@@ -372,17 +380,18 @@ export function GameController() {
         ),
       );
       const tank=useNetworkStore.getState().getMe()?.vehicle_id==='tank';
+      const mechanic=isMechanicPlayer();
       const secondary=useCombatStore.getState().secondaryWeapon;
       if(lastSecondary!==secondary){secondaryFireArmed=false;lastSecondary=secondary;}
       if(!pressed(15))secondaryFireArmed=true;
-      if (combatIntent.enabled) {
+      if (combatIntent.enabled||mechanic) {
         if(tank){
           setWeaponHeld('gamepad','primary',armed&&pressed(5));
           setWeaponHeld('gamepad','secondary',armed&&secondaryFireArmed&&pressed(15));
           combatIntent.gamepadFire=false;
         }else combatIntent.gamepadFire=armed&&pressed(5);
-      }
-      if (combatIntent.enabled && armed) aimCombat(axis(pad.axes[2], preferences.controllerDeadzone)*0.035, axis(pad.axes[3], preferences.controllerDeadzone)*0.035);
+      }else combatIntent.gamepadFire=false;
+      if (combatIntent.enabled && !mechanic && armed) aimCombat(axis(pad.axes[2], preferences.controllerDeadzone)*0.035, axis(pad.axes[3], preferences.controllerDeadzone)*0.035);
       const me=useNetworkStore.getState().getMe();
       const transmission=unpackCockpit(me?.cockpit_mask);
       const {throttle,brake}=controllerDrive(
@@ -402,7 +411,7 @@ export function GameController() {
           pressed(4) ||
           pressed(5) ||
           pressed(10) ||
-          (tank&&pressed(15))
+          (tank&&(pressed(14)||pressed(15)))
         )
           return;
         armed = true;
@@ -422,15 +431,16 @@ export function GameController() {
         brake,
         handbrake,
       });
-      const mechanic=isMechanicPlayer();
       if(mechanic&&edges[4])void requestNearestRevive();
+      const guardDps=isGuardDpsPlayer();
+      if(guardDps&&edges[4])void requestGuardBoost();
       combatIntent.gamepadRam=tank&&combatIntent.enabled&&armed&&pressed(4);
-      store.setHeldVehicleFlag("gamepad", VehicleFlags.BOOST, !tank&&!mechanic&&pressed(4));
-      store.setHeldPlayerFlag("gamepad", PlayerFlags.HONK, !combatIntent.enabled && pressed(5));
+      store.setHeldVehicleFlag("gamepad", VehicleFlags.BOOST, !tank&&!mechanic&&!guardDps&&pressed(4));
+      store.setHeldPlayerFlag("gamepad", PlayerFlags.HONK, !combatIntent.enabled&&!mechanic && pressed(5));
       if (edges[2]) store.toggleVehicleFlag(VehicleFlags.ENGINE_ON);
       if (edges[3]) {if(cycleTankWeapon())secondaryFireArmed=false;else store.toggleVehicleFlag(VehicleFlags.HEADLIGHTS);}
       if (edges[12]) {if(tank)resetTurretOrientation();else store.toggleVehicleFlag(VehicleFlags.HAZARDS);}
-      if (edges[14]) store.toggleVehicleFlag(VehicleFlags.BLINKER_LEFT);
+      if (edges[14]) {if(tank)void requestTankBarrier();else store.toggleVehicleFlag(VehicleFlags.BLINKER_LEFT);}
       if (edges[15]&&!(tank&&combatIntent.enabled)) store.toggleVehicleFlag(VehicleFlags.BLINKER_RIGHT);
       if (edges[11]) {
         if(combatIntent.enabled)toggleTurretOrientationLock();

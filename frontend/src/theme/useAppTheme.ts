@@ -3,6 +3,7 @@ import { useHeroLoadouts } from "../vehicles/cosmetics/heroLoadouts";
 import { useEffect } from "react";
 import { usePreferencesStore } from "../store/preferences";
 import { applyUITheme } from "./catalog";
+import { useMatchTeamTheme } from "./useMatchTeamTheme";
 import "./theme.css";
 /** Mount once at the app/preview root. Accessibility follows the same persisted
  * owner on every screen; standalone previews do not invent their own palette. */
@@ -25,4 +26,5 @@ export function useAppTheme() {
     root.dataset.highContrast = String(contrast);
     root.style.setProperty("--menu-text-scale", String(scale));
   }, [theme, motion, contrast, scale, cosmetics, body, savedBody]);
+  useMatchTeamTheme();
 }

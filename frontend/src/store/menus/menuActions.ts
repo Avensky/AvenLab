@@ -1,4 +1,4 @@
-import { reconSetupParent } from "../alpha/alphaStore";
+import { reconSetupParent, useAlphaStore } from "../alpha/alphaStore";
 import type { StateCreator } from "zustand";
 import { MAIN_MENU_ITEMS, PAUSE_MENU_ITEMS } from "../../game/menus/menuItems";
 import { cycleCanInterface, cycleCaptureMode } from "../recon/captureSetup";
@@ -95,6 +95,8 @@ export const createMenuActions: StateCreator<
     if (activeMenu === "main") {
       const item = MAIN_MENU_ITEMS[index];
       if (item?.available) {
+        if(item.id==='play')useAlphaStore.getState().chooseMode(useAlphaStore.getState().lastMatchMode);
+        else if(item.id==='explore')useAlphaStore.getState().chooseMode('sandbox');
         get().setScreen(item.screen);
       }
       return;

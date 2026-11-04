@@ -195,7 +195,7 @@ fn alpha_server() -> Server {
 }
 #[tokio::test]
 async fn matchmaking_reserves_ten_unpicked_seats_and_locks_roles_only_after_selection() {
-    let s = alpha_server();
+    let mut s = alpha_server(); s.max_active_worlds=1;
     let mut players = Vec::new();
     for index in 0..10 {
         let (player, _, _) = client(&s, &format!("Unpicked {index}")).await;
@@ -323,8 +323,8 @@ async fn alpha_reconnect_reserves_then_restores_a_seat_and_expiry_promotes_queue
     cleanup(s).await;
 }
 #[tokio::test]
-async fn five_by_five_roles_share_one_match_slot_and_results_cannot_be_client_forged() {
-    let s = alpha_server();
+async fn five_by_five_roles_respect_configured_match_budget_and_results_cannot_be_client_forged() {
+    let mut s = alpha_server(); s.max_active_worlds=1;
     let mut players = Vec::new();
     let picks = [
         "tank", "tank", "ae86", "ae86", "brz", "brz", "mechanic", "mechanic", "camaro", "camaro",
@@ -542,9 +542,9 @@ async fn roster_portraits_publish_only_equipped_styles_for_live_and_reserved_pla
     appearance.finish = "soft".into();
     profile.progression.hero_loadouts.insert("brz".into(), appearance.clone());
     let mut alpha = AlphaState::default();
-    alpha.members.insert(player.clone(), Member { mode: Mode::Quickplay, world: 7, hero: "mechanic".into(), team: Team::Red });
+    alpha.members.insert(player.clone(), Member { mode: Mode::Quickplay, team_size:5, world: 7, hero: "mechanic".into(), team: Team::Red });
     let clients = server.connections.lock().await;
-    let view = Server::alpha_view(&alpha, &profile_id, &player, &clients, &data);
+    let view = Server::alpha_view(&alpha, &profile_id, &player, &clients, &data, server.max_active_worlds);
     let card = &view["roster"][0];
     assert_eq!(card["appearance"]["body"], "#ed258d");
     assert_eq!(card["appearance"]["finish"], "soft");
@@ -553,12 +553,12 @@ async fn roster_portraits_publish_only_equipped_styles_for_live_and_reserved_pla
     assert!(card.get("hero_loadouts").is_none());
     let member = alpha.members.remove(&player).unwrap();
     alpha.reservations.insert(profile_id.clone(), Reservation { retained_player:None, member, expires: timestamp() + 30 });
-    let reserved = Server::alpha_view(&alpha, &profile_id, &player, &clients, &data);
+    let reserved = Server::alpha_view(&alpha, &profile_id, &player, &clients, &data, server.max_active_worlds);
     assert_eq!(reserved["roster"][0]["appearance"], card["appearance"]);
     assert_eq!(reserved["roster"][0]["reconnecting"], true);
     assert_eq!(reserved["roster"][0]["world_id"], 7);
     alpha.reservations.get_mut(&profile_id).unwrap().member.hero = "tank".into();
-    let factory = Server::alpha_view(&alpha, &profile_id, &player, &clients, &data);
+    let factory = Server::alpha_view(&alpha, &profile_id, &player, &clients, &data, server.max_active_worlds);
     assert_eq!(factory["roster"][0]["appearance"]["body"], "factory");
     drop(clients);
     drop(data);
@@ -661,7 +661,7 @@ fn travel_ctf_body(room: &mut WorldRuntime, player: &str, target: [f32;3]) {
 
 #[tokio::test]
 async fn real_ctf_capture_completion_archives_careers_once_and_history_survives_restart() {
-    let (s, world, roster) = deployed_ctf(true).await;
+    let (mut s, world, roster) = deployed_ctf(true).await; s.max_active_worlds=1;
     let runtime = s.runtimes.lock().await[&world].clone();
     let mut red = roster.iter().find(|(id, _)| s.connections.try_lock().unwrap()[id].team == Team::Red).unwrap().0.clone();
     let red_profile = s.connections.lock().await[&red].profile_id.clone().unwrap();
@@ -842,14 +842,10 @@ async fn result_capacity_is_preflighted_and_existing_pending_archives_do_not_blo
 }
 
 #[tokio::test]
-async fn ctf_participant_history_budget_queues_new_profiles_but_preserves_reconnects() {
-    let (s, world, roster)=deployed_ctf(false).await;
-    for index in 2..32 {
-        let (player,_,_)=client(&s,&format!("Replacement {index}")).await;
-        assert_eq!(mode(&s,&player,"competitive","brz").await["status"],"joined");
-        s.spawn(&player,"streaming_endless_city","brz").await.unwrap();
-        s.handle(&player,json!({"action":"mode_leave"})).await.unwrap();
-    }
+async fn running_round_cannot_backfill_new_profiles_but_preserves_verified_reconnects() {
+    let (mut s, world, roster)=deployed_ctf(false).await;s.max_active_worlds=1;
+    // Even a truly vacant side cannot turn a running round into another lobby.
+    s.handle(&roster[1].0,json!({"action":"mode_leave"})).await.unwrap();
     let (waiting,_,_)=client(&s,"Next round driver").await;
     assert_eq!(mode(&s,&waiting,"competitive","brz").await["status"],"queued");
     let (old,identity)=&roster[0];
@@ -860,5 +856,229 @@ async fn ctf_participant_history_budget_queues_new_profiles_but_preserves_reconn
     s.spawn(&resumed,"streaming_endless_city","brz").await.unwrap();
     assert!(s.alpha.lock().await.members.contains_key(&resumed));
     assert!(s.alpha.lock().await.queue.iter().any(|t| t.player==waiting));
+    assert!(s.participant_slot_available(world,Some(identity["profile_id"].as_str().unwrap())).await);
+    cleanup(s).await;
+}
+
+
+#[tokio::test]
+async fn skirmish_admits_six_unpicked_seats_and_reserves_reconnects_without_mixing_modes() {
+    let mut s = alpha_server(); s.max_active_worlds=1;
+    let mut seats = Vec::new();
+    let mut world = 0;
+    for index in 0..6 {
+        let (player, identity, _) = client(&s, &format!("3v3 seat {index}")).await;
+        let joined = mode(&s, &player, "skirmish", "").await;
+        assert_eq!(joined["status"], "joined");
+        world = joined["world_id"].as_u64().unwrap() as usize;
+        seats.push((player, identity));
+    }
+    let alpha = s.alpha.lock().await.clone();
+    assert_eq!(alpha.members.len(), 6);
+    for team in [Team::Red, Team::Blue] { assert_eq!(alpha.members.values().filter(|m| m.team == team).count(), 3); }
+    assert_eq!(s.data.lock().await.worlds[&world].max_players, 6);
+    let original = &seats[0].0;
+    let team = alpha.members[original].team;
+    let ally = seats.iter().find(|(id, _)| id != original && alpha.members[id].team == team).unwrap().0.clone();
+    s.handle(original, json!({"action":"hero_select","hero":"tank"})).await.unwrap();
+    assert!(s.handle(&ally, json!({"action":"hero_select","hero":"tank"})).await.is_err());
+    s.handle(&ally, json!({"action":"hero_select","hero":"ae86"})).await.unwrap();
+    assert!(s.handle(&ally, json!({"action":"hero_select","hero":"tank"})).await.is_err());
+    let (seventh, _, _) = client(&s, "Seventh 3v3 player").await;
+    assert_eq!(mode(&s, &seventh, "skirmish", "").await["status"], "queued");
+    let (five_by_five, _, _) = client(&s, "5v5 waits for 3v3").await;
+    assert_eq!(mode(&s, &five_by_five, "quickplay", "").await["status"], "queued");
+    s.disconnect(original).await;
+    s.maintain_alpha().await;
+    assert!(s.connections.lock().await[&seventh].world_id.is_none(), "the sixth seat is reserved, not reusable");
+    let (resumed, _, view) = client(&s, "Reconnect placeholder").await;
+    s.handle(&resumed, json!({"action":"identify","name":"3v3 seat 0","token":seats[0].1["token"]})).await.unwrap();
+    let member = s.alpha.lock().await.members[&resumed].clone();
+    assert_eq!(member.mode, crate::alpha::Mode::Skirmish);
+    assert_eq!(member.world, world);
+    assert_eq!(member.team, team);
+    assert_eq!(member.hero, "tank");
+    let packet: Value = serde_json::from_str(view.borrow().as_ref().unwrap()).unwrap();
+    assert_eq!(packet["data"]["alpha"]["active"]["team_size"], 3);
+    assert_eq!(packet["data"]["alpha"]["active"]["capacity"], 6);
+    assert_eq!(packet["data"]["alpha"]["active"]["role_caps"], json!({"tank":1,"dps":1,"support":1}));
+    assert_eq!(s.runtimes.lock().await.len(), 1);
+    assert!(s.alpha.lock().await.members.values().all(|m| m.mode == crate::alpha::Mode::Skirmish));
+    s.handle(&resumed, json!({"action":"mode_cancel"})).await.unwrap();
+    s.maintain_alpha().await;
+    assert_eq!(s.alpha.lock().await.members[&seventh].world, world);
+    assert!(s.connections.lock().await[&five_by_five].world_id.is_none());
+    cleanup(s).await;
+}
+
+#[tokio::test]
+async fn skirmish_starts_only_with_six_deployed_roles_and_archives_its_own_mode_once() {
+    let s = alpha_server();
+    let picks = ["tank", "tank", "ae86", "ae86", "mechanic", "mechanic"];
+    let mut world = 0;
+    let mut roster = Vec::new();
+    for (index, hero) in picks.iter().enumerate() {
+        let (player, identity, _) = client(&s, &format!("Scored 3v3 {index}")).await;
+        let joined = mode(&s, &player, "skirmish", hero).await;
+        assert_eq!(joined["status"], "joined");
+        world = joined["world_id"].as_u64().unwrap() as usize;
+        s.spawn(&player, "streaming_endless_city", crate::alpha::policy::hero(hero).unwrap().vehicle).await.unwrap();
+        let runtime = s.runtimes.lock().await[&world].clone();
+        let phase = runtime.lock().await.round.as_ref().unwrap().phase;
+        assert_eq!(phase, if index == 5 { crate::ctf::CtfPhase::Running } else { crate::ctf::CtfPhase::Waiting });
+        roster.push((player, identity));
+    }
+    let runtime = s.runtimes.lock().await[&world].clone();
+    {
+        let mut room = runtime.lock().await;
+        assert_eq!(room.round.as_ref().unwrap().mode, "skirmish");
+        assert!(!room.round.as_ref().unwrap().training);
+        room.round.as_mut().unwrap().duration_s = 0.001;
+        room.tick(0.0);
+        assert_eq!(room.round.as_ref().unwrap().phase, crate::ctf::CtfPhase::Ended);
+    }
+    s.maintain_matches().await; s.maintain_matches().await;
+    let data = s.data.lock().await;
+    assert_eq!(data.completed_results.len(), 1);
+    assert_eq!(data.profiles.values().map(|p| p.progression.matches).sum::<u32>(), 6);
+    for (_, identity) in &roster {
+        let profile = &data.profiles[identity["profile_id"].as_str().unwrap()];
+        assert_eq!(profile.progression.career.by_mode["skirmish"].matches, 1);
+        assert_eq!(profile.progression.career.by_mode["skirmish"].draws, 1);
+        assert!(!profile.progression.career.by_mode.contains_key("competitive"));
+    }
+    drop(data);
+    let history = s.handle(&roster[0].0, json!({"action":"career_history","mode":"skirmish"})).await.unwrap();
+    assert_eq!(history["matches"].as_array().unwrap().len(), 1);
+    assert_eq!(history["matches"][0]["mode"], "skirmish");
+    cleanup(s).await;
+}
+
+#[tokio::test]
+async fn skirmish_verified_rewards_are_nonranked_and_cannot_be_duplicated() {
+    let s = alpha_server();
+    let mut world = 0;
+    for (index, hero) in ["tank", "tank", "ae86", "ae86", "mechanic", "mechanic"].iter().enumerate() {
+        let (player, _, _) = client(&s, &format!("3v3 result {index}")).await;
+        let joined = mode(&s, &player, "skirmish", hero).await;
+        assert_eq!(joined["status"], "joined");
+        world = joined["world_id"].as_u64().unwrap() as usize;
+        if index == 0 { assert!(s.record_completed_match(world, Team::Red, "3v3-incomplete").await.is_err()); }
+    }
+    for _ in 0..2 { s.record_completed_match(world, Team::Red, "trusted-3v3-result").await.unwrap(); }
+    let data = s.data.lock().await;
+    assert_eq!(data.completed_results.len(), 1);
+    assert_eq!(data.profiles.values().map(|p| p.progression.matches).sum::<u32>(), 6);
+    assert_eq!(data.profiles.values().map(|p| p.progression.competitive_wins).sum::<u32>(), 0);
+    assert_eq!(data.profiles.values().map(|p| p.progression.quickplay_wins).sum::<u32>(), 3);
+    assert_eq!(data.profiles.values().map(|p| p.progression.career.by_mode["skirmish"].wins).sum::<u64>(), 3);
+    drop(data); cleanup(s).await;
+}
+
+#[tokio::test]
+async fn skirmish_flexible_composition_remains_training_without_progression() {
+    let s = alpha_server(); s.alpha.lock().await.enforce_roles = false;
+    let mut world = 0;
+    for index in 0..2 {
+        let (player, _, _) = client(&s, &format!("3v3 training {index}")).await;
+        let joined = mode(&s, &player, "skirmish", "tank").await;
+        assert_eq!(joined["status"], "joined"); world = joined["world_id"].as_u64().unwrap() as usize;
+        s.spawn(&player, "streaming_endless_city", "tank").await.unwrap();
+    }
+    let runtime = s.runtimes.lock().await[&world].clone();
+    {
+        let mut room = runtime.lock().await;
+        assert_eq!(room.round.as_ref().unwrap().phase, crate::ctf::CtfPhase::Running);
+        assert!(room.round.as_ref().unwrap().training);
+        room.round.as_mut().unwrap().duration_s = 0.001; room.tick(0.0);
+    }
+    s.maintain_matches().await; s.maintain_matches().await;
+    let data = s.data.lock().await;
+    assert_eq!(data.completed_results.len(), 1);
+    assert_eq!(data.profiles.values().map(|p| p.progression.matches).sum::<u32>(), 0);
+    assert!(data.profiles.values().all(|p| !p.progression.career.by_mode.contains_key("skirmish")));
+    assert_eq!(data.profiles.values().map(|p| p.progression.career.by_mode["training"].matches).sum::<u64>(), 2);
+    drop(data); cleanup(s).await;
+}
+
+#[tokio::test]
+async fn match_formats_fill_compatible_lobbies_and_allocate_bounded_concurrent_games() {
+    let mut s=alpha_server();s.max_active_worlds=4;s.max_players=40;
+    let mut first=Vec::new();
+    for mode_name in ["quickplay","competitive"] {for size in [3,5] {
+        let (player,_,view)=client(&s,&format!("{mode_name} {size}")).await;
+        let joined=s.handle(&player,json!({"action":"mode_join","mode":mode_name,"team_size":size})).await.unwrap();
+        assert_eq!(joined["status"],"joined");assert_eq!(joined["team_size"],size);
+        let world=joined["world_id"].as_u64().unwrap() as usize;
+        let packet:Value=serde_json::from_str(view.borrow().as_ref().unwrap()).unwrap();
+        let active=&packet["data"]["alpha"]["active"];
+        assert_eq!(active["mode"],mode_name);assert_eq!(active["team_size"],size);assert_eq!(active["capacity"],size*2);
+        assert_eq!(packet["data"]["worlds"].as_array().unwrap().iter().find(|w|w["id"]==world).unwrap()["team_size"],size);
+        assert_eq!(s.runtimes.lock().await[&world].lock().await.round.as_ref().unwrap().team_size,size as usize);
+        first.push((player,world,mode_name,size));
+    }}
+    assert_eq!(first.iter().map(|(_,w,_,_)|*w).collect::<std::collections::HashSet<_>>().len(),4);
+    let qp3=first[0].1;
+    for i in 1..6 {let (p,_,_)=client(&s,&format!("QP3 fill {i}")).await;let joined=s.handle(&p,json!({"action":"mode_join","mode":"quickplay","team_size":3})).await.unwrap();assert_eq!(joined["world_id"],qp3);}
+    let (overflow,_,view)=client(&s,"QP3 overflow").await;
+    assert_eq!(s.handle(&overflow,json!({"action":"mode_join","mode":"quickplay","team_size":3})).await.unwrap()["status"],"queued");
+    let snapshot:Value=serde_json::from_str(view.borrow().as_ref().unwrap()).unwrap();assert_eq!(snapshot["data"]["alpha"]["queue"]["team_size"],3);
+    let (five,_,_)=client(&s,"QP5 not blocked").await;
+    assert_eq!(s.handle(&five,json!({"action":"mode_join","mode":"quickplay","team_size":5})).await.unwrap()["world_id"],first[1].1);
+    s.handle(&first[3].0,json!({"action":"mode_leave"})).await.unwrap();s.maintain_alpha().await;
+    let second=s.alpha.lock().await.members[&overflow].world;assert_ne!(second,qp3);assert_eq!(s.runtimes.lock().await.len(),4);
+    assert_eq!(s.alpha.lock().await.members[&overflow].team_size,3);
+    cleanup(s).await;
+}
+
+#[tokio::test]
+async fn invalid_match_sizes_do_not_release_existing_seats_and_missing_size_defaults_to_five() {
+    let s=alpha_server();let (player,_,_)=client(&s,"Size validation").await;
+    let first=mode(&s,&player,"competitive","").await;assert_eq!(first["team_size"],5);
+    for size in [json!(0),json!(4),json!(999),json!("3"),json!(null)] {
+        assert!(s.handle(&player,json!({"action":"mode_join","mode":"quickplay","team_size":size})).await.is_err());
+        assert_eq!(s.connections.lock().await[&player].world_id,Some(first["world_id"].as_u64().unwrap() as usize));
+    }
+    cleanup(s).await;
+}
+
+#[tokio::test]
+async fn competitive_three_by_three_uses_size_roles_and_records_size_without_changing_rules() {
+    let mut s=alpha_server();s.max_active_worlds=2;
+    let mut players=Vec::new();let mut world=0;
+    for (index,hero) in ["tank","tank","brz","brz","mechanic","mechanic"].into_iter().enumerate(){
+        let (player,identity,_)=client(&s,&format!("Competitive three {index}")).await;
+        let joined=s.handle(&player,json!({"action":"mode_join","mode":"competitive","team_size":3,"hero":hero})).await.unwrap();
+        assert_eq!(joined["status"],"joined");world=joined["world_id"].as_u64().unwrap() as usize;
+        s.spawn(&player,"streaming_endless_city",crate::alpha::policy::hero(hero).unwrap().vehicle).await.unwrap();players.push((player,identity));
+    }
+    let runtime=s.runtimes.lock().await[&world].clone();{
+        let room=runtime.lock().await;assert_eq!(room.round.as_ref().unwrap().phase,crate::ctf::CtfPhase::Running);assert_eq!(room.round.as_ref().unwrap().mode,"competitive");assert_eq!(room.round_view().unwrap().team_size,3);
+    }
+    s.record_completed_match(world,Team::Red,"competitive-three-format").await.unwrap();
+    let history=s.handle(&players[0].0,json!({"action":"career_history"})).await.unwrap();assert_eq!(history["matches"][0]["team_size"],3);assert_eq!(history["matches"][0]["mode"],"competitive");
+    let (outsider,_,_)=client(&s,"New round entrant").await;
+    let newer=s.handle(&outsider,json!({"action":"mode_join","mode":"competitive","team_size":3})).await.unwrap();assert_eq!(newer["status"],"joined");assert_ne!(newer["world_id"],world);
+    let original=players[0].0.clone();let team=s.alpha.lock().await.members[&original].team;
+    s.disconnect(&original).await;let (resumed,_,_)=client(&s,"Resumed competition").await;
+    s.handle(&resumed,json!({"action":"identify","token":players[0].1["token"]})).await.unwrap();
+    let member=s.alpha.lock().await.members[&resumed].clone();assert_eq!(member.world,world);assert_eq!(member.mode,crate::alpha::Mode::Competitive);assert_eq!(member.team_size,3);assert_eq!(member.team,team);
+    cleanup(s).await;
+}
+
+#[tokio::test]
+async fn old_match_results_cannot_interrupt_another_world_or_a_reused_round() {
+    use crate::alpha::career::{CareerMatch,CareerParticipant};
+    let s=server(2,10);let (away,away_identity,_)=client(&s,"Moved to new game").await;let (current,current_identity,_)=client(&s,"Current result viewer").await;
+    let (away_tx,mut away_rx)=tokio::sync::mpsc::unbounded_channel();let (current_tx,mut current_rx)=tokio::sync::mpsc::unbounded_channel();
+    {let mut clients=s.connections.lock().await;let peer=clients.get_mut(&away).unwrap();peer.world_id=Some(2);peer.tx=away_tx;let peer=clients.get_mut(&current).unwrap();peer.world_id=Some(1);peer.tx=current_tx;}
+    let mut room=WorldRuntime::new(1,"road_precision").unwrap();let mut round=crate::ctf::CtfRound::new("quickplay",false,[[0.0,0.0,0.0],[50.0,0.0,0.0]]).unwrap();round.match_id="ended-current-round".into();round.phase=crate::ctf::CtfPhase::Ended;room.round=Some(round);s.runtimes.lock().await.insert(1,Arc::new(Mutex::new(room)));s.matches.lock().await.ended.insert(1,timestamp());
+    let mut record=CareerMatch{match_id:"ended-current-round".into(),world_id:1,mode:crate::alpha::Mode::Quickplay,team_size:Some(3),map:"road_precision".into(),ended_at:timestamp(),participants:vec![CareerParticipant{profile_id:away_identity["profile_id"].as_str().unwrap().into(),name:"Moved to new game".into(),team:Some("red".into()),hero:"brz".into(),..Default::default()},CareerParticipant{profile_id:current_identity["profile_id"].as_str().unwrap().into(),name:"Current result viewer".into(),team:Some("blue".into()),hero:"brz".into(),..Default::default()}],..Default::default()};
+    s.persist_record(&record).await.unwrap();
+    assert!(away_rx.try_recv().is_err(),"a participant now in world2 must not receive a world1 result overlay");
+    let packet:Value=serde_json::from_str(&current_rx.try_recv().unwrap()).unwrap();assert_eq!(packet["type"],"match_result");assert_eq!(packet["data"]["team_size"],3);
+    record.match_id="old-round-archive-retry".into();s.persist_record(&record).await.unwrap();
+    assert!(current_rx.try_recv().is_err(),"world ID reuse cannot show the result of a different round");
+    assert_eq!(s.data.lock().await.profiles[away_identity["profile_id"].as_str().unwrap()].progression.career.summary.sessions,2,"departed participants still receive durable career records");
     cleanup(s).await;
 }

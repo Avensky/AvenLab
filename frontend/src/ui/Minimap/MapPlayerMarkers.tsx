@@ -34,9 +34,10 @@ export function MapPlayerMarkers({x,z,range,circular}:{x:number;z:number;range:n
 
 /** Keep relationship colours on the dot; gold identifies the carried objective. */
 function CarrierRing({id,x,z,range,self=false,flag}:{id:string;x:number;z:number;range:number;self?:boolean;flag:'red'|'blue'}){
- const scale=range/600,radius=range/(self?24:44);
+ const radius=range/(self?24:44);
  return <g className="map-flag-carrier" data-carrier-id={id} data-self-carrier={self} data-carried-flag={flag} aria-label={self?'You carry the flag':'Flag carrier'}>
-  <circle cx={x} cy={z} r={radius} fill="none" stroke="#ffe28c" strokeWidth={range/210} style={{filter:'drop-shadow(0 0 3px #ffe28c)'}}/>
-  <path d="M-3 -10v-12m0 0h10v7H-3" transform={`translate(${x} ${z}) scale(${scale})`} fill="#ffe28c" stroke="#ffe28c" strokeWidth="1.5" strokeLinejoin="round"/>
+  <title>{self?'You carry':'Carries'} the {flag.toUpperCase()} flag</title>
+  <circle className="map-carrier-ring" cx={x} cy={z} r={radius} fill="none" stroke="#ffe28c" strokeWidth={range/210} style={{filter:'drop-shadow(0 0 3px #ffe28c)'}}/>
+  <circle cx={x} cy={z} r={radius+range/180} fill="none" stroke="#ffe28c" strokeWidth={range/600} opacity=".35"/>
  </g>;
 }

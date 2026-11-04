@@ -12,6 +12,7 @@ export const DEFAULT_BINDINGS = {
   scope:"KeyO",
   healthBars:"KeyJ",
   revive:"KeyU",
+  barrier:"KeyP",
 };
 export type BindingAction = keyof typeof DEFAULT_BINDINGS;
 export const RESERVED_KEYS = new Set([
@@ -57,7 +58,7 @@ export function sanitizeBindings(value:unknown):Record<BindingAction,string>{
  const valid=new Set(driving).size===DRIVING_ACTIONS.length&&DRIVING_ACTIONS.every((a,i)=>typeof driving[i]==='string'&&isBindingKey(a,driving[i] as string));
  const result={} as Record<BindingAction,string>;const used=new Set<string>();
  for(const a of DRIVING_ACTIONS){result[a]=valid?raw[a] as string??DEFAULT_BINDINGS[a]:DEFAULT_BINDINGS[a];used.add(result[a]);}
- for(const a of ['fire','nextWeapon','previousWeapon','scope','secondaryFire','healthBars','revive'] as const){
+ for(const a of ['fire','nextWeapon','previousWeapon','scope','secondaryFire','healthBars','revive','barrier'] as const){
   const candidates=[raw[a],DEFAULT_BINDINGS[a],'KeyI','KeyJ','KeyK','Digit2','Digit4','Digit5',...Array.from({length:26},(_,i)=>`Key${String.fromCharCode(65+i)}`),...Array.from({length:10},(_,i)=>`Digit${i}`)];
   const code=candidates.find(c=>typeof c==='string'&&isBindingKey(a,c)&&!used.has(c)) as string;
   result[a]=code;used.add(code);

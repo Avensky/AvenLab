@@ -2,7 +2,7 @@ import test, { before, after } from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "vite";
 
-let server, ui, route, preferences, canDrive, canNavigateMenu;
+let server, ui, route, preferences, canDrive, canNavigateMenu, alpha, mainItems;
 before(async () => {
   server = await createServer({
     server: { middlewareMode: true, hmr: false, ws: false },
@@ -10,6 +10,8 @@ before(async () => {
     logLevel: "error",
   });
   ui = (await server.ssrLoadModule("/src/store/menus/uiStore.ts")).useUIStore;
+  alpha = (await server.ssrLoadModule("/src/store/alpha/alphaStore.ts")).useAlphaStore;
+  mainItems = (await server.ssrLoadModule("/src/game/menus/menuItems.ts")).MAIN_MENU_ITEMS;
   ({
     routeMenuAction: route,
     canDrive,
@@ -51,14 +53,26 @@ test("every pause row routes correctly and navigation wraps across all nine item
   assert.equal(ui.getState().getActiveMenuIndex(), 0);
 });
 
-test("Play opens the shared garage and the remaining main entries keep their destinations", () => {
-  ["mode_select", "heroes", "career", "social", "settings"].forEach((screen, index) => {
+test("Play and Explore & Build share the garage while all six main destinations retain their actions", () => {
+  const destinations=[['play','mode_select'],['explore','mode_select'],['heroes','heroes'],['career','career'],['social','social'],['settings','settings']];
+  assert.deepEqual(mainItems.map(item=>item.id),destinations.map(([id])=>id));
+  alpha.getState().chooseMode('competitive');
+  alpha.getState().chooseTeamSize(3);
+  destinations.forEach(([id,screen], index) => {
     ui.setState({ screen: "main", overlay: null, isModeLoading: false });
     ui.getState().setActiveMenuIndex(index);
     route("activate");
     assert.equal(ui.getState().screen, screen);
     assert.equal(ui.getState().overlay, null);
+    if(id==='play')assert.equal(alpha.getState().mode,'competitive');
+    if(id==='explore')assert.equal(alpha.getState().mode,'sandbox');
+    assert.equal(alpha.getState().teamSize,3,'main-menu navigation cannot overwrite the match-size preference');
   });
+  ui.setState({screen:'main',overlay:null});ui.getState().setActiveMenuIndex(0);
+  route('up');assert.equal(ui.getState().getActiveMenuIndex(),5,'controller navigation includes every main destination');
+  route('down');assert.equal(ui.getState().getActiveMenuIndex(),0);route('activate');
+  assert.equal(alpha.getState().mode,'competitive','returning from tools restores the last match category');
+  assert.equal(alpha.getState().teamSize,3);
 });
 
 test("panel input never activates the underlying main menu and Back returns to the correct parent", () => {

@@ -1,3 +1,4 @@
+import {MatchModePortraits} from "./ModePortraitCard";
 import {useSelectionStore as useWorldSelection} from '../../store/selection/selectionStore';
 import {WorldPortraitCard} from '../preview/WorldPortraitCard';
 import {createTabProfile,identifySocial} from "../../net/socialClient";
@@ -10,6 +11,9 @@ import {
   GAME_MODES,
   useAlphaStore,
   showFavoriteHero,
+  isMatchMode,
+  canonicalGameMode,
+  type MatchTeamSize,
 } from "../../store/alpha/alphaStore";
 import { useUIStore } from "../../store/menus/uiStore";
 import { useNetworkStore } from "../../store/session/networkStore";
@@ -39,6 +43,7 @@ export function ModeSelection() {
   const profileReady=Boolean(profileId)&&profileStatus!=="restoring";
   const selectedWorld=useWorldSelection(s=>s.getSelectedMap());
   const mode = useAlphaStore((s) => s.mode);
+  const teamSize = useAlphaStore((s) => s.teamSize);
   const defaultHero = useHeroLoadouts(s=>s.defaultHero);
   const connected = useNetworkStore((s) => s.connected);
   const root = useRef<HTMLElement>(null),
@@ -48,21 +53,23 @@ export function ModeSelection() {
   const [canField, setCanField] = useState(0);
   const research = mode === "signal_recon",
     planned = mode === "swarm";
-  const item = GAME_MODES.find((m) => m.id === mode)!;
+  const destinations=GAME_MODES.filter(entry=>isMatchMode(entry.id)===isMatchMode(mode));
+  const item = GAME_MODES.find((m) => m.id === canonicalGameMode(mode))!;
   const back = useCallback(() => {
     if (!pending.current) useUIStore.getState().setScreen("main");
   }, []);
   const tab = useCallback((direction: number) => {
     if (pending.current) return;
     const current = useAlphaStore.getState().mode;
+    const entries=GAME_MODES.filter(entry=>isMatchMode(entry.id)===isMatchMode(current));
     useAlphaStore
       .getState()
       .chooseMode(
-        GAME_MODES[
-          (GAME_MODES.findIndex((m) => m.id === current) +
+        entries[
+          (entries.findIndex((m) => m.id === canonicalGameMode(current)) +
             direction +
-            GAME_MODES.length) %
-            GAME_MODES.length
+            entries.length) %
+            entries.length
         ].id,
       );
     setStatus("");
@@ -77,8 +84,14 @@ export function ModeSelection() {
     root.current?.focus({ preventScroll: true });
     setCanField(0);
   }, [mode]);
+  const selectMatchSize = useCallback((next: MatchTeamSize) => {
+    if(pending.current)return;
+    useAlphaStore.getState().chooseTeamSize(next);setStatus("");
+  }, []);
   const next = useCallback(async () => {
     if (pending.current || planned) return;
+    const focusedSize=Number((document.activeElement as HTMLElement|null)?.closest<HTMLElement>("[data-match-size]")?.dataset.matchSize);
+    if(isMatchMode(useAlphaStore.getState().mode)&&(focusedSize===3||focusedSize===5)&&focusedSize!==useAlphaStore.getState().teamSize){selectMatchSize(focusedSize);return;}
     if(!research&&!profileReady){
       const active=document.activeElement as HTMLButtonElement|null;
       if(active?.matches('[data-profile-action]:not(:disabled)'))active.click();
@@ -108,7 +121,7 @@ export function ModeSelection() {
       pending.current = false;
       setBusy(false);
     }
-  }, [research, planned,profileReady]);
+  }, [research, planned,profileReady,selectMatchSize]);
   const recoverProfile=async(tabOnly:boolean)=>{
     if(pending.current||profileStatus==="restoring")return;
     pending.current=true;setBusy(true);setStatus("");
@@ -125,6 +138,11 @@ export function ModeSelection() {
           const index=buttons.indexOf(document.activeElement as HTMLButtonElement),step=action==="up"||action==="left"?-1:1;
           buttons[index<0?0:(index+step+buttons.length)%buttons.length]?.focus();return;
         }
+      }
+      if(isMatchMode(mode)&&["up","down","left","right"].includes(action)){
+        const cards=[...root.current?.querySelectorAll<HTMLButtonElement>('[data-match-size]:not(:disabled)')??[]];
+        const index=cards.indexOf(document.activeElement as HTMLButtonElement),step=action==="up"||action==="left"?-1:1;
+        cards[index<0?Math.max(0,cards.findIndex(card=>Number(card.dataset.matchSize)===useAlphaStore.getState().teamSize)):(index+step+cards.length)%cards.length]?.focus({preventScroll:true});return;
       }
       if(action!=="left"&&action!=="right")return;
       const step = action === "left" ? -1 : 1;
@@ -154,19 +172,20 @@ export function ModeSelection() {
     <section
       ref={root}
       className="game-ui menu-surface alpha-selection hero-selection mode-selection"
+      data-play-category={isMatchMode(mode)?'match':'tools'}
       data-controller-form
       data-controller-rows
       tabIndex={-1}
       aria-label="Game mode selection"
     >
-      <SelectionHeader title="PLAY" onBack={back} busy={busy}/>
+      <SelectionHeader title={isMatchMode(mode)?'PLAY':'EXPLORE & BUILD'} onBack={back} busy={busy}/>
       <nav
         className="alpha-mode-tabs"
         role="tablist"
         aria-label="Game mode"
         data-controller-tab-only
       >
-        {GAME_MODES.map((entry) => (
+        {destinations.map((entry) => (
           <button
             key={entry.id}
             type="button"
@@ -193,10 +212,11 @@ export function ModeSelection() {
       </nav>
       <div className="hero-selection-stage">
         {(mode==='sandbox'||mode==='editor')&&<WorldPortraitCard map={selectedWorld}/>}
+        {isMatchMode(mode)&&<MatchModePortraits selected={teamSize} disabled={busy} onSelect={selectMatchSize}/>}
         <section className="hero-summary" aria-label="Selected game mode">
           <small>GAME MODE</small>
           <h2>{item.label}</h2>
-          {(mode==='quickplay'||mode==='competitive')&&<p className="alpha-status" role="note">ALPHA CTF · First to 3 captures · 15 minutes. Career records are live; ranked MMR is pending.</p>}
+          {isMatchMode(mode)&&<p className="alpha-status" role="note">{teamSize===3?'3 VS 3 · One Tank, DPS and Support per team. ':'5 VS 5 · '}First to 3 captures · 15 minutes. Career records are live; {mode==='competitive'?'ranked MMR is pending.':'choose a match size to find a game.'}</p>}
           {!research&&!planned&&!profileReady&&<div className="profile-recovery" aria-label="Player profile recovery">
             <p role="status">{connected?profileMessage:"Connect to the game server to restore your player."}</p>
             {connected&&profileStatus!=="restoring"&&<>

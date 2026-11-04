@@ -56,22 +56,33 @@ pub fn hero(id: &str) -> Result<Hero, String> {
         .copied()
         .ok_or_else(|| "Choose a known hero.".into())
 }
-/// Preserve enough empty seats to reach one tank, two DPS and one support.
-/// Valid final compositions are 1/3/1 or 1/2/2. Testing modes skip this policy.
-pub fn role_fits(roles: &[Role], candidate: Role) -> bool {
-    let count = |role| {
-        roles.iter().filter(|&&value| value == role).count() + usize::from(candidate == role)
-    };
-    let (tank, dps, support) = (count(Role::Tank), count(Role::Dps), count(Role::Support));
+/// The default five-player policy preserves room for one tank, two DPS and
+/// one support. Skirmish reserves exactly one seat per role. Training bypasses
+/// this helper explicitly in the admission layer, never by accepting client caps.
+pub fn role_fits_for(mode: Mode, roles: &[Role], candidate: Role) -> bool {
+    role_fits_for_format(mode.into(), roles, candidate)
+}
+pub fn role_fits_for_format(format: MatchFormat, roles: &[Role], candidate: Role) -> bool {
+    let counts = role_counts(roles.iter().copied().chain(std::iter::once(candidate)));
     let total = roles.len() + 1;
-    total <= 5
-        && tank <= 1
-        && dps <= 3
-        && support <= 2
-        && (1usize.saturating_sub(tank)
-            + 2usize.saturating_sub(dps)
-            + 1usize.saturating_sub(support))
-            <= 5 - total
+    let capacity = format.team_size;
+    let caps = format.role_caps();
+    let minimums = format.role_minimums();
+    total <= capacity && counts.iter().zip(caps).all(|(count, max)| *count <= max)
+        && counts.iter().zip(minimums).map(|(count, min)| min.saturating_sub(*count)).sum::<usize>() <= capacity - total
+}
+pub fn complete_team(mode: Mode, roles: &[Role]) -> bool {
+    complete_team_format(mode.into(), roles)
+}
+pub fn complete_team_format(format: MatchFormat, roles: &[Role]) -> bool {
+    let counts = role_counts(roles.iter().copied());
+    roles.len() == format.team_size && counts.iter().zip(format.role_caps()).all(|(count, max)| *count <= max)
+        && counts.iter().zip(format.role_minimums()).all(|(count, min)| *count >= min)
+}
+fn role_counts(roles: impl Iterator<Item=Role>) -> [usize; 3] {
+    let mut counts = [0; 3];
+    for role in roles { counts[match role { Role::Tank => 0, Role::Dps => 1, Role::Support => 2 }] += 1; }
+    counts
 }
 #[cfg(test)]
 mod tests {
@@ -79,13 +90,48 @@ mod tests {
     #[test]
     fn composition_keeps_required_seats_and_testing_has_three_roles() {
         use Role::*;
-        assert!(role_fits(&[Dps, Dps, Support], Tank));
-        assert!(!role_fits(&[Dps, Dps, Support, Support], Dps));
-        assert!(!role_fits(&[Tank, Dps, Dps, Support], Tank));
-        assert!(role_fits(&[Tank, Dps, Dps, Support], Support));
-        assert!(role_fits(&[Tank, Dps, Dps, Support], Dps));
-        assert!(!role_fits(&[Tank, Dps, Dps, Dps], Dps));
+        assert!(role_fits_for(Mode::Quickplay, &[Dps, Dps, Support], Tank));
+        assert!(!role_fits_for(Mode::Quickplay, &[Dps, Dps, Support, Support], Dps));
+        assert!(!role_fits_for(Mode::Quickplay, &[Tank, Dps, Dps, Support], Tank));
+        assert!(role_fits_for(Mode::Quickplay, &[Tank, Dps, Dps, Support], Support));
+        assert!(role_fits_for(Mode::Quickplay, &[Tank, Dps, Dps, Support], Dps));
+        assert!(!role_fits_for(Mode::Quickplay, &[Tank, Dps, Dps, Dps], Dps));
         assert_eq!(hero("mechanic").unwrap().role, Support);
         assert!(hero("fake").is_err());
     }
+    #[test]
+    fn skirmish_reserves_exactly_one_of_each_role_and_keeps_the_existing_match_budget() {
+        use Role::*;
+        assert_eq!(Mode::parse("skirmish").unwrap(), Mode::Skirmish);
+        assert_eq!(Mode::Skirmish.capacity(), 6);
+        assert_eq!(Mode::Skirmish.team_size(), 3);
+        assert_eq!(Mode::Skirmish.bucket(), Mode::Quickplay.bucket());
+        assert_eq!(serde_json::to_value(Mode::Skirmish).unwrap(), "skirmish");
+        assert!(role_fits_for(Mode::Skirmish, &[], Dps));
+        assert!(!role_fits_for(Mode::Skirmish, &[Dps], Dps));
+        assert!(!role_fits_for(Mode::Skirmish, &[Tank], Tank));
+        assert!(!role_fits_for(Mode::Skirmish, &[Support], Support));
+        assert!(role_fits_for(Mode::Skirmish, &[Dps, Tank], Support));
+        assert!(complete_team(Mode::Skirmish, &[Tank, Dps, Support]));
+        assert!(!complete_team(Mode::Skirmish, &[Tank, Dps]));
+        assert!(!complete_team(Mode::Skirmish, &[Tank, Dps, Dps]));
+        assert!(!role_fits_for(Mode::Skirmish, &[Tank, Dps, Support], Dps));
+        assert!(complete_team(Mode::Quickplay, &[Tank, Dps, Dps, Dps, Support]));
+        assert!(complete_team(Mode::Competitive, &[Tank, Dps, Dps, Support, Support]));
+    }
+
+    #[test]
+    fn both_rule_sets_accept_three_or_five_with_size_owned_role_policy() {
+        use Role::*;
+        for mode in [Mode::Quickplay,Mode::Competitive] {
+            for size in [3,5] {
+                let format=MatchFormat::requested(mode,Some(&serde_json::json!(size))).unwrap();
+                assert_eq!(format.capacity(),size*2);
+                let roles=if size==3 {vec![Tank,Dps,Support]}else{vec![Tank,Dps,Dps,Dps,Support]};
+                assert!(complete_team_format(format,&roles));
+                assert!(!role_fits_for_format(format,&roles,Dps));
+            }
+        }
+    }
+
 }

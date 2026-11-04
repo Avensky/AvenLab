@@ -1,4 +1,25 @@
-.ctf-match-hud{position:absolute;z-index:35;top:max(8px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);width:min(380px,60vw);text-align:center;pointer-events:none;color:var(--app-text);font:700 11px/1.2 system-ui;text-shadow:0 1px 3px #000}
+.ctf-match-hud{position:absolute;z-index:35;top:max(8px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);width:min(280px,60vw);text-align:center;pointer-events:none;color:var(--app-text);font:700 11px/1.2 system-ui;text-shadow:none}
 .ctf-score-line{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--app-panel);border-bottom:2px solid var(--app-accent);padding:4px 10px}
-.ctf-score-line strong[data-team=blue]{color:#74d9ff}.ctf-score-line strong[data-team=red]{color:#ff929c}.ctf-match-hud small{display:block;font-size:8px;padding-top:3px}.ctf-flag-status{display:block;font-size:7px;padding-top:2px}
+.ctf-team-indicator{display:none}
+.ctf-score-line strong[data-team=blue]{color:color-mix(in srgb,var(--app-text) 70%,#4bc9ff)}.ctf-score-line strong[data-team=red]{color:var(--team-red,#ff675b)}.ctf-match-hud small{display:block;font-size:8px;padding:3px 5px;background:var(--app-panel)}.ctf-flag-status{display:block;font-size:7px;padding-top:2px}
 @media(max-width:600px){.ctf-match-hud{width:58vw;font-size:9px}.ctf-score-line{padding:3px 5px;gap:3px}.ctf-match-hud small,.ctf-flag-status{font-size:6px}}
+.ctf-capture-cue{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:5px;padding:5px 9px;color:var(--app-text);background:var(--app-panel);border-left:3px solid var(--app-accent);font-size:9px;line-height:1.3;text-shadow:none}
+.ctf-capture-cue>span:first-child{font-size:18px;line-height:1;color:var(--app-accent)}
+.ctf-capture-cue[data-state=blocked]{border-left-color:#e5aa35}.ctf-capture-cue[data-state=blocked]>span:first-child{color:#e5aa35}
+.ctf-capture-cue[data-state=confirmed]{border-left-color:#48cf9b;box-shadow:0 0 14px #48cf9b55}.ctf-capture-cue[data-state=confirmed]>span:first-child{color:#48cf9b}
+.ctf-mission-objective{padding:7px 9px;background:var(--app-panel-soft,var(--app-panel));border-left:3px solid var(--app-accent)}
+.ctf-mission-objective strong{font-size:11px}.ctf-mission-objective p{margin:4px 0!important;font-size:10px;line-height:1.4}
+.mission-radio-history article[data-source=ctf]{border-left:2px solid var(--app-accent);padding-left:7px}.mission-radio-history article[data-source=ctf] strong{font-size:10px}.mission-radio-history article[data-source=ctf] p{font-size:10px;line-height:1.4}
+@media(max-width:600px){.ctf-capture-cue{padding:4px 5px;font-size:8px;gap:4px}.ctf-capture-cue>span:first-child{font-size:15px}}
+
+.mission-apps:has(.mission-radio-history) h2{margin:2px 0 5px;font-size:12px}.mission-radio-history[role=log]{display:flex;flex-direction:column;gap:6px;margin:4px 0 8px}.ctf-mission-objective>summary{font-size:10px;cursor:pointer}.ctf-mission-objective:has(summary){padding:5px 7px}
+/* The Missions document shares the app palette even inside the physical radio
+   frame; muted light-theme text must never sit on its inherited navy surface. */
+:is(.hud-utilities,.cockpit-panel) .console-display:has(.mission-apps),
+.console-display:has(.mission-apps) .console-display-content {
+  color:var(--app-text);background:var(--app-panel);border-color:var(--app-line);
+}
+.console-display .mission-apps {color:var(--app-text);background:var(--app-panel)}
+.console-display .mission-apps :is(h2,strong,summary){color:var(--app-text)}
+.console-display .mission-apps p{color:var(--app-muted)}
+.console-display .mission-radio-history article{background:var(--app-panel);border-color:var(--app-line)}

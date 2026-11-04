@@ -20,7 +20,7 @@ export async function leaveMatchResults(playAgain=false):Promise<void>{
    useMatchResultsStore.setState({leftWorld:true});
   }
   const mode=state.record!.mode;
-  if(['quickplay','competitive','sandbox','editor'].includes(mode))useAlphaStore.getState().chooseMode(mode as GameMode);
+  if(['quickplay','competitive','skirmish','sandbox','editor'].includes(mode))useAlphaStore.getState().restoreMode(mode as GameMode,state.record!.team_size??undefined);
   if(playAgain){
    await joinSelectedMode();
   }else closeMatchResults();

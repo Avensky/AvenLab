@@ -11,6 +11,7 @@ export function RadioPage() {
     <div className="cockpit-radio-page">
       <div className="cockpit-hud-options">
         <HudVisibilityToggle id="display" label="Radio on driving HUD" />
+        <HudVisibilityToggle id="missions" label="Missions on driving HUD" />
         <div
           className="radio-style-buttons"
           role="group"
@@ -30,8 +31,8 @@ export function RadioPage() {
               ],
               [
                 "no-tabs",
-                "NO TAB BAR",
-                "Transport controls and volume dial; open missions beside power",
+                "SINGLE ROW",
+                "Compact track, power, playback and volume; full controls stay in Cockpit",
               ],
             ] as const
           ).map(([value, label, title]) => (

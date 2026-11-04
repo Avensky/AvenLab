@@ -7,12 +7,18 @@ import { useMomentaryFeedback } from "./useMomentaryFeedback";
  * live in their own menu, so idle cabin masks never subscribe this whole panel. */
 export const ConsoleDisplay = memo(function ConsoleDisplay({
   onMinimize,
+  showRadio = true,
+  showMissions = true,
 }: {
   onMinimize?: () => void;
+  showRadio?: boolean;
+  showMissions?: boolean;
 }) {
   const style = usePreferencesStore((s) => s.radioHudStyle);
   const [tab, setTab] = useState<"radio" | "missions">("radio");
   const feedback = useMomentaryFeedback();
+  const missionsOpen = showMissions && (!showRadio || tab === "missions");
+  if (!showRadio && !showMissions) return null;
   return (
     <section
       {...feedback}
@@ -21,17 +27,19 @@ export const ConsoleDisplay = memo(function ConsoleDisplay({
       data-radio-style={style}
       aria-label="Vehicle electronic display"
     >
-      <RadioPanel
+      {showRadio && <RadioPanel
         compact
+        singleRow={style === "no-tabs"}
         transportVisible={style !== "streamlined"}
         onMinimize={onMinimize}
-        missionsOpen={tab === "missions"}
-        onMissionsToggle={() =>
+        missionsOpen={missionsOpen}
+        onMissionsToggle={showMissions ? () =>
           setTab((current) => (current === "missions" ? "radio" : "missions"))
-        }
-      />
+        : undefined}
+      />}
+      {!showRadio && <header className="missions-only-heading"><strong>MISSIONS</strong>{onMinimize && <button type="button" aria-label="Minimize missions" onClick={onMinimize}>−</button>}</header>}
       <>
-        {style === "classic" && (
+        {showRadio && showMissions && style === "classic" && (
           <nav
             className="console-display-tabs"
             aria-label="Vehicle display tabs"
@@ -52,7 +60,7 @@ export const ConsoleDisplay = memo(function ConsoleDisplay({
             </button>
           </nav>
         )}
-        {tab === "missions" && (
+        {missionsOpen && (
           <div className="console-display-content">
             <MissionApps />
           </div>

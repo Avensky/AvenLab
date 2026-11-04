@@ -1,3 +1,4 @@
+import {matchModeLabel,modeTeamSize} from '../../store/alpha/alphaStore';
 import {useEffect,useState} from 'react';
 import {isTypingTarget} from '../../controls/inputRouting';
 import {ControllerAction} from '../../components/controller';
@@ -9,14 +10,14 @@ import {scoreboardPlayers,type ScoreboardPlayer} from './scoreboardData';
 import {MatchTeamComposition,MatchStatsTable,MatchPlayerDetails,MatchViewTabs,MatchTeamFilterTabs} from './MatchPresentation';
 import './matchScoreboard.css';
 
-type BoardData={session:string;players:ScoreboardPlayer[];stale:boolean;world:string;mode:string};
+type BoardData={session:string;players:ScoreboardPlayer[];stale:boolean;world:string;mode:string;teamSize:3|5};
 function readBoard():BoardData{
  const network=useNetworkStore.getState(),view=useSocialStore.getState().view;
  const me=network.getMe(),received=network.snapshot?.received_at_ms;
  return {session:`${network.playerId}:${me?.room_id??network.room_id??''}`,players:scoreboardPlayers(network.snapshot,network.playerId,view),
   stale:received===undefined||!Number.isFinite(received)||performance.now()-received>1000,
   world:network.worldName??view?.worlds.find(world=>world.id===(me?.room_id??network.room_id))?.name??'CURRENT WORLD',
-  mode:view?.alpha?.active?.mode.toUpperCase()??'PRACTICE'};
+  mode:matchModeLabel(view?.alpha?.active?.mode??'practice',view?.alpha?.active?.team_size),teamSize:modeTeamSize(view?.alpha?.active?.mode??'',view?.alpha?.active?.team_size)};
 }
 
 /** Session totals update at a readable 4 Hz, never once per rendered physics
@@ -62,7 +63,7 @@ export function MatchScoreboard({onAbilities}:{onAbilities?:()=>void}){
   <MatchViewTabs view={view} onChange={setView}/>
   {view==='composition'&&<MatchTeamFilterTabs filter={teamFilter} onChange={setTeamFilter}/>}
   <div className="match-scoreboard-body" data-view={view}>
-   <div className="match-scoreboard-main">{view==='composition'?<MatchTeamComposition players={rows} teamFilter={teamFilter} selectedId={selected?.id} onSelect={setSelectedId}/>:<MatchStatsTable players={rows} selectedId={selected?.id} onSelect={setSelectedId}/>}</div>
+   <div className="match-scoreboard-main">{view==='composition'?<MatchTeamComposition teamSize={data?.teamSize} players={rows} teamFilter={teamFilter} selectedId={selected?.id} onSelect={setSelectedId}/>:<MatchStatsTable teamSize={data?.teamSize} players={rows} selectedId={selected?.id} onSelect={setSelectedId}/>}</div>
    <MatchPlayerDetails player={selected}/>
   </div>
   <footer className="match-scoreboard-footer"><span>HOLD TAB · LB / RB: TEAM / STATS · LT / RT: ALL / RED / BLUE</span><span>HEALING INCLUDES SELF · — MEANS UNAVAILABLE</span></footer>

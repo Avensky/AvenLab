@@ -1,3 +1,4 @@
+import {modeTeamSize} from '../../store/alpha/alphaStore';
 import {useMemo,useState} from 'react';
 import type {SocialView} from '../../store/social/socialStore';
 import type {MatchView} from '../../store/hud/scoreboardStore';
@@ -10,10 +11,11 @@ export function PreMatchTeamPreview({view}:{view:SocialView|null}){
  const [tab,setTab]=useState<MatchView>('composition');
  const [selectedId,setSelectedId]=useState<string|null>(null);
  const team=view?.alpha?.active?.team;
+ const teamSize=modeTeamSize(view?.alpha?.active?.mode??'',view?.alpha?.active?.team_size);
  const ownTeam=team==='red'||team==='blue'?team:null;
  const players=useMemo(()=>preMatchPlayers(view).filter(player=>ownTeam!==null&&player.team===ownTeam),[view,ownTeam]);
  return <section className="prematch-team-preview" aria-label="Pre-deployment match preview" data-match-preview>
   <header><span>{ownTeam?`${ownTeam.toUpperCase()} TEAM`:'TEAM PREVIEW'} <small>YOUR STYLES · CONFIRMED PICKS</small></span><MatchViewTabs view={tab} onChange={setTab}/></header>
-  <div className="prematch-preview-content">{ownTeam?(tab==='composition'?<MatchTeamComposition players={players} compact teamFilter={ownTeam} selectedId={selectedId??players.find(player=>player.self)?.id} onSelect={setSelectedId}/>:<MatchStatsTable players={players} compact teamFilter={ownTeam}/>):<p className="scoreboard-team-empty">Waiting for your confirmed team.</p>}</div>
+  <div className="prematch-preview-content">{ownTeam?(tab==='composition'?<MatchTeamComposition players={players} teamSize={teamSize} compact teamFilter={ownTeam} selectedId={selectedId??players.find(player=>player.self)?.id} onSelect={setSelectedId}/>:<MatchStatsTable players={players} teamSize={teamSize} compact teamFilter={ownTeam}/>):<p className="scoreboard-team-empty">Waiting for your confirmed team.</p>}</div>
  </section>;
 }

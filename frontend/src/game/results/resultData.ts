@@ -31,6 +31,7 @@ export function parseMatchResult(value:unknown):CareerMatch|null{
  if(value.type==='match_result')value=value.data;
  else if(object(value.match))value=value.match;
  if(!object(value)||!text(value.match_id,128)||!integer(value.world_id)||!text(value.mode,80)||!text(value.map,200)||!integer(value.ended_at)||!number(value.duration_s,31536000)||typeof value.training!=='boolean'||!side(value.winner))return null;
+ if(value.team_size!==undefined&&value.team_size!==null&&value.team_size!==3&&value.team_size!==5&&!(value.team_size===1&&(value.mode==='sandbox'||value.mode==='editor')))return null;
  if(!Array.isArray(value.score)||value.score.length!==2||!value.score.every(score=>integer(score,1e9)))return null;
  if(!Array.isArray(value.participants)||value.participants.length>64||!value.participants.every(validParticipant))return null;
  const ids=value.participants.map(participant=>participant.profile_id);

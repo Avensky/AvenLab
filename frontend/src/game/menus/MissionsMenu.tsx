@@ -14,7 +14,7 @@ export function MissionsMenu() {
           id: "overview",
           label: "Overview",
           description:
-            "Sandbox is playable. Capture the flag is the next game mode; these briefings describe the intended rules and logistics, not an active match.",
+            "Capture the flag is playable in Quickplay. The Missions HUD reports confirmed flag pickup, drop, return and capture events.",
           rows: [
             {
               id: "sandbox",
@@ -34,7 +34,7 @@ export function MissionsMenu() {
               label: "Capture the flag",
               description:
                 "Two squads. Vehicle roles. Objective play with limited supplies.",
-              value: "Planned",
+              value: "Quickplay",
               disabled: true,
             },
           ],
@@ -43,13 +43,13 @@ export function MissionsMenu() {
           id: "objectives",
           label: "Objectives",
           description:
-            "Proposed CTF rules: first team to three captures wins, with a 15-minute match limit. At the limit, higher score wins; a tied score goes to the team that captured last. A 0–0 match is a draw. Final rules will be enforced by the match server.",
+            "CTF rules: first team to three captures wins, with a 15-minute match limit. At the limit, higher score wins; a tied score goes to the team that captured last. A 0–0 match is a draw. All scoring is enforced by the match server. Your own flag must be home before you can turn in the enemy flag.",
           rows: [
             {
               id: "capture",
               label: "Capture",
               description:
-                "Reach the enemy flag, secure it and return to base.",
+                "Touch the enemy flag, secure it and bring it to your own home-base ring. Your flag must be home to score.",
               disabled: true,
             },
             {
@@ -63,7 +63,7 @@ export function MissionsMenu() {
               id: "recover",
               label: "Recover",
               description:
-                "Recover your flag and regroup before the next push.",
+                "Physically touch your dropped flag to return it, then regroup before the next push.",
               disabled: true,
             },
           ],

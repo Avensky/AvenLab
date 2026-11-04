@@ -22,6 +22,7 @@ impl PhysicsWorld {
     /// hits. This path preserves that simultaneous policy and credits one event.
     pub(crate) fn apply_validated_vehicle_damage(&mut self,victim:&str,attacker:Option<&str>,amount:f32,kind:&str)->bool {
         let amount=amount*if self.ctf_carriers.contains(victim){crate::ctf::CARRIER_DAMAGE_FACTOR}else{1.0};
+        let amount=self.absorb_guard_damage(victim,attacker,amount,kind);
         let Some(health)=self.vehicle_health.get_mut(victim) else{return false};
         let before=health.hp;let maximum=health.max_hp;
         let defeated=health.apply_damage(amount,attacker,kind);
@@ -45,6 +46,7 @@ impl PhysicsWorld {
     }
 
     fn freeze_disabled_vehicle(&mut self,player:&str){
+        self.cancel_guard(player);
         if let Some(vehicle)=self.vehicles.get_mut(player){
             vehicle.throttle=0.0;vehicle.steer=0.0;vehicle.brake=0.0;vehicle.handbrake=0.0;
             vehicle.pitch=0.0;vehicle.yaw=0.0;vehicle.roll=0.0;vehicle.ascend=0.0;vehicle.player_flags=0;
@@ -120,14 +122,43 @@ impl PhysicsWorld {
         target_vehicle.vehicle_flags.insert(VehicleStateFlags::ENGINE_ON);target_vehicle.vehicle_flags.remove(VehicleStateFlags::BOOST);
         target_vehicle.throttle=0.0;target_vehicle.steer=0.0;target_vehicle.brake=0.0;target_vehicle.handbrake=0.0;target_vehicle.player_flags=0;
         target_vehicle.ram.cancel();target_vehicle.ram.requested=false;
-        let health=self.vehicle_health.get_mut(target).unwrap();let (combat,healed)=health.revive();health.stats.gain_fuel(fuel_gained);
+        let health=self.vehicle_health.get_mut(target).unwrap();let (combat,healed)=health.revive();let maximum_hp=health.max_hp;health.stats.gain_fuel(fuel_gained);
         let health=self.vehicle_health.get_mut(actor).unwrap();health.revive_cooldown_s=crate::vehicle_health::REVIVE_COOLDOWN_SECONDS;health.spawn_protection_s=0.0;
         health.stats.healing_done=(health.stats.healing_done+healed).min(f32::MAX);
         if combat {health.stats.resurrections=health.stats.resurrections.saturating_add(1);}
+        if let Some(vehicle)=self.vehicles.get_mut(actor){vehicle.powertrain.credit_teammate_healing(healed,maximum_hp);}
         if let Some(body)=self.bodies.get_mut(handle){body.set_enabled(true);body.set_linvel(rapier3d::prelude::Vector::zeros(),true);body.set_angvel(rapier3d::prelude::Vector::zeros(),true);for h in body.colliders(){if let Some(c)=self.colliders.get_mut(*h){c.set_enabled(true);}}}
         self.combat_poses.remove(target);self.combat_sequences.remove(target);
         self.bodies.propagate_modified_body_positions_to_colliders(&mut self.colliders);self.query_pipeline.update(&self.colliders);
         Ok(())
+    }
+
+    /// Only an accepted ally-health-pack arrival calls this. It cannot revive,
+    /// heal self/enemies, award overhealing, or turn healing into self-repair.
+    pub(crate) fn heal_living_ally(&mut self,actor:&str,target:&str,amount:f32)->Result<f32,String>{
+        if !amount.is_finite()||amount<=0.0{return Err("Invalid healing amount.".into());}
+        if !self.health_pack_pair_valid(actor,target,40.0,8.0)||!self.health_pack_line_of_sight(actor,target){return Err("The injured teammate is no longer reachable.".into());}
+        let health=self.vehicle_health.get_mut(target).ok_or("Teammate health unavailable.")?;
+        let maximum=health.max_hp;
+        let healed=amount.min((maximum-health.hp).max(0.0));
+        if healed<=0.0{return Ok(0.0);}
+        health.hp=(health.hp+healed).min(maximum);
+        if let Some(health)=self.vehicle_health.get_mut(actor){health.stats.healing_done=(health.stats.healing_done+healed).min(f32::MAX);}
+        if let Some(vehicle)=self.vehicles.get_mut(actor){vehicle.powertrain.credit_teammate_healing(healed,maximum);}
+        Ok(healed)
+    }
+
+    /// Runtime supplies connected client IDs. Retained practice bodies keep
+    /// their charge while detached instead of farming through another player.
+    pub(crate) fn advance_passive_ultimates<'a>(&mut self, dt:f32, active:impl Iterator<Item=&'a str>) {
+        if !dt.is_finite() || dt <= 0.0 || dt > 0.1 { return; }
+        for id in active {
+            if !self.vehicle_health.get(id).is_some_and(|h| !h.defeated && h.hp > 0.0) { continue; }
+            let Some(vehicle) = self.vehicles.get_mut(id) else { continue; };
+            if self.bodies.get(vehicle.body).is_some_and(|body| body.is_enabled()) {
+                vehicle.powertrain.advance_passive_ultimate(dt);
+            }
+        }
     }
 
     pub(crate) fn advance_vehicle_lives(&mut self,dt:f32){

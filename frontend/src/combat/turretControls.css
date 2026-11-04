@@ -16,6 +16,7 @@
 .attack-icon{width:19px;height:19px;position:relative!important;inset:auto!important;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;fill:none}
 .action-progress-orbit>.attack-icon{width:19px;height:19px}
 .turret-actions .weapon-choice[data-equipped=true] .cooldown-clock,
+.turret-actions .secondary-choice[data-equipped=true] .cooldown-clock,
 .turret-actions button[aria-pressed=true] .cooldown-clock{--orbit-outer-color:#fff;--orbit-inner-color:var(--app-accent,#82b7ff);--orbit-halo-color:#fff;color:var(--app-text)}
 .turret-actions button[data-ready=false]{opacity:.58}.turret-actions button[data-ready=true]{opacity:1}
 .climate-panel .turret-instruments{white-space:normal;text-align:center;font-size:8px;line-height:1.4;padding:3px 1px}
@@ -67,7 +68,7 @@
 
 /* The primary/secondary pair anchors the bottom row without enlarging the deck. */
 .turret-orbit-scope{grid-column:1;grid-row:1}.turret-orbit-ram{grid-column:2;grid-row:1}
-.turret-orbit-roof{grid-column:1;grid-row:2}.turret-orbit-forward{grid-column:2;grid-row:2}
+.turret-orbit-machine-gun{grid-column:1;grid-row:2}.turret-orbit-barrier{grid-column:2;grid-row:2}
 .turret-orbit-primary{grid-column:1;grid-row:3}.turret-orbit-secondary{grid-column:2;grid-row:3}
 .turret-actions button[data-planned=true]{opacity:.42}
 .weapon-slots .secondary-swap{align-self:center;font:700 9px/1 system-ui;padding:5px;border:0;background:transparent;color:var(--app-text)}

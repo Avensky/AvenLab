@@ -27,8 +27,22 @@ export function createPortraitCache(render: (model: VehicleModelId, appearance: 
     return result;
   };
 }
+const readyPortraits = new Map<string, string>();
+const listeners = new Set<() => void>();
+/** Live squad cards can reuse a finished portrait without decoding a GLB or
+ * creating another GPU context while the main scene is being simulated. */
+export const peekStyledPortrait = (model: VehicleModelId, appearance: HeroAppearance) =>
+  readyPortraits.get(portraitStyleKey(model, appearance)) ?? null;
+export const subscribeStyledPortraits = (listener: () => void) => {
+  listeners.add(listener); return () => {listeners.delete(listener);};
+};
 export const getStyledPortrait = createPortraitCache(async (model, appearance) => {
   if (typeof WebGLRenderingContext === "undefined") throw Error("WebGL unavailable");
   const { bakeHeroPortrait } = await import("../preview/bakeHeroPortrait");
-  return bakeHeroPortrait(model, appearance);
+  const image = await bakeHeroPortrait(model, appearance);
+  const key = portraitStyleKey(model, appearance);
+  readyPortraits.delete(key); readyPortraits.set(key, image);
+  while (readyPortraits.size > 48) readyPortraits.delete(readyPortraits.keys().next().value!);
+  for (const listener of listeners) listener();
+  return image;
 });

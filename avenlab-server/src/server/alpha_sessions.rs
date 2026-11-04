@@ -19,12 +19,15 @@ impl Server {
             return Ok(());
         }
         let clients = self.connections.lock().await.clone();
-        let mode = a.worlds.get(&world_id).copied().unwrap_or(Mode::Sandbox);
+        let mode = a.worlds.get(&world_id).copied().unwrap_or(Mode::Sandbox.into());
         if self.match_ended(world_id).await && !a.restoring.contains(player) {
             return Err("This match has ended. Waiting for its result screen to close.".into());
         }
+        if mode.bucket()==0 && !a.restoring.contains(player) && !self.match_accepts_new_players(world_id).await {
+            return Err("This round has started. Join a new match through its queue.".into());
+        }
         if mode.bucket() == 0 && !a.pending_team.contains_key(player) {
-            return Err("Join Quickplay or Competitive through its hero selection queue.".into());
+            return Err("Join a match through its hero selection queue.".into());
         }
         let now = timestamp();
         let own = clients.get(player).and_then(|c| c.profile_id.as_ref());
@@ -42,13 +45,13 @@ impl Server {
             .filter_map(|(_, c)| c.world_id)
             .chain(reserved.iter().map(|(_, r)| r.member.world))
             .collect();
-        if occupied.iter().any(|id| {
+        if mode.bucket()!=0 && occupied.iter().any(|id| {
             *id != world_id
-                && a.worlds.get(id).copied().unwrap_or(Mode::Sandbox).bucket() == mode.bucket()
+                && a.worlds.get(id).copied().unwrap_or(Mode::Sandbox.into()).bucket() == mode.bucket()
         }) {
             return Err(format!(
                 "The {} world slot is busy. Join its queue.",
-                mode.label()
+                mode.mode.label()
             ));
         }
         let population = clients
@@ -76,13 +79,14 @@ impl Server {
         let connection=self.connections.lock().await.get(player).cloned();
         let Some(client)=connection else{return};
         let (Some(profile),Some(world))=(client.profile_id,client.world_id) else{return};
-        let mode=self.data.lock().await.worlds.get(&world).and_then(|w|w.mode).unwrap_or(Mode::Sandbox);
+        let format=self.data.lock().await.worlds.get(&world).map(|w|MatchFormat::for_world(w.mode.unwrap_or(Mode::Sandbox),w.max_players)).unwrap_or(Mode::Sandbox.into());
+        let mode=format.mode;
         let practice=matches!(mode,Mode::Sandbox|Mode::Editor);
         let runtime=self.runtimes.lock().await.get(&world).cloned();
         let has_body=if let Some(runtime)=runtime{runtime.lock().await.physics.vehicles.contains_key(player)}else{false};
         let mut a=self.alpha.lock().await;
         if !a.enabled&&!(practice&&has_body){return;}
-        let member=a.members.get(player).cloned().unwrap_or(Member{mode,world,hero:String::new(),team:client.team});
+        let member=a.members.get(player).cloned().unwrap_or(Member{mode,team_size:format.team_size,world,hero:String::new(),team:client.team});
         let expires=timestamp()+if practice{600}else{a.grace_seconds};
         a.reservations.insert(profile,Reservation{member,expires,retained_player:(practice&&has_body).then(||player.into())});
         drop(a);
@@ -162,6 +166,7 @@ impl Server {
                 })
             });
         drop(data);
+        let mode = a.worlds.get(&world).copied().unwrap_or(Mode::Quickplay.into());
         let mut options = Vec::new();
         for team in [Team::Red, Team::Blue] {
             // Unpicked seats count toward capacity but do not claim a role.
@@ -176,8 +181,8 @@ impl Server {
                 .collect();
             let roles: Vec<Role> = seated.iter()
                 .filter_map(|m| policy::hero(&m.hero).ok().map(|h| h.role)).collect();
-            if seated.len() < 5 && candidate.is_none_or(|hero|
-                !a.enforce_roles || policy::role_fits(&roles, hero.role)) {
+            if seated.len() < mode.team_size && candidate.is_none_or(|hero|
+                !a.enforce_roles || policy::role_fits_for_format(mode, &roles, hero.role)) {
                 options.push((seated.len(), team));
             }
         }
@@ -187,111 +192,55 @@ impl Server {
             .map(|(_, team)| *team)
             .ok_or_else(|| "Both teams have filled the available slots for this role.".into())
     }
+    /// Try compatible waiting rooms before allocating another bounded world.
+    /// Running rounds accept their reserved reconnects only, never backfill.
     async fn admit_mode(&self, ticket: &Ticket) -> Result<Value, String> {
         if !ticket.hero.is_empty() { policy::hero(&ticket.hero)?; }
-        if !map_available(&ticket.map) {
-            return Err("Choose an installed environment.".into());
+        if !map_available(&ticket.map) { return Err("Choose an installed environment.".into()); }
+        let format=ticket.format();
+        let a=self.alpha.lock().await.clone();
+        let clients=self.connections.lock().await.clone();
+        let now=timestamp();
+        let reserved:Vec<_>=a.reservations.values().filter(|r|r.expires>now).collect();
+        let occupied:HashSet<_>=clients.values().filter_map(|c|c.world_id).chain(reserved.iter().map(|r|r.member.world)).collect();
+        let total=clients.values().filter(|c|c.world_id.is_some()).count()+reserved.len();
+        if total>=self.max_players {return Err("The server active-player budget is full. Waiting for a seat.".into());}
+        if format.bucket()!=0 && occupied.iter().any(|world|a.worlds.get(world).is_some_and(|f|f.bucket()==format.bucket())) {
+            return Err("The requested editor/practice world slot is busy.".into());
         }
-        let a = self.alpha.lock().await.clone();
-        let clients = self.connections.lock().await.clone();
-        let occupied: HashSet<usize> = clients
-            .values()
-            .filter_map(|c| c.world_id)
-            .chain(
-                a.reservations
-                    .values()
-                    .filter(|r| r.expires > timestamp())
-                    .map(|r| r.member.world),
-            )
-            .collect();
-        let busy = occupied
-            .iter()
-            .find(|id| {
-                a.worlds.get(id).copied().unwrap_or(Mode::Sandbox).bucket() == ticket.mode.bucket()
-            })
-            .copied();
-        let world = if let Some(world) = busy {
-            let mode = a.worlds.get(&world).copied().unwrap_or(Mode::Sandbox);
-            if ticket.mode.bucket() != 0 || mode != ticket.mode {
-                return Err("The requested world slot is busy.".into());
-            }
-            world
-        } else {
-            let existing = {
-                let data = self.data.lock().await;
-                a.worlds
-                    .iter()
-                    .find(|(id, mode)| {
-                        **mode == ticket.mode
-                            && data.worlds.get(id).is_some_and(|w| w.map == ticket.map)
-                    })
-                    .map(|(id, _)| *id)
-            };
-            if let Some(id) = existing {
-                id
-            } else {
-                let previous = self.data.lock().await.clone();
-                let mut data = self.data.lock().await;
-                if data.worlds.len() >= 256 {
-                    return Err("The saved-world budget is full.".into());
-                }
-                let id = data.next_world;
-                data.next_world += 1;
-                data.worlds.insert(
-                    id,
-                    World {
-                        mode: Some(ticket.mode),
-                        id,
-                        name: format!("ALPHA {}", ticket.mode.label()),
-                        map: ticket.map.clone(),
-                        owner_id: None,
-                        listed: true,
-                        max_players: ticket.mode.capacity(),
-                        password_hash: None,
-                        invite_code: crate::social::model::id(),
-                    },
-                );
-                drop(data);
-                self.commit(previous).await?;
-                self.alpha.lock().await.worlds.insert(id, ticket.mode);
-                id
-            }
-        };
-        let team = if ticket.mode.bucket() == 0 {
-            if self.match_ended(world).await {
-                return Err("This match has ended. Waiting for its result screen to close.".into());
-            }
-            self.team_for_hero(world, &ticket.hero, Some(&ticket.player))
-                .await?
-        } else {
-            Team::Red
-        };
-        self.alpha
-            .lock()
-            .await
-            .pending_team
-            .insert(ticket.player.clone(), team);
-        let result = self
-            .join_inner(&ticket.player, world, "", String::new())
-            .await;
+        let data=self.data.lock().await.clone();
+        let mut candidates:Vec<_>=a.worlds.iter().filter(|(world,f)|**f==format&&data.worlds.get(world).is_some_and(|w|w.map==ticket.map)).map(|(world,_)|*world).collect();
+        // Fill an occupied compatible lobby first; reuse empty saved rooms next.
+        candidates.sort_by_key(|world|(!occupied.contains(world),*world));
+        for world in candidates {
+            if format.bucket()==0 && !self.match_accepts_new_players(world).await {continue;}
+            if let Ok(result)=self.admit_ticket_to_world(ticket,world).await {return Ok(result);}
+        }
+        if self.runtimes.lock().await.len()>=self.max_active_worlds {return Err("The active-world budget is full. Waiting for a matching lobby or a free world.".into());}
+        let previous=self.data.lock().await.clone();
+        let mut data=self.data.lock().await;
+        if data.worlds.len()>=256 {return Err("The saved-world budget is full.".into());}
+        let world=data.next_world;data.next_world+=1;
+        data.worlds.insert(world,World{mode:Some(ticket.mode),id:world,
+            name:if format.bucket()==0 {format!("ALPHA {} {}V{}",ticket.mode.label(),format.team_size,format.team_size)}else{format!("ALPHA {}",ticket.mode.label())},
+            map:ticket.map.clone(),owner_id:None,listed:true,max_players:format.capacity(),password_hash:None,invite_code:crate::social::model::id()});
+        drop(data);self.commit(previous).await?;
+        self.alpha.lock().await.worlds.insert(world,format);
+        self.admit_ticket_to_world(ticket,world).await
+    }
+    async fn admit_ticket_to_world(&self,ticket:&Ticket,world:usize)->Result<Value,String>{
+        let team=if ticket.mode.bucket()==0 {self.team_for_hero(world,&ticket.hero,Some(&ticket.player)).await?}else{Team::Red};
+        self.alpha.lock().await.pending_team.insert(ticket.player.clone(),team);
+        let result=self.join_inner(&ticket.player,world,"",String::new()).await;
         self.alpha.lock().await.pending_team.remove(&ticket.player);
-        let result = result?;
-        self.alpha.lock().await.members.insert(
-            ticket.player.clone(),
-            Member {
-                mode: ticket.mode,
-                world,
-                hero: ticket.hero.clone(),
-                team,
-            },
-        );
-        Ok(
-            json!({"status":"joined","mode":ticket.mode,"world_id":world,"map":result["map"],"hero":ticket.hero}),
-        )
+        let result=result?;
+        self.alpha.lock().await.members.insert(ticket.player.clone(),Member{mode:ticket.mode,team_size:ticket.team_size,world,hero:ticket.hero.clone(),team});
+        Ok(json!({"status":"joined","mode":ticket.mode,"team_size":ticket.team_size,"capacity":ticket.format().capacity(),"world_id":world,"map":result["map"],"hero":ticket.hero}))
     }
     async fn join_mode(&self, player: &str, value: &Value) -> Result<Value, String> {
         let profile = self.actor(player).await?;
         let mode = Mode::parse(value["mode"].as_str().unwrap_or("sandbox"))?;
+        let format=MatchFormat::requested(mode,value.get("team_size"))?;
         let hero = value["hero"].as_str().unwrap_or("").to_string();
         if !hero.is_empty() { policy::hero(&hero)?; }
         let map = if mode.bucket() == 0 {
@@ -312,6 +261,7 @@ impl Server {
             player: player.into(),
             profile,
             mode,
+            team_size:format.team_size,
             map,
             hero,
             joined: timestamp(),
@@ -323,7 +273,7 @@ impl Server {
             .await
             .queue
             .iter()
-            .any(|t| t.mode.bucket() == mode.bucket());
+            .any(|t| t.format() == format);
         if !waiting {
             if let Ok(result) = self.admit_mode(&ticket).await {
                 return Ok(result);
@@ -334,7 +284,7 @@ impl Server {
             return Err("The alpha waiting line is full. Try again shortly.".into());
         }
         a.queue.push_back(ticket);
-        Ok(json!({"status":"queued","mode":mode}))
+        Ok(json!({"status":"queued","mode":mode,"team_size":format.team_size,"capacity":format.capacity()}))
     }
     pub(super) async fn handle_alpha(&self, player: &str, value: &Value) -> Result<Value, String> {
         match value["action"].as_str().unwrap_or("") {
@@ -459,8 +409,8 @@ impl Server {
                         .filter_map(|r| policy::hero(&r.member.hero).ok().map(|h| h.role)),
                 )
                 .collect();
-            if !policy::role_fits(&roles, selected.role) {
-                return Err("That role would leave an invalid five-player team.".into());
+            if !policy::role_fits_for_format(member.format(), &roles, selected.role) {
+                return Err(format!("That role would leave an invalid {}-player team.", member.team_size));
             }
         }
         let runtime = self.runtime(player).await?;
@@ -490,6 +440,7 @@ impl Server {
                 }
             }
         }
+        room.physics.set_assigned_hero(player,id);
         drop(room);
         if let Some(current) = self.alpha.lock().await.members.get_mut(player) {
             current.hero = id.into();
@@ -636,6 +587,11 @@ impl Server {
             member.team.as_str(),
         )?;
         if let Some(config) = previous_config { physics.configure_vehicle_for_player(player, config)?; }
+        physics.set_assigned_hero(player,&member.hero);
+        let ability=if member.hero=="tank" {"tank_barrier"}else{"guard_boost"};
+        let guard_cooldown=self.ability_cooldown(player,ability).await;
+        physics.guard_boosts.entry(player.into()).or_default().cooldown=guard_cooldown;
+        physics.support.ensure_cooldown(player,self.ability_cooldown(player,"heal_pack").await);
         let mut game = crate::state::SharedGameState::new();
         game.room_id = member.world;
         let spawn = game
@@ -702,7 +658,7 @@ impl Server {
         let tickets: Vec<_> = self.alpha.lock().await.queue.iter().cloned().collect();
         let mut blocked = HashSet::new();
         for ticket in tickets {
-            if blocked.contains(&ticket.mode.bucket()) {
+            if blocked.contains(&ticket.format()) {
                 continue;
             }
             if !clients.contains_key(&ticket.player) {
@@ -722,7 +678,7 @@ impl Server {
                     .retain(|t| t.player != ticket.player);
                 changed = true;
             } else {
-                blocked.insert(ticket.mode.bucket());
+                blocked.insert(ticket.format());
             }
         }
         if changed {
@@ -738,8 +694,12 @@ impl Server {
         let mode = a.worlds.get(&world).copied().ok_or("No managed match.")?;
         if !a.enforce_roles || mode.bucket() != 0 { return Err("Testing worlds do not grant match rewards.".into()); }
         let members: Vec<_> = a.members.iter().filter(|(_, m)| m.world == world).collect();
-        if members.len() != 10 || [Team::Red, Team::Blue].iter().any(|team| members.iter().filter(|(_, m)| m.team == *team).count() != 5) {
-            return Err("A complete verified 5v5 roster is required.".into());
+        if members.len() != mode.capacity() || [Team::Red, Team::Blue].iter().any(|team| {
+            let roles: Vec<_> = members.iter().filter(|(_, m)| m.team == *team)
+                .filter_map(|(_, m)| policy::hero(&m.hero).ok().map(|h| h.role)).collect();
+            !policy::complete_team_format(mode, &roles)
+        }) {
+            return Err(format!("A complete verified {}v{} roster is required.", mode.team_size, mode.team_size));
         }
         let clients = self.connections.lock().await.clone();
         let data = self.data.lock().await;
@@ -756,7 +716,7 @@ impl Server {
         let map = data.worlds.get(&world).map(|w| w.map.clone()).ok_or("Match world unavailable.")?;
         drop(data);
         let record = crate::alpha::career::CareerMatch {
-            match_id: result_id.into(), world_id: world, mode, map, ended_at: timestamp(),
+            match_id: result_id.into(), world_id: world, mode:mode.mode, team_size:Some(mode.team_size), map, ended_at: timestamp(),
             progression_eligible: true, winner: Some(winner.as_str().into()), participants, ..Default::default()
         };
         self.persist_record(&record).await
@@ -767,11 +727,12 @@ impl Server {
         player: &str,
         clients: &HashMap<String, Connection>,
         data: &SocialData,
+        max_active_worlds:usize,
     ) -> Value {
         let ticket = a.queue.iter().find(|ticket| ticket.profile == actor);
-        let queue=ticket.map(|ticket|json!({"mode":ticket.mode,"position":a.queue.iter().take_while(|t|t.profile!=actor).filter(|t|t.mode.bucket()==ticket.mode.bucket()).count()+1,"joined":ticket.joined,"size":a.queue.iter().filter(|t|t.mode.bucket()==ticket.mode.bucket()).count(),"reason":"Waiting for a free seat, compatible team role, or the current mode to empty. Reconnect seats are held briefly."}));
+        let queue=ticket.map(|ticket|json!({"mode":ticket.mode,"team_size":ticket.team_size,"capacity":ticket.format().capacity(),"position":a.queue.iter().take_while(|t|t.profile!=actor).filter(|t|t.format()==ticket.format()).count()+1,"joined":ticket.joined,"size":a.queue.iter().filter(|t|t.format()==ticket.format()).count(),"reason":"Waiting for this mode and match size, a compatible role, or server world/player capacity. Reconnect seats are held briefly."}));
         let active = a.members.get(player).map(
-            |m| json!({"mode":m.mode,"world_id":m.world,"hero":m.hero,"team":m.team.as_str()}),
+            |m| { let caps=m.format().role_caps(); let minimums=m.format().role_minimums(); json!({"mode":m.mode,"world_id":m.world,"hero":m.hero,"team":m.team.as_str(),"team_size":m.team_size,"capacity":m.format().capacity(),"role_caps":{"tank":caps[0],"dps":caps[1],"support":caps[2]},"role_minimums":{"tank":minimums[0],"dps":minimums[1],"support":minimums[2]}}) },
         );
         // Public cards expose only the equipped vehicle appearance, never the
         // profile's credentials, inventory or other vehicle loadouts.
@@ -781,7 +742,7 @@ impl Server {
                 .and_then(|hero| profile.progression.hero_loadouts.get(hero.vehicle))
                 .cloned().unwrap_or_default();
             json!({"id":profile.id,"name":profile.name,"team":member.team.as_str(),
-                "hero":member.hero,"showcase_hero":showcase,"mode":member.mode,"world_id":member.world,
+                "hero":member.hero,"showcase_hero":showcase,"mode":member.mode,"team_size":member.team_size,"world_id":member.world,
                 "reconnecting":reconnecting,"appearance":appearance})
         };
         let roster: Vec<_> = a.members.iter().filter(|(_, m)| m.mode.bucket() == 0)
@@ -794,6 +755,6 @@ impl Server {
                 .filter_map(|(id, r)| data.profiles.get(id)
                     .map(|profile| card(profile, &r.member, true))))
             .collect();
-        json!({"enabled":a.enabled,"role_limits":a.enforce_roles,"queue":queue,"active":active,"roster":roster,"reconnect_grace_seconds":a.grace_seconds,"reserved_players":a.reservations.len(),"limits":{"match_worlds":1,"editor_worlds":1,"practice_worlds":1,"match_players":10,"editor_players":1,"practice_players":1},"skins":SKINS.iter().map(|s|json!({"id":s.0,"name":s.1,"cost":s.2,"color":s.3})).collect::<Vec<_>>()})
+        json!({"enabled":a.enabled,"role_limits":a.enforce_roles,"queue":queue,"active":active,"roster":roster,"reconnect_grace_seconds":a.grace_seconds,"reserved_players":a.reservations.len(),"limits":{"match_worlds":max_active_worlds,"editor_worlds":1,"practice_worlds":1,"match_players":10,"skirmish_players":6,"editor_players":1,"practice_players":1},"skins":SKINS.iter().map(|s|json!({"id":s.0,"name":s.1,"cost":s.2,"color":s.3})).collect::<Vec<_>>()})
     }
 }

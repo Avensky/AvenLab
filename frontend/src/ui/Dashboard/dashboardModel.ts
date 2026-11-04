@@ -16,8 +16,9 @@ export type DisplayPower =
   "off" | "on" | "cranking" | "running" | "unavailable";
 export function displayPower(
   data: Pick<VehicleTelemetry, "signal" | "engineOn" | "resourceMask"> &
-    Partial<Pick<VehicleTelemetry, "cabinMask">>,
+    Partial<Pick<VehicleTelemetry, "cabinMask" | "instrumentPower">>,
 ): DisplayPower {
+  if (data.signal === 'stale' && data.instrumentPower !== undefined) return data.instrumentPower;
   const state = engineDisplayState(data);
   if (state !== "off") return state;
   if (

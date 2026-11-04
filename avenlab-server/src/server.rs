@@ -47,7 +47,7 @@ impl Server {
         let managed_worlds = data
             .worlds
             .iter()
-            .filter_map(|(id, w)| w.mode.map(|mode| (*id, mode)))
+            .filter_map(|(id, w)| w.mode.map(|mode| (*id, crate::alpha::MatchFormat::for_world(mode,w.max_players))))
             .collect();
         let limit = |name: &str, default: usize, max: usize| {
             std::env::var(name)
@@ -77,7 +77,7 @@ impl Server {
             runtimes: Mutex::new(HashMap::new()),
             path,
             max_active_worlds: limit("AVENLAB_MAX_ACTIVE_WORLDS", 3, 16),
-            max_players: limit("AVENLAB_MAX_PLAYERS", 12, 160),
+            max_players: limit("AVENLAB_MAX_PLAYERS", 24, 160),
         })
     }
     async fn save(&self) -> Result<(), String> {
@@ -324,7 +324,7 @@ impl Server {
             if mode.bucket() == 0 {
                 let training = !self.alpha.lock().await.enforce_roles;
                 let mut room = runtime.lock().await;
-                if room.round.is_none() { room.configure_round(mode, training)?; }
+                if room.round.is_none() { room.configure_round_format(crate::alpha::MatchFormat::for_world(mode,world.max_players), training)?; }
             }
         }
         // Build/validate the destination before releasing the original room.
@@ -424,11 +424,19 @@ impl Server {
         let runtime = self.runtime(player).await?;
         let appearance = self.saved_appearance(player, vehicle).await;
         let revive_cooldown = self.revival_cooldown(player).await;
+        let assigned = self.alpha.lock().await.members.get(player).filter(|m|Some(m.world)==joined_world).map(|m|m.hero.clone()).unwrap_or_default();
+        let guard_ability=if assigned=="tank" {"tank_barrier"}else{"guard_boost"};
+        let guard_cooldown = self.ability_cooldown(player,guard_ability).await;
+        let heal_cooldown = self.ability_cooldown(player,"heal_pack").await;
         let mut room = runtime.lock().await;
         if room.round.as_ref().is_some_and(|r| r.phase == crate::ctf::CtfPhase::Ended) {
             return Err("This match has ended. Start another match to deploy.".into());
         }
         room.spawn(player, vehicle)?;
+        room.physics.set_assigned_hero(player,&assigned);
+        let retained_guard_cooldown=room.physics.guard_view(player).cooldown_s.max(guard_cooldown);
+        room.physics.guard_boosts.entry(player.into()).or_default().cooldown=retained_guard_cooldown;
+        room.physics.support.ensure_cooldown(player,heal_cooldown);
         let round_id = room.round.as_ref().map(|round| round.match_id.clone());
         if let Some(lease) = self.take_downed_reconnect(player, room.game.room_id, round_id.as_deref()).await {
             lease.restore(&mut room, player)?;
@@ -466,6 +474,9 @@ impl Server {
 
             "career_history" | "career_match" => self.handle_career(player, &value).await?,
             "vehicle_revive" => self.handle_vehicle_revive(player, &value).await?,
+            "vehicle_heal_pack" => self.handle_vehicle_heal_pack(player, &value).await?,
+            "dps_guard_boost" => self.handle_dps_guard_boost(player, &value).await?,
+            "tank_barrier" => self.handle_tank_barrier(player, &value).await?,
 
             "identify" => {
                 let previous = self.data.lock().await.clone();
@@ -630,6 +641,8 @@ impl Server {
 mod alpha_sessions;
 mod matches;
 mod revival;
+mod guard;
+mod support;
 mod chat;
 #[cfg(test)]
 mod tests;

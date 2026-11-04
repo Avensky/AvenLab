@@ -13,7 +13,7 @@ export function WeaponSelector(){
  const enabled=useCombatStore(s=>s.enabled),secondary=useCombatStore(s=>s.secondaryWeapon);
  const vehicle=useNetworkStore(s=>s.getMe()?.vehicle_id),confirmed=useNetworkStore(s=>s.getMe()?.combat);
  const visible=useUIStore(s=>s.screen==='sandbox'&&s.overlay===null&&!s.isModeLoading);
- const orbit=usePreferencesStore(s=>s.showTouchControls&&s.hudGroups.turret);
+ const orbit=usePreferencesStore(s=>s.hudGroups.turret);
  const keys=usePreferencesStore(s=>s.bindings);
  if(!enabled||vehicle!=='tank'||!visible||orbit)return null;
  const definition=secondaryDefinition(secondary),reload=confirmed?.cannon_reload??confirmed?.reload;

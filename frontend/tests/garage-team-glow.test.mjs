@@ -4,19 +4,22 @@ import {Group,Mesh,MeshStandardMaterial,BoxGeometry} from 'three';
 import {garageTeamAccent,TEAM_GARAGE_LIGHT_COLORS} from '../src/game/preview/garageTeamAccent.ts';
 import {GARAGE_LIGHT_COLORS,tagGarageAccent,applyGarageLighting} from '../src/theme/garageLighting.ts';
 import {createGarageReflectionSnapshot} from '../src/game/preview/garageReflectionSnapshot.ts';
+import {MATCH_TEAM_COLORS} from '../src/theme/matchTeamTheme.ts';
 
 const active=(team,mode='quickplay')=>({mode,team,world_id:3,hero:'tank'});
 
-test('only confirmed Quickplay staging selects a transient team accent',()=>{
- for(const screen of ['hero_select','queue']){
-  assert.equal(garageTeamAccent(screen,active('red')),TEAM_GARAGE_LIGHT_COLORS.red);
-  assert.equal(garageTeamAccent(screen,active('blue')),GARAGE_LIGHT_COLORS.navy);
+test('only confirmed match staging selects a transient team accent',()=>{
+ for(const screen of ['hero_select','queue'])for(const mode of ['quickplay','competitive','skirmish']){
+  assert.equal(garageTeamAccent(screen,active('red',mode)),TEAM_GARAGE_LIGHT_COLORS.red);
+  assert.equal(garageTeamAccent(screen,active('blue',mode)),GARAGE_LIGHT_COLORS.navy);
  }
+ assert.equal(TEAM_GARAGE_LIGHT_COLORS.red,MATCH_TEAM_COLORS.red.glow);
+ assert.notEqual(TEAM_GARAGE_LIGHT_COLORS.red,GARAGE_LIGHT_COLORS.strawberry);
  for(const screen of ['heroes','main','mode_select','sandbox','world_builder','career'])assert.equal(garageTeamAccent(screen,active('red')),null);
  assert.equal(garageTeamAccent('hero_select',undefined),null);
  assert.equal(garageTeamAccent('hero_select',null),null);
  assert.equal(garageTeamAccent('hero_select',active('unknown')),null);
- assert.equal(garageTeamAccent('hero_select',active('red','competitive')),null);
+ for(const mode of ['sandbox','editor'])assert.equal(garageTeamAccent('hero_select',active('red',mode)),null);
 });
 
 test('team fixture tint and the first owned reflection agree, then restore the player palette without touching neutral paint',()=>{

@@ -13,6 +13,7 @@ pub(super) const REVIVE_MAX_SPEED_MPS: f32 = 3.0;
 #[derive(Default)]
 pub(super) struct RevivalState {
     deadlines: HashMap<String, Instant>,
+    ability_deadlines: HashMap<(String, &'static str), Instant>,
     downed: HashMap<String, DownedLease>,
 }
 #[derive(Clone)]
@@ -29,6 +30,13 @@ pub(super) struct DownedLease {
     ultimate_fraction: f32,
 }
 impl RevivalState {
+    pub(super) fn ability_remaining(&mut self, profile: &str, ability: &'static str) -> f32 {
+        let now=Instant::now();self.ability_deadlines.retain(|_,ready|*ready>now);
+        self.ability_deadlines.get(&(profile.into(),ability)).map(|ready|ready.duration_since(now).as_secs_f32()).unwrap_or(0.0)
+    }
+    pub(super) fn ability_used(&mut self, profile: String, ability: &'static str, cooldown:f32) {
+        if cooldown.is_finite()&&cooldown>0.0&&cooldown<=300.0 {self.ability_deadlines.insert((profile,ability),Instant::now()+Duration::from_secs_f32(cooldown));}
+    }
     fn remaining(&mut self, profile: &str) -> f32 {
         let now = Instant::now();
         self.deadlines.retain(|_, ready| *ready > now);
@@ -69,7 +77,7 @@ impl Server {
         profiles.extend(self.alpha.lock().await.reservations.iter()
             .filter(|(_, lease)| lease.member.world == world).map(|(profile, _)| profile.clone()));
         let mut revivals = self.revivals.lock().await;
-        for profile in profiles { revivals.deadlines.remove(&profile); }
+        for profile in profiles { revivals.deadlines.remove(&profile); revivals.ability_deadlines.retain(|(owner,_),_|owner!=&profile); }
         revivals.downed.retain(|_, lease| lease.world != world);
     }
 
@@ -229,9 +237,9 @@ mod tests {
         });
         {
             let mut alpha = s.alpha.lock().await;
-            alpha.enabled = true; alpha.enforce_roles = false; alpha.worlds.insert(WORLD, Mode::Quickplay);
-            alpha.members.insert(mechanic.clone(), Member { mode: Mode::Quickplay, world: WORLD, hero: "mechanic".into(), team: Team::Red });
-            alpha.members.insert(target.clone(), Member { mode: Mode::Quickplay, world: WORLD, hero: "brz".into(), team: Team::Red });
+            alpha.enabled = true; alpha.enforce_roles = false; alpha.worlds.insert(WORLD, Mode::Quickplay.into());
+            alpha.members.insert(mechanic.clone(), Member { mode: Mode::Quickplay, team_size:5, world: WORLD, hero: "mechanic".into(), team: Team::Red });
+            alpha.members.insert(target.clone(), Member { mode: Mode::Quickplay, team_size:5, world: WORLD, hero: "brz".into(), team: Team::Red });
         }
         let mut room = WorldRuntime::new(WORLD, "road_precision").unwrap();
         for player in [&mechanic, &target] {

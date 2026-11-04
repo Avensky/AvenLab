@@ -235,7 +235,7 @@ html[data-ui-theme] .hero-selection :is(.alpha-header,.alpha-selection-footer) {
   border-color: var(--app-line);
 }
 html[data-ui-theme] .hero-selection :is(.alpha-header h1,.hero-summary h2,.hero-roster h2,.hero-team-strip strong) { color: var(--app-text);text-shadow:none; }
-html[data-ui-theme] .hero-selection :is(.alpha-header small,.alpha-mode-planned,.hero-roster header span,.hero-team-strip small,.hero-summary small,.alpha-progress small,.alpha-progress span) { color: var(--app-muted);text-shadow:none; }
+html[data-ui-theme] .hero-selection :is(.alpha-header small,.alpha-mode-planned,.hero-roster header span,.hero-team-strip small,.alpha-progress small,.alpha-progress span) { color: var(--app-muted);text-shadow:none; }
 html[data-ui-theme] .hero-selection :is(.alpha-mode-tabs,.hero-role-tabs) {
   background: var(--app-panel);
   color: var(--app-text);
@@ -253,7 +253,8 @@ html[data-ui-theme] .hero-selection :is(.hero-roster>header,.alpha-squad-seat) {
 }
 html[data-ui-theme] .hero-selection .hero-summary {background:transparent;padding:0;border:0;border-radius:0;}
 html[data-ui-theme] .hero-selection .hero-summary h2 {color:#f3f6ff;text-shadow:0 2px 6px #000,0 0 2px #000;}
-html[data-ui-theme] .hero-selection .hero-summary > small {color:#d8e2f2;text-shadow:0 1px 4px #000;}
+/* Scene captions use readable world text; chrome keeps the player's palette. */
+html[data-ui-theme] .hero-selection .hero-summary > small {color:#e4edf6;text-shadow:0 1px 4px #000,0 0 2px #000;}
 html[data-ui-theme] .hero-selection :is(.alpha-mode-tabs,.hero-role-tabs) .menu-control {border-radius:0;}
 html[data-ui-theme] .hero-selection .hero-roster>header {padding:6px;border-radius:var(--app-radius-sm);}
 

@@ -1,4 +1,6 @@
 import {useChatStore} from '../store/chat/chatStore';
+import {isMechanicPlayer} from './reviveTargets';
+import {requestAssistedHealPack} from './healPackTargets';
 import {TANK_SECONDARIES,secondaryDefinition,clearTankFireInputs,type TankFireSource,type TankFireSlot} from './tankLoadout';
 import {Quaternion,Vector3} from 'three';
 import {canDrive} from "../controls/inputRouting";
@@ -87,6 +89,7 @@ export function triggerRam(){
 /** A short click survives the interval between input packets; Rust still owns
  * reload and fire cadence. Holding a weapon face keeps that weapon firing. */
 export function requestWeaponFire(weapon?:TankWeapon){
+ if(isMechanicPlayer()){if(!canDrive())return false;void requestAssistedHealPack();return true;}
  if(!canDrive()||!combatIntent.enabled)return false;
  if(useNetworkStore.getState().getMe()?.vehicle_id==='tank')return weapon&&weapon!=='cannon'?requestSecondaryFire():requestPrimaryFire();
  if(weapon)useCombatStore.getState().selectWeapon(weapon);

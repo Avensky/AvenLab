@@ -12,10 +12,13 @@ import {
 } from "../session/vehicleConfigStore";
 import { CLUSTER_KNOWN_MASK } from "./clusterMasks";
 import { sampleMapTelemetry } from "./mapTelemetry";
+import { createInstrumentContinuity, type InstrumentPower } from "./instrumentContinuity";
 
 export const HUD_UPDATE_HZ = 20;
 export const HUD_STALE_MS = 500;
 export type VehicleTelemetry = {
+  /** Bounded visual-only power continuity; never an engine/input state. */
+  instrumentPower?: InstrumentPower;
   signal: "live" | "waiting" | "stale" | "offline";
   vehicleId: string;
   speedKph: number | null;
@@ -57,7 +60,7 @@ export function projectVehicleTelemetry(
     ? "offline"
     : !entity
       ? "waiting"
-      : receivedMs === undefined ||
+      : receivedMs === undefined || !Number.isFinite(receivedMs) ||
           now - receivedMs > HUD_STALE_MS ||
           now < receivedMs
         ? "stale"
@@ -202,6 +205,7 @@ export function projectVehicleTelemetry(
 export const useVehicleTelemetryStore = create<{ data: VehicleTelemetry }>(
   () => ({ data: projectVehicleTelemetry(null, false, undefined, 0) }),
 );
+const instrumentContinuity = createInstrumentContinuity();
 export function updateVehicleTelemetry(now = performance.now()) {
   const network = useNetworkStore.getState();
   const config =
@@ -214,6 +218,11 @@ export function updateVehicleTelemetry(now = performance.now()) {
     now,
     config,
   );
+  const me = network.getMe();
+  const session = network.connected && me ? `${network.playerId}:${me.room_id}:${me.vehicle_id}` : '';
+  const instrumentPower = instrumentContinuity(session, data, network.snapshot?.received_at_ms, now);
+  // Keep the key present so the primitive-diff sampler also notices expiry.
+  data.instrumentPower = instrumentPower;
   sampleMapTelemetry(data, now);
   const previous = useVehicleTelemetryStore.getState().data;
   if (

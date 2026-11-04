@@ -92,9 +92,10 @@ impl PhysicsWorld {
             let stunned=vehicle.ram.stun_remaining>0.0;
             let steer_input=if stunned {0.0}else{vehicle.steer};
             if stunned{throttle=0.0;brake=0.0;}
+            let guarding=self.guard_boosts.get(player_id).is_some_and(|g|g.mobility_active())&&!vehicle.config.tracked;
             let carrier_speed=if self.ctf_carriers.contains(player_id){crate::ctf::CARRIER_SPEED_FACTOR}else{1.0};
-            let ram_speed=vehicle.ram.speed_multiplier()*carrier_speed;
-            let ram_force=vehicle.ram.force_multiplier();
+            let ram_speed=vehicle.ram.speed_multiplier()*carrier_speed*if guarding {crate::guard_boost::GUARD_SPEED_MULTIPLIER}else{1.0};
+            let ram_force=vehicle.ram.force_multiplier()*if guarding {crate::guard_boost::GUARD_FORCE_MULTIPLIER}else{1.0};
             if vehicle.ram.charging()&&!stunned{throttle=1.0;}
             let handbrake = (if stunned {0.0}else{vehicle.handbrake}).max(vehicle.cockpit.parking_force());
             vehicle.powertrain.manual_gear = vehicle.cockpit.manual_gear();
@@ -104,7 +105,7 @@ impl PhysicsWorld {
             let pivot_demand=vehicle.config.tracked && throttle.abs()<0.01 && steer_input.abs()>0.01 && vehicle.cockpit.manual_gear()!=Some(0);
             let engine_throttle=if pivot_demand {steer_input.abs()*0.85}else{throttle};
             let mut engine_resources=vehicle.config.resources;
-            if vehicle.config.tracked{vehicle.powertrain.boost_requested=false;}
+            if vehicle.config.tracked||guarding{vehicle.powertrain.boost_requested=false;}
             // Ram softens the extra stress with a bounded net heat budget; it must
             // not turn the unchanged radiator into an ability-powered cooler.
             if vehicle.ram.active(){
@@ -120,6 +121,7 @@ impl PhysicsWorld {
                 if consuming{vehicle.powertrain.nos_remaining_s=(vehicle.powertrain.nos_remaining_s-dt).max(0.0);}
                 vehicle.powertrain.boost_active=consuming;
             }
+            if guarding {vehicle.powertrain.boost_active=vehicle.powertrain.running&&!vehicle.powertrain.thermal_recovery;}
             vehicle.vehicle_flags.set(VehicleStateFlags::ENGINE_ON, vehicle.powertrain.running);
             vehicle.vehicle_flags.set(VehicleStateFlags::BOOST, vehicle.powertrain.boost_active);
             if vehicle.cockpit.enabled || vehicle.cockpit.flashing() {
@@ -138,7 +140,8 @@ impl PhysicsWorld {
             let mut loads = HashMap::new();
 
             let cfg = steering_config(vehicle);
-            let target = if vehicle.config.tracked {0.0}else{steer_input * cfg.max_steer_angle};
+            let guard_steering=if guarding {(1.0/(1.0+longitudinal_speed.abs()/120.0)).max(0.75)}else{1.0};
+            let target = if vehicle.config.tracked {0.0}else{steer_input * cfg.max_steer_angle*guard_steering};
             // One active steering strategy: a 0.10 s exponential response.
             // The legacy torque rack is not called. Ackermann below is geometry,
             // not another smoothing pass; positive input turns toward local -X.
@@ -250,6 +253,8 @@ impl PhysicsWorld {
                 let mu = vehicle.config.mu_base;
                 contact.mu_lat = (mu * ratio.powf(-vehicle.config.load_sensitivity))
                     .clamp(mu * 0.6, mu * 1.1);
+                if guarding && handbrake>0.2 && longitudinal_speed.abs()>8.0
+                    && matches!(contact.wheel,WheelId::RL|WheelId::RR) {contact.mu_lat*=0.75;}
             }
 
             let ctx = SolveContext {
@@ -284,9 +289,9 @@ impl PhysicsWorld {
                 && patch.tire_state == crate::aven_tire::state::TireState::Slide);
             vehicle.cockpit.observe_traction(dt, grounded_drive, slipping_drive, vehicle.powertrain.running);
             vehicle.vehicle_flags.set(VehicleStateFlags::TCS, vehicle.cockpit.tcs_enabled(ctx.tcs_enabled));
-            // Cars turn through contact forces only. Tracked vehicles retain
-            // those forces and add the bounded ground-only yaw assist below;
-            // neither path snaps rotation or supplies airborne steering.
+            // Normal cars turn through tire contact forces. Active Guard Boost
+            // adds bounded ground-only stability/drift assistance; tracked
+            // vehicles use their own pivot assist. No airborne steering.
             for patch in &contacts {
                 if let Some(wheel) = wheels.iter_mut()
                     .find(|wheel| WheelId::from_debug(&wheel.debug_id) == patch.wheel) {
@@ -311,6 +316,22 @@ impl PhysicsWorld {
                 let inertia=body_mass*(vehicle.config.chassis_half_extents[0].powi(2)+vehicle.config.chassis_half_extents[2].powi(2))/3.0;
                 let torque=((desired-current)*inertia/0.20).clamp(-inertia*7.0,inertia*7.0);
                 body.apply_torque_impulse(up*torque*dt,true);
+            }
+            if guarding && contacts.iter().filter(|p|p.grounded&&p.normal_force>0.0).count()>=2 {
+                // Bounded angular impulses resist rollover without snapping the
+                // pose or zeroing yaw. Ebrake retains a steerable, controlled arc.
+                let up=body.rotation()*Vector::y();
+                let angular=*body.angvel();
+                let extent=vehicle.config.chassis_half_extents;
+                let inertia=body_mass*(extent[0].powi(2)+extent[2].powi(2))/3.0;
+                let correction=up.cross(&Vector::y())*2.5-vector![angular.x,0.0,angular.z]*1.4;
+                let correction=correction.cap_magnitude(5.0)*inertia*dt;
+                body.apply_torque_impulse(correction,true);
+                if handbrake>0.2 && longitudinal_speed.abs()>8.0 {
+                    let desired=-steer_input*(0.45+longitudinal_speed.abs()*0.01).min(1.4);
+                    let torque=((desired-angular.y)*inertia/0.35).clamp(-inertia*3.0,inertia*3.0);
+                    body.apply_torque_impulse(Vector::y()*torque*dt,true);
+                }
             }
             let velocity = *body.linvel();
             let planar_speed=(velocity.x*velocity.x+velocity.z*velocity.z).sqrt();

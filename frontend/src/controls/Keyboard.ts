@@ -1,4 +1,5 @@
 import {requestNearestRevive,isMechanicPlayer} from '../combat/reviveTargets';
+import {isGuardDpsPlayer,requestGuardBoost,isTankBarrierPlayer,requestTankBarrier} from '../combat/guardBoost';
 import {setScoreboardHeld,useScoreboardStore} from "../store/hud/scoreboardStore";
 import {openHeroGuide,closeHeroGuide} from "../store/hud/heroGuideStore";
 import {cycleHealthBarMode,HEALTH_BAR_LABELS} from "../store/preferences/healthVisibility";
@@ -320,8 +321,9 @@ export function Keyboard() {
       const store = useInputStore.getState();
       const combatKeys=usePreferencesStore.getState().bindings;
       if(event.code===combatKeys.revive&&isMechanicPlayer()){event.preventDefault();void requestNearestRevive();return;}
+      if(event.code===combatKeys.barrier&&isTankBarrierPlayer()){event.preventDefault();if(!event.repeat)void requestTankBarrier();return;}
       if(combatIntent.enabled&&event.code===combatKeys.scope){if(!event.repeat)toggleTankScope();event.preventDefault();return;}
-      if(combatIntent.enabled&&event.code===combatKeys.fire){
+      if((combatIntent.enabled||isMechanicPlayer())&&event.code===combatKeys.fire){
         if(useNetworkStore.getState().getMe()?.vehicle_id==='tank')setWeaponHeld('keyboard','primary',true);
         else combatIntent.keyboardFire=true;
         fireKey=event.code;event.preventDefault();return;
@@ -383,6 +385,7 @@ export function Keyboard() {
         store.togglePlayerFlag(PLAYER_TOGGLES[event.code]);
       else if (event.code === "ShiftLeft"){
         if(useNetworkStore.getState().getMe()?.vehicle_id==='tank'&&combatIntent.enabled)combatIntent.keyboardRam=true;
+        else if(isGuardDpsPlayer()){if(!event.repeat)void requestGuardBoost();}
         else store.setHeldVehicleFlag("keyboard", VehicleFlags.BOOST, true);
       }
       else if (event.code === "KeyN")

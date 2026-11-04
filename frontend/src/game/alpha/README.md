@@ -11,9 +11,20 @@ VehicleMenu lazily reuses HeroSelection in managed games; Back closes the picker
 without cancelling the occupied seat. Main selection Back cancels its session.
 See docs/ALPHA_UI_AND_LOBBIES.md for scope and alpha balancing values.
 
-Play now enters this garage; its six mode destinations are defined in alphaStore.
-Only four are server GameMode IDs. Signal Recon opens existing interface setup;
-Swarm remains planned. sessionActions rejects research/planned mode_join calls.
+Play enters this garage with only Quickplay and Competitive tabs. The two portrait
+cards select 3v3 or 5v5 independently; the combined `mode` and `team_size` travel in
+one server-validated `mode_join`. Selecting or focusing a size never joins a queue.
+`teamSize` retains the format while changing category; authoritative admission and
+queue views restore it after reconnect/promotion. Role limits, teammate slots,
+results and Play Again use the server's confirmed size. Legacy `skirmish` records
+remain readable and requeue as Quickplay 3v3 rather than adding a duplicate tab.
+
+The compact main menu's Explore & Build entry opens the other four destinations:
+Sandbox, World Editor, Signal Recon and the planned Swarm Command. They share the
+garage/configuration component but cannot become extra Play match tabs. Returning
+to Play restores the last Quickplay/Competitive category and selected size.
+Signal Recon opens existing interface setup; sessionActions rejects research/planned
+mode_join calls.
 The restored VehicleSelector/MapSelector use native SelectorArrow buttons under
 form navigation, retaining legacy setup-row behavior elsewhere. Vehicle arrows
 use the same server-validated hero chooser as the wall. Map arrows lock once a

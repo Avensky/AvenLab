@@ -1,6 +1,8 @@
 import {CtfFlagMarkers} from "../game/stats/CtfFlagMarkers";
 import { VehicleHealthMarkers } from "../combat/VehicleHealthMarkers";
 import { NetworkWeapons } from "../combat/NetworkWeapons";
+import { NetworkHealthPacks } from "../combat/NetworkHealthPacks";
+import { NetworkGuardShields } from "../combat/NetworkGuardShields";
 // src/vehicles/VehicleScene.tsx
 import * as THREE from "three";
 import { DebugWheelVisualizer } from "../components/debugger/DebugWheelVisualizer";
@@ -19,6 +21,8 @@ export function VehicleScene() {
     <>
       <VehicleRoster />
       <NetworkWeapons />
+      <NetworkHealthPacks />
+      <NetworkGuardShields />
       <VehicleHealthMarkers />
       <CtfFlagMarkers />
       {mask !== 0 && <VehicleDiagnostics />}

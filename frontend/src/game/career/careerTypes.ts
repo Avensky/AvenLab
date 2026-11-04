@@ -16,7 +16,7 @@ export type CareerBucket={
  totals:CareerStats;best:CareerStats;mvp:number;svp:number;play_of_the_game:number;top_support:number;
 };
 export type CareerHistoryEntry={
- match_id:string;mode:string;map:string;ended_at:number;duration_s:number;training:boolean;
+ match_id:string;mode:string;team_size?:1|3|5|null;map:string;ended_at:number;duration_s:number;training:boolean;
  outcome:CareerOutcome;hero:string;team:CareerTeam|null;stats:CareerStats;
  awards:CareerAward[];abandoned:boolean;
 };
@@ -35,7 +35,7 @@ export type CareerPlayOfGame={
  kills:number;captures:number;damage:number;description?:string;replay_available?:boolean;
 };
 export type CareerMatch={
- match_id:string;world_id:number;mode:string;map:string;ended_at:number;duration_s:number;
+ match_id:string;world_id:number;mode:string;team_size?:1|3|5|null;map:string;ended_at:number;duration_s:number;
  training:boolean;progression_eligible:boolean;winner:CareerTeam|null;score:[number,number];participants:CareerParticipant[];
  play_of_game:CareerPlayOfGame|null;
 };

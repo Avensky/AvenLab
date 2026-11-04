@@ -9,7 +9,6 @@ import { performanceRecorder as recorder } from "./measurements";
 import { initializeCaptureArchive } from "./captureActions";
 import { cityStreamingStats } from "../world/cityWorkQueue";
 import { usePreferencesStore } from "../store/preferences/preferencesStore";
-import { useHudPanelsStore } from "../store/hud/hudPanelsStore";
 import { sampleHudFrame, resetHudFrames } from "./frameReadout";
 
 export function PerformanceProbe() {
@@ -35,10 +34,7 @@ export function PerformanceProbe() {
         driving &&
         useUIStore.getState().overlay === null &&
         useRenderSettingsStore.getState().hud &&
-        preferences.showDriveControls &&
-        preferences.hudGroups.climate &&
-        preferences.climateHudSize === "compact" &&
-        useHudPanelsStore.getState().climate
+        preferences.hudGroups.performance
       )
         sampleHudFrame(started);
       else resetHudFrames();

@@ -1,4 +1,6 @@
 import {sampleTankFire,clearTankFireInputs} from '../combat/tankLoadout';
+import {isMechanicPlayer} from '../combat/reviveTargets';
+import {requestAssistedHealPack} from '../combat/healPackTargets';
 import {canAimTurret,syncTurretOrientation} from "../combat/turretControls";
 import { combatIntent,tankFireInputs,DEFAULT_MOUNT,useCombatStore } from "../combat/combatStore";
 import { useNetworkStore } from "../store/session/networkStore";
@@ -51,10 +53,14 @@ function transmitInput(allowQueuedNeutral = false) {
       // Older servers treat unknown weapon IDs as cannon. Never let a missing
       // basket capability turn an intended machine-gun request into a cannon.
       const supported=firing.weapon!=='basket'||me?.combat?.basket_reload!==undefined;
+      const healer=isMechanicPlayer();
+      // Primary support fire does not require turret enable/aim. It requests an
+      // assisted projectile through the server adapter, never a damaging ray.
+      if(healer&&firing.fire&&ui.overlay===null&&document.visibilityState!=='hidden')void requestAssistedHealPack();
       combatIntent.weapon=firing.weapon;
       return {...combatIntent,hull_locked:combatIntent.orientationLocked,
         ram:ui.overlay===null&&(combatIntent.ram||combatIntent.gamepadRam||combatIntent.keyboardRam||now<combatIntent.ramPulseUntil),
-        weapon:firing.weapon,fire:supported&&enabled&&ui.overlay===null&&firing.fire,enabled,
+        weapon:firing.weapon,fire:!healer&&supported&&enabled&&ui.overlay===null&&firing.fire,enabled:!healer&&enabled,
         ...(state.mounts[me?.vehicle_id??'']??DEFAULT_MOUNT)};
     })(),
     type: "input",

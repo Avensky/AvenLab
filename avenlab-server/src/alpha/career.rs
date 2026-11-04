@@ -61,15 +61,16 @@ pub struct PlayOfGame {
 #[derive(Clone,Debug,PartialEq,Serialize,Deserialize)]
 #[serde(default)]
 pub struct CareerMatch {
-    pub match_id:String,pub world_id:usize,pub mode:Mode,pub map:String,
+    pub match_id:String,pub world_id:usize,pub mode:Mode,pub team_size:Option<usize>,pub map:String,
     pub ended_at:u64,pub duration_s:f64,pub training:bool,pub progression_eligible:bool,
     pub winner:Option<String>,pub score:[u32;2],pub participants:Vec<CareerParticipant>,
     pub play_of_game:Option<PlayOfGame>,
 }
 impl Default for CareerMatch {
-    fn default()->Self{Self{match_id:String::new(),world_id:0,mode:Mode::Quickplay,map:String::new(),ended_at:0,duration_s:0.0,training:false,progression_eligible:false,winner:None,score:[0,0],participants:Vec::new(),play_of_game:None}}
+    fn default()->Self{Self{match_id:String::new(),world_id:0,mode:Mode::Quickplay,team_size:None,map:String::new(),ended_at:0,duration_s:0.0,training:false,progression_eligible:false,winner:None,score:[0,0],participants:Vec::new(),play_of_game:None}}
 }
 impl CareerMatch {
+    pub fn effective_team_size(&self)->usize {self.team_size.unwrap_or_else(||self.mode.team_size())}
     pub fn mode_key(&self)->&'static str{if self.training{"training"}else{mode_key(self.mode)}}
     pub fn outcome_for(&self,participant:&CareerParticipant)->CareerOutcome{
         if self.mode.bucket()!=0{return if participant.abandoned{CareerOutcome::Abandoned}else{CareerOutcome::Completed};}
@@ -78,6 +79,7 @@ impl CareerMatch {
     }
     pub fn validate(&self)->Result<(),String>{
         valid_identifier(&self.match_id)?;
+        if self.team_size.is_some_and(|size|if self.mode.bucket()==0 {![3,5].contains(&size)}else{size!=1}) {return Err("Invalid career match size.".into());}
         if self.map.len()>128||self.map.chars().any(char::is_control){return Err("Invalid career map identifier.".into());}
         if !self.duration_s.is_finite()||self.duration_s<0.0||self.duration_s>7.0*86400.0{return Err("Invalid career match duration.".into());}
         if self.participants.is_empty()||self.participants.len()>MAX_PARTICIPANTS{return Err("Invalid career participant count.".into());}
@@ -101,7 +103,7 @@ impl CareerMatch {
         }Ok(())
     }
 }
-pub fn mode_key(mode:Mode)->&'static str{match mode{Mode::Quickplay=>"quickplay",Mode::Competitive=>"competitive",Mode::Sandbox=>"sandbox",Mode::Editor=>"editor"}}
+pub fn mode_key(mode:Mode)->&'static str{match mode{Mode::Quickplay=>"quickplay",Mode::Competitive=>"competitive",Mode::Skirmish=>"skirmish",Mode::Sandbox=>"sandbox",Mode::Editor=>"editor"}}
 fn valid_identifier(value:&str)->Result<(),String>{if value.is_empty()||value.len()>128||!value.bytes().all(|c|c.is_ascii_alphanumeric()||b"_-:.".contains(&c)){Err("Invalid career identifier.".into())}else{Ok(())}}
 
 #[derive(Clone,Debug)]
@@ -152,11 +154,11 @@ impl CareerBucket{
 }
 #[derive(Clone,Debug,PartialEq,Serialize,Deserialize)]
 pub struct CareerHistoryEntry{
-    pub match_id:String,pub mode:Mode,pub map:String,pub ended_at:u64,pub duration_s:f64,pub training:bool,
+    pub match_id:String,pub mode:Mode,#[serde(default)]pub team_size:Option<usize>,pub map:String,pub ended_at:u64,pub duration_s:f64,pub training:bool,
     pub outcome:CareerOutcome,pub hero:String,pub team:Option<String>,pub stats:CareerStats,pub awards:Vec<CareerAward>,pub abandoned:bool,
 }
 impl CareerHistoryEntry{
-    pub fn from_match(record:&CareerMatch,profile_id:&str)->Option<Self>{let p=record.participants.iter().find(|p|p.profile_id==profile_id)?;Some(Self{match_id:record.match_id.clone(),mode:record.mode,map:record.map.clone(),ended_at:record.ended_at,duration_s:record.duration_s,training:record.training,outcome:record.outcome_for(p),hero:p.hero.clone(),team:p.team.clone(),stats:p.stats.clone(),awards:p.awards.clone(),abandoned:p.abandoned})}
+    pub fn from_match(record:&CareerMatch,profile_id:&str)->Option<Self>{let p=record.participants.iter().find(|p|p.profile_id==profile_id)?;Some(Self{match_id:record.match_id.clone(),mode:record.mode,team_size:Some(record.effective_team_size()),map:record.map.clone(),ended_at:record.ended_at,duration_s:record.duration_s,training:record.training,outcome:record.outcome_for(p),hero:p.hero.clone(),team:p.team.clone(),stats:p.stats.clone(),awards:p.awards.clone(),abandoned:p.abandoned})}
 }
 #[derive(Clone,Debug,PartialEq,Serialize,Deserialize)]
 #[serde(default)]
@@ -208,7 +210,7 @@ pub fn write_match_archive(social_path:&Path,record:&CareerMatch)->Result<(),Str
 pub fn read_match_archive(social_path:&Path,match_id:&str)->Result<CareerMatch,String>{valid_identifier(match_id)?;let record:CareerMatch=read_json(&archive_root(social_path).join("records").join(format!("{}.json",digest(match_id))),MAX_RECORD_BYTES)?;record.validate()?;if record.match_id!=match_id{return Err("Career archive ID mismatch.".into());}Ok(record)}
 pub fn read_history(social_path:&Path,profile_id:&str,cursor:Option<&str>,limit:usize,completed:&BTreeSet<String>)->Result<HistoryPage,String>{read_history_filtered(social_path,profile_id,cursor,limit,None,None,completed)}
 pub fn read_history_filtered(social_path:&Path,profile_id:&str,cursor:Option<&str>,limit:usize,mode:Option<&str>,hero:Option<&str>,completed:&BTreeSet<String>)->Result<HistoryPage,String>{
-    valid_identifier(profile_id)?;if !(1..=50).contains(&limit){return Err("Choose 1–50 career records per page.".into());}if mode.is_some_and(|m|!["quickplay","competitive","sandbox","editor","training"].contains(&m)){return Err("Unknown career mode filter.".into());}if let Some(hero)=hero{valid_identifier(hero)?;}
+    valid_identifier(profile_id)?;if !(1..=50).contains(&limit){return Err("Choose 1–50 career records per page.".into());}if mode.is_some_and(|m|!["quickplay","competitive","skirmish","sandbox","editor","training"].contains(&m)){return Err("Unknown career mode filter.".into());}if let Some(hero)=hero{valid_identifier(hero)?;}
     let path=archive_root(social_path).join("players").join(format!("{}.json",digest(profile_id)));let mut index:Vec<ArchiveRef>=if path.exists(){read_json(&path,MAX_INDEX_BYTES)?}else{Vec::new()};
     index.retain(|r|completed.contains(&r.match_id)&&mode.is_none_or(|mode|r.mode==mode)&&hero.is_none_or(|hero|r.hero==hero));
     let offset=if let Some(cursor)=cursor{if cursor.len()!=67||!cursor.starts_with("v1:")||!cursor[3..].bytes().all(|c|c.is_ascii_hexdigit()){return Err("Invalid career history cursor.".into());}index.iter().position(|r|digest(&r.match_id)==cursor[3..]).map(|i|i+1).ok_or("Career history cursor does not belong to this filtered player history.")?}else{0};

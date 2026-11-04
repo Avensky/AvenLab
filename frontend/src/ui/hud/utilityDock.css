@@ -239,14 +239,14 @@
   margin: 6px auto;
 }
 .utility-climate .climate-knob output {
-  font-size: 6px;
+  font-size: 8px;
 }
 .utility-climate .knob-title {
-  font-size: 6px;
+  font-size: 7px;
   top: -8px;
 }
 .utility-climate .climate-knob button {
-  font-size: 5px;
+  font-size: 6px;
   min-height: 0;
   padding: 1px;
 }
@@ -379,11 +379,11 @@
   gap: 3px;
   font: 9px/1.4 monospace;
   white-space: nowrap;
-  color: #d9edf5;
+  color: var(--app-text);
 }
 .cabin-performance small {
   font-size: 5px;
-  color: #9fb6c7;
+  color: var(--app-muted);
 }
 
 /* Collapsed launchers are fixed-size controls, with no fractional transform or
@@ -424,3 +424,60 @@
 }
 .utility-toggle svg { display: block; }
 .hud-utilities .match-clock { min-width: 5.5em; text-align: center; }
+
+/* Driving head units use one horizontal row. Cockpit pages and the CLASSIC
+   radio/full HVAC options keep their larger controls. */
+.hud-utilities .radio-single-row{position:relative;display:flex;align-items:center;gap:3px;min-height:30px;padding:3px;box-sizing:border-box;color:var(--app-text);background:var(--app-panel);overflow:visible}
+.hud-utilities .radio-single-row > button{box-sizing:border-box;display:grid;place-items:center;flex:0 0 24px;width:24px;height:24px;min-width:24px;min-height:24px;padding:4px;border:1px solid color-mix(in srgb,var(--app-accent) 35%,transparent);border-radius:0;background:var(--app-raised);color:var(--app-text);font:11px/1 system-ui}
+.hud-utilities .radio-single-row > button svg{width:100%;height:100%}
+.hud-utilities .radio-single-row > .radio-track-name{display:block;flex:1 1 auto;width:auto;min-width:0;padding:2px;font-size:7px;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;text-align:left}
+.hud-utilities .radio-single-row .radio-volume-dial{flex:0 0 24px;width:24px;height:24px;margin:0;padding:0}
+.hud-utilities .radio-single-row .radio-volume-dial .climate-knob{box-sizing:border-box;width:24px;height:24px;margin:0}
+.radio-single-row .knob-title,.radio-single-row .radio-volume-dial output{display:none}
+.radio-single-row .radio-volume-dial .climate-knob button{font-size:7px}
+.radio-single-notice{position:absolute;right:0;top:calc(100% + 3px);z-index:10;max-width:100%;padding:4px;background:var(--app-panel);color:var(--app-text);font-size:8px;overflow-wrap:anywhere}
+/* Clock and temperature stay adjacent instead of stretching to both ends.
+   Compact can wrap its optional performance strip; Single Bar never adds it. */
+.utility-climate .climate-panel:is([data-size=compact],[data-size=single]){display:flex;flex-wrap:nowrap;align-items:center;gap:3px;min-height:34px;padding:3px;box-sizing:border-box;background:var(--app-panel);color:var(--app-text)}
+.utility-climate .climate-panel[data-size=single]{flex-wrap:nowrap}
+.utility-climate .climate-panel:is([data-size=compact],[data-size=single]) .console-clock-strip{display:flex;flex:0 1 auto;justify-content:flex-start;align-items:center;gap:3px;min-width:0;min-height:26px;padding:0}
+.utility-climate .climate-panel:is([data-size=compact],[data-size=single]) .utility-toggle{position:static;order:3;flex:0 0 23px;margin-left:auto;border-radius:0}
+.utility-climate .climate-panel:is([data-size=compact],[data-size=single]) .cabin-performance{display:flex;align-items:center;justify-content:flex-start;gap:7px;border:0;padding:0;flex:0 0 auto}
+.utility-climate .climate-panel:is([data-size=compact],[data-size=single]) .cabin-performance output{flex-direction:column;gap:0;font-size:11px;line-height:1.1}
+.utility-climate .climate-panel:is([data-size=compact],[data-size=single]) .cabin-performance small{font-size:6px}
+.utility-climate .climate-panel[data-size=compact] .cabin-performance output[aria-label="Frame time"]{display:none}
+.utility-climate .climate-panel:is([data-size=compact],[data-size=single]) .console-clock-strip .cabin-clock{min-width:60px;font-size:12px;padding:4px 12px 4px 6px}
+.utility-climate .climate-panel:is([data-size=compact],[data-size=single]) .console-clock-strip output{font-size:11px;color:var(--app-text)}
+.utility-climate .climate-panel:is([data-size=compact],[data-size=single]) .physical-hazard{flex:none;width:24px;height:24px;min-width:24px;min-height:24px}
+/* The bearing is supplemental telemetry; hover/focus reveals its full text
+   while its compact glyph shares the same row as the cabin strip. */
+.utility-climate .climate-panel:is([data-size=compact],[data-size=single]) .turret-instruments{max-width:12px;flex:0 0 12px;overflow:hidden;white-space:nowrap;text-overflow:clip;font-size:6px;padding:0}
+.hud-utilities .radio-single-row .radio-track-name small{display:block;font:inherit;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.utility-climate .climate-panel:is([data-size=compact],[data-size=single]) .turret-instruments{font-size:0}
+.utility-climate .climate-panel:is([data-size=compact],[data-size=single]) .turret-instruments::before{content:'⌖';font-size:14px;color:var(--app-muted)}
+.hud-utilities{container-type:inline-size}
+@container(max-width:200px){
+ .hud-utilities .radio-single-row{gap:2px}
+ .hud-utilities .radio-single-row > button:not(.radio-track-name){flex-basis:20px;width:20px;min-width:20px;height:22px;min-height:22px;padding:3px}
+ .hud-utilities .radio-single-row .radio-volume-dial{flex-basis:20px;width:20px;height:22px}
+ .hud-utilities .radio-single-row .radio-volume-dial .climate-knob{width:20px;height:22px}
+ .utility-climate .climate-panel[data-size=compact]{flex-wrap:wrap}
+ .utility-climate .climate-panel[data-size=compact] .cabin-performance{order:4;flex-basis:100%;gap:8px;padding:3px 1px 0;border-top:1px solid var(--app-line,#45647760)}
+ .utility-climate .climate-panel[data-size=compact] .cabin-performance output{flex-direction:row;gap:3px}
+ .utility-climate .climate-panel[data-size=compact] .cabin-performance output[aria-label="Frame time"]{display:flex}
+}
+
+/* Optional readouts own their row when HVAC or the radio is absent. */
+.utility-readouts{display:flex;align-items:center;justify-content:flex-end;gap:6px;min-width:0;color:var(--app-text);pointer-events:auto}
+.utility-readouts .cabin-performance{display:flex;align-items:center;gap:7px;padding:5px 7px;border:0;background:var(--app-panel);border-radius:6px}
+.utility-readouts .cabin-performance output{font-size:11px;gap:3px}
+.utility-readouts .cabin-performance small{font-size:6px}
+.utility-readouts .physical-hazard{width:28px;height:28px;min-width:28px;min-height:28px}
+.missions-only-heading{display:flex;align-items:center;justify-content:space-between;padding:4px 7px;gap:8px;background:var(--app-panel);color:var(--app-text)}
+.missions-only-heading button{display:grid;place-items:center;width:24px;height:24px;padding:0;color:inherit;background:transparent;border:0;border-radius:50%}
+.missions-only-heading button:is(:hover,:focus-visible){background:var(--app-accent-soft);box-shadow:0 0 8px var(--app-accent)}
+/* The score/capture cue owns the top lane in a CTF world. */
+@media(max-width:600px) and (orientation:portrait){.driving-hud[data-ctf-match=true] .hud-top-left{top:max(76px,calc(env(safe-area-inset-top) + 68px))}}
+
+.utility-readouts .cabin-performance output{color:var(--app-text)}
+.utility-readouts .cabin-performance small{color:var(--app-muted)}

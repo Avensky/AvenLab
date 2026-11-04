@@ -1,0 +1,6 @@
+.heal-pack-action{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:0;color:var(--app-text);background:transparent;border:0;touch-action:none}
+.heal-pack-action>.cooldown-dial{color:#7ff0b4}.heal-pack-action>span{font-size:7px;line-height:1.1}.heal-pack-action>small,.heal-pack-action>output{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:6px;line-height:1.2;color:var(--app-muted)}
+.heal-pack-action:disabled{opacity:.55}.heal-pack-action[data-ready=true]{opacity:1}.heal-pack-action:is(:hover,:focus-visible){text-decoration:none;filter:drop-shadow(0 0 5px #70e9ad66)}
+.revive-action-fallback[data-mechanic-support=true]{display:flex;align-items:center;gap:6px}.revive-action-fallback .heal-pack-action{width:72px;min-height:90px}
+/* Floating world labels need their own contrast surface in light app themes. */
+.revive-action-fallback[data-mechanic-support=true] :is(.heal-pack-action,.revive-action)>:is(span,small,output):not(.cooldown-clock){background:var(--app-panel);color:var(--app-text);border-radius:3px;box-shadow:0 0 0 2px var(--app-panel),0 2px 6px #0005}

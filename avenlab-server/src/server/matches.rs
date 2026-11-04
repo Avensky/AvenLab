@@ -2,7 +2,7 @@
 //! Profiles come only from authenticated connections; neither results nor
 //! statistics are accepted from socket payloads.
 use super::*;
-use crate::alpha::{Mode, career::{self, CareerEvent, CareerMatch, CareerParticipant, CareerStats, PlayOfGame}, policy};
+use crate::alpha::{Mode, MatchFormat, career::{self, CareerEvent, CareerMatch, CareerParticipant, CareerStats, PlayOfGame}, policy};
 use crate::ctf::CtfPhase;
 use crate::vehicle_health::VehicleHealth;
 use std::{collections::BTreeMap, path::Path, time::Instant};
@@ -16,6 +16,7 @@ pub(super) struct MatchBridge {
 struct Journal {
     match_id: String,
     mode: Mode,
+    team_size: usize,
     map: String,
     training: bool,
     progression_eligible: bool,
@@ -44,8 +45,8 @@ struct Sample {
     health: VehicleHealth,
 }
 impl Journal {
-    fn new(match_id: String, mode: Mode, map: String, training: bool, eligible: bool) -> Self {
-        Self { match_id, mode, map, training, progression_eligible: eligible,
+    fn new(match_id: String, format: MatchFormat, map: String, training: bool, eligible: bool) -> Self {
+        Self { match_id, mode:format.mode, team_size:format.team_size, map, training, progression_eligible: eligible,
             created: Instant::now(), elapsed: 0.0, people: BTreeMap::new(),
             sources: HashMap::new(), aliases: HashMap::new(), moments: HashMap::new() }
     }
@@ -84,7 +85,7 @@ impl Journal {
         for source in self.sources.values() {
             if let Some(person) = people.get_mut(&source.profile) { person.stats.add_assign(&source.stats); }
         }
-        CareerMatch { match_id: self.match_id.clone(), world_id: world, mode: self.mode,
+        CareerMatch { match_id: self.match_id.clone(), world_id: world, mode: self.mode, team_size:Some(self.team_size),
             map: self.map.clone(), ended_at, duration_s: self.elapsed, training: self.training,
             progression_eligible: self.progression_eligible, participants: people.into_values().collect(),
             ..Default::default() }
@@ -196,6 +197,11 @@ impl Server {
             }
         }
     }
+    pub(super) async fn match_accepts_new_players(&self,world:usize)->bool {
+        let runtime=self.runtimes.lock().await.get(&world).cloned();
+        if let Some(runtime)=runtime {return runtime.lock().await.round.as_ref().is_none_or(|r|r.phase==CtfPhase::Waiting);}
+        true
+    }
     pub(super) async fn match_ended(&self, world: usize) -> bool {
         let runtime = self.runtimes.lock().await.get(&world).cloned();
         if let Some(runtime) = runtime {
@@ -230,21 +236,19 @@ impl Server {
         let mut bridge = self.matches.lock().await;
         let journal = bridge.journals.entry(world).or_insert_with(|| Journal::new(
             room.round.as_ref().map(|r| r.match_id.clone()).unwrap_or_else(|| format!("activity:{}", id())),
-            mode, info.map, room.round.as_ref().is_some_and(|r| r.training), mode.bucket() == 0 && room.round.as_ref().is_some_and(|r| !r.training)));
+            MatchFormat::for_world(mode,info.max_players), info.map, room.round.as_ref().is_some_and(|r| r.training), mode.bucket() == 0 && room.round.as_ref().is_some_and(|r| !r.training)));
         let elapsed = room.round.as_ref().map(|r| r.elapsed_s as f64).unwrap_or_else(|| journal.created.elapsed().as_secs_f64());
         for sample in samples { journal.sample(sample, elapsed); }
     }
-    fn valid_start(members: &[(&String, &crate::alpha::Member)], room: &WorldRuntime, strict: bool) -> bool {
+    fn valid_start(format: MatchFormat, members: &[(&String, &crate::alpha::Member)], room: &WorldRuntime, strict: bool) -> bool {
         let deployed: Vec<_> = members.iter().filter(|(id, m)|
             room.physics.vehicles.contains_key(*id) && !m.hero.is_empty()).collect();
         if !strict { return [Team::Red, Team::Blue].iter().all(|t| deployed.iter().any(|(_, m)| m.team == *t)); }
-        if deployed.len() != 10 { return false; }
+        if deployed.len() != format.capacity() || deployed.iter().any(|(_, member)| member.format() != format) { return false; }
         [Team::Red, Team::Blue].iter().all(|team| {
             let heroes: Vec<_> = deployed.iter().filter(|(_, m)| m.team == *team)
                 .filter_map(|(_, m)| policy::hero(&m.hero).ok()).collect();
-            heroes.len() == 5 && heroes.iter().filter(|h| h.role == policy::Role::Tank).count() == 1
-                && heroes.iter().filter(|h| h.role == policy::Role::Dps).count() >= 2
-                && heroes.iter().filter(|h| h.role == policy::Role::Support).count() >= 1
+            policy::complete_team_format(format, &heroes.iter().map(|hero| hero.role).collect::<Vec<_>>())
         })
     }
     pub async fn maintain_matches(&self) {
@@ -258,11 +262,12 @@ impl Server {
             let info = self.data.lock().await.worlds.get(world).cloned();
             let Some(info) = info else { continue; };
             let mode = info.mode.unwrap_or(Mode::Sandbox);
+            let format=MatchFormat::for_world(mode,info.max_players);
             let mut room = runtime.lock().await;
-            if mode.bucket() == 0 && room.round.is_none() { let _ = room.configure_round(mode, !alpha.enforce_roles); }
+            if mode.bucket() == 0 && room.round.is_none() { let _ = room.configure_round_format(format, !alpha.enforce_roles); }
             if room.round.as_ref().is_some_and(|r| r.phase == CtfPhase::Waiting) {
                 let members: Vec<_> = alpha.members.iter().filter(|(_, m)| m.world == *world).collect();
-                if Self::valid_start(&members, &room, alpha.enforce_roles) {
+                if Self::valid_start(format, &members, &room, alpha.enforce_roles) {
                     if let Err(error) = room.start_round() { eprintln!("[career] Could not start round: {error}"); }
                     else { self.reset_revival_cooldowns(*world).await; }
                 }
@@ -275,7 +280,7 @@ impl Server {
                     let mut bridge = self.matches.lock().await;
                     let journal = bridge.journals.entry(*world).or_insert_with(|| Journal::new(
                         room.round.as_ref().map(|r| r.match_id.clone()).unwrap_or_else(|| format!("activity:{}", id())),
-                        mode, info.map.clone(), mode.bucket() == 0 && !alpha.enforce_roles,
+                        format, info.map.clone(), mode.bucket() == 0 && !alpha.enforce_roles,
                         mode.bucket() == 0 && alpha.enforce_roles));
                     let elapsed = room.round.as_ref().map(|r| r.elapsed_s as f64).unwrap_or_else(|| journal.created.elapsed().as_secs_f64());
                     for sample in samples { journal.sample(sample, elapsed); }
@@ -342,7 +347,7 @@ impl Server {
             let mut bridge = self.matches.lock().await;
             if !samples.is_empty() && room.round.is_none() {
                 if let Some(info) = info {
-                    bridge.journals.entry(world).or_insert_with(|| Journal::new(format!("activity:{}", id()), info.mode.unwrap_or(Mode::Sandbox), info.map, false, false));
+                    bridge.journals.entry(world).or_insert_with(|| Journal::new(format!("activity:{}", id()), MatchFormat::for_world(info.mode.unwrap_or(Mode::Sandbox),info.max_players), info.map, false, false));
                 }
             }
             if let Some(journal) = bridge.journals.get_mut(&world) {
@@ -468,10 +473,16 @@ impl Server {
         *self.data.lock().await = next;
         self.commit(previous).await?;
         if record.mode.bucket() == 0 && self.matches.lock().await.ended.contains_key(&record.world_id) {
-            let payload = json!({"type":"match_result","data":record}).to_string();
-            for client in self.connections.lock().await.values() {
-                if client.profile_id.as_ref().is_some_and(|id| record.participants.iter().any(|p| &p.profile_id == id)) {
-                    let _ = client.tx.send(payload.clone());
+            let runtime=self.runtimes.lock().await.get(&record.world_id).cloned();
+            let current_round=if let Some(runtime)=runtime {runtime.lock().await.round.as_ref().is_some_and(|round|round.match_id==record.match_id&&round.phase==CtfPhase::Ended)}else{false};
+            // A departed participant may already be playing another game. Old
+            // archive retries and reused world IDs must never replace its HUD.
+            if current_round {
+                let payload = json!({"type":"match_result","data":record}).to_string();
+                for client in self.connections.lock().await.values() {
+                    if client.world_id==Some(record.world_id) && client.profile_id.as_ref().is_some_and(|id| record.participants.iter().any(|p| &p.profile_id == id)) {
+                        let _ = client.tx.send(payload.clone());
+                    }
                 }
             }
         }

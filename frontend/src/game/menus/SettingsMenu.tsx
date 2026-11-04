@@ -1,5 +1,6 @@
 import {HEALTH_BAR_LABELS,cycleHealthBarMode} from "../../store/preferences/healthVisibility";
 import { HUD_GROUP_LABELS } from "../../store/preferences/index";
+import { CLIMATE_HUD_LABELS, CLIMATE_HUD_SIZES } from "../../store/preferences/hudVisibility";
 import { ControllerGuide } from "../../components/controller";
 import { appearanceSettingsRows } from "./appearanceSettingsRows";
 import { useEffect, useState } from "react";
@@ -46,6 +47,7 @@ const BINDING_LABELS: Record<BindingAction, string> = {
   previousWeapon:"Previous secondary weapon",
   scope: "Tank scope",
   revive: "Mechanic revive nearby teammate",
+  barrier: "Tank personal barrier",
   healthBars: "Cycle health bars",
 };
 
@@ -151,18 +153,18 @@ export function SettingsMenu() {
     },
     {
       id: "touch-visible",
-      label: "On-screen steering & pedals",
+      label: "On-screen touch controls",
       description:
-        "Optional in either layout. Keyboard and controller always work.",
+        "Show or hide wheel, levers, pedals and aim controls together. Individual HUD switches below can restore any combination. Keyboard and controller always work.",
       value: prefs.showTouchControls ? "Show" : "Hide",
       action: () =>
         prefs.update({ showTouchControls: !prefs.showTouchControls }),
     },
     {
       id: "drive-switches",
-      label: "On-screen drive switches",
+      label: "On-screen console controls",
       description:
-        "ABS, TRAC, VSC SPORT and parking brake. All remain available in Cockpit.",
+        "Show or hide console widgets together, then mix individual components below. Cockpit controls remain available.",
       value: prefs.showDriveControls ? "Show" : "Hide",
       action: () =>
         prefs.update({ showDriveControls: !prefs.showDriveControls }),
@@ -263,9 +265,20 @@ export function SettingsMenu() {
             id: "hud",
             label: "HUD",
             description:
-              "Hide or restore each group. Closing a group never disables keyboard or controller input. Chat space is reserved; a message service is not connected yet.",
+              "Mix any HUD components individually. Presets are shortcuts; each switch below controls its own component. Keyboard and controller inputs remain available.",
             rows: [
               ...drivingRows,
+              {
+                id: "instrument-preset",
+                label: "Instrument layout",
+                value: prefs.hudGroups.gauges ? (prefs.hudGroups.futuristic ? "BOTH" : "CLASSIC") : (prefs.hudGroups.futuristic ? "FUTURISTIC" : "HIDDEN"),
+                description: "Choose a starting layout, then mix individual HUD groups below. Driving inputs stay enabled.",
+                action: (dir) => {
+                  const current = prefs.hudGroups.gauges ? (prefs.hudGroups.futuristic ? "both" : "classic") : (prefs.hudGroups.futuristic ? "futuristic" : "hidden");
+                  const next = step(["classic", "futuristic", "both", "hidden"] as const, current, dir);
+                  prefs.update({hudGroups: {gauges: next === "classic" || next === "both", futuristic: next === "futuristic" || next === "both"}});
+                },
+              },
               {
                 id: "health-bars",
                 label: "Health bars",
@@ -286,9 +299,17 @@ export function SettingsMenu() {
                     ),
                   }),
               },
-              // Climate owns its hazard-button option. One row hides the whole
-              // unit; no second cabin-strip gate can leave a hidden strip live.
-              ...HUD_GROUPS.filter((id) => id !== "hazards").map(
+              {
+                id: "climate-size",
+                label: "Climate dashboard style",
+                value: CLIMATE_HUD_LABELS[prefs.climateHudSize],
+                description: "Single bar omits performance; Compact adds the readout. Performance and hazards can also be shown independently below.",
+                action: (dir) => {
+                  const size = step(CLIMATE_HUD_SIZES, prefs.climateHudSize, dir);
+                  prefs.update({climateHudSize: size, ...(size === "single" ? {hudGroups: {performance: false}} : size === "compact" ? {hudGroups: {performance: true, hazards: true}} : {})});
+                },
+              },
+              ...HUD_GROUPS.map(
                 (id): MenuRow => ({
                   id: `hud-${id}`,
                   label: groupLabels[id],

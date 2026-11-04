@@ -1,3 +1,5 @@
+import {applyTeamIdentityColors} from './matchTeamTheme.ts';
+
 /** Base palettes are always available. Never gate readable UI behind progress. */
 export const UI_THEMES = {
   navy: {
@@ -136,4 +138,5 @@ export function applyUITheme(theme: UITheme) {
   for (const [name, value] of Object.entries(palette))
     if (name !== "label" && name !== "scheme")
       root.style.setProperty(`--app-${name}`, value);
+  applyTeamIdentityColors(root, palette.scheme);
 }

@@ -363,6 +363,21 @@ fn timeout_chooses_nearest_supported_central_or_own_home_zone(){
     }
 }
 #[test]
+fn passive_ultimate_helper_rejects_invalid_time_and_requires_a_living_enabled_body() {
+    let mut w=world();
+    for dt in [f32::NAN, f32::INFINITY, f32::MAX, -1.0, 0.0, 0.101] { w.advance_passive_ultimates(dt, ["shooter"].into_iter()); }
+    assert_eq!(w.vehicles["shooter"].powertrain.ultimate_fraction,0.0);
+    w.advance_passive_ultimates(0.1,["shooter"].into_iter());
+    let charge=w.vehicles["shooter"].powertrain.ultimate_fraction;
+    assert!((charge-0.1/crate::powertrain::PASSIVE_ULTIMATE_SECONDS).abs()<0.0000001);
+    assert_eq!(w.vehicles["target"].powertrain.ultimate_fraction,0.0,"a non-active body cannot gain passive charge");
+    let body=w.vehicles["shooter"].body; w.bodies[body].set_enabled(false);
+    w.advance_passive_ultimates(0.1,["shooter"].into_iter());assert_eq!(w.vehicles["shooter"].powertrain.ultimate_fraction,charge);
+    w.bodies[body].set_enabled(true);w.vehicle_health.get_mut("shooter").unwrap().defeated=true;
+    w.advance_passive_ultimates(0.1,["shooter"].into_iter());assert_eq!(w.vehicles["shooter"].powertrain.ultimate_fraction,charge);
+}
+
+#[test]
 fn in_place_combat_revive_is_once_only_with_actual_healing_and_ability_cooldown(){
     let mut w=world();move_body(&mut w,"target",0.0,7.5);w.vehicles.get_mut("shooter").unwrap().team="blue".into();vulnerable(&mut w);
     w.damage_vehicle("target",None,9999.0,"impact");let position=*w.bodies[w.vehicles["target"].body].translation();
@@ -373,7 +388,9 @@ fn in_place_combat_revive_is_once_only_with_actual_healing_and_ability_cooldown(
     assert_eq!(*w.bodies[w.vehicles["target"].body].translation(),position);assert!(w.bodies[w.vehicles["target"].body].is_enabled());
     assert_eq!(w.vehicles["target"].powertrain.fuel_liters,5.0);assert_eq!(target.stats.gas_gained_liters,5.0);
     assert_eq!(w.vehicle_health["shooter"].stats.resurrections,1);assert_eq!(w.vehicle_health["shooter"].stats.healing_done,150.0);assert_eq!(w.vehicle_health["shooter"].stats.self_healing,0.0);
+    assert_eq!(w.vehicles["shooter"].powertrain.ultimate_fraction,0.3,"only actual 150/500 teammate HP restored earns charge");
     assert_eq!(w.vehicle_health["shooter"].revive_cooldown_s,20.0);assert!(w.revive_vehicle_at_current_location("shooter","target").is_err());
+    assert_eq!(w.vehicles["shooter"].powertrain.ultimate_fraction,0.3,"repeat/overhealing cannot award more");
     assert_eq!(w.vehicle_health["shooter"].stats.resurrections,1);
     w.advance_vehicle_lives(0.5);assert!((w.vehicle_health["shooter"].revive_cooldown_s-19.5).abs()<0.01);
 }
@@ -382,6 +399,7 @@ fn fuel_rescue_preserves_hull_hp_and_does_not_invent_a_resurrection(){
     let mut w=world();move_body(&mut w,"target",0.0,7.5);w.vehicles.get_mut("shooter").unwrap().team="blue".into();
     w.vehicle_health.get_mut("target").unwrap().hp=400.0;w.vehicles.get_mut("target").unwrap().powertrain.fuel_liters=0.0;
     w.advance_vehicle_lives(0.1);w.revive_vehicle_at_current_location("shooter","target").unwrap();
+    assert_eq!(w.vehicles["shooter"].powertrain.ultimate_fraction,0.0,"refuel without actual healing grants no charge");
     assert_eq!(w.vehicle_health["target"].hp,400.0);assert_eq!(w.vehicle_health["target"].deaths,0);assert_eq!(w.vehicle_health["shooter"].stats.resurrections,0);assert_eq!(w.vehicle_health["shooter"].stats.healing_done,0.0);assert_eq!(w.vehicle_health["target"].stats.gas_gained_liters,5.0);
 }
 #[test]

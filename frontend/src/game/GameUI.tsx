@@ -1,4 +1,5 @@
 import {MinimapSessionLifecycle} from "../ui/Minimap/MinimapSessionLifecycle";
+import {CtfMissionLifecycle} from "./stats/CtfMissionLifecycle";
 import {MatchResultsScreen} from "./results/MatchResultsScreen";
 import {CtfMatchHUD} from "./stats/CtfMatchHUD";
 import {MatchScoreboard} from "./stats/MatchScoreboard";
@@ -100,6 +101,7 @@ export function GameUI() {
     <div className="relative game-wrapper">
       <HeroLoadoutSync />
       <MinimapSessionLifecycle />
+      <CtfMissionLifecycle />
       {screen === "heroes" && <HeroWorkshop key={heroOwner} />}
       {/* Requires Canvas */}
       {needsCanvas && (

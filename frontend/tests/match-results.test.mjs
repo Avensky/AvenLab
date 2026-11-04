@@ -31,6 +31,7 @@ test('saved/live results use server outcomes and preserve modal/action ownership
    const source=match('validation'),record=data.parseMatchResult(source);source.participants[0].stats.kills=999;assert.equal(record.participants[0].stats.kills,4);
    assert(data.parseMatchResult({match:match('wrapped')}));assert(data.parseMatchResult({type:'match_result',data:match('packet')}));
    assert.equal(data.parseMatchResult(match('nan',{duration_s:NaN})),null);
+   assert.equal(data.parseMatchResult(match('format',{mode:'competitive',team_size:3})).team_size,3);assert.equal(data.parseMatchResult(match('badformat',{mode:'competitive',team_size:1})),null);assert.equal(data.parseMatchResult(match('practice',{mode:'sandbox',team_size:1})).team_size,1);assert.equal(data.parseMatchResult(match('old',{team_size:null})).team_size,null);
    const invalid=match('invalid');invalid.participants[0].stats.gas_burned_liters=-1;assert.equal(data.parseMatchResult(invalid),null);
    assert.equal(data.parseMatchResult(match('duplicate',{participants:[participant('self','red'),participant('self','blue')]})),null);
    assert.equal(data.parseMatchResult(match('badplay',{play_of_game:{profile_id:'missing',start_s:1,end_s:2,score:1,kills:0,captures:0,damage:0}})),null);
@@ -80,10 +81,17 @@ test('saved/live results use server outcomes and preserve modal/action ownership
    assert.equal(store.receiveMatchResult(match('leave')),true);assert.equal(ui.getState().overlay,null,'duplicate result cannot reopen an acknowledged match');
   });
   await t.test('Play Again leaves then joins the original mode with real queued acknowledgement',async()=>{
-   await act(async()=>{ui.setState({screen:'sandbox',overlay:null});store.receiveMatchResult(match('again'));});
+   await act(async()=>{ui.setState({screen:'sandbox',overlay:null});store.receiveMatchResult(match('again',{mode:'skirmish'}));});
    let playing;await act(async()=>{playing=playAgainFromResults();});assert.equal(sent.at(-1).action,'mode_leave');
-   await act(async()=>reply(sent.at(-1)));await flush();assert.equal(sent.at(-1).action,'mode_join');assert.equal(sent.at(-1).mode,'quickplay');assert.equal(ui.getState().overlay,'match_results');
+   await act(async()=>reply(sent.at(-1)));await flush();assert.equal(sent.at(-1).action,'mode_join');assert.equal(sent.at(-1).mode,'quickplay');assert.equal(sent.at(-1).team_size,3);assert.equal(ui.getState().overlay,'match_results');
    await act(async()=>reply(sent.at(-1),{status:'queued'}));await playing;await flush();assert.equal(ui.getState().screen,'queue');assert.equal(ui.getState().overlay,null);
+  });
+  await t.test('modern3v3 result composition and Play Again keep the Competitive format',async()=>{
+   await act(async()=>{ui.setState({screen:'sandbox',overlay:null});store.receiveMatchResult(match('again3',{mode:'competitive',team_size:3}));});await render();
+   assert.match(document.querySelector('.result-world').textContent,/COMPETITIVE · 3V3/);
+   await act(async()=>store.useMatchResultsStore.getState().selectTab('team'));assert.equal(document.querySelectorAll('.match-composition-seat').length,6);
+   let playing;await act(async()=>{playing=playAgainFromResults();});await act(async()=>reply(sent.at(-1)));await flush();assert.equal(sent.at(-1).mode,'competitive');assert.equal(sent.at(-1).team_size,3);
+   await act(async()=>reply(sent.at(-1),{status:'queued',mode:'competitive',team_size:3}));await playing;await flush();assert.equal(ui.getState().screen,'queue');
   });
   await t.test('a late live acknowledgement cannot turn a same-match history detail into a queue request',async()=>{
    await act(async()=>{ui.setState({screen:'sandbox',overlay:null});store.receiveMatchResult(match('late-history'));});

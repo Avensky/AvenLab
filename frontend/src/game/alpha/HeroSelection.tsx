@@ -1,11 +1,15 @@
 import { unavailableHeroes } from "./heroAvailability";
 import { prepareReconSelection } from "../../store/recon/captureSetup";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { MenuShortcuts, ControllerAction } from "../../components/controller";
+import { ControllerAction } from "../../components/controller";
 import {
   useAlphaStore,
   HEROES,
   HERO_FILTERS,
+  isMatchMode,
+  matchModeLabel,
+  canonicalGameMode,
+  modeTeamSize,
   type HeroFilter,
 } from "../../store/alpha/alphaStore";
 import { useSocialStore } from "../../store/social/socialStore";
@@ -16,13 +20,14 @@ import { useSelectionNavigation } from "./useSelectionNavigation";
 import { navigateFormRows } from "../social/formRows";
 import type { MenuAction } from "../../controls/inputRouting";
 import { deploySelectedHero } from "./sessionActions";
-import { ProgressBadge } from "./ProgressBadge";
+import {SelectionHeader,SelectionFooter} from './SelectionChrome';
 import { HeroRoster } from "./HeroRoster";
 import { PreMatchTeamPreview } from "../stats/PreMatchTeamPreview";
 import { LobbyChat } from "./LobbyChat";
 import "./heroSelection.css";
 export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
   const selectedMode = useAlphaStore((s) => s.mode),
+    selectedTeamSize=useAlphaStore(s=>s.teamSize),
     heroId = useAlphaStore((s) => s.hero),
     previewId = useAlphaStore((s) => s.previewHero);
   const view = useSocialStore((s) => s.view),
@@ -35,10 +40,10 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
     [busy, setBusy] = useState(false);
   const pending = useRef(false),
     root = useRef<HTMLElement>(null);
-  const inMode = active?.mode === mode;
+  const inMode = !!active&&canonicalGameMode(active.mode)===canonicalGameMode(mode)&&(!isMatchMode(mode)||modeTeamSize(active.mode,active.team_size)===selectedTeamSize||overlay);
   const research = mode === "signal_recon";
   const planned = mode === "swarm";
-  const match = mode === "quickplay" || mode === "competitive";
+  const match = isMatchMode(mode);
   const customWorld = Boolean(world && !active);
   // Hydrate an existing pick once per admission, including reconnect/refresh.
   // Replaceable lobby views can trail request acknowledgements; an old view
@@ -200,24 +205,7 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
       aria-label={overlay ? "Change hero" : "Hero selection"}
       style={overlay ? { zIndex: 50, background:"transparent", backdropFilter:"none" } : undefined}
     >
-      <header className="alpha-header">
-        <div>
-          <small>REDLINE VECTOR · ALPHA</small>
-          <h1>
-            {overlay
-              ? "CHANGE HERO"
-              : `${mode.replaceAll("_", " ").toUpperCase()} · CHOOSE HERO`}
-          </h1>
-        </div>
-        <ProgressBadge />
-        <ControllerAction button="B"
-          type="button"
-          className="menu-control"
-          onClick={back}
-        >
-           BACK
-        </ControllerAction>
-      </header>
+      <SelectionHeader title={overlay?'CHANGE HERO':'CHOOSE HERO'} eyebrow={matchModeLabel(mode,active&&inMode?active.team_size:selectedTeamSize)} onBack={()=>void back()} busy={busy}/>
       <div className="hero-selection-stage">
         {(!match || inMode || overlay) && (
           <HeroRoster
@@ -247,8 +235,7 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
         </div>
       </div>
       {match && inMode && !overlay && <PreMatchTeamPreview key={`${active.world_id}:${mode}`} view={view}/>}
-      <footer className="alpha-selection-footer">
-        <MenuShortcuts chat directions="both" />
+      <SelectionFooter chat>
         <ControllerAction button="A"
           type="button"
           className="menu-control  alpha-deploy"
@@ -274,7 +261,7 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
                       ? "DEPLOY"
                       : "CHOOSE A HERO"}
         </ControllerAction>
-      </footer>
+      </SelectionFooter>
     </section>
   );
 }

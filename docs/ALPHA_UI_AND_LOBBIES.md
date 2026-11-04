@@ -8,7 +8,8 @@ patches. Rebuild and restart **Rust and frontend together**.
 
 Main offers Play, Career, Worlds & Social and Settings. Play opens the existing
 3D garage with Quickplay, Competitive, Sandbox, World Editor, Signal Recon and
-planned Swarm Command. Quickplay/Competitive share the single match slot. The
+planned Swarm Command. Quickplay/Competitive each offer independent 3v3 and 5v5
+match sizes, with multiple games sharing the configured server budget. The
 selection screen keeps real teammate picks centered above the footer and the
 controller legend. Role filters sit above the top-right portrait grid, with the
 selected name/role at upper left. Environment or Recon CAN controls sit below
@@ -30,32 +31,36 @@ The alpha hero catalog uses the installed chassis:
 | DPS | AE86, BRZ, Camaro, Supra | Corresponding installed vehicle |
 | Support | Mechanic, Logistics | BRZ, AE86 |
 
-Support role selection is available for testing. Repair/refuel abilities and
-weapons are still gameplay work; role names do not claim those abilities exist.
-Quickplay and Competitive enforce a five-player team: exactly one tank, two or
-three DPS, and one or two support. Empty seats must still permit a valid final
+Mechanic target-assisted health packs and nearby recovery are live; dedicated
+Logistics abilities and ultimate actions remain planned. Both modes offer
+three-player teams with one of each role, or five-player teams with exactly
+one tank, two or three DPS, and one or two support. Empty seats must still permit a valid final
 composition. Group members prefer the same side when role and seat limits allow.
 Duplicate heroes are allowed within those role limits. Solo/editor accept any
 hero. An operator can set `AVENLAB_ROLE_LIMITS=0` for flexible composition testing;
 these test sessions cannot award progression through the result adapter.
 
-## Exactly three occupied world slots
+## Bounded simultaneous worlds
 
-| Slot | Population | Behavior |
+| Category | Population | Behavior |
 | --- | --- | --- |
-| Shared Quickplay / Competitive | 10 total, five per side | One selected mode at a time; another mode waits until this world empties |
-| Editor physics | 1 | Isolated draft application and live driving tests |
-| Solo / practice | 1 | Choose any installed environment; saved private worlds use this slot too |
+| Quickplay / Competitive matches | 6 for 3v3, 10 for 5v5 | Fill a waiting lobby with the same mode and size; create another isolated game when capacity permits |
+| Editor physics | 1 | One occupied editor slot for draft application and driving tests |
+| Solo / practice | 1 | One occupied practice slot, including saved private worlds |
 
-The total default is **12 active players and three occupied worlds**. Waiting
-players keep a lightweight connection and profile, not a physics vehicle. Saved
-world metadata does not consume another occupied slot. These are configured
-limits, not a measured capacity guarantee for a $20 host.
+The defaults are **24 active players and three occupied worlds** shared across
+these categories. Set `AVENLAB_MAX_PLAYERS` and `AVENLAB_MAX_ACTIVE_WORLDS` before
+starting to adjust them. These bounds permit multiple matches; they are not a
+measured capacity guarantee for a hosting tier. Saved metadata and waiting
+profiles do not consume another running physics world.
 
-Tickets are FIFO within each slot category. A role-blocked ticket retains its
-place, so later arrivals cannot bypass it. The queue screen displays the real
-position and cycles the existing NIWC-Pacific and SEA-STRIKE videos, muted and
-inline. Reduced-motion and unavailable-media cases use a static background.
+Tickets are FIFO within the exact requested mode and size. A blocked 3v3 pool
+does not prevent another format's available waiting lobby from filling. Running
+and ended rounds do not accept new profiles; reserved reconnects retain their
+original world. If no compatible waiting lobby or server capacity is available,
+the queue preserves the requested format and displays its actual position.
+It cycles the existing NIWC-Pacific and SEA-STRIKE videos, muted and inline;
+reduced-motion and unavailable-media cases use a static background.
 No wait-time estimate is invented. If a waiting player's connection is lost, its
 ticket ends; Rejoin Queue requests a new place when connected again.
 

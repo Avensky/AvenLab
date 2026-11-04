@@ -1,7 +1,7 @@
 import { socket } from "../../net/rustSocket";
 import { requestSocial } from "../../net/socialClient";
 import { useSocialStore } from "../../store/social/socialStore";
-import { useAlphaStore, HEROES } from "../../store/alpha/alphaStore";
+import { useAlphaStore, HEROES, canonicalGameMode, isMatchMode, modeTeamSize } from "../../store/alpha/alphaStore";
 import { mapCatalog, useSelectionStore } from "../../store/selection/selectionStore";
 import { useNetworkStore } from "../../store/session/networkStore";
 import { useUIStore } from "../../store/menus/uiStore";
@@ -14,20 +14,46 @@ export async function joinSelectedMode() {
     throw Error("Select a driving mode before joining the alpha queue.");
   if (!useSocialStore.getState().view?.profile.id)
     throw Error("Restore your player profile or choose New Tab Profile before joining.");
+  const previousView=useSocialStore.getState().view;
   const result = await requestSocial("mode_join", {
-    mode: state.mode,
+    mode: canonicalGameMode(state.mode),
+    ...(isMatchMode(state.mode)?{team_size:state.mode==='skirmish'?3:state.teamSize}:{}),
     // Reserve capacity first. A role is claimed only by an explicit portrait pick.
     hero: "",
     map: useSelectionStore.getState().getSelectedMap().id,
   });
+  if(result.status==='joined'||result.status==='queued'){
+    const confirmedMode=typeof result.mode==='string'&&isMatchMode(result.mode)?result.mode:state.mode;
+    useAlphaStore.getState().restoreMode(confirmedMode,typeof result.team_size==='number'?result.team_size:state.teamSize);
+  }
   if (result.status === "joined") {
     // An admitted seat needs no one-frame trip through the video/queue screen.
     if (typeof result.hero === "string" && result.hero)
       state.chooseHero(result.hero);
     else state.clearHero();
     useUIStore.getState().setScreen("hero_select");
-  } else if (result.status === "queued")
+  } else if (result.status === "queued") {
+    // A queued ACK confirms mode_join released the old seat/ticket. The socket
+    // may deliver this ACK before its coalesced social view; leaving that cached
+    // active seat here would make useAlphaFlow reopen the previous Hero screen.
+    // Keep a newer compatible promotion if it already arrived from another world.
+    const selection=useAlphaStore.getState();
+    const matches=(candidate:{mode:string;team_size?:number})=>canonicalGameMode(candidate.mode)===selection.mode&&(!isMatchMode(selection.mode)||modeTeamSize(candidate.mode,candidate.team_size)===selection.teamSize);
+    let refreshAmbiguousSeat=false;
+    useSocialStore.setState(current=>{
+      if(!current.view?.alpha||current.view.profile.id!==previousView?.profile.id)return current;
+      const alpha=current.view.alpha;
+      const active=alpha.active&&alpha.active.world_id!==previousView?.alpha?.active?.world_id&&matches(alpha.active)?alpha.active:null;
+      const queue=alpha.queue&&alpha.queue!==previousView?.alpha?.queue&&matches(alpha.queue)?alpha.queue:null;
+      // A recycled world ID cannot distinguish an old seat from a very early
+      // promotion. Discard that ambiguity and ask for a new authoritative view.
+      refreshAmbiguousSeat=!!alpha.active&&!active&&alpha!==previousView?.alpha&&matches(alpha.active);
+      if(active===alpha.active&&queue===alpha.queue)return current;
+      return {view:{...current.view,alpha:{...alpha,active,queue}}};
+    });
     useUIStore.getState().setScreen("queue");
+    if(refreshAmbiguousSeat)void requestSocial('refresh').catch(()=>{/* Queue retry remains available if transport recovery fails. */});
+  }
   return result;
 }
 let spawning = false;
@@ -91,7 +117,7 @@ export async function deploySelectedHero() {
           type: "spawn_request",
           map,
           vehicle: hero.vehicle,
-          mode: selected.mode,
+          mode: active?.mode ?? selected.mode,
         }),
       );
     });

@@ -2,7 +2,9 @@ import { useHeroLoadouts, type HeroAppearance } from "../../vehicles/cosmetics/h
 import { create } from "zustand";
 import { useSelectionStore, vehicleCatalog } from "../selection/selectionStore";
 import { usePreferencesStore } from "../preferences/preferencesStore";
-export type GameMode = "quickplay" | "competitive" | "sandbox" | "editor";
+export type GameMode = "quickplay" | "competitive" | "skirmish" | "sandbox" | "editor";
+export type MatchTeamSize = 3 | 5;
+export type MatchCategory = "quickplay" | "competitive";
 /** Research/planned modes are garage destinations, never server mode_join IDs. */
 export type PlayMode = GameMode | "signal_recon" | "swarm";
 export type HeroRole = "tank" | "dps" | "support";
@@ -124,6 +126,8 @@ export type AlphaView = {
   enabled: boolean;
   queue: {
     mode: GameMode;
+    team_size?: number;
+    capacity?: number;
     position: number;
     size: number;
     joined: number;
@@ -131,6 +135,10 @@ export type AlphaView = {
   } | null;
   active: {
     mode: GameMode;
+    team_size?: number;
+    capacity?: number;
+    role_caps?: Record<HeroRole, number>;
+    role_minimums?: Record<HeroRole, number>;
     world_id: number;
     hero: string;
     team: "red" | "blue";
@@ -152,20 +160,35 @@ export type AlphaView = {
 };
 export const useAlphaStore = create<{
   mode: PlayMode;
+  /** Match format is independent of the Quickplay/Competitive queue category. */
+  teamSize: MatchTeamSize;
+  lastMatchMode: MatchCategory;
   hero: string | null;
   previewHero: string | null;
   /** An explicit empty admission is known state, not a reconnect to hydrate. */
   selectionInitialized: boolean;
   chooseMode: (mode: PlayMode) => void;
+  chooseTeamSize: (size: MatchTeamSize) => void;
+  restoreMode: (mode: PlayMode, confirmedSize?: number) => void;
   chooseHero: (id: string) => void;
   preview: (id: string) => void;
   clearHero: () => void;
 }>((set) => ({
   mode: "quickplay",
+  teamSize: 5,
+  lastMatchMode: "quickplay",
   hero: null,
   previewHero: null,
   selectionInitialized: false,
-  chooseMode: (mode) => set({ mode }),
+  chooseMode: (mode) => {
+    const next=canonicalGameMode(mode);
+    set({mode:next,...(mode==='skirmish'?{teamSize:3 as const}:{}),...(next==='quickplay'||next==='competitive'?{lastMatchMode:next}:{})});
+  },
+  chooseTeamSize: (teamSize) => {if(teamSize===3||teamSize===5)set({teamSize});},
+  restoreMode: (mode, confirmedSize) => {
+    const next=canonicalGameMode(mode);
+    set({mode:next,...(isMatchMode(mode)?{teamSize:modeTeamSize(mode,confirmedSize)}:{}),...(next==='quickplay'||next==='competitive'?{lastMatchMode:next}:{})});
+  },
   clearHero: () =>
     set({ hero: null, previewHero: null, selectionInitialized: true }),
   preview: (id) => {
@@ -200,4 +223,22 @@ export function reconSetupParent(): "hero_select" | "main" {
   return useAlphaStore.getState().mode === "signal_recon"
     ? "hero_select"
     : "main";
+}
+
+/** Modes share the CTF loop; the server owns admission, capacities and rewards. */
+export function isMatchMode(mode: string): mode is "quickplay" | "competitive" | "skirmish" {
+  return mode === "quickplay" || mode === "competitive" || mode === "skirmish";
+}
+export function modeTeamSize(mode: string, confirmedSize?: number): 3 | 5 {
+  return confirmedSize === 3 || confirmedSize === 5 ? confirmedSize : mode === "skirmish" ? 3 : 5;
+}
+/** Old saved casual3v3 admissions remain readable without a duplicate tab. */
+export function canonicalGameMode<T extends string>(mode:T):Exclude<T,"skirmish">|"quickplay" {
+  return (mode === "skirmish" ? "quickplay" : mode) as Exclude<T,"skirmish">|"quickplay";
+}
+export function gameModeLabel(mode: string): string {
+  return GAME_MODES.find(item => item.id === canonicalGameMode(mode))?.label ?? mode.replaceAll("_", " ").toUpperCase();
+}
+export function matchModeLabel(mode:string, confirmedSize?:number):string {
+  return isMatchMode(mode) ? `${gameModeLabel(mode)} · ${modeTeamSize(mode,confirmedSize)}V${modeTeamSize(mode,confirmedSize)}` : gameModeLabel(mode);
 }

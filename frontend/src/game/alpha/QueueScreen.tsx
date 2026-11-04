@@ -7,7 +7,7 @@ import { useUIStore } from "../../store/menus/uiStore";
 import { requestSocial } from "../../net/socialClient";
 import { useFormNavigation } from "../social/useFormNavigation";
 import { joinSelectedMode } from "./sessionActions";
-import { GAME_MODES } from "../../store/alpha/alphaStore";
+import { matchModeLabel } from "../../store/alpha/alphaStore";
 import "./alpha.css";
 export function QueueScreen() {
   const queue = useSocialStore((s) => s.view?.alpha?.queue),
@@ -58,8 +58,7 @@ export function QueueScreen() {
         <small>REDLINE VECTOR · LIMITED ALPHA</small>
         <h1>{queue ? "YOU’RE IN LINE" : "FINDING A SERVER"}</h1>
         <h2>
-          {GAME_MODES.find((m) => m.id === queue?.mode)?.label ??
-            (connected ? "REJOIN AVAILABLE" : "RECONNECTING")}
+          {queue?matchModeLabel(queue.mode,queue.team_size):(connected ? "REJOIN AVAILABLE" : "RECONNECTING")}
         </h2>
         <strong className="alpha-queue-position" aria-live="polite">
           {connected && queue ? `#${queue.position}` : "—"}
@@ -78,7 +77,7 @@ export function QueueScreen() {
               : "The waiting line will refresh when the connection returns.")}
         </p>
         <p className="alpha-queue-note">
-          ONE 5v5 MATCH · ONE LIVE EDITOR · ONE SOLO WORLD
+          MATCHES OPEN AS SERVER CAPACITY ALLOWS
           <br />A disconnected player has a short reconnect window before their
           seat opens. Your position updates automatically when a seat opens.
         </p>

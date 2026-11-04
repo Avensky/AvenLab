@@ -18,6 +18,8 @@ pub const STARVED: u16 = 8;
 pub const DAMAGED: u16 = 16;
 pub const HEAT_LOCK: u16 = 32; // Legacy protocol bit; heat no longer disables the engine.
 pub const THERMAL_RECOVERY:u16=64;
+/// Passive charge alone fills in eight minutes of active server simulation.
+pub const PASSIVE_ULTIMATE_SECONDS: f32 = 480.0;
 
 #[derive(Clone, Copy, Debug)]
 pub struct ResourceConfig {
@@ -432,11 +434,28 @@ impl Powertrain {
         self.impact_cooldown_s = 0.25;
         damage
     }
-    // Only authoritative damage attribution calls this. Never use own condition,
-    // throttle, elapsed time, or a client-reported charge value as damage dealt.
-    pub fn credit_damage_dealt(&mut self, condition_lost: f32) {
-        if condition_lost.is_finite() && condition_lost > 0.0 {
-            self.ultimate_fraction = (self.ultimate_fraction + condition_lost.min(1.0)).clamp(0.0, 1.0);
+    /// One finite, capped accumulator for accepted server sources. Never assign
+    /// client-reported charge or infer damage from the shooter's own condition.
+    fn credit_ultimate_fraction(&mut self, fraction: f32) {
+        let current = if self.ultimate_fraction.is_finite() { self.ultimate_fraction.clamp(0.0, 1.0) } else { 0.0 };
+        self.ultimate_fraction = if fraction.is_finite() && fraction > 0.0 {
+            (current + fraction.min(1.0)).clamp(0.0, 1.0)
+        } else { current };
+    }
+    pub fn credit_damage_dealt(&mut self, fraction_lost: f32) {
+        self.credit_ultimate_fraction(fraction_lost);
+    }
+    /// Physics calls this only for an active connected, living vehicle. The dt
+    /// is fixed simulation time, never a wall-clock or input-packet catch-up.
+    pub fn advance_passive_ultimate(&mut self, dt: f32) {
+        if !dt.is_finite() || dt <= 0.0 || dt > 0.1 { return; }
+        self.credit_ultimate_fraction(dt / PASSIVE_ULTIMATE_SECONDS);
+    }
+    /// The world passes actual HP gained, not a requested healing amount. Fuel,
+    /// service and self-repair have no path to this teammate-healing credit.
+    pub fn credit_teammate_healing(&mut self, actual_hp: f32, maximum_hp: f32) {
+        if actual_hp.is_finite() && maximum_hp.is_finite() && actual_hp > 0.0 && maximum_hp > 0.0 {
+            self.credit_ultimate_fraction(actual_hp / maximum_hp);
         }
     }
     pub fn resource_mask(&self, config: ResourceConfig) -> u16 {
@@ -653,6 +672,28 @@ mod tests {
         assert_eq!(state.ultimate_fraction, 0.0);
         state.credit_damage_dealt(0.2);state.service(ROAD_RESOURCES);assert_eq!(state.ultimate_fraction,0.2);
         state.credit_damage_dealt(0.9);assert_eq!(state.ultimate_fraction,1.0);
+    }
+    #[test]
+    fn passive_ultimate_is_slow_simulation_time_and_all_charge_sources_are_bounded() {
+        let mut passive = Powertrain::new(ROAD_RESOURCES);
+        for dt in [0.0, -1.0, f32::NAN, f32::INFINITY, f32::MAX, 0.101] { passive.advance_passive_ultimate(dt); }
+        assert_eq!(passive.ultimate_fraction, 0.0);
+        for _ in 0..600 { passive.advance_passive_ultimate(0.1); }
+        assert!((passive.ultimate_fraction - 0.125).abs() < 0.00001, "one minute earns one eighth of passive charge");
+        let mut action = Powertrain::new(ROAD_RESOURCES);
+        action.credit_damage_dealt(0.3);
+        let mut healer = Powertrain::new(ROAD_RESOURCES);
+        for (healed, maximum) in [(f32::NAN, 500.0), (50.0, 0.0), (-1.0, 500.0), (50.0, f32::INFINITY)] { healer.credit_teammate_healing(healed, maximum); }
+        assert_eq!(healer.ultimate_fraction, 0.0);
+        healer.credit_teammate_healing(150.0, 500.0);
+        assert_eq!(healer.ultimate_fraction, action.ultimate_fraction);
+        assert!(action.ultimate_fraction > passive.ultimate_fraction, "useful combat/healing beats passive waiting");
+        for _ in 0..5000 { passive.advance_passive_ultimate(0.1); }
+        assert_eq!(passive.ultimate_fraction, 1.0);
+        healer.ultimate_fraction = f32::NAN; healer.credit_damage_dealt(0.1);
+        assert_eq!(healer.ultimate_fraction, 0.1);
+        healer.credit_teammate_healing(f32::MAX, 1.0); assert_eq!(healer.ultimate_fraction, 1.0);
+        healer.service(ROAD_RESOURCES); assert_eq!(healer.ultimate_fraction, 1.0);
     }
     #[test]
     fn reverse_at_speed_brakes_before_selecting_reverse() {

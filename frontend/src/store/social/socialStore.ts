@@ -17,6 +17,7 @@ export type SocialGroup = {
 };
 export type SocialWorld = {
   mode?: GameMode | null;
+  team_size?: 1 | 3 | 5 | null;
   id: number;
   name: string;
   map: string;

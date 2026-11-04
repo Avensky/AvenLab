@@ -1,0 +1,73 @@
+/* Theme frames are decorative; resource colors keep a stable meaning. */
+.hud-top-left{position:absolute;top:max(10px,env(safe-area-inset-top));left:max(12px,env(safe-area-inset-left));width:var(--instrument-size);display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.hud-top-left .instrument-hud{position:relative;inset:auto;width:100%}
+.center-combat-dock{position:absolute;left:50%;transform:translateX(-50%);bottom:max(8px,env(safe-area-inset-bottom));width:calc(100dvw - 24px);max-width:680px;display:flex;flex-direction:column;align-items:stretch;gap:6px;pointer-events:none;z-index:7;container:combat-dock / inline-size}
+.center-combat-dock:empty{display:none}
+/* Flow replaces independent absolute anchors, so HP and weapons cannot overlap. */
+.driving-hud .center-combat-dock > :is(.active-effects,.weapon-selector){position:relative;inset:auto;transform:none;width:auto;max-width:100%;box-sizing:border-box;margin:0}
+.center-combat-dock > .active-effects{align-self:center}
+.center-combat-dock .weapon-selector{border-radius:0;font-size:8px}
+.center-combat-dock .weapon-selector-footer{flex-wrap:wrap;font-size:7px}
+.center-combat-dock .weapon-slots button{min-height:36px;font-size:8px;gap:3px}
+.futuristic-hud{position:relative;box-sizing:border-box;display:grid;grid-template-columns:64px minmax(0,1fr) 52px 66px;align-items:center;gap:10px;padding:11px 12px;border:1px solid var(--app-line,#657884);border-top:2px solid var(--app-accent,#82b7ff);background:linear-gradient(135deg,color-mix(in srgb,var(--app-accent,#82b7ff) 10%,transparent),transparent 55%),color-mix(in srgb,var(--app-panel,#0b1729) 96%,transparent);color:var(--app-text,#edf5ff);font:600 10px/1.2 system-ui;pointer-events:none;overflow:hidden;box-shadow:inset 0 0 0 3px color-mix(in srgb,var(--app-accent,#82b7ff) 8%,transparent),0 3px 12px #0003}
+/* Small angled corner rails echo the concept without clipping meters/text. */
+.futuristic-hud::before{content:'';position:absolute;inset:4px;pointer-events:none;border:1px solid color-mix(in srgb,var(--app-accent,#82b7ff) 24%,transparent);clip-path:polygon(0 7px,7px 0,calc(100% - 7px) 0,100% 7px,100% calc(100% - 7px),calc(100% - 7px) 100%,7px 100%,0 calc(100% - 7px))}
+.future-identity{min-width:0;display:grid;gap:4px;text-align:center}
+.future-identity .hero-portrait-art{position:relative;display:block;width:100%;aspect-ratio:1.3;overflow:hidden;background:var(--app-raised,#12243a)}
+.future-identity .hero-portrait-art img{display:block;width:100%;height:100%;object-fit:contain}
+.future-identity .hero-portrait-style-status{display:none}
+.future-identity strong{font-size:9px;overflow:hidden;text-overflow:ellipsis}
+.future-resources{display:grid;gap:5px;min-width:0}
+.future-resource{--resource-color:#66e893;display:grid;grid-template-columns:50px minmax(0,1fr) 76px;align-items:center;gap:5px;font-size:10px}
+.future-resource[data-kind=fuel]{--resource-color:#f6bf57}
+.future-resource[data-kind=nitrous]{--resource-color:#36cfff}
+.future-resource[data-kind=health][data-low=true]{--resource-color:#ff6078}
+.future-track{height:10px;border:1px solid color-mix(in srgb,var(--app-line,#8193a8) 65%,transparent);background:#050c18;overflow:hidden}
+.future-track i{display:block;height:100%;background:var(--resource-color)}
+.future-resource[data-kind=health] .future-track{height:14px}
+.future-resource[data-kind=nitrous] .future-track i{background:repeating-linear-gradient(100deg,transparent 0 3px,var(--resource-color) 3px 18px)}
+.future-resource output{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.future-resource[data-available=false]{opacity:.55}
+.future-condition{display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap;font-size:8px;color:var(--app-muted,#b8c5d6)}
+.future-driving{display:flex;flex-direction:column;align-items:center;border-left:1px solid color-mix(in srgb,var(--app-line,#8093a8) 35%,transparent);padding-left:7px;gap:1px;font-variant-numeric:tabular-nums}
+.future-driving strong{font-size:26px;line-height:1}
+.future-driving small{font-size:8px;color:var(--app-muted,#b8c5d6)}
+.future-driving span{margin-top:4px;font-size:8px}
+.future-driving b{font-size:11px}
+.future-ultimate{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;width:66px;height:66px;gap:2px;color:var(--app-accent,#82b7ff)}
+.future-ultimate svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg);fill:none;stroke:color-mix(in srgb,var(--app-line,#8193a8) 35%,transparent);stroke-width:4}
+.future-ultimate .future-ultimate-fill{stroke:#36cfff}
+.future-ultimate strong{font-size:14px}
+.future-ultimate small{font-size:6px}
+.future-ultimate[data-ready=true]{color:#ffe08b}
+.future-ultimate[data-ready=true] .future-ultimate-fill{stroke:#ffe08b}
+.future-status:empty{display:none}
+.future-status{grid-column:1/-1;font-size:8px;text-align:center;color:#f6bf57}
+.futuristic-hud[data-defeated=true]{border-color:#ff6078}
+.teammate-hud{width:min(100%,235px);color:var(--app-text,#edf5ff);font:600 10px/1.2 system-ui;pointer-events:none}
+.teammate-hud ul{display:grid;gap:4px;list-style:none;padding:0;margin:0}
+.teammate-hud li{display:grid;grid-template-columns:45px minmax(0,1fr);align-items:center;gap:6px;min-height:35px;padding:3px 6px 3px 3px;background:color-mix(in srgb,var(--app-panel,#0b1729) 94%,transparent);border:1px solid color-mix(in srgb,var(--app-line,#8193a8) 55%,transparent);border-left:2px solid var(--team-blue-glow,#4484ff)}
+.teammate-hud li[data-team=red]{border-left-color:var(--team-red-glow,#ff3b30)}
+.teammate-hud li[data-defeated=true]{opacity:.6}
+.teammate-hud .hero-portrait-art{position:relative;display:block;width:45px;height:32px;overflow:hidden}
+.teammate-hud img{width:100%;height:100%;object-fit:contain}
+.teammate-hud .hero-portrait-style-status{display:none}
+.teammate-hud li > div{min-width:0;display:grid;gap:3px}
+.teammate-hud strong{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:9px}
+.teammate-hud small{font-size:6px;color:var(--app-muted,#b8c5d6)}
+.teammate-health{height:5px;background:#050c18;border:1px solid #8193a866;overflow:hidden}
+.teammate-health i{display:block;height:100%;background:#66e893}
+@media(max-width:1000px){.futuristic-hud{grid-template-columns:minmax(0,1fr) 37px 44px;gap:6px;padding:7px}.future-identity{display:none}.future-ultimate{width:44px;height:44px}.future-ultimate strong{font-size:11px}.future-ultimate small{font-size:6px}.future-driving strong{font-size:19px}.future-resource{grid-template-columns:40px minmax(0,1fr) 61px;gap:3px;font-size:8px}.future-condition{font-size:7px}.future-track{height:8px}.future-resource[data-kind=health] .future-track{height:12px}}
+/* A desktop can also have a narrow free lane beside steering or aim controls. */
+@container combat-dock (max-width:500px){.futuristic-hud{grid-template-columns:minmax(0,1fr) 37px 44px;gap:6px;padding:7px}.future-identity{display:none}.future-ultimate{width:44px;height:44px}.future-ultimate strong{font-size:11px}.future-ultimate small{font-size:6px}.future-driving strong{font-size:19px}.future-resource{grid-template-columns:40px minmax(0,1fr) 61px;gap:3px;font-size:8px}.future-condition{font-size:7px}.future-track{height:8px}.future-resource[data-kind=health] .future-track{height:12px}}
+@media(max-height:500px) and (orientation:landscape){.teammate-hud{width:100%}.teammate-hud ul{grid-template-columns:repeat(2,minmax(0,1fr));gap:3px}.teammate-hud li{grid-template-columns:28px minmax(0,1fr);gap:3px;padding:2px;min-height:26px}.teammate-hud .hero-portrait-art{width:28px;height:25px}.teammate-hud strong{font-size:7px}.teammate-hud small{font-size:5px}.teammate-health{height:3px}.hud-top-left{gap:4px;top:max(6px,env(safe-area-inset-top))}}
+@media(prefers-reduced-motion:reduce){.futuristic-hud *{transition:none;animation:none}}
+.future-condition [data-hot=true]{color:#ff9c57}
+/* Leave a lane for the centered match header and the independent utility dock. */
+@media(min-width:601px){.hud-top-left{width:min(var(--instrument-size),26vw)}}
+@media(max-width:600px) and (orientation:portrait){.hud-top-left{width:calc(100dvw - clamp(170px,24vw,230px) - 34px)}.teammate-hud li{grid-template-columns:32px minmax(0,1fr)}.teammate-hud .hero-portrait-art{width:32px;height:28px}}
+@media(max-width:600px) and (orientation:portrait){.hud-top-left .instrument-hud{order:-1;width:var(--instrument-size)}}
+
+/* Live portraits never start a custom GLB bake. A cheap paint swatch keeps the
+   player's selected color visible until a finished cached portrait is available. */
+.teammate-hud .hero-portrait-art[data-style=deferred]::after{content:'';position:absolute;left:1px;right:1px;bottom:1px;height:3px;border-radius:1px;background:var(--portrait-paint,#bac5cf);box-shadow:0 0 2px #0008}

@@ -19,6 +19,11 @@ export type {BindingAction} from './keyBindings';
 import {
   HUD_GROUPS,
   DEFAULT_HUD_GROUPS,
+  HUD_VISIBILITY_VERSION,
+  TOUCH_HUD_GROUPS,
+  DRIVE_HUD_GROUPS,
+  hasTouchHud,
+  hasDriveHud,
   type HudGroupId,
 } from "./hudVisibility";
 // Stable exports for callers from the previous patch. New callers use index.ts.
@@ -28,6 +33,8 @@ export {
   type HudGroupId,
 } from "./hudVisibility";
 export type Preferences = {
+  /** Marks the one-time migration from hidden parent gates to independent widgets. */
+  hudVisibilityVersion: number;
   radioHudStyle: "classic" | "streamlined" | "no-tabs";
   healthBars: HealthBarMode;
   theme: UITheme;
@@ -37,7 +44,7 @@ export type Preferences = {
   /** Compatibility alias for hudGroups.climate; actions keep both synchronized. */
   researchHud: boolean;
   /** Compact/full HVAC affects the driving widget; its cockpit page stays usable. */
-  climateHudSize: "compact" | "full";
+  climateHudSize: "single" | "compact" | "full";
   parkingCrystals: boolean;
   parkingBrakeStyle: "lever" | "button";
   /** Three HUD switches by default; keep the expanded bank as a saved option. */
@@ -77,6 +84,7 @@ export type PreferenceUpdate = Omit<
   vehicleCosmetics?: Partial<Pick<VehicleCosmetics,"matchCockpit">>;
 };
 export const DEFAULT_PREFERENCES: Preferences = {
+  hudVisibilityVersion: HUD_VISIBILITY_VERSION,
   radioHudStyle: "no-tabs",
   healthBars: "all",
   theme: "navy",
@@ -133,7 +141,28 @@ export function sanitizePreferences(value: unknown): Preferences {
     typeof data.researchHud === "boolean"
       ? data.researchHud && visibility.climate !== false
       : visibility.climate === true;
+  const independent = data.hudVisibilityVersion === HUD_VISIBILITY_VERSION;
+  const touchVisible = typeof data.showTouchControls === "boolean"
+    ? data.showTouchControls : data.drivingLayout !== "controller";
+  const driveVisible = data.showDriveControls !== false;
+  const hudGroups = Object.fromEntries(HUD_GROUPS.map((id) => {
+    let shown = typeof visibility[id] === "boolean" ? visibility[id] : DEFAULT_HUD_GROUPS[id];
+    if (id === "climate") shown = climateVisible;
+    if (id === "ignition" && data.ignitionVisibility === "hidden") shown = false;
+    if (!independent) {
+      // Preserve what older layouts actually displayed, including child widgets
+      // suppressed by a hidden parent. New switches never inherit those gates.
+      if (id === "missions") shown = visibility.display !== false;
+      if (id === "hazards") shown = climateVisible && visibility.hazards !== false;
+      if (id === "performance") shown = climateVisible && data.climateHudSize !== "full";
+      if (id === "stalks") shown = shown && visibility.wheel !== false;
+      if ((TOUCH_HUD_GROUPS as readonly string[]).includes(id) && !touchVisible) shown = false;
+      if ((DRIVE_HUD_GROUPS as readonly string[]).includes(id) && !driveVisible) shown = false;
+    }
+    return [id, shown];
+  })) as Record<HudGroupId, boolean>;
   return {
+    hudVisibilityVersion: HUD_VISIBILITY_VERSION,
     healthBars: sanitizeHealthBarMode(data.healthBars),
     radioHudStyle:
       data.radioHudStyle === "streamlined" || data.radioHudStyle === "classic"
@@ -147,25 +176,14 @@ export function sanitizePreferences(value: unknown): Preferences {
       data.ignitionVisibility === "hidden"
         ? data.ignitionVisibility
         : "auto",
-    researchHud: climateVisible,
-    climateHudSize: data.climateHudSize === "full" ? "full" : "compact",
+    researchHud: hudGroups.climate,
+    climateHudSize: data.climateHudSize === "full" || data.climateHudSize === "single" ? data.climateHudSize : "compact",
     parkingCrystals: data.parkingCrystals === true,
     parkingBrakeStyle: data.parkingBrakeStyle === "button" ? "button" : "lever",
     assistHudLayout: data.assistHudLayout === "extended" ? "extended" : "three",
     dashboardBrightness: numeric("dashboardBrightness", 0.1, 1),
     shiftLayout: data.shiftLayout === "automatic" ? "automatic" : "h-pattern",
-    hudGroups: Object.fromEntries(
-      HUD_GROUPS.map((id) => [
-        id,
-        id === "ignition" && data.ignitionVisibility === "hidden"
-          ? false
-          : id === "climate"
-            ? climateVisible
-            : typeof visibility[id] === "boolean"
-              ? visibility[id]
-              : DEFAULT_HUD_GROUPS[id],
-      ]),
-    ) as Record<HudGroupId, boolean>,
+    hudGroups,
     wheelDrop: numeric("wheelDrop", 0, 0.55),
     steeringTravel: numeric("steeringTravel", 0.9, 1.3),
     minimapScale: numeric("minimapScale", 0.5, 1.25),
@@ -188,11 +206,8 @@ export function sanitizePreferences(value: unknown): Preferences {
     touchLayout: data.touchLayout === "sticks" ? "sticks" : "pedals",
     drivingLayout:
       data.drivingLayout === "controller" ? "controller" : "standard",
-    showTouchControls:
-      typeof data.showTouchControls === "boolean"
-        ? data.showTouchControls
-        : data.drivingLayout !== "controller",
-    showDriveControls: data.showDriveControls !== false,
+    showTouchControls: hasTouchHud(hudGroups),
+    showDriveControls: hasDriveHud(hudGroups),
     speedUnit: data.speedUnit === "mph" ? "mph" : "kmh",
   };
 }
@@ -211,12 +226,18 @@ export const usePreferencesStore = create<
       // alias, so Settings and Research cannot disagree about what is shown.
       update: (patch) => {
         const state = get();
-        const groups = { ...state.hudGroups, ...patch.hudGroups };
+        const groups = { ...state.hudGroups };
+        if (patch.showTouchControls !== undefined)
+          for (const id of TOUCH_HUD_GROUPS) groups[id] = patch.showTouchControls;
+        if (patch.showDriveControls !== undefined)
+          for (const id of DRIVE_HUD_GROUPS) groups[id] = patch.showDriveControls;
+        Object.assign(groups, patch.hudGroups);
         const climate = patch.researchHud ?? patch.hudGroups?.climate;
+        if (climate !== undefined) groups.climate = climate;
         // Legacy "hidden" policies share the same visibility switch. Showing
         // the key again restores AUTO; AUTO/ALWAYS edits also reveal it.
         const ignitionVisibility =
-          patch.hudGroups?.ignition === true &&
+          (patch.hudGroups?.ignition === true || patch.showDriveControls === true) &&
           patch.ignitionVisibility === undefined &&
           state.ignitionVisibility === "hidden"
             ? "auto"
@@ -230,9 +251,7 @@ export const usePreferencesStore = create<
           hudGroups: groups,
           garageEffects: { ...state.garageEffects, ...patch.garageEffects },
           vehicleCosmetics: { ...state.vehicleCosmetics, ...patch.vehicleCosmetics },
-          ...(climate === undefined
-            ? {}
-            : { researchHud: climate, hudGroups: { ...groups, climate } }),
+          researchHud: climate ?? groups.climate,
         });
         // Sanitizing creates new maps/arrays. Retain unchanged references so
         // a brightness drag cannot redraw the wheel, radio and entire HUD.

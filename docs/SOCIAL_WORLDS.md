@@ -90,8 +90,10 @@ membership does not force current players to switch sides.
 
 ## Around $20 per month
 
-The alpha configuration permits **one 5v5 match, one editor player and one
-practice player**. These are operator limits, not a measured hosting guarantee. The city now has ten non-overlapping
+The default alpha budget is **three active worlds and 24 active players**.
+Quickplay and Competitive can run multiple 3v3/5v5 games within that shared
+budget; editor and practice retain one occupied slot each. These are operator
+limits, not a measured hosting guarantee. See `MATCH-FORMATS-AND-CONCURRENT-GAMES.md`. The city now has ten non-overlapping
 spawn bays; small test maps have fewer bays, so a parked car may need to move away
 before another can spawn. More worlds duplicate map physics and reduce CPU and
 memory headroom. Empty saved worlds are much cheaper than occupied worlds.

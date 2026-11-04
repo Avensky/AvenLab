@@ -528,7 +528,7 @@ test("alpha selection, queue and HUD route to their own state owners", async (t)
           document.querySelector('select[aria-label="Radio HUD style"]'),
           null,
         );
-        await click("NO TAB BAR");
+        await click("SINGLE ROW");
         assert.equal(
           sanitizePreferences({ radioHudStyle: "no-tabs" }).radioHudStyle,
           "no-tabs",

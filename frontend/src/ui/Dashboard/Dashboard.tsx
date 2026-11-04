@@ -50,6 +50,7 @@ const RpmInstrument = memo(function RpmInstrument() {
         speedKph: s.data.speedKph,
         engineOn: s.data.engineOn,
         signal: s.data.signal,
+        instrumentPower: s.data.instrumentPower,
         resourceMask: s.data.resourceMask,
         cabinMask: s.data.cabinMask,
         cockpitMask: s.data.cockpitMask,
@@ -100,6 +101,7 @@ const FuelInstrument = memo(function FuelInstrument() {
       resourceMask: s.data.resourceMask,
       engineOn: s.data.engineOn,
       signal: s.data.signal,
+      instrumentPower: s.data.instrumentPower,
       cabinMask: s.data.cabinMask,
       abs: s.data.absEnabled,
       tcs: s.data.tcsEnabled,
@@ -124,11 +126,12 @@ const FuelInstrument = memo(function FuelInstrument() {
   );
 });
 export default function Dashboard() {
-  const { signal, engineOn, power } = useVehicleTelemetryStore(
+  const { signal, engineOn, power, held } = useVehicleTelemetryStore(
     useShallow((s) => ({
       signal: s.data.signal,
       engineOn: s.data.engineOn,
       power: displayPower(s.data),
+      held: s.data.signal === 'stale' && s.data.instrumentPower !== undefined,
     })),
   );
   const root = useRef<HTMLElement>(null);
@@ -150,6 +153,8 @@ export default function Dashboard() {
       data-signal={signal}
       data-engine-on={engineOn}
       data-power={power}
+      data-power-held={held}
+      aria-description={held ? 'Signal delayed. Readings are unavailable; illumination retains the last confirmed power temporarily.' : undefined}
       aria-label="Vehicle instruments"
     >
       <div
