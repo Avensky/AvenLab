@@ -1,4 +1,4 @@
-import {HEROES} from '../../store/alpha/alphaStore';
+import {HEROES,heroForVehicle} from '../../store/alpha/alphaStore';
 import type {PhysicsEntitySnapshot,PhysicsSnapshot,VehicleSessionStats} from '../../store/session/networkStore';
 import type {SocialView} from '../../store/social/socialStore';
 import type {HeroAppearance} from '../../vehicles/cosmetics/heroLoadouts';
@@ -52,7 +52,7 @@ export function scoreboardPlayers(snapshot:PhysicsSnapshot|null,playerId:string,
   if(profileId)seenProfiles.add(profileId);
   const card=profileId?roster.find(item=>item.id===profileId):undefined;
   const hidden=card?.hero_hidden===true,desired=self?view?.alpha?.active?.hero:card?.hero;
-  const hero=hidden?undefined:HEROES.find(item=>item.id===desired&&item.vehicle===entity.vehicle_id)??HEROES.find(item=>item.id===entity.vehicle_id);
+  const hero=hidden?undefined:HEROES.find(item=>item.id===desired&&item.vehicle===entity.vehicle_id)??heroForVehicle(entity.vehicle_id);
   const ownStyle=self&&hero?view?.profile.progression?.hero_loadouts?.[hero.vehicle]:undefined;
   return {id:entity.id,profileId,name:self?view?.profile.name??member?.name??'YOU':member?.name??card?.name??'UNKNOWN PLAYER',team:team(entity.team),self,
    hero:hero?.id??null,appearance:hidden?null:entity.appearance??card?.appearance??ownStyle??null,heroHidden:hidden,

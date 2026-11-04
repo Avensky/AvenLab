@@ -26,6 +26,8 @@ type RosterEntity = {
   collider?: VehicleColliderShape;
 };
 import { Ae86 } from "./Ae86";
+import { SocketCar } from "./SocketCar";
+import { Cx30 } from "./Cx30";
 import { Brz } from "./Brz";
 import { Camaro } from "./Camaro";
 import { Supra } from "./Supra";
@@ -98,6 +100,16 @@ function GlbVehicle({ entity }: { entity: RosterEntity }) {
   let model: ReactNode;
 
   switch (vehicleId) {
+    case "sierra":
+    case "fortuner":
+    case "landcruiser":
+    case "mini":
+      model = <SocketCar entityId={entity.id} model={vehicleId} />;
+      break;
+
+    case "cx30":
+      model = <Cx30 entityId={entity.id} />;
+      break;
     case "ae86":
     case "toyota-ae86":
       model = <Ae86 entityId={entity.id} />;

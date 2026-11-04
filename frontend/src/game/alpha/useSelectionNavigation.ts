@@ -18,6 +18,7 @@ export function useSelectionNavigation(
 ) {
   useEffect(() => {
     const action = (next: MenuAction) => {
+      if (root.current?.inert) return;
       if(["hero_abilities","match_results"].includes(useUIStore.getState().overlay??""))return;
       const active = document.activeElement as HTMLElement | null;
       const chat = active?.closest('.lobby-chat[data-expanded="true"]');

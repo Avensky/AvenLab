@@ -1,7 +1,7 @@
 # Alpha policy and progression
 
 mod.rs defines volatile membership, FIFO tickets, reconnect reservations and
-managed mode types. policy.rs maps seven heroes to approved chassis and roles;
+managed mode types. policy.rs maps eight heroes to approved chassis and roles;
 it keeps room for valid five-player compositions and exact one-of-each-role three-player teams. progression.rs owns persisted
 win tiers, 1–100 levels/prestige, milestone credits and voucher ownership.
 

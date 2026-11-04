@@ -11,14 +11,14 @@ export function CtfFlagCloth({ color, carried = false }: { color: string; carrie
   const initialized = useRef(false), cameraLocal = useMemo(() => new Vector3(), []);
   const reduced = usePreferencesStore(state => state.reducedMotion);
   useFrame(({ clock, camera }, delta) => {
-    if (geometry.current) updateFlagCloth(geometry.current, reduced ? 0 : clock.elapsedTime);
+    if (geometry.current) updateFlagCloth(geometry.current, reduced ? 0 : clock.elapsedTime, carried);
     const group = pivot.current, parent = group?.parent;
     if (!carried || !group || !parent) return;
     // The carrier's -2 frame callback already applied the shared chassis pose.
     parent.updateWorldMatrix(true, false);
     camera.getWorldPosition(cameraLocal);
     parent.worldToLocal(cameraLocal);
-    const target = flagClothTargetYaw(group.rotation.y, cameraLocal.x, cameraLocal.z);
+    const target = Math.max(-.24, Math.min(.24, flagClothTargetYaw(group.rotation.y, cameraLocal.x, cameraLocal.z)));
     group.rotation.y = !initialized.current || reduced ? target : approachFlagClothYaw(group.rotation.y, target, delta);
     initialized.current = true;
   }, -1);

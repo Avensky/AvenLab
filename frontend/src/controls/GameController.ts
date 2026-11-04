@@ -1,5 +1,5 @@
 import {requestNearestRevive,isMechanicPlayer} from '../combat/reviveTargets';
-import {isGuardDpsPlayer,requestGuardBoost,requestTankBarrier} from '../combat/guardBoost';
+import {isGuardDpsPlayer,requestGuardBoost,requestTankBarrier,requestDiveShield,isDiveShieldPlayer} from '../combat/guardBoost';
 import {useScoreboardStore} from "../store/hud/scoreboardStore";
 import {controllerDrive} from "./controllerDrive";
 import {unpackCockpit} from "../store/input/protocol/cockpitMasks";
@@ -189,15 +189,16 @@ export function GameController() {
       // Its B/Close action owns this edge, then requires neutral controls before
       // the same held button can become the driving handbrake again.
       const scoreboard=useScoreboardStore.getState();
-      if((scoreboard.held||scoreboard.pinned)&&ui.screen==='sandbox'&&ui.overlay===null&&(edges[4]||edges[5])){
+      const scoreboardOpen=scoreboard.held||scoreboard.pinned;
+      if(scoreboardOpen&&(edges[4]||edges[5])){
         scoreboard.setView(edges[4]?"composition":"table");releasePanelPress();release();return;
       }
-      if(edges[1]&&(scoreboard.held||scoreboard.pinned)&&ui.screen==='sandbox'&&ui.overlay===null){
+      if(edges[1]&&scoreboardOpen){
         scoreboard.close();releasePanelPress();release();return;
       }
       // Team filters own triggers only in the composition view. Holding one
       // after a filter change cannot become throttle/reverse on the next poll.
-      if((scoreboard.held||scoreboard.pinned)&&ui.screen==='sandbox'&&ui.overlay===null&&scoreboard.view==='composition'&&(pressed(6)||pressed(7))){
+      if(scoreboardOpen&&scoreboard.view==='composition'&&(pressed(6)||pressed(7))){
         if(edges[6]||edges[7])scoreboard.cycleTeamFilter(edges[6]?-1:1);
         releasePanelPress();release();return;
       }
@@ -358,7 +359,7 @@ export function GameController() {
           routeMenuAction(edges[4] ? "previous_tab" : "next_tab");
           return;
         }
-        if ((edges[6] || edges[7]) && ((ui.screen === "mode_select" && ui.overlay === null) || ui.overlay === "match_results" || (ui.screen==='hero_select'&&ui.overlay===null&&document.activeElement?.closest('[data-match-preview]')))) {
+        if ((edges[6] || edges[7]) && ((ui.screen === "mode_select" && ui.overlay === null) || ui.overlay === "match_results")) {
           routeMenuAction(edges[6] ? "previous_option" : "next_option");
           return;
         }
@@ -440,7 +441,7 @@ export function GameController() {
       if (edges[2]) store.toggleVehicleFlag(VehicleFlags.ENGINE_ON);
       if (edges[3]) {if(cycleTankWeapon())secondaryFireArmed=false;else store.toggleVehicleFlag(VehicleFlags.HEADLIGHTS);}
       if (edges[12]) {if(tank)resetTurretOrientation();else store.toggleVehicleFlag(VehicleFlags.HAZARDS);}
-      if (edges[14]) {if(tank)void requestTankBarrier();else store.toggleVehicleFlag(VehicleFlags.BLINKER_LEFT);}
+      if (edges[14]) {if(tank)void requestTankBarrier();else if(isDiveShieldPlayer()&&combatIntent.enabled)void requestDiveShield();else store.toggleVehicleFlag(VehicleFlags.BLINKER_LEFT);}
       if (edges[15]&&!(tank&&combatIntent.enabled)) store.toggleVehicleFlag(VehicleFlags.BLINKER_RIGHT);
       if (edges[11]) {
         if(combatIntent.enabled)toggleTurretOrientationLock();

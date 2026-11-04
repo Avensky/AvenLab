@@ -89,20 +89,36 @@ export const HEROES: {
     note: "DPS · pursuit chassis",
   },
   {
-    id: "mechanic",
-    name: "MECHANIC",
-    vehicle: "brz",
-    role: "support",
-    note: "SUPPORT · BRZ chassis · abilities in development",
+    id: "mini",
+    name: "MINI COOPER",
+    vehicle: "mini",
+    role: "dps",
+    note: "DPS · compact front-wheel-drive flanker",
   },
   {
-    id: "logistics",
-    name: "LOGISTICS",
-    vehicle: "ae86",
+    id: "mechanic", name: "FORTUNER MECHANIC", vehicle: "fortuner", role: "support",
+    note: "SUPPORT · Toyota Fortuner · assisted health packs and recovery",
+  },
+  {
+    id: "logistics", name: "LAND CRUISER LOGISTICS", vehicle: "landcruiser", role: "support",
+    note: "SUPPORT · Toyota Land Cruiser · dedicated supply kit pending",
+  },
+  {
+    id: "cx30",
+    name: "CX-30 RESCUE",
+    vehicle: "cx30",
     role: "support",
-    note: "SUPPORT · AE86 chassis · abilities in development",
+    note: "SUPPORT · Mazda utility SUV · close-range spray and Dive Shield",
+  },
+  {
+    id: "sierra", name: "SIERRA AT4X", vehicle: "sierra", role: "tank",
+    note: "TANK · GMC Sierra 1500 AT4X · 900 HP wheeled pickup",
   },
 ];
+export function heroForVehicle(vehicle: string | null | undefined) {
+  return HEROES.find(hero => hero.vehicle === vehicle);
+}
+
 export type Progression = {
   career?: import("../../game/career/careerTypes").CareerSummary;
   default_hero?: string;

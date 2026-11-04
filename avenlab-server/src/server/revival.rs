@@ -149,8 +149,7 @@ impl Server {
         }
         let source = room.game.entities.get(player).filter(|entity| entity.team == member.team && entity.room_id == world)
             .ok_or("Your mechanic vehicle is unavailable.")?;
-        let expected = crate::alpha::policy::hero("mechanic")?.vehicle;
-        if source.vehicle_id.as_deref() != Some(expected) { return Err("Deploy the Mechanic's assigned vehicle before reviving.".into()); }
+        if room.physics.assigned_hero(player) != Some("mechanic") || source.vehicle_id.as_deref() != Some(crate::alpha::policy::hero("mechanic")?.vehicle) { return Err("Deploy the Mechanic's assigned vehicle before reviving.".into()); }
         let vehicle = room.physics.vehicles.get(player).ok_or("Your mechanic vehicle is unavailable.")?;
         if vehicle.config.resources.fuel_capacity_liters > 0.0 &&
             (!vehicle.powertrain.fuel_liters.is_finite() || vehicle.powertrain.fuel_liters <= 0.0) {
@@ -246,8 +245,8 @@ mod tests {
             let client = s.connections.lock().await[player].clone();
             room.join(player, client.tx, client.frame, client.input, Some(Team::Red), 10);
             s.connections.lock().await.get_mut(player).unwrap().world_id = Some(WORLD);
-            room.spawn(player, "brz").unwrap();
-            if player == &mechanic { move_body(&mut room, player, 0.0, 0.0, 20.0); }
+            room.spawn(player, if player == &mechanic { "fortuner" } else { "brz" }).unwrap();
+            if player == &mechanic { room.physics.set_assigned_hero(player,"mechanic"); move_body(&mut room, player, 0.0, 0.0, 20.0); }
         }
         move_body(&mut room, &mechanic, 0.0, 0.0, -14.0);
         for health in room.physics.vehicle_health.values_mut() { health.spawn_protection_s = 0.0; }
@@ -319,7 +318,8 @@ mod tests {
         let next = connect(&s).await;
         s.handle(&next, json!({"action":"identify","name":"Returned mechanic","token":identity["token"]})).await.unwrap();
         assert_eq!(s.connections.lock().await[&next].world_id, Some(WORLD));
-        s.spawn(&next, "road_precision", "brz").await.unwrap();
+        assert!(s.spawn(&next, "road_precision", "brz").await.is_err());
+        s.spawn(&next, "road_precision", "fortuner").await.unwrap();
         let runtime = s.runtimes.lock().await[&WORLD].clone();
         assert!(runtime.lock().await.physics.vehicle_health[&next].revive_cooldown_s > 0.0);
         assert!(revive(&s, &next, &target).await.unwrap_err().contains("cooling down"));

@@ -31,7 +31,7 @@ export function confirmedMatchTeam(context: MatchTeamContext): MatchTeam | null 
 
 export const MATCH_TEAM_COLORS = {
   // Warm red identifies a team; Strawberry retains its separate magenta/pink palette.
-  red: {glow: "#ff3b30", dark: "#ff675b", light: "#b6201a"},
+  red: {glow: "#ef122c", dark: "#ff6570", light: "#ac132a"},
   blue: {glow: "#4484ff", dark: "#69bbff", light: "#145fa8"},
 } as const;
 

@@ -213,7 +213,7 @@ async fn matchmaking_reserves_ten_unpicked_seats_and_locks_roles_only_after_sele
     let same_team = players.iter().find(|p| *p != &players[0] && a.members[*p].team == team).unwrap();
     s.handle(&players[0], json!({"action":"hero_select","hero":"tank"})).await.unwrap();
     assert!(s.handle(same_team, json!({"action":"hero_select","hero":"tank"})).await.is_err());
-    s.handle(same_team, json!({"action":"hero_select","hero":"mechanic"})).await.unwrap();
+    s.handle(same_team, json!({"action":"hero_select","hero":"cx30"})).await.unwrap();
     let (waiter, _, _) = client(&s, "Eleventh").await;
     assert_eq!(mode(&s, &waiter, "quickplay", "").await["status"], "queued");
     s.handle(&players[0], json!({"action":"mode_cancel"})).await.unwrap();
@@ -274,7 +274,7 @@ async fn alpha_has_exactly_one_slot_per_category_and_fifo_admission() {
     let (e, _, _) = client(&s, "Editor").await;
     assert_eq!(mode(&s, &a, "sandbox", "tank").await["status"], "joined");
     assert_eq!(
-        mode(&s, &b, "sandbox", "mechanic").await["status"],
+        mode(&s, &b, "sandbox", "cx30").await["status"],
         "queued"
     );
     assert_eq!(mode(&s, &c, "sandbox", "brz").await["status"], "queued");
@@ -296,7 +296,7 @@ async fn alpha_reconnect_reserves_then_restores_a_seat_and_expiry_promotes_queue
     let s = alpha_server();
     let (a, identity, _) = client(&s, "Reconnect").await;
     let (b, _, _) = client(&s, "Waiting").await;
-    let original = mode(&s, &a, "sandbox", "mechanic").await["world_id"].clone();
+    let original = mode(&s, &a, "sandbox", "cx30").await["world_id"].clone();
     mode(&s, &b, "sandbox", "brz").await;
     s.disconnect(&a).await;
     s.maintain_alpha().await;
@@ -313,7 +313,7 @@ async fn alpha_reconnect_reserves_then_restores_a_seat_and_expiry_promotes_queue
         s.connections.lock().await[&reconnected].world_id,
         Some(original.as_u64().unwrap() as usize)
     );
-    assert_eq!(s.alpha.lock().await.members[&reconnected].hero, "mechanic");
+    assert_eq!(s.alpha.lock().await.members[&reconnected].hero, "cx30");
     s.disconnect(&reconnected).await;
     for reservation in s.alpha.lock().await.reservations.values_mut() {
         reservation.expires = timestamp() - 1;
@@ -327,7 +327,7 @@ async fn five_by_five_roles_respect_configured_match_budget_and_results_cannot_b
     let mut s = alpha_server(); s.max_active_worlds=1;
     let mut players = Vec::new();
     let picks = [
-        "tank", "tank", "ae86", "ae86", "brz", "brz", "mechanic", "mechanic", "camaro", "camaro",
+        "tank", "tank", "ae86", "ae86", "brz", "brz", "cx30", "cx30", "camaro", "camaro",
     ];
     let mut world = 0;
     for (index, hero) in picks.iter().enumerate() {
@@ -540,9 +540,9 @@ async fn roster_portraits_publish_only_equipped_styles_for_live_and_reserved_pla
     let mut appearance = crate::alpha::appearance::HeroAppearance::default();
     appearance.body = "#ed258d".into();
     appearance.finish = "soft".into();
-    profile.progression.hero_loadouts.insert("brz".into(), appearance.clone());
+    profile.progression.hero_loadouts.insert("cx30".into(), appearance.clone());
     let mut alpha = AlphaState::default();
-    alpha.members.insert(player.clone(), Member { mode: Mode::Quickplay, team_size:5, world: 7, hero: "mechanic".into(), team: Team::Red });
+    alpha.members.insert(player.clone(), Member { mode: Mode::Quickplay, team_size:5, world: 7, hero: "cx30".into(), team: Team::Red });
     let clients = server.connections.lock().await;
     let view = Server::alpha_view(&alpha, &profile_id, &player, &clients, &data, server.max_active_worlds);
     let card = &view["roster"][0];
@@ -577,12 +577,12 @@ async fn enemy_lobby_picks_are_hidden_until_their_exact_world_has_started() {
     let ally_profile=ally_identity["profile_id"].as_str().unwrap();
     let enemy_profile=enemy_identity["profile_id"].as_str().unwrap();
     let mut a=AlphaState::default();
-    for (id,hero,team) in [(&me,"tank",Team::Red),(&ally,"brz",Team::Red),(&enemy,"mechanic",Team::Blue)] {
+    for (id,hero,team) in [(&me,"tank",Team::Red),(&ally,"brz",Team::Red),(&enemy,"cx30",Team::Blue)] {
         a.members.insert(id.clone(),Member{mode:Mode::Competitive,team_size:3,world:7,hero:hero.into(),team});
     }
     let mut data=s.data.lock().await;
     let mut paint=crate::alpha::appearance::HeroAppearance::default();paint.body="#ed258d".into();
-    data.profiles.get_mut(enemy_profile).unwrap().progression.hero_loadouts.insert("brz".into(),paint);
+    data.profiles.get_mut(enemy_profile).unwrap().progression.hero_loadouts.insert("cx30".into(),paint);
     let clients=s.connections.lock().await;
     let mut phases=HashMap::from([(7,("round-seven".into(),CtfPhase::Waiting)),(8,("other-round".into(),CtfPhase::Running))]);
     let view=Server::alpha_view_for_phases(&a,profile,&me,&clients,&data,3,&phases);
@@ -597,7 +597,7 @@ async fn enemy_lobby_picks_are_hidden_until_their_exact_world_has_started() {
     for phase in [CtfPhase::Running,CtfPhase::Ended] {
         phases.insert(7,("round-seven".into(),phase));
         let started=Server::alpha_view_for_phases(&a,profile,&me,&clients,&data,3,&phases);
-        let revealed=card(&started,enemy_profile);assert_eq!(revealed["hero_hidden"],false);assert_eq!(revealed["hero"],"mechanic");assert_eq!(revealed["appearance"]["body"],"#ed258d");
+        let revealed=card(&started,enemy_profile);assert_eq!(revealed["hero_hidden"],false);assert_eq!(revealed["hero"],"cx30");assert_eq!(revealed["appearance"]["body"],"#ed258d");
     }
     drop(clients);drop(data);cleanup(s).await;
 }
@@ -659,7 +659,7 @@ async fn world_member_levels_use_authenticated_profiles_and_do_not_publish_inven
 async fn deployed_ctf(strict: bool) -> (Server, usize, Vec<(String, Value)>) {
     let s = alpha_server();
     s.alpha.lock().await.enforce_roles = strict;
-    let picks: Vec<_> = if strict { vec!["tank","tank","ae86","ae86","brz","brz","mechanic","mechanic","camaro","camaro"] } else { vec!["brz","brz"] };
+    let picks: Vec<_> = if strict { vec!["tank","tank","ae86","ae86","brz","brz","cx30","cx30","camaro","camaro"] } else { vec!["brz","brz"] };
     let mut roster = Vec::new();
     let mut world = 0;
     for (index, hero) in picks.iter().enumerate() {
@@ -951,7 +951,7 @@ async fn skirmish_admits_six_unpicked_seats_and_reserves_reconnects_without_mixi
 #[tokio::test]
 async fn skirmish_starts_only_with_six_deployed_roles_and_archives_its_own_mode_once() {
     let s = alpha_server();
-    let picks = ["tank", "tank", "ae86", "ae86", "mechanic", "mechanic"];
+    let picks = ["tank", "tank", "ae86", "ae86", "cx30", "cx30"];
     let mut world = 0;
     let mut roster = Vec::new();
     for (index, hero) in picks.iter().enumerate() {
@@ -995,7 +995,7 @@ async fn skirmish_starts_only_with_six_deployed_roles_and_archives_its_own_mode_
 async fn skirmish_verified_rewards_are_nonranked_and_cannot_be_duplicated() {
     let s = alpha_server();
     let mut world = 0;
-    for (index, hero) in ["tank", "tank", "ae86", "ae86", "mechanic", "mechanic"].iter().enumerate() {
+    for (index, hero) in ["tank", "tank", "ae86", "ae86", "cx30", "cx30"].iter().enumerate() {
         let (player, _, _) = client(&s, &format!("3v3 result {index}")).await;
         let joined = mode(&s, &player, "skirmish", hero).await;
         assert_eq!(joined["status"], "joined");
@@ -1083,7 +1083,7 @@ async fn invalid_match_sizes_do_not_release_existing_seats_and_missing_size_defa
 async fn competitive_three_by_three_uses_size_roles_and_records_size_without_changing_rules() {
     let mut s=alpha_server();s.max_active_worlds=2;
     let mut players=Vec::new();let mut world=0;
-    for (index,hero) in ["tank","tank","brz","brz","mechanic","mechanic"].into_iter().enumerate(){
+    for (index,hero) in ["tank","tank","brz","brz","cx30","cx30"].into_iter().enumerate(){
         let (player,identity,_)=client(&s,&format!("Competitive three {index}")).await;
         let joined=s.handle(&player,json!({"action":"mode_join","mode":"competitive","team_size":3,"hero":hero})).await.unwrap();
         assert_eq!(joined["status"],"joined");world=joined["world_id"].as_u64().unwrap() as usize;

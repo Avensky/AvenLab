@@ -171,3 +171,12 @@
   width: 100%;
   height: 100%;
 }
+
+.climate-panel .console-clock-strip {
+  justify-content: space-between; gap: 12px; margin-inline-end: 22px;
+  padding: 3px 6px; border: 1px solid var(--cabin-lcd-border); border-radius: 3px;
+}
+.climate-panel .console-clock-strip .cabin-clock {
+  padding: 0; min-width: 0; border: 0; background: transparent;
+}
+.climate-status-row { display: flex; align-items: center; justify-content: center; gap: 8px; }

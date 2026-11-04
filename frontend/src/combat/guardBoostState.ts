@@ -4,12 +4,13 @@ export const GUARD_DURATION_S=4;
 export const GUARD_COOLDOWN_S=20;
 export const GUARD_SHIELD_HP=200;
 export const GUARD_FUEL_LITERS=3;
-export const TANK_BARRIER_DURATION_S=5;
+export const DIVE_DURATION_S=2;
+export const DIVE_COOLDOWN_S=18;
 export const TANK_BARRIER_COOLDOWN_S=15;
 export const TANK_BARRIER_HP=500;
 export const TANK_BARRIER_FUEL_LITERS=1;
 export type GuardActionKind='brz_guard'|'tank_barrier';
-export type GuardBoostSnapshot={kind?:''|GuardActionKind;remaining_s:number;cooldown_s:number;shield_hp:number;shield_max_hp:number;break_seq:number};
+export type GuardBoostSnapshot={kind?:''|GuardActionKind;remaining_s:number;cooldown_s:number;shield_hp:number;shield_max_hp:number;break_seq:number;dive_remaining_s?:number;dive_cooldown_s?:number};
 const finite=(value:unknown):value is number=>typeof value==='number'&&Number.isFinite(value);
 
 /** Missing/invalid contracts never create a ready button or a permanent shield. */

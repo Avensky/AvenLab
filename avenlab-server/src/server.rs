@@ -426,6 +426,7 @@ impl Server {
         let revive_cooldown = self.revival_cooldown(player).await;
         let assigned = self.alpha.lock().await.members.get(player).filter(|m|Some(m.world)==joined_world).map(|m|m.hero.clone()).unwrap_or_default();
         let guard_ability=if assigned=="tank" {"tank_barrier"}else{"guard_boost"};
+        let dive_cooldown=self.ability_cooldown(player,"dive_shield").await;
         let guard_cooldown = self.ability_cooldown(player,guard_ability).await;
         let heal_cooldown = self.ability_cooldown(player,"heal_pack").await;
         let mut room = runtime.lock().await;
@@ -436,6 +437,8 @@ impl Server {
         room.physics.set_assigned_hero(player,&assigned);
         let retained_guard_cooldown=room.physics.guard_view(player).cooldown_s.max(guard_cooldown);
         room.physics.guard_boosts.entry(player.into()).or_default().cooldown=retained_guard_cooldown;
+        let guard=room.physics.guard_boosts.entry(player.into()).or_default();
+        guard.dive_cooldown=guard.dive_cooldown.max(dive_cooldown);
         room.physics.support.ensure_cooldown(player,heal_cooldown);
         let round_id = room.round.as_ref().map(|round| round.match_id.clone());
         if let Some(lease) = self.take_downed_reconnect(player, room.game.room_id, round_id.as_deref()).await {
@@ -475,7 +478,7 @@ impl Server {
             "career_history" | "career_match" => self.handle_career(player, &value).await?,
             "vehicle_revive" => self.handle_vehicle_revive(player, &value).await?,
             "vehicle_heal_pack" => self.handle_vehicle_heal_pack(player, &value).await?,
-            "dps_guard_boost" => self.handle_dps_guard_boost(player, &value).await?,
+            "dive_shield" | "dps_guard_boost" => self.handle_dps_guard_boost(player, &value).await?,
             "tank_barrier" => self.handle_tank_barrier(player, &value).await?,
 
             "identify" => {

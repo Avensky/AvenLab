@@ -2,11 +2,11 @@
 
 ## Live first versions
 
-The Mechanic's primary fire sends target-assisted health packs to an injured living teammate. The server chooses a valid nearby ally, checks the range and clear path, and owns the cooldown, fuel cost, flight and actual HP restored. Manual turret aim is not required. Packs heal missing HP and contribute to the Mechanic's ultimate charge through actual healing. They do not resurrect disabled vehicles; U / controller LB still uses the separate nearby recovery ability.
+The Mini Cooper is a compact front-wheel-drive DPS with a single roof gun. The GMC Sierra AT4X fills a Tank seat with 900 hull HP, conventional steering and the shared roof gun. The CX-30 is a Support SUV. The Toyota Fortuner is the Mechanic chassis. Its assisted packs heal living teammates and its recovery ability revives eligible allies. The Land Cruiser is the Logistics chassis. It uses the shared roof gun while dedicated supply transfer is pending.
 
-BRZ DPS keeps one primary gun and gains Guard Boost: a breakable frontal shield plus a short high-speed stability/boost window. Its grounded frontal rush can add one hit per opponent; it has no tank-style stun or extra forced knockback. Finite shield HP, directional coverage, cooldown, fuel and NOS costs keep the tank dangerous. A broken shield does not make the remainder of the stability effect disappear. The Mechanic uses the BRZ chassis but cannot activate the DPS kit.
+BRZ DPS keeps one primary gun and gains Guard Boost: a breakable frontal shield plus a short high-speed stability/boost window. Its grounded frontal rush can add one hit per opponent; it has no tank-style stun or extra forced knockback. Finite shield HP, directional coverage, cooldown, fuel and NOS costs keep the tank dangerous. A broken shield does not make the remainder of the stability effect disappear.
 
-The Tank gains a separate blue personal Frontal Barrier: 500 shield HP across a ±60-degree front, five seconds duration, fifteen seconds cooldown and one litre of fuel. Activate it with the Barrier button, controller D-pad Left, or the remappable keyboard binding (default P). The engine must run to activate it; engine shutdown, defeat or expiry cancels the barrier without clearing its cooldown. It follows the hull and protects the tank itself, rather than creating an independent team wall. It adds no NOS use, boost, stabilization or rush bonus. The Tank guide now lists Ram, Barrier and Scope as its three abilities; Angle Lock and Reset remain ordinary aiming controls.
+The Tank projects a turret-facing, 500 HP barrier 5.4 m ahead. Its 10 m × 3.4 m panel intercepts enemy cannon and machine-gun fire and allows allied fire through. It covers a broadside when the cannon turns sideways. It lasts until its HP is depleted, costs one litre of fuel and cannot be recast within fifteen seconds of activation. Activate it with the Barrier button, D-pad Left or the remappable P key. Stopping the engine preserves the shield during deployment. The BRZ retains its small personal guard. The CX-30 Support SUV has a two-second Dive Shield with an eighteen-second cooldown. It blocks incoming damage from every direction while the spray gun can still fire. A frontal hit at 90% of its normal top speed can dislodge an enemy flag while its shield is intact.
 
 The abilities guide describes the server tuning for these three live kits. Other dedicated abilities and every usable ultimate action remain marked PLANNED. Passive, damage and healing ultimate charge remain the existing foundation.
 
@@ -19,12 +19,9 @@ Concepts are separate from the playable `HEROES` list. They have no spawn/model 
 | Vehicle foundation | Proposed use | Work still required |
 | --- | --- | --- |
 | Field truck | Limited mobile repair/fuel depot | Asset, heavy collider/suspension and resource-transfer rules |
-| Utility SUV | Rescue/support platform with planned short-range spray damage | Asset, handling, cone-hit validation and finite spray resource/cooldown |
-| Mini Cooper | Compact flanking DPS with one weapon | Asset, collider, agile handling and weapon balance |
 | Motorcycle, optional | Scout or fast interceptor | Bike/rider assets, two-wheel physics, crash/recovery design |
 | Submarine, optional | Later underwater scouting/support | Asset, buoyancy, depth controls and underwater objectives |
 
-The SUV and optional submarine are both retained as design possibilities because “sub” could refer to either direction. Neither is promised as a working vehicle in this patch.
 
 ## Planned kits
 

@@ -21,6 +21,7 @@ impl PhysicsWorld {
     /// Impact batches validate all attackers before resolving reciprocal lethal
     /// hits. This path preserves that simultaneous policy and credits one event.
     pub(crate) fn apply_validated_vehicle_damage(&mut self,victim:&str,attacker:Option<&str>,amount:f32,kind:&str)->bool {
+        if self.dive_protected(victim){return false;}
         let amount=amount*if self.ctf_carriers.contains(victim){crate::ctf::CARRIER_DAMAGE_FACTOR}else{1.0};
         let amount=self.absorb_guard_damage(victim,attacker,amount,kind);
         let Some(health)=self.vehicle_health.get_mut(victim) else{return false};
@@ -46,7 +47,7 @@ impl PhysicsWorld {
     }
 
     fn freeze_disabled_vehicle(&mut self,player:&str){
-        self.cancel_guard(player);
+        self.suspend_shields(player);
         if let Some(vehicle)=self.vehicles.get_mut(player){
             vehicle.throttle=0.0;vehicle.steer=0.0;vehicle.brake=0.0;vehicle.handbrake=0.0;
             vehicle.pitch=0.0;vehicle.yaw=0.0;vehicle.roll=0.0;vehicle.ascend=0.0;vehicle.player_flags=0;

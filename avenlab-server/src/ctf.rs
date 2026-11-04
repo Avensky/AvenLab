@@ -72,6 +72,7 @@ pub struct CtfRound {
     objectives:HashMap<String,CtfObjectiveStats>,capture_events:Vec<CtfCaptureEvent>,
     previous:HashMap<String,CtfPlayer>,last_safe:HashMap<String,[f32;3]>,last_capture:Option<Team>,completion:Option<CtfCompletion>,
     events:Vec<CtfFlagEvent>,event_sequence:u64,
+    pickup_lock:[Option<String>;2],
 }
 fn index(team:Team)->usize {match team{Team::Red=>0,Team::Blue=>1}}
 fn near(a:[f32;3],b:[f32;3])->bool {let x=a[0]-b[0];let z=a[2]-b[2];x*x+z*z<=FLAG_RADIUS*FLAG_RADIUS&&(a[1]-b[1]).abs()<=4.0}
@@ -99,7 +100,7 @@ impl CtfRound {
         if !bases.iter().all(|p|finite(*p))||near(bases[0],bases[1]) {return Err("CTF requires two distinct authored team bases.".into());}
         let dx=bases[0][0]-bases[1][0];let dz=bases[0][2]-bases[1][2];
         if dx*dx+dz*dz<144.0{return Err("CTF team bases must be at least 12 metres apart.".into());}
-        Ok(Self{match_id:uuid::Uuid::new_v4().to_string(),mode:mode.into(),team_size:if mode=="skirmish" {3}else{5},training,phase:CtfPhase::Waiting,elapsed_s:0.0,duration_s:ROUND_DURATION_S,bases,flags:[CtfFlag::home(Team::Red,bases[0]),CtfFlag::home(Team::Blue,bases[1])],scores:CtfScores::default(),objectives:HashMap::new(),capture_events:Vec::new(),previous:HashMap::new(),last_safe:HashMap::new(),last_capture:None,completion:None,events:Vec::new(),event_sequence:0})
+        Ok(Self{match_id:uuid::Uuid::new_v4().to_string(),mode:mode.into(),team_size:if mode=="skirmish" {3}else{5},training,phase:CtfPhase::Waiting,elapsed_s:0.0,duration_s:ROUND_DURATION_S,bases,flags:[CtfFlag::home(Team::Red,bases[0]),CtfFlag::home(Team::Blue,bases[1])],scores:CtfScores::default(),objectives:HashMap::new(),capture_events:Vec::new(),previous:HashMap::new(),last_safe:HashMap::new(),last_capture:None,completion:None,events:Vec::new(),event_sequence:0,pickup_lock:[None,None]})
     }
     pub fn start(&mut self,players:&[CtfPlayer])->Result<(),String>{
         if self.phase!=CtfPhase::Waiting{return Err("This round has already started.".into());}
@@ -107,6 +108,7 @@ impl CtfRound {
         // Warmup contact is playable, but its flags and statistics never enter
         // the scored round. The world has already reset vehicles and inputs.
         self.flags=[CtfFlag::home(Team::Red,self.bases[0]),CtfFlag::home(Team::Blue,self.bases[1])];
+        self.pickup_lock=[None,None];
         self.objectives.clear();self.capture_events.clear();self.events.clear();self.scores=CtfScores::default();self.last_capture=None;self.completion=None;self.elapsed_s=0.0;
         self.previous=players.iter().map(|p|(p.player_id.clone(),p.clone())).collect();
         self.last_safe=players.iter().filter(|p|p.alive&&p.grounded&&finite(p.position)).map(|p|(p.player_id.clone(),p.position)).collect();
@@ -118,6 +120,7 @@ impl CtfRound {
     pub fn completion(&self)->Option<&CtfCompletion>{self.completion.as_ref()}
     /// Leaving drops immediately at the last observed location, before body removal.
     pub fn remove_player(&mut self,id:&str){
+        for lock in &mut self.pickup_lock {if lock.as_deref()==Some(id){*lock=None;}}
         let mut dropped=Vec::new();
         for flag in &mut self.flags{if flag.carrier.as_deref()==Some(id){flag.position=self.last_safe.get(id).copied().unwrap_or(flag.base);flag.drop();dropped.push(flag.team);}}
         for team in dropped{self.record_flag_event(CtfFlagEventKind::Dropped,team,Some(id.to_owned()));}
@@ -133,7 +136,11 @@ impl CtfRound {
         self.phase=CtfPhase::Ended;
         self.completion=Some(CtfCompletion{match_id:self.match_id.clone(),mode:self.mode.clone(),team_size:self.team_size,training:self.training,duration_s:self.elapsed_s,scores:self.scores.clone(),winner,objectives:self.objectives.clone(),capture_events:self.capture_events.clone()});
     }
+    #[cfg(test)]
     pub fn tick(&mut self,dt:f32,players:&[CtfPlayer]){
+        self.tick_with_rams(dt,players,&HashSet::new());
+    }
+    pub fn tick_with_rams(&mut self,dt:f32,players:&[CtfPlayer],dislodged:&HashSet<String>){
         if self.phase==CtfPhase::Ended||!dt.is_finite()||dt<=0.0{return;}
         let scored=self.phase==CtfPhase::Running;
         let dt=dt.min(0.1).min(if scored{(self.duration_s-self.elapsed_s).max(0.0)}else{0.1});
@@ -147,7 +154,15 @@ impl CtfRound {
             else if p.grounded{self.last_safe.insert(p.player_id.clone(),p.position);}
         }
         let mut dropped=Vec::new();
-        for flag in &mut self.flags{
+        let mut released=[false;2];
+        for (i,flag) in self.flags.iter_mut().enumerate(){
+            if let Some(id)=flag.carrier.as_ref().filter(|id|dislodged.contains(*id)).cloned(){
+                flag.position=self.last_safe.get(&id).copied().unwrap_or(flag.position);
+                flag.drop();
+                self.pickup_lock[i]=Some(id.clone());
+                dropped.push((flag.team,id));
+                released[i]=true;
+            }
             // A dropped objective waits for physical contact. Returning a flag
             // on an unattended timer would bypass the rescue/defend contest.
             if let Some(id)=flag.carrier.clone(){
@@ -164,9 +179,14 @@ impl CtfRound {
         for (team,id) in dropped{self.record_flag_event(CtfFlagEventKind::Dropped,team,Some(id));}
         for flag_index in 0..self.flags.len(){
             let flag=&self.flags[flag_index];
-            if flag.status==FlagStatus::Carried{continue;}
+            if released[flag_index] || flag.status==FlagStatus::Carried{continue;}
+            // Require the dislodged carrier to leave the pickup volume before re-entry.
+            if self.pickup_lock[flag_index].as_ref().is_some_and(|id|
+                !ordered.iter().any(|p|&p.player_id==id && near(self.previous.get(id).map_or(p.position,|old|old.position),flag.position))) {
+                self.pickup_lock[flag_index]=None;
+            }
             let mut touches:Vec<_>=ordered.iter().filter_map(|p|{
-                if invalid.contains(&p.player_id)||(p.team==flag.team&&flag.status!=FlagStatus::Dropped)||
+                if self.pickup_lock[flag_index].as_ref()==Some(&p.player_id)||invalid.contains(&p.player_id)||(p.team==flag.team&&flag.status!=FlagStatus::Dropped)||
                     (p.team!=flag.team&&self.flags.iter().any(|f|f.carrier.as_deref()==Some(&p.player_id))){return None;}
                 let previous=self.previous.get(&p.player_id).map(|p|p.position).unwrap_or(p.position);
                 contact_time(previous,p.position,flag.position).map(|time|(time,*p))
@@ -175,6 +195,7 @@ impl CtfRound {
             // a deterministic tie-break for genuinely simultaneous contact.
             touches.sort_by(|(ta,a),(tb,b)|ta.total_cmp(tb).then_with(||a.player_id.cmp(&b.player_id)));
             let Some((_,player))=touches.first()else{continue;};
+            self.pickup_lock[flag_index]=None;
             let flag=&mut self.flags[flag_index];
             if player.team==flag.team{
                 flag.return_home();if scored{self.objectives.entry(player.player_id.clone()).or_default().flag_returns+=1;}
@@ -206,6 +227,17 @@ mod tests{
     fn player(id:&str,team:Team,x:f32)->CtfPlayer{CtfPlayer{player_id:id.into(),team,position:[x,1.0,0.0],alive:true,resetting:false,grounded:true,vehicle_id:Some("brz".into())}}
     fn setup()->(CtfRound,Vec<CtfPlayer>){let mut r=CtfRound::new("quickplay",false,[[0.0,1.0,0.0],[30.0,1.0,0.0]]).unwrap();let p=vec![player("r",Team::Red,0.0),player("b",Team::Blue,30.0)];r.start(&p).unwrap();(r,p)}
     fn move_to(r:&mut CtfRound,p:&mut [CtfPlayer],i:usize,x:f32){while (p[i].position[0]-x).abs()>0.001{p[i].position[0]+=(x-p[i].position[0]).clamp(-5.0,5.0);r.tick(0.1,p);}}
+    #[test]fn guarded_ram_drops_flag_and_requires_former_carrier_to_leave_before_repickup(){
+        let(mut round,mut players)=setup();
+        players[1].position[2]=10.0;
+        move_to(&mut round,&mut players,0,30.0);
+        round.tick_with_rams(0.1,&players,&HashSet::from(["r".to_owned()]));
+        assert_eq!(round.flags[1].status,FlagStatus::Dropped);
+        round.tick(0.1,&players);assert_eq!(round.flags[1].status,FlagStatus::Dropped);
+        move_to(&mut round,&mut players,0,20.0);
+        move_to(&mut round,&mut players,0,30.0);
+        assert_eq!(round.flags[1].carrier.as_deref(),Some("r"));
+    }
     #[test]fn captures_three_then_completion_is_immutable(){let(mut r,mut p)=setup();p[1].position[2]=10.0;for _ in 0..3{move_to(&mut r,&mut p,0,30.0);assert_eq!(r.flags[1].carrier.as_deref(),Some("r"));move_to(&mut r,&mut p,0,0.0);}assert_eq!(r.phase,CtfPhase::Ended);assert_eq!(r.completion().unwrap().winner,Some(Team::Red));let end=r.elapsed_s;r.tick(0.1,&p);assert_eq!(r.elapsed_s,end);assert_eq!(r.scores.red,3);assert_eq!(r.completion().unwrap().objectives["r"].captures,3);}
     #[test]fn death_reset_model_change_and_teleport_drop_without_capture(){for cause in 0..4{let(mut r,mut p)=setup();p[1].position[2]=10.0;move_to(&mut r,&mut p,0,30.0);match cause{0=>p[0].alive=false,1=>p[0].resetting=true,2=>p[0].vehicle_id=Some("tank".into()),_=>p[0].position=[0.0,1.0,0.0]};r.tick(0.1,&p);assert_eq!(r.flags[1].status,FlagStatus::Dropped);assert_eq!(r.flags[1].position[0],30.0);assert_eq!(r.scores.red,0);}}
     #[test]fn friendly_touch_returns_but_unattended_drop_waits(){let(mut r,mut p)=setup();p[1].position[2]=10.0;move_to(&mut r,&mut p,0,30.0);move_to(&mut r,&mut p,0,20.0);r.remove_player("r");assert_eq!(r.flags[1].status,FlagStatus::Dropped);p.remove(0);p[0].position=[20.0,1.0,5.0];r.tick(0.1,&p);p[0].position=[20.0,1.0,0.0];r.tick(0.1,&p);assert_eq!(r.flags[1].status,FlagStatus::Home);assert_eq!(r.objectives["b"].flag_returns,1);

@@ -1,5 +1,6 @@
 // Render completed backend poses on a short timeline; never simulate forces here.
 import { useCallback, useEffect, useRef } from "react";
+import { blendCombatAim, blendYaw } from '../combat/turretPresentation';
 import { Quaternion } from "three";
 import { useDebugViewStore } from "../store/presentation/debugViewStore";
 import {
@@ -126,6 +127,8 @@ export class PhysicsInterpolationBuffer {
     timing?: SnapshotTiming,
   ) {
     let history = this.histories.get(id);
+    const prior=history?.frames.at(-1)?.pose;
+    if (prior && (prior.room_id!==pose.room_id || prior.vehicle_id!==pose.vehicle_id)) history=undefined;
     const last = history?.frames[history.frames.length - 1];
     const tick = Number.isFinite(timing?.tick) ? timing?.tick : undefined;
     // Re-renders and late packets must not reset the clock or replay a pose.
@@ -159,8 +162,7 @@ export class PhysicsInterpolationBuffer {
     // short buffer. Playing an old backlog would add visible input latency.
     if (
       !history ||
-      receivedMs - history.lastReceivedMs > STALE_GAP_MS ||
-      last?.pose.vehicle_id !== pose.vehicle_id
+      receivedMs - history.lastReceivedMs > STALE_GAP_MS
     ) {
       history = {
         frames: [],
@@ -227,6 +229,10 @@ export class PhysicsInterpolationBuffer {
       ...b.pose,
       position: lerpVec3(a.pose.position, b.pose.position, t),
       rotation: slerpQuat(a.pose.rotation, b.pose.rotation, t),
+      combat: blendCombatAim(a.pose.combat,b.pose.combat,t),
+      guard: a.pose.guard?.panel_yaw !== undefined && b.pose.guard?.panel_yaw !== undefined
+        ? {...b.pose.guard, panel_yaw:blendYaw(a.pose.guard.panel_yaw,b.pose.guard.panel_yaw,t)}
+        : b.pose.guard,
       wheels: interpolateWheels(a.pose.wheels, b.pose.wheels, t),
     };
   }
@@ -354,6 +360,7 @@ export function useVehiclePhysicsInterpolator(
   const id = entityId ?? playerId;
   useEffect(retainVehicleTimeline, []);
 
+  const frameKey=JSON.stringify([id,delayMs]);
   const getInterpolated = useCallback(
     (requestedId: string): InterpolatedPhysicsSnapshot | null => {
       const state = useNetworkStore.getState();
@@ -366,7 +373,7 @@ export function useVehiclePhysicsInterpolator(
       // GLB, collider and geometry poses share the selected timeline and camera.
       // Force/ray diagnostics remain raw backend results; OFF exposes raw poses.
       const raw = !useDebugViewStore.getState().interpolationEnabled;
-      const key = JSON.stringify([requestedId, raw, delayMs]);
+      const key = raw ? "raw"+frameKey : frameKey;
       if (renderTimeMs !== null && framePoses.has(key))
         return framePoses.get(key)!;
       const pose = raw
@@ -381,7 +388,7 @@ export function useVehiclePhysicsInterpolator(
       if (renderTimeMs !== null) framePoses.set(key, pose);
       return pose;
     },
-    [id, delayMs],
+    [id, delayMs, frameKey],
   );
   // Compatibility actions remain available; mounted models only need sampling.
   const setSnapshot = useCallback(

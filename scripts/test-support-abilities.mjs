@@ -80,15 +80,15 @@ try {
   for (const peer of peers) {peer.team = roster.find(row => row.id === peer.identity.profile_id).team; teams[peer.team].push(peer);}
   for (const team of Object.values(teams)) {
     assert.equal(team.length, 3);
-    for (let i = 0; i < 3; i++) {team[i].hero = ['tank','brz','mechanic'][i]; team[i].vehicle = i === 0 ? 'tank' : 'brz'; await team[i].command('hero_select', {hero:team[i].hero});}
+    for (let i = 0; i < 3; i++) {team[i].hero = ['tank','brz','mechanic'][i]; team[i].vehicle = ['tank','brz','fortuner'][i]; await team[i].command('hero_select', {hero:team[i].hero});}
   }
   for (const peer of peers) await peer.deploy(peer.vehicle);
   inputTimer = setInterval(() => {for (const peer of peers) peer.tick();}, 16);
   const running = await peers[0].wait(m => m.type === 'snapshot' && m.data.entities?.length === 6 && m.data.match_state?.phase === 'running');
   await next(peers[0], m => m.data.tick > running.data.tick + 75);
-  checks.push('Six distinct profiles deploy Tank, BRZ DPS and BRZ Mechanic on both teams in a real scored Skirmish');
+  checks.push('Six distinct profiles deploy Tank, BRZ DPS and Fortuner Mechanic on both teams in a real scored Skirmish');
   const [tank, dps, mechanic] = teams.red, observer = teams.blue[2];
-  assert.equal(entity(observer.latest, dps.player).vehicle_id, 'brz'); assert.equal(entity(observer.latest, mechanic.player).vehicle_id, 'brz');
+  assert.equal(entity(observer.latest, dps.player).vehicle_id, 'brz'); assert.equal(entity(observer.latest, mechanic.player).vehicle_id, 'fortuner');
 
   phase = 'actual hero authority and no-need heal';
   await reject(dps, 'vehicle_heal_pack', {hero:'mechanic', target:mechanic.player, healing_hp:99999}, /Mechanic/);
@@ -106,7 +106,7 @@ try {
   assert.equal(afterHeal.health.stats.healing_done, beforeHeal.health.stats.healing_done);
   closeTo(beforeHeal.fuel - afterHeal.fuel, 0, 0.05, 'rejected heal has no pack fuel charge beyond engine idle');
   for (const [id,hp] of allyHp) assert.equal(entity(afterHealFrame,id).health.hp,hp);
-  checks.push('Hero authority distinguishes two BRZ chassis; forged target/HP/hero/timing fields cannot grant healing, shield or resources, and a no-need pack spends no cooldown/fuel/HP');
+  checks.push('Hero authority distinguishes the BRZ DPS and Fortuner Mechanic; forged target/HP/hero/timing fields cannot grant healing, shield or resources, and a no-need pack spends no cooldown/fuel/HP');
 
   phase = 'raw primary Mechanic suppression and ordinary DPS primary';
   const beforeFire = observer.latest, shot = entity(beforeFire,dps.player).combat.shot, mechanicShot = entity(beforeFire,mechanic.player).combat.shot;
@@ -132,13 +132,13 @@ try {
   closeTo(beforeGuard.fuel - activeGuard.fuel,3,0.08,'Guard Boost fuel cost'); closeTo(beforeGuard.boost_fraction - activeGuard.boost_fraction,0.4,0.00001,'Guard Boost spends four of ten NOS seconds');
   assert.equal(entity(observedGuard,mechanic.player).guard.remaining_s,0); assert.equal(entity(observedGuard,mechanic.player).guard.shield_hp,0);
   await reject(dps,'dps_guard_boost',{},/cooling down/);
-  checks.push('Observer sees authoritative BRZ 200HP / four-second guard, twenty-second cooldown and exact 3L + four-second NOS costs; Mechanic sharing that chassis has no guard');
+  checks.push('Observer sees authoritative BRZ 200HP / four-second guard, twenty-second cooldown and exact 3L + four-second NOS costs; Fortuner Mechanic has no BRZ guard');
 
   phase = 'Tank barrier resources and reset cooldown';
   const beforeBarrier = entity(tank.latest,tank.player);
   const barrier = await tank.command('tank_barrier',{shield_hp:999999,duration_s:999,cooldown_s:0,fuel_cost:0});
-  assert.equal(barrier.guard.kind,'tank_barrier'); assert.equal(barrier.guard.shield_hp,500); assert.equal(barrier.guard.remaining_s,5); assert.equal(barrier.guard.cooldown_s,15);
-  const observedBarrier = await next(observer,m => entity(m,tank.player).guard?.remaining_s > 4.5);
+  assert.equal(barrier.guard.kind,'tank_barrier'); assert.equal(barrier.guard.shield_hp,500); assert.equal(barrier.guard.remaining_s,0); assert.equal(barrier.guard.cooldown_s,15);
+  const observedBarrier = await next(observer,m => entity(m,tank.player).guard?.shield_hp === 500);
   const activeBarrier = entity(observedBarrier,tank.player);
   closeTo(beforeBarrier.fuel - activeBarrier.fuel,1,0.08,'Tank barrier fuel cost'); closeTo(beforeBarrier.boost_fraction,activeBarrier.boost_fraction,0.000001,'Tank barrier spends no NOS');
   await reject(tank,'tank_barrier',{},/cooling down/);
@@ -148,13 +148,13 @@ try {
   for (const peer of [tank,dps]) {
     const reset = entity(resetFrame,peer.player);
     assert.equal(reset.player_mask & 32,32,'server acknowledges the real reset input');
-    assert.equal(reset.guard.remaining_s,0,'successful reset cancels the active shield');
-    assert.equal(reset.guard.shield_hp,0);
+    assert.equal(reset.guard.remaining_s,0,'reset ends temporary guard time');
+    assert.equal(reset.guard.shield_hp,peer===tank?500:0,'the tank keeps its pool while the temporary personal guard ends');
     assert(reset.guard.cooldown_s > 10,'reset retains the simulation cooldown');
   }
   tank.control.playerMask = 0; dps.control.playerMask = 0;
   await reject(tank,'tank_barrier',{},/cooling down/); await reject(dps,'dps_guard_boost',{},/cooling down/);
-  checks.push('Tank barrier replicates 500HP / five seconds / fifteen-second cooldown, costs 1L and no NOS; repeated RPCs and normal reset input cannot erase either hero cooldown');
+  checks.push('Tank barrier replicates 500HP with a fifteen-second recast cooldown, costs 1L and no NOS; repeated RPCs and normal reset input cannot erase either hero cooldown');
 
   phase = 'authenticated reconnect preserves cooldown';
   for (const original of [tank,dps]) {

@@ -12,7 +12,7 @@ pub struct Hero {
     pub vehicle: &'static str,
     pub role: Role,
 }
-pub const HEROES: [Hero; 7] = [
+pub const HEROES: [Hero; 10] = [
     Hero {
         id: "tank",
         vehicle: "tank",
@@ -38,14 +38,13 @@ pub const HEROES: [Hero; 7] = [
         vehicle: "supra",
         role: Role::Dps,
     },
+    Hero { id: "sierra", vehicle: "sierra", role: Role::Tank },
+    Hero { id: "mechanic", vehicle: "fortuner", role: Role::Support },
+    Hero { id: "logistics", vehicle: "landcruiser", role: Role::Support },
+    Hero { id: "mini", vehicle: "mini", role: Role::Dps },
     Hero {
-        id: "mechanic",
-        vehicle: "brz",
-        role: Role::Support,
-    },
-    Hero {
-        id: "logistics",
-        vehicle: "ae86",
+        id: "cx30",
+        vehicle: "cx30",
         role: Role::Support,
     },
 ];
@@ -96,7 +95,13 @@ mod tests {
         assert!(role_fits_for(Mode::Quickplay, &[Tank, Dps, Dps, Support], Support));
         assert!(role_fits_for(Mode::Quickplay, &[Tank, Dps, Dps, Support], Dps));
         assert!(!role_fits_for(Mode::Quickplay, &[Tank, Dps, Dps, Dps], Dps));
-        assert_eq!(hero("mechanic").unwrap().role, Support);
+        assert_eq!(hero("cx30").unwrap().role, Support);
+        assert_eq!(hero("mini").unwrap().role, Dps);
+        assert_eq!(hero("sierra").unwrap().role, Tank);
+        assert_eq!(hero("mechanic").unwrap().vehicle, "fortuner");
+        assert_eq!(hero("logistics").unwrap().vehicle, "landcruiser");
+        let chassis: std::collections::HashSet<_> = HEROES.iter().map(|h| h.vehicle).collect();
+        assert_eq!(chassis.len(), HEROES.len());
         assert!(hero("fake").is_err());
     }
     #[test]

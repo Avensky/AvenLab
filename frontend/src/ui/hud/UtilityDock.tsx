@@ -30,12 +30,13 @@ export const UtilityDock = memo(function UtilityDock() {
     showDisplay = showRadio || showMissions,
     showClimate = groups.climate;
   const inlinePerformance = groups.performance && showClimate && climate && climateSize === "compact";
+  const separatePerformance = groups.performance && (!showClimate || (climate && climateSize === "full"));
   useLayoutEffect(() => {
     const element = root.current, hud = element?.closest('.driving-hud');
     if (!element || !hud) return;
     // Run only when the layout changes. Snapshot positions and telemetry never
     // poll geometry; gauges and the score own space before the utility column.
-    const readTargets = () => [element, ...hud.querySelectorAll('.hud-top-left,.instrument-hud,.teammate-hud'), ...document.querySelectorAll('.ctf-match-hud')];
+    const readTargets = () => [element, ...hud.querySelectorAll('.hud-top-left,.instrument-hud,.teammate-hud,.drive-dock,.turret-actions,.turret-aim-module'), ...document.querySelectorAll('.ctf-match-hud')];
     let baseline = 8;
     const resetBaseline = () => {
       // The CSS/safe-area anchor only changes on a real viewport/layout edit,
@@ -47,13 +48,26 @@ export const UtilityDock = memo(function UtilityDock() {
       const bounds = element.getBoundingClientRect();
       let top = baseline;
       for (const node of readTargets()) {
-        if (node === element) continue;
+        if (node === element || node.closest('.drive-dock')) continue;
         const rect = node.getBoundingClientRect();
         if (rect.width > 0 && rect.height > 0 && rect.right > bounds.left && rect.left < bounds.right)
           top = Math.max(top, rect.bottom + 8);
       }
       setHudStyle(element, 'top', `${top}px`);
       setHudStyle(element, 'max-height', `${Math.max(40, window.innerHeight - top - 12)}px`);
+      const dock=hud.querySelector<HTMLElement>('.drive-dock[data-futuristic=true]');
+      const actions=dock?.querySelector('.turret-actions')?.getBoundingClientRect();
+      const aim=dock?.querySelector('.turret-aim-module')?.getBoundingClientRect();
+      if (dock && actions && aim && window.matchMedia('(orientation:landscape)').matches) {
+        const frame=dock.getBoundingClientRect();
+        const upper=actions.top-12;
+        const centered=actions.left+(actions.width-aim.width)/2;
+        const consoleOpen=(showDisplay && radio)||(showClimate && climate);
+        const overlaps=consoleOpen && bounds.bottom>upper-aim.height-5 && bounds.left<centered+aim.width+5;
+        const x=overlaps?Math.min(centered,bounds.left-aim.width-5):centered;
+        setHudStyle(dock,'--aim-right',Math.max(0,frame.right-x-aim.width)+'px');
+        setHudStyle(dock,'--aim-bottom',Math.max(0,frame.bottom-upper)+'px');
+      }
     };
     resetBaseline();
     window.addEventListener('resize', resetBaseline);
@@ -111,15 +125,18 @@ export const UtilityDock = memo(function UtilityDock() {
           <ClimatePanel
             performanceReadout={inlinePerformance}
             size={climateSize}
+            onToggleDensity={groups.performance ? () => usePreferencesStore.getState().update({
+              climateHudSize: climateSize === "single" ? "compact" : "single",
+            }) : undefined}
             showHazards={groups.hazards}
             onMinimize={() => toggle("climate")}
           />
         </section>
       )}
-      {((groups.performance && !inlinePerformance) || (groups.hazards && (!showClimate || !climate))) && (
+      {(separatePerformance || (groups.hazards && !showClimate)) && (
         <section className="utility-readouts" aria-label="Independent HUD readouts">
-          {groups.performance && !inlinePerformance && <div data-hud-group="performance"><CabinPerformance /></div>}
-          {groups.hazards && (!showClimate || !climate) && <div data-hud-group="hazards"><HazardButton round /></div>}
+          {separatePerformance && <div data-hud-group="performance"><CabinPerformance /></div>}
+          {groups.hazards && !showClimate && <div data-hud-group="hazards"><HazardButton round /></div>}
         </section>
       )}
     </aside>

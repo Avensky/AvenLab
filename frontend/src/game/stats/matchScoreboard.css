@@ -40,21 +40,6 @@
 /* One bounded prematch dock owns its toolbar and both view heights. Team and
    Stats scroll within this same viewport; their content never grows the dock. */
 .prematch-team-preview{--prematch-content-height:68px;--prematch-control-height:26px;flex:none;min-width:0;display:flex;flex-direction:column;gap:2px;padding:3px 7px;box-sizing:border-box;overflow:hidden;pointer-events:auto;background:color-mix(in srgb,var(--app-panel,#0b1628) 92%,transparent);color:var(--app-text,#e8effa);border-top:1px solid var(--app-line,#54749a)}
-.prematch-preview-toolbar{display:flex;align-items:center;gap:6px;min-width:0;flex:none;height:var(--prematch-control-height)}
-.prematch-team-preview .match-view-tabs{flex:none}
-.prematch-team-preview .match-view-tabs .menu-control,.prematch-team-preview .prematch-team-tabs .menu-control,.prematch-team-preview .prematch-preview-toolbar>.prematch-preview-collapse{box-sizing:border-box;height:var(--prematch-control-height);min-height:var(--prematch-control-height);padding:3px 8px;border:0;border-radius:0;font:800 8px/1 system-ui;white-space:nowrap;text-decoration:none!important}
-.prematch-team-preview .match-view-tabs .menu-control{min-width:56px}
-.prematch-team-tabs{display:flex;align-items:stretch;gap:0;min-width:0;margin-left:auto}
-.prematch-team-trigger{display:grid;place-items:center;padding:0 3px}.prematch-team-trigger .controller-key{min-width:17px;height:17px;font-size:7px;padding:1px 2px}
-.prematch-team-preview .prematch-team-tabs .menu-control{display:flex;align-items:center;justify-content:center;gap:4px;min-width:62px;background:color-mix(in srgb,var(--app-text) 5%,transparent);color:var(--app-muted);cursor:pointer}
-.prematch-team-tabs [data-prematch-team=red]{--preview-team:var(--team-red,#ff675b)}
-.prematch-team-tabs [data-prematch-team=blue]{--preview-team:var(--team-blue,#69bbff)}
-.prematch-team-tabs [data-your-team=true] i{display:block;width:4px;height:4px;border-radius:50%;background:var(--preview-team);box-shadow:0 0 5px var(--preview-team)}
-.prematch-team-preview .prematch-team-tabs [aria-selected=true]{color:var(--app-text);background:color-mix(in srgb,var(--app-accent) 19%,var(--app-panel));box-shadow:inset 0 -2px var(--preview-team)}
-.prematch-team-preview .prematch-team-tabs .menu-control:is(:hover,:focus-visible),.prematch-preview-collapse:is(:hover,:focus-visible){outline:1px solid var(--app-accent);outline-offset:-1px}
-.prematch-own-team{font-size:6px;color:var(--preview-team)}
-.prematch-team-preview .prematch-preview-toolbar>.prematch-preview-collapse{display:grid;place-items:center;min-width:26px;flex:none;background:transparent;color:var(--app-muted);cursor:pointer}
-.prematch-preview-collapse span{font-size:17px;line-height:1}
 .prematch-preview-content{height:var(--prematch-content-height);min-height:var(--prematch-content-height);max-height:var(--prematch-content-height);flex:none;min-width:0;overflow:auto;scrollbar-width:none;overscroll-behavior:contain}
 .prematch-preview-content[hidden]{display:none}.prematch-preview-content::-webkit-scrollbar{display:none}
 .prematch-team-preview .match-team-composition,.prematch-team-preview .match-stats-table{display:block}
@@ -69,8 +54,5 @@
 .prematch-team-preview .match-composition-empty>span{font-size:17px}.prematch-team-preview .match-composition-empty>strong{font-size:6px}
 .prematch-team-preview .match-player-level,.prematch-team-preview .match-player-you{font-size:5px;padding:0 2px}
 .prematch-team-preview [data-status=mystery] .hero-portrait-fallback{color:var(--app-muted);font-size:22px}
-.prematch-team-preview .scoreboard-table-player{min-height:24px;padding:2px 5px}.prematch-team-preview .scoreboard-table-portrait{display:none}
-.prematch-team-preview .scoreboard-table-player strong{font-size:8px}.prematch-team-preview .scoreboard-table-player small{font-size:5px;margin-top:0}
-.prematch-team-preview .match-stats-table tbody td{font-size:9px;padding:3px 4px}.prematch-team-preview .match-stats-table thead th{font-size:6px;padding:3px 4px}
-@media(max-width:700px){.prematch-team-preview{--prematch-content-height:60px;padding-inline:6px}.prematch-preview-toolbar{gap:4px}.prematch-team-preview .match-view-tabs .menu-control{min-width:51px;padding-inline:6px}.prematch-team-preview .prematch-team-tabs .menu-control{min-width:58px;padding-inline:6px}.prematch-team-preview .match-composition-seat:not(.match-composition-empty){grid-template-columns:53px minmax(0,1fr)}}
+@media(max-width:700px){.prematch-team-preview{--prematch-content-height:60px;padding-inline:6px}.prematch-team-preview .match-composition-seat:not(.match-composition-empty){grid-template-columns:53px minmax(0,1fr)}}
 @media(orientation:landscape) and (max-height:450px){.prematch-team-preview{--prematch-content-height:48px;--prematch-control-height:24px}.prematch-team-preview .match-composition-seat:not(.match-composition-empty){grid-template-columns:49px minmax(0,1fr)}.prematch-team-preview .match-composition-info>strong{font-size:8px}.prematch-team-preview .match-composition-info>small{font-size:7px}}

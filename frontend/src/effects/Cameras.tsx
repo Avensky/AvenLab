@@ -54,6 +54,13 @@ const VEHICLE_CAMERA_PRESETS: Record<string, VehicleCameraPreset> = {
     positionSpeed: 7,
     targetSpeed: 10,
   },
+  sierra: {offset:[0,3.15,-7.6],targetOffset:[0,1.25,7.2],positionSpeed:7,targetSpeed:10},
+  fortuner: {offset:[0,2.9,-6.8],targetOffset:[0,1.1,6.5],positionSpeed:7,targetSpeed:10},
+  landcruiser: {offset:[0,3.0,-6.9],targetOffset:[0,1.12,6.55],positionSpeed:7,targetSpeed:10},
+  mini: {offset:[0,2.15,-5.0], targetOffset:[0,.95,5.5], positionSpeed:7, targetSpeed:10},
+  cx30: {
+    offset:[0,2.55,-6.0],targetOffset:[0,1.05,6.0],positionSpeed:7,targetSpeed:10,
+  },
   camaro: {
     offset: [0, 2.6, -6.4],
     targetOffset: [0, 1.2, 6.5],
@@ -106,6 +113,11 @@ function cameraPresetForVehicle(
   return VEHICLE_CAMERA_PRESETS[id] ?? DEFAULT_CAMERA_PRESET;
 }
 
+const driverEyeSockets: Record<string, [number, number, number]> = {
+  cx30: [.385,.375,.19], mini: [.34,.26,.21],
+  sierra: [.38,.59,.64], fortuner: [-.38,.47,.15], landcruiser: [.4,.51,.10],
+};
+
 export default function Cameras() {
   const scope=useCombatStore(s=>s.scope&&s.enabled);
   const fov = usePreferencesStore((s) => s.fov);
@@ -131,6 +143,11 @@ export default function Cameras() {
   const cameraEditing = editorSession && workspace === "vehicle" && overlay === "world_builder";
   const expectedMode = cameraView === "bird" ? "BIRDS_EYE" : "FIRST_PERSON";
   const rigActive = editorSession && (overlay === null || cameraEditing) && cameraView !== "chase" && camMode === expectedMode;
+  const socket = driverEyeSockets[playerVehicleId ?? ""];
+  if (!profile && socket && camMode === "FIRST_PERSON") {
+    playerCameraPreset.offset = [...socket];
+    playerCameraPreset.targetOffset = [socket[0], socket[1], socket[2] + 20];
+  }
   if (profile && camMode === "FIRST_PERSON") {
     const yaw = profile.yaw * Math.PI / 180, pitch = profile.pitch * Math.PI / 180;
     playerCameraPreset.offset = [profile.x, profile.y, profile.z];

@@ -1,5 +1,7 @@
+import {useSocialStore} from '../store/social/socialStore';
+import {isMatchMode} from '../store/alpha/alphaStore';
 import {requestNearestRevive,isMechanicPlayer} from '../combat/reviveTargets';
-import {isGuardDpsPlayer,requestGuardBoost,isTankBarrierPlayer,requestTankBarrier} from '../combat/guardBoost';
+import {isGuardDpsPlayer,requestGuardBoost,isTankBarrierPlayer,requestTankBarrier,requestDiveShield,isDiveShieldPlayer} from '../combat/guardBoost';
 import {setScoreboardHeld,useScoreboardStore} from "../store/hud/scoreboardStore";
 import {openHeroGuide,closeHeroGuide} from "../store/hud/heroGuideStore";
 import {cycleHealthBarMode,HEALTH_BAR_LABELS} from "../store/preferences/healthVisibility";
@@ -321,6 +323,7 @@ export function Keyboard() {
       const store = useInputStore.getState();
       const combatKeys=usePreferencesStore.getState().bindings;
       if(event.code===combatKeys.revive&&isMechanicPlayer()){event.preventDefault();void requestNearestRevive();return;}
+      if(event.code===combatKeys.barrier&&isDiveShieldPlayer()){event.preventDefault();if(!event.repeat)void requestDiveShield();return;}
       if(event.code===combatKeys.barrier&&isTankBarrierPlayer()){event.preventDefault();if(!event.repeat)void requestTankBarrier();return;}
       if(combatIntent.enabled&&event.code===combatKeys.scope){if(!event.repeat)toggleTankScope();event.preventDefault();return;}
       if((combatIntent.enabled||isMechanicPlayer())&&event.code===combatKeys.fire){
@@ -477,12 +480,17 @@ export function Keyboard() {
         // passive hold never takes steering ownership or opens a modal menu.
         const ui=useUIStore.getState(),network=useNetworkStore.getState();
         const age=performance.now()-(network.snapshot?.received_at_ms??-Infinity);
+        const active=useSocialStore.getState().view?.alpha?.active;
+        const choosing=!!active && isMatchMode(active.mode) && (ui.screen==='hero_select' && ui.overlay===null || ui.screen==='sandbox' && ui.overlay==='vehicle_select');
         if(!event.defaultPrevented && !event.shiftKey && !event.repeat && focused &&
            document.visibilityState!=='hidden' && !isTypingTarget(event.target) &&
-           ui.screen==='sandbox' && ui.overlay===null && !ui.isModeLoading &&
+           !ui.isModeLoading &&
            !useCanDataStore.getState().commandOpen && !useTextKeyboardStore.getState().session &&
            !useGameStore.getState().editor && !performanceOverlayHasFocus() &&
-           network.connected && network.getMe() && age>=0 && age<1000)setScoreboardHeld(true);
+           network.connected && (choosing || (ui.screen==='sandbox' && ui.overlay===null && network.getMe() && age>=0 && age<1000))) {
+          if (choosing) useScoreboardStore.getState().setView('table');
+          setScoreboardHeld(true);
+        }
         event.preventDefault(); event.stopPropagation();
       }
     };

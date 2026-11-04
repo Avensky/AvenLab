@@ -47,7 +47,7 @@ test('BRZ guarded boost uses confirmed hero, resources, cooldown and shield stat
    assert.deepEqual(effects(read({...me,guard:{...running,shield_hp:0}})).map(buff=>buff.id),['guard-stability']);
    assert.deepEqual(effects(read({...me,guard:{...running,remaining_s:0}})),[]);assert.deepEqual(effects(read({...me,health:{defeated:true},guard:running})),[]);assert.deepEqual(effects(read({...me,guard:{...running,remaining_s:Infinity}})),[]);
   });
-  await t.test('Tank barrier is a separate role-locked personal shield without DPS movement or nitrous requirements',async()=>{
+  await t.test('Tank barrier is a separate role-locked team shield without DPS movement or nitrous requirements',async()=>{
    const tankGuard={...guard,kind:'tank_barrier',shield_max_hp:500};
    await act(async()=>stage('tank',3,'tank-driver',{vehicle_id:'tank',fuel:1,gear:0,boost_fraction:0,wheels:[],guard:tankGuard}));
    assert.equal(actions.isGuardDpsPlayer(),false);assert.equal(actions.isTankBarrierPlayer(),true);assert.equal(await actions.requestGuardBoost(),false);
@@ -55,9 +55,9 @@ test('BRZ guarded boost uses confirmed hero, resources, cooldown and shield stat
    await act(async()=>root.render(h(TankBarrierAction)));const button=document.querySelector('[aria-label="Tank barrier"]');assert(button&&!button.disabled);let pending;
    await act(async()=>{pending=actions.requestTankBarrier();});assert.equal(sent.at(-1).action,'tank_barrier');assert.equal(Object.hasOwn(sent.at(-1),'shield_hp'),false);assert.equal(button.disabled,true);
    await act(async()=>client.receiveSocialResult({request_id:sent.at(-1).request_id,ok:true,data:{}}));assert.equal(await pending,true);
-   await act(async()=>stage('tank',3,'tank-driver',{vehicle_id:'tank',guard:{...tankGuard,remaining_s:4.3,cooldown_s:7.5,shield_hp:420}}));
+   await act(async()=>stage('tank',3,'tank-driver',{vehicle_id:'tank',guard:{...tankGuard,remaining_s:0,cooldown_s:7.5,shield_hp:420}}));
    assert.match(button.textContent,/BARRIER 420 HP/);assert.equal(button.querySelector('.cooldown-clock').dataset.progress,'0.5');
-   const tankBuffs=effects(read(network.getState().getMe()));assert.deepEqual(tankBuffs.map(buff=>buff.id),['tank-barrier']);assert.equal(tankBuffs[0].duration,5);assert.equal(tankBuffs[0].nature,'defense');
+   const tankBuffs=effects(read(network.getState().getMe()));assert.deepEqual(tankBuffs.map(buff=>buff.id),['tank-barrier']);assert.equal(tankBuffs[0].duration,null);assert.equal(tankBuffs[0].nature,'defense');
    await act(async()=>stage('brz'));assert.equal(document.querySelector('[aria-label="Tank barrier"]'),null);assert.equal(await actions.requestTankBarrier(),false);
   });
   await t.test('confirmed breaks pulse once and initial/reconnected snapshots do not replay an old break',()=>{

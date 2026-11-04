@@ -11,7 +11,7 @@ import {
   requestTurnSignal,
   stepTurnSignal,
 } from "./stalks/index";
-export const ColumnStalks = memo(function ColumnStalks({system,detailed=false}:{system?:"lights"|"wipers"|"cruise";detailed?:boolean}={}) {
+export const ColumnStalks = memo(function ColumnStalks({system,detailed=false,wide=false}:{system?:"lights"|"wipers"|"cruise";detailed?:boolean;wide?:boolean}={}) {
   const state = useCockpitState(),
     flags = useInputStore((s) => s.input.vehicleMask);
   const clearWasher = useCallback(() => {
@@ -33,6 +33,7 @@ export const ColumnStalks = memo(function ColumnStalks({system,detailed=false}:{
     >
       {(!system||system==="lights")&&<Stalk
         {...STALK_LAYOUTS.lights}
+        {...(wide?{angle:170,reach:55,spacing:7}:{})}
         {...(detailed?{scale:1.6,spacing:64,reach:40}: {})}
         label="Lights and turn signal stalk"
         words={["R", "L"]}
@@ -61,6 +62,7 @@ export const ColumnStalks = memo(function ColumnStalks({system,detailed=false}:{
       />}
       {(!system||system==="wipers")&&<Stalk
         {...STALK_LAYOUTS.wipers}
+        {...(wide?{angle:10,reach:55,spacing:7}:{})}
         {...(detailed?{scale:1.6,spacing:64,reach:40}: {})}
         label="Wiper and washer stalk"
         words={["WASH", "WIPE"]}
@@ -76,6 +78,7 @@ export const ColumnStalks = memo(function ColumnStalks({system,detailed=false}:{
       />}
       {(!system||system==="cruise")&&<Stalk
         {...STALK_LAYOUTS.cruise}
+        {...(wide?{angle:326,reach:46,spacing:7}:{})}
         {...(detailed?{scale:1.6,spacing:64,reach:40}: {})}
         label="Cruise control stalk"
         words={["RES+", "SET−"]}

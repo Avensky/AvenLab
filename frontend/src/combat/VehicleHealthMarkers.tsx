@@ -28,8 +28,8 @@ const VehicleHealthMarker=memo(function VehicleHealthMarker({id}:{id:string}){
   const entity=s.snapshot?.entities.find(e=>e.id===id),health=entity?.health;
   const max=health&&Number.isFinite(health.max_hp)&&health.max_hp>0?health.max_hp:0;
   const hp=max&&Number.isFinite(health?.hp)?Math.max(0,Math.min(max,health!.hp)):0;
-  const localTeam=s.getMe()?.team,team=entity?.team;
-  return {max,hp,remaining:Math.ceil(Math.max(0,health?.respawn_remaining_s??0)*10)/10,window:health?.recovery_window_s,reason:health?.disabled_reason,showHp:showVehicleHealthBar(mode,team,id===s.playerId),defeated:health?.defeated===true,protected:(health?.spawn_protection_s??0)>0,
+  const local=s.getMe(),localTeam=local?.team,team=entity?.team;
+  return {max,hp,focused:local?.combat?.assisted_target===id,remaining:Math.ceil(Math.max(0,health?.respawn_remaining_s??0)*10)/10,window:health?.recovery_window_s,reason:health?.disabled_reason,showHp:showVehicleHealthBar(mode,team,id===s.playerId),defeated:health?.defeated===true,protected:(health?.spawn_protection_s??0)>0,
    relation:team&&localTeam?(team===localTeam?'ally':'enemy'):'neutral',
    label:entity?.vehicle_id==='tank'?'VANGUARD':entity?.vehicle_id?.replaceAll('_',' ').toUpperCase()??'VEHICLE',
    height:entity?.vehicle_id==='tank'?3.2:Math.max(1.15,(entity?.collider?.chassis_half_extents[1]??.5)+(entity?.collider?.chassis_offset[1]??0)+.7)};
@@ -62,14 +62,15 @@ const VehicleHealthMarker=memo(function VehicleHealthMarker({id}:{id:string}){
    }
   }
   node.style.visibility=visible&&!occluded.current?'visible':'hidden';
+  if(data.focused){const me=network.getMe();if(me){const meters=Math.round(Math.hypot(...pose.position.map((v,i)=>v-me.position[i])));node.dataset.range=meters+' M';}}
   node.style.opacity=String(data.defeated ? .95 : Math.min(1,Math.max(0,(MAX_MARKER_DISTANCE-distance)/25)));
  });
  if(data.max===0)return null;
  const status=recoveryStatus({defeated:data.defeated,respawn_remaining_s:data.remaining,recovery_window_s:data.window,disabled_reason:data.reason});
- const label=data.defeated?data.reason==='fuel'?'FUEL EMPTY':status?.revivable?'AWAITING MECHANIC':'DEFEATED':data.protected?'SPAWN SHIELD':data.relation.toUpperCase();
+ const label=data.focused?'ASSIST':data.defeated?data.reason==='fuel'?'FUEL EMPTY':status?.revivable?'AWAITING MECHANIC':'DEFEATED':data.protected?'SPAWN SHIELD':data.relation.toUpperCase();
  return <group ref={root} name={`vehicle-health-marker-${id}`}>
   <Html center zIndexRange={[4,0]} style={{pointerEvents:'none'}}>
-   <div ref={card} className="vehicle-health-marker" data-relation={data.relation} data-defeated={data.defeated} data-protected={!data.defeated&&data.protected}>
+   <div ref={card} className="vehicle-health-marker" data-focused={data.focused} data-relation={data.relation} data-defeated={data.defeated} data-protected={!data.defeated&&data.protected}>
     {status&&<RecoveryCountdown status={status}/>}
     {data.showHp&&<><div className="vehicle-health-marker-title"><strong>{data.label}</strong><span>{label}</span></div>
     <div className="vehicle-health-marker-track" role="progressbar" aria-label={`${data.label} health`} aria-valuemin={0} aria-valuemax={data.max} aria-valuenow={data.hp}>

@@ -11,6 +11,7 @@ export const GARAGE_LIGHT_COLORS: Record<UITheme, string> = {
   black: "#e5cb70",
   "deep-purple": "#7185ff",
   "pastel-purple": "#b49ade",
+  scarlet: "#ef122c",
   strawberry: "#ff3caf",
   white: "#eff5ff",
 };
@@ -41,7 +42,8 @@ export function applyGarageLighting(
   // Blue/purple need more radiance than green to reach the same bloom threshold.
   // Match perceived fixture brightness without desaturating the selected hue.
   const luminance = color.r * 0.2126 + color.g * 0.7152 + color.b * 0.0722;
-  const gain = contrast ? 0.3 : Math.min(4, 0.72 / Math.max(0.01, luminance));
+  const redFixture = (accentOverride ?? GARAGE_LIGHT_COLORS[theme]) === GARAGE_LIGHT_COLORS.scarlet;
+  const gain = contrast ? 0.3 : Math.min(redFixture ? 1.5 : 4, 0.72 / Math.max(0.01, luminance));
   const visited = new Set<MeshStandardMaterial>();
   root.traverse((node) => {
     if (!(node instanceof Mesh)) return;

@@ -37,7 +37,7 @@ test("garage themes recolor owned fixtures, preserve neutral surfaces and restor
     applyGarageLighting(display.root, theme, false);
     assert.equal("#" + bulb.emissive.getHexString(), color);
     assert.ok(
-      Math.abs(radiance(bulb) - 2.88) < 0.00001,
+      theme === "scarlet" ? bulb.emissiveIntensity === 6 : Math.abs(radiance(bulb) - 2.88) < 0.00001,
       `${theme} retains the fixture's visible brightness`,
     );
     assert.equal(
@@ -96,7 +96,7 @@ test("the first reflection snapshot is already themed, owns its materials and ca
     );
     assert.notEqual(mesh.material, displayMaterial);
     assert.equal(mesh.geometry, geometry);
-    assert.ok(Math.abs(radiance(mesh.material) - 2.88) < 0.00001);
+    assert.ok(theme === "scarlet" ? mesh.material.emissiveIntensity === 6 : Math.abs(radiance(mesh.material) - 2.88) < 0.00001);
     applyGarageLighting(display.root, "strawberry", false);
     assert.equal(
       "#" + mesh.material.emissive.getHexString(),

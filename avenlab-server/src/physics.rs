@@ -43,6 +43,7 @@ pub struct PhysicsWorld {
     pub(crate) guard_impact_directions: HashMap<String,Vector<Real>>,
     pub support: crate::support::SupportState,
     pub ctf_carriers: HashSet<String>,
+    pub(crate) dislodged_carriers: HashSet<String>,
     pub(crate) ctf_reset_players: HashSet<String>,
     pub vehicle_health:HashMap<String,crate::vehicle_health::VehicleHealth>,
     barrier_impacts:HashMap<(RigidBodyHandle,RigidBodyHandle),f32>,
@@ -129,10 +130,10 @@ impl PhysicsWorld {
             v.powertrain=Powertrain::new(v.config.resources);v.cockpit=crate::cockpit::Cockpit::default();v.ram=crate::ram::RamState::default();
             v.throttle=0.0;v.steer=0.0;v.brake=0.0;v.handbrake=0.0;v.pitch=0.0;v.yaw=0.0;v.roll=0.0;v.ascend=0.0;
             v.player_flags=0;v.vehicle_flags=VehicleStateFlags::ENGINE_ON;v.steer_angle=0.0;v.steer_rate=0.0;v.steering=SteeringState::default();
-            self.vehicle_health.insert(id.clone(),crate::vehicle_health::VehicleHealth::new(v.config.tracked));
+            self.vehicle_health.insert(id.clone(),crate::vehicle_health::VehicleHealth::new(v.config.hull_hp));
         }
         self.guard_boosts.clear();self.guard_impact_directions.clear();self.support.reset();
-        self.combat_poses.clear();self.combat_sequences.clear();self.combat_cooldowns.clear();self.ctf_carriers.clear();self.ctf_reset_players.clear();self.falling_seconds.clear();
+        self.combat_poses.clear();self.combat_sequences.clear();self.combat_cooldowns.clear();self.ctf_carriers.clear();self.dislodged_carriers.clear();self.ctf_reset_players.clear();self.falling_seconds.clear();
         self.bodies.propagate_modified_body_positions_to_colliders(&mut self.colliders);self.query_pipeline.update(&self.colliders);Ok(())
     }
 
@@ -361,7 +362,7 @@ impl PhysicsWorld {
         vehicle.throttle=0.0;vehicle.steer=0.0;vehicle.brake=0.0;vehicle.handbrake=0.0;
         self.body_to_player.insert(vehicle.body,new.into());self.vehicles.insert(new.into(),vehicle);
         if let Some(v)=self.trusted_heroes.remove(old){self.trusted_heroes.insert(new.into(),v);}
-        if let Some(mut v)=self.guard_boosts.remove(old){v.remaining=0.0;v.shield_hp=0.0;self.guard_boosts.insert(new.into(),v);}
+        if let Some(mut v)=self.guard_boosts.remove(old){v.remaining=0.0;v.dive_remaining=0.0;if v.kind!="tank_barrier"{v.shield_hp=0.0;}self.guard_boosts.insert(new.into(),v);}
         self.guard_impact_directions.remove(old);self.support.reassign(old,new);
         if let Some(v)=self.vehicle_health.remove(old){self.vehicle_health.insert(new.into(),v);}
         for health in self.vehicle_health.values_mut(){health.reassign_contributor(old,new);}
@@ -373,13 +374,13 @@ impl PhysicsWorld {
         if let Some(v)=self.combat_cooldowns.remove(old){self.combat_cooldowns.insert(new.into(),v);}
         if let Some(v)=self.spawn_poses.remove(old){self.spawn_poses.insert(new.into(),v);}
         if let Some(v)=self.falling_seconds.remove(old){self.falling_seconds.insert(new.into(),v);}
-        self.ctf_carriers.remove(old);self.ctf_reset_players.remove(old);self.ctf_reset_players.insert(new.into());
+        self.ctf_carriers.remove(old);self.dislodged_carriers.remove(old);self.ctf_reset_players.remove(old);self.ctf_reset_players.insert(new.into());
         self.combat_sequences.remove(old);true
     }
 
     pub fn despawn_vehicle_for_player(&mut self, player_id: &str) {
         self.trusted_heroes.remove(player_id);self.guard_boosts.remove(player_id);self.guard_impact_directions.remove(player_id);self.support.clear_player(player_id);
-        self.ctf_carriers.remove(player_id);self.ctf_reset_players.remove(player_id);
+        self.ctf_carriers.remove(player_id);self.dislodged_carriers.remove(player_id);self.ctf_reset_players.remove(player_id);
         self.vehicle_health.remove(player_id);
         for health in self.vehicle_health.values_mut(){health.remove_contributor(player_id);}
         self.combat_poses.remove(player_id);self.combat_sequences.remove(player_id);
@@ -423,7 +424,7 @@ impl PhysicsWorld {
 
         Self {
             trusted_heroes: HashMap::new(), guard_boosts: HashMap::new(), guard_impact_directions: HashMap::new(), support: Default::default(),
-            ctf_carriers: HashSet::new(), ctf_reset_players: HashSet::new(),
+            ctf_carriers: HashSet::new(), dislodged_carriers: HashSet::new(), ctf_reset_players: HashSet::new(),
             combat_poses: HashMap::new(),tank_colliders: HashMap::new(),
             barrier_impacts:HashMap::new(),asset_health: HashMap::new(), combat_sequences: HashMap::new(), combat_cooldowns: HashMap::new(),
             gravity,
@@ -469,6 +470,7 @@ impl PhysicsWorld {
         let entry=self.combat_sequences.entry(player.to_owned()).or_insert((seq,std::time::Instant::now()));
         if entry.0!=seq {*entry=(seq,std::time::Instant::now());}
         let fresh=entry.1.elapsed().as_millis()<=250;
+        let spray=self.assigned_hero(player)==Some("cx30");
         let mut target=intent.map(|c|c.bounded()).unwrap_or_default();
         if self.assigned_hero(player)==Some("mechanic"){target.fire=false;target.ram=false;}
         if let Some(vehicle)=self.vehicles.get_mut(player){
@@ -485,6 +487,14 @@ impl PhysicsWorld {
         }
         c.hull_locked=config.tracked&&target.hull_locked;
         c.enabled=target.enabled&&fresh&&self.vehicles.get(player).is_some_and(|v|v.ram.stun_remaining<=0.0);c.fire=target.fire&&c.enabled;c.ram=target.ram&&c.enabled;
+        let previous_target=c.assisted_target.take();
+        if c.enabled && target.hull_locked && self.assigned_hero(player)==Some("brz") {
+            let muzzle=hull*point![0.0,config.chassis_com_offset[1]+config.chassis_half_extents[1]+0.05,0.0];
+            if let Some((id,aim))=self.forward_target(player,previous_target.as_deref(),muzzle,forward) {
+                target.yaw=(-aim.x).atan2(-aim.z);target.pitch=aim.y.clamp(-1.0,1.0).asin();
+                c.assisted_target=Some(id);
+            }
+        }
         if c.enabled && !c.hull_locked {
             let delta=(target.yaw-c.yaw).sin().atan2((target.yaw-c.yaw).cos());
             let rate=if config.tracked {2.6}else{3.0};
@@ -507,7 +517,8 @@ impl PhysicsWorld {
             // client/editor mount offset must never move a shot across cover.
             c.x=0.0;c.y=config.chassis_com_offset[1]+config.chassis_half_extents[1]+0.05;c.z=0.0;
         }
-        c.weapon=if config.tracked {target.weapon.clone()}else{"primary".into()};
+        if spray && target.hull_locked {direction=forward;c.yaw=(-forward.x).atan2(-forward.z);c.pitch=forward.y.clamp(-1.0,1.0).asin();}
+        c.weapon=if config.tracked {target.weapon.clone()}else if spray {"spray".into()}else{"primary".into()};
         let cannon=config.tracked && c.weapon=="cannon";
         let small_arms_range=if config.tracked&&c.weapon=="coax"{800.0}else{200.0};
         // All three timers advance while holstered: swapping never resets a reload.
@@ -517,8 +528,11 @@ impl PhysicsWorld {
         let key=if config.tracked && !cannon {format!("{player}:{}",c.weapon)}else{player.to_owned()};
         let cooldown=self.combat_cooldowns.entry(key).or_insert(0.0);
         let shoot=c.fire&&*cooldown<=0.0;
-        if shoot {c.shot_weapon=c.weapon.clone();*cooldown=if cannon {3.0}else if c.role=="medic" {0.6}else{0.1};c.shot=c.shot.wrapping_add(1);if cannon {c.cannon_shot=c.cannon_shot.wrapping_add(1);}}
-        c.reload=*cooldown;c.ammo=if cannon {u8::from(*cooldown<=0.0)}else{255};
+        if shoot {c.shot_weapon=c.weapon.clone();*cooldown=if spray && c.shot%crate::support_spray::CAPACITY==crate::support_spray::CAPACITY-1 {crate::support_spray::RECHARGE}else if cannon {3.0}else if c.role=="medic" && !spray {0.6}else{0.1};c.shot=c.shot.wrapping_add(1);if cannon {c.cannon_shot=c.cannon_shot.wrapping_add(1);}}
+        c.reload=*cooldown;c.ammo=if cannon {u8::from(*cooldown<=0.0)}else if spray {
+            let used=c.shot%crate::support_spray::CAPACITY;
+            if used==0 && *cooldown>0.0 {0} else {(crate::support_spray::CAPACITY-used) as u8}
+        }else{255};
         c.cannon_reload=*self.combat_cooldowns.get(player).unwrap_or(&0.0);
         c.coax_reload=*self.combat_cooldowns.get(&format!("{player}:coax")).unwrap_or(&0.0);
         c.basket_reload=*self.combat_cooldowns.get(&format!("{player}:basket")).unwrap_or(&0.0);
@@ -556,6 +570,7 @@ impl PhysicsWorld {
         if !shoot {return;}
         if cannon {if let Some(body)=self.bodies.get_mut(body_handle){body.apply_impulse_at_point(-direction*36000.0,origin,true);}}
         self.query_pipeline.update(&self.colliders);
+        if spray {self.fire_support_spray(player,origin,direction);return;}
         let obstruction=if config.tracked {self.query_pipeline.cast_ray_and_get_normal(&self.bodies,&self.colliders,&Ray::new(shot_breech,barrel_delta/barrel_length),barrel_length,true,QueryFilter::default().exclude_rigid_body(body_handle)).map(|(h,i)|(h,shot_breech+(barrel_delta/barrel_length)*i.time_of_impact,0.0,i.normal))}else{None};
         let hit=if obstruction.is_some(){obstruction}else if cannon {
             crate::ballistics::trace(origin,direction,body_handle,&self.bodies,&self.colliders,&self.query_pipeline)
@@ -563,17 +578,46 @@ impl PhysicsWorld {
             self.query_pipeline.cast_ray_and_get_normal(&self.bodies,&self.colliders,&Ray::new(origin,direction),small_arms_range,true,QueryFilter::default().exclude_rigid_body(body_handle))
                 .map(|(h,i)|(h,origin+direction*i.time_of_impact,0.0,i.normal))
         };
+        let base_damage=if cannon {crate::vehicle_health::CANNON_DAMAGE} else {crate::vehicle_health::COAX_DAMAGE};
+        let mut damage=base_damage;
+        if self.guard_boosts.values().any(|g|g.kind=="tank_barrier" && g.active() && g.shield_hp>0.0) {
+            let breech_end=obstruction.map_or(origin, |(_,p,_,_)|p);
+            let mut block=self.screen_segment(player,shot_breech,breech_end,&mut damage).map(|(p,n,_)|(p,n,0.0));
+            if block.is_none() && obstruction.is_none() {
+                if cannon {
+                    // Use the same piecewise-linear trajectory as the world raycast.
+                    let end=hit.map_or(crate::ballistics::MAX_TIME,|(_,_,t,_)|t);
+                    let mut previous=origin;
+                    for step in 1..=(end/crate::ballistics::SEGMENT_DT).ceil() as u32 {
+                        let t=(step as f32*crate::ballistics::SEGMENT_DT).min(end);
+                        let start=(step-1) as f32*crate::ballistics::SEGMENT_DT;
+                        let next=if t==end {hit.map_or_else(||crate::ballistics::position(origin,direction,t),|(_,p,_,_)|p)} else {crate::ballistics::position(origin,direction,t)};
+                        if let Some((p,n,fraction))=self.screen_segment(player,previous,next,&mut damage) {
+                            block=Some((p,n,start+(t-start)*fraction)); break;
+                        }
+                        previous=next;
+                    }
+                } else {
+                    let end=hit.map_or(origin+direction*small_arms_range, |(_,p,_,_)|p);
+                    block=self.screen_segment(player,origin,end,&mut damage).map(|(p,n,_)|(p,n,0.0));
+                }
+            }
+            if let Some((p,n,t))=block {
+                if let Some(c)=self.combat_poses.get_mut(player) {c.impact=Some([p.x,p.y,p.z]);c.impact_normal=Some([n.x,n.y,n.z]);c.impact_time=t;c.impact_static=false;}
+                return;
+            }
+        }
         if let Some(c)=self.combat_poses.get_mut(player){c.impact=hit.map(|(_,p,_,_)|[p.x,p.y,p.z]);c.impact_time=hit.map(|(_,_,t,_)|t).unwrap_or(crate::ballistics::MAX_TIME);
             c.impact_normal=hit.map(|(_,_,_,n)|[n.x,n.y,n.z]);
             c.impact_static=hit.is_some_and(|(h,_,_,_)|self.colliders[h].parent().is_none_or(|b|self.bodies[b].is_fixed()));}
         let Some((handle,impact,_,_))=hit else {return;};
         let Some(parent)=self.colliders[handle].parent() else {return;};
         if let Some(victim)=self.body_to_player.get(&parent).cloned(){
-            self.damage_vehicle(&victim,Some(player),if cannon{crate::vehicle_health::CANNON_DAMAGE}else{crate::vehicle_health::COAX_DAMAGE},if cannon{"cannon"}else{"machine-gun"});
+            self.damage_vehicle(&victim,Some(player),damage,if cannon{"cannon"}else{"machine-gun"});
         }
         if cannon && self.bodies[parent].is_dynamic(){
             let mass=self.bodies[parent].mass();
-            self.bodies[parent].apply_impulse_at_point(direction*(mass*2.8).min(80000.0),impact,true);
+            self.bodies[parent].apply_impulse_at_point(direction*(mass*2.8).min(80000.0)*(damage/base_damage),impact,true);
         }
         let index=self.bodies[parent].user_data as usize;if index==0{return;}
         let Some(layout)=self.active_map.as_ref().and_then(|m|m.authored_layout.as_ref()).filter(|l|!l.repeat) else{return;};
@@ -582,8 +626,14 @@ impl PhysicsWorld {
         let Some(d)=object.destruction.as_ref().filter(|d|d.enabled) else{return;};
         let multiplier=if cannon {d.cannon}else{d.small_arms};
         let hp=self.asset_health.entry(object.id.clone()).or_insert(d.hp);
-        *hp=(*hp-if cannon {300.0*multiplier}else{20.0*multiplier}).max(0.0);
+        *hp=(*hp-(if cannon {300.0}else{20.0})*multiplier*(damage/base_damage)).max(0.0);
         if *hp==0.0 {for h in self.bodies[parent].colliders().to_vec(){if let Some(c)=self.colliders.get_mut(h){c.set_enabled(false);}}self.query_pipeline.update(&self.colliders);}
+    }
+    pub(crate) fn barrier_yaw(&self,player:&str)->f32 {
+        self.tank_colliders.get(player).and_then(|(turret,_)|self.colliders.get(*turret))
+            .and_then(|c|c.position_wrt_parent()).map_or(0.0,|pose|{
+                let front=pose.rotation*Vector::z();front.x.atan2(front.z)
+            })
     }
     fn update_tank_collision(&mut self,player:&str,body:RigidBodyHandle,_hull:&Isometry<Real>,yaw:f32,elevation:f32,visual_y:f32){
         let existing=self.tank_colliders.get(player).copied().filter(|(a,b)|self.colliders.contains(*a)&&self.colliders.contains(*b));
@@ -665,7 +715,7 @@ impl PhysicsWorld {
         self.bodies.propagate_modified_body_positions_to_colliders(&mut self.colliders);
         self.query_pipeline.update(&self.colliders);
         if let Some(v)=self.vehicles.get_mut(player_id){v.ram.cancel();}
-        self.cancel_guard(player_id);
+        if self.assigned_hero(player_id)!=Some("tank"){self.cancel_guard(player_id);}
         self.falling_seconds.remove(player_id);
         Ok(())
     }
@@ -881,7 +931,7 @@ impl PhysicsWorld {
         // now instead of giving that first force solve zero reference load.
         self.bodies[handle].recompute_mass_properties_from_colliders(&self.colliders);
         self.body_to_player.insert(handle, id.clone()); // map body to player ID
-        self.vehicle_health.insert(id.clone(),crate::vehicle_health::VehicleHealth::new(config.tracked));
+        self.vehicle_health.insert(id.clone(),crate::vehicle_health::VehicleHealth::new(config.hull_hp));
         self.register_vehicle(handle, config); // setup wheels
 
         self.vehicles.insert(
@@ -995,7 +1045,7 @@ impl PhysicsWorld {
         vehicle.powertrain.reconfigure(previous.resources, config.resources);
         vehicle.ram.cancel();
         vehicle.config = config;
-        if let Some(health)=self.vehicle_health.get_mut(player_id){health.set_chassis(config.tracked);}
+        if let Some(health)=self.vehicle_health.get_mut(player_id){health.set_chassis(config.hull_hp);}
         vehicle.throttle = 0.0;
         vehicle.steer = 0.0;
         vehicle.brake = 0.0;
@@ -1296,7 +1346,8 @@ impl PhysicsWorld {
                 && toward.normalize().dot(&forward.normalize())>=crate::guard_boost::GUARD_FRONT_DOT;
             let delta_v=impact_impulse/body.mass().max(1.0);
             let guarded_wear=frontal_shield&&self.guard_boosts.get(victim_id).is_some_and(|g|g.mobility_active());
-            let damage = vehicle.powertrain.impact(if guarded_wear {crate::guard_boost::guarded_impact_delta_v(delta_v)}else{delta_v}, vehicle.config.resources);
+            let dive=self.guard_boosts.get(victim_id).is_some_and(|g|g.dive_remaining>0.0);
+            let damage = if dive {0.0} else {vehicle.powertrain.impact(if guarded_wear {crate::guard_boost::guarded_impact_delta_v(delta_v)}else{delta_v}, vehicle.config.resources)};
             if frontal_shield {self.guard_impact_directions.insert(victim_id.clone(),impact_direction);}
             if damage > 0.0 {
                 let attacker=impact_source.and_then(|source|{
@@ -1310,9 +1361,10 @@ impl PhysicsWorld {
                 impact_damage.push((victim_id.clone(),attacker,damage*maximum));
             }
         }
+        let guard_contacts=self.guard_contacts(&impact_motion);
         self.apply_queued_impact_damage(impact_damage);
         self.guard_impact_directions.clear();
-        self.apply_guard_contact_bonus(&impact_motion);
+        self.resolve_guard_contacts(guard_contacts);
 
 
 
@@ -1802,7 +1854,7 @@ mod tests {
 
     #[test]
     fn real_spawn_path_places_all_vehicle_wheels_at_target_sag_on_the_road() {
-        for id in ["ae86", "gt86", "brz", "camaro", "supra", "tank"] {
+        for id in ["ae86", "gt86", "brz", "camaro", "supra", "cx30", "mini", "fortuner", "landcruiser", "sierra", "tank"] {
             let mut world = flat_world();
             let handle = world.spawn_vehicle_for_player("test".into(), [0.0; 3], id, "red").unwrap();
             world.query_pipeline.update(&world.colliders);
@@ -1883,7 +1935,7 @@ mod tests {
 
     #[test]
     fn handling_com_does_not_move_the_collision_box_or_double_vehicle_mass() {
-        for id in ["ae86", "gt86", "brz", "camaro", "supra", "tank"] {
+        for id in ["ae86", "gt86", "brz", "camaro", "supra", "cx30", "mini", "fortuner", "landcruiser", "sierra", "tank"] {
             let mut world = flat_world();
             let handle = world.spawn_vehicle_for_player("test".into(), [0.0; 3], id, "red").unwrap();
             let config = world.vehicles["test"].config;
@@ -1951,7 +2003,7 @@ mod tests {
 
     #[test]
     fn impact_guard_still_settles_a_half_meter_drop_without_freezing_roll() {
-        for id in ["ae86", "gt86", "brz", "camaro", "supra", "tank"] {
+        for id in ["ae86", "gt86", "brz", "camaro", "supra", "cx30", "mini", "fortuner", "landcruiser", "sierra", "tank"] {
             let mut world = flat_world();
             let handle = world.spawn_vehicle_for_player("test".into(), [0.0; 3], id, "red").unwrap();
             let nominal_y = world.vehicles["test"].config.nominal_chassis_y(0.32);

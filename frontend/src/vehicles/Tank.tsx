@@ -7,7 +7,8 @@ import {
   useRef,
   type PropsWithChildren,
 } from "react";
-import { Group, Vector3, type Object3D } from "three";
+import { Group, Vector3, Quaternion, type Object3D } from "three";
+import {worldAim} from '../combat/turretPresentation';
 import {weaponVisuals} from "../combat/weaponVisuals";
 import { useFrame } from "@react-three/fiber";
 import { useGLTF } from "@react-three/drei";
@@ -41,7 +42,8 @@ export const Tank = forwardRef<Group, TankProps>(function Tank(
   );
 
   const shot=useRef({number:-1,time:-100});
-  const lastPosition=useRef<Vector3 | null>(null);
+  const previousValid=useRef(false);
+  const scratch=useMemo(()=>({local:new Vector3(),inverse:new Quaternion(),forward:new Vector3(),distance:new Vector3(),previous:new Vector3()}),[]);
   const { model, parts, turretY, cannonX } = useMemo(() => {
     const model = scene.clone(true);
     const parts = getTankParts(model);
@@ -68,14 +70,13 @@ export const Tank = forwardRef<Group, TankProps>(function Tank(
   useFrame(({clock},dt) => {
     if (preview || !root.current) return;
     const pose = getInterpolated(entityId ?? localId);
-    if (!pose) return;
+    if (!pose) {previousValid.current=false;return;}
     root.current.position.fromArray(pose.position);
     root.current.quaternion.fromArray(pose.rotation);
-    const entity=useNetworkStore.getState().snapshot?.entities.find(e=>e.id===(entityId??localId));
-    const combat=entity?.combat;
+    const combat=pose.combat;
     advanceTankHatches(parts.hatches,combat?.enabled??true,dt);
     if(combat?.role==='tank'){
-      const local=new Vector3(-Math.sin(combat.yaw)*Math.cos(combat.pitch),Math.sin(combat.pitch),-Math.cos(combat.yaw)*Math.cos(combat.pitch)).applyQuaternion(root.current.quaternion.clone().invert());
+      const local=worldAim(scratch.local,combat.yaw,combat.pitch).applyQuaternion(scratch.inverse.copy(root.current.quaternion).invert());
       const locked=combat.hull_locked&&combat.lock_yaw!==undefined;
       if(turret.current)turret.current.rotation.y=locked?combat.lock_yaw!:Math.atan2(local.x,local.z);
       if(cannon.current)cannon.current.rotation.x=locked?-(combat.lock_pitch??0):-Math.atan2(local.y,Math.hypot(local.x,local.z));
@@ -87,12 +88,12 @@ export const Tank = forwardRef<Group, TankProps>(function Tank(
     const cannonShot=combat?.cannon_shot??combat?.shot;
     if(cannonShot!==undefined && cannonShot!==shot.current.number){shot.current={number:cannonShot,time:shot.current.number<0?-100:clock.elapsedTime};}
     if(recoil.current)recoil.current.position.z=-.48*Math.exp(-(clock.elapsedTime-shot.current.time)/.12);
-    if(lastPosition.current && dt>0 && dt<.1){
-      const forward=new Vector3(0,0,1).applyQuaternion(root.current.quaternion);
-      const distance=root.current.position.clone().sub(lastPosition.current).dot(forward);
+    if(previousValid.current && dt>0 && dt<.1){
+      const forward=scratch.forward.set(0,0,1).applyQuaternion(root.current.quaternion);
+      const distance=scratch.distance.subVectors(root.current.position,scratch.previous).dot(forward);
       if(Math.abs(distance)<2)for(const wheel of wheelPivots.current)wheel.rotateX(distance/.35);
     }
-    lastPosition.current=root.current.position.clone();
+    scratch.previous.copy(root.current.position);previousValid.current=true;
   });
   return (
     <group ref={root}>

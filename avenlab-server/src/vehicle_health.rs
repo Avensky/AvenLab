@@ -94,13 +94,8 @@ pub struct VehicleHealth {
     best_moment: Option<BestCombatMoment>,
 }
 
-fn maximum_health(tracked: bool) -> f32 {
-    if tracked { 1200.0 } else { 500.0 }
-}
-
 impl VehicleHealth {
-    pub fn new(tracked: bool) -> Self {
-        let max_hp = maximum_health(tracked);
+    pub fn new(max_hp: f32) -> Self {
         Self {
             hp: max_hp,
             max_hp,
@@ -270,13 +265,13 @@ impl VehicleHealth {
 
     /// Swapping chassis changes capacity, not the fraction lost to damage or
     /// any active defeat/protection timer. Score survives the selected vehicle.
-    pub fn set_chassis(&mut self, tracked: bool) {
+    pub fn set_chassis(&mut self, maximum: f32) {
         let fraction = if self.max_hp.is_finite() && self.max_hp > 0.0 {
             (self.hp / self.max_hp).clamp(0.0, 1.0)
         } else {
             0.0
         };
-        self.max_hp = maximum_health(tracked);
+        self.max_hp = maximum;
         self.hp = if self.defeated && self.disabled_reason != "fuel" { 0.0 } else { self.max_hp * fraction };
     }
 
@@ -297,15 +292,16 @@ mod tests {
     use super::*;
 
     fn vulnerable(tracked: bool) -> VehicleHealth {
-        let mut health = VehicleHealth::new(tracked);
+        let mut health = VehicleHealth::new(if tracked { 1200.0 } else { 500.0 });
         health.advance(SPAWN_PROTECTION_SECONDS);
         health
     }
 
     #[test]
     fn capacity_and_initial_protection_follow_the_chassis() {
-        for (tracked, maximum) in [(true, 1200.0), (false, 500.0)] {
-            let health = VehicleHealth::new(tracked);
+        use crate::vehicle_setup::{BRZ, SIERRA, TANK};
+        for (config, maximum) in [(TANK, 1200.0), (BRZ, 500.0), (SIERRA, 900.0)] {
+            let health = VehicleHealth::new(config.hull_hp);
             assert_eq!(health.hp, maximum);
             assert_eq!(health.max_hp, maximum);
             assert_eq!(health.spawn_protection_s, 2.0);
@@ -316,7 +312,7 @@ mod tests {
 
     #[test]
     fn protection_and_invalid_hits_cannot_change_health_or_attribution() {
-        let mut health = VehicleHealth::new(false);
+        let mut health = VehicleHealth::new(500.0);
         assert!(!health.apply_damage(1000.0, Some("protected-hit"), "cannon"));
         health.advance(2.0);
         for damage in [0.0, -1.0, f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
@@ -375,14 +371,14 @@ mod tests {
         health.apply_damage(125.0, Some("attacker"), "cannon");
         health.spawn_protection_s = 0.75;
         health.kills = 2;
-        health.set_chassis(true);
+        health.set_chassis(1200.0);
         assert_eq!(health.max_hp, 1200.0);
         assert_eq!(health.hp, 900.0);
         assert_eq!(health.spawn_protection_s, 0.75);
         assert_eq!(health.kills, 2);
         assert_eq!(health.damage_seq, 1);
         assert_eq!(health.last_attacker.as_deref(), Some("attacker"));
-        health.set_chassis(false);
+        health.set_chassis(500.0);
         assert_eq!(health.hp, 375.0);
     }
 
@@ -391,7 +387,7 @@ mod tests {
         let mut health = vulnerable(false);
         health.apply_damage(500.0, None, "fall");
         health.advance(1.5);
-        health.set_chassis(true);
+        health.set_chassis(1200.0);
         health.repair(10000.0);
         assert!(health.defeated);
         assert_eq!(health.hp, 0.0);
@@ -417,7 +413,7 @@ mod tests {
 
     #[test]
     fn invalid_time_does_not_expire_protection_or_respawn() {
-        let mut health = VehicleHealth::new(true);
+        let mut health = VehicleHealth::new(1200.0);
         for dt in [0.0, -1.0, f32::NAN, f32::INFINITY] {
             assert!(!health.advance(dt));
             assert_eq!(health.spawn_protection_s, 2.0);
@@ -436,7 +432,7 @@ mod combat_stats_tests {
     use super::*;
     #[test]
     fn repair_counts_only_actual_self_healing_and_invalid_values_never_change_stats() {
-        let mut h=VehicleHealth::new(false);h.hp=490.0;
+        let mut h=VehicleHealth::new(500.0);h.hp=490.0;
         h.repair(100.0);h.repair(100.0);h.repair(f32::NAN);
         assert_eq!(h.stats.healing_done,10.0);assert_eq!(h.stats.self_healing,10.0);
         h.defeated=true;h.hp=0.0;h.repair(100.0);assert_eq!(h.stats.healing_done,10.0);
@@ -445,7 +441,7 @@ mod combat_stats_tests {
     }
     #[test]
     fn pending_assists_are_bounded_expire_in_simulation_time_and_clear_on_respawn() {
-        let mut h=VehicleHealth::new(false);
+        let mut h=VehicleHealth::new(500.0);
         for i in 0..32 {h.note_contributor(&format!("source-{i}"));}
         assert_eq!(h.contributors.len(),MAX_ASSIST_CONTRIBUTORS);
         h.advance(8.1);assert!(h.take_assist_candidates(None).is_empty());
@@ -454,15 +450,15 @@ mod combat_stats_tests {
     }
     #[test]
     fn kill_streak_resets_at_defeat_but_best_survives_respawn_and_chassis_changes() {
-        let mut h=VehicleHealth::new(false);h.advance(2.0);h.credit_kill();h.credit_kill();
+        let mut h=VehicleHealth::new(500.0);h.advance(2.0);h.credit_kill();h.credit_kill();
         assert_eq!((h.kills,h.stats.current_kill_streak,h.stats.best_kill_streak),(2,2,2));
         assert!(h.apply_damage(500.0,None,"fall"));assert_eq!(h.stats.current_kill_streak,0);
-        h.respawn();h.set_chassis(true);h.credit_kill();
+        h.respawn();h.set_chassis(1200.0);h.credit_kill();
         assert_eq!((h.kills,h.stats.current_kill_streak,h.stats.best_kill_streak),(3,1,2));
     }
     #[test]
     fn highlight_tracks_only_finite_actual_contributions_inside_ten_simulated_seconds() {
-        let mut h=VehicleHealth::new(false);h.advance(1.0);h.note_damage_dealt(100.0);h.credit_kill();
+        let mut h=VehicleHealth::new(500.0);h.advance(1.0);h.note_damage_dealt(100.0);h.credit_kill();
         h.advance(4.0);h.note_damage_dealt(200.0);h.credit_kill();
         let best=h.best_combat_moment().unwrap();assert_eq!((best.start_s,best.end_s,best.kills,best.damage),(0.0,5.0,2,300.0));
         h.advance(11.0);h.note_damage_dealt(10.0);
@@ -472,7 +468,7 @@ mod combat_stats_tests {
     }
     #[test]
     fn highlight_storage_stays_bounded_at_high_fire_rates() {
-        let mut h=VehicleHealth::new(false);
+        let mut h=VehicleHealth::new(500.0);
         for _ in 0..MAX_HIGHLIGHT_EVENTS+10 {h.note_damage_dealt(1.0);}
         assert_eq!(h.highlight_events.len(),MAX_HIGHLIGHT_EVENTS);
         assert_eq!(h.stats.damage_dealt,(MAX_HIGHLIGHT_EVENTS+10) as f32);

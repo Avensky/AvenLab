@@ -27,7 +27,7 @@ test('Mechanic assisted packs use primary fire without aiming and never author d
   const vehicle=(id,x,extra={})=>({id,kind:'vehicle',vehicle_id:'brz',team:'red',room_id:1,position:[x,1,0],rotation:[0,0,0,1],speed:0,rpm:1000,gear:1,fuel:20,temp:85,vehicle_mask:1,player_mask:0,health:hp(),support:{cooldown_s:0,sequence:0,pack:null},...extra});
   let actor=vehicle('me',0),ally=vehicle('ally',8,{health:hp({hp:250})}),tick=0;
   const stage=(id='me',hero='mechanic',extras={})=>{
-   actor=vehicle(id,0,extras);ally=vehicle('ally',8,{health:hp({hp:250})});
+   actor=vehicle(id,0,{vehicle_id:hero==='mechanic'?'fortuner':'brz',...extras});ally=vehicle('ally',8,{health:hp({hp:250})});
    social.setState({view:{profile:{id:'profile-'+id,name:'Mechanic'},worlds:[{id:1,members:[{player_id:'ally',name:'ALLY DRIVER'}]}],alpha:{active:{mode:'quickplay',hero,world_id:1,team:'red'}}}});
    network.setState({connected:true,playerId:id,room_id:1});network.getState().setSnapshot({tick:++tick,entities:[actor,ally]},performance.now());ui.setState({screen:'sandbox',overlay:null,isModeLoading:false});combat.getState().setEnabled(false);
   };

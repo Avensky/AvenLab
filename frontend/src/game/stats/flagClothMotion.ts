@@ -32,21 +32,22 @@ export function approachFlagClothYaw(current: number, target: number, delta: num
 /** A small segmented sheet: fixed at the pole, gently bellied and rippling
  * toward its free edge. Reuse the existing buffers instead of allocating each
  * frame or changing React state. */
-export function updateFlagCloth(geometry: BufferGeometry, elapsed: number) {
+export function updateFlagCloth(geometry: BufferGeometry, elapsed: number, pennant = false) {
   const position = geometry.getAttribute('position'), uv = geometry.getAttribute('uv'), normal = geometry.getAttribute('normal');
   if (!position || !uv || position.count !== uv.count) return;
   const time = Number.isFinite(elapsed) ? elapsed : 0;
   for (let index = 0; index < position.count; index++) {
     const u = uv.getX(index), v = uv.getY(index);
+    const taper = pennant ? 1-u : 1;
     const phase = 2.5 * Math.PI * u - 2.4 * time + .8 * v;
     const sine = Math.sin(phase), cosine = Math.cos(phase), wave = u * sine;
     position.setXYZ(index,
       (u - .5) * FLAG_CLOTH_WIDTH,
-      (v - .5) * FLAG_CLOTH_HEIGHT - .045 * u * u + .018 * wave,
+      (v - .5) * FLAG_CLOTH_HEIGHT * taper - (pennant ? .29*u : 0) - .045 * u * u + .018 * wave,
       .105 * Math.sin(Math.PI * u) + .075 * wave);
     if (normal) {
       const derivative = sine + 2.5 * Math.PI * u * cosine;
-      const yu = -.09 * u + .018 * derivative, yv = FLAG_CLOTH_HEIGHT + .018 * .8 * u * cosine;
+      const yu = (pennant ? -(v-.5)*FLAG_CLOTH_HEIGHT-.29 : 0) -.09 * u + .018 * derivative, yv = FLAG_CLOTH_HEIGHT*taper + .018 * .8 * u * cosine;
       const zu = .105 * Math.PI * Math.cos(Math.PI * u) + .075 * derivative, zv = .075 * .8 * u * cosine;
       const nx = yu * zv - zu * yv, ny = -FLAG_CLOTH_WIDTH * zv, nz = FLAG_CLOTH_WIDTH * yv;
       const length = Math.hypot(nx, ny, nz);

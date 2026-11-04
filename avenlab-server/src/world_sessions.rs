@@ -79,7 +79,7 @@ impl WorldRuntime {
     fn capture_round_players(&mut self){let ids:Vec<_>=self.game.entities.keys().cloned().collect();for id in ids{self.capture_round_player(&id);}}
     fn advance_round(&mut self) {
         if self.round.as_ref().is_none_or(|r|r.phase==crate::ctf::CtfPhase::Ended){self.game.match_state=self.round_view();return;}
-        let observations=self.round_observations();self.round.as_mut().unwrap().tick(SIMULATION_DT,&observations);self.physics.ctf_reset_players.clear();
+        let observations=self.round_observations();self.round.as_mut().unwrap().tick_with_rams(SIMULATION_DT,&observations,&self.physics.dislodged_carriers);self.physics.dislodged_carriers.clear();self.physics.ctf_reset_players.clear();
         let carriers=self.round.as_ref().unwrap().carriers();
         for id in carriers.difference(&self.physics.ctf_carriers){if let Some(h)=self.physics.vehicle_health.get_mut(id){h.spawn_protection_s=0.0;}}
         self.physics.ctf_carriers=carriers;
@@ -122,7 +122,7 @@ impl WorldRuntime {
     /// No transport remains for a leased practice body. Clear all held intent.
     pub fn detach(&mut self,id:&str){
         self.game.unregister_client(id);
-        self.physics.cancel_guard(id);
+        self.physics.suspend_shields(id);
         if let Some(e)=self.game.entities.get_mut(id){e.last_packet=None;}
         if let Some(v)=self.physics.vehicles.get_mut(id){v.throttle=0.0;v.steer=0.0;v.brake=1.0;v.handbrake=0.0;v.ram.cancel();}
         if let Some(c)=self.physics.combat_poses.get_mut(id){c.fire=false;c.ram=false;}

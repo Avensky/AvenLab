@@ -158,7 +158,7 @@
 .driving-chat {
   position:absolute;
   left:max(8px,env(safe-area-inset-left));
-  top:50%;transform:translateY(-50%);
+  bottom:var(--wheel-size);
   width:min(300px,calc(100dvw - 24px));
   height:clamp(110px,22dvh,180px);
   display:flex;align-items:flex-end;
@@ -198,7 +198,7 @@
     font-size: 5px;
   }
   .driving-chat {
-    top:45%;bottom:auto;left:max(8px,env(safe-area-inset-left));
+    left:max(8px,env(safe-area-inset-left));
     width:min(280px,38dvw);height:clamp(90px,24dvh,120px);
   }
 }

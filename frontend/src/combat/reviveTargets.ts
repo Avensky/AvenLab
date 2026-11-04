@@ -13,7 +13,7 @@ const living=(entity:PhysicsEntitySnapshot)=>entity.health?.defeated===false&&Nu
  * world membership distinguish a Mechanic from an ordinary BRZ. */
 export function isMechanicPlayer(network=useNetworkStore.getState(),view:SocialView|null=useSocialStore.getState().view){
  const me=network.getMe(),active=view?.alpha?.active;
- return Boolean(network.connected&&me?.vehicle_id==='brz'&&active?.hero==='mechanic'&&active.world_id===me.room_id&&(network.room_id===null||network.room_id===me.room_id)&&active.team===me.team);
+ return Boolean(network.connected&&me?.vehicle_id==='fortuner'&&active?.hero==='mechanic'&&active.world_id===me.room_id&&(network.room_id===null||network.room_id===me.room_id)&&active.team===me.team);
 }
 /** Client presentation only. Rust repeats every identity, distance, team,
  * timer, cooldown and safe-placement check before changing the vehicle. */

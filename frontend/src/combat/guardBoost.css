@@ -6,3 +6,5 @@
 .guard-boost-fallback:empty{display:none}.guard-boost-fallback button{pointer-events:auto;width:64px;height:68px}
 .guard-boost-fallback .cooldown-clock{--action-orbit-size:42px;--orbit-art-size:48px;--orbit-scale:1;width:42px;height:42px}
 .guard-boost-fallback .guard-boost-action>span:not(.cooldown-clock){background:var(--app-panel);color:var(--app-text);border-radius:3px;box-shadow:0 0 0 2px var(--app-panel),0 2px 6px #0005}
+.guard-boost-fallback {display:flex;gap:4px;}
+.guard-boost-action[data-guard-kind=dive_shield][data-active=true] {color:#63f1d4;}

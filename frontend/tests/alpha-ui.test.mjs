@@ -132,10 +132,10 @@ test("alpha selection, queue and HUD route to their own state owners", async (t)
         );
         assert.equal(document.querySelectorAll(".match-composition-seat").length, 5);
         await click("SUPPORT", "tab");
-        await click("MECHANIC · SUPPORT");
+        await click("CX-30 RESCUE · SUPPORT");
         const command = sent.at(-1);
         assert.equal(command.action, "hero_select");
-        assert.equal(command.hero, "mechanic");
+        assert.equal(command.hero, "cx30");
         await act(async () =>
           client.receiveSocialResult({
             request_id: command.request_id,
@@ -258,7 +258,7 @@ test("alpha selection, queue and HUD route to their own state owners", async (t)
           ui.setState({ screen: "hero_select" });
         });
         await render(HeroSelection);
-        assert.equal(document.querySelectorAll("[data-hero]").length, 7);
+        assert.equal(document.querySelectorAll("[data-hero]").length, 10);
         assert.equal(
           document.querySelectorAll(
             ".alpha-mode-tabs,[data-can-field],[data-controller-selector]",
@@ -501,7 +501,7 @@ test("alpha selection, queue and HUD route to their own state owners", async (t)
         assert.equal(ui.getState().screen, "hero_select");
         assert.equal(alpha.getState().hero, null);
         assert.equal(alpha.getState().previewHero, null);
-        assert.equal(document.querySelectorAll("[data-hero]").length, 7);
+        assert.equal(document.querySelectorAll("[data-hero]").length, 10);
         assert.equal(document.querySelectorAll(".match-composition-seat").length, 5);
         assert.match(
           document.querySelector(".alpha-deploy").textContent,

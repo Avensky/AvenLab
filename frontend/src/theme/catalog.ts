@@ -94,6 +94,12 @@ export const UI_THEMES = {
     floor: "#bbadd1",
     "scene-tint": "#a789d4",
   },
+  scarlet: {
+    label: "Scarlet crimson", scheme: "dark", background: "#0c090c", panel: "#181419",
+    raised: "#322029", line: "#9b3545", text: "#fff1ef", muted: "#cfadb4",
+    accent: "#ff4552", physical: "#ff646b", grid: "#3b1924", axis: "#ae344b",
+    floor: "#25151b", "scene-tint": "#ef122c",
+  },
   strawberry: {
     label: "Strawberry",
     scheme: "light",

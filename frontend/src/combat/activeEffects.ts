@@ -3,7 +3,7 @@ import {ResourceFlags} from '../store/telemetry/resourceMasks';
 import {VehicleFlags} from '../store/input/protocol/inputMasks';
 import {TelemetryFields} from '../store/session/vehicleConfigStore';
 import type {AttackSymbol} from './AttackIcon';
-import {readGuardBoost,guardActionKind,GUARD_DURATION_S,TANK_BARRIER_DURATION_S} from './guardBoostState';
+import {readGuardBoost,guardActionKind,GUARD_DURATION_S,DIVE_DURATION_S} from './guardBoostState';
 
 export type EffectNature='mobility'|'offense'|'control'|'heat'|'wear'|'healing'|'defense'|'utility';
 export type ActiveVehicleEffect={id:string;label:string;description:string;kind:'buff'|'debuff';nature:EffectNature;icon:AttackSymbol;remaining:number|null;duration:number|null};
@@ -21,7 +21,8 @@ export function readEffectSignals(entity:PhysicsEntitySnapshot|null|undefined){
   stun:time(entity?.combat?.stun_remaining,1),
   resource:Number.isSafeInteger(resource)&&resource!>=0&&resource!<=0xffff?resource!:0,
   boost:Boolean((entity?.telemetry_mask??0)&TelemetryFields.BOOST)&&Boolean((entity?.vehicle_mask??0)&VehicleFlags.BOOST),
-  guard:time(guard?.remaining_s,guardKind==='tank_barrier'?TANK_BARRIER_DURATION_S:GUARD_DURATION_S),
+  dive:time(guard?.dive_remaining_s,DIVE_DURATION_S),
+  guard:time(guard?.remaining_s,GUARD_DURATION_S),
   guardHp:guard?Math.ceil(guard.shield_hp):0,
   guardKind,
  };
@@ -29,9 +30,10 @@ export function readEffectSignals(entity:PhysicsEntitySnapshot|null|undefined){
 export function activeVehicleEffects(s:ReturnType<typeof readEffectSignals>):ActiveVehicleEffect[]{
  const effects:ActiveVehicleEffect[]=[];if(s.defeated)return effects;
  if(s.protection>0)effects.push({id:"spawn-protection",label:"SPAWN SHIELD",description:"Brief damage protection after spawning. Firing or starting Ram ends it early.",kind:"buff",nature:"defense",icon:"shield",remaining:s.protection,duration:2});
- if(s.guard>0){
+ if(s.dive>0)effects.push({id:'dive-shield',label:'DIVE SHIELD',description:'All-angle damage protection. Your gun remains available.',kind:'buff',nature:'defense',icon:'shield',remaining:s.dive,duration:DIVE_DURATION_S});
+ if(s.guard>0 || (s.guardKind==='tank_barrier' && s.guardHp>0)){
   const tank=s.guardKind==='tank_barrier';
-  if(s.guardHp>0)effects.push({id:tank?'tank-barrier':'front-guard',label:tank?'FRONTAL BARRIER':'FRONT SHIELD',description:`${s.guardHp} shield HP remain. This personal frontal shield absorbs incoming damage and collision damage; side and rear hits remain dangerous.`,kind:'buff',nature:'defense',icon:'shield',remaining:s.guard,duration:tank?TANK_BARRIER_DURATION_S:GUARD_DURATION_S});
+  if(s.guardHp>0)effects.push({id:tank?'tank-barrier':'front-guard',label:tank?'FRONTAL BARRIER':'FRONT SHIELD',description:tank?`${s.guardHp} barrier HP. Rotate the cannon to cover teammates until the barrier breaks.`:`${s.guardHp} shield HP on your front. Side and rear hits bypass the guard.`,kind:'buff',nature:'defense',icon:'shield',remaining:tank?null:s.guard,duration:tank?null:GUARD_DURATION_S});
   if(!tank)effects.push({id:'guard-stability',label:'STABILIZED BOOST',description:'Grounded stabilization helps high-speed steering and controlled handbrake drifts. A fast frontal rush can add 60 HP once per enemy. Stability remains after the shield breaks; fuel and nitrous were spent on activation.',kind:'buff',nature:'mobility',icon:'boost',remaining:s.guard,duration:GUARD_DURATION_S});
  }
  const recovering=Boolean(s.resource&ResourceFlags.THERMAL_RECOVERY);

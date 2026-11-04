@@ -47,7 +47,7 @@ const BINDING_LABELS: Record<BindingAction, string> = {
   previousWeapon:"Previous secondary weapon",
   scope: "Tank scope",
   revive: "Mechanic revive nearby teammate",
-  barrier: "Tank personal barrier",
+  barrier: "Tank barrier / CX-30 dive shield",
   healthBars: "Cycle health bars",
 };
 

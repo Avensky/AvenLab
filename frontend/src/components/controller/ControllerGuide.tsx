@@ -10,7 +10,7 @@ const controls: [ControllerKey, string][] = [
   ["Y", "Cycle secondary small arms while tank armed · otherwise lights"],
   ["LB", "Tank Ram · Mechanic revive · BRZ shield boost · NOS boost on other cars"],
   ["RB", "Tank cannon · Mechanic health pack · armed car fire · otherwise horn"],
-  ["D-PAD", "Tank: left personal barrier, right secondary fire, up reset turret, down scope · cars: up hazards, down radio"],
+  ["D-PAD", "Tank: left team barrier, right secondary fire, up reset turret, down scope · cars: up hazards, down radio"],
   ["START", "Pause / resume"],
   ["VIEW", "Performance details · LB + View cockpit"],
 ];

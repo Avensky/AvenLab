@@ -20,7 +20,8 @@ function FlagArtwork({color,carried=false}:{color:string;carried?:boolean}){
 /** Share the exact chassis render timeline instead of moving this attachment
  * from raw flag snapshots. The small bob is cosmetic and frame-clock driven. */
 const CarriedFlag=memo(function CarriedFlag({carrier,color}:{carrier:string;color:string}){
- const root=useRef<Group>(null),bob=useRef<Group>(null);
+ const root=useRef<Group>(null),bob=useRef<Group>(null),marker=useRef<HTMLSpanElement>(null);
+ const nextLabel=useRef(0);
  const {getInterpolated}=useVehiclePhysicsInterpolator(carrier);
  useFrame(({clock})=>{
   const group=root.current,offset=bob.current;
@@ -28,8 +29,18 @@ const CarriedFlag=memo(function CarriedFlag({carrier,color}:{carrier:string;colo
   const pose=getInterpolated(carrier);
   group.visible=pose!==null;
   if(pose)updateCarriedFlagPose(group,offset,pose,clock.elapsedTime);
+  if(marker.current && clock.elapsedTime>=nextLabel.current){
+   nextLabel.current=clock.elapsedTime+.2;
+   const me=useNetworkStore.getState().getMe();
+   const distance=me&&pose?Math.round(Math.hypot(pose.position[0]-me.position[0],pose.position[1]-me.position[1],pose.position[2]-me.position[2])):0;
+   marker.current.hidden=distance<40;
+   marker.current.textContent='⚑ '+distance+' m';
+  }
  },-2);
  return <group ref={root} name={`carried-flag-${carrier}`} visible={false}>
+  <Html center position={[0,4.5,0]} zIndexRange={[3,0]} style={{pointerEvents:'none'}}>
+   <span ref={marker} hidden className="carrier-range" style={{borderColor:color}}/>
+  </Html>
   <group ref={bob} position={[0,1.1,0]} scale={CARRIED_FLAG_SCALE} rotation={[0,CARRIED_FLAG_ROTATION,0]}><FlagArtwork color={color} carried/></group>
  </group>;
 });

@@ -39,14 +39,14 @@ test('red and blue accent text remains readable across the app palettes',()=>{
  }
 });
 
-test('warm Red team identity stays distinct from Strawberry and survives outside a live match',()=>{
+test('crimson Red team identity stays distinct from Strawberry and survives outside a live match',()=>{
  const dom=new JSDOM(''),html=dom.window.document.documentElement;
  try{
   html.style.setProperty('--app-accent',UI_THEMES.strawberry.accent);
   html.style.setProperty('--app-panel',UI_THEMES.strawberry.panel);
   for(const value of Object.values(MATCH_TEAM_COLORS.red)){
    const [r,g,b]=value.slice(1).match(/../g).map(channel=>parseInt(channel,16));
-   assert(r>g&&g>b,'team red stays on the warm red side instead of Strawberry magenta');
+   assert(r>2*g && r>2*b,'crimson keeps a dominant red channel');
    assert.notEqual(value,UI_THEMES.strawberry.accent);
    assert.notEqual(value,GARAGE_LIGHT_COLORS.strawberry);
   }

@@ -587,8 +587,10 @@ impl Server {
         if let Some(config) = previous_config { physics.configure_vehicle_for_player(player, config)?; }
         physics.set_assigned_hero(player,&member.hero);
         let ability=if member.hero=="tank" {"tank_barrier"}else{"guard_boost"};
+        let dive_cooldown=self.ability_cooldown(player,"dive_shield").await;
         let guard_cooldown=self.ability_cooldown(player,ability).await;
-        physics.guard_boosts.entry(player.into()).or_default().cooldown=guard_cooldown;
+        let guard=physics.guard_boosts.entry(player.into()).or_default();
+        guard.cooldown=guard_cooldown;guard.dive_cooldown=dive_cooldown;
         physics.support.ensure_cooldown(player,self.ability_cooldown(player,"heal_pack").await);
         let mut game = crate::state::SharedGameState::new();
         game.room_id = member.world;
@@ -752,7 +754,7 @@ impl Server {
             let teammate=viewer.is_some_and(|viewer|viewer.world==member.world&&viewer.team==member.team);
             let started=phases.get(&member.world).is_some_and(|(_,phase)|*phase!=crate::ctf::CtfPhase::Waiting);
             let hidden=profile.id!=actor&&!teammate&&!started;
-            let showcase=if member.hero.is_empty(){profile.progression.default_hero.as_str()}else{member.hero.as_str()};
+            let showcase=if member.hero.is_empty(){profile.progression.showcase_hero()}else{member.hero.as_str()};
             let appearance = policy::hero(showcase).ok()
                 .and_then(|hero| profile.progression.hero_loadouts.get(hero.vehicle))
                 .cloned().unwrap_or_default();

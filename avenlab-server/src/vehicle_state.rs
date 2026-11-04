@@ -8,6 +8,8 @@ use crate::powertrain::{Powertrain, ResourceConfig};
 #[derive(Serialize, Clone, Copy, Debug)]
 pub struct VehicleConfig {
     pub tracked: bool,
+    pub hull_hp: f32,
+    pub front_wheel_drive: bool,
     #[serde(skip)]
     pub resources: ResourceConfig,
     pub mass: f32,              // kg

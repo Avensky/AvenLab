@@ -25,6 +25,7 @@ export default function ControlsPanel() {
       <UtilityDock />
       <aside
         className="drive-dock"
+        data-futuristic={groups.futuristic}
         data-expanded={expanded}
         data-aim-controls={aimControls}
         aria-label="Drive controls"
@@ -51,8 +52,8 @@ export default function ControlsPanel() {
         )}
         {/* This row defines the shared radio/HVAC width in styles/layout.css. */}
         <div className="console-foot-controls">
-          <DrivingIgnition/>
-          {(
+          {!groups.futuristic && <DrivingIgnition/>}
+          {(!groups.futuristic &&
             <HudGroup
               id="assists"
               title="DRIVING ASSISTS"

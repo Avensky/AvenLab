@@ -67,7 +67,7 @@ try{
  const teams={red:peers.filter(peer=>peer.team==='red'),blue:peers.filter(peer=>peer.team==='blue')};
  for(const team of Object.values(teams)){
   assert.equal(team.length,3);
-  for(let index=0;index<team.length;index++){const peer=team[index];peer.hero=['tank','brz','mechanic'][index];peer.vehicle=index===0?'tank':'brz';await peer.command('hero_select',{hero:peer.hero});}
+  for(let index=0;index<team.length;index++){const peer=team[index];peer.hero=['tank','brz','cx30'][index];peer.vehicle=peer.hero;await peer.command('hero_select',{hero:peer.hero});}
  }
  checks.push('Six authenticated profiles select complete independent Tank/DPS/Mechanic teams in a real Quickplay 3v3 waiting room');
 

@@ -1,4 +1,4 @@
-import { HEROES, modeTeamSize } from '../../store/alpha/alphaStore';
+import { HEROES, heroForVehicle, modeTeamSize } from '../../store/alpha/alphaStore';
 import { useNetworkStore } from '../../store/session/networkStore';
 import { useSocialStore } from '../../store/social/socialStore';
 import type { HeroAppearance } from '../../vehicles/cosmetics/heroLoadouts';
@@ -34,7 +34,7 @@ export function readTeammates(now = performance.now()): TeammateCard[] {
     const member = membersByPlayer.get(entity.id), profileId = member?.profile_id ?? null;
     const card = profileId ? cardsByProfile.get(profileId) : undefined;
     if (profileId) present.add(profileId);
-    const hero = HEROES.find(hero => hero.id === card?.hero && hero.vehicle === entity.vehicle_id) ?? HEROES.find(hero => hero.id === entity.vehicle_id);
+    const hero = heroForVehicle(entity.vehicle_id);
     const health = fresh ? combatHealth(entity) : null;
     if (health) {health.hp = Math.ceil(health.hp); health.protection = health.protection > 0 ? 1 : 0;}
     rows.push({id: entity.id, profileId, name: member?.name ?? card?.name ?? 'UNKNOWN PLAYER', team: me.team,

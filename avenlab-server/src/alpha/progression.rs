@@ -108,13 +108,27 @@ impl Progression {
         self.equipped = id.into();
         Ok(())
     }
+    pub fn showcase_hero(&self) -> &str {
+        super::policy::hero(&self.default_hero).map(|h| h.id).unwrap_or("brz")
+    }
     pub fn view(&self) -> serde_json::Value {
-        serde_json::json!({"career":self.career,"default_hero":self.default_hero,"hero_loadouts":self.hero_loadouts,"level":self.level,"prestige":self.prestige,"xp":self.xp,"required_xp":self.required_xp(),"tier":self.tier(),"competitive_wins":self.competitive_wins,"quickplay_wins":self.quickplay_wins,"matches":self.matches,"credits":self.credits,"owned":self.owned,"equipped":self.equipped,"color":self.color(),"next_milestone":if self.level<100{((self.level/10)+1)*10}else{100}})
+        serde_json::json!({"career":self.career,"default_hero":self.showcase_hero(),"hero_loadouts":self.hero_loadouts,"level":self.level,"prestige":self.prestige,"xp":self.xp,"required_xp":self.required_xp(),"tier":self.tier(),"competitive_wins":self.competitive_wins,"quickplay_wins":self.quickplay_wins,"matches":self.matches,"credits":self.credits,"owned":self.owned,"equipped":self.equipped,"color":self.color(),"next_milestone":if self.level<100{((self.level/10)+1)*10}else{100}})
     }
 }
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn retired_favorite_resolves_without_erasing_saved_progress() {
+        let mut profile = Progression::default();
+        for id in ["unknown", ""] {
+            profile.default_hero = id.into();
+            assert_eq!(profile.view()["default_hero"], "brz");
+            assert_eq!(profile.default_hero, id);
+        }
+        profile.default_hero = "mini".into();
+        assert_eq!(profile.showcase_hero(), "mini");
+    }
     #[test]
     fn prestige_rolls_level_and_increases_cost() {
         let mut p = Progression {

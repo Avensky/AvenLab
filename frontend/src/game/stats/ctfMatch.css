@@ -23,3 +23,13 @@
 .console-display .mission-apps :is(h2,strong,summary){color:var(--app-text)}
 .console-display .mission-apps p{color:var(--app-muted)}
 .console-display .mission-radio-history article{background:var(--app-panel);border-color:var(--app-line)}
+
+.carrier-range {color:#f5f6f8;background:#0e111ae0;border-inline-start:3px solid;padding:2px 5px;white-space:nowrap;font:700 10px/1.2 system-ui;font-variant-numeric:tabular-nums;}
+
+/* Mirrored score wings keep the clock readable even in the waiting phase. */
+.ctf-score-line {padding:0;gap:0;clip-path:polygon(0 0,100% 0,97% 100%,3% 100%);background:linear-gradient(#202833,#080d14);color:#fff;}
+.ctf-score-line strong {align-self:stretch;display:flex;align-items:center;justify-content:center;gap:3px;min-width:23%;padding:4px 6px;}
+.ctf-score-line strong[data-team=blue] {background:linear-gradient(110deg,#123965,#14508a);color:#effaff;}
+.ctf-score-line strong[data-team=red] {background:linear-gradient(110deg,#70232c,#48131c);color:#fff3f3;}
+.ctf-score-line > span {padding:3px 4px;font-variant-numeric:tabular-nums;}
+.ctf-match-hud > small {display:table;margin:auto;padding:2px 9px;color:#dee8f4;background:#0a111bd9;}

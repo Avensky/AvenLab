@@ -17,12 +17,14 @@ export function ClimatePanel({
   controlsVisible = true,
   onMinimize,
   performanceReadout = false,
+  onToggleDensity,
 }: {
   size?: "single" | "compact" | "full";
   showHazards?: boolean;
   controlsVisible?: boolean;
   onMinimize?: () => void;
   performanceReadout?: boolean;
+  onToggleDensity?: () => void;
 }) {
   const { cabin, confirmedCabin, extended, climate, cabinMask, cabinPending } =
     useCockpitState();
@@ -47,12 +49,20 @@ export function ClimatePanel({
       <div className="console-clock-strip">
         <CabinClock />
         {showHazards && <HazardButton round />}
+        {onToggleDensity && size !== "full" ? (
+          <button type="button" className="climate-density" onClick={onToggleDensity}
+            aria-label={size === "single" ? "Show two-line climate dash" : "Show one-line climate dash"}
+            aria-expanded={size !== "single"} title={size === "single" ? "Two-line climate" : "One-line climate"}>
+            ✣ {size === "single" ? "▾" : "▴"}
+          </button>
+        ) : size !== "full" && <span className="climate-fan" title={`Fan speed ${confirmedCabin.fan}`} aria-label={`Fan speed ${confirmedCabin.fan}`}>✣</span>}
+
         <output aria-label="Ambient temperature">
           {ambient === null ? "—" : Math.round((ambient * 9) / 5 + 32)}°F
         </output>
       </div>
-      <TurretInstruments />
-      {performanceReadout && size === "compact" && <CabinPerformance />}
+      {size === "compact" && performanceReadout && <div className="climate-status-row"><CabinPerformance /></div>}
+      {size === "full" && <TurretInstruments />}
       {controlsVisible && size === "full" && (
         <div className="climate-three-knobs">
           <RotaryKnob

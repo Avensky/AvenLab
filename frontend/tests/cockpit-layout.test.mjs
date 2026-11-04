@@ -431,6 +431,11 @@ test("cockpit layout preferences preserve electronics and physical source owners
           by("Hazards").closest(".console-clock-strip") !== null,
           true,
         );
+        assert(document.querySelector('.console-clock-strip output[aria-label="Ambient temperature"]'));
+        await click("Minimize climate controls");
+        assert.equal(document.querySelector('.climate-panel,.utility-readouts'),null);
+        await click("Open climate controls");
+        assert(by("Hazards"));
         await act(async () =>
           prefs.getState().update({ climateHudSize: "full" }),
         );

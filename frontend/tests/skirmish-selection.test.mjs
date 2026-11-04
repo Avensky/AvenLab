@@ -117,14 +117,14 @@ test('match category and size select independently through real admission and au
   });
   await t.test('3v3 role capacity reserves one place for each role and excludes your replaceable pick',async()=>{
    const {unavailableHeroes}=await load('game/alpha/heroAvailability.ts');
-   const roster=[{id:'me',team:'red',hero:'tank',mode:'skirmish',world_id:4},{id:'dps',team:'red',hero:'brz',mode:'skirmish',world_id:4},{id:'enemy',team:'blue',hero:'mechanic',mode:'skirmish',world_id:4}];
-   const limits=unavailableHeroes({...view.alpha,active,roster},'skirmish','me');assert.equal(limits.tank,undefined);assert.match(limits.brz,/DPS full/);assert.equal(limits.mechanic,undefined);assert.deepEqual(unavailableHeroes({...view.alpha,role_limits:false,active,roster},'skirmish','me'),{});
+   const roster=[{id:'me',team:'red',hero:'tank',mode:'skirmish',world_id:4},{id:'dps',team:'red',hero:'brz',mode:'skirmish',world_id:4},{id:'enemy',team:'blue',hero:'cx30',mode:'skirmish',world_id:4}];
+   const limits=unavailableHeroes({...view.alpha,active,roster},'skirmish','me');assert.equal(limits.tank,undefined);assert.match(limits.brz,/DPS full/);assert.equal(limits.cx30,undefined);assert.deepEqual(unavailableHeroes({...view.alpha,role_limits:false,active,roster},'skirmish','me'),{});
    const filled=[...roster,{id:'tank2',team:'red',hero:'tank',mode:'skirmish',world_id:4}];assert.match(unavailableHeroes({...view.alpha,active,roster:filled},'skirmish','me').tank,/TANK full/);
    const modern={...active,mode:'competitive',role_caps:undefined,role_minimums:undefined},modernRoster=roster.map(member=>({...member,mode:'competitive'}));assert.match(unavailableHeroes({...view.alpha,active:modern,roster:modernRoster},'competitive','me').brz,/DPS full/,'fallback roles follow confirmed size rather than queue category');
   });
   await t.test('own-team deployment preview uses three slots while Quickplay retains five',async()=>{
    const {PreMatchTeamPreview}=await load('game/stats/PreMatchTeamPreview.tsx');
-   const own=[{id:'me',name:'Driver',team:'red',hero:'tank',mode:'skirmish',world_id:4,reconnecting:false},{id:'ally',name:'Ally',team:'red',hero:'mechanic',mode:'skirmish',world_id:4,reconnecting:false},{id:'enemy',name:'Enemy',team:'blue',hero:'brz',mode:'skirmish',world_id:4,reconnecting:false}];
+   const own=[{id:'me',name:'Driver',team:'red',hero:'tank',mode:'skirmish',world_id:4,reconnecting:false},{id:'ally',name:'Ally',team:'red',hero:'cx30',mode:'skirmish',world_id:4,reconnecting:false},{id:'enemy',name:'Enemy',team:'blue',hero:'brz',mode:'skirmish',world_id:4,reconnecting:false}];
    await act(async()=>root.render(h(PreMatchTeamPreview,{view:{...view,alpha:{...view.alpha,active,roster:own}}})));assert.equal(document.querySelectorAll('.match-composition-seat').length,3);assert.equal(document.querySelectorAll('.match-composition-empty').length,1);assert(!document.querySelector('.match-team-composition').textContent.includes('Enemy'));
    await act(async()=>root.render(h(PreMatchTeamPreview,{view:{...view,alpha:{...view.alpha,active:{...active,mode:'quickplay',team_size:5},roster:[]}}})));assert.equal(document.querySelectorAll('.match-composition-seat').length,5);
   });

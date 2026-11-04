@@ -82,14 +82,16 @@ try{
  phase='role selection';
  const byTeam={red:[],blue:[]};
  for(const peer of seated){const card=state.alpha.roster.find(row=>row.id===peer.identity.profile_id);peer.team=card.team;byTeam[card.team].push(peer);}
- const heroes=['tank','ae86','mechanic'],vehicles=['tank','ae86','brz'];
  for(const team of ['red','blue']){
-  await byTeam[team][0].command('hero_select',{hero:'tank'});
+  const tankHero=team==='red'?'tank':'sierra';
+  const heroes=[tankHero,'mini',team==='red'?'mechanic':'logistics'];
+  const vehicles=[tankHero,'mini',team==='red'?'fortuner':'landcruiser'];
+  await byTeam[team][0].command('hero_select',{hero:tankHero});
   const duplicate=await byTeam[team][1].request('hero_select',{hero:'tank'});assert.equal(duplicate.ok,false);
   for(let index=1;index<3;index++)await byTeam[team][index].command('hero_select',{hero:heroes[index]});
   for(let index=0;index<3;index++)byTeam[team][index].vehicle=vehicles[index];
  }
- checks.push('Each side selects Tank, DPS and Mechanic; a second tank is rejected without stealing a locked role');
+ checks.push('Each side selects a Tank and Mini DPS, with Fortuner Mechanic on red and Land Cruiser Logistics on blue; a second tank is rejected without stealing a locked role');
 
  phase='five vehicles remain in warmup';
  for(const peer of seated.slice(0,5))await peer.deploy(peer.vehicle);
@@ -104,6 +106,10 @@ try{
  assert.equal(running.match_state.mode,'skirmish');assert.equal(running.match_state.training,false);
  assert.equal(running.match_state.captures_to_win,3);
  for(const team of ['red','blue'])assert.equal(running.entities.filter(entity=>entity.team===team).length,3);
+ const pickup=running.entities.find(entity=>entity.vehicle_id==='sierra');
+ assert(pickup);assert.equal(pickup.health.max_hp,900);
+ assert(running.entities.some(entity=>entity.vehicle_id==='fortuner'));
+ assert(running.entities.some(entity=>entity.vehicle_id==='landcruiser'));
  checks.push('The sixth real deployment starts server-owned 3v3 CTF with first-to-three scoring');
 
  phase='server-owned passive ultimate and forged input';
@@ -127,9 +133,9 @@ try{
  const resumed=await new Peer().ready();peers.push(resumed);
  const restored=await resumed.command('identify',{name:'3v3 driver 0',token:identity.token});assert.equal(restored.profile_id,identity.profile_id);
  const current=(await resumed.wait(message=>message.type==='social_state'&&message.data.alpha?.active?.mode==='skirmish')).data;
- assert.equal(current.alpha.active.world_id,world);assert.equal(current.alpha.active.team,team);assert.equal(current.alpha.active.hero,'tank');assert.equal(current.alpha.active.team_size,3);
+ assert.equal(current.alpha.active.world_id,world);assert.equal(current.alpha.active.team,team);assert.equal(current.alpha.active.hero,original.vehicle);assert.equal(current.alpha.active.team_size,3);
  assert.equal(current.alpha.roster.filter(row=>row.id===identity.profile_id).length,1);
- await resumed.deploy('tank');
+ await resumed.deploy(original.vehicle);
  await resumed.wait(message=>message.type==='snapshot'&&message.data.entities.some(entity=>entity.id===resumed.player&&entity.team===team)&&message.data.match_state?.mode==='skirmish');
  checks.push('Token reconnect restores the same 3v3 world, team and hero, with one roster card and a valid redeployed body');
  console.log(JSON.stringify({checks,failures:0},null,2));

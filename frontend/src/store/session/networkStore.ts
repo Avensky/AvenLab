@@ -113,6 +113,10 @@ export interface SupportSnapshot {
   pack: HealthPackSnapshot | null;
 }
 export interface GuardSnapshot {
+  panel?: [number, number, number, number];
+  panel_yaw?: number;
+  dive_remaining_s?: number;
+  dive_cooldown_s?: number;
   kind?: "" | "brz_guard" | "tank_barrier";
   remaining_s: number;
   cooldown_s: number;
@@ -144,7 +148,7 @@ export interface PhysicsEntitySnapshot {
     /** Session totals from accepted server events, retained through respawn. */
     stats?: VehicleSessionStats;
   };
-  combat?: {shot_origin?:[number,number,number]|null;impact_normal?:[number,number,number]|null;impact_static?:boolean;shot_weapon?:string;stun_remaining?:number;ram_charge_remaining?:number;ram_blocked?:string;impact?:[number,number,number]|null;impact_time?:number;lock_yaw?:number;lock_pitch?:number;hull_locked?:boolean;ram_remaining?:number;ram_cooldown?:number;cannon_reload?:number;coax_reload?:number;basket_reload?:number;cannon_shot?:number;weapon?:string;shot?:number;ammo?:number;reload?:number;fire?:boolean;enabled:boolean;yaw:number;pitch:number;x:number;y:number;z:number;role:string};
+  combat?: {assisted_target?:string;shot_origin?:[number,number,number]|null;impact_normal?:[number,number,number]|null;impact_static?:boolean;shot_weapon?:string;stun_remaining?:number;ram_charge_remaining?:number;ram_blocked?:string;impact?:[number,number,number]|null;impact_time?:number;lock_yaw?:number;lock_pitch?:number;hull_locked?:boolean;ram_remaining?:number;ram_cooldown?:number;cannon_reload?:number;coax_reload?:number;basket_reload?:number;cannon_shot?:number;weapon?:string;shot?:number;ammo?:number;reload?:number;fire?:boolean;enabled:boolean;yaw:number;pitch:number;x:number;y:number;z:number;role:string};
   collider?: VehicleColliderShape;
   id: string;
   kind: VehicleKind;

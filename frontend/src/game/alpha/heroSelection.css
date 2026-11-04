@@ -1,5 +1,6 @@
 /* The scene owns the vehicle. This edge-to-edge overlay uses static portraits
    and translucent selector strips; only actual controls capture pointer input. */
+.hero-selection > .menu-frame-header { padding-block: clamp(6px, 1.15dvh, 12px); }
 .hero-selection {
   --hero-panel-width: clamp(240px, 30vw, 360px);
   box-sizing: border-box;
@@ -575,3 +576,9 @@ html[data-reduce-motion="true"] .hero-portrait-card .hero-portrait-art img {
 .hero-role-full { position: absolute; inset: auto 0 4px; color: #bdc6ce; font: 800 8px/1.2 system-ui; text-align: center; letter-spacing: .08em; }
 .hero-portrait-style-status { position: absolute; inset: auto 2px 2px; display: flex; align-items: center; justify-content: center; gap: 3px; padding: 2px; background: #030507dc; color: #e3e9ef; font: 700 6px/1.2 system-ui; }
 .hero-portrait-style-status i { width: 7px; height: 7px; background: var(--portrait-paint); border: 1px solid #ffffff80; }
+
+.hero-roster-vacancy {
+  display:block; min-width:0; aspect-ratio:1.5; align-self:stretch;
+  background:color-mix(in srgb,var(--app-panel) 55%,transparent);
+  border:1px dashed color-mix(in srgb,var(--app-line) 55%,transparent);
+}

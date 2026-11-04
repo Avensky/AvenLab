@@ -1,5 +1,5 @@
 import { memo, useEffect, useState, useSyncExternalStore, type CSSProperties } from "react";
-import { HEROES } from "../../store/alpha/alphaStore";
+import { HEROES, heroForVehicle } from "../../store/alpha/alphaStore";
 import { FACTORY_APPEARANCE, useHeroLoadouts, type HeroAppearance } from "../../vehicles/cosmetics/heroLoadouts";
 import type { VehicleModelId } from "../../vehicles/tools/vehicleModelPaths";
 import { getStyledPortrait, needsStyledPortrait, peekStyledPortrait, portraitStyleKey, subscribeStyledPortraits } from "./heroPortraitCache";
@@ -18,7 +18,7 @@ export const HeroPortrait = memo(function HeroPortrait({ hero, className = "", a
   // create GLB/PMREM work while the world remains mounted behind an overlay.
   const driving = useUIStore(s => isDrivingScreen(s.screen));
   const deferred = cacheOnly || driving;
-  const item = HEROES.find(item => item.id === hero);
+  const item = HEROES.find(item => item.id === hero) ?? heroForVehicle(hero);
   const saved = useHeroLoadouts(s => item ? (s.draft?.vehicle === item.vehicle ? s.draft.appearance : s.loadouts[item.vehicle]) : undefined);
   const style = appearance === undefined ? saved ?? FACTORY_APPEARANCE : appearance ?? FACTORY_APPEARANCE;
   const model = item?.vehicle as VehicleModelId | undefined;

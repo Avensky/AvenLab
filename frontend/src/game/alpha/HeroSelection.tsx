@@ -1,3 +1,4 @@
+import {useScoreboardStore} from '../../store/hud/scoreboardStore';
 import { unavailableHeroes } from "./heroAvailability";
 import { prepareReconSelection } from "../../store/recon/captureSetup";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -26,6 +27,7 @@ import { PreMatchTeamPreview } from "../stats/PreMatchTeamPreview";
 import { LobbyChat } from "./LobbyChat";
 import "./heroSelection.css";
 export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
+  const inspecting=useScoreboardStore(s=>s.held||s.pinned);
   const selectedMode = useAlphaStore((s) => s.mode),
     selectedTeamSize=useAlphaStore(s=>s.teamSize),
     heroId = useAlphaStore((s) => s.hero),
@@ -62,15 +64,6 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
   }, []);
   const tab = useCallback(
     (step: number) => {
-      const current = document.activeElement as HTMLElement | null;
-      const preview = current?.closest("[data-match-preview]");
-      if (preview) {
-        const next = preview.querySelector('[data-match-view][aria-selected="true"]')?.getAttribute("data-match-view") === "composition" ? "table" : "composition";
-        const target = preview.querySelector<HTMLButtonElement>(`[data-match-view="${next}"]`);
-        target?.click();
-        target?.focus({ preventScroll: true });
-        return;
-      }
       filter(
         HERO_FILTERS[
           (HERO_FILTERS.indexOf(role) + step + HERO_FILTERS.length) %
@@ -89,14 +82,6 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
       remembered.current,
     );
   }, []);
-  const option = useCallback(() => {
-    if(pending.current)return;
-    const preview=document.activeElement?.closest('[data-match-preview]');
-    if(!preview)return;
-    const selected=preview.querySelector('[data-prematch-team][aria-selected="true"]')?.getAttribute('data-prematch-team');
-    const target=preview.querySelector<HTMLButtonElement>(`[data-prematch-team="${selected==='red'?'blue':'red'}"]:not(:disabled)`);
-    target?.click();target?.focus({preventScroll:true});
-  },[]);
   useEffect(() => {
     root.current?.focus({ preventScroll: true });
   }, []);
@@ -190,22 +175,18 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
     [planned, research, active, customWorld, overlay, inMode, connected, view, mode],
   );
   const confirm = useCallback(() => {
-    const activeControl = document.activeElement as HTMLElement | null;
-    if (activeControl?.closest("[data-match-preview]")) {
-      activeControl.click();
-      return;
-    }
     const focused = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>("[data-hero]");
     const id = focused?.dataset.hero ??
       useAlphaStore.getState().previewHero ??
       HEROES.find((h) => role === "all" || h.role === role)!.id;
     void choose(id);
   }, [choose, role]);
-  useSelectionNavigation(root, { confirm, back, direction, tab, option });
+  useSelectionNavigation(root, { confirm, back, direction, tab });
   const selected = HEROES.find((h) => h.id === previewId);
   return (
     <section
       ref={root}
+      inert={inspecting}
       className="game-ui menu-surface alpha-selection hero-selection"
       data-controller-form
       data-controller-rows

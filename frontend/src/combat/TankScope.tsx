@@ -8,13 +8,15 @@ import {useNetworkStore} from '../store/session/networkStore';
 import {useUIStore} from '../store/menus/uiStore';
 import {useVehiclePhysicsInterpolator} from '../hooks/usePhysicsInterpolator';
 import {usePreferencesStore} from '../store/preferences/preferencesStore';
-import {CANNON_SPEED,GRAVITY,ballisticPoint,elevationForRange,planeFlight} from './ballistics';
+import {CANNON_SPEED,GRAVITY,elevationForRange,planeFlight} from './ballistics';
+import {worldAim} from './turretPresentation';
 import {toggleTankScope} from './turretControls';
 import './tankScope.css';
 
 export function TankScopeHUD(){
  const zoom=useCombatStore(s=>s.scopeZoom);
- const scope=useCombatStore(s=>s.scope),me=useNetworkStore(s=>s.getMe()),visible=useUIStore(s=>s.screen==='sandbox'&&s.overlay===null&&!s.isModeLoading);
+ const scope=useCombatStore(s=>s.scope),visible=useUIStore(s=>s.screen==='sandbox'&&s.overlay===null&&!s.isModeLoading);
+ const me=useNetworkStore(s=>scope&&visible?s.getMe():null);
  const [research,setResearch]=useState(false),[reference,setReference]=useState(250);
  if(!scope||!visible||me?.vehicle_id!=='tank'||!me.combat)return null;
  const c=me.combat,cannonReload=c.cannon_reload??c.reload,dir=new Vector3(-Math.sin(c.yaw)*Math.cos(c.pitch),Math.sin(c.pitch),-Math.cos(c.yaw)*Math.cos(c.pitch));
@@ -43,15 +45,15 @@ function ScopeCamera({playerId}:{playerId:string}){
  const reduce=usePreferencesStore(s=>s.reducedMotion);
  useEffect(()=>()=>{buffers.geometry.dispose();(path.material as LineBasicMaterial).dispose();},[buffers,path]);
  useFrame((_,dt)=>{
-  const pose=getInterpolated(playerId),c=useNetworkStore.getState().getMe()?.combat;if(!pose||!c)return;
-  const {p,q,direction,origin,look}=buffers;p.fromArray(pose.position);q.fromArray(pose.rotation);direction.set(-Math.sin(c.yaw)*Math.cos(c.pitch),Math.sin(c.pitch),-Math.cos(c.yaw)*Math.cos(c.pitch));
+  const pose=getInterpolated(playerId),c=pose?.combat;if(!pose||!c)return;
+  const {p,q,direction,origin,look}=buffers;p.fromArray(pose.position);q.fromArray(pose.rotation);worldAim(direction,c.yaw,c.pitch);
   if(c.hull_locked&&c.lock_yaw!==undefined){const yaw=c.lock_yaw,pitch=c.lock_pitch??0;direction.set(Math.sin(yaw)*Math.cos(pitch),Math.sin(pitch),Math.cos(yaw)*Math.cos(pitch)).applyQuaternion(q);}
   origin.set(c.x,c.y,c.z).applyQuaternion(q).add(p).addScaledVector(direction,4.1);
   if(lastShot.current>=0&&c.cannon_shot!==lastShot.current)kick.current=1;lastShot.current=c.cannon_shot??0;kick.current=Math.max(0,kick.current-dt*4);
-  camera.position.copy(origin).addScaledVector(direction,-.5).addScaledVector(new Vector3(0,1,0),.12);
-  camera.lookAt(look.copy(camera.position).add(direction).addScaledVector(new Vector3(0,1,0),reduce?0:kick.current*.028));
+  camera.position.copy(origin).addScaledVector(direction,-.5);camera.position.y+=.12;
+  look.copy(camera.position).add(direction);look.y+=reduce?0:kick.current*.028;camera.lookAt(look);
   const time=planeFlight(c.pitch,Math.max(.1,origin.y)).time,positions=buffers.geometry.attributes.position;
-  for(let i=0;i<=64;i++){const t=time*i/64;const point=ballisticPoint([origin.x,origin.y,origin.z],[direction.x,direction.y,direction.z],t);positions.setXYZ(i,...point);}
+  for(let i=0;i<=64;i++){const t=time*i/64;const travel=CANNON_SPEED*t;positions.setXYZ(i,origin.x+direction.x*travel,origin.y+direction.y*travel-.5*GRAVITY*t*t,origin.z+direction.z*travel);}
   uploadTrajectory(buffers.geometry);
  },-1);
  return <primitive object={path} dispose={null}/>;

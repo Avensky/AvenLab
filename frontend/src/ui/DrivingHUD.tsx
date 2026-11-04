@@ -50,6 +50,7 @@ export function DrivingHUD() {
       data-touch-visible={touch}
       data-drive-controls={dock}
       data-ctf-match={ctf}
+      data-futuristic={groups.futuristic}
       inert={inspector || command}
       onPointerDownCapture={(event) => {
         if (

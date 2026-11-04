@@ -436,35 +436,14 @@
 .radio-single-row .knob-title,.radio-single-row .radio-volume-dial output{display:none}
 .radio-single-row .radio-volume-dial .climate-knob button{font-size:7px}
 .radio-single-notice{position:absolute;right:0;top:calc(100% + 3px);z-index:10;max-width:100%;padding:4px;background:var(--app-panel);color:var(--app-text);font-size:8px;overflow-wrap:anywhere}
-/* Clock and temperature stay adjacent instead of stretching to both ends.
-   Compact can wrap its optional performance strip; Single Bar never adds it. */
-.utility-climate .climate-panel:is([data-size=compact],[data-size=single]){display:flex;flex-wrap:nowrap;align-items:center;gap:3px;min-height:34px;padding:3px;box-sizing:border-box;background:var(--app-panel);color:var(--app-text)}
-.utility-climate .climate-panel[data-size=single]{flex-wrap:nowrap}
-.utility-climate .climate-panel:is([data-size=compact],[data-size=single]) .console-clock-strip{display:flex;flex:0 1 auto;justify-content:flex-start;align-items:center;gap:3px;min-width:0;min-height:26px;padding:0}
-.utility-climate .climate-panel:is([data-size=compact],[data-size=single]) .utility-toggle{position:static;order:3;flex:0 0 23px;margin-left:auto;border-radius:0}
-.utility-climate .climate-panel:is([data-size=compact],[data-size=single]) .cabin-performance{display:flex;align-items:center;justify-content:flex-start;gap:7px;border:0;padding:0;flex:0 0 auto}
-.utility-climate .climate-panel:is([data-size=compact],[data-size=single]) .cabin-performance output{flex-direction:column;gap:0;font-size:11px;line-height:1.1}
-.utility-climate .climate-panel:is([data-size=compact],[data-size=single]) .cabin-performance small{font-size:6px}
-.utility-climate .climate-panel[data-size=compact] .cabin-performance output[aria-label="Frame time"]{display:none}
-.utility-climate .climate-panel:is([data-size=compact],[data-size=single]) .console-clock-strip .cabin-clock{min-width:60px;font-size:12px;padding:4px 12px 4px 6px}
-.utility-climate .climate-panel:is([data-size=compact],[data-size=single]) .console-clock-strip output{font-size:11px;color:var(--cabin-lcd-ink,#ffad55)}
-.utility-climate .climate-panel:is([data-size=compact],[data-size=single]) .physical-hazard{flex:none;width:24px;height:24px;min-width:24px;min-height:24px}
-/* The bearing is supplemental telemetry; hover/focus reveals its full text
-   while its compact glyph shares the same row as the cabin strip. */
-.utility-climate .climate-panel:is([data-size=compact],[data-size=single]) .turret-instruments{max-width:12px;flex:0 0 12px;overflow:hidden;white-space:nowrap;text-overflow:clip;font-size:6px;padding:0}
 .hud-utilities .radio-single-row .radio-track-name small{display:block;font:inherit;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.utility-climate .climate-panel:is([data-size=compact],[data-size=single]) .turret-instruments{font-size:0}
-.utility-climate .climate-panel:is([data-size=compact],[data-size=single]) .turret-instruments::before{content:'⌖';font-size:14px;color:var(--app-muted)}
 .hud-utilities{container-type:inline-size}
 @container(max-width:200px){
  .hud-utilities .radio-single-row{gap:2px}
  .hud-utilities .radio-single-row > button:not(.radio-track-name){flex-basis:20px;width:20px;min-width:20px;height:22px;min-height:22px;padding:3px}
  .hud-utilities .radio-single-row .radio-volume-dial{flex-basis:20px;width:20px;height:22px}
  .hud-utilities .radio-single-row .radio-volume-dial .climate-knob{width:20px;height:22px}
- .utility-climate .climate-panel[data-size=compact]{flex-wrap:wrap}
- .utility-climate .climate-panel[data-size=compact] .cabin-performance{order:4;flex-basis:100%;gap:8px;padding:3px 1px 0;border-top:1px solid var(--app-line,#45647760)}
- .utility-climate .climate-panel[data-size=compact] .cabin-performance output{flex-direction:row;gap:3px}
- .utility-climate .climate-panel[data-size=compact] .cabin-performance output[aria-label="Frame time"]{display:flex}
+
 }
 
 /* Optional readouts own their row when HVAC or the radio is absent. */
@@ -481,3 +460,24 @@
 
 .utility-readouts .cabin-performance output{color:var(--app-text)}
 .utility-readouts .cabin-performance small{color:var(--app-muted)}
+/* Clock, warning switch, fan and temperature always share the first row. */
+.utility-climate .climate-panel {
+  display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 2px 3px;
+  padding: 2px; min-width: 0; box-sizing: border-box;
+}
+.utility-climate .climate-panel .console-clock-strip {
+  grid-area: 1 / 1; width: 100%; margin: 0; padding: 1px 4px; box-sizing: border-box;
+  min-height: 22px; min-width: 0; justify-content: space-between; gap: 2px;
+}
+.utility-climate .console-clock-strip .cabin-clock {min-width:0; padding:0; font-size:11px;}
+.utility-climate .climate-panel .physical-hazard[data-shape="round"] {
+  position:relative; inset:auto; transform:none; width:19px; height:19px; min-height:19px;
+}
+.utility-climate .climate-panel .utility-toggle {position:static; grid-area:1 / 2; margin:0;}
+.utility-climate .climate-fan {font-size:14px; line-height:1; color:var(--cabin-lcd-ink);}
+.utility-climate :is(.climate-status-row,.climate-three-knobs,.turret-instruments) {grid-column:1/-1;}
+.utility-climate .climate-status-row {grid-row:2;}
+.utility-climate .cabin-performance {display:flex; width:100%; justify-content:space-evenly; gap:2px; padding:2px 0 0;}
+.utility-climate .cabin-performance output {font-size:9px; gap:2px; white-space:nowrap;}
+
+.utility-climate .climate-density {padding:0 2px; min-width:18px; min-height:19px; border:0; background:transparent; color:var(--cabin-lcd-ink); font:12px/1 system-ui; cursor:pointer;}

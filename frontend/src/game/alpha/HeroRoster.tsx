@@ -59,6 +59,9 @@ export function HeroRoster({
             </button>
           ),
         )}
+        {(filter === "all" || filter === "support") && ["mechanic", "logistics"].filter(id => !HEROES.some(hero => hero.id === id)).map(slot =>
+          <span key={slot} className="hero-roster-vacancy" role="img" aria-label="Unassigned support vehicle" />
+        )}
       </div>
     </aside>
   );

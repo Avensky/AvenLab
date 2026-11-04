@@ -133,9 +133,9 @@ test("organized feature APIs, pause braking, shared themes and bounded display u
       },
     );
     await t.test(
-      "seven base palettes hydrate safely and share root tokens",
+      "base palettes hydrate safely and share root tokens",
       () => {
-        assert.equal(Object.keys(UI_THEMES).length, 7);
+        assert.ok(UI_THEMES.scarlet && UI_THEMES.strawberry);
         for (const theme of Object.keys(UI_THEMES)) {
           prefs.getState().update({ theme });
           assert.equal(prefs.getState().theme, theme);

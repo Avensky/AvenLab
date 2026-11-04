@@ -1,3 +1,4 @@
+import { HEROES } from "../store/alpha/alphaStore";
 import { useNetworkStore } from "../store/session/networkStore";
 import { useHeroLoadouts } from "../vehicles/cosmetics/heroLoadouts";
 import { useEffect } from "react";
@@ -14,7 +15,7 @@ export function useAppTheme() {
     scale = usePreferencesStore((s) => s.menuTextScale),
     cosmetics = usePreferencesStore((s) => s.vehicleCosmetics);
   const body=useNetworkStore(s=>s.getMe()?.appearance?.body);
-  const savedBody=useHeroLoadouts(s=>s.loadouts[s.defaultHero === "mechanic" ? "brz" : s.defaultHero === "logistics" ? "ae86" : s.defaultHero]?.body);
+  const savedBody=useHeroLoadouts(s=>s.loadouts[HEROES.find(h => h.id === s.defaultHero)?.vehicle ?? ""]?.body);
   useEffect(() => {
     applyUITheme(theme);
     const root = document.documentElement;

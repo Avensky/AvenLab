@@ -1,4 +1,4 @@
-export type VehicleAssetId = 'ae86' | 'brz' | 'camaro' | 'supra' | 'tank';
+export type VehicleAssetId = 'ae86' | 'brz' | 'camaro' | 'supra' | 'cx30' | 'fortuner' | 'landcruiser' | 'sierra' | 'mini' | 'tank';
 export type VehiclePlacement = {asset: VehicleAssetId; lod: 'auto' | 'proxy' | 'full'};
 export type VehicleAsset = {id: VehicleAssetId; label: string; url: string; size: [number,number,number]; sourceYaw: number; color: string};
 // Background props use their complete imported static pose, without any player
@@ -8,6 +8,11 @@ export const VEHICLE_ASSETS: VehicleAsset[] = [
   {id:'brz',label:'BRZ',url:'/models/vehicles/brz.glb',size:[1.9,1.35,4.3],sourceYaw:0,color:'#5f9fd8'},
   {id:'camaro',label:'Camaro',url:'/models/vehicles/camaro.glb',size:[2,1.4,4.8],sourceYaw:0,color:'#e6b55c'},
   {id:'supra',label:'Supra',url:'/models/vehicles/supra_2020.glb',size:[2.03,1.29,4.51],sourceYaw:Math.PI,color:'#c84c5e'},
+  {id:'sierra',label:'GMC Sierra 1500 AT4X',url:'/models/vehicles/sierra.glb',size:[2.469,2.225,5.868],sourceYaw:0,color:'#ba5537'},
+  {id:'fortuner',label:'Toyota Fortuner',url:'/models/vehicles/fortuner.glb',size:[2.07,1.81,4.80],sourceYaw:0,color:'#b4bbc4'},
+  {id:'landcruiser',label:'Toyota Land Cruiser',url:'/models/vehicles/landcruiser.glb',size:[2.114,1.922,4.928],sourceYaw:0,color:'#a1a8ad'},
+  {id:'mini',label:'Mini Cooper',url:'/models/vehicles/mini.glb',size:[1.932,1.701,3.876],sourceYaw:0,color:'#5195ce'},
+  {id:'cx30',label:'Mazda CX-30',url:'/models/vehicles/cx30.glb',size:[2.132,1.54,4.329],sourceYaw:0,color:'#9a2432'},
   {id:'tank',label:'Tank',url:'/models/vehicles/tank.glb',size:[3.6,3,7.5],sourceYaw:0,color:'#7c9273'},
 ];
 export const vehicleAsset = (id: string) => VEHICLE_ASSETS.find(v=>v.id===id);

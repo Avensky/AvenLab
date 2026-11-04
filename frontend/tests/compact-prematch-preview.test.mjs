@@ -56,35 +56,24 @@ test('compact prematch views share a frame and keep opposing picks mysterious un
    const absent=preMatchPlayers(view,true).find(player=>player.profileId==='enemy-profile');assert.equal(absent.hero,null);assert.equal(absent.appearance,null);
    const accepted=structuredClone(view);accepted.alpha.skins=[];await act(async()=>social.getState().receive(accepted));assert.equal(social.getState().view.alpha.roster[1].appearance,null,'hidden nullable appearance is a valid social view');
   });
-  await t.test('both sizes expose team tabs with mystery artwork and the same viewport in Team and Stats',async()=>{
-   await act(async()=>{ui.setState({screen:'hero_select',overlay:null,isModeLoading:false});network.setState({connected:true});});
+  await t.test('three and five seat pickers show only own slots without a toolbar',async()=>{
    for(const size of [3,5]){
-    const view=makeView(size);await render(h(PreMatchTeamPreview,{view}));assert.equal(document.querySelectorAll('.match-composition-seat').length,size);
-    assert.equal(document.querySelector('[data-prematch-team=red]').getAttribute('aria-selected'),'true');assert(document.querySelector('[data-controller-key=LT]'));assert(document.querySelector('[data-controller-key=RT]'));
-    const viewport=document.querySelector('[data-prematch-viewport]');await click('[data-prematch-team=blue]');
-    const enemy=document.querySelector('[data-player-id="profile:enemy-profile"]');assert(enemy);assert.match(enemy.textContent,/MYSTERY HERO/);assert.equal(enemy.querySelector('img'),null);assert.equal(enemy.querySelector('[data-role]'),null);assert.equal(enemy.dataset.status,'mystery');assert(!enemy.textContent.includes('RECONNECTING'));assert.equal(enemy.querySelector('.hero-portrait-art').style.getPropertyValue('--portrait-paint'),'#bac5cf');
-    await click('[data-match-view=table]');assert.equal(document.querySelector('[data-prematch-viewport]'),viewport);assert.match(document.querySelector('tbody').textContent,/MYSTERY HERO/);assert.equal(document.querySelectorAll('tbody img').length,0);assert(!document.querySelector('tbody').textContent.includes('VANGUARD'));assert.equal(document.querySelector('tbody td').textContent,'—');
-    await click('[aria-label="Collapse team preview"]');assert(viewport.hidden);assert.equal(document.querySelector('[aria-label="Expand team preview"]').getAttribute('aria-expanded'),'false');
-    await click('[data-match-view=composition]');assert(!viewport.hidden,'view selection expands in place');assert.equal(document.querySelector('[data-prematch-viewport]'),viewport);
+    const view=makeView();view.alpha.active.team_size=size;await render(h(PreMatchTeamPreview,{view}));
+    assert.equal(document.querySelectorAll('.match-composition-seat').length,size);
+    assert.equal(document.querySelector('[role=tablist],.prematch-preview-toolbar,.match-stats-table'),null);
+    assert.equal(document.querySelector('[data-team=blue]'),null);
+    assert(document.querySelector('[data-self=true]'));
    }
   });
-  await t.test('fresh social start reveals the opponent in place; stale/wrong-world snapshots do not',async()=>{
-   const view=makeView();await render(h(PreMatchTeamPreview,{view}));await click('[data-prematch-team=blue]');
-   for(const received of [performance.now(),performance.now()-5000])await act(async()=>network.setState({room_id:99,snapshot:{tick:100,received_at_ms:received,match_state:{phase:'running',match_id:'wrong-round',mode:'quickplay'},entities:[{id:'old',room_id:99}]}}));
-   assert.match(document.querySelector('[data-player-id="profile:enemy-profile"]').textContent,/MYSTERY HERO/);
-   const started=structuredClone(view);started.alpha.active.match_phase='running';started.alpha.roster[1].reconnecting=false;await act(async()=>root.render(h(PreMatchTeamPreview,{view:started})));
-   assert.match(document.querySelector('[data-player-id="profile:enemy-profile"]').textContent,/VANGUARD/);assert(document.querySelector('[data-player-id="profile:enemy-profile"] img'));
-   await act(async()=>network.setState({connected:false}));assert.match(document.querySelector('[data-player-id="profile:enemy-profile"]').textContent,/MYSTERY HERO/);
-  });
-  await t.test('LB/RB uses the selected view from team/collapse focus and LT/RT changes only preview team',async()=>{
-   const {HeroSelection}=await load('game/alpha/HeroSelection.tsx'),{GameController}=await load('controls/GameController.ts');
-   await act(async()=>{network.setState({connected:true,playerId:'local',room_id:7,snapshot:null});social.setState({view:makeView(),available:true,profileStatus:'ready'});alpha.setState({mode:'quickplay',teamSize:3,hero:null,previewHero:null,selectionInitialized:true});ui.setState({screen:'hero_select',overlay:null,isModeLoading:false});});
-   await render(h(Fragment,null,h(GameController),h(HeroSelection)));await poll();
-   await act(async()=>document.querySelector('[data-prematch-team=red]').focus());await press(5,true);assert.equal(document.querySelector('[data-match-view=table]').getAttribute('aria-selected'),'true');await press(5,false);
-   await act(async()=>document.querySelector('[aria-label="Collapse team preview"]').focus());await press(5,true);assert.equal(document.querySelector('[data-match-view=composition]').getAttribute('aria-selected'),'true');await press(5,false);
-   await press(7,true);assert.equal(document.querySelector('[data-prematch-team=blue]').getAttribute('aria-selected'),'true');await poll();assert.equal(document.querySelector('[data-prematch-team=blue]').getAttribute('aria-selected'),'true','held trigger is one edge');await press(7,false);
-   await press(6,true);assert.equal(document.querySelector('[data-prematch-team=red]').getAttribute('aria-selected'),'true');await press(6,false);
-   assert.equal(alpha.getState().hero,null,'read-only team/view browsing cannot choose or deploy a hero');assert.equal(ui.getState().screen,'hero_select');
+  await t.test('holding Tab shows privacy-filtered stats with no vehicle and release closes stats',async()=>{
+   const {Keyboard}=await vite.ssrLoadModule('/src/controls/Keyboard.ts');
+   const {MatchScoreboard}=await vite.ssrLoadModule('/src/game/stats/MatchScoreboard.tsx');
+   const view=makeView();
+   await act(async()=>{network.setState({connected:true,playerId:'me',room_id:7,snapshot:null});social.setState({view});ui.setState({screen:'hero_select',overlay:null,isModeLoading:false});});
+   await render(h(Fragment,null,h(Keyboard),h(MatchScoreboard)));
+   const key=async(type)=>act(async()=>window.dispatchEvent(new window.KeyboardEvent(type,{key:'Tab',code:'Tab',bubbles:true,cancelable:true})));
+   await key('keydown');assert(document.querySelector('.match-stats-table'));assert.match(document.querySelector('.match-stats-table').textContent,/MYSTERY HERO/);
+   await key('keyup');assert.equal(document.querySelector('.match-scoreboard'),null);
   });
  }finally{if(root)await act(async()=>root.unmount());await vite?.close();dom.window.close();for(const[key,value]of old)if(value)Object.defineProperty(globalThis,key,value);else delete globalThis[key];}
 });

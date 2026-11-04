@@ -14,7 +14,8 @@ pub const GUARD_SPEED_MULTIPLIER: f32 = 1.25;
 pub const GUARD_FORCE_MULTIPLIER: f32 = 1.35;
 pub const GUARD_FRONT_DOT: f32 = 0.5;
 pub const GUARD_CONTACT_DAMAGE: f32 = 60.0;
-pub const BARRIER_DURATION: f32 = 5.0;
+pub const DIVE_DURATION: f32 = 2.0;
+pub const DIVE_COOLDOWN: f32 = 18.0;
 pub const BARRIER_COOLDOWN: f32 = 15.0;
 pub const BARRIER_HP: f32 = 500.0;
 pub const BARRIER_FUEL_LITERS: f32 = 1.0;
@@ -29,6 +30,11 @@ pub struct GuardView {
     pub shield_hp: f32,
     pub shield_max_hp: f32,
     pub break_seq: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub panel: Option<[f32; 4]>,
+    pub panel_yaw: f32,
+    pub dive_remaining_s: f32,
+    pub dive_cooldown_s: f32,
 }
 #[derive(Default)]
 pub struct GuardBoostState {
@@ -38,15 +44,27 @@ pub struct GuardBoostState {
     pub shield_hp: f32,
     pub break_seq: u32,
     pub hits: HashSet<RigidBodyHandle>,
+    pub suspended: bool,
+    pub dive_remaining: f32,
+    pub dive_cooldown: f32,
 }
 impl GuardBoostState {
     pub fn view(&self) -> GuardView {
         GuardView { kind:self.kind, remaining_s: self.remaining, cooldown_s: self.cooldown,
-            shield_hp: self.shield_hp, shield_max_hp: if self.kind=="tank_barrier" {BARRIER_HP}else{GUARD_HP}, break_seq: self.break_seq }
+            shield_hp: if self.suspended {0.0} else {self.shield_hp}, shield_max_hp: if self.kind=="tank_barrier" {BARRIER_HP}else{GUARD_HP}, break_seq: self.break_seq, panel_yaw:0.0, dive_remaining_s:self.dive_remaining, dive_cooldown_s:self.dive_cooldown, panel: (self.kind=="tank_barrier").then_some(crate::team_barrier::PANEL) }
     }
-    pub fn active(&self) -> bool { self.remaining > 0.0 }
+    pub fn active(&self) -> bool { if self.kind=="tank_barrier" {!self.suspended && self.shield_hp>0.0} else {self.remaining>0.0} }
     pub fn mobility_active(&self) -> bool {self.active()&&self.kind=="brz_guard"}
-    fn cancel(&mut self) { self.remaining = 0.0; self.shield_hp = 0.0; }
+    pub(crate) fn absorb(&mut self, amount: f32) -> f32 {
+        let spent = amount.min(self.shield_hp);
+        self.shield_hp -= spent;
+        if spent > 0.0 && self.shield_hp == 0.0 { self.break_seq = self.break_seq.wrapping_add(1); }
+        amount - spent
+    }
+    fn suspend(&mut self) {
+        if self.kind=="tank_barrier" {self.suspended=true;} else {self.cancel();}
+    }
+    fn cancel(&mut self) { self.suspended=false; self.dive_remaining=0.0; self.remaining = 0.0; self.shield_hp = 0.0; }
 }
 
 impl PhysicsWorld {
@@ -59,11 +77,12 @@ impl PhysicsWorld {
     pub fn guard_view(&self, player: &str) -> GuardView {
         let mut view=self.guard_boosts.get(player).map(GuardBoostState::view)
             .unwrap_or(GuardView { shield_max_hp: GUARD_HP, ..Default::default() });
-        if self.assigned_hero(player)==Some("tank") {view.kind="tank_barrier";view.shield_max_hp=BARRIER_HP;}
+        if self.assigned_hero(player)==Some("tank") {view.kind="tank_barrier";view.shield_max_hp=BARRIER_HP;view.panel_yaw=self.barrier_yaw(player);}
         else if self.assigned_hero(player)==Some("brz") {view.kind="brz_guard";view.shield_max_hp=GUARD_HP;}
         view
     }
     pub fn cancel_guard(&mut self, player: &str) { if let Some(guard) = self.guard_boosts.get_mut(player) { guard.cancel(); } }
+    pub fn suspend_shields(&mut self,player:&str){if let Some(g)=self.guard_boosts.get_mut(player){g.suspend();}}
     pub fn start_guard_boost(&mut self, player: &str) -> Result<(), String> {
         if self.assigned_hero(player) != Some("brz") { return Err("Select the BRZ DPS hero to use Guard Boost.".into()); }
         if !self.vehicle_health.get(player).is_some_and(|h| !h.defeated && h.hp > 0.0) { return Err("A disabled vehicle cannot use Guard Boost.".into()); }
@@ -81,7 +100,7 @@ impl PhysicsWorld {
         vehicle.powertrain.nos_remaining_s -= GUARD_NOS_SECONDS;
         vehicle.powertrain.fuel_liters -= GUARD_FUEL_LITERS;
         let guard = self.guard_boosts.entry(player.into()).or_default();
-        guard.kind="brz_guard"; guard.remaining = GUARD_DURATION; guard.cooldown = GUARD_COOLDOWN; guard.shield_hp = GUARD_HP; guard.hits.clear();
+        guard.kind="brz_guard"; guard.suspended=false; guard.remaining = GUARD_DURATION; guard.cooldown = GUARD_COOLDOWN; guard.shield_hp = GUARD_HP; guard.hits.clear();
         // Aggressive mobility cannot refresh the ordinary spawn shield.
         let health=self.vehicle_health.get_mut(player).unwrap();
         health.spawn_protection_s = 0.0; health.stats.burn_fuel(GUARD_FUEL_LITERS);
@@ -92,29 +111,47 @@ impl PhysicsWorld {
         if !self.vehicle_health.get(player).is_some_and(|h|!h.defeated&&h.hp>0.0) {return Err("A disabled vehicle cannot raise its barrier.".into());}
         let vehicle=self.vehicles.get(player).ok_or("Deploy your Tank first.")?;
         if !vehicle.config.tracked {return Err("The barrier belongs to the Tank hero.".into());}
+        if self.guard_boosts.get(player).is_some_and(|g|g.kind=="tank_barrier" && g.shield_hp>0.0) {return Err("The barrier is already active.".into());}
         if self.guard_boosts.get(player).is_some_and(|g|g.cooldown>0.0) {return Err("The frontal barrier is cooling down.".into());}
         if !vehicle.powertrain.running || !self.bodies.get(vehicle.body).is_some_and(|b|b.is_enabled()) {return Err("Start the Tank engine before raising its barrier.".into());}
         if !vehicle.powertrain.fuel_liters.is_finite() || vehicle.powertrain.fuel_liters<BARRIER_FUEL_LITERS {return Err("The frontal barrier needs 1 litre of fuel.".into());}
         self.vehicles.get_mut(player).unwrap().powertrain.fuel_liters-=BARRIER_FUEL_LITERS;
         let guard=self.guard_boosts.entry(player.into()).or_default();
-        guard.kind="tank_barrier";guard.remaining=BARRIER_DURATION;guard.cooldown=BARRIER_COOLDOWN;guard.shield_hp=BARRIER_HP;guard.hits.clear();
+        guard.kind="tank_barrier";guard.suspended=false;guard.remaining=0.0;guard.cooldown=BARRIER_COOLDOWN;guard.shield_hp=BARRIER_HP;guard.hits.clear();
         let health=self.vehicle_health.get_mut(player).unwrap();health.spawn_protection_s=0.0;health.stats.burn_fuel(BARRIER_FUEL_LITERS);
         Ok(())
+    }
+    pub fn start_dive_shield(&mut self, player:&str)->Result<(),String> {
+        if self.assigned_hero(player)!=Some("cx30") || self.is_defeated(player) {return Err("Deploy a living CX-30 Support SUV first.".into());}
+        let car=self.vehicles.get(player).ok_or("Deploy your CX-30 first.")?;
+        if !car.powertrain.running || !self.bodies[car.body].is_enabled() {return Err("Start the engine first.".into());}
+        let guard=self.guard_boosts.entry(player.into()).or_default();
+        if guard.dive_cooldown>0.0 {return Err("Dive Shield is cooling down.".into());}
+        guard.dive_remaining=DIVE_DURATION;
+        guard.dive_cooldown=DIVE_COOLDOWN;
+        self.vehicle_health.get_mut(player).unwrap().spawn_protection_s=0.0;
+        Ok(())
+    }
+    pub fn dive_protected(&self, player:&str)->bool {
+        self.guard_boosts.get(player).is_some_and(|g|g.dive_remaining>0.0)
     }
     pub fn advance_guard_boosts<'a>(&mut self, dt: f32, active: impl Iterator<Item = &'a str>) {
         if !dt.is_finite() || dt <= 0.0 || dt > 0.1 { return; }
         let connected: std::collections::HashSet<_> = active.collect();
         for (id, guard) in &mut self.guard_boosts {
             guard.cooldown = (guard.cooldown - dt).max(0.0);
+            guard.dive_cooldown=(guard.dive_cooldown-dt).max(0.0);
+            guard.dive_remaining=(guard.dive_remaining-dt).max(0.0);
             let living = self.vehicle_health.get(id).is_some_and(|h| !h.defeated && h.hp > 0.0);
-            let enabled = self.vehicles.get(id).is_some_and(|v| v.powertrain.running && (guard.kind=="tank_barrier" || !v.powertrain.thermal_recovery) && self.bodies.get(v.body).is_some_and(|b| b.is_enabled()));
-            if !living || !enabled || !connected.contains(id.as_str()) { guard.cancel(); }
-            else { guard.remaining = (guard.remaining - dt).max(0.0); if !guard.active() { guard.shield_hp = 0.0; } }
+            let enabled = self.vehicles.get(id).is_some_and(|v| (guard.kind=="tank_barrier" || (v.powertrain.running && !v.powertrain.thermal_recovery)) && self.bodies.get(v.body).is_some_and(|b| b.is_enabled()));
+            if !living || !enabled || !connected.contains(id.as_str()) { guard.suspend(); }
+            else if guard.kind=="tank_barrier" {guard.suspended=false;}
+            else if guard.kind!="tank_barrier" { guard.remaining = (guard.remaining - dt).max(0.0); if !guard.active() { guard.shield_hp = 0.0; } }
         }
     }
     pub fn guard_covers_direction(&self, player: &str, toward: Vector<Real>) -> bool {
         let Some(guard) = self.guard_boosts.get(player).filter(|g| g.active() && g.shield_hp > 0.0) else { return false; };
-        let _ = guard;
+        if guard.kind=="tank_barrier" {return false;}
         let Some(body) = self.vehicles.get(player).and_then(|v| self.bodies.get(v.body)) else { return false; };
         let mut direction = toward; direction.y = 0.0;
         let mut forward = body.rotation() * Vector::z(); forward.y = 0.0;
@@ -125,22 +162,23 @@ impl PhysicsWorld {
     /// The finite pool blocks frontal hits, never side/rear damage or falling.
     pub fn absorb_guard_damage(&mut self, victim: &str, attacker: Option<&str>, amount: f32, kind: &str) -> f32 {
         if !amount.is_finite() || amount <= 0.0 { return amount; }
+        // Tank projectiles cross the spatial screen during tracing. A hit from
+        // inside or around that screen must not be absorbed again at the hull.
+        if matches!(kind, "cannon" | "machine-gun") && self.guard_boosts.get(victim).is_some_and(|g|g.kind=="tank_barrier") {return amount;}
         let impact_direction = (kind == "impact").then(|| self.guard_impact_directions.get(victim).copied()).flatten();
         let direction = impact_direction.or_else(|| attacker.and_then(|id| self.vehicles.get(id).and_then(|v| self.bodies.get(v.body)))
             .zip(self.vehicles.get(victim).and_then(|v| self.bodies.get(v.body)))
             .map(|(source,target)| source.translation() - target.translation()));
         if !direction.is_some_and(|v| self.guard_covers_direction(victim, v)) { return amount; }
         let guard = self.guard_boosts.get_mut(victim).unwrap();
-        let absorbed = amount.min(guard.shield_hp); guard.shield_hp = (guard.shield_hp - absorbed).max(0.0);
-        if absorbed > 0.0 && guard.shield_hp == 0.0 { guard.break_seq = guard.break_seq.wrapping_add(1); }
-        (amount - absorbed).max(0.0)
+        guard.absorb(amount)
     }
 }
 
 impl PhysicsWorld {
     /// One modest offensive payoff for an actual frontal vehicle contact. No
     /// stun or artificial impulse: Rapier remains the owner of knockback.
-    pub(crate) fn apply_guard_contact_bonus(&mut self, motion: &HashMap<RigidBodyHandle,(Vector<Real>,Vector<Real>)>) {
+    pub(crate) fn guard_contacts(&self, motion:&HashMap<RigidBodyHandle,(Vector<Real>,Vector<Real>)>) -> Vec<(String,RigidBodyHandle,String,bool)> {
         let mut hits=Vec::new();
         for (id,guard) in &self.guard_boosts {
             if !guard.mobility_active() || self.is_defeated(id) { continue; }
@@ -153,17 +191,24 @@ impl PhysicsWorld {
                 if pair.total_impulse_magnitude()<500.0 {continue;}
                 let other=if pair.collider1==*collider {pair.collider2}else{pair.collider1};
                 let Some(target)=self.colliders.get(other).and_then(|c|c.parent()) else {continue};
-                if guard.hits.contains(&target) {continue;}
+
                 let Some(victim)=self.body_to_player.get(&target) else {continue};
                 if !self.vehicles.get(victim).is_some_and(|v|v.team!=source.team) || self.is_defeated(victim) {continue;}
                 let Some((target_position,target_velocity))=motion.get(&target) else {continue};
                 let mut toward=target_position-position; toward.y=0.0;
                 if toward.norm_squared()<0.01 {continue;}
                 let toward=toward.normalize();
-                if toward.dot(&forward)>=GUARD_FRONT_DOT && (velocity-target_velocity).dot(&toward)>6.0 {hits.push((id.clone(),target,victim.clone()));}
+                if toward.dot(&forward)>=GUARD_FRONT_DOT && (velocity-target_velocity).dot(&toward)>6.0 {let cap=source.config.max_speed * if self.ctf_carriers.contains(id) {crate::ctf::CARRIER_SPEED_FACTOR} else {1.0};
+                    let dislodge=guard.shield_hp>0.0 && velocity.dot(&forward)>=cap*0.90 && self.ctf_carriers.contains(victim);
+                    hits.push((id.clone(),target,victim.clone(),dislodge));}
             }}
         }
-        for (source,target,victim) in hits {
+        hits
+    }
+    pub(crate) fn resolve_guard_contacts(&mut self, hits:Vec<(String,RigidBodyHandle,String,bool)>) {
+        for (source,target,victim,dislodge) in hits {
+            if dislodge {self.dislodged_carriers.insert(victim.clone());}
+            if self.is_defeated(&source) {continue;}
             if self.guard_boosts.get_mut(&source).is_some_and(|g|g.hits.insert(target)) {
                 self.damage_vehicle(&victim,Some(&source),GUARD_CONTACT_DAMAGE,"guard-ram");
             }
@@ -227,19 +272,86 @@ mod tests {
         assert_eq!(w.vehicle_health["guard"].hp,390.0);
     }
     #[test]
-    fn tank_barrier_is_personal_finite_and_never_boosts_or_drains_nitrous(){
+    fn tank_barrier_is_directional_finite_and_never_boosts_or_drains_nitrous(){
         let mut w=range("tank","tank");let nos=w.vehicles["guard"].powertrain.nos_remaining_s;
         let fuel=w.vehicles["guard"].powertrain.fuel_liters;
         w.start_tank_barrier("guard").unwrap();
         assert_eq!(w.guard_view("guard").shield_max_hp,BARRIER_HP);assert!(!w.guard_boosts["guard"].mobility_active());
         assert_eq!(w.vehicles["guard"].powertrain.nos_remaining_s,nos);assert_eq!(w.vehicles["guard"].powertrain.fuel_liters,fuel-1.0);
-        w.damage_vehicle("guard",Some("enemy"),550.0,"cannon");
+        let mut damage=550.0;
+        let pose=*w.bodies[w.vehicles["guard"].body].position();
+        assert!(w.screen_segment("enemy",pose*point![3.8,0.8,12.0],pose*point![3.8,0.8,0.0],&mut damage).is_none());
+        assert_eq!(damage,50.0);
+        w.damage_vehicle("guard",Some("enemy"),damage,"cannon");
         assert_eq!(w.guard_view("guard").shield_hp,0.0);assert_eq!(w.guard_view("guard").break_seq,1);
         assert_eq!(w.vehicle_health["guard"].hp,w.vehicle_health["guard"].max_hp-50.0);
         assert!(w.start_tank_barrier("guard").is_err());
         for _ in 0..301 {w.advance_guard_boosts(SIMULATION_DT,["guard","enemy"].into_iter());}
         assert_eq!(w.guard_view("guard").remaining_s,0.0);assert!(w.guard_view("guard").cooldown_s>9.0);
         w.set_assigned_hero("guard","brz");assert!(w.start_tank_barrier("guard").is_err());
+    }
+    #[test]
+    fn cannon_line_shields_a_teammate_beside_the_tank_but_not_beyond_the_edge() {
+        let mut w=range("tank","tank");
+        w.spawn_vehicle_for_player("ally".into(),[0.0;3],"brz","red").unwrap();
+        crate::support::tests::place(&mut w,"ally",3.8,0.0);
+        w.start_tank_barrier("guard").unwrap();
+        let pose=*w.bodies[w.vehicles["guard"].body].position();
+        for (shooter,x,front,back,blocked) in [("enemy",3.8,12.0,0.0,true),
+            ("enemy",5.2,12.0,0.0,false),("enemy",3.8,0.0,12.0,false),
+            ("ally",3.8,12.0,0.0,false),("enemy",3.8,12.0,6.0,false)] {
+            let mut damage=50.0;
+            let hit=w.screen_segment(shooter,pose*point![x,0.8,front],pose*point![x,0.8,back],&mut damage);
+            assert_eq!(hit.is_some(),blocked);
+            assert_eq!(damage,if blocked {0.0}else{50.0});
+        }
+        assert_eq!(w.guard_view("guard").shield_hp,BARRIER_HP-50.0);
+    }
+    #[test]
+    fn fast_frontal_guard_dislodges_only_with_shield_and_real_enemy_contact() {
+        for (speed,shield,should_drop) in [(65.0,GUARD_HP,true),(26.0,GUARD_HP,false),(65.0,0.0,false)] {
+            let mut w=range("brz","brz");
+            w.ctf_carriers.insert("enemy".into());
+            w.start_guard_boost("guard").unwrap();w.guard_boosts.get_mut("guard").unwrap().shield_hp=shield;
+            let car=w.vehicles["guard"].body;
+            w.bodies[car].set_linvel(vector![0.0,0.0,speed],true);
+            for _ in 0..50 {w.step(SIMULATION_DT);}
+            assert_eq!(w.dislodged_carriers.contains("enemy"),should_drop,"speed {speed}, shield {shield}");
+        }
+    }
+    #[test]
+    fn broadside_screen_follows_cannon_and_only_damage_depletes_it() {
+        let mut w=range("tank","tank");w.start_tank_barrier("guard").unwrap();
+        let body=w.vehicles["guard"].body;
+        let hull=*w.bodies[body].position();
+        let aim=hull.rotation*Vector::x();
+        let intent=crate::state::CombatPose{enabled:true,yaw:(-aim.x).atan2(-aim.z),pitch:aim.y.asin(),..Default::default()};
+        for seq in 1..180 {w.combat_tick("guard",seq,Some(&intent));}
+        assert!((w.guard_view("guard").panel_yaw-std::f32::consts::FRAC_PI_2).abs()<0.05);
+        w.vehicles.get_mut("guard").unwrap().powertrain.running=false;
+        for _ in 0..1800 {w.advance_guard_boosts(SIMULATION_DT,["guard","enemy"].into_iter());}
+        assert_eq!(w.guard_view("guard").shield_hp,BARRIER_HP);
+        assert!(w.start_tank_barrier("guard").is_err());
+        let mut damage=75.0;
+        assert!(w.screen_segment("enemy",hull*point![12.0,0.8,3.7],hull*point![0.0,0.8,3.7],&mut damage).is_some());
+        assert_eq!(damage,0.0);assert_eq!(w.guard_view("guard").shield_hp,425.0);
+        let mut bow=75.0;
+        assert!(w.screen_segment("enemy",hull*point![0.0,0.8,12.0],hull*point![0.0,0.8,0.0],&mut bow).is_none());
+        assert_eq!(bow,75.0);
+    }
+    #[test]
+    fn rescue_suv_dive_shield_absorbs_all_angles_and_expires() {
+        let mut w=range("cx30","cx30");assert!(w.start_guard_boost("guard").is_err());w.start_dive_shield("guard").unwrap();
+        let hp=w.vehicle_health["guard"].hp;
+        for kind in ["cannon","machine-gun","ram","guard-ram","impact"] {
+            w.damage_vehicle("guard",Some("enemy"),5000.0,kind);
+            assert_eq!(w.vehicle_health["guard"].hp,hp);
+        }
+        assert_eq!(w.guard_view("guard").shield_hp,0.0);
+        assert!(w.start_dive_shield("guard").is_err());
+        for _ in 0..130 {w.advance_guard_boosts(SIMULATION_DT,["guard","enemy"].into_iter());}
+        assert!(!w.dive_protected("guard"));assert!(w.guard_view("guard").dive_cooldown_s>15.0);
+        w.damage_vehicle("guard",Some("enemy"),250.0,"cannon");assert!(w.vehicle_health["guard"].hp<hp);
     }
     #[test]
     fn guard_expiration_and_disconnect_never_refund_cost_or_cooldown(){
@@ -274,11 +386,11 @@ mod tests {
             let initial_target=w.vehicle_health["enemy"].hp;
             let before=w.vehicle_health["guard"].hp;
             let no_contact:HashMap<_,_>=w.vehicles.values().map(|v|(v.body,(*w.bodies[v.body].translation(),*w.bodies[v.body].linvel()))).collect();
-            w.apply_guard_contact_bonus(&no_contact);assert_eq!(w.vehicle_health["enemy"].hp,initial_target,"proximity cannot cause guard contact damage");
+            let contacts=w.guard_contacts(&no_contact);w.resolve_guard_contacts(contacts);assert_eq!(w.vehicle_health["enemy"].hp,initial_target,"proximity cannot cause guard contact damage");
             for _ in 0..50 {w.step(SIMULATION_DT);}
             let hits=w.guard_boosts.get("guard").map(|g|g.hits.len()).unwrap_or(0);
             let target_hp=w.vehicle_health["enemy"].hp;
-            for _ in 0..4 {w.apply_guard_contact_bonus(&no_contact);}
+            for _ in 0..4 {let contacts=w.guard_contacts(&no_contact);w.resolve_guard_contacts(contacts);}
             assert_eq!(w.vehicle_health["enemy"].hp,target_hp,"one target may not earn a second contact bonus");
             assert!(w.vehicle_health["guard"].hp<before||w.guard_view("guard").shield_hp<GUARD_HP,"actual collision must spend health or shield");
             (w.vehicle_health["guard"].hp,w.vehicles["guard"].powertrain.condition,initial_target-target_hp,hits,w.guard_view("guard").shield_hp)

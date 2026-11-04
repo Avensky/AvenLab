@@ -1,4 +1,4 @@
-.vehicle-health-marker{--health-marker-color:#9fbdcf;visibility:hidden;width:94px;padding:4px 5px 3px;border-radius:4px;background:#07111de8;border:1px solid color-mix(in srgb,var(--health-marker-color) 55%,transparent);color:#f1f6fb;box-sizing:border-box;font:700 7px/1.2 system-ui;text-align:center;text-shadow:0 1px 2px #000;white-space:nowrap;user-select:none}
+.vehicle-health-marker{--health-marker-color:#9fbdcf;visibility:hidden;width:68px;padding:4px 5px 3px;border-radius:4px;background:#07111de8;border:1px solid color-mix(in srgb,var(--health-marker-color) 55%,transparent);color:#f1f6fb;box-sizing:border-box;font:700 7px/1.2 system-ui;text-align:center;text-shadow:0 1px 2px #000;white-space:nowrap;user-select:none}
 .vehicle-health-marker,.vehicle-health-marker *{pointer-events:none!important}
 .vehicle-health-marker[data-relation=ally]{--health-marker-color:#70d8ff}.vehicle-health-marker[data-relation=enemy]{--health-marker-color:#ff8191}
 .vehicle-health-marker[data-protected=true]{--health-marker-color:#a9caff;box-shadow:0 0 7px #91baff66}
@@ -10,9 +10,21 @@
 .vehicle-health-marker small{font-size:6px;letter-spacing:.2px;color:#e7f0f8}
 html[data-reduce-motion=true] .vehicle-health-marker-track>span{transition:none}
 @media(prefers-reduced-motion:reduce){.vehicle-health-marker-track>span{transition:none}}
-@media(max-width:600px){.vehicle-health-marker{width:84px}}
+@media(max-width:600px){.vehicle-health-marker{width:62px}}
 /* Recovery is critical feedback, independent of HP-bar visibility settings. */
 .vehicle-health-marker:has(.recovery-countdown){display:flex;flex-direction:column;align-items:center;gap:3px;white-space:normal}
 .vehicle-health-marker .vehicle-health-marker-track{width:100%}
 .vehicle-health-marker .vehicle-health-marker-title{width:100%}
 .vehicle-health-marker .vehicle-recovery-marker-label{font-size:6px;color:#fff}
+.vehicle-health-marker[data-relation=enemy]:not([data-defeated=true]) {
+  --health-marker-color:var(--team-red,#ff6570); width:68px; padding:2px 3px;
+  border:0; border-radius:1px; background:#07101ac9;
+}
+.vehicle-health-marker[data-relation=enemy][data-focused=false]:not([data-defeated=true]) small {display:none;}
+.vehicle-health-marker[data-relation=enemy] .vehicle-health-marker-track {height:3px; margin:2px 0;}
+.vehicle-health-marker[data-relation=enemy][data-focused=true] {
+  width:90px; padding:4px 6px; background:linear-gradient(var(--health-marker-color),var(--health-marker-color)) left top / 10px 2px no-repeat,
+  linear-gradient(var(--health-marker-color),var(--health-marker-color)) right bottom / 10px 2px no-repeat,#0a0f18ea;
+  border-inline:1px solid var(--health-marker-color);
+}
+.vehicle-health-marker[data-focused=true]::after {content:attr(data-range);margin-left:5px;color:#fff;}

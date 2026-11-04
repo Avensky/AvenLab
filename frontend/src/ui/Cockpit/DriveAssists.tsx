@@ -16,9 +16,9 @@ function requestAssist(assist: number, traction: boolean) {
 
 // The same switches live in the optional drive dock and full cockpit. Indicators
 // always follow confirmed telemetry; requests never paint a successful state.
-export function DriveAssists({ compact = false }: { compact?: boolean }) {
+export function DriveAssists({ compact = false, instrument = false }: { compact?: boolean; instrument?: boolean }) {
   const layout = usePreferencesStore((s) => s.assistHudLayout);
-  const extended = !compact || layout === "extended";
+  const extended = !instrument && (!compact || layout === "extended");
   const contact = useMomentaryFeedback();
   const live = useVehicleTelemetryStore((s) => s.data.signal === "live");
   const supported = useVehicleTelemetryStore(
@@ -163,8 +163,7 @@ export function DriveAssists({ compact = false }: { compact?: boolean }) {
           <img src="/images/traction-control.svg" alt="" />
           <span>
             TRAC
-            <br />
-            {tcs ? "ON" : "OFF"}
+            {!instrument && <><br />{tcs ? "ON" : "OFF"}</>}
           </span>
         </span>
       </button>

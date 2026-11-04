@@ -139,8 +139,8 @@ try {
     assert.equal(team.length, 3);
     await team[0].command('hero_select', {hero: 'tank'});
     assert.equal((await team[1].request('hero_select', {hero: 'tank'})).ok, false);
-    for (let index = 1; index < 3; index++) await team[index].command('hero_select', {hero: ['tank', 'brz', 'mechanic'][index]});
-    for (let index = 0; index < 3; index++) {team[index].hero = ['tank', 'brz', 'mechanic'][index]; team[index].vehicle = index === 0 ? 'tank' : 'brz';}
+    for (let index = 1; index < 3; index++) await team[index].command('hero_select', {hero: ['tank', 'brz', 'cx30'][index]});
+    for (let index = 0; index < 3; index++) {team[index].hero = ['tank', 'brz', 'cx30'][index]; team[index].vehicle = team[index].hero;}
   }
   for (const peer of first.slice(0, 5)) await peer.deploy(peer.vehicle);
   const visibleWaiting = first.slice(0,5).filter(peer=>peer.team===q3.team).length;

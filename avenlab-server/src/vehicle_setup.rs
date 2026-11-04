@@ -34,6 +34,12 @@ pub fn config_for_vehicle(vehicle_id: &str) -> Option<VehicleConfig> {
         | "toyota-supra" | "toyota_supra"
         | "a90" | "toyota-a90" | "toyota_a90" => Some(SUPRA),
 
+        "mini" | "mini-cooper" => Some(MINI),
+        "sierra" => Some(SIERRA),
+        "fortuner" => Some(FORTUNER),
+        "landcruiser" => Some(LAND_CRUISER),
+        "cx30" => Some(CX30),
+
         // Tank
         "tank" => Some(TANK),
 
@@ -128,11 +134,13 @@ impl PhysicsWorld {
         // for Ackermann/ARB. The existing asset-ID mapping occurs once when
         // snapshots are serialized, preserving the current correct visual sides.
         // This implementation registers four wheels for every current config.
+        let drive_front = config.tracked || config.front_wheel_drive;
+        let drive_rear = config.tracked || !config.front_wheel_drive;
         let wheels = vec![
-            make_wheel(-half_front_track, front_z, config.tracked, !config.tracked, "FL"),
-            make_wheel(half_front_track, front_z, config.tracked, !config.tracked, "FR"),
-            make_wheel(-half_rear_track, rear_z, true, false, "RL"),
-            make_wheel(half_rear_track, rear_z, true, false, "RR"),
+            make_wheel(-half_front_track, front_z, drive_front, !config.tracked, "FL"),
+            make_wheel(half_front_track, front_z, drive_front, !config.tracked, "FR"),
+            make_wheel(-half_rear_track, rear_z, drive_rear, false, "RL"),
+            make_wheel(half_rear_track, rear_z, drive_rear, false, "RR"),
         ];
 
         self.wheels.insert(body, wheels);
@@ -162,6 +170,8 @@ impl PhysicsWorld {
 // -----------------------------------------------------------------------------
 
 pub const AE86: VehicleConfig = VehicleConfig {
+    hull_hp: 500.0,
+    front_wheel_drive: false,
     tracked: false,
     resources: ROAD_RESOURCES,
     // Performance and identity
@@ -261,6 +271,51 @@ pub const BRZ: VehicleConfig = VehicleConfig {
 // HIGH-POWER ROAD CAR
 // -----------------------------------------------------------------------------
 
+// CX-30 asset measurements are in metres. The collider follows the bodywork
+// and roof, excluding accessories and mirrors. Handling values are alpha tuning.
+pub const CX30: VehicleConfig = VehicleConfig {
+    mass: 1510.0, engine_force: 8400.0, brake_force: 8600.0, max_speed: 48.0,
+    chassis_half_extents: [0.935,0.695,2.165], chassis_com_offset: [0.0,0.0,0.0],
+    front_axle_z: 1.2449, rear_axle_z: -1.3740, front_track_width: 1.6249, rear_track_width: 1.6249,
+    wheel_radius: 0.3406, wheel_y: -0.2694, center_of_mass_height: 0.58,
+    ..BRZ
+};
+
+// Hub positions and radius are measured from the exported Mini. The suspension
+// mount includes the inherited spring travel so the nominal pose matches the GLB.
+pub const MINI: VehicleConfig = VehicleConfig {
+    front_wheel_drive: true, mass: 1180.0, engine_force: 7800.0,
+    brake_force: 7500.0, max_speed: 53.0, chassis_half_extents: [0.865, 0.62, 1.938],
+    front_axle_z: 1.1682, rear_axle_z: -1.3197, front_track_width: 1.4776,
+    rear_track_width: 1.4776, wheel_radius: 0.3079, wheel_y: -0.2264,
+    center_of_mass_height: 0.47, ..AE86
+};
+
+// Measured hub positions in chassis space. The front axle uses the midpoint
+// of the Fortuner source's slightly asymmetric left/right tire centers.
+pub const FORTUNER: VehicleConfig = VehicleConfig {
+    mass: 2100.0, engine_force: 10800.0, brake_force: 11300.0, max_speed: 45.0,
+    chassis_half_extents: [0.93,0.80,2.398], center_of_mass_height: 0.64,
+    front_axle_z: 1.4003, rear_axle_z: -1.3497, front_track_width: 1.5434,
+    rear_track_width: 1.5427, wheel_radius: 0.3725, wheel_y: -0.3707, ..CX30
+};
+
+pub const LAND_CRUISER: VehicleConfig = VehicleConfig {
+    mass: 2450.0, engine_force: 11900.0, brake_force: 12800.0, max_speed: 43.0,
+    chassis_half_extents: [0.966,0.82,2.464], center_of_mass_height: 0.67,
+    front_axle_z: 1.5258, rear_axle_z: -1.3272, front_track_width: 1.6860,
+    rear_track_width: 1.6860, wheel_radius: 0.4134, wheel_y: -0.3215, ..CX30
+};
+
+// The AT4X is a wheeled Tank. Its independent hull capacity does not enable
+// tracked pivot steering, the Vanguard cannon, scope or directional barrier.
+pub const SIERRA: VehicleConfig = VehicleConfig {
+    hull_hp: 900.0, mass: 2650.0, engine_force: 13100.0, brake_force: 14100.0,
+    max_speed: 45.0, chassis_half_extents: [1.045,0.92,2.934], center_of_mass_height: 0.68,
+    front_axle_z: 2.0058, rear_axle_z: -1.7030, front_track_width: 1.7235,
+    rear_track_width: 1.7235, wheel_radius: 0.4305, wheel_y: -0.4278, ..CX30
+};
+
 pub const CAMARO: VehicleConfig = VehicleConfig {
     tracked: false,
     resources: MUSCLE_RESOURCES,
@@ -291,6 +346,8 @@ pub const CAMARO: VehicleConfig = VehicleConfig {
 // -----------------------------------------------------------------------------
 
 pub const SUPRA: VehicleConfig = VehicleConfig {
+    hull_hp: 500.0,
+    front_wheel_drive: false,
     tracked: false,
     resources: SUPRA_RESOURCES,
     // Performance and identity
@@ -347,6 +404,8 @@ pub const SUPRA: VehicleConfig = VehicleConfig {
 // -----------------------------------------------------------------------------
 
 pub const TANK: VehicleConfig = VehicleConfig {
+    hull_hp: 1200.0,
+    front_wheel_drive: false,
     tracked: true,
     resources: TANK_RESOURCES,
     // Performance and identity

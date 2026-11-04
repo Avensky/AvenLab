@@ -20,7 +20,8 @@ impl Server {
         let runtime=self.runtime(player).await?;
         let mut room=runtime.lock().await;
         if room.round.as_ref().is_some_and(|r|r.phase==crate::ctf::CtfPhase::Ended){return Err("This match has ended.".into());}
-        let source=room.game.entities.get(player).filter(|e|e.room_id==world&&e.team==member.team&&e.vehicle_id.as_deref()==Some("brz"))
+        let expected = crate::alpha::policy::hero("mechanic")?.vehicle;
+        let source=room.game.entities.get(player).filter(|e|e.room_id==world&&e.team==member.team&&e.vehicle_id.as_deref()==Some(expected)&&room.physics.assigned_hero(player)==Some("mechanic"))
             .ok_or("Deploy the Mechanic's assigned vehicle before firing health packs.")?;
         if !room.game.clients.contains_key(&source.id){return Err("Your mechanic vehicle is not connected.".into());}
         let pack=room.physics.launch_health_pack(player,&connected)?;
@@ -55,7 +56,7 @@ mod tests {
         let mut room=WorldRuntime::from_parts(game,crate::support::tests::blank_world());
         for (player,hero,z) in [(&actor,"mechanic",0.0),(&target,"brz",12.0)] {
             let connection=server.connections.lock().await[player].clone();room.join(player,connection.tx,connection.frame,connection.input,Some(Team::Red),10);server.connections.lock().await.get_mut(player).unwrap().world_id=Some(WORLD);
-            room.spawn(player,"brz").unwrap();room.physics.set_assigned_hero(player,hero);crate::support::tests::place(&mut room.physics,player,0.0,z);
+            room.spawn(player,crate::alpha::policy::hero(hero).unwrap().vehicle).unwrap();room.physics.set_assigned_hero(player,hero);crate::support::tests::place(&mut room.physics,player,0.0,z);
         }
         room.physics.vehicle_health.get_mut(&target).unwrap().hp=300.0;
         server.runtimes.lock().await.insert(WORLD,Arc::new(Mutex::new(room)));

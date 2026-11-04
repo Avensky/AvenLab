@@ -9,11 +9,11 @@ export type CosmeticBundle = keyof typeof COSMETIC_BUNDLES;
 export type VehicleCosmetics = { bundle: CosmeticBundle; finish: "factory" | "frs" | "soft"; matchCockpit: boolean };
 export const DEFAULT_VEHICLE_COSMETICS: VehicleCosmetics = { bundle: "factory", finish: "frs", matchCockpit: true };
 export const COSMETIC_SLOTS = {
-  body: { status: "ready", models: ["ae86", "brz", "camaro", "supra"] },
+  body: { status: "ready", models: ["ae86", "brz", "camaro", "supra", "cx30", "mini", "fortuner", "landcruiser", "sierra"] },
   stripes: { status: "needs-mask", models: ["camaro"] },
   seats: { status: "needs-material-mapping", models: ["brz"] },
   stitching: { status: "needs-mask", models: ["brz", "camaro"] },
-  steeringWheel: { status: "hud-ready", models: ["ae86", "brz", "camaro", "supra", "tank"] },
+  steeringWheel: { status: "hud-ready", models: ["ae86", "brz", "camaro", "supra", "cx30", "mini", "fortuner", "landcruiser", "sierra", "tank"] },
 } as const;
 export function sanitizeVehicleCosmetics(value: unknown): VehicleCosmetics {
   const v = (value && typeof value === "object" ? value : {}) as Partial<VehicleCosmetics>;

@@ -37,7 +37,7 @@ test('team filter triggers and Heroes Y have contextual controller ownership',as
   });
   await t.test('Mechanic U and LB issue the same recovery action without accidentally boosting',async()=>{
    const sent=[];client.setSocialConnection({readyState:WebSocket.OPEN,send:body=>sent.push(JSON.parse(body))});
-   const actor={id:'mechanic',vehicle_id:'brz',team:'red',room_id:1,position:[0,1,0],rotation:[0,0,0,1],speed:0,health:{hp:500,max_hp:500,defeated:false,revive_cooldown_s:0}},target={...actor,id:'ally',position:[6,1,0],health:{hp:0,max_hp:500,defeated:true,recovery_window_s:12,respawn_remaining_s:10,disabled_reason:'combat'}};
+   const actor={id:'mechanic',vehicle_id:'fortuner',team:'red',room_id:1,position:[0,1,0],rotation:[0,0,0,1],speed:0,health:{hp:500,max_hp:500,defeated:false,revive_cooldown_s:0}},target={...actor,id:'ally',position:[6,1,0],health:{hp:0,max_hp:500,defeated:true,recovery_window_s:12,respawn_remaining_s:10,disabled_reason:'combat'}};
    await act(async()=>{social.setState({view:{profile:{id:'profile',name:'Mechanic'},worlds:[],alpha:{active:{world_id:1,team:'red',hero:'mechanic',mode:'quickplay'}}}});network.setState({connected:true,playerId:'mechanic',room_id:1,snapshot:{tick:10,entities:[actor,target]}});ui.setState({screen:'sandbox',overlay:null,isModeLoading:false});combat.getState().setEnabled(false);root.render(h('div',null,h(GameController),h(Keyboard)));});await poll();
    const key=async(type,code)=>act(async()=>window.dispatchEvent(new window.KeyboardEvent(type,{code,bubbles:true,cancelable:true})));
    const reply=async()=>act(async()=>client.receiveSocialResult({request_id:sent.at(-1).request_id,ok:true,data:{revived:true,target:'ally',cooldown_s:20}}));
