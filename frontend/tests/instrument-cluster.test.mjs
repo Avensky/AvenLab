@@ -530,7 +530,7 @@ test("instrument scales, confirmed warning lamps and display power states", asyn
           temp: 100,
         });
         assert.equal(fuel().getAttribute("aria-valuenow"), "25");
-        assert.equal(temp().getAttribute("aria-valuenow"), "100");
+        assert.equal(temp().getAttribute("aria-valuenow"), "212", "100 °C is displayed as 212 °F");
         assert.ok(
           parseFloat(
             fuel()

@@ -1,3 +1,4 @@
+import { UltimateChargeArc } from '../../combat/UltimateChargeArc';
 import {BarrageTrigger} from "../../combat/BarrageTrigger";
 import { DriveAssists } from '../Cockpit/DriveAssists';
 import { HudGroup } from '../HudGroup';
@@ -11,7 +12,6 @@ import { startVehicleTelemetry, useVehicleTelemetryStore } from '../../store/tel
 import { combatHealth, resourceReadings, engineHeatBand } from './resourceModel';
 import './futuristicHUD.css';
 
-const chargePerimeter = 'M50 3H91L97 9V91L91 97H9L3 91V9L9 3Z';
 const percent = (value: number | null) => value === null ? '—' : `${Math.round(value * 100)}%`;
 const ResourceBar = memo(function ResourceBar({ label, value, text, kind }: {
   label: string; value: number | null; text?: string; kind: string;
@@ -27,11 +27,12 @@ const ResourceBar = memo(function ResourceBar({ label, value, text, kind }: {
  * No extra input bindings, physics writes or fabricated weapon-heat meter. */
 export function FuturisticHUD() {
   useEffect(startVehicleTelemetry, []);
-  const data = useVehicleTelemetryStore(useShallow(s => ({signal: s.data.signal, vehicleId: s.data.vehicleId, speedKph: s.data.speedKph, gear: s.data.gear, cockpitMask: s.data.cockpitMask, fuelLiters: s.data.fuelLiters, boostFraction: s.data.boostFraction, ultimateFraction: s.data.ultimateFraction, tempC: s.data.tempC, config: s.data.config})));
+  const data = useVehicleTelemetryStore(useShallow(s => ({signal: s.data.signal, speedKph: s.data.speedKph, gear: s.data.gear, cockpitMask: s.data.cockpitMask, fuelLiters: s.data.fuelLiters, boostFraction: s.data.boostFraction, ultimateFraction: s.data.ultimateFraction, tempC: s.data.tempC, config: s.data.config})));
+  const appearance = useNetworkStore(useShallow(s => s.connected ? s.getMe()?.appearance : undefined));
   const me = useNetworkStore(useShallow(s => {
     const entity = s.connected ? s.getMe() : undefined;
     const health = combatHealth(entity);
-    return {hero: entity?.vehicle_id ?? null, appearance: entity?.appearance, team: entity?.team, hp: health?.hp ?? null, max: health?.max ?? null, defeated: health?.defeated ?? false, protection: health?.protection ?? 0};
+    return {hero: entity?.vehicle_id ?? null, team: entity?.team, hp: health?.hp ?? null, max: health?.max ?? null, defeated: health?.defeated ?? false, protection: Math.ceil((health?.protection ?? 0) * 10) / 10};
   }));
   const mode = usePreferencesStore(s => s.healthBars), units = usePreferencesStore(s => s.speedUnit);
   // Only these readings are consumed; resourceReadings deliberately needs no pose.
@@ -45,18 +46,12 @@ export function FuturisticHUD() {
   const speed = readings.speed === null ? '—' : Math.round(readings.speed / (units === 'mph' ? 1.609344 : 1));
   return <><section className="futuristic-hud" aria-label="Futuristic vehicle instruments" data-signal={data.signal} data-defeated={health?.defeated ?? false}>
     <div className="future-identity" data-charged={charge===1}>
-      <HeroPortrait hero={me.hero} appearance={me.appearance} cacheOnly showStyleStatus={false} />
+      <HeroPortrait hero={me.hero} appearance={appearance} cacheOnly showStyleStatus={false} />
       <BarrageTrigger/>
       <div className="ultimate-gauge" role="meter" aria-label="Ultimate charge" title="Ultimate charge"
         aria-valuemin={0} aria-valuemax={100} aria-valuenow={charge===null?undefined:Math.round(charge*100)}
         aria-valuetext={chargeText}>
-        <svg viewBox="0 0 100 100" aria-hidden="true">
-          <path className="charge-track" d={chargePerimeter}/>
-          <path className="charge-outer" d={chargePerimeter} pathLength="1"
-            strokeDasharray="1" strokeDashoffset={1-(charge??0)} />
-          <path className="charge-inner" d="M50 7H11L7 11V89L11 93H89L93 89V11L89 7Z" pathLength="1"
-            strokeDasharray="1" strokeDashoffset={1-(charge??0)} />
-        </svg>
+        <UltimateChargeArc shape="portrait" fraction={charge} />
         <strong>{chargeText}</strong>
       </div>
     </div>

@@ -55,22 +55,22 @@ pub struct VehicleColliderShape {
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct PhysicsEntitySnapshot {
+pub struct PhysicsEntitySnapshot<'a> {
     #[serde(skip_serializing_if="Option::is_none")]
-    pub barrage:Option<crate::tank_barrage::Barrage>,
+    pub barrage:Option<&'a crate::tank_barrage::Barrage>,
     pub guard:crate::guard_boost::GuardView,
     pub support:crate::support::SupportView,
-    pub health:crate::vehicle_health::VehicleHealth,
+    pub health:std::borrow::Cow<'a, crate::vehicle_health::VehicleHealth>,
     pub combat: CombatPose,
     // Collider preview metadata is independent of expensive force diagnostics.
     pub collider: VehicleColliderShape,
-    pub id: String,
-    pub kind: String,
+    pub id: &'a str,
+    pub kind: &'static str,
     /// Canonical model id selected at spawn (ae86, brz, camaro, supra, ...).
-    pub vehicle_id: Option<String>,
-    pub appearance: crate::alpha::appearance::HeroAppearance,
+    pub vehicle_id: Option<&'a str>,
+    pub appearance: &'a crate::alpha::appearance::HeroAppearance,
     pub room_id: usize,
-    pub team: String,
+    pub team: &'a str,
 
     // --- Pose ---
     pub position: [f32; 3],
@@ -115,16 +115,16 @@ pub struct ServerTiming {
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct PhysicsSnapshot {
-    pub match_state: Option<crate::ctf::CtfView>,
-    pub asset_health: HashMap<String,f32>,
-    pub server_timing: ServerTiming,
+pub struct PhysicsSnapshot<'a> {
+    pub match_state: Option<&'a crate::ctf::CtfView>,
+    pub asset_health: &'a HashMap<String,f32>,
+    pub server_timing: &'a ServerTiming,
     pub tick: u64,
     // Simulation time is independent of socket arrival time. Clients may use
     // these additive fields, or tick / 60, for one shared interpolation clock.
     pub simulation_time_s: f64,
     pub tick_dt_s: f32,
-    pub entities: Vec<PhysicsEntitySnapshot>,
+    pub entities: Vec<PhysicsEntitySnapshot<'a>>,
 }
 
 // Serialize directly from typed physics data. An intermediate JSON Value
@@ -543,7 +543,9 @@ impl SharedGameState {
     // ------------------------------------------------------------------------
 
 
-    fn build_snapshot(&self, physics: &PhysicsWorld) -> PhysicsSnapshot {
+    // Serialize borrowed state before releasing the room lock. Only the encoded
+    // frame enters a socket mailbox, so hit history and paint need no deep copy.
+    fn build_snapshot<'a>(&'a self, physics: &'a PhysicsWorld) -> PhysicsSnapshot<'a> {
         // PhysicsWorld owns the single wheel-ID mapping and final wheel poses.
         // This function reads them; it never steers, spins or raycasts again.
         let mut entities_out = Vec::with_capacity(self.entities.len());
@@ -595,9 +597,10 @@ impl SharedGameState {
             );
 
             entities_out.push(PhysicsEntitySnapshot {
-                barrage:physics.barrages.get(&ent.id).cloned(),
+                barrage:physics.barrages.get(&ent.id),
                 guard:physics.guard_view(&ent.id), support:physics.support.view(&ent.id),
-                health:physics.vehicle_health.get(&ent.id).cloned().unwrap_or_else(||crate::vehicle_health::VehicleHealth::new(vehicle.config.hull_hp)),
+                health:physics.vehicle_health.get(&ent.id).map(std::borrow::Cow::Borrowed)
+                    .unwrap_or_else(|| std::borrow::Cow::Owned(crate::vehicle_health::VehicleHealth::new(vehicle.config.hull_hp))),
                 combat: {let mut c=physics.combat_poses.get(&ent.id).cloned().unwrap_or_default();c.ram_remaining=vehicle.ram.remaining;c.ram_charge_remaining=vehicle.ram.charge_remaining();c.stun_remaining=vehicle.ram.stun_remaining;c.ram_cooldown=vehicle.ram.cooldown;c.ram_blocked=vehicle.ram.blocked.into();c},
                 condition: vehicle.powertrain.condition,
                 ultimate_fraction: vehicle.powertrain.ultimate_fraction,
@@ -616,12 +619,12 @@ impl SharedGameState {
                     wheel_count: vehicle.config.wheels,
                 },
 
-                id: ent.id.clone(),
-                kind: ent.kind.as_str().to_string(),
-                vehicle_id: ent.vehicle_id.clone(),
-                appearance: ent.appearance.clone(),
+                id: &ent.id,
+                kind: ent.kind.as_str(),
+                vehicle_id: ent.vehicle_id.as_deref(),
+                appearance: &ent.appearance,
                 room_id: ent.room_id,
-                team: ent.team.as_str().to_string(),
+                team: ent.team.as_str(),
 
                 position: [pos.x, pos.y, pos.z],
                 rotation: [rot.i, rot.j, rot.k, rot.w],
@@ -643,15 +646,15 @@ impl SharedGameState {
 
         // Stable entity order prevents index-based renderers from changing order
         // just because a HashMap iteration order changed after a join/disconnect.
-        entities_out.sort_by(|a, b| a.id.cmp(&b.id));
+        entities_out.sort_by(|a, b| a.id.cmp(b.id));
         PhysicsSnapshot {
-            match_state: self.match_state.clone(),
-            server_timing: self.server_timing.clone(),
+            match_state: self.match_state.as_ref(),
+            server_timing: &self.server_timing,
             tick: self.tick,
             simulation_time_s: self.tick as f64 / SIMULATION_HZ,
             tick_dt_s: SIMULATION_DT,
             entities: entities_out,
-            asset_health: physics.asset_health.clone(),
+            asset_health: &physics.asset_health,
         }
     }
 }
@@ -672,6 +675,15 @@ mod tests {
                 room.join(&id,tx,frames,input,None,10);room.spawn(&id,"brz").unwrap();
             }
             for _ in 0..60 {room.tick(0.0);}
+            // A busy fight carries server-only hit history that never crosses the wire.
+            for health in room.physics.vehicle_health.values_mut() {
+                for _ in 0..32 { health.note_damage_dealt(1.0); }
+            }
+            for _ in 0..3 {
+                let start=Instant::now();
+                for _ in 0..10_000 { black_box(room.game.build_snapshot(black_box(&room.physics))); }
+                println!("snapshot-build players={players} us={:.2}",start.elapsed().as_secs_f64()*1e6/10_000.0);
+            }
             let snap=room.game.build_snapshot(&room.physics);
             let count=300;
             for typed in [false,true,false,true] {
