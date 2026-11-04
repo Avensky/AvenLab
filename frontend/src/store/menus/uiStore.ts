@@ -113,15 +113,17 @@ export const useUIStore = create<UIState>()((set, get, api) => ({
     }),
 
   openPause: () => {
-    const { screen } = get();
-    if (!isDrivingScreen(screen)) return;
+    const { screen, overlay } = get();
+    if (!isDrivingScreen(screen) || overlay === "match_results") return;
 
     set({ overlay: "pause" });
   },
   closeOverlay: () => {
+    if(get().overlay === "match_results") return;
     set({ overlay: null, vehicleSelectionParent: null, settingsParent: null });
   },
   backToParentMenu: () => {
+    if(get().overlay === "match_results") return;
     if (get().overlay === "settings" && get().settingsParent === "cockpit")
       set({ overlay: "cockpit", settingsParent: null });
     else if (get().overlay === "debug_menu")
@@ -138,7 +140,7 @@ export const useUIStore = create<UIState>()((set, get, api) => ({
   togglePauseMenu: () => {
     const { screen, overlay } = get();
 
-    if (!isDrivingScreen(screen)) return;
+    if (!isDrivingScreen(screen) || overlay === "match_results") return;
 
     set({
       overlay: overlay === "pause" ? null : "pause",

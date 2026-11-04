@@ -1,0 +1,18 @@
+.vehicle-health-marker{--health-marker-color:#9fbdcf;visibility:hidden;width:94px;padding:4px 5px 3px;border-radius:4px;background:#07111de8;border:1px solid color-mix(in srgb,var(--health-marker-color) 55%,transparent);color:#f1f6fb;box-sizing:border-box;font:700 7px/1.2 system-ui;text-align:center;text-shadow:0 1px 2px #000;white-space:nowrap;user-select:none}
+.vehicle-health-marker,.vehicle-health-marker *{pointer-events:none!important}
+.vehicle-health-marker[data-relation=ally]{--health-marker-color:#70d8ff}.vehicle-health-marker[data-relation=enemy]{--health-marker-color:#ff8191}
+.vehicle-health-marker[data-protected=true]{--health-marker-color:#a9caff;box-shadow:0 0 7px #91baff66}
+.vehicle-health-marker[data-defeated=true]{--health-marker-color:#a0a8b2}
+.vehicle-health-marker-title{display:flex;justify-content:space-between;align-items:baseline;gap:3px;overflow:hidden}
+.vehicle-health-marker-title strong{font-size:7px;overflow:hidden;text-overflow:ellipsis}.vehicle-health-marker-title span{font-size:5px;color:var(--health-marker-color)}
+.vehicle-health-marker-track{height:5px;margin:3px 0 2px;border-radius:1px;background:#020710;border:1px solid #c8dfff35;overflow:hidden}
+.vehicle-health-marker-track>span{display:block;height:100%;background:var(--health-marker-color);transition:width 90ms linear}
+.vehicle-health-marker small{font-size:6px;letter-spacing:.2px;color:#e7f0f8}
+html[data-reduce-motion=true] .vehicle-health-marker-track>span{transition:none}
+@media(prefers-reduced-motion:reduce){.vehicle-health-marker-track>span{transition:none}}
+@media(max-width:600px){.vehicle-health-marker{width:84px}}
+/* Recovery is critical feedback, independent of HP-bar visibility settings. */
+.vehicle-health-marker:has(.recovery-countdown){display:flex;flex-direction:column;align-items:center;gap:3px;white-space:normal}
+.vehicle-health-marker .vehicle-health-marker-track{width:100%}
+.vehicle-health-marker .vehicle-health-marker-title{width:100%}
+.vehicle-health-marker .vehicle-recovery-marker-label{font-size:6px;color:#fff}

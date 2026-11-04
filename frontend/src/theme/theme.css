@@ -257,44 +257,13 @@ html[data-ui-theme] .hero-selection .hero-summary > small {color:#d8e2f2;text-sh
 html[data-ui-theme] .hero-selection :is(.alpha-mode-tabs,.hero-role-tabs) .menu-control {border-radius:0;}
 html[data-ui-theme] .hero-selection .hero-roster>header {padding:6px;border-radius:var(--app-radius-sm);}
 
-/* Shared modern surface language: settings, research tabs and cockpit tools
-   use the same radius, color and focus tokens rather than per-screen boxes. */
-html[data-ui-theme] .tabbed-menu-shell { background:var(--app-background); }
-html[data-ui-theme] .tabbed-menu-header {padding:14px 20px;border:0;}
-html[data-ui-theme] .menu-heading-title {font-size:20px;font-weight:650;letter-spacing:-.025em;}
-html[data-ui-theme] .tabbed-menu-tabs {background:transparent;border:0;padding:4px 16px 12px;gap:6px;}
-html[data-ui-theme] .tabbed-menu .menu-tab {border:0;border-radius:999px;background:transparent;min-height:36px;padding:8px 14px;}
-html[data-ui-theme] .tabbed-menu .menu-tab[aria-selected="true"] {background:var(--app-raised);outline:0;box-shadow:none;color:var(--app-text);}
-html[data-ui-theme] .tabbed-menu-content {padding:8px 20px 18px;}
-html[data-ui-theme] .tabbed-menu-content > :is(.menu-row-list,.menu-description,.menu-extras) {width:min(100%,960px);margin-inline:auto;}
-html[data-ui-theme] .tabbed-menu .menu-description {padding:0 4px 12px;line-height:1.5;}
-html[data-ui-theme] .tabbed-menu .menu-row-list {background:var(--app-panel);border-radius:var(--app-radius);padding:4px;gap:0;overflow:hidden;}
-html[data-ui-theme] .tabbed-menu .menu-row {
-  min-height:54px;padding:12px 16px;border:0;border-bottom:1px solid color-mix(in srgb,var(--app-line) 24%,transparent);
-  border-radius:0;background:transparent;gap:18px;box-shadow:none;outline:0;
-}
-html[data-ui-theme] .tabbed-menu .menu-row:last-child {border-bottom-color:transparent;}
-html[data-ui-theme] .tabbed-menu .menu-row:is(:hover,:focus-visible,[data-selected="true"]):not(:disabled) {background:var(--app-raised);border-radius:var(--app-radius-sm);}
-html[data-ui-theme] .tabbed-menu .menu-row:focus-visible {outline:2px solid var(--app-accent);outline-offset:-2px;}
-html[data-ui-theme] .tabbed-menu .menu-row-label {font-size:13px;font-weight:600;letter-spacing:.01em;}
-html[data-ui-theme] .tabbed-menu .menu-row-description {margin-top:4px;line-height:1.45;}
-html[data-ui-theme] .tabbed-menu .menu-row-value {color:var(--app-text);font-weight:650;display:inline-flex;align-items:center;gap:12px;}
-html[data-ui-theme] .menu-row-value[data-toggle]::after {content:"";width:34px;height:20px;border-radius:999px;flex:none;background:radial-gradient(circle at 10px 10px,var(--app-muted) 6px,transparent 7px),var(--app-background);}
-html[data-ui-theme] .menu-row-value[data-toggle="on"]::after {background:radial-gradient(circle at 24px 10px,#fff 6px,transparent 7px),var(--app-accent);}
-html[data-ui-theme] .tabbed-menu-footer {padding:10px 20px;background:var(--app-panel);border:0;}
-html[data-ui-theme] .tabbed-menu .menu-back {border:0;border-radius:999px;padding:9px 14px;min-height:38px;background:var(--app-panel);}
+/* Shared full-screen menu surfaces live in components/menus/menuFrame.css.
+   Physical cockpit/editor controls keep their own compact hardware shapes. */
 html[data-ui-theme] :is(.cockpit-panel button,.ve-panel button,.ve-drive-bar button) {border-radius:var(--app-radius-sm);}
 html[data-ui-theme] :is(.ve-panel,.ve-drive-bar,.menu-bind-card) {border-radius:var(--app-radius);}
 html[data-ui-theme] :is(.menu-field,.menu-input,.controller-guide) {color:var(--app-text);}
 html[data-ui-theme] .menu-input {background:var(--app-panel);border-color:var(--app-line);border-radius:var(--app-radius-sm);}
-html[data-high-contrast="true"] .tabbed-menu .menu-row:focus-visible {outline-width:3px;}
-@media(max-width:600px),(max-height:500px) {
-  html[data-ui-theme] .tabbed-menu-header {padding:8px 12px;}
-  html[data-ui-theme] .tabbed-menu-tabs {padding:2px 8px 6px;}
-  html[data-ui-theme] .tabbed-menu-content {padding:6px 10px 12px;}
-  html[data-ui-theme] .tabbed-menu .menu-row {min-height:48px;padding:10px 12px;}
-  html[data-ui-theme] .tabbed-menu-footer {padding:6px 10px;}
-}
+html[data-high-contrast="true"] .menu-frame .menu-row:focus-visible {outline-width:3px;}
 html[data-ui-theme] .alpha-progress strong {background:#111b2b;padding:3px 6px;border-radius:6px;}
 html[data-ui-theme] .alpha-queue {background:var(--app-background);}
 html[data-ui-theme] .alpha-queue-card {background:var(--app-panel);color:var(--app-text);border-color:var(--app-line);border-radius:var(--app-radius);}

@@ -1,3 +1,5 @@
+import {useScoreboardStore} from "../store/hud/scoreboardStore";
+import {receiveMatchResult} from "../store/session/matchResultsStore";
 // One socket owner. Direct imports avoid loading models/UI/CAN via the store barrel.
 import {
   useNetworkStore,
@@ -441,6 +443,9 @@ export function connectRustServer(): WebSocket {
         });
         if (message.social_version === 1) beginSocialSession(message.server_id);
         return;
+      case "match_result":
+        receiveMatchResult(message.data);
+        break;
       case "social_result":
         receiveSocialResult(message);
         return;
@@ -458,7 +463,7 @@ export function connectRustServer(): WebSocket {
         if(resumeIntent){if(message.preserved===true){resumeIntent.preserved=true;resumeDeployment();}else failRecovery(message.reason==='EXPIRED'?'Your reconnect reservation expired. Your previous game mode is selected; deploy when ready.':'Your previous physics body could not be retained. Your game mode is selected; deploy when ready.');}
         return;
       case "world_changed":
-        if(!message.world&&hadLocalBody&&!resumeIntent&&useUIStore.getState().screen==='sandbox'&&useUIStore.getState().overlay!=='leave_game')failRecovery('The server closed your physics world. Your previous game mode is selected; deploy when ready.');
+        if(!message.world&&hadLocalBody&&!resumeIntent&&useUIStore.getState().screen==='sandbox'&&!['leave_game','match_results'].includes(useUIStore.getState().overlay??''))failRecovery('The server closed your physics world. Your previous game mode is selected; deploy when ready.');
         hadLocalBody=false;missingBodySince=null;
         state.resetWorld();
         useVehicleConfigStore.getState().reset();
@@ -505,6 +510,7 @@ export function connectRustServer(): WebSocket {
             message.data.server_timing?.work_ms,
             receivedMs,
           );
+          if(message.data.match_state?.match_id && message.data.match_state.match_id !== state.snapshot?.match_state?.match_id)useScoreboardStore.getState().resetView();
           state.setSnapshot(message.data, receivedMs);
           const me = message.data.entities.find(
             (entity: PhysicsSnapshot["entities"][number]) =>
@@ -520,7 +526,7 @@ export function connectRustServer(): WebSocket {
             );
           }
           if(me){hadLocalBody=true;lastLocalBodyMs=receivedMs;missingBodySince=null;resumeDeployment();}
-          else if(hadLocalBody&&!resumeIntent&&useUIStore.getState().screen==='sandbox'&&!useUIStore.getState().isModeLoading){
+          else if(hadLocalBody&&!resumeIntent&&useUIStore.getState().screen==='sandbox'&&useUIStore.getState().overlay!=='match_results'&&!useUIStore.getState().isModeLoading){
             missingBodySince??=receivedMs;
             if(receivedMs-missingBodySince>1500)failRecovery('Your physics body is no longer available. Returned to your previous game mode; choose deploy to start again.');
           }

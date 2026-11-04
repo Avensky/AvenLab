@@ -1,3 +1,6 @@
+import {useUIStore} from "../../store/menus/uiStore";
+import {useSocialStore} from "../../store/social/socialStore";
+import {garageTeamAccent} from "./garageTeamAccent";
 import { Suspense, useState } from "react";
 import { Group } from "three";
 import { useThree } from "@react-three/fiber";
@@ -16,6 +19,9 @@ export function VehiclePreview({
   heroLayout = false,
   awaitingHero = false,
 }: { heroLayout?: boolean; awaitingHero?: boolean } = {}) {
+  const screen=useUIStore(s=>s.screen);
+  const active=useSocialStore(s=>s.view?.alpha?.active);
+  const teamAccent=garageTeamAccent(screen,active);
   const unselected = useAlphaStore((s) => s.previewHero === null);
   const vehicleId = useSelectionStore((s) => s.getSelectedVehicle().id);
   const reducedMotion = usePreferencesStore((s) => s.reducedMotion);
@@ -40,7 +46,7 @@ export function VehiclePreview({
   const targetY = 1.8;
   return (
     <>
-      <GarageEnvironment turntable={turntable} onPlatformReady={setPlatform} />
+      <GarageEnvironment turntable={turntable} onPlatformReady={setPlatform} accentOverride={teamAccent} />
       <PerspectiveCamera
         makeDefault
         fov={fov}

@@ -4,6 +4,7 @@ import { useChatStore } from "../store/chat/chatStore";
 import { useNetworkStore } from "../store/session/networkStore";
 
 type Identity = { id: string; token: string; name: string };
+type IdentityScope = "device" | "tab";
 type Response = {
   request_id?: string;
   ok?: boolean;
@@ -23,26 +24,35 @@ const pending = new Map<
   }
 >();
 
-const readIdentity = (): Identity | null => {
+// A secondary player belongs to this tab. Never overwrite the device's main
+// credential when opening another player for local multiplayer testing.
+const readStoredIdentity = (storage: () => Storage, key: string): Identity | null => {
   try {
-    const value = JSON.parse(localStorage.getItem(identityKey) ?? "null");
-    return typeof value?.id === "string" &&
-      typeof value?.token === "string" &&
-      value.token.length === 64
-      ? value
+    const value = JSON.parse(storage().getItem(key) ?? "null");
+    return typeof value?.id === "string" && typeof value?.token === "string" && value.token.length === 64
+      ? {id:value.id,token:value.token,name:typeof value.name === "string" ? value.name : "DRIVER"}
       : null;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 };
-const saveIdentity = (value: Identity) => {
+const readIdentity = (): {identity:Identity;scope:IdentityScope} | null => {
+  const tab = readStoredIdentity(() => window.sessionStorage, `${identityKey}:tab`);
+  if (tab) return {identity:tab,scope:"tab"};
+  const device = readStoredIdentity(() => localStorage, identityKey);
+  return device ? {identity:device,scope:"device"} : null;
+};
+const saveIdentity = (value: Identity, scope:IdentityScope) => {
   try {
-    localStorage.setItem(identityKey, JSON.stringify(value));
-  } catch {
-    /* Private browsing may keep this profile only for this page. */
-  }
+    if (scope === "tab") window.sessionStorage.setItem(`${identityKey}:tab`, JSON.stringify(value));
+    else {
+      localStorage.setItem(identityKey, JSON.stringify(value));
+      window.sessionStorage.removeItem(`${identityKey}:tab`);
+    }
+  } catch { /* Restricted storage keeps this profile only for this page. */ }
 };
 let pageIdentity: Identity | null = null;
+let pageIdentityScope:IdentityScope = "device";
+let connectionGeneration = 0;
+let identifying = false;
 
 /** One request owner with bounded pending work. Closing a socket rejects every
  * pending command immediately; old replies cannot resolve a replacement session. */
@@ -53,6 +63,8 @@ export function setSocialConnection(next: WebSocket | null) {
   }
   pending.clear();
   connection = next;
+  connectionGeneration++;
+  identifying = false;
   initialized = false;
   pageIdentity = null;
   identityKey = "";
@@ -106,22 +118,41 @@ export function receiveSocialResult(value: Response) {
       new Error(value.message || "The server rejected the request."),
     );
 }
-export async function identifySocial(name?: string, newProfile = false) {
-  const identity = pageIdentity ?? readIdentity();
-  const result = await requestSocial("identify", {
-    ...(identity && !newProfile ? { token: identity.token } : {}),
-    name: name ?? identity?.name ?? "DRIVER",
-  });
-  const token =
-    typeof result.token === "string" ? result.token : identity?.token;
-  if (typeof result.profile_id === "string" && token) {
-    pageIdentity = {
-      id: result.profile_id,
-      token,
-      name: name ?? identity?.name ?? "DRIVER",
-    };
-    saveIdentity(pageIdentity);
+async function identifyProfile(name:string|undefined,newProfile:boolean,tabOnly=false) {
+  if (identifying) throw new Error("Wait for player profile restoration to finish.");
+  const generation=connectionGeneration;
+  const saved=readIdentity(),identity=pageIdentity??saved?.identity;
+  const scope:IdentityScope=tabOnly?"tab":newProfile?"device":pageIdentity?pageIdentityScope:saved?.scope??"device";
+  identifying=true;
+  useSocialStore.setState({profileStatus:"restoring",message:tabOnly?"Creating a player for this tab…":"Restoring your player profile…"});
+  try {
+    const result=await requestSocial("identify",{
+      ...(identity&&!newProfile?{token:identity.token}:{}),
+      name:name??identity?.name??"DRIVER",
+    });
+    if(generation!==connectionGeneration) throw new Error("The game connection changed. Try again after reconnecting.");
+    const token=typeof result.token==="string"?result.token:!newProfile?identity?.token:undefined;
+    if(typeof result.profile_id!=="string"||!token||token.length!==64)
+      throw new Error("The server did not confirm the player profile. Retry your saved profile.");
+    pageIdentity={id:result.profile_id,token,name:name??identity?.name??"DRIVER"};
+    pageIdentityScope=scope;
+    saveIdentity(pageIdentity,scope);
+    // The confirmed social_state owns readiness; a reply alone is not a view.
+  } catch(error) {
+    if(generation===connectionGeneration)useSocialStore.setState({profileStatus:"error",message:error instanceof Error?error.message:"Player profile restoration failed."});
+    throw error;
+  } finally {
+    if(generation===connectionGeneration)identifying=false;
   }
+}
+export function identifySocial(name?:string,newProfile=false) {
+  return identifyProfile(name,newProfile);
+}
+/** Explicitly create another authenticated player without changing the saved
+ * main profile. Duplicated tabs may inherit sessionStorage and can use this
+ * action again if their copied profile is still connected elsewhere. */
+export function createTabProfile() {
+  return identifyProfile("DRIVER 2",true,true);
 }
 export function beginSocialSession(serverId: unknown) {
   if (initialized || typeof serverId !== "string") return;
@@ -129,11 +160,10 @@ export function beginSocialSession(serverId: unknown) {
   identityKey = `avenlab-social-profile-v1:${serverId}`;
   useSocialStore.setState({
     available: true,
+    profileStatus: "restoring",
     message: "Restoring your player profile…",
   });
-  void identifySocial().catch((error) =>
-    useSocialStore.setState({ message: (error as Error).message }),
-  );
+  void identifySocial().catch(() => { /* The identity owner reports its own current-session error. */ });
 }
 export function receiveSocialState(value: unknown) {
   useSocialStore.getState().receive(value);
@@ -147,14 +177,16 @@ export function receiveSocialState(value: unknown) {
     );
   if (view) usePresenceStore.getState().observe(view);
   const profile = useSocialStore.getState().view?.profile;
-  const identity = pageIdentity ?? readIdentity();
+  const saved = readIdentity();
+  const identity = pageIdentity ?? saved?.identity;
   if (
     profile &&
     identity &&
     profile.id === identity.id &&
     profile.name !== identity.name
   ) {
+    pageIdentityScope = pageIdentity ? pageIdentityScope : saved?.scope ?? "device";
     pageIdentity = { ...identity, name: profile.name };
-    saveIdentity(pageIdentity);
+    saveIdentity(pageIdentity,pageIdentityScope);
   }
 }

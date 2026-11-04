@@ -20,11 +20,17 @@ impl Server {
         }
         let clients = self.connections.lock().await.clone();
         let mode = a.worlds.get(&world_id).copied().unwrap_or(Mode::Sandbox);
+        if self.match_ended(world_id).await && !a.restoring.contains(player) {
+            return Err("This match has ended. Waiting for its result screen to close.".into());
+        }
         if mode.bucket() == 0 && !a.pending_team.contains_key(player) {
             return Err("Join Quickplay or Competitive through its hero selection queue.".into());
         }
         let now = timestamp();
         let own = clients.get(player).and_then(|c| c.profile_id.as_ref());
+        if mode.bucket() == 0 && !self.participant_slot_available(world_id, own.map(String::as_str)).await {
+            return Err("This round has reached its participant history limit. Wait for the next match.".into());
+        }
         let reserved: Vec<_> = a
             .reservations
             .iter()
@@ -79,6 +85,8 @@ impl Server {
         let member=a.members.get(player).cloned().unwrap_or(Member{mode,world,hero:String::new(),team:client.team});
         let expires=timestamp()+if practice{600}else{a.grace_seconds};
         a.reservations.insert(profile,Reservation{member,expires,retained_player:(practice&&has_body).then(||player.into())});
+        drop(a);
+        if !practice { self.remember_downed_reconnect(player, world, expires).await; }
     }
     pub(super) async fn restore_reservation(&self, player: &str, profile: &str) {
         let lease=self.alpha.lock().await.reservations.remove(profile);
@@ -107,9 +115,10 @@ impl Server {
                 }
             }
             if self.data.lock().await.worlds.get(&lease.member.world).is_some_and(|w|w.mode.is_some()){
-                self.alpha.lock().await.members.insert(player.into(),lease.member);
+                self.alpha.lock().await.members.insert(player.into(),lease.member.clone());
             }
             self.recovery_result(player,preserved,if preserved{"PRESERVED"}else{"REDEPLOY"}).await;
+            self.replay_completed_result(player,lease.member.world).await;
         }else{
             self.alpha.lock().await.reservations.insert(profile.into(),lease);
             self.recovery_result(player,false,"WORLD_UNAVAILABLE").await;
@@ -249,6 +258,9 @@ impl Server {
             }
         };
         let team = if ticket.mode.bucket() == 0 {
+            if self.match_ended(world).await {
+                return Err("This match has ended. Waiting for its result screen to close.".into());
+            }
             self.team_for_hero(world, &ticket.hero, Some(&ticket.player))
                 .await?
         } else {
@@ -327,7 +339,7 @@ impl Server {
     pub(super) async fn handle_alpha(&self, player: &str, value: &Value) -> Result<Value, String> {
         match value["action"].as_str().unwrap_or("") {
             "mode_join" => self.join_mode(player, value).await,
-            "mode_cancel" => {
+            "mode_cancel" | "mode_leave" => {
                 let profile = self.actor(player).await?;
                 let mut a = self.alpha.lock().await;
                 a.queue.retain(|t| t.profile != profile);
@@ -396,6 +408,16 @@ impl Server {
         Ok(())
     }
     async fn select_hero(&self, player: &str, id: &str) -> Result<Value, String> {
+        if let Ok(runtime) = self.runtime(player).await {
+            let room = runtime.lock().await;
+            if room.round.as_ref().is_some_and(|r| r.phase != crate::ctf::CtfPhase::Waiting) {
+                let current = self.alpha.lock().await.members.get(player).map(|m| m.hero.clone());
+                if current.as_deref() != Some(id) {
+                    return Err("Your hero is locked for this CTF round. Choose a different hero for the next match.".into());
+                }
+                return Ok(json!({"hero":id,"vehicle":policy::hero(id)?.vehicle}));
+            }
+        }
         if id.is_empty() {
             // Back may clear a pre-deployment choice without releasing its
             // seat. A live vehicle must keep its validated role/loadout.
@@ -630,7 +652,7 @@ impl Server {
         game.attach_body(player, handle);
         game.set_vehicle_id(player, vehicle);
         if let Some(entity)=game.entities.get_mut(player) { entity.appearance=self.saved_appearance(player,vehicle).await; }
-        let room = WorldRuntime { game, physics };
+        let room = WorldRuntime::from_parts(game, physics);
         let map = room.physics.map_snapshot();
         let runtime = Arc::new(Mutex::new(room));
         // Environment switches update this editor slot only, after successful validation.
@@ -672,7 +694,11 @@ impl Server {
             if !keep { unloaded.push(*id); }
             keep
         });
-        for world in unloaded { self.chat.lock().await.clear_world(world); }
+        for world in unloaded {
+            self.mark_expired_participants(world).await;
+            self.finish_empty_activity(world).await;
+            self.chat.lock().await.clear_world(world);
+        }
         let tickets: Vec<_> = self.alpha.lock().await.queue.iter().cloned().collect();
         let mut blocked = HashSet::new();
         for ticket in tickets {
@@ -703,61 +729,37 @@ impl Server {
             self.publish().await;
         }
     }
-    /// Future match-rule code calls this after a verified result. Not exposed on
-    /// the socket. One result ID can award a roster only once, even after reload.
+    /// Compatibility adapter for trusted server integrations. Real CTF uses
+    /// its frozen completion event; no socket action can invoke this adapter.
     #[allow(dead_code)]
-    pub async fn record_completed_match(
-        &self,
-        world: usize,
-        winner: Team,
-        result_id: &str,
-    ) -> Result<(), String> {
+    pub async fn record_completed_match(&self, world: usize, winner: Team, result_id: &str) -> Result<(), String> {
         let _operation = self.operations.lock().await;
         let a = self.alpha.lock().await.clone();
         let mode = a.worlds.get(&world).copied().ok_or("No managed match.")?;
-        if !a.enforce_roles {
-            return Err("Flex testing does not grant progression.".into());
-        }
-        if mode.bucket() != 0 {
-            return Err("Testing worlds do not grant match rewards.".into());
-        }
+        if !a.enforce_roles || mode.bucket() != 0 { return Err("Testing worlds do not grant match rewards.".into()); }
         let members: Vec<_> = a.members.iter().filter(|(_, m)| m.world == world).collect();
-        if members.len() != 10
-            || [Team::Red, Team::Blue]
-                .iter()
-                .any(|team| members.iter().filter(|(_, m)| m.team == *team).count() != 5)
-        {
+        if members.len() != 10 || [Team::Red, Team::Blue].iter().any(|team| members.iter().filter(|(_, m)| m.team == *team).count() != 5) {
             return Err("A complete verified 5v5 roster is required.".into());
         }
-        let previous = self.data.lock().await.clone();
-        let mut data = self.data.lock().await;
-        if result_id.is_empty() || result_id.len() > 128 {
-            return Err("Invalid trusted result identifier.".into());
-        }
-        if data.completed_results.contains(result_id) {
-            return Ok(());
-        }
-        if data.completed_results.len() >= 16384 {
-            return Err("Result ledger needs archival before more rewards can be granted.".into());
-        }
-        let clients = self.connections.lock().await;
+        let clients = self.connections.lock().await.clone();
+        let data = self.data.lock().await;
+        let mut participants = Vec::new();
         for (player, member) in members {
-            if let Some(profile) = clients
-                .get(player)
-                .and_then(|c| c.profile_id.as_ref())
-                .and_then(|id| data.profiles.get_mut(id))
-            {
-                profile
-                    .progression
-                    .award(mode == Mode::Competitive, member.team == winner);
-            }
+            let profile = clients.get(player).and_then(|c| c.profile_id.as_ref()).and_then(|id| data.profiles.get(id)).ok_or("An authenticated match profile is unavailable.")?;
+            let vehicle = policy::hero(&member.hero)?.vehicle;
+            participants.push(crate::alpha::career::CareerParticipant {
+                profile_id: profile.id.clone(), name: profile.name.clone(), team: Some(member.team.as_str().into()),
+                hero: member.hero.clone(), appearance: profile.progression.hero_loadouts.get(vehicle).cloned().unwrap_or_default(),
+                ..Default::default()
+            });
         }
-        data.completed_results.insert(result_id.into());
-        drop(clients);
+        let map = data.worlds.get(&world).map(|w| w.map.clone()).ok_or("Match world unavailable.")?;
         drop(data);
-        self.commit(previous).await?;
-        self.publish().await;
-        Ok(())
+        let record = crate::alpha::career::CareerMatch {
+            match_id: result_id.into(), world_id: world, mode, map, ended_at: timestamp(),
+            progression_eligible: true, winner: Some(winner.as_str().into()), participants, ..Default::default()
+        };
+        self.persist_record(&record).await
     }
     pub(super) fn alpha_view(
         a: &AlphaState,

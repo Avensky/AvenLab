@@ -84,6 +84,7 @@ impl PhysicsWorld {
             let Some(body_ro) = self.bodies.get(handle) else { continue };
             let Some(player_id) = self.body_to_player.get(&handle) else { continue };
             let Some(vehicle) = self.vehicles.get_mut(player_id) else { continue };
+            if self.vehicle_health.get(player_id).is_some_and(|h|h.defeated){continue;}
             if wheels.is_empty() { continue; }
 
             let longitudinal_speed = (body_ro.rotation().inverse() * body_ro.linvel()).z;
@@ -91,7 +92,8 @@ impl PhysicsWorld {
             let stunned=vehicle.ram.stun_remaining>0.0;
             let steer_input=if stunned {0.0}else{vehicle.steer};
             if stunned{throttle=0.0;brake=0.0;}
-            let ram_speed=vehicle.ram.speed_multiplier();
+            let carrier_speed=if self.ctf_carriers.contains(player_id){crate::ctf::CARRIER_SPEED_FACTOR}else{1.0};
+            let ram_speed=vehicle.ram.speed_multiplier()*carrier_speed;
             let ram_force=vehicle.ram.force_multiplier();
             if vehicle.ram.charging()&&!stunned{throttle=1.0;}
             let handbrake = (if stunned {0.0}else{vehicle.handbrake}).max(vehicle.cockpit.parking_force());
@@ -103,7 +105,12 @@ impl PhysicsWorld {
             let engine_throttle=if pivot_demand {steer_input.abs()*0.85}else{throttle};
             let mut engine_resources=vehicle.config.resources;
             if vehicle.config.tracked{vehicle.powertrain.boost_requested=false;}
-            if vehicle.ram.active(){engine_resources.heat_gameplay_multiplier*=0.02;engine_resources.max_heat_rise_c_s=0.2;}
+            // Ram softens the extra stress with a bounded net heat budget; it must
+            // not turn the unchanged radiator into an ability-powered cooler.
+            if vehicle.ram.active(){
+                engine_resources.min_running_heat_rise_c_s=crate::ram::MIN_HEAT_RISE_C_S;
+                engine_resources.max_heat_rise_c_s=crate::ram::MAX_HEAT_RISE_C_S;
+            }
             vehicle.powertrain.advance(engine_resources, Demand {
                 throttle:engine_throttle, longitudinal_speed,
                 wheel_radius: vehicle.config.wheel_radius, engine_force: vehicle.config.engine_force, top_speed:if vehicle.powertrain.thermal_recovery{(vehicle.config.max_speed*0.35).min(8.0)}else{vehicle.config.max_speed*ram_speed},

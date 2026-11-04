@@ -853,14 +853,14 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
         }
         await click(tab("Keyboard"));
         await click(row("forward"));
-        await key("KeyU", "u");
-        assert.equal(preferences.getState().bindings.forward, "KeyU");
+        await key("KeyK", "k");
+        assert.equal(preferences.getState().bindings.forward, "KeyK");
         assert.equal(
           JSON.parse(localStorage.getItem("avenlab-preferences-v1")).state
             .bindings.forward,
-          "KeyU",
+          "KeyK",
         );
-        await key("KeyU", "u");
+        await key("KeyK", "k");
         assert.equal(inputs.getState().input.throttle, 0);
         await click(tab("Controller"));
         await click(row("deadzone"));
@@ -999,13 +999,13 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
         );
         await key("KeyW", "w");
         assert.equal(inputs.getState().input.throttle, 0);
-        await key("KeyU", "u");
+        await key("KeyK", "k");
         assert.equal(inputs.getState().input.throttle, 1);
         await act(async () =>
           document.activeElement.dispatchEvent(
             new dom.window.KeyboardEvent("keyup", {
-              code: "KeyU",
-              key: "u",
+              code: "KeyK",
+              key: "k",
               bubbles: true,
             }),
           ),

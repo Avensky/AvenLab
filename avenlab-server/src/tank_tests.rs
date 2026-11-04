@@ -123,6 +123,9 @@ fn range_size(side:f32)->PhysicsWorld {
   let mut w=range();let h=w.vehicles["tank"].body;let y=w.bodies[h].translation().y;
   w.bodies[h].set_translation(rapier3d::math::Vector::new(0.0,y,-15.0),true);
   let target=w.spawn_vehicle_for_player("target".into(),[0.0;3],"tank","red").unwrap();w.vehicles.get_mut("target").unwrap().team=team.into();
+  // This fixture exercises post-spawn Ram effects. Spawn-shield behavior has
+  // separate coverage and must not suppress the ability being compared here.
+  for health in w.vehicle_health.values_mut(){health.advance(crate::vehicle_health::SPAWN_PROTECTION_SECONDS);}
   w.bodies[h].set_translation(rapier3d::math::Vector::new(0.0,y,-8.0),true);w.bodies[h].set_linvel(rapier3d::math::Vector::new(0.0,0.0,12.0),true);
   {let t=w.vehicles.get_mut("tank").unwrap();t.powertrain.gear=1;t.throttle=1.0;if ram{t.ram.remaining=crate::ram::DURATION;t.ram.cooldown=crate::ram::COOLDOWN;}}
   let mut peak=0.0_f32;let mut stun=0.0_f32;for _ in 0..90{w.step(SIMULATION_DT);peak=peak.max(w.bodies[target].linvel().norm());stun=stun.max(w.vehicles["target"].ram.stun_remaining);}
@@ -212,11 +215,15 @@ fn range_size(side:f32)->PhysicsWorld {
  world.combat_tick("tank",2,Some(&intent));assert_eq!(world.combat_poses["tank"].shot,1);
 }
 
-#[test]fn ram_consumes_nitrous_without_a_thermal_spike_and_requires_a_refill(){
+#[test]fn ram_heats_progressively_consumes_nitrous_and_requires_a_refill(){
  let mut w=range_size(20000.0);let fuel=w.vehicles["tank"].powertrain.fuel_liters;let heat=w.vehicles["tank"].powertrain.temperature_c;
  {let v=w.vehicles.get_mut("tank").unwrap();v.throttle=1.0;v.ram.requested=true;v.powertrain.boost_requested=true;}
- for _ in 0..420{w.step(SIMULATION_DT);}
- let v=&w.vehicles["tank"];assert!(v.powertrain.nos_remaining_s>13.9&&v.powertrain.nos_remaining_s<14.1);assert!(v.powertrain.temperature_c<=heat+3.5);assert!(v.powertrain.fuel_liters<fuel-9.9);assert!(v.powertrain.running);
+ for tick in 0..420{
+  let before=w.vehicles["tank"].powertrain.temperature_c;w.step(SIMULATION_DT);
+  let after=w.vehicles["tank"].powertrain.temperature_c;
+  if tick<419{assert!(after>before,"active Ram must visibly heat, never cool, the running engine");assert!(after-before<=crate::ram::MAX_HEAT_RISE_C_S*SIMULATION_DT+0.001);}
+ }
+ let v=&w.vehicles["tank"];assert!(v.powertrain.nos_remaining_s>13.9&&v.powertrain.nos_remaining_s<14.1);assert!(v.powertrain.temperature_c>=heat+4.1&&v.powertrain.temperature_c<=heat+7.7,"Ram heat must be noticeable but bounded: {} -> {}",heat,v.powertrain.temperature_c);assert!(v.powertrain.fuel_liters<fuel-9.9);assert!(v.powertrain.running);
  {let v=w.vehicles.get_mut("tank").unwrap();v.ram.cancel();v.ram.cooldown=0.0;v.ram.requested=false;v.powertrain.nos_remaining_s=6.9;}
  w.step(SIMULATION_DT);w.vehicles.get_mut("tank").unwrap().ram.requested=true;w.step(SIMULATION_DT);assert!(!w.vehicles["tank"].ram.active());assert_eq!(w.vehicles["tank"].ram.blocked,"REFILL NOS");
 }
@@ -226,4 +233,95 @@ fn range_size(side:f32)->PhysicsWorld {
  {let v=w.vehicles.get_mut("tank").unwrap();v.powertrain.temperature_c=145.0;v.throttle=1.0;v.steer=0.15;}
  for _ in 0..240{w.step(SIMULATION_DT);assert!(w.vehicles["tank"].powertrain.running,"heat must not stall the tank");}
  let tank=&w.vehicles["tank"];assert!(tank.powertrain.thermal_recovery);assert!(tank.powertrain.temperature_c<145.0);assert!((w.bodies[h].translation()-start).norm()>0.5);assert!(w.bodies[h].linvel().norm()>0.2);assert!(w.bodies[h].angvel().y.abs()>0.01);assert_eq!(tank.ram.blocked,"COOL ENGINE");
+}
+
+#[test]fn confirmed_weapon_hits_publish_surface_normals_and_fired_weapon(){
+ let mut world=range_size(2000.0);
+ let intent=CombatPose{enabled:true,fire:true,yaw:std::f32::consts::PI,..Default::default()};
+ world.combat_tick("tank",1,Some(&intent));
+ let c=&world.combat_poses["tank"];
+ assert!(c.impact_static);assert!(c.impact_normal.unwrap()[1]>0.99);assert_eq!(c.shot_weapon,"cannon");
+ let mut world=range();
+ let wall=world.bodies.insert(rapier3d::prelude::RigidBodyBuilder::fixed().translation(rapier3d::math::Vector::new(0.0,2.0,20.0)).build());
+ world.colliders.insert_with_parent(rapier3d::prelude::ColliderBuilder::cuboid(5.0,3.0,0.1).build(),wall,&mut world.bodies);
+ let mg=CombatPose{weapon:"coax".into(),..intent};world.combat_tick("tank",1,Some(&mg));
+ let c=&world.combat_poses["tank"];assert_eq!(c.shot_weapon,"coax");assert!(c.impact_static);
+ assert!(c.impact_normal.unwrap()[2]< -0.99);assert!((c.impact.unwrap()[2]-19.9).abs()<0.01);
+ let off=CombatPose{fire:false,weapon:"cannon".into(),..mg};world.combat_tick("tank",2,Some(&off));
+ assert_eq!(world.combat_poses["tank"].shot_weapon,"coax","selection must not relabel a confirmed shot");
+}
+
+#[test]fn ram_can_overheat_a_hot_engine_but_cannot_stall_or_trap_it(){
+ let mut w=range_size(20000.0);
+ {let v=w.vehicles.get_mut("tank").unwrap();v.powertrain.temperature_c=109.5;v.throttle=1.0;v.steer=0.1;v.ram.requested=true;}
+ let mut reached_limp=false;
+ for _ in 0..240{w.step(SIMULATION_DT);let v=&w.vehicles["tank"];assert!(v.powertrain.running);reached_limp|=v.powertrain.thermal_recovery;}
+ let v=&w.vehicles["tank"];assert!(reached_limp,"Ram must retain the risk of overheating");assert!(!v.ram.active());assert!(v.ram.cooldown>50.0);assert!(v.powertrain.power_multiplier>0.0);assert!(v.powertrain.temperature_c<112.5,"limp mode must still cool toward recovery");
+}
+
+#[test]fn roof_machine_gun_fires_from_right_mount_and_client_cannot_override_origin(){
+ let mut world=range();
+ let wall=world.bodies.insert(rapier3d::prelude::RigidBodyBuilder::fixed().translation(rapier3d::math::Vector::new(-0.505,2.0,20.0)).build());
+ world.colliders.insert_with_parent(rapier3d::prelude::ColliderBuilder::cuboid(0.12,3.0,0.1).build(),wall,&mut world.bodies);
+ let intent=CombatPose{enabled:true,fire:true,yaw:std::f32::consts::PI,weapon:"coax".into(),shot_origin:Some([99.0;3]),..Default::default()};
+ assert!(intent.bounded().shot_origin.is_none());world.combat_tick("tank",1,Some(&intent));
+ let c=&world.combat_poses["tank"];let origin=c.shot_origin.unwrap();
+ assert!(origin[0]< -0.4&&origin[0]> -0.6,"MG must use the hatch's opposite/right side");
+ assert!(origin[2]>1.3&&origin[2]<1.6,"origin belongs to the existing roof gun, not the longer placeholder");
+ assert!((c.impact.unwrap()[2]-19.9).abs()<0.01,"right-side MG should hit the narrow right-side target");
+}
+
+#[test]
+fn three_tank_weapons_have_independent_holstered_reload_timers_and_bounded_ids() {
+ let mut w=range();let mut intent=CombatPose{enabled:true,fire:true,yaw:std::f32::consts::PI,..Default::default()};
+ w.combat_tick("tank",1,Some(&intent));
+ intent.weapon="coax".into();w.combat_tick("tank",2,Some(&intent));
+ intent.weapon="basket".into();intent.basket_reload=0.0;w.combat_tick("tank",3,Some(&intent));
+ let c=&w.combat_poses["tank"];assert_eq!((c.shot,c.cannon_shot),(3,1));assert_eq!(c.shot_weapon,"basket");
+ assert!(c.cannon_reload>2.9&&c.coax_reload>0.07&&c.basket_reload>0.09);
+ for (seq,weapon) in [(4,"cannon"),(5,"coax"),(6,"basket")] {intent.weapon=weapon.into();w.combat_tick("tank",seq,Some(&intent));}
+ assert_eq!(w.combat_poses["tank"].shot,3,"switching cannot skip any weapon cadence");
+ intent.fire=false;intent.weapon="basket".into();for seq in 7..188 {w.combat_tick("tank",seq,Some(&intent));}
+ assert_eq!(w.combat_poses["tank"].cannon_reload,0.0,"holstered cannon keeps reloading");
+ assert_eq!(w.combat_poses["tank"].coax_reload,0.0);assert_eq!(w.combat_poses["tank"].basket_reload,0.0);
+ intent.weapon="cannon".into();intent.fire=true;w.combat_tick("tank",188,Some(&intent));assert_eq!(w.combat_poses["tank"].cannon_shot,2);
+ let spoof=CombatPose{weapon:"unlimited-bombs".into(),basket_reload:-999.0,coax_reload:-999.0,cannon_reload:-999.0,..Default::default()}.bounded();
+ assert_eq!(spoof.weapon,"cannon");assert_eq!((spoof.basket_reload,spoof.coax_reload,spoof.cannon_reload),(0.0,0.0,0.0));
+}
+
+#[test]
+fn basket_gun_fires_from_its_measured_pitched_external_port_and_has_no_cannon_recoil() {
+ let mut w=range_size(2000.0);let body=w.vehicles["tank"].body;
+ w.bodies[body].set_position(rapier3d::math::Isometry::translation(10.0,2.0,-10.0),true);
+ let mut intent=CombatPose{enabled:true,fire:false,yaw:std::f32::consts::FRAC_PI_2,pitch:0.2,weapon:"basket".into(),shot_origin:Some([99.0;3]),x:99.0,y:99.0,z:99.0,..Default::default()};
+ for seq in 0..180 {w.combat_tick("tank",seq,Some(&intent));}
+ w.bodies[body].set_linvel(rapier3d::math::Vector::zeros(),true);
+ intent.fire=true;w.combat_tick("tank",180,Some(&intent));
+ let c=&w.combat_poses["tank"];let actual=c.shot_origin.unwrap();
+ // Independent measured reference: identity hull at (10,2,-10), 90-degree
+ // left yaw, +0.2 elevation. This is the asset-space muzzle after that pose.
+ let cfg=w.vehicles["tank"].config;let visual_y=cfg.nominal_wheel_center_y()-cfg.wheel_radius-0.0130596;
+ let expected=[10.0+(-1.2694973090_f32),2.0+visual_y+1.5040733846_f32,-10.0-0.2396];
+ assert!(actual.iter().zip(expected).all(|(a,b)|(a-b).abs()<0.00001),"server muzzle must use the actual yaw/pitched port: {actual:?}, {expected:?}");
+ assert_eq!(c.shot_weapon,"basket");assert_eq!(c.cannon_shot,0);assert_eq!(c.shot,1);
+ assert!(c.basket_reload>0.09&&c.coax_reload==0.0&&c.cannon_reload==0.0);
+ assert!(w.bodies[body].linvel().norm()<0.001,"small arms cannot create cannon kick");
+}
+
+#[test]
+fn basket_range_is_two_hundred_meters_while_roof_gun_keeps_eight_hundred() {
+ use rapier3d::prelude::*;
+ let mut w=range_size(2000.0);
+ let far_wall=w.bodies.insert(RigidBodyBuilder::fixed().translation(vector![0.0,3.0,250.0]).build());
+ w.colliders.insert_with_parent(ColliderBuilder::cuboid(10.0,5.0,0.1).build(),far_wall,&mut w.bodies);
+ let mut intent=CombatPose{enabled:true,fire:true,yaw:std::f32::consts::PI,weapon:"basket".into(),..Default::default()};
+ w.combat_tick("tank",1,Some(&intent));assert!(w.combat_poses["tank"].impact.is_none(),"basket cannot hit a wall 250m away");
+ intent.weapon="coax".into();w.combat_tick("tank",2,Some(&intent));
+ assert!(w.combat_poses["tank"].impact.is_some_and(|p|p[2]>249.0&&p[2]<251.0),"roof MG retains its longer range");
+ let near_wall=w.bodies.insert(RigidBodyBuilder::fixed().translation(vector![0.0,3.0,100.0]).build());
+ w.colliders.insert_with_parent(ColliderBuilder::cuboid(10.0,5.0,0.1).build(),near_wall,&mut w.bodies);
+ intent.weapon="basket".into();intent.fire=false;for seq in 3..12 {w.combat_tick("tank",seq,Some(&intent));}
+ intent.fire=true;w.combat_tick("tank",12,Some(&intent));
+ assert!(w.combat_poses["tank"].impact.is_some_and(|p|p[2]>99.0&&p[2]<101.0),"same basket gun hits cover in its real range");
+ assert_eq!(w.combat_poses["tank"].shot_weapon,"basket");
 }

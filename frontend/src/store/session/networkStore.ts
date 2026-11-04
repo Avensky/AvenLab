@@ -2,7 +2,29 @@
 import { create } from "zustand";
 import type { Team, VehicleKind } from "./types";
 
+export interface CtfFlag {
+  team: Team;
+  base: [number, number, number];
+  position: [number, number, number];
+  status: "home" | "carried" | "dropped";
+  carrier: string | null;
+  return_remaining_s: number;
+}
+export interface CtfMatchState {
+  match_id: string;
+  mode: string;
+  training: boolean;
+  phase: "waiting" | "running" | "ended";
+  elapsed_s: number;
+  remaining_s: number;
+  duration_s: number;
+  captures_to_win: number;
+  scores: { red: number; blue: number };
+  flags: [CtfFlag, CtfFlag];
+  winner: Team | null;
+}
 export interface PhysicsSnapshot {
+  match_state?: CtfMatchState | null;
   asset_health?: Record<string,number>;
   match_clock?: {
     remaining_s: number;
@@ -49,8 +71,41 @@ export interface VehicleColliderShape {
   wheel_count: number;
 }
 
+export interface VehicleSessionStats {
+  current_kill_streak?: number;
+  best_kill_streak?: number;
+  damage_dealt: number;
+  healing_done: number;
+  self_healing: number;
+  gas_burned_liters: number;
+  gas_gained_liters: number;
+  assists: number;
+  resurrections: number;
+  respawns: number;
+}
+
 export interface PhysicsEntitySnapshot {
-  combat?: {stun_remaining?:number;ram_charge_remaining?:number;ram_blocked?:string;impact?:[number,number,number]|null;impact_time?:number;lock_yaw?:number;lock_pitch?:number;hull_locked?:boolean;ram_remaining?:number;ram_cooldown?:number;cannon_reload?:number;coax_reload?:number;cannon_shot?:number;weapon?:string;shot?:number;ammo?:number;reload?:number;fire?:boolean;enabled:boolean;yaw:number;pitch:number;x:number;y:number;z:number;role:string};
+  /** Server-owned combat HP is separate from mechanical condition. */
+  health?: {
+    hp: number;
+    max_hp: number;
+    defeated: boolean;
+    /** Optional recovery contract from the updated authoritative server. */
+    disabled_reason?: "" | "combat" | "fuel";
+    recovery_window_s?: number;
+    revive_cooldown_s?: number;
+    respawn_remaining_s: number;
+    spawn_protection_s: number;
+    damage_seq: number;
+    last_attacker: string | null;
+    last_damage: number;
+    last_damage_kind: string;
+    kills: number;
+    deaths: number;
+    /** Session totals from accepted server events, retained through respawn. */
+    stats?: VehicleSessionStats;
+  };
+  combat?: {shot_origin?:[number,number,number]|null;impact_normal?:[number,number,number]|null;impact_static?:boolean;shot_weapon?:string;stun_remaining?:number;ram_charge_remaining?:number;ram_blocked?:string;impact?:[number,number,number]|null;impact_time?:number;lock_yaw?:number;lock_pitch?:number;hull_locked?:boolean;ram_remaining?:number;ram_cooldown?:number;cannon_reload?:number;coax_reload?:number;basket_reload?:number;cannon_shot?:number;weapon?:string;shot?:number;ammo?:number;reload?:number;fire?:boolean;enabled:boolean;yaw:number;pitch:number;x:number;y:number;z:number;role:string};
   collider?: VehicleColliderShape;
   id: string;
   kind: VehicleKind;

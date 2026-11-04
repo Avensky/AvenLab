@@ -1,3 +1,6 @@
+import {useCombatStore} from "../combat/combatStore";
+import {useUIStore} from "../store/menus/uiStore";
+import {bindCameraDrag,canUseDrivingCamera} from "../utils/cameraDrag";
 import {useNetworkStore} from "../store/session/networkStore";
 import { usePreferencesStore } from "../store/preferences/preferencesStore";
 import { useFrame, useThree } from "@react-three/fiber";
@@ -43,87 +46,47 @@ export function PlayerCameraControls({
   const orbitYaw = useRef(0);
   const orbitPitch = useRef(0);
   const looking = useRef(false);
-  const activePointer = useRef<number | null>(null);
-  const previousPointer = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
     follower.current!.reset();
   }, [playerId, enabled, camera]);
   useEffect(() => {
     if (!enabled) return;
-    const element = gl.domElement;
-    const releasePointer = () => {
-      const pointer = activePointer.current;
-      looking.current = false;
-      activePointer.current = null;
-      if (pointer !== null && element.hasPointerCapture?.(pointer))
-        element.releasePointerCapture(pointer);
-    };
-    const onDown = (event: PointerEvent) => {
-      if (event.pointerType === "mouse" && event.button !== 2) return;
-      if (activePointer.current !== null) return;
-      looking.current = true;
-      activePointer.current = event.pointerId;
-      previousPointer.current = { x: event.clientX, y: event.clientY };
-      element.setPointerCapture(event.pointerId);
-    };
-    const onMove = (event: PointerEvent) => {
-      if (!looking.current || activePointer.current !== event.pointerId) return;
-      const dx = event.clientX - previousPointer.current.x;
-      const dy = event.clientY - previousPointer.current.y;
-      previousPointer.current = { x: event.clientX, y: event.clientY };
-      // Preserve precise short drags and the existing faster long-drag curve.
-      const yawCurve = MathUtils.clamp(Math.abs(dx) / 30, 0, 1) ** 2;
-      const pitchCurve = MathUtils.clamp(Math.abs(dy) / 30, 0, 1) ** 2;
-      orbitYaw.current = MathUtils.clamp(
-        orbitYaw.current -
-          dx *
-            sensitivity *
-            MathUtils.lerp(
-              lookSensitivity * 0.2,
-              lookSensitivity * 1.75,
-              yawCurve,
-            ),
-        -maxYaw,
-        maxYaw,
-      );
-      orbitPitch.current = MathUtils.clamp(
-        orbitPitch.current -
-          dy *
-            sensitivity *
-            MathUtils.lerp(
-              lookSensitivity * 0.2,
-              lookSensitivity * 1.35,
-              pitchCurve,
-            ),
-        -maxPitch,
-        maxPitch,
-      );
-    };
-    const onUp = (event: PointerEvent) => {
-      if (activePointer.current === event.pointerId) releasePointer();
-    };
-    const onLostCapture = () => {
-      looking.current = false;
-      activePointer.current = null;
-    };
-    const onContextMenu = (event: MouseEvent) => event.preventDefault();
-    element.addEventListener("pointerdown", onDown);
-    element.addEventListener("pointermove", onMove);
-    element.addEventListener("pointerup", onUp);
-    element.addEventListener("pointercancel", onUp);
-    element.addEventListener("lostpointercapture", onLostCapture);
-    element.addEventListener("contextmenu", onContextMenu);
-    window.addEventListener("blur", releasePointer);
+    const unbind=bindCameraDrag(gl.domElement,{
+      canDrag:()=>enabled&&canUseDrivingCamera(useUIStore.getState(),useCombatStore.getState().scope),
+      onActiveChange:active=>{looking.current=active;},
+      onDelta:(dx,dy)=>{
+        // Preserve precise short drags and the existing faster long-drag curve.
+        const yawCurve = MathUtils.clamp(Math.abs(dx) / 30, 0, 1) ** 2;
+        const pitchCurve = MathUtils.clamp(Math.abs(dy) / 30, 0, 1) ** 2;
+        orbitYaw.current = MathUtils.clamp(
+          orbitYaw.current -
+            dx *
+              sensitivity *
+              MathUtils.lerp(
+                lookSensitivity * 0.2,
+                lookSensitivity * 1.75,
+                yawCurve,
+              ),
+          -maxYaw,
+          maxYaw,
+        );
+        orbitPitch.current = MathUtils.clamp(
+          orbitPitch.current -
+            dy *
+              sensitivity *
+              MathUtils.lerp(
+                lookSensitivity * 0.2,
+                lookSensitivity * 1.35,
+                pitchCurve,
+              ),
+          -maxPitch,
+          maxPitch,
+        );
+      },
+    });
     return () => {
-      element.removeEventListener("pointerdown", onDown);
-      element.removeEventListener("pointermove", onMove);
-      element.removeEventListener("pointerup", onUp);
-      element.removeEventListener("pointercancel", onUp);
-      element.removeEventListener("lostpointercapture", onLostCapture);
-      element.removeEventListener("contextmenu", onContextMenu);
-      window.removeEventListener("blur", releasePointer);
-      releasePointer();
+      unbind();
       orbitYaw.current = orbitPitch.current = 0;
     };
   }, [enabled, gl, playerId, sensitivity, lookSensitivity, maxYaw, maxPitch]);

@@ -11,6 +11,10 @@ pub const STUN_SECONDS:f32=1.0;
 pub const FUEL_COST:f32=10.0;
 pub const CONDITION_COST:f32=0.04;
 pub const HEAT_DEBT:f32=2.0;
+// Full seven-second use adds 4.2–5.6 C before its existing 2 C end cost.
+// Applied only while running; thermal-recovery cooling always takes precedence.
+pub const MIN_HEAT_RISE_C_S:f32=0.6;
+pub const MAX_HEAT_RISE_C_S:f32=0.8;
 #[derive(Default)]
 pub struct RamState{
  pub blocked:&'static str,pub remaining:f32,pub cooldown:f32,pub requested:bool,

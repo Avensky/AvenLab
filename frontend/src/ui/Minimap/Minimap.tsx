@@ -1,3 +1,4 @@
+import {MapPlayerMarkers} from "./MapPlayerMarkers";
 import { useHudPanelsStore } from "../../store/hud/hudPanelsStore";
 import { useMapTelemetryStore } from "../../store/telemetry";
 import { memo, useEffect, useMemo, useState, type CSSProperties } from "react";
@@ -179,6 +180,7 @@ function MapContent({ circular = false }: { circular?: boolean }) {
               />
             </g>
           )}
+          {x !== null && z !== null && <MapPlayerMarkers x={px} z={pz} range={range} circular={circular}/> }
           {x !== null && z !== null && (
             <g
               transform={`translate(${x} ${z}) scale(${range / 170}) rotate(${180 - (yaw ?? 0)})`}

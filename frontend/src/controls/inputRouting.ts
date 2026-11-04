@@ -1,3 +1,4 @@
+import {useNetworkStore} from '../store/session/networkStore';
 import { useGameStore } from "../store/presentation/gameStore";
 import { isDrivingScreen, useUIStore } from "../store/menus/uiStore";
 import { useCanDataStore } from "../store/recon/canDataStore";
@@ -20,6 +21,8 @@ export type MenuAction =
 export function canDrive() {
   const ui = useUIStore.getState();
   return (
+    !useNetworkStore.getState().getMe()?.health?.defeated &&
+    useNetworkStore.getState().snapshot?.match_state?.phase !== "ended" &&
     !useTextKeyboardStore.getState().session &&
     !useGameStore.getState().editor &&
     isDrivingScreen(ui.screen) &&
@@ -41,6 +44,8 @@ export function canNavigateMenu() {
       [
         "debug_menu",
         "settings",
+        "hero_abilities",
+      "match_results",
         "career",
         "missions",
         "vehicle_select",
@@ -69,7 +74,7 @@ export function isTypingTarget(target: EventTarget | null) {
 export function routeMenuAction(action: MenuAction) {
   if (action === "previous_option" || action === "next_option") {
     const ui = useUIStore.getState();
-    if (ui.screen !== "mode_select" || ui.overlay !== null || useTextKeyboardStore.getState().session) return;
+    if (!((ui.screen === "mode_select" && ui.overlay === null) || ui.overlay === "match_results") || useTextKeyboardStore.getState().session) return;
   }
   if (useTextKeyboardStore.getState().session) {
     window.dispatchEvent(
@@ -94,6 +99,8 @@ export function routeMenuAction(action: MenuAction) {
     [
       "debug_menu",
       "settings",
+      "hero_abilities",
+      "match_results",
       "career",
       "missions",
       "vehicle_select",

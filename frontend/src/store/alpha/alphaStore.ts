@@ -16,12 +16,12 @@ export const GAME_MODES: {
   {
     id: "quickplay",
     label: "QUICKPLAY",
-    description: "Casual 5v5 · shared alpha match slot",
+    description: "Alpha CTF · first to 3 captures",
   },
   {
     id: "competitive",
     label: "COMPETITIVE",
-    description: "Ranked 5v5 · shared alpha match slot",
+    description: "CTF alpha · ranked MMR pending",
   },
   {
     id: "sandbox",
@@ -102,6 +102,7 @@ export const HEROES: {
   },
 ];
 export type Progression = {
+  career?: import("../../game/career/careerTypes").CareerSummary;
   default_hero?: string;
   hero_loadouts?: Record<string,HeroAppearance>;
   level: number;

@@ -35,8 +35,9 @@ export function applyGarageLighting(
   theme: UITheme,
   contrast: boolean,
   brightness = 1,
+  accentOverride: string | null = null,
 ) {
-  const color = new Color(contrast ? "#ffffff" : GARAGE_LIGHT_COLORS[theme]);
+  const color = new Color(contrast ? "#ffffff" : accentOverride ?? GARAGE_LIGHT_COLORS[theme]);
   // Blue/purple need more radiance than green to reach the same bloom threshold.
   // Match perceived fixture brightness without desaturating the selected hue.
   const luminance = color.r * 0.2126 + color.g * 0.7152 + color.b * 0.0722;

@@ -1,5 +1,7 @@
 import {useSelectionStore as useWorldSelection} from '../../store/selection/selectionStore';
 import {WorldPortraitCard} from '../preview/WorldPortraitCard';
+import {createTabProfile,identifySocial} from "../../net/socialClient";
+import "./profileRecovery.css";
 import {useSocialStore} from '../../store/social/socialStore';
 import { useHeroLoadouts } from "../../vehicles/cosmetics/heroLoadouts";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -31,6 +33,10 @@ import "./heroSelection.css";
  * next stage; matchmaking and the portrait picker cannot race each other. */
 export function ModeSelection() {
   const recoveryNotice=useSocialStore(s=>s.recoveryMessage);
+  const profileId=useSocialStore(s=>s.view?.profile.id);
+  const profileStatus=useSocialStore(s=>s.profileStatus);
+  const profileMessage=useSocialStore(s=>s.message);
+  const profileReady=Boolean(profileId)&&profileStatus!=="restoring";
   const selectedWorld=useWorldSelection(s=>s.getSelectedMap());
   const mode = useAlphaStore((s) => s.mode);
   const defaultHero = useHeroLoadouts(s=>s.defaultHero);
@@ -73,6 +79,12 @@ export function ModeSelection() {
   }, [mode]);
   const next = useCallback(async () => {
     if (pending.current || planned) return;
+    if(!research&&!profileReady){
+      const active=document.activeElement as HTMLButtonElement|null;
+      if(active?.matches('[data-profile-action]:not(:disabled)'))active.click();
+      else root.current?.querySelector<HTMLButtonElement>('[data-profile-action]:not(:disabled)')?.focus();
+      return;
+    }
     pending.current = true;
     setBusy(true);
     useSocialStore.setState({recoveryMessage:undefined});
@@ -96,10 +108,25 @@ export function ModeSelection() {
       pending.current = false;
       setBusy(false);
     }
-  }, [research, planned]);
+  }, [research, planned,profileReady]);
+  const recoverProfile=async(tabOnly:boolean)=>{
+    if(pending.current||profileStatus==="restoring")return;
+    pending.current=true;setBusy(true);setStatus("");
+    try {await (tabOnly?createTabProfile():identifySocial());}
+    catch { /* The social client exposes the failed attempt beside these actions. */ }
+    finally {pending.current=false;setBusy(false);}
+  };
   const direction = useCallback(
     (action: MenuAction) => {
-      if (pending.current || (action !== "left" && action !== "right")) return;
+      if(pending.current)return;
+      if(!research&&!profileReady&&connected){
+        const buttons=[...root.current?.querySelectorAll<HTMLButtonElement>('[data-profile-action]:not(:disabled)')??[]];
+        if(buttons.length&&["up","down","left","right"].includes(action)){
+          const index=buttons.indexOf(document.activeElement as HTMLButtonElement),step=action==="up"||action==="left"?-1:1;
+          buttons[index<0?0:(index+step+buttons.length)%buttons.length]?.focus();return;
+        }
+      }
+      if(action!=="left"&&action!=="right")return;
       const step = action === "left" ? -1 : 1;
       if (research)
         (canField === 0 ? cycleCanInterface : cycleCaptureMode)(step);
@@ -107,7 +134,7 @@ export function ModeSelection() {
         useSelectionStore.getState()[step < 0 ? "prevMap" : "nextMap"]();
       setStatus("");
     },
-    [research, canField, mode],
+    [research, canField, mode,profileReady,connected],
   );
   const option = useCallback(
     (step: number) => {
@@ -169,6 +196,18 @@ export function ModeSelection() {
         <section className="hero-summary" aria-label="Selected game mode">
           <small>GAME MODE</small>
           <h2>{item.label}</h2>
+          {(mode==='quickplay'||mode==='competitive')&&<p className="alpha-status" role="note">ALPHA CTF · First to 3 captures · 15 minutes. Career records are live; ranked MMR is pending.</p>}
+          {!research&&!planned&&!profileReady&&<div className="profile-recovery" aria-label="Player profile recovery">
+            <p role="status">{connected?profileMessage:"Connect to the game server to restore your player."}</p>
+            {connected&&profileStatus!=="restoring"&&<>
+              <p>Your saved player may be active in another tab. Create another player here to test together; your main profile is kept.</p>
+              <div className="profile-recovery-actions" data-controller-row>
+                <ControllerAction button="A" className="menu-control" data-profile-action disabled={busy} onClick={()=>void recoverProfile(true)}>NEW TAB PROFILE</ControllerAction>
+                <button type="button" className="menu-control" data-profile-action disabled={busy} onClick={()=>void recoverProfile(false)}>RETRY SAVED PROFILE</button>
+              </div>
+              <small>A tab profile keeps its own styles and progress for reconnects and reloads in this tab. Rename it in Social → Profile.</small>
+            </>}
+          </div>}
           {(status||recoveryNotice) && (
             <p className="alpha-status" role="status">
               {status||recoveryNotice}
@@ -205,11 +244,11 @@ export function ModeSelection() {
         <ControllerAction button="A"
           type="button"
           className="menu-control  alpha-deploy"
-          disabled={busy || planned || (!research && !connected)}
+          disabled={busy || planned || (!research && (!connected||!profileReady))}
           onClick={() => void next()}
         >
 
-          {busy ? "FINDING SERVER…" : planned ? "COMING LATER" : "CONTINUE"}
+          {busy ? !research&&!profileReady?"PREPARING PLAYER…":"FINDING SERVER…" : planned ? "COMING LATER" : "CONTINUE"}
         </ControllerAction>
       </SelectionFooter>
     </section>

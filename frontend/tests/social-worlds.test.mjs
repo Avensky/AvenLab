@@ -376,10 +376,11 @@ test("social requests, world transitions and assisted text have independent owne
             h(OnScreenKeyboard),
           ),
         );
+        // World rows expose their reusable Join action with an Xbox A hint.
+        // Match the labelled control, independent of its rendered glyph text.
         const joinButtons = () =>
-          [...document.querySelectorAll("button")].filter(
-            (node) => node.textContent === "JOIN",
-          );
+          [...document.querySelectorAll('.social-world-list article [aria-label="Xbox A"]')]
+            .map((hint) => hint.closest("button"));
         await act(async () => joinButtons()[0].click());
         await click("WORLD PASSWORD");
         await click("Type A");

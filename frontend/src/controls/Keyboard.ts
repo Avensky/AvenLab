@@ -1,6 +1,12 @@
+import {requestNearestRevive,isMechanicPlayer} from '../combat/reviveTargets';
+import {setScoreboardHeld,useScoreboardStore} from "../store/hud/scoreboardStore";
+import {openHeroGuide,closeHeroGuide} from "../store/hud/heroGuideStore";
+import {cycleHealthBarMode,HEALTH_BAR_LABELS} from "../store/preferences/healthVisibility";
+import {useChatStore} from "../store/chat/chatStore";
+import {useTextKeyboardStore} from "../store/text/keyboardStore";
 import {DRIVING_ACTIONS} from '../store/preferences/keyBindings';
 import {combatIntent} from '../combat/combatStore';
-import {cycleTankWeapon,toggleTankScope} from '../combat/turretControls';
+import {cycleTankWeapon,toggleTankScope,setWeaponHeld,releaseWeaponSource} from '../combat/turretControls';
 import {
   openWorldBuilder,
   closeWorldBuilder,
@@ -34,6 +40,7 @@ import {
 } from "./inputRouting";
 import { togglePerformanceCapture } from "../performance/captureActions";
 import {
+  performanceOverlayHasFocus,
   closePerformanceOverlay,
   togglePerformanceDetails,
   usePerformanceOverlayStore,
@@ -84,10 +91,13 @@ export function Keyboard() {
     const keys = new Set<string>();
     let focused = document.hasFocus();
     let fireKey:string|null=null;
+    let secondaryFireKey:string|null=null;
     let resetTimer: number | null = null;
     let tractionHold: number | null = null;
     const release = () => {
-      combatIntent.keyboardRam=false;combatIntent.keyboardFire=false;fireKey=null;
+      useScoreboardStore.getState().close();
+      releaseWeaponSource("keyboard");
+      combatIntent.keyboardRam=false;combatIntent.keyboardFire=false;fireKey=null;secondaryFireKey=null;
       keys.clear();
       if (tractionHold !== null) window.clearTimeout(tractionHold);
       tractionHold = null;
@@ -118,6 +128,14 @@ export function Keyboard() {
       )
         return;
       const ui = useUIStore.getState();
+      if(event.code==='F1' && !event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey &&
+         !ui.isModeLoading && !useCanDataStore.getState().commandOpen && !useTextKeyboardStore.getState().session &&
+         (ui.overlay==='hero_abilities' || (ui.overlay===null &&
+           ['sandbox','heroes','hero_select','mode_select'].includes(ui.screen) && !useGameStore.getState().editor))){
+        event.preventDefault();release();
+        if(ui.overlay==='hero_abilities')closeHeroGuide();else openHeroGuide();
+        return;
+      }
       if (event.code === "F9" && ui.screen === "world_builder") {
         event.preventDefault();
         release();
@@ -273,6 +291,21 @@ export function Keyboard() {
         togglePerformanceCapture();
         return;
       }
+      // Display policy remains adjustable during the defeated countdown. It
+      // never takes a driving key, steals text input or edits combat state.
+      if (event.code === usePreferencesStore.getState().bindings.healthBars &&
+          !event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey &&
+          isDrivingScreen(ui.screen) && ui.overlay === null && !ui.isModeLoading &&
+          !useCanDataStore.getState().commandOpen && !useTextKeyboardStore.getState().session &&
+          !useGameStore.getState().editor && !performanceOverlayHasFocus()) {
+        const network=useNetworkStore.getState(),age=performance.now()-(network.snapshot?.received_at_ms??-Infinity);
+        if(network.connected && network.getMe() && age>=0 && age<1000){
+          event.preventDefault();
+          const prefs=usePreferencesStore.getState(),next=cycleHealthBarMode(prefs.healthBars);
+          prefs.update({healthBars:next});useChatStore.getState().notify(`Health bars: ${HEALTH_BAR_LABELS[next]}`);
+        }
+        return;
+      }
       if (!canDrive()) {
         release();
         if (useCanDataStore.getState().commandOpen || !canNavigateMenu())
@@ -286,8 +319,16 @@ export function Keyboard() {
       }
       const store = useInputStore.getState();
       const combatKeys=usePreferencesStore.getState().bindings;
+      if(event.code===combatKeys.revive&&isMechanicPlayer()){event.preventDefault();void requestNearestRevive();return;}
       if(combatIntent.enabled&&event.code===combatKeys.scope){if(!event.repeat)toggleTankScope();event.preventDefault();return;}
-      if(combatIntent.enabled&&event.code===combatKeys.fire){combatIntent.keyboardFire=true;fireKey=event.code;event.preventDefault();return;}
+      if(combatIntent.enabled&&event.code===combatKeys.fire){
+        if(useNetworkStore.getState().getMe()?.vehicle_id==='tank')setWeaponHeld('keyboard','primary',true);
+        else combatIntent.keyboardFire=true;
+        fireKey=event.code;event.preventDefault();return;
+      }
+      if(combatIntent.enabled&&event.code===combatKeys.secondaryFire&&useNetworkStore.getState().getMe()?.vehicle_id==='tank'){
+        setWeaponHeld('keyboard','secondary',true);secondaryFireKey=event.code;event.preventDefault();return;
+      }
       if(combatIntent.enabled&&event.code===combatKeys.nextWeapon){cycleTankWeapon(1);event.preventDefault();return;}
       if(combatIntent.enabled&&event.code===combatKeys.previousWeapon){cycleTankWeapon(-1);event.preventDefault();return;}
       if (event.code === "Escape") {
@@ -358,7 +399,8 @@ export function Keyboard() {
       }
     };
     const onKeyUp = (event: KeyboardEvent) => {
-      if(event.code===fireKey){combatIntent.keyboardFire=false;fireKey=null;}
+      if(event.code===fireKey){setWeaponHeld('keyboard','primary',false);combatIntent.keyboardFire=false;fireKey=null;}
+      if(event.code===secondaryFireKey){setWeaponHeld('keyboard','secondary',false);secondaryFireKey=null;}
       // Release a key even if focus moved into an input after its keydown.
       if (event.code === "KeyT" && tractionHold !== null) { window.clearTimeout(tractionHold); tractionHold = null; }
       const owned = keys.delete(event.code);
@@ -414,6 +456,10 @@ export function Keyboard() {
     // Clear physical key state at the transition, not on the next key press.
     const unsubscribeGame = useGameStore.subscribe(releaseIfBlocked);
     const unsubscribeUI = useUIStore.subscribe(releaseIfBlocked);
+    const unsubscribeNetwork=useNetworkStore.subscribe((state,previous)=>{
+      if((!state.connected&&previous.connected)||state.playerId!==previous.playerId||
+        (state.snapshot?.match_state?.phase==='ended'&&previous.snapshot?.match_state?.phase!=='ended'))release();
+    });
     const unsubscribePerformance = usePerformanceOverlayStore.subscribe(
       (state, previous) => {
         if (state.focused !== previous.focused) release();
@@ -424,10 +470,23 @@ export function Keyboard() {
     });
     const blockTab = (event: KeyboardEvent) => {
       if (event.code === "Tab" && !event.ctrlKey && !event.altKey && !event.metaKey) {
+        // Tab is consumed in capture, before the normal keydown handler. This
+        // passive hold never takes steering ownership or opens a modal menu.
+        const ui=useUIStore.getState(),network=useNetworkStore.getState();
+        const age=performance.now()-(network.snapshot?.received_at_ms??-Infinity);
+        if(!event.defaultPrevented && !event.shiftKey && !event.repeat && focused &&
+           document.visibilityState!=='hidden' && !isTypingTarget(event.target) &&
+           ui.screen==='sandbox' && ui.overlay===null && !ui.isModeLoading &&
+           !useCanDataStore.getState().commandOpen && !useTextKeyboardStore.getState().session &&
+           !useGameStore.getState().editor && !performanceOverlayHasFocus() &&
+           network.connected && network.getMe() && age>=0 && age<1000)setScoreboardHeld(true);
         event.preventDefault(); event.stopPropagation();
       }
     };
+    // Capture release even if focus moved into chat or a component consumes it.
+    const releaseTab=(event:KeyboardEvent)=>{if(event.code==='Tab')setScoreboardHeld(false);};
     window.addEventListener("keydown", blockTab, true);
+    window.addEventListener("keyup", releaseTab, true);
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
     window.addEventListener("keydown", onHudBrakeDown, true);
@@ -438,6 +497,7 @@ export function Keyboard() {
     document.addEventListener("focusin", onFocusIn);
     return () => {
       window.removeEventListener("keydown", blockTab, true);
+      window.removeEventListener("keyup", releaseTab, true);
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("keydown", onHudBrakeDown, true);
@@ -448,6 +508,7 @@ export function Keyboard() {
       document.removeEventListener("focusin", onFocusIn);
       unsubscribeGame();
       unsubscribeUI();
+      unsubscribeNetwork();
       unsubscribeCAN();
       unsubscribePerformance();
       release();

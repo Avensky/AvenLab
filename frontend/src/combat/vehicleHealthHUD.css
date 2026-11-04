@@ -1,0 +1,27 @@
+/* Combat health is a passive readout; it must never steal driving/aim input. */
+.vehicle-health-hud{position:absolute;left:max(12px,env(safe-area-inset-left));bottom:max(12px,env(safe-area-inset-bottom));box-sizing:border-box;width:176px;height:38px;padding:4px 6px;color:var(--app-text,#e7eff8);background:color-mix(in srgb,var(--app-panel,#0b1625) 88%,transparent);border-radius:5px;pointer-events:none;z-index:7;font:700 7.5px/1.2 system-ui;--hp-color:#76dca5}
+.vehicle-health-heading{display:flex;justify-content:space-between;gap:4px;white-space:nowrap}
+.vehicle-health-heading>span{font-size:7px;letter-spacing:.025em}
+.vehicle-health-track{height:5px;margin-top:4px;border-radius:3px;background:#10141ccc;overflow:hidden}
+.vehicle-health-track>span{display:block;height:100%;background:var(--hp-color);box-shadow:0 0 6px var(--hp-color)}
+.vehicle-health-note{margin-top:3px;font-size:7px;color:var(--app-muted,#b9c7d8);white-space:nowrap}
+.vehicle-health-hud[data-critical=true]{--hp-color:#ff7185}
+.vehicle-health-hud[data-protected=true]{--hp-color:#77d5ff}
+.vehicle-health-hud[data-defeated=true]{--hp-color:#ff7185}
+.vehicle-defeated-banner{position:absolute;top:42%;left:50%;transform:translate(-50%,-50%);display:grid;gap:6px;text-align:center;width:min(290px,74vw);padding:12px 16px;border-radius:8px;box-sizing:border-box;background:color-mix(in srgb,var(--app-panel,#08121f) 92%,transparent);color:var(--app-text,#e7eff8);pointer-events:none;z-index:10;font:700 12px/1.3 system-ui;box-shadow:0 0 24px #f24c6b25}
+.vehicle-defeated-banner strong{font-size:15px;color:#ff8ba0;letter-spacing:.04em}
+.vehicle-defeated-banner small{font-size:10px;color:var(--app-muted,#bdc7d4);font-weight:400}
+.vehicle-damage-flash{position:absolute;inset:0;z-index:11;pointer-events:none;box-shadow:inset 0 0 48px #ff4566a0;animation:vehicle-confirmed-hit 180ms ease-out both}
+@keyframes vehicle-confirmed-hit{from{opacity:.75}to{opacity:0}}
+html[data-reduce-motion=true] .vehicle-damage-flash{display:none}
+@media(prefers-reduced-motion:reduce){.vehicle-damage-flash{display:none}}
+@media(max-height:400px){.vehicle-defeated-banner{top:40%;gap:3px;padding:8px 12px}.vehicle-defeated-banner strong{font-size:13px}}
+/* Landscape phones and smaller tablets have chat directly above steering.
+   The free top-center slot keeps HP visible instead of stacking over chat. */
+@media(orientation:landscape) and (max-width:1100px),(orientation:landscape) and (max-height:500px){
+ .vehicle-health-hud{top:max(42px,env(safe-area-inset-top));bottom:auto!important;left:50%;transform:translateX(-50%);width:min(168px,24vw)!important}
+}
+.vehicle-defeated-banner{display:flex;align-items:center;justify-content:center;gap:12px}
+.vehicle-defeated-banner>div:last-child{display:grid;gap:4px;min-width:0}
+.vehicle-defeated-banner>div:last-child>span{font-size:11px}
+.vehicle-defeated-banner>div:last-child>small{font-size:9px}

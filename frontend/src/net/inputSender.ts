@@ -1,5 +1,6 @@
+import {sampleTankFire,clearTankFireInputs} from '../combat/tankLoadout';
 import {canAimTurret,syncTurretOrientation} from "../combat/turretControls";
-import { combatIntent,DEFAULT_MOUNT,useCombatStore } from "../combat/combatStore";
+import { combatIntent,tankFireInputs,DEFAULT_MOUNT,useCombatStore } from "../combat/combatStore";
 import { useNetworkStore } from "../store/session/networkStore";
 import { useUIStore } from "../store/menus/uiStore";
 import { inputRef, useInputStore } from "../store/input/inputStore";
@@ -40,7 +41,22 @@ function transmitInput(allowQueuedNeutral = false) {
   syncTurretOrientation(turretVehicle?.rotation);
   const packet = {
     ...inputRef.current,
-    combat: (()=>{const ui=useUIStore.getState(),me=useNetworkStore.getState().getMe();return {...combatIntent,hull_locked:combatIntent.orientationLocked,ram:ui.overlay===null&&(combatIntent.ram||combatIntent.gamepadRam||combatIntent.keyboardRam||performance.now()<combatIntent.ramPulseUntil),fire:ui.overlay===null&&(combatIntent.fire||combatIntent.keyboardFire||combatIntent.gamepadFire),enabled:combatIntent.enabled&&canAimTurret()&&document.visibilityState!=='hidden',...(useCombatStore.getState().mounts[me?.vehicle_id??'']??DEFAULT_MOUNT)};})(),
+    combat: (()=>{
+      const ui=useUIStore.getState(),me=useNetworkStore.getState().getMe(),state=useCombatStore.getState();
+      const enabled=combatIntent.enabled&&canAimTurret()&&document.visibilityState!=='hidden';
+      const firing=me?.vehicle_id==='tank'?sampleTankFire(tankFireInputs,state.secondaryWeapon,now,me.combat?.cannon_reload):{
+        weapon:combatIntent.weapon,
+        fire:combatIntent.fire||combatIntent.keyboardFire||combatIntent.gamepadFire||combatIntent.directWeaponHeld===combatIntent.weapon||now<combatIntent.firePulseUntil,
+      };
+      // Older servers treat unknown weapon IDs as cannon. Never let a missing
+      // basket capability turn an intended machine-gun request into a cannon.
+      const supported=firing.weapon!=='basket'||me?.combat?.basket_reload!==undefined;
+      combatIntent.weapon=firing.weapon;
+      return {...combatIntent,hull_locked:combatIntent.orientationLocked,
+        ram:ui.overlay===null&&(combatIntent.ram||combatIntent.gamepadRam||combatIntent.keyboardRam||now<combatIntent.ramPulseUntil),
+        weapon:firing.weapon,fire:supported&&enabled&&ui.overlay===null&&firing.fire,enabled,
+        ...(state.mounts[me?.vehicle_id??'']??DEFAULT_MOUNT)};
+    })(),
     type: "input",
     seq,
     dt, // Transport timing only; Rust retains its fixed simulation timestep.
@@ -58,6 +74,7 @@ export function sendInputPacket() {
 }
 
 function releaseHeldControls() {
+  clearTankFireInputs(tankFireInputs);
   useInputStore.getState().releaseControls();
   sendInputPacket();
 }
@@ -84,6 +101,7 @@ export function stopInputSender() {
   inputSenderDiagnostics.running = false;
   window.removeEventListener("blur", releaseHeldControls);
   document.removeEventListener("visibilitychange", onVisibilityChange);
+  clearTankFireInputs(tankFireInputs);
   useInputStore.getState().releaseControls();
   // One final neutral packet releases the server's last held input. This rare
   // teardown packet may queue behind existing bytes; no stopped loop can retry it.

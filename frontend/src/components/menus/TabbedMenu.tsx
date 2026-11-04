@@ -1,4 +1,4 @@
-import { MenuShortcuts, ControllerAction } from "../controller";
+import {MenuFrame,MenuFrameHeader,MenuFrameFooter} from "./MenuFrame";
 import { trapMenuFocus } from "./menuFocus";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import type { MenuAction } from "../../controls/inputRouting";
@@ -120,7 +120,7 @@ export function TabbedMenu({
 
   return (
     <div className="game-ui menu-surface tabbed-menu fixed inset-0 z-50 bg-slate-950 text-slate-100">
-      <section
+      <MenuFrame
         onKeyDown={trapMenuFocus}
         onPointerDownCapture={(event) => {
           pointerOwner.current =
@@ -165,33 +165,12 @@ export function TabbedMenu({
         aria-describedby={subtitle ? `${panelId}-description` : undefined}
         className="menu-shell tabbed-menu-shell flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden bg-slate-950"
       >
-        <header className="tabbed-menu-header">
-          <h1 id={`${panelId}-title`} className="menu-heading">
-            <span className="menu-heading-title">{title}</span>
-            <span className="menu-heading-eyebrow">{eyebrow}</span>
-          </h1>
-          {subtitle && (
-            <p id={`${panelId}-description`} className="sr-only">
-              {subtitle}
-            </p>
-          )}
-          <ControllerAction button="B"
-            type="button"
-            onClick={onBack}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ")
-                event.stopPropagation();
-            }}
-            className="menu-control menu-back"
-          >
-
-            {backLabel}
-          </ControllerAction>
-        </header>
+        <MenuFrameHeader title={title} titleId={`${panelId}-title`} eyebrow={eyebrow} onBack={onBack} backLabel={backLabel} className="tabbed-menu-header"/>
+        {subtitle&&<p id={`${panelId}-description`} className="sr-only">{subtitle}</p>}
         <div
           role="tablist"
           aria-label={`${title} categories`}
-          className="tabbed-menu-tabs"
+          className="tabbed-menu-tabs menu-frame-tabs"
         >
           {tabs.map((item, index) => (
             <button
@@ -235,7 +214,7 @@ export function TabbedMenu({
           role="tabpanel"
           id={`${tabId}-panel`}
           aria-labelledby={`${tabId}-tab`}
-          className="tabbed-menu-content min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain"
+          className="tabbed-menu-content menu-frame-content min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain"
         >
           {tab.description && (
             <p className="menu-description">{tab.description}</p>
@@ -287,14 +266,8 @@ export function TabbedMenu({
           </div>
           {tab.content && <div className="menu-extras">{tab.content}</div>}
         </div>
-        <footer
-          className="tabbed-menu-footer"
-          data-has-status={Boolean(status)}
-        >
-          <MenuShortcuts />
-          {status && <p role="status">{status}</p>}
-        </footer>
-      </section>
+        <MenuFrameFooter className="tabbed-menu-footer" status={status}/>
+      </MenuFrame>
     </div>
   );
 }

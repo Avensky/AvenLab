@@ -5,6 +5,7 @@ use std::collections::BTreeSet;
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Progression {
+    pub career: super::career::CareerSummary,
     pub level: u32,
     pub prestige: u32,
     pub xp: u64,
@@ -20,6 +21,7 @@ pub struct Progression {
 impl Default for Progression {
     fn default() -> Self {
         Self {
+            career: Default::default(),
             level: 1,
             prestige: 0,
             xp: 0,
@@ -107,7 +109,7 @@ impl Progression {
         Ok(())
     }
     pub fn view(&self) -> serde_json::Value {
-        serde_json::json!({"default_hero":self.default_hero,"hero_loadouts":self.hero_loadouts,"level":self.level,"prestige":self.prestige,"xp":self.xp,"required_xp":self.required_xp(),"tier":self.tier(),"competitive_wins":self.competitive_wins,"quickplay_wins":self.quickplay_wins,"matches":self.matches,"credits":self.credits,"owned":self.owned,"equipped":self.equipped,"color":self.color(),"next_milestone":if self.level<100{((self.level/10)+1)*10}else{100}})
+        serde_json::json!({"career":self.career,"default_hero":self.default_hero,"hero_loadouts":self.hero_loadouts,"level":self.level,"prestige":self.prestige,"xp":self.xp,"required_xp":self.required_xp(),"tier":self.tier(),"competitive_wins":self.competitive_wins,"quickplay_wins":self.quickplay_wins,"matches":self.matches,"credits":self.credits,"owned":self.owned,"equipped":self.equipped,"color":self.color(),"next_milestone":if self.level<100{((self.level/10)+1)*10}else{100}})
     }
 }
 #[cfg(test)]

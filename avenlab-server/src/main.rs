@@ -1,3 +1,8 @@
+mod ctf;
+mod vehicle_health;
+mod vehicle_life;
+#[cfg(test)]
+mod vehicle_life_tests;
 mod ballistics;
 mod ram;
 // Outer tick owner: input -> physics substeps -> one completed network frame.
@@ -45,6 +50,7 @@ async fn main() -> anyhow::Result<()> {
         timer.set_missed_tick_behavior(MissedTickBehavior::Skip);
         loop {
             timer.tick().await;
+            admission.maintain_matches().await;
             admission.maintain_alpha().await;
         }
     });

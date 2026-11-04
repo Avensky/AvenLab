@@ -12,6 +12,8 @@ export async function joinSelectedMode() {
   const state = useAlphaStore.getState();
   if (state.mode === "signal_recon" || state.mode === "swarm")
     throw Error("Select a driving mode before joining the alpha queue.");
+  if (!useSocialStore.getState().view?.profile.id)
+    throw Error("Restore your player profile or choose New Tab Profile before joining.");
   const result = await requestSocial("mode_join", {
     mode: state.mode,
     // Reserve capacity first. A role is claimed only by an explicit portrait pick.

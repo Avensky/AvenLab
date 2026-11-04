@@ -10,6 +10,7 @@ export function createGarageReflectionSnapshot(
   theme: UITheme,
   contrast: boolean,
   brightness: number,
+  accentOverride: string | null = null,
 ) {
   const root = new Group();
   root.name = "garage-themed-reflection-probe";
@@ -32,7 +33,7 @@ export function createGarageReflectionSnapshot(
     });
     root.add(clone);
   }
-  applyGarageLighting(root, theme, contrast, brightness);
+  applyGarageLighting(root, theme, contrast, brightness, accentOverride);
   return {
     root,
     dispose: () => {

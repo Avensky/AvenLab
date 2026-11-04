@@ -33,6 +33,8 @@ pub struct ResourceConfig {
     pub fuel_gameplay_multiplier: f32,
     pub heat_gameplay_multiplier: f32,
     pub max_heat_rise_c_s:f32,
+    // Temporary ability load can require net heating; ordinary driving has no floor.
+    pub min_running_heat_rise_c_s:f32,
     pub thermal_capacity_kj_per_c: f32,
     pub cooling_multiplier:f32,
     pub ambient_c: f32,
@@ -56,6 +58,7 @@ pub const ROAD_RESOURCES: ResourceConfig = ResourceConfig {
     fuel_gameplay_multiplier: 12.0,
     heat_gameplay_multiplier: 1.35,
     max_heat_rise_c_s:f32::INFINITY,
+    min_running_heat_rise_c_s:f32::NEG_INFINITY,
     thermal_capacity_kj_per_c: 160.0,
     cooling_multiplier:1.0,
     ambient_c: 25.0,
@@ -393,7 +396,8 @@ impl Powertrain {
         let net_heat=(heating_kw-cooling_kw)/config.thermal_capacity_kj_per_c;
         // The debuff reduces heat production: crawl toward service while cooling,
         // or stop the engine to cool faster. Neither option waits on a heat latch.
-        let heat_rate=if self.thermal_recovery{net_heat.min(if self.running{-0.6}else{-2.0})}else{net_heat};
+        let heat_rate=if self.thermal_recovery{net_heat.min(if self.running{-0.6}else{-2.0})}
+            else if self.running{net_heat.max(config.min_running_heat_rise_c_s)}else{net_heat};
         self.temperature_c = (self.temperature_c
             + heat_rate.min(config.max_heat_rise_c_s) * dt)
             .clamp(config.ambient_c, config.critical_c + 30.0);
@@ -416,14 +420,17 @@ impl Powertrain {
     // Rapier collision impulse / mass is a normal delta-v. Threshold removes
     // standing load and gentle scrapes; cooldown avoids charging one impact
     // repeatedly across its contact solver's substeps.
-    pub fn impact(&mut self, delta_v: f32, config: ResourceConfig) {
+    pub fn impact(&mut self, delta_v: f32, config: ResourceConfig) -> f32 {
         if !delta_v.is_finite() || delta_v <= 3.5 || self.impact_cooldown_s > 0.0 {
-            return;
+            return 0.0;
         }
-        self.condition = (self.condition
-            - (delta_v - 3.5).powi(2) * 0.0025 * config.impact_damage_multiplier)
+        // HP damage uses the accepted impact severity, independently of how
+        // much mechanical condition was left before this collision.
+        let damage = ((delta_v - 3.5).powi(2) * 0.0025 * config.impact_damage_multiplier)
             .clamp(0.0, 1.0);
+        self.condition = (self.condition - damage).clamp(0.0, 1.0);
         self.impact_cooldown_s = 0.25;
+        damage
     }
     // Only authoritative damage attribution calls this. Never use own condition,
     // throttle, elapsed time, or a client-reported charge value as damage dealt.

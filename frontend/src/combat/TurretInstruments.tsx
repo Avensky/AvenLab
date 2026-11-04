@@ -16,7 +16,7 @@ export function TurretInstruments() {
     const bearing = Math.round(Math.atan2(local.x, local.z) * 180 / Math.PI);
     const elevation = Math.round(Math.atan2(local.y, Math.hypot(local.x, local.z)) * 180 / Math.PI);
     const ready = (turret.stun_remaining??0)>0 ? `STUN ${turret.stun_remaining!.toFixed(1)}s` : !turret.enabled ? 'SAFE'
-      : turret.reload && turret.reload > 0 ? `${turret.weapon==='coax'?'CYCLE':'LOAD'} ${turret.reload.toFixed(1)}s` : 'READY';
+      : turret.reload && turret.reload > 0 ? `${turret.weapon==='coax'||turret.weapon==='basket'?'CYCLE':'LOAD'} ${turret.reload.toFixed(1)}s` : 'READY';
     return `TURRET ${bearing}° · ELEV ${elevation}°${turret.role === 'tank' ? ` · ${ready}` : ''}`;
   });
   return value ? <div className="turret-instruments" aria-label="Turret instruments">{value}</div> : null;

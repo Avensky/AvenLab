@@ -19,6 +19,8 @@ export type MenuScreen =
   | "social";
 
 export type UIOverlay =
+  | "match_results"
+  | "hero_abilities"
   | null
   | "pause"
   | "debug_menu"

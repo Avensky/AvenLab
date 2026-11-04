@@ -1,3 +1,5 @@
+import {VehicleHealthHUD} from '../combat/VehicleHealthHUD';
+import {ActiveEffectsBar} from '../combat/ActiveEffectsBar';
 import {useCombatStore} from '../combat/combatStore';
 import {EditorDriveBar} from '../worldBuilder/vehicleEditor/EditorDriveBar';
 import { WeaponSelector } from '../combat/WeaponSelector';
@@ -89,6 +91,8 @@ export function DrivingHUD() {
 
       <EditorDriveBar />
       <WeaponSelector />
+      <ActiveEffectsBar />
+      <VehicleHealthHUD />
       <ControlsPanel />
       <InspectionPanel />
       {groups.chat && <ChatDock />}

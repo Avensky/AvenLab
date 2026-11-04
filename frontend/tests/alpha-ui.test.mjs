@@ -130,7 +130,7 @@ test("alpha selection, queue and HUD route to their own state owners", async (t)
           document.querySelectorAll(".alpha-mode-tabs button").length,
           0,
         );
-        assert.equal(document.querySelectorAll(".alpha-squad-seat").length, 5);
+        assert.equal(document.querySelectorAll(".match-composition-seat").length, 5);
         await click("SUPPORT", "tab");
         await click("MECHANIC · SUPPORT");
         const command = sent.at(-1);
@@ -183,7 +183,7 @@ test("alpha selection, queue and HUD route to their own state owners", async (t)
         assert.equal(selection.getState().getSelectedVehicle().id, "brz");
         assert.equal(alpha.getState().hero, null);
         assert.equal(
-          document.querySelectorAll("[data-hero], .alpha-squad-seat").length,
+          document.querySelectorAll("[data-hero], .match-composition-seat").length,
           0,
         );
         assert.ok(
@@ -458,7 +458,7 @@ test("alpha selection, queue and HUD route to their own state owners", async (t)
         assert.equal(command.action, "mode_join");
         assert.equal(command.hero, "");
         assert.equal(
-          document.querySelectorAll("[data-hero],.alpha-squad-seat").length,
+          document.querySelectorAll("[data-hero],.match-composition-seat").length,
           0,
         );
         await act(async () => {
@@ -485,7 +485,7 @@ test("alpha selection, queue and HUD route to their own state owners", async (t)
         });
         assert.equal(ui.getState().screen, "queue");
         assert.equal(
-          document.querySelectorAll("[data-hero],.alpha-squad-seat").length,
+          document.querySelectorAll("[data-hero],.match-composition-seat").length,
           0,
         );
         await act(async () =>
@@ -502,7 +502,7 @@ test("alpha selection, queue and HUD route to their own state owners", async (t)
         assert.equal(alpha.getState().hero, null);
         assert.equal(alpha.getState().previewHero, null);
         assert.equal(document.querySelectorAll("[data-hero]").length, 7);
-        assert.equal(document.querySelectorAll(".alpha-squad-seat").length, 5);
+        assert.equal(document.querySelectorAll(".match-composition-seat").length, 5);
         assert.match(
           document.querySelector(".alpha-deploy").textContent,
           /SELECT HERO/,

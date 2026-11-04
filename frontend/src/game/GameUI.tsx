@@ -1,3 +1,9 @@
+import {MinimapSessionLifecycle} from "../ui/Minimap/MinimapSessionLifecycle";
+import {MatchResultsScreen} from "./results/MatchResultsScreen";
+import {CtfMatchHUD} from "./stats/CtfMatchHUD";
+import {MatchScoreboard} from "./stats/MatchScoreboard";
+import {HeroAbilities} from "./heroes/HeroAbilities";
+import {openHeroGuide} from "../store/hud/heroGuideStore";
 import { CombatHUD } from "../combat/CombatHUD";
 import { HeroWorkshop, HeroLoadoutSync } from "./heroes/HeroWorkshop";
 import { useAlphaFlow } from "./alpha/useAlphaFlow";
@@ -93,6 +99,7 @@ export function GameUI() {
   return (
     <div className="relative game-wrapper">
       <HeroLoadoutSync />
+      <MinimapSessionLifecycle />
       {screen === "heroes" && <HeroWorkshop key={heroOwner} />}
       {/* Requires Canvas */}
       {needsCanvas && (
@@ -114,7 +121,7 @@ export function GameUI() {
             screen === "queue") && (
             <VehiclePreview
               heroLayout={screen !== "sandbox_setup"}
-              awaitingHero={screen === "hero_select"}
+              awaitingHero={screen === "hero_select" || screen === "heroes"}
             />
           )}
           {screen === "world_builder" && (
@@ -142,6 +149,7 @@ export function GameUI() {
       {/* UI Overlay */}
       {screen === "sandbox" && !overlay && hud && <DrivingHUD />}
       {screen === "sandbox" && <CombatHUD />}
+      {screen === "sandbox" && !overlay && hud && <CtfMatchHUD />}
 
       {/* Research pages load only when opened; keep the canvas mounted. */}
       <Suspense
@@ -175,6 +183,9 @@ export function GameUI() {
           <SignalReconSetup collapsed={collapsed} setCollapsed={setCollapsed} />
         )}
       </Suspense>
+      <MatchScoreboard onAbilities={() => openHeroGuide()} />
+      {overlay === "hero_abilities" && <HeroAbilities />}
+      {overlay === "match_results" && <MatchResultsScreen />}
       {/* Menus */}
       {screen === "main" && <MainMenu />}
       {screen === "sandbox" && overlay === "pause" && <PauseMenu />}

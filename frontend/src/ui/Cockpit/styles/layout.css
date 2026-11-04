@@ -1,7 +1,9 @@
 /* The lower pedal/assist row owns the console width. Keep all equipment inside
    that same footprint; changing vehicle UI must not push it into the road view. */
 .driving-hud {
-  --hud-pedal-width: 45px;
+  --hud-pedal-width: 54px;
+  --hud-foot-height: 73.5px;
+  --hud-ignition-size: var(--hud-foot-height);
   --hud-assist-width: 72px;
   --hud-pedal-gap: 4px;
   --hud-foot-gap: 5px;
@@ -97,8 +99,10 @@
 .drive-dock .driving-pedals {
   gap: var(--hud-pedal-gap);
 }
+.drive-dock .driving-pedal img{height:calc(var(--hud-foot-height) * .55);max-width:calc(var(--hud-pedal-width) * .58)}
 .drive-dock .driving-pedal {
   width: var(--hud-pedal-width);
+  height: var(--hud-foot-height);
 }
 .drive-dock .hud-transmission:not(:has(> .hud-parking)),
 .drive-dock .hud-transmission:not(:has(.hud-shifter,.hud-turret)) {
@@ -134,7 +138,8 @@
    GPS + radio + full HVAC + both mechanical controls + pedals in landscape. */
 @media (max-height: 500px) and (orientation: landscape) {
   .driving-hud {
-    --hud-pedal-width: 42px;
+    --hud-pedal-width: 48px;
+    --hud-foot-height: 51px;
     --hud-shifter-size: clamp(64px, calc(28dvh - 26px), 112px);
     --hud-knob-size: clamp(22px, 7dvh, 34px);
   }
@@ -168,8 +173,8 @@
     padding: 8px 2px 5px;
   }
   .drive-dock .driving-pedal {
-    height: 34px;
-    --pedal-icon-height: 18px;
+    height: var(--hud-foot-height);
+    --pedal-icon-height: 28px;
   }
   .drive-dock .driving-pedal img {
     height: var(--pedal-icon-height);
@@ -193,7 +198,7 @@
 }
 @media (max-width: 380px) {
   .driving-hud {
-    --hud-pedal-width: 35px;
+    --hud-pedal-width: 45px;
   }
   .driving-hud .wheel-hud {
     bottom: max(65px, env(safe-area-inset-bottom));

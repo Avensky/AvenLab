@@ -8,13 +8,14 @@ pub const SEGMENT_DT:f32=1.0/60.0;
 pub fn position(origin:Point<Real>,direction:Vector<Real>,time:f32)->Point<Real>{
     origin+direction*(SPEED*time)-Vector::y()*(0.5*GRAVITY*time*time)
 }
-pub fn trace(origin:Point<Real>,direction:Vector<Real>,body:RigidBodyHandle,bodies:&RigidBodySet,colliders:&ColliderSet,queries:&QueryPipeline)->Option<(ColliderHandle,Point<Real>,f32)>{
+pub fn trace(origin:Point<Real>,direction:Vector<Real>,body:RigidBodyHandle,bodies:&RigidBodySet,colliders:&ColliderSet,queries:&QueryPipeline)->Option<(ColliderHandle,Point<Real>,f32,Vector<Real>)>{
     let mut previous=origin;
     for step in 1..=(MAX_TIME/SEGMENT_DT) as u32 {
         let time=step as f32*SEGMENT_DT;
         let next=position(origin,direction,time);let delta=next-previous;let length=delta.norm();
-        if let Some((handle,toi))=queries.cast_ray(bodies,colliders,&Ray::new(previous,delta/length),length,true,QueryFilter::default().exclude_rigid_body(body)){
-            return Some((handle,previous+delta*(toi/length),time-SEGMENT_DT+SEGMENT_DT*toi/length));
+        if let Some((handle,intersection))=queries.cast_ray_and_get_normal(bodies,colliders,&Ray::new(previous,delta/length),length,true,QueryFilter::default().exclude_rigid_body(body)){
+            let toi=intersection.time_of_impact;
+            return Some((handle,previous+delta*(toi/length),time-SEGMENT_DT+SEGMENT_DT*toi/length,intersection.normal));
         }
         previous=next;
     }

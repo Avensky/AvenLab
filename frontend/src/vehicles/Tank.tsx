@@ -1,3 +1,4 @@
+import {advanceTankHatches} from './tools/tankHatches';
 import {
   forwardRef,
   useImperativeHandle,
@@ -7,6 +8,7 @@ import {
   type PropsWithChildren,
 } from "react";
 import { Group, Vector3, type Object3D } from "three";
+import {weaponVisuals} from "../combat/weaponVisuals";
 import { useFrame } from "@react-three/fiber";
 import { useGLTF } from "@react-three/drei";
 import { getTankParts } from "./tools/getTankParts";
@@ -30,13 +32,14 @@ export const Tank = forwardRef<Group, TankProps>(function Tank(
   const visual = useRef<Group>(null!);
   const turret = useRef<Group | null>(null);
   const cannon = useRef<Group | null>(null);
+  const forwardGunPitch=useRef<Group|null>(null);
   const recoil=useRef<Group|null>(null),wheelPivots=useRef<Object3D[]>([]);
   useImperativeHandle(ref, () => root.current, []);
   const localId = useNetworkStore((s) => s.playerId);
   const preview = useUIStore(
     (s) => s.screen === "sandbox_setup" || s.screen === "signal_recon_setup",
   );
-  const muzzleFlash=useRef<Group>(null),impactFlash=useRef<Group>(null);
+
   const shot=useRef({number:-1,time:-100});
   const lastPosition=useRef<Vector3 | null>(null);
   const { model, parts, turretY, cannonX } = useMemo(() => {
@@ -52,8 +55,14 @@ export const Tank = forwardRef<Group, TankProps>(function Tank(
   useLayoutEffect(() => {
     turret.current = parts.turret;
     cannon.current = parts.cannon;
+    forwardGunPitch.current=parts.forwardGun.pitch;
     recoil.current=parts.recoil;wheelPivots.current=parts.wheels;
+    return()=>[...parts.hatches.ownedGeometries,...parts.forwardGun.ownedGeometries].forEach(geometry=>geometry.dispose());
   }, [parts]);
+  useLayoutEffect(()=>{const id=entityId??localId;if(!id)return;
+    const anchors={cannon:parts.muzzle,coax:parts.coax,basket:parts.forwardGun.muzzle};weaponVisuals.set(id,anchors);
+    return()=>{if(weaponVisuals.get(id)===anchors)weaponVisuals.delete(id);};
+  },[parts,entityId,localId]);
   useVehicleVisualAlignment("tank", entityId, visual, parts.wheels, preview);
   const { getInterpolated } = useVehiclePhysicsInterpolator(entityId);
   useFrame(({clock},dt) => {
@@ -64,6 +73,7 @@ export const Tank = forwardRef<Group, TankProps>(function Tank(
     root.current.quaternion.fromArray(pose.rotation);
     const entity=useNetworkStore.getState().snapshot?.entities.find(e=>e.id===(entityId??localId));
     const combat=entity?.combat;
+    advanceTankHatches(parts.hatches,combat?.enabled??true,dt);
     if(combat?.role==='tank'){
       const local=new Vector3(-Math.sin(combat.yaw)*Math.cos(combat.pitch),Math.sin(combat.pitch),-Math.cos(combat.yaw)*Math.cos(combat.pitch)).applyQuaternion(root.current.quaternion.clone().invert());
       const locked=combat.hull_locked&&combat.lock_yaw!==undefined;
@@ -73,16 +83,9 @@ export const Tank = forwardRef<Group, TankProps>(function Tank(
       if(turret.current)turret.current.rotation.y=turretY+turretRotation;
       if(cannon.current)cannon.current.rotation.x=cannonX+cannonElevation;
     }
+    if(forwardGunPitch.current)forwardGunPitch.current.rotation.x=cannon.current?.rotation.x??0;
     const cannonShot=combat?.cannon_shot??combat?.shot;
     if(cannonShot!==undefined && cannonShot!==shot.current.number){shot.current={number:cannonShot,time:shot.current.number<0?-100:clock.elapsedTime};}
-    const age=clock.elapsedTime-shot.current.time;
-    if(muzzleFlash.current&&combat){
-      const d=new Vector3(-Math.sin(combat.yaw)*Math.cos(combat.pitch),Math.sin(combat.pitch),-Math.cos(combat.yaw)*Math.cos(combat.pitch)).applyQuaternion(root.current.quaternion.clone().invert());
-      if(combat.hull_locked&&combat.lock_yaw!==undefined){const yaw=combat.lock_yaw,pitch=combat.lock_pitch??0;d.set(Math.sin(yaw)*Math.cos(pitch),Math.sin(pitch),Math.cos(yaw)*Math.cos(pitch));}
-      muzzleFlash.current.position.set(combat.x,combat.y,combat.z).addScaledVector(d,4.1);
-      muzzleFlash.current.visible=age>=0&&age<.11;muzzleFlash.current.scale.setScalar(.8+age*8);
-    }
-    if(impactFlash.current){impactFlash.current.visible=Boolean(combat?.impact&&age>=0&&age<.25);if(combat?.impact)impactFlash.current.position.fromArray(combat.impact).sub(root.current.position).applyQuaternion(root.current.quaternion.clone().invert());impactFlash.current.scale.setScalar(1+Math.max(0,age)*10);}
     if(recoil.current)recoil.current.position.z=-.48*Math.exp(-(clock.elapsedTime-shot.current.time)/.12);
     if(lastPosition.current && dt>0 && dt<.1){
       const forward=new Vector3(0,0,1).applyQuaternion(root.current.quaternion);
@@ -96,8 +99,6 @@ export const Tank = forwardRef<Group, TankProps>(function Tank(
       <group ref={visual}>
         <primitive object={model} />
       </group>
-      <group ref={muzzleFlash} visible={false}><mesh><sphereGeometry args={[.28,8,6]}/><meshBasicMaterial color="#ffe8a6" toneMapped={false}/></mesh><pointLight color="#ffac49" intensity={18} distance={8}/></group>
-      <group ref={impactFlash} visible={false}><mesh><sphereGeometry args={[.30,10,8]}/><meshBasicMaterial color="#ff9c38" transparent opacity={.55} depthWrite={false}/></mesh></group>
       {children}
     </group>
   );

@@ -40,3 +40,25 @@
 .hero-workshop .alpha-selection-footer{height:32px;min-height:32px;flex-wrap:nowrap;overflow:visible}
 .hero-workshop .controller-shortcuts{min-width:0;flex:1;flex-wrap:nowrap;overflow:hidden}
 @media(max-width:600px){.hero-workshop .controller-shortcuts>span:not(:nth-child(3)){display:none}.hero-workshop-actions{flex:none}}
+
+/* Styling uses the same readable section/card architecture as the ability guide. */
+.hero-modifications{gap:10px;background:var(--app-background);padding:12px;}
+.hero-styling-heading small{font:700 8px/1.3 system-ui;letter-spacing:.1em;color:var(--app-accent)}
+.hero-styling-heading h2{margin:4px 0 7px;font:900 24px/1.05 system-ui;font-style:italic;letter-spacing:0}
+.hero-styling-heading p{font:500 10px/1.45 system-ui;color:var(--app-muted)}
+.hero-modifications .hero-style-section{display:flex;flex-direction:column;gap:8px;padding:10px;background:var(--app-panel);border:1px solid color-mix(in srgb,var(--app-line) 30%,transparent);border-radius:8px;}
+.hero-modifications .hero-style-section>header{padding-bottom:6px;border-bottom:1px solid color-mix(in srgb,var(--app-line) 30%,transparent)}
+.hero-modifications .hero-style-section label{font:700 9px/1.4 system-ui;letter-spacing:.03em;padding:0;border:0;gap:6px;color:var(--app-muted)}
+.hero-modifications .hero-style-section :is(select,input){min-height:36px;box-sizing:border-box;padding:6px 8px;color:var(--app-text);background:var(--app-raised);border-radius:5px;font:600 11px/1.3 system-ui;letter-spacing:0}
+.hero-modifications .hero-style-section .hero-pending-note{font-size:9px;border-left:2px solid var(--app-accent);padding:7px;background:var(--app-raised)}
+.hero-modifications .hero-style-section button{white-space:normal;font-size:9px;min-height:34px}
+.hero-style-save-status{padding:8px 2px 0;border-top:1px solid var(--app-line)}
+.hero-workshop .hero-workshop-actions>.controller-action:not(.hero-main-hold){min-height:28px;padding:3px 6px;gap:4px;font-size:9px;white-space:nowrap}
+.hero-workshop[data-has-selection=false] .hero-summary h2{font-size:clamp(18px,3vw,30px)}
+@media(max-width:600px){.hero-modifications{width:min(80vw,320px);padding:9px}.hero-modifications .hero-style-section{padding:9px}.hero-workshop .hero-workshop-actions>.controller-action:not(.hero-main-hold){font-size:8px;padding:3px 4px}.hero-workshop-actions{gap:4px}}
+
+/* Keep drafts and save ownership mounted beneath sibling modal screens while
+   hiding their UI; only the garage scene may show through a guide backdrop. */
+.hero-workshop[inert]{visibility:hidden}
+/* Scene captions need stable contrast over garage lighting in every UI theme. */
+.hero-workshop .hero-summary>p{color:#e4edf6;text-shadow:0 1px 4px #000,0 0 2px #000}

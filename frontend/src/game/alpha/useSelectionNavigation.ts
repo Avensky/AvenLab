@@ -1,3 +1,4 @@
+import {useUIStore} from "../../store/menus/uiStore";
 import { useEffect, type RefObject } from "react";
 import { isTypingTarget, type MenuAction } from "../../controls/inputRouting";
 
@@ -17,6 +18,7 @@ export function useSelectionNavigation(
 ) {
   useEffect(() => {
     const action = (next: MenuAction) => {
+      if(["hero_abilities","match_results"].includes(useUIStore.getState().overlay??""))return;
       const active = document.activeElement as HTMLElement | null;
       const chat = active?.closest('.lobby-chat[data-expanded="true"]');
       if (chat) {

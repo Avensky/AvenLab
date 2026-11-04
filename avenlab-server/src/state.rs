@@ -56,6 +56,7 @@ pub struct VehicleColliderShape {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct PhysicsEntitySnapshot {
+    pub health:crate::vehicle_health::VehicleHealth,
     pub combat: CombatPose,
     // Collider preview metadata is independent of expensive force diagnostics.
     pub collider: VehicleColliderShape,
@@ -111,6 +112,7 @@ pub struct ServerTiming {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct PhysicsSnapshot {
+    pub match_state: Option<crate::ctf::CtfView>,
     pub asset_health: HashMap<String,f32>,
     pub server_timing: ServerTiming,
     pub tick: u64,
@@ -199,6 +201,10 @@ pub struct EntityState {
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct CombatPose {
+    #[serde(default)] pub shot_origin:Option<[f32;3]>,
+    #[serde(default)] pub impact_normal:Option<[f32;3]>,
+    #[serde(default)] pub impact_static:bool,
+    #[serde(default)] pub shot_weapon:String,
     #[serde(default)] pub impact:Option<[f32;3]>,
     #[serde(default)] pub impact_time:f32,
     #[serde(default)] pub hull_locked:bool,
@@ -212,6 +218,7 @@ pub struct CombatPose {
     #[serde(default)] pub ram_cooldown:f32,
     #[serde(default)] pub cannon_reload:f32,
     #[serde(default)] pub coax_reload:f32,
+    #[serde(default)] pub basket_reload:f32,
     #[serde(default)] pub weapon:String,
     #[serde(default)] pub cannon_shot:u32,
     #[serde(default)] pub shot:u32,
@@ -229,7 +236,7 @@ pub struct CombatPose {
 impl CombatPose {
     pub fn bounded(&self) -> Self {
         let finite = |v:f32, lo:f32, hi:f32| if v.is_finite() {v.clamp(lo,hi)} else {0.0};
-        Self {ram_charge_remaining:0.0,stun_remaining:0.0,ram_blocked:String::new(),impact:None,impact_time:0.0,lock_yaw:0.0,lock_pitch:0.0,hull_locked:self.hull_locked,ram:self.ram,ram_remaining:0.0,ram_cooldown:0.0,cannon_reload:0.0,coax_reload:0.0,cannon_shot:self.cannon_shot,weapon:if self.weapon=="coax" {"coax".into()}else{"cannon".into()},shot:self.shot,ammo:self.ammo,reload:self.reload,enabled:self.enabled,fire:self.fire,yaw:finite(self.yaw,-std::f32::consts::PI,std::f32::consts::PI),pitch:finite(self.pitch,-0.7854,0.7854),x:finite(self.x,-3.0,3.0),y:finite(self.y,-3.0,3.0),z:finite(self.z,-3.0,3.0),role:if ["assault","support","medic"].contains(&self.role.as_str()){self.role.clone()}else{"assault".into()}}
+        Self {shot_origin:None,impact_normal:None,impact_static:false,shot_weapon:String::new(),ram_charge_remaining:0.0,stun_remaining:0.0,ram_blocked:String::new(),impact:None,impact_time:0.0,lock_yaw:0.0,lock_pitch:0.0,hull_locked:self.hull_locked,ram:self.ram,ram_remaining:0.0,ram_cooldown:0.0,cannon_reload:0.0,coax_reload:0.0,basket_reload:0.0,cannon_shot:self.cannon_shot,weapon:match self.weapon.as_str(){"coax"=>"coax".into(),"basket"=>"basket".into(),_=>"cannon".into()},shot:self.shot,ammo:self.ammo,reload:self.reload,enabled:self.enabled,fire:self.fire,yaw:finite(self.yaw,-std::f32::consts::PI,std::f32::consts::PI),pitch:finite(self.pitch,-0.7854,0.7854),x:finite(self.x,-3.0,3.0),y:finite(self.y,-3.0,3.0),z:finite(self.z,-3.0,3.0),role:if ["assault","support","medic"].contains(&self.role.as_str()){self.role.clone()}else{"assault".into()}}
     }
 }
 
@@ -264,6 +271,7 @@ pub struct InputPacket {
 // Shared Game State
 // ============================================================================
 pub struct SharedGameState {
+    pub match_state: Option<crate::ctf::CtfView>,
     pub room_id: usize,
     /// Authoritative simulation tick counter
     pub tick: u64,
@@ -290,6 +298,7 @@ impl SharedGameState {
     // ------------------------------------------------------------------------
     pub fn new() -> Self {
         Self {
+            match_state: None,
             room_id: 0,
             tick: 0,
             server_timing: ServerTiming::default(),
@@ -327,11 +336,18 @@ impl SharedGameState {
     /// after cloning so receiving input never waits on a physics step or send.
     pub fn collect_input_packets(&mut self) {
         for (id, receiver) in &mut self.input_clients {
+            if !receiver.has_changed().unwrap_or(false) {continue;}
             let packet = { receiver.borrow_and_update().clone() };
             if let (Some(entity), Some(packet)) = (self.entities.get_mut(id), packet) {
                 entity.last_packet = Some(packet);
             }
         }
+    }
+
+    /// Consume cached warm-up packets without applying them at match start.
+    pub fn clear_round_inputs(&mut self) {
+        for entity in self.entities.values_mut(){entity.last_packet=None;}
+        for receiver in self.input_clients.values_mut(){let _=receiver.borrow_and_update();}
     }
 
     // ------------------------------------------------------------------------
@@ -515,6 +531,7 @@ impl SharedGameState {
             );
 
             entities_out.push(PhysicsEntitySnapshot {
+                health:physics.vehicle_health.get(&ent.id).cloned().unwrap_or_else(||crate::vehicle_health::VehicleHealth::new(vehicle.config.tracked)),
                 combat: {let mut c=physics.combat_poses.get(&ent.id).cloned().unwrap_or_default();c.ram_remaining=vehicle.ram.remaining;c.ram_charge_remaining=vehicle.ram.charge_remaining();c.stun_remaining=vehicle.ram.stun_remaining;c.ram_cooldown=vehicle.ram.cooldown;c.ram_blocked=vehicle.ram.blocked.into();c},
                 condition: vehicle.powertrain.condition,
                 ultimate_fraction: vehicle.powertrain.ultimate_fraction,
@@ -562,6 +579,7 @@ impl SharedGameState {
         // just because a HashMap iteration order changed after a join/disconnect.
         entities_out.sort_by(|a, b| a.id.cmp(&b.id));
         PhysicsSnapshot {
+            match_state: self.match_state.clone(),
             server_timing: self.server_timing.clone(),
             tick: self.tick,
             simulation_time_s: self.tick as f64 / SIMULATION_HZ,

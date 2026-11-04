@@ -1,0 +1,28 @@
+/* Semantic effect colors are independent of the player's decorative theme. */
+.active-effects{position:absolute;left:50%;bottom:max(12px,env(safe-area-inset-bottom));transform:translateX(-50%);z-index:8;pointer-events:none;max-width:calc(100dvw - 24px);color:var(--app-text);font:700 8px/1.2 system-ui}
+.active-effects ul{display:flex;justify-content:center;gap:7px;margin:0;padding:0;list-style:none}
+.active-effect-item{--effect-color:#a89cff;pointer-events:none}
+.active-effect-item[data-nature=mobility]{--effect-color:#65dcff}.active-effect-item[data-nature=offense]{--effect-color:#ffd078}
+.active-effect-item[data-nature=control]{--effect-color:#ff6482}.active-effect-item[data-nature=heat]{--effect-color:#ff9c57}.active-effect-item[data-nature=wear]{--effect-color:#ffc65e}
+.active-effect-item[data-nature=healing]{--effect-color:#72eca1}.active-effect-item[data-nature=defense]{--effect-color:#7daaff}
+.driving-hud .active-effects .active-effect-button{position:relative;display:grid;place-items:center;width:40px;height:49px;padding:0 0 10px;min-width:0;min-height:0;border:0!important;border-radius:50%;outline-offset:3px;background:transparent!important;box-shadow:none!important;pointer-events:auto;color:var(--effect-color);touch-action:manipulation;cursor:pointer;text-decoration:none!important}
+.active-effect-button .action-progress-orbit{--action-orbit-size:35px;--orbit-art-size:40px;--orbit-scale:1;--orbit-color:var(--effect-color);color:var(--effect-color);filter:drop-shadow(0 0 3px var(--effect-color))}
+.active-effect-button .attack-icon{width:18px;height:18px}
+.active-effect-time{position:absolute;bottom:0;left:50%;transform:translateX(-50%);font:700 8px/1.2 system-ui;white-space:nowrap;color:var(--effect-color);text-shadow:0 1px 2px #000,0 0 4px #000}
+.active-effect-description{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);width:min(240px,calc(100dvw - 24px));box-sizing:border-box;padding:9px 11px;border-radius:8px;background:var(--app-panel,#0a1626);color:var(--app-text,#fff);border:1px solid var(--effect-color);box-shadow:0 0 12px color-mix(in srgb,var(--effect-color) 25%,transparent);display:grid;gap:4px;font:11px/1.4 system-ui;pointer-events:auto}
+.active-effect-description strong{color:var(--effect-color);font-size:10px}
+.driving-hud:has(.weapon-selector) .active-effects{bottom:110px}
+@media(max-width:1000px){.driving-hud:is([data-drive-controls=true],:has(.turret-joystick)) .active-effects{bottom:calc(var(--hud-foot-height,74px) + 14px)}}
+/* On portrait phones the control stack occupies bottom center; statuses stay
+   centered just above it rather than covering aim, pedals or ignition. */
+@media(max-width:600px) and (orientation:portrait){.driving-hud:is([data-drive-controls=true],:has(.turret-joystick)) .active-effects{bottom:calc(var(--hud-foot-height,74px) + 2 * var(--hud-shifter-size,112px) + 28px)}}
+html[data-high-contrast=true] .active-effect-button .action-progress-orbit{filter:none}
+@media(max-width:1000px){
+ .active-effects ul{gap:4px}
+ .driving-hud .active-effects .active-effect-button{width:32px;height:42px;padding-bottom:9px}
+ .active-effect-button .action-progress-orbit{--action-orbit-size:28px;--orbit-art-size:32px}
+ .active-effect-button .attack-icon{width:15px;height:15px}
+ .active-effect-time{font-size:7px}
+}
+
+@media(min-width:601px){.driving-hud:has(.weapon-selector) .active-effects{bottom:max(110px,calc(var(--hud-foot-height,74px) + 14px))}}

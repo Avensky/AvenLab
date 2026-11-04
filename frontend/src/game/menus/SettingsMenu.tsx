@@ -1,3 +1,4 @@
+import {HEALTH_BAR_LABELS,cycleHealthBarMode} from "../../store/preferences/healthVisibility";
 import { HUD_GROUP_LABELS } from "../../store/preferences/index";
 import { ControllerGuide } from "../../components/controller";
 import { appearanceSettingsRows } from "./appearanceSettingsRows";
@@ -39,10 +40,13 @@ const BINDING_LABELS: Record<BindingAction, string> = {
   right: "Steer right",
   brake: "Brake",
   handbrake: "Handbrake",
-  fire:"Fire weapon (hold)",
-  nextWeapon:"Next weapon",
-  previousWeapon:"Previous weapon",
+  fire:"Fire primary weapon (hold)",
+  secondaryFire:"Fire secondary weapon (hold)",
+  nextWeapon:"Next secondary weapon",
+  previousWeapon:"Previous secondary weapon",
   scope: "Tank scope",
+  revive: "Mechanic revive nearby teammate",
+  healthBars: "Cycle health bars",
 };
 
 export function SettingsMenu() {
@@ -263,6 +267,13 @@ export function SettingsMenu() {
             rows: [
               ...drivingRows,
               {
+                id: "health-bars",
+                label: "Health bars",
+                value: HEALTH_BAR_LABELS[prefs.healthBars],
+                description: `Cycle with ${keyLabel(prefs.bindings.healthBars)}. Team filters include your own team. Defeat and damage feedback remain visible. Rebind in Keyboard.`,
+                action: (dir) => prefs.update({healthBars:cycleHealthBarMode(prefs.healthBars,dir)}),
+              },
+              {
                 id: "ignition-visibility",
                 label: "Ignition while driving",
                 value: prefs.ignitionVisibility.toUpperCase(),
@@ -334,6 +345,7 @@ export function SettingsMenu() {
                 action: () => {
                   prefs.update({
                     hudGroups: { ...DEFAULT_HUD_GROUPS },
+                    healthBars: "all",
                     ignitionVisibility: "auto",
                     showTouchControls: true,
                     showDriveControls: true,
@@ -391,7 +403,7 @@ export function SettingsMenu() {
             id: "keyboard",
             label: "Keyboard",
             description:
-              "Select a driving or combat action, then press a key. Hold the Fire binding to shoot while driving. Fixed shortcuts remain reserved. Menu navigation always uses arrows / WASD, Enter and Escape.",
+              "Select a driving or combat action, then press a key. Hold the primary or secondary fire binding to shoot while driving. Fixed shortcuts remain reserved. Menu navigation always uses arrows / WASD, Enter and Escape.",
             rows: [
               ...turretRows,
               ...(Object.keys(DEFAULT_BINDINGS) as BindingAction[]).map(
@@ -434,7 +446,7 @@ export function SettingsMenu() {
             ],
             content: (
               <p className="mt-1 text-xs leading-tight text-slate-400">
-                F2 Debugger · F3 Latency overlay · F8 Start/stop capture · H
+                Tab Hold scoreboard · F1 Hero abilities · F2 Debugger · F3 Latency overlay · F8 Start/stop capture · H
                 Change vehicle · Shift+H Hazards · E Engine · L Lights · Z/X
                 Indicators · Q ABS · T TCS · Shift Tank Ram / car boost · weapon keys listed above · N Horn · R
                 Reset · ` Terminal

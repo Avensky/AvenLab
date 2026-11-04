@@ -123,6 +123,7 @@ export function HoldButton({
       onClick={(event) => {
         event.preventDefault();
         event.stopPropagation();
+        props.onClick?.(event);
       }}
       onBlur={release}
     />

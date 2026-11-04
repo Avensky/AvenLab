@@ -12,7 +12,7 @@
 // src/physics.rs
 use rapier3d::prelude::*;
 use rapier3d::prelude::{InteractionGroups, Group};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;
 use crate::aven_tire::steering::SteeringState;
@@ -38,12 +38,15 @@ const MAX_PHYSICS_SUBSTEP: Real = 1.0 / 120.0;
 const MAX_PHYSICS_SUBSTEPS: usize = 8;
 
 pub struct PhysicsWorld {
+    pub ctf_carriers: HashSet<String>,
+    pub(crate) ctf_reset_players: HashSet<String>,
+    pub vehicle_health:HashMap<String,crate::vehicle_health::VehicleHealth>,
     barrier_impacts:HashMap<(RigidBodyHandle,RigidBodyHandle),f32>,
     pub asset_health: HashMap<String,f32>,
     pub combat_poses: HashMap<String,crate::state::CombatPose>,
     tank_colliders: HashMap<String,(ColliderHandle,ColliderHandle)>,
-    combat_sequences: HashMap<String,(u32,std::time::Instant)>,
-    combat_cooldowns: HashMap<String,f32>,
+    pub(crate) combat_sequences: HashMap<String,(u32,std::time::Instant)>,
+    pub(crate) combat_cooldowns: HashMap<String,f32>,
     pub gravity: Vector<Real>, // gravity vector
     pub pipeline: PhysicsPipeline, // physics pipeline
     pub island_manager: IslandManager, // manages islands of bodies
@@ -96,6 +99,36 @@ impl PhysicsWorld {
         let map = self.active_map.as_ref()?;
 
         Some(map.snapshot(&self.block_world))
+    }
+
+    /// Flags use authored team spawn anchors in the same coordinate system as bodies.
+    pub fn ctf_bases(&self) -> Result<[[f32;3];2], String> {
+        let map=self.active_map.as_ref().ok_or("Select a map before preparing CTF")?;
+        let point=|spawns:&Vec<crate::world::block_colliders::MapSpawnPoint>|->Result<[f32;3],String>{
+            let p=spawns.first().ok_or("This map needs authored red and blue spawn zones for CTF")?;
+            Ok([p.chunk[0] as f32*map.cell[0]+p.local[0],p.surface_y.unwrap_or(map.surface.road_y)+1.0,p.chunk[1] as f32*map.cell[1]+p.local[1]])
+        };
+        Ok([point(&map.team_spawns.red)?,point(&map.team_spawns.blue)?])
+    }
+    /// Start is a single world transition: no warm-up health, fuel or held inputs
+    /// survive into the scored round. Recorded assigned pads retain separation.
+    pub fn prepare_ctf_round(&mut self) -> Result<(), String> {
+        if self.vehicles.is_empty(){return Err("Spawn both teams before starting.".into());}
+        if self.vehicles.values().any(|v|!self.bodies.contains(v.body)){return Err("A vehicle body is unavailable.".into());}
+        for (id,v) in &mut self.vehicles {
+            if let Some((mut pose,road))=self.spawn_poses.get(id).copied(){
+                pose.translation.y=v.config.nominal_chassis_y(road).max(road+v.config.chassis_half_extents[1]-v.config.chassis_com_offset[1]+0.05);
+                let body=self.bodies.get_mut(v.body).unwrap();body.set_enabled(true);body.set_position(pose,true);
+                body.set_linvel(Vector::zeros(),true);body.set_angvel(Vector::zeros(),true);body.reset_forces(true);body.reset_torques(true);
+                for handle in body.colliders(){if let Some(c)=self.colliders.get_mut(*handle){c.set_enabled(true);}}
+            }
+            v.powertrain=Powertrain::new(v.config.resources);v.cockpit=crate::cockpit::Cockpit::default();v.ram=crate::ram::RamState::default();
+            v.throttle=0.0;v.steer=0.0;v.brake=0.0;v.handbrake=0.0;v.pitch=0.0;v.yaw=0.0;v.roll=0.0;v.ascend=0.0;
+            v.player_flags=0;v.vehicle_flags=VehicleStateFlags::ENGINE_ON;v.steer_angle=0.0;v.steer_rate=0.0;v.steering=SteeringState::default();
+            self.vehicle_health.insert(id.clone(),crate::vehicle_health::VehicleHealth::new(v.config.tracked));
+        }
+        self.combat_poses.clear();self.combat_sequences.clear();self.combat_cooldowns.clear();self.ctf_carriers.clear();self.ctf_reset_players.clear();self.falling_seconds.clear();
+        self.bodies.propagate_modified_body_positions_to_colliders(&mut self.colliders);self.query_pipeline.update(&self.colliders);Ok(())
     }
 
     /// Fresh isolated editor physics, constructed before replacing its old runtime.
@@ -317,18 +350,33 @@ impl PhysicsWorld {
 
     /// Rebind an authenticated practice lease without recreating its Rapier body.
     pub fn reassign_player(&mut self,old:&str,new:&str)->bool {
+        if old==new{return self.vehicles.contains_key(old);}
+        if self.vehicles.contains_key(new){return false;}
         let Some(mut vehicle)=self.vehicles.remove(old) else{return false};
         vehicle.throttle=0.0;vehicle.steer=0.0;vehicle.brake=0.0;vehicle.handbrake=0.0;
         self.body_to_player.insert(vehicle.body,new.into());self.vehicles.insert(new.into(),vehicle);
+        if let Some(v)=self.vehicle_health.remove(old){self.vehicle_health.insert(new.into(),v);}
+        for health in self.vehicle_health.values_mut(){health.reassign_contributor(old,new);}
+        for weapon in ["coax","basket"] {
+            if let Some(v)=self.combat_cooldowns.remove(&format!("{old}:{weapon}")){self.combat_cooldowns.insert(format!("{new}:{weapon}"),v);}
+        }
         if let Some(v)=self.combat_poses.remove(old){self.combat_poses.insert(new.into(),v);}
         if let Some(v)=self.tank_colliders.remove(old){self.tank_colliders.insert(new.into(),v);}
         if let Some(v)=self.combat_cooldowns.remove(old){self.combat_cooldowns.insert(new.into(),v);}
         if let Some(v)=self.spawn_poses.remove(old){self.spawn_poses.insert(new.into(),v);}
         if let Some(v)=self.falling_seconds.remove(old){self.falling_seconds.insert(new.into(),v);}
+        self.ctf_carriers.remove(old);self.ctf_reset_players.remove(old);self.ctf_reset_players.insert(new.into());
         self.combat_sequences.remove(old);true
     }
 
     pub fn despawn_vehicle_for_player(&mut self, player_id: &str) {
+        self.ctf_carriers.remove(player_id);self.ctf_reset_players.remove(player_id);
+        self.vehicle_health.remove(player_id);
+        for health in self.vehicle_health.values_mut(){health.remove_contributor(player_id);}
+        self.combat_poses.remove(player_id);self.combat_sequences.remove(player_id);
+        self.combat_cooldowns.remove(player_id);
+        for weapon in ["coax","basket"]{self.combat_cooldowns.remove(&format!("{player_id}:{weapon}"));}
+        self.tank_colliders.remove(player_id);
         self.spawn_poses.remove(player_id); self.falling_seconds.remove(player_id);
         let Some(vehicle) = self.vehicles.remove(player_id) else {
             return;
@@ -365,6 +413,7 @@ impl PhysicsWorld {
         // create duplicate contacts/jitter.
 
         Self {
+            ctf_carriers: HashSet::new(), ctf_reset_players: HashSet::new(),
             combat_poses: HashMap::new(),tank_colliders: HashMap::new(),
             barrier_impacts:HashMap::new(),asset_health: HashMap::new(), combat_sequences: HashMap::new(), combat_cooldowns: HashMap::new(),
             gravity,
@@ -383,6 +432,7 @@ impl PhysicsWorld {
             wheels:  HashMap::new(),
             vehicles: HashMap::new(),
             body_to_player: HashMap::new(),
+            vehicle_health:HashMap::new(),
             debug_overlay: DebugOverlay {
                 chassis: Vec::new(),
                 arb_links: Vec::new(),
@@ -400,6 +450,7 @@ impl PhysicsWorld {
 
     /// Server-owned turret state, firing cadence and direct-hit structure damage.
     pub fn combat_tick(&mut self, player: &str, seq:u32, intent: Option<&crate::state::CombatPose>) {
+        if self.is_defeated(player){return;}
         let Some(vehicle)=self.vehicles.get(player) else {return;};
         let body_handle=vehicle.body;let config=vehicle.config;
         let Some(body)=self.bodies.get(body_handle) else {return;};
@@ -440,36 +491,75 @@ impl PhysicsWorld {
             c.yaw=(-direction.x).atan2(-direction.z);c.pitch=direction.y.clamp(-1.0,1.0).asin();
             c.x=0.0;c.y=config.nominal_wheel_center_y()-config.wheel_radius-0.0130596+1.65;c.z=1.05;
             self.update_tank_collision(player,body_handle,&hull,yaw,elevation,config.nominal_wheel_center_y()-config.wheel_radius-0.0130596);
-        }else{c.x=target.x;c.y=target.y;c.z=target.z;}
+        }else{
+            // Live weapon origins belong to the selected server chassis. A
+            // client/editor mount offset must never move a shot across cover.
+            c.x=0.0;c.y=config.chassis_com_offset[1]+config.chassis_half_extents[1]+0.05;c.z=0.0;
+        }
         c.weapon=if config.tracked {target.weapon.clone()}else{"primary".into()};
-        let cannon=config.tracked && c.weapon!="coax";
-        // Both timers advance while holstered: switching never resets a reload.
-        for key in [player.to_owned(),format!("{player}:coax")] {
+        let cannon=config.tracked && c.weapon=="cannon";
+        let small_arms_range=if config.tracked&&c.weapon=="coax"{800.0}else{200.0};
+        // All three timers advance while holstered: swapping never resets a reload.
+        for key in [player.to_owned(),format!("{player}:coax"),format!("{player}:basket")] {
             if let Some(t)=self.combat_cooldowns.get_mut(&key){*t=(*t-SIMULATION_DT).max(0.0);}
         }
-        let key=if config.tracked && !cannon {format!("{player}:coax")}else{player.to_owned()};
+        let key=if config.tracked && !cannon {format!("{player}:{}",c.weapon)}else{player.to_owned()};
         let cooldown=self.combat_cooldowns.entry(key).or_insert(0.0);
         let shoot=c.fire&&*cooldown<=0.0;
-        if shoot {*cooldown=if cannon {3.0}else if c.role=="medic" {0.6}else{0.1};c.shot=c.shot.wrapping_add(1);if cannon {c.cannon_shot=c.cannon_shot.wrapping_add(1);}}
+        if shoot {c.shot_weapon=c.weapon.clone();*cooldown=if cannon {3.0}else if c.role=="medic" {0.6}else{0.1};c.shot=c.shot.wrapping_add(1);if cannon {c.cannon_shot=c.cannon_shot.wrapping_add(1);}}
         c.reload=*cooldown;c.ammo=if cannon {u8::from(*cooldown<=0.0)}else{255};
         c.cannon_reload=*self.combat_cooldowns.get(player).unwrap_or(&0.0);
         c.coax_reload=*self.combat_cooldowns.get(&format!("{player}:coax")).unwrap_or(&0.0);
+        c.basket_reload=*self.combat_cooldowns.get(&format!("{player}:basket")).unwrap_or(&0.0);
         let breech=hull.transform_point(&point![c.x,c.y,c.z]);
-        let origin=breech+if config.tracked {direction*4.1}else{Vector::zeros()};
+        let (shot_breech,origin)=if config.tracked&&c.weapon=="basket" {
+            // Measured visible thin barrel beside the cannon. Rotate its base
+            // with Turret yaw, then pitch only the barrel around that base.
+            let local_direction=hull.rotation.inverse()*direction;
+            let yaw=local_direction.x.atan2(local_direction.z);
+            let elevation=local_direction.y.atan2((local_direction.x*local_direction.x+local_direction.z*local_direction.z).sqrt());
+            let turret_rotation=Rotation::from_axis_angle(&Vector::y_axis(),yaw);
+            let gun_rotation=turret_rotation*Rotation::from_axis_angle(&Vector::x_axis(),-elevation);
+            let visual_y=config.nominal_wheel_center_y()-config.wheel_radius-0.0130596;
+            let pivot=vector![0.0,visual_y+1.30,0.10];
+            let base=hull.transform_point(&Point::from(pivot+turret_rotation*vector![-0.3388,1.4641-1.30,1.2020-0.10]));
+            // Tip includes 3.5 cm clearance, matching the frontend model rig.
+            let tip=base+hull.rotation*(gun_rotation*vector![-0.3396-(-0.3388),1.4700-1.4641,1.3741-1.2020]);
+            (base,tip)
+        }else if config.tracked&&!cannon {
+            // Match the roof MG baked into Turret: yaw follows the top section;
+            // its physical exit does not move with the separate cannon pitch.
+            let local_direction=hull.rotation.inverse()*direction;
+            let yaw=local_direction.x.atan2(local_direction.z);
+            let turret_rotation=Rotation::from_axis_angle(&Vector::y_axis(),yaw);
+            let visual_y=config.nominal_wheel_center_y()-config.wheel_radius-0.0130596;
+            let pivot=vector![0.0,visual_y+1.30,0.10];
+            let base=hull.transform_point(&Point::from(pivot+turret_rotation*vector![-0.505,0.90,0.70]));
+            let tip=hull.transform_point(&Point::from(pivot+turret_rotation*vector![-0.505,0.90,1.341]));
+            (base,tip)
+        }else{(breech,breech+if cannon {direction*4.1}else{Vector::zeros()})};
+        let barrel_delta=origin-shot_breech;
+        let barrel_length=barrel_delta.norm();
+        if shoot{c.shot_origin=Some([origin.x,origin.y,origin.z]);if let Some(health)=self.vehicle_health.get_mut(player){health.spawn_protection_s=0.0;}}
         self.combat_poses.insert(player.to_owned(),c);
         if !shoot {return;}
         if cannon {if let Some(body)=self.bodies.get_mut(body_handle){body.apply_impulse_at_point(-direction*36000.0,origin,true);}}
         self.query_pipeline.update(&self.colliders);
-        let obstruction=if config.tracked {self.query_pipeline.cast_ray(&self.bodies,&self.colliders,&Ray::new(breech,direction),4.1,true,QueryFilter::default().exclude_rigid_body(body_handle)).map(|(h,d)|(h,breech+direction*d,0.0))}else{None};
+        let obstruction=if config.tracked {self.query_pipeline.cast_ray_and_get_normal(&self.bodies,&self.colliders,&Ray::new(shot_breech,barrel_delta/barrel_length),barrel_length,true,QueryFilter::default().exclude_rigid_body(body_handle)).map(|(h,i)|(h,shot_breech+(barrel_delta/barrel_length)*i.time_of_impact,0.0,i.normal))}else{None};
         let hit=if obstruction.is_some(){obstruction}else if cannon {
             crate::ballistics::trace(origin,direction,body_handle,&self.bodies,&self.colliders,&self.query_pipeline)
         }else{
-            self.query_pipeline.cast_ray(&self.bodies,&self.colliders,&Ray::new(origin,direction),if config.tracked {800.0}else{200.0},true,QueryFilter::default().exclude_rigid_body(body_handle))
-                .map(|(h,d)|(h,origin+direction*d,0.0))
+            self.query_pipeline.cast_ray_and_get_normal(&self.bodies,&self.colliders,&Ray::new(origin,direction),small_arms_range,true,QueryFilter::default().exclude_rigid_body(body_handle))
+                .map(|(h,i)|(h,origin+direction*i.time_of_impact,0.0,i.normal))
         };
-        if let Some(c)=self.combat_poses.get_mut(player){c.impact=hit.map(|(_,p,_)|[p.x,p.y,p.z]);c.impact_time=hit.map(|(_,_,t)|t).unwrap_or(crate::ballistics::MAX_TIME);}
-        let Some((handle,impact,_))=hit else {return;};
+        if let Some(c)=self.combat_poses.get_mut(player){c.impact=hit.map(|(_,p,_,_)|[p.x,p.y,p.z]);c.impact_time=hit.map(|(_,_,t,_)|t).unwrap_or(crate::ballistics::MAX_TIME);
+            c.impact_normal=hit.map(|(_,_,_,n)|[n.x,n.y,n.z]);
+            c.impact_static=hit.is_some_and(|(h,_,_,_)|self.colliders[h].parent().is_none_or(|b|self.bodies[b].is_fixed()));}
+        let Some((handle,impact,_,_))=hit else {return;};
         let Some(parent)=self.colliders[handle].parent() else {return;};
+        if let Some(victim)=self.body_to_player.get(&parent).cloned(){
+            self.damage_vehicle(&victim,Some(player),if cannon{crate::vehicle_health::CANNON_DAMAGE}else{crate::vehicle_health::COAX_DAMAGE},if cannon{"cannon"}else{"machine-gun"});
+        }
         if cannon && self.bodies[parent].is_dynamic(){
             let mass=self.bodies[parent].mass();
             self.bodies[parent].apply_impulse_at_point(direction*(mass*2.8).min(80000.0),impact,true);
@@ -509,6 +599,7 @@ impl PhysicsWorld {
         player_id: &str,
         packet: InputPacket,
     ) {
+        if self.is_defeated(player_id){return;}
         let mut recover = false;
         if let Some(v) = self.vehicles.get_mut(player_id) {
 
@@ -535,6 +626,11 @@ impl PhysicsWorld {
     /// Recovery returns a car to its recorded map spawn without repairing, cooling,
     /// refilling or changing ownership. A held Reset input triggers only once.
     pub fn recover_vehicle_for_player(&mut self, player_id: &str) -> Result<(), String> {
+        if self.is_defeated(player_id){return Err("Vehicle defeated. Wait for respawn.".into());}
+        self.ctf_reset_players.insert(player_id.into());
+        self.place_vehicle_at_spawn(player_id)
+    }
+    pub(crate) fn place_vehicle_at_spawn(&mut self, player_id: &str) -> Result<(), String> {
         let vehicle = self.vehicles.get(player_id).ok_or("Spawn a vehicle first")?;
         let handle = vehicle.body;
         let config = vehicle.config;
@@ -558,9 +654,76 @@ impl PhysicsWorld {
         self.bodies.propagate_modified_body_positions_to_colliders(&mut self.colliders);
         self.query_pipeline.update(&self.colliders);
         if let Some(v)=self.vehicles.get_mut(player_id){v.ram.cancel();}
+        self.falling_seconds.remove(player_id);
         Ok(())
     }
 
+
+    /// Automatic recovery may choose a central supported road or an authored
+    /// home pad, ranked by distance from the actual downing position. Geometry
+    /// and dynamic occupancy are checked before committing any relocation.
+    pub(crate) fn place_vehicle_after_recovery(&mut self, player_id:&str) -> Result<(),String> {
+        let vehicle=self.vehicles.get(player_id).ok_or("Vehicle unavailable")?;
+        let handle=vehicle.body;let config=vehicle.config;
+        let body=self.bodies.get(handle).ok_or("Vehicle body unavailable")?;
+        let from=self.vehicle_health.get(player_id).and_then(|h|h.downed_position).unwrap_or_else(||[body.translation().x,body.translation().y,body.translation().z]);
+        let map=self.active_map.as_ref().ok_or("Map unavailable")?;
+        let spawns=if vehicle.team.eq_ignore_ascii_case("red"){&map.team_spawns.red}else{&map.team_spawns.blue};
+        let mut candidates:Vec<(f32,f32,f32,f32)>=spawns.iter().map(|s|(s.chunk[0] as f32*map.cell[0]+s.local[0],s.chunk[1] as f32*map.cell[1]+s.local[1],s.surface_y.unwrap_or(map.surface.road_y),s.yaw)).collect();
+        let center=self.ctf_bases().ok().map(|b|[(b[0][0]+b[1][0])*0.5,(b[0][2]+b[1][2])*0.5]).unwrap_or_else(||{
+            let count=candidates.len().max(1) as f32;[candidates.iter().map(|c|c.0).sum::<f32>()/count,candidates.iter().map(|c|c.1).sum::<f32>()/count]
+        });
+        let mut central:Vec<(f32,f32,f32)>=self.block_world.debug_boxes.values().flat_map(|boxes|boxes.iter()).filter(|b|b.kind=="road"||b.kind=="intersection").map(|b|(b.center[0],b.center[2],b.center[1]+b.half_extents[1])).collect();
+        if let Some(layout)=&map.authored_layout {
+            if layout.ground {central.push((center[0],center[1],map.surface.road_y));}
+            central.extend(layout.objects.iter().filter(|o|o.solid&&(o.road.is_some()||o.piece.contains("road")||o.piece.contains("bridge")||o.piece=="coastal-land")).map(|o|(o.position[0],o.position[2],o.position[1]+o.size[1])));
+        }
+        central.sort_by(|a,b|((a.0-center[0]).powi(2)+(a.1-center[1]).powi(2)).total_cmp(&((b.0-center[0]).powi(2)+(b.1-center[1]).powi(2))).then_with(||a.0.total_cmp(&b.0)).then_with(||a.1.total_cmp(&b.1)));
+        // Only the nearest central road zone is a second recovery zone. Other
+        // arbitrary road pieces must not turn into invisible spawn shortcuts.
+        if let Some(point)=central.first(){candidates.push((point.0,point.1,point.2,0.0));}
+        candidates.sort_by(|a,b|((a.0-from[0]).powi(2)+(a.1-from[2]).powi(2)).total_cmp(&((b.0-from[0]).powi(2)+(b.1-from[2]).powi(2))));
+        self.query_pipeline.update(&self.colliders);
+        for (x,z,expected_y,yaw) in candidates {
+            let ray=Ray::new(point![x,expected_y+3.0,z],-Vector::y());
+            let Some((_,hit))=self.query_pipeline.cast_ray_and_get_normal(&self.bodies,&self.colliders,&ray,8.0,true,QueryFilter::only_fixed()) else{continue};
+            if hit.normal.y<0.9||hit.time_of_impact<0.01{continue;}
+            let road=ray.origin.y-hit.time_of_impact;
+            let y=config.nominal_chassis_y(road).max(road+config.chassis_half_extents[1]-config.chassis_com_offset[1]+0.05);
+            let pose=Isometry::new(vector![x,y,z],vector![0.0,yaw,0.0]);
+            if !self.vehicle_pose_clear(handle,config,pose)||!self.vehicle_recovery_support(config,pose,road){continue;}
+            let body=self.bodies.get_mut(handle).unwrap();body.set_position(pose,true);body.set_linvel(Vector::zeros(),true);body.set_angvel(Vector::zeros(),true);body.reset_forces(true);body.reset_torques(true);
+            self.bodies.propagate_modified_body_positions_to_colliders(&mut self.colliders);self.query_pipeline.update(&self.colliders);self.falling_seconds.remove(player_id);return Ok(());
+        }
+        Err("Waiting for a safe central or home-base recovery zone.".into())
+    }
+
+    fn vehicle_pose_clear(&self,handle:RigidBodyHandle,config:crate::vehicle_state::VehicleConfig,pose:Isometry<Real>)->bool {
+        let [hx,hy,hz]=config.chassis_half_extents;let [cx,cy,cz]=config.chassis_com_offset;
+        self.query_pipeline.intersection_with_shape(&self.bodies,&self.colliders,&(pose*Isometry::translation(cx,cy,cz)),&*SharedShape::cuboid(hx,hy,hz),QueryFilter::default().exclude_rigid_body(handle)).is_none()
+    }
+
+    fn vehicle_recovery_support(&self,config:crate::vehicle_state::VehicleConfig,pose:Isometry<Real>,road:f32)->bool {
+        [(config.front_track_width*0.5,config.front_axle_z),(-config.front_track_width*0.5,config.front_axle_z),(config.rear_track_width*0.5,config.rear_axle_z),(-config.rear_track_width*0.5,config.rear_axle_z)].iter().all(|(x,z)|{
+            let p=pose*point![*x,0.0,*z];let ray=Ray::new(point![p.x,p.y+2.0,p.z],-Vector::y());
+            self.query_pipeline.cast_ray_and_get_normal(&self.bodies,&self.colliders,&ray,6.0,true,QueryFilter::only_fixed()).is_some_and(|(_,hit)|hit.time_of_impact>0.01&&hit.normal.y>0.7&&(ray.origin.y-hit.time_of_impact-road).abs()<0.8)
+        })
+    }
+
+    /// A medic cannot revive a frozen body inside another vehicle/wall, below
+    /// the map or suspended high above support. No teleport or healing occurs
+    /// on a failed validation.
+    pub(crate) fn validate_revive_placement(&mut self,player_id:&str)->Result<(),String>{
+        let vehicle=self.vehicles.get(player_id).ok_or("Vehicle unavailable")?;
+        let handle=vehicle.body;let config=vehicle.config;let body=self.bodies.get(handle).ok_or("Vehicle body unavailable")?;
+        let pose=*body.position();
+        self.query_pipeline.update(&self.colliders);
+        if !self.vehicle_pose_clear(handle,config,pose){return Err("The disabled vehicle is obstructed. Clear the area before reviving.".into());}
+        let origin=point![pose.translation.x,pose.translation.y+1.0,pose.translation.z];
+        let Some((_,hit))=self.query_pipeline.cast_ray_and_get_normal(&self.bodies,&self.colliders,&Ray::new(origin,-Vector::y()),5.0,true,QueryFilter::only_fixed())else{return Err("The disabled vehicle needs safe ground support.".into())};
+        if hit.normal.y<0.7||hit.time_of_impact<0.1||!self.vehicle_recovery_support(config,pose,origin.y-hit.time_of_impact){return Err("The disabled vehicle needs safe ground support.".into());}
+        Ok(())
+    }
 
     // ============================================================================
     // Spawn a simple "car" for this player:
@@ -574,6 +737,7 @@ impl PhysicsWorld {
         vehicle_id: &str,
         team: &str,
     ) -> Result<RigidBodyHandle, String> {
+        if self.vehicles.contains_key(&id){return Err("Vehicle already spawned".into());}
         let config = config_for_vehicle(vehicle_id).ok_or_else(|| {
             format!("Unknown vehicle id '{vehicle_id}'")
         })?;
@@ -705,6 +869,7 @@ impl PhysicsWorld {
         // now instead of giving that first force solve zero reference load.
         self.bodies[handle].recompute_mass_properties_from_colliders(&self.colliders);
         self.body_to_player.insert(handle, id.clone()); // map body to player ID
+        self.vehicle_health.insert(id.clone(),crate::vehicle_health::VehicleHealth::new(config.tracked));
         self.register_vehicle(handle, config); // setup wheels
 
         self.vehicles.insert(
@@ -756,6 +921,7 @@ impl PhysicsWorld {
 
     /// Editor tuning uses the same validated body/wheel rebuild as model swaps.
     pub fn configure_vehicle_for_player(&mut self, player_id: &str, config: crate::vehicle_state::VehicleConfig) -> Result<(), String> {
+        if self.is_defeated(player_id){return Err("Wait for respawn before changing or editing a vehicle".into());}
         let current = self.vehicles.get(player_id)
             .ok_or_else(|| "Spawn a vehicle before changing cars".to_string())?;
         let previous = current.config;
@@ -788,8 +954,15 @@ impl PhysicsWorld {
             return Err("Not enough room for this vehicle. Move to an open area and try again.".to_string());
         }
 
+        self.ctf_reset_players.insert(player_id.into());
         // All fallible validation is above: a rejected request leaves the old
         // vehicle intact. Reusing the handle also keeps ownership/team stable.
+        if !config.tracked {
+            if let Some((turret,barrel))=self.tank_colliders.remove(player_id) {
+                self.colliders.remove(turret,&mut self.island_manager,&mut self.bodies,true);
+                self.colliders.remove(barrel,&mut self.island_manager,&mut self.bodies,true);
+            }
+        }
         let collider = self.colliders.get_mut(collider_handle).unwrap();
         collider.set_shape(shape);
         collider.set_translation_wrt_parent(vector![cx, cy, cz]);
@@ -808,6 +981,7 @@ impl PhysicsWorld {
         vehicle.powertrain.reconfigure(previous.resources, config.resources);
         vehicle.ram.cancel();
         vehicle.config = config;
+        if let Some(health)=self.vehicle_health.get_mut(player_id){health.set_chassis(config.tracked);}
         vehicle.throttle = 0.0;
         vehicle.steer = 0.0;
         vehicle.brake = 0.0;
@@ -827,6 +1001,7 @@ impl PhysicsWorld {
     /// an arbitrary client-supplied player ID. Future match service must also
     /// require an authorized station/cost; this is explicitly a debug action.
     pub fn service_vehicle_for_player(&mut self, player_id: &str) -> Result<(), String> {
+        if self.is_defeated(player_id){return Err("Defeated vehicles cannot be serviced".into());}
         let vehicle = self.vehicles.get_mut(player_id).ok_or("Spawn a vehicle before servicing")?;
         let body = self.bodies.get(vehicle.body).ok_or("Vehicle body unavailable")?;
         if vehicle.powertrain.engine_requested || body.linvel().norm() > 0.5 {
@@ -846,7 +1021,8 @@ impl PhysicsWorld {
     fn service_authored_bays(&mut self, dt: Real) {
         let Some(layout) = self.active_map.as_ref().and_then(|map|map.authored_layout.as_ref()) else { return; };
         let tile = self.block_world.tile_size.unwrap_or([1.0, 1.0]);
-        'vehicle: for vehicle in self.vehicles.values_mut() {
+        'vehicle: for (player,vehicle) in self.vehicles.iter_mut() {
+            if self.vehicle_health.get(player).is_some_and(|h|h.defeated){continue;}
             let Some(body) = self.bodies.get(vehicle.body) else { continue; };
             if body.linvel().norm() > 0.5 { continue; }
             let p=body.translation();
@@ -860,8 +1036,13 @@ impl PhysicsWorld {
                 if x.abs()>bay.size[0]*0.3 || z.abs()>bay.size[2]*0.325
                     || p.y<bay.position[1] || p.y>bay.position[1]+bay.size[1] { continue; }
                 let state=&mut vehicle.powertrain;
-                if bay.piece!="repair-shop" { state.fuel_liters=(state.fuel_liters+dt*3.0).min(vehicle.config.resources.fuel_capacity_liters); }
+                if bay.piece!="repair-shop" {
+                    let before=state.fuel_liters;
+                    state.fuel_liters=(state.fuel_liters+dt*3.0).min(vehicle.config.resources.fuel_capacity_liters);
+                    if let Some(h)=self.vehicle_health.get_mut(player){h.stats.gain_fuel(state.fuel_liters-before);}
+                }
                 if bay.piece!="repair-shop" {state.nos_remaining_s=(state.nos_remaining_s+dt*1.5).min(vehicle.config.resources.nos_seconds);}
+                if bay.piece!="fuel-station" {if let Some(h)=self.vehicle_health.get_mut(player){h.repair(h.max_hp*0.10*dt);}}
                 if bay.piece!="fuel-station" { state.condition=(state.condition+dt*0.06).min(1.0);state.temperature_c=(state.temperature_c-dt*3.0).max(vehicle.config.resources.initial_temp_c); }
                 continue 'vehicle; // Overlapping bays cannot multiply the service rate.
             }
@@ -870,13 +1051,19 @@ impl PhysicsWorld {
     }
 
     pub fn step(&mut self, dt: Real) {
+        if dt.is_finite()&&dt>0.0{self.advance_vehicle_lives(dt.min(0.1));}
         if dt.is_finite() && dt > 0.0 { self.service_authored_bays(dt.min(0.1)); }
         if !dt.is_finite() || dt <= 0.0 {
             return;
         }
 
+        // Sample after respawn/service refills, before Ram and engine costs.
+        // Manual service and chassis changes happen outside step and cannot be
+        // mistaken for gameplay fuel gained or consumed.
+        let fuel_before:Vec<_>=self.vehicles.values().map(|vehicle|(vehicle.body,vehicle.powertrain.fuel_liters)).collect();
         let step_started = std::time::Instant::now();
-        for vehicle in self.vehicles.values_mut(){
+        for (player,vehicle) in self.vehicles.iter_mut(){
+            if self.vehicle_health.get(player).is_some_and(|h|h.defeated){continue;}
             vehicle.ram.stun_remaining=(vehicle.ram.stun_remaining-dt.min(0.066667)).max(0.0);
             let grounded=self.wheels.get(&vehicle.body).is_some_and(|ws|ws.iter().filter(|w|w.grounded).count()>=2);
             let forward_speed=self.bodies.get(vehicle.body).map(|b|(b.rotation().inverse()*b.linvel()).z).unwrap_or(-1.0);
@@ -895,12 +1082,13 @@ impl PhysicsWorld {
             let allowed=vehicle.ram.blocked.is_empty();
             let started = vehicle.ram.advance(dt.min(0.066667),allowed);
             if started {
+                if let Some(health)=self.vehicle_health.get_mut(player){health.spawn_protection_s=0.0;}
                 vehicle.powertrain.fuel_liters=(vehicle.powertrain.fuel_liters-crate::ram::FUEL_COST).max(0.0);
                 if let Some(body) = self.bodies.get_mut(vehicle.body) {
                     // Ability-powered launch, once per activation, only grounded.
                     let forward = body.rotation()*Vector::z();
                     let speed = body.linvel().dot(&forward);
-                    let delta = (vehicle.config.max_speed*crate::ram::SPEED_MULTIPLIER-speed).clamp(0.0,12.0);
+                    let delta = (vehicle.config.max_speed*crate::ram::SPEED_MULTIPLIER*if self.ctf_carriers.contains(player){crate::ctf::CARRIER_SPEED_FACTOR}else{1.0}-speed).clamp(0.0,12.0);
                     body.apply_impulse(forward*(body.mass()*delta),true);
                 }
             }
@@ -933,6 +1121,11 @@ impl PhysicsWorld {
         let substep_dt = elapsed / count as Real;
         for _ in 0..count {
             self.step_substep(substep_dt);
+        }
+        for (body,before) in fuel_before {
+            let Some(id)=self.body_to_player.get(&body) else{continue};
+            let Some(vehicle)=self.vehicles.get(id) else{continue};
+            if let Some(h)=self.vehicle_health.get_mut(id){h.stats.burn_fuel(before-vehicle.powertrain.fuel_liters);}
         }
         let trace_now = self.refresh_vehicle_wheel_snapshots();
         self.populate_block_debug();
@@ -1002,14 +1195,14 @@ impl PhysicsWorld {
                     let kick=(closing*0.8).clamp(6.0,18.0);
                     body.apply_impulse((direction*kick+Vector::y()*0.8)*body.mass(),true);
                 }
-                let mut dealt=0.0;
+                if self.vehicle_health.get(&victim_id).is_some_and(|h|h.defeated||h.spawn_protection_s>0.0){continue;}
                 if let Some(victim)=self.vehicles.get_mut(&victim_id){
                     if victim.team==team{continue;}
                     victim.ram.stun_remaining=victim.ram.stun_remaining.max(crate::ram::STUN_SECONDS);
                     let bonus=((closing-3.5)*0.015).clamp(0.03,0.25);
-                    let before=victim.powertrain.condition;victim.powertrain.condition=(before-bonus).max(0.0);dealt=before-victim.powertrain.condition;
+                    victim.powertrain.condition=(victim.powertrain.condition-bonus).max(0.0);
                 }
-                if let Some(attacker)=self.vehicles.get_mut(&source){attacker.powertrain.credit_damage_dealt(dealt);}
+                self.damage_vehicle(&victim_id,Some(&source),crate::vehicle_health::RAM_DAMAGE,"ram");
             }else{
                 let index=self.bodies[target].user_data as usize;
                 let Some(object)=self.active_map.as_ref().and_then(|m|m.authored_layout.as_ref()).filter(|l|!l.repeat).and_then(|l|index.checked_sub(1).and_then(|i|l.objects.get(i)))else{continue;};
@@ -1062,8 +1255,9 @@ impl PhysicsWorld {
 
         // Collision normal impulses are Rapier's results, after integration.
         // Inspect only each vehicle's contacts; never scan all city colliders.
-        let mut damage_credits = Vec::new();
+        let mut impact_damage = Vec::new();
         for (victim_id, vehicle) in &mut self.vehicles {
+            if self.vehicle_health.get(victim_id).is_some_and(|h|h.defeated){continue;}
             let Some(body) = self.bodies.get(vehicle.body) else { continue; };
             let mut impact_impulse = 0.0_f32;
             let mut impact_source = None;
@@ -1077,24 +1271,21 @@ impl PhysicsWorld {
                     }
                 }
             }
-            let before = vehicle.powertrain.condition;
-            vehicle.powertrain.impact(impact_impulse / body.mass().max(1.0), vehicle.config.resources);
-            let damage = before - vehicle.powertrain.condition;
+            let damage = vehicle.powertrain.impact(impact_impulse / body.mass().max(1.0), vehicle.config.resources);
             if damage > 0.0 {
-                if let Some(source) = impact_source {
-                    if let (Some((source_pos, source_velocity)), Some((victim_pos, _)), Some(source_id)) =
-                        (impact_motion.get(&source), impact_motion.get(&vehicle.body), self.body_to_player.get(&source)) {
-                        let toward = victim_pos - source_pos;
-                        if source_id != victim_id && toward.norm() > 0.1 && source_velocity.dot(&toward.normalize()) > 1.0 {
-                            damage_credits.push((source_id.clone(), damage));
-                        }
-                    }
-                }
+                let attacker=impact_source.and_then(|source|{
+                    let (source_pos,source_velocity)=impact_motion.get(&source)?;
+                    let (victim_pos,_)=impact_motion.get(&vehicle.body)?;
+                    let toward=victim_pos-source_pos;
+                    let source_id=self.body_to_player.get(&source)?;
+                    (source_id!=victim_id&&toward.norm()>0.1&&source_velocity.dot(&toward.normalize())>1.0).then(||source_id.clone())
+                });
+                let maximum=self.vehicle_health.get(victim_id).map(|h|h.max_hp).unwrap_or(500.0);
+                impact_damage.push((victim_id.clone(),attacker,damage*maximum));
             }
         }
-        for (source, damage) in damage_credits {
-            if let Some(vehicle) = self.vehicles.get_mut(&source) { vehicle.powertrain.credit_damage_dealt(damage); }
-        }
+        self.apply_queued_impact_damage(impact_damage);
+
 
 
         self.apply_barrier_impacts(&impact_motion,dt);
@@ -1104,6 +1295,7 @@ impl PhysicsWorld {
         // Allow a brief fall before resetting to the authored spawn, not origin.
         let mut recover = Vec::new();
         for (id, vehicle) in &self.vehicles {
+            if self.is_defeated(id){continue;}
             let Some(body) = self.bodies.get(vehicle.body) else { continue; };
             let road = self.spawn_poses.get(id).map(|s|s.1).unwrap_or(0.0);
             let p = body.translation();
@@ -1137,6 +1329,25 @@ impl PhysicsWorld {
 
                 println!("⚠️ Reset exploding body back to {:?}", pos);
             }
+        }
+    }
+
+    /// Contact damage is simultaneous: validate every source before the first
+    /// defeat is applied, so reciprocal lethal hits do not depend on HashMap
+    /// iteration order. Weapon/Ram calls retain their live-attacker gate.
+    pub(crate) fn apply_queued_impact_damage(&mut self, hits: Vec<(String, Option<String>, f32)>) {
+        let accepted: Vec<_> = hits.into_iter().filter(|(victim, attacker, _)| {
+            let Some(target) = self.vehicles.get(victim) else { return false; };
+            if self.is_defeated(victim) { return false; }
+            attacker.as_ref().is_none_or(|source| {
+                self.vehicles.get(source).is_some_and(|attacker| {
+                    source != victim && !self.is_defeated(source)
+                        && !attacker.team.eq_ignore_ascii_case(&target.team)
+                })
+            })
+        }).collect();
+        for (victim, attacker, damage) in accepted {
+            self.apply_validated_vehicle_damage(&victim,attacker.as_deref(),damage,"impact");
         }
     }
 }
@@ -1218,14 +1429,25 @@ mod tests {
         let y = world.bodies[attacker].translation().y;
         world.bodies[attacker].set_translation(vector![0.0,y,-12.0],true);
         let target = world.spawn_vehicle_for_player("target".into(), [0.0;3], "brz", "red").unwrap();
+        world.vehicles.get_mut("target").unwrap().team = "blue".into();
         for vehicle in world.vehicles.values_mut() { vehicle.powertrain.engine_requested = false; }
         for _ in 0..120 { world.step(SIMULATION_DT); }
+        // Test the impact attribution after protection, not the spawn shield.
+        for health in world.vehicle_health.values_mut() {
+            health.advance(crate::vehicle_health::SPAWN_PROTECTION_SECONDS);
+        }
         assert_eq!(world.vehicles["attacker"].powertrain.ultimate_fraction,0.0);
         assert_eq!(world.vehicles["target"].powertrain.condition,1.0);
+        let initial_hp = world.vehicle_health["target"].hp;
         world.bodies[attacker].set_linvel(vector![0.0,0.0,18.0],true);
-        for _ in 0..100 { world.step(SIMULATION_DT); }
-        let dealt = 1.0 - world.vehicles["target"].powertrain.condition;
-        assert!(dealt>0.0001,"test needs a damaging ram: attacker={:?}, target={:?}, target condition={}",world.bodies[attacker].translation(),world.bodies[target].translation(),world.vehicles["target"].powertrain.condition);
+        for _ in 0..100 {
+            world.step(SIMULATION_DT);
+            if world.vehicle_health["target"].hp < initial_hp { break; }
+        }
+        let target_health = &world.vehicle_health["target"];
+        let dealt = (initial_hp - target_health.hp) / target_health.max_hp;
+        assert!(dealt>0.0001,"test needs a damaging ram: attacker={:?}, target={:?}, target HP={}",world.bodies[attacker].translation(),world.bodies[target].translation(),target_health.hp);
+        assert_eq!(target_health.last_attacker.as_deref(),Some("attacker"));
         assert!((world.vehicles["attacker"].powertrain.ultimate_fraction-dealt).abs()<1.0e-5);
         assert_eq!(world.vehicles["target"].powertrain.ultimate_fraction,0.0);
         assert_ne!(attacker,target);
@@ -1751,24 +1973,36 @@ mod editor_service_tests {
             world.bodies[handle].set_translation(vector![0.0,1.0,0.0],true);
             let state=&mut world.vehicles.get_mut("test").unwrap().powertrain;
             state.fuel_liters=1.0; state.condition=0.5;state.nos_remaining_s=0.0;
+            world.vehicle_health.get_mut("test").unwrap().hp=200.0;
             world.service_authored_bays(1.0);
             let state=&world.vehicles["test"].powertrain;
             assert_eq!(state.fuel_liters,if kind=="repair-shop" {1.0} else {4.0});
             assert_eq!(state.nos_remaining_s,if kind=="repair-shop" {0.0}else{1.5});
             assert!((state.condition-if kind=="fuel-station" {0.5} else {0.56}).abs()<0.0001);
             let fuel=state.fuel_liters; let condition=state.condition;
+            let hp=world.vehicle_health["test"].hp;assert_eq!(hp,if kind=="fuel-station"{200.0}else{250.0});
+            let stats=&world.vehicle_health["test"].stats;
+            assert_eq!(stats.healing_done,if kind=="fuel-station"{0.0}else{50.0});
+            assert_eq!(stats.self_healing,stats.healing_done);
+            assert_eq!(stats.gas_gained_liters,if kind=="repair-shop"{0.0}else{3.0});
             world.bodies[handle].set_linvel(vector![1.0,0.0,0.0],true);
             world.service_authored_bays(1.0);
             assert_eq!(world.vehicles["test"].powertrain.fuel_liters,fuel);
             assert_eq!(world.vehicles["test"].powertrain.condition,condition);
+            assert_eq!(world.vehicle_health["test"].hp,hp);
             world.bodies[handle].set_linvel(Vector::zeros(),true);
             world.asset_health.insert("test-bay".into(),0.0);
             world.service_authored_bays(1.0);
             assert_eq!(world.vehicles["test"].powertrain.nos_remaining_s,if kind=="repair-shop"{0.0}else{1.5});
+            assert_eq!(world.vehicle_health["test"].hp,hp);
             world.bodies[handle].set_translation(vector![50.0,1.0,0.0],true);
             world.service_authored_bays(1.0);
             assert_eq!(world.vehicles["test"].powertrain.fuel_liters,fuel);
             assert_eq!(world.vehicles["test"].powertrain.condition,condition);
+            assert_eq!(world.vehicle_health["test"].hp,hp);
+            world.vehicle_health.get_mut("test").unwrap().defeated=true;
+            world.asset_health.clear();world.bodies[handle].set_translation(vector![0.0,1.0,0.0],true);world.service_authored_bays(1.0);
+            assert_eq!(world.vehicle_health["test"].hp,hp,"a repair bay cannot revive a defeated vehicle");
         }
     }
 }

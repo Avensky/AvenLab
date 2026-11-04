@@ -1,0 +1,7 @@
+.turret-orbit-revive{grid-column:1;grid-row:3}
+.revive-action{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:0;border-radius:50%;padding:0;background:transparent;color:var(--app-text);font:750 8px/1 system-ui;touch-action:manipulation}
+.revive-action .cooldown-clock{--orbit-outer-color:#fff;--orbit-inner-color:var(--app-accent);--orbit-halo-color:#fff}
+.revive-action:disabled{opacity:.5}.revive-action[data-ready=true]{opacity:1}
+.revive-action-fallback{position:absolute;bottom:max(104px,calc(env(safe-area-inset-bottom) + 104px));left:50%;transform:translateX(-50%);z-index:18;pointer-events:none}
+.revive-action-fallback:empty{display:none}.revive-action-fallback button{pointer-events:auto;width:56px;height:64px}
+.revive-action-fallback .cooldown-clock{--action-orbit-size:42px;--orbit-art-size:48px;--orbit-scale:1;width:42px;height:42px}

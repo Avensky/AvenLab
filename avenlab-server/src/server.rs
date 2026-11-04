@@ -25,6 +25,8 @@ pub struct Connection {
 pub struct Server {
     operations: Mutex<()>,
     chat: Mutex<chat::ChatState>,
+    matches: Mutex<matches::MatchBridge>,
+    revivals: Mutex<revival::RevivalState>,
     pub alpha: Mutex<crate::alpha::AlphaState>,
     pub data: Mutex<SocialData>,
     pub connections: Mutex<HashMap<String, Connection>>,
@@ -40,7 +42,8 @@ impl Server {
             .unwrap_or_else(|| {
                 PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("runtime/social.json")
             });
-        let data = SocialData::load(&path)?;
+        let mut data = SocialData::load(&path)?;
+        matches::recover_archives(&path, &mut data)?;
         let managed_worlds = data
             .worlds
             .iter()
@@ -56,6 +59,8 @@ impl Server {
         Ok(Self {
             operations: Mutex::new(()),
             chat: Mutex::new(Default::default()),
+            matches: Mutex::new(Default::default()),
+            revivals: Mutex::new(Default::default()),
             alpha: Mutex::new(crate::alpha::AlphaState {
                 worlds: managed_worlds,
                 enforce_roles: std::env::var("AVENLAB_ROLE_LIMITS").as_deref() != Ok("0"),
@@ -78,6 +83,9 @@ impl Server {
     async fn save(&self) -> Result<(), String> {
         let bytes = serde_json::to_vec(&*self.data.lock().await)
             .map_err(|_| "Could not serialize social data.")?;
+        if bytes.len() > 8 * 1024 * 1024 {
+            return Err("The social data budget is full; archive player summaries before saving.".into());
+        }
         if let Some(parent) = self.path.parent() {
             tokio::fs::create_dir_all(parent)
                 .await
@@ -138,6 +146,12 @@ impl Server {
             .ok_or_else(|| "Choose a player profile first.".into())
     }
     async fn leave_inner(&self, player: &str) {
+        let connected_world = self.connections.lock().await.get(player).and_then(|client| client.world_id).is_some();
+        if connected_world { self.clear_downed_reconnect(player).await; }
+        self.checkpoint_departure(player, true).await;
+        self.leave_transport(player).await;
+    }
+    async fn leave_transport(&self, player: &str) {
         self.alpha.lock().await.members.remove(player);
         let connection = self.connections.lock().await.get(player).cloned();
         let Some(client) = connection else { return };
@@ -163,6 +177,7 @@ impl Server {
                 .values()
                 .any(|entry| entry.member.world == world && entry.expires > timestamp());
             if !occupied && !reserved {
+                self.finish_empty_activity(world).await;
                 self.runtimes.lock().await.remove(&world);
                 self.chat.lock().await.clear_world(world);
             }
@@ -175,13 +190,18 @@ impl Server {
     }
     pub async fn disconnect(&self, player: &str) {
         let _operation = self.operations.lock().await;
+        self.checkpoint_departure(player, false).await;
         self.reserve_disconnect(player).await;
         let client=self.connections.lock().await.get(player).cloned();
         let retained={let a=self.alpha.lock().await;client.as_ref().and_then(|c|c.profile_id.as_ref()).and_then(|p|a.reservations.get(p)).is_some_and(|r|r.retained_player.as_deref()==Some(player))};
         if retained{
             if let Some(world)=client.and_then(|c|c.world_id){let runtime=self.runtimes.lock().await.get(&world).cloned();if let Some(runtime)=runtime{runtime.lock().await.detach(player);}}
             self.alpha.lock().await.members.remove(player);
-        }else{self.leave_inner(player).await;}
+        }else{
+            // The reconnect lease, rather than transport loss, decides whether
+            // a participant abandoned the round.
+            self.leave_transport(player).await;
+        }
         self.alpha
             .lock()
             .await
@@ -300,6 +320,13 @@ impl Server {
                 .map_err(|_| "Could not load the world.")??;
             Arc::new(Mutex::new(loaded))
         };
+        if let Some(mode) = world.mode {
+            if mode.bucket() == 0 {
+                let training = !self.alpha.lock().await.enforce_roles;
+                let mut room = runtime.lock().await;
+                if room.round.is_none() { room.configure_round(mode, training)?; }
+            }
+        }
         // Build/validate the destination before releasing the original room.
         // operations serializes admission; physics continues while a map loads.
         self.leave_inner(player).await;
@@ -387,12 +414,32 @@ impl Server {
             self.join_inner(player, world_id, "", String::new()).await?;
         }
         self.validate_alpha_vehicle(player, vehicle).await?;
+        let profile = self.actor(player).await.ok();
+        let joined_world = self.connections.lock().await.get(player).and_then(|c| c.world_id);
+        if let Some(world) = joined_world {
+            if !self.participant_slot_available(world, profile.as_deref()).await {
+                return Err("This round has reached its participant history limit. Wait for the next match.".into());
+            }
+        }
         let runtime = self.runtime(player).await?;
         let appearance = self.saved_appearance(player, vehicle).await;
+        let revive_cooldown = self.revival_cooldown(player).await;
         let mut room = runtime.lock().await;
+        if room.round.as_ref().is_some_and(|r| r.phase == crate::ctf::CtfPhase::Ended) {
+            return Err("This match has ended. Start another match to deploy.".into());
+        }
         room.spawn(player, vehicle)?;
+        let round_id = room.round.as_ref().map(|round| round.match_id.clone());
+        if let Some(lease) = self.take_downed_reconnect(player, room.game.room_id, round_id.as_deref()).await {
+            lease.restore(&mut room, player)?;
+        }
+        if let Some(health) = room.physics.vehicle_health.get_mut(player) {
+            health.revive_cooldown_s = health.revive_cooldown_s.max(revive_cooldown);
+        }
         if let Some(entity)=room.game.entities.get_mut(player) { entity.appearance=appearance; }
+        self.checkpoint_spawn(&room).await;
         drop(room);
+        self.maintain_matches_inner().await;
         self.publish().await;
         Ok(())
     }
@@ -414,8 +461,11 @@ impl Server {
                 .to_string()
         };
         let result = match action {
-            "mode_join" | "mode_cancel" | "hero_select" | "skin_redeem" | "skin_equip"
+            "mode_join" | "mode_cancel" | "mode_leave" | "hero_select" | "skin_redeem" | "skin_equip"
             | "hero_loadout_save" | "editor_apply" | "editor_vehicle_get" | "editor_vehicle_apply" => self.handle_alpha(player, &value).await?,
+
+            "career_history" | "career_match" => self.handle_career(player, &value).await?,
+            "vehicle_revive" => self.handle_vehicle_revive(player, &value).await?,
 
             "identify" => {
                 let previous = self.data.lock().await.clone();
@@ -578,6 +628,8 @@ impl Server {
 }
 
 mod alpha_sessions;
+mod matches;
+mod revival;
 mod chat;
 #[cfg(test)]
 mod tests;

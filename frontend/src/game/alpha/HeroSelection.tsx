@@ -18,7 +18,7 @@ import type { MenuAction } from "../../controls/inputRouting";
 import { deploySelectedHero } from "./sessionActions";
 import { ProgressBadge } from "./ProgressBadge";
 import { HeroRoster } from "./HeroRoster";
-import { HeroPortrait } from "./HeroPortrait";
+import { PreMatchTeamPreview } from "../stats/PreMatchTeamPreview";
 import { LobbyChat } from "./LobbyChat";
 import "./heroSelection.css";
 export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
@@ -57,6 +57,15 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
   }, []);
   const tab = useCallback(
     (step: number) => {
+      const current = document.activeElement as HTMLElement | null;
+      const preview = current?.closest("[data-match-preview]");
+      if (preview) {
+        const next = current?.getAttribute("data-match-view") === "composition" ? "table" : "composition";
+        const target = preview.querySelector<HTMLButtonElement>(`[data-match-view="${next}"]`);
+        target?.click();
+        target?.focus({ preventScroll: true });
+        return;
+      }
       filter(
         HERO_FILTERS[
           (HERO_FILTERS.indexOf(role) + step + HERO_FILTERS.length) %
@@ -168,6 +177,11 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
     [planned, research, active, customWorld, overlay, inMode, connected, view, mode],
   );
   const confirm = useCallback(() => {
+    const activeControl = document.activeElement as HTMLElement | null;
+    if (activeControl?.closest("[data-match-preview]")) {
+      activeControl.click();
+      return;
+    }
     const focused = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>("[data-hero]");
     const id = focused?.dataset.hero ??
       useAlphaStore.getState().previewHero ??
@@ -175,19 +189,6 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
     void choose(id);
   }, [choose, role]);
   useSelectionNavigation(root, { confirm, back, direction, tab });
-  const roster = (view?.alpha?.roster ?? []).filter(
-    (member) => member.mode === mode,
-  );
-  const ownTeam = inMode ? active.team : "red";
-  const teammates = roster
-    .filter((member) => member.team === ownTeam)
-    .sort((a, b) =>
-      a.id === view?.profile.id
-        ? -1
-        : b.id === view?.profile.id
-          ? 1
-          : a.name.localeCompare(b.name),
-    );
   const selected = HEROES.find((h) => h.id === previewId);
   return (
     <section
@@ -245,44 +246,7 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
           <LobbyChat />
         </div>
       </div>
-      {match && inMode && (
-        <div
-          className="alpha-squad-bar hero-team-strip"
-          aria-label="Teammate hero selections"
-        >
-          {Array.from({ length: 5 }, (_, index) => {
-            const member = teammates[index],
-              hero = HEROES.find((h) => h.id === (member?.hero||member?.showcase_hero));
-            return (
-              <div
-                key={member?.id ?? index}
-                className="alpha-squad-seat"
-                data-role={hero?.role}
-                title={
-                  member
-                    ? `${hero?.name ?? "Hero"} · ${member.name}`
-                    : "Waiting for player"
-                }
-              >
-                <HeroPortrait
-                  key={member?.hero||member?.showcase_hero||"empty"}
-                  hero={member?.hero||member?.showcase_hero||null}
-                  appearance={member?.appearance ?? (member?.id===view?.profile.id&&hero ? view?.profile.progression?.hero_loadouts?.[hero.vehicle] : null)}
-                />
-                <div>
-                  <strong>{hero?.name ?? "OPEN SLOT"}</strong>
-                  <small>
-                    {member
-                      ? member.name +
-                        (member.reconnecting ? " · RECONNECTING" : !member.hero ? " · CHOOSING" : "")
-                      : "WAITING"}
-                  </small>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      {match && inMode && !overlay && <PreMatchTeamPreview key={`${active.world_id}:${mode}`} view={view}/>}
       <footer className="alpha-selection-footer">
         <MenuShortcuts chat directions="both" />
         <ControllerAction button="A"

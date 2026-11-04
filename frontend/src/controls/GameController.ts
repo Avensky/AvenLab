@@ -1,8 +1,10 @@
+import {requestNearestRevive,isMechanicPlayer} from '../combat/reviveTargets';
+import {useScoreboardStore} from "../store/hud/scoreboardStore";
 import {controllerDrive} from "./controllerDrive";
 import {unpackCockpit} from "../store/input/protocol/cockpitMasks";
 import {useNetworkStore} from '../store/session/networkStore';
-import {toggleTankScope,resetTurretOrientation,cycleTankWeapon,toggleTurretOrientationLock} from '../combat/turretControls';
-import { aimCombat, combatIntent } from "../combat/combatStore";
+import {toggleTankScope,resetTurretOrientation,cycleTankWeapon,toggleTurretOrientationLock,setWeaponHeld,releaseWeaponSource} from '../combat/turretControls';
+import { aimCombat, combatIntent, useCombatStore } from "../combat/combatStore";
 import { useGameStore } from "../store/presentation/gameStore";
 import { leaveInspection } from "../store/presentation/inspectionActions";
 import { usePreferencesStore } from "../store/preferences/preferencesStore";
@@ -50,8 +52,8 @@ export function GameController() {
   useEffect(() => {
     let frameId = 0;
     let focused = document.hasFocus();
-    let weaponFireArmed=true;
-    let lastWeapon=combatIntent.weapon;
+    let secondaryFireArmed=true;
+    let lastSecondary=useCombatStore.getState().secondaryWeapon;
     let previousButtons: boolean[] = [];
     let padKey: string | null = null;
     let armed = false;
@@ -66,14 +68,14 @@ export function GameController() {
       window.dispatchEvent(new CustomEvent("avenlab:hero-main-hold",{detail:{pressed:false,cancelled}}));
     };
     const releasePanelPress = (cancelled = true) => {
-      combatIntent.gamepadFire=false;combatIntent.gamepadRam=false;
+      releaseWeaponSource("gamepad");combatIntent.gamepadFire=false;combatIntent.gamepadRam=false;
       releaseHeroMain();
       if (!panelPressHeld) return;
       panelPressHeld = false;
       routePhysicalMenuPress(false, cancelled);
     };
     const release = () => {
-      combatIntent.gamepadRam=false;combatIntent.gamepadFire=false;
+      releaseWeaponSource("gamepad");combatIntent.gamepadRam=false;combatIntent.gamepadFire=false;
       armed = false;
       if (resetTimer !== null) window.clearTimeout(resetTimer);
       resetTimer = null;
@@ -182,9 +184,31 @@ export function GameController() {
       }
       if (panelPressHeld && !pressed(0)) releasePanelPress(false);
       const ui = useUIStore.getState();
+      // Statistics is a passive overlay: ordinary driving continues beneath it.
+      // Its B/Close action owns this edge, then requires neutral controls before
+      // the same held button can become the driving handbrake again.
+      const scoreboard=useScoreboardStore.getState();
+      if((scoreboard.held||scoreboard.pinned)&&ui.screen==='sandbox'&&ui.overlay===null&&(edges[4]||edges[5])){
+        scoreboard.setView(edges[4]?"composition":"table");releasePanelPress();release();return;
+      }
+      if(edges[1]&&(scoreboard.held||scoreboard.pinned)&&ui.screen==='sandbox'&&ui.overlay===null){
+        scoreboard.close();releasePanelPress();release();return;
+      }
+      // Team filters own triggers only in the composition view. Holding one
+      // after a filter change cannot become throttle/reverse on the next poll.
+      if((scoreboard.held||scoreboard.pinned)&&ui.screen==='sandbox'&&ui.overlay===null&&scoreboard.view==='composition'&&(pressed(6)||pressed(7))){
+        if(edges[6]||edges[7])scoreboard.cycleTeamFilter(edges[6]?-1:1);
+        releasePanelPress();release();return;
+      }
       // Menu X and driving RB+View open the same chat without changing the
       // existing engine (X) or performance (View) actions during normal driving.
       const keyboardOpen = Boolean(useTextKeyboardStore.getState().session);
+      if(edges[3]&&ui.screen==='heroes'&&(ui.overlay===null||ui.overlay==='hero_abilities')&&
+        !keyboardOpen&&!ui.isModeLoading&&menuArmed&&canNavigateMenu()&&
+        !(isTypingTarget(document.activeElement)&&!document.activeElement?.closest('[data-controller-form]'))){
+        releasePanelPress();release();window.dispatchEvent(new Event('avenlab:hero-abilities'));return;
+      }
+
       const heroHoldAllowed=ui.screen==="heroes"&&ui.overlay===null&&!ui.isModeLoading&&!keyboardOpen&&menuArmed&&canNavigateMenu();
       if(!heroHoldAllowed||!pressed(2))releaseHeroMain(!heroHoldAllowed);
       else if(edges[2]&&!heroMainHeld){heroMainHeld=true;window.dispatchEvent(new CustomEvent("avenlab:hero-main-hold",{detail:{pressed:true}}));}
@@ -326,7 +350,7 @@ export function GameController() {
           routeMenuAction(edges[4] ? "previous_tab" : "next_tab");
           return;
         }
-        if ((edges[6] || edges[7]) && ui.screen === "mode_select" && ui.overlay === null) {
+        if ((edges[6] || edges[7]) && ((ui.screen === "mode_select" && ui.overlay === null) || ui.overlay === "match_results")) {
           routeMenuAction(edges[6] ? "previous_option" : "next_option");
           return;
         }
@@ -347,9 +371,17 @@ export function GameController() {
             (preferences.invertSteering ? -1 : 1),
         ),
       );
-      if(lastWeapon!==combatIntent.weapon){weaponFireArmed=false;lastWeapon=combatIntent.weapon;}
-      if(!pressed(5))weaponFireArmed=true;
-      if (combatIntent.enabled) { combatIntent.gamepadFire=armed&&weaponFireArmed&&pressed(5); }
+      const tank=useNetworkStore.getState().getMe()?.vehicle_id==='tank';
+      const secondary=useCombatStore.getState().secondaryWeapon;
+      if(lastSecondary!==secondary){secondaryFireArmed=false;lastSecondary=secondary;}
+      if(!pressed(15))secondaryFireArmed=true;
+      if (combatIntent.enabled) {
+        if(tank){
+          setWeaponHeld('gamepad','primary',armed&&pressed(5));
+          setWeaponHeld('gamepad','secondary',armed&&secondaryFireArmed&&pressed(15));
+          combatIntent.gamepadFire=false;
+        }else combatIntent.gamepadFire=armed&&pressed(5);
+      }
       if (combatIntent.enabled && armed) aimCombat(axis(pad.axes[2], preferences.controllerDeadzone)*0.035, axis(pad.axes[3], preferences.controllerDeadzone)*0.035);
       const me=useNetworkStore.getState().getMe();
       const transmission=unpackCockpit(me?.cockpit_mask);
@@ -369,7 +401,8 @@ export function GameController() {
           handbrake !== 0 ||
           pressed(4) ||
           pressed(5) ||
-          pressed(10)
+          pressed(10) ||
+          (tank&&pressed(15))
         )
           return;
         armed = true;
@@ -389,17 +422,20 @@ export function GameController() {
         brake,
         handbrake,
       });
-      const tank=useNetworkStore.getState().getMe()?.vehicle_id==='tank';
+      const mechanic=isMechanicPlayer();
+      if(mechanic&&edges[4])void requestNearestRevive();
       combatIntent.gamepadRam=tank&&combatIntent.enabled&&armed&&pressed(4);
-      store.setHeldVehicleFlag("gamepad", VehicleFlags.BOOST, !tank&&pressed(4));
+      store.setHeldVehicleFlag("gamepad", VehicleFlags.BOOST, !tank&&!mechanic&&pressed(4));
       store.setHeldPlayerFlag("gamepad", PlayerFlags.HONK, !combatIntent.enabled && pressed(5));
       if (edges[2]) store.toggleVehicleFlag(VehicleFlags.ENGINE_ON);
-      if (edges[3]) {if(cycleTankWeapon())weaponFireArmed=false;else store.toggleVehicleFlag(VehicleFlags.HEADLIGHTS);}
-      if (edges[12]) {if(!tank||!resetTurretOrientation())store.toggleVehicleFlag(VehicleFlags.HAZARDS);}
+      if (edges[3]) {if(cycleTankWeapon())secondaryFireArmed=false;else store.toggleVehicleFlag(VehicleFlags.HEADLIGHTS);}
+      if (edges[12]) {if(tank)resetTurretOrientation();else store.toggleVehicleFlag(VehicleFlags.HAZARDS);}
       if (edges[14]) store.toggleVehicleFlag(VehicleFlags.BLINKER_LEFT);
-      if (edges[15]) store.toggleVehicleFlag(VehicleFlags.BLINKER_RIGHT);
-      if (edges[11] && !(combatIntent.enabled&&toggleTurretOrientationLock()) && !stepManualGear(-1))
-        store.togglePlayerFlag(PlayerFlags.DYNO);
+      if (edges[15]&&!(tank&&combatIntent.enabled)) store.toggleVehicleFlag(VehicleFlags.BLINKER_RIGHT);
+      if (edges[11]) {
+        if(combatIntent.enabled)toggleTurretOrientationLock();
+        else if(!stepManualGear(-1))store.togglePlayerFlag(PlayerFlags.DYNO);
+      }
       if (edges[13]) {if(!tank||!toggleTankScope())store.togglePlayerFlag(PlayerFlags.RADIO);}
       if (edges[10]) {
         if (resetTimer !== null) window.clearTimeout(resetTimer);

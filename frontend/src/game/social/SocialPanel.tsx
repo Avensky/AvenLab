@@ -7,7 +7,7 @@ import {
 } from "../../store/text/keyboardStore";
 import { requestSocial, identifySocial } from "../../net/socialClient";
 import { AssistedInput } from "../../components/text/AssistedInput";
-import { MenuShortcuts, ControllerAction } from "../../components/controller";
+import {MenuFrame,MenuFrameHeader,MenuFrameFooter} from "../../components/menus/MenuFrame";
 import { trapMenuFocus } from "../../components/menus/menuFocus";
 import { WorldsPage } from "./WorldsPage";
 import { TeammatesPage, GroupsPage } from "./PeoplePages";
@@ -163,9 +163,9 @@ export function SocialPanel() {
   );
   useFormNavigation(root, back, cycle);
   useEffect(() => {
-    root.current
-      ?.querySelector<HTMLElement>(`[data-social-tab="${tab}"]`)
-      ?.focus({ preventScroll: true });
+    const button=root.current?.querySelector<HTMLElement>(`[data-social-tab="${tab}"]`);
+    button?.focus({preventScroll:true});
+    button?.scrollIntoView?.({block:'nearest',inline:'nearest'});
   }, [tab]);
   const run = async (
     task: () => Promise<Record<string, unknown> | void>,
@@ -203,7 +203,7 @@ export function SocialPanel() {
     : 0;
   return (
     <div className="game-ui menu-surface social-overlay">
-      <section
+      <MenuFrame
         ref={root}
         role="dialog"
         aria-modal="true"
@@ -212,17 +212,7 @@ export function SocialPanel() {
         className="social-panel"
         onKeyDown={trapMenuFocus}
       >
-        <header className="social-header">
-          <h1 id="social-title">WORLDS & SOCIAL</h1>
-          <span>{view?.profile.name ?? "PLAYER PROFILE"}</span>
-          <ControllerAction button="B"
-            type="button"
-            className="menu-control"
-            onClick={back}
-          >
-             BACK
-          </ControllerAction>
-        </header>
+        <MenuFrameHeader title="WORLDS & SOCIAL" titleId="social-title" onBack={back} className="social-header"/>
         {view && (
           <p className="social-server-budget">
             {view.limits.active_worlds}/{view.limits.max_active_worlds} ACTIVE
@@ -231,7 +221,7 @@ export function SocialPanel() {
           </p>
         )}
         <nav
-          className="social-tabs"
+          className="social-tabs menu-frame-tabs"
           role="tablist"
           aria-label="Worlds and social sections"
         >
@@ -250,7 +240,7 @@ export function SocialPanel() {
             </button>
           ))}
         </nav>
-        <div className="social-scroll">
+        <div className="social-scroll menu-frame-content">
           <fieldset disabled={busy} className="social-body" aria-busy={busy}>
             {view && tab === "WORLDS" && (
               <WorldsPage view={view} command={command} onStatus={setStatus} />
@@ -288,9 +278,7 @@ export function SocialPanel() {
             )}
           </fieldset>
         </div>
-        <footer className="social-footer">
-          <MenuShortcuts />
-          <p role="status">{status || connectionMessage}</p>
+        <MenuFrameFooter className="social-footer" status={status || connectionMessage}>
           <button
             type="button"
             className="menu-control"
@@ -299,8 +287,8 @@ export function SocialPanel() {
           >
             REFRESH
           </button>
-        </footer>
-      </section>
+        </MenuFrameFooter>
+      </MenuFrame>
     </div>
   );
 }

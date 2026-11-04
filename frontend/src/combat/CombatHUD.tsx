@@ -1,7 +1,10 @@
+import {ReviveActionFallback} from './ReviveAction';
+import {useCanDataStore} from '../store/recon/canDataStore';
+import {clearTankFireInputs} from './tankLoadout';
 import {useUIStore} from '../store/menus/uiStore';
 import {useNetworkStore} from '../store/session/networkStore';
 import {useEffect} from 'react';
-import {combatIntent,useCombatStore} from './combatStore';
+import {combatIntent,tankFireInputs,useCombatStore} from './combatStore';
 import {TankScopeHUD} from './TankScope';
 import {setTurretEnabled} from './turretControls';
 let autoVehicle='';
@@ -10,6 +13,13 @@ export function CombatHUD(){
  useEffect(()=>{
   const auto=()=>{
    const network=useNetworkStore.getState(),me=network.getMe();
+   if(me?.health?.defeated){
+    clearTankFireInputs(tankFireInputs);
+    combatIntent.firePulseUntil=0;combatIntent.directWeaponHeld=null;combatIntent.ramPulseUntil=0;
+    combatIntent.fire=false;combatIntent.keyboardFire=false;combatIntent.gamepadFire=false;
+    combatIntent.ram=false;combatIntent.gamepadRam=false;combatIntent.keyboardRam=false;
+    useCombatStore.getState().setScope(false);
+   }
    const key=network.connected&&me?`${network.playerId}:${me.vehicle_id}`:'';
    if(key===autoVehicle)return;
    const wasTank=autoVehicle.endsWith(':tank');autoVehicle=key;
@@ -21,10 +31,11 @@ export function CombatHUD(){
   const entered=(event:Event)=>{const detail=(event as CustomEvent<{vehicle?:string}>).detail;if(detail?.vehicle==='tank'){autoVehicle='';setTurretEnabled(true);auto();}};
   auto();const unsubscribe=useNetworkStore.subscribe(auto);
   window.addEventListener('avenlab:vehicle-entered',entered);
-  const stop=()=>{combatIntent.ramPulseUntil=0;useCombatStore.getState().setScope(false);combatIntent.fire=false;combatIntent.keyboardFire=false;combatIntent.gamepadFire=false;combatIntent.ram=false;combatIntent.gamepadRam=false;combatIntent.keyboardRam=false;};
+  const stop=()=>{clearTankFireInputs(tankFireInputs);combatIntent.firePulseUntil=0;combatIntent.directWeaponHeld=null;combatIntent.ramPulseUntil=0;useCombatStore.getState().setScope(false);combatIntent.fire=false;combatIntent.keyboardFire=false;combatIntent.gamepadFire=false;combatIntent.ram=false;combatIntent.gamepadRam=false;combatIntent.keyboardRam=false;};
   window.addEventListener('blur',stop);document.addEventListener('visibilitychange',stop);
+  const canRelease=useCanDataStore.subscribe(state=>{if(state.commandOpen)stop();});
   const uiRelease=useUIStore.subscribe(()=>{const ui=useUIStore.getState();if(ui.screen!=='sandbox'||ui.overlay!==null||ui.isModeLoading)stop();});
-  return()=>{unsubscribe();uiRelease();stop();window.removeEventListener('avenlab:vehicle-entered',entered);window.removeEventListener('blur',stop);document.removeEventListener('visibilitychange',stop);if(useUIStore.getState().screen!=='sandbox'){autoVehicle='';useCombatStore.getState().setEnabled(false);}};
+  return()=>{unsubscribe();uiRelease();canRelease();stop();window.removeEventListener('avenlab:vehicle-entered',entered);window.removeEventListener('blur',stop);document.removeEventListener('visibilitychange',stop);if(useUIStore.getState().screen!=='sandbox'){autoVehicle='';useCombatStore.getState().setEnabled(false);}};
  },[]);
- return <TankScopeHUD/>;
+ return <><TankScopeHUD/><ReviveActionFallback/></>;
 }

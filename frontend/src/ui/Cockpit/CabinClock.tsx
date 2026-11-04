@@ -12,16 +12,15 @@ export function GearClock({ lit }: { lit: boolean }) {
     </text>
   );
 }
-// A competitive server can publish this clock later. No local countdown invents
-// a match start/end, winner, or sudden-death rule in today's sandbox.
+// The server owns the CTF clock; legacy match_clock remains compatible.
 export function MatchClock() {
   const remaining = useNetworkStore((s) => {
-    const value = s.snapshot?.match_clock?.remaining_s;
+    const value = s.snapshot?.match_state?.remaining_s ?? s.snapshot?.match_clock?.remaining_s;
     return value !== undefined && Number.isFinite(value)
       ? Math.max(0, Math.ceil(value))
       : null;
   });
-  const phase = useNetworkStore((s) => s.snapshot?.match_clock?.phase);
+  const phase = useNetworkStore((s) => s.snapshot?.match_state?.phase ?? s.snapshot?.match_clock?.phase);
   if (remaining === null || !Number.isFinite(remaining)) return null;
   const seconds = Math.max(0, Math.ceil(remaining));
   return (
@@ -30,7 +29,7 @@ export function MatchClock() {
       data-phase={phase}
       aria-label="Server match clock"
     >
-      {phase === "overtime"
+      {phase === "waiting" ? "WAITING" : phase === "overtime"
         ? "OVERTIME"
         : `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`}
     </time>

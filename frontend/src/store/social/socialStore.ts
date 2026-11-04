@@ -29,6 +29,7 @@ export type SocialWorld = {
   invite_code: string | null;
   members: {
     player_id: string;
+    level?: number | null;
     profile_id: string | null;
     name: string;
     team: "red" | "blue";
@@ -76,6 +77,7 @@ const person = (value: unknown) => {
 /** Human-rate, server-owned data. Physics snapshots never write this store. */
 export const useSocialStore = create<{
   available: boolean;
+  profileStatus: "idle" | "restoring" | "ready" | "error";
   view: SocialView | null;
   message: string;
   recoveryMessage?:string;
@@ -84,6 +86,7 @@ export const useSocialStore = create<{
   receive: (value: unknown) => void;
 }>((set) => ({
   available: false,
+  profileStatus: "idle",
   view: null,
   message:
     "Connect to the updated game server to use worlds and social groups.",
@@ -91,6 +94,7 @@ export const useSocialStore = create<{
   reset: () =>
     set({
       available: false,
+      profileStatus: "idle",
       view: null,
       message: "Connecting to the game server…",
     }),
@@ -191,6 +195,6 @@ export const useSocialStore = create<{
       )
     )
       return;
-    set({ view, message: "Connected" });
+    set({ view, profileStatus:"ready", message: "Connected" });
   },
 }));

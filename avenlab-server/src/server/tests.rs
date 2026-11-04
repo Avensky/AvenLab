@@ -4,6 +4,8 @@ fn server(active: usize, players: usize) -> Server {
     Server {
         operations: Mutex::new(()),
         chat: Mutex::new(Default::default()),
+        matches: Mutex::new(Default::default()),
+        revivals: Mutex::new(Default::default()),
         alpha: Mutex::new(crate::alpha::AlphaState::disabled()),
         data: Mutex::new(SocialData::default()),
         connections: Mutex::new(HashMap::new()),
@@ -590,4 +592,273 @@ async fn expired_practice_body_is_removed_before_world_capacity_is_reused(){
  let runtime=s.runtimes.lock().await[&world].clone();s.disconnect(&player).await;
  for lease in s.alpha.lock().await.reservations.values_mut(){lease.expires=timestamp()-1;}
  s.maintain_alpha().await;assert!(runtime.lock().await.physics.vehicles.is_empty());assert!(s.runtimes.lock().await.is_empty());cleanup(s).await;
+}
+
+#[tokio::test]
+async fn world_member_levels_use_authenticated_profiles_and_do_not_publish_invented_mmr() {
+    let s=server(2,10);
+    let (a,_,a_view)=client(&s,"Host").await;
+    let (b,b_identity,_)=client(&s,"Experienced driver").await;
+    let (_,_,outside_view)=client(&s,"Outside observer").await;
+    let world_id=world(&s,&a,"Scoreboard course","",true).await;
+    let b_profile=b_identity["profile_id"].as_str().unwrap();
+    s.data.lock().await.profiles.get_mut(b_profile).unwrap().progression.level=37;
+    s.handle(&a,json!({"action":"world_join","world_id":world_id})).await.unwrap();
+    s.handle(&b,json!({"action":"world_join","world_id":world_id})).await.unwrap();
+    s.handle(&b,json!({"action":"refresh","level":999,"mmr":9000})).await.unwrap();
+    let own:Value=serde_json::from_str(a_view.borrow().as_ref().unwrap()).unwrap();
+    let current=own["data"]["worlds"].as_array().unwrap().iter().find(|w|w["id"]==world_id).unwrap();
+    let members=current["members"].as_array().unwrap();
+    let remote=members.iter().find(|member|member["player_id"]==b).unwrap();
+    assert_eq!(remote["profile_id"],b_profile);assert_eq!(remote["level"],37);
+    assert!(remote.get("mmr").is_none());
+    let local=members.iter().find(|member|member["player_id"]==a).unwrap();assert_eq!(local["level"],1);
+    let outside:Value=serde_json::from_str(outside_view.borrow().as_ref().unwrap()).unwrap();
+    let listed=outside["data"]["worlds"].as_array().unwrap().iter().find(|w|w["id"]==world_id).unwrap();
+    assert!(listed["members"].as_array().unwrap().is_empty(),"world discovery does not reveal member details to outsiders");
+    cleanup(s).await;
+}
+
+async fn deployed_ctf(strict: bool) -> (Server, usize, Vec<(String, Value)>) {
+    let s = alpha_server();
+    s.alpha.lock().await.enforce_roles = strict;
+    let picks: Vec<_> = if strict { vec!["tank","tank","ae86","ae86","brz","brz","mechanic","mechanic","camaro","camaro"] } else { vec!["brz","brz"] };
+    let mut roster = Vec::new();
+    let mut world = 0;
+    for (index, hero) in picks.iter().enumerate() {
+        let (player, identity, _) = client(&s, &format!("Career driver {index}")).await;
+        let joined = mode(&s, &player, "competitive", hero).await;
+        world = joined["world_id"].as_u64().unwrap() as usize;
+        let vehicle = crate::alpha::policy::hero(hero).unwrap().vehicle;
+        s.spawn(&player, "streaming_endless_city", vehicle).await.unwrap();
+        roster.push((player, identity));
+    }
+    assert_eq!(s.runtimes.lock().await[&world].lock().await.round.as_ref().unwrap().phase, crate::ctf::CtfPhase::Running);
+    (s, world, roster)
+}
+fn place_ctf_body(room: &mut WorldRuntime, player: &str, point: [f32;3]) {
+    use rapier3d::prelude::*;
+    let handle = room.physics.vehicles[player].body;
+    let body = &mut room.physics.bodies[handle];
+    body.set_body_type(RigidBodyType::KinematicPositionBased, true);
+    body.set_translation(vector![point[0], point[1], point[2]], true);
+    body.set_next_kinematic_translation(vector![point[0], point[1], point[2]]);
+    body.set_linvel(Vector::zeros(), true);
+}
+fn travel_ctf_body(room: &mut WorldRuntime, player: &str, target: [f32;3]) {
+    loop {
+        let pos = room.physics.bodies[room.physics.vehicles[player].body].translation();
+        let delta = [target[0]-pos.x,target[1]-pos.y,target[2]-pos.z];
+        let distance = (delta.iter().map(|v| v*v).sum::<f32>()).sqrt();
+        if distance < 0.001 { break; }
+        let amount = (4.0 / distance).min(1.0);
+        let next = [pos.x+delta[0]*amount,pos.y+delta[1]*amount,pos.z+delta[2]*amount];
+        place_ctf_body(room, player, next);
+        room.tick(0.0);
+    }
+    room.tick(0.0);
+}
+
+#[tokio::test]
+async fn real_ctf_capture_completion_archives_careers_once_and_history_survives_restart() {
+    let (s, world, roster) = deployed_ctf(true).await;
+    let runtime = s.runtimes.lock().await[&world].clone();
+    let mut red = roster.iter().find(|(id, _)| s.connections.try_lock().unwrap()[id].team == Team::Red).unwrap().0.clone();
+    let red_profile = s.connections.lock().await[&red].profile_id.clone().unwrap();
+    let match_id;
+    {
+        let mut room = runtime.lock().await;
+        let bases = room.round.as_ref().unwrap().bases;
+        match_id = room.round.as_ref().unwrap().match_id.clone();
+        for (index, (id, _)) in roster.iter().enumerate() {
+            place_ctf_body(&mut room, id, [bases[0][0]+50.0+index as f32*8.0,bases[0][1],bases[0][2]+40.0]);
+        }
+        place_ctf_body(&mut room, &red, bases[0]);
+        room.tick(0.0); room.tick(0.0);
+        for _ in 0..3 {
+            travel_ctf_body(&mut room, &red, bases[1]);
+            assert_eq!(room.round.as_ref().unwrap().flags[1].carrier.as_deref(), Some(red.as_str()));
+            travel_ctf_body(&mut room, &red, bases[0]);
+        }
+        assert_eq!(room.round.as_ref().unwrap().phase, crate::ctf::CtfPhase::Ended);
+        assert_eq!(room.round.as_ref().unwrap().scores.red, 3);
+    }
+    s.maintain_matches().await;
+    s.maintain_matches().await;
+    assert_eq!(s.data.lock().await.completed_results.len(), 1);
+    {
+        let data = s.data.lock().await;
+        assert_eq!(data.profiles.values().map(|p| p.progression.matches).sum::<u32>(), 10);
+        assert_eq!(data.profiles.values().map(|p| p.progression.competitive_wins).sum::<u32>(), 5);
+        let career = &data.profiles[&red_profile].progression.career;
+        assert_eq!(career.summary.wins, 1);
+        assert_eq!(career.summary.best.captures, 3);
+        assert_eq!(career.summary.mvp, 1);
+        assert_eq!(career.summary.play_of_the_game, 1);
+    }
+    let history = s.handle(&red,json!({"action":"career_history","mode":"competitive","hero":"tank"})).await.unwrap();
+    assert_eq!(history["matches"][0]["match_id"], match_id);
+    let detail = s.handle(&red,json!({"action":"career_match","match_id":match_id})).await.unwrap();
+    assert_eq!(detail["match"]["score"], json!([3,0]));
+    let red_identity=roster.iter().find(|(id,_)| id==&red).unwrap().1.clone();
+    s.disconnect(&red).await;
+    let (resumed,_,_)=client(&s,"Result reconnect").await;
+    let (result_tx,mut result_rx)=tokio::sync::mpsc::unbounded_channel();
+    s.connections.lock().await.get_mut(&resumed).unwrap().tx=result_tx;
+    s.handle(&resumed,json!({"action":"identify","name":"Career driver 0","token":red_identity["token"]})).await.unwrap();
+    let mut replayed=false;
+    while let Ok(packet)=result_rx.try_recv() {
+        let packet:Value=serde_json::from_str(&packet).unwrap();
+        if packet["type"]=="match_result" { assert_eq!(packet["data"]["match_id"],match_id);replayed=true; }
+    }
+    assert!(replayed,"a reconnecting participant must receive the already-committed result");
+    red=resumed;
+    let (outsider, _, _) = client(&s, "Private history outsider").await;
+    assert!(s.handle(&outsider,json!({"action":"career_match","match_id":match_id})).await.is_err());
+    assert!(s.handle(&outsider,json!({"action":"match_result","winner":"blue","stats":{"kills":999}})).await.is_err());
+    let mut reloaded = SocialData::load(&s.path).unwrap();
+    super::matches::recover_archives(&s.path,&mut reloaded).unwrap();
+    let committed = reloaded.completed_results.clone();
+    let page = crate::alpha::career::read_history(&s.path,&red_profile,None,20,&committed).unwrap();
+    assert_eq!(page.matches.len(),1);
+    assert_eq!(page.matches[0].stats.captures,3);
+    assert_eq!(reloaded.profiles[&red_profile].progression.career.summary.sessions,1);
+    // A player asking for another game must queue while others view this result.
+    assert_eq!(mode(&s,&red,"competitive","tank").await["status"],"queued");
+    s.matches.lock().await.ended.insert(world,timestamp()-46);
+    s.maintain_matches().await;
+    s.maintain_alpha().await;
+    assert!(s.alpha.lock().await.members.contains_key(&red));
+    assert_eq!(s.runtimes.lock().await[&world].lock().await.round.as_ref().unwrap().phase,crate::ctf::CtfPhase::Waiting);
+    cleanup(s).await;
+}
+
+#[tokio::test]
+async fn practice_reconnect_deduplicates_retained_stats_and_saves_without_match_rewards() {
+    let s=alpha_server();
+    let (old,identity,_)=client(&s,"Persistent mechanic").await;
+    mode(&s,&old,"sandbox","tank").await;
+    s.spawn(&old,"road_precision","tank").await.unwrap();
+    let runtime=s.runtime(&old).await.unwrap();
+    runtime.lock().await.physics.vehicle_health.get_mut(&old).unwrap().note_damage_dealt(150.0);
+    s.disconnect(&old).await;
+    assert!(s.data.lock().await.completed_results.is_empty());
+    let (new,_,_)=client(&s,"Reconnect placeholder").await;
+    s.handle(&new,json!({"action":"identify","name":"Persistent mechanic","token":identity["token"]})).await.unwrap();
+    runtime.lock().await.physics.vehicle_health.get_mut(&new).unwrap().note_damage_dealt(50.0);
+    s.handle(&new,json!({"action":"mode_leave"})).await.unwrap();
+    let profile=identity["profile_id"].as_str().unwrap();
+    let data=s.data.lock().await;
+    assert_eq!(data.profiles[profile].progression.matches,0);
+    assert_eq!(data.profiles[profile].progression.career.summary.totals.damage_dealt,200.0);
+    assert_eq!(data.profiles[profile].progression.career.summary.sessions,1);
+    drop(data);
+    let history=s.handle(&new,json!({"action":"career_history"})).await.unwrap();
+    assert_eq!(history["matches"][0]["outcome"],"completed");
+    cleanup(s).await;
+}
+
+#[tokio::test]
+async fn interrupted_archive_commit_rolls_back_then_recovers_exactly_once() {
+    let s=alpha_server();
+    let (player,identity,_)=client(&s,"Crash recovery").await;
+    let profile=identity["profile_id"].as_str().unwrap().to_string();
+    let record=crate::alpha::career::CareerMatch {
+        match_id:"server-recovery-result".into(),world_id:1,mode:crate::alpha::Mode::Competitive,
+        map:"road_precision".into(),ended_at:timestamp(),duration_s:30.0,progression_eligible:true,winner:Some("red".into()),score:[3,0],
+        participants:vec![crate::alpha::career::CareerParticipant {profile_id:profile.clone(),name:"Crash recovery".into(),team:Some("red".into()),hero:"tank".into(),stats:crate::alpha::career::CareerStats {kills:4,..Default::default()},..Default::default()}],..Default::default()
+    };
+    let baseline=SocialData::load(&s.path).unwrap();
+    // A directory in place of the atomic temp file simulates a failed social
+    // save after the full immutable record has reached disk.
+    std::fs::create_dir(s.path.with_extension("tmp")).unwrap();
+    assert!(s.persist_record(&record).await.is_err());
+    assert!(s.data.lock().await.completed_results.is_empty());
+    assert_eq!(s.data.lock().await.profiles[&profile].progression.matches,0);
+    assert!(s.handle(&player,json!({"action":"career_match","match_id":record.match_id})).await.is_err());
+    let mut restarted=baseline;
+    super::matches::recover_archives(&s.path,&mut restarted).unwrap();
+    super::matches::recover_archives(&s.path,&mut restarted).unwrap();
+    assert_eq!(restarted.completed_results.len(),1);
+    assert_eq!(restarted.profiles[&profile].progression.matches,1);
+    assert_eq!(restarted.profiles[&profile].progression.career.summary.best.kills,4);
+    cleanup(s).await;
+}
+
+#[tokio::test]
+async fn running_ctf_reconnect_aggregates_new_body_and_records_explicit_leaver_without_rewards() {
+    let (s, world, roster)=deployed_ctf(false).await;
+    let (old, identity)=&roster[0];
+    let runtime=s.runtimes.lock().await[&world].clone();
+    runtime.lock().await.physics.vehicle_health.get_mut(old).unwrap().note_damage_dealt(100.0);
+    assert!(s.handle(old,json!({"action":"hero_select","hero":"tank"})).await.unwrap_err().contains("locked for this CTF round"));
+    s.disconnect(old).await;
+    let (new,_,_)=client(&s,"Reconnect guest").await;
+    s.handle(&new,json!({"action":"identify","name":"Career driver 0","token":identity["token"]})).await.unwrap();
+    s.spawn(&new,"streaming_endless_city","brz").await.unwrap();
+    runtime.lock().await.physics.vehicle_health.get_mut(&new).unwrap().note_damage_dealt(50.0);
+    s.handle(&new,json!({"action":"mode_leave"})).await.unwrap();
+    {
+        let mut room=runtime.lock().await;
+        room.round.as_mut().unwrap().duration_s=crate::physics::SIMULATION_DT;
+        room.tick(0.0);
+    }
+    s.maintain_matches().await;
+    s.maintain_matches().await;
+    let profile=identity["profile_id"].as_str().unwrap();
+    {
+        let data=s.data.lock().await;
+        let career=&data.profiles[profile].progression.career;
+        assert_eq!(career.summary.totals.damage_dealt,150.0);
+        assert_eq!(career.summary.sessions,1);
+        assert_eq!(career.summary.losses,1);
+        assert_eq!(career.summary.abandoned,1);
+        assert_eq!(data.profiles[profile].progression.matches,0);
+    }
+    let history=s.handle(&new,json!({"action":"career_history","mode":"training"})).await.unwrap();
+    assert_eq!(history["matches"][0]["outcome"],"loss");
+    assert_eq!(history["matches"][0]["abandoned"],true);
+    cleanup(s).await;
+}
+
+#[tokio::test]
+async fn result_capacity_is_preflighted_and_existing_pending_archives_do_not_block_startup() {
+    let s=alpha_server();
+    let (_,identity,_)=client(&s,"Capacity driver").await;
+    let profile=identity["profile_id"].as_str().unwrap().to_string();
+    let record=crate::alpha::career::CareerMatch {
+        match_id:"capacity-pending".into(),world_id:1,mode:crate::alpha::Mode::Sandbox,map:"road_precision".into(),ended_at:timestamp(),
+        participants:vec![crate::alpha::career::CareerParticipant {profile_id:profile,name:"Capacity driver".into(),hero:"tank".into(),..Default::default()}],..Default::default()
+    };
+    s.data.lock().await.completed_results=(0..16384).map(|i| format!("old-result-{i}")).collect();
+    assert!(s.persist_record(&record).await.unwrap_err().contains("ledger"));
+    assert!(crate::alpha::career::pending_archives(&s.path,&s.data.lock().await.completed_results).unwrap().is_empty(),"logical capacity failure must precede archive creation");
+    crate::alpha::career::write_match_archive(&s.path,&record).unwrap();
+    let mut data=s.data.lock().await.clone();
+    super::matches::recover_archives(&s.path,&mut data).unwrap();
+    assert_eq!(data.completed_results.len(),16384);
+    assert!(!data.completed_results.contains(&record.match_id));
+    cleanup(s).await;
+}
+
+#[tokio::test]
+async fn ctf_participant_history_budget_queues_new_profiles_but_preserves_reconnects() {
+    let (s, world, roster)=deployed_ctf(false).await;
+    for index in 2..32 {
+        let (player,_,_)=client(&s,&format!("Replacement {index}")).await;
+        assert_eq!(mode(&s,&player,"competitive","brz").await["status"],"joined");
+        s.spawn(&player,"streaming_endless_city","brz").await.unwrap();
+        s.handle(&player,json!({"action":"mode_leave"})).await.unwrap();
+    }
+    let (waiting,_,_)=client(&s,"Next round driver").await;
+    assert_eq!(mode(&s,&waiting,"competitive","brz").await["status"],"queued");
+    let (old,identity)=&roster[0];
+    s.disconnect(old).await;
+    let (resumed,_,_)=client(&s,"Resumed driver").await;
+    s.handle(&resumed,json!({"action":"identify","name":"Career driver 0","token":identity["token"]})).await.unwrap();
+    assert_eq!(s.connections.lock().await[&resumed].world_id,Some(world));
+    s.spawn(&resumed,"streaming_endless_city","brz").await.unwrap();
+    assert!(s.alpha.lock().await.members.contains_key(&resumed));
+    assert!(s.alpha.lock().await.queue.iter().any(|t| t.player==waiting));
+    cleanup(s).await;
 }

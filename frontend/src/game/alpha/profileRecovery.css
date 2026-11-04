@@ -1,0 +1,6 @@
+/* Profile recovery stays with mode selection and shares the app's control skin. */
+.profile-recovery{display:grid;gap:6px;margin-top:9px;max-width:420px;padding:9px;background:color-mix(in srgb,var(--app-panel,#0b1729) 92%,transparent);color:var(--app-text,#e4eefb);text-shadow:none;pointer-events:auto;font:600 10px/1.35 system-ui}
+.profile-recovery p{margin:0}.profile-recovery p[role=status]{color:var(--app-accent,#98caff)}
+.profile-recovery-actions{display:flex;flex-wrap:wrap;gap:5px}.profile-recovery-actions .menu-control{min-height:30px;padding:5px 8px;font-size:9px;border-radius:0;text-decoration:none}
+.profile-recovery small{font:400 9px/1.3 system-ui;color:var(--app-muted,#b7c7db)}
+@media(max-height:450px){.profile-recovery{gap:4px;margin-top:5px;padding:6px;font-size:9px}.profile-recovery small{font-size:8px}.profile-recovery-actions .menu-control{min-height:26px;padding:3px 6px}}

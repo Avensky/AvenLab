@@ -11,6 +11,7 @@ import {
   type GarageEffects,
 } from "./garageEffects";
 
+import {sanitizeHealthBarMode,type HealthBarMode} from "./healthVisibility";
 import {DEFAULT_BINDINGS,sanitizeBindings} from './keyBindings';
 import type {BindingAction} from './keyBindings';
 export {DEFAULT_BINDINGS,RESERVED_KEYS,isBindingKey} from './keyBindings';
@@ -28,6 +29,7 @@ export {
 } from "./hudVisibility";
 export type Preferences = {
   radioHudStyle: "classic" | "streamlined" | "no-tabs";
+  healthBars: HealthBarMode;
   theme: UITheme;
   vehicleCosmetics: Pick<VehicleCosmetics,"matchCockpit">;
   garageEffects: GarageEffects;
@@ -76,6 +78,7 @@ export type PreferenceUpdate = Omit<
 };
 export const DEFAULT_PREFERENCES: Preferences = {
   radioHudStyle: "no-tabs",
+  healthBars: "all",
   theme: "navy",
   vehicleCosmetics: {matchCockpit:DEFAULT_VEHICLE_COSMETICS.matchCockpit},
   garageEffects: DEFAULT_GARAGE_EFFECTS,
@@ -131,6 +134,7 @@ export function sanitizePreferences(value: unknown): Preferences {
       ? data.researchHud && visibility.climate !== false
       : visibility.climate === true;
   return {
+    healthBars: sanitizeHealthBarMode(data.healthBars),
     radioHudStyle:
       data.radioHudStyle === "streamlined" || data.radioHudStyle === "classic"
         ? data.radioHudStyle

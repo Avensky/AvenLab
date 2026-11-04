@@ -20,10 +20,11 @@ export const GARAGE_MODEL_PATH =
 const GARAGE_DISPLAY_SCALE = 0.06;
 type GarageProps = {
   turntable: Group | null;
+  accentOverride?: string | null;
   onPlatformReady?: (footprint: [number, number]) => void;
 };
 
-export function GarageEnvironment({ turntable, onPlatformReady }: GarageProps) {
+export function GarageEnvironment({ turntable, onPlatformReady, accentOverride = null }: GarageProps) {
   return (
     <>
       <Showroom floor={false} />
@@ -44,6 +45,7 @@ export function GarageEnvironment({ turntable, onPlatformReady }: GarageProps) {
           <GarageModel
             turntable={turntable}
             onPlatformReady={onPlatformReady}
+            accentOverride={accentOverride}
           />
         </Suspense>
       </AssetBoundary>
@@ -51,7 +53,7 @@ export function GarageEnvironment({ turntable, onPlatformReady }: GarageProps) {
   );
 }
 
-function GarageModel({ turntable, onPlatformReady }: GarageProps) {
+function GarageModel({ turntable, onPlatformReady, accentOverride = null }: GarageProps) {
   const theme = usePreferencesStore((s) => s.theme),
     contrast = usePreferencesStore((s) => s.highContrast);
   const brightness = usePreferencesStore(
@@ -112,8 +114,8 @@ function GarageModel({ turntable, onPlatformReady }: GarageProps) {
   useEffect(() => () => prepared.dispose(), [prepared]);
   useLayoutEffect(() => {
     for (const root of [prepared.root, prepared.platform, prepared.structure])
-      applyGarageLighting(root, theme, contrast, brightness);
-  }, [prepared, theme, contrast, brightness]);
+      applyGarageLighting(root, theme, contrast, brightness, accentOverride);
+  }, [prepared, theme, contrast, brightness, accentOverride]);
   const probe = useMemo(
     () =>
       environmentReflections
@@ -122,9 +124,10 @@ function GarageModel({ turntable, onPlatformReady }: GarageProps) {
             theme,
             contrast,
             brightness,
+            accentOverride,
           )
         : null,
-    [prepared, theme, contrast, brightness, environmentReflections],
+    [prepared, theme, contrast, brightness, environmentReflections, accentOverride],
   );
   useEffect(() => () => probe?.dispose(), [probe]);
   // Stable JSX prevents a hero hover or unrelated menu render from triggering

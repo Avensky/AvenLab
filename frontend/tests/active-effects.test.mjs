@@ -1,0 +1,13 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {createServer} from 'vite';
+test('active status projection follows confirmed durations, resource flags and mutually exclusive phases',async t=>{
+ const server=await createServer({server:{middlewareMode:true,hmr:false,ws:false},appType:'custom',logLevel:'error'});
+ try{
+  const{readEffectSignals:read,activeVehicleEffects:effects}=await server.ssrLoadModule('/src/combat/activeEffects.ts');
+  await t.test('empty and cooldown-only snapshots do not invent active buffs',()=>{assert.deepEqual(effects(read(null)),[]);assert.deepEqual(effects(read({combat:{ram_cooldown:58,ram_remaining:0,stun_remaining:0}})),[]);});
+  await t.test('spawn shield uses confirmed time and defeated snapshots suppress all buffs',()=>{const a=effects(read({health:{spawn_protection_s:1.27,defeated:false}}));assert.equal(a[0].id,'spawn-protection');assert.equal(a[0].remaining,1.3);assert.equal(a[0].nature,'defense');assert.deepEqual(effects(read({health:{spawn_protection_s:2,defeated:true},combat:{ram_remaining:5},resource_mask:2})),[]);});
+  await t.test('charge changes to the shorter boost tail without duplicate nitrous',()=>{const a=effects(read({combat:{ram_charge_remaining:2.26,ram_remaining:6.2},telemetry_mask:16,vehicle_mask:128}));assert.equal(a.length,1);assert.equal(a[0].id,'ram-charge');assert.equal(a[0].remaining,2.3);const b=effects(read({combat:{ram_charge_remaining:0,ram_remaining:3.4}}));assert.equal(b[0].id,'ram-boost');assert.equal(b[0].duration,4);});
+  await t.test('stun and thermal recovery suppress contradictory boost badges',()=>{const a=effects(read({combat:{stun_remaining:.7,ram_remaining:4},resource_mask:64|16,telemetry_mask:16,vehicle_mask:128}));assert.deepEqual(a.map(e=>e.id),['stun','thermal-recovery','engine-wear']);assert(a.every(e=>e.kind==='debuff'));assert.equal(a[0].remaining,.7);assert.equal(a[1].remaining,null);});
+  await t.test('NOS requires confirmed boost telemetry and active state',()=>{assert.deepEqual(effects(read({telemetry_mask:0,vehicle_mask:128})),[]);assert.deepEqual(effects(read({telemetry_mask:16,vehicle_mask:0})),[]);assert.equal(effects(read({telemetry_mask:16,vehicle_mask:128}))[0].id,'nitrous');});
+  await t.test('unknown duration stays untimed, and invalid timers cannot produce badges',()=>{const a=effects(read({resource_mask:2}));assert.equal(a[0].id,'engine-hot');assert.equal(a[0].remaining,null);assert.deepEqual(effects(read({combat:{ram_remaining:NaN,ram_charge_remaining:Infinity,stun_remaining:-1},resource_mask:NaN})),[]);});
+ }finally{await server.close();}
+});

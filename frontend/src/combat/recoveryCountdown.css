@@ -1,0 +1,5 @@
+.recovery-countdown{--recovery-color:#ff8797;--action-orbit-size:36px;--orbit-art-size:42px;--orbit-scale:1;flex:none;color:var(--recovery-color);width:42px;height:42px;display:grid;place-items:center;pointer-events:none}
+.recovery-countdown[data-reason=fuel]{--recovery-color:#ffbf69}
+.recovery-countdown .action-progress-orbit{color:var(--recovery-color);--orbit-outer-color:var(--recovery-color);--orbit-inner-color:#fff;--orbit-halo-color:var(--recovery-color)}
+.recovery-countdown .action-progress-orbit>strong{position:relative;z-index:2;grid-area:1/1;color:#fff;font:800 13px/1 system-ui;text-shadow:0 1px 3px #000}
+.recovery-countdown[data-revivable=false]{opacity:.7}
