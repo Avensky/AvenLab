@@ -115,6 +115,11 @@ export const HEROES: {
     id: "sierra", name: "SIERRA AT4X", vehicle: "sierra", role: "tank",
     note: "TANK · GMC Sierra 1500 AT4X · 900 HP wheeled pickup",
   },
+  {id:"enforcer", vehicle:"enforcer", name:"MARUSSIA B2 ENFORCER", role:"support", note:"Police field support with a protected approach"},
+  {id:"interceptor", vehicle:"interceptor", name:"POLICE INTERCEPTOR", role:"support", note:"Fast police escort with allied field service"},
+  {id:"charger70", vehicle:"charger70", name:"1970 CHARGER R/T", role:"dps", note:"Rear-drive muscle for a heavy launch"},
+  {id:"skyline34", vehicle:"skyline34", name:"SKYLINE R34", role:"dps", note:"Pursuit coupe for high-speed intercepts"},
+  {id:"timecar", vehicle:"timecar", name:"TIME MACHINE", role:"dps", note:"Gull-wing pursuit car"},
 ];
 export function heroForVehicle(vehicle: string | null | undefined) {
   return HEROES.find(hero => hero.vehicle === vehicle);

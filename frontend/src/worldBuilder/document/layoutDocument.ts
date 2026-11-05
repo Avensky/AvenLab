@@ -24,13 +24,13 @@ import {
   validateVehicle,
   type VehiclePlacement,
 } from "../vehicles/vehicleCatalog.ts";
-import { EXTRA_PIECES } from "./libraryCatalog.ts";
+import { EXTRA_PIECES, isServiceGarage } from "./libraryCatalog.ts";
 import { validateSpawns, type LayoutSpawn } from "./spawnDocument.ts";
 // Layouts use runtime metres and Y-up throughout. Unlike the legacy map boxes,
 // these transforms never pass through the Blender-axis conversion.
 export type V3 = [number, number, number];
 export type LayoutPart = {
-  shape: "box" | "wedge";
+  shape: "box" | "wedge" | "deck";
   position: V3;
   size: V3;
   color?: string;
@@ -369,7 +369,7 @@ export function parseLayout(value: unknown, mapId?: string): WorldLayout {
       validateModel(item.model);
       if (
         item.road !== undefined ||
-        item.piece !== `prefab-${item.model.asset}`
+        (item.piece !== `prefab-${item.model.asset}` && !isServiceGarage(item.piece))
       )
         throw Error("Prefab piece and asset must agree");
       parts += modelAsset(item.model.asset)!.colliders.filter((c) =>
@@ -396,7 +396,7 @@ export function parseLayout(value: unknown, mapId?: string): WorldLayout {
     for (const entry of item.parts) {
       const part = object(entry);
       if (
-        !["box", "wedge"].includes(String(part.shape)) ||
+        !["box", "wedge", "deck"].includes(String(part.shape)) ||
         !vector(part.position, -2, 2) ||
         !vector(part.size, 0.001, 4) ||
         (part.color !== undefined && !color(part.color)) ||
@@ -474,6 +474,8 @@ export function updatePiece(
     Pick<
       LayoutObject,
       | "name"
+      | "piece"
+      | "parts"
       | "position"
       | "size"
       | "yaw"

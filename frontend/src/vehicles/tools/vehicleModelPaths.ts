@@ -1,4 +1,9 @@
 export const VEHICLE_MODEL_PATHS = {
+  enforcer: "/models/vehicles/enforcer.glb",
+  interceptor: "/models/vehicles/interceptor.glb",
+  charger70: "/models/vehicles/charger70.glb",
+  skyline34: "/models/vehicles/skyline34.glb",
+  timecar: "/models/vehicles/timecar.glb",
   ae86: "/models/vehicles/ae86.glb",
   sierra: "/models/vehicles/sierra.glb",
   fortuner: "/models/vehicles/fortuner.glb",

@@ -22,6 +22,41 @@ pub fn config_for_vehicle(vehicle_id: &str) -> Option<VehicleConfig> {
         | "frs" | "fr-s" | "fr_s"
         | "scion-frs" | "scion-fr-s" | "scion_frs" | "scion_fr_s" => Some(BRZ),
 
+        "enforcer" => Some(VehicleConfig {
+            front_axle_z: 1.2426, rear_axle_z: -1.4379, front_track_width: 1.7011, rear_track_width: 1.7257,
+            wheel_radius: 0.3470, wheel_y: -0.0431,
+            chassis_half_extents: [1.1211, 0.5353, 2.2422], chassis_com_offset: [0., 0.09, 0.],
+            suspension_max_length: 0.14, suspension_sag: 0.085, suspension_damping_ratio: 0.96,
+            ..GT86
+        }),
+        "interceptor" => Some(VehicleConfig {
+            front_axle_z: 1.3006, rear_axle_z: -1.3804, front_track_width: 1.5149, rear_track_width: 1.6476,
+            wheel_radius: 0.3213, wheel_y: -0.0306,
+            chassis_half_extents: [1.0493, 0.4970, 2.2272], chassis_com_offset: [0., 0.09, 0.],
+            suspension_max_length: 0.14, suspension_sag: 0.085, suspension_damping_ratio: 0.96,
+            ..GT86
+        }),
+        "charger70" => Some(VehicleConfig {
+            front_axle_z: 1.6319, rear_axle_z: -1.2921, front_track_width: 1.5409, rear_track_width: 1.5351,
+            wheel_radius: 0.3460, wheel_y: -0.1296,
+            chassis_half_extents: [0.9915, 0.6208, 2.6327], chassis_com_offset: [0., 0.09, 0.],
+            ..CAMARO
+        }),
+        "skyline34" => Some(VehicleConfig {
+            front_axle_z: 1.3365, rear_axle_z: -1.3011, front_track_width: 1.4583, rear_track_width: 1.4682,
+            wheel_radius: 0.3233, wheel_y: -0.1031,
+            chassis_half_extents: [0.9393, 0.5729, 2.3000], chassis_com_offset: [0., 0.09, 0.],
+            suspension_max_length: 0.14, suspension_sag: 0.085, suspension_damping_ratio: 0.96,
+            ..GT86
+        }),
+        "timecar" => Some(VehicleConfig {
+            front_axle_z: 1.2727, rear_axle_z: -1.1613, front_track_width: 1.5241, rear_track_width: 1.5084,
+            wheel_radius: 0.3136, wheel_y: -0.0924,
+            chassis_half_extents: [0.9874, 0.5513, 2.2102], chassis_com_offset: [0., 0.09, 0.],
+            suspension_max_length: 0.14, suspension_sag: 0.085, suspension_damping_ratio: 0.96,
+            ..GT86
+        }),
+
         // Camaro
         "camaro" | "camaro-2017" | "camaro_2017" => Some(CAMARO),
 

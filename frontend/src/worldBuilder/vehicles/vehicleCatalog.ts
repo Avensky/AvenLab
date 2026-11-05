@@ -1,4 +1,4 @@
-export type VehicleAssetId = 'ae86' | 'brz' | 'camaro' | 'supra' | 'cx30' | 'fortuner' | 'landcruiser' | 'sierra' | 'mini' | 'tank';
+export type VehicleAssetId = 'ae86' | 'brz' | 'camaro' | 'supra' | 'cx30' | 'fortuner' | 'landcruiser' | 'sierra' | 'mini' | 'tank' | 'enforcer' | 'interceptor' | 'charger70' | 'skyline34' | 'timecar';
 export type VehiclePlacement = {asset: VehicleAssetId; lod: 'auto' | 'proxy' | 'full'};
 export type VehicleAsset = {id: VehicleAssetId; label: string; url: string; size: [number,number,number]; sourceYaw: number; color: string};
 // Background props use their complete imported static pose, without any player
@@ -13,6 +13,11 @@ export const VEHICLE_ASSETS: VehicleAsset[] = [
   {id:'landcruiser',label:'Toyota Land Cruiser',url:'/models/vehicles/landcruiser.glb',size:[2.114,1.922,4.928],sourceYaw:0,color:'#a1a8ad'},
   {id:'mini',label:'Mini Cooper',url:'/models/vehicles/mini.glb',size:[1.932,1.701,3.876],sourceYaw:0,color:'#5195ce'},
   {id:'cx30',label:'Mazda CX-30',url:'/models/vehicles/cx30.glb',size:[2.132,1.54,4.329],sourceYaw:0,color:'#9a2432'},
+  {id:'enforcer',label:'Marussia B2 Enforcer',url:'/models/vehicles/enforcer.glb',size:[2.242,1.251,4.484],sourceYaw:0,color:'#6d7c89'},
+  {id:'interceptor',label:'Police Interceptor',url:'/models/vehicles/interceptor.glb',size:[2.099,1.174,4.454],sourceYaw:0,color:'#6d7c89'},
+  {id:'charger70',label:'1970 Charger R/T',url:'/models/vehicles/charger70.glb',size:[1.983,1.422,5.265],sourceYaw:0,color:'#6d7c89'},
+  {id:'skyline34',label:'Skyline R34',url:'/models/vehicles/skyline34.glb',size:[1.879,1.326,4.600],sourceYaw:0,color:'#6d7c89'},
+  {id:'timecar',label:'Time Machine',url:'/models/vehicles/timecar.glb',size:[1.975,1.283,4.420],sourceYaw:0,color:'#6d7c89'},
   {id:'tank',label:'Tank',url:'/models/vehicles/tank.glb',size:[3.6,3,7.5],sourceYaw:0,color:'#7c9273'},
 ];
 export const vehicleAsset = (id: string) => VEHICLE_ASSETS.find(v=>v.id===id);

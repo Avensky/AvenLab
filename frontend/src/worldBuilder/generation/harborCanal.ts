@@ -11,6 +11,7 @@ export function harborCanal(plan:DockPlan,seed:number):MapDocument {
   const add=(piece:string,name:string,position:V3,size:V3,color:string,solid=true,yaw=0):LayoutObject=>{
     const template=pieceById(piece);
     const item:LayoutObject={id:"harbor-"+(objects.length+1),name,piece,position,size,color,solid,yaw,locked:false,
+      ...(template?.model?{model:structuredClone(template.model)}:{}),
       parts:template?structuredClone(template.parts):[{shape:"box",position:[0,.5,0],size:[1,1,1]}]};
     objects.push(item);return item;
   };
@@ -104,7 +105,7 @@ export function harborCanal(plan:DockPlan,seed:number):MapDocument {
     if(afloat){
       add(CARRIER,team+" docked Big E",[cx,6,0],[...pieceById(CARRIER)!.size],"#63747c").id="carrier-"+team;
       const ramp=add("coastal-ramp","Quay to flight deck",[side*205.5,.08,0],[16,5.92,27],"#7f898c",true,-side*90);
-      ramp.parts=[{shape:"wedge",position:[0,.5,0],size:[1,1,1]}];
+      ramp.parts=[{shape:"deck",position:[0,.5,0],size:[1,1,1]}];
       add("coastal-pier","Boarding pier",[side*232,5.4,0],[26,.6,16],"#68757c");
     }
     for(let n=0;n<5;n++)spawns.push({id:"spawn-"+team+"-"+n,team,yaw:side<0?90:-90,

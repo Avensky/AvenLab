@@ -657,7 +657,7 @@ impl SharedGameState {
                 parking_brake: vehicle.cockpit.parking_fraction,
                 cabin_mask: vehicle.cockpit.cabin_snapshot(vehicle.powertrain.running,vehicle.powertrain.engine_requested),
                 cruise_target_kph: vehicle.cockpit.cruise_target_kph(),
-                cluster_mask: vehicle.cockpit.cluster_mask(vehicle.handbrake),
+                cluster_mask: vehicle.cockpit.cluster_mask(vehicle.handbrake) | if vehicle.brake > 0.05 { 1 << 12 } else { 0 },
                 collider: VehicleColliderShape {
                     nominal_wheel_center_y: vehicle.config.nominal_wheel_center_y(),
                     chassis_half_extents: vehicle.config.chassis_half_extents,

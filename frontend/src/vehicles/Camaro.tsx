@@ -87,8 +87,6 @@ export const Camaro = forwardRef<Group, CamaroProps>(function Camaro(
   // Refs for individual lights
   const leftLightRef = useRef<SpotLight | null>(null);
   const rightLightRef = useRef<SpotLight | null>(null);
-  const leftTailRef = useRef<SpotLight | null>(null);
-  const rightTailRef = useRef<SpotLight | null>(null);
   const flBlinkerRef = useRef<SpotLight | null>(null);
   const frBlinkerRef = useRef<SpotLight | null>(null);
   const rlBlinkerRef = useRef<SpotLight | null>(null);
@@ -267,8 +265,6 @@ export const Camaro = forwardRef<Group, CamaroProps>(function Camaro(
     addSpot(leftLightRef, 0xffffff, 5, 40, [-0.5, 0.7, -1.8], [-0.4, -0.6, -5]);
     addSpot(rightLightRef, 0xffffff, 5, 40, [0.55, 0.7, -1.8], [0.4, -0.6, -5]);
 
-    addSpot(leftTailRef, 0xff0000, 3, 8, [-0.5, 0.6, 1.9], [-0.5, 0.5, 3]);
-    addSpot(rightTailRef, 0xff0000, 3, 8, [0.57, 0.6, 1.8], [0.57, 0.5, 3]);
 
     addSpot(
       flBlinkerRef,
@@ -286,8 +282,6 @@ export const Camaro = forwardRef<Group, CamaroProps>(function Camaro(
       [
         leftLightRef,
         rightLightRef,
-        leftTailRef,
-        rightTailRef,
         flBlinkerRef,
         frBlinkerRef,
         rlBlinkerRef,
@@ -388,7 +382,6 @@ export const Camaro = forwardRef<Group, CamaroProps>(function Camaro(
     // Mixing the newest raw wheels with a delayed body creates two clocks.
     const animatedWheels = interp.wheels ?? [];
 
-    const controls = inputState.controls;
     const input = inputState.input;
     const group = vehicleGroupRef.current;
 
@@ -420,9 +413,6 @@ export const Camaro = forwardRef<Group, CamaroProps>(function Camaro(
     // Lights visibility
     applyHeadlightBeam(leftLightRef.current, headlights, highBeam);
     applyHeadlightBeam(rightLightRef.current, headlights, highBeam);
-    const braking = isLocalPlayer && controls.braking;
-    if (leftTailRef.current) leftTailRef.current.visible = braking;
-    if (rightTailRef.current) rightTailRef.current.visible = braking;
 
     if (flBlinkerRef.current)
       flBlinkerRef.current.visible = (hazards || blinkerLeft) && blinkOn;

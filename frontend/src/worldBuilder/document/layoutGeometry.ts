@@ -1,4 +1,4 @@
-import { BufferGeometry, Float32BufferAttribute } from "three";
+import { BoxGeometry, BufferGeometry, Float32BufferAttribute } from "three";
 
 // Six-vertex convex wedge. The high edge is -Z; the low edge is +Z.
 // Rust uses the same six vertices for Rapier's convex hull.
@@ -23,4 +23,15 @@ export function createWedgeGeometry() {
   geometry.dispose();
   flat.computeVertexNormals();
   return flat;
+}
+
+// Both faces follow the same grade. The top edge matches the existing ramp,
+// with a constant vertical thickness of 10% of its rise along the full run.
+export function createDeckGeometry() {
+  const geometry = new BoxGeometry();
+  const position = geometry.attributes.position;
+  for (let i = 0; i < position.count; i++)
+    position.setY(i, -position.getZ(i) + .1 * (position.getY(i) - .5));
+  geometry.computeVertexNormals();
+  return geometry;
 }

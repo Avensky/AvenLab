@@ -7,8 +7,6 @@ import { useVehicleVisualAlignment } from '../hooks/useVehicleVisualAlignment';
 import { useLiveAppearance } from './cosmetics/useLiveAppearance';
 import { applyBackendWheelPose, extractWheelAssembly, type WheelCorner } from './tools/vehicleVisualRig';
 import { useRenderSettingsStore } from '../store/presentation/renderSettingsStore';
-import { useNetworkStore } from '../store/session/networkStore';
-import { useInputStore } from '../store/input/inputStore';
 import { cx30Lights } from './tools/cx30Lights';
 import { VEHICLE_MODEL_PATHS } from './tools/vehicleModelPaths';
 
@@ -16,7 +14,7 @@ const corners = ['fl', 'fr', 'rl', 'rr'] as const;
 
 /** The exported hub is the steering/suspension pivot. Only SPIN carries axle
  * rotation; its sibling CALIPER follows the wheel around corners. */
-export function SocketCar({ entityId, model }: { entityId: string; model: "cx30" | "mini" | "fortuner" | "landcruiser" | "sierra" }) {
+export function SocketCar({ entityId, model }: { entityId: string; model: "enforcer" | "interceptor" | "charger70" | "skyline34" | "timecar" | "cx30" | "mini" | "fortuner" | "landcruiser" | "sierra" }) {
   const { scene } = useGLTF(VEHICLE_MODEL_PATHS[model]);
   const body = useRef<Group>(null), visual = useRef<Group>(null);
   const { getInterpolated } = useVehiclePhysicsInterpolator(entityId);
@@ -32,9 +30,9 @@ export function SocketCar({ entityId, model }: { entityId: string; model: "cx30"
   const lights=useRef<ReturnType<typeof cx30Lights>|null>(null);
   useEffect(()=>{
     if(!enabledLights)return;
-    const mounted=cx30Lights(rig.root);lights.current=mounted;
+    const mounted=cx30Lights(rig.root,model);lights.current=mounted;
     return ()=>{mounted.dispose();lights.current=null;};
-  },[rig,enabledLights]);
+  },[rig,enabledLights,model]);
   const assembly=useRef<Group>(null);
   const spin = useRef([0, 0, 0, 0]);
   useVehicleVisualAlignment(model, entityId, visual, rig.carriers);
@@ -44,9 +42,8 @@ export function SocketCar({ entityId, model }: { entityId: string; model: "cx30"
     if (!assembly.current || !body.current) return;
     assembly.current.visible=!!pose;
     if (!pose) return;
-    const local=useNetworkStore.getState().playerId===entityId;
     lights.current?.update(pose.vehicle_mask??0,Boolean((pose.cluster_mask??0)&8),
-      local&&useInputStore.getState().controls.braking,clock.elapsedTime%1<.5);
+      clock.elapsedTime%1<.5);
     body.current.position.fromArray(pose.position);
     body.current.quaternion.fromArray(pose.rotation);
     for (const wheel of pose.wheels ?? []) {

@@ -1,3 +1,5 @@
+import {modelAsset,newModel} from "../models/modelCatalog.ts";
+export const isServiceGarage = (id: string) => ["fuel-station","repair-shop","service-center"].includes(id);
 import type { LayoutPart, Piece } from "./layoutDocument.ts";
 
 export const LIBRARY_TABS = [
@@ -99,14 +101,9 @@ export const EXTRA_PIECES: Piece[] = [
   ...(['fuel-station', 'repair-shop', 'service-center'] as const).map((id): Piece => ({
     id, label: id === 'fuel-station' ? 'Fuel station' : id === 'repair-shop' ? 'Repair shop' : 'Service center',
     category: 'garages',
-    description: 'Drive into the open bay and stop for gradual service. Placeholder geometry; GLB-ready.',
-    size: [14, 5, 16], color: id === 'fuel-station' ? '#c4a46a' : id === 'repair-shop' ? '#6ba5b0' : '#8ca480',
-    parts: [
-      box([-.48,.5,0],[.04,1,1]), box([.48,.5,0],[.04,1,1]),
-      box([0,.5,-.48],[1,1,.04]), box([0,.97,0],[1,.06,1]),
-      box([0,.004,0],[.6,.008,.65], '#82b3a0', false),
-      box([0,.87,.48],[.7,.12,.025]),
-    ],
+    description: 'Two-wall garage with open entries. Stop inside for service.',
+    size: [18, 7, 20], color: id === 'fuel-station' ? '#c4a46a' : id === 'repair-shop' ? '#6ba5b0' : '#8ca480',
+    model: newModel(modelAsset("selection_garage")!), parts: [],
   })),
   {
     id:"bridge-span",label:"Bridge span",category:"jumps",description:"Modular concrete bridge · deck 5 m above its base",size:[12,5.6,30],color:"#8297ac",

@@ -16,3 +16,7 @@
 @media(max-width:800px){.result-team-layout,.result-stats-layout{grid-template-columns:minmax(0,1fr);gap:16px}.result-stats-layout .result-personal dl{grid-template-columns:repeat(4,minmax(0,1fr))}.result-team-layout .scoreboard-player-identity{grid-template-columns:110px minmax(0,1fr) auto}.result-team-layout .scoreboard-player-identity>.hero-portrait-art{grid-column:auto}.result-team-layout .scoreboard-player-stats{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media(max-width:450px){.result-stats-layout .result-personal dl,.result-team-layout .scoreboard-player-stats{grid-template-columns:repeat(3,minmax(0,1fr))}.result-team-layout .scoreboard-player-identity{grid-template-columns:80px minmax(0,1fr) auto}}
 .match-results{box-sizing:border-box;pointer-events:auto;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}.result-personal dd{overflow-wrap:anywhere;line-height:1.15}
+
+.rescue-emote{position:relative;width:100%;height:clamp(180px,38dvh,370px);overflow:hidden;background:#303c49}
+.rescue-emote>button{position:absolute;bottom:8px;right:8px}
+.result-highlight button,.rescue-emote button{padding:.5rem .8rem;color:#eef2f5;background:#202731;border:1px solid #78828d}

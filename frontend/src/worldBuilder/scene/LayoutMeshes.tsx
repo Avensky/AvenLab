@@ -13,7 +13,7 @@ import {
   type LayoutObject,
   type LayoutPart,
 } from "../document/layoutDocument";
-import { createWedgeGeometry } from "../document/layoutGeometry";
+import { createDeckGeometry, createWedgeGeometry } from "../document/layoutGeometry";
 import { ModelInstances, ModelMesh } from "../models/ModelMeshes";
 import { RoadInstances, RoadModel } from "../roads/RoadMeshes";
 import { localBounds } from "../roads/layoutSnapping";
@@ -22,13 +22,14 @@ import { VehicleInstances, VehicleMesh } from "../vehicles/VehicleProps";
 
 function useGeometries() {
   const geometries = useMemo(
-    () => ({ box: new BoxGeometry(), wedge: createWedgeGeometry() }),
+    () => ({ box: new BoxGeometry(), wedge: createWedgeGeometry(), deck: createDeckGeometry() }),
     [],
   );
   useEffect(
     () => () => {
       geometries.box.dispose();
       geometries.wedge.dispose();
+      geometries.deck.dispose();
     },
     [geometries],
   );
@@ -42,7 +43,7 @@ function ShapeInstances({
   onSelect,
 }: {
   items: Instance[];
-  shape: "box" | "wedge";
+  shape: LayoutPart["shape"];
   wireframe: boolean;
   onSelect?: (id: string) => void;
 }) {
@@ -137,6 +138,7 @@ export const LayoutInstances = memo(function LayoutInstances({
     () => items.filter((i) => i.part.shape === "box"),
     [items],
   );
+  const decks = useMemo(() => items.filter(i => i.part.shape === "deck"), [items]);
   const wedges = useMemo(
     () => items.filter((i) => i.part.shape === "wedge"),
     [items],
@@ -155,6 +157,7 @@ export const LayoutInstances = memo(function LayoutInstances({
         wireframe={wireframe}
         onSelect={onSelect}
       />
+      {!!decks.length && <ShapeInstances items={decks} shape="deck" wireframe={wireframe} onSelect={onSelect} />}
       {live && objects.filter(o=>o.piece===LIFT && o.id!==exclude).map(o=><BridgeLeaf key={o.id} item={o} wireframe={wireframe}/> )}
       {!collisionOnly && !wireframe && objects.filter(o=>o.piece===CARRIER && o.id!==exclude).map(o=>(
         <group key={o.id} position={o.position} rotation={[0,o.yaw*Math.PI/180,0]} scale={o.size}

@@ -12,7 +12,7 @@
     712
   ],
   "surface": {
-    "road_y": 0
+    "road_y": 0.08
   },
   "layout": {
     "kind": "fixed_grid",
@@ -32371,96 +32371,30 @@
           145
         ],
         "size": [
-          14,
-          5,
-          16
+          18,
+          7,
+          20
         ],
         "color": "#c4a46a",
         "solid": true,
         "yaw": 0,
         "locked": false,
-        "parts": [
-          {
-            "shape": "box",
-            "position": [
-              -0.48,
-              0.5,
-              0
-            ],
-            "size": [
-              0.04,
-              1,
-              1
-            ]
+        "model": {
+          "asset": "selection_garage",
+          "source_sha256": "f4686f981e5c165d03a8bca20628654bb20db50db5cb91ce67e1a5c583d086ce",
+          "visible": {
+            "floor": true,
+            "walls": true,
+            "roof": true,
+            "details": true
           },
-          {
-            "shape": "box",
-            "position": [
-              0.48,
-              0.5,
-              0
-            ],
-            "size": [
-              0.04,
-              1,
-              1
-            ]
-          },
-          {
-            "shape": "box",
-            "position": [
-              0,
-              0.5,
-              -0.48
-            ],
-            "size": [
-              1,
-              1,
-              0.04
-            ]
-          },
-          {
-            "shape": "box",
-            "position": [
-              0,
-              0.97,
-              0
-            ],
-            "size": [
-              1,
-              0.06,
-              1
-            ]
-          },
-          {
-            "shape": "box",
-            "position": [
-              0,
-              0.004,
-              0
-            ],
-            "size": [
-              0.6,
-              0.008,
-              0.65
-            ],
-            "color": "#82b3a0",
-            "solid": false
-          },
-          {
-            "shape": "box",
-            "position": [
-              0,
-              0.87,
-              0.48
-            ],
-            "size": [
-              0.7,
-              0.12,
-              0.025
-            ]
+          "collision": {
+            "floor": true,
+            "walls": true,
+            "roof": true
           }
-        ]
+        },
+        "parts": []
       },
       {
         "id": "harbor-223",
@@ -32472,96 +32406,30 @@
           -145
         ],
         "size": [
-          14,
-          5,
-          16
+          18,
+          7,
+          20
         ],
         "color": "#6ba5b0",
         "solid": true,
         "yaw": 0,
         "locked": false,
-        "parts": [
-          {
-            "shape": "box",
-            "position": [
-              -0.48,
-              0.5,
-              0
-            ],
-            "size": [
-              0.04,
-              1,
-              1
-            ]
+        "model": {
+          "asset": "selection_garage",
+          "source_sha256": "f4686f981e5c165d03a8bca20628654bb20db50db5cb91ce67e1a5c583d086ce",
+          "visible": {
+            "floor": true,
+            "walls": true,
+            "roof": true,
+            "details": true
           },
-          {
-            "shape": "box",
-            "position": [
-              0.48,
-              0.5,
-              0
-            ],
-            "size": [
-              0.04,
-              1,
-              1
-            ]
-          },
-          {
-            "shape": "box",
-            "position": [
-              0,
-              0.5,
-              -0.48
-            ],
-            "size": [
-              1,
-              1,
-              0.04
-            ]
-          },
-          {
-            "shape": "box",
-            "position": [
-              0,
-              0.97,
-              0
-            ],
-            "size": [
-              1,
-              0.06,
-              1
-            ]
-          },
-          {
-            "shape": "box",
-            "position": [
-              0,
-              0.004,
-              0
-            ],
-            "size": [
-              0.6,
-              0.008,
-              0.65
-            ],
-            "color": "#82b3a0",
-            "solid": false
-          },
-          {
-            "shape": "box",
-            "position": [
-              0,
-              0.87,
-              0.48
-            ],
-            "size": [
-              0.7,
-              0.12,
-              0.025
-            ]
+          "collision": {
+            "floor": true,
+            "walls": true,
+            "roof": true
           }
-        ]
+        },
+        "parts": []
       },
       {
         "id": "carrier-blue",
@@ -32877,7 +32745,7 @@
         "locked": false,
         "parts": [
           {
-            "shape": "wedge",
+            "shape": "deck",
             "position": [
               0,
               0.5,
@@ -32935,96 +32803,30 @@
           145
         ],
         "size": [
-          14,
-          5,
-          16
+          18,
+          7,
+          20
         ],
         "color": "#c4a46a",
         "solid": true,
         "yaw": 0,
         "locked": false,
-        "parts": [
-          {
-            "shape": "box",
-            "position": [
-              -0.48,
-              0.5,
-              0
-            ],
-            "size": [
-              0.04,
-              1,
-              1
-            ]
+        "model": {
+          "asset": "selection_garage",
+          "source_sha256": "f4686f981e5c165d03a8bca20628654bb20db50db5cb91ce67e1a5c583d086ce",
+          "visible": {
+            "floor": true,
+            "walls": true,
+            "roof": true,
+            "details": true
           },
-          {
-            "shape": "box",
-            "position": [
-              0.48,
-              0.5,
-              0
-            ],
-            "size": [
-              0.04,
-              1,
-              1
-            ]
-          },
-          {
-            "shape": "box",
-            "position": [
-              0,
-              0.5,
-              -0.48
-            ],
-            "size": [
-              1,
-              1,
-              0.04
-            ]
-          },
-          {
-            "shape": "box",
-            "position": [
-              0,
-              0.97,
-              0
-            ],
-            "size": [
-              1,
-              0.06,
-              1
-            ]
-          },
-          {
-            "shape": "box",
-            "position": [
-              0,
-              0.004,
-              0
-            ],
-            "size": [
-              0.6,
-              0.008,
-              0.65
-            ],
-            "color": "#82b3a0",
-            "solid": false
-          },
-          {
-            "shape": "box",
-            "position": [
-              0,
-              0.87,
-              0.48
-            ],
-            "size": [
-              0.7,
-              0.12,
-              0.025
-            ]
+          "collision": {
+            "floor": true,
+            "walls": true,
+            "roof": true
           }
-        ]
+        },
+        "parts": []
       },
       {
         "id": "harbor-228",
@@ -33036,96 +32838,30 @@
           -145
         ],
         "size": [
-          14,
-          5,
-          16
+          18,
+          7,
+          20
         ],
         "color": "#6ba5b0",
         "solid": true,
         "yaw": 0,
         "locked": false,
-        "parts": [
-          {
-            "shape": "box",
-            "position": [
-              -0.48,
-              0.5,
-              0
-            ],
-            "size": [
-              0.04,
-              1,
-              1
-            ]
+        "model": {
+          "asset": "selection_garage",
+          "source_sha256": "f4686f981e5c165d03a8bca20628654bb20db50db5cb91ce67e1a5c583d086ce",
+          "visible": {
+            "floor": true,
+            "walls": true,
+            "roof": true,
+            "details": true
           },
-          {
-            "shape": "box",
-            "position": [
-              0.48,
-              0.5,
-              0
-            ],
-            "size": [
-              0.04,
-              1,
-              1
-            ]
-          },
-          {
-            "shape": "box",
-            "position": [
-              0,
-              0.5,
-              -0.48
-            ],
-            "size": [
-              1,
-              1,
-              0.04
-            ]
-          },
-          {
-            "shape": "box",
-            "position": [
-              0,
-              0.97,
-              0
-            ],
-            "size": [
-              1,
-              0.06,
-              1
-            ]
-          },
-          {
-            "shape": "box",
-            "position": [
-              0,
-              0.004,
-              0
-            ],
-            "size": [
-              0.6,
-              0.008,
-              0.65
-            ],
-            "color": "#82b3a0",
-            "solid": false
-          },
-          {
-            "shape": "box",
-            "position": [
-              0,
-              0.87,
-              0.48
-            ],
-            "size": [
-              0.7,
-              0.12,
-              0.025
-            ]
+          "collision": {
+            "floor": true,
+            "walls": true,
+            "roof": true
           }
-        ]
+        },
+        "parts": []
       },
       {
         "id": "kit-link-west",
@@ -33545,88 +33281,22 @@
         "solid": true,
         "locked": false,
         "yaw": 180,
-        "parts": [
-          {
-            "shape": "box",
-            "position": [
-              -0.48,
-              0.5,
-              0
-            ],
-            "size": [
-              0.04,
-              1,
-              1
-            ]
+        "parts": [],
+        "model": {
+          "asset": "selection_garage",
+          "source_sha256": "f4686f981e5c165d03a8bca20628654bb20db50db5cb91ce67e1a5c583d086ce",
+          "visible": {
+            "floor": true,
+            "walls": true,
+            "roof": true,
+            "details": true
           },
-          {
-            "shape": "box",
-            "position": [
-              0.48,
-              0.5,
-              0
-            ],
-            "size": [
-              0.04,
-              1,
-              1
-            ]
-          },
-          {
-            "shape": "box",
-            "position": [
-              0,
-              0.5,
-              -0.48
-            ],
-            "size": [
-              1,
-              1,
-              0.04
-            ]
-          },
-          {
-            "shape": "box",
-            "position": [
-              0,
-              0.97,
-              0
-            ],
-            "size": [
-              1,
-              0.06,
-              1
-            ]
-          },
-          {
-            "shape": "box",
-            "position": [
-              0,
-              0.004,
-              0
-            ],
-            "size": [
-              0.6,
-              0.008,
-              0.65
-            ],
-            "color": "#82b3a0",
-            "solid": false
-          },
-          {
-            "shape": "box",
-            "position": [
-              0,
-              0.87,
-              0.48
-            ],
-            "size": [
-              0.7,
-              0.12,
-              0.025
-            ]
+          "collision": {
+            "floor": true,
+            "walls": true,
+            "roof": true
           }
-        ]
+        }
       },
       {
         "id": "street-east-64",
@@ -33816,88 +33486,22 @@
           20
         ],
         "color": "#8ca480",
-        "parts": [
-          {
-            "shape": "box",
-            "position": [
-              -0.48,
-              0.5,
-              0
-            ],
-            "size": [
-              0.04,
-              1,
-              1
-            ]
+        "model": {
+          "asset": "selection_garage",
+          "source_sha256": "f4686f981e5c165d03a8bca20628654bb20db50db5cb91ce67e1a5c583d086ce",
+          "visible": {
+            "floor": true,
+            "walls": true,
+            "roof": true,
+            "details": true
           },
-          {
-            "shape": "box",
-            "position": [
-              0.48,
-              0.5,
-              0
-            ],
-            "size": [
-              0.04,
-              1,
-              1
-            ]
-          },
-          {
-            "shape": "box",
-            "position": [
-              0,
-              0.5,
-              -0.48
-            ],
-            "size": [
-              1,
-              1,
-              0.04
-            ]
-          },
-          {
-            "shape": "box",
-            "position": [
-              0,
-              0.97,
-              0
-            ],
-            "size": [
-              1,
-              0.06,
-              1
-            ]
-          },
-          {
-            "shape": "box",
-            "position": [
-              0,
-              0.004,
-              0
-            ],
-            "size": [
-              0.6,
-              0.008,
-              0.65
-            ],
-            "color": "#82b3a0",
-            "solid": false
-          },
-          {
-            "shape": "box",
-            "position": [
-              0,
-              0.87,
-              0.48
-            ],
-            "size": [
-              0.7,
-              0.12,
-              0.025
-            ]
+          "collision": {
+            "floor": true,
+            "walls": true,
+            "roof": true
           }
-        ]
+        },
+        "parts": []
       },
       {
         "yaw": 0,

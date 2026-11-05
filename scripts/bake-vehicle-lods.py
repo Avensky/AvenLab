@@ -14,7 +14,7 @@ import numpy as np
 from PIL import Image
 from scipy.spatial.transform import Rotation
 
-MODELS = "ae86 brz camaro supra mini sierra landcruiser fortuner cx30 tank".split()
+MODELS = "ae86 brz camaro supra mini sierra landcruiser fortuner cx30 tank enforcer interceptor charger70 skyline34 timecar patrolclassic".split()
 KINDS = {0:"POSITION", 1:"NORMAL", 2:"COLOR_0", 3:"TEXCOORD_0"}
 DTYPES = {5120:"i1",5121:"u1",5122:"<i2",5123:"<u2",5125:"<u4",5126:"<f4"}
 COMPONENTS = {"SCALAR":1,"VEC2":2,"VEC3":3,"VEC4":4}

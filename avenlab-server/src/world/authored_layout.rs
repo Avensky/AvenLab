@@ -68,7 +68,7 @@ pub struct LayoutPart {
 fn default_solid() -> bool { true }
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
-pub enum PartShape { Box, Wedge }
+pub enum PartShape { Box, Wedge, Deck }
 fn vector_ok(value: &[f32; 3], min: f32, max: f32) -> bool {
     value.iter().all(|v| v.is_finite() && *v >= min && *v <= max)
 }
@@ -120,7 +120,7 @@ impl AuthoredLayout {
             }
             if let Some(model) = &object.model {
                 model.validate()?;
-                anyhow::ensure!(object.piece == format!("prefab-{}",model.asset) && object.parts.is_empty(), "Prefab requires its measured structural surfaces");
+                anyhow::ensure!((object.piece == format!("prefab-{}",model.asset) || matches!(object.piece.as_str(),"fuel-station"|"repair-shop"|"service-center")) && object.parts.is_empty(), "Prefab requires its measured structural surfaces");
                 count += model.shape_count(); continue;
             }
             if let Some(road) = &object.road {
@@ -178,6 +178,12 @@ impl LayoutPart {
         let h = [self.size[0] * object.size[0] / 2.0, self.size[1] * object.size[1] / 2.0, self.size[2] * object.size[2] / 2.0];
         match self.shape {
             PartShape::Box => Some(ColliderBuilder::cuboid(h[0], h[1], h[2])),
+            PartShape::Deck => {
+                let points: Vec<_> = [-h[0],h[0]].into_iter().flat_map(|x|
+                    [-1.,1.].into_iter().flat_map(move |z| [0.,0.2*h[1]].map(|t|
+                        point![x, -z*h[1]-t, z*h[2]]))).collect();
+                ColliderBuilder::convex_hull(&points)
+            }
             PartShape::Wedge => ColliderBuilder::convex_hull(&[
                 point![-h[0], -h[1], h[2]], point![h[0], -h[1], h[2]],
                 point![-h[0], -h[1], -h[2]], point![h[0], -h[1], -h[2]],

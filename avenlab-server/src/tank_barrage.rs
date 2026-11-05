@@ -82,7 +82,7 @@ impl PhysicsWorld {
         };
         let mut targets:Vec<_>=self.vehicles.iter().filter_map(|(id,v)|{
             if v.team.eq_ignore_ascii_case(&tank.team) || !online(id) || self.is_defeated(id) ||
-                self.vehicle_health.get(id).is_some_and(|h|h.spawn_protection_s>0.0) {return None}
+                self.garage_protected(id) || self.vehicle_health.get(id).is_some_and(|h|h.spawn_protection_s>0.0) {return None}
             let body=self.bodies.get(v.body).filter(|body|body.is_enabled())?;
             let center=body.position()*Point::from(v.config.chassis_com_offset);
             let distance=(center-origin).norm();

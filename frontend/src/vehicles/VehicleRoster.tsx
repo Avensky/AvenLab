@@ -1,3 +1,4 @@
+import {ExteriorMarkers} from "./ExteriorMarkers";
 import { useConnectionView, useMotionView } from "../store/session/networkViews";
 import { RemoteFleet, VehicleExterior } from "./RemoteFleet";
 import { vehicleAsset } from "../worldBuilder/vehicles/vehicleCatalog";
@@ -94,6 +95,11 @@ function GlbVehicle({ entity }: { entity: RosterEntity }) {
   let model: ReactNode;
 
   switch (vehicleId) {
+    case "enforcer":
+    case "interceptor":
+    case "charger70":
+    case "skyline34":
+    case "timecar":
     case "sierra":
     case "fortuner":
     case "landcruiser":
@@ -154,6 +160,8 @@ export const VehicleRoster = memo(function VehicleRoster() {
   const overrides = useRenderSettingsStore((s) => s.vehicleOverrides);
   const selectRoster = useMemo(createRosterSelector, []);
   const entities = useMotionView(selectRoster);
+  const lampsEnabled=useRenderSettingsStore(s=>s.vehicleLights);
+  const lampCars=useMemo(()=>entities.filter(e=>['glb','hybrid'].includes(overrides[e.id]??mode)),[entities,overrides,mode]);
 
   const {regular,remote}=useMemo(()=>{
     const regular:RosterEntity[]=[],remote:RosterEntity[]=[];
@@ -165,6 +173,7 @@ export const VehicleRoster = memo(function VehicleRoster() {
   },[entities,local,mode,overrides]);
   return (
     <group name="network-vehicle-roster">
+      {lampsEnabled && lampCars.length>0 && <ExteriorMarkers cars={lampCars}/>}
       {!!remote.length && <RemoteFleet cars={remote}/>}
       {regular.map((entity) => (
         <NetworkVehicle

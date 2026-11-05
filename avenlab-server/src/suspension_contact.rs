@@ -113,6 +113,7 @@ pub(crate) struct WheelGroundHit {
     pub ground_normal: Vector<Real>,
     pub compression: f32,
     pub compression_ratio: f32,
+    pub overtravel: f32,
 }
 
 pub(crate) fn cast_wheel_ground(
@@ -144,14 +145,18 @@ pub(crate) fn cast_wheel_ground(
         // A ray starting inside a collider is not a usable suspension contact.
         return None;
     }
-    let suspension_length = (toi - wheel.radius).clamp(0.0, full_droop);
+    // The suspension and tire solve use the world-vertical strut. Keep its
+    // spring axis through inclined roads so ramps retain their launch profile.
+    let length = toi - wheel.radius;
+    let suspension_length = length.clamp(0.0, full_droop);
     // ray distance includes the radius; subtract it once to get mount-to-center
     // length. Spring compression is measured from ZERO-LOAD full droop.
     let compression = (full_droop - suspension_length).clamp(0.0, wheel.max_length);
     Some(WheelGroundHit {
         origin,
         hit_point: origin + dir * toi,
-        ground_normal: vector![0.0, 1.0, 0.0],
+        ground_normal: Vector::y(),
+        overtravel: (wheel.rest_length - length).max(0.0),
         compression,
         compression_ratio: compression / wheel.max_length.max(1.0e-6),
     })
@@ -200,7 +205,11 @@ pub fn build_suspension_contact(
     // doing so would discard axle support when the outside tire takes load.
     // This module measures candidate normal load; it never applies a force.
     let max_nf = fz_ref * 2.2;
-    let normal_force = normal_force.min(max_nf);
+    let bump_stop = if hit.overtravel > 0.04 && suspension_vel < -2.0 {
+        // The rubber stop acts only at full compression, including on hard landings.
+        (hit.overtravel.powi(2) / 0.1 * wheel.stiffness).min(0.5*fz_ref)
+    } else { 0.0 };
+    let normal_force = (normal_force + bump_stop).min(max_nf);
 
     let (raw_forward, _) = wheel_basis_world(&wheel.debug_id, &rot, &steering.fl, &steering.fr);
 

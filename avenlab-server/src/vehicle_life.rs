@@ -21,7 +21,7 @@ impl PhysicsWorld {
     /// Impact batches validate all attackers before resolving reciprocal lethal
     /// hits. This path preserves that simultaneous policy and credits one event.
     pub(crate) fn apply_validated_vehicle_damage(&mut self,victim:&str,attacker:Option<&str>,amount:f32,kind:&str)->bool {
-        if self.dive_protected(victim){return false;}
+        if self.dive_protected(victim) || self.garage_protected(victim) || attacker.is_some_and(|id| self.garage_protected(id)) {return false;}
         let amount=amount*if self.ctf_carriers.contains(victim){crate::ctf::CARRIER_DAMAGE_FACTOR}else{1.0};
         let amount=self.absorb_guard_damage(victim,attacker,amount,kind);
         let Some(health)=self.vehicle_health.get_mut(victim) else{return false};

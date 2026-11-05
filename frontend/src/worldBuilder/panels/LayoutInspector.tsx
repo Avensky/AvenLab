@@ -5,6 +5,8 @@ import { useShallow } from "zustand/react/shallow";
 import { Icon, Thumbnail } from "../components/EditorArtwork";
 import { NumberField } from "../components/NumberField";
 import { pieceById, type V3 } from "../document/layoutDocument";
+import {isServiceGarage} from "../document/libraryCatalog";
+import {ServiceGarageControls} from "../models/ServiceGarageControls";
 import { ModelInspector } from "../models/ModelInspector";
 import { modelAsset, modelSolid } from "../models/modelCatalog";
 import { RoadInspector } from "../roads/RoadInspector";
@@ -270,6 +272,7 @@ export function LayoutInspector({
                   ↷
                 </button>
               </div>
+              {isServiceGarage(item.piece) && <ServiceGarageControls item={item} />}
               {item.model && <ModelInspector item={item} />}{" "}
               {item.vehicle && (
                 <>

@@ -1075,6 +1075,7 @@ impl PhysicsWorld {
         let [cx, cy, cz] = config.chassis_com_offset;
 
         let collider = ColliderBuilder::cuboid(hx, hy, hz)
+
             .translation(vector![cx, cy, cz])
             .collision_groups(vehicle_collision_groups(false))
             .active_events(ActiveEvents::empty())
@@ -1271,6 +1272,30 @@ impl PhysicsWorld {
         Ok(())
     }
 
+    // Use the current body pose even when a shot arrives between physics ticks.
+    // Home garages shelter their team. Neutral service garages shelter either.
+    pub(crate) fn garage_protected(&self, player: &str) -> bool {
+        let Some(v) = self.vehicles.get(player) else { return false };
+        let Some(map) = self.active_map.as_ref() else { return false };
+        let Some(layout) = map.authored_layout.as_ref() else { return false };
+        let p = self.bodies[v.body].translation();
+        for &(x,z) in self.block_world.loaded.keys() {
+            if !map.includes_authored_tile(x,z) { continue; }
+            for &i in &self.service_bays {
+                let bay = &layout.objects[i];
+                if bay.id == "home-gas-west" && v.team != "red" || bay.id == "home-gas-east" && v.team != "blue"
+                    || self.asset_health.get(&bay.id) == Some(&0.0) { continue; }
+                let dx=p.x-bay.position[0]-x as f32*map.cell[0];
+                let dz=p.z-bay.position[2]-z as f32*map.cell[1];
+                if dx.abs()+dz.abs()>bay.size[0]+bay.size[2]+4.0 { continue; }
+                let (sin,cos)=bay.yaw.to_radians().sin_cos();
+                if (dx*cos-dz*sin).abs() <= bay.size[0]*0.5+2.0 && (dx*sin+dz*cos).abs() <= bay.size[2]*0.5+2.0
+                    && p.y >= bay.position[1]-0.15 && p.y <= bay.position[1]+bay.size[1] { return true; }
+            }
+        }
+        false
+    }
+
     /// Authored service bays use their local footprint, including rotation.
     /// Home bays restore all gauges once per stopped visit. Other service
     /// bays deliver their existing gradual fuel and repair rates.
@@ -1396,12 +1421,48 @@ impl PhysicsWorld {
             let Some(vehicle)=self.vehicles.get(id) else{continue};
             if let Some(h)=self.vehicle_health.get_mut(id){h.stats.burn_fuel(before-vehicle.powertrain.fuel_liters);}
         }
+        self.settle_bottomed_chassis();
         let trace_now = self.refresh_vehicle_wheel_snapshots();
         self.populate_block_debug();
         if trace_now {
             println!("[physics] substeps={} step_ms={:.2} debug_boxes={}",
                 count, step_started.elapsed().as_secs_f64() * 1000.0,
                 self.debug_overlay.block_boxes.len());
+        }
+    }
+
+    // A fully compressed strut can leave a little residual penetration after
+    // Rapier's contact solve. Check the belly corners only on bottom-out or a
+    // hard descent. Respect the actual supporting surface, including a moving
+    // bridge or seabed, and leave pitch, roll and horizontal momentum intact.
+    fn settle_bottomed_chassis(&mut self) {
+        let mut moved=false;
+        for vehicle in self.vehicles.values() {
+            let handle=vehicle.body;
+            let body=&self.bodies[handle];
+            if body.is_sleeping() || !body.is_enabled() { continue; }
+            if body.linvel().y > -2.0 && !self.wheels.get(&handle).is_some_and(|w|w.iter().any(|t|t.compression_ratio>0.94)) { continue; }
+            let c=vehicle.config;
+            let [hx,hy,hz]=c.chassis_half_extents;
+            let [cx,cy,cz]=c.chassis_com_offset;
+            let mut lift=0.0_f32;
+            for x in [-hx,hx] { for z in [-hz,hz] {
+                let belly=body.position()*point![cx+x,cy-hy,cz+z];
+                let ray=Ray::new(belly+Vector::y()*0.20,-Vector::y());
+                if let Some((_,hit))=self.query_pipeline.cast_ray_and_get_normal(&self.bodies,&self.colliders,
+                    &ray,0.20,true,QueryFilter::exclude_dynamic().exclude_sensors().exclude_rigid_body(handle)) {
+                    if hit.time_of_impact>0.0001 && hit.normal.y>0.8 {lift=lift.max(0.20-hit.time_of_impact);}
+                }
+            }}
+            if lift > 0.001 {
+                let body=&mut self.bodies[handle];
+                body.set_translation(*body.translation()+Vector::y()*lift,true);
+                moved=true;
+            }
+        }
+        if moved {
+            self.bodies.propagate_modified_body_positions_to_colliders(&mut self.colliders);
+            self.synchronize_queries();
         }
     }
 
@@ -1485,7 +1546,7 @@ impl PhysicsWorld {
                     let kick=(closing*0.8).clamp(6.0,18.0);
                     body.apply_impulse((direction*kick+Vector::y()*0.8)*body.mass(),true);
                 }
-                if self.vehicle_health.get(&victim_id).is_some_and(|h|h.defeated||h.spawn_protection_s>0.0){continue;}
+                if self.garage_protected(&victim_id) || self.vehicle_health.get(&victim_id).is_some_and(|h|h.defeated||h.spawn_protection_s>0.0){continue;}
                 if let Some(victim)=self.vehicles.get_mut(&victim_id){
                     if victim.team==team{continue;}
                     victim.ram.stun_remaining=victim.ram.stun_remaining.max(crate::ram::STUN_SECONDS);
@@ -1595,6 +1656,7 @@ impl PhysicsWorld {
                 .is_some_and(|v|v.team.eq_ignore_ascii_case(&target.team));
             let softened = friendly || (contact_player.is_none() && health.friendly_shove_s > 0.0);
             let scale = if softened { FRIENDLY_CRASH_DAMAGE_FACTOR } else { 1.0 };
+            if impact_impulse > 0.0 && self.garage_protected(victim_id) { continue; }
             let vehicle = self.vehicles.get_mut(victim_id).unwrap();
             // Only an intact frontal guard braces impact wear. Its HP pool is
             // spent below; a second impact after a break receives normal wear.
@@ -2456,6 +2518,59 @@ mod tests {
 #[cfg(test)]
 mod editor_service_tests {
     use super::*;
+    #[test]
+    fn garage_immunity_follows_the_rotated_bay_and_expires_on_exit_or_destruction() {
+        let mut world=PhysicsWorld::new();
+        world.select_map("harbor_canal_fleet").unwrap();
+        let handle=world.spawn_vehicle_for_player("home".into(),[0.;3],"camaro","blue").unwrap();
+        let enemy=world.spawn_vehicle_for_player("away".into(),[0.;3],"brz","red").unwrap();
+        let map=world.active_map.as_ref().unwrap();
+        let bay=map.authored_layout.as_ref().unwrap().objects.iter().find(|o|o.id=="home-gas-east").unwrap().clone();
+        for h in world.vehicle_health.values_mut() {h.spawn_protection_s=0.0;}
+        let point=vector![bay.position[0],bay.position[1]+1.,bay.position[2]];
+        world.bodies[handle].set_translation(point,true);
+        let hp=world.vehicle_health["home"].hp;
+        world.damage_vehicle("home",Some("away"),75.,"cannon");
+        assert_eq!(world.vehicle_health["home"].hp,hp);
+        let enemy_hp=world.vehicle_health["away"].hp;
+        world.damage_vehicle("away",Some("home"),75.,"coax");
+        assert_eq!(world.vehicle_health["away"].hp,enemy_hp);
+        world.bodies[enemy].set_translation(point,true);
+        assert!(!world.garage_protected("away"));
+        world.asset_health.insert(bay.id.clone(),0.);
+        assert!(!world.garage_protected("home"));
+        world.asset_health.remove(&bay.id);
+        world.bodies[handle].set_translation(point+Vector::x()*(bay.size[0]*0.5+2.1),true);
+        world.damage_vehicle("home",None,75.,"impact");
+        assert!(world.vehicle_health["home"].hp<hp);
+    }
+
+    #[test]
+    fn hard_landing_keeps_the_hull_above_the_road_and_wheels_within_their_strut_travel() {
+        let mut w=crate::support::tests::blank_world();
+        let h=w.spawn_vehicle_for_player("drop".into(),[0.;3],"enforcer","red").unwrap();
+        let cfg=w.vehicles["drop"].config;
+        w.bodies[h].set_translation(vector![0.,4.,0.],true);
+        w.bodies[h].set_linvel(vector![0.,-8.,0.],true);
+        let mut deepest=0.0_f32;
+        for _ in 0..200 {
+            w.step(SIMULATION_DT);
+            let body=&w.bodies[h];
+            for x in [-1.,1.] {for z in [-1.,1.] {
+                let p=body.position()*point![cfg.chassis_com_offset[0]+x*cfg.chassis_half_extents[0],
+                    cfg.chassis_com_offset[1]-cfg.chassis_half_extents[1],cfg.chassis_com_offset[2]+z*cfg.chassis_half_extents[2]];
+                deepest=deepest.min(p.y);
+            }}
+            for wheel in &w.wheels[&h] {
+                let mount=body.position()*wheel.offset;
+                let length=mount.y-wheel.world_center[1];
+                assert!(length>=wheel.rest_length-0.001 && length<=wheel.full_droop_length()+0.001);
+            }
+        }
+        // Rapier is a contact solver with a small numerical tolerance.
+        assert!(deepest>=-0.02,"hull penetrated flat floor by {} m",-deepest);
+    }
+
     #[test]
     fn authored_bays_service_only_their_resource_and_require_a_stopped_vehicle() {
         for kind in ["fuel-station", "repair-shop", "service-center"] {

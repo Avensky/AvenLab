@@ -82,7 +82,8 @@ test('preview material repairs leave body and wheel materials opaque and window 
   const body = first.root.getObjectByName('body'); const glass = first.root.getObjectByName('mixed-window').material;
   assert.equal(body.material.transparent, false); assert.equal(body.material.opacity, 1); assert.equal(body.material.depthWrite, true);
   assert.equal(glass[0].transparent, true); assert.equal(glass[0].depthWrite, false); near(glass[0].opacity, 0.42);
-  for (const slot of glass.slice(1)) { assert.equal(slot.transparent, false); assert.equal(slot.opacity, 1); }
+  assert.equal(glass[1].transparent,false);assert.equal(glass[1].opacity,1); // window surround
+  assert.equal(glass[2].transparent,true);near(glass[2].opacity,.48); // red lamp lens
   assert.equal(scene.getObjectByName('body').material.transparent, true, 'do not mutate useGLTF cache');
   assert.equal(body.geometry, scene.getObjectByName('body').geometry, 'geometry remains shared');
   updateVehicleGlass(first.glassMaterials, true, 1);

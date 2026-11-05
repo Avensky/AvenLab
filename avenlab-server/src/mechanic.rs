@@ -88,7 +88,7 @@ mod tests {
 
     #[test]
     fn pulse_applies_once_to_living_friends_and_self() {
-        for (hero, chassis) in [("mechanic","fortuner"),("cx30","cx30"),("logistics","landcruiser")] {
+        for (hero, chassis) in [("mechanic","fortuner"),("cx30","cx30"),("logistics","landcruiser"),("enforcer","enforcer"),("interceptor","interceptor")] {
             let mut w=blank_world();
             for (n,id,car,team) in [(0,"medic",chassis,"red"),(1,"ally","brz","red"),(2,"other","mini","blue"),(3,"far","brz","red")] {
                 w.spawn_vehicle_for_player(id.into(),[0.0;3],car,team).unwrap();

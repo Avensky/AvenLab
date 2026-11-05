@@ -1,4 +1,7 @@
-import { useConnectionView, useMotionView } from "../store/session/networkViews";
+import {mountPlateLights} from '../vehicles/tools/plateLights';
+import {VehicleFlags} from '../store/input/protocol/inputMasks';
+import {prepareLampLenses} from "../vehicles/tools/lampLenses";
+import { useConnectionView, useMotionView, type MotionState } from "../store/session/networkViews";
 import { useLayoutEffect, useRef, type RefObject } from "react";
 import type { Group, Object3D } from "three";
 import { snapshotEntity, useNetworkStore } from "../store/session/networkStore";
@@ -19,6 +22,16 @@ export function useVehicleVisualAlignment(
 ) {
   const localId = useConnectionView(s => s.playerId);
   const id = entityId ?? localId;
+  const lampsEnabled=useRenderSettingsStore(s=>s.vehicleLights);
+  useLayoutEffect(() => {
+    if(!visual.current)return;
+    const release=prepareLampLenses(visual.current);
+    const owned=lampsEnabled && !preview ? mountPlateLights(visual.current) : null;
+    const update=(s:MotionState)=>owned?.setNight(Boolean((snapshotEntity(s.snapshot,id)?.vehicle_mask??0)&VehicleFlags.HEADLIGHTS));
+    let stop:(()=>void)|undefined;
+    if(owned?.count){update(useMotionView.getState());stop=useMotionView.subscribe(update);}
+    return ()=>{stop?.();owned?.dispose();release();};
+  }, [id,visual,wheels,model,preview,lampsEnabled]);
   const enabled = useRenderSettingsStore((s) => s.autoVehicleAlignment);
   // Stable scalar metadata prevents this hook from rerendering on every pose.
   const colliderKey = useMotionView((s) => {

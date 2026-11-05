@@ -1,4 +1,4 @@
-import {useEffect,useRef} from 'react';
+import {lazy,Suspense,useEffect,useRef,useState} from 'react';
 import {ControllerAction,ControllerButton} from '../../components/controller';
 import {trapMenuFocus} from '../../components/menus/menuFocus';
 import {HEROES,matchModeLabel,modeTeamSize} from '../../store/alpha/alphaStore';
@@ -12,6 +12,7 @@ import {leaveMatchResults,playAgainFromResults} from './resultActions';
 import {RESULT_TABS,resultDuration,resultOutcome,resultPlayers} from './resultData';
 import './matchResults.css';
 
+const RescueEmote=lazy(()=>import('./RescueEmote'));
 const AWARD_LABELS:Record<CareerAward,string>={mvp:'MVP',svp:'SVP',top_support:'TOP SUPPORT',play_of_the_game:'PLAY OF THE GAME'};
 function AwardCard({award,player,record}:{award:CareerAward;player:CareerParticipant|undefined;record:CareerMatch}){
  const hero=HEROES.find(hero=>hero.id===player?.hero),play=record.play_of_game;
@@ -24,8 +25,13 @@ function AwardCard({award,player,record}:{award:CareerAward;player:CareerPartici
 function Awards({record}:{record:CareerMatch}){
  const award=(kind:CareerAward)=>record.participants.find(player=>player.awards.includes(kind)&&(kind!=='mvp'||record.winner!==null&&player.team===record.winner)&&(kind!=='svp'||record.winner!==null&&player.team!==record.winner));
  const play=record.play_of_game,performer=play?record.participants.find(player=>player.profile_id===play.profile_id):undefined;
+ const [show,setShow]=useState(false);
+ const trigger=useRef<HTMLButtonElement>(null);
+ const model=HEROES.find(h=>h.id===performer?.hero)?.vehicle;
+ const close=()=>{setShow(false);requestAnimationFrame(()=>trigger.current?.focus());};
  return <><div className="result-awards-grid">{(['mvp','svp','top_support','play_of_the_game'] as const).map(kind=><AwardCard key={kind} award={kind} player={kind==='play_of_the_game'?performer:award(kind)} record={record}/>)}</div>
-  <section className="result-highlight" aria-label="Play of the game summary"><div><small>MATCH HIGHLIGHT</small><h2>{performer?`${performer.name} · PLAY OF THE GAME`:'PLAY OF THE GAME'}</h2><p>{play?`${play.kills} killing blow${play.kills===1?'':'s'} · ${play.captures} capture${play.captures===1?'':'s'} · ${formatStat(play.damage)} damage during ${resultDuration(play.start_s)} – ${resultDuration(play.end_s)}.`:'No highlight was recorded for this session.'}</p></div><p className="result-pending">{play?'REPLAY CAPTURE · PENDING':'HIGHLIGHT DATA · UNAVAILABLE'}<span>{play?'Event summary saved. Cinematic replay recording is a future update.':'Awards appear only when confirmed by the game server.'}</span></p></section>
+  <section className="result-highlight" aria-label="Play of the game summary"><div><small>MATCH HIGHLIGHT</small><h2>{performer?`${performer.name} · PLAY OF THE GAME`:'PLAY OF THE GAME'}</h2><p>{play?`${play.kills} killing blow${play.kills===1?'':'s'} · ${play.captures} capture${play.captures===1?'':'s'} · ${formatStat(play.damage)} damage during ${resultDuration(play.start_s)} – ${resultDuration(play.end_s)}.`:'No highlight was recorded for this session.'}</p></div>{model && !show && <button ref={trigger} type="button" onClick={()=>setShow(true)}>Play extraction emote</button>}</section>
+  {model && show && <Suspense fallback={<p role="status">Loading extraction…</p>}><RescueEmote model={model} onClose={close}/></Suspense>}
  </>;
 }
 const DETAIL_STATS:readonly {key:keyof CareerStats;label:string;decimals?:number;unit?:string}[]=[

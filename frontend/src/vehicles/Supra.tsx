@@ -86,8 +86,6 @@ export const Supra = forwardRef<Group, SupraProps>(function Supra(
   const blinkState = useRef(false);
   const leftLightRef = useRef<SpotLight | null>(null);
   const rightLightRef = useRef<SpotLight | null>(null);
-  const leftTailRef = useRef<SpotLight | null>(null);
-  const rightTailRef = useRef<SpotLight | null>(null);
   const flBlinkerRef = useRef<SpotLight | null>(null);
   const frBlinkerRef = useRef<SpotLight | null>(null);
   const rlBlinkerRef = useRef<SpotLight | null>(null);
@@ -132,22 +130,6 @@ export const Supra = forwardRef<Group, SupraProps>(function Supra(
       [0.55, -0.45, 6],
     );
     addSpot(
-      leftTailRef,
-      0xff0000,
-      3,
-      9,
-      [-0.72, 0.66, -2.12],
-      [-0.72, 0.55, -4],
-    );
-    addSpot(
-      rightTailRef,
-      0xff0000,
-      3,
-      9,
-      [0.72, 0.66, -2.12],
-      [0.72, 0.55, -4],
-    );
-    addSpot(
       flBlinkerRef,
       0xffa500,
       12,
@@ -177,8 +159,6 @@ export const Supra = forwardRef<Group, SupraProps>(function Supra(
       [
         leftLightRef,
         rightLightRef,
-        leftTailRef,
-        rightTailRef,
         flBlinkerRef,
         frBlinkerRef,
         rlBlinkerRef,
@@ -264,9 +244,6 @@ export const Supra = forwardRef<Group, SupraProps>(function Supra(
 
     applyHeadlightBeam(leftLightRef.current, headlights, highBeam);
     applyHeadlightBeam(rightLightRef.current, headlights, highBeam);
-    const braking = isLocalPlayer && inputState.controls.braking;
-    if (leftTailRef.current) leftTailRef.current.visible = braking;
-    if (rightTailRef.current) rightTailRef.current.visible = braking;
     if (flBlinkerRef.current)
       flBlinkerRef.current.visible = (hazards || blinkerLeft) && blinkOn;
     if (frBlinkerRef.current)

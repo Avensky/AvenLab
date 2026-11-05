@@ -420,7 +420,7 @@ impl PhysicsWorld {
                     wheel.grounded = true;
                     wheel.compression = hit.compression;
                     wheel.compression_ratio = hit.compression_ratio;
-                    hit.hit_point + hit.ground_normal * wheel.radius
+                    origin - Vector::y() * (wheel.full_droop_length() - hit.compression)
                 } else {
                     wheel.grounded = false;
                     wheel.normal_force = 0.0;
@@ -429,7 +429,7 @@ impl PhysicsWorld {
                     origin + vector![0.0, -wheel.full_droop_length(), 0.0]
                 };
                 wheel.world_center = p3(center);
-                // A grounded tire bottom equals the actual ray hit height.
+                // Use the same bounded spring travel for forces and wheel presentation.
                 // This refresh runs once after integration, with no extra lift,
                 // force, smoothing or frontend suspension compensation.
                 let (raw_forward, _) = kinematics::wheel_basis_world(

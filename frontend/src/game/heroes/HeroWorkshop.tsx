@@ -30,14 +30,17 @@ export function HeroLoadoutSync() {
 export function HeroWorkshop() {
  const guideOpen=useUIStore(s=>s.overlay==="hero_abilities"||s.overlay==="match_results");
  const owner=useSocialStore(s=>s.view?.profile.id??null);
- const main=useHeroLoadouts(s=>s.defaultHero);
+ const main=useHeroLoadouts(s=>s.ownerId===owner?s.defaultHero:null);
  const skins=useSocialStore(s=>s.view?.alpha?.skins);
  const owned=useSocialStore(s=>s.view?.profile.progression?.owned??NO_OWNED_SKINS);
- const [hero,setHero]=useState<string|null>(null);
+ const [chosen,setHero]=useState<string|null>(null);
+ const hero=chosen??(HEROES.some(h=>h.id===main)?main:null);
  const [editing,setEditing]=useState(false);
  const [role,setRole]=useState<HeroFilter>("all");
  const definition=HEROES.find(h=>h.id===hero)??null;
- const [appearance,setAppearance]=useState<HeroAppearance>({...FACTORY_APPEARANCE});
+ const saved=useHeroLoadouts(s=>definition?s.loadouts[definition.vehicle]:undefined);
+ const [editedAppearance,setAppearance]=useState<HeroAppearance>({...FACTORY_APPEARANCE});
+ const appearance=chosen?editedAppearance:saved??FACTORY_APPEARANCE;
  const [status,setStatus]=useState<HeroSaveStatus>("idle"),[message,setMessage]=useState("");
  const root=useRef<HTMLElement>(null),remembered=useRef(new WeakMap<HTMLElement,number>());
  const leaving=useRef(false);
@@ -112,7 +115,7 @@ export function HeroWorkshop() {
   <SelectionFooter selectLabel={editing?"Edit style":"Choose hero"}><div className="hero-workshop-actions">
    <ControllerAction button="Y" type="button" className="menu-control" data-open-hero-abilities onClick={showAbilities}>ABILITIES</ControllerAction>
    {<ControllerAction button="A" type="button" className="menu-control" disabled={!owner} onClick={()=>editing?root.current?.querySelector<HTMLElement>(".hero-modifications select")?.focus():openHero()}> {editing?"EDIT STYLE":"CHOOSE HERO"}</ControllerAction>}
-   {<HoldMainButton key={`${owner}:${hero}:${editing}:${main===hero}:${status==="error"}`} disabled={guideOpen||!owner||!hero||status==="error"} selected={main===hero} onComplete={()=>mainChoice()}/>}
+   {<HoldMainButton key={`${owner}:${hero}:${editing}:${main===hero}:${status==="error"}`} disabled={guideOpen||!owner||!hero||main===hero||status==="error"} selected={main===hero} onComplete={()=>mainChoice()}/>}
   </div></SelectionFooter>
  </section>;
 }

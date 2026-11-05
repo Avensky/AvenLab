@@ -30,20 +30,23 @@ test('hero guide explains shipped actions and returns without equipping or repla
   await t.test('status reference reuses live buff/debuff descriptions with unique timed and untimed states',()=>{
    const map=new Map(effects.map(effect=>[effect.id,effect]));assert.equal(map.size,effects.length);assert.equal(map.get('spawn-protection').duration,2);assert.equal(map.get('stun').duration,1);assert.equal(map.get('ram-charge').duration,3);assert.equal(map.get('ram-boost').duration,4);assert.equal(map.get('thermal-recovery').duration,null);assert.match(map.get('thermal-recovery').description,/drive to repairs/);assert.equal(map.get('engine-wear').kind,'debuff');assert.equal(map.get('tank-barrier').duration,null);assert.equal(map.get('dive-shield').duration,2);assert.equal(map.get('tank-barrier').nature,'defense');
   });
-  await t.test('Heroes starts with an empty collection preview and Y toggles help without choosing a main',async()=>{
+  await t.test('Heroes opens on the saved favorite and Y toggles help without changing the main',async()=>{
    social.setState({view:{profile:{id:'me',name:'Player',progression:{default_hero:'brz',hero_loadouts:{brz:factory},owned:['factory'],tier:'BRONZE',color:'#aabbcc',prestige:0,level:1,xp:0,required_xp:100,credits:0}},alpha:{skins:[]}}});
    loadouts.getState().adopt('me','brz',{brz:{...factory}});alpha.getState().preview('tank');ui.setState({screen:'heroes',overlay:null,isModeLoading:false});
    await act(async()=>root.render(h(Host)));
-   assert.equal(alpha.getState().previewHero,null);assert.equal(loadouts.getState().defaultHero,'brz');assert.equal(document.querySelector('.hero-modifications'),null);
-   assert.equal(document.querySelectorAll('.hero-portrait-card[aria-pressed="true"]').length,0);assert.equal(document.querySelector('.hero-main-hold').disabled,true);
+   assert.equal(alpha.getState().previewHero,'brz');assert.equal(loadouts.getState().defaultHero,'brz');assert.equal(document.querySelector('.hero-modifications'),null);
+   assert.equal(document.querySelector('.hero-portrait-card[aria-pressed="true"]').dataset.hero,'brz');assert.equal(document.querySelector('.hero-main-hold').disabled,true);
    assert(document.querySelector('[data-open-hero-abilities] [data-controller-key="Y"]'));
-   await act(async()=>route('activate'));assert(document.activeElement.matches('[data-hero]'),'A first focuses a portrait instead of selecting the saved main');assert.equal(alpha.getState().previewHero,null);
-   const first=document.activeElement.dataset.hero;await act(async()=>route('next_tab'));assert.notEqual(document.activeElement.dataset.hero,first);await act(async()=>route('previous_tab'));assert.equal(document.activeElement.dataset.hero,first);assert.equal(alpha.getState().previewHero,null,'tab browsing focuses portraits without choosing a preview');
+   await act(async()=>route('activate'));assert(document.querySelector('.hero-modifications'),'A opens customization for the shown favorite');
+   await act(async()=>route('back'));assert.equal(document.querySelector('.hero-modifications'),null);
+   document.querySelector('[data-hero="brz"]').focus();await act(async()=>route('next_tab'));
+   assert.notEqual(document.activeElement.dataset.hero,'brz');await act(async()=>route('previous_tab'));
+   assert.equal(document.activeElement.dataset.hero,'brz');assert.equal(alpha.getState().previewHero,'brz');
    document.querySelector('.hero-workshop').focus();
    await act(async()=>window.dispatchEvent(new dom.window.Event('avenlab:hero-abilities')));
    assert.equal(ui.getState().overlay,'hero_abilities');assert(document.querySelector('.hero-ability-guide').classList.contains('hero-selection'),'guide participates in the shared Play theme/frame');assert(document.querySelector('[data-close-hero-abilities] [data-controller-key="Y"]'));
    await act(async()=>window.dispatchEvent(new dom.window.Event('avenlab:hero-abilities')));
-   assert.equal(ui.getState().overlay,null);assert.equal(alpha.getState().previewHero,null,'closing help restores the empty selection stage');assert.equal(loadouts.getState().defaultHero,'brz');assert.equal(sent.length,0);
+   assert.equal(ui.getState().overlay,null);assert.equal(alpha.getState().previewHero,'brz','closing help restores the favorite preview');assert.equal(loadouts.getState().defaultHero,'brz');assert.equal(sent.length,0);
    await act(async()=>root.render(null));
   });
   await t.test('the styling view survives opening, browsing and controller Back without changing main or saved cosmetics',async()=>{

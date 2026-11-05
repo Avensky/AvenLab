@@ -18,7 +18,7 @@ export function dockHome(side: number, shoreX: number, y: number, z: number): La
       position: [bayX, y - 1, z - 16], size: [32, 1, 36], color: "#68757c", parts: boxParts() },
     { ...common, id: "home-gas-" + bank, piece: "service-center", name: "Dock home garage",
       position: [bayX, y, z - 19], size: [18, 6, 20], color: "#8ca480",
-      parts: structuredClone(pieceById("service-center")!.parts) },
+      model: structuredClone(pieceById("service-center")!.model!), parts: [] },
     { ...common, id: "home-flag-" + team, piece: "ctf-home", name: "Dock flag stand",
       position: [shoreX - side * 7, y + .02, z], size: [8, .025, 8], color: "#59616b", solid: false, parts: boxParts() },
   ];
@@ -81,7 +81,8 @@ export function outfitHarbor(objects: LayoutObject[]) {
     if (!dock) {
       const station = box("home-gas-" + bank, "fuel-station", "Home gas and repair garage",
         [side * 64, .08, 159], [14, 5, 16], "#ad9566");
-      station.parts = structuredClone(pieceById("fuel-station")!.parts);
+      station.model = structuredClone(pieceById("fuel-station")!.model!);
+      station.parts = [];
       station.yaw = 180;
       continue;
     }

@@ -92,8 +92,6 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
   // Refs for individual lights
   const leftLightRef = useRef<SpotLight | null>(null);
   const rightLightRef = useRef<SpotLight | null>(null);
-  const leftTailRef = useRef<SpotLight | null>(null);
-  const rightTailRef = useRef<SpotLight | null>(null);
   const flBlinkerRef = useRef<SpotLight | null>(null);
   const frBlinkerRef = useRef<SpotLight | null>(null);
   const rlBlinkerRef = useRef<SpotLight | null>(null);
@@ -215,9 +213,6 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
       [-0.4, -0.6, 4],
     ); // FR
 
-    // Add tail lights
-    addSpot(leftTailRef, 0xff0000, 7, 8, [0.5, 0.6, -1.9], [0.5, -0.5, -3]); // RL
-    addSpot(rightTailRef, 0xff0000, 7, 8, [-0.55, 0.6, -1.9], [-0.5, -0.5, -3]); // RR
 
     // Add blinkers
     addSpot(flBlinkerRef, 0xffa500, 12, 16, [0.7, 0.6, 1.9], [0.9, -0.6, 3]); // FL
@@ -237,8 +232,6 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
       [
         leftLightRef,
         rightLightRef,
-        leftTailRef,
-        rightTailRef,
         flBlinkerRef,
         frBlinkerRef,
         rlBlinkerRef,
@@ -291,7 +284,6 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
     if (!interp) return;
 
     const input = inputState.input;
-    const controls = inputState.controls;
 
     const group = vehicleGroupRef.current;
 
@@ -382,9 +374,6 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
     applyHeadlightBeam(leftLightRef.current, headlights, highBeam);
     applyHeadlightBeam(rightLightRef.current, headlights, highBeam);
 
-    const braking = isLocalPlayer && controls.braking;
-    if (leftTailRef.current) leftTailRef.current.visible = braking;
-    if (rightTailRef.current) rightTailRef.current.visible = braking;
 
     if (flBlinkerRef.current)
       flBlinkerRef.current.visible = (hazards || blinkerLeft) && blinkOn;

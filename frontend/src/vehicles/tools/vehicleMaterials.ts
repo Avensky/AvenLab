@@ -1,3 +1,4 @@
+import {prepareLampLenses} from "./lampLenses.ts";
 import { repairAe86Material, repairSupraHighlights } from "./assetMaterialRepairs.ts";
 import { Color, DoubleSide, Group, Material, MathUtils, Mesh, MeshPhysicalMaterial, type Object3D } from "three";
 import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils.js";
@@ -82,7 +83,8 @@ export function prepareVehicleVisual(scene: Group, model: string) {
       object.material = Array.isArray(object.material) ? object.material.map(own) : own(object.material);
     });
   }
-  return { root, materials, glassMaterials, dispose: () => { for (const material of materials) material.dispose(); } };
+  const releaseLenses=prepareLampLenses(root);
+  return { root, materials, glassMaterials, dispose: () => { releaseLenses(); for (const material of materials) material.dispose(); } };
 }
 
 const interiorTint = new Color(0xffffff);
