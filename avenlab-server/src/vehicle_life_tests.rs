@@ -121,15 +121,15 @@ fn timer_runs_without_packets_and_blocked_spawn_waits_until_safe() {
 }
 
 #[test]
-fn swapping_and_manual_reset_preserve_health_fraction_and_do_not_grant_shield() {
+fn swap_preserves_health_and_reset_refills_without_a_new_shield() {
     let mut w=world();vulnerable(&mut w);
     w.damage_vehicle("target",Some("shooter"),250.0,"cannon");
     w.change_vehicle_for_player("target","tank").unwrap();
     assert_eq!(w.vehicle_health["target"].hp,600.0);assert_eq!(w.vehicle_health["target"].max_hp,1200.0);
     assert_eq!(w.vehicle_health["target"].spawn_protection_s,0.0);
     w.recover_vehicle_for_player("target").unwrap();
-    assert_eq!(w.vehicle_health["target"].hp,600.0);
-    w.change_vehicle_for_player("target","brz").unwrap();assert_eq!(w.vehicle_health["target"].hp,250.0);
+    assert_eq!(w.vehicle_health["target"].hp,1200.0);
+    w.change_vehicle_for_player("target","brz").unwrap();assert_eq!(w.vehicle_health["target"].hp,500.0);
     assert_eq!(w.vehicle_health["target"].damage_seq,1);
 }
 
@@ -392,13 +392,13 @@ fn in_place_combat_revive_is_once_only_with_actual_healing_and_ability_cooldown(
     w.vehicles.get_mut("target").unwrap().powertrain.fuel_liters=0.0;
     w.revive_vehicle_at_current_location("shooter","target").unwrap();
     let target=&w.vehicle_health["target"];
-    assert!(!target.defeated);assert_eq!(target.hp,150.0);assert_eq!(target.deaths,1);assert_eq!(target.stats.respawns,0);assert_eq!(target.spawn_protection_s,1.0);
+    assert!(!target.defeated);assert_eq!(target.hp,500.0);assert_eq!(target.deaths,1);assert_eq!(target.stats.respawns,0);assert_eq!(target.spawn_protection_s,1.0);
     assert_eq!(*w.bodies[w.vehicles["target"].body].translation(),position);assert!(w.bodies[w.vehicles["target"].body].is_enabled());
-    assert_eq!(w.vehicles["target"].powertrain.fuel_liters,5.0);assert_eq!(target.stats.gas_gained_liters,5.0);
-    assert_eq!(w.vehicle_health["shooter"].stats.resurrections,1);assert_eq!(w.vehicle_health["shooter"].stats.healing_done,150.0);assert_eq!(w.vehicle_health["shooter"].stats.self_healing,0.0);
-    assert_eq!(w.vehicles["shooter"].powertrain.ultimate_fraction,0.3,"only actual 150/500 teammate HP restored earns charge");
+    assert_eq!(w.vehicles["target"].powertrain.fuel_liters,50.0);assert_eq!(target.stats.gas_gained_liters,50.0);
+    assert_eq!(w.vehicle_health["shooter"].stats.resurrections,1);assert_eq!(w.vehicle_health["shooter"].stats.healing_done,500.0);assert_eq!(w.vehicle_health["shooter"].stats.self_healing,0.0);
+    assert_eq!(w.vehicles["shooter"].powertrain.ultimate_fraction,1.0,"full teammate HP restored earns charge once");
     assert_eq!(w.vehicle_health["shooter"].revive_cooldown_s,20.0);assert!(w.revive_vehicle_at_current_location("shooter","target").is_err());
-    assert_eq!(w.vehicles["shooter"].powertrain.ultimate_fraction,0.3,"repeat/overhealing cannot award more");
+    assert_eq!(w.vehicles["shooter"].powertrain.ultimate_fraction,1.0,"repeat/overhealing cannot award more");
     assert_eq!(w.vehicle_health["shooter"].stats.resurrections,1);
     w.advance_vehicle_lives(0.5);assert!((w.vehicle_health["shooter"].revive_cooldown_s-19.5).abs()<0.01);
 }
@@ -407,8 +407,8 @@ fn fuel_rescue_preserves_hull_hp_and_does_not_invent_a_resurrection(){
     let mut w=world();move_body(&mut w,"target",0.0,7.5);w.vehicles.get_mut("shooter").unwrap().team="blue".into();
     w.vehicle_health.get_mut("target").unwrap().hp=400.0;w.vehicles.get_mut("target").unwrap().powertrain.fuel_liters=0.0;
     w.advance_vehicle_lives(0.1);w.revive_vehicle_at_current_location("shooter","target").unwrap();
-    assert_eq!(w.vehicles["shooter"].powertrain.ultimate_fraction,0.0,"refuel without actual healing grants no charge");
-    assert_eq!(w.vehicle_health["target"].hp,400.0);assert_eq!(w.vehicle_health["target"].deaths,0);assert_eq!(w.vehicle_health["shooter"].stats.resurrections,0);assert_eq!(w.vehicle_health["shooter"].stats.healing_done,0.0);assert_eq!(w.vehicle_health["target"].stats.gas_gained_liters,5.0);
+    assert!((w.vehicles["shooter"].powertrain.ultimate_fraction-0.2).abs()<0.001,"only actual HP repaired grants healing charge");
+    assert_eq!(w.vehicle_health["target"].hp,500.0);assert_eq!(w.vehicle_health["target"].deaths,0);assert_eq!(w.vehicle_health["shooter"].stats.resurrections,0);assert_eq!(w.vehicle_health["shooter"].stats.healing_done,100.0);assert_eq!(w.vehicle_health["target"].stats.gas_gained_liters,50.0);
 }
 #[test]
 fn revive_rejects_enemy_range_speed_expired_and_obstructed_placements_without_healing(){

@@ -13,7 +13,6 @@ export function enterWorld(result: Record<string, unknown>) {
     throw new Error(
       "This world uses a map that is unavailable in this client.",
     );
-  useSelectionStore.setState({ mapIndex: index });
   const view = useSocialStore.getState().view;
   const world = view?.worlds.find(
     (world) => world.id === (result.world_id ?? view.current_world_id),
@@ -22,5 +21,6 @@ export function enterWorld(result: Record<string, unknown>) {
   else if (view?.alpha?.active)
     useAlphaStore.getState().chooseMode(view.alpha.active.mode);
   else useAlphaStore.getState().chooseMode("sandbox");
+  useSelectionStore.setState({ mapIndex: index });
   useUIStore.getState().setScreen("hero_select");
 }

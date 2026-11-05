@@ -25,6 +25,12 @@ test("all dock plans have ten spawns, exactly three crossings and no hidden wate
       assert(pads.every(p=>p.position[1]===(afloat?6:.08)));
     }
     assert(pieces.filter(o=>o.piece==="coastal-water-visual").every(o=>!o.solid));
+    assert.equal(pieces.filter(o=>o.piece==="harbor-seabed" && o.solid && o.position[1]+o.size[1]===-24).length,4);
+    assert.equal(pieces.filter(o=>o.id.startsWith("home-gas-")).length,2);
+    assert(pieces.filter(o=>o.piece==="highway-guardrail").every(o=>o.destruction?.enabled && o.destruction.hp===12));
+    assert(pieces.some(o=>o.id.startsWith("boarding-rail-")));
+    assert(pieces.filter(o=>o.name==="Boarding bridge column").every(o=>o.position[1]===-24));
+    assert(pieces.some(o=>o.piece==="kit-stone_start") && pieces.some(o=>o.piece==="kit-highway_25_wide_straight_level"));
     assert(pieces.some(o=>o.piece==="highway-guardrail"&&o.yaw%90!==0));
   }
 });
@@ -45,6 +51,19 @@ test("late packets cause fewer held frames without reversing render time",async(
     assert.equal(charted("8000000000000001",99,99),false);
     const layout=harborCanal("red",7).authored_layout,roads=harborRoads(layout,false);
     assert.equal(roads.length-harborRoads(layout,true).length,1);
+    const {surveyPosition,useSurvey,personalChart}=await vite.ssrLoadModule("/src/ui/Minimap/surveyedCells.ts");
+    const box={id:"home",kind:"road",center:[10,0,10],half_extents:[2,1,2]};
+    const far={...box,id:"far",center:[210,0,10]};
+    const stream={map_id:"stream",collider_chunks:[{boxes:[box,far]}]};
+    surveyPosition("me:room1",stream,[10,0,10]);
+    assert.deepEqual([...useSurvey.getState().cells.values()].map(c=>c.boxes.map(b=>b.id)),[["home"]]);
+    surveyPosition("me:room1",stream,[210,0,10]);
+    assert.deepEqual([...useSurvey.getState().cells.values()].map(c=>c.boxes.map(b=>b.id)),[["home"],["far"]]);
+    surveyPosition("me:room2",stream,[210,0,10]);assert.equal(useSurvey.getState().cells.size,1);
+    surveyPosition("me:harbor",{...stream,map_id:"harbor_canal_fleet"},[210,0,10]);
+    assert.deepEqual(personalChart(useSurvey.getState().cells,"ffffffffffffffff").map(c=>[c.x,c.z]),[[200,0]],
+      "allied exploration cannot reveal an unvisited sector on the full map");
+    assert.equal(personalChart(useSurvey.getState().cells,"0000000000000000").length,0);
     const buffer=new PhysicsInterpolationBuffer(), clock=new PresentationDelay();
     const gaps=[30,35,70,20,40,65,20,40], counts=[0,0],prev=[-1,-1];
     let arrival=0,seq=0,delay=50;

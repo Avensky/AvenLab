@@ -423,3 +423,6 @@ FodyWeavers.xsd
 
 # Private server social profiles and world metadata
 avenlab-server/runtime/
+
+# Derived locally from the stored city GLB by predev/prebuild.
+/frontend/public/models/harbor-generated/

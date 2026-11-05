@@ -1,5 +1,6 @@
 import { parseLayout, pieceById, type WorldLayout, type LayoutObject, type V3 } from "../document/layoutDocument.ts";
 import {mapExport,parseMapText,type MapDocument} from "../document/mapDocument.ts";
+import {outfitHarbor} from "./harborOutfit.ts";
 import {CARRIER,LIFT,guardrail} from "./harborPieces.ts";
 
 export type DockPlan = "red" | "blue" | "fleet";
@@ -114,6 +115,7 @@ export function harborCanal(plan:DockPlan,seed:number):MapDocument {
       add(piece,template.label,[side*95,.08,(i===0?-1:1)*flip*145],[...template.size],template.color);});
   }
   objects.push(...additions);
+  outfitHarbor(objects);
   const layout=parseLayout({format:"avenlab-world-layout",version:1,map_id:id,title:"Harbor Canal · "+plan+" · "+seed,
     base:"replace",ground:false,repeat:false,spawns,objects});
   return parseMapText(mapExport({schema_version:2,map_id:id,sky:"foggy_day",

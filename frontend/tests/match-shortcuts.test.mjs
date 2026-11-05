@@ -12,6 +12,12 @@ test('hold Tab and F1 share gameplay focus rules without taking driving ownershi
   const down=(code,options={},target=window)=>event('keydown',code,options,target),up=(code,options={},target=window)=>event('keyup',code,options,target),press=async code=>{await down(code);await up(code);};
   const reset=async()=>{await act(async()=>{board.getState().close();ui.setState({screen:'sandbox',overlay:null,isModeLoading:false});game.setState({editor:false});can.setState({commandOpen:false});network.setState({playerId:'me',connected:true});send();window.dispatchEvent(new window.Event('focus'));});};
   await reset();root=createRoot(document.getElementById('root'));await act(async()=>root.render(h(Keyboard)));
+  await t.test('M toggles the survey map and releases driving input',async()=>{
+   await reset();await down('KeyW');await press('KeyM');assert.equal(ui.getState().overlay,'survey_map');
+   assert.equal(input.getState().input.throttle,0);assert.equal(canDrive(),false);
+   await press('KeyM');assert.equal(ui.getState().overlay,null);await down('KeyM',{ctrlKey:true});
+   assert.equal(ui.getState().overlay,null);await up('KeyM');await up('KeyW');
+  });
   await t.test('Tab holds stats, consumes browser focus and leaves acceleration available',async()=>{
    await down('KeyW');assert.equal(input.getState().input.throttle,1);const tab=await down('Tab');assert.equal(tab.defaultPrevented,true);assert.equal(board.getState().held,true);assert.equal(canDrive(),true);assert.equal(input.getState().input.throttle,1);
    await down('Tab',{repeat:true});assert.equal(board.getState().held,true);await up('Tab');assert.equal(board.getState().held,false);assert.equal(input.getState().input.throttle,1);await up('KeyW');assert.equal(input.getState().input.throttle,0);

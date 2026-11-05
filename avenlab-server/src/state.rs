@@ -650,7 +650,7 @@ impl SharedGameState {
                     .unwrap_or_else(|| std::borrow::Cow::Owned(crate::vehicle_health::VehicleHealth::new(vehicle.config.hull_hp))),
                 combat: {let mut c=physics.combat_poses.get(&ent.id).cloned().unwrap_or_default();c.ram_remaining=vehicle.ram.remaining;c.ram_charge_remaining=vehicle.ram.charge_remaining();c.stun_remaining=vehicle.ram.stun_remaining;c.ram_cooldown=vehicle.ram.cooldown;c.ram_blocked=vehicle.ram.blocked.into();c},
                 condition: vehicle.powertrain.condition,
-                ultimate_fraction: vehicle.powertrain.ultimate_fraction,
+                ultimate_fraction: physics.barrages.get(&ent.id).map_or(vehicle.powertrain.ultimate_fraction, |b| b.fraction_remaining()),
                 boost_fraction: vehicle.powertrain.boost_fraction(vehicle.config.resources),
                 resource_mask: vehicle.powertrain.resource_mask(vehicle.config.resources),
                 cockpit_mask: vehicle.cockpit.snapshot(),

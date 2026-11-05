@@ -234,7 +234,7 @@ impl VehicleHealth {
     pub(crate) fn revive(&mut self) -> (bool, f32) {
         let combat = self.disabled_reason == "combat";
         let before = self.hp;
-        self.hp = self.hp.max(self.max_hp * 0.30);
+        self.hp = self.max_hp;
         self.defeated = false;
         self.disabled_reason.clear();
         self.respawn_remaining_s = 0.0;

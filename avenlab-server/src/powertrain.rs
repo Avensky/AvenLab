@@ -495,6 +495,17 @@ impl Powertrain {
         self.engine_torque_nm = 0.0;
         self.boost_active = false;
     }
+    /// Restore the HUD reserves without changing the driver's gear or ignition.
+    pub fn refill_gauges(&mut self, config: ResourceConfig) {
+        self.fuel_liters = config.fuel_capacity_liters;
+        self.nos_remaining_s = config.nos_seconds;
+        self.condition = 1.0;
+        self.ultimate_fraction = 1.0;
+        self.temperature_c = config.initial_temp_c;
+        self.thermal_recovery = false;
+        self.blink_stress_s = 0.0;
+    }
+
     pub fn service(&mut self, config: ResourceConfig) {
         let charge = self.ultimate_fraction;
         *self = Self::new(config);

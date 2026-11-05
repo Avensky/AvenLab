@@ -92,6 +92,7 @@ const RpmInstrument = memo(function RpmInstrument() {
   );
 });
 const FuelInstrument = memo(function FuelInstrument() {
+  const ultimateActive=useMotionView(s=>(s.getMe()?.barrage?.ticks_left??0)>0);
   const d = useVehicleTelemetryStore(
     useShallow((s) => ({
       fuel: s.data.fuelLiters,
@@ -121,6 +122,7 @@ const FuelInstrument = memo(function FuelInstrument() {
       tcsEnabled={d.tcs}
       live={d.signal === "live"}
       cockpitMask={d.cockpit}
+      ultimateActive={ultimateActive}
       ultimate={d.ultimate}
     />
   );

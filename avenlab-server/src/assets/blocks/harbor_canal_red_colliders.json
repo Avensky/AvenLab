@@ -6384,7 +6384,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-39",
@@ -6516,7 +6524,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-40",
@@ -6648,7 +6664,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-41",
@@ -6780,7 +6804,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-42",
@@ -6912,7 +6944,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-43",
@@ -7044,7 +7084,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-44",
@@ -7176,7 +7224,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-45",
@@ -7308,7 +7364,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-46",
@@ -7440,7 +7504,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-47",
@@ -7572,7 +7644,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-48",
@@ -7704,7 +7784,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-49",
@@ -7836,7 +7924,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-50",
@@ -7968,7 +8064,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-51",
@@ -8100,7 +8204,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-52",
@@ -8232,7 +8344,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-53",
@@ -8364,7 +8484,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-54",
@@ -8496,7 +8624,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-55",
@@ -8628,7 +8764,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-56",
@@ -8760,7 +8904,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-57",
@@ -8892,7 +9044,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-58",
@@ -9024,7 +9184,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-59",
@@ -9156,7 +9324,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-60",
@@ -9288,7 +9464,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-61",
@@ -9420,7 +9604,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-62",
@@ -9552,7 +9744,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-63",
@@ -9684,7 +9884,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-64",
@@ -9816,7 +10024,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-65",
@@ -9948,7 +10164,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-66",
@@ -10080,7 +10304,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-67",
@@ -10212,7 +10444,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-68",
@@ -10344,7 +10584,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-69",
@@ -10476,7 +10724,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-70",
@@ -10608,7 +10864,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-71",
@@ -10740,7 +11004,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-72",
@@ -10872,7 +11144,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-73",
@@ -11004,7 +11284,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-74",
@@ -11136,7 +11424,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-75",
@@ -11268,7 +11564,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-76",
@@ -11400,7 +11704,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-77",
@@ -11532,7 +11844,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-78",
@@ -11664,7 +11984,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-79",
@@ -11796,7 +12124,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-80",
@@ -11928,7 +12264,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-81",
@@ -12060,7 +12404,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-82",
@@ -12192,7 +12544,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-83",
@@ -12324,7 +12684,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-84",
@@ -12456,7 +12824,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-85",
@@ -12588,7 +12964,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-86",
@@ -12720,7 +13104,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-87",
@@ -12852,7 +13244,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-88",
@@ -12984,7 +13384,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-89",
@@ -13116,7 +13524,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-90",
@@ -13248,7 +13664,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-91",
@@ -13380,7 +13804,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-92",
@@ -13512,7 +13944,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-93",
@@ -13644,7 +14084,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-94",
@@ -13776,7 +14224,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-95",
@@ -13908,7 +14364,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-96",
@@ -14040,7 +14504,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-97",
@@ -14172,7 +14644,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-98",
@@ -14304,7 +14784,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-99",
@@ -14436,7 +14924,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-100",
@@ -14568,7 +15064,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-101",
@@ -14700,7 +15204,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-102",
@@ -14832,7 +15344,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-103",
@@ -14964,7 +15484,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-104",
@@ -15096,7 +15624,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-105",
@@ -15228,7 +15764,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-106",
@@ -15360,7 +15904,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-107",
@@ -15492,7 +16044,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-108",
@@ -15624,7 +16184,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-109",
@@ -15756,7 +16324,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-110",
@@ -21855,7 +22431,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-144",
@@ -21987,7 +22571,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-145",
@@ -22119,7 +22711,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-146",
@@ -22251,7 +22851,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-147",
@@ -22383,7 +22991,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-148",
@@ -22515,7 +23131,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-149",
@@ -22647,7 +23271,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-150",
@@ -22779,7 +23411,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-151",
@@ -22911,7 +23551,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-152",
@@ -23043,7 +23691,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-153",
@@ -23175,7 +23831,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-154",
@@ -23307,7 +23971,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-155",
@@ -23439,7 +24111,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-156",
@@ -23571,7 +24251,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-157",
@@ -23703,7 +24391,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-158",
@@ -23835,7 +24531,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-159",
@@ -23967,7 +24671,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-160",
@@ -24099,7 +24811,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-161",
@@ -24231,7 +24951,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-162",
@@ -24363,7 +25091,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-163",
@@ -24495,7 +25231,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-164",
@@ -24627,7 +25371,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-165",
@@ -24759,7 +25511,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-166",
@@ -24891,7 +25651,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-167",
@@ -25023,7 +25791,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-168",
@@ -25155,7 +25931,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-169",
@@ -25287,7 +26071,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-170",
@@ -25419,7 +26211,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-171",
@@ -25551,7 +26351,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-172",
@@ -25683,7 +26491,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-173",
@@ -25815,7 +26631,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-174",
@@ -25947,7 +26771,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-175",
@@ -26079,7 +26911,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-176",
@@ -26211,7 +27051,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-177",
@@ -26343,7 +27191,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-178",
@@ -26475,7 +27331,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-179",
@@ -26607,7 +27471,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-180",
@@ -26739,7 +27611,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-181",
@@ -26871,7 +27751,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-182",
@@ -27003,7 +27891,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-183",
@@ -27135,7 +28031,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-184",
@@ -27267,7 +28171,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-185",
@@ -27399,7 +28311,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-186",
@@ -27531,7 +28451,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-187",
@@ -27663,7 +28591,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-188",
@@ -27795,7 +28731,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-189",
@@ -27927,7 +28871,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-190",
@@ -28059,7 +29011,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-191",
@@ -28191,7 +29151,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-192",
@@ -28323,7 +29291,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-193",
@@ -28455,7 +29431,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-194",
@@ -28587,7 +29571,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-195",
@@ -28719,7 +29711,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-196",
@@ -28851,7 +29851,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-197",
@@ -28983,7 +29991,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-198",
@@ -29115,7 +30131,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-199",
@@ -29247,7 +30271,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-200",
@@ -29379,7 +30411,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-201",
@@ -29511,7 +30551,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-202",
@@ -29643,7 +30691,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-203",
@@ -29775,7 +30831,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-204",
@@ -29907,7 +30971,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-205",
@@ -30039,7 +31111,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-206",
@@ -30171,7 +31251,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-207",
@@ -30303,7 +31391,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-208",
@@ -30435,7 +31531,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-209",
@@ -30567,7 +31671,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-210",
@@ -30699,7 +31811,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-211",
@@ -30831,7 +31951,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-212",
@@ -30963,7 +32091,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-213",
@@ -31095,7 +32231,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-214",
@@ -31227,7 +32371,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-215",
@@ -32312,6 +33464,3544 @@
         "solid": true,
         "locked": false,
         "parts": []
+      },
+      {
+        "id": "bed-harbor-1",
+        "piece": "harbor-seabed",
+        "name": "Harbor seabed",
+        "position": [
+          -180,
+          -25,
+          -170
+        ],
+        "size": [
+          360,
+          1,
+          340
+        ],
+        "color": "#5a5851",
+        "solid": true,
+        "locked": false,
+        "yaw": 0,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "bed-harbor-2",
+        "piece": "harbor-seabed",
+        "name": "Harbor seabed",
+        "position": [
+          -180,
+          -25,
+          170
+        ],
+        "size": [
+          360,
+          1,
+          340
+        ],
+        "color": "#5a5851",
+        "solid": true,
+        "locked": false,
+        "yaw": 0,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "bed-harbor-3",
+        "piece": "harbor-seabed",
+        "name": "Harbor seabed",
+        "position": [
+          180,
+          -25,
+          -170
+        ],
+        "size": [
+          360,
+          1,
+          340
+        ],
+        "color": "#5a5851",
+        "solid": true,
+        "locked": false,
+        "yaw": 0,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "bed-harbor-4",
+        "piece": "harbor-seabed",
+        "name": "Harbor seabed",
+        "position": [
+          180,
+          -25,
+          170
+        ],
+        "size": [
+          360,
+          1,
+          340
+        ],
+        "color": "#5a5851",
+        "solid": true,
+        "locked": false,
+        "yaw": 0,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-west-64",
+        "piece": "coastal-road",
+        "name": "Dockside cross street",
+        "position": [
+          -101,
+          0.005,
+          -236
+        ],
+        "size": [
+          94,
+          0.075,
+          8
+        ],
+        "color": "#363e43",
+        "solid": true,
+        "locked": false,
+        "yaw": 0,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-west-206",
+        "piece": "coastal-road",
+        "name": "Dockside cross street",
+        "position": [
+          -101,
+          0.005,
+          -94
+        ],
+        "size": [
+          94,
+          0.075,
+          8
+        ],
+        "color": "#363e43",
+        "solid": true,
+        "locked": false,
+        "yaw": 0,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-west-394",
+        "piece": "coastal-road",
+        "name": "Dockside cross street",
+        "position": [
+          -101,
+          0.005,
+          94
+        ],
+        "size": [
+          94,
+          0.075,
+          8
+        ],
+        "color": "#363e43",
+        "solid": true,
+        "locked": false,
+        "yaw": 0,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-west-536",
+        "piece": "coastal-road",
+        "name": "Dockside cross street",
+        "position": [
+          -101,
+          0.005,
+          236
+        ],
+        "size": [
+          94,
+          0.075,
+          8
+        ],
+        "color": "#363e43",
+        "solid": true,
+        "locked": false,
+        "yaw": 0,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "home-gas-west",
+        "piece": "fuel-station",
+        "name": "Home gas and repair garage",
+        "position": [
+          -173,
+          0.08,
+          16
+        ],
+        "size": [
+          14,
+          5,
+          16
+        ],
+        "color": "#ad9566",
+        "solid": true,
+        "locked": false,
+        "yaw": 90,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              -0.48,
+              0.5,
+              0
+            ],
+            "size": [
+              0.04,
+              1,
+              1
+            ]
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.48,
+              0.5,
+              0
+            ],
+            "size": [
+              0.04,
+              1,
+              1
+            ]
+          },
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              -0.48
+            ],
+            "size": [
+              1,
+              1,
+              0.04
+            ]
+          },
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.97,
+              0
+            ],
+            "size": [
+              1,
+              0.06,
+              1
+            ]
+          },
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.004,
+              0
+            ],
+            "size": [
+              0.6,
+              0.008,
+              0.65
+            ],
+            "color": "#82b3a0",
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.87,
+              0.48
+            ],
+            "size": [
+              0.7,
+              0.12,
+              0.025
+            ]
+          }
+        ]
+      },
+      {
+        "id": "col-west-0--1",
+        "piece": "harbor-column",
+        "name": "Boarding bridge column",
+        "position": [
+          -198.75,
+          -24,
+          -6.2
+        ],
+        "size": [
+          1.3,
+          24.41,
+          1.4
+        ],
+        "color": "#7d8587",
+        "solid": true,
+        "locked": false,
+        "yaw": 0,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "col-west-0-1",
+        "piece": "harbor-column",
+        "name": "Boarding bridge column",
+        "position": [
+          -198.75,
+          -24,
+          6.2
+        ],
+        "size": [
+          1.3,
+          24.41,
+          1.4
+        ],
+        "color": "#7d8587",
+        "solid": true,
+        "locked": false,
+        "yaw": 0,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "cap-west-0",
+        "piece": "harbor-column",
+        "name": "Boarding bridge crossbeam",
+        "position": [
+          -198.75,
+          0.31000000000000005,
+          0
+        ],
+        "size": [
+          1.5,
+          0.6,
+          16
+        ],
+        "color": "#687679",
+        "solid": true,
+        "locked": false,
+        "yaw": 0,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "col-west-1--1",
+        "piece": "harbor-column",
+        "name": "Boarding bridge column",
+        "position": [
+          -211.44,
+          -24,
+          -6.2
+        ],
+        "size": [
+          1.3,
+          27.1924,
+          1.4
+        ],
+        "color": "#7d8587",
+        "solid": true,
+        "locked": false,
+        "yaw": 0,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "col-west-1-1",
+        "piece": "harbor-column",
+        "name": "Boarding bridge column",
+        "position": [
+          -211.44,
+          -24,
+          6.2
+        ],
+        "size": [
+          1.3,
+          27.1924,
+          1.4
+        ],
+        "color": "#7d8587",
+        "solid": true,
+        "locked": false,
+        "yaw": 0,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "cap-west-1",
+        "piece": "harbor-column",
+        "name": "Boarding bridge crossbeam",
+        "position": [
+          -211.44,
+          3.0923999999999996,
+          0
+        ],
+        "size": [
+          1.5,
+          0.6,
+          16
+        ],
+        "color": "#687679",
+        "solid": true,
+        "locked": false,
+        "yaw": 0,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "col-west-2--1",
+        "piece": "harbor-column",
+        "name": "Boarding bridge column",
+        "position": [
+          -226,
+          -24,
+          -6.2
+        ],
+        "size": [
+          1.3,
+          28.85,
+          1.4
+        ],
+        "color": "#7d8587",
+        "solid": true,
+        "locked": false,
+        "yaw": 0,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "col-west-2-1",
+        "piece": "harbor-column",
+        "name": "Boarding bridge column",
+        "position": [
+          -226,
+          -24,
+          6.2
+        ],
+        "size": [
+          1.3,
+          28.85,
+          1.4
+        ],
+        "color": "#7d8587",
+        "solid": true,
+        "locked": false,
+        "yaw": 0,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "cap-west-2",
+        "piece": "harbor-column",
+        "name": "Boarding bridge crossbeam",
+        "position": [
+          -226,
+          4.75,
+          0
+        ],
+        "size": [
+          1.5,
+          0.6,
+          16
+        ],
+        "color": "#687679",
+        "solid": true,
+        "locked": false,
+        "yaw": 0,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "col-west-3--1",
+        "piece": "harbor-column",
+        "name": "Boarding bridge column",
+        "position": [
+          -238,
+          -24,
+          -6.2
+        ],
+        "size": [
+          1.3,
+          28.85,
+          1.4
+        ],
+        "color": "#7d8587",
+        "solid": true,
+        "locked": false,
+        "yaw": 0,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "col-west-3-1",
+        "piece": "harbor-column",
+        "name": "Boarding bridge column",
+        "position": [
+          -238,
+          -24,
+          6.2
+        ],
+        "size": [
+          1.3,
+          28.85,
+          1.4
+        ],
+        "color": "#7d8587",
+        "solid": true,
+        "locked": false,
+        "yaw": 0,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "cap-west-3",
+        "piece": "harbor-column",
+        "name": "Boarding bridge crossbeam",
+        "position": [
+          -238,
+          4.75,
+          0
+        ],
+        "size": [
+          1.5,
+          0.6,
+          16
+        ],
+        "color": "#687679",
+        "solid": true,
+        "locked": false,
+        "yaw": 0,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "boarding-rail-west--1-r0",
+        "name": "Highway guardrail",
+        "piece": "highway-guardrail",
+        "position": [
+          -194.25,
+          0.5733333333333334,
+          -7.82
+        ],
+        "size": [
+          4.5,
+          1.05,
+          0.4
+        ],
+        "yaw": -180,
+        "color": "#9da9aa",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.68,
+              0
+            ],
+            "size": [
+              1,
+              0.37,
+              0.56
+            ]
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.46,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.3,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.15,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.15,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.3,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.46,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          }
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
+      },
+      {
+        "id": "boarding-rail-west--1-r1",
+        "name": "Highway guardrail",
+        "piece": "highway-guardrail",
+        "position": [
+          -198.75,
+          1.56,
+          -7.82
+        ],
+        "size": [
+          4.5,
+          1.05,
+          0.4
+        ],
+        "yaw": -180,
+        "color": "#9da9aa",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.68,
+              0
+            ],
+            "size": [
+              1,
+              0.37,
+              0.56
+            ]
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.46,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.3,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.15,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.15,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.3,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.46,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          }
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
+      },
+      {
+        "id": "boarding-rail-west--1-r2",
+        "name": "Highway guardrail",
+        "piece": "highway-guardrail",
+        "position": [
+          -203.25,
+          2.5466666666666664,
+          -7.82
+        ],
+        "size": [
+          4.5,
+          1.05,
+          0.4
+        ],
+        "yaw": -180,
+        "color": "#9da9aa",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.68,
+              0
+            ],
+            "size": [
+              1,
+              0.37,
+              0.56
+            ]
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.46,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.3,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.15,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.15,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.3,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.46,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          }
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
+      },
+      {
+        "id": "boarding-rail-west--1-r3",
+        "name": "Highway guardrail",
+        "piece": "highway-guardrail",
+        "position": [
+          -207.75,
+          3.533333333333333,
+          -7.82
+        ],
+        "size": [
+          4.5,
+          1.05,
+          0.4
+        ],
+        "yaw": -180,
+        "color": "#9da9aa",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.68,
+              0
+            ],
+            "size": [
+              1,
+              0.37,
+              0.56
+            ]
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.46,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.3,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.15,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.15,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.3,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.46,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          }
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
+      },
+      {
+        "id": "boarding-rail-west--1-r4",
+        "name": "Highway guardrail",
+        "piece": "highway-guardrail",
+        "position": [
+          -212.25,
+          4.52,
+          -7.82
+        ],
+        "size": [
+          4.5,
+          1.05,
+          0.4
+        ],
+        "yaw": -180,
+        "color": "#9da9aa",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.68,
+              0
+            ],
+            "size": [
+              1,
+              0.37,
+              0.56
+            ]
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.46,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.3,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.15,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.15,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.3,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.46,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          }
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
+      },
+      {
+        "id": "boarding-rail-west--1-r5",
+        "name": "Highway guardrail",
+        "piece": "highway-guardrail",
+        "position": [
+          -216.75,
+          5.506666666666667,
+          -7.82
+        ],
+        "size": [
+          4.5,
+          1.05,
+          0.4
+        ],
+        "yaw": -180,
+        "color": "#9da9aa",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.68,
+              0
+            ],
+            "size": [
+              1,
+              0.37,
+              0.56
+            ]
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.46,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.3,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.15,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.15,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.3,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.46,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          }
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
+      },
+      {
+        "id": "boarding-rail-west--1-p0",
+        "name": "Highway guardrail",
+        "piece": "highway-guardrail",
+        "position": [
+          -223.33333333333331,
+          6,
+          -7.82
+        ],
+        "size": [
+          8.666666666666657,
+          1.05,
+          0.4
+        ],
+        "yaw": -180,
+        "color": "#9da9aa",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.68,
+              0
+            ],
+            "size": [
+              1,
+              0.37,
+              0.56
+            ]
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.46,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.3,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.15,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.15,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.3,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.46,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          }
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
+      },
+      {
+        "id": "boarding-rail-west--1-p1",
+        "name": "Highway guardrail",
+        "piece": "highway-guardrail",
+        "position": [
+          -232,
+          6,
+          -7.82
+        ],
+        "size": [
+          8.666666666666686,
+          1.05,
+          0.4
+        ],
+        "yaw": -180,
+        "color": "#9da9aa",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.68,
+              0
+            ],
+            "size": [
+              1,
+              0.37,
+              0.56
+            ]
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.46,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.3,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.15,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.15,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.3,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.46,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          }
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
+      },
+      {
+        "id": "boarding-rail-west--1-p2",
+        "name": "Highway guardrail",
+        "piece": "highway-guardrail",
+        "position": [
+          -240.66666666666669,
+          6,
+          -7.82
+        ],
+        "size": [
+          8.666666666666657,
+          1.05,
+          0.4
+        ],
+        "yaw": -180,
+        "color": "#9da9aa",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.68,
+              0
+            ],
+            "size": [
+              1,
+              0.37,
+              0.56
+            ]
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.46,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.3,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.15,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.15,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.3,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.46,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          }
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
+      },
+      {
+        "id": "boarding-rail-west-1-r0",
+        "name": "Highway guardrail",
+        "piece": "highway-guardrail",
+        "position": [
+          -194.25,
+          0.5733333333333334,
+          7.82
+        ],
+        "size": [
+          4.5,
+          1.05,
+          0.4
+        ],
+        "yaw": -180,
+        "color": "#9da9aa",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.68,
+              0
+            ],
+            "size": [
+              1,
+              0.37,
+              0.56
+            ]
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.46,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.3,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.15,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.15,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.3,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.46,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          }
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
+      },
+      {
+        "id": "boarding-rail-west-1-r1",
+        "name": "Highway guardrail",
+        "piece": "highway-guardrail",
+        "position": [
+          -198.75,
+          1.56,
+          7.82
+        ],
+        "size": [
+          4.5,
+          1.05,
+          0.4
+        ],
+        "yaw": -180,
+        "color": "#9da9aa",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.68,
+              0
+            ],
+            "size": [
+              1,
+              0.37,
+              0.56
+            ]
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.46,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.3,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.15,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.15,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.3,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.46,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          }
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
+      },
+      {
+        "id": "boarding-rail-west-1-r2",
+        "name": "Highway guardrail",
+        "piece": "highway-guardrail",
+        "position": [
+          -203.25,
+          2.5466666666666664,
+          7.82
+        ],
+        "size": [
+          4.5,
+          1.05,
+          0.4
+        ],
+        "yaw": -180,
+        "color": "#9da9aa",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.68,
+              0
+            ],
+            "size": [
+              1,
+              0.37,
+              0.56
+            ]
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.46,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.3,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.15,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.15,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.3,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.46,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          }
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
+      },
+      {
+        "id": "boarding-rail-west-1-r3",
+        "name": "Highway guardrail",
+        "piece": "highway-guardrail",
+        "position": [
+          -207.75,
+          3.533333333333333,
+          7.82
+        ],
+        "size": [
+          4.5,
+          1.05,
+          0.4
+        ],
+        "yaw": -180,
+        "color": "#9da9aa",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.68,
+              0
+            ],
+            "size": [
+              1,
+              0.37,
+              0.56
+            ]
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.46,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.3,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.15,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.15,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.3,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.46,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          }
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
+      },
+      {
+        "id": "boarding-rail-west-1-r4",
+        "name": "Highway guardrail",
+        "piece": "highway-guardrail",
+        "position": [
+          -212.25,
+          4.52,
+          7.82
+        ],
+        "size": [
+          4.5,
+          1.05,
+          0.4
+        ],
+        "yaw": -180,
+        "color": "#9da9aa",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.68,
+              0
+            ],
+            "size": [
+              1,
+              0.37,
+              0.56
+            ]
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.46,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.3,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.15,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.15,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.3,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.46,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          }
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
+      },
+      {
+        "id": "boarding-rail-west-1-r5",
+        "name": "Highway guardrail",
+        "piece": "highway-guardrail",
+        "position": [
+          -216.75,
+          5.506666666666667,
+          7.82
+        ],
+        "size": [
+          4.5,
+          1.05,
+          0.4
+        ],
+        "yaw": -180,
+        "color": "#9da9aa",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.68,
+              0
+            ],
+            "size": [
+              1,
+              0.37,
+              0.56
+            ]
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.46,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.3,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.15,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.15,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.3,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.46,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          }
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
+      },
+      {
+        "id": "boarding-rail-west-1-p0",
+        "name": "Highway guardrail",
+        "piece": "highway-guardrail",
+        "position": [
+          -223.33333333333331,
+          6,
+          7.82
+        ],
+        "size": [
+          8.666666666666657,
+          1.05,
+          0.4
+        ],
+        "yaw": -180,
+        "color": "#9da9aa",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.68,
+              0
+            ],
+            "size": [
+              1,
+              0.37,
+              0.56
+            ]
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.46,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.3,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.15,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.15,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.3,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.46,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          }
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
+      },
+      {
+        "id": "boarding-rail-west-1-p1",
+        "name": "Highway guardrail",
+        "piece": "highway-guardrail",
+        "position": [
+          -232,
+          6,
+          7.82
+        ],
+        "size": [
+          8.666666666666686,
+          1.05,
+          0.4
+        ],
+        "yaw": -180,
+        "color": "#9da9aa",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.68,
+              0
+            ],
+            "size": [
+              1,
+              0.37,
+              0.56
+            ]
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.46,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.3,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.15,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.15,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.3,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.46,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          }
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
+      },
+      {
+        "id": "boarding-rail-west-1-p2",
+        "name": "Highway guardrail",
+        "piece": "highway-guardrail",
+        "position": [
+          -240.66666666666669,
+          6,
+          7.82
+        ],
+        "size": [
+          8.666666666666657,
+          1.05,
+          0.4
+        ],
+        "yaw": -180,
+        "color": "#9da9aa",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.68,
+              0
+            ],
+            "size": [
+              1,
+              0.37,
+              0.56
+            ]
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.46,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.3,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              -0.15,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.15,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.3,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.46,
+              0.4,
+              0.19
+            ],
+            "size": [
+              0.017,
+              0.8,
+              0.55
+            ],
+            "solid": false
+          }
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
+      },
+      {
+        "id": "street-east-64",
+        "piece": "coastal-road",
+        "name": "Dockside cross street",
+        "position": [
+          101,
+          0.005,
+          -236
+        ],
+        "size": [
+          94,
+          0.075,
+          8
+        ],
+        "color": "#363e43",
+        "solid": true,
+        "locked": false,
+        "yaw": 0,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-east-206",
+        "piece": "coastal-road",
+        "name": "Dockside cross street",
+        "position": [
+          101,
+          0.005,
+          -94
+        ],
+        "size": [
+          94,
+          0.075,
+          8
+        ],
+        "color": "#363e43",
+        "solid": true,
+        "locked": false,
+        "yaw": 0,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-east-394",
+        "piece": "coastal-road",
+        "name": "Dockside cross street",
+        "position": [
+          101,
+          0.005,
+          94
+        ],
+        "size": [
+          94,
+          0.075,
+          8
+        ],
+        "color": "#363e43",
+        "solid": true,
+        "locked": false,
+        "yaw": 0,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-east-536",
+        "piece": "coastal-road",
+        "name": "Dockside cross street",
+        "position": [
+          101,
+          0.005,
+          236
+        ],
+        "size": [
+          94,
+          0.075,
+          8
+        ],
+        "color": "#363e43",
+        "solid": true,
+        "locked": false,
+        "yaw": 0,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "home-gas-east",
+        "piece": "fuel-station",
+        "name": "Home gas and repair garage",
+        "position": [
+          64,
+          0.08,
+          159
+        ],
+        "size": [
+          14,
+          5,
+          16
+        ],
+        "color": "#ad9566",
+        "solid": true,
+        "locked": false,
+        "yaw": 180,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              -0.48,
+              0.5,
+              0
+            ],
+            "size": [
+              0.04,
+              1,
+              1
+            ]
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.48,
+              0.5,
+              0
+            ],
+            "size": [
+              0.04,
+              1,
+              1
+            ]
+          },
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              -0.48
+            ],
+            "size": [
+              1,
+              1,
+              0.04
+            ]
+          },
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.97,
+              0
+            ],
+            "size": [
+              1,
+              0.06,
+              1
+            ]
+          },
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.004,
+              0
+            ],
+            "size": [
+              0.6,
+              0.008,
+              0.65
+            ],
+            "color": "#82b3a0",
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.87,
+              0.48
+            ],
+            "size": [
+              0.7,
+              0.12,
+              0.025
+            ]
+          }
+        ]
       }
     ]
   },

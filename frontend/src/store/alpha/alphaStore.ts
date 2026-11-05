@@ -1,7 +1,7 @@
 import type {VehicleModelId} from "../../vehicles/tools/vehicleModelPaths";
 import { useHeroLoadouts, type HeroAppearance } from "../../vehicles/cosmetics/heroLoadouts";
 import { create } from "zustand";
-import { useSelectionStore, vehicleCatalog } from "../selection/selectionStore";
+import { useSelectionStore, vehicleCatalog, mapCatalog } from "../selection/selectionStore";
 import { usePreferencesStore } from "../preferences/preferencesStore";
 export type GameMode = "quickplay" | "competitive" | "skirmish" | "sandbox" | "editor";
 export type MatchTeamSize = 3 | 5;
@@ -203,6 +203,10 @@ export const useAlphaStore = create<{
   selectionInitialized: false,
   chooseMode: (mode) => {
     const next=canonicalGameMode(mode);
+    if(next==="sandbox" && !useSelectionStore.getState().mapChosen) {
+      const fleet=mapCatalog.findIndex(m=>m.id==="harbor_canal_fleet");
+      if(fleet>=0) useSelectionStore.setState({mapIndex:fleet});
+    }
     set({mode:next,...(mode==='skirmish'?{teamSize:3 as const}:{}),...(next==='quickplay'||next==='competitive'?{lastMatchMode:next}:{})});
   },
   chooseTeamSize: (teamSize) => {if(teamSize===3||teamSize===5)set({teamSize});},

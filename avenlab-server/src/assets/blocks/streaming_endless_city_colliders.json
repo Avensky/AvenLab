@@ -2103,7 +2103,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-2",
@@ -2235,7 +2243,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-3",
@@ -2367,7 +2383,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-4",
@@ -2499,7 +2523,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-5",
@@ -2631,7 +2663,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-6",
@@ -2763,7 +2803,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-7",
@@ -2895,7 +2943,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-8",
@@ -3027,7 +3083,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-9",
@@ -3159,7 +3223,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-10",
@@ -3291,7 +3363,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-11",
@@ -3423,7 +3503,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-12",
@@ -3555,7 +3643,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-13",
@@ -3687,7 +3783,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-14",
@@ -3819,7 +3923,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-15",
@@ -3951,7 +4063,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-16",
@@ -4083,7 +4203,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-17",
@@ -4215,7 +4343,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-18",
@@ -4347,7 +4483,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-19",
@@ -4479,7 +4623,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-20",
@@ -4611,7 +4763,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-21",
@@ -4743,7 +4903,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-22",
@@ -4875,7 +5043,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-23",
@@ -5007,7 +5183,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-24",
@@ -5139,7 +5323,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-25",
@@ -5271,7 +5463,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-26",
@@ -5403,7 +5603,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-27",
@@ -5535,7 +5743,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-28",
@@ -5667,7 +5883,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-29",
@@ -5799,7 +6023,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-30",
@@ -5931,7 +6163,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-31",
@@ -6063,7 +6303,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-32",
@@ -6195,7 +6443,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-33",
@@ -6327,7 +6583,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-34",
@@ -6459,7 +6723,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-35",
@@ -6591,7 +6863,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-36",
@@ -6723,7 +7003,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-37",
@@ -6855,7 +7143,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-38",
@@ -6987,7 +7283,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-39",
@@ -7119,7 +7423,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-40",
@@ -7251,7 +7563,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-41",
@@ -7383,7 +7703,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-42",
@@ -7515,7 +7843,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-43",
@@ -7647,7 +7983,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-44",
@@ -7779,7 +8123,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-45",
@@ -7911,7 +8263,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-46",
@@ -8043,7 +8403,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-47",
@@ -8175,7 +8543,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-48",
@@ -8307,7 +8683,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-49",
@@ -8439,7 +8823,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-50",
@@ -8571,7 +8963,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-51",
@@ -8703,7 +9103,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-52",
@@ -8835,7 +9243,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-53",
@@ -8967,7 +9383,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-54",
@@ -9099,7 +9523,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-55",
@@ -9231,7 +9663,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-56",
@@ -9363,7 +9803,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-57",
@@ -9495,7 +9943,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-58",
@@ -9627,7 +10083,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-59",
@@ -9759,7 +10223,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-60",
@@ -9891,7 +10363,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-61",
@@ -10023,7 +10503,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-62",
@@ -10155,7 +10643,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-63",
@@ -10287,7 +10783,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-64",
@@ -10419,7 +10923,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-65",
@@ -10551,7 +11063,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-66",
@@ -10683,7 +11203,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-67",
@@ -10815,7 +11343,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-68",
@@ -10947,7 +11483,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-69",
@@ -11079,7 +11623,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-70",
@@ -11211,7 +11763,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-71",
@@ -11343,7 +11903,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-72",
@@ -11475,7 +12043,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-73",
@@ -11607,7 +12183,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-74",
@@ -11739,7 +12323,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-75",
@@ -11871,7 +12463,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-76",
@@ -12003,7 +12603,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-77",
@@ -12135,7 +12743,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-78",
@@ -12267,7 +12883,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-79",
@@ -12399,7 +13023,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-80",
@@ -12531,7 +13163,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-81",
@@ -12663,7 +13303,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-82",
@@ -12795,7 +13443,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-83",
@@ -12927,7 +13583,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-84",
@@ -13059,7 +13723,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-85",
@@ -13191,7 +13863,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-86",
@@ -13323,7 +14003,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-87",
@@ -13455,7 +14143,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-88",
@@ -13587,7 +14283,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-89",
@@ -13719,7 +14423,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-90",
@@ -13851,7 +14563,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-91",
@@ -13983,7 +14703,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-92",
@@ -14115,7 +14843,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-93",
@@ -14247,7 +14983,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-94",
@@ -14379,7 +15123,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-95",
@@ -14511,7 +15263,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-96",
@@ -14643,7 +15403,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-97",
@@ -14775,7 +15543,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-98",
@@ -14907,7 +15683,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-99",
@@ -15039,7 +15823,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-100",
@@ -15171,7 +15963,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-101",
@@ -15303,7 +16103,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-102",
@@ -15435,7 +16243,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-103",
@@ -15567,7 +16383,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-104",
@@ -15699,7 +16523,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-105",
@@ -15831,7 +16663,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-106",
@@ -15963,7 +16803,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-107",
@@ -16095,7 +16943,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-108",
@@ -16227,7 +17083,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-109",
@@ -16359,7 +17223,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-110",
@@ -16491,7 +17363,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-111",
@@ -16623,7 +17503,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-112",
@@ -16755,7 +17643,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-113",
@@ -16887,7 +17783,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-114",
@@ -17019,7 +17923,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-115",
@@ -17151,7 +18063,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-116",
@@ -17283,7 +18203,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-117",
@@ -17415,7 +18343,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-118",
@@ -17547,7 +18483,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-119",
@@ -17679,7 +18623,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-120",
@@ -17811,7 +18763,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-121",
@@ -17943,7 +18903,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-122",
@@ -18075,7 +19043,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-123",
@@ -18207,7 +19183,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-124",
@@ -18339,7 +19323,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       },
       {
         "id": "perimeter-rail-125",
@@ -18471,7 +19463,15 @@
             ],
             "solid": false
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 12,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
       }
     ]
   }

@@ -1,3 +1,4 @@
+import {SurveyMap} from "../ui/Minimap/SurveyMap";
 import {MinimapSessionLifecycle} from "../ui/Minimap/MinimapSessionLifecycle";
 import {CtfMissionLifecycle} from "./stats/CtfMissionLifecycle";
 import {MatchResultsScreen} from "./results/MatchResultsScreen";
@@ -214,6 +215,7 @@ export function GameUI() {
           <SocialPanel />
         </Suspense>
       )}
+      {screen === "sandbox" && overlay === "survey_map" && <SurveyMap/>}
       {screen === "sandbox" && overlay === "cockpit" && <CockpitPanel />}
       {(screen === "world_builder" ||
         (screen === "sandbox" && overlay === "world_builder")) && (

@@ -13,10 +13,10 @@ export const ResourceRing = memo(function ResourceRing({ kind, fraction, active 
 }) {
   const percent = fraction === null ? null : Math.round(Math.max(0, Math.min(1, fraction)) * 100);
   const label = kind === "speed" ? "Vehicle condition" : kind === "rpm" ? "NOS reserve" : "Ultimate charge";
-  return <div className={`resource-ring resource-ring-${kind}`} data-ready={kind === "hero" && percent === 100}
+  return <div className={`resource-ring resource-ring-${kind}`} data-ready={kind === "hero" && fraction === 1 && !active}
     data-available={percent !== null} data-active={active} data-damaged={kind === "speed" && percent !== null && percent < 75}
     role="meter" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent ?? undefined}
-    aria-valuetext={percent === null ? "Unavailable" : `${percent} percent${kind === "hero" ? " · damage dealt" : ""}`}
+    aria-valuetext={percent === null ? "Unavailable" : `${percent} percent${kind === "hero" ? (active ? " · active time remaining" : " · ultimate charge") : ""}`}
     title={`${label}: ${percent === null ? "unavailable" : `${percent}%`}`}>
     <svg viewBox="0 0 200 200" aria-hidden="true">
       <path d={paths[kind]} transform={kind==="hero"?"translate(200 0) scale(-1 1)":undefined} className="resource-ring-track" />

@@ -18,6 +18,12 @@ pub struct Barrage {
     #[serde(skip)] sweeping: bool,
 }
 
+impl Barrage {
+    pub fn fraction_remaining(&self) -> f32 {
+        f32::from(self.ticks_left) / f32::from(TICKS)
+    }
+}
+
 impl PhysicsWorld {
     pub fn start_barrage(&mut self, player: &str) -> Result<(),String> {
         let vehicle=self.vehicles.get_mut(player).ok_or("Deploy a vehicle first.")?;
@@ -50,6 +56,9 @@ impl PhysicsWorld {
                     pose.yaw=(-dir.x).atan2(-dir.z);pose.pitch=dir.y.clamp(-1.,1.).asin();
                 }
             }
+            // The charge was spent at activation. While the timer owns the meter,
+            // hits during the effect must not start a second charge behind it.
+            if let Some(vehicle)=self.vehicles.get_mut(player) { vehicle.powertrain.ultimate_fraction=0.0; }
             barrage.ticks_left-=1;
             barrage.ticks_left>0
         });
@@ -156,7 +165,10 @@ mod tests {
     #[test]
     fn full_charge_is_spent_once_and_exposed_lone_tank_dies_within_five_seconds() {
         let mut w=world();w.start_barrage("source").unwrap();assert!(w.start_barrage("source").is_err());
-        for _ in 0..299 {w.advance_barrages(|_|true);}
+        assert_eq!(w.barrages["source"].fraction_remaining(),1.0);
+        for _ in 0..150 {w.advance_barrages(|_|true);}
+        assert_eq!(w.barrages["source"].fraction_remaining(),0.5);
+        for _ in 150..299 {w.advance_barrages(|_|true);}
         assert_eq!(w.barrages["source"].pulse,20);assert!(w.is_defeated("a"));
         assert_eq!(w.vehicle_health["ally"].hp,w.vehicle_health["ally"].max_hp);
         assert_eq!(w.vehicles["source"].powertrain.ultimate_fraction,0.);

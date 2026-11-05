@@ -3,6 +3,7 @@ import type {Piece, LayoutPart, V3} from "../document/layoutDocument.ts";
 
 export const CARRIER = "big-e-docked";
 export const LIFT = "canal-lift";
+export const railDamage={enabled:true,hp:12,smallArms:1,cannon:1,bomb:1,rubble:"clear" as const};
 export const carrierSize = data.size as V3;
 export const harborPieces: Piece[] = [{
   id:CARRIER, label:"Big E · docked flight deck", category:"props",
@@ -20,7 +21,7 @@ export function guardrail(id:string,x1:number,z1:number,x2:number,z2:number,surf
   const dx=x2-x1,dz=z2-z1,template=harborPieces[1];
   return {id,name:template.label,piece:template.id,position:[(x1+x2)/2,surface,(z1+z2)/2],
     size:[Math.hypot(dx,dz),template.size[1],template.size[2]],yaw:-Math.atan2(dz,dx)*180/Math.PI,
-    color:template.color,locked:false,solid:true,parts:structuredClone(template.parts)};
+    color:template.color,locked:false,solid:true,parts:structuredClone(template.parts),destruction:{...railDamage}};
 }
 
 // Recompute the eye from the placed hull, so rotated and resized prefabs keep a

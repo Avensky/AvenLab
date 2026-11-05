@@ -1,5 +1,5 @@
 import { kitAsset, kitPieces } from "../mapKit/catalog.ts";
-import { harborPieces } from "../generation/harborPieces.ts";
+import { harborPieces, railDamage } from "../generation/harborPieces.ts";
 import { streetProps } from "../props/streetPropCatalog.ts";
 import { validateDestruction, type DestructionSettings } from "../../combat/destruction.ts";
 import {
@@ -459,6 +459,7 @@ export function addPiece(
         locked: false,
         solid: piece.solid !== false,
         parts: structuredClone(piece.parts),
+        ...(piece.id==="highway-guardrail"?{destruction:{...railDamage}}:{}),
         ...(piece.road ? { road: structuredClone(piece.road) } : {}),
         ...(piece.model ? { model: structuredClone(piece.model) } : {}),
         ...(piece.vehicle ? { vehicle: structuredClone(piece.vehicle) } : {}),

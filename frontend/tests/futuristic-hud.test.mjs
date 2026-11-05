@@ -51,12 +51,13 @@ test('futuristic HUD mixes with classic gauges and filters teammate resources',a
     assert.equal(meter.querySelector('.charge-inner').getAttribute('transform'),meter===charge?'translate(94 6) scale(-.88 .88)':'translate(100 0) scale(-1 1)');
    }
   }
-  await act(async()=>{me.barrage={ticks_left:180};send();});
+  await act(async()=>{me.barrage={ticks_left:180};me.ultimate_fraction=.6;send();});
   const activeCharge=meter('Ultimate charge');
   assert.equal(activeCharge.parentElement.dataset.ultimateActive,'true');
-  assert.equal(activeCharge.querySelector('strong').textContent,'ACTIVE');
+  assert.equal(activeCharge.querySelector('strong').textContent,'ACTIVE · 60%');
+  assert.equal(activeCharge.querySelector('.charge-outer').getAttribute('stroke-dashoffset'),'0.4');
   assert.match(activeCharge.getAttribute('aria-valuetext'),/Ultimate active/);
-  await act(async()=>{me.barrage={ticks_left:0};send();});
+  await act(async()=>{delete me.barrage;me.ultimate_fraction=0;send();});
   assert.equal(activeCharge.parentElement.dataset.ultimateActive,'false');
   assert.equal(activeCharge.querySelector('strong').textContent,'0%');
   const paint={body:'factory',finish:'factory',seats:'factory',skin:'factory'};

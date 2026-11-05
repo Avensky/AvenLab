@@ -2,6 +2,27 @@
 use crate::{physics::PhysicsWorld, state::SharedGameState, spawn::Team};
 use std::collections::HashMap;
 
+use rapier3d::prelude::{RigidBody, Vector};
+
+pub const SEA_LEVEL: f32 = -8.0;
+pub(crate) struct WaterTile { center: [f32;2], half: [f32;2], pub bottom: f32 }
+impl WaterTile {
+    pub fn from_bed(o:&crate::world::authored_layout::LayoutObject)->Self {
+        Self{center:[o.position[0],o.position[2]],half:[o.size[0]/2.,o.size[2]/2.],bottom:o.position[1]+o.size[1]}
+    }
+    pub fn contains(&self,p:&Vector<f32>)->bool {
+        (p.x-self.center[0]).abs()<=self.half[0] && (p.z-self.center[1]).abs()<=self.half[1]
+    }
+    pub fn damp_submerged(&self,body:&mut RigidBody,dt:f32) {
+        let y=body.translation().y;
+        if y>=SEA_LEVEL || y<self.bottom-2.0 {return;}
+        let terminal=(0.65+0.20*(SEA_LEVEL-y)).min(3.0);
+        let drag=(-0.55*dt).exp();
+        let v=body.linvel();let next=Vector::new(v.x*drag,v.y.max(-terminal),v.z*drag);
+        body.set_linvel(next,false);
+    }
+}
+
 pub const VARIANTS: [&str; 3] = ["harbor_canal_red","harbor_canal_blue","harbor_canal_fleet"];
 pub fn queue_map(world:usize)->&'static str { match world%4 {0=>"streaming_endless_city",slot=>VARIANTS[slot-1]} }
 /// Assign four reserved service lots per bank from the world seed. All peers,
@@ -16,7 +37,7 @@ pub fn place_services(world:usize,file:&mut crate::world::block_colliders::Block
             lots.swap(i,((u64::from(state)*(i as u64+1))>>32) as usize);
         }
         for (site,z) in layout.objects.iter_mut().filter(|o|
-            o.position[0].signum()==side && matches!(o.piece.as_str(),"fuel-station"|"repair-shop")).zip(lots){
+            o.position[0].signum()==side && !o.id.starts_with("home-gas-") && matches!(o.piece.as_str(),"fuel-station"|"repair-shop")).zip(lots){
             site.position[2]=z;
         }
     }
@@ -31,24 +52,12 @@ fn cell(x:f32,z:f32)->u64 {
 }
 fn team_index(team:Team)->usize { if team==Team::Red {0} else {1} }
 #[derive(Default)]
-pub struct HarborIntel { seen:[u64;2], initialized:bool, delivered:HashMap<String,(usize,u64)> }
+pub struct HarborIntel { seen:[u64;2], delivered:HashMap<String,(usize,u64)> }
 impl HarborIntel {
     pub fn forget_connection(&mut self,id:&str){self.delivered.remove(id);}
     pub fn tick(&mut self,game:&SharedGameState,physics:&PhysicsWorld) {
         let Some(map)=physics.active_map_id() else{return};
         if !VARIANTS.contains(&map) || game.tick%15!=0 { return; }
-        if !self.initialized {
-        for team in [Team::Red,Team::Blue] {
-            // One land defender starts with the chart for both banks. Both fleets
-            // start at sea in the double-dock variant.
-            if (map==VARIANTS[0] && team==Team::Blue) || (map==VARIANTS[1] && team==Team::Red) {
-                for z in [-250.,-150.,-50.,50.,150.,250.] {
-                    for x in [-150.,-50.,50.,150.] {self.seen[team_index(team)]|=cell(x,z);}
-                }
-            }
-        }
-        self.initialized=true;
-        }
         for (id,vehicle) in &physics.vehicles {
             let Some(entity)=game.entities.get(id) else{continue};
             if !game.clients.contains_key(id) || physics.is_defeated(id){continue;}
@@ -84,7 +93,7 @@ mod tests {
         for x in [-256.,256.]{
             for z in [-78.,-70.,-62.,-54.,-46.]{assert!((support(&w,x,z).unwrap()-6.).abs()<0.02);}
         }
-        assert!(support(&w,0.,60.).is_none());
+        assert!((support(&w,0.,60.).unwrap()+24.).abs()<0.02);
         for x in [-14.,14.] {
             let ray=Ray::new(point![x,-4.,-202.],Vector::z());
             assert!(!w.colliders.iter().any(|(_,c)| c.shape().cast_ray(c.position(),&ray,48.,true).is_some()),
@@ -94,13 +103,13 @@ mod tests {
         assert!((support(&w,0.,178.).unwrap()-0.08).abs()<0.02);
         w.move_drawbridges(300);w.step(crate::physics::SIMULATION_DT);
         assert!(support(&w,-6.,0.).unwrap()>8.);
-        assert!(support(&w,0.,0.).is_none());
+        assert!((support(&w,0.,0.).unwrap()+24.).abs()<0.02);
         w.move_drawbridges(900);w.step(crate::physics::SIMULATION_DT);
         assert!(support(&w,-6.,0.).unwrap().abs()<0.02);
         let index=o.iter().position(|o|o.piece=="canal-breakable").unwrap();
         let id=w.bodies.iter().find(|(_,b)|b.user_data==index as u128+1).unwrap().0;
         w.damage_authored_surface(id,true,300.);
-        assert!(support(&w,0.,178.).is_none());
+        assert!((support(&w,0.,178.).unwrap()+24.).abs()<0.02);
         assert!(support(&w,0.,-178.).is_some());
     }
     #[test]
@@ -124,6 +133,22 @@ mod tests {
             if position.x>135. {return;}
         }
         panic!("vehicle did not reach the far approach: {:?}",world.bodies[handle].translation());
+    }
+
+    #[test]
+    fn water_slows_entry_allows_bottom_contact_and_resets_to_the_deck() {
+        let mut world=PhysicsWorld::for_harbor_room(2,VARIANTS[2]).unwrap();
+        let handle=world.spawn_vehicle_for_player("diver".into(),[0.;3],"brz","red").unwrap();
+        let spawn=*world.bodies[handle].translation();
+        world.bodies[handle].set_translation(vector![0.,SEA_LEVEL-0.2,65.],true);
+        world.bodies[handle].set_linvel(vector![0.,-14.,0.],true);
+        for _ in 0..60 {world.step(crate::physics::SIMULATION_DT);}
+        assert!(world.bodies[handle].translation().y>SEA_LEVEL-2.);
+        for _ in 0..1200 {world.step(crate::physics::SIMULATION_DT);}
+        let y=world.bodies[handle].translation().y;
+        assert!((-24.2..-21.5).contains(&y),"seabed contact at {y}");
+        world.recover_vehicle_for_player("diver").unwrap();
+        assert!((*world.bodies[handle].translation()-spawn).norm()<0.01);
     }
 
     #[test]

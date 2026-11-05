@@ -8,6 +8,7 @@ export { mapCatalog, type MapDefinition } from "./worldCatalog";
 type SelectionState = {
   vehicleIndex: number;
   mapIndex: number;
+  mapChosen: boolean;
 
   nextVehicle: () => void;
   prevVehicle: () => void;
@@ -21,6 +22,7 @@ type SelectionState = {
 export const useSelectionStore = create<SelectionState>((set, get) => ({
   vehicleIndex: 0,
   mapIndex: 0,
+  mapChosen: false,
 
   nextVehicle: () =>
     set((s) => ({
@@ -35,11 +37,13 @@ export const useSelectionStore = create<SelectionState>((set, get) => ({
 
   nextMap: () =>
     set((s) => ({
+      mapChosen: true,
       mapIndex: (s.mapIndex + 1) % mapCatalog.length,
     })),
 
   prevMap: () =>
     set((s) => ({
+      mapChosen: true,
       mapIndex: (s.mapIndex - 1 + mapCatalog.length) % mapCatalog.length,
     })),
 

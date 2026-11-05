@@ -20,6 +20,7 @@ export default memo(function FuelTemp({
   live,
   cockpitMask,
   ultimate,
+  ultimateActive,
 }: {
   fuel: number | null;
   temp: number | null;
@@ -32,6 +33,7 @@ export default memo(function FuelTemp({
   live: boolean;
   cockpitMask: number | null;
   ultimate: number | null;
+  ultimateActive: boolean;
 }) {
   return (
     <div
@@ -65,7 +67,7 @@ export default memo(function FuelTemp({
         live={live}
         cockpitMask={cockpitMask}
       />
-      <ResourceRing kind="hero" fraction={ultimate} />
+      <ResourceRing kind="hero" fraction={ultimate} active={ultimateActive} />
     </div>
   );
 });

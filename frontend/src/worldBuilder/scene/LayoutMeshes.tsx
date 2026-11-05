@@ -1,3 +1,5 @@
+import {HarborBuildings, HarborBuildingLods, HarborStreet} from "../../world/props/HarborStructures";
+import {garageVisual, usesGarage} from "../../world/props/harborGarage";
 import { kitAsset } from "../mapKit/catalog";
 import { KitInstances, KitMesh } from "../mapKit/KitMesh";
 import { CARRIER,LIFT } from "../generation/harborPieces";
@@ -107,6 +109,9 @@ export const LayoutInstances = memo(function LayoutInstances({
 }) {
   const props = useMemo(() => collisionOnly || wireframe ? [] :
     objects.filter(o => o.id !== exclude && streetProp(o.piece)), [objects, exclude, collisionOnly, wireframe]);
+  const detailed=!wireframe && !collisionOnly;
+  const buildings=useMemo(()=>detailed?objects.filter(o=>o.id!==exclude && o.piece==="coastal-building"):[],[objects,exclude,detailed]);
+  const visualModels=useMemo(()=>detailed?objects.map(o=>usesGarage(o.piece)?garageVisual(o):o):objects,[objects,detailed]);
   const propFallback = useMemo(() => props.flatMap(item => item.parts.map(part => ({item,part}))), [props]);
   const items = useMemo(
     () =>
@@ -114,7 +119,7 @@ export const LayoutInstances = memo(function LayoutInstances({
         .filter(
           (o) =>
             !(live && o.piece === LIFT) &&
-            (collisionOnly || wireframe || (o.piece !== CARRIER && !streetProp(o.piece))) &&
+            (collisionOnly || wireframe || (o.piece !== CARRIER && !streetProp(o.piece) && o.piece!=="coastal-building" && o.piece!=="coastal-road" && !usesGarage(o.piece))) &&
             !o.road &&
             !o.model &&
             !o.vehicle &&
@@ -158,6 +163,14 @@ export const LayoutInstances = memo(function LayoutInstances({
             <boxGeometry/><meshStandardMaterial color={o.color}/></mesh>)}</group>}/>
         </group>
       ))}
+      {detailed && objects.filter(o=>o.piece==="coastal-road" && o.id!==exclude).map(o=>
+        <group key={o.id} position={o.position} rotation={[0,o.yaw*Math.PI/180,0]} scale={o.size}
+          onClick={onSelect?e=>{if(e.button===0&&e.delta<5){e.stopPropagation();onSelect(o.id);}}:undefined}>
+          <HarborStreet item={o}/>
+        </group>)}
+      {buildings.length>0 && <HarborBuildingLods items={buildings} onSelect={onSelect}
+        renderProxy={items=><ShapeInstances items={items.flatMap(item=>item.parts.map(part=>({item,part})))}
+          shape="box" wireframe={false} onSelect={onSelect}/>}/>}
       <StreetPropInstances objects={props} onSelect={onSelect} fallback={<ShapeInstances items={propFallback} shape="box" wireframe={false} onSelect={onSelect}/>}/>
       <KitInstances objects={objects} exclude={exclude} collisionOnly={collisionOnly} wireframe={wireframe} onSelect={onSelect}/>
       <RoadInstances
@@ -174,7 +187,7 @@ export const LayoutInstances = memo(function LayoutInstances({
         onSelect={onSelect}
       />
       <ModelInstances
-        objects={objects}
+        objects={visualModels}
         exclude={exclude}
         collisionOnly={collisionOnly}
         wireframe={wireframe}
@@ -263,7 +276,11 @@ export function PieceModel({
           ghost={ghost}
         />
       )}
-      {item.piece===CARRIER && !collisionOnly && !wireframe && !ghost ? <BigEDocked fallback={<>{parts}</>}/> : streetProp(item.piece) && !collisionOnly && !wireframe && !ghost ?
+      {item.piece==="coastal-road" && !wireframe && !collisionOnly ? <HarborStreet item={item}/> :
+       usesGarage(item.piece) && !wireframe && !collisionOnly ? <ModelMesh item={garageVisual(item)} ghost={ghost}/> :
+       item.piece==="coastal-building" && !wireframe && !collisionOnly && !ghost ?
+       <HarborBuildings items={[{...item,position:[0,0,0],size:[1,1,1],yaw:0}]} fallback={parts}/> :
+       item.piece===CARRIER && !collisionOnly && !wireframe && !ghost ? <BigEDocked fallback={<>{parts}</>}/> : streetProp(item.piece) && !collisionOnly && !wireframe && !ghost ?
         <StreetPropPreview piece={item.piece} fallback={parts}/> : parts}
       {selected && (
         <mesh position={center} scale={extent} renderOrder={10}>

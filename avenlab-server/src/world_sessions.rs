@@ -225,11 +225,12 @@ impl WorldRuntime {
         self.harbor_intel.tick(&self.game,&self.physics);
         self.physics.advance_field_service(SIMULATION_DT, |id| self.game.clients.contains_key(id));
         self.physics.advance_guard_boosts(SIMULATION_DT, |id| self.game.clients.contains_key(id));
+        // Award charge before advancing the effect so its final frame publishes exactly zero.
+        self.physics.advance_health_packs(SIMULATION_DT, self.game.clients.keys().map(String::as_str));
+        self.physics.advance_passive_ultimates(SIMULATION_DT, self.game.clients.keys().map(String::as_str));
         if self.round.as_ref().is_none_or(|r| r.phase==crate::ctf::CtfPhase::Running) {
             self.physics.advance_barrages(|id|self.game.clients.contains_key(id));
         } else { self.physics.barrages.clear(); }
-        self.physics.advance_health_packs(SIMULATION_DT, self.game.clients.keys().map(String::as_str));
-        self.physics.advance_passive_ultimates(SIMULATION_DT, self.game.clients.keys().map(String::as_str));
         self.advance_round();
         self.game.server_timing = crate::state::ServerTiming {
             lock_ms,
@@ -298,6 +299,21 @@ mod tests {
         }
         world.configure_round(crate::alpha::Mode::Quickplay,true).unwrap();(world,control.unwrap())
     }
+    #[test]
+    fn ultimate_is_zero_on_the_expiry_tick_then_resumes_passive_charge() {
+        let (mut world, _input)=two_team_round();
+        world.round=None;
+        world.physics.vehicles.get_mut("red").unwrap().powertrain.ultimate_fraction=1.0;
+        world.physics.start_barrage("red").unwrap();
+        for _ in 0..150 { world.tick(0.0); }
+        assert_eq!(world.physics.barrages["red"].fraction_remaining(),0.5);
+        for _ in 0..150 { world.tick(0.0); }
+        assert!(!world.physics.barrages.contains_key("red"));
+        assert_eq!(world.physics.vehicles["red"].powertrain.ultimate_fraction,0.0);
+        world.tick(0.0);
+        assert!(world.physics.vehicles["red"].powertrain.ultimate_fraction>0.0);
+    }
+
     #[test]
     fn passive_ultimate_advances_only_connected_living_simulation_and_ignores_packet_claims() {
         let (mut world, input) = two_team_round();

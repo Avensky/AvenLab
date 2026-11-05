@@ -65,6 +65,8 @@ pub struct PhysicsWorld {
     pub block_world: BlockColliderWorld, // for block-based colliders
     chunks_ready: bool,
     service_bays: Vec<usize>,
+    serviced_home: std::collections::HashSet<String>,
+    harbor_water: Vec<crate::harbor::WaterTile>,
     drawbridges: Vec<(RigidBodyHandle, Isometry<Real>)>,
     has_impact_barriers: bool,
     map_json: std::sync::OnceLock<String>,
@@ -113,13 +115,18 @@ impl PhysicsWorld {
     fn install_map(&mut self, map: Arc<BlockColliderFile>) {
         self.drawbridges.clear();
         self.service_bays.clear();
+        self.serviced_home.clear();
+        self.harbor_water.clear();
         self.has_impact_barriers = false;
         if let Some(layout) = &map.authored_layout {
             for (index, object) in layout.objects.iter().enumerate() {
+                if object.piece == "harbor-seabed" && !layout.repeat {
+                    self.harbor_water.push(crate::harbor::WaterTile::from_bed(object));
+                }
                 if matches!(object.piece.as_str(), "fuel-station" | "repair-shop" | "service-center") {
                     self.service_bays.push(index);
                 }
-                self.has_impact_barriers |= !layout.repeat && object.piece == "barrier";
+                self.has_impact_barriers |= !layout.repeat && matches!(object.piece.as_str(), "barrier" | "highway-guardrail");
             }
         }
         self.active_map = Some(map);
@@ -489,6 +496,7 @@ impl PhysicsWorld {
         let Some(mut vehicle)=self.vehicles.remove(old) else{return false};
         vehicle.throttle=0.0;vehicle.steer=0.0;vehicle.brake=0.0;vehicle.handbrake=0.0;
         self.body_to_player.insert(vehicle.body,new.into());self.vehicles.insert(new.into(),vehicle);
+        if self.serviced_home.remove(old) {self.serviced_home.insert(new.into());}
         self.barrages.remove(old);
         if let Some(v)=self.trusted_heroes.remove(old){self.trusted_heroes.insert(new.into(),v);}
         if let Some(mut v)=self.guard_boosts.remove(old){v.remaining=0.0;v.dive_remaining=0.0;if v.kind!="tank_barrier"{v.shield_hp=0.0;}self.guard_boosts.insert(new.into(),v);}
@@ -508,6 +516,7 @@ impl PhysicsWorld {
     }
 
     pub fn despawn_vehicle_for_player(&mut self, player_id: &str) {
+        self.serviced_home.remove(player_id);
         self.barrages.remove(player_id);self.trusted_heroes.remove(player_id);self.guard_boosts.remove(player_id);self.guard_impact_directions.remove(player_id);self.support.clear_player(player_id);
         self.ctf_carriers.remove(player_id);self.dislodged_carriers.remove(player_id);self.ctf_reset_players.remove(player_id);
         self.vehicle_health.remove(player_id);
@@ -567,6 +576,8 @@ impl PhysicsWorld {
             block_world: BlockColliderWorld::new(),
             chunks_ready: false,
             service_bays: Vec::new(),
+            serviced_home: Default::default(),
+            harbor_water: Vec::new(),
             drawbridges: Vec::new(),
             has_impact_barriers: false,
             map_json: Default::default(),
@@ -853,12 +864,17 @@ impl PhysicsWorld {
         if recover { let _ = self.recover_vehicle_for_player(player_id); }
     }
 
-    /// Recovery returns a car to its recorded map spawn without repairing, cooling,
-    /// refilling or changing ownership. A held Reset input triggers only once.
+    /// Restore gauges only after the recorded spawn is clear and recovery succeeds.
     pub fn recover_vehicle_for_player(&mut self, player_id: &str) -> Result<(), String> {
         if self.is_defeated(player_id){return Err("Vehicle defeated. Wait for respawn.".into());}
+        self.place_vehicle_at_spawn(player_id)?;
+        self.barrages.remove(player_id);
         self.ctf_reset_players.insert(player_id.into());
-        self.place_vehicle_at_spawn(player_id)
+        if let Some(vehicle) = self.vehicles.get_mut(player_id) {
+            vehicle.powertrain.refill_gauges(vehicle.config.resources);
+        }
+        if let Some(health) = self.vehicle_health.get_mut(player_id) { health.hp = health.max_hp; }
+        Ok(())
     }
     pub(crate) fn place_vehicle_at_spawn(&mut self, player_id: &str) -> Result<(), String> {
         let vehicle = self.vehicles.get(player_id).ok_or("Spawn a vehicle first")?;
@@ -1222,17 +1238,18 @@ impl PhysicsWorld {
     }
 
     /// Authored service bays use their local footprint, including rotation.
-    /// A stopped vehicle receives fuel and/or repairs gradually; no client can
-    /// request arbitrary healing. Supply/destruction economics are a later layer.
+    /// Home bays restore all gauges once per stopped visit. Other service
+    /// bays deliver their existing gradual fuel and repair rates.
     fn service_authored_bays(&mut self, dt: Real) {
         if self.service_bays.is_empty() { return; }
         let Some(map) = self.active_map.as_ref() else {return;};
         let Some(layout) = &map.authored_layout else {return;};
         let tile = self.block_world.tile_size.unwrap_or([1.0, 1.0]);
+        let mut at_home=std::collections::HashSet::new();
         'vehicle: for (player,vehicle) in self.vehicles.iter_mut() {
             if self.vehicle_health.get(player).is_some_and(|h|h.defeated){continue;}
             let Some(body) = self.bodies.get(vehicle.body) else { continue; };
-            if body.linvel().norm() > 0.5 { continue; }
+            let stopped = body.linvel().norm() <= 0.5;
             let p=body.translation();
             for &(bx, bz) in self.block_world.loaded.keys() {
             if !map.includes_authored_tile(bx,bz) {continue;}
@@ -1245,11 +1262,28 @@ impl PhysicsWorld {
                 if x.abs()>bay.size[0]*0.3 || z.abs()>bay.size[2]*0.325
                     || p.y<bay.position[1] || p.y>bay.position[1]+bay.size[1] { continue; }
                 let state=&mut vehicle.powertrain;
+                if bay.id.starts_with("home-gas-") && bay.piece=="fuel-station" {
+                    if self.serviced_home.contains(player) {
+                        at_home.insert(player.clone());
+                        continue 'vehicle;
+                    }
+                    if !stopped { continue 'vehicle; }
+                    at_home.insert(player.clone());
+                    let before=state.fuel_liters;
+                    state.refill_gauges(vehicle.config.resources);
+                    if let Some(health)=self.vehicle_health.get_mut(player) {
+                        health.stats.gain_fuel(state.fuel_liters-before);
+                        health.repair(health.max_hp-health.hp);
+                    }
+                    continue 'vehicle;
+                }
+                if !stopped { continue; }
                 if bay.piece!="repair-shop" {
                     let before=state.fuel_liters;
                     state.fuel_liters=(state.fuel_liters+dt*3.0).min(vehicle.config.resources.fuel_capacity_liters);
                     if let Some(h)=self.vehicle_health.get_mut(player){h.stats.gain_fuel(state.fuel_liters-before);}
                 }
+                if !stopped { continue; }
                 if bay.piece!="repair-shop" {state.nos_remaining_s=(state.nos_remaining_s+dt*1.5).min(vehicle.config.resources.nos_seconds);}
                 if bay.piece!="fuel-station" {if let Some(h)=self.vehicle_health.get_mut(player){h.repair(h.max_hp*0.10*dt);}}
                 if bay.piece!="fuel-station" { state.condition=(state.condition+dt*0.06).min(1.0);state.temperature_c=(state.temperature_c-dt*3.0).max(vehicle.config.resources.initial_temp_c); }
@@ -1257,6 +1291,7 @@ impl PhysicsWorld {
             }
             }
         }
+        self.serviced_home=at_home;
     }
 
     pub fn step(&mut self, dt: Real) {
@@ -1349,20 +1384,35 @@ impl PhysicsWorld {
             let speed=motion.get(&v.body).map(|(_,velocity)|velocity.norm()).unwrap_or_else(||body.linvel().norm());
             if speed<3.0{continue;}
             for collider in body.colliders(){for pair in self.narrow_phase.contact_pairs_with(*collider){
-                if pair.total_impulse_magnitude()<1000.0{continue;}
                 let other=if pair.collider1==*collider{pair.collider2}else{pair.collider1};
                 let Some(target)=self.colliders.get(other).and_then(|c|c.parent())else{continue};
                 if self.barrier_impacts.contains_key(&(v.body,target)){continue;}
-                let Some(object)=self.bodies[target].user_data.checked_sub(1).and_then(|i|layout.objects.get(i as usize)).filter(|o|o.piece=="barrier")else{continue};
+                let Some(object)=self.bodies[target].user_data.checked_sub(1).and_then(|i|layout.objects.get(i as usize)).filter(|o|matches!(o.piece.as_str(), "barrier" | "highway-guardrail"))else{continue};
+                let rail = object.piece == "highway-guardrail";
+                if pair.total_impulse_magnitude() < (if rail {140.0} else {1000.0}) {continue;}
                 let Some(d)=object.destruction.as_ref().filter(|d|d.enabled)else{continue};
-                let damage=(0.5*body.mass()*speed*speed/5000.0).clamp(0.0,400.0);
-                hits.insert((v.body,target),(object.id.clone(),d.hp,damage));
+                let damage=if rail {d.hp} else {(0.5*body.mass()*speed*speed/5000.0).clamp(0.0,400.0)};
+                hits.insert((v.body,target),(object.id.clone(),d.hp,damage,rail));
             }}
         }
-        for ((source,target),(id,max_hp,damage)) in hits{
+        for ((source,target),(id,max_hp,damage,rail)) in hits{
             self.barrier_impacts.insert((source,target),0.4);
             let hp=self.asset_health.entry(id).or_insert(max_hp);*hp=(*hp-damage).max(0.0);
-            if *hp==0.0{for h in self.bodies[target].colliders().to_vec(){if let Some(c)=self.colliders.get_mut(h){c.set_enabled(false);}}}
+            if *hp==0.0{
+                for h in self.bodies[target].colliders().to_vec(){if let Some(c)=self.colliders.get_mut(h){c.set_enabled(false);}}
+                if rail {
+                    if let (Some((_,v)),Some(body))=(motion.get(&source),self.bodies.get_mut(source)) {
+                        let horizontal=vector![v.x,0.0,v.z];
+                        let speed=horizontal.norm();
+                        if speed>3.0 {
+                            let heading=horizontal/speed;
+                            let current=*body.linvel();
+                            let loss=(speed*0.72-current.dot(&heading)).max(0.0);
+                            if loss>0.0 {body.set_linvel(current+heading*loss,true);}
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -1423,6 +1473,14 @@ impl PhysicsWorld {
         // rack integrator or a second control pass here.
         // Apply suspension + traction + tire forces exactly once per substep.
         self.apply_vehicle_forces(dt);
+        if !self.harbor_water.is_empty() {
+            for vehicle in self.vehicles.values() {
+                let Some(body)=self.bodies.get_mut(vehicle.body) else {continue};
+                if let Some(tile)=self.harbor_water.iter().find(|t|t.contains(body.translation())) {
+                    tile.damp_submerged(body, dt);
+                }
+            }
+        }
 
         // Only multiplayer impacts can earn ultimate. Sample vehicle motion
         // before Rapier resolves a collision, so a ram that stops the attacker
@@ -1540,6 +1598,7 @@ impl PhysicsWorld {
             let p = body.translation();
             let elapsed = self.falling_seconds.entry(id.clone()).or_default();
             if !p.iter().all(|v|v.is_finite()) { recover.push(id.clone()); }
+            else if self.harbor_water.iter().any(|tile|tile.contains(p) && p.y>=tile.bottom-2.0) { *elapsed=0.0; }
             else if p.y < road - 20.0 {
                 *elapsed += dt;
                 if *elapsed >= 2.0 { recover.push(id.clone()); }
@@ -1830,7 +1889,41 @@ mod tests {
     }
 
     #[test]
-    fn recovery_is_edge_triggered_and_preserves_supplies_damage_and_temperature() {
+    fn home_bay_replenishes_once_until_the_vehicle_leaves() {
+        let mut world=PhysicsWorld::for_harbor_room(2,"harbor_canal_fleet").unwrap();
+        let handle=world.spawn_vehicle_for_player("driver".into(),[0.;3],"brz","red").unwrap();
+        let bay=world.active_map.as_ref().unwrap().authored_layout.as_ref().unwrap()
+            .objects.iter().find(|o|o.id=="home-gas-west").unwrap().position;
+        let center=vector![bay[0],bay[1]+1.,bay[2]];
+        world.bodies[handle].set_translation(center,true);
+        let train=&mut world.vehicles.get_mut("driver").unwrap().powertrain;
+        train.ultimate_fraction=0.; train.fuel_liters=3.; train.nos_remaining_s=0.;
+        world.vehicle_health.get_mut("driver").unwrap().hp=3.;
+        world.bodies[handle].set_linvel(vector![2.,0.,0.],true);
+        world.service_authored_bays(SIMULATION_DT);
+        assert_eq!(world.vehicles["driver"].powertrain.fuel_liters,3.);
+        world.bodies[handle].set_linvel(Vector::zeros(),true);
+        world.service_authored_bays(SIMULATION_DT);
+        let car=&world.vehicles["driver"];
+        assert_eq!(car.powertrain.fuel_liters,car.config.resources.fuel_capacity_liters);
+        assert_eq!(car.powertrain.nos_remaining_s,car.config.resources.nos_seconds);
+        assert_eq!(car.powertrain.ultimate_fraction,1.);
+        assert_eq!(world.vehicle_health["driver"].hp,world.vehicle_health["driver"].max_hp);
+        world.vehicles.get_mut("driver").unwrap().powertrain.ultimate_fraction=0.;
+        world.bodies[handle].set_linvel(vector![2.,0.,0.],true);
+        world.service_authored_bays(SIMULATION_DT);
+        world.bodies[handle].set_linvel(Vector::zeros(),true);
+        world.service_authored_bays(SIMULATION_DT);
+        assert_eq!(world.vehicles["driver"].powertrain.ultimate_fraction,0.);
+        world.bodies[handle].set_translation(center+vector![0.,0.,30.],true);
+        world.service_authored_bays(SIMULATION_DT);
+        world.bodies[handle].set_translation(center,true);
+        world.service_authored_bays(SIMULATION_DT);
+        assert_eq!(world.vehicles["driver"].powertrain.ultimate_fraction,1.);
+    }
+
+    #[test]
+    fn recovery_is_edge_triggered_and_refills_gauges() {
         let mut world = flat_world();
         let handle = world.spawn_vehicle_for_player("recover-test".into(), [0.0; 3], "brz", "red").unwrap();
         world.bodies[handle].set_rotation(Rotation::from_euler_angles(0.0, 0.4, 2.5), true);
@@ -1844,7 +1937,9 @@ mod tests {
         world.apply_player_input_packet("recover-test", packet);
         assert_eq!(world.bodies[handle].linvel().x, 1.0, "a held reset cannot repeatedly freeze the car");
         let train = &world.vehicles["recover-test"].powertrain;
-        assert_eq!(train.fuel_liters, 12.0); assert_eq!(train.condition, 0.6); assert_eq!(train.temperature_c, 120.0); assert_eq!(train.nos_remaining_s, 2.0);
+        let config=world.vehicles["recover-test"].config.resources;
+        assert_eq!(train.fuel_liters,config.fuel_capacity_liters); assert_eq!(train.nos_remaining_s,config.nos_seconds);
+        assert_eq!(train.condition,1.0); assert_eq!(train.temperature_c,config.initial_temp_c); assert_eq!(train.ultimate_fraction,1.0);
     }
 
     #[test]
@@ -2386,10 +2481,10 @@ mod combat_structure_tests {
 
 #[cfg(test)]mod barrier_weight_tests{
  use super::*;
- fn impact(vehicle:&str,destructible:bool,speed:f32)->Option<f32>{
+ fn impact(vehicle:&str,destructible:bool,speed:f32,rail_kind:&str)->Option<f32>{
   let mut value:serde_json::Value=serde_json::from_str(include_str!("assets/blocks/coastal_district_colliders.json")).unwrap();
   value["team_spawns"]=serde_json::json!({"red":[{"chunk":[0,0],"local":[0,0],"yaw":0,"surface_y":0}],"blue":[]});
-  value["authored_layout"]=serde_json::json!({"format":"avenlab-world-layout","version":1,"map_id":"coastal_district","title":"Rail impact range","base":"replace","ground":true,"repeat":false,"objects":[{"id":"edge-rail","name":"Bridge edge rail","piece":"barrier","position":[0,0,8],"size":[16,2,0.5],"yaw":0,"color":"#888888","locked":false,"solid":true,"parts":[{"shape":"box","position":[0,0.5,0],"size":[1,1,1],"solid":true}],"destruction":{"enabled":destructible,"hp":100,"smallArms":1,"cannon":1,"bomb":1.5,"rubble":"clear"}}]});
+  value["authored_layout"]=serde_json::json!({"format":"avenlab-world-layout","version":1,"map_id":"coastal_district","title":"Rail impact range","base":"replace","ground":true,"repeat":false,"objects":[{"id":"edge-rail","name":"Bridge edge rail","piece":rail_kind,"position":[0,0,8],"size":[16,2,0.5],"yaw":0,"color":"#888888","locked":false,"solid":true,"parts":[{"shape":"box","position":[0,0.5,0],"size":[1,1,1],"solid":true}],"destruction":{"enabled":destructible,"hp":100,"smallArms":1,"cannon":1,"bomb":1.5,"rubble":"clear"}}]});
   let mut w=PhysicsWorld::from_editor_document(serde_json::from_value(value).unwrap()).unwrap();let body=w.spawn_vehicle_for_player("driver".into(),[0.0;3],vehicle,"red").unwrap();
   for _ in 0..180{w.step(SIMULATION_DT);}
   w.bodies[body].set_linvel(Vector::new(0.0,0.0,speed),true);
@@ -2399,9 +2494,10 @@ mod combat_structure_tests {
   hp
  }
  #[test]fn heavy_tank_breaks_an_authored_edge_rail_without_ram_while_light_car_does_less(){
-  assert_eq!(impact("tank",true,10.0),Some(0.0));
-  assert!(impact("brz",true,10.0).unwrap_or(100.0)>50.0);
-  assert_eq!(impact("tank",false,10.0),None);
-  assert_eq!(impact("tank",true,0.0),None);
+  assert_eq!(impact("tank",true,10.0,"barrier"),Some(0.0));
+  assert!(impact("brz",true,10.0,"barrier").unwrap_or(100.0)>50.0);
+  assert_eq!(impact("tank",false,10.0,"barrier"),None);
+  assert_eq!(impact("tank",true,0.0,"barrier"),None);
+  assert_eq!(impact("brz",true,7.0,"highway-guardrail"),Some(0.0));
  }
 }

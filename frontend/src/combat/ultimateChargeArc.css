@@ -13,5 +13,15 @@
 @media (prefers-reduced-motion:no-preference) {
   html:not([data-reduced-motion=true]) .portrait-charge :is(.charge-inner,.charge-outer){transition:stroke-dashoffset .12s linear;}
 }
-.future-identity[data-ultimate-active=true] .portrait-charge {filter:drop-shadow(0 0 2px var(--app-accent));}
-.future-identity[data-ultimate-active=true] .portrait-charge :is(.charge-inner,.charge-outer){stroke-dashoffset:0;}
+.future-identity[data-charged=true] .portrait-charge,
+.barrage-action [data-ready=true] .ultimate-charge-arc,
+.resource-ring-hero[data-ready=true] .resource-ring-fill {
+  filter:drop-shadow(0 0 2px #fff7df) drop-shadow(0 0 4px #ce8c16);
+}
+.future-identity[data-ultimate-active=true] .portrait-charge,
+.barrage-action [data-ultimate-active=true] .ultimate-charge-arc,
+.resource-ring-hero[data-active=true] .resource-ring-fill {
+  filter:drop-shadow(0 0 2px #fff) drop-shadow(0 0 5px #e48d18);
+}
+[data-ultimate-active=true] .ultimate-charge-arc :is(.charge-inner,.charge-outer),
+.resource-ring-hero[data-active=true] .resource-ring-fill {stroke:#ffd478;}

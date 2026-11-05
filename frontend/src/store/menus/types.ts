@@ -19,6 +19,7 @@ export type MenuScreen =
   | "social";
 
 export type UIOverlay =
+  | "survey_map"
   | "match_results"
   | "hero_abilities"
   | null

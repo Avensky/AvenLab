@@ -122,9 +122,8 @@ impl PhysicsWorld {
         self.validate_revive_placement(target)?;
         let target_vehicle=self.vehicles.get_mut(target).unwrap();let handle=target_vehicle.body;
         let before_fuel=target_vehicle.powertrain.fuel_liters;
-        target_vehicle.powertrain.fuel_liters=before_fuel.max(target_vehicle.config.resources.fuel_capacity_liters*0.10);
+        target_vehicle.powertrain.refill_gauges(target_vehicle.config.resources);
         let fuel_gained=target_vehicle.powertrain.fuel_liters-before_fuel;
-        target_vehicle.powertrain.condition=target_vehicle.powertrain.condition.max(0.2);
         target_vehicle.powertrain.engine_requested=true;target_vehicle.powertrain.running=true;target_vehicle.powertrain.rpm=target_vehicle.config.resources.idle_rpm;
         target_vehicle.powertrain.boost_requested=false;target_vehicle.powertrain.boost_active=false;
         target_vehicle.vehicle_flags.insert(VehicleStateFlags::ENGINE_ON);target_vehicle.vehicle_flags.remove(VehicleStateFlags::BOOST);
@@ -199,6 +198,7 @@ impl PhysicsWorld {
             let cooldown=vehicle.ram.cooldown;
             vehicle.ram=crate::ram::RamState::default();vehicle.ram.cooldown=cooldown;
             vehicle.powertrain=crate::powertrain::Powertrain::new(vehicle.config.resources);
+            vehicle.powertrain.refill_gauges(vehicle.config.resources);
             vehicle.cockpit=crate::cockpit::Cockpit::default();
             vehicle.throttle=0.0;vehicle.steer=0.0;vehicle.brake=0.0;vehicle.handbrake=0.0;vehicle.player_flags=0;
             vehicle.vehicle_flags.insert(VehicleStateFlags::ENGINE_ON);

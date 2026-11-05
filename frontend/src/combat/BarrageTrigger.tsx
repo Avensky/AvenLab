@@ -10,7 +10,8 @@ function BarrageDial() {
   // Both layouts use the same sampled, freshness-checked charge as the portrait.
   useEffect(startVehicleTelemetry, []);
   const charge = useVehicleTelemetryStore(s => s.data.ultimateFraction);
-  return <span className="cooldown-clock" data-ready={charge === 1}
+  const active=useMotionView(s=>(s.getMe()?.barrage?.ticks_left??0)>0);
+  return <span className="cooldown-clock" data-ready={charge === 1 && !active} data-ultimate-active={active}
     aria-label={charge === null ? 'Ultimate charge unavailable' : `Ultimate charge ${Math.round(charge * 100)}%`}>
     <UltimateChargeArc shape="dial" fraction={charge} />
     <AttackIcon kind="cannon"/>

@@ -87,7 +87,6 @@ const PLAYER_TOGGLES: Record<string, number> = {
   KeyC: PlayerFlags.CANDUMP,
   KeyV: PlayerFlags.LIVECAN,
   KeyY: PlayerFlags.DYNO,
-  KeyM: PlayerFlags.RADIO,
 };
 
 export function Keyboard() {
@@ -132,6 +131,14 @@ export function Keyboard() {
       )
         return;
       const ui = useUIStore.getState();
+      if(event.code==="KeyM" && !event.altKey && !event.metaKey && !event.ctrlKey && !event.shiftKey &&
+          ui.screen==="sandbox" && !ui.isModeLoading && !useGameStore.getState().editor &&
+          !performanceOverlayHasFocus() && !useCanDataStore.getState().commandOpen &&
+          !useTextKeyboardStore.getState().session && (ui.overlay===null || ui.overlay==="survey_map")) {
+        event.preventDefault(); release();
+        if(ui.overlay==="survey_map")ui.closeOverlay(); else ui.setOverlay("survey_map");
+        return;
+      }
       if(event.code==='KeyL' && !event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey &&
         ui.screen==='sandbox' && !ui.isModeLoading && !useCanDataStore.getState().commandOpen &&
         !useTextKeyboardStore.getState().session && (ui.overlay==='missions'||(ui.overlay===null&&canDrive()))){

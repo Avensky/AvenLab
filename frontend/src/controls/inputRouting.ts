@@ -40,7 +40,7 @@ export function canNavigateMenu() {
   const panel = ui.overlay ?? ui.screen;
   return (
     !ui.isModeLoading &&
-    (ui.getActiveMenuId() !== null ||
+    (ui.getActiveMenuId() !== null || panel === "survey_map" ||
       [
         "debug_menu",
         "settings",
@@ -94,6 +94,7 @@ export function routeMenuAction(action: MenuAction) {
   }
   const ui = useUIStore.getState();
   if (!canNavigateMenu()) return;
+  if(ui.overlay==="survey_map"){ if(action==="back"||action==="activate")ui.closeOverlay(); return; }
   const panel = ui.overlay ?? ui.screen;
   if (
     [
