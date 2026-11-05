@@ -58,12 +58,22 @@ test('compact prematch views share a frame and keep opposing picks mysterious un
   });
   await t.test('three and five seat pickers show only own slots without a toolbar',async()=>{
    for(const size of [3,5]){
-    const view=makeView();view.alpha.active.team_size=size;await render(h(PreMatchTeamPreview,{view}));
+    const view=makeView();view.alpha.active.team_size=size;await render(h(PreMatchTeamPreview,{view,selectedHero:'brz'}));
     assert.equal(document.querySelectorAll('.match-composition-seat').length,size);
     assert.equal(document.querySelector('[role=tablist],.prematch-preview-toolbar,.match-stats-table'),null);
     assert.equal(document.querySelector('[data-team=blue]'),null);
     assert(document.querySelector('[data-self=true]'));
    }
+  });
+  await t.test('empty seats survive showcase heroes, rejected picks and clearing the local choice',async()=>{
+   const view=makeView(5);view.alpha.roster[0].showcase_hero='brz';view.alpha.roster[0].hero='';
+   await render(h(PreMatchTeamPreview,{view,selectedHero:null}));
+   assert.equal(document.querySelectorAll('.match-composition-empty').length,5);
+   await render(h(PreMatchTeamPreview,{view,selectedHero:'brz'}));
+   assert.equal(document.querySelectorAll('.match-composition-empty').length,4);
+   assert.match(document.querySelector('[data-self=true]').textContent,/BRZ/);
+   await render(h(PreMatchTeamPreview,{view,selectedHero:null}));
+   assert.equal(document.querySelectorAll('.match-composition-empty').length,5);
   });
   await t.test('holding Tab shows privacy-filtered stats with no vehicle and release closes stats',async()=>{
    const {Keyboard}=await vite.ssrLoadModule('/src/controls/Keyboard.ts');

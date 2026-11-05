@@ -43,14 +43,22 @@ test('futuristic HUD mixes with classic gauges and filters teammate resources',a
    const tile=document.querySelector('.barrage-action');
    assert.equal(tile.disabled,!ready);
    assert.equal(tile.querySelector('.cooldown-clock').dataset.ready,String(ready));
-   for(const [meter,half] of [[charge,'M50 3H91L97 9V91L91 97H50'],[tile,'M50 4A46 46 0 0 1 50 96']]) {
+   for(const [meter,track] of [[charge,'M50 3H90L97 10V90L90 97H10L3 90V10L10 3Z'],[tile,'M50 4A46 46 0 0 1 50 96']]) {
     for(const stroke of meter.querySelectorAll('.charge-outer,.charge-inner')){
-     assert.equal(stroke.getAttribute('d'),half,'each stroke ends at the bottom midpoint');
+     assert.equal(stroke.getAttribute('d'),track,'each fill follows its full calibrated track');
      assert(Math.abs(Number(stroke.getAttribute('stroke-dashoffset'))-(1-parseInt(text,10)/100))<1e-6);
     }
-    assert.equal(meter.querySelector('.charge-inner').getAttribute('transform'),'translate(100 0) scale(-1 1)');
+    assert.equal(meter.querySelector('.charge-inner').getAttribute('transform'),meter===charge?'translate(94 6) scale(-.88 .88)':'translate(100 0) scale(-1 1)');
    }
   }
+  await act(async()=>{me.barrage={ticks_left:180};send();});
+  const activeCharge=meter('Ultimate charge');
+  assert.equal(activeCharge.parentElement.dataset.ultimateActive,'true');
+  assert.equal(activeCharge.querySelector('strong').textContent,'ACTIVE');
+  assert.match(activeCharge.getAttribute('aria-valuetext'),/Ultimate active/);
+  await act(async()=>{me.barrage={ticks_left:0};send();});
+  assert.equal(activeCharge.parentElement.dataset.ultimateActive,'false');
+  assert.equal(activeCharge.querySelector('strong').textContent,'0%');
   const paint={body:'factory',finish:'factory',seats:'factory',skin:'factory'};
   await act(async()=>{me.appearance=paint;send();});
   const stable=dockCommits;

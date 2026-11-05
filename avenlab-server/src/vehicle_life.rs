@@ -146,14 +146,18 @@ impl PhysicsWorld {
     pub(crate) fn heal_living_ally(&mut self,actor:&str,target:&str,amount:f32)->Result<f32,String>{
         if !amount.is_finite()||amount<=0.0{return Err("Invalid healing amount.".into());}
         if !self.health_pack_pair_valid(actor,target,40.0,8.0)||!self.health_pack_line_of_sight(actor,target){return Err("The injured teammate is no longer reachable.".into());}
-        let health=self.vehicle_health.get_mut(target).ok_or("Teammate health unavailable.")?;
+        Ok(self.credit_ally_repair(actor,target,amount))
+    }
+    /// Range, team and sight are checked by the supplying ability.
+    pub(crate) fn credit_ally_repair(&mut self,actor:&str,target:&str,amount:f32)->f32 {
+        let Some(health)=self.vehicle_health.get_mut(target) else { return 0.0; };
         let maximum=health.max_hp;
         let healed=amount.min((maximum-health.hp).max(0.0));
-        if healed<=0.0{return Ok(0.0);}
+        if healed<=0.0{return 0.0;}
         health.hp=(health.hp+healed).min(maximum);
         if let Some(health)=self.vehicle_health.get_mut(actor){health.stats.healing_done=(health.stats.healing_done+healed).min(f32::MAX);}
         if let Some(vehicle)=self.vehicles.get_mut(actor){vehicle.powertrain.credit_teammate_healing(healed,maximum);}
-        Ok(healed)
+        healed
     }
 
     /// Runtime supplies connected client IDs. Retained practice bodies keep

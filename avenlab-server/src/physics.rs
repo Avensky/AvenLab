@@ -65,6 +65,7 @@ pub struct PhysicsWorld {
     pub block_world: BlockColliderWorld, // for block-based colliders
     chunks_ready: bool,
     service_bays: Vec<usize>,
+    drawbridges: Vec<(RigidBodyHandle, Isometry<Real>)>,
     has_impact_barriers: bool,
     map_json: std::sync::OnceLock<String>,
     active_map: Option<Arc<BlockColliderFile>>, // currently active map
@@ -110,6 +111,7 @@ impl PhysicsWorld {
     }
 
     fn install_map(&mut self, map: Arc<BlockColliderFile>) {
+        self.drawbridges.clear();
         self.service_bays.clear();
         self.has_impact_barriers = false;
         if let Some(layout) = &map.authored_layout {
@@ -218,6 +220,13 @@ impl PhysicsWorld {
     pub fn from_editor_document(file: crate::world::block_colliders::BlockColliderFile) -> anyhow::Result<Self> {
         let file=crate::world::block_colliders::validate_block_collider_file(file)?;
         let mut world=Self::new();world.block_world.tile_size=Some(file.cell);world.install_map(Arc::new(file));world.update_loaded_blocks_around_players();Ok(world)
+    }
+
+    pub fn for_harbor_room(world:usize,map:&str)->anyhow::Result<Self>{
+        let file=Self::map_definition_path(map)?;
+        let mut file=load_block_collider_file(file.to_string_lossy().to_string())?;
+        crate::harbor::place_services(world,&mut file);
+        Self::from_editor_document(file)
     }
 
     /// Load the collider set selected by the frontend before spawning a car.
@@ -398,6 +407,14 @@ impl PhysicsWorld {
             groups,
         );
 
+        if let Some(layout)=file.authored_layout.as_ref() {
+            for handle in &handles {
+                let body=&self.bodies[*handle];
+                if body.user_data.checked_sub(1).and_then(|i|layout.objects.get(i as usize)).is_some_and(|o|o.piece=="canal-lift") {
+                    self.drawbridges.push((*handle,*body.position()));
+                }
+            }
+        }
         // Restore destruction only for newly created bodies, before their first tick.
         if let Some(layout) = file.authored_layout.as_ref().filter(|layout| !layout.repeat && !self.asset_health.is_empty()) {
             for handle in &handles {
@@ -421,6 +438,17 @@ impl PhysicsWorld {
         );
 
         Ok(())
+    }
+
+    pub fn move_drawbridges(&mut self,tick:u64) {
+        if self.drawbridges.is_empty(){return;}
+        let angle=crate::harbor::lift_angle(tick);
+        self.drawbridges.retain(|(id,base)|{
+            let Some(body)=self.bodies.get_mut(*id) else{return false};
+            let pose=*base * Isometry::rotation(vector![0.,0.,angle]);
+            body.set_next_kinematic_position(pose);
+            true
+        });
     }
 
     pub fn unload_block(&mut self, bx: i32, by: i32) {
@@ -539,6 +567,7 @@ impl PhysicsWorld {
             block_world: BlockColliderWorld::new(),
             chunks_ready: false,
             service_bays: Vec::new(),
+            drawbridges: Vec::new(),
             has_impact_barriers: false,
             map_json: Default::default(),
             active_map: None,
@@ -747,6 +776,10 @@ impl PhysicsWorld {
             let mass=self.bodies[parent].mass();
             self.bodies[parent].apply_impulse_at_point(direction*(mass*2.8).min(80000.0)*(damage/base_damage),impact,true);
         }
+        self.damage_authored_surface(parent,cannon,(if cannon{300.0}else{20.0})*(damage/base_damage));
+    }
+
+    pub(crate) fn damage_authored_surface(&mut self,parent:RigidBodyHandle,cannon:bool,damage:f32) {
         let index=self.bodies[parent].user_data as usize;if index==0{return;}
         let Some(layout)=self.active_map.as_ref().and_then(|m|m.authored_layout.as_ref()).filter(|l|!l.repeat) else{return;};
         let Some(object)=layout.objects.get(index-1) else{return;};
@@ -754,7 +787,7 @@ impl PhysicsWorld {
         let Some(d)=object.destruction.as_ref().filter(|d|d.enabled) else{return;};
         let multiplier=if cannon {d.cannon}else{d.small_arms};
         let hp=self.asset_health.entry(object.id.clone()).or_insert(d.hp);
-        *hp=(*hp-(if cannon {300.0}else{20.0})*multiplier*(damage/base_damage)).max(0.0);
+        *hp=(*hp-damage*multiplier).max(0.0);
         if *hp==0.0 {for h in self.bodies[parent].colliders().to_vec(){if let Some(c)=self.colliders.get_mut(h){c.set_enabled(false);}}self.query_pipeline.update(&self.colliders);}
     }
     pub(crate) fn barrier_yaw(&self,player:&str)->f32 {

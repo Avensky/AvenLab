@@ -128,8 +128,14 @@ impl PhysicsWorld {
         if matches!(self.assigned_hero(player), Some("tank" | "brz")) {return Err("Use this vehicle's dedicated shield.".into());}
         let car=self.vehicles.get(player).ok_or("Deploy your vehicle first.")?;
         if !car.powertrain.running || !self.bodies[car.body].is_enabled() {return Err("Start the engine first.".into());}
+        if self.guard_boosts.get(player).is_some_and(|g| g.dive_cooldown > 0.0) { return Err("Dive Shield is cooling down.".into()); }
+        let body = car.body;
+        let destination = self.dive_destination(player)?;
+        self.bodies[body].set_translation(destination, true);
+        self.bodies.propagate_modified_body_positions_to_colliders(&mut self.colliders);
+        self.query_pipeline.update(&self.colliders);
+        self.vehicles.get_mut(player).unwrap().powertrain.blink_stress_s = crate::mechanic::STRESS_SECONDS;
         let guard=self.guard_boosts.entry(player.into()).or_default();
-        if guard.dive_cooldown>0.0 {return Err("Dive Shield is cooling down.".into());}
         guard.dive_remaining=DIVE_DURATION;
         guard.dive_cooldown=DIVE_COOLDOWN;
         self.vehicle_health.get_mut(player).unwrap().spawn_protection_s=0.0;

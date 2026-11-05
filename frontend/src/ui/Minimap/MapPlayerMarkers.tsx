@@ -21,7 +21,7 @@ function sameMarkers(a:ReturnType<typeof readContacts>, b:ReturnType<typeof read
 
 /** Only this small layer observes snapshots. Project at the map's display rate,
  * keeping raw network updates away from road geometry and route searches. */
-export function MapPlayerMarkers({x,z,range,circular}:{x:number;z:number;range:number;circular:boolean}){
+export function MapPlayerMarkers({x,z,centerX=x,centerZ=z,range,circular}:{x:number;z:number;centerX?:number;centerZ?:number;range:number;circular:boolean}){
  const [markers,setMarkers]=useState(readContacts);
  useEffect(()=>{
   let last=-Infinity;
@@ -37,7 +37,7 @@ export function MapPlayerMarkers({x,z,range,circular}:{x:number;z:number;range:n
   });
  },[]);
  return <g className="map-player-contacts" pointerEvents="none" aria-label="Team radio contacts">{markers.selfFlag&&<CarrierRing id="self" x={x} z={z} range={range} self flag={markers.selfFlag}/>} {markers.contacts.map(contact=>{
-  const point=projectMinimapContact(contact,x,z,range,circular);
+  const point=projectMinimapContact(contact,centerX,centerZ,range,circular);
   if(!point)return null;
   return <g key={contact.id}>{contact.carryingFlag&&<CarrierRing id={contact.id} x={point.x} z={point.z} range={range} flag={contact.carryingFlag}/>}<circle data-player-id={contact.id} data-side={contact.side} data-edge={point.edge} data-defeated={contact.defeated} data-flag-carrier={Boolean(contact.carryingFlag)} cx={point.x} cy={point.z} r={range/80} fill={contact.side==='ally'?MINIMAP_ALLY_COLOR:MINIMAP_ENEMY_COLOR} stroke="#061019" strokeWidth={range/300} opacity={contact.defeated?0.45:1} aria-label={contact.side==='ally'?contact.defeated?'Defeated teammate':'Teammate':'Detected enemy'}><title>{contact.side==='ally'?'Teammate':'Detected enemy'}{point.edge?' · beyond map edge':''}</title></circle></g>;
  })}</g>;

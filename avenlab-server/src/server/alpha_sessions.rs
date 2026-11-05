@@ -223,7 +223,7 @@ impl Server {
         let worlds: Vec<_> = {
             let data = self.data.lock().await;
             formats.into_iter().filter(|world| data.worlds.get(world)
-                .is_some_and(|w| w.map == ticket.map)).collect()
+                .is_some_and(|w| w.map == ticket.map || (format.bucket()==0 && crate::harbor::VARIANTS.contains(&w.map.as_str())))).collect()
         };
         let mut candidates = Vec::new();
         for world in worlds {
@@ -248,7 +248,7 @@ impl Server {
         let world=data.next_world;data.next_world+=1;
         data.worlds.insert(world,World{tire_thermals:crate::tire_thermals::server_default(),mode:Some(ticket.mode),id:world,
             name:if format.bucket()==0 {format!("ALPHA {} {}V{}",ticket.mode.label(),format.team_size,format.team_size)}else{format!("ALPHA {}",ticket.mode.label())},
-            map:ticket.map.clone(),owner_id:None,listed:true,max_players:format.capacity(),password_hash:None,invite_code:crate::social::model::id()});
+            map:if format.bucket()==0 {crate::harbor::queue_map(world).into()} else {ticket.map.clone()},owner_id:None,listed:true,max_players:format.capacity(),password_hash:None,invite_code:crate::social::model::id()});
         drop(data);self.commit(previous).await?;
         self.alpha.lock().await.worlds.insert(world,format);
         self.admit_ticket_to_world(ticket,world).await

@@ -23,6 +23,7 @@ import {
 import { useBuilderStore } from "../state/builderStore";
 import { useEditorScenePalette } from "./useEditorScenePalette";
 import { layoutAction, useLayoutStore } from "../state/layoutStore";
+import { CARRIER,deckPanorama } from "../generation/harborPieces";
 import { ChunkGuide } from "./ChunkGuide";
 import { LayoutInstances, PieceModel } from "./LayoutMeshes";
 import { SpawnMarkers } from "./SpawnMarkers";
@@ -240,6 +241,8 @@ export default function LayoutScene() {
   );
   const selectedObject = doc?.objects.find((o) => o.id === selected),
     piece = placing ? pieceById(placing) : undefined;
+  const [panorama]=useState(()=>focus==="deck" && doc && selectedObject?.piece===CARRIER ?
+    deckPanorama(selectedObject,doc.objects):null);
   const phantom = useMemo<LayoutObject | null>(
     () =>
       piece
@@ -292,7 +295,7 @@ export default function LayoutScene() {
       <PerspectiveCamera
         makeDefault
         position={
-          camera === "top"
+          panorama ? panorama.eye : camera === "top"
             ? [
                 frame.center[0],
                 frame.center[1] + frame.span * 1.25,
@@ -310,7 +313,7 @@ export default function LayoutScene() {
       />
       <OrbitControls
         makeDefault
-        target={frame.center}
+        target={panorama?.target??frame.center}
         enableRotate={camera !== "top" && navigation !== "pan"}
         enablePan
         screenSpacePanning

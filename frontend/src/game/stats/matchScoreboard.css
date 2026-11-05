@@ -127,3 +127,10 @@ section.match-scoreboard {
    min-height:clamp(28px,calc((100dvh - 216px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) / (2 * var(--team-size,5))),72px);
  }
 }
+
+.prematch-team-preview .match-composition-row{width:100%;box-sizing:border-box;}
+.prematch-team-preview .match-composition-seat{min-width:0;}
+@media(max-width:600px){
+ .prematch-team-preview .match-composition-art{min-width:0;}
+ .prematch-team-preview .match-composition-empty strong{font-size:9px;}
+}

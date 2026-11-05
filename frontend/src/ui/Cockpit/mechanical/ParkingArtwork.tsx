@@ -68,18 +68,19 @@ export function ParkingLeverArtwork({
         <path d="M23 43V17h9c14 0 14 16 0 16h-9m-9-17c-8 9-8 20 0 29m32-29c8 9 8 20 0 29" />
       </svg>
       <span className="ebrake-floor" />
-      <span className="ebrake-base">
-        <svg viewBox="0 0 80 30" aria-hidden="true">
-          <ellipse cx="40" cy="20" rx="34" ry="8" />
-          <path d="M14 19 28 9H49L68 19 60 23H22Z" />
-          <path d="M27 12 34 22m4-12 3 13m5-12 8 10" />
-        </svg>
-      </span>
       <span className="ebrake-handle" ref={handleRef}>
         <svg viewBox="0 0 100 20" preserveAspectRatio="none" aria-hidden="true">
           <path d="M1 6 18 4 30 2H91Q99 2 99 10T91 18H30L18 16H1Z" />
           <path className="parking-grip" d="M33 3H88Q94 3 94 10T88 17H33Z" />
           <path className="parking-stitch" d="M35 5H86Q91 5 91 9M35 15H86Q91 15 91 11" />
+        </svg>
+      </span>
+      {/* The fixed boot sits in front of the rotating lever pivot. */}
+      <span className="ebrake-base">
+        <svg viewBox="0 0 80 30" aria-hidden="true">
+          <ellipse cx="40" cy="20" rx="34" ry="8" />
+          <path d="M14 19 28 9H49L68 19 60 23H22Z" />
+          <path d="M27 12 34 22m4-12 3 13m5-12 8 10" />
         </svg>
       </span>
     </>

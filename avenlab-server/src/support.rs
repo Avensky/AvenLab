@@ -146,6 +146,7 @@ struct Pack { view: HealthPackView, hold_s: f32 }
 
 #[derive(Default)]
 pub struct SupportState {
+    pub(crate) service_elapsed: f32,
     cooldowns: HashMap<String, f32>,
     sequences: HashMap<String, u32>,
     packs: HashMap<String, Pack>,

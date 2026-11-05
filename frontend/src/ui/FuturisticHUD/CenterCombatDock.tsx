@@ -30,7 +30,7 @@ export function CenterCombatDock({children}: {children: ReactNode}) {
       const preferred = Number.parseFloat(window.getComputedStyle(element).maxWidth);
       const maximum = Math.min(Number.isFinite(preferred) ? preferred : width - margin * 2, width - margin * 2), minimum = Math.min(220, maximum);
       if (groups.futuristic) {
-        // The cluster always touches the sill. When it cannot fit between the
+        // The cluster uses the pedal bank’s bottom inset. When it cannot fit between the
         // physical controls, give it a separate bottom row and lift those controls.
         const wheel = hud.querySelector('.wheel-hud')?.getBoundingClientRect();
         const rightControls = Array.from(hud.querySelectorAll('.drive-dock .hud-parking,.drive-dock .hud-shifter,.drive-dock:not(:has(.hud-shifter)) .turret-aim-module,.console-foot-controls > .hud-group'))
@@ -42,9 +42,9 @@ export function CenterCombatDock({children}: {children: ReactNode}) {
         const right = Math.min(width - margin, ...rightControls.map(rect => rect.left - gap));
         const stacked = right - left < 315;
 
-        // On short phones the wheel can sit above the instruments. Keeping the
-        // pedal bank on the sill leaves its upper lane free for the radio/HVAC.
-        const split = stacked && width>height && height<=500 && rightControls.length>0 && right-margin>=280;
+        // In landscape, use the clear lane left of the real pedals before
+        // lifting the pedal bank. This also covers wide but shallow windows.
+        const split = stacked && width>height && rightControls.length>0 && right-margin>=minimum;
         const keyOverlapsRight=keyWidth>0 && keyLeft+keyWidth>right;
         const lowestClearY=Math.min(height,...rightControls.filter(r=>r.right>keyLeft && r.left<keyLeft+keyWidth).map(r=>r.top));
         // Moving both stations together must not feed their translated positions back into the measurement.
@@ -57,7 +57,7 @@ export function CenterCombatDock({children}: {children: ReactNode}) {
           stacked ? (width-available)/2 : Math.max(left,Math.min((width-available)/2,right-available));
         setHudStyle(element, 'width', `${available}px`);
         setHudStyle(element, 'left', `${x}px`);
-        setHudStyle(element, 'bottom', '0px');
+        setHudStyle(element, 'bottom', 'var(--drive-sill)');
         setHudStyle(element, 'transform', 'none');
         const lift=stacked ? `${Math.ceil(element.getBoundingClientRect().height)+3}px` : '0px';
         setHudStyle(hud,'--station-lift',lift);

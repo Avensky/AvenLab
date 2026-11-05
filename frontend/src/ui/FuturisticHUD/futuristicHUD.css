@@ -165,10 +165,9 @@
     --trim-thread: color-mix(in srgb,var(--app-accent) 45%,#4f5155);
   }
   .driving-hud[data-futuristic=true][data-low-detail=false] .futuristic-hud::after {
-    content:'';position:absolute;inset:3px 13px auto;height:1px;pointer-events:none;
-    --seam:repeating-linear-gradient(to right,var(--trim-thread,transparent) 0 3px,transparent 3px 6px);
-    background:var(--seam) left / min(12%,54px) 1px no-repeat,
-               var(--seam) right / min(12%,54px) 1px no-repeat;
+    content:'';position:absolute;inset:4px 6px;pointer-events:none;
+    border:1px dashed var(--trim-thread,transparent);border-radius:9px 3px;
+
   }
   .driving-hud[data-futuristic=true][data-low-detail=false] .turret-stick-knob::after {
     content:'';position:absolute;inset:3px;border-radius:50%;pointer-events:none;
@@ -231,3 +230,20 @@
 .future-identity .barrage-trigger:focus-visible {outline:2px solid #fff;outline-offset:-3px;}
 .future-identity .barrage-trigger:disabled {pointer-events:none;}
 .barrage-time {position:absolute;top:6%;left:6%;padding:1px 3px;color:white;background:#171d24;font:700 10px/1 system-ui;}
+
+@media (forced-colors:none) {
+  html:not([data-high-contrast=true]) .driving-hud[data-futuristic=true][data-low-detail=false] {
+    --aim-thread:color-mix(in srgb,var(--app-accent) 66%,#546069);
+  }
+  .driving-hud[data-futuristic=true][data-low-detail=false] .turret-joystick::before {
+    content:"";position:absolute;inset:3px;border-radius:50%;pointer-events:none;
+    background:repeating-conic-gradient(from -6deg,var(--aim-thread,transparent) 0deg 12deg,transparent 12deg 90deg);
+    mask-image:radial-gradient(closest-side,transparent calc(100% - 2px),black calc(100% - 1px));
+  }
+  .driving-hud[data-futuristic=true][data-low-detail=false] .turret-stick-knob::after {
+    border-inline-color:var(--aim-thread,transparent);
+  }
+  html:not([data-high-contrast=true]) .driving-hud[data-futuristic=true] .turret-actions button:not(:disabled,[data-healing=true]) .attack-icon {
+    color:color-mix(in srgb,var(--ability-signal,var(--app-accent)) 30%,#d9e0e3);
+  }
+}

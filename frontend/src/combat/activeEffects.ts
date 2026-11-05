@@ -19,7 +19,7 @@ export function readEffectSignals(entity:PhysicsEntitySnapshot|null|undefined){
   charge:time(entity?.combat?.ram_charge_remaining,3),
   ram:time(entity?.combat?.ram_remaining,7),
   stun:time(entity?.combat?.stun_remaining,1),
-  resource:Number.isSafeInteger(resource)&&resource!>=0&&resource!<=0xffff?resource! & (ResourceFlags.THERMAL_RECOVERY|ResourceFlags.HOT|ResourceFlags.DAMAGED):0,
+  resource:Number.isSafeInteger(resource)&&resource!>=0&&resource!<=0xffff?resource! & (ResourceFlags.THERMAL_RECOVERY|ResourceFlags.HOT|ResourceFlags.DAMAGED|ResourceFlags.BLINK_STRESS):0,
   boost:Boolean((entity?.telemetry_mask??0)&TelemetryFields.BOOST)&&Boolean((entity?.vehicle_mask??0)&VehicleFlags.BOOST),
   dive:time(guard?.dive_remaining_s,DIVE_DURATION_S),
   guard:time(guard?.remaining_s,GUARD_DURATION_S),
@@ -36,6 +36,7 @@ export function activeVehicleEffects(s:ReturnType<typeof readEffectSignals>):Act
   if(s.guardHp>0)effects.push({id:tank?'tank-barrier':'front-guard',label:tank?'FRONTAL BARRIER':'FRONT SHIELD',description:tank?`${s.guardHp} barrier HP. Rotate the cannon to cover teammates until the barrier breaks.`:`${s.guardHp} shield HP on your front. Side and rear hits bypass the guard.`,kind:'buff',nature:'defense',icon:'shield',remaining:tank?null:s.guard,duration:tank?null:GUARD_DURATION_S});
   if(!tank)effects.push({id:'guard-stability',label:'STABILIZED BOOST',description:'Grounded stabilization helps high-speed steering and controlled handbrake drifts. A fast frontal rush can add 60 HP once per enemy. Stability remains after the shield breaks; fuel and nitrous were spent on activation.',kind:'buff',nature:'mobility',icon:'boost',remaining:s.guard,duration:GUARD_DURATION_S});
  }
+ if(s.resource & ResourceFlags.BLINK_STRESS) effects.push({id:'blink-stress',label:'BLINK STRAIN',description:'Field drive strain: 1.6× engine fuel burn and 1.5× temperature rise for six seconds after blinking.',kind:'debuff',nature:'heat',icon:'heat',remaining:null,duration:null});
  const recovering=Boolean(s.resource&ResourceFlags.THERMAL_RECOVERY);
  if(s.stun>0)effects.push({id:'stun',label:'STUNNED',description:'Steering, throttle and weapons are briefly interrupted.',kind:'debuff',nature:'control',icon:'stun',remaining:s.stun,duration:1});
  if(recovering)effects.push({id:'thermal-recovery',label:'ENGINE WEAK',description:'Overheating reduced engine output. Ease off to cool or drive to repairs.',kind:'debuff',nature:'heat',icon:'heat',remaining:null,duration:null});

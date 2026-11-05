@@ -30,7 +30,7 @@ export function NetworkCombatEffects(){
    const live=s.live;live.clear();
    for(const entity of snapshot?.entities??[]){
     if(room!==-1&&entity.room_id!==room)continue;
-    if(!entity.combat&&!entity.support&&!entity.guard)continue;
+    if(!entity.combat&&!entity.support&&!entity.guard&&!entity.barrage)continue;
     live.add(entity.id);
     const previous=s.observed.get(entity.id);
     s.observed.set(entity.id,entity);

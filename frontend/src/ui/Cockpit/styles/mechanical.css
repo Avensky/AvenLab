@@ -136,7 +136,8 @@
   /* Halfway from the panel center to its right edge. Grip and metal cap
      share this transform, so the release target stays attached while pulling. */
   left: calc(75% - var(--parking-art-height, 119px) * 0.05);
-  top: 89.5%;
+  /* Seat the pivot inside the boot, including at full upright travel. */
+  top: 85.5%;
   width: var(--parking-art-height, 119px);
   height: 11%;
   transform-origin: 5% 50%;

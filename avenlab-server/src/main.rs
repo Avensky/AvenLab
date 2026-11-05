@@ -6,6 +6,8 @@ mod vehicle_life_tests;
 mod ballistics;
 mod ram;
 mod guard_boost;
+mod mechanic;
+mod harbor;
 mod team_barrier;
 mod tank_barrage;
 mod forward_assist;

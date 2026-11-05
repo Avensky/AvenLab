@@ -21,7 +21,7 @@ export function BarrageTrigger({tile=false}:{tile?:boolean}={}){
   const ready=useMotionView(barrageReady);
   const seconds=useMotionView(s=>Math.ceil((s.getMe()?.barrage?.ticks_left??0)/60));
   return <button type="button" className={tile?'barrage-action':'barrage-trigger'} disabled={!ready} aria-label="Activate Barrage Ultimate"
-    title={seconds?`Barrage active · ${seconds}s`:'Barrage · 5 seconds · 45 m · requires full Ultimate charge'} onClick={()=>void requestTankBarrage()}>
+    title={seconds?`Barrage active · ${seconds}s`:'Barrage · tracks enemies or fires a rotating sweep · 5 seconds · 45 m · requires full charge'} onClick={()=>void requestTankBarrage()}>
     {tile && <><BarrageDial/><span>BARRAGE</span></>}
     {seconds>0 && <span className="barrage-time">{seconds}s</span>}
   </button>;

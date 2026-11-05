@@ -30,7 +30,7 @@ type LayoutState = {
   placing: string | null;
   navigation: "orbit" | "pan";
   tool: "select" | "translate" | "rotate" | "scale";
-  focus: "layout" | "selected";
+  focus: "layout" | "selected" | "deck";
   view: "3d" | "plan";
   camera: "iso" | "top";
   cameraRevision: number;

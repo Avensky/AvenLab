@@ -616,6 +616,12 @@ export function connectRustServer(): WebSocket {
           if(!masked) acknowledgeInput(me?.last_input_seq, receivedMs);
         }
         return;
+      case "sector_chart":
+        if(message.world_id===state.room_id && message.map===state.worldMap && message.team===state.team &&
+          typeof message.sectors==="string" && /^[0-9a-f]{16}$/.test(message.sectors)){
+          useWorldStore.setState({sectorChart:message.sectors});
+        }
+        return;
       case "map_snapshot": {
         if(message.world_id!==undefined&&message.world_id!==state.room_id)return;
         const map = message.data as MapSnapshot | undefined;

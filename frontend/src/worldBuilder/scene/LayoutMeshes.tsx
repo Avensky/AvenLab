@@ -1,3 +1,5 @@
+import { CARRIER,LIFT } from "../generation/harborPieces";
+import { BigEDocked,BridgeLeaf } from "../../world/props/HarborPieces";
 import { streetProp } from "../props/streetPropCatalog";
 import { StreetPropInstances, StreetPropPreview } from "../props/StreetPropMeshes";
 import { memo, useEffect, useLayoutEffect, useMemo, useRef } from "react";
@@ -88,12 +90,14 @@ function ShapeInstances({
 // Starter shapes use two instanced draws; road modules share cached GLB resources.
 export const LayoutInstances = memo(function LayoutInstances({
   objects,
+  live = false,
   exclude = null,
   wireframe = false,
   collisionOnly = false,
   onSelect,
 }: {
   objects: LayoutObject[];
+  live?: boolean;
   exclude?: string | null;
   wireframe?: boolean;
   collisionOnly?: boolean;
@@ -107,7 +111,8 @@ export const LayoutInstances = memo(function LayoutInstances({
       objects
         .filter(
           (o) =>
-            (collisionOnly || wireframe || !streetProp(o.piece)) &&
+            !(live && o.piece === LIFT) &&
+            (collisionOnly || wireframe || (o.piece !== CARRIER && !streetProp(o.piece))) &&
             !o.road &&
             !o.model &&
             !o.vehicle &&
@@ -119,7 +124,7 @@ export const LayoutInstances = memo(function LayoutInstances({
             .filter((part) => !collisionOnly || part.solid !== false)
             .map((part) => ({ item, part })),
         ),
-    [objects, exclude, collisionOnly, wireframe],
+    [objects, exclude, collisionOnly, wireframe, live],
   );
   const boxes = useMemo(
     () => items.filter((i) => i.part.shape === "box"),
@@ -143,6 +148,14 @@ export const LayoutInstances = memo(function LayoutInstances({
         wireframe={wireframe}
         onSelect={onSelect}
       />
+      {live && objects.filter(o=>o.piece===LIFT && o.id!==exclude).map(o=><BridgeLeaf key={o.id} item={o} wireframe={wireframe}/> )}
+      {!collisionOnly && !wireframe && objects.filter(o=>o.piece===CARRIER && o.id!==exclude).map(o=>(
+        <group key={o.id} position={o.position} rotation={[0,o.yaw*Math.PI/180,0]} scale={o.size}
+          onClick={onSelect?e=>{e.stopPropagation();onSelect(o.id);}:undefined}>
+          <BigEDocked fallback={<group>{o.parts.map((p,i)=><mesh key={i} position={p.position} scale={p.size}>
+            <boxGeometry/><meshStandardMaterial color={o.color}/></mesh>)}</group>}/>
+        </group>
+      ))}
       <StreetPropInstances objects={props} onSelect={onSelect} fallback={<ShapeInstances items={propFallback} shape="box" wireframe={false} onSelect={onSelect}/>}/>
       <RoadInstances
         objects={objects}
@@ -245,7 +258,7 @@ export function PieceModel({
           ghost={ghost}
         />
       )}
-      {streetProp(item.piece) && !collisionOnly && !wireframe && !ghost ?
+      {item.piece===CARRIER && !collisionOnly && !wireframe && !ghost ? <BigEDocked fallback={<>{parts}</>}/> : streetProp(item.piece) && !collisionOnly && !wireframe && !ghost ?
         <StreetPropPreview piece={item.piece} fallback={parts}/> : parts}
       {selected && (
         <mesh position={center} scale={extent} renderOrder={10}>

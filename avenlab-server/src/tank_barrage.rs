@@ -15,6 +15,7 @@ pub struct Barrage {
     pub pulse: u16,
     pub traces: Vec<BarrageTrace>,
     #[serde(skip)] cursor: usize,
+    #[serde(skip)] sweeping: bool,
 }
 
 impl PhysicsWorld {
@@ -29,7 +30,7 @@ impl PhysicsWorld {
         }
         vehicle.powertrain.ultimate_fraction=0.0;
         health.spawn_protection_s=0.0;
-        self.barrages.insert(player.to_owned(),Barrage{ticks_left:TICKS,pulse:0,traces:Vec::with_capacity(3),cursor:0});
+        self.barrages.insert(player.to_owned(),Barrage{ticks_left:TICKS,pulse:0,traces:Vec::with_capacity(3),cursor:0,sweeping:false});
         Ok(())
     }
 
@@ -39,7 +40,16 @@ impl PhysicsWorld {
         active.retain(|player,barrage| {
             if !online(player) || self.is_defeated(player) ||
                 !self.vehicles.get(player).is_some_and(|v|self.bodies[v.body].is_enabled()) {return false}
-            if (TICKS-barrage.ticks_left)%PULSE_TICKS==0 {self.barrage_pulse(player,barrage,&online);}
+            let elapsed=TICKS-barrage.ticks_left;
+            if elapsed%PULSE_TICKS==0 {self.barrage_pulse(player,barrage,&online);}
+            if barrage.sweeping && elapsed%PULSE_TICKS!=0 {
+                let body=self.vehicles[player].body;
+                let yaw=(elapsed as f32)*std::f32::consts::TAU/150.0;
+                let dir=self.bodies[body].rotation()*vector![yaw.sin(),0.,yaw.cos()];
+                if let Some(pose)=self.combat_poses.get_mut(player){
+                    pose.yaw=(-dir.x).atan2(-dir.z);pose.pitch=dir.y.clamp(-1.,1.).asin();
+                }
+            }
             barrage.ticks_left-=1;
             barrage.ticks_left>0
         });
@@ -73,11 +83,38 @@ impl PhysicsWorld {
         b.traces.clear();
         let cannon_ready=b.pulse%4==0;
         b.pulse+=1;
-        if targets.is_empty(){return}
         let mut aim=None;
+        b.sweeping=targets.is_empty();
+        if b.sweeping {
+            // Three mounts cover the ring. Across consecutive pulses the pattern
+            // sweeps clockwise. Each ray stops at its first physical obstruction.
+            let yaw=(b.pulse-1) as f32 * std::f32::consts::TAU/10.0;
+            for mount in 0..3 {
+                let angle=yaw+mount as f32*std::f32::consts::TAU/3.0;
+                let dir=hull.rotation*vector![angle.sin(),0.,angle.cos()];
+                if mount==0 {aim=Some(dir);}
+                let cannon=mount==0 && cannon_ready;
+                let ray=Ray::new(origin,dir);
+                let hit=self.query_pipeline.cast_ray(&self.bodies,&self.colliders,&ray,RANGE,true,filter);
+                let mut end=ray.point_at(hit.map_or(RANGE,|(_,t)|t));
+                let mut damage=if cannon {100.0}else{19.0};
+                if let Some((block,_,_))=self.screen_segment(player,origin,end,&mut damage){end=block;}
+                if damage>0.0 {
+                    if let Some(parent)=hit.and_then(|(handle,_)|self.colliders[handle].parent()) {
+                        if let Some(victim)=self.body_to_player.get(&parent).cloned() {
+                            if online(&victim) && self.vehicles[&victim].team!=self.vehicles[player].team {
+                                self.damage_vehicle(&victim,Some(player),damage,"barrage-sweep");
+                            }
+                        } else {self.damage_authored_surface(parent,cannon,damage);}
+                    }
+                }
+                b.traces.push(BarrageTrace{from:origin.into(),to:end.into(),cannon});
+            }
+        }
         // Cannon, roof MG and forward MG share a fixed damage budget. A single
         // exposed opponent draws every mount; multiple opponents take turns.
         for (offset,cannon) in [(0.0,true),(-0.38,false),(0.32,false)] {
+            if targets.is_empty(){break;}
             if cannon && !cannon_ready {continue}
             let (id,handle,center,distance)=&targets[b.cursor%targets.len()];b.cursor=b.cursor.wrapping_add(1);
             let start=hull*point![offset,height+if offset<0.0{0.22}else{0.0},0.10];
@@ -157,6 +194,34 @@ mod tests {
         assert!(w.guard_view("a").shield_hp<crate::guard_boost::BARRIER_HP);
         for _ in 1..TICKS {w.advance_barrages(|_|true);}
         assert!(w.vehicle_health["a"].hp>0. && w.vehicle_health["a"].hp<w.vehicle_health["a"].max_hp);
+    }
+    #[test]
+    fn every_deployable_vehicle_can_spend_charge_and_fire_without_targets() {
+        for hero in crate::alpha::policy::HEROES {
+            let mut w=blank_world();
+            w.spawn_vehicle_for_player("solo".into(),[0.;3],hero.vehicle,"blue").unwrap();
+            w.set_assigned_hero("solo",hero.id);
+            w.vehicles.get_mut("solo").unwrap().powertrain.ultimate_fraction=1.;
+            w.start_barrage("solo").unwrap();w.advance_barrages(|_|true);
+            assert_eq!(w.barrages["solo"].traces.len(),3,"{}",hero.id);
+            assert_eq!(w.vehicles["solo"].powertrain.ultimate_fraction,0.);
+        }
+    }
+    #[test]
+    fn empty_barrage_sweeps_from_a_road_vehicle_and_reacquires(){
+        let mut w=world();
+        w.spawn_vehicle_for_player("coupe".into(),[0.;3],"brz","red").unwrap();
+        place(&mut w,"coupe",12.,7.);place(&mut w,"a",110.,110.);
+        w.vehicles.get_mut("coupe").unwrap().powertrain.ultimate_fraction=1.;
+        w.start_barrage("coupe").unwrap();w.advance_barrages(|_|true);
+        let first=w.barrages["coupe"].traces.clone();assert_eq!(first.len(),3);
+        let yaw=w.combat_poses["coupe"].yaw;
+        for _ in 0..15{w.advance_barrages(|_|true);}
+        assert_ne!(w.combat_poses["coupe"].yaw,yaw);assert_ne!(w.barrages["coupe"].traces[0].to,first[0].to);
+        place(&mut w,"a",12.,22.);
+        let hp=w.vehicle_health["a"].hp;
+        for _ in 0..15{w.advance_barrages(|_|true);}
+        assert!(w.vehicle_health["a"].hp<hp);
     }
     #[test]
     fn shields_block_damage_and_disconnect_cancels_the_action(){

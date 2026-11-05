@@ -7,4 +7,5 @@ export const ResourceFlags = {
   DAMAGED: 16,
   HEAT_LOCK: 32,
   THERMAL_RECOVERY:64,
+  BLINK_STRESS:128,
 } as const;

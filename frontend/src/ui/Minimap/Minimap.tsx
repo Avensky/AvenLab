@@ -1,5 +1,6 @@
 import { useMotionView } from "../../store/session/networkViews";
 import {useRenderSettingsStore} from '../../store/presentation/renderSettingsStore';
+import {HarborChart,harborRoads,isHarbor} from "./HarborChart";
 import {MapPlayerMarkers} from "./MapPlayerMarkers";
 import { useHudPanelsStore } from "../../store/hud/hudPanelsStore";
 import { useMapTelemetryStore } from "../../store/telemetry";
@@ -96,11 +97,14 @@ function MapContent({ circular = false }: { circular?: boolean }) {
     mile = usePreferencesStore((s) => s.speedUnit === "mph");
   const destination = useNavigationStore((s) => s.destination),
     set = useNavigationStore.getState().setDestination,
-    [range, setRange] = useState(600),
+    [range, setRange] = useState(!circular && isHarbor(map?.map_id)?850:600),
     [notice, setNotice] = useState("");
   const objective = useNavigationStore((s) => s.mission?.target);
   const modern = usePreferencesStore(s => s.hudGroups.futuristic);
-  const boxes = useMemo(() => (map?.collider_chunks ?? []).flatMap(chunk => chunk.boxes), [map]);
+  const harbor = isHarbor(map?.map_id)?map?.authored_layout:undefined;
+  const bridgeId=useMemo(()=>harbor?.objects.find(o=>o.piece==="canal-breakable")?.id,[harbor]);
+  const collapsed=useMotionView(s=>!!bridgeId && s.snapshot?.asset_health?.[bridgeId]===0);
+  const boxes = useMemo(() => harbor ? harborRoads(harbor,collapsed) : (map?.collider_chunks ?? []).flatMap(chunk => chunk.boxes), [map,harbor,collapsed]);
   const graph = useMemo(() => buildRoadGraph(boxes), [boxes]);
   const lowDetail = useRenderSettingsStore(s => s.lowDetail);
   const showBuildings=modern && circular && !lowDetail;
@@ -132,8 +136,8 @@ function MapContent({ circular = false }: { circular?: boolean }) {
           : metres >= 1000
             ? `${(metres / 1000).toFixed(1)} KM`
             : `${Math.round(metres)} M`;
-  const px = x ?? 0,
-    pz = z ?? 0,
+  const px = harbor && !circular ? 0 : x ?? 0,
+    pz = harbor && !circular ? 0 : z ?? 0,
     depth = range,
     cell = range / 2,
     cx = Math.floor(px / cell),
@@ -172,7 +176,10 @@ function MapContent({ circular = false }: { circular?: boolean }) {
             } else setNotice("SELECT A ROAD");
           }}
         >
+          {harbor && <g fill="#41504f">{harbor.objects.filter(o=>o.piece==="coastal-land").map(o=><rect key={o.id}
+             x={o.position[0]-o.size[0]/2} y={o.position[2]-o.size[2]/2} width={o.size[0]} height={o.size[2]}/>)}</g>}
           <RoadLayer roads={visibleRoads} />
+          {harbor && <HarborChart layout={harbor} range={range}/>}
           {showBuildings && <BlockLayer boxes={buildings} x={(cx + .5) * cell} z={(cz + .5) * cell} radius={range} />}
           {route && (
             <polyline
@@ -204,7 +211,7 @@ function MapContent({ circular = false }: { circular?: boolean }) {
               />
             </g>
           )}
-          {x !== null && z !== null && <MapPlayerMarkers x={px} z={pz} range={range} circular={circular}/> }
+          {x !== null && z !== null && <MapPlayerMarkers x={x} z={z} centerX={px} centerZ={pz} range={range} circular={circular}/> }
           {x !== null && z !== null && (
             <g
               transform={`translate(${x} ${z}) scale(${range / 170}) rotate(${180 - (yaw ?? 0)})`}
@@ -221,6 +228,7 @@ function MapContent({ circular = false }: { circular?: boolean }) {
         <span className="map-north">N</span>
         <MissionReadout />
       </div>
+      {harbor && !circular && <small className="harbor-chart-key">F · FUEL　 R · REPAIR　 DARK SECTORS · UNSURVEYED</small>}
       <div className="gps-controls">
         <button
           aria-label="GPS destination ahead"

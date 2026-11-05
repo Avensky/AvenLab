@@ -385,15 +385,11 @@ impl Server {
             .get(player)
             .and_then(|client| client.world_id);
         if let Some(world_id) = current {
-            if self
-                .data
-                .lock()
-                .await
-                .worlds
-                .get(&world_id)
-                .map(|world| world.map.as_str())
-                != Some(map)
-            {
+            let data=self.data.lock().await;
+            let matches=data.worlds.get(&world_id).is_some_and(|world|world.map==map ||
+                (map=="streaming_endless_city" && world.mode.is_some_and(|m|m.bucket()==0) &&
+                 crate::harbor::VARIANTS.contains(&world.map.as_str())));
+            if !matches {
                 return Err("Your joined world uses a different map. Leave that world before selecting another.".into());
             }
         } else {

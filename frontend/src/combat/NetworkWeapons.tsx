@@ -1,3 +1,4 @@
+import {writeInstanceMatrix} from '../vehicles/writeInstanceMatrix';
 import { useMotionView } from "../store/session/networkViews";
 import { memo, useMemo, useRef, type RefObject } from 'react';
 import { useFrame } from '@react-three/fiber';
@@ -29,21 +30,24 @@ export function NetworkWeapons() {
       .map(e => e.id).sort() : [];
   }));
   const bases=useRef<InstancedMesh>(null),barrels=useRef<InstancedMesh>(null);
+  const dirty=useRef({bases:false,barrels:false});
   const capacity=Math.max(10,ids.length);
   useFrame(()=>{
     if(!bases.current||!barrels.current)return;
     bases.current.count=ids.length;barrels.current.count=ids.length*2;
-    if(ids.length){bases.current.instanceMatrix.needsUpdate=true;barrels.current.instanceMatrix.needsUpdate=true;}
+    if(dirty.current.bases)bases.current.instanceMatrix.needsUpdate=true;
+    if(dirty.current.barrels)barrels.current.instanceMatrix.needsUpdate=true;
+    dirty.current.bases=dirty.current.barrels=false;
   });
   return <><NetworkCombatEffects/>
     <instancedMesh ref={bases} name="roof-turret-bases" args={[cube,baseSteel,capacity]} count={0} frustumCulled={false}/>
     <instancedMesh ref={barrels} name="roof-turret-barrels" args={[cube,gunSteel,capacity*2]} count={0} frustumCulled={false}/>
-    {ids.map((id,index)=><Turret key={id} id={id} index={index} bases={bases} barrels={barrels}/>)}</>;
+    {ids.map((id,index)=><Turret key={id} id={id} index={index} bases={bases} barrels={barrels} dirty={dirty}/>)}</>;
 }
 
 const hidden=new Matrix4().makeScale(0,0,0);
 type Batch=RefObject<InstancedMesh|null>;
-const Turret=memo(function Turret({id,index,bases,barrels}:{id:string;index:number;bases:Batch;barrels:Batch}){
+const Turret=memo(function Turret({id,index,bases,barrels,dirty}:{id:string;index:number;bases:Batch;barrels:Batch;dirty:RefObject<{bases:boolean;barrels:boolean}>}){
   const chassis=useMotionView(s=>snapshotEntity(s.snapshot, id)?.vehicle_id);
   const rig=useMemo(()=>{
     const kit=roofKits[chassis??'']??roofKits.brz;
@@ -63,9 +67,9 @@ const Turret=memo(function Turret({id,index,bases,barrels}:{id:string;index:numb
       placeRoofTurret(rig.mount,rig.pivot,rig.gun,pose,c,rig.direction,rig.inverse);
       rig.mount.updateMatrixWorld();
     }
-    bases.current.setMatrixAt(index,c?rig.base.matrixWorld:hidden);
-    barrels.current.setMatrixAt(index*2,c?rig.tubes[0].matrixWorld:hidden);
-    barrels.current.setMatrixAt(index*2+1,c&&rig.tubes[1]?rig.tubes[1].matrixWorld:hidden);
-  });
+    if(writeInstanceMatrix(bases.current,index,c?rig.base.matrixWorld:hidden))dirty.current.bases=true;
+    if(writeInstanceMatrix(barrels.current,index*2,c?rig.tubes[0].matrixWorld:hidden))dirty.current.barrels=true;
+    if(writeInstanceMatrix(barrels.current,index*2+1,c&&rig.tubes[1]?rig.tubes[1].matrixWorld:hidden))dirty.current.barrels=true;
+  },-2);
   return null;
 });

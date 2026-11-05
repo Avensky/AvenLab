@@ -146,7 +146,8 @@ impl AuthoredLayout {
                 continue;
             }
             if !object.solid || !object.parts.iter().any(|p| p.solid) { continue; }
-            let root = RigidBodyBuilder::fixed().user_data((object_index+1) as u128)
+            let builder = if object.piece=="canal-lift" {RigidBodyBuilder::kinematic_position_based()} else {RigidBodyBuilder::fixed()};
+            let root = builder.user_data((object_index+1) as u128)
                 .translation(vector![origin[0] + object.position[0], origin[1] + object.position[1], origin[2] + object.position[2]])
                 .rotation(vector![0.0, object.yaw.to_radians(), 0.0]).build();
             let handle = bodies.insert(root);

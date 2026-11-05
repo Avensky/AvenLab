@@ -57,7 +57,7 @@ Run `node --test tests/network-view-groups.test.mjs` from `frontend` to exercise
 
 ## Remaining work to profile
 
-The server still builds full personalized JSON on genuine lobby changes, and refresh still validates the installed maps. The shared simulation still carries visible vehicle poses and wheels. The live CTF flag-marker component also builds JSON keys and derives detected contacts when a flag is carried. Capture browser CPU, allocation and render traces alongside server timings during a hosted fight before changing those cadences or vehicle detail.
+The server still builds full personalized JSON on genuine lobby changes, and refresh still validates the installed maps. The shared simulation still carries visible vehicle poses and wheels. The live CTF flag markers now reuse their last readings and check visibility only for the relevant carrier. Capture browser CPU, allocation and render traces alongside server timings during a hosted fight before changing those cadences or vehicle detail.
 
 ## Reproduce
 

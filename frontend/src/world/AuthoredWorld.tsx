@@ -30,13 +30,13 @@ export function AuthoredWorld({
             <meshStandardMaterial color="#142d40" roughness={1} />
           </mesh>
         )}
-      <LayoutInstances
+      <LayoutInstances live
         objects={objects}
         wireframe={mode === "collider"}
         collisionOnly={mode === "collider" || mode === "geometry"}
       />
       {mode === "hybrid" && (
-        <LayoutInstances objects={objects} wireframe collisionOnly />
+        <LayoutInstances live objects={objects} wireframe collisionOnly />
       )}
     </group>
   );

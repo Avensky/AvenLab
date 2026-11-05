@@ -34,3 +34,5 @@ Mount `MinimapSessionLifecycle` once beside the game UI lifecycle owners. It
 opens the normal map on deployment and real round start, without changing the
 saved minimap size/visibility preferences. Later snapshots and menu close do
 not reopen a map the player has minimized.
+
+In Harbor Canal matches the Rust world samples living teammates' 100 m sectors at 4 Hz. A reliable world-scoped chart is sent to the appropriate team on a change or a new connection. The chart lasts for the world session. A land defender starts with both city banks charted. A carrier team discovers resources by scouting. The full Navigation map exposes known fuel and repair sites and distinguishes unexplored sectors. This controls the GPS display; static world geometry still goes to all players.

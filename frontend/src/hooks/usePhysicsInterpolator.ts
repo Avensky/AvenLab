@@ -3,6 +3,8 @@ import { useConnectionView, useMotionView } from "../store/session/networkViews"
 import { useCallback, useEffect, useRef } from "react";
 import { blendCombatAim, blendYaw } from '../combat/turretPresentation';
 import { Quaternion } from "three";
+import { PresentationDelay } from "./presentationDelay";
+import { ResourceFlags } from "../store/telemetry/resourceMasks";
 import { useDebugViewStore } from "../store/presentation/debugViewStore";
 import {
   snapshotEntity, useNetworkStore,
@@ -45,9 +47,6 @@ type History = {
   lastTick?: number;
   lastServerMs?: number;
   lastReceivedMs: number;
-  serverOriginMs?: number;
-  localOriginMs: number;
-  renderDelayMs?: number;
 };
 
 // A snapshot shared by several models gets one receipt timestamp, even when
@@ -162,42 +161,25 @@ export class PhysicsInterpolationBuffer {
     )
       return;
 
-    // After a long delivery/server pause, show the fresh state and start a new
-    // short buffer. Playing an old backlog would add visible input latency.
-    if (
-      !history ||
-      receivedMs - history.lastReceivedMs > STALE_GAP_MS
-    ) {
-      history = {
-        frames: [],
-        lastReceivedMs: receivedMs,
-        localOriginMs: receivedMs,
-        serverOriginMs: serverMs,
-      };
+    // A confirmed blink jumps on its first authoritative pose. Do not fly the
+    // camera through the gap or interpolate the burst back toward the origin.
+    const blink = Boolean((pose.resource_mask ?? 0) & ResourceFlags.BLINK_STRESS) &&
+      !Boolean((prior?.resource_mask ?? 0) & ResourceFlags.BLINK_STRESS);
+    if (!history || receivedMs - history.lastReceivedMs > STALE_GAP_MS || blink) {
+      history = { frames: [], lastReceivedMs: receivedMs };
       this.histories.set(id, history);
     }
 
-    // Preserve server tick spacing: a burst of socket arrivals is not a burst
-    // of simulated time. Legacy callers without timing use monotonic receipts.
-    let timeMs =
-      serverMs !== undefined && history.serverOriginMs !== undefined
-        ? history.localOriginMs + serverMs - history.serverOriginMs
-        : receivedMs;
-    // Skipped server ticks or a change in delivery latency can move this clock
-    // beyond the buffer's headroom, even without one long socket gap. Reanchor
-    // to the fresh pose and discard older frames so recovery cannot rewind it.
-    const driftLimitMs = Math.max(
-      history.renderDelayMs ?? DEFAULT_INTERPOLATION_DELAY_MS,
-      1000 / 60,
-    );
-    if (
-      serverMs !== undefined &&
-      Math.abs(receivedMs - timeMs) >= driftLimitMs
-    ) {
-      history.frames = [];
-      history.serverOriginMs = serverMs;
-      history.localOriginMs = receivedMs;
-      timeMs = receivedMs;
+    let timeMs = receivedMs;
+    const tail = history.frames.at(-1);
+    if (tail && serverMs !== undefined && history.lastServerMs !== undefined) {
+      // Preserve simulation spacing during short packet bursts, but follow a
+      // slow-running world continuously instead of discarding the whole buffer
+      // whenever wall and simulation time drift apart by 50 ms.
+      const step = serverMs - history.lastServerMs;
+      const expected = tail.timeMs + step;
+      const correction = Math.max(-step * .4, Math.min(step * .4, (receivedMs - expected) * .25));
+      timeMs = Math.max(tail.timeMs + .01, expected + correction, receivedMs - 12);
     }
     history.frames.push({ timeMs, pose });
     history.lastTick = tick;
@@ -213,15 +195,14 @@ export class PhysicsInterpolationBuffer {
   ): InterpolatedPhysicsSnapshot | null {
     const history = this.histories.get(id);
     if (!history?.frames.length) return null;
-    history.renderDelayMs = Math.max(0, delayMs);
     const targetMs = nowMs - Math.max(0, delayMs);
     const frames = history.frames;
 
     // Sampling does not consume history: the camera and models can read it in
     // either order. Appending already bounds history to MAX_HISTORY frames.
-    let index = 0;
-    while (index < frames.length - 2 && frames[index + 1].timeMs <= targetMs)
-      index++;
+    // Most renders need one of the newest two intervals.
+    let index = Math.max(0, frames.length - 2);
+    while (index > 0 && frames[index].timeMs > targetMs) index--;
     const a = frames[index];
     if (targetMs <= a.timeMs || frames.length === 1) return a.pose;
     const b = frames[index + 1];
@@ -288,6 +269,8 @@ export function usePhysicsInterpolator(
 // One live subscription feeds one shared history for every vehicle and camera.
 // React effects retain it; no network subscription is created during render.
 const vehicleBuffer = new PhysicsInterpolationBuffer();
+const presentationDelay=new PresentationDelay();
+let frameDelay=DEFAULT_INTERPOLATION_DELAY_MS;
 let consumers = 0;
 let unsubscribeNetwork: (() => void) | null = null;
 let blockedSnapshot: PhysicsSnapshot | null = null;
@@ -300,6 +283,7 @@ const framePoses = new Map<string, InterpolatedPhysicsSnapshot | null>();
 // A single timestamp and cached result keep their world transforms together.
 export function beginVehicleRenderFrame(nowMs = performance.now()) {
   renderTimeMs = nowMs;
+  frameDelay=presentationDelay.sample(nowMs);
   framePoses.clear();
 }
 
@@ -310,6 +294,7 @@ export function releaseVehicleRenderFrameClock() {
 
 function clearVehicleHistory() {
   vehicleBuffer.clearAll();
+  presentationDelay.reset();
   knownIds.clear();
   framePoses.clear();
 }
@@ -332,6 +317,7 @@ function ingestVehicles() {
   if (after?.phase === "running" && (before?.phase !== "running" || before.match_id !== after.match_id)) {
     clearVehicleHistory();
   }
+  presentationDelay.receipt(snapshot.received_at_ms??performance.now());
   lastSnapshot = snapshot;
   const nextIds = new Set<string>();
   for (const entity of snapshot.entities) {
@@ -363,7 +349,7 @@ function retainVehicleTimeline() {
   };
 }
 
-function framePose(requestedId:string,delayMs=DEFAULT_INTERPOLATION_DELAY_MS):InterpolatedPhysicsSnapshot|null {
+function framePose(requestedId:string,delayMs=frameDelay):InterpolatedPhysicsSnapshot|null {
   const state = useNetworkStore.getState();
   if (
     !state.connected ||
@@ -395,7 +381,7 @@ export function useFleetPoseReader(){
 
 export function useVehiclePhysicsInterpolator(
   entityId?: string,
-  delayMs = DEFAULT_INTERPOLATION_DELAY_MS,
+  delayMs?: number,
 ) {
   const playerId = useConnectionView(state => state.playerId);
   const id = entityId ?? playerId;

@@ -1,7 +1,8 @@
 import { Suspense, useEffect, useMemo } from "react";
 import { Html, useGLTF } from "@react-three/drei";
 import { AssetBoundary } from "../../components/debugger/AssetBoundary";
-import { CarrierPlaceholder } from "../../world/props/CarrierPlaceholder";
+import { BigEDocked } from "../../world/props/HarborPieces";
+import { carrierSize } from "../../worldBuilder/generation/harborPieces";
 import { prepareCityShowcase } from "./prepareCityShowcase";
 
 // Standalone display stage, not a spawned/streamed gameplay map. These are the
@@ -34,7 +35,7 @@ export function CityShowcase() {
     {Array.from({ length: 9 }, (_, index) => <mesh key={index} position={[137, 0.4, index * 44 - 176]}>
       <cylinderGeometry args={[0.6, 0.8, 1.2, 6]} /><meshStandardMaterial color="#ba9550" roughness={0.9} />
     </mesh>)}
-    <CarrierPlaceholder />
+    <group position={[200,13,0]} scale={carrierSize}><BigEDocked/></group>
     </group>
   </>;
 }

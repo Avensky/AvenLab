@@ -1,3 +1,4 @@
+import {writeInstanceMatrix as writeMatrix} from './writeInstanceMatrix';
 import {useEffect,useMemo,useRef,useState,useSyncExternalStore} from 'react';
 import {useFrame} from '@react-three/fiber';
 import {fleetArt,fleetArtVersion,retainFleetArt,subscribeFleetArt} from './fleetAssets';
@@ -16,11 +17,6 @@ const unit=new Vector3(1,1,1);
 const hidden=new Matrix4().makeScale(0,0,0);
 const up=new Vector3(0,1,0),axle=new Vector3(1,0,0);
 type BatchProps={model:string;tier:FleetDetail|'seed';cars:RosterEntity[];scene:Group};
-function writeMatrix(batch:InstancedMesh,index:number,matrix:Matrix4){
-  const a=batch.instanceMatrix.array,offset=index*16;
-  if(matrix.elements.some((n,i)=>Math.fround(n)!==a[offset+i])){batch.setMatrixAt(index,matrix);return true;}
-  return false;
-}
 function FleetBatch({model,tier,cars,scene}:BatchProps){
   const parts=useMemo(()=>scene.children.filter((m):m is Mesh=>m instanceof Mesh),[scene]);
   const meshes=useRef<(InstancedMesh|null)[]>([]);

@@ -18,6 +18,7 @@ pub const STARVED: u16 = 8;
 pub const DAMAGED: u16 = 16;
 pub const HEAT_LOCK: u16 = 32; // Legacy protocol bit; heat no longer disables the engine.
 pub const THERMAL_RECOVERY:u16=64;
+pub const BLINK_STRESS: u16 = 128;
 /// Passive charge alone fills in eight minutes of active server simulation.
 pub const PASSIVE_ULTIMATE_SECONDS: f32 = 480.0;
 
@@ -166,6 +167,7 @@ pub struct Powertrain {
     pub boost_requested: bool,
     pub running: bool,
     pub thermal_recovery:bool,
+    pub blink_stress_s: f32,
     pub rpm: f32,
     pub gear: i32,
     pub fuel_liters: f32,
@@ -198,7 +200,7 @@ impl Powertrain {
             manual_gear: None,
             engine_requested: true,
             boost_requested: false,
-            running: true,thermal_recovery:false,
+            running: true,thermal_recovery:false, blink_stress_s:0.0,
             rpm: config.idle_rpm,
             gear: 0,
             fuel_liters: config.fuel_capacity_liters,
@@ -229,6 +231,8 @@ impl Powertrain {
         if !dt.is_finite() || dt <= 0.0 || dt > 0.1 {
             return;
         }
+        let stressed = self.blink_stress_s > 0.0;
+        self.blink_stress_s = (self.blink_stress_s - dt).max(0.0);
         let speed = if demand.longitudinal_speed.is_finite() {
             demand.longitudinal_speed
         } else {
@@ -380,6 +384,7 @@ impl Powertrain {
             self.fuel_liters = (self.fuel_liters
                 - liters_s
                     * config.fuel_gameplay_multiplier
+                    * if stressed { crate::mechanic::FUEL_MULTIPLIER } else { 1.0 }
                     * (1.0 + (1.0 - self.condition) * 0.25)
                     * dt)
                 .max(0.0);
@@ -400,8 +405,9 @@ impl Powertrain {
         // or stop the engine to cool faster. Neither option waits on a heat latch.
         let heat_rate=if self.thermal_recovery{net_heat.min(if self.running{-0.6}else{-2.0})}
             else if self.running{net_heat.max(config.min_running_heat_rise_c_s)}else{net_heat};
-        self.temperature_c = (self.temperature_c
-            + heat_rate.min(config.max_heat_rise_c_s) * dt)
+        let rise = heat_rate.min(config.max_heat_rise_c_s);
+        let multiplier = if stressed && rise > 0.0 { crate::mechanic::HEAT_MULTIPLIER } else { 1.0 };
+        self.temperature_c = (self.temperature_c + rise * multiplier * dt)
             .clamp(config.ambient_c, config.critical_c + 30.0);
         let exposure = ((self.temperature_c - config.overheat_c)
             / (config.critical_c - config.overheat_c))
@@ -474,6 +480,7 @@ impl Powertrain {
         }) | (if self.fuel_liters <= 0.0 { STARVED } else { 0 })
             | (if self.condition < 0.75 { DAMAGED } else { 0 })
             | (if self.thermal_recovery {THERMAL_RECOVERY}else{0})
+            | (if self.blink_stress_s > 0.0 {BLINK_STRESS}else{0})
     }
     pub fn boost_fraction(&self, config: ResourceConfig) -> Option<f32> {
         (config.nos_seconds > 0.0)
@@ -583,6 +590,23 @@ mod tests {
         for _ in 0..(seconds * hz as f32) as usize {
             state.advance(ROAD_RESOURCES, input, 1.0 / hz as f32);
         }
+    }
+    #[test]
+    fn blink_strain_increases_real_burn_and_positive_heat_then_expires() {
+        let mut normal=Powertrain::new(ROAD_RESOURCES);
+        let mut blink=normal.clone();
+        blink.blink_stress_s=crate::mechanic::STRESS_SECONDS;
+        let fuel=normal.fuel_liters;
+        let temp=normal.temperature_c;
+        run(&mut normal,demand(1.0,10.0),1.0,60);
+        run(&mut blink,demand(1.0,10.0),1.0,60);
+        let fuel_ratio=(fuel-blink.fuel_liters)/(fuel-normal.fuel_liters);
+        let heat_ratio=(blink.temperature_c-temp)/(normal.temperature_c-temp);
+        assert!((fuel_ratio-crate::mechanic::FUEL_MULTIPLIER).abs()<0.08);
+        assert!((heat_ratio-crate::mechanic::HEAT_MULTIPLIER).abs()<0.08);
+        assert!(blink.resource_mask(ROAD_RESOURCES)&BLINK_STRESS!=0);
+        run(&mut blink,demand(0.0,0.0),5.1,60);
+        assert_eq!(blink.resource_mask(ROAD_RESOURCES)&BLINK_STRESS,0);
     }
     #[test]
     fn rates_use_seconds_and_are_nearly_substep_independent() {

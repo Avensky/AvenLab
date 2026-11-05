@@ -5,6 +5,21 @@
     "desc": "Editable coastal chase world"
   },
   {
+    "id": "harbor_canal_blue",
+    "name": "Harbor Canal · blue",
+    "desc": "Two banks, three crossings and a docked carrier."
+  },
+  {
+    "id": "harbor_canal_fleet",
+    "name": "Harbor Canal · fleet",
+    "desc": "Two banks, three crossings and a docked carrier."
+  },
+  {
+    "id": "harbor_canal_red",
+    "name": "Harbor Canal · red",
+    "desc": "Two banks, three crossings and a docked carrier."
+  },
+  {
     "id": "road_jump_lab",
     "name": "Road & Jump Lab",
     "desc": "Installed server environment"

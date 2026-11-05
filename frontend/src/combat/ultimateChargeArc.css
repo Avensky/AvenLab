@@ -8,3 +8,10 @@
 
 .barrage-action .cooldown-clock {position:relative;display:inline-grid;place-items:center;}
 .barrage-action .ultimate-charge-arc {position:absolute;inset:0;}
+
+.portrait-charge .charge-inner{stroke:color-mix(in srgb,var(--app-accent) 52%,#abb2ba);}
+@media (prefers-reduced-motion:no-preference) {
+  html:not([data-reduced-motion=true]) .portrait-charge :is(.charge-inner,.charge-outer){transition:stroke-dashoffset .12s linear;}
+}
+.future-identity[data-ultimate-active=true] .portrait-charge {filter:drop-shadow(0 0 2px var(--app-accent));}
+.future-identity[data-ultimate-active=true] .portrait-charge :is(.charge-inner,.charge-outer){stroke-dashoffset:0;}

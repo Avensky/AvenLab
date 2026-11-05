@@ -1,11 +1,11 @@
-import { useMotionView } from "../../store/session/networkViews";
+import { useMotionView, type MotionState } from "../../store/session/networkViews";
 import {Html} from '@react-three/drei';
 import {useFrame} from '@react-three/fiber';
 import {memo,useMemo,useRef} from 'react';
 import type {Group,MeshBasicMaterial} from 'three';
 import {useVehiclePhysicsInterpolator} from '../../hooks/usePhysicsInterpolator';
 import {useNetworkStore,type CtfFlag} from '../../store/session/networkStore';
-import {minimapContacts} from '../../ui/Minimap/minimapContacts';
+import {visibleCarrier} from '../../ui/Minimap/minimapContacts';
 import {CARRIED_FLAG_SCALE,CARRIED_FLAG_ROTATION,updateCarriedFlagPose} from './carriedFlagVisual';
 import {getCtfCaptureObjective} from './ctfObjective';
 import {CtfFlagCloth} from './CtfFlagCloth';
@@ -64,23 +64,40 @@ function BaseZone({flag,color,captureState}:{flag:CtfFlag;color:string;captureSt
 
 /** Authored base/drop positions are authoritative. Carried flags follow the
  * rendered vehicle; neither a mesh nor a label sends pickup/capture requests. */
+function markerSelector() {
+ let rows: CtfFlag[] = [];
+ const samePoint=(a:number[],b:number[])=>a[0]===b[0]&&a[1]===b[1]&&a[2]===b[2];
+ return (state:MotionState) => {
+  const flags=state.snapshot?.match_state?.flags;
+  if(!flags?.length){if(rows.length) rows=[];return rows;}
+  let next=rows;
+  for(let i=0;i<flags.length;i++){
+   const flag=flags[i], old=rows[i];
+   const carried=flag.status==='carried';
+   const position=carried?flag.base:flag.position;
+   const carrier=carried && visibleCarrier(state.snapshot,state.playerId,flag.carrier)?flag.carrier:null;
+   const remaining=Math.ceil(flag.return_remaining_s??0);
+   if(old && old.team===flag.team && old.status===flag.status && old.carrier===carrier &&
+      old.return_remaining_s===remaining && samePoint(old.base,flag.base) && samePoint(old.position,position))continue;
+   if(next===rows)next=rows.slice();
+   next[i]={...flag,carrier,position,return_remaining_s:remaining};
+  }
+  if(next.length!==flags.length)next=next.slice(0,flags.length);
+  return rows=next;
+ };
+}
 export function CtfFlagMarkers(){
- const flagsKey=useMotionView(s=>JSON.stringify(s.snapshot?.match_state?.flags.map(flag=>({...flag,return_remaining_s:Math.ceil(flag.return_remaining_s??0),position:flag.status==='carried'?flag.base:flag.position}))??[]));
- const visibleKey=useMotionView(s=>{
-  if (!s.snapshot?.match_state?.flags.some(flag=>flag.status==='carried')) return '';
-  return JSON.stringify([s.playerId,...minimapContacts(s.snapshot,s.playerId).map(contact=>contact.id)]);
- });
+ const selectFlags=useMemo(markerSelector,[]);
+ const flags=useMotionView(selectFlags);
  const captureKey=useMotionView(s=>{
   const match=s.snapshot?.match_state,objective=match?getCtfCaptureObjective(match,s.getMe()??undefined):null;
   return objective?`${objective.team}:${objective.state}`:'';
  });
- const flags=useMemo(()=>JSON.parse(flagsKey) as CtfFlag[],[flagsKey]);
- const visibleCarriers=useMemo(()=>new Set(visibleKey ? JSON.parse(visibleKey) as string[] : []),[visibleKey]);
  return <group name="ctf-flag-markers">{flags.map(flag=>{
   const color=flag.team==='red'?MATCH_TEAM_COLORS.red.glow:'#4bc9ff';
   return <group key={flag.team}>
    <BaseZone flag={flag} color={color} captureState={captureKey.startsWith(flag.team+':')?captureKey.slice(flag.team.length+1):''}/>
-   {flag.status==='carried' ? flag.carrier&&visibleCarriers.has(flag.carrier)&&<CarriedFlag carrier={flag.carrier} color={color}/> : <group position={[flag.position[0],flag.position[1]+1.1,flag.position[2]]}>
+   {flag.status==='carried' ? flag.carrier&&<CarriedFlag carrier={flag.carrier} color={color}/> : <group position={[flag.position[0],flag.position[1]+1.1,flag.position[2]]}>
     <FlagArtwork color={color}/>
     <Html position={[0,2.8,0]} center distanceFactor={65} style={{pointerEvents:'none',color,whiteSpace:'nowrap',font:'bold 11px system-ui',textShadow:'0 1px 3px #000'}}>{flag.team.toUpperCase()} FLAG · {flag.status.toUpperCase()}{flag.status==='dropped' && flag.return_remaining_s>0 ? ` · ${flag.return_remaining_s}s` : ''}</Html>
    </group>}

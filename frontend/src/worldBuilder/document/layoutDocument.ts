@@ -1,3 +1,4 @@
+import { harborPieces } from "../generation/harborPieces.ts";
 import { streetProps } from "../props/streetPropCatalog.ts";
 import { validateDestruction, type DestructionSettings } from "../../combat/destruction.ts";
 import {
@@ -99,6 +100,7 @@ const box = (
 });
 export const PIECES: Piece[] = [
   ...EXTRA_PIECES,
+  ...harborPieces,
   ...streetProps,
   ...VEHICLE_ASSETS.map((a) => ({
     id: `vehicle-${a.id}`,

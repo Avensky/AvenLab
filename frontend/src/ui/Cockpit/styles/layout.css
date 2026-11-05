@@ -11,10 +11,11 @@
   --hud-shifter-size: 112px;
   --hud-knob-size: 42px;
 }
+.driving-hud { --drive-sill: max(8px, env(safe-area-inset-bottom)); }
 .drive-dock {
   position: absolute;
   right: max(10px, env(safe-area-inset-right));
-  bottom: max(8px, env(safe-area-inset-bottom));
+  bottom: var(--drive-sill, max(8px, env(safe-area-inset-bottom)));
   width: var(--console-width);
   max-width: calc(100dvw - 20px);
   display: flex;

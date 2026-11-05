@@ -39,6 +39,7 @@ export function FuturisticHUD() {
   // Only these readings are consumed; resourceReadings deliberately needs no pose.
   const readings = resourceReadings(data);
   const charge = readings.ultimate;
+  const ultimateActive = useMotionView(s => (s.getMe()?.barrage?.ticks_left ?? 0) > 0);
   const chargeText = percent(charge);
   const heat = engineHeatBand(readings.temperature, data.config);
   const health = data.signal === 'live' && me.hp !== null && me.max !== null ? {hp: me.hp, max: me.max, defeated: me.defeated, protection: me.protection} : null;
@@ -46,14 +47,14 @@ export function FuturisticHUD() {
   const park = data.signal === 'live' && data.cockpitMask !== null && Boolean(data.cockpitMask & 64) && ((data.cockpitMask >>> 7) & 15) === 8;
   const speed = readings.speed === null ? '—' : Math.round(readings.speed / (units === 'mph' ? 1.609344 : 1));
   return <><section className="futuristic-hud" aria-label="Futuristic vehicle instruments" data-signal={data.signal} data-defeated={health?.defeated ?? false}>
-    <div className="future-identity" data-charged={charge===1}>
+    <div className="future-identity" data-charged={charge===1} data-ultimate-active={ultimateActive}>
       <HeroPortrait hero={me.hero} appearance={appearance} cacheOnly showStyleStatus={false} />
       <BarrageTrigger/>
       <div className="ultimate-gauge" role="meter" aria-label="Ultimate charge" title="Ultimate charge"
         aria-valuemin={0} aria-valuemax={100} aria-valuenow={charge===null?undefined:Math.round(charge*100)}
-        aria-valuetext={chargeText}>
+        aria-valuetext={ultimateActive ? `Ultimate active · ${chargeText}` : chargeText}>
         <UltimateChargeArc shape="portrait" fraction={charge} />
-        <strong>{chargeText}</strong>
+        <strong>{ultimateActive ? "ACTIVE" : chargeText}</strong>
       </div>
     </div>
     <div className="future-resources">

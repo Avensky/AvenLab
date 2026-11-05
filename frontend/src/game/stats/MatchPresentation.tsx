@@ -43,7 +43,7 @@ export const MatchTeamComposition=memo(function MatchTeamComposition({players,se
    const slots=side===null?rows:Array.from({length:teamSize},(_,index)=>rows[index]);
    return <section className="scoreboard-team match-composition-team" data-team={side??'unknown'} key={side??'unknown'} aria-label={`${label(side)} composition`}>
     <h3>{label(side)}<span>{rows.length}{side===null?'':` / ${teamSize}`}</span></h3>
-    <div className="match-composition-row" data-controller-row data-controller-columns={compact?teamSize:2} style={compact?{gridTemplateColumns:`repeat(${teamSize},minmax(132px,1fr))`,minWidth:teamSize*132+(teamSize-1)*4}:undefined}>
+    <div className="match-composition-row" data-controller-row data-controller-columns={compact?teamSize:2} style={compact?{gridTemplateColumns:`repeat(${teamSize},minmax(0,1fr))`}:undefined}>
      {slots.map((player,index)=>{
       if(!player)return <div className="match-composition-seat match-composition-empty" key={`open:${index}`} aria-label={`${label(side)} open slot`}><span aria-hidden="true">+</span><strong>OPEN SLOT</strong></div>;
       const hero=HEROES.find(hero=>hero.id===player.hero),heroLabel=player.heroHidden?'MYSTERY HERO':hero?.name??'AWAITING HERO';

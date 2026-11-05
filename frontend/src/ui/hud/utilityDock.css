@@ -579,3 +579,16 @@
   .driving-hud[data-futuristic=true] .hud-utilities[data-map-open=true][data-panels-open=true] {--utility-map-size:clamp(60px,21vw,78px);}
 }
 .mission-summary button span {min-width:0;overflow:hidden;text-overflow:ellipsis;}
+
+@media (forced-colors:none) {
+  html:not([data-high-contrast=true]) .driving-hud[data-futuristic=true][data-low-detail=false] .hud-minimap:not(.map-full) .map-viewport::after {
+    background:repeating-conic-gradient(from -2deg,color-mix(in srgb,var(--app-accent) 62%,#929b9f) 0deg 4deg,transparent 4deg 90deg),
+      repeating-conic-gradient(from -1deg,#d3dde4a6 0deg 1.5deg,transparent 1.5deg 30deg);
+  }
+}
+.harbor-chart-key{display:block;text-align:center;font:600 10px/1.3 system-ui;color:var(--app-muted);}
+@media (forced-colors:none){
+  html:not([data-high-contrast=true]) .driving-hud[data-futuristic=true] .utility-map-row :is(.map-toggle,.utility-toggle) svg{
+    color:color-mix(in srgb,var(--app-accent) 27%,#d9e1e5);
+  }
+}

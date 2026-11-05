@@ -130,6 +130,7 @@ interface WorldState {
   activeBlock: BlockColliderFile | null;
   setActiveBlock: (block: BlockColliderFile | null) => void;
 
+  sectorChart:string;
   map: MapSnapshot | null;
   setMap: (map: MapSnapshot | null) => void;
 }
@@ -165,5 +166,6 @@ export const useWorldStore = create<WorldState>((set) => ({
   setActiveBlock: (block) => set({ activeBlock: block }),
 
   map: null,
-  setMap: (map) => set({ map }),
+  sectorChart:"0000000000000000",
+  setMap: (map) => set(s=>({ map, sectorChart:map && map.map_id===s.map?.map_id?s.sectorChart:"0000000000000000" })),
 }));

@@ -31,17 +31,23 @@ pub struct WorldRuntime {
     round_players: HashMap<String, RoundPlayerSnapshot>,
     round_completion: Option<CompletedRound>,
     completion_captured: bool,
+    harbor_intel: crate::harbor::HarborIntel,
 }
 impl WorldRuntime {
     pub fn new(id: usize, map: &str) -> Result<Self, String> {
-        let mut physics = PhysicsWorld::new();
-        physics.select_map(map).map_err(|error| error.to_string())?;
+        let physics=if crate::harbor::VARIANTS.contains(&map) {
+            PhysicsWorld::for_harbor_room(id,map).map_err(|e|e.to_string())?
+        } else {
+            let mut physics=PhysicsWorld::new();
+            physics.select_map(map).map_err(|e|e.to_string())?;
+            physics
+        };
         let mut game = SharedGameState::new();
         game.room_id = id;
         Ok(Self::from_parts(game, physics))
     }
     pub fn from_parts(game: SharedGameState, physics: PhysicsWorld) -> Self {
-        Self { game, physics, round: None, round_players: HashMap::new(), round_completion: None, completion_captured: false }
+        Self { game, physics, round: None, round_players: HashMap::new(), round_completion: None, completion_captured: false, harbor_intel: Default::default() }
     }
     /// Server admission owns eligibility and calls start only after its roster gate.
     pub fn configure_round(&mut self, mode: crate::alpha::Mode, training: bool) -> Result<(),String> {
@@ -126,6 +132,7 @@ impl WorldRuntime {
     }
     /// No transport remains for a leased practice body. Clear all held intent.
     pub fn detach(&mut self,id:&str){
+        self.harbor_intel.forget_connection(id);
         self.game.unregister_client(id);
         self.physics.suspend_shields(id);
         if let Some(e)=self.game.entities.get_mut(id){e.last_packet=None;}
@@ -142,6 +149,7 @@ impl WorldRuntime {
         self.game.register_client(new.into(),connection.tx.clone(),connection.frame.clone(),connection.input.clone());true
     }
     pub fn leave(&mut self, id: &str) {
+        self.harbor_intel.forget_connection(id);
         if self.round.as_ref().is_some_and(|r|r.phase==crate::ctf::CtfPhase::Running){self.capture_round_player(id);}
         if let Some(round)=&mut self.round{round.remove_player(id);}
         self.physics.despawn_vehicle_for_player(id);
@@ -212,7 +220,10 @@ impl WorldRuntime {
         if (self.game.tick+1)%crate::snapshot_wire::AUX_DIVISOR!=0 {debug=DebugFlags::NONE;}
         self.physics.set_debug_flags(debug);
         let physics_started = std::time::Instant::now();
+        self.physics.move_drawbridges(self.game.tick as u64 + 1);
         self.physics.step(SIMULATION_DT);
+        self.harbor_intel.tick(&self.game,&self.physics);
+        self.physics.advance_field_service(SIMULATION_DT, |id| self.game.clients.contains_key(id));
         self.physics.advance_guard_boosts(SIMULATION_DT, |id| self.game.clients.contains_key(id));
         if self.round.as_ref().is_none_or(|r| r.phase==crate::ctf::CtfPhase::Running) {
             self.physics.advance_barrages(|id|self.game.clients.contains_key(id));

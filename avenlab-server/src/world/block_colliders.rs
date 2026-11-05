@@ -575,7 +575,7 @@ mod authored_map_tests {
         assert_eq!(file.initial_chunks().into_iter().filter(|&(x,z)|file.includes_authored_tile(x,z)).count(),1);
         let water:Vec<_>=layout.objects.iter().filter(|o|o.piece=="coastal-water-visual").collect();
         assert!(!water.is_empty() && water.iter().all(|o|!o.solid && o.parts.iter().all(|p|!p.solid)));
-        assert!(layout.objects.iter().any(|o|o.piece=="fleet-static-deck" && o.solid));
+        assert!(layout.objects.iter().any(|o|o.piece=="big-e-docked" && o.solid));
         assert!(layout.objects.iter().any(|o|o.piece=="service-center"));
     }
     #[test]

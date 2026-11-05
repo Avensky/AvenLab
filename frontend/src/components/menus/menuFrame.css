@@ -28,8 +28,8 @@ html[data-ui-theme] .menu-frame[role=dialog]{background:var(--app-panel);color:v
 .menu-frame-header[data-team-heading]{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);column-gap:16px}
 .menu-header-team{align-self:stretch;display:flex;align-items:center;justify-content:center;gap:.28em;white-space:nowrap;color:var(--team-blue,#69bbff);font-family:Bahnschrift,"Arial Narrow",system-ui,sans-serif;font-size:clamp(26px,3.2vw,48px);font-style:italic;font-weight:900;line-height:1;letter-spacing:.06em}
 .menu-header-team[data-team=red]{color:var(--team-red,#ff6570)}
-.menu-header-team strong{font:inherit}
-.menu-header-team>span{font-size:.3em;font-style:normal;font-weight:800;letter-spacing:.12em}
+.menu-frame-header .menu-header-team{align-self:center;align-items:center;padding:0;margin:0}
+.menu-frame-header .menu-header-team> :is(strong,span){display:block;font:inherit;line-height:1;letter-spacing:inherit;margin:0}
 @media(max-width:1100px){.menu-frame-header[data-team-heading] .alpha-progress{display:none}}
 @media(max-width:480px){
  .menu-frame-header[data-team-heading]{column-gap:8px}
