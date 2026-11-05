@@ -85,58 +85,63 @@
     "blue": [
       {
         "chunk": [
-          1,
-          2
+          0,
+          0
         ],
         "local": [
-          0,
-          65
+          738.7248,
+          393.4487
         ],
-        "yaw": 0
+        "surface_y": 3.32,
+        "yaw": -1.5707963267948966
       },
       {
         "chunk": [
-          1,
-          2
+          0,
+          0
         ],
         "local": [
-          0,
-          56
+          738.7248,
+          401.4487
         ],
-        "yaw": 0
+        "surface_y": 3.32,
+        "yaw": -1.5707963267948966
       },
       {
         "chunk": [
-          1,
-          2
+          0,
+          0
         ],
         "local": [
-          0,
-          47
+          738.7248,
+          409.4487
         ],
-        "yaw": 0
+        "surface_y": 3.32,
+        "yaw": -1.5707963267948966
       },
       {
         "chunk": [
-          1,
-          2
+          0,
+          0
         ],
         "local": [
-          0,
-          38
+          738.7248,
+          417.4487
         ],
-        "yaw": 0
+        "surface_y": 3.32,
+        "yaw": -1.5707963267948966
       },
       {
         "chunk": [
-          1,
-          2
+          0,
+          0
         ],
         "local": [
-          0,
-          29
+          738.7248,
+          425.4487
         ],
-        "yaw": 0
+        "surface_y": 3.32,
+        "yaw": -1.5707963267948966
       }
     ]
   },
@@ -1609,42 +1614,6 @@
         ]
       },
       {
-        "id": "carrier-service",
-        "name": "Deck refuel and repair",
-        "piece": "service-center",
-        "position": [
-          742.7248,
-          3.32,
-          480.4487
-        ],
-        "size": [
-          22,
-          4,
-          27
-        ],
-        "yaw": 0,
-        "color": "#83a38e",
-        "locked": true,
-        "solid": false,
-        "parts": [
-          {
-            "shape": "box",
-            "position": [
-              0,
-              0.005,
-              0
-            ],
-            "size": [
-              1,
-              0.01,
-              1
-            ],
-            "color": "#637e76",
-            "solid": false
-          }
-        ]
-      },
-      {
         "id": "big-e-original",
         "name": "Big E · docked flight deck",
         "piece": "big-e-docked",
@@ -1974,6 +1943,175 @@
         ]
       },
       {
+        "yaw": 0,
+        "locked": false,
+        "solid": true,
+        "id": "home-apron-east",
+        "piece": "coastal-pier",
+        "name": "Dock garage apron",
+        "position": [
+          652.7248,
+          -0.6800000000000002,
+          423.4487
+        ],
+        "size": [
+          32,
+          1,
+          36
+        ],
+        "color": "#68757c",
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "yaw": 0,
+        "locked": false,
+        "solid": true,
+        "id": "home-gas-east",
+        "piece": "service-center",
+        "name": "Dock home garage",
+        "position": [
+          652.7248,
+          0.31999999999999984,
+          420.4487
+        ],
+        "size": [
+          18,
+          6,
+          20
+        ],
+        "color": "#8ca480",
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              -0.48,
+              0.5,
+              0
+            ],
+            "size": [
+              0.04,
+              1,
+              1
+            ]
+          },
+          {
+            "shape": "box",
+            "position": [
+              0.48,
+              0.5,
+              0
+            ],
+            "size": [
+              0.04,
+              1,
+              1
+            ]
+          },
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              -0.48
+            ],
+            "size": [
+              1,
+              1,
+              0.04
+            ]
+          },
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.97,
+              0
+            ],
+            "size": [
+              1,
+              0.06,
+              1
+            ]
+          },
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.004,
+              0
+            ],
+            "size": [
+              0.6,
+              0.008,
+              0.65
+            ],
+            "color": "#82b3a0",
+            "solid": false
+          },
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.87,
+              0.48
+            ],
+            "size": [
+              0.7,
+              0.12,
+              0.025
+            ]
+          }
+        ]
+      },
+      {
+        "yaw": 0,
+        "locked": false,
+        "solid": false,
+        "id": "home-flag-blue",
+        "piece": "ctf-home",
+        "name": "Dock flag stand",
+        "position": [
+          637.7248,
+          0.33999999999999986,
+          439.4487
+        ],
+        "size": [
+          8,
+          0.025,
+          8
+        ],
+        "color": "#59616b",
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
         "id": "perimeter-rail-1",
         "name": "Highway guardrail",
         "piece": "highway-guardrail",
@@ -2106,7 +2244,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -2246,7 +2384,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -2386,7 +2524,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -2526,7 +2664,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -2666,7 +2804,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -2806,7 +2944,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -2946,7 +3084,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -3086,7 +3224,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -3226,7 +3364,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -3366,7 +3504,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -3506,7 +3644,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -3646,7 +3784,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -3786,7 +3924,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -3926,7 +4064,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -4066,7 +4204,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -4206,7 +4344,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -4346,7 +4484,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -4486,7 +4624,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -4626,7 +4764,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -4766,7 +4904,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -4906,7 +5044,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -5046,7 +5184,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -5186,7 +5324,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -5326,7 +5464,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -5466,7 +5604,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -5606,7 +5744,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -5746,7 +5884,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -5886,7 +6024,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -6026,7 +6164,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -6166,7 +6304,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -6306,7 +6444,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -6446,7 +6584,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -6586,7 +6724,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -6726,7 +6864,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -6866,7 +7004,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -7006,7 +7144,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -7146,7 +7284,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -7286,7 +7424,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -7426,7 +7564,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -7566,7 +7704,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -7706,7 +7844,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -7846,7 +7984,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -7986,7 +8124,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -8126,7 +8264,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -8266,7 +8404,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -8406,7 +8544,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -8546,7 +8684,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -8686,7 +8824,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -8826,7 +8964,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -8966,7 +9104,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -9106,7 +9244,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -9246,7 +9384,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -9386,7 +9524,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -9526,7 +9664,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -9666,7 +9804,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -9806,7 +9944,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -9946,7 +10084,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -10086,7 +10224,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -10226,7 +10364,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -10366,7 +10504,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -10506,7 +10644,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -10646,7 +10784,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -10786,7 +10924,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -10926,7 +11064,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -11066,7 +11204,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -11206,7 +11344,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -11346,7 +11484,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -11486,7 +11624,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -11626,7 +11764,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -11766,7 +11904,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -11906,7 +12044,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -12046,7 +12184,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -12186,7 +12324,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -12326,7 +12464,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -12466,7 +12604,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -12606,7 +12744,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -12746,7 +12884,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -12886,7 +13024,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -13026,7 +13164,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -13166,7 +13304,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -13306,7 +13444,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -13446,7 +13584,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -13586,7 +13724,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -13726,7 +13864,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -13866,7 +14004,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -14006,7 +14144,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -14146,7 +14284,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -14286,7 +14424,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -14426,7 +14564,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -14566,7 +14704,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -14706,7 +14844,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -14846,7 +14984,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -14986,7 +15124,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -15126,7 +15264,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -15266,7 +15404,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -15406,7 +15544,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -15546,7 +15684,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -15686,7 +15824,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -15826,7 +15964,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -15966,7 +16104,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -16106,7 +16244,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -16246,7 +16384,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -16386,7 +16524,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -16526,7 +16664,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -16666,7 +16804,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -16806,7 +16944,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -16946,7 +17084,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -17086,7 +17224,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -17226,7 +17364,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -17366,7 +17504,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -17506,7 +17644,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -17646,7 +17784,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -17786,7 +17924,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -17926,7 +18064,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -18066,7 +18204,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -18206,7 +18344,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -18346,7 +18484,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -18486,7 +18624,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -18626,7 +18764,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -18766,7 +18904,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -18906,7 +19044,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -19046,7 +19184,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -19186,7 +19324,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -19326,7 +19464,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,
@@ -19466,7 +19604,7 @@
         ],
         "destruction": {
           "enabled": true,
-          "hp": 12,
+          "hp": 5,
           "smallArms": 1,
           "cannon": 1,
           "bomb": 1,

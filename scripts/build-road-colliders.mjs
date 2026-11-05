@@ -45,6 +45,6 @@ export function generateRoadCatalog() {
 }
 if(process.argv[1]===fileURLToPath(import.meta.url)){
   const bytes=JSON.stringify(generateRoadCatalog())+'\n',out=path.join(root,'avenlab-server/src/assets/roads/road-colliders.json');
-  if(process.argv.includes('--check')){if(fs.readFileSync(out,'utf8')!==bytes)throw Error('Road catalog is stale. Run node scripts/build-road-colliders.mjs');}
+  if(process.argv.includes('--check')){if(fs.readFileSync(out,'utf8').replace(/\r\n/g,'\n')!==bytes)throw Error('Road catalog is stale. Run node scripts/build-road-colliders.mjs');}
   else fs.writeFileSync(out,bytes);
 }

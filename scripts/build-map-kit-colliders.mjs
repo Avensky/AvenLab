@@ -1,4 +1,5 @@
 // Bake the dedicated physics GLBs. The server can run without a frontend file tree.
+import { isDeepStrictEqual } from "node:util";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { kitAssets } from "../frontend/src/worldBuilder/mapKit/catalog.ts";
@@ -88,7 +89,7 @@ function emit(path, value) {
   const file = new URL(path, import.meta.url),
     json = JSON.stringify(value) + "\n";
   if (process.argv.includes("--check")) {
-    if (fs.readFileSync(file, "utf8") !== json)
+    if (!isDeepStrictEqual(JSON.parse(fs.readFileSync(file, "utf8")), JSON.parse(json)))
       throw Error(
         "Stale " + path + ". Run node scripts/build-map-kit-colliders.mjs",
       );

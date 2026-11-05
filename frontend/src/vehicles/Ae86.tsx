@@ -1,3 +1,4 @@
+import { measuredWheelHub, restorePartTransform } from "./tools/vehicleVisualRig";
 import { useLiveAppearance } from "./cosmetics/useLiveAppearance";
 import { applyHeadlightBeam } from "./tools/headlightBeam";
 import { useVehicleVisualAlignment } from "../hooks/useVehicleVisualAlignment";
@@ -148,13 +149,15 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
   }, [scene]);
 
   const wheels = useMemo(() => {
-    return [
-      clonesByGroup.WHEEL_FL?.[PARTS.wheels.fl] ?? null,
-      clonesByGroup.WHEEL_FR?.[PARTS.wheels.fr] ?? null,
-      clonesByGroup.WHEEL_RL?.[PARTS.wheels.rl] ?? null,
-      clonesByGroup.WHEEL_RR?.[PARTS.wheels.rr] ?? null,
-    ];
-  }, [clonesByGroup]);
+    return (["fl", "fr", "rl", "rr"] as const).map(corner => {
+      const name = PARTS.wheels[corner];
+      const part = clonesByGroup["WHEEL_" + corner.toUpperCase()]?.[name];
+      const source = scene.getObjectByName(name);
+      if (!part || !source) return null;
+      restorePartTransform(part, source);
+      return measuredWheelHub(part, [part]).carrier;
+    });
+  }, [clonesByGroup, scene]);
 
   useVehicleVisualAlignment(
     "ae86",

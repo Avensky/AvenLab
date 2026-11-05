@@ -3,6 +3,7 @@ import { DrivingIgnition } from './Cockpit/DrivingIgnition';
 import { FuturisticHUD } from "./FuturisticHUD/FuturisticHUD";
 import { TeammateHUD } from "./FuturisticHUD/TeammateHUD";
 import { CenterCombatDock } from "./FuturisticHUD/CenterCombatDock";
+import {CombatNotices} from "../combat/CombatNotices";
 import {VehicleHealthHUD} from '../combat/VehicleHealthHUD';
 import {ActiveEffectsBar} from '../combat/ActiveEffectsBar';
 import {useCombatStore} from '../combat/combatStore';
@@ -110,6 +111,7 @@ export function DrivingHUD() {
         <WeaponSelector />
         {groups.futuristic && <FuturisticHUD />}
       </CenterCombatDock>
+      <CombatNotices />
       <VehicleHealthHUD />
       <ControlsPanel />
       <InspectionPanel />

@@ -1,3 +1,4 @@
+import {announceCombat} from './combatNoticeStore';
 import { useMotionView } from "../store/session/networkViews";
 import {BarrageTrigger} from './BarrageTrigger';
 import {ReviveAction} from './ReviveAction';
@@ -68,5 +69,8 @@ export function VehicleAbilityActions(){
    onHold={held=>{if(held)requestWeaponFire();combatIntent.fire=held;}} onClick={e=>{if(e.detail===0)requestWeaponFire();}}>
    <SelectedCooldownClock><AttackIcon kind="fire"/></SelectedCooldownClock><span>{rescue?`SPRAY ${pressure??'—'}/10`:'FIRE'}</span></HoldButton>});
  }
- return <div className="turret-actions" aria-label="Vehicle abilities">{actions.map(a=><div key={vehicle+':'+a.id} className={`turret-orbit-${a.id}`}>{a.face}</div>)}</div>;
+ return <div className="turret-actions" aria-label="Vehicle abilities">{actions.map(a=><div key={vehicle+':'+a.id} className={`turret-orbit-${a.id}`} onPointerDown={event=>{
+   const reason=event.currentTarget.querySelector<HTMLButtonElement>('button:disabled[data-resource-warning]')?.dataset.resourceWarning;
+   if(reason && canDrive())announceCombat(reason);
+ }}>{a.face}</div>)}</div>;
 }

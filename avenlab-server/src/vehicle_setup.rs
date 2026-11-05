@@ -335,6 +335,12 @@ pub const CAMARO: VehicleConfig = VehicleConfig {
     rear_track_width: 1.60,
     wheel_radius: 0.36,
 
+    // Extra travel and static sag preserve ride height while letting the
+    // driven rear axle load up under acceleration.
+    suspension_max_length: 0.165,
+    suspension_sag: 0.110,
+    suspension_damping_ratio: 0.86,
+
     // Heavier anti-roll tuning
     arb_front: 18_000.0,
     arb_rear: 14_000.0,

@@ -3,7 +3,7 @@ import {create} from 'zustand';
 import {requestSocial} from '../net/socialClient';
 import {useNetworkStore,type PhysicsEntitySnapshot,type PhysicsSnapshot} from '../store/session/networkStore';
 import {useSocialStore,type SocialView} from '../store/social/socialStore';
-import {useChatStore} from '../store/chat/chatStore';
+import {announceCombat} from './combatNoticeStore';
 import {canDrive} from '../controls/inputRouting';
 
 export const REVIVE_RANGE_M=8;
@@ -36,10 +36,10 @@ export async function requestNearestRevive():Promise<boolean>{
  try{
   await requestSocial('vehicle_revive',{target:target.id});
   if(actorKey()!==key)return false;
-  useChatStore.getState().notify(target.health?.disabled_reason==='fuel'?'Teammate refueled and recovered.':'Teammate revived.');
+  announceCombat(target.health?.disabled_reason==='fuel'?'Teammate refueled and recovered.':'Teammate revived.', 'buff');
   return true;
  }catch(error){
-  if(actorKey()===key)useChatStore.getState().notify(error instanceof Error?error.message:'Recovery request failed. Try again.');
+  if(actorKey()===key)announceCombat(error instanceof Error?error.message:'Recovery request failed. Try again.');
   return false;
  }finally{
   if(useReviveRequestStore.getState().key===key)useReviveRequestStore.setState({key:null,busy:false});

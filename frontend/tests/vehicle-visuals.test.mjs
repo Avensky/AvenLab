@@ -5,7 +5,7 @@ import { Box3, BoxGeometry, CylinderGeometry, Group, Mesh, MeshStandardMaterial,
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { CAMARO_GLASS_PARTS, prepareVehicleVisual, updateVehicleGlass } from '../src/vehicles/tools/vehicleMaterials.ts';
 import { createSupraVisualRig, SUPRA_WHEEL_CORNERS } from '../src/vehicles/tools/supraVisualRig.ts';
-import { applyBackendWheelPose } from '../src/vehicles/tools/vehicleVisualRig.ts';
+import { measuredWheelHub, restorePartTransform, applyBackendWheelPose } from '../src/vehicles/tools/vehicleVisualRig.ts';
 import { measureVisualReference, solveVisualAlignment } from '../src/vehicles/tools/visualAlignment.ts';
 
 const near = (actual, expected, tolerance = 1e-6) => assert.ok(Math.abs(actual - expected) < tolerance, `${actual} differs from ${expected}`);
@@ -151,4 +151,26 @@ test('current Supra GLB recovers four complete wheels and a measured chassis ali
   assert.equal(rig.glassMaterials.size > 0, true);
   assert.ok(new Box3().setFromObject(rig.root).getSize(new Vector3()).length() < 10, 'import scale must remain in metres');
   rig.dispose();
+});
+
+test('off-center tire spins about its measured axle while the caliper stays fixed', () => {
+  const parent = new Group();
+  parent.position.set(-2, 3, 4);
+  parent.rotation.y = Math.PI / 2;
+  const source = new Mesh(new CylinderGeometry(.34, .34, .17, 24).rotateZ(Math.PI / 2).translate(0, .08, -.045));
+  parent.add(source);
+  const tire = source.clone();
+  restorePartTransform(tire, source);
+  const center = new Box3().setFromObject(source, true).getCenter(new Vector3());
+  const caliper = new Group();
+  caliper.position.copy(center).add(new Vector3(.14, 0, 0));
+  const fixedPosition = caliper.position.clone();
+  const {carrier, spin} = measuredWheelHub(tire, [tire], [caliper]);
+  near(carrier.position.distanceTo(center), 0);
+  for (const angle of [0, Math.PI/2, Math.PI, 2*Math.PI]) {
+    spin.rotation.x = angle;
+    carrier.updateMatrixWorld(true);
+    near(new Box3().setFromObject(tire, true).getCenter(new Vector3()).distanceTo(center), 0);
+    near(caliper.getWorldPosition(new Vector3()).distanceTo(fixedPosition), 0);
+  }
 });

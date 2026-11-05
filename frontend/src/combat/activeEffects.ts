@@ -44,7 +44,7 @@ export function activeVehicleEffects(s:ReturnType<typeof readEffectSignals>):Act
  if(!recovering&&s.stun===0){
   if(s.charge>0)effects.push({id:'ram-charge',label:'RAM CHARGE',description:'Charge speed and impact bonus are active. Enemy contact can stun and knock back.',kind:'buff',nature:'offense',icon:'ram',remaining:s.charge,duration:3});
   else if(s.ram>0)effects.push({id:'ram-boost',label:'RAM BOOST',description:'The reduced speed bonus remains active. Heat, fuel and nitrous costs still apply.',kind:'buff',nature:'mobility',icon:'boost',remaining:Math.min(4,s.ram),duration:4});
-  else if(s.boost&&s.guard===0)effects.push({id:'nitrous',label:'NITROUS',description:'Nitrous is boosting engine output and consuming its reserve.',kind:'buff',nature:'mobility',icon:'boost',remaining:null,duration:null});
+  else if(s.boost&&s.guard===0)effects.push({id:'nitrous',label:'NITROUS',description:'Nitrous adds up to 35% engine output and 12% top speed. Grounded tires gain drive grip and roll damping while the reserve lasts.',kind:'buff',nature:'mobility',icon:'boost',remaining:null,duration:null});
  }
  if(s.resource&ResourceFlags.DAMAGED)effects.push({id:'engine-wear',label:'ENGINE WEAR',description:'Vehicle condition is reducing engine power. Visit a mechanic.',kind:'debuff',nature:'wear',icon:'repair',remaining:null,duration:null});
  return effects;

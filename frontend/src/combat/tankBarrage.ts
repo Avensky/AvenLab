@@ -1,4 +1,5 @@
 import type { MotionState } from "../store/session/networkViews";
+import {announceCombat} from "./combatNoticeStore";
 import { announceRadioEquipment } from "../store/radio/radioStore";
 import { canDrive } from '../controls/inputRouting';
 import { requestSocial } from '../net/socialClient';
@@ -14,6 +15,6 @@ export async function requestTankBarrage(){
   if(pending || !canDrive() || !barrageReady(useNetworkStore.getState()))return false;
   pending=true;
   try { await requestSocial('tank_barrage');announceRadioEquipment('BARRAGE ACTIVE · 5 S');return true; }
-  catch(error){announceRadioEquipment(error instanceof Error?error.message:'Barrage unavailable');return false;}
+  catch(error){announceCombat(error instanceof Error?error.message:'Barrage unavailable');return false;}
   finally {pending=false;}
 }

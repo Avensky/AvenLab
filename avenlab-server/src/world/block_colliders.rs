@@ -221,9 +221,19 @@ fn default_state() -> StructureState {
 
 
 impl BlockColliderFile {
+    pub fn authored_anchor(&self) -> [i32; 2] {
+        match self.layout { MapLayout::FixedGrid { origin, .. } => origin, MapLayout::Streamed { .. } => [0, 0] }
+    }
+
+    pub fn dock_flag(&self, team: &str) -> Option<&super::authored_layout::LayoutObject> {
+        let id = match team { "red" => "home-flag-red", "blue" => "home-flag-blue", _ => return None };
+        self.authored_layout.as_ref().filter(|layout| !layout.repeat)?
+            .objects.iter().find(|o| o.id == id && o.piece == "ctf-home")
+    }
+
     /// Non-repeating overlays are authored once relative to the grid origin.
     pub fn includes_authored_tile(&self, x:i32, z:i32) -> bool {
-        let anchor=match self.layout {MapLayout::FixedGrid{origin,..}=>origin,MapLayout::Streamed{..}=>[0,0]};
+        let anchor=self.authored_anchor();
         self.authored_layout.as_ref().is_some_and(|layout|layout.repeat || [x,z]==anchor)
     }
 

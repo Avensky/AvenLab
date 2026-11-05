@@ -152,6 +152,37 @@ mod tests {
     }
 
     #[test]
+    fn dock_teams_spawn_and_recover_on_deck_but_capture_at_the_shore() {
+        for id in ["streaming_endless_city", "harbor_canal_red", "harbor_canal_blue", "harbor_canal_fleet"] {
+            let mut world = PhysicsWorld::new();
+            world.select_map(id).unwrap();
+            let map = world.map_snapshot().unwrap();
+            let objects = &map.authored_layout.as_ref().unwrap().objects;
+            let bases = world.ctf_bases().unwrap();
+            let mut homes = 0;
+            for (index, team) in ["red", "blue"].iter().enumerate() {
+                let Some(flag) = objects.iter().find(|o| o.id == format!("home-flag-{team}")) else { continue };
+                homes += 1;
+                assert_eq!(bases[index], [flag.position[0], flag.position[1]+1., flag.position[2]]);
+                let bay = objects.iter().find(|o| o.id == if index == 0 {"home-gas-west"} else {"home-gas-east"}).unwrap();
+                assert_eq!(bay.piece, "service-center");
+                let car = world.spawn_vehicle_for_player(team.to_string(), [0.;3], "brz", team).unwrap();
+                let spawn = *world.bodies[car].translation();
+                assert!(spawn.y > flag.position[1]+2.);
+                world.bodies[car].set_translation(vector![flag.position[0],2.,flag.position[2]],true);
+                world.place_vehicle_after_recovery(team).unwrap();
+                let recovered = world.bodies[car].translation();
+                assert!(recovered.y > flag.position[1]+2. && (recovered.x-spawn.x).abs()<1.);
+                world.bodies[car].set_translation(vector![bay.position[0],bay.position[1]+1.,bay.position[2]],true);
+                world.change_vehicle_for_player(team, "ae86").unwrap();
+                assert!((world.bodies[car].translation().z-bay.position[2]-bay.size[2]*0.24).abs()<0.05);
+            }
+            assert!(homes >= 1);
+            assert_eq!(homes, objects.iter().filter(|o| o.piece == "big-e-docked").count());
+        }
+    }
+
+    #[test]
     fn discovery_is_team_private_persistent_and_idle_silent(){
         let mut room=WorldRuntime::new(11,VARIANTS[2]).unwrap();
         let mut receivers=Vec::new();

@@ -5,7 +5,7 @@ import {requestSocial} from '../net/socialClient';
 import {canDrive} from '../controls/inputRouting';
 import {useNetworkStore,type PhysicsEntitySnapshot} from '../store/session/networkStore';
 import {useSocialStore,type SocialView} from '../store/social/socialStore';
-import {useChatStore} from '../store/chat/chatStore';
+import {announceCombat} from './combatNoticeStore';
 import {GUARD_FUEL_LITERS,TANK_BARRIER_FUEL_LITERS,readGuardBoost,type GuardActionKind} from './guardBoostState';
 export {GUARD_DURATION_S,GUARD_COOLDOWN_S,GUARD_SHIELD_HP,GUARD_FUEL_LITERS,TANK_BARRIER_COOLDOWN_S,TANK_BARRIER_HP,readGuardBoost} from './guardBoostState';
 const finite=(value:unknown):value is number=>typeof value==='number'&&Number.isFinite(value);
@@ -58,7 +58,8 @@ async function requestGuardAction(kind:ShieldAction):Promise<boolean>{
  const network=useNetworkStore.getState(),me=network.getMe(),guard=readGuardBoost(me);
  const eligible=playerShield(network)===kind;
  const blocked=kind==='dive_shield'?diveShieldBlockReason(me,guard):kind==='tank_barrier'?tankBarrierBlockReason(me,guard):guardBoostBlockReason(me,guard);
- if(!canDrive()||!eligible||blocked)return false;
+ if(!canDrive()||!eligible)return false;
+ if(blocked){if(blocked!=='ACTIVE')announceCombat(blocked);return false;}
  const key=guardRequestKey(kind),pending=useGuardBoostRequestStore.getState();
  if(pending.busy&&pending.key===key)return false;
  useGuardBoostRequestStore.setState({key,busy:true});
@@ -66,7 +67,7 @@ async function requestGuardAction(kind:ShieldAction):Promise<boolean>{
   await requestSocial(kind==='brz_guard'?'dps_guard_boost':kind);
   return guardRequestKey(kind)===key;
  }catch(error){
-  if(guardRequestKey(kind)===key)useChatStore.getState().notify(error instanceof Error?error.message:'Shield request failed. Try again.');
+  if(guardRequestKey(kind)===key)announceCombat(error instanceof Error?error.message:'Shield request failed. Try again.');
   return false;
  }finally{
   if(useGuardBoostRequestStore.getState().key===key)useGuardBoostRequestStore.setState({key:null,busy:false});

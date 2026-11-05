@@ -39,9 +39,11 @@ step or client resource simulation is added.
   charging one impact repeatedly across contact substeps. Low condition reduces
   power/cooling; severe damage prevents propulsion. The scalar condition model
   does not simulate deformable bodywork or individual damaged components.
-- NOS is finite (10 seconds on road profiles), adds up to 25% engine-force
-  demand and consequently increases fuel/heat. It does not recharge automatically.
-  The tank has no fitted NOS. Requested boost and confirmed activity are separate.
+- Road NOS spends a finite reserve under throttle. It adds up to 35% engine
+  output and raises the configured top speed by 12%. Grounded wheels gain
+  14% longitudinal grip, and the chassis resists roll while at least two
+  tires carry load. Acceleration and braking act at the contact patches,
+  letting suspension travel show pitch naturally. The tank uses its ram reserve.
 - Empty fuel, critical heat and severe damage gate actual tire-solver propulsion.
   Braking/steering remain available. Changing vehicle preserves fuel fraction,
   condition, temperature, ultimate charge and remaining NOS fraction.

@@ -3,7 +3,7 @@ import type {Piece, LayoutPart, V3} from "../document/layoutDocument.ts";
 
 export const CARRIER = "big-e-docked";
 export const LIFT = "canal-lift";
-export const railDamage={enabled:true,hp:12,smallArms:1,cannon:1,bomb:1,rubble:"clear" as const};
+export const railDamage={enabled:true,hp:5,smallArms:1,cannon:1,bomb:1,rubble:"clear" as const};
 export const carrierSize = data.size as V3;
 export const harborPieces: Piece[] = [{
   id:CARRIER, label:"Big E · docked flight deck", category:"props",

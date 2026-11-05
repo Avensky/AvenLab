@@ -1,7 +1,7 @@
 import {create} from 'zustand';
 import {canDrive} from '../controls/inputRouting';
 import {requestSocial} from '../net/socialClient';
-import {useChatStore} from '../store/chat/chatStore';
+import {announceCombat} from './combatNoticeStore';
 import {useNetworkStore,type PhysicsEntitySnapshot,type PhysicsSnapshot} from '../store/session/networkStore';
 import {useSocialStore} from '../store/social/socialStore';
 import {isMechanicPlayer} from './reviveTargets';
@@ -38,6 +38,9 @@ export async function requestAssistedHealPack():Promise<boolean>{
  const now=performance.now(),network=useNetworkStore.getState(),me=network.getMe(),key=actorKey();
  if(key!==attemptKey){attemptKey=key;nextAttempt=0;}
  const age=now-(network.snapshot?.received_at_ms??-Infinity),cooldown=me?.support?.cooldown_s;
+ if(canDrive() && isMechanicPlayer() && age>=0 && age<=1000 && typeof me?.fuel==='number' && me.fuel<HEAL_PACK_FUEL_L){
+  announceCombat('Low fuel');return false;
+ }
  if(document.visibilityState==='hidden'||!canDrive()||!isMechanicPlayer()||!me||age<0||age>1000||cooldown===undefined||!Number.isFinite(cooldown)||cooldown!==0||typeof me.fuel!=="number"||!Number.isFinite(me.fuel)||me.fuel<HEAL_PACK_FUEL_L||now<nextAttempt||!nearestHealPackTarget(network.snapshot,network.playerId))return false;
  if(useHealPackRequestStore.getState().key===key&&useHealPackRequestStore.getState().busy)return false;
  nextAttempt=now+250;
@@ -48,7 +51,7 @@ export async function requestAssistedHealPack():Promise<boolean>{
   nextAttempt=Math.max(nextAttempt,now+HEAL_PACK_COOLDOWN_S*1000);
   return true;
  }catch(error){
-  if(actorKey()===key&&performance.now()-lastNoticeAt>1500){lastNoticeAt=performance.now();useChatStore.getState().notify(error instanceof Error?error.message:'Health pack could not launch. Move closer or clear the route.');}
+  if(actorKey()===key&&performance.now()-lastNoticeAt>1500){lastNoticeAt=performance.now();announceCombat(error instanceof Error?error.message:'Health pack could not launch. Move closer or clear the route.');}
   return false;
  }finally{
   if(useHealPackRequestStore.getState().key===key)useHealPackRequestStore.setState({key:null,busy:false});

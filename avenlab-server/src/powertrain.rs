@@ -22,6 +22,9 @@ pub const BLINK_STRESS: u16 = 128;
 /// Passive charge alone fills in eight minutes of active server simulation.
 pub const PASSIVE_ULTIMATE_SECONDS: f32 = 480.0;
 
+pub const NOS_SPEED_BONUS: f32 = 0.12;
+pub const NOS_OUTPUT_BONUS: f32 = 0.35;
+
 #[derive(Clone, Copy, Debug)]
 pub struct ResourceConfig {
     pub fuel_capacity_liters: f32,
@@ -299,7 +302,18 @@ impl Powertrain {
         // Calibrate road speed to the existing vehicle's configured maximum.
         // Every ratio remains mechanical: top gear reaches 82% of redline at
         // that speed, so all forward gears are usable for every vehicle class.
-        let final_drive=config.effective_final_drive(demand.wheel_radius,demand.top_speed);
+        let boost_weight = if self.running
+            && self.boost_requested
+            && !self.thermal_recovery
+            && self.drive_throttle > 0.1
+            && self.nos_remaining_s > 0.0
+        {
+            (self.nos_remaining_s / dt).clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
+        let boosted_speed = demand.top_speed * (1.0 + boost_weight * NOS_SPEED_BONUS);
+        let final_drive=config.effective_final_drive(demand.wheel_radius, boosted_speed);
         let coupled = wheel_rpm * gear_ratio(self.gear) * final_drive;
         let loaded=throttle.abs()>0.05;
         if self.manual_gear.is_none() && self.running && self.gear > 0 && loaded && self.shift_remaining_s <= 0.0 {
@@ -346,20 +360,10 @@ impl Powertrain {
             / (config.critical_c - config.overheat_c))
             .clamp(0.0, 1.0);
         let condition_loss = ((0.75 - self.condition) / 0.75).clamp(0.0, 1.0);
-        let boost_weight = if self.running
-            && self.boost_requested
-            && !self.thermal_recovery
-            && self.drive_throttle > 0.1
-            && self.nos_remaining_s > 0.0
-        {
-            (self.nos_remaining_s / dt).clamp(0.0, 1.0)
-        } else {
-            0.0
-        };
         self.boost_active = boost_weight > 0.0;
         self.nos_remaining_s = (self.nos_remaining_s - boost_weight * dt).max(0.0);
         self.power_multiplier = if self.running {
-            (1.0 - heat_loss * 0.65) * (1.0 - condition_loss * 0.65) * (1.0 + boost_weight * 0.25)*if self.thermal_recovery{0.30}else{1.0}
+            (1.0 - heat_loss * 0.65) * (1.0 - condition_loss * 0.65) * (1.0 + boost_weight * NOS_OUTPUT_BONUS)*if self.thermal_recovery{0.30}else{1.0}
         } else {
             0.0
         };

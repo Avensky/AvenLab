@@ -51,7 +51,7 @@ pub struct LongitudinalResult {
 // ====================================================================
 // Longitudinal tire model step
 // - Engine + brake + ABS/TCS + traction limits.
-// - Returns longitudinal impulse at COM; solve.rs computes ellipse usage.
+// - Returns the longitudinal contribution for this contact; solve.rs computes ellipse usage.
 // ====================================================================
 pub fn solve_longitudinal(
     ctx: &SolveContext,

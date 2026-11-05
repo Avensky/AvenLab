@@ -5,6 +5,25 @@ import {
 } from "../document/layoutDocument.ts";
 import { guardrail } from "./harborPieces.ts";
 
+// The marker is at the foot of the pier. The service bay opens toward the
+// crossing, with its own slab so a wheel never finds open water at the door.
+export function dockHome(side: number, shoreX: number, y: number, z: number): LayoutObject[] {
+  const bank = side < 0 ? "west" : "east";
+  const team = side < 0 ? "red" : "blue";
+  const bayX = shoreX + side * 8;
+  const common = { yaw: 0, locked: false, solid: true };
+  const boxParts = () => [{ shape: "box" as const, position: [0, .5, 0] as V3, size: [1, 1, 1] as V3 }];
+  return [
+    { ...common, id: "home-apron-" + bank, piece: "coastal-pier", name: "Dock garage apron",
+      position: [bayX, y - 1, z - 16], size: [32, 1, 36], color: "#68757c", parts: boxParts() },
+    { ...common, id: "home-gas-" + bank, piece: "service-center", name: "Dock home garage",
+      position: [bayX, y, z - 19], size: [18, 6, 20], color: "#8ca480",
+      parts: structuredClone(pieceById("service-center")!.parts) },
+    { ...common, id: "home-flag-" + team, piece: "ctf-home", name: "Dock flag stand",
+      position: [shoreX - side * 7, y + .02, z], size: [8, .025, 8], color: "#59616b", solid: false, parts: boxParts() },
+  ];
+}
+
 // Add these after the original objects so their damage and spawn IDs remain stable.
 export function outfitHarbor(objects: LayoutObject[]) {
   const additions: LayoutObject[] = [];
@@ -59,17 +78,13 @@ export function outfitHarbor(objects: LayoutObject[]) {
     const dock = objects.find(
       (o) => o.piece === "big-e-docked" && Math.sign(o.position[0]) === side,
     );
-    const station = box(
-      "home-gas-" + bank,
-      "fuel-station",
-      "Home gas and repair garage",
-      [side * (dock ? 173 : 64), 0.08, dock ? 16 : 159],
-      [14, 5, 16],
-      "#ad9566",
-    );
-    station.parts = structuredClone(pieceById("fuel-station")!.parts);
-    station.yaw = dock ? -90 * side : 180;
-    if (!dock) continue;
+    if (!dock) {
+      const station = box("home-gas-" + bank, "fuel-station", "Home gas and repair garage",
+        [side * 64, .08, 159], [14, 5, 16], "#ad9566");
+      station.parts = structuredClone(pieceById("fuel-station")!.parts);
+      station.yaw = 180;
+      continue;
+    }
     const ramp = objects.find(
       (o) => o.piece === "coastal-ramp" && Math.sign(o.position[0]) === side,
     )!;
@@ -80,6 +95,7 @@ export function outfitHarbor(objects: LayoutObject[]) {
       rise = ramp.size[1],
       half = ramp.size[0] / 2;
     const shore = Math.abs(ramp.position[0]) - run / 2;
+    additions.push(...dockHome(side, side * shore, ramp.position[1], ramp.position[2]));
     // The original wedge owns the grade. Caps sit below it and pairs of solid
     // columns reach the ocean floor, leaving open water between the supports.
     [run * 0.25, run * 0.72, run + 7, run + 19].forEach((distance, i) => {

@@ -1,0 +1,30 @@
+.combat-notices {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + clamp(54px, 10dvh, 82px));
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(70vw, 34rem);
+  pointer-events: none;
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  z-index: 8;
+}
+.combat-notices span {
+  padding: 2px 9px;
+  background: #111821e8;
+  color: #ffd99b;
+  font-weight: 650;
+  animation: combat-notice-out 1.9s ease-out both;
+}
+.combat-notices [data-tone="damage"] { color: #f1c4b6; }
+.combat-notices [data-tone="buff"] { color: #b8e7da; }
+@keyframes combat-notice-out {
+  0% { opacity: .65; }
+  16%, 69% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(10px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .combat-notices span { animation: none; }
+}
+.turret-actions button:disabled[data-resource-warning] { pointer-events: none; }

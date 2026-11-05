@@ -2,10 +2,8 @@
 // Longitudinal: demand -> actuator/ABS/TCS limits. Lateral: brush response.
 // Their final impulses share one combined-slip ellipse. The individual clamps
 // enforce axis limits; the ellipse enforces simultaneous use of both axes.
-// Longitudinal impulses act at COM (no drive/brake pitch moment in this model).
-// Lateral impulses act at the contact point, producing physical yaw AND roll.
-// There is no lateral split, roll_factor reduction, aligning torque or separate
-// yaw assist in the active implementation. Those old descriptions were stale.
+// Apply the combined impulse at the tire contact. Its lever arm produces
+// braking dive, launch squat, yaw and roll without applying a second torque.
 
 use crate::aven_tire::types::{ ContactPatch, ControlInput, Impulse, SolveContext, v_mag, v_scale,};
 use crate::aven_tire::longitudinal::solve_longitudinal;
@@ -44,7 +42,7 @@ pub fn solve_step(
     contacts: &mut[ContactPatch],
 ) -> TireForces {
 
-    let mut impulses = Vec::new();
+    let mut impulses = Vec::with_capacity(contacts.len());
 
     let brush_cfg = BrushLiteConfig::default();
 
@@ -112,26 +110,11 @@ pub fn solve_step(
 
         patch.tire_state = new_state;
 
-        // --------------------------------------------------
-        // LONGITUDINAL (ENGINE + BRAKE) -> COM
-        // --------------------------------------------------
-        let long_i = v_scale(long.impulse, scale);
+        let combined = std::array::from_fn(|axis| long.impulse[axis] + lat[axis]);
         impulses.push(Impulse {
-            impulse: long_i,
-            at_point: None,
+            impulse: v_scale(combined, scale),
+            at_point: Some(patch.hit_point),
         });
-
-        // --------------------------------------------------
-        // LATERAL → CONTACT (yaw comes from tire geometry)
-        // Full impulse goes to the patch. r x J already produces the yaw and
-        // roll moments; do not also inject turn torque or a second copy at COM.
-        // --------------------------------------------------
-        let lat_i = v_scale(lat, scale);
-        impulses.push(Impulse {
-            impulse: lat_i,
-            at_point: Some(patch.apply_point),
-        });
-
     } // Contacts iter end
 
 

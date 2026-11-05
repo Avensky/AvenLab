@@ -1,3 +1,4 @@
+import { measuredWheelHub, restorePartTransform } from "./tools/vehicleVisualRig";
 import { useLiveAppearance } from "./cosmetics/useLiveAppearance";
 import { applyHeadlightBeam } from "./tools/headlightBeam";
 import { useVehicleVisualAlignment } from "../hooks/useVehicleVisualAlignment";
@@ -42,7 +43,6 @@ type CamaroProps = PropsWithChildren<{
 
 type WheelVisualRig = {
   carrier: Group;
-  steer: Group;
   spin: Group;
   previewMatrix: Matrix4;
 };
@@ -311,62 +311,21 @@ export const Camaro = forwardRef<Group, CamaroProps>(function Camaro(
       clonesByGroup["RL_WHEEL"],
       clonesByGroup["RR_WHEEL"],
     ].map((parts, index) => {
-      const carrier = new Group();
-      const steer = new Group();
-      const spin = new Group();
-
-      carrier.add(steer);
-      steer.add(spin);
-
-      Object.values(parts).forEach((object: Object3D) => {
-        spin.add(object);
-      });
-
-      // Calipers have different origins from tires in this GLB.
-      // Preserve their authored relationship using full matrices, and
-      // map it into the existing (already working) tire clone frame.
       const prefix = ["FL", "FR", "RL", "RR"][index];
-      const sourceTire = scene.getObjectByName(`${prefix}_TIRE`);
-      const sourceCaliper = scene.getObjectByName(`${prefix}_BRAKE_CALIPER`);
-      const clonedTire = parts[`${prefix}_TIRE`] as Object3D | undefined;
-
-      // Restore the authored tire placement in the preview. The clone
-      // may have been recentered by setupVehicleParts, so account for
-      // its local matrix rather than copying only the Empty position.
-      const previewMatrix = new Matrix4();
-      if (sourceTire && clonedTire) {
-        sourceTire.updateWorldMatrix(true, false);
-        clonedTire.updateMatrix();
-        previewMatrix
-          .copy(sourceTire.matrixWorld)
-          .multiply(clonedTire.matrix.clone().invert());
+      const rolling = Object.values(parts ?? {});
+      for (const part of rolling) {
+        const original = scene.getObjectByName(part.name);
+        if (original) restorePartTransform(part, original);
       }
-
-      if (sourceTire && sourceCaliper && clonedTire) {
-        sourceTire.updateWorldMatrix(true, false);
-        sourceCaliper.updateWorldMatrix(true, false);
-        clonedTire.updateMatrix();
-
-        const caliper = sourceCaliper.clone(true);
-        const caliperInWheel = clonedTire.matrix
-          .clone()
-          .multiply(sourceTire.matrixWorld.clone().invert())
-          .multiply(sourceCaliper.matrixWorld);
-
-        caliper.matrix.copy(caliperInWheel);
-        caliper.matrix.decompose(
-          caliper.position,
-          caliper.quaternion,
-          caliper.scale,
-        );
-        caliper.matrixAutoUpdate = false;
+      const original = scene.getObjectByName(prefix + "_BRAKE_CALIPER");
+      const fixed = [];
+      if (original) {
+        const caliper = original.clone(true);
+        restorePartTransform(caliper, original);
         configureObjectMaterials(caliper, false);
-        steer.add(caliper);
-      } else {
-        console.warn(`[Camaro] Missing tire/caliper for ${prefix}`);
+        fixed.push(caliper);
       }
-
-      return { carrier, steer, spin, previewMatrix };
+      return measuredWheelHub(parts?.[prefix + "_TIRE"], rolling, fixed);
     });
   }, [clonesByGroup, scene]);
 
@@ -385,7 +344,6 @@ export const Camaro = forwardRef<Group, CamaroProps>(function Camaro(
         rig.carrier.scale,
       );
       if (isVehiclePreview) {
-        rig.steer.rotation.set(0, 0, 0);
         rig.spin.rotation.set(0, 0, 0);
       } else {
         // Runtime position/rotation come from backend world data.
@@ -501,7 +459,6 @@ export const Camaro = forwardRef<Group, CamaroProps>(function Camaro(
 
       rig.carrier.position.set(...wheel.position);
       rig.carrier.quaternion.set(...wheel.rotation);
-      rig.steer.rotation.y = 0;
 
       wheelSpinAngles.current[index] = MathUtils.euclideanModulo(
         wheelSpinAngles.current[index] + wheelSpeed * wheelDelta,

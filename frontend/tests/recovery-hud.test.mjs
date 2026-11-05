@@ -39,7 +39,7 @@ test('recovery timers and Mechanic actions use authoritative windows and actor o
   await t.test('late responses from an old actor cannot notify or clear a new worlds pending recovery',async()=>{
    chat.setState({notices:[]});let oldRequest,newRequest;await act(async()=>{oldRequest=actions.requestNearestRevive();});const first=sent.at(-1);await act(async()=>stage(2,'new-owner'));assert.equal(document.querySelector('[aria-label="Revive nearby teammate"]').disabled,false,'old request does not lock new actor');await act(async()=>{newRequest=actions.requestNearestRevive();});const second=sent.at(-1);
    assert.notEqual(first.request_id,second.request_id);await act(async()=>reply(first));assert.equal(await oldRequest,false);assert.equal(chat.getState().notices.length,0);assert.equal(actions.useReviveRequestStore.getState().busy,true);
-   await act(async()=>reply(second));assert.equal(await newRequest,true);assert.equal(chat.getState().notices.length,1);assert.equal(actions.useReviveRequestStore.getState().busy,false);
+   await act(async()=>reply(second));assert.equal(await newRequest,true);assert.equal(chat.getState().notices.length,0);assert.equal((await load('combat/combatNoticeStore.ts')).useCombatNotices.getState().lines.at(-1)?.tone,'buff');assert.equal(actions.useReviveRequestStore.getState().busy,false);
   });
   await t.test('expired targets, unsupported timers and non-mechanics cannot request recovery',async()=>{
    stage();await act(async()=>network.setState({snapshot:{entities:[me,{...ally,health:hp({defeated:true,respawn_remaining_s:0})}]}}));assert.equal(await actions.requestNearestRevive(),false);

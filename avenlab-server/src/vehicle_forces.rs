@@ -120,9 +120,10 @@ impl PhysicsWorld {
                 engine_resources.min_running_heat_rise_c_s=crate::ram::MIN_HEAT_RISE_C_S;
                 engine_resources.max_heat_rise_c_s=crate::ram::MAX_HEAT_RISE_C_S;
             }
+            let base_top_speed = if vehicle.powertrain.thermal_recovery { (vehicle.config.max_speed * 0.35).min(8.0) } else { vehicle.config.max_speed * ram_speed };
             if !disabled { vehicle.powertrain.advance(engine_resources, Demand {
                 throttle:engine_throttle, longitudinal_speed,
-                wheel_radius: vehicle.config.wheel_radius, engine_force: vehicle.config.engine_force, top_speed:if vehicle.powertrain.thermal_recovery{(vehicle.config.max_speed*0.35).min(8.0)}else{vehicle.config.max_speed*ram_speed},
+                wheel_radius: vehicle.config.wheel_radius, engine_force: vehicle.config.engine_force, top_speed:base_top_speed,
             }, dt); }
             if vehicle.config.tracked{
                 let consuming=vehicle.ram.active()&&vehicle.powertrain.running&&!vehicle.powertrain.thermal_recovery;
@@ -136,7 +137,9 @@ impl PhysicsWorld {
                 vehicle.vehicle_flags.set(VehicleStateFlags::HEADLIGHTS, vehicle.cockpit.headlights(vehicle.powertrain.running));
             }
 
-            let drive_top_speed=if vehicle.powertrain.thermal_recovery{(vehicle.config.max_speed*0.35).min(8.0)}else{vehicle.config.max_speed*ram_speed};
+            let road_nos = vehicle.powertrain.boost_active && !vehicle.config.tracked && !guarding && !vehicle.ram.active() && !disabled && !stunned;
+            let nos_speed = if road_nos { 1.0 + crate::powertrain::NOS_SPEED_BONUS } else { 1.0 };
+            let drive_top_speed = base_top_speed * nos_speed;
             contacts.clear();
             suspension_contacts.clear();
             let body_mass = body_ro.mass() as f32;
@@ -224,7 +227,7 @@ impl PhysicsWorld {
                     v_long: contact.v_long, v_lat: contact.v_lat,
                     normal_force: contact.normal_force,
                     // mu_lat is finalized once below AFTER anti-roll changes Fz.
-                    mu_lat: vehicle.config.mu_base, mu_long: vehicle.config.mu_base*grip,
+                    mu_lat: vehicle.config.mu_base, mu_long: vehicle.config.mu_base*grip*if road_nos {1.14} else {1.0},
                     // Legacy field retained for tire API compatibility. solve_step
                     // applies full lateral impulse at contact and ignores this.
                     roll_factor: 1.0,
@@ -333,6 +336,13 @@ impl PhysicsWorld {
                 let torque=((desired-current)*inertia/0.20).clamp(-inertia*7.0,inertia*7.0);
                 body.apply_torque_impulse(up*torque*dt,true);
             }
+            if road_nos && contacts.iter().filter(|p| p.grounded && p.normal_force > 0.0).count() >= 2 {
+                let axis = body.rotation() * Vector::z();
+                let roll_rate = body.angvel().dot(&axis);
+                let [x, y, _] = vehicle.config.chassis_half_extents;
+                let inertia = body_mass * (x*x + y*y) / 3.0;
+                body.apply_torque_impulse(axis * (-roll_rate * 1.8).clamp(-3.0, 3.0) * inertia * dt, true);
+            }
             if guarding && contacts.iter().filter(|p|p.grounded&&p.normal_force>0.0).count()>=2 {
                 // Bounded angular impulses resist rollover without snapping the
                 // pose or zeroing yaw. Ebrake retains a steerable, controlled arc.
@@ -352,7 +362,7 @@ impl PhysicsWorld {
             let velocity = *body.linvel();
             let planar_speed=(velocity.x*velocity.x+velocity.z*velocity.z).sqrt();
             if planar_speed>0.001 {
-                let force=vehicle.config.resources.road_resistance(vehicle.config.engine_force,body_mass,vehicle.config.linear_damping,vehicle.config.max_speed*ram_speed,planar_speed,contacts.iter().any(|p|p.grounded));
+                let force=vehicle.config.resources.road_resistance(vehicle.config.engine_force,body_mass,vehicle.config.linear_damping,vehicle.config.max_speed*ram_speed*nos_speed,planar_speed,contacts.iter().any(|p|p.grounded));
                 let impulse=(force*dt).min(body_mass*planar_speed);
                 impulses.linear.push(vector![-velocity.x/planar_speed*impulse,0.0,-velocity.z/planar_speed*impulse]);
             }

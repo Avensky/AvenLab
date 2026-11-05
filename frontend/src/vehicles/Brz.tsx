@@ -1,3 +1,4 @@
+import { measuredWheelHub } from "./tools/vehicleVisualRig";
 import { useLiveAppearance } from "./cosmetics/useLiveAppearance";
 import { applyHeadlightBeam } from "./tools/headlightBeam";
 import { useVehicleVisualAlignment } from "../hooks/useVehicleVisualAlignment";
@@ -75,18 +76,7 @@ function extractWheel(root: Object3D, names: readonly string[]) {
   const wheel = findFirstNamedObject(root, names);
   if (!wheel) return null;
 
-  // Preserve transforms contributed by any intermediate Blender parents.
-  root.updateMatrixWorld(true);
-  wheel.updateMatrixWorld(true);
-
-  // Keep the complete imported orientation/scale, including VEHICLE_ROOT's
-  // 180-degree Blender correction. Position is replaced by backend data.
-  const importedWorldMatrix = wheel.matrixWorld.clone();
-  wheel.removeFromParent();
-  importedWorldMatrix.decompose(wheel.position, wheel.quaternion, wheel.scale);
-  wheel.updateMatrix();
-
-  return wheel;
+  return measuredWheelHub(wheel, [wheel]).carrier;
 }
 
 type BrzProps = PropsWithChildren<{

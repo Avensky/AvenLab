@@ -1,4 +1,5 @@
 import {
+  Box3,
   Group,
   Material,
   Mesh,
@@ -6,6 +7,32 @@ import {
   Quaternion,
   Vector3,
 } from "three";
+
+/** Place a detached clone in the GLB scene frame, including parent empties. */
+export function restorePartTransform(part: Object3D, source: Object3D) {
+  source.updateWorldMatrix(true, false);
+  const world = source.matrixWorld.clone();
+  part.removeFromParent();
+  world.decompose(part.position, part.quaternion, part.scale);
+  part.updateMatrix();
+}
+
+/** Compute the axle once at load time. An exported mesh origin may be offset
+ * from the tire center. Keep imported transforms below a neutral physics hub. */
+export function measuredWheelHub(tire: Object3D | undefined, rolling: Object3D[], fixed: Object3D[] = []) {
+  const carrier = new Group();
+  const spin = new Group();
+  if (tire) {
+    tire.updateWorldMatrix(true, true);
+    const bounds = new Box3().setFromObject(tire, true);
+    if (!bounds.isEmpty()) bounds.getCenter(carrier.position);
+  }
+  carrier.add(spin);
+  for (const part of rolling) spin.attach(part);
+  for (const part of fixed) carrier.attach(part);
+  carrier.updateMatrix();
+  return { carrier, spin, previewMatrix: carrier.matrix.clone() };
+}
 
 export type WheelCorner = "fl" | "fr" | "rl" | "rr";
 

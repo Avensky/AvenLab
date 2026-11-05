@@ -21,13 +21,18 @@ test("all dock plans have ten spawns, exactly three crossings and no hidden wate
     assert.equal(pieces.filter(o=>o.piece==="canal-breakable"&&o.destruction?.enabled).length,1);
     for(const team of ["red","blue"]){
       const afloat=team===plan||plan==="fleet";
+      const stand=pieces.find(o=>o.id==="home-flag-"+team);
+      const bay=pieces.find(o=>o.id==="home-gas-"+(team==="red"?"west":"east"));
+      assert.equal(!!stand,afloat);
+      assert.equal(bay.piece,afloat?"service-center":"fuel-station");
+      if (stand) assert(!stand.solid && Math.hypot(stand.position[0]-bay.position[0],stand.position[2]-bay.position[2])>15);
       const pads=layout.spawns.filter(p=>p.team===team);assert.equal(pads.length,5);
       assert(pads.every(p=>p.position[1]===(afloat?6:.08)));
     }
     assert(pieces.filter(o=>o.piece==="coastal-water-visual").every(o=>!o.solid));
     assert.equal(pieces.filter(o=>o.piece==="harbor-seabed" && o.solid && o.position[1]+o.size[1]===-24).length,4);
     assert.equal(pieces.filter(o=>o.id.startsWith("home-gas-")).length,2);
-    assert(pieces.filter(o=>o.piece==="highway-guardrail").every(o=>o.destruction?.enabled && o.destruction.hp===12));
+    assert(pieces.filter(o=>o.piece==="highway-guardrail").every(o=>o.destruction?.enabled && o.destruction.hp===5));
     assert(pieces.some(o=>o.id.startsWith("boarding-rail-")));
     assert(pieces.filter(o=>o.name==="Boarding bridge column").every(o=>o.position[1]===-24));
     assert(pieces.some(o=>o.piece==="kit-stone_start") && pieces.some(o=>o.piece==="kit-highway_25_wide_straight_level"));
