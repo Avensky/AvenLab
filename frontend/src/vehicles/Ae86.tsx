@@ -1,3 +1,4 @@
+import {popupAngle} from './tools/roadLamps';
 import { measuredWheelHub, restorePartTransform } from "./tools/vehicleVisualRig";
 import { useLiveAppearance } from "./cosmetics/useLiveAppearance";
 import { useVehicleVisualAlignment } from "../hooks/useVehicleVisualAlignment";
@@ -34,7 +35,7 @@ const PARTS = {
 
   body: "Body",
   glass: "Glass",
-  mirrors: "Mirror",
+  mirrors: "Mirrors",
   lightLenses: "LightLenses",
   headlightLenses: "HeadlightLenses",
   interior: "Interior",
@@ -85,7 +86,7 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
   const { getInterpolated } = useVehiclePhysicsInterpolator(entityId);
 
   const { clonesByGroup, renderedGroups } = useMemo(() => {
-    return setupVehicleParts({
+    const setup=setupVehicleParts({
       scene,
       model: "ae86",
       groups: [
@@ -94,6 +95,8 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
           parts: [
             PARTS.body,
             PARTS.glass,
+            PARTS.mirrors,
+            PARTS.lightLenses,
             PARTS.interior,
             PARTS.headlights,
             PARTS.steeringWheel,
@@ -105,8 +108,7 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
           transparent: [
             PARTS.glass,
             PARTS.mirrors,
-            PARTS.lightLenses,
-            PARTS.headlightLenses,
+
           ],
           opacity: 0.9,
         },
@@ -128,6 +130,14 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
         },
       ],
     });
+    const lid=setup.clonesByGroup.BODY?.[PARTS.headlights];
+    const lens=scene.getObjectByName(PARTS.headlightLenses);
+    if (lid && lens) {
+      // The export put the lenses beside the hinged lids. Retain their rest
+      // transform and make both panes follow the original pop-up pivot.
+      lid.attach(lens.clone(true));
+    }
+    return setup;
   }, [scene]);
 
   const wheels = useMemo(() => {
@@ -149,14 +159,9 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
     isVehiclePreview,
   );
 
-  // Log the body parts and headlights when they are available
   useEffect(() => {
     headlightRef.current = clonesByGroup.BODY?.[PARTS.headlights] ?? null;
-
-    // console.log("[ae86 used] body parts:", Object.keys(clonesByGroup.BODY ?? {}));
-    // console.log("[ae86 used] headlights:", headlightRef.current?.name);
-    // console.log("[ae86 used] wheels:", wheels.map((w) => w?.name));
-  }, [clonesByGroup, wheels]);
+  }, [clonesByGroup]);
 
   // Store the initial wheel rotations for later use
   const wheelRestRotations = useMemo(
@@ -247,17 +252,7 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
       VehicleFlags.HEADLIGHTS,
     );
     const highBeam = Boolean((interp.cluster_mask ?? 0) & (1 << 3));
-    // Animate headlights opening/closing based on input
-    const openRotation = -Math.PI / 3;
-    const closedRotation = 0;
-    const targetRotation = headlights ? openRotation : closedRotation;
-
-    headlightRotation.current = MathUtils.lerp(
-      headlightRotation.current,
-      targetRotation,
-      1 - Math.exp(-(highBeam ? 22 : 5) * Math.max(0, delta)),
-    );
-
+    headlightRotation.current = popupAngle(headlightRotation.current, headlights, highBeam, delta);
     if (headlightRef.current) {
       headlightRef.current.rotation.x = headlightRotation.current;
     }

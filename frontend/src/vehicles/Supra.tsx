@@ -12,7 +12,7 @@ import { useGLTF } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { Group, MathUtils } from "three";
 
-import { applyBackendWheelPose } from "./tools/vehicleVisualRig";
+import { applyBackendWheelPose, socketWheelIndex } from "./tools/vehicleVisualRig";
 import { updateVehicleGlass } from "./tools/vehicleMaterials";
 import {
   createSupraVisualRig,
@@ -97,13 +97,11 @@ export const Supra = forwardRef<Group, SupraProps>(function Supra(
     group.position.set(...interpolated.position);
     group.quaternion.set(...interpolated.rotation);
 
-    const indexById = { fl: 0, fr: 1, rl: 2, rr: 3 } as const;
     const wheelDelta = Math.min(delta, 0.05);
 
     interpolated.wheels?.forEach((wheel) => {
-      const id = wheel.id.toLowerCase() as keyof typeof indexById;
-      const index = indexById[id];
-      if (index === undefined) return;
+      const index = socketWheelIndex(wheel.id);
+      if (index < 0) return;
 
       const assembly = wheelAssemblies[index];
       if (!assembly) return;

@@ -1,10 +1,10 @@
 import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { AdditiveBlending, Color, InstancedMesh, Object3D } from 'three';
+import { AdditiveBlending, Color, InstancedMesh, Object3D, Vector3 } from 'three';
 import { useFleetPoseReader } from '../hooks/usePhysicsInterpolator';
 import { VehicleFlags } from '../store/input/protocol/inputMasks';
 import type { RosterEntity } from './rosterSelector';
-import { lampFloor, positions } from './tools/roadLamps';
+import { exhaustOutlets, lensProfiles, placeModel } from './tools/roadLamps';
 import { writeInstanceMatrix } from './writeInstanceMatrix';
 
 const red = new Color('#ff482b'), blue = new Color('#55aeff');
@@ -12,21 +12,22 @@ const red = new Color('#ff482b'), blue = new Color('#55aeff');
 export function NitrousExhaust({cars}: {cars:RosterEntity[]}) {
   const batch = useRef<InstancedMesh>(null);
   const read = useFleetPoseReader();
-  const scratch = useMemo(() => ({body:new Object3D(), flame:new Object3D()}),[]);
-  const capacity = Math.max(1, cars.reduce((n,car) => n + (positions[car.vehicle_id ?? '']?.outlets.length ?? 0)*2, 0));
+  const scratch = useMemo(() => ({body:new Object3D(), flame:new Object3D(), offset:new Vector3()}),[]);
+  const capacity = Math.max(1, cars.reduce((n,car) => n + (exhaustOutlets[car.vehicle_id ?? '']?.length ?? 0)*2, 0));
   useFrame(({clock}) => {
     if (!batch.current) return;
     let count = 0;
     const {body,flame} = scratch;
     for (const car of cars) {
-      const slots = positions[car.vehicle_id ?? ''];
+      const id=car.vehicle_id??'';
+      const slots=exhaustOutlets[id];
       if (!slots) continue;
       const pose = read(car.id);
       if (!pose || !((pose.vehicle_mask ?? 0) & VehicleFlags.BOOST) ||
           pose.guard?.remaining_s || pose.combat?.ram_remaining || pose.combat?.stun_remaining) continue;
-      body.position.fromArray(pose.position); body.quaternion.fromArray(pose.rotation); body.updateMatrix();
-      const floor = lampFloor(car);
-      for (const [index,outlet] of slots.outlets.entries()) {
+      body.position.fromArray(pose.position); body.quaternion.fromArray(pose.rotation); placeModel(body,car,scratch.offset);
+      const floor = lensProfiles[id].floor;
+      for (const [index,outlet] of slots.entries()) {
         const pulse = .84 + .16*Math.sin(clock.elapsedTime*32 + index*2);
         for (const core of [false,true]) {
           const length = (core ? .44 : .76)*pulse;

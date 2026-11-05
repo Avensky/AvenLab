@@ -36,6 +36,18 @@ export function measuredWheelHub(tire: Object3D | undefined, rolling: Object3D[]
 
 export type WheelCorner = "fl" | "fr" | "rl" | "rr";
 
+// Snapshot "fl" is on +X (driver left when the nose is +Z). Socket exports
+// and the Supra's geometry buckets use "fl" for -X. Swap IDs only at that boundary.
+export function socketWheelIndex(id: string): number {
+  switch (id.toLowerCase()) {
+    case "fr": return 0;
+    case "fl": return 1;
+    case "rr": return 2;
+    case "rl": return 3;
+    default: return -1;
+  }
+}
+
 export type WheelVisualAssembly = {
   /** Moves with suspension and steering, but does not spin. */
   carrier: Object3D;

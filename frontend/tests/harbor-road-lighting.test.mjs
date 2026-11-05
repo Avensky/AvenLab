@@ -45,11 +45,16 @@ test('inclined boarding rails follow both ramp endpoints and home garages sit wh
 test('stalk signals work with the headlight switch off and fog lamps extinguish on high',async()=>{
   const vite=await createServer({server:{middlewareMode:true,hmr:false,ws:false},appType:'custom',logLevel:'error'});
   try {
-    const {lampSignal,signals}=await vite.ssrLoadModule('/src/vehicles/tools/roadLamps.ts');
+    const {lampSignal,lensProfiles,lensGeometry}=await vite.ssrLoadModule('/src/vehicles/tools/roadLamps.ts');
     const {VehicleFlags:f}=await vite.ssrLoadModule('/src/store/input/protocol/inputMasks.ts');
-    for(const id of ['skyline34','charger70','interceptor','enforcer']) {
-      assert.equal(signals[id].filter(s=>s.kind==='left').length,2);
-      assert.equal(signals[id].filter(s=>s.kind==='right').length,2);
+    assert.equal(Object.keys(lensProfiles).length,14);
+    for(const [id,profile] of Object.entries(lensProfiles)) {
+      const geometry=lensGeometry(profile),role=geometry.getAttribute('lensRole');
+      const codes=new Set(role.array);
+      assert(codes.has(id==='ae86'?2:1) && codes.has(4) && codes.has(6) && codes.has(7),id);
+      assert.equal(role.count,geometry.getAttribute('position').count);
+      for(const [x,,z] of profile.mounts) assert(Math.abs(x)>.2 && z>1.0,id);
+      geometry.dispose();
     }
     assert.equal(lampSignal('left',false,false,f.BLINKER_LEFT,true),'amber');
     assert.equal(lampSignal('right',false,false,f.BLINKER_LEFT,true),null);
@@ -61,20 +66,43 @@ test('stalk signals work with the headlight switch off and fog lamps extinguish 
 });
 
 test('shipping rigs separate tire rubber, windshields and decorative masked badges',()=>{
-  for(const id of ['skyline34','charger70','interceptor','enforcer']) {
+  for(const id of ['skyline34','charger70','interceptor','enforcer','timecar']) {
     const b=fs.readFileSync(new URL('../public/models/vehicles/'+id+'.glb',import.meta.url));
     const {materials}=JSON.parse(b.subarray(20,20+b.readUInt32LE(12)));
     const tires=materials.filter(m=>m.name.startsWith('TireRubber_'));
-    if(id!=='charger70') assert(tires.length>0);
+    if(!['charger70','timecar'].includes(id)) assert(tires.length>0);
     for(const m of tires) {
       assert.equal(m.alphaMode,'OPAQUE');
       assert(Math.max(...m.pbrMetallicRoughness.baseColorFactor.slice(0,3))<.04);
     }
-    if(id==='charger70') assert.equal(materials.find(m=>m.name==='GlassMtl').alphaMode,'BLEND');
+    if(id==='charger70') {
+      const pane=materials.find(m=>m.name==='GlassMtl');
+      assert.equal(pane.alphaMode,'BLEND');assert(pane.pbrMetallicRoughness.baseColorFactor[3]<=.15);
+    }
+    if(id==='timecar'){
+      for(const part of ['1985Base_Material1','1985_Wheel1A_3D_3DWheel1A_Material1']) {
+        assert.equal(materials.find(m=>m.name.endsWith(part)).alphaMode,'OPAQUE');
+      }
+      assert.equal(materials.find(m=>m.name.endsWith('1985Window_Material1')).alphaMode,'BLEND');
+    }
     if(id==='skyline34') assert(!materials.some(m=>m.emissiveFactor?.some(Boolean)));
     if(id==='enforcer' || id==='interceptor') {
       const name=id==='enforcer'?'chassis':'Livery';
       assert.equal(materials.find(m=>m.name===name).alphaMode,'OPAQUE');
+    }
+  }
+});
+
+test('socket and Supra axles keep each outboard face on its snapshot side',async()=>{
+  const {socketWheelIndex}=await import('../src/vehicles/tools/vehicleVisualRig.ts');
+  assert.deepEqual(['fr','fl','rr','rl','?'].map(socketWheelIndex),[0,1,2,3,-1]);
+  for(const id of ['mini','charger70','timecar','sierra']) {
+    const b=fs.readFileSync(new URL('../public/models/vehicles/'+id+'.glb',import.meta.url));
+    const g=JSON.parse(b.subarray(20,20+b.readUInt32LE(12)));
+    for(const [snapshot,side] of [['fl',1],['fr',-1],['rl',1],['rr',-1]]) {
+      const corner=['FL','FR','RL','RR'][socketWheelIndex(snapshot)];
+      const wheel=g.nodes.find(n=>n.name==='WHEEL_'+corner);
+      assert.equal(Math.sign(wheel.translation[0]),side,id+' '+snapshot);
     }
   }
 });

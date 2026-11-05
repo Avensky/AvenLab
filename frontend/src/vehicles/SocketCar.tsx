@@ -5,7 +5,7 @@ import { Group, MathUtils } from 'three';
 import { useVehiclePhysicsInterpolator } from '../hooks/usePhysicsInterpolator';
 import { useVehicleVisualAlignment } from '../hooks/useVehicleVisualAlignment';
 import { useLiveAppearance } from './cosmetics/useLiveAppearance';
-import { applyBackendWheelPose, extractWheelAssembly, type WheelCorner } from './tools/vehicleVisualRig';
+import { applyBackendWheelPose, extractWheelAssembly, socketWheelIndex } from './tools/vehicleVisualRig';
 import { VEHICLE_MODEL_PATHS } from './tools/vehicleModelPaths';
 
 const corners = ['fl', 'fr', 'rl', 'rr'] as const;
@@ -36,7 +36,7 @@ export function SocketCar({ entityId, model }: { entityId: string; model: "enfor
     body.current.position.fromArray(pose.position);
     body.current.quaternion.fromArray(pose.rotation);
     for (const wheel of pose.wheels ?? []) {
-      const i = corners.indexOf(wheel.id.toLowerCase() as WheelCorner);
+      const i = socketWheelIndex(wheel.id);
       const assembly = rig.wheels[i];
       if (!assembly) continue;
       spin.current[i] = MathUtils.euclideanModulo(spin.current[i] + (wheel.wheel_speed ?? 0) * Math.min(delta, .05), 2*Math.PI);
