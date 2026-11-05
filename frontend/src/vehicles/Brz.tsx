@@ -1,3 +1,4 @@
+import {brzWheelAxle} from "./tools/brzWheelAxle";
 import { measuredWheelHub } from "./tools/vehicleVisualRig";
 import { useLiveAppearance } from "./cosmetics/useLiveAppearance";
 import { useVehicleVisualAlignment } from "../hooks/useVehicleVisualAlignment";
@@ -72,11 +73,15 @@ function extractWheel(root: Object3D, names: readonly string[]) {
   const wheel = findFirstNamedObject(root, names);
   if (!wheel) return null;
 
-  let tire: Object3D | undefined;
+  let tire: Mesh | undefined, disc: Mesh | undefined;
   wheel.traverse(part => {
-    if (part instanceof Mesh && !Array.isArray(part.material) && /tyre|tire/i.test(part.material.name)) tire = part;
+    const mesh=part as Mesh;
+    if (!mesh.isMesh || Array.isArray(mesh.material)) return;
+    if (/tyre|tire/i.test(mesh.material.name)) tire=mesh;
+    if (/_EXT_Disc$/i.test(mesh.material.name)) disc=mesh;
   });
-  return measuredWheelHub(tire ?? wheel, [wheel]).carrier;
+  const axle=brzWheelAxle(disc);
+  return {carrier:measuredWheelHub(tire ?? wheel,[wheel]).carrier,axle};
 }
 
 type BrzProps = PropsWithChildren<{
@@ -106,7 +111,7 @@ export const Brz = forwardRef<Group, BrzProps>(function Brz(
   // One completed backend timeline drives both the body and world-space wheels.
   const { getInterpolated } = useVehiclePhysicsInterpolator(entityId);
 
-  const { vehicleVisualRoot, wheels } = useMemo(() => {
+  const { vehicleVisualRoot, wheels, wheelAxes } = useMemo(() => {
     // Clone the complete hierarchy instead of rebuilding a partial model
     // from a flat list of object names. This keeps every child beneath the
     // Blender VEHICLE_ROOT visible.
@@ -122,7 +127,8 @@ export const Brz = forwardRef<Group, BrzProps>(function Brz(
 
     return {
       vehicleVisualRoot: root,
-      wheels: extractedWheels,
+      wheels: extractedWheels.map(w=>w?.carrier ?? null),
+      wheelAxes: extractedWheels.map(w=>w?.axle ?? new Vector3(1,0,0)),
     };
   }, [scene]);
 
@@ -156,7 +162,6 @@ export const Brz = forwardRef<Group, BrzProps>(function Brz(
   const wheelSpinAngles = useRef([0, 0, 0, 0]);
   const wheelBaseQuaternion = useRef(new Quaternion());
   const wheelSpinQuaternion = useRef(new Quaternion());
-  const wheelAxle = useRef(new Vector3(1, 0, 0));
 
   useFrame((_, delta) => {
     // Keep the selection model in its imported GLB pose. A previous game
@@ -210,7 +215,7 @@ export const Brz = forwardRef<Group, BrzProps>(function Brz(
 
       wheelBaseQuaternion.current.set(...wheel.rotation);
       wheelSpinQuaternion.current.setFromAxisAngle(
-        wheelAxle.current,
+        wheelAxes[index],
         wheelSpinAngles.current[index],
       );
 

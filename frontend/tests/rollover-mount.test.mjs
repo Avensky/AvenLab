@@ -81,3 +81,28 @@ test('selecting the M2 in the cockpit saves it per vehicle and leaves the tank c
     for(const [key,value] of old)if(value)Object.defineProperty(globalThis,key,value);else delete globalThis[key];
   }
 });
+
+test('each shipping FR-S rim spins around its own cambered brake disc',async()=>{
+  const {NodeIO}=await import('@gltf-transform/core');
+  const {ALL_EXTENSIONS}=await import('@gltf-transform/extensions');
+  const {default:draco}=await import('draco3dgltf');
+  const {BufferAttribute,BufferGeometry,Mesh}=await import('three');
+  const {brzWheelAxle}=await import('../src/vehicles/tools/brzWheelAxle.ts');
+  const io=new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({'draco3d.decoder':await draco.createDecoderModule()});
+  const doc=await io.read(new URL('../public/models/vehicles/brz.glb',import.meta.url).pathname);
+  const nodes=doc.getRoot().listNodes().filter(n=>/^WHEEL_(FL|FR|RL|RR)$/.test(n.getName()));
+  assert.equal(nodes.length,4);
+  for(const node of nodes) {
+    const primitive=node.getMesh().listPrimitives().find(p=>/_EXT_Disc$/i.test(p.getMaterial().getName()));
+    const geometry=new BufferGeometry().setAttribute('position',new BufferAttribute(primitive.getAttribute('POSITION').getArray(),3));
+    geometry.setIndex(new BufferAttribute(primitive.getIndices().getArray(),1));
+    const rotor=new Mesh(geometry);
+    rotor.matrixAutoUpdate=false;rotor.matrix.fromArray(node.getWorldMatrix());
+    const axle=brzWheelAxle(rotor);
+    assert(axle.x>.999 && Math.abs(axle.y)>.021 && Math.abs(axle.y)<.026,node.getName());
+    assert.equal(Math.sign(axle.y),node.getName().endsWith('L')?1:-1);
+    const spin=new Quaternion().setFromAxisAngle(axle,Math.PI*.75);
+    assert(axle.clone().applyQuaternion(spin).distanceTo(axle)<1e-6);
+    geometry.dispose();rotor.material.dispose();
+  }
+});
