@@ -13,6 +13,15 @@ export function harborCanal(plan:DockPlan,seed:number):MapDocument {
       parts:template?structuredClone(template.parts):[{shape:"box",position:[0,.5,0],size:[1,1,1]}]};
     objects.push(item);return item;
   };
+  // Queue new placements separately so established harbor IDs (especially the demolition
+  // crossing and its saved damage) keep their original numbering.
+  const additions: LayoutObject[] = [];
+  const permanentZ = -178, roadHeight = .09;
+  const kitPiece = (key:string,name:string,position:V3,yaw:number,id:string):LayoutObject => {
+    const piece=pieceById("kit-"+key)!;
+    return {id,name,piece:piece.id,position,yaw,size:[...piece.size],color:piece.color,
+      solid:true,locked:false,parts:[]};
+  };
   // One continuous navigable channel. No ground or collision plane spans water.
   for(const x of [-180,180])for(const z of [-170,170])
     add("coastal-water-visual","Sea and canal",[x,-8,z],[360,.05,340],"#234957",false);
@@ -23,7 +32,16 @@ export function harborCanal(plan:DockPlan,seed:number):MapDocument {
       for(const z of [-150,150])add("coastal-road","Quayside avenue",[side*x,0,z],[15,.08,300],"#333b40");
     }
     for(const z of [-178,0,178]){
-      const road=add("coastal-road","Crossing approach",[side*108,.01,z],[168,.08,16],"#32393f");
+      const permanent=z===permanentZ;
+      const road=add("coastal-road","Crossing approach",[side*(permanent?164.5:108),.01,z],[permanent?55:168,.08,16],"#32393f");
+      if (permanent) {
+        // Keep both avenue intersections open. The 72 m module starts beyond the inner
+        // junction and ends before the outer one. Its inlet, not its center, is the pivot.
+        const sideId=side<0?"west":"east";
+        additions.push({...road,id:"kit-link-"+sideId,position:[side*47.5,.01,z],size:[35,.08,16],parts:structuredClone(road.parts)});
+        additions.push(kitPiece("highway_25_wide_straight_level","Highway bridge approach",
+          [side*65,roadHeight,z],side<0?180:0,"kit-approach-"+sideId));
+      }
       for(const offset of [-.42,-.28,-.14,0,.14,.28,.42])road.parts.push({shape:"box",
         position:[offset,1.25,0],size:[.045,.1,.009],color:"#b7b395",solid:false});
     }
@@ -62,9 +80,15 @@ export function harborCanal(plan:DockPlan,seed:number):MapDocument {
       }
     }
   }
-  // The causeway cap and piers leave two submerged culverts open to the sea.
-  add("coastal-land-bridge","Permanent causeway",[0,-1.1,-178],[48,1.18,16],"#7c8585");
-  for(const x of [-22,0,22])add("coastal-land-bridge","Culvert pier",[x,-11,-178],[4,10,16],"#687375");
+  // Two native 30 m spans cross the 48 m canal with 6 m of bearing on each bank.
+  // Local -Z points east at this yaw. Keep the centerline open above and below deck.
+  const masonry=(key:string,name:string,x:number)=>objects.push(
+    kitPiece(key,name,[x,roadHeight,permanentZ],-90,"harbor-"+(objects.length+1)));
+  masonry("stone_start","Permanent causeway",-30);
+  masonry("stone_pedestal_large","West bridge abutment",-27.82);
+  masonry("stone_pedestal_small","Central stone pier",0);
+  masonry("stone_pedestal_large","East bridge abutment",27.82);
+  additions.push(kitPiece("stone_end","Permanent stone span",[0,roadHeight,permanentZ],-90,"kit-east-span"));
   // Each leaf pivots about its bank. Both are level when closed.
   for(const side of [-1,1]){
     const leaf=add(LIFT,"Drawbridge jump leaf",[24*side,0,0],[24,.6,16],"#8e969a",true,side<0?0:180);
@@ -89,6 +113,7 @@ export function harborCanal(plan:DockPlan,seed:number):MapDocument {
     sites.forEach((piece,i)=>{const template=pieceById(piece)!;
       add(piece,template.label,[side*95,.08,(i===0?-1:1)*flip*145],[...template.size],template.color);});
   }
+  objects.push(...additions);
   const layout=parseLayout({format:"avenlab-world-layout",version:1,map_id:id,title:"Harbor Canal · "+plan+" · "+seed,
     base:"replace",ground:false,repeat:false,spawns,objects});
   return parseMapText(mapExport({schema_version:2,map_id:id,sky:"foggy_day",

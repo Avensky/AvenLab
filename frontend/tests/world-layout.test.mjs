@@ -134,7 +134,7 @@ test("layout UI places, edits, locks, undoes, saves and routes controller action
     const { WorldBuilderPanel } = await load(
       "worldBuilder/panels/WorldBuilderPanel.tsx",
     );
-    builder.getState().load(parseMapDocument(source), "Test map");
+    builder.getState().load(parseMapDocument({ ...source, authored_layout: emptyLayout(source.map_id) }), "Test map");
     ui.setState({
       screen: "world_builder",
       overlay: null,
@@ -157,9 +157,11 @@ test("layout UI places, edits, locks, undoes, saves and routes controller action
     await click(by("Pan view"));assert.equal(layout.getState().navigation,"pan");
     await click(by("Move tool"));assert.equal(layout.getState().navigation,"orbit");assert.equal(layout.getState().tool,"translate");
     await click(by("Select tool"));
-    await click(by("Place Open garage"));
+    await click(by("Place Stone bridge · 120 m"));
     await click(button("+ Place at cursor"));
     assert.equal(layout.getState().doc.objects.length, 1);
+    assert.equal(layout.getState().doc.objects[0].piece, "kit-stone_bridge_120m");
+    assert.equal(layout.getState().doc.objects[0].position[1], source.surface.road_y);
     assert.equal(canDrive(), false);
     await click(button("Finish placing · Esc"));
     const id = layout.getState().selected;

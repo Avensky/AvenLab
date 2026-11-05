@@ -85,6 +85,11 @@ mod tests {
             for z in [-78.,-70.,-62.,-54.,-46.]{assert!((support(&w,x,z).unwrap()-6.).abs()<0.02);}
         }
         assert!(support(&w,0.,60.).is_none());
+        for x in [-14.,14.] {
+            let ray=Ray::new(point![x,-4.,-202.],Vector::z());
+            assert!(!w.colliders.iter().any(|(_,c)| c.shape().cast_ray(c.position(),&ray,48.,true).is_some()),
+                    "the stone arch at {x} must leave a passage below the deck");
+        }
         assert!((support(&w,0.,-178.).unwrap()-0.08).abs()<0.02);
         assert!((support(&w,0.,178.).unwrap()-0.08).abs()<0.02);
         w.move_drawbridges(300);w.step(crate::physics::SIMULATION_DT);
@@ -98,6 +103,29 @@ mod tests {
         assert!(support(&w,0.,178.).is_none());
         assert!(support(&w,0.,-178.).is_some());
     }
+    #[test]
+    fn car_crosses_both_highway_approaches_and_the_masonry_seam() {
+        let mut world=PhysicsWorld::for_harbor_room(2,VARIANTS[2]).unwrap();
+        let handle=world.spawn_vehicle_for_player("bridge-driver".into(),[0.;3],"brz","red").unwrap();
+        let body=&mut world.bodies[handle];
+        body.set_translation(vector![-135.,1.,-178.],true);
+        body.set_rotation(Rotation::from_euler_angles(0.,std::f32::consts::FRAC_PI_2,0.),true);
+        body.set_linvel(Vector::zeros(),true);
+        world.bodies.propagate_modified_body_positions_to_colliders(&mut world.colliders);
+        world.query_pipeline.update(&world.colliders);
+        world.vehicles.get_mut("bridge-driver").unwrap().powertrain.engine_requested=true;
+        for _ in 0..150 {world.step(crate::physics::SIMULATION_DT);}
+        world.vehicles.get_mut("bridge-driver").unwrap().throttle=0.65;
+        for _ in 0..3000 {
+            world.step(crate::physics::SIMULATION_DT);
+            let position=world.bodies[handle].translation();
+            assert!(position.y > 0. && position.y < 2. && (position.z+178.).abs()<5.,
+                    "vehicle lost the crossing at {position:?}");
+            if position.x>135. {return;}
+        }
+        panic!("vehicle did not reach the far approach: {:?}",world.bodies[handle].translation());
+    }
+
     #[test]
     fn discovery_is_team_private_persistent_and_idle_silent(){
         let mut room=WorldRuntime::new(11,VARIANTS[2]).unwrap();

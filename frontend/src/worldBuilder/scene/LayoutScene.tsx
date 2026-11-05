@@ -160,6 +160,7 @@ function SelectedObject({ item }: { item: LayoutObject }) {
           magnetLock.current,
         );
         object.position.fromArray(result.position);
+        object.rotation.y=result.yaw*Math.PI/180;
         magnetLock.current = result.lock;
       }}
       onMouseUp={() => {
@@ -267,7 +268,7 @@ export default function LayoutScene() {
   const hoverLock = useRef<LayoutSnapLock | null>(null);
   const previewPosition = (position: V3) => {
     const state = useLayoutStore.getState();
-    if (!phantom || !state.magnet) return position;
+    if (!phantom || !state.magnet) return {position,yaw};
     const result = snapLayoutPosition(
       phantom,
       position,
@@ -277,7 +278,7 @@ export default function LayoutScene() {
       hoverLock.current,
     );
     hoverLock.current = result.lock;
-    return result.position;
+    return result;
   };
   const select = useCallback(
     (id: string | null) => useLayoutStore.getState().select(id),
@@ -329,13 +330,9 @@ export default function LayoutScene() {
         onPointerMove={(e) => {
           if (ghost.current && placing) {
             ghost.current.visible = true;
-            ghost.current.position.fromArray(
-              previewPosition([
-                snap(e.point.x, grid),
-                cursor[1],
-                snap(e.point.z, grid),
-              ]),
-            );
+            const pose = previewPosition([snap(e.point.x, grid), cursor[1], snap(e.point.z, grid)]);
+            ghost.current.position.fromArray(pose.position);
+            ghost.current.rotation.y=pose.yaw*Math.PI/180;
             invalidate();
           }
         }}
@@ -347,11 +344,7 @@ export default function LayoutScene() {
               useLayoutStore
                 .getState()
                 .place(
-                  previewPosition([
-                    snap(e.point.x, grid),
-                    cursor[1],
-                    snap(e.point.z, grid),
-                  ]),
+                  [snap(e.point.x, grid), cursor[1], snap(e.point.z, grid)],
                 ),
             );
           else select(null);

@@ -1,3 +1,4 @@
+import { kitAsset } from "../worldBuilder/mapKit/catalog";
 import { addPiece } from "../worldBuilder/document/layoutDocument";
 import { useState } from "react";
 import { useLayoutStore, layoutAction } from "../worldBuilder/state/layoutStore";
@@ -14,14 +15,14 @@ export function CombatAuthoringPanel() {
   const item = doc?.objects.find(o => o.id === selected);
   const [role, setRole] = useState(0), [aim, setAim] = useState({ x: 0, y: 0 });
   const settings = item?.destruction ?? destructionDefaults;
-  const permanent = item?.piece === "coastal-land-bridge" || item?.piece === "coastal-land";
+  const permanent = (item && kitAsset(item.piece)?.permanent) || item?.piece === "coastal-land-bridge" || item?.piece === "coastal-land";
   const update = (patch: Partial<DestructionSettings>) => layoutAction(() => {
     if (item && !item.locked) useLayoutStore.getState().update({ destruction: { ...settings, ...patch, ...(permanent ? { enabled: false } : {}) } });
   });
   return <div className="le-section"><h3>ASSET DAMAGE</h3><button onClick={()=>layoutAction(()=>{if(!doc)return;const spawn=doc.spawns?.[0];if(!spawn)throw Error("Place a spawn first");const a=spawn.yaw*Math.PI/180;const next=addPiece(doc,'wall',[spawn.position[0]-Math.sin(a)*25,spawn.position[1],spawn.position[2]-Math.cos(a)*25],spawn.yaw);const wall=next.objects.at(-1)!;wall.size=[8,3,.5];wall.destruction={...destructionDefaults,enabled:true,hp:100,smallArms:1};useLayoutStore.getState().commit(next,'Practice wall placed 25 m ahead of the first spawn. Apply & Test Drive to load its collider.');useLayoutStore.getState().select(wall.id);})}>ADD PRACTICE WALL</button>
     <p className="le-tip">STRUCTURE TEST · Apply the map, enable Combat Test and aim/fire at the practice wall. Small-arms hits clear explicit standalone structures; rubble and explosions remain pending.</p>
     {item ? <fieldset disabled={item.locked}><legend>{item.name}</legend>
-      {permanent && <p>Permanent land / land bridge · indestructible</p>}
+      {permanent && <p>Permanent crossing or land · indestructible</p>}
       <label><input type="checkbox" disabled={permanent} checked={!permanent && settings.enabled} onChange={e => update({ enabled: e.target.checked })}/> Destructible</label>
       {([['hp','Structural HP',1,1000000,100],['smallArms','Small-arms multiplier',0,10,0.01],['cannon','Cannon multiplier',0,10,0.1],['bomb','Bomb multiplier',0,10,0.1]] as const).map(([key,label,min,max,step]) => <label className="le-title-label" key={key}>{label}<input type="number" min={min} max={max} step={step} value={settings[key]} onChange={e => update({ [key]: Number(e.target.value) })}/></label>)}
       <label>Destroyed footprint (rubble pending; test clears)<select value={settings.rubble} onChange={e => update({ rubble: e.target.value as DestructionSettings['rubble'] })}><option value="clear">Clear route</option><option value="cover">Bounded rubble cover</option></select></label>

@@ -1,3 +1,4 @@
+import { kitAsset, kitPieces } from "../mapKit/catalog.ts";
 import { harborPieces } from "../generation/harborPieces.ts";
 import { streetProps } from "../props/streetPropCatalog.ts";
 import { validateDestruction, type DestructionSettings } from "../../combat/destruction.ts";
@@ -100,6 +101,7 @@ const box = (
 });
 export const PIECES: Piece[] = [
   ...EXTRA_PIECES,
+  ...kitPieces,
   ...harborPieces,
   ...streetProps,
   ...VEHICLE_ASSETS.map((a) => ({
@@ -325,9 +327,11 @@ export function parseLayout(value: unknown, mapId?: string): WorldLayout {
     )
       throw Error("Invalid or duplicate piece ID");
     ids.add(item.id);
+    const kit = kitAsset(String(item.piece));
+    if (String(item.piece).startsWith("kit-") && !kit) throw Error("Unknown map kit piece");
     if (item.destruction !== undefined) {
       validateDestruction(item.destruction);
-      if (["coastal-land", "coastal-land-bridge"].includes(String(item.piece)) && item.destruction.enabled) throw Error("Permanent land bridges cannot be destructible");
+      if ((kit?.permanent || ["coastal-land", "coastal-land-bridge"].includes(String(item.piece))) && item.destruction.enabled) throw Error("Permanent land bridges cannot be destructible");
     }
     if (
       typeof item.name !== "string" ||
@@ -352,7 +356,7 @@ export function parseLayout(value: unknown, mapId?: string): WorldLayout {
     )
       throw Error("Invalid piece appearance or collision setting");
     if (
-      [item.road, item.model, item.vehicle].filter((v) => v !== undefined)
+      [kit, item.road, item.model, item.vehicle].filter((v) => v !== undefined)
         .length > 1
     )
       throw Error("Choose one asset type per piece");
@@ -382,13 +386,13 @@ export function parseLayout(value: unknown, mapId?: string): WorldLayout {
     }
     if (
       !Array.isArray(item.parts) ||
-      (item.road || item.model || item.vehicle
+      (kit || item.road || item.model || item.vehicle
         ? item.parts.length !== 0
         : !item.parts.length) ||
       item.parts.length > 32
     )
       throw Error("Each piece needs 1–32 explicit shapes");
-    parts += item.parts.length;
+    parts += item.parts.length + (kit ? 1 : 0);
     for (const entry of item.parts) {
       const part = object(entry);
       if (
@@ -439,7 +443,7 @@ export function addPiece(
   while (ids.has(`${pieceId}-${n}`)) n++;
   return parseLayout({
     ...doc,
-    ...((piece.road || piece.model) && !doc.objects.length
+    ...((kitAsset(piece.id) || piece.road || piece.model) && !doc.objects.length
       ? { ground: false, repeat: false }
       : {}),
     objects: [

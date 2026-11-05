@@ -20,7 +20,7 @@ export function readGlb(file) {
   const raw=[];
   const visit=(i,parent)=>{const node=doc.nodes[i],local=node.matrix?new Matrix4().fromArray(node.matrix):new Matrix4().compose(new Vector3().fromArray(node.translation??[0,0,0]),new Quaternion().fromArray(node.rotation??[0,0,0,1]),new Vector3().fromArray(node.scale??[1,1,1])),world=new Matrix4().multiplyMatrices(parent,local);
     if(node.mesh!==undefined)doc.meshes[node.mesh].primitives.forEach((p,j)=>{if((p.mode??4)!==4)throw Error('Road must use triangles');const positions=accessor(p.attributes.POSITION),v=new Vector3();for(let k=0;k<positions.length;k+=3){v.fromArray(positions,k).applyMatrix4(world).toArray(positions,k);}let indices=p.indices===undefined?Array.from({length:positions.length/3},(_,k)=>k):accessor(p.indices);if(world.determinant()<0){indices=[...indices];for(let k=0;k<indices.length;k+=3)[indices[k+1],indices[k+2]]=[indices[k+2],indices[k+1]];}
-      raw.push({id:`${i}-${j}`,sourceNode:node.name??`node-${i}`,material:doc.materials[p.material]?.name??'',positions,indices});});
+      raw.push({id:`${i}-${j}`,sourceNode:node.name??`node-${i}`,material:doc.materials?.[p.material]?.name??'',positions,indices});});
     for(const child of node.children??[])visit(child,world);};
   for(const i of doc.scenes[doc.scene??0].nodes)visit(i,new Matrix4());
   return {bytes,raw};

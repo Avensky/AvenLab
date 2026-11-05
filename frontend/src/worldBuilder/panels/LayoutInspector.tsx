@@ -1,3 +1,4 @@
+import {kitAsset} from "../mapKit/catalog";
 import { CombatAuthoringPanel } from "../../combat/CombatAuthoringPanel";
 import { useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
@@ -328,7 +329,7 @@ export function LayoutInspector({
                   value={item.color}
                   disabled={
                     item.locked ||
-                    Boolean(item.road || item.model || item.vehicle)
+                    Boolean(kitAsset(item.piece) || item.road || item.model || item.vehicle)
                   }
                   onChange={(e) =>
                     layoutAction(() => s.update({ color: e.target.value }))
@@ -350,7 +351,7 @@ export function LayoutInspector({
                     ? "Background vehicle · no physics"
                     : "Physical collisions"}
                   <small>
-                    {item.model
+                    {kitAsset(item.piece) ? 1 : item.model
                       ? modelAsset(item.model.asset)!.colliders.filter((c) =>
                           modelSolid(c.role, item.model!),
                         ).length
@@ -360,7 +361,7 @@ export function LayoutInspector({
                           ).length
                         : item.parts.filter((p) => p.solid !== false)
                             .length}{" "}
-                    {item.road || item.model
+                    {kitAsset(item.piece) || item.road || item.model
                       ? "measured surface groups"
                       : "explicit shapes"}
                   </small>

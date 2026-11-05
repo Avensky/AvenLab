@@ -1,3 +1,5 @@
+import { kitAsset } from "../mapKit/catalog";
+import { KitInstances, KitMesh } from "../mapKit/KitMesh";
 import { CARRIER,LIFT } from "../generation/harborPieces";
 import { BigEDocked,BridgeLeaf } from "../../world/props/HarborPieces";
 import { streetProp } from "../props/streetPropCatalog";
@@ -157,6 +159,7 @@ export const LayoutInstances = memo(function LayoutInstances({
         </group>
       ))}
       <StreetPropInstances objects={props} onSelect={onSelect} fallback={<ShapeInstances items={propFallback} shape="box" wireframe={false} onSelect={onSelect}/>}/>
+      <KitInstances objects={objects} exclude={exclude} collisionOnly={collisionOnly} wireframe={wireframe} onSelect={onSelect}/>
       <RoadInstances
         objects={objects}
         exclude={exclude}
@@ -200,6 +203,7 @@ export function PieceModel({
 }) {
   const geometries = useGeometries();
   const detail = useEditorPreferences((s) => s.detail);
+  const kit = kitAsset(item.piece);
   const bounds = localBounds(item),
     center = bounds.min.map(
       (n, i) => (n + bounds.max[i]) / 2 / item.size[i],
@@ -233,6 +237,7 @@ export function PieceModel({
         ));
   return (
     <>
+      {kit && <KitMesh item={item} asset={kit} ghost={ghost} collisionOnly={collisionOnly} wireframe={wireframe} forceDetail={forceDetail}/>}
       {item.vehicle && (
         <VehicleMesh
           item={item}

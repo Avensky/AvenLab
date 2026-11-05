@@ -105,6 +105,9 @@ test("lab pieces support pointer and controller edits in the installed editor", 
       value,
     });
   }
+  // The controller routes activation only to a visible control in the focused document.
+  document.hasFocus = () => true;
+  dom.window.HTMLElement.prototype.getClientRects = function () { return this.closest("[hidden]") ? [] : [{}]; };
   dom.window.HTMLElement.prototype.scrollIntoView = () => {};
   const server = await createServer({
     server: { middlewareMode: true, hmr: false, ws: false },
@@ -162,6 +165,7 @@ test("lab pieces support pointer and controller edits in the installed editor", 
         .position[0],
       0.5,
     );
+    await act(async () => button("TOOLS").click());
     await act(async () => button("Save").click());
     const saved = JSON.parse(
       localStorage.getItem("avenlab-layout-v1:road_jump_lab"),

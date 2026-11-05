@@ -196,6 +196,7 @@ export const useLayoutStore = create<LayoutState>((set, get) => ({
         s.magnetRadius,
       );
       placed.position = result.position;
+      placed.yaw = result.yaw;
       doc = parseLayout(doc);
     }
     s.commit(doc, "Piece placed. Click again to place another; Esc finishes.");

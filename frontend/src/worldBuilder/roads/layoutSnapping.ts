@@ -1,3 +1,5 @@
+import { snapKitSockets } from "../mapKit/sockets.ts";
+import { kitAsset } from "../mapKit/catalog.ts";
 import type { LayoutObject, V3 } from "../document/layoutDocument.ts";
 import { modelAsset } from "../models/modelCatalog.ts";
 import type { Bounds } from "../roadKit/roadKitCore.ts";
@@ -7,11 +9,16 @@ import {
   type SnapLock,
 } from "../roadKit/roadKitSnap.ts";
 import { roadAsset, roadBounds } from "./roadCatalog.ts";
-export type LayoutSnapLock = { id: string; lock: SnapLock };
+export type LayoutSnapLock = { id: string; lock: SnapLock | { kind: "socket"; moving: number; fixed: number } };
 export function localBounds(
   item: LayoutObject,
   basis: "asphalt" | "outer" = "outer",
 ): Bounds {
+  const kit = kitAsset(item.piece);
+  if (kit) return {
+    min: kit.bounds.min.map((n,i)=>n*item.size[i]/kit.size[i]) as V3,
+    max: kit.bounds.max.map((n,i)=>n*item.size[i]/kit.size[i]) as V3,
+  };
   if (item.model) {
     const a = modelAsset(item.model.asset)!,
       b = a.bounds;
@@ -46,7 +53,9 @@ export function snapLayoutPosition(
   basis: "asphalt" | "outer",
   radius: number,
   previous: LayoutSnapLock | null = null,
-): { position: V3; lock: LayoutSnapLock | null } {
+): { position: V3; yaw: number; lock: LayoutSnapLock | null } {
+  const match = snapKitSockets(item, desired, objects, radius);
+  if (match) return { position:match.position, yaw:match.yaw, lock:{id:match.id, lock:match.lock} };
   const moving = localBounds(item, basis),
     pose = { x: desired[0], z: desired[2], yaw: (item.yaw * Math.PI) / 180 };
   const reach =
@@ -58,6 +67,7 @@ export function snapLayoutPosition(
   const targets = objects.filter(
     (o) =>
       o.id !== item.id &&
+      !(kitAsset(item.piece)?.sockets.length && kitAsset(o.piece)?.sockets.length) &&
       Math.abs(o.position[1] - desired[1]) < 0.02 &&
       Math.hypot(o.position[0] - desired[0], o.position[2] - desired[2]) <=
         reach + Math.hypot(o.size[0], o.size[2]),
@@ -75,7 +85,7 @@ export function snapLayoutPosition(
           yaw: (fixed.yaw * Math.PI) / 180,
         },
         radius,
-        previous?.id === fixed.id ? previous.lock : null,
+        previous?.id === fixed.id && previous.lock.kind !== "socket" ? previous.lock : null,
       ),
     }))
     .filter((r) => r.result.lock);
@@ -90,8 +100,9 @@ export function snapLayoutPosition(
   const best = results[0];
   return best
     ? {
+        yaw: item.yaw,
         position: [best.result.pose.x, desired[1], best.result.pose.z],
         lock: { id: best.id, lock: best.result.lock! },
       }
-    : { position: desired, lock: null };
+    : { position: desired, yaw: item.yaw, lock: null };
 }

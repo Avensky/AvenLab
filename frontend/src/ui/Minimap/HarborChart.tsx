@@ -1,3 +1,5 @@
+import { kitAsset } from "../../worldBuilder/mapKit/catalog";
+import { worldSocket } from "../../worldBuilder/mapKit/sockets";
 import {memo,useMemo} from "react";
 import {useWorldStore} from "../../store/world/worldStore";
 import type {WorldLayout} from "../../worldBuilder/document/layoutDocument";
@@ -11,12 +13,25 @@ export function charted(bits:string,x:number,z:number){
   return Boolean(parseInt(bits[15-(i>>2)]??"0",16)&(1<<(i%4)));
 }
 export function harborRoads(layout:WorldLayout,collapsed:boolean):DebugAabbBox[]{
-  return layout.objects.filter(o=>o.piece==="coastal-road" || o.name==="Permanent causeway" ||
-    (o.piece==="canal-breakable"&&!collapsed) || o.piece==="canal-lift").map(o=>({
-      kind:"road",id:o.id,visual:o.name,
+  return layout.objects.flatMap((o):DebugAabbBox[]=>{
+    const asset=kitAsset(o.piece);
+    if (asset?.sockets.length===2) {
+      const mouths=asset.sockets.map(s=>worldSocket(o,asset,s));
+      const edges=mouths.flatMap(({position:[x,,z],heading,width})=>{
+        const a=heading*Math.PI/180,dx=Math.cos(a)*width/2,dz=-Math.sin(a)*width/2;
+        return [[x-dx,z-dz],[x+dx,z+dz]];
+      });
+      const xs=edges.map(p=>p[0]),zs=edges.map(p=>p[1]);
+      const minX=Math.min(...xs),maxX=Math.max(...xs),minZ=Math.min(...zs),maxZ=Math.max(...zs);
+      return [{kind:"road",id:o.id,visual:o.name,center:[(minX+maxX)/2,o.position[1],(minZ+maxZ)/2],
+        half_extents:[(maxX-minX)/2,.1,(maxZ-minZ)/2]}];
+    }
+    if (o.piece!=="coastal-road" && o.name!=="Permanent causeway" &&
+        !(o.piece==="canal-breakable"&&!collapsed) && o.piece!=="canal-lift") return [];
+    return [{kind:"road",id:o.id,visual:o.name,
       center:[o.position[0]+(o.piece==="canal-lift"?(o.yaw===0?12:-12):0),o.position[1],o.position[2]],
-      half_extents:[o.size[0]/2,o.size[1]/2,o.size[2]/2],
-    }));
+      half_extents:[o.size[0]/2,o.size[1]/2,o.size[2]/2]}];
+  });
 }
 export const HarborChart=memo(function HarborChart({layout,range}:{layout:WorldLayout,range:number}){
   const bits=useWorldStore(s=>s.sectorChart);

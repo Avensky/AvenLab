@@ -1,3 +1,5 @@
+import { kitOutline, insideOutline } from "../mapKit/plan";
+import { kitAsset } from "../mapKit/catalog";
 import {
   useCallback,
   useEffect,
@@ -84,6 +86,13 @@ function PieceFootprint({
   ghost?: boolean;
   collisionOnly?: boolean;
 }) {
+  const kit = kitAsset(item.piece);
+  const outline = kitOutline(item);
+  if (kit) return collisionOnly && !item.solid ? null : <polygon
+    points={outline ? outline.map(p=>p.join(",")).join(" ") : pointsFor(item)}
+    transform={outline ? `translate(${item.position[0]} ${item.position[2]}) rotate(${-item.yaw})` : undefined}
+    fill={collisionOnly ? "none" : item.color} fillOpacity={ghost ? .45 : 1}
+    stroke={collisionOnly ? "#4ce2b0" : "#0b1926"} strokeWidth=".6" vectorEffect="non-scaling-stroke"/>;
   if (item.vehicle) {
     return collisionOnly ? null : (
       <g
@@ -270,7 +279,7 @@ export function LayoutPlan() {
   const magnetLock = useRef<LayoutSnapLock | null>(null);
   const magnetic = (item: LayoutObject, position: V3) => {
     const state = useLayoutStore.getState();
-    if (!state.magnet) return position;
+    if (!state.magnet) return {position, yaw:item.yaw};
     const result = snapLayoutPosition(
       item,
       position,
@@ -280,7 +289,7 @@ export function LayoutPlan() {
       magnetLock.current,
     );
     magnetLock.current = result.lock;
-    return result.position;
+    return result;
   };
   const selection = useRef<SVGGElement>(null),
     ghost = useRef<SVGGElement>(null);
@@ -290,6 +299,7 @@ export function LayoutPlan() {
     item: LayoutObject;
     start: [number, number];
     next: V3;
+    yaw: number;
   } | null>(null);
   const pan = useRef<{
     pointer: number;
@@ -358,10 +368,10 @@ export function LayoutPlan() {
       held &&
       held.pointer === e.pointerId &&
       useLayoutStore.getState().doc === held.doc &&
-      held.next.some((v, i) => v !== held.item.position[i])
+      (held.next.some((v, i) => v !== held.item.position[i]) || held.yaw!==held.item.yaw)
     )
       layoutAction(() =>
-        useLayoutStore.getState().update({ position: held.next }),
+        useLayoutStore.getState().update({ position: held.next, yaw:held.yaw }),
       );
   };
   return (
@@ -401,13 +411,7 @@ export function LayoutPlan() {
             useLayoutStore
               .getState()
               .place(
-                phantom
-                  ? magnetic(phantom, [
-                      snap(p[0], grid),
-                      cursor[1],
-                      snap(p[1], grid),
-                    ])
-                  : [snap(p[0], grid), cursor[1], snap(p[1], grid)],
+                [snap(p[0], grid), cursor[1], snap(p[1], grid)],
               ),
           );
           return;
@@ -419,6 +423,8 @@ export function LayoutPlan() {
           const b = localBounds(item),
             lx = Math.cos(a) * x - Math.sin(a) * z,
             lz = Math.sin(a) * x + Math.cos(a) * z;
+          const ring=kitOutline(item);
+          if (ring) return insideOutline(lx,lz,ring);
           return (
             lx >= b.min[0] && lx <= b.max[0] && lz >= b.min[2] && lz <= b.max[2]
           );
@@ -431,6 +437,7 @@ export function LayoutPlan() {
             item: hit,
             start: p,
             next: [...hit.position],
+            yaw: hit.yaw,
           };
           e.currentTarget.setPointerCapture?.(e.pointerId);
         }
@@ -462,7 +469,7 @@ export function LayoutPlan() {
           ]);
           ghost.current.setAttribute(
             "transform",
-            `translate(${next[0]} ${next[2]})`,
+            `translate(${next.position[0]} ${next.position[2]}) rotate(${yaw-next.yaw})`,
           );
         }
         const held = drag.current;
@@ -474,14 +481,15 @@ export function LayoutPlan() {
             cancel();
             return;
           }
-          held.next = magnetic(held.item, [
+          const pose = magnetic(held.item, [
             snap(held.item.position[0] + p[0] - held.start[0], grid),
             held.item.position[1],
             snap(held.item.position[2] + p[1] - held.start[1], grid),
           ]);
+          held.next=pose.position; held.yaw=pose.yaw;
           selection.current?.setAttribute(
             "transform",
-            `translate(${held.next[0] - held.item.position[0]} ${held.next[2] - held.item.position[2]})`,
+            `translate(${held.next[0]} ${held.next[2]}) rotate(${held.item.yaw-held.yaw}) translate(${-held.item.position[0]} ${-held.item.position[2]})`,
           );
         }
       }}

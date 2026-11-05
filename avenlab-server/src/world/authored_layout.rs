@@ -98,15 +98,22 @@ impl AuthoredLayout {
         let mut ids = HashSet::new();
         let mut count = 0;
         for object in &self.objects {
+            let kit = super::map_kit::piece(&object.piece);
+            anyhow::ensure!(!object.piece.starts_with("kit-") || kit.is_some(), "Unknown map kit piece");
             if let Some(d)=&object.destruction {
                 anyhow::ensure!(d.hp.is_finite() && d.hp>=1.0 && d.hp<=1000000.0 && [d.small_arms,d.cannon,d.bomb].iter().all(|n|n.is_finite()&&*n>=0.0&&*n<=10.0) && ["clear","cover"].contains(&d.rubble.as_str()), "Invalid destruction profile");
-                anyhow::ensure!(!d.enabled || !["coastal-land","coastal-land-bridge"].contains(&object.piece.as_str()), "Permanent land cannot be destructible");
+                anyhow::ensure!(!d.enabled || (!kit.is_some_and(|p| p.permanent) && !["coastal-land","coastal-land-bridge"].contains(&object.piece.as_str())), "Permanent land cannot be destructible");
             }
             anyhow::ensure!(identifier(&object.id, 96) && ids.insert(object.id.clone()), "Invalid or duplicate authored piece ID");
             anyhow::ensure!(identifier(&object.piece, 64) && !object.name.trim().is_empty() && object.name.chars().count() <= 80, "Invalid piece name");
             anyhow::ensure!(vector_ok(&object.position, -100000.0, 100000.0) && vector_ok(&object.size, 0.02, 512.0) && object.yaw.is_finite() && object.yaw.abs() <= 36000.0, "Invalid authored piece transform");
             anyhow::ensure!(color_ok(&object.color), "Invalid authored piece color");
-            anyhow::ensure!([object.model.is_some(),object.road.is_some(),object.vehicle.is_some()].iter().filter(|v| **v).count() <= 1, "A piece has one asset type");
+            anyhow::ensure!([kit.is_some(),object.model.is_some(),object.road.is_some(),object.vehicle.is_some()].iter().filter(|v| **v).count() <= 1, "A piece has one asset type");
+            if kit.is_some() {
+                anyhow::ensure!(object.parts.is_empty(), "Map kit pieces use their measured triangle surfaces");
+                count += 1;
+                continue;
+            }
             if let Some(vehicle) = &object.vehicle {
                 anyhow::ensure!(object.piece == format!("vehicle-{}",vehicle.asset.id()) && object.parts.is_empty() && !object.solid, "Background vehicles must be decorative approved assets");
                 continue;
@@ -136,6 +143,10 @@ impl AuthoredLayout {
     pub fn spawn(&self, bodies: &mut RigidBodySet, colliders: &mut ColliderSet, origin: [f32; 3], groups: InteractionGroups) -> Vec<RigidBodyHandle> {
         let mut handles = Vec::new();
         for (object_index, object) in self.objects.iter().enumerate() {
+            if let Some(kit) = super::map_kit::piece(&object.piece) {
+                if let Some(handle) = kit.spawn(object,object_index,bodies,colliders,origin,groups) { handles.push(handle); }
+                continue;
+            }
             if object.vehicle.is_some() { continue; }
             if let Some(model) = &object.model {
                 if let Some(handle) = model.spawn(object,bodies,colliders,origin,groups) { handles.push(handle); }

@@ -511,12 +511,12 @@
         "name": "Crossing approach",
         "piece": "coastal-road",
         "position": [
-          -108,
+          -164.5,
           0.01,
           -178
         ],
         "size": [
-          168,
+          55,
           0.08,
           16
         ],
@@ -15952,12 +15952,12 @@
         "name": "Crossing approach",
         "piece": "coastal-road",
         "position": [
-          108,
+          164.5,
           0.01,
           -178
         ],
         "size": [
-          168,
+          55,
           0.08,
           16
         ],
@@ -30917,138 +30917,82 @@
       {
         "id": "harbor-215",
         "name": "Permanent causeway",
-        "piece": "coastal-land-bridge",
+        "piece": "kit-stone_start",
         "position": [
-          0,
-          -1.1,
+          -30,
+          0.09,
           -178
         ],
+        "yaw": -90,
         "size": [
-          48,
-          1.18,
-          16
+          23.108799934387207,
+          17.513399600982666,
+          32.19860005378723
         ],
-        "color": "#7c8585",
+        "color": "#887e74",
         "solid": true,
-        "yaw": 0,
         "locked": false,
-        "parts": [
-          {
-            "shape": "box",
-            "position": [
-              0,
-              0.5,
-              0
-            ],
-            "size": [
-              1,
-              1,
-              1
-            ]
-          }
-        ]
+        "parts": []
       },
       {
         "id": "harbor-216",
-        "name": "Culvert pier",
-        "piece": "coastal-land-bridge",
+        "name": "West bridge abutment",
+        "piece": "kit-stone_pedestal_large",
         "position": [
-          -22,
-          -11,
+          -27.82,
+          0.09,
           -178
         ],
+        "yaw": -90,
         "size": [
-          4,
-          10,
-          16
+          33.945600509643555,
+          20.881700038909912,
+          13.79740047454834
         ],
-        "color": "#687375",
+        "color": "#887e74",
         "solid": true,
-        "yaw": 0,
         "locked": false,
-        "parts": [
-          {
-            "shape": "box",
-            "position": [
-              0,
-              0.5,
-              0
-            ],
-            "size": [
-              1,
-              1,
-              1
-            ]
-          }
-        ]
+        "parts": []
       },
       {
         "id": "harbor-217",
-        "name": "Culvert pier",
-        "piece": "coastal-land-bridge",
+        "name": "Central stone pier",
+        "piece": "kit-stone_pedestal_small",
         "position": [
           0,
-          -11,
+          0.09,
           -178
         ],
+        "yaw": -90,
         "size": [
-          4,
-          10,
-          16
+          33.945600509643555,
+          20.881700038909912,
+          9.365400314331055
         ],
-        "color": "#687375",
+        "color": "#887e74",
         "solid": true,
-        "yaw": 0,
         "locked": false,
-        "parts": [
-          {
-            "shape": "box",
-            "position": [
-              0,
-              0.5,
-              0
-            ],
-            "size": [
-              1,
-              1,
-              1
-            ]
-          }
-        ]
+        "parts": []
       },
       {
         "id": "harbor-218",
-        "name": "Culvert pier",
-        "piece": "coastal-land-bridge",
+        "name": "East bridge abutment",
+        "piece": "kit-stone_pedestal_large",
         "position": [
-          22,
-          -11,
+          27.82,
+          0.09,
           -178
         ],
+        "yaw": -90,
         "size": [
-          4,
-          10,
-          16
+          33.945600509643555,
+          20.881700038909912,
+          13.79740047454834
         ],
-        "color": "#687375",
+        "color": "#887e74",
         "solid": true,
-        "yaw": 0,
         "locked": false,
-        "parts": [
-          {
-            "shape": "box",
-            "position": [
-              0,
-              0.5,
-              0
-            ],
-            "size": [
-              1,
-              1,
-              1
-            ]
-          }
-        ]
+        "parts": []
       },
       {
         "id": "harbor-219",
@@ -32287,6 +32231,134 @@
             ]
           }
         ]
+      },
+      {
+        "id": "kit-link-west",
+        "name": "Crossing approach",
+        "piece": "coastal-road",
+        "position": [
+          -47.5,
+          0.01,
+          -178
+        ],
+        "size": [
+          35,
+          0.08,
+          16
+        ],
+        "color": "#32393f",
+        "solid": true,
+        "yaw": 0,
+        "locked": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "kit-approach-west",
+        "name": "Highway bridge approach",
+        "piece": "kit-highway_25_wide_straight_level",
+        "position": [
+          -65,
+          0.09,
+          -178
+        ],
+        "yaw": 180,
+        "size": [
+          74.47270202636719,
+          9.82160037077847,
+          13.267200469970703
+        ],
+        "color": "#525960",
+        "solid": true,
+        "locked": false,
+        "parts": []
+      },
+      {
+        "id": "kit-link-east",
+        "name": "Crossing approach",
+        "piece": "coastal-road",
+        "position": [
+          47.5,
+          0.01,
+          -178
+        ],
+        "size": [
+          35,
+          0.08,
+          16
+        ],
+        "color": "#32393f",
+        "solid": true,
+        "yaw": 0,
+        "locked": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "kit-approach-east",
+        "name": "Highway bridge approach",
+        "piece": "kit-highway_25_wide_straight_level",
+        "position": [
+          65,
+          0.09,
+          -178
+        ],
+        "yaw": 0,
+        "size": [
+          74.47270202636719,
+          9.82160037077847,
+          13.267200469970703
+        ],
+        "color": "#525960",
+        "solid": true,
+        "locked": false,
+        "parts": []
+      },
+      {
+        "id": "kit-east-span",
+        "name": "Permanent stone span",
+        "piece": "kit-stone_end",
+        "position": [
+          0,
+          0.09,
+          -178
+        ],
+        "yaw": -90,
+        "size": [
+          23.108799934387207,
+          17.513399600982666,
+          32.19860076904297
+        ],
+        "color": "#887e74",
+        "solid": true,
+        "locked": false,
+        "parts": []
       }
     ]
   },

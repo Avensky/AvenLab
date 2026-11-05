@@ -1,3 +1,4 @@
+import { kitAsset } from "../mapKit/catalog";
 import {
   lazy,
   Suspense,
@@ -329,7 +330,7 @@ function LayoutPanel({
       selected: null,
       cursor: [
         useLayoutStore.getState().cursor[0],
-        floor - (piece.category === "roads" && !piece.road ? piece.size[1] : 0),
+        floor - (piece.category === "roads" && !piece.road && !kitAsset(piece.id) ? piece.size[1] : 0),
         useLayoutStore.getState().cursor[2],
       ],
       status: `Placing ${piece.label.toLowerCase()}. Click the ground; Q / E rotates. Esc finishes.`,
