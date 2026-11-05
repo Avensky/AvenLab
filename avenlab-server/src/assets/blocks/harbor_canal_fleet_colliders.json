@@ -308,12 +308,12 @@
         "piece": "coastal-land",
         "position": [
           -108,
-          -10,
+          -60,
           -150
         ],
         "size": [
           168,
-          10,
+          60,
           300
         ],
         "color": "#536069",
@@ -342,12 +342,12 @@
         "piece": "coastal-land",
         "position": [
           -108,
-          -10,
+          -60,
           150
         ],
         "size": [
           168,
-          10,
+          60,
           300
         ],
         "color": "#536069",
@@ -16127,12 +16127,12 @@
         "piece": "coastal-land",
         "position": [
           108,
-          -10,
+          -60,
           -150
         ],
         "size": [
           168,
-          10,
+          60,
           300
         ],
         "color": "#536069",
@@ -16161,12 +16161,12 @@
         "piece": "coastal-land",
         "position": [
           108,
-          -10,
+          -60,
           150
         ],
         "size": [
           168,
-          10,
+          60,
           300
         ],
         "color": "#536069",
@@ -32959,142 +32959,6 @@
         "parts": []
       },
       {
-        "id": "bed-harbor-1",
-        "piece": "harbor-seabed",
-        "name": "Harbor seabed",
-        "position": [
-          -180,
-          -25,
-          -170
-        ],
-        "size": [
-          360,
-          1,
-          340
-        ],
-        "color": "#5a5851",
-        "solid": true,
-        "locked": false,
-        "yaw": 0,
-        "parts": [
-          {
-            "shape": "box",
-            "position": [
-              0,
-              0.5,
-              0
-            ],
-            "size": [
-              1,
-              1,
-              1
-            ]
-          }
-        ]
-      },
-      {
-        "id": "bed-harbor-2",
-        "piece": "harbor-seabed",
-        "name": "Harbor seabed",
-        "position": [
-          -180,
-          -25,
-          170
-        ],
-        "size": [
-          360,
-          1,
-          340
-        ],
-        "color": "#5a5851",
-        "solid": true,
-        "locked": false,
-        "yaw": 0,
-        "parts": [
-          {
-            "shape": "box",
-            "position": [
-              0,
-              0.5,
-              0
-            ],
-            "size": [
-              1,
-              1,
-              1
-            ]
-          }
-        ]
-      },
-      {
-        "id": "bed-harbor-3",
-        "piece": "harbor-seabed",
-        "name": "Harbor seabed",
-        "position": [
-          180,
-          -25,
-          -170
-        ],
-        "size": [
-          360,
-          1,
-          340
-        ],
-        "color": "#5a5851",
-        "solid": true,
-        "locked": false,
-        "yaw": 0,
-        "parts": [
-          {
-            "shape": "box",
-            "position": [
-              0,
-              0.5,
-              0
-            ],
-            "size": [
-              1,
-              1,
-              1
-            ]
-          }
-        ]
-      },
-      {
-        "id": "bed-harbor-4",
-        "piece": "harbor-seabed",
-        "name": "Harbor seabed",
-        "position": [
-          180,
-          -25,
-          170
-        ],
-        "size": [
-          360,
-          1,
-          340
-        ],
-        "color": "#5a5851",
-        "solid": true,
-        "locked": false,
-        "yaw": 0,
-        "parts": [
-          {
-            "shape": "box",
-            "position": [
-              0,
-              0.5,
-              0
-            ],
-            "size": [
-              1,
-              1,
-              1
-            ]
-          }
-        ]
-      },
-      {
         "id": "street-west-64",
         "piece": "coastal-road",
         "name": "Dockside cross street",
@@ -33339,12 +33203,12 @@
         "name": "Boarding bridge column",
         "position": [
           -198.75,
-          -24,
+          -60,
           -6.2
         ],
         "size": [
           1.3,
-          24.41,
+          60.410000000000004,
           1.4
         ],
         "color": "#7d8587",
@@ -33373,12 +33237,12 @@
         "name": "Boarding bridge column",
         "position": [
           -198.75,
-          -24,
+          -60,
           6.2
         ],
         "size": [
           1.3,
-          24.41,
+          60.410000000000004,
           1.4
         ],
         "color": "#7d8587",
@@ -33441,12 +33305,12 @@
         "name": "Boarding bridge column",
         "position": [
           -211.44,
-          -24,
+          -60,
           -6.2
         ],
         "size": [
           1.3,
-          27.1924,
+          63.1924,
           1.4
         ],
         "color": "#7d8587",
@@ -33475,12 +33339,12 @@
         "name": "Boarding bridge column",
         "position": [
           -211.44,
-          -24,
+          -60,
           6.2
         ],
         "size": [
           1.3,
-          27.1924,
+          63.1924,
           1.4
         ],
         "color": "#7d8587",
@@ -33543,12 +33407,12 @@
         "name": "Boarding bridge column",
         "position": [
           -226,
-          -24,
+          -60,
           -6.2
         ],
         "size": [
           1.3,
-          28.85,
+          64.85,
           1.4
         ],
         "color": "#7d8587",
@@ -33577,12 +33441,12 @@
         "name": "Boarding bridge column",
         "position": [
           -226,
-          -24,
+          -60,
           6.2
         ],
         "size": [
           1.3,
-          28.85,
+          64.85,
           1.4
         ],
         "color": "#7d8587",
@@ -33645,12 +33509,12 @@
         "name": "Boarding bridge column",
         "position": [
           -238,
-          -24,
+          -60,
           -6.2
         ],
         "size": [
           1.3,
-          28.85,
+          64.85,
           1.4
         ],
         "color": "#7d8587",
@@ -33679,12 +33543,12 @@
         "name": "Boarding bridge column",
         "position": [
           -238,
-          -24,
+          -60,
           6.2
         ],
         "size": [
           1.3,
-          28.85,
+          64.85,
           1.4
         ],
         "color": "#7d8587",
@@ -36518,12 +36382,12 @@
         "name": "Boarding bridge column",
         "position": [
           198.75,
-          -24,
+          -60,
           -6.2
         ],
         "size": [
           1.3,
-          24.41,
+          60.410000000000004,
           1.4
         ],
         "color": "#7d8587",
@@ -36552,12 +36416,12 @@
         "name": "Boarding bridge column",
         "position": [
           198.75,
-          -24,
+          -60,
           6.2
         ],
         "size": [
           1.3,
-          24.41,
+          60.410000000000004,
           1.4
         ],
         "color": "#7d8587",
@@ -36620,12 +36484,12 @@
         "name": "Boarding bridge column",
         "position": [
           211.44,
-          -24,
+          -60,
           -6.2
         ],
         "size": [
           1.3,
-          27.1924,
+          63.1924,
           1.4
         ],
         "color": "#7d8587",
@@ -36654,12 +36518,12 @@
         "name": "Boarding bridge column",
         "position": [
           211.44,
-          -24,
+          -60,
           6.2
         ],
         "size": [
           1.3,
-          27.1924,
+          63.1924,
           1.4
         ],
         "color": "#7d8587",
@@ -36722,12 +36586,12 @@
         "name": "Boarding bridge column",
         "position": [
           226,
-          -24,
+          -60,
           -6.2
         ],
         "size": [
           1.3,
-          28.85,
+          64.85,
           1.4
         ],
         "color": "#7d8587",
@@ -36756,12 +36620,12 @@
         "name": "Boarding bridge column",
         "position": [
           226,
-          -24,
+          -60,
           6.2
         ],
         "size": [
           1.3,
-          28.85,
+          64.85,
           1.4
         ],
         "color": "#7d8587",
@@ -36824,12 +36688,12 @@
         "name": "Boarding bridge column",
         "position": [
           238,
-          -24,
+          -60,
           -6.2
         ],
         "size": [
           1.3,
-          28.85,
+          64.85,
           1.4
         ],
         "color": "#7d8587",
@@ -36858,12 +36722,12 @@
         "name": "Boarding bridge column",
         "position": [
           238,
-          -24,
+          -60,
           6.2
         ],
         "size": [
           1.3,
-          28.85,
+          64.85,
           1.4
         ],
         "color": "#7d8587",
@@ -39806,13 +39670,13 @@
         "name": "Viaduct support",
         "position": [
           -11.176242964476927,
-          -24,
+          -60,
           10.951225888976282
         ],
         "yaw": 0,
         "size": [
           1.3,
-          33.539970000000004,
+          69.53997,
           1.3
         ],
         "color": "#98a69a",
@@ -39840,13 +39704,13 @@
         "name": "Viaduct support",
         "position": [
           -11.176242964476927,
-          -24,
+          -60,
           19.351225888976284
         ],
         "yaw": 0,
         "size": [
           1.3,
-          33.539970000000004,
+          69.53997,
           1.3
         ],
         "color": "#98a69a",
@@ -42959,6 +42823,142 @@
               0.21
             ],
             "color": "#d34c3f"
+          }
+        ]
+      },
+      {
+        "id": "bed-harbor-1",
+        "piece": "harbor-seabed",
+        "name": "Seafloor",
+        "position": [
+          -180,
+          -61,
+          -170
+        ],
+        "yaw": 0,
+        "size": [
+          360,
+          1,
+          340
+        ],
+        "color": "#515354",
+        "solid": true,
+        "locked": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "bed-harbor-2",
+        "piece": "harbor-seabed",
+        "name": "Seafloor",
+        "position": [
+          -180,
+          -61,
+          170
+        ],
+        "yaw": 0,
+        "size": [
+          360,
+          1,
+          340
+        ],
+        "color": "#515354",
+        "solid": true,
+        "locked": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "bed-harbor-3",
+        "piece": "harbor-seabed",
+        "name": "Seafloor",
+        "position": [
+          180,
+          -61,
+          -170
+        ],
+        "yaw": 0,
+        "size": [
+          360,
+          1,
+          340
+        ],
+        "color": "#515354",
+        "solid": true,
+        "locked": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "bed-harbor-4",
+        "piece": "harbor-seabed",
+        "name": "Seafloor",
+        "position": [
+          180,
+          -61,
+          170
+        ],
+        "yaw": 0,
+        "size": [
+          360,
+          1,
+          340
+        ],
+        "color": "#515354",
+        "solid": true,
+        "locked": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
           }
         ]
       }

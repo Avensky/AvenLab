@@ -1,3 +1,4 @@
+import {DOCK_DEPTH} from './coastalTerrain.ts';
 import {pieceById,type LayoutObject,type V3} from '../document/layoutDocument.ts';
 import {kitAsset} from '../mapKit/catalog.ts';
 import {worldSocket} from '../mapKit/sockets.ts';
@@ -29,7 +30,7 @@ function viaduct(objects:LayoutObject[]) {
   for(const [i,along] of [0,.5,1].entries()){
     const a=mouth(level,0).position,b=mouth(level,1).position;
     const x=a[0]+(b[0]-a[0])*along,z=a[2]+(b[2]-a[2])*along;
-    const bottom=Math.abs(x)<24 ? -24 : 0;
+    const bottom=Math.abs(x)<24 ? -8-DOCK_DEPTH : 0;
     for(const side of [-1,1]){
       const column=prop('viaduct-column-'+i+'-'+side,'wall',[x,bottom,z+side*4.2]);
       column.size=[1.3,a[1]-bottom-.55,1.3];column.name='Viaduct support';objects.push(column);

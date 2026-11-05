@@ -46,7 +46,7 @@ test("canals and damaged bridge retain real open collision gaps", () => {
   assert.equal(d.repeat, false);
   assert.equal(d.base, "replace");
   for (const [x, z] of [[0, 0], [0, 40], [-60, 0], [80, 0], [210, -140]])
-    assert.equal(topAt(d, x, z), -Infinity, `${x},${z} must have no floor`);
+    assert.equal(topAt(d, x, z), -57, `${x},${z} must stay open down to the seabed`);
   for (const o of d.objects.filter(o => o.piece === "coastal-water-visual")) assert.equal(o.solid, false);
   assert.ok(Number.isFinite(topAt(d, -60, -12)));
   assert.ok(Number.isFinite(topAt(d, -60, 12)));
@@ -175,6 +175,13 @@ test("standalone coastal identity, old export recovery and full chassis spawn fo
   assert.equal(recovered.layout.map_id, 'coastal_district');
   assert.equal(recovered.layout.title, legacy.title);
   assert.deepEqual(recovered.layout.spawns, legacy.spawns);
+  const old = structuredClone(legacy);
+  old.objects = old.objects.filter(o => o.piece !== 'harbor-seabed');
+  const bank = old.objects.find(o => o.piece === 'coastal-land');
+  bank.position[1] = -8; bank.size[1] = 8;
+  const upgraded = parseDistrictImport(JSON.stringify(old)).layout;
+  assert.equal(upgraded.objects.find(o => o.id === bank.id).position[1], -57);
+  assert.deepEqual(parseLayoutText(layoutJSON(upgraded)),upgraded);
   assert.throws(() => parseDistrictImport(JSON.stringify({ ...legacy, objects: null }), 'road_precision'));
   assert.throws(() => parseDistrictImport(JSON.stringify({ ...legacy, objects: [] }), 'road_jump_lab'));
 });

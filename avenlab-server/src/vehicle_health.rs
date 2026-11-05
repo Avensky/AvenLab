@@ -56,6 +56,7 @@ impl VehicleCombatStats {
 /// totals. The career journal already checkpointed the old body's statistics.
 #[derive(Clone, Debug)]
 pub struct DownedLifecycle {
+    pub last_damage_kind: String,
     pub hp_fraction: f32,
     pub disabled_reason: String,
     pub remaining_s: f32,
@@ -129,8 +130,13 @@ impl VehicleHealth {
         }
     }
 
+    pub fn lost_to_environment(&self) -> bool {
+        self.defeated && matches!(self.last_damage_kind.as_str(), "water" | "out_of_bounds")
+    }
+
     pub fn downed_lifecycle(&self) -> Option<DownedLifecycle> {
         self.defeated.then(|| DownedLifecycle {
+            last_damage_kind:self.last_damage_kind.clone(),
             hp_fraction: if self.max_hp > 0.0 { (self.hp / self.max_hp).clamp(0.0, 1.0) } else { 0.0 },
             disabled_reason: self.disabled_reason.clone(), remaining_s: self.respawn_remaining_s,
             recovery_window_s: self.recovery_window_s, position: self.downed_position,

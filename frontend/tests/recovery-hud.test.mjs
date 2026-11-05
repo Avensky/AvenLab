@@ -18,6 +18,11 @@ test('recovery timers and Mechanic actions use authoritative windows and actor o
    assert.equal(actions.nearestReviveTarget(snapshot,'me').id,'ally');assert.equal(actions.nearestReviveTarget({...snapshot,entities:[{...me,speed:3.01},ally]},'me'),null);assert.equal(actions.nearestReviveTarget({...snapshot,entities:[{...me,health:hp({defeated:true})},ally]},'me'),null);
    assert.equal(actions.nearestReviveTarget({...snapshot,match_state:{phase:'ended'}},'me'),null);assert.equal(actions.nearestReviveTarget({entities:[me,{...ally,position:[NaN,1,0]}]},'me'),null);
    assert.equal(actions.nearestReviveTarget({entities:[me,{...ally,position:[8,5,0]}]},'me').id,'ally','range and height boundaries are inclusive');
+   for (const cause of ['water', 'out_of_bounds']) {
+    const wreck = {...ally,health:{...ally.health,last_damage_kind:cause}};
+    assert.equal(actions.nearestReviveTarget({entities:[me,wreck]},'me'),null);
+    assert.equal(status.recoveryStatus(wreck.health).revivable,false);
+   }
    assert.equal(actions.isMechanicPlayer(),true);social.setState({view:{...social.getState().view,alpha:{active:{hero:'brz',world_id:1,team:'red'}}}});assert.equal(actions.isMechanicPlayer(),false,'a BRZ chassis alone does not grant revive');stage();
   });
   await t.test('downed circles include self despite Hide All, have bounded server progress and no invented legacy window',async()=>{

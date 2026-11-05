@@ -1,3 +1,4 @@
+import {coastalTerrain} from '../generation/coastalTerrain.ts';
 import {glassDamage} from './libraryCatalog.ts';
 import { kitAsset, kitPieces } from "../mapKit/catalog.ts";
 import { harborPieces, railDamage } from "../generation/harborPieces.ts";
@@ -416,7 +417,18 @@ export function parseLayout(value: unknown, mapId?: string): WorldLayout {
 export function parseLayoutText(text: string, mapId?: string) {
   if (new TextEncoder().encode(text).length > MAX_LAYOUT_BYTES)
     throw Error("Layout JSON exceeds 2 MiB");
-  return parseLayout(JSON.parse(text), mapId);
+  const layout = parseLayout(JSON.parse(text), mapId);
+  // Older saved coastal drafts have thin banks and omit some seabed tiles.
+  // Validate the upgraded copy through the normal editor limits before use.
+  if (layout.repeat === false && /^(coastal_district|harbor_canal_(blue|red|fleet)|streaming_endless_city)$/.test(layout.map_id)) {
+    const upgraded = structuredClone(layout);
+    coastalTerrain(upgraded.objects);
+    // A hand-edited, otherwise valid layout can already fill the piece/shape
+    // budget. Keep the working draft if new seabed geometry would exceed it.
+    try { return parseLayout(upgraded, mapId); }
+    catch { return layout; }
+  }
+  return layout;
 }
 export const layoutJSON = (doc: WorldLayout) =>
   JSON.stringify(parseLayout(doc), null, 2) + "\n";

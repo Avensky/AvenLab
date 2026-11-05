@@ -4,6 +4,7 @@ import {requestSocial} from '../net/socialClient';
 import {useNetworkStore,type PhysicsEntitySnapshot,type PhysicsSnapshot} from '../store/session/networkStore';
 import {useSocialStore,type SocialView} from '../store/social/socialStore';
 import {announceCombat} from './combatNoticeStore';
+import {recoveryStatus} from './recoveryStatus';
 import {canDrive} from '../controls/inputRouting';
 
 export const REVIVE_RANGE_M=8;
@@ -21,7 +22,7 @@ export function isMechanicPlayer(network: MotionState = useNetworkStore.getState
 export function nearestReviveTarget(snapshot:PhysicsSnapshot|null,playerId:string):PhysicsEntitySnapshot|null{
  const me=snapshot?.entities.find(entity=>entity.id===playerId);
  if(!me||!validPosition(me)||!living(me)||!Number.isFinite(me.speed)||Math.abs(me.speed)>3||!['red','blue'].includes(me.team??'')||snapshot?.match_state?.phase==='ended')return null;
- const nearby=(snapshot?.entities??[]).filter(entity=>entity.id!==playerId&&entity.room_id===me.room_id&&entity.team===me.team&&validPosition(entity)&&entity.health?.defeated&&Number.isFinite(entity.health.respawn_remaining_s)&&entity.health.respawn_remaining_s>0&&typeof entity.health.recovery_window_s==='number'&&Number.isFinite(entity.health.recovery_window_s)&&entity.health.recovery_window_s>0&&Math.abs(entity.position[1]-me.position[1])<=4&&Math.hypot(entity.position[0]-me.position[0],entity.position[2]-me.position[2])<=REVIVE_RANGE_M);
+ const nearby=(snapshot?.entities??[]).filter(entity=>entity.id!==playerId&&entity.room_id===me.room_id&&entity.team===me.team&&validPosition(entity)&&recoveryStatus(entity.health)?.revivable&&Math.abs(entity.position[1]-me.position[1])<=4&&Math.hypot(entity.position[0]-me.position[0],entity.position[2]-me.position[2])<=REVIVE_RANGE_M);
  nearby.sort((a,b)=>Math.hypot(a.position[0]-me.position[0],a.position[2]-me.position[2])-Math.hypot(b.position[0]-me.position[0],b.position[2]-me.position[2])||a.id.localeCompare(b.id));
  return nearby[0]??null;
 }

@@ -1,3 +1,4 @@
+import {coastalTerrain} from './coastalTerrain.ts';
 import { addPiece, parseLayout, type LayoutObject, type V3, type WorldLayout } from "../document/layoutDocument.ts";
 
 /** Expand land and run-up distances while preserving the narrow canal widths. */
@@ -5,8 +6,8 @@ export const coastalCoordinate = (value: number, halfCanal: number) =>
   Math.abs(value) <= halfCanal ? value : Math.sign(value) * (halfCanal + (Math.abs(value) - halfCanal) * (5 / 3));
 
 /** A finite greybox, using the same explicit shapes as hand-authored pieces.
- * Land is split around channels: there is no hidden floor under the water.
- * Version 1 deliberately emits static geometry, not buoyancy or water triggers.
+ * The wet channels reach the seabed. The server uses the same water footprints
+ * for vehicle defeat, independently of the solid bank and deck colliders.
  */
 export type DistrictSize = "block" | "chunk" | "massive";
 export function coastalDistrict(mapId: string, seed = 1, surface = 0, districtSize: DistrictSize = "chunk", landBridge = true): WorldLayout {
@@ -164,6 +165,7 @@ export function coastalDistrict(mapId: string, seed = 1, surface = 0, districtSi
       scaled.push(part);
     }
   }
+  coastalTerrain(scaled);
   return parseLayout({ ...district, title: `Coastal district · ${districtSize} · seed ${seed}`, objects: scaled,
     spawns: district.spawns?.map(p => ({ ...p, position: [p.position[0]*scale, p.position[1], p.position[2]*scale] })) });
 }

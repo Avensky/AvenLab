@@ -24,6 +24,24 @@ impl PhysicsWorld {
         if self.dive_protected(victim) || self.garage_protected(victim) || attacker.is_some_and(|id| self.garage_protected(id)) {return false;}
         let amount=amount*if self.ctf_carriers.contains(victim){crate::ctf::CARRIER_DAMAGE_FACTOR}else{1.0};
         let amount=self.absorb_guard_damage(victim,attacker,amount,kind);
+        self.record_vehicle_damage(victim,attacker,amount,kind)
+    }
+    pub(crate) fn defeat_from_environment(&mut self, victim: &str, reason: &str) {
+        let Some(health) = self.vehicle_health.get_mut(victim) else { return };
+        if health.lost_to_environment() { return; }
+        if health.defeated && health.disabled_reason != "fuel" {
+            // An already destroyed wreck can lose its rescue site without a second death.
+            health.last_damage_kind = reason.to_owned();
+            return;
+        }
+        // A fuel-disabled car is still alive. Loss of the vehicle ends that rescue window.
+        health.defeated = false;
+        health.spawn_protection_s = 0.;
+        let remaining = health.hp;
+        self.record_vehicle_damage(victim, None, remaining, reason);
+    }
+
+    fn record_vehicle_damage(&mut self,victim:&str,attacker:Option<&str>,amount:f32,kind:&str)->bool {
         let Some(health)=self.vehicle_health.get_mut(victim) else{return false};
         let before=health.hp;let maximum=health.max_hp;
         let defeated=health.apply_damage(amount,attacker,kind);
@@ -96,6 +114,7 @@ impl PhysicsWorld {
         if state.disabled_reason=="fuel" {self.vehicles.get_mut(player).unwrap().powertrain.fuel_liters=0.0;}
         let health=self.vehicle_health.get_mut(player).unwrap();health.defeated=true;
         health.hp=if state.disabled_reason=="combat"{0.0}else{health.max_hp*state.hp_fraction};
+        health.last_damage_kind=state.last_damage_kind.clone();
         health.disabled_reason=state.disabled_reason.clone();health.recovery_window_s=state.recovery_window_s;
         health.respawn_remaining_s=state.remaining_s.max(0.0);health.spawn_protection_s=0.0;
         self.bodies.propagate_modified_body_positions_to_colliders(&mut self.colliders);self.query_pipeline.update(&self.colliders);
@@ -109,6 +128,9 @@ impl PhysicsWorld {
         let source=self.vehicles.get(actor).ok_or("Mechanic vehicle unavailable")?;
         let victim=self.vehicles.get(target).ok_or("Disabled vehicle unavailable")?;
         if !source.team.eq_ignore_ascii_case(&victim.team){return Err("Only teammates can be revived.".into());}
+        if self.vehicle_health.get(target).is_some_and(|h| h.lost_to_environment()) {
+            return Err("This vehicle must return at its safe spawn.".into());
+        }
         let actor_health=self.vehicle_health.get(actor).ok_or("Mechanic health unavailable")?;
         if actor_health.defeated{return Err("A disabled mechanic cannot revive.".into());}
         if actor_health.revive_cooldown_s>0.0{return Err("Mechanic revive is cooling down.".into());}

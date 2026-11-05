@@ -66,7 +66,7 @@ pub struct PhysicsWorld {
     chunks_ready: bool,
     service_bays: Vec<usize>,
     serviced_home: std::collections::HashSet<String>,
-    harbor_water: Vec<crate::harbor::WaterTile>,
+    coast:Option<crate::harbor::Coast>,
     pub bridge_motion: Option<crate::harbor::BridgeMotion>,
     bridge_tick: u64,
     drawbridges: Vec<(RigidBodyHandle, Isometry<Real>)>,
@@ -121,13 +121,10 @@ impl PhysicsWorld {
             l.objects.iter().any(|o|o.piece=="bridge-lever") && l.objects.iter().any(|o|o.piece=="canal-lift")).map(|_|Default::default());
         self.service_bays.clear();
         self.serviced_home.clear();
-        self.harbor_water.clear();
+        self.coast=crate::harbor::Coast::from_map(&map);
         self.has_impact_barriers = false;
         if let Some(layout) = &map.authored_layout {
             for (index, object) in layout.objects.iter().enumerate() {
-                if object.piece == "harbor-seabed" && !layout.repeat {
-                    self.harbor_water.push(crate::harbor::WaterTile::from_bed(object));
-                }
                 if matches!(object.piece.as_str(), "fuel-station" | "repair-shop" | "service-center") {
                     self.service_bays.push(index);
                 }
@@ -623,7 +620,7 @@ impl PhysicsWorld {
             chunks_ready: false,
             service_bays: Vec::new(),
             serviced_home: Default::default(),
-            harbor_water: Vec::new(),
+            coast:None,
             drawbridges: Vec::new(), bridge_motion:None, bridge_tick:0,
             has_impact_barriers: false,
             map_json: Default::default(),
@@ -993,6 +990,8 @@ impl PhysicsWorld {
             let road=ray.origin.y-hit.time_of_impact;
             let y=config.nominal_chassis_y(road).max(road+config.chassis_half_extents[1]-config.chassis_com_offset[1]+0.05);
             let pose=Isometry::new(vector![x,y,z],vector![0.0,yaw,0.0]);
+            let bottom = y + config.chassis_com_offset[1] - config.chassis_half_extents[1];
+            if self.coast.as_ref().is_some_and(|coast| coast.hazard(&pose.translation.vector, bottom).is_some()) { continue; }
             if !self.vehicle_pose_clear(handle,config,pose)||!self.vehicle_recovery_support(config,pose,road){continue;}
             let body=self.bodies.get_mut(handle).unwrap();body.set_position(pose,true);body.set_linvel(Vector::zeros(),true);body.set_angvel(Vector::zeros(),true);body.reset_forces(true);body.reset_torques(true);
             self.bodies.propagate_modified_body_positions_to_colliders(&mut self.colliders);self.query_pipeline.update(&self.colliders);self.falling_seconds.remove(player_id);return Ok(());
@@ -1621,15 +1620,6 @@ impl PhysicsWorld {
         // rack integrator or a second control pass here.
         // Apply suspension + traction + tire forces exactly once per substep.
         self.apply_vehicle_forces(dt);
-        if !self.harbor_water.is_empty() {
-            for vehicle in self.vehicles.values() {
-                let Some(body)=self.bodies.get_mut(vehicle.body) else {continue};
-                if let Some(tile)=self.harbor_water.iter().find(|t|t.contains(body.translation())) {
-                    tile.damp_submerged(body, dt);
-                }
-            }
-        }
-
         // Only multiplayer impacts can earn ultimate. Sample vehicle motion
         // before Rapier resolves a collision, so a ram that stops the attacker
         // still counts. Ordinary solo driving allocates no attribution table;
@@ -1744,19 +1734,33 @@ impl PhysicsWorld {
         // Recovery is server-owned and independent of menus or held input.
         // Allow a brief fall before resetting to the authored spawn, not origin.
         let mut recover = Vec::new();
+        let mut defeats = Vec::new();
         for (id, vehicle) in &self.vehicles {
-            if self.is_defeated(id){continue;}
-            let Some(body) = self.bodies.get(vehicle.body) else { continue; };
-            let road = self.spawn_poses.get(id).map(|s|s.1).unwrap_or(0.0);
+            let Some(body) = self.bodies.get(vehicle.body) else { continue };
             let p = body.translation();
-            let elapsed = self.falling_seconds.entry(id.clone()).or_default();
-            if !p.iter().all(|v|v.is_finite()) { recover.push(id.clone()); }
-            else if self.harbor_water.iter().any(|tile|tile.contains(p) && p.y>=tile.bottom-2.0) { *elapsed=0.0; }
-            else if p.y < road - 20.0 {
-                *elapsed += dt;
-                if *elapsed >= 2.0 { recover.push(id.clone()); }
-            } else { *elapsed = 0.0; }
+            if !p.iter().all(|v| v.is_finite()) {
+                if !self.is_defeated(id) { recover.push(id.clone()); }
+                continue;
+            }
+            if let Some(coast) = &self.coast {
+                // Airborne wheel rays can reach below a jump. Use the hull itself.
+                let bottom = body.colliders().first().and_then(|h| self.colliders.get(*h))
+                    .map_or(p.y, |c| c.compute_aabb().mins.y);
+                if let Some(reason) = coast.hazard(p, bottom) {
+                    if self.vehicle_health.get(id).is_some_and(|h| !h.lost_to_environment()) {
+                        defeats.push((id.clone(), reason));
+                    }
+                }
+            } else if !self.is_defeated(id) {
+                let road = self.spawn_poses.get(id).map(|s| s.1).unwrap_or(0.0);
+                let elapsed = self.falling_seconds.entry(id.clone()).or_default();
+                if p.y < road - 20.0 {
+                    *elapsed += dt;
+                    if *elapsed >= 2.0 { recover.push(id.clone()); }
+                } else { *elapsed = 0.0; }
+            }
         }
+        for (id, reason) in defeats { self.defeat_from_environment(&id, reason); }
         for id in recover { if self.recover_vehicle_for_player(&id).is_ok() { self.falling_seconds.remove(&id); } }
 
         self.repair_invalid_body_positions();

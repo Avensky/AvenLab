@@ -2,27 +2,75 @@
 use crate::{physics::PhysicsWorld, state::SharedGameState, spawn::Team};
 use std::collections::HashMap;
 
-use rapier3d::prelude::{RigidBody, Vector};
+use crate::world::block_colliders::{BlockColliderFile, MapLayout};
+use rapier3d::prelude::Vector;
 
-pub const SEA_LEVEL: f32 = -8.0;
-pub(crate) struct WaterTile { center: [f32;2], half: [f32;2], pub bottom: f32 }
-impl WaterTile {
-    pub fn from_bed(o:&crate::world::authored_layout::LayoutObject)->Self {
-        Self{center:[o.position[0],o.position[2]],half:[o.size[0]/2.,o.size[2]/2.],bottom:o.position[1]+o.size[1]}
-    }
-    pub fn contains(&self,p:&Vector<f32>)->bool {
-        (p.x-self.center[0]).abs()<=self.half[0] && (p.z-self.center[1]).abs()<=self.half[1]
-    }
-    pub fn damp_submerged(&self,body:&mut RigidBody,dt:f32) {
-        let y=body.translation().y;
-        if y>=SEA_LEVEL || y<self.bottom-2.0 {return;}
-        let terminal=(0.65+0.20*(SEA_LEVEL-y)).min(3.0);
-        let drag=(-0.55*dt).exp();
-        let v=body.linvel();let next=Vector::new(v.x*drag,v.y.max(-terminal),v.z*drag);
-        body.set_linvel(next,false);
-    }
+struct WaterTile {
+    center: [f32; 2],
+    half: [f32; 2],
+    sin: f32,
+    cos: f32,
+    surface: f32,
 }
 
+pub(crate) struct Coast {
+    tiles: Vec<WaterTile>,
+    min: [f32; 2],
+    max: [f32; 2],
+    low_level: f32,
+}
+
+impl Coast {
+    pub fn from_map(map: &BlockColliderFile) -> Option<Self> {
+        let layout = map.authored_layout.as_ref().filter(|layout| !layout.repeat)?;
+        let MapLayout::FixedGrid { origin, size } = map.layout else { return None };
+        let mut coast = Self {
+            tiles: Vec::new(), min: [0.; 2], max: [0.; 2], low_level: f32::INFINITY,
+        };
+        for axis in 0..2 {
+            coast.min[axis] = (origin[axis] as f32 - 0.5) * map.cell[axis];
+            coast.max[axis] = (origin[axis] as f32 + size[axis] as f32 - 0.5) * map.cell[axis];
+        }
+        for object in &layout.objects {
+            let x = origin[0] as f32 * map.cell[0] + object.position[0];
+            let z = origin[1] as f32 * map.cell[1] + object.position[2];
+            let (sin, cos) = object.yaw.to_radians().sin_cos();
+            let hx = object.size[0] * 0.5;
+            let hz = object.size[2] * 0.5;
+            // Outboard docks and carriers can lie beyond the original city grid.
+            let extent = [hx * cos.abs() + hz * sin.abs(), hx * sin.abs() + hz * cos.abs()];
+            for (axis, center) in [x, z].into_iter().enumerate() {
+                coast.min[axis] = coast.min[axis].min(center - extent[axis]);
+                coast.max[axis] = coast.max[axis].max(center + extent[axis]);
+            }
+            if object.piece == "coastal-water-visual" {
+                let surface = object.position[1] + object.size[1];
+                coast.low_level = coast.low_level.min(surface);
+                coast.tiles.push(WaterTile { center: [x, z], half: [hx, hz], sin, cos, surface });
+            }
+        }
+        (!coast.tiles.is_empty()).then_some(coast)
+    }
+
+    pub fn hazard(&self, position: &Vector<f32>, chassis_bottom: f32) -> Option<&'static str> {
+        if position.x < self.min[0] || position.x > self.max[0]
+            || position.z < self.min[1] || position.z > self.max[1] {
+            return Some("out_of_bounds");
+        }
+        for water in &self.tiles {
+            if chassis_bottom > water.surface { continue; }
+            let dx = position.x - water.center[0];
+            let dz = position.z - water.center[1];
+            let local_x = water.cos * dx - water.sin * dz;
+            let local_z = water.sin * dx + water.cos * dz;
+            if local_x.abs() <= water.half[0] && local_z.abs() <= water.half[1] {
+                return Some("water");
+            }
+        }
+        // A fall through a gap without a painted water tile is also fatal.
+        (position.y < self.low_level - 2.).then_some("out_of_bounds")
+    }
+}
 pub const VARIANTS: [&str; 3] = ["harbor_canal_red","harbor_canal_blue","harbor_canal_fleet"];
 pub fn queue_map(world:usize)->&'static str { match world%4 {0=>"streaming_endless_city",slot=>VARIANTS[slot-1]} }
 /// Assign four reserved service lots per bank from the world seed. All peers,
@@ -104,7 +152,7 @@ mod tests {
     fn support(w:&PhysicsWorld,x:f32,z:f32)->Option<f32>{
         let ray=Ray::new(point![x,50.,z],-Vector::y());
         w.colliders.iter().filter(|(_,c)|c.is_enabled()).filter_map(|(_,c)|
-            c.shape().cast_ray(c.position(),&ray,100.,true)).min_by(f32::total_cmp).map(|t|50.-t)
+            c.shape().cast_ray(c.position(),&ray,200.,true)).min_by(f32::total_cmp).map(|t|50.-t)
     }
     #[test]
     fn viaduct_deck_carries_load_above_the_open_canal(){
@@ -119,8 +167,8 @@ mod tests {
             let height=support(&w,x+dx,z).unwrap();
             assert!((height-y).abs()<0.18,"deck at {dx}: {height}");
         }
-        let hull=Ray::new(point![-2.,0.,z-8.],Vector::z());
-        assert!(!w.colliders.iter().any(|(_,c)|c.shape().cast_ray(c.position(),&hull,16.,true).is_some()));
+        let hull=Ray::new(point![-2.,0.,z-5.],Vector::z());
+        assert!(!w.colliders.iter().any(|(_,c)|c.shape().cast_ray(c.position(),&hull,10.,true).is_some()));
     }
 
     #[test]
@@ -161,7 +209,7 @@ mod tests {
         for x in [-256.,256.]{
             for z in [-78.,-70.,-62.,-54.,-46.]{assert!((support(&w,x,z).unwrap()-6.).abs()<0.02);}
         }
-        assert!((support(&w,0.,60.).unwrap()+24.).abs()<0.02);
+        assert!((support(&w,0.,60.).unwrap()+60.).abs()<0.02);
         for x in [-14.,14.] {
             let ray=Ray::new(point![x,-4.,-202.],Vector::z());
             assert!(!w.colliders.iter().any(|(_,c)| c.shape().cast_ray(c.position(),&ray,48.,true).is_some()),
@@ -172,14 +220,14 @@ mod tests {
         w.bridge_motion.as_mut().unwrap().select(0,RAMP_ANGLE);
         w.move_drawbridges(300);w.step(crate::physics::SIMULATION_DT);
         assert!(support(&w,-6.,0.).unwrap()>8.);
-        assert!((support(&w,0.,0.).unwrap()+24.).abs()<0.02);
+        assert!((support(&w,0.,0.).unwrap()+60.).abs()<0.02);
         w.bridge_motion.as_mut().unwrap().select(300,0.0);
         w.move_drawbridges(900);w.step(crate::physics::SIMULATION_DT);
         assert!(support(&w,-6.,0.).unwrap().abs()<0.02);
         let index=o.iter().position(|o|o.piece=="canal-breakable").unwrap();
         let id=w.bodies.iter().find(|(_,b)|b.user_data==index as u128+1).unwrap().0;
         w.damage_authored_surface(id,true,300.);
-        assert!((support(&w,0.,178.).unwrap()+24.).abs()<0.02);
+        assert!((support(&w,0.,178.).unwrap()+60.).abs()<0.02);
         assert!(support(&w,0.,-178.).is_some());
     }
     #[test]
@@ -206,19 +254,37 @@ mod tests {
     }
 
     #[test]
-    fn water_slows_entry_allows_bottom_contact_and_resets_to_the_deck() {
-        let mut world=PhysicsWorld::for_harbor_room(2,VARIANTS[2]).unwrap();
-        let handle=world.spawn_vehicle_for_player("diver".into(),[0.;3],"brz","red").unwrap();
-        let spawn=*world.bodies[handle].translation();
-        world.bodies[handle].set_translation(vector![0.,SEA_LEVEL-0.2,65.],true);
-        world.bodies[handle].set_linvel(vector![0.,-14.,0.],true);
-        for _ in 0..60 {world.step(crate::physics::SIMULATION_DT);}
-        assert!(world.bodies[handle].translation().y>SEA_LEVEL-2.);
-        for _ in 0..1200 {world.step(crate::physics::SIMULATION_DT);}
-        let y=world.bodies[handle].translation().y;
-        assert!((-24.2..-21.5).contains(&y),"seabed contact at {y}");
-        world.recover_vehicle_for_player("diver").unwrap();
-        assert!((*world.bodies[handle].translation()-spawn).norm()<0.01);
+    fn coastal_water_and_map_edges_trigger_one_defeat_and_safe_respawn(){
+        for map_id in ["harbor_canal_fleet","coastal_district","streaming_endless_city"] {
+            let mut world=PhysicsWorld::new();world.select_map(map_id).unwrap();
+            let map=world.map_snapshot().unwrap();
+            let objects=&map.authored_layout.as_ref().unwrap().objects;
+            let water=objects.iter().find(|o|o.piece=="coastal-water-visual").unwrap();
+            let handle=world.spawn_vehicle_for_player("diver".into(),[0.;3],"brz","blue").unwrap();
+            let x=if map_id.starts_with("harbor_canal") {0.} else {water.position[0]};
+            let z=if map_id.starts_with("harbor_canal") {65.} else {water.position[2]};
+            let top=water.position[1]+water.size[1];
+            world.bodies[handle].set_translation(vector![x,top+3.,z],true);
+            world.step(crate::physics::SIMULATION_DT);assert!(!world.is_defeated("diver"),"an airborne jump is safe");
+            world.vehicle_health.get_mut("diver").unwrap().spawn_protection_s=3.;
+            world.bodies[handle].set_translation(vector![x,top-0.2,z],true);
+            for _ in 0..3 {world.step(crate::physics::SIMULATION_DT);}
+            let health=&world.vehicle_health["diver"];
+            assert!(health.defeated && health.hp==0.);
+            assert_eq!(health.deaths,1);assert_eq!(health.last_damage_kind,"water");
+            assert!(health.respawn_remaining_s>0.);
+            world.vehicle_health.get_mut("diver").unwrap().respawn_remaining_s=0.;
+            world.advance_vehicle_lives(crate::physics::SIMULATION_DT);
+            assert!(!world.is_defeated("diver"));
+            let recovered = world.bodies[handle].translation();
+            assert!(recovered.y > top, "{map_id} must recover on dry ground or deck");
+            world.step(crate::physics::SIMULATION_DT);
+            assert_eq!(world.vehicle_health["diver"].deaths,1);
+            world.bodies[handle].set_translation(vector![20000.,45.,0.],true);
+            world.step(crate::physics::SIMULATION_DT);
+            assert_eq!(world.vehicle_health["diver"].deaths,2);
+            assert_eq!(world.vehicle_health["diver"].last_damage_kind,"out_of_bounds");
+        }
     }
 
     #[test]

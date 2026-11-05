@@ -30,11 +30,11 @@ test("all dock plans have ten spawns, the surface crossings and viaduct and no h
       assert(pads.every(p=>p.position[1]===(afloat?6:.08)));
     }
     assert(pieces.filter(o=>o.piece==="coastal-water-visual").every(o=>!o.solid));
-    assert.equal(pieces.filter(o=>o.piece==="harbor-seabed" && o.solid && o.position[1]+o.size[1]===-24).length,4);
+    assert.equal(pieces.filter(o=>o.piece==="harbor-seabed" && o.solid && o.position[1]+o.size[1]===-60).length,4);
     assert.equal(pieces.filter(o=>o.id.startsWith("home-gas-")).length,2);
     assert(pieces.filter(o=>o.piece==="highway-guardrail").every(o=>o.destruction?.enabled && o.destruction.hp===5));
     assert(pieces.some(o=>o.id.startsWith("boarding-rail-")));
-    assert(pieces.filter(o=>o.name==="Boarding bridge column").every(o=>o.position[1]===-24));
+    assert(pieces.filter(o=>o.name==="Boarding bridge column").every(o=>o.position[1]===-60));
     assert(pieces.some(o=>o.piece==="kit-stone_start") && pieces.some(o=>o.piece==="kit-highway_25_wide_straight_level"));
     assert(pieces.some(o=>o.piece==="highway-guardrail"&&o.yaw%90!==0));
   }
@@ -43,6 +43,19 @@ test("runtime CVN-65 is one embedded indexed primitive and supplies a measured d
   const b=fs.readFileSync(new URL("../public/models/world/big-e-docked.glb",import.meta.url));
   assert.equal(b.readUInt32LE(8),b.length);
   const model=JSON.parse(b.subarray(20,20+b.readUInt32LE(12)));
+  const position = model.accessors[model.meshes[0].primitives[0].attributes.POSITION];
+  const objects = harborCanal('fleet',123).authored_layout.objects;
+  for (const bank of objects.filter(o => o.piece==='coastal-land')) {
+    assert.equal(bank.position[1],-60);
+    assert.equal(bank.position[1]+bank.size[1],0);
+  }
+  for (const ship of objects.filter(o => o.piece==='big-e-docked')) {
+    const keel = ship.position[1]+position.min[1]*ship.size[1];
+    const floor = Math.max(...objects.filter(o=>o.piece==='harbor-seabed' &&
+      Math.abs(ship.position[0]-o.position[0])<=o.size[0]/2 &&
+      Math.abs(ship.position[2]-o.position[2])<=o.size[2]/2).map(o=>o.position[1]+o.size[1]));
+    assert(Number.isFinite(floor) && keel-floor >= 37, 'each dock has clearance beneath the actual hull');
+  }
   assert.equal(model.meshes.length,1);assert.equal(model.meshes[0].primitives.length,1);
   assert.equal(model.accessors[3].count/3,72945+2*(2+15+4));
 });

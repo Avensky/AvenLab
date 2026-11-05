@@ -1,3 +1,4 @@
+import {coastalTerrain,DOCK_DEPTH} from '../frontend/src/worldBuilder/generation/coastalTerrain.ts';
 import fs from "node:fs";
 import {guardrail} from "../frontend/src/worldBuilder/generation/harborPieces.ts";
 import {dockHome} from "../frontend/src/worldBuilder/generation/harborOutfit.ts";
@@ -13,7 +14,7 @@ for(const [i,plan] of ["red","blue","fleet"].entries()){
 // Endless City keeps its original streets and its eastern pier entrance.
 const cityPath=new URL("../avenlab-server/src/assets/blocks/streaming_endless_city_colliders.json",import.meta.url);
 const city=JSON.parse(fs.readFileSync(cityPath,"utf8")),layout=city.authored_layout;
-layout.objects=layout.objects.filter(o=>!o.id.startsWith("perimeter-rail-"));
+layout.objects=layout.objects.filter(o=>!o.id.startsWith("perimeter-rail-") && !(o.piece==="harbor-seabed" && o.id.startsWith("bed-ocean-")));
 const deck=layout.objects.find(o=>o.id==="big-e-original");
 const pier=layout.objects.find(o=>o.id==="east-pier");
 if (!deck || !pier) throw Error("Endless City requires its docked carrier and pier");
@@ -37,6 +38,14 @@ const [width,depth]=city.cell,[nx,nz]=city.layout.size;
 const west=-width/2+1.5,east=(nx-.5)*width-1.5,north=-depth/2+1.5,south=(nz-.5)*depth-1.5;
 line(west,north,west,south);line(west,north,east,north);line(west,south,east,south);
 line(east,north,east,depth-11);line(east,depth+11,east,south);
+coastalTerrain(layout.objects);
+// The finite city GLB uses one rectangular road collider per tile. Extend
+// that land downwards, preserving the original top face and tile seams.
+const waterLevel=layout.objects.find(o=>o.piece==="coastal-water-visual").position[1];
+for(const road of city.roads.filter(r=>r.id==="roads_2x2")){
+  const top=city.surface.road_y, bottom=waterLevel-DOCK_DEPTH;
+  road.pos[2]=(top+bottom)/2;road.half_extents[2]=(top-bottom)/2;
+}
 const text=JSON.stringify(city,null,2)+"\n";
 if(process.argv.includes("--check")){if(fs.readFileSync(cityPath,"utf8").replace(/\r\n/g,"\n")!==text)throw Error("Stale city perimeter");}
 else fs.writeFileSync(cityPath,text);

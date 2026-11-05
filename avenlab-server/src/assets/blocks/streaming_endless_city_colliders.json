@@ -195,7 +195,7 @@
       "pos": [
         0,
         0,
-        0.27
+        -27.865
       ],
       "rot": [
         0,
@@ -206,7 +206,7 @@
       "half_extents": [
         128.944962,
         219.72435,
-        0.05
+        28.185
       ],
       "collider": "box",
       "destructible": false,
@@ -19544,6 +19544,482 @@
           "bomb": 1,
           "rubble": "clear"
         }
+      },
+      {
+        "id": "bed-ocean-w-0-0",
+        "piece": "harbor-seabed",
+        "name": "Seafloor",
+        "position": [
+          -378.945,
+          -57.05,
+          0
+        ],
+        "yaw": 0,
+        "size": [
+          500,
+          1,
+          439.4487
+        ],
+        "color": "#515354",
+        "solid": true,
+        "locked": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "bed-ocean-w-0-1",
+        "piece": "harbor-seabed",
+        "name": "Seafloor",
+        "position": [
+          -378.945,
+          -57.05,
+          439.4487
+        ],
+        "yaw": 0,
+        "size": [
+          500,
+          1,
+          439.4487
+        ],
+        "color": "#515354",
+        "solid": true,
+        "locked": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "bed-ocean-w-0-2",
+        "piece": "harbor-seabed",
+        "name": "Seafloor",
+        "position": [
+          -378.945,
+          -57.05,
+          878.8974
+        ],
+        "yaw": 0,
+        "size": [
+          500,
+          1,
+          439.4487
+        ],
+        "color": "#515354",
+        "solid": true,
+        "locked": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "bed-ocean-e-0-0",
+        "piece": "harbor-seabed",
+        "name": "Seafloor",
+        "position": [
+          894.7248,
+          -57.05,
+          0
+        ],
+        "yaw": 0,
+        "size": [
+          500,
+          1,
+          439.4487
+        ],
+        "color": "#515354",
+        "solid": true,
+        "locked": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "bed-ocean-e-0-1",
+        "piece": "harbor-seabed",
+        "name": "Seafloor",
+        "position": [
+          894.7248,
+          -57.05,
+          439.4487
+        ],
+        "yaw": 0,
+        "size": [
+          500,
+          1,
+          439.4487
+        ],
+        "color": "#515354",
+        "solid": true,
+        "locked": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "bed-ocean-e-0-2",
+        "piece": "harbor-seabed",
+        "name": "Seafloor",
+        "position": [
+          894.7248,
+          -57.05,
+          878.8974
+        ],
+        "yaw": 0,
+        "size": [
+          500,
+          1,
+          439.4487
+        ],
+        "color": "#515354",
+        "solid": true,
+        "locked": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "bed-ocean-n-0-0",
+        "piece": "harbor-seabed",
+        "name": "Seafloor",
+        "position": [
+          -407.2362,
+          -57.05,
+          -469.7243
+        ],
+        "yaw": 0,
+        "size": [
+          443.4174,
+          1,
+          500
+        ],
+        "color": "#515354",
+        "solid": true,
+        "locked": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "bed-ocean-n-1-0",
+        "piece": "harbor-seabed",
+        "name": "Seafloor",
+        "position": [
+          36.1812,
+          -57.05,
+          -469.7243
+        ],
+        "yaw": 0,
+        "size": [
+          443.4174,
+          1,
+          500
+        ],
+        "color": "#515354",
+        "solid": true,
+        "locked": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "bed-ocean-n-2-0",
+        "piece": "harbor-seabed",
+        "name": "Seafloor",
+        "position": [
+          479.5986,
+          -57.05,
+          -469.7243
+        ],
+        "yaw": 0,
+        "size": [
+          443.4174,
+          1,
+          500
+        ],
+        "color": "#515354",
+        "solid": true,
+        "locked": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "bed-ocean-n-3-0",
+        "piece": "harbor-seabed",
+        "name": "Seafloor",
+        "position": [
+          923.0161,
+          -57.05,
+          -469.7243
+        ],
+        "yaw": 0,
+        "size": [
+          443.4174,
+          1,
+          500
+        ],
+        "color": "#515354",
+        "solid": true,
+        "locked": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "bed-ocean-s-0-0",
+        "piece": "harbor-seabed",
+        "name": "Seafloor",
+        "position": [
+          -407.2362,
+          -57.05,
+          1348.6218
+        ],
+        "yaw": 0,
+        "size": [
+          443.4174,
+          1,
+          500
+        ],
+        "color": "#515354",
+        "solid": true,
+        "locked": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "bed-ocean-s-1-0",
+        "piece": "harbor-seabed",
+        "name": "Seafloor",
+        "position": [
+          36.1812,
+          -57.05,
+          1348.6218
+        ],
+        "yaw": 0,
+        "size": [
+          443.4174,
+          1,
+          500
+        ],
+        "color": "#515354",
+        "solid": true,
+        "locked": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "bed-ocean-s-2-0",
+        "piece": "harbor-seabed",
+        "name": "Seafloor",
+        "position": [
+          479.5986,
+          -57.05,
+          1348.6218
+        ],
+        "yaw": 0,
+        "size": [
+          443.4174,
+          1,
+          500
+        ],
+        "color": "#515354",
+        "solid": true,
+        "locked": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "bed-ocean-s-3-0",
+        "piece": "harbor-seabed",
+        "name": "Seafloor",
+        "position": [
+          923.0161,
+          -57.05,
+          1348.6218
+        ],
+        "yaw": 0,
+        "size": [
+          443.4174,
+          1,
+          500
+        ],
+        "color": "#515354",
+        "solid": true,
+        "locked": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
       }
     ]
   }

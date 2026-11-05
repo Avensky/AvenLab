@@ -42,7 +42,7 @@ const VehicleHealthMarker=memo(function VehicleHealthMarker({id,budget,focused,h
   const max=health&&Number.isFinite(health.max_hp)&&health.max_hp>0?health.max_hp:0;
   const hp=max&&Number.isFinite(health?.hp)?Math.max(0,Math.min(max,health!.hp)):0;
   const local=s.getMe(),localTeam=local?.team,team=entity?.team;
-  return {max,hp,assisted:local?.combat?.assisted_target===id,remaining:Math.ceil(Math.max(0,health?.respawn_remaining_s??0)*10)/10,window:health?.recovery_window_s,reason:health?.disabled_reason,showHp:showVehicleHealthBar(mode,team,id===s.playerId),defeated:health?.defeated===true,protected:(health?.spawn_protection_s??0)>0,
+  return {max,hp,assisted:local?.combat?.assisted_target===id,remaining:Math.ceil(Math.max(0,health?.respawn_remaining_s??0)*10)/10,window:health?.recovery_window_s,reason:health?.disabled_reason,cause:health?.last_damage_kind,showHp:showVehicleHealthBar(mode,team,id===s.playerId),defeated:health?.defeated===true,protected:(health?.spawn_protection_s??0)>0,
    relation:team&&localTeam?(team===localTeam?'ally':'enemy'):'neutral',
    label:entity?.vehicle_id==='tank'?'VANGUARD':entity?.vehicle_id?.replaceAll('_',' ').toUpperCase()??'VEHICLE',
    height:entity?.vehicle_id==='tank'?3.2:Math.max(1.15,(entity?.collider?.chassis_half_extents[1]??.5)+(entity?.collider?.chassis_offset[1]??0)+.7)};
@@ -102,7 +102,7 @@ const VehicleHealthMarker=memo(function VehicleHealthMarker({id,budget,focused,h
   if(node.style.opacity!==opacity)node.style.opacity=opacity;
  });
  if(data.max===0)return null;
- const status=recoveryStatus({defeated:data.defeated,respawn_remaining_s:data.remaining,recovery_window_s:data.window,disabled_reason:data.reason});
+ const status=recoveryStatus({defeated:data.defeated,respawn_remaining_s:data.remaining,recovery_window_s:data.window,disabled_reason:data.reason,last_damage_kind:data.cause});
  const cue=healing?'+ HEAL':data.relation==='ally'?'ALLY':data.assisted?'ATTACK ASSIST':'ATTACK';
  const label=focused?cue:data.defeated?data.reason==='fuel'?'FUEL EMPTY':status?.revivable?'AWAITING MECHANIC':'DEFEATED':data.protected?'SPAWN SHIELD':data.relation.toUpperCase();
  return <group ref={root} name={`vehicle-health-marker-${id}`}>

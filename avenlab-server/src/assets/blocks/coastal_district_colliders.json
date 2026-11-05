@@ -12,7 +12,7 @@
     610.6666666666667
   ],
   "surface": {
-    "road_y": 0
+    "road_y": 0.08
   },
   "layout": {
     "kind": "fixed_grid",
@@ -59,7 +59,6 @@
     "format": "avenlab-world-layout",
     "version": 1,
     "map_id": "coastal_district",
-  "sky": "foggy_day",
     "title": "Coastal district · chunk · seed 1",
     "base": "replace",
     "ground": false,
@@ -337,12 +336,12 @@
         "piece": "coastal-land",
         "position": [
           -153.33333333333334,
-          -8,
+          -57,
           -127.66666666666667
         ],
         "size": [
           266.6666666666667,
-          8,
+          57,
           223.33333333333334
         ],
         "yaw": 0,
@@ -371,12 +370,12 @@
         "piece": "coastal-land",
         "position": [
           -153.33333333333334,
-          -8,
+          -57,
           127.66666666666667
         ],
         "size": [
           266.6666666666667,
-          8,
+          57,
           223.33333333333334
         ],
         "yaw": 0,
@@ -405,12 +404,12 @@
         "piece": "coastal-land",
         "position": [
           120,
-          -8,
+          -57,
           -127.66666666666667
         ],
         "size": [
           200,
-          8,
+          57,
           223.33333333333334
         ],
         "yaw": 0,
@@ -439,12 +438,12 @@
         "piece": "coastal-land",
         "position": [
           120,
-          -8,
+          -57,
           127.66666666666667
         ],
         "size": [
           200,
-          8,
+          57,
           223.33333333333334
         ],
         "yaw": 0,
@@ -847,12 +846,12 @@
         "piece": "coastal-land-bridge",
         "position": [
           0,
-          -7.92,
+          -57,
           122.66666666666667
         ],
         "size": [
           40,
-          8,
+          57.08,
           23.333333333333343
         ],
         "yaw": 0,
@@ -2454,96 +2453,30 @@
           -64.33333333333334
         ],
         "size": [
-          14,
-          5,
-          16
+          18,
+          7,
+          20
         ],
         "yaw": 0,
         "color": "#c4a46a",
         "locked": false,
         "solid": true,
-        "parts": [
-          {
-            "shape": "box",
-            "position": [
-              -0.48,
-              0.5,
-              0
-            ],
-            "size": [
-              0.04,
-              1,
-              1
-            ]
+        "parts": [],
+        "model": {
+          "asset": "selection_garage",
+          "source_sha256": "f4686f981e5c165d03a8bca20628654bb20db50db5cb91ce67e1a5c583d086ce",
+          "visible": {
+            "floor": true,
+            "walls": true,
+            "roof": true,
+            "details": true
           },
-          {
-            "shape": "box",
-            "position": [
-              0.48,
-              0.5,
-              0
-            ],
-            "size": [
-              0.04,
-              1,
-              1
-            ]
-          },
-          {
-            "shape": "box",
-            "position": [
-              0,
-              0.5,
-              -0.48
-            ],
-            "size": [
-              1,
-              1,
-              0.04
-            ]
-          },
-          {
-            "shape": "box",
-            "position": [
-              0,
-              0.97,
-              0
-            ],
-            "size": [
-              1,
-              0.06,
-              1
-            ]
-          },
-          {
-            "shape": "box",
-            "position": [
-              0,
-              0.004,
-              0
-            ],
-            "size": [
-              0.6,
-              0.008,
-              0.65
-            ],
-            "color": "#82b3a0",
-            "solid": false
-          },
-          {
-            "shape": "box",
-            "position": [
-              0,
-              0.87,
-              0.48
-            ],
-            "size": [
-              0.7,
-              0.12,
-              0.025
-            ]
+          "collision": {
+            "floor": true,
+            "walls": true,
+            "roof": true
           }
-        ]
+        }
       },
       {
         "id": "repair-shop-1-tile-0-0",
@@ -2555,96 +2488,30 @@
           64.33333333333334
         ],
         "size": [
-          14,
-          5,
-          16
+          18,
+          7,
+          20
         ],
         "yaw": 0,
         "color": "#6ba5b0",
         "locked": false,
         "solid": true,
-        "parts": [
-          {
-            "shape": "box",
-            "position": [
-              -0.48,
-              0.5,
-              0
-            ],
-            "size": [
-              0.04,
-              1,
-              1
-            ]
+        "parts": [],
+        "model": {
+          "asset": "selection_garage",
+          "source_sha256": "f4686f981e5c165d03a8bca20628654bb20db50db5cb91ce67e1a5c583d086ce",
+          "visible": {
+            "floor": true,
+            "walls": true,
+            "roof": true,
+            "details": true
           },
-          {
-            "shape": "box",
-            "position": [
-              0.48,
-              0.5,
-              0
-            ],
-            "size": [
-              0.04,
-              1,
-              1
-            ]
-          },
-          {
-            "shape": "box",
-            "position": [
-              0,
-              0.5,
-              -0.48
-            ],
-            "size": [
-              1,
-              1,
-              0.04
-            ]
-          },
-          {
-            "shape": "box",
-            "position": [
-              0,
-              0.97,
-              0
-            ],
-            "size": [
-              1,
-              0.06,
-              1
-            ]
-          },
-          {
-            "shape": "box",
-            "position": [
-              0,
-              0.004,
-              0
-            ],
-            "size": [
-              0.6,
-              0.008,
-              0.65
-            ],
-            "color": "#82b3a0",
-            "solid": false
-          },
-          {
-            "shape": "box",
-            "position": [
-              0,
-              0.87,
-              0.48
-            ],
-            "size": [
-              0.7,
-              0.12,
-              0.025
-            ]
+          "collision": {
+            "floor": true,
+            "walls": true,
+            "roof": true
           }
-        ]
+        }
       },
       {
         "id": "service-center-1-tile-0-0",
@@ -2656,93 +2523,231 @@
           164.33333333333334
         ],
         "size": [
-          14,
-          5,
-          16
+          18,
+          7,
+          20
         ],
         "yaw": 0,
         "color": "#8ca480",
         "locked": false,
         "solid": true,
+        "parts": [],
+        "model": {
+          "asset": "selection_garage",
+          "source_sha256": "f4686f981e5c165d03a8bca20628654bb20db50db5cb91ce67e1a5c583d086ce",
+          "visible": {
+            "floor": true,
+            "walls": true,
+            "roof": true,
+            "details": true
+          },
+          "collision": {
+            "floor": true,
+            "walls": true,
+            "roof": true
+          }
+        }
+      },
+      {
+        "id": "bed-coast-1-tile-0-0",
+        "piece": "harbor-seabed",
+        "name": "Seafloor",
+        "position": [
+          370,
+          -58,
+          -144.66666666666669
+        ],
+        "yaw": 0,
+        "size": [
+          300,
+          1,
+          289.33333333333337
+        ],
+        "color": "#515354",
+        "solid": true,
+        "locked": false,
         "parts": [
           {
             "shape": "box",
             "position": [
-              -0.48,
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "bed-coast-2-tile-0-0",
+        "piece": "harbor-seabed",
+        "name": "Seafloor",
+        "position": [
+          370,
+          -58,
+          144.66666666666669
+        ],
+        "yaw": 0,
+        "size": [
+          300,
+          1,
+          289.33333333333337
+        ],
+        "color": "#515354",
+        "solid": true,
+        "locked": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
               0.5,
               0
             ],
             "size": [
-              0.04,
+              1,
               1,
               1
             ]
-          },
+          }
+        ]
+      },
+      {
+        "id": "bed-coast-3-tile-0-0",
+        "piece": "harbor-seabed",
+        "name": "Seafloor",
+        "position": [
+          0,
+          -58,
+          -119.66666666666667
+        ],
+        "yaw": 0,
+        "size": [
+          40,
+          1,
+          239.33333333333334
+        ],
+        "color": "#515354",
+        "solid": true,
+        "locked": false,
+        "parts": [
           {
             "shape": "box",
             "position": [
-              0.48,
+              0,
               0.5,
               0
             ],
             "size": [
-              0.04,
+              1,
               1,
               1
             ]
-          },
+          }
+        ]
+      },
+      {
+        "id": "bed-coast-4-tile-0-0",
+        "piece": "harbor-seabed",
+        "name": "Seafloor",
+        "position": [
+          0,
+          -58,
+          119.66666666666667
+        ],
+        "yaw": 0,
+        "size": [
+          40,
+          1,
+          239.33333333333334
+        ],
+        "color": "#515354",
+        "solid": true,
+        "locked": false,
+        "parts": [
           {
             "shape": "box",
             "position": [
               0,
               0.5,
-              -0.48
-            ],
-            "size": [
-              1,
-              1,
-              0.04
-            ]
-          },
-          {
-            "shape": "box",
-            "position": [
-              0,
-              0.97,
               0
             ],
             "size": [
               1,
-              0.06,
+              1,
               1
             ]
-          },
+          }
+        ]
+      },
+      {
+        "id": "bed-coast-5-tile-0-0",
+        "piece": "harbor-seabed",
+        "name": "Seafloor",
+        "position": [
+          -153.33333333333334,
+          -58,
+          0
+        ],
+        "yaw": 0,
+        "size": [
+          266.6666666666667,
+          1,
+          32
+        ],
+        "color": "#515354",
+        "solid": true,
+        "locked": false,
+        "parts": [
           {
             "shape": "box",
             "position": [
               0,
-              0.004,
+              0.5,
               0
             ],
             "size": [
-              0.6,
-              0.008,
-              0.65
-            ],
-            "color": "#82b3a0",
-            "solid": false
-          },
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "bed-coast-6-tile-0-0",
+        "piece": "harbor-seabed",
+        "name": "Seafloor",
+        "position": [
+          120,
+          -58,
+          0
+        ],
+        "yaw": 0,
+        "size": [
+          200,
+          1,
+          32
+        ],
+        "color": "#515354",
+        "solid": true,
+        "locked": false,
+        "parts": [
           {
             "shape": "box",
             "position": [
               0,
-              0.87,
-              0.48
+              0.5,
+              0
             ],
             "size": [
-              0.7,
-              0.12,
-              0.025
+              1,
+              1,
+              1
             ]
           }
         ]

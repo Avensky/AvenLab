@@ -1,3 +1,4 @@
+import {coastalTerrain} from './coastalTerrain.ts';
 import {dressHarbor} from './harborStreet.ts';
 import {fitHarborShortcut} from './harborShortcut.ts';
 import { parseLayout, pieceById, type WorldLayout, type LayoutObject, type V3 } from "../document/layoutDocument.ts";
@@ -122,6 +123,7 @@ export function harborCanal(plan:DockPlan,seed:number):MapDocument {
   outfitHarbor(objects);
   for (const side of [-1,1]) fitHarborShortcut(objects,side);
   dressHarbor(objects);
+  coastalTerrain(objects);
   const layout=parseLayout({format:"avenlab-world-layout",version:1,map_id:id,title:"Harbor Canal · "+plan+" · "+seed,
     base:"replace",ground:false,repeat:false,spawns,objects});
   return parseMapText(mapExport({schema_version:2,map_id:id,sky:"foggy_day",

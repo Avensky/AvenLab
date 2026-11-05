@@ -42,13 +42,13 @@ export function VehicleHealthHUD(){
  const health=useMotionView(useShallow(s=>{
   const h=s.connected?s.getMe()?.health:undefined;
   if(!h||!finite(h.hp)||!finite(h.max_hp)||h.max_hp<=0||typeof h.defeated!=='boolean')return null;
-  return {reason:h.disabled_reason,window:h.recovery_window_s,dead:h.defeated,respawn:tenths(h.respawn_remaining_s)};
+  return {reason:h.disabled_reason,cause:h.defeated?h.last_damage_kind:undefined,window:h.recovery_window_s,dead:h.defeated,respawn:tenths(h.respawn_remaining_s)};
  }));
  const shown=visible&&health!==null&&(live||health.dead);
  if(!shown||!health)return null;
- const recovery=recoveryStatus({defeated:health.dead,respawn_remaining_s:health.respawn,recovery_window_s:health.window,disabled_reason:health.reason});
+ const recovery=recoveryStatus({defeated:health.dead,respawn_remaining_s:health.respawn,recovery_window_s:health.window,disabled_reason:health.reason,last_damage_kind:health.cause});
  return <>
-  {health.dead&&<div className="vehicle-defeated-banner" aria-label="Vehicle defeated" data-delayed={!live}>{recovery&&<RecoveryCountdown status={recovery}/>}<div><strong role="status">{health.reason==='fuel'?'FUEL EMPTY':'VEHICLE DISABLED'}</strong><span>{!live?'SIGNAL DELAY · LAST CONFIRMED':health.respawn>0?`RESPAWN IN ${health.respawn.toFixed(1)}s`:'WAITING FOR SAFE SPAWN'}</span><small>{!live?'Waiting for a fresh server recovery update.':recovery?.revivable?'A mechanic can recover you before the timer ends.':'Controls resume after safe recovery.'}</small></div></div>}
+  {health.dead&&<div className="vehicle-defeated-banner" aria-label="Vehicle defeated" data-delayed={!live}>{recovery&&<RecoveryCountdown status={recovery}/>}<div><strong role="status">{health.cause==='water'?'LOST IN WATER':health.cause==='out_of_bounds'?'OUT OF BOUNDS':health.reason==='fuel'?'FUEL EMPTY':'VEHICLE DISABLED'}</strong><span>{!live?'SIGNAL DELAY · LAST CONFIRMED':health.respawn>0?`RESPAWN IN ${health.respawn.toFixed(1)}s`:'WAITING FOR SAFE SPAWN'}</span><small>{!live?'Waiting for a fresh server recovery update.':recovery?.revivable?'A mechanic can recover you before the timer ends.':'Controls resume after safe recovery.'}</small></div></div>}
   {flash!==null&&<div key={flash} className="vehicle-damage-flash" aria-hidden="true"/>}
  </>;
 }

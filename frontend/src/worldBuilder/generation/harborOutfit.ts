@@ -1,3 +1,4 @@
+import {DOCK_DEPTH} from './coastalTerrain.ts';
 import {
   pieceById,
   type LayoutObject,
@@ -50,19 +51,7 @@ export function outfitHarbor(objects: LayoutObject[]) {
     additions.push(o);
     return o;
   }
-  const seabed = -24;
-  for (const water of objects.filter(
-    (o) => o.piece === "coastal-water-visual",
-  )) {
-    box(
-      "bed-" + water.id,
-      "harbor-seabed",
-      "Harbor seabed",
-      [water.position[0], seabed - 1, water.position[2]],
-      [water.size[0], 1, water.size[2]],
-      "#5a5851",
-    );
-  }
+  const seabed = -8-DOCK_DEPTH;
   for (const side of [-1, 1]) {
     const bank = side < 0 ? "west" : "east";
     for (const z of [-236, -94, 94, 236]) {
