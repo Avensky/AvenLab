@@ -1,3 +1,4 @@
+import {cityWallScene} from './facades/cityWallScene';
 import {
   Suspense,
   useCallback,
@@ -287,7 +288,8 @@ function CityAssetInstances({
 }: AssetProps & { blockLod: boolean }) {
   const { visual, fast } = props;
   const path = cityTextureAsset(visual.asset, fast ? "fast" : "balanced");
-  const { scene: source } = useGLTF(path, "/draco/", true, cityLoader);
+  const { scene } = useGLTF(path, "/draco/", true, cityLoader);
+  const source = useMemo(()=>cityWallScene(scene),[scene]);
   return blockLod ? (
     <AssetBoundary fallback={<PreparedCityAsset source={source} {...props} />}>
       <ReducedCityAsset source={source} {...props} />
@@ -303,7 +305,8 @@ function ReducedCityAsset(props: AssetProps & { source: Object3D }) {
     true,
     cityLoader,
   );
-  return <PreparedCityAsset reducedSource={reducedSource} {...props} />;
+  const repaired = useMemo(()=>cityWallScene(reducedSource),[reducedSource]);
+  return <PreparedCityAsset reducedSource={repaired} {...props} />;
 }
 function PreparedCityAsset({
   source,

@@ -1,8 +1,6 @@
 import { measuredWheelHub } from "./tools/vehicleVisualRig";
 import { useLiveAppearance } from "./cosmetics/useLiveAppearance";
-import { applyHeadlightBeam } from "./tools/headlightBeam";
 import { useVehicleVisualAlignment } from "../hooks/useVehicleVisualAlignment";
-import { useRenderSettingsStore } from "../store/presentation/renderSettingsStore";
 // Brz.tsx
 
 import {
@@ -18,7 +16,6 @@ import {
   Color,
   MathUtils,
   Quaternion,
-  SpotLight,
   Vector3,
   Object3D,
 } from "three";
@@ -28,12 +25,10 @@ import { useGLTF } from "@react-three/drei";
 
 import {
   useNetworkStore,
-  useInputStore,
   useGameStore,
   useUIStore,
 } from "../store";
 import { useVehiclePhysicsInterpolator } from "../hooks/usePhysicsInterpolator";
-import { hasFlag, VehicleFlags } from "../store/input/protocol/inputMasks";
 
 const MODEL_PATH = "/models/vehicles/brz.glb";
 
@@ -91,7 +86,6 @@ export const Brz = forwardRef<Group, BrzProps>(function Brz(
   const tintFirstPerson = new Color(0xffffff); // Clear tint for first-person view
   const tintExterior = new Color(0x556677); // Blue-gray tint (customize as needed)
 
-  const vehicleLights = useRenderSettingsStore((s) => s.vehicleLights);
   const { scene } = useGLTF(MODEL_PATH); // Load the car model
   const isVehiclePreview = useUIStore(
     (state) =>
@@ -103,18 +97,6 @@ export const Brz = forwardRef<Group, BrzProps>(function Brz(
   // Allow parent components to access the car group ref
   useLiveAppearance(visualGroupRef, "brz", entityId);
   useImperativeHandle(ref, () => vehicleGroupRef.current, []);
-
-  // Simulate hazard lights
-  const blinkTimer = useRef(0);
-  const blinkState = useRef(false);
-
-  // Refs for individual lights
-  const leftLightRef = useRef<SpotLight | null>(null);
-  const rightLightRef = useRef<SpotLight | null>(null);
-  const flBlinkerRef = useRef<SpotLight | null>(null);
-  const frBlinkerRef = useRef<SpotLight | null>(null);
-  const rlBlinkerRef = useRef<SpotLight | null>(null);
-  const rrBlinkerRef = useRef<SpotLight | null>(null);
 
   // One completed backend timeline drives both the body and world-space wheels.
   const { getInterpolated } = useVehiclePhysicsInterpolator(entityId);
@@ -148,65 +130,6 @@ export const Brz = forwardRef<Group, BrzProps>(function Brz(
   );
 
   useEffect(() => {
-    if (!vehicleLights) return;
-    const visualGroup = visualGroupRef.current;
-    if (!visualGroup) return;
-
-    const addSpot = (
-      refObj: { current: SpotLight | null },
-      color: number,
-      intensity: number,
-      distance: number,
-      position: [number, number, number],
-      target: [number, number, number],
-    ) => {
-      const light = new SpotLight(color, intensity, distance, Math.PI / 6, 0.2);
-      light.position.set(...position);
-      light.target.position.set(...target);
-      light.visible = false;
-      refObj.current = light;
-
-      visualGroup.add(light);
-      visualGroup.add(light.target);
-    };
-
-    addSpot(leftLightRef, 0xffffff, 5, 40, [-0.5, 0.7, -1.8], [-0.4, -0.6, -5]);
-    addSpot(rightLightRef, 0xffffff, 5, 40, [0.55, 0.7, -1.8], [0.4, -0.6, -5]);
-
-
-    addSpot(
-      flBlinkerRef,
-      0xffa500,
-      12,
-      16,
-      [-0.7, 0.6, -1.9],
-      [-0.85, 0.6, -3],
-    );
-    addSpot(frBlinkerRef, 0xffa500, 12, 16, [0.7, 0.6, -1.9], [0.9, 0.6, -3]);
-    addSpot(rlBlinkerRef, 0xffa500, 12, 16, [-0.5, 0.6, 1.9], [-0.9, 0.6, 3]);
-    addSpot(rrBlinkerRef, 0xffa500, 12, 16, [0.5, 0.6, 1.9], [0.9, 0.6, 3]);
-
-    return () => {
-      [
-        leftLightRef,
-        rightLightRef,
-        flBlinkerRef,
-        frBlinkerRef,
-        rlBlinkerRef,
-        rrBlinkerRef,
-      ].forEach((lightRef) => {
-        const light = lightRef.current;
-        if (!light) return;
-
-        light.parent?.remove(light);
-        light.target.parent?.remove(light.target);
-        light.dispose();
-        lightRef.current = null;
-      });
-    };
-  }, [vehicleLights]);
-
-  useEffect(() => {
     const missingWheelNames = (["FL", "FR", "RL", "RR"] as const).filter(
       (_, index) => !wheels[index],
     );
@@ -236,7 +159,6 @@ export const Brz = forwardRef<Group, BrzProps>(function Brz(
     if (isVehiclePreview) return;
 
     // get state on frame
-    const inputState = useInputStore.getState();
     const gameState = useGameStore.getState();
     const networkState = useNetworkStore.getState();
     const localPlayerId = networkState.playerId;
@@ -244,53 +166,12 @@ export const Brz = forwardRef<Group, BrzProps>(function Brz(
 
     if (!id) return;
 
-    const isLocalPlayer = id === localPlayerId;
-
     const interp = getInterpolated(id);
     if (!interp) return;
 
-    const input = inputState.input;
     const camMode = gameState.camera;
 
     const group = vehicleGroupRef.current;
-
-    // Update blink state every 0.5s
-    blinkTimer.current += delta;
-    if (blinkTimer.current >= 0.5) {
-      blinkTimer.current = 0;
-      blinkState.current = !blinkState.current;
-    }
-
-    // Determine which lights should be on based on input state
-    const vehicleMask = isLocalPlayer
-      ? input.vehicleMask
-      : ((interp as { vehicle_mask?: number }).vehicle_mask ?? 0);
-
-    const headlights = hasFlag(
-      interp.vehicle_mask ?? vehicleMask,
-      VehicleFlags.HEADLIGHTS,
-    );
-    const highBeam = Boolean((interp.cluster_mask ?? 0) & (1 << 3));
-    const hazards = hasFlag(vehicleMask, VehicleFlags.HAZARDS);
-    const blinkerLeft =
-      hasFlag(vehicleMask, VehicleFlags.BLINKER_LEFT) && !hazards;
-    const blinkerRight =
-      hasFlag(vehicleMask, VehicleFlags.BLINKER_RIGHT) && !hazards;
-
-    const blinkOn = blinkState.current;
-
-    // Lights visibility
-    applyHeadlightBeam(leftLightRef.current, headlights, highBeam);
-    applyHeadlightBeam(rightLightRef.current, headlights, highBeam);
-
-    if (flBlinkerRef.current)
-      flBlinkerRef.current.visible = (hazards || blinkerLeft) && blinkOn;
-    if (frBlinkerRef.current)
-      frBlinkerRef.current.visible = (hazards || blinkerRight) && blinkOn;
-    if (rlBlinkerRef.current)
-      rlBlinkerRef.current.visible = (hazards || blinkerLeft) && blinkOn;
-    if (rrBlinkerRef.current)
-      rrBlinkerRef.current.visible = (hazards || blinkerRight) && blinkOn;
 
     // Update vehicle body
     group.position.set(...interp.position);
@@ -334,7 +215,7 @@ export const Brz = forwardRef<Group, BrzProps>(function Brz(
         .multiply(restRotation);
     });
 
-    if (isLocalPlayer) {
+    if (id === localPlayerId) {
       const isFirstPerson = camMode === "FIRST_PERSON";
       const targetOpacity = isFirstPerson ? 0.1 : 0.4;
       const targetIOR = isFirstPerson ? 1.0 : 6.5;

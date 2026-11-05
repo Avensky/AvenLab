@@ -17,11 +17,20 @@ export const harborPieces: Piece[] = [{
     ...[-.46,-.30,-.15,0,.15,.30,.46].map(x=>({shape:"box" as const,position:[x,.4,.19] as V3,size:[.017,.8,.55] as V3,solid:false}))],
 }];
 
-export function guardrail(id:string,x1:number,z1:number,x2:number,z2:number,surface:number):import("../document/layoutDocument.ts").LayoutObject{
+export function guardrail(id:string,x1:number,z1:number,x2:number,z2:number,surface:number, rise=0):import("../document/layoutDocument.ts").LayoutObject{
   const dx=x2-x1,dz=z2-z1,template=harborPieces[1];
+  const parts=structuredClone(template.parts);
+  // Local +X points from endpoint 1 toward endpoint 2 on either bank.
+  // Keep posts plumb and move their feet to the deck directly beneath them.
+  if (rise) {
+    for (const part of parts) {
+      part.position[1] += part.position[0] * rise / template.size[1];
+      if (part.solid !== false) part.rise = rise / template.size[1];
+    }
+  }
   return {id,name:template.label,piece:template.id,position:[(x1+x2)/2,surface,(z1+z2)/2],
     size:[Math.hypot(dx,dz),template.size[1],template.size[2]],yaw:-Math.atan2(dz,dx)*180/Math.PI,
-    color:template.color,locked:false,solid:true,parts:structuredClone(template.parts),destruction:{...railDamage}};
+    color:template.color,locked:false,solid:true,parts,destruction:{...railDamage}};
 }
 
 // Recompute the eye from the placed hull, so rotated and resized prefabs keep a

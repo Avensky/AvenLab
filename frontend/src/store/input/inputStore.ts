@@ -256,7 +256,7 @@ export const useInputStore = create<InputState>((set, get) => ({
       reviseCockpit(
         undefined,
         {
-          lights: hasFlag(current.vehicleMask, VehicleFlags.HEADLIGHTS) ? 2 : 0,
+          lights: hasFlag(current.vehicleMask, VehicleFlags.HEADLIGHTS) ? 2 : 1,
           assist: hasFlag(current.vehicleMask, VehicleFlags.TCS) ? 0 : 2,
         },
         0,
@@ -280,7 +280,7 @@ export const useInputStore = create<InputState>((set, get) => ({
       reviseCockpit(
         undefined,
         {
-          lights: hasFlag(current.vehicleMask, VehicleFlags.HEADLIGHTS) ? 2 : 0,
+          lights: hasFlag(current.vehicleMask, VehicleFlags.HEADLIGHTS) ? 2 : 1,
           assist: hasFlag(current.vehicleMask, VehicleFlags.TCS) ? 0 : 2,
         },
         0,
@@ -306,7 +306,7 @@ export const useInputStore = create<InputState>((set, get) => ({
       reviseCockpit(
         undefined,
         {
-          lights: hasFlag(current.vehicleMask, VehicleFlags.HEADLIGHTS) ? 2 : 0,
+          lights: hasFlag(current.vehicleMask, VehicleFlags.HEADLIGHTS) ? 2 : 1,
         },
         0,
       );
@@ -459,7 +459,7 @@ export const useInputStore = create<InputState>((set, get) => ({
     const current = inputRef.current.vehicleMask;
     const vehicleMask = setFlag(current, flag, enabled);
 
-    const cockpit = inputRef.current.cockpit_mask;
+    const cockpit = cockpitRequestBase(inputRef.current);
     const cabin = inputRef.current.cabin_mask;
     const revisesCockpit = cockpit !== undefined && (flag === VehicleFlags.TCS || flag === VehicleFlags.HEADLIGHTS);
     const revisesIgnition = cabin !== undefined && flag === VehicleFlags.ENGINE_ON;
@@ -502,9 +502,11 @@ export const useInputStore = create<InputState>((set, get) => ({
 
   toggleVehicleFlag(flag) {
     const current = inputRef.current.vehicleMask;
-    const enabled = !hasFlag(current, flag);
-
-    get().setVehicleFlag(flag, enabled);
+    const mode = flag === VehicleFlags.HEADLIGHTS ? cockpitRequestBase(inputRef.current) : undefined;
+    const lights = mode === undefined ? undefined : unpackCockpit(mode).lights;
+    const on = lights === undefined ? hasFlag(current, flag)
+      : lights >= 2 || (lights === 1 && hasFlag(current, VehicleFlags.ENGINE_ON));
+    get().setVehicleFlag(flag, !on);
   },
 
   setPlayerFlag(flag, enabled) {

@@ -1,13 +1,10 @@
 import { measuredWheelHub, restorePartTransform } from "./tools/vehicleVisualRig";
 import { useLiveAppearance } from "./cosmetics/useLiveAppearance";
-import { applyHeadlightBeam } from "./tools/headlightBeam";
 import { useVehicleVisualAlignment } from "../hooks/useVehicleVisualAlignment";
-import { useRenderSettingsStore } from "../store/presentation/renderSettingsStore";
 // Camaro.tsx
 
 import {
   forwardRef,
-  useEffect,
   useImperativeHandle,
   useLayoutEffect,
   useMemo,
@@ -15,7 +12,7 @@ import {
 } from "react";
 import type { PropsWithChildren } from "react";
 import { useGLTF } from "@react-three/drei";
-import { Group, MathUtils, Matrix4, Mesh, SpotLight } from "three";
+import { Group, MathUtils, Matrix4, Mesh } from "three";
 import {
   CAMARO_GLASS_PARTS as GLASS_PARTS,
   createVehicleMaterial,
@@ -23,9 +20,8 @@ import {
 import type { Object3D } from "three";
 import { useFrame } from "@react-three/fiber";
 import { setupVehicleParts } from "./tools/setupVehicleParts";
-import { useNetworkStore, useInputStore, useUIStore } from "../store";
+import { useNetworkStore, useUIStore } from "../store";
 import { useVehiclePhysicsInterpolator } from "../hooks/usePhysicsInterpolator";
-import { hasFlag, VehicleFlags } from "../store/input/protocol/inputMasks";
 
 const MODEL_PATH = "/models/vehicles/camaro.glb";
 
@@ -64,7 +60,6 @@ export const Camaro = forwardRef<Group, CamaroProps>(function Camaro(
   ref,
 ) {
   // Load the car model
-  const vehicleLights = useRenderSettingsStore((s) => s.vehicleLights);
   const { scene } = useGLTF(MODEL_PATH);
 
   // Refs for car group
@@ -79,18 +74,6 @@ export const Camaro = forwardRef<Group, CamaroProps>(function Camaro(
   // Allow parent components to access the car group ref
   useLiveAppearance(vehicleVisualGroupRef, "camaro", entityId);
   useImperativeHandle(ref, () => vehicleGroupRef.current, []);
-
-  // Simulate hazard lights
-  const blinkTimer = useRef(0);
-  const blinkState = useRef(false);
-
-  // Refs for individual lights
-  const leftLightRef = useRef<SpotLight | null>(null);
-  const rightLightRef = useRef<SpotLight | null>(null);
-  const flBlinkerRef = useRef<SpotLight | null>(null);
-  const frBlinkerRef = useRef<SpotLight | null>(null);
-  const rlBlinkerRef = useRef<SpotLight | null>(null);
-  const rrBlinkerRef = useRef<SpotLight | null>(null);
 
   // One completed backend timeline drives both the body and world-space wheels.
   const { getInterpolated } = useVehiclePhysicsInterpolator(entityId);
@@ -237,67 +220,6 @@ export const Camaro = forwardRef<Group, CamaroProps>(function Camaro(
     return setup;
   }, [scene]);
 
-  useEffect(() => {
-    if (!vehicleLights) return;
-    const visualGroup = vehicleVisualGroupRef.current;
-    if (!visualGroup) return;
-
-    const addSpot = (
-      refObj: { current: SpotLight | null },
-      color: number,
-      intensity: number,
-      distance: number,
-      position: [number, number, number],
-      target: [number, number, number],
-    ) => {
-      const light = new SpotLight(color, intensity, distance, Math.PI / 6, 0.2);
-      // Match the model's 180-degree rotation around the vertical Y axis.
-      // Rotate both the mounting position and beam target: (x, y, z) -> (-x, y, -z).
-      light.position.set(-position[0], position[1], -position[2]);
-      light.target.position.set(-target[0], target[1], -target[2]);
-      light.visible = false;
-      refObj.current = light;
-
-      visualGroup.add(light);
-      visualGroup.add(light.target);
-    };
-
-    addSpot(leftLightRef, 0xffffff, 5, 40, [-0.5, 0.7, -1.8], [-0.4, -0.6, -5]);
-    addSpot(rightLightRef, 0xffffff, 5, 40, [0.55, 0.7, -1.8], [0.4, -0.6, -5]);
-
-
-    addSpot(
-      flBlinkerRef,
-      0xffa500,
-      12,
-      16,
-      [-0.7, 0.6, -1.9],
-      [-0.85, 0.6, -3],
-    );
-    addSpot(frBlinkerRef, 0xffa500, 12, 16, [0.7, 0.6, -1.9], [0.9, 0.6, -3]);
-    addSpot(rlBlinkerRef, 0xffa500, 12, 16, [-0.5, 0.6, 1.9], [-0.9, 0.6, 3]);
-    addSpot(rrBlinkerRef, 0xffa500, 12, 16, [0.5, 0.6, 1.9], [0.9, 0.6, 3]);
-
-    return () => {
-      [
-        leftLightRef,
-        rightLightRef,
-        flBlinkerRef,
-        frBlinkerRef,
-        rlBlinkerRef,
-        rrBlinkerRef,
-      ].forEach((lightRef) => {
-        const light = lightRef.current;
-        if (!light) return;
-
-        light.parent?.remove(light);
-        light.target.parent?.remove(light.target);
-        light.dispose();
-        lightRef.current = null;
-      });
-    };
-  }, [vehicleLights]);
-
   const wheelRigs = useMemo<WheelVisualRig[]>(() => {
     return [
       clonesByGroup["FL_WHEEL"],
@@ -366,14 +288,11 @@ export const Camaro = forwardRef<Group, CamaroProps>(function Camaro(
     if (isVehiclePreview) return;
 
     // get state on frame
-    const inputState = useInputStore.getState();
     const networkState = useNetworkStore.getState();
     const localPlayerId = networkState.playerId;
     const id = entityId ?? localPlayerId;
 
     if (!id) return;
-
-    const isLocalPlayer = id === localPlayerId;
 
     const interp = getInterpolated(id);
     if (!interp) return;
@@ -382,46 +301,7 @@ export const Camaro = forwardRef<Group, CamaroProps>(function Camaro(
     // Mixing the newest raw wheels with a delayed body creates two clocks.
     const animatedWheels = interp.wheels ?? [];
 
-    const input = inputState.input;
     const group = vehicleGroupRef.current;
-
-    // Update blink state every 0.5s
-    blinkTimer.current += delta;
-    if (blinkTimer.current >= 0.5) {
-      blinkTimer.current = 0;
-      blinkState.current = !blinkState.current;
-    }
-
-    // Determine which lights should be on based on input state
-    const vehicleMask = isLocalPlayer
-      ? input.vehicleMask
-      : ((interp as { vehicle_mask?: number }).vehicle_mask ?? 0);
-
-    const headlights = hasFlag(
-      interp.vehicle_mask ?? vehicleMask,
-      VehicleFlags.HEADLIGHTS,
-    );
-    const highBeam = Boolean((interp.cluster_mask ?? 0) & (1 << 3));
-    const hazards = hasFlag(vehicleMask, VehicleFlags.HAZARDS);
-    const blinkerLeft =
-      hasFlag(vehicleMask, VehicleFlags.BLINKER_LEFT) && !hazards;
-    const blinkerRight =
-      hasFlag(vehicleMask, VehicleFlags.BLINKER_RIGHT) && !hazards;
-
-    const blinkOn = blinkState.current;
-
-    // Lights visibility
-    applyHeadlightBeam(leftLightRef.current, headlights, highBeam);
-    applyHeadlightBeam(rightLightRef.current, headlights, highBeam);
-
-    if (flBlinkerRef.current)
-      flBlinkerRef.current.visible = (hazards || blinkerLeft) && blinkOn;
-    if (frBlinkerRef.current)
-      frBlinkerRef.current.visible = (hazards || blinkerRight) && blinkOn;
-    if (rlBlinkerRef.current)
-      rlBlinkerRef.current.visible = (hazards || blinkerLeft) && blinkOn;
-    if (rrBlinkerRef.current)
-      rrBlinkerRef.current.visible = (hazards || blinkerRight) && blinkOn;
 
     // Update vehicle body
     group.position.set(...interp.position);

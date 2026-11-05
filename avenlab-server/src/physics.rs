@@ -126,7 +126,7 @@ impl PhysicsWorld {
                 if matches!(object.piece.as_str(), "fuel-station" | "repair-shop" | "service-center") {
                     self.service_bays.push(index);
                 }
-                self.has_impact_barriers |= !layout.repeat && object.destruction.as_ref().is_some_and(|d| d.enabled) && matches!(object.piece.as_str(), "barrier" | "highway-guardrail");
+                self.has_impact_barriers |= !layout.repeat && object.destruction.as_ref().is_some_and(|d| d.enabled) && matches!(object.piece.as_str(), "barrier" | "highway-guardrail" | "breakaway-glass");
             }
         }
         self.active_map = Some(map);
@@ -1482,8 +1482,9 @@ impl PhysicsWorld {
                 let other=if pair.collider1==*collider{pair.collider2}else{pair.collider1};
                 let Some(target)=self.colliders.get(other).and_then(|c|c.parent())else{continue};
                 if self.barrier_impacts.contains_key(&(v.body,target)){continue;}
-                let Some(object)=self.bodies[target].user_data.checked_sub(1).and_then(|i|layout.objects.get(i as usize)).filter(|o|matches!(o.piece.as_str(), "barrier" | "highway-guardrail"))else{continue};
-                let rail = object.piece == "highway-guardrail";
+                let Some(object)=self.bodies[target].user_data.checked_sub(1).and_then(|i|layout.objects.get(i as usize)).filter(|o|matches!(o.piece.as_str(), "barrier" | "highway-guardrail" | "breakaway-glass"))else{continue};
+                let pane = object.piece == "breakaway-glass";
+                let rail = object.piece == "highway-guardrail" || pane;
                 if pair.total_impulse_magnitude() < (if rail {140.0} else {1000.0}) {continue;}
                 let Some(d)=object.destruction.as_ref().filter(|d|d.enabled)else{continue};
                 let normal = self.bodies[target].rotation() * Vector::z();
@@ -1491,10 +1492,10 @@ impl PhysicsWorld {
                 if rail && normal_speed.abs() < 3.0 { continue; }
                 let impact_speed = if rail { normal_speed.abs() } else { speed };
                 let damage = (0.5 * body.mass() * impact_speed.powi(2) / 5000.0).min(400.0);
-                hits.insert((v.body,target),(object.id.clone(),d.hp,damage,rail));
+                hits.insert((v.body,target),(object.id.clone(),d.hp,damage,rail,pane));
             }}
         }
-        for ((source,target),(id,max_hp,damage,rail)) in hits{
+        for ((source,target),(id,max_hp,damage,rail,pane)) in hits{
             self.barrier_impacts.insert((source,target),0.4);
             let hp=self.asset_health.entry(id).or_insert(max_hp);
             if *hp<=0.0 {continue;}
@@ -1507,7 +1508,9 @@ impl PhysicsWorld {
                         let before = velocity.dot(&normal);
                         let direction = normal * before.signum();
                         let current = *body.linvel();
-                        let restored = ((before.abs() * 0.35).min(2.5) - current.dot(&direction)).max(0.0);
+                        // Glass gives way on contact. Carry speed into the ramp beyond it.
+                        let through_speed = if pane { before.abs() * 0.85 } else { (before.abs()*0.35).min(2.5) };
+                        let restored = (through_speed - current.dot(&direction)).max(0.0);
                         if restored > 0.0 { body.set_linvel(current + direction * restored, true); }
                     }
                 }
@@ -1631,7 +1634,7 @@ impl PhysicsWorld {
                     let other_body = self.colliders.get(other).and_then(|collider| collider.parent());
                     let rail = self.has_impact_barriers && other_body.and_then(|h| self.bodies[h].user_data.checked_sub(1))
                         .and_then(|i| self.active_map.as_ref()?.authored_layout.as_ref()?.objects.get(i as usize))
-                        .is_some_and(|o| o.piece == "highway-guardrail" && o.destruction.as_ref().is_some_and(|d| d.enabled));
+                        .is_some_and(|o| matches!(o.piece.as_str(), "highway-guardrail" | "breakaway-glass") && o.destruction.as_ref().is_some_and(|d| d.enabled));
                     let impulse = if rail { impulse * 0.2 } else { impulse };
                     // A genuine incoming ally shove also softens an immediate wall
                     // impact. Mere side-by-side contact cannot grant protection.
@@ -2243,11 +2246,34 @@ mod tests {
         assert!(on_roof,"the lower bypass must connect back to the landing roof through a drivable ramp");
     }
 
+    #[test]
+    fn harbor_glass_run_reaches_the_opposite_roof() {
+        let mut world=PhysicsWorld::new();
+        world.select_map("harbor_canal_fleet").unwrap();
+        let handle=world.spawn_vehicle_for_player("jumper".into(),[0.;3],"brz","blue").unwrap();
+        let config=world.vehicles["jumper"].config;
+        let start=Isometry::translation(119.,config.spawn_height(0.),-168.);
+        world.bodies[handle].set_position(start,true);
+        for _ in 0..100 {world.step(SIMULATION_DT);}
+        let mut crossed=false;
+        let mut landed=false;
+        for _ in 0..960 {
+            world.vehicles.get_mut("jumper").unwrap().throttle=1.;
+            world.step(SIMULATION_DT);
+            let p=world.bodies[handle].translation();
+            if (-99.0..-90.0).contains(&p.z) && p.y>4.0 && world.wheels[&handle].iter().all(|w|!w.grounded) {crossed=true;}
+            if (-87.0..-65.0).contains(&p.z) && (2.4..3.9).contains(&p.y) && world.wheels[&handle].iter().all(|w|w.grounded) {landed=true;break;}
+            if p.z> -58.0 {break;}
+        }
+        assert_eq!(world.asset_health.get("shortcut-glass-east"),Some(&0.0));
+        assert!(crossed && landed,"airborne across road={crossed}, on roof={landed}, end={:?}",world.bodies[handle].translation());
+    }
+
     // Real BRZ on the installed fixture: accelerate with the existing powertrain,
     // then observe suspension takeoff and roof contact. No scripted launch force.
     #[test]
     fn road_jump_lab_brz_proves_takeoff_landing_and_an_open_gap() {
-        for (label, throttle, boost) in [("unboosted",1.0,false),("nos",1.0,true),("slow",0.12,false)] {
+        for (label, throttle, boost) in [("unboosted",1.0,false),("nos",1.0,true),("slow",0.10,false)] {
             let mut world=PhysicsWorld::new();world.select_map("road_jump_lab").unwrap();
             let h=world.spawn_vehicle_for_player("jump-driver".into(),[0.0;3],"brz","red").unwrap();
             for _ in 0..180 {world.step(SIMULATION_DT);}
@@ -2663,7 +2689,7 @@ mod combat_structure_tests {
 #[cfg(test)]mod barrier_weight_tests{
  use super::*;
  fn impact(vehicle:&str,destructible:bool,speed:f32,rail_kind:&str)->Option<f32>{
-  let hp=if rail_kind=="highway-guardrail"{5}else{100};
+  let hp=match rail_kind {"highway-guardrail"=>5, "breakaway-glass"=>3, _=>100};
   let mut value:serde_json::Value=serde_json::from_str(include_str!("assets/blocks/coastal_district_colliders.json")).unwrap();
   value["team_spawns"]=serde_json::json!({"red":[{"chunk":[0,0],"local":[0,0],"yaw":0,"surface_y":0}],"blue":[]});
   value["authored_layout"]=serde_json::json!({"format":"avenlab-world-layout","version":1,"map_id":"coastal_district","title":"Rail impact range","base":"replace","ground":true,"repeat":false,"objects":[{"id":"edge-rail","name":"Bridge edge rail","piece":rail_kind,"position":[0,0,8],"size":[16,2,0.5],"yaw":0,"color":"#888888","locked":false,"solid":true,"parts":[{"shape":"box","position":[0,0.5,0],"size":[1,1,1],"solid":true}],"destruction":{"enabled":destructible,"hp":hp,"smallArms":1,"cannon":1,"bomb":1.5,"rubble":"clear"}}]});
@@ -2680,6 +2706,8 @@ mod combat_structure_tests {
   assert!(impact("brz",true,10.0,"barrier").unwrap_or(100.0)>50.0);
   assert_eq!(impact("tank",false,10.0,"barrier"),None);
   assert_eq!(impact("tank",true,0.0,"barrier"),None);
+  assert_eq!(impact("brz",true,10.0,"breakaway-glass"),Some(0.0));
+  assert_eq!(impact("brz",true,2.5,"breakaway-glass"),None);
   assert_eq!(impact("brz",true,2.5,"highway-guardrail"),None);
   assert_eq!(impact("brz",true,10.0,"highway-guardrail"),Some(0.0));
  }

@@ -1,8 +1,6 @@
 import { measuredWheelHub, restorePartTransform } from "./tools/vehicleVisualRig";
 import { useLiveAppearance } from "./cosmetics/useLiveAppearance";
-import { applyHeadlightBeam } from "./tools/headlightBeam";
 import { useVehicleVisualAlignment } from "../hooks/useVehicleVisualAlignment";
-import { useRenderSettingsStore } from "../store/presentation/renderSettingsStore";
 import {
   forwardRef,
   useEffect,
@@ -16,7 +14,6 @@ import {
   MathUtils,
   Object3D,
   Quaternion,
-  SpotLight,
   Vector3,
 } from "three";
 import { useFrame } from "@react-three/fiber";
@@ -67,7 +64,6 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
   { children, entityId },
   ref: React.Ref<Group>,
 ) {
-  const vehicleLights = useRenderSettingsStore((s) => s.vehicleLights);
   const { scene } = useGLTF(MODEL_PATH); //load the model and get the scene
   const isVehiclePreview = useUIStore(
     (state) =>
@@ -84,18 +80,6 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
 
   // Headlight animation state
   const headlightRotation = useRef(0);
-
-  // Simulate hazard lights
-  const blinkTimer = useRef(0);
-  const blinkState = useRef(false);
-
-  // Refs for individual lights
-  const leftLightRef = useRef<SpotLight | null>(null);
-  const rightLightRef = useRef<SpotLight | null>(null);
-  const flBlinkerRef = useRef<SpotLight | null>(null);
-  const frBlinkerRef = useRef<SpotLight | null>(null);
-  const rlBlinkerRef = useRef<SpotLight | null>(null);
-  const rrBlinkerRef = useRef<SpotLight | null>(null);
 
   // One completed backend timeline drives both the body and world-space wheels.
   const { getInterpolated } = useVehiclePhysicsInterpolator(entityId);
@@ -173,85 +157,6 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
     // console.log("[ae86 used] headlights:", headlightRef.current?.name);
     // console.log("[ae86 used] wheels:", wheels.map((w) => w?.name));
   }, [clonesByGroup, wheels]);
-
-  // light setup
-  useEffect(() => {
-    if (!vehicleLights) return;
-    const vehicleGroup = vehicleVisualRef.current;
-    const addSpot = (
-      refObj: { current: SpotLight | null },
-      color: number,
-      intensity: number,
-      distance: number,
-      position: [number, number, number],
-      target: [number, number, number],
-    ) => {
-      if (!vehicleGroup) return;
-
-      const light = new SpotLight(color, intensity, distance, Math.PI / 6, 0.2);
-      light.position.set(...position);
-      light.target.position.set(...target);
-      light.visible = false;
-      refObj.current = light;
-
-      vehicleGroup.add(light);
-      vehicleGroup.add(light.target);
-    };
-
-    // addSpot( SpotLight, color, intensity, distance,
-    // position: [X, Y, Z],
-    // target: [X, Y, Z])
-
-    // Add headlights
-    addSpot(leftLightRef, 0xffffff, 12, 40, [0.5, 0.7, 1.9], [0.4, -0.6, 4]); // FL
-    addSpot(
-      rightLightRef,
-      0xffffff,
-      12,
-      40,
-      [-0.55, 0.7, 1.9],
-      [-0.4, -0.6, 4],
-    ); // FR
-
-
-    // Add blinkers
-    addSpot(flBlinkerRef, 0xffa500, 12, 16, [0.7, 0.6, 1.9], [0.9, -0.6, 3]); // FL
-    addSpot(frBlinkerRef, 0xffa500, 12, 16, [-0.7, 0.6, 1.9], [-0.9, -0.6, 3]); // FR
-
-    addSpot(rlBlinkerRef, 0xffa500, 12, 16, [0.5, 0.6, -1.9], [0.9, -0.6, -3]); // RL
-    addSpot(
-      rrBlinkerRef,
-      0xffa500,
-      12,
-      16,
-      [-0.5, 0.6, -1.9],
-      [-0.9, -0.6, -3],
-    ); // RR
-
-    return () => {
-      [
-        leftLightRef,
-        rightLightRef,
-        flBlinkerRef,
-        frBlinkerRef,
-        rlBlinkerRef,
-        rrBlinkerRef,
-      ].forEach((lightRef) => {
-        const light = lightRef.current;
-        if (!light) return;
-
-        if (vehicleGroup) {
-          vehicleGroup.remove(light);
-          vehicleGroup.remove(light.target);
-        } else {
-          light.parent?.remove(light);
-          light.target.parent?.remove(light.target);
-        }
-
-        lightRef.current = null;
-      });
-    };
-  }, [vehicleLights]);
 
   // Store the initial wheel rotations for later use
   const wheelRestRotations = useMemo(
@@ -342,12 +247,6 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
       VehicleFlags.HEADLIGHTS,
     );
     const highBeam = Boolean((interp.cluster_mask ?? 0) & (1 << 3));
-    const hazards = hasFlag(vehicleMask, VehicleFlags.HAZARDS);
-    const blinkerLeft =
-      hasFlag(vehicleMask, VehicleFlags.BLINKER_LEFT) && !hazards;
-    const blinkerRight =
-      hasFlag(vehicleMask, VehicleFlags.BLINKER_RIGHT) && !hazards;
-
     // Animate headlights opening/closing based on input
     const openRotation = -Math.PI / 3;
     const closedRotation = 0;
@@ -363,26 +262,6 @@ export const Ae86 = forwardRef<Group, Ae86Props>(function Ae86(
       headlightRef.current.rotation.x = headlightRotation.current;
     }
 
-    blinkTimer.current += delta;
-    if (blinkTimer.current >= 0.5) {
-      blinkTimer.current = 0;
-      blinkState.current = !blinkState.current;
-    }
-
-    const blinkOn = blinkState.current;
-
-    applyHeadlightBeam(leftLightRef.current, headlights, highBeam);
-    applyHeadlightBeam(rightLightRef.current, headlights, highBeam);
-
-
-    if (flBlinkerRef.current)
-      flBlinkerRef.current.visible = (hazards || blinkerLeft) && blinkOn;
-    if (frBlinkerRef.current)
-      frBlinkerRef.current.visible = (hazards || blinkerRight) && blinkOn;
-    if (rlBlinkerRef.current)
-      rlBlinkerRef.current.visible = (hazards || blinkerLeft) && blinkOn;
-    if (rrBlinkerRef.current)
-      rrBlinkerRef.current.visible = (hazards || blinkerRight) && blinkOn;
   });
 
   return (

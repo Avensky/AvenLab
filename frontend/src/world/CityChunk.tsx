@@ -1,3 +1,4 @@
+import {cityWallScene} from './facades/cityWallScene';
 import { memo, useMemo } from "react";
 import { useRenderSettingsStore } from "../store/presentation/renderSettingsStore";
 import { Clone, useGLTF } from "@react-three/drei";
@@ -23,7 +24,7 @@ export const CityChunk = memo(function CityChunk({
   const shadows = useRenderSettingsStore((s) => s.shadows);
   const opaqueMaterials = useRenderSettingsStore((s) => s.opaqueCityMaterials);
   const scene = useMemo(
-    () => cityMaterialScene(gltf.scene, opaqueMaterials),
+    () => cityMaterialScene(cityWallScene(gltf.scene), opaqueMaterials),
     [gltf.scene, opaqueMaterials],
   );
 

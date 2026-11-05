@@ -37,7 +37,7 @@ pub struct Cockpit {
 }
 impl Default for Cockpit {
     fn default() -> Self { Self { enabled:false, automatic:true, gear:1, parking:false, parking_strength:0, parking_fraction:0.0, precise_parking:false,
-        lights:0, wipers:0, washer:false, assist:0, traction_active:false, traction_requested:true,
+        lights:1, wipers:0, washer:false, assist:0, traction_active:false, traction_requested:true,
         cruise_enabled:false, cruise_target:None, last_target:None, rearmed:false, traction_latched_off:false, launch_slip_seen:false, launch_clear_s:0.0,
         revision:0, rejected:0, last_request:None, rejected_gear:None,
         cabin_mask:4, key_override:false, key_position:2, key_inserted:true,

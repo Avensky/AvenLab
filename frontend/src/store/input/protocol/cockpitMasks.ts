@@ -14,7 +14,7 @@ export type CockpitRequest = {
   cruiseAction: number;
   revision: number;
 };
-export const DEFAULT_COCKPIT_MASK = (1 << 6) | (1 << 7); // automatic Drive
+export const DEFAULT_COCKPIT_MASK = 1 | (1 << 6) | (1 << 7); // AUTO lights, automatic Drive
 export function cockpitCommandPending(
   request: number | undefined,
   confirmed: number | null,

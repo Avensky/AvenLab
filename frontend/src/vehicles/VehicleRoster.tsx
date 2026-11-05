@@ -1,3 +1,5 @@
+import {RoadHeadlights} from './RoadHeadlights';
+import {NitrousExhaust} from './NitrousExhaust';
 import {ExteriorMarkers} from "./ExteriorMarkers";
 import { useConnectionView, useMotionView } from "../store/session/networkViews";
 import { RemoteFleet, VehicleExterior } from "./RemoteFleet";
@@ -163,6 +165,7 @@ export const VehicleRoster = memo(function VehicleRoster() {
   const lampsEnabled=useRenderSettingsStore(s=>s.vehicleLights);
   const lampCars=useMemo(()=>entities.filter(e=>['glb','hybrid'].includes(overrides[e.id]??mode)),[entities,overrides,mode]);
 
+  const driver = lampCars.find(car=>car.id===local);
   const {regular,remote}=useMemo(()=>{
     const regular:RosterEntity[]=[],remote:RosterEntity[]=[];
     for(const entity of entities){
@@ -173,7 +176,8 @@ export const VehicleRoster = memo(function VehicleRoster() {
   },[entities,local,mode,overrides]);
   return (
     <group name="network-vehicle-roster">
-      {lampsEnabled && lampCars.length>0 && <ExteriorMarkers cars={lampCars}/>}
+      {lampCars.length>0 && <><ExteriorMarkers cars={lampCars}/><NitrousExhaust cars={lampCars}/></>}
+      {lampsEnabled && driver && <RoadHeadlights car={driver}/>}
       {!!remote.length && <RemoteFleet cars={remote}/>}
       {regular.map((entity) => (
         <NetworkVehicle

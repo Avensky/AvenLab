@@ -14,6 +14,7 @@ import {
   inputSenderDiagnostics,
   recordInputPacketSent,
 } from "./rustSocket";
+import {DEFAULT_COCKPIT_MASK} from '../store/input/protocol/cockpitMasks';
 import {encodePackedInput} from './packedInput';
 import {InputSendGate} from './inputSendGate';
 import {useDebugViewStore} from '../store/presentation/debugViewStore';
@@ -54,6 +55,11 @@ function transmitInput(allowQueuedNeutral = false) {
   const mask=useWorldStore.getState().debugMask;
   const packet = {
     ...inputRef.current,
+    // Arm AUTO on a freshly spawned modern cockpit until its enabled bit is
+    // acknowledged. Rejoins retain the selector already confirmed by the server.
+    cockpit_mask: inputRef.current.cockpit_mask ?? (
+      turretVehicle.cockpit_mask === DEFAULT_COCKPIT_MASK ? DEFAULT_COCKPIT_MASK : undefined
+    ),
     combat: (()=>{
       const ui=useUIStore.getState(),me=turretVehicle,state=useCombatStore.getState();
       const enabled=combatIntent.enabled&&canAimTurret()&&document.visibilityState!=='hidden';

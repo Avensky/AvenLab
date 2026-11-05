@@ -212,7 +212,7 @@ pub const AE86: VehicleConfig = VehicleConfig {
     resources: ROAD_RESOURCES,
     // Performance and identity
     mass: 950.0,
-    engine_force: 6_500.0,
+    engine_force: 7_800.0,
     brake_force: 6_500.0,
     max_speed: 50.0,
 
@@ -264,7 +264,7 @@ pub const GT86: VehicleConfig = VehicleConfig {
     tracked: false,
     // Performance and identity
     mass: 1_270.0,
-    engine_force: 8_000.0,
+    engine_force: 9_600.0,
     brake_force: 7_500.0,
     max_speed: 55.0,
 
@@ -284,7 +284,7 @@ pub const BRZ: VehicleConfig = VehicleConfig {
     tracked: false,
     // Performance and identity
     mass: 1_280.0,
-    engine_force: 8_500.0,
+    engine_force: 10_200.0,
     brake_force: 7_600.0,
     max_speed: 62.0, // approximately 139 mph
 
@@ -310,7 +310,7 @@ pub const BRZ: VehicleConfig = VehicleConfig {
 // CX-30 asset measurements are in metres. The collider follows the bodywork
 // and roof, excluding accessories and mirrors. Handling values are alpha tuning.
 pub const CX30: VehicleConfig = VehicleConfig {
-    mass: 1510.0, engine_force: 8400.0, brake_force: 8600.0, max_speed: 48.0,
+    mass: 1510.0, engine_force: 10_080.0, brake_force: 8600.0, max_speed: 48.0,
     chassis_half_extents: [0.935,0.695,2.165], chassis_com_offset: [0.0,0.0,0.0],
     front_axle_z: 1.2449, rear_axle_z: -1.3740, front_track_width: 1.6249, rear_track_width: 1.6249,
     wheel_radius: 0.3406, wheel_y: -0.2694, center_of_mass_height: 0.58,
@@ -320,7 +320,7 @@ pub const CX30: VehicleConfig = VehicleConfig {
 // Hub positions and radius are measured from the exported Mini. The suspension
 // mount includes the inherited spring travel so the nominal pose matches the GLB.
 pub const MINI: VehicleConfig = VehicleConfig {
-    front_wheel_drive: true, mass: 1180.0, engine_force: 7800.0,
+    front_wheel_drive: true, mass: 1180.0, engine_force: 9_360.0,
     brake_force: 7500.0, max_speed: 53.0, chassis_half_extents: [0.865, 0.62, 1.938],
     front_axle_z: 1.1682, rear_axle_z: -1.3197, front_track_width: 1.4776,
     rear_track_width: 1.4776, wheel_radius: 0.3079, wheel_y: -0.2264,
@@ -330,14 +330,14 @@ pub const MINI: VehicleConfig = VehicleConfig {
 // Measured hub positions in chassis space. The front axle uses the midpoint
 // of the Fortuner source's slightly asymmetric left/right tire centers.
 pub const FORTUNER: VehicleConfig = VehicleConfig {
-    mass: 2100.0, engine_force: 10800.0, brake_force: 11300.0, max_speed: 45.0,
+    mass: 2100.0, engine_force: 12_960.0, brake_force: 11300.0, max_speed: 45.0,
     chassis_half_extents: [0.93,0.80,2.398], center_of_mass_height: 0.64,
     front_axle_z: 1.4003, rear_axle_z: -1.3497, front_track_width: 1.5434,
     rear_track_width: 1.5427, wheel_radius: 0.3725, wheel_y: -0.3707, ..CX30
 };
 
 pub const LAND_CRUISER: VehicleConfig = VehicleConfig {
-    mass: 2450.0, engine_force: 11900.0, brake_force: 12800.0, max_speed: 43.0,
+    mass: 2450.0, engine_force: 14_280.0, brake_force: 12800.0, max_speed: 43.0,
     chassis_half_extents: [0.966,0.82,2.464], center_of_mass_height: 0.67,
     front_axle_z: 1.5258, rear_axle_z: -1.3272, front_track_width: 1.6860,
     rear_track_width: 1.6860, wheel_radius: 0.4134, wheel_y: -0.3215, ..CX30
@@ -346,7 +346,7 @@ pub const LAND_CRUISER: VehicleConfig = VehicleConfig {
 // The AT4X is a wheeled Tank. Its independent hull capacity does not enable
 // tracked pivot steering, the Vanguard cannon, scope or directional barrier.
 pub const SIERRA: VehicleConfig = VehicleConfig {
-    hull_hp: 900.0, mass: 2650.0, engine_force: 13100.0, brake_force: 14100.0,
+    hull_hp: 900.0, mass: 2650.0, engine_force: 15_720.0, brake_force: 14100.0,
     max_speed: 45.0, chassis_half_extents: [1.045,0.92,2.934], center_of_mass_height: 0.68,
     front_axle_z: 2.0058, rear_axle_z: -1.7030, front_track_width: 1.7235,
     rear_track_width: 1.7235, wheel_radius: 0.4305, wheel_y: -0.4278, ..CX30
@@ -357,7 +357,7 @@ pub const CAMARO: VehicleConfig = VehicleConfig {
     resources: MUSCLE_RESOURCES,
     // Performance and identity
     mass: 1_650.0,
-    engine_force: 11_000.0,
+    engine_force: 13_200.0,
     brake_force: 9_000.0,
     max_speed: 65.0,
 
@@ -394,7 +394,7 @@ pub const SUPRA: VehicleConfig = VehicleConfig {
     resources: SUPRA_RESOURCES,
     // Performance and identity
     mass: 1_540.0,
-    engine_force: 10_500.0,
+    engine_force: 12_600.0,
     brake_force: 8_800.0,
     max_speed: 69.0, // approximately 155 mph
 

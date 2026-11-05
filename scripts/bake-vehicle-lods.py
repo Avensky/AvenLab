@@ -162,6 +162,9 @@ def write(path,parts,model,ratio,error,simplify):
         if colors is not None:attrs["COLOR_0"]=acc("VEC3",5121,size,normalized=True)
         keys={KINDS[a['attribute_type']]:a['unique_id'] for a in mesh.attributes};i=len(doc['nodes'])
         doc['materials'].append(dict(name=name,pbrMetallicRoughness=dict(baseColorFactor=factory+[1],metallicFactor=.22,roughnessFactor=.22 if name=="glass" else .36 if name=="paint" else .60)))
+        if name=="glass":
+            doc['materials'][-1].update(alphaMode="BLEND",doubleSided=True)
+            doc['materials'][-1]['pbrMetallicRoughness']['baseColorFactor'][3]=0.42
         doc['meshes'].append(dict(primitives=[dict(material=i,attributes=attrs,indices=acc("SCALAR",5123 if size<=65535 else 5125,faces),extensions={"KHR_draco_mesh_compression":dict(bufferView=vid,attributes=keys)})]))
         doc['nodes'].append(dict(name=name,mesh=i,translation=pivot));doc['scenes'][0]['nodes'].append(i);triangles+=faces//3
     binary+=b'\0'*(-len(binary)%4);doc['buffers']=[dict(byteLength=len(binary))];j=json.dumps(doc,separators=(',',':')).encode();j+=b' '*(-len(j)%4)

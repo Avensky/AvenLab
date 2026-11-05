@@ -61,7 +61,12 @@ function baseArt(model:Model):Art{
     geometry.setAttribute('normal',new BufferAttribute(new Int8Array(bytes.buffer,6*n,3*n),3,true));
     if(part.name!=='paint')geometry.setAttribute('color',new BufferAttribute(new Uint8Array(bytes.buffer,9*n,3*n),3,true));
     geometry.setIndex(new BufferAttribute(new Uint16Array(bytes.buffer,12*n),1));
-    const material=new MeshStandardMaterial({color:new Color().fromArray(part.color),vertexColors:part.name!=='paint',metalness:.22,roughness:part.name==='glass'?.22:.48});
+    const glazing=part.name==='glass';
+    const material=new MeshStandardMaterial({
+      color:new Color().fromArray(part.color),vertexColors:part.name!=='paint',
+      metalness:.22,roughness:glazing ? .22 : .48,
+      transparent:glazing,opacity:glazing ? .42 : 1,depthWrite:!glazing,
+    });
     const mesh=new Mesh(geometry,material);mesh.name=part.name;mesh.position.fromArray(part.pivot);scene.add(mesh);
   }
   const art:Art={scene,tier:'seed'};bases.set(model,art);return art;

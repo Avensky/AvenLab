@@ -1,5 +1,6 @@
 // The stored city is batched by material, not by building. Recover four lots
 // using the same Blender-to-runtime bounds as the physical city loader.
+import {panelGeometry, wallPanels} from '../src/world/facades/wallGeometry.ts';
 import { createHash } from "node:crypto";
 import { readFile, writeFile, mkdir, rename } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
@@ -32,11 +33,13 @@ const map = JSON.parse(await readFile(mapFile, "utf8")),
     if (!entry) throw Error("Missing city building " + n);
     const [x, depth, y] = entry.pos,
       [hx, hz, hy] = entry.half_extents;
-    return { name: "dock_facade_" + n, x, z: -depth, y, hx, hz, hy };
+    return { lot:entry.id, name: "dock_facade_" + n, x, z: -depth, y, hx, hz, hy };
   });
 const key = createHash("sha256")
   .update(input)
   .update(JSON.stringify(selected))
+  .update(JSON.stringify(wallPanels))
+  .update(await readFile(new URL("../src/world/facades/wallGeometry.ts", import.meta.url)))
   .update(await readFile(new URL(import.meta.url)))
   .digest("hex");
 let cached = false;
@@ -136,6 +139,16 @@ if (cached) {
   const scene = doc.createScene("Harbor facades");
   root.setDefaultScene(scene);
   for (const m of models) {
+    for (const [label, panels] of Object.entries(wallPanels[m.lot] ?? {})) {
+      const material=root.listMaterials().find(mat=>mat.getName()===label);
+      if(!material) throw Error("Missing facade material "+label);
+      const {position,normal,uv,index}=panelGeometry(panels);
+      const attr=(type,values)=>doc.createAccessor().setType(type).setArray(new Float32Array(values)).setBuffer(buffer);
+      m.mesh.addPrimitive(doc.createPrimitive().setMaterial(material)
+        .setAttribute("POSITION",attr("VEC3",position)).setAttribute("NORMAL",attr("VEC3",normal))
+        .setAttribute("TEXCOORD_0",attr("VEC2",uv))
+        .setIndices(doc.createAccessor().setType("SCALAR").setArray(new Uint16Array(index)).setBuffer(buffer)));
+    }
     const extent = m.bounds.getSize(new Vector3()),
       center = m.bounds.getCenter(new Vector3());
     if (

@@ -7,7 +7,7 @@ import { BigEDocked,BridgeLeaf } from "../../world/props/HarborPieces";
 import { streetProp } from "../props/streetPropCatalog";
 import { StreetPropInstances, StreetPropPreview } from "../props/StreetPropMeshes";
 import { memo, useEffect, useLayoutEffect, useMemo, useRef } from "react";
-import { BoxGeometry, Color, InstancedMesh, Object3D } from "three";
+import { BoxGeometry, Color, InstancedMesh, Matrix4, Object3D } from "three";
 import {
   partTransform,
   type LayoutObject,
@@ -41,7 +41,9 @@ function ShapeInstances({
   shape,
   wireframe,
   onSelect,
+  glass = false,
 }: {
+  glass?: boolean;
   items: Instance[];
   shape: LayoutPart["shape"];
   wireframe: boolean;
@@ -59,6 +61,8 @@ function ShapeInstances({
       transform.rotation.set(0, value.yaw, 0);
       transform.scale.fromArray(value.size);
       transform.updateMatrix();
+      // Column 0 displaces the top and bottom edge equally along local X.
+      if (part.rise) transform.matrix.elements[1] += part.rise * item.size[1];
       mesh.current!.setMatrixAt(i, transform.matrix);
       mesh.current!.setColorAt(i, tint.set(part.color ?? item.color));
     });
@@ -85,7 +89,10 @@ function ShapeInstances({
       }
     >
       <meshStandardMaterial
-        roughness={0.9}
+        roughness={glass ? .15 : .9}
+        transparent={glass}
+        opacity={glass ? .42 : 1}
+        depthWrite={!glass}
         metalness={0.025}
         wireframe={wireframe}
       />
@@ -135,9 +142,10 @@ export const LayoutInstances = memo(function LayoutInstances({
     [objects, exclude, collisionOnly, wireframe, live],
   );
   const boxes = useMemo(
-    () => items.filter((i) => i.part.shape === "box"),
-    [items],
+    () => items.filter((i) => i.part.shape === "box" && (!detailed || i.item.piece!=="breakaway-glass")),
+    [items,detailed],
   );
+  const panes = useMemo(()=>detailed ? items.filter(i=>i.item.piece==="breakaway-glass") : [],[items,detailed]);
   const decks = useMemo(() => items.filter(i => i.part.shape === "deck"), [items]);
   const wedges = useMemo(
     () => items.filter((i) => i.part.shape === "wedge"),
@@ -151,6 +159,7 @@ export const LayoutInstances = memo(function LayoutInstances({
         wireframe={wireframe}
         onSelect={onSelect}
       />
+      {panes.length>0 && <ShapeInstances items={panes} shape="box" wireframe={false} glass onSelect={onSelect}/>}
       <ShapeInstances
         items={wedges}
         shape="wedge"
@@ -237,16 +246,21 @@ export function PieceModel({
           <mesh
             key={i}
             geometry={geometries[part.shape]}
-            position={part.position}
-            scale={part.size}
+            matrixAutoUpdate={false}
+            matrix={new Matrix4().set(
+              part.size[0], 0, 0, part.position[0],
+              part.rise ?? 0, part.size[1], 0, part.position[1],
+              0, 0, part.size[2], part.position[2],
+              0, 0, 0, 1,
+            )}
           >
             <meshStandardMaterial
               color={ghost ? "#60e0bd" : (part.color ?? item.color)}
               roughness={0.9}
               metalness={0.025}
-              transparent={ghost}
-              opacity={ghost ? 0.48 : 1}
-              depthWrite={!ghost}
+              transparent={ghost || item.piece==="breakaway-glass"}
+              opacity={ghost ? .48 : item.piece==="breakaway-glass" && !collisionOnly ? .42 : 1}
+              depthWrite={!ghost && item.piece!=="breakaway-glass"}
               wireframe={wireframe}
             />
           </mesh>

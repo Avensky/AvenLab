@@ -20,7 +20,7 @@ if (!deck || !pier) throw Error("Endless City requires its docked carrier and pi
 const access=layout.objects.find(o=>o.id==="carrier-ramp");
 if (access) access.parts[0].shape="deck";
 const shoreX=pier.position[0]-pier.size[0]/2;
-const homes=dockHome(1,shoreX,pier.position[1]+pier.size[1],pier.position[2]);
+const homes=dockHome(1,shoreX,pier.position[1]+pier.size[1],pier.position[2],16);
 const replaced=new Set(["carrier-service", ...homes.map(o=>o.id)]);
 layout.objects=layout.objects.filter(o=>!replaced.has(o.id));
 layout.objects.push(...homes);

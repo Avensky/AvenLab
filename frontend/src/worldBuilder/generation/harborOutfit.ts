@@ -7,15 +7,15 @@ import { guardrail } from "./harborPieces.ts";
 
 // The marker is at the foot of the pier. The service bay opens toward the
 // crossing, with its own slab so a wheel never finds open water at the door.
-export function dockHome(side: number, shoreX: number, y: number, z: number): LayoutObject[] {
+export function dockHome(side: number, shoreX: number, y: number, z: number, setback = 24): LayoutObject[] {
   const bank = side < 0 ? "west" : "east";
   const team = side < 0 ? "red" : "blue";
-  const bayX = shoreX + side * 8;
+  const bayX = shoreX - side * setback;
   const common = { yaw: 0, locked: false, solid: true };
   const boxParts = () => [{ shape: "box" as const, position: [0, .5, 0] as V3, size: [1, 1, 1] as V3 }];
   return [
     { ...common, id: "home-apron-" + bank, piece: "coastal-pier", name: "Dock garage apron",
-      position: [bayX, y - 1, z - 16], size: [32, 1, 36], color: "#68757c", parts: boxParts() },
+      position: [bayX, y - 0.12, z - 15], size: [26, 0.12, 30], color: "#68757c", parts: boxParts() },
     { ...common, id: "home-gas-" + bank, piece: "service-center", name: "Dock home garage",
       position: [bayX, y, z - 19], size: [18, 6, 20], color: "#8ca480",
       model: structuredClone(pieceById("service-center")!.model!), parts: [] },
@@ -133,6 +133,7 @@ export function outfitHarbor(objects: LayoutObject[]) {
             side * (shore + b),
             z,
             ramp.position[1] + (rise * (a + b)) / (2 * run),
+            rise * (b - a) / run,
           ),
         );
       }

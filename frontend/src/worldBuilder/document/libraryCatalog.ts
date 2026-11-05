@@ -1,4 +1,5 @@
 import {modelAsset,newModel} from "../models/modelCatalog.ts";
+export const glassDamage = {enabled:true, hp:3, smallArms:1, cannon:1, bomb:1, rubble:'clear' as const};
 export const isServiceGarage = (id: string) => ["fuel-station","repair-shop","service-center"].includes(id);
 import type { LayoutPart, Piece } from "./layoutDocument.ts";
 
@@ -112,6 +113,19 @@ export const EXTRA_PIECES: Piece[] = [
   {
     id:"canal-section",label:"Canal section",category:"props",description:"Raised concrete channel with a visual water strip · no terrain excavation or water physics",size:[16,2,30],color:"#8398a9",
     parts:[box([-.44,.5,0],[.12,1,1]),box([.44,.5,0],[.12,1,1]),box([0,.04,0],[.8,.08,1]),box([0,.28,0],[.75,.02,1],"#28657b",false)],
+  },
+  {
+    id:"launch-gallery", label:"Glass run · launch gallery", category:"jumps",
+    description:"Open-ended building with an interior ramp rising toward local -Z.",
+    size:[15,6,22], color:"#87959e",
+    parts:[box([-.48,.5,0],[.04,1,1]),box([.48,.5,0],[.04,1,1]),
+      // The deck rises toward local -Z. Placement yaw selects the launch direction.
+      {shape:"deck",position:[0,.5,0],size:[.92,1,1],color:"#586977"}],
+  },
+  {
+    id:"breakaway-glass",label:"Breakaway storefront",category:"buildings",
+    description:"A full-height pane that shatters under a direct vehicle hit or weapon fire.",
+    size:[12,4,.10],color:"#92c1cd",parts:[box([0,.5,0],[1,1,1])],
   },
   chunk(2),
   chunk(3),

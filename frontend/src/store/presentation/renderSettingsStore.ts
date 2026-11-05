@@ -37,7 +37,7 @@ export const BASELINE_SETTINGS: RenderSettings = {
   dpr: 1,
   shadows: false,
   reflections: false,
-  vehicleLights: false,
+  vehicleLights: true,
   hud: false,
   overlay: false,
   autoVehicleAlignment: true,
@@ -52,7 +52,7 @@ function detailSettings(s: RenderSettings): DetailSettings {
 }
 const LOW_DETAIL: DetailSettings = {
   cityQuality:"fast",cityViewDistance:250,environmentMode:"glb",dpr:0.75,
-  shadows:false,reflections:false,vehicleLights:false,
+  shadows:false,reflections:false,vehicleLights:true,
 };
 
 type State = RenderSettings & {
@@ -107,7 +107,7 @@ export const useRenderSettingsStore = create<State>()(
         useWorldStore.getState().setMode("glb");
         useWorldStore.getState().setDebugMask(0);
         set({
-          ...LOW_DETAIL, dpr:Math.min(LOW_DETAIL.dpr,get().dpr), lowDetail:true, savedDetail:get().savedDetail??detailSettings(get()),
+          ...LOW_DETAIL, vehicleLights:get().vehicleLights, dpr:Math.min(LOW_DETAIL.dpr,get().dpr), lowDetail:true, savedDetail:get().savedDetail??detailSettings(get()),
           chunkOverrides:{},assetGlbs:{},vehicleOverrides:{},
         });
       },
@@ -129,7 +129,11 @@ export const useRenderSettingsStore = create<State>()(
     }),
     {
       name: "avenlab-display-v1",
-      version: 1,
+      version: 2,
+      migrate: (saved,version) => {
+        const profile=(saved && typeof saved==="object" ? saved : {}) as Partial<RenderSettings>;
+        return version<2 ? {...profile,vehicleLights:true} : profile;
+      },
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         cityQuality: state.cityQuality,
@@ -180,7 +184,7 @@ export const useRenderSettingsStore = create<State>()(
           )
         )
           merged.environmentMode = data.environmentMode;
-        return data.lowDetail===true ? {...merged,...LOW_DETAIL,dpr:Math.min(LOW_DETAIL.dpr,merged.dpr),lowDetail:true,savedDetail:detailSettings(merged)} : merged;
+        return data.lowDetail===true ? {...merged,...LOW_DETAIL,vehicleLights:merged.vehicleLights,dpr:Math.min(LOW_DETAIL.dpr,merged.dpr),lowDetail:true,savedDetail:detailSettings(merged)} : merged;
       },
     },
   ),

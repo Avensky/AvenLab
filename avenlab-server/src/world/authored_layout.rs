@@ -58,6 +58,8 @@ pub struct LayoutObject {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct LayoutPart {
     pub shape: PartShape,
+    #[serde(default, skip_serializing_if="Option::is_none")]
+    pub rise: Option<f32>,
     pub position: [f32; 3],
     pub size: [f32; 3],
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -133,6 +135,7 @@ impl AuthoredLayout {
             count += object.parts.len();
             for part in &object.parts {
                 anyhow::ensure!(vector_ok(&part.position, -2.0, 2.0) && vector_ok(&part.size, 0.001, 4.0), "Invalid authored shape transform");
+                anyhow::ensure!(part.rise.is_none_or(|rise| matches!(part.shape, PartShape::Box) && rise.is_finite() && rise.abs() <= 4.0), "Invalid box incline");
                 anyhow::ensure!(part.color.as_ref().is_none_or(|c| color_ok(c)), "Invalid authored shape color");
                 anyhow::ensure!(part.collider(object).is_some(), "Degenerate authored collision shape");
             }
@@ -177,6 +180,13 @@ impl LayoutPart {
     fn collider(&self, object: &LayoutObject) -> Option<ColliderBuilder> {
         let h = [self.size[0] * object.size[0] / 2.0, self.size[1] * object.size[1] / 2.0, self.size[2] * object.size[2] / 2.0];
         match self.shape {
+            PartShape::Box if self.rise.is_some() => {
+                let dy = self.rise.unwrap_or_default() * object.size[1] * 0.5;
+                let corners: Vec<_> = [-1.0, 1.0].into_iter().flat_map(|side|
+                    [-h[1], h[1]].into_iter().flat_map(move |y| [-h[2], h[2]].map(|z|
+                        point![side * h[0], y + side * dy, z]))).collect();
+                ColliderBuilder::convex_hull(&corners)
+            }
             PartShape::Box => Some(ColliderBuilder::cuboid(h[0], h[1], h[2])),
             PartShape::Deck => {
                 let points: Vec<_> = [-h[0],h[0]].into_iter().flat_map(|x|
@@ -238,6 +248,27 @@ mod tests {
         }
     }
 
+    #[test]
+    fn boarding_rail_collision_tracks_the_ramp_on_both_banks() {
+        let map: serde_json::Value=serde_json::from_str(include_str!("../assets/blocks/harbor_canal_fleet_colliders.json")).unwrap();
+        let mut layout: AuthoredLayout=serde_json::from_value(map["authored_layout"].clone()).unwrap();
+        layout.objects.retain(|o|o.id=="boarding-rail-east-1-r2" || o.id=="boarding-rail-west-1-r2");
+        assert_eq!(layout.objects.len(),2);
+        let mut bodies=RigidBodySet::new();
+        let mut colliders=ColliderSet::new();
+        layout.spawn(&mut bodies,&mut colliders,[0.;3],InteractionGroups::all());
+        for (_,c) in colliders.iter() {
+            let rail=&layout.objects[(bodies[c.parent().unwrap()].user_data-1) as usize];
+            let beam=&rail.parts[0];
+            for u in [-0.48,0.48] {
+                let x=rail.position[0]+u*rail.size[0]*rail.yaw.to_radians().cos();
+                let y=rail.position[1]+(beam.position[1]+beam.size[1]*0.5+u*beam.rise.unwrap())*rail.size[1];
+                let ray=Ray::new(point![x,20.,rail.position[2]],-Vector::y());
+                let hit=c.shape().cast_ray(c.position(),&ray,40.,true).unwrap();
+                assert!((20.-hit-y).abs()<0.005);
+            }
+        }
+    }
     #[test]
     fn wedge_raycast_matches_slope_and_rotates_once() {
         let doc = sample(); doc.validate("test").unwrap();

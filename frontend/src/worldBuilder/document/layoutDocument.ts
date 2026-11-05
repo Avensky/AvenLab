@@ -1,3 +1,4 @@
+import {glassDamage} from './libraryCatalog.ts';
 import { kitAsset, kitPieces } from "../mapKit/catalog.ts";
 import { harborPieces, railDamage } from "../generation/harborPieces.ts";
 import { streetProps } from "../props/streetPropCatalog.ts";
@@ -31,6 +32,8 @@ import { validateSpawns, type LayoutSpawn } from "./spawnDocument.ts";
 export type V3 = [number, number, number];
 export type LayoutPart = {
   shape: "box" | "wedge" | "deck";
+  /** Height change across local X, in units of object height. */
+  rise?: number;
   position: V3;
   size: V3;
   color?: string;
@@ -397,6 +400,7 @@ export function parseLayout(value: unknown, mapId?: string): WorldLayout {
       const part = object(entry);
       if (
         !["box", "wedge", "deck"].includes(String(part.shape)) ||
+        (part.rise !== undefined && (part.shape !== "box" || typeof part.rise !== "number" || !Number.isFinite(part.rise) || Math.abs(part.rise)>4)) ||
         !vector(part.position, -2, 2) ||
         !vector(part.size, 0.001, 4) ||
         (part.color !== undefined && !color(part.color)) ||
@@ -459,6 +463,7 @@ export function addPiece(
         locked: false,
         solid: piece.solid !== false,
         parts: structuredClone(piece.parts),
+        ...(piece.id==="breakaway-glass"?{destruction:{...glassDamage}}:{}),
         ...(piece.id==="highway-guardrail"?{destruction:{...railDamage}}:{}),
         ...(piece.road ? { road: structuredClone(piece.road) } : {}),
         ...(piece.model ? { model: structuredClone(piece.model) } : {}),

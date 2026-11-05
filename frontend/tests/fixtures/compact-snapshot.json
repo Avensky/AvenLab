@@ -32,7 +32,7 @@
           0.0,
           1.0,
           0,
-          192,
+          193,
           0.0,
           6148,
           null,
@@ -252,7 +252,7 @@
           0.0,
           1.0,
           0,
-          192,
+          193,
           0.0,
           6148,
           null,
@@ -455,7 +455,7 @@
           0.0,
           1.0,
           0,
-          192,
+          193,
           0.0,
           6148,
           null,
@@ -731,7 +731,7 @@
           0.0,
           1.0,
           0,
-          192,
+          193,
           0.0,
           6148,
           null,
@@ -951,7 +951,7 @@
           0.0,
           1.0,
           0,
-          192,
+          193,
           0.0,
           6148,
           null,
@@ -1154,7 +1154,7 @@
           0.0,
           1.0,
           0,
-          192,
+          193,
           0.0,
           6148,
           null,
@@ -1361,7 +1361,7 @@
           "boost_fraction": 1.0,
           "cabin_mask": 6148,
           "cluster_mask": 0,
-          "cockpit_mask": 192,
+          "cockpit_mask": 193,
           "collider": {
             "chassis_half_extents": [
               1.38,
@@ -1588,7 +1588,7 @@
           "boost_fraction": 1.0,
           "cabin_mask": 6148,
           "cluster_mask": 0,
-          "cockpit_mask": 192,
+          "cockpit_mask": 193,
           "collider": {
             "chassis_half_extents": [
               0.89,
@@ -1796,7 +1796,7 @@
           "boost_fraction": 1.0,
           "cabin_mask": 6148,
           "cluster_mask": 0,
-          "cockpit_mask": 192,
+          "cockpit_mask": 193,
           "collider": {
             "chassis_half_extents": [
               0.966,
@@ -2043,7 +2043,7 @@
           "boost_fraction": 1.0,
           "cabin_mask": 6148,
           "cluster_mask": 0,
-          "cockpit_mask": 192,
+          "cockpit_mask": 193,
           "collider": {
             "chassis_half_extents": [
               1.38,
@@ -2270,7 +2270,7 @@
           "boost_fraction": 1.0,
           "cabin_mask": 6148,
           "cluster_mask": 0,
-          "cockpit_mask": 192,
+          "cockpit_mask": 193,
           "collider": {
             "chassis_half_extents": [
               0.89,
@@ -2478,7 +2478,7 @@
           "boost_fraction": 1.0,
           "cabin_mask": 6148,
           "cluster_mask": 0,
-          "cockpit_mask": 192,
+          "cockpit_mask": 193,
           "collider": {
             "chassis_half_extents": [
               0.966,
@@ -2706,7 +2706,7 @@
           "boost_fraction": 1.0,
           "cabin_mask": 6148,
           "cluster_mask": 0,
-          "cockpit_mask": 192,
+          "cockpit_mask": 193,
           "collider": {
             "chassis_half_extents": [
               1.38,
@@ -2933,7 +2933,7 @@
           "boost_fraction": 1.0,
           "cabin_mask": 6148,
           "cluster_mask": 0,
-          "cockpit_mask": 192,
+          "cockpit_mask": 193,
           "collider": {
             "chassis_half_extents": [
               0.89,
@@ -3141,7 +3141,7 @@
           "boost_fraction": 1.0,
           "cabin_mask": 6148,
           "cluster_mask": 0,
-          "cockpit_mask": 192,
+          "cockpit_mask": 193,
           "collider": {
             "chassis_half_extents": [
               0.966,
