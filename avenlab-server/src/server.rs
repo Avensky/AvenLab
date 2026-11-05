@@ -495,6 +495,14 @@ impl Server {
             // Gameplay snapshots already carry these effects; recasting the social lobby for each shot stalls unrelated peers.
             "vehicle_heal_pack" => return self.handle_vehicle_heal_pack(player, &value).await,
             "dive_shield" | "dps_guard_boost" | "tank_barrier" => return self.handle_vehicle_shield(player, action).await,
+            "bridge_control" => {
+                let runtime=self.runtime(player).await?;
+                let mut room=runtime.lock().await;
+                if !room.game.clients.contains_key(player){return Err("Connect before using the bridge.".into());}
+                let tick=room.game.tick as u64;
+                room.physics.operate_bridge(player,value.get("command").and_then(|c|c.as_str()).unwrap_or(""),tick)?;
+                return Ok(json!({"bridge_updated":true}));
+            }
             "tank_barrage" | "barrage" => {
                 let runtime=self.runtime(player).await?;
                 let mut room=runtime.lock().await;

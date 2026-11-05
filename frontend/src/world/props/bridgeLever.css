@@ -1,0 +1,3 @@
+.harbor-bridge-control{position:absolute;left:50%;top:18%;transform:translateX(-50%);display:grid;gap:3px;pointer-events:auto;
+padding:7px 16px;background:#162027ed;color:#fff;border:1px solid #dbb365;text-transform:uppercase;text-align:center;z-index:5}
+.harbor-bridge-control span{font-size:.66rem;color:#f3ce84}.harbor-bridge-control strong{font-size:.84rem}

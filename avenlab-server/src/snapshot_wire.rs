@@ -106,10 +106,17 @@ impl Compact for PhysicsEntitySnapshot<'_> {
                 mask | u32::from(wheel.grounded).checked_shl(index as u32).unwrap_or(0))))
     }
 }
+// Keep the v1 tuple length stable for older clients. The optional bridge transition
+// travels with frame metadata; modern decoders lift it onto the normalized snapshot.
+#[derive(Serialize)]
+struct FrameMetadata<'a>{
+    #[serde(flatten)] timing:&'a crate::state::ServerTiming,
+    #[serde(skip_serializing_if="Option::is_none")] drawbridge:Option<&'a crate::harbor::BridgeMotion>,
+}
 impl Compact for PhysicsSnapshot<'_> {
     fn write<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         row!(s; self.tick, self.simulation_time_s, self.tick_dt_s,
-            Rows(&self.entities), self.match_state, self.asset_health, self.server_timing)
+            Rows(&self.entities), self.match_state, self.asset_health, FrameMetadata{timing:self.server_timing,drawbridge:self.drawbridge})
     }
 }
 pub fn encode(world_id: usize, data: &PhysicsSnapshot<'_>) -> String {

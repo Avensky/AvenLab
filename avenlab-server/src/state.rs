@@ -120,6 +120,8 @@ pub struct ServerTiming {
 pub struct PhysicsSnapshot<'a> {
     pub match_state: Option<&'a crate::ctf::CtfView>,
     pub asset_health: &'a HashMap<String,f32>,
+    #[serde(skip_serializing_if="Option::is_none")]
+    pub drawbridge: Option<&'a crate::harbor::BridgeMotion>,
     pub server_timing: &'a ServerTiming,
     pub tick: u64,
     // Simulation time is independent of socket arrival time. Clients may use
@@ -702,6 +704,7 @@ impl SharedGameState {
             tick_dt_s: SIMULATION_DT,
             entities: entities_out,
             asset_health: &physics.asset_health,
+            drawbridge: physics.bridge_motion.as_ref(),
         }
     }
 }

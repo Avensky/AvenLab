@@ -1,3 +1,4 @@
+import {BridgeControls} from '../world/props/BridgeLever';
 import { useMotionView } from "../store/session/networkViews";
 import { DrivingIgnition } from './Cockpit/DrivingIgnition';
 import { FuturisticHUD } from "./FuturisticHUD/FuturisticHUD";
@@ -111,6 +112,7 @@ export function DrivingHUD() {
         <WeaponSelector />
         {groups.futuristic && <FuturisticHUD />}
       </CenterCombatDock>
+      <BridgeControls />
       <CombatNotices />
       <VehicleHealthHUD />
       <ControlsPanel />

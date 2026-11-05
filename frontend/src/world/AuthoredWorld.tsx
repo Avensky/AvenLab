@@ -1,3 +1,4 @@
+import {HarborDebris} from './props/HarborDebris';
 import { useMotionView } from "../store/session/networkViews";
 import {useMemo} from "react";
 
@@ -30,6 +31,7 @@ export function AuthoredWorld({
             <meshStandardMaterial color="#142d40" roughness={1} />
           </mesh>
         )}
+      <HarborDebris layout={layout} destroyed={destroyed}/>
       <LayoutInstances live
         objects={objects}
         wireframe={mode === "collider"}

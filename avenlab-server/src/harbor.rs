@@ -42,6 +42,26 @@ pub fn place_services(world:usize,file:&mut crate::world::block_colliders::Block
         }
     }
 }
+pub const RAMP_ANGLE: f32 = std::f32::consts::PI / 6.0;
+const TRAVEL_TICKS: f32 = 150.0;
+
+#[derive(Clone, Debug, Default, serde::Serialize)]
+pub struct BridgeMotion {
+    pub start_tick: u64,
+    pub start_angle: f32,
+    pub target_angle: f32,
+    pub broken: Option<String>,
+}
+impl BridgeMotion {
+    pub fn angle(&self,tick:u64)->f32 {
+        let travel=tick.saturating_sub(self.start_tick) as f32 * RAMP_ANGLE / TRAVEL_TICKS;
+        self.start_angle + (self.target_angle-self.start_angle).clamp(-travel,travel)
+    }
+    pub fn select(&mut self,tick:u64,target:f32) {
+        if self.target_angle==target {return;}
+        self.start_angle=self.angle(tick);self.start_tick=tick;self.target_angle=target;
+    }
+}
 pub fn lift_angle(tick:u64)->f32 {
     (std::f32::consts::TAU * (tick%1200) as f32/1200.).sin().max(0.).powi(2)*std::f32::consts::PI/6.
 }
@@ -87,6 +107,54 @@ mod tests {
             c.shape().cast_ray(c.position(),&ray,100.,true)).min_by(f32::total_cmp).map(|t|50.-t)
     }
     #[test]
+    fn viaduct_deck_carries_load_above_the_open_canal(){
+        let w=PhysicsWorld::for_harbor_room(2,VARIANTS[2]).unwrap();
+        let map=w.map_snapshot().unwrap();
+        let objects=&map.authored_layout.as_ref().unwrap().objects;
+        let span=objects.iter().find(|o|o.id=="viaduct-span").unwrap();
+        let [x,y,z]=span.position;
+        // Probe both sides of the two GLB seams; the middle span retains its
+        // measured collision surface and never inserts a box across the channel.
+        for dx in [-0.18,0.18,30.,71.82,72.18] {
+            let height=support(&w,x+dx,z).unwrap();
+            assert!((height-y).abs()<0.18,"deck at {dx}: {height}");
+        }
+        let hull=Ray::new(point![-2.,0.,z-8.],Vector::z());
+        assert!(!w.colliders.iter().any(|(_,c)|c.shape().cast_ray(c.position(),&hull,16.,true).is_some()));
+    }
+
+    #[test]
+    fn bridge_lever_holds_repairs_and_never_removes_both_leaves(){
+        let mut w=PhysicsWorld::for_harbor_room(2,VARIANTS[2]).unwrap();
+        let car=w.spawn_vehicle_for_player("driver".into(),[0.;3],"brz","blue").unwrap();
+        assert!(w.operate_bridge("driver","raise",0).is_err());
+        w.bodies[car].set_translation(vector![33.,1.,10.],true);
+        w.operate_bridge("driver","raise",0).unwrap();
+        w.move_drawbridges(1000);w.step(crate::physics::SIMULATION_DT);
+        assert!(support(&w,-6.,0.).unwrap()>8.);
+        w.operate_bridge("driver","lower",1000).unwrap();
+        w.move_drawbridges(1300);w.step(crate::physics::SIMULATION_DT);
+        assert!(support(&w,-6.,0.).unwrap().abs()<0.02);
+        let map=w.map_snapshot().unwrap();
+        let leaves:Vec<_>=map.authored_layout.unwrap().objects.into_iter().enumerate()
+            .filter(|(_,o)|o.piece=="canal-lift")
+            .map(|(i,o)|(o.id,w.bodies.iter().find(|(_,b)|b.user_data==(i+1) as u128).unwrap().0)).collect();
+        w.damage_authored_surface(leaves[0].1,true,500.);
+        assert_eq!(w.bridge_motion.as_ref().unwrap().broken.as_ref(),Some(&leaves[0].0));
+        let fixture=w.bridge_motion.as_ref().unwrap().clone();
+        assert_eq!(fixture.angle(1600),RAMP_ANGLE);
+        w.damage_authored_surface(leaves[1].1,true,500.);
+        assert!(w.asset_health.get(&leaves[1].0).is_none());
+        assert!(w.operate_bridge("driver","lower",1600).is_err());
+        assert!(w.bodies[leaves[0].1].colliders().iter().all(|h|!w.colliders[*h].is_enabled()));
+        w.operate_bridge("driver","repair",1600).unwrap();
+        assert!(w.bodies[leaves[0].1].colliders().iter().all(|h|w.colliders[*h].is_enabled()));
+        assert!(w.bridge_motion.as_ref().unwrap().broken.is_none());
+        w.operate_bridge("driver","lower",1600).unwrap();w.move_drawbridges(1900);w.step(crate::physics::SIMULATION_DT);
+        assert!(support(&w,0.,0.).unwrap().abs()<0.02);
+    }
+
+    #[test]
     fn deck_support_moving_jump_and_collapsed_bridge_agree_with_world_geometry(){
         let mut w=PhysicsWorld::for_harbor_room(2,VARIANTS[2]).unwrap();
         let m=w.map_snapshot().unwrap();let o=&m.authored_layout.unwrap().objects;
@@ -101,9 +169,11 @@ mod tests {
         }
         assert!((support(&w,0.,-178.).unwrap()-0.08).abs()<0.02);
         assert!((support(&w,0.,178.).unwrap()-0.08).abs()<0.02);
+        w.bridge_motion.as_mut().unwrap().select(0,RAMP_ANGLE);
         w.move_drawbridges(300);w.step(crate::physics::SIMULATION_DT);
         assert!(support(&w,-6.,0.).unwrap()>8.);
         assert!((support(&w,0.,0.).unwrap()+24.).abs()<0.02);
+        w.bridge_motion.as_mut().unwrap().select(300,0.0);
         w.move_drawbridges(900);w.step(crate::physics::SIMULATION_DT);
         assert!(support(&w,-6.,0.).unwrap().abs()<0.02);
         let index=o.iter().position(|o|o.piece=="canal-breakable").unwrap();

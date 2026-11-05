@@ -1,3 +1,4 @@
+import {BridgeLever} from '../../world/props/BridgeLever';
 import {HarborBuildings, HarborBuildingLods, HarborStreet} from "../../world/props/HarborStructures";
 import {garageVisual, usesGarage} from "../../world/props/harborGarage";
 import { kitAsset } from "../mapKit/catalog";
@@ -126,7 +127,7 @@ export const LayoutInstances = memo(function LayoutInstances({
       objects
         .filter(
           (o) =>
-            !(live && o.piece === LIFT) &&
+            !(live && (o.piece === LIFT || o.piece==="bridge-lever")) &&
             (collisionOnly || wireframe || (o.piece !== CARRIER && !streetProp(o.piece) && o.piece!=="coastal-building" && o.piece!=="coastal-road" && !usesGarage(o.piece))) &&
             !o.road &&
             !o.model &&
@@ -167,6 +168,7 @@ export const LayoutInstances = memo(function LayoutInstances({
         onSelect={onSelect}
       />
       {!!decks.length && <ShapeInstances items={decks} shape="deck" wireframe={wireframe} onSelect={onSelect} />}
+      {live && objects.filter(o=>o.piece==="bridge-lever" && o.id!==exclude).map(o=><BridgeLever key={o.id} item={o}/>)}
       {live && objects.filter(o=>o.piece===LIFT && o.id!==exclude).map(o=><BridgeLeaf key={o.id} item={o} wireframe={wireframe}/> )}
       {!collisionOnly && !wireframe && objects.filter(o=>o.piece===CARRIER && o.id!==exclude).map(o=>(
         <group key={o.id} position={o.position} rotation={[0,o.yaw*Math.PI/180,0]} scale={o.size}

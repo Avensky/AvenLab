@@ -6,7 +6,7 @@ import {deckPanorama} from "../src/worldBuilder/generation/harborPieces.ts";
 import {PresentationDelay} from "../src/hooks/presentationDelay.ts";
 import {createServer} from "vite";
 
-test("all dock plans have ten spawns, exactly three crossings and no hidden water floor",()=>{
+test("all dock plans have ten spawns, the surface crossings and viaduct and no hidden water floor",()=>{
   for(const plan of ["red","blue","fleet"]){
     const layout=harborCanal(plan,123).authored_layout;
     assert.equal(layout.ground,false);assert.equal(layout.repeat,false);

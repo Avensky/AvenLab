@@ -1,3 +1,4 @@
+import {dressHarbor} from './harborStreet.ts';
 import {fitHarborShortcut} from './harborShortcut.ts';
 import { parseLayout, pieceById, type WorldLayout, type LayoutObject, type V3 } from "../document/layoutDocument.ts";
 import {mapExport,parseMapText,type MapDocument} from "../document/mapDocument.ts";
@@ -95,6 +96,7 @@ export function harborCanal(plan:DockPlan,seed:number):MapDocument {
   // Each leaf pivots about its bank. Both are level when closed.
   for(const side of [-1,1]){
     const leaf=add(LIFT,"Drawbridge jump leaf",[24*side,0,0],[24,.6,16],"#8e969a",true,side<0?0:180);
+    leaf.destruction={enabled:true,hp:320,smallArms:.08,cannon:1,bomb:1.5,rubble:"clear"};
     leaf.parts=[{shape:"box",position:[.5,-.5,0],size:[1,1,1]}];
   }
   const breakable=add("canal-breakable","Demolition crossing",[0,-.6,178],[48,.68,16],"#a29385");
@@ -119,6 +121,7 @@ export function harborCanal(plan:DockPlan,seed:number):MapDocument {
   objects.push(...additions);
   outfitHarbor(objects);
   for (const side of [-1,1]) fitHarborShortcut(objects,side);
+  dressHarbor(objects);
   const layout=parseLayout({format:"avenlab-world-layout",version:1,map_id:id,title:"Harbor Canal · "+plan+" · "+seed,
     base:"replace",ground:false,repeat:false,spawns,objects});
   return parseMapText(mapExport({schema_version:2,map_id:id,sky:"foggy_day",

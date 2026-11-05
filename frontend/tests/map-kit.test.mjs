@@ -77,7 +77,7 @@ test("all three harbor variants use stone spans and a highway approach on both b
       ],
     );
     assert.equal(
-      objects.filter((o) => o.piece === "kit-highway_25_wide_straight_level")
+      objects.filter((o) => o.id.startsWith("kit-approach-") && o.piece === "kit-highway_25_wide_straight_level")
         .length,
       2,
     );

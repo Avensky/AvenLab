@@ -67,6 +67,8 @@ pub struct PhysicsWorld {
     service_bays: Vec<usize>,
     serviced_home: std::collections::HashSet<String>,
     harbor_water: Vec<crate::harbor::WaterTile>,
+    pub bridge_motion: Option<crate::harbor::BridgeMotion>,
+    bridge_tick: u64,
     drawbridges: Vec<(RigidBodyHandle, Isometry<Real>)>,
     has_impact_barriers: bool,
     map_json: std::sync::OnceLock<String>,
@@ -114,6 +116,9 @@ impl PhysicsWorld {
 
     fn install_map(&mut self, map: Arc<BlockColliderFile>) {
         self.drawbridges.clear();
+        self.bridge_tick=0;
+        self.bridge_motion=map.authored_layout.as_ref().filter(|l|
+            l.objects.iter().any(|o|o.piece=="bridge-lever") && l.objects.iter().any(|o|o.piece=="canal-lift")).map(|_|Default::default());
         self.service_bays.clear();
         self.serviced_home.clear();
         self.harbor_water.clear();
@@ -126,7 +131,7 @@ impl PhysicsWorld {
                 if matches!(object.piece.as_str(), "fuel-station" | "repair-shop" | "service-center") {
                     self.service_bays.push(index);
                 }
-                self.has_impact_barriers |= !layout.repeat && object.destruction.as_ref().is_some_and(|d| d.enabled) && matches!(object.piece.as_str(), "barrier" | "highway-guardrail" | "breakaway-glass");
+                self.has_impact_barriers |= !layout.repeat && object.destruction.as_ref().is_some_and(|d| d.enabled) && matches!(object.piece.as_str(), "barrier" | "highway-guardrail" | "breakaway-glass" | "downtown-metal-barrier");
             }
         }
         self.active_map = Some(map);
@@ -452,9 +457,45 @@ impl PhysicsWorld {
         Ok(())
     }
 
+    pub fn operate_bridge(&mut self,player:&str,command:&str,tick:u64)->Result<(),String>{
+        let vehicle=self.vehicles.get(player).ok_or("Deploy a vehicle to use the bridge lever.")?;
+        if self.is_defeated(player){return Err("Recover your vehicle first.".into());}
+        let p=self.bodies[vehicle.body].translation();
+        let map=self.active_map.as_ref().ok_or("No active map.")?;
+        let layout=map.authored_layout.as_ref().ok_or("No bridge lever on this map.")?;
+        let [cx,cz]=map.authored_anchor();
+        let nearby=layout.objects.iter().filter(|o|o.piece=="bridge-lever").any(|o|{
+            let [x,y,z]=o.position;
+            (p.x-x-cx as f32*map.cell[0]).hypot(p.z-z-cz as f32*map.cell[1])<=14.0 && (p.y-y).abs()<=4.0
+        });
+        if !nearby{return Err("Drive to a bridge lever on either bank.".into());}
+        let bridge=self.bridge_motion.as_mut().ok_or("No controlled drawbridge.")?;
+        match command{
+            "repair"=>{
+                let Some(id)=bridge.broken.as_deref()else{return Ok(())};
+                let index=layout.objects.iter().position(|o|o.id==id).ok_or("Damaged span unavailable.")?;
+                self.asset_health.remove(id);
+                for (handle,_) in &self.drawbridges {
+                    if let Some(body)=self.bodies.get(*handle).filter(|body|body.user_data==(index+1) as u128) {
+                        for collider in body.colliders(){self.colliders[*collider].set_enabled(true);}
+                    }
+                }
+                bridge.broken=None;bridge.select(tick,crate::harbor::RAMP_ANGLE);
+                self.synchronize_queries();
+            }
+            "raise"|"lower"=>{
+                if bridge.broken.is_some(){return Err("Repair the fallen span to release the lever.".into());}
+                bridge.select(tick,if command=="raise"{crate::harbor::RAMP_ANGLE}else{0.});
+            }
+            _=>return Err("Unknown bridge control.".into()),
+        }
+        Ok(())
+    }
+
     pub fn move_drawbridges(&mut self,tick:u64) {
         if self.drawbridges.is_empty(){return;}
-        let angle=crate::harbor::lift_angle(tick);
+        self.bridge_tick=tick;
+        let angle=self.bridge_motion.as_ref().map_or_else(||crate::harbor::lift_angle(tick),|bridge|bridge.angle(tick));
         self.drawbridges.retain(|(id,base)|{
             let Some(body)=self.bodies.get_mut(*id) else{return false};
             let pose=*base * Isometry::rotation(vector![0.,0.,angle]);
@@ -583,7 +624,7 @@ impl PhysicsWorld {
             service_bays: Vec::new(),
             serviced_home: Default::default(),
             harbor_water: Vec::new(),
-            drawbridges: Vec::new(),
+            drawbridges: Vec::new(), bridge_motion:None, bridge_tick:0,
             has_impact_barriers: false,
             map_json: Default::default(),
             active_map: None,
@@ -801,9 +842,16 @@ impl PhysicsWorld {
         let Some(object)=layout.objects.get(index-1) else{return;};
         if ["coastal-land","coastal-land-bridge"].contains(&object.piece.as_str()){return;}
         let Some(d)=object.destruction.as_ref().filter(|d|d.enabled) else{return;};
+        let lift=object.piece=="canal-lift";
+        if lift && self.bridge_motion.as_ref().is_some_and(|b|b.broken.is_some()){return;}
         let multiplier=if cannon {d.cannon}else{d.small_arms};
         let hp=self.asset_health.entry(object.id.clone()).or_insert(d.hp);
         *hp=(*hp-damage*multiplier).max(0.0);
+        if lift && *hp==0.0 {
+            if let Some(bridge)=self.bridge_motion.as_mut(){
+                bridge.broken=Some(object.id.clone());bridge.select(self.bridge_tick,crate::harbor::RAMP_ANGLE);
+            }
+        }
         if *hp==0.0 {for h in self.bodies[parent].colliders().to_vec(){if let Some(c)=self.colliders.get_mut(h){c.set_enabled(false);}}self.query_pipeline.update(&self.colliders);}
     }
     pub(crate) fn barrier_yaw(&self,player:&str)->f32 {
@@ -1482,9 +1530,9 @@ impl PhysicsWorld {
                 let other=if pair.collider1==*collider{pair.collider2}else{pair.collider1};
                 let Some(target)=self.colliders.get(other).and_then(|c|c.parent())else{continue};
                 if self.barrier_impacts.contains_key(&(v.body,target)){continue;}
-                let Some(object)=self.bodies[target].user_data.checked_sub(1).and_then(|i|layout.objects.get(i as usize)).filter(|o|matches!(o.piece.as_str(), "barrier" | "highway-guardrail" | "breakaway-glass"))else{continue};
+                let Some(object)=self.bodies[target].user_data.checked_sub(1).and_then(|i|layout.objects.get(i as usize)).filter(|o|matches!(o.piece.as_str(), "barrier" | "highway-guardrail" | "breakaway-glass" | "downtown-metal-barrier"))else{continue};
                 let pane = object.piece == "breakaway-glass";
-                let rail = object.piece == "highway-guardrail" || pane;
+                let rail = matches!(object.piece.as_str(),"highway-guardrail"|"downtown-metal-barrier") || pane;
                 if pair.total_impulse_magnitude() < (if rail {140.0} else {1000.0}) {continue;}
                 let Some(d)=object.destruction.as_ref().filter(|d|d.enabled)else{continue};
                 let normal = self.bodies[target].rotation() * Vector::z();
@@ -1561,9 +1609,7 @@ impl PhysicsWorld {
                 let index=self.bodies[target].user_data as usize;
                 let Some(object)=self.active_map.as_ref().and_then(|m|m.authored_layout.as_ref()).filter(|l|!l.repeat).and_then(|l|index.checked_sub(1).and_then(|i|l.objects.get(i)))else{continue;};
                 if ["coastal-land","coastal-land-bridge"].contains(&object.piece.as_str()){continue;}
-                let Some(d)=object.destruction.as_ref().filter(|d|d.enabled)else{continue;};
-                let hp=self.asset_health.entry(object.id.clone()).or_insert(d.hp);*hp=(*hp-150.0*d.cannon).max(0.0);
-                if *hp==0.0 {for h in self.bodies[target].colliders().to_vec(){if let Some(c)=self.colliders.get_mut(h){c.set_enabled(false);}}}
+                self.damage_authored_surface(target,true,150.0);
             }
         }
     }

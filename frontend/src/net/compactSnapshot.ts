@@ -23,6 +23,9 @@ export function decodeCompactSnapshot(message: unknown): Row | null {
     const wire = message as Row;
     if (wire?.type !== 'snapshot_compact' || wire.version !== 1 || !Number.isSafeInteger(wire.world_id)) return null;
     const data = unpack(['tick','simulation_time_s','tick_dt_s','entities','match_state','asset_health','server_timing'], wire.data);
+    if(data.server_timing?.drawbridge) {
+      const {drawbridge,...timing}=data.server_timing;data.drawbridge=drawbridge;data.server_timing=timing;
+    }
     if (!Array.isArray(data.entities) || data.entities.length > 96) return null;
     data.entities = data.entities.map((value: unknown) => {
       const entity = unpack(fields.entity, value);

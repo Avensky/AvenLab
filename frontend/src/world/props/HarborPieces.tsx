@@ -1,3 +1,4 @@
+import {bridgeAngle} from './bridgeMotion';
 import {useGLTF} from "@react-three/drei";
 import {useFrame} from "@react-three/fiber";
 import {Suspense,useRef} from "react";
@@ -16,17 +17,13 @@ export function BigEDocked({fallback=null}:{fallback?:React.ReactNode}){
 }
 
 // Both peers evaluate the same hinge angle from the server simulation tick.
-export function leafAngle(tick:number){
-  const wave=Math.max(0,Math.sin(2*Math.PI*(tick%1200)/1200));
-  return wave*wave*Math.PI/6;
-}
 export function BridgeLeaf({item,wireframe}:{item:LayoutObject,wireframe:boolean}){
   const hinge=useRef<Group>(null);
   useFrame(()=>{
     const snapshot=useNetworkStore.getState().snapshot;
     if(!hinge.current || !snapshot)return;
     const age=Math.min(50,Math.max(0,performance.now()-(snapshot.received_at_ms??performance.now())));
-    hinge.current.rotation.z=leafAngle(snapshot.tick+age*.06);
+    hinge.current.rotation.z=bridgeAngle(snapshot.tick+age*.06,snapshot.drawbridge);
   });
   return <group position={item.position} rotation={[0,item.yaw*Math.PI/180,0]}>
     <group ref={hinge}><mesh position={[item.size[0]/2,-item.size[1]/2,0]} scale={item.size}>

@@ -31947,7 +31947,15 @@
               1
             ]
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 320,
+          "smallArms": 0.08,
+          "cannon": 1,
+          "bomb": 1.5,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-220",
@@ -31981,7 +31989,15 @@
               1
             ]
           }
-        ]
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 320,
+          "smallArms": 0.08,
+          "cannon": 1,
+          "bomb": 1.5,
+          "rubble": "clear"
+        }
       },
       {
         "id": "harbor-221",
@@ -36224,6 +36240,3432 @@
           "bomb": 1,
           "rubble": "clear"
         }
+      },
+      {
+        "id": "viaduct-curve",
+        "piece": "kit-highway_33_wide_bend45_rise10",
+        "name": "H33 · wide 45° bend +10 m",
+        "position": [
+          -148,
+          0.09,
+          42
+        ],
+        "yaw": 44.748810948169314,
+        "size": [
+          69.37159932777286,
+          18.79400063166395,
+          37.25659990310669
+        ],
+        "color": "#525960",
+        "locked": false,
+        "solid": true,
+        "parts": []
+      },
+      {
+        "id": "viaduct-span",
+        "piece": "kit-highway_25_wide_straight_level",
+        "name": "H25 · wide straight level",
+        "position": [
+          -83.17615296447693,
+          10.08997,
+          15.151185888976283
+        ],
+        "yaw": 0,
+        "size": [
+          74.47270202636719,
+          9.82160037077847,
+          13.267200469970703
+        ],
+        "color": "#525960",
+        "locked": false,
+        "solid": true,
+        "parts": []
+      },
+      {
+        "id": "viaduct-descent",
+        "piece": "kit-highway_28_wide_straight_rise10",
+        "name": "H28 · wide straight +10 m",
+        "position": [
+          60.82373703552307,
+          0.08999999999999986,
+          15.151255888976292
+        ],
+        "yaw": 180,
+        "size": [
+          72.00440217275172,
+          18.797899527009577,
+          13.26710033416748
+        ],
+        "color": "#525960",
+        "locked": false,
+        "solid": true,
+        "parts": []
+      },
+      {
+        "id": "viaduct-column-0--1",
+        "piece": "wall",
+        "name": "Viaduct support",
+        "position": [
+          -83.17615296447693,
+          0,
+          10.951185888976283
+        ],
+        "yaw": 0,
+        "size": [
+          1.3,
+          9.539969999999999,
+          1.3
+        ],
+        "color": "#98a69a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "viaduct-column-0-1",
+        "piece": "wall",
+        "name": "Viaduct support",
+        "position": [
+          -83.17615296447693,
+          0,
+          19.351185888976282
+        ],
+        "yaw": 0,
+        "size": [
+          1.3,
+          9.539969999999999,
+          1.3
+        ],
+        "color": "#98a69a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "viaduct-cap-0",
+        "piece": "floor",
+        "name": "Viaduct crossbeam",
+        "position": [
+          -83.17615296447693,
+          9.289969999999999,
+          15.151185888976283
+        ],
+        "yaw": 0,
+        "size": [
+          1.7,
+          0.48,
+          10
+        ],
+        "color": "#a4ae9d",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "viaduct-column-1--1",
+        "piece": "wall",
+        "name": "Viaduct support",
+        "position": [
+          -47.17619796447693,
+          0,
+          10.951205888976283
+        ],
+        "yaw": 0,
+        "size": [
+          1.3,
+          9.539969999999999,
+          1.3
+        ],
+        "color": "#98a69a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "viaduct-column-1-1",
+        "piece": "wall",
+        "name": "Viaduct support",
+        "position": [
+          -47.17619796447693,
+          0,
+          19.35120588897628
+        ],
+        "yaw": 0,
+        "size": [
+          1.3,
+          9.539969999999999,
+          1.3
+        ],
+        "color": "#98a69a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "viaduct-cap-1",
+        "piece": "floor",
+        "name": "Viaduct crossbeam",
+        "position": [
+          -47.17619796447693,
+          9.289969999999999,
+          15.151205888976282
+        ],
+        "yaw": 0,
+        "size": [
+          1.7,
+          0.48,
+          10
+        ],
+        "color": "#a4ae9d",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "viaduct-column-2--1",
+        "piece": "wall",
+        "name": "Viaduct support",
+        "position": [
+          -11.176242964476927,
+          -24,
+          10.951225888976282
+        ],
+        "yaw": 0,
+        "size": [
+          1.3,
+          33.539970000000004,
+          1.3
+        ],
+        "color": "#98a69a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "viaduct-column-2-1",
+        "piece": "wall",
+        "name": "Viaduct support",
+        "position": [
+          -11.176242964476927,
+          -24,
+          19.351225888976284
+        ],
+        "yaw": 0,
+        "size": [
+          1.3,
+          33.539970000000004,
+          1.3
+        ],
+        "color": "#98a69a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "viaduct-cap-2",
+        "piece": "floor",
+        "name": "Viaduct crossbeam",
+        "position": [
+          -11.176242964476927,
+          9.289969999999999,
+          15.151225888976283
+        ],
+        "yaw": 0,
+        "size": [
+          1.7,
+          0.48,
+          10
+        ],
+        "color": "#a4ae9d",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "viaduct-east-apron",
+        "piece": "floor",
+        "name": "Floor slab",
+        "position": [
+          60.82373703552307,
+          0.01,
+          15.151255888976292
+        ],
+        "yaw": 0,
+        "size": [
+          16,
+          0.08,
+          14
+        ],
+        "color": "#42484b",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-west-cart-0",
+        "piece": "harbor-cart",
+        "name": "Hot dog cart",
+        "position": [
+          -73,
+          0.09,
+          -215
+        ],
+        "yaw": -90,
+        "size": [
+          2.323,
+          2.45,
+          2.403
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-west-paper-0",
+        "piece": "harbor-news",
+        "name": "Newspaper box",
+        "position": [
+          -73,
+          0.09,
+          -212
+        ],
+        "yaw": 0,
+        "size": [
+          0.438,
+          1.02,
+          0.359
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-west-table-0",
+        "piece": "harbor-table",
+        "name": "Sidewalk café table",
+        "position": [
+          -70,
+          0.09,
+          -214
+        ],
+        "yaw": 0,
+        "size": [
+          0.727,
+          0.78,
+          0.727
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-west-chair-a-0",
+        "piece": "harbor-chair",
+        "name": "Café chair",
+        "position": [
+          -69,
+          0.09,
+          -215
+        ],
+        "yaw": 90,
+        "size": [
+          0.615,
+          0.92,
+          0.478
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-west-chair-b-0",
+        "piece": "harbor-chair",
+        "name": "Café chair",
+        "position": [
+          -71,
+          0.09,
+          -213
+        ],
+        "yaw": -90,
+        "size": [
+          0.615,
+          0.92,
+          0.478
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-west-bin-0",
+        "piece": "harbor-bin",
+        "name": "Street bin",
+        "position": [
+          -75,
+          0.09,
+          -210
+        ],
+        "yaw": 0,
+        "size": [
+          0.801,
+          1.05,
+          0.807
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-west-alley-0",
+        "piece": "harbor-bags",
+        "name": "Alley trash bags",
+        "position": [
+          -98,
+          0.09,
+          -210
+        ],
+        "yaw": 0,
+        "size": [
+          0.552,
+          0.6,
+          0.597
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-west-cart-1",
+        "piece": "harbor-cart",
+        "name": "Hot dog cart",
+        "position": [
+          -73,
+          0.09,
+          79
+        ],
+        "yaw": -90,
+        "size": [
+          2.323,
+          2.45,
+          2.403
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-west-paper-1",
+        "piece": "harbor-news",
+        "name": "Newspaper box",
+        "position": [
+          -73,
+          0.09,
+          82
+        ],
+        "yaw": 0,
+        "size": [
+          0.438,
+          1.02,
+          0.359
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-west-table-1",
+        "piece": "harbor-table",
+        "name": "Sidewalk café table",
+        "position": [
+          -70,
+          0.09,
+          80
+        ],
+        "yaw": 0,
+        "size": [
+          0.727,
+          0.78,
+          0.727
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-west-chair-a-1",
+        "piece": "harbor-chair",
+        "name": "Café chair",
+        "position": [
+          -69,
+          0.09,
+          79
+        ],
+        "yaw": 90,
+        "size": [
+          0.615,
+          0.92,
+          0.478
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-west-chair-b-1",
+        "piece": "harbor-chair",
+        "name": "Café chair",
+        "position": [
+          -71,
+          0.09,
+          81
+        ],
+        "yaw": -90,
+        "size": [
+          0.615,
+          0.92,
+          0.478
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-west-bin-1",
+        "piece": "harbor-bin",
+        "name": "Street bin",
+        "position": [
+          -75,
+          0.09,
+          84
+        ],
+        "yaw": 0,
+        "size": [
+          0.801,
+          1.05,
+          0.807
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-west-alley-1",
+        "piece": "harbor-bags",
+        "name": "Alley trash bags",
+        "position": [
+          -98,
+          0.09,
+          84
+        ],
+        "yaw": 0,
+        "size": [
+          0.552,
+          0.6,
+          0.597
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-west-cart-2",
+        "piece": "harbor-cart",
+        "name": "Hot dog cart",
+        "position": [
+          -73,
+          0.09,
+          251
+        ],
+        "yaw": -90,
+        "size": [
+          2.323,
+          2.45,
+          2.403
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-west-paper-2",
+        "piece": "harbor-news",
+        "name": "Newspaper box",
+        "position": [
+          -73,
+          0.09,
+          254
+        ],
+        "yaw": 0,
+        "size": [
+          0.438,
+          1.02,
+          0.359
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-west-table-2",
+        "piece": "harbor-table",
+        "name": "Sidewalk café table",
+        "position": [
+          -70,
+          0.09,
+          252
+        ],
+        "yaw": 0,
+        "size": [
+          0.727,
+          0.78,
+          0.727
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-west-chair-a-2",
+        "piece": "harbor-chair",
+        "name": "Café chair",
+        "position": [
+          -69,
+          0.09,
+          251
+        ],
+        "yaw": 90,
+        "size": [
+          0.615,
+          0.92,
+          0.478
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-west-chair-b-2",
+        "piece": "harbor-chair",
+        "name": "Café chair",
+        "position": [
+          -71,
+          0.09,
+          253
+        ],
+        "yaw": -90,
+        "size": [
+          0.615,
+          0.92,
+          0.478
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-west-bin-2",
+        "piece": "harbor-bin",
+        "name": "Street bin",
+        "position": [
+          -75,
+          0.09,
+          256
+        ],
+        "yaw": 0,
+        "size": [
+          0.801,
+          1.05,
+          0.807
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-west-alley-2",
+        "piece": "harbor-bags",
+        "name": "Alley trash bags",
+        "position": [
+          -98,
+          0.09,
+          256
+        ],
+        "yaw": 0,
+        "size": [
+          0.552,
+          0.6,
+          0.597
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-west-lamp-0",
+        "piece": "harbor-lamp",
+        "name": "Harbor streetlight",
+        "position": [
+          -64,
+          0.09,
+          -236
+        ],
+        "yaw": -90,
+        "size": [
+          0.248,
+          6.4,
+          2.104
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0.43
+            ],
+            "size": [
+              0.74,
+              1,
+              0.1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-west-lamp-1",
+        "piece": "harbor-lamp",
+        "name": "Harbor streetlight",
+        "position": [
+          -64,
+          0.09,
+          -100
+        ],
+        "yaw": -90,
+        "size": [
+          0.248,
+          6.4,
+          2.104
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0.43
+            ],
+            "size": [
+              0.74,
+              1,
+              0.1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-west-lamp-2",
+        "piece": "harbor-lamp",
+        "name": "Harbor streetlight",
+        "position": [
+          -64,
+          0.09,
+          -60
+        ],
+        "yaw": -90,
+        "size": [
+          0.248,
+          6.4,
+          2.104
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0.43
+            ],
+            "size": [
+              0.74,
+              1,
+              0.1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-west-lamp-3",
+        "piece": "harbor-lamp",
+        "name": "Harbor streetlight",
+        "position": [
+          -64,
+          0.09,
+          55
+        ],
+        "yaw": -90,
+        "size": [
+          0.248,
+          6.4,
+          2.104
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0.43
+            ],
+            "size": [
+              0.74,
+              1,
+              0.1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-west-lamp-4",
+        "piece": "harbor-lamp",
+        "name": "Harbor streetlight",
+        "position": [
+          -64,
+          0.09,
+          100
+        ],
+        "yaw": -90,
+        "size": [
+          0.248,
+          6.4,
+          2.104
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0.43
+            ],
+            "size": [
+              0.74,
+              1,
+              0.1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-west-lamp-5",
+        "piece": "harbor-lamp",
+        "name": "Harbor streetlight",
+        "position": [
+          -64,
+          0.09,
+          208
+        ],
+        "yaw": -90,
+        "size": [
+          0.248,
+          6.4,
+          2.104
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0.43
+            ],
+            "size": [
+              0.74,
+              1,
+              0.1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-west-lamp-6",
+        "piece": "harbor-lamp",
+        "name": "Harbor streetlight",
+        "position": [
+          -64,
+          0.09,
+          270
+        ],
+        "yaw": -90,
+        "size": [
+          0.248,
+          6.4,
+          2.104
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0.43
+            ],
+            "size": [
+              0.74,
+              1,
+              0.1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-west-closure-sign",
+        "piece": "harbor-closed",
+        "name": "Road closed sign",
+        "position": [
+          -104,
+          0.09,
+          234
+        ],
+        "yaw": -90,
+        "size": [
+          1.18,
+          1.28,
+          1.523
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-west-lane-sign",
+        "piece": "harbor-lane",
+        "name": "Lane closure sign",
+        "position": [
+          -113,
+          0.09,
+          234
+        ],
+        "yaw": -90,
+        "size": [
+          1.214,
+          1.35,
+          1.607
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-west-barrier-0",
+        "piece": "downtown-metal-barrier",
+        "name": "Metal crowd barrier",
+        "position": [
+          -104,
+          0.09,
+          234
+        ],
+        "yaw": -12,
+        "size": [
+          1.894,
+          1,
+          0.479
+        ],
+        "color": "#88939c",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 5,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
+      },
+      {
+        "id": "street-west-cone-0",
+        "piece": "downtown-cone",
+        "name": "Traffic cone",
+        "position": [
+          -116,
+          0.09,
+          234
+        ],
+        "yaw": 0,
+        "size": [
+          0.329,
+          0.72,
+          0.329
+        ],
+        "color": "#e88042",
+        "locked": false,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-west-barrier-1",
+        "piece": "downtown-metal-barrier",
+        "name": "Metal crowd barrier",
+        "position": [
+          -105.8,
+          0.09,
+          234.48
+        ],
+        "yaw": -12,
+        "size": [
+          1.894,
+          1,
+          0.479
+        ],
+        "color": "#88939c",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 5,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
+      },
+      {
+        "id": "street-west-cone-1",
+        "piece": "downtown-cone",
+        "name": "Traffic cone",
+        "position": [
+          -117.6,
+          0.09,
+          234.45
+        ],
+        "yaw": 0,
+        "size": [
+          0.329,
+          0.72,
+          0.329
+        ],
+        "color": "#e88042",
+        "locked": false,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-west-barrier-2",
+        "piece": "downtown-metal-barrier",
+        "name": "Metal crowd barrier",
+        "position": [
+          -107.6,
+          0.09,
+          234.96
+        ],
+        "yaw": -12,
+        "size": [
+          1.894,
+          1,
+          0.479
+        ],
+        "color": "#88939c",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 5,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
+      },
+      {
+        "id": "street-west-cone-2",
+        "piece": "downtown-cone",
+        "name": "Traffic cone",
+        "position": [
+          -119.2,
+          0.09,
+          234.9
+        ],
+        "yaw": 0,
+        "size": [
+          0.329,
+          0.72,
+          0.329
+        ],
+        "color": "#e88042",
+        "locked": false,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-west-roadworks",
+        "piece": "harbor-closed",
+        "name": "Road closed sign",
+        "position": [
+          -108,
+          0.09,
+          -236
+        ],
+        "yaw": -90,
+        "size": [
+          1.18,
+          1.28,
+          1.523
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-west-closed-0",
+        "piece": "downtown-metal-barrier",
+        "name": "Metal crowd barrier",
+        "position": [
+          -104,
+          0.09,
+          -239
+        ],
+        "yaw": 90,
+        "size": [
+          1.894,
+          1,
+          0.479
+        ],
+        "color": "#88939c",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 5,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
+      },
+      {
+        "id": "street-west-closed-1",
+        "piece": "downtown-metal-barrier",
+        "name": "Metal crowd barrier",
+        "position": [
+          -104,
+          0.09,
+          -237
+        ],
+        "yaw": 90,
+        "size": [
+          1.894,
+          1,
+          0.479
+        ],
+        "color": "#88939c",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 5,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
+      },
+      {
+        "id": "street-west-closed-2",
+        "piece": "downtown-metal-barrier",
+        "name": "Metal crowd barrier",
+        "position": [
+          -104,
+          0.09,
+          -235
+        ],
+        "yaw": 90,
+        "size": [
+          1.894,
+          1,
+          0.479
+        ],
+        "color": "#88939c",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 5,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
+      },
+      {
+        "id": "street-west-closed-3",
+        "piece": "downtown-metal-barrier",
+        "name": "Metal crowd barrier",
+        "position": [
+          -104,
+          0.09,
+          -233
+        ],
+        "yaw": 90,
+        "size": [
+          1.894,
+          1,
+          0.479
+        ],
+        "color": "#88939c",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 5,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
+      },
+      {
+        "id": "street-west-lever",
+        "piece": "bridge-lever",
+        "name": "Bridge lever",
+        "position": [
+          -33,
+          0.09,
+          10
+        ],
+        "yaw": -90,
+        "size": [
+          0.72,
+          1.5,
+          0.7
+        ],
+        "color": "#c59346",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.36,
+              0
+            ],
+            "size": [
+              0.64,
+              0.72,
+              0.7
+            ],
+            "color": "#545e64"
+          },
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.82,
+              0
+            ],
+            "size": [
+              0.12,
+              0.36,
+              0.12
+            ],
+            "color": "#c59346"
+          },
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.96,
+              0
+            ],
+            "size": [
+              0.58,
+              0.12,
+              0.21
+            ],
+            "color": "#d34c3f"
+          }
+        ]
+      },
+      {
+        "id": "street-east-cart-0",
+        "piece": "harbor-cart",
+        "name": "Hot dog cart",
+        "position": [
+          73,
+          0.09,
+          -215
+        ],
+        "yaw": 90,
+        "size": [
+          2.323,
+          2.45,
+          2.403
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-east-paper-0",
+        "piece": "harbor-news",
+        "name": "Newspaper box",
+        "position": [
+          73,
+          0.09,
+          -212
+        ],
+        "yaw": 0,
+        "size": [
+          0.438,
+          1.02,
+          0.359
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-east-table-0",
+        "piece": "harbor-table",
+        "name": "Sidewalk café table",
+        "position": [
+          70,
+          0.09,
+          -214
+        ],
+        "yaw": 0,
+        "size": [
+          0.727,
+          0.78,
+          0.727
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-east-chair-a-0",
+        "piece": "harbor-chair",
+        "name": "Café chair",
+        "position": [
+          69,
+          0.09,
+          -215
+        ],
+        "yaw": 90,
+        "size": [
+          0.615,
+          0.92,
+          0.478
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-east-chair-b-0",
+        "piece": "harbor-chair",
+        "name": "Café chair",
+        "position": [
+          71,
+          0.09,
+          -213
+        ],
+        "yaw": -90,
+        "size": [
+          0.615,
+          0.92,
+          0.478
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-east-bin-0",
+        "piece": "harbor-bin",
+        "name": "Street bin",
+        "position": [
+          75,
+          0.09,
+          -210
+        ],
+        "yaw": 0,
+        "size": [
+          0.801,
+          1.05,
+          0.807
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-east-alley-0",
+        "piece": "harbor-bags",
+        "name": "Alley trash bags",
+        "position": [
+          98,
+          0.09,
+          -210
+        ],
+        "yaw": 0,
+        "size": [
+          0.552,
+          0.6,
+          0.597
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-east-cart-1",
+        "piece": "harbor-cart",
+        "name": "Hot dog cart",
+        "position": [
+          73,
+          0.09,
+          79
+        ],
+        "yaw": 90,
+        "size": [
+          2.323,
+          2.45,
+          2.403
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-east-paper-1",
+        "piece": "harbor-news",
+        "name": "Newspaper box",
+        "position": [
+          73,
+          0.09,
+          82
+        ],
+        "yaw": 0,
+        "size": [
+          0.438,
+          1.02,
+          0.359
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-east-table-1",
+        "piece": "harbor-table",
+        "name": "Sidewalk café table",
+        "position": [
+          70,
+          0.09,
+          80
+        ],
+        "yaw": 0,
+        "size": [
+          0.727,
+          0.78,
+          0.727
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-east-chair-a-1",
+        "piece": "harbor-chair",
+        "name": "Café chair",
+        "position": [
+          69,
+          0.09,
+          79
+        ],
+        "yaw": 90,
+        "size": [
+          0.615,
+          0.92,
+          0.478
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-east-chair-b-1",
+        "piece": "harbor-chair",
+        "name": "Café chair",
+        "position": [
+          71,
+          0.09,
+          81
+        ],
+        "yaw": -90,
+        "size": [
+          0.615,
+          0.92,
+          0.478
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-east-bin-1",
+        "piece": "harbor-bin",
+        "name": "Street bin",
+        "position": [
+          75,
+          0.09,
+          84
+        ],
+        "yaw": 0,
+        "size": [
+          0.801,
+          1.05,
+          0.807
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-east-alley-1",
+        "piece": "harbor-bags",
+        "name": "Alley trash bags",
+        "position": [
+          98,
+          0.09,
+          84
+        ],
+        "yaw": 0,
+        "size": [
+          0.552,
+          0.6,
+          0.597
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-east-cart-2",
+        "piece": "harbor-cart",
+        "name": "Hot dog cart",
+        "position": [
+          73,
+          0.09,
+          251
+        ],
+        "yaw": 90,
+        "size": [
+          2.323,
+          2.45,
+          2.403
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-east-paper-2",
+        "piece": "harbor-news",
+        "name": "Newspaper box",
+        "position": [
+          73,
+          0.09,
+          254
+        ],
+        "yaw": 0,
+        "size": [
+          0.438,
+          1.02,
+          0.359
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-east-table-2",
+        "piece": "harbor-table",
+        "name": "Sidewalk café table",
+        "position": [
+          70,
+          0.09,
+          252
+        ],
+        "yaw": 0,
+        "size": [
+          0.727,
+          0.78,
+          0.727
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-east-chair-a-2",
+        "piece": "harbor-chair",
+        "name": "Café chair",
+        "position": [
+          69,
+          0.09,
+          251
+        ],
+        "yaw": 90,
+        "size": [
+          0.615,
+          0.92,
+          0.478
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-east-chair-b-2",
+        "piece": "harbor-chair",
+        "name": "Café chair",
+        "position": [
+          71,
+          0.09,
+          253
+        ],
+        "yaw": -90,
+        "size": [
+          0.615,
+          0.92,
+          0.478
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-east-bin-2",
+        "piece": "harbor-bin",
+        "name": "Street bin",
+        "position": [
+          75,
+          0.09,
+          256
+        ],
+        "yaw": 0,
+        "size": [
+          0.801,
+          1.05,
+          0.807
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-east-alley-2",
+        "piece": "harbor-bags",
+        "name": "Alley trash bags",
+        "position": [
+          98,
+          0.09,
+          256
+        ],
+        "yaw": 0,
+        "size": [
+          0.552,
+          0.6,
+          0.597
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-east-lamp-0",
+        "piece": "harbor-lamp",
+        "name": "Harbor streetlight",
+        "position": [
+          64,
+          0.09,
+          -236
+        ],
+        "yaw": 90,
+        "size": [
+          0.248,
+          6.4,
+          2.104
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0.43
+            ],
+            "size": [
+              0.74,
+              1,
+              0.1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-east-lamp-1",
+        "piece": "harbor-lamp",
+        "name": "Harbor streetlight",
+        "position": [
+          64,
+          0.09,
+          -100
+        ],
+        "yaw": 90,
+        "size": [
+          0.248,
+          6.4,
+          2.104
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0.43
+            ],
+            "size": [
+              0.74,
+              1,
+              0.1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-east-lamp-2",
+        "piece": "harbor-lamp",
+        "name": "Harbor streetlight",
+        "position": [
+          64,
+          0.09,
+          -60
+        ],
+        "yaw": 90,
+        "size": [
+          0.248,
+          6.4,
+          2.104
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0.43
+            ],
+            "size": [
+              0.74,
+              1,
+              0.1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-east-lamp-3",
+        "piece": "harbor-lamp",
+        "name": "Harbor streetlight",
+        "position": [
+          64,
+          0.09,
+          55
+        ],
+        "yaw": 90,
+        "size": [
+          0.248,
+          6.4,
+          2.104
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0.43
+            ],
+            "size": [
+              0.74,
+              1,
+              0.1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-east-lamp-4",
+        "piece": "harbor-lamp",
+        "name": "Harbor streetlight",
+        "position": [
+          64,
+          0.09,
+          100
+        ],
+        "yaw": 90,
+        "size": [
+          0.248,
+          6.4,
+          2.104
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0.43
+            ],
+            "size": [
+              0.74,
+              1,
+              0.1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-east-lamp-5",
+        "piece": "harbor-lamp",
+        "name": "Harbor streetlight",
+        "position": [
+          64,
+          0.09,
+          208
+        ],
+        "yaw": 90,
+        "size": [
+          0.248,
+          6.4,
+          2.104
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0.43
+            ],
+            "size": [
+              0.74,
+              1,
+              0.1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-east-lamp-6",
+        "piece": "harbor-lamp",
+        "name": "Harbor streetlight",
+        "position": [
+          64,
+          0.09,
+          270
+        ],
+        "yaw": 90,
+        "size": [
+          0.248,
+          6.4,
+          2.104
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0.43
+            ],
+            "size": [
+              0.74,
+              1,
+              0.1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-east-closure-sign",
+        "piece": "harbor-closed",
+        "name": "Road closed sign",
+        "position": [
+          104,
+          0.09,
+          234
+        ],
+        "yaw": 90,
+        "size": [
+          1.18,
+          1.28,
+          1.523
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-east-lane-sign",
+        "piece": "harbor-lane",
+        "name": "Lane closure sign",
+        "position": [
+          113,
+          0.09,
+          234
+        ],
+        "yaw": 90,
+        "size": [
+          1.214,
+          1.35,
+          1.607
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-east-barrier-0",
+        "piece": "downtown-metal-barrier",
+        "name": "Metal crowd barrier",
+        "position": [
+          104,
+          0.09,
+          234
+        ],
+        "yaw": 12,
+        "size": [
+          1.894,
+          1,
+          0.479
+        ],
+        "color": "#88939c",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 5,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
+      },
+      {
+        "id": "street-east-cone-0",
+        "piece": "downtown-cone",
+        "name": "Traffic cone",
+        "position": [
+          116,
+          0.09,
+          234
+        ],
+        "yaw": 0,
+        "size": [
+          0.329,
+          0.72,
+          0.329
+        ],
+        "color": "#e88042",
+        "locked": false,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-east-barrier-1",
+        "piece": "downtown-metal-barrier",
+        "name": "Metal crowd barrier",
+        "position": [
+          105.8,
+          0.09,
+          234.48
+        ],
+        "yaw": 12,
+        "size": [
+          1.894,
+          1,
+          0.479
+        ],
+        "color": "#88939c",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 5,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
+      },
+      {
+        "id": "street-east-cone-1",
+        "piece": "downtown-cone",
+        "name": "Traffic cone",
+        "position": [
+          117.6,
+          0.09,
+          234.45
+        ],
+        "yaw": 0,
+        "size": [
+          0.329,
+          0.72,
+          0.329
+        ],
+        "color": "#e88042",
+        "locked": false,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-east-barrier-2",
+        "piece": "downtown-metal-barrier",
+        "name": "Metal crowd barrier",
+        "position": [
+          107.6,
+          0.09,
+          234.96
+        ],
+        "yaw": 12,
+        "size": [
+          1.894,
+          1,
+          0.479
+        ],
+        "color": "#88939c",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 5,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
+      },
+      {
+        "id": "street-east-cone-2",
+        "piece": "downtown-cone",
+        "name": "Traffic cone",
+        "position": [
+          119.2,
+          0.09,
+          234.9
+        ],
+        "yaw": 0,
+        "size": [
+          0.329,
+          0.72,
+          0.329
+        ],
+        "color": "#e88042",
+        "locked": false,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-east-roadworks",
+        "piece": "harbor-closed",
+        "name": "Road closed sign",
+        "position": [
+          108,
+          0.09,
+          -236
+        ],
+        "yaw": 90,
+        "size": [
+          1.18,
+          1.28,
+          1.523
+        ],
+        "color": "#88959a",
+        "locked": false,
+        "solid": false,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "street-east-closed-0",
+        "piece": "downtown-metal-barrier",
+        "name": "Metal crowd barrier",
+        "position": [
+          104,
+          0.09,
+          -239
+        ],
+        "yaw": 90,
+        "size": [
+          1.894,
+          1,
+          0.479
+        ],
+        "color": "#88939c",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 5,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
+      },
+      {
+        "id": "street-east-closed-1",
+        "piece": "downtown-metal-barrier",
+        "name": "Metal crowd barrier",
+        "position": [
+          104,
+          0.09,
+          -237
+        ],
+        "yaw": 90,
+        "size": [
+          1.894,
+          1,
+          0.479
+        ],
+        "color": "#88939c",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 5,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
+      },
+      {
+        "id": "street-east-closed-2",
+        "piece": "downtown-metal-barrier",
+        "name": "Metal crowd barrier",
+        "position": [
+          104,
+          0.09,
+          -235
+        ],
+        "yaw": 90,
+        "size": [
+          1.894,
+          1,
+          0.479
+        ],
+        "color": "#88939c",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 5,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
+      },
+      {
+        "id": "street-east-closed-3",
+        "piece": "downtown-metal-barrier",
+        "name": "Metal crowd barrier",
+        "position": [
+          104,
+          0.09,
+          -233
+        ],
+        "yaw": 90,
+        "size": [
+          1.894,
+          1,
+          0.479
+        ],
+        "color": "#88939c",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.5,
+              0
+            ],
+            "size": [
+              1,
+              1,
+              1
+            ]
+          }
+        ],
+        "destruction": {
+          "enabled": true,
+          "hp": 5,
+          "smallArms": 1,
+          "cannon": 1,
+          "bomb": 1,
+          "rubble": "clear"
+        }
+      },
+      {
+        "id": "street-east-lever",
+        "piece": "bridge-lever",
+        "name": "Bridge lever",
+        "position": [
+          33,
+          0.09,
+          10
+        ],
+        "yaw": 90,
+        "size": [
+          0.72,
+          1.5,
+          0.7
+        ],
+        "color": "#c59346",
+        "locked": false,
+        "solid": true,
+        "parts": [
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.36,
+              0
+            ],
+            "size": [
+              0.64,
+              0.72,
+              0.7
+            ],
+            "color": "#545e64"
+          },
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.82,
+              0
+            ],
+            "size": [
+              0.12,
+              0.36,
+              0.12
+            ],
+            "color": "#c59346"
+          },
+          {
+            "shape": "box",
+            "position": [
+              0,
+              0.96,
+              0
+            ],
+            "size": [
+              0.58,
+              0.12,
+              0.21
+            ],
+            "color": "#d34c3f"
+          }
+        ]
       }
     ]
   },

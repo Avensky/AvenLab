@@ -15,6 +15,13 @@ export const harborPieces: Piece[] = [{
   size:[24,1.05,.4], color:"#9da9aa",
   parts:[{shape:"box",position:[0,.68,0],size:[1,.37,.56]},
     ...[-.46,-.30,-.15,0,.15,.30,.46].map(x=>({shape:"box" as const,position:[x,.4,.19] as V3,size:[.017,.8,.55] as V3,solid:false}))],
+}, {
+  id:'bridge-lever',label:'Bridge lever',category:'props',description:'Operate the canal drawbridge from the switch stand.',
+  size:[.72,1.5,.7],color:'#c59346',parts:[
+    {shape:'box',position:[0,.36,0],size:[.64,.72,.70],color:'#545e64'},
+    {shape:'box',position:[0,.82,0],size:[.12,.36,.12],color:'#c59346'},
+    {shape:'box',position:[0,.96,0],size:[.58,.12,.21],color:'#d34c3f'},
+  ],
 }];
 
 export function guardrail(id:string,x1:number,z1:number,x2:number,z2:number,surface:number, rise=0):import("../document/layoutDocument.ts").LayoutObject{
