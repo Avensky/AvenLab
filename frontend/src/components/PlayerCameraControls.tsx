@@ -1,3 +1,5 @@
+import {cameraGround} from '../utils/cameraGround';
+import {useWorldStore} from '../store/world/worldStore';
 import {useCombatStore} from "../combat/combatStore";
 import {useUIStore} from "../store/menus/uiStore";
 import {bindCameraDrag,canUseDrivingCamera} from "../utils/cameraDrag";
@@ -118,7 +120,14 @@ export function PlayerCameraControls({
     // Copy the shared displayed pose plus local view offsets. No extra world
     // lerp, velocity prediction, wheel compensation or raw-snapshot follow.
     camera.position.copy(follower.current!.position);
-    camera.lookAt(follower.current!.target);
+    const map=useWorldStore.getState().map;
+    const ground=cameraGround(map,camera.position.x,camera.position.z);
+    const target=follower.current!.target;
+    if (pose.health?.defeated && ['water','out_of_bounds'].includes(pose.health.last_damage_kind ?? '')) {
+      camera.position.y=Math.max(camera.position.y,ground+2.5);
+      target.y=Math.max(target.y,cameraGround(map,target.x,target.z)-.35);
+    } else camera.position.y=Math.max(camera.position.y,ground);
+    camera.lookAt(target);
     const shell=useNetworkStore.getState().getMe()?.combat?.cannon_shot;
     if(shell!==undefined){if(recoil.current.shot>=0&&shell!==recoil.current.shot)recoil.current.kick=1;recoil.current.shot=shell;}
     recoil.current.kick=Math.max(0,recoil.current.kick-delta*4);

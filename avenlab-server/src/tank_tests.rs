@@ -349,3 +349,20 @@ fn manual_aim_slews_under_lock_and_holds_the_new_angle_through_a_hull_turn() {
         assert_eq!(c.shot,0);
     }
 }
+
+#[test]
+fn mounted_browning_shoots_from_its_barrel_and_keeps_the_factory_roof_anchor() {
+    use rapier3d::prelude::*;
+    let mut world=PhysicsWorld::new();
+    world.select_map("road_precision").unwrap();
+    let handle=world.spawn_vehicle_for_player("gunner".into(),[0.;3],"brz","blue").unwrap();
+    let body=*world.bodies[handle].position();
+    let request=CombatPose{enabled:true,fire:true,hull_locked:true,lock_target:Some([0.,0.]),
+        role:"support".into(),x:3.,y:3.,z:3.,..Default::default()};
+    world.combat_tick("gunner",1,Some(&request));
+    let c=&world.combat_poses["gunner"];
+    assert_eq!(c.role,"support");
+    let muzzle=Point::from(c.shot_origin.unwrap());
+    let expected=body * point![0.,c.y+0.2532,0.7596];
+    assert!((muzzle-expected).norm()<0.001);
+}

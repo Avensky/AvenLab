@@ -176,7 +176,7 @@ impl PhysicsWorld {
                     // Visual free spin is integrated once per substep. It has
                     // no effect on chassis propulsion or the friction budget.
                     let center = body_ro.position() * wheel.offset
-                        + vector![0.0, -wheel.full_droop_length(), 0.0];
+                        + body_ro.rotation() * -Vector::y() * wheel.full_droop_length();
                     let velocity = kinematics::point_velocity(
                         *body_ro.linvel(), *body_ro.angvel(), *body_ro.center_of_mass(), center,
                     );
@@ -416,17 +416,18 @@ impl PhysicsWorld {
                     wheel, body, &self.query_pipeline, &self.bodies, &self.colliders, handle,
                 );
                 let hit_point = ground.as_ref().map(|hit| hit.hit_point);
+                let strut = pos.rotation * -Vector::y();
                 let center = if let Some(hit) = &ground {
                     wheel.grounded = true;
                     wheel.compression = hit.compression;
                     wheel.compression_ratio = hit.compression_ratio;
-                    origin - Vector::y() * (wheel.full_droop_length() - hit.compression)
+                    origin + strut * (wheel.full_droop_length() - hit.compression)
                 } else {
                     wheel.grounded = false;
                     wheel.normal_force = 0.0;
                     wheel.compression = 0.0;
                     wheel.compression_ratio = 0.0;
-                    origin + vector![0.0, -wheel.full_droop_length(), 0.0]
+                    origin + strut * wheel.full_droop_length()
                 };
                 wheel.world_center = p3(center);
                 // Use the same bounded spring travel for forces and wheel presentation.
@@ -440,7 +441,7 @@ impl PhysicsWorld {
                     local_forward.x.atan2(local_forward.z)
                 } else { 0.0 };
                 wheel.world_rotation = wheel_pose_rotation(
-                    pos.rotation, raw_forward, ground.as_ref().map(|hit| hit.ground_normal),
+                    pos.rotation, raw_forward, ground.as_ref().filter(|_| vehicle.config.tracked).map(|hit| hit.ground_normal),
                     wheel.steer_angle,
                 );
                 let normal = vector![0.0, 1.0, 0.0];
@@ -459,7 +460,7 @@ impl PhysicsWorld {
 
                 if ray_debug {
                     self.debug_overlay.suspension_rays.push(DebugRay {
-                        player_id: player_id.clone(), origin: p3(origin), direction: [0.0, -1.0, 0.0],
+                        player_id: player_id.clone(), origin: p3(origin), direction: [strut.x, strut.y, strut.z],
                         length: reach, hit: hit_point.map(p3),
                         color: if wheel.grounded { [0.0, 1.0, 0.0] } else { [1.0, 0.0, 0.0] },
                     });
@@ -583,7 +584,7 @@ mod tests {
         world.refresh_vehicle_wheel_snapshots();
 
         // Emulate a new integrated pose with body roll. Refresh must use it
-        // without making the grounded wheels inherit that body tilt.
+        // with all hubs attached to the rolled chassis.
         world.bodies[handle].set_translation(vector![20.0, height, 405.0], true);
         let yaw = Rotation::from_axis_angle(&Vector::y_axis(), 0.7);
         let roll = Rotation::from_axis_angle(&Vector::z_axis(), 0.03);
@@ -594,13 +595,13 @@ mod tests {
         let body = &world.bodies[handle];
         let snapshots = world.wheel_snapshots_for_body(handle, 0.0);
         for (wheel, snapshot) in world.wheels[&handle].iter().zip(&snapshots) {
-            let mount = body.position() * wheel.offset;
-            assert!((snapshot.position[0] - mount.x).abs() < 1.0e-4);
-            assert!((snapshot.position[2] - mount.z).abs() < 1.0e-4);
-            assert!((snapshot.position[1] - snapshot.radius).abs() < 1.0e-4);
+            let local = body.position().inverse_transform_point(&Point::from(snapshot.position));
+            assert!((local.x - wheel.offset.x).abs() < 1.0e-4);
+            assert!((local.z - wheel.offset.z).abs() < 1.0e-4);
+            assert!((snapshot.position[1] - snapshot.radius * roll.angle().cos()).abs() < 1.0e-4);
             assert!(snapshot.grounded);
-            let dot = snapshot.rotation[0] * yaw.i + snapshot.rotation[1] * yaw.j
-                + snapshot.rotation[2] * yaw.k + snapshot.rotation[3] * yaw.w;
+            let dot = snapshot.rotation[0] * body.rotation().i + snapshot.rotation[1] * body.rotation().j
+                + snapshot.rotation[2] * body.rotation().k + snapshot.rotation[3] * body.rotation().w;
             assert!(dot.abs() > 1.0 - 1.0e-5);
             let debug = world.debug_overlay.wheels.iter().find(|debug| debug.id == wheel.debug_id).unwrap();
             assert_eq!(debug.center, snapshot.position);
@@ -608,5 +609,17 @@ mod tests {
         }
         assert_eq!(world.debug_overlay.chassis[0].position, [20.0, height, 405.0]);
         assert_eq!(world.debug_overlay.suspension_rays.len(), 4);
+        for pitch in [1.2, 2.0, std::f32::consts::PI] {
+            let body = &mut world.bodies[handle];
+            body.set_translation(vector![20., 3., 405.], true);
+            body.set_rotation(Rotation::from_axis_angle(&Vector::x_axis(), pitch), true);
+            world.refresh_vehicle_wheel_snapshots();
+            for wheel in &world.wheels[&handle] {
+                assert!(!wheel.grounded);
+                let expected = wheel.offset - Vector::y() * wheel.full_droop_length();
+                let local = world.bodies[handle].position().inverse_transform_point(&Point::from(wheel.world_center));
+                assert!((local - expected).norm() < 0.0001);
+            }
+        }
     }
 }

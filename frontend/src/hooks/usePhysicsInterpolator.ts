@@ -2,7 +2,7 @@ import { useConnectionView, useMotionView } from "../store/session/networkViews"
 // Render completed backend poses on a short timeline; never simulate forces here.
 import { useCallback, useEffect, useRef } from "react";
 import { blendCombatAim, blendYaw } from '../combat/turretPresentation';
-import { Quaternion } from "three";
+import { Quaternion, Vector3 } from "three";
 import { PresentationDelay } from "./presentationDelay";
 import { ResourceFlags } from "../store/telemetry/resourceMasks";
 import { useDebugViewStore } from "../store/presentation/debugViewStore";
@@ -90,22 +90,38 @@ function lerpNumber(a: number | undefined, b: number | undefined, t: number) {
 }
 
 function interpolateWheels(
-  a: WheelSnapshot[] | undefined,
-  b: WheelSnapshot[] | undefined,
+  previous: InterpolatedPhysicsSnapshot,
+  current: InterpolatedPhysicsSnapshot,
+  position: [number, number, number],
+  rotation: [number, number, number, number],
   t: number,
 ): InterpolatedWheelSnapshot[] | undefined {
-  if (!b) return undefined;
-  if (!a) return b;
-  // Rust sends stable wheel order. Match by ID only if a legacy snapshot
-  // changes casing, reorders axles or supplies a different wheel count.
+  const a = previous.wheels, b = current.wheels;
+  if (!b || !a) return b;
+  // Interpolate suspension travel relative to the chassis. In a rollover the
+  // wheel must follow the body's arc, even between sparse network samples.
+  const previousBody = new Vector3().fromArray(previous.position);
+  const currentBody = new Vector3().fromArray(current.position);
+  const displayBody = new Vector3().fromArray(position);
+  const previousInverse = new Quaternion().fromArray(previous.rotation).invert();
+  const currentInverse = new Quaternion().fromArray(current.rotation).invert();
+  const displayRotation = new Quaternion().fromArray(rotation);
+  const start = new Vector3(), end = new Vector3();
+  const startRotation = new Quaternion(), endRotation = new Quaternion();
   return b.map((wheel,index) => {
     const prior = a[index];
     const prev = prior?.id === wheel.id ? prior : a.find(item=>item.id.toLowerCase()===wheel.id.toLowerCase());
     if (!prev) return wheel;
+    start.fromArray(prev.position).sub(previousBody).applyQuaternion(previousInverse);
+    end.fromArray(wheel.position).sub(currentBody).applyQuaternion(currentInverse);
+    start.lerp(end,t).applyQuaternion(displayRotation).add(displayBody);
+    startRotation.fromArray(prev.rotation).premultiply(previousInverse);
+    endRotation.fromArray(wheel.rotation).premultiply(currentInverse);
+    startRotation.slerp(endRotation,t).premultiply(displayRotation);
     return {
       ...wheel,
-      position: lerpVec3(prev.position, wheel.position, t),
-      rotation: slerpQuat(prev.rotation, wheel.rotation, t),
+      position: start.toArray() as [number,number,number],
+      rotation: startRotation.toArray() as [number,number,number,number],
       wheel_speed: lerpNumber(prev.wheel_speed, wheel.wheel_speed, t),
       steer_angle: lerpNumber(prev.steer_angle, wheel.steer_angle, t),
       // Contact is a discrete backend result, not a frontend collision test.
@@ -211,17 +227,18 @@ export class PhysicsInterpolationBuffer {
     if (targetMs >= b.timeMs) return b.pose;
     const t = (targetMs - a.timeMs) / (b.timeMs - a.timeMs);
     let wheels: InterpolatedWheelSnapshot[] | undefined;
+    const position = lerpVec3(a.pose.position, b.pose.position, t);
+    const rotation = slerpQuat(a.pose.rotation, b.pose.rotation, t);
     return {
       ...b.pose,
-      position: lerpVec3(a.pose.position, b.pose.position, t),
-      rotation: slerpQuat(a.pose.rotation, b.pose.rotation, t),
+      position, rotation,
       combat: blendCombatAim(a.pose.combat,b.pose.combat,t),
       guard: a.pose.guard?.panel_yaw !== undefined && b.pose.guard?.panel_yaw !== undefined
         ? {...b.pose.guard, panel_yaw:blendYaw(a.pose.guard.panel_yaw,b.pose.guard.panel_yaw,t)}
         : b.pose.guard,
       // Batched exteriors and aim markers read only the chassis. The local rig
       // and wheel debugger still share a fully interpolated set when requested.
-      get wheels() { return wheels ??= interpolateWheels(a.pose.wheels, b.pose.wheels, t); },
+      get wheels() { return wheels ??= interpolateWheels(a.pose, b.pose, position, rotation, t); },
     };
   }
 

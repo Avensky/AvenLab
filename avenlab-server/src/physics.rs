@@ -773,6 +773,11 @@ impl PhysicsWorld {
             let base=hull.transform_point(&Point::from(pivot+turret_rotation*vector![-0.505,0.90,0.70]));
             let tip=hull.transform_point(&Point::from(pivot+turret_rotation*vector![-0.505,0.90,1.341]));
             (base,tip)
+        }else if !config.tracked && !spray && c.role=="support" {
+            // The M2 mesh is centered at its trunnion. Check cover along the
+            // barrel before tracing out from its muzzle, just like the tank.
+            let pivot=breech+hull.rotation*Vector::y()*0.2532;
+            (pivot, pivot+direction*0.7596)
         }else{(breech,breech+if cannon {direction*4.1}else{Vector::zeros()})};
         let barrel_delta=origin-shot_breech;
         let barrel_length=barrel_delta.norm();
@@ -782,7 +787,7 @@ impl PhysicsWorld {
         if cannon {if let Some(body)=self.bodies.get_mut(body_handle){body.apply_impulse_at_point(-direction*36000.0,origin,true);}}
         self.synchronize_queries();
         if spray {self.fire_support_spray(player,origin,direction);return;}
-        let obstruction=if config.tracked {self.query_pipeline.cast_ray_and_get_normal(&self.bodies,&self.colliders,&Ray::new(shot_breech,barrel_delta/barrel_length),barrel_length,true,QueryFilter::default().groups(vehicle_collision_groups(false)).exclude_rigid_body(body_handle)).map(|(h,i)|(h,shot_breech+(barrel_delta/barrel_length)*i.time_of_impact,0.0,i.normal))}else{None};
+        let obstruction=if barrel_length>0.001 {self.query_pipeline.cast_ray_and_get_normal(&self.bodies,&self.colliders,&Ray::new(shot_breech,barrel_delta/barrel_length),barrel_length,true,QueryFilter::default().groups(vehicle_collision_groups(false)).exclude_rigid_body(body_handle)).map(|(h,i)|(h,shot_breech+(barrel_delta/barrel_length)*i.time_of_impact,0.0,i.normal))}else{None};
         let hit=if obstruction.is_some(){obstruction}else if cannon {
             crate::ballistics::trace(origin,direction,body_handle,&self.bodies,&self.colliders,&self.query_pipeline)
         }else{

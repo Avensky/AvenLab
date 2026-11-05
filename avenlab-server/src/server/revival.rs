@@ -359,11 +359,13 @@ mod tests {
         }
         s.disconnect(&target).await;
         assert!(!runtime.lock().await.physics.vehicles.contains_key(&target));
-        {
+        let (saved_at, window, cause) = {
             let mut state = s.revivals.lock().await;
             let lease = state.downed.get_mut(&profile).expect("A disabled reconnect retains its recovery lease");
             lease.saved_at -= Duration::from_secs(3);
-        }
+            (lease.saved_at, lease.life.remaining_s, lease.life.last_damage_kind.clone())
+        };
+        let latest_remaining = (window - saved_at.elapsed().as_secs_f32()).max(0.0);
         let next = connect(&s).await;
         s.handle(&next, json!({"action":"identify","name":"Returned teammate","token":identity["token"]})).await.unwrap();
         assert_eq!(s.connections.lock().await[&next].world_id, Some(WORLD));
@@ -373,7 +375,12 @@ mod tests {
             let health = &room.physics.vehicle_health[&next];
             assert!(health.defeated);
             assert_eq!(health.disabled_reason, "combat");
-            assert!(health.respawn_remaining_s > 8.0 && health.respawn_remaining_s <= 9.0);
+            // The reconnect spends real time too. Bound the value by the measured
+            // reconnect interval instead of assuming a new body loads in under 1 s.
+            let earliest_remaining = (window - saved_at.elapsed().as_secs_f32()).max(0.0);
+            assert!((earliest_remaining..=latest_remaining).contains(&health.respawn_remaining_s));
+            assert!(health.respawn_remaining_s <= 9.0);
+            assert_eq!(health.last_damage_kind, cause);
             assert_eq!(health.hp, 0.0);
             assert_eq!(health.spawn_protection_s, 0.0);
             assert_eq!((health.kills, health.deaths, health.stats.respawns, health.stats.resurrections), (0, 0, 0, 0));

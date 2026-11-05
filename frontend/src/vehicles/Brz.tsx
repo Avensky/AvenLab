@@ -13,6 +13,7 @@ import {
 import type { PropsWithChildren } from "react";
 import {
   Group,
+  Mesh,
   Color,
   MathUtils,
   Quaternion,
@@ -71,7 +72,11 @@ function extractWheel(root: Object3D, names: readonly string[]) {
   const wheel = findFirstNamedObject(root, names);
   if (!wheel) return null;
 
-  return measuredWheelHub(wheel, [wheel]).carrier;
+  let tire: Object3D | undefined;
+  wheel.traverse(part => {
+    if (part instanceof Mesh && !Array.isArray(part.material) && /tyre|tire/i.test(part.material.name)) tire = part;
+  });
+  return measuredWheelHub(tire ?? wheel, [wheel]).carrier;
 }
 
 type BrzProps = PropsWithChildren<{

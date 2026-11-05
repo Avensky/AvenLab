@@ -3,3 +3,9 @@
 .weapon-slots button[data-equipped=true]{border-color:var(--app-accent)}.weapon-slots button:focus-visible{outline:2px solid var(--app-accent)}
 .weapon-selector-footer{display:flex;justify-content:space-between;gap:5px;padding:4px 2px 0;font-size:8px;color:var(--app-muted)}
 .ram-attack[data-active=true]{color:var(--app-accent);filter:drop-shadow(0 0 7px var(--app-accent))}
+.mount-picker{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:5px;border:0;padding:0;margin:8px 0;min-width:0}
+.mount-picker legend{font-weight:700}.mount-picker p{grid-column:1/-1;margin:2px 0}
+.mount-picker button{display:grid;gap:3px;padding:8px;text-align:left;color:var(--app-text);background:var(--app-panel);border:1px solid var(--app-muted);border-radius:4px}
+.mount-picker button[aria-pressed=true]{border-color:var(--app-accent);box-shadow:inset 3px 0 var(--app-accent)}
+.mount-picker small{font-size:.8em;color:var(--app-muted)}
+.mount-picker img{width:90px;height:32px;object-fit:contain;justify-self:start}

@@ -126,9 +126,10 @@ pub(crate) fn cast_wheel_ground(
 ) -> Option<WheelGroundHit> {
     // Wheel.offset is a mount, transformed once from body space to world space.
     let origin = body.position() * wheel.offset;
-    // This model supports a flat map and keeps suspension rays world-vertical.
-    // Tilting chassis axes must not rotate the ray into a building wall.
-    let dir = vector![0.0, -1.0, 0.0];
+    // Suspension travel is along the chassis strut. An inverted wheel cannot
+    // find the ground through the roof or gain traction on a side wall.
+    let dir = body.rotation() * -Vector::y();
+    if dir.y >= 0.0 { return None; }
     let full_droop = wheel.full_droop_length();
     // Self and sensors are excluded. The road/building shapes in Rapier, not a
     // frontend ground plane or a second fallback floor, determine the hit height.
@@ -137,16 +138,16 @@ pub(crate) fn cast_wheel_ground(
     let filter = QueryFilter::default().groups(groups)
         .exclude_rigid_body(handle)
         .exclude_sensors();
-    let (_, toi) = query.cast_ray(
+    let (_, hit) = query.cast_ray_and_get_normal(
         bodies, colliders, &Ray::new(origin, dir),
         full_droop + wheel.radius + CONTACT_EPSILON, true, filter,
     )?;
-    if toi <= CONTACT_EPSILON {
+    let toi = hit.time_of_impact;
+    if toi <= CONTACT_EPSILON || hit.normal.y < 0.35 || -dir.dot(&hit.normal) < 0.35 {
         // A ray starting inside a collider is not a usable suspension contact.
         return None;
     }
-    // The suspension and tire solve use the world-vertical strut. Keep its
-    // spring axis through inclined roads so ramps retain their launch profile.
+    // Preserve the existing vertical load model while measuring travel along the axle hardpoint.
     let length = toi - wheel.radius;
     let suspension_length = length.clamp(0.0, full_droop);
     // ray distance includes the radius; subtract it once to get mount-to-center

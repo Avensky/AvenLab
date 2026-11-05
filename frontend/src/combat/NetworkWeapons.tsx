@@ -1,12 +1,13 @@
 import {writeInstanceMatrix} from '../vehicles/writeInstanceMatrix';
 import { useMotionView } from "../store/session/networkViews";
-import { memo, useMemo, useRef, type RefObject } from 'react';
+import { memo, Suspense, useMemo, useRef, type RefObject } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { BoxGeometry, Group, InstancedMesh, Matrix4, MeshStandardMaterial, Object3D, Quaternion, Vector3 } from 'three';
 import { useShallow } from 'zustand/react/shallow';
 import { useVehiclePhysicsInterpolator } from '../hooks/usePhysicsInterpolator';
 import {snapshotEntity} from '../store/session/networkStore';
 import { NetworkCombatEffects } from './NetworkCombatEffects';
+import {BrowningModel} from './BrowningModel';
 import { placeRoofTurret } from './turretPresentation';
 
 // Instances share GPU geometry/materials. Dimensions distinguish the mounts
@@ -49,27 +50,37 @@ const hidden=new Matrix4().makeScale(0,0,0);
 type Batch=RefObject<InstancedMesh|null>;
 const Turret=memo(function Turret({id,index,bases,barrels,dirty}:{id:string;index:number;bases:Batch;barrels:Batch;dirty:RefObject<{bases:boolean;barrels:boolean}>}){
   const chassis=useMotionView(s=>snapshotEntity(s.snapshot, id)?.vehicle_id);
+  const role=useMotionView(s=>{
+    const c=snapshotEntity(s.snapshot,id)?.combat;
+    return c?.weapon==='spray' ? 'assault' : c?.role ?? 'assault';
+  });
+  const browning=role==='support';
   const rig=useMemo(()=>{
     const kit=roofKits[chassis??'']??roofKits.brz;
-    const mount=new Group(),pivot=new Group(),gun=new Group(),base=new Object3D();
-    mount.add(pivot);pivot.add(base,gun);base.scale.set(kit.width,.18,kit.width*.88);
-    const tubes=(kit.twin?[-.16,.16]:[0]).map(x=>{
-      const tube=new Object3D();tube.scale.set(kit.bore,kit.bore,kit.length);
-      tube.position.set(x,.1,-kit.length/2);gun.add(tube);return tube;
+    const mount=new Group(),pivot=new Group(),gun=new Group(),base=new Object3D(),stand=new Group();
+    mount.add(stand,pivot);pivot.add(base,gun);base.scale.set(kit.width,.18,kit.width*.88);
+    if (browning) gun.position.y=.2532;
+    const precision=role==='medic';
+    const tubes=(!precision && kit.twin?[-.16,.16]:[0]).map(x=>{
+      const tube=new Object3D();tube.scale.set(kit.bore,kit.bore,kit.length*(precision?1.35:1));
+      tube.position.set(x,.1,-tube.scale.z/2);gun.add(tube);return tube;
     });
-    return {mount,pivot,gun,base,tubes,direction:new Vector3(),inverse:new Quaternion()};
-  },[chassis]);
+    return {mount,pivot,gun,stand,base,tubes,direction:new Vector3(),inverse:new Quaternion()};
+  },[chassis,role,browning]);
   const {getInterpolated}=useVehiclePhysicsInterpolator(id);
   useFrame(()=>{
     if(!bases.current||!barrels.current)return;
     const pose=getInterpolated(id),c=pose?.combat;
+    rig.mount.visible=Boolean(pose&&c);
     if(pose&&c){
       placeRoofTurret(rig.mount,rig.pivot,rig.gun,pose,c,rig.direction,rig.inverse);
+      rig.stand.position.copy(rig.pivot.position);
       rig.mount.updateMatrixWorld();
     }
-    if(writeInstanceMatrix(bases.current,index,c?rig.base.matrixWorld:hidden))dirty.current.bases=true;
-    if(writeInstanceMatrix(barrels.current,index*2,c?rig.tubes[0].matrixWorld:hidden))dirty.current.barrels=true;
-    if(writeInstanceMatrix(barrels.current,index*2+1,c&&rig.tubes[1]?rig.tubes[1].matrixWorld:hidden))dirty.current.barrels=true;
+    if(writeInstanceMatrix(bases.current,index,c&&!browning?rig.base.matrixWorld:hidden))dirty.current.bases=true;
+    if(writeInstanceMatrix(barrels.current,index*2,c&&!browning?rig.tubes[0].matrixWorld:hidden))dirty.current.barrels=true;
+    if(writeInstanceMatrix(barrels.current,index*2+1,c&&!browning&&rig.tubes[1]?rig.tubes[1].matrixWorld:hidden))dirty.current.barrels=true;
   },-2);
-  return null;
+  return browning ? <><primitive object={rig.mount} dispose={null}/>
+    <Suspense fallback={null}><BrowningModel stand={rig.stand} gun={rig.gun}/></Suspense></> : null;
 });

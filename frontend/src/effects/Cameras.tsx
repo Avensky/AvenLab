@@ -1,4 +1,6 @@
 import { useConnectionView, useMotionView } from "../store/session/networkViews";
+import {cameraGround} from '../utils/cameraGround';
+import {useWorldStore} from '../store/world/worldStore';
 import {TankScopeRig} from '../combat/TankScope';
 import {useCombatStore} from '../combat/combatStore';
 import { useBuilderStore } from "../worldBuilder/state/builderStore";
@@ -160,6 +162,12 @@ export default function Cameras() {
   // editor mode too. Negative priority retains automatic R3F rendering.
   useFrame(() => beginVehicleRenderFrame(), -100);
   useEffect(() => releaseVehicleRenderFrameClock, []);
+  // Run after chase, scope, orbit and the vehicle camera rig place their eye.
+  useFrame(({camera}) => {
+    if (screen !== 'sandbox') return;
+    const p=camera.position;
+    p.y=Math.max(p.y,cameraGround(useWorldStore.getState().map,p.x,p.z));
+  }, -.01);
 
   if(scope&&screen==='sandbox'&&overlay===null&&playerVehicleId)return <TankScopeRig playerId={playerId}/>;
 
