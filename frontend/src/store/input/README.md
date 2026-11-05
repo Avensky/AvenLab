@@ -21,3 +21,9 @@ mask limit together when adding a protocol capability.
 See [all state owners](../README.md) and the [project guide](../../../../docs/PROJECT_GUIDE.md).
 
 `setParkingBrake(fraction)` validates a 0–1 deliberate cable latch for cockpit v7. It writes `parking_brake` independently of other packed commands, using the existing sender. releaseControls clears transient input while preserving this latch. The HUD and cockpit use the same progressive control; explicit zero releases it. `touch-parking` remains an available analog source for older/experimental momentary controls. Keyboard/controller analog handbrake still merges separately using maximum force.
+
+## Update frequency by store
+
+- [useInputStore](inputStore.README.md)
+
+Source arbitration lives in [deviceAnalog.ts](deviceAnalog.ts). Keyboard, touch and gamepad keep independent contributions. A source release recomputes the remaining controls immediately. Packet masks, ignition revisions, menu braking and HUD signals are still owned by inputStore. The sender reads inputRef on its existing input clock.

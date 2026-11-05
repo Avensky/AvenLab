@@ -38,7 +38,7 @@ export async function requestAssistedHealPack():Promise<boolean>{
  const now=performance.now(),network=useNetworkStore.getState(),me=network.getMe(),key=actorKey();
  if(key!==attemptKey){attemptKey=key;nextAttempt=0;}
  const age=now-(network.snapshot?.received_at_ms??-Infinity),cooldown=me?.support?.cooldown_s;
- if(document.visibilityState==='hidden'||!canDrive()||!isMechanicPlayer()||!me||age<0||age>1000||cooldown===undefined||!Number.isFinite(cooldown)||cooldown!==0||!Number.isFinite(me.fuel)||me.fuel<HEAL_PACK_FUEL_L||now<nextAttempt||!nearestHealPackTarget(network.snapshot,network.playerId))return false;
+ if(document.visibilityState==='hidden'||!canDrive()||!isMechanicPlayer()||!me||age<0||age>1000||cooldown===undefined||!Number.isFinite(cooldown)||cooldown!==0||typeof me.fuel!=="number"||!Number.isFinite(me.fuel)||me.fuel<HEAL_PACK_FUEL_L||now<nextAttempt||!nearestHealPackTarget(network.snapshot,network.playerId))return false;
  if(useHealPackRequestStore.getState().key===key&&useHealPackRequestStore.getState().busy)return false;
  nextAttempt=now+250;
  useHealPackRequestStore.setState({key,busy:true});

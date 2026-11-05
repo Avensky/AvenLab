@@ -1,3 +1,4 @@
+import { useMotionView } from "../store/session/networkViews";
 import { DrivingIgnition } from './Cockpit/DrivingIgnition';
 import { FuturisticHUD } from "./FuturisticHUD/FuturisticHUD";
 import { TeammateHUD } from "./FuturisticHUD/TeammateHUD";
@@ -18,11 +19,11 @@ import { usePerformanceOverlayStore } from "../performance/performanceOverlaySto
 import { useCanDataStore } from "../store/recon/canDataStore";
 import { startVehicleTelemetry } from "../store/telemetry/vehicleTelemetryStore";
 import { HudGroup } from "./HudGroup";
-import { useNetworkStore } from "../store/session/networkStore";
+
 import { useRenderSettingsStore } from "../store/presentation/renderSettingsStore";
 
 export function DrivingHUD() {
-  const ctf = useNetworkStore((s) => Boolean(s.snapshot?.match_state));
+  const ctf = useMotionView((s) => Boolean(s.snapshot?.match_state));
   const scoped=useCombatStore(s=>s.scope&&s.enabled);
   const drivingLayout = usePreferencesStore((s) => s.drivingLayout);
   const touch = usePreferencesStore((s) => s.showTouchControls),

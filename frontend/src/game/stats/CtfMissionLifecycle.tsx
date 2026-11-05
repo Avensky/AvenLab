@@ -1,3 +1,4 @@
+import { useMotionView } from "../../store/session/networkViews";
 import { useEffect } from "react";
 import { useNetworkStore } from "../../store/session/networkStore";
 import { useUIStore } from "../../store/menus/uiStore";
@@ -33,7 +34,13 @@ export function CtfMissionLifecycle() {
       }
     };
     sync();
-    const offNetwork = useNetworkStore.subscribe(sync), offUI = useUIStore.subscribe(sync);
+    const offNetwork = useMotionView.subscribe((next, prev) => {
+      if (next.snapshot !== prev.snapshot || next.connected !== prev.connected ||
+          next.playerId !== prev.playerId || next.room_id !== prev.room_id) sync();
+    });
+    const offUI = useUIStore.subscribe((next, prev) => {
+      if (next.screen !== prev.screen || next.isModeLoading !== prev.isModeLoading) sync();
+    });
     return () => { offNetwork(); offUI(); };
   }, []);
   return null;

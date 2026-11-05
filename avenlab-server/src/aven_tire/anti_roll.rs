@@ -19,7 +19,6 @@
 
 
 use rapier3d::prelude::*;
-use std::collections::HashMap;
 use crate::aven_tire::WheelId;
 
 /// One anti-roll bar axle pair (FL/FR or RL/RR)
@@ -40,14 +39,14 @@ pub struct AntiRollPair {
 pub fn apply_arb_load_transfer(
     left: WheelId,
     right: WheelId,
-    axle_normal_force: &mut HashMap<WheelId, f32>,
-    axle_compression: &HashMap<WheelId, f32>,
+    axle_normal_force: &mut [f32;4],
+    axle_compression: &[Option<f32>;4],
     arb_stiffness: f32,
     fz_ref: f32,
 ) {
     let (Some(cl), Some(cr)) = (
-        axle_compression.get(&left),
-        axle_compression.get(&right),
+        axle_compression[left.index()],
+        axle_compression[right.index()],
     ) else { return };
 
     let delta = cl - cr;
@@ -61,8 +60,8 @@ pub fn apply_arb_load_transfer(
 
     
     // left / right normals
-    let nl = axle_normal_force.get(&left).copied().unwrap_or(0.0).max(0.0);
-    let nr = axle_normal_force.get(&right).copied().unwrap_or(0.0).max(0.0);
+    let nl = axle_normal_force[left.index()].max(0.0);
+    let nr = axle_normal_force[right.index()].max(0.0);
     
 
     // scale by load to avoid jacking
@@ -78,8 +77,8 @@ pub fn apply_arb_load_transfer(
 
     // redistribute
     // Support the lower, more compressed side without creating axle load.
-    axle_normal_force.insert(left, nl + transfer);
-    axle_normal_force.insert(right, nr - transfer);
+    axle_normal_force[left.index()] = nl + transfer;
+    axle_normal_force[right.index()] = nr - transfer;
 }
 
 #[cfg(test)]
@@ -90,13 +89,13 @@ mod tests {
     fn redistribution_conserves_axle_load_when_a_wheel_unloads() {
         for (nl, nr) in [(100.0, 100.0), (0.0, 1000.0), (1000.0, 0.0)] {
             for (cl, cr) in [(0.06, 0.02), (0.02, 0.06), (0.12, 0.0)] {
-                let mut loads = HashMap::from([(WheelId::FL, nl), (WheelId::FR, nr)]);
-                let compression = HashMap::from([(WheelId::FL, cl), (WheelId::FR, cr)]);
+                let mut loads = [nl,nr,0.0,0.0];
+                let compression = [Some(cl),Some(cr),None,None];
                 apply_arb_load_transfer(
                     WheelId::FL, WheelId::FR, &mut loads, &compression, 14000.0, 3139.2,
                 );
-                let left = loads[&WheelId::FL];
-                let right = loads[&WheelId::FR];
+                let left = loads[WheelId::FL.index()];
+                let right = loads[WheelId::FR.index()];
                 assert!(left >= 0.0 && right >= 0.0);
                 assert!((left + right - nl - nr).abs() < 0.001);
             }
@@ -105,22 +104,22 @@ mod tests {
 
     #[test]
     fn more_compressed_side_receives_restoring_support() {
-        let mut loads = HashMap::from([(WheelId::FL, 3000.0), (WheelId::FR, 3000.0)]);
-        let compression = HashMap::from([(WheelId::FL, 0.08), (WheelId::FR, 0.05)]);
+        let mut loads = [3000.0,3000.0,0.0,0.0];
+        let compression = [Some(0.08),Some(0.05),None,None];
         apply_arb_load_transfer(
             WheelId::FL, WheelId::FR, &mut loads, &compression, 14000.0, 3139.2,
         );
-        assert!(loads[&WheelId::FL] > 3000.0);
-        assert!(loads[&WheelId::FR] < 3000.0);
+        assert!(loads[WheelId::FL.index()] > 3000.0);
+        assert!(loads[WheelId::FR.index()] < 3000.0);
     }
 
     #[test]
     fn a_loaded_outside_tire_can_support_more_than_one_and_a_half_resting_loads() {
         let reference = 3000.0;
-        let mut loads = HashMap::from([(WheelId::FL, 1.8 * reference), (WheelId::FR, 0.2 * reference)]);
-        let compression = HashMap::from([(WheelId::FL, 0.1), (WheelId::FR, 0.01)]);
+        let mut loads = [1.8*reference,0.2*reference,0.0,0.0];
+        let compression = [Some(0.1),Some(0.01),None,None];
         apply_arb_load_transfer(WheelId::FL, WheelId::FR, &mut loads, &compression, 14000.0, reference);
-        assert!(loads[&WheelId::FL] > 1.5 * reference);
-        assert!((loads[&WheelId::FL] + loads[&WheelId::FR] - 2.0 * reference).abs() < 0.001);
+        assert!(loads[WheelId::FL.index()] > 1.5 * reference);
+        assert!((loads[WheelId::FL.index()] + loads[WheelId::FR.index()] - 2.0 * reference).abs() < 0.001);
     }
 }

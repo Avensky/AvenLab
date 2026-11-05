@@ -42,7 +42,9 @@ struct Sample {
     team: Team,
     hero: String,
     appearance: crate::alpha::appearance::HeroAppearance,
-    health: VehicleHealth,
+    stats: CareerStats,
+    combat_time_s: f64,
+    best_moment: Option<crate::vehicle_health::BestCombatMoment>,
 }
 impl Journal {
     fn new(match_id: String, format: MatchFormat, map: String, training: bool, eligible: bool) -> Self {
@@ -61,8 +63,8 @@ impl Journal {
         // A reconnect during grace resumes the participant, not a second entry.
         p.abandoned = false;
         let was_bound = self.aliases.get(&sample.player) == Some(&sample.source);
-        let offset = self.sources.get(&sample.source).map(|s| s.clock_offset).unwrap_or(elapsed - sample.health.combat_time_s());
-        if let Some(moment) = sample.health.best_combat_moment() {
+        let offset = self.sources.get(&sample.source).map(|s| s.clock_offset).unwrap_or(elapsed - sample.combat_time_s);
+        if let Some(moment) = &sample.best_moment {
             let candidate = PlayOfGame { profile_id: sample.profile.clone(),
                 start_s: (offset + moment.start_s).max(0.0), end_s: (offset + moment.end_s).clamp(0.0, elapsed),
                 score: moment.score, kills: moment.kills, captures: 0, damage: moment.damage, replay_available: false };
@@ -70,13 +72,12 @@ impl Journal {
             if candidate.score > current.score { *current = candidate; }
         }
         self.aliases.insert(sample.player, sample.source.clone());
-        let stats = health_stats(&sample.health);
         let source = self.sources.entry(sample.source).or_insert_with(|| Source {
             profile: sample.profile, stats: CareerStats::default(), last_elapsed: elapsed, clock_offset: offset,
         });
         let play_time = source.stats.play_time_s + if was_bound { (elapsed - source.last_elapsed).max(0.0) } else { 0.0 };
         source.last_elapsed = elapsed;
-        source.stats = stats;
+        source.stats = sample.stats;
         source.stats.play_time_s = play_time;
     }
     fn record(&self, world: usize, ended_at: u64) -> CareerMatch {
@@ -206,18 +207,31 @@ impl Server {
             .is_some_and(|journal| profile.is_some_and(|id| journal.people.contains_key(id)))
     }
     async fn samples(&self, world: usize, room: &WorldRuntime) -> Vec<Sample> {
-        let clients = self.connections.lock().await.clone();
-        let members = self.alpha.lock().await.members.clone();
+        // Capture only identities used by this world. Cloning every connection
+        // also cloned its socket/watch senders for every active room, twice/s.
+        let profiles: HashMap<_, _> = {
+            let clients = self.connections.lock().await;
+            room.physics.vehicles.keys().filter_map(|player| {
+                let client = clients.get(player).filter(|c| c.world_id == Some(world))?;
+                Some((player.as_str(), client.profile_id.clone()?))
+            }).collect()
+        };
+        let heroes: HashMap<_, _> = {
+            let alpha = self.alpha.lock().await;
+            profiles.keys().filter_map(|player| alpha.members.get(*player)
+                .map(|member| (*player, member.hero.clone()))).collect()
+        };
         let data = self.data.lock().await;
         room.physics.vehicles.iter().filter_map(|(player, vehicle)| {
-            let client = clients.get(player).filter(|c| c.world_id == Some(world))?;
-            let profile = data.profiles.get(client.profile_id.as_ref()?)?;
+            let profile = data.profiles.get(profiles.get(player.as_str())?)?;
             let entity = room.game.entities.get(player)?;
-            let hero = members.get(player).map(|m| m.hero.as_str()).filter(|s| !s.is_empty())
+            let hero = heroes.get(player.as_str()).map(String::as_str).filter(|s| !s.is_empty())
                 .or(entity.vehicle_id.as_deref()).unwrap_or("ae86");
+            let health = room.physics.vehicle_health.get(player)?;
             Some(Sample { player: player.clone(), source: format!("{:p}:{:?}", room, vehicle.body),
                 profile: profile.id.clone(), name: profile.name.clone(), team: entity.team,
-                hero: hero.into(), appearance: entity.appearance.clone(), health: room.physics.vehicle_health.get(player)?.clone() })
+                hero: hero.into(), appearance: entity.appearance.clone(), stats: health_stats(health),
+                combat_time_s: health.combat_time_s(), best_moment: health.best_combat_moment().cloned() })
         }).collect()
     }
     /// Bind a newly deployed body while the caller still owns the room lock.
@@ -293,8 +307,7 @@ impl Server {
                 }
             }
             self.mark_expired_participants(*world).await;
-            let clients = self.connections.lock().await.clone();
-            let occupied = clients.values().any(|c| c.world_id == Some(*world));
+            let occupied = self.connections.lock().await.values().any(|c| c.world_id == Some(*world));
             let reserved = alpha.reservations.values().any(|r| r.member.world == *world && r.expires > timestamp());
             if !occupied && !reserved { self.finish_empty_activity(*world).await; }
         }

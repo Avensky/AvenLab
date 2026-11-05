@@ -14,3 +14,11 @@ Import the public API from `store/telemetry/index.ts`. Modules inside this secti
 Add a display reading in projectVehicleTelemetry, then subscribe only the instrument that uses it. Use null for unavailable values. Hidden HUDs release their sampler owner. Physics and network delivery rates do not change when a display is hidden.
 
 See [all state owners](../README.md) and the [project guide](../../../../docs/PROJECT_GUIDE.md).
+
+The local sampler consumes the newest available driver readings. It does not request a packet per gauge, interpolate tire data, or change transport cadence. Optional tire heat and pressure live in requested wheel diagnostics, outside the HUD sampling loop.
+
+## Update frequency by store
+
+- [useMapTelemetryStore](mapTelemetry.README.md)
+- [useVehicleTelemetryStore](vehicleTelemetryStore.README.md)
+- [useCabinTime](cabinClock.README.md)

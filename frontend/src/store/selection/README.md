@@ -13,3 +13,7 @@ Import the public API from `store/selection/index.ts`. Modules inside this secti
 Add vehicle metadata here, its renderer under vehicles, and physical configuration in Rust vehicle_setup.rs. A label/preview alone does not register a driveable vehicle. The former unused Component field was removed so importing state no longer imports all vehicle models.
 
 See [all state owners](../README.md) and the [project guide](../../../../docs/PROJECT_GUIDE.md).
+
+## Update frequency by store
+
+- [useSelectionStore](selectionStore.README.md)

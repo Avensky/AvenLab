@@ -22,3 +22,9 @@ Import the public API from `store/recon/index.ts`. Modules inside this section u
 To change an A/C research experiment, edit catalog.ts and packed cabin requests, not a driving mission. Change phase sequencing in runActions; preserve the shared activeRunId cancellation check and marker queue. Session finalization must await marker posts. For HTTP behavior, use data-server/app/can/capture. Research missions do not award gameplay wins.
 
 See [all state owners](../README.md) and the [project guide](../../../../docs/PROJECT_GUIDE.md).
+
+## Update frequency by store
+
+- [useCanBusStore](canBusStore.README.md)
+- [useCanDataStore](canDataStore.README.md)
+- [useSignalReconStore](store.README.md)

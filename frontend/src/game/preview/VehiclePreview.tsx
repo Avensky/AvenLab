@@ -1,7 +1,5 @@
 import {useUIStore} from "../../store/menus/uiStore";
-import {useSocialStore} from "../../store/social/socialStore";
-import {GARAGE_LIGHT_COLORS,SELECTION_CRIMSON} from "../../theme/garageLighting";
-import {garageTeamAccent} from "./garageTeamAccent";
+import {SELECTION_CRIMSON} from "../../theme/garageLighting";
 import { Suspense, useState } from "react";
 import { Group } from "three";
 import { useThree } from "@react-three/fiber";
@@ -21,12 +19,11 @@ export function VehiclePreview({
   awaitingHero = false,
 }: { heroLayout?: boolean; awaitingHero?: boolean } = {}) {
   const screen=useUIStore(s=>s.screen);
-  const active=useSocialStore(s=>s.view?.alpha?.active);
   const theme=usePreferencesStore(s=>s.theme);
-  const teamAccent=garageTeamAccent(screen,active);
   const staging=screen==="hero_select"||screen==="heroes"||screen==="queue";
-  const selectionAccent=staging && (teamAccent??GARAGE_LIGHT_COLORS[theme])===GARAGE_LIGHT_COLORS.scarlet
-    ? SELECTION_CRIMSON : teamAccent;
+  // Team identity belongs in the selection UI; fixtures and reflections keep
+  // the saved theme, including its softer crimson selection lighting.
+  const selectionAccent=staging && theme==="scarlet" ? SELECTION_CRIMSON : null;
   const picked = useAlphaStore(s => screen === "heroes" ? s.previewHero : s.hero);
   const favorite = useSelectionStore(s => s.getSelectedVehicle().id);
   const vehicleId = awaitingHero ? HEROES.find(hero => hero.id === picked)?.vehicle : favorite;

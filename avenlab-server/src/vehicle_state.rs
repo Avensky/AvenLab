@@ -152,6 +152,7 @@ pub struct Wheel {
     pub compression_ratio: f32,    // current suspension compression ratio (for debug visualization)
 
     pub tire_state: TireState,
+    pub thermal: crate::tire_thermals::TireThermal,
 }
 
 impl VehicleConfig {

@@ -1,3 +1,4 @@
+import { useMotionView } from "../../store/session/networkViews";
 import { lazy, Suspense } from "react";
 import { useSocialStore } from "../../store/social/socialStore";
 import { ControllerAction } from "../../components/controller";
@@ -28,7 +29,7 @@ export function VehicleMenu() {
   );
 }
 function LegacyVehicleMenu() {
-  const current = useNetworkStore((s) => s.getMe()?.vehicle_id ?? "");
+  const current = useMotionView((s) => s.getMe()?.vehicle_id ?? "");
   const [selected, setSelected] = useState(() =>
     Math.max(
       0,

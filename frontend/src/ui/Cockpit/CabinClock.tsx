@@ -1,4 +1,4 @@
-import { useNetworkStore } from "../../store/session/networkStore";
+import { useMotionView } from "../../store/session/networkViews";
 import { useCabinTime } from "../../store/telemetry/cabinClock";
 
 export function CabinClock() {
@@ -14,13 +14,13 @@ export function GearClock({ lit }: { lit: boolean }) {
 }
 // The server owns the CTF clock; legacy match_clock remains compatible.
 export function MatchClock() {
-  const remaining = useNetworkStore((s) => {
+  const remaining = useMotionView((s) => {
     const value = s.snapshot?.match_state?.remaining_s ?? s.snapshot?.match_clock?.remaining_s;
     return value !== undefined && Number.isFinite(value)
       ? Math.max(0, Math.ceil(value))
       : null;
   });
-  const phase = useNetworkStore((s) => s.snapshot?.match_state?.phase ?? s.snapshot?.match_clock?.phase);
+  const phase = useMotionView((s) => s.snapshot?.match_state?.phase ?? s.snapshot?.match_clock?.phase);
   if (remaining === null || !Number.isFinite(remaining)) return null;
   const seconds = Math.max(0, Math.ceil(remaining));
   return (

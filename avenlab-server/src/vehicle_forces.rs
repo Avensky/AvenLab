@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::sync::{OnceLock, atomic::{AtomicU32, Ordering}};
 use rapier3d::math::Rotation;
 use rapier3d::prelude::*;
@@ -68,11 +67,11 @@ struct ImpulseAccumulator {
 
 impl ImpulseAccumulator {
     fn new() -> Self { Self { linear: Vec::with_capacity(8), at_points: Vec::with_capacity(8) } }
-    fn apply(self, body: &mut RigidBody) {
+    fn apply(&mut self, body: &mut RigidBody) {
         // This is the only custom impulse application point for a vehicle in
         // this substep. Each queued impulse is consumed exactly once.
-        for j in self.linear { body.apply_impulse(j, true); }
-        for (j, p) in self.at_points { body.apply_impulse_at_point(j, p, true); }
+        for j in self.linear.drain(..) { body.apply_impulse(j, true); }
+        for (j, p) in self.at_points.drain(..) { body.apply_impulse_at_point(j, p, true); }
     }
 }
 
@@ -80,6 +79,15 @@ impl PhysicsWorld {
     /// Sense and solve each substep. Snapshot geometry is refreshed separately
     /// after Rapier finishes integrating the outer step.
     pub(crate) fn apply_vehicle_forces(&mut self, dt: Real) {
+        // Reuse per-call buffers across vehicles; no data survives a substep.
+        let mut thermal_dt=0.0;
+        if self.tire_thermals {
+            self.tire_sample_elapsed+=dt;
+            if self.tire_sample_elapsed>=0.1 { thermal_dt=std::mem::take(&mut self.tire_sample_elapsed); }
+        }
+        let mut impulses = ImpulseAccumulator::new();
+        let mut contacts = Vec::with_capacity(4);
+        let mut suspension_contacts: Vec<(WheelId, SuspensionContact)> = Vec::with_capacity(4);
         for (&handle, wheels) in self.wheels.iter_mut() {
             let Some(body_ro) = self.bodies.get(handle) else { continue };
             let Some(player_id) = self.body_to_player.get(&handle) else { continue };
@@ -129,15 +137,15 @@ impl PhysicsWorld {
             }
 
             let drive_top_speed=if vehicle.powertrain.thermal_recovery{(vehicle.config.max_speed*0.35).min(8.0)}else{vehicle.config.max_speed*ram_speed};
-            let mut impulses = ImpulseAccumulator::new();
+            contacts.clear();
+            suspension_contacts.clear();
             let body_mass = body_ro.mass() as f32;
             // N per wheel at the nominal equal-load state. Actual spring/ARB
             // loads below control grip; this reference is only a scaling basis.
             let fz_ref = body_mass * 9.81 / wheels.len() as f32;
-            let mut contacts = Vec::with_capacity(wheels.len());
-            let mut suspension_contacts: Vec<(WheelId, SuspensionContact)> = Vec::with_capacity(wheels.len());
-            let mut compression = HashMap::new();
-            let mut loads = HashMap::new();
+            let mut compression = [None;4];
+            let mut loads = [0.0;4];
+            let thermal=self.tire_thermals && !vehicle.config.tracked;
 
             let cfg = steering_config(vehicle);
             let guard_steering=if guarding {(1.0/(1.0+longitudinal_speed.abs()/120.0)).max(0.75)}else{1.0};
@@ -158,6 +166,7 @@ impl PhysicsWorld {
                     wheel, &vehicle.steering, body_ro, &self.query_pipeline,
                     &self.bodies, &self.colliders, handle, fz_ref,
                 ) else {
+                    if thermal && thermal_dt>0.0 {wheel.thermal.step(thermal_dt,vehicle.config.resources.ambient_c,longitudinal_speed,0.0,0.0,0.0);}
                     wheel.grounded = false;
                     wheel.compression = 0.0;
                     wheel.compression_ratio = 0.0;
@@ -182,8 +191,16 @@ impl PhysicsWorld {
                     continue;
                 };
 
-                compression.insert(id, contact.compression);
-                loads.insert(id, contact.normal_force);
+                let grip=if thermal {
+                    if thermal_dt>0.0 {
+                        let sliding=if wheel.tire_state==crate::aven_tire::state::TireState::Slide {0.25*contact.v_long.abs()} else {0.0};
+                        let brake=vehicle.brake.max(if !id.is_front(){handbrake}else{0.0});
+                        wheel.thermal.step(thermal_dt,vehicle.config.resources.ambient_c,contact.v_long,contact.normal_force/fz_ref.max(1.0),contact.v_lat.abs()+sliding,brake);
+                    }
+                    wheel.thermal.grip
+                } else {1.0};
+                compression[id.index()] = Some(contact.compression);
+                loads[id.index()] = contact.normal_force;
                 wheel.grounded = true;
                 wheel.compression = contact.compression;
                 wheel.compression_ratio = contact.compression_ratio;
@@ -207,7 +224,7 @@ impl PhysicsWorld {
                     v_long: contact.v_long, v_lat: contact.v_lat,
                     normal_force: contact.normal_force,
                     // mu_lat is finalized once below AFTER anti-roll changes Fz.
-                    mu_lat: vehicle.config.mu_base, mu_long: vehicle.config.mu_base,
+                    mu_lat: vehicle.config.mu_base, mu_long: vehicle.config.mu_base*grip,
                     // Legacy field retained for tire API compatibility. solve_step
                     // applies full lateral impulse at contact and ignores this.
                     roll_factor: 1.0,
@@ -238,19 +255,18 @@ impl PhysicsWorld {
             // telemetry. Anti-roll redistributes spring support; do not apply a
             // second independent ARB force/torque as well as these changed loads.
             for wheel in wheels.iter_mut() {
-                wheel.normal_force = loads.get(&WheelId::from_debug(&wheel.debug_id))
-                    .copied().unwrap_or(0.0);
+                wheel.normal_force = loads[WheelId::from_debug(&wheel.debug_id).index()];
             }
             for (id, contact) in &suspension_contacts {
-                let force = loads.get(id).copied().unwrap_or(0.0);
+                let force = loads[id.index()];
                 impulses.at_points.push((contact.ground_normal * force * dt, contact.apply_point));
             }
             for contact in &mut contacts {
                 // Load sensitivity has one owner, after load redistribution.
                 // Previously the contact builder computed this and we overwrote it.
-                contact.normal_force = loads.get(&contact.wheel).copied().unwrap_or(0.0);
+                contact.normal_force = loads[contact.wheel.index()];
                 let ratio = (contact.normal_force / fz_ref.max(1.0e-6)).max(0.2);
-                let mu = vehicle.config.mu_base;
+                let mu = contact.mu_long;
                 contact.mu_lat = (mu * ratio.powf(-vehicle.config.load_sensitivity))
                     .clamp(mu * 0.6, mu * 1.1);
                 if guarding && handbrake>0.2 && longitudinal_speed.abs()>8.0
@@ -447,6 +463,7 @@ impl PhysicsWorld {
                         steering: wheel.steer, drive: wheel.drive, rotation: wheel.world_rotation,
                         wheel_speed: wheel.wheel_speed, steer_angle: wheel.steer_angle,
                         v_long, v_lat, slip_angle, slip_ratio,
+                        tire: (self.tire_thermals && !vehicle.config.tracked).then_some([wheel.thermal.temp_c,wheel.thermal.psi]),
                     });
                 }
                 if wheel.grounded {

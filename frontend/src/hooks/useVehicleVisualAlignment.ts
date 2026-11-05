@@ -1,3 +1,4 @@
+import { useConnectionView, useMotionView } from "../store/session/networkViews";
 import { useLayoutEffect, useRef, type RefObject } from "react";
 import type { Group, Object3D } from "three";
 import { snapshotEntity, useNetworkStore } from "../store/session/networkStore";
@@ -16,11 +17,11 @@ export function useVehicleVisualAlignment(
   wheels: readonly (Object3D | null)[],
   preview = false,
 ) {
-  const localId = useNetworkStore((s) => s.playerId);
+  const localId = useConnectionView(s => s.playerId);
   const id = entityId ?? localId;
   const enabled = useRenderSettingsStore((s) => s.autoVehicleAlignment);
   // Stable scalar metadata prevents this hook from rerendering on every pose.
-  const colliderKey = useNetworkStore((s) => {
+  const colliderKey = useMotionView((s) => {
     const shape = snapshotEntity(s.snapshot, id)?.collider;
     return shape
       ? JSON.stringify([shape.chassis_offset, shape.nominal_wheel_center_y])

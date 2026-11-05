@@ -1,3 +1,4 @@
+import {SnapshotDecoder} from './snapshotDecoder';
 import {useScoreboardStore} from "../store/hud/scoreboardStore";
 import {receiveMatchResult} from "../store/session/matchResultsStore";
 // One socket owner. Direct imports avoid loading models/UI/CAN via the store barrel.
@@ -28,6 +29,7 @@ let socket: WebSocket | null = null;
 const packedInputPeers = new WeakSet<WebSocket>();
 export function supportsPackedInput(peer: WebSocket) {return packedInputPeers.has(peer);}
 let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+let setupTimer: ReturnType<typeof setTimeout> | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let reconnectEnabled = false;
 let pingSentMs: number | null = null;
@@ -38,7 +40,7 @@ let vehicleChangeSequence = 0;
 let resumeIntent: {profile:string;world:number;vehicle:string;map:string;mode:ReturnType<typeof useAlphaStore.getState>['mode'];teamSize:3|5;matchId?:string;step:"waiting"|"retained"|"redeploy"|"requested"}|null=null;
 let recoveryTimer:ReturnType<typeof setTimeout>|null=null;
 let foregroundTimer:ReturnType<typeof setTimeout>|null=null;
-let lastPacketMs=0,lastLocalBodyMs=0,foregroundGraceUntil=0,hadLocalBody=false,missingBodySince:number|null=null;
+let lastPacketMs=0,foregroundGraceUntil=0,hadLocalBody=false,missingBodySince:number|null=null;
 function forgetRecovery(){resumeIntent=null;if(recoveryTimer!==null)clearTimeout(recoveryTimer);recoveryTimer=null;}
 function failRecovery(message:string){
  const intent=resumeIntent;forgetRecovery();hadLocalBody=false;missingBodySince=null;
@@ -292,6 +294,8 @@ function getRustWsUrl() {
 }
 
 function clearTimers() {
+  if (setupTimer !== null) clearTimeout(setupTimer);
+  setupTimer = null;
   if(foregroundTimer!==null)clearTimeout(foregroundTimer);foregroundTimer=null;
   if (heartbeatTimer !== null) clearInterval(heartbeatTimer);
   if (reconnectTimer !== null) clearTimeout(reconnectTimer);
@@ -376,6 +380,7 @@ export function connectRustServer(): WebSocket {
     return socket;
   clearTimers();
   clearSession();
+  const decoder = new SnapshotDecoder();
   const connection = new WebSocket(getRustWsUrl());
   socket = connection;
   let pendingResult: unknown;
@@ -396,17 +401,27 @@ export function connectRustServer(): WebSocket {
     handleLoss();
     connection.close();
   };
+  // CONNECTING and an upgraded socket without welcome both need a deadline.
+  // Otherwise the single-socket guard prevents any later reconnect attempt.
+  setupTimer = setTimeout(retrySocket, 15000);
 
   connection.onopen = () => {
     if (!isCurrent()) return;
+    lastPacketMs = performance.now();
     useNetworkStore.getState().setConnected(true);
     setSocialConnection(connection);
     heartbeatTimer = setInterval(() => {
       const now=performance.now();
-      if(isCurrent()&&document.visibilityState!=='hidden'&&now>foregroundGraceUntil&&hadLocalBody&&!resumeIntent&&useUIStore.getState().screen==='sandbox'&&!useUIStore.getState().isModeLoading&&now-lastLocalBodyMs>8000){
+      // Menus have no local physics body. Detect a silent established socket
+      // there as well, while giving resumed background tabs their usual grace.
+      if (isCurrent() && document.visibilityState !== 'hidden' &&
+          now > foregroundGraceUntil && now - lastPacketMs > 15000) {
         retrySocket();
         return;
       }
+      // Match completion deliberately stops snapshots. A paused world with a
+      // responsive transport is not a disconnect. Missing-body snapshots have
+      // their own recovery path; silence is handled by the deadline above.
       if (
         !isCurrent() ||
         connection.readyState !== WebSocket.OPEN ||
@@ -416,7 +431,8 @@ export function connectRustServer(): WebSocket {
       // Application pong has no timestamp, so allow one outstanding RTT measurement.
       if (pingSentMs !== null) return;
       pingSentMs = performance.now();
-      connection.send(JSON.stringify({ type: "ping" }));
+      try { connection.send(JSON.stringify({ type: "ping" })); }
+      catch { retrySocket(); }
     }, 5000);
   };
 
@@ -440,6 +456,17 @@ export function connectRustServer(): WebSocket {
       return;
     }
     if (!message || typeof message !== "object") return;
+    const masked = message.type === 'snapshot_compact' || message.type === 'snapshot_delta';
+    if (masked) {
+      message = decoder.decode(message,useNetworkStore.getState().playerId);
+      if (!message) {
+        if(decoder.takeResyncRequest()) {
+          try {connection.send(JSON.stringify({type:'snapshot_format',version:1}));}
+          catch {retrySocket();}
+        }
+        return;
+      }
+    }
     packetDiagnostics.decodeMs = Math.max(0, performance.now() - receivedMs);
     packetDiagnostics.worstDecodeMs = Math.max(
       packetDiagnostics.worstDecodeMs,
@@ -454,6 +481,9 @@ export function connectRustServer(): WebSocket {
       );
     const state = useNetworkStore.getState();
     switch (message.type) {
+      case "driver":
+        if(message.world_id===state.room_id && decoder.receiveDriver(message)) acknowledgeInput(message.data[0],receivedMs);
+        return;
       case "pong":
         if (pingSentMs !== null) {
           state.setPingMs(receivedMs - pingSentMs);
@@ -463,7 +493,12 @@ export function connectRustServer(): WebSocket {
         return;
       case "welcome":
         if (typeof message.player_id !== "string") return;
+        if (setupTimer !== null) clearTimeout(setupTimer);
+        setupTimer = null;
         if (message.packed_input_version === 1) packedInputPeers.add(connection);
+        if (message.compact_snapshot_version === 1) {
+          connection.send(JSON.stringify({type:'snapshot_format',version:1}));
+        }
         state.setPlayerId(message.player_id);
         useNetworkStore.setState({
           team: message.team === "red" ? "red" : "blue",
@@ -512,6 +547,7 @@ export function connectRustServer(): WebSocket {
         }
         return;
       case "world_changed":
+        decoder.reset();
         if(!message.world&&hadLocalBody&&!resumeIntent&&useUIStore.getState().screen==='sandbox'&&!['leave_game','match_results'].includes(useUIStore.getState().overlay??''))failRecovery('The server closed your physics world. Your previous game mode is selected; deploy when ready.');
         hadLocalBody=false;missingBodySince=null;
         state.resetWorld();
@@ -535,6 +571,7 @@ export function connectRustServer(): WebSocket {
           return;
         // Preserve simulation_time_s/tick_dt_s instead of rebuilding tick/entities only.
         if (isSnapshot(message.data)) {
+          if(state.snapshot && message.data.tick<=state.snapshot.tick)return;
           packetDiagnostics.snapshotChars =
             typeof event.data === "string" ? event.data.length : 0;
           const previousReceipt = state.snapshot?.received_at_ms;
@@ -561,10 +598,7 @@ export function connectRustServer(): WebSocket {
           );
           if(message.data.match_state?.match_id && message.data.match_state.match_id !== state.snapshot?.match_state?.match_id)useScoreboardStore.getState().resetView();
           state.setSnapshot(message.data, receivedMs);
-          const me = message.data.entities.find(
-            (entity: PhysicsSnapshot["entities"][number]) =>
-              entity.id === state.playerId,
-          );
+          const me = useNetworkStore.getState().getMe() ?? undefined;
           if (recorder.enabled || recorder.capturing) {
             const handling = handlingSample(me);
             recorder.record("bodyRollDeg", handling.bodyRollDeg, receivedMs);
@@ -574,12 +608,12 @@ export function connectRustServer(): WebSocket {
               receivedMs,
             );
           }
-          if(me){hadLocalBody=true;lastLocalBodyMs=receivedMs;missingBodySince=null;resumeDeployment();}
+          if(me){hadLocalBody=true;missingBodySince=null;resumeDeployment();}
           else if(hadLocalBody&&!resumeIntent&&useUIStore.getState().screen==='sandbox'&&useUIStore.getState().overlay!=='match_results'&&!useUIStore.getState().isModeLoading){
             missingBodySince??=receivedMs;
             if(receivedMs-missingBodySince>1500)failRecovery('Your physics body is no longer available. Returned to your previous game mode; choose deploy to start again.');
           }
-          acknowledgeInput(me?.last_input_seq, performance.now());
+          if(!masked) acknowledgeInput(me?.last_input_seq, receivedMs);
         }
         return;
       case "map_snapshot": {

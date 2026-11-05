@@ -16,7 +16,11 @@ mod support;
 mod aven_tire;
 mod cockpit;
 mod net;
+mod outbox;
 mod packed_input;
+mod snapshot_wire;
+mod snapshot_delta;
+mod tire_thermals;
 mod physics;
 mod powertrain;
 mod spawn;
@@ -35,6 +39,7 @@ mod capacity_bench;
 mod server;
 mod social;
 mod world_sessions;
+mod world_scheduler;
 
 use crate::{physics::SIMULATION_HZ, server::Server};
 use std::sync::Arc;
@@ -65,23 +70,20 @@ async fn main() -> anyhow::Result<()> {
     ticker.set_missed_tick_behavior(MissedTickBehavior::Skip);
     let trace = vehicle_forces::contact_trace_enabled();
     let mut tick = 0u64;
+    let mut scheduler = world_scheduler::WorldScheduler::default();
     loop {
         ticker.tick().await;
         let started = std::time::Instant::now();
         // Copy only Arc handles under the registry lock. Map loading, password
         // hashing, persistence and socket I/O never hold the physics tick lock.
-        let worlds: Vec<_> = server.runtimes.lock().await.values().cloned().collect();
-        let mut bytes = 0;
-        for world in &worlds {
-            let wait = std::time::Instant::now();
-            let mut room = world.lock().await;
-            bytes += room.tick(wait.elapsed().as_secs_f64() * 1000.0);
-        }
+        let worlds: Vec<_> = server.runtimes.lock().await.iter().map(|(&id,room)|(id,room.clone())).collect();
+        let world_count=worlds.len();
+        let bytes=scheduler.schedule(worlds).await?;
         tick += 1;
         if trace && tick % 60 == 0 {
             println!(
                 "[server] worlds={} total_ms={:.2} frame_bytes={}",
-                worlds.len(),
+                world_count,
                 started.elapsed().as_secs_f64() * 1000.0,
                 bytes
             );

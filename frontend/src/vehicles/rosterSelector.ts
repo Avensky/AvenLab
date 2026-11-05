@@ -10,7 +10,10 @@ function sameShape(a?:VehicleColliderShape,b?:VehicleColliderShape) {
 /** Metadata is stable while poses, telemetry and combat stats stream in. */
 export function createRosterSelector() {
   let rows:RosterEntity[]=[];
+  let previous: PhysicsSnapshot | null = null;
   return ({snapshot}:{snapshot:PhysicsSnapshot|null})=>{
+    if (snapshot === previous) return rows;
+    previous = snapshot;
     const entities=snapshot?.entities;
     if(!entities?.length){if(rows.length)rows=[];return rows;}
     if(entities.length===rows.length && entities.every((entity,i)=>{

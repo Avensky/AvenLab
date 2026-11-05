@@ -13,3 +13,8 @@ Import the public API from `store/world/index.ts`. Modules inside this section u
 The world editor owns its draft in worldBuilder/state; changing Editing world never changes this live map. Mission adapters set/clear navigationStore.mission; GPS destination stays separate. For a new map, add the selection catalog entry and install its Rust collider definition.
 
 See [all state owners](../README.md) and the [project guide](../../../../docs/PROJECT_GUIDE.md).
+
+## Update frequency by store
+
+- [useNavigationStore](navigationStore.README.md)
+- [useWorldStore](worldStore.README.md)

@@ -1,3 +1,4 @@
+import { useConnectionView } from "../store/session/networkViews";
 import { ControllerButton, MenuShortcuts } from "../components/controller";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { inputRef, useInputStore } from "../store/input/inputStore";
@@ -93,7 +94,7 @@ function Readout() {
   const rendering = useRenderSettingsStore();
   const interpolation = useDebugViewStore((s) => s.interpolationEnabled);
   const map = useWorldStore((s) => s.map);
-  const connected = useNetworkStore((s) => s.connected);
+  const connected = useConnectionView(s => s.connected);
   const overlay = useUIStore((s) => s.overlay);
   const [exportOpen, setExportOpen] = useState(false),
     [copyStatus, setCopyStatus] = useState("");

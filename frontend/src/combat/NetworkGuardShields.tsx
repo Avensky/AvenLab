@@ -1,3 +1,4 @@
+import { useMotionView } from "../store/session/networkViews";
 import {useRef} from 'react';
 import {useFrame} from '@react-three/fiber';
 import {DoubleSide,type Group,type Mesh,type MeshBasicMaterial} from 'three';
@@ -8,7 +9,7 @@ import {GUARD_ARC_HALF_ANGLE,guardShieldTransform,sampleGuardBreak,type GuardBre
 
 function GuardShield({player}:{player:string}){
  const root=useRef<Group>(null),sheet=useRef<Mesh>(null),material=useRef<MeshBasicMaterial>(null);
- const panel=useNetworkStore(s=>snapshotEntity(s.snapshot, player)?.guard?.panel?.length===4);
+ const panel=useMotionView(s=>snapshotEntity(s.snapshot, player)?.guard?.panel?.length===4);
  const bubble=useRef<Mesh>(null);
  const broken=useRef<GuardBreakState>({sequence:null,at:-Infinity});
  const {getInterpolated}=useVehiclePhysicsInterpolator(player);
@@ -57,7 +58,7 @@ function GuardShield({player}:{player:string}){
 /** Stable entity membership only. Timers/poses are read inside the frame loop,
  * with shared interpolation and one small reusable arc per eligible body. */
 export function NetworkGuardShields(){
- const ids=useNetworkStore(state=>{
+ const ids=useMotionView(state=>{
   const room=state.getMe()?.room_id??state.room_id;
   return state.connected?(state.snapshot?.entities??[]).filter(entity=>entity.room_id===room&&(entity.vehicle_id==='brz'||entity.vehicle_id==='tank'||(entity.guard?.dive_remaining_s??0)>0)).map(entity=>entity.id).sort().join('\0'):'';
  });

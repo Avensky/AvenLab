@@ -25,3 +25,7 @@ Cockpit → Radio and Ignition now expose the same Show/Hide HUD switches as Set
 `PreferenceUpdate` accepts partial HUD maps. `update` validates a merged preference snapshot, then publishes only changed top-level values using shallow equality. Unchanged HUD maps, bindings and favorite arrays retain their references, and a repeated identical edit does not notify subscribers or write storage. This prevents brightness edits from rerendering the entire driving HUD. Every visibility shortcut uses the same action so compatibility aliases stay synchronized.
 
 `assistHudLayout` defaults to `three`; `extended` keeps the larger bank as a saved option for later work. Cockpit Drive owns the switch and `hudGroups.assists` visibility control, sharing state with Research/Settings. `climateHudSize=compact` hides dials; choosing it in Climate enables the inner hazard button while leaving the master visibility unchanged. Full restores knobs, and the cockpit preview follows the selected size immediately.
+
+## Update frequency by store
+
+- [usePreferencesStore](preferencesStore.README.md)

@@ -1,3 +1,4 @@
+import { useConnectionView, useDiagnosticsView, useMotionView } from "../store/session/networkViews";
 import {CtfFlagMarkers} from "../game/stats/CtfFlagMarkers";
 import { VehicleHealthMarkers } from "../combat/VehicleHealthMarkers";
 import { NetworkWeapons } from "../combat/NetworkWeapons";
@@ -11,7 +12,7 @@ import { DebugAntiRollBarVisualizer } from "../components/debugger/DebugAntiRoll
 import { DebugSlipAngleVisualizer } from "../components/debugger/DebugSlipAngleVisualizer";
 import { DebugSpringVisualizer } from "../components/debugger/DebugSpringVisualizer";
 import { DebugFlags, hasDebugFlag } from "../store/world/debugMasks";
-import { useNetworkStore, useWorldStore } from "../store";
+import {useWorldStore} from "../store";
 import { useDebugViewStore } from "../store/presentation/debugViewStore";
 import { VehicleRoster } from "./VehicleRoster";
 
@@ -32,11 +33,11 @@ export function VehicleScene() {
 
 function VehicleDiagnostics() {
   // Membership/diagnostics may rerender; poses belong to frame callbacks.
-  const hasSnapshot = useNetworkStore((s) => s.snapshot !== null);
-  const playerId = useNetworkStore((s) => s.playerId);
+  const hasSnapshot = useMotionView((s) => s.snapshot !== null);
+  const playerId = useConnectionView(s => s.playerId);
   // Force/ray diagnostics stay raw. Chassis and wheel poses now share
   // the GLB/camera timeline; OFF exposes raw poses for contact inspection.
-  const debug = useNetworkStore((s) => s.debugOverlay);
+  const debug = useDiagnosticsView((s) => s.debugOverlay);
 
   const playerScope = useDebugViewStore((s) => s.playerScope);
 

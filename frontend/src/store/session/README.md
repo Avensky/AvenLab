@@ -18,3 +18,13 @@ World migration uses resetWorld to clear old ticks/poses/diagnostics while keepi
 the socket and player identity. rustSocket filters world-tagged snapshots and
 resets vehicle setup, map and old packed controls before accepting a new world.
 Social metadata belongs to store/social and does not follow physics updates.
+
+The compact transport has one shared motion stream (~30 Hz), a changed-value owner-only driver stream (ordinary telemetry up to 10 Hz), and explicit diagnostics (up to 10 Hz). Driver fuel, engine temperature/torque, input ack and cockpit/cabin controls are not present on remote entities. Read the local body through getMe(); do not mirror its transform into physicsData. That field is a fallback for old servers before the first authoritative snapshot. Details and scope rules: [Snapshot transport](../../../../docs/NETWORK-SNAPSHOT-PROTOCOL.md).
+
+## Update frequency by store
+
+- [useMatchResultsStore](matchResultsStore.README.md)
+- [useNetworkStore](networkStore.README.md)
+- [useVehicleConfigStore](vehicleConfigStore.README.md)
+
+Use the [network subscription groups](networkViews.README.md) for new UI subscriptions. Pick connection for menu identity, motion for live vehicle data and diagnostics for requested inspector data.

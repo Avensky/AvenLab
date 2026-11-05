@@ -15,3 +15,10 @@ Import the public API from `store/presentation/index.ts`. Modules inside this se
 Change graphics defaults here, then verify the renderer consumer. Visual overrides do not alter Rapier shapes. Keep frame-rate camera values out of React menus; read getState()/refs inside animation loops.
 
 See [all state owners](../README.md) and the [project guide](../../../../docs/PROJECT_GUIDE.md).
+
+## Update frequency by store
+
+- [useDebugViewStore](debugViewStore.README.md)
+- [useGameStore](gameStore.README.md)
+- [useRenderSettingsStore](renderSettingsStore.README.md)
+- [useVisualAlignmentStore](visualAlignmentStore.README.md)

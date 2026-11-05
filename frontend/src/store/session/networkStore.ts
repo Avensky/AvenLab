@@ -168,9 +168,9 @@ export interface PhysicsEntitySnapshot {
   speed: number;
   rpm: number;
   gear: number;
-  fuel: number;
-  temp: number;
-  engine_torque: number;
+  fuel?: number;
+  temp?: number;
+  engine_torque?: number;
 
   // Optional availability contract for future drivetrain/resource models.
   // Missing mask means RPM/gear/fuel/temp are legacy placeholders, not readings.
@@ -225,6 +225,7 @@ export interface DebugSlipRay {
 }
 
 export interface DebugWheel {
+  tire?: [number, number]; // tread temperature °C and gauge PSI, only when enabled
   player_id: string;
   id?: string; // Backend wheel identity; optional for older debug packets.
   center: [number, number, number];
@@ -311,22 +312,6 @@ export interface NetworkState {
   setDebugOverlay: (dbg: DebugOverlay, tick?: number) => void;
 }
 
-function telemetry(me: PhysicsEntitySnapshot | undefined): PhysicsData | null {
-  return me
-    ? {
-        speed: me.speed,
-        rpm: me.rpm,
-        gear: me.gear,
-        fuel: me.fuel,
-        temp: me.temp,
-        engineTorque: me.engine_torque,
-        vehicleMask: me.vehicle_mask,
-        playerMask: me.player_mask,
-        wheels: me.wheels,
-      }
-    : null;
-}
-
 // Clearing a session is also what allows a restarted server to begin at tick zero.
 // Keep actions out of this object so Zustand merges retain their stable identities.
 const emptySession = {
@@ -394,13 +379,12 @@ export const useNetworkStore = create<NetworkState>((set, get) => ({
     if (state.tick !== null && snap.tick <= state.tick) return;
     const previousReceipt = state.snapshot?.received_at_ms;
     const received = { ...snap, received_at_ms: receivedMs };
-    const me = snapshotEntity(received, state.playerId);
     set({
       snapshot: received,
       tick: snap.tick,
       snapshotIntervalMs:
         previousReceipt === undefined ? null : receivedMs - previousReceipt,
-      physicsData: telemetry(me),
+      physicsData: null, // legacy fallback only; gauges read their sampled store
     });
   },
   // Compatibility with older servers only. Once snapshots exist, their local
@@ -410,8 +394,7 @@ export const useNetworkStore = create<NetworkState>((set, get) => ({
   },
   setPingMs: (pingMs) => set({ pingMs }),
   setPlayerId: (playerId) => {
-    const me = snapshotEntity(get().snapshot, playerId);
-    set({ playerId, physicsData: telemetry(me) });
+    if (get().playerId!==playerId) set({playerId});
   },
 
   getMe() {

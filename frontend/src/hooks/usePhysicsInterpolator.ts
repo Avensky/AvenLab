@@ -1,3 +1,4 @@
+import { useConnectionView, useMotionView } from "../store/session/networkViews";
 // Render completed backend poses on a short timeline; never simulate forces here.
 import { useCallback, useEffect, useRef } from "react";
 import { blendCombatAim, blendYaw } from '../combat/turretPresentation';
@@ -348,7 +349,7 @@ function retainVehicleTimeline() {
     const state = useNetworkStore.getState();
     blockedSnapshot = state.connected ? null : state.snapshot;
     lastSnapshot = null;
-    unsubscribeNetwork = useNetworkStore.subscribe(ingestVehicles);
+    unsubscribeNetwork = useMotionView.subscribe(ingestVehicles);
     ingestVehicles();
   }
   return () => {
@@ -396,7 +397,7 @@ export function useVehiclePhysicsInterpolator(
   entityId?: string,
   delayMs = DEFAULT_INTERPOLATION_DELAY_MS,
 ) {
-  const playerId = useNetworkStore((state) => state.playerId);
+  const playerId = useConnectionView(state => state.playerId);
   const id = entityId ?? playerId;
   useEffect(retainVehicleTimeline, []);
 

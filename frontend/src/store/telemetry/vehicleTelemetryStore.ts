@@ -212,14 +212,14 @@ export function updateVehicleTelemetry(now = performance.now()) {
   const config =
     useVehicleConfigStore.getState().byPlayer[network.playerId] ??
     DEFAULT_GAUGE_CONFIG;
+  const me = network.getMe();
   const data = projectVehicleTelemetry(
-    network.getMe(),
+    me,
     network.connected,
     network.snapshot?.received_at_ms,
     now,
     config,
   );
-  const me = network.getMe();
   const session = network.connected && me ? `${network.playerId}:${me.room_id}:${me.vehicle_id}` : '';
   const instrumentPower = instrumentContinuity(session, data, network.snapshot?.received_at_ms, now);
   // Keep the key present so the primitive-diff sampler also notices expiry.

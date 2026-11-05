@@ -1,3 +1,4 @@
+import type { MotionState } from "../store/session/networkViews";
 import {create} from 'zustand';
 import {requestSocial} from '../net/socialClient';
 import {useNetworkStore,type PhysicsEntitySnapshot,type PhysicsSnapshot} from '../store/session/networkStore';
@@ -11,7 +12,7 @@ const validPosition=(entity:PhysicsEntitySnapshot)=>entity.position?.length===3&
 const living=(entity:PhysicsEntitySnapshot)=>entity.health?.defeated===false&&Number.isFinite(entity.health.hp)&&entity.health.hp>0;
 /** A chassis alone cannot grant the ability: actual server-confirmed hero and
  * world membership distinguish a Mechanic from an ordinary BRZ. */
-export function isMechanicPlayer(network=useNetworkStore.getState(),view:SocialView|null=useSocialStore.getState().view){
+export function isMechanicPlayer(network: MotionState = useNetworkStore.getState(),view:SocialView|null=useSocialStore.getState().view){
  const me=network.getMe(),active=view?.alpha?.active;
  return Boolean(network.connected&&me?.vehicle_id==='fortuner'&&active?.hero==='mechanic'&&active.world_id===me.room_id&&(network.room_id===null||network.room_id===me.room_id)&&active.team===me.team);
 }

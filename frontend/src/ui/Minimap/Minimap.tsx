@@ -1,3 +1,4 @@
+import { useMotionView } from "../../store/session/networkViews";
 import {useRenderSettingsStore} from '../../store/presentation/renderSettingsStore';
 import {MapPlayerMarkers} from "./MapPlayerMarkers";
 import { useHudPanelsStore } from "../../store/hud/hudPanelsStore";
@@ -15,7 +16,7 @@ import {
   roadRoute,
   pathDistance,
 } from "../../navigation/roadNavigation";
-import { useNetworkStore, type DebugAabbBox } from "../../store/session/networkStore";
+import {type DebugAabbBox} from "../../store/session/networkStore";
 
 const RoadLayer = memo(function RoadLayer({
   roads,
@@ -55,7 +56,7 @@ const MissionReadout = memo(function MissionReadout() {
   const mission = useNavigationStore((s) => s.mission),
     hasDestination = useNavigationStore((s) => s.destination !== null),
     sandbox = useUIStore((s) => s.screen === "sandbox");
-  const match = useNetworkStore(s => Boolean(s.snapshot?.match_state));
+  const match = useMotionView(s => Boolean(s.snapshot?.match_state));
   if (match && !mission && !hasDestination) return null;
   const title = mission?.title ?? (sandbox ? "SANDBOX" : "NAVIGATION"),
     objective =

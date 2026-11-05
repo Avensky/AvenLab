@@ -67,6 +67,8 @@ pub struct Group {
 #[derive(Clone, Serialize, Deserialize)]
 pub struct World {
     #[serde(default)]
+    pub tire_thermals: bool,
+    #[serde(default)]
     pub mode: Option<crate::alpha::Mode>,
     pub id: usize,
     pub name: String,

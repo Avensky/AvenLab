@@ -1,8 +1,9 @@
+import { useConnectionView } from "../store/session/networkViews";
 import { useGameStore } from "../store/presentation/gameStore";
 import { useEffect } from "react";
 import { useUIStore } from "../store/menus/uiStore";
 import { useCanDataStore } from "../store/recon/canDataStore";
-import { useNetworkStore } from "../store/session/networkStore";
+
 import { usePerformanceOverlayStore } from "../performance/performanceOverlayStore";
 import { canDrive } from "./inputRouting";
 import { useTextKeyboardStore } from "../store/text/keyboardStore";
@@ -20,7 +21,7 @@ export function useControlRelease(release: () => void) {
     const ui = useUIStore.subscribe(blocked),
       can = useCanDataStore.subscribe(blocked),
       inspector = usePerformanceOverlayStore.subscribe(blocked);
-    const network = useNetworkStore.subscribe((state, previous) => {
+    const network = useConnectionView.subscribe((state, previous) => {
       if (previous.connected && !state.connected) release();
     });
     window.addEventListener("blur", release);

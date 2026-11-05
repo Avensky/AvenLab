@@ -1,4 +1,4 @@
-import {useNetworkStore} from '../../store/session/networkStore';
+import { useMotionView } from "../../store/session/networkViews";
 import { memo, useEffect, useLayoutEffect, useRef } from "react";
 import { useShallow } from "zustand/react/shallow";
 import {
@@ -17,8 +17,8 @@ import "./dashboard.css";
 
 // Position/yaw and unrelated controls must not redraw all three instrument faces.
 const SpeedInstrument = memo(function SpeedInstrument() {
-  const tank=useNetworkStore(s=>s.getMe()?.vehicle_id==='tank');
-  const ram=useNetworkStore(s=>(s.getMe()?.combat?.ram_remaining??0)>0);
+  const tank=useMotionView(s=>s.getMe()?.vehicle_id==='tank');
+  const ram=useMotionView(s=>(s.getMe()?.combat?.ram_remaining??0)>0);
   const d = useVehicleTelemetryStore(
       useShallow((s) => ({
         speed: s.data.speedKph,

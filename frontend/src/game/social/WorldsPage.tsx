@@ -29,6 +29,7 @@ export function WorldsPage({
   const [password, setPassword] = useState(""),
     [listed, setListed] = useState(false),
     [capacity, setCapacity] = useState(10);
+  const [tireThermals,setTireThermals] = useState(false);
   const [code, setCode] = useState(
       () =>
         useSocialStore.getState().entryCode ||
@@ -69,7 +70,7 @@ export function WorldsPage({
   const create = async () => {
     const created = await command(
       "world_create",
-      { name, map, password, listed, max_players: capacity },
+      { name, map, password, listed, max_players: capacity, tire_thermals:tireThermals },
       "World saved",
     );
     if (!created) return;
@@ -232,6 +233,8 @@ export function WorldsPage({
               SHOW IN WORLD BROWSER
             </label>
           </div>
+          <label className="social-check"><input type="checkbox" checked={tireThermals}
+            onChange={event=>setTireThermals(event.currentTarget.checked)} /> SIMULATE TIRE HEAT AND PRESSURE</label>
           <AssistedInput
             label="PASSWORD · OPTIONAL"
             value={password}
@@ -299,6 +302,10 @@ export function WorldsPage({
                 )}
                 {world.owner_id === view.profile.id && (
                   <>
+                    <button type="button" className="menu-control" aria-pressed={!!world.tire_thermals}
+                      onClick={()=>void command("world_tire_thermals",{world_id:world.id,enabled:!world.tire_thermals},"World handling updated")}>
+                      TIRE HEAT &amp; PRESSURE: {world.tire_thermals ? "ON" : "OFF"}
+                    </button>
                     <button
                       type="button"
                       className="menu-control"

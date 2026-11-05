@@ -1,3 +1,4 @@
+import { useMotionView } from "../../store/session/networkViews";
 import {useEffect} from 'react';
 import {useUIStore} from '../../store/menus/uiStore';
 import {useNetworkStore} from '../../store/session/networkStore';
@@ -13,7 +14,7 @@ export function MinimapSessionLifecycle(){
    const key=deployed&&match?.phase!=='ended'?`${network.playerId}:${me.room_id}:${match?.match_id??'practice'}:${match?.phase==='running'?'round':'world'}`:null;
    useHudPanelsStore.getState().openMapForSession(key);
   };
-  sync();const network=useNetworkStore.subscribe(sync),ui=useUIStore.subscribe(sync);
+  sync();const network=useMotionView.subscribe(sync),ui=useUIStore.subscribe(sync);
   return()=>{network();ui();};
  },[]);
  return null;

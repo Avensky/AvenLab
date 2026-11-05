@@ -1,10 +1,12 @@
+import type { MotionState } from "../../store/session/networkViews";
+import { useMotionView } from "../../store/session/networkViews";
 import {matchModeLabel,modeTeamSize} from '../../store/alpha/alphaStore';
 import {useCallback,useEffect,useRef,useState,type CSSProperties} from 'react';
 import {isTypingTarget} from '../../controls/inputRouting';
 import {ControllerAction} from '../../components/controller';
 import {useScoreboardStore} from '../../store/hud/scoreboardStore';
 import {useUIStore} from '../../store/menus/uiStore';
-import {useNetworkStore} from '../../store/session/networkStore';
+import {snapshotEntity,useNetworkStore} from '../../store/session/networkStore';
 import {useSocialStore} from '../../store/social/socialStore';
 import {preMatchPlayers,preMatchEnemiesRevealed,scoreboardPlayers,retainScoreboardPlayers,type ScoreboardPlayer} from './scoreboardData';
 import {MatchTeamComposition,MatchStatsTable,MatchPlayerDetails,MatchViewTabs,MatchTeamFilterTabs} from './MatchPresentation';
@@ -13,11 +15,15 @@ import {shallow} from 'zustand/vanilla/shallow';
 import './matchScoreboard.css';
 
 type BoardData={session:string;players:ScoreboardPlayer[];stale:boolean;mode:string;teamSize:3|5};
+function boardSession(state: MotionState) {
+  const room = snapshotEntity(state.snapshot, state.playerId)?.room_id ?? state.room_id ?? '';
+  return `${state.playerId}:${room}`;
+}
 function readBoard():BoardData{
  const network=useNetworkStore.getState(),view=useSocialStore.getState().view;
- const me=network.getMe(),received=network.snapshot?.received_at_ms;
+ const received=network.snapshot?.received_at_ms;
  const staging=useUIStore.getState().screen==='hero_select';
- return {session:`${network.playerId}:${me?.room_id??network.room_id??''}`,players:staging?preMatchPlayers(view,preMatchEnemiesRevealed(view,network.connected)):scoreboardPlayers(network.snapshot,network.playerId,view),
+ return {session:boardSession(network),players:staging?preMatchPlayers(view,preMatchEnemiesRevealed(view,network.connected)):scoreboardPlayers(network.snapshot,network.playerId,view),
   stale:!staging && (received===undefined||!Number.isFinite(received)||performance.now()-received>1000),
   mode:matchModeLabel(view?.alpha?.active?.mode??'practice',view?.alpha?.active?.team_size),teamSize:modeTeamSize(view?.alpha?.active?.mode??'',view?.alpha?.active?.team_size)};
 }
@@ -41,12 +47,15 @@ export function MatchScoreboard({onAbilities}:{onAbilities?:()=>void}){
  useEffect(()=>{if(!visible)setInspect(false);},[visible]);
  useEffect(()=>{if(inspect && back.current?.offsetWidth)back.current.focus();},[inspect]);
 
- const session=useNetworkStore(s=>`${s.playerId}:${s.getMe()?.room_id??s.room_id??''}`);
+ const session=useMotionView(boardSession);
  const [data,setData]=useState<BoardData|null>(null);
  useEffect(()=>{
   const reset=()=>close(),hidden=()=>{if(document.visibilityState==='hidden')reset();};
   const stopUI=useUIStore.subscribe((state,previous)=>{if(state.screen!==previous.screen||state.overlay!==previous.overlay||state.isModeLoading)reset();});
-  const stopNetwork=useNetworkStore.subscribe((state,previous)=>{if(!state.connected||state.playerId!==previous.playerId||(state.getMe()?.room_id??state.room_id)!==(previous.snapshot?.entities.find(entity=>entity.id===previous.playerId)?.room_id??previous.room_id))reset();});
+  const stopNetwork=useMotionView.subscribe((state,previous)=>{
+   const board=useScoreboardStore.getState();
+   if ((board.held || board.pinned) && (!state.connected || boardSession(state)!==boardSession(previous))) reset();
+  });
   window.addEventListener('blur',reset);document.addEventListener('visibilitychange',hidden);
   return()=>{stopUI();stopNetwork();window.removeEventListener('blur',reset);document.removeEventListener('visibilitychange',hidden);close();};
  },[close]);

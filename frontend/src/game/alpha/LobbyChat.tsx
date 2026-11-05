@@ -1,9 +1,10 @@
+import { useConnectionView } from "../../store/session/networkViews";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ControllerButton } from "../../components/controller";
 import { AssistedInput } from "../../components/text/AssistedInput";
 import { useChatStore, type ChatChannel } from "../../store/chat/chatStore";
 import { usePresenceStore } from "../../store/chat/presenceStore";
-import { useNetworkStore } from "../../store/session/networkStore";
+
 import { useTextKeyboardStore } from "../../store/text/keyboardStore";
 import { loadChatHistory, sendChat } from "../../net/chatClient";
 import "./lobbyChat.css";
@@ -14,7 +15,7 @@ const EMPTY: never[] = [];
 export function LobbyChat({ driving = false }: { driving?: boolean }) {
   const profile = useChatStore((s) => s.profile),
     team = useChatStore((s) => s.teamContext);
-  const connected = useNetworkStore((s) => s.connected),
+  const connected = useConnectionView(s => s.connected),
     activity = useChatStore((s) => s.activity);
   const notices=useChatStore(s=>s.notices);
   const events = usePresenceStore((s) => s.events),

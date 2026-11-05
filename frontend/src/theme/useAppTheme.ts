@@ -1,5 +1,6 @@
+import { useMotionView } from "../store/session/networkViews";
 import { HEROES } from "../store/alpha/alphaStore";
-import { useNetworkStore } from "../store/session/networkStore";
+
 import { useHeroLoadouts } from "../vehicles/cosmetics/heroLoadouts";
 import { useEffect } from "react";
 import { usePreferencesStore } from "../store/preferences";
@@ -14,7 +15,7 @@ export function useAppTheme() {
     contrast = usePreferencesStore((s) => s.highContrast),
     scale = usePreferencesStore((s) => s.menuTextScale),
     cosmetics = usePreferencesStore((s) => s.vehicleCosmetics);
-  const body=useNetworkStore(s=>s.getMe()?.appearance?.body);
+  const body=useMotionView(s=>s.getMe()?.appearance?.body);
   const savedBody=useHeroLoadouts(s=>s.loadouts[HEROES.find(h => h.id === s.defaultHero)?.vehicle ?? ""]?.body);
   useEffect(() => {
     applyUITheme(theme);

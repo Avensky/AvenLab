@@ -1,8 +1,10 @@
+import { useConnectionView, useDiagnosticsView, useMotionView } from "../../store/session/networkViews";
+import { createRosterSelector } from "../../vehicles/rosterSelector";
 import { openWorldBuilder } from "../../worldBuilder/state/builderActions";
 import { TabbedMenu, type MenuRow } from "../menus/TabbedMenu";
 import { useUIStore } from "../../store/menus/uiStore";
 import { useWorldStore } from "../../store/world/worldStore";
-import { useNetworkStore } from "../../store/session/networkStore";
+
 import { useDebugViewStore } from "../../store/presentation/debugViewStore";
 import { DebugFlags, hasDebugFlag } from "../../store/world/debugMasks";
 import {
@@ -22,7 +24,7 @@ import {
 import { useCaptureSettingsStore } from "../../performance/captureSettingsStore";
 import { useVisualAlignmentStore } from "../../store/presentation/visualAlignmentStore";
 import { usePerformanceReadout } from "../../performance/usePerformanceReadout";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { requestSandboxService } from "../../net/rustSocket";
 
 const MODES: VisualMode[] = ["collider", "geometry", "glb", "hybrid", "hidden"];
@@ -64,14 +66,18 @@ export function DebugMenu() {
   const mode = useWorldStore((s) => s.mode);
   const mask = useWorldStore((s) => s.debugMask);
   const map = useWorldStore((s) => s.map);
+  const wheels = useDiagnosticsView(s => (mask & DebugFlags.WHEELS) ? s.debugOverlay?.wheels : undefined);
+  const playerId = useConnectionView(s => s.playerId);
+  const tires = useMemo(() => (wheels ?? []).flatMap(wheel =>
+    wheel.player_id === playerId && wheel.tire
+      ? [`${wheel.id} ${Math.round(wheel.tire[0] * 9 / 5 + 32)}°F / ${wheel.tire[1].toFixed(1)} PSI`]
+      : []
+  ).join(" · "), [wheels, playerId]);
   const debug = useDebugViewStore();
   const back = useUIStore((s) => s.backToParentMenu);
   // Entity poses update at network rate; menu membership changes much less often.
-  const rosterKey = useNetworkStore((s) =>
-    JSON.stringify(
-      (s.snapshot?.entities ?? []).map((e) => [e.id, e.vehicle_id]),
-    ),
-  );
+  const selectRoster = useMemo(createRosterSelector, []);
+  const roster = useMotionView(selectRoster);
   const captureSettings = useCaptureSettingsStore();
   const label = captureSettings.label;
   const duration = captureSettings.seconds;
@@ -150,6 +156,7 @@ export function DebugMenu() {
             },
             ...DEBUG_OPTIONS.map(([name, flag]): MenuRow => ({
               id: `debug-${flag}`,
+              description: flag===DebugFlags.WHEELS && tires ? tires : undefined,
               label: `${name} diagnostics`,
               value: hasDebugFlag(mask, flag) ? "On" : "Off",
               adjustable: false,
@@ -196,8 +203,8 @@ export function DebugMenu() {
               disabled: servicing,
               action: service,
             },
-            ...(JSON.parse(rosterKey) as [string, string | null][]).map(
-              ([id, vehicle]): MenuRow => ({
+            ...roster.map(
+              ({id, vehicle_id: vehicle}): MenuRow => ({
                 id: `vehicle-${id}`,
                 label: `Vehicle ${vehicle ?? "unknown"} · ${id.slice(0, 8)}`,
                 value: (settings.vehicleOverrides[id] ?? mode).toUpperCase(),

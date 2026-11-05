@@ -1,4 +1,4 @@
-import {useNetworkStore} from '../store/session/networkStore';
+import { useMotionView } from "../store/session/networkViews";
 import {useSocialStore} from '../store/social/socialStore';
 import {useUIStore} from '../store/menus/uiStore';
 import {usePreferencesStore} from '../store/preferences/preferencesStore';
@@ -15,15 +15,15 @@ import './reviveAction.css';
 
 export function ReviveAction(){
  const view=useSocialStore(state=>state.view);
- const eligible=useNetworkStore(state=>isMechanicPlayer(state,view));
+ const eligible=useMotionView(state=>isMechanicPlayer(state,view));
  const visible=useUIStore(state=>state.screen==='sandbox'&&state.overlay===null&&!state.isModeLoading);
  return visible && eligible ? <MechanicReviveSwitch profile={view?.profile.id??''}/> : null;
 }
 function MechanicReviveSwitch({profile}:{profile:string}){
  const request=useReviveRequestStore();
- const requestKey=useNetworkStore(state=>`${profile}:${state.playerId}:${state.getMe()?.room_id??''}`);
- const target=useNetworkStore(state=>nearestReviveTarget(state.snapshot,state.playerId)?.id??null);
- const cooldown=useNetworkStore(state=>{
+ const requestKey=useMotionView(state=>`${profile}:${state.playerId}:${state.getMe()?.room_id??''}`);
+ const target=useMotionView(state=>nearestReviveTarget(state.snapshot,state.playerId)?.id??null);
+ const cooldown=useMotionView(state=>{
   const value=state.getMe()?.health?.revive_cooldown_s;
   return value===undefined?undefined:Math.ceil(value*10)/10;
  });

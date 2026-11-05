@@ -1,3 +1,4 @@
+import { useMotionView } from "../../store/session/networkViews";
 import {useEffect,useState} from 'react';
 import {snapshotEntity,useNetworkStore} from '../../store/session/networkStore';
 import {MAP_UPDATE_HZ} from '../../store/telemetry/mapTelemetry';
@@ -24,7 +25,7 @@ export function MapPlayerMarkers({x,z,range,circular}:{x:number;z:number;range:n
  const [markers,setMarkers]=useState(readContacts);
  useEffect(()=>{
   let last=-Infinity;
-  return useNetworkStore.subscribe((state,previous)=>{
+  return useMotionView.subscribe((state,previous)=>{
    const sessionChanged=state.playerId!==previous.playerId||state.connected!==previous.connected||state.room_id!==previous.room_id;
    if(!sessionChanged&&state.snapshot===previous.snapshot)return;
    const identityChanged=sessionChanged||!snapshotEntity(state.snapshot,state.playerId);

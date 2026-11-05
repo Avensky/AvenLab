@@ -211,11 +211,11 @@ mod tests {
     }
     async fn connect(s: &Server) -> String {
         let player = id();
-        let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
+        let (tx, _rx) = crate::outbox::channel();
         let (frame, _frame) = watch::channel(None);
         let (social, _social) = watch::channel(None);
         let (input_tx, input) = watch::channel(None);
-        s.register(player.clone(), Connection { tx, frame, social, input, input_tx, profile_id: None, world_id: None, team: Team::Red }).await.unwrap();
+        s.register(player.clone(), Connection { tx, frame:frame.into(), social, input, input_tx, profile_id: None, world_id: None, team: Team::Red }).await.unwrap();
         player
     }
     async fn identified(s: &Server, name: &str) -> (String, Value) {
@@ -236,6 +236,7 @@ mod tests {
         let (mechanic, identity) = identified(&s, "Mechanic").await;
         let (target, target_identity) = identified(&s, "Teammate").await;
         s.data.lock().await.worlds.insert(WORLD, World {
+            tire_thermals:false,
             mode: Some(Mode::Quickplay), id: WORLD, name: "Recovery test".into(), map: "road_precision".into(),
             owner_id: None, listed: true, max_players: 10, password_hash: None, invite_code: id(),
         });

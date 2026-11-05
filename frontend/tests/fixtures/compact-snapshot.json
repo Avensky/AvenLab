@@ -1,0 +1,3356 @@
+{
+  "compact": {
+    "data": [
+      123456,
+      2057.6,
+      0.016666668,
+      [
+        [
+          "alpha",
+          "vehicle",
+          "tank",
+          9,
+          "red",
+          [
+            257.88992,
+            1.786,
+            -175.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          0.0,
+          600.0,
+          0,
+          1100.0,
+          85.0,
+          0.0,
+          1.0,
+          0.0,
+          1.0,
+          0,
+          192,
+          0.0,
+          6148,
+          null,
+          0,
+          97,
+          0,
+          null,
+          [
+            -1.05,
+            [
+              1.38,
+              0.6,
+              2.8
+            ],
+            [
+              -0.005,
+              -0.03,
+              -0.04
+            ],
+            0.416,
+            4
+          ],
+          [
+            [
+              "fr",
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              0.416,
+              0.0,
+              0.0
+            ],
+            [
+              "fl",
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              0.416,
+              0.0,
+              0.0
+            ],
+            [
+              "rr",
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              0.416,
+              0.0,
+              0.0
+            ],
+            [
+              "rl",
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              0.416,
+              0.0,
+              0.0
+            ]
+          ],
+          [
+            "beta",
+            [
+              4.5,
+              6.0,
+              7.0
+            ],
+            [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "",
+            [
+              1.2345678,
+              -2.5,
+              3.0
+            ],
+            0.0,
+            0.0,
+            0.0,
+            "",
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            "cannon",
+            4294967295,
+            123,
+            0,
+            0.0,
+            0.7123457,
+            -0.45,
+            0.0,
+            0.0,
+            0.0,
+            ""
+          ],
+          [
+            1200.0,
+            1200.0,
+            0.0,
+            "",
+            12.0,
+            0.0,
+            2.0,
+            0,
+            null,
+            0.0,
+            "",
+            0,
+            0,
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          ],
+          [
+            "tank_barrier",
+            0.0,
+            0.0,
+            0.0,
+            500.0,
+            0,
+            [
+              5.4,
+              0.8,
+              10.0,
+              3.4
+            ],
+            0.0,
+            0.0,
+            0.0
+          ],
+          {
+            "cooldown_s": 0.0,
+            "pack": null,
+            "sequence": 0
+          },
+          null,
+          {
+            "body": "factory",
+            "finish": "frs",
+            "seats": "factory",
+            "skin": "factory"
+          },
+          6,
+          0
+        ],
+        [
+          "beta",
+          "vehicle",
+          "brz",
+          9,
+          "blue",
+          [
+            257.88992,
+            1.215,
+            943.8974
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          0.0,
+          900.0,
+          0,
+          50.0,
+          85.0,
+          0.0,
+          1.0,
+          0.0,
+          1.0,
+          0,
+          192,
+          0.0,
+          6148,
+          null,
+          0,
+          97,
+          0,
+          null,
+          [
+            -0.565,
+            [
+              0.89,
+              0.35,
+              2.12
+            ],
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            0.33,
+            4
+          ],
+          [
+            [
+              "fr",
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              0.33,
+              0.0,
+              0.0
+            ],
+            [
+              "fl",
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              0.33,
+              0.0,
+              0.0
+            ],
+            [
+              "rr",
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              0.33,
+              0.0,
+              0.0
+            ],
+            [
+              "rl",
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              0.33,
+              0.0,
+              0.0
+            ]
+          ],
+          [
+            null,
+            null,
+            null,
+            "",
+            null,
+            0.0,
+            0.0,
+            0.0,
+            "",
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            "",
+            0,
+            0,
+            0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            ""
+          ],
+          [
+            123.45678,
+            500.0,
+            0.0,
+            "",
+            12.0,
+            0.0,
+            2.0,
+            0,
+            "alpha",
+            0.0,
+            "cannon",
+            0,
+            0,
+            [
+              432.1,
+              23.4,
+              0.0,
+              0.0,
+              0.0,
+              0,
+              2,
+              0,
+              0,
+              0
+            ]
+          ],
+          [
+            "",
+            0.0,
+            0.0,
+            0.0,
+            200.0,
+            0,
+            null,
+            0.0,
+            0.0,
+            0.0
+          ],
+          {
+            "cooldown_s": 0.0,
+            "pack": null,
+            "sequence": 0
+          },
+          null,
+          {
+            "body": "factory",
+            "finish": "frs",
+            "seats": "factory",
+            "skin": "factory"
+          },
+          0,
+          0
+        ],
+        [
+          "gamma",
+          "vehicle",
+          "landcruiser",
+          9,
+          "red",
+          [
+            257.88992,
+            1.2899,
+            -166.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          0.0,
+          900.0,
+          0,
+          50.0,
+          85.0,
+          0.0,
+          1.0,
+          0.0,
+          1.0,
+          0,
+          192,
+          0.0,
+          6148,
+          null,
+          0,
+          97,
+          0,
+          null,
+          [
+            -0.5565,
+            [
+              0.966,
+              0.82,
+              2.464
+            ],
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            0.4134,
+            4
+          ],
+          [
+            [
+              "fr",
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              0.4134,
+              0.0,
+              0.0
+            ],
+            [
+              "fl",
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              0.4134,
+              0.0,
+              0.0
+            ],
+            [
+              "rr",
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              0.4134,
+              0.0,
+              0.0
+            ],
+            [
+              "rl",
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              0.4134,
+              0.0,
+              0.0
+            ]
+          ],
+          [
+            null,
+            null,
+            null,
+            "",
+            null,
+            0.0,
+            0.0,
+            0.0,
+            "",
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            "",
+            0,
+            0,
+            0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            ""
+          ],
+          [
+            500.0,
+            500.0,
+            0.0,
+            "",
+            12.0,
+            0.0,
+            2.0,
+            0,
+            null,
+            0.0,
+            "",
+            0,
+            0,
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          ],
+          [
+            "",
+            0.0,
+            0.0,
+            0.0,
+            200.0,
+            0,
+            null,
+            0.0,
+            0.0,
+            0.0
+          ],
+          {
+            "cooldown_s": 0.0,
+            "pack": null,
+            "sequence": 0
+          },
+          null,
+          {
+            "body": "factory",
+            "finish": "frs",
+            "seats": "factory",
+            "skin": "factory"
+          },
+          0,
+          0
+        ]
+      ],
+      null,
+      {
+        "wall-1": 42.5
+      },
+      {
+        "lock_ms": 0.0,
+        "physics_ms": 0.0,
+        "work_ms": 0.0
+      }
+    ],
+    "type": "snapshot_compact",
+    "version": 1,
+    "world_id": 9
+  },
+  "delta": {
+    "base_id": 101,
+    "patch": [
+      1,
+      11,
+      0,
+      [
+        0,
+        123458
+      ],
+      [
+        0,
+        2057.633333333333
+      ],
+      [
+        1,
+        3,
+        0,
+        [
+          1,
+          16384,
+          2,
+          [
+            0,
+            0.5
+          ],
+          [
+            0,
+            4
+          ]
+        ],
+        [
+          1,
+          268435456,
+          0,
+          [
+            1,
+            1,
+            0,
+            [
+              0,
+              400.25
+            ]
+          ]
+        ]
+      ]
+    ],
+    "type": "snapshot_delta",
+    "version": 1,
+    "world_id": 9
+  },
+  "keyframe": {
+    "base_id": 101,
+    "data": [
+      123456,
+      2057.6,
+      0.016666668,
+      [
+        [
+          "alpha",
+          "vehicle",
+          "tank",
+          9,
+          "red",
+          [
+            257.88992,
+            1.786,
+            -175.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          0.0,
+          600.0,
+          0,
+          1100.0,
+          85.0,
+          0.0,
+          1.0,
+          0.0,
+          1.0,
+          0,
+          192,
+          0.0,
+          6148,
+          null,
+          0,
+          97,
+          0,
+          null,
+          [
+            -1.05,
+            [
+              1.38,
+              0.6,
+              2.8
+            ],
+            [
+              -0.005,
+              -0.03,
+              -0.04
+            ],
+            0.416,
+            4
+          ],
+          [
+            [
+              "fr",
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              0.416,
+              0.0,
+              0.0
+            ],
+            [
+              "fl",
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              0.416,
+              0.0,
+              0.0
+            ],
+            [
+              "rr",
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              0.416,
+              0.0,
+              0.0
+            ],
+            [
+              "rl",
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              0.416,
+              0.0,
+              0.0
+            ]
+          ],
+          [
+            "beta",
+            [
+              4.5,
+              6.0,
+              7.0
+            ],
+            [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "",
+            [
+              1.2345678,
+              -2.5,
+              3.0
+            ],
+            0.0,
+            0.0,
+            0.0,
+            "",
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            "cannon",
+            4294967295,
+            123,
+            0,
+            0.0,
+            0.7123457,
+            -0.45,
+            0.0,
+            0.0,
+            0.0,
+            ""
+          ],
+          [
+            1200.0,
+            1200.0,
+            0.0,
+            "",
+            12.0,
+            0.0,
+            2.0,
+            0,
+            null,
+            0.0,
+            "",
+            0,
+            0,
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          ],
+          [
+            "tank_barrier",
+            0.0,
+            0.0,
+            0.0,
+            500.0,
+            0,
+            [
+              5.4,
+              0.8,
+              10.0,
+              3.4
+            ],
+            0.0,
+            0.0,
+            0.0
+          ],
+          {
+            "cooldown_s": 0.0,
+            "pack": null,
+            "sequence": 0
+          },
+          null,
+          {
+            "body": "factory",
+            "finish": "frs",
+            "seats": "factory",
+            "skin": "factory"
+          },
+          6,
+          0
+        ],
+        [
+          "beta",
+          "vehicle",
+          "brz",
+          9,
+          "blue",
+          [
+            257.88992,
+            1.215,
+            943.8974
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          0.0,
+          900.0,
+          0,
+          50.0,
+          85.0,
+          0.0,
+          1.0,
+          0.0,
+          1.0,
+          0,
+          192,
+          0.0,
+          6148,
+          null,
+          0,
+          97,
+          0,
+          null,
+          [
+            -0.565,
+            [
+              0.89,
+              0.35,
+              2.12
+            ],
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            0.33,
+            4
+          ],
+          [
+            [
+              "fr",
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              0.33,
+              0.0,
+              0.0
+            ],
+            [
+              "fl",
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              0.33,
+              0.0,
+              0.0
+            ],
+            [
+              "rr",
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              0.33,
+              0.0,
+              0.0
+            ],
+            [
+              "rl",
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              0.33,
+              0.0,
+              0.0
+            ]
+          ],
+          [
+            null,
+            null,
+            null,
+            "",
+            null,
+            0.0,
+            0.0,
+            0.0,
+            "",
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            "",
+            0,
+            0,
+            0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            ""
+          ],
+          [
+            123.45678,
+            500.0,
+            0.0,
+            "",
+            12.0,
+            0.0,
+            2.0,
+            0,
+            "alpha",
+            0.0,
+            "cannon",
+            0,
+            0,
+            [
+              432.1,
+              23.4,
+              0.0,
+              0.0,
+              0.0,
+              0,
+              2,
+              0,
+              0,
+              0
+            ]
+          ],
+          [
+            "",
+            0.0,
+            0.0,
+            0.0,
+            200.0,
+            0,
+            null,
+            0.0,
+            0.0,
+            0.0
+          ],
+          {
+            "cooldown_s": 0.0,
+            "pack": null,
+            "sequence": 0
+          },
+          null,
+          {
+            "body": "factory",
+            "finish": "frs",
+            "seats": "factory",
+            "skin": "factory"
+          },
+          0,
+          0
+        ],
+        [
+          "gamma",
+          "vehicle",
+          "landcruiser",
+          9,
+          "red",
+          [
+            257.88992,
+            1.2899,
+            -166.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          0.0,
+          900.0,
+          0,
+          50.0,
+          85.0,
+          0.0,
+          1.0,
+          0.0,
+          1.0,
+          0,
+          192,
+          0.0,
+          6148,
+          null,
+          0,
+          97,
+          0,
+          null,
+          [
+            -0.5565,
+            [
+              0.966,
+              0.82,
+              2.464
+            ],
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            0.4134,
+            4
+          ],
+          [
+            [
+              "fr",
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              0.4134,
+              0.0,
+              0.0
+            ],
+            [
+              "fl",
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              0.4134,
+              0.0,
+              0.0
+            ],
+            [
+              "rr",
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              0.4134,
+              0.0,
+              0.0
+            ],
+            [
+              "rl",
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              0.4134,
+              0.0,
+              0.0
+            ]
+          ],
+          [
+            null,
+            null,
+            null,
+            "",
+            null,
+            0.0,
+            0.0,
+            0.0,
+            "",
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            "",
+            0,
+            0,
+            0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            ""
+          ],
+          [
+            500.0,
+            500.0,
+            0.0,
+            "",
+            12.0,
+            0.0,
+            2.0,
+            0,
+            null,
+            0.0,
+            "",
+            0,
+            0,
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          ],
+          [
+            "",
+            0.0,
+            0.0,
+            0.0,
+            200.0,
+            0,
+            null,
+            0.0,
+            0.0,
+            0.0
+          ],
+          {
+            "cooldown_s": 0.0,
+            "pack": null,
+            "sequence": 0
+          },
+          null,
+          {
+            "body": "factory",
+            "finish": "frs",
+            "seats": "factory",
+            "skin": "factory"
+          },
+          0,
+          0
+        ]
+      ],
+      null,
+      {
+        "wall-1": 42.5
+      },
+      {
+        "lock_ms": 0.0,
+        "physics_ms": 0.0,
+        "work_ms": 0.0
+      }
+    ],
+    "type": "snapshot_compact",
+    "version": 1,
+    "world_id": 9
+  },
+  "legacy": {
+    "data": {
+      "asset_health": {
+        "wall-1": 42.5
+      },
+      "entities": [
+        {
+          "appearance": {
+            "body": "factory",
+            "finish": "frs",
+            "seats": "factory",
+            "skin": "factory"
+          },
+          "boost_fraction": 1.0,
+          "cabin_mask": 6148,
+          "cluster_mask": 0,
+          "cockpit_mask": 192,
+          "collider": {
+            "chassis_half_extents": [
+              1.38,
+              0.6,
+              2.8
+            ],
+            "chassis_offset": [
+              -0.005,
+              -0.03,
+              -0.04
+            ],
+            "nominal_wheel_center_y": -1.05,
+            "wheel_count": 4,
+            "wheel_radius": 0.416
+          },
+          "combat": {
+            "ammo": 0,
+            "assisted_target": "beta",
+            "basket_reload": 0.0,
+            "cannon_reload": 0.0,
+            "cannon_shot": 4294967295,
+            "coax_reload": 0.0,
+            "enabled": true,
+            "fire": true,
+            "hull_locked": false,
+            "impact": [
+              1.2345678,
+              -2.5,
+              3.0
+            ],
+            "impact_normal": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "impact_static": false,
+            "impact_time": 0.0,
+            "lock_pitch": 0.0,
+            "lock_yaw": 0.0,
+            "pitch": -0.45,
+            "ram": false,
+            "ram_blocked": "",
+            "ram_charge_remaining": 0.0,
+            "ram_cooldown": 0.0,
+            "ram_remaining": 0.0,
+            "reload": 0.0,
+            "role": "",
+            "shot": 123,
+            "shot_origin": [
+              4.5,
+              6.0,
+              7.0
+            ],
+            "shot_weapon": "",
+            "stun_remaining": 0.0,
+            "weapon": "cannon",
+            "x": 0.0,
+            "y": 0.0,
+            "yaw": 0.7123457,
+            "z": 0.0
+          },
+          "condition": 1.0,
+          "cruise_target_kph": null,
+          "engine_torque": 0.0,
+          "fuel": 1100.0,
+          "gear": 0,
+          "guard": {
+            "break_seq": 0,
+            "cooldown_s": 0.0,
+            "dive_cooldown_s": 0.0,
+            "dive_remaining_s": 0.0,
+            "kind": "tank_barrier",
+            "panel": [
+              5.4,
+              0.8,
+              10.0,
+              3.4
+            ],
+            "panel_yaw": 0.0,
+            "remaining_s": 0.0,
+            "shield_hp": 0.0,
+            "shield_max_hp": 500.0
+          },
+          "health": {
+            "damage_seq": 0,
+            "deaths": 0,
+            "defeated": false,
+            "disabled_reason": "",
+            "hp": 1200.0,
+            "kills": 0,
+            "last_attacker": null,
+            "last_damage": 0.0,
+            "last_damage_kind": "",
+            "max_hp": 1200.0,
+            "recovery_window_s": 12.0,
+            "respawn_remaining_s": 0.0,
+            "revive_cooldown_s": 0.0,
+            "spawn_protection_s": 2.0,
+            "stats": {
+              "assists": 0,
+              "best_kill_streak": 0,
+              "current_kill_streak": 0,
+              "damage_dealt": 0.0,
+              "gas_burned_liters": 0.0,
+              "gas_gained_liters": 0.0,
+              "healing_done": 0.0,
+              "respawns": 0,
+              "resurrections": 0,
+              "self_healing": 0.0
+            }
+          },
+          "id": "alpha",
+          "kind": "vehicle",
+          "last_input_seq": null,
+          "parking_brake": 0.0,
+          "player_mask": 0,
+          "position": [
+            257.88992,
+            1.786,
+            -175.0
+          ],
+          "resource_mask": 0,
+          "room_id": 9,
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "rpm": 600.0,
+          "speed": 0.0,
+          "support": {
+            "cooldown_s": 0.0,
+            "pack": null,
+            "sequence": 0
+          },
+          "team": "red",
+          "temp": 85.0,
+          "ultimate_fraction": 0.0,
+          "vehicle_id": "tank",
+          "vehicle_mask": 97,
+          "wheels": [
+            {
+              "grounded": false,
+              "id": "fr",
+              "position": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "radius": 0.416,
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "steer_angle": 0.0,
+              "wheel_speed": 0.0
+            },
+            {
+              "grounded": false,
+              "id": "fl",
+              "position": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "radius": 0.416,
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "steer_angle": 0.0,
+              "wheel_speed": 0.0
+            },
+            {
+              "grounded": false,
+              "id": "rr",
+              "position": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "radius": 0.416,
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "steer_angle": 0.0,
+              "wheel_speed": 0.0
+            },
+            {
+              "grounded": false,
+              "id": "rl",
+              "position": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "radius": 0.416,
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "steer_angle": 0.0,
+              "wheel_speed": 0.0
+            }
+          ]
+        },
+        {
+          "appearance": {
+            "body": "factory",
+            "finish": "frs",
+            "seats": "factory",
+            "skin": "factory"
+          },
+          "boost_fraction": 1.0,
+          "cabin_mask": 6148,
+          "cluster_mask": 0,
+          "cockpit_mask": 192,
+          "collider": {
+            "chassis_half_extents": [
+              0.89,
+              0.35,
+              2.12
+            ],
+            "chassis_offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "nominal_wheel_center_y": -0.565,
+            "wheel_count": 4,
+            "wheel_radius": 0.33
+          },
+          "combat": {
+            "ammo": 0,
+            "basket_reload": 0.0,
+            "cannon_reload": 0.0,
+            "cannon_shot": 0,
+            "coax_reload": 0.0,
+            "enabled": false,
+            "fire": false,
+            "hull_locked": false,
+            "impact": null,
+            "impact_normal": null,
+            "impact_static": false,
+            "impact_time": 0.0,
+            "lock_pitch": 0.0,
+            "lock_yaw": 0.0,
+            "pitch": 0.0,
+            "ram": false,
+            "ram_blocked": "",
+            "ram_charge_remaining": 0.0,
+            "ram_cooldown": 0.0,
+            "ram_remaining": 0.0,
+            "reload": 0.0,
+            "role": "",
+            "shot": 0,
+            "shot_origin": null,
+            "shot_weapon": "",
+            "stun_remaining": 0.0,
+            "weapon": "",
+            "x": 0.0,
+            "y": 0.0,
+            "yaw": 0.0,
+            "z": 0.0
+          },
+          "condition": 1.0,
+          "cruise_target_kph": null,
+          "engine_torque": 0.0,
+          "fuel": 50.0,
+          "gear": 0,
+          "guard": {
+            "break_seq": 0,
+            "cooldown_s": 0.0,
+            "dive_cooldown_s": 0.0,
+            "dive_remaining_s": 0.0,
+            "kind": "",
+            "panel_yaw": 0.0,
+            "remaining_s": 0.0,
+            "shield_hp": 0.0,
+            "shield_max_hp": 200.0
+          },
+          "health": {
+            "damage_seq": 0,
+            "deaths": 0,
+            "defeated": false,
+            "disabled_reason": "",
+            "hp": 123.45678,
+            "kills": 0,
+            "last_attacker": "alpha",
+            "last_damage": 0.0,
+            "last_damage_kind": "cannon",
+            "max_hp": 500.0,
+            "recovery_window_s": 12.0,
+            "respawn_remaining_s": 0.0,
+            "revive_cooldown_s": 0.0,
+            "spawn_protection_s": 2.0,
+            "stats": {
+              "assists": 0,
+              "best_kill_streak": 0,
+              "current_kill_streak": 0,
+              "damage_dealt": 432.1,
+              "gas_burned_liters": 0.0,
+              "gas_gained_liters": 0.0,
+              "healing_done": 23.4,
+              "respawns": 0,
+              "resurrections": 2,
+              "self_healing": 0.0
+            }
+          },
+          "id": "beta",
+          "kind": "vehicle",
+          "last_input_seq": null,
+          "parking_brake": 0.0,
+          "player_mask": 0,
+          "position": [
+            257.88992,
+            1.215,
+            943.8974
+          ],
+          "resource_mask": 0,
+          "room_id": 9,
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "rpm": 900.0,
+          "speed": 0.0,
+          "support": {
+            "cooldown_s": 0.0,
+            "pack": null,
+            "sequence": 0
+          },
+          "team": "blue",
+          "temp": 85.0,
+          "ultimate_fraction": 0.0,
+          "vehicle_id": "brz",
+          "vehicle_mask": 97,
+          "wheels": [
+            {
+              "grounded": false,
+              "id": "fr",
+              "position": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "radius": 0.33,
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "steer_angle": 0.0,
+              "wheel_speed": 0.0
+            },
+            {
+              "grounded": false,
+              "id": "fl",
+              "position": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "radius": 0.33,
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "steer_angle": 0.0,
+              "wheel_speed": 0.0
+            },
+            {
+              "grounded": false,
+              "id": "rr",
+              "position": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "radius": 0.33,
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "steer_angle": 0.0,
+              "wheel_speed": 0.0
+            },
+            {
+              "grounded": false,
+              "id": "rl",
+              "position": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "radius": 0.33,
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "steer_angle": 0.0,
+              "wheel_speed": 0.0
+            }
+          ]
+        },
+        {
+          "appearance": {
+            "body": "factory",
+            "finish": "frs",
+            "seats": "factory",
+            "skin": "factory"
+          },
+          "boost_fraction": 1.0,
+          "cabin_mask": 6148,
+          "cluster_mask": 0,
+          "cockpit_mask": 192,
+          "collider": {
+            "chassis_half_extents": [
+              0.966,
+              0.82,
+              2.464
+            ],
+            "chassis_offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "nominal_wheel_center_y": -0.5565,
+            "wheel_count": 4,
+            "wheel_radius": 0.4134
+          },
+          "combat": {
+            "ammo": 0,
+            "basket_reload": 0.0,
+            "cannon_reload": 0.0,
+            "cannon_shot": 0,
+            "coax_reload": 0.0,
+            "enabled": false,
+            "fire": false,
+            "hull_locked": false,
+            "impact": null,
+            "impact_normal": null,
+            "impact_static": false,
+            "impact_time": 0.0,
+            "lock_pitch": 0.0,
+            "lock_yaw": 0.0,
+            "pitch": 0.0,
+            "ram": false,
+            "ram_blocked": "",
+            "ram_charge_remaining": 0.0,
+            "ram_cooldown": 0.0,
+            "ram_remaining": 0.0,
+            "reload": 0.0,
+            "role": "",
+            "shot": 0,
+            "shot_origin": null,
+            "shot_weapon": "",
+            "stun_remaining": 0.0,
+            "weapon": "",
+            "x": 0.0,
+            "y": 0.0,
+            "yaw": 0.0,
+            "z": 0.0
+          },
+          "condition": 1.0,
+          "cruise_target_kph": null,
+          "engine_torque": 0.0,
+          "fuel": 50.0,
+          "gear": 0,
+          "guard": {
+            "break_seq": 0,
+            "cooldown_s": 0.0,
+            "dive_cooldown_s": 0.0,
+            "dive_remaining_s": 0.0,
+            "kind": "",
+            "panel_yaw": 0.0,
+            "remaining_s": 0.0,
+            "shield_hp": 0.0,
+            "shield_max_hp": 200.0
+          },
+          "health": {
+            "damage_seq": 0,
+            "deaths": 0,
+            "defeated": false,
+            "disabled_reason": "",
+            "hp": 500.0,
+            "kills": 0,
+            "last_attacker": null,
+            "last_damage": 0.0,
+            "last_damage_kind": "",
+            "max_hp": 500.0,
+            "recovery_window_s": 12.0,
+            "respawn_remaining_s": 0.0,
+            "revive_cooldown_s": 0.0,
+            "spawn_protection_s": 2.0,
+            "stats": {
+              "assists": 0,
+              "best_kill_streak": 0,
+              "current_kill_streak": 0,
+              "damage_dealt": 0.0,
+              "gas_burned_liters": 0.0,
+              "gas_gained_liters": 0.0,
+              "healing_done": 0.0,
+              "respawns": 0,
+              "resurrections": 0,
+              "self_healing": 0.0
+            }
+          },
+          "id": "gamma",
+          "kind": "vehicle",
+          "last_input_seq": null,
+          "parking_brake": 0.0,
+          "player_mask": 0,
+          "position": [
+            257.88992,
+            1.2899,
+            -166.0
+          ],
+          "resource_mask": 0,
+          "room_id": 9,
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "rpm": 900.0,
+          "speed": 0.0,
+          "support": {
+            "cooldown_s": 0.0,
+            "pack": null,
+            "sequence": 0
+          },
+          "team": "red",
+          "temp": 85.0,
+          "ultimate_fraction": 0.0,
+          "vehicle_id": "landcruiser",
+          "vehicle_mask": 97,
+          "wheels": [
+            {
+              "grounded": false,
+              "id": "fr",
+              "position": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "radius": 0.4134,
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "steer_angle": 0.0,
+              "wheel_speed": 0.0
+            },
+            {
+              "grounded": false,
+              "id": "fl",
+              "position": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "radius": 0.4134,
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "steer_angle": 0.0,
+              "wheel_speed": 0.0
+            },
+            {
+              "grounded": false,
+              "id": "rr",
+              "position": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "radius": 0.4134,
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "steer_angle": 0.0,
+              "wheel_speed": 0.0
+            },
+            {
+              "grounded": false,
+              "id": "rl",
+              "position": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "radius": 0.4134,
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "steer_angle": 0.0,
+              "wheel_speed": 0.0
+            }
+          ]
+        }
+      ],
+      "match_state": null,
+      "server_timing": {
+        "lock_ms": 0.0,
+        "physics_ms": 0.0,
+        "work_ms": 0.0
+      },
+      "simulation_time_s": 2057.6,
+      "tick": 123456,
+      "tick_dt_s": 0.016666668
+    },
+    "type": "snapshot",
+    "world_id": 9
+  },
+  "return_delta": {
+    "base_id": 101,
+    "patch": [
+      1,
+      3,
+      0,
+      [
+        0,
+        123460
+      ],
+      [
+        0,
+        2057.6666666666665
+      ]
+    ],
+    "type": "snapshot_delta",
+    "version": 1,
+    "world_id": 9
+  },
+  "returned": {
+    "data": {
+      "asset_health": {
+        "wall-1": 42.5
+      },
+      "entities": [
+        {
+          "appearance": {
+            "body": "factory",
+            "finish": "frs",
+            "seats": "factory",
+            "skin": "factory"
+          },
+          "boost_fraction": 1.0,
+          "cabin_mask": 6148,
+          "cluster_mask": 0,
+          "cockpit_mask": 192,
+          "collider": {
+            "chassis_half_extents": [
+              1.38,
+              0.6,
+              2.8
+            ],
+            "chassis_offset": [
+              -0.005,
+              -0.03,
+              -0.04
+            ],
+            "nominal_wheel_center_y": -1.05,
+            "wheel_count": 4,
+            "wheel_radius": 0.416
+          },
+          "combat": {
+            "ammo": 0,
+            "assisted_target": "beta",
+            "basket_reload": 0.0,
+            "cannon_reload": 0.0,
+            "cannon_shot": 4294967295,
+            "coax_reload": 0.0,
+            "enabled": true,
+            "fire": true,
+            "hull_locked": false,
+            "impact": [
+              1.2345678,
+              -2.5,
+              3.0
+            ],
+            "impact_normal": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "impact_static": false,
+            "impact_time": 0.0,
+            "lock_pitch": 0.0,
+            "lock_yaw": 0.0,
+            "pitch": -0.45,
+            "ram": false,
+            "ram_blocked": "",
+            "ram_charge_remaining": 0.0,
+            "ram_cooldown": 0.0,
+            "ram_remaining": 0.0,
+            "reload": 0.0,
+            "role": "",
+            "shot": 123,
+            "shot_origin": [
+              4.5,
+              6.0,
+              7.0
+            ],
+            "shot_weapon": "",
+            "stun_remaining": 0.0,
+            "weapon": "cannon",
+            "x": 0.0,
+            "y": 0.0,
+            "yaw": 0.7123457,
+            "z": 0.0
+          },
+          "condition": 1.0,
+          "cruise_target_kph": null,
+          "engine_torque": 0.0,
+          "fuel": 1100.0,
+          "gear": 0,
+          "guard": {
+            "break_seq": 0,
+            "cooldown_s": 0.0,
+            "dive_cooldown_s": 0.0,
+            "dive_remaining_s": 0.0,
+            "kind": "tank_barrier",
+            "panel": [
+              5.4,
+              0.8,
+              10.0,
+              3.4
+            ],
+            "panel_yaw": 0.0,
+            "remaining_s": 0.0,
+            "shield_hp": 0.0,
+            "shield_max_hp": 500.0
+          },
+          "health": {
+            "damage_seq": 0,
+            "deaths": 0,
+            "defeated": false,
+            "disabled_reason": "",
+            "hp": 1200.0,
+            "kills": 0,
+            "last_attacker": null,
+            "last_damage": 0.0,
+            "last_damage_kind": "",
+            "max_hp": 1200.0,
+            "recovery_window_s": 12.0,
+            "respawn_remaining_s": 0.0,
+            "revive_cooldown_s": 0.0,
+            "spawn_protection_s": 2.0,
+            "stats": {
+              "assists": 0,
+              "best_kill_streak": 0,
+              "current_kill_streak": 0,
+              "damage_dealt": 0.0,
+              "gas_burned_liters": 0.0,
+              "gas_gained_liters": 0.0,
+              "healing_done": 0.0,
+              "respawns": 0,
+              "resurrections": 0,
+              "self_healing": 0.0
+            }
+          },
+          "id": "alpha",
+          "kind": "vehicle",
+          "last_input_seq": null,
+          "parking_brake": 0.0,
+          "player_mask": 0,
+          "position": [
+            257.88992,
+            1.786,
+            -175.0
+          ],
+          "resource_mask": 0,
+          "room_id": 9,
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "rpm": 600.0,
+          "speed": 0.0,
+          "support": {
+            "cooldown_s": 0.0,
+            "pack": null,
+            "sequence": 0
+          },
+          "team": "red",
+          "temp": 85.0,
+          "ultimate_fraction": 0.0,
+          "vehicle_id": "tank",
+          "vehicle_mask": 97,
+          "wheels": [
+            {
+              "grounded": false,
+              "id": "fr",
+              "position": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "radius": 0.416,
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "steer_angle": 0.0,
+              "wheel_speed": 0.0
+            },
+            {
+              "grounded": false,
+              "id": "fl",
+              "position": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "radius": 0.416,
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "steer_angle": 0.0,
+              "wheel_speed": 0.0
+            },
+            {
+              "grounded": false,
+              "id": "rr",
+              "position": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "radius": 0.416,
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "steer_angle": 0.0,
+              "wheel_speed": 0.0
+            },
+            {
+              "grounded": false,
+              "id": "rl",
+              "position": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "radius": 0.416,
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "steer_angle": 0.0,
+              "wheel_speed": 0.0
+            }
+          ]
+        },
+        {
+          "appearance": {
+            "body": "factory",
+            "finish": "frs",
+            "seats": "factory",
+            "skin": "factory"
+          },
+          "boost_fraction": 1.0,
+          "cabin_mask": 6148,
+          "cluster_mask": 0,
+          "cockpit_mask": 192,
+          "collider": {
+            "chassis_half_extents": [
+              0.89,
+              0.35,
+              2.12
+            ],
+            "chassis_offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "nominal_wheel_center_y": -0.565,
+            "wheel_count": 4,
+            "wheel_radius": 0.33
+          },
+          "combat": {
+            "ammo": 0,
+            "basket_reload": 0.0,
+            "cannon_reload": 0.0,
+            "cannon_shot": 0,
+            "coax_reload": 0.0,
+            "enabled": false,
+            "fire": false,
+            "hull_locked": false,
+            "impact": null,
+            "impact_normal": null,
+            "impact_static": false,
+            "impact_time": 0.0,
+            "lock_pitch": 0.0,
+            "lock_yaw": 0.0,
+            "pitch": 0.0,
+            "ram": false,
+            "ram_blocked": "",
+            "ram_charge_remaining": 0.0,
+            "ram_cooldown": 0.0,
+            "ram_remaining": 0.0,
+            "reload": 0.0,
+            "role": "",
+            "shot": 0,
+            "shot_origin": null,
+            "shot_weapon": "",
+            "stun_remaining": 0.0,
+            "weapon": "",
+            "x": 0.0,
+            "y": 0.0,
+            "yaw": 0.0,
+            "z": 0.0
+          },
+          "condition": 1.0,
+          "cruise_target_kph": null,
+          "engine_torque": 0.0,
+          "fuel": 50.0,
+          "gear": 0,
+          "guard": {
+            "break_seq": 0,
+            "cooldown_s": 0.0,
+            "dive_cooldown_s": 0.0,
+            "dive_remaining_s": 0.0,
+            "kind": "",
+            "panel_yaw": 0.0,
+            "remaining_s": 0.0,
+            "shield_hp": 0.0,
+            "shield_max_hp": 200.0
+          },
+          "health": {
+            "damage_seq": 0,
+            "deaths": 0,
+            "defeated": false,
+            "disabled_reason": "",
+            "hp": 123.45678,
+            "kills": 0,
+            "last_attacker": "alpha",
+            "last_damage": 0.0,
+            "last_damage_kind": "cannon",
+            "max_hp": 500.0,
+            "recovery_window_s": 12.0,
+            "respawn_remaining_s": 0.0,
+            "revive_cooldown_s": 0.0,
+            "spawn_protection_s": 2.0,
+            "stats": {
+              "assists": 0,
+              "best_kill_streak": 0,
+              "current_kill_streak": 0,
+              "damage_dealt": 432.1,
+              "gas_burned_liters": 0.0,
+              "gas_gained_liters": 0.0,
+              "healing_done": 23.4,
+              "respawns": 0,
+              "resurrections": 2,
+              "self_healing": 0.0
+            }
+          },
+          "id": "beta",
+          "kind": "vehicle",
+          "last_input_seq": null,
+          "parking_brake": 0.0,
+          "player_mask": 0,
+          "position": [
+            257.88992,
+            1.215,
+            943.8974
+          ],
+          "resource_mask": 0,
+          "room_id": 9,
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "rpm": 900.0,
+          "speed": 0.0,
+          "support": {
+            "cooldown_s": 0.0,
+            "pack": null,
+            "sequence": 0
+          },
+          "team": "blue",
+          "temp": 85.0,
+          "ultimate_fraction": 0.0,
+          "vehicle_id": "brz",
+          "vehicle_mask": 97,
+          "wheels": [
+            {
+              "grounded": false,
+              "id": "fr",
+              "position": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "radius": 0.33,
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "steer_angle": 0.0,
+              "wheel_speed": 0.0
+            },
+            {
+              "grounded": false,
+              "id": "fl",
+              "position": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "radius": 0.33,
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "steer_angle": 0.0,
+              "wheel_speed": 0.0
+            },
+            {
+              "grounded": false,
+              "id": "rr",
+              "position": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "radius": 0.33,
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "steer_angle": 0.0,
+              "wheel_speed": 0.0
+            },
+            {
+              "grounded": false,
+              "id": "rl",
+              "position": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "radius": 0.33,
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "steer_angle": 0.0,
+              "wheel_speed": 0.0
+            }
+          ]
+        },
+        {
+          "appearance": {
+            "body": "factory",
+            "finish": "frs",
+            "seats": "factory",
+            "skin": "factory"
+          },
+          "boost_fraction": 1.0,
+          "cabin_mask": 6148,
+          "cluster_mask": 0,
+          "cockpit_mask": 192,
+          "collider": {
+            "chassis_half_extents": [
+              0.966,
+              0.82,
+              2.464
+            ],
+            "chassis_offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "nominal_wheel_center_y": -0.5565,
+            "wheel_count": 4,
+            "wheel_radius": 0.4134
+          },
+          "combat": {
+            "ammo": 0,
+            "basket_reload": 0.0,
+            "cannon_reload": 0.0,
+            "cannon_shot": 0,
+            "coax_reload": 0.0,
+            "enabled": false,
+            "fire": false,
+            "hull_locked": false,
+            "impact": null,
+            "impact_normal": null,
+            "impact_static": false,
+            "impact_time": 0.0,
+            "lock_pitch": 0.0,
+            "lock_yaw": 0.0,
+            "pitch": 0.0,
+            "ram": false,
+            "ram_blocked": "",
+            "ram_charge_remaining": 0.0,
+            "ram_cooldown": 0.0,
+            "ram_remaining": 0.0,
+            "reload": 0.0,
+            "role": "",
+            "shot": 0,
+            "shot_origin": null,
+            "shot_weapon": "",
+            "stun_remaining": 0.0,
+            "weapon": "",
+            "x": 0.0,
+            "y": 0.0,
+            "yaw": 0.0,
+            "z": 0.0
+          },
+          "condition": 1.0,
+          "cruise_target_kph": null,
+          "engine_torque": 0.0,
+          "fuel": 50.0,
+          "gear": 0,
+          "guard": {
+            "break_seq": 0,
+            "cooldown_s": 0.0,
+            "dive_cooldown_s": 0.0,
+            "dive_remaining_s": 0.0,
+            "kind": "",
+            "panel_yaw": 0.0,
+            "remaining_s": 0.0,
+            "shield_hp": 0.0,
+            "shield_max_hp": 200.0
+          },
+          "health": {
+            "damage_seq": 0,
+            "deaths": 0,
+            "defeated": false,
+            "disabled_reason": "",
+            "hp": 500.0,
+            "kills": 0,
+            "last_attacker": null,
+            "last_damage": 0.0,
+            "last_damage_kind": "",
+            "max_hp": 500.0,
+            "recovery_window_s": 12.0,
+            "respawn_remaining_s": 0.0,
+            "revive_cooldown_s": 0.0,
+            "spawn_protection_s": 2.0,
+            "stats": {
+              "assists": 0,
+              "best_kill_streak": 0,
+              "current_kill_streak": 0,
+              "damage_dealt": 0.0,
+              "gas_burned_liters": 0.0,
+              "gas_gained_liters": 0.0,
+              "healing_done": 0.0,
+              "respawns": 0,
+              "resurrections": 0,
+              "self_healing": 0.0
+            }
+          },
+          "id": "gamma",
+          "kind": "vehicle",
+          "last_input_seq": null,
+          "parking_brake": 0.0,
+          "player_mask": 0,
+          "position": [
+            257.88992,
+            1.2899,
+            -166.0
+          ],
+          "resource_mask": 0,
+          "room_id": 9,
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "rpm": 900.0,
+          "speed": 0.0,
+          "support": {
+            "cooldown_s": 0.0,
+            "pack": null,
+            "sequence": 0
+          },
+          "team": "red",
+          "temp": 85.0,
+          "ultimate_fraction": 0.0,
+          "vehicle_id": "landcruiser",
+          "vehicle_mask": 97,
+          "wheels": [
+            {
+              "grounded": false,
+              "id": "fr",
+              "position": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "radius": 0.4134,
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "steer_angle": 0.0,
+              "wheel_speed": 0.0
+            },
+            {
+              "grounded": false,
+              "id": "fl",
+              "position": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "radius": 0.4134,
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "steer_angle": 0.0,
+              "wheel_speed": 0.0
+            },
+            {
+              "grounded": false,
+              "id": "rr",
+              "position": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "radius": 0.4134,
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "steer_angle": 0.0,
+              "wheel_speed": 0.0
+            },
+            {
+              "grounded": false,
+              "id": "rl",
+              "position": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "radius": 0.4134,
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "steer_angle": 0.0,
+              "wheel_speed": 0.0
+            }
+          ]
+        }
+      ],
+      "match_state": null,
+      "server_timing": {
+        "lock_ms": 0.0,
+        "physics_ms": 0.0,
+        "work_ms": 0.0
+      },
+      "simulation_time_s": 2057.6666666666665,
+      "tick": 123460,
+      "tick_dt_s": 0.016666668
+    },
+    "type": "snapshot",
+    "world_id": 9
+  },
+  "updated": {
+    "data": {
+      "asset_health": {
+        "wall-1": 42.5
+      },
+      "entities": [
+        {
+          "appearance": {
+            "body": "factory",
+            "finish": "frs",
+            "seats": "factory",
+            "skin": "factory"
+          },
+          "boost_fraction": 1.0,
+          "cabin_mask": 6148,
+          "cluster_mask": 0,
+          "cockpit_mask": 192,
+          "collider": {
+            "chassis_half_extents": [
+              1.38,
+              0.6,
+              2.8
+            ],
+            "chassis_offset": [
+              -0.005,
+              -0.03,
+              -0.04
+            ],
+            "nominal_wheel_center_y": -1.05,
+            "wheel_count": 4,
+            "wheel_radius": 0.416
+          },
+          "combat": {
+            "ammo": 0,
+            "assisted_target": "beta",
+            "basket_reload": 0.0,
+            "cannon_reload": 0.0,
+            "cannon_shot": 4294967295,
+            "coax_reload": 0.0,
+            "enabled": false,
+            "fire": true,
+            "hull_locked": false,
+            "impact": [
+              1.2345678,
+              -2.5,
+              3.0
+            ],
+            "impact_normal": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "impact_static": false,
+            "impact_time": 0.0,
+            "lock_pitch": 0.0,
+            "lock_yaw": 0.0,
+            "pitch": -0.45,
+            "ram": false,
+            "ram_blocked": "",
+            "ram_charge_remaining": 0.0,
+            "ram_cooldown": 0.0,
+            "ram_remaining": 0.0,
+            "reload": 0.0,
+            "role": "",
+            "shot": 123,
+            "shot_origin": [
+              4.5,
+              6.0,
+              7.0
+            ],
+            "shot_weapon": "",
+            "stun_remaining": 0.0,
+            "weapon": "cannon",
+            "x": 0.0,
+            "y": 0.0,
+            "yaw": 0.7123457,
+            "z": 0.0
+          },
+          "condition": 1.0,
+          "cruise_target_kph": null,
+          "engine_torque": 0.0,
+          "fuel": 1100.0,
+          "gear": 0,
+          "guard": {
+            "break_seq": 0,
+            "cooldown_s": 0.0,
+            "dive_cooldown_s": 0.0,
+            "dive_remaining_s": 0.0,
+            "kind": "tank_barrier",
+            "panel": [
+              5.4,
+              0.8,
+              10.0,
+              3.4
+            ],
+            "panel_yaw": 0.0,
+            "remaining_s": 0.0,
+            "shield_hp": 0.0,
+            "shield_max_hp": 500.0
+          },
+          "health": {
+            "damage_seq": 0,
+            "deaths": 0,
+            "defeated": false,
+            "disabled_reason": "",
+            "hp": 1200.0,
+            "kills": 0,
+            "last_attacker": null,
+            "last_damage": 0.0,
+            "last_damage_kind": "",
+            "max_hp": 1200.0,
+            "recovery_window_s": 12.0,
+            "respawn_remaining_s": 0.0,
+            "revive_cooldown_s": 0.0,
+            "spawn_protection_s": 2.0,
+            "stats": {
+              "assists": 0,
+              "best_kill_streak": 0,
+              "current_kill_streak": 0,
+              "damage_dealt": 0.0,
+              "gas_burned_liters": 0.0,
+              "gas_gained_liters": 0.0,
+              "healing_done": 0.0,
+              "respawns": 0,
+              "resurrections": 0,
+              "self_healing": 0.0
+            }
+          },
+          "id": "alpha",
+          "kind": "vehicle",
+          "last_input_seq": null,
+          "parking_brake": 0.0,
+          "player_mask": 0,
+          "position": [
+            257.88992,
+            1.786,
+            -175.0
+          ],
+          "resource_mask": 0,
+          "room_id": 9,
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "rpm": 600.0,
+          "speed": 0.0,
+          "support": {
+            "cooldown_s": 0.0,
+            "pack": null,
+            "sequence": 0
+          },
+          "team": "red",
+          "temp": 85.0,
+          "ultimate_fraction": 0.5,
+          "vehicle_id": "tank",
+          "vehicle_mask": 97,
+          "wheels": [
+            {
+              "grounded": false,
+              "id": "fr",
+              "position": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "radius": 0.416,
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "steer_angle": 0.0,
+              "wheel_speed": 0.0
+            },
+            {
+              "grounded": false,
+              "id": "fl",
+              "position": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "radius": 0.416,
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "steer_angle": 0.0,
+              "wheel_speed": 0.0
+            },
+            {
+              "grounded": false,
+              "id": "rr",
+              "position": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "radius": 0.416,
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "steer_angle": 0.0,
+              "wheel_speed": 0.0
+            },
+            {
+              "grounded": false,
+              "id": "rl",
+              "position": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "radius": 0.416,
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "steer_angle": 0.0,
+              "wheel_speed": 0.0
+            }
+          ]
+        },
+        {
+          "appearance": {
+            "body": "factory",
+            "finish": "frs",
+            "seats": "factory",
+            "skin": "factory"
+          },
+          "boost_fraction": 1.0,
+          "cabin_mask": 6148,
+          "cluster_mask": 0,
+          "cockpit_mask": 192,
+          "collider": {
+            "chassis_half_extents": [
+              0.89,
+              0.35,
+              2.12
+            ],
+            "chassis_offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "nominal_wheel_center_y": -0.565,
+            "wheel_count": 4,
+            "wheel_radius": 0.33
+          },
+          "combat": {
+            "ammo": 0,
+            "basket_reload": 0.0,
+            "cannon_reload": 0.0,
+            "cannon_shot": 0,
+            "coax_reload": 0.0,
+            "enabled": false,
+            "fire": false,
+            "hull_locked": false,
+            "impact": null,
+            "impact_normal": null,
+            "impact_static": false,
+            "impact_time": 0.0,
+            "lock_pitch": 0.0,
+            "lock_yaw": 0.0,
+            "pitch": 0.0,
+            "ram": false,
+            "ram_blocked": "",
+            "ram_charge_remaining": 0.0,
+            "ram_cooldown": 0.0,
+            "ram_remaining": 0.0,
+            "reload": 0.0,
+            "role": "",
+            "shot": 0,
+            "shot_origin": null,
+            "shot_weapon": "",
+            "stun_remaining": 0.0,
+            "weapon": "",
+            "x": 0.0,
+            "y": 0.0,
+            "yaw": 0.0,
+            "z": 0.0
+          },
+          "condition": 1.0,
+          "cruise_target_kph": null,
+          "engine_torque": 0.0,
+          "fuel": 50.0,
+          "gear": 0,
+          "guard": {
+            "break_seq": 0,
+            "cooldown_s": 0.0,
+            "dive_cooldown_s": 0.0,
+            "dive_remaining_s": 0.0,
+            "kind": "",
+            "panel_yaw": 0.0,
+            "remaining_s": 0.0,
+            "shield_hp": 0.0,
+            "shield_max_hp": 200.0
+          },
+          "health": {
+            "damage_seq": 0,
+            "deaths": 0,
+            "defeated": false,
+            "disabled_reason": "",
+            "hp": 400.25,
+            "kills": 0,
+            "last_attacker": "alpha",
+            "last_damage": 0.0,
+            "last_damage_kind": "cannon",
+            "max_hp": 500.0,
+            "recovery_window_s": 12.0,
+            "respawn_remaining_s": 0.0,
+            "revive_cooldown_s": 0.0,
+            "spawn_protection_s": 2.0,
+            "stats": {
+              "assists": 0,
+              "best_kill_streak": 0,
+              "current_kill_streak": 0,
+              "damage_dealt": 432.1,
+              "gas_burned_liters": 0.0,
+              "gas_gained_liters": 0.0,
+              "healing_done": 23.4,
+              "respawns": 0,
+              "resurrections": 2,
+              "self_healing": 0.0
+            }
+          },
+          "id": "beta",
+          "kind": "vehicle",
+          "last_input_seq": null,
+          "parking_brake": 0.0,
+          "player_mask": 0,
+          "position": [
+            257.88992,
+            1.215,
+            943.8974
+          ],
+          "resource_mask": 0,
+          "room_id": 9,
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "rpm": 900.0,
+          "speed": 0.0,
+          "support": {
+            "cooldown_s": 0.0,
+            "pack": null,
+            "sequence": 0
+          },
+          "team": "blue",
+          "temp": 85.0,
+          "ultimate_fraction": 0.0,
+          "vehicle_id": "brz",
+          "vehicle_mask": 97,
+          "wheels": [
+            {
+              "grounded": false,
+              "id": "fr",
+              "position": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "radius": 0.33,
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "steer_angle": 0.0,
+              "wheel_speed": 0.0
+            },
+            {
+              "grounded": false,
+              "id": "fl",
+              "position": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "radius": 0.33,
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "steer_angle": 0.0,
+              "wheel_speed": 0.0
+            },
+            {
+              "grounded": false,
+              "id": "rr",
+              "position": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "radius": 0.33,
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "steer_angle": 0.0,
+              "wheel_speed": 0.0
+            },
+            {
+              "grounded": false,
+              "id": "rl",
+              "position": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "radius": 0.33,
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "steer_angle": 0.0,
+              "wheel_speed": 0.0
+            }
+          ]
+        },
+        {
+          "appearance": {
+            "body": "factory",
+            "finish": "frs",
+            "seats": "factory",
+            "skin": "factory"
+          },
+          "boost_fraction": 1.0,
+          "cabin_mask": 6148,
+          "cluster_mask": 0,
+          "cockpit_mask": 192,
+          "collider": {
+            "chassis_half_extents": [
+              0.966,
+              0.82,
+              2.464
+            ],
+            "chassis_offset": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "nominal_wheel_center_y": -0.5565,
+            "wheel_count": 4,
+            "wheel_radius": 0.4134
+          },
+          "combat": {
+            "ammo": 0,
+            "basket_reload": 0.0,
+            "cannon_reload": 0.0,
+            "cannon_shot": 0,
+            "coax_reload": 0.0,
+            "enabled": false,
+            "fire": false,
+            "hull_locked": false,
+            "impact": null,
+            "impact_normal": null,
+            "impact_static": false,
+            "impact_time": 0.0,
+            "lock_pitch": 0.0,
+            "lock_yaw": 0.0,
+            "pitch": 0.0,
+            "ram": false,
+            "ram_blocked": "",
+            "ram_charge_remaining": 0.0,
+            "ram_cooldown": 0.0,
+            "ram_remaining": 0.0,
+            "reload": 0.0,
+            "role": "",
+            "shot": 0,
+            "shot_origin": null,
+            "shot_weapon": "",
+            "stun_remaining": 0.0,
+            "weapon": "",
+            "x": 0.0,
+            "y": 0.0,
+            "yaw": 0.0,
+            "z": 0.0
+          },
+          "condition": 1.0,
+          "cruise_target_kph": null,
+          "engine_torque": 0.0,
+          "fuel": 50.0,
+          "gear": 0,
+          "guard": {
+            "break_seq": 0,
+            "cooldown_s": 0.0,
+            "dive_cooldown_s": 0.0,
+            "dive_remaining_s": 0.0,
+            "kind": "",
+            "panel_yaw": 0.0,
+            "remaining_s": 0.0,
+            "shield_hp": 0.0,
+            "shield_max_hp": 200.0
+          },
+          "health": {
+            "damage_seq": 0,
+            "deaths": 0,
+            "defeated": false,
+            "disabled_reason": "",
+            "hp": 500.0,
+            "kills": 0,
+            "last_attacker": null,
+            "last_damage": 0.0,
+            "last_damage_kind": "",
+            "max_hp": 500.0,
+            "recovery_window_s": 12.0,
+            "respawn_remaining_s": 0.0,
+            "revive_cooldown_s": 0.0,
+            "spawn_protection_s": 2.0,
+            "stats": {
+              "assists": 0,
+              "best_kill_streak": 0,
+              "current_kill_streak": 0,
+              "damage_dealt": 0.0,
+              "gas_burned_liters": 0.0,
+              "gas_gained_liters": 0.0,
+              "healing_done": 0.0,
+              "respawns": 0,
+              "resurrections": 0,
+              "self_healing": 0.0
+            }
+          },
+          "id": "gamma",
+          "kind": "vehicle",
+          "last_input_seq": null,
+          "parking_brake": 0.0,
+          "player_mask": 0,
+          "position": [
+            257.88992,
+            1.2899,
+            -166.0
+          ],
+          "resource_mask": 0,
+          "room_id": 9,
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "rpm": 900.0,
+          "speed": 0.0,
+          "support": {
+            "cooldown_s": 0.0,
+            "pack": null,
+            "sequence": 0
+          },
+          "team": "red",
+          "temp": 85.0,
+          "ultimate_fraction": 0.0,
+          "vehicle_id": "landcruiser",
+          "vehicle_mask": 97,
+          "wheels": [
+            {
+              "grounded": false,
+              "id": "fr",
+              "position": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "radius": 0.4134,
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "steer_angle": 0.0,
+              "wheel_speed": 0.0
+            },
+            {
+              "grounded": false,
+              "id": "fl",
+              "position": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "radius": 0.4134,
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "steer_angle": 0.0,
+              "wheel_speed": 0.0
+            },
+            {
+              "grounded": false,
+              "id": "rr",
+              "position": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "radius": 0.4134,
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "steer_angle": 0.0,
+              "wheel_speed": 0.0
+            },
+            {
+              "grounded": false,
+              "id": "rl",
+              "position": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "radius": 0.4134,
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "steer_angle": 0.0,
+              "wheel_speed": 0.0
+            }
+          ]
+        }
+      ],
+      "match_state": null,
+      "server_timing": {
+        "lock_ms": 0.0,
+        "physics_ms": 0.0,
+        "work_ms": 0.0
+      },
+      "simulation_time_s": 2057.633333333333,
+      "tick": 123458,
+      "tick_dt_s": 0.016666668
+    },
+    "type": "snapshot",
+    "world_id": 9
+  }
+}

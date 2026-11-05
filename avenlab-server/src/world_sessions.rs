@@ -3,13 +3,13 @@
 use crate::{
     physics::{PhysicsWorld, SIMULATION_DT},
     spawn::Team,
-    state::{EntityType, InputPacket, PhysicsFrame, SharedGameState, VehicleConfigPayload},
+    state::{EntityType, InputPacket, SharedGameState, VehicleConfigPayload},
     vehicle_debug::DebugFlags,
 };
 use rapier3d::prelude::RigidBodyHandle;
 use serde_json::json;
 use std::{sync::Arc, collections::HashMap};
-use tokio::sync::{mpsc::UnboundedSender, watch};
+use tokio::sync::{watch};
 
 #[derive(Debug, Clone)]
 pub struct RoundPlayerSnapshot {
@@ -100,8 +100,8 @@ impl WorldRuntime {
     pub fn join(
         &mut self,
         id: &str,
-        tx: UnboundedSender<String>,
-        frame: watch::Sender<Option<Arc<PhysicsFrame>>>,
+        tx: crate::outbox::Sender,
+        frame: impl Into<crate::snapshot_wire::SnapshotSender>,
         input: watch::Receiver<Option<InputPacket>>,
         preferred: Option<Team>,
         capacity: usize,
@@ -170,15 +170,15 @@ impl WorldRuntime {
         if newly_spawned {
             self.game.set_vehicle_id(id, vehicle);
         }
-        if let Some(current) = self.physics.vehicles.get(id) {
+        if let Some(current) = self.physics.vehicles.get(id).filter(|_|newly_spawned) {
             self.game.broadcast_vehicle_config(id, current);
         }
         let tx = self.game.clients.get(id).ok_or("The connection closed.")?;
-        let _=tx.send(self.physics.map_snapshot_packet(self.game.room_id));
+        // Map arrives on join/restore or a real map edit; spawning does not reinstall it.
         let _=tx.send(json!({"type":"spawn_ready","player_id":id,"vehicle":vehicle,"map":self.physics.active_map_id(),"newly_spawned":newly_spawned}).to_string());
         Ok(())
     }
-    pub fn send_existing_configs(&self, viewer:&str, tx: &UnboundedSender<String>) {
+    pub fn send_existing_configs(&self, viewer:&str, tx: &crate::outbox::Sender) {
         for (id, vehicle) in &self.physics.vehicles {
             if !self.game.can_receive_vehicle_identity(viewer,id){continue;}
             let _=tx.send(json!({"type":"vehicle_config","data":VehicleConfigPayload::new(id,vehicle.config)}).to_string());
@@ -209,6 +209,7 @@ impl WorldRuntime {
                 self.physics.combat_tick(&entity.id,packet.seq,packet.combat.as_ref());
             }
         }
+        if (self.game.tick+1)%crate::snapshot_wire::AUX_DIVISOR!=0 {debug=DebugFlags::NONE;}
         self.physics.set_debug_flags(debug);
         let physics_started = std::time::Instant::now();
         self.physics.step(SIMULATION_DT);
@@ -238,7 +239,7 @@ mod tests {
         world.game.hide_warmup_enemies=true;
         let mut receivers=Vec::new();
         for (id,team) in [("red-one",Team::Red),("red-two",Team::Red),("blue",Team::Blue)] {
-            let(tx,rx)=tokio::sync::mpsc::unbounded_channel::<String>();let(frame,frames)=watch::channel(None);let(_input,inputs)=watch::channel(None);
+            let(tx,rx)=crate::outbox::channel();let(frame,frames)=watch::channel(None);let(_input,inputs)=watch::channel(None);
             world.join(id,tx,frame,inputs,Some(team),10);receivers.push((id,rx,frames));
         }
         world.configure_round(crate::alpha::Mode::Quickplay,true).unwrap();
@@ -281,7 +282,7 @@ mod tests {
     fn two_team_round() -> (WorldRuntime,watch::Sender<Option<InputPacket>>) {
         let mut world=WorldRuntime::new(1,"road_precision").unwrap();let mut control=None;
         for (id,team) in [("red",Team::Red),("blue",Team::Blue)]{
-            let (tx,_rx)=tokio::sync::mpsc::unbounded_channel();let(frame,_frames)=watch::channel(None);let(input,inputs)=watch::channel(None);
+            let (tx,_rx)=crate::outbox::channel();let(frame,_frames)=watch::channel(None);let(input,inputs)=watch::channel(None);
             world.join(id,tx,frame,inputs,Some(team),10);world.spawn(id,"brz").unwrap();if id=="red"{control=Some(input);}
         }
         world.configure_round(crate::alpha::Mode::Quickplay,true).unwrap();(world,control.unwrap())
@@ -388,7 +389,7 @@ mod tests {
     #[test]
     fn defeated_cached_input_never_replays_after_respawn() {
         let mut world=WorldRuntime::new(1,"road_precision").unwrap();
-        let (tx,_rx)=tokio::sync::mpsc::unbounded_channel();
+        let (tx,_rx)=crate::outbox::channel();
         let (frame,_frames)=watch::channel(None);let (input,inputs)=watch::channel(None);
         world.join("driver",tx,frame,inputs,None,10);world.spawn("driver","tank").unwrap();
         input.send_replace(Some(serde_json::from_value(json!({"type":"input","seq":1,"dt":1.0/60.0,"throttle":1,"steer":1,"brake":0,"handbrake":0,"vehicleMask":1,"playerMask":0,"combat":{"enabled":true,"fire":true,"ram":true,"yaw":3.14159}})).unwrap()));
@@ -411,7 +412,7 @@ mod tests {
         world.configure_round(crate::alpha::Mode::Skirmish, true).unwrap();
         let mut first_pad = None;
         for (id, team) in [("red-one", Team::Red), ("red-two", Team::Red), ("blue", Team::Blue)] {
-            let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
+            let (tx, _rx) = crate::outbox::channel();
             let (frame, _frames) = watch::channel(None);
             let (_input, inputs) = watch::channel(None);
             world.join(id, tx, frame, inputs, Some(team), 6);
@@ -448,7 +449,7 @@ mod tests {
         let mut world = WorldRuntime::new(1, "streaming_endless_city").unwrap();
         for index in 0..10 {
             let id = format!("city-{index}");
-            let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
+            let (tx, _rx) = crate::outbox::channel();
             let (frame, _frames) = watch::channel(None);
             let (_input, inputs) = watch::channel(None);
             world.join(&id, tx, frame, inputs, None, 10);
@@ -460,7 +461,7 @@ mod tests {
     fn each_world_has_independent_bodies_frames_and_cleanup() {
         let mut a = WorldRuntime::new(1, "road_precision").unwrap();
         let mut b = WorldRuntime::new(2, "road_jump_lab").unwrap();
-        let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
+        let (tx, _rx) = crate::outbox::channel();
         let (fa, ra) = watch::channel(None);
         let (fb, rb) = watch::channel(None);
         let (_input, ri) = watch::channel(None);

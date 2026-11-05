@@ -1,4 +1,4 @@
-import {useNetworkStore} from '../../store/session/networkStore';
+import { useMotionView } from "../../store/session/networkViews";
 import {triggerRam} from '../../combat/turretControls';
 import { useInputStore } from "../../store/input/inputStore";
 import { VehicleFlags, hasFlag } from "../../store/input/protocol/inputMasks";
@@ -11,7 +11,7 @@ export function Boost({
   fraction: number | null;
   active: boolean;
 }) {
-  const tank=useNetworkStore(s=>s.getMe()?.vehicle_id==='tank');
+  const tank=useMotionView(s=>s.getMe()?.vehicle_id==='tank');
   const requested = useInputStore((s) =>
     hasFlag(s.input.vehicleMask, VehicleFlags.BOOST),
   );

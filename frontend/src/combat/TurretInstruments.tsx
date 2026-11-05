@@ -1,10 +1,11 @@
+import { useMotionView } from "../store/session/networkViews";
 import { Quaternion, Vector3 } from 'three';
-import { useNetworkStore } from '../store/session/networkStore';
+
 import './turretControls.css';
 
 /** Compact, confirmed hull-relative bearing; no floating debug card. */
 export function TurretInstruments() {
-  const value = useNetworkStore(s => {
+  const value = useMotionView(s => {
     const me = s.snapshot?.entities.find(e => e.id === s.playerId);
     const turret = me?.combat;
     if (!me || !turret || (!turret.enabled && turret.role !== 'tank')) return '';

@@ -38,6 +38,8 @@ const MAX_PHYSICS_SUBSTEP: Real = 1.0 / 120.0;
 const MAX_PHYSICS_SUBSTEPS: usize = 8;
 
 pub struct PhysicsWorld {
+    pub tire_thermals: bool,
+    pub(crate) tire_sample_elapsed: f32,
     pub barrages: HashMap<String,crate::tank_barrage::Barrage>,
     pub trusted_heroes: HashMap<String,String>,
     pub guard_boosts: HashMap<String,crate::guard_boost::GuardBoostState>,
@@ -62,10 +64,6 @@ pub struct PhysicsWorld {
     pub colliders: ColliderSet, // for collision shapes
     pub block_world: BlockColliderWorld, // for block-based colliders
     chunks_ready: bool,
-    query_topology_changed: bool,
-    indexed_collider_count: usize,
-    steps_since_query_rebuild: u16,
-    moved_weapon_colliders: Vec<ColliderHandle>,
     service_bays: Vec<usize>,
     has_impact_barriers: bool,
     map_json: std::sync::OnceLock<String>,
@@ -123,35 +121,13 @@ impl PhysicsWorld {
             }
         }
         self.active_map = Some(map);
-        self.query_topology_changed = true;
     }
 
-    /// Rapier refits moving bodies in both simulation substeps. Before an
-    /// out-of-step raycast, update only changes made since the last step.
-    fn synchronize_queries(&mut self, before_shot: bool) {
-        let count = self.colliders.len();
-        // Substep refits are cheap, but vehicles moving across many city blocks
-        // can gradually degrade the tree. Compact it once per simulated second.
-        if self.query_topology_changed || self.indexed_collider_count != count || self.steps_since_query_rebuild >= 60 {
-            self.query_pipeline.update(&self.colliders);
-            self.query_topology_changed = false;
-            self.indexed_collider_count = count;
-            self.steps_since_query_rebuild = 0;
-        } else {
-            // A reset, revive or reposition may have moved a chassis between
-            // substeps. Refresh the small dynamic roster before a weapon query.
-            if before_shot {
-                for handle in self.body_to_player.keys() {
-                    if let Some(body) = self.bodies.get(*handle) {
-                        self.moved_weapon_colliders.extend_from_slice(body.colliders());
-                    }
-                }
-            }
-            if !self.moved_weapon_colliders.is_empty() {
-                self.query_pipeline.update_incremental(&self.colliders, &self.moved_weapon_colliders, &[], true);
-            }
-        }
-        self.moved_weapon_colliders.clear();
+    /// Rebuild the small world index at query boundaries. Repeated incremental
+    /// rebalance of overlapping city/vehicle AABBs can create very long combat
+    /// ticks. A rebuild has predictable cost and still includes every collider.
+    fn synchronize_queries(&mut self) {
+        self.query_pipeline.update(&self.colliders);
     }
 
     pub fn active_map_id(&self) -> Option<&str> {
@@ -432,7 +408,6 @@ impl PhysicsWorld {
                 }
             }
         }
-        self.query_topology_changed = true;
         self.map_json.take();
         self.chunks_ready = false;
         self.block_world.loaded.insert((bx, bz), handles);
@@ -449,7 +424,6 @@ impl PhysicsWorld {
     }
 
     pub fn unload_block(&mut self, bx: i32, by: i32) {
-        self.query_topology_changed = true;
         self.map_json.take();
         self.chunks_ready = false;
         self.block_world.unload(
@@ -506,7 +480,6 @@ impl PhysicsWorld {
     }
 
     pub fn despawn_vehicle_for_player(&mut self, player_id: &str) {
-        self.query_topology_changed = true;
         self.barrages.remove(player_id);self.trusted_heroes.remove(player_id);self.guard_boosts.remove(player_id);self.guard_impact_directions.remove(player_id);self.support.clear_player(player_id);
         self.ctf_carriers.remove(player_id);self.dislodged_carriers.remove(player_id);self.ctf_reset_players.remove(player_id);
         self.vehicle_health.remove(player_id);
@@ -556,6 +529,7 @@ impl PhysicsWorld {
             combat_poses: HashMap::new(),tank_colliders: HashMap::new(),
             barrier_impacts:HashMap::new(),asset_health: HashMap::new(), combat_sequences: HashMap::new(), combat_cooldowns: HashMap::new(),
             gravity,
+            tire_thermals: false, tire_sample_elapsed: 0.0,
             pipeline: PhysicsPipeline::new(),
             island_manager: IslandManager::new(),
             broad_phase: DefaultBroadPhase::new(),
@@ -564,10 +538,6 @@ impl PhysicsWorld {
             colliders,
             block_world: BlockColliderWorld::new(),
             chunks_ready: false,
-            query_topology_changed: true,
-            indexed_collider_count: 0,
-            steps_since_query_rebuild: 0,
-            moved_weapon_colliders: Vec::new(),
             service_bays: Vec::new(),
             has_impact_barriers: false,
             map_json: Default::default(),
@@ -727,7 +697,7 @@ impl PhysicsWorld {
         self.combat_poses.insert(player.to_owned(),c);
         if !shoot {return;}
         if cannon {if let Some(body)=self.bodies.get_mut(body_handle){body.apply_impulse_at_point(-direction*36000.0,origin,true);}}
-        self.synchronize_queries(true);
+        self.synchronize_queries();
         if spray {self.fire_support_spray(player,origin,direction);return;}
         let obstruction=if config.tracked {self.query_pipeline.cast_ray_and_get_normal(&self.bodies,&self.colliders,&Ray::new(shot_breech,barrel_delta/barrel_length),barrel_length,true,QueryFilter::default().groups(vehicle_collision_groups(false)).exclude_rigid_body(body_handle)).map(|(h,i)|(h,shot_breech+(barrel_delta/barrel_length)*i.time_of_impact,0.0,i.normal))}else{None};
         let hit=if obstruction.is_some(){obstruction}else if cannon {
@@ -812,7 +782,6 @@ impl PhysicsWorld {
                 let collider = &mut self.colliders[handle];
                 collider.set_position_wrt_parent(pose);
                 collider.set_position(hull * pose);
-                self.moved_weapon_colliders.push(handle);
             }
         }
     }
@@ -1310,8 +1279,7 @@ impl PhysicsWorld {
         // Rapier keeps this query pipeline current between substeps.
         self.debug_overlay.clear();
         self.update_loaded_blocks_around_players();
-        self.steps_since_query_rebuild += 1;
-        self.synchronize_queries(false);
+        self.synchronize_queries();
 
         // Recompute custom contacts and forces for each small integration step.
         // Bound catch-up work after a stall as well as the spring integration dt.
@@ -1546,27 +1514,25 @@ impl PhysicsWorld {
         }
         for id in recover { if self.recover_vehicle_for_player(&id).is_ok() { self.falling_seconds.remove(&id); } }
 
-        // Safety: prevent bodies from exploding to insane coordinates
-        for (_, body) in self.bodies.iter_mut() {
-            let mut pos = *body.translation();
+        self.repair_invalid_body_positions();
+    }
 
-            let bad =
-                !pos.x.is_finite()
-                || !pos.y.is_finite()
-                || !pos.z.is_finite()
-                || pos.y.abs() > 10_000.0;
-
-            if bad {
-                // Emergency fallback only: this is not normal vehicle spawning.
-                // A reset at y=5 is announced below and can explain a sudden high
-                // spawn if non-finite state was produced elsewhere.
-                pos = vector![0.0, 5.0, 0.0];
-                body.set_translation(pos, true);
-                body.set_linvel(vector![0.0, 0.0, 0.0], true);
-                body.set_angvel(vector![0.0, 0.0, 0.0], true);
-
-                println!("⚠️ Reset exploding body back to {:?}", pos);
-            }
+    fn repair_invalid_body_positions(&mut self) {
+        // RigidBodySet::iter_mut queues EVERY visited body as modified, even
+        // for a read-only position check. Do not send an unchanged city through
+        // Rapier's modification pass twice per tick. Allocate only on failure.
+        let invalid: Vec<_> = self.bodies.iter().filter_map(|(handle, body)| {
+            let pos = body.translation();
+            (!pos.iter().all(|v| v.is_finite()) || pos.y.abs() > 10_000.0).then_some(handle)
+        }).collect();
+        for handle in invalid {
+            let body = self.bodies.get_mut(handle).unwrap();
+            // Emergency fallback only; ordinary recovery uses authored spawns.
+            let pos = vector![0.0, 5.0, 0.0];
+            body.set_translation(pos, true);
+            body.set_linvel(Vector::zeros(), true);
+            body.set_angvel(Vector::zeros(), true);
+            println!("⚠️ Reset exploding body back to {:?}", pos);
         }
     }
 
@@ -1594,6 +1560,22 @@ impl PhysicsWorld {
 mod tests {
     use super::*;
     use crate::suspension_contact::cast_wheel_ground;
+
+    #[test]
+    fn position_safety_repairs_bad_bodies_without_changing_valid_or_sleeping_ones() {
+        let mut world = PhysicsWorld::new();
+        let valid = world.bodies.insert(RigidBodyBuilder::fixed().translation(vector![12.0, 3.0, 9.0]).build());
+        let sleeping = world.bodies.insert(RigidBodyBuilder::dynamic().translation(vector![4.0, 2.0, 8.0]).sleeping(true).build());
+        for bad in [vector![f32::NAN, 0.0, 0.0], vector![0.0, 10_001.0, 0.0], vector![0.0, 0.0, f32::INFINITY]] {
+            let handle = world.bodies.insert(RigidBodyBuilder::dynamic().translation(bad).linvel(vector![3.0, 1.0, 2.0]).build());
+            world.repair_invalid_body_positions();
+            assert_eq!(*world.bodies[handle].translation(), vector![0.0, 5.0, 0.0]);
+            assert_eq!(*world.bodies[handle].linvel(), Vector::zeros());
+        }
+        assert_eq!(*world.bodies[valid].translation(), vector![12.0, 3.0, 9.0]);
+        assert_eq!(*world.bodies[sleeping].translation(), vector![4.0, 2.0, 8.0]);
+        assert!(world.bodies[sleeping].is_sleeping());
+    }
 
     #[test]
     fn peer_setup_reuses_the_map_and_invalidates_after_tile_changes() {

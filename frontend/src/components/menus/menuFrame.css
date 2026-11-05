@@ -24,6 +24,19 @@ html[data-ui-theme] .menu-frame[role=dialog]{background:var(--app-panel);color:v
 .menu-frame-header>div:first-child>small{display:block;line-height:1.1}
 .menu-frame-header h1{margin:0;font-size:clamp(20px,2.6vw,32px);font-style:italic;font-weight:850;line-height:1.1;letter-spacing:.04em;text-transform:uppercase}
 .menu-frame-header .alpha-progress{margin:0}
+.menu-header-actions{display:flex;align-items:center;justify-content:flex-end;gap:18px;min-width:0}
+.menu-frame-header[data-team-heading]{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);column-gap:16px}
+.menu-header-team{align-self:stretch;display:flex;align-items:center;justify-content:center;gap:.28em;white-space:nowrap;color:var(--team-blue,#69bbff);font-family:Bahnschrift,"Arial Narrow",system-ui,sans-serif;font-size:clamp(26px,3.2vw,48px);font-style:italic;font-weight:900;line-height:1;letter-spacing:.06em}
+.menu-header-team[data-team=red]{color:var(--team-red,#ff6570)}
+.menu-header-team strong{font:inherit}
+.menu-header-team>span{font-size:.3em;font-style:normal;font-weight:800;letter-spacing:.12em}
+@media(max-width:1100px){.menu-frame-header[data-team-heading] .alpha-progress{display:none}}
+@media(max-width:480px){
+ .menu-frame-header[data-team-heading]{column-gap:8px}
+ .menu-frame-header[data-team-heading] h1{font-size:13px;letter-spacing:0}
+ .menu-frame-header[data-team-heading]>div:first-child>small{font-size:6px;letter-spacing:.04em}
+ .menu-header-team{font-size:26px;letter-spacing:.02em;gap:.18em}
+}
 .menu-frame .menu-control{min-height:34px;padding:7px 13px;border-radius:4px;background:var(--app-raised);border:1px solid var(--app-line);color:var(--app-text);box-shadow:none}
 .menu-frame .menu-control:hover{border-color:var(--app-accent);box-shadow:0 0 12px color-mix(in srgb,var(--app-accent) 18%,transparent)}
 .menu-frame .menu-frame-tabs{display:flex;flex-shrink:0;overflow-x:auto;min-height:0;border-bottom:1px solid var(--app-line);padding:0 var(--menu-gutter);gap:0;scrollbar-width:none;background:transparent}

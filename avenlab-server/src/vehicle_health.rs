@@ -93,6 +93,10 @@ pub struct VehicleHealth {
     #[serde(skip)]
     highlight_events: VecDeque<HighlightEvent>,
     #[serde(skip)]
+    highlight_kills: u32,
+    #[serde(skip)]
+    highlight_damage: f64,
+    #[serde(skip)]
     best_moment: Option<BestCombatMoment>,
 }
 
@@ -119,6 +123,8 @@ impl VehicleHealth {
             contributors: HashMap::new(),
             combat_clock_s: 0.0,
             highlight_events: VecDeque::new(),
+            highlight_kills: 0,
+            highlight_damage: 0.0,
             best_moment: None,
         }
     }
@@ -151,17 +157,24 @@ impl VehicleHealth {
     fn highlight(&mut self, kills: u32, damage: f64) {
         let start_s = (self.combat_clock_s - HIGHLIGHT_WINDOW_SECONDS).max(0.0);
         while self.highlight_events.front().is_some_and(|event| event.at_s < start_s) {
-            self.highlight_events.pop_front();
+            self.remove_oldest_highlight();
         }
-        if self.highlight_events.len() >= MAX_HIGHLIGHT_EVENTS { self.highlight_events.pop_front(); }
+        if self.highlight_events.len() >= MAX_HIGHLIGHT_EVENTS { self.remove_oldest_highlight(); }
         self.highlight_events.push_back(HighlightEvent { at_s: self.combat_clock_s, kills, damage });
-        let mut moment = BestCombatMoment { start_s, end_s: self.combat_clock_s, kills: 0, damage: 0.0, score: 0.0 };
-        for event in &self.highlight_events {
-            moment.kills = moment.kills.saturating_add(event.kills);
-            moment.damage += event.damage;
-        }
-        moment.score = moment.kills as f64 * 100.0 + moment.damage * 0.1;
+        self.highlight_kills += kills;
+        self.highlight_damage += damage;
+        let moment = BestCombatMoment { start_s, end_s: self.combat_clock_s,
+            kills: self.highlight_kills, damage: self.highlight_damage,
+            score: self.highlight_kills as f64 * 100.0 + self.highlight_damage * 0.1 };
         if self.best_moment.as_ref().is_none_or(|best| moment.score > best.score) { self.best_moment = Some(moment); }
+    }
+
+    fn remove_oldest_highlight(&mut self) {
+        if let Some(event) = self.highlight_events.pop_front() {
+            self.highlight_kills -= event.kills;
+            self.highlight_damage = (self.highlight_damage - event.damage).max(0.0);
+            if self.highlight_events.is_empty() { self.highlight_damage = 0.0; }
+        }
     }
 
     pub(crate) fn note_contributor(&mut self,player:&str) {
@@ -478,5 +491,27 @@ mod combat_stats_tests {
         assert_eq!(h.highlight_events.len(),MAX_HIGHLIGHT_EVENTS);
         assert_eq!(h.stats.damage_dealt,(MAX_HIGHLIGHT_EVENTS+10) as f32);
         assert_eq!(h.best_combat_moment().unwrap().damage,MAX_HIGHLIGHT_EVENTS as f64);
+    }
+
+    #[test]
+    fn rolling_highlights_match_rescanning_through_capacity_expiry_and_respawn() {
+        let mut h = VehicleHealth::new(500.0);
+        let mut best = 0.0_f64;
+        for i in 0..4000 {
+            // Dense fire hits the capacity cap, then an idle gap expires it all.
+            h.advance(if i == 2100 { 11.0 } else { 0.002 });
+            if i % 17 == 0 { h.credit_kill(); }
+            h.note_damage_dealt((i % 97 + 1) as f32 * 0.25);
+            if i % 1200 == 0 { h.respawn(); }
+            let kills: u32 = h.highlight_events.iter().map(|e| e.kills).sum();
+            let damage: f64 = h.highlight_events.iter().map(|e| e.damage).sum();
+            assert_eq!(h.highlight_kills, kills);
+            assert_eq!(h.highlight_damage, damage);
+            best = best.max(kills as f64 * 100.0 + damage * 0.1);
+            assert_eq!(h.best_combat_moment().unwrap().score, best);
+        }
+        let serialized = serde_json::to_value(&h).unwrap();
+        assert!(serialized.get("highlight_kills").is_none());
+        assert!(serialized.get("highlight_damage").is_none());
     }
 }

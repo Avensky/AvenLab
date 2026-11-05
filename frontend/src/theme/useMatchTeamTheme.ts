@@ -1,6 +1,7 @@
+import { useMotionView } from "../store/session/networkViews";
 import {useEffect} from "react";
 import {useShallow} from "zustand/react/shallow";
-import {useNetworkStore} from "../store/session/networkStore";
+
 import {useSocialStore} from "../store/social/socialStore";
 import {useUIStore} from "../store/menus/uiStore";
 import {usePreferencesStore} from "../store/preferences/preferencesStore";
@@ -17,7 +18,7 @@ export function useMatchTeamTheme() {
     activeWorld: state.view?.alpha?.active?.world_id,
     activeTeam: state.view?.alpha?.active?.team,
   })));
-  const network = useNetworkStore(useShallow(state => {
+  const network = useMotionView(useShallow(state => {
     const me = state.getMe();
     return {
       connected: state.connected, playerId: state.playerId, roomId: state.room_id,

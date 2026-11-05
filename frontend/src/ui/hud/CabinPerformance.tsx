@@ -1,12 +1,13 @@
+import { useDiagnosticsView } from "../../store/session/networkViews";
 import { memo } from "react";
 import { useFrameReadout } from "../../performance/frameReadout";
-import { useNetworkStore } from "../../store/session/networkStore";
+
 
 /** Isolate the low-rate readout so frame/ping updates never rerender the knobs. */
 export const CabinPerformance = memo(function CabinPerformance() {
   const fps = useFrameReadout((s) => s.fps);
   const frameMs = useFrameReadout((s) => s.frameMs);
-  const ping = useNetworkStore((s) =>
+  const ping = useDiagnosticsView((s) =>
     s.connected && s.pingMs !== null && Number.isFinite(s.pingMs)
       ? Math.round(s.pingMs)
       : null,

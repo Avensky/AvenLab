@@ -1,13 +1,14 @@
+import { useMotionView } from "../../store/session/networkViews";
 import {useUIStore} from "../../store/menus";
 import {useMissionRadioStore} from "../../store/missions";
-import {useNetworkStore} from "../../store/session/networkStore";
+
 import {useNavigationStore} from "../../store/world";
 import {ctfObjectiveLine} from "../../game/stats/ctfObjective";
 
 /** The head unit carries the current instruction and the last bulletin. The
  * mission log owns the explanations and the full history. */
 export function MissionApps() {
-  const objective=useNetworkStore(ctfObjectiveLine);
+  const objective=useMotionView(ctfObjectiveLine);
   const missionTitle=useNavigationStore(s=>s.mission?.title);
   const bulletin=useMissionRadioStore(s=>s.current?.title);
   const title=objective??missionTitle??"Free drive";

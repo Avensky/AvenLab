@@ -1,3 +1,4 @@
+import { useMotionView } from "../../store/session/networkViews";
 import {Html} from '@react-three/drei';
 import {useFrame} from '@react-three/fiber';
 import {memo,useMemo,useRef} from 'react';
@@ -64,12 +65,12 @@ function BaseZone({flag,color,captureState}:{flag:CtfFlag;color:string;captureSt
 /** Authored base/drop positions are authoritative. Carried flags follow the
  * rendered vehicle; neither a mesh nor a label sends pickup/capture requests. */
 export function CtfFlagMarkers(){
- const flagsKey=useNetworkStore(s=>JSON.stringify(s.snapshot?.match_state?.flags.map(flag=>({...flag,return_remaining_s:Math.ceil(flag.return_remaining_s??0),position:flag.status==='carried'?flag.base:flag.position}))??[]));
- const visibleKey=useNetworkStore(s=>{
+ const flagsKey=useMotionView(s=>JSON.stringify(s.snapshot?.match_state?.flags.map(flag=>({...flag,return_remaining_s:Math.ceil(flag.return_remaining_s??0),position:flag.status==='carried'?flag.base:flag.position}))??[]));
+ const visibleKey=useMotionView(s=>{
   if (!s.snapshot?.match_state?.flags.some(flag=>flag.status==='carried')) return '';
   return JSON.stringify([s.playerId,...minimapContacts(s.snapshot,s.playerId).map(contact=>contact.id)]);
  });
- const captureKey=useNetworkStore(s=>{
+ const captureKey=useMotionView(s=>{
   const match=s.snapshot?.match_state,objective=match?getCtfCaptureObjective(match,s.getMe()??undefined):null;
   return objective?`${objective.team}:${objective.state}`:'';
  });

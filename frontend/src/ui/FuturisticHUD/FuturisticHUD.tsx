@@ -1,3 +1,4 @@
+import { useMotionView } from "../../store/session/networkViews";
 import { UltimateChargeArc } from '../../combat/UltimateChargeArc';
 import {BarrageTrigger} from "../../combat/BarrageTrigger";
 import { DriveAssists } from '../Cockpit/DriveAssists';
@@ -5,7 +6,7 @@ import { HudGroup } from '../HudGroup';
 import { memo, useEffect } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { HeroPortrait } from '../../game/alpha/HeroPortrait';
-import { useNetworkStore } from '../../store/session/networkStore';
+
 import { usePreferencesStore } from '../../store/preferences/preferencesStore';
 import { showVehicleHealthBar } from '../../store/preferences/healthVisibility';
 import { startVehicleTelemetry, useVehicleTelemetryStore } from '../../store/telemetry/vehicleTelemetryStore';
@@ -28,8 +29,8 @@ const ResourceBar = memo(function ResourceBar({ label, value, text, kind }: {
 export function FuturisticHUD() {
   useEffect(startVehicleTelemetry, []);
   const data = useVehicleTelemetryStore(useShallow(s => ({signal: s.data.signal, speedKph: s.data.speedKph, gear: s.data.gear, cockpitMask: s.data.cockpitMask, fuelLiters: s.data.fuelLiters, boostFraction: s.data.boostFraction, ultimateFraction: s.data.ultimateFraction, tempC: s.data.tempC, config: s.data.config})));
-  const appearance = useNetworkStore(useShallow(s => s.connected ? s.getMe()?.appearance : undefined));
-  const me = useNetworkStore(useShallow(s => {
+  const appearance = useMotionView(useShallow(s => s.connected ? s.getMe()?.appearance : undefined));
+  const me = useMotionView(useShallow(s => {
     const entity = s.connected ? s.getMe() : undefined;
     const health = combatHealth(entity);
     return {hero: entity?.vehicle_id ?? null, team: entity?.team, hp: health?.hp ?? null, max: health?.max ?? null, defeated: health?.defeated ?? false, protection: Math.ceil((health?.protection ?? 0) * 10) / 10};

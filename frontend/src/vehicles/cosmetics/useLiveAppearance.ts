@@ -1,10 +1,11 @@
+import { useConnectionView, useMotionView } from "../../store/session/networkViews";
 import {useShallow} from 'zustand/react/shallow';
 import { useFrame } from "@react-three/fiber";
 import { useUIStore } from "../../store/menus/uiStore";
 import { useHeroLoadouts } from "./heroLoadouts";
 import { useEffect, useRef, type RefObject } from "react";
 import { Mesh, MeshPhysicalMaterial, MeshStandardMaterial, type Object3D, type Material } from "three";
-import { snapshotEntity, useNetworkStore } from "../../store/session/networkStore";
+import {snapshotEntity} from "../../store/session/networkStore";
 import { applyShowroomPaint, applyShowroomHighlights, hasVehicleFinish } from "../../game/preview/garageVehiclePaint";
 import {useRenderSettingsStore} from '../../store/presentation/renderSettingsStore';
 import { FACTORY_APPEARANCE, type HeroAppearance } from "./heroLoadouts";
@@ -12,12 +13,12 @@ import { FACTORY_APPEARANCE, type HeroAppearance } from "./heroLoadouts";
  * never recolor cached GLTF materials or another player's vehicle. */
 export function useLiveAppearance(ref: RefObject<Object3D|null>, model:string, entityId?:string) {
  const lowDetail=useRenderSettingsStore(s=>s.lowDetail);
- const inFleet=useNetworkStore(s=>(s.snapshot?.entities.length??0)>=3);
+ const inFleet=useMotionView(s=>(s.snapshot?.entities.length??0)>=3);
  const simplifyTransmission=lowDetail||inFleet;
  const changing=useUIStore(s=>s.overlay === "vehicle_select");
- const local=useNetworkStore(s=>s.playerId);
+ const local=useConnectionView(s => s.playerId);
  const preview=useHeroLoadouts(s=>s.loadouts[model]);
- const confirmed=useNetworkStore(useShallow(s=>snapshotEntity(s.snapshot,entityId??s.playerId)?.appearance??FACTORY_APPEARANCE));
+ const confirmed=useMotionView(useShallow(s=>snapshotEntity(s.snapshot,entityId??s.playerId)?.appearance??FACTORY_APPEARANCE));
  const appearance=changing && (!entityId || entityId===local) ? preview??FACTORY_APPEARANCE : confirmed;
  const applied=useRef<{root:Object3D;simplifyTransmission:boolean;appearance:HeroAppearance;restore:()=>void}|null>(null);
  useEffect(()=>{const state=applied;return()=>{state.current?.restore();state.current=null;};},[]);

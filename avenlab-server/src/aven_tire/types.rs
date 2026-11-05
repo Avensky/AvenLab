@@ -45,6 +45,12 @@ fn normalize(v: [f32;3]) -> [f32;3] {
 pub enum WheelId { FL, FR, RL, RR }
 
 impl WheelId {
+    /// The active model has four tire/bogie force proxies. Dense arrays avoid
+    /// hashing and allocation for their per-substep compression/load values.
+    pub const fn index(self) -> usize {
+        match self { Self::FL=>0, Self::FR=>1, Self::RL=>2, Self::RR=>3 }
+    }
+
     pub fn from_debug(s: &str) -> Self {
         match s {
             "FL" => WheelId::FL,

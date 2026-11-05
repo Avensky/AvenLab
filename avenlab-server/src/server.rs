@@ -3,18 +3,18 @@
 use crate::{
     social::{actions::SocialAction, model::*, security},
     spawn::Team,
-    state::{InputPacket, PhysicsFrame},
+    state::{InputPacket},
     world_sessions::WorldRuntime,
 };
 use serde_json::{Value, json};
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
-use tokio::sync::{Mutex, mpsc::UnboundedSender, watch};
+use tokio::sync::{Mutex, watch};
 
 pub type Runtime = Arc<Mutex<WorldRuntime>>;
 #[derive(Clone)]
 pub struct Connection {
-    pub tx: UnboundedSender<String>,
-    pub frame: watch::Sender<Option<Arc<PhysicsFrame>>>,
+    pub tx: crate::outbox::Sender,
+    pub frame: crate::snapshot_wire::SnapshotSender,
     pub social: watch::Sender<Option<String>>,
     pub input: watch::Receiver<Option<InputPacket>>,
     pub input_tx: watch::Sender<Option<InputPacket>>,
@@ -114,7 +114,8 @@ impl Server {
         Ok(())
     }
     pub async fn register(&self, id: String, connection: Connection) -> Result<(), String> {
-        let _operation = self.operations.lock().await;
+        // Registration only changes this map. Waiting on control-plane disk
+        // work would leave upgraded sockets outside the live-client cap.
         let mut clients = self.connections.lock().await;
         if clients.len() >= 96 {
             return Err("The server connection limit has been reached.".into());
@@ -190,6 +191,16 @@ impl Server {
     }
     pub async fn disconnect(&self, player: &str) {
         let _operation = self.operations.lock().await;
+        {
+            let mut clients = self.connections.lock().await;
+            let Some(client) = clients.get(player) else { return; };
+            if client.profile_id.is_none() && client.world_id.is_none() {
+                // No identity, room or queue entry can refer to this socket.
+                // Avoid rebuilding everyone's lobby when an anonymous probe leaves.
+                clients.remove(player);
+                return;
+            }
+        }
         self.checkpoint_departure(player, false).await;
         self.reserve_disconnect(player).await;
         let client=self.connections.lock().await.get(player).cloned();
@@ -315,9 +326,10 @@ impl Server {
                 return Err("The active-world limit has been reached. Join an active world or wait for one to empty.".into());
             }
             let map = world.map.clone();
-            let loaded = tokio::task::spawn_blocking(move || WorldRuntime::new(world_id, &map))
+            let mut loaded = tokio::task::spawn_blocking(move || WorldRuntime::new(world_id, &map))
                 .await
                 .map_err(|_| "Could not load the world.")??;
+            loaded.physics.set_tire_thermals(world.tire_thermals);
             Arc::new(Mutex::new(loaded))
         };
         if let Some(mode) = world.mode {
@@ -354,7 +366,7 @@ impl Server {
             connection.team = team;
         }
         let _=client.tx.send(json!({"type":"world_changed","world":{"id":world_id,"name":world.name,"map":world.map,"team":team.as_str()}}).to_string());
-        let _=client.tx.send(json!({"type":"welcome","player_id":player,"room_id":world_id,"team":team.as_str(),"spawned":false}).to_string());
+        if !client.frame.compact() {let _=client.tx.send(json!({"type":"welcome","player_id":player,"room_id":world_id,"team":team.as_str(),"spawned":false}).to_string());}
         room.send_existing_configs(player,&client.tx);
         let _=client.tx.send(room.physics.map_snapshot_packet(world_id));
         Ok(json!({"world_id":world_id,"map":world.map}))
@@ -403,6 +415,7 @@ impl Server {
                     World {
                         mode: None,
                         id: world_id,
+                        tire_thermals: crate::tire_thermals::server_default(),
                         name: format!("Public {}", map.replace('_', " ")),
                         map: map.into(),
                         owner_id: None,
@@ -477,10 +490,12 @@ impl Server {
         };
         let result = match action {
             "mode_join" | "mode_cancel" | "mode_leave" | "hero_select" | "skin_redeem" | "skin_equip"
-            | "hero_loadout_save" | "editor_apply" | "editor_vehicle_get" | "editor_vehicle_apply" => self.handle_alpha(player, &value).await?,
+            | "hero_loadout_save" | "editor_apply" => self.handle_alpha(player, &value).await?,
 
-            "career_history" | "career_match" => self.handle_career(player, &value).await?,
-            "vehicle_revive" => self.handle_vehicle_revive(player, &value).await?,
+            // These handlers reply directly or publish their own config/gameplay packet.
+            "editor_vehicle_get" | "editor_vehicle_apply" => return self.handle_alpha(player, &value).await,
+            "career_history" | "career_match" => return self.handle_career(player, &value).await,
+            "vehicle_revive" => return self.handle_vehicle_revive(player, &value).await,
             // Gameplay snapshots already carry these effects; recasting the social lobby for each shot stalls unrelated peers.
             "vehicle_heal_pack" => return self.handle_vehicle_heal_pack(player, &value).await,
             "dive_shield" | "dps_guard_boost" | "tank_barrier" => return self.handle_vehicle_shield(player, action).await,
@@ -537,7 +552,10 @@ impl Server {
                 self.restore_reservation(player, &profile_id).await;
                 json!({"profile_id":profile_id,"token":new_token})
             }
-            "refresh" => json!({}),
+            "refresh" => {
+                self.publish_for(Some(player)).await;
+                return Ok(json!({}));
+            }
             "world_create" => {
                 let actor = self.actor(player).await?;
                 let map = string("map");
@@ -575,6 +593,7 @@ impl Server {
                     World {
                         mode: None,
                         id: world_id,
+                        tire_thermals: value.get("tire_thermals").and_then(Value::as_bool).unwrap_or(false),
                         name,
                         map,
                         owner_id: Some(actor),
@@ -590,6 +609,22 @@ impl Server {
                 drop(data);
                 self.commit(previous).await?;
                 json!({"world_id":world_id})
+            }
+            "world_tire_thermals" => {
+                let actor=self.actor(player).await?;
+                let world_id=value.get("world_id").and_then(Value::as_u64).ok_or("Select a world.")? as usize;
+                let enabled=value.get("enabled").and_then(Value::as_bool).ok_or("Choose on or off.")?;
+                let mut data=self.data.lock().await;
+                let world=data.worlds.get(&world_id).ok_or("Unknown world.")?;
+                if world.owner_id.as_deref()!=Some(&actor) || world.mode.is_some() {return Err("Only the owner may change saved-world handling.".into());}
+                if world.tire_thermals==enabled {return Ok(json!({"enabled":enabled}));}
+                let previous=data.clone();
+                data.worlds.get_mut(&world_id).unwrap().tire_thermals=enabled;
+                drop(data);
+                self.commit(previous).await?;
+                let runtime=self.runtimes.lock().await.get(&world_id).cloned();
+                if let Some(runtime)=runtime {runtime.lock().await.physics.set_tire_thermals(enabled);}
+                json!({"enabled":enabled})
             }
             "world_join" => {
                 let _actor = self.actor(player).await?;

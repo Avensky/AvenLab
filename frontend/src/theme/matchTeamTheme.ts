@@ -38,8 +38,10 @@ export const MATCH_TEAM_COLORS = {
 /** Semantic team identities also appear in staging, career and results when no
  * live match accent is active. Keep readable red text separate from red light. */
 export function applyTeamIdentityColors(root: HTMLElement, scheme: "dark" | "light") {
-  root.style.setProperty("--team-red", MATCH_TEAM_COLORS.red[scheme]);
-  root.style.setProperty("--team-red-glow", MATCH_TEAM_COLORS.red.glow);
+  for (const team of ["red", "blue"] as const) {
+    root.style.setProperty(`--team-${team}`, MATCH_TEAM_COLORS[team][scheme]);
+    root.style.setProperty(`--team-${team}-glow`, MATCH_TEAM_COLORS[team].glow);
+  }
 }
 
 /** App-theme tokens are never replaced. Transient tokens drive explicit team

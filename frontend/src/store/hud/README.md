@@ -5,3 +5,9 @@ radio style and HVAC size remain preferences; playback stays in radioStore and
 physical requests stay in inputStore. Minimizing unmounts the panel's content,
 preserving those owners. UtilityDock is the single positioning owner. Its rim
 launchers have an explicit layer above the clickable map.
+
+## Update frequency by store
+
+- [useHeroGuideStore](heroGuideStore.README.md)
+- [useHudPanelsStore](hudPanelsStore.README.md)
+- [useScoreboardStore](scoreboardStore.README.md)

@@ -118,7 +118,11 @@ export const useVehicleConfigStore = create<{
   receive: (playerId, config) => {
     const gauges = parseGaugeConfig(config);
     if (typeof playerId !== "string" || !playerId || !gauges) return;
-    set((state) => ({ byPlayer: { ...state.byPlayer, [playerId]: gauges } }));
+    set((state) => {
+      const current=state.byPlayer[playerId];
+      if(current && (Object.keys(gauges) as (keyof GaugeConfig)[]).every(key=>current[key]===gauges[key]))return state;
+      return {byPlayer:{...state.byPlayer,[playerId]:gauges}};
+    });
   },
   reset: () => set({ byPlayer: {} }),
 }));

@@ -19,7 +19,7 @@ fn server(active: usize, players: usize) -> Server {
 }
 async fn client(server: &Server, name: &str) -> (String, Value, watch::Receiver<Option<String>>) {
     let player = id();
-    let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
+    let (tx, _rx) = crate::outbox::channel();
     let (frame, _frame) = watch::channel(None);
     let (social, view) = watch::channel(None);
     let (input_tx, input) = watch::channel(None);
@@ -28,7 +28,7 @@ async fn client(server: &Server, name: &str) -> (String, Value, watch::Receiver<
             player.clone(),
             Connection {
                 tx,
-                frame,
+                frame: frame.into(),
                 social,
                 input,
                 input_tx,
@@ -50,6 +50,39 @@ async fn world(server: &Server, player: &str, name: &str, password: &str, listed
 }
 async fn cleanup(server: Server) {
     let _ = tokio::fs::remove_dir_all(server.path.parent().unwrap()).await;
+}
+
+#[tokio::test]
+async fn anonymous_registration_is_bounded_without_waiting_for_control_plane() {
+    let s = server(2, 10);
+    let (identified, _, _) = client(&s, "Registered").await;
+    let mut anonymous = s.connections.lock().await[&identified].clone();
+    anonymous.profile_id = None;
+    let operation = s.operations.lock().await;
+    for i in 1..96 {
+        tokio::time::timeout(std::time::Duration::from_secs(1),
+            s.register(format!("anonymous-{i}"), anonymous.clone())).await.unwrap().unwrap();
+    }
+    assert!(s.register("excess".into(), anonymous).await.is_err());
+    assert_eq!(s.connections.lock().await.len(), 96);
+    drop(operation);
+    cleanup(s).await;
+}
+
+#[tokio::test]
+async fn anonymous_departure_does_not_rebuild_authenticated_social_views() {
+    let s = server(2, 10);
+    let (identified, _, _) = client(&s, "Registered").await;
+    let mut anonymous = s.connections.lock().await[&identified].clone();
+    anonymous.profile_id = None;
+    s.register("anonymous".into(), anonymous).await.unwrap();
+    // Publishing needs the data lock. An unrelated anonymous departure must not.
+    let data = s.data.lock().await;
+    tokio::time::timeout(std::time::Duration::from_secs(1), s.disconnect("anonymous")).await.unwrap();
+    assert!(!s.connections.lock().await.contains_key("anonymous"));
+    assert!(s.connections.lock().await.contains_key(&identified));
+    drop(data);
+    cleanup(s).await;
 }
 
 #[tokio::test]
@@ -745,7 +778,7 @@ async fn real_ctf_capture_completion_archives_careers_once_and_history_survives_
     let red_identity=roster.iter().find(|(id,_)| id==&red).unwrap().1.clone();
     s.disconnect(&red).await;
     let (resumed,_,_)=client(&s,"Result reconnect").await;
-    let (result_tx,mut result_rx)=tokio::sync::mpsc::unbounded_channel();
+    let (result_tx,mut result_rx)=crate::outbox::channel();
     s.connections.lock().await.get_mut(&resumed).unwrap().tx=result_tx;
     s.handle(&resumed,json!({"action":"identify","name":"Career driver 0","token":red_identity["token"]})).await.unwrap();
     let mut replayed=false;
@@ -1149,7 +1182,7 @@ async fn competitive_three_by_three_uses_size_roles_and_records_size_without_cha
 async fn old_match_results_cannot_interrupt_another_world_or_a_reused_round() {
     use crate::alpha::career::{CareerMatch,CareerParticipant};
     let s=server(2,10);let (away,away_identity,_)=client(&s,"Moved to new game").await;let (current,current_identity,_)=client(&s,"Current result viewer").await;
-    let (away_tx,mut away_rx)=tokio::sync::mpsc::unbounded_channel();let (current_tx,mut current_rx)=tokio::sync::mpsc::unbounded_channel();
+    let (away_tx,mut away_rx)=crate::outbox::channel();let (current_tx,mut current_rx)=crate::outbox::channel();
     {let mut clients=s.connections.lock().await;let peer=clients.get_mut(&away).unwrap();peer.world_id=Some(2);peer.tx=away_tx;let peer=clients.get_mut(&current).unwrap();peer.world_id=Some(1);peer.tx=current_tx;}
     let mut room=WorldRuntime::new(1,"road_precision").unwrap();let mut round=crate::ctf::CtfRound::new("quickplay",false,[[0.0,0.0,0.0],[50.0,0.0,0.0]]).unwrap();round.match_id="ended-current-round".into();round.phase=crate::ctf::CtfPhase::Ended;room.round=Some(round);s.runtimes.lock().await.insert(1,Arc::new(Mutex::new(room)));s.matches.lock().await.ended.insert(1,timestamp());
     let mut record=CareerMatch{match_id:"ended-current-round".into(),world_id:1,mode:crate::alpha::Mode::Quickplay,team_size:Some(3),map:"road_precision".into(),ended_at:timestamp(),participants:vec![CareerParticipant{profile_id:away_identity["profile_id"].as_str().unwrap().into(),name:"Moved to new game".into(),team:Some("red".into()),hero:"brz".into(),..Default::default()},CareerParticipant{profile_id:current_identity["profile_id"].as_str().unwrap().into(),name:"Current result viewer".into(),team:Some("blue".into()),hero:"brz".into(),..Default::default()}],..Default::default()};
@@ -1159,5 +1192,50 @@ async fn old_match_results_cannot_interrupt_another_world_or_a_reused_round() {
     record.match_id="old-round-archive-retry".into();s.persist_record(&record).await.unwrap();
     assert!(current_rx.try_recv().is_err(),"world ID reuse cannot show the result of a different round");
     assert_eq!(s.data.lock().await.profiles[away_identity["profile_id"].as_str().unwrap()].progression.career.summary.sessions,2,"departed participants still receive durable career records");
+    cleanup(s).await;
+}
+
+#[tokio::test]
+async fn only_world_owner_can_switch_and_persist_tire_thermals() {
+    let s=server(2,10);
+    let (owner,_,_)=client(&s,"Tire host").await;
+    let (guest,_,_)=client(&s,"Tire guest").await;
+    let id=world(&s,&owner,"Rubber range","",true).await;
+    s.handle(&owner,json!({"action":"world_join","world_id":id})).await.unwrap();
+    let runtime=s.runtimes.lock().await[&id].clone();
+    assert!(!runtime.lock().await.physics.tire_thermals);
+    let enable=json!({"action":"world_tire_thermals","world_id":id,"enabled":true});
+    assert!(s.handle(&guest,enable.clone()).await.is_err());
+    s.handle(&owner,enable).await.unwrap();
+    assert!(runtime.lock().await.physics.tire_thermals);
+    let saved:SocialData=serde_json::from_slice(&std::fs::read(&s.path).unwrap()).unwrap();
+    assert!(saved.worlds[&id].tire_thermals);
+    s.handle(&owner,json!({"action":"world_tire_thermals","world_id":id,"enabled":false})).await.unwrap();
+    assert!(!runtime.lock().await.physics.tire_thermals);
+    cleanup(s).await;
+}
+
+#[tokio::test]
+async fn reads_leave_other_social_subscribers_alone_and_mutations_still_broadcast() {
+    let s = server(2, 10);
+    let (a, identity, mut a_view) = client(&s, "Reader").await;
+    let (b, _, mut b_view) = client(&s, "Observer").await;
+    a_view.borrow_and_update();
+    b_view.borrow_and_update();
+    // Make both projections stale so wire deduplication cannot mask a full broadcast.
+    let actor = identity["profile_id"].as_str().unwrap();
+    s.data.lock().await.profiles.get_mut(actor).unwrap().name = "Changed".into();
+    s.handle(&a, json!({"action":"career_history"})).await.unwrap();
+    assert!(!a_view.has_changed().unwrap() && !b_view.has_changed().unwrap());
+    s.handle(&a, json!({"action":"refresh"})).await.unwrap();
+    assert!(a_view.has_changed().unwrap() && !b_view.has_changed().unwrap());
+    let view: Value = serde_json::from_str(a_view.borrow_and_update().as_deref().unwrap()).unwrap();
+    assert_eq!(view["data"]["profile"]["name"], "Changed");
+    let id = world(&s, &b, "Shared range", "", true).await;
+    assert!(a_view.has_changed().unwrap() && b_view.has_changed().unwrap());
+    let outsider: Value = serde_json::from_str(a_view.borrow().as_deref().unwrap()).unwrap();
+    let listed = outsider["data"]["worlds"].as_array().unwrap().iter().find(|w| w["id"] == id).unwrap();
+    assert!(listed["invite_code"].is_null());
+    assert_eq!(listed["members"], json!([]));
     cleanup(s).await;
 }

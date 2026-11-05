@@ -1,3 +1,4 @@
+import { useConnectionView } from "../../store/session/networkViews";
 import {MenuTabButton} from "../../components/menus/MenuTabButton";
 import {MatchModePortraits} from "./ModePortraitCard";
 import {useSelectionStore as useWorldSelection} from '../../store/selection/selectionStore';
@@ -17,7 +18,7 @@ import {
   type MatchTeamSize,
 } from "../../store/alpha/alphaStore";
 import { useUIStore } from "../../store/menus/uiStore";
-import { useNetworkStore } from "../../store/session/networkStore";
+
 import { useCanBusStore } from "../../store/recon/canBusStore";
 import { captureReady } from "../../store/recon/captureSetup";
 import { CanCaptureSelectors } from "../modes/recon/CanCaptureSelectors";
@@ -46,7 +47,7 @@ export function ModeSelection() {
   const mode = useAlphaStore((s) => s.mode);
   const teamSize = useAlphaStore((s) => s.teamSize);
   const defaultHero = useHeroLoadouts(s=>s.defaultHero);
-  const connected = useNetworkStore((s) => s.connected);
+  const connected = useConnectionView(s => s.connected);
   const root = useRef<HTMLElement>(null),
     pending = useRef(false);
   const [busy, setBusy] = useState(false),

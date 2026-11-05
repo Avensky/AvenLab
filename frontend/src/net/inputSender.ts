@@ -1,3 +1,4 @@
+import { useMotionView } from "../store/session/networkViews";
 import {sampleTankFire,clearTankFireInputs} from '../combat/tankLoadout';
 import {isMechanicPlayer} from '../combat/reviveTargets';
 import {requestAssistedHealPack} from '../combat/healPackTargets';
@@ -14,13 +15,17 @@ import {
   recordInputPacketSent,
 } from "./rustSocket";
 import {encodePackedInput} from './packedInput';
+import {InputSendGate} from './inputSendGate';
+import {useDebugViewStore} from '../store/presentation/debugViewStore';
 export { getInputSenderStats } from "./rustSocket";
 
 let seq = 0;
 let lastSendTime = performance.now();
 let lastSocket: WebSocket | null = null;
 let intervalId: number | null = null;
+let stopSessionWatch: (()=>void)|null=null;
 let rate = 60;
+const sendGate = new InputSendGate();
 
 function transmitInput(allowQueuedNeutral = false) {
   const connection = socket;
@@ -28,6 +33,7 @@ function transmitInput(allowQueuedNeutral = false) {
   const now = performance.now();
   if (connection !== lastSocket) {
     lastSocket = connection;
+    sendGate.reset();
     seq = 0;
     lastSendTime = now - 1000 / rate;
     inputSenderDiagnostics.sent = 0;
@@ -42,7 +48,10 @@ function transmitInput(allowQueuedNeutral = false) {
     useInputStore.getState().releaseControls();
   const dt = Math.max(0, Math.min((now - lastSendTime) / 1000, 0.1));
   const turretVehicle=useNetworkStore.getState().getMe();
-  syncTurretOrientation(turretVehicle?.rotation);
+  // Lobby/menu sockets still heartbeat, but have no driving mailbox to feed.
+  if (!turretVehicle || turretVehicle.health?.defeated) {sendGate.reset();return;}
+  syncTurretOrientation(turretVehicle.rotation);
+  const mask=useWorldStore.getState().debugMask;
   const packet = {
     ...inputRef.current,
     combat: (()=>{
@@ -70,9 +79,15 @@ function transmitInput(allowQueuedNeutral = false) {
     type: "input" as const,
     seq,
     dt, // Transport timing only; Rust retains its fixed simulation timestep.
-    debug_mask: useWorldStore.getState().debugMask, // Single owner of debug requests.
+    debug_mask: mask && useDebugViewStore.getState().playerScope==='all' ? mask|128 : mask, // Single owner of debug requests.
   };
-  connection.send(supportsPackedInput(connection) ? encodePackedInput(packet) : JSON.stringify(packet));
+  const packed = supportsPackedInput(connection) ? encodePackedInput(packet) : null;
+  if (packed && !allowQueuedNeutral && !sendGate.shouldSend(packed, now)) {
+    inputSenderDiagnostics.skipped++;
+    return;
+  }
+  connection.send(packed ?? JSON.stringify(packet));
+  if (packed) sendGate.sent(packed, now);
   recordInputPacketSent(seq, now);
   seq = (seq + 1) >>> 0; // Rust seq is u32; increment only on actual sends.
   lastSendTime = now;
@@ -86,10 +101,22 @@ export function sendInputPacket() {
 function releaseHeldControls() {
   clearTankFireInputs(tankFireInputs);
   useInputStore.getState().releaseControls();
-  sendInputPacket();
+  transmitInput(true);
+}
+function syncInputClock() {
+  const me=useNetworkStore.getState().getMe();
+  const active=!!me && !me.health?.defeated && document.visibilityState!=="hidden";
+  if(active && intervalId===null) {
+    sendGate.reset();
+    intervalId=window.setInterval(sendInputPacket,1000/rate);
+  } else if(!active && intervalId!==null) {
+    window.clearInterval(intervalId);intervalId=null;sendGate.reset();
+  }
+  inputSenderDiagnostics.running=active;
 }
 function onVisibilityChange() {
   if (document.visibilityState === "hidden") releaseHeldControls();
+  syncInputClock();
 }
 
 export function startInputSender(rateHz = 60) {
@@ -100,11 +127,12 @@ export function startInputSender(rateHz = 60) {
   lastSendTime = performance.now();
   window.addEventListener("blur", releaseHeldControls);
   document.addEventListener("visibilitychange", onVisibilityChange);
-  intervalId = window.setInterval(sendInputPacket, 1000 / rate);
-  inputSenderDiagnostics.running = true;
+  stopSessionWatch=useMotionView.subscribe(syncInputClock);
+  syncInputClock();
 }
 
 export function stopInputSender() {
+  stopSessionWatch?.();stopSessionWatch=null;
   const wasRunning = intervalId !== null;
   if (intervalId !== null) window.clearInterval(intervalId);
   intervalId = null;

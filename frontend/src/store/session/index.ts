@@ -2,3 +2,5 @@
 export * from "./networkStore";
 export * from "./types";
 export * from "./vehicleConfigStore";
+
+export * from "./networkViews";

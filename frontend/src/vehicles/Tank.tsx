@@ -1,3 +1,4 @@
+import { useConnectionView } from "../store/session/networkViews";
 import {advanceTankHatches} from './tools/tankHatches';
 import {
   forwardRef,
@@ -13,7 +14,7 @@ import {weaponVisuals} from "../combat/weaponVisuals";
 import { useFrame } from "@react-three/fiber";
 import { useGLTF } from "@react-three/drei";
 import { getTankParts } from "./tools/getTankParts";
-import { useNetworkStore } from "../store/session/networkStore";
+
 import { useUIStore } from "../store/menus/uiStore";
 import { useVehiclePhysicsInterpolator } from "../hooks/usePhysicsInterpolator";
 import { useVehicleVisualAlignment } from "../hooks/useVehicleVisualAlignment";
@@ -36,7 +37,7 @@ export const Tank = forwardRef<Group, TankProps>(function Tank(
   const forwardGunPitch=useRef<Group|null>(null);
   const recoil=useRef<Group|null>(null),wheelPivots=useRef<Object3D[]>([]);
   useImperativeHandle(ref, () => root.current, []);
-  const localId = useNetworkStore((s) => s.playerId);
+  const localId = useConnectionView(s => s.playerId);
   const preview = useUIStore(
     (s) => s.screen === "sandbox_setup" || s.screen === "signal_recon_setup",
   );

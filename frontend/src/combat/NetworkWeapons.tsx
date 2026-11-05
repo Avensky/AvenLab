@@ -1,9 +1,10 @@
+import { useMotionView } from "../store/session/networkViews";
 import { memo, useMemo, useRef, type RefObject } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { BoxGeometry, Group, InstancedMesh, Matrix4, MeshStandardMaterial, Object3D, Quaternion, Vector3 } from 'three';
 import { useShallow } from 'zustand/react/shallow';
 import { useVehiclePhysicsInterpolator } from '../hooks/usePhysicsInterpolator';
-import { snapshotEntity, useNetworkStore } from '../store/session/networkStore';
+import {snapshotEntity} from '../store/session/networkStore';
 import { NetworkCombatEffects } from './NetworkCombatEffects';
 import { placeRoofTurret } from './turretPresentation';
 
@@ -21,7 +22,7 @@ const roofKits:Record<string,RoofKit>={
  cx30:{width:.58,length:.55,bore:.14,twin:true},
 };
 export function NetworkWeapons() {
-  const ids=useNetworkStore(useShallow(state => {
+  const ids=useMotionView(useShallow(state => {
     const room=state.getMe()?.room_id ?? state.room_id;
     return state.connected ? (state.snapshot?.entities ?? [])
       .filter(e => (room===null || room===e.room_id) && e.combat && e.vehicle_id!=='tank')
@@ -43,7 +44,7 @@ export function NetworkWeapons() {
 const hidden=new Matrix4().makeScale(0,0,0);
 type Batch=RefObject<InstancedMesh|null>;
 const Turret=memo(function Turret({id,index,bases,barrels}:{id:string;index:number;bases:Batch;barrels:Batch}){
-  const chassis=useNetworkStore(s=>snapshotEntity(s.snapshot, id)?.vehicle_id);
+  const chassis=useMotionView(s=>snapshotEntity(s.snapshot, id)?.vehicle_id);
   const rig=useMemo(()=>{
     const kit=roofKits[chassis??'']??roofKits.brz;
     const mount=new Group(),pivot=new Group(),gun=new Group(),base=new Object3D();

@@ -1,3 +1,4 @@
+import { useMotionView } from "../store/session/networkViews";
 import {RecoveryCountdown} from './RecoveryCountdown';
 import {recoveryStatus} from './recoveryStatus';
 import {useEffect,useState} from 'react';
@@ -25,7 +26,7 @@ function useConfirmedDamageFlash(){
    }
    previousKey=key;previousSeq=seq;
   };
-  read();const stop=useNetworkStore.subscribe(read);
+  read();const stop=useMotionView.subscribe(read);
   return()=>{stop();window.clearTimeout(timeout);};
  },[]);
  return flash;
@@ -38,7 +39,7 @@ export function VehicleHealthHUD(){
  const flash=useConfirmedDamageFlash();
  const live=useVehicleTelemetryStore(s=>s.data.signal==='live');
  const visible=useUIStore(s=>isDrivingScreen(s.screen)&&s.overlay===null&&!s.isModeLoading);
- const health=useNetworkStore(useShallow(s=>{
+ const health=useMotionView(useShallow(s=>{
   const h=s.connected?s.getMe()?.health:undefined;
   if(!h||!finite(h.hp)||!finite(h.max_hp)||h.max_hp<=0||typeof h.defeated!=='boolean')return null;
   return {reason:h.disabled_reason,window:h.recovery_window_s,dead:h.defeated,respawn:tenths(h.respawn_remaining_s)};

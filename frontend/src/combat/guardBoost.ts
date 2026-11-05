@@ -1,3 +1,4 @@
+import type { MotionState } from "../store/session/networkViews";
 import {create} from 'zustand';
 import {heroForVehicle} from '../store/alpha/alphaStore';
 import {requestSocial} from '../net/socialClient';
@@ -10,16 +11,16 @@ export {GUARD_DURATION_S,GUARD_COOLDOWN_S,GUARD_SHIELD_HP,GUARD_FUEL_LITERS,TANK
 const finite=(value:unknown):value is number=>typeof value==='number'&&Number.isFinite(value);
 
 /** Validate the deployed chassis once for the deck, hotkeys and fallback HUD. */
-export function playerShield(network=useNetworkStore.getState(),view:SocialView|null=useSocialStore.getState().view):ShieldAction|null{
+export function playerShield(network: MotionState = useNetworkStore.getState(),view:SocialView|null=useSocialStore.getState().view):ShieldAction|null{
  const me=network.getMe();
  if(!network.connected||!me?.vehicle_id||(network.room_id!==null && me.room_id!==network.room_id))return null;
  const hero=heroForVehicle(me.vehicle_id),seat=view?.alpha?.active;
  if(!hero || (seat ? seat.world_id!==me.room_id || seat.team!==me.team || seat.hero!==hero.id : !!network.snapshot?.match_state))return null;
  return hero.id==='tank'?'tank_barrier':hero.id==='brz'?'brz_guard':'dive_shield';
 }
-export function isGuardDpsPlayer(network=useNetworkStore.getState(),view=useSocialStore.getState().view){return playerShield(network,view)==='brz_guard';}
-export function isDiveShieldPlayer(network=useNetworkStore.getState(),view=useSocialStore.getState().view){return playerShield(network,view)==='dive_shield';}
-export function isTankBarrierPlayer(network=useNetworkStore.getState(),view=useSocialStore.getState().view){return playerShield(network,view)==='tank_barrier';}
+export function isGuardDpsPlayer(network: MotionState = useNetworkStore.getState(),view=useSocialStore.getState().view){return playerShield(network,view)==='brz_guard';}
+export function isDiveShieldPlayer(network: MotionState = useNetworkStore.getState(),view=useSocialStore.getState().view){return playerShield(network,view)==='dive_shield';}
+export function isTankBarrierPlayer(network: MotionState = useNetworkStore.getState(),view=useSocialStore.getState().view){return playerShield(network,view)==='tank_barrier';}
 
 export function guardBoostBlockReason(me:PhysicsEntitySnapshot|null|undefined,guard=readGuardBoost(me)){
  if(!guard)return 'SERVER UPDATE REQUIRED';

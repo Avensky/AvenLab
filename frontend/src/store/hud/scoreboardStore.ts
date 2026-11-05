@@ -20,14 +20,14 @@ export const useScoreboardStore=create<{
  setHeld:(held:boolean)=>void;
  toggle:()=>void;
  close:()=>void;
-}>(set=>({
+}>((set,get)=>({
  held:false,pinned:false,view:'table',teamFilter:'all',
  setTeamFilter:teamFilter=>set({teamFilter}),
  cycleTeamFilter:direction=>set(state=>({teamFilter:nextMatchTeamFilter(state.teamFilter,direction)})),
  setView:view=>set({view}),
  resetView:()=>set({view:'table',teamFilter:'all'}),
- setHeld:held=>set({held}),
+ setHeld:held=>{if(get().held!==held) set({held});},
  toggle:()=>set(s=>({pinned:!s.pinned})),
- close:()=>set({held:false,pinned:false}),
+ close:()=>{if(get().held || get().pinned) set({held:false,pinned:false});},
 }));
 export const setScoreboardHeld=(held:boolean)=>useScoreboardStore.getState().setHeld(held);

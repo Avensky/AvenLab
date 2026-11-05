@@ -1,3 +1,4 @@
+import { useMotionView } from "../store/session/networkViews";
 import {publishSightCue} from './sightCue';
 import {useSocialStore} from '../store/social/socialStore';
 import {isMechanicPlayer} from './reviveTargets';
@@ -36,7 +37,7 @@ const VehicleHealthMarker=memo(function VehicleHealthMarker({id,budget,focused,h
  useEffect(()=>()=>{if(focused)publishSightCue(id,null);},[id,focused]);
  const {getInterpolated}=useVehiclePhysicsInterpolator(id);
  const mode=usePreferencesStore(s=>s.healthBars);
- const data=useNetworkStore(useShallow(s=>{
+ const data=useMotionView(useShallow(s=>{
   const entity=snapshotEntity(s.snapshot, id),health=entity?.health;
   const max=health&&Number.isFinite(health.max_hp)&&health.max_hp>0?health.max_hp:0;
   const hp=max&&Number.isFinite(health?.hp)?Math.max(0,Math.min(max,health!.hp)):0;
@@ -142,9 +143,9 @@ export function VehicleHealthMarkers(){
  const visible=useUIStore(s=>s.screen==='sandbox'&&s.overlay===null&&!s.isModeLoading);
  const modern=usePreferencesStore(s=>s.hudGroups.futuristic);
  const social=useSocialStore(s=>s.view?.alpha?.active);
- const healingTarget=useNetworkStore(s=>visible&&!covered&&social?.hero==='mechanic'&&isMechanicPlayer(s)?nearestHealPackTarget(s.snapshot,s.playerId)?.id??null:null);
- const target=useNetworkStore(s=>healingTarget??(visible&&!covered&&s.connected?(modern?sightedTarget(s.snapshot,s.getMe()):s.getMe()?.combat?.assisted_target??null):null));
- const ids=useNetworkStore(useShallow(s=>visible&&!covered&&s.connected&&s.playerId?healthMarkerIds(s.snapshot,s.playerId,mode,target):[]));
+ const healingTarget=useMotionView(s=>visible&&!covered&&social?.hero==='mechanic'&&isMechanicPlayer(s)?nearestHealPackTarget(s.snapshot,s.playerId)?.id??null:null);
+ const target=useMotionView(s=>healingTarget??(visible&&!covered&&s.connected?(modern?sightedTarget(s.snapshot,s.getMe()):s.getMe()?.combat?.assisted_target??null):null));
+ const ids=useMotionView(useShallow(s=>visible&&!covered&&s.connected&&s.playerId?healthMarkerIds(s.snapshot,s.playerId,mode,target):[]));
  if(!visible||covered)return null;
  return <group name="remote-vehicle-health-markers">{ids.map(id=><VehicleHealthMarker key={id} id={id} budget={budget} focused={target===id} healing={healingTarget===id}/>)}</group>;
 }

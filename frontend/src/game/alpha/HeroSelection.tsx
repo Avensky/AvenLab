@@ -1,3 +1,4 @@
+import { useConnectionView } from "../../store/session/networkViews";
 import {useScoreboardStore} from '../../store/hud/scoreboardStore';
 import { unavailableHeroes } from "./heroAvailability";
 import { prepareReconSelection } from "../../store/recon/captureSetup";
@@ -33,8 +34,8 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
     heroId = useAlphaStore((s) => s.hero),
     previewId = useAlphaStore((s) => s.previewHero);
   const view = useSocialStore((s) => s.view),
-    connected = useNetworkStore((s) => s.connected),
-    world = useNetworkStore((s) => s.worldName);
+    connected = useConnectionView(s => s.connected),
+    world = useConnectionView(s => s.worldName);
   const active = view?.alpha?.active;
   const mode = overlay && active ? active.mode : selectedMode;
   const [role, setRole] = useState<HeroFilter>("all");
@@ -46,6 +47,8 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
   const research = mode === "signal_recon";
   const planned = mode === "swarm";
   const match = isMatchMode(mode);
+  const confirmedTeam = match && inMode && (active?.team === "red" || active?.team === "blue")
+    ? active.team : undefined;
   const customWorld = Boolean(world && !active);
   // Hydrate an existing pick once per admission, including reconnect/refresh.
   // Replaceable lobby views can trail request acknowledgements; an old view
@@ -194,7 +197,7 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
       aria-label={overlay ? "Change hero" : "Hero selection"}
       style={overlay ? { zIndex: 50, background:"transparent", backdropFilter:"none" } : undefined}
     >
-      <SelectionHeader title={overlay?'CHANGE HERO':'CHOOSE HERO'} eyebrow={matchModeLabel(mode,active&&inMode?active.team_size:selectedTeamSize)} onBack={()=>void back()} busy={busy}/>
+      <SelectionHeader title={overlay?'CHANGE HERO':'CHOOSE HERO'} eyebrow={matchModeLabel(mode,active&&inMode?active.team_size:selectedTeamSize)} team={confirmedTeam} onBack={()=>void back()} busy={busy}/>
       <div className="hero-selection-stage">
         {(!match || inMode || overlay) && (
           <HeroRoster

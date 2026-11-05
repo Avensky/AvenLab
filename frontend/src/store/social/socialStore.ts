@@ -16,6 +16,7 @@ export type SocialGroup = {
   invited: SocialPerson[];
 };
 export type SocialWorld = {
+  tire_thermals?: boolean;
   mode?: GameMode | null;
   team_size?: 1 | 3 | 5 | null;
   id: number;

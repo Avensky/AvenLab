@@ -1,27 +1,56 @@
-import type { CtfFlagEvent, CtfMatchState } from "../../store/session/networkStore";
+import type { CtfFlag, CtfFlagEvent, CtfMatchState } from "../../store/session/networkStore";
 import type { MissionRadioNotice } from "../../store/missions/missionRadioStore";
 
 export type ObservedFlagEvent = CtfFlagEvent & { id: string; warmup: boolean };
 const otherTeam = (team: "red" | "blue") => team === "red" ? "blue" : "red";
 
+type FlagHistory = {
+  phase: CtfMatchState["phase"];
+  scores: CtfMatchState["scores"];
+  flags: Pick<CtfFlag, "team" | "status" | "carrier">[];
+};
+
+// Older servers omit event sequences. Keep just the fields needed to infer
+// their next transition, and copy only when one of those fields changes.
+function rememberFlags(previous: FlagHistory | null, match: CtfMatchState): FlagHistory {
+  if (previous && previous.phase === match.phase &&
+      previous.scores.red === match.scores.red && previous.scores.blue === match.scores.blue &&
+      previous.flags.length === match.flags.length && match.flags.every((flag, i) => {
+        const old = previous.flags[i];
+        return old.team === flag.team && old.status === flag.status && old.carrier === flag.carrier;
+      })) return previous;
+  return {
+    phase: match.phase, scores: { ...match.scores },
+    flags: match.flags.map(({team, status, carrier}) => ({team, status, carrier})),
+  };
+}
+
 /** A new world/round is a baseline, never a replay. Server sequence IDs also
  * preserve fast pickup/drop/return events that occur between snapshot packets. */
 export function createCtfEventObserver() {
   let context: string | null = null, lastTick = -1, lastSeq = 0;
-  let previous: CtfMatchState | null = null;
+  let previous: FlagHistory | null = null;
   return (key: string | null, match: CtfMatchState | null | undefined, tick: number): ObservedFlagEvent[] => {
     if (!key || !match) { context = null; previous = null; lastTick = -1; lastSeq = 0; return []; }
-    const newestSeq = Math.max(0, ...(match.events ?? []).map((event) => event.seq));
     if (key !== context) {
-      context = key; previous = structuredClone(match); lastTick = tick; lastSeq = newestSeq;
+      context = key;
+      previous = rememberFlags(null, match);
+      lastTick = tick;
+      lastSeq = (match.events ?? []).reduce((highest, event) =>
+        Number.isSafeInteger(event.seq) ? Math.max(highest, event.seq) : highest, 0);
       return [];
     }
     if (!Number.isFinite(tick) || tick <= lastTick) return [];
     const events: CtfFlagEvent[] = [];
     if (Array.isArray(match.events)) {
-      for (const event of [...match.events].sort((a, b) => a.seq - b.seq)) {
-        if (Number.isSafeInteger(event.seq) && event.seq > lastSeq && ["picked_up", "dropped", "returned", "captured"].includes(event.kind) && ["red", "blue"].includes(event.flag_team)) {
-          events.push(event); lastSeq = event.seq;
+      // Most snapshots repeat the same bounded event history.
+      if (match.events.some(event => event.seq > lastSeq)) {
+        const fresh = match.events.filter(event => event.seq > lastSeq).sort((a, b) => a.seq - b.seq);
+        for (const event of fresh) {
+          if (Number.isSafeInteger(event.seq) && event.seq > lastSeq && ["picked_up", "dropped", "returned", "captured"].includes(event.kind) && ["red", "blue"].includes(event.flag_team)) {
+            events.push(event);
+            lastSeq = event.seq;
+          }
         }
       }
     } else if (previous && !(previous.phase === "waiting" && match.phase !== "waiting") && !(previous.phase === "ended" && match.phase !== "ended")) {
@@ -42,7 +71,8 @@ export function createCtfEventObserver() {
         if (kind) events.push({ seq: ++lastSeq, kind, flag_team: flag.team, player_id: flag.carrier ?? old.carrier, elapsed_s: match.elapsed_s });
       }
     }
-    previous = structuredClone(match); lastTick = tick;
+    previous = rememberFlags(previous, match);
+    lastTick = tick;
     return events.map((event) => ({ ...event, id: `ctf:${key}:${event.seq}`, warmup: match.phase === "waiting" }));
   };
 }

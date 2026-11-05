@@ -1,12 +1,13 @@
+import { useMotionView } from "../../store/session/networkViews";
 import { useShallow } from "zustand/react/shallow";
 import { useEffect } from "react";
-import { useNetworkStore } from "../../store/session/networkStore";
+
 import { useCtfFeedbackStore } from "./ctfFeedbackStore";
 import { getCtfCaptureObjective } from "./ctfObjective";
 import "./ctfMatch.css";
 
 export function CtfMatchHUD() {
-  const display = useNetworkStore(useShallow(s => {
+  const display = useMotionView(useShallow(s => {
     const match = s.snapshot?.match_state;
     if (!match) return null;
     const objective = getCtfCaptureObjective(match, s.getMe() ?? undefined);

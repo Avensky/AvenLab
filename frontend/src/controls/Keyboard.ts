@@ -1,3 +1,4 @@
+import { useMotionView } from "../store/session/networkViews";
 import {requestTankBarrage} from "../combat/tankBarrage";
 import {useSocialStore} from '../store/social/socialStore';
 import {isMatchMode} from '../store/alpha/alphaStore';
@@ -471,7 +472,7 @@ export function Keyboard() {
     // Clear physical key state at the transition, not on the next key press.
     const unsubscribeGame = useGameStore.subscribe(releaseIfBlocked);
     const unsubscribeUI = useUIStore.subscribe(releaseIfBlocked);
-    const unsubscribeNetwork=useNetworkStore.subscribe((state,previous)=>{
+    const unsubscribeNetwork=useMotionView.subscribe((state,previous)=>{
       if((!state.connected&&previous.connected)||state.playerId!==previous.playerId||
         (state.snapshot?.match_state?.phase==='ended'&&previous.snapshot?.match_state?.phase!=='ended'))release();
     });

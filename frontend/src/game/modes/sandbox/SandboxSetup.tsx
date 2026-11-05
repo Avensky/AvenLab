@@ -1,8 +1,9 @@
+import { useConnectionView } from "../../../store/session/networkViews";
 import { useGameStore, useSelectionStore, useUIStore } from "../../../store";
 import { useRenderSettingsStore } from "../../../store/presentation/renderSettingsStore";
 import { ControllerAction } from "../../../components/controller";
 import { socket } from "../../../net/rustSocket";
-import { useNetworkStore } from "../../../store/session/networkStore";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import SignalReconHeader from "../recon/SignalReconHeader";
 import { MapSelector } from "../MapSelector";
@@ -14,8 +15,8 @@ type Sandbox = {
 };
 
 export function SandboxSetup({ collapsed, setCollapsed }: Sandbox) {
-  const connected = useNetworkStore((s) => s.connected);
-  const joinedWorld = useNetworkStore((s) => s.worldName);
+  const connected = useConnectionView(s => s.connected);
+  const joinedWorld = useConnectionView(s => s.worldName);
   const [spawnError, setSpawnError] = useState("");
   const setScreen = useUIStore((s) => s.setScreen);
 

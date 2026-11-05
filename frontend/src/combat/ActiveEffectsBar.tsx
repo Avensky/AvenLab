@@ -1,6 +1,7 @@
+import { useMotionView } from "../store/session/networkViews";
 import {memo,useEffect,useState} from 'react';
 import {useShallow} from 'zustand/react/shallow';
-import {useNetworkStore} from '../store/session/networkStore';
+
 import {useUIStore} from '../store/menus/uiStore';
 import {startVehicleTelemetry,useVehicleTelemetryStore} from '../store/telemetry/vehicleTelemetryStore';
 import {ProgressOrbit} from '../components/controller/ProgressOrbit';
@@ -34,7 +35,7 @@ const EffectBadge=memo(function EffectBadge(effect:ActiveVehicleEffect){
  * glowing indefinitely; opening a badge explains it without invoking an ability. */
 export function ActiveEffectsBar(){
  useEffect(startVehicleTelemetry,[]);
- const signals=useNetworkStore(useShallow(s=>readEffectSignals(s.connected?s.getMe():undefined)));
+ const signals=useMotionView(useShallow(s=>readEffectSignals(s.connected?s.getMe():undefined)));
  const live=useVehicleTelemetryStore(s=>s.data.signal==='live');
  const visible=useUIStore(s=>s.screen==='sandbox'&&s.overlay===null&&!s.isModeLoading);
  if(!visible||!live)return null;

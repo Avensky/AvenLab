@@ -1,7 +1,8 @@
+import { useConnectionView } from "../../store/session/networkViews";
 import {useState} from 'react';
 import {useLayoutStore} from '../state/layoutStore';
 import {useSocialStore} from '../../store/social/socialStore';
-import {useNetworkStore} from '../../store/session/networkStore';
+
 import {useInputStore} from '../../store/input/inputStore';
 import {useUIStore} from '../../store/menus/uiStore';
 import {useBuilderStore} from '../state/builderStore';
@@ -9,7 +10,7 @@ import {useVehicleEditorStore} from './vehicleEditorStore';
 import './vehicleEditor.css';
 /** The live world's HUD owns these tools; tuning stays restricted to editor worlds. */
 export function EditorDriveBar(){
- const active=useSocialStore(s=>s.view?.alpha?.active),connected=useNetworkStore(s=>s.connected);
+ const active=useSocialStore(s=>s.view?.alpha?.active),connected=useConnectionView(s => s.connected);
  const [open,setOpen]=useState(false);
  if(active?.mode!=='editor'||!connected)return null;
  const show=(workspace:'layout'|'vehicle',presentation:'workspace'|'hud')=>{

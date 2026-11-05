@@ -1,7 +1,8 @@
+import { useMotionView } from "../../store/session/networkViews";
 import { useLayoutEffect, useRef, type ReactNode } from 'react';
 import { usePreferencesStore } from '../../store/preferences/preferencesStore';
 import { useCombatStore } from '../../combat/combatStore';
-import { useNetworkStore } from '../../store/session/networkStore';
+
 import { observeHudLayout, setHudStyle } from '../hud/observeHudLayout';
 import './futuristicHUD.css';
 
@@ -11,7 +12,7 @@ export function CenterCombatDock({children}: {children: ReactNode}) {
   const root = useRef<HTMLDivElement>(null);
   const groups = usePreferencesStore(s => s.hudGroups), touch = usePreferencesStore(s => s.showTouchControls), drive = usePreferencesStore(s => s.showDriveControls), drop = usePreferencesStore(s => s.wheelDrop);
   const armed = useCombatStore(s => s.enabled);
-  const match = useNetworkStore(s => Boolean(s.snapshot?.match_state));
+  const match = useMotionView(s => Boolean(s.snapshot?.match_state));
   useLayoutEffect(() => {
     const element = root.current, hud = element?.closest<HTMLElement>('.driving-hud');
     if (!element || !hud) return;

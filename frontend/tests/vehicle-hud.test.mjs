@@ -477,8 +477,9 @@ test("restored gauges consume Rust telemetry without inventing resource state or
         assert.equal(meter("Fuel").getAttribute("aria-valuenow"), "25");
         assert.equal(
           meter("Coolant temperature").getAttribute("aria-valuenow"),
-          "90",
+          "194", // The server fixture supplies 90 °C. The US gauge shows °F.
         );
+        assert.match(meter("Coolant temperature").getAttribute("aria-valuetext"), /194\.0 degrees Fahrenheit/);
         assert.equal(control("Hold NOS boost"), null);
         await act(async () => prefs.getState().update({ speedUnit: "mph" }));
         assert.ok(

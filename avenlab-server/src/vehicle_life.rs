@@ -200,6 +200,7 @@ impl PhysicsWorld {
             vehicle.vehicle_flags.insert(VehicleStateFlags::ENGINE_ON);
             vehicle.vehicle_flags.remove(VehicleStateFlags::BOOST);
             if let Some(body)=self.bodies.get_mut(vehicle.body){body.set_enabled(true);for handle in body.colliders(){if let Some(c)=self.colliders.get_mut(*handle){c.set_collision_groups(crate::physics::vehicle_collision_groups(false));c.set_enabled(true);}}}
+            if self.tire_thermals {if let Some(wheels)=self.wheels.get_mut(&vehicle.body){for wheel in wheels {wheel.thermal=Default::default();}}}
             if let Some(health)=self.vehicle_health.get_mut(&id){health.respawn();}
             self.combat_poses.remove(&id);
             self.combat_cooldowns.remove(&id);

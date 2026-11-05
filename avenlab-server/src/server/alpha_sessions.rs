@@ -246,7 +246,7 @@ impl Server {
         let mut data=self.data.lock().await;
         if data.worlds.len()>=256 {return Err("The saved-world budget is full.".into());}
         let world=data.next_world;data.next_world+=1;
-        data.worlds.insert(world,World{mode:Some(ticket.mode),id:world,
+        data.worlds.insert(world,World{tire_thermals:crate::tire_thermals::server_default(),mode:Some(ticket.mode),id:world,
             name:if format.bucket()==0 {format!("ALPHA {} {}V{}",ticket.mode.label(),format.team_size,format.team_size)}else{format!("ALPHA {}",ticket.mode.label())},
             map:ticket.map.clone(),owner_id:None,listed:true,max_players:format.capacity(),password_hash:None,invite_code:crate::social::model::id()});
         drop(data);self.commit(previous).await?;
@@ -643,6 +643,7 @@ impl Server {
         game.attach_body(player, handle);
         game.set_vehicle_id(player, vehicle);
         if let Some(entity)=game.entities.get_mut(player) { entity.appearance=self.saved_appearance(player,vehicle).await; }
+        physics.set_tire_thermals(world.tire_thermals);
         let room = WorldRuntime::from_parts(game, physics);
         let packet = room.physics.map_snapshot_packet(world.id);
         let runtime = Arc::new(Mutex::new(room));
@@ -670,7 +671,10 @@ impl Server {
         let expired:Vec<_>={let mut alpha=self.alpha.lock().await;let keys:Vec<_>=alpha.reservations.iter().filter(|(_,r)|r.expires<=now).map(|(id,_)|id.clone()).collect();keys.into_iter().filter_map(|id|alpha.reservations.remove(&id)).collect()};
         for lease in &expired{self.release_retained(lease).await;}
         let mut changed=!expired.is_empty();
-        let clients = self.connections.lock().await.clone();
+        // Admission maintenance only needs socket IDs and occupied worlds, not
+        // cloned frame/input channels, profile strings or outbox handles.
+        let clients: HashMap<_, _> = self.connections.lock().await.iter()
+            .map(|(id, client)| (id.clone(), client.world_id)).collect();
         let reserved: HashSet<_> = self
             .alpha
             .lock()
@@ -681,7 +685,7 @@ impl Server {
             .collect();
         let mut unloaded = Vec::new();
         self.runtimes.lock().await.retain(|id, _| {
-            let keep = reserved.contains(id) || clients.values().any(|c| c.world_id == Some(*id));
+            let keep = reserved.contains(id) || clients.values().any(|world| *world == Some(*id));
             if !keep { unloaded.push(*id); }
             keep
         });
@@ -694,7 +698,7 @@ impl Server {
             let alpha = self.alpha.lock().await;
             (alpha.queue.iter().cloned().collect::<Vec<_>>(), alpha.reservations.len())
         };
-        let mut free = self.max_players.saturating_sub(held + clients.values().filter(|c| c.world_id.is_some()).count());
+        let mut free = self.max_players.saturating_sub(held + clients.values().filter(|world| world.is_some()).count());
         for ticket in tickets {
             if !clients.contains_key(&ticket.player) {
                 self.alpha

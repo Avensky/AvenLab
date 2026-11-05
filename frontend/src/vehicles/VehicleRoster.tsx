@@ -1,3 +1,4 @@
+import { useConnectionView, useMotionView } from "../store/session/networkViews";
 import { RemoteFleet, VehicleExterior } from "./RemoteFleet";
 import { vehicleAsset } from "../worldBuilder/vehicles/vehicleCatalog";
 import { useUIStore } from "../store/menus/uiStore";
@@ -8,9 +9,7 @@ import { useFrame } from "@react-three/fiber";
 import { useVehiclePhysicsInterpolator } from "../hooks/usePhysicsInterpolator";
 import type { ReactNode } from "react";
 
-import {
-  useNetworkStore,
-} from "../store/session/networkStore";
+
 import { useWorldStore } from "../store/world/worldStore";
 import {
   useRenderSettingsStore,
@@ -150,11 +149,11 @@ function GlbVehicle({ entity }: { entity: RosterEntity }) {
 export const VehicleRoster = memo(function VehicleRoster() {
   const mode = useWorldStore((s) => s.mode);
   const overlay=useUIStore(s=>s.overlay);
-  const local=useNetworkStore(s=>s.playerId);
+  const local=useConnectionView(s => s.playerId);
   const preview=useSelectionStore(s=>s.getSelectedVehicle().id);
   const overrides = useRenderSettingsStore((s) => s.vehicleOverrides);
   const selectRoster = useMemo(createRosterSelector, []);
-  const entities = useNetworkStore(selectRoster);
+  const entities = useMotionView(selectRoster);
 
   const {regular,remote}=useMemo(()=>{
     const regular:RosterEntity[]=[],remote:RosterEntity[]=[];

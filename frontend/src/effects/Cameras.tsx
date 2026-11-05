@@ -1,3 +1,4 @@
+import { useConnectionView, useMotionView } from "../store/session/networkViews";
 import {TankScopeRig} from '../combat/TankScope';
 import {useCombatStore} from '../combat/combatStore';
 import { useBuilderStore } from "../worldBuilder/state/builderStore";
@@ -14,7 +15,7 @@ import { OrbitControls as ThreeOrbitControls } from "three-stdlib";
 import { usePreferencesStore } from "../store/preferences/preferencesStore";
 import { useGameStore } from "../store/presentation/gameStore";
 import { useUIStore } from "../store/menus/uiStore";
-import { snapshotEntity, useNetworkStore } from "../store/session/networkStore";
+import {snapshotEntity} from "../store/session/networkStore";
 import { PlayerCameraControls } from "../components/PlayerCameraControls";
 import {
   beginVehicleRenderFrame,
@@ -126,8 +127,8 @@ export default function Cameras() {
   const screen = useUIStore((state) => state.screen);
   const camMode = useGameStore((state) => state.camera);
   const editor = useGameStore((state) => state.editor);
-  const playerId = useNetworkStore((state) => state.playerId);
-  const playerVehicleId = useNetworkStore(
+  const playerId = useConnectionView(state => state.playerId);
+  const playerVehicleId = useMotionView(
     (state) =>
       snapshotEntity(state.snapshot, state.playerId)
         ?.vehicle_id ?? null,

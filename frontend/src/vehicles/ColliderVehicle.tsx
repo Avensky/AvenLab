@@ -1,10 +1,8 @@
+import { useConnectionView } from "../store/session/networkViews";
 import { memo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import type { Group, MeshBasicMaterial } from "three";
-import {
-  useNetworkStore,
-  type VehicleColliderShape,
-} from "../store/session/networkStore";
+import {type VehicleColliderShape} from "../store/session/networkStore";
 import { useWorldStore } from "../store/world/worldStore";
 import { useDebugViewStore } from "../store/presentation/debugViewStore";
 import { useVehiclePhysicsInterpolator } from "../hooks/usePhysicsInterpolator";
@@ -23,7 +21,7 @@ export const ColliderVehicle = memo(function ColliderVehicle({
   shape: VehicleColliderShape;
   solid?: boolean;
 }) {
-  const localPlayerId = useNetworkStore((s) => s.playerId);
+  const localPlayerId = useConnectionView(s => s.playerId);
   const scope = useDebugViewStore((s) => s.playerScope);
   const debugMask = useWorldStore((s) => s.debugMask);
   const parts = colliderPreviewParts(id, localPlayerId, scope, debugMask);

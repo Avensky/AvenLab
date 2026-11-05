@@ -1,3 +1,4 @@
+import { useMotionView } from "../../store/session/networkViews";
 import { UtilityToggle } from "./UtilityToggle";
 import { memo, useLayoutEffect, useRef, type CSSProperties } from "react";
 import { usePreferencesStore } from "../../store/preferences/preferencesStore";
@@ -7,7 +8,7 @@ import { ConsoleDisplay } from "../Cockpit/ConsoleDisplay";
 import { ClimatePanel } from "../Cockpit/ClimatePanel";
 import { CabinPerformance } from "./CabinPerformance";
 import { HazardButton } from "../Cockpit/HazardButton";
-import { useNetworkStore } from "../../store/session/networkStore";
+
 import { observeHudLayout, setHudStyle } from "./observeHudLayout";
 import "./utilityDock.css";
 
@@ -15,7 +16,7 @@ import "./utilityDock.css";
  * row, so media always drops below an open map and rises when it minimizes. */
 export const UtilityDock = memo(function UtilityDock() {
   const root = useRef<HTMLElement>(null);
-  const match = useNetworkStore((state) => Boolean(state.snapshot?.match_state));
+  const match = useMotionView((state) => Boolean(state.snapshot?.match_state));
   const reduced = usePreferencesStore((state) => state.reducedMotion);
   const groups = usePreferencesStore((state) => state.hudGroups);
   const scale = usePreferencesStore((state) => state.minimapScale);

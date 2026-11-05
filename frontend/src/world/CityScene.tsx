@@ -1,6 +1,7 @@
+import { useDiagnosticsView } from "../store/session/networkViews";
 import { Suspense } from "react";
 import { useWorldStore } from "../store/world/worldStore";
-import { useNetworkStore } from "../store/session/networkStore";
+
 import {
   assetKey,
   chunkKey,
@@ -88,6 +89,6 @@ export function CityScene() {
   );
 }
 function BlockDiagnostics() {
-  const boxes = useNetworkStore((s) => s.debugOverlay?.block_boxes);
+  const boxes = useDiagnosticsView((s) => s.debugOverlay?.block_boxes);
   return boxes ? <DebugColliders boxes={boxes} /> : null;
 }

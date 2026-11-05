@@ -1,5 +1,6 @@
 //! Socket transport only. Server owns social authorization/room admission;
 //! WorldRuntime owns the room's physics. Inputs remain replaceable mailboxes.
+mod ingress;
 use crate::{
     server::{Connection, Server},
     spawn::Team,
@@ -14,7 +15,7 @@ use std::{
 };
 use tokio::{
     net::TcpListener,
-    sync::{mpsc, watch},
+    sync::{Semaphore, watch},
 };
 use tokio_tungstenite::{
     accept_async_with_config,
@@ -57,7 +58,10 @@ pub async fn start_websocket_server(server: Arc<Server>) {
         .await
         .expect("Failed to bind WebSocket listener");
     println!("WebSocket listening on {address}");
+    let handshakes = Arc::new(Semaphore::new(32));
     while let Ok((stream, _peer)) = listener.accept().await {
+        // This limit applies before register() can enforce the live-client cap.
+        let Ok(permit) = handshakes.clone().try_acquire_owned() else { continue; };
         let server = Arc::clone(&server);
         tokio::spawn(async move {
             let config = WebSocketConfig {
@@ -65,18 +69,29 @@ pub async fn start_websocket_server(server: Arc<Server>) {
                 max_frame_size: Some(1024 * 1024),
                 ..Default::default()
             };
-            let Ok(socket) = accept_async_with_config(stream, Some(config)).await else {
+            let Ok(Ok(socket)) = tokio::time::timeout(Duration::from_secs(5),
+                accept_async_with_config(stream, Some(config))).await else {
                 return;
             };
+            drop(permit);
             let (write, mut read) = socket.split();
-            let (tx, mut rx) = mpsc::unbounded_channel::<String>();
+            let (tx, mut rx) = crate::outbox::channel();
+            let mut overflow = tx.failure();
             let (frame_tx, mut frame_rx) = watch::channel::<Option<Arc<PhysicsFrame>>>(None);
             let (social_tx, mut social_rx) = watch::channel::<Option<String>>(None);
             let (input_tx, input_rx) = watch::channel::<Option<InputPacket>>(None);
+            let frame_tx = crate::snapshot_wire::SnapshotSender::from(frame_tx);
+            let snapshot_format = frame_tx.format.clone();
+            let snapshot_reset=frame_tx.revision.clone();
+            let writer_reset=snapshot_reset.clone();
             // A stalled socket cannot hold any game lock. Five-second send
             // deadlines also terminate its reader and remove its world slot.
             let mut writer = tokio::spawn(async move {
                 let mut write = write;
+                let mut sent_base=None;
+                let mut sent_driver:Option<crate::snapshot_wire::DriverLane>=None;
+                let mut driver_window=0;
+                let mut reset_seen=0;
                 // Browsers answer protocol pings even when background JS timers are throttled.
                 let mut heartbeat = tokio::time::interval(Duration::from_secs(8));
                 heartbeat.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
@@ -95,7 +110,24 @@ pub async fn start_websocket_server(server: Arc<Server>) {
                         changed=frame_rx.changed()=>{
                             if changed.is_err(){break;}let frame=frame_rx.borrow_and_update().clone();
                             let Some(frame)=frame else{continue};
-                            if frame.debug.is_empty(){vec![frame.snapshot.clone()]}else{vec![frame.snapshot.clone(),frame.debug.clone()]}
+                            let reset=writer_reset.load(std::sync::atomic::Ordering::Relaxed);
+                            if reset!=reset_seen {sent_base=None;sent_driver=None;reset_seen=reset;}
+                            let mut messages=Vec::with_capacity(3);
+                            if let Some(driver)=frame.driver {
+                                let window=frame.tick/crate::snapshot_wire::AUX_DIVISOR;
+                                if sent_driver!=Some(driver) && (sent_driver.is_none_or(|old|driver.edge(old)) || window!=driver_window) {
+                                    messages.push(driver.encode());sent_driver=Some(driver);driver_window=window;
+                                }
+                            } else {sent_driver=None;}
+                            if let Some(base)=&frame.keyframe {
+                                if sent_base!=Some(base.id) {
+                                    messages.push(base.packet.clone());
+                                    sent_base=Some(base.id);
+                                    if frame.snapshot.as_ref()!=base.packet {messages.push(frame.snapshot.to_string());}
+                                } else {messages.push(frame.snapshot.to_string());}
+                            } else {sent_base=None;messages.push(frame.snapshot.to_string());}
+                            if !frame.debug.is_empty(){messages.push(frame.debug.to_string());}
+                            messages
                         }
                     };
                     for message in messages {
@@ -129,21 +161,37 @@ pub async fn start_websocket_server(server: Arc<Server>) {
                 return;
             }
             let server_id = server.data.lock().await.server_id.clone();
-            let _=tx.send(json!({"type":"welcome","player_id":player,"room_id":0,"team":"blue","spawned":false,"social_version":1,"packed_input_version":1,"server_id":server_id}).to_string());
+            let _=tx.send(json!({"type":"welcome","player_id":player,"room_id":0,"team":"blue","spawned":false,"social_version":1,"packed_input_version":1,"compact_snapshot_version":crate::snapshot_wire::VERSION,"snapshot_hz":30,"server_id":server_id}).to_string());
             let mut commands = RateLimit::new(12, 10);
             let mut passwords = RateLimit::new(4, 30);
             let mut pings = RateLimit::new(2, 1);
+            let mut ingress = ingress::IngressBudget::new(Instant::now());
+            // Protocol pongs keep idle menus alive, but must not reserve an
+            // unidentified connection forever. No per-packet registry lookup.
+            let identify_deadline = tokio::time::Instant::now() + Duration::from_secs(30);
+            let mut identified = false;
             loop {
-                let next = tokio::select! {next=tokio::time::timeout(Duration::from_secs(20),read.next())=>match next{Ok(value)=>value,Err(_)=>break},_=&mut writer=>break};
-                let text = match next {
-                    Some(Ok(Message::Text(text))) => text,
-                    Some(Ok(Message::Binary(bytes))) => {
+                if *overflow.borrow() { break; }
+                let next = tokio::select! {
+                    biased;
+                    _=overflow.changed()=>break,
+                    _=&mut writer=>break,
+                    _=tokio::time::sleep_until(identify_deadline), if !identified=>break,
+                    next=tokio::time::timeout(Duration::from_secs(20),read.next())=>match next{Ok(value)=>value,Err(_)=>break},
+                };
+                let Some(Ok(message)) = next else { break; };
+                // Includes malformed input and control frames: rejected JSON
+                // cannot bypass the byte/packet budget by failing to decode.
+                if !ingress.allow(message.len(), Instant::now()) { break; }
+                let text = match message {
+                    Message::Text(text) => text,
+                    Message::Binary(bytes) => {
                         if let Some(packet) = crate::packed_input::decode(&bytes) {
                             input_tx.send_replace(Some(packet));
                         }
                         continue;
                     }
-                    None | Some(Err(_)) | Some(Ok(Message::Close(_))) => break,
+                    Message::Close(_) => break,
                     _ => continue,
                 };
                 if text.trim() == "ping" {
@@ -189,7 +237,18 @@ pub async fn start_websocket_server(server: Arc<Server>) {
                     continue;
                 }
                 match message_type {
+                    "snapshot_format" => {
+                        // Version zero remains a supported fallback. Invalid
+                        // negotiations never change the current wire format.
+                        if let Some(version) = value.get("version").and_then(Value::as_u64) {
+                            if version == 0 || version == u64::from(crate::snapshot_wire::VERSION) {
+                                snapshot_format.store(version as u8, std::sync::atomic::Ordering::Relaxed);
+                                snapshot_reset.fetch_add(1,std::sync::atomic::Ordering::Relaxed);
+                            }
+                        }
+                    }
                     "social_request" => {
+                        let identifying = value.get("action").and_then(Value::as_str) == Some("identify");
                         let password_action = matches!(
                             value.get("action").and_then(Value::as_str),
                             Some("world_join" | "world_create")
@@ -199,6 +258,7 @@ pub async fn start_websocket_server(server: Arc<Server>) {
                         } else {
                             server.handle(&player, value).await
                         };
+                        if identifying && result.is_ok() { identified = true; }
                         let response = match result {
                             Ok(data) => {
                                 json!({"type":"social_result","request_id":request_id,"ok":true,"data":data})
@@ -288,8 +348,11 @@ pub async fn start_websocket_server(server: Arc<Server>) {
                     _ => {}
                 }
             }
-            server.disconnect(&player).await;
+            // Stop transport immediately, even if world cleanup is waiting
+            // behind another control-plane operation.
             writer.abort();
+            drop(read);
+            server.disconnect(&player).await;
         });
     }
 }

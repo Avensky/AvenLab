@@ -33,7 +33,6 @@ pub(crate) const CONTACT_EPSILON: Real = 0.005;
 
 #[derive(Clone)]
 pub struct SuspensionContact {
-    pub wheel_id: String,
 
     // geometry
     pub hit_point: Point<Real>,
@@ -211,7 +210,6 @@ pub fn build_suspension_contact(
     let (v_long, v_lat) = slip_components(point_vel, forward, side);
 
     Some(SuspensionContact {
-        wheel_id: wheel.debug_id.clone(),
         hit_point,
         apply_point: hit_point,
         ground_normal: ground_n,
@@ -241,6 +239,7 @@ mod tests {
             stiffness: 48295.38, damping: 8255.57, drive: false, steer: true,
             compression: 0.0, compression_ratio: 0.0,
             tire_state: crate::aven_tire::state::TireState::Grip,
+            thermal: Default::default(),
         }
     }
 

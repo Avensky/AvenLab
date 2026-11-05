@@ -1,3 +1,4 @@
+import { useConnectionView } from "../../store/session/networkViews";
 import { useCallback, useRef, useState } from "react";
 import { MenuVideoBackground } from "../../components/menus/MenuVideoBackground";
 import { MenuShortcuts, ControllerAction } from "../../components/controller";
@@ -11,7 +12,7 @@ import { matchModeLabel } from "../../store/alpha/alphaStore";
 import "./alpha.css";
 export function QueueScreen() {
   const queue = useSocialStore((s) => s.view?.alpha?.queue),
-    connected = useNetworkStore((s) => s.connected);
+    connected = useConnectionView(s => s.connected);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const pending = useRef(false);

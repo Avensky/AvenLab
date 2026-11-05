@@ -1,3 +1,4 @@
+import { useMotionView } from "../store/session/networkViews";
 import {ReviveActionFallback} from './ReviveAction';
 import {GuardBoostFallback} from './GuardBoostAction';
 import {useCanDataStore} from '../store/recon/canDataStore';
@@ -27,7 +28,7 @@ export function CombatHUD(){
    setTurretEnabled(Boolean(live));
   };
   const entered=()=>{autoVehicle='';auto();};
-  auto();const unsubscribe=useNetworkStore.subscribe(auto);
+  auto();const unsubscribe=useMotionView.subscribe(auto);
   window.addEventListener('avenlab:vehicle-entered',entered);
   const stop=()=>{clearTankFireInputs(tankFireInputs);combatIntent.firePulseUntil=0;combatIntent.directWeaponHeld=null;combatIntent.ramPulseUntil=0;useCombatStore.getState().setScope(false);combatIntent.fire=false;combatIntent.keyboardFire=false;combatIntent.gamepadFire=false;combatIntent.ram=false;combatIntent.gamepadRam=false;combatIntent.keyboardRam=false;};
   window.addEventListener('blur',stop);document.addEventListener('visibilitychange',stop);

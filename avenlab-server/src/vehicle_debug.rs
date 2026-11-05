@@ -50,6 +50,8 @@ pub struct DebugWheel {
     pub v_lat: f32,
     pub slip_angle: f32,
     pub slip_ratio: f32,
+    #[serde(skip_serializing_if="Option::is_none")]
+    pub tire: Option<[f32;2]>, // °C and gauge PSI; wheel inspection only
 
     // pub lateral_force: [f32; 3],                // for debug visualization
     // pub lateral_magnitude: f32,                 // for debug visualization
@@ -95,5 +97,34 @@ impl DebugOverlay {
         self.arb_links.clear();
         self.wheels.clear();
         self.slip_vectors.clear();
+    }
+}
+
+/// Serialization projection only: requested channels share the existing physics
+/// buffers; two inspectors with different masks never receive each other's data.
+#[derive(Serialize)]
+#[serde(untagged)]
+enum Selected<'a,T> { All(&'a [T]), Local(Vec<&'a T>) }
+fn selected<'a,T>(rows:&'a [T], show:bool, player:Option<&str>, id:impl Fn(&T)->&str)->Selected<'a,T> {
+    if !show {Selected::All(&[])}
+    else if let Some(player)=player {Selected::Local(rows.iter().filter(|row|id(row)==player).collect())}
+    else {Selected::All(rows)}
+}
+#[derive(Serialize)]
+pub struct DebugView<'a> {
+    chassis:Selected<'a,DebugChassis>, suspension_rays:Selected<'a,DebugRay>, load_bars:Selected<'a,DebugRay>,
+    arb_links:Selected<'a,DebugRay>, wheels:Selected<'a,DebugWheel>, chassis_right:[f32;3],
+    slip_vectors:Selected<'a,DebugSlipRay>, block_boxes:&'a [DebugAabbBox],
+}
+impl DebugOverlay {
+    pub fn view(&self,mask:DebugFlags, player:Option<&str>)->DebugView<'_> {
+        DebugView{chassis:selected(&self.chassis,mask.contains(DebugFlags::CHASSIS),player,|r|&r.player_id),
+            suspension_rays:selected(&self.suspension_rays,mask.contains(DebugFlags::RAYS),player,|r|&r.player_id),
+            load_bars:selected(&self.load_bars,mask.contains(DebugFlags::LOAD_BARS),player,|r|&r.player_id),
+            arb_links:selected(&self.arb_links,mask.contains(DebugFlags::ARB),player,|r|&r.player_id),
+            wheels:selected(&self.wheels,mask.contains(DebugFlags::WHEELS),player,|r|&r.player_id),
+            chassis_right:if mask.contains(DebugFlags::CHASSIS){self.chassis_right}else{[0.0;3]},
+            slip_vectors:selected(&self.slip_vectors,mask.contains(DebugFlags::SLIP),player,|r|&r.player_id),
+            block_boxes:if mask.contains(DebugFlags::BLOCKS){&self.block_boxes}else{&[]}}
     }
 }

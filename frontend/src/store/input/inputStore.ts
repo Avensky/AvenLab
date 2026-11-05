@@ -22,6 +22,12 @@ import {
   VehicleFlags,
 } from "./protocol/inputMasks";
 
+import {
+  clampControl, clearAnalogSources, releaseDeviceAnalog, updateDeviceAnalog,
+  type InputSource, type VehicleControlInput,
+} from "./deviceAnalog";
+export type { InputSource, VehicleControlInput } from "./deviceAnalog";
+
 export interface VehicleControls {
   braking: boolean;
   accelerating: boolean;
@@ -30,71 +36,12 @@ export interface VehicleControls {
   absActive?: boolean;
   tractionControl?: boolean;
 }
-export interface VehicleControlInput {
-  throttle: number; // [-1..1]
-  steer: number; // [-1..1]
-  brake: number; // [0..1]
-  handbrake: number; // [0..1]
-}
-
-export type InputSource =
-  | "keyboard"
-  | "gamepad"
-  | "touch-steering"
-  | "touch-throttle"
-  | "touch-pedals"
-  | "touch-actions"
-  | "touch-parking"
-  | "ebrake-pull";
-const neutralControls = (): VehicleControlInput => ({
-  throttle: 0,
-  steer: 0,
-  brake: 0,
-  handbrake: 0,
-});
 // A menu owns its brake independently of every physical device. Releasing a
 // keyboard, controller or touch hold cannot clear this brake while paused.
 let menuBrake = false;
-// Device intent lives here, outside React. Only the merged packet goes to Rust.
-const analogSources: Record<InputSource, VehicleControlInput> = {
-  keyboard: neutralControls(),
-  gamepad: neutralControls(),
-  "touch-steering": neutralControls(),
-  "touch-throttle": neutralControls(),
-  "touch-pedals": neutralControls(),
-  "touch-actions": neutralControls(),
-  "touch-parking": neutralControls(),
-  "ebrake-pull": neutralControls(),
-};
 const heldVehicleFlags = new Map<number, Set<InputSource>>();
 const heldPlayerFlags = new Map<number, Set<InputSource>>();
 const flashOwners = new Set<InputSource>();
-const clampControl = (value: number, min: number, max: number) =>
-  Number.isFinite(value) && value !== 0
-    ? Math.max(min, Math.min(max, value))
-    : 0;
-
-function mergedAnalog(): VehicleControlInput {
-  const sources = [
-    analogSources.keyboard,
-    analogSources["touch-steering"],
-    analogSources["touch-throttle"],
-    analogSources["touch-pedals"],
-    analogSources["touch-actions"],
-    analogSources["touch-parking"],
-    analogSources["ebrake-pull"],
-    analogSources.gamepad,
-  ];
-  // An idle producer cannot erase another device. Keyboard wins deliberate
-  // axis conflicts, then touch, then gamepad. Either device can apply brakes.
-  return {
-    throttle: sources.find((source) => source.throttle !== 0)?.throttle ?? 0,
-    steer: sources.find((source) => source.steer !== 0)?.steer ?? 0,
-    brake: Math.max(...sources.map((source) => source.brake)),
-    handbrake: Math.max(...sources.map((source) => source.handbrake)),
-  };
-}
-
 function updateHold(
   flags: Map<number, Set<InputSource>>,
   source: InputSource,
@@ -102,6 +49,7 @@ function updateHold(
   enabled: boolean,
 ) {
   let owners = flags.get(flag);
+  if (!owners && !enabled) return false;
   if (!owners) flags.set(flag, (owners = new Set()));
   if (enabled) owners.add(source);
   else owners.delete(source);
@@ -406,19 +354,19 @@ export const useInputStore = create<InputState>((set, get) => ({
     get().setInput(partial);
   },
   setAnalogFromSource(source, partial) {
-    const next = { ...analogSources[source], ...partial };
-    next.throttle = clampControl(next.throttle, -1, 1);
-    next.steer = clampControl(next.steer, -1, 1);
-    next.brake = clampControl(next.brake, 0, 1);
-    next.handbrake = clampControl(next.handbrake, 0, 1);
-    analogSources[source] = next;
-    get().setInput(mergedAnalog());
+    const merged = updateDeviceAnalog(source, partial);
+    // A legacy direct write can change the packet despite unchanged device
+    // intent. Reassert the merged request in that case, respecting menu brake.
+    const packet = inputRef.current;
+    if (packet.throttle === (menuBrake ? 0 : merged.throttle) &&
+        packet.steer === (menuBrake ? 0 : merged.steer) &&
+        packet.brake === (menuBrake ? 1 : merged.brake) &&
+        packet.handbrake === merged.handbrake) return;
+    get().setInput(merged);
   },
   // Legacy callers can release axes alone; producers own their individual holds.
   releaseAnalog() {
-    for (const source of Object.keys(analogSources) as InputSource[])
-      analogSources[source] = neutralControls();
-    get().setInput(neutralControls());
+    get().setInput(clearAnalogSources());
   },
   setHeldVehicleFlag(source, flag, enabled) {
     get().setVehicleFlag(
@@ -433,7 +381,7 @@ export const useInputStore = create<InputState>((set, get) => ({
     );
   },
   releaseInputSource(source) {
-    analogSources[source] = neutralControls();
+    const merged = releaseDeviceAnalog(source);
     flashOwners.delete(source);
     let vehicleMask = inputRef.current.vehicleMask;
     let playerMask = inputRef.current.playerMask;
@@ -449,7 +397,7 @@ export const useInputStore = create<InputState>((set, get) => ({
     }
     const cabin = inputRef.current.cabin_mask;
     get().setInput({
-      ...mergedAnalog(),
+      ...merged,
       vehicleMask,
       playerMask,
       ...(cabin === undefined
@@ -473,8 +421,7 @@ export const useInputStore = create<InputState>((set, get) => ({
     });
   },
   releaseControls() {
-    for (const source of Object.keys(analogSources) as InputSource[])
-      analogSources[source] = neutralControls();
+    const neutral = clearAnalogSources();
     heldVehicleFlags.clear();
     heldPlayerFlags.clear();
     flashOwners.clear();
@@ -485,7 +432,7 @@ export const useInputStore = create<InputState>((set, get) => ({
       cockpit !== undefined &&
       ((cockpit & (1 << 12)) !== 0 || ((cockpit >>> 14) & 3) !== 3);
     get().setInput({
-      ...neutralControls(),
+      ...neutral,
       ...(cabin !== undefined
         ? {
             cabin_mask: releaseKey
@@ -514,6 +461,9 @@ export const useInputStore = create<InputState>((set, get) => ({
 
     const cockpit = inputRef.current.cockpit_mask;
     const cabin = inputRef.current.cabin_mask;
+    const revisesCockpit = cockpit !== undefined && (flag === VehicleFlags.TCS || flag === VehicleFlags.HEADLIGHTS);
+    const revisesIgnition = cabin !== undefined && flag === VehicleFlags.ENGINE_ON;
+    if (current === vehicleMask && !revisesCockpit && !revisesIgnition) return;
     get().setInput({
       vehicleMask,
       ...(flag === VehicleFlags.ENGINE_ON && cabin !== undefined
@@ -561,7 +511,7 @@ export const useInputStore = create<InputState>((set, get) => ({
     const current = inputRef.current.playerMask;
     const playerMask = setFlag(current, flag, enabled);
 
-    get().setInput({ playerMask });
+    if (playerMask !== current) get().setInput({ playerMask });
   },
 
   togglePlayerFlag(flag) {

@@ -1,7 +1,8 @@
+import { useMotionView } from "../../store/session/networkViews";
 import { memo, useEffect, useState } from 'react';
 import {HEROES,heroForVehicle} from '../../store/alpha/alphaStore';
 import { HeroPortrait } from '../../game/alpha/HeroPortrait';
-import { useNetworkStore } from '../../store/session/networkStore';
+
 import { usePreferencesStore } from '../../store/preferences/preferencesStore';
 import { showVehicleHealthBar, type HealthBarMode } from '../../store/preferences/healthVisibility';
 import { readTeammates, retainTeammateCards, type TeammateCard } from './teammateModel';
@@ -26,7 +27,7 @@ const TeammateRow = memo(function TeammateRow({player, mode}: {player: TeammateC
  * a GLB or create a portrait GPU context while the world is rendering. */
 export function TeammateHUD() {
   const mode = usePreferencesStore(s => s.healthBars);
-  const session = useNetworkStore(s => `${s.connected}:${s.playerId}:${s.getMe()?.room_id ?? ''}:${s.getMe()?.team ?? ''}`);
+  const session = useMotionView(s => `${s.connected}:${s.playerId}:${s.getMe()?.room_id ?? ''}:${s.getMe()?.team ?? ''}`);
   const [sample, setSample] = useState(() => ({session, rows: readTeammates()}));
   useEffect(() => {
     const update = () => {

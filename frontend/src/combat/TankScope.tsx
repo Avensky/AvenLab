@@ -1,3 +1,4 @@
+import { useMotionView } from "../store/session/networkViews";
 import {useSightCue} from './sightCue';
 import {ScopeAimControls} from './ScopeAimControls';
 import {useEffect,useMemo,useRef,useState} from 'react';
@@ -17,7 +18,7 @@ import './tankScope.css';
 export function TankScopeHUD(){
  const scope=useCombatStore(s=>s.scope);
  const visible=useUIStore(s=>s.screen==='sandbox'&&s.overlay===null&&!s.isModeLoading);
- const vehicle=useNetworkStore(s=>scope && visible && s.connected && s.getMe()?.combat?.enabled?s.getMe()?.vehicle_id:null);
+ const vehicle=useMotionView(s=>scope && visible && s.connected && s.getMe()?.combat?.enabled?s.getMe()?.vehicle_id:null);
  return vehicle?<ScopeInstruments key={vehicle} tank={vehicle==='tank'}/>:null;
 }
 function readScope(tank:boolean){

@@ -1,3 +1,4 @@
+import { useMotionView } from "../store/session/networkViews";
 import {BarrageTrigger} from './BarrageTrigger';
 import {ReviveAction} from './ReviveAction';
 import {HealPackAction} from './HealPackAction';
@@ -7,7 +8,7 @@ import {useSocialStore} from '../store/social/socialStore';
 import {heroForVehicle} from '../store/alpha/alphaStore';
 import {getHeroAbilityGuide,type HeroAbility} from '../game/heroes/heroAbilityCatalog';
 import {useMemo,useEffect,useRef,useState,type ReactNode} from 'react';
-import {useNetworkStore} from '../store/session/networkStore';
+
 import {canDrive} from '../controls/inputRouting';
 import {HoldButton} from '../controls/TouchControls';
 import {combatIntent,useCombatStore} from './combatStore';
@@ -30,13 +31,13 @@ function TrialButton({ability}:{ability:HeroAbility}){
 }
 /** Two columns, three rows. The bottom row is always primary / secondary. */
 export function VehicleAbilityActions(){
- const vehicle=useNetworkStore(s=>s.getMe()?.vehicle_id);
+ const vehicle=useMotionView(s=>s.getMe()?.vehicle_id);
  const seat=useSocialStore(s=>s.view?.alpha?.active);
- const room=useNetworkStore(s=>s.getMe()?.room_id),team=useNetworkStore(s=>s.getMe()?.team);
+ const room=useMotionView(s=>s.getMe()?.room_id),team=useMotionView(s=>s.getMe()?.team);
  const admitted=seat && room===seat.world_id && team===seat.team ? seat.hero : null;
  const mechanic=vehicle==='fortuner'&&admitted==='mechanic',rescue=vehicle==='cx30'&&admitted==='cx30';
- const pressure=useNetworkStore(s=>s.getMe()?.vehicle_id==='cx30'?s.getMe()?.combat?.ammo:undefined);
- const cooling=useNetworkStore(s=>(s.getMe()?.combat?.reload??0)>0);
+ const pressure=useMotionView(s=>s.getMe()?.vehicle_id==='cx30'?s.getMe()?.combat?.ammo:undefined);
+ const cooling=useMotionView(s=>(s.getMe()?.combat?.reload??0)>0);
  const scope=useCombatStore(s=>s.scope),secondary=useCombatStore(s=>s.secondaryWeapon);
  const actions:{id:string;face:ReactNode}[]=[];
  const kit=useMemo(()=>{

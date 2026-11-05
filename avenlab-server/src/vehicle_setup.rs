@@ -127,6 +127,7 @@ impl PhysicsWorld {
                 steer,
                 debug_id: debug_id.to_string(),
                 tire_state: TireState::Grip,
+            thermal: Default::default(),
             }
         };
 

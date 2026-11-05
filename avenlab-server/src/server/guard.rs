@@ -61,13 +61,13 @@ mod tests {
             path:std::env::temp_dir().join(format!("avenlab-guard-{}",id())).join("social.json"),max_active_worlds:3,max_players:16 }
     }
     async fn client(server:&Server,name:&str)->(String,Value){
-        let player=id();let(tx,_rx)=tokio::sync::mpsc::unbounded_channel();let(frame,_frame)=watch::channel(None);let(social,_social)=watch::channel(None);let(input_tx,input)=watch::channel(None);
-        server.register(player.clone(),Connection{tx,frame,social,input,input_tx,profile_id:None,world_id:None,team:Team::Red}).await.unwrap();
+        let player=id();let(tx,_rx)=crate::outbox::channel();let(frame,_frame)=watch::channel(None);let(social,_social)=watch::channel(None);let(input_tx,input)=watch::channel(None);
+        server.register(player.clone(),Connection{tx,frame:frame.into(),social,input,input_tx,profile_id:None,world_id:None,team:Team::Red}).await.unwrap();
         let identity=server.handle(&player,json!({"action":"identify","name":name})).await.unwrap();(player,identity)
     }
     async fn fixture(hero:&str)->(Server,String,Value){
         let server=server();let(actor,identity)=client(&server,"Guard driver").await;
-        server.data.lock().await.worlds.insert(WORLD,World{mode:Some(Mode::Quickplay),id:WORLD,name:"Guard range".into(),map:"road_precision".into(),owner_id:None,listed:true,max_players:10,password_hash:None,invite_code:id()});
+        server.data.lock().await.worlds.insert(WORLD,World{tire_thermals:false,mode:Some(Mode::Quickplay),id:WORLD,name:"Guard range".into(),map:"road_precision".into(),owner_id:None,listed:true,max_players:10,password_hash:None,invite_code:id()});
         {let mut alpha=server.alpha.lock().await;alpha.enabled=true;alpha.enforce_roles=false;alpha.worlds.insert(WORLD,Mode::Quickplay.into());
          alpha.members.insert(actor.clone(),Member{mode:Mode::Quickplay, team_size:5,world:WORLD,hero:hero.into(),team:Team::Red});}
         let mut game=SharedGameState::new();game.room_id=WORLD;

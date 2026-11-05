@@ -15,3 +15,7 @@ Add a route to types.ts and composition in game/GameUI.tsx. Add menu rows in gam
 See [all state owners](../README.md) and the [project guide](../../../../docs/PROJECT_GUIDE.md).
 
 `openSettings` remembers a cockpit parent in `settingsParent`. HUD-layout shortcuts and the cockpit header open the existing Settings pages; Back returns to the same cockpit tab. Other Settings entry points keep their existing pause/main return behavior. `closeOverlay` and screen changes clear the parent.
+
+## Update frequency by store
+
+- [useUIStore](uiStore.README.md)

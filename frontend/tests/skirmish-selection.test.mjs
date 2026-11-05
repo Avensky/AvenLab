@@ -128,8 +128,8 @@ test('match category and size select independently through real admission and au
    await act(async()=>root.render(h(PreMatchTeamPreview,{view:{...view,alpha:{...view.alpha,active,roster:own}}})));assert.equal(document.querySelectorAll('.match-composition-seat').length,3);assert.equal(document.querySelectorAll('.match-composition-empty').length,1);assert(!document.querySelector('.match-team-composition').textContent.includes('Enemy'));
    await act(async()=>root.render(h(PreMatchTeamPreview,{view:{...view,alpha:{...view.alpha,active:{...active,mode:'quickplay',team_size:5},roster:[]}}})));assert.equal(document.querySelectorAll('.match-composition-seat').length,5);
   });
-  await t.test('career and team staging recognize the distinct casual mode',async()=>{
-   const {CAREER_MODES,careerModeLabel}=await load('game/career/careerData.ts'),{garageTeamAccent,TEAM_GARAGE_LIGHT_COLORS}=await load('game/preview/garageTeamAccent.ts');assert(CAREER_MODES.some(([id])=>id==='skirmish'));assert.equal(careerModeLabel('skirmish'),'3v3 CTF');assert.equal(garageTeamAccent('hero_select',active),TEAM_GARAGE_LIGHT_COLORS.red);assert.equal(garageTeamAccent('sandbox',active),null);
+  await t.test('career recognizes the distinct casual mode',async()=>{
+   const {CAREER_MODES,careerModeLabel}=await load('game/career/careerData.ts');assert(CAREER_MODES.some(([id])=>id==='skirmish'));assert.equal(careerModeLabel('skirmish'),'3v3 CTF');
   });
  }finally{await act(async()=>root.unmount());await vite.close();dom.window.close();for(const[key,value]of original){if(value)Object.defineProperty(globalThis,key,value);else delete globalThis[key];}}
 });

@@ -2,7 +2,23 @@
 //! Includes Rapier, input sampling and room snapshot serialization, not rendering.
 use crate::{state::InputPacket, world_sessions::WorldRuntime};
 use serde_json::json;
-use tokio::sync::{mpsc, watch};
+use tokio::sync::watch;
+
+// Optional benchmark-only CPU clock. Separates actual work from descheduling
+// on Linux hosts; unsupported targets still report wall and per-world timings.
+#[cfg(all(target_os = "linux", target_pointer_width = "64"))]
+fn thread_cpu_ms() -> Option<f64> {
+    #[repr(C)]
+    struct Timespec { seconds: std::os::raw::c_long, nanos: std::os::raw::c_long }
+    unsafe extern "C" { fn clock_gettime(clock: std::os::raw::c_int, time: *mut Timespec) -> std::os::raw::c_int; }
+    let mut time = Timespec { seconds: 0, nanos: 0 };
+    // Linux CLOCK_THREAD_CPUTIME_ID is 3; the 64-bit ABI uses two C longs.
+    // `time` is initialized, aligned, writable and lives through the call.
+    (unsafe { clock_gettime(3, &mut time) } == 0)
+        .then_some(time.seconds as f64 * 1000.0 + time.nanos as f64 / 1_000_000.0)
+}
+#[cfg(not(all(target_os = "linux", target_pointer_width = "64")))]
+fn thread_cpu_ms() -> Option<f64> { None }
 
 pub fn run() -> anyhow::Result<()> {
     let args: Vec<String> = std::env::args().collect();
@@ -28,7 +44,9 @@ pub fn run() -> anyhow::Result<()> {
     } else {
         vec![number("--players", 10, 10); number("--worlds", 1, 16)]
     };
+    let compact = args.iter().any(|arg| arg == "--compact-snapshots");
     let combat = args.iter().any(|arg| arg == "--combat");
+    let cpu_timing = args.iter().any(|arg| arg == "--cpu-timing");
     let chassis = ["tank", "brz", "cx30", "sierra", "landcruiser", "mini"];
     let count = plan.len();
     let ticks = number("--ticks", 1200, 10000);
@@ -40,8 +58,10 @@ pub fn run() -> anyhow::Result<()> {
         let mut room = WorldRuntime::new(n + 1, &map).map_err(anyhow::Error::msg)?;
         for player in 0..plan[n] {
             let id = format!("benchmark-{n}-{player}");
-            let (tx, rx) = mpsc::unbounded_channel();
+            let (tx, rx) = crate::outbox::channel();
             let (frame, frame_rx) = watch::channel(None);
+            let frame=crate::snapshot_wire::SnapshotSender::from(frame);
+            if compact { frame.format.store(crate::snapshot_wire::VERSION,std::sync::atomic::Ordering::Relaxed); }
             let (input, input_rx) = watch::channel(None);
             room.join(&id, tx, frame, input_rx, None, 10);
             let model = if combat { chassis[player % chassis.len()] } else { "brz" };
@@ -55,6 +75,8 @@ pub fn run() -> anyhow::Result<()> {
         worlds.push(room);
     }
     let mut times = Vec::with_capacity(ticks);
+    let mut cpu_times = Vec::new();
+    let mut slow_ticks = Vec::new();
     // Warm physics/contact caches before the measured window.
     for _ in 0..120 {
         for world in &mut worlds {
@@ -89,15 +111,26 @@ pub fn run() -> anyhow::Result<()> {
                 debug_mask: Some(0),
             }));
         }
+        let cpu_start = cpu_timing.then(thread_cpu_ms).flatten();
         let started = std::time::Instant::now();
         for world in &mut worlds {
             encoded_bytes += world.tick(0.0);
         }
-        times.push(started.elapsed().as_secs_f64() * 1000.0);
+        let wall_ms = started.elapsed().as_secs_f64() * 1000.0;
+        let cpu_ms = cpu_start.and_then(|start| thread_cpu_ms().map(|end| (end-start).max(0.0)));
+        if let Some(cpu) = cpu_ms { cpu_times.push(cpu); }
+        if wall_ms > 1000.0 / 60.0 && slow_ticks.len() < 16 {
+            slow_ticks.push(json!({"sample_tick":tick,"wall_ms":wall_ms,"cpu_ms":cpu_ms,
+                "worlds":worlds.iter().map(|w|json!({"id":w.game.room_id,"simulation_tick":w.game.tick,
+                    "timing":w.game.server_timing,"bodies":w.physics.bodies.len(),"colliders":w.physics.colliders.len()})).collect::<Vec<_>>() }));
+        }
+        times.push(wall_ms);
     }
     times.sort_by(f64::total_cmp);
     let p = |fraction: f64| times[((times.len() - 1) as f64 * fraction).ceil() as usize];
-    let result = json!({"worlds":count,"players_per_world":plan,"total_players":plan.iter().sum::<usize>(),"map":map,"ticks":ticks,"mean_encoded_bytes_per_world_tick":encoded_bytes as f64 / (count * ticks) as f64,"combat":combat,"over_budget_ticks":times.iter().filter(|v| **v>1000.0/60.0).count(),"tick_budget_ms":1000.0/60.0,"p50_ms":p(0.5),"p95_ms":p(0.95),"p99_ms":p(0.99),"max_ms":times.last(),"p95_under_12ms":p(0.95)<12.0,"scope":"CPU physics and snapshot serialization; no socket traffic, target-client rendering, shared-host contention, or capacity guarantee"});
+    cpu_times.sort_by(f64::total_cmp);
+    let cpu_p95 = (!cpu_times.is_empty()).then(|| cpu_times[((cpu_times.len()-1) as f64 * 0.95).ceil() as usize]);
+    let result = json!({"worlds":count,"players_per_world":plan,"total_players":plan.iter().sum::<usize>(),"map":map,"ticks":ticks,"mean_encoded_bytes_per_world_tick":encoded_bytes as f64 / (count * ticks) as f64,"combat":combat,"compact_snapshots":compact,"over_budget_ticks":times.iter().filter(|v| **v>1000.0/60.0).count(),"tick_budget_ms":1000.0/60.0,"p50_ms":p(0.5),"p95_ms":p(0.95),"p99_ms":p(0.99),"max_ms":times.last(),"cpu_p95_ms":cpu_p95,"cpu_max_ms":cpu_times.last(),"slow_ticks":slow_ticks,"p95_under_12ms":p(0.95)<12.0,"scope":"Physics and snapshot serialization wall time includes host scheduling delays. No socket traffic, client rendering, or capacity guarantee."});
     let bytes = serde_json::to_string_pretty(&result)?;
     if let Some(output) = value("--output") {
         std::fs::write(output, bytes + "\n")?;

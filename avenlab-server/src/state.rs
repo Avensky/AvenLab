@@ -26,7 +26,7 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::{mpsc::UnboundedSender, watch};
+use tokio::sync::{watch};
 use serde::{Serialize, Deserialize};
 use serde_json::json;
 use rapier3d::prelude::*;
@@ -56,6 +56,8 @@ pub struct VehicleColliderShape {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct PhysicsEntitySnapshot<'a> {
+    #[serde(skip)]
+    pub owner_fields_separate: bool,
     #[serde(skip_serializing_if="Option::is_none")]
     pub barrage:Option<&'a crate::tank_barrage::Barrage>,
     pub guard:crate::guard_boost::GuardView,
@@ -147,8 +149,11 @@ impl<T: Serialize> FrameEnvelope<'_, T> {
 /// recalled, but we no longer add every old physics tick to an application FIFO.
 #[derive(Debug)]
 pub struct PhysicsFrame {
-    pub snapshot: String,
-    pub debug: String,
+    pub snapshot: Arc<str>,
+    pub tick:u64,
+    pub driver: Option<crate::snapshot_wire::DriverLane>,
+    pub keyframe: Option<Arc<crate::snapshot_delta::Keyframe>>,
+    pub debug: Arc<str>,
 }
 
 // ---------------------------------------------------------------------------
@@ -311,9 +316,12 @@ pub struct SharedGameState {
     pub spawns: SpawnManager,
 
     /// Reliable, infrequent setup/config/pong messages. Never queue physics here.
-    pub clients: HashMap<String, UnboundedSender<String>>,
+    pub clients: HashMap<String, crate::outbox::Sender>,
     /// Replaceable physics/debug pair. Slow clients consume the newest tick.
-    frame_clients: HashMap<String, watch::Sender<Option<Arc<PhysicsFrame>>>>,
+    frame_clients: HashMap<String, crate::snapshot_wire::SnapshotSender>,
+    frame_revision: u64,
+    last_ended_publication: Option<(u64,u64,u64)>,
+    compact_cache: crate::snapshot_delta::SnapshotCache,
     /// One newest held-control packet per connection, not a FIFO of old intent.
     input_clients: HashMap<String, watch::Receiver<Option<InputPacket>>>,
 }
@@ -334,6 +342,9 @@ impl SharedGameState {
             spawns: SpawnManager::new(10),
             clients: HashMap::new(),
             frame_clients: HashMap::new(),
+            frame_revision: 0,
+            last_ended_publication: None,
+            compact_cache: Default::default(),
             input_clients: HashMap::new(),
         }
     }
@@ -345,16 +356,18 @@ impl SharedGameState {
     pub fn register_client(
         &mut self,
         player_id: String,
-        tx: UnboundedSender<String>,
-        frame_tx: watch::Sender<Option<Arc<PhysicsFrame>>>,
+        tx: crate::outbox::Sender,
+        frame_tx: impl Into<crate::snapshot_wire::SnapshotSender>,
         input_rx: watch::Receiver<Option<InputPacket>>,
     ) {
+        self.frame_revision=self.frame_revision.wrapping_add(1);
         self.input_clients.insert(player_id.clone(), input_rx);
-        self.frame_clients.insert(player_id.clone(), frame_tx);
+        self.frame_clients.insert(player_id.clone(), frame_tx.into());
         self.clients.insert(player_id, tx);
     }
 
     pub fn unregister_client(&mut self, player_id: &str) {
+        self.frame_revision=self.frame_revision.wrapping_add(1);
         self.clients.remove(player_id);
         self.frame_clients.remove(player_id);
         self.input_clients.remove(player_id);
@@ -434,7 +447,7 @@ impl SharedGameState {
         }
     }
 
-    pub fn remove_entity(&mut self, id: &str) { self.entities.remove(id);}
+    pub fn remove_entity(&mut self, id: &str) { self.entities.remove(id); self.frame_revision=self.frame_revision.wrapping_add(1);}
 
     // ------------------------------------------------------------------------
     // Network Send Helpers
@@ -489,48 +502,81 @@ impl SharedGameState {
     // ------------------------------------------------------------------------
     // Completed physics/debug frame publication
     // ------------------------------------------------------------------------
-    pub fn publish_physics_frame(&self, physics: &PhysicsWorld) -> usize {
+    pub fn publish_physics_frame(&mut self, physics: &PhysicsWorld) -> usize {
+        use crate::snapshot_wire::{encode, SNAPSHOT_DIVISOR};
         if self.frame_clients.is_empty() { return 0; }
-        // Waiting rooms share at most two team-specific frames. Omitting the
-        // enemy entity also withholds model, collider, paint and weapon data;
-        // a null model alone would still leak the selected chassis via shape.
-        if self.private_warmup(){
-            let mut snapshot=self.build_snapshot(physics);
-            let (red, blue): (Vec<_>, Vec<_>) = std::mem::take(&mut snapshot.entities)
-                .into_iter().partition(|entity| entity.team == Team::Red.as_str());
-            let mut bytes=0;
-            for (team, entities) in [(Team::Red, red),(Team::Blue, blue)] {
-                let viewers:Vec<_>=self.frame_clients.iter().filter(|(id,_)|self.entities.get(*id).is_some_and(|entity|entity.team==team)).collect();
-                if viewers.is_empty(){continue;}
-                snapshot.entities = entities;
-                let frame=Arc::new(PhysicsFrame{snapshot:FrameEnvelope{kind:"snapshot",world_id:self.room_id,tick:None,data:&snapshot}.encode(),debug:String::new()});
-                bytes+=frame.snapshot.len();
-                for (_,tx) in viewers {let _=tx.send_replace(Some(Arc::clone(&frame)));}
+        let ended=self.match_state.as_ref().is_some_and(|round|round.phase==crate::ctf::CtfPhase::Ended);
+        if ended {
+            let transport_revision=self.frame_clients.values().fold(0u64, |sum,tx|
+                sum.wrapping_add(tx.revision.load(std::sync::atomic::Ordering::Relaxed)));
+            let key=(self.tick,self.frame_revision,transport_revision);
+            if self.last_ended_publication==Some(key) {return 0;}
+            // A completed round has no changing simulation. Send its final
+            // state once, then again only if membership changes/reconnects.
+            self.last_ended_publication=Some(key);
+        } else {self.last_ended_publication=None;}
+        // Read negotiation once per subscriber for this publication. A format
+        // change cannot create an inconsistent frame halfway through the tick.
+        let viewers: Vec<_> = self.frame_clients.iter().filter_map(|(id, tx)| {
+            let compact = tx.compact();
+            (!compact || self.tick % SNAPSHOT_DIVISOR == 0 ||
+                ended)
+                .then_some((id, tx, compact))
+        }).collect();
+        if viewers.is_empty() { return 0; }
+        let debug_mask = |id: &String| self.entities.get(id)
+            .and_then(|e| e.last_packet.as_ref()).and_then(|p| p.debug_mask).unwrap_or(0) & 255;
+        let private = self.private_warmup();
+        let mut cache=std::mem::take(&mut self.compact_cache);
+        let mut snapshot = self.build_snapshot(physics);
+        let entities = std::mem::take(&mut snapshot.entities);
+        // Public rooms encode each requested format once. Private staging
+        // retains its existing team boundary before either encoder runs.
+        let groups = if private {
+            let (red, blue): (Vec<_>, Vec<_>) = entities.into_iter()
+                .partition(|entity| entity.team == Team::Red.as_str());
+            vec![(Some(Team::Red), red), (Some(Team::Blue), blue)]
+        } else { vec![(None, entities)] };
+        let debug_due=!private && self.tick % crate::snapshot_wire::AUX_DIVISOR==0;
+        let mut debug_packets=HashMap::<(u32,Option<&str>),Arc<str>>::new();
+        let mut bytes=0;
+        for (team, entities) in groups {
+            snapshot.entities = entities;
+            let visible = |id: &String| team.is_none_or(|team|
+                self.entities.get(id).is_some_and(|entity|entity.team==team));
+            for compact in [false, true] {
+                let recipients: Vec<_> = viewers.iter().filter(|(id, _, format)|
+                    *format == compact && visible(id)).collect();
+                if recipients.is_empty() { continue; }
+                let (wire,keyframe) = if compact {
+                    for entity in &mut snapshot.entities {entity.owner_fields_separate=true;}
+                    let scope=match team {None=>0,Some(Team::Red)=>1,Some(Team::Blue)=>2};
+                    let (packet,keyframe)=cache.encode(scope,self.tick,encode(self.room_id,&snapshot));
+                    (packet,Some(keyframe))
+                } else {
+                    (FrameEnvelope{kind:"snapshot",world_id:self.room_id,tick:None,data:&snapshot}.encode(),None)
+                };
+                bytes += wire.len();
+                let wire:Arc<str>=wire.into();
+                let quiet=Arc::new(PhysicsFrame{snapshot:wire,keyframe,tick:self.tick,driver:None,debug:"".into()});
+                for (id,tx,_) in recipients {
+                    let driver=if compact {snapshot.entities.binary_search_by(|e|e.id.cmp(id.as_str())).ok()
+                        .map(|i|crate::snapshot_wire::DriverLane::sample(self.room_id,&snapshot.entities[i]))} else {None};
+                    let mask=if debug_due {debug_mask(id)} else {0};
+                    if mask&127==0 && driver.is_none(){tx.send_replace(Some(quiet.clone()));continue;}
+                    let focus=(mask&128==0).then_some(id.as_str());
+                    let debug=if mask&127!=0 {debug_packets.entry((mask,focus)).or_insert_with(|| {
+                        let view=physics.debug_overlay.view(crate::vehicle_debug::DebugFlags::from_bits_truncate(mask),focus);
+                        let packet=FrameEnvelope{kind:"debug",world_id:self.room_id,tick:Some(self.tick),data:&view}.encode();
+                        bytes+=packet.len();Arc::from(packet)
+                    }).clone()} else {quiet.debug.clone()};
+                    tx.send_replace(Some(Arc::new(PhysicsFrame{snapshot:quiet.snapshot.clone(),keyframe:quiet.keyframe.clone(),tick:self.tick,driver,debug})));
+                }
             }
-            return bytes;
         }
-        let wants_debug = |id: &String| self.entities.get(id)
-            .and_then(|entity| entity.last_packet.as_ref())
-            .and_then(|packet| packet.debug_mask).unwrap_or(0) != 0;
-        let any_debug = self.frame_clients.keys().any(wants_debug);
-        // Serialize diagnostics only when requested. Collider previews use normal
-        // pose/shape snapshots and static map metadata instead of this stream.
-        let frame = Arc::new(PhysicsFrame {
-            snapshot: FrameEnvelope{kind:"snapshot",world_id:self.room_id,tick:None,data:&self.build_snapshot(physics)}.encode(),
-            debug: if any_debug {
-                FrameEnvelope{kind:"debug",world_id:self.room_id,tick:Some(self.tick),data:&physics.debug_overlay}.encode()
-            } else { String::new() },
-        });
-        // One client's diagnostics must not add JSON/traffic to everybody else.
-        // Share one quiet frame across all clients with diagnostics disabled.
-        let quiet = if any_debug { Arc::new(PhysicsFrame {
-            snapshot: frame.snapshot.clone(), debug: String::new(),
-        }) } else { Arc::clone(&frame) };
-        for (id, tx) in &self.frame_clients {
-            let selected = if wants_debug(id) { &frame } else { &quiet };
-            let _ = tx.send_replace(Some(Arc::clone(selected)));
-        }
-        frame.snapshot.len() + frame.debug.len()
+        drop(snapshot);
+        self.compact_cache=cache;
+        bytes
     }
 
     // ------------------------------------------------------------------------
@@ -597,6 +643,7 @@ impl SharedGameState {
             );
 
             entities_out.push(PhysicsEntitySnapshot {
+                owner_fields_separate:false,
                 barrage:physics.barrages.get(&ent.id),
                 guard:physics.guard_view(&ent.id), support:physics.support.view(&ent.id),
                 health:physics.vehicle_health.get(&ent.id).map(std::borrow::Cow::Borrowed)
@@ -664,6 +711,100 @@ mod tests {
     use super::*;
 
     #[test]
+    fn compact_snapshot_fixture_covers_full_state_without_quantization() {
+        let mut room=crate::world_sessions::WorldRuntime::new(9,"streaming_endless_city").unwrap();
+        let mut receivers=Vec::new();
+        for (id,model) in [("alpha","tank"),("beta","brz"),("gamma","landcruiser")] {
+            let (tx,rx)=crate::outbox::channel();let (frames,fr)=watch::channel(None);let (_,input)=watch::channel(None);
+            room.join(id,tx,frames,input,None,10);room.spawn(id,model).unwrap();receivers.push((rx,fr));
+        }
+        room.game.tick=123456;
+        room.physics.combat_poses.insert("alpha".into(), CombatPose{
+            assisted_target:Some("beta".into()),impact:Some([1.2345678,-2.5,3.0]),
+            shot_origin:Some([4.5,6.0,7.0]),impact_normal:Some([0.0,1.0,0.0]),
+            cannon_shot:u32::MAX,shot:123,enabled:true,fire:true,weapon:"cannon".into(),
+            yaw:0.7123457,pitch:-0.45,..Default::default()
+        });
+        let h=room.physics.vehicle_health.get_mut("beta").unwrap();
+        h.hp=123.45678;h.last_attacker=Some("alpha".into());h.last_damage_kind="cannon".into();
+        h.stats.damage_dealt=432.1;h.stats.healing_done=23.4;h.stats.resurrections=2;
+        room.physics.guard_boosts.entry("alpha".into()).or_default().kind="tank_barrier";
+        room.physics.asset_health.insert("wall-1".into(),42.5);
+        let snapshot=room.game.build_snapshot(&room.physics);
+        let legacy=FrameEnvelope{kind:"snapshot",world_id:9,tick:None,data:&snapshot}.encode();
+        let compact=crate::snapshot_wire::encode(9,&snapshot);
+        assert!(compact.len()*100<legacy.len()*65,"compact={} legacy={}",compact.len(),legacy.len());
+        let mut cache=crate::snapshot_delta::SnapshotCache::default();
+        let (keyframe,_)=cache.encode(0,room.game.tick,compact.clone());
+        drop(snapshot);
+        let encode=|room:&crate::world_sessions::WorldRuntime| {
+            let snapshot=room.game.build_snapshot(&room.physics);
+            (FrameEnvelope{kind:"snapshot",world_id:9,tick:None,data:&snapshot}.encode(),crate::snapshot_wire::encode(9,&snapshot))
+        };
+        room.game.tick+=2;
+        room.physics.vehicle_health.get_mut("beta").unwrap().hp=400.25;
+        room.physics.combat_poses.get_mut("alpha").unwrap().enabled=false;
+        room.physics.vehicles.get_mut("alpha").unwrap().powertrain.ultimate_fraction=0.5;
+        let (updated,wire)=encode(&room);let (delta,_)=cache.encode(0,room.game.tick,wire);
+        room.game.tick+=2;
+        room.physics.vehicle_health.get_mut("beta").unwrap().hp=123.45678;
+        room.physics.combat_poses.get_mut("alpha").unwrap().enabled=true;
+        room.physics.vehicles.get_mut("alpha").unwrap().powertrain.ultimate_fraction=0.0;
+        let (returned,wire)=encode(&room);let (return_delta,_)=cache.encode(0,room.game.tick,wire);
+        let parse=|s:&str|serde_json::from_str::<serde_json::Value>(s).unwrap();
+        let stable=|s:&str|{let mut v=parse(s);v["base_id"]=json!(101);v};
+        let fixture=json!({"legacy":parse(&legacy),"compact":parse(&compact),"keyframe":stable(&keyframe),
+            "delta":stable(&delta),"updated":parse(&updated),"return_delta":stable(&return_delta),"returned":parse(&returned)});
+        if let Ok(path)=std::env::var("AVENLAB_SNAPSHOT_FIXTURE") {
+            std::fs::write(path,serde_json::to_string_pretty(&fixture).unwrap()).unwrap();
+        } else {
+            let expected:serde_json::Value=serde_json::from_str(include_str!("../../frontend/tests/fixtures/compact-snapshot.json")).unwrap();
+            assert_eq!(fixture,expected,"Regenerate the cross-language wire fixture after a deliberate schema/config change");
+        }
+    }
+
+    #[test]
+    fn compact_clients_skip_only_intermediate_publication_and_can_fall_back() {
+        use std::sync::atomic::Ordering;
+        let mut game=SharedGameState::new();let physics=PhysicsWorld::new();
+        let (tx,_)=crate::outbox::channel();let (frames,mut rx)=watch::channel(None);
+        let sender=crate::snapshot_wire::SnapshotSender::from(frames);let format=sender.format.clone();
+        let (_,input)=watch::channel(None);game.register_client("new".into(),tx,sender,input);
+        format.store(1,Ordering::Relaxed);game.tick=1;
+        assert_eq!(game.publish_physics_frame(&physics),0);assert!(!rx.has_changed().unwrap());
+        game.tick=2;assert!(game.publish_physics_frame(&physics)>0);
+        let compact=rx.borrow_and_update().clone().unwrap();
+        assert_eq!(serde_json::from_str::<serde_json::Value>(&compact.snapshot).unwrap()["type"],"snapshot_compact");
+        format.store(0,Ordering::Relaxed);game.tick=3;
+        assert!(game.publish_physics_frame(&physics)>0);
+        assert_eq!(serde_json::from_str::<serde_json::Value>(&rx.borrow_and_update().clone().unwrap().snapshot).unwrap()["type"],"snapshot");
+    }
+
+    #[test]
+    fn completed_round_publishes_on_an_odd_tick_once_and_again_for_reconnect() {
+        let mut game=SharedGameState::new();let physics=PhysicsWorld::new();
+        let mut round=crate::ctf::CtfRound::new("quickplay",false,[[0.0;3],[100.0,0.0,0.0]]).unwrap();
+        round.phase=crate::ctf::CtfPhase::Ended;game.match_state=Some(round.view());game.tick=3;
+        let (tx,_)=crate::outbox::channel();let (frame,mut frames)=watch::channel(None);let (_,input)=watch::channel(None);
+        let sender=crate::snapshot_wire::SnapshotSender::from(frame);
+        sender.format.store(1,std::sync::atomic::Ordering::Relaxed);
+        let revision=sender.revision.clone();
+        game.register_client("first".into(),tx,sender,input);
+        assert!(game.publish_physics_frame(&physics)>0);
+        let wire:serde_json::Value=serde_json::from_str(&frames.borrow_and_update().clone().unwrap().snapshot).unwrap();
+        assert_eq!(wire["data"][4]["phase"],"ended");
+        assert_eq!(game.publish_physics_frame(&physics),0);
+        revision.fetch_add(1,std::sync::atomic::Ordering::Relaxed);
+        assert!(game.publish_physics_frame(&physics)>0,"even a frozen final round must honor decoder resync");
+        assert_eq!(game.publish_physics_frame(&physics),0);
+        let (tx,_)=crate::outbox::channel();let (frame,mut frames)=watch::channel(None);let (_,input)=watch::channel(None);
+        game.register_client("late".into(),tx,frame,input);
+        assert!(game.publish_physics_frame(&physics)>0);
+        assert!(frames.borrow_and_update().is_some());
+        assert_eq!(game.publish_physics_frame(&physics),0);
+    }
+
+    #[test]
     #[ignore = "repeatable encoder benchmark"]
     fn benchmark_snapshot_encoder() {
         use std::{hint::black_box,time::Instant};
@@ -671,7 +812,7 @@ mod tests {
             let mut room=crate::world_sessions::WorldRuntime::new(1,"streaming_endless_city").unwrap();
             for i in 0..players {
                 let id=format!("encoder-{i}");
-                let (tx,_)=tokio::sync::mpsc::unbounded_channel();let (frames,_)=watch::channel(None);let (_,input)=watch::channel(None);
+                let (tx,_)=crate::outbox::channel();let (frames,_)=watch::channel(None);let (_,input)=watch::channel(None);
                 room.join(&id,tx,frames,input,None,10);room.spawn(&id,"brz").unwrap();
             }
             for _ in 0..60 {room.tick(0.0);}
@@ -717,7 +858,7 @@ mod tests {
     fn a_stalled_client_gets_the_latest_complete_frame_and_keeps_setup_messages() {
         let mut game = SharedGameState::new();
         let physics = PhysicsWorld::new();
-        let (reliable_tx, mut reliable_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (reliable_tx, mut reliable_rx) = crate::outbox::channel();
         let (frame_tx, mut frame_rx) = watch::channel(None);
         let (_input_tx, input_rx) = watch::channel(None);
         reliable_tx.send("welcome".into()).unwrap();
@@ -746,7 +887,7 @@ mod tests {
         let physics = PhysicsWorld::new();
         let mut receivers = Vec::new();
         for (id, mask) in [("quiet", 0), ("debug", 1)] {
-            let (reliable_tx, _reliable_rx) = tokio::sync::mpsc::unbounded_channel();
+            let (reliable_tx, _reliable_rx) = crate::outbox::channel();
             let (frame_tx, frame_rx) = watch::channel(None);
             let (input_tx, input_rx) = watch::channel(None);
             game.register_client(id.into(), reliable_tx, frame_tx, input_rx);
@@ -759,20 +900,22 @@ mod tests {
             game.collect_input_packets();
             receivers.push(frame_rx);
         }
-        game.tick = 7;
+        game.tick=7;game.publish_physics_frame(&physics);
+        assert!(receivers[1].borrow().as_ref().unwrap().debug.is_empty());
+        game.tick = 12;
         game.publish_physics_frame(&physics);
         let quiet = receivers[0].borrow().clone().unwrap();
         let debug = receivers[1].borrow().clone().unwrap();
         assert!(quiet.debug.is_empty());
         assert_eq!(quiet.snapshot, debug.snapshot);
         let envelope: serde_json::Value = serde_json::from_str(&debug.debug).unwrap();
-        assert_eq!(envelope["tick"], 7);
+        assert_eq!(envelope["tick"], 12);
     }
 
     #[test]
     fn input_mailbox_samples_the_newest_controls_without_replaying_backlog() {
         let mut game = SharedGameState::new();
-        let (reliable_tx, _reliable_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (reliable_tx, _reliable_rx) = crate::outbox::channel();
         let (frame_tx, _frame_rx) = watch::channel(None);
         let (input_tx, input_rx) = watch::channel(None);
         game.register_client("driver".into(), reliable_tx, frame_tx, input_rx);

@@ -1,13 +1,14 @@
+import { useMotionView } from "../../store/session/networkViews";
 import {useMissionRadioStore} from "../../store/missions";
 import {useNavigationStore} from "../../store/world";
-import {useNetworkStore} from "../../store/session/networkStore";
+
 import {ctfObjectiveLine,getCtfCaptureObjective} from "../stats/ctfObjective";
 import { TabbedMenu } from "../../components/menus/TabbedMenu";
 import { useUIStore } from "../../store/menus/uiStore";
 
 function LiveMissionLog() {
-  const objective=useNetworkStore(ctfObjectiveLine);
-  const guidance=useNetworkStore(s=>{
+  const objective=useMotionView(ctfObjectiveLine);
+  const guidance=useMotionView(s=>{
     const match=s.snapshot?.match_state;
     const returnTrip=match&&getCtfCaptureObjective(match,s.getMe()??undefined);
     if(!returnTrip)return null;
