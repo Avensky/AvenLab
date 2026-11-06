@@ -11,6 +11,26 @@ import { kitAssets } from "../src/worldBuilder/mapKit/catalog.ts";
 import { worldSocket } from "../src/worldBuilder/mapKit/sockets.ts";
 import { harborCanal } from "../src/worldBuilder/generation/harborCanal.ts";
 import { destructionDefaults } from "../src/combat/destruction.ts";
+import { portraitSource } from "../src/worldBuilder/components/prefabPortraits.ts";
+import { isHighwayBorderMaterial } from "../src/worldBuilder/mapKit/materials.ts";
+
+test("the prefab library resolves distinct 3D portraits from the actual model files", () => {
+  const straight = portraitSource(pieceById("kit-highway_25_wide_straight_level"));
+  const bend = portraitSource(pieceById("kit-highway_26_wide_bend44_level"));
+  const stone = portraitSource(pieceById("kit-stone_bridge_120m"));
+  assert.match(straight.url, /highway_25.*lod0\.glb$/);
+  assert.match(bend.url, /highway_26.*lod0\.glb$/);
+  assert.notEqual(straight.url, bend.url);
+  assert.match(stone.url, /stone_bridge.*lod0\.glb$/);
+  assert.equal(portraitSource(pieceById("tower")), null);
+});
+
+test("connector rail finishes are shared without recoloring stone masonry", () => {
+  assert(isHighwayBorderMaterial("guardrail_section", "mat_01"));
+  assert(isHighwayBorderMaterial("part_03", "metal"));
+  assert(!isHighwayBorderMaterial("road_asphalt", "asphalt"));
+  assert(!isHighwayBorderMaterial("stone_wall", "concrete"));
+});
 
 test("every kit asset places, round-trips and uses only its dedicated collider", () => {
   assert.equal(kitAssets.length, 34);

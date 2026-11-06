@@ -29,6 +29,9 @@
 .layout-editor .le-tools button[aria-pressed=true]{background:var(--le-green);color:var(--le-bg)}
 .layout-editor .le-piece.is-current{border-color:var(--le-green)!important;background:var(--le-raised)!important}
 .le-piece-card{min-width:0;display:flex;flex-direction:column}.le-piece-card>.le-piece{width:100%;border-radius:7px 7px 0 0!important}
+.le-portrait{position:relative;width:100%;height:75px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:linear-gradient(145deg,#142b3c,#0c1724);border:1px solid var(--le-line);border-radius:4px;margin-bottom:6px}.le-portrait .le-thumbnail{height:100%;width:100%}.le-portrait-image{width:100%;height:100%;display:block;object-fit:contain}.le-portrait-kind{position:absolute;right:4px;bottom:3px;padding:1px 3px;background:#08131cc9;color:#b8ddeb;font:8px ui-monospace,monospace;letter-spacing:.5px}
+@media(max-width:1000px){.le-portrait{height:65px}}
+@media(max-width:760px){.le-portrait{height:59px}}
 .layout-editor .le-preview-button{width:100%;border-radius:0 0 7px 7px;padding:5px;font-size:9px;color:var(--le-green);background:var(--le-bg)}
 .le-model-settings{border-block:1px solid var(--le-line);padding-bottom:10px;margin-top:20px}.le-model-settings input[type=checkbox],.le-road-settings input[type=checkbox]{accent-color:var(--le-physical)}
 .le-piece-preview{width:min(760px,94vw);max-height:92svh;overflow:auto;display:flex;flex-direction:column;border:1px solid var(--le-line);border-radius:12px;background:var(--le-panel);box-shadow:0 24px 100px #0009;pointer-events:auto}

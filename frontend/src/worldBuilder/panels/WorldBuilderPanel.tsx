@@ -14,7 +14,8 @@ import { ControllerAction } from "../../components/controller";
 import "../../components/menus/menus.css";
 import { isTypingTarget, type MenuAction } from "../../controls/inputRouting";
 import { useUIStore } from "../../store/menus/uiStore";
-import { Icon, Thumbnail } from "../components/EditorArtwork";
+import { Icon } from "../components/EditorArtwork";
+import { PrefabPortrait } from "../components/PrefabPortrait";
 import {
   initialMapLayout,
   layoutJSON,
@@ -497,7 +498,7 @@ function LayoutPanel({
                   disabled={!s.doc}
                   onClick={() => choose(piece)}
                 >
-                  <Thumbnail piece={piece} />
+                  <PrefabPortrait piece={piece} />
                   <span>{piece.label}</span>
                   <small>
                     {Number(piece.size[0].toFixed(2))} ×{" "}

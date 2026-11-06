@@ -8,10 +8,20 @@ import {
   useRef,
   useState,
 } from "react";
-import { DoubleSide, Group, type Mesh, MeshBasicMaterial, Vector3 } from "three";
+import { DoubleSide, Group, type Mesh, MeshBasicMaterial, MeshStandardMaterial, Vector3 } from "three";
 import { AssetBoundary } from "../../components/debugger/AssetBoundary";
 import type { LayoutObject, V3 } from "../document/layoutDocument";
 import { kitAsset, type KitAsset } from "./catalog";
+import { isHighwayBorderMaterial } from "./materials";
+
+// All highway connector modules share one galvanized finish, independent of
+// their source GLB or LOD. The old GLBs can have mismatched metal tint/gloss.
+// Stone masonry is intentionally not recolored into metal.
+const highwayBorder = new MeshStandardMaterial({
+  color: "#929da3",
+  metalness: 0.36,
+  roughness: 0.69,
+});
 
 function Loaded({
   asset,
@@ -33,6 +43,14 @@ function Loaded({
       if (mesh.isMesh) {
         mesh.receiveShadow = !tint;
         if (tint) mesh.material = tint;
+        else if (asset.id.startsWith("highway_")) {
+          if (Array.isArray(mesh.material))
+            mesh.material = mesh.material.map((material) =>
+              isHighwayBorderMaterial(mesh.name, material.name) ? highwayBorder : material,
+            );
+          else if (isHighwayBorderMaterial(mesh.name, mesh.material.name))
+            mesh.material = highwayBorder;
+        }
       }
     });
     return clone;
