@@ -6,6 +6,7 @@ import { RemoteFleet, VehicleExterior } from "./RemoteFleet";
 import { vehicleAsset } from "../worldBuilder/vehicles/vehicleCatalog";
 import { useUIStore } from "../store/menus/uiStore";
 import { useSelectionStore } from "../store/selection/selectionStore";
+import {useAlphaStore} from '../store/alpha/alphaStore';
 import { Suspense, memo, useMemo, useRef } from "react";
 import type { Group } from "three";
 import { useFrame } from "@react-three/fiber";
@@ -29,6 +30,7 @@ import { Brz } from "./Brz";
 import { Camaro } from "./Camaro";
 import { Supra } from "./Supra";
 import { Tank } from "./Tank";
+import {NavalVessel} from './NavalVessel';
 
 function normalizeVehicleId(vehicleId?: string | null) {
   return vehicleId?.trim().toLowerCase().replaceAll("_", "-") ?? "";
@@ -146,6 +148,10 @@ function GlbVehicle({ entity }: { entity: RosterEntity }) {
       model = <Tank entityId={entity.id} />;
       break;
 
+    case "hawaii-rescue":
+      model = <NavalVessel entityId={entity.id}/>;
+      break;
+
     default:
       return <VehicleFallback entity={entity} />;
   }
@@ -159,6 +165,8 @@ export const VehicleRoster = memo(function VehicleRoster() {
   const overlay=useUIStore(s=>s.overlay);
   const local=useConnectionView(s => s.playerId);
   const preview=useSelectionStore(s=>s.getSelectedVehicle().id);
+  const previewHero=useAlphaStore(s=>s.previewHero);
+  const previewVehicle=previewHero==='hawaii-rescue'?'hawaii-rescue':preview;
   const overrides = useRenderSettingsStore((s) => s.vehicleOverrides);
   const selectRoster = useMemo(createRosterSelector, []);
   const entities = useMotionView(selectRoster);
@@ -182,7 +190,7 @@ export const VehicleRoster = memo(function VehicleRoster() {
       {regular.map((entity) => (
         <NetworkVehicle
           key={entity.id}
-          entity={overlay === "vehicle_select" && entity.id === local ? {...entity,vehicle_id:preview} : entity}
+          entity={overlay === "vehicle_select" && entity.id === local ? {...entity,vehicle_id:previewVehicle} : entity}
           mode={overlay === "vehicle_select" && entity.id === local ? "glb" : overrides[entity.id] ?? mode}
         />
       ))}

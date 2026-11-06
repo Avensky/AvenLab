@@ -4,9 +4,11 @@ import {garageVisual, usesGarage} from "../../world/props/harborGarage";
 import { kitAsset } from "../mapKit/catalog";
 import { KitInstances, KitMesh } from "../mapKit/KitMesh";
 import { CARRIER,LIFT } from "../generation/harborPieces";
-import {DESTROYER} from "../generation/harborPieces";
+import {DESTROYER,HAWAII_DOCKED} from "../generation/harborPieces";
 import { BigEDocked,BridgeLeaf } from "../../world/props/HarborPieces";
 import {ArleighBurke} from "../../world/props/ArleighBurke";
+import {HawaiiDocked} from '../../world/props/HawaiiDocked';
+import {NAVAL_WAYPOINT} from '../generation/navalRoutes';
 import { streetProp } from "../props/streetPropCatalog";
 import { StreetPropInstances, StreetPropPreview } from "../props/StreetPropMeshes";
 import { memo, useEffect, useLayoutEffect, useMemo, useRef } from "react";
@@ -129,8 +131,8 @@ export const LayoutInstances = memo(function LayoutInstances({
       objects
         .filter(
           (o) =>
-            !(live && (o.piece === LIFT || o.piece==="bridge-lever")) &&
-            (collisionOnly || wireframe || (o.piece !== CARRIER && o.piece !== DESTROYER && !streetProp(o.piece) && o.piece!=="coastal-building" && o.piece!=="coastal-road" && !usesGarage(o.piece))) &&
+            !(live && (o.piece === LIFT || o.piece==="bridge-lever" || o.piece===NAVAL_WAYPOINT)) &&
+            (collisionOnly || wireframe || (o.piece !== CARRIER && o.piece !== DESTROYER && o.piece!==HAWAII_DOCKED && !streetProp(o.piece) && o.piece!=="coastal-building" && o.piece!=="coastal-road" && !usesGarage(o.piece))) &&
             !o.road &&
             !o.model &&
             !o.vehicle &&
@@ -183,6 +185,13 @@ export const LayoutInstances = memo(function LayoutInstances({
         <group key={o.id} position={o.position} rotation={[0,o.yaw*Math.PI/180,0]} scale={o.size}
           onClick={onSelect?e=>{if(e.button===0&&e.delta<5){e.stopPropagation();onSelect(o.id);}}:undefined}>
           <ArleighBurke fallback={<group>{o.parts.map((p,i)=><mesh key={i} position={p.position} scale={p.size}>
+            <boxGeometry/><meshStandardMaterial color={o.color}/></mesh>)}</group>}/>
+        </group>
+      ))}
+      {!collisionOnly && !wireframe && objects.filter(o=>o.piece===HAWAII_DOCKED && o.id!==exclude).map(o=>(
+        <group key={o.id} position={o.position} rotation={[0,o.yaw*Math.PI/180,0]} scale={o.size}
+          onClick={onSelect?e=>{if(e.button===0&&e.delta<5){e.stopPropagation();onSelect(o.id);}}:undefined}>
+          <HawaiiDocked fallback={<group>{o.parts.map((p,i)=><mesh key={i} position={p.position} scale={p.size}>
             <boxGeometry/><meshStandardMaterial color={o.color}/></mesh>)}</group>}/>
         </group>
       ))}
@@ -308,7 +317,7 @@ export function PieceModel({
        usesGarage(item.piece) && !wireframe && !collisionOnly ? <ModelMesh item={garageVisual(item)} ghost={ghost}/> :
        item.piece==="coastal-building" && !wireframe && !collisionOnly && !ghost ?
        <HarborBuildings items={[{...item,position:[0,0,0],size:[1,1,1],yaw:0}]} fallback={parts}/> :
-       item.piece===CARRIER && !collisionOnly && !wireframe && !ghost ? <BigEDocked fallback={<>{parts}</>}/> : item.piece===DESTROYER && !collisionOnly && !wireframe && !ghost ? <ArleighBurke fallback={<>{parts}</>}/> : streetProp(item.piece) && !collisionOnly && !wireframe && !ghost ?
+       item.piece===CARRIER && !collisionOnly && !wireframe && !ghost ? <BigEDocked fallback={<>{parts}</>}/> : item.piece===DESTROYER && !collisionOnly && !wireframe && !ghost ? <ArleighBurke fallback={<>{parts}</>}/> : item.piece===HAWAII_DOCKED && !collisionOnly && !wireframe && !ghost ? <HawaiiDocked fallback={<>{parts}</>}/> : streetProp(item.piece) && !collisionOnly && !wireframe && !ghost ?
         <StreetPropPreview piece={item.piece} fallback={parts}/> : parts}
       {selected && (
         <mesh position={center} scale={extent} renderOrder={10}>

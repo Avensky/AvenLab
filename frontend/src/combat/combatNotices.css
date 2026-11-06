@@ -17,8 +17,13 @@
   font-weight: 650;
   animation: combat-notice-out 1.9s ease-out both;
 }
-.combat-notices [data-tone="damage"] { color: #f1c4b6; }
-.combat-notices [data-tone="buff"] { color: #b8e7da; }
+.combat-notices [data-tone="damage"] { color: #ff7182; border-left:2px solid #ff7182; }
+.combat-notices [data-tone="buff"] { color: #72eca1; border-left:2px solid #72eca1; }
+.combat-notices [data-tone="debuff"] { color: #ff8fbd; border-left:2px solid #ff8fbd; }
+.combat-notices [data-tone="warning"] { color: #ffd078; border-left:2px solid #ffd078; }
+.combat-notices [data-tone="system"] { color: #65dcff; border-left:2px solid #65dcff; }
+.combat-notices [data-tone="objective"] { color: #7daaff; border-left:2px solid #7daaff; }
+.combat-notices [data-tone="rescue"] { color: #7deacf; border-left:2px solid #7deacf; }
 @keyframes combat-notice-out {
   0% { opacity: .65; }
   16%, 69% { opacity: 1; transform: translateY(0); }

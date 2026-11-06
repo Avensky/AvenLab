@@ -4,6 +4,7 @@ import {burkeSize,burkeCollisionParts,burkeKeelY} from "./burkeDeck.ts";
 
 export const CARRIER = "big-e-docked";
 export const DESTROYER="arleigh-burke-docked";
+export const HAWAII_DOCKED='hawaii-rescue-docked';
 export const LIFT = "canal-lift";
 // Small enough that a car breaks one panel, rather than removing a whole road edge.
 export const GUARDRAIL_MODULE_METERS = 3.6;
@@ -30,6 +31,20 @@ export const harborPieces: Piece[] = [{
   id:DESTROYER,label:"Arleigh Burke · escort destroyer",category:"props",
   description:"154 m destroyer · static harbor prototype with walkable deck, bridge and hull collision. Buoyancy and weapons come later.",
   size:burkeSize,color:"#52626b",parts:burkeCollisionParts,
+}, {
+  id:HAWAII_DOCKED,label:'USS Hawaii · rescue vessel (docked)',category:'boats',
+  description:'Static hull and landing-deck proxy; pilot the dynamic version from the Sandbox BOAT tab.',
+  size:[24,26,154],color:'#445867',parts:[
+    {shape:'box',position:[0,.32,0],size:[.92,.52,.94]},
+    {shape:'box',position:[0,.72,0],size:[.87,.045,.88]},
+  ],
+}, {
+  id:'naval-route-waypoint',label:'Rescue ship · route waypoint',category:'boats',
+  description:'Place successive markers at SEA LEVEL to record a future cruiser patrol/rescue route. Non-colliding authoring guide.',
+  size:[4,1,4],color:'#40b9d9',solid:false,parts:[
+    {shape:'box',position:[0,.12,0],size:[1,.10,1],color:'#40b9d9',solid:false},
+    {shape:'box',position:[0,.6,0],size:[.12,.8,.12],color:'#f4d48b',solid:false},
+  ],
 }];
 
 export function guardrail(id:string,x1:number,z1:number,x2:number,z2:number,surface:number, rise=0):import("../document/layoutDocument.ts").LayoutObject{

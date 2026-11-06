@@ -8,6 +8,7 @@ mod ram;
 mod guard_boost;
 mod mechanic;
 mod harbor;
+mod naval;
 mod team_barrier;
 mod tank_barrage;
 mod forward_assist;

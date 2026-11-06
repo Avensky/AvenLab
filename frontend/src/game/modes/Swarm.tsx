@@ -1,4 +1,6 @@
 import { useUIStore } from "../../store";
+import {useState} from 'react';
+import {useAlphaStore} from '../../store/alpha/alphaStore';
 
 const vehicles = [
   { id: "drone-01", type: "DRONE", status: "PATROL", color: "text-cyan-300" },
@@ -10,6 +12,11 @@ const vehicles = [
 
 export function Swarm() {
   const setScreen = useUIStore((s) => s.setScreen);
+  const [tab,setTab]=useState<'registry'|'boats'>('registry');
+  const openNavalTrial=()=>{
+    useAlphaStore.getState().chooseMode('sandbox');
+    setScreen('mode_select');
+  };
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-[#020617] text-cyan-100">
@@ -55,9 +62,18 @@ export function Swarm() {
           </section>
 
           <section className="rounded-2xl border border-cyan-400/20 bg-slate-950/80 p-5 shadow-xl shadow-cyan-500/10">
-            <h2 className="mb-3 text-xl font-bold text-cyan-200">
-              Asset Registry
-            </h2>
+            <div className="mb-4 flex gap-2" role="tablist" aria-label="Swarm platforms">
+              <button role="tab" aria-selected={tab==='registry'} onClick={()=>setTab('registry')} className={`border px-3 py-2 text-xs font-bold ${tab==='registry'?'border-cyan-300 bg-cyan-700/30':'border-slate-700'}`}>REGISTRY</button>
+              <button role="tab" aria-selected={tab==='boats'} onClick={()=>setTab('boats')} className={`border px-3 py-2 text-xs font-bold ${tab==='boats'?'border-cyan-300 bg-cyan-700/30':'border-slate-700'}`}>BOATS</button>
+            </div>
+            {tab==='boats'?<div role="tabpanel" className="space-y-3">
+              <img src="/images/heroes/hawaii-rescue.webp" alt="USS Hawaii rescue destroyer" className="h-40 w-full object-contain"/>
+              <h2 className="text-xl font-black text-cyan-100">USS HAWAII · RESCUE CRUISER</h2>
+              <p className="text-sm text-slate-300">Playable sea trial in Sandbox and World Editor. Water buoyancy, propeller thrust and rudder turning are server-simulated.</p>
+              <p className="text-xs uppercase text-amber-300">Autonomous route, helicopter sorties, drones and live targeting: not deployed yet.</p>
+              <button onClick={openNavalTrial} className="w-full border border-cyan-300/50 bg-cyan-500/15 px-4 py-3 font-bold text-cyan-100">OPEN NAVAL SANDBOX</button>
+            </div>:<div role="tabpanel">
+            <h2 className="mb-3 text-xl font-bold text-cyan-200">Asset Registry</h2>
 
             <div className="space-y-3">
               {vehicles.map((v) => (
@@ -76,9 +92,10 @@ export function Swarm() {
               ))}
             </div>
 
-            <button className="mt-5 w-full rounded-xl border border-cyan-300/40 bg-cyan-500/10 px-5 py-4 font-bold text-cyan-100 hover:bg-cyan-400/20">
-              DEPLOY FORMATION
+            <button disabled title="Server-controlled NPC formations are in development" className="mt-5 w-full cursor-not-allowed border border-cyan-300/20 bg-cyan-500/5 px-5 py-4 font-bold text-slate-400">
+              FORMATION DEPLOYMENT · IN DEVELOPMENT
             </button>
+            </div>}
           </section>
         </main>
       </div>

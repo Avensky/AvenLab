@@ -12,6 +12,7 @@ import {
 } from "./garageEffects";
 
 import {sanitizeHealthBarMode,type HealthBarMode} from "./healthVisibility";
+import {DEFAULT_NOTICE_CHANNELS,sanitizeNoticeChannels,type NoticeChannel} from '../../combat/noticeModel';
 import {DEFAULT_BINDINGS,sanitizeBindings} from './keyBindings';
 import type {BindingAction} from './keyBindings';
 export {DEFAULT_BINDINGS,RESERVED_KEYS,isBindingKey} from './keyBindings';
@@ -37,6 +38,7 @@ export type Preferences = {
   hudVisibilityVersion: number;
   radioHudStyle: "classic" | "streamlined" | "no-tabs";
   healthBars: HealthBarMode;
+  notificationChannels:Record<NoticeChannel,boolean>;
   theme: UITheme;
   vehicleCosmetics: Pick<VehicleCosmetics,"matchCockpit">;
   garageEffects: GarageEffects;
@@ -87,6 +89,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   hudVisibilityVersion: HUD_VISIBILITY_VERSION,
   radioHudStyle: "no-tabs",
   healthBars: "all",
+  notificationChannels:DEFAULT_NOTICE_CHANNELS,
   theme: "navy",
   vehicleCosmetics: {matchCockpit:DEFAULT_VEHICLE_COSMETICS.matchCockpit},
   garageEffects: DEFAULT_GARAGE_EFFECTS,
@@ -164,6 +167,7 @@ export function sanitizePreferences(value: unknown): Preferences {
   return {
     hudVisibilityVersion: HUD_VISIBILITY_VERSION,
     healthBars: sanitizeHealthBarMode(data.healthBars),
+    notificationChannels:sanitizeNoticeChannels(data.notificationChannels),
     radioHudStyle:
       data.radioHudStyle === "streamlined" || data.radioHudStyle === "classic"
         ? data.radioHudStyle

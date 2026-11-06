@@ -47,6 +47,7 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
   const research = mode === "signal_recon";
   const planned = mode === "swarm";
   const match = isMatchMode(mode);
+  const allowBoats=!match && !research && !planned;
   const confirmedTeam = match && inMode && (active?.team === "red" || active?.team === "blue")
     ? active.team : undefined;
   const customWorld = Boolean(world && !active);
@@ -67,14 +68,15 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
   }, []);
   const tab = useCallback(
     (step: number) => {
+      const filters=HERO_FILTERS.filter(item=>allowBoats||item!=='boat');
       filter(
-        HERO_FILTERS[
-          (HERO_FILTERS.indexOf(role) + step + HERO_FILTERS.length) %
-            HERO_FILTERS.length
+        filters[
+          (filters.indexOf(role) + step + filters.length) %
+            filters.length
         ],
       );
     },
-    [filter, role],
+    [filter, role, allowBoats],
   );
   const direction = useCallback((action: MenuAction) => {
     if (pending.current || !root.current) return;
@@ -181,9 +183,10 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
     const focused = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>("[data-hero]");
     const id = focused?.dataset.hero ??
       useAlphaStore.getState().previewHero ??
-      HEROES.find((h) => role === "all" || h.role === role)!.id;
+      HEROES.find((h) => (allowBoats||h.vehicle!=='hawaii-rescue') &&
+        (role==='all'||(role==='boat'?h.vehicle==='hawaii-rescue':h.role===role)))!.id;
     void choose(id);
-  }, [choose, role]);
+  }, [choose, role, allowBoats]);
   useSelectionNavigation(root, { confirm, back, direction, tab });
   const selected = HEROES.find((h) => h.id === previewId);
   return (
@@ -203,6 +206,7 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
           <HeroRoster
             selected={heroId}
             filter={role}
+            allowBoats={allowBoats}
             busy={busy}
             onFilter={filter}
             unavailable={unavailableHeroes(view?.alpha, mode, view?.profile.id)}

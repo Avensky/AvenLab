@@ -28,6 +28,7 @@ import { inLibraryTab, type LibraryTab } from "../document/libraryCatalog";
 import { LAYOUT_LEVELS, layoutLevel } from "../document/layoutLevels";
 import { mapExport } from "../document/mapDocument";
 import { COASTAL_MAP_ID, parseDistrictImport } from "../generation/coastalMap";
+import {recordedNavalRoute} from '../generation/navalRoutes';
 import { sourceSpawns } from "../document/spawnDocument";
 import "../layoutEditor.css";
 import { LayoutPlan } from "../scene/LayoutPlan";
@@ -115,6 +116,7 @@ function LayoutPanel({
       ),
     [category, search],
   );
+  const navalRoute=useMemo(()=>recordedNavalRoute(s.doc?.objects??[]),[s.doc]);
   const preferences = useEditorPreferences(),
     palette = useEditorPalette();
   const appTheme = usePreferencesStore(s => s.theme);
@@ -492,6 +494,9 @@ function LayoutPanel({
             />
           </label>
           <LibraryTabs active={category} onChange={setCategory} />
+          {category==='boats'&&<p role="status" className="px-3 py-2 text-xs text-cyan-200/85">
+            HAWAII ROUTE · {navalRoute.length} waypoint{navalRoute.length===1?'':'s'} recorded in placement order. Select SEA LEVEL for the water path. Autopilot replay is not active yet.
+          </p>}
           <div
             className="le-palette"
             id="world-prefab-library"

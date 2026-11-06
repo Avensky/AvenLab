@@ -15,6 +15,7 @@ export function HeroRoster({
   onChoose,
   unavailable = {},
   onFilter,
+  allowBoats = false,
 }: {
   selected: string | null;
   main?: string | null;
@@ -23,10 +24,11 @@ export function HeroRoster({
   onChoose: (hero: string) => void;
   unavailable?: Record<string, string>;
   onFilter: (filter: HeroFilter) => void;
+  allowBoats?: boolean;
 }) {
   return (
     <aside className="hero-roster" aria-label="Hero portraits">
-      <HeroRoleTabs filter={filter} onFilter={onFilter} />
+      <HeroRoleTabs filter={filter} onFilter={onFilter} allowBoats={allowBoats}/>
       <div
         className="hero-roster-grid"
         data-controller-grid
@@ -37,7 +39,10 @@ export function HeroRoster({
           filter === "all" ? "All heroes" : `${filter.toUpperCase()} heroes`
         }
       >
-        {HEROES.filter((hero) => filter === "all" || hero.role === filter).map(
+        {HEROES.filter((hero) =>
+          (allowBoats || hero.vehicle !== 'hawaii-rescue') &&
+          (filter === 'all' || (filter === 'boat' ? hero.vehicle === 'hawaii-rescue' : hero.role === filter))
+        ).map(
           (hero) => (
             <button
               key={hero.id}
@@ -71,9 +76,11 @@ export function HeroRoster({
 export function HeroRoleTabs({
   filter,
   onFilter,
+  allowBoats = false,
 }: {
   filter: HeroFilter;
   onFilter: (filter: HeroFilter) => void;
+  allowBoats?: boolean;
 }) {
   return (
     <nav
@@ -83,7 +90,7 @@ export function HeroRoleTabs({
       data-controller-row
       data-controller-tab-only
     >
-      {HERO_FILTERS.map((role) => (
+      {HERO_FILTERS.filter(role=>allowBoats||role!=='boat').map((role) => (
         <MenuTabButton
           key={role}
           data-role-filter

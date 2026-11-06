@@ -81,7 +81,8 @@ export type Piece = {
     | "garages"
     | "objectives"
     | "jumps"
-    | "vehicles";
+    | "vehicles"
+    | "boats";
   description: string;
   size: V3;
   color: string;

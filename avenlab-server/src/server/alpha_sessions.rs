@@ -379,6 +379,9 @@ impl Server {
     pub async fn validate_alpha_vehicle(&self, player: &str, vehicle: &str) -> Result<(), String> {
         let a = self.alpha.lock().await;
         if let Some(member) = a.members.get(player) {
+            if member.mode.bucket()==0 && vehicle==crate::naval::RESCUE_SHIP_ID {
+                return Err("Naval craft are available in Sandbox and World Editor, not this Quickplay rotation.".into());
+            }
             if member.hero.is_empty() { return Err("Choose a hero before deploying.".into()); }
             if policy::hero(&member.hero)?.vehicle != vehicle {
                 return Err("Choose this vehicle's hero in the lobby first.".into());
@@ -428,6 +431,9 @@ impl Server {
             .get(player)
             .cloned()
             .ok_or("Join a mode before locking a hero.")?;
+        if member.mode.bucket()==0 && selected.vehicle==crate::naval::RESCUE_SHIP_ID {
+            return Err("Naval craft are only selectable in Sandbox and World Editor.".into());
+        }
         if member.mode.bucket() == 0 && self.alpha.lock().await.enforce_roles {
             let a = self.alpha.lock().await.clone();
             let roles: Vec<_> = a

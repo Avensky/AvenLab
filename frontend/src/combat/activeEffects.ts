@@ -9,7 +9,7 @@ export type EffectNature='mobility'|'offense'|'control'|'heat'|'wear'|'healing'|
 export type ActiveVehicleEffect={id:string;label:string;description:string;kind:'buff'|'debuff';nature:EffectNature;icon:AttackSymbol;remaining:number|null;duration:number|null};
 const time=(value:unknown,max:number)=>typeof value==='number'&&Number.isFinite(value)?Math.ceil(Math.max(0,Math.min(max,value))*10)/10:0;
 /** Primitive signals keep the status component independent of 60 Hz pose changes. */
-export function readEffectSignals(entity:PhysicsEntitySnapshot|null|undefined){
+export function readEffectSignals(entity:PhysicsEntitySnapshot|null|undefined,boostHeld=false,deckHold=false){
  const resource=entity?.resource_mask;
  const guard=readGuardBoost(entity);
  const guardKind=guardActionKind(entity,guard);
@@ -21,6 +21,8 @@ export function readEffectSignals(entity:PhysicsEntitySnapshot|null|undefined){
   stun:time(entity?.combat?.stun_remaining,1),
   resource:Number.isSafeInteger(resource)&&resource!>=0&&resource!<=0xffff?resource! & (ResourceFlags.THERMAL_RECOVERY|ResourceFlags.HOT|ResourceFlags.DAMAGED|ResourceFlags.BLINK_STRESS):0,
   boost:Boolean((entity?.telemetry_mask??0)&TelemetryFields.BOOST)&&Boolean((entity?.vehicle_mask??0)&VehicleFlags.BOOST),
+  dryBoost:Boolean(entity?.vehicle_id!=='tank' && boostHeld && entity?.boost_fraction===0),
+  deckHold,
   dive:time(guard?.dive_remaining_s,DIVE_DURATION_S),
   guard:time(guard?.remaining_s,GUARD_DURATION_S),
   guardHp:guard?Math.ceil(guard.shield_hp):0,
@@ -30,6 +32,7 @@ export function readEffectSignals(entity:PhysicsEntitySnapshot|null|undefined){
 export function activeVehicleEffects(s:ReturnType<typeof readEffectSignals>):ActiveVehicleEffect[]{
  const effects:ActiveVehicleEffect[]=[];if(s.defeated)return effects;
  if(s.protection>0)effects.push({id:"spawn-protection",label:"SPAWN SHIELD",description:"Brief damage protection after spawning. Firing or starting Ram ends it early.",kind:"buff",nature:"defense",icon:"shield",remaining:s.protection,duration:2});
+ if(s.deckHold)effects.push({id:'deck-hold',label:'DECK AUTO BRAKE',description:'The rescue vessel reduces your relative horizontal slide while you are on its landing deck.',kind:'buff',nature:'control',icon:'shield',remaining:null,duration:null});
  if(s.dive>0)effects.push({id:'dive-shield',label:'DIVE SHIELD',description:'All-angle damage protection. Your gun remains available.',kind:'buff',nature:'defense',icon:'shield',remaining:s.dive,duration:DIVE_DURATION_S});
  if(s.guard>0 || (s.guardKind==='tank_barrier' && s.guardHp>0)){
   const tank=s.guardKind==='tank_barrier';
@@ -46,6 +49,7 @@ export function activeVehicleEffects(s:ReturnType<typeof readEffectSignals>):Act
   else if(s.ram>0)effects.push({id:'ram-boost',label:'RAM BOOST',description:'The reduced speed bonus remains active. Heat, fuel and nitrous costs still apply.',kind:'buff',nature:'mobility',icon:'boost',remaining:Math.min(4,s.ram),duration:4});
   else if(s.boost&&s.guard===0)effects.push({id:'nitrous',label:'NITROUS',description:'Nitrous adds up to 35% engine output and 12% top speed. Grounded tires gain drive grip and roll damping while the reserve lasts.',kind:'buff',nature:'mobility',icon:'boost',remaining:null,duration:null});
  }
+ if(s.dryBoost)effects.push({id:'nitrous-empty',label:'NITROUS EMPTY',description:'Nitrous reserve is depleted. Recharge at a service station before boosting again.',kind:'debuff',nature:'wear',icon:'boost',remaining:null,duration:null});
  if(s.resource&ResourceFlags.DAMAGED)effects.push({id:'engine-wear',label:'ENGINE WEAR',description:'Vehicle condition is reducing engine power. Visit a mechanic.',kind:'debuff',nature:'wear',icon:'repair',remaining:null,duration:null});
  return effects;
 }

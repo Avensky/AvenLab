@@ -10,8 +10,8 @@ export type MatchCategory = "quickplay" | "competitive";
 /** Research/planned modes are garage destinations, never server mode_join IDs. */
 export type PlayMode = GameMode | "signal_recon" | "swarm";
 export type HeroRole = "tank" | "dps" | "support";
-export type HeroFilter = HeroRole | "all";
-export const HERO_FILTERS: HeroFilter[] = ["all", "tank", "dps", "support"];
+export type HeroFilter = HeroRole | "all" | "boat";
+export const HERO_FILTERS: HeroFilter[] = ["all", "tank", "dps", "support", "boat"];
 export const GAME_MODES: {
   id: PlayMode;
   label: string;
@@ -121,6 +121,7 @@ export const HEROES: {
   {id:"charger70", vehicle:"charger70", name:"1970 CHARGER R/T", role:"dps", note:"Rear-drive muscle for a heavy launch"},
   {id:"skyline34", vehicle:"skyline34", name:"SKYLINE R34", role:"dps", note:"Pursuit coupe for high-speed intercepts"},
   {id:"timecar", vehicle:"timecar", name:"TIME MACHINE", role:"dps", note:"Gull-wing pursuit car"},
+  {id:"hawaii-rescue", vehicle:"hawaii-rescue", name:"USS HAWAII", role:"support", note:"BOAT · rescue cruiser · propeller/rudder sea trial"},
 ];
 export function heroForVehicle(vehicle: string | null | undefined) {
   return HEROES.find(hero => hero.vehicle === vehicle);

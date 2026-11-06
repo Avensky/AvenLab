@@ -66,7 +66,7 @@ pub struct PhysicsWorld {
     chunks_ready: bool,
     service_bays: Vec<usize>,
     serviced_home: std::collections::HashSet<String>,
-    coast:Option<crate::harbor::Coast>,
+    pub(crate) coast:Option<crate::harbor::Coast>,
     pub bridge_motion: Option<crate::harbor::BridgeMotion>,
     bridge_tick: u64,
     drawbridges: Vec<(RigidBodyHandle, Isometry<Real>)>,
@@ -966,6 +966,7 @@ impl PhysicsWorld {
     /// and dynamic occupancy are checked before committing any relocation.
     pub(crate) fn place_vehicle_after_recovery(&mut self, player_id:&str) -> Result<(),String> {
         let vehicle=self.vehicles.get(player_id).ok_or("Vehicle unavailable")?;
+        if vehicle.config.wheels==0 {return self.place_vehicle_at_spawn(player_id);}
         let handle=vehicle.body;let config=vehicle.config;
         let body=self.bodies.get(handle).ok_or("Vehicle body unavailable")?;
         let from=self.vehicle_health.get(player_id).and_then(|h|h.downed_position).unwrap_or_else(||[body.translation().x,body.translation().y,body.translation().z]);
@@ -1025,6 +1026,12 @@ impl PhysicsWorld {
         let pose=*body.position();
         self.query_pipeline.update(&self.colliders);
         if !self.vehicle_pose_clear(handle,config,pose){return Err("The disabled vehicle is obstructed. Clear the area before reviving.".into());}
+        if config.wheels==0 {
+            return self.coast.as_ref()
+                .and_then(|coast|coast.water_surface_at(pose.translation.x,pose.translation.z))
+                .filter(|surface|(pose.translation.y-surface-2.0).abs()<6.0)
+                .map(|_|()).ok_or_else(||"The vessel needs water support before revival.".into());
+        }
         let origin=point![pose.translation.x,pose.translation.y+1.0,pose.translation.z];
         let Some((_,hit))=self.query_pipeline.cast_ray_and_get_normal(&self.bodies,&self.colliders,&Ray::new(origin,-Vector::y()),5.0,true,QueryFilter::only_fixed())else{return Err("The disabled vehicle needs safe ground support.".into())};
         if hit.normal.y<0.7||hit.time_of_impact<0.1||!self.vehicle_recovery_support(config,pose,origin.y-hit.time_of_impact){return Err("The disabled vehicle needs safe ground support.".into());}
@@ -1050,7 +1057,24 @@ impl PhysicsWorld {
         let [hx, hy, hz] = config.chassis_half_extents;
 
 
-        let (spawn_x, spawn_z, spawn_yaw, road_surface_y) = {
+        let (spawn_x, spawn_z, spawn_yaw, road_surface_y) = if config.wheels == 0 {
+            let map = self.active_map.as_ref().ok_or("No map selected")?;
+            if !map.map_id.starts_with("harbor_canal_") {
+                return Err("This watercraft needs an installed harbor canal environment".into());
+            }
+            let coast=self.coast.as_ref().ok_or("This environment has no navigable water")?;
+            let z=if team=="red" {-235.0}else if team=="blue" {235.0}else {return Err("Unknown boat team".into())};
+            let yaw=if team=="red" {0.0}else {std::f32::consts::PI};
+            let berth_x=0.0;
+            let water=coast.water_surface_at(berth_x,z).ok_or("Naval berth has no water")?;
+            if coast.water_surface_at(berth_x,z-75.0).is_none() || coast.water_surface_at(berth_x,z+75.0).is_none() {
+                return Err("Naval berth is too short for this hull".into());
+            }
+            if self.vehicles.values().any(|v|self.bodies.get(v.body).is_some_and(|b|{
+                let p=b.translation();(p.x-berth_x).powi(2)+(p.z-z).powi(2)<170.0_f32.powi(2)
+            })) {return Err("The naval berth is occupied. Wait for the ship to depart".into());}
+            (berth_x,z,yaw,water)
+        } else {
             let map = self.active_map
                 .as_ref()
                 .ok_or_else(|| "No map selected".to_string())?;
@@ -1110,7 +1134,7 @@ impl PhysicsWorld {
         // wheel_y locates the mount below the body origin. Subtract it exactly
         // once when solving body height; omitting it starts the springs bottomed
         // out and launches the chassis toward the actual equilibrium height.
-        let spawn_y = config.spawn_height(road_surface_y);
+        let spawn_y = if config.wheels==0 {road_surface_y+2.0} else {config.spawn_height(road_surface_y)};
 
         self.spawn_poses.insert(id.to_string(), (Isometry::new(vector![spawn_x, spawn_y, spawn_z], vector![0.0, spawn_yaw, 0.0]), road_surface_y));
         // Rigid body
@@ -1625,6 +1649,10 @@ impl PhysicsWorld {
         // rack integrator or a second control pass here.
         // Apply suspension + traction + tire forces exactly once per substep.
         self.apply_vehicle_forces(dt);
+        // Ships have no wheels. Buoyancy, propeller thrust and rudder yaw have
+        // one independent force owner, before the same Rapier integration.
+        self.apply_watercraft_forces(dt);
+        self.apply_naval_deck_brake();
         // Only multiplayer impacts can earn ultimate. Sample vehicle motion
         // before Rapier resolves a collision, so a ram that stops the attacker
         // still counts. Ordinary solo driving allocates no attribution table;
@@ -1751,7 +1779,10 @@ impl PhysicsWorld {
                 // Airborne wheel rays can reach below a jump. Use the hull itself.
                 let bottom = body.colliders().first().and_then(|h| self.colliders.get(*h))
                     .map_or(p.y, |c| c.compute_aabb().mins.y);
-                if let Some(reason) = coast.hazard(p, bottom) {
+                let reason = if vehicle.config.wheels==0 && coast.water_surface_at(p.x,p.z).is_some() {
+                    None // Water is support for the boat, not a death trigger.
+                } else { coast.hazard(p, bottom) };
+                if let Some(reason) = reason {
                     if self.vehicle_health.get(id).is_some_and(|h| !h.lost_to_environment()) {
                         defeats.push((id.clone(), reason));
                     }

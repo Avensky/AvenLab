@@ -14,6 +14,7 @@ export const LIBRARY_TABS = [
   { id: "jumps", label: "Jumps" },
   { id: "objectives", label: "Objectives" },
   { id: "vehicles", label: "Vehicles" },
+  { id: "boats", label: "Boats" },
   { id: "props", label: "Props" },
 ] as const;
 export type LibraryTab = (typeof LIBRARY_TABS)[number]["id"];

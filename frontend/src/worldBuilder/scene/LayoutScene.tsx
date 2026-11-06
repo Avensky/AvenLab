@@ -1,6 +1,7 @@
 import { useThree } from "@react-three/fiber";
 import {
   OrbitControls,
+  Line,
   PerspectiveCamera,
   TransformControls,
 } from "@react-three/drei";
@@ -24,6 +25,7 @@ import { useBuilderStore } from "../state/builderStore";
 import { useEditorScenePalette } from "./useEditorScenePalette";
 import { layoutAction, useLayoutStore } from "../state/layoutStore";
 import { CARRIER,DESTROYER,deckPanorama } from "../generation/harborPieces";
+import {recordedNavalRoute} from '../generation/navalRoutes';
 import { ChunkGuide } from "./ChunkGuide";
 import { LayoutInstances, PieceModel } from "./LayoutMeshes";
 import { SpawnMarkers } from "./SpawnMarkers";
@@ -227,6 +229,7 @@ export default function LayoutScene() {
     selectedSpawn = useLayoutStore((s) => s.selectedSpawn);
   const source = useBuilderStore((s) => s.doc),
     ghost = useRef<Group>(null);
+  const navalRoute=useMemo(()=>recordedNavalRoute(doc?.objects??[]),[doc]);
   const orbit=useRef<OrbitControlsImpl>(null);
   const previousFloor=useRef(cursor[1]);
   useEffect(()=>{
@@ -386,6 +389,8 @@ export default function LayoutScene() {
         <WorldReference source={source} full={reference} />
       )}
       <SpawnMarkers />
+      {navalRoute.length>1&&<Line points={navalRoute.map(mark=>[mark.position[0],mark.position[1]+1.3,mark.position[2]] as [number,number,number])}
+        color="#45d9f3" lineWidth={2.5} dashed={false} />}
       {doc && (
         <LayoutInstances
           objects={doc.objects}

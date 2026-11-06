@@ -1,4 +1,5 @@
 import {HEALTH_BAR_LABELS,cycleHealthBarMode} from "../../store/preferences/healthVisibility";
+import {NOTICE_CHANNELS,NOTICE_LABELS,DEFAULT_NOTICE_CHANNELS} from '../../combat/noticeModel';
 import { HUD_GROUP_LABELS } from "../../store/preferences/index";
 import { CLIMATE_HUD_LABELS, CLIMATE_HUD_SIZES } from "../../store/preferences/hudVisibility";
 import { ControllerGuide } from "../../components/controller";
@@ -283,6 +284,13 @@ export function SettingsMenu() {
                 description: `Cycle with ${keyLabel(prefs.bindings.healthBars)}. Team filters include your own team. Defeat and damage feedback remain visible. Rebind in Keyboard.`,
                 action: (dir) => prefs.update({healthBars:cycleHealthBarMode(prefs.healthBars,dir)}),
               },
+              ...NOTICE_CHANNELS.map((channel):MenuRow=>({
+                id:`notice-${channel}`,label:NOTICE_LABELS[channel],
+                description:'Compact, color-coded game notices are separate from chat.',
+                value:prefs.notificationChannels[channel]?'Show':'Hide',
+                action:()=>prefs.update({notificationChannels:{...prefs.notificationChannels,
+                  [channel]:!prefs.notificationChannels[channel]}}),
+              })),
               {
                 id: "climate-size",
                 label: "Climate dashboard style",
@@ -351,6 +359,7 @@ export function SettingsMenu() {
                   prefs.update({
                     hudGroups: { ...DEFAULT_HUD_GROUPS },
                     healthBars: "all",
+                    notificationChannels:{...DEFAULT_NOTICE_CHANNELS},
                     ignitionVisibility: "always",
                     showTouchControls: true,
                     showDriveControls: true,

@@ -3,10 +3,13 @@ import {memo,useEffect,useState} from 'react';
 import {useShallow} from 'zustand/react/shallow';
 
 import {useUIStore} from '../store/menus/uiStore';
+import {useInputStore} from '../store/input/inputStore';
+import {VehicleFlags} from '../store/input/protocol/inputMasks';
 import {startVehicleTelemetry,useVehicleTelemetryStore} from '../store/telemetry/vehicleTelemetryStore';
 import {ProgressOrbit} from '../components/controller/ProgressOrbit';
 import {AttackIcon} from './AttackIcon';
 import {activeVehicleEffects,readEffectSignals,type ActiveVehicleEffect} from './activeEffects';
+import {onNavalDeck} from './navalDeckHold';
 import './activeEffects.css';
 
 const EffectBadge=memo(function EffectBadge(effect:ActiveVehicleEffect){
@@ -35,7 +38,11 @@ const EffectBadge=memo(function EffectBadge(effect:ActiveVehicleEffect){
  * glowing indefinitely; opening a badge explains it without invoking an ability. */
 export function ActiveEffectsBar(){
  useEffect(startVehicleTelemetry,[]);
- const signals=useMotionView(useShallow(s=>readEffectSignals(s.connected?s.getMe():undefined)));
+ const boostHeld=useInputStore(s=>Boolean(s.input.vehicleMask&VehicleFlags.BOOST));
+ const signals=useMotionView(useShallow(s=>{
+  const me=s.connected?s.getMe():undefined;
+  return readEffectSignals(me,boostHeld,onNavalDeck(me,s.snapshot));
+ }));
  const live=useVehicleTelemetryStore(s=>s.data.signal==='live');
  const visible=useUIStore(s=>s.screen==='sandbox'&&s.overlay===null&&!s.isModeLoading);
  if(!visible||!live)return null;

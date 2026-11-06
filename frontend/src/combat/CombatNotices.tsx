@@ -4,7 +4,9 @@ import {useMotionView, type MotionState} from '../store/session/networkViews';
 import {useInputStore} from '../store/input/inputStore';
 import {VehicleFlags} from '../store/input/protocol/inputMasks';
 import {ResourceFlags} from '../store/telemetry/resourceMasks';
-import {announceCombat, clearCombatNotices, useCombatNotices} from './combatNoticeStore';
+import {usePreferencesStore} from '../store/preferences/preferencesStore';
+import {announceGame,clearCombatNotices,useCombatNotices} from './combatNoticeStore';
+import {onNavalDeck} from './navalDeckHold';
 import './combatNotices.css';
 
 const warnings: [number, string][] = [
@@ -14,7 +16,7 @@ const warnings: [number, string][] = [
 ];
 
 function watchCombatFeedback() {
-  let identity = '', flags = 0, stun = false, boost = false, empty = false, blocked = '';
+  let identity = '', flags = 0, stun = false, boost = false, empty = false, deckHold=false, blocked = '',defeated=false;
   let total: number | undefined;
   let damage = 0, timer: ReturnType<typeof setTimeout> | undefined;
   function reset() {
@@ -36,23 +38,30 @@ function watchCombatFeedback() {
     const roadNos = me.vehicle_id !== 'tank' && !me.guard?.remaining_s && !me.combat?.ram_remaining;
     const boosting = roadNos && Boolean(me.vehicle_mask & VehicleFlags.BOOST);
     const dry = roadNos && me.boost_fraction === 0 && Boolean(useInputStore.getState().input.vehicleMask & VehicleFlags.BOOST);
+    const onDeck=onNavalDeck(me,state.snapshot);
     const next = me.health?.stats?.damage_dealt;
     if (same) {
-      for (const [bit, text] of warnings) if ((mask & ~flags) & bit) announceCombat(text);
-      if (stunned && !stun) announceCombat('Stunned');
-      if (reason && reason !== blocked) announceCombat(reason);
-      if (boosting && !boost) announceCombat('Nitrous · speed + stability', 'buff');
-      if (dry && !empty) announceCombat('Nitrous empty');
+      for (const [bit, text] of warnings) if ((mask & ~flags) & bit) announceGame(text,'warning');
+      if (stunned && !stun) announceGame('STUNNED · CONTROLS INTERRUPTED','debuff');
+      if (reason && reason !== blocked) announceGame(reason,'warning');
+      if (boosting && !boost) announceGame('NITROUS · SPEED + STABILITY', 'buff');
+      if (dry && !empty) announceGame('NITROUS EMPTY · BOOST UNAVAILABLE','debuff');
+      if (onDeck && !deckHold) announceGame('RESCUE DECK · AUTO BRAKE ENGAGED','buff','rescue');
+      const down=me.health?.defeated===true;
+      if(down&&!defeated)announceGame(me.health?.last_damage_kind==='water'?'VEHICLE LOST IN WATER':
+        me.health?.last_damage_kind==='out_of_bounds'?'OUT OF BOUNDS':'VEHICLE DISABLED','debuff','system');
+      if(!down&&defeated)announceGame('RESPAWN COMPLETE · SPAWN SHIELD ACTIVE','buff','system');
       if (next !== undefined && total !== undefined && next > total) {
         damage += next - total;
         if (timer === undefined) timer = setTimeout(() => {
-          announceCombat(Math.round(damage) + ' damage', 'damage');
+          announceGame(Math.round(damage) + ' DAMAGE', 'damage');
           damage = 0;
           timer = undefined;
         }, 300);
       }
     }
-    flags = mask; stun = stunned; boost = boosting; empty = dry; blocked = reason; total = next;
+    flags = mask; stun = stunned; boost = boosting; empty = dry; deckHold=onDeck; blocked = reason;
+    defeated=me.health?.defeated===true;total=next;
   }
   read(useMotionView.getState());
   const stop = useMotionView.subscribe(read);
@@ -62,6 +71,7 @@ function watchCombatFeedback() {
 export function CombatNotices() {
   const visible = useUIStore(s => isDrivingScreen(s.screen) && !s.overlay && !s.isModeLoading);
   const lines = useCombatNotices(s => s.lines);
+  const channels=usePreferencesStore(s=>s.notificationChannels);
   useEffect(() => {
     if (visible) return watchCombatFeedback();
     clearCombatNotices();
@@ -76,6 +86,6 @@ export function CombatNotices() {
   }, [lines]);
   if (!visible) return null;
   return <aside className="combat-notices" aria-live="polite" aria-atomic="false">
-    {lines.map(line => <span data-tone={line.tone} key={line.id}>{line.text}</span>)}
+    {lines.filter(line=>channels[line.channel]).map(line => <span data-tone={line.tone} data-channel={line.channel} key={line.id}>{line.text}</span>)}
   </aside>;
 }

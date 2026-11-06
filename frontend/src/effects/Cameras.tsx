@@ -39,6 +39,7 @@ const DEFAULT_CAMERA_PRESET: VehicleCameraPreset = {
 };
 
 const VEHICLE_CAMERA_PRESETS: Record<string, VehicleCameraPreset> = {
+  'hawaii-rescue': {offset:[0,50,-200],targetOffset:[0,13,65],positionSpeed:2.5,targetSpeed:3.5},
   ae86: {
     offset: [0, 2.2, -5.4],
     targetOffset: [0, 1.0, 5.5],

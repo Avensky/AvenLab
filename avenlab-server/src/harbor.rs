@@ -21,6 +21,17 @@ pub(crate) struct Coast {
 }
 
 impl Coast {
+    /// Return the actual painted-water level; an inland road or missing
+    /// water tile must never magically support a naval hull.
+    pub fn water_surface_at(&self, x:f32,z:f32)->Option<f32> {
+        self.tiles.iter().find_map(|tile|{
+            let dx=x-tile.center[0];let dz=z-tile.center[1];
+            let local_x=tile.cos*dx-tile.sin*dz;
+            let local_z=tile.sin*dx+tile.cos*dz;
+            (local_x.abs()<=tile.half[0] && local_z.abs()<=tile.half[1]).then_some(tile.surface)
+        })
+    }
+
     pub fn from_map(map: &BlockColliderFile) -> Option<Self> {
         let layout = map.authored_layout.as_ref().filter(|layout| !layout.repeat)?;
         let MapLayout::FixedGrid { origin, size } = map.layout else { return None };

@@ -78,6 +78,9 @@ pub fn config_for_vehicle(vehicle_id: &str) -> Option<VehicleConfig> {
         // Tank
         "tank" => Some(TANK),
 
+        // Naval rescue craft; intentionally no wheels or tire contact solver.
+        "hawaii-rescue" => Some(HAWAII_RESCUE),
+
         _ => None,
     }
 }
@@ -112,6 +115,10 @@ impl PhysicsWorld {
         body: RigidBodyHandle,
         config: VehicleConfig,
     ) {
+        if config.wheels == 0 {
+            self.wheels.insert(body, Vec::new());
+            return;
+        }
         let (stiffness, damping) = self.suspension_from_sag(
             config.mass,
             config.wheels,
@@ -493,4 +500,25 @@ pub const TANK: VehicleConfig = VehicleConfig {
     abs_nx_limit: AE86.abs_nx_limit,
     tcs_enabled: false,
     tcs_nx_limit: AE86.tcs_nx_limit,
+};
+
+/// First playable naval hull. Buoyancy/propulsion are solved on water tiles,
+/// never by the road tire solver. Dimensions approximate a full-size cruiser.
+pub const HAWAII_RESCUE: VehicleConfig = VehicleConfig {
+    tracked: false,
+    hull_hp: 6500.0,
+    mass: 7_000_000.0,
+    engine_force: 5_400_000.0,
+    brake_force: 3_600_000.0,
+    max_speed: 16.0,
+    linear_damping: 0.025,
+    angular_damping: 1.7,
+    chassis_half_extents: [12.0, 5.0, 77.0],
+    chassis_com_offset: [0.0, 0.0, 0.0],
+    center_of_mass_height: 0.7,
+    wheels: 0,
+    // Used as an equivalent drivetrain radius by the telemetry model only.
+    wheel_radius: 1.0,
+    max_steer_angle: 0.0,
+    ..TANK
 };
