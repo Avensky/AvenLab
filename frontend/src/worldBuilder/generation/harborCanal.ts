@@ -4,7 +4,8 @@ import {fitHarborShortcut} from './harborShortcut.ts';
 import { parseLayout, pieceById, type WorldLayout, type LayoutObject, type V3 } from "../document/layoutDocument.ts";
 import {mapExport,parseMapText,type MapDocument} from "../document/mapDocument.ts";
 import {outfitHarbor} from "./harborOutfit.ts";
-import {CARRIER,LIFT,guardrail} from "./harborPieces.ts";
+import {CARRIER,DESTROYER,LIFT,guardrail} from "./harborPieces.ts";
+import {burkeHarborKeel} from "./burkeDeck.ts";
 
 export type DockPlan = "red" | "blue" | "fleet";
 export function harborCanal(plan:DockPlan,seed:number):MapDocument {
@@ -108,9 +109,18 @@ export function harborCanal(plan:DockPlan,seed:number):MapDocument {
     const cx=side*256;
     if(afloat){
       add(CARRIER,team+" docked Big E",[cx,6,0],[...pieceById(CARRIER)!.size],"#63747c").id="carrier-"+team;
+      // The static escort uses measured deck/hull boxes, with its keel above
+      // the -24 m harbor floor and its apparent waterline at sea level -8 m.
+      add(DESTROYER,team+" Arleigh Burke escort",[side*326,burkeHarborKeel,0],
+        [...pieceById(DESTROYER)!.size],"#52626b").id="destroyer-"+team;
       const ramp=add("coastal-ramp","Quay to flight deck",[side*205.5,.08,0],[16,5.92,27],"#7f898c",true,-side*90);
       ramp.parts=[{shape:"deck",position:[0,.5,0],size:[1,1,1]}];
       add("coastal-pier","Boarding pier",[side*232,5.4,0],[26,.6,16],"#68757c");
+      // Added after the original quay ramp: harborOutfit must keep measuring
+      // columns and guardrails from that established shoreline boarding route.
+      const gangway=add("coastal-ramp","Carrier-to-destroyer gangway",
+        [side*291,-4,60],[6,10,70],"#85949b",true,side*90);
+      gangway.parts=[{shape:"wedge",position:[0,.5,0],size:[1,1,1]}];
     }
     for(let n=0;n<5;n++)spawns.push({id:"spawn-"+team+"-"+n,team,yaw:side<0?90:-90,
       position:[afloat?cx:side*54,afloat?6:.08,(afloat?-62:178)+(n-2)*8]});

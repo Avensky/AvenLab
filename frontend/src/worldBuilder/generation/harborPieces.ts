@@ -1,7 +1,9 @@
 import data from "./carrierDeck.json" with {type:"json"};
 import type {Piece, LayoutPart, V3} from "../document/layoutDocument.ts";
+import {burkeSize,burkeCollisionParts,burkeKeelY} from "./burkeDeck.ts";
 
 export const CARRIER = "big-e-docked";
+export const DESTROYER="arleigh-burke-docked";
 export const LIFT = "canal-lift";
 export const railDamage={enabled:true,hp:5,smallArms:1,cannon:1,bomb:1,rubble:"clear" as const};
 export const carrierSize = data.size as V3;
@@ -22,6 +24,10 @@ export const harborPieces: Piece[] = [{
     {shape:'box',position:[0,.82,0],size:[.12,.36,.12],color:'#c59346'},
     {shape:'box',position:[0,.96,0],size:[.58,.12,.21],color:'#d34c3f'},
   ],
+}, {
+  id:DESTROYER,label:"Arleigh Burke · escort destroyer",category:"props",
+  description:"154 m destroyer · static harbor prototype with walkable deck, bridge and hull collision. Buoyancy and weapons come later.",
+  size:burkeSize,color:"#52626b",parts:burkeCollisionParts,
 }];
 
 export function guardrail(id:string,x1:number,z1:number,x2:number,z2:number,surface:number, rise=0):import("../document/layoutDocument.ts").LayoutObject{
@@ -45,8 +51,10 @@ export function guardrail(id:string,x1:number,z1:number,x2:number,z2:number,surf
 export function deckPanorama(item:import("../document/layoutDocument.ts").LayoutObject,
     objects:import("../document/layoutDocument.ts").LayoutObject[]){
   const [x,y,z]=item.position, yaw=item.yaw*Math.PI/180;
-  const fore=-item.size[2]*.28;
-  const eye:V3=[x+fore*Math.sin(yaw),y+Math.max(5,item.size[1]*.13),z+fore*Math.cos(yaw)];
+  const destroyer=item.piece===DESTROYER;
+  const fore=item.size[2]*(destroyer ? .38 : -.28);
+  const deckEye=destroyer?(-2.85-burkeKeelY)*item.size[1]/burkeSize[1]+3.5:Math.max(5,item.size[1]*.13);
+  const eye:V3=[x+fore*Math.sin(yaw),y+deckEye,z+fore*Math.cos(yaw)];
   let shore:V3=[0,y,0],nearest=Infinity;
   for(const o of objects){
     if(o.piece!=="coastal-land")continue;

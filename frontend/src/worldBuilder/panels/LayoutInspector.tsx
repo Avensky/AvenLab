@@ -15,7 +15,7 @@ import { useBuilderStore } from "../state/builderStore";
 import { useEditorPreferences } from "../state/editorPreferences";
 import { layoutAction, useLayoutStore } from "../state/layoutStore";
 import { SpawnInspector } from "./SpawnInspector";
-import { CARRIER } from "../generation/harborPieces";
+import { CARRIER,DESTROYER } from "../generation/harborPieces";
 import { CoastalGenerator } from "./CoastalGenerator";
 export function LayoutInspector({
   planOnly,
@@ -320,7 +320,7 @@ export function LayoutInspector({
                   Focus in world
                 </button>
               </div>
-              {item.piece===CARRIER && <button onClick={()=>useLayoutStore.setState(state=>({
+              {(item.piece===CARRIER || item.piece===DESTROYER) && <button onClick={()=>useLayoutStore.setState(state=>({
                 focus:"deck",view:"3d",camera:"iso",cameraRevision:state.cameraRevision+1,
               }))}>Deck panorama</button>}
               {item.road && <RoadInspector item={item} />}

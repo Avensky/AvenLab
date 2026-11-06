@@ -23,7 +23,7 @@ import {
 import { useBuilderStore } from "../state/builderStore";
 import { useEditorScenePalette } from "./useEditorScenePalette";
 import { layoutAction, useLayoutStore } from "../state/layoutStore";
-import { CARRIER,deckPanorama } from "../generation/harborPieces";
+import { CARRIER,DESTROYER,deckPanorama } from "../generation/harborPieces";
 import { ChunkGuide } from "./ChunkGuide";
 import { LayoutInstances, PieceModel } from "./LayoutMeshes";
 import { SpawnMarkers } from "./SpawnMarkers";
@@ -242,7 +242,7 @@ export default function LayoutScene() {
   );
   const selectedObject = doc?.objects.find((o) => o.id === selected),
     piece = placing ? pieceById(placing) : undefined;
-  const [panorama]=useState(()=>focus==="deck" && doc && selectedObject?.piece===CARRIER ?
+  const [panorama]=useState(()=>focus==="deck" && doc && (selectedObject?.piece===CARRIER || selectedObject?.piece===DESTROYER) ?
     deckPanorama(selectedObject,doc.objects):null);
   const phantom = useMemo<LayoutObject | null>(
     () =>
