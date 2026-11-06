@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import fs from "node:fs";
 import {harborCanal} from "../src/worldBuilder/generation/harborCanal.ts";
-import {deckPanorama} from "../src/worldBuilder/generation/harborPieces.ts";
+import {deckPanorama,GUARDRAIL_MODULE_METERS} from "../src/worldBuilder/generation/harborPieces.ts";
 import {PresentationDelay} from "../src/hooks/presentationDelay.ts";
 import {createServer} from "vite";
 
@@ -33,6 +33,10 @@ test("all dock plans have ten spawns, the surface crossings and viaduct and no h
     assert.equal(pieces.filter(o=>o.piece==="harbor-seabed" && o.solid && o.position[1]+o.size[1]===-60).length,4);
     assert.equal(pieces.filter(o=>o.id.startsWith("home-gas-")).length,2);
     assert(pieces.filter(o=>o.piece==="highway-guardrail").every(o=>o.destruction?.enabled && o.destruction.hp===5));
+    assert(pieces.filter(o=>o.piece==="highway-guardrail").every(o=>o.size[0]<=GUARDRAIL_MODULE_METERS+.001));
+    assert(pieces.length>1000,'rails split into independently destructible vehicle-size panels');
+    assert(pieces.filter(o=>o.name==='Quayside avenue').every(o=>o.size[0]===20));
+    assert(pieces.filter(o=>o.piece==='canal-lift').every(o=>o.size[0]===32));
     assert(pieces.some(o=>o.id.startsWith("boarding-rail-")));
     assert(pieces.filter(o=>o.name==="Boarding bridge column").every(o=>o.position[1]===-60));
     assert(pieces.some(o=>o.piece==="kit-stone_start") && pieces.some(o=>o.piece==="kit-highway_25_wide_straight_level"));

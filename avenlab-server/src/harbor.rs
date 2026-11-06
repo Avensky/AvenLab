@@ -72,7 +72,20 @@ impl Coast {
     }
 }
 pub const VARIANTS: [&str; 3] = ["harbor_canal_red","harbor_canal_blue","harbor_canal_fleet"];
-pub fn queue_map(world:usize)->&'static str { match world%4 {0=>"streaming_endless_city",slot=>VARIANTS[slot-1]} }
+/// Only explicitly installed, server-validated CTF environments enter the
+/// Quickplay rotation. A deleted map disappears without editing this list.
+pub fn quickplay_maps()->Vec<String> {
+    let directory=std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/assets/blocks");
+    crate::social::model::available_maps().into_iter().filter(|id|{
+        let path=directory.join(format!("{id}_colliders.json"));
+        crate::world::block_colliders::load_block_collider_file(path.to_string_lossy().into_owned())
+            .ok().and_then(|map|map.quickplay).is_some_and(|entry|entry.objective=="ctf")
+    }).collect()
+}
+pub fn queue_map(world:usize)->Option<String> {
+    let choices=quickplay_maps();
+    (!choices.is_empty()).then(||choices[world%choices.len()].clone())
+}
 /// Assign four reserved service lots per bank from the world seed. All peers,
 /// including replacements, receive the same resulting authored map.
 pub fn place_services(world:usize,file:&mut crate::world::block_colliders::BlockColliderFile){
@@ -90,28 +103,41 @@ pub fn place_services(world:usize,file:&mut crate::world::block_colliders::Block
         }
     }
 }
-pub const RAMP_ANGLE: f32 = std::f32::consts::PI / 6.0;
-const TRAVEL_TICKS: f32 = 150.0;
+// Raised leaves clear ship masts instead of hovering only 30 degrees above water.
+pub const RAMP_ANGLE: f32 = 70.0 * std::f32::consts::PI / 180.0;
+pub const TRAVEL_TICKS: u64 = 240; // four seconds at 60 Hz
+pub const BRIDGE_HOLD_TICKS: u64 = 360; // six more seconds for ship passage
 
 #[derive(Clone, Debug, Default, serde::Serialize)]
 pub struct BridgeMotion {
     pub start_tick: u64,
     pub start_angle: f32,
     pub target_angle: f32,
+    pub next_available_tick: u64,
     pub broken: Option<String>,
 }
 impl BridgeMotion {
     pub fn angle(&self,tick:u64)->f32 {
-        let travel=tick.saturating_sub(self.start_tick) as f32 * RAMP_ANGLE / TRAVEL_TICKS;
+        let travel=tick.saturating_sub(self.start_tick) as f32 * RAMP_ANGLE / TRAVEL_TICKS as f32;
         self.start_angle + (self.target_angle-self.start_angle).clamp(-travel,travel)
     }
     pub fn select(&mut self,tick:u64,target:f32) {
         if self.target_angle==target {return;}
         self.start_angle=self.angle(tick);self.start_tick=tick;self.target_angle=target;
     }
+    pub fn request(&mut self,tick:u64,target:f32)->Result<(),String>{
+        if self.target_angle==target{return Ok(());}
+        if tick<self.next_available_tick {
+            return Err(format!("Bridge locked for {} more seconds while ships pass.",
+                (self.next_available_tick-tick).div_ceil(60)));
+        }
+        self.select(tick,target);
+        self.next_available_tick=tick+TRAVEL_TICKS+BRIDGE_HOLD_TICKS;
+        Ok(())
+    }
 }
 pub fn lift_angle(tick:u64)->f32 {
-    (std::f32::consts::TAU * (tick%1200) as f32/1200.).sin().max(0.).powi(2)*std::f32::consts::PI/6.
+    (std::f32::consts::TAU * (tick%1200) as f32/1200.).sin().max(0.).powi(2)*RAMP_ANGLE
 }
 fn cell(x:f32,z:f32)->u64 {
     let col=((x+400.)/100.).floor() as i32;
@@ -149,6 +175,15 @@ mod tests {
     use super::*;
     use crate::world_sessions::WorldRuntime;
     use rapier3d::prelude::*;
+    #[test]
+    fn bridge_lever_requires_a_safe_ship_passage_window(){
+        let mut bridge=BridgeMotion::default();
+        bridge.request(0,RAMP_ANGLE).unwrap();
+        assert_eq!(bridge.next_available_tick,600);
+        assert!(bridge.request(500,0.).is_err());
+        bridge.request(600,0.).unwrap();
+        assert_eq!(bridge.next_available_tick,1200);
+    }
     fn support(w:&PhysicsWorld,x:f32,z:f32)->Option<f32>{
         let ray=Ray::new(point![x,50.,z],-Vector::y());
         w.colliders.iter().filter(|(_,c)|c.is_enabled()).filter_map(|(_,c)|
@@ -179,7 +214,7 @@ mod tests {
         w.bodies[car].set_translation(vector![33.,1.,10.],true);
         w.operate_bridge("driver","raise",0).unwrap();
         w.move_drawbridges(1000);w.step(crate::physics::SIMULATION_DT);
-        assert!(support(&w,-6.,0.).unwrap()>8.);
+        assert!(support(&w,-26.,0.).unwrap()>8.);
         w.operate_bridge("driver","lower",1000).unwrap();
         w.move_drawbridges(1300);w.step(crate::physics::SIMULATION_DT);
         assert!(support(&w,-6.,0.).unwrap().abs()<0.02);
@@ -211,15 +246,15 @@ mod tests {
         }
         assert!((support(&w,0.,60.).unwrap()+60.).abs()<0.02);
         for x in [-14.,14.] {
-            let ray=Ray::new(point![x,-4.,-202.],Vector::z());
+            let ray=Ray::new(point![x,-4.,-218.],Vector::z());
             assert!(!w.colliders.iter().any(|(_,c)| c.shape().cast_ray(c.position(),&ray,48.,true).is_some()),
                     "the stone arch at {x} must leave a passage below the deck");
         }
-        assert!((support(&w,0.,-178.).unwrap()-0.08).abs()<0.02);
-        assert!((support(&w,0.,178.).unwrap()-0.08).abs()<0.02);
+        assert!((support(&w,0.,-194.).unwrap()-0.08).abs()<0.02);
+        assert!((support(&w,0.,194.).unwrap()-0.08).abs()<0.02);
         w.bridge_motion.as_mut().unwrap().select(0,RAMP_ANGLE);
         w.move_drawbridges(300);w.step(crate::physics::SIMULATION_DT);
-        assert!(support(&w,-6.,0.).unwrap()>8.);
+        assert!(support(&w,-26.,0.).unwrap()>8.);
         assert!((support(&w,0.,0.).unwrap()+60.).abs()<0.02);
         w.bridge_motion.as_mut().unwrap().select(300,0.0);
         w.move_drawbridges(900);w.step(crate::physics::SIMULATION_DT);
@@ -227,15 +262,15 @@ mod tests {
         let index=o.iter().position(|o|o.piece=="canal-breakable").unwrap();
         let id=w.bodies.iter().find(|(_,b)|b.user_data==index as u128+1).unwrap().0;
         w.damage_authored_surface(id,true,300.);
-        assert!((support(&w,0.,178.).unwrap()+60.).abs()<0.02);
-        assert!(support(&w,0.,-178.).is_some());
+        assert!((support(&w,0.,194.).unwrap()+60.).abs()<0.02);
+        assert!(support(&w,0.,-194.).is_some());
     }
     #[test]
     fn car_crosses_both_highway_approaches_and_the_masonry_seam() {
         let mut world=PhysicsWorld::for_harbor_room(2,VARIANTS[2]).unwrap();
         let handle=world.spawn_vehicle_for_player("bridge-driver".into(),[0.;3],"brz","red").unwrap();
         let body=&mut world.bodies[handle];
-        body.set_translation(vector![-135.,1.,-178.],true);
+        body.set_translation(vector![-135.,1.,-194.],true);
         body.set_rotation(Rotation::from_euler_angles(0.,std::f32::consts::FRAC_PI_2,0.),true);
         body.set_linvel(Vector::zeros(),true);
         world.bodies.propagate_modified_body_positions_to_colliders(&mut world.colliders);
@@ -246,7 +281,7 @@ mod tests {
         for _ in 0..3000 {
             world.step(crate::physics::SIMULATION_DT);
             let position=world.bodies[handle].translation();
-            assert!(position.y > 0. && position.y < 2. && (position.z+178.).abs()<5.,
+            assert!(position.y > 0. && position.y < 2. && (position.z+194.).abs()<5.,
                     "vehicle lost the crossing at {position:?}");
             if position.x>135. {return;}
         }

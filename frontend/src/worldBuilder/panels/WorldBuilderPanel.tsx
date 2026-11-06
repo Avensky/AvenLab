@@ -25,6 +25,7 @@ import {
   type Piece,
 } from "../document/layoutDocument";
 import { inLibraryTab, type LibraryTab } from "../document/libraryCatalog";
+import { LAYOUT_LEVELS, layoutLevel } from "../document/layoutLevels";
 import { mapExport } from "../document/mapDocument";
 import { COASTAL_MAP_ID, parseDistrictImport } from "../generation/coastalMap";
 import { sourceSpawns } from "../document/spawnDocument";
@@ -80,6 +81,8 @@ function LayoutPanel({
         past: s.past,
         future: s.future,
         snap: s.snap,
+        placementLevel: s.placementLevel,
+        setPlacementLevel: s.setPlacementLevel,
         angleSnap: s.angleSnap,
         camera: s.camera,
         cameraRevision: s.cameraRevision,
@@ -233,7 +236,7 @@ function LayoutPanel({
       if (
         (ui.overlay !== "world_builder" && ui.screen !== "world_builder") ||
         isTypingTarget(e.target) ||
-        e.repeat ||
+        (e.repeat && e.code !== "PageUp" && e.code !== "PageDown") ||
         e.defaultPrevented
       )
         return;
@@ -254,6 +257,13 @@ function LayoutPanel({
         else if (e.code === "Escape") action = () => navigate("back");
         else if (e.code === "KeyQ" || e.code === "KeyE")
           action = () => state.rotate(e.code === "KeyQ" ? -1 : 1);
+        else if (e.code === "PageUp" || e.code === "PageDown")
+          action = () => {
+            const index = LAYOUT_LEVELS.findIndex((level) => level.id === state.placementLevel);
+            const next = Math.max(0, Math.min(LAYOUT_LEVELS.length - 1,
+              index + (e.code === "PageUp" ? 1 : -1)*(e.shiftKey?10:1)));
+            state.setPlacementLevel(LAYOUT_LEVELS[next].id);
+          };
         else if (e.code === "KeyF")
           action = () =>
             useLayoutStore.setState({
@@ -296,7 +306,7 @@ function LayoutPanel({
     let mapId = originalMap;
     try {
       if (selected.size > MAX_LAYOUT_BYTES)
-        throw Error("Layout JSON exceeds 2 MiB");
+        throw Error(`Layout JSON exceeds ${MAX_LAYOUT_BYTES / (1024 * 1024)} MiB`);
       const { layout: doc, coastal } = parseDistrictImport(await selected.text(), mapId);
       if (token !== importSequence.current || useLayoutStore.getState().doc?.map_id !== originalMap) return;
       if (coastal && mapId !== COASTAL_MAP_ID) {
@@ -617,6 +627,31 @@ function LayoutPanel({
             )}
           <div className="le-stage-bottom">
             <div className="le-grid-control">
+              <span>LEVEL</span>
+              <select
+                aria-label="Construction level"
+                value={s.placementLevel}
+                onChange={(e) => s.setPlacementLevel(e.target.value as typeof s.placementLevel)}
+              >
+                {LAYOUT_LEVELS.map((level) => (
+                  <option key={level.id} value={level.id}>
+                    {level.label} · {level.elevation >= 0 ? "+" : ""}{level.elevation}m
+                  </option>
+                ))}
+              </select>
+              <button
+                title="Move the selected piece's base elevation to this construction plane"
+                aria-label="Snap selected piece to construction level"
+                disabled={!s.selected || !s.doc?.objects.find((object) => object.id === s.selected && !object.locked)}
+                onClick={() => layoutAction(() => {
+                  const object = s.doc?.objects.find((entry) => entry.id === s.selected);
+                  if (object) useLayoutStore.getState().update({
+                    position: [object.position[0], layoutLevel(s.placementLevel).elevation, object.position[2]],
+                  });
+                })}
+              >
+                SNAP Y
+              </button>
               <span>GRID</span>
               <select
                 aria-label="Grid snap"
@@ -662,7 +697,7 @@ function LayoutPanel({
           <div className="le-stage-help">
             {s.placing ? (
               <>
-                <kbd>CLICK</kbd> place <kbd>Q / E</kbd> turn <kbd>ESC</kbd>{" "}
+                <kbd>CLICK</kbd> place <kbd>Q / E</kbd> turn <kbd>PGUP / PGDN</kbd> floor <kbd>SHIFT</kbd> ×10 <kbd>ESC</kbd>{" "}
                 finish
               </>
             ) : planOnly || s.view === "plan" ? (

@@ -16,6 +16,7 @@ import {
 } from "../document/layoutDocument";
 import { updateSpawn, type LayoutSpawn } from "../document/spawnDocument";
 import { snapLayoutPosition } from "../roads/layoutSnapping";
+import { layoutLevel, type LayoutLevel } from "../document/layoutLevels";
 type LayoutState = {
   doc: WorldLayout | null;
   saved: WorldLayout | null;
@@ -40,6 +41,8 @@ type LayoutState = {
   snapBasis: "outer" | "asphalt";
   magnetRadius: number;
   cursor: V3;
+  placementLevel: LayoutLevel;
+  setPlacementLevel: (level: LayoutLevel) => void;
   placementYaw: number;
   reference: boolean;
   wireframe: boolean;
@@ -125,6 +128,13 @@ export const useLayoutStore = create<LayoutState>((set, get) => ({
   snap: 0.5,
   angleSnap: 15,
   cursor: [0, 0, 0],
+  placementLevel: "ground",
+  setPlacementLevel: (level) =>
+    set((state) => ({
+      placementLevel: level,
+      cursor: [state.cursor[0], layoutLevel(level).elevation, state.cursor[2]],
+      status: `${layoutLevel(level).label} construction plane selected (${layoutLevel(level).elevation} m).`,
+    })),
   placementYaw: 0,
   reference: false,
   wireframe: false,
@@ -153,6 +163,8 @@ export const useLayoutStore = create<LayoutState>((set, get) => ({
       selected: null,
       placing: null,
       reference: false,
+      placementLevel: "ground",
+      cursor: [0, 0, 0],
       cameraRevision: get().cameraRevision + 1,
     });
   },

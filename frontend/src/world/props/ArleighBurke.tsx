@@ -16,7 +16,9 @@ function Hull({path}:{path:string}){
 function Model(){
   return <group position={[0,-burkeKeelY/burkeSize[1],0]} rotation={[0,Math.PI,0]}
     scale={[1/burkeSize[0],1/burkeSize[1],1/burkeSize[2]]}>
-    <Detailed distances={[0,220]}>
+    {/* Keep the modeled bridge, weapons and deck equipment visible throughout
+        the near harbor; switch to the cheaper hull beyond the gameplay area. */}
+    <Detailed distances={[0,360]}>
       <Hull path={paths[0]}/>
       <Hull path={paths[1]}/>
     </Detailed>

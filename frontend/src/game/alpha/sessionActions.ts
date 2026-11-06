@@ -2,7 +2,8 @@ import { socket } from "../../net/rustSocket";
 import { requestSocial } from "../../net/socialClient";
 import { useSocialStore } from "../../store/social/socialStore";
 import { useAlphaStore, HEROES, canonicalGameMode, isMatchMode, modeTeamSize } from "../../store/alpha/alphaStore";
-import { mapCatalog, useSelectionStore } from "../../store/selection/selectionStore";
+import { useSelectionStore } from "../../store/selection/selectionStore";
+import { refreshInstalledWorlds, useWorldCatalog } from "../../store/selection/worldCatalog";
 import { useNetworkStore } from "../../store/session/networkStore";
 import { useUIStore } from "../../store/menus/uiStore";
 import { useGameStore } from "../../store/presentation/gameStore";
@@ -14,13 +15,22 @@ export async function joinSelectedMode() {
     throw Error("Select a driving mode before joining the alpha queue.");
   if (!useSocialStore.getState().view?.profile.id)
     throw Error("Restore your player profile or choose New Tab Profile before joining.");
+  // Matchmaking owns the eligible-map rotation; editor/practice keeps the
+  // player's installed-world selection. Fetch here too: match screens do not
+  // render MapSelector, so relying on its mount hook breaks first-time joins.
+  await refreshInstalledWorlds();
+  const selectedMap=useSelectionStore.getState().getSelectedMap();
+  if(!useWorldCatalog.getState().maps.length)
+    throw Error("No installed environments found. Check the world catalog or server files.");
+  if(!isMatchMode(state.mode)&&!selectedMap.id)
+    throw Error("Select an installed environment before joining.");
   const previousView=useSocialStore.getState().view;
   const result = await requestSocial("mode_join", {
     mode: canonicalGameMode(state.mode),
     ...(isMatchMode(state.mode)?{team_size:state.mode==='skirmish'?3:state.teamSize}:{}),
     // Reserve capacity first. A role is claimed only by an explicit portrait pick.
     hero: "",
-    map: useSelectionStore.getState().getSelectedMap().id,
+    ...(!isMatchMode(state.mode)?{map:selectedMap.id}:{}),
   });
   if(result.status==='joined'||result.status==='queued'){
     const confirmedMode=typeof result.mode==='string'&&isMatchMode(result.mode)?result.mode:state.mode;
@@ -125,7 +135,7 @@ export async function deploySelectedHero() {
     useGameStore.setState({ camera: "DEFAULT" });
     if (selected.mode === "editor") {
       const { useBuilderStore } = await import("../../worldBuilder/state/builderStore");
-      const selectedMap = mapCatalog.findIndex(item => item.id === map);
+      const selectedMap = useWorldCatalog.getState().maps.findIndex(item => item.id === map);
       if(selectedMap >= 0) useSelectionStore.setState({mapIndex:selectedMap});
       useBuilderStore.setState({workspace:"layout",presentation:"workspace"});
       // Enter authoring atomically: never expose a driving frame underneath.

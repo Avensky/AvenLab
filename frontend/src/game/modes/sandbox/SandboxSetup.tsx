@@ -29,6 +29,7 @@ export function SandboxSetup({ collapsed, setCollapsed }: Sandbox) {
   const choices = useRef<HTMLDivElement>(null);
 
   const startSandbox = useCallback(() => {
+    if(!map.id){setSpawnError("No installed worlds available. Refresh your world list.");return;}
     if (!connected || !socket || socket.readyState !== WebSocket.OPEN) {
       setSpawnError("Connecting to the game server. Try again when connected.");
       return;

@@ -105,8 +105,15 @@ pub enum WorldSky {
     FoggyDay,
 }
 
+/// Opt-in playlist metadata. The existing match engine currently supports
+/// capture-the-flag; other objectives remain private until their rules exist.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct QuickplayEligibility { pub objective: String }
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct BlockColliderFile {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub quickplay: Option<QuickplayEligibility>,
     #[serde(default)]
     pub sky: WorldSky,
     #[serde(default, skip_serializing_if = "Option::is_none")]

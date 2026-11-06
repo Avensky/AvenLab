@@ -80,8 +80,8 @@ test("invalid imports cannot replace a layout; locked pieces cannot be edited or
   }
   assert.throws(() => parseLayout(doc, "another"), /different map/);
   assert.throws(
-    () => parseLayoutText(" ".repeat(2 * 1024 * 1024 + 1)),
-    /2 MiB/,
+    () => parseLayoutText(" ".repeat(8 * 1024 * 1024 + 1)),
+    /8 MiB/,
   );
 });
 

@@ -135,6 +135,10 @@ export default function Cameras() {
       snapshotEntity(state.snapshot, state.playerId)
         ?.vehicle_id ?? null,
   );
+  const sinkingWreck = useMotionView(state=>{
+    const health=snapshotEntity(state.snapshot,state.playerId)?.health;
+    return health?.defeated===true && health.last_damage_kind==='water';
+  });
   const playerCameraPreset =
     camMode === "FIRST_PERSON" || camMode === "BIRDS_EYE"
       ? specialCameraPreset(camMode, playerVehicleId)
@@ -166,7 +170,7 @@ export default function Cameras() {
   useFrame(({camera}) => {
     if (screen !== 'sandbox') return;
     const p=camera.position;
-    p.y=Math.max(p.y,cameraGround(useWorldStore.getState().map,p.x,p.z));
+    if(!sinkingWreck)p.y=Math.max(p.y,cameraGround(useWorldStore.getState().map,p.x,p.z));
   }, -.01);
 
   if(scope&&screen==='sandbox'&&overlay===null&&playerVehicleId)return <TankScopeRig playerId={playerId}/>;

@@ -7,21 +7,22 @@ import { useUIStore } from "../../store/menus/uiStore";
 import { useAlphaStore } from "../../store/alpha/alphaStore";
 import {
   useSelectionStore,
-  mapCatalog,
 } from "../../store/selection/selectionStore";
+import { useWorldCatalog } from "../../store/selection/worldCatalog";
 
 /** Explicit apply, not pointer-move uploads. Rust validates/builds a complete
  * replacement before swapping only the editor runtime and resetting its car. */
 export function EditorTestAction() {
   const active = useSocialStore((s) => s.view?.alpha?.active),
-    source = useBuilderStore((s) => s.doc);
+    source = useBuilderStore((s) => s.doc),
+    installed = useWorldCatalog((s)=>s.maps);
   const [status, setStatus] = useState(""),
     [busy, setBusy] = useState(false);
   const pending = useRef(false);
   const test = async () => {
     if (pending.current) return;
     if (active?.mode !== "editor") {
-      const map = mapCatalog.findIndex((m) => m.id === source?.map_id);
+      const map = useWorldCatalog.getState().maps.findIndex((m) => m.id === source?.map_id);
       closeWorldBuilder();
       if (map >= 0) useSelectionStore.setState({ mapIndex: map });
       useAlphaStore.getState().chooseMode("editor");
@@ -47,7 +48,7 @@ export function EditorTestAction() {
       <button
         type="button"
         className="le-button"
-        disabled={busy || !source}
+        disabled={busy || !source || !installed.some((map)=>map.id===source.map_id)}
         onClick={() => void test()}
         title="Validate the current draft, rebuild only your isolated editor physics world, and reset your test vehicle."
       >

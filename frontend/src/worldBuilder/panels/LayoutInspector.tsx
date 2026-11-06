@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { Icon, Thumbnail } from "../components/EditorArtwork";
 import { NumberField } from "../components/NumberField";
-import { pieceById, type V3 } from "../document/layoutDocument";
+import { MAX_LAYOUT_OBJECTS, pieceById, type V3 } from "../document/layoutDocument";
 import {isServiceGarage} from "../document/libraryCatalog";
 import {ServiceGarageControls} from "../models/ServiceGarageControls";
 import { ModelInspector } from "../models/ModelInspector";
@@ -513,7 +513,7 @@ export function LayoutInspector({
         <div className="le-scene-section">
           <div className="le-section-title">
             <span>SCENE</span>
-            <span>{s.doc?.objects.length ?? 0} / 512</span>
+            <span>{s.doc?.objects.length ?? 0} / {MAX_LAYOUT_OBJECTS}</span>
           </div>
           <div className="le-scene-list">
             {s.doc?.objects.length ? (

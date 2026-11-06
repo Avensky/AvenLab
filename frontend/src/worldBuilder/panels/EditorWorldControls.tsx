@@ -1,5 +1,6 @@
 import { EditorTestAction } from "../../game/alpha/EditorTestAction";
-import { mapCatalog } from "../../store/selection/worldCatalog";
+import { refreshInstalledWorlds, useWorldCatalog } from "../../store/selection/worldCatalog";
+import { useEffect } from "react";
 import { switchBuilderWorld } from "../state/builderActions";
 import { useBuilderStore } from "../state/builderStore";
 import { useEditorPreferences } from "../state/editorPreferences";
@@ -13,10 +14,11 @@ export function EditorWorldControls({
   const source = useBuilderStore((s) => s.doc),
     loading = useBuilderStore((s) => s.loadingMap),
     preferences = useEditorPreferences();
-  const worlds =
-    source && !mapCatalog.some((m) => m.id === source.map_id)
-      ? [...mapCatalog, { id: source.map_id, name: source.map_id, desc: "" }]
-      : mapCatalog;
+  const worlds = useWorldCatalog((s) => s.maps),
+    ready = useWorldCatalog((s) => s.ready),
+    status = useWorldCatalog((s) => s.status);
+  useEffect(() => {void refreshInstalledWorlds();}, []);
+  const selected = loading ?? (source && worlds.some(world=>world.id===source.map_id)?source.map_id:"");
   return (
     <div className={`le-world-controls${compact ? " is-compact" : ""}`}>
       <label className="le-header-field le-world-field">
@@ -24,12 +26,12 @@ export function EditorWorldControls({
         <select
           aria-label="Editing world"
           aria-busy={Boolean(loading)}
-          value={loading ?? source?.map_id ?? ""}
+          value={selected}
           onChange={(e) => void switchBuilderWorld(e.target.value)}
         >
-          {!source && !loading && (
+          {!selected && (
             <option value="" disabled>
-              Choose world
+              {!ready?"Discovering worlds…":worlds.length?"Choose installed world":"No installed worlds"}
             </option>
           )}
           {worlds.map((world) => (
@@ -39,6 +41,7 @@ export function EditorWorldControls({
           ))}
         </select>
       </label>
+      {ready && !worlds.length && <span className="le-muted" role="status">{status}</span>}
       <button type="button" onClick={() => useBuilderStore.setState({ workspace: "vehicle" })}>EDIT VEHICLE</button>
       <EditorTestAction />
       {!compact && (

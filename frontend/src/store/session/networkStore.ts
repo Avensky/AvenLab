@@ -36,7 +36,7 @@ export interface CtfFlagEvent {
 export interface PhysicsSnapshot {
   match_state?: CtfMatchState | null;
   asset_health?: Record<string,number>;
-  drawbridge?: {start_tick:number;start_angle:number;target_angle:number;broken:string|null};
+  drawbridge?: {start_tick:number;start_angle:number;target_angle:number;next_available_tick?:number;broken:string|null};
   match_clock?: {
     remaining_s: number;
     phase: "regulation" | "overtime" | "ended";

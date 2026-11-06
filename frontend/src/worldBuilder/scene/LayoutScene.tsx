@@ -6,7 +6,7 @@ import {
 } from "@react-three/drei";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Group, MOUSE, TOUCH } from "three";
-import type { TransformControls as TransformControlsImpl } from "three-stdlib";
+import type { OrbitControls as OrbitControlsImpl, TransformControls as TransformControlsImpl } from "three-stdlib";
 import {
   footprint,
   pieceById,
@@ -211,6 +211,7 @@ function SelectedObject({ item }: { item: LayoutObject }) {
 }
 export default function LayoutScene() {
   const invalidate = useThree((s) => s.invalidate);
+  const activeCamera = useThree((s) => s.camera);
   const palette = useEditorScenePalette();
   const navigation = useLayoutStore(s=>s.navigation);
   const doc = useLayoutStore((s) => s.doc),
@@ -226,6 +227,18 @@ export default function LayoutScene() {
     selectedSpawn = useLayoutStore((s) => s.selectedSpawn);
   const source = useBuilderStore((s) => s.doc),
     ghost = useRef<Group>(null);
+  const orbit=useRef<OrbitControlsImpl>(null);
+  const previousFloor=useRef(cursor[1]);
+  useEffect(()=>{
+    // Like a Sims story switch: shift the orbit rig with its working plane.
+    // Otherwise a high-floor grid can be hundreds of metres above the view.
+    const delta=cursor[1]-previousFloor.current;
+    previousFloor.current=cursor[1];
+    if(!delta)return;
+    activeCamera.position.y+=delta;
+    if(orbit.current){orbit.current.target.y+=delta;orbit.current.update();}
+    invalidate();
+  },[cursor[1],activeCamera,invalidate]);
   const [frame] = useState(() =>
     layoutFrame(
       focus === "selected" && selected
@@ -285,13 +298,17 @@ export default function LayoutScene() {
     [],
   );
   const floor = source?.surface.road_y ?? 0;
+  const activePlane = cursor[1];
+  // Slightly above the water/road skin, so the active floor remains visible
+  // and clickable even at sea level or across an existing bridge deck.
+  const activeGuide = activePlane + .11;
   return (
     <group name="layout-authoring-scene">
-      <hemisphereLight args={["#ffffff", palette.floor, 1.6]} />
+      <hemisphereLight args={["#dde7ee", palette.floor, 0.9]} />
       <directionalLight
         position={[-60, 100, 40]}
-        intensity={2.8}
-        color="#ffffff"
+        intensity={1.5}
+        color="#fff3e4"
       />
       <PerspectiveCamera
         makeDefault
@@ -313,6 +330,7 @@ export default function LayoutScene() {
         far={Math.max(3000, frame.span * 10)}
       />
       <OrbitControls
+        ref={orbit}
         makeDefault
         target={panorama?.target??frame.center}
         enableRotate={camera !== "top" && navigation !== "pan"}
@@ -326,7 +344,7 @@ export default function LayoutScene() {
       />
       <mesh
         rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, floor - 0.15, 0]}
+        position={[0, activeGuide, 0]}
         onPointerMove={(e) => {
           if (ghost.current && placing) {
             ghost.current.visible = true;
@@ -361,7 +379,7 @@ export default function LayoutScene() {
       )}
       <gridHelper
         args={[1000, 200, palette.axis, palette.grid]}
-        position={[0, floor - 0.125, 0]}
+        position={[0, activeGuide + .015, 0]}
       />
       <ChunkGuide floor={floor} />
       {source && (reference || doc?.base === "overlay") && (

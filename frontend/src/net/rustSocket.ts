@@ -21,7 +21,8 @@ import { handlingSample } from "../performance/handling";
 import { useChatStore } from "../store/chat/chatStore";
 import {useSocialStore} from '../store/social/socialStore';
 import {useUIStore} from '../store/menus/uiStore';
-import {mapCatalog,useSelectionStore} from '../store/selection/selectionStore';
+import {useSelectionStore} from '../store/selection/selectionStore';
+import {useWorldCatalog} from '../store/selection/worldCatalog';
 import {heroForVehicle, isMatchMode, useAlphaStore} from '../store/alpha/alphaStore';
 const packetEncoder = new TextEncoder();
 
@@ -45,7 +46,7 @@ function forgetRecovery(){resumeIntent=null;if(recoveryTimer!==null)clearTimeout
 function failRecovery(message:string){
  const intent=resumeIntent;forgetRecovery();hadLocalBody=false;missingBodySince=null;
  if(useUIStore.getState().screen!=='sandbox')return;
- if(intent){useAlphaStore.getState().restoreMode(intent.mode,intent.teamSize);const mapIndex=mapCatalog.findIndex(m=>m.id===intent.map);if(mapIndex>=0)useSelectionStore.setState({mapIndex});}
+ if(intent){useAlphaStore.getState().restoreMode(intent.mode,intent.teamSize);const mapIndex=useWorldCatalog.getState().maps.findIndex(m=>m.id===intent.map);if(mapIndex>=0)useSelectionStore.setState({mapIndex});}
  useChatStore.getState().notify(message);useSocialStore.setState({message,recoveryMessage:message});useUIStore.getState().setScreen('mode_select');
 }
 function armRecoveryTimeout(seconds:number){

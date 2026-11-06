@@ -40,7 +40,7 @@ export type EditableBox = {
 };
 export type PlanBounds = { x: number; z: number; width: number; depth: number };
 export const MAX_BOXES = 2048,
-  MAX_JSON_BYTES = 2 * 1024 * 1024;
+  MAX_JSON_BYTES = 8 * 1024 * 1024;
 const record = (v: unknown): Record<string, unknown> => {
   if (!v || typeof v !== "object" || Array.isArray(v))
     throw Error("Expected a JSON object");
@@ -183,7 +183,7 @@ export function parseMapDocument(
 }
 export function parseMapText(text: string, expectedMap?: string) {
   if (new TextEncoder().encode(text).length > MAX_JSON_BYTES)
-    throw Error("Map JSON exceeds 2 MiB");
+    throw Error(`Map JSON exceeds ${MAX_JSON_BYTES / (1024 * 1024)} MiB`);
   return parseMapDocument(JSON.parse(text), expectedMap);
 }
 // Existing schema 2 records are Blender XYZ even though map metadata says Y-up.

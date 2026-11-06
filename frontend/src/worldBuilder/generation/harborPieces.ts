@@ -5,6 +5,8 @@ import {burkeSize,burkeCollisionParts,burkeKeelY} from "./burkeDeck.ts";
 export const CARRIER = "big-e-docked";
 export const DESTROYER="arleigh-burke-docked";
 export const LIFT = "canal-lift";
+// Small enough that a car breaks one panel, rather than removing a whole road edge.
+export const GUARDRAIL_MODULE_METERS = 3.6;
 export const railDamage={enabled:true,hp:5,smallArms:1,cannon:1,bomb:1,rubble:"clear" as const};
 export const carrierSize = data.size as V3;
 export const harborPieces: Piece[] = [{
@@ -13,10 +15,10 @@ export const harborPieces: Piece[] = [{
   size:carrierSize, color:"#677882", parts:data.parts as LayoutPart[],
 }, {
   id:"highway-guardrail", label:"Highway guardrail", category:"roads",
-  description:"Galvanized rail and posts. Adjacent segments can follow a curve.",
-  size:[24,1.05,.4], color:"#9da9aa",
+  description:"Independent 3.6 m impact panel. Road deck and edge protection resize separately.",
+  size:[GUARDRAIL_MODULE_METERS,1.05,.4], color:"#9da9aa",
   parts:[{shape:"box",position:[0,.68,0],size:[1,.37,.56]},
-    ...[-.46,-.30,-.15,0,.15,.30,.46].map(x=>({shape:"box" as const,position:[x,.4,.19] as V3,size:[.017,.8,.55] as V3,solid:false}))],
+    ...[-.46,0,.46].map(x=>({shape:"box" as const,position:[x,.4,.19] as V3,size:[.035,.8,.55] as V3,solid:false}))],
 }, {
   id:'bridge-lever',label:'Bridge lever',category:'props',description:'Operate the canal drawbridge from the switch stand.',
   size:[.72,1.5,.7],color:'#c59346',parts:[
@@ -32,6 +34,8 @@ export const harborPieces: Piece[] = [{
 
 export function guardrail(id:string,x1:number,z1:number,x2:number,z2:number,surface:number, rise=0):import("../document/layoutDocument.ts").LayoutObject{
   const dx=x2-x1,dz=z2-z1,template=harborPieces[1];
+  if(Math.hypot(dx,dz)>GUARDRAIL_MODULE_METERS+.001)
+    throw Error(`Guardrail ${id} exceeds one vehicle-length module; use guardrailRun()`);
   const parts=structuredClone(template.parts);
   // Local +X points from endpoint 1 toward endpoint 2 on either bank.
   // Keep posts plumb and move their feet to the deck directly beneath them.
@@ -44,6 +48,18 @@ export function guardrail(id:string,x1:number,z1:number,x2:number,z2:number,surf
   return {id,name:template.label,piece:template.id,position:[(x1+x2)/2,surface,(z1+z2)/2],
     size:[Math.hypot(dx,dz),template.size[1],template.size[2]],yaw:-Math.atan2(dz,dx)*180/Math.PI,
     color:template.color,locked:false,solid:true,parts,destruction:{...railDamage}};
+}
+
+/** Independent impact pieces along a level or graded rail. The requested
+ * surface is the midpoint height; rise is the total end-to-end grade.
+ */
+export function guardrailRun(id:string,x1:number,z1:number,x2:number,z2:number,surface:number,rise=0){
+  const count=Math.max(1,Math.ceil(Math.hypot(x2-x1,z2-z1)/GUARDRAIL_MODULE_METERS));
+  return Array.from({length:count},(_,i)=>{
+    const a=i/count,b=(i+1)/count;
+    return guardrail(`${id}-${i+1}`,x1+(x2-x1)*a,z1+(z2-z1)*a,
+      x1+(x2-x1)*b,z1+(z2-z1)*b,surface+rise*((a+b)/2-.5),rise/count);
+  });
 }
 
 // Recompute the eye from the placed hull, so rotated and resized prefabs keep a

@@ -12,15 +12,16 @@ import './bridgeLever.css';
 function useBridgeAction(){
   const [busy,setBusy]=useState(false);
   const current=useMotionView(s=>s.snapshot?.drawbridge?.broken?'broken':s.snapshot?.drawbridge?.target_angle?'raised':'lowered');
+  const lockSeconds=useMotionView(s=>Math.max(0,Math.ceil(((s.snapshot?.drawbridge?.next_available_tick??0)-(s.snapshot?.tick??0))/60)));
   const command=current==='broken'?'repair':current==='raised'?'lower':'raise';
   async function pull(){
-    if(busy)return;
+    if(busy || (lockSeconds>0 && current!=='broken'))return;
     setBusy(true);
     try{await requestSocial('bridge_control',{command});}
     catch(e){announceCombat(e instanceof Error?e.message:'Bridge lever unavailable','warning');}
     finally{setBusy(false);}
   }
-  return {current,command,busy,pull};
+  return {current,command,busy,lockSeconds,pull};
 }
 export function BridgeLever({item}:{item:LayoutObject}){
   const lever=useRef<Group>(null);
@@ -43,9 +44,9 @@ export function BridgeControls(){
       Math.hypot(me.position[0]-o.position[0],me.position[2]-o.position[2])<=14 &&
       Math.abs(me.position[1]-o.position[1])<=4);
   });
-  const {current,command,busy,pull}=useBridgeAction();
+  const {current,command,busy,lockSeconds,pull}=useBridgeAction();
   if(!near)return null;
-  return <button className="harbor-bridge-control" disabled={busy} onClick={()=>void pull()}>
-    <span>Drawbridge · {current}</span><strong>{command==='repair'?'Repair fallen span':command==='lower'?'Lower bridge':'Raise jump ramps'}</strong>
+  return <button className="harbor-bridge-control" disabled={busy || (lockSeconds>0 && current!=='broken')} onClick={()=>void pull()}>
+    <span>Drawbridge · {current}</span><strong>{lockSeconds>0 && current!=='broken'?`Ship passage · ${lockSeconds}s`:command==='repair'?'Repair fallen span':command==='lower'?'Lower bridge':'Raise jump ramps'}</strong>
   </button>;
 }

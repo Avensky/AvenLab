@@ -68,7 +68,10 @@ export function snapKitSockets(
           dz = anchor[2] - desired[2] - current[2];
         const planar = Math.hypot(dx, dz),
           vertical = Math.abs(anchor[1] - desired[1] - current[1]);
-        if (planar > radius || vertical > Math.max(22, radius)) continue;
+        // Only connect sockets that meet at the current construction height.
+        // A loose vertical tolerance silently moved elevated bridge pieces to
+        // ground-level sockets from another floor.
+        if (planar > radius || vertical > 1) continue;
         const yaw =
           ((((other.yaw + b.heading - a.heading + (i === j ? 180 : 0) + 540) %
             360) +

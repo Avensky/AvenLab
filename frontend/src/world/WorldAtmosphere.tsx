@@ -1,8 +1,9 @@
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { Color, Fog, type Points } from "three";
 import { skyReflectionMap, worldSkyLighting } from "./worldSkyLighting";
 import type { WorldSkyPreset } from "../store/world/worldStore";
+import {useWorldStore} from "../store/world/worldStore";
 
 // A fixed celestial sphere gives every client the same stars, including late joins.
 const positions = new Float32Array(1200 * 3);
@@ -37,20 +38,33 @@ export function WorldAtmosphere({ preset, shadows, detailedReflections }: { pres
   const scene = useThree(s => s.scene), gl = useThree(s => s.gl), invalidate = useThree(s => s.invalidate);
   const sky = worldSkyLighting(preset);
   const day = preset === "foggy_day";
+  const waterSurface=useWorldStore(s=>{
+    const water=s.map?.authored_layout?.objects.find(o=>o.piece==='coastal-water-visual');
+    return water?water.position[1]+water.size[1]:null;
+  });
+  const surfaceFog=useMemo(()=>new Fog(sky.horizon,sky.fogNear,sky.fogFar),[sky]);
+  const underwaterFog=useMemo(()=>new Fog('#113744',4,110),[]);
+  const underwaterColor=useMemo(()=>new Color('#113744'),[]);
+  const skyColor=useMemo(()=>new Color(sky.horizon),[sky]);
   useLayoutEffect(() => {
     const background = scene.background, fog = scene.fog;
     const exposure = gl.toneMappingExposure;
-    scene.background = new Color(sky.horizon);
-    scene.fog = new Fog(sky.horizon, sky.fogNear, sky.fogFar);
-    gl.toneMappingExposure = 1;
+    scene.background = skyColor;
+    scene.fog = surfaceFog;
+    gl.toneMappingExposure = day ? 0.84 : 1;
     invalidate();
     return () => { scene.background = background; scene.fog = fog; gl.toneMappingExposure = exposure; invalidate(); };
-  }, [scene, gl, invalidate, sky]);
+  }, [scene, gl, invalidate, sky, day, skyColor, surfaceFog]);
+  useFrame(({camera})=>{
+    const submerged=waterSurface!==null&&camera.position.y<waterSurface-.25;
+    const fog=submerged?underwaterFog:surfaceFog;
+    if(scene.fog!==fog){scene.fog=fog;scene.background=submerged?underwaterColor:skyColor;invalidate();}
+  });
   useLayoutEffect(() => {
     const previous = scene.environment, intensity = scene.environmentIntensity, rotation = scene.environmentRotation.clone();
     const texture = skyReflectionMap(preset, detailedReflections);
     scene.environment = texture;
-    scene.environmentIntensity = 1;
+    scene.environmentIntensity = day ? 0.72 : 1;
     scene.environmentRotation.set(0, 0, 0);
     invalidate();
     return () => {
@@ -60,7 +74,7 @@ export function WorldAtmosphere({ preset, shadows, detailedReflections }: { pres
       texture.dispose();
       invalidate();
     };
-  }, [scene, invalidate, preset, detailedReflections]);
+  }, [scene, invalidate, preset, detailedReflections, day]);
   return <>
     {!day && <NightStars />}
     <hemisphereLight args={[sky.skyLight, sky.groundLight, sky.ambient]} />

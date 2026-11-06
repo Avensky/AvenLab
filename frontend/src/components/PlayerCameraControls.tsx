@@ -123,10 +123,10 @@ export function PlayerCameraControls({
     const map=useWorldStore.getState().map;
     const ground=cameraGround(map,camera.position.x,camera.position.z);
     const target=follower.current!.target;
-    if (pose.health?.defeated && ['water','out_of_bounds'].includes(pose.health.last_damage_kind ?? '')) {
-      camera.position.y=Math.max(camera.position.y,ground+2.5);
-      target.y=Math.max(target.y,cameraGround(map,target.x,target.z)-.35);
-    } else camera.position.y=Math.max(camera.position.y,ground);
+    // The dead wreck remains a live Rapier body until recovery. Follow its
+    // sinking pose underwater, instead of pinning the eye above the sea skin.
+    const sinking=pose.health?.defeated && pose.health.last_damage_kind==='water';
+    if(!sinking)camera.position.y=Math.max(camera.position.y,ground);
     camera.lookAt(target);
     const shell=useNetworkStore.getState().getMe()?.combat?.cannon_shot;
     if(shell!==undefined){if(recoil.current.shot>=0&&shell!==recoil.current.shot)recoil.current.kick=1;recoil.current.shot=shell;}

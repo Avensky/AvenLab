@@ -7,7 +7,7 @@ import {
   pieceById,
 } from "../src/worldBuilder/document/layoutDocument.ts";
 import { snapLayoutPosition } from "../src/worldBuilder/roads/layoutSnapping.ts";
-import { kitAssets } from "../src/worldBuilder/mapKit/catalog.ts";
+import { kitAsset, kitAssets } from "../src/worldBuilder/mapKit/catalog.ts";
 import { worldSocket } from "../src/worldBuilder/mapKit/sockets.ts";
 import { harborCanal } from "../src/worldBuilder/generation/harborCanal.ts";
 import { destructionDefaults } from "../src/combat/destruction.ts";
@@ -59,7 +59,9 @@ test("socket snapping aligns rotated, raised and resized road seams", () => {
   const exit = worldSocket(fixed, road, road.sockets[1]);
   const next = addPiece(emptyLayout("test"), "kit-" + straight.id, [0, 0, 0], 0)
     .objects[0];
-  const desired = [exit.position[0] + 0.5, 0, exit.position[2] - 0.4];
+  // The construction level must be close to the exit height. Elevated seams
+  // must not pull a ground-floor prefab up by an entire story unprompted.
+  const desired = [exit.position[0] + 0.5, exit.position[1] + 0.5, exit.position[2] - 0.4];
   const pose = snapLayoutPosition(next, desired, [fixed], "outer", 2);
   assert.equal(pose.lock?.lock.kind, "socket");
   const inlet = worldSocket(
@@ -71,6 +73,7 @@ test("socket snapping aligns rotated, raised and resized road seams", () => {
     Math.hypot(...inlet.position.map((v, i) => v - exit.position[i])) < 1e-5,
   );
   assert(Math.abs(inlet.heading - exit.heading) < 0.001);
+  assert.equal(snapLayoutPosition(next, [exit.position[0], 0, exit.position[2]], [fixed], "outer", 2).lock, null);
   const narrow = addPiece(
     emptyLayout("test"),
     "kit-highway_44_narrow_straight_level",
@@ -92,10 +95,15 @@ test("all three harbor variants use stone spans and a highway approach on both b
     assert.deepEqual(
       stone.map((o) => o.position),
       [
-        [-30, 0.09, -178],
-        [0, 0.09, -178],
+        [-32, 0.09, -194],
+        [0, 0.09, -194],
       ],
     );
+    const [west,east]=stone;
+    const westAsset=kitAsset(west.piece),eastAsset=kitAsset(east.piece);
+    const joint=worldSocket(west,westAsset,westAsset.sockets[1]);
+    const start=worldSocket(east,eastAsset,eastAsset.sockets[0]);
+    assert(Math.hypot(...joint.position.map((v,i)=>v-start.position[i]))<.01,'lengthened stone spans meet');
     assert.equal(
       objects.filter((o) => o.id.startsWith("kit-approach-") && o.piece === "kit-highway_25_wide_straight_level")
         .length,

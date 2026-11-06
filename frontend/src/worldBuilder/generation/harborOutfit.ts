@@ -4,7 +4,7 @@ import {
   type LayoutObject,
   type V3,
 } from "../document/layoutDocument.ts";
-import { guardrail } from "./harborPieces.ts";
+import { guardrailRun } from "./harborPieces.ts";
 
 // The marker is at the foot of the pier. The service bay opens toward the
 // crossing, with its own slab so a wheel never finds open water at the door.
@@ -115,7 +115,7 @@ export function outfitHarbor(objects: LayoutObject[]) {
         const a = (run * i) / 6,
           b = (run * (i + 1)) / 6;
         additions.push(
-          guardrail(
+          ...guardrailRun(
             `boarding-rail-${bank}-${edge}-r${i}`,
             side * (shore + a),
             z,
@@ -130,7 +130,7 @@ export function outfitHarbor(objects: LayoutObject[]) {
         x2 = Math.abs(pier.position[0]) + pier.size[0] / 2;
       for (let i = 0; i < 3; i++) {
         additions.push(
-          guardrail(
+          ...guardrailRun(
             `boarding-rail-${bank}-${edge}-p${i}`,
             side * (x1 + ((x2 - x1) * i) / 3),
             z,

@@ -482,7 +482,7 @@ impl PhysicsWorld {
             }
             "raise"|"lower"=>{
                 if bridge.broken.is_some(){return Err("Repair the fallen span to release the lever.".into());}
-                bridge.select(tick,if command=="raise"{crate::harbor::RAMP_ANGLE}else{0.});
+                bridge.request(tick,if command=="raise"{crate::harbor::RAMP_ANGLE}else{0.})?;
             }
             _=>return Err("Unknown bridge control.".into()),
         }

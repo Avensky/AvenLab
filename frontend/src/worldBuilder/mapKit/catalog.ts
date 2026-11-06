@@ -1,4 +1,6 @@
-import data from "../../../public/models/roads/catalog.json" with { type: "json" };
+// Vite cannot import from public/. The predev/prebuild sync mirrors the same
+// authored road definition into src for both the editor and Node tests.
+import data from "./generated/catalog.json" with { type: "json" };
 import type { Piece, V3 } from "../document/layoutDocument.ts";
 
 export type Socket = {
@@ -38,7 +40,11 @@ const modules: KitAsset[] = data.pieces.map((p) => {
     size: size(bounds),
     sockets: (p.sockets ?? []) as Socket[],
     permanent: p.destructible === false,
-    label: label[0].toUpperCase() + label.slice(1),
+    label: p.id === 'highway_42_ramp_straight_rise20'
+      ? 'High bridge ramp · +20 m'
+      : p.id === 'highway_43_ramp_bend89_rise20'
+        ? 'High bridge curved ramp · +20 m'
+        : label[0].toUpperCase() + label.slice(1),
   };
 });
 const presets: KitAsset[] = data.presets.map((p) => {

@@ -1,9 +1,9 @@
 import { ControllerAction } from "../../components/controller";
 import { useAlphaStore } from "../../store/alpha/alphaStore";
 import { useUIStore } from "../../store/menus/uiStore";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AssistedInput } from "../../components/text/AssistedInput";
-import { mapCatalog } from "../../store/selection/selectionStore";
+import { refreshInstalledWorlds, useWorldCatalog } from "../../store/selection/worldCatalog";
 import { enterWorld } from "./navigation";
 import { inviteCodeFromUrl, worldInviteUrl } from "./invitationLinks";
 import {
@@ -25,7 +25,13 @@ export function WorldsPage({
   onStatus: (message: string) => void;
 }) {
   const [name, setName] = useState("MY WORLD"),
-    [map, setMap] = useState(view.maps[0] ?? "road_jump_lab");
+    [map, setMap] = useState(view.maps[0] ?? "");
+  const installed = useWorldCatalog(s=>s.maps);
+  const availableMaps = view.maps.filter(id=>installed.some(item=>item.id===id));
+  useEffect(()=>{void refreshInstalledWorlds();},[]);
+  useEffect(()=>{
+    if(!availableMaps.includes(map))setMap(availableMaps[0]??"");
+  },[availableMaps.join('|'),map]);
   const [password, setPassword] = useState(""),
     [listed, setListed] = useState(false),
     [capacity, setCapacity] = useState(10);
@@ -68,6 +74,7 @@ export function WorldsPage({
     }
   };
   const create = async () => {
+    if(!availableMaps.includes(map)){onStatus("Select an installed world before creating a lobby.");return;}
     const created = await command(
       "world_create",
       { name, map, password, listed, max_players: capacity, tire_thermals:tireThermals },
@@ -200,9 +207,9 @@ export function WorldsPage({
               value={map}
               onChange={(event) => setMap(event.currentTarget.value)}
             >
-              {view.maps.map((id) => (
+              {availableMaps.map((id) => (
                 <option key={id} value={id}>
-                  {mapCatalog.find((map) => map.id === id)?.name ?? id}
+                  {installed.find((entry) => entry.id === id)?.name ?? id}
                 </option>
               ))}
             </select>
@@ -247,7 +254,7 @@ export function WorldsPage({
             Unlisted worlds need an invite or code. Add a password for another
             access check.
           </p>
-          <button type="submit" className="menu-control">
+          <button type="submit" className="menu-control" disabled={!availableMaps.length}>
             CREATE & JOIN
           </button>
         </form>
@@ -255,12 +262,12 @@ export function WorldsPage({
       <section className="social-card social-wide">
         <h2>AVAILABLE & SAVED WORLDS</h2>
         <div className="social-world-list">
-          {view.worlds.map((world) => (
+          {view.worlds.filter(world=>availableMaps.includes(world.map)).map((world) => (
             <article key={world.id}>
               <div>
                 <strong>{world.name}</strong>
                 <small>
-                  {mapCatalog.find((map) => map.id === world.map)?.name ??
+                  {installed.find((entry) => entry.id === world.map)?.name ??
                     world.map}{" "}
                   · {world.players}/{world.max_players} ·{" "}
                   {world.active ? "ACTIVE" : "SLEEPING"} ·{" "}

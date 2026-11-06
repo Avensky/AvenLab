@@ -2,7 +2,7 @@ import { useInputStore } from "../../store/input/inputStore";
 import { useUIStore } from "../../store/menus/uiStore";
 import { leaveInspection } from "../../store/presentation/inspectionActions";
 import { useSelectionStore } from "../../store/selection/selectionStore";
-import { mapCatalog } from "../../store/selection/worldCatalog";
+import { refreshInstalledWorlds, useWorldCatalog } from "../../store/selection/worldCatalog";
 import { useWorldStore, type MapSnapshot } from "../../store/world/worldStore";
 import type { DistrictSize } from "../generation/coastalDistrict";
 import { coastalMap, COASTAL_MAP_ID } from "../generation/coastalMap";
@@ -94,11 +94,11 @@ async function readWorld(mapId: string) {
 }
 export async function switchBuilderWorld(mapId: string) {
   if (!editing()) return;
+  const mapCatalog=useWorldCatalog.getState().maps;
   if (
     !/^[a-zA-Z0-9_-]{1,96}$/.test(mapId) ||
     (!mapCatalog.some((m) => m.id === mapId) &&
-      !bundledSources.has(mapId) &&
-      useBuilderStore.getState().doc?.map_id !== mapId)
+      !bundledSources.has(mapId))
   )
     throw Error("Unknown editor world");
   const token = ++request;
@@ -244,9 +244,13 @@ export async function openWorldBuilder() {
 }
 export async function loadStandaloneBuilder() {
   if (useBuilderStore.getState().loadingMap) return;
+  await refreshInstalledWorlds();
   const mapId =
-    useSelectionStore.getState().getSelectedMap?.()?.id ??
-    "streaming_endless_city";
+    useSelectionStore.getState().getSelectedMap().id;
+  if(!mapId){
+    useBuilderStore.setState({status:useWorldCatalog.getState().status});
+    return;
+  }
   await switchBuilderWorld(mapId);
 }
 export function closeWorldBuilder() {

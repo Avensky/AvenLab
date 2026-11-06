@@ -2,10 +2,8 @@ import { useEffect } from "react";
 import { useSocialStore } from "../../store/social/socialStore";
 import { useUIStore } from "../../store/menus/uiStore";
 import { useAlphaStore } from "../../store/alpha/alphaStore";
-import {
-  mapCatalog,
-  useSelectionStore,
-} from "../../store/selection/selectionStore";
+import { useSelectionStore } from "../../store/selection/selectionStore";
+import { useWorldCatalog } from "../../store/selection/worldCatalog";
 export function useAlphaFlow() {
   const alpha = useSocialStore((s) => s.view?.alpha),
     screen = useUIStore((s) => s.screen);
@@ -18,7 +16,7 @@ export function useAlphaFlow() {
     useAlphaStore.getState().restoreMode(alpha.active.mode,alpha.active.team_size);
     if (alpha.active.hero) useAlphaStore.getState().chooseHero(alpha.active.hero);
     else useAlphaStore.getState().clearHero();
-    const map = mapCatalog.findIndex(
+    const map = useWorldCatalog.getState().maps.findIndex(
       (m) =>
         m.id ===
         useSocialStore

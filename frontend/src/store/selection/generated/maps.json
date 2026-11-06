@@ -7,17 +7,22 @@
   {
     "id": "harbor_canal_blue",
     "name": "Harbor Canal · blue",
-    "desc": "Two banks, three crossings and a docked carrier."
+    "desc": "Wider canal, three strategic crossings, independent breakaway guardrails and docked fleet."
+  },
+  {
+    "id": "harbor_canal_fleet_classic",
+    "name": "Harbor Fleet · Classic",
+    "desc": "Original committed fleet layout and narrower harbor before the wide-canal redesign."
   },
   {
     "id": "harbor_canal_fleet",
     "name": "Harbor Canal · fleet",
-    "desc": "Two banks, three crossings and a docked carrier."
+    "desc": "Wider canal, three strategic crossings, independent breakaway guardrails and docked fleet."
   },
   {
     "id": "harbor_canal_red",
     "name": "Harbor Canal · red",
-    "desc": "Two banks, three crossings and a docked carrier."
+    "desc": "Wider canal, three strategic crossings, independent breakaway guardrails and docked fleet."
   },
   {
     "id": "road_jump_lab",

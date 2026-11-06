@@ -44,7 +44,7 @@ test('measured hull and deck collision fits the authoring bounds, with a usable 
   assert(eye[2]>40,'camera is near the aft helipad');
 });
 
-test('active harbor teams have a separated static escort and a gangway',()=>{
+test('active harbor teams berth each escort inside the navigable canal with shore access',()=>{
   for(const plan of ['red','blue','fleet']){
     const layout=harborCanal(plan,41).authored_layout;
     const escorts=layout.objects.filter(item=>item.piece===DESTROYER);
@@ -54,9 +54,13 @@ test('active harbor teams have a separated static escort and a gangway',()=>{
       assert.equal(ship.parts.length,burkeCollisionParts.length);
       const carrier=layout.objects.find(item=>item.id==='carrier-'+ship.id.split('-')[1]);
       assert(carrier);
-      assert(Math.abs(ship.position[0]-carrier.position[0])>(ship.size[0]+carrier.size[0])/2);
-      assert(layout.objects.some(item=>item.name==='Carrier-to-destroyer gangway' &&
-        Math.sign(item.position[0])===Math.sign(ship.position[0]) && item.parts[0].shape==='wedge'));
+      const side=ship.id.includes('red')?-1:1;
+      assert.equal(ship.position[0],0,'escort is on the centerline of the canal');
+      assert.equal(ship.position[2],side*97);
+      assert(Math.abs(ship.position[0]-carrier.position[0])>100);
+      assert(layout.objects.some(item=>item.name==='Canal-to-destroyer boarding gangway' &&
+        Math.sign(item.position[0])===side && item.parts[0].shape==='deck'));
+      assert(layout.objects.filter(item=>item.id.startsWith(`canal-boarding-${ship.id.split('-')[1]}`)).length>=10);
     }
   }
   assert(harborPieces.some(piece=>piece.id===CARRIER));

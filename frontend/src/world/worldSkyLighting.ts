@@ -8,9 +8,9 @@ const skies = {
     keyColor: "#a3bfe7", keyIntensity: .85, fogNear: 230, fogFar: 1000,
   },
   foggy_day: {
-    horizon: "#b0bec4", zenith: "#cad3d8", ground: "#606b66",
-    skyLight: "#e1e9ec", groundLight: "#67726c", ambient: 1.65,
-    keyColor: "#f3eee2", keyIntensity: 1.5, fogNear: 24, fogFar: 155,
+    horizon: "#96a9b3", zenith: "#a8b9c8", ground: "#424f54",
+    skyLight: "#c1d1de", groundLight: "#647069", ambient: 0.76,
+    keyColor: "#f2ece0", keyIntensity: 1.12, fogNear: 160, fogFar: 930,
   },
 } as const;
 

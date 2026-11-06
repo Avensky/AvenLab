@@ -198,6 +198,8 @@ impl Server {
     async fn admit_mode(&self, ticket: &Ticket) -> Result<Value, String> {
         if !ticket.hero.is_empty() { policy::hero(&ticket.hero)?; }
         if !map_available(&ticket.map) { return Err("Choose an installed environment.".into()); }
+        let quickplay_maps=if ticket.mode.bucket()==0 {crate::harbor::quickplay_maps()} else {Vec::new()};
+        if ticket.mode.bucket()==0 && quickplay_maps.is_empty() {return Err("No installed CTF Quickplay maps are enabled.".into());}
         let format=ticket.format();
         // Admission only needs populations here. Do not clone every connection,
         // ticket and reservation for every waiting player on every queue sweep.
@@ -223,7 +225,7 @@ impl Server {
         let worlds: Vec<_> = {
             let data = self.data.lock().await;
             formats.into_iter().filter(|world| data.worlds.get(world)
-                .is_some_and(|w| w.map == ticket.map || (format.bucket()==0 && crate::harbor::VARIANTS.contains(&w.map.as_str())))).collect()
+                .is_some_and(|w| (format.bucket()==0 && quickplay_maps.contains(&w.map)) || (format.bucket()!=0 && w.map==ticket.map))).collect()
         };
         let mut candidates = Vec::new();
         for world in worlds {
@@ -246,9 +248,10 @@ impl Server {
         let mut data=self.data.lock().await;
         if data.worlds.len()>=256 {return Err("The saved-world budget is full.".into());}
         let world=data.next_world;data.next_world+=1;
+        let chosen_map=if format.bucket()==0 {crate::harbor::queue_map(world).ok_or("No installed CTF Quickplay maps are enabled.")?}else{ticket.map.clone()};
         data.worlds.insert(world,World{tire_thermals:crate::tire_thermals::server_default(),mode:Some(ticket.mode),id:world,
             name:if format.bucket()==0 {format!("ALPHA {} {}V{}",ticket.mode.label(),format.team_size,format.team_size)}else{format!("ALPHA {}",ticket.mode.label())},
-            map:if format.bucket()==0 {crate::harbor::queue_map(world).into()} else {ticket.map.clone()},owner_id:None,listed:true,max_players:format.capacity(),password_hash:None,invite_code:crate::social::model::id()});
+            map:chosen_map,owner_id:None,listed:true,max_players:format.capacity(),password_hash:None,invite_code:crate::social::model::id()});
         drop(data);self.commit(previous).await?;
         self.alpha.lock().await.worlds.insert(world,format);
         self.admit_ticket_to_world(ticket,world).await
@@ -269,7 +272,8 @@ impl Server {
         let hero = value["hero"].as_str().unwrap_or("").to_string();
         if !hero.is_empty() { policy::hero(&hero)?; }
         let map = if mode.bucket() == 0 {
-            "streaming_endless_city".to_string()
+            crate::harbor::quickplay_maps().into_iter().next()
+                .ok_or("No installed CTF Quickplay maps are enabled.")?
         } else {
             value["map"]
                 .as_str()

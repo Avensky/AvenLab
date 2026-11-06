@@ -1,6 +1,8 @@
 import { SelectorArrow } from "./SelectorArrow";
 import { getSelectionClasses } from "../../components/menus/selectionStyles";
 import { useSelectionStore, useUIStore } from "../../store";
+import { useEffect } from "react";
+import { refreshInstalledWorlds, useWorldCatalog } from "../../store/selection/worldCatalog";
 
 type MapSelectorProps = {
   menuIndex?: number;
@@ -32,6 +34,9 @@ export function MapSelector({
   quiet = false,
 }: MapSelectorProps) {
   const map = useSelectionStore((s) => s.getSelectedMap());
+  const ready=useWorldCatalog(s=>s.ready);
+  const unavailable=disabled||!ready||!map.id;
+  useEffect(()=>{void refreshInstalledWorlds();},[]);
   const previousMap = useSelectionStore((s) => s.prevMap);
   const nextMap = useSelectionStore((s) => s.nextMap);
 
@@ -45,14 +50,14 @@ export function MapSelector({
       className={`selection-strip border-t transition-[background,border-color,box-shadow] duration-200 ${getSelectionClasses(selected, translucent)}`}
       data-controller-selector={formNavigation || undefined}
       data-quiet={quiet || undefined}
-      tabIndex={formNavigation && !disabled ? 0 : undefined}
+      tabIndex={formNavigation && !unavailable ? 0 : undefined}
       role={formNavigation ? "group" : undefined}
       aria-label={
         formNavigation ? `Environment: ${title ?? map.name}` : undefined
       }
-      aria-disabled={disabled || undefined}
+      aria-disabled={unavailable || undefined}
       onClick={(event) => {
-        if (event.target === event.currentTarget && !disabled) onConfirm?.();
+        if (event.target === event.currentTarget && !unavailable) onConfirm?.();
       }}
       onPointerEnter={() => {
         if (!formNavigation) setActiveMenuIndex(menuIndex);
@@ -64,7 +69,7 @@ export function MapSelector({
       <div className="selection-strip-layout">
         <SelectorArrow
           formNavigation={formNavigation}
-          disabled={disabled}
+          disabled={unavailable}
           variant={
             translucent
               ? "neutral"
@@ -85,7 +90,7 @@ export function MapSelector({
                 selected || translucent ? "text-cyan-100" : "text-slate-500"
               }`}
             >
-              {title ?? map.name}
+              {title ?? (!ready?"Discovering worlds…":map.name)}
             </h2>
           )}
 
@@ -102,7 +107,7 @@ export function MapSelector({
 
         <SelectorArrow
           formNavigation={formNavigation}
-          disabled={disabled}
+          disabled={unavailable}
           variant={
             translucent
               ? "neutral"

@@ -1,6 +1,6 @@
 import {coastalTerrain,DOCK_DEPTH} from '../frontend/src/worldBuilder/generation/coastalTerrain.ts';
 import fs from "node:fs";
-import {guardrail} from "../frontend/src/worldBuilder/generation/harborPieces.ts";
+import {guardrailRun} from "../frontend/src/worldBuilder/generation/harborPieces.ts";
 import {dockHome} from "../frontend/src/worldBuilder/generation/harborOutfit.ts";
 import {harborCanal} from "../frontend/src/worldBuilder/generation/harborCanal.ts";
 import {mapExport} from "../frontend/src/worldBuilder/document/mapDocument.ts";
@@ -14,6 +14,7 @@ for(const [i,plan] of ["red","blue","fleet"].entries()){
 // Endless City keeps its original streets and its eastern pier entrance.
 const cityPath=new URL("../avenlab-server/src/assets/blocks/streaming_endless_city_colliders.json",import.meta.url);
 const city=JSON.parse(fs.readFileSync(cityPath,"utf8")),layout=city.authored_layout;
+city.quickplay={objective:'ctf'};
 layout.objects=layout.objects.filter(o=>!o.id.startsWith("perimeter-rail-") && !(o.piece==="harbor-seabed" && o.id.startsWith("bed-ocean-")));
 const deck=layout.objects.find(o=>o.id==="big-e-original");
 const pier=layout.objects.find(o=>o.id==="east-pier");
@@ -32,7 +33,7 @@ city.team_spawns.blue=Array.from({length:5},(_,i)=>({
 let serial=0;
 function line(x1,z1,x2,z2){
   const dx=x2-x1,dz=z2-z1,n=Math.ceil(Math.hypot(dx,dz)/34);
-  for(let i=0;i<n;i++)layout.objects.push(guardrail("perimeter-rail-"+(++serial),x1+dx*i/n,z1+dz*i/n,x1+dx*(i+1)/n,z1+dz*(i+1)/n,city.surface.road_y));
+  for(let i=0;i<n;i++)layout.objects.push(...guardrailRun("perimeter-rail-"+(++serial),x1+dx*i/n,z1+dz*i/n,x1+dx*(i+1)/n,z1+dz*(i+1)/n,city.surface.road_y));
 }
 const [width,depth]=city.cell,[nx,nz]=city.layout.size;
 const west=-width/2+1.5,east=(nx-.5)*width-1.5,north=-depth/2+1.5,south=(nz-.5)*depth-1.5;

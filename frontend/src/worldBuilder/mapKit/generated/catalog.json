@@ -1,0 +1,2066 @@
+{
+  "version": 1,
+  "units": "meters",
+  "upAxis": "Y",
+  "socketOrder": [
+    "inlet",
+    "outlet"
+  ],
+  "socketForwardConvention": "direction of travel at both ends",
+  "collisionKind": "fixedTrimesh",
+  "pieces": [
+    {
+      "id": "highway_25_wide_straight_level",
+      "sourceGroup": 25,
+      "sockets": [
+        {
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "forwardXZ": [
+            1.0,
+            -0.0
+          ],
+          "widthM": 12.0
+        },
+        {
+          "position": [
+            71.99991,
+            0.0,
+            4e-05
+          ],
+          "forwardXZ": [
+            1.0,
+            0.0
+          ],
+          "widthM": 12.0
+        }
+      ],
+      "lods": [
+        {
+          "file": "highway/highway_25_wide_straight_level/lod0.glb",
+          "triangles": 3654
+        },
+        {
+          "file": "highway/highway_25_wide_straight_level/lod1.glb",
+          "triangles": 1854
+        },
+        {
+          "file": "highway/highway_25_wide_straight_level/lod2.glb",
+          "triangles": 936
+        }
+      ],
+      "collider": "highway/highway_25_wide_straight_level/collision.glb",
+      "collisionTriangles": 89,
+      "boundsLocalM": {
+        "min": [
+          -0.0,
+          -0.00039999998989515007,
+          -6.633600234985352
+        ],
+        "max": [
+          74.47270202636719,
+          9.821200370788574,
+          6.633600234985352
+        ]
+      },
+      "node": "highway_25_wide_straight_level",
+      "belowInletM": 0.0
+    },
+    {
+      "id": "highway_26_wide_bend44_level",
+      "sourceGroup": 26,
+      "sockets": [
+        {
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "forwardXZ": [
+            0.99999,
+            -0.00436
+          ],
+          "widthM": 12.0
+        },
+        {
+          "position": [
+            65.39096,
+            0.0,
+            25.76204
+          ],
+          "forwardXZ": [
+            0.7283,
+            0.68526
+          ],
+          "widthM": 12.0
+        }
+      ],
+      "lods": [
+        {
+          "file": "highway/highway_26_wide_bend44_level/lod0.glb",
+          "triangles": 4901
+        },
+        {
+          "file": "highway/highway_26_wide_bend44_level/lod1.glb",
+          "triangles": 2606
+        },
+        {
+          "file": "highway/highway_26_wide_bend44_level/lod2.glb",
+          "triangles": 1348
+        }
+      ],
+      "collider": "highway/highway_26_wide_bend44_level/collision.glb",
+      "collisionTriangles": 170,
+      "boundsLocalM": {
+        "min": [
+          -0.027000000700354576,
+          -0.0007999999797903001,
+          -6.193900108337402
+        ],
+        "max": [
+          71.63600158691406,
+          9.821200370788574,
+          31.98550033569336
+        ]
+      },
+      "node": "highway_26_wide_bend44_level",
+      "belowInletM": 0.001
+    },
+    {
+      "id": "highway_27_wide_bend87_level",
+      "sourceGroup": 27,
+      "sockets": [
+        {
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "forwardXZ": [
+            1.0,
+            -0.0
+          ],
+          "widthM": 12.0
+        },
+        {
+          "position": [
+            47.34639,
+            0.0,
+            44.93919
+          ],
+          "forwardXZ": [
+            0.05213,
+            0.99864
+          ],
+          "widthM": 12.0
+        }
+      ],
+      "lods": [
+        {
+          "file": "highway/highway_27_wide_bend87_level/lod0.glb",
+          "triangles": 4899
+        },
+        {
+          "file": "highway/highway_27_wide_bend87_level/lod1.glb",
+          "triangles": 2606
+        },
+        {
+          "file": "highway/highway_27_wide_bend87_level/lod2.glb",
+          "triangles": 1382
+        }
+      ],
+      "collider": "highway/highway_27_wide_bend87_level/collision.glb",
+      "collisionTriangles": 235,
+      "boundsLocalM": {
+        "min": [
+          -0.0,
+          -0.0010000000474974513,
+          -6.193999767303467
+        ],
+        "max": [
+          53.756099700927734,
+          9.821200370788574,
+          47.4098014831543
+        ]
+      },
+      "node": "highway_27_wide_bend87_level",
+      "belowInletM": 0.001
+    },
+    {
+      "id": "highway_28_wide_straight_rise10",
+      "sourceGroup": 28,
+      "sockets": [
+        {
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "forwardXZ": [
+            1.0,
+            -1e-05
+          ],
+          "widthM": 12.0
+        },
+        {
+          "position": [
+            71.99998,
+            9.99997,
+            3e-05
+          ],
+          "forwardXZ": [
+            1.0,
+            0.0
+          ],
+          "widthM": 12.0
+        }
+      ],
+      "lods": [
+        {
+          "file": "highway/highway_28_wide_straight_rise10/lod0.glb",
+          "triangles": 11619
+        },
+        {
+          "file": "highway/highway_28_wide_straight_rise10/lod1.glb",
+          "triangles": 5044
+        },
+        {
+          "file": "highway/highway_28_wide_straight_rise10/lod2.glb",
+          "triangles": 2851
+        }
+      ],
+      "collider": "highway/highway_28_wide_straight_rise10/collision.glb",
+      "collisionTriangles": 1105,
+      "boundsLocalM": {
+        "min": [
+          -0.00279999990016222,
+          -0.0019000000320374966,
+          -6.633500099182129
+        ],
+        "max": [
+          72.00160217285156,
+          18.79599952697754,
+          6.633600234985352
+        ]
+      },
+      "node": "highway_28_wide_straight_rise10",
+      "belowInletM": 0.002
+    },
+    {
+      "id": "highway_29_wide_straight_level",
+      "sourceGroup": 29,
+      "sockets": [
+        {
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "forwardXZ": [
+            1.0,
+            0.0
+          ],
+          "widthM": 12.0
+        },
+        {
+          "position": [
+            71.99998,
+            0.0,
+            0.0
+          ],
+          "forwardXZ": [
+            1.0,
+            0.0
+          ],
+          "widthM": 12.0
+        }
+      ],
+      "lods": [
+        {
+          "file": "highway/highway_29_wide_straight_level/lod0.glb",
+          "triangles": 7435
+        },
+        {
+          "file": "highway/highway_29_wide_straight_level/lod1.glb",
+          "triangles": 3395
+        },
+        {
+          "file": "highway/highway_29_wide_straight_level/lod2.glb",
+          "triangles": 1507
+        }
+      ],
+      "collider": "highway/highway_29_wide_straight_level/collision.glb",
+      "collisionTriangles": 665,
+      "boundsLocalM": {
+        "min": [
+          -0.9624999761581421,
+          -10.0,
+          -6.633600234985352
+        ],
+        "max": [
+          73.0,
+          9.471199989318848,
+          6.633500099182129
+        ]
+      },
+      "node": "highway_29_wide_straight_level",
+      "belowInletM": 10.0
+    },
+    {
+      "id": "highway_30_wide_straight_rise10",
+      "sourceGroup": 30,
+      "sockets": [
+        {
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "forwardXZ": [
+            1.0,
+            -1e-05
+          ],
+          "widthM": 12.0001
+        },
+        {
+          "position": [
+            71.99997,
+            9.99997,
+            3e-05
+          ],
+          "forwardXZ": [
+            1.0,
+            0.0
+          ],
+          "widthM": 12.0001
+        }
+      ],
+      "lods": [
+        {
+          "file": "highway/highway_30_wide_straight_rise10/lod0.glb",
+          "triangles": 12224
+        },
+        {
+          "file": "highway/highway_30_wide_straight_rise10/lod1.glb",
+          "triangles": 5191
+        },
+        {
+          "file": "highway/highway_30_wide_straight_rise10/lod2.glb",
+          "triangles": 2885
+        }
+      ],
+      "collider": "highway/highway_30_wide_straight_rise10/collision.glb",
+      "collisionTriangles": 1151,
+      "boundsLocalM": {
+        "min": [
+          -0.00279999990016222,
+          -10.0,
+          -6.633500099182129
+        ],
+        "max": [
+          72.00160217285156,
+          18.781400680541992,
+          6.633699893951416
+        ]
+      },
+      "node": "highway_30_wide_straight_rise10",
+      "belowInletM": 10.0
+    },
+    {
+      "id": "highway_31_wide_straight_level",
+      "sourceGroup": 31,
+      "sockets": [
+        {
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "forwardXZ": [
+            1.0,
+            0.0
+          ],
+          "widthM": 12.0001
+        },
+        {
+          "position": [
+            71.99994,
+            0.0,
+            -0.0
+          ],
+          "forwardXZ": [
+            1.0,
+            0.0
+          ],
+          "widthM": 12.0001
+        }
+      ],
+      "lods": [
+        {
+          "file": "highway/highway_31_wide_straight_level/lod0.glb",
+          "triangles": 7400
+        },
+        {
+          "file": "highway/highway_31_wide_straight_level/lod1.glb",
+          "triangles": 3367
+        },
+        {
+          "file": "highway/highway_31_wide_straight_level/lod2.glb",
+          "triangles": 1484
+        }
+      ],
+      "collider": "highway/highway_31_wide_straight_level/collision.glb",
+      "collisionTriangles": 665,
+      "boundsLocalM": {
+        "min": [
+          -0.9624999761581421,
+          -20.0,
+          -6.633600234985352
+        ],
+        "max": [
+          73.0,
+          9.471199989318848,
+          6.633600234985352
+        ]
+      },
+      "node": "highway_31_wide_straight_level",
+      "belowInletM": 20.0
+    },
+    {
+      "id": "highway_32_wide_bend90_rise10",
+      "sourceGroup": 32,
+      "sockets": [
+        {
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "forwardXZ": [
+            1.0,
+            6e-05
+          ],
+          "widthM": 12.0
+        },
+        {
+          "position": [
+            45.83674,
+            9.99998,
+            45.83794
+          ],
+          "forwardXZ": [
+            4e-05,
+            1.0
+          ],
+          "widthM": 12.0
+        }
+      ],
+      "lods": [
+        {
+          "file": "highway/highway_32_wide_bend90_rise10/lod0.glb",
+          "triangles": 13365
+        },
+        {
+          "file": "highway/highway_32_wide_bend90_rise10/lod1.glb",
+          "triangles": 6880
+        },
+        {
+          "file": "highway/highway_32_wide_bend90_rise10/lod2.glb",
+          "triangles": 3431
+        }
+      ],
+      "collider": "highway/highway_32_wide_bend90_rise10/collision.glb",
+      "collisionTriangles": 1618,
+      "boundsLocalM": {
+        "min": [
+          -0.00279999990016222,
+          -0.0024999999441206455,
+          -6.249899864196777
+        ],
+        "max": [
+          52.086700439453125,
+          18.861600875854492,
+          45.839599609375
+        ]
+      },
+      "node": "highway_32_wide_bend90_rise10",
+      "belowInletM": 0.002
+    },
+    {
+      "id": "highway_33_wide_bend45_rise10",
+      "sourceGroup": 33,
+      "sockets": [
+        {
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "forwardXZ": [
+            0.99999,
+            -0.00434
+          ],
+          "widthM": 12.0
+        },
+        {
+          "position": [
+            64.93946,
+            9.99997,
+            26.56796
+          ],
+          "forwardXZ": [
+            0.7102,
+            0.704
+          ],
+          "widthM": 12.0001
+        }
+      ],
+      "lods": [
+        {
+          "file": "highway/highway_33_wide_bend45_rise10/lod0.glb",
+          "triangles": 13323
+        },
+        {
+          "file": "highway/highway_33_wide_bend45_rise10/lod1.glb",
+          "triangles": 5970
+        },
+        {
+          "file": "highway/highway_33_wide_bend45_rise10/lod2.glb",
+          "triangles": 2995
+        }
+      ],
+      "collider": "highway/highway_33_wide_bend45_rise10/collision.glb",
+      "collisionTriangles": 1378,
+      "boundsLocalM": {
+        "min": [
+          -0.03009999915957451,
+          -0.00139999995008111,
+          -6.249800205230713
+        ],
+        "max": [
+          69.34149932861328,
+          18.792600631713867,
+          31.006799697875977
+        ]
+      },
+      "node": "highway_33_wide_bend45_rise10",
+      "belowInletM": 0.001
+    },
+    {
+      "id": "highway_34_wide_bend88_level",
+      "sourceGroup": 34,
+      "sockets": [
+        {
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "forwardXZ": [
+            0.99979,
+            0.02044
+          ],
+          "widthM": 12.0
+        },
+        {
+          "position": [
+            46.11298,
+            0.0,
+            46.07626
+          ],
+          "forwardXZ": [
+            0.02124,
+            0.99977
+          ],
+          "widthM": 12.0
+        }
+      ],
+      "lods": [
+        {
+          "file": "highway/highway_34_wide_bend88_level/lod0.glb",
+          "triangles": 11173
+        },
+        {
+          "file": "highway/highway_34_wide_bend88_level/lod1.glb",
+          "triangles": 5300
+        },
+        {
+          "file": "highway/highway_34_wide_bend88_level/lod2.glb",
+          "triangles": 2148
+        }
+      ],
+      "collider": "highway/highway_34_wide_bend88_level/collision.glb",
+      "collisionTriangles": 1195,
+      "boundsLocalM": {
+        "min": [
+          -0.9624000191688538,
+          -10.0,
+          -6.248700141906738
+        ],
+        "max": [
+          52.36159896850586,
+          9.471199989318848,
+          47.07619857788086
+        ]
+      },
+      "node": "highway_34_wide_bend88_level",
+      "belowInletM": 10.0
+    },
+    {
+      "id": "highway_35_wide_bend90_rise10",
+      "sourceGroup": 35,
+      "sockets": [
+        {
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "forwardXZ": [
+            1.0,
+            6e-05
+          ],
+          "widthM": 12.0001
+        },
+        {
+          "position": [
+            45.83667,
+            9.99998,
+            45.83786
+          ],
+          "forwardXZ": [
+            4e-05,
+            1.0
+          ],
+          "widthM": 12.0001
+        }
+      ],
+      "lods": [
+        {
+          "file": "highway/highway_35_wide_bend90_rise10/lod0.glb",
+          "triangles": 14000
+        },
+        {
+          "file": "highway/highway_35_wide_bend90_rise10/lod1.glb",
+          "triangles": 6948
+        },
+        {
+          "file": "highway/highway_35_wide_bend90_rise10/lod2.glb",
+          "triangles": 3208
+        }
+      ],
+      "collider": "highway/highway_35_wide_bend90_rise10/collision.glb",
+      "collisionTriangles": 1713,
+      "boundsLocalM": {
+        "min": [
+          -0.00279999990016222,
+          -10.0,
+          -6.250100135803223
+        ],
+        "max": [
+          52.08679962158203,
+          18.895099639892578,
+          45.839500427246094
+        ]
+      },
+      "node": "highway_35_wide_bend90_rise10",
+      "belowInletM": 10.0
+    },
+    {
+      "id": "highway_36_wide_bend88_level",
+      "sourceGroup": 36,
+      "sockets": [
+        {
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "forwardXZ": [
+            0.99979,
+            0.02044
+          ],
+          "widthM": 12.0001
+        },
+        {
+          "position": [
+            46.11295,
+            0.0,
+            46.07618
+          ],
+          "forwardXZ": [
+            0.02124,
+            0.99977
+          ],
+          "widthM": 12.0001
+        }
+      ],
+      "lods": [
+        {
+          "file": "highway/highway_36_wide_bend88_level/lod0.glb",
+          "triangles": 11157
+        },
+        {
+          "file": "highway/highway_36_wide_bend88_level/lod1.glb",
+          "triangles": 5296
+        },
+        {
+          "file": "highway/highway_36_wide_bend88_level/lod2.glb",
+          "triangles": 2147
+        }
+      ],
+      "collider": "highway/highway_36_wide_bend88_level/collision.glb",
+      "collisionTriangles": 1194,
+      "boundsLocalM": {
+        "min": [
+          -0.9624000191688538,
+          -20.0,
+          -6.248799800872803
+        ],
+        "max": [
+          52.36159896850586,
+          9.471199989318848,
+          47.07609939575195
+        ]
+      },
+      "node": "highway_36_wide_bend88_level",
+      "belowInletM": 20.0
+    },
+    {
+      "id": "highway_37_wide_bend44_level",
+      "sourceGroup": 37,
+      "sockets": [
+        {
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "forwardXZ": [
+            0.99998,
+            0.00586
+          ],
+          "widthM": 12.0
+        },
+        {
+          "position": [
+            65.03297,
+            0.0,
+            26.59058
+          ],
+          "forwardXZ": [
+            0.71762,
+            0.69643
+          ],
+          "widthM": 12.0
+        }
+      ],
+      "lods": [
+        {
+          "file": "highway/highway_37_wide_bend44_level/lod0.glb",
+          "triangles": 10987
+        },
+        {
+          "file": "highway/highway_37_wide_bend44_level/lod1.glb",
+          "triangles": 4918
+        },
+        {
+          "file": "highway/highway_37_wide_bend44_level/lod2.glb",
+          "triangles": 1973
+        }
+      ],
+      "collider": "highway/highway_37_wide_bend44_level/collision.glb",
+      "collisionTriangles": 988,
+      "boundsLocalM": {
+        "min": [
+          -0.9886000156402588,
+          -10.0,
+          -6.304999828338623
+        ],
+        "max": [
+          69.97090148925781,
+          9.471199989318848,
+          31.551799774169922
+        ]
+      },
+      "node": "highway_37_wide_bend44_level",
+      "belowInletM": 10.0
+    },
+    {
+      "id": "highway_38_wide_bend45_rise10",
+      "sourceGroup": 38,
+      "sockets": [
+        {
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "forwardXZ": [
+            0.99999,
+            -0.00434
+          ],
+          "widthM": 12.0001
+        },
+        {
+          "position": [
+            64.93929,
+            9.99998,
+            26.56788
+          ],
+          "forwardXZ": [
+            0.7102,
+            0.704
+          ],
+          "widthM": 12.0001
+        }
+      ],
+      "lods": [
+        {
+          "file": "highway/highway_38_wide_bend45_rise10/lod0.glb",
+          "triangles": 13914
+        },
+        {
+          "file": "highway/highway_38_wide_bend45_rise10/lod1.glb",
+          "triangles": 6145
+        },
+        {
+          "file": "highway/highway_38_wide_bend45_rise10/lod2.glb",
+          "triangles": 3029
+        }
+      ],
+      "collider": "highway/highway_38_wide_bend45_rise10/collision.glb",
+      "collisionTriangles": 1451,
+      "boundsLocalM": {
+        "min": [
+          -0.029999999329447746,
+          -10.0,
+          -6.25
+        ],
+        "max": [
+          69.33940124511719,
+          18.826099395751953,
+          31.00670051574707
+        ]
+      },
+      "node": "highway_38_wide_bend45_rise10",
+      "belowInletM": 10.0
+    },
+    {
+      "id": "highway_39_wide_bend44_level",
+      "sourceGroup": 39,
+      "sockets": [
+        {
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "forwardXZ": [
+            0.99998,
+            0.00586
+          ],
+          "widthM": 12.0001
+        },
+        {
+          "position": [
+            65.03292,
+            0.0,
+            26.59055
+          ],
+          "forwardXZ": [
+            0.71762,
+            0.69643
+          ],
+          "widthM": 12.0001
+        }
+      ],
+      "lods": [
+        {
+          "file": "highway/highway_39_wide_bend44_level/lod0.glb",
+          "triangles": 10975
+        },
+        {
+          "file": "highway/highway_39_wide_bend44_level/lod1.glb",
+          "triangles": 4910
+        },
+        {
+          "file": "highway/highway_39_wide_bend44_level/lod2.glb",
+          "triangles": 1963
+        }
+      ],
+      "collider": "highway/highway_39_wide_bend44_level/collision.glb",
+      "collisionTriangles": 987,
+      "boundsLocalM": {
+        "min": [
+          -0.9886999726295471,
+          -20.0,
+          -6.249899864196777
+        ],
+        "max": [
+          69.98600006103516,
+          9.471199989318848,
+          31.569599151611328
+        ]
+      },
+      "node": "highway_39_wide_bend44_level",
+      "belowInletM": 20.0
+    },
+    {
+      "id": "highway_40_ramp_straight_rise10",
+      "sourceGroup": 40,
+      "sockets": [
+        {
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "forwardXZ": [
+            1.0,
+            2e-05
+          ],
+          "widthM": 6.0
+        },
+        {
+          "position": [
+            47.59269,
+            10.00002,
+            0.67816
+          ],
+          "forwardXZ": [
+            1.0,
+            0.0
+          ],
+          "widthM": 4.6437
+        }
+      ],
+      "lods": [
+        {
+          "file": "highway/highway_40_ramp_straight_rise10/lod0.glb",
+          "triangles": 6070
+        },
+        {
+          "file": "highway/highway_40_ramp_straight_rise10/lod1.glb",
+          "triangles": 2562
+        },
+        {
+          "file": "highway/highway_40_ramp_straight_rise10/lod2.glb",
+          "triangles": 851
+        }
+      ],
+      "collider": "highway/highway_40_ramp_straight_rise10/collision.glb",
+      "collisionTriangles": 651,
+      "boundsLocalM": {
+        "min": [
+          -0.9524000287055969,
+          -0.0031999999191612005,
+          -3.466099977493286
+        ],
+        "max": [
+          47.77920150756836,
+          18.33919906616211,
+          3.4660000801086426
+        ]
+      },
+      "node": "highway_40_ramp_straight_rise10",
+      "belowInletM": 0.003
+    },
+    {
+      "id": "highway_41_ramp_bend88_rise10",
+      "sourceGroup": 41,
+      "sockets": [
+        {
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "forwardXZ": [
+            0.99953,
+            0.03077
+          ],
+          "widthM": 6.0
+        },
+        {
+          "position": [
+            29.30164,
+            10.00002,
+            30.73515
+          ],
+          "forwardXZ": [
+            0.00601,
+            0.99998
+          ],
+          "widthM": 4.6437
+        }
+      ],
+      "lods": [
+        {
+          "file": "highway/highway_41_ramp_bend88_rise10/lod0.glb",
+          "triangles": 6239
+        },
+        {
+          "file": "highway/highway_41_ramp_bend88_rise10/lod1.glb",
+          "triangles": 2875
+        },
+        {
+          "file": "highway/highway_41_ramp_bend88_rise10/lod2.glb",
+          "triangles": 1072
+        }
+      ],
+      "collider": "highway/highway_41_ramp_bend88_rise10/collision.glb",
+      "collisionTriangles": 857,
+      "boundsLocalM": {
+        "min": [
+          -0.9495000243186951,
+          -0.006300000008195639,
+          -3.467400074005127
+        ],
+        "max": [
+          32.02730178833008,
+          18.313199996948242,
+          30.91699981689453
+        ]
+      },
+      "node": "highway_41_ramp_bend88_rise10",
+      "belowInletM": 0.006
+    },
+    {
+      "id": "highway_42_ramp_straight_rise20",
+      "sourceGroup": 42,
+      "sockets": [
+        {
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "forwardXZ": [
+            1.0,
+            -0.0
+          ],
+          "widthM": 5.9999
+        },
+        {
+          "position": [
+            71.99987,
+            19.99992,
+            0.67802
+          ],
+          "forwardXZ": [
+            1.0,
+            -0.0
+          ],
+          "widthM": 4.6437
+        }
+      ],
+      "lods": [
+        {
+          "file": "highway/highway_42_ramp_straight_rise20/lod0.glb",
+          "triangles": 8922
+        },
+        {
+          "file": "highway/highway_42_ramp_straight_rise20/lod1.glb",
+          "triangles": 3500
+        },
+        {
+          "file": "highway/highway_42_ramp_straight_rise20/lod2.glb",
+          "triangles": 1426
+        }
+      ],
+      "collider": "highway/highway_42_ramp_straight_rise20/collision.glb",
+      "collisionTriangles": 957,
+      "boundsLocalM": {
+        "min": [
+          -1.0324000120162964,
+          -0.0024999999441206455,
+          -3.4837000370025635
+        ],
+        "max": [
+          71.9999008178711,
+          26.94700050354004,
+          3.4602999687194824
+        ]
+      },
+      "node": "highway_42_ramp_straight_rise20",
+      "belowInletM": 0.002
+    },
+    {
+      "id": "highway_43_ramp_bend89_rise20",
+      "sourceGroup": 43,
+      "sockets": [
+        {
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "forwardXZ": [
+            0.99975,
+            0.0222
+          ],
+          "widthM": 5.9999
+        },
+        {
+          "position": [
+            44.77201,
+            19.99992,
+            46.47068
+          ],
+          "forwardXZ": [
+            -0.0,
+            1.0
+          ],
+          "widthM": 4.6437
+        }
+      ],
+      "lods": [
+        {
+          "file": "highway/highway_43_ramp_bend89_rise20/lod0.glb",
+          "triangles": 10134
+        },
+        {
+          "file": "highway/highway_43_ramp_bend89_rise20/lod1.glb",
+          "triangles": 4605
+        },
+        {
+          "file": "highway/highway_43_ramp_bend89_rise20/lod2.glb",
+          "triangles": 1811
+        }
+      ],
+      "collider": "highway/highway_43_ramp_bend89_rise20/collision.glb",
+      "collisionTriangles": 1455,
+      "boundsLocalM": {
+        "min": [
+          -1.032099962234497,
+          -0.0012000000569969416,
+          -3.4951000213623047
+        ],
+        "max": [
+          47.497798919677734,
+          26.909299850463867,
+          46.470699310302734
+        ]
+      },
+      "node": "highway_43_ramp_bend89_rise20",
+      "belowInletM": 0.001
+    },
+    {
+      "id": "highway_44_narrow_straight_level",
+      "sourceGroup": 44,
+      "sockets": [
+        {
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "forwardXZ": [
+            1.0,
+            -0.0
+          ],
+          "widthM": 4.6437
+        },
+        {
+          "position": [
+            71.99985,
+            0.0,
+            -4e-05
+          ],
+          "forwardXZ": [
+            1.0,
+            0.0
+          ],
+          "widthM": 4.6437
+        }
+      ],
+      "lods": [
+        {
+          "file": "highway/highway_44_narrow_straight_level/lod0.glb",
+          "triangles": 5431
+        },
+        {
+          "file": "highway/highway_44_narrow_straight_level/lod1.glb",
+          "triangles": 2347
+        },
+        {
+          "file": "highway/highway_44_narrow_straight_level/lod2.glb",
+          "triangles": 943
+        }
+      ],
+      "collider": "highway/highway_44_narrow_straight_level/collision.glb",
+      "collisionTriangles": 715,
+      "boundsLocalM": {
+        "min": [
+          -0.17440000176429749,
+          -10.0,
+          -3.105299949645996
+        ],
+        "max": [
+          72.22660064697266,
+          9.471199989318848,
+          2.726300001144409
+        ]
+      },
+      "node": "highway_44_narrow_straight_level",
+      "belowInletM": 10.0
+    },
+    {
+      "id": "highway_45_narrow_bend45_level",
+      "sourceGroup": 45,
+      "sockets": [
+        {
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "forwardXZ": [
+            0.99998,
+            0.00625
+          ],
+          "widthM": 4.6437
+        },
+        {
+          "position": [
+            64.61404,
+            0.0,
+            27.07325
+          ],
+          "forwardXZ": [
+            0.70576,
+            0.70845
+          ],
+          "widthM": 4.6437
+        }
+      ],
+      "lods": [
+        {
+          "file": "highway/highway_45_narrow_bend45_level/lod0.glb",
+          "triangles": 9563
+        },
+        {
+          "file": "highway/highway_45_narrow_bend45_level/lod1.glb",
+          "triangles": 3705
+        },
+        {
+          "file": "highway/highway_45_narrow_bend45_level/lod2.glb",
+          "triangles": 1392
+        }
+      ],
+      "collider": "highway/highway_45_narrow_bend45_level/collision.glb",
+      "collisionTriangles": 1010,
+      "boundsLocalM": {
+        "min": [
+          -0.18490000069141388,
+          -10.0,
+          -2.7256999015808105
+        ],
+        "max": [
+          66.54940032958984,
+          9.471199989318848,
+          28.997299194335938
+        ]
+      },
+      "node": "highway_45_narrow_bend45_level",
+      "belowInletM": 10.0
+    },
+    {
+      "id": "highway_46_narrow_bend90_level",
+      "sourceGroup": 46,
+      "sockets": [
+        {
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "forwardXZ": [
+            0.99999,
+            0.00379
+          ],
+          "widthM": 4.6437
+        },
+        {
+          "position": [
+            45.75085,
+            0.0,
+            45.69878
+          ],
+          "forwardXZ": [
+            0.00492,
+            0.99999
+          ],
+          "widthM": 4.6437
+        }
+      ],
+      "lods": [
+        {
+          "file": "highway/highway_46_narrow_bend90_level/lod0.glb",
+          "triangles": 9909
+        },
+        {
+          "file": "highway/highway_46_narrow_bend90_level/lod1.glb",
+          "triangles": 4518
+        },
+        {
+          "file": "highway/highway_46_narrow_bend90_level/lod2.glb",
+          "triangles": 1578
+        }
+      ],
+      "collider": "highway/highway_46_narrow_bend90_level/collision.glb",
+      "collisionTriangles": 1224,
+      "boundsLocalM": {
+        "min": [
+          -0.1737000048160553,
+          -10.0,
+          -2.7256999015808105
+        ],
+        "max": [
+          48.476600646972656,
+          9.471199989318848,
+          45.92470169067383
+        ]
+      },
+      "node": "highway_46_narrow_bend90_level",
+      "belowInletM": 10.0
+    },
+    {
+      "id": "highway_47_narrow_straight_rise10",
+      "sourceGroup": 47,
+      "sockets": [
+        {
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "forwardXZ": [
+            1.0,
+            -0.0
+          ],
+          "widthM": 4.6437
+        },
+        {
+          "position": [
+            71.98892,
+            9.99988,
+            -0.0001
+          ],
+          "forwardXZ": [
+            1.0,
+            -0.0
+          ],
+          "widthM": 4.6437
+        }
+      ],
+      "lods": [
+        {
+          "file": "highway/highway_47_narrow_straight_rise10/lod0.glb",
+          "triangles": 8454
+        },
+        {
+          "file": "highway/highway_47_narrow_straight_rise10/lod1.glb",
+          "triangles": 3122
+        },
+        {
+          "file": "highway/highway_47_narrow_straight_rise10/lod2.glb",
+          "triangles": 1338
+        }
+      ],
+      "collider": "highway/highway_47_narrow_straight_rise10/collision.glb",
+      "collisionTriangles": 840,
+      "boundsLocalM": {
+        "min": [
+          -0.006399999838322401,
+          -10.0,
+          -3.1054999828338623
+        ],
+        "max": [
+          72.01380157470703,
+          18.357999801635742,
+          2.7262001037597656
+        ]
+      },
+      "node": "highway_47_narrow_straight_rise10",
+      "belowInletM": 10.0
+    },
+    {
+      "id": "highway_48_narrow_bend45_rise10",
+      "sourceGroup": 48,
+      "sockets": [
+        {
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "forwardXZ": [
+            0.99999,
+            0.00443
+          ],
+          "widthM": 4.6437
+        },
+        {
+          "position": [
+            64.5816,
+            9.99988,
+            27.07356
+          ],
+          "forwardXZ": [
+            0.70421,
+            0.71
+          ],
+          "widthM": 4.6437
+        }
+      ],
+      "lods": [
+        {
+          "file": "highway/highway_48_narrow_bend45_rise10/lod0.glb",
+          "triangles": 9931
+        },
+        {
+          "file": "highway/highway_48_narrow_bend45_rise10/lod1.glb",
+          "triangles": 3897
+        },
+        {
+          "file": "highway/highway_48_narrow_bend45_rise10/lod2.glb",
+          "triangles": 1451
+        }
+      ],
+      "collider": "highway/highway_48_narrow_bend45_rise10/collision.glb",
+      "collisionTriangles": 1076,
+      "boundsLocalM": {
+        "min": [
+          -0.01730000041425228,
+          -10.0,
+          -2.7256999015808105
+        ],
+        "max": [
+          66.52580261230469,
+          18.358800888061523,
+          28.999799728393555
+        ]
+      },
+      "node": "highway_48_narrow_bend45_rise10",
+      "belowInletM": 10.0
+    },
+    {
+      "id": "highway_49_narrow_bend90_rise10",
+      "sourceGroup": 49,
+      "sockets": [
+        {
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "forwardXZ": [
+            1.0,
+            0.00014
+          ],
+          "widthM": 4.6437
+        },
+        {
+          "position": [
+            45.67638,
+            9.99988,
+            45.65786
+          ],
+          "forwardXZ": [
+            0.00055,
+            1.0
+          ],
+          "widthM": 4.6437
+        }
+      ],
+      "lods": [
+        {
+          "file": "highway/highway_49_narrow_bend90_rise10/lod0.glb",
+          "triangles": 10144
+        },
+        {
+          "file": "highway/highway_49_narrow_bend90_rise10/lod1.glb",
+          "triangles": 4731
+        },
+        {
+          "file": "highway/highway_49_narrow_bend90_rise10/lod2.glb",
+          "triangles": 1755
+        }
+      ],
+      "collider": "highway/highway_49_narrow_bend90_rise10/collision.glb",
+      "collisionTriangles": 1425,
+      "boundsLocalM": {
+        "min": [
+          -0.006399999838322401,
+          -10.0,
+          -2.7256999015808105
+        ],
+        "max": [
+          48.402099609375,
+          18.359600067138672,
+          45.68259811401367
+        ]
+      },
+      "node": "highway_49_narrow_bend90_rise10",
+      "belowInletM": 10.0
+    },
+    {
+      "id": "highway_50_narrow_straight_level",
+      "sourceGroup": 50,
+      "sockets": [
+        {
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "forwardXZ": [
+            1.0,
+            -0.0
+          ],
+          "widthM": 4.6437
+        },
+        {
+          "position": [
+            71.99982,
+            0.0,
+            -0.0
+          ],
+          "forwardXZ": [
+            1.0,
+            -0.0
+          ],
+          "widthM": 4.6437
+        }
+      ],
+      "lods": [
+        {
+          "file": "highway/highway_50_narrow_straight_level/lod0.glb",
+          "triangles": 5415
+        },
+        {
+          "file": "highway/highway_50_narrow_straight_level/lod1.glb",
+          "triangles": 2329
+        },
+        {
+          "file": "highway/highway_50_narrow_straight_level/lod2.glb",
+          "triangles": 927
+        }
+      ],
+      "collider": "highway/highway_50_narrow_straight_level/collision.glb",
+      "collisionTriangles": 715,
+      "boundsLocalM": {
+        "min": [
+          -0.1745000034570694,
+          -20.0,
+          -3.1054000854492188
+        ],
+        "max": [
+          72.22650146484375,
+          9.471199989318848,
+          2.7262001037597656
+        ]
+      },
+      "node": "highway_50_narrow_straight_level",
+      "belowInletM": 20.0
+    },
+    {
+      "id": "highway_51_narrow_bend45_level",
+      "sourceGroup": 51,
+      "sockets": [
+        {
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "forwardXZ": [
+            0.99998,
+            0.00626
+          ],
+          "widthM": 4.6437
+        },
+        {
+          "position": [
+            64.61401,
+            -0.0,
+            27.07336
+          ],
+          "forwardXZ": [
+            0.70576,
+            0.70845
+          ],
+          "widthM": 4.6436
+        }
+      ],
+      "lods": [
+        {
+          "file": "highway/highway_51_narrow_bend45_level/lod0.glb",
+          "triangles": 9563
+        },
+        {
+          "file": "highway/highway_51_narrow_bend45_level/lod1.glb",
+          "triangles": 3701
+        },
+        {
+          "file": "highway/highway_51_narrow_bend45_level/lod2.glb",
+          "triangles": 1401
+        }
+      ],
+      "collider": "highway/highway_51_narrow_bend45_level/collision.glb",
+      "collisionTriangles": 1009,
+      "boundsLocalM": {
+        "min": [
+          -0.1850000023841858,
+          -20.0,
+          -2.7256999015808105
+        ],
+        "max": [
+          66.54609680175781,
+          9.471199989318848,
+          28.997400283813477
+        ]
+      },
+      "node": "highway_51_narrow_bend45_level",
+      "belowInletM": 20.0
+    },
+    {
+      "id": "highway_52_narrow_bend90_level",
+      "sourceGroup": 52,
+      "sockets": [
+        {
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "forwardXZ": [
+            0.99999,
+            0.00379
+          ],
+          "widthM": 4.6437
+        },
+        {
+          "position": [
+            45.75078,
+            0.0,
+            45.6989
+          ],
+          "forwardXZ": [
+            0.00492,
+            0.99999
+          ],
+          "widthM": 4.6436
+        }
+      ],
+      "lods": [
+        {
+          "file": "highway/highway_52_narrow_bend90_level/lod0.glb",
+          "triangles": 9911
+        },
+        {
+          "file": "highway/highway_52_narrow_bend90_level/lod1.glb",
+          "triangles": 4521
+        },
+        {
+          "file": "highway/highway_52_narrow_bend90_level/lod2.glb",
+          "triangles": 1580
+        }
+      ],
+      "collider": "highway/highway_52_narrow_bend90_level/collision.glb",
+      "collisionTriangles": 1212,
+      "boundsLocalM": {
+        "min": [
+          -0.1738000065088272,
+          -20.0,
+          -2.725800037384033
+        ],
+        "max": [
+          48.47650146484375,
+          9.471199989318848,
+          45.924800872802734
+        ]
+      },
+      "node": "highway_52_narrow_bend90_level",
+      "belowInletM": 20.0
+    },
+    {
+      "id": "stone_middle",
+      "node": "stone_middle",
+      "destructible": false,
+      "collisionTriangles": 1282,
+      "lods": [
+        {
+          "file": "stone/stone_bridge.lod0.glb",
+          "triangles": 1282
+        },
+        {
+          "file": "stone/stone_bridge.lod1.glb",
+          "triangles": 702
+        },
+        {
+          "file": "stone/stone_bridge.lod2.glb",
+          "triangles": 349
+        }
+      ],
+      "collider": "stone/stone_bridge.collision.glb",
+      "sockets": [
+        {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "forwardXZ": [
+            0,
+            -1
+          ],
+          "widthM": 11.5455
+        },
+        {
+          "position": [
+            0,
+            0,
+            -30
+          ],
+          "forwardXZ": [
+            0,
+            -1
+          ],
+          "widthM": 11.5455
+        }
+      ],
+      "boundsLocalM": {
+        "min": [
+          -11.339400291442871,
+          -14.36929988861084,
+          -30.0
+        ],
+        "max": [
+          11.339599609375,
+          2.986999988555908,
+          0.0
+        ]
+      }
+    },
+    {
+      "id": "stone_pedestal_large",
+      "node": "stone_pedestal_large",
+      "destructible": false,
+      "collisionTriangles": 262,
+      "lods": [
+        {
+          "file": "stone/stone_bridge.lod0.glb",
+          "triangles": 806
+        },
+        {
+          "file": "stone/stone_bridge.lod1.glb",
+          "triangles": 462
+        },
+        {
+          "file": "stone/stone_bridge.lod2.glb",
+          "triangles": 235
+        }
+      ],
+      "collider": "stone/stone_bridge.collision.glb",
+      "boundsLocalM": {
+        "min": [
+          -16.98579978942871,
+          -14.311200141906738,
+          -6.89870023727417
+        ],
+        "max": [
+          16.959800720214844,
+          6.570499897003174,
+          6.89870023727417
+        ]
+      }
+    },
+    {
+      "id": "stone_pedestal_small",
+      "node": "stone_pedestal_small",
+      "destructible": false,
+      "collisionTriangles": 261,
+      "lods": [
+        {
+          "file": "stone/stone_bridge.lod0.glb",
+          "triangles": 806
+        },
+        {
+          "file": "stone/stone_bridge.lod1.glb",
+          "triangles": 462
+        },
+        {
+          "file": "stone/stone_bridge.lod2.glb",
+          "triangles": 234
+        }
+      ],
+      "collider": "stone/stone_bridge.collision.glb",
+      "boundsLocalM": {
+        "min": [
+          -16.98579978942871,
+          -14.311200141906738,
+          -4.682700157165527
+        ],
+        "max": [
+          16.959800720214844,
+          6.570499897003174,
+          4.682700157165527
+        ]
+      }
+    },
+    {
+      "id": "stone_start",
+      "node": "stone_start",
+      "destructible": false,
+      "collisionTriangles": 754,
+      "lods": [
+        {
+          "file": "stone/stone_bridge.lod0.glb",
+          "triangles": 754
+        },
+        {
+          "file": "stone/stone_bridge.lod1.glb",
+          "triangles": 519
+        },
+        {
+          "file": "stone/stone_bridge.lod2.glb",
+          "triangles": 399
+        }
+      ],
+      "collider": "stone/stone_bridge.collision.glb",
+      "sockets": [
+        {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "forwardXZ": [
+            0,
+            -1
+          ],
+          "widthM": 11.5455
+        },
+        {
+          "position": [
+            0,
+            0,
+            -30
+          ],
+          "forwardXZ": [
+            0,
+            -1
+          ],
+          "widthM": 11.5455
+        }
+      ],
+      "boundsLocalM": {
+        "min": [
+          -11.554800033569336,
+          -14.348799705505371,
+          -30.0
+        ],
+        "max": [
+          11.553999900817871,
+          3.164599895477295,
+          2.1986000537872314
+        ]
+      }
+    },
+    {
+      "id": "stone_end",
+      "node": "stone_end",
+      "destructible": false,
+      "collisionTriangles": 754,
+      "lods": [
+        {
+          "file": "stone/stone_bridge.lod0.glb",
+          "triangles": 754
+        },
+        {
+          "file": "stone/stone_bridge.lod1.glb",
+          "triangles": 520
+        },
+        {
+          "file": "stone/stone_bridge.lod2.glb",
+          "triangles": 400
+        }
+      ],
+      "collider": "stone/stone_bridge.collision.glb",
+      "sockets": [
+        {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "forwardXZ": [
+            0,
+            -1
+          ],
+          "widthM": 11.5455
+        },
+        {
+          "position": [
+            0,
+            0,
+            -30
+          ],
+          "forwardXZ": [
+            0,
+            -1
+          ],
+          "widthM": 11.5455
+        }
+      ],
+      "boundsLocalM": {
+        "min": [
+          -11.554800033569336,
+          -14.348799705505371,
+          -32.19860076904297
+        ],
+        "max": [
+          11.553999900817871,
+          3.164599895477295,
+          0.0
+        ]
+      }
+    }
+  ],
+  "presets": [
+    {
+      "id": "stone_bridge_120m",
+      "destructible": false,
+      "lodFiles": [
+        "stone/stone_bridge.lod0.glb",
+        "stone/stone_bridge.lod1.glb",
+        "stone/stone_bridge.lod2.glb"
+      ],
+      "collisionFile": "stone/stone_bridge.collision.glb",
+      "placements": [
+        {
+          "node": "stone_middle",
+          "piece": "stone_middle",
+          "position": [
+            0.0,
+            0.0,
+            -30.0
+          ]
+        },
+        {
+          "node": "stone_pedestal_large",
+          "piece": "stone_pedestal_large",
+          "position": [
+            0.0,
+            0.0,
+            -2.17598
+          ]
+        },
+        {
+          "node": "stone_pedestal_small",
+          "piece": "stone_pedestal_small",
+          "position": [
+            0.0,
+            0.0,
+            -30.01788
+          ]
+        },
+        {
+          "node": "stone_start",
+          "piece": "stone_start",
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "node": "stone_end",
+          "piece": "stone_end",
+          "position": [
+            0.0,
+            0.0,
+            -90.0
+          ]
+        },
+        {
+          "node": "stone_middle_1",
+          "piece": "stone_middle",
+          "position": [
+            0.0,
+            0.0,
+            -60.0
+          ]
+        },
+        {
+          "node": "stone_pedestal_small_1",
+          "piece": "stone_pedestal_small",
+          "position": [
+            0.0,
+            0.0,
+            -45.00016
+          ]
+        },
+        {
+          "node": "stone_pedestal_small_2",
+          "piece": "stone_pedestal_small",
+          "position": [
+            0.0,
+            0.0,
+            -60.00016
+          ]
+        },
+        {
+          "node": "stone_pedestal_small_3",
+          "piece": "stone_pedestal_small",
+          "position": [
+            0.0,
+            0.0,
+            -75.00017
+          ]
+        },
+        {
+          "node": "stone_pedestal_large_1",
+          "piece": "stone_pedestal_large",
+          "position": [
+            0.0,
+            0.0,
+            -88.99971
+          ]
+        }
+      ],
+      "sockets": [
+        {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "forwardXZ": [
+            0,
+            -1
+          ],
+          "widthM": 11.5455
+        },
+        {
+          "position": [
+            0,
+            0,
+            -120
+          ],
+          "forwardXZ": [
+            0,
+            -1
+          ],
+          "widthM": 11.5455
+        }
+      ]
+    }
+  ]
+}

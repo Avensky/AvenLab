@@ -273,9 +273,11 @@ export const PIECES: Piece[] = [
     ],
   },
 ];
-export const MAX_LAYOUT_OBJECTS = 512,
-  MAX_LAYOUT_PARTS = 4096,
-  MAX_LAYOUT_BYTES = 2 * 1024 * 1024;
+// Harbor railings are independent, destructible modules rather than one long
+// collider. Leave headroom for their generated spans and for player edits.
+export const MAX_LAYOUT_OBJECTS = 3072,
+  MAX_LAYOUT_PARTS = 16384,
+  MAX_LAYOUT_BYTES = 8 * 1024 * 1024;
 export const pieceById = (id: string) =>
   PIECES.find((piece) => piece.id === id);
 export const snap = (value: number, step: number) =>
@@ -416,7 +418,7 @@ export function parseLayout(value: unknown, mapId?: string): WorldLayout {
 }
 export function parseLayoutText(text: string, mapId?: string) {
   if (new TextEncoder().encode(text).length > MAX_LAYOUT_BYTES)
-    throw Error("Layout JSON exceeds 2 MiB");
+    throw Error(`Layout JSON exceeds ${MAX_LAYOUT_BYTES / (1024 * 1024)} MiB`);
   const layout = parseLayout(JSON.parse(text), mapId);
   // Older saved coastal drafts have thin banks and omit some seabed tiles.
   // Validate the upgraded copy through the normal editor limits before use.

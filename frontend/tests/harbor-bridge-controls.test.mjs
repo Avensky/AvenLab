@@ -20,7 +20,7 @@ test('viaduct mouths share height and width, with ground access from both banks'
   assert(objects.filter(o=>o.piece==='downtown-metal-barrier' && o.destruction.enabled).length===14);
 });
 test('drawbridge holds a selected position and reverses continuously',()=>{
-  const raised=Math.PI/6;
+  const raised=70*Math.PI/180;
   const up={start_angle:0,start_tick:60,target_angle:raised,broken:null};
   assert.equal(bridgeAngle(1000,up),raised);
   const half=bridgeAngle(135,up);

@@ -160,7 +160,7 @@ export function CollisionBuilderPanel({
   const importFile = async (selected: File) => {
     const token = ++importSequence.current;
     try {
-      if (selected.size > MAX_JSON_BYTES) throw Error("Map JSON exceeds 2 MiB");
+      if (selected.size > MAX_JSON_BYTES) throw Error(`Map JSON exceeds ${MAX_JSON_BYTES / (1024 * 1024)} MiB`);
       const map = useWorldStore.getState().map,
         target = useBuilderStore.getState().doc?.map_id,
         doc = parseMapText(await selected.text(), target ?? map?.map_id);
