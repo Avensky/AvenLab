@@ -16,6 +16,8 @@ import {
 import { sourceSpawns } from "../document/spawnDocument";
 import { builderStorageKey, useBuilderStore } from "./builderStore";
 import { useLayoutStore } from "./layoutStore";
+import {requestSocial} from '../../net/socialClient';
+import {useSocialStore} from '../../store/social/socialStore';
 let request = 0;
 const bundledSources = new Map<string, MapDocument>();
 type LayoutSession = Pick<
@@ -84,6 +86,12 @@ async function readWorld(mapId: string) {
     } catch {
       /* Load the bundled map if a saved source is corrupt. */
     }
+  }
+  if(useSocialStore.getState().view?.alpha?.active?.mode==='editor'){
+    try{
+      const result=await requestSocial('editor_document_get',{map:mapId});
+      if(result.document)return parseMapText(JSON.stringify(result.document),mapId);
+    }catch{/* Older servers and disconnected previews use the bundled source. */}
   }
   const response = await fetch(`/world-builder/${mapId}_colliders.json`);
   if (!response.ok)
@@ -209,6 +217,14 @@ export async function openWorldBuilder() {
     if (!doc) {
       if (!/^[a-zA-Z0-9_-]{1,96}$/.test(map.map_id))
         throw Error("Invalid map id");
+      if(useSocialStore.getState().view?.alpha?.active?.mode==='editor'){
+        try{
+          const remote=await requestSocial('editor_document_get',{map:map.map_id});
+          if(remote.document)doc=parseMapText(JSON.stringify(remote.document),map.map_id);
+        }catch{/* Old server builds may not expose the saved revision yet. */}
+      }
+    }
+    if(!doc){
       const response = await fetch(
         `/world-builder/${map.map_id}_colliders.json`,
       );

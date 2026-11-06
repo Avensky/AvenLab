@@ -98,6 +98,14 @@ pub struct SocialData {
     pub friend_requests: BTreeSet<(String, String)>,
     pub groups: BTreeMap<String, Group>,
     pub worlds: BTreeMap<usize, World>,
+    /// Authoritative, validated editor documents shared by every player and
+    /// reloaded by the server after a restart. Browser drafts remain private.
+    #[serde(default)]
+    pub saved_maps: BTreeMap<String, serde_json::Value>,
+    /// Validated factory-relative vehicle tuning, explicitly published from
+    /// the editor. New spawns in every world adopt these server defaults.
+    #[serde(default)]
+    pub vehicle_defaults: BTreeMap<String, serde_json::Map<String,serde_json::Value>>,
     pub world_invites: Vec<WorldInvite>,
     #[serde(default)]
     pub completed_results: BTreeSet<String>,
@@ -112,6 +120,8 @@ impl Default for SocialData {
             friend_requests: BTreeSet::new(),
             groups: BTreeMap::new(),
             worlds: BTreeMap::new(),
+            saved_maps: BTreeMap::new(),
+            vehicle_defaults: BTreeMap::new(),
             world_invites: Vec::new(),
             completed_results: BTreeSet::new(),
         }
@@ -124,7 +134,7 @@ impl SocialData {
         }
         let bytes = std::fs::read(path)?;
         anyhow::ensure!(
-            bytes.len() <= 8 * 1024 * 1024,
+            bytes.len() <= 32 * 1024 * 1024,
             "Social data file is too large"
         );
         let mut data: Self = serde_json::from_slice(&bytes)?;
@@ -132,6 +142,8 @@ impl SocialData {
             data.version == 1
                 && data.profiles.len() <= MAX_PROFILES
                 && data.worlds.len() <= 256
+                && data.saved_maps.len() <= 8
+                && data.vehicle_defaults.len() <= 64
                 && data.groups.len() <= 256,
             "Unsupported or oversized social data"
         );

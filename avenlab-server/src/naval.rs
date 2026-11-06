@@ -7,6 +7,8 @@ use crate::powertrain::Demand;
 use crate::vehicle_state::VehicleStateFlags;
 
 pub const RESCUE_SHIP_ID:&str = "hawaii-rescue";
+pub const BATTLESHIP_ID:&str = "louisiana";
+pub fn is_ship(id:&str)->bool {matches!(id,RESCUE_SHIP_ID|BATTLESHIP_ID)}
 
 impl PhysicsWorld {
     pub(crate) fn apply_watercraft_forces(&mut self, dt:Real) {

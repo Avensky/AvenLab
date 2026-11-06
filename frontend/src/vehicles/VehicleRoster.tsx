@@ -151,6 +151,9 @@ function GlbVehicle({ entity }: { entity: RosterEntity }) {
     case "hawaii-rescue":
       model = <NavalVessel entityId={entity.id}/>;
       break;
+    case "louisiana":
+      model = <NavalVessel entityId={entity.id} model="louisiana"/>;
+      break;
 
     default:
       return <VehicleFallback entity={entity} />;
@@ -166,7 +169,7 @@ export const VehicleRoster = memo(function VehicleRoster() {
   const local=useConnectionView(s => s.playerId);
   const preview=useSelectionStore(s=>s.getSelectedVehicle().id);
   const previewHero=useAlphaStore(s=>s.previewHero);
-  const previewVehicle=previewHero==='hawaii-rescue'?'hawaii-rescue':preview;
+  const previewVehicle=previewHero==='hawaii-rescue'||previewHero==='louisiana'?previewHero:preview;
   const overrides = useRenderSettingsStore((s) => s.vehicleOverrides);
   const selectRoster = useMemo(createRosterSelector, []);
   const entities = useMotionView(selectRoster);

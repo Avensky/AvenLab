@@ -1,5 +1,5 @@
 import { useConnectionView, useMotionView } from "../store/session/networkViews";
-import {cameraGround} from '../utils/cameraGround';
+import {cameraGround,cameraSeabed} from '../utils/cameraGround';
 import {useWorldStore} from '../store/world/worldStore';
 import {TankScopeRig} from '../combat/TankScope';
 import {useCombatStore} from '../combat/combatStore';
@@ -40,6 +40,7 @@ const DEFAULT_CAMERA_PRESET: VehicleCameraPreset = {
 
 const VEHICLE_CAMERA_PRESETS: Record<string, VehicleCameraPreset> = {
   'hawaii-rescue': {offset:[0,50,-200],targetOffset:[0,13,65],positionSpeed:2.5,targetSpeed:3.5},
+  'louisiana': {offset:[0,68,-245],targetOffset:[0,20,82],positionSpeed:2.1,targetSpeed:3.0},
   ae86: {
     offset: [0, 2.2, -5.4],
     targetOffset: [0, 1.0, 5.5],
@@ -171,7 +172,8 @@ export default function Cameras() {
   useFrame(({camera}) => {
     if (screen !== 'sandbox') return;
     const p=camera.position;
-    if(!sinkingWreck)p.y=Math.max(p.y,cameraGround(useWorldStore.getState().map,p.x,p.z));
+    const map=useWorldStore.getState().map;
+    p.y=Math.max(p.y,sinkingWreck?cameraSeabed(map):cameraGround(map,p.x,p.z));
   }, -.01);
 
   if(scope&&screen==='sandbox'&&overlay===null&&playerVehicleId)return <TankScopeRig playerId={playerId}/>;

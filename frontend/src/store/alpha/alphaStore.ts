@@ -121,7 +121,8 @@ export const HEROES: {
   {id:"charger70", vehicle:"charger70", name:"1970 CHARGER R/T", role:"dps", note:"Rear-drive muscle for a heavy launch"},
   {id:"skyline34", vehicle:"skyline34", name:"SKYLINE R34", role:"dps", note:"Pursuit coupe for high-speed intercepts"},
   {id:"timecar", vehicle:"timecar", name:"TIME MACHINE", role:"dps", note:"Gull-wing pursuit car"},
-  {id:"hawaii-rescue", vehicle:"hawaii-rescue", name:"USS HAWAII", role:"support", note:"BOAT · rescue cruiser · propeller/rudder sea trial"},
+  {id:"hawaii-rescue", vehicle:"hawaii-rescue", name:"USS HAWAII", role:"support", note:"BOAT · 154 m rescue cruiser · propeller/rudder sea trial"},
+  {id:"louisiana",vehicle:"louisiana",name:"USS LOUISIANA",role:"tank",note:"BOAT · 188 m battleship · heavy displacement physics · turret rig pending"},
 ];
 export function heroForVehicle(vehicle: string | null | undefined) {
   return HEROES.find(hero => hero.vehicle === vehicle);

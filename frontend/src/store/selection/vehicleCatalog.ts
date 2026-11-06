@@ -163,4 +163,12 @@ export const vehicleCatalog: VehicleDefinition[] = [
   {id:"timecar", name:"Time Machine", role:"dps", description:"Gull-wing pursuit car.",
     canIdentity:{slug:"timecar-simulation",make:"Custom",model:"Time Machine",datasetKind:"simulation",notes:"AvenLab simulation profile."},
     stats:{armor:45,speed:82,handling:80,support:15}},
+  {id:"hawaii-rescue",name:"USS Hawaii · rescue ship",role:"utility",
+    description:"154 m watercraft with buoyancy, rudder and rescue deck assist.",
+    canIdentity:{slug:"hawaii-rescue-simulation",make:"AvenLab Fleet",model:"USS Hawaii",datasetKind:"simulation",notes:"Virtual naval telemetry; not an automotive CAN profile."},
+    stats:{armor:90,speed:18,handling:22,support:95}},
+  {id:"louisiana",name:"USS Louisiana · battleship",role:"tank",
+    description:"188 m battleship with heavy-displacement buoyancy and slower helm response.",
+    canIdentity:{slug:"louisiana-simulation",make:"AvenLab Fleet",model:"USS Louisiana",datasetKind:"simulation",notes:"Virtual naval telemetry; this asset is a battleship rather than a flight-deck carrier."},
+    stats:{armor:100,speed:14,handling:12,support:55}},
 ];

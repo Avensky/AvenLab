@@ -333,7 +333,15 @@ impl Server {
                     .await
             }
             "editor_apply" => self.apply_editor_document(player, value).await,
-            "editor_vehicle_get" | "editor_vehicle_apply" => self.edit_vehicle(player, value).await,
+            "editor_document_get" => {
+                let member=self.alpha.lock().await.members.get(player).cloned()
+                    .ok_or("Join the World Editor first.")?;
+                if member.mode!=Mode::Editor{return Err("Saved editor maps require the editor slot.".into());}
+                let map=value["map"].as_str().ok_or("Select an installed map.")?;
+                if !map_available(map){return Err("Map is not installed.".into());}
+                Ok(json!({"map":map,"document":self.data.lock().await.saved_maps.get(map)}))
+            },
+            "editor_vehicle_get" | "editor_vehicle_apply" | "editor_vehicle_publish" => self.edit_vehicle(player, value).await,
             "hero_loadout_save" => {
                 let actor=self.actor(player).await?;
                 let hero=value["hero"].as_str().ok_or("Choose a hero.")?;
@@ -379,7 +387,7 @@ impl Server {
     pub async fn validate_alpha_vehicle(&self, player: &str, vehicle: &str) -> Result<(), String> {
         let a = self.alpha.lock().await;
         if let Some(member) = a.members.get(player) {
-            if member.mode.bucket()==0 && vehicle==crate::naval::RESCUE_SHIP_ID {
+            if member.mode.bucket()==0 && crate::naval::is_ship(vehicle) {
                 return Err("Naval craft are available in Sandbox and World Editor, not this Quickplay rotation.".into());
             }
             if member.hero.is_empty() { return Err("Choose a hero before deploying.".into()); }
@@ -431,7 +439,7 @@ impl Server {
             .get(player)
             .cloned()
             .ok_or("Join a mode before locking a hero.")?;
-        if member.mode.bucket()==0 && selected.vehicle==crate::naval::RESCUE_SHIP_ID {
+        if member.mode.bucket()==0 && crate::naval::is_ship(selected.vehicle) {
             return Err("Naval craft are only selectable in Sandbox and World Editor.".into());
         }
         if member.mode.bucket() == 0 && self.alpha.lock().await.enforce_roles {
@@ -498,10 +506,15 @@ impl Server {
         let factory = crate::vehicle_setup::config_for_vehicle(vehicle_id).ok_or("Unknown vehicle.")?;
         let runtime = self.runtime(player).await?;
         let mut room = runtime.lock().await;
-        if value["action"] == "editor_vehicle_apply" {
+        if value["action"] == "editor_vehicle_apply" || value["action"] == "editor_vehicle_publish" {
             let patch = value["tuning"].as_object().ok_or("Supply a tuning object.")?;
             let config = crate::vehicle_tuning::validated_config(factory, patch)?;
             room.physics.configure_vehicle_for_player(player, config)?;
+            if value["action"] == "editor_vehicle_publish" {
+                let previous=self.data.lock().await.clone();
+                self.data.lock().await.vehicle_defaults.insert(vehicle_id.to_owned(),patch.clone());
+                self.commit(previous).await?;
+            }
             if let Some(entity) = room.game.entities.get_mut(player) { entity.last_packet = None; }
             if let Some(connection) = self.connections.lock().await.get(player) {
                 connection.input_tx.send_replace(None);
@@ -510,7 +523,8 @@ impl Server {
             for tx in room.game.clients.values() { let _ = tx.send(packet.clone()); }
         }
         let current = room.physics.vehicles.get(player).ok_or("Deploy a test vehicle first.")?.config;
-        Ok(json!({"vehicle":vehicle_id,"factory":factory,"current":current}))
+        Ok(json!({"vehicle":vehicle_id,"factory":factory,"current":current,
+            "published_default":self.data.lock().await.vehicle_defaults.get(vehicle_id)}))
     }
     async fn apply_editor_document(&self, player: &str, value: &Value) -> Result<Value, String> {
         let member = self
@@ -530,7 +544,7 @@ impl Server {
         if serde_json::to_vec(document)
             .map_err(|_| "Invalid document.")?
             .len()
-            > 768 * 1024
+            > 2 * 1024 * 1024
         {
             return Err("Editor document exceeds the alpha budget.".into());
         }
@@ -580,9 +594,9 @@ impl Server {
         if file
             .authored_layout
             .as_ref()
-            .is_some_and(|layout| layout.objects.len() > 256)
+            .is_some_and(|layout| layout.objects.len() > 2048)
         {
-            return Err("Live editor tests allow up to 256 authored pieces.".into());
+            return Err("Live editor tests allow up to 2048 authored pieces.".into());
         }
         if file.roads.iter().chain(file.buildings.iter()).any(|b| {
             b.pos
@@ -617,6 +631,7 @@ impl Server {
             .cloned()
             .ok_or("Connection closed.")?;
         let vehicle = policy::hero(&member.hero)?.vehicle;
+        let saved_document=document.clone();
         let mut physics = tokio::task::spawn_blocking(move || {
             crate::physics::PhysicsWorld::from_editor_document(file)
         })
@@ -658,7 +673,20 @@ impl Server {
         let packet = room.physics.map_snapshot_packet(world.id);
         let runtime = Arc::new(Mutex::new(room));
         // Environment switches update this editor slot only, after successful validation.
-        if let Some(record) = self.data.lock().await.worlds.get_mut(&member.world) { record.map = world.map.clone(); }
+        // One successful Apply now publishes a durable server-wide map revision.
+        // Commit before swapping the runtime; a failed disk write keeps both
+        // the previous live world and the previous saved map intact.
+        {
+            let mut data=self.data.lock().await;
+            if !data.saved_maps.contains_key(&world.map)&&data.saved_maps.len()>=8 {
+                return Err("Server map archive is full (eight editor environments).".into());
+            }
+            let previous=data.clone();
+            data.saved_maps.insert(world.map.clone(),saved_document);
+            if let Some(record)=data.worlds.get_mut(&member.world){record.map=world.map.clone();}
+            drop(data);
+            self.commit(previous).await?;
+        }
         // Only the editor slot is replaced, and only after the full build succeeded.
         self.runtimes
             .lock()

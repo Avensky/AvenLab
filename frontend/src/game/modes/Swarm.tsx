@@ -70,8 +70,12 @@ export function Swarm() {
               <img src="/images/heroes/hawaii-rescue.webp" alt="USS Hawaii rescue destroyer" className="h-40 w-full object-contain"/>
               <h2 className="text-xl font-black text-cyan-100">USS HAWAII · RESCUE CRUISER</h2>
               <p className="text-sm text-slate-300">Playable sea trial in Sandbox and World Editor. Water buoyancy, propeller thrust and rudder turning are server-simulated.</p>
+              <div className="flex items-center gap-3 border border-cyan-400/20 bg-slate-900/60 p-3">
+                <img src="/images/heroes/louisiana.svg" alt="Illustrated Louisiana battleship silhouette" className="h-20 w-32 object-cover"/>
+                <div><strong className="text-sm">USS LOUISIANA · BATTLESHIP</strong><p className="text-xs text-slate-300">188 m hull; heavy displacement physics and simplified collision. Original gun turrets need a separated mesh rig.</p></div>
+              </div>
               <p className="text-xs uppercase text-amber-300">Autonomous route, helicopter sorties, drones and live targeting: not deployed yet.</p>
-              <button onClick={openNavalTrial} className="w-full border border-cyan-300/50 bg-cyan-500/15 px-4 py-3 font-bold text-cyan-100">OPEN NAVAL SANDBOX</button>
+              <button onClick={openNavalTrial} className="w-full border border-cyan-300/50 bg-cyan-500/15 px-4 py-3 font-bold text-cyan-100">OPEN NAVAL SANDBOX · SELECT BOAT</button>
             </div>:<div role="tabpanel">
             <h2 className="mb-3 text-xl font-bold text-cyan-200">Asset Registry</h2>
 

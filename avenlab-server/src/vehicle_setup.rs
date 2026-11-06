@@ -80,6 +80,7 @@ pub fn config_for_vehicle(vehicle_id: &str) -> Option<VehicleConfig> {
 
         // Naval rescue craft; intentionally no wheels or tire contact solver.
         "hawaii-rescue" => Some(HAWAII_RESCUE),
+        "louisiana" => Some(LOUISIANA),
 
         _ => None,
     }
@@ -521,4 +522,23 @@ pub const HAWAII_RESCUE: VehicleConfig = VehicleConfig {
     wheel_radius: 1.0,
     max_steer_angle: 0.0,
     ..TANK
+};
+
+/// Art manifest dimensions: 188.08m long, 36.67m beam. A broad, heavy
+/// displacement hull rides on the same naval solver as Hawaii, but its single
+/// lower-hull Rapier collider does not approximate turrets or upper decks.
+pub const LOUISIANA: VehicleConfig = VehicleConfig {
+    hull_hp: 15_000.0,
+    mass: 48_000_000.0,
+    engine_force: 35_000_000.0,
+    brake_force: 22_000_000.0,
+    max_speed: 14.0,
+    linear_damping: 0.03,
+    angular_damping: 2.1,
+    chassis_half_extents: [18.335, 5.5, 94.04],
+    chassis_com_offset: [0.0, 0.0, 0.0],
+    wheels: 0,
+    wheel_radius: 1.0,
+    max_steer_angle: 0.0,
+    ..HAWAII_RESCUE
 };

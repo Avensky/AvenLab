@@ -89,6 +89,10 @@ export function VehicleEditorPanel() {
         receive(await requestSocial('editor_vehicle_apply', { tuning: draft }));
         setStatus('Applied. Vehicle stopped and suspension rebuilt at its current location.');
     });
+    const publish = () => run(async () => {
+        receive(await requestSocial('editor_vehicle_publish',{tuning:draft}));
+        setStatus('SAVED TO SERVER · New vehicles of this model in every world inherit this validated tune. Existing vehicles keep their current physics.');
+    });
     const test = () => { useInputStore.getState().releaseControls(); useUIStore.getState().closeOverlay(); };
     useEffect(() => {
         const navigate = (event: Event) => {
@@ -175,6 +179,7 @@ export function VehicleEditorPanel() {
       </div>
       {!['Weapons','Camera','Materials'].includes(tab) && <footer className="ve-actions">
         <button disabled={!reply || busy} onClick={() => void apply()}>{busy ? 'WORKING…' : 'APPLY PHYSICS'}</button>
+        <button disabled={!reply || busy || ['hawaii-rescue','louisiana'].includes(vehicle)} onClick={() => void publish()} title="Save this validated tuning as the server default for future spawns of this model">PUBLISH SERVER DEFAULT</button>
         <button disabled={!history.current.length || busy} onClick={() => { const previous = history.current.pop(); if (previous)
             setDraft(previous); }}>UNDO</button>
         <button disabled={!reply || busy} onClick={() => { setDraft(tuningOnly(reply!.current)); history.current = []; }}>REVERT DRAFT</button>
@@ -182,7 +187,7 @@ export function VehicleEditorPanel() {
         <button disabled={!reply || busy} onClick={() => { editor.save(vehicle, draft); setStatus('Preset saved in this browser. Apply physics to activate it.'); }}>SAVE PRESET</button>
         <button disabled={!editor.presets[vehicle] || busy} onClick={() => { const p = editor.presets[vehicle]; history.current.push(draft); setDraft({ ...p.tuning }); editor.setCamera(vehicle, { ...p.camera }); }}>LOAD PRESET</button>
       </footer>}
-      {!['Weapons','Camera','Materials'].includes(tab) && <p>Changes apply only to your isolated editor vehicle. Factory/reset and saved presets require Apply.</p>}
+      {!['Weapons','Camera','Materials'].includes(tab) && <p>APPLY changes only your test vehicle. PUBLISH saves a factory-relative default on the server for new spawns in every world; existing vehicles are not forcibly rebuilt. Naval mass/propeller tuning will get a dedicated editor.</p>}
     </>}
     <output role="status">{status}</output>
   </section>;

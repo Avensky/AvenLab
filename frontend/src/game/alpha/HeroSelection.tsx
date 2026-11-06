@@ -183,8 +183,9 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
     const focused = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>("[data-hero]");
     const id = focused?.dataset.hero ??
       useAlphaStore.getState().previewHero ??
-      HEROES.find((h) => (allowBoats||h.vehicle!=='hawaii-rescue') &&
-        (role==='all'||(role==='boat'?h.vehicle==='hawaii-rescue':h.role===role)))!.id;
+      HEROES.find((h) => (allowBoats||!['hawaii-rescue','louisiana'].includes(h.vehicle)) &&
+        (role==='all'||(role==='boat'?['hawaii-rescue','louisiana'].includes(h.vehicle):h.role===role)))?.id;
+    if (!id) return;
     void choose(id);
   }, [choose, role, allowBoats]);
   useSelectionNavigation(root, { confirm, back, direction, tab });

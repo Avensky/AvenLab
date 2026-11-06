@@ -4,6 +4,9 @@ import {parseMapDocument} from '../frontend/src/worldBuilder/document/mapDocumen
 import {createHash} from 'node:crypto';
 const source=new URL('../avenlab-server/src/assets/blocks/',import.meta.url),target=new URL('../frontend/public/world-builder/',import.meta.url);
 const checking=process.argv.includes('--check');
+// Patch installation must never remove unrelated user-authored exports in this
+// ignored directory. The published catalog still lists installed server maps only.
+const preserveExtras=process.argv.includes('--preserve-extras');
 async function syncedWrite(location,bytes){
  if(!checking){await writeFile(location,bytes);return;}
  const actual=await readFile(location).catch(()=>null);
@@ -27,7 +30,7 @@ if(!checking)await mkdir(new URL('../frontend/src/store/selection/generated/',im
 await syncedWrite(new URL('../frontend/src/store/selection/generated/maps.json',import.meta.url),JSON.stringify(catalog,null,2)+'\n');
 
 const retained=new Set(entries.map(m=>m.file));
-for(const file of await readdir(target)) if(/^[a-zA-Z0-9_-]+_colliders\.json$/.test(file)&&!retained.has(file)){
+for(const file of await readdir(target)) if(!preserveExtras&&/^[a-zA-Z0-9_-]+_colliders\.json$/.test(file)&&!retained.has(file)){
  if(checking)throw Error(`Removed world is still published: ${file}`);
  await unlink(new URL(file,target));
 }

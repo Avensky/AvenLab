@@ -1,10 +1,12 @@
 import data from "./carrierDeck.json" with {type:"json"};
 import type {Piece, LayoutPart, V3} from "../document/layoutDocument.ts";
 import {burkeSize,burkeCollisionParts,burkeKeelY} from "./burkeDeck.ts";
+import {LOUISIANA_SIZE,louisianaCollisionParts} from './navalHullSpecs.ts';
 
 export const CARRIER = "big-e-docked";
 export const DESTROYER="arleigh-burke-docked";
 export const HAWAII_DOCKED='hawaii-rescue-docked';
+export const LOUISIANA_DOCKED='louisiana-docked';
 export const LIFT = "canal-lift";
 // Small enough that a car breaks one panel, rather than removing a whole road edge.
 export const GUARDRAIL_MODULE_METERS = 3.6;
@@ -38,6 +40,10 @@ export const harborPieces: Piece[] = [{
     {shape:'box',position:[0,.32,0],size:[.92,.52,.94]},
     {shape:'box',position:[0,.72,0],size:[.87,.045,.88]},
   ],
+}, {
+  id:LOUISIANA_DOCKED,label:'USS Louisiana · battleship (docked)',category:'boats',
+  description:'188 m historical-style battleship · hull, three deck zones and bridge collision; its source GLB contains one merged mesh, so original gun turrets do not animate.',
+  size:LOUISIANA_SIZE,color:'#4e626d',parts:louisianaCollisionParts,
 }, {
   id:'naval-route-waypoint',label:'Rescue ship · route waypoint',category:'boats',
   description:'Place successive markers at SEA LEVEL to record a future cruiser patrol/rescue route. Non-colliding authoring guide.',
@@ -82,9 +88,10 @@ export function guardrailRun(id:string,x1:number,z1:number,x2:number,z2:number,s
 export function deckPanorama(item:import("../document/layoutDocument.ts").LayoutObject,
     objects:import("../document/layoutDocument.ts").LayoutObject[]){
   const [x,y,z]=item.position, yaw=item.yaw*Math.PI/180;
-  const destroyer=item.piece===DESTROYER;
+  const destroyer=[DESTROYER,HAWAII_DOCKED,LOUISIANA_DOCKED].includes(item.piece);
   const fore=item.size[2]*(destroyer ? .38 : -.28);
-  const deckEye=destroyer?(-2.85-burkeKeelY)*item.size[1]/burkeSize[1]+3.5:Math.max(5,item.size[1]*.13);
+  const deckEye=item.piece===DESTROYER?(-2.85-burkeKeelY)*item.size[1]/burkeSize[1]+3.5:
+    destroyer?item.size[1]*.34:Math.max(5,item.size[1]*.13);
   const eye:V3=[x+fore*Math.sin(yaw),y+deckEye,z+fore*Math.cos(yaw)];
   let shore:V3=[0,y,0],nearest=Infinity;
   for(const o of objects){

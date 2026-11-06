@@ -12,7 +12,7 @@ pub struct Hero {
     pub vehicle: &'static str,
     pub role: Role,
 }
-pub const HEROES: [Hero; 16] = [
+pub const HEROES: [Hero; 17] = [
     Hero {
         id: "tank",
         vehicle: "tank",
@@ -54,6 +54,7 @@ pub const HEROES: [Hero; 16] = [
     Hero { id: "timecar", vehicle: "timecar", role: Role::Dps },
     // An optional naval sandbox/editor platform, not a competitive role slot.
     Hero { id: "hawaii-rescue", vehicle: "hawaii-rescue", role: Role::Support },
+    Hero { id: "louisiana", vehicle: "louisiana", role: Role::Tank },
 ];
 pub fn hero(id: &str) -> Result<Hero, String> {
     HEROES

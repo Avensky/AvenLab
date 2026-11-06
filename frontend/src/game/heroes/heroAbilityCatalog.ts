@@ -72,6 +72,20 @@ const tank:HeroAbilityGuide={
  * ability slots and one ultimate slot; unfinished actions stay visibly planned. */
 export function getHeroAbilityGuide(hero:string):HeroAbilityGuide{
  if(hero==='tank')return tank;
+ if(hero==='hawaii-rescue'||hero==='louisiana'){
+  const rescue=hero==='hawaii-rescue';
+  return {
+   hero,role:rescue?'SUPPORT / NAVAL':'TANK / NAVAL',hp:rescue?6500:15000,
+   description:rescue?'154 m rescue destroyer with water buoyancy, propeller thrust, helm response and a deck that automatically slows landing vehicles.':'188 m heavy battleship with full-size displacement collision. Original turrets are part of one merged GLB mesh; individual gun rotation needs a new rig.',
+   weapons:[planned('ship-main-guns','NAVAL MAIN GUNS','Server-side traverse, target acquisition, projectile ballistics and impact damage are not connected to this model yet.','cannon')],
+   abilities:[
+    {id:'ship-helm',name:'HELM / REVERSE',icon:'boost',state:'live',description:'Thrust, water resistance and heading are simulated on the Rust server. The ship turns with forward or reverse way, rather than pivoting like a tank.',stats:[{label:'Hull',value:rescue?'154 m × 24 m':'188.08 m × 36.67 m'},{label:'Top trial speed',value:rescue?'16 m/s':'14 m/s'}]},
+    {id:'deck-brake',name:'LANDING DECK BRAKE',icon:'shield',state:'live',description:'When a car touches the broad rescue deck, the server reduces relative sliding. This passive assist does not teleport or attach the car.',stats:[{label:'Activation',value:'Automatic on deck contact'}]},
+    planned('naval-escort','ESCORT & COVER','Automated radar scans, directed turrets and nearby escort AI will be added after ship rigs and authoritative weapons.','scope'),
+   ],
+   ultimate:planned('rescue-sortie',rescue?'HELICOPTER RESCUE SORTIE':'BATTLE GROUP BARRAGE',rescue?'Two helicopters and drones deploy to cover a rescued car, then return to their host.':'Turrets coordinate suppressive fire on targets identified by allied ships.','cannon'),
+  };
+ }
  const definition=HEROES.find(item=>item.id===hero)??HEROES.find(item=>item.id==='brz')!;
  const support=definition.role==='support',mechanic=definition.id==='mechanic',guardDps=definition.id==='brz',suv=definition.id==='cx30';
  const primary:HeroAbility=mechanic?{

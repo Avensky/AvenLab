@@ -1067,7 +1067,8 @@ impl PhysicsWorld {
             let yaw=if team=="red" {0.0}else {std::f32::consts::PI};
             let berth_x=0.0;
             let water=coast.water_surface_at(berth_x,z).ok_or("Naval berth has no water")?;
-            if coast.water_surface_at(berth_x,z-75.0).is_none() || coast.water_surface_at(berth_x,z+75.0).is_none() {
+            let half_length=config.chassis_half_extents[2];
+            if coast.water_surface_at(berth_x,z-half_length).is_none() || coast.water_surface_at(berth_x,z+half_length).is_none() {
                 return Err("Naval berth is too short for this hull".into());
             }
             if self.vehicles.values().any(|v|self.bodies.get(v.body).is_some_and(|b|{

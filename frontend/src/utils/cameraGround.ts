@@ -56,3 +56,12 @@ export function cameraGround(map: MapSnapshot | null, x:number, z:number) {
   // Keep the spectator above the deepest seabed through an out-of-bounds fall.
   return Math.max(top,floor) + .35;
 }
+
+/** Defeated vehicles can sink and the camera should follow, including below
+ * water. Only the actual seabed limits the camera: elevated roads, docks and
+ * the water-surface visual must not trap it above the wreck. */
+export function cameraSeabed(map:MapSnapshot|null):number {
+  if(!map?.authored_layout)return -Infinity;
+  const beds=map.authored_layout.objects.filter(o=>o.piece==='harbor-seabed');
+  return beds.length ? Math.min(...beds.map(o=>o.position[1]+o.size[1]))+.6 : -Infinity;
+}

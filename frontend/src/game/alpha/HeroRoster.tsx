@@ -40,8 +40,8 @@ export function HeroRoster({
         }
       >
         {HEROES.filter((hero) =>
-          (allowBoats || hero.vehicle !== 'hawaii-rescue') &&
-          (filter === 'all' || (filter === 'boat' ? hero.vehicle === 'hawaii-rescue' : hero.role === filter))
+          (allowBoats || !['hawaii-rescue','louisiana'].includes(hero.vehicle)) &&
+          (filter === 'all' || (filter === 'boat' ? ['hawaii-rescue','louisiana'].includes(hero.vehicle) : hero.role === filter))
         ).map(
           (hero) => (
             <button

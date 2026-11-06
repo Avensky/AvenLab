@@ -1,5 +1,6 @@
 export const VEHICLE_MODEL_PATHS = {
   "hawaii-rescue": "/models/fleet/hawaii-rescue.glb",
+  "louisiana": "/models/fleet/louisiana-lod0.glb",
   enforcer: "/models/vehicles/enforcer.glb",
   interceptor: "/models/vehicles/interceptor.glb",
   charger70: "/models/vehicles/charger70.glb",

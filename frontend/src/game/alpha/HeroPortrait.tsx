@@ -42,7 +42,7 @@ export const HeroPortrait = memo(function HeroPortrait({ hero, className = "", a
     return () => { live = false; window.clearTimeout(timer); };
   }, [deferred, custom, key, model]);
   const ready = cached || (custom && image.key === key && image.src);
-  const src = ready || (item ? `/images/heroes/${item.vehicle}.webp` : "");
+  const src = ready || (item ? item.vehicle==='louisiana'?'/images/heroes/louisiana.svg':`/images/heroes/${item.vehicle}.webp` : "");
   return (
     <span className={`hero-portrait-art ${className}`} data-role={item?.role} data-cache-only={deferred} data-style={custom ? ready ? "ready" : deferred ? "deferred" : image.key === key ? "unavailable" : "loading" : "factory"} style={{ "--portrait-paint": style.body === "factory" ? "#bac5cf" : style.body === "theme" ? "var(--app-accent)" : style.body } as CSSProperties}>
       {item && src !== failedSrc ? <img src={src} width="320" height="216" alt="" decoding="async" draggable={false} onError={() => setFailedSrc(src)} /> : <span className="hero-portrait-fallback" aria-hidden="true">{item?.name.slice(0, 2) ?? "?"}</span>}

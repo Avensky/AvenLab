@@ -326,7 +326,17 @@ impl Server {
                 return Err("The active-world limit has been reached. Join an active world or wait for one to empty.".into());
             }
             let map = world.map.clone();
-            let mut loaded = tokio::task::spawn_blocking(move || WorldRuntime::new(world_id, &map))
+            let saved_map=self.data.lock().await.saved_maps.get(&map).cloned();
+            let mut loaded = tokio::task::spawn_blocking(move || {
+                if let Some(saved) = saved_map {
+                    let file: crate::world::block_colliders::BlockColliderFile = serde_json::from_value(saved)
+                        .map_err(|_| "Saved editor map is invalid. Restore the previous revision.".to_string())?;
+                    if file.map_id!=map {return Err("Saved editor map ID does not match its environment.".into());}
+                    let physics=crate::physics::PhysicsWorld::from_editor_document(file).map_err(|e|e.to_string())?;
+                    let mut game=crate::state::SharedGameState::new();game.room_id=world_id;
+                    Ok(WorldRuntime::from_parts(game,physics))
+                }else{WorldRuntime::new(world_id, &map)}
+            })
                 .await
                 .map_err(|_| "Could not load the world.")??;
             loaded.physics.set_tire_thermals(world.tire_thermals);
@@ -442,11 +452,23 @@ impl Server {
         let [dive_cooldown,guard_cooldown,heal_cooldown]=if let Some(profile)=profile.as_deref() {
             self.revivals.lock().await.ability_cooldowns(profile,["dive_shield",guard_ability,"heal_pack"])
         } else {[0.0;3]};
+        let server_default=self.data.lock().await.vehicle_defaults.get(vehicle).cloned();
         let mut room = runtime.lock().await;
         if room.round.as_ref().is_some_and(|r| r.phase == crate::ctf::CtfPhase::Ended) {
             return Err("This match has ended. Start another match to deploy.".into());
         }
+        let initial=!room.physics.vehicles.contains_key(player);
         room.spawn(player, vehicle)?;
+        if initial {
+            if let Some(patch)=server_default {
+                let factory=crate::vehicle_setup::config_for_vehicle(vehicle).ok_or("Unknown vehicle.")?;
+                let config=crate::vehicle_tuning::validated_config(factory,&patch)?;
+                room.physics.configure_vehicle_for_player(player,config)?;
+                room.game.broadcast_vehicle_config_json(player,serde_json::json!({
+                    "type":"vehicle_config","data":crate::state::VehicleConfigPayload::new(player,config)
+                }));
+            }
+        }
         room.physics.set_assigned_hero(player,&assigned);
         let retained_guard_cooldown=room.physics.guard_view(player).cooldown_s.max(guard_cooldown);
         let guard=room.physics.guard_boosts.entry(player.into()).or_default();
