@@ -74,7 +74,7 @@ test('all mountain presets place successfully and budgets reject oversize genera
   for (const piece of ['mountain-segment-small', 'mountain-segment-standard', 'mountain-segment-long', 'mountain-segment-broad', 'mountain-curved-tunnel', 'mountain-canal-cut'])
     assert.doesNotThrow(() => addPiece(base(), piece, [0, 0, 0]), piece);
   assert.throws(() => excavateRoute(base(), options({ width: NaN })), /width/);
-  assert.throws(() => excavateRoute(base(), options({ points: [[0, 0, 0], [0, 2, 10]] })), /level/);
+  assert.throws(() => excavateRoute(base(), options({ kind: 'canal', points: [[0, 0, 0], [0, 2, 10]] })), /level/);
   const doc = base(), box = colliderBox('box', 'box', [0, 0, 0], [1, 1, 1]);
   box.parts = Array.from({ length: 512 }, () => box.parts[0]);
   doc.objects = Array.from({ length: 33 }, (_, i) => ({ ...box, id: `box-${i}` }));
@@ -97,4 +97,19 @@ test('Harbor Exchange exports only explicit collision geometry with connected ra
     const z = ramp.position[2] + (t - .5) * ramp.size[0];
     assert(doc.objects.some(o => occupies(o, [ramp.position[0], t * 10 - .05, z])), `ramp support at ${z}`);
   }
+});
+
+test('graded floors follow the centreline and shoulders widen the physical corridor',()=>{
+ for(const grade of [-25,25]){
+ const points=presetPath(24,0,[0,5,0],0,grade);
+ const result=excavateRoute(base(),options({points,shoulder:3}));
+ const floors=result.doc.objects.filter(o=>o.piece==='excavated-road');
+ for(let i=0;i<floors.length;i++){
+ const a=points[i],b=points[i+1],mid=[(a[0]+b[0])/2,(a[1]+b[1])/2-.1,(a[2]+b[2])/2];
+ assert(occupies(floors[i],mid));assert(floors[i].parts[0].rise);
+ assert(floors[i].size[2]>18);
+ }
+ assert.equal(points.at(-1)[1],5+24*grade/100);
+ }
+ assert.throws(()=>excavateRoute(base(),options({points:[[0,0,0],[0,4,10]]})),/30%/);
 });

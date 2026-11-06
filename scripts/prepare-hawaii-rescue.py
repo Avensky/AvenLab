@@ -70,7 +70,7 @@ for obj in objects:
     obj.matrix_world = matrix
 root.rotation_euler.z = -math.pi / 2
 
-model_path = root_dir / "frontend/public/models/fleet/hawaii-rescue.glb"
+model_path = root_dir / "frontend/public/models/vehicles/fleet/destroyers/hawaii-rescue/model.glb"
 model_path.parent.mkdir(parents=True, exist_ok=True)
 bpy.ops.export_scene.gltf(
     filepath=str(model_path), export_format="GLB", use_selection=False,

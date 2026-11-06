@@ -2,7 +2,7 @@
 
 ## Current asset classification
 
-`models/fleet/manifest.json` identifies **USS Louisiana (1949)** as a **battleship**, roughly 188.08 m long and 36.67 m abeam. It is not an aircraft carrier. This is the new selectable heavy surface combatant, alongside the 154 m Hawaii rescue cruiser. The existing Big E docked flight deck stays available in the classic harbor map until a replacement carrier asset can support aircraft, a usable flight deck and shore ramps.
+`models/vehicles/fleet/manifest.json` identifies **USS Louisiana (1949)** as a **battleship**, roughly 188.08 m long and 36.67 m abeam. It is not an aircraft carrier. This is the new selectable heavy surface combatant, alongside the 154 m Hawaii rescue cruiser. The existing Big E docked flight deck stays available in the classic harbor map until a replacement carrier asset can support aircraft, a usable flight deck and shore ramps.
 
 The Louisiana source GLB contains one merged mesh. Its detailed guns and antenna geometry render, but individual original turrets and antennas **cannot yet track a target or spin independently**. Do not imply working weapons based on visual animation. The asset needs an exported hierarchy with separate pivots and clean local origins, or a dedicated rig, before implementing those effects.
 

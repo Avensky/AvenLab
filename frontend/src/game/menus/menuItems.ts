@@ -8,7 +8,7 @@ export const MAIN_MENU_ITEMS = [
     available: true,
   },
   {id:"explore",label:"Explore & build",description:"Sandbox, World Editor and research tools.",screen:"mode_select",available:true},
-  {id:"heroes",label:"Heroes",description:"Default hero, paint, collection and loadouts.",screen:"heroes",available:true},
+  {id:"heroes",label:"Vehicle Mods",description:"Performance builds, paint, collection and loadouts.",screen:"heroes",available:true},
   {
     id: "career",
     label: "Career",

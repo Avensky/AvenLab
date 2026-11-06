@@ -40,7 +40,7 @@ if not exist "frontend\src\ui\Minimap\SurveyMap.tsx" goto missing_patch
 if not exist "frontend\scripts\build-harbor-facades.mjs" goto missing_patch
 :assets
 echo Preparing the harbor assets in "%CD%"...
-git lfs pull --include="frontend/public/models/roads/**,frontend/public/models/world/garage_special.glb,frontend/public/models/world/big-e-docked.glb,frontend/public/models/chuncks/chunck_0,0_2x2_blocks_centered_textures512.glb" || goto asset_error
+git lfs pull --include="frontend/public/models/roads/**,frontend/public/models/world/garage_special.glb,frontend/public/models/vehicles/fleet/carriers/big-e/docked.glb,frontend/public/models/chuncks/chunck_0,0_2x2_blocks_centered_textures512.glb" || goto asset_error
 call npm ci --prefix frontend --no-audit --no-fund || goto dependency_error
 node frontend\scripts\build-harbor-facades.mjs || goto asset_error
 echo Harbor update installed. Restart the server and client with your usual dev command.

@@ -44,7 +44,7 @@ test("all dock plans have ten spawns, the surface crossings and viaduct and no h
   }
 });
 test("runtime CVN-65 is one embedded indexed primitive and supplies a measured deck",()=>{
-  const b=fs.readFileSync(new URL("../public/models/world/big-e-docked.glb",import.meta.url));
+  const b=fs.readFileSync(new URL("../public/models/vehicles/fleet/carriers/big-e/docked.glb",import.meta.url));
   assert.equal(b.readUInt32LE(8),b.length);
   const model=JSON.parse(b.subarray(20,20+b.readUInt32LE(12)));
   const position = model.accessors[model.meshes[0].primitives[0].attributes.POSITION];

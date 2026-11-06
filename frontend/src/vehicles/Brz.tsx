@@ -1,3 +1,4 @@
+import {vehicleModelUrl} from './assetCatalog.ts';
 import {brzWheelAxle} from "./tools/brzWheelAxle";
 import { measuredWheelHub } from "./tools/vehicleVisualRig";
 import { useLiveAppearance } from "./cosmetics/useLiveAppearance";
@@ -32,7 +33,7 @@ import {
 } from "../store";
 import { useVehiclePhysicsInterpolator } from "../hooks/usePhysicsInterpolator";
 
-const MODEL_PATH = "/models/vehicles/brz.glb";
+const MODEL_PATH = vehicleModelUrl('brz');
 
 // Use the exported asset transform beneath the backend body pose. There is
 // no runtime body-height correction: road alignment belongs to the map data.

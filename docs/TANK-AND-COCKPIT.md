@@ -6,7 +6,7 @@ Steering calibration and the secondary-weapon status below are superseded by [TA
 
 ## Tank model and collision
 
-Uses the supplied, original `frontend/public/models/vehicles/tank.glb`.
+Uses the supplied, original `frontend/public/models/vehicles/land/armored/tank/model.glb`.
 SHA-256: bb4a5d63a134adfe0eb6d426bd8fa91e3c5a4a4656268b50120f28854d813452.
 This matches the repository's Git LFS object; no re-export or asset rename is
 required. Keep the real GLB present when building/testing, not its LFS pointer.

@@ -79,6 +79,15 @@ impl PhysicsWorld {
     /// Sense and solve each substep. Snapshot geometry is refreshed separately
     /// after Rapier finishes integrating the outer step.
     pub(crate) fn apply_vehicle_forces(&mut self, dt: Real) {
+        // Snapshot eligible road cars before mutable wheel/body updates.
+        let draft_cars:Vec<_>=self.wheels.iter().filter_map(|(handle,wheels)|{
+            let id=self.body_to_player.get(handle)?;
+            let car=self.vehicles.get(id)?;let body=self.bodies.get(*handle)?;
+            if car.config.tracked||wheels.is_empty()||self.vehicle_health.get(id).is_some_and(|h|h.defeated){return None;}
+            let forward=body.rotation()*Vector::z();
+            if body.linvel().dot(&forward)<12.0{return None;}
+            Some((*handle,*body.translation(),forward,car.config.chassis_half_extents[2]))
+        }).collect();
         // Reuse per-call buffers across vehicles; no data survives a substep.
         let mut thermal_dt=0.0;
         if self.tire_thermals {
@@ -91,6 +100,21 @@ impl PhysicsWorld {
         for (&handle, wheels) in self.wheels.iter_mut() {
             let Some(body_ro) = self.bodies.get(handle) else { continue };
             let Some(player_id) = self.body_to_player.get(&handle) else { continue };
+            let mut drafting=0.0_f32;
+            if let Some((_,position,forward,half))=draft_cars.iter().find(|c|c.0==handle){
+                for (leader,target,direction,leader_half) in &draft_cars {
+                    if *leader==handle{continue;}
+                    let delta=*target-*position;
+                    let ahead=delta.dot(forward);
+                    let lateral=(delta-forward*ahead).norm();
+                    let factor=draft_reduction(ahead-half-leader_half,lateral,forward.dot(direction));
+                    if factor<=drafting{continue;}
+                    let distance=delta.norm();
+                    let ray=Ray::new(Point::from(*position),delta/distance);
+                    if self.query_pipeline.cast_ray(&self.bodies,&self.colliders,&ray,distance,true,QueryFilter::default().exclude_sensors().exclude_rigid_body(handle))
+                        .is_some_and(|(hit,_)|self.colliders.get(hit).and_then(|c|c.parent())==Some(*leader)){drafting=factor;}
+                }
+            }
             let Some(vehicle) = self.vehicles.get_mut(player_id) else { continue };
             let disabled = self.vehicle_health.get(player_id).is_some_and(|h|h.defeated);
             if wheels.is_empty() { continue; }
@@ -363,6 +387,9 @@ impl PhysicsWorld {
             let planar_speed=(velocity.x*velocity.x+velocity.z*velocity.z).sqrt();
             if planar_speed>0.001 {
                 let force=vehicle.config.resources.road_resistance(vehicle.config.engine_force,body_mass,vehicle.config.linear_damping,vehicle.config.max_speed*ram_speed*nos_speed,planar_speed,contacts.iter().any(|p|p.grounded));
+                let aero=vehicle.config.resources.road_resistance(vehicle.config.engine_force,body_mass,vehicle.config.linear_damping,vehicle.config.max_speed*ram_speed*nos_speed,planar_speed,false);
+                let reduction=if !disabled && contacts.iter().filter(|p|p.grounded).count()>=2 {drafting}else{0.0};
+                let force=(force-aero*reduction).max(0.0);
                 let impulse=(force*dt).min(body_mass*planar_speed);
                 impulses.linear.push(vector![-velocity.x/planar_speed*impulse,0.0,-velocity.z/planar_speed*impulse]);
             }
@@ -621,5 +648,21 @@ mod tests {
                 assert!((local - expected).norm() < 0.0001);
             }
         }
+    }
+}
+
+/// Arcade wake: at most 30% of aerodynamic resistance, never extra propulsion.
+fn draft_reduction(gap:f32,lateral:f32,alignment:f32)->f32 {
+    if !gap.is_finite()||!lateral.is_finite()||!alignment.is_finite()||gap<=1.0||gap>=35.0||lateral>=2.5||alignment<=0.95{return 0.0;}
+    0.30*((gap-1.0)/4.0).min(1.0)*(1.0-gap/35.0)*(1.0-lateral/2.5)*((alignment-0.95)/0.05).clamp(0.0,1.0)
+}
+#[cfg(test)]
+mod drafting_tests {
+    use super::draft_reduction;
+    #[test] fn wake_is_bounded_and_requires_ahead_alignment(){
+        assert!(draft_reduction(6.0,0.0,1.0)>0.2);
+        for (gap,side,heading) in [(-5.0,0.0,1.0),(0.0,0.0,1.0),(40.0,0.0,1.0),(6.0,3.0,1.0),(6.0,0.0,-1.0)]{assert_eq!(draft_reduction(gap,side,heading),0.0);}
+        for gap in 0..100 {assert!((0.0..=0.3).contains(&draft_reduction(gap as f32,0.0,1.0)));}
+        assert!(draft_reduction(8.0,0.0,1.0)>draft_reduction(8.0,1.0,1.0));
     }
 }

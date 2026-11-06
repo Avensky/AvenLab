@@ -7,9 +7,9 @@ and carrier-to-escort boarding before attempting moving platforms or buoyancy.
 
 ## What is implemented
 
-- `public/models/fleet/burke-lod0.glb`: 80,609 triangles, self-contained gray
+- `public/models/vehicles/fleet/destroyers/burke/model.glb`: 80,609 triangles, self-contained gray
   PBR materials. The source Blender model's 22 missing textures are not needed.
-- `public/models/fleet/burke-lod1.glb`: 47,381 triangles; swap at approximately
+- `public/models/vehicles/fleet/destroyers/burke/lod-medium.glb`: 47,381 triangles; swap at approximately
   220 m through a shared R3F detail component.
 - 154 m length and 21.3 m beam; exported GLB is Y-up and its bow is rotated to
   AvenLab's usual local **-Z** forward in the renderer.

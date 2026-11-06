@@ -99,7 +99,7 @@ test('Tank falls back to the track center when an export has no named chassis', 
   tracks.geometry.dispose(); cannon.geometry.dispose(); material.dispose();
 });
 
-const tankPath = new URL('../public/models/vehicles/tank.glb', import.meta.url);
+const tankPath = new URL('../public/models/vehicles/land/armored/tank/model.glb', import.meta.url);
 const tankBytes = fs.existsSync(tankPath) ? fs.readFileSync(tankPath) : Buffer.alloc(0);
 test('the shared reference matches the shipped Tank chassis rather than its longer cannon', {
   skip: tankBytes.subarray(0, 4).toString() !== 'glTF' ? 'Materialize the real Tank GLB with Git LFS' : false,

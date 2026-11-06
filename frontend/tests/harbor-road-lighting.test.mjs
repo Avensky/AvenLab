@@ -1,3 +1,4 @@
+import {vehicleModelUrl} from '../src/vehicles/assetCatalog.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -67,7 +68,7 @@ test('stalk signals work with the headlight switch off and fog lamps extinguish 
 
 test('shipping rigs separate tire rubber, windshields and decorative masked badges',()=>{
   for(const id of ['skyline34','charger70','interceptor','enforcer','timecar']) {
-    const b=fs.readFileSync(new URL('../public/models/vehicles/'+id+'.glb',import.meta.url));
+    const b=fs.readFileSync(new URL('../public'+vehicleModelUrl(id),import.meta.url));
     const {materials}=JSON.parse(b.subarray(20,20+b.readUInt32LE(12)));
     const tires=materials.filter(m=>m.name.startsWith('TireRubber_'));
     if(!['charger70','timecar'].includes(id)) assert(tires.length>0);
@@ -97,7 +98,7 @@ test('socket and Supra axles keep each outboard face on its snapshot side',async
   const {socketWheelIndex}=await import('../src/vehicles/tools/vehicleVisualRig.ts');
   assert.deepEqual(['fr','fl','rr','rl','?'].map(socketWheelIndex),[0,1,2,3,-1]);
   for(const id of ['mini','charger70','timecar','sierra']) {
-    const b=fs.readFileSync(new URL('../public/models/vehicles/'+id+'.glb',import.meta.url));
+    const b=fs.readFileSync(new URL('../public'+vehicleModelUrl(id),import.meta.url));
     const g=JSON.parse(b.subarray(20,20+b.readUInt32LE(12)));
     for(const [snapshot,side] of [['fl',1],['fr',-1],['rl',1],['rr',-1]]) {
       const corner=['FL','FR','RL','RR'][socketWheelIndex(snapshot)];

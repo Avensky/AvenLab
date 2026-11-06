@@ -4,6 +4,23 @@ use crate::vehicle_state::VehicleConfig;
 use serde_json::{Map, Value};
 
 pub fn validated_config(mut c: VehicleConfig, patch: &Map<String, Value>) -> Result<VehicleConfig, String> {
+    if let Some(stages)=patch.get("mod_stages") {
+        if patch.len()!=1 {return Err("Mod stages cannot be mixed with raw tuning fields.".into());}
+        let stages=stages.as_object().ok_or("Mod stages must be an object.")?;
+        let catalog:Value=serde_json::from_str(include_str!("assets/vehicle-mods.json")).map_err(|_|"Invalid mod catalog")?;
+        let mut factors=std::collections::BTreeMap::<String,f64>::new();
+        for (id,value) in stages {
+            let stage=value.as_u64().filter(|v|*v<=3).ok_or("Mod stage must be an integer from 0 to 3.")?;
+            let effects=catalog.get(id).and_then(|p|p["effects"].as_object()).ok_or("Unknown mod part.")?;
+            for (stat,amount) in effects {*factors.entry(stat.clone()).or_insert(1.0)+=amount.as_f64().ok_or("Invalid mod effect")?*stage as f64;}
+        }
+        let mut resolved=Map::new();
+        for (stat,factor) in factors {
+            let stock=match stat.as_str(){"engine_force"=>c.engine_force,"max_speed"=>c.max_speed,"mu_base"=>c.mu_base,"brake_force"=>c.brake_force,"mass"=>c.mass,"suspension_damping_ratio"=>c.suspension_damping_ratio,_=>return Err("Unsupported mod stat".into())};
+            resolved.insert(stat,serde_json::json!(stock as f64*factor));
+        }
+        return validated_config(c,&resolved);
+    }
     let tracked=c.tracked;
     for (key, value) in patch {
         if key == "abs_enabled" || key == "tcs_enabled" {
@@ -51,6 +68,17 @@ pub fn validated_config(mut c: VehicleConfig, patch: &Map<String, Value>) -> Res
 mod tests {
     use super::*;
     use crate::vehicle_setup::AE86;
+    #[test]
+    fn staged_mods_are_bounded_and_factory_relative() {
+        let patch=serde_json::json!({"mod_stages":{"turbo":3,"tires":2,"weight":1}});
+        let a=validated_config(AE86,patch.as_object().unwrap()).unwrap();
+        let b=validated_config(AE86,patch.as_object().unwrap()).unwrap();
+        assert!((a.engine_force-AE86.engine_force*1.36).abs()<0.01);
+        assert_eq!(a.engine_force,b.engine_force);
+        assert!((a.mu_base-AE86.mu_base*1.16).abs()<0.001);
+        assert_eq!(validated_config(AE86,serde_json::json!({"mod_stages":{}}).as_object().unwrap()).unwrap().engine_force,AE86.engine_force);
+        for invalid in [serde_json::json!({"mod_stages":{"turbo":4}}),serde_json::json!({"mod_stages":{"turbo":-1}}),serde_json::json!({"mod_stages":{"turbo":1.5}}),serde_json::json!({"mod_stages":{"unknown":1}}),serde_json::json!({"mod_stages":{},"engine_force":1000})]{assert!(validated_config(AE86,invalid.as_object().unwrap()).is_err());}
+    }
     #[test]
     fn rejects_bad_fields_ranges_and_sag() {
         for patch in [serde_json::json!({"mass":0}), serde_json::json!({"mass":"heavy"}),

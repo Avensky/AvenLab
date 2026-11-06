@@ -1,3 +1,4 @@
+import {vehicleModelUrl} from './assetCatalog.ts';
 import { useLiveAppearance } from "./cosmetics/useLiveAppearance";
 import { useVehicleVisualAlignment } from "../hooks/useVehicleVisualAlignment";
 import {
@@ -25,7 +26,7 @@ import {
 } from "../store";
 import { useVehiclePhysicsInterpolator } from "../hooks/usePhysicsInterpolator";
 
-const MODEL_PATH = "/models/vehicles/supra_2020.glb";
+const MODEL_PATH = vehicleModelUrl('supra');
 
 type SupraProps = PropsWithChildren<{
   entityId?: string;

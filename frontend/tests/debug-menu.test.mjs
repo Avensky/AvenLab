@@ -79,7 +79,7 @@ test("starting Sandbox clears object overrides while retaining display preferenc
     assert.equal(state.reflections, true);
     assert.equal(state.autoVehicleAlignment, true);
     assert.deepEqual(state.vehicleOverrides, {});
-    assert.equal(VEHICLE_MODEL_PATHS.cx30, "/models/vehicles/cx30.glb");
+    assert.equal(VEHICLE_MODEL_PATHS.cx30, "/models/vehicles/land/suvs/cx30/model.glb");
   } finally {
     await server.close();
   }

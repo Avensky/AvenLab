@@ -1,24 +1,25 @@
+import {vehicleModelUrl} from '../../vehicles/assetCatalog.ts';
 export type VehicleAssetId = 'ae86' | 'brz' | 'camaro' | 'supra' | 'cx30' | 'fortuner' | 'landcruiser' | 'sierra' | 'mini' | 'tank' | 'enforcer' | 'interceptor' | 'charger70' | 'skyline34' | 'timecar';
 export type VehiclePlacement = {asset: VehicleAssetId; lod: 'auto' | 'proxy' | 'full'};
 export type VehicleAsset = {id: VehicleAssetId; label: string; url: string; size: [number,number,number]; sourceYaw: number; color: string};
 // Background props use their complete imported static pose, without any player
 // stores, wheel animation, audio, lights or suspension updates.
 export const VEHICLE_ASSETS: VehicleAsset[] = [
-  {id:'ae86',label:'AE86',url:'/models/vehicles/ae86.glb',size:[1.8,1.35,4.3],sourceYaw:0,color:'#d7e1e9'},
-  {id:'brz',label:'BRZ',url:'/models/vehicles/brz.glb',size:[1.9,1.35,4.3],sourceYaw:0,color:'#5f9fd8'},
-  {id:'camaro',label:'Camaro',url:'/models/vehicles/camaro.glb',size:[2,1.4,4.8],sourceYaw:0,color:'#e6b55c'},
-  {id:'supra',label:'Supra',url:'/models/vehicles/supra_2020.glb',size:[2.03,1.29,4.51],sourceYaw:Math.PI,color:'#c84c5e'},
-  {id:'sierra',label:'GMC Sierra 1500 AT4X',url:'/models/vehicles/sierra.glb',size:[2.469,2.225,5.868],sourceYaw:0,color:'#ba5537'},
-  {id:'fortuner',label:'Toyota Fortuner',url:'/models/vehicles/fortuner.glb',size:[2.07,1.81,4.80],sourceYaw:0,color:'#b4bbc4'},
-  {id:'landcruiser',label:'Toyota Land Cruiser',url:'/models/vehicles/landcruiser.glb',size:[2.114,1.922,4.928],sourceYaw:0,color:'#a1a8ad'},
-  {id:'mini',label:'Mini Cooper',url:'/models/vehicles/mini.glb',size:[1.932,1.701,3.876],sourceYaw:0,color:'#5195ce'},
-  {id:'cx30',label:'Mazda CX-30',url:'/models/vehicles/cx30.glb',size:[2.132,1.54,4.329],sourceYaw:0,color:'#9a2432'},
-  {id:'enforcer',label:'Marussia B2 Enforcer',url:'/models/vehicles/enforcer.glb',size:[2.242,1.251,4.484],sourceYaw:0,color:'#6d7c89'},
-  {id:'interceptor',label:'Police Interceptor',url:'/models/vehicles/interceptor.glb',size:[2.099,1.174,4.454],sourceYaw:0,color:'#6d7c89'},
-  {id:'charger70',label:'1970 Charger R/T',url:'/models/vehicles/charger70.glb',size:[1.983,1.422,5.265],sourceYaw:0,color:'#6d7c89'},
-  {id:'skyline34',label:'Skyline R34',url:'/models/vehicles/skyline34.glb',size:[1.879,1.326,4.600],sourceYaw:0,color:'#6d7c89'},
-  {id:'timecar',label:'Time Machine',url:'/models/vehicles/timecar.glb',size:[1.975,1.283,4.420],sourceYaw:0,color:'#6d7c89'},
-  {id:'tank',label:'Tank',url:'/models/vehicles/tank.glb',size:[3.6,3,7.5],sourceYaw:0,color:'#7c9273'},
+  {id:'ae86',label:'AE86',url:vehicleModelUrl('ae86'),size:[1.8,1.35,4.3],sourceYaw:0,color:'#d7e1e9'},
+  {id:'brz',label:'BRZ',url:vehicleModelUrl('brz'),size:[1.9,1.35,4.3],sourceYaw:0,color:'#5f9fd8'},
+  {id:'camaro',label:'Camaro',url:vehicleModelUrl('camaro'),size:[2,1.4,4.8],sourceYaw:0,color:'#e6b55c'},
+  {id:'supra',label:'Supra',url:vehicleModelUrl('supra'),size:[2.03,1.29,4.51],sourceYaw:Math.PI,color:'#c84c5e'},
+  {id:'sierra',label:'GMC Sierra 1500 AT4X',url:vehicleModelUrl('sierra'),size:[2.469,2.225,5.868],sourceYaw:0,color:'#ba5537'},
+  {id:'fortuner',label:'Toyota Fortuner',url:vehicleModelUrl('fortuner'),size:[2.07,1.81,4.80],sourceYaw:0,color:'#b4bbc4'},
+  {id:'landcruiser',label:'Toyota Land Cruiser',url:vehicleModelUrl('landcruiser'),size:[2.114,1.922,4.928],sourceYaw:0,color:'#a1a8ad'},
+  {id:'mini',label:'Mini Cooper',url:vehicleModelUrl('mini'),size:[1.932,1.701,3.876],sourceYaw:0,color:'#5195ce'},
+  {id:'cx30',label:'Mazda CX-30',url:vehicleModelUrl('cx30'),size:[2.132,1.54,4.329],sourceYaw:0,color:'#9a2432'},
+  {id:'enforcer',label:'Marussia B2 Enforcer',url:vehicleModelUrl('enforcer'),size:[2.242,1.251,4.484],sourceYaw:0,color:'#6d7c89'},
+  {id:'interceptor',label:'Police Interceptor',url:vehicleModelUrl('interceptor'),size:[2.099,1.174,4.454],sourceYaw:0,color:'#6d7c89'},
+  {id:'charger70',label:'1970 Charger R/T',url:vehicleModelUrl('charger70'),size:[1.983,1.422,5.265],sourceYaw:0,color:'#6d7c89'},
+  {id:'skyline34',label:'Skyline R34',url:vehicleModelUrl('skyline34'),size:[1.879,1.326,4.600],sourceYaw:0,color:'#6d7c89'},
+  {id:'timecar',label:'Time Machine',url:vehicleModelUrl('timecar'),size:[1.975,1.283,4.420],sourceYaw:0,color:'#6d7c89'},
+  {id:'tank',label:'Tank',url:vehicleModelUrl('tank'),size:[3.6,3,7.5],sourceYaw:0,color:'#7c9273'},
 ];
 export const vehicleAsset = (id: string) => VEHICLE_ASSETS.find(v=>v.id===id);
 export function validateVehicle(value: unknown): asserts value is VehiclePlacement {

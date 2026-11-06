@@ -1,3 +1,4 @@
+import {vehicleLodUrl} from '../src/vehicles/assetCatalog.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -24,7 +25,7 @@ test('all exteriors have three distinct detail levels, articulated tank mounts a
    for(let i=part.vertices*12;i<bytes.length;i+=2)assert(bytes.readUInt16LE(i)<part.vertices);
   }
   for(const tier of ['near','medium','far']){
-   const bytes=fs.readFileSync(new URL(`../public/models/vehicles/lod/${model}-${tier}.glb`,import.meta.url));
+   const bytes=fs.readFileSync(new URL('../public'+vehicleLodUrl(model,tier),import.meta.url));
    assert.equal(bytes.toString('ascii',0,4),'glTF');
    const d=JSON.parse(bytes.toString('utf8',20,20+bytes.readUInt32LE(12)));
    const triangles=d.meshes.flatMap(m=>m.primitives).reduce((sum,p)=>sum+d.accessors[p.indices].count/3,0);

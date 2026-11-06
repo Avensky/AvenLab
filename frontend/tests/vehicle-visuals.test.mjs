@@ -125,7 +125,7 @@ test('backend wheel poses move the entire assembly and spin the imported axle wh
   rig.dispose();
 });
 
-const supraPath = new URL('../public/models/vehicles/supra_2020.glb', import.meta.url);
+const supraPath = new URL('../public/models/vehicles/land/sports-cars/supra/model.glb', import.meta.url);
 const bytes = fs.existsSync(supraPath) ? fs.readFileSync(supraPath) : Buffer.alloc(0);
 test('current Supra GLB recovers four complete wheels and a measured chassis alignment reference', { skip: bytes.subarray(0, 4).toString() !== 'glTF' ? 'Run git lfs pull for the real Supra asset' : false }, async () => {
   const loader = new GLTFLoader();

@@ -1,3 +1,4 @@
+import {vehicleModelUrl} from './assetCatalog.ts';
 import {popupAngle} from './tools/roadLamps';
 import { measuredWheelHub, restorePartTransform } from "./tools/vehicleVisualRig";
 import { useLiveAppearance } from "./cosmetics/useLiveAppearance";
@@ -25,7 +26,7 @@ import { useVehiclePhysicsInterpolator } from "../hooks/usePhysicsInterpolator";
 import { hasFlag, VehicleFlags } from "../store/input/protocol/inputMasks";
 import { setupVehicleParts } from "./tools/setupVehicleParts";
 
-const MODEL_PATH = "/models/vehicles/ae86.glb";
+const MODEL_PATH = vehicleModelUrl('ae86');
 
 // Runtime body and wheel poses are backend world coordinates. Exported model
 // transforms stay in the asset; a road height mismatch is fixed in map data.

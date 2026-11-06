@@ -1,3 +1,4 @@
+import {vehicleLodUrl} from './assetCatalog.ts';
 import {BufferGeometry, BufferAttribute, Color, Group, Mesh, MeshStandardMaterial} from 'three';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
 import {DRACOLoader} from 'three/examples/jsm/loaders/DRACOLoader.js';
@@ -29,7 +30,7 @@ function loadNext(){
     if(e.retryAt>now){nextRetry=Math.min(nextRetry,e.retryAt);continue;}
     if(active>=2)break;
     active++;e.loading=true;
-    loader.loadAsync('/models/vehicles/lod/'+key(e.model,e.tier)+'.glb').then(gltf=>{
+    loader.loadAsync(vehicleLodUrl(e.model,e.tier)).then(gltf=>{
       e.art={scene:gltf.scene,tier:e.tier};revision++;listeners.forEach(fn=>fn());
     }).catch(()=>{e.retryAt=Date.now()+15000;}).finally(()=>{e.loading=false;active--;loadNext();});
   }

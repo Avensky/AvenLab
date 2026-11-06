@@ -5,7 +5,7 @@ import struct
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
-source = ROOT / "frontend/public/models/vehicles/big_e_cvn65.glb"
+source = ROOT / "frontend/public/models/vehicles/fleet/carriers/big-e/model.glb"
 blob = source.read_bytes()
 length = struct.unpack_from("<I", blob, 12)[0]
 src = json.loads(blob[20:20+length])
@@ -95,6 +95,6 @@ for i,arr in enumerate([(p/size).astype("<f4"),n.astype("<f4"),np.round(c*255).a
     g["accessors"].append(access);data.extend(bytes(-len(data)%4))
 g["buffers"]=[{"byteLength":len(data)}]
 raw=json.dumps(g,separators=(",",":")).encode();raw+=b" "*(-len(raw)%4)
-out=ROOT/"frontend/public/models/world/big-e-docked.glb"
+out=ROOT/"frontend/public/models/vehicles/fleet/carriers/big-e/docked.glb"
 out.write_bytes(struct.pack("<4sIIII",b"glTF",2,28+len(raw)+len(data),len(raw),0x4e4f534a)+raw+struct.pack("<II",len(data),0x004e4942)+data)
 print(len(f),"triangles,",len(parts),"collision shapes,",len(data),"bytes, deck spans",span(0), "island",a,b)

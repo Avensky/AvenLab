@@ -1,3 +1,4 @@
+import {vehicleModelUrl} from './assetCatalog.ts';
 import {useGLTF} from '@react-three/drei';
 import {useFrame} from '@react-three/fiber';
 import {useEffect,useMemo,useRef} from 'react';
@@ -5,8 +6,8 @@ import {Color,Mesh,MeshStandardMaterial,type Group,type Object3D} from 'three';
 import {useVehiclePhysicsInterpolator} from '../hooks/usePhysicsInterpolator';
 import {snapshotEntity,useNetworkStore} from '../store/session/networkStore';
 
-const HAWAII='/models/fleet/hawaii-rescue.glb';
-const LOUISIANA='/models/fleet/louisiana-lod0.glb';
+const HAWAII=vehicleModelUrl('hawaii-rescue');
+const LOUISIANA=vehicleModelUrl('louisiana');
 // The source FBX was modeled at ~5 units bow-to-stern. It is kept small on
 // disk; the same full-size 154 m hull is used for visible ship and collider.
 const SCALE:[number,number,number]=[12,12,31];

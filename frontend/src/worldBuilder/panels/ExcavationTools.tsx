@@ -12,6 +12,7 @@ export function ExcavationTools() {
   const [kind, setKind] = useState<RouteKind>('tunnel'), [length, setLength] = useState(24), [bend, setBend] = useState(0);
   const [origin, setOrigin] = useState<V3>([...cursor]), [yaw, setYaw] = useState(0);
   const [width, setWidth] = useState(12), [height, setHeight] = useState(7), [depth, setDepth] = useState(6), [resolution, setResolution] = useState(2);
+  const [grade,setGrade]=useState(0), [shoulder,setShoulder]=useState(1.5);
   const [custom, setCustom] = useState(''), [rails, setRails] = useState(true), [waterfall, setWaterfall] = useState(false);
   const clear = () => useExcavationPreview.setState({ preview: null });
   useEffect(() => { if (preview && preview.base !== doc) clear(); }, [doc, preview]);
@@ -25,10 +26,10 @@ export function ExcavationTools() {
     if (!doc) return;
     const points = custom.trim() ? custom.trim().split('\n').map((line): V3 => {
       const pair = line.trim().split(/[\s,]+/).map(Number);
-      if (pair.length !== 2 || pair.some(n => !Number.isFinite(n))) throw Error('Each custom path row must contain world X, Z in metres');
-      return [pair[0], origin[1], pair[1]];
-    }) : presetPath(length, bend, origin, yaw);
-    const result = excavateRoute(doc, { kind, points, width, height, depth, resolution, rails, waterfall: canal && waterfall });
+      if ((pair.length !== 2 && pair.length !== 3) || pair.some(n => !Number.isFinite(n))) throw Error('Each custom path row must contain world X, Z or X, Y, Z in metres');
+      return pair.length===3 ? pair as V3 : [pair[0], origin[1], pair[1]];
+    }) : presetPath(length, bend, origin, yaw, canal ? 0 : grade);
+    const result = excavateRoute(doc, { kind, points, width, height, depth, shoulder: canal ? 0 : shoulder, resolution, rails, waterfall: canal && waterfall });
     useLayoutStore.setState({ placing: null, selected: null, view: '3d', status: 'Excavation preview · cyan outlines show the requested passage. Apply commits one undoable edit.' });
     useExcavationPreview.setState({ preview: { ...result, base: doc } });
   });
@@ -47,13 +48,14 @@ export function ExcavationTools() {
     }}><option value="custom" disabled>Custom length</option>{Object.entries(SEGMENT_PRESETS).map(([id, n]) => <option key={id} value={id}>{id} · {n} m</option>)}</select></label>
     <div className="le-twin">{number('Path length (m)', length, setLength, 6, 384)}{number('Turn (degrees)', bend, setBend, -180, 180, 15)}</div>
     <div className="le-twin">{number('Clear width (m)', width, setWidth, 4, 48)}{number('Clear height (m)', height, setHeight, 3, 24)}</div>
+    {!canal && <><div className="le-twin">{number('Grade (%)',grade,setGrade,-30,30,.5)}{number('Emergency shoulder per side (m)',shoulder,setShoulder,0,6,.5)}</div><p>Hill presets: <button onClick={()=>{clear();setGrade(0);}}>Level</button><button onClick={()=>{clear();setGrade(8);}}>Gentle 8%</button><button onClick={()=>{clear();setGrade(18);}}>Steep 18%</button><button onClick={()=>{clear();setGrade(25);}}>SF-style 25%</button></p><p>Width is the travel corridor; shoulders add usable width on both sides. Negative grades descend. Steep grades need a test drive.</p></>}
     {canal && number('Water depth (m)', depth, setDepth, 1, 16)}
     <div className="le-twin">{number('Cut resolution (m)', resolution, setResolution, .5, 4, .5)}{number('Entry heading (degrees)', yaw, setYaw, -180, 180, 15)}</div>
     <p>Smaller cut resolution makes finer rock edges and uses more colliders. The standard segment is 24 m.</p>
     {(['X', 'Y', 'Z'] as const).map((axis, i) => <div key={axis}>{number(`Entry ${axis} (m)`, origin[i], n => setOrigin(p => p.map((v, k) => k === i ? n : v) as V3), -99000, 99000, .5)}</div>)}
     <button onClick={() => { clear(); setOrigin([...cursor]); }}>Use construction cursor</button>
     <label className="le-title-label">Custom centreline (optional)
-      <textarea aria-label="Excavation custom path" rows={4} placeholder="World X, Z per row; leave blank for preset" value={custom} onChange={e => { clear(); setCustom(e.target.value); }} />
+      <textarea aria-label="Excavation custom path" rows={4} placeholder="World X, Z or X, Y, Z per row; leave blank for preset" value={custom} onChange={e => { clear(); setCustom(e.target.value); }} />
     </label>
     <p>Custom points replace the preset. Round bends with intermediate points; each join allows up to 30°.</p>
     <label><input type="checkbox" checked={rails} onChange={e => { clear(); setRails(e.target.checked); }} /> Road edge barriers</label>

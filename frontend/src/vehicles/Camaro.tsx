@@ -1,3 +1,4 @@
+import {vehicleModelUrl} from './assetCatalog.ts';
 import { measuredWheelHub, restorePartTransform } from "./tools/vehicleVisualRig";
 import { useLiveAppearance } from "./cosmetics/useLiveAppearance";
 import { useVehicleVisualAlignment } from "../hooks/useVehicleVisualAlignment";
@@ -23,7 +24,7 @@ import { setupVehicleParts } from "./tools/setupVehicleParts";
 import { useNetworkStore, useUIStore } from "../store";
 import { useVehiclePhysicsInterpolator } from "../hooks/usePhysicsInterpolator";
 
-const MODEL_PATH = "/models/vehicles/camaro.glb";
+const MODEL_PATH = vehicleModelUrl('camaro');
 
 // Chassis and wheel placement use backend poses; map data owns road alignment.
 const DYNAMIC_WHEEL_GROUPS = new Set([

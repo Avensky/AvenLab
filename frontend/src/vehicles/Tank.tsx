@@ -1,3 +1,4 @@
+import {vehicleModelUrl} from './assetCatalog.ts';
 import { useConnectionView } from "../store/session/networkViews";
 import {advanceTankHatches} from './tools/tankHatches';
 import {
@@ -24,7 +25,7 @@ interface TankProps extends PropsWithChildren {
   turretRotation?: number;
   cannonElevation?: number;
 }
-const MODEL_PATH = "/models/vehicles/tank.glb";
+const MODEL_PATH = vehicleModelUrl('tank');
 export const Tank = forwardRef<Group, TankProps>(function Tank(
   { children, entityId, turretRotation = 0, cannonElevation = 0 },
   ref,

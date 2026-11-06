@@ -1,3 +1,4 @@
+import {VehicleMods} from './VehicleMods';
 import {openHeroGuide} from "../../store/hud/heroGuideStore";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { HEROES, useAlphaStore, type HeroFilter } from "../../store/alpha/alphaStore";
@@ -78,15 +79,16 @@ export function HeroWorkshop() {
   else if(root.current)navigateFormRows(root.current,active as HTMLElement,a,remembered.current);
  },tab:dir=>{if(guideOpen)return;const visible=HEROES.filter(h=>role==="all"||h.role===role);const focused=(document.activeElement as HTMLElement|null)?.closest<HTMLElement>("[data-hero]")?.dataset.hero;const index=visible.findIndex(h=>h.id===(focused??hero)),start=index<0?(dir>0?-1:0):index;setEditing(false);requestAnimationFrame(()=>root.current?.querySelector<HTMLElement>(`[data-hero="${visible[(start+dir+visible.length)%visible.length].id}"]`)?.focus({preventScroll:true}));}});
  const unlocked=(skins??[]).filter(s=>owned.includes(s.id));
- return <section ref={root} className="game-ui menu-surface alpha-selection hero-selection hero-workshop" data-editing={editing} data-has-selection={hero!==null} inert={guideOpen} tabIndex={-1} aria-label="Hero modifications" data-controller-form data-controller-rows>
-  <SelectionHeader title="HEROES" onBack={()=>void back()}/>
+ return <section ref={root} className="game-ui menu-surface alpha-selection hero-selection hero-workshop" data-editing={editing} data-has-selection={hero!==null} inert={guideOpen} tabIndex={-1} aria-label="Vehicle modifications" data-controller-form data-controller-rows>
+  <SelectionHeader title="VEHICLE MODS" onBack={()=>void back()}/>
   <div className="hero-selection-stage hero-workshop-body">
    {!editing&&<div className="hero-workshop-collection"><HeroRoster selected={hero} main={main} filter={role} busy={!owner} onChoose={openHero} onFilter={filter=>{setRole(filter);setEditing(false);}}/>
     <p className="hero-workshop-hint">Select a portrait to customize. Hold X to choose your main.</p>
     {!editing&&status!=="idle"&&<div className="hero-collection-save-status" role="status">{status==="error"?`NOT SAVED · ${message}`:status==="saved"?"SAVED TO YOUR PLAYER":"SAVING YOUR STYLE…"}{status==="error"&&<button className="menu-control" onClick={()=>void queue.flush()}>RETRY SAVE</button>}</div>}
    </div>}
-   {!editing&&<section className="hero-summary" aria-label="Selected hero"><small>HERO</small><h2>{definition?.name??"CHOOSE YOUR HERO"}</h2><p>{definition?"Select a portrait or press A to open styling.":"Choose a vehicle portrait to preview and customize. Your main stays saved."}</p></section>}
+   {!editing&&<section className="hero-summary" aria-label="Selected hero"><small>HERO</small><h2>{definition?.name??"CHOOSE YOUR HERO"}</h2><p>{definition?"Select a vehicle or press A to open the mods garage.":"Choose a vehicle portrait to preview and customize. Your main stays saved."}</p></section>}
    {editing && definition && <aside data-controller-row data-controller-columns="1" className="hero-modifications" aria-label="Hero styling" tabIndex={-1}><header className="hero-styling-heading"><small>{definition.role.toUpperCase()} · YOUR VEHICLE</small><h2>{definition.name}</h2><p>Style changes save automatically to your player.</p></header>
+    <VehicleMods key={`${owner}:${definition.vehicle}`} vehicle={definition.vehicle}/>
     <section className="hero-ability-card hero-style-section"><header><div><small>COSMETICS</small><h3>Skin & finish</h3></div></header>
     <label>UNLOCKED SKIN<select aria-label="Unlocked hero skin" disabled={!owner} value={appearance.skin} onChange={e=>{const skin=unlocked.find(s=>s.id===e.target.value);edit({skin:e.target.value,body:skin&&skin.id!=="factory"?skin.color:"factory"});}}><option value="factory">Factory</option>{unlocked.filter(s=>s.id!=="factory").map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
     </section>

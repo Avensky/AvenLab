@@ -1,3 +1,4 @@
+import {vehicleModelUrl,vehicleLodUrl} from '../src/vehicles/assetCatalog.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -14,7 +15,7 @@ test('new cars include four independent rigged hubs, portraits and three usable 
     return JSON.parse(b.subarray(20,20+b.readUInt32LE(12)));
   }
   for(const id of ['charger70','skyline34','enforcer','interceptor','timecar']){
-    const g=glb('models/vehicles/'+id+'.glb');
+    const g=glb(vehicleModelUrl(id).slice(1));
     const node=name=>g.nodes.find(n=>n.name===name);
     assert(node('VEHICLE_ROOT')&&node('CHASSIS_ANCHOR'));
     for(const c of ['FL','FR','RL','RR']){
@@ -22,10 +23,10 @@ test('new cars include four independent rigged hubs, portraits and three usable 
       assert.equal(Math.sign(h.translation[0]),c.endsWith('L')?-1:1);
       assert.equal(Math.sign(h.translation[2]),c.startsWith('F')?1:-1);
     }
-    for(const lod of ['near','medium','far']) assert(glb('models/vehicles/lod/'+id+'-'+lod+'.glb').meshes.length);
+    for(const lod of ['near','medium','far']) assert(glb(vehicleLodUrl(id,lod).slice(1)).meshes.length);
     assert(fs.statSync(new URL('../public/images/heroes/'+id+'.webp',import.meta.url)).size>1500);
   }
-  assert(glb('models/world/rescue-helicopter.glb').nodes.some(n=>n.name==='MAIN_ROTOR'));
+  assert(glb('models/vehicles/flying/helicopters/rescue-helicopter/model.glb').nodes.some(n=>n.name==='MAIN_ROTOR'));
 });
 test('the folding bridge meets the helicopter smoothly and the vehicle leaves with the sling',()=>{
  const pickup=rescueFlight(3.8),after=rescueFlight(3.80001),finish=rescueFlight(RESCUE_DURATION);

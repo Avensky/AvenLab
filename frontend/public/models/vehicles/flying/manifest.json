@@ -1,0 +1,1149 @@
+{
+  "format": 1,
+  "coordinate_note": "Source axes and scale are preserved; orient and size against flight collider profiles before gameplay use.",
+  "models": [
+    {
+      "id": "apache-ah64",
+      "class": "helicopter",
+      "source": "AH-64.fbx",
+      "sourceBytes": 7758860,
+      "sourceMeshes": 91,
+      "sourceVertices": 173781,
+      "sourceTriangles": 220787,
+      "sourceBounds": {
+        "min": [
+          -5.82375,
+          -8.82066,
+          -0.42507
+        ],
+        "max": [
+          5.66069,
+          5.53269,
+          6.01006
+        ]
+      },
+      "sourceMaterials": [
+        "Burner",
+        "Front point of bomb",
+        "Glass",
+        "Green Black",
+        "GreenishBlack",
+        "LightBlackgreen",
+        "Material.001",
+        "Material.002",
+        "Material.003",
+        "Red siran",
+        "back panel",
+        "diffuse",
+        "front panel",
+        "just"
+      ],
+      "missingExternalTextures": [],
+      "packedTexturesDownscaled": [],
+      "discardedCameraOrLightObjects": 1,
+      "meshObjects": [
+        "Mesh6.001",
+        "Mesh7.001",
+        "Mesh8.001",
+        "Mesh9.001",
+        "Mesh10.001",
+        "Mesh11.001",
+        "Mesh12.001",
+        "Mesh13.001",
+        "Mesh14.001",
+        "Mesh15.001",
+        "Mesh16.001",
+        "Mesh17.001",
+        "Mesh18.001",
+        "Mesh19.001",
+        "Mesh20.001",
+        "Mesh21.001",
+        "Mesh22.001",
+        "Mesh23.001",
+        "Mesh24.001",
+        "Mesh25.001",
+        "Mesh26.001",
+        "Mesh27.001",
+        "Mesh28.001",
+        "Mesh29.001",
+        "Mesh30",
+        "Mesh31",
+        "Mesh32",
+        "Mesh33",
+        "Mesh34",
+        "Mesh35",
+        "Mesh37",
+        "Mesh38",
+        "Mesh39",
+        "Mesh40",
+        "Mesh41",
+        "Mesh42",
+        "Mesh43",
+        "Mesh44",
+        "Mesh45",
+        "Mesh46",
+        "Mesh47",
+        "Mesh48",
+        "Mesh49",
+        "Mesh50",
+        "Mesh51",
+        "Mesh52",
+        "Mesh53",
+        "Mesh54",
+        "Mesh55",
+        "Mesh56",
+        "Mesh57",
+        "Mesh58",
+        "Mesh59",
+        "Mesh60",
+        "Mesh61",
+        "Mesh62",
+        "Mesh63",
+        "Mesh64",
+        "Mesh65",
+        "Mesh66",
+        "Mesh70",
+        "Mesh71",
+        "Mesh29",
+        "Mesh28",
+        "Mesh27",
+        "Mesh26",
+        "Mesh25",
+        "Mesh24",
+        "Mesh23",
+        "Mesh22",
+        "Mesh21",
+        "Mesh20",
+        "Mesh19",
+        "Mesh18",
+        "Mesh17",
+        "Mesh16",
+        "Mesh15",
+        "Mesh14",
+        "Mesh13",
+        "Mesh12",
+        "Mesh11",
+        "Mesh10",
+        "Mesh9",
+        "Mesh8",
+        "Mesh7",
+        "Mesh6",
+        "Mesh5",
+        "Mesh4",
+        "Mesh3",
+        "Mesh2",
+        "Mesh1"
+      ],
+      "lods": [
+        {
+          "level": "lod0",
+          "path": "/models/vehicles/flying/helicopters/apache-ah64/model.glb",
+          "bytes": 8039060,
+          "vertices": 125246,
+          "triangles": 143384,
+          "bounds": {
+            "min": [
+              -5.82375,
+              -8.82066,
+              -0.42507
+            ],
+            "max": [
+              5.66069,
+              5.53269,
+              6.01007
+            ]
+          }
+        },
+        {
+          "level": "lod1",
+          "path": "/models/vehicles/flying/helicopters/apache-ah64/lod-medium.glb",
+          "bytes": 3822840,
+          "vertices": 73776,
+          "triangles": 64482,
+          "bounds": {
+            "min": [
+              -5.82849,
+              -8.82598,
+              -0.4227
+            ],
+            "max": [
+              5.66542,
+              5.53269,
+              6.01013
+            ]
+          }
+        },
+        {
+          "level": "lod2",
+          "path": "/models/vehicles/flying/helicopters/apache-ah64/lod-far.glb",
+          "bytes": 1515628,
+          "vertices": 46510,
+          "triangles": 22976,
+          "bounds": {
+            "min": [
+              -5.82849,
+              -8.82598,
+              -0.41477
+            ],
+            "max": [
+              5.66542,
+              5.53269,
+              6.011
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "military-helicopter-highpoly",
+      "class": "helicopter",
+      "source": "military helicopter (highpoly)(1).glb",
+      "sourceBytes": 58004596,
+      "sourceMeshes": 1,
+      "sourceVertices": 1019986,
+      "sourceTriangles": 1931826,
+      "sourceBounds": {
+        "min": [
+          -0.48885,
+          -0.48999,
+          0.0
+        ],
+        "max": [
+          0.48885,
+          0.48999,
+          0.34911
+        ]
+      },
+      "sourceMaterials": [
+        "tripo_material_30a61759-d550-4c53-abac-34c4cdcf5882"
+      ],
+      "missingExternalTextures": [],
+      "packedTexturesDownscaled": [
+        {
+          "name": "military+helicopter+(highpoly)_basecolor.jpg",
+          "from": [
+            4096,
+            4096
+          ],
+          "to": [
+            2048,
+            2048
+          ]
+        },
+        {
+          "name": "military+helicopter+(highpoly)_normal.jpg",
+          "from": [
+            4096,
+            4096
+          ],
+          "to": [
+            2048,
+            2048
+          ]
+        },
+        {
+          "name": "military+helicopter+(highpoly)_rm.jpg",
+          "from": [
+            4096,
+            4096
+          ],
+          "to": [
+            2048,
+            2048
+          ]
+        }
+      ],
+      "discardedCameraOrLightObjects": 0,
+      "meshObjects": [
+        "tripo_node_30a61759-d550-4c53-abac-34c4cdcf5882"
+      ],
+      "lods": [
+        {
+          "level": "lod0",
+          "path": "/models/vehicles/flying/helicopters/military-helicopter-highpoly/model.glb",
+          "bytes": 8938548,
+          "vertices": 34497,
+          "triangles": 38635,
+          "bounds": {
+            "min": [
+              -0.48841,
+              -0.48952,
+              0.00014
+            ],
+            "max": [
+              0.48898,
+              0.48987,
+              0.34924
+            ]
+          }
+        },
+        {
+          "level": "lod1",
+          "path": "/models/vehicles/flying/helicopters/military-helicopter-highpoly/lod-medium.glb",
+          "bytes": 8287940,
+          "vertices": 18238,
+          "triangles": 17385,
+          "bounds": {
+            "min": [
+              -0.48778,
+              -0.48996,
+              -3e-05
+            ],
+            "max": [
+              0.48773,
+              0.49107,
+              0.35039
+            ]
+          }
+        },
+        {
+          "level": "lod2",
+          "path": "/models/vehicles/flying/helicopters/military-helicopter-highpoly/lod-far.glb",
+          "bytes": 7890500,
+          "vertices": 8313,
+          "triangles": 6181,
+          "bounds": {
+            "min": [
+              -0.48749,
+              -0.49083,
+              -0.00263
+            ],
+            "max": [
+              0.4868,
+              0.49157,
+              0.35107
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "f16",
+      "class": "jet",
+      "source": "F-16.blend",
+      "sourceBytes": 30364168,
+      "sourceMeshes": 9,
+      "sourceVertices": 17460,
+      "sourceTriangles": 30272,
+      "sourceBounds": {
+        "min": [
+          -49.52477,
+          -46.96788,
+          -18.87465
+        ],
+        "max": [
+          101.3952,
+          46.96788,
+          32.9312
+        ]
+      },
+      "sourceMaterials": [
+        "Dots Stroke",
+        "F-16-airframe",
+        "F-16-hud",
+        "F-16-landingLights",
+        "Glass"
+      ],
+      "missingExternalTextures": [],
+      "packedTexturesDownscaled": [
+        {
+          "name": "BaseColor.png",
+          "from": [
+            4096,
+            4096
+          ],
+          "to": [
+            2048,
+            2048
+          ]
+        },
+        {
+          "name": "Metallic.png",
+          "from": [
+            4096,
+            4096
+          ],
+          "to": [
+            2048,
+            2048
+          ]
+        },
+        {
+          "name": "Normal.png",
+          "from": [
+            4096,
+            4096
+          ],
+          "to": [
+            2048,
+            2048
+          ]
+        },
+        {
+          "name": "Roughness.png",
+          "from": [
+            4096,
+            4096
+          ],
+          "to": [
+            2048,
+            2048
+          ]
+        }
+      ],
+      "discardedCameraOrLightObjects": 0,
+      "meshObjects": [
+        "F-16-airframe",
+        "F-16-canopy",
+        "F-16-cockpit",
+        "F-16-hud",
+        "F-16-instrGlass",
+        "F-16-landingOff",
+        "F-16-landingOn",
+        "F-16-landingOnLight",
+        "F-16-rails"
+      ],
+      "lods": [
+        {
+          "level": "lod0",
+          "path": "/models/vehicles/flying/jets/f16/model.glb",
+          "bytes": 11803816,
+          "vertices": 17460,
+          "triangles": 30272,
+          "bounds": {
+            "min": [
+              -49.52477,
+              -46.96788,
+              -18.87465
+            ],
+            "max": [
+              101.3952,
+              46.96788,
+              32.9312
+            ]
+          }
+        },
+        {
+          "level": "lod1",
+          "path": "/models/vehicles/flying/jets/f16/lod-medium.glb",
+          "bytes": 11245620,
+          "vertices": 8598,
+          "triangles": 13612,
+          "bounds": {
+            "min": [
+              -49.52544,
+              -46.96788,
+              -18.90468
+            ],
+            "max": [
+              101.39216,
+              46.96788,
+              32.93032
+            ]
+          }
+        },
+        {
+          "level": "lod2",
+          "path": "/models/vehicles/flying/jets/f16/lod-far.glb",
+          "bytes": 10848392,
+          "vertices": 3759,
+          "triangles": 4851,
+          "bounds": {
+            "min": [
+              -49.38774,
+              -46.76425,
+              -18.9045
+            ],
+            "max": [
+              101.39791,
+              46.76425,
+              32.9165
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "rafale",
+      "class": "jet",
+      "source": "Dassault-Rafale.blend",
+      "sourceBytes": 28690040,
+      "sourceMeshes": 10,
+      "sourceVertices": 24143,
+      "sourceTriangles": 40798,
+      "sourceBounds": {
+        "min": [
+          -49.23739,
+          -53.74659,
+          -25.32327
+        ],
+        "max": [
+          106.90594,
+          53.74659,
+          37.415
+        ]
+      },
+      "sourceMaterials": [
+        "Dots Stroke",
+        "Glass",
+        "Rafale-airframe",
+        "Rafale-hud",
+        "Rafale-landinglights"
+      ],
+      "missingExternalTextures": [],
+      "packedTexturesDownscaled": [
+        {
+          "name": "BaseColor.png",
+          "from": [
+            4096,
+            4096
+          ],
+          "to": [
+            2048,
+            2048
+          ]
+        },
+        {
+          "name": "metallic.png",
+          "from": [
+            4096,
+            4096
+          ],
+          "to": [
+            2048,
+            2048
+          ]
+        },
+        {
+          "name": "Normal.png",
+          "from": [
+            4096,
+            4096
+          ],
+          "to": [
+            2048,
+            2048
+          ]
+        },
+        {
+          "name": "roughness.png",
+          "from": [
+            4096,
+            4096
+          ],
+          "to": [
+            2048,
+            2048
+          ]
+        }
+      ],
+      "discardedCameraOrLightObjects": 0,
+      "meshObjects": [
+        "Rafale-airframe",
+        "Rafale-canopy",
+        "Rafale-cockpit",
+        "Rafale-hud",
+        "Rafale-instrGlass",
+        "Rafale-landingOff",
+        "Rafale-landingOn",
+        "Rafale-landingOnLight",
+        "Rafale-Rails",
+        "Rafale-Pods"
+      ],
+      "lods": [
+        {
+          "level": "lod0",
+          "path": "/models/vehicles/flying/jets/rafale/model.glb",
+          "bytes": 11643572,
+          "vertices": 24143,
+          "triangles": 40798,
+          "bounds": {
+            "min": [
+              -49.23739,
+              -53.74659,
+              -25.32327
+            ],
+            "max": [
+              106.90594,
+              53.74659,
+              37.415
+            ]
+          }
+        },
+        {
+          "level": "lod1",
+          "path": "/models/vehicles/flying/jets/rafale/lod-medium.glb",
+          "bytes": 10915516,
+          "vertices": 12242,
+          "triangles": 18348,
+          "bounds": {
+            "min": [
+              -49.23809,
+              -53.74563,
+              -25.32402
+            ],
+            "max": [
+              106.90925,
+              53.74564,
+              37.415
+            ]
+          }
+        },
+        {
+          "level": "lod2",
+          "path": "/models/vehicles/flying/jets/rafale/lod-far.glb",
+          "bytes": 10367132,
+          "vertices": 5517,
+          "triangles": 6435,
+          "bounds": {
+            "min": [
+              -49.23809,
+              -53.60265,
+              -25.23765
+            ],
+            "max": [
+              107.06491,
+              53.60265,
+              37.41487
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "su47-berkut",
+      "class": "jet",
+      "source": "Su47Berkut_Fighter.obj",
+      "sourceBytes": 1693654,
+      "sourceMeshes": 55,
+      "sourceVertices": 13373,
+      "sourceTriangles": 12750,
+      "sourceBounds": {
+        "min": [
+          -8.37557,
+          -12.43269,
+          -2.58244
+        ],
+        "max": [
+          8.37557,
+          11.11298,
+          3.15055
+        ]
+      },
+      "sourceMaterials": [
+        "Glass",
+        "Su47Berkut"
+      ],
+      "missingExternalTextures": [
+        "Su47Berkut_A.png",
+        "Su47Berkut_MGC.png",
+        "Su47Berkut_N.png"
+      ],
+      "packedTexturesDownscaled": [],
+      "discardedCameraOrLightObjects": 0,
+      "meshObjects": [
+        "Su47Berkut_Back_Wing_L",
+        "Su47Berkut_Back_Wing_R",
+        "Su47Berkut_Chassis_F_01",
+        "Su47Berkut_Chassis_F_02",
+        "Su47Berkut_Chassis_F_03",
+        "Su47Berkut_Chassis_F_04",
+        "Su47Berkut_Chassis_F_05",
+        "Su47Berkut_Chassis_F_06",
+        "Su47Berkut_Chassis_Hatch_F",
+        "Su47Berkut_Chassis_Hatch_L",
+        "Su47Berkut_Chassis_Hatch_R",
+        "Su47Berkut_Chassis_L_01",
+        "Su47Berkut_Chassis_L_02",
+        "Su47Berkut_Chassis_L_03",
+        "Su47Berkut_Chassis_L_04",
+        "Su47Berkut_Chassis_L_05",
+        "Su47Berkut_Chassis_L_06",
+        "Su47Berkut_Chassis_L_07",
+        "Su47Berkut_Chassis_R_01",
+        "Su47Berkut_Chassis_R_02",
+        "Su47Berkut_Chassis_R_03",
+        "Su47Berkut_Chassis_R_04",
+        "Su47Berkut_Chassis_R_05",
+        "Su47Berkut_Chassis_R_06",
+        "Su47Berkut_Chassis_R_07",
+        "Su47Berkut_Chassis_Wheel_F_01",
+        "Su47Berkut_Chassis_Wheel_L_01",
+        "Su47Berkut_Chassis_Wheel_R_01",
+        "Su47Berkut_Driver_L",
+        "Su47Berkut_Driver_R",
+        "Su47Berkut_Eleron_L",
+        "Su47Berkut_Eleron_R",
+        "Su47Berkut_Engine_L_01",
+        "Su47Berkut_Engine_R_01",
+        "Su47Berkut_Flaps_L",
+        "Su47Berkut_Flaps_R",
+        "Su47Berkut_Frame",
+        "Su47Berkut_Front_Wing_L",
+        "Su47Berkut_Front_Wing_R",
+        "Su47Berkut_Glass_01",
+        "Su47Berkut_Glass_02",
+        "Su47Berkut_Hatch_L_01",
+        "Su47Berkut_Hatch_L_02",
+        "Su47Berkut_Hatch_L_03",
+        "Su47Berkut_Hatch_R_01",
+        "Su47Berkut_Hatch_R_02",
+        "Su47Berkut_Hatch_R_03",
+        "Su47Berkut_Hull",
+        "Su47Berkut_Pilons_01",
+        "Su47Berkut_Pilons_02",
+        "Su47Berkut_Pilons_03",
+        "Su47Berkut_Slats_L_01",
+        "Su47Berkut_Slats_L_02",
+        "Su47Berkut_Slats_R_01",
+        "Su47Berkut_Slats_R_02"
+      ],
+      "lods": [
+        {
+          "level": "lod0",
+          "path": "/models/vehicles/flying/jets/su47-berkut/model.glb",
+          "bytes": 554300,
+          "vertices": 13373,
+          "triangles": 12750,
+          "bounds": {
+            "min": [
+              -8.37557,
+              -12.43269,
+              -2.58244
+            ],
+            "max": [
+              8.37557,
+              11.11298,
+              3.15055
+            ]
+          }
+        },
+        {
+          "level": "lod1",
+          "path": "/models/vehicles/flying/jets/su47-berkut/lod-medium.glb",
+          "bytes": 327740,
+          "vertices": 7914,
+          "triangles": 5707,
+          "bounds": {
+            "min": [
+              -8.37511,
+              -12.43269,
+              -2.63372
+            ],
+            "max": [
+              8.3682,
+              11.09545,
+              3.15602
+            ]
+          }
+        },
+        {
+          "level": "lod2",
+          "path": "/models/vehicles/flying/jets/su47-berkut/lod-far.glb",
+          "bytes": 169820,
+          "vertices": 4625,
+          "triangles": 2003,
+          "bounds": {
+            "min": [
+              -8.34951,
+              -12.43269,
+              -2.64173
+            ],
+            "max": [
+              8.35599,
+              11.09545,
+              3.15602
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "tu222",
+      "class": "jet",
+      "source": "TU222_Fighter.obj",
+      "sourceBytes": 1891451,
+      "sourceMeshes": 62,
+      "sourceVertices": 15538,
+      "sourceTriangles": 12941,
+      "sourceBounds": {
+        "min": [
+          -17.95324,
+          -24.76084,
+          -3.50025
+        ],
+        "max": [
+          17.95324,
+          24.5412,
+          6.61856
+        ]
+      },
+      "sourceMaterials": [
+        "Glass",
+        "TU222"
+      ],
+      "missingExternalTextures": [
+        "TU222_A.png",
+        "TU222_MGC.png",
+        "TU222_N.png"
+      ],
+      "packedTexturesDownscaled": [],
+      "discardedCameraOrLightObjects": 0,
+      "meshObjects": [
+        "TU222_Chassis_Front_01",
+        "TU222_Chassis_L_01",
+        "TU222_Chassis_L_02",
+        "TU222_Chassis_L_03",
+        "TU222_Chassis_L_06",
+        "TU222_Chassis_L_07",
+        "TU222_Chassis_L_08",
+        "TU222_Chassis_R_01",
+        "TU222_Chassis_R_02",
+        "TU222_Chassis_R_03",
+        "TU222_Chassis_R_06",
+        "TU222_Chassis_R_07",
+        "TU222_Chassis_R_08",
+        "TU222_Driver_L",
+        "TU222_Driver_R",
+        "TU222_Drum",
+        "TU222_Eleron_L_01",
+        "TU222_Eleron_L_02",
+        "TU222_Eleron_R_01",
+        "TU222_Eleron_R_02",
+        "TU222_Elevator_L",
+        "TU222_Elevator_R",
+        "TU222_Engine_L",
+        "TU222_Engine_R",
+        "TU222_Flaps_L_01",
+        "TU222_Flaps_L_02",
+        "TU222_Flaps_L_03",
+        "TU222_Flaps_L_04",
+        "TU222_Flaps_R_01",
+        "TU222_Flaps_R_02",
+        "TU222_Flaps_R_03",
+        "TU222_Flaps_R_04",
+        "TU222_Glass",
+        "TU222_Hatch_L_01",
+        "TU222_Hatch_L_02",
+        "TU222_Hatch_L_03",
+        "TU222_Hatch_L_04",
+        "TU222_Hatch_L_05",
+        "TU222_Hatch_L_06",
+        "TU222_Hatch_L_07",
+        "TU222_Hatch_L_08",
+        "TU222_Hatch_R_01",
+        "TU222_Hatch_R_02",
+        "TU222_Hatch_R_03",
+        "TU222_Hatch_R_04",
+        "TU222_Hatch_R_05",
+        "TU222_Hatch_R_06",
+        "TU222_Hatch_R_07",
+        "TU222_Hatch_R_08",
+        "TU222_Hull",
+        "TU222_Pylon",
+        "TU222_Slat_L",
+        "TU222_Slat_R",
+        "TU222_Spoiler_L_01",
+        "TU222_Spoiler_L_02",
+        "TU222_Spoiler_R_01",
+        "TU222_Spoiler_R_02",
+        "TU222_Wheel_F_01",
+        "TU222_Wheel_L_01",
+        "TU222_Wheel_L_02",
+        "TU222_Wheel_R_01",
+        "TU222_Wheel_R_02"
+      ],
+      "lods": [
+        {
+          "level": "lod0",
+          "path": "/models/vehicles/flying/jets/tu222/model.glb",
+          "bytes": 625508,
+          "vertices": 15538,
+          "triangles": 12941,
+          "bounds": {
+            "min": [
+              -17.95324,
+              -24.76084,
+              -3.50025
+            ],
+            "max": [
+              17.95324,
+              24.5412,
+              6.61856
+            ]
+          }
+        },
+        {
+          "level": "lod1",
+          "path": "/models/vehicles/flying/jets/tu222/lod-medium.glb",
+          "bytes": 364804,
+          "vertices": 9762,
+          "triangles": 5803,
+          "bounds": {
+            "min": [
+              -17.95617,
+              -24.75817,
+              -3.51997
+            ],
+            "max": [
+              17.95617,
+              24.55253,
+              6.62065
+            ]
+          }
+        },
+        {
+          "level": "lod2",
+          "path": "/models/vehicles/flying/jets/tu222/lod-far.glb",
+          "bytes": 177148,
+          "vertices": 6266,
+          "triangles": 2050,
+          "bounds": {
+            "min": [
+              -17.95617,
+              -24.75817,
+              -3.5607
+            ],
+            "max": [
+              17.95617,
+              24.57316,
+              6.69119
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "granad-ba1000t",
+      "class": "drone",
+      "source": "GranadBA1000T_Quadcopter.obj",
+      "sourceBytes": 471152,
+      "sourceMeshes": 9,
+      "sourceVertices": 3758,
+      "sourceTriangles": 3884,
+      "sourceBounds": {
+        "min": [
+          -0.41751,
+          -0.71358,
+          -0.0
+        ],
+        "max": [
+          0.41751,
+          0.71358,
+          0.52021
+        ]
+      },
+      "sourceMaterials": [
+        "BPLAPterodactyl"
+      ],
+      "missingExternalTextures": [
+        "BLAPterodactyl_A.png",
+        "BLAPterodactyl_MGC.png",
+        "BLAPterodactyl_N.png"
+      ],
+      "packedTexturesDownscaled": [],
+      "discardedCameraOrLightObjects": 0,
+      "meshObjects": [
+        "BPLAPterodactyl_Hull",
+        "BPLAPterodactyl_Rotor_1",
+        "BPLAPterodactyl_Rotor_2",
+        "BPLAPterodactyl_Rotor_3",
+        "BPLAPterodactyl_Rotor_4",
+        "BPLAPterodactyl_Rotor_Blades_1",
+        "BPLAPterodactyl_Rotor_Blades_2",
+        "BPLAPterodactyl_Rotor_Blades_3",
+        "BPLAPterodactyl_Rotor_Blades_4"
+      ],
+      "lods": [
+        {
+          "level": "lod0",
+          "path": "/models/vehicles/flying/drones/granad-ba1000t/model.glb",
+          "bytes": 148132,
+          "vertices": 3758,
+          "triangles": 3884,
+          "bounds": {
+            "min": [
+              -0.41751,
+              -0.71358,
+              -0.0
+            ],
+            "max": [
+              0.41751,
+              0.71358,
+              0.52021
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "hornet-quadcopter",
+      "class": "drone",
+      "source": "Hornet_Quadcopter.obj",
+      "sourceBytes": 382961,
+      "sourceMeshes": 11,
+      "sourceVertices": 3247,
+      "sourceTriangles": 2795,
+      "sourceBounds": {
+        "min": [
+          -2.78468,
+          -3.26606,
+          -6e-05
+        ],
+        "max": [
+          2.78468,
+          2.88265,
+          1.32373
+        ]
+      },
+      "sourceMaterials": [
+        "Hornet_Quadcopter"
+      ],
+      "missingExternalTextures": [
+        "Hornet_Quadcopter_A.png",
+        "Hornet_Quadcopter_MGC.png",
+        "Hornet_Quadcopter_N.png"
+      ],
+      "packedTexturesDownscaled": [],
+      "discardedCameraOrLightObjects": 0,
+      "meshObjects": [
+        "Hornet_Quadcopter_Blades_1",
+        "Hornet_Quadcopter_Blades_2",
+        "Hornet_Quadcopter_Blades_3",
+        "Hornet_Quadcopter_Blades_4",
+        "Hornet_Quadcopter_Holder",
+        "Hornet_Quadcopter_Hull",
+        "Hornet_Quadcopter_Rotor_1",
+        "Hornet_Quadcopter_Rotor_2",
+        "Hornet_Quadcopter_Rotor_3",
+        "Hornet_Quadcopter_Rotor_4",
+        "Hornet_Quadcopter_Visor"
+      ],
+      "lods": [
+        {
+          "level": "lod0",
+          "path": "/models/vehicles/flying/drones/hornet-quadcopter/model.glb",
+          "bytes": 129276,
+          "vertices": 3247,
+          "triangles": 2795,
+          "bounds": {
+            "min": [
+              -2.78468,
+              -3.26606,
+              -6e-05
+            ],
+            "max": [
+              2.78468,
+              2.88265,
+              1.32373
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "candidates": [
+    {
+      "id": "tu222-draco-source",
+      "class": "jet",
+      "source": "tu222.glb",
+      "path": "/models/vehicles/flying/jets/tu222/source-draco.glb",
+      "bytes": 8978576,
+      "validation": "GLB structure and object metadata valid; Draco geometry not decoded by Blender",
+      "nodes": 62,
+      "meshes": 62,
+      "meshNames": [
+        "TU222_Chassis_Front_01",
+        "TU222_Chassis_L_01",
+        "TU222_Chassis_L_02",
+        "TU222_Chassis_L_03",
+        "TU222_Chassis_L_06",
+        "TU222_Chassis_L_07",
+        "TU222_Chassis_L_08",
+        "TU222_Chassis_R_01",
+        "TU222_Chassis_R_02",
+        "TU222_Chassis_R_03",
+        "TU222_Chassis_R_06",
+        "TU222_Chassis_R_07",
+        "TU222_Chassis_R_08",
+        "TU222_Driver_L",
+        "TU222_Driver_R",
+        "TU222_Drum",
+        "TU222_Eleron_L_01",
+        "TU222_Eleron_L_02",
+        "TU222_Eleron_R_01",
+        "TU222_Eleron_R_02",
+        "TU222_Elevator_L",
+        "TU222_Elevator_R",
+        "TU222_Engine_L",
+        "TU222_Engine_R",
+        "TU222_Flaps_L_01",
+        "TU222_Flaps_L_02",
+        "TU222_Flaps_L_03",
+        "TU222_Flaps_L_04",
+        "TU222_Flaps_R_01",
+        "TU222_Flaps_R_02",
+        "TU222_Flaps_R_03",
+        "TU222_Flaps_R_04",
+        "TU222_Glass",
+        "TU222_Hatch_L_01",
+        "TU222_Hatch_L_02",
+        "TU222_Hatch_L_03",
+        "TU222_Hatch_L_04",
+        "TU222_Hatch_L_05",
+        "TU222_Hatch_L_06",
+        "TU222_Hatch_L_07",
+        "TU222_Hatch_L_08",
+        "TU222_Hatch_R_01",
+        "TU222_Hatch_R_02",
+        "TU222_Hatch_R_03",
+        "TU222_Hatch_R_04",
+        "TU222_Hatch_R_05",
+        "TU222_Hatch_R_06",
+        "TU222_Hatch_R_07",
+        "TU222_Hatch_R_08",
+        "TU222_Hull",
+        "TU222_Pylon",
+        "TU222_Slat_L",
+        "TU222_Slat_R",
+        "TU222_Spoiler_L_01",
+        "TU222_Spoiler_L_02",
+        "TU222_Spoiler_R_01",
+        "TU222_Spoiler_R_02",
+        "TU222_Wheel_F_01",
+        "TU222_Wheel_L_01",
+        "TU222_Wheel_L_02",
+        "TU222_Wheel_R_01",
+        "TU222_Wheel_R_02"
+      ],
+      "triangles": 12941,
+      "extensionsRequired": [
+        "KHR_draco_mesh_compression"
+      ],
+      "materials": [
+        "TU222",
+        "Glass"
+      ],
+      "embeddedImages": 6,
+      "extensionsUsed": [
+        "KHR_draco_mesh_compression",
+        "EXT_texture_webp",
+        "KHR_materials_specular"
+      ]
+    }
+  ],
+  "rejected": [
+    {
+      "id": "su47-berkut-new-source",
+      "class": "jet",
+      "file": "su47berkut.blend",
+      "reason": "RuntimeError: Error: Loading \"su47berkut.blend\" failed: Cannot read blend file 'su47berkut.blend', incomplete header, may be from a newer version of Blender\n"
+    },
+    {
+      "id": "perunf-quadcopter",
+      "class": "drone",
+      "file": "PerunF_Quadcopter.obj",
+      "reason": "import succeeded but produced no mesh objects"
+    }
+  ]
+}

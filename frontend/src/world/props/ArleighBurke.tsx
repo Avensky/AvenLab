@@ -1,9 +1,10 @@
+import {vehicleLodUrl,vehicleModelUrl} from '../../vehicles/assetCatalog.ts';
 import {Detailed,useGLTF} from "@react-three/drei";
 import {Suspense,useMemo} from "react";
 import {AssetBoundary} from "../../components/debugger/AssetBoundary";
 import {burkeKeelY,burkeSize} from "../../worldBuilder/generation/burkeDeck";
 
-const paths=["/models/fleet/burke-lod0.glb","/models/fleet/burke-lod1.glb"] as const;
+const paths=[vehicleModelUrl('burke'),vehicleLodUrl('burke','medium')] as const;
 
 function Hull({path}:{path:string}){
   // useGLTF caches the source. Clone nodes per docked ship so two teams can

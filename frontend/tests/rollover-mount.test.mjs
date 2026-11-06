@@ -89,7 +89,7 @@ test('each shipping FR-S rim spins around its own cambered brake disc',async()=>
   const {BufferAttribute,BufferGeometry,Mesh}=await import('three');
   const {brzWheelAxle}=await import('../src/vehicles/tools/brzWheelAxle.ts');
   const io=new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({'draco3d.decoder':await draco.createDecoderModule()});
-  const doc=await io.read(new URL('../public/models/vehicles/brz.glb',import.meta.url).pathname);
+  const doc=await io.read(new URL('../public/models/vehicles/land/sports-cars/brz/model.glb',import.meta.url).pathname);
   const nodes=doc.getRoot().listNodes().filter(n=>/^WHEEL_(FL|FR|RL|RR)$/.test(n.getName()));
   assert.equal(nodes.length,4);
   for(const node of nodes) {

@@ -1,7 +1,7 @@
 {
   "assets": [
     {
-      "path": "frontend/public/models/aircraft/apache-ah64-lod0.glb",
+      "path": "frontend/public/models/vehicles/flying/helicopters/apache-ah64/model.glb",
       "status": "available",
       "nodes": 91,
       "meshes": 91,
@@ -65,7 +65,7 @@
       ]
     },
     {
-      "path": "frontend/public/models/aircraft/apache-ah64-lod1.glb",
+      "path": "frontend/public/models/vehicles/flying/helicopters/apache-ah64/lod-medium.glb",
       "status": "available",
       "nodes": 91,
       "meshes": 91,
@@ -129,7 +129,7 @@
       ]
     },
     {
-      "path": "frontend/public/models/aircraft/apache-ah64-lod2.glb",
+      "path": "frontend/public/models/vehicles/flying/helicopters/apache-ah64/lod-far.glb",
       "status": "available",
       "nodes": 91,
       "meshes": 91,
@@ -193,7 +193,7 @@
       ]
     },
     {
-      "path": "frontend/public/models/aircraft/f16-lod0.glb",
+      "path": "frontend/public/models/vehicles/flying/jets/f16/model.glb",
       "status": "available",
       "nodes": 9,
       "meshes": 9,
@@ -221,7 +221,7 @@
       ]
     },
     {
-      "path": "frontend/public/models/aircraft/f16-lod1.glb",
+      "path": "frontend/public/models/vehicles/flying/jets/f16/lod-medium.glb",
       "status": "available",
       "nodes": 9,
       "meshes": 9,
@@ -249,7 +249,7 @@
       ]
     },
     {
-      "path": "frontend/public/models/aircraft/f16-lod2.glb",
+      "path": "frontend/public/models/vehicles/flying/jets/f16/lod-far.glb",
       "status": "available",
       "nodes": 9,
       "meshes": 9,
@@ -277,7 +277,7 @@
       ]
     },
     {
-      "path": "frontend/public/models/aircraft/granad-ba1000t-lod0.glb",
+      "path": "frontend/public/models/vehicles/flying/drones/granad-ba1000t/model.glb",
       "status": "available",
       "nodes": 9,
       "meshes": 9,
@@ -293,7 +293,7 @@
       ]
     },
     {
-      "path": "frontend/public/models/aircraft/hornet-quadcopter-lod0.glb",
+      "path": "frontend/public/models/vehicles/flying/drones/hornet-quadcopter/model.glb",
       "status": "available",
       "nodes": 11,
       "meshes": 11,
@@ -309,7 +309,7 @@
       ]
     },
     {
-      "path": "frontend/public/models/aircraft/military-helicopter-highpoly-lod0.glb",
+      "path": "frontend/public/models/vehicles/flying/helicopters/military-helicopter-highpoly/model.glb",
       "status": "available",
       "nodes": 1,
       "meshes": 1,
@@ -325,7 +325,7 @@
       ]
     },
     {
-      "path": "frontend/public/models/aircraft/military-helicopter-highpoly-lod1.glb",
+      "path": "frontend/public/models/vehicles/flying/helicopters/military-helicopter-highpoly/lod-medium.glb",
       "status": "available",
       "nodes": 1,
       "meshes": 1,
@@ -341,7 +341,7 @@
       ]
     },
     {
-      "path": "frontend/public/models/aircraft/military-helicopter-highpoly-lod2.glb",
+      "path": "frontend/public/models/vehicles/flying/helicopters/military-helicopter-highpoly/lod-far.glb",
       "status": "available",
       "nodes": 1,
       "meshes": 1,
@@ -357,7 +357,7 @@
       ]
     },
     {
-      "path": "frontend/public/models/aircraft/rafale-lod0.glb",
+      "path": "frontend/public/models/vehicles/flying/jets/rafale/model.glb",
       "status": "available",
       "nodes": 10,
       "meshes": 10,
@@ -385,7 +385,7 @@
       ]
     },
     {
-      "path": "frontend/public/models/aircraft/rafale-lod1.glb",
+      "path": "frontend/public/models/vehicles/flying/jets/rafale/lod-medium.glb",
       "status": "available",
       "nodes": 10,
       "meshes": 10,
@@ -413,7 +413,7 @@
       ]
     },
     {
-      "path": "frontend/public/models/aircraft/rafale-lod2.glb",
+      "path": "frontend/public/models/vehicles/flying/jets/rafale/lod-far.glb",
       "status": "available",
       "nodes": 10,
       "meshes": 10,
@@ -441,7 +441,7 @@
       ]
     },
     {
-      "path": "frontend/public/models/aircraft/su47-berkut-lod0.glb",
+      "path": "frontend/public/models/vehicles/flying/jets/su47-berkut/model.glb",
       "status": "available",
       "nodes": 55,
       "meshes": 55,
@@ -461,7 +461,7 @@
       ]
     },
     {
-      "path": "frontend/public/models/aircraft/su47-berkut-lod1.glb",
+      "path": "frontend/public/models/vehicles/flying/jets/su47-berkut/lod-medium.glb",
       "status": "available",
       "nodes": 55,
       "meshes": 55,
@@ -481,7 +481,7 @@
       ]
     },
     {
-      "path": "frontend/public/models/aircraft/su47-berkut-lod2.glb",
+      "path": "frontend/public/models/vehicles/flying/jets/su47-berkut/lod-far.glb",
       "status": "available",
       "nodes": 55,
       "meshes": 55,
@@ -501,7 +501,7 @@
       ]
     },
     {
-      "path": "frontend/public/models/aircraft/tu222-draco-source.glb",
+      "path": "frontend/public/models/vehicles/flying/jets/tu222/source-draco.glb",
       "status": "available",
       "nodes": 62,
       "meshes": 62,
@@ -521,7 +521,7 @@
       ]
     },
     {
-      "path": "frontend/public/models/aircraft/tu222-lod0.glb",
+      "path": "frontend/public/models/vehicles/flying/jets/tu222/model.glb",
       "status": "available",
       "nodes": 62,
       "meshes": 62,
@@ -541,7 +541,7 @@
       ]
     },
     {
-      "path": "frontend/public/models/aircraft/tu222-lod1.glb",
+      "path": "frontend/public/models/vehicles/flying/jets/tu222/lod-medium.glb",
       "status": "available",
       "nodes": 62,
       "meshes": 62,
@@ -561,7 +561,7 @@
       ]
     },
     {
-      "path": "frontend/public/models/aircraft/tu222-lod2.glb",
+      "path": "frontend/public/models/vehicles/flying/jets/tu222/lod-far.glb",
       "status": "available",
       "nodes": 62,
       "meshes": 62,
@@ -621,31 +621,31 @@
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/fleet/arizona-lod0.glb",
+      "path": "frontend/public/models/vehicles/fleet/battleships/arizona/model.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/fleet/arizona-lod1.glb",
+      "path": "frontend/public/models/vehicles/fleet/battleships/arizona/lod-medium.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/fleet/burke-lod0.glb",
+      "path": "frontend/public/models/vehicles/fleet/destroyers/burke/model.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/fleet/burke-lod1.glb",
+      "path": "frontend/public/models/vehicles/fleet/destroyers/burke/lod-medium.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/fleet/hawaii-rescue.glb",
+      "path": "frontend/public/models/vehicles/fleet/destroyers/hawaii-rescue/model.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/fleet/louisiana-lod0.glb",
+      "path": "frontend/public/models/vehicles/fleet/carriers/louisiana/model.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/fleet/louisiana-lod1.glb",
+      "path": "frontend/public/models/vehicles/fleet/carriers/louisiana/lod-medium.glb",
       "status": "lfs-pointer"
     },
     {
@@ -4152,23 +4152,23 @@
       ]
     },
     {
-      "path": "frontend/public/models/vehicles/ae86.glb",
+      "path": "frontend/public/models/vehicles/land/sports-cars/ae86/model.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/big_e_cvn65.glb",
+      "path": "frontend/public/models/vehicles/fleet/carriers/big-e/model.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/brz.glb",
+      "path": "frontend/public/models/vehicles/land/sports-cars/brz/model.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/camaro.glb",
+      "path": "frontend/public/models/vehicles/land/sports-cars/camaro/model.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/charger70.glb",
+      "path": "frontend/public/models/vehicles/land/sports-cars/charger70/model.glb",
       "status": "available",
       "nodes": 24,
       "meshes": 9,
@@ -4317,11 +4317,11 @@
       ]
     },
     {
-      "path": "frontend/public/models/vehicles/cx30.glb",
+      "path": "frontend/public/models/vehicles/land/suvs/cx30/model.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/enforcer.glb",
+      "path": "frontend/public/models/vehicles/land/police/enforcer/model.glb",
       "status": "available",
       "nodes": 24,
       "meshes": 9,
@@ -4502,11 +4502,11 @@
       ]
     },
     {
-      "path": "frontend/public/models/vehicles/fortuner.glb",
+      "path": "frontend/public/models/vehicles/land/suvs/fortuner/model.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/interceptor.glb",
+      "path": "frontend/public/models/vehicles/land/police/interceptor/model.glb",
       "status": "available",
       "nodes": 24,
       "meshes": 9,
@@ -4723,191 +4723,191 @@
       ]
     },
     {
-      "path": "frontend/public/models/vehicles/landcruiser.glb",
+      "path": "frontend/public/models/vehicles/land/suvs/landcruiser/model.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/ae86-far.glb",
+      "path": "frontend/public/models/vehicles/land/sports-cars/ae86/lod-far.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/ae86-medium.glb",
+      "path": "frontend/public/models/vehicles/land/sports-cars/ae86/lod-medium.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/ae86-near.glb",
+      "path": "frontend/public/models/vehicles/land/sports-cars/ae86/lod-near.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/brz-far.glb",
+      "path": "frontend/public/models/vehicles/land/sports-cars/brz/lod-far.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/brz-medium.glb",
+      "path": "frontend/public/models/vehicles/land/sports-cars/brz/lod-medium.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/brz-near.glb",
+      "path": "frontend/public/models/vehicles/land/sports-cars/brz/lod-near.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/camaro-far.glb",
+      "path": "frontend/public/models/vehicles/land/sports-cars/camaro/lod-far.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/camaro-medium.glb",
+      "path": "frontend/public/models/vehicles/land/sports-cars/camaro/lod-medium.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/camaro-near.glb",
+      "path": "frontend/public/models/vehicles/land/sports-cars/camaro/lod-near.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/charger70-far.glb",
+      "path": "frontend/public/models/vehicles/land/sports-cars/charger70/lod-far.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/charger70-medium.glb",
+      "path": "frontend/public/models/vehicles/land/sports-cars/charger70/lod-medium.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/charger70-near.glb",
+      "path": "frontend/public/models/vehicles/land/sports-cars/charger70/lod-near.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/cx30-far.glb",
+      "path": "frontend/public/models/vehicles/land/suvs/cx30/lod-far.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/cx30-medium.glb",
+      "path": "frontend/public/models/vehicles/land/suvs/cx30/lod-medium.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/cx30-near.glb",
+      "path": "frontend/public/models/vehicles/land/suvs/cx30/lod-near.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/enforcer-far.glb",
+      "path": "frontend/public/models/vehicles/land/police/enforcer/lod-far.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/enforcer-medium.glb",
+      "path": "frontend/public/models/vehicles/land/police/enforcer/lod-medium.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/enforcer-near.glb",
+      "path": "frontend/public/models/vehicles/land/police/enforcer/lod-near.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/fortuner-far.glb",
+      "path": "frontend/public/models/vehicles/land/suvs/fortuner/lod-far.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/fortuner-medium.glb",
+      "path": "frontend/public/models/vehicles/land/suvs/fortuner/lod-medium.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/fortuner-near.glb",
+      "path": "frontend/public/models/vehicles/land/suvs/fortuner/lod-near.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/interceptor-far.glb",
+      "path": "frontend/public/models/vehicles/land/police/interceptor/lod-far.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/interceptor-medium.glb",
+      "path": "frontend/public/models/vehicles/land/police/interceptor/lod-medium.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/interceptor-near.glb",
+      "path": "frontend/public/models/vehicles/land/police/interceptor/lod-near.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/landcruiser-far.glb",
+      "path": "frontend/public/models/vehicles/land/suvs/landcruiser/lod-far.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/landcruiser-medium.glb",
+      "path": "frontend/public/models/vehicles/land/suvs/landcruiser/lod-medium.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/landcruiser-near.glb",
+      "path": "frontend/public/models/vehicles/land/suvs/landcruiser/lod-near.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/mini-far.glb",
+      "path": "frontend/public/models/vehicles/land/compact-cars/mini/lod-far.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/mini-medium.glb",
+      "path": "frontend/public/models/vehicles/land/compact-cars/mini/lod-medium.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/mini-near.glb",
+      "path": "frontend/public/models/vehicles/land/compact-cars/mini/lod-near.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/sierra-far.glb",
+      "path": "frontend/public/models/vehicles/land/pickups/sierra/lod-far.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/sierra-medium.glb",
+      "path": "frontend/public/models/vehicles/land/pickups/sierra/lod-medium.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/sierra-near.glb",
+      "path": "frontend/public/models/vehicles/land/pickups/sierra/lod-near.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/skyline34-far.glb",
+      "path": "frontend/public/models/vehicles/land/sports-cars/skyline34/lod-far.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/skyline34-medium.glb",
+      "path": "frontend/public/models/vehicles/land/sports-cars/skyline34/lod-medium.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/skyline34-near.glb",
+      "path": "frontend/public/models/vehicles/land/sports-cars/skyline34/lod-near.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/supra-far.glb",
+      "path": "frontend/public/models/vehicles/land/sports-cars/supra/lod-far.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/supra-medium.glb",
+      "path": "frontend/public/models/vehicles/land/sports-cars/supra/lod-medium.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/supra-near.glb",
+      "path": "frontend/public/models/vehicles/land/sports-cars/supra/lod-near.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/tank-far.glb",
+      "path": "frontend/public/models/vehicles/land/armored/tank/lod-far.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/tank-medium.glb",
+      "path": "frontend/public/models/vehicles/land/armored/tank/lod-medium.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/tank-near.glb",
+      "path": "frontend/public/models/vehicles/land/armored/tank/lod-near.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/timecar-far.glb",
+      "path": "frontend/public/models/vehicles/land/specialty/timecar/lod-far.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/timecar-medium.glb",
+      "path": "frontend/public/models/vehicles/land/specialty/timecar/lod-medium.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/lod/timecar-near.glb",
+      "path": "frontend/public/models/vehicles/land/specialty/timecar/lod-near.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/mini.glb",
+      "path": "frontend/public/models/vehicles/land/compact-cars/mini/model.glb",
       "status": "available",
       "nodes": 43,
       "meshes": 13,
@@ -5144,7 +5144,7 @@
       ]
     },
     {
-      "path": "frontend/public/models/vehicles/sierra.glb",
+      "path": "frontend/public/models/vehicles/land/pickups/sierra/model.glb",
       "status": "available",
       "nodes": 43,
       "meshes": 13,
@@ -5437,7 +5437,7 @@
       ]
     },
     {
-      "path": "frontend/public/models/vehicles/skyline34.glb",
+      "path": "frontend/public/models/vehicles/land/sports-cars/skyline34/model.glb",
       "status": "available",
       "nodes": 24,
       "meshes": 9,
@@ -5662,19 +5662,19 @@
       ]
     },
     {
-      "path": "frontend/public/models/vehicles/supra_1998.glb",
+      "path": "frontend/public/models/vehicles/land/sports-cars/supra-1998/model.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/supra_2020.glb",
+      "path": "frontend/public/models/vehicles/land/sports-cars/supra/model.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/tank.glb",
+      "path": "frontend/public/models/vehicles/land/armored/tank/model.glb",
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/vehicles/timecar.glb",
+      "path": "frontend/public/models/vehicles/land/specialty/timecar/model.glb",
       "status": "available",
       "nodes": 24,
       "meshes": 9,
@@ -5887,7 +5887,7 @@
       ]
     },
     {
-      "path": "frontend/public/models/world/big-e-docked.glb",
+      "path": "frontend/public/models/vehicles/fleet/carriers/big-e/docked.glb",
       "status": "lfs-pointer"
     },
     {
@@ -5923,7 +5923,7 @@
       "status": "lfs-pointer"
     },
     {
-      "path": "frontend/public/models/world/rescue-helicopter.glb",
+      "path": "frontend/public/models/vehicles/flying/helicopters/rescue-helicopter/model.glb",
       "status": "lfs-pointer"
     },
     {

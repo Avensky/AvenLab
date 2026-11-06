@@ -1,3 +1,4 @@
+import {vehicleVariantUrl} from '../../vehicles/assetCatalog.ts';
 import {bridgeAngle} from './bridgeMotion';
 import {useGLTF} from "@react-three/drei";
 import {useFrame} from "@react-three/fiber";
@@ -8,7 +9,7 @@ import {useNetworkStore} from "../../store/session/networkStore";
 import type {LayoutObject} from "../../worldBuilder/document/layoutDocument";
 
 function FlightDeck(){
-  const {scene}=useGLTF("/models/world/big-e-docked.glb");
+  const {scene}=useGLTF(vehicleVariantUrl('big-e','docked'));
   const source=scene.children[0] as Mesh;
   return <mesh geometry={source.geometry} material={source.material} dispose={null} receiveShadow/>;
 }

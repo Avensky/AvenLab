@@ -1,3 +1,4 @@
+import {vehicleModelUrl,vehicleLodUrl} from '../src/vehicles/assetCatalog.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import fs from 'node:fs';
@@ -11,7 +12,7 @@ const shapeTop=(object,part)=>object.position[1]+(part.position[1]+part.size[1]/
 test('Burke binaries are self-contained GLB 2.0 with lower triangle-count distance tier',()=>{
   const triangles=[];
   for(const lod of [0,1]){
-    const blob=fs.readFileSync(new URL(`../public/models/fleet/burke-lod${lod}.glb`,import.meta.url));
+    const blob=fs.readFileSync(new URL('../public'+(lod===0?vehicleModelUrl('burke'):vehicleLodUrl('burke','medium')),import.meta.url));
     assert.equal(blob.subarray(0,4).toString(),'glTF');
     assert.equal(blob.readUInt32LE(4),2);
     assert.equal(blob.readUInt32LE(8),blob.length);

@@ -1,9 +1,10 @@
+import {vehicleLodUrl,vehicleModelUrl} from '../../vehicles/assetCatalog.ts';
 import {Detailed,useGLTF} from '@react-three/drei';
 import {Suspense,useMemo} from 'react';
 import {AssetBoundary} from '../../components/debugger/AssetBoundary';
 import {LOUISIANA_SIZE} from '../../worldBuilder/generation/navalHullSpecs';
 
-const paths=['/models/fleet/louisiana-lod0.glb','/models/fleet/louisiana-lod1.glb'];
+const paths=[vehicleModelUrl('louisiana'),vehicleLodUrl('louisiana','medium')];
 function Hull({path}:{path:string}){
   const {scene}=useGLTF(path);
   const root=useMemo(()=>scene.clone(true),[scene]);

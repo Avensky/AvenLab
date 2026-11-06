@@ -14,7 +14,11 @@ import numpy as np
 from PIL import Image
 from scipy.spatial.transform import Rotation
 
-MODELS = "ae86 brz camaro supra mini sierra landcruiser fortuner cx30 tank enforcer interceptor charger70 skyline34 timecar patrolclassic".split()
+CATALOG = json.loads((Path(__file__).resolve().parents[1] / "frontend/public/models/vehicles/catalog.json").read_text())['assets']
+MODELS = [key for key, asset in CATALOG.items() if asset['group'] == 'land' and 'near' in asset['lods']]
+
+def relative_asset(url):
+    return Path(url.removeprefix('/models/vehicles/'))
 KINDS = {0:"POSITION", 1:"NORMAL", 2:"COLOR_0", 3:"TEXCOORD_0"}
 DTYPES = {5120:"i1",5121:"u1",5122:"<i2",5123:"<u2",5125:"<u4",5126:"<f4"}
 COMPONENTS = {"SCALAR":1,"VEC2":2,"VEC3":3,"VEC4":4}
@@ -213,8 +217,8 @@ def bake_seed(parts,model,library):
 
 if __name__=="__main__":
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('source',type=Path)
-    parser.add_argument('output',type=Path)
+    parser.add_argument('source',type=Path,help='Vehicle catalog root, e.g. frontend/public/models/vehicles')
+    parser.add_argument('output',type=Path,help='Output vehicle root; preserves group/subgroup/vehicle folders')
     parser.add_argument('--meshoptimizer',help='Path to a meshoptimizer shared library')
     parser.add_argument('--models',nargs='+',choices=MODELS,default=MODELS)
     parser.add_argument('--seeds',type=Path,help='Write the bundled cold-join geometry as JSON')
@@ -223,9 +227,11 @@ if __name__=="__main__":
     args.output.mkdir(parents=True,exist_ok=True)
     simplify=mesh_simplifier(args.meshoptimizer)
     for model in args.models:
-        parts,original=source_parts(model,args.source/(('supra_2020' if model=='supra' else model)+'.glb'))
+        parts,original=source_parts(model,args.source/relative_asset(CATALOG[model]['model']))
         if args.seeds:seeds[model]=bake_seed(parts,model,args.meshoptimizer)
         for tier,ratio,error in [('near',.39,.006),('medium',.11,.025),('far',.025,.075)]:
-            result=write(args.output/f'{model}-{tier}.glb',parts,model,ratio,error,simplify)
+            destination=args.output/relative_asset(CATALOG[model]['lods'][tier])
+            destination.parent.mkdir(parents=True,exist_ok=True)
+            result=write(destination,parts,model,ratio,error,simplify)
             print(model,tier,original,*result,flush=True)
     if args.seeds:args.seeds.write_text(json.dumps(seeds,separators=(',',':'))+'\n')

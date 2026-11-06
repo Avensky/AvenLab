@@ -1,9 +1,10 @@
+import {vehicleModelUrl} from '../../vehicles/assetCatalog.ts';
 import {useGLTF} from '@react-three/drei';
 import {Suspense,useMemo} from 'react';
 import {AssetBoundary} from '../../components/debugger/AssetBoundary';
 
 function Model(){
-  const {scene}=useGLTF('/models/fleet/hawaii-rescue.glb');
+  const {scene}=useGLTF(vehicleModelUrl('hawaii-rescue'));
   const copy=useMemo(()=>scene.clone(true),[scene]);
   // Parent World Builder transform uses real hull size [24,26,154]. This
   // normalizes the original FBX units, keeping static and playable art equal.

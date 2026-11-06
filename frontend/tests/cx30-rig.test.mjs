@@ -6,7 +6,7 @@ import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
 import {extractWheelAssembly,applyBackendWheelPose} from '../src/vehicles/tools/vehicleVisualRig.ts';
 
 test('CX-30 GLB uses meter-scale Y-up chassis and four independently posed hubs',async t=>{
- const bytes=await readFile(new URL('../public/models/vehicles/cx30.glb',import.meta.url));
+ const bytes=await readFile(new URL('../public/models/vehicles/land/suvs/cx30/model.glb',import.meta.url));
  if(bytes.toString('utf8',0,7)==='version')return t.skip('Fetch the CX-30 Git LFS model.');
  const {scene}=await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'');
  const size=new Box3().setFromObject(scene,true).getSize(new Vector3());
@@ -29,7 +29,7 @@ test('CX-30 GLB uses meter-scale Y-up chassis and four independently posed hubs'
 });
 
 test('only the CX-30 sunroof pane uses its glossy tinted glass material', async t=>{
- const bytes=await readFile(new URL('../public/models/vehicles/cx30.glb',import.meta.url));
+ const bytes=await readFile(new URL('../public/models/vehicles/land/suvs/cx30/model.glb',import.meta.url));
  if(bytes.toString('utf8',0,7)==='version')return t.skip('Fetch the CX-30 Git LFS model.');
  const gltf=JSON.parse(bytes.toString('utf8',20,20+bytes.readUInt32LE(12)));
  const index=gltf.materials.findIndex(m=>m.name==='sunroof_glass');
