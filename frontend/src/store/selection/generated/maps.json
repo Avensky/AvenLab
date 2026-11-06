@@ -25,6 +25,11 @@
     "desc": "Wider canal, three strategic crossings, independent breakaway guardrails and docked fleet."
   },
   {
+    "id": "harbor_exchange",
+    "name": "Harbor Exchange",
+    "desc": "Collision district · mountain road and canal tunnels, curved cutting, viaduct, underpass and waterfall terminus."
+  },
+  {
     "id": "road_jump_lab",
     "name": "Road & Jump Lab",
     "desc": "Installed server environment"

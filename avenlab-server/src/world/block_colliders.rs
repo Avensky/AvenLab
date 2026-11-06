@@ -425,7 +425,7 @@ pub fn validate_block_collider_file(file: BlockColliderFile) -> anyhow::Result<B
         );
     }
 
-    if file.visuals.is_empty() {
+    if file.visuals.is_empty() && !file.authored_layout.as_ref().is_some_and(|layout| layout.replaces_base()) {
         anyhow::bail!(
             "Map '{}' has no visual assets",
             file.map_id,

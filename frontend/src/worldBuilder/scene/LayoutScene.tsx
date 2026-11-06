@@ -30,6 +30,7 @@ import { ChunkGuide } from "./ChunkGuide";
 import { LayoutInstances, PieceModel } from "./LayoutMeshes";
 import { SpawnMarkers } from "./SpawnMarkers";
 import { WorldReference } from "./WorldReference";
+import { useExcavationPreview } from '../state/excavationPreview';
 
 function layoutFrame(
   objects: LayoutObject[],
@@ -256,9 +257,11 @@ export default function LayoutScene() {
         : doc?.spawns,
     ),
   );
-  const selectedObject = doc?.objects.find((o) => o.id === selected),
+  const excavation = useExcavationPreview(s => s.preview);
+  const preview = excavation?.base === doc ? excavation : null;
+  const selectedObject = preview ? undefined : doc?.objects.find((o) => o.id === selected),
     piece = placing ? pieceById(placing) : undefined;
-  const [panorama]=useState(()=>focus==="deck" && doc && [CARRIER,DESTROYER,HAWAII_DOCKED,LOUISIANA_DOCKED].includes(selectedObject?.piece??'') ?
+  const [panorama]=useState(()=>focus==="deck" && doc && selectedObject && [CARRIER,DESTROYER,HAWAII_DOCKED,LOUISIANA_DOCKED].includes(selectedObject.piece) ?
     deckPanorama(selectedObject,doc.objects):null);
   const phantom = useMemo<LayoutObject | null>(
     () =>
@@ -358,7 +361,7 @@ export default function LayoutScene() {
           }
         }}
         onClick={(e) => {
-          if (e.delta >= 5 || e.button !== 0 || navigation === "pan") return;
+          if (e.delta >= 5 || e.button !== 0 || navigation === "pan" || preview) return;
           e.stopPropagation();
           if (placing)
             layoutAction(() =>
@@ -393,13 +396,14 @@ export default function LayoutScene() {
         color="#45d9f3" lineWidth={2.5} dashed={false} />}
       {doc && (
         <LayoutInstances
-          objects={doc.objects}
-          exclude={placing ? null : selected}
-          onSelect={placing ? undefined : select}
+          objects={preview?.doc.objects ?? doc.objects}
+          exclude={placing || preview ? null : selected}
+          onSelect={placing || preview ? undefined : select}
           wireframe={wireframe}
-          collisionOnly={wireframe}
+          collisionOnly={wireframe || Boolean(preview)}
         />
       )}
+      {preview && <LayoutInstances objects={preview.clearance} wireframe />}
       {selectedObject && !placing && (
         <SelectedObject key={selectedObject.id} item={selectedObject} />
       )}

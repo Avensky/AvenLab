@@ -4,6 +4,7 @@ import { Color, Fog, type Points } from "three";
 import { skyReflectionMap, worldSkyLighting } from "./worldSkyLighting";
 import type { WorldSkyPreset } from "../store/world/worldStore";
 import {useWorldStore} from "../store/world/worldStore";
+import { waterSurfaceAt, isWaterRegion } from '../worldBuilder/generation/waterRegions';
 
 // A fixed celestial sphere gives every client the same stars, including late joins.
 const positions = new Float32Array(1200 * 3);
@@ -38,10 +39,8 @@ export function WorldAtmosphere({ preset, shadows, detailedReflections }: { pres
   const scene = useThree(s => s.scene), gl = useThree(s => s.gl), invalidate = useThree(s => s.invalidate);
   const sky = worldSkyLighting(preset);
   const day = preset === "foggy_day";
-  const waterSurface=useWorldStore(s=>{
-    const water=s.map?.authored_layout?.objects.find(o=>o.piece==='coastal-water-visual');
-    return water?water.position[1]+water.size[1]:null;
-  });
+  const layoutObjects = useWorldStore(s => s.map?.authored_layout?.objects);
+  const waters = useMemo(() => layoutObjects?.filter(isWaterRegion) ?? [], [layoutObjects]);
   const surfaceFog=useMemo(()=>new Fog(sky.horizon,sky.fogNear,sky.fogFar),[sky]);
   const underwaterFog=useMemo(()=>new Fog('#113744',4,110),[]);
   const underwaterColor=useMemo(()=>new Color('#113744'),[]);
@@ -56,6 +55,7 @@ export function WorldAtmosphere({ preset, shadows, detailedReflections }: { pres
     return () => { scene.background = background; scene.fog = fog; gl.toneMappingExposure = exposure; invalidate(); };
   }, [scene, gl, invalidate, sky, day, skyColor, surfaceFog]);
   useFrame(({camera})=>{
+    const waterSurface = waterSurfaceAt(waters, camera.position.x, camera.position.z);
     const submerged=waterSurface!==null&&camera.position.y<waterSurface-.25;
     const fog=submerged?underwaterFog:surfaceFog;
     if(scene.fog!==fog){scene.fog=fog;scene.background=submerged?underwaterColor:skyColor;invalidate();}

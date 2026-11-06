@@ -130,7 +130,11 @@ test("visibility, decorative surfaces and render LOD are independent and imports
     ...budget.objects[0],
     id: `junction-${i}`,
   }));
-  assert.throws(() => parseLayout(budget), /4096/);
+  assert.doesNotThrow(() => parseLayout(budget)); // Current shared budget is 16,384 shapes.
+  const dense = addPiece(emptyLayout("test"), "floor", [0, 0, 0]);
+  dense.objects[0].parts = Array.from({ length: 512 }, () => dense.objects[0].parts[0]);
+  dense.objects = Array.from({ length: 33 }, (_, i) => ({ ...dense.objects[0], id: `dense-${i}` }));
+  assert.throws(() => parseLayout(dense), /16384/);
 });
 
 test("opposing carriageways align the asphalt and remove only adjacent local sidewalks", () => {

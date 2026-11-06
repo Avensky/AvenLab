@@ -56,7 +56,7 @@ impl PhysicsWorld {
             let thrust=if speed_limited {0.0} else {requested*cfg.engine_force};
             let drag=-longitudinal*mass*(0.10+brake.clamp(0.0,1.0)*1.5);
             let side_drag=-lateral*mass*1.8;
-            body.apply_force(Vector::y()*lift + forward*(thrust+drag) + side*side_drag,true);
+            body.add_force(Vector::y()*lift + forward*(thrust+drag) + side*side_drag,true);
 
             // Rudder reverses with sternway. No instantaneous turn-in-place;
             // angular drag and hull inertia make heading changes deliberate.
@@ -64,7 +64,7 @@ impl PhysicsWorld {
                 (longitudinal.abs()/5.0).clamp(0.08,1.0)*longitudinal.signum()}else {0.0};
             let yaw=mass*(rudder*90.0-body.angvel().y*700.0);
             let restore=up.cross(&Vector::y())*mass*1450.0;
-            body.apply_torque(Vector::y()*yaw + restore,true);
+            body.add_torque(Vector::y()*yaw + restore,true);
         }
     }
 
@@ -91,7 +91,7 @@ impl PhysicsWorld {
                     || !(deck+car_half[1]-1.0..=deck+car_half[1]+2.0).contains(&local.y){continue;}
                 let delta=*body.linvel()-*ship_speed;
                 let match_velocity=vector![-delta.x*vehicle.config.mass*7.0,0.0,-delta.z*vehicle.config.mass*7.0];
-                body.apply_force(match_velocity,true);
+                body.add_force(match_velocity,true);
                 break;
             }
         }

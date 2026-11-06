@@ -396,9 +396,9 @@ export function parseLayout(value: unknown, mapId?: string): WorldLayout {
       (kit || item.road || item.model || item.vehicle
         ? item.parts.length !== 0
         : !item.parts.length) ||
-      item.parts.length > 32
+      item.parts.length > 512
     )
-      throw Error("Each piece needs 1–32 explicit shapes");
+      throw Error("Each piece needs 1–512 explicit shapes");
     parts += item.parts.length + (kit ? 1 : 0);
     for (const entry of item.parts) {
       const part = object(entry);

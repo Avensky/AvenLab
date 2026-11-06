@@ -87,6 +87,69 @@ function chunk(side: 2 | 3): Piece {
     parts,
   };
 }
+function mountainFabrication(carvedCurve90 = false): LayoutPart[] {
+  const extent = 72, height = 36, cell = 12, parts: LayoutPart[] = [];
+  const tunnelCenter = (x: number, z: number) => {
+    const angle = Math.max(-Math.PI / 2, Math.min(0, Math.atan2(z - 48, x)));
+    const nearestX = 48 * Math.cos(angle), nearestZ = 48 + 48 * Math.sin(angle);
+    return Math.hypot(x - nearestX, z - nearestZ);
+  };
+  for (let y = cell / 2; y < height; y += cell) {
+    const layer = Math.floor(y / cell), hillRadius = 48 - layer * 12;
+    for (let x = cell / 2; x < extent; x += cell)
+      for (let z = cell / 2; z < extent; z += cell) {
+        if (Math.hypot(x - 24, z - 24) > hillRadius) continue;
+        // The 90° road bore is a subtraction from the rock cells. Leave a
+        // 12 m high opening around the measured H27 highway bend centerline.
+        if (carvedCurve90 && y < 12 && tunnelCenter(x, z) < 18) continue;
+        const shade = layer === 0 ? "#6f7779" : layer === 1 ? "#7c8586" : "#8b9290";
+        parts.push(box(
+          [(x - extent / 2) / extent, y / height, (z - extent / 2) / extent],
+          [cell / extent, cell / height, cell / extent], shade,
+        ));
+      }
+  }
+  return parts;
+}
+function mountainSegmentParts(width: number, height: number, length: number): LayoutPart[] {
+  const cell = 12, parts: LayoutPart[] = [];
+  for (let y = cell / 2; y < height; y += cell) {
+    for (let x = cell / 2; x < width; x += cell) {
+      const across = Math.abs((x - width / 2) / (width / 2));
+      const ridgeHeight = height * (1 - across);
+      if (y >= ridgeHeight) continue;
+      for (let z = cell / 2; z < length; z += cell) {
+        const shade = y < height / 3 ? "#6f7779" : y < height * 2 / 3 ? "#7c8586" : "#8b9290";
+        parts.push(box(
+          [(x - width / 2) / width, y / height, (z - length / 2) / length],
+          [cell / width, cell / height, cell / length], shade,
+        ));
+      }
+    }
+  }
+  return parts;
+}
+function mountainCanalParts(): LayoutPart[] {
+  const extent = 72, height = 36, cell = 12, parts: LayoutPart[] = [];
+  for (let y = cell / 2; y < height; y += cell) {
+    const layer = Math.floor(y / cell), hillRadius = 48 - layer * 12;
+    for (let x = cell / 2; x < extent; x += cell)
+      for (let z = cell / 2; z < extent; z += cell) {
+        if (Math.hypot(x - 36, z - 36) > hillRadius) continue;
+        // Carve a straight 24 m waterway from bank to bank through the lower
+        // 12 m of the rock cells. The seabed/water remain separate parts.
+        if (y < 12 && Math.abs(x - extent / 2) < 18) continue;
+        const shade = layer === 0 ? "#6f7779" : layer === 1 ? "#7c8586" : "#8b9290";
+        parts.push(box(
+          [(x - extent / 2) / extent, y / height, (z - extent / 2) / extent],
+          [cell / extent, cell / height, cell / extent], shade,
+        ));
+      }
+  }
+  parts.push(box([0,.045,0],[.34,.09,1],"#515354"));
+  parts.push(box([0,.17,0],[.33,.015,1],"#28748b",false));
+  return parts;
+}
 const outline = (color: string): LayoutPart[] => [
   box([-0.49, 0.5, 0], [0.02, 1, 1], color, false),
   box([0.49, 0.5, 0], [0.02, 1, 1], color, false),
@@ -114,6 +177,73 @@ export const EXTRA_PIECES: Piece[] = [
   {
     id:"canal-section",label:"Canal section",category:"props",description:"Raised concrete channel with a visual water strip · no terrain excavation or water physics",size:[16,2,30],color:"#8398a9",
     parts:[box([-.44,.5,0],[.12,1,1]),box([.44,.5,0],[.12,1,1]),box([0,.04,0],[.8,.08,1]),box([0,.28,0],[.75,.02,1],"#28657b",false)],
+  },
+  {
+    id:"excavated-canal-section",label:"Excavated canal profile",category:"roads",
+    description:"40 m open channel · solid seabed and retaining walls with a separate non-solid water surface. Water simulation remains map-level.",
+    size:[64,12,32],color:"#657d86",
+    parts:[
+      box([0,.055,0],[.64,.09,1],"#515354"),
+      box([-.33,.39,0],[.04,.66,1],"#7c8588"),
+      box([.33,.39,0],[.04,.66,1],"#7c8588"),
+      box([0,.43,0],[.62,.012,1],"#28657b",false),
+    ],
+  },
+  {
+    id:"mountain-segment-small",label:"Mountain segment · Small · 24 m",category:"blocks",
+    description:"24 m default segment · 48 m wide × 24 m high · solid low-poly rock cells. Add matching segments end-to-end.",
+    size:[48,24,24],color:"#7c8586",parts:mountainSegmentParts(48,24,24),
+  },
+  {
+    id:"mountain-segment-standard",label:"Mountain segment · Standard · 24 m",category:"blocks",
+    description:"24 m default segment · 72 m wide × 36 m high · solid low-poly rock cells. Add matching segments end-to-end.",
+    size:[72,36,24],color:"#7c8586",parts:mountainSegmentParts(72,36,24),
+  },
+  {
+    id:"mountain-segment-long",label:"Mountain segment · Long · 48 m",category:"blocks",
+    description:"48 m segment · 72 m wide × 36 m high · solid low-poly rock cells. Add matching segments end-to-end.",
+    size:[72,36,48],color:"#7c8586",parts:mountainSegmentParts(72,36,48),
+  },
+  {
+    id:"mountain-segment-broad",label:"Mountain segment · Broad · 72 m",category:"blocks",
+    description:"72 m segment · 96 m wide × 48 m high · solid low-poly rock cells. Add matching segments end-to-end.",
+    size:[96,48,72],color:"#7c8586",parts:mountainSegmentParts(96,48,72),
+  },
+  {
+    id:"mountain-curved-tunnel",label:"Mountain fabrication · curved tunnel cut",category:"blocks",
+    description:"Rock cells leave a curved 90° bore for the measured H27 wide highway bend · separate road surface · 12 m opening.",
+    size:[72,36,72],color:"#7c8586",parts:mountainFabrication(true),
+  },
+  {
+    id:"mountain-canal-cut",label:"Mountain canal · excavated passage",category:"blocks",
+    description:"Straight 24 m canal cut through a 72 m rock module · solid bed · separate non-solid water surface.",
+    size:[72,36,72],color:"#7c8586",parts:mountainCanalParts(),
+  },
+  {
+    id:"mountain-waterfall-roadblock",label:"Waterfall · rock road blocker",category:"blocks",
+    description:"Solid cliff face blocks the route; a separate non-solid water curtain marks the waterfall and plunge pool.",
+    size:[36,24,20],color:"#727b7d",
+    parts:[
+      box([0,.5,0],[1,1,1],"#687174"),
+      box([0,.43,-.46],[.52,.78,.025],"#55b5ce",false),
+      box([0,.08,-.26],[.68,.12,.38],"#376d7c"),
+      box([-.44,.44,.03],[.12,.84,.92],"#777f80"),
+      box([.44,.44,.03],[.12,.84,.92],"#777f80"),
+    ],
+  },
+  {
+    id:"waterfall-lookout-boardwalk",label:"Waterfall lookout · boardwalk end",category:"props",
+    description:"Solid timber viewing deck with independent rails · place beside the plunge pool as the ride terminus.",
+    size:[24,2,12],color:"#765d45",
+    parts:[
+      box([0,.12,0],[1,.18,1],"#765d45"),
+      box([-.47,.62,0],[.045,.62,.92],"#5c4939"),
+      box([.47,.62,0],[.045,.62,.92],"#5c4939"),
+      ...[-.32,0,.32].flatMap(z=>[
+        {shape:"box" as const,position:[-.47,.36,z] as [number,number,number],size:[.06,.72,.06] as [number,number,number],color:"#584635"},
+        {shape:"box" as const,position:[.47,.36,z] as [number,number,number],size:[.06,.72,.06] as [number,number,number],color:"#584635"},
+      ]),
+    ],
   },
   {
     id:"launch-gallery", label:"Glass run · launch gallery", category:"jumps",

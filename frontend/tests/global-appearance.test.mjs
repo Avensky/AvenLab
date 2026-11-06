@@ -19,3 +19,10 @@ test('white Camaro body preview retains the atlas and can return to pink or fact
  applyShowroomPaint(root,'camaro','hot-pink');assert.equal(body.color.getHexString(),'ed258d');applyShowroomPaint(root,'camaro','factory');assert.equal(body.color.getHexString(),'aabbcc');
  geometry.dispose();body.dispose();map.dispose();
 });
+test('new imported vehicle portraits and live models share explicit paint targets',()=>{
+ for(const [model,name] of [['charger70','Paint'],['enforcer','chassis'],['skyline34','rNissan_SkylineGTRR34F2_1999Paint_Material1'],['timecar','Time:BTTF_TimeMachine1_1985Paint_Material1']]){
+  const root=new Group(),paint=new MeshStandardMaterial(),glass=new MeshStandardMaterial();paint.name=name;glass.name='glass';const geometry=new BoxGeometry();root.add(new Mesh(geometry,[paint,glass]));
+  applyShowroomPaint(root,model,'factory','#123456');assert.equal(paint.color.getHexString(),'123456');assert.equal(glass.color.getHexString(),'ffffff');
+  applyShowroomHighlights(root,.45,'frs');assert.equal(paint.roughness,.20529644);geometry.dispose();paint.dispose();glass.dispose();
+ }
+});

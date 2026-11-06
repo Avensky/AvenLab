@@ -80,7 +80,7 @@ export default function PiecePreview({
   onPlace: () => void;
 }) {
   const piece = pieceById(pieceId)!,
-    [collision, setCollision] = useState(false),
+    [collision, setCollision] = useState(true),
     [cutaway, setCutaway] = useState(false),
     dialog = useRef<HTMLElement>(null);
   const item: LayoutObject = {

@@ -17,6 +17,31 @@ export const harborPieces: Piece[] = [{
   description:"Level CVN-65 deck. Place the origin at flight-deck height.",
   size:carrierSize, color:"#677882", parts:data.parts as LayoutPart[],
 }, {
+  id:"highway-support-pier", label:"Elevated highway support pier", category:"roads",
+  description:"Resizable reinforced concrete pier · structural collider · separate from road deck and breakable guardrails.",
+  size:[14,12,3], color:"#848b8e",
+  parts:[
+    {shape:"box",position:[0,.92,0],size:[.94,.14,.38]},
+    ...[-.27,.27].flatMap(x=>[
+      {shape:"box" as const,position:[x,.46,0] as V3,size:[.13,.78,.28] as V3},
+      {shape:"box" as const,position:[x,.055,0] as V3,size:[.24,.11,.42] as V3},
+    ]),
+  ],
+}, {
+  id:"urban-tunnel-shell", label:"Urban underpass shell", category:"roads",
+  description:"Open-ended tunnel envelope · solid roof and sidewalls · no floor, so the road collider stays independent.",
+  size:[16,8,32], color:"#777d80",
+  parts:[
+    {shape:"box",position:[-.47,.5,0],size:[.06,1,1]},
+    {shape:"box",position:[.47,.5,0],size:[.06,1,1]},
+    {shape:"box",position:[0,.94,0],size:[1,.12,1]},
+    ...[-.47,.47].flatMap(z=>[
+      {shape:"box" as const,position:[-.41,.45,z] as V3,size:[.08,.9,.05] as V3},
+      {shape:"box" as const,position:[.41,.45,z] as V3,size:[.08,.9,.05] as V3},
+      {shape:"box" as const,position:[0,.91,z] as V3,size:[.9,.08,.05] as V3},
+    ]),
+  ],
+}, {
   id:"highway-guardrail", label:"Highway guardrail", category:"roads",
   description:"Independent 3.6 m impact panel. Road deck and edge protection resize separately.",
   size:[GUARDRAIL_MODULE_METERS,1.05,.4], color:"#9da9aa",
@@ -54,7 +79,7 @@ export const harborPieces: Piece[] = [{
 }];
 
 export function guardrail(id:string,x1:number,z1:number,x2:number,z2:number,surface:number, rise=0):import("../document/layoutDocument.ts").LayoutObject{
-  const dx=x2-x1,dz=z2-z1,template=harborPieces[1];
+  const dx=x2-x1,dz=z2-z1,template=harborPieces.find(piece=>piece.id==="highway-guardrail")!;
   if(Math.hypot(dx,dz)>GUARDRAIL_MODULE_METERS+.001)
     throw Error(`Guardrail ${id} exceeds one vehicle-length module; use guardrailRun()`);
   const parts=structuredClone(template.parts);
@@ -67,7 +92,7 @@ export function guardrail(id:string,x1:number,z1:number,x2:number,z2:number,surf
     }
   }
   return {id,name:template.label,piece:template.id,position:[(x1+x2)/2,surface,(z1+z2)/2],
-    size:[Math.hypot(dx,dz),template.size[1],template.size[2]],yaw:-Math.atan2(dz,dx)*180/Math.PI,
+    size:[Math.hypot(dx,dz),template.size[1],template.size[2]],yaw:(-Math.atan2(dz,dx)*180/Math.PI)||0,
     color:template.color,locked:false,solid:true,parts,destruction:{...railDamage}};
 }
 

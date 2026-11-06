@@ -137,7 +137,7 @@ export const useLayoutStore = create<LayoutState>((set, get) => ({
     })),
   placementYaw: 0,
   reference: false,
-  wireframe: false,
+  wireframe: true,
   status: "Choose a piece, then click the ground to place it.",
   initialize: (mapId, source, sourceSpawns) => {
     if (get().doc?.map_id === mapId) return;

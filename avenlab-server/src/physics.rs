@@ -2316,6 +2316,33 @@ mod tests {
     }
 
     #[test]
+    fn harbor_exchange_brz_drives_both_tunnels_and_climbs_the_viaduct() {
+        for (x, target_z, raised) in [(-66., 90., false), (62., 90., false), (84., -38., true)] {
+            let mut world = PhysicsWorld::new();
+            world.select_map("harbor_exchange").unwrap();
+            let h = world.spawn_vehicle_for_player("exchange-driver".into(), [0.; 3], "brz", "red").unwrap();
+            world.bodies[h].set_translation(vector![x, 0.895, -98.], true);
+            world.bodies[h].set_rotation(Rotation::identity(), true);
+            world.bodies.propagate_modified_body_positions_to_colliders(&mut world.colliders);
+            world.query_pipeline.update(&world.colliders);
+            world.vehicles.get_mut("exchange-driver").unwrap().powertrain.engine_requested = true;
+            for _ in 0..180 { world.step(SIMULATION_DT); }
+            world.vehicles.get_mut("exchange-driver").unwrap().throttle = 0.45;
+            let mut arrived = false;
+            for _ in 0..2400 {
+                world.step(SIMULATION_DT);
+                let p = world.bodies[h].translation();
+                assert!(!world.is_defeated("exchange-driver") && (p.x - x).abs() < 3. && p.y > 0. && p.y < 12., "lost route: {p:?}");
+                if p.z >= target_z {
+                    assert!(!raised || p.y > 9.);
+                    arrived = true; break;
+                }
+            }
+            assert!(arrived, "BRZ did not finish corridor at x={x}: {:?}", world.bodies[h].translation());
+        }
+    }
+
+    #[test]
     fn road_jump_lab_brz_climbs_the_return_ramp_onto_the_roof() {
         let mut world=PhysicsWorld::new();world.select_map("road_jump_lab").unwrap();
         let h=world.spawn_vehicle_for_player("return-driver".into(),[0.0;3],"brz","red").unwrap();

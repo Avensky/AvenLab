@@ -1,4 +1,5 @@
 import {BridgeLever} from '../../world/props/BridgeLever';
+import { ExcavatedWaterfall } from '../../world/props/ExcavatedWaterfall';
 import {HarborBuildings, HarborBuildingLods, HarborStreet} from "../../world/props/HarborStructures";
 import {garageVisual, usesGarage} from "../../world/props/harborGarage";
 import { kitAsset } from "../mapKit/catalog";
@@ -80,6 +81,8 @@ function ShapeInstances({
   if (!items.length) return null;
   return (
     <instancedMesh
+      castShadow
+      receiveShadow
       key={items.length}
       ref={mesh}
       args={[geometries[shape], undefined, items.length]}
@@ -132,7 +135,7 @@ export const LayoutInstances = memo(function LayoutInstances({
       objects
         .filter(
           (o) =>
-            !(live && (o.piece === LIFT || o.piece==="bridge-lever" || o.piece===NAVAL_WAYPOINT)) &&
+            !(live && (o.piece === LIFT || o.piece==="bridge-lever" || o.piece===NAVAL_WAYPOINT || (detailed && o.piece==='excavated-waterfall'))) &&
             (collisionOnly || wireframe || (o.piece !== CARRIER && o.piece !== DESTROYER && o.piece!==HAWAII_DOCKED && o.piece!==LOUISIANA_DOCKED && !streetProp(o.piece) && o.piece!=="coastal-building" && o.piece!=="coastal-road" && !usesGarage(o.piece))) &&
             !o.road &&
             !o.model &&
@@ -145,7 +148,7 @@ export const LayoutInstances = memo(function LayoutInstances({
             .filter((part) => !collisionOnly || part.solid !== false)
             .map((part) => ({ item, part })),
         ),
-    [objects, exclude, collisionOnly, wireframe, live],
+    [objects, exclude, collisionOnly, wireframe, live, detailed],
   );
   const boxes = useMemo(
     () => items.filter((i) => i.part.shape === "box" && (!detailed || i.item.piece!=="breakaway-glass")),
@@ -174,6 +177,7 @@ export const LayoutInstances = memo(function LayoutInstances({
       />
       {!!decks.length && <ShapeInstances items={decks} shape="deck" wireframe={wireframe} onSelect={onSelect} />}
       {live && objects.filter(o=>o.piece==="bridge-lever" && o.id!==exclude).map(o=><BridgeLever key={o.id} item={o}/>)}
+      {live && detailed && objects.filter(o => o.piece === 'excavated-waterfall' && o.id !== exclude).map(o => <ExcavatedWaterfall key={o.id} item={o} />)}
       {live && objects.filter(o=>o.piece===LIFT && o.id!==exclude).map(o=><BridgeLeaf key={o.id} item={o} wireframe={wireframe}/> )}
       {!collisionOnly && !wireframe && objects.filter(o=>o.piece===CARRIER && o.id!==exclude).map(o=>(
         <group key={o.id} position={o.position} rotation={[0,o.yaw*Math.PI/180,0]} scale={o.size}

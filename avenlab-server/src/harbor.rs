@@ -54,11 +54,21 @@ impl Coast {
                 coast.min[axis] = coast.min[axis].min(center - extent[axis]);
                 coast.max[axis] = coast.max[axis].max(center + extent[axis]);
             }
-            if object.piece == "coastal-water-visual" {
+            if matches!(object.piece.as_str(), "coastal-water-visual" | "excavated-water") {
                 let surface = object.position[1] + object.size[1];
-                coast.low_level = coast.low_level.min(surface);
+                // A raised canal must not kill vehicles on lower dry roads.
+                // Keep the old coastal fall plane only for sea-level tiles.
+                if object.piece == "coastal-water-visual" {
+                    coast.low_level = coast.low_level.min(surface);
+                }
                 coast.tiles.push(WaterTile { center: [x, z], half: [hx, hz], sin, cos, surface });
             }
+        }
+        if coast.low_level == f32::INFINITY {
+            coast.low_level = layout.objects.iter().filter(|o| o.solid)
+                .flat_map(|o| o.parts.iter().filter(|p| p.solid).map(move |p|
+                    o.position[1] + (p.position[1] - p.size[1] * 0.5) * o.size[1]))
+                .fold(0.0_f32, f32::min) - 20.0;
         }
         (!coast.tiles.is_empty()).then_some(coast)
     }
@@ -187,6 +197,21 @@ mod tests {
     use crate::world_sessions::WorldRuntime;
     use rapier3d::prelude::*;
     #[test]
+    fn harbor_exchange_water_is_local_and_does_not_flood_lower_dry_roads() {
+        let mut map: BlockColliderFile = serde_json::from_str(include_str!("assets/blocks/harbor_exchange_colliders.json")).unwrap();
+        let coast = Coast::from_map(&map).unwrap();
+        assert_eq!(coast.water_surface_at(0., 60.), Some(-2.));
+        assert_eq!(coast.water_surface_at(62., 60.), None);
+        assert_eq!(coast.hazard(&vector![62., 0., 60.], -0.1), None);
+        assert_eq!(coast.hazard(&vector![0., -3., 60.], -4.), Some("water"));
+        for o in &mut map.authored_layout.as_mut().unwrap().objects {
+            if o.piece == "excavated-water" { o.position[1] += 30.; }
+        }
+        let raised = Coast::from_map(&map).unwrap();
+        assert_eq!(raised.water_surface_at(0., 60.), Some(28.));
+        assert_eq!(raised.hazard(&vector![62., 0., 60.], -0.1), None);
+    }
+    #[test]
     fn bridge_lever_requires_a_safe_ship_passage_window(){
         let mut bridge=BridgeMotion::default();
         bridge.request(0,RAMP_ANGLE).unwrap();
@@ -255,7 +280,9 @@ mod tests {
         for x in [-256.,256.]{
             for z in [-78.,-70.,-62.,-54.,-46.]{assert!((support(&w,x,z).unwrap()-6.).abs()<0.02);}
         }
-        assert!((support(&w,0.,60.).unwrap()+60.).abs()<0.02);
+        // The current fleet fixture docks the escort over the centreline here.
+        // Probe the open water beside its hull when checking the seabed.
+        assert!((support(&w,-20.,60.).unwrap()+60.).abs()<0.02);
         for x in [-14.,14.] {
             let ray=Ray::new(point![x,-4.,-218.],Vector::z());
             assert!(!w.colliders.iter().any(|(_,c)| c.shape().cast_ray(c.position(),&ray,48.,true).is_some()),

@@ -1,0 +1,6022 @@
+{
+  "assets": [
+    {
+      "path": "frontend/public/models/aircraft/apache-ah64-lod0.glb",
+      "status": "available",
+      "nodes": 91,
+      "meshes": 91,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "GreenishBlack"
+        },
+        {
+          "index": 1,
+          "name": "Front point of bomb"
+        },
+        {
+          "index": 2,
+          "name": "LightBlackgreen"
+        },
+        {
+          "index": 3,
+          "name": "Green Black"
+        },
+        {
+          "index": 4,
+          "name": "diffuse"
+        },
+        {
+          "index": 5,
+          "name": "back panel"
+        },
+        {
+          "index": 6,
+          "name": "Material.002"
+        },
+        {
+          "index": 7,
+          "name": "Red siran"
+        },
+        {
+          "index": 8,
+          "name": "Glass"
+        },
+        {
+          "index": 9,
+          "name": "Material.001"
+        },
+        {
+          "index": 10,
+          "name": "front panel"
+        },
+        {
+          "index": 11,
+          "name": "Burner"
+        },
+        {
+          "index": 12,
+          "name": "just"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/aircraft/apache-ah64-lod1.glb",
+      "status": "available",
+      "nodes": 91,
+      "meshes": 91,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "GreenishBlack"
+        },
+        {
+          "index": 1,
+          "name": "Front point of bomb"
+        },
+        {
+          "index": 2,
+          "name": "LightBlackgreen"
+        },
+        {
+          "index": 3,
+          "name": "Green Black"
+        },
+        {
+          "index": 4,
+          "name": "diffuse"
+        },
+        {
+          "index": 5,
+          "name": "back panel"
+        },
+        {
+          "index": 6,
+          "name": "Material.002"
+        },
+        {
+          "index": 7,
+          "name": "Red siran"
+        },
+        {
+          "index": 8,
+          "name": "Glass"
+        },
+        {
+          "index": 9,
+          "name": "Material.001"
+        },
+        {
+          "index": 10,
+          "name": "front panel"
+        },
+        {
+          "index": 11,
+          "name": "Burner"
+        },
+        {
+          "index": 12,
+          "name": "just"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/aircraft/apache-ah64-lod2.glb",
+      "status": "available",
+      "nodes": 91,
+      "meshes": 91,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "GreenishBlack"
+        },
+        {
+          "index": 1,
+          "name": "Front point of bomb"
+        },
+        {
+          "index": 2,
+          "name": "LightBlackgreen"
+        },
+        {
+          "index": 3,
+          "name": "Green Black"
+        },
+        {
+          "index": 4,
+          "name": "diffuse"
+        },
+        {
+          "index": 5,
+          "name": "back panel"
+        },
+        {
+          "index": 6,
+          "name": "Material.002"
+        },
+        {
+          "index": 7,
+          "name": "Red siran"
+        },
+        {
+          "index": 8,
+          "name": "Glass"
+        },
+        {
+          "index": 9,
+          "name": "Material.001"
+        },
+        {
+          "index": 10,
+          "name": "front panel"
+        },
+        {
+          "index": 11,
+          "name": "Burner"
+        },
+        {
+          "index": 12,
+          "name": "just"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/aircraft/f16-lod0.glb",
+      "status": "available",
+      "nodes": 9,
+      "meshes": 9,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "F-16-airframe"
+        },
+        {
+          "index": 1,
+          "name": "Glass"
+        },
+        {
+          "index": 2,
+          "name": "F-16-hud"
+        },
+        {
+          "index": 3,
+          "name": "F-16-landingLights"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/aircraft/f16-lod1.glb",
+      "status": "available",
+      "nodes": 9,
+      "meshes": 9,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "F-16-airframe"
+        },
+        {
+          "index": 1,
+          "name": "Glass"
+        },
+        {
+          "index": 2,
+          "name": "F-16-hud"
+        },
+        {
+          "index": 3,
+          "name": "F-16-landingLights"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/aircraft/f16-lod2.glb",
+      "status": "available",
+      "nodes": 9,
+      "meshes": 9,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "F-16-airframe"
+        },
+        {
+          "index": 1,
+          "name": "Glass"
+        },
+        {
+          "index": 2,
+          "name": "F-16-hud"
+        },
+        {
+          "index": 3,
+          "name": "F-16-landingLights"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/aircraft/granad-ba1000t-lod0.glb",
+      "status": "available",
+      "nodes": 9,
+      "meshes": 9,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "BPLAPterodactyl"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/aircraft/hornet-quadcopter-lod0.glb",
+      "status": "available",
+      "nodes": 11,
+      "meshes": 11,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "Hornet_Quadcopter"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/aircraft/military-helicopter-highpoly-lod0.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "tripo_material_30a61759-d550-4c53-abac-34c4cdcf5882"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/aircraft/military-helicopter-highpoly-lod1.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "tripo_material_30a61759-d550-4c53-abac-34c4cdcf5882"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/aircraft/military-helicopter-highpoly-lod2.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "tripo_material_30a61759-d550-4c53-abac-34c4cdcf5882"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/aircraft/rafale-lod0.glb",
+      "status": "available",
+      "nodes": 10,
+      "meshes": 10,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "Rafale-airframe"
+        },
+        {
+          "index": 1,
+          "name": "Glass"
+        },
+        {
+          "index": 2,
+          "name": "Rafale-hud"
+        },
+        {
+          "index": 3,
+          "name": "Rafale-landinglights"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/aircraft/rafale-lod1.glb",
+      "status": "available",
+      "nodes": 10,
+      "meshes": 10,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "Rafale-airframe"
+        },
+        {
+          "index": 1,
+          "name": "Glass"
+        },
+        {
+          "index": 2,
+          "name": "Rafale-hud"
+        },
+        {
+          "index": 3,
+          "name": "Rafale-landinglights"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/aircraft/rafale-lod2.glb",
+      "status": "available",
+      "nodes": 10,
+      "meshes": 10,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "Rafale-airframe"
+        },
+        {
+          "index": 1,
+          "name": "Glass"
+        },
+        {
+          "index": 2,
+          "name": "Rafale-hud"
+        },
+        {
+          "index": 3,
+          "name": "Rafale-landinglights"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/aircraft/su47-berkut-lod0.glb",
+      "status": "available",
+      "nodes": 55,
+      "meshes": 55,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "Su47Berkut"
+        },
+        {
+          "index": 1,
+          "name": "Glass"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/aircraft/su47-berkut-lod1.glb",
+      "status": "available",
+      "nodes": 55,
+      "meshes": 55,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "Su47Berkut"
+        },
+        {
+          "index": 1,
+          "name": "Glass"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/aircraft/su47-berkut-lod2.glb",
+      "status": "available",
+      "nodes": 55,
+      "meshes": 55,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "Su47Berkut"
+        },
+        {
+          "index": 1,
+          "name": "Glass"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/aircraft/tu222-draco-source.glb",
+      "status": "available",
+      "nodes": 62,
+      "meshes": 62,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "TU222"
+        },
+        {
+          "index": 1,
+          "name": "Glass"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/aircraft/tu222-lod0.glb",
+      "status": "available",
+      "nodes": 62,
+      "meshes": 62,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "TU222"
+        },
+        {
+          "index": 1,
+          "name": "Glass"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/aircraft/tu222-lod1.glb",
+      "status": "available",
+      "nodes": 62,
+      "meshes": 62,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "TU222"
+        },
+        {
+          "index": 1,
+          "name": "Glass"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/aircraft/tu222-lod2.glb",
+      "status": "available",
+      "nodes": 62,
+      "meshes": 62,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "TU222"
+        },
+        {
+          "index": 1,
+          "name": "Glass"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/blocks/block_01/block_01.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/chuncks/chunck_0,0_2x2_blocks.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/chuncks/chunck_0,0_2x2_blocks_centered.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/chuncks/chunck_0,0_2x2_blocks_centered_reduced.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/chuncks/chunck_0,0_2x2_blocks_centered_textures1024.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/chuncks/chunck_0,0_2x2_blocks_centered_textures512.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/chuncks/chunck_0,0_2x2_roads.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/chuncks/chunck_0,0_2x2_roads_textures1024.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/chuncks/chunck_0,0_2x2_roads_textures512.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/chuncks/chunck_0,0_optimized_draco.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/fleet/arizona-lod0.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/fleet/arizona-lod1.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/fleet/burke-lod0.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/fleet/burke-lod1.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/fleet/hawaii-rescue.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/fleet/louisiana-lod0.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/fleet/louisiana-lod1.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/roads/Downtown_Roadworks.glb",
+      "status": "available",
+      "nodes": 5,
+      "meshes": 5,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "wire_000000000"
+        },
+        {
+          "index": 1,
+          "name": "RoadConstruction"
+        },
+        {
+          "index": 2,
+          "name": "Barrier_02"
+        },
+        {
+          "index": 3,
+          "name": "Metal_01"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/Road_Intersection/Road_Intersection_LOD0.glb",
+      "status": "available",
+      "nodes": 4,
+      "meshes": 3,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "Sewers_01"
+        },
+        {
+          "index": 1,
+          "name": "asphalt_01"
+        },
+        {
+          "index": 2,
+          "name": "MarkingRoad"
+        },
+        {
+          "index": 3,
+          "name": "Sidewalk_02"
+        },
+        {
+          "index": 4,
+          "name": "Sidewalk_01"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/Road_Intersection/Road_Intersection_LOD1.glb",
+      "status": "available",
+      "nodes": 4,
+      "meshes": 3,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "Sewers_01"
+        },
+        {
+          "index": 1,
+          "name": "asphalt_01"
+        },
+        {
+          "index": 2,
+          "name": "MarkingRoad"
+        },
+        {
+          "index": 3,
+          "name": "Sidewalk_02"
+        },
+        {
+          "index": 4,
+          "name": "Sidewalk_01"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/Road_Intersection/Road_Intersection_LOD2.glb",
+      "status": "available",
+      "nodes": 3,
+      "meshes": 2,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt_01"
+        },
+        {
+          "index": 1,
+          "name": "MarkingRoad"
+        },
+        {
+          "index": 2,
+          "name": "Sidewalk_02"
+        },
+        {
+          "index": 3,
+          "name": "Sidewalk_01"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/Road_Narrow_Oneway/Road_Narrow_Oneway_LOD0.glb",
+      "status": "available",
+      "nodes": 6,
+      "meshes": 5,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "MarkingRoad"
+        },
+        {
+          "index": 1,
+          "name": "asphalt_01"
+        },
+        {
+          "index": 2,
+          "name": "Sidewalk_02"
+        },
+        {
+          "index": 3,
+          "name": "Sidewalk_01"
+        },
+        {
+          "index": 4,
+          "name": "Sewers_01"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/Road_Narrow_Oneway/Road_Narrow_Oneway_LOD1.glb",
+      "status": "available",
+      "nodes": 6,
+      "meshes": 5,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "MarkingRoad"
+        },
+        {
+          "index": 1,
+          "name": "asphalt_01"
+        },
+        {
+          "index": 2,
+          "name": "Sidewalk_02"
+        },
+        {
+          "index": 3,
+          "name": "Sidewalk_01"
+        },
+        {
+          "index": 4,
+          "name": "Sewers_01"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/Road_Narrow_Oneway/Road_Narrow_Oneway_LOD2.glb",
+      "status": "available",
+      "nodes": 6,
+      "meshes": 4,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "MarkingRoad"
+        },
+        {
+          "index": 1,
+          "name": "asphalt_01"
+        },
+        {
+          "index": 2,
+          "name": "Sidewalk_02"
+        },
+        {
+          "index": 3,
+          "name": "Sidewalk_01"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/Road_Wide_Twoway/Road_Wide_Twoway_LOD0.glb",
+      "status": "available",
+      "nodes": 5,
+      "meshes": 4,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt_01"
+        },
+        {
+          "index": 1,
+          "name": "Sidewalk_02"
+        },
+        {
+          "index": 2,
+          "name": "Sidewalk_01"
+        },
+        {
+          "index": 3,
+          "name": "MarkingRoad"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/Road_Wide_Twoway/Road_Wide_Twoway_LOD1.glb",
+      "status": "available",
+      "nodes": 5,
+      "meshes": 4,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt_01"
+        },
+        {
+          "index": 1,
+          "name": "Sidewalk_02"
+        },
+        {
+          "index": 2,
+          "name": "Sidewalk_01"
+        },
+        {
+          "index": 3,
+          "name": "MarkingRoad"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/Road_Wide_Twoway/Road_Wide_Twoway_LOD2.glb",
+      "status": "available",
+      "nodes": 5,
+      "meshes": 4,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt_01"
+        },
+        {
+          "index": 1,
+          "name": "Sidewalk_02"
+        },
+        {
+          "index": 2,
+          "name": "Sidewalk_01"
+        },
+        {
+          "index": 3,
+          "name": "MarkingRoad"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_25_wide_straight_level/collision.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": []
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_25_wide_straight_level/lod0.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt"
+        },
+        {
+          "index": 1,
+          "name": "concrete"
+        },
+        {
+          "index": 2,
+          "name": "lamp"
+        },
+        {
+          "index": 3,
+          "name": "steel"
+        },
+        {
+          "index": 4,
+          "name": "markings"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_25_wide_straight_level/lod1.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt"
+        },
+        {
+          "index": 1,
+          "name": "concrete"
+        },
+        {
+          "index": 2,
+          "name": "lamp"
+        },
+        {
+          "index": 3,
+          "name": "steel"
+        },
+        {
+          "index": 4,
+          "name": "markings"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_25_wide_straight_level/lod2.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt"
+        },
+        {
+          "index": 1,
+          "name": "concrete"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "markings"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_26_wide_bend44_level/collision.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": []
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_26_wide_bend44_level/lod0.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "markings"
+        },
+        {
+          "index": 1,
+          "name": "asphalt"
+        },
+        {
+          "index": 2,
+          "name": "concrete"
+        },
+        {
+          "index": 3,
+          "name": "lamp"
+        },
+        {
+          "index": 4,
+          "name": "steel"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_26_wide_bend44_level/lod1.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "markings"
+        },
+        {
+          "index": 1,
+          "name": "asphalt"
+        },
+        {
+          "index": 2,
+          "name": "concrete"
+        },
+        {
+          "index": 3,
+          "name": "lamp"
+        },
+        {
+          "index": 4,
+          "name": "steel"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_26_wide_bend44_level/lod2.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "markings"
+        },
+        {
+          "index": 1,
+          "name": "asphalt"
+        },
+        {
+          "index": 2,
+          "name": "concrete"
+        },
+        {
+          "index": 3,
+          "name": "steel"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_27_wide_bend87_level/collision.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": []
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_27_wide_bend87_level/lod0.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt"
+        },
+        {
+          "index": 1,
+          "name": "concrete"
+        },
+        {
+          "index": 2,
+          "name": "lamp"
+        },
+        {
+          "index": 3,
+          "name": "steel"
+        },
+        {
+          "index": 4,
+          "name": "markings"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_27_wide_bend87_level/lod1.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt"
+        },
+        {
+          "index": 1,
+          "name": "concrete"
+        },
+        {
+          "index": 2,
+          "name": "lamp"
+        },
+        {
+          "index": 3,
+          "name": "steel"
+        },
+        {
+          "index": 4,
+          "name": "markings"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_27_wide_bend87_level/lod2.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt"
+        },
+        {
+          "index": 1,
+          "name": "concrete"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "markings"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_28_wide_straight_rise10/collision.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": []
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_28_wide_straight_rise10/lod0.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "lamp"
+        },
+        {
+          "index": 1,
+          "name": "concrete"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "markings"
+        },
+        {
+          "index": 4,
+          "name": "asphalt"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_28_wide_straight_rise10/lod1.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "lamp"
+        },
+        {
+          "index": 1,
+          "name": "concrete"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "markings"
+        },
+        {
+          "index": 4,
+          "name": "asphalt"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_28_wide_straight_rise10/lod2.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "concrete"
+        },
+        {
+          "index": 1,
+          "name": "steel"
+        },
+        {
+          "index": 2,
+          "name": "markings"
+        },
+        {
+          "index": 3,
+          "name": "asphalt"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_29_wide_straight_level/collision.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": []
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_29_wide_straight_level/lod0.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "concrete"
+        },
+        {
+          "index": 1,
+          "name": "asphalt"
+        },
+        {
+          "index": 2,
+          "name": "markings"
+        },
+        {
+          "index": 3,
+          "name": "lamp"
+        },
+        {
+          "index": 4,
+          "name": "steel"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_29_wide_straight_level/lod1.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "concrete"
+        },
+        {
+          "index": 1,
+          "name": "asphalt"
+        },
+        {
+          "index": 2,
+          "name": "markings"
+        },
+        {
+          "index": 3,
+          "name": "lamp"
+        },
+        {
+          "index": 4,
+          "name": "steel"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_29_wide_straight_level/lod2.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "concrete"
+        },
+        {
+          "index": 1,
+          "name": "asphalt"
+        },
+        {
+          "index": 2,
+          "name": "markings"
+        },
+        {
+          "index": 3,
+          "name": "steel"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_30_wide_straight_rise10/collision.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": []
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_30_wide_straight_rise10/lod0.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "lamp"
+        },
+        {
+          "index": 1,
+          "name": "concrete"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "markings"
+        },
+        {
+          "index": 4,
+          "name": "asphalt"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_30_wide_straight_rise10/lod1.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "lamp"
+        },
+        {
+          "index": 1,
+          "name": "concrete"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "markings"
+        },
+        {
+          "index": 4,
+          "name": "asphalt"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_30_wide_straight_rise10/lod2.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "concrete"
+        },
+        {
+          "index": 1,
+          "name": "steel"
+        },
+        {
+          "index": 2,
+          "name": "markings"
+        },
+        {
+          "index": 3,
+          "name": "asphalt"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_31_wide_straight_level/collision.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": []
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_31_wide_straight_level/lod0.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "lamp"
+        },
+        {
+          "index": 1,
+          "name": "concrete"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "markings"
+        },
+        {
+          "index": 4,
+          "name": "asphalt"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_31_wide_straight_level/lod1.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "lamp"
+        },
+        {
+          "index": 1,
+          "name": "concrete"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "markings"
+        },
+        {
+          "index": 4,
+          "name": "asphalt"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_31_wide_straight_level/lod2.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "concrete"
+        },
+        {
+          "index": 1,
+          "name": "steel"
+        },
+        {
+          "index": 2,
+          "name": "markings"
+        },
+        {
+          "index": 3,
+          "name": "asphalt"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_32_wide_bend90_rise10/collision.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": []
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_32_wide_bend90_rise10/lod0.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt"
+        },
+        {
+          "index": 1,
+          "name": "markings"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "concrete"
+        },
+        {
+          "index": 4,
+          "name": "lamp"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_32_wide_bend90_rise10/lod1.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt"
+        },
+        {
+          "index": 1,
+          "name": "markings"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "concrete"
+        },
+        {
+          "index": 4,
+          "name": "lamp"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_32_wide_bend90_rise10/lod2.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt"
+        },
+        {
+          "index": 1,
+          "name": "markings"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "concrete"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_33_wide_bend45_rise10/collision.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": []
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_33_wide_bend45_rise10/lod0.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt"
+        },
+        {
+          "index": 1,
+          "name": "markings"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "concrete"
+        },
+        {
+          "index": 4,
+          "name": "lamp"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_33_wide_bend45_rise10/lod1.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt"
+        },
+        {
+          "index": 1,
+          "name": "markings"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "concrete"
+        },
+        {
+          "index": 4,
+          "name": "lamp"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_33_wide_bend45_rise10/lod2.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt"
+        },
+        {
+          "index": 1,
+          "name": "markings"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "concrete"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_34_wide_bend88_level/collision.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": []
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_34_wide_bend88_level/lod0.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "concrete"
+        },
+        {
+          "index": 1,
+          "name": "asphalt"
+        },
+        {
+          "index": 2,
+          "name": "markings"
+        },
+        {
+          "index": 3,
+          "name": "lamp"
+        },
+        {
+          "index": 4,
+          "name": "steel"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_34_wide_bend88_level/lod1.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "concrete"
+        },
+        {
+          "index": 1,
+          "name": "asphalt"
+        },
+        {
+          "index": 2,
+          "name": "markings"
+        },
+        {
+          "index": 3,
+          "name": "lamp"
+        },
+        {
+          "index": 4,
+          "name": "steel"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_34_wide_bend88_level/lod2.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "concrete"
+        },
+        {
+          "index": 1,
+          "name": "asphalt"
+        },
+        {
+          "index": 2,
+          "name": "markings"
+        },
+        {
+          "index": 3,
+          "name": "steel"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_35_wide_bend90_rise10/collision.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": []
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_35_wide_bend90_rise10/lod0.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "concrete"
+        },
+        {
+          "index": 1,
+          "name": "markings"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "lamp"
+        },
+        {
+          "index": 4,
+          "name": "asphalt"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_35_wide_bend90_rise10/lod1.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "concrete"
+        },
+        {
+          "index": 1,
+          "name": "markings"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "lamp"
+        },
+        {
+          "index": 4,
+          "name": "asphalt"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_35_wide_bend90_rise10/lod2.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "concrete"
+        },
+        {
+          "index": 1,
+          "name": "markings"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "asphalt"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_36_wide_bend88_level/collision.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": []
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_36_wide_bend88_level/lod0.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt"
+        },
+        {
+          "index": 1,
+          "name": "markings"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "concrete"
+        },
+        {
+          "index": 4,
+          "name": "lamp"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_36_wide_bend88_level/lod1.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt"
+        },
+        {
+          "index": 1,
+          "name": "markings"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "concrete"
+        },
+        {
+          "index": 4,
+          "name": "lamp"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_36_wide_bend88_level/lod2.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt"
+        },
+        {
+          "index": 1,
+          "name": "markings"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "concrete"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_37_wide_bend44_level/collision.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": []
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_37_wide_bend44_level/lod0.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "concrete"
+        },
+        {
+          "index": 1,
+          "name": "asphalt"
+        },
+        {
+          "index": 2,
+          "name": "markings"
+        },
+        {
+          "index": 3,
+          "name": "lamp"
+        },
+        {
+          "index": 4,
+          "name": "steel"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_37_wide_bend44_level/lod1.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "concrete"
+        },
+        {
+          "index": 1,
+          "name": "asphalt"
+        },
+        {
+          "index": 2,
+          "name": "markings"
+        },
+        {
+          "index": 3,
+          "name": "lamp"
+        },
+        {
+          "index": 4,
+          "name": "steel"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_37_wide_bend44_level/lod2.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "concrete"
+        },
+        {
+          "index": 1,
+          "name": "asphalt"
+        },
+        {
+          "index": 2,
+          "name": "markings"
+        },
+        {
+          "index": 3,
+          "name": "steel"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_38_wide_bend45_rise10/collision.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": []
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_38_wide_bend45_rise10/lod0.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "concrete"
+        },
+        {
+          "index": 1,
+          "name": "markings"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "lamp"
+        },
+        {
+          "index": 4,
+          "name": "asphalt"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_38_wide_bend45_rise10/lod1.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "concrete"
+        },
+        {
+          "index": 1,
+          "name": "markings"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "lamp"
+        },
+        {
+          "index": 4,
+          "name": "asphalt"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_38_wide_bend45_rise10/lod2.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "concrete"
+        },
+        {
+          "index": 1,
+          "name": "markings"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "asphalt"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_39_wide_bend44_level/collision.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": []
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_39_wide_bend44_level/lod0.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt"
+        },
+        {
+          "index": 1,
+          "name": "markings"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "concrete"
+        },
+        {
+          "index": 4,
+          "name": "lamp"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_39_wide_bend44_level/lod1.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt"
+        },
+        {
+          "index": 1,
+          "name": "markings"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "concrete"
+        },
+        {
+          "index": 4,
+          "name": "lamp"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_39_wide_bend44_level/lod2.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt"
+        },
+        {
+          "index": 1,
+          "name": "markings"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "concrete"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_40_ramp_straight_rise10/collision.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": []
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_40_ramp_straight_rise10/lod0.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt"
+        },
+        {
+          "index": 1,
+          "name": "concrete"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "lamp"
+        },
+        {
+          "index": 4,
+          "name": "markings"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_40_ramp_straight_rise10/lod1.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt"
+        },
+        {
+          "index": 1,
+          "name": "concrete"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "lamp"
+        },
+        {
+          "index": 4,
+          "name": "markings"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_40_ramp_straight_rise10/lod2.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt"
+        },
+        {
+          "index": 1,
+          "name": "concrete"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "markings"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_41_ramp_bend88_rise10/collision.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": []
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_41_ramp_bend88_rise10/lod0.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "markings"
+        },
+        {
+          "index": 1,
+          "name": "steel"
+        },
+        {
+          "index": 2,
+          "name": "lamp"
+        },
+        {
+          "index": 3,
+          "name": "concrete"
+        },
+        {
+          "index": 4,
+          "name": "asphalt"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_41_ramp_bend88_rise10/lod1.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "markings"
+        },
+        {
+          "index": 1,
+          "name": "steel"
+        },
+        {
+          "index": 2,
+          "name": "lamp"
+        },
+        {
+          "index": 3,
+          "name": "concrete"
+        },
+        {
+          "index": 4,
+          "name": "asphalt"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_41_ramp_bend88_rise10/lod2.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "markings"
+        },
+        {
+          "index": 1,
+          "name": "steel"
+        },
+        {
+          "index": 2,
+          "name": "concrete"
+        },
+        {
+          "index": 3,
+          "name": "asphalt"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_42_ramp_straight_rise20/collision.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": []
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_42_ramp_straight_rise20/lod0.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "markings"
+        },
+        {
+          "index": 1,
+          "name": "steel"
+        },
+        {
+          "index": 2,
+          "name": "concrete"
+        },
+        {
+          "index": 3,
+          "name": "lamp"
+        },
+        {
+          "index": 4,
+          "name": "asphalt"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_42_ramp_straight_rise20/lod1.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "markings"
+        },
+        {
+          "index": 1,
+          "name": "steel"
+        },
+        {
+          "index": 2,
+          "name": "concrete"
+        },
+        {
+          "index": 3,
+          "name": "lamp"
+        },
+        {
+          "index": 4,
+          "name": "asphalt"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_42_ramp_straight_rise20/lod2.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "markings"
+        },
+        {
+          "index": 1,
+          "name": "steel"
+        },
+        {
+          "index": 2,
+          "name": "concrete"
+        },
+        {
+          "index": 3,
+          "name": "asphalt"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_43_ramp_bend89_rise20/collision.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": []
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_43_ramp_bend89_rise20/lod0.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt"
+        },
+        {
+          "index": 1,
+          "name": "markings"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "lamp"
+        },
+        {
+          "index": 4,
+          "name": "concrete"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_43_ramp_bend89_rise20/lod1.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt"
+        },
+        {
+          "index": 1,
+          "name": "markings"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "lamp"
+        },
+        {
+          "index": 4,
+          "name": "concrete"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_43_ramp_bend89_rise20/lod2.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt"
+        },
+        {
+          "index": 1,
+          "name": "markings"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "concrete"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_44_narrow_straight_level/collision.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": []
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_44_narrow_straight_level/lod0.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "steel"
+        },
+        {
+          "index": 1,
+          "name": "markings"
+        },
+        {
+          "index": 2,
+          "name": "concrete"
+        },
+        {
+          "index": 3,
+          "name": "lamp"
+        },
+        {
+          "index": 4,
+          "name": "asphalt"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_44_narrow_straight_level/lod1.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "steel"
+        },
+        {
+          "index": 1,
+          "name": "markings"
+        },
+        {
+          "index": 2,
+          "name": "concrete"
+        },
+        {
+          "index": 3,
+          "name": "lamp"
+        },
+        {
+          "index": 4,
+          "name": "asphalt"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_44_narrow_straight_level/lod2.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "steel"
+        },
+        {
+          "index": 1,
+          "name": "markings"
+        },
+        {
+          "index": 2,
+          "name": "concrete"
+        },
+        {
+          "index": 3,
+          "name": "asphalt"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_45_narrow_bend45_level/collision.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": []
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_45_narrow_bend45_level/lod0.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt"
+        },
+        {
+          "index": 1,
+          "name": "concrete"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "markings"
+        },
+        {
+          "index": 4,
+          "name": "lamp"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_45_narrow_bend45_level/lod1.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt"
+        },
+        {
+          "index": 1,
+          "name": "concrete"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "markings"
+        },
+        {
+          "index": 4,
+          "name": "lamp"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_45_narrow_bend45_level/lod2.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt"
+        },
+        {
+          "index": 1,
+          "name": "concrete"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "markings"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_46_narrow_bend90_level/collision.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": []
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_46_narrow_bend90_level/lod0.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt"
+        },
+        {
+          "index": 1,
+          "name": "concrete"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "lamp"
+        },
+        {
+          "index": 4,
+          "name": "markings"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_46_narrow_bend90_level/lod1.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt"
+        },
+        {
+          "index": 1,
+          "name": "concrete"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "lamp"
+        },
+        {
+          "index": 4,
+          "name": "markings"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_46_narrow_bend90_level/lod2.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt"
+        },
+        {
+          "index": 1,
+          "name": "concrete"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "markings"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_47_narrow_straight_rise10/collision.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": []
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_47_narrow_straight_rise10/lod0.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt"
+        },
+        {
+          "index": 1,
+          "name": "markings"
+        },
+        {
+          "index": 2,
+          "name": "concrete"
+        },
+        {
+          "index": 3,
+          "name": "lamp"
+        },
+        {
+          "index": 4,
+          "name": "steel"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_47_narrow_straight_rise10/lod1.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt"
+        },
+        {
+          "index": 1,
+          "name": "markings"
+        },
+        {
+          "index": 2,
+          "name": "concrete"
+        },
+        {
+          "index": 3,
+          "name": "lamp"
+        },
+        {
+          "index": 4,
+          "name": "steel"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_47_narrow_straight_rise10/lod2.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt"
+        },
+        {
+          "index": 1,
+          "name": "markings"
+        },
+        {
+          "index": 2,
+          "name": "concrete"
+        },
+        {
+          "index": 3,
+          "name": "steel"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_48_narrow_bend45_rise10/collision.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": []
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_48_narrow_bend45_rise10/lod0.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt"
+        },
+        {
+          "index": 1,
+          "name": "concrete"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "lamp"
+        },
+        {
+          "index": 4,
+          "name": "markings"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_48_narrow_bend45_rise10/lod1.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt"
+        },
+        {
+          "index": 1,
+          "name": "concrete"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "lamp"
+        },
+        {
+          "index": 4,
+          "name": "markings"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_48_narrow_bend45_rise10/lod2.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt"
+        },
+        {
+          "index": 1,
+          "name": "concrete"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "markings"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_49_narrow_bend90_rise10/collision.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": []
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_49_narrow_bend90_rise10/lod0.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "steel"
+        },
+        {
+          "index": 1,
+          "name": "asphalt"
+        },
+        {
+          "index": 2,
+          "name": "concrete"
+        },
+        {
+          "index": 3,
+          "name": "lamp"
+        },
+        {
+          "index": 4,
+          "name": "markings"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_49_narrow_bend90_rise10/lod1.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "steel"
+        },
+        {
+          "index": 1,
+          "name": "asphalt"
+        },
+        {
+          "index": 2,
+          "name": "concrete"
+        },
+        {
+          "index": 3,
+          "name": "lamp"
+        },
+        {
+          "index": 4,
+          "name": "markings"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_49_narrow_bend90_rise10/lod2.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "steel"
+        },
+        {
+          "index": 1,
+          "name": "asphalt"
+        },
+        {
+          "index": 2,
+          "name": "concrete"
+        },
+        {
+          "index": 3,
+          "name": "markings"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_50_narrow_straight_level/collision.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": []
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_50_narrow_straight_level/lod0.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "steel"
+        },
+        {
+          "index": 1,
+          "name": "asphalt"
+        },
+        {
+          "index": 2,
+          "name": "concrete"
+        },
+        {
+          "index": 3,
+          "name": "lamp"
+        },
+        {
+          "index": 4,
+          "name": "markings"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_50_narrow_straight_level/lod1.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "steel"
+        },
+        {
+          "index": 1,
+          "name": "asphalt"
+        },
+        {
+          "index": 2,
+          "name": "concrete"
+        },
+        {
+          "index": 3,
+          "name": "lamp"
+        },
+        {
+          "index": 4,
+          "name": "markings"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_50_narrow_straight_level/lod2.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "steel"
+        },
+        {
+          "index": 1,
+          "name": "asphalt"
+        },
+        {
+          "index": 2,
+          "name": "concrete"
+        },
+        {
+          "index": 3,
+          "name": "markings"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_51_narrow_bend45_level/collision.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": []
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_51_narrow_bend45_level/lod0.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "steel"
+        },
+        {
+          "index": 1,
+          "name": "asphalt"
+        },
+        {
+          "index": 2,
+          "name": "concrete"
+        },
+        {
+          "index": 3,
+          "name": "lamp"
+        },
+        {
+          "index": 4,
+          "name": "markings"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_51_narrow_bend45_level/lod1.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "steel"
+        },
+        {
+          "index": 1,
+          "name": "asphalt"
+        },
+        {
+          "index": 2,
+          "name": "concrete"
+        },
+        {
+          "index": 3,
+          "name": "lamp"
+        },
+        {
+          "index": 4,
+          "name": "markings"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_51_narrow_bend45_level/lod2.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "steel"
+        },
+        {
+          "index": 1,
+          "name": "asphalt"
+        },
+        {
+          "index": 2,
+          "name": "concrete"
+        },
+        {
+          "index": 3,
+          "name": "markings"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_52_narrow_bend90_level/collision.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": []
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_52_narrow_bend90_level/lod0.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt"
+        },
+        {
+          "index": 1,
+          "name": "markings"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "lamp"
+        },
+        {
+          "index": 4,
+          "name": "concrete"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_52_narrow_bend90_level/lod1.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt"
+        },
+        {
+          "index": 1,
+          "name": "markings"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "lamp"
+        },
+        {
+          "index": 4,
+          "name": "concrete"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/highway/highway_52_narrow_bend90_level/lod2.glb",
+      "status": "available",
+      "nodes": 1,
+      "meshes": 1,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt"
+        },
+        {
+          "index": 1,
+          "name": "markings"
+        },
+        {
+          "index": 2,
+          "name": "steel"
+        },
+        {
+          "index": 3,
+          "name": "concrete"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/intersection.glb",
+      "status": "available",
+      "nodes": 11,
+      "meshes": 11,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt_01"
+        },
+        {
+          "index": 1,
+          "name": "MarkingRoad"
+        },
+        {
+          "index": 2,
+          "name": "Sidewalk_02"
+        },
+        {
+          "index": 3,
+          "name": "Sidewalk_01"
+        },
+        {
+          "index": 4,
+          "name": "Sewers_01"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/intersection_grouped.glb",
+      "status": "available",
+      "nodes": 32,
+      "meshes": 16,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt_01"
+        },
+        {
+          "index": 1,
+          "name": "MarkingRoad"
+        },
+        {
+          "index": 2,
+          "name": "Sidewalk_02"
+        },
+        {
+          "index": 3,
+          "name": "Sidewalk_01"
+        },
+        {
+          "index": 4,
+          "name": "Sewers_01"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/road_narrow.glb",
+      "status": "available",
+      "nodes": 127,
+      "meshes": 127,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt_01"
+        },
+        {
+          "index": 1,
+          "name": "MarkingRoad"
+        },
+        {
+          "index": 2,
+          "name": "Sidewalk_02"
+        },
+        {
+          "index": 3,
+          "name": "Sidewalk_01"
+        },
+        {
+          "index": 4,
+          "name": "Sewers_01"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/road_narrow_grouped.glb",
+      "status": "available",
+      "nodes": 169,
+      "meshes": 159,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt_01"
+        },
+        {
+          "index": 1,
+          "name": "MarkingRoad"
+        },
+        {
+          "index": 2,
+          "name": "Sidewalk_02"
+        },
+        {
+          "index": 3,
+          "name": "Sidewalk_01"
+        },
+        {
+          "index": 4,
+          "name": "Sewers_01"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/road_wide.glb",
+      "status": "available",
+      "nodes": 90,
+      "meshes": 90,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "MarkingRoad"
+        },
+        {
+          "index": 1,
+          "name": "Sidewalk_02"
+        },
+        {
+          "index": 2,
+          "name": "Sidewalk_01"
+        },
+        {
+          "index": 3,
+          "name": "asphalt_01"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/road_wide_grouped.glb",
+      "status": "available",
+      "nodes": 115,
+      "meshes": 106,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "MarkingRoad"
+        },
+        {
+          "index": 1,
+          "name": "Sidewalk_02"
+        },
+        {
+          "index": 2,
+          "name": "Sidewalk_01"
+        },
+        {
+          "index": 3,
+          "name": "asphalt_01"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/stone/stone_bridge.collision.glb",
+      "status": "available",
+      "nodes": 10,
+      "meshes": 5,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": []
+    },
+    {
+      "path": "frontend/public/models/roads/stone/stone_bridge.lod0.glb",
+      "status": "available",
+      "nodes": 10,
+      "meshes": 5,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "CobbleStonePathShader"
+        },
+        {
+          "index": 1,
+          "name": "Brick06Shader"
+        },
+        {
+          "index": 2,
+          "name": "Brick03Shader"
+        },
+        {
+          "index": 3,
+          "name": "GravelRoadShader"
+        },
+        {
+          "index": 4,
+          "name": "PavingSlabShadder"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/stone/stone_bridge.lod1.glb",
+      "status": "available",
+      "nodes": 10,
+      "meshes": 5,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "CobbleStonePathShader"
+        },
+        {
+          "index": 1,
+          "name": "Brick06Shader"
+        },
+        {
+          "index": 2,
+          "name": "Brick03Shader"
+        },
+        {
+          "index": 3,
+          "name": "GravelRoadShader"
+        },
+        {
+          "index": 4,
+          "name": "PavingSlabShadder"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/stone/stone_bridge.lod2.glb",
+      "status": "available",
+      "nodes": 10,
+      "meshes": 5,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "CobbleStonePathShader"
+        },
+        {
+          "index": 1,
+          "name": "Brick06Shader"
+        },
+        {
+          "index": 2,
+          "name": "Brick03Shader"
+        },
+        {
+          "index": 3,
+          "name": "GravelRoadShader"
+        },
+        {
+          "index": 4,
+          "name": "PavingSlabShadder"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/roads/stone_bridge.lod0.glb",
+      "status": "available",
+      "nodes": 10,
+      "meshes": 5,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "CobbleStonePathShader"
+        },
+        {
+          "index": 1,
+          "name": "Brick06Shader"
+        },
+        {
+          "index": 2,
+          "name": "Brick03Shader"
+        },
+        {
+          "index": 3,
+          "name": "GravelRoadShader"
+        },
+        {
+          "index": 4,
+          "name": "PavingSlabShadder"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/vehicles/ae86.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/big_e_cvn65.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/brz.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/camaro.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/charger70.glb",
+      "status": "available",
+      "nodes": 24,
+      "meshes": 9,
+      "skins": 0,
+      "animations": 0,
+      "components": [
+        {
+          "node": 3,
+          "name": "CALIPER_FL_GEO"
+        },
+        {
+          "node": 4,
+          "name": "CALIPER_FL"
+        },
+        {
+          "node": 5,
+          "name": "SPIN_FL_GEO"
+        },
+        {
+          "node": 6,
+          "name": "SPIN_FL"
+        },
+        {
+          "node": 7,
+          "name": "WHEEL_FL"
+        },
+        {
+          "node": 8,
+          "name": "CALIPER_FR_GEO"
+        },
+        {
+          "node": 9,
+          "name": "CALIPER_FR"
+        },
+        {
+          "node": 10,
+          "name": "SPIN_FR_GEO"
+        },
+        {
+          "node": 11,
+          "name": "SPIN_FR"
+        },
+        {
+          "node": 12,
+          "name": "WHEEL_FR"
+        },
+        {
+          "node": 13,
+          "name": "CALIPER_RL_GEO"
+        },
+        {
+          "node": 14,
+          "name": "CALIPER_RL"
+        },
+        {
+          "node": 15,
+          "name": "SPIN_RL_GEO"
+        },
+        {
+          "node": 16,
+          "name": "SPIN_RL"
+        },
+        {
+          "node": 17,
+          "name": "WHEEL_RL"
+        },
+        {
+          "node": 18,
+          "name": "CALIPER_RR_GEO"
+        },
+        {
+          "node": 19,
+          "name": "CALIPER_RR"
+        },
+        {
+          "node": 20,
+          "name": "SPIN_RR_GEO"
+        },
+        {
+          "node": 21,
+          "name": "SPIN_RR"
+        },
+        {
+          "node": 22,
+          "name": "WHEEL_RR"
+        }
+      ],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "InteriorA"
+        },
+        {
+          "index": 1,
+          "name": "Base"
+        },
+        {
+          "index": 2,
+          "name": "Coloured"
+        },
+        {
+          "index": 3,
+          "name": "GlassMtl"
+        },
+        {
+          "index": 4,
+          "name": "GlassRed"
+        },
+        {
+          "index": 5,
+          "name": "GlassAmber"
+        },
+        {
+          "index": 6,
+          "name": "Grille1A"
+        },
+        {
+          "index": 7,
+          "name": "LightA"
+        },
+        {
+          "index": 8,
+          "name": "Paint"
+        },
+        {
+          "index": 9,
+          "name": "LicensePlateDefaultA"
+        },
+        {
+          "index": 10,
+          "name": "ManufacturerPlateA"
+        },
+        {
+          "index": 11,
+          "name": "CaliperGloss"
+        },
+        {
+          "index": 12,
+          "name": "Wheel1A"
+        },
+        {
+          "index": 13,
+          "name": "rim"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/vehicles/cx30.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/enforcer.glb",
+      "status": "available",
+      "nodes": 24,
+      "meshes": 9,
+      "skins": 0,
+      "animations": 0,
+      "components": [
+        {
+          "node": 3,
+          "name": "CALIPER_FL_GEO"
+        },
+        {
+          "node": 4,
+          "name": "CALIPER_FL"
+        },
+        {
+          "node": 5,
+          "name": "SPIN_FL_GEO"
+        },
+        {
+          "node": 6,
+          "name": "SPIN_FL"
+        },
+        {
+          "node": 7,
+          "name": "WHEEL_FL"
+        },
+        {
+          "node": 8,
+          "name": "CALIPER_FR_GEO"
+        },
+        {
+          "node": 9,
+          "name": "CALIPER_FR"
+        },
+        {
+          "node": 10,
+          "name": "SPIN_FR_GEO"
+        },
+        {
+          "node": 11,
+          "name": "SPIN_FR"
+        },
+        {
+          "node": 12,
+          "name": "WHEEL_FR"
+        },
+        {
+          "node": 13,
+          "name": "CALIPER_RL_GEO"
+        },
+        {
+          "node": 14,
+          "name": "CALIPER_RL"
+        },
+        {
+          "node": 15,
+          "name": "SPIN_RL_GEO"
+        },
+        {
+          "node": 16,
+          "name": "SPIN_RL"
+        },
+        {
+          "node": 17,
+          "name": "WHEEL_RL"
+        },
+        {
+          "node": 18,
+          "name": "CALIPER_RR_GEO"
+        },
+        {
+          "node": 19,
+          "name": "CALIPER_RR"
+        },
+        {
+          "node": 20,
+          "name": "SPIN_RR_GEO"
+        },
+        {
+          "node": 21,
+          "name": "SPIN_RR"
+        },
+        {
+          "node": 22,
+          "name": "WHEEL_RR"
+        }
+      ],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "swatch"
+        },
+        {
+          "index": 1,
+          "name": "oarnge_glass"
+        },
+        {
+          "index": 2,
+          "name": "red_glass"
+        },
+        {
+          "index": 3,
+          "name": "badges"
+        },
+        {
+          "index": 4,
+          "name": "chassis"
+        },
+        {
+          "index": 5,
+          "name": "internal"
+        },
+        {
+          "index": 6,
+          "name": "plate"
+        },
+        {
+          "index": 7,
+          "name": "carbon"
+        },
+        {
+          "index": 8,
+          "name": "glass_light"
+        },
+        {
+          "index": 9,
+          "name": "windows"
+        },
+        {
+          "index": 10,
+          "name": "grille_A"
+        },
+        {
+          "index": 11,
+          "name": "grille_B"
+        },
+        {
+          "index": 12,
+          "name": "livvery"
+        },
+        {
+          "index": 13,
+          "name": "cop_L"
+        },
+        {
+          "index": 14,
+          "name": "propsCop"
+        },
+        {
+          "index": 15,
+          "name": "phong18"
+        },
+        {
+          "index": 16,
+          "name": "mirror"
+        },
+        {
+          "index": 17,
+          "name": "glass_surr"
+        },
+        {
+          "index": 18,
+          "name": "Calipers"
+        },
+        {
+          "index": 19,
+          "name": "rim"
+        },
+        {
+          "index": 20,
+          "name": "TireRubber_cop:tore"
+        },
+        {
+          "index": 21,
+          "name": "cop:dfosk"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/vehicles/fortuner.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/interceptor.glb",
+      "status": "available",
+      "nodes": 24,
+      "meshes": 9,
+      "skins": 0,
+      "animations": 0,
+      "components": [
+        {
+          "node": 3,
+          "name": "CALIPER_FL_GEO"
+        },
+        {
+          "node": 4,
+          "name": "CALIPER_FL"
+        },
+        {
+          "node": 5,
+          "name": "SPIN_FL_GEO"
+        },
+        {
+          "node": 6,
+          "name": "SPIN_FL"
+        },
+        {
+          "node": 7,
+          "name": "WHEEL_FL"
+        },
+        {
+          "node": 8,
+          "name": "CALIPER_FR_GEO"
+        },
+        {
+          "node": 9,
+          "name": "CALIPER_FR"
+        },
+        {
+          "node": 10,
+          "name": "SPIN_FR_GEO"
+        },
+        {
+          "node": 11,
+          "name": "SPIN_FR"
+        },
+        {
+          "node": 12,
+          "name": "WHEEL_FR"
+        },
+        {
+          "node": 13,
+          "name": "CALIPER_RL_GEO"
+        },
+        {
+          "node": 14,
+          "name": "CALIPER_RL"
+        },
+        {
+          "node": 15,
+          "name": "SPIN_RL_GEO"
+        },
+        {
+          "node": 16,
+          "name": "SPIN_RL"
+        },
+        {
+          "node": 17,
+          "name": "WHEEL_RL"
+        },
+        {
+          "node": 18,
+          "name": "CALIPER_RR_GEO"
+        },
+        {
+          "node": 19,
+          "name": "CALIPER_RR"
+        },
+        {
+          "node": 20,
+          "name": "SPIN_RR_GEO"
+        },
+        {
+          "node": 21,
+          "name": "SPIN_RR"
+        },
+        {
+          "node": 22,
+          "name": "WHEEL_RR"
+        }
+      ],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "Under"
+        },
+        {
+          "index": 1,
+          "name": "Metal"
+        },
+        {
+          "index": 2,
+          "name": "Iner:_30_BF_5F1"
+        },
+        {
+          "index": 3,
+          "name": "orange_glass"
+        },
+        {
+          "index": 4,
+          "name": "red_glass"
+        },
+        {
+          "index": 5,
+          "name": "Badges"
+        },
+        {
+          "index": 6,
+          "name": "Livery"
+        },
+        {
+          "index": 7,
+          "name": "Light_glass"
+        },
+        {
+          "index": 8,
+          "name": "Light_4"
+        },
+        {
+          "index": 9,
+          "name": "Iner:F0_27_DF_E4"
+        },
+        {
+          "index": 10,
+          "name": "Iner:_FF_28_AA1"
+        },
+        {
+          "index": 11,
+          "name": "Black"
+        },
+        {
+          "index": 12,
+          "name": "Interior"
+        },
+        {
+          "index": 13,
+          "name": "niquel"
+        },
+        {
+          "index": 14,
+          "name": "glass_surr"
+        },
+        {
+          "index": 15,
+          "name": "Iner:FC_E6_25_0B1"
+        },
+        {
+          "index": 16,
+          "name": "mirror"
+        },
+        {
+          "index": 17,
+          "name": "Iner:B8_F9_B1_38"
+        },
+        {
+          "index": 18,
+          "name": "Iner:_61_34_71"
+        },
+        {
+          "index": 19,
+          "name": "Iner:_D8_0E_93"
+        },
+        {
+          "index": 20,
+          "name": "Light_1"
+        },
+        {
+          "index": 21,
+          "name": "blue_glass"
+        },
+        {
+          "index": 22,
+          "name": "Iner:_A8_CE_8D1"
+        },
+        {
+          "index": 23,
+          "name": "Iner:_EF_4C_8F1"
+        },
+        {
+          "index": 24,
+          "name": "Iner:_A4_AC_02"
+        },
+        {
+          "index": 25,
+          "name": "Rim"
+        },
+        {
+          "index": 26,
+          "name": "Iner:F_A3_52_F6"
+        },
+        {
+          "index": 27,
+          "name": "Iner:CC_E4_23_D10"
+        },
+        {
+          "index": 28,
+          "name": "TireRubber_Iner:_2B_C1_9A1"
+        },
+        {
+          "index": 29,
+          "name": "Rim2"
+        },
+        {
+          "index": 30,
+          "name": "Windshield glass"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/vehicles/landcruiser.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/ae86-far.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/ae86-medium.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/ae86-near.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/brz-far.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/brz-medium.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/brz-near.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/camaro-far.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/camaro-medium.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/camaro-near.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/charger70-far.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/charger70-medium.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/charger70-near.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/cx30-far.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/cx30-medium.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/cx30-near.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/enforcer-far.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/enforcer-medium.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/enforcer-near.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/fortuner-far.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/fortuner-medium.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/fortuner-near.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/interceptor-far.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/interceptor-medium.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/interceptor-near.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/landcruiser-far.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/landcruiser-medium.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/landcruiser-near.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/mini-far.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/mini-medium.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/mini-near.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/sierra-far.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/sierra-medium.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/sierra-near.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/skyline34-far.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/skyline34-medium.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/skyline34-near.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/supra-far.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/supra-medium.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/supra-near.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/tank-far.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/tank-medium.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/tank-near.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/timecar-far.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/timecar-medium.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/lod/timecar-near.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/mini.glb",
+      "status": "available",
+      "nodes": 43,
+      "meshes": 13,
+      "skins": 0,
+      "animations": 0,
+      "components": [
+        {
+          "node": 9,
+          "name": "HEADLIGHT_L"
+        },
+        {
+          "node": 10,
+          "name": "HEADLIGHT_R"
+        },
+        {
+          "node": 22,
+          "name": "CALIPER_FL_GEO"
+        },
+        {
+          "node": 23,
+          "name": "CALIPER_FL"
+        },
+        {
+          "node": 24,
+          "name": "SPIN_FL_GEO"
+        },
+        {
+          "node": 25,
+          "name": "SPIN_FL"
+        },
+        {
+          "node": 26,
+          "name": "WHEEL_FL"
+        },
+        {
+          "node": 27,
+          "name": "CALIPER_FR_GEO"
+        },
+        {
+          "node": 28,
+          "name": "CALIPER_FR"
+        },
+        {
+          "node": 29,
+          "name": "SPIN_FR_GEO"
+        },
+        {
+          "node": 30,
+          "name": "SPIN_FR"
+        },
+        {
+          "node": 31,
+          "name": "WHEEL_FR"
+        },
+        {
+          "node": 32,
+          "name": "CALIPER_RL_GEO"
+        },
+        {
+          "node": 33,
+          "name": "CALIPER_RL"
+        },
+        {
+          "node": 34,
+          "name": "SPIN_RL_GEO"
+        },
+        {
+          "node": 35,
+          "name": "SPIN_RL"
+        },
+        {
+          "node": 36,
+          "name": "WHEEL_RL"
+        },
+        {
+          "node": 37,
+          "name": "CALIPER_RR_GEO"
+        },
+        {
+          "node": 38,
+          "name": "CALIPER_RR"
+        },
+        {
+          "node": 39,
+          "name": "SPIN_RR_GEO"
+        },
+        {
+          "node": 40,
+          "name": "SPIN_RR"
+        },
+        {
+          "node": 41,
+          "name": "WHEEL_RR"
+        }
+      ],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "body"
+        },
+        {
+          "index": 1,
+          "name": "Roof"
+        },
+        {
+          "index": 2,
+          "name": "WindowGlass"
+        },
+        {
+          "index": 3,
+          "name": "RoofGlass"
+        },
+        {
+          "index": 4,
+          "name": "CabinBlack"
+        },
+        {
+          "index": 5,
+          "name": "FrontSeat"
+        },
+        {
+          "index": 6,
+          "name": "RearSeat"
+        },
+        {
+          "index": 7,
+          "name": "Headliner"
+        },
+        {
+          "index": 8,
+          "name": "DoorCards"
+        },
+        {
+          "index": 9,
+          "name": "HeadlinerDetail"
+        },
+        {
+          "index": 10,
+          "name": "Console"
+        },
+        {
+          "index": 11,
+          "name": "Dashboard"
+        },
+        {
+          "index": 12,
+          "name": "HatchLiner"
+        },
+        {
+          "index": 13,
+          "name": "LampHousing"
+        },
+        {
+          "index": 14,
+          "name": "ClearLens"
+        },
+        {
+          "index": 15,
+          "name": "TailLens"
+        },
+        {
+          "index": 16,
+          "name": "Reflector"
+        },
+        {
+          "index": 17,
+          "name": "HeadlightLens"
+        },
+        {
+          "index": 18,
+          "name": "TailEmitter"
+        },
+        {
+          "index": 19,
+          "name": "Brightwork"
+        },
+        {
+          "index": 20,
+          "name": "ExteriorBlack"
+        },
+        {
+          "index": 21,
+          "name": "BumperTrim"
+        },
+        {
+          "index": 22,
+          "name": "Underbody"
+        },
+        {
+          "index": 23,
+          "name": "Plates"
+        },
+        {
+          "index": 24,
+          "name": "Grille"
+        },
+        {
+          "index": 25,
+          "name": "Hardware"
+        },
+        {
+          "index": 26,
+          "name": "BadgeRed"
+        },
+        {
+          "index": 27,
+          "name": "Mirror"
+        },
+        {
+          "index": 28,
+          "name": "Caliper"
+        },
+        {
+          "index": 29,
+          "name": "Tire"
+        },
+        {
+          "index": 30,
+          "name": "Rim"
+        },
+        {
+          "index": 31,
+          "name": "Rim_Face"
+        },
+        {
+          "index": 32,
+          "name": "Rotor"
+        },
+        {
+          "index": 33,
+          "name": "Hub_Badge"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/vehicles/sierra.glb",
+      "status": "available",
+      "nodes": 43,
+      "meshes": 13,
+      "skins": 0,
+      "animations": 0,
+      "components": [
+        {
+          "node": 9,
+          "name": "HEADLIGHT_L"
+        },
+        {
+          "node": 10,
+          "name": "HEADLIGHT_R"
+        },
+        {
+          "node": 22,
+          "name": "CALIPER_FL_GEO"
+        },
+        {
+          "node": 23,
+          "name": "CALIPER_FL"
+        },
+        {
+          "node": 24,
+          "name": "SPIN_FL_GEO"
+        },
+        {
+          "node": 25,
+          "name": "SPIN_FL"
+        },
+        {
+          "node": 26,
+          "name": "WHEEL_FL"
+        },
+        {
+          "node": 27,
+          "name": "CALIPER_FR_GEO"
+        },
+        {
+          "node": 28,
+          "name": "CALIPER_FR"
+        },
+        {
+          "node": 29,
+          "name": "SPIN_FR_GEO"
+        },
+        {
+          "node": 30,
+          "name": "SPIN_FR"
+        },
+        {
+          "node": 31,
+          "name": "WHEEL_FR"
+        },
+        {
+          "node": 32,
+          "name": "CALIPER_RL_GEO"
+        },
+        {
+          "node": 33,
+          "name": "CALIPER_RL"
+        },
+        {
+          "node": 34,
+          "name": "SPIN_RL_GEO"
+        },
+        {
+          "node": 35,
+          "name": "SPIN_RL"
+        },
+        {
+          "node": 36,
+          "name": "WHEEL_RL"
+        },
+        {
+          "node": 37,
+          "name": "CALIPER_RR_GEO"
+        },
+        {
+          "node": 38,
+          "name": "CALIPER_RR"
+        },
+        {
+          "node": 39,
+          "name": "SPIN_RR_GEO"
+        },
+        {
+          "node": 40,
+          "name": "SPIN_RR"
+        },
+        {
+          "node": 41,
+          "name": "WHEEL_RR"
+        }
+      ],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "body"
+        },
+        {
+          "index": 1,
+          "name": "glass"
+        },
+        {
+          "index": 2,
+          "name": "Plasitc_Diff"
+        },
+        {
+          "index": 3,
+          "name": "Interior_ICon"
+        },
+        {
+          "index": 4,
+          "name": "door_Pattrn"
+        },
+        {
+          "index": 5,
+          "name": "leather_dots"
+        },
+        {
+          "index": 6,
+          "name": "display"
+        },
+        {
+          "index": 7,
+          "name": "BlackPaint"
+        },
+        {
+          "index": 8,
+          "name": "Seatbe"
+        },
+        {
+          "index": 9,
+          "name": "Costuras"
+        },
+        {
+          "index": 10,
+          "name": "costura_roja"
+        },
+        {
+          "index": 11,
+          "name": "Red_Stitch"
+        },
+        {
+          "index": 12,
+          "name": "leather"
+        },
+        {
+          "index": 13,
+          "name": "Interior_2"
+        },
+        {
+          "index": 14,
+          "name": "chrome"
+        },
+        {
+          "index": 15,
+          "name": "GMC_RED"
+        },
+        {
+          "index": 16,
+          "name": "Fabric_Carpet"
+        },
+        {
+          "index": 17,
+          "name": "material"
+        },
+        {
+          "index": 18,
+          "name": "speaker"
+        },
+        {
+          "index": 19,
+          "name": "alum_brush"
+        },
+        {
+          "index": 20,
+          "name": "white_plas"
+        },
+        {
+          "index": 21,
+          "name": "AT4X_Logo"
+        },
+        {
+          "index": 22,
+          "name": "Plastic_Leather"
+        },
+        {
+          "index": 23,
+          "name": "Plastic_Line"
+        },
+        {
+          "index": 24,
+          "name": "Plastic_Red"
+        },
+        {
+          "index": 25,
+          "name": "bose"
+        },
+        {
+          "index": 26,
+          "name": "emiss"
+        },
+        {
+          "index": 27,
+          "name": "glass_clear"
+        },
+        {
+          "index": 28,
+          "name": "red_glass"
+        },
+        {
+          "index": 29,
+          "name": "Chrome_Line"
+        },
+        {
+          "index": 30,
+          "name": "Chrome_SQ"
+        },
+        {
+          "index": 31,
+          "name": "Sierra_Logo"
+        },
+        {
+          "index": 32,
+          "name": "Plastic_Grey"
+        },
+        {
+          "index": 33,
+          "name": "chassis"
+        },
+        {
+          "index": 34,
+          "name": "Plastic_R"
+        },
+        {
+          "index": 35,
+          "name": "Plastic_SH"
+        },
+        {
+          "index": 36,
+          "name": "Chome_Orange"
+        },
+        {
+          "index": 37,
+          "name": "Chrome_SQ_orange"
+        },
+        {
+          "index": 38,
+          "name": "ChromeColour_Bump"
+        },
+        {
+          "index": 39,
+          "name": "Colour_AO"
+        },
+        {
+          "index": 40,
+          "name": "Colour_Text"
+        },
+        {
+          "index": 41,
+          "name": "GMC_Bump"
+        },
+        {
+          "index": 42,
+          "name": "Plas_D_Sensor"
+        },
+        {
+          "index": 43,
+          "name": "Plastic_SQ"
+        },
+        {
+          "index": 44,
+          "name": "Hexagon"
+        },
+        {
+          "index": 45,
+          "name": "plate"
+        },
+        {
+          "index": 46,
+          "name": "Breaks"
+        },
+        {
+          "index": 47,
+          "name": "Tyre"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/vehicles/skyline34.glb",
+      "status": "available",
+      "nodes": 24,
+      "meshes": 9,
+      "skins": 0,
+      "animations": 0,
+      "components": [
+        {
+          "node": 3,
+          "name": "CALIPER_FL_GEO"
+        },
+        {
+          "node": 4,
+          "name": "CALIPER_FL"
+        },
+        {
+          "node": 5,
+          "name": "SPIN_FL_GEO"
+        },
+        {
+          "node": 6,
+          "name": "SPIN_FL"
+        },
+        {
+          "node": 7,
+          "name": "WHEEL_FL"
+        },
+        {
+          "node": 8,
+          "name": "CALIPER_FR_GEO"
+        },
+        {
+          "node": 9,
+          "name": "CALIPER_FR"
+        },
+        {
+          "node": 10,
+          "name": "SPIN_FR_GEO"
+        },
+        {
+          "node": 11,
+          "name": "SPIN_FR"
+        },
+        {
+          "node": 12,
+          "name": "WHEEL_FR"
+        },
+        {
+          "node": 13,
+          "name": "CALIPER_RL_GEO"
+        },
+        {
+          "node": 14,
+          "name": "CALIPER_RL"
+        },
+        {
+          "node": 15,
+          "name": "SPIN_RL_GEO"
+        },
+        {
+          "node": 16,
+          "name": "SPIN_RL"
+        },
+        {
+          "node": 17,
+          "name": "WHEEL_RL"
+        },
+        {
+          "node": 18,
+          "name": "CALIPER_RR_GEO"
+        },
+        {
+          "node": 19,
+          "name": "CALIPER_RR"
+        },
+        {
+          "node": 20,
+          "name": "SPIN_RR_GEO"
+        },
+        {
+          "node": 21,
+          "name": "SPIN_RR"
+        },
+        {
+          "node": 22,
+          "name": "WHEEL_RR"
+        }
+      ],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "rNissan_SkylineGTRR34F2_1999BadgeA_Material1"
+        },
+        {
+          "index": 1,
+          "name": "rNissan_SkylineGTRR34F2_1999Base_Material1"
+        },
+        {
+          "index": 2,
+          "name": "rNissan_SkylineGTRR34F2_1999Carbon1_Material1"
+        },
+        {
+          "index": 3,
+          "name": "rNissan_SkylineGTRR34F2_1999Coloured_Material1"
+        },
+        {
+          "index": 4,
+          "name": "rNissan_SkylineGTRR34F2_1999EngineA_Material1"
+        },
+        {
+          "index": 5,
+          "name": "rNissan_SkylineGTRR34F2_1999Grille1A_Material1"
+        },
+        {
+          "index": 6,
+          "name": "rNissan_SkylineGTRR34F2_1999Grille2A_Material1"
+        },
+        {
+          "index": 7,
+          "name": "rNissan_SkylineGTRR34F2_1999Grille3A_Material1"
+        },
+        {
+          "index": 8,
+          "name": "rNissan_SkylineGTRR34F2_1999Grille4A_Material1"
+        },
+        {
+          "index": 9,
+          "name": "rNissan_SkylineGTRR34F2_1999InteriorA_Material1"
+        },
+        {
+          "index": 10,
+          "name": "seat"
+        },
+        {
+          "index": 11,
+          "name": "rNissan_SkylineGTRR34F2_1999InteriorTillingA_Material1"
+        },
+        {
+          "index": 12,
+          "name": "rNissan_SkylineGTRR34F2_1999LightA_Material1"
+        },
+        {
+          "index": 13,
+          "name": "rNissan_SkylineGTRR34F2_1999LightA_Material1.001"
+        },
+        {
+          "index": 14,
+          "name": "lightpao"
+        },
+        {
+          "index": 15,
+          "name": "rNissan_SkylineGTRR34F2_1999ManufacturerPlateA_Material1"
+        },
+        {
+          "index": 16,
+          "name": "rNissan_SkylineGTRR34F2_1999Paint_Material1"
+        },
+        {
+          "index": 17,
+          "name": "rNissan_SkylineGTRR34F2_1999TexturedA_Material1"
+        },
+        {
+          "index": 18,
+          "name": "ambar_glass"
+        },
+        {
+          "index": 19,
+          "name": "rNissan_SkylineGTRR34F2_1999Window_Material1"
+        },
+        {
+          "index": 20,
+          "name": "red_glass"
+        },
+        {
+          "index": 21,
+          "name": "rNissan_SkylineGTRR34F2_1999Window_Material1.001"
+        },
+        {
+          "index": 22,
+          "name": "rNissan_SkylineGTRR34F2_1999CalliperBadgeA_Material1"
+        },
+        {
+          "index": 23,
+          "name": "rNissan_SkylineGTRR34F2_1999CalliperGloss_Material1"
+        },
+        {
+          "index": 24,
+          "name": "brack"
+        },
+        {
+          "index": 25,
+          "name": "cal_m"
+        },
+        {
+          "index": 26,
+          "name": "rNissan_SkylineGTRR34F2_1999_Wheel1A_3D_3DWheel1A_Material1.013"
+        },
+        {
+          "index": 27,
+          "name": "rim"
+        },
+        {
+          "index": 28,
+          "name": "riminside"
+        },
+        {
+          "index": 29,
+          "name": "rNissan_SkylineGTRR34F2_1999_Wheel1A_3D_3DWheel1A_Material1.012"
+        },
+        {
+          "index": 30,
+          "name": "TireRubber_rNissan_SkylineGTRR34F2_1999_Wheel1A_3D_3DWheel1A_Material1.003"
+        },
+        {
+          "index": 31,
+          "name": "TireRubber_rNissan_SkylineGTRR34F2_1999_Wheel1A_3D_3DWheel1A_Material1.004"
+        },
+        {
+          "index": 32,
+          "name": "TireRubber_rNissan_SkylineGTRR34F2_1999_Wheel1A_3D_3DWheel1A_Material1.005"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/vehicles/supra_1998.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/supra_2020.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/tank.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/vehicles/timecar.glb",
+      "status": "available",
+      "nodes": 24,
+      "meshes": 9,
+      "skins": 0,
+      "animations": 0,
+      "components": [
+        {
+          "node": 3,
+          "name": "CALIPER_FL_GEO"
+        },
+        {
+          "node": 4,
+          "name": "CALIPER_FL"
+        },
+        {
+          "node": 5,
+          "name": "SPIN_FL_GEO"
+        },
+        {
+          "node": 6,
+          "name": "SPIN_FL"
+        },
+        {
+          "node": 7,
+          "name": "WHEEL_FL"
+        },
+        {
+          "node": 8,
+          "name": "CALIPER_FR_GEO"
+        },
+        {
+          "node": 9,
+          "name": "CALIPER_FR"
+        },
+        {
+          "node": 10,
+          "name": "SPIN_FR_GEO"
+        },
+        {
+          "node": 11,
+          "name": "SPIN_FR"
+        },
+        {
+          "node": 12,
+          "name": "WHEEL_FR"
+        },
+        {
+          "node": 13,
+          "name": "CALIPER_RL_GEO"
+        },
+        {
+          "node": 14,
+          "name": "CALIPER_RL"
+        },
+        {
+          "node": 15,
+          "name": "SPIN_RL_GEO"
+        },
+        {
+          "node": 16,
+          "name": "SPIN_RL"
+        },
+        {
+          "node": 17,
+          "name": "WHEEL_RL"
+        },
+        {
+          "node": 18,
+          "name": "CALIPER_RR_GEO"
+        },
+        {
+          "node": 19,
+          "name": "CALIPER_RR"
+        },
+        {
+          "node": 20,
+          "name": "SPIN_RR_GEO"
+        },
+        {
+          "node": 21,
+          "name": "SPIN_RR"
+        },
+        {
+          "node": 22,
+          "name": "WHEEL_RR"
+        }
+      ],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "Time:BTTF_TimeMachine1_1985BadgeA_Material1"
+        },
+        {
+          "index": 1,
+          "name": "Time:BTTF_TimeMachine1_1985Base_Material1"
+        },
+        {
+          "index": 2,
+          "name": "Time:BTTF_TimeMachine1_1985Coloured_Material1"
+        },
+        {
+          "index": 3,
+          "name": "Time:BTTF_TimeMachine1_1985EngineA_Material1"
+        },
+        {
+          "index": 4,
+          "name": "Time:BTTF_TimeMachine1_1985Grille1ADetails_Material1"
+        },
+        {
+          "index": 5,
+          "name": "Time:BTTF_TimeMachine1_1985Grille2ADetails_Material1"
+        },
+        {
+          "index": 6,
+          "name": "Time:BTTF_TimeMachine1_1985GrilleAlpha6A_Material1"
+        },
+        {
+          "index": 7,
+          "name": "Time:BTTF_TimeMachine1_1985GrilleAlpha7A_Material1"
+        },
+        {
+          "index": 8,
+          "name": "Time:BTTF_TimeMachine1_1985GrilleAlpha8A_Material1"
+        },
+        {
+          "index": 9,
+          "name": "Time:BTTF_TimeMachine1_1985GrilleNoAlpha1A_Material1"
+        },
+        {
+          "index": 10,
+          "name": "Time:BTTF_TimeMachine1_1985GrilleNoAlpha2A_Material1"
+        },
+        {
+          "index": 11,
+          "name": "Time:BTTF_TimeMachine1_1985GrilleNoAlpha3A_Material1"
+        },
+        {
+          "index": 12,
+          "name": "Time:BTTF_TimeMachine1_1985GrilleNoAlpha4A_Material1"
+        },
+        {
+          "index": 13,
+          "name": "Time:BTTF_TimeMachine1_1985GrilleNoAlpha5A_Material1"
+        },
+        {
+          "index": 14,
+          "name": "Time:BTTF_TimeMachine1_1985GrilleNoAlpha9A_Material1"
+        },
+        {
+          "index": 15,
+          "name": "Time:BTTF_TimeMachine1_1985InteriorA_Material1"
+        },
+        {
+          "index": 16,
+          "name": "Time:BTTF_TimeMachine1_1985LightA_Material1"
+        },
+        {
+          "index": 17,
+          "name": "paint_2"
+        },
+        {
+          "index": 18,
+          "name": "Time:BTTF_TimeMachine1_1985Paint_Material1"
+        },
+        {
+          "index": 19,
+          "name": "Time:BTTF_TimeMachine1_1985Textured2A_Material1"
+        },
+        {
+          "index": 20,
+          "name": "Time:BTTF_TimeMachine1_1985TexturedA_Material1"
+        },
+        {
+          "index": 21,
+          "name": "Time:BTTF_TimeMachine1_1985Window_Material1"
+        },
+        {
+          "index": 22,
+          "name": "light_glass"
+        },
+        {
+          "index": 23,
+          "name": "red_glas"
+        },
+        {
+          "index": 24,
+          "name": "orange_glass"
+        },
+        {
+          "index": 25,
+          "name": "map2:BTTF_TimeMachine1_1985Grille1ADetails_Material1"
+        },
+        {
+          "index": 26,
+          "name": "map2:BTTF_TimeMachine1_1985InteriorA_Material1"
+        },
+        {
+          "index": 27,
+          "name": "map2:BTTF_TimeMachine1_1985LightEmissiveA_Material1"
+        },
+        {
+          "index": 28,
+          "name": "Time:BTTF_TimeMachine1_1985_CallipersCalliperA_Zone_Material1"
+        },
+        {
+          "index": 29,
+          "name": "Time:BTTF_TimeMachine1_1985_Wheel1A_3D_3DWheel1A_Material1"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/world/big-e-docked.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/world/city.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/world/city_rtx.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/world/city_time_square.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/world/garage.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/world/garage_special.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/world/harbor-street-props.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/world/m2-browning.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/world/props/DowntownObj_Props.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/world/rescue-helicopter.glb",
+      "status": "lfs-pointer"
+    },
+    {
+      "path": "frontend/public/models/world/road-kit/intersection.glb",
+      "status": "available",
+      "nodes": 11,
+      "meshes": 11,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt_01"
+        },
+        {
+          "index": 1,
+          "name": "MarkingRoad"
+        },
+        {
+          "index": 2,
+          "name": "Sidewalk_02"
+        },
+        {
+          "index": 3,
+          "name": "Sidewalk_01"
+        },
+        {
+          "index": 4,
+          "name": "Sewers_01"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/world/road-kit/road_narrow.glb",
+      "status": "available",
+      "nodes": 127,
+      "meshes": 127,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "asphalt_01"
+        },
+        {
+          "index": 1,
+          "name": "MarkingRoad"
+        },
+        {
+          "index": 2,
+          "name": "Sidewalk_02"
+        },
+        {
+          "index": 3,
+          "name": "Sidewalk_01"
+        },
+        {
+          "index": 4,
+          "name": "Sewers_01"
+        }
+      ]
+    },
+    {
+      "path": "frontend/public/models/world/road-kit/road_wide.glb",
+      "status": "available",
+      "nodes": 90,
+      "meshes": 90,
+      "skins": 0,
+      "animations": 0,
+      "components": [],
+      "unnamed": 0,
+      "materials": [
+        {
+          "index": 0,
+          "name": "MarkingRoad"
+        },
+        {
+          "index": 1,
+          "name": "Sidewalk_02"
+        },
+        {
+          "index": 2,
+          "name": "Sidewalk_01"
+        },
+        {
+          "index": 3,
+          "name": "asphalt_01"
+        }
+      ]
+    }
+  ]
+}

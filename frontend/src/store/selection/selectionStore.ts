@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import type { VehicleDefinition } from "./vehicleCatalog";
 import { vehicleCatalog } from "./vehicleCatalog";
-import { mapCatalog, useWorldCatalog, type MapDefinition } from "./worldCatalog";
+import { useWorldCatalog, type MapDefinition } from "./worldCatalog";
 import { NO_INSTALLED_MAP } from "./worldCatalogCore";
 export * from "./vehicleCatalog";
 export { mapCatalog, type MapDefinition } from "./worldCatalog";

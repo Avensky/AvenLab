@@ -1,4 +1,5 @@
 import { kitAsset } from "../mapKit/catalog";
+import { ExcavationTools } from './ExcavationTools';
 import {
   lazy,
   Suspense,
@@ -408,6 +409,7 @@ function LayoutPanel({
         <div className="le-drawer-title"><strong>WORLD TOOLS</strong><button aria-label="Close world tools" onClick={() => { setToolsOpen(false); root.current?.querySelector<HTMLButtonElement>(".le-tool-toggle")?.focus(); }}>CLOSE</button></div>
         <h3>World, vehicle & test</h3>
         <EditorWorldControls />
+        <ExcavationTools />
         <h3>Workspace & files</h3>
         <div className="le-drawer-actions">
         <button className="le-presentation-toggle" onClick={() => {

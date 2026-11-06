@@ -12,12 +12,21 @@ import {vehicleAsset} from '../worldBuilder/vehicles/vehicleCatalog';
 import {fleetDetail,type FleetDetail} from './fleetDetail';
 import type {RosterEntity} from './rosterSelector';
 
-const whitePaint=new MeshStandardMaterial({color:0xffffff,roughness:.36,metalness:.18});
+type Finish='factory'|'frs'|'soft';
+const finishOf=(value:unknown):Finish=>value==='factory'||value==='soft'?value:'frs';
 const unit=new Vector3(1,1,1);
 const hidden=new Matrix4().makeScale(0,0,0);
 const up=new Vector3(0,1,0),axle=new Vector3(1,0,0);
-type BatchProps={model:string;tier:FleetDetail|'seed';cars:RosterEntity[];scene:Group};
-function FleetBatch({model,tier,cars,scene}:BatchProps){
+type BatchProps={model:string;tier:FleetDetail|'seed';cars:RosterEntity[];scene:Group;finish?:Finish};
+function FleetBatch({model,tier,cars,scene,finish='frs'}:BatchProps){
+  const paintMaterials=useMemo(()=>scene.children.map(source=>{
+    if(!(source instanceof Mesh)||source.name!=='paint')return null;
+    const material=(source.material as MeshStandardMaterial).clone();
+    material.color.set(0xffffff);
+    material.roughness=finish==='factory'?material.roughness:finish==='frs'?.20529644:Math.max(material.roughness,.4025);
+    return material;
+  }),[scene,finish]);
+  useEffect(()=>()=>paintMaterials.forEach(material=>material?.dispose()),[paintMaterials]);
   const parts=useMemo(()=>scene.children.filter((m):m is Mesh=>m instanceof Mesh),[scene]);
   const meshes=useRef<(InstancedMesh|null)[]>([]);
   const turret=useMemo(()=>parts.find(part=>part.name==='turret'),[parts]);
@@ -74,7 +83,7 @@ function FleetBatch({model,tier,cars,scene}:BatchProps){
       if(parts[j].name==='paint'&&s.paintDirty&&batch.instanceColor)batch.instanceColor.needsUpdate=true;});
   });
   return <group name={`fleet-${model}-${tier}`}>{parts.map((p,j)=><instancedMesh key={p.uuid} ref={m=>{meshes.current[j]=m;}}
-    name={`${model}-${tier}-${p.name}`} args={[p.geometry,p.name==='paint'?whitePaint:p.material,cars.length]} count={0} frustumCulled={false}/>)}</group>;
+    name={`${model}-${tier}-${p.name}`} args={[p.geometry,paintMaterials[j]??p.material,cars.length]} count={0} frustumCulled={false}/>)}</group>;
 }
 
 /** Used on cold deployment or if a full local rig fails to load. */
@@ -82,8 +91,9 @@ export function VehicleExterior({entity}:{entity:RosterEntity}){
   const model=entity.vehicle_id??'';
   useSyncExternalStore(subscribeFleetArt,fleetArtVersion,fleetArtVersion);
   useEffect(()=>retainFleetArt(model,'medium'),[model]);
+  const finish=useNetworkStore(s=>finishOf(snapshotEntity(s.snapshot,entity.id)?.appearance?.finish));
   const art=fleetArt(model,'medium');
-  return art?<FleetBatch model={model} cars={[entity]} {...art}/>:null;
+  return art?<FleetBatch model={model} cars={[entity]} finish={finish} {...art}/>:null;
 }
 
 export function RemoteFleet({cars}:{cars:RosterEntity[]}){
@@ -126,18 +136,21 @@ export function RemoteFleet({cars}:{cars:RosterEntity[]}){
     });
     return ()=>releases.forEach(release=>release());
   },[cars,levels]);
+  // A scalar selector changes only when a visible player's finish changes, not on every pose packet.
+  const finishes=useNetworkStore(s=>cars.map(car=>finishOf(snapshotEntity(s.snapshot,car.id)?.appearance?.finish)).join(','));
   const batches=useMemo(()=>{
     const batches=new Map<string,BatchProps>();
-    for(const car of cars){
+    for(const [index,car] of cars.entries()){
+      const finish=finishOf(finishes.split(',')[index]);
       const tier=levels.get(car.id),model=car.vehicle_id;
       if(!tier||!model)continue;
       const art=fleetArt(model,tier);
       if(!art)continue;
-      const key=model+'-'+art.tier;
-      const group=batches.get(key)??{model,...art,cars:[]};
+      const key=model+'-'+art.tier+'-'+finish;
+      const group=batches.get(key)??{model,...art,finish,cars:[]};
       group.cars.push(car);batches.set(key,group);
     }
     return [...batches];
-  },[cars,levels,version]);
+  },[cars,levels,version,finishes]);
   return <>{batches.map(([key,batch])=><FleetBatch key={key} {...batch}/>)}</>;
 }

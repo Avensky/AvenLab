@@ -31,7 +31,7 @@ export function prepareGarageVehiclePaint(root: Object3D, model: string) {
 /** Paint only explicitly identified body materials on instance-owned clones.
  * Texture atlases, glass, lights, trim and cached GLBs are never recolored. */
 export function applyShowroomPaint(root: Object3D, model: string, finish: "factory" | "hot-pink" | "pastel-pink", overrideColor?: string) {
-  const names: Record<string, RegExp> = {ae86:/^Primary(?:\.\d+)?$/,brz:/^body$/,cx30:/^body$/,mini:/^body$/,fortuner:/^body$/,landcruiser:/^body$/,sierra:/^body$/,camaro:/^ext(?:\.\d+)?$/,supra:/PaintTNR_Material1$/};
+  const names: Record<string, RegExp> = {charger70:/^Paint$/,enforcer:/^chassis$/,skyline34:/^rNissan_SkylineGTRR34F2_1999Paint_Material1$/,timecar:/^(Time:BTTF_TimeMachine1_1985Paint_Material1|paint_2)$/,ae86:/^Primary(?:\.\d+)?$/,brz:/^body$/,cx30:/^body$/,mini:/^body$/,fortuner:/^body$/,landcruiser:/^body$/,sierra:/^body$/,camaro:/^ext(?:\.\d+)?$/,supra:/PaintTNR_Material1$/};
   const allowed=names[model]; if(!allowed) return;
   const seen=new Set<MeshStandardMaterial>();
   root.traverse(object => {
@@ -47,7 +47,7 @@ export function applyShowroomPaint(root: Object3D, model: string, finish: "facto
 }
 
 export function hasVehicleFinish(name: string) {
-  return /^(Primary(?:\.\d+)?|body|ext(?:\.\d+)?|chassis(?:\.\d+)?)$|PaintTNR_Material1$/.test(name);
+  return /^(Primary(?:\.\d+)?|body|ext(?:\.\d+)?|chassis(?:\.\d+)?|Paint|paint_2)$|(?:PaintTNR|Paint)_Material1$/.test(name);
 }
 
 /** All showroom body paints share a low-glare finish control. Zero is glossy,

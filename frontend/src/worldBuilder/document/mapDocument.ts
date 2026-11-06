@@ -97,8 +97,9 @@ export function parseMapDocument(
     (layout.radius as number) > 16
   )
     throw Error("Invalid map layout");
-  if (!Array.isArray(d.visuals) || !d.visuals.length || d.visuals.length > 32)
-    throw Error("Expected 1–32 visual assets");
+  const standalone = d.authored_layout && record(d.authored_layout).base === 'replace';
+  if (!Array.isArray(d.visuals) || (!d.visuals.length && !standalone) || d.visuals.length > 32)
+    throw Error("Expected up to 32 visual assets (zero is allowed for a standalone authored layout)");
   const visualIds = new Set<string>();
   for (const item of d.visuals) {
     const v = record(item);

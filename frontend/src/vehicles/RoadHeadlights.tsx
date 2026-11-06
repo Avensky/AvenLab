@@ -6,10 +6,12 @@ import { VehicleFlags } from '../store/input/protocol/inputMasks';
 import type { RosterEntity } from './rosterSelector';
 import { applyHeadlightBeam } from './tools/headlightBeam';
 import { AE_HINGE, lensProfiles, placeModel, popupAngle } from './tools/roadLamps';
+import { useRenderSettingsStore } from '../store/presentation/renderSettingsStore';
 
 // Two real road lights for the driver. Remote lenses are drawn by ExteriorMarkers.
 export function RoadHeadlights({car}: {car:RosterEntity}) {
   const read = useFleetPoseReader();
+  const shadows = useRenderSettingsStore(s => s.shadows && !s.lowDetail);
   const lift=useRef(0);
   const mounts = lensProfiles[car.vehicle_id ?? '']?.mounts;
   const rig = useMemo(() => {
@@ -18,6 +20,10 @@ export function RoadHeadlights({car}: {car:RosterEntity}) {
       const side=Math.sign(at[0]);
       const lamp = new SpotLight(0xfff3dd, 1400, 78, Math.PI/7, .50, 2);
       lamp.visible = false;
+      lamp.shadow.mapSize.set(512, 512);
+      lamp.shadow.camera.near = .15;
+      lamp.shadow.bias = -.0002;
+      lamp.shadow.normalBias = .025;
       lamp.position.fromArray(at);
       lamp.target.position.set(lamp.position.x+side*.65, lamp.position.y-1.2, lamp.position.z+32);
       root.add(lamp,lamp.target);
@@ -25,6 +31,7 @@ export function RoadHeadlights({car}: {car:RosterEntity}) {
     });
     return {root, lights, offset:new Vector3()};
   },[mounts]);
+  useEffect(() => { for (const light of rig.lights) light.castShadow = shadows; }, [rig, shadows]);
   useEffect(() => () => rig.lights.forEach(light=>light.dispose()),[rig]);
   useFrame((_,dt) => {
     const pose = read(car.id);

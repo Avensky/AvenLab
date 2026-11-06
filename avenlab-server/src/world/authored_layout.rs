@@ -86,7 +86,8 @@ impl AuthoredLayout {
         anyhow::ensure!(self.format == "avenlab-world-layout" && self.version == 1, "Unsupported authored layout format");
         anyhow::ensure!(self.map_id == map_id && identifier(&self.map_id, 96), "Authored layout map ID mismatch");
         anyhow::ensure!(!self.title.trim().is_empty() && self.title.chars().count() <= 80, "Invalid layout title");
-        anyhow::ensure!(self.objects.len() <= 512, "Authored layout exceeds 512 pieces");
+        // Match the editor budget, including independent destructible rail panels.
+        anyhow::ensure!(self.objects.len() <= 3072, "Authored layout exceeds 3072 pieces");
         if let Some(spawns) = &self.spawns {
             let mut ids = HashSet::new();
             for team in ["red", "blue"] {
@@ -131,7 +132,7 @@ impl AuthoredLayout {
                 count += road.shape_count();
                 continue;
             }
-            anyhow::ensure!(!object.parts.is_empty() && object.parts.len() <= 32, "Piece must have 1-32 shapes");
+            anyhow::ensure!(!object.parts.is_empty() && object.parts.len() <= 512, "Piece must have 1-512 shapes");
             count += object.parts.len();
             for part in &object.parts {
                 anyhow::ensure!(vector_ok(&part.position, -2.0, 2.0) && vector_ok(&part.size, 0.001, 4.0), "Invalid authored shape transform");
@@ -140,7 +141,7 @@ impl AuthoredLayout {
                 anyhow::ensure!(part.collider(object).is_some(), "Degenerate authored collision shape");
             }
         }
-        anyhow::ensure!(count <= 4096, "Authored layout exceeds 4096 shapes");
+        anyhow::ensure!(count <= 16384, "Authored layout exceeds 16384 shapes");
         Ok(())
     }
     pub fn spawn(&self, bodies: &mut RigidBodySet, colliders: &mut ColliderSet, origin: [f32; 3], groups: InteractionGroups) -> Vec<RigidBodyHandle> {
@@ -245,6 +246,49 @@ mod tests {
         }
         for (x,z) in [(0.0,-20.0),(18.0,100.0),(0.0,1200.0)] {
             assert!(height(x,z).is_none(),"gap, masked sidewalk and out-of-map air must stay empty at {x},{z}");
+        }
+    }
+
+    #[test]
+    fn harbor_exchange_has_drivable_bores_and_navigable_water_below_the_bridge() {
+        let file: serde_json::Value = serde_json::from_str(include_str!("../assets/blocks/harbor_exchange_colliders.json")).unwrap();
+        let doc: AuthoredLayout = serde_json::from_value(file["authored_layout"].clone()).unwrap();
+        doc.validate("harbor_exchange").unwrap();
+        assert!(!doc.ground && !doc.repeat && doc.replaces_base());
+        let mut bodies = RigidBodySet::new();
+        let mut colliders = ColliderSet::new();
+        doc.spawn(&mut bodies, &mut colliders, [0.; 3], InteractionGroups::all());
+        assert!(colliders.len() < 400);
+        let hit = |start: Point<f32>, direction: Vector<f32>, length: f32| {
+            let ray = Ray::new(start, direction);
+            colliders.iter().filter_map(|(_, c)| c.shape().cast_ray(c.position(), &ray, length, true))
+                .min_by(f32::total_cmp)
+        };
+        // Probe a vehicle-sized width at several roof clearances, end to end.
+        for x in [-66., 62.] {
+            for lateral in [-5.5, 0., 5.5] {
+                for y in [0.1, 2., 6.8] {
+                    assert!(hit(point![x + lateral, y, -100.], Vector::z(), 198.).is_none(), "blocked vehicle passage {x} {lateral} {y}");
+                }
+            }
+            let floor = hit(point![x, 2., 0.], -Vector::y(), 5.).unwrap();
+            assert!((floor - 2.).abs() < 0.01);
+        }
+        for x in [-10., 0., 10.] {
+            assert!(hit(point![x, -6., -100.], Vector::z(), 213.).is_none(), "underwater hull passage");
+            assert!(hit(point![x, 3., -100.], Vector::z(), 213.).is_none(), "mast/headroom passage");
+            let bed = hit(point![x, -2., 0.], -Vector::y(), 10.).unwrap();
+            assert!((bed - 6.).abs() < 0.01, "water must not become a solid floor");
+        }
+        assert!(hit(point![0., 0., 114.], Vector::z(), 5.).is_some(), "waterfall rock is a deliberate end stop");
+        let underside = hit(point![0., 0., -36.], Vector::y(), 15.).unwrap();
+        assert!((underside - 9.5).abs() < 0.01);
+        for x in [-84., 84.] {
+            for (z, height) in [(-95.5, 1. / 12.), (-66., 5.), (-36.5, 10. - 1. / 12.)] {
+                let down = hit(point![x, 12., z], -Vector::y(), 20.).unwrap();
+                // The bridge overlaps the upper ramp, so it can provide support first.
+                assert!(12. - down >= height - 0.01 && 12. - down <= 10.01);
+            }
         }
     }
 
