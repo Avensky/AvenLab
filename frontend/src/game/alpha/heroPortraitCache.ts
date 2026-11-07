@@ -1,13 +1,15 @@
-import { FACTORY_APPEARANCE, type HeroAppearance } from "../../vehicles/cosmetics/heroLoadouts";
+import { FACTORY_APPEARANCE, normalizeHeroAppearance, type HeroAppearance } from "../../vehicles/cosmetics/heroLoadouts";
 import type { VehicleModelId } from "../../vehicles/tools/vehicleModelPaths";
 import {isDrivingScreen, useUIStore} from "../../store/menus/uiStore";
 
 export function portraitStyleKey(model: string, appearance: HeroAppearance): string {
-  return JSON.stringify([model, appearance.body.toLowerCase(), appearance.finish, appearance.seats, appearance.skin]);
+  const style=normalizeHeroAppearance(appearance);
+  return JSON.stringify([model, style.body.toLowerCase(), style.finish, style.seats, style.skin, style.metallic]);
 }
 export function needsStyledPortrait(appearance: HeroAppearance): boolean {
   // Seat colors remain pending asset mapping in both showroom and portrait.
-  return appearance.body !== FACTORY_APPEARANCE.body || appearance.finish !== FACTORY_APPEARANCE.finish;
+  const style=normalizeHeroAppearance(appearance);
+  return style.body !== FACTORY_APPEARANCE.body || style.finish !== FACTORY_APPEARANCE.finish || style.metallic !== FACTORY_APPEARANCE.metallic;
 }
 /** Bounded image/promise cache; one bake at a time, shared by roster and squad.
  * No frame loop, per-card WebGL contexts or whole-image hue filters. */
@@ -18,7 +20,7 @@ export function createPortraitCache(render: (model: VehicleModelId, appearance: 
     const key = portraitStyleKey(model, appearance);
     const existing = cache.get(key);
     if (existing) { cache.delete(key); cache.set(key, existing); return existing; }
-    const style = { ...appearance };
+    const style = normalizeHeroAppearance(appearance);
     const result = queue.then(() => render(model, style));
     queue = result.then(() => undefined, () => undefined);
     cache.set(key, result);

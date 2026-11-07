@@ -1,0 +1,63 @@
+/* The vehicle garage and performance page share this single editable theme.
+   Palette colors inherit the player's normal UI theme from catalog.ts. */
+:root {
+  --vehicle-studio-bg: color-mix(in srgb, var(--app-background) 92%, #03070d);
+  --vehicle-studio-panel: color-mix(in srgb, var(--app-panel) 94%, transparent);
+  --vehicle-studio-raised: var(--app-raised);
+  --vehicle-studio-line: color-mix(in srgb, var(--app-line) 78%, transparent);
+  --vehicle-studio-ink: var(--app-text);
+  --vehicle-studio-muted: var(--app-muted);
+  --vehicle-studio-accent: var(--app-accent);
+  --vehicle-studio-radius: 8px;
+  --vehicle-studio-gap: 8px;
+  --vehicle-studio-tab-height: 44px;
+  --vehicle-studio-glow: color-mix(in srgb, var(--app-accent) 42%, transparent);
+}
+.vehicle-studio {position:absolute;inset:0;z-index:2;display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:var(--vehicle-studio-gap);padding:8px 10px 10px;box-sizing:border-box;color:var(--vehicle-studio-ink);pointer-events:auto;}
+.vehicle-studio :is(button,input,select){font:inherit;color:inherit;}
+.vehicle-studio-tabs{display:flex;align-items:stretch;gap:5px;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--vehicle-studio-line);}
+.vehicle-studio-tab{flex:1 0 112px;min-height:var(--vehicle-studio-tab-height);display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:3px;padding:7px 11px;border:1px solid var(--vehicle-studio-line);border-bottom:0;border-radius:var(--vehicle-studio-radius) var(--vehicle-studio-radius) 0 0;background:var(--vehicle-studio-panel);text-align:left;cursor:pointer;}
+.vehicle-studio-tab span{font-weight:900;font-size:10px;letter-spacing:.08em;}
+.vehicle-studio-tab small{font-size:8px;color:var(--vehicle-studio-muted);letter-spacing:.04em;}
+.vehicle-studio-tab:is(:hover,:focus-visible,[aria-selected="true"]){background:var(--vehicle-studio-raised);border-color:var(--vehicle-studio-accent);box-shadow:inset 0 -2px var(--vehicle-studio-accent),0 0 12px var(--vehicle-studio-glow);outline:none;}
+.vehicle-studio-main{min-height:0;display:grid;grid-template-columns:minmax(190px,22vw) minmax(280px,34vw);justify-content:space-between;gap:clamp(12px,2vw,28px);align-items:stretch;}
+.vehicle-studio-details,.vehicle-studio-panel{min-height:0;overflow:auto;scrollbar-width:thin;scrollbar-color:var(--vehicle-studio-line) transparent;background:var(--vehicle-studio-panel);border:1px solid var(--vehicle-studio-line);border-radius:var(--vehicle-studio-radius);backdrop-filter:blur(11px);}
+.vehicle-studio-details{padding:12px;align-self:start;max-height:100%;}
+.vehicle-studio-details header small,.vehicle-studio-panel-heading small{font-size:8px;font-weight:900;letter-spacing:.12em;color:var(--vehicle-studio-accent);}
+.vehicle-studio-details h2,.vehicle-studio-panel-heading h2{margin:4px 0 5px;font-size:18px;line-height:1.1;letter-spacing:.03em;}
+.vehicle-studio-details p{margin:0;color:var(--vehicle-studio-muted);font-size:9px;line-height:1.5;}
+.vehicle-studio-power,.vehicle-studio-class-stats{margin-top:14px;padding-top:10px;border-top:1px solid var(--vehicle-studio-line);}
+.vehicle-studio-power h3,.vehicle-studio-class-stats h3{margin:0 0 7px;font-size:8px;letter-spacing:.12em;}
+.vehicle-studio-stat{margin:7px 0;}
+.vehicle-studio-stat>div,.vehicle-studio-class-stats>div{display:flex;align-items:center;justify-content:space-between;gap:7px;font-size:9px;}
+.vehicle-studio-stat strong,.vehicle-studio-class-stats strong{font-variant-numeric:tabular-nums;}
+.vehicle-studio-stat meter{display:block;width:100%;height:7px;margin-top:3px;accent-color:var(--vehicle-studio-accent);}
+.vehicle-studio-class-stats>div{padding:4px 0;border-top:1px solid color-mix(in srgb,var(--vehicle-studio-line) 55%,transparent);color:var(--vehicle-studio-muted);}
+.vehicle-studio-class-stats strong{color:var(--vehicle-studio-ink);}
+.vehicle-studio-panel{display:flex;flex-direction:column;align-self:stretch;padding:11px;}
+.vehicle-studio-panel-heading{padding-bottom:8px;border-bottom:1px solid var(--vehicle-studio-line);}
+.vehicle-studio-panel-content{display:flex;flex-direction:column;gap:var(--vehicle-studio-gap);padding-top:9px;overflow:auto;}
+.vehicle-studio-card{display:flex;flex-direction:column;gap:8px;padding:10px;background:color-mix(in srgb,var(--vehicle-studio-bg) 74%,transparent);border:1px solid var(--vehicle-studio-line);border-radius:var(--vehicle-studio-radius);}
+.vehicle-studio-card h3{margin:0;font-size:11px;letter-spacing:.04em;}
+.vehicle-studio-card p{margin:0;color:var(--vehicle-studio-muted);font-size:9px;line-height:1.5;}
+.vehicle-studio-card label{display:flex;flex-direction:column;gap:5px;color:var(--vehicle-studio-muted);font-size:9px;font-weight:700;letter-spacing:.04em;}
+.vehicle-studio-card :is(select,input:not([type="color"])){box-sizing:border-box;width:100%;min-height:34px;padding:6px 8px;border:1px solid var(--vehicle-studio-line);border-radius:5px;background:var(--vehicle-studio-raised);color:var(--vehicle-studio-ink);}
+.vehicle-studio-card input[type="range"]{accent-color:var(--vehicle-studio-accent);padding:0;}
+.vehicle-studio-card button,.vehicle-studio-dock button{min-height:30px;padding:5px 9px;border:1px solid var(--vehicle-studio-line);border-radius:5px;background:var(--vehicle-studio-raised);color:var(--vehicle-studio-ink);font-size:9px;font-weight:800;letter-spacing:.04em;cursor:pointer;}
+.vehicle-studio-card button:is(:hover,:focus-visible,[aria-pressed="true"]),.vehicle-studio-dock button:is(:hover,:focus-visible,[aria-pressed="true"]){border-color:var(--vehicle-studio-accent);box-shadow:0 0 10px var(--vehicle-studio-glow);outline:none;}
+.vehicle-studio-dock{display:flex;align-items:center;gap:12px;min-height:43px;padding:5px 9px;border:1px solid var(--vehicle-studio-line);border-radius:var(--vehicle-studio-radius);background:var(--vehicle-studio-panel);backdrop-filter:blur(11px);}
+.vehicle-studio-dock>small{flex:none;color:var(--vehicle-studio-accent);font-size:8px;font-weight:900;letter-spacing:.1em;}
+.vehicle-studio-dock-actions{display:flex;align-items:center;gap:6px;min-width:0;overflow-x:auto;scrollbar-width:none;}
+.vehicle-studio-dock-actions>span{font-size:9px;color:var(--vehicle-studio-muted);}
+.vehicle-studio-swatches{display:flex;flex-wrap:wrap;gap:6px;}
+.vehicle-studio-swatch{width:25px;height:25px;min-height:25px!important;padding:0!important;border-radius:50%!important;background:var(--paint-swatch)!important;border:2px solid color-mix(in srgb,var(--vehicle-studio-ink) 40%,transparent)!important;}
+.vehicle-studio-swatch[aria-pressed="true"]{outline:2px solid var(--vehicle-studio-accent);outline-offset:2px;box-shadow:0 0 10px var(--vehicle-studio-glow)!important;}
+.vehicle-studio-feature[data-supported="false"]{opacity:.58;}
+.vehicle-studio-feature-status{color:var(--vehicle-studio-muted);font-size:8px;}
+.vehicle-studio-portrait{display:block;width:100%;max-height:230px;object-fit:contain;background:var(--vehicle-studio-bg);border:1px solid var(--vehicle-studio-line);border-radius:var(--vehicle-studio-radius);}
+.vehicle-performance-stats{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.vehicle-performance-stat{padding:7px;border:1px solid var(--vehicle-studio-line);border-radius:5px;background:var(--vehicle-studio-bg);}
+.vehicle-performance-stat>label{display:grid;grid-template-columns:1fr auto;gap:2px 8px;font-size:8px;color:var(--vehicle-studio-muted);}
+.vehicle-performance-stat meter{grid-column:1/-1;width:100%;height:7px;accent-color:var(--vehicle-studio-accent);}
+@media(max-width:760px){.vehicle-studio{padding:5px;gap:5px}.vehicle-studio-tab{flex-basis:100px;padding:6px}.vehicle-studio-main{grid-template-columns:minmax(135px,32vw) minmax(240px,50vw);gap:6px}.vehicle-studio-details,.vehicle-studio-panel{padding:8px}.vehicle-studio-details h2{font-size:14px}.vehicle-studio-dock{gap:7px;padding:4px;min-height:38px}}
+@media(max-width:520px){.vehicle-studio-main{grid-template-columns:minmax(110px,29vw) minmax(220px,60vw)}.vehicle-studio-details{padding:6px}.vehicle-studio-details p{display:none}.vehicle-studio-class-stats{display:none}.vehicle-studio-panel{padding:7px}.vehicle-studio-dock>small{font-size:7px}}

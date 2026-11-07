@@ -6,16 +6,18 @@ use serde::{Serialize, Deserialize};
 pub struct HeroAppearance {
     pub body: String,
     pub finish: String,
+    pub metallic: f32,
     pub seats: String,
     pub skin: String,
 }
 impl Default for HeroAppearance {
-    fn default() -> Self { Self { body:"factory".into(), finish:"frs".into(), seats:"factory".into(), skin:"factory".into() } }
+    fn default() -> Self { Self { body:"factory".into(), finish:"frs".into(), metallic:0.42, seats:"factory".into(), skin:"factory".into() } }
 }
 impl HeroAppearance {
     pub fn validate(&self, owned: &std::collections::BTreeSet<String>) -> Result<(),String> {
         if self.body != "factory" && !(self.body.len()==7 && self.body.starts_with('#') && self.body[1..].bytes().all(|b|b.is_ascii_hexdigit())) { return Err("Choose a valid body color.".into()); }
         if !["factory","frs","soft"].contains(&self.finish.as_str()) || !["factory","black","red"].contains(&self.seats.as_str()) { return Err("Unknown appearance option.".into()); }
+        if !self.metallic.is_finite() || !(0.0..=1.0).contains(&self.metallic) { return Err("Metallic finish must be between 0 and 1.".into()); }
         if !owned.contains(&self.skin) { return Err("This skin is locked.".into()); }
         Ok(())
     }

@@ -8,7 +8,7 @@ Appearance changes preview immediately and enter HeroSaveQueue. The queue coales
 
 hero_loadout_save always edits the authenticated server actor. The server checks hero policy, body color, appearance enums and skin ownership. Client-supplied profile/player target fields cannot edit another player. Profiles persist vehicle-keyed loadouts; live snapshots carry the equipped appearance to other players. Support heroes currently share their chassis appearance.
 
-useHeroLoadouts is an in-memory cache scoped to the current profile; adopting another profile or signing out clears foreign drafts. It no longer reads the old device-wide persisted hero cache. VehiclePreviewModel consumes the current profile's per-car loadout or FACTORY_APPEARANCE, never legacy Garage paint, global bundle, or interface theme. Choosing Current Theme Color in Heroes saves a resolved color for that car only.
+useHeroLoadouts is an in-memory cache scoped to the current profile; adopting another profile or signing out clears foreign drafts. It no longer reads the old device-wide persisted hero cache. VehiclePreviewModel consumes the current profile's per-car draft/loadout or FACTORY_APPEARANCE, never legacy Garage paint, global bundle, or interface theme. Paint, finish and metallic strength preview immediately; choosing Current Theme Color in Heroes saves a resolved color for that car only.
 
 The skin picker lists Factory and server-reported owned skins. Equips are saved per car; rare bundles remain locked placeholders until inventory/artwork is ready. Body presets are free alpha paint editing, not rare-item unlocks. Base readable UI themes remain independent of cosmetic ownership.
 

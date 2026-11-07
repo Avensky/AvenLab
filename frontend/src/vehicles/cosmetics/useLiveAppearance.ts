@@ -2,11 +2,12 @@ import { useConnectionView, useMotionView } from "../../store/session/networkVie
 import {useShallow} from 'zustand/react/shallow';
 import { useFrame } from "@react-three/fiber";
 import { useUIStore } from "../../store/menus/uiStore";
-import { useHeroLoadouts } from "./heroLoadouts";
+import { normalizeHeroAppearance,useHeroLoadouts } from "./heroLoadouts";
 import { useEffect, useRef, type RefObject } from "react";
 import { Mesh, MeshPhysicalMaterial, MeshStandardMaterial, type Object3D, type Material } from "three";
 import {snapshotEntity} from "../../store/session/networkStore";
 import { applyShowroomPaint, applyShowroomHighlights, hasVehicleFinish } from "../../game/preview/garageVehiclePaint";
+import { createVehicleMaterial,isVehicleWindowMaterial } from "../tools/vehicleMaterials";
 import {useRenderSettingsStore} from '../../store/presentation/renderSettingsStore';
 import { FACTORY_APPEARANCE, type HeroAppearance } from "./heroLoadouts";
 /** Snapshot appearance is authoritative. Clone only this instance's body paint;
@@ -19,7 +20,7 @@ export function useLiveAppearance(ref: RefObject<Object3D|null>, model:string, e
  const local=useConnectionView(s => s.playerId);
  const preview=useHeroLoadouts(s=>s.loadouts[model]);
  const confirmed=useMotionView(useShallow(s=>snapshotEntity(s.snapshot,entityId??s.playerId)?.appearance??FACTORY_APPEARANCE));
- const appearance=changing && (!entityId || entityId===local) ? preview??FACTORY_APPEARANCE : confirmed;
+ const appearance=normalizeHeroAppearance(changing && (!entityId || entityId===local) ? preview??FACTORY_APPEARANCE : confirmed);
  const applied=useRef<{root:Object3D;simplifyTransmission:boolean;appearance:HeroAppearance;restore:()=>void}|null>(null);
  useEffect(()=>{const state=applied;return()=>{state.current?.restore();state.current=null;};},[]);
  // R3F may attach the owned primitive after React layout effects. Apply once
@@ -28,13 +29,15 @@ export function useLiveAppearance(ref: RefObject<Object3D|null>, model:string, e
   const root=ref.current;if(!root)return;
   if(applied.current?.root===root&&applied.current.appearance===appearance&&applied.current.simplifyTransmission===simplifyTransmission)return;
   applied.current?.restore();
-  const originals=new Map<Mesh,Material|Material[]>(),owned=new Map<Material,Material>();
-  const own=(material:Material)=>{
+  const originals=new Map<Mesh,Material|Material[]>(),owned=new Map<Material,Map<boolean,Material>>();
+  const own=(material:Material,object:Mesh)=>{
    if(!(material instanceof MeshStandardMaterial))return material;
+   const windowGlass=isVehicleWindowMaterial(material.name,object,model);
    const simpleGlass=simplifyTransmission&&material instanceof MeshPhysicalMaterial&&material.transmission>0;
-   if(!simpleGlass&&!hasVehicleFinish(material.name))return material;
-   const existing=owned.get(material);if(existing)return existing;
-   const clone=material.clone();
+   if(!windowGlass&&!simpleGlass&&!hasVehicleFinish(material.name,model))return material;
+   let variants=owned.get(material);if(!variants){variants=new Map();owned.set(material,variants);}
+   const existing=variants.get(windowGlass);if(existing)return existing;
+   const clone=windowGlass?createVehicleMaterial(material,true,model):material.clone();
    if(simpleGlass&&clone instanceof MeshPhysicalMaterial){
     // Transmission asks Three to render the opaque scene into a second target.
     // Tinted glass keeps the local cockpit transparent in a crowded fight.
@@ -43,17 +46,17 @@ export function useLiveAppearance(ref: RefObject<Object3D|null>, model:string, e
     }
     clone.transmission=0;
    }
-   owned.set(material,clone);return clone;
+   variants.set(windowGlass,clone);return clone;
   };
   root.traverse(object=>{
    if(!(object instanceof Mesh))return;
    const original=object.material;
-   const next=Array.isArray(original)?original.map(own):own(original);
+   const next=Array.isArray(original)?original.map(material=>own(material,object)):own(original,object);
    if(next===original)return;
    originals.set(object,original);object.material=next;
   });
   applyShowroomPaint(root,model,"factory",appearance.body==="factory"?undefined:appearance.body);
-  applyShowroomHighlights(root,.45,appearance.finish);
-  applied.current={root,simplifyTransmission,appearance,restore:()=>{for(const [mesh,material]of originals)mesh.material=material;for(const m of owned.values())m.dispose();}};
+  applyShowroomHighlights(root,.45,appearance.finish,appearance.metallic,model);
+  applied.current={root,simplifyTransmission,appearance,restore:()=>{for(const [mesh,material]of originals)mesh.material=material;for(const variants of owned.values())for(const material of variants.values())material.dispose();}};
  });
 }

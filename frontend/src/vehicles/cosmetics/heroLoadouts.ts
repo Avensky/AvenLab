@@ -1,6 +1,13 @@
 import { create } from "zustand";
-export type HeroAppearance = {body:string;finish:"factory"|"frs"|"soft";seats:"factory"|"black"|"red";skin:string};
-export const FACTORY_APPEARANCE: HeroAppearance = {body:"factory",finish:"frs",seats:"factory",skin:"factory"};
+export type HeroAppearance = {body:string;finish:"factory"|"frs"|"soft";metallic:number;seats:"factory"|"black"|"red";skin:string};
+export const FACTORY_APPEARANCE: HeroAppearance = {body:"factory",finish:"frs",metallic:.42,seats:"factory",skin:"factory"};
+export function normalizeHeroAppearance(value?:Partial<HeroAppearance>|null):HeroAppearance {
+ const metallic=typeof value?.metallic==="number"&&Number.isFinite(value.metallic)?Math.max(0,Math.min(1,value.metallic)):FACTORY_APPEARANCE.metallic;
+ return {body:typeof value?.body==="string"?value.body:FACTORY_APPEARANCE.body,
+  finish:value?.finish==="factory"||value?.finish==="soft"?value.finish:"frs",metallic,
+  seats:value?.seats==="black"||value?.seats==="red"?value.seats:"factory",
+  skin:typeof value?.skin==="string"?value.skin:FACTORY_APPEARANCE.skin};
+}
 /** Account-scoped server cache, never a device-wide skin preference. Profile
  * adoption and sign-out clear drafts so another player cannot inherit paint. */
 export const useHeroLoadouts = create<{
@@ -9,6 +16,6 @@ export const useHeroLoadouts = create<{
  adopt:(ownerId:string|null,defaultHero?:string,loadouts?:Record<string,HeroAppearance>)=>void;
  save:(hero:string,vehicle:string,appearance:HeroAppearance,makeDefault?:boolean)=>void;
 }>(set=>({ownerId:null,defaultHero:"brz",loadouts:{},draft:null,
- adopt:(ownerId,defaultHero="brz",loadouts={})=>set(s=>({ownerId,defaultHero,loadouts,...(s.ownerId!==ownerId?{draft:null}:{})})),
- save:(hero,vehicle,appearance,makeDefault=true)=>set(s=>({...(makeDefault?{defaultHero:hero}:{}),loadouts:{...s.loadouts,[vehicle]:appearance}})),
+ adopt:(ownerId,defaultHero="brz",loadouts={})=>set(s=>({ownerId,defaultHero,loadouts:Object.fromEntries(Object.entries(loadouts).map(([vehicle,appearance])=>[vehicle,normalizeHeroAppearance(appearance)])),...(s.ownerId!==ownerId?{draft:null}:{})})),
+ save:(hero,vehicle,appearance,makeDefault=true)=>set(s=>({...(makeDefault?{defaultHero:hero}:{}),loadouts:{...s.loadouts,[vehicle]:normalizeHeroAppearance(appearance)}})),
 }));

@@ -1,123 +1,196 @@
-import {VehicleMods} from './VehicleMods';
+import {useCallback,useEffect,useMemo,useRef,useState,type CSSProperties,type ReactNode} from "react";
+import {VehicleMods} from "./VehicleMods";
 import {openHeroGuide} from "../../store/hud/heroGuideStore";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { HEROES, useAlphaStore, type HeroFilter } from "../../store/alpha/alphaStore";
-import { useUIStore } from "../../store/menus/uiStore";
-import { useSocialStore } from "../../store/social/socialStore";
-import { requestSocial } from "../../net/socialClient";
-import { FACTORY_APPEARANCE, useHeroLoadouts, type HeroAppearance } from "../../vehicles/cosmetics/heroLoadouts";
-import { useSelectionNavigation } from "../alpha/useSelectionNavigation";
-import { navigateFormRows } from "../social/formRows";
-import { UI_THEMES } from "../../theme/catalog";
-import { usePreferencesStore } from "../../store/preferences/preferencesStore";
-import { HeroRoster } from "../alpha/HeroRoster";
-import { HoldMainButton } from "./HoldMainButton";
-import { SelectionHeader, SelectionFooter } from "../alpha/SelectionChrome";
-import { ControllerAction } from "../../components/controller";
-import { HeroSaveQueue, type HeroSaveStatus } from "./HeroSaveQueue";
+import {HEROES,useAlphaStore,type HeroFilter} from "../../store/alpha/alphaStore";
+import {useUIStore} from "../../store/menus/uiStore";
+import {useSocialStore} from "../../store/social/socialStore";
+import {requestSocial} from "../../net/socialClient";
+import {FACTORY_APPEARANCE,useHeroLoadouts,type HeroAppearance} from "../../vehicles/cosmetics/heroLoadouts";
+import {useSelectionNavigation} from "../alpha/useSelectionNavigation";
+import {navigateFormRows} from "../social/formRows";
+import {UI_THEMES} from "../../theme/catalog";
+import {usePreferencesStore} from "../../store/preferences/preferencesStore";
+import {HeroRoster} from "../alpha/HeroRoster";
+import {HoldMainButton} from "./HoldMainButton";
+import {SelectionHeader,SelectionFooter} from "../alpha/SelectionChrome";
+import {ControllerAction} from "../../components/controller";
+import {HeroSaveQueue,type HeroSaveStatus} from "./HeroSaveQueue";
+import {VehicleStudio,STOCK_VEHICLE_SUMMARY,type VehiclePerformanceSummary,type VehicleStudioTab} from "./VehicleStudio";
+import {VEHICLE_PAINT_PRESETS} from "./vehiclePaintPresets";
+import {vehicleCatalog} from "../../store/selection/vehicleCatalog";
+import {useVehicleStudioStore,type VehicleStudioPart} from "./vehicleStudioStore";
+import {VehicleFlags,hasFlag} from "../../store/input/protocol/inputMasks";
+import {useInputStore} from "../../store/input/inputStore";
+import {toggleTurnSignal} from "../../ui/Cockpit/stalks/commands";
+import {HeroPortrait} from "../alpha/HeroPortrait";
 import "../alpha/heroSelection.css";
 import "./heroAbilities.css";
 import "./heroWorkshop.css";
+import "../../theme/vehicleStudio.css";
 
-const NO_OWNED_SKINS: string[] = [];
+const NO_OWNED_SKINS:string[]=[];
 
-export function HeroLoadoutSync() {
+export function HeroLoadoutSync(){
  const profile=useSocialStore(s=>s.view?.profile);
  useEffect(()=>{useHeroLoadouts.getState().adopt(profile?.id??null,profile?.progression?.default_hero,profile?.progression?.hero_loadouts);},[profile]);
  return null;
 }
-/** Click/A chooses a preview and opens styling. Hold X chooses your main. Appearance edits auto-save to
- * the authenticated actor only, in order, without choosing a different main. */
-export function HeroWorkshop() {
+
+/** Vehicle styling and the stock-relative performance page share one studio
+ * chrome. Appearance edits save to the authenticated player's vehicle loadout. */
+export function HeroWorkshop(){
  const guideOpen=useUIStore(s=>s.overlay==="hero_abilities"||s.overlay==="match_results");
  const owner=useSocialStore(s=>s.view?.profile.id??null);
  const main=useHeroLoadouts(s=>s.ownerId===owner?s.defaultHero:null);
  const skins=useSocialStore(s=>s.view?.alpha?.skins);
  const owned=useSocialStore(s=>s.view?.profile.progression?.owned??NO_OWNED_SKINS);
  const [chosen,setHero]=useState<string|null>(null);
- const hero=chosen??(HEROES.some(h=>h.id===main)?main:null);
+ const hero=chosen??(HEROES.some(item=>item.id===main)?main:null);
  const [editing,setEditing]=useState(false);
  const [role,setRole]=useState<HeroFilter>("all");
- const definition=HEROES.find(h=>h.id===hero)??null;
+ const definition=HEROES.find(item=>item.id===hero)??null;
+ const vehicle=definition?.vehicle;
  const saved=useHeroLoadouts(s=>definition?s.loadouts[definition.vehicle]:undefined);
  const [editedAppearance,setAppearance]=useState<HeroAppearance>({...FACTORY_APPEARANCE});
  const appearance=chosen?editedAppearance:saved??FACTORY_APPEARANCE;
  const [status,setStatus]=useState<HeroSaveStatus>("idle"),[message,setMessage]=useState("");
- const root=useRef<HTMLElement>(null),remembered=useRef(new WeakMap<HTMLElement,number>());
- const leaving=useRef(false);
+ const root=useRef<HTMLElement>(null),remembered=useRef(new WeakMap<HTMLElement,number>()),leaving=useRef(false);
  const drafts=useRef<Record<string,HeroAppearance>>({});
  const theme=usePreferencesStore(s=>s.theme);
+ const [studioTab,setStudioTab]=useState<VehicleStudioTab>("performance");
+ const [studioSummary,setStudioSummary]=useState<VehiclePerformanceSummary>(STOCK_VEHICLE_SUMMARY);
+ const [studioFooter,setStudioFooter]=useState<ReactNode|null>(null);
+ const [vehicleModStages,setVehicleModStages]=useState<Record<string,Record<string,number>>>({});
+ const [portraitCapture,setPortraitCapture]=useState<string|null>(null),[portraitMessage,setPortraitMessage]=useState("");
+ const availableParts=useVehicleStudioStore(s=>s.availableVehicle===definition?.vehicle?s.availableParts:[]);
+ const openedParts=useVehicleStudioStore(s=>s.parts);
+ const vehicleFlags=useInputStore(s=>s.input.vehicleMask);
+ const setStudioFooterContent=useCallback((content:ReactNode|null)=>setStudioFooter(content),[]);
+ const setPerformanceSummary=useCallback((summary:VehiclePerformanceSummary)=>setStudioSummary(summary),[]);
+ const updateVehicleModStages=useCallback((stages:Record<string,number>)=>{if(vehicle)setVehicleModStages(previous=>({...previous,[vehicle]:stages}));},[vehicle]);
+ const stats=vehicleCatalog.find(item=>item.id===definition?.vehicle)?.stats??{armor:0,speed:0,handling:0,support:0};
+ const lightingBits=VehicleFlags.HEADLIGHTS|VehicleFlags.BLINKER_LEFT|VehicleFlags.BLINKER_RIGHT|VehicleFlags.HAZARDS;
  const queue=useMemo(()=>new HeroSaveQueue(async job=>{
   if(!owner||useSocialStore.getState().view?.profile.id!==owner)throw Error("Connect with your player profile to save.");
   await requestSocial("hero_loadout_save",{hero:job.hero,appearance:job.appearance,make_default:job.makeDefault});
  },job=>{if(useHeroLoadouts.getState().ownerId===owner)useHeroLoadouts.getState().save(job.hero,job.vehicle,job.appearance,job.makeDefault);},(next,error)=>{setStatus(next);setMessage(error??"");}),[owner]);
  useEffect(()=>()=>queue.dispose(),[queue]);
  useEffect(()=>{useAlphaStore.setState({previewHero:null});root.current?.focus();},[]);
- useEffect(()=>{if(editing)root.current?.querySelector<HTMLElement>(".hero-modifications")?.focus({preventScroll:true});else root.current?.focus({preventScroll:true});},[editing]);
+ useEffect(()=>{if(editing)root.current?.querySelector<HTMLElement>(".vehicle-studio-tab")?.focus({preventScroll:true});else{useVehicleStudioStore.getState().closeParts();root.current?.focus({preventScroll:true});}},[editing]);
  useEffect(()=>{if(hero)useAlphaStore.getState().preview(hero);},[hero]);
- const vehicle=definition?.vehicle;
+ useEffect(()=>{setStudioTab("performance");setStudioSummary(STOCK_VEHICLE_SUMMARY);setStudioFooter(null);setPortraitCapture(null);setPortraitMessage("");},[vehicle]);
+ useEffect(()=>{
+  if(!editing)return;
+  const savedFlags=useInputStore.getState().input.vehicleMask&lightingBits;
+  return()=>{const current=useInputStore.getState().input.vehicleMask;useInputStore.getState().setInput({vehicleMask:(current&~lightingBits)|savedFlags});};
+ },[editing,lightingBits]);
  useEffect(()=>{useHeroLoadouts.setState({draft:vehicle?{vehicle,appearance}:null});return()=>{useHeroLoadouts.setState({draft:null});};},[vehicle,appearance]);
- const preview=(id:string)=>{const h=HEROES.find(h=>h.id===id)!;setHero(id);setAppearance(drafts.current[h.vehicle]??useHeroLoadouts.getState().loadouts[h.vehicle]??{...FACTORY_APPEARANCE});};
- const openHero=(id=hero)=>{if(!id){root.current?.querySelector<HTMLElement>('[data-hero]:not(:disabled)')?.focus({preventScroll:true});return;}preview(id);setEditing(true);};
+ const preview=(id:string)=>{
+  const item=HEROES.find(value=>value.id===id)!;setHero(id);
+  setAppearance(drafts.current[item.vehicle]??useHeroLoadouts.getState().loadouts[item.vehicle]??{...FACTORY_APPEARANCE});
+ };
+ const openHero=(id=hero)=>{
+  if(!id){root.current?.querySelector<HTMLElement>("[data-hero]:not(:disabled)")?.focus({preventScroll:true});return;}
+  preview(id);setStudioTab("performance");setEditing(true);
+ };
  const showAbilities=()=>{
-  if(useUIStore.getState().screen!=='heroes'||useUIStore.getState().overlay!==null)return;
-  const focused=(document.activeElement as HTMLElement|null)?.closest<HTMLElement>('[data-hero]')?.dataset.hero;
+  if(useUIStore.getState().screen!=="heroes"||useUIStore.getState().overlay!==null)return;
+  const focused=(document.activeElement as HTMLElement|null)?.closest<HTMLElement>("[data-hero]")?.dataset.hero;
   openHeroGuide(focused??hero??undefined);
  };
  useEffect(()=>{
-  const abilities=(event:Event)=>{const ui=useUIStore.getState();if(ui.screen!=='heroes'||ui.overlay!==null)return;event.stopImmediatePropagation();showAbilities();};
-  window.addEventListener('avenlab:hero-abilities',abilities);
-  return()=>window.removeEventListener('avenlab:hero-abilities',abilities);
+  const abilities=(event:Event)=>{const ui=useUIStore.getState();if(ui.screen!=="heroes"||ui.overlay!==null)return;event.stopImmediatePropagation();showAbilities();};
+  window.addEventListener("avenlab:hero-abilities",abilities);return()=>window.removeEventListener("avenlab:hero-abilities",abilities);
  });
- const mainChoice=(id=hero)=>{if(guideOpen||!id)return;const h=HEROES.find(h=>h.id===id)!;const style=id===hero?appearance:drafts.current[h.vehicle]??useHeroLoadouts.getState().loadouts[h.vehicle]??{...FACTORY_APPEARANCE};queue.enqueue({hero:id,vehicle:h.vehicle,appearance:style,makeDefault:true});};
- const edit=(patch:Partial<HeroAppearance>)=>{if(!hero||!definition)return;const next={...appearance,...patch};drafts.current[definition.vehicle]=next;setAppearance(next);queue.enqueue({hero,vehicle:definition.vehicle,appearance:next,makeDefault:false});};
- const back=async()=>{if(editing){setEditing(false);return;}if(leaving.current)return;leaving.current=true;try{if(await queue.flush())useUIStore.getState().setScreen("main");}finally{leaving.current=false;}};
- useSelectionNavigation(root,{confirm:()=>{if(guideOpen)return;const active=document.activeElement as HTMLElement;if(active===root.current)openHero();else active?.click();},back:()=>{if(!guideOpen)void back();},direction:a=>{
-  if(guideOpen)return;
-  const active=document.activeElement;
-  if(active instanceof HTMLSelectElement&&(a==="left"||a==="right")){active.selectedIndex=(active.selectedIndex+(a==="left"?-1:1)+active.options.length)%active.options.length;active.dispatchEvent(new Event("change",{bubbles:true}));}
-  else if(root.current)navigateFormRows(root.current,active as HTMLElement,a,remembered.current);
- },tab:dir=>{if(guideOpen)return;const visible=HEROES.filter(h=>role==="all"||h.role===role);const focused=(document.activeElement as HTMLElement|null)?.closest<HTMLElement>("[data-hero]")?.dataset.hero;const index=visible.findIndex(h=>h.id===(focused??hero)),start=index<0?(dir>0?-1:0):index;setEditing(false);requestAnimationFrame(()=>root.current?.querySelector<HTMLElement>(`[data-hero="${visible[(start+dir+visible.length)%visible.length].id}"]`)?.focus({preventScroll:true}));}});
- const unlocked=(skins??[]).filter(s=>owned.includes(s.id));
+ const mainChoice=(id=hero)=>{
+  if(guideOpen||!id)return;
+  const item=HEROES.find(value=>value.id===id)!;
+  const style=id===hero?appearance:drafts.current[item.vehicle]??useHeroLoadouts.getState().loadouts[item.vehicle]??{...FACTORY_APPEARANCE};
+  queue.enqueue({hero:id,vehicle:item.vehicle,appearance:style,makeDefault:true});
+ };
+ const edit=(patch:Partial<HeroAppearance>)=>{
+  if(!hero||!definition)return;
+  const next={...appearance,...patch};drafts.current[definition.vehicle]=next;setAppearance(next);
+  queue.enqueue({hero,vehicle:definition.vehicle,appearance:next,makeDefault:false});
+ };
+ const capturePortrait=async()=>{
+  if(!definition)return;setPortraitMessage("CAPTURING CURRENT STYLE…");
+  try{const {bakeHeroPortrait}=await import("../preview/bakeHeroPortrait");const image=await bakeHeroPortrait(definition.vehicle,appearance);setPortraitCapture(image);setPortraitMessage("PORTRAIT READY · SESSION PREVIEW");}
+  catch(error){setPortraitMessage(error instanceof Error?`CAPTURE FAILED · ${error.message}`:"CAPTURE FAILED");}
+ };
+ const back=async()=>{
+  if(editing){setEditing(false);return;}
+  if(leaving.current)return;leaving.current=true;
+  try{if(await queue.flush())useUIStore.getState().setScreen("main");}finally{leaving.current=false;}
+ };
+ useSelectionNavigation(root,{confirm:()=>{
+  if(guideOpen)return;const active=document.activeElement as HTMLElement;
+  if(active===root.current)openHero();else active?.click();
+ },back:()=>{if(!guideOpen)void back();},direction:action=>{
+  if(guideOpen)return;const active=document.activeElement;
+  if(active instanceof HTMLSelectElement&&(action==="left"||action==="right")){
+   active.selectedIndex=(active.selectedIndex+(action==="left"?-1:1)+active.options.length)%active.options.length;
+   active.dispatchEvent(new Event("change",{bubbles:true}));
+  }else if(root.current)navigateFormRows(root.current,active as HTMLElement,action,remembered.current);
+ },tab:direction=>{
+  if(guideOpen)return;const visible=HEROES.filter(item=>role==="all"||item.role===role);
+  const focused=(document.activeElement as HTMLElement|null)?.closest<HTMLElement>("[data-hero]")?.dataset.hero;
+  const index=visible.findIndex(item=>item.id===(focused??hero)),start=index<0?(direction>0?-1:0):index;setEditing(false);
+  requestAnimationFrame(()=>root.current?.querySelector<HTMLElement>(`[data-hero="${visible[(start+direction+visible.length)%visible.length].id}"]`)?.focus({preventScroll:true}));
+ }});
+ const unlocked=(skins??[]).filter(skin=>owned.includes(skin.id));
+ const paintPresets=[...VEHICLE_PAINT_PRESETS,{label:`${UI_THEMES[theme].label} accent`,color:UI_THEMES[theme]["scene-tint"]}];
+ const partLabels:Record<VehicleStudioPart,string>={"door-left":"LEFT DOOR","door-right":"RIGHT DOOR",hood:"HOOD",trunk:"TRUNK",headlights:"POP-UP HEADLIGHTS"};
+ const partOptions:VehicleStudioPart[]=["door-left","door-right","hood","trunk","headlights"];
+ const renderPartButton=(part:VehicleStudioPart)=>{
+  const supported=availableParts.includes(part),open=openedParts[part];
+  return <button key={part} type="button" className="vehicle-studio-feature" data-supported={supported} disabled={!supported} aria-pressed={supported?open:undefined} title={supported?`${open?"Close":"Open"} ${partLabels[part].toLowerCase()}`:`No separate movable ${partLabels[part].toLowerCase()} mesh in this vehicle model`} onClick={()=>useVehicleStudioStore.getState().setPart(part,!open)}>{partLabels[part]} · {supported?(open?"OPEN":"CLOSED"):"NOT RIGGED"}</button>;
+ };
+ const paintFooter=<div className="vehicle-studio-swatches" aria-label="Paint presets">{paintPresets.map(preset=><button key={preset.label} type="button" className="vehicle-studio-swatch" style={{"--paint-swatch":preset.color==="factory"?"#aeb7c0":preset.color} as CSSProperties} aria-label={`Paint: ${preset.label}`} title={preset.label} aria-pressed={appearance.body===preset.color} disabled={!owner||definition?.vehicle==="tank"} onClick={()=>edit({body:preset.color})}/>)}</div>;
+ const bodyFooter=<>{partOptions.map(renderPartButton)}</>;
+ const lightingFooter=<>
+  <button type="button" aria-pressed={hasFlag(vehicleFlags,VehicleFlags.HEADLIGHTS)} onClick={()=>useInputStore.getState().toggleVehicleFlag(VehicleFlags.HEADLIGHTS)}>HEADLIGHTS · {hasFlag(vehicleFlags,VehicleFlags.HEADLIGHTS)?"ON":"OFF"}</button>
+  <button type="button" aria-pressed={hasFlag(vehicleFlags,VehicleFlags.BLINKER_LEFT)} onClick={()=>toggleTurnSignal(-1)}>LEFT STALK</button>
+  <button type="button" aria-pressed={hasFlag(vehicleFlags,VehicleFlags.BLINKER_RIGHT)} onClick={()=>toggleTurnSignal(1)}>RIGHT STALK</button>
+  <button type="button" aria-pressed={hasFlag(vehicleFlags,VehicleFlags.HAZARDS)} onClick={()=>useInputStore.getState().toggleVehicleFlag(VehicleFlags.HAZARDS)}>HAZARDS</button>
+ </>;
+ const portraitFooter=<button type="button" onClick={()=>void capturePortrait()} disabled={!definition}>CAPTURE CURRENT PORTRAIT</button>;
+ const currentFooter=studioTab==="performance"?studioFooter:studioTab==="paint"?paintFooter:studioTab==="body"?bodyFooter:studioTab==="lighting"?lightingFooter:portraitFooter;
  return <section ref={root} className="game-ui menu-surface alpha-selection hero-selection hero-workshop" data-editing={editing} data-has-selection={hero!==null} inert={guideOpen} tabIndex={-1} aria-label="Vehicle modifications" data-controller-form data-controller-rows>
   <SelectionHeader title="VEHICLE MODS" onBack={()=>void back()}/>
   <div className="hero-selection-stage hero-workshop-body">
    {!editing&&<div className="hero-workshop-collection"><HeroRoster selected={hero} main={main} filter={role} busy={!owner} onChoose={openHero} onFilter={filter=>{setRole(filter);setEditing(false);}}/>
     <p className="hero-workshop-hint">Select a portrait to customize. Hold X to choose your main.</p>
-    {!editing&&status!=="idle"&&<div className="hero-collection-save-status" role="status">{status==="error"?`NOT SAVED · ${message}`:status==="saved"?"SAVED TO YOUR PLAYER":"SAVING YOUR STYLE…"}{status==="error"&&<button className="menu-control" onClick={()=>void queue.flush()}>RETRY SAVE</button>}</div>}
+    {status!=="idle"&&<div className="hero-collection-save-status" role="status">{status==="error"?`NOT SAVED · ${message}`:status==="saved"?"SAVED TO YOUR PLAYER":"SAVING YOUR STYLE…"}{status==="error"&&<button className="menu-control" onClick={()=>void queue.flush()}>RETRY SAVE</button>}</div>}
    </div>}
-   {!editing&&<section className="hero-summary" aria-label="Selected hero"><small>HERO</small><h2>{definition?.name??"CHOOSE YOUR HERO"}</h2><p>{definition?"Select a vehicle or press A to open the mods garage.":"Choose a vehicle portrait to preview and customize. Your main stays saved."}</p></section>}
-   {editing && definition && <aside data-controller-row data-controller-columns="1" className="hero-modifications" aria-label="Hero styling" tabIndex={-1}><header className="hero-styling-heading"><small>{definition.role.toUpperCase()} · YOUR VEHICLE</small><h2>{definition.name}</h2><p>Style changes save automatically to your player.</p></header>
-    <VehicleMods key={`${owner}:${definition.vehicle}`} vehicle={definition.vehicle}/>
-    <section className="hero-ability-card hero-style-section"><header><div><small>COSMETICS</small><h3>Skin & finish</h3></div></header>
-    <label>UNLOCKED SKIN<select aria-label="Unlocked hero skin" disabled={!owner} value={appearance.skin} onChange={e=>{const skin=unlocked.find(s=>s.id===e.target.value);edit({skin:e.target.value,body:skin&&skin.id!=="factory"?skin.color:"factory"});}}><option value="factory">Factory</option>{unlocked.filter(s=>s.id!=="factory").map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
-    </section>
-    <section className="hero-ability-card hero-style-section"><header><div><small>EXTERIOR</small><h3>Body paint</h3></div></header>
-    <label>BODY PAINT<select aria-label="Hero body paint" disabled={!owner||definition.vehicle==="tank"} value={appearance.body} onChange={e=>edit({body:e.target.value})}>
-     <option value="factory">Factory</option><option value="#f4f5f7">Clean white</option><option value="#ed258d">Hot pink</option><option value="#ed9dcc">Pastel pink</option><option value="#161a22">Midnight black</option><option value={UI_THEMES[theme]["scene-tint"]}>Current theme color · this car</option>
-     {!["factory","#f4f5f7","#ed258d","#ed9dcc","#161a22",UI_THEMES[theme]["scene-tint"]].includes(appearance.body)&&<option value={appearance.body}>Custom {appearance.body}</option>}
-    </select></label>
-    <label>CUSTOM BODY COLOR<input aria-label="Custom hero body color" type="color" disabled={!owner||definition.vehicle==="tank"} value={appearance.body==="factory"?"#f4f5f7":appearance.body} onChange={e=>edit({body:e.target.value})}/></label>
-    </section>
-    <section className="hero-ability-card hero-style-section"><header><div><small>SURFACE</small><h3>Highlight finish</h3></div></header>
-    <label>HIGHLIGHT FINISH<select aria-label="Hero highlight finish" disabled={!owner} value={appearance.finish} onChange={e=>edit({finish:e.target.value as HeroAppearance["finish"]})}><option value="factory">Factory</option><option value="frs">FR-S reference</option><option value="soft">Soft</option></select></label>
-    </section>
-    <section className="hero-ability-card hero-style-section"><header><div><small>INTERIOR</small><h3>Seats & details</h3></div></header>
-    <label>SEAT COLOR REQUEST<select aria-label="Hero seat color request" disabled={!owner||definition.vehicle!=="brz"} value={appearance.seats} onChange={e=>edit({seats:e.target.value as HeroAppearance["seats"]})}><option value="factory">Factory</option><option value="black">Black · pending asset mapping</option><option value="red">Red · pending asset mapping</option></select></label>
-    <p className="hero-pending-note">PENDING · Seat materials, stitching, calipers and stripes need asset mapping and your visual feedback. Seat requests save now; their colors are not rendered yet.</p>
-    {definition.vehicle==="tank"&&<p>PENDING · Tank paint atlas mapping.</p>}
-    </section>
-    <section className="hero-ability-card hero-style-section"><header><div><small>COLLECTION</small><h3>Unlocks</h3></div></header>
-    <button className="menu-control" disabled>EMOTES · INCOMING / NEEDS TESTING</button><button className="menu-control" disabled>SECRET RARE BUNDLES · LOCKED</button>
-    </section>
-    <div className="hero-style-save-status"><p role="status" aria-live="polite">{!owner?"CONNECT YOUR PLAYER PROFILE":status==="pending"||status==="saving"?"SAVING YOUR STYLE…":status==="error"?`NOT SAVED · ${message}`:status==="saved"?"SAVED TO YOUR PLAYER · SHARED IN GAME":"Changes save automatically for this vehicle."}</p>
-    {status==="error"&&<button className="menu-control" onClick={()=>void queue.flush()}>RETRY SAVE</button>}</div>
-   </aside>}
+   {!editing&&<section className="hero-summary" aria-label="Selected hero"><small>HERO</small><h2>{definition?.name??"CHOOSE YOUR HERO"}</h2><p>{definition?"Select a vehicle or press A to open the performance garage.":"Choose a vehicle portrait to preview and customize. Your main stays saved."}</p></section>}
+   {editing&&definition&&<VehicleStudio name={definition.name} role={definition.role} note={definition.note} stats={stats} summary={studioSummary} tab={studioTab} onTab={setStudioTab} footer={currentFooter}>
+    {studioTab==="performance"&&<VehicleMods key={`${owner}:${definition.vehicle}`} vehicle={definition.vehicle} stages={vehicleModStages[definition.vehicle]??{}} onStagesChange={updateVehicleModStages} onSummaryChange={setPerformanceSummary} onFooterChange={setStudioFooterContent}/>}
+    {studioTab==="paint"&&<>
+     <section className="vehicle-studio-card"><header><small>EXTERIOR COLOR</small><h3>Body paint</h3></header><div className="vehicle-studio-swatches" aria-label="Paint presets">{paintPresets.map(preset=><button key={preset.label} type="button" className="vehicle-studio-swatch" style={{"--paint-swatch":preset.color==="factory"?"#aeb7c0":preset.color} as CSSProperties} aria-label={`Paint: ${preset.label}`} title={preset.label} aria-pressed={appearance.body===preset.color} disabled={!owner||definition.vehicle==="tank"} onClick={()=>edit({body:preset.color})}/>)}</div>
+      <label>Custom paint<input type="color" aria-label="Custom hero body color" disabled={!owner||definition.vehicle==="tank"} value={appearance.body==="factory"?"#f1f3f4":appearance.body} onChange={event=>edit({body:event.target.value})}/></label>
+     </section>
+     <section className="vehicle-studio-card"><header><small>SHARED BODY MATERIAL</small><h3>Finish & metallic</h3></header>
+      <label>PAINT FINISH<select aria-label="Hero highlight finish" disabled={!owner} value={appearance.finish} onChange={event=>edit({finish:event.target.value as HeroAppearance["finish"]})}><option value="factory">Factory texture · controlled highlights</option><option value="frs">FR-S glass and gloss profile</option><option value="soft">Soft metallic finish</option></select></label>
+      <label>METALLIC / REFLECTION <output>{Math.round(appearance.metallic*100)}%</output><input type="range" min="0" max="1" step="0.01" aria-label="Metallic reflection strength" disabled={!owner||definition.vehicle==="tank"} value={appearance.metallic} onChange={event=>edit({metallic:Number(event.target.value)})}/></label>
+     </section>
+     <section className="vehicle-studio-card"><header><small>COSMETICS</small><h3>Interior & collection</h3></header>
+      <label>UNLOCKED SKIN<select aria-label="Unlocked hero skin" disabled={!owner} value={appearance.skin} onChange={event=>{const skin=unlocked.find(item=>item.id===event.target.value);edit({skin:event.target.value,body:skin&&skin.id!=="factory"?skin.color:"factory"});}}><option value="factory">Factory</option>{unlocked.filter(item=>item.id!=="factory").map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+      <label>SEAT COLOR<select aria-label="Hero seat color request" disabled={!owner||definition.vehicle!=="brz"} value={appearance.seats} onChange={event=>edit({seats:event.target.value as HeroAppearance["seats"]})}><option value="factory">Factory</option><option value="black">Black · mapping pending</option><option value="red">Red · mapping pending</option></select></label>
+      <p>Seat colors save as requests; the GLB seat material mapping still needs a verified asset pass.</p>
+     </section>
+    </>}
+    {studioTab==="body"&&<section className="vehicle-studio-card"><header><small>MODEL-SUPPORTED PANELS</small><h3>Open and inspect</h3></header><p>Controls move only separate panel meshes present in this vehicle model. Unsupported parts stay disabled until its GLB has a movable panel.</p><div className="vehicle-studio-feature-list">{partOptions.map(part=><div key={part} data-supported={availableParts.includes(part)}><span>{partLabels[part]}</span><strong>{availableParts.includes(part)?(openedParts[part]?"OPEN":"CLOSED"):"NO MOVING MESH"}</strong></div>)}</div></section>}
+    {studioTab==="lighting"&&<section className="vehicle-studio-card"><header><small>LOCAL GARAGE TEST</small><h3>Steering stalks & hazards</h3></header><p>The garage buttons use the same turn-signal commands as the cockpit stalks. The preview flashes the model's named headlight and amber lens materials. Test flags are restored when you leave the garage.</p><div className="vehicle-studio-feature-list"><div><span>HEADLIGHT CIRCUIT</span><strong>{hasFlag(vehicleFlags,VehicleFlags.HEADLIGHTS)?"ON":"OFF"}</strong></div><div><span>LEFT STALK</span><strong>{hasFlag(vehicleFlags,VehicleFlags.BLINKER_LEFT)?"ACTIVE":"CENTER"}</strong></div><div><span>RIGHT STALK</span><strong>{hasFlag(vehicleFlags,VehicleFlags.BLINKER_RIGHT)?"ACTIVE":"CENTER"}</strong></div><div><span>HAZARDS</span><strong>{hasFlag(vehicleFlags,VehicleFlags.HAZARDS)?"ACTIVE":"OFF"}</strong></div></div></section>}
+    {studioTab==="studio"&&<section className="vehicle-studio-card"><header><small>PORTRAIT PREVIEW</small><h3>{definition.name}</h3></header>{portraitCapture?<img className="vehicle-studio-portrait" src={portraitCapture} alt={`${definition.name} portrait using current finish settings`}/>:<HeroPortrait hero={definition.id} appearance={appearance} cacheOnly showStyleStatus={false}/>}<p>Capture uses the current paint, shared window profile, and metallic setting. The preview stays in this session.</p><p role="status" aria-live="polite">{portraitMessage||"PORTRAIT READY TO CAPTURE"}</p></section>}
+    <p className="vehicle-studio-save-status" role="status" aria-live="polite">{!owner?"CONNECT YOUR PLAYER PROFILE":status==="pending"||status==="saving"?"SAVING YOUR STYLE…":status==="error"?`NOT SAVED · ${message}`:status==="saved"?"SAVED TO YOUR PLAYER · SHARED IN GAME":"Appearance changes save automatically for this vehicle."}</p>
+    {status==="error"&&<button className="menu-control" onClick={()=>void queue.flush()}>RETRY SAVE</button>}
+   </VehicleStudio>}
   </div>
   <SelectionFooter selectLabel={editing?"Edit style":"Choose hero"}><div className="hero-workshop-actions">
    <ControllerAction button="Y" type="button" className="menu-control" data-open-hero-abilities onClick={showAbilities}>ABILITIES</ControllerAction>
-   {<ControllerAction button="A" type="button" className="menu-control" disabled={!owner} onClick={()=>editing?root.current?.querySelector<HTMLElement>(".hero-modifications select")?.focus():openHero()}> {editing?"EDIT STYLE":"CHOOSE HERO"}</ControllerAction>}
-   {<HoldMainButton key={`${owner}:${hero}:${editing}:${main===hero}:${status==="error"}`} disabled={guideOpen||!owner||!hero||main===hero||status==="error"} selected={main===hero} onComplete={()=>mainChoice()}/>}
+   <ControllerAction button="A" type="button" className="menu-control" disabled={!owner} onClick={()=>editing?root.current?.querySelector<HTMLElement>(".vehicle-studio-panel select")?.focus():openHero()}>{editing?"EDIT STYLE":"CHOOSE HERO"}</ControllerAction>
+   <HoldMainButton key={`${owner}:${hero}:${editing}:${main===hero}:${status==="error"}`} disabled={guideOpen||!owner||!hero||main===hero||status==="error"} selected={main===hero} onComplete={()=>mainChoice()}/>
   </div></SelectionFooter>
  </section>;
 }

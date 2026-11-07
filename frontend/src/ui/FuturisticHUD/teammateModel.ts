@@ -55,7 +55,7 @@ export function readTeammates(now = performance.now()): TeammateCard[] {
   return rows.sort((a,b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id)).slice(0, count);
 }
 const sameAppearance = (a: HeroAppearance | null, b: HeroAppearance | null) => a === b || !!a && !!b &&
-  a.body === b.body && a.finish === b.finish && a.seats === b.seats && a.skin === b.skin;
+  a.body === b.body && a.finish === b.finish && a.metallic === b.metallic && a.seats === b.seats && a.skin === b.skin;
 export function sameTeammateCard(a: TeammateCard, b: TeammateCard) {
   return a.id === b.id && a.profileId === b.profileId && a.name === b.name && a.team === b.team && a.hero === b.hero &&
     a.waiting === b.waiting && a.status === b.status && sameAppearance(a.appearance, b.appearance) &&

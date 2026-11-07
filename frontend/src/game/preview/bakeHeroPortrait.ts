@@ -77,7 +77,7 @@ export async function bakeHeroPortrait(model: VehicleModelId, appearance: HeroAp
     prepared = prepareVehicleVisual(gltf.scene, model);
     prepareGarageVehiclePaint(prepared.root, model);
     applyShowroomPaint(prepared.root, model, "factory", appearance.body === "factory" ? undefined : appearance.body);
-    applyShowroomHighlights(prepared.root, .45, appearance.finish);
+    applyShowroomHighlights(prepared.root, .45, appearance.finish, appearance.metallic, model);
     const scene = new Scene();
     pmrem = new PMREMGenerator(renderer);
     room = new RoomEnvironment();

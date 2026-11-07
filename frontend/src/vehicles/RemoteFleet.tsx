@@ -2,7 +2,7 @@ import {writeInstanceMatrix as writeMatrix} from './writeInstanceMatrix';
 import {useEffect,useMemo,useRef,useState,useSyncExternalStore} from 'react';
 import {useFrame} from '@react-three/fiber';
 import {fleetArt,fleetArtVersion,retainFleetArt,subscribeFleetArt} from './fleetAssets';
-import {Color,Frustum,Group,InstancedMesh,Matrix4,Mesh,MeshStandardMaterial,Object3D,Quaternion,Sphere,Vector3} from 'three';
+import {Color,Frustum,Group,InstancedMesh,Matrix4,Mesh,MeshPhysicalMaterial,MeshStandardMaterial,Object3D,Quaternion,Sphere,Vector3} from 'three';
 import {useFleetPoseReader} from '../hooks/usePhysicsInterpolator';
 import {snapshotEntity,useNetworkStore} from '../store/session/networkStore';
 import {useRenderSettingsStore} from '../store/presentation/renderSettingsStore';
@@ -14,18 +14,21 @@ import type {RosterEntity} from './rosterSelector';
 
 type Finish='factory'|'frs'|'soft';
 const finishOf=(value:unknown):Finish=>value==='factory'||value==='soft'?value:'frs';
+const metallicOf=(value:unknown)=>typeof value==='number'&&Number.isFinite(value)?Math.max(0,Math.min(1,value)):.42;
 const unit=new Vector3(1,1,1);
 const hidden=new Matrix4().makeScale(0,0,0);
 const up=new Vector3(0,1,0),axle=new Vector3(1,0,0);
-type BatchProps={model:string;tier:FleetDetail|'seed';cars:RosterEntity[];scene:Group;finish?:Finish};
-function FleetBatch({model,tier,cars,scene,finish='frs'}:BatchProps){
+type BatchProps={model:string;tier:FleetDetail|'seed';cars:RosterEntity[];scene:Group;finish?:Finish;metallic?:number};
+function FleetBatch({model,tier,cars,scene,finish='frs',metallic=.42}:BatchProps){
   const paintMaterials=useMemo(()=>scene.children.map(source=>{
     if(!(source instanceof Mesh)||source.name!=='paint')return null;
     const material=(source.material as MeshStandardMaterial).clone();
     material.color.set(0xffffff);
-    material.roughness=finish==='factory'?material.roughness:finish==='frs'?.20529644:Math.max(material.roughness,.4025);
+    material.roughness=finish==='factory'?Math.max(material.roughness,.24):finish==='frs'?.28:Math.max(.44,material.roughness);
+    material.metalness=metallic*.82;
+    if(material instanceof MeshPhysicalMaterial){material.clearcoat=Math.min(.18,.05+metallic*.13);material.clearcoatRoughness=material.roughness;material.specularIntensity=Math.min(1,material.specularIntensity);}
     return material;
-  }),[scene,finish]);
+  }),[scene,finish,metallic]);
   useEffect(()=>()=>paintMaterials.forEach(material=>material?.dispose()),[paintMaterials]);
   const parts=useMemo(()=>scene.children.filter((m):m is Mesh=>m instanceof Mesh),[scene]);
   const meshes=useRef<(InstancedMesh|null)[]>([]);
@@ -92,8 +95,9 @@ export function VehicleExterior({entity}:{entity:RosterEntity}){
   useSyncExternalStore(subscribeFleetArt,fleetArtVersion,fleetArtVersion);
   useEffect(()=>retainFleetArt(model,'medium'),[model]);
   const finish=useNetworkStore(s=>finishOf(snapshotEntity(s.snapshot,entity.id)?.appearance?.finish));
+  const metallic=useNetworkStore(s=>metallicOf(snapshotEntity(s.snapshot,entity.id)?.appearance?.metallic));
   const art=fleetArt(model,'medium');
-  return art?<FleetBatch model={model} cars={[entity]} finish={finish} {...art}/>:null;
+  return art?<FleetBatch model={model} cars={[entity]} finish={finish} metallic={metallic} {...art}/>:null;
 }
 
 export function RemoteFleet({cars}:{cars:RosterEntity[]}){
@@ -137,17 +141,18 @@ export function RemoteFleet({cars}:{cars:RosterEntity[]}){
     return ()=>releases.forEach(release=>release());
   },[cars,levels]);
   // A scalar selector changes only when a visible player's finish changes, not on every pose packet.
-  const finishes=useNetworkStore(s=>cars.map(car=>finishOf(snapshotEntity(s.snapshot,car.id)?.appearance?.finish)).join(','));
+  const finishes=useNetworkStore(s=>cars.map(car=>`${finishOf(snapshotEntity(s.snapshot,car.id)?.appearance?.finish)}:${metallicOf(snapshotEntity(s.snapshot,car.id)?.appearance?.metallic)}`).join(','));
   const batches=useMemo(()=>{
     const batches=new Map<string,BatchProps>();
     for(const [index,car] of cars.entries()){
-      const finish=finishOf(finishes.split(',')[index]);
+      const [finishValue,metalValue]=finishes.split(',')[index].split(':');
+      const finish=finishOf(finishValue),metallic=metallicOf(Number(metalValue));
       const tier=levels.get(car.id),model=car.vehicle_id;
       if(!tier||!model)continue;
       const art=fleetArt(model,tier);
       if(!art)continue;
-      const key=model+'-'+art.tier+'-'+finish;
-      const group=batches.get(key)??{model,...art,finish,cars:[]};
+      const key=model+'-'+art.tier+'-'+finish+'-'+metallic;
+      const group=batches.get(key)??{model,...art,finish,metallic,cars:[]};
       group.cars.push(car);batches.set(key,group);
     }
     return [...batches];

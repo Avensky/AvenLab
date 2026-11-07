@@ -1,6 +1,6 @@
 # Shared themes and accessibility
 
-catalog.ts defines the shared base palettes and root token application. ThemePreferences.tsx selects the persisted store preference. theme.css applies palettes to menus/debugger/cockpit. The editor always follows this preference; it has no separate theme selector or persisted theme.
+catalog.ts defines the shared base palettes and root token application. ThemePreferences.tsx selects the persisted store preference. theme.css applies palettes to menus/debugger/cockpit. vehicleStudio.css is the single style source for garage chrome and the vehicle performance page; it inherits the selected app palette and owns studio spacing, borders, surfaces, and focus treatment. The editor always follows this preference; it has no separate theme selector or persisted theme.
 
 ## How to edit
 
@@ -28,6 +28,11 @@ Main menu → Heroes owns equipped body paint and finishes. Settings → Appeara
 keeps the global interface palette and cockpit matching. Saved hero loadouts
 are validated by the server and rendered by other clients; old showroom paint
 preferences are ignored. Vehicles with no saved loadout use factory paint.
+The Heroes garage uses one shared VehicleStudio shell for performance, paint,
+body, lighting, and portrait tabs. Edit its visual tokens in
+vehicleStudio.css; edit the selectable app palettes in catalog.ts. Vehicle
+paint presets live in the garage paint catalog, while all vehicle windows and
+paint highlights use the shared material pipeline.
 
 Editor surfaces use `--le-*` palette tokens, including toolbar ink, disabled
 undo/redo, category chips, thumbnail tiles and grid/angle controls. Coordinate

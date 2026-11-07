@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { HEROES, heroForVehicle } from "../../store/alpha/alphaStore";
-import { FACTORY_APPEARANCE, useHeroLoadouts, type HeroAppearance } from "../../vehicles/cosmetics/heroLoadouts";
+import { normalizeHeroAppearance, useHeroLoadouts, type HeroAppearance } from "../../vehicles/cosmetics/heroLoadouts";
 import type { VehicleModelId } from "../../vehicles/tools/vehicleModelPaths";
 import { getStyledPortrait, needsStyledPortrait, peekStyledPortrait, portraitStyleKey, subscribeStyledPortrait } from "./heroPortraitCache";
 import { isDrivingScreen, useUIStore } from "../../store/menus/uiStore";
@@ -20,7 +20,7 @@ export const HeroPortrait = memo(function HeroPortrait({ hero, className = "", a
   const deferred = cacheOnly || driving;
   const item = HEROES.find(item => item.id === hero) ?? heroForVehicle(hero);
   const saved = useHeroLoadouts(s => item ? (s.draft?.vehicle === item.vehicle ? s.draft.appearance : s.loadouts[item.vehicle]) : undefined);
-  const style = appearance === undefined ? saved ?? FACTORY_APPEARANCE : appearance ?? FACTORY_APPEARANCE;
+  const style = normalizeHeroAppearance(appearance === undefined ? saved : appearance);
   const model = item?.vehicle as VehicleModelId | undefined;
   const key = portraitStyleKey(model ?? "empty", style);
   const custom = Boolean(model && needsStyledPortrait(style));
@@ -34,7 +34,7 @@ export const HeroPortrait = memo(function HeroPortrait({ hero, className = "", a
     let live = true;
     // The key snapshots all style fields and rejects late work after switching.
     const selectedStyle = JSON.parse(key) as string[];
-    const value: HeroAppearance = { body: selectedStyle[1], finish: selectedStyle[2] as HeroAppearance["finish"], seats: selectedStyle[3] as HeroAppearance["seats"], skin: selectedStyle[4] };
+    const value: HeroAppearance = { body: selectedStyle[1], finish: selectedStyle[2] as HeroAppearance["finish"], seats: selectedStyle[3] as HeroAppearance["seats"], skin: selectedStyle[4], metallic: Number(selectedStyle[5]) };
     const timer = window.setTimeout(() => {
       // The store can change before React runs this effect's cleanup.
       if (!live || isDrivingScreen(useUIStore.getState().screen)) return;
