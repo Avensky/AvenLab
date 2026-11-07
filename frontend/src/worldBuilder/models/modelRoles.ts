@@ -15,3 +15,10 @@ export function garageRole(node:string,centerY:number,normalY:number):ModelRole 
 
 const modules=new Set(['44','planepiste','basefull','basesol','03piler','planeplane','solcube','rbtour','rbtour001','fond01','fond01001','semimurs','toitgrille']);
 export const isGarageModule=(name:string)=>modules.has(name.replace(/[^a-zA-Z0-9]/g,'').toLowerCase());
+
+
+/** Classify measured triangles from ordinary commercial shells, independent of node names. */
+export function buildingRole(centerY:number,originY:number,height:number,normalY:number):ModelRole {
+ if (Math.abs(normalY) <= .72) return 'walls';
+ return centerY >= originY + height * .78 ? 'roof' : 'floor';
+}

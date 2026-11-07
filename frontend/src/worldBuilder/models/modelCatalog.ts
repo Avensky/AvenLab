@@ -1,4 +1,5 @@
 import data from "../../../../avenlab-server/src/assets/models/placement-colliders.json" with { type: "json" };
+import commercialBuildings from "../../../../avenlab-server/src/assets/models/commercial-buildings.json" with { type: "json" };
 import type { Bounds, Vec3 } from "../roadKit/roadKitCore.ts";
 import type { ModelRole } from "./modelRoles.ts";
 export type ModelMask = {
@@ -8,14 +9,17 @@ export type ModelMask = {
   details: boolean;
 };
 export type ModelPlacement = {
-  asset: "selection_garage";
+  asset: string;
   source_sha256: string;
   visible: ModelMask;
   collision: { floor: boolean; walls: boolean; roof: boolean };
 };
 export type ModelAsset = {
-  id: "selection_garage";
+  id: string;
   label: string;
+  category?: "structures" | "buildings" | "garages" | "roads" | "props";
+  collection?: string;
+  description?: string;
   lods: { url: string; sha256: string; lod: number }[];
   source_scale: number;
   origin: Vec3;
@@ -27,7 +31,10 @@ export type ModelAsset = {
     indices: [number, number, number][];
   }[];
 };
-export const MODEL_ASSETS = data.assets as unknown as ModelAsset[];
+export const MODEL_ASSETS = [
+  ...(data.assets as unknown as ModelAsset[]),
+  ...(commercialBuildings.assets as unknown as ModelAsset[]),
+];
 export const modelAsset = (id: string) => MODEL_ASSETS.find((a) => a.id === id);
 export const newModel = (asset: ModelAsset): ModelPlacement => ({
   asset: asset.id,

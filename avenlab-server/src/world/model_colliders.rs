@@ -4,7 +4,7 @@ use rapier3d::prelude::*;
 use serde::{Deserialize,Serialize};
 use super::{authored_layout::LayoutObject,road_colliders::{RoadAsset,prepared_shapes}};
 #[derive(Deserialize)]struct ModelCatalog{assets:Vec<RoadAsset>}
-pub fn assets()->&'static [RoadAsset]{static DATA:OnceLock<ModelCatalog>=OnceLock::new();&DATA.get_or_init(||serde_json::from_str(include_str!("../assets/models/placement-colliders.json")).expect("valid generated prefab catalog")).assets}
+pub fn assets()->&'static [RoadAsset]{static DATA:OnceLock<Vec<RoadAsset>>=OnceLock::new();DATA.get_or_init(||{let mut catalog:ModelCatalog=serde_json::from_str(include_str!("../assets/models/placement-colliders.json")).expect("valid generated prefab catalog");let buildings:ModelCatalog=serde_json::from_str(include_str!("../assets/models/commercial-buildings.json")).expect("valid commercial building prefab catalog");catalog.assets.extend(buildings.assets);catalog.assets}).as_slice()}
 #[derive(Debug,Clone,Deserialize,Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct ModelPlacement{pub asset:String,pub source_sha256:String,pub visible:Visibility,pub collision:Collision}

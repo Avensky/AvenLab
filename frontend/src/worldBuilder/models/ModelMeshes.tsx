@@ -23,7 +23,7 @@ import {
   modelVisible,
   type ModelAsset,
 } from "./modelCatalog";
-import { garageRole, isGarageModule, type ModelRole } from "./modelRoles";
+import { buildingRole, garageRole, isGarageModule, type ModelRole } from "./modelRoles";
 type Draw = { role: ModelRole; geometry: BufferGeometry; material: Material };
 const visualCache = new WeakMap<Object3D, Draw[]>(),
   collisionCache = new Map<
@@ -33,7 +33,12 @@ const visualCache = new WeakMap<Object3D, Draw[]>(),
 function modelDraws(scene: Object3D, a: ModelAsset): Draw[] {
   const cached = visualCache.get(scene);
   if (cached) return cached;
-  const display = prepareGarageDisplay(scene);
+  // Garage lighting/material edits belong to the selection garage only; keep
+  // incoming city buildings in their authored material state.
+  const display =
+    a.id === "selection_garage"
+      ? prepareGarageDisplay(scene)
+      : { root: scene.clone(true) };
   display.root.updateMatrixWorld(true);
   const out: Draw[] = [];
   const normalize = new Matrix4()
@@ -66,11 +71,13 @@ function modelDraws(scene: Object3D, a: ModelAsset): Draw[] {
     const groups = g.groups.length
       ? g.groups
       : [{ start: 0, count: g.index?.count ?? p.count, materialIndex: 0 }];
-    // Only the two mixed shell meshes need per-triangle classification. The
-    // 460k-triangle decorative model stays on the fast whole-primitive path.
+    // Keep garage detail on the fast node-role path; commercial building shells
+    // use the same face classification as their measured collision catalog.
     const key = name.replace(/[^a-zA-Z0-9]/g, "").toLowerCase(),
       uniform =
-        key === "basefull" || key === "basesol" ? null : garageRole(name, 0, 0);
+        a.category === "buildings" || key === "basefull" || key === "basesol"
+          ? null
+          : garageRole(name, 0, 0);
     for (const group of groups) {
       if (uniform !== null) {
         if (uniform !== "omit") {
@@ -110,7 +117,10 @@ function modelDraws(scene: Object3D, a: ModelAsset): Draw[] {
             .sub(v[0])
             .cross(v[2].clone().sub(v[0]))
             .normalize(),
-          role = garageRole(name, v.reduce((n, p) => n + p.y, 0) / 3, normal.y);
+          centerY = v.reduce((n, p) => n + p.y, 0) / 3,
+          role = a.category === "buildings"
+            ? buildingRole(centerY, a.origin[1], a.size[1], normal.y)
+            : garageRole(name, centerY, normal.y);
         if (role === "omit") continue;
         const list = byRole.get(role) ?? [];
         list.push(...tri);
