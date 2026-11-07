@@ -8,7 +8,7 @@ type Voice={
   family:string; mixer:GainNode; panner:PannerNode; distance:BiquadFilterNode; wet:GainNode;
   engine:AudioBufferSourceNode; exhaust:BiquadFilterNode; intake:BiquadFilterNode;
   idle:GainNode; load:GainNode; texture:AudioBufferSourceNode; surface:BiquadFilterNode; surfaceGain:GainNode;
-  turbine:OscillatorNode; turbineGain:GainNode; air:AudioBufferSourceNode; airGain:GainNode;
+  turbine:OscillatorNode; turbineFilter:BiquadFilterNode; turbineGain:GainNode; air:AudioBufferSourceNode; airGain:GainNode;
   nodes:AudioNode[]; sources:(AudioBufferSourceNode|OscillatorNode)[];
   spool:number; burst:number; previousLoad:number; previousGear:number; respawns:number;
 };
@@ -74,13 +74,13 @@ export function createVehicleAudioEngine(getRuntime:()=>SharedVehicleAudio|null=
     const texture=source(state.profile.tracks?'track':state.profile.marine?'air':'friction'),
       surface=filter('bandpass'),surfaceGain=gain();
     texture.connect(surface).connect(surfaceGain).connect(mixer);
-    const turbine=c.createOscillator(),turbineGain=gain();nodes.push(turbine);sources.push(turbine);
-    turbine.type='sine';turbine.frequency.value=800;turbine.connect(turbineGain).connect(mixer);
+    const turbine=c.createOscillator(),turbineFilter=filter('lowpass'),turbineGain=gain();nodes.push(turbine);sources.push(turbine);
+    turbine.type='sine';turbine.frequency.value=800;turbineFilter.frequency.value=3200;turbineFilter.Q.value=.7;turbine.connect(turbineFilter).connect(turbineGain).connect(mixer);
     const air=source('air'),airFilter=filter('highpass'),airGain=gain();
     airFilter.frequency.value=1600;air.connect(airFilter).connect(airGain).connect(mixer);
     for(const s of sources)s.start();
     const voice:Voice={family:state.profile.family,mixer,panner,distance,wet,engine,exhaust,intake,idle,load,
-      texture,surface,surfaceGain,turbine,turbineGain,air,airGain,nodes,sources,spool:0,burst:0,
+      texture,surface,surfaceGain,turbine,turbineFilter,turbineGain,air,airGain,nodes,sources,spool:0,burst:0,
       previousLoad:state.load,previousGear:state.gear,respawns:state.respawns};
     voices.set(state.id,voice);return voice;
   };
@@ -139,13 +139,14 @@ export function createVehicleAudioEngine(getRuntime:()=>SharedVehicleAudio|null=
         smoothAudioParam(v.surface.frequency,state.profile.tracks?750+state.speed*25:450+state.slip*2000+state.speed*12,now);
         smoothAudioParam(v.surface.Q,state.profile.tracks?1.2:1+state.slip*5,now);
         const spoolTarget=state.profile.turbo&&state.running?normalized((state.rpm-1400)/4500)*throttle:0;
-        v.spool+=(spoolTarget-v.spool)*(1-Math.exp(-dt/(spoolTarget>v.spool ? .32 : .14)));
+        v.spool+=(spoolTarget-v.spool)*(1-Math.exp(-dt/(spoolTarget>v.spool ? .38 : .20)));
         const release=(v.previousLoad>.55&&throttle<.2)||(v.previousGear!==state.gear);
         if(release&&v.spool>.25&&state.running)v.burst=Math.max(v.burst,v.spool*.8);
-        else v.burst*=Math.exp(-dt/.17);
+        else v.burst*=Math.exp(-dt/.22);
         v.previousLoad=throttle;v.previousGear=state.gear;
-        smoothAudioParam(v.turbine.frequency,800+v.spool*5200,now,.1);
-        smoothAudioParam(v.turbineGain.gain,state.profile.turbo?v.spool*settings.turbo*.028:0,now,.06);
+        smoothAudioParam(v.turbine.frequency,800+v.spool*3600,now,.14);
+        smoothAudioParam(v.turbineFilter.frequency,2300+v.spool*1000,now,.16);
+        smoothAudioParam(v.turbineGain.gain,state.profile.turbo?v.spool*settings.turbo*.021:0,now,.08);
         smoothAudioParam(v.airGain.gain,(state.boost?settings.nitrous*.085:0)+v.burst*settings.turbo*.13,now,.025);
         smoothAudioParam(v.wet.gain,settings.echo*(.025+normalized(enclosure)*.6),now,.25);
       }

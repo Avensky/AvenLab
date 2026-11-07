@@ -6,10 +6,11 @@ import {useNetworkStore} from '../../store/session/networkStore';
 import {useGameStore} from '../../store/presentation/gameStore';
 import {useUIStore} from '../../store/menus/uiStore';
 import {useTireEffectsSettings} from './tireEffectsSettings';
-import {SkidTrail,type TrailSegment} from './skidTrail.ts';
+import {SkidTrail,type Contact,type TrailSegment} from './skidTrail.ts';
+import {VehicleFlags} from '../../store/input/protocol/inputMasks.ts';
 import {createTireSqueal} from './tireSqueal';
 
-const CAPACITY=2048,LIFETIME=45;
+const CAPACITY=2048,LIFETIME=60;
 /** Shared, bounded decal pool for local and nearby remote wheels. */
 export function TireEffects(){
  const getPose=useFleetPoseReader(),trails=useRef(new Map<string,SkidTrail>()),world=useRef<number|null>(null);
@@ -18,7 +19,7 @@ export function TireEffects(){
   const geometry=new PlaneGeometry(1,1),born=new InstancedBufferAttribute(new Float32Array(CAPACITY),1),strength=new InstancedBufferAttribute(new Float32Array(CAPACITY),1);
   born.setUsage(DynamicDrawUsage);strength.setUsage(DynamicDrawUsage);geometry.setAttribute('skidBorn',born);geometry.setAttribute('skidStrength',strength);
   const time={value:0};
-  const material=new MeshBasicMaterial({color:'#171717',transparent:true,opacity:.6,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1,toneMapped:false});
+  const material=new MeshBasicMaterial({color:'#111111',transparent:true,opacity:.68,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1,toneMapped:false});
   material.onBeforeCompile=shader=>{
    shader.uniforms.skidTime=time;
    shader.vertexShader=shader.vertexShader.replace('#include <common>','#include <common>\nattribute float skidBorn; attribute float skidStrength; varying float skidAge; varying float skidAlpha; uniform float skidTime;').replace('#include <begin_vertex>', '#include <begin_vertex>\nskidAge=skidTime-skidBorn; skidAlpha=skidStrength;');
@@ -57,14 +58,20 @@ export function TireEffects(){
   const nearby=snapshot.entities.map(entity=>({entity,distance:camera.position.distanceTo(data.position.fromArray(entity.position))})).filter(item=>item.distance<60).sort((a,b)=>a.distance-b.distance).slice(0,24);
   for(const {entity,distance} of nearby){
    if(entity.health?.defeated)continue;
+   const tcsEnabled=(entity.vehicle_mask&VehicleFlags.TCS)!==0;
    const pose=getPose(entity.id);if(!pose)continue;
    for(const wheel of pose.wheels??[]){
     const key=entity.id+':'+entity.vehicle_id+':'+(entity.health?.stats?.respawns??0)+':'+wheel.id;active.add(key);
     const trail=trails.current.get(key)??new SkidTrail();trails.current.set(key,trail);
     const contact=wheel.tire_contact;
     if(wheel.grounded&&contact&&contact.every(Number.isFinite))loudest=Math.max(loudest,Math.min(1,contact[6])*Math.max(0,1-distance/45));
-    const segment=trail.sample(contact,wheel.grounded===true,now);
-    if(segment&&settings.marks)emit(segment);
+    // TCS reduces the visible trace density/strength only while enabled. The
+    // off setting keeps the prior full-strength, full-density behavior.
+    const markContact=tcsEnabled&&contact&&contact.length===7
+      ? [contact[0],contact[1],contact[2],contact[3],contact[4],contact[5],contact[6]*.7] as Contact
+      : contact as Contact|null|undefined;
+    const segment=trail.sample(markContact,wheel.grounded===true,now,tcsEnabled?{minIntensity:.14,minDistance:.18}:undefined);
+    if(segment&&settings.marks)emit({...segment,intensity:Math.min(1,segment.intensity*(tcsEnabled?1:.5)+.5)});
    }
   }
   for(const key of trails.current.keys())if(!active.has(key))trails.current.delete(key);

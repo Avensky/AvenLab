@@ -44,6 +44,7 @@ export function PlayerCameraControls({
   const { camera, gl } = useThree();
   const { getInterpolated } = useVehiclePhysicsInterpolator(playerId);
   const follower = useRef<VehicleCameraFollower | null>(null);
+  const lastUprightRotation = useRef<[number, number, number, number] | null>(null);
   if (follower.current === null) follower.current = new VehicleCameraFollower();
   const orbitYaw = useRef(0);
   const orbitPitch = useRef(0);
@@ -51,6 +52,7 @@ export function PlayerCameraControls({
 
   useEffect(() => {
     follower.current!.reset();
+    lastUprightRotation.current = null;
   }, [playerId, enabled, camera]);
   useEffect(() => {
     if (!enabled) return;
@@ -98,8 +100,15 @@ export function PlayerCameraControls({
     const pose = getInterpolated(playerId);
     if (!pose) {
       follower.current!.reset();
+      lastUprightRotation.current = null;
       return;
     }
+    // Keep the chase camera level through a wreck's rollover animation. The
+    // vehicle still moves and sinks normally; only its camera frame is held.
+    if (!pose.health?.defeated) lastUprightRotation.current = [...pose.rotation];
+    const cameraPose = pose.health?.defeated && lastUprightRotation.current
+      ? { ...pose, rotation: lastUprightRotation.current }
+      : pose;
     if (!looking.current) {
       const alpha =
         1 - Math.exp(-Math.max(0, returnSpeed) * Math.max(0, delta));
@@ -107,7 +116,7 @@ export function PlayerCameraControls({
       orbitPitch.current = MathUtils.lerp(orbitPitch.current, 0, alpha);
     }
     follower.current!.update(
-      pose,
+      cameraPose,
       offset,
       targetOffset,
       orbitYaw.current,

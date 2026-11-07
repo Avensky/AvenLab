@@ -13,10 +13,10 @@ export function recoveryStatus(health:RecoveryHealth|undefined):RecoveryStatus|n
  return {remaining,window,progress:window===null?null:Math.min(1,remaining/window),reason:health.disabled_reason==='fuel'?'fuel':'combat',revivable:window!==null&&remaining>0&&health.last_damage_kind!=='water'&&health.last_damage_kind!=='out_of_bounds'};
 }
 
-/** Downed vehicles, including self, retain critical recovery feedback even
- * when the player hides ordinary HP bars. Other rooms never contribute. */
+/** The local player has a fixed HUD countdown; world markers are for teammates.
+ * Other rooms never contribute, and defeat feedback ignores HP-bar preferences. */
 export function healthMarkerIds(snapshot:PhysicsSnapshot|null,playerId:string,mode:HealthBarMode,targetId?:string|null):string[]{
  const me=snapshot?.entities.find(entity=>entity.id===playerId);
  if(!me)return [];
- return (snapshot?.entities??[]).filter(entity=>entity.health&&entity.room_id===me.room_id&&(entity.health.defeated||(entity.id!==playerId&&(entity.id===(targetId??me.combat?.assisted_target)||showVehicleHealthBar(mode,entity.team,false))))).slice(0,10).map(entity=>entity.id);
+ return (snapshot?.entities??[]).filter(entity=>entity.id!==playerId&&entity.health&&entity.room_id===me.room_id&&(entity.health.defeated||(entity.id===(targetId??me.combat?.assisted_target)||showVehicleHealthBar(mode,entity.team,false)))).slice(0,10).map(entity=>entity.id);
 }

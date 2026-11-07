@@ -30,7 +30,9 @@ function useConfirmedDamageFlash(){
    }
    const key=[me.id,me.room_id,me.vehicle_id,network.snapshot?.match_state?.match_id??'',network.snapshot?.match_state?.phase??''].join('/');
    if(key!==previousKey)cancel();
-   if(key===previousKey&&seq>previousSeq){
+   // A fatal hit already transitions to the recovery display. Avoid stacking
+   // the hit flash on top of that full-screen state change.
+   if(key===previousKey&&seq>previousSeq&&!me.health.defeated){
     setFlash(seq);window.clearTimeout(timeout);timeout=window.setTimeout(()=>{timeout=undefined;setFlash(null);},180);
    }
    previousKey=key;previousSeq=seq;

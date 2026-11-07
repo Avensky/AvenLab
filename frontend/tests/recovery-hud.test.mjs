@@ -26,8 +26,8 @@ test('recovery timers and Mechanic actions use authoritative windows and actor o
    }
    assert.equal(actions.isMechanicPlayer(),true);social.setState({view:{...social.getState().view,alpha:{active:{hero:'brz',world_id:1,team:'red'}}}});assert.equal(actions.isMechanicPlayer(),false,'a BRZ chassis alone does not grant revive');stage();
   });
-  await t.test('downed circles include self despite Hide All, have bounded server progress and no invented legacy window',async()=>{
-   const deadMe={...me,health:hp({hp:0,defeated:true,respawn_remaining_s:6,disabled_reason:'fuel'})};assert.deepEqual(status.healthMarkerIds({entities:[deadMe,ally,{...ally,id:'foreign',room_id:9} ]},'me','none'),['me','ally']);
+  await t.test('world downed circles exclude self and retain bounded server progress without inventing a legacy window',async()=>{
+   const deadMe={...me,health:hp({hp:0,defeated:true,respawn_remaining_s:6,disabled_reason:'fuel'})};assert.deepEqual(status.healthMarkerIds({entities:[deadMe,ally,{...ally,id:'foreign',room_id:9} ]},'me','none'),['ally']);
    const half=status.recoveryStatus(deadMe.health);assert.equal(half.progress,.5);assert.equal(half.reason,'fuel');await act(async()=>root.render(h(RecoveryCountdown,{status:half})));assert.equal(document.querySelector('.action-progress-orbit').dataset.progress,'0.5');assert.match(document.querySelector('[role="timer"]').getAttribute('aria-label'),/6 seconds/);
    assert.equal(status.recoveryStatus(hp()),null);assert.equal(status.recoveryStatus(hp({defeated:true,respawn_remaining_s:30})).progress,1);assert.equal(status.recoveryStatus(hp({defeated:true,recovery_window_s:undefined,respawn_remaining_s:5})).progress,null);assert.equal(status.recoveryStatus(hp({defeated:true,respawn_remaining_s:0})).revivable,false);
   });
