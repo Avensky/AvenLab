@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useLayoutEffect, useMemo } from "react";
 import { Environment, Html, Lightformer, useGLTF } from "@react-three/drei";
 import { createPortal } from "@react-three/fiber";
-import { Box3, Group, Vector3 } from "three";
+import { Box3, CylinderGeometry, Group, Mesh, MeshStandardMaterial, TorusGeometry, Vector3, type BufferGeometry } from "three";
 import { AssetBoundary } from "../../components/debugger/AssetBoundary";
 import { Showroom, ShowroomFloor } from "./Showroom";
 import { garagePlacement } from "./garagePlacement";
@@ -10,7 +10,7 @@ import { GarageGlow } from "./GarageGlow";
 import { GarageFloorReflection } from "./GarageFloorReflection";
 import { completeGarageStructure } from "./completeGarageStructure";
 import { usePreferencesStore } from "../../store/preferences/preferencesStore";
-import { applyGarageLighting } from "../../theme/garageLighting";
+import { applyGarageLighting, tagGarageAccent } from "../../theme/garageLighting";
 import { createGarageReflectionSnapshot } from "./garageReflectionSnapshot";
 
 // Vite serves files in public/ at the URL root. Presentation fixes below are
@@ -73,25 +73,60 @@ function GarageModel({ turntable, onPlatformReady, accentOverride = null }: Gara
     const platform = new Group();
     platform.name = "garage-display-platform";
     const pad = display.root.getObjectByName("Plane_PISTE");
-    const footprint = pad
-      ? new Box3().setFromObject(pad, true).getSize(new Vector3())
-      : null;
+    const padBounds = pad ? new Box3().setFromObject(pad, true) : null;
+    const footprint = padBounds ? padBounds.getSize(new Vector3()) : null;
+    const center = padBounds ? padBounds.getCenter(new Vector3()) : new Vector3();
+    const floorY = padBounds ? padBounds.max.y : 0;
+    const diameter = Math.max(4, Math.max(footprint?.x ?? 8, footprint?.z ?? 8) * 0.98);
+    const radius = diameter / 2;
+    const stageMaterials: MeshStandardMaterial[] = [];
+    const stageGeometries: BufferGeometry[] = [];
+    // Hide the authored rectangular pad and warning stripe rails. A procedural
+    // circle keeps a clean, consistent stage without editing the source GLB.
+    for (const name of ["Plane_PISTE", "RB_Tour", "RB_Tour001", "RB_Tour.001"]) {
+      const part = display.root.getObjectByName(name);
+      if (part) part.visible = false;
+    }
+    const diskGeometry = new CylinderGeometry(radius, radius, 0.06, 72);
+    const diskMaterial = new MeshStandardMaterial({
+      color: "#121922", metalness: 0.72, roughness: 0.28,
+      envMapIntensity: 0.85,
+    });
+    stageGeometries.push(diskGeometry);
+    stageMaterials.push(diskMaterial);
+    const disk = new Mesh(diskGeometry, diskMaterial);
+    disk.name = "heroes-circular-garage-platform";
+    disk.position.set(center.x, floorY - 0.03 + 0.005, center.z);
+    disk.receiveShadow = true;
+    platform.add(disk);
+    const addRing = (ringRadius: number, tube: number, color: string, emissiveIntensity: number, themed = false) => {
+      const geometry = new TorusGeometry(ringRadius, tube, 8, 96);
+      const material = new MeshStandardMaterial({
+        color: themed ? "#07121a" : color,
+        emissive: themed ? "#ffffff" : color,
+        emissiveIntensity,
+        metalness: 0.24,
+        roughness: 0.3,
+      });
+      if (themed) tagGarageAccent(material);
+      stageGeometries.push(geometry);
+      stageMaterials.push(material);
+      const mesh = new Mesh(geometry, material);
+      mesh.rotation.x = Math.PI / 2;
+      mesh.position.set(center.x, floorY + 0.012, center.z);
+      mesh.name = themed ? "garage-platform-theme-light" : "garage-platform-mixed-light";
+      platform.add(mesh);
+    };
+    addRing(radius * 0.94, 0.035, "#26dff0", 1.3, true);
+    addRing(radius * 0.84, 0.018, "#ffad43", 1.0);
+    addRing(radius * 0.99, 0.012, "#d8edf5", 0.75);
     // The reflective tile shader already draws this surface. Keep the full
     // grid in the exported asset, but avoid drawing 47k covered triangles here.
     if (display.root.userData.avenlabGarageComplete === true) {
       const coveredTiles = display.root.getObjectByName("Sol_CUBE");
       if (coveredTiles) coveredTiles.visible = false;
     }
-    // Preserve the placed pad's world transform, including the source scale.
-    for (const name of [
-      "Plane_PISTE",
-      "RB_Tour",
-      "RB_Tour001",
-      "RB_Tour.001",
-    ]) {
-      const part = display.root.getObjectByName(name);
-      if (part) platform.attach(part);
-    }
+
     const completed = completeGarageStructure(display.root);
     // The full-plane tile overlay covers the original grey floor edging.
     // Follow the authored wall frame when restoring that perimeter finish.
@@ -103,10 +138,13 @@ function GarageModel({ turntable, onPlatformReady, accentOverride = null }: Gara
       ...display,
       platform,
       footprint,
+      platformDiameter: diameter,
       perimeter,
       structure: completed.structure,
       dispose: () => {
         completed.dispose();
+        stageGeometries.forEach((geometry) => geometry.dispose());
+        stageMaterials.forEach((material) => material.dispose());
         display.dispose();
       },
     };
@@ -173,8 +211,8 @@ function GarageModel({ turntable, onPlatformReady, accentOverride = null }: Gara
   );
   const footprint = prepared.footprint;
   useEffect(() => {
-    if (footprint) onPlatformReady?.([footprint.x, footprint.z]);
-  }, [footprint, onPlatformReady]);
+    if (prepared.platformDiameter) onPlatformReady?.([prepared.platformDiameter, prepared.platformDiameter]);
+  }, [prepared.platformDiameter, onPlatformReady]);
   return (
     <>
       <group name="garage-special-environment">
@@ -190,8 +228,8 @@ function GarageModel({ turntable, onPlatformReady, accentOverride = null }: Gara
         )}
       {footprint && (
         <GarageFloorReflection
-          width={footprint.x}
-          depth={footprint.z}
+          width={prepared.platformDiameter}
+          depth={prepared.platformDiameter}
           turntable={turntable}
           perimeter={prepared.perimeter}
         />
