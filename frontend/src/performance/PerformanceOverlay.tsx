@@ -553,6 +553,14 @@ function Readout() {
                       `${format(m.decodeMs?.mean, 2)} / ${format(m.decodeMs?.p95, 2)} ms`,
                     ],
                     [
+                      "Snapshot store dispatch / p95",
+                      `${format(m.publishMs?.mean, 2)} / ${format(m.publishMs?.p95, 2)} ms`,
+                    ],
+                    [
+                      "Obsolete snapshots coalesced",
+                      `${sender.coalescedSnapshots} this world`,
+                    ],
+                    [
                       "Snapshots / debug",
                       `${format(stats.snapshotKiBps)} / ${format(stats.debugKiBps)} KiB/s`,
                     ],

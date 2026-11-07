@@ -3,7 +3,7 @@ import type { PlayerLocation } from "./location";
 // No React/store writes in the frame or packet hot paths. Bounded numeric rings
 // keep the profiler's own cost stable, even during a long driving session.
 export const METRICS = ["frameMs", "cpuSubmitMs", "drawCalls", "triangles", "geometries", "textures",
-  "receiptAgeMs", "inputAckMs", "rttMs", "arrivalMs", "decodeMs", "queuedBytes",
+  "receiptAgeMs", "inputAckMs", "rttMs", "arrivalMs", "decodeMs", "publishMs", "queuedBytes",
   "serverLockMs", "serverPhysicsMs", "serverWorkMs", "bodyRollDeg", "airborneWheels",
   "cityDetailedChunks", "cityProxyChunks", "cityPendingAssets", "longTaskMs"] as const;
 export type Metric = typeof METRICS[number];

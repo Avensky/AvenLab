@@ -5,7 +5,7 @@ import {useWorldStore} from '../../store/world/worldStore';
 import {useMotionView} from '../../store/session/networkViews';
 import {useNetworkStore} from '../../store/session/networkStore';
 import {requestSocial} from '../../net/socialClient';
-import {announceCombat} from '../../combat/combatNoticeStore';
+import {announceCombat,captureNoticeEvent} from '../../combat/combatNoticeStore';
 import type {LayoutObject} from '../../worldBuilder/document/layoutDocument';
 import './bridgeLever.css';
 
@@ -16,9 +16,10 @@ function useBridgeAction(){
   const command=current==='broken'?'repair':current==='raised'?'lower':'raise';
   async function pull(){
     if(busy || (lockSeconds>0 && current!=='broken'))return;
+    const notice=captureNoticeEvent();
     setBusy(true);
     try{await requestSocial('bridge_control',{command});}
-    catch(e){announceCombat(e instanceof Error?e.message:'Bridge lever unavailable','warning');}
+    catch(e){if(notice)announceCombat(e instanceof Error?e.message:'Bridge lever unavailable','warning',notice);}
     finally{setBusy(false);}
   }
   return {current,command,busy,lockSeconds,pull};

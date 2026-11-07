@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {MarkerSightBudget,hasSightBlocker} from '../src/combat/markerSight.ts';
-import {Group,Mesh,BoxGeometry,MeshBasicMaterial,Raycaster,Vector3} from 'three';
+import {Group,Mesh,InstancedMesh,Matrix4,BoxGeometry,MeshBasicMaterial,Raycaster,Vector3} from 'three';
 
 test('health labels share fair sight checks and preserve visible mesh obstructions',()=>{
   for(const count of [5,9]){
@@ -23,4 +23,30 @@ test('health labels share fair sight checks and preserve visible mesh obstructio
   ray.far=2;assert.equal(hasSightBlocker(scene,ray,[]),false);
   ray.far=8;mesh.layers.set(2);assert.equal(hasSightBlocker(scene,ray,[]),false);
   mesh.geometry.dispose();mesh.material.dispose();
+});
+
+test('HUD sight never invokes detailed triangle raycasts and handles instanced bounds',()=>{
+ const scene=new Group(),geometry=new BoxGeometry(),material=new MeshBasicMaterial();
+ const ship=new Mesh(geometry,material);
+ ship.position.set(10,0,-4);
+ ship.raycast=()=>{throw Error('triangle raycast must not run for HUD labels');};
+ scene.add(ship);
+ const instances=new InstancedMesh(geometry,material,2);
+ instances.setMatrixAt(0,new Matrix4().makeTranslation(-10,0,-4));
+ instances.setMatrixAt(1,new Matrix4().makeTranslation(0,0,-4));
+ instances.raycast=()=>{throw Error('instanced triangle raycast must not run');};
+ scene.add(instances);scene.updateMatrixWorld(true);
+ const ray=new Raycaster(new Vector3(),new Vector3(0,0,-1),.01,8);
+ assert.equal(hasSightBlocker(scene,ray,[]),true);
+ instances.count=1;
+ assert.equal(hasSightBlocker(scene,ray,[]),false,'space between separated instance bounds stays visible');
+ geometry.dispose();material.dispose();
+});
+
+test('a camera inside a merged hull does not expose a label before the bounds exit',()=>{
+ const geometry=new BoxGeometry(30,30,30),material=new MeshBasicMaterial();
+ const hull=new Mesh(geometry,material);hull.updateMatrixWorld(true);
+ const ray=new Raycaster(new Vector3(),new Vector3(0,0,-1),.01,4);
+ assert.equal(hasSightBlocker(hull,ray,[]),true);
+ geometry.dispose();material.dispose();
 });

@@ -3,7 +3,7 @@ import test from 'node:test';
 import {createServer} from 'vite';
 
 test('network readers receive only their fields and release their upstream listener', async () => {
-  const vite = await createServer({server:{middlewareMode:true,hmr:false,ws:false},appType:'custom',logLevel:'error'});
+  const vite = await createServer({optimizeDeps:{noDiscovery:true,include:[]},server:{middlewareMode:true,hmr:false,ws:false},appType:'custom',logLevel:'error'});
   try {
     const {useNetworkStore:net} = await vite.ssrLoadModule('/src/store/session/networkStore.ts');
     const views = await vite.ssrLoadModule('/src/store/session/networkViews.ts');
@@ -47,7 +47,7 @@ test('network readers receive only their fields and release their upstream liste
 });
 
 test('held inputs skip packet building while device priority and direct overrides still work',async()=>{
-  const vite=await createServer({server:{middlewareMode:true,hmr:false,ws:false},appType:'custom',logLevel:'error'});
+  const vite=await createServer({optimizeDeps:{noDiscovery:true,include:[]},server:{middlewareMode:true,hmr:false,ws:false},appType:'custom',logLevel:'error'});
   try {
     const {useInputStore:store}=await vite.ssrLoadModule('/src/store/input/inputStore.ts');
     const {VehicleFlags,PlayerFlags}=await vite.ssrLoadModule('/src/store/input/protocol/inputMasks.ts');

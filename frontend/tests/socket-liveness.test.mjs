@@ -20,7 +20,7 @@ test('unfinished connections and silent menu sockets recover once; healthy and b
     send(data){this.sent.push(JSON.parse(data));}
   }
   globalThis.WebSocket = FakeSocket;
-  const vite = await createServer({cacheDir:'node_modules/.vite-liveness', server:{middlewareMode:true,hmr:false,ws:false},appType:'custom',logLevel:'error'});
+  const vite = await createServer({cacheDir:'node_modules/.vite-liveness', optimizeDeps:{noDiscovery:true,include:[]}, server:{middlewareMode:true,hmr:false,ws:false},appType:'custom',logLevel:'error'});
   let transport, now=0;
   const clock = Object.getOwnPropertyDescriptor(performance,'now');
   try {

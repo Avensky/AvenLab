@@ -1,91 +1,123 @@
-import {useEffect} from 'react';
-import {isDrivingScreen, useUIStore} from '../store/menus/uiStore';
-import {useMotionView, type MotionState} from '../store/session/networkViews';
+import {memo,useEffect,type CSSProperties} from 'react';
+import {isDrivingScreen,useUIStore} from '../store/menus/uiStore';
+import {useMotionView,type MotionState} from '../store/session/networkViews';
 import {useInputStore} from '../store/input/inputStore';
 import {VehicleFlags} from '../store/input/protocol/inputMasks';
-import {ResourceFlags} from '../store/telemetry/resourceMasks';
+import {HUD_STALE_MS} from '../store/telemetry/vehicleTelemetryStore';
 import {usePreferencesStore} from '../store/preferences/preferencesStore';
-import {announceGame,clearCombatNotices,useCombatNotices} from './combatNoticeStore';
+import {channelForTone} from './noticeModel';
+import {NOTICE_LIFETIME_MS} from './noticeQueue';
+import {announceGame,bindNoticeAudience,captureNoticeEvent,clearCombatNotices,discardMutedNotices,
+  useCombatNotices,type GameNotice,type NoticeAudience,type NoticeEvent} from './combatNoticeStore';
+import {vehicleNoticeSignals,vehicleNoticeTransitions} from './vehicleNoticeSignals';
+import {startVehicleFeedbackFreshness,useVehicleFeedbackFreshness} from './vehicleFeedbackFreshness';
 import {onNavalDeck} from './navalDeckHold';
 import './combatNotices.css';
 
-const warnings: [number, string][] = [
-  [ResourceFlags.LOW_FUEL, 'Low fuel'], [ResourceFlags.STARVED, 'Fuel empty'],
-  [ResourceFlags.HOT, 'Engine hot'], [ResourceFlags.THERMAL_RECOVERY, 'Engine cooling'],
-  [ResourceFlags.DAMAGED, 'Engine damaged'], [ResourceFlags.BLINK_STRESS, 'Blink strain'],
-];
-
-function watchCombatFeedback() {
-  let identity = '', flags = 0, stun = false, boost = false, empty = false, deckHold=false, blocked = '',defeated=false;
-  let total: number | undefined;
-  let damage = 0, timer: ReturnType<typeof setTimeout> | undefined;
-  function reset() {
-    clearTimeout(timer);
-    timer = undefined;
-    damage = 0;
-    clearCombatNotices();
+/** Snapshot transitions produce events, not React state per socket frame.
+ * There is one damage coalescer and the store owns the one expiry timer. */
+function watchCombatFeedback(){
+  let identity='',lastActor='',epoch=0,lastSnapshot:MotionState['snapshot'];
+  let previous:ReturnType<typeof vehicleNoticeSignals>|undefined;
+  let damage=0,timer:ReturnType<typeof setTimeout>|undefined,damageEvent:NoticeEvent|undefined;
+  function audience():NoticeAudience{
+    const state=useMotionView.getState(),ui=useUIStore.getState();
+    const me=state.connected?state.getMe():undefined;
+    const received=state.snapshot?.received_at_ms,now=performance.now();
+    const bound=!!me&&me.id===state.playerId&&(state.room_id===null||me.room_id===state.room_id);
+    return {
+      active:isDrivingScreen(ui.screen)&&ui.overlay===null&&!ui.isModeLoading&&document.visibilityState!=='hidden',
+      session:[epoch,ui.screen,state.playerId||'disconnected',state.room_id??'none',me?.vehicle_id??'pending',
+        state.snapshot?.match_state?.match_id??'',state.snapshot?.match_state?.phase??''].join('/'),
+      fresh:bound&&typeof received==='number'&&Number.isFinite(received)&&now>=received&&now-received<=HUD_STALE_MS,
+      channels:usePreferencesStore.getState().notificationChannels,
+    };
   }
-  function read(state: MotionState) {
-    const me = state.connected && state.getMe();
-    const key = me ? [state.playerId, me.room_id, me.vehicle_id, state.snapshot?.match_state?.phase].join('/') : '';
-    const same = key !== '' && key === identity;
-    if (key !== identity) reset();
-    identity = key;
-    if (!me) return;
-    const mask = me.resource_mask ?? 0;
-    const stunned = (me.combat?.stun_remaining ?? 0) > 0;
-    const reason = me.combat?.ram_blocked ?? '';
-    const roadNos = me.vehicle_id !== 'tank' && !me.guard?.remaining_s && !me.combat?.ram_remaining;
-    const boosting = roadNos && Boolean(me.vehicle_mask & VehicleFlags.BOOST);
-    const dry = roadNos && me.boost_fraction === 0 && Boolean(useInputStore.getState().input.vehicleMask & VehicleFlags.BOOST);
-    const onDeck=onNavalDeck(me,state.snapshot);
-    const next = me.health?.stats?.damage_dealt;
-    if (same) {
-      for (const [bit, text] of warnings) if ((mask & ~flags) & bit) announceGame(text,'warning');
-      if (stunned && !stun) announceGame('STUNNED · CONTROLS INTERRUPTED','debuff');
-      if (reason && reason !== blocked) announceGame(reason,'warning');
-      if (boosting && !boost) announceGame('NITROUS · SPEED + STABILITY', 'buff');
-      if (dry && !empty) announceGame('NITROUS EMPTY · BOOST UNAVAILABLE','debuff');
-      if (onDeck && !deckHold) announceGame('RESCUE DECK · AUTO BRAKE ENGAGED','buff','rescue');
-      const down=me.health?.defeated===true;
-      if(down&&!defeated)announceGame(me.health?.last_damage_kind==='water'?'VEHICLE LOST IN WATER':
-        me.health?.last_damage_kind==='out_of_bounds'?'OUT OF BOUNDS':'VEHICLE DISABLED','debuff','system');
-      if(!down&&defeated)announceGame('RESPAWN COMPLETE · SPAWN SHIELD ACTIVE','buff','system');
-      if (next !== undefined && total !== undefined && next > total) {
-        damage += next - total;
-        if (timer === undefined) timer = setTimeout(() => {
-          announceGame(Math.round(damage) + ' DAMAGE', 'damage');
-          damage = 0;
-          timer = undefined;
-        }, 300);
+  function reset(invalidate=false){
+    if(invalidate)epoch++;
+    clearTimeout(timer);timer=undefined;damage=0;damageEvent=undefined;
+    previous=undefined;identity='';lastSnapshot=null;clearCombatNotices();
+  }
+  function read(state=useMotionView.getState()){
+    const view=audience(),me=state.connected?state.getMe():undefined;
+    const actor=me?[state.playerId,me.room_id,me.vehicle_id,state.snapshot?.match_state?.match_id??'',state.snapshot?.match_state?.phase??''].join('/') : '';
+    const newActor=!!actor&&actor!==lastActor;
+    // Observe identity even while hidden/loading, but never replay effects from
+    // that interval when the same actor resumes. A new live spawn may flash once.
+    if(actor)lastActor=actor;
+    if(!view.active){
+      if(previous||identity||useCombatNotices.getState().lines.length)reset(true);
+      return;
+    }
+    if(!view.fresh||!me){
+      if(previous||identity)reset(true);
+      return;
+    }
+    if(identity===view.session&&lastSnapshot===state.snapshot)return;
+    if(identity!==view.session){reset();identity=view.session;}
+    lastSnapshot=state.snapshot;
+    const current=vehicleNoticeSignals(me,Boolean(useInputStore.getState().input.vehicleMask&VehicleFlags.BOOST),onNavalDeck(me,state.snapshot));
+    for(const notice of vehicleNoticeTransitions(previous,current,newActor)){
+      announceGame(notice.text,notice.tone,notice.channel??channelForTone(notice.tone));
+    }
+    if(previous&&typeof current.damage==='number'&&typeof previous.damage==='number'&&Number.isFinite(current.damage)&&Number.isFinite(previous.damage)&&current.damage>previous.damage){
+      damage+=current.damage-previous.damage;
+      if(timer===undefined){
+        damageEvent=captureNoticeEvent();
+        timer=setTimeout(()=>{
+          // Audience and event age are checked again after any main-thread stall.
+          if(damageEvent)announceGame(`${Math.round(damage)} DAMAGE`,'damage','combat',damageEvent);
+          damage=0;damageEvent=undefined;timer=undefined;
+        },250);
       }
     }
-    flags = mask; stun = stunned; boost = boosting; empty = dry; deckHold=onDeck; blocked = reason;
-    defeated=me.health?.defeated===true;total=next;
+    previous=current;
   }
-  read(useMotionView.getState());
-  const stop = useMotionView.subscribe(read);
-  return () => { stop(); reset(); };
+  const unbind=bindNoticeAudience(audience);
+  const stopFreshness=startVehicleFeedbackFreshness();
+  let signal=useVehicleFeedbackFreshness.getState().signal;
+  const stopSignal=useVehicleFeedbackFreshness.subscribe(state=>{
+    if(state.signal===signal)return;
+    const wasLive=signal==='live';signal=state.signal;
+    if(signal==='live'){read();return;}
+    reset(true);
+    // Link warnings are the only notices allowed without fresh vehicle data.
+    // They flash once on a transition, never remain as a bottom status banner.
+    if(wasLive&&signal!=='hidden'){
+      const event=captureNoticeEvent(true);
+      if(event)announceGame(signal==='offline'?'CONNECTION LOST':'VEHICLE SIGNAL DELAYED','warning','system',event);
+    }
+  });
+  const stopMotion=useMotionView.subscribe(read);
+  const stopUI=useUIStore.subscribe(()=>read());
+  const stopPreferences=usePreferencesStore.subscribe((state,previous)=>{
+    if(state.notificationChannels!==previous.notificationChannels)discardMutedNotices(state.notificationChannels);
+  });
+  function visibility(){reset(true);if(document.visibilityState!=='hidden')read();}
+  document.addEventListener('visibilitychange',visibility);
+  read();
+  return()=>{
+    stopMotion();stopUI();stopPreferences();stopSignal();stopFreshness();
+    document.removeEventListener('visibilitychange',visibility);reset(true);unbind();
+  };
 }
 
-export function CombatNotices() {
-  const visible = useUIStore(s => isDrivingScreen(s.screen) && !s.overlay && !s.isModeLoading);
-  const lines = useCombatNotices(s => s.lines);
+const NoticeLine=memo(function NoticeLine({line}:{line:GameNotice}){
+  // A delayed React commit starts at the remaining lifetime, not a full replay.
+  // Memoization keeps existing animations from jumping when another line enters.
+  const delay=-Math.max(0,performance.now()-line.created);
+  return <span className="combat-notice-line" data-tone={line.tone} data-channel={line.channel}
+    style={{'--notice-slot':line.slot,animationDelay:`${delay}ms`,animationDuration:`${NOTICE_LIFETIME_MS}ms`} as CSSProperties}>{line.text}</span>;
+});
+
+export function CombatNotices(){
+  const visible=useUIStore(s=>isDrivingScreen(s.screen)&&s.overlay===null&&!s.isModeLoading);
+  const lines=useCombatNotices(s=>s.lines);
   const channels=usePreferencesStore(s=>s.notificationChannels);
-  useEffect(() => {
-    if (visible) return watchCombatFeedback();
-    clearCombatNotices();
-  }, [visible]);
-  useEffect(() => {
-    if (!lines.length) return;
-    const timer = setTimeout(() => {
-      const now = performance.now();
-      useCombatNotices.setState(s => ({lines: s.lines.filter(n => n.expires > now)}));
-    }, Math.max(1, Math.ceil(lines[0].expires - performance.now())));
-    return () => clearTimeout(timer);
-  }, [lines]);
-  if (!visible) return null;
+  useEffect(watchCombatFeedback,[]);
+  if(!visible)return null;
+  const now=performance.now();
   return <aside className="combat-notices" aria-live="polite" aria-atomic="false">
-    {lines.filter(line=>channels[line.channel]).map(line => <span data-tone={line.tone} data-channel={line.channel} key={line.id}>{line.text}</span>)}
+    {lines.filter(line=>line.expires>now&&channels[line.channel]).map(line=><NoticeLine line={line} key={line.id}/>)}
   </aside>;
 }

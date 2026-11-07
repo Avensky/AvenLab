@@ -1,9 +1,11 @@
 import {SnapshotDecoder} from './snapshotDecoder';
+import {SnapshotDelivery, type SnapshotReceipt} from './snapshotDelivery';
 import {useScoreboardStore} from "../store/hud/scoreboardStore";
 import {receiveMatchResult} from "../store/session/matchResultsStore";
 // One socket owner. Direct imports avoid loading models/UI/CAN via the store barrel.
 import {
   useNetworkStore,
+  snapshotEntity,
   type PhysicsSnapshot,
 } from "../store/session/networkStore";
 import { useInputStore } from "../store/input/inputStore";
@@ -35,6 +37,11 @@ let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let reconnectEnabled = false;
 let pingSentMs: number | null = null;
 let vehicleChangeSequence = 0;
+let lastSnapshotReceiptMs: number | null = null;
+const snapshotDelivery = new SnapshotDelivery<PhysicsSnapshot>(publishSnapshot, {
+  request: callback => window.requestAnimationFrame(callback),
+  cancel: handle => window.cancelAnimationFrame(handle),
+});
 
 // Preserve only an already-deployed session; authentication and world permissions
 // are rechecked by the server. Explicit leave/menu navigation cancels recovery.
@@ -234,7 +241,45 @@ export const packetDiagnostics = {
   debugChars: 0,
   decodeMs: 0,
   worstDecodeMs: 0,
+  // Dispatch cost is distinct from JSON decoding and network round-trip time.
+  publishMs: 0,
+  worstPublishMs: 0,
+  coalescedSnapshots: 0,
 };
+
+function resetSnapshotDelivery() {
+  snapshotDelivery.reset();
+  lastSnapshotReceiptMs = null;
+  packetDiagnostics.coalescedSnapshots = 0;
+}
+
+function publishSnapshot({snapshot, receivedMs}: SnapshotReceipt<PhysicsSnapshot>) {
+  const startedMs = performance.now();
+  const state = useNetworkStore.getState();
+  if (snapshot.match_state?.match_id && snapshot.match_state.match_id !== state.snapshot?.match_state?.match_id)
+    useScoreboardStore.getState().resetView();
+  state.setSnapshot(snapshot, receivedMs);
+  if (resumeIntent) resumeDeployment();
+  packetDiagnostics.publishMs = Math.max(0, performance.now() - startedMs);
+  packetDiagnostics.worstPublishMs = Math.max(packetDiagnostics.worstPublishMs, packetDiagnostics.publishMs);
+  recorder.record('publishMs', packetDiagnostics.publishMs, startedMs);
+}
+
+// Control/lifecycle boundaries are not cosmetic frames. Keep the input sender,
+// death/respawn notices and finished-match screens responsive even in a slow tab.
+function needsImmediateSnapshot(snapshot: PhysicsSnapshot) {
+  const state = useNetworkStore.getState();
+  const previous = state.snapshot;
+  if (!previous) return true;
+  const before = snapshotEntity(previous, state.playerId);
+  const after = snapshotEntity(snapshot, state.playerId);
+  return Boolean(before) !== Boolean(after) ||
+    before?.vehicle_id !== after?.vehicle_id ||
+    before?.health?.defeated !== after?.health?.defeated ||
+    previous.match_state?.match_id !== snapshot.match_state?.match_id ||
+    previous.match_state?.phase !== snapshot.match_state?.phase ||
+    previous.match_clock?.phase !== snapshot.match_clock?.phase;
+}
 
 export function recordInputPacketSent(seq: number, sentMs: number) {
   pendingInputTimes.set(seq, sentMs);
@@ -306,11 +351,15 @@ function clearTimers() {
 }
 
 function clearSession() {
+  resetSnapshotDelivery();
+  hadLocalBody = false;
+  missingBodySince = null;
   setSocialConnection(null);
   pendingInputTimes.clear();
   acknowledgedInputSeq = inputAckMs = null;
   packetDiagnostics.snapshotChars = packetDiagnostics.debugChars = 0;
   packetDiagnostics.decodeMs = packetDiagnostics.worstDecodeMs = 0;
+  packetDiagnostics.publishMs = packetDiagnostics.worstPublishMs = 0;
   useNetworkStore.getState().resetSession();
   useVehicleConfigStore.getState().reset();
   useWorldStore.getState().setMap(null);
@@ -461,6 +510,9 @@ export function connectRustServer(): WebSocket {
     if(message.type==='snapshot_compact'&&[1,2].includes(message.version))snapshotVersion=message.version;
     const masked = message.type === 'snapshot_compact' || message.type === 'snapshot_delta';
     if (masked) {
+      // Reliable world changes can overtake a coalesced frame on the server.
+      // Reject stale envelopes before they replace this world's keyframe.
+      if (message.world_id !== useNetworkStore.getState().room_id) return;
       message = decoder.decode(message,useNetworkStore.getState().playerId);
       if (!message) {
         if(decoder.takeResyncRequest()) {
@@ -551,6 +603,7 @@ export function connectRustServer(): WebSocket {
         }
         return;
       case "world_changed":
+        resetSnapshotDelivery();
         decoder.reset();
         if(!message.world&&hadLocalBody&&!resumeIntent&&useUIStore.getState().screen==='sandbox'&&!['leave_game','match_results'].includes(useUIStore.getState().overlay??''))failRecovery('The server closed your physics world. Your previous game mode is selected; deploy when ready.');
         hadLocalBody=false;missingBodySince=null;
@@ -576,15 +629,18 @@ export function connectRustServer(): WebSocket {
         // Preserve simulation_time_s/tick_dt_s instead of rebuilding tick/entities only.
         if (isSnapshot(message.data)) {
           if(state.snapshot && message.data.tick<=state.snapshot.tick)return;
+          if (!snapshotDelivery.offer(message.data, receivedMs, needsImmediateSnapshot(message.data))) return;
+          packetDiagnostics.coalescedSnapshots = snapshotDelivery.coalesced;
           packetDiagnostics.snapshotChars =
             typeof event.data === "string" ? event.data.length : 0;
-          const previousReceipt = state.snapshot?.received_at_ms;
-          if (previousReceipt !== undefined)
+          // Measure arrivals independently of UI publication/coalescing.
+          if (lastSnapshotReceiptMs !== null)
             recorder.record(
               "arrivalMs",
-              receivedMs - previousReceipt,
+              receivedMs - lastSnapshotReceiptMs,
               receivedMs,
             );
+          lastSnapshotReceiptMs = receivedMs;
           recorder.record(
             "serverLockMs",
             message.data.server_timing?.lock_ms,
@@ -600,9 +656,7 @@ export function connectRustServer(): WebSocket {
             message.data.server_timing?.work_ms,
             receivedMs,
           );
-          if(message.data.match_state?.match_id && message.data.match_state.match_id !== state.snapshot?.match_state?.match_id)useScoreboardStore.getState().resetView();
-          state.setSnapshot(message.data, receivedMs);
-          const me = useNetworkStore.getState().getMe() ?? undefined;
+          const me = snapshotEntity(message.data, state.playerId);
           if (recorder.enabled || recorder.capturing) {
             const handling = handlingSample(me);
             recorder.record("bodyRollDeg", handling.bodyRollDeg, receivedMs);
@@ -612,7 +666,7 @@ export function connectRustServer(): WebSocket {
               receivedMs,
             );
           }
-          if(me){hadLocalBody=true;missingBodySince=null;resumeDeployment();}
+          if(me){hadLocalBody=true;missingBodySince=null;}
           else if(hadLocalBody&&!resumeIntent&&useUIStore.getState().screen==='sandbox'&&useUIStore.getState().overlay!=='match_results'&&!useUIStore.getState().isModeLoading){
             missingBodySince??=receivedMs;
             if(receivedMs-missingBodySince>1500)failRecovery('Your physics body is no longer available. Returned to your previous game mode; choose deploy to start again.');

@@ -1,10 +1,8 @@
-/** One small shared relay sound, independent of radio and rendering. There is
- * no engine sample, download, idle audio timer or per-frame React update. */
+import {unlockVehicleAudio,peekVehicleAudio} from '../../audio/sharedAudio.ts';
+/** One small relay sound on the shared vehicle bus. An injected context remains
+ * independently owned for tests; gameplay uses the one shared AudioContext. */
 export function createStarterRelayAudio(
-  contextFactory: () => AudioContext | null = () =>
-    typeof window.AudioContext === "function"
-      ? new window.AudioContext()
-      : null,
+  contextFactory?: () => AudioContext | null,
   schedule = (callback: () => void, delay: number) =>
     window.setInterval(callback, delay),
   cancel = (timer: number) => window.clearInterval(timer),
@@ -23,7 +21,8 @@ export function createStarterRelayAudio(
     voice.frequency.exponentialRampToValueAtTime(110, now + 0.018);
     gain.gain.setValueAtTime(0.035, now);
     gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.025);
-    voice.connect(gain).connect(context.destination);
+    const shared=peekVehicleAudio();
+    voice.connect(gain).connect(!contextFactory&&shared?.context===context?shared.output:context.destination);
     voices.add(voice);
     voice.onended = () => {
       voices.delete(voice);
@@ -43,7 +42,7 @@ export function createStarterRelayAudio(
     // Called only from a deliberate gesture; the browser owns audio consent.
     unlock() {
       try {
-        context ??= contextFactory();
+        context ??= contextFactory ? contextFactory() : unlockVehicleAudio()?.context??null;
         if (context?.state === "suspended")
           void context.resume().catch(() => {});
       } catch {
@@ -65,7 +64,7 @@ export function createStarterRelayAudio(
     dispose() {
       owners.clear();
       stop();
-      void context?.close().catch(() => {});
+      if(contextFactory)void context?.close().catch(() => {});
       context = null;
     },
   };

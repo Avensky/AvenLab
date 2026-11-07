@@ -5,7 +5,7 @@ import {requestSocial} from '../net/socialClient';
 import {canDrive} from '../controls/inputRouting';
 import {useNetworkStore,type PhysicsEntitySnapshot} from '../store/session/networkStore';
 import {useSocialStore,type SocialView} from '../store/social/socialStore';
-import {announceCombat} from './combatNoticeStore';
+import {announceCombat,captureNoticeEvent} from './combatNoticeStore';
 import {GUARD_FUEL_LITERS,TANK_BARRIER_FUEL_LITERS,readGuardBoost,type GuardActionKind} from './guardBoostState';
 export {GUARD_DURATION_S,GUARD_COOLDOWN_S,GUARD_SHIELD_HP,GUARD_FUEL_LITERS,TANK_BARRIER_COOLDOWN_S,TANK_BARRIER_HP,readGuardBoost} from './guardBoostState';
 const finite=(value:unknown):value is number=>typeof value==='number'&&Number.isFinite(value);
@@ -62,12 +62,13 @@ async function requestGuardAction(kind:ShieldAction):Promise<boolean>{
  if(blocked){if(blocked!=='ACTIVE')announceCombat(blocked);return false;}
  const key=guardRequestKey(kind),pending=useGuardBoostRequestStore.getState();
  if(pending.busy&&pending.key===key)return false;
+ const notice=captureNoticeEvent();
  useGuardBoostRequestStore.setState({key,busy:true});
  try{
   await requestSocial(kind==='brz_guard'?'dps_guard_boost':kind);
   return guardRequestKey(kind)===key;
  }catch(error){
-  if(guardRequestKey(kind)===key)announceCombat(error instanceof Error?error.message:'Shield request failed. Try again.');
+  if(notice&&guardRequestKey(kind)===key)announceCombat(error instanceof Error?error.message:'Shield request failed. Try again.','warning',notice);
   return false;
  }finally{
   if(useGuardBoostRequestStore.getState().key===key)useGuardBoostRequestStore.setState({key:null,busy:false});

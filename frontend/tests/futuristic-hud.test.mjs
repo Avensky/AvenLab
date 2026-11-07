@@ -65,11 +65,16 @@ test('futuristic HUD mixes with classic gauges and filters teammate resources',a
   const stable=dockCommits;
   for(let i=0;i<6;i++) await act(()=>{me.appearance={...paint};me.position=[i,1,0];send();});
   assert.equal(dockCommits,stable,'pose packets and equal paint values do not redraw the instruments');
+  await act(()=>{me.health={...health,spawn_protection_s:2};send();});
+  const protectionCommits=dockCommits;
+  for(const remaining of [1.9,1.8,1.7])await act(()=>{me.health={...me.health,spawn_protection_s:remaining};send();});
+  assert.equal(dockCommits,protectionCommits,'spawn-shield countdown does not repaint the instrument console');
+  assert.equal(document.querySelector('.future-status'),null,'protection is a transient top-lane notice, not bottom prose');
   await act(()=>{me.appearance={...paint,body:'#6699aa'};send();});
   assert(dockCommits>stable,'a changed paint still updates the portrait');
   await act(async()=>prefs.getState().update({healthBars:'none'}));assert.equal(meter('HULL HP'),null);assert.equal(document.querySelector('.teammate-health'),null);assert(meter('FUEL'));
   await act(async()=>prefs.getState().update({healthBars:'all',speedUnit:'mph'}));assert.equal(document.querySelector('.future-driving strong').textContent,'45');
-  await act(async()=>{me.health={...health,hp:0,defeated:true,respawn_remaining_s:3};send();});assert(document.querySelector('.vehicle-defeated-banner'));assert.match(document.querySelector('.future-status').textContent,/DISABLED/);assert.equal(document.querySelector('.futuristic-hud .future-status'),null,'status notices do not add a console grid row');
+  await act(async()=>{me.health={...health,hp:0,defeated:true,respawn_remaining_s:3};send();});assert(document.querySelector('.vehicle-defeated-banner'));assert.equal(document.querySelector('.future-status'),null,'disabled text never returns as a bottom banner');
   await act(async()=>{network.setState(s=>({snapshot:{...s.snapshot,received_at_ms:performance.now()-1000}}));updateVehicleTelemetry();});assert.equal(meter('FUEL').getAttribute('aria-valuetext'),'—');assert.equal(meter('HULL HP').getAttribute('aria-valuetext'),'—');assert.equal(meter('Ultimate charge').getAttribute('aria-valuenow'),null);assert(document.querySelector('.barrage-action [aria-label="Ultimate charge unavailable"]'));
   assert.equal(resourceReadings({...telemetry.getState().data,signal:'live',fuelLiters:20,config:{...DEFAULT_GAUGE_CONFIG,fuelCapacityLiters:0}}).fuel,null);assert.equal(combatHealth({...me,health:{...health,max_hp:0}}),null);
   await act(async()=>{me.health=health;send();prefs.getState().update({hudGroups:{futuristic:false,gauges:true}});});assert.equal(document.querySelector('.futuristic-hud'),null);assert.equal(document.querySelector('.vehicle-health-hud'),null,'retired hull overlay never returns');

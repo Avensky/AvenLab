@@ -16,6 +16,7 @@ import { DebugFlags, hasDebugFlag } from "../store/world/debugMasks";
 import {useWorldStore} from "../store";
 import { useDebugViewStore } from "../store/presentation/debugViewStore";
 import { VehicleRoster } from "./VehicleRoster";
+import {VehicleAudioScene} from '../audio/VehicleAudioScene';
 
 export function VehicleScene() {
   const mask = useWorldStore((s) => s.debugMask);
@@ -23,6 +24,7 @@ export function VehicleScene() {
     <>
       <VehicleRoster />
       <TireEffects />
+      <VehicleAudioScene />
       <NetworkWeapons />
       <NetworkHealthPacks />
       <NetworkGuardShields />

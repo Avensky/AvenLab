@@ -20,13 +20,17 @@ test('tank slots request independent factory weapons, while unavailable guns and
   network.setState({connected:true,playerId:'tank',snapshot:{entities:[entity]}});ui.setState({screen:'sandbox',overlay:null,isModeLoading:false});combat.getState().setEnabled(true);combat.getState().selectSecondary('roof-mg');
   const {useChatStore:chat}=await load('store/chat/chatStore.ts');
   const {useRadioStore:radio}=await load('store/radio/radioStore.ts');
+  const {bindNoticeAudience,useCombatNotices}=await load('combat/combatNoticeStore.ts');
   await t.test('secondary swaps clear only secondary requests; both small arms keep the fixed cannon usable',()=>{
+   const unbind=bindNoticeAudience(()=>({active:true,fresh:true,session:'tank-loadout-test',channels:{combat:true,effects:true,system:true,objectives:true,rescue:true}}));
+   try{
    assert(actions.setWeaponHeld('keyboard','primary',true));assert(actions.setWeaponHeld('gamepad','secondary',true));
    const notices=chat.getState().notices;
-   assert(actions.cycleTankWeapon());assert.equal(chat.getState().notices,notices);assert.equal(radio.getState().equipmentNotice,'COAX MG · 200 m');assert.equal(combat.getState().secondaryWeapon,'forward-mg');assert(fire.keyboard.primary);assert(!fire.gamepad.secondary);assert.equal(fire.gamepad.secondaryPulseUntil,0);
+   assert(actions.cycleTankWeapon());assert.equal(chat.getState().notices,notices);assert.equal(radio.getState().equipmentNotice,'','combat does not overwrite the bottom radio display');assert.equal(useCombatNotices.getState().lines.at(-1)?.text,'COAX MG · 200 m');assert.equal(combat.getState().secondaryWeapon,'forward-mg');assert(fire.keyboard.primary);assert(!fire.gamepad.secondary);assert.equal(fire.gamepad.secondaryPulseUntil,0);
    assert.equal(actions.requestSecondaryFire(),true);assert.equal(actions.requestPrimaryFire(),true);
    assert.equal(sampleTankFire(fire,'unavailable',performance.now(),0).weapon,'cannon');
    actions.releaseWeaponSource('keyboard');assert.equal(fire.keyboard.primaryPulseUntil,0);actions.releaseWeaponSource('pointer');
+   }finally{unbind();}
   });
   const {TurretLockButton}=await load('combat/TurretLockButton.tsx');root=createRoot(document.getElementById('root'));
   await t.test('lock ring briefly fills and drains, then holds its true state',async()=>{

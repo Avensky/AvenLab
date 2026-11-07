@@ -1,7 +1,7 @@
 import {create} from 'zustand';
 import {canDrive} from '../controls/inputRouting';
 import {requestSocial} from '../net/socialClient';
-import {announceCombat} from './combatNoticeStore';
+import {announceCombat,captureNoticeEvent} from './combatNoticeStore';
 import {useNetworkStore,type PhysicsEntitySnapshot,type PhysicsSnapshot} from '../store/session/networkStore';
 import {useSocialStore} from '../store/social/socialStore';
 import {isMechanicPlayer} from './reviveTargets';
@@ -43,6 +43,7 @@ export async function requestAssistedHealPack():Promise<boolean>{
  }
  if(document.visibilityState==='hidden'||!canDrive()||!isMechanicPlayer()||!me||age<0||age>1000||cooldown===undefined||!Number.isFinite(cooldown)||cooldown!==0||typeof me.fuel!=="number"||!Number.isFinite(me.fuel)||me.fuel<HEAL_PACK_FUEL_L||now<nextAttempt||!nearestHealPackTarget(network.snapshot,network.playerId))return false;
  if(useHealPackRequestStore.getState().key===key&&useHealPackRequestStore.getState().busy)return false;
+ const notice=captureNoticeEvent();
  nextAttempt=now+250;
  useHealPackRequestStore.setState({key,busy:true});
  try{
@@ -51,7 +52,7 @@ export async function requestAssistedHealPack():Promise<boolean>{
   nextAttempt=Math.max(nextAttempt,now+HEAL_PACK_COOLDOWN_S*1000);
   return true;
  }catch(error){
-  if(actorKey()===key&&performance.now()-lastNoticeAt>1500){lastNoticeAt=performance.now();announceCombat(error instanceof Error?error.message:'Health pack could not launch. Move closer or clear the route.');}
+  if(notice&&actorKey()===key&&performance.now()-lastNoticeAt>1500){lastNoticeAt=performance.now();announceCombat(error instanceof Error?error.message:'Health pack could not launch. Move closer or clear the route.','warning',notice);}
   return false;
  }finally{
   if(useHealPackRequestStore.getState().key===key)useHealPackRequestStore.setState({key:null,busy:false});

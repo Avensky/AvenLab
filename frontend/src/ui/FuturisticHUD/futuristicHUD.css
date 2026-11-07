@@ -80,8 +80,6 @@
 .wheel-ignition-station {position:absolute;z-index:7;left:var(--key-left,12px);bottom:calc(max(6px,env(safe-area-inset-bottom)) + var(--station-lift,0px) + var(--key-lift,0px));width:var(--instrument-face);pointer-events:none;}
 .wheel-ignition-station:not(:has(.ignition-hud)) {display:none;}
 .driving-hud .wheel-ignition-station .ignition-hud {position:static;inset:auto;transform:none;width:100%;height:auto;pointer-events:auto;}
-.center-combat-dock > .future-status {position:absolute;bottom:calc(100% + 4px);left:0;right:0;text-align:center;color:#ffc86d;font-size:9px;pointer-events:none;}
-.future-status:empty {display:none;}
 .futuristic-hud[data-defeated=true] {background:#ff616c;}
 .teammate-hud {width:min(100%,clamp(104px,12vw,158px));color:#eff5fd;font:650 10px/1.1 system-ui;pointer-events:none;}
 .teammate-hud ul {display:grid;grid-template-columns:minmax(0,1fr);gap:3px;list-style:none;padding:0;margin:0;}
@@ -218,13 +216,11 @@
 .driving-hud[data-futuristic=true] .active-effect-button .action-progress-orbit {
   --action-orbit-size:clamp(25px,4.4dvh,35px);--orbit-art-size:var(--action-orbit-size);
 }
-.driving-hud[data-futuristic=true] .active-effect-item:not([data-inspecting=true]) :is(.action-progress-orbit,.action-orbit-fill,.action-orbit-inner-fill) {filter:none;}
-.driving-hud[data-futuristic=true] .active-effect-item:not([data-inspecting=true]) .action-orbit-halo {visibility:hidden;}
-.driving-hud[data-futuristic=true] .active-effects .active-effect-description {inset:auto auto 100% 0;transform:none;}
+.driving-hud[data-futuristic=true] .active-effect-item :is(.action-progress-orbit,.action-orbit-fill,.action-orbit-inner-fill) {filter:none;}
+.driving-hud[data-futuristic=true] .active-effect-item .action-orbit-halo {visibility:hidden;}
 
 .driving-hud[data-futuristic=true] .active-effect-item[data-kind=debuff] {order:1;margin-inline-start:auto;}
 .driving-hud[data-futuristic=true] .active-effect-item[data-kind=debuff]~.active-effect-item[data-kind=debuff] {margin-inline-start:0;}
-.driving-hud[data-futuristic=true] .active-effect-item[data-kind=debuff] .active-effect-description {left:auto;right:0;}
 
 .future-identity .barrage-trigger {position:absolute;inset:0;z-index:1;background:transparent;border:0;padding:0;cursor:pointer;pointer-events:auto;}
 .future-identity .barrage-trigger:focus-visible {outline:2px solid #fff;outline-offset:-3px;}

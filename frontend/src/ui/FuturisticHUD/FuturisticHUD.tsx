@@ -33,7 +33,7 @@ export function FuturisticHUD() {
   const me = useMotionView(useShallow(s => {
     const entity = s.connected ? s.getMe() : undefined;
     const health = combatHealth(entity);
-    return {hero: entity?.vehicle_id ?? null, team: entity?.team, hp: health?.hp ?? null, max: health?.max ?? null, defeated: health?.defeated ?? false, protection: Math.ceil((health?.protection ?? 0) * 10) / 10};
+    return {hero: entity?.vehicle_id ?? null, team: entity?.team, hp: health?.hp ?? null, max: health?.max ?? null, defeated: health?.defeated ?? false};
   }));
   const mode = usePreferencesStore(s => s.healthBars), units = usePreferencesStore(s => s.speedUnit);
   // Only these readings are consumed; resourceReadings deliberately needs no pose.
@@ -42,11 +42,11 @@ export function FuturisticHUD() {
   const ultimateActive = useMotionView(s => (s.getMe()?.barrage?.ticks_left ?? 0) > 0);
   const chargeText = percent(charge);
   const heat = engineHeatBand(readings.temperature, data.config);
-  const health = data.signal === 'live' && me.hp !== null && me.max !== null ? {hp: me.hp, max: me.max, defeated: me.defeated, protection: me.protection} : null;
+  const health = data.signal === 'live' && me.hp !== null && me.max !== null ? {hp: me.hp, max: me.max, defeated: me.defeated} : null;
   const showHP = showVehicleHealthBar(mode, me.team, true);
   const park = data.signal === 'live' && data.cockpitMask !== null && Boolean(data.cockpitMask & 64) && ((data.cockpitMask >>> 7) & 15) === 8;
   const speed = readings.speed === null ? '—' : Math.round(readings.speed / (units === 'mph' ? 1.609344 : 1));
-  return <><section className="futuristic-hud" aria-label="Futuristic vehicle instruments" data-signal={data.signal} data-defeated={health?.defeated ?? false}>
+  return <section className="futuristic-hud" aria-label="Futuristic vehicle instruments" data-signal={data.signal} data-defeated={health?.defeated ?? false}>
     <div className="future-identity" data-charged={charge===1 && !ultimateActive} data-ultimate-active={ultimateActive}>
       <HeroPortrait hero={me.hero} appearance={appearance} cacheOnly showStyleStatus={false} />
       <BarrageTrigger/>
@@ -70,7 +70,5 @@ export function FuturisticHUD() {
     </div>
     <HudGroup id="assists" title="Driving assists" className="future-assists"><DriveAssists compact instrument /></HudGroup>
     <div className="future-driving"><strong>{speed}</strong><small>{units === 'mph' ? 'MPH' : 'KM/H'}</small><span>GEAR <b>{readings.gear === null ? '—' : park ? 'P' : readings.gear === -1 ? 'R' : readings.gear === 0 ? 'N' : readings.gear}</b></span></div>
-  </section>
-    <div className="future-status" role="status">{data.signal !== 'live' ? data.signal.toUpperCase() : health?.defeated ? 'VEHICLE DISABLED' : health && health.protection > 0 ? `SPAWN PROTECTION ${health.protection.toFixed(1)}s` : ''}</div>
-  </>;
+  </section>;
 }

@@ -1,4 +1,4 @@
-import catalog from '../../public/models/vehicles/catalog.json' with {type:'json'};
+import catalog from './generated/assetCatalog.json' with {type:'json'};
 
 export type VehicleAssetId=keyof typeof catalog.assets;
 export type VehicleLod='near'|'medium'|'far';

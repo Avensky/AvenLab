@@ -1,5 +1,6 @@
 import { FACTORY_APPEARANCE, type HeroAppearance } from "../../vehicles/cosmetics/heroLoadouts";
 import type { VehicleModelId } from "../../vehicles/tools/vehicleModelPaths";
+import {isDrivingScreen, useUIStore} from "../../store/menus/uiStore";
 
 export function portraitStyleKey(model: string, appearance: HeroAppearance): string {
   return JSON.stringify([model, appearance.body.toLowerCase(), appearance.finish, appearance.seats, appearance.skin]);
@@ -37,6 +38,9 @@ export const subscribeStyledPortraits = (listener: () => void) => {
   listeners.add(listener); return () => {listeners.delete(listener);};
 };
 export const getStyledPortrait = createPortraitCache(async (model, appearance) => {
+  // A job queued in the menu may reach the front only after deployment. Do not
+  // start its loader/WebGL work in a live world; rejection evicts it for retry.
+  if (isDrivingScreen(useUIStore.getState().screen)) throw Error("Styled portraits are generated in menus, not during gameplay.");
   if (typeof WebGLRenderingContext === "undefined") throw Error("WebGL unavailable");
   const { bakeHeroPortrait } = await import("../preview/bakeHeroPortrait");
   const image = await bakeHeroPortrait(model, appearance);

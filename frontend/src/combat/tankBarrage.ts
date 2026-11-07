@@ -1,6 +1,5 @@
 import type { MotionState } from "../store/session/networkViews";
-import {announceCombat} from "./combatNoticeStore";
-import { announceRadioEquipment } from "../store/radio/radioStore";
+import {announceCombat,captureNoticeEvent} from "./combatNoticeStore";
 import { canDrive } from '../controls/inputRouting';
 import { requestSocial } from '../net/socialClient';
 import { useNetworkStore } from '../store/session/networkStore';
@@ -13,8 +12,9 @@ export function barrageReady(state:MotionState){
 let pending=false;
 export async function requestTankBarrage(){
   if(pending || !canDrive() || !barrageReady(useNetworkStore.getState()))return false;
+  const notice=captureNoticeEvent();
   pending=true;
-  try { await requestSocial('tank_barrage');announceRadioEquipment('BARRAGE ACTIVE · 5 S');return true; }
-  catch(error){announceCombat(error instanceof Error?error.message:'Barrage unavailable');return false;}
+  try { await requestSocial('tank_barrage');if(notice)announceCombat('BARRAGE ACTIVE · 5 S','buff',notice);return true; }
+  catch(error){if(notice)announceCombat(error instanceof Error?error.message:'Barrage unavailable','warning',notice);return false;}
   finally {pending=false;}
 }

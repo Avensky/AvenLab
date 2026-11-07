@@ -10,12 +10,12 @@ export const HeroPortrait = memo(function HeroPortrait({ hero, className = "", a
   className?: string;
   /** Undefined uses this player's style; null is an unknown peer's factory. */
   appearance?: HeroAppearance | null;
-  /** Driving HUDs prefer cached images and defer missing styles to the shared serial queue. */
+  /** Reuse ready styled images or factory art; never start a GLB/GPU bake. */
   cacheOnly?: boolean;
   showStyleStatus?: boolean;
 }) {
-  // Late-joining peers may never have appeared in a menu. Their missing style
-  // gets a delayed, deduplicated bake instead of staying on the factory portrait.
+  // A late-joining peer may not have a styled image yet. Keep factory art until
+  // a menu prepares it: a 1500ms delay still causes a GPU/GLB stall while driving.
   const driving = useUIStore(s => isDrivingScreen(s.screen));
   const deferred = cacheOnly || driving;
   const item = HEROES.find(item => item.id === hero) ?? heroForVehicle(hero);
@@ -29,14 +29,16 @@ export const HeroPortrait = memo(function HeroPortrait({ hero, className = "", a
   const [image, setImage] = useState<{ key: string; src: string | null }>({ key: "", src: null });
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   useEffect(() => {
-    if (!custom || !model || cached) return;
+    if (deferred || !custom || !model || cached) return;
     let live = true;
     // The key snapshots all style fields and rejects late work after switching.
     const selectedStyle = JSON.parse(key) as string[];
     const value: HeroAppearance = { body: selectedStyle[1], finish: selectedStyle[2] as HeroAppearance["finish"], seats: selectedStyle[3] as HeroAppearance["seats"], skin: selectedStyle[4] };
     const timer = window.setTimeout(() => {
+      // The store can change before React runs this effect's cleanup.
+      if (!live || isDrivingScreen(useUIStore.getState().screen)) return;
       void getStyledPortrait(model, value).then(src => { if (live) setImage({ key, src }); }, () => { if (live) setImage({ key, src: null }); });
-    }, deferred ? 1500 : 120);
+    }, 120);
     return () => { live = false; window.clearTimeout(timer); };
   }, [deferred, custom, key, model, cached]);
   const ready = cached || (custom && image.key === key && image.src);

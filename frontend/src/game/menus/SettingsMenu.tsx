@@ -29,6 +29,8 @@ import {
   interpolationControl,
 } from "../../components/menus/cityQualityControl";
 import { garageSettingsRows } from "./garageSettingsRows";
+import {useVehicleAudioSettings} from '../../audio/vehicleAudioSettings';
+import type {VehicleAudioSettings} from '../../audio/audioSettings';
 
 const step = <T,>(values: readonly T[], value: T, dir: 1 | -1 = 1): T =>
   values[
@@ -61,12 +63,17 @@ export function SettingsMenu() {
   const debug = useDebugViewStore();
   const prefs = usePreferencesStore();
   const tireEffects=useTireEffectsSettings();
+  const audio = useVehicleAudioSettings();
   const initialTab = useUIStore((s) => s.settingsTab);
   const back = useUIStore((s) => s.backToParentMenu);
   const [pendingBinding, setPendingBinding] = useState<BindingAction | null>(
     null,
   );
   const [notice, setNotice] = useState("");
+  const audioVolume=(key:keyof Pick<VehicleAudioSettings,'master'|'engines'|'tires'|'tracks'|'turbo'|'nitrous'|'echo'>,label:string):MenuRow=>({
+    id:'audio-'+key,label,value:`${Math.round(audio[key]*100)}%`,adjustable:true,
+    action:direction=>audio.update({[key]:Math.round((audio[key]+direction*.05)*100)/100}),
+  });
   useEffect(() => {
     if (!pendingBinding) return;
     const capture = (event: KeyboardEvent) => {
@@ -399,17 +406,23 @@ export function SettingsMenu() {
             id: "audio",
             label: "Audio",
             description:
-              "Tire squeal follows ground contact and modeled skid intensity. Engine, world and voice mixers are still pending.",
+              "Procedural vehicle audio includes tire squeal, engines, tracks, turbo and nitrous. Nearby sounds use distance and stereo position; tunnel echo uses authored volumes. Radio keeps its own mixer.",
             rows: [
               {id:'tire-volume',label:'Tire squeal volume',value:`${Math.round(tireEffects.volume*100)}%`,adjustable:true,action:direction=>tireEffects.setVolume(Math.round((tireEffects.volume+direction*.05)*100)/100)},
               {id:'tire-marks',label:'Skid marks',value:tireEffects.marks?'On':'Off',action:()=>tireEffects.setMarks(!tireEffects.marks)},
-              upcoming("master", "Master volume", "Volume for all playback."),
-              upcoming(
-                "engine",
-                "Vehicle & engine volume",
-                "Engine, tires, horn and impacts.",
-              ),
-              upcoming("music", "Music volume", "Menu and match music."),
+              {id:'vehicle-audio',label:'Vehicle sounds',value:audio.enabled?'On':'Off',action:()=>audio.update({enabled:!audio.enabled})},
+              audioVolume('master','Vehicle sound master'),
+              audioVolume('engines','Engine and intake'),
+              audioVolume('tires','Tires and road noise'),
+              audioVolume('tracks','Tank tracks and hull wash'),
+              audioVolume('turbo','Turbo spool and blow-off'),
+              audioVolume('nitrous','Nitrous flow'),
+              audioVolume('echo','Tunnel echo'),
+              {id:'spatial-audio',label:'Directional audio',value:audio.spatial?'Stereo position':'Centered with distance',action:()=>audio.update({spatial:!audio.spatial})},
+              {id:'audio-voices',label:'Nearby vehicle sound budget',value:String(audio.maxVoices),adjustable:true,
+                action:direction=>audio.update({maxVoices:step([2,4,6] as const,audio.maxVoices,direction)}),
+              },
+              upcoming("music", "Music", "Choose local tracks and volume from the cockpit radio."),
               upcoming(
                 "voice",
                 "Voice chat",

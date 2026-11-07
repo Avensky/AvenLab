@@ -1,4 +1,4 @@
-import {announceRadioEquipment} from '../store/radio/radioStore';
+import {announceGame} from './combatNoticeStore';
 import {isMechanicPlayer} from './reviveTargets';
 import {requestAssistedHealPack} from './healPackTargets';
 import {TANK_SECONDARIES,secondaryDefinition,clearTankFireInputs,type TankFireSource,type TankFireSlot} from './tankLoadout';
@@ -21,7 +21,7 @@ export function cycleTankWeapon(direction=1){
   const index=slots.findIndex(item=>item.id===useCombatStore.getState().secondaryWeapon);
   const next=slots[(index+direction%slots.length+slots.length)%slots.length];
   useCombatStore.getState().selectSecondary(next.id);
-  announceRadioEquipment(`${next.label} · ${next.rangeMeters} m`);
+  announceGame(`${next.label} · ${next.rangeMeters} m`,'system');
   return true;
 }
 
@@ -98,7 +98,7 @@ export function requestWeaponFire(weapon?:TankWeapon){
 function requestSlotFire(slot:TankFireSlot,source:TankFireSource='pointer'){
  if(!canDrive()||!combatIntent.enabled||useNetworkStore.getState().getMe()?.vehicle_id!=='tank')return false;
  if(slot==='secondary'&&secondaryDefinition(useCombatStore.getState().secondaryWeapon).planned){
-  announceRadioEquipment('SECONDARY MOUNT UNAVAILABLE');return false;
+  announceGame('SECONDARY MOUNT UNAVAILABLE','warning');return false;
  }
  tankFireInputs[source][slot==='primary'?'primaryPulseUntil':'secondaryPulseUntil']=performance.now()+120;
  return true;

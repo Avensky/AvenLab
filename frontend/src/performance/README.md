@@ -6,6 +6,13 @@ PerformanceProbe.tsx records bounded numeric samples; measurements.ts owns captu
 
 Use F3 for compact, Shift+F3 or controller View for details, F8 for capture. Compare the same car/map/route/range/quality after warmup. Check p95/p99 frame time, draw calls, triangles, packet bytes and server work separately. Menu/settings changes invalidate a capture. Do not claim target-machine FPS from headless/software WebGL.
 
+The Network details distinguish JSON decode, synchronous snapshot store dispatch,
+network RTT, and snapshot age. Store dispatch excludes later React/GPU work.
+`publishMs` is included in new captures; older captures simply have no samples.
+The coalesced counter is cumulative for the current world and counts obsolete
+ordinary movement snapshots replaced before rendering, not packet loss. Death,
+respawn, vehicle replacement and match boundaries still publish immediately.
+
 Compact climate has a separate tiny frame readout fed by the existing R3F probe.
 `frameReadout.ts` averages frames and publishes at most twice per second; it does
 not turn on diagnostic recording or start a RAF/timer. Hidden/paused/closed HUD

@@ -1,35 +1,34 @@
+/* One transient text lane. No panels, lower-screen banners or layout shifts. */
 .combat-notices {
-  position: absolute;
-  top: calc(env(safe-area-inset-top, 0px) + clamp(54px, 10dvh, 82px));
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(70vw, 34rem);
-  pointer-events: none;
-  display: grid;
-  justify-items: center;
-  gap: 3px;
-  z-index: 8;
+  position:absolute;top:calc(env(safe-area-inset-top,0px) + clamp(58px,12dvh,108px));
+  left:50%;transform:translateX(-50%);width:min(84vw,42rem);height:12rem;
+  pointer-events:none;z-index:12;contain:layout style;
 }
-.combat-notices span {
-  padding: 2px 9px;
-  background: #111821e8;
-  color: #ffd99b;
-  font-weight: 650;
-  animation: combat-notice-out 1.9s ease-out both;
+.combat-notices .combat-notice-line {
+  --notice-color:#65dcff;position:absolute;top:calc(var(--notice-slot,0) * 3.5rem);
+  left:0;right:0;text-align:center;color:var(--notice-color);background:none;border:0;padding:0;
+  font:750 clamp(11px,1.25vw,17px)/1.25 system-ui,sans-serif;letter-spacing:.05em;text-transform:uppercase;
+  overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
+  text-shadow:0 1px 3px #000,0 0 5px #000,0 0 8px color-mix(in srgb,var(--notice-color) 35%,transparent);
+  animation:combat-notice-fall 1600ms ease-out both;
 }
-.combat-notices [data-tone="damage"] { color: #ff7182; border-left:2px solid #ff7182; }
-.combat-notices [data-tone="buff"] { color: #72eca1; border-left:2px solid #72eca1; }
-.combat-notices [data-tone="debuff"] { color: #ff8fbd; border-left:2px solid #ff8fbd; }
-.combat-notices [data-tone="warning"] { color: #ffd078; border-left:2px solid #ffd078; }
-.combat-notices [data-tone="system"] { color: #65dcff; border-left:2px solid #65dcff; }
-.combat-notices [data-tone="objective"] { color: #7daaff; border-left:2px solid #7daaff; }
-.combat-notices [data-tone="rescue"] { color: #7deacf; border-left:2px solid #7deacf; }
-@keyframes combat-notice-out {
-  0% { opacity: .65; }
-  16%, 69% { opacity: 1; transform: translateY(0); }
-  100% { opacity: 0; transform: translateY(10px); }
+.combat-notices [data-tone="damage"] {--notice-color:#ff7182;}
+.combat-notices [data-tone="buff"] {--notice-color:#72eca1;}
+.combat-notices [data-tone="debuff"] {--notice-color:#ff8fbd;}
+.combat-notices [data-tone="warning"] {--notice-color:#ffd078;}
+.combat-notices [data-tone="system"] {--notice-color:#65dcff;}
+.combat-notices [data-tone="objective"] {--notice-color:#7daaff;}
+.combat-notices [data-tone="rescue"] {--notice-color:#7deacf;}
+@keyframes combat-notice-fall {
+  0% {opacity:0;transform:translateY(-8px) scale(1.04);}
+  10% {opacity:1;transform:translateY(0) scale(1);}
+  24% {opacity:.88;}
+  38%,62% {opacity:1;}
+  100% {opacity:0;transform:translateY(34px) scale(1);}
 }
-@media (prefers-reduced-motion: reduce) {
-  .combat-notices span { animation: none; }
-}
-.turret-actions button:disabled[data-resource-warning] { pointer-events: none; }
+/* Reduced motion removes travel, but still fades even if JS is temporarily busy. */
+@keyframes combat-notice-fade {0%{opacity:0}12%,62%{opacity:1}100%{opacity:0}}
+html[data-reduce-motion=true] .combat-notice-line {animation-name:combat-notice-fade;}
+@media(prefers-reduced-motion:reduce){.combat-notice-line{animation-name:combat-notice-fade!important;}}
+@media(forced-colors:active){.combat-notice-line{color:CanvasText!important;text-shadow:none!important;}}
+.turret-actions button:disabled[data-resource-warning] {pointer-events:none;}

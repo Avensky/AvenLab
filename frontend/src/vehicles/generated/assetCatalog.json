@@ -1,0 +1,329 @@
+{
+  "schema": 1,
+  "groups": {
+    "land": [
+      "sports-cars",
+      "compact-cars",
+      "suvs",
+      "pickups",
+      "police",
+      "specialty",
+      "armored"
+    ],
+    "flying": [
+      "jets",
+      "helicopters",
+      "drones"
+    ],
+    "fleet": [
+      "carriers",
+      "destroyers",
+      "battleships"
+    ],
+    "boats": [
+      "speedboats",
+      "patrol-boats",
+      "utility"
+    ]
+  },
+  "assets": {
+    "ae86": {
+      "group": "land",
+      "subgroup": "sports-cars",
+      "model": "/models/vehicles/land/sports-cars/ae86/model.glb",
+      "lods": {
+        "near": "/models/vehicles/land/sports-cars/ae86/lod-near.glb",
+        "medium": "/models/vehicles/land/sports-cars/ae86/lod-medium.glb",
+        "far": "/models/vehicles/land/sports-cars/ae86/lod-far.glb"
+      },
+      "variants": {}
+    },
+    "brz": {
+      "group": "land",
+      "subgroup": "sports-cars",
+      "model": "/models/vehicles/land/sports-cars/brz/model.glb",
+      "lods": {
+        "near": "/models/vehicles/land/sports-cars/brz/lod-near.glb",
+        "medium": "/models/vehicles/land/sports-cars/brz/lod-medium.glb",
+        "far": "/models/vehicles/land/sports-cars/brz/lod-far.glb"
+      },
+      "variants": {}
+    },
+    "camaro": {
+      "group": "land",
+      "subgroup": "sports-cars",
+      "model": "/models/vehicles/land/sports-cars/camaro/model.glb",
+      "lods": {
+        "near": "/models/vehicles/land/sports-cars/camaro/lod-near.glb",
+        "medium": "/models/vehicles/land/sports-cars/camaro/lod-medium.glb",
+        "far": "/models/vehicles/land/sports-cars/camaro/lod-far.glb"
+      },
+      "variants": {}
+    },
+    "charger70": {
+      "group": "land",
+      "subgroup": "sports-cars",
+      "model": "/models/vehicles/land/sports-cars/charger70/model.glb",
+      "lods": {
+        "near": "/models/vehicles/land/sports-cars/charger70/lod-near.glb",
+        "medium": "/models/vehicles/land/sports-cars/charger70/lod-medium.glb",
+        "far": "/models/vehicles/land/sports-cars/charger70/lod-far.glb"
+      },
+      "variants": {}
+    },
+    "skyline34": {
+      "group": "land",
+      "subgroup": "sports-cars",
+      "model": "/models/vehicles/land/sports-cars/skyline34/model.glb",
+      "lods": {
+        "near": "/models/vehicles/land/sports-cars/skyline34/lod-near.glb",
+        "medium": "/models/vehicles/land/sports-cars/skyline34/lod-medium.glb",
+        "far": "/models/vehicles/land/sports-cars/skyline34/lod-far.glb"
+      },
+      "variants": {}
+    },
+    "supra": {
+      "group": "land",
+      "subgroup": "sports-cars",
+      "model": "/models/vehicles/land/sports-cars/supra/model.glb",
+      "lods": {
+        "near": "/models/vehicles/land/sports-cars/supra/lod-near.glb",
+        "medium": "/models/vehicles/land/sports-cars/supra/lod-medium.glb",
+        "far": "/models/vehicles/land/sports-cars/supra/lod-far.glb"
+      },
+      "variants": {}
+    },
+    "supra-1998": {
+      "group": "land",
+      "subgroup": "sports-cars",
+      "model": "/models/vehicles/land/sports-cars/supra-1998/model.glb",
+      "lods": {},
+      "variants": {}
+    },
+    "mini": {
+      "group": "land",
+      "subgroup": "compact-cars",
+      "model": "/models/vehicles/land/compact-cars/mini/model.glb",
+      "lods": {
+        "near": "/models/vehicles/land/compact-cars/mini/lod-near.glb",
+        "medium": "/models/vehicles/land/compact-cars/mini/lod-medium.glb",
+        "far": "/models/vehicles/land/compact-cars/mini/lod-far.glb"
+      },
+      "variants": {}
+    },
+    "cx30": {
+      "group": "land",
+      "subgroup": "suvs",
+      "model": "/models/vehicles/land/suvs/cx30/model.glb",
+      "lods": {
+        "near": "/models/vehicles/land/suvs/cx30/lod-near.glb",
+        "medium": "/models/vehicles/land/suvs/cx30/lod-medium.glb",
+        "far": "/models/vehicles/land/suvs/cx30/lod-far.glb"
+      },
+      "variants": {}
+    },
+    "fortuner": {
+      "group": "land",
+      "subgroup": "suvs",
+      "model": "/models/vehicles/land/suvs/fortuner/model.glb",
+      "lods": {
+        "near": "/models/vehicles/land/suvs/fortuner/lod-near.glb",
+        "medium": "/models/vehicles/land/suvs/fortuner/lod-medium.glb",
+        "far": "/models/vehicles/land/suvs/fortuner/lod-far.glb"
+      },
+      "variants": {}
+    },
+    "landcruiser": {
+      "group": "land",
+      "subgroup": "suvs",
+      "model": "/models/vehicles/land/suvs/landcruiser/model.glb",
+      "lods": {
+        "near": "/models/vehicles/land/suvs/landcruiser/lod-near.glb",
+        "medium": "/models/vehicles/land/suvs/landcruiser/lod-medium.glb",
+        "far": "/models/vehicles/land/suvs/landcruiser/lod-far.glb"
+      },
+      "variants": {}
+    },
+    "sierra": {
+      "group": "land",
+      "subgroup": "pickups",
+      "model": "/models/vehicles/land/pickups/sierra/model.glb",
+      "lods": {
+        "near": "/models/vehicles/land/pickups/sierra/lod-near.glb",
+        "medium": "/models/vehicles/land/pickups/sierra/lod-medium.glb",
+        "far": "/models/vehicles/land/pickups/sierra/lod-far.glb"
+      },
+      "variants": {}
+    },
+    "enforcer": {
+      "group": "land",
+      "subgroup": "police",
+      "model": "/models/vehicles/land/police/enforcer/model.glb",
+      "lods": {
+        "near": "/models/vehicles/land/police/enforcer/lod-near.glb",
+        "medium": "/models/vehicles/land/police/enforcer/lod-medium.glb",
+        "far": "/models/vehicles/land/police/enforcer/lod-far.glb"
+      },
+      "variants": {}
+    },
+    "interceptor": {
+      "group": "land",
+      "subgroup": "police",
+      "model": "/models/vehicles/land/police/interceptor/model.glb",
+      "lods": {
+        "near": "/models/vehicles/land/police/interceptor/lod-near.glb",
+        "medium": "/models/vehicles/land/police/interceptor/lod-medium.glb",
+        "far": "/models/vehicles/land/police/interceptor/lod-far.glb"
+      },
+      "variants": {}
+    },
+    "timecar": {
+      "group": "land",
+      "subgroup": "specialty",
+      "model": "/models/vehicles/land/specialty/timecar/model.glb",
+      "lods": {
+        "near": "/models/vehicles/land/specialty/timecar/lod-near.glb",
+        "medium": "/models/vehicles/land/specialty/timecar/lod-medium.glb",
+        "far": "/models/vehicles/land/specialty/timecar/lod-far.glb"
+      },
+      "variants": {}
+    },
+    "tank": {
+      "group": "land",
+      "subgroup": "armored",
+      "model": "/models/vehicles/land/armored/tank/model.glb",
+      "lods": {
+        "near": "/models/vehicles/land/armored/tank/lod-near.glb",
+        "medium": "/models/vehicles/land/armored/tank/lod-medium.glb",
+        "far": "/models/vehicles/land/armored/tank/lod-far.glb"
+      },
+      "variants": {}
+    },
+    "arizona": {
+      "group": "fleet",
+      "subgroup": "battleships",
+      "model": "/models/vehicles/fleet/battleships/arizona/model.glb",
+      "lods": {
+        "medium": "/models/vehicles/fleet/battleships/arizona/lod-medium.glb"
+      },
+      "variants": {}
+    },
+    "burke": {
+      "group": "fleet",
+      "subgroup": "destroyers",
+      "model": "/models/vehicles/fleet/destroyers/burke/model.glb",
+      "lods": {
+        "medium": "/models/vehicles/fleet/destroyers/burke/lod-medium.glb"
+      },
+      "variants": {}
+    },
+    "louisiana": {
+      "group": "fleet",
+      "subgroup": "carriers",
+      "model": "/models/vehicles/fleet/carriers/louisiana/model.glb",
+      "lods": {
+        "medium": "/models/vehicles/fleet/carriers/louisiana/lod-medium.glb"
+      },
+      "variants": {}
+    },
+    "hawaii-rescue": {
+      "group": "fleet",
+      "subgroup": "destroyers",
+      "model": "/models/vehicles/fleet/destroyers/hawaii-rescue/model.glb",
+      "lods": {},
+      "variants": {}
+    },
+    "big-e": {
+      "group": "fleet",
+      "subgroup": "carriers",
+      "model": "/models/vehicles/fleet/carriers/big-e/model.glb",
+      "lods": {},
+      "variants": {
+        "docked": "/models/vehicles/fleet/carriers/big-e/docked.glb"
+      }
+    },
+    "apache-ah64": {
+      "group": "flying",
+      "subgroup": "helicopters",
+      "model": "/models/vehicles/flying/helicopters/apache-ah64/model.glb",
+      "lods": {
+        "medium": "/models/vehicles/flying/helicopters/apache-ah64/lod-medium.glb",
+        "far": "/models/vehicles/flying/helicopters/apache-ah64/lod-far.glb"
+      },
+      "variants": {}
+    },
+    "military-helicopter-highpoly": {
+      "group": "flying",
+      "subgroup": "helicopters",
+      "model": "/models/vehicles/flying/helicopters/military-helicopter-highpoly/model.glb",
+      "lods": {
+        "medium": "/models/vehicles/flying/helicopters/military-helicopter-highpoly/lod-medium.glb",
+        "far": "/models/vehicles/flying/helicopters/military-helicopter-highpoly/lod-far.glb"
+      },
+      "variants": {}
+    },
+    "f16": {
+      "group": "flying",
+      "subgroup": "jets",
+      "model": "/models/vehicles/flying/jets/f16/model.glb",
+      "lods": {
+        "medium": "/models/vehicles/flying/jets/f16/lod-medium.glb",
+        "far": "/models/vehicles/flying/jets/f16/lod-far.glb"
+      },
+      "variants": {}
+    },
+    "rafale": {
+      "group": "flying",
+      "subgroup": "jets",
+      "model": "/models/vehicles/flying/jets/rafale/model.glb",
+      "lods": {
+        "medium": "/models/vehicles/flying/jets/rafale/lod-medium.glb",
+        "far": "/models/vehicles/flying/jets/rafale/lod-far.glb"
+      },
+      "variants": {}
+    },
+    "su47-berkut": {
+      "group": "flying",
+      "subgroup": "jets",
+      "model": "/models/vehicles/flying/jets/su47-berkut/model.glb",
+      "lods": {
+        "medium": "/models/vehicles/flying/jets/su47-berkut/lod-medium.glb",
+        "far": "/models/vehicles/flying/jets/su47-berkut/lod-far.glb"
+      },
+      "variants": {}
+    },
+    "tu222": {
+      "group": "flying",
+      "subgroup": "jets",
+      "model": "/models/vehicles/flying/jets/tu222/model.glb",
+      "lods": {
+        "medium": "/models/vehicles/flying/jets/tu222/lod-medium.glb",
+        "far": "/models/vehicles/flying/jets/tu222/lod-far.glb"
+      },
+      "variants": {
+        "source": "/models/vehicles/flying/jets/tu222/source-draco.glb"
+      }
+    },
+    "granad-ba1000t": {
+      "group": "flying",
+      "subgroup": "drones",
+      "model": "/models/vehicles/flying/drones/granad-ba1000t/model.glb",
+      "lods": {},
+      "variants": {}
+    },
+    "hornet-quadcopter": {
+      "group": "flying",
+      "subgroup": "drones",
+      "model": "/models/vehicles/flying/drones/hornet-quadcopter/model.glb",
+      "lods": {},
+      "variants": {}
+    },
+    "rescue-helicopter": {
+      "group": "flying",
+      "subgroup": "helicopters",
+      "model": "/models/vehicles/flying/helicopters/rescue-helicopter/model.glb",
+      "lods": {},
+      "variants": {}
+    }
+  }
+}

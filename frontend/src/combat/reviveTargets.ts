@@ -3,7 +3,7 @@ import {create} from 'zustand';
 import {requestSocial} from '../net/socialClient';
 import {useNetworkStore,type PhysicsEntitySnapshot,type PhysicsSnapshot} from '../store/session/networkStore';
 import {useSocialStore,type SocialView} from '../store/social/socialStore';
-import {announceCombat} from './combatNoticeStore';
+import {announceCombat,captureNoticeEvent} from './combatNoticeStore';
 import {recoveryStatus} from './recoveryStatus';
 import {canDrive} from '../controls/inputRouting';
 
@@ -33,14 +33,15 @@ export async function requestNearestRevive():Promise<boolean>{
  if(!canDrive()||!isMechanicPlayer()||!me||cooldown===undefined||!Number.isFinite(cooldown)||cooldown!==0)return false;
  const target=nearestReviveTarget(network.snapshot,network.playerId),key=actorKey();
  if(!target||(useReviveRequestStore.getState().busy&&useReviveRequestStore.getState().key===key))return false;
+ const notice=captureNoticeEvent();
  useReviveRequestStore.setState({key,busy:true});
  try{
   await requestSocial('vehicle_revive',{target:target.id});
   if(actorKey()!==key)return false;
-  announceCombat(target.health?.disabled_reason==='fuel'?'Teammate refueled and recovered.':'Teammate revived.', 'buff');
+  if(notice)announceCombat(target.health?.disabled_reason==='fuel'?'Teammate refueled and recovered.':'Teammate revived.', 'buff',notice);
   return true;
  }catch(error){
-  if(actorKey()===key)announceCombat(error instanceof Error?error.message:'Recovery request failed. Try again.');
+  if(notice&&actorKey()===key)announceCombat(error instanceof Error?error.message:'Recovery request failed. Try again.','warning',notice);
   return false;
  }finally{
   if(useReviveRequestStore.getState().key===key)useReviveRequestStore.setState({key:null,busy:false});
