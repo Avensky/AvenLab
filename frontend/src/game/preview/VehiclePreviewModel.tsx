@@ -64,6 +64,29 @@ export function VehiclePreviewModel({platform,model}:{
     useVehicleStudioStore.getState().setAvailable(model,[...availableVehicleParts(partRig)]);
     return ()=>{if(useVehicleStudioStore.getState().availableVehicle===model)useVehicleStudioStore.getState().setAvailable(null);};
   },[model,partRig]);
+  useEffect(()=>{
+    const profile={
+      clear:{color:"#68747d",opacity:0.24,roughness:0.2,specular:"#b9c2c9",specularIntensity:0.42,ior:1.36},
+      "light-smoke":{color:"#3d4852",opacity:0.5,roughness:0.2,specular:"#aeb7bf",specularIntensity:0.34,ior:1.33},
+      "dark-smoke":{color:"#202830",opacity:0.68,roughness:0.22,specular:"#929ca5",specularIntensity:0.27,ior:1.3},
+    }[glassStyle];
+    for(const material of prepared.glassMaterials){
+      material.color.set(profile.color);
+      material.opacity=profile.opacity;
+      material.roughness=profile.roughness;
+      material.specularColor.set(profile.specular);
+      material.specularIntensity=profile.specularIntensity;
+      material.ior=profile.ior;
+      material.metalness=0;
+      material.transmission=0;
+      material.needsUpdate=true;
+    }
+  },[prepared,glassStyle]);
+  useEffect(()=>{
+    if(!activeTab)return;
+    const hasHood=partRig.some(part=>part.part==="hood");
+    useVehicleStudioStore.getState().setPart("hood",activeTab==="performance"&&hasHood);
+  },[activeTab,partRig]);
   useEffect(() => {
     const appearance = savedAppearance ?? FACTORY_APPEARANCE;
     applyShowroomPaint(prepared.root, model, "factory", appearance.body === "factory" ? undefined : appearance.body);
