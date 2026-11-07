@@ -2,6 +2,7 @@ import { useEffect, type ReactNode } from "react";
 import { useVehicleStudioStore, type VehicleStudioTab } from "./vehicleStudioStore";
 
 export const VEHICLE_STUDIO_TABS = [
+  { id: "overview", label: "OVERVIEW", description: "Vehicle and build summary" },
   { id: "performance", label: "PERFORMANCE", description: "Power, drivetrain and handling" },
   { id: "paint", label: "APPEARANCE", description: "Color, glass and finish" },
   { id: "body", label: "BODY", description: "Doors, panels and glass" },
