@@ -12,7 +12,7 @@ a claim that every possible gameplay, device, database or network path was run.
 | Zustand was imported directly but declared only transitively | Declared the already locked/installed 5.0.14 as a direct dependency | No runtime version change |
 | Selection state imported every vehicle renderer | Data-only vehicleCatalog; removed unused Component field | Menu/state imports do not register all vehicle render components |
 | Python CAN files mixed capture, analysis, learning and HTTP endpoints | capture / analysis / learning packages with explicit dependency imports and public package entry points | 192 original function/class bodies retained; 34-path HTTP contract preserved |
-| Comment-only retired UI/audio examples obscured searches | 44 modules preserved outside active src in frontend/legacy | Nothing is reactivated; old monolithic stores remain retired |
+| Comment-only retired UI/audio examples obscured searches | 44 modules preserved outside active src in frontend/legacy at the time of this audit | Nothing is reactivated; old monolithic stores remain retired |
 | Pausing released throttle but let a car coast | Shared Pause/world-editor brake hold; child menus retain it, Resume releases neutral | Existing sender and Rust service brake; online simulation continues. Direct cockpit access does not invent a brake during a research run |
 | No editable saved spawn authoring | Team markers, XYZ/heading, shared history/save/export, source import and optional server surface_y | Editor degrees convert to runtime radians; support height is separate from body clearance |
 | Sidebar repeated a large settings/file area | Header visibility/minimize controls, six focused inspector sections | Editing world is one header selector; export title is file metadata |

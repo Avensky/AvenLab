@@ -78,7 +78,7 @@ For data service: activate its environment, then `python -m unittest discover
 -s tests -v` from data-server. See [audit](REPO_AUDIT.md) for test scope and what
 still requires a running service/real rendering hardware.
 
-Comment-only historical examples are preserved under `frontend/legacy`.
+Retired comment-only frontend examples have been removed; active implementations live under `frontend/src`.
 Generated assets and collision catalogs keep their public URLs/storage contracts.
 
 ## Cockpit control editing update

@@ -17,7 +17,6 @@ import { VehiclePreview } from "./preview";
 import { MainMenu } from "./menus/MainMenu";
 import { PauseMenu } from "./menus/PauseMenu";
 import { ModeLoadingScreen } from "./ModeLoadingScreen";
-// Explicit index avoids a stale flat SandBox.tsx shadowing this folder on Windows.
 import { Sandbox, SandboxSetup } from "./modes/sandbox/index";
 import { DebugMenu } from "../components/debugger/DebugMenu";
 import { DrivingHUD } from "../ui/DrivingHUD";
@@ -144,7 +143,6 @@ export function GameUI() {
           )}
 
           {screen === "signal_recon_setup" && <VehiclePreview />}
-          {/* {!needsCanvas && screen === "settings" && <Settings />} */}
           {screen === "sandbox" && (overlay !== "world_builder" || vehicleAuthoring) && <Cameras />}
         </FullCanvas>
       )}

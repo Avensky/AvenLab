@@ -60,14 +60,6 @@ export function FullCanvas({
         }}
       >
         {preview && <RevealPreview />}
-        {/* <color attach="background" args={["#050509"]} /> */}
-
-        {/* Ground */}
-        {/* <mesh rotation={[-Math.PI / 2, 0, 0]}>
-                    <planeGeometry args={[200, 200, 1, 1]} />
-                    <meshStandardMaterial color="#222" />
-                </mesh> */}
-
         <ScoreboardSceneCover />
         <PerformanceProbe />
         {children}

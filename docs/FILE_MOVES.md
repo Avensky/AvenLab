@@ -81,4 +81,4 @@ The public entry points are in [PROJECT_GUIDE](PROJECT_GUIDE.md). These paths ma
 
 The old CAN server files are now feature packages: can_router.py → capture/; can_ai_router.py → analysis/; can_ml_service.py → learning/. Each package README lists every moved function/class.
 
-44 comment-only frontend examples are preserved under frontend/legacy, outside the active application tree.
+44 comment-only frontend examples were preserved under frontend/legacy at the time of this move record; the later unused-code cleanup removed that archive.

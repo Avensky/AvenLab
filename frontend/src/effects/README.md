@@ -1,6 +1,6 @@
 # Cameras and active effects
 
-Cameras.tsx chooses driving/inspection view. RotatingCamera.tsx and VehicleRotatingCamera.ts support preview camera behavior. Retired comment-only engine/skid/audio examples are in frontend/legacy.
+Cameras.tsx chooses driving/inspection view. RotatingCamera.tsx and VehicleRotatingCamera.ts support preview camera behavior. Retired comment-only engine/skid/audio examples were removed; active effects live under frontend/src.
 
 ## How to edit
 

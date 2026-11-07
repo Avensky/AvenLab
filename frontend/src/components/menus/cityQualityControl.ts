@@ -16,7 +16,7 @@ export function cityQualityControl(
     label: "City detail",
     value: CITY_QUALITY_LABELS[settings.cityQuality],
     description:
-      "Model detail and texture resolution. Original renders all loaded models.",
+      "Fast and Balanced stream distant city chunks; Original renders every loaded model for A/B comparisons.",
     action: (direction = 1) => {
       const current = useRenderSettingsStore.getState();
       current.update({

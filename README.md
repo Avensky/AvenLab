@@ -434,7 +434,6 @@ AvenLab/
 │   │   │   │   ├── createGlassMaterialFactory.ts
 │   │   │   │   ├── getTankParts.tsx
 │   │   │   │   ├── setupVehicleParts.tsx
-│   │   │   │   └── VehicleSpotLight.tsx
 │   │   │   ├── Ae86.tsx
 │   │   │   ├── Brz.tsx
 │   │   │   ├── Camaro.tsx
@@ -448,9 +447,7 @@ AvenLab/
 │   │   │   │   ├── index.ts
 │   │   │   │   ├── Rtx.tsx
 │   │   │   │   └── TimeSquare.tsx
-│   │   │   ├── BlueTeamBaseGround.tsx
 │   │   │   ├── CityChunk.tsx
-│   │   │   ├── CityGeometry.tsx
 │   │   │   ├── CityScene.tsx
 │   │   │   └── index.ts
 │   │   ├── App.css
