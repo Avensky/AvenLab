@@ -22,7 +22,7 @@ export function inLibraryTab(piece: Piece, tab: LibraryTab) {
   if (tab === "all") return true;
   if (tab === "garages")
     return (
-      Boolean(piece.model) ||
+      Boolean(piece.model && piece.category === "structures") ||
       piece.id === "garage" ||
       piece.category === "garages"
     );

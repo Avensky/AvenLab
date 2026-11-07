@@ -124,9 +124,9 @@ export const PIECES: Piece[] = [
   ...MODEL_ASSETS.map((asset) => ({
     id: `prefab-${asset.id}`,
     label: asset.label,
-    category: "structures" as const,
+    category: asset.category ?? ("structures" as const),
     description:
-      "The actual selection-screen garage · measured structure · open interior",
+      asset.description ?? "Measured GLB prefab · collision model included",
     size: asset.size,
     color: "#50769b",
     parts: [],
