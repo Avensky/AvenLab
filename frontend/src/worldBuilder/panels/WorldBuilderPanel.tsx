@@ -104,18 +104,23 @@ function LayoutPanel({
     importSequence = useRef(0);
   const [category, setCategory] = useState<LibraryTab>("all"),
     [search, setSearch] = useState(""),
+    [packFilter, setPackFilter] = useState("all"),
     [confirm, setConfirm] = useState<"new" | "example" | null>(null);
+  const packOptions = useMemo(
+    () => Array.from(new Set(PIECES.map((piece) => piece.collection ?? "AvenLab Core"))).sort((a, b) => a.localeCompare(b)),
+    [],
+  );
 
   const library = useMemo(
     () =>
-      PIECES.filter(
-        (p) =>
-          inLibraryTab(p, category) &&
-          (p.label + p.description)
-            .toLowerCase()
-            .includes(search.toLowerCase()),
-      ),
-    [category, search],
+      PIECES.filter((p) => {
+        const pack = p.collection ?? "AvenLab Core";
+        const query = [p.label, p.description, pack, p.source ?? ""].join(" ").toLowerCase();
+        return inLibraryTab(p, category) &&
+          (packFilter === "all" || pack === packFilter) &&
+          query.includes(search.toLowerCase());
+      }),
+    [category, packFilter, search],
   );
   const navalRoute=useMemo(()=>recordedNavalRoute(s.doc?.objects??[]),[s.doc]);
   const preferences = useEditorPreferences(),
@@ -495,6 +500,13 @@ function LayoutPanel({
               aria-label="Search pieces"
             />
           </label>
+          <label className="le-pack-filter">
+            <span>PACK</span>
+            <select aria-label="Filter by source pack" value={packFilter} onChange={(event) => setPackFilter(event.target.value)}>
+              <option value="all">All packs</option>
+              {packOptions.map((pack) => <option key={pack} value={pack}>{pack}</option>)}
+            </select>
+          </label>
           <LibraryTabs active={category} onChange={setCategory} />
           {category==='boats'&&<p role="status" className="px-3 py-2 text-xs text-cyan-200/85">
             HAWAII ROUTE · {navalRoute.length} waypoint{navalRoute.length===1?'':'s'} recorded in placement order. Select SEA LEVEL for the water path. Autopilot replay is not active yet.
@@ -503,14 +515,14 @@ function LayoutPanel({
             className="le-palette"
             id="world-prefab-library"
             role="tabpanel"
-            aria-label={`${category} prefabs`}
+            aria-label={category + " prefabs from " + (packFilter === "all" ? "all packs" : packFilter)}
           >
             {library.map((piece) => (
               <div className="le-piece-card" key={piece.id}>
                 <button
                   className={`le-piece ${s.placing === piece.id ? "is-current" : ""}`}
-                  title={piece.description}
-                  aria-label={`Place ${piece.label}`}
+                  title={piece.source ? piece.description + "\nSource: " + piece.source : piece.description}
+                  aria-label={"Place " + piece.label + " from " + (piece.collection ?? "AvenLab Core")}
                   aria-pressed={s.placing === piece.id}
                   disabled={!s.doc}
                   onClick={() => choose(piece)}
@@ -520,6 +532,9 @@ function LayoutPanel({
                   <small>
                     {Number(piece.size[0].toFixed(2))} ×{" "}
                     {Number(piece.size[2].toFixed(2))} m
+                  </small>
+                  <small className="le-piece-pack" title={piece.source ? "Source: " + piece.source : undefined}>
+                    PACK · {piece.collection ?? "AvenLab Core"}
                   </small>
                   <span className="le-piece-add">+</span>
                 </button>

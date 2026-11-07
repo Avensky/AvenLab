@@ -15,6 +15,8 @@ export type RoadCollider = {
 export type RoadAsset = {
   id: RoadId;
   label: string;
+  collection?: string;
+  source?: string;
   lods: { lod: number; url: string; sha256: string }[];
   origin: Vec3;
   source_yaw: number;

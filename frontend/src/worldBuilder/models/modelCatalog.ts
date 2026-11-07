@@ -19,6 +19,7 @@ export type ModelAsset = {
   label: string;
   category?: "structures" | "buildings" | "garages" | "roads" | "road-rails" | "tunnels" | "props" | "city-props" | "greenery" | "prefabs";
   collection?: string;
+  source?: string;
   description?: string;
   lods: { url: string; sha256: string; lod: number }[];
   source_scale: number;

@@ -212,15 +212,15 @@ export const EXTRA_PIECES: Piece[] = [
     model: newModel(modelAsset("selection_garage")!), parts: [],
   })),
   {
-    id:"bridge-span",label:"Bridge span",category:"jumps",description:"Modular concrete bridge · deck 5 m above its base",size:[12,5.6,30],color:"#8297ac",
+    id:"bridge-span",label:"Bridge span",category:"jumps",collection:"Harbor Modular Bridge Kit",description:"Modular concrete bridge · deck 5 m above its base",size:[12,5.6,30],color:"#8297ac",
     parts:[box([0,.93,0],[1,.1,1]),box([-.47,1.04,0],[.05,.15,1]),box([.47,1.04,0],[.05,.15,1]),box([0,.44,-.38],[.6,.88,.08]),box([0,.44,.38],[.6,.88,.08])],
   },
   {
-    id:"canal-section",label:"Canal section",category:"props",description:"Raised concrete channel with a visual water strip · no terrain excavation or water physics",size:[16,2,30],color:"#8398a9",
+    id:"canal-section",label:"Canal section",category:"props",collection:"Harbor Canal Kit",description:"Raised concrete channel with a visual water strip · no terrain excavation or water physics",size:[16,2,30],color:"#8398a9",
     parts:[box([-.44,.5,0],[.12,1,1]),box([.44,.5,0],[.12,1,1]),box([0,.04,0],[.8,.08,1]),box([0,.28,0],[.75,.02,1],"#28657b",false)],
   },
   {
-    id:"excavated-canal-section",label:"Excavated canal profile",category:"roads",
+    id:"excavated-canal-section",label:"Excavated canal profile",category:"roads",collection:"Harbor Canal Kit",
     description:"40 m open channel · solid seabed and retaining walls with a separate non-solid water surface. Water simulation remains map-level.",
     size:[64,12,32],color:"#657d86",
     parts:[
@@ -231,37 +231,37 @@ export const EXTRA_PIECES: Piece[] = [
     ],
   },
   {
-    id:"mountain-segment-small",label:"Mountain segment · Small · 24 m",category:"blocks",
+    id:"mountain-segment-small",label:"Mountain segment · Small · 24 m",category:"blocks",collection:"Mountain Builder Kit",
     description:"24 m default segment · 48 m wide × 24 m high · solid low-poly rock cells. Add matching segments end-to-end.",
     size:[48,24,24],color:"#7c8586",parts:mountainSegmentParts(48,24),
   },
   {
-    id:"mountain-segment-standard",label:"Mountain segment · Standard · 24 m",category:"blocks",
+    id:"mountain-segment-standard",label:"Mountain segment · Standard · 24 m",category:"blocks",collection:"Mountain Builder Kit",
     description:"24 m default segment · 72 m wide × 36 m high · solid low-poly rock cells. Add matching segments end-to-end.",
     size:[72,36,24],color:"#7c8586",parts:mountainSegmentParts(72,36),
   },
   {
-    id:"mountain-segment-long",label:"Mountain segment · Long · 48 m",category:"blocks",
+    id:"mountain-segment-long",label:"Mountain segment · Long · 48 m",category:"blocks",collection:"Mountain Builder Kit",
     description:"48 m segment · 72 m wide × 36 m high · solid low-poly rock cells. Add matching segments end-to-end.",
     size:[72,36,48],color:"#7c8586",parts:mountainSegmentParts(72,36),
   },
   {
-    id:"mountain-segment-broad",label:"Mountain segment · Broad · 72 m",category:"blocks",
+    id:"mountain-segment-broad",label:"Mountain segment · Broad · 72 m",category:"blocks",collection:"Mountain Builder Kit",
     description:"72 m segment · 96 m wide × 48 m high · solid low-poly rock cells. Add matching segments end-to-end.",
     size:[96,48,72],color:"#7c8586",parts:mountainSegmentParts(96,48),
   },
   {
-    id:"mountain-curved-tunnel",label:"Mountain fabrication · curved tunnel cut",category:"tunnels",
+    id:"mountain-curved-tunnel",label:"Mountain fabrication · curved tunnel cut",category:"tunnels",collection:"Mountain Builder Kit",
     description:"Rock cells leave a curved 90° bore for the measured H27 wide highway bend · separate road surface · 12 m opening.",
     size:[72,36,72],color:"#7c8586",parts:mountainFabrication(true),
   },
   {
-    id:"mountain-canal-cut",label:"Mountain canal · excavated passage",category:"blocks",
+    id:"mountain-canal-cut",label:"Mountain canal · excavated passage",category:"blocks",collection:"Mountain Builder Kit",
     description:"Straight 24 m canal cut through a 72 m rock module · solid bed · separate non-solid water surface.",
     size:[72,36,72],color:"#7c8586",parts:mountainCanalParts(),
   },
   {
-    id:"mountain-waterfall-roadblock",label:"Waterfall · rock road blocker",category:"blocks",
+    id:"mountain-waterfall-roadblock",label:"Waterfall · rock road blocker",category:"blocks",collection:"Mountain Builder Kit",
     description:"Solid cliff face blocks the route; a separate non-solid water curtain marks the waterfall and plunge pool.",
     size:[36,24,20],color:"#727b7d",
     parts:[
@@ -273,7 +273,7 @@ export const EXTRA_PIECES: Piece[] = [
     ],
   },
   {
-    id:"waterfall-lookout-boardwalk",label:"Waterfall lookout · boardwalk end",category:"props",
+    id:"waterfall-lookout-boardwalk",label:"Waterfall lookout · boardwalk end",category:"props",collection:"Mountain Builder Kit",
     description:"Solid timber viewing deck with independent rails · place beside the plunge pool as the ride terminus.",
     size:[24,2,12],color:"#765d45",
     parts:[
@@ -305,6 +305,7 @@ export const EXTRA_PIECES: Piece[] = [
     id: "courtyard-block",
     label: "Courtyard block",
     category: "blocks",
+    collection: "Coastal Block Kit",
     description: "Open courtyard with two explicit building masses · 64 m",
     size: [64, 18, 64],
     color: "#849bad",
