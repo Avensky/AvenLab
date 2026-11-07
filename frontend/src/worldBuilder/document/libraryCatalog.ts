@@ -25,7 +25,7 @@ export type LibraryTab = (typeof LIBRARY_TABS)[number]["id"];
 export function inLibraryTab(piece: Piece, tab: LibraryTab) {
   if (tab === "all") return true;
   const search = `${piece.id} ${piece.label} ${piece.description}`;
-  const greenery = piece.category === "greenery" || /(?:^|[-_\s])(tree|trees|foliage|plant|plants|grass|shrub|hedge|flower|vegetation|bush)(?:$|[-_\s])/i.test(search);
+  const greenery = piece.category === "greenery" || /(?:^|[-_\s])(tree|trees|forest|forests|pine|oak|palm|maple|cedar|spruce|fir|sequoia|juniper|bamboo|foliage|plant|plants|grass|shrub|hedge|flower|vegetation|bush)(?:$|[-_\s])/i.test(search);
   const tunnel = piece.category === "tunnels" || /tunnel/i.test(search);
   const roadRail = piece.category === "road-rails" || /(?:^|[-_\s])(road|highway|guard)[-_\s]*rails?(?:$|[-_\s])|guardrail/i.test(search);
   const block = /(?:^|[-_\s])blocks?(?:[_-]?\d+)?(?:$|[-_\s])/i.test(`${piece.id} ${piece.label}`);
