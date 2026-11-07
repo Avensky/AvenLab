@@ -36,6 +36,8 @@ export function VehiclePreviewModel({platform,model}:{
     [scene, model],
   );
   const partRig=useMemo(()=>createVehiclePartRig(prepared.root,model),[prepared,model]);
+  const activeTab=useVehicleStudioStore(s=>s.activeTab);
+  const glassStyle=useVehicleStudioStore(s=>s.glassStyle);
   const lamps=useMemo(()=>{
     const headlights=new Set<MeshStandardMaterial>(),signals=new Set<MeshStandardMaterial>(),leftSignals=new Set<MeshStandardMaterial>(),rightSignals=new Set<MeshStandardMaterial>();
     prepared.root.traverse(object=>{
@@ -79,7 +81,6 @@ export function VehiclePreviewModel({platform,model}:{
       material.ior=profile.ior;
       material.metalness=0;
       material.transmission=0;
-      material.needsUpdate=true;
     }
   },[prepared,glassStyle]);
   useEffect(()=>{
