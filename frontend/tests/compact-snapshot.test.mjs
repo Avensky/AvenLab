@@ -54,7 +54,7 @@ test('boolean masks cover health, weapon controls and grounded wheels',()=>{
 });
 
 test('unknown versions and malformed tuples never reach game stores',()=>{
- for(const value of [null,{}, {...fixture.compact,version:2}, {...fixture.compact,world_id:1.5}, {...fixture.compact,data:[]}, {...fixture.compact,data:[0,0,0,{}]}]) assert.equal(decodeCompactSnapshot(value),null);
+ for(const value of [null,{}, {...fixture.compact,version:99}, {...fixture.compact,world_id:1.5}, {...fixture.compact,data:[]}, {...fixture.compact,data:[0,0,0,{}]}]) assert.equal(decodeCompactSnapshot(value),null);
  const corrupt=structuredClone(fixture.compact);corrupt.data[3][0].pop();assert.equal(decodeCompactSnapshot(corrupt),null);
  const wheel=structuredClone(fixture.compact);wheel.data[3][0][26][0].pop();assert.equal(decodeCompactSnapshot(wheel),null);
  const decoded=decodeCompactSnapshot(fixture.compact);
@@ -74,4 +74,14 @@ test('private readings are world scoped, validated and projected only onto their
  assert(!('fuel' in peer));assert(!('last_input_seq' in peer));assert(!('cruise_target_kph' in peer));
  decoder.reset();assert(!('fuel' in decoder.decode(key,'alpha').data.entities[0]));
  decoder.receiveDriver({...packet,world_id:99});assert(!('fuel' in decoder.decode(key,'alpha').data.entities[0]));
+});
+
+test('v1 remains decodable and v2 carries authoritative tire contact effects',()=>{
+ const old=JSON.parse(fs.readFileSync(new URL('./fixtures/compact-snapshot-v1.json',import.meta.url),'utf8'));
+ assert.deepEqual(decodeCompactSnapshot(old.compact),old.legacy);
+ const decoder=new SnapshotDecoder();assert.deepEqual(decoder.decode(old.keyframe),old.legacy);assert.deepEqual(decoder.decode(old.delta),old.updated);
+ const next=structuredClone(fixture.compact);assert.equal(next.version,2);
+ next.data[3][0][26][0][6]=[1,2,3,0,1,0,.8];
+ assert.deepEqual(decodeCompactSnapshot(next).data.entities[0].wheels[0].tire_contact,[1,2,3,0,1,0,.8]);
+ decoder.decode(fixture.keyframe);assert.equal(decoder.decode({...fixture.delta,version:1}),null);
 });

@@ -381,6 +381,7 @@ export function connectRustServer(): WebSocket {
     return socket;
   clearTimers();
   clearSession();
+  let snapshotVersion=2;
   const decoder = new SnapshotDecoder();
   const connection = new WebSocket(getRustWsUrl());
   socket = connection;
@@ -457,12 +458,13 @@ export function connectRustServer(): WebSocket {
       return;
     }
     if (!message || typeof message !== "object") return;
+    if(message.type==='snapshot_compact'&&[1,2].includes(message.version))snapshotVersion=message.version;
     const masked = message.type === 'snapshot_compact' || message.type === 'snapshot_delta';
     if (masked) {
       message = decoder.decode(message,useNetworkStore.getState().playerId);
       if (!message) {
         if(decoder.takeResyncRequest()) {
-          try {connection.send(JSON.stringify({type:'snapshot_format',version:1}));}
+          try {connection.send(JSON.stringify({type:'snapshot_format',version:snapshotVersion}));}
           catch {retrySocket();}
         }
         return;
@@ -497,8 +499,9 @@ export function connectRustServer(): WebSocket {
         if (setupTimer !== null) clearTimeout(setupTimer);
         setupTimer = null;
         if (message.packed_input_version === 1) packedInputPeers.add(connection);
-        if (message.compact_snapshot_version === 1) {
-          connection.send(JSON.stringify({type:'snapshot_format',version:1}));
+        if ([1,2].includes(message.compact_snapshot_version)) {
+          snapshotVersion=message.compact_snapshot_version;
+          connection.send(JSON.stringify({type:'snapshot_format',version:message.compact_snapshot_version}));
         }
         state.setPlayerId(message.player_id);
         useNetworkStore.setState({

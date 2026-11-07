@@ -72,6 +72,9 @@ export interface WheelSnapshot {
   wheel_speed?: number; // rad/s is best for tire visual spin
   steer_angle?: number; // radians, useful for front wheel steering visual
   grounded?: boolean;
+  radius?: number;
+  /** Contact XYZ, normal XYZ, modeled skid intensity. */
+  tire_contact?: [number,number,number,number,number,number,number] | null;
 }
 
 export interface VehicleColliderShape {

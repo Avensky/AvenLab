@@ -169,7 +169,7 @@ impl PhysicsWorld {
                 drive,
                 steer,
                 debug_id: debug_id.to_string(),
-                tire_state: TireState::Grip,
+                skid_intensity: 0.0, tire_contact: None, tire_state: TireState::Grip,
             thermal: Default::default(),
             }
         };

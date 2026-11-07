@@ -1,3 +1,4 @@
+import {useTireEffectsSettings} from '../../vehicles/effects/tireEffectsSettings';
 import {HEALTH_BAR_LABELS,cycleHealthBarMode} from "../../store/preferences/healthVisibility";
 import {NOTICE_CHANNELS,NOTICE_LABELS,DEFAULT_NOTICE_CHANNELS} from '../../combat/noticeModel';
 import { HUD_GROUP_LABELS } from "../../store/preferences/index";
@@ -59,6 +60,7 @@ export function SettingsMenu() {
   const render = useRenderSettingsStore();
   const debug = useDebugViewStore();
   const prefs = usePreferencesStore();
+  const tireEffects=useTireEffectsSettings();
   const initialTab = useUIStore((s) => s.settingsTab);
   const back = useUIStore((s) => s.backToParentMenu);
   const [pendingBinding, setPendingBinding] = useState<BindingAction | null>(
@@ -397,8 +399,10 @@ export function SettingsMenu() {
             id: "audio",
             label: "Audio",
             description:
-              "The vehicle audio components in this build are inactive. Mixer controls will become available with engine, world and voice playback.",
+              "Tire squeal follows ground contact and modeled skid intensity. Engine, world and voice mixers are still pending.",
             rows: [
+              {id:'tire-volume',label:'Tire squeal volume',value:`${Math.round(tireEffects.volume*100)}%`,adjustable:true,action:direction=>tireEffects.setVolume(Math.round((tireEffects.volume+direction*.05)*100)/100)},
+              {id:'tire-marks',label:'Skid marks',value:tireEffects.marks?'On':'Off',action:()=>tireEffects.setMarks(!tireEffects.marks)},
               upcoming("master", "Master volume", "Volume for all playback."),
               upcoming(
                 "engine",

@@ -71,7 +71,8 @@
               ],
               0.416,
               0.0,
-              0.0
+              0.0,
+              null
             ],
             [
               "fl",
@@ -88,7 +89,8 @@
               ],
               0.416,
               0.0,
-              0.0
+              0.0,
+              null
             ],
             [
               "rr",
@@ -105,7 +107,8 @@
               ],
               0.416,
               0.0,
-              0.0
+              0.0,
+              null
             ],
             [
               "rl",
@@ -122,7 +125,8 @@
               ],
               0.416,
               0.0,
-              0.0
+              0.0,
+              null
             ]
           ],
           [
@@ -291,7 +295,8 @@
               ],
               0.33,
               0.0,
-              0.0
+              0.0,
+              null
             ],
             [
               "fl",
@@ -308,7 +313,8 @@
               ],
               0.33,
               0.0,
-              0.0
+              0.0,
+              null
             ],
             [
               "rr",
@@ -325,7 +331,8 @@
               ],
               0.33,
               0.0,
-              0.0
+              0.0,
+              null
             ],
             [
               "rl",
@@ -342,7 +349,8 @@
               ],
               0.33,
               0.0,
-              0.0
+              0.0,
+              null
             ]
           ],
           [
@@ -494,7 +502,8 @@
               ],
               0.4134,
               0.0,
-              0.0
+              0.0,
+              null
             ],
             [
               "fl",
@@ -511,7 +520,8 @@
               ],
               0.4134,
               0.0,
-              0.0
+              0.0,
+              null
             ],
             [
               "rr",
@@ -528,7 +538,8 @@
               ],
               0.4134,
               0.0,
-              0.0
+              0.0,
+              null
             ],
             [
               "rl",
@@ -545,7 +556,8 @@
               ],
               0.4134,
               0.0,
-              0.0
+              0.0,
+              null
             ]
           ],
           [
@@ -643,7 +655,7 @@
       }
     ],
     "type": "snapshot_compact",
-    "version": 1,
+    "version": 2,
     "world_id": 9
   },
   "delta": {
@@ -694,7 +706,7 @@
       ]
     ],
     "type": "snapshot_delta",
-    "version": 1,
+    "version": 2,
     "world_id": 9
   },
   "keyframe": {
@@ -770,7 +782,8 @@
               ],
               0.416,
               0.0,
-              0.0
+              0.0,
+              null
             ],
             [
               "fl",
@@ -787,7 +800,8 @@
               ],
               0.416,
               0.0,
-              0.0
+              0.0,
+              null
             ],
             [
               "rr",
@@ -804,7 +818,8 @@
               ],
               0.416,
               0.0,
-              0.0
+              0.0,
+              null
             ],
             [
               "rl",
@@ -821,7 +836,8 @@
               ],
               0.416,
               0.0,
-              0.0
+              0.0,
+              null
             ]
           ],
           [
@@ -990,7 +1006,8 @@
               ],
               0.33,
               0.0,
-              0.0
+              0.0,
+              null
             ],
             [
               "fl",
@@ -1007,7 +1024,8 @@
               ],
               0.33,
               0.0,
-              0.0
+              0.0,
+              null
             ],
             [
               "rr",
@@ -1024,7 +1042,8 @@
               ],
               0.33,
               0.0,
-              0.0
+              0.0,
+              null
             ],
             [
               "rl",
@@ -1041,7 +1060,8 @@
               ],
               0.33,
               0.0,
-              0.0
+              0.0,
+              null
             ]
           ],
           [
@@ -1193,7 +1213,8 @@
               ],
               0.4134,
               0.0,
-              0.0
+              0.0,
+              null
             ],
             [
               "fl",
@@ -1210,7 +1231,8 @@
               ],
               0.4134,
               0.0,
-              0.0
+              0.0,
+              null
             ],
             [
               "rr",
@@ -1227,7 +1249,8 @@
               ],
               0.4134,
               0.0,
-              0.0
+              0.0,
+              null
             ],
             [
               "rl",
@@ -1244,7 +1267,8 @@
               ],
               0.4134,
               0.0,
-              0.0
+              0.0,
+              null
             ]
           ],
           [
@@ -1342,7 +1366,7 @@
       }
     ],
     "type": "snapshot_compact",
-    "version": 1,
+    "version": 2,
     "world_id": 9
   },
   "legacy": {
@@ -1520,6 +1544,7 @@
                 1.0
               ],
               "steer_angle": 0.0,
+              "tire_contact": null,
               "wheel_speed": 0.0
             },
             {
@@ -1538,6 +1563,7 @@
                 1.0
               ],
               "steer_angle": 0.0,
+              "tire_contact": null,
               "wheel_speed": 0.0
             },
             {
@@ -1556,6 +1582,7 @@
                 1.0
               ],
               "steer_angle": 0.0,
+              "tire_contact": null,
               "wheel_speed": 0.0
             },
             {
@@ -1574,6 +1601,7 @@
                 1.0
               ],
               "steer_angle": 0.0,
+              "tire_contact": null,
               "wheel_speed": 0.0
             }
           ]
@@ -1728,6 +1756,7 @@
                 1.0
               ],
               "steer_angle": 0.0,
+              "tire_contact": null,
               "wheel_speed": 0.0
             },
             {
@@ -1746,6 +1775,7 @@
                 1.0
               ],
               "steer_angle": 0.0,
+              "tire_contact": null,
               "wheel_speed": 0.0
             },
             {
@@ -1764,6 +1794,7 @@
                 1.0
               ],
               "steer_angle": 0.0,
+              "tire_contact": null,
               "wheel_speed": 0.0
             },
             {
@@ -1782,6 +1813,7 @@
                 1.0
               ],
               "steer_angle": 0.0,
+              "tire_contact": null,
               "wheel_speed": 0.0
             }
           ]
@@ -1936,6 +1968,7 @@
                 1.0
               ],
               "steer_angle": 0.0,
+              "tire_contact": null,
               "wheel_speed": 0.0
             },
             {
@@ -1954,6 +1987,7 @@
                 1.0
               ],
               "steer_angle": 0.0,
+              "tire_contact": null,
               "wheel_speed": 0.0
             },
             {
@@ -1972,6 +2006,7 @@
                 1.0
               ],
               "steer_angle": 0.0,
+              "tire_contact": null,
               "wheel_speed": 0.0
             },
             {
@@ -1990,6 +2025,7 @@
                 1.0
               ],
               "steer_angle": 0.0,
+              "tire_contact": null,
               "wheel_speed": 0.0
             }
           ]
@@ -2024,7 +2060,7 @@
       ]
     ],
     "type": "snapshot_delta",
-    "version": 1,
+    "version": 2,
     "world_id": 9
   },
   "returned": {
@@ -2202,6 +2238,7 @@
                 1.0
               ],
               "steer_angle": 0.0,
+              "tire_contact": null,
               "wheel_speed": 0.0
             },
             {
@@ -2220,6 +2257,7 @@
                 1.0
               ],
               "steer_angle": 0.0,
+              "tire_contact": null,
               "wheel_speed": 0.0
             },
             {
@@ -2238,6 +2276,7 @@
                 1.0
               ],
               "steer_angle": 0.0,
+              "tire_contact": null,
               "wheel_speed": 0.0
             },
             {
@@ -2256,6 +2295,7 @@
                 1.0
               ],
               "steer_angle": 0.0,
+              "tire_contact": null,
               "wheel_speed": 0.0
             }
           ]
@@ -2410,6 +2450,7 @@
                 1.0
               ],
               "steer_angle": 0.0,
+              "tire_contact": null,
               "wheel_speed": 0.0
             },
             {
@@ -2428,6 +2469,7 @@
                 1.0
               ],
               "steer_angle": 0.0,
+              "tire_contact": null,
               "wheel_speed": 0.0
             },
             {
@@ -2446,6 +2488,7 @@
                 1.0
               ],
               "steer_angle": 0.0,
+              "tire_contact": null,
               "wheel_speed": 0.0
             },
             {
@@ -2464,6 +2507,7 @@
                 1.0
               ],
               "steer_angle": 0.0,
+              "tire_contact": null,
               "wheel_speed": 0.0
             }
           ]
@@ -2618,6 +2662,7 @@
                 1.0
               ],
               "steer_angle": 0.0,
+              "tire_contact": null,
               "wheel_speed": 0.0
             },
             {
@@ -2636,6 +2681,7 @@
                 1.0
               ],
               "steer_angle": 0.0,
+              "tire_contact": null,
               "wheel_speed": 0.0
             },
             {
@@ -2654,6 +2700,7 @@
                 1.0
               ],
               "steer_angle": 0.0,
+              "tire_contact": null,
               "wheel_speed": 0.0
             },
             {
@@ -2672,6 +2719,7 @@
                 1.0
               ],
               "steer_angle": 0.0,
+              "tire_contact": null,
               "wheel_speed": 0.0
             }
           ]
@@ -2865,6 +2913,7 @@
                 1.0
               ],
               "steer_angle": 0.0,
+              "tire_contact": null,
               "wheel_speed": 0.0
             },
             {
@@ -2883,6 +2932,7 @@
                 1.0
               ],
               "steer_angle": 0.0,
+              "tire_contact": null,
               "wheel_speed": 0.0
             },
             {
@@ -2901,6 +2951,7 @@
                 1.0
               ],
               "steer_angle": 0.0,
+              "tire_contact": null,
               "wheel_speed": 0.0
             },
             {
@@ -2919,6 +2970,7 @@
                 1.0
               ],
               "steer_angle": 0.0,
+              "tire_contact": null,
               "wheel_speed": 0.0
             }
           ]
@@ -3073,6 +3125,7 @@
                 1.0
               ],
               "steer_angle": 0.0,
+              "tire_contact": null,
               "wheel_speed": 0.0
             },
             {
@@ -3091,6 +3144,7 @@
                 1.0
               ],
               "steer_angle": 0.0,
+              "tire_contact": null,
               "wheel_speed": 0.0
             },
             {
@@ -3109,6 +3163,7 @@
                 1.0
               ],
               "steer_angle": 0.0,
+              "tire_contact": null,
               "wheel_speed": 0.0
             },
             {
@@ -3127,6 +3182,7 @@
                 1.0
               ],
               "steer_angle": 0.0,
+              "tire_contact": null,
               "wheel_speed": 0.0
             }
           ]
@@ -3281,6 +3337,7 @@
                 1.0
               ],
               "steer_angle": 0.0,
+              "tire_contact": null,
               "wheel_speed": 0.0
             },
             {
@@ -3299,6 +3356,7 @@
                 1.0
               ],
               "steer_angle": 0.0,
+              "tire_contact": null,
               "wheel_speed": 0.0
             },
             {
@@ -3317,6 +3375,7 @@
                 1.0
               ],
               "steer_angle": 0.0,
+              "tire_contact": null,
               "wheel_speed": 0.0
             },
             {
@@ -3335,6 +3394,7 @@
                 1.0
               ],
               "steer_angle": 0.0,
+              "tire_contact": null,
               "wheel_speed": 0.0
             }
           ]

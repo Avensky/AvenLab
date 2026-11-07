@@ -111,6 +111,7 @@ pub(crate) struct WheelGroundHit {
     pub origin: Point<Real>,
     pub hit_point: Point<Real>,
     pub ground_normal: Vector<Real>,
+    pub surface_normal: Vector<Real>,
     pub compression: f32,
     pub compression_ratio: f32,
     pub overtravel: f32,
@@ -157,6 +158,7 @@ pub(crate) fn cast_wheel_ground(
         origin,
         hit_point: origin + dir * toi,
         ground_normal: Vector::y(),
+        surface_normal: hit.normal,
         overtravel: (wheel.rest_length - length).max(0.0),
         compression,
         compression_ratio: compression / wheel.max_length.max(1.0e-6),
@@ -248,7 +250,7 @@ mod tests {
             world_rotation: [0.0, 0.0, 0.0, 1.0], wheel_speed: 0.0, steer_angle: 0.0,
             stiffness: 48295.38, damping: 8255.57, drive: false, steer: true,
             compression: 0.0, compression_ratio: 0.0,
-            tire_state: crate::aven_tire::state::TireState::Grip,
+            skid_intensity: 0.0, tire_contact: None, tire_state: crate::aven_tire::state::TireState::Grip,
             thermal: Default::default(),
         }
     }

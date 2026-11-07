@@ -6,7 +6,7 @@ use std::sync::{Arc, atomic::{AtomicU8, AtomicU64, Ordering}};
 use tokio::sync::watch;
 use crate::state::{PhysicsFrame, PhysicsSnapshot, PhysicsEntitySnapshot};
 
-pub const VERSION: u8 = 1;
+pub const VERSION: u8 = 2;
 pub const AUX_DIVISOR: u64 = 6; // 10 Hz inspection / private slow readings.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct DriverLane {
@@ -73,7 +73,7 @@ impl Compact for crate::state::VehicleColliderShape {
 }
 impl Compact for crate::vehicle_state::PhysicsWheelSnapshot {
     fn write<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        row!(s; self.id, self.position, self.rotation, self.radius, self.wheel_speed, self.steer_angle)
+        row!(s; self.id, self.position, self.rotation, self.radius, self.wheel_speed, self.steer_angle, self.tire_contact)
     }
 }
 impl Compact for crate::vehicle_health::VehicleHealth {

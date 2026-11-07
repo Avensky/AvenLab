@@ -73,7 +73,7 @@ export class SnapshotDecoder {
         this.requested=false;this.missing=false;
         return this.project(decoded,playerId);
       }
-      if(wire.type!=='snapshot_delta'||wire.version!==1||!this.base||
+      if(wire.type!=='snapshot_delta'||![1,2].includes(wire.version)||!this.base||wire.version!==this.base.version||
           wire.world_id!==this.base.world_id||wire.base_id!==this.base.base_id) throw new Error('Missing keyframe');
       const data=apply(this.base.data,wire.patch);
       const decoded=decodeCompactSnapshot({...this.base,data});

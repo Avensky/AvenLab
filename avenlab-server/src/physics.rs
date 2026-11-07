@@ -349,6 +349,7 @@ impl PhysicsWorld {
                     wheel_speed: w.wheel_speed,
                     steer_angle: w.steer_angle,
                     grounded: w.grounded,
+                    tire_contact: w.tire_contact,
                 }
             })
             .collect()

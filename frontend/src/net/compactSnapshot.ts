@@ -1,4 +1,4 @@
-/** Version-one self-contained snapshot tuples. Field order matches snapshot_wire.rs.
+/** Versioned self-contained snapshot tuples (v1 legacy, v2 tire effects). Field order matches snapshot_wire.rs.
  * Normalize once at the network boundary; all gameplay/HUD stores keep one shape.
  * Full tuples need no previous state; snapshotDecoder restores deltas first.
  */
@@ -21,7 +21,7 @@ function unpack(keys: readonly string[], value: unknown): Row {
 export function decodeCompactSnapshot(message: unknown): Row | null {
   try {
     const wire = message as Row;
-    if (wire?.type !== 'snapshot_compact' || wire.version !== 1 || !Number.isSafeInteger(wire.world_id)) return null;
+    if (wire?.type !== 'snapshot_compact' || ![1,2].includes(wire.version) || !Number.isSafeInteger(wire.world_id)) return null;
     const data = unpack(['tick','simulation_time_s','tick_dt_s','entities','match_state','asset_health','server_timing'], wire.data);
     if(data.server_timing?.drawbridge) {
       const {drawbridge,...timing}=data.server_timing;data.drawbridge=drawbridge;data.server_timing=timing;
@@ -45,7 +45,10 @@ export function decodeCompactSnapshot(message: unknown): Row | null {
       if (entity.barrage === null) delete entity.barrage;
       if (entity.wheels !== null) {
         if (!Array.isArray(entity.wheels) || entity.wheels.length > 32) throw new Error('Invalid wheels');
-        entity.wheels = entity.wheels.map((wheel: unknown,index:number) => ({...unpack(fields.wheel, wheel),grounded:Boolean((wheelMask>>>index)&1)}));
+        entity.wheels = entity.wheels.map((wheel: unknown,index:number) => {
+          const keys=wire.version===2?[...fields.wheel,'tire_contact']:fields.wheel;
+          return {...unpack(keys,wheel),grounded:Boolean((wheelMask>>>index)&1)};
+        });
       }
       return entity;
     });

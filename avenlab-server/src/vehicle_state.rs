@@ -125,6 +125,8 @@ pub struct PhysicsWheelSnapshot {
     pub wheel_speed: f32,
     pub steer_angle: f32,
     pub grounded: bool,
+    /// Contact XYZ, surface normal XYZ, and normalized modeled skid intensity.
+    pub tire_contact: Option<[f32; 7]>,
 }
 
 #[derive(Clone, Debug)]
@@ -151,6 +153,8 @@ pub struct Wheel {
     pub compression: f32,          // current suspension compression (for debug visualization)
     pub compression_ratio: f32,    // current suspension compression ratio (for debug visualization)
 
+    pub skid_intensity: f32,
+    pub tire_contact: Option<[f32; 7]>,
     pub tire_state: TireState,
     pub thermal: crate::tire_thermals::TireThermal,
 }

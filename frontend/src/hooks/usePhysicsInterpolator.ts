@@ -122,6 +122,7 @@ function interpolateWheels(
       ...wheel,
       position: start.toArray() as [number,number,number],
       rotation: startRotation.toArray() as [number,number,number,number],
+      tire_contact: t<1 ? (prev.tire_contact && wheel.tire_contact ? prev.tire_contact.map((v,i)=>v+(wheel.tire_contact![i]-v)*t) as WheelSnapshot['tire_contact'] : prev.tire_contact) : wheel.tire_contact,
       wheel_speed: lerpNumber(prev.wheel_speed, wheel.wheel_speed, t),
       steer_angle: lerpNumber(prev.steer_angle, wheel.steer_angle, t),
       // Contact is a discrete backend result, not a frontend collision test.

@@ -8,12 +8,13 @@ static NEXT_BASE: AtomicU64 = AtomicU64::new(1);
 const KEYFRAME_TICKS: u64 = 60;
 #[derive(Debug)]
 pub struct Keyframe { pub id: u64, pub packet: String }
-struct Base { tick: u64, ids: Vec<String>, data: Box<RawValue>, keyframe: Arc<Keyframe> }
+struct Base { version:u8, tick: u64, ids: Vec<String>, data: Box<RawValue>, keyframe: Arc<Keyframe> }
 #[derive(Default)]
 pub struct SnapshotCache { bases: HashMap<u8, Base> }
 #[derive(Deserialize)]
 struct Envelope<'a> {
     world_id: usize,
+    version:u8,
     #[serde(borrow)]
     data: &'a RawValue,
 }
@@ -77,15 +78,15 @@ impl SnapshotCache {
         let ids: Vec<String> = array(root[3]).iter().map(|entity|
             serde_json::from_str(array(entity)[0].get()).expect("entity ID")).collect();
         if let Some(base) = self.bases.get(&scope).filter(|base|
-            tick>=base.tick && tick-base.tick<KEYFRAME_TICKS && base.ids==ids) {
+            envelope.version==base.version && tick>=base.tick && tick-base.tick<KEYFRAME_TICKS && base.ids==ids) {
             let change = patch(&base.data, data).unwrap_or_else(|| "null".into());
-            let update = format!("{{\"type\":\"snapshot_delta\",\"version\":1,\"world_id\":{},\"base_id\":{},\"patch\":{change}}}", envelope.world_id, base.keyframe.id);
+            let update = format!("{{\"type\":\"snapshot_delta\",\"version\":{},\"world_id\":{},\"base_id\":{},\"patch\":{change}}}", envelope.version, envelope.world_id, base.keyframe.id);
             if update.len() < full.len() { return (update, base.keyframe.clone()); }
         }
         let id = NEXT_BASE.fetch_add(1, Ordering::Relaxed);
-        let packet = format!("{{\"type\":\"snapshot_compact\",\"version\":1,\"world_id\":{},\"base_id\":{id},\"data\":{}}}", envelope.world_id, data.get());
+        let packet = format!("{{\"type\":\"snapshot_compact\",\"version\":{},\"world_id\":{},\"base_id\":{id},\"data\":{}}}", envelope.version, envelope.world_id, data.get());
         let keyframe = Arc::new(Keyframe { id, packet: packet.clone() });
-        self.bases.insert(scope, Base { tick, ids, data: data.to_owned(), keyframe: keyframe.clone() });
+        self.bases.insert(scope, Base { version:envelope.version, tick, ids, data: data.to_owned(), keyframe: keyframe.clone() });
         (packet, keyframe)
     }
 }

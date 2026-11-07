@@ -118,6 +118,7 @@ impl PhysicsWorld {
             let Some(vehicle) = self.vehicles.get_mut(player_id) else { continue };
             let disabled = self.vehicle_health.get(player_id).is_some_and(|h|h.defeated);
             if wheels.is_empty() { continue; }
+            for wheel in wheels.iter_mut(){wheel.skid_intensity=0.0;wheel.tire_contact=None;}
 
             let longitudinal_speed = (body_ro.rotation().inverse() * body_ro.linvel()).z;
             let (mut throttle, mut brake) = if disabled { (0.0,0.0) } else { vehicle.cockpit.advance(dt, longitudinal_speed, vehicle.throttle, vehicle.brake, vehicle.handbrake, vehicle.powertrain.running) };
@@ -339,6 +340,12 @@ impl PhysicsWorld {
                 if let Some(wheel) = wheels.iter_mut()
                     .find(|wheel| WheelId::from_debug(&wheel.debug_id) == patch.wheel) {
                     wheel.tire_state = patch.tire_state;
+                    if !disabled && !vehicle.config.tracked {
+                        wheel.skid_intensity=modeled_skid(patch.grounded,patch.normal_force,patch.v_long,patch.v_lat,
+                            patch.drive,drive_demand,patch.mu_long,ctx.tcs_enabled,ctx.abs_enabled,
+                            patch.tire_state==crate::aven_tire::state::TireState::Lock,
+                            control.handbrake>0.2&&!patch.wheel.is_front());
+                    }
                 }
             }
             for impulse in tire_impulses {
@@ -457,6 +464,10 @@ impl PhysicsWorld {
                     origin + strut * wheel.full_droop_length()
                 };
                 wheel.world_center = p3(center);
+                wheel.tire_contact = ground.as_ref().filter(|hit| wheel.skid_intensity>0.01 &&
+                    self.coast.as_ref().and_then(|coast|coast.water_surface_at(hit.hit_point.x,hit.hit_point.z)).is_none_or(|water|hit.hit_point.y>=water))
+                    .map(|hit|[hit.hit_point.x,hit.hit_point.y,hit.hit_point.z,
+                        hit.surface_normal.x,hit.surface_normal.y,hit.surface_normal.z,wheel.skid_intensity]);
                 // Use the same bounded spring travel for forces and wheel presentation.
                 // This refresh runs once after integration, with no extra lift,
                 // force, smoothing or frontend suspension compensation.
@@ -610,6 +621,7 @@ mod tests {
         world.query_pipeline.update(&world.colliders);
         world.refresh_vehicle_wheel_snapshots();
 
+        for wheel in world.wheels.get_mut(&handle).unwrap(){wheel.skid_intensity=0.8;}
         // Emulate a new integrated pose with body roll. Refresh must use it
         // with all hubs attached to the rolled chassis.
         world.bodies[handle].set_translation(vector![20.0, height, 405.0], true);
@@ -627,6 +639,8 @@ mod tests {
             assert!((local.z - wheel.offset.z).abs() < 1.0e-4);
             assert!((snapshot.position[1] - snapshot.radius * roll.angle().cos()).abs() < 1.0e-4);
             assert!(snapshot.grounded);
+            let contact=snapshot.tire_contact.expect("loaded skid has a final ground contact");
+            assert!(contact[1].abs()<1e-4);assert_eq!(&contact[3..6],&[0.,1.,0.]);assert_eq!(contact[6],0.8);
             let dot = snapshot.rotation[0] * body.rotation().i + snapshot.rotation[1] * body.rotation().j
                 + snapshot.rotation[2] * body.rotation().k + snapshot.rotation[3] * body.rotation().w;
             assert!(dot.abs() > 1.0 - 1.0e-5);
@@ -636,13 +650,24 @@ mod tests {
         }
         assert_eq!(world.debug_overlay.chassis[0].position, [20.0, height, 405.0]);
         assert_eq!(world.debug_overlay.suspension_rays.len(), 4);
+        // Decals use the measured slope normal, while the existing suspension
+        // force convention remains unchanged.
+        for (_,collider) in world.colliders.iter_mut(){collider.set_rotation(Rotation::from_axis_angle(&Vector::x_axis(),0.03));}
+        world.query_pipeline.update(&world.colliders);
+        world.bodies[handle].set_translation(vector![0.,height,0.],true);
+        world.bodies[handle].set_rotation(Rotation::identity(),true);
+        world.refresh_vehicle_wheel_snapshots();
+        let contacts:Vec<_>=world.wheel_snapshots_for_body(handle,0.).iter().filter_map(|w|w.tire_contact).collect();
+        assert!(!contacts.is_empty());
+        for contact in contacts{assert!((contact[5]-0.03_f32.sin()).abs()<0.001);assert!((contact[1]+contact[2]*0.03_f32.tan()).abs()<0.001);}
+
         for pitch in [1.2, 2.0, std::f32::consts::PI] {
             let body = &mut world.bodies[handle];
             body.set_translation(vector![20., 3., 405.], true);
             body.set_rotation(Rotation::from_axis_angle(&Vector::x_axis(), pitch), true);
             world.refresh_vehicle_wheel_snapshots();
             for wheel in &world.wheels[&handle] {
-                assert!(!wheel.grounded);
+                assert!(!wheel.grounded);assert!(wheel.tire_contact.is_none());
                 let expected = wheel.offset - Vector::y() * wheel.full_droop_length();
                 let local = world.bodies[handle].position().inverse_transform_point(&Point::from(wheel.world_center));
                 assert!((local - expected).norm() < 0.0001);
@@ -665,4 +690,27 @@ mod drafting_tests {
         for gap in 0..100 {assert!((0.0..=0.3).contains(&draft_reduction(gap as f32,0.0,1.0)));}
         assert!(draft_reduction(8.0,0.0,1.0)>draft_reduction(8.0,1.0,1.0));
     }
+}
+
+// Launch slip is a force-demand proxy: the current solver has no rotating tire inertia.
+fn modeled_skid(grounded:bool,load:f32,long:f32,lateral:f32,driven:bool,demand:f32,mu:f32,tcs:bool,abs:bool,locked:bool,handbrake:bool)->f32{
+    if !grounded||load<50.0{return 0.0;}
+    let drift=((lateral.abs()-1.0)/5.0).clamp(0.0,1.0);
+    let launch=if driven&&!tcs {((demand/(load*mu).max(1.0)-1.05)/1.5).clamp(0.0,1.0)}else{0.0};
+    let braking=if (locked&&!abs)||handbrake {((long.abs()-1.5)/7.0).clamp(0.0,1.0)}else{0.0};
+    drift.max(launch).max(braking)
+}
+#[cfg(test)]
+mod skid_effect_tests {
+ use super::modeled_skid;
+ #[test]fn launch_requires_loaded_driven_tire_and_excess_demand(){
+  let intensity=|ground,drive,demand,tcs|modeled_skid(ground,3000.0,0.0,0.0,drive,demand,1.0,tcs,true,false,false);
+  assert!(intensity(true,true,6000.0,false)>0.5);
+  for value in [intensity(false,true,6000.0,false),intensity(true,false,6000.0,false),intensity(true,true,1500.0,false),intensity(true,true,6000.0,true)]{assert_eq!(value,0.0);}
+ }
+ #[test]fn drift_and_lock_require_movement(){
+  assert!(modeled_skid(true,3000.0,15.0,4.0,false,0.0,1.0,true,true,false,false)>0.5);
+  assert!(modeled_skid(true,3000.0,15.0,0.0,false,0.0,1.0,true,false,true,false)>0.9);
+  assert_eq!(modeled_skid(true,3000.0,0.0,0.0,false,0.0,1.0,true,false,true,false),0.0);
+ }
 }

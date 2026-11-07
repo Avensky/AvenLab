@@ -1,3 +1,4 @@
+import {TireEffects} from './effects/TireEffects';
 import { useConnectionView, useDiagnosticsView, useMotionView } from "../store/session/networkViews";
 import {CtfFlagMarkers} from "../game/stats/CtfFlagMarkers";
 import { VehicleHealthMarkers } from "../combat/VehicleHealthMarkers";
@@ -21,6 +22,7 @@ export function VehicleScene() {
   return (
     <>
       <VehicleRoster />
+      <TireEffects />
       <NetworkWeapons />
       <NetworkHealthPacks />
       <NetworkGuardShields />
