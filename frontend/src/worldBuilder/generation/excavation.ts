@@ -5,7 +5,7 @@ export type RouteOptions = {
   kind: RouteKind; points: V3[]; width: number; height: number; depth: number;
   shoulder?: number; resolution: number; rails: boolean; waterfall: boolean;
 };
-export const SEGMENT_PRESETS = { small: 12, standard: 24, long: 48, extended: 96 } as const;
+export const SEGMENT_PRESETS = { standard: 24, long: 48, extended: 72 } as const;
 export const isExcavatable = (o: LayoutObject) => o.piece.startsWith('mountain-') && !o.piece.includes('waterfall');
 const radians = Math.PI / 180;
 export function colliderBox(id: string, piece: string, position: V3, size: V3, color = '#71777b', yaw = 0, solid = true): LayoutObject {

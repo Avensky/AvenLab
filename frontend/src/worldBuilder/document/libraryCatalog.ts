@@ -96,35 +96,48 @@ function mountainFabrication(carvedCurve90 = false): LayoutPart[] {
   };
   for (let y = cell / 2; y < height; y += cell) {
     const layer = Math.floor(y / cell), hillRadius = 48 - layer * 12;
-    for (let x = cell / 2; x < extent; x += cell)
-      for (let z = cell / 2; z < extent; z += cell) {
-        if (Math.hypot(x - 24, z - 24) > hillRadius) continue;
-        // The 90° road bore is a subtraction from the rock cells. Leave a
-        // 12 m high opening around the measured H27 highway bend centerline.
-        if (carvedCurve90 && y < 12 && tunnelCenter(x, z) < 18) continue;
+    for (let xi = 0; xi < extent / cell; xi++) {
+      const x = cell / 2 + xi * cell;
+      let runStart = -1;
+      const flush = (end: number) => {
+        if (runStart < 0) return;
+        const runLength = (end - runStart) * cell;
+        const runCenter = (runStart + end) * cell / 2 - extent / 2;
         const shade = layer === 0 ? "#6f7779" : layer === 1 ? "#7c8586" : "#8b9290";
         parts.push(box(
-          [(x - extent / 2) / extent, y / height, (z - extent / 2) / extent],
-          [cell / extent, cell / height, cell / extent], shade,
+          [(x - extent / 2) / extent, y / height, runCenter / extent],
+          [cell / extent, cell / height, runLength / extent], shade,
         ));
+        runStart = -1;
+      };
+      for (let zi = 0; zi <= extent / cell; zi++) {
+        const z = cell / 2 + zi * cell;
+        const rock = zi < extent / cell && Math.hypot(x - 24, z - 24) <= hillRadius &&
+          // The 90° road bore is a subtraction from the rock cells. Leave a
+          // 12 m high opening around the measured H27 highway bend centerline.
+          !(carvedCurve90 && y < 12 && tunnelCenter(x, z) < 18);
+        if (rock && runStart < 0) runStart = zi;
+        else if (!rock) flush(zi);
       }
+    }
   }
   return parts;
 }
-function mountainSegmentParts(width: number, height: number, length: number): LayoutPart[] {
+function mountainSegmentParts(width: number, height: number): LayoutPart[] {
   const cell = 12, parts: LayoutPart[] = [];
   for (let y = cell / 2; y < height; y += cell) {
     for (let x = cell / 2; x < width; x += cell) {
       const across = Math.abs((x - width / 2) / (width / 2));
       const ridgeHeight = height * (1 - across);
       if (y >= ridgeHeight) continue;
-      for (let z = cell / 2; z < length; z += cell) {
-        const shade = y < height / 3 ? "#6f7779" : y < height * 2 / 3 ? "#7c8586" : "#8b9290";
-        parts.push(box(
-          [(x - width / 2) / width, y / height, (z - length / 2) / length],
-          [cell / width, cell / height, cell / length], shade,
-        ));
-      }
+      const shade = y < height / 3 ? "#6f7779" : y < height * 2 / 3 ? "#7c8586" : "#8b9290";
+      // Each 12 m cell along a mountain run used to become a separate part.
+      // These adjacent cells are identical, so one full-length box has the
+      // same surface and collision volume with fewer scene objects/shapes.
+      parts.push(box(
+        [(x - width / 2) / width, y / height, 0],
+        [cell / width, cell / height, 1], shade,
+      ));
     }
   }
   return parts;
@@ -133,18 +146,30 @@ function mountainCanalParts(): LayoutPart[] {
   const extent = 72, height = 36, cell = 12, parts: LayoutPart[] = [];
   for (let y = cell / 2; y < height; y += cell) {
     const layer = Math.floor(y / cell), hillRadius = 48 - layer * 12;
-    for (let x = cell / 2; x < extent; x += cell)
-      for (let z = cell / 2; z < extent; z += cell) {
-        if (Math.hypot(x - 36, z - 36) > hillRadius) continue;
-        // Carve a straight 24 m waterway from bank to bank through the lower
-        // 12 m of the rock cells. The seabed/water remain separate parts.
-        if (y < 12 && Math.abs(x - extent / 2) < 18) continue;
+    for (let xi = 0; xi < extent / cell; xi++) {
+      const x = cell / 2 + xi * cell;
+      let runStart = -1;
+      const flush = (end: number) => {
+        if (runStart < 0) return;
+        const runLength = (end - runStart) * cell;
+        const runCenter = (runStart + end) * cell / 2 - extent / 2;
         const shade = layer === 0 ? "#6f7779" : layer === 1 ? "#7c8586" : "#8b9290";
         parts.push(box(
-          [(x - extent / 2) / extent, y / height, (z - extent / 2) / extent],
-          [cell / extent, cell / height, cell / extent], shade,
+          [(x - extent / 2) / extent, y / height, runCenter / extent],
+          [cell / extent, cell / height, runLength / extent], shade,
         ));
+        runStart = -1;
+      };
+      for (let zi = 0; zi <= extent / cell; zi++) {
+        const z = cell / 2 + zi * cell;
+        // Carve a straight 24 m waterway from bank to bank through the lower
+        // 12 m of the rock cells. The seabed/water remain separate parts.
+        const rock = zi < extent / cell && Math.hypot(x - 36, z - 36) <= hillRadius &&
+          !(y < 12 && Math.abs(x - extent / 2) < 18);
+        if (rock && runStart < 0) runStart = zi;
+        else if (!rock) flush(zi);
       }
+    }
   }
   parts.push(box([0,.045,0],[.34,.09,1],"#515354"));
   parts.push(box([0,.17,0],[.33,.015,1],"#28748b",false));
@@ -192,22 +217,22 @@ export const EXTRA_PIECES: Piece[] = [
   {
     id:"mountain-segment-small",label:"Mountain segment · Small · 24 m",category:"blocks",
     description:"24 m default segment · 48 m wide × 24 m high · solid low-poly rock cells. Add matching segments end-to-end.",
-    size:[48,24,24],color:"#7c8586",parts:mountainSegmentParts(48,24,24),
+    size:[48,24,24],color:"#7c8586",parts:mountainSegmentParts(48,24),
   },
   {
     id:"mountain-segment-standard",label:"Mountain segment · Standard · 24 m",category:"blocks",
     description:"24 m default segment · 72 m wide × 36 m high · solid low-poly rock cells. Add matching segments end-to-end.",
-    size:[72,36,24],color:"#7c8586",parts:mountainSegmentParts(72,36,24),
+    size:[72,36,24],color:"#7c8586",parts:mountainSegmentParts(72,36),
   },
   {
     id:"mountain-segment-long",label:"Mountain segment · Long · 48 m",category:"blocks",
     description:"48 m segment · 72 m wide × 36 m high · solid low-poly rock cells. Add matching segments end-to-end.",
-    size:[72,36,48],color:"#7c8586",parts:mountainSegmentParts(72,36,48),
+    size:[72,36,48],color:"#7c8586",parts:mountainSegmentParts(72,36),
   },
   {
     id:"mountain-segment-broad",label:"Mountain segment · Broad · 72 m",category:"blocks",
     description:"72 m segment · 96 m wide × 48 m high · solid low-poly rock cells. Add matching segments end-to-end.",
-    size:[96,48,72],color:"#7c8586",parts:mountainSegmentParts(96,48,72),
+    size:[96,48,72],color:"#7c8586",parts:mountainSegmentParts(96,48),
   },
   {
     id:"mountain-curved-tunnel",label:"Mountain fabrication · curved tunnel cut",category:"blocks",

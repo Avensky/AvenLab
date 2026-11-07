@@ -29,6 +29,7 @@ import "./heroWorkshop.css";
 import "../../theme/vehicleStudio.css";
 
 const NO_OWNED_SKINS:string[]=[];
+const NO_VEHICLE_PARTS:VehicleStudioPart[]=[];
 
 export function HeroLoadoutSync(){
  const profile=useSocialStore(s=>s.view?.profile);
@@ -62,7 +63,7 @@ export function HeroWorkshop(){
  const [studioFooter,setStudioFooter]=useState<ReactNode|null>(null);
  const [vehicleModStages,setVehicleModStages]=useState<Record<string,Record<string,number>>>({});
  const [portraitCapture,setPortraitCapture]=useState<string|null>(null),[portraitMessage,setPortraitMessage]=useState("");
- const availableParts=useVehicleStudioStore(s=>s.availableVehicle===definition?.vehicle?s.availableParts:[]);
+ const availableParts=useVehicleStudioStore(s=>s.availableVehicle===definition?.vehicle?s.availableParts:NO_VEHICLE_PARTS);
  const openedParts=useVehicleStudioStore(s=>s.parts);
  const vehicleFlags=useInputStore(s=>s.input.vehicleMask);
  const setStudioFooterContent=useCallback((content:ReactNode|null)=>setStudioFooter(content),[]);
@@ -156,8 +157,8 @@ export function HeroWorkshop(){
  </>;
  const portraitFooter=<button type="button" onClick={()=>void capturePortrait()} disabled={!definition}>CAPTURE CURRENT PORTRAIT</button>;
  const currentFooter=studioTab==="performance"?studioFooter:studioTab==="paint"?paintFooter:studioTab==="body"?bodyFooter:studioTab==="lighting"?lightingFooter:portraitFooter;
- return <section ref={root} className="game-ui menu-surface alpha-selection hero-selection hero-workshop" data-editing={editing} data-has-selection={hero!==null} inert={guideOpen} tabIndex={-1} aria-label="Vehicle modifications" data-controller-form data-controller-rows>
-  <SelectionHeader title="VEHICLE MODS" onBack={()=>void back()}/>
+ return <section ref={root} className="game-ui menu-surface alpha-selection hero-selection hero-workshop" data-editing={editing} data-has-selection={hero!==null} inert={guideOpen} tabIndex={-1} aria-label="Heroes garage" data-controller-form data-controller-rows>
+  <SelectionHeader title="HEROES" onBack={()=>void back()}/>
   <div className="hero-selection-stage hero-workshop-body">
    {!editing&&<div className="hero-workshop-collection"><HeroRoster selected={hero} main={main} filter={role} busy={!owner} onChoose={openHero} onFilter={filter=>{setRole(filter);setEditing(false);}}/>
     <p className="hero-workshop-hint">Select a portrait to customize. Hold X to choose your main.</p>
