@@ -52,8 +52,8 @@ export function VehicleStudio({
   const setActiveTab = useVehicleStudioStore((state) => state.setActiveTab);
   useEffect(() => {
     setActiveTab(tab);
-    return () => setActiveTab(null);
   }, [setActiveTab, tab]);
+  useEffect(() => () => setActiveTab(null), [setActiveTab]);
 
   const rows: [string, number, string][] = [
     ["POWER", summary.engine_force, "relative"],
