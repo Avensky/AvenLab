@@ -29,13 +29,19 @@ export function createPortraitCache(render: (model: VehicleModelId, appearance: 
   };
 }
 const readyPortraits = new Map<string, string>();
-const listeners = new Set<() => void>();
+const listeners = new Map<string, Set<() => void>>();
 /** Live squad cards can reuse a finished portrait without decoding a GLB or
  * creating another GPU context while the main scene is being simulated. */
 export const peekStyledPortrait = (model: VehicleModelId, appearance: HeroAppearance) =>
   readyPortraits.get(portraitStyleKey(model, appearance)) ?? null;
-export const subscribeStyledPortraits = (listener: () => void) => {
-  listeners.add(listener); return () => {listeners.delete(listener);};
+export const subscribeStyledPortrait = (key: string, listener: () => void) => {
+  let subscribers=listeners.get(key);
+  if(!subscribers){subscribers=new Set();listeners.set(key,subscribers);}
+  subscribers.add(listener);
+  return () => {
+    subscribers!.delete(listener);
+    if(!subscribers!.size)listeners.delete(key);
+  };
 };
 export const getStyledPortrait = createPortraitCache(async (model, appearance) => {
   // A job queued in the menu may reach the front only after deployment. Do not
@@ -47,6 +53,6 @@ export const getStyledPortrait = createPortraitCache(async (model, appearance) =
   const key = portraitStyleKey(model, appearance);
   readyPortraits.delete(key); readyPortraits.set(key, image);
   while (readyPortraits.size > 48) readyPortraits.delete(readyPortraits.keys().next().value!);
-  for (const listener of listeners) listener();
+  for (const listener of listeners.get(key) ?? []) listener();
   return image;
 });

@@ -1,8 +1,8 @@
-import { memo, useEffect, useState, useSyncExternalStore, type CSSProperties } from "react";
+import { memo, useCallback, useEffect, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { HEROES, heroForVehicle } from "../../store/alpha/alphaStore";
 import { FACTORY_APPEARANCE, useHeroLoadouts, type HeroAppearance } from "../../vehicles/cosmetics/heroLoadouts";
 import type { VehicleModelId } from "../../vehicles/tools/vehicleModelPaths";
-import { getStyledPortrait, needsStyledPortrait, peekStyledPortrait, portraitStyleKey, subscribeStyledPortraits } from "./heroPortraitCache";
+import { getStyledPortrait, needsStyledPortrait, peekStyledPortrait, portraitStyleKey, subscribeStyledPortrait } from "./heroPortraitCache";
 import { isDrivingScreen, useUIStore } from "../../store/menus/uiStore";
 
 export const HeroPortrait = memo(function HeroPortrait({ hero, className = "", appearance, cacheOnly = false, showStyleStatus = true }: {
@@ -24,7 +24,8 @@ export const HeroPortrait = memo(function HeroPortrait({ hero, className = "", a
   const model = item?.vehicle as VehicleModelId | undefined;
   const key = portraitStyleKey(model ?? "empty", style);
   const custom = Boolean(model && needsStyledPortrait(style));
-  const cached = useSyncExternalStore(subscribeStyledPortraits,
+  const subscribe = useCallback((listener:()=>void)=>subscribeStyledPortrait(key,listener),[key]);
+  const cached = useSyncExternalStore(subscribe,
     () => custom && model ? peekStyledPortrait(model, style) : null, () => null);
   const [image, setImage] = useState<{ key: string; src: string | null }>({ key: "", src: null });
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
