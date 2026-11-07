@@ -72,6 +72,11 @@ export type Piece = {
   label: string;
   category:
     | "roads"
+    | "road-rails"
+    | "prefabs"
+    | "tunnels"
+    | "greenery"
+    | "city-props"
     | "structures"
     | "props"
     | "chunks2"
@@ -83,6 +88,8 @@ export type Piece = {
     | "jumps"
     | "vehicles"
     | "boats";
+  collection?: string;
+  source?: string;
   description: string;
   size: V3;
   color: string;
@@ -105,9 +112,9 @@ const box = (
   ...(solid ? {} : { solid: false }),
 });
 export const PIECES: Piece[] = [
-  ...EXTRA_PIECES,
-  ...kitPieces,
-  ...harborPieces,
+  ...EXTRA_PIECES.map((piece) => ({ ...piece, collection: piece.collection ?? "AvenLab Core" })),
+  ...kitPieces.map((piece) => ({ ...piece, collection: piece.collection ?? "World Builder Map Kit" })),
+  ...harborPieces.map((piece) => ({ ...piece, collection: piece.collection ?? "Harbor Infrastructure" })),
   ...streetProps,
   ...VEHICLE_ASSETS.map((a) => ({
     id: `vehicle-${a.id}`,
@@ -119,6 +126,7 @@ export const PIECES: Piece[] = [
     color: a.color,
     parts: [],
     solid: false,
+    collection: "Vehicle Catalog",
     vehicle: { asset: a.id, lod: "auto" as const },
   })),
   ...MODEL_ASSETS.map((asset) => ({
@@ -130,6 +138,8 @@ export const PIECES: Piece[] = [
     size: asset.size,
     color: "#50769b",
     parts: [],
+    collection: asset.collection ?? "Imported Model Assets",
+    source: asset.source ?? asset.lods[0]?.url,
     model: newModel(asset),
   })),
   ...ROAD_ASSETS.map((asset) => ({
@@ -141,6 +151,8 @@ export const PIECES: Piece[] = [
     size: asset.size,
     color: "#455466",
     parts: [],
+    collection: asset.collection ?? "Road Geometry",
+    source: asset.source ?? asset.lods[0]?.url,
     road: newRoad(asset),
   })),
   {
@@ -273,7 +285,7 @@ export const PIECES: Piece[] = [
       box([0.36, 0.92, 0], [0.25, 0.04, 0.65], "#d4d6a5"),
     ],
   },
-];
+].map((piece) => ({ ...piece, collection: piece.collection ?? "AvenLab Core" }));
 // Harbor railings are independent, destructible modules rather than one long
 // collider. Leave headroom for their generated spans and for player edits.
 export const MAX_LAYOUT_OBJECTS = 3072,

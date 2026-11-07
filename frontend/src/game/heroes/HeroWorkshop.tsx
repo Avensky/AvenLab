@@ -15,7 +15,7 @@ import {HoldMainButton} from "./HoldMainButton";
 import {SelectionHeader,SelectionFooter} from "../alpha/SelectionChrome";
 import {ControllerAction} from "../../components/controller";
 import {HeroSaveQueue,type HeroSaveStatus} from "./HeroSaveQueue";
-import {VehicleStudio,STOCK_VEHICLE_SUMMARY,type VehiclePerformanceSummary,type VehicleStudioTab} from "./VehicleStudio";
+import {VehicleStudio,VehicleStudioNavigation,STOCK_VEHICLE_SUMMARY,type VehiclePerformanceSummary,type VehicleStudioTab} from "./VehicleStudio";
 import {VEHICLE_PAINT_PRESETS} from "./vehiclePaintPresets";
 import {vehicleCatalog} from "../../store/selection/vehicleCatalog";
 import {useVehicleStudioStore,type VehicleStudioPart} from "./vehicleStudioStore";
@@ -30,6 +30,7 @@ import "../../theme/vehicleStudio.css";
 
 const NO_OWNED_SKINS:string[]=[];
 const NO_VEHICLE_PARTS:VehicleStudioPart[]=[];
+const NO_VEHICLE_MOD_STAGES:Record<string,number>={};
 
 export function HeroLoadoutSync(){
  const profile=useSocialStore(s=>s.view?.profile);
@@ -160,16 +161,16 @@ export function HeroWorkshop(){
  const portraitFooter=<button type="button" onClick={()=>void capturePortrait()} disabled={!definition}>CAPTURE CURRENT PORTRAIT</button>;
  const currentFooter=studioTab==="overview"?<span>Vehicle overview · stock baseline and class profile</span>:studioTab==="performance"?studioFooter:studioTab==="paint"?paintFooter:studioTab==="body"?bodyFooter:studioTab==="lighting"?lightingFooter:portraitFooter;
  return <section ref={root} className="game-ui menu-surface alpha-selection hero-selection hero-workshop" data-editing={editing} data-has-selection={hero!==null} inert={guideOpen} tabIndex={-1} aria-label="Heroes garage" data-controller-form data-controller-rows>
-  <SelectionHeader title="HEROES" onBack={()=>void back()}/>
+  <SelectionHeader title="HEROES" onBack={()=>void back()}>{editing&&definition&&<VehicleStudioNavigation tab={studioTab} onTab={setStudioTab}/>}</SelectionHeader>
   <div className="hero-selection-stage hero-workshop-body">
    {!editing&&<div className="hero-workshop-collection"><HeroRoster selected={hero} main={main} filter={role} busy={!owner} onChoose={openHero} onFilter={filter=>{setRole(filter);setEditing(false);}}/>
     <p className="hero-workshop-hint">Select a portrait to customize. Hold X to choose your main.</p>
     {status!=="idle"&&<div className="hero-collection-save-status" role="status">{status==="error"?`NOT SAVED · ${message}`:status==="saved"?"SAVED TO YOUR PLAYER":"SAVING YOUR STYLE…"}{status==="error"&&<button className="menu-control" onClick={()=>void queue.flush()}>RETRY SAVE</button>}</div>}
    </div>}
    {!editing&&<section className="hero-summary" aria-label="Selected hero"><small>HERO</small><h2>{definition?.name??"CHOOSE YOUR HERO"}</h2><p>{definition?"Select a vehicle or press A to open the performance garage.":"Choose a vehicle portrait to preview and customize. Your main stays saved."}</p></section>}
-   {editing&&definition&&<VehicleStudio name={definition.name} role={definition.role} note={definition.note} stats={stats} summary={studioSummary} tab={studioTab} onTab={setStudioTab} footer={currentFooter}>
+   {editing&&definition&&<VehicleStudio name={definition.name} role={definition.role} note={definition.note} stats={stats} summary={studioSummary} tab={studioTab} footer={currentFooter}>
     {studioTab==="overview"&&<section className="vehicle-studio-card vehicle-overview-card"><header><small>HERO VEHICLE</small><h3>{definition.name}</h3></header><p>{definition.note}</p><div className="vehicle-studio-feature-list"><div><span>ROLE</span><strong>{definition.role.toUpperCase()}</strong></div><div><span>CLASS PROFILE</span><strong>ARMOR {stats.armor} · SPEED {stats.speed} · HANDLING {stats.handling}</strong></div><div><span>STOCK BUILD</span><strong>BASELINE READY</strong></div></div></section>}
-    {studioTab==="performance"&&<VehicleMods key={`${owner}:${definition.vehicle}`} vehicle={definition.vehicle} stages={vehicleModStages[definition.vehicle]??{}} onStagesChange={updateVehicleModStages} onSummaryChange={setPerformanceSummary} onFooterChange={setStudioFooterContent}/>}
+    {studioTab==="performance"&&<VehicleMods key={`${owner}:${definition.vehicle}`} vehicle={definition.vehicle} stages={vehicleModStages[definition.vehicle]??NO_VEHICLE_MOD_STAGES} onStagesChange={updateVehicleModStages} onSummaryChange={setPerformanceSummary} onFooterChange={setStudioFooterContent}/>}
     {studioTab==="paint"&&<>
      <section className="vehicle-studio-card"><header><small>EXTERIOR COLOR</small><h3>Body paint</h3></header><div className="vehicle-studio-swatches" aria-label="Paint presets">{paintPresets.map(preset=><button key={preset.label} type="button" className="vehicle-studio-swatch" style={{"--paint-swatch":preset.color==="factory"?"#aeb7c0":preset.color} as CSSProperties} aria-label={`Paint: ${preset.label}`} title={preset.label} aria-pressed={appearance.body===preset.color} disabled={!owner||definition.vehicle==="tank"} onClick={()=>edit({body:preset.color})}/>)}</div>
       <label>Custom paint<input type="color" aria-label="Custom hero body color" disabled={!owner||definition.vehicle==="tank"} value={appearance.body==="factory"?"#f1f3f4":appearance.body} onChange={event=>edit({body:event.target.value})}/></label>

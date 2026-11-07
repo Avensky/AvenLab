@@ -13,11 +13,11 @@ export const GUARDRAIL_MODULE_METERS = 3.6;
 export const railDamage={enabled:true,hp:5,smallArms:1,cannon:1,bomb:1,rubble:"clear" as const};
 export const carrierSize = data.size as V3;
 export const harborPieces: Piece[] = [{
-  id:CARRIER, label:"Big E · docked flight deck", category:"props",
+  id:CARRIER, label:"Big E · docked flight deck", category:"props", collection:"Harbor Fleet",
   description:"Level CVN-65 deck. Place the origin at flight-deck height.",
   size:carrierSize, color:"#677882", parts:data.parts as LayoutPart[],
 }, {
-  id:"highway-support-pier", label:"Elevated highway support pier", category:"roads",
+  id:"highway-support-pier", label:"Elevated highway support pier", category:"roads", collection:"Harbor Highway Infrastructure",
   description:"Resizable reinforced concrete pier · structural collider · separate from road deck and breakable guardrails.",
   size:[14,12,3], color:"#848b8e",
   parts:[
@@ -28,7 +28,7 @@ export const harborPieces: Piece[] = [{
     ]),
   ],
 }, {
-  id:"urban-tunnel-shell", label:"Urban underpass shell", category:"roads",
+  id:"urban-tunnel-shell", label:"Urban underpass shell", category:"tunnels", collection:"Urban Tunnel Kit",
   description:"Open-ended tunnel envelope · solid roof and sidewalls · no floor, so the road collider stays independent.",
   size:[16,8,32], color:"#777d80",
   parts:[
@@ -42,35 +42,35 @@ export const harborPieces: Piece[] = [{
     ]),
   ],
 }, {
-  id:"highway-guardrail", label:"Highway guardrail", category:"roads",
+  id:"highway-guardrail", label:"Highway guardrail", category:"road-rails", collection:"Road Rails Kit",
   description:"Independent 3.6 m impact panel. Road deck and edge protection resize separately.",
   size:[GUARDRAIL_MODULE_METERS,1.05,.4], color:"#9da9aa",
   parts:[{shape:"box",position:[0,.68,0],size:[1,.37,.56]},
     ...[-.46,0,.46].map(x=>({shape:"box" as const,position:[x,.4,.19] as V3,size:[.035,.8,.55] as V3,solid:false}))],
 }, {
-  id:'bridge-lever',label:'Bridge lever',category:'props',description:'Operate the canal drawbridge from the switch stand.',
+  id:'bridge-lever',label:'Bridge lever',category:'props',collection:'Harbor Modular Bridge Kit',description:'Operate the canal drawbridge from the switch stand.',
   size:[.72,1.5,.7],color:'#c59346',parts:[
     {shape:'box',position:[0,.36,0],size:[.64,.72,.70],color:'#545e64'},
     {shape:'box',position:[0,.82,0],size:[.12,.36,.12],color:'#c59346'},
     {shape:'box',position:[0,.96,0],size:[.58,.12,.21],color:'#d34c3f'},
   ],
 }, {
-  id:DESTROYER,label:"Arleigh Burke · escort destroyer",category:"props",
+  id:DESTROYER,label:"Arleigh Burke · escort destroyer",category:"props",collection:"Harbor Fleet",
   description:"154 m destroyer · static harbor prototype with walkable deck, bridge and hull collision. Buoyancy and weapons come later.",
   size:burkeSize,color:"#52626b",parts:burkeCollisionParts,
 }, {
-  id:HAWAII_DOCKED,label:'USS Hawaii · rescue vessel (docked)',category:'boats',
+  id:HAWAII_DOCKED,label:'USS Hawaii · rescue vessel (docked)',category:'boats',collection:'Harbor Fleet',
   description:'Static hull and landing-deck proxy; pilot the dynamic version from the Sandbox BOAT tab.',
   size:[24,26,154],color:'#445867',parts:[
     {shape:'box',position:[0,.32,0],size:[.92,.52,.94]},
     {shape:'box',position:[0,.72,0],size:[.87,.045,.88]},
   ],
 }, {
-  id:LOUISIANA_DOCKED,label:'USS Louisiana · battleship (docked)',category:'boats',
+  id:LOUISIANA_DOCKED,label:'USS Louisiana · battleship (docked)',category:'boats',collection:'Harbor Fleet',
   description:'188 m historical-style battleship · hull, three deck zones and bridge collision; its source GLB contains one merged mesh, so original gun turrets do not animate.',
   size:LOUISIANA_SIZE,color:'#4e626d',parts:louisianaCollisionParts,
 }, {
-  id:'naval-route-waypoint',label:'Rescue ship · route waypoint',category:'boats',
+  id:'naval-route-waypoint',label:'Rescue ship · route waypoint',category:'boats',collection:'Harbor Navigation Markers',
   description:'Place successive markers at SEA LEVEL to record a future cruiser patrol/rescue route. Non-colliding authoring guide.',
   size:[4,1,4],color:'#40b9d9',solid:false,parts:[
     {shape:'box',position:[0,.12,0],size:[1,.10,1],color:'#40b9d9',solid:false},

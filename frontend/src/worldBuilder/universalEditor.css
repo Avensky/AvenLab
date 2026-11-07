@@ -142,6 +142,46 @@
   font-size: 9px;
   color: var(--le-muted);
 }
+.layout-editor .le-pack-filter {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  margin: 5px 0 7px;
+  color: var(--le-muted);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+.layout-editor .le-pack-filter select {
+  width: 100%;
+  min-width: 0;
+  min-height: 29px;
+  padding: 4px 6px;
+  font-size: 9px;
+}
+.layout-editor .le-piece .le-piece-pack {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--le-muted);
+  font-size: 7px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.layout-editor .le-preview-origin {
+  display: grid;
+  gap: 3px;
+  margin-bottom: 8px;
+  color: var(--le-muted);
+  font-size: 9px;
+  overflow-wrap: anywhere;
+}
+.layout-editor .le-preview-origin strong {
+  color: var(--le-text);
+  letter-spacing: .08em;
+}
+
 .layout-editor .le-search input {
   padding: 6px 0;
 }

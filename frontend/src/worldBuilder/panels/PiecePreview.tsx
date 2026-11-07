@@ -198,6 +198,10 @@ export default function PiecePreview({
           <span>{piece.size.map((n) => n.toFixed(2)).join(" × ")} m</span>
         </div>
         <footer>
+          <div className="le-preview-origin">
+            <span><strong>PACK</strong> · {piece.collection ?? "AvenLab Core"}</span>
+            {piece.source && <span><strong>SOURCE</strong> · {piece.source}</span>}
+          </div>
           <p>{piece.description}</p>
           <button className="le-primary" onClick={onPlace}>
             Place this piece
