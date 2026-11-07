@@ -28,6 +28,29 @@ export const STOCK_VEHICLE_SUMMARY: VehiclePerformanceSummary = {
   fuel_consumption: 1,
 };
 
+export function VehicleStudioNavigation({tab,onTab}:{tab:VehicleStudioTab;onTab:(tab:VehicleStudioTab)=>void}) {
+  return (
+    <nav className="vehicle-studio-tabs" role="tablist" aria-label="Heroes garage sections">
+      {VEHICLE_STUDIO_TABS.map((item) => (
+        <button
+          key={item.id}
+          type="button"
+          role="tab"
+          id={"vehicle-studio-tab-" + item.id}
+          aria-selected={tab === item.id}
+          aria-controls="vehicle-studio-tab-panel"
+          aria-label={`${item.label}: ${item.description}`}
+          title={item.description}
+          className="vehicle-studio-tab"
+          onClick={() => onTab(item.id)}
+        >
+          <span>{item.label}</span>
+        </button>
+      ))}
+    </nav>
+  );
+}
+
 export function VehicleStudio({
   name,
   role,
@@ -35,7 +58,6 @@ export function VehicleStudio({
   stats,
   summary = STOCK_VEHICLE_SUMMARY,
   tab,
-  onTab,
   footer,
   children,
 }: {
@@ -45,7 +67,6 @@ export function VehicleStudio({
   stats: { armor: number; speed: number; handling: number; support: number };
   summary?: VehiclePerformanceSummary;
   tab: VehicleStudioTab;
-  onTab: (tab: VehicleStudioTab) => void;
   footer?: ReactNode;
   children: ReactNode;
 }) {
@@ -68,24 +89,6 @@ export function VehicleStudio({
 
   return (
     <div className="vehicle-studio">
-      <nav className="vehicle-studio-tabs" role="tablist" aria-label="Heroes garage sections">
-        {VEHICLE_STUDIO_TABS.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            role="tab"
-            id={"vehicle-studio-tab-" + item.id}
-            aria-selected={tab === item.id}
-            aria-controls="vehicle-studio-tab-panel"
-            className="vehicle-studio-tab"
-            onClick={() => onTab(item.id)}
-          >
-            <span>{item.label}</span>
-            <small>{item.description}</small>
-          </button>
-        ))}
-      </nav>
-
       <div className="vehicle-studio-main">
         <aside className="vehicle-studio-details" aria-label="Power and vehicle details">
           <header>

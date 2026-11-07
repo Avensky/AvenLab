@@ -22,6 +22,29 @@ function isCamaroWindow(object: Object3D) {
   return false;
 }
 
+const camaroNonOpaqueNames = /window|windshield|windscreen|glass|mirror|head.?light|tail.?light|lamp|lens|indicator|turn.?signal|reflector|marker/i;
+const camaroBodyPaintName = /^ext(?:\.\d+)?$/i;
+const camaroSurfaceNames = /(?:^|[\s_.:/-])(body|wheel|wheels|tire|tires|tyre|tyres|rim|rims|alloy|hub|rubber|chassis)(?:$|[\s_.:/-])/i;
+function isCamaroOpaqueSurface(source: Material, object: Object3D) {
+  const names = [source.name];
+  for (let current: Object3D | null = object; current; current = current.parent) {
+    names.push(current.name, String(current.userData.name ?? ""));
+  }
+  const combined = names.join(" ");
+  if (camaroNonOpaqueNames.test(combined)) return false;
+  const namedBodyOrWheel = camaroBodyPaintName.test(source.name) || camaroSurfaceNames.test(combined);
+  const authoredAlpha = source.transparent || source.opacity < 1 || source.alphaTest > 0;
+  return namedBodyOrWheel || authoredAlpha;
+}
+function forceOpaqueCamaroSurface(material: Material) {
+  material.transparent = false;
+  material.opacity = 1;
+  material.depthWrite = true;
+  material.alphaTest = 0;
+  material.needsUpdate = true;
+  return material;
+}
+
 const nonWindowGlass = /(?:red|amber|ambar|orange|oarnge|blue)_?glass|glass_?surr|surround|frame|mirror|lamp|light|lens|instrument/i;
 /** All vehicle windows use the BRZ/FR-S neutral tinted-glass profile. Lamp
  * covers, mirrors, and colored marker lenses keep their authored materials. */
@@ -93,18 +116,21 @@ export function prepareVehicleVisual(scene: Group, model: string) {
   const glassMaterials = new Set<MeshPhysicalMaterial>();
   // Every vehicle receives instance-owned materials, one shared mapping for
   // windows, and the same highlight calibration. Texture maps remain intact.
-  const cache = new Map<Material, Map<boolean, Material>>();
+  const cache = new Map<Material, Map<string, Material>>();
   root.traverse(object => {
     if (!(object instanceof Mesh)) return;
     const repair = (source: Material) => {
       const glass = isVehicleWindowMaterial(source.name, object, model) || (model === "supra" && isSupraWindowMaterial(source.name));
+      const opaqueCamaroSurface = model === "camaro" && !glass && isCamaroOpaqueSurface(source, object);
+      const role = glass ? "glass" : opaqueCamaroSurface ? "camaro-opaque" : "surface";
       let variants = cache.get(source);
       if (!variants) { variants = new Map(); cache.set(source, variants); }
-      let material = variants.get(glass);
+      let material = variants.get(role);
       if (!material) {
         material = createVehicleMaterial(source, glass, model);
+        if (opaqueCamaroSurface) forceOpaqueCamaroSurface(material);
         if (!glass && model === "ae86") repairAe86Material(material);
-        variants.set(glass, material); materials.add(material);
+        variants.set(role, material); materials.add(material);
         if (glass && material instanceof MeshPhysicalMaterial) glassMaterials.add(material);
       }
       return material;

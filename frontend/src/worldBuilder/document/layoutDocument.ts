@@ -72,6 +72,11 @@ export type Piece = {
   label: string;
   category:
     | "roads"
+    | "road-rails"
+    | "prefabs"
+    | "tunnels"
+    | "greenery"
+    | "city-props"
     | "structures"
     | "props"
     | "chunks2"

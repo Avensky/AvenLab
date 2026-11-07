@@ -28,7 +28,7 @@ export const harborPieces: Piece[] = [{
     ]),
   ],
 }, {
-  id:"urban-tunnel-shell", label:"Urban underpass shell", category:"roads",
+  id:"urban-tunnel-shell", label:"Urban underpass shell", category:"tunnels",
   description:"Open-ended tunnel envelope · solid roof and sidewalls · no floor, so the road collider stays independent.",
   size:[16,8,32], color:"#777d80",
   parts:[
@@ -42,7 +42,7 @@ export const harborPieces: Piece[] = [{
     ]),
   ],
 }, {
-  id:"highway-guardrail", label:"Highway guardrail", category:"roads",
+  id:"highway-guardrail", label:"Highway guardrail", category:"road-rails",
   description:"Independent 3.6 m impact panel. Road deck and edge protection resize separately.",
   size:[GUARDRAIL_MODULE_METERS,1.05,.4], color:"#9da9aa",
   parts:[{shape:"box",position:[0,.68,0],size:[1,.37,.56]},

@@ -17,7 +17,7 @@ export type ModelPlacement = {
 export type ModelAsset = {
   id: string;
   label: string;
-  category?: "structures" | "buildings" | "garages" | "roads" | "props";
+  category?: "structures" | "buildings" | "garages" | "roads" | "road-rails" | "tunnels" | "props" | "city-props" | "greenery" | "prefabs";
   collection?: string;
   description?: string;
   lods: { url: string; sha256: string; lod: number }[];

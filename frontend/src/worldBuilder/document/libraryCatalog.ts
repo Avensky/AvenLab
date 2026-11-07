@@ -10,16 +10,29 @@ export const LIBRARY_TABS = [
   { id: "blocks", label: "Blocks" },
   { id: "buildings", label: "Buildings" },
   { id: "garages", label: "Garages / small" },
+  { id: "prefabs", label: "Prefabs" },
   { id: "roads", label: "Roads" },
+  { id: "road-rails", label: "Road Rails" },
+  { id: "tunnels", label: "Tunnels" },
   { id: "jumps", label: "Jumps" },
   { id: "objectives", label: "Objectives" },
   { id: "vehicles", label: "Vehicles" },
   { id: "boats", label: "Boats" },
-  { id: "props", label: "Props" },
+  { id: "props", label: "City Props" },
+  { id: "greenery", label: "Greenery" },
 ] as const;
 export type LibraryTab = (typeof LIBRARY_TABS)[number]["id"];
 export function inLibraryTab(piece: Piece, tab: LibraryTab) {
   if (tab === "all") return true;
+  const search = `${piece.id} ${piece.label} ${piece.description}`;
+  const greenery = piece.category === "greenery" || /(?:^|[-_\s])(tree|trees|foliage|plant|plants|grass|shrub|hedge|flower|vegetation|bush)(?:$|[-_\s])/i.test(search);
+  const tunnel = piece.category === "tunnels" || /tunnel/i.test(search);
+  const roadRail = piece.category === "road-rails" || /(?:^|[-_\s])(road|highway|guard)[-_\s]*rails?(?:$|[-_\s])|guardrail/i.test(search);
+  const block = /(?:^|[-_\s])blocks?(?:[_-]?\d+)?(?:$|[-_\s])/i.test(`${piece.id} ${piece.label}`);
+  if (tab === "prefabs") return Boolean(piece.model) || piece.category === "prefabs";
+  if (tab === "greenery") return greenery;
+  if (tab === "tunnels") return tunnel;
+  if (tab === "road-rails") return roadRail;
   if (tab === "garages")
     return (
       Boolean(piece.model && piece.category === "structures") ||
@@ -30,7 +43,10 @@ export function inLibraryTab(piece: Piece, tab: LibraryTab) {
     return piece.id === "building" || piece.category === "buildings";
   if (tab === "jumps") return piece.id === "ramp" || piece.category === "jumps";
   if (tab === "blocks")
-    return ["wall", "floor"].includes(piece.id) || piece.category === "blocks";
+    return !tunnel && (["wall", "floor"].includes(piece.id) || piece.category === "blocks" || block);
+  if (tab === "props")
+    return !greenery && !tunnel && !roadRail && (piece.category === "props" || piece.category === "city-props");
+  if (tab === "roads") return !tunnel && !roadRail && piece.category === "roads";
   return piece.category === tab;
 }
 const box = (
@@ -235,7 +251,7 @@ export const EXTRA_PIECES: Piece[] = [
     size:[96,48,72],color:"#7c8586",parts:mountainSegmentParts(96,48),
   },
   {
-    id:"mountain-curved-tunnel",label:"Mountain fabrication · curved tunnel cut",category:"blocks",
+    id:"mountain-curved-tunnel",label:"Mountain fabrication · curved tunnel cut",category:"tunnels",
     description:"Rock cells leave a curved 90° bore for the measured H27 wide highway bend · separate road surface · 12 m opening.",
     size:[72,36,72],color:"#7c8586",parts:mountainFabrication(true),
   },
