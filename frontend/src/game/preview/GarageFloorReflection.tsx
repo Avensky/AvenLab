@@ -26,7 +26,7 @@ const floorShader = {
     color: { value: null },
     tDiffuse: { value: null },
     textureMatrix: { value: null },
-    platformHalfSize: { value: new Vector2() },
+    platformRadius: { value: 0 },
     platformAngle: { value: 0 },
     reflectionTexel: { value: new Vector2(1 / 768, 1 / 768) },
     reflectionStrength: { value: 1 },
@@ -50,7 +50,7 @@ const floorShader = {
   `,
   fragmentShader: /* glsl */ `
     uniform sampler2D tDiffuse;
-    uniform vec2 platformHalfSize;
+    uniform float platformRadius;
     uniform float platformAngle;
     uniform vec2 reflectionTexel;
     uniform float reflectionStrength;
@@ -68,8 +68,7 @@ const floorShader = {
       vec2 uv = vReflection.xy / vReflection.w;
       float c = cos(platformAngle), s = sin(platformAngle);
       vec2 local = vec2(c * vFloor.x - s * vFloor.y, s * vFloor.x + c * vFloor.y);
-      vec2 edge = abs(local) - platformHalfSize;
-      float edgeValue = max(edge.x, edge.y);
+      float edgeValue = length(local) - platformRadius;
       float edgeAA = max(fwidth(edgeValue), 0.015);
       float platform = 1.0 - smoothstep(-edgeAA, edgeAA, edgeValue);
       vec3 reflection = reflectionStrength > 0.001 ? texture2D(tDiffuse, uv).rgb : vec3(0.0);
@@ -104,15 +103,13 @@ const floorShader = {
         * (1.0 - smoothstep(0.55 - trimAA, 0.55 + trimAA, wallEdge));
       tileColor = mix(tileColor, vec3(0.085, 0.09, 0.10) + reflection * 0.28, trim);
       vec3 padColor = vec3(0.005, 0.005, 0.006) + reflection * 0.75;
-      // Complete safety band on all four edges, in the platform's coordinates.
-      float edgeDistance = min(platformHalfSize.x - abs(local.x), platformHalfSize.y - abs(local.y));
-      float bandAA = max(fwidth(edgeDistance), 0.0075);
-      float safetyBand = 1.0 - smoothstep(0.1375 - bandAA, 0.1375 + bandAA, edgeDistance);
-      float stripePosition = (local.x + local.y) / 0.28;
-      float stripeAA = max(fwidth(stripePosition) * 2.0, 0.001);
-      float stripe = smoothstep(0.5 - stripeAA, 0.5 + stripeAA, abs(fract(stripePosition) * 2.0 - 1.0));
-      vec3 safetyColor = mix(vec3(0.0015), vec3(0.8, 0.2094, 0.0), stripe);
-      padColor = mix(padColor, safetyColor, safetyBand);
+      // Circular perimeter with alternating theme, amber and cool-white cues.
+      float edgeDistance = platformRadius - length(local);
+      float rimAA = max(fwidth(edgeDistance), 0.004);
+      float rim = 1.0 - smoothstep(0.018 - rimAA, 0.018 + rimAA, abs(edgeDistance));
+      float sector = mod(floor((atan(local.y, local.x) + 3.1415926) * 12.0 / 6.2831852), 3.0);
+      vec3 rimColor = sector < 1.0 ? vec3(0.08, 0.72, 0.82) : sector < 2.0 ? vec3(0.92, 0.48, 0.08) : vec3(0.62, 0.8, 0.88);
+      padColor = mix(padColor, padColor * 0.55 + rimColor * 0.45, rim);
       gl_FragColor = vec4(mix(tileColor, padColor, platform), 1.0);
       #include <tonemapping_fragment>
       #include <colorspace_fragment>
@@ -161,7 +158,7 @@ export function GarageFloorReflection({
     const texture = object.getRenderTarget().texture;
     texture.generateMipmaps = true;
     texture.minFilter = LinearMipmapLinearFilter;
-    material.uniforms.platformHalfSize.value.set(width / 2, depth / 2);
+    material.uniforms.platformRadius.value = Math.max(width, depth) / 2;
     if (perimeter && !perimeter.isEmpty()) {
       material.uniforms.perimeterBounds.value.set(
         perimeter.min.x,
