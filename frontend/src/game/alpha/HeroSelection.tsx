@@ -22,8 +22,9 @@ import { useSelectionNavigation } from "./useSelectionNavigation";
 import { navigateFormRows } from "../social/formRows";
 import type { MenuAction } from "../../controls/inputRouting";
 import { deploySelectedHero } from "./sessionActions";
-import {SelectionHeader,SelectionFooter} from './SelectionChrome';
-import { HeroRoster, HeroRoleTabs } from "./HeroRoster";
+import {SelectionFooter} from './SelectionChrome';
+import {AngledTabHeader} from "../../components/menus/AngledTabHeader";
+import { HeroRoster, heroRoleHeaderTabs } from "./HeroRoster";
 import { PreMatchTeamPreview } from "../stats/PreMatchTeamPreview";
 import { LobbyChat } from "./LobbyChat";
 import "./heroSelection.css";
@@ -201,8 +202,8 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
       aria-label={overlay ? "Change hero" : "Hero selection"}
       style={overlay ? { zIndex: 50, background:"transparent", backdropFilter:"none" } : undefined}
     >
-      <SelectionHeader title={overlay?'CHANGE HERO':'CHOOSE HERO'} eyebrow={matchModeLabel(mode,active&&inMode?active.team_size:selectedTeamSize)} team={confirmedTeam} onBack={()=>void back()} busy={busy}><HeroRoleTabs filter={role} onFilter={filter} allowBoats={allowBoats}/></SelectionHeader>
-      <div className="hero-selection-stage">
+      <AngledTabHeader title={overlay?"CHANGE HERO":"CHOOSE HERO"} eyebrow={matchModeLabel(mode,active&&inMode?active.team_size:selectedTeamSize)} titleMeta={confirmedTeam?<span className="angled-header-team" data-team={confirmedTeam}>{confirmedTeam.toUpperCase()} TEAM</span>:undefined} tabs={heroRoleHeaderTabs(allowBoats)} activeTab={role} onTabChange={next=>filter(next as HeroFilter)} idPrefix="hero-selection-role" panelId="hero-role-panel"/>
+      <div className="hero-selection-stage" id="hero-role-panel" role="tabpanel" aria-labelledby={"hero-selection-role-tab-"+role}>
         {(!match || inMode || overlay) && (
           <HeroRoster
             showFilters={false}
