@@ -11,26 +11,26 @@ export type VehiclePerformanceSummary = {
   mass: number; // kg
   suspension_damping_ratio: number;
 };
-type VehiclePhysics = VehiclePerformanceSummary & { hull_hp: number };
+type VehiclePhysics = VehiclePerformanceSummary;
 export const VEHICLE_PHYSICS_STOCK: Readonly<Record<string, VehiclePhysics>> = Object.freeze({
-  ae86: { mass:950, engine_force:7800, brake_force:6500, max_speed:50, mu_base:.85, suspension_damping_ratio:1.05, hull_hp:500 },
-  gt86: { mass:1270, engine_force:9600, brake_force:7500, max_speed:55, mu_base:.85, suspension_damping_ratio:1.05, hull_hp:500 },
-  brz: { mass:1280, engine_force:10200, brake_force:7600, max_speed:62, mu_base:.85, suspension_damping_ratio:1.05, hull_hp:500 },
-  cx30: { mass:1510, engine_force:10080, brake_force:8600, max_speed:48, mu_base:.85, suspension_damping_ratio:1.05, hull_hp:650 },
-  mini: { mass:1180, engine_force:9360, brake_force:7500, max_speed:53, mu_base:.85, suspension_damping_ratio:1.05, hull_hp:500 },
-  fortuner: { mass:2100, engine_force:12960, brake_force:11300, max_speed:45, mu_base:.85, suspension_damping_ratio:1.05, hull_hp:900 },
-  landcruiser: { mass:2450, engine_force:14280, brake_force:12800, max_speed:43, mu_base:.85, suspension_damping_ratio:1.05, hull_hp:1100 },
-  sierra: { mass:2650, engine_force:15720, brake_force:14100, max_speed:45, mu_base:.85, suspension_damping_ratio:1.05, hull_hp:1200 },
-  camaro: { mass:1650, engine_force:13200, brake_force:9000, max_speed:65, mu_base:.85, suspension_damping_ratio:.86, hull_hp:650 },
-  supra: { mass:1540, engine_force:12600, brake_force:8800, max_speed:69, mu_base:.95, suspension_damping_ratio:1.08, hull_hp:600 },
-  tank: { mass:40000, engine_force:200000, brake_force:240000, max_speed:30, mu_base:1.2, suspension_damping_ratio:1.1, hull_hp:1200 },
-  "hawaii-rescue": { mass:7000000, engine_force:5400000, brake_force:3600000, max_speed:16, mu_base:1.2, suspension_damping_ratio:1.1, hull_hp:6500 },
-  louisiana: { mass:48000000, engine_force:35000000, brake_force:22000000, max_speed:14, mu_base:1.2, suspension_damping_ratio:1.1, hull_hp:15000 },
-  enforcer: { mass:1270, engine_force:9600, brake_force:7500, max_speed:55, mu_base:.85, suspension_damping_ratio:1.05, hull_hp:700 },
-  interceptor: { mass:1270, engine_force:9600, brake_force:7500, max_speed:55, mu_base:.85, suspension_damping_ratio:1.05, hull_hp:700 },
-  skyline34: { mass:1270, engine_force:9600, brake_force:7500, max_speed:55, mu_base:.85, suspension_damping_ratio:1.05, hull_hp:600 },
-  timecar: { mass:1270, engine_force:9600, brake_force:7500, max_speed:55, mu_base:.85, suspension_damping_ratio:1.05, hull_hp:600 },
-  charger70: { mass:1650, engine_force:13200, brake_force:9000, max_speed:65, mu_base:.85, suspension_damping_ratio:.86, hull_hp:700 },
+  ae86: { mass:950, engine_force:7800, brake_force:6500, max_speed:50, mu_base:.85, suspension_damping_ratio:1.05 },
+  gt86: { mass:1270, engine_force:9600, brake_force:7500, max_speed:55, mu_base:.85, suspension_damping_ratio:1.05 },
+  brz: { mass:1280, engine_force:10200, brake_force:7600, max_speed:62, mu_base:.85, suspension_damping_ratio:1.05 },
+  cx30: { mass:1510, engine_force:10080, brake_force:8600, max_speed:48, mu_base:.85, suspension_damping_ratio:1.05 },
+  mini: { mass:1180, engine_force:9360, brake_force:7500, max_speed:53, mu_base:.85, suspension_damping_ratio:1.05 },
+  fortuner: { mass:2100, engine_force:12960, brake_force:11300, max_speed:45, mu_base:.85, suspension_damping_ratio:1.05 },
+  landcruiser: { mass:2450, engine_force:14280, brake_force:12800, max_speed:43, mu_base:.85, suspension_damping_ratio:1.05 },
+  sierra: { mass:2650, engine_force:15720, brake_force:14100, max_speed:45, mu_base:.85, suspension_damping_ratio:1.05 },
+  camaro: { mass:1650, engine_force:13200, brake_force:9000, max_speed:65, mu_base:.85, suspension_damping_ratio:.86 },
+  supra: { mass:1540, engine_force:12600, brake_force:8800, max_speed:69, mu_base:.95, suspension_damping_ratio:1.08 },
+  tank: { mass:40000, engine_force:200000, brake_force:240000, max_speed:30, mu_base:1.2, suspension_damping_ratio:1.1 },
+  "hawaii-rescue": { mass:7000000, engine_force:5400000, brake_force:3600000, max_speed:16, mu_base:1.2, suspension_damping_ratio:1.1 },
+  louisiana: { mass:48000000, engine_force:35000000, brake_force:22000000, max_speed:14, mu_base:1.2, suspension_damping_ratio:1.1 },
+  enforcer: { mass:1270, engine_force:9600, brake_force:7500, max_speed:55, mu_base:.85, suspension_damping_ratio:1.05 },
+  interceptor: { mass:1270, engine_force:9600, brake_force:7500, max_speed:55, mu_base:.85, suspension_damping_ratio:1.05 },
+  skyline34: { mass:1270, engine_force:9600, brake_force:7500, max_speed:55, mu_base:.85, suspension_damping_ratio:1.05 },
+  timecar: { mass:1270, engine_force:9600, brake_force:7500, max_speed:55, mu_base:.85, suspension_damping_ratio:1.05 },
+  charger70: { mass:1650, engine_force:13200, brake_force:9000, max_speed:65, mu_base:.85, suspension_damping_ratio:.86 },
 });
 
 export const SUPERCAR_BENCHMARK = Object.freeze({
@@ -54,8 +54,7 @@ export type PerformanceReadout = {
 
 export function getVehicleStockPerformance(vehicle: string): VehiclePerformanceSummary {
   const spec = VEHICLE_PHYSICS_STOCK[vehicle] ?? VEHICLE_PHYSICS_STOCK.gt86;
-  const { hull_hp: _hullHp, ...summary } = spec;
-  return { ...summary };
+  return { ...spec };
 }
 
 /** Vehicle classes have different fictional upgrade ceilings and max stages. */
