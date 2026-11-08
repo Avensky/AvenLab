@@ -2,6 +2,7 @@ import {forwardRef,type ComponentPropsWithoutRef,type ReactNode} from 'react';
 import {ControllerAction,MenuShortcuts} from '../controller';
 import {ProgressBadge} from '../../game/alpha/ProgressBadge';
 import type {MatchTeam} from '../../theme/matchTeamTheme';
+import {APP_ALPHA_EYEBROW} from '../../theme/branding';
 import './menuFrame.css';
 
 /** Shared full-screen shell. Content and navigation stay with each screen;
@@ -9,7 +10,7 @@ import './menuFrame.css';
 export const MenuFrame=forwardRef<HTMLElement,ComponentPropsWithoutRef<'section'>>(function MenuFrame({className='',children,...props},ref){
  return <section {...props} ref={ref} className={`menu-frame ${className}`}>{children}</section>;
 });
-export function MenuFrameHeader({title,onBack,titleId,eyebrow='REDLINE VECTOR · ALPHA',backLabel='BACK',busy=false,className='',variant='panel',team,children}:{title:string;onBack:()=>void;titleId?:string;eyebrow?:string;backLabel?:string;busy?:boolean;className?:string;variant?:'panel'|'scene';team?:MatchTeam;children?:ReactNode}){
+export function MenuFrameHeader({title,onBack,titleId,eyebrow=APP_ALPHA_EYEBROW,backLabel='BACK',busy=false,className='',variant='panel',team,children}:{title:string;onBack:()=>void;titleId?:string;eyebrow?:string;backLabel?:string;busy?:boolean;className?:string;variant?:'panel'|'scene';team?:MatchTeam;children?:ReactNode}){
  return <header className={`menu-frame-header alpha-header ${className}`} data-menu-chrome={variant} data-team-heading={team?true:undefined}>
   <div><small>{eyebrow}</small><h1 id={titleId}>{title}</h1></div>
   {children}
