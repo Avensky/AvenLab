@@ -111,7 +111,7 @@ const box = (
   ...(color ? { color } : {}),
   ...(solid ? {} : { solid: false }),
 });
-export const PIECES: Piece[] = [
+const RAW_PIECES: Piece[] = [
   ...EXTRA_PIECES.map((piece) => ({ ...piece, collection: piece.collection ?? "AvenLab Core" })),
   ...kitPieces.map((piece) => ({ ...piece, collection: piece.collection ?? "World Builder Map Kit" })),
   ...harborPieces.map((piece) => ({ ...piece, collection: piece.collection ?? "Harbor Infrastructure" })),
@@ -285,7 +285,8 @@ export const PIECES: Piece[] = [
       box([0.36, 0.92, 0], [0.25, 0.04, 0.65], "#d4d6a5"),
     ],
   },
-].map((piece) => ({ ...piece, collection: piece.collection ?? "AvenLab Core" }));
+];
+export const PIECES: Piece[] = RAW_PIECES.map((piece) => ({ ...piece, collection: piece.collection ?? "AvenLab Core" }));
 // Harbor railings are independent, destructible modules rather than one long
 // collider. Leave headroom for their generated spans and for player edits.
 export const MAX_LAYOUT_OBJECTS = 3072,
