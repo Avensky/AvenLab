@@ -16,6 +16,7 @@ export function HeroRoster({
   unavailable = {},
   onFilter,
   allowBoats = false,
+  showFilters = true,
 }: {
   selected: string | null;
   main?: string | null;
@@ -25,10 +26,11 @@ export function HeroRoster({
   unavailable?: Record<string, string>;
   onFilter: (filter: HeroFilter) => void;
   allowBoats?: boolean;
+  showFilters?: boolean;
 }) {
   return (
     <aside className="hero-roster" aria-label="Hero portraits">
-      <HeroRoleTabs filter={filter} onFilter={onFilter} allowBoats={allowBoats}/>
+      {showFilters&&<HeroRoleTabs filter={filter} onFilter={onFilter} allowBoats={allowBoats}/>}
       <div
         className="hero-roster-grid"
         data-controller-grid
