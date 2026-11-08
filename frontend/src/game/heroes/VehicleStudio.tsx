@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useVehicleStudioStore, type VehicleStudioTab } from "./vehicleStudioStore";
 import { getPerformanceReadouts, getVehicleStockPerformance, type VehiclePerformanceSummary } from "./vehiclePerformance";
 
@@ -47,12 +47,14 @@ export function VehicleStudio({
   children: ReactNode;
 }) {
   const setActiveTab = useVehicleStudioStore((state) => state.setActiveTab);
+  const [panelOpen, setPanelOpen] = useState(false);
   useEffect(() => {
     setActiveTab(tab);
   }, [setActiveTab, tab]);
   useEffect(() => () => setActiveTab(null), [setActiveTab]);
 
   const rows = getPerformanceReadouts(summary);
+  const basicRows = rows.filter((row) => ["engine_force", "max_speed", "mass", "mu_base"].includes(row.key));
   const selected = VEHICLE_STUDIO_TABS.find((item) => item.id === tab)!;
 
   return (
@@ -64,55 +66,43 @@ export function VehicleStudio({
             <h2>{name}</h2>
             <p>{note}</p>
           </header>
-          <section className="vehicle-studio-power">
-            <h3>PERFORMANCE PROFILE</h3>
-            {rows.map((row) => (
+          <section className="vehicle-studio-power" aria-label="Stock vehicle performance">
+            <h3>STOCK SPECS</h3>
+            {basicRows.map((row) => (
               <div className="vehicle-studio-stat" key={row.key}>
                 <div>
                   <span>{row.label}</span>
-                  <strong>{row.grade} · {row.valueText}</strong>
+                  <strong>{row.valueText}</strong>
                 </div>
-                <small>VS SUPERCAR · {row.benchmarkText}</small>
-                <meter min={0} max={1.25} value={row.ratio} optimum={1} aria-label={row.label + " grade " + row.grade + ", " + row.valueText + ", benchmark " + row.benchmarkText} />
-              </div>
-            ))}
-            <p className="vehicle-studio-estimate">Configured in-game physics · chassis-specific tuning limits</p>
-          </section>
-          <section className="vehicle-studio-class-stats" aria-label="Vehicle class ratings">
-            <h3>CLASS PROFILE</h3>
-            {([
-              ["SPEED", stats.speed],
-              ["HANDLING", stats.handling],
-              ["SUPPORT", stats.support],
-            ] as const).map(([label, value]) => (
-              <div key={label}>
-                <span>{label}</span>
-                <strong>{value}</strong>
+                <meter min={0} max={1.25} value={row.ratio} optimum={1} aria-label={row.label + " " + row.valueText} />
               </div>
             ))}
           </section>
         </aside>
 
-        <section
+        {panelOpen && <section
           className="vehicle-studio-panel"
           role="tabpanel"
           id="vehicle-studio-tab-panel"
           aria-labelledby={"vehicle-studio-tab-" + tab}
         >
           <header className="vehicle-studio-panel-heading">
-            <small>{selected.description.toUpperCase()}</small>
-            <h2>{selected.label}</h2>
+            <div><small>{selected.description.toUpperCase()}</small><h2>{selected.label}</h2></div>
+            <button type="button" className="vehicle-studio-panel-close" aria-label="Close options panel" onClick={() => setPanelOpen(false)}>×</button>
           </header>
           <div className="vehicle-studio-panel-content">{children}</div>
-        </section>
+        </section>}
       </div>
 
       <div className="vehicle-studio-rotate-hint" aria-hidden="true">
         <span>↔</span> DRAG TO ROTATE
       </div>
       <footer className="vehicle-studio-dock">
-        <small>{selected.label} OPTIONS</small>
-        <div className="vehicle-studio-dock-actions">{footer ?? <span>{selected.description}</span>}</div>
+        <small>QUICK ACTIONS</small>
+        <div className="vehicle-studio-dock-actions">
+          <button type="button" className="vehicle-studio-panel-toggle" aria-expanded={panelOpen} aria-controls="vehicle-studio-tab-panel" onClick={() => setPanelOpen((open) => !open)}>{panelOpen ? "CLOSE PANEL" : "OPEN " + selected.label}</button>
+          {footer}
+        </div>
       </footer>
     </div>
   );
