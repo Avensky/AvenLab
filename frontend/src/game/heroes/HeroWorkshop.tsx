@@ -168,7 +168,6 @@ export function HeroWorkshop(){
     ? <AngledTabHeader
         title="HEROES"
         eyebrow={APP_BRANDING.productName}
-        onBack={()=>void back()}
         activeTab={studioTab}
         onTabChange={next=>setStudioTab(next as VehicleStudioTab)}
         idPrefix="vehicle-studio"
@@ -177,7 +176,6 @@ export function HeroWorkshop(){
           ...item,
           icon:<VehicleStudioTabIcon tab={item.id}/>,
           grow:[.92,1.12,1.05,.78,.9,.8][index],
-          separatorBefore:item.id==="studio",
         }))}
       />
     : <SelectionHeader title="HEROES" onBack={()=>void back()}/>}
