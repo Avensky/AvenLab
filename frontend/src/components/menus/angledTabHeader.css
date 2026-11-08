@@ -1,30 +1,49 @@
 /* Shared, theme-aware top chrome for tabbed screens. */
 .menu-frame-header.angled-tab-header {
   --angled-tab-cut: clamp(12px, 1.25vw, 17px);
-  --angled-header-height: 38px;
-  --angled-tabs-height: 100%;
+  --angled-title-cut: calc(var(--angled-tab-cut) + 5px);
+  --angled-header-height: clamp(58px, 6vw, 78px);
+  --angled-tabs-height: clamp(40px, 4.5vw, 58px);
+  position: relative;
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
-  align-items: stretch;
+  align-items: start;
   gap: 0;
   min-height: var(--angled-header-height);
   padding: 0;
-  /* background: color-mix(in srgb, var(--app-background) 54%, var(--app-panel)); */
-  border-bottom-color: color-mix(in srgb, var(--app-accent) 36%, var(--app-line));
+  background: transparent !important;
+  border: 0;
+  overflow: visible;
 }
 .menu-frame-header.angled-tab-header > div:first-child {
   position: relative;
-  z-index: 1;
+  z-index: 3;
+  isolation: isolate;
   display: flex;
   flex-direction: row;
   align-items: center;
-  align-self: center;
-  height: calc(var(--angled-tabs-height));
+  align-self: start;
+  height: var(--angled-header-height);
   gap: clamp(9px, 1.1vw, 16px);
   min-width: 0;
-  padding: 9px calc(var(--angled-tab-cut) + 9px) 9px 12px;
-  background: color-mix(in srgb, var(--app-background) 36%, var(--app-panel));
-  clip-path: polygon(0 0, 100% 0, calc(100% - var(--angled-tab-cut)) 100%, 0 100%);
+  padding: 1px calc(var(--angled-title-cut) + 9px) 1px 12px;
+  color: var(--app-text);
+  background: var(--app-accent);
+  clip-path: polygon(0 0, 100% 0, calc(100% - var(--angled-title-cut)) 100%, 0 100%);
+  filter: drop-shadow(0 0 1px var(--app-accent));
+}
+.menu-frame-header.angled-tab-header > div:first-child::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 1px;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--app-panel) 94%, transparent);
+  clip-path: polygon(0 0, 100% 0, calc(100% - var(--angled-title-cut)) 100%, 0 100%);
+}
+.menu-frame-header.angled-tab-header > div:first-child > :is(small,h1,.menu-header-title-meta) {
+  position: relative;
+  z-index: 1;
 }
 .menu-frame-header.angled-tab-header > div:first-child > small {
   flex: 0 0 auto;
@@ -35,6 +54,20 @@
   font-weight: 850;
   font-style: italic;
   letter-spacing: -.035em;
+}
+.menu-frame-header.angled-tab-header > div:first-child > .angled-header-level {
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+  flex: 0 0 auto;
+  padding: 3px 6px;
+  border-left: 1px solid color-mix(in srgb, var(--app-text) 46%, transparent);
+  color: var(--app-muted);
+  font-size: clamp(8px, .72vw, 11px);
+  font-weight: 850;
+  letter-spacing: .08em;
+  line-height: 1;
+  white-space: nowrap;
 }
 .menu-frame-header.angled-tab-header > div:first-child > h1 {
   min-width: 0;
@@ -47,12 +80,13 @@
   z-index: 2;
   display: flex;
   align-items: stretch;
-  align-self: center;
+  align-self: start;
   width: calc(100% + var(--angled-tab-cut));
-  height: var(--angled-tabs-height );
+  height: var(--angled-tabs-height);
   min-width: 0;
   margin-left: calc(-1 * var(--angled-tab-cut));
   overflow: visible;
+  filter: drop-shadow(0 0 1px var(--app-accent));
 }
 .angled-header-tab {
   position: relative;
@@ -64,9 +98,9 @@
   justify-content: center;
   gap: clamp(4px, .5vw, 8px);
   min-width: 0;
-  /* height: 100%; */
+  height: 100%;
   margin-left: calc(-1 * var(--angled-tab-cut));
-  padding: 0 3px 0 clamp(0, .55vw, 0);
+  padding: 3px clamp(4px, .55vw, 8px);
   overflow: visible;
   border: 0;
   border-radius: 0;
@@ -87,7 +121,7 @@
 .angled-header-tab--studio .angled-header-edge { display: none; }
 .angled-header-tab[aria-selected="true"] {
   z-index: 2;
-  color: #06131a;
+  color: var(--app-background);
   background: var(--app-accent);
   box-shadow: inset 0 0 0 1px rgba(255,255,255,.18);
 }
@@ -156,8 +190,9 @@
 @media (max-width: 760px) {
   .menu-frame-header.angled-tab-header {
     --angled-tab-cut: 10px;
-    --angled-header-height: 38px;
-    --angled-tabs-height: 26px;
+    --angled-header-height: 52px;
+    --angled-tabs-height: 36px;
+    --angled-title-cut: calc(var(--angled-tab-cut) + 4px);
     grid-template-columns: minmax(112px, 21vw) minmax(0, 1fr);
     gap: 3px;
     padding: 4px 0 4px 6px;
@@ -184,15 +219,16 @@
 @media (max-width: 520px) {
   .menu-frame-header.angled-tab-header {
     --angled-tab-cut: 8px;
-    --angled-header-height: 38px;
-    --angled-tabs-height: 26px;
+    --angled-header-height: 46px;
+    --angled-tabs-height: 32px;
+    --angled-title-cut: calc(var(--angled-tab-cut) + 4px);
     grid-template-columns: minmax(78px, 20vw) minmax(0, 1fr);
     gap: 2px;
     padding: 3px 0 3px 4px;
   }
   .menu-frame-header.angled-tab-header > div:first-child { gap: 4px; padding-left: 4px; }
   .menu-frame-header.angled-tab-header > div:first-child > small { font-size: 9px; padding-right: 4px; }
-  .menu-frame-header.angled-tab-header > div:first-child > h1 { font-size: 15px; letter-spacing: .015em; }
+  .menu-frame-header.angled-tab-header > div:first-child > .angled-header-level { padding-inline: 2px; font-size: 7px; }\n  .menu-frame-header.angled-tab-header > div:first-child > h1 { font-size: 15px; letter-spacing: .015em; }
   .angled-header-tab { gap: 2px; padding-inline: 1px; font-size: 6px; letter-spacing: 0; }
   .angled-header-icon svg { width: 11px; height: 11px; }
   .menu-frame-header.angled-tab-header .menu-header-actions { padding-left: 2px; }
