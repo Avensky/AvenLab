@@ -1,3 +1,4 @@
+import { type ReactNode } from "react";
 import { AngledTabNavigation, type AngledHeaderTab } from "./AngledTabNavigation";
 export type { AngledHeaderTab } from "./AngledTabNavigation";
 import { MenuFrameHeader } from "./MenuFrame";
@@ -13,6 +14,7 @@ export function AngledTabHeader({
   idPrefix,
   className = "",
   busy = false,
+  level,
 }: {
   title: string;
   eyebrow?: string;
@@ -23,6 +25,7 @@ export function AngledTabHeader({
   idPrefix: string;
   className?: string;
   busy?: boolean;
+  level?: number | string;
 }) {
   return (
     <MenuFrameHeader
@@ -30,6 +33,7 @@ export function AngledTabHeader({
       eyebrow={eyebrow}
       showBack={false}
       busy={busy}
+      titleMeta={level == null ? undefined : <span className="angled-header-level">LEVEL {level}</span>}
       variant="scene"
       className={"angled-tab-header angled-tab-header--no-back " + className}
     >
