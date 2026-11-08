@@ -45,9 +45,11 @@ export function AngledTabNavigation({
           {tab.separatorBefore && <span className="angled-header-divider" aria-hidden="true" />}
           <span className="angled-header-icon">{tab.icon}</span>
           <span className="angled-header-label">{tab.label}</span>
-          <svg className={"angled-header-edge" + (index === tabs.length - 1 ? " angled-header-edge--right" : "")} viewBox="0 0 18 72" preserveAspectRatio="none" aria-hidden="true">
-            <path d="M17 0 1 72" />
-          </svg>
+          {index !== tabs.length - 1 && (
+            <svg className="angled-header-edge" viewBox="0 0 18 72" preserveAspectRatio="none" aria-hidden="true">
+              <path d="M17 0 1 72" />
+            </svg>
+          )}
         </button>
       ))}
     </nav>
