@@ -2,8 +2,8 @@
 .menu-frame-header.angled-tab-header {
   --angled-tab-cut: clamp(12px, 1.25vw, 17px);
   --angled-title-cut: calc(var(--angled-tab-cut) + 5px);
-  --angled-header-height: clamp(58px, 6vw, 78px);
-  --angled-tabs-height: clamp(40px, 4.5vw, 58px);
+  --angled-header-height: clamp(54px, 5.4vw, 70px);
+  --angled-tabs-height: clamp(36px, 3.9vw, 50px);
   position: relative;
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
@@ -80,20 +80,35 @@
   z-index: 2;
   display: flex;
   align-items: stretch;
+  justify-content: space-between;
   align-self: start;
   width: calc(100% + var(--angled-tab-cut));
   height: var(--angled-tabs-height);
   min-width: 0;
   margin-left: calc(-1 * var(--angled-tab-cut));
   overflow: visible;
+  background: color-mix(in srgb, var(--app-panel) 88%, transparent);
   filter: drop-shadow(0 0 1px var(--app-accent));
+}
+.angled-header-tabs::after {
+  content: "";
+  position: absolute;
+  z-index: 4;
+  top: 0;
+  right: 0;
+  width: var(--angled-tab-cut);
+  height: 100%;
+  background: color-mix(in srgb, var(--app-accent) 30%, var(--app-panel));
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+  pointer-events: none;
 }
 .angled-header-tab {
   position: relative;
   isolation: isolate;
   z-index: 0;
   display: flex;
-  flex: var(--angled-tab-grow, 1) 1 0;
+  flex: var(--angled-tab-grow, 1) 1 clamp(68px, 8.2vw, 112px);
+  max-width: clamp(104px, 10.6vw, 146px);
   align-items: center;
   justify-content: center;
   gap: clamp(4px, .5vw, 8px);
@@ -190,8 +205,8 @@
 @media (max-width: 760px) {
   .menu-frame-header.angled-tab-header {
     --angled-tab-cut: 10px;
-    --angled-header-height: 52px;
-    --angled-tabs-height: 36px;
+    --angled-header-height: 48px;
+    --angled-tabs-height: 34px;
     --angled-title-cut: calc(var(--angled-tab-cut) + 4px);
     grid-template-columns: minmax(112px, 21vw) minmax(0, 1fr);
     gap: 0;
@@ -219,8 +234,8 @@
 @media (max-width: 520px) {
   .menu-frame-header.angled-tab-header {
     --angled-tab-cut: 8px;
-    --angled-header-height: 46px;
-    --angled-tabs-height: 32px;
+    --angled-header-height: 44px;
+    --angled-tabs-height: 30px;
     --angled-title-cut: calc(var(--angled-tab-cut) + 4px);
     grid-template-columns: minmax(78px, 20vw) minmax(0, 1fr);
     gap: 0;
@@ -229,6 +244,7 @@
   .menu-frame-header.angled-tab-header > div:first-child { gap: 4px; padding-left: 4px; }
   .menu-frame-header.angled-tab-header > div:first-child > small { font-size: 9px; padding-right: 4px; }
   .menu-frame-header.angled-tab-header > div:first-child > .angled-header-level { padding-inline: 2px; font-size: 7px; }
+  .angled-header-tab { flex-basis: clamp(58px, 10.2vw, 76px); max-width: 88px; }
   .menu-frame-header.angled-tab-header > div:first-child > h1 { font-size: 15px; letter-spacing: .015em; }
   .angled-header-tab { gap: 2px; padding-inline: 1px; font-size: 6px; letter-spacing: 0; }
   .angled-header-icon svg { width: 11px; height: 11px; }
