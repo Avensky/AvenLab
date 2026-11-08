@@ -96,7 +96,7 @@
   z-index: 2;
   display: flex;
   align-items: stretch;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-self: start;
   width: calc(100% + var(--angled-tab-cut));
   height: var(--angled-tabs-height);
@@ -106,14 +106,13 @@
   background: color-mix(in srgb, var(--app-panel) 88%, transparent);
   filter: drop-shadow(0 0 1px var(--app-accent));
 }
-.angled-header-tabs::after {
-  content: "";
-  position: absolute;
-  z-index: 4;
-  top: 0;
-  right: 0;
+.angled-header-tail {
+  position: relative;
+  z-index: 3;
+  flex: 0 0 var(--angled-tab-cut);
   width: var(--angled-tab-cut);
   height: 100%;
+  margin-left: calc(-1 * var(--angled-tab-cut));
   background: color-mix(in srgb, var(--app-accent) 30%, var(--app-panel));
   clip-path: polygon(100% 0, 100% 100%, 0 100%);
   pointer-events: none;
