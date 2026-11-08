@@ -102,12 +102,15 @@ export function getPerformanceReadouts(
   const accelerationTime = summary.max_speed >= targetSpeed ? targetSpeed / acceleration : 0;
   const quarterMile = timeForDistance(QUARTER_MILE_METERS, acceleration, summary.max_speed);
   const hpAt60 = summary.engine_force * Math.min(summary.max_speed, MPH_60_MS) / WATTS_PER_HP;
+  const marine = vehicle === "hawaii-rescue" || vehicle === "louisiana";
   const mpg = STOCK_MPG_ESTIMATE[vehicle];
   const values: PerformanceReadout[] = [
     { key:"engine_force", label:"POWER EST.", value:hpAt60, valueText:`~${number(hpAt60)} HP`, benchmarkText:"650 HP", ratio:hpAt60/650, grade:"" },
     { key:"max_speed", label:"TOP SPEED", value:shownSpeed, valueText:`${number(shownSpeed)} ${metric?"km/h":"mph"}`, benchmarkText:metric?"248 km/h":"154 mph", ratio:summary.max_speed/SUPERCAR_BENCHMARK.max_speed, grade:"" },
-    { key:"acceleration", label:targetLabel, value:accelerationTime, valueText:accelerationTime?`${number(accelerationTime,1)} s`:"—", benchmarkText:"3.5 s", ratio:accelerationTime?3.5/accelerationTime:0, grade:"" },
-    { key:"quarter_mile", label:"¼ MILE", value:quarterMile, valueText:`${number(quarterMile,1)} s`, benchmarkText:"11.0 s", ratio:11/quarterMile, grade:"" },
+    ...(!marine ? [
+      { key:"acceleration" as const, label:targetLabel, value:accelerationTime, valueText:accelerationTime?`${number(accelerationTime,1)} s`:"—", benchmarkText:"3.5 s", ratio:accelerationTime?3.5/accelerationTime:0, grade:"" },
+      { key:"quarter_mile" as const, label:"¼ MILE", value:quarterMile, valueText:`${number(quarterMile,1)} s`, benchmarkText:"11.0 s", ratio:11/quarterMile, grade:"" },
+    ] : []),
     ...(mpg == null ? [] : [{ key:"fuel_economy" as const,label:"FUEL ECONOMY",value:mpg,valueText:`~${mpg} MPG`,benchmarkText:"30 MPG",ratio:mpg/30,grade:"" }]),
     { key:"mass", label:"MASS", value:summary.mass, valueText:metric?`${number(summary.mass)} kg`:`${number(summary.mass*POUNDS_PER_KG)} lb`, benchmarkText:metric?"1,540 kg":"3,395 lb", ratio:SUPERCAR_BENCHMARK.mass/summary.mass, grade:"" },
     { key:"suspension_damping_ratio", label:"SUSPENSION", value:summary.suspension_damping_ratio, valueText:number(summary.suspension_damping_ratio,2), benchmarkText:"1.08", ratio:1-Math.min(1,Math.abs(summary.suspension_damping_ratio-SUPERCAR_BENCHMARK.suspension_damping_ratio)/1.08), grade:"" },
