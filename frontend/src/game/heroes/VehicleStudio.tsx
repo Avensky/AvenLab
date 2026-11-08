@@ -28,27 +28,16 @@ export const STOCK_VEHICLE_SUMMARY: VehiclePerformanceSummary = {
   fuel_consumption: 1,
 };
 
-export function VehicleStudioNavigation({tab,onTab}:{tab:VehicleStudioTab;onTab:(tab:VehicleStudioTab)=>void}) {
-  return (
-    <nav className="vehicle-studio-tabs" role="tablist" aria-label="Heroes garage sections">
-      {VEHICLE_STUDIO_TABS.map((item) => (
-        <button
-          key={item.id}
-          type="button"
-          role="tab"
-          id={"vehicle-studio-tab-" + item.id}
-          aria-selected={tab === item.id}
-          aria-controls="vehicle-studio-tab-panel"
-          aria-label={`${item.label}: ${item.description}`}
-          title={item.description}
-          className="vehicle-studio-tab"
-          onClick={() => onTab(item.id)}
-        >
-          <span>{item.label}</span>
-        </button>
-      ))}
-    </nav>
-  );
+export function VehicleStudioTabIcon({tab}:{tab:VehicleStudioTab}) {
+  const paths:Record<VehicleStudioTab,string>={
+    overview:"M3 10 12 3l9 7M5 9v12h14V9M9 21v-7h6v7",
+    performance:"M4 20V11M9 20V5M14 20v-8M19 20V8M2 20h20",
+    paint:"m14 6 4 4M4 20l4-1 11-11a2.8 2.8 0 0 0-4-4L4 15l-1 5Z",
+    body:"M3 14h18l-1.5-5a2 2 0 0 0-2-1.5h-9A2 2 0 0 0 6.5 9L5 14Zm1 0v4h2m14-4v4h-2M7 18h10m-9-2.5h.01m10 0h.01",
+    lighting:"M3 10a6 6 0 0 1 0 4h8V10H3Zm11-1 7-4m-7 7h8m-8 3 7 4",
+    studio:"M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8ZM4 21a8 8 0 0 1 16 0Z",
+  };
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d={paths[tab]}/></svg>;
 }
 
 export function VehicleStudio({
