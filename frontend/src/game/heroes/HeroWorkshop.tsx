@@ -46,6 +46,7 @@ export function HeroLoadoutSync(){
 export function HeroWorkshop(){
  const guideOpen=useUIStore(s=>s.overlay==="hero_abilities"||s.overlay==="match_results");
  const owner=useSocialStore(s=>s.view?.profile.id??null);
+ const characterLevel=useSocialStore(s=>s.view?.profile.progression?.level??null);
  const main=useHeroLoadouts(s=>s.ownerId===owner?s.defaultHero:null);
  const skins=useSocialStore(s=>s.view?.alpha?.skins);
  const owned=useSocialStore(s=>s.view?.profile.progression?.owned??NO_OWNED_SKINS);
@@ -168,6 +169,7 @@ export function HeroWorkshop(){
     ? <AngledTabHeader
         title="HEROES"
         eyebrow={APP_BRANDING.productName}
+        level={characterLevel??undefined}
         activeTab={studioTab}
         onTabChange={next=>setStudioTab(next as VehicleStudioTab)}
         idPrefix="vehicle-studio"
