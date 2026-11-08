@@ -6,6 +6,6 @@ import {MenuFrameHeader,MenuFrameFooter} from '../../components/menus/MenuFrame'
 export function SelectionHeader({title,onBack,busy=false,eyebrow,team,children}:{title:string;onBack:()=>void;busy?:boolean;eyebrow?:string;team?:MatchTeam;children?:ReactNode}) {
  return <MenuFrameHeader title={title} eyebrow={eyebrow} onBack={onBack} busy={busy} variant="scene" team={team}>{children}</MenuFrameHeader>;
 }
-export function SelectionFooter({children,chat=false,secondaryTabs=false,selectLabel}:{children:ReactNode;chat?:boolean;secondaryTabs?:boolean;selectLabel?:string}) {
- return <MenuFrameFooter chat={chat} secondaryTabs={secondaryTabs} selectLabel={selectLabel} variant="scene">{children}</MenuFrameFooter>;
+export function SelectionFooter({children,chat=false,secondaryTabs=false,selectLabel,hasPrimaryAction=false}:{children:ReactNode;chat?:boolean;secondaryTabs?:boolean;selectLabel?:string;hasPrimaryAction?:boolean}) {
+ return <MenuFrameFooter chat={chat} secondaryTabs={secondaryTabs} selectLabel={selectLabel} hasPrimaryAction={hasPrimaryAction} variant="scene">{children}</MenuFrameFooter>;
 }
