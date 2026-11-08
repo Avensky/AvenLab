@@ -49,6 +49,7 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
   const planned = mode === "swarm";
   const match = isMatchMode(mode);
   const allowBoats=!match && !research && !planned;
+  useEffect(() => { if (!allowBoats && (role === "air" || role === "sea")) setRole("all"); }, [allowBoats, role]);
   const confirmedTeam = match && inMode && (active?.team === "red" || active?.team === "blue")
     ? active.team : undefined;
   const customWorld = Boolean(world && !active);
