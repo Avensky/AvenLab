@@ -36,7 +36,6 @@ export function VehiclePreviewModel({platform,model}:{
     [scene, model],
   );
   const partRig=useMemo(()=>createVehiclePartRig(prepared.root,model),[prepared,model]);
-  const activeTab=useVehicleStudioStore(s=>s.activeTab);
   const glassStyle=useVehicleStudioStore(s=>s.glassStyle);
   const lamps=useMemo(()=>{
     const headlights=new Set<MeshStandardMaterial>(),signals=new Set<MeshStandardMaterial>(),leftSignals=new Set<MeshStandardMaterial>(),rightSignals=new Set<MeshStandardMaterial>();
@@ -83,11 +82,6 @@ export function VehiclePreviewModel({platform,model}:{
       material.transmission=0;
     }
   },[prepared,glassStyle]);
-  useEffect(()=>{
-    if(!activeTab)return;
-    const hasHood=partRig.some(part=>part.part==="hood");
-    useVehicleStudioStore.getState().setPart("hood",activeTab==="performance"&&hasHood);
-  },[activeTab,partRig]);
   useEffect(() => {
     const appearance = savedAppearance ?? FACTORY_APPEARANCE;
     applyShowroomPaint(prepared.root, model, "factory", appearance.body === "factory" ? undefined : appearance.body);

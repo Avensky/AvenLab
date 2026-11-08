@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useLayoutEffect, useMemo } from "react";
 import { Environment, Html, Lightformer, useGLTF } from "@react-three/drei";
 import { createPortal } from "@react-three/fiber";
-import { Box3, CylinderGeometry, Group, Mesh, MeshStandardMaterial, TorusGeometry, Vector3, type BufferGeometry } from "three";
+import { Box3, BoxGeometry, Color, CylinderGeometry, Group, InstancedMesh, Mesh, MeshStandardMaterial, Object3D, TorusGeometry, Vector3, type BufferGeometry } from "three";
 import { AssetBoundary } from "../../components/debugger/AssetBoundary";
 import { Showroom, ShowroomFloor } from "./Showroom";
 import { garagePlacement } from "./garagePlacement";
@@ -117,9 +117,48 @@ function GarageModel({ turntable, onPlatformReady, accentOverride = null }: Gara
       mesh.name = themed ? "garage-platform-theme-light" : "garage-platform-mixed-light";
       platform.add(mesh);
     };
-    addRing(radius * 0.94, 0.035, "#26dff0", 1.3, true);
-    addRing(radius * 0.84, 0.018, "#ffad43", 1.0);
-    addRing(radius * 0.99, 0.012, "#d8edf5", 0.75);
+    addRing(radius * 0.94, 0.035, "#26dff0", 0.55, true);
+    addRing(radius * 0.84, 0.018, "#ffad43", 0.28);
+    addRing(radius * 0.99, 0.009, "#52636d", 0.18);
+
+    // Machined dark outer lip with spaced, low-output marker lights instead of
+    // a continuous bright halo. Instancing keeps the extra stage detail cheap.
+    const rimGeometry = new TorusGeometry(radius * 0.976, 0.038, 8, 96);
+    const rimMaterial = new MeshStandardMaterial({ color: "#27323b", metalness: 0.88, roughness: 0.24 });
+    stageGeometries.push(rimGeometry);
+    stageMaterials.push(rimMaterial);
+    const rim = new Mesh(rimGeometry, rimMaterial);
+    rim.rotation.x = Math.PI / 2;
+    rim.position.set(center.x, floorY + 0.006, center.z);
+    rim.name = "garage-platform-machined-outer-rim";
+    platform.add(rim);
+
+    const markerGeometry = new BoxGeometry(0.09, 0.014, 0.026);
+    const markerMaterial = new MeshStandardMaterial({
+      color: "#43dce5", emissive: "#17484d", emissiveIntensity: 0.5,
+      metalness: 0.35, roughness: 0.28,
+    });
+    const markers = new InstancedMesh(markerGeometry, markerMaterial, 48);
+    const marker = new Object3D();
+    for (let index = 0; index < 48; index += 1) {
+      const angle = (index / 48) * Math.PI * 2;
+      const markerRadius = radius * 0.978;
+      marker.position.set(
+        center.x + Math.cos(angle) * markerRadius,
+        floorY + 0.027,
+        center.z + Math.sin(angle) * markerRadius,
+      );
+      marker.rotation.set(0, -angle, 0);
+      marker.updateMatrix();
+      markers.setMatrixAt(index, marker.matrix);
+      markers.setColorAt(index, new Color(index % 8 === 0 ? "#d98d3b" : "#63dfe5"));
+    }
+    markers.instanceMatrix.needsUpdate = true;
+    if (markers.instanceColor) markers.instanceColor.needsUpdate = true;
+    markers.name = "garage-platform-dotted-edge-lights";
+    stageGeometries.push(markerGeometry);
+    stageMaterials.push(markerMaterial);
+    platform.add(markers);
     // The reflective tile shader already draws this surface. Keep the full
     // grid in the exported asset, but avoid drawing 47k covered triangles here.
     if (display.root.userData.avenlabGarageComplete === true) {

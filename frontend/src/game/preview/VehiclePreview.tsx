@@ -4,7 +4,7 @@ import { Suspense, useState } from "react";
 import { Group } from "three";
 import { useThree } from "@react-three/fiber";
 import { AssetBoundary } from "../../components/debugger/AssetBoundary";
-import { Html, OrbitControls, PerspectiveCamera } from "@react-three/drei";
+import { Html, PerspectiveCamera } from "@react-three/drei";
 
 import { useSelectionStore } from "../../store/selection/selectionStore";
 import { VehiclePreviewModel } from "./VehiclePreviewModel";
@@ -13,7 +13,6 @@ import { GarageEnvironment } from "./GarageEnvironment";
 import { PreviewTurntable } from "./PreviewTurntable";
 import { DEFAULT_PREVIEW_PLATFORM } from "./previewPlacement";
 import { HEROES, useAlphaStore } from "../../store/alpha/alphaStore";
-import { useVehicleStudioStore } from "../heroes/vehicleStudioStore";
 
 export function VehiclePreview({
   heroLayout = false,
@@ -28,9 +27,6 @@ export function VehiclePreview({
   const picked = useAlphaStore(s => screen === "heroes" ? s.previewHero : s.hero);
   const favorite = useSelectionStore(s => s.getSelectedVehicle().id);
   const vehicleId = awaitingHero ? HEROES.find(hero => hero.id === picked)?.vehicle : favorite;
-  const reducedMotion = usePreferencesStore((s) => s.reducedMotion);
-  const cameraSensitivity = usePreferencesStore((s) => s.cameraSensitivity);
-  const activeTab = useVehicleStudioStore((s) => s.activeTab);
   const size = useThree((s) => s.size);
   const [turntable, setTurntable] = useState<Group | null>(null);
   const [platform, setPlatform] = useState<[number, number]>(
@@ -42,19 +38,14 @@ export function VehiclePreview({
   // camera outside and clipping away the racks, aluminum frame and lights.
   // One shared camera frames the enlarged chassis throughout the turntable.
   // The cannon is free to overhang instead of limiting the lineup's size.
-  const radius = activeTab === "performance" ? 7.1 : activeTab === "body" ? 7.8 : activeTab === "lighting" ? 7.6 : activeTab === "paint" ? 8.0 : 7.25;
+  const radius = 7.25;
   const aspect = size.width / Math.max(1, size.height);
   // Give the enlarged turret headroom while keeping the chassis visible on phones.
   const fov = Math.max(
     60,
     (2 * Math.atan(Math.tan((75 * Math.PI) / 360) / aspect) * 180) / Math.PI,
   );
-  const targetY = activeTab === "performance" ? 1.3 : activeTab === "lighting" ? 1.25 : 1.65;
-  const cameraPosition: [number, number, number] = activeTab === "lighting"
-    ? [radius * 0.22, 2.9, radius * 0.98]
-    : activeTab === "paint"
-      ? [radius * 0.94, 3.0, radius * 0.34]
-      : [radius * 0.75, 3.2, radius * 0.66];
+  const cameraPosition: [number, number, number] = [0, 3.2, radius];
   return (
     <>
       <GarageEnvironment turntable={turntable} onPlatformReady={setPlatform} accentOverride={selectionAccent} />
@@ -65,18 +56,9 @@ export function VehiclePreview({
         near={0.1}
         onUpdate={(camera) => {
           const portrait = aspect < 1;
-          const offsetY =
-            heroLayout && portrait
-              ? -size.height * 0.1
-              : Math.min(40, size.height * 0.06);
-          camera.setViewOffset(
-            size.width,
-            size.height,
-            heroLayout ? size.width * (portrait ? 0.08 : 0.12) : 0,
-            offsetY,
-            size.width,
-            size.height,
-          );
+          const offsetY = heroLayout && portrait ? -size.height * 0.04 : 0;
+          camera.setViewOffset(size.width, size.height, 0, offsetY, size.width, size.height);
+          camera.lookAt(0, 1.35, 0);
         }}
       />
 
@@ -100,18 +82,6 @@ export function VehiclePreview({
         </AssetBoundary>}
       </PreviewTurntable>
 
-      <OrbitControls
-        makeDefault
-        target={[0, targetY, 0]}
-        autoRotate={false}
-        enableDamping={!reducedMotion}
-        enablePan={false}
-        enableZoom={false}
-        enableRotate
-        rotateSpeed={cameraSensitivity}
-        maxPolarAngle={Math.PI / 2 - 0.05}
-        minPolarAngle={Math.PI / 8}
-      />
     </>
   );
 }

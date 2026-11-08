@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from "react";
 import { useVehicleStudioStore, type VehicleStudioTab } from "./vehicleStudioStore";
+import { getPerformanceReadouts, getVehicleStockPerformance, type VehiclePerformanceSummary } from "./vehiclePerformance";
 
 export const VEHICLE_STUDIO_TABS = [
   { id: "overview", label: "OVERVIEW", description: "Vehicle and build summary" },
@@ -11,44 +12,19 @@ export const VEHICLE_STUDIO_TABS = [
 ] as const;
 
 export type { VehicleStudioTab };
-export type VehiclePerformanceSummary = {
-  engine_force: number;
-  max_speed: number;
-  mu_base: number;
-  brake_force: number;
-  suspension_damping_ratio: number;
-  fuel_consumption: number;
-};
-export const STOCK_VEHICLE_SUMMARY: VehiclePerformanceSummary = {
-  engine_force: 1,
-  max_speed: 1,
-  mu_base: 1,
-  brake_force: 1,
-  suspension_damping_ratio: 1,
-  fuel_consumption: 1,
-};
+export type { VehiclePerformanceSummary } from "./vehiclePerformance";
+export const STOCK_VEHICLE_SUMMARY = getVehicleStockPerformance("gt86");
 
-export function VehicleStudioNavigation({tab,onTab}:{tab:VehicleStudioTab;onTab:(tab:VehicleStudioTab)=>void}) {
-  return (
-    <nav className="vehicle-studio-tabs" role="tablist" aria-label="Heroes garage sections">
-      {VEHICLE_STUDIO_TABS.map((item) => (
-        <button
-          key={item.id}
-          type="button"
-          role="tab"
-          id={"vehicle-studio-tab-" + item.id}
-          aria-selected={tab === item.id}
-          aria-controls="vehicle-studio-tab-panel"
-          aria-label={`${item.label}: ${item.description}`}
-          title={item.description}
-          className="vehicle-studio-tab"
-          onClick={() => onTab(item.id)}
-        >
-          <span>{item.label}</span>
-        </button>
-      ))}
-    </nav>
-  );
+export function VehicleStudioTabIcon({tab}:{tab:VehicleStudioTab}) {
+  const paths:Record<VehicleStudioTab,string>={
+    overview:"M3 10 12 3l9 7M5 9v12h14V9M9 21v-7h6v7",
+    performance:"M4 20V11M9 20V5M14 20v-8M19 20V8M2 20h20",
+    paint:"m14 6 4 4M4 20l4-1 11-11a2.8 2.8 0 0 0-4-4L4 15l-1 5Z",
+    body:"M3 14h18l-1.5-5a2 2 0 0 0-2-1.5h-9A2 2 0 0 0 6.5 9L5 14Zm1 0v4h2m14-4v4h-2M7 18h10m-9-2.5h.01m10 0h.01",
+    lighting:"M3 10a6 6 0 0 1 0 4h8V10H3Zm11-1 7-4m-7 7h8m-8 3 7 4",
+    studio:"M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8ZM4 21a8 8 0 0 1 16 0Z",
+  };
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d={paths[tab]}/></svg>;
 }
 
 export function VehicleStudio({
@@ -76,15 +52,7 @@ export function VehicleStudio({
   }, [setActiveTab, tab]);
   useEffect(() => () => setActiveTab(null), [setActiveTab]);
 
-  const rows: [string, number, string][] = [
-    ["POWER", summary.engine_force, "relative"],
-    ["TOP SPEED", summary.max_speed, "relative"],
-    ["FUEL CONSUMPTION", summary.fuel_consumption, "relative"],
-    ["TIRE GRIP", summary.mu_base, "relative"],
-    ["BRAKES", summary.brake_force, "relative"],
-    ["SUSPENSION", summary.suspension_damping_ratio, "relative"],
-    ["ARMOR", stats.armor, "rating"],
-  ];
+  const rows = getPerformanceReadouts(summary);
   const selected = VEHICLE_STUDIO_TABS.find((item) => item.id === tab)!;
 
   return (
@@ -98,26 +66,17 @@ export function VehicleStudio({
           </header>
           <section className="vehicle-studio-power">
             <h3>PERFORMANCE PROFILE</h3>
-            {rows.map(([label, value, kind]) => (
-              <div className="vehicle-studio-stat" key={label}>
+            {rows.map((row) => (
+              <div className="vehicle-studio-stat" key={row.key}>
                 <div>
-                  <span>{label}</span>
-                  <strong>
-                    {kind === "rating"
-                      ? Math.round(value) + " / 100"
-                      : Math.round(value * 100) + "%"}
-                  </strong>
+                  <span>{row.label}</span>
+                  <strong>{row.grade} · {row.valueText}</strong>
                 </div>
-                <meter
-                  min={0}
-                  max={kind === "rating" ? 100 : 1.5}
-                  value={Math.max(0, Math.min(kind === "rating" ? 100 : 1.5, kind === "rating" ? value : value))}
-                  optimum={kind === "rating" ? 100 : 1}
-                  aria-label={label + (kind === "rating" ? " rating" : " relative to stock")}
-                />
+                <small>VS SUPERCAR · {row.benchmarkText}</small>
+                <meter min={0} max={1.25} value={row.ratio} optimum={1} aria-label={row.label + " grade " + row.grade + ", " + row.valueText + ", benchmark " + row.benchmarkText} />
               </div>
             ))}
-            <p className="vehicle-studio-estimate">Build estimates · stock baseline = 100%</p>
+            <p className="vehicle-studio-estimate">Configured in-game physics · chassis-specific tuning limits</p>
           </section>
           <section className="vehicle-studio-class-stats" aria-label="Vehicle class ratings">
             <h3>CLASS PROFILE</h3>
