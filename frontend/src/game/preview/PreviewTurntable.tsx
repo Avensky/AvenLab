@@ -29,7 +29,7 @@ export function PreviewTurntable({
 
   const beginDrag = (event: ThreeEvent<PointerEvent>) => {
     event.stopPropagation();
-    event.preventDefault();
+    event.nativeEvent.preventDefault();
     drag.current = { pointerId: event.pointerId, clientX: event.clientX };
     (event.target as EventTarget & { setPointerCapture(pointerId: number): void }).setPointerCapture(event.pointerId);
   };
