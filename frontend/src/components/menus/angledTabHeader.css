@@ -2,8 +2,8 @@
 .menu-frame-header.angled-tab-header {
   --angled-tab-cut: clamp(16px, 1.45vw, 22px);
   --angled-title-cut: var(--angled-tab-cut);
-  --angled-header-height: clamp(48px, 4.2vw, 56px);
-  --angled-tabs-height: clamp(40px, 3.8vw, 48px);
+  --angled-header-height: clamp(46px, 4vw, 54px);
+  --angled-tabs-height: clamp(38px, 3.5vw, 46px);
   position: relative;
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
@@ -97,7 +97,7 @@
   display: flex;
   align-items: stretch;
   justify-content: flex-start;
-  align-self: start;
+  align-self: end;
   width: calc(100% + var(--angled-tab-cut));
   height: var(--angled-tabs-height);
   min-width: 0;
@@ -107,7 +107,7 @@
   border-bottom: 1px solid var(--app-accent);
   filter: drop-shadow(0 0 1px var(--app-accent));
 }
- .angled-header-tail { display: none; }
+  .angled-header-tail { display: none; }
 .angled-header-tab {
   position: relative;
   isolation: isolate;
@@ -121,7 +121,7 @@
   min-width: 0;
   height: 100%;
   margin-left: calc(-1 * var(--angled-tab-cut));
-  padding: 3px clamp(6px, .7vw, 10px);
+  padding: 3px clamp(9px, .8vw, 12px);
   overflow: visible;
   border: 0;
   border-radius: 0;
@@ -139,10 +139,8 @@
   transition: color 120ms ease, background-color 120ms ease;
 }
 .angled-header-tab--overview { margin-left: 0; }
-.angled-header-tab--performance {
-  max-width: clamp(132px, 12vw, 168px);
-  padding-inline: clamp(10px, 1vw, 15px);
-}
+.angled-header-tab--performance { max-width: clamp(148px, 11vw, 176px); }
+.angled-header-tab--paint { max-width: clamp(150px, 11.5vw, 180px); }
 .angled-header-tab[aria-selected="true"] {
   z-index: 2;
   color: var(--app-background);
@@ -174,6 +172,7 @@
   stroke-linejoin: round;
 }
 .angled-header-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+ .angled-header-edge--right { left: auto; right: 0; }
 .angled-header-edge {
   position: absolute;
   z-index: 2;
@@ -213,7 +212,7 @@
 @media (max-width: 760px) {
   .menu-frame-header.angled-tab-header {
     --angled-tab-cut: 10px;
-    --angled-header-height: 42px;
+    --angled-header-height: 40px;
     --angled-tabs-height: 36px;
     --angled-title-cut: var(--angled-tab-cut);
     grid-template-columns: minmax(112px, 21vw) minmax(0, 1fr);
@@ -242,7 +241,7 @@
 @media (max-width: 520px) {
   .menu-frame-header.angled-tab-header {
     --angled-tab-cut: 8px;
-    --angled-header-height: 39px;
+    --angled-header-height: 37px;
     --angled-tabs-height: 33px;
     --angled-title-cut: var(--angled-tab-cut);
     grid-template-columns: minmax(78px, 20vw) minmax(0, 1fr);
