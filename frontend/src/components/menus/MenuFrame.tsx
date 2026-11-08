@@ -12,7 +12,7 @@ export const MenuFrame=forwardRef<HTMLElement,ComponentPropsWithoutRef<'section'
 });
 export function MenuFrameHeader({title,onBack,showBack=true,titleId,eyebrow=APP_ALPHA_EYEBROW,backLabel='BACK',busy=false,className='',variant='panel',team,children,titleMeta}:{title:string;onBack?:()=>void;showBack?:boolean;titleId?:string;eyebrow?:string;backLabel?:string;busy?:boolean;className?:string;variant?:'panel'|'scene';team?:MatchTeam;children?:ReactNode;titleMeta?:ReactNode}){
  return <header className={`menu-frame-header alpha-header ${className}`} data-menu-chrome={variant} data-team-heading={team?true:undefined}>
-  <div><small>{eyebrow}</small><h1 id={titleId}>{title}</h1>{titleMeta&&<span className="menu-header-title-meta">{titleMeta}</span>}</div>
+  <div><small>{eyebrow}</small><h1 id={titleId}>{title}</h1>{titleMeta}</div>
   {children}
   {team&&<div className="menu-header-team" data-team={team}><strong>{team.toUpperCase()}</strong><span>TEAM</span></div>}
   {showBack&&<div className="menu-header-actions"><ProgressBadge/><ControllerAction button="B" type="button" className="menu-control menu-back" disabled={busy} onClick={onBack} onKeyDown={event=>{if(event.key==='Enter'||event.key===' ')event.stopPropagation();}}>{backLabel}</ControllerAction></div>}
