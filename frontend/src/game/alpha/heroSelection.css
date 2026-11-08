@@ -109,6 +109,7 @@
 .hero-roster-grid::-webkit-scrollbar {
   display: none;
 }
+.hero-roster-empty { grid-column:1/-1; padding:12px 6px; color:var(--app-muted); font-size:9px; font-weight:800; letter-spacing:.08em; text-align:center; }
 .hero-portrait-card {
   position: relative;
   display: block;
