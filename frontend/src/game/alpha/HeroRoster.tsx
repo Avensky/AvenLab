@@ -42,7 +42,7 @@ export function HeroRoster({
   showFilters?: boolean;
 }) {
   const visibleHeroes = HEROES.filter((hero) => {
-    if (!allowBoats && SEA_VEHICLE_IDS.has(hero.vehicle)) return false;
+    if (!allowBoats && (SEA_VEHICLE_IDS.has(hero.vehicle) || AIR_VEHICLE_IDS.has(hero.vehicle))) return false;
     if (filter === "all") return true;
     if (filter === "air") return AIR_VEHICLE_IDS.has(hero.vehicle);
     if (filter === "sea") return SEA_VEHICLE_IDS.has(hero.vehicle);
@@ -106,11 +106,11 @@ export function HeroRoleTabs({
     <nav
       className="hero-role-tabs"
       role="tablist"
-      aria-label="Hero role"
+      aria-label="Vehicle class"
       data-controller-row
       data-controller-tab-only
     >
-      {HERO_FILTERS.filter(role=>allowBoats||role!=='boat').map((role) => (
+      {HERO_FILTERS.filter(role=>allowBoats||!["air","sea"].includes(role)).map((role) => (
         <MenuTabButton
           key={role}
           data-role-filter
