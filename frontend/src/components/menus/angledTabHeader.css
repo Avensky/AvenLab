@@ -1,15 +1,15 @@
 /* Shared, theme-aware top chrome for tabbed screens. */
 .menu-frame-header.angled-tab-header {
   --angled-tab-cut: clamp(12px, 1.25vw, 17px);
-  --angled-header-height: 78px;
-  --angled-tabs-height: 58px;
+  --angled-header-height: 38px;
+  --angled-tabs-height: 100%;
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
   align-items: stretch;
   gap: 0;
   min-height: var(--angled-header-height);
-  padding: 5px 0 5px clamp(8px, 1.2vw, 18px);
-  background: color-mix(in srgb, var(--app-background) 54%, var(--app-panel));
+  padding: 0;
+  /* background: color-mix(in srgb, var(--app-background) 54%, var(--app-panel)); */
   border-bottom-color: color-mix(in srgb, var(--app-accent) 36%, var(--app-line));
 }
 .menu-frame-header.angled-tab-header > div:first-child {
@@ -19,7 +19,7 @@
   flex-direction: row;
   align-items: center;
   align-self: center;
-  height: calc(var(--angled-tabs-height) + 28px);
+  height: calc(var(--angled-tabs-height));
   gap: clamp(9px, 1.1vw, 16px);
   min-width: 0;
   padding: 9px calc(var(--angled-tab-cut) + 9px) 9px 12px;
@@ -49,7 +49,7 @@
   align-items: stretch;
   align-self: center;
   width: calc(100% + var(--angled-tab-cut));
-  height: var(--angled-tabs-height);
+  height: var(--angled-tabs-height );
   min-width: 0;
   margin-left: calc(-1 * var(--angled-tab-cut));
   overflow: visible;
@@ -64,9 +64,9 @@
   justify-content: center;
   gap: clamp(4px, .5vw, 8px);
   min-width: 0;
-  height: 100%;
+  /* height: 100%; */
   margin-left: calc(-1 * var(--angled-tab-cut));
-  padding: 3px clamp(4px, .55vw, 8px);
+  padding: 0 3px 0 clamp(0, .55vw, 0);
   overflow: visible;
   border: 0;
   border-radius: 0;
@@ -156,8 +156,8 @@
 @media (max-width: 760px) {
   .menu-frame-header.angled-tab-header {
     --angled-tab-cut: 10px;
-    --angled-header-height: 58px;
-    --angled-tabs-height: 46px;
+    --angled-header-height: 38px;
+    --angled-tabs-height: 26px;
     grid-template-columns: minmax(112px, 21vw) minmax(0, 1fr);
     gap: 3px;
     padding: 4px 0 4px 6px;
@@ -184,8 +184,8 @@
 @media (max-width: 520px) {
   .menu-frame-header.angled-tab-header {
     --angled-tab-cut: 8px;
-    --angled-header-height: 54px;
-    --angled-tabs-height: 42px;
+    --angled-header-height: 38px;
+    --angled-tabs-height: 26px;
     grid-template-columns: minmax(78px, 20vw) minmax(0, 1fr);
     gap: 2px;
     padding: 3px 0 3px 4px;

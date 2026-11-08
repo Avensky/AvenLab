@@ -1,4 +1,3 @@
-import { type ReactNode } from "react";
 import { AngledTabNavigation, type AngledHeaderTab } from "./AngledTabNavigation";
 export type { AngledHeaderTab } from "./AngledTabNavigation";
 import { MenuFrameHeader } from "./MenuFrame";
