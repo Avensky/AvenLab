@@ -69,7 +69,7 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
   }, []);
   const tab = useCallback(
     (step: number) => {
-      const filters=HERO_FILTERS.filter(item=>allowBoats||item!=='boat');
+      const filters=HERO_FILTERS.filter(item=>allowBoats||!["air","sea"].includes(item));
       filter(
         filters[
           (filters.indexOf(role) + step + filters.length) %
@@ -184,8 +184,8 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
     const focused = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>("[data-hero]");
     const id = focused?.dataset.hero ??
       useAlphaStore.getState().previewHero ??
-      HEROES.find((h) => (allowBoats||!['hawaii-rescue','louisiana'].includes(h.vehicle)) &&
-        (role==='all'||(role==='boat'?['hawaii-rescue','louisiana'].includes(h.vehicle):h.role===role)))?.id;
+      HEROES.find((h) => (allowBoats || !["hawaii-rescue","louisiana"].includes(h.vehicle)) &&
+        (role === "all" || (role === "sea" ? ["hawaii-rescue","louisiana"].includes(h.vehicle) : role === "air" ? false : h.role === role)))?.id;
     if (!id) return;
     void choose(id);
   }, [choose, role, allowBoats]);
