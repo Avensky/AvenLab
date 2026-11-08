@@ -43,7 +43,7 @@ export const SUPERCAR_BENCHMARK = Object.freeze({
 });
 
 export type PerformanceReadout = {
-  key: keyof VehiclePerformanceSummary;
+  key: keyof VehiclePerformanceSummary | "acceleration" | "quarter_mile" | "fuel_economy";
   label: string;
   value: number;
   valueText: string;
@@ -67,15 +67,52 @@ export function getVehicleTuningLimits(vehicle: string) {
 
 const gradeFor = (ratio:number) => ratio >= 1 ? "S" : ratio >= .9 ? "A" : ratio >= .78 ? "B" : ratio >= .62 ? "C" : ratio >= .45 ? "D" : "E";
 const clampRatio = (value:number) => Math.max(0, Math.min(1.25, value));
+const POUNDS_PER_KG = 2.2046226218;
+const WATTS_PER_HP = 745.699872;
+const MPH_60_MS = 26.8224;
+const KMH_100_MS = 27.7778;
+const QUARTER_MILE_METERS = 402.336;
+/** In-game comparison estimates until fuel burn is simulated per vehicle. */
+const STOCK_MPG_ESTIMATE: Readonly<Record<string, number>> = Object.freeze({
+  ae86:28, gt86:27, brz:25, camaro:20, supra:19, mini:30, cx30:29,
+  fortuner:22, landcruiser:16, sierra:17, enforcer:19, interceptor:16,
+  charger70:13, skyline34:20, timecar:18,
+});
+const number = (value:number, digits=0) => value.toLocaleString(undefined,{maximumFractionDigits:digits,minimumFractionDigits:digits});
+function timeForDistance(distance:number, acceleration:number, topSpeed:number) {
+  if (acceleration <= 0 || topSpeed <= 0) return 0;
+  const timeToTop = topSpeed / acceleration;
+  const distanceToTop = .5 * acceleration * timeToTop * timeToTop;
+  return distance <= distanceToTop
+    ? Math.sqrt(2 * distance / acceleration)
+    : timeToTop + (distance - distanceToTop) / topSpeed;
+}
 
-export function getPerformanceReadouts(summary: VehiclePerformanceSummary): PerformanceReadout[] {
-  const raw = [
-    { key:"engine_force" as const, label:"POWER", value:summary.engine_force, valueText:`${(summary.engine_force/1000).toFixed(1)} kN`, benchmarkText:"13.2 kN", ratio:summary.engine_force/SUPERCAR_BENCHMARK.engine_force },
-    { key:"max_speed" as const, label:"TOP SPEED", value:summary.max_speed, valueText:`${Math.round(summary.max_speed*3.6)} km/h`, benchmarkText:"248 km/h", ratio:summary.max_speed/SUPERCAR_BENCHMARK.max_speed },
-    { key:"mass" as const, label:"MASS", value:summary.mass, valueText:`${Math.round(summary.mass).toLocaleString()} kg`, benchmarkText:"1,540 kg", ratio:SUPERCAR_BENCHMARK.mass/summary.mass },
-    { key:"mu_base" as const, label:"TIRE GRIP", value:summary.mu_base, valueText:`μ ${summary.mu_base.toFixed(2)}`, benchmarkText:"μ 0.95", ratio:summary.mu_base/SUPERCAR_BENCHMARK.mu_base },
-    { key:"brake_force" as const, label:"BRAKING", value:summary.brake_force, valueText:`${(summary.brake_force/1000).toFixed(1)} kN`, benchmarkText:"9.0 kN", ratio:summary.brake_force/SUPERCAR_BENCHMARK.brake_force },
-    { key:"suspension_damping_ratio" as const, label:"SUSPENSION", value:summary.suspension_damping_ratio, valueText:summary.suspension_damping_ratio.toFixed(2), benchmarkText:"1.08 setup", ratio:1-Math.min(1,Math.abs(summary.suspension_damping_ratio-SUPERCAR_BENCHMARK.suspension_damping_ratio)/1.08) },
+/** Estimates follow the live stock physics profile and the chosen display units. */
+export function getPerformanceReadouts(
+  summary: VehiclePerformanceSummary,
+  speedUnit: "kmh" | "mph" = "kmh",
+  vehicle = "gt86",
+): PerformanceReadout[] {
+  const metric = speedUnit === "kmh";
+  const shownSpeed = metric ? summary.max_speed * 3.6 : summary.max_speed * 2.2369362921;
+  const targetSpeed = metric ? KMH_100_MS : MPH_60_MS;
+  const targetLabel = metric ? "0–100 KM/H" : "0–60 MPH";
+  const acceleration = Math.max(.1, Math.min(summary.engine_force / Math.max(1, summary.mass), summary.mu_base * 9.81));
+  const accelerationTime = summary.max_speed >= targetSpeed ? targetSpeed / acceleration : 0;
+  const quarterMile = timeForDistance(QUARTER_MILE_METERS, acceleration, summary.max_speed);
+  const hpAt60 = summary.engine_force * Math.min(summary.max_speed, MPH_60_MS) / WATTS_PER_HP;
+  const mpg = STOCK_MPG_ESTIMATE[vehicle];
+  const values: PerformanceReadout[] = [
+    { key:"engine_force", label:"POWER EST.", value:hpAt60, valueText:`~${number(hpAt60)} HP`, benchmarkText:"650 HP", ratio:hpAt60/650, grade:"" },
+    { key:"max_speed", label:"TOP SPEED", value:shownSpeed, valueText:`${number(shownSpeed)} ${metric?"km/h":"mph"}`, benchmarkText:metric?"248 km/h":"154 mph", ratio:summary.max_speed/SUPERCAR_BENCHMARK.max_speed, grade:"" },
+    { key:"acceleration", label:targetLabel, value:accelerationTime, valueText:accelerationTime?`${number(accelerationTime,1)} s`:"—", benchmarkText:"3.5 s", ratio:accelerationTime?3.5/accelerationTime:0, grade:"" },
+    { key:"quarter_mile", label:"¼ MILE", value:quarterMile, valueText:`${number(quarterMile,1)} s`, benchmarkText:"11.0 s", ratio:11/quarterMile, grade:"" },
+    ...(mpg == null ? [] : [{ key:"fuel_economy" as const,label:"FUEL ECONOMY",value:mpg,valueText:`~${mpg} MPG`,benchmarkText:"30 MPG",ratio:mpg/30,grade:"" }]),
+    { key:"mass", label:"MASS", value:summary.mass, valueText:metric?`${number(summary.mass)} kg`:`${number(summary.mass*POUNDS_PER_KG)} lb`, benchmarkText:metric?"1,540 kg":"3,395 lb", ratio:SUPERCAR_BENCHMARK.mass/summary.mass, grade:"" },
+    { key:"suspension_damping_ratio", label:"SUSPENSION", value:summary.suspension_damping_ratio, valueText:number(summary.suspension_damping_ratio,2), benchmarkText:"1.08", ratio:1-Math.min(1,Math.abs(summary.suspension_damping_ratio-SUPERCAR_BENCHMARK.suspension_damping_ratio)/1.08), grade:"" },
+    { key:"mu_base", label:"TIRE GRIP", value:summary.mu_base, valueText:`μ ${number(summary.mu_base,2)}`, benchmarkText:"μ 0.95", ratio:summary.mu_base/SUPERCAR_BENCHMARK.mu_base, grade:"" },
+    { key:"brake_force", label:"BRAKES", value:summary.brake_force, valueText:`${number(summary.brake_force/1000,1)} kN`, benchmarkText:"9.0 kN", ratio:summary.brake_force/SUPERCAR_BENCHMARK.brake_force, grade:"" },
   ];
-  return raw.map((row) => ({ ...row, ratio:clampRatio(row.ratio), grade:gradeFor(row.ratio) }));
+  return values.map((row) => ({ ...row, ratio:clampRatio(row.ratio), grade:gradeFor(clampRatio(row.ratio)) }));
 }
