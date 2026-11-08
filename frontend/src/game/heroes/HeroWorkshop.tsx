@@ -63,6 +63,7 @@ export function HeroWorkshop(){
  const root=useRef<HTMLElement>(null),remembered=useRef(new WeakMap<HTMLElement,number>()),leaving=useRef(false);
  const drafts=useRef<Record<string,HeroAppearance>>({});
  const theme=usePreferencesStore(s=>s.theme);
+ const speedUnit=usePreferencesStore(s=>s.speedUnit);
  const [studioTab,setStudioTab]=useState<VehicleStudioTab>("performance");
  const [studioSummary,setStudioSummary]=useState<VehiclePerformanceSummary>(STOCK_VEHICLE_SUMMARY);
  const [studioFooter,setStudioFooter]=useState<ReactNode|null>(null);
@@ -187,7 +188,7 @@ export function HeroWorkshop(){
     {status!=="idle"&&<div className="hero-collection-save-status" role="status">{status==="error"?`NOT SAVED · ${message}`:status==="saved"?"SAVED TO YOUR PLAYER":"SAVING YOUR STYLE…"}{status==="error"&&<button className="menu-control" onClick={()=>void queue.flush()}>RETRY SAVE</button>}</div>}
    </div>}
    {!editing&&<section className="hero-summary" aria-label="Selected hero"><small>HERO</small><h2>{definition?.name??"CHOOSE YOUR HERO"}</h2><p>{definition?"Select a vehicle or press A to open the performance garage.":"Choose a vehicle portrait to preview and customize. Your main stays saved."}</p></section>}
-   {editing&&definition&&<VehicleStudio name={definition.name} role={definition.role} note={definition.note} stats={stats} summary={studioSummary} tab={studioTab} footer={currentFooter}>
+   {editing&&definition&&<VehicleStudio name={definition.name} role={definition.role} note={definition.note} vehicleId={definition.vehicle} speedUnit={speedUnit} summary={studioSummary} tab={studioTab} footer={currentFooter}>
     {studioTab==="overview"&&<section className="vehicle-studio-card vehicle-overview-card"><header><small>HERO VEHICLE</small><h3>{definition.name}</h3></header><p>{definition.note}</p><div className="vehicle-studio-feature-list"><div><span>ROLE</span><strong>{definition.role.toUpperCase()}</strong></div><div><span>CLASS PROFILE</span><strong>ARMOR {stats.armor} · SPEED {stats.speed} · HANDLING {stats.handling}</strong></div><div><span>STOCK BUILD</span><strong>BASELINE READY</strong></div></div></section>}
     {studioTab==="performance"&&<VehicleMods key={`${owner}:${definition.vehicle}`} vehicle={definition.vehicle} stages={vehicleModStages[definition.vehicle]??NO_VEHICLE_MOD_STAGES} onStagesChange={updateVehicleModStages} onSummaryChange={setPerformanceSummary} onFooterChange={setStudioFooterContent}/>}
     {studioTab==="paint"&&<>
