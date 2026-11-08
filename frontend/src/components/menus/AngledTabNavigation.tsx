@@ -49,6 +49,7 @@ export function AngledTabNavigation({
           </svg>
         </button>
       ))}
+      <span className="angled-header-tail" aria-hidden="true" />
     </nav>
   );
 }
