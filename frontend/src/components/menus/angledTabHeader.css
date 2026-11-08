@@ -173,7 +173,7 @@
   stroke-linejoin: round;
 }
 .angled-header-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
- .angled-header-edge--right { left: auto; right: 0; }
+ .angled-header-edge.angled-header-edge--right { left: auto; right: 0; }
 .angled-header-edge {
   position: absolute;
   z-index: 2;
