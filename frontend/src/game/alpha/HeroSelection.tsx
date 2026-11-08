@@ -23,7 +23,7 @@ import { navigateFormRows } from "../social/formRows";
 import type { MenuAction } from "../../controls/inputRouting";
 import { deploySelectedHero } from "./sessionActions";
 import {SelectionHeader,SelectionFooter} from './SelectionChrome';
-import { HeroRoster } from "./HeroRoster";
+import { HeroRoster, HeroRoleTabs } from "./HeroRoster";
 import { PreMatchTeamPreview } from "../stats/PreMatchTeamPreview";
 import { LobbyChat } from "./LobbyChat";
 import "./heroSelection.css";
@@ -201,10 +201,11 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
       aria-label={overlay ? "Change hero" : "Hero selection"}
       style={overlay ? { zIndex: 50, background:"transparent", backdropFilter:"none" } : undefined}
     >
-      <SelectionHeader title={overlay?'CHANGE HERO':'CHOOSE HERO'} eyebrow={matchModeLabel(mode,active&&inMode?active.team_size:selectedTeamSize)} team={confirmedTeam} onBack={()=>void back()} busy={busy}/>
+      <SelectionHeader title={overlay?'CHANGE HERO':'CHOOSE HERO'} eyebrow={matchModeLabel(mode,active&&inMode?active.team_size:selectedTeamSize)} team={confirmedTeam} onBack={()=>void back()} busy={busy}><HeroRoleTabs filter={role} onFilter={filter} allowBoats={allowBoats}/></SelectionHeader>
       <div className="hero-selection-stage">
         {(!match || inMode || overlay) && (
           <HeroRoster
+            showFilters={false}
             selected={heroId}
             filter={role}
             allowBoats={allowBoats}
@@ -232,7 +233,7 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
         </div>
       </div>
       {match && inMode && !overlay && <PreMatchTeamPreview key={`${active.world_id}:${mode}`} view={view} selectedHero={heroId}/>}
-      <SelectionFooter chat>
+      <SelectionFooter chat hasPrimaryAction>
         <ControllerAction button="A"
           type="button"
           className="menu-control  alpha-deploy"
