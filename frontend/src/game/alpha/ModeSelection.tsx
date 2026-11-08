@@ -262,7 +262,7 @@ export function ModeSelection() {
           )}
         </div>
       )}
-      <SelectionFooter chat secondaryTabs={research}>
+      <SelectionFooter chat secondaryTabs={research} hasPrimaryAction>
         <ControllerAction button="A"
           type="button"
           className="menu-control  alpha-deploy"
