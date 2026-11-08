@@ -11,6 +11,14 @@ import type { AngledHeaderTab } from "../../components/menus/AngledTabHeader";
 const SEA_VEHICLE_IDS = new Set(["hawaii-rescue", "louisiana"]);
 const AIR_VEHICLE_IDS = new Set<string>();
 
+export function heroMatchesFilter(hero: (typeof HEROES)[number], filter: HeroFilter, allowDomains = false) {
+  if (!allowDomains && (SEA_VEHICLE_IDS.has(hero.vehicle) || AIR_VEHICLE_IDS.has(hero.vehicle))) return false;
+  if (filter === "all") return true;
+  if (filter === "air") return AIR_VEHICLE_IDS.has(hero.vehicle);
+  if (filter === "sea") return SEA_VEHICLE_IDS.has(hero.vehicle);
+  return hero.role === filter;
+}
+
 export function heroRoleHeaderTabs(allowBoats = false): AngledHeaderTab[] {
   return HERO_FILTERS.filter(role => allowBoats || !["air", "sea"].includes(role)).map(role => ({
     id: role,
@@ -41,13 +49,7 @@ export function HeroRoster({
   allowBoats?: boolean;
   showFilters?: boolean;
 }) {
-  const visibleHeroes = HEROES.filter((hero) => {
-    if (!allowBoats && (SEA_VEHICLE_IDS.has(hero.vehicle) || AIR_VEHICLE_IDS.has(hero.vehicle))) return false;
-    if (filter === "all") return true;
-    if (filter === "air") return AIR_VEHICLE_IDS.has(hero.vehicle);
-    if (filter === "sea") return SEA_VEHICLE_IDS.has(hero.vehicle);
-    return hero.role === filter;
-  });
+  const visibleHeroes = HEROES.filter((hero) => heroMatchesFilter(hero, filter, allowBoats));
   return (
     <aside className="hero-roster" aria-label="Vehicle selection">
       {showFilters&&<HeroRoleTabs filter={filter} onFilter={onFilter} allowBoats={allowBoats}/>}
