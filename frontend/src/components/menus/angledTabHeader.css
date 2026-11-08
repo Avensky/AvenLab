@@ -101,7 +101,7 @@
   display: flex;
   align-items: stretch;
   justify-content: flex-start;
-  align-self: end;
+  align-self: start;
   width: calc(100% + var(--angled-tab-cut));
   height: var(--angled-tabs-height);
   min-width: 0;
