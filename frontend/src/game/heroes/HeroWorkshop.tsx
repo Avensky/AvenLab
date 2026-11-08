@@ -12,7 +12,7 @@ import {useSelectionNavigation} from "../alpha/useSelectionNavigation";
 import {navigateFormRows} from "../social/formRows";
 import {UI_THEMES} from "../../theme/catalog";
 import {usePreferencesStore} from "../../store/preferences/preferencesStore";
-import {HeroRoster,heroRoleHeaderTabs} from "../alpha/HeroRoster";
+import {HeroRoster,heroRoleHeaderTabs,heroMatchesFilter} from "../alpha/HeroRoster";
 import {HoldMainButton} from "./HoldMainButton";
 import {SelectionFooter} from "../alpha/SelectionChrome";
 import {ControllerAction} from "../../components/controller";
@@ -142,9 +142,10 @@ export function HeroWorkshop(){
    active.dispatchEvent(new Event("change",{bubbles:true}));
   }else if(root.current)navigateFormRows(root.current,active as HTMLElement,action,remembered.current);
  },tab:direction=>{
-  if(guideOpen)return;const visible=HEROES.filter(item=>role==="all"||item.role===role);
+  if(guideOpen)return;const visible=HEROES.filter(item=>heroMatchesFilter(item,role,true));
   const focused=(document.activeElement as HTMLElement|null)?.closest<HTMLElement>("[data-hero]")?.dataset.hero;
   const index=visible.findIndex(item=>item.id===(focused??hero)),start=index<0?(direction>0?-1:0):index;setEditing(false);
+  if(!visible.length)return;
   requestAnimationFrame(()=>root.current?.querySelector<HTMLElement>(`[data-hero="${visible[(start+direction+visible.length)%visible.length].id}"]`)?.focus({preventScroll:true}));
  }});
  const unlocked=(skins??[]).filter(skin=>owned.includes(skin.id));
@@ -181,9 +182,9 @@ export function HeroWorkshop(){
           grow:[.92,1.12,1.05,.78,.9,.8][index],
         }))}
       />
-    : <AngledTabHeader title="HEROES" eyebrow={APP_BRANDING.productName} level={characterLevel??undefined} tabs={heroRoleHeaderTabs(false)} activeTab={role} onTabChange={next=>{setRole(next as HeroFilter);setEditing(false);}} idPrefix="hero-workshop-role" panelId="hero-workshop-role-panel"/>}
+    : <AngledTabHeader title="HEROES" eyebrow={APP_BRANDING.productName} level={characterLevel??undefined} tabs={heroRoleHeaderTabs(true)} activeTab={role} onTabChange={next=>{setRole(next as HeroFilter);setEditing(false);}} idPrefix="hero-workshop-role" panelId="hero-workshop-role-panel"/>}
   <div className="hero-selection-stage hero-workshop-body" id={!editing?"hero-workshop-role-panel":undefined} role={!editing?"tabpanel":undefined} aria-labelledby={!editing?"hero-workshop-role-tab-"+role:undefined}>
-   {!editing&&<div className="hero-workshop-collection"><HeroRoster showFilters={false} selected={hero} main={main} filter={role} busy={!owner} onChoose={openHero} onFilter={filter=>{setRole(filter);setEditing(false);}}/>
+   {!editing&&<div className="hero-workshop-collection"><HeroRoster showFilters={false} allowBoats selected={hero} main={main} filter={role} busy={!owner} onChoose={openHero} onFilter={filter=>{setRole(filter);setEditing(false);}}/>
     <p className="hero-workshop-hint">Select a portrait to customize. Hold X to choose your main.</p>
     {status!=="idle"&&<div className="hero-collection-save-status" role="status">{status==="error"?`NOT SAVED · ${message}`:status==="saved"?"SAVED TO YOUR PLAYER":"SAVING YOUR STYLE…"}{status==="error"&&<button className="menu-control" onClick={()=>void queue.flush()}>RETRY SAVE</button>}</div>}
    </div>}
@@ -217,7 +218,7 @@ export function HeroWorkshop(){
   </div>
   <SelectionFooter selectLabel={editing?"Apply":"Choose hero"} hasPrimaryAction><div className="hero-workshop-actions">
    <ControllerAction button="Y" type="button" tabIndex={-1} className="menu-control" data-open-hero-abilities onClick={showAbilities}>ABILITIES</ControllerAction>
-   <ControllerAction button="A" type="button" className="menu-control" disabled={!owner} tabIndex={-1} onClick={()=>editing?root.current?.querySelector<HTMLElement>(".vehicle-studio-panel select")?.focus():openHero()}>{editing?"APPLY":"CHOOSE HERO"}</ControllerAction>
+   <ControllerAction button="A" type="button" className="menu-control" disabled={!owner} tabIndex={-1} onClick={()=>editing?setEditing(false):openHero()}>{editing?"APPLY":"CHOOSE HERO"}</ControllerAction>
    <HoldMainButton key={`${owner}:${hero}:${editing}:${main===hero}:${status==="error"}`} disabled={guideOpen||!owner||!hero||main===hero||status==="error"} selected={main===hero} onComplete={()=>mainChoice()}/>
   </div></SelectionFooter>
  </section>;
