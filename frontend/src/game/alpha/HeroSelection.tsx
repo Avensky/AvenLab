@@ -202,7 +202,7 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
       aria-label={overlay ? "Change hero" : "Hero selection"}
       style={overlay ? { zIndex: 50, background:"transparent", backdropFilter:"none" } : undefined}
     >
-      <AngledTabHeader title={overlay?"CHANGE HERO":"CHOOSE HERO"} eyebrow={matchModeLabel(mode,active&&inMode?active.team_size:selectedTeamSize)} titleMeta={confirmedTeam?<span className="angled-header-team" data-team={confirmedTeam}>{confirmedTeam.toUpperCase()} TEAM</span>:undefined} tabs={heroRoleHeaderTabs(allowBoats)} activeTab={role} onTabChange={next=>filter(next as HeroFilter)} idPrefix="hero-selection-role" panelId="hero-role-panel"/>
+      <AngledTabHeader title={overlay?"CHANGE HERO":"CHOOSE HERO"} eyebrow={matchModeLabel(mode,active&&inMode?active.team_size:selectedTeamSize)} titleMeta={confirmedTeam?<span className="menu-header-title-meta angled-header-team" data-team={confirmedTeam}>{confirmedTeam.toUpperCase()} TEAM</span>:undefined} tabs={heroRoleHeaderTabs(allowBoats)} activeTab={role} onTabChange={next=>filter(next as HeroFilter)} idPrefix="hero-selection-role" panelId="hero-role-panel"/>
       <div className="hero-selection-stage" id="hero-role-panel" role="tabpanel" aria-labelledby={"hero-selection-role-tab-"+role}>
         {(!match || inMode || overlay) && (
           <HeroRoster
