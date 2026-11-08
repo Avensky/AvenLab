@@ -69,6 +69,22 @@
   line-height: 1;
   white-space: nowrap;
 }
+.menu-frame-header.angled-tab-header > div:first-child > .angled-header-team {
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+  flex: 0 0 auto;
+  padding: 3px 6px;
+  border-left: 1px solid color-mix(in srgb, var(--app-text) 46%, transparent);
+  color: var(--app-muted);
+  font-size: clamp(8px, .72vw, 11px);
+  font-weight: 850;
+  letter-spacing: .08em;
+  line-height: 1;
+  white-space: nowrap;
+}
+.menu-frame-header.angled-tab-header .angled-header-team[data-team="red"] { color: var(--team-red, #ff6570); }
+.menu-frame-header.angled-tab-header .angled-header-team[data-team="blue"] { color: var(--team-blue, #69bbff); }
 .menu-frame-header.angled-tab-header > div:first-child > h1 {
   min-width: 0;
   color: var(--app-accent);
