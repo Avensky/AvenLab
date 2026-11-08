@@ -180,6 +180,7 @@ export function HeroWorkshop(){
           ...item,
           icon:<VehicleStudioTabIcon tab={item.id}/>,
           grow:[.92,1.12,1.05,.78,.9,.8][index],
+          separatorBefore:item.id==="studio",
         }))}
       />
     : <AngledTabHeader title="HEROES" eyebrow={APP_BRANDING.productName} level={characterLevel??undefined} tabs={heroRoleHeaderTabs(true)} activeTab={role} onTabChange={next=>{setRole(next as HeroFilter);setEditing(false);}} idPrefix="hero-workshop-role" panelId="hero-workshop-role-panel"/>}
