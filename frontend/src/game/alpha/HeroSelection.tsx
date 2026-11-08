@@ -238,6 +238,7 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
         <ControllerAction button="A"
           type="button"
           className="menu-control  alpha-deploy"
+          tabIndex={-1}
           disabled={
             busy ||
             planned ||
