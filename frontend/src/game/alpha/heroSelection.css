@@ -1,6 +1,6 @@
 /* The scene owns the vehicle. This edge-to-edge overlay uses static portraits
    and translucent selector strips; only actual controls capture pointer input. */
-.hero-selection > .menu-frame-header { padding-block: clamp(6px, 1.15dvh, 12px); }
+.hero-selection > .menu-frame-header { padding-block: clamp(4px, .65dvh, 8px); }
 .hero-selection {
   --hero-panel-width: clamp(240px, 30vw, 360px);
   box-sizing: border-box;
@@ -588,4 +588,35 @@ html[data-ui-theme=scarlet]:not([data-high-contrast=true]) .hero-selection:not(.
   --app-background:#11151a;--app-panel:#181d23;--app-raised:#282d34;--app-line:#51555c;
   --app-accent:#d9828a;--app-accent-soft:#35292e;--app-text:#f1eff0;--app-muted:#bec2c8;
   --menu-chrome-surface:#181b21;
+}
+
+/* Dock vehicle role filters into the selection header. Tab widths stay compact;
+   the row scrolls on narrow screens instead of stretching across the scene. */
+.hero-selection:not(.mode-selection) > .menu-frame-header > .hero-role-tabs {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  width: auto;
+  max-width: min(48vw, 560px);
+  margin-left: auto;
+  overflow-x: auto;
+  scrollbar-width: none;
+  background: transparent;
+}
+.hero-selection:not(.mode-selection) > .menu-frame-header > .hero-role-tabs::-webkit-scrollbar {
+  display: none;
+}
+.hero-selection:not(.mode-selection) > .menu-frame-header > .hero-role-tabs .menu-control {
+  flex: 0 0 clamp(58px, 6vw, 88px);
+  min-height: clamp(28px, 2.7vw, 36px);
+  padding: 2px 5px;
+  font-size: clamp(8px, .72vw, 10px);
+}
+@media (max-width: 760px) {
+  .hero-selection:not(.mode-selection) > .menu-frame-header > .hero-role-tabs {
+    max-width: 48vw;
+  }
+  .hero-selection:not(.mode-selection) > .menu-frame-header > .hero-role-tabs .menu-control {
+    flex-basis: clamp(46px, 8vw, 62px);
+  }
 }
