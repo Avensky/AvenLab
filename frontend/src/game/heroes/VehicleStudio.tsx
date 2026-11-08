@@ -66,8 +66,8 @@ export function VehicleStudio({
             <h2>{name}</h2>
             <p><strong>{role.toUpperCase()}</strong> · {note}</p>
           </header>
-          <section className="vehicle-studio-power" aria-label="Stock vehicle performance">
-            <h3>STOCK SPECS</h3>
+          <section className="vehicle-studio-power" aria-label="Vehicle performance statistics">
+            <h3>VEHICLE STATS</h3>
             {rows.map((row) => (
               <div className="vehicle-studio-stat" key={row.key} data-stat={row.key}>
                 <div>
