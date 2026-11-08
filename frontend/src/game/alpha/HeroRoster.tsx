@@ -6,6 +6,16 @@ import {
 } from "../../store/alpha/alphaStore";
 import { ControllerButton } from "../../components/controller";
 import { HeroPortrait } from "./HeroPortrait";
+import type { AngledHeaderTab } from "../../components/menus/AngledTabHeader";
+
+export function heroRoleHeaderTabs(allowBoats = false): AngledHeaderTab[] {
+  return HERO_FILTERS.filter(role => allowBoats || role !== "boat").map(role => ({
+    id: role,
+    label: role.toUpperCase(),
+    description: role === "all" ? "Show all vehicles" : `Show ${role} vehicles`,
+    icon: null,
+  }));
+}
 
 export function HeroRoster({
   selected,
