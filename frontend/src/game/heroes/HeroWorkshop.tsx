@@ -12,7 +12,7 @@ import {useSelectionNavigation} from "../alpha/useSelectionNavigation";
 import {navigateFormRows} from "../social/formRows";
 import {UI_THEMES} from "../../theme/catalog";
 import {usePreferencesStore} from "../../store/preferences/preferencesStore";
-import {HeroRoster} from "../alpha/HeroRoster";
+import {HeroRoster,HeroRoleTabs} from "../alpha/HeroRoster";
 import {HoldMainButton} from "./HoldMainButton";
 import {SelectionHeader,SelectionFooter} from "../alpha/SelectionChrome";
 import {ControllerAction} from "../../components/controller";
@@ -180,9 +180,9 @@ export function HeroWorkshop(){
           grow:[.92,1.12,1.05,.78,.9,.8][index],
         }))}
       />
-    : <SelectionHeader title="HEROES" onBack={()=>void back()}/>}
+    : <SelectionHeader title="HEROES" onBack={()=>void back()}><HeroRoleTabs filter={role} onFilter={filter=>{setRole(filter);setEditing(false);}}/></SelectionHeader>}
   <div className="hero-selection-stage hero-workshop-body">
-   {!editing&&<div className="hero-workshop-collection"><HeroRoster selected={hero} main={main} filter={role} busy={!owner} onChoose={openHero} onFilter={filter=>{setRole(filter);setEditing(false);}}/>
+   {!editing&&<div className="hero-workshop-collection"><HeroRoster showFilters={false} selected={hero} main={main} filter={role} busy={!owner} onChoose={openHero} onFilter={filter=>{setRole(filter);setEditing(false);}}/>
     <p className="hero-workshop-hint">Select a portrait to customize. Hold X to choose your main.</p>
     {status!=="idle"&&<div className="hero-collection-save-status" role="status">{status==="error"?`NOT SAVED · ${message}`:status==="saved"?"SAVED TO YOUR PLAYER":"SAVING YOUR STYLE…"}{status==="error"&&<button className="menu-control" onClick={()=>void queue.flush()}>RETRY SAVE</button>}</div>}
    </div>}
@@ -214,7 +214,7 @@ export function HeroWorkshop(){
     {status==="error"&&<button className="menu-control" onClick={()=>void queue.flush()}>RETRY SAVE</button>}
    </VehicleStudio>}
   </div>
-  <SelectionFooter selectLabel={editing?"Edit style":"Choose hero"}><div className="hero-workshop-actions">
+  <SelectionFooter selectLabel={editing?"Edit style":"Choose hero"} hasPrimaryAction><div className="hero-workshop-actions">
    <ControllerAction button="Y" type="button" className="menu-control" data-open-hero-abilities onClick={showAbilities}>ABILITIES</ControllerAction>
    <ControllerAction button="A" type="button" className="menu-control" disabled={!owner} onClick={()=>editing?root.current?.querySelector<HTMLElement>(".vehicle-studio-panel select")?.focus():openHero()}>{editing?"EDIT STYLE":"CHOOSE HERO"}</ControllerAction>
    <HoldMainButton key={`${owner}:${hero}:${editing}:${main===hero}:${status==="error"}`} disabled={guideOpen||!owner||!hero||main===hero||status==="error"} selected={main===hero} onComplete={()=>mainChoice()}/>
