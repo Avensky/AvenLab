@@ -32,7 +32,7 @@ export function HoldMainButton({disabled,selected,onComplete}:{disabled:boolean;
   onPointerUp={event=>release(`pointer-${event.pointerId}`)} onPointerCancel={event=>release(`pointer-${event.pointerId}`)} onLostPointerCapture={event=>release(`pointer-${event.pointerId}`)}
   onKeyDown={event=>{if(event.code==="Space"||event.code==="Enter"){event.preventDefault();event.stopPropagation();if(!event.repeat)begin("button-key");}}} onKeyUp={event=>{if(event.code==="Space"||event.code==="Enter")release("button-key");}}>
 
-  <span>{selected?"MAIN HERO":value===1?"SETTING MAIN…":"HOLD X · SET MAIN"}</span>
+  <span>{selected?"MAIN SET":value===1?"SETTING MAIN…":"SET MAIN"}</span>
   <span className="hero-hold-accessible" role="progressbar" aria-label="Main hero hold progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(value*100)}/>
  </ControllerAction>;
 }
