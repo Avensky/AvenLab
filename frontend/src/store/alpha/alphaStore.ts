@@ -10,8 +10,8 @@ export type MatchCategory = "quickplay" | "competitive";
 /** Research/planned modes are garage destinations, never server mode_join IDs. */
 export type PlayMode = GameMode | "signal_recon" | "swarm";
 export type HeroRole = "tank" | "dps" | "support";
-export type HeroFilter = HeroRole | "all" | "boat";
-export const HERO_FILTERS: HeroFilter[] = ["all", "tank", "dps", "support", "boat"];
+export type HeroFilter = HeroRole | "all" | "air" | "sea";
+export const HERO_FILTERS: HeroFilter[] = ["all", "tank", "dps", "support", "air", "sea"];
 export const GAME_MODES: {
   id: PlayMode;
   label: string;
