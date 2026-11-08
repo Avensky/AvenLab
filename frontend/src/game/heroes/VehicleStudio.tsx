@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from "react";
 import { useVehicleStudioStore, type VehicleStudioTab } from "./vehicleStudioStore";
+import { getPerformanceReadouts, getVehicleStockPerformance, type VehiclePerformanceSummary } from "./vehiclePerformance";
 
 export const VEHICLE_STUDIO_TABS = [
   { id: "overview", label: "OVERVIEW", description: "Vehicle and build summary" },
@@ -11,22 +12,8 @@ export const VEHICLE_STUDIO_TABS = [
 ] as const;
 
 export type { VehicleStudioTab };
-export type VehiclePerformanceSummary = {
-  engine_force: number;
-  max_speed: number;
-  mu_base: number;
-  brake_force: number;
-  suspension_damping_ratio: number;
-  fuel_consumption: number;
-};
-export const STOCK_VEHICLE_SUMMARY: VehiclePerformanceSummary = {
-  engine_force: 1,
-  max_speed: 1,
-  mu_base: 1,
-  brake_force: 1,
-  suspension_damping_ratio: 1,
-  fuel_consumption: 1,
-};
+export type { VehiclePerformanceSummary } from "./vehiclePerformance";
+export const STOCK_VEHICLE_SUMMARY = getVehicleStockPerformance("gt86");
 
 export function VehicleStudioTabIcon({tab}:{tab:VehicleStudioTab}) {
   const paths:Record<VehicleStudioTab,string>={
@@ -65,15 +52,7 @@ export function VehicleStudio({
   }, [setActiveTab, tab]);
   useEffect(() => () => setActiveTab(null), [setActiveTab]);
 
-  const rows: [string, number, string][] = [
-    ["POWER", summary.engine_force, "relative"],
-    ["TOP SPEED", summary.max_speed, "relative"],
-    ["FUEL CONSUMPTION", summary.fuel_consumption, "relative"],
-    ["TIRE GRIP", summary.mu_base, "relative"],
-    ["BRAKES", summary.brake_force, "relative"],
-    ["SUSPENSION", summary.suspension_damping_ratio, "relative"],
-    ["ARMOR", stats.armor, "rating"],
-  ];
+  const rows = getPerformanceReadouts(summary);
   const selected = VEHICLE_STUDIO_TABS.find((item) => item.id === tab)!;
 
   return (
@@ -87,26 +66,17 @@ export function VehicleStudio({
           </header>
           <section className="vehicle-studio-power">
             <h3>PERFORMANCE PROFILE</h3>
-            {rows.map(([label, value, kind]) => (
-              <div className="vehicle-studio-stat" key={label}>
+            {rows.map((row) => (
+              <div className="vehicle-studio-stat" key={row.key}>
                 <div>
-                  <span>{label}</span>
-                  <strong>
-                    {kind === "rating"
-                      ? Math.round(value) + " / 100"
-                      : Math.round(value * 100) + "%"}
-                  </strong>
+                  <span>{row.label}</span>
+                  <strong>{row.grade} · {row.valueText}</strong>
                 </div>
-                <meter
-                  min={0}
-                  max={kind === "rating" ? 100 : 1.5}
-                  value={Math.max(0, Math.min(kind === "rating" ? 100 : 1.5, kind === "rating" ? value : value))}
-                  optimum={kind === "rating" ? 100 : 1}
-                  aria-label={label + (kind === "rating" ? " rating" : " relative to stock")}
-                />
+                <small>VS SUPERCAR · {row.benchmarkText}</small>
+                <meter min={0} max={1.25} value={row.ratio} optimum={1} aria-label={row.label + " grade " + row.grade + ", " + row.valueText + ", benchmark " + row.benchmarkText} />
               </div>
             ))}
-            <p className="vehicle-studio-estimate">Build estimates · stock baseline = 100%</p>
+            <p className="vehicle-studio-estimate">Configured in-game physics · chassis-specific tuning limits</p>
           </section>
           <section className="vehicle-studio-class-stats" aria-label="Vehicle class ratings">
             <h3>CLASS PROFILE</h3>
