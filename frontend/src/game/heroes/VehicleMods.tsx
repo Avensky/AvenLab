@@ -3,7 +3,7 @@ import catalog from "../../../../avenlab-server/src/assets/vehicle-mods.json";
 import type { VehiclePerformanceSummary } from "./VehicleStudio";
 import { useVehicleStudioStore } from "./vehicleStudioStore";
 import { drivetrainProfileFor } from "./vehicleDrivetrainOptions";
-import { getPerformanceReadouts, getVehicleStockPerformance, getVehicleTuningLimits } from "./vehiclePerformance";
+import { getVehicleStockPerformance, getVehicleTuningLimits } from "./vehiclePerformance";
 
 export function VehicleMods({
   vehicle,
@@ -46,7 +46,6 @@ export function VehicleMods({
       mass: stock.mass * capped.mass,
     };
   }, [effects, limits, stock]);
-  const readouts = getPerformanceReadouts(summary);
 
   const restore = useCallback(() => onStagesChange({}), [onStagesChange]);
   const exportBuild = useCallback(() => {
@@ -75,13 +74,10 @@ export function VehicleMods({
   useEffect(() => { onSummaryChange?.(summary); }, [summary, onSummaryChange]);
   useEffect(() => {
     onFooterChange?.(
-      <details className="vehicle-build-options">
-        <summary>BUILD OPTIONS</summary>
-        <div>
-          <button type="button" onClick={restore}>RESTORE STOCK</button>
-          <button type="button" onClick={exportBuild}>EXPORT BUILD</button>
-        </div>
-      </details>,
+      <>
+        <button type="button" onClick={restore}>RESTORE STOCK</button>
+        <button type="button" onClick={exportBuild}>EXPORT BUILD</button>
+      </>,
     );
     return () => onFooterChange?.(null);
   }, [onFooterChange, restore, exportBuild]);
@@ -89,7 +85,7 @@ export function VehicleMods({
   return (
     <section className="vehicle-studio-card vehicle-performance-page" aria-label="Performance modifications">
       <header><small>{limits.className} CHASSIS · STOCK PHYSICS</small><h3>Performance parts</h3></header>
-      <p>Grades compare this configured chassis with a supercar benchmark. Fictional upgrades are capped by vehicle class and do not change driving physics yet.</p>
+      <p>{limits.className} · MAX STAGE {limits.maxStage}</p>
 
       <section className="vehicle-drivetrain-card" aria-label="Drivetrain and transmission preview">
         <header><small>VEHICLE-SPECIFIC CONFIGURATION</small><h3>{profile.driveLayout} · TRANSMISSION</h3></header>
@@ -115,10 +111,7 @@ export function VehicleMods({
                 onClick={() => setPaddlesEnabled((value) => !value)}
               >PADDLE SHIFTERS</button>
             </div>
-            <p>{profile.transmissions.length === 1
-              ? "This chassis is configured for automatic modes only."
-              : "Only transmission modes configured for this chassis can be selected."}</p>
-          </>
+           </>
         ) : (
           <p>Dedicated propulsion controls for this vehicle class.</p>
         )}
@@ -139,20 +132,7 @@ export function VehicleMods({
         </label>
       ))}
 
-      <figure className="vehicle-performance-stats" aria-label="Configured vehicle performance compared with supercar benchmark">
-        <figcaption className="sr-only">In-game values and chassis-specific supercar grades</figcaption>
-        {readouts.map((row) => (
-          <div className="vehicle-performance-stat" key={row.key}>
-            <label>
-              <span>{row.label}</span>
-              <strong>{row.grade} · {row.valueText}</strong>
-              <small>SUPERCAR {row.benchmarkText}</small>
-              <meter min={0} max={1.25} value={row.ratio} optimum={1} aria-label={row.label + " grade " + row.grade + ", " + row.valueText + ", benchmark " + row.benchmarkText} />
-            </label>
-          </div>
-        ))}
-      </figure>
-      <p className="vehicle-mod-limit-note">CHASSIS LIMIT · {limits.className} · STAGE {limits.maxStage} MAX</p>
+
     </section>
   );
 }
