@@ -80,7 +80,8 @@ export function VehicleStudio({
           </section>
         </aside>
 
-        {panelOpen && <section
+        <section
+          hidden={!panelOpen}
           className="vehicle-studio-panel"
           role="tabpanel"
           id="vehicle-studio-tab-panel"
@@ -91,7 +92,7 @@ export function VehicleStudio({
             <button type="button" className="vehicle-studio-panel-close" aria-label="Close options panel" onClick={() => setPanelOpen(false)}>×</button>
           </header>
           <div className="vehicle-studio-panel-content">{children}</div>
-        </section>}
+        </section>
       </div>
 
       <div className="vehicle-studio-rotate-hint" aria-hidden="true">
