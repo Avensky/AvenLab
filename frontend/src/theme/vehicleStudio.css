@@ -103,6 +103,7 @@
   color: var(--vehicle-studio-muted);
 }
 .vehicle-studio-class-stats strong { color: var(--vehicle-studio-ink); }
+ .vehicle-studio-panel[hidden] { display: none; }
  .vehicle-studio-panel {
   position: absolute;
   z-index: 10;
