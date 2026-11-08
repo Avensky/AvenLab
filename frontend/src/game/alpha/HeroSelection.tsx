@@ -24,7 +24,7 @@ import type { MenuAction } from "../../controls/inputRouting";
 import { deploySelectedHero } from "./sessionActions";
 import {SelectionFooter} from './SelectionChrome';
 import {AngledTabHeader} from "../../components/menus/AngledTabHeader";
-import { HeroRoster, heroRoleHeaderTabs } from "./HeroRoster";
+import { HeroRoster, heroRoleHeaderTabs, heroMatchesFilter } from "./HeroRoster";
 import { PreMatchTeamPreview } from "../stats/PreMatchTeamPreview";
 import { LobbyChat } from "./LobbyChat";
 import "./heroSelection.css";
@@ -185,8 +185,7 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
     const focused = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>("[data-hero]");
     const id = focused?.dataset.hero ??
       useAlphaStore.getState().previewHero ??
-      HEROES.find((h) => (allowBoats || !["hawaii-rescue","louisiana"].includes(h.vehicle)) &&
-        (role === "all" || (role === "sea" ? ["hawaii-rescue","louisiana"].includes(h.vehicle) : role === "air" ? false : h.role === role)))?.id;
+      HEROES.find((candidate) => heroMatchesFilter(candidate, role, allowBoats))?.id;
     if (!id) return;
     void choose(id);
   }, [choose, role, allowBoats]);
