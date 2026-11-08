@@ -17,7 +17,6 @@ export function AngledTabHeader({
   tabs,
   activeTab,
   onTabChange,
-  onBack,
   panelId,
   idPrefix,
   className = "",
@@ -28,7 +27,6 @@ export function AngledTabHeader({
   tabs: AngledHeaderTab[];
   activeTab: string;
   onTabChange: (tab: string) => void;
-  onBack: () => void;
   panelId: string;
   idPrefix: string;
   className?: string;
@@ -38,10 +36,10 @@ export function AngledTabHeader({
     <MenuFrameHeader
       title={title}
       eyebrow={eyebrow}
-      onBack={onBack}
+      showBack={false}
       busy={busy}
       variant="scene"
-      className={"angled-tab-header " + className}
+      className={"angled-tab-header angled-tab-header--no-back " + className}
     >
       <nav className="angled-header-tabs" role="tablist" aria-label={title + " sections"}>
         {tabs.map((tab) => (
