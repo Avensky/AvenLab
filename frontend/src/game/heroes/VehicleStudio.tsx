@@ -13,7 +13,24 @@ export const VEHICLE_STUDIO_TABS = [
 
 export type { VehicleStudioTab };
 export type { VehiclePerformanceSummary } from "./vehiclePerformance";
+
 export const STOCK_VEHICLE_SUMMARY = getVehicleStockPerformance("gt86");
+
+const PERFORMANCE_ICON_PATH: Record<string, string> = {
+  engine_force: "M13 2 4 13h6l-1 9 11-13h-6l1-7Z",
+  max_speed: "M4 18a8 8 0 1 1 16 0M12 12l4-4M5 18h14",
+  acceleration: "M3 12h15m-5-5 5 5-5 5M3 6v12",
+  quarter_mile: "M4 20V4m0 2h13l-3 4 3 4H4",
+  fuel_economy: "M6 3h9v18H6zM8 6h5v5H8zM15 8h2l3 3v6h-5M9 15h3",
+  mass: "M12 3a3 3 0 1 0 0 6 3 3 0 0 0 0-6ZM5 11h14l2 10H3l2-10Z",
+  suspension_damping_ratio: "M8 3v3m8-3v3M6 6h12l-2 4 2 4H6l2 4-2 3m12-3-2 3",
+  mu_base: "M5 4v16m4-16v16m6-16v16m4-16v16M3 7h18M3 17h18",
+  brake_force: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 4v5l4 2M4 9h2m12 0h2M4 15h2m12 0h2",
+};
+
+function PerformanceStatIcon({ stat }: { stat: string }) {
+  return <span className="vehicle-studio-stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d={PERFORMANCE_ICON_PATH[stat] ?? PERFORMANCE_ICON_PATH.engine_force} /></svg></span>;
+}
 
 export function VehicleStudioTabIcon({tab}:{tab:VehicleStudioTab}) {
   const paths:Record<VehicleStudioTab,string>={
@@ -70,11 +87,14 @@ export function VehicleStudio({
             <h3>VEHICLE STATS</h3>
             {rows.map((row) => (
               <div className="vehicle-studio-stat" key={row.key} data-stat={row.key}>
-                <div>
-                  <span>{row.label}</span>
-                  <strong>{row.valueText}</strong>
+                <PerformanceStatIcon stat={row.key} />
+                <div className="vehicle-studio-stat-main">
+                  <div className="vehicle-studio-stat-line">
+                    <span>{row.label.replace(" EST.", "")}</span>
+                    <strong>{row.valueText}</strong>
+                  </div>
+                  <meter min={0} max={1.25} value={row.ratio} optimum={1} aria-label={row.label + " " + row.valueText} />
                 </div>
-                <meter min={0} max={1.25} value={row.ratio} optimum={1} aria-label={row.label + " " + row.valueText} />
               </div>
             ))}
           </section>
