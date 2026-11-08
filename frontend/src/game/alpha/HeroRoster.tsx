@@ -8,8 +8,11 @@ import { ControllerButton } from "../../components/controller";
 import { HeroPortrait } from "./HeroPortrait";
 import type { AngledHeaderTab } from "../../components/menus/AngledTabHeader";
 
+const SEA_VEHICLE_IDS = new Set(["hawaii-rescue", "louisiana"]);
+const AIR_VEHICLE_IDS = new Set<string>();
+
 export function heroRoleHeaderTabs(allowBoats = false): AngledHeaderTab[] {
-  return HERO_FILTERS.filter(role => allowBoats || role !== "boat").map(role => ({
+  return HERO_FILTERS.filter(role => allowBoats || !["air", "sea"].includes(role)).map(role => ({
     id: role,
     label: role.toUpperCase(),
     description: role === "all" ? "Show all vehicles" : `Show ${role} vehicles`,
@@ -38,8 +41,15 @@ export function HeroRoster({
   allowBoats?: boolean;
   showFilters?: boolean;
 }) {
+  const visibleHeroes = HEROES.filter((hero) => {
+    if (!allowBoats && SEA_VEHICLE_IDS.has(hero.vehicle)) return false;
+    if (filter === "all") return true;
+    if (filter === "air") return AIR_VEHICLE_IDS.has(hero.vehicle);
+    if (filter === "sea") return SEA_VEHICLE_IDS.has(hero.vehicle);
+    return hero.role === filter;
+  });
   return (
-    <aside className="hero-roster" aria-label="Hero portraits">
+    <aside className="hero-roster" aria-label="Vehicle selection">
       {showFilters&&<HeroRoleTabs filter={filter} onFilter={onFilter} allowBoats={allowBoats}/>}
       <div
         className="hero-roster-grid"
@@ -48,13 +58,11 @@ export function HeroRoster({
         data-controller-columns="3"
         role="group"
         aria-label={
-          filter === "all" ? "All heroes" : `${filter.toUpperCase()} heroes`
+          filter === "all" ? "All vehicles" : `${filter.toUpperCase()} vehicles`
         }
       >
-        {HEROES.filter((hero) =>
-          (allowBoats || !['hawaii-rescue','louisiana'].includes(hero.vehicle)) &&
-          (filter === 'all' || (filter === 'boat' ? ['hawaii-rescue','louisiana'].includes(hero.vehicle) : hero.role === filter))
-        ).map(
+        {visibleHeroes.length === 0 && <span className="hero-roster-empty" role="status">{filter === "air" ? "AIR VEHICLES ARRIVING" : "NO VEHICLES IN THIS CLASS"}</span>}
+        {visibleHeroes.map(
           (hero) => (
             <button
               key={hero.id}
