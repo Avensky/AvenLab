@@ -31,7 +31,8 @@ export function VehicleStudio({
   name,
   role,
   note,
-  stats,
+  vehicleId,
+  speedUnit,
   summary = STOCK_VEHICLE_SUMMARY,
   tab,
   footer,
@@ -40,7 +41,8 @@ export function VehicleStudio({
   name: string;
   role: string;
   note: string;
-  stats: { armor: number; speed: number; handling: number; support: number };
+  vehicleId: string;
+  speedUnit: "kmh" | "mph";
   summary?: VehiclePerformanceSummary;
   tab: VehicleStudioTab;
   footer?: ReactNode;
@@ -53,23 +55,21 @@ export function VehicleStudio({
   }, [setActiveTab, tab]);
   useEffect(() => () => setActiveTab(null), [setActiveTab]);
 
-  const rows = getPerformanceReadouts(summary);
-  const basicRows = rows.filter((row) => ["engine_force", "max_speed", "mass", "mu_base"].includes(row.key));
+  const rows = getPerformanceReadouts(summary, speedUnit, vehicleId);
   const selected = VEHICLE_STUDIO_TABS.find((item) => item.id === tab)!;
 
   return (
     <div className="vehicle-studio">
       <div className="vehicle-studio-main">
-        <aside className="vehicle-studio-details" aria-label="Power and vehicle details">
-          <header>
-            <small>{role.toUpperCase()} · VEHICLE DETAILS</small>
+        <aside className="vehicle-studio-details" aria-label="Vehicle details and performance">
+          <header className="vehicle-studio-identity">
             <h2>{name}</h2>
-            <p>{note}</p>
+            <p><strong>{role.toUpperCase()}</strong> · {note}</p>
           </header>
           <section className="vehicle-studio-power" aria-label="Stock vehicle performance">
             <h3>STOCK SPECS</h3>
-            {basicRows.map((row) => (
-              <div className="vehicle-studio-stat" key={row.key}>
+            {rows.map((row) => (
+              <div className="vehicle-studio-stat" key={row.key} data-stat={row.key}>
                 <div>
                   <span>{row.label}</span>
                   <strong>{row.valueText}</strong>
