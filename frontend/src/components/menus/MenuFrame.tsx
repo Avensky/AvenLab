@@ -19,5 +19,5 @@ export function MenuFrameHeader({title,onBack,showBack=true,titleId,eyebrow=APP_
  </header>;
 }
 export function MenuFrameFooter({children,status,secondaryTabs=false,selectLabel='Select',className='',chat=false,variant='panel',hasPrimaryAction=false}:{children?:ReactNode;status?:ReactNode;secondaryTabs?:boolean;selectLabel?:string;className?:string;chat?:boolean;variant?:'panel'|'scene';hasPrimaryAction?:boolean}){
- return <footer className={`menu-frame-footer alpha-selection-footer ${className}`} data-menu-chrome={variant} data-controller-row data-has-status={Boolean(status)}><MenuShortcuts chat={chat} directions="both" secondaryTabs={secondaryTabs} selectLabel={selectLabel} selectAction={!hasPrimaryAction}/>{status&&<p className="menu-frame-status" role="status">{status}</p>}{children}</footer>;
+ return <footer className={`menu-frame-footer alpha-selection-footer ${className}`} data-menu-chrome={variant} data-has-status={Boolean(status)}><MenuShortcuts chat={chat} directions="both" secondaryTabs={secondaryTabs} selectLabel={selectLabel} selectAction={!hasPrimaryAction}/>{status&&<p className="menu-frame-status" role="status">{status}</p>}{children}</footer>;
 }
