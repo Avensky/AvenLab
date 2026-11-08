@@ -1,5 +1,7 @@
 import {useCallback,useEffect,useMemo,useRef,useState,type CSSProperties,type ReactNode} from "react";
 import {VehicleMods} from "./VehicleMods";
+import {AngledTabHeader} from "../../components/menus/AngledTabHeader";
+import {APP_BRANDING} from "../../theme/branding";
 import {openHeroGuide} from "../../store/hud/heroGuideStore";
 import {HEROES,useAlphaStore,type HeroFilter} from "../../store/alpha/alphaStore";
 import {useUIStore} from "../../store/menus/uiStore";
@@ -15,7 +17,7 @@ import {HoldMainButton} from "./HoldMainButton";
 import {SelectionHeader,SelectionFooter} from "../alpha/SelectionChrome";
 import {ControllerAction} from "../../components/controller";
 import {HeroSaveQueue,type HeroSaveStatus} from "./HeroSaveQueue";
-import {VehicleStudio,VehicleStudioNavigation,STOCK_VEHICLE_SUMMARY,type VehiclePerformanceSummary,type VehicleStudioTab} from "./VehicleStudio";
+import {VehicleStudio,VEHICLE_STUDIO_TABS,VehicleStudioTabIcon,STOCK_VEHICLE_SUMMARY,type VehiclePerformanceSummary,type VehicleStudioTab} from "./VehicleStudio";
 import {VEHICLE_PAINT_PRESETS} from "./vehiclePaintPresets";
 import {vehicleCatalog} from "../../store/selection/vehicleCatalog";
 import {useVehicleStudioStore,type VehicleStudioPart} from "./vehicleStudioStore";
@@ -161,7 +163,23 @@ export function HeroWorkshop(){
  const portraitFooter=<button type="button" onClick={()=>void capturePortrait()} disabled={!definition}>CAPTURE CURRENT PORTRAIT</button>;
  const currentFooter=studioTab==="overview"?<span>Vehicle overview · stock baseline and class profile</span>:studioTab==="performance"?studioFooter:studioTab==="paint"?paintFooter:studioTab==="body"?bodyFooter:studioTab==="lighting"?lightingFooter:portraitFooter;
  return <section ref={root} className="game-ui menu-surface alpha-selection hero-selection hero-workshop" data-editing={editing} data-has-selection={hero!==null} inert={guideOpen} tabIndex={-1} aria-label="Heroes garage" data-controller-form data-controller-rows>
-  <SelectionHeader title="HEROES" onBack={()=>void back()}>{editing&&definition&&<VehicleStudioNavigation tab={studioTab} onTab={setStudioTab}/>}</SelectionHeader>
+  {editing&&definition
+    ? <AngledTabHeader
+        title="HEROES"
+        eyebrow={APP_BRANDING.productName}
+        onBack={()=>void back()}
+        activeTab={studioTab}
+        onTabChange={next=>setStudioTab(next as VehicleStudioTab)}
+        idPrefix="vehicle-studio"
+        panelId="vehicle-studio-tab-panel"
+        tabs={VEHICLE_STUDIO_TABS.map((item,index)=>({
+          ...item,
+          icon:<VehicleStudioTabIcon tab={item.id}/>,
+          grow:[.92,1.12,1.05,.78,.9,.8][index],
+          separatorBefore:item.id==="studio",
+        }))}
+      />
+    : <SelectionHeader title="HEROES" onBack={()=>void back()}/>}
   <div className="hero-selection-stage hero-workshop-body">
    {!editing&&<div className="hero-workshop-collection"><HeroRoster selected={hero} main={main} filter={role} busy={!owner} onChoose={openHero} onFilter={filter=>{setRole(filter);setEditing(false);}}/>
     <p className="hero-workshop-hint">Select a portrait to customize. Hold X to choose your main.</p>
