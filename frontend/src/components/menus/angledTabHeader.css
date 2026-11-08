@@ -194,13 +194,13 @@
     --angled-tabs-height: 36px;
     --angled-title-cut: calc(var(--angled-tab-cut) + 4px);
     grid-template-columns: minmax(112px, 21vw) minmax(0, 1fr);
-    gap: 3px;
-    padding: 4px 0 4px 6px;
+    gap: 0;
+    padding: 0;
   }
   .menu-frame-header.angled-tab-header > div:first-child {
     gap: 6px;
     padding-left: 7px;
-    padding-right: calc(var(--angled-tab-cut) + 5px);
+    padding-right: calc(var(--angled-title-cut) + 5px);
   }
   .menu-frame-header.angled-tab-header > div:first-child > small {
     padding-right: 6px;
@@ -223,12 +223,13 @@
     --angled-tabs-height: 32px;
     --angled-title-cut: calc(var(--angled-tab-cut) + 4px);
     grid-template-columns: minmax(78px, 20vw) minmax(0, 1fr);
-    gap: 2px;
-    padding: 3px 0 3px 4px;
+    gap: 0;
+    padding: 0;
   }
   .menu-frame-header.angled-tab-header > div:first-child { gap: 4px; padding-left: 4px; }
   .menu-frame-header.angled-tab-header > div:first-child > small { font-size: 9px; padding-right: 4px; }
-  .menu-frame-header.angled-tab-header > div:first-child > .angled-header-level { padding-inline: 2px; font-size: 7px; }\n  .menu-frame-header.angled-tab-header > div:first-child > h1 { font-size: 15px; letter-spacing: .015em; }
+  .menu-frame-header.angled-tab-header > div:first-child > .angled-header-level { padding-inline: 2px; font-size: 7px; }
+  .menu-frame-header.angled-tab-header > div:first-child > h1 { font-size: 15px; letter-spacing: .015em; }
   .angled-header-tab { gap: 2px; padding-inline: 1px; font-size: 6px; letter-spacing: 0; }
   .angled-header-icon svg { width: 11px; height: 11px; }
   .menu-frame-header.angled-tab-header .menu-header-actions { padding-left: 2px; }
