@@ -12,7 +12,8 @@ function UpgradeIcon({ id }: { id: string }) {
     : id.includes("suspension") ? "M7 3 5 7l4 3-4 4 4 3-2 4m10-18 2 4-4 3 4 4-4 3 2 4"
     : id.includes("brake") ? "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 4v5l4 2M4 9h2m12 0h2m-14 6h2m12 0h2"
     : id.includes("armor") ? "M12 3 20 6v5c0 5-3 8-8 10-5-2-8-5-8-10V6zM9 12l2 2 4-5"
-    : id.includes("fuel") ? "M6 3h9v18H6zM8 6h5v5H8zM15 8h2l3 3v6h-5";
+    : id.includes("fuel") ? "M6 3h9v18H6zM8 6h5v5H8zM15 8h2l3 3v6h-5"
+    : "M4 7h16M4 12h16M4 17h16M8 5v4M16 10v4M10 15v4";
   return <span className="vehicle-upgrade-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d={path}/></svg></span>;
 }
 
