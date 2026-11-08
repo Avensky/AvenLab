@@ -214,9 +214,9 @@ export function HeroWorkshop(){
     {status==="error"&&<button className="menu-control" onClick={()=>void queue.flush()}>RETRY SAVE</button>}
    </VehicleStudio>}
   </div>
-  <SelectionFooter selectLabel={editing?"Edit style":"Choose hero"} hasPrimaryAction><div className="hero-workshop-actions">
-   <ControllerAction button="Y" type="button" className="menu-control" data-open-hero-abilities onClick={showAbilities}>ABILITIES</ControllerAction>
-   <ControllerAction button="A" type="button" className="menu-control" disabled={!owner} onClick={()=>editing?root.current?.querySelector<HTMLElement>(".vehicle-studio-panel select")?.focus():openHero()}>{editing?"EDIT STYLE":"CHOOSE HERO"}</ControllerAction>
+  <SelectionFooter selectLabel={editing?"Apply":"Choose hero"} hasPrimaryAction><div className="hero-workshop-actions">
+   <ControllerAction button="Y" type="button" tabIndex={-1} className="menu-control" data-open-hero-abilities onClick={showAbilities}>ABILITIES</ControllerAction>
+   <ControllerAction button="A" type="button" className="menu-control" disabled={!owner} tabIndex={-1} onClick={()=>editing?root.current?.querySelector<HTMLElement>(".vehicle-studio-panel select")?.focus():openHero()}>{editing?"APPLY":"CHOOSE HERO"}</ControllerAction>
    <HoldMainButton key={`${owner}:${hero}:${editing}:${main===hero}:${status==="error"}`} disabled={guideOpen||!owner||!hero||main===hero||status==="error"} selected={main===hero} onComplete={()=>mainChoice()}/>
   </div></SelectionFooter>
  </section>;
