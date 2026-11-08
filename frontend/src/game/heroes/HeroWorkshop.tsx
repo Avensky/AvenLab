@@ -19,6 +19,7 @@ import {ControllerAction} from "../../components/controller";
 import {HeroSaveQueue,type HeroSaveStatus} from "./HeroSaveQueue";
 import {VehicleStudio,VEHICLE_STUDIO_TABS,VehicleStudioTabIcon,STOCK_VEHICLE_SUMMARY,type VehiclePerformanceSummary,type VehicleStudioTab} from "./VehicleStudio";
 import {VEHICLE_PAINT_PRESETS} from "./vehiclePaintPresets";
+import {getVehicleStockPerformance} from "./vehiclePerformance";
 import {vehicleCatalog} from "../../store/selection/vehicleCatalog";
 import {useVehicleStudioStore,type VehicleStudioPart} from "./vehicleStudioStore";
 import {VehicleFlags,hasFlag} from "../../store/input/protocol/inputMasks";
@@ -84,7 +85,7 @@ export function HeroWorkshop(){
  useEffect(()=>{useAlphaStore.setState({previewHero:null});root.current?.focus();},[]);
  useEffect(()=>{if(editing)root.current?.querySelector<HTMLElement>(".vehicle-studio-tab")?.focus({preventScroll:true});else{useVehicleStudioStore.getState().closeParts();root.current?.focus({preventScroll:true});}},[editing]);
  useEffect(()=>{if(hero)useAlphaStore.getState().preview(hero);},[hero]);
- useEffect(()=>{setStudioTab("performance");setStudioSummary(STOCK_VEHICLE_SUMMARY);setStudioFooter(null);setPortraitCapture(null);setPortraitMessage("");},[vehicle]);
+ useEffect(()=>{setStudioTab("performance");setStudioSummary(vehicle?getVehicleStockPerformance(vehicle):STOCK_VEHICLE_SUMMARY);setStudioFooter(null);setPortraitCapture(null);setPortraitMessage("");},[vehicle]);
  useEffect(()=>{
   if(!editing)return;
   const savedFlags=useInputStore.getState().input.vehicleMask&lightingBits;
