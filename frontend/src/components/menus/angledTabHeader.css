@@ -1,9 +1,9 @@
 /* Shared, theme-aware top chrome for tabbed screens. */
 .menu-frame-header.angled-tab-header {
-  --angled-tab-cut: clamp(12px, 1.25vw, 17px);
-  --angled-title-cut: calc(var(--angled-tab-cut) + 5px);
-  --angled-header-height: clamp(52px, 4.9vw, 62px);
-  --angled-tabs-height: clamp(42px, 4.1vw, 52px);
+  --angled-tab-cut: clamp(16px, 1.45vw, 22px);
+  --angled-title-cut: var(--angled-tab-cut);
+  --angled-header-height: clamp(48px, 4.2vw, 56px);
+  --angled-tabs-height: clamp(40px, 3.8vw, 48px);
   position: relative;
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
@@ -104,19 +104,10 @@
   margin-left: calc(-1 * var(--angled-tab-cut));
   overflow: visible;
   background: color-mix(in srgb, var(--app-panel) 88%, transparent);
+  border-bottom: 2px solid var(--app-accent);
   filter: drop-shadow(0 0 1px var(--app-accent));
 }
-.angled-header-tail {
-  position: relative;
-  z-index: 3;
-  flex: 0 0 var(--angled-tab-cut);
-  width: var(--angled-tab-cut);
-  height: 100%;
-  margin-left: calc(-1 * var(--angled-tab-cut));
-  background: color-mix(in srgb, var(--app-accent) 30%, var(--app-panel));
-  clip-path: polygon(100% 0, 100% 100%, 0 100%);
-  pointer-events: none;
-}
+ .angled-header-tail { display: none; }
 .angled-header-tab {
   position: relative;
   isolation: isolate;
@@ -130,7 +121,7 @@
   min-width: 0;
   height: 100%;
   margin-left: calc(-1 * var(--angled-tab-cut));
-  padding: 3px clamp(4px, .55vw, 8px);
+  padding: 3px clamp(6px, .7vw, 10px);
   overflow: visible;
   border: 0;
   border-radius: 0;
@@ -148,7 +139,10 @@
   transition: color 120ms ease, background-color 120ms ease;
 }
 .angled-header-tab--overview { margin-left: 0; }
-.angled-header-tab--studio .angled-header-edge { display: none; }
+.angled-header-tab--performance {
+  max-width: clamp(132px, 12vw, 168px);
+  padding-inline: clamp(10px, 1vw, 15px);
+}
 .angled-header-tab[aria-selected="true"] {
   z-index: 2;
   color: var(--app-background);
@@ -193,8 +187,8 @@
 }
 .angled-header-edge path {
   fill: none;
-  stroke: color-mix(in srgb, var(--app-text) 24%, transparent);
-  stroke-width: 1;
+  stroke: color-mix(in srgb, var(--app-text) 42%, transparent);
+  stroke-width: 1.2;
   vector-effect: non-scaling-stroke;
 }
 .angled-header-tab[aria-selected="true"] .angled-header-edge path {
@@ -220,9 +214,9 @@
 @media (max-width: 760px) {
   .menu-frame-header.angled-tab-header {
     --angled-tab-cut: 10px;
-    --angled-header-height: 46px;
-    --angled-tabs-height: 39px;
-    --angled-title-cut: calc(var(--angled-tab-cut) + 4px);
+    --angled-header-height: 39px;
+    --angled-tabs-height: 33px;
+    --angled-title-cut: var(--angled-tab-cut);
     grid-template-columns: minmax(112px, 21vw) minmax(0, 1fr);
     gap: 0;
     padding: 0;
