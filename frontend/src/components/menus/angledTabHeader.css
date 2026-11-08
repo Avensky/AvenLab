@@ -89,6 +89,7 @@
   min-width: 0;
   color: var(--app-accent);
   font-size: clamp(20px, 2.35vw, 31px);
+  font-style: italic;
   letter-spacing: .08em;
 }
 .angled-header-tabs {
@@ -103,7 +104,7 @@
   min-width: 0;
   margin-left: calc(-1 * var(--angled-tab-cut));
   overflow: visible;
-  background: color-mix(in srgb, var(--app-panel) 88%, transparent);
+  background: color-mix(in srgb, var(--app-background) 42%, var(--app-panel));
   border-bottom: 1px solid var(--app-accent);
   filter: drop-shadow(0 0 1px var(--app-accent));
 }
@@ -232,7 +233,7 @@
     font-size: clamp(15px, 2.8vw, 21px);
     letter-spacing: .04em;
   }
-  .angled-header-tab { gap: 3px; padding-inline: 3px; }
+   .angled-header-tab { gap: 3px; padding-inline: 4px; }
   .angled-header-icon svg { width: 14px; height: 14px; }
   .angled-header-tab { font-size: clamp(7px, 1.12vw, 9px); }
   .angled-header-divider { left: calc(var(--angled-tab-cut) + 1px); }
@@ -253,7 +254,7 @@
   .menu-frame-header.angled-tab-header > div:first-child > .angled-header-level { padding-inline: 2px; font-size: 7px; }
   .angled-header-tab { flex-basis: clamp(58px, 10.2vw, 76px); max-width: 88px; }
   .menu-frame-header.angled-tab-header > div:first-child > h1 { font-size: 15px; letter-spacing: .015em; }
-  .angled-header-tab { gap: 2px; padding-inline: 1px; font-size: 6px; letter-spacing: 0; }
+   .angled-header-tab { gap: 2px; padding-inline: 2px; font-size: 6px; letter-spacing: 0; }
   .angled-header-icon svg { width: 11px; height: 11px; }
   .menu-frame-header.angled-tab-header .menu-header-actions { padding-left: 2px; }
 }
