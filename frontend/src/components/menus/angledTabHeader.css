@@ -5,6 +5,8 @@
   --angled-header-height: clamp(46px, 4vw, 54px);
   --angled-tabs-height: clamp(38px, 3.5vw, 46px);
   position: relative;
+  top: 0;
+  margin-block-start: 0;
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
   align-items: start;
@@ -65,6 +67,7 @@
   color: var(--app-muted);
   font-size: clamp(8px, .72vw, 11px);
   font-weight: 850;
+  font-style: italic;
   letter-spacing: .08em;
   line-height: 1;
   white-space: nowrap;
@@ -104,7 +107,7 @@
   min-width: 0;
   margin-left: calc(-1 * var(--angled-tab-cut));
   overflow: visible;
-  background: color-mix(in srgb, var(--app-background) 42%, var(--app-panel));
+  background: color-mix(in srgb, #020609 92%, var(--app-background));
   border-bottom: 1px solid var(--app-accent);
   filter: drop-shadow(0 0 1px var(--app-accent));
 }
@@ -127,7 +130,7 @@
   border: 0;
   border-radius: 0;
   color: var(--app-text);
-  background: color-mix(in srgb, var(--app-background) 42%, var(--app-panel));
+  background: color-mix(in srgb, #020609 92%, var(--app-background));
   clip-path: polygon(var(--angled-tab-cut) 0, 100% 0, calc(100% - var(--angled-tab-cut)) 100%, 0 100%);
   font: inherit;
   font-size: clamp(9px, .78vw, 12px);
@@ -141,7 +144,21 @@
 }
 .angled-header-tab--overview { margin-left: 0; }
 .angled-header-tab--performance { max-width: clamp(148px, 11vw, 176px); }
-.angled-header-tab--paint { max-width: clamp(150px, 11.5vw, 180px); }
+ .angled-header-tab--paint { max-width: clamp(150px, 11.5vw, 180px); }
+.angled-header-tab:last-child {
+  clip-path: polygon(var(--angled-tab-cut) 0, 100% 0, 100% 100%, 0 100%);
+  box-shadow: inset -1px 0 var(--app-accent);
+}
+.angled-header-tab:last-child::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--app-accent);
+  pointer-events: none;
+}
 .angled-header-tab[aria-selected="true"] {
   z-index: 2;
   color: var(--app-background);
@@ -173,8 +190,7 @@
   stroke-linejoin: round;
 }
 .angled-header-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
- .angled-header-edge.angled-header-edge--right { left: auto; right: 0; }
-.angled-header-edge {
+ .angled-header-edge {
   position: absolute;
   z-index: 2;
   top: 0;
