@@ -33,7 +33,7 @@ export function AngledTabHeader({
       eyebrow={eyebrow}
       showBack={false}
       busy={busy}
-      titleMeta={level == null ? undefined : <span className="angled-header-level">LEVEL {level}</span>}
+      titleMeta={level == null ? undefined : <span className="menu-header-title-meta angled-header-level">LEVEL {level}</span>}
       variant="scene"
       className={"angled-tab-header angled-tab-header--no-back " + className}
     >
