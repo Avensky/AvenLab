@@ -1,7 +1,7 @@
 /* Shared, theme-aware top chrome for tabbed screens. */
 .menu-frame-header.angled-tab-header {
   --angled-tab-cut: clamp(12px, 1.25vw, 17px);
-  --angled-header-height: 90px;
+  --angled-header-height: 78px;
   --angled-tabs-height: 58px;
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
@@ -18,7 +18,8 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  align-self: stretch;
+  align-self: center;
+  height: calc(var(--angled-tabs-height) + 28px);
   gap: clamp(9px, 1.1vw, 16px);
   min-width: 0;
   padding: 9px calc(var(--angled-tab-cut) + 9px) 9px 12px;
@@ -155,7 +156,7 @@
 @media (max-width: 760px) {
   .menu-frame-header.angled-tab-header {
     --angled-tab-cut: 10px;
-    --angled-header-height: 66px;
+    --angled-header-height: 58px;
     --angled-tabs-height: 46px;
     grid-template-columns: minmax(112px, 21vw) minmax(0, 1fr);
     gap: 3px;
@@ -183,7 +184,7 @@
 @media (max-width: 520px) {
   .menu-frame-header.angled-tab-header {
     --angled-tab-cut: 8px;
-    --angled-header-height: 60px;
+    --angled-header-height: 54px;
     --angled-tabs-height: 42px;
     grid-template-columns: minmax(78px, 20vw) minmax(0, 1fr);
     gap: 2px;
