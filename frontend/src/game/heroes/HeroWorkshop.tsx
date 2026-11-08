@@ -12,9 +12,9 @@ import {useSelectionNavigation} from "../alpha/useSelectionNavigation";
 import {navigateFormRows} from "../social/formRows";
 import {UI_THEMES} from "../../theme/catalog";
 import {usePreferencesStore} from "../../store/preferences/preferencesStore";
-import {HeroRoster,HeroRoleTabs} from "../alpha/HeroRoster";
+import {HeroRoster,heroRoleHeaderTabs} from "../alpha/HeroRoster";
 import {HoldMainButton} from "./HoldMainButton";
-import {SelectionHeader,SelectionFooter} from "../alpha/SelectionChrome";
+import {SelectionFooter} from "../alpha/SelectionChrome";
 import {ControllerAction} from "../../components/controller";
 import {HeroSaveQueue,type HeroSaveStatus} from "./HeroSaveQueue";
 import {VehicleStudio,VEHICLE_STUDIO_TABS,VehicleStudioTabIcon,STOCK_VEHICLE_SUMMARY,type VehiclePerformanceSummary,type VehicleStudioTab} from "./VehicleStudio";
@@ -180,8 +180,8 @@ export function HeroWorkshop(){
           grow:[.92,1.12,1.05,.78,.9,.8][index],
         }))}
       />
-    : <SelectionHeader title="HEROES" onBack={()=>void back()}><HeroRoleTabs filter={role} onFilter={filter=>{setRole(filter);setEditing(false);}}/></SelectionHeader>}
-  <div className="hero-selection-stage hero-workshop-body">
+    : <AngledTabHeader title="HEROES" eyebrow={APP_BRANDING.productName} level={characterLevel??undefined} tabs={heroRoleHeaderTabs(false)} activeTab={role} onTabChange={next=>{setRole(next as HeroFilter);setEditing(false);}} idPrefix="hero-workshop-role" panelId="hero-workshop-role-panel"/>}
+  <div className="hero-selection-stage hero-workshop-body" id={!editing?"hero-workshop-role-panel":undefined} role={!editing?"tabpanel":undefined} aria-labelledby={!editing?"hero-workshop-role-tab-"+role:undefined}>
    {!editing&&<div className="hero-workshop-collection"><HeroRoster showFilters={false} selected={hero} main={main} filter={role} busy={!owner} onChoose={openHero} onFilter={filter=>{setRole(filter);setEditing(false);}}/>
     <p className="hero-workshop-hint">Select a portrait to customize. Hold X to choose your main.</p>
     {status!=="idle"&&<div className="hero-collection-save-status" role="status">{status==="error"?`NOT SAVED · ${message}`:status==="saved"?"SAVED TO YOUR PLAYER":"SAVING YOUR STYLE…"}{status==="error"&&<button className="menu-control" onClick={()=>void queue.flush()}>RETRY SAVE</button>}</div>}
