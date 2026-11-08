@@ -31,8 +31,9 @@
 .vehicle-studio-main {
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(185px, 18vw) minmax(270px, 22vw);
-  justify-content: space-between;
+  position: relative;
+  grid-template-columns: minmax(185px, 18vw);
+  justify-content: start;
   gap: clamp(8px, 1.4vw, 22px);
   align-items: stretch;
   pointer-events: none;
@@ -102,9 +103,24 @@
   color: var(--vehicle-studio-muted);
 }
 .vehicle-studio-class-stats strong { color: var(--vehicle-studio-ink); }
-.vehicle-studio-panel { display: flex; flex-direction: column; align-self: stretch; padding: 7px; }
-.vehicle-studio-panel-heading { padding-bottom: 7px; border-bottom: 1px solid var(--vehicle-studio-line); }
-.vehicle-studio-panel-heading h2 { margin: 3px 0 0; font-size: 14px; }
+ .vehicle-studio-panel {
+  position: absolute;
+  z-index: 10;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  width: min(370px, 31vw);
+  box-sizing: border-box;
+  padding: 7px;
+  box-shadow: 0 14px 34px rgba(0,0,0,.46);
+}
+ .vehicle-studio-panel-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; padding-bottom:7px; border-bottom:1px solid var(--vehicle-studio-line); }
+ .vehicle-studio-panel-heading h2 { margin: 3px 0 0; font-size: 14px; }
+.vehicle-studio-panel-close { flex:none; width:28px; height:28px; padding:0!important; border:1px solid var(--vehicle-studio-line); border-radius:4px; background:var(--vehicle-studio-raised); font-size:19px!important; line-height:1; cursor:pointer; }
+.vehicle-studio-dock .vehicle-studio-panel-toggle { border-color:var(--vehicle-studio-accent); color:var(--vehicle-studio-accent); }
+.vehicle-studio-panel-toggle[aria-expanded="true"] { background:var(--vehicle-studio-accent)!important; color:var(--vehicle-studio-selected-ink)!important; }
 .vehicle-studio-panel-content { display: flex; flex-direction: column; gap: 7px; padding-top: 7px; overflow: auto; }
 .vehicle-studio-card {
   display: flex;
@@ -181,7 +197,7 @@
 .vehicle-studio-dock-actions>span { color: var(--vehicle-studio-muted); font-size: 8px; }
 .vehicle-studio-rotate-hint {
   position: absolute;
-  right: calc(22vw + 18px);
+  right: clamp(16px, 4vw, 64px);
   bottom: 48px;
   display: flex;
   align-items: center;
@@ -239,7 +255,6 @@
 .vehicle-studio-feature[data-supported="false"],.vehicle-studio-feature-status { color: var(--vehicle-studio-muted); }
 .vehicle-studio-save-status { margin: 0; padding-top: 6px; border-top: 1px solid var(--vehicle-studio-line); color: var(--vehicle-studio-muted); font-size: 8px; line-height: 1.45; }
 .vehicle-studio-portrait { display: block; width: 100%; max-height: 230px; object-fit: contain; background: var(--vehicle-studio-bg); border: 1px solid var(--vehicle-studio-line); border-radius: var(--vehicle-studio-radius); }
-.vehicle-performance-page figure { margin: 0; }
 .vehicle-performance-page header small { color: var(--vehicle-studio-accent); font-size: 8px; font-weight: 900; letter-spacing: .1em; }
 .vehicle-performance-page header h3 { margin: 2px 0; font-size: 11px; }
 .vehicle-performance-page>label { display: flex; flex-direction: column; gap: 4px; padding: 5px 0; border-bottom: 1px solid color-mix(in srgb,var(--vehicle-studio-line) 65%,transparent); font-size: 8px; color: var(--vehicle-studio-muted); }
@@ -279,11 +294,14 @@
   background: var(--vehicle-studio-panel);
   box-shadow: 0 8px 22px rgba(0,0,0,.42);
 }
-.vehicle-performance-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
-.vehicle-performance-stat { padding: 6px; border: 1px solid var(--vehicle-studio-line); border-radius: 5px; background: var(--vehicle-studio-bg); }
-.vehicle-performance-stat>label { display: grid; grid-template-columns: 1fr auto; gap: 2px 7px; font-size: 7px; color: var(--vehicle-studio-muted); }
-.vehicle-performance-stat meter { grid-column: 1/-1; width: 100%; height: 6px; accent-color: var(--vehicle-studio-accent); }
 
 @media(max-width:900px),(max-height:500px) {
   .vehicle-studio-details,.vehicle-studio-panel { backdrop-filter: blur(7px); }
+}
+
+@media(max-width:760px) {
+  .vehicle-studio-panel { width:min(390px, 54vw); }
+}
+@media(max-width:520px) {
+  .vehicle-studio-panel { width:min(94vw, 420px); }
 }
