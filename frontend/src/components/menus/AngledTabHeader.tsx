@@ -15,6 +15,7 @@ export function AngledTabHeader({
   className = "",
   busy = false,
   level,
+  titleMeta,
 }: {
   title: string;
   eyebrow?: string;
@@ -26,6 +27,7 @@ export function AngledTabHeader({
   className?: string;
   busy?: boolean;
   level?: number | string;
+  titleMeta?: ReactNode;
 }) {
   return (
     <MenuFrameHeader
@@ -33,7 +35,7 @@ export function AngledTabHeader({
       eyebrow={eyebrow}
       showBack={false}
       busy={busy}
-      titleMeta={level == null ? undefined : <span className="menu-header-title-meta angled-header-level">LEVEL {level}</span>}
+      titleMeta={titleMeta ?? (level == null ? undefined : <span className="menu-header-title-meta angled-header-level">LEVEL {level}</span>)}
       variant="scene"
       className={"angled-tab-header angled-tab-header--no-back " + className}
     >
