@@ -16,7 +16,7 @@ pub fn validated_config(mut c: VehicleConfig, patch: &Map<String, Value>) -> Res
         }
         let mut resolved=Map::new();
         for (stat,factor) in factors {
-            let stock=match stat.as_str(){"engine_force"=>c.engine_force,"max_speed"=>c.max_speed,"mu_base"=>c.mu_base,"brake_force"=>c.brake_force,"mass"=>c.mass,"suspension_damping_ratio"=>c.suspension_damping_ratio,_=>return Err("Unsupported mod stat".into())};
+            let stock=match stat.as_str(){"engine_force"=>c.engine_force,"max_speed"=>c.max_speed,"mu_base"=>c.mu_base,"brake_force"=>c.brake_force,"mass"=>c.mass,"suspension_damping_ratio"=>c.suspension_damping_ratio,"cooling_multiplier"=>c.resources.cooling_multiplier,_=>return Err("Unsupported mod stat".into())};
             resolved.insert(stat,serde_json::json!(stock as f64*factor));
         }
         return validated_config(c,&resolved);
@@ -31,6 +31,7 @@ pub fn validated_config(mut c: VehicleConfig, patch: &Map<String, Value>) -> Res
         let (target, min, max): (&mut f32, f32, f32) = match key.as_str() {
             "mass" => (&mut c.mass, 300.0, 60000.0),
             "engine_force" => (&mut c.engine_force, 0.0, 200000.0),
+            "cooling_multiplier" => (&mut c.resources.cooling_multiplier, 0.25, 32.0),
             "brake_force" => (&mut c.brake_force, 100.0, 300000.0),
             "max_speed" => (&mut c.max_speed, 2.0, 150.0),
             "linear_damping" => (&mut c.linear_damping, 0.0, 5.0),
@@ -78,6 +79,16 @@ mod tests {
         assert!((a.mu_base-AE86.mu_base*1.16).abs()<0.001);
         assert_eq!(validated_config(AE86,serde_json::json!({"mod_stages":{}}).as_object().unwrap()).unwrap().engine_force,AE86.engine_force);
         for invalid in [serde_json::json!({"mod_stages":{"turbo":4}}),serde_json::json!({"mod_stages":{"turbo":-1}}),serde_json::json!({"mod_stages":{"turbo":1.5}}),serde_json::json!({"mod_stages":{"unknown":1}}),serde_json::json!({"mod_stages":{},"engine_force":1000})]{assert!(validated_config(AE86,invalid.as_object().unwrap()).is_err());}
+    }
+    #[test]
+    fn intercooler_stages_increase_cooling_and_restore_stock() {
+        let patch = serde_json::json!({"mod_stages":{"intercooler":3}});
+        let tuned = validated_config(AE86, patch.as_object().unwrap()).unwrap();
+        assert!((tuned.resources.cooling_multiplier - AE86.resources.cooling_multiplier * 1.3).abs() < 0.0001);
+        assert_eq!(tuned.engine_force, AE86.engine_force);
+        let restored = validated_config(AE86, serde_json::json!({"mod_stages":{"intercooler":0}}).as_object().unwrap()).unwrap();
+        assert_eq!(restored.resources.cooling_multiplier, AE86.resources.cooling_multiplier);
+        assert!(validated_config(AE86, serde_json::json!({"cooling_multiplier":33}).as_object().unwrap()).is_err());
     }
     #[test]
     fn rejects_bad_fields_ranges_and_sag() {

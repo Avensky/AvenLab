@@ -5,17 +5,10 @@ import { useVehicleStudioStore } from "./vehicleStudioStore";
 import { drivetrainProfileFor } from "./vehicleDrivetrainOptions";
 import { getVehicleStockPerformance, getVehicleTuningLimits } from "./vehiclePerformance";
 
-function UpgradeIcon({ id }: { id: string }) {
-  const path = id.includes("engine") ? "M3 9h3l2-3h8l2 3h3v8h-3l-2 3H8l-2-3H3zM8 9v2m8-2v2"
-    : id.includes("transmission") ? "M6 3v5m0 4v9m6-18v4m0 4v10m6-18v5m0 4v9M6 8h12m-12 3h12"
-    : id.includes("tire") ? "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 4a5 5 0 1 0 0 10 5 5 0 0 0 0-10Z"
-    : id.includes("suspension") ? "M7 3 5 7l4 3-4 4 4 3-2 4m10-18 2 4-4 3 4 4-4 3 2 4"
-    : id.includes("brake") ? "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 4v5l4 2M4 9h2m12 0h2m-14 6h2m12 0h2"
-    : id.includes("armor") ? "M12 3 20 6v5c0 5-3 8-8 10-5-2-8-5-8-10V6zM9 12l2 2 4-5"
-    : id.includes("fuel") ? "M6 3h9v18H6zM8 6h5v5H8zM15 8h2l3 3v6h-5"
-    : "M4 7h16M4 12h16M4 17h16M8 5v4M16 10v4M10 15v4";
-  return <span className="vehicle-upgrade-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d={path}/></svg></span>;
-}
+import { VehicleGarageIcon } from "./VehicleGarageIcon";
+
+const POWER_PARTS = new Set(["turbo", "nitrous", "exhaust", "intercooler"]);
+const PART_LABELS: Record<string, string> = { tires: "TIRES", turbo: "TURBO", nitrous: "NITROUS", exhaust: "EXHAUST", suspension: "SUSPENSION", brakes: "BRAKES", gearing: "GEARING", weight: "WEIGHT", intercooler: "INTERCOOLER" };
 
 export function VehicleMods({
   vehicle,
@@ -30,6 +23,7 @@ export function VehicleMods({
   onSummaryChange?: (summary: VehiclePerformanceSummary) => void;
   onFooterChange?: (footer: ReactNode | null) => void;
 }) {
+  const [upgradeGroup, setUpgradeGroup] = useState("power");
   const stock = useMemo(() => getVehicleStockPerformance(vehicle), [vehicle]);
   const limits = useMemo(() => getVehicleTuningLimits(vehicle), [vehicle]);
   const effects = useMemo(() => {
@@ -56,6 +50,7 @@ export function VehicleMods({
       brake_force: stock.brake_force * capped.brake_force,
       suspension_damping_ratio: stock.suspension_damping_ratio * capped.suspension_damping_ratio,
       mass: stock.mass * capped.mass,
+      cooling_multiplier: (stock.cooling_multiplier ?? 1) * Math.min(1 + limits.maxStage * 0.1, effects.cooling_multiplier ?? 1),
     };
   }, [effects, limits, stock]);
 
@@ -95,68 +90,31 @@ export function VehicleMods({
   }, [onFooterChange, restore, exportBuild]);
 
   return (
-    <section className="vehicle-studio-card vehicle-performance-page" aria-label="Performance modifications">
-      <header><small>{limits.className} CHASSIS · STOCK PHYSICS</small><h3>Performance parts</h3></header>
-      <p>{limits.className} · MAX STAGE {limits.maxStage}</p>
-
-      <section className="vehicle-drivetrain-card" aria-label="Drivetrain and transmission preview">
-        <header><small>VEHICLE-SPECIFIC CONFIGURATION</small><h3>{profile.driveLayout} · TRANSMISSION</h3></header>
-        {profile.transmissions.length > 0 ? (
-          <>
-            <div className="vehicle-drivetrain-modes" role="group" aria-label="Transmission mode">
-              <button
-                type="button"
-                disabled={!profile.transmissions.includes("manual")}
-                aria-pressed={selectedTransmission === "manual"}
-                onClick={() => setTransmission(vehicle, "manual")}
-              >MANUAL · H-PATTERN</button>
-              <button
-                type="button"
-                disabled={!profile.transmissions.includes("automatic")}
-                aria-pressed={selectedTransmission === "automatic"}
-                onClick={() => setTransmission(vehicle, "automatic")}
-              >AUTOMATIC</button>
-              <button
-                type="button"
-                disabled={!profile.paddleShifters}
-                aria-pressed={profile.paddleShifters && paddlesEnabled}
-                onClick={() => setPaddlesEnabled((value) => !value)}
-              >PADDLE SHIFTERS</button>
-            </div>
-           </>
-        ) : (
-          <p>Dedicated propulsion controls for this vehicle class.</p>
-        )}
-      </section>
-
+    <section className="vehicle-performance-page" aria-label="Performance modifications" data-upgrade-group={upgradeGroup}>
+      <div className="vehicle-upgrade-limit">{limits.className} · MAX STAGE {limits.maxStage}</div>
+      <div className="vehicle-upgrade-filter" role="group" aria-label="Upgrade categories">
+        {["power", "chassis"].map(group => <button type="button" key={group} aria-pressed={upgradeGroup === group} onClick={() => setUpgradeGroup(group)}>{group.toUpperCase()}</button>)}
+      </div>
       {Object.entries(catalog).map(([id, part]) => {
-        const stage = Math.min(limits.maxStage, stages[id] ?? 0);
-        return (
-          <label className="vehicle-upgrade-row" key={id}>
-            <UpgradeIcon id={id} />
-            <span className="vehicle-upgrade-copy">
-              <span className="vehicle-upgrade-line">
-                <span className="vehicle-upgrade-name">{part.label}</span>
-                <select
-                  className="vehicle-upgrade-select"
-                  aria-label={part.label}
-                  value={stage}
-                  onChange={(event) => onStagesChange({ ...stages, [id]: Number(event.target.value) })}
-                >
-                  {["Stock", "Street · Stage 1", "Sport · Stage 2", "Race · Stage 3"].slice(0, limits.maxStage + 1).map((label, index) => (
-                    <option key={index} value={index}>{label}</option>
-                  ))}
-                </select>
-              </span>
-              <span className="vehicle-upgrade-segments" aria-hidden="true">
-                {[0, 1, 2].map((index) => <i key={index} data-active={index < stage} data-available={index < limits.maxStage} />)}
-              </span>
-            </span>
-          </label>
-        );
+        const stage = Math.max(0, Math.min(limits.maxStage, stages[id] ?? 0));
+        return <div className="vehicle-upgrade-row" key={id} data-upgrade-group={POWER_PARTS.has(id) ? "power" : "chassis"} role="group" aria-labelledby={`upgrade-label-${id}`}>
+          <VehicleGarageIcon name={id} />
+          <span className="vehicle-upgrade-name" id={`upgrade-label-${id}`}>{PART_LABELS[id] ?? part.label}</span>
+          <div className="vehicle-upgrade-stepper">
+            <button type="button" aria-label={`Downgrade ${part.label}`} disabled={stage === 0} onClick={() => onStagesChange({ ...stages, [id]: stage - 1 })}>−</button>
+            <output aria-live="polite" aria-label={`${part.label} stage`}>{stage ? `STAGE ${stage}` : "STOCK"}</output>
+            <button type="button" aria-label={`Upgrade ${part.label}`} disabled={stage >= limits.maxStage} onClick={() => onStagesChange({ ...stages, [id]: stage + 1 })}>+</button>
+          </div>
+          <span className="vehicle-upgrade-segments" aria-hidden="true">{[0, 1, 2].map(index => <i key={index} data-active={index < stage} data-available={index < limits.maxStage} />)}</span>
+        </div>;
       })}
-
-
+      {profile.transmissions.length > 0 && <div className="vehicle-gearbox-controls" role="group" aria-label="Gearbox configuration">
+        <span><VehicleGarageIcon name="gearing" /> GEARBOX</span>
+        <div className="vehicle-drivetrain-modes">
+          {profile.transmissions.map(mode => <button key={mode} type="button" aria-pressed={selectedTransmission === mode} onClick={() => setTransmission(vehicle, mode)}>{mode === "manual" ? "MANUAL" : "AUTO"}</button>)}
+          {profile.paddleShifters && <button type="button" aria-pressed={paddlesEnabled} onClick={() => setPaddlesEnabled(value => !value)}>PADDLES</button>}
+        </div>
+      </div>}
     </section>
   );
 }

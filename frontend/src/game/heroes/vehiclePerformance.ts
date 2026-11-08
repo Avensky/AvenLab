@@ -10,6 +10,7 @@ export type VehiclePerformanceSummary = {
   brake_force: number;
   mass: number; // kg
   suspension_damping_ratio: number;
+  cooling_multiplier?: number; // Radiator/charge-cooling capacity, relative to stock.
 };
 type VehiclePhysics = VehiclePerformanceSummary;
 export const VEHICLE_PHYSICS_STOCK: Readonly<Record<string, VehiclePhysics>> = Object.freeze({
@@ -54,7 +55,7 @@ export type PerformanceReadout = {
 
 export function getVehicleStockPerformance(vehicle: string): VehiclePerformanceSummary {
   const spec = VEHICLE_PHYSICS_STOCK[vehicle] ?? VEHICLE_PHYSICS_STOCK.gt86;
-  return { ...spec };
+  return { ...spec, cooling_multiplier: ["tank", "hawaii-rescue", "louisiana"].includes(vehicle) ? 16 : 1 };
 }
 
 /** Vehicle classes have different fictional upgrade ceilings and max stages. */
