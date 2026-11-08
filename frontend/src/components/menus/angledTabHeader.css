@@ -1,14 +1,14 @@
 /* Shared, theme-aware top chrome for tabbed screens. */
 .menu-frame-header.angled-tab-header {
   --angled-tab-cut: clamp(12px, 1.25vw, 17px);
-  --angled-header-height: 78px;
+  --angled-header-height: 90px;
   --angled-tabs-height: 58px;
   display: grid;
-  grid-template-columns: minmax(190px, 21vw) minmax(0, 1fr);
+  grid-template-columns: max-content minmax(0, 1fr);
   align-items: stretch;
-  gap: clamp(4px, .65vw, 10px);
+  gap: 0;
   min-height: var(--angled-header-height);
-  padding: 5px clamp(8px, 1.2vw, 18px);
+  padding: 5px 0 5px clamp(8px, 1.2vw, 18px);
   background: color-mix(in srgb, var(--app-background) 54%, var(--app-panel));
   border-bottom-color: color-mix(in srgb, var(--app-accent) 36%, var(--app-line));
 }
@@ -21,7 +21,7 @@
   align-self: stretch;
   gap: clamp(9px, 1.1vw, 16px);
   min-width: 0;
-  padding: 2px calc(var(--angled-tab-cut) + 9px) 2px 12px;
+  padding: 9px calc(var(--angled-tab-cut) + 9px) 9px 12px;
   background: color-mix(in srgb, var(--app-background) 36%, var(--app-panel));
   clip-path: polygon(0 0, 100% 0, calc(100% - var(--angled-tab-cut)) 100%, 0 100%);
 }
@@ -155,11 +155,11 @@
 @media (max-width: 760px) {
   .menu-frame-header.angled-tab-header {
     --angled-tab-cut: 10px;
-    --angled-header-height: 58px;
+    --angled-header-height: 66px;
     --angled-tabs-height: 46px;
     grid-template-columns: minmax(112px, 21vw) minmax(0, 1fr);
     gap: 3px;
-    padding: 4px 6px;
+    padding: 4px 0 4px 6px;
   }
   .menu-frame-header.angled-tab-header > div:first-child {
     gap: 6px;
@@ -183,11 +183,11 @@
 @media (max-width: 520px) {
   .menu-frame-header.angled-tab-header {
     --angled-tab-cut: 8px;
-    --angled-header-height: 54px;
+    --angled-header-height: 60px;
     --angled-tabs-height: 42px;
     grid-template-columns: minmax(78px, 20vw) minmax(0, 1fr);
     gap: 2px;
-    padding: 3px 4px;
+    padding: 3px 0 3px 4px;
   }
   .menu-frame-header.angled-tab-header > div:first-child { gap: 4px; padding-left: 4px; }
   .menu-frame-header.angled-tab-header > div:first-child > small { font-size: 9px; padding-right: 4px; }
