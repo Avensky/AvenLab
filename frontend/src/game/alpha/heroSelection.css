@@ -18,15 +18,6 @@
   pointer-events: none;
   font: calc(12px * var(--menu-text-scale, 1))/1.45 ui-sans-serif, system-ui, sans-serif;
 }
-.hero-selection.hero-selection--picking {
-  --menu-action-height: 26px;
-  --menu-action-y: 2px;
-  --menu-header-y: 2px;
-  --menu-angled-header-height: 29px;
-}
-.hero-selection--picking > .menu-frame-header:not(.angled-tab-header) {
-  padding-block: var(--menu-header-y);
-}
 .hero-pick-tabs.angled-header-tabs {
   width: max-content;
   max-width: calc(100% + var(--angled-tab-cut));

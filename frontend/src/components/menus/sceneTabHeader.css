@@ -369,10 +369,10 @@
 .menu-frame-header.angled-tab-header.scene-tab-header--compact > div:first-child {
   padding: 0 calc(var(--angled-title-cut) + 5px) 0 6px;
 }
-.scene-tab-header--compact [data-title-team="red"] {
+.scene-tab-header--compact [data-title-team="red"] > h1 {
   --app-text: var(--team-red, #ff6570);
 }
-.scene-tab-header--compact [data-title-team="blue"] {
+.scene-tab-header--compact [data-title-team="blue"] > h1 {
   --app-text: var(--team-blue, #69bbff);
 }
 .scene-tab-header--compact .menu-logo {

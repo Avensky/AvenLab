@@ -202,7 +202,7 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
       {...pressOwner}
       ref={root}
       inert={inspecting}
-      className="game-ui menu-surface alpha-selection hero-selection hero-selection--picking"
+      className="game-ui menu-surface alpha-selection hero-selection"
       data-controller-form
       data-controller-rows
       tabIndex={-1}
