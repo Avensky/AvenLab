@@ -18,6 +18,29 @@
   pointer-events: none;
   font: calc(12px * var(--menu-text-scale, 1))/1.45 ui-sans-serif, system-ui, sans-serif;
 }
+.hero-selection.hero-selection--picking {
+  --menu-action-height: 26px;
+  --menu-action-y: 2px;
+  --menu-header-y: 2px;
+  --menu-footer-y: 1px;
+}
+.hero-selection--picking > .menu-frame-header:not(.angled-tab-header) {
+  padding-block: var(--menu-header-y);
+}
+.hero-pick-tabs.angled-header-tabs {
+  width: max-content;
+  max-width: calc(100% + var(--angled-tab-cut));
+}
+.hero-pick-tabs .angled-header-tab {
+  flex: 0 1 auto;
+  max-width: none;
+  padding-inline: calc(var(--angled-tab-cut) / 2 + 9px);
+}
+.hero-pick-tabs.classic-header-tabs {
+  display: flex;
+  align-self: flex-start;
+  max-width: 100%;
+}
 .hero-selection :is(button, input, label, select) {
   pointer-events: auto;
 }
@@ -35,7 +58,6 @@
 .hero-selection [data-role="support"] {
   --hero-color: #8dd9c2;
 }
-/* The portrait grid scrolls inside the shared panel frame. */
 .hero-roster {
   position: absolute;
   top: 5px;
@@ -44,10 +66,7 @@
   max-height: calc(100% - 10px);
   display: flex;
   flex-direction: column;
-  padding: 6px;
   pointer-events: auto;
-  background: none;
-  border: 0;
 }
 .hero-roster header {
   display: flex;
@@ -70,30 +89,37 @@
 .hero-roster-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: max-content;
   gap: 4px;
   min-height: 0;
-  overflow: auto;
+  padding: 2px;
+  overflow: hidden auto;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
   scrollbar-width: none;
 }
 .hero-roster-grid::-webkit-scrollbar {
   display: none;
 }
 .hero-roster-empty { grid-column:1/-1; padding:12px 6px; color:var(--app-muted); font-size:9px; font-weight:800; letter-spacing:.08em; text-align:center; }
-.hero-portrait-card {
-  position: relative;
+.hero-portrait-card.menu-panel-frame {
+  --menu-panel-cut: 6px;
+  --menu-panel-fill: var(--app-background);
+  --hero-card-edge: var(--app-line);
   display: block;
   min-width: 0;
-  padding: 0;
-  border: 1px solid #6d899b44;
+  padding: 1px;
+  border: 0;
   border-radius: 0;
-  background: #0a18256b;
-  color: #d8e7ee;
+  background: transparent;
+  color: var(--app-text);
   cursor: pointer;
-  overflow: hidden;
 }
+.hero-portrait-card.menu-panel-frame::before { background: var(--hero-card-edge); }
 .hero-portrait-card:focus-visible {
-  outline: 2px solid var(--app-accent, #82b7ff);
-  outline-offset: 1px;
+  --hero-card-edge: var(--app-accent);
+  outline: 0;
+  filter: drop-shadow(0 0 3px var(--app-accent));
   z-index: 2;
 }
 .hero-portrait-card .hero-portrait-art img {
@@ -103,12 +129,11 @@
 }
 .hero-portrait-card[aria-pressed="true"]:not([data-unavailable="true"]) .hero-portrait-art img {
   transform: scale(1.13);
-  filter: drop-shadow(0 0 5px var(--hero-color, #a7e5ff));
+  filter: drop-shadow(0 0 5px var(--app-accent));
 }
 .hero-portrait-card[aria-pressed="true"]:not([data-unavailable="true"]) {
-  border-color: #ffffff44;
-  background: radial-gradient(ellipse, #ecf7ff35, #10253585 75%);
-  box-shadow: 0 0 10px #e6f4ff88;
+  --menu-panel-fill: color-mix(in srgb, var(--app-raised) 85%, var(--app-accent));
+  --hero-card-edge: var(--app-accent);
 }
 .hero-portrait-card:disabled {
   cursor: wait;
@@ -128,6 +153,10 @@
     color-mix(in srgb, var(--hero-color) 15%, #152b3b80),
     #0b182580 75%
   );
+}
+.hero-portrait-card .hero-portrait-art {
+  background: var(--menu-panel-fill);
+  clip-path: var(--menu-panel-shape);
 }
 .hero-portrait-art img {
   display: block;
@@ -355,10 +384,6 @@
   color: #fff;
   box-shadow: inset 0 -1px #d0f0ff;
 }
-.hero-roster-grid {
-  margin: 3px -5px;
-  padding: 5px;
-}
 .hero-environment {
   flex: none;
 }
@@ -527,10 +552,8 @@ html[data-reduce-motion="true"] .hero-portrait-card .hero-portrait-art img {
 }
 
 /* Capacity is a team rule, independent of a player's selected paint. */
-.hero-portrait-card[data-unavailable="true"] { background: #030507; border-color: #26303a; opacity: 1; cursor: not-allowed; box-shadow: none; }
-.hero-portrait-card[data-unavailable="true"] .hero-portrait-art { background: #030507; }
+.hero-portrait-card[data-unavailable="true"] { opacity: 1; cursor: not-allowed; }
 .hero-portrait-card[data-unavailable="true"] .hero-portrait-art img { filter: grayscale(1) brightness(.13); transform: none; }
-.hero-portrait-card[data-unavailable="true"]::after { display: none; }
 .hero-role-full { position: absolute; inset: auto 0 4px; color: #bdc6ce; font: 800 8px/1.2 system-ui; text-align: center; letter-spacing: .08em; }
 .hero-portrait-style-status { position: absolute; inset: auto 2px 2px; display: flex; align-items: center; justify-content: center; gap: 3px; padding: 2px; background: #030507dc; color: #e3e9ef; font: 700 6px/1.2 system-ui; }
 .hero-portrait-style-status i { width: 7px; height: 7px; background: var(--portrait-paint); border: 1px solid #ffffff80; }

@@ -31,7 +31,7 @@ export function HeroRoster({
 }) {
   const visibleHeroes = HEROES.filter((hero) => heroMatchesFilter(hero, filter, allowBoats));
   return (
-    <aside className="hero-roster menu-panel-frame" aria-label="Vehicle selection">
+    <aside className="hero-roster" aria-label="Vehicle selection">
       {showFilters&&<HeroRoleTabs filter={filter} onFilter={onFilter} allowBoats={allowBoats}/>}
       <div
         className="hero-roster-grid"
@@ -49,7 +49,7 @@ export function HeroRoster({
             <button
               key={hero.id}
               type="button"
-              className="hero-portrait-card"
+              className="hero-portrait-card menu-panel-frame"
               data-hero={hero.id}
               data-role={hero.role}
               data-grid-item
@@ -58,6 +58,7 @@ export function HeroRoster({
               aria-pressed={selected === hero.id}
               disabled={busy || Boolean(unavailable[hero.id])}
               data-unavailable={Boolean(unavailable[hero.id])}
+              onFocus={(event) => event.currentTarget.scrollIntoView?.({ block: "nearest", inline: "nearest" })}
               onClick={() => onChoose(hero.id)}
             >
               <HeroPortrait hero={hero.id} />

@@ -370,11 +370,9 @@
   padding: 0 calc(var(--angled-title-cut) + 5px) 0 6px;
 }
 .scene-tab-header--compact [data-title-team="red"] {
-  --app-accent: var(--team-red, #ff6570);
   --app-text: var(--team-red, #ff6570);
 }
 .scene-tab-header--compact [data-title-team="blue"] {
-  --app-accent: var(--team-blue, #69bbff);
   --app-text: var(--team-blue, #69bbff);
 }
 .scene-tab-header--compact .menu-logo {

@@ -45,6 +45,7 @@
 .prematch-team-preview .match-team-composition,.prematch-team-preview .match-stats-table{display:block}
 .prematch-team-preview .scoreboard-team>h3{display:none}
 .prematch-team-preview .match-composition-row{gap:4px;padding:2px 0}
+.prematch-team-preview .match-composition-seat{--team-color:var(--app-accent)}
 .prematch-team-preview .match-composition-seat:not(.match-composition-empty){display:grid;grid-template-columns:58px minmax(0,1fr);gap:4px;min-height:0;height:calc(var(--prematch-content-height) - 4px);padding:2px}
 .prematch-team-preview .match-composition-art .hero-portrait-art{height:calc(var(--prematch-content-height) - 10px);aspect-ratio:auto}
 .prematch-team-preview .match-composition-info{gap:1px;padding-right:2px}

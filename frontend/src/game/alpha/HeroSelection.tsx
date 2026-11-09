@@ -202,7 +202,7 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
       {...pressOwner}
       ref={root}
       inert={inspecting}
-      className="game-ui menu-surface alpha-selection hero-selection"
+      className="game-ui menu-surface alpha-selection hero-selection hero-selection--picking"
       data-controller-form
       data-controller-rows
       tabIndex={-1}
@@ -217,6 +217,7 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
         titleMeta={!matchHeader && confirmedTeam ? <span className="menu-header-title-meta angled-header-team" data-team={confirmedTeam}>{confirmedTeam.toUpperCase()} TEAM</span> : undefined}
         showProgress={matchHeader}
         tabs={heroRoleHeaderTabs(allowBoats)}
+        tablistClassName="hero-pick-tabs"
         activeTab={role}
         onTabChange={next => filter(next as HeroFilter)}
         idPrefix="hero-selection-role"
