@@ -74,7 +74,8 @@ test("real App removes the startup cover and opens the latest main menu without 
       "startup cover must be removed after React commits",
     );
     assert.ok(document.querySelector(".main-menu"));
-    assert.equal(document.querySelectorAll(".main-menu .menu-panel-frame .menu-icon").length, 6);
+    assert.equal(document.querySelector(".main-menu .menu-panel-frame"), null);
+    assert.equal(document.querySelectorAll(".main-menu .menu-action-list .menu-icon").length, 6);
     assert.ok(
       document
         .querySelector(".main-menu")

@@ -305,8 +305,6 @@
 }
 
 .menu-home.pause-menu {
-  align-items: flex-end;
-  padding-inline-end: max(clamp(0.5rem, 3vw, 2.75rem), env(safe-area-inset-right));
   background-color: rgb(6 10 20 / 0.34);
 }
 .pause-menu .menu-home-content {
@@ -315,6 +313,9 @@
 }
 .pause-menu .menu-action-list {
   width: 100%;
+}
+.pause-menu .menu-home-shortcuts:has(.controller-shortcuts:empty) {
+  display: none;
 }
 .pause-menu-heading {
   display: flex;
@@ -701,10 +702,46 @@ html[data-reduce-motion="true"] .menu-surface * {
   font-size: 10px;
 }
 .main-menu-actions .menu-action-list {
+  --menu-action-cut: 10px;
+  --menu-action-border-offset: -1px;
   width: min(92%, 28rem);
 }
-.main-menu-actions .menu-action {
+html[data-high-contrast="true"] .main-menu-actions .menu-action-list {
+  --menu-action-border-offset: -2px;
+}
+.main-menu-actions .menu-action-list .menu-action {
   min-height: 36px;
+  border-radius: 0;
+}
+.main-menu-actions .menu-action:is(:first-child, :last-child) {
+  position: relative;
+  outline-offset: -1px;
+}
+.main-menu-actions .menu-action:first-child {
+  clip-path: polygon(var(--menu-action-cut) 0, 100% 0, 100% 100%, 0 100%, 0 var(--menu-action-cut));
+}
+.main-menu-actions .menu-action:last-child {
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--menu-action-cut)), calc(100% - var(--menu-action-cut)) 100%, 0 100%);
+}
+/* Continue the button border along each diagonal using its current state color. */
+.main-menu-actions .menu-action:is(:first-child, :last-child)::after {
+  content: "";
+  position: absolute;
+  width: calc(var(--menu-action-cut) * sqrt(2));
+  transform: rotate(-45deg);
+  pointer-events: none;
+}
+.main-menu-actions .menu-action:first-child::after {
+  top: calc(var(--menu-action-cut) + var(--menu-action-border-offset));
+  left: var(--menu-action-border-offset);
+  border-top: inherit;
+  transform-origin: top left;
+}
+.main-menu-actions .menu-action:last-child::after {
+  right: var(--menu-action-border-offset);
+  bottom: calc(var(--menu-action-cut) + var(--menu-action-border-offset));
+  border-bottom: inherit;
+  transform-origin: bottom right;
 }
 .main-menu .menu-home-shortcuts {
   margin: 0;
@@ -737,7 +774,7 @@ html[data-reduce-motion="true"] .menu-surface * {
     width: 88px;
     height: 88px;
   }
-  .main-menu-actions .menu-action {
+  .main-menu-actions .menu-action-list .menu-action {
     min-height: 32px;
   }
   .main-menu .menu-brand-eyebrow {

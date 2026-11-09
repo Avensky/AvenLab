@@ -126,10 +126,9 @@ export function DebugMenu() {
     <TabbedMenu
       title="Debugger"
       chamferTitle
-      eyebrow="REDLINE VECTOR / ENGINE TOOLS"
+      eyebrow=""
       onBack={back}
       status={serviceStatus}
-      subtitle="Inspect physics, isolate visual cost and compare driving captures. Live latency stats appear in the performance overlay."
       tabs={[
         {
           id: "visualizers",

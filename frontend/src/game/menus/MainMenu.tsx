@@ -49,7 +49,7 @@ export function MainMenu() {
           <ProgressBadge />
         </section>
         <section className="main-menu-actions" aria-label="Main menu">
-          <div className="menu-action-list menu-panel-frame">
+          <div className="menu-action-list">
             {MAIN_MENU_ITEMS.map((item, index) => (
               <GameButton
                 key={item.id}
