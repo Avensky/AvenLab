@@ -25,8 +25,11 @@ export function ControllerButton({ button }: { button: ControllerKey }) {
     </kbd>
   );
 }
+export type BackShortcutAction = { onClick: () => void; disabled?: boolean };
+
 export function MenuShortcuts({
   back = true,
+  backAction,
   tabs = true,
   hold = false,
   chat = false,
@@ -36,6 +39,7 @@ export function MenuShortcuts({
   selectAction = true,
 }: {
   back?: boolean;
+  backAction?: BackShortcutAction;
   tabs?: boolean;
   hold?: boolean;
   chat?: boolean;
@@ -44,6 +48,7 @@ export function MenuShortcuts({
   selectLabel?: string;
   selectAction?: boolean;
 } = {}) {
+  const backHint = <><ControllerButton button="B" /> Back <kbd>Esc</kbd></>;
   return (
     <div className="controller-shortcuts" aria-label="Menu shortcuts">
       <span>
@@ -66,11 +71,11 @@ export function MenuShortcuts({
           <ControllerButton button="X" /> Chat <kbd>T</kbd>
         </span>
       )}
-      {back && (
-        <span>
-          <ControllerButton button="B" /> Back <kbd>Esc</kbd>
-        </span>
-      )}
+      {back && (backAction ? (
+        <button type="button" className="controller-shortcut-back" aria-label="Back" tabIndex={-1} disabled={backAction.disabled} onClick={backAction.onClick}>
+          {backHint}
+        </button>
+      ) : <span>{backHint}</span>)}
     </div>
   );
 }

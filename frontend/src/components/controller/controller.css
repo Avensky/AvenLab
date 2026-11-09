@@ -52,15 +52,26 @@
     10px/1.3 system-ui,
     sans-serif;
 }
-.controller-shortcuts > span {
+.controller-shortcuts > :is(span, .controller-shortcut-back) {
   display: inline-flex;
   align-items: center;
   gap: 4px;
 }
-.controller-shortcuts > span > kbd:not(.controller-key) {
+.controller-shortcuts > :is(span, .controller-shortcut-back) > kbd:not(.controller-key) {
   font-size: 9px;
   color: var(--app-muted, #a6b9d3);
 }
+.controller-shortcut-back {
+  flex: none;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.controller-shortcut-back:disabled { opacity: .45; cursor: default; }
 @media (max-width: 600px) {
   .controller-shortcuts {
     gap: 4px 9px;

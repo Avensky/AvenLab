@@ -2,6 +2,7 @@
 :is(.menu-frame,.hero-selection,.hero-ability-guide){
  --menu-gutter:clamp(16px,3vw,44px);
  --menu-header-y:6px;--menu-footer-y:4px;--menu-action-height:32px;--menu-action-y:4px;
+ --menu-footer-min-height:calc(var(--menu-action-height) + 2 * var(--menu-footer-y) + 1px);
  --menu-tab-height:35px;--menu-tab-y:6px;
  --menu-chrome-surface:color-mix(in srgb,var(--app-background) 65%,var(--app-panel));
 }
@@ -44,7 +45,7 @@ html[data-ui-theme] .menu-frame[role=dialog]{background:var(--app-panel);color:v
 .menu-frame .menu-frame-tabs .menu-control[aria-selected=true]{color:var(--app-accent);border-bottom-color:var(--app-accent);background:color-mix(in srgb,var(--app-accent) 8%,transparent);outline:0;box-shadow:none}
 .menu-frame .menu-frame-content{flex:1;min-width:0;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:none;padding:14px var(--menu-gutter) 22px;outline:none}
 .menu-frame ::-webkit-scrollbar{display:none}
-.menu-frame-footer{box-sizing:border-box;pointer-events:auto;color:var(--app-text);font:calc(12px * var(--menu-text-scale,1))/1.45 ui-sans-serif,system-ui,sans-serif;display:flex;align-items:center;flex-shrink:0;gap:16px;border-top:1px solid var(--app-line);padding:var(--menu-footer-y) var(--menu-gutter);background:var(--menu-chrome-surface);min-height:calc(var(--menu-action-height) + 2 * var(--menu-footer-y) + 1px)}
+.menu-frame-footer{box-sizing:border-box;pointer-events:auto;color:var(--app-text);font:calc(12px * var(--menu-text-scale,1))/1.45 ui-sans-serif,system-ui,sans-serif;display:flex;align-items:center;flex-shrink:0;gap:16px;border-top:1px solid var(--app-line);padding:var(--menu-footer-y) var(--menu-gutter);background:var(--menu-chrome-surface);min-height:var(--menu-footer-min-height)}
 .menu-frame-footer .controller-shortcuts{margin-right:auto;color:var(--app-muted)}
 .menu-frame .menu-frame-status{min-width:0;margin:0;color:var(--app-muted);font-size:9px;line-height:1.4;overflow-wrap:anywhere}
 /* Scoped frame rules take precedence over generic menu utility styles. */
@@ -76,9 +77,8 @@ html[data-ui-theme] .menu-frame .menu-row-description{color:var(--app-muted);fon
  .menu-frame .menu-frame-tabs .menu-control{padding-inline:10px}
 }
 .menu-frame-footer .controller-shortcuts{flex:1 1 auto;min-width:0}
-@media(max-width:760px){.menu-frame-footer .controller-shortcuts>span>kbd:not(.controller-key){display:none}}
-/* Keep a single mobile footer row: Back is already in the header, and a
-   clickable A action does not need a second A hint alongside it. */
+@media(max-width:760px){.menu-frame-footer .controller-shortcuts>:is(span,.controller-shortcut-back)>kbd:not(.controller-key){display:none}}
+/* Keep the mobile footer on one row and preserve its clickable actions. */
 @media(max-width:650px){
  .menu-frame-footer .controller-shortcuts>span:first-child,.menu-frame-footer .controller-shortcuts>span:last-child{display:none}
  .menu-frame-footer:has(>.controller-action>[data-controller-key=A]) .controller-shortcuts>span:nth-child(2){display:none}
