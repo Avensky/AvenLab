@@ -2,6 +2,7 @@ import { useConnectionView } from "../../store/session/networkViews";
 import { useCallback, useRef, useState } from "react";
 import { MenuVideoBackground } from "../../components/menus/MenuVideoBackground";
 import { MenuShortcuts, ControllerAction } from "../../components/controller";
+import { MenuFooter } from "../../components/menus/MenuFrame";
 import { useSocialStore } from "../../store/social/socialStore";
 import { useNetworkStore } from "../../store/session/networkStore";
 import { useUIStore } from "../../store/menus/uiStore";
@@ -83,25 +84,27 @@ export function QueueScreen() {
           seat opens. Your position updates automatically when a seat opens.
         </p>
         {error && <p role="status">{error}</p>}
-        {connected && !queue && (
-          <button
+        <MenuFooter className="alpha-queue-footer">
+          {connected && !queue && (
+            <button
+              type="button"
+              className="menu-control"
+              disabled={busy}
+              onClick={() => void retry()}
+            >
+              REJOIN QUEUE
+            </button>
+          )}
+          <ControllerAction button="B"
             type="button"
             className="menu-control"
             disabled={busy}
-            onClick={() => void retry()}
+            onClick={cancel}
           >
-            REJOIN QUEUE
-          </button>
-        )}
-        <ControllerAction button="B"
-          type="button"
-          className="menu-control"
-          disabled={busy}
-          onClick={cancel}
-        >
-           LEAVE QUEUE
-        </ControllerAction>
-        <MenuShortcuts tabs={false} />
+            LEAVE QUEUE
+          </ControllerAction>
+          <MenuShortcuts back={false} tabs={false} />
+        </MenuFooter>
       </section>
     </main>
   );

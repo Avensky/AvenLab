@@ -160,15 +160,10 @@
   font-size: calc(clamp(8px, 2.3dvh, 12px) * var(--menu-text-scale, 1));
   font-weight: 750;
 }
-.team-lineup-actions { display: flex; gap: 8px; }
+.team-lineup-actions { gap: 8px; }
 .team-lineup-actions > .menu-control {
   justify-content: center;
-  min-height: 44px;
   padding-inline: 12px;
-}
-.team-lineup-actions > .menu-control:focus-visible {
-  outline: 2px solid var(--app-accent);
-  outline-offset: 2px;
 }
 @media (max-width: 520px) {
   .team-lineup-card > header { flex-wrap: wrap; }

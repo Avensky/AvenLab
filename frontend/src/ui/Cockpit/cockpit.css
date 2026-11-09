@@ -100,12 +100,10 @@
   overscroll-behavior: contain;
 }
 .cockpit-status {
-  height: 23px;
-  flex-shrink: 0;
-  padding: 5px 10px;
-  border-top: 1px solid #343b46;
+  --menu-footer-gutter: 10px;
+  gap: 12px;
+  flex-wrap: wrap;
   font: 9px/1.2 monospace;
-  color: #d5b484;
 }
 .cockpit-drive-layout {
   display: grid;

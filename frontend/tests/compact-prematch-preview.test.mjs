@@ -77,7 +77,7 @@ test('compact prematch views share a frame and keep opposing picks mysterious un
    await render(h(PreMatchTeamPreview,{view,selectedHero:null}));
    assert.equal(document.querySelectorAll('.team-portrait-ellipsis').length,5);
   });
-  await t.test('the confirmed lineup opens over video once per round and only offers a swap at spawn',async()=>{
+  await t.test('the confirmed lineup opens over video once per round and enables swaps only at spawn',async()=>{
    const {TeamLineup}=await load('game/stats/TeamLineup.tsx');
    const {PauseMenu}=await load('game/menus/PauseMenu.tsx');
    const {routeMenuAction}=await load('controls/inputRouting.ts');
@@ -107,13 +107,18 @@ test('compact prematch views share a frame and keep opposing picks mysterious un
    assert.match(document.querySelector('.team-lineup-card[data-self=true]').textContent,/dpsLevel 12BRZLocal Driver/);
    assert.match(document.querySelector('.team-lineup-cards').textContent,/Level 8VANGUARDAtlas/);
    assert.doesNotMatch(document.querySelector('.team-lineup-cards').textContent,/Opponent/);
+   const changeHero = '.team-lineup-actions button:first-child';
+   assert.equal(document.querySelector(changeHero).disabled,false);
    await act(async()=>{routeMenuAction('left');routeMenuAction('activate');});
    assert.equal(ui.getState().overlay,'vehicle_select');
    await act(async()=>ui.getState().backToParentMenu());
    assert.equal(ui.getState().overlay,'team_lineup');
    await act(async()=>network.setState({snapshot:snapshot(false)}));
-   assert.doesNotMatch(document.querySelector('.team-lineup-actions').textContent,/Change Hero/);
-   await act(async()=>ui.getState().openVehicleSelection());
+   assert.equal(document.querySelector(changeHero).disabled,true);
+   assert.equal(document.querySelector('.team-lineup-actions button:last-child'),document.activeElement);
+   await click(changeHero);
+   await act(async()=>{routeMenuAction('left');ui.getState().openVehicleSelection();});
+   assert.equal(document.querySelector('.team-lineup-actions button:last-child'),document.activeElement);
    assert.equal(ui.getState().overlay,'team_lineup');
    await act(async()=>routeMenuAction('back'));
    assert.equal(ui.getState().overlay,null);
@@ -123,11 +128,13 @@ test('compact prematch views share a frame and keep opposing picks mysterious un
    assert.equal(ui.getState().overlay,'vehicle_select');
    await act(async()=>{network.setState({snapshot:snapshot(false)});ui.getState().openPause();});
    await render(h(PauseMenu));
-   assert.equal(document.querySelector('[data-pause-action=vehicle_select]'),null);
+   const pauseChangeHero = '[data-pause-action=vehicle_select]';
+   assert.equal(document.querySelector(pauseChangeHero).getAttribute('aria-disabled'),'true');
    await act(async()=>{ui.getState().setActiveMenuIndex(0);routeMenuAction('up');});
    assert.equal(document.activeElement.getAttribute('data-pause-action'),'cockpit');
    await act(async()=>network.setState({snapshot:snapshot(true)}));
-   assert.equal(document.querySelector('[data-pause-action=vehicle_select]').getAttribute('aria-label'),'Change hero');
+   assert.equal(document.querySelector(pauseChangeHero).getAttribute('aria-disabled'),'false');
+   assert.equal(document.querySelector(pauseChangeHero).getAttribute('aria-label'),'Change hero');
   });
   await t.test('holding Tab shows privacy-filtered stats with no vehicle and release closes stats',async()=>{
    const {Keyboard}=await vite.ssrLoadModule('/src/controls/Keyboard.ts');

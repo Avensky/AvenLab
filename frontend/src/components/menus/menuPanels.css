@@ -23,6 +23,19 @@
   inset: 1px;
   background: var(--menu-panel-fill, var(--app-panel));
 }
+.menu-control.menu-panel-frame {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--app-text);
+}
+.menu-control.menu-panel-frame::before {
+  background: var(--menu-panel-edge, var(--app-line));
+}
+.menu-control.menu-panel-frame:is(:hover, :focus-visible, [data-selected="true"]):not(:disabled, [aria-disabled="true"]) {
+  --menu-panel-edge: var(--app-accent);
+  --menu-panel-fill: color-mix(in srgb, var(--app-raised) 87%, var(--app-accent));
+}
 .menu-icon {
   width: 1.25em;
   height: 1.25em;

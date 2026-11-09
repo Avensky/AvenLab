@@ -6,6 +6,7 @@ import { cockpitParent } from "./panels/tabs";
  * Pages subscribe only while mounted; tabs/navigation and page APIs live in panels/. */
 import { useEffect, useRef } from "react";
 import { MenuShortcuts, ControllerAction } from "../../components/controller";
+import { MenuFooter } from "../../components/menus/MenuFrame";
 import { trapMenuFocus } from "../../components/menus/menuFocus";
 import { useInputStore } from "../../store/input/inputStore";
 import {
@@ -141,7 +142,7 @@ export function CockpitPanel() {
           {tab === "navigation" && <Minimap forceExpanded />}
           {tab === "ignition" && <IgnitionPage />}
         </div>
-        <footer className="cockpit-status cockpit-shortcuts">
+        <MenuFooter className="cockpit-status cockpit-shortcuts">
           <MenuShortcuts hold />
           <span role="status">
             {!supported &&
@@ -157,7 +158,7 @@ export function CockpitPanel() {
                 ? "REQUESTING…"
                 : rejection || "REDLINE VECTOR"}
           </span>
-        </footer>
+        </MenuFooter>
       </section>
     </div>
   );

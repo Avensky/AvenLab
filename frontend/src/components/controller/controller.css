@@ -156,7 +156,7 @@
   outline: 2px solid var(--app-accent, #82b7ff);
   outline-offset: 3px;
 }
-.controller-action:focus-visible:not(:has(.controller-key, .keyboard-key)) {
+.controller-action:focus-visible:not(.menu-panel-frame, :has(.controller-key, .keyboard-key)) {
   outline: 2px solid var(--app-accent, #82b7ff) !important;
 }
 .controller-action:disabled { opacity: .45; cursor: default; }

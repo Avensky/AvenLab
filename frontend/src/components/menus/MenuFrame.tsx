@@ -1,5 +1,6 @@
 import {forwardRef,type ComponentPropsWithoutRef,type ReactNode} from 'react';
 import {ControllerAction,MenuShortcuts,type BackShortcutAction} from '../controller';
+import {useMenuInputDevice} from '../controller/useMenuInputDevice';
 import {ProgressBadge} from '../../game/alpha/ProgressBadge';
 import type {MatchTeam} from '../../theme/matchTeamTheme';
 import {APP_ALPHA_EYEBROW} from '../../theme/branding';
@@ -27,6 +28,15 @@ export function MenuFrameHeader({
   </div>}
  </header>;
 }
+export function MenuFooter({className = '', ...props}: ComponentPropsWithoutRef<'footer'>) {
+ const inputDevice = useMenuInputDevice();
+ return <footer {...props} className={`menu-footer ${className}`} data-input-device={inputDevice} />;
+}
+
 export function MenuFrameFooter({children,status,secondaryTabs=false,selectLabel='Select',className='',chat=false,variant='panel',hasPrimaryAction=false,backAction}:{children?:ReactNode;status?:ReactNode;secondaryTabs?:boolean;selectLabel?:string;className?:string;chat?:boolean;variant?:'panel'|'scene';hasPrimaryAction?:boolean;backAction?:BackShortcutAction}){
- return <footer className={`menu-frame-footer alpha-selection-footer ${className}`} data-menu-chrome={variant} data-has-status={Boolean(status)}><MenuShortcuts chat={chat} directions="both" secondaryTabs={secondaryTabs} selectLabel={selectLabel} selectAction={!hasPrimaryAction} backAction={backAction}/>{status&&<p className="menu-frame-status" role="status">{status}</p>}{children}</footer>;
+ return <MenuFooter className={`menu-frame-footer alpha-selection-footer ${className}`} data-menu-chrome={variant}>
+  <MenuShortcuts chat={chat} directions="both" secondaryTabs={secondaryTabs} selectLabel={selectLabel} selectAction={!hasPrimaryAction} backAction={backAction}/>
+  {status&&<p className="menu-frame-status" role="status">{status}</p>}
+  {children}
+ </MenuFooter>;
 }

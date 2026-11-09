@@ -37,7 +37,7 @@ html[data-ui-theme]
     .menu-tab,
     .cockpit-panel button,
     .theme-choice select
-  ) {
+  ):where(:not(.menu-panel-frame)) {
   background: var(--app-panel);
   color: var(--app-text);
   border-color: var(--app-line);
@@ -51,7 +51,7 @@ html[data-ui-theme]
     [aria-pressed="true"],
     [aria-selected="true"],
     [data-selected="true"]
-  ):not(:disabled) {
+  ):not(:disabled, .menu-panel-frame) {
   background: var(--app-raised);
   border-color: var(--app-accent);
   color: var(--app-text);
@@ -133,14 +133,6 @@ html[data-ui-theme] .cockpit-header {
 html[data-ui-theme] .cockpit-header h1 {
   letter-spacing: 0.05em;
 }
-html[data-ui-theme] .cockpit-panel .cockpit-shortcuts {
-  height: auto;
-  min-height: 30px;
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  flex-wrap: wrap;
-}
 html[data-high-contrast="true"]
   :is(.menu-surface, .cockpit-panel, .cockpit-overlay) {
   --app-text: #fff;
@@ -151,7 +143,7 @@ html[data-high-contrast="true"]
   --app-line: #ccc;
   --app-accent: #fff;
 }
-html[data-high-contrast="true"] :is(.menu-control, .cockpit-panel button) {
+html[data-high-contrast="true"] :is(.menu-control, .cockpit-panel button):not(.menu-panel-frame) {
   border-width: 2px;
 }
 html[data-reduce-motion="true"] :is(.cockpit-panel, .driving-hud) * {
@@ -234,7 +226,7 @@ html[data-ui-theme] .hero-selection {
   background: color-mix(in srgb,var(--app-scene-tint) 6%,transparent);
   backdrop-filter: none;
 }
-html[data-ui-theme] .hero-selection :is(.alpha-header,.alpha-selection-footer) {
+html[data-ui-theme] .hero-selection .alpha-header {
   background: color-mix(in srgb,var(--app-panel) 97%,transparent);
   color: var(--app-text);
   border-color: var(--app-line);

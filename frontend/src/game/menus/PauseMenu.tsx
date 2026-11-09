@@ -1,13 +1,14 @@
 import { ControlGlyph, MenuShortcuts } from "../../components/controller";
 import { useMenuInputDevice } from "../../components/controller/useMenuInputDevice";
 import { trapMenuFocus } from "../../components/menus/menuFocus";
+import { MenuFooter } from "../../components/menus/MenuFrame";
 import { useEffect, useId, useRef } from "react";
 import { useUIStore } from "../../store/menus/uiStore";
 import { useVehicleSelectionAvailable } from "../../store/alpha/matchHeroChange";
 import { isMatchMode } from "../../store/alpha/alphaStore";
 import { useSocialStore } from "../../store/social/socialStore";
 import { GameButton } from "../../components/GameButton";
-import { PAUSE_CHANGE_VEHICLE_INDEX, PAUSE_MENU_ITEMS, PAUSE_RESUME_INDEX, pauseMenuRails } from "./menuItems";
+import { PAUSE_CHANGE_VEHICLE_INDEX, PAUSE_MENU_ITEMS, PAUSE_MENU_RAILS, PAUSE_RESUME_INDEX } from "./menuItems";
 import { MenuIcon } from "../../components/menus/MenuIcon";
 import "./pauseMenu.css";
 
@@ -42,6 +43,7 @@ export function PauseMenu() {
           buttons.current[index] = element;
         }}
         selected={selectedIndex === index}
+        disabled={index === PAUSE_CHANGE_VEHICLE_INDEX && !vehicleSelectionAvailable}
         variant="menu"
         onFocus={() => setIndex(index)}
         onPress={() => {
@@ -50,7 +52,7 @@ export function PauseMenu() {
         }}
         aria-label={label}
         data-pause-action={item.id}
-        className={resume ? "pause-menu-resume menu-panel-frame" : "menu-row menu-action"}
+        className={`menu-panel-frame ${resume ? "pause-menu-resume" : "menu-row menu-action"}`}
       >
         {resume ? (
           <>
@@ -85,18 +87,18 @@ export function PauseMenu() {
           <h2 id={headingId}>Game menu</h2>
         </header>
         <div className="pause-menu-rails">
-          {pauseMenuRails(vehicleSelectionAvailable).map(({ label, indices, controller, keyboard }) => (
+          {PAUSE_MENU_RAILS.map(({ label, indices, controller, keyboard }) => (
             <section key={label} className="pause-menu-rail pause-menu-glass menu-panel-frame" aria-label={label}>
               <h3>{label}<ControlGlyph controller={controller} keyboard={keyboard} /></h3>
               <div className="menu-row-list">{indices.map(renderAction)}</div>
             </section>
           ))}
         </div>
-        <footer className="pause-menu-footer pause-menu-glass menu-panel-frame">
+        <MenuFooter className="pause-menu-footer pause-menu-glass menu-panel-frame">
           {inputDevice !== "touch" && <MenuShortcuts menuToggle directions="both" selectAction={false} back={false} tabs={false} />}
           {renderAction(PAUSE_RESUME_INDEX)}
           {inputDevice !== "touch" && <MenuShortcuts navigate={false} tabs={false} selectAction={!resumeSelected} />}
-        </footer>
+        </MenuFooter>
       </section>
     </div>
   );

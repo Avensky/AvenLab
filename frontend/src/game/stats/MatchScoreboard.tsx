@@ -4,6 +4,7 @@ import {matchModeLabel,modeTeamSize} from '../../store/alpha/alphaStore';
 import {useCallback,useEffect,useRef,useState,type CSSProperties} from 'react';
 import {isTypingTarget} from '../../controls/inputRouting';
 import {ControllerAction,ControlGlyph} from '../../components/controller';
+import {MenuFooter} from '../../components/menus/MenuFrame';
 import {useScoreboardStore} from '../../store/hud/scoreboardStore';
 import {useUIStore} from '../../store/menus/uiStore';
 import {snapshotEntity,useNetworkStore} from '../../store/session/networkStore';
@@ -94,6 +95,9 @@ export function MatchScoreboard({onAbilities}:{onAbilities?:()=>void}){
    <div className="match-scoreboard-main">{view==='composition'?<MatchTeamComposition teamSize={data?.teamSize} players={rows} teamFilter={teamFilter} selectedId={selected?.id} onSelect={selectPlayer}/>:<MatchStatsTable teamSize={data?.teamSize} players={rows} selectedId={selected?.id} onSelect={selectPlayer}/>}</div>
    <div className="scoreboard-inspector"><button ref={back} className="scoreboard-back" aria-label="Back to player list" onClick={backToList}>← PLAYER LIST</button><MatchPlayerDetails player={selected}/></div>
   </div>
-  <footer className="match-scoreboard-footer"><span><ControlGlyph controller={["LB","RB"]} keyboard="PgUp / PgDn"/> TEAM / STATS</span><span>HEALING INCLUDES SELF · — MEANS UNAVAILABLE</span></footer>
+  <MenuFooter className="match-scoreboard-footer">
+   <span><ControlGlyph controller={["LB","RB"]} keyboard="PgUp / PgDn"/> TEAM / STATS</span>
+   <span>HEALING INCLUDES SELF · — MEANS UNAVAILABLE</span>
+  </MenuFooter>
  </section>;
 }

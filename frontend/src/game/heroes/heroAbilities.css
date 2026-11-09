@@ -29,8 +29,8 @@
 .hero-ability-guide .hero-ability-card[data-planned=true]{border-style:dashed;background:color-mix(in srgb,var(--app-panel) 72%,var(--app-background))}
 .hero-ability-guide .hero-effect-grid article{background:var(--app-panel)}
 .hero-ability-guide .hero-guide-showcase{border-bottom:2px solid var(--app-accent)}
-.hero-ability-guide .alpha-selection-footer>.controller-action{flex-shrink:0;font-size:9px;min-height:28px;white-space:nowrap}
-@media(max-width:650px){.hero-ability-guide .alpha-selection-footer>.controller-action{font-size:8px;padding:3px 5px;gap:4px}.hero-ability-guide .alpha-selection-footer .controller-shortcuts{max-width:40px}.hero-ability-guide .alpha-selection-footer .controller-shortcuts>span{white-space:nowrap}}
+.hero-ability-guide .alpha-selection-footer>.controller-action{flex-shrink:0;font-size:9px;white-space:nowrap}
+@media(max-width:650px){.hero-ability-guide .alpha-selection-footer>.controller-action{font-size:8px;padding-inline:5px;gap:4px}.hero-ability-guide .alpha-selection-footer .controller-shortcuts{max-width:40px}.hero-ability-guide .alpha-selection-footer .controller-shortcuts>span{white-space:nowrap}}
 /* Description gaps share a solid themed surface so headings and notes remain
    readable even when the shared selection shell exposes a dark garage. */
 .hero-ability-guide .hero-guide-scroll{background:var(--app-panel)}

@@ -4,6 +4,7 @@ import { useUIStore } from "../../store";
 import { GameButton } from "../../components/GameButton";
 import { useEffect, useRef } from "react";
 import { MenuLogo } from "../../components/menus/MenuLogo";
+import { MenuFooter } from "../../components/menus/MenuFrame";
 import { MenuIcon } from "../../components/menus/MenuIcon";
 import { MenuVideoBackground } from "../../components/menus/MenuVideoBackground";
 
@@ -74,9 +75,9 @@ export function MainMenu() {
               </GameButton>
             ))}
           </div>
-          <footer className="menu-home-shortcuts">
+          <MenuFooter className="menu-home-shortcuts">
             <MenuShortcuts back={false} tabs={false} />
-          </footer>
+          </MenuFooter>
         </section>
       </div>
     </div>

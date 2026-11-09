@@ -67,32 +67,30 @@
 .pause-menu .pause-menu-rail .menu-control.menu-row {
   justify-content: flex-start;
   padding-inline: clamp(0.25rem, 1vw, 0.625rem);
-  border-radius: 0;
   font-size: calc(clamp(0.625rem, 1.65vw, 0.8125rem) * var(--menu-text-scale, 1));
   text-align: left;
   overflow-wrap: anywhere;
-}
-.pause-menu .pause-menu-rail .menu-control.menu-row[data-selected="true"] {
-  box-shadow: inset 2px 0 var(--app-accent);
 }
 .pause-menu .pause-menu-rail .menu-control.menu-row[data-pause-action="leave_game"] {
   color: var(--pause-leave-text);
 }
 
-.pause-menu-footer {
-  --pause-glass-edge: color-mix(in srgb, var(--app-background) 34%, transparent);
-  --pause-glass-center: color-mix(in srgb, var(--app-background) 64%, transparent);
+.pause-menu-footer.menu-footer {
+  --menu-footer-gutter: clamp(0.375rem, 1.4vw, 0.75rem);
+  --pause-glass-edge: color-mix(in srgb, var(--menu-footer-surface) 34%, transparent);
+  --pause-glass-center: color-mix(in srgb, var(--menu-footer-surface) 64%, transparent);
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: clamp(0.25rem, 1vw, 0.625rem);
   width: min(100%, 34rem);
-  padding: 0.3125rem clamp(0.375rem, 1.4vw, 0.75rem);
+  border-top: 0;
+  background: transparent;
 }
 html[data-ui-scheme="light"] .pause-menu { --pause-leave-text: #8a2533; }
-html[data-ui-scheme="light"] .pause-menu-footer {
-  --pause-glass-edge: color-mix(in srgb, var(--app-panel) 72%, transparent);
-  --pause-glass-center: color-mix(in srgb, var(--app-panel) 82%, transparent);
+html[data-ui-scheme="light"] .pause-menu-footer.menu-footer {
+  --pause-glass-edge: color-mix(in srgb, var(--menu-footer-surface) 72%, transparent);
+  --pause-glass-center: color-mix(in srgb, var(--menu-footer-surface) 82%, transparent);
 }
 .pause-menu-footer .controller-shortcuts {
   color: var(--app-text);
@@ -106,33 +104,17 @@ html[data-ui-scheme="light"] .pause-menu-footer {
   width: max-content;
 }
 .pause-menu .pause-menu-footer .pause-menu-resume.menu-control {
-  --menu-panel-shape: polygon(0 0, calc(100% - var(--menu-panel-cut)) 0, 100% var(--menu-panel-cut), 100% 100%, var(--menu-panel-cut) 100%, 0 calc(100% - var(--menu-panel-cut)));
   justify-content: center;
-  min-height: clamp(1.625rem, 7.2dvh, 2.375rem);
+  gap: 10px;
   padding-inline: clamp(0.375rem, 1.8vw, 0.9375rem);
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  outline-offset: 2px;
   white-space: nowrap;
-}
-.pause-menu .pause-menu-footer .pause-menu-resume.menu-control:is(:hover, :focus-visible, [data-selected="true"]) {
-  --menu-panel-fill: color-mix(in srgb, var(--app-panel) 89%, var(--app-accent));
-  background: transparent;
-  box-shadow: none;
-  outline-color: transparent;
-}
-.pause-menu-resume.menu-panel-frame::before { background: var(--app-line); }
-.pause-menu-resume.menu-panel-frame:is(:hover, :focus-visible, [data-selected="true"])::before {
-  background: var(--app-accent);
 }
 .pause-menu-resume-mark {
   display: grid;
   flex: none;
   place-items: center;
-  width: 1.3125rem;
+  min-width: 1.3125rem;
 }
-.pause-menu-content[data-input-device="keyboard"] .pause-menu-resume-mark { width: 2rem; }
 
 html[data-high-contrast="true"] .pause-menu-glass.menu-panel-frame::before { background: var(--app-line); }
 html[data-high-contrast="true"] .pause-menu-glass.menu-panel-frame::after {

@@ -22,7 +22,7 @@
   --menu-action-height: 26px;
   --menu-action-y: 2px;
   --menu-header-y: 2px;
-  --menu-footer-y: 1px;
+  --menu-angled-header-height: 29px;
 }
 .hero-selection--picking > .menu-frame-header:not(.angled-tab-header) {
   padding-block: var(--menu-header-y);
@@ -249,7 +249,6 @@
 }
 /* Shared menu chrome owns all header/footer geometry. */
 .hero-selection .alpha-deploy {
-  min-height: var(--menu-action-height, 32px);
   min-width: 180px;
   justify-content: center;
   gap: 6px;
@@ -298,7 +297,6 @@
     width: min(86vw, 330px);
   }
   .hero-selection .alpha-deploy {
-    min-height: var(--menu-action-height, 32px);
     min-width: 128px;
     font-size: 10px;
   }
@@ -349,7 +347,6 @@
     font-size: 6px;
   }
   .hero-selection .alpha-deploy {
-    min-height: var(--menu-action-height, 28px);
     min-width: 140px;
     font-size: 10px;
   }

@@ -1,6 +1,7 @@
 import { useEffect, useId, useMemo, useRef, type CSSProperties } from "react";
 import { AttackIcon } from "../../combat/AttackIcon";
 import { ControllerAction } from "../../components/controller";
+import { MenuFooter } from "../../components/menus/MenuFrame";
 import { MenuIcon } from "../../components/menus/MenuIcon";
 import { MenuVideoBackground } from "../../components/menus/MenuVideoBackground";
 import { trapMenuFocus } from "../../components/menus/menuFocus";
@@ -95,12 +96,12 @@ export function TeamLineup() {
           );
         })}
       </div>
-      <footer className="team-lineup-actions">
-        {atSpawn && <button type="button" className="menu-control" ref={change} onClick={openPicker}>
+      <MenuFooter className="team-lineup-actions">
+        <button type="button" className="menu-control menu-panel-frame" disabled={!atSpawn} ref={change} onClick={openPicker}>
           <MenuIcon name="vehicle_select" /> Change Hero
-        </button>}
-        <ControllerAction button="A" className="menu-control" ref={proceed} onClick={close}>Continue</ControllerAction>
-      </footer>
+        </button>
+        <ControllerAction button="A" className="menu-control menu-panel-frame" ref={proceed} onClick={close}>Continue</ControllerAction>
+      </MenuFooter>
     </section>
   );
 }

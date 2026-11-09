@@ -47,7 +47,7 @@
   --angled-tab-cut: clamp(16px, 1.45vw, 22px);
   --angled-title-cut: calc(var(--angled-tab-cut) * var(--angled-title-scale));
   --angled-title-chamfer: 0px;
-  --angled-header-height: var(--menu-footer-min-height, 41px);
+  --angled-header-height: var(--menu-angled-header-height, 41px);
   --angled-tabs-height: calc(var(--angled-header-height) / var(--angled-title-scale));
   --angled-title-shape: polygon(0 0, 100% 0, calc(100% - var(--angled-tab-cut)) var(--angled-tabs-height), calc(100% - var(--angled-title-cut) - var(--angled-title-chamfer)) 100%, 0 100%);
   --angled-tab-surface: color-mix(in srgb, var(--app-background) 62%, var(--app-panel));

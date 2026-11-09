@@ -1,5 +1,6 @@
 import {lazy,Suspense,useEffect,useRef,useState} from 'react';
 import {ControllerAction,ControlGlyph} from '../../components/controller';
+import {MenuFooter} from '../../components/menus/MenuFrame';
 import {trapMenuFocus} from '../../components/menus/menuFocus';
 import {HEROES,matchModeLabel,modeTeamSize} from '../../store/alpha/alphaStore';
 import {useUIStore} from '../../store/menus/uiStore';
@@ -99,6 +100,12 @@ export function MatchResultsScreen(){
    {tab==='team'&&<><MatchTeamFilterTabs filter={teamFilter} onChange={state.setTeamFilter}/><div className="result-team-layout"><MatchTeamComposition teamSize={modeTeamSize(record.mode,record.team_size??undefined)} players={rows} teamFilter={teamFilter} selectedId={activeRow?.id} onSelect={state.selectPlayer}/><MatchPlayerDetails player={activeRow??null}/></div></>}
    {tab==='stats'&&<div className="result-stats-layout"><MatchStatsTable teamSize={modeTeamSize(record.mode,record.team_size??undefined)} players={rows} selectedId={selectedPlayer} onSelect={state.selectPlayer}/><PersonalStats player={selected??own} self={(selected??own)?.profile_id===profileId}/></div>}
   </div>
-  <footer className="match-results-footer"><div className="result-save-status" role={error?'alert':'status'} data-error={Boolean(error)}>{error??(busy?'CONTACTING GAME SERVER…':history?'READ ONLY · SAVED APPEARANCE & MATCH TOTALS':record.training?'TRAINING RECORD · SEPARATE FROM COMPETITIVE CAREER':'MATCH TOTALS · AVAILABLE IN CAREER HISTORY')}</div><div className="result-footer-actions"><ControllerAction button="B" disabled={busy} onClick={close}>{history?'BACK TO CAREER':'LEAVE'}</ControllerAction>{!history&&<ControllerAction button="A" disabled={busy} onClick={()=>void playAgainFromResults()}>PLAY AGAIN</ControllerAction>}</div></footer>
+  <MenuFooter className="match-results-footer">
+   <div className="result-save-status" role={error?'alert':'status'} data-error={Boolean(error)}>{error??(busy?'CONTACTING GAME SERVER…':history?'READ ONLY · SAVED APPEARANCE & MATCH TOTALS':record.training?'TRAINING RECORD · SEPARATE FROM COMPETITIVE CAREER':'MATCH TOTALS · AVAILABLE IN CAREER HISTORY')}</div>
+   <div className="result-footer-actions">
+    <ControllerAction button="B" disabled={busy} onClick={close}>{history?'BACK TO CAREER':'LEAVE'}</ControllerAction>
+    {!history&&<ControllerAction button="A" disabled={busy} onClick={()=>void playAgainFromResults()}>PLAY AGAIN</ControllerAction>}
+   </div>
+  </MenuFooter>
  </section>;
 }
