@@ -1,10 +1,11 @@
 import {forwardRef,type ComponentPropsWithoutRef,type ReactNode} from 'react';
-import {ControllerAction,MenuShortcuts,type BackShortcutAction} from '../controller';
+import {MenuShortcuts,type BackShortcutAction} from '../controller';
 import {useMenuInputDevice} from '../controller/useMenuInputDevice';
 import {ProgressBadge} from '../../game/alpha/ProgressBadge';
 import type {MatchTeam} from '../../theme/matchTeamTheme';
 import {APP_ALPHA_EYEBROW} from '../../theme/branding';
 import './menuFrame.css';
+import './sceneTabHeader.css';
 
 /** Shared full-screen shell. Content and navigation stay with each screen;
  * this frame owns the app-theme, safe areas and compact controller chrome. */
@@ -12,19 +13,19 @@ export const MenuFrame=forwardRef<HTMLElement,ComponentPropsWithoutRef<'section'
  return <section {...props} ref={ref} className={`menu-frame ${className}`}>{children}</section>;
 });
 export function MenuFrameHeader({
- title,onBack,showBack=true,showProgress=showBack,titleId,eyebrow=APP_ALPHA_EYEBROW,logo,
- backLabel='BACK',busy=false,className='',variant='panel',team,children,titleMeta,titleTeam,
+ title,showProgress=false,titleId,compact=false,eyebrow=compact?'':APP_ALPHA_EYEBROW,logo,
+ className='',variant='panel',team,children,titleMeta,titleTeam,actions,
 }:{
- title:string;onBack?:()=>void;showBack?:boolean;showProgress?:boolean;titleId?:string;eyebrow?:string;logo?:ReactNode;
- backLabel?:string;busy?:boolean;className?:string;variant?:'panel'|'scene';team?:MatchTeam;children?:ReactNode;titleMeta?:ReactNode;titleTeam?:MatchTeam;
+ title:string;showProgress?:boolean;titleId?:string;compact?:boolean;eyebrow?:string;logo?:ReactNode;
+ className?:string;variant?:'panel'|'scene';team?:MatchTeam;children?:ReactNode;titleMeta?:ReactNode;titleTeam?:MatchTeam;actions?:ReactNode;
 }){
- return <header className={`menu-frame-header alpha-header ${className}`} data-menu-chrome={variant} data-team-heading={team?true:undefined}>
+ return <header className={`menu-frame-header alpha-header ${compact?'menu-frame-header--compact':''} ${className}`} data-menu-chrome={variant} data-team-heading={team?true:undefined}>
   <div data-title-team={titleTeam}>{logo??(eyebrow&&<small>{eyebrow}</small>)}<h1 id={titleId}>{title}</h1>{titleMeta}</div>
   {children}
   {team&&<div className="menu-header-team" data-team={team}><strong>{team.toUpperCase()}</strong><span>TEAM</span></div>}
-  {(showProgress||showBack)&&<div className="menu-header-actions">
+  {(showProgress||actions)&&<div className="menu-header-actions">
+   {actions}
    {showProgress&&<ProgressBadge/>}
-   {showBack&&<ControllerAction button="B" type="button" className="menu-control menu-back" disabled={busy} onClick={onBack} onKeyDown={event=>{if(event.key==='Enter'||event.key===' ')event.stopPropagation();}}>{backLabel}</ControllerAction>}
   </div>}
  </header>;
 }

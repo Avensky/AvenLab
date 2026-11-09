@@ -4,7 +4,6 @@ import type { MatchTeam } from "../../theme/matchTeamTheme";
 import { MenuFrameHeader } from "./MenuFrame";
 import { MenuTabButton } from "./MenuTabButton";
 import { useAngledMenuHeader } from "./useAngledMenuHeader";
-import "./sceneTabHeader.css";
 
 export type SceneHeaderTab = {
   id: string;
@@ -21,6 +20,7 @@ export function SceneTabHeader({
   title,
   eyebrow,
   logo,
+  compact = Boolean(logo),
   tabs,
   activeTab,
   onTabChange,
@@ -28,7 +28,6 @@ export function SceneTabHeader({
   tablistClassName = "",
   panelId,
   idPrefix,
-  onBack,
   showProgress,
   busy = false,
   level,
@@ -38,6 +37,7 @@ export function SceneTabHeader({
   title: string;
   eyebrow?: string;
   logo?: ReactNode;
+  compact?: boolean;
   tabs: readonly SceneHeaderTab[];
   activeTab: string;
   onTabChange: (tab: string) => void;
@@ -45,7 +45,6 @@ export function SceneTabHeader({
   tablistClassName?: string;
   panelId: string;
   idPrefix: string;
-  onBack?: () => void;
   showProgress?: boolean;
   busy?: boolean;
   level?: number | string;
@@ -84,16 +83,14 @@ export function SceneTabHeader({
     <>
       <MenuFrameHeader
         title={title}
-        eyebrow={eyebrow ?? (angled ? APP_BRANDING.productName : undefined)}
+        eyebrow={eyebrow ?? (angled && !compact ? APP_BRANDING.productName : undefined)}
         logo={logo}
-        onBack={onBack}
-        showBack={Boolean(onBack)}
+        compact={compact}
         showProgress={showProgress}
         titleTeam={titleTeam}
-        busy={busy}
         titleMeta={titleMeta ?? (level == null ? undefined : <span className="menu-header-title-meta angled-header-level">LEVEL {level}</span>)}
         variant="scene"
-        className={[angled && "angled-tab-header", logo && "scene-tab-header--compact"].filter(Boolean).join(" ")}
+        className={angled ? "angled-tab-header" : undefined}
       >
         {angled && navigation}
       </MenuFrameHeader>

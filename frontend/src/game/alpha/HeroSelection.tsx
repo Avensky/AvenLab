@@ -210,11 +210,11 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
       style={overlay ? { zIndex: 50, background:"transparent", backdropFilter:"none" } : undefined}
     >
       <SceneTabHeader
-        title={matchHeader ? "HEROES" : overlay ? "CHANGE HERO" : "CHOOSE HERO"}
+        title={matchHeader || overlay ? "HEROES" : "CHOOSE HERO"}
         logo={matchHeader ? <MenuLogo /> : undefined}
-        eyebrow={matchModeLabel(mode, active && inMode ? active.team_size : selectedTeamSize)}
-        titleTeam={matchHeader ? confirmedTeam : undefined}
-        titleMeta={!matchHeader && confirmedTeam ? <span className="menu-header-title-meta angled-header-team" data-team={confirmedTeam}>{confirmedTeam.toUpperCase()} TEAM</span> : undefined}
+        compact={matchHeader || overlay}
+        eyebrow={overlay ? "" : matchModeLabel(mode, active && inMode ? active.team_size : selectedTeamSize)}
+        titleTeam={confirmedTeam}
         showProgress={matchHeader}
         tabs={heroRoleHeaderTabs(allowBoats)}
         tablistClassName="hero-pick-tabs"
@@ -224,7 +224,7 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
         panelId="hero-role-panel"
         busy={busy}
       />
-      <div className="hero-selection-stage" id="hero-role-panel" role="tabpanel" aria-labelledby={"hero-selection-role-tab-"+role}>
+      <div className="hero-selection-stage hero-picker-stage" data-hero-filter={role} id="hero-role-panel" role="tabpanel" aria-labelledby={"hero-selection-role-tab-"+role}>
         {(!match || inMode || overlay) && (
           <HeroRoster
             showFilters={false}
@@ -237,24 +237,20 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
             onChoose={(id) => void choose(id)}
           />
         )}
-        <section
-          className="hero-summary"
-          aria-label="Selected hero"
-          data-role={selected?.role}
-        >
-          <small>{selected?.role.toUpperCase() ?? "CHOOSE YOUR HERO"}</small>
-          <h2>{selected?.name ?? "AWAITING PICK"}</h2>
-          {status && (
-            <p className="alpha-status" role="status">
-              {status}
-            </p>
-          )}
-        </section>
-        <div className="hero-chat-panel">
-          <LobbyChat />
+        <div className="hero-picker-scene">
+          <div className="hero-picker-preview">
+            <section className="hero-summary" aria-label="Selected hero" data-role={selected?.role}>
+              <small>{selected?.role.toUpperCase() ?? "CHOOSE YOUR HERO"}</small>
+              <h2>{selected?.name ?? "AWAITING PICK"}</h2>
+              {status && <p className="alpha-status" role="status">{status}</p>}
+            </section>
+            <div className="hero-chat-panel">
+              <LobbyChat />
+            </div>
+          </div>
+          {match && inMode && !overlay && <PreMatchTeamPreview key={`${active.world_id}:${mode}`} view={view} selectedHero={heroId}/>}
         </div>
       </div>
-      {match && inMode && !overlay && <PreMatchTeamPreview key={`${active.world_id}:${mode}`} view={view} selectedHero={heroId}/>}
       <SelectionFooter chat hasPrimaryAction backAction={{ onClick: back, disabled: busy }}>
         <ControllerAction button="A"
           type="button"

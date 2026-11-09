@@ -7,7 +7,6 @@ import { trapMenuFocus } from "./menuFocus";
 import { useMenuPressOwner } from "./useMenuPressOwner";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import type { MenuAction } from "../../controls/inputRouting";
-import "./sceneTabHeader.css";
 
 export type MenuRow = {
   id: string;
@@ -185,8 +184,8 @@ export function TabbedMenu({
         aria-describedby={subtitle ? `${panelId}-description` : undefined}
         className="menu-shell tabbed-menu-shell flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden bg-slate-950"
       >
-        <MenuFrameHeader title={title} titleId={`${panelId}-title`} eyebrow={eyebrow}
-          onBack={onBack} backLabel={backLabel} showBack={!angled}
+        <MenuFrameHeader title={title} titleId={`${panelId}-title`} eyebrow={eyebrow} compact={angled && !eyebrow}
+          showProgress={!angled}
           className={angled ? `angled-tab-header${chamferTitle ? " angled-tab-header--chamfered" : ""}` : "tabbed-menu-header"}>
           {angled && <div className="tabbed-angled-scroll">{navigation}</div>}
         </MenuFrameHeader>
@@ -254,7 +253,7 @@ export function TabbedMenu({
           {tab.preview && <div className="tabbed-menu-preview">{tab.preview}</div>}
         </div>
         <MenuFrameFooter className="tabbed-menu-footer" status={status}
-          backAction={angled ? { onClick: onBack, label: backLabel } : undefined} />
+          backAction={{ onClick: onBack, label: backLabel }} />
       </MenuFrame>
     </div>
   );

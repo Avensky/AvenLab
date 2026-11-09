@@ -65,7 +65,7 @@ export function HeroAbilities(){
  },[showConcepts]);
  useEffect(()=>{scroll.current?.scrollTo({top:0});const card=root.current?.querySelector<HTMLElement>(conceptsOpen?'[data-guide-concepts]':`[data-guide-hero="${selected}"]`);card?.focus({preventScroll:true});card?.scrollIntoView({block:'nearest',inline:'nearest'});},[selected,conceptsOpen]);
  return <section ref={root} className="game-ui menu-surface alpha-selection hero-selection hero-ability-guide" data-context={screen==='heroes'?'garage':'world'} role="dialog" aria-modal="true" aria-label="Hero abilities" tabIndex={-1} onKeyDown={trapMenuFocus}>
-  <SelectionHeader title={conceptsOpen?'HERO CONCEPTS':'HERO ABILITIES'} onBack={closeHeroGuide}/>
+  <SelectionHeader title={conceptsOpen?'CONCEPTS':'ABILITIES'} compact/>
   <nav className="hero-guide-roster" aria-label="Hero ability selection">{HEROES.map(item=><button type="button" key={item.id} data-guide-hero={item.id} className="hero-guide-portrait menu-control" aria-pressed={!conceptsOpen&&item.id===hero.id} aria-label={`View ${item.name} abilities`} onClick={()=>{showConcepts(false);choose(item.id);}}><HeroPortrait hero={item.id}/><span>{item.name}</span></button>)}<button type="button" data-guide-concepts className="hero-guide-portrait hero-guide-concepts menu-control" aria-pressed={conceptsOpen} aria-label="View planned hero concepts" onClick={()=>showConcepts(true)}><span className="hero-guide-concept-symbol" aria-hidden="true">＋</span><span>CONCEPTS · PLANNED</span></button></nav>
   <div ref={scroll} className="hero-guide-scroll" tabIndex={0} aria-label="Ability descriptions">
    {conceptsOpen?<HeroConceptGallery/>:<div className="hero-guide-body">
@@ -78,6 +78,6 @@ export function HeroAbilities(){
     </main>
    </div>}
   </div>
-  <SelectionFooter selectLabel="View" >{screen==='heroes'&&<ControllerAction button="Y" keyboard="F1" className="menu-control" data-close-hero-abilities onClick={closeHeroGuide}>CLOSE ABILITIES</ControllerAction>}<ControllerAction button="B" className="menu-control" onClick={closeHeroGuide}>BACK TO {screen==='heroes'?'HERO':'GAME'}</ControllerAction></SelectionFooter>
+  <SelectionFooter selectLabel="View" backAction={{onClick:closeHeroGuide,label:screen==='heroes'?'Back to hero':'Back to game'}}>{screen==='heroes'&&<ControllerAction button="Y" keyboard="F1" className="menu-control" data-close-hero-abilities onClick={closeHeroGuide}>CLOSE ABILITIES</ControllerAction>}</SelectionFooter>
  </section>;
 }

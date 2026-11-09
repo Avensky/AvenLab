@@ -848,7 +848,9 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
         assert.equal(document.activeElement, pauseAction("resume"));
 
         await act(async () => preferences.getState().update({ inputDevice: "keyboard" }));
-        assert.ok(pauseAction("resume").querySelector('[data-keyboard-key="Enter"]'));
+        assert.ok(pauseAction("resume").querySelector(".menu-icon"));
+        assert.equal(pauseAction("resume").querySelector("kbd"), null);
+        assert.ok(document.querySelector('.pause-menu-footer .controller-shortcuts:last-child [data-keyboard-key="Enter"]'));
         assert.equal(document.querySelector(".pause-menu [data-controller-key]"), null);
         await act(async () => preferences.getState().update({ inputDevice: "touch" }));
         assert.equal(document.querySelector(".pause-menu kbd"), null);

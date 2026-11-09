@@ -37,7 +37,7 @@ html[data-ui-theme]
     .menu-tab,
     .cockpit-panel button,
     .theme-choice select
-  ):where(:not(.menu-panel-frame)) {
+  ):where(:not(.menu-panel-frame, .angled-header-tab)) {
   background: var(--app-panel);
   color: var(--app-text);
   border-color: var(--app-line);
@@ -51,7 +51,7 @@ html[data-ui-theme]
     [aria-pressed="true"],
     [aria-selected="true"],
     [data-selected="true"]
-  ):not(:disabled, .menu-panel-frame) {
+  ):not(:disabled, .menu-panel-frame, .angled-header-tab) {
   background: var(--app-raised);
   border-color: var(--app-accent);
   color: var(--app-text);
@@ -95,7 +95,7 @@ html[data-ui-theme] .cockpit-content {
   background: var(--app-background);
   font-size: calc(12px * var(--menu-text-scale, 1));
 }
-html[data-ui-theme] .cockpit-panel button {
+html[data-ui-theme] .cockpit-panel button:where(:not(.angled-header-tab)) {
   font-size: calc(10px * var(--menu-text-scale, 1));
   min-height: 30px;
   touch-action: manipulation;
@@ -125,14 +125,6 @@ html[data-ui-theme] .theme-choice select {
   padding: 5px;
   font: inherit;
 }
-html[data-ui-theme] .cockpit-header {
-  flex-wrap: wrap;
-  height: auto;
-  min-height: 42px;
-}
-html[data-ui-theme] .cockpit-header h1 {
-  letter-spacing: 0.05em;
-}
 html[data-high-contrast="true"]
   :is(.menu-surface, .cockpit-panel, .cockpit-overlay) {
   --app-text: #fff;
@@ -143,7 +135,7 @@ html[data-high-contrast="true"]
   --app-line: #ccc;
   --app-accent: #fff;
 }
-html[data-high-contrast="true"] :is(.menu-control, .cockpit-panel button):not(.menu-panel-frame) {
+html[data-high-contrast="true"] :is(.menu-control, .cockpit-panel button):not(.menu-panel-frame, .angled-header-tab) {
   border-width: 2px;
 }
 html[data-reduce-motion="true"] :is(.cockpit-panel, .driving-hud) * {
@@ -158,12 +150,6 @@ html[data-reduce-motion="true"] :is(.cockpit-panel, .driving-hud) * {
   }
 }
 @media (max-width: 600px) {
-  html[data-ui-theme] .cockpit-header {
-    gap: 6px;
-  }
-  html[data-ui-theme] .cockpit-header h1 {
-    font-size: 12px;
-  }
   html[data-ui-theme] .theme-choice {
     margin-left: auto;
   }

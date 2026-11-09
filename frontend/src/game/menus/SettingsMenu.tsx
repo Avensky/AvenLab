@@ -188,6 +188,7 @@ export function SettingsMenu() {
       <TabbedMenu
         initialTab={initialTab}
         title="Settings"
+        eyebrow=""
         chamferTitle
         onBack={back}
         status={notice}

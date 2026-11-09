@@ -335,7 +335,8 @@ test("cockpit layout preferences preserve electronics and physical source owners
           assert.equal(Boolean(document.querySelector(".cockpit-wheel-picker")),true);
         }
         assert.ok(by("Select cruise stalk").closest(".cockpit-wheel-picker"));
-        assert.ok(document.querySelector(".cockpit-tabs + .cockpit-column-tabs"));
+        assert.ok(document.querySelector(".cockpit-header.angled-tab-header .cockpit-tabs"));
+        assert.ok(document.querySelector(".cockpit-header + .cockpit-column-tabs"));
         assert.deepEqual(input.getState().input, before);
       },
     );
@@ -906,7 +907,7 @@ test("cockpit layout preferences preserve electronics and physical source owners
         assert.equal(input.getState().input.vehicleMask & 8, 0);
         await act(async () => ui.getState().setCockpitTab("cruise"));
         assert.ok(by("Select cruise stalk").closest(".cockpit-wheel-picker"));
-        assert.ok(document.querySelector(".cockpit-tabs + .cockpit-column-tabs"));
+        assert.ok(document.querySelector(".cockpit-header + .cockpit-column-tabs"));
         await act(async () => ui.getState().setCockpitTab("climate"));
         assert.ok(document.querySelector(".cockpit-climate-page"));
       },

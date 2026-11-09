@@ -1,5 +1,5 @@
 /* One density/surface contract for menus and translucent selection chrome. */
-:is(.menu-frame,.hero-selection,.hero-ability-guide){
+:is(.menu-frame,.hero-selection,.hero-ability-guide,.cockpit-panel){
  --menu-gutter:clamp(16px,3vw,44px);
  --menu-header-y:6px;--menu-action-height:32px;--menu-action-y:4px;
  --menu-angled-header-height:41px;
@@ -19,7 +19,7 @@ html[data-ui-theme] .menu-frame[role=dialog]{background:var(--app-panel);color:v
 .menu-frame :is(button,select):focus-visible{outline:2px solid var(--app-accent);outline-offset:-2px}
 .menu-frame button{cursor:pointer}.menu-frame button:disabled{cursor:default;opacity:.5}
 .menu-frame :is(button,select):hover{text-decoration:none!important}
-.menu-frame-header{box-sizing:border-box;pointer-events:auto;color:var(--app-text);font:calc(12px * var(--menu-text-scale,1))/1.45 ui-sans-serif,system-ui,sans-serif;display:flex;align-items:center;gap:18px;padding:var(--menu-header-y) var(--menu-gutter);flex-shrink:0;border-bottom:1px solid var(--app-line);background:var(--menu-chrome-surface)}
+.menu-frame-header{box-sizing:border-box;pointer-events:auto;color:var(--app-text);font:calc(12px * var(--menu-text-scale,1))/1.45 ui-sans-serif,system-ui,sans-serif;display:flex;align-items:center;gap:18px;padding:var(--menu-header-y,4px) var(--menu-gutter,10px);flex-shrink:0;border-bottom:1px solid var(--app-line);background:var(--menu-chrome-surface,var(--app-panel))}
 .menu-frame-header>div:first-child{flex:1;min-width:0}
 .menu-frame-header small{margin:0;color:var(--app-accent);font-size:10px;font-weight:750;letter-spacing:.16em}
 .menu-frame-header>div:first-child>small{display:block;line-height:1.1}
@@ -97,7 +97,7 @@ html[data-ui-theme] .menu-frame .menu-row:is(:hover,:focus-visible,[data-selecte
 html[data-ui-theme] .menu-frame .menu-row-label{font-weight:700;font-size:calc(13px * var(--menu-text-scale,1))}
 html[data-ui-theme] .menu-frame .menu-row-description{color:var(--app-muted);font-size:calc(10px * var(--menu-text-scale,1))}
 @media(max-width:760px){
- :is(.menu-frame,.hero-selection,.hero-ability-guide){--menu-gutter:16px;--menu-header-y:4px;--menu-angled-header-height:39px;--menu-tab-height:32px;--menu-tab-y:4px}
+ :is(.menu-frame,.hero-selection,.hero-ability-guide,.cockpit-panel){--menu-gutter:16px;--menu-header-y:4px;--menu-angled-header-height:39px;--menu-tab-height:32px;--menu-tab-y:4px}
  .menu-frame-header{gap:10px}
  .menu-frame-header small{font-size:7px}.menu-frame-header .alpha-progress{display:none}
  .menu-frame .menu-frame-tabs,html[data-ui-theme] .menu-frame .menu-frame-tabs{padding:0 6px}
@@ -109,7 +109,7 @@ html[data-ui-theme] .menu-frame .menu-row-description{color:var(--app-muted);fon
  html[data-ui-theme] .menu-frame .menu-row{min-height:48px;padding:12px 10px}
 }
 @media(max-height:480px) and (min-width:560px){
- :is(.menu-frame,.hero-selection,.hero-ability-guide){--menu-gutter:15px;--menu-header-y:3px;--menu-angled-header-height:35px;--menu-action-height:28px;--menu-action-y:3px;--menu-tab-height:28px;--menu-tab-y:3px}
+ :is(.menu-frame,.hero-selection,.hero-ability-guide,.cockpit-panel){--menu-gutter:15px;--menu-header-y:3px;--menu-angled-header-height:35px;--menu-action-height:28px;--menu-action-y:3px;--menu-tab-height:28px;--menu-tab-y:3px}
  .menu-frame-header h1{font-size:20px}.menu-frame-header small,.menu-frame-header .alpha-progress{display:none}
  .menu-frame .menu-frame-tabs .menu-control{padding-inline:10px}
 }

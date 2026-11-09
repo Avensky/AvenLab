@@ -190,7 +190,6 @@ export function ModeSelection() {
       <SceneTabHeader
         title={play ? "PLAY" : "EXPLORE & BUILD"}
         logo={play ? <MenuLogo /> : undefined}
-        onBack={play ? undefined : back}
         showProgress
         busy={busy}
         tablistLabel="Game mode"
@@ -256,7 +255,7 @@ export function ModeSelection() {
         chat
         secondaryTabs={research}
         hasPrimaryAction
-        backAction={play ? { onClick: back, disabled: busy } : undefined}
+        backAction={{ onClick: back, disabled: busy }}
       >
         <ControllerAction button="A"
           type="button"

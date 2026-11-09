@@ -5,9 +5,11 @@ import { cockpitParent } from "./panels/tabs";
 /** Cockpit shell: shared header/theme, focused pages and confirmed footer.
  * Pages subscribe only while mounted; tabs/navigation and page APIs live in panels/. */
 import { useEffect, useRef } from "react";
-import { MenuShortcuts, ControllerAction } from "../../components/controller";
-import { MenuFooter } from "../../components/menus/MenuFrame";
+import { MenuShortcuts } from "../../components/controller";
+import { MenuFooter, MenuFrameHeader } from "../../components/menus/MenuFrame";
+import { MenuTabButton } from "../../components/menus/MenuTabButton";
 import { trapMenuFocus } from "../../components/menus/menuFocus";
+import { useAngledMenuHeader } from "../../components/menus/useAngledMenuHeader";
 import { useInputStore } from "../../store/input/inputStore";
 import {
   cockpitStatus,
@@ -43,6 +45,7 @@ import {
 } from "./panels/index";
 
 export function CockpitPanel() {
+  const angled = useAngledMenuHeader();
   const contact = useMomentaryFeedback();
   useEffect(startVehicleTelemetry, []);
   const tab = useUIStore((s) => s.cockpitTab),
@@ -69,6 +72,21 @@ export function CockpitPanel() {
         : status.rejection
           ? "REQUEST UNAVAILABLE"
           : "";
+  const navigation = (
+    <nav className={angled ? "cockpit-tabs angled-header-tabs" : "cockpit-tabs"} role="tablist" aria-label="Cockpit systems">
+      {COCKPIT_TABS.map((item) => (
+        <MenuTabButton
+          key={item.id}
+          angled={angled}
+          data-cockpit-tab={item.id}
+          selected={cockpitParent(tab) === item.id}
+          onClick={() => useUIStore.getState().setCockpitTab(item.id)}
+        >
+          {item.label}
+        </MenuTabButton>
+      ))}
+    </nav>
+  );
   return (
     <div className="cockpit-overlay menu-surface">
       <section
@@ -83,32 +101,16 @@ export function CockpitPanel() {
             event.stopPropagation();
         }}
       >
-        <header className="cockpit-header">
-          <h1 id="cockpit-title">COCKPIT</h1>
-          <ThemePreferences />
-          <button
-            type="button"
-            onClick={() => useUIStore.getState().openSettings("accessibility")}
-          >
-            SETTINGS
-          </button>
-          <CabinClock />
-          <ControllerAction button="B" className="cockpit-back" onClick={close}>
-             CLOSE
-          </ControllerAction>
-        </header>
-        <nav className="cockpit-tabs" aria-label="Cockpit systems">
-          {COCKPIT_TABS.map((item) => (
-            <button
-              key={item.id}
-              data-cockpit-tab={item.id}
-              aria-pressed={cockpitParent(tab) === item.id}
-              onClick={() => useUIStore.getState().setCockpitTab(item.id)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </nav>
+        <MenuFrameHeader title="COCKPIT" titleId="cockpit-title" eyebrow="" compact={angled}
+          className={angled ? "cockpit-header angled-tab-header" : "cockpit-header"}
+          actions={<>
+            <ThemePreferences />
+            <button className="menu-control" type="button" onClick={() => useUIStore.getState().openSettings("accessibility")}>Settings</button>
+            <CabinClock />
+          </>}>
+          {angled && <div className="tabbed-angled-scroll">{navigation}</div>}
+        </MenuFrameHeader>
+        {!angled && navigation}
         {(tab==='lights'||tab==='wipers'||tab==='cruise')&&<nav className="cockpit-subtabs cockpit-column-tabs" aria-label="Column levers">{([['lights','LIGHTS'],['wipers','WIPERS'],['cruise','CRUISE']] as const).map(([id,label])=><button key={id} aria-pressed={tab===id} onClick={()=>useUIStore.getState().setCockpitTab(id)}>{label}</button>)}</nav>}
         <div {...contact} className="cockpit-content">
           {tab === "drive" && (
@@ -143,7 +145,7 @@ export function CockpitPanel() {
           {tab === "ignition" && <IgnitionPage />}
         </div>
         <MenuFooter className="cockpit-status cockpit-shortcuts">
-          <MenuShortcuts hold />
+          <MenuShortcuts hold backAction={{ onClick: close, label: "Close" }} />
           <span role="status">
             {!supported &&
             ![

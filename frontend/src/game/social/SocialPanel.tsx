@@ -9,6 +9,7 @@ import {
 import { requestSocial, identifySocial } from "../../net/socialClient";
 import { AssistedInput } from "../../components/text/AssistedInput";
 import {MenuFrame,MenuFrameHeader,MenuFrameFooter} from "../../components/menus/MenuFrame";
+import {useAngledMenuHeader} from "../../components/menus/useAngledMenuHeader";
 import {ControllerAction} from "../../components/controller";
 import {isTypingTarget} from "../../controls/inputRouting";
 import { trapMenuFocus } from "../../components/menus/menuFocus";
@@ -147,6 +148,7 @@ function ProfilePage({
 }
 
 export function SocialPanel() {
+  const angled = useAngledMenuHeader();
   const loading = useUIStore((s) => s.isModeLoading);
   const view = useSocialStore((s) => s.view),
     available = useSocialStore((s) => s.available),
@@ -170,7 +172,7 @@ export function SocialPanel() {
     const button=root.current?.querySelector<HTMLElement>(`[data-social-tab="${tab}"]`);
     button?.focus({preventScroll:true});
     button?.scrollIntoView?.({block:'nearest',inline:'nearest'});
-  }, [tab]);
+  }, [angled, tab]);
   const run = async (
     task: () => Promise<Record<string, unknown> | void>,
     success: string,
@@ -205,6 +207,22 @@ export function SocialPanel() {
       view.groups.filter((group) => !group.joined).length +
       view.world_invites.length
     : 0;
+  const navigation = (
+    <nav className={angled ? "angled-header-tabs" : "social-tabs menu-frame-tabs"} role="tablist" aria-label="Worlds and social sections">
+      {TABS.map((value) => (
+        <MenuTabButton
+          selected={tab === value}
+          angled={angled}
+          data-social-tab={value}
+          key={value}
+          onClick={() => setTab(value)}
+        >
+          {value}
+          {value === "INVITES" && incoming > 0 ? ` (${incoming})` : ""}
+        </MenuTabButton>
+      ))}
+    </nav>
+  );
   return (
     <div className="game-ui menu-surface social-overlay">
       <MenuFrame
@@ -223,7 +241,10 @@ export function SocialPanel() {
           root.current?.querySelector<HTMLButtonElement>('[data-social-refresh]:not(:disabled)')?.click();
         }}
       >
-        <MenuFrameHeader title="WORLDS & SOCIAL" titleId="social-title" onBack={back} className="social-header"/>
+        <MenuFrameHeader title="SOCIAL" titleId="social-title" eyebrow="" compact={angled}
+          showProgress className={angled ? "angled-tab-header" : undefined}>
+          {angled && <div className="tabbed-angled-scroll">{navigation}</div>}
+        </MenuFrameHeader>
         {view && (
           <p className="social-server-budget">
             {view.limits.active_worlds}/{view.limits.max_active_worlds} ACTIVE
@@ -231,23 +252,7 @@ export function SocialPanel() {
             ACTIVE PLAYERS
           </p>
         )}
-        <nav
-          className="social-tabs menu-frame-tabs"
-          role="tablist"
-          aria-label="Worlds and social sections"
-        >
-          {TABS.map((value) => (
-            <MenuTabButton
-              selected={tab === value}
-              data-social-tab={value}
-              key={value}
-              onClick={() => setTab(value)}
-            >
-              {value}
-              {value === "INVITES" && incoming > 0 ? ` (${incoming})` : ""}
-            </MenuTabButton>
-          ))}
-        </nav>
+        {!angled && navigation}
         <div className="social-scroll menu-frame-content">
           <fieldset disabled={busy} className="social-body" aria-busy={busy}>
             {view && tab === "WORLDS" && (
@@ -286,7 +291,7 @@ export function SocialPanel() {
             )}
           </fieldset>
         </div>
-        <MenuFrameFooter className="social-footer" status={status || connectionMessage}>
+        <MenuFrameFooter className="social-footer" status={status || connectionMessage} backAction={{ onClick: back }}>
           <ControllerAction
             button="X"
             keyboard="X"

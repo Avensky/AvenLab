@@ -20,7 +20,7 @@
 .hero-workshop .controller-shortcuts{min-width:0;flex:1;flex-wrap:nowrap;overflow:hidden;}
 .hero-workshop .hero-workshop-actions>.controller-action:not(.hero-main-hold){padding-inline:8px;gap:6px;font-size:11px;white-space:nowrap;}
 .menu-world-vehicle-overlay{display:flex;align-items:center;justify-content:flex-end;padding:12px;background:transparent!important;backdrop-filter:none!important;pointer-events:none;}
-.menu-world-vehicle-overlay .menu-vehicle-card{width:min(340px,42vw);max-height:90vh;overflow:auto;background:var(--app-panel);pointer-events:auto;}
+.menu-world-vehicle-overlay .menu-vehicle-card{width:min(340px,42vw);max-height:90vh;background:var(--app-panel);pointer-events:auto;}
 .vehicle-studio-feature-list{display:flex;flex-direction:column;gap:5px;}
 .vehicle-studio-feature-list>div{display:flex;justify-content:space-between;gap:8px;padding:7px 8px;border:1px solid var(--vehicle-studio-line);border-radius:5px;background:var(--vehicle-studio-bg);font-size:8px;}
 .vehicle-studio-feature-list>div[data-supported="false"]{opacity:.55;}

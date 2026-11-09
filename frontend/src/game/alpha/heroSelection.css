@@ -40,6 +40,39 @@
   flex: 1;
   min-height: 0;
 }
+.hero-picker-stage {
+  --hero-roster-gap: 5px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--hero-panel-width);
+  grid-template-rows: minmax(0, 1fr);
+}
+.hero-picker-scene {
+  grid-area: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.hero-picker-preview {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+.hero-picker-preview .hero-summary { width: calc(100% - 10px); }
+.hero-picker-preview .hero-chat-panel { max-width: calc(100% - 10px); }
+.hero-picker-stage > .hero-roster {
+  grid-area: 1 / 2;
+  position: static;
+  width: auto;
+  min-height: 0;
+  max-height: none;
+  margin: var(--hero-roster-gap) var(--hero-roster-gap) var(--hero-roster-gap) 6px;
+}
+.hero-picker-stage .hero-roster-grid { flex: 1; }
+.hero-picker-stage[data-hero-filter="all"] .hero-roster-grid { grid-auto-rows: minmax(max-content, 1fr); }
+.hero-picker-stage[data-hero-filter="all"] .hero-portrait-card {
+  display: grid;
+  align-items: center;
+}
 .hero-selection [data-role="tank"] {
   --hero-color: #e1bd6e;
 }
@@ -293,6 +326,7 @@
   }
 }
 @media (max-height: 500px) and (orientation: landscape) {
+  .hero-picker-stage { --hero-roster-gap: 3px; }
   .hero-selection {
     --hero-panel-width: clamp(206px, 30vw, 260px);
   }

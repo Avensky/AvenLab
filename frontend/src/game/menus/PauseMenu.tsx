@@ -19,7 +19,7 @@ export function PauseMenu() {
   const vehicleSelectionAvailable = useVehicleSelectionAvailable();
   const match = useSocialStore(s => isMatchMode(s.view?.alpha?.active?.mode ?? ""));
   const inputDevice = useMenuInputDevice();
-  const resumeSelected = selectedIndex === PAUSE_RESUME_INDEX;
+  const showResumeGlyph = inputDevice === "controller" && selectedIndex === PAUSE_RESUME_INDEX;
   const headingId = useId();
   const buttons = useRef<Array<HTMLDivElement | null>>([]);
   useEffect(() => {
@@ -57,7 +57,7 @@ export function PauseMenu() {
         {resume ? (
           <>
             <span className="pause-menu-resume-mark" aria-hidden="true">
-              {resumeSelected && inputDevice !== "touch"
+              {showResumeGlyph
                 ? <ControlGlyph controller="A" />
                 : <MenuIcon name="resume" />}
             </span>
@@ -97,7 +97,7 @@ export function PauseMenu() {
         <MenuFooter className="pause-menu-footer pause-menu-glass menu-panel-frame">
           {inputDevice !== "touch" && <MenuShortcuts menuToggle directions="both" selectAction={false} back={false} tabs={false} />}
           {renderAction(PAUSE_RESUME_INDEX)}
-          {inputDevice !== "touch" && <MenuShortcuts navigate={false} tabs={false} selectAction={!resumeSelected} />}
+          {inputDevice !== "touch" && <MenuShortcuts navigate={false} tabs={false} selectAction={!showResumeGlyph} />}
         </MenuFooter>
       </section>
     </div>

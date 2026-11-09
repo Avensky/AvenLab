@@ -353,11 +353,6 @@
   line-height: 1.1;
   overflow-wrap: anywhere;
 }
-.menu-back {
-  flex-shrink: 0;
-  justify-content: center;
-  white-space: nowrap;
-}
 .menu-key {
   color: #67e8f9;
   font-weight: 900;
@@ -536,19 +531,24 @@
   outline: 0;
 }
 .menu-vehicle-card {
+  display: flex;
+  flex-direction: column;
   width: 100%;
   max-width: 40rem;
   max-height: calc(100dvh - 0.5rem);
-  overflow-y: auto;
+  overflow: hidden;
   border-block: 1px solid rgb(103 232 249 / 0.4);
   background: rgb(2 6 23 / 0.96);
   color: #cffafe;
 }
 .menu-vehicle-list {
   display: grid;
+  min-height: 0;
+  overflow-y: auto;
   gap: var(--menu-gap);
   padding: 0.25rem;
 }
+.menu-vehicle-footer { justify-content: flex-end; }
 .menu-vehicle-notice {
   margin: 0;
   padding: 0.25rem 0.5rem;

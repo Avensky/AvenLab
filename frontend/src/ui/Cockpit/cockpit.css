@@ -18,7 +18,7 @@
   min-height: 0;
   background: radial-gradient(ellipse at 50% 20%, #23272e, #0c1016 70%);
 }
-.cockpit-panel button {
+.cockpit-panel button:where(:not(.angled-header-tab)) {
   border: 1px solid #4b515c;
   border-radius: 2px;
   background: linear-gradient(#242a32, #12171f);
@@ -30,9 +30,8 @@
   cursor: pointer;
   touch-action: none;
 }
-.cockpit-panel button:hover:not(:disabled),
-.cockpit-panel button:focus-visible,
-.cockpit-panel button[aria-pressed="true"] {
+.cockpit-panel button:where(:not(.angled-header-tab)):is(:hover:not(:disabled), :focus-visible, [aria-pressed="true"]),
+.cockpit-tabs:not(.angled-header-tabs) [aria-selected="true"] {
   outline: 1px solid #b0e1ea;
   outline-offset: 1px;
   border-color: #b0e1ea;
@@ -42,18 +41,21 @@
   opacity: 0.35;
   cursor: default;
 }
-.cockpit-header {
-  display: flex;
-  align-items: center;
+.cockpit-header:not(.angled-tab-header) {
+  flex-wrap: wrap;
   gap: 10px;
-  min-height: 39px;
+  min-height: 42px;
   padding: 5px 10px;
-  border-bottom: 1px solid #474e59;
 }
-.cockpit-header h1 {
+.cockpit-header:not(.angled-tab-header) h1 {
   font-size: 15px;
-  margin: 0 auto 0 0;
-  letter-spacing: 0.12em;
+}
+.cockpit-header .menu-header-actions {
+  gap: 6px;
+}
+.cockpit-header .menu-header-actions .menu-control {
+  min-height: 24px;
+  padding: 3px 7px;
 }
 .cabin-clock {
   display: block;
@@ -68,17 +70,7 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-.cockpit-back {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.cockpit-back kbd {
-  border: 1px solid #8d99a7;
-  padding: 1px 3px;
-  font: 9px monospace;
-}
-.cockpit-tabs {
+.cockpit-tabs:not(.angled-header-tabs) {
   display: flex;
   gap: 3px;
   padding: 4px 8px;
@@ -86,7 +78,7 @@
   flex-shrink: 0;
   overflow-x: auto;
 }
-.cockpit-tabs button {
+.cockpit-tabs:not(.angled-header-tabs) button {
   flex: 1;
   min-width: 52px;
   padding: 6px 8px;
@@ -301,25 +293,21 @@
   .cockpit-content {
     padding: 8px;
   }
-  .cockpit-header {
+  .cockpit-header:not(.angled-tab-header) {
     gap: 6px;
     padding: 4px 7px;
   }
-  .cockpit-header h1 {
+  .cockpit-header:not(.angled-tab-header) h1 {
     font-size: 12px;
   }
   .cockpit-header .cabin-clock {
     font-size: 13px;
   }
-  .cockpit-panel .cockpit-back {
-    padding: 5px;
-    font-size: 9px;
-  }
-  .cockpit-tabs {
+  .cockpit-tabs:not(.angled-header-tabs) {
     gap: 2px;
     padding: 3px;
   }
-  .cockpit-tabs button {
+  .cockpit-tabs:not(.angled-header-tabs) button {
     min-width: 45px;
     font-size: 8px;
     padding: 6px 4px;
@@ -333,12 +321,12 @@
   }
 }
 @media (max-height: 400px) {
-  .cockpit-header {
+  .cockpit-header:not(.angled-tab-header) {
     min-height: 32px;
     padding-top: 3px;
     padding-bottom: 3px;
   }
-  .cockpit-tabs {
+  .cockpit-tabs:not(.angled-header-tabs) {
     padding-top: 3px;
     padding-bottom: 3px;
   }

@@ -19,12 +19,18 @@ test('Career, Settings and Worlds/Social share themed controller chrome without 
   social.setState({available:true,message:'CONNECTED',view:{profile:{id:'player',name:'FRAME DRIVER'},players:[],teammates:[],requests:[],groups:[],world_invites:[],current_world_id:null,worlds:[],maps:['road_precision'],limits:{active_worlds:0,max_active_worlds:3,active_players:1,max_players:10}}});
   root=createRoot(document.getElementById('root'));
   const render=async(component,screen)=>{await act(async()=>{ui.setState({screen,overlay:null});root.render(h('div',null,h(ThemeController),h(component)));});};
-  prefs.getState().update({inputDevice:'controller'});
-  for(const [Component,screen,title]of [[CareerMenu,'career','CAREER'],[SettingsMenu,'settings','SETTINGS'],[SocialPanel,'social','WORLDS & SOCIAL']])await t.test(`${title} uses the same frame and a native B action`,async()=>{
+  prefs.getState().update({inputDevice:'controller',menuHeaderStyle:'angled'});
+  for(const [Component,screen,title]of [[CareerMenu,'career','CAREER'],[SettingsMenu,'settings','SETTINGS'],[SocialPanel,'social','SOCIAL']])await t.test(`${title} uses the shared angled header and a native B action`,async()=>{
    await render(Component,screen);assert(document.querySelector('.menu-frame[role="dialog"]'));assert.equal(document.querySelector('.menu-frame-header h1').textContent.toUpperCase(),title);
-   const backLocation=screen==='settings'?'.menu-frame-footer':'.menu-frame-header';
-   assert(document.querySelector(`${backLocation} [data-controller-key="B"]`));assert(document.querySelector('.menu-frame-footer [aria-label="Menu shortcuts"]'));
-   assert(document.querySelector('.menu-frame [role="tab"][aria-selected="true"]'));
+   const header=document.querySelector('.menu-frame-header.angled-tab-header');
+   assert(header.querySelector('[role="tab"][aria-selected="true"]'));
+   assert.equal(header.querySelector(':scope > div:first-child > small'),null);
+   for(const style of ['angled','classic']){
+    await act(async()=>prefs.getState().update({menuHeaderStyle:style}));
+    assert.equal(document.querySelector('.menu-frame-header [data-controller-key="B"]'),null);
+    assert(document.querySelector('.menu-frame-footer button[aria-label="Back"] [data-controller-key="B"]'));
+   }
+   await act(async()=>prefs.getState().update({menuHeaderStyle:'angled'}));
    for(const theme of ['white','strawberry','deep-purple','pit-wall','navy']){await act(async()=>prefs.getState().update({theme}));assert.equal(document.documentElement.dataset.uiTheme,theme);assert(document.documentElement.style.getPropertyValue('--app-panel'));}
    assert.equal(social.getState().view.profile.id,'player','styling never changes the authenticated player');
   });
@@ -34,12 +40,12 @@ test('Career, Settings and Worlds/Social share themed controller chrome without 
    await render(SocialPanel,'social');assert(document.querySelector('input[aria-label="WORLD INVITE CODE"]')||document.querySelector('input'));
    assert([...document.querySelectorAll('button')].some(button=>button.textContent.includes('CREATE & JOIN')));
    assert.equal(ui.getState().screen,'social');
-   await act(async()=>document.querySelector('.menu-frame-header button').click());assert.equal(ui.getState().screen,'main');
+   await act(async()=>document.querySelector('.menu-frame-footer button[aria-label="Back"]').click());assert.equal(ui.getState().screen,'main');
   });
   await t.test('Play and Hero chrome reuse the same controller components without an opaque scene shell',async()=>{
    let backs=0;
    for(const title of ['PLAY','HEROES']){
-    await act(async()=>root.render(h('section',{className:'hero-selection'},h(SelectionHeader,{title,eyebrow:`${title} LABEL`,onBack:()=>backs++}),h('main',{'aria-label':'Open garage scene'}),h(SelectionFooter,{chat:true,secondaryTabs:true,selectLabel:'Choose hero'},h('button',null,'CONTINUE')))));
+    await act(async()=>root.render(h('section',{className:'hero-selection'},h(SelectionHeader,{title,eyebrow:`${title} LABEL`}),h('main',{'aria-label':'Open garage scene'}),h(SelectionFooter,{chat:true,secondaryTabs:true,selectLabel:'Choose hero',backAction:{onClick:()=>backs++}},h('button',null,'CONTINUE')))));
     assert.equal(document.querySelector('.menu-frame'),null,'shared chrome must not add the opaque full-screen panel');
     assert.equal(document.querySelector('.menu-frame-header h1').textContent,title);
     assert.equal(document.querySelector('.menu-frame-header small').textContent,`${title} LABEL`);
@@ -47,8 +53,8 @@ test('Career, Settings and Worlds/Social share themed controller chrome without 
     assert.equal(document.querySelector('.menu-frame-footer').dataset.menuChrome,'scene');
     const shortcuts=document.querySelector('[aria-label="Menu shortcuts"]');
     assert.match(shortcuts.textContent,/Choose hero/);assert.match(shortcuts.textContent,/Chat/);assert.match(shortcuts.textContent,/Field/);
-    assert(document.querySelector('.menu-frame-header [data-controller-key="B"]'));
-    await act(async()=>document.querySelector('.menu-frame-header button').click());
+    assert.equal(document.querySelector('.menu-frame-header [data-controller-key="B"]'),null);
+    await act(async()=>document.querySelector('.menu-frame-footer button[aria-label="Back"]').click());
    }
    assert.equal(backs,2);assert.equal(social.getState().view.profile.id,'player');
   });

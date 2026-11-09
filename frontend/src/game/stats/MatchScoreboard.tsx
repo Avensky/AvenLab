@@ -86,7 +86,7 @@ export function MatchScoreboard({onAbilities}:{onAbilities?:()=>void}){
  const selected=shownRows.find(player=>player.id===selectedId)??shownRows.find(player=>player.self)??shownRows[0]??null;
  return <section ref={panel} className="match-scoreboard" data-inspecting={inspect} style={{"--team-size":data?.teamSize??5} as CSSProperties} role="dialog" aria-modal="false" aria-label="Player statistics" onPointerDown={event=>event.stopPropagation()}>
   <header className="match-scoreboard-header"><div><small>{data?.mode??'SESSION'}</small><h2>{view==='composition'?'TEAM COMPOSITION':'PLAYER STATISTICS'}</h2></div>
-   <div className="match-scoreboard-tools">{onAbilities&&!staging&&<button type="button" className="menu-control" onClick={()=>{close();onAbilities();}}>HERO ABILITIES</button>}<ControllerAction button="B" className="menu-control" aria-label="Close player statistics" onClick={close}>CLOSE</ControllerAction></div>
+   {onAbilities&&!staging&&<div className="match-scoreboard-tools"><button type="button" className="menu-control" onClick={()=>{close();onAbilities();}}>HERO ABILITIES</button></div>}
   </header>
   <div className="scoreboard-toolbar"><div className="match-scoreboard-status" role="status">{staging?'PRE-MATCH ROSTER':data?.stale?'SNAPSHOT STALE · LAST CONFIRMED TOTALS':'LIVE SESSION TOTALS'}<span>LEVEL IS PROFILE PROGRESSION · MMR PENDING</span></div>
   <MatchViewTabs view={view} onChange={setView}/></div>
@@ -98,6 +98,7 @@ export function MatchScoreboard({onAbilities}:{onAbilities?:()=>void}){
   <MenuFooter className="match-scoreboard-footer">
    <span><ControlGlyph controller={["LB","RB"]} keyboard="PgUp / PgDn"/> TEAM / STATS</span>
    <span>HEALING INCLUDES SELF · — MEANS UNAVAILABLE</span>
+   <ControllerAction button="B" className="menu-control" aria-label="Close player statistics" onClick={close}>CLOSE</ControllerAction>
   </MenuFooter>
  </section>;
 }
