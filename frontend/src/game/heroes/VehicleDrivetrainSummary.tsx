@@ -50,7 +50,7 @@ export function VehicleDrivetrainSummary({ vehicle, weight, economy, suspension,
       <VehicleDrivetrainDiagram layout={profile.driveLayout} />
       <dl>
         <div><dt>WEIGHT</dt><dd>{weight}</dd></div>
-        <div title="Estimated front/rear static weight split from the configured axle positions"><dt>F/R EST.</dt><dd>{front === null ? "—" : `${front}:${100-front}`}</dd></div>
+        <div title="Estimated front/rear static weight split from the configured axle positions"><dt>F/R SPLIT</dt><dd>{front === null ? "—" : `${front}:${100-front}`}</dd></div>
         <div><dt>GEARBOX</dt><dd>{gearbox}</dd></div>
         <div title={`Suspension damping ratio: ${damping.toFixed(2)}`}><dt>SUSPENSION</dt><dd>{["STOCK", "STREET", "SPORT", "RACE"][suspension] ?? "STOCK"}</dd></div>
         {economy && <div><dt>ECONOMY</dt><dd>{economy}</dd></div>}

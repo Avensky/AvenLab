@@ -6,7 +6,7 @@ import {
 } from "../../store/alpha/alphaStore";
 import { ControllerButton } from "../../components/controller";
 import { HeroPortrait } from "./HeroPortrait";
-import type { AngledHeaderTab } from "../../components/menus/AngledTabHeader";
+import type { SceneHeaderTab } from "../../components/menus/SceneTabHeader";
 
 const SEA_VEHICLE_IDS = new Set(["hawaii-rescue", "louisiana"]);
 const AIR_VEHICLE_IDS = new Set<string>();
@@ -19,12 +19,11 @@ export function heroMatchesFilter(hero: (typeof HEROES)[number], filter: HeroFil
   return hero.role === filter;
 }
 
-export function heroRoleHeaderTabs(allowBoats = false): AngledHeaderTab[] {
+export function heroRoleHeaderTabs(allowBoats = false): SceneHeaderTab[] {
   return HERO_FILTERS.filter(role => allowBoats || !["air", "sea"].includes(role)).map(role => ({
     id: role,
     label: role.toUpperCase(),
     description: role === "all" ? "Show all vehicles" : `Show ${role} vehicles`,
-    icon: null,
   }));
 }
 

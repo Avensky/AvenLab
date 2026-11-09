@@ -1,14 +1,52 @@
-/* Shared, theme-aware top chrome for tabbed screens. */
+/* Classic scene menus keep a separate row below the title. */
+.classic-header-tabs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(105px, 1fr));
+  flex-shrink: 0;
+  background: var(--app-panel);
+}
+.classic-header-tabs[role="tablist"] .menu-control {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-height: var(--menu-action-height, 32px);
+  padding: 4px 8px;
+  border: 1px solid var(--app-line);
+  border-top: 0;
+  border-radius: 0;
+  color: var(--app-text);
+  background: var(--app-panel);
+  font-size: 11px;
+  text-align: center;
+}
+.classic-header-tabs[role="tablist"] .menu-control + .menu-control { border-left: 0; }
+.classic-header-tabs[role="tablist"] [aria-selected="true"] {
+  background: var(--app-raised);
+  border-color: var(--app-accent);
+  box-shadow: inset 0 -2px var(--app-accent);
+}
+.scene-header-tab-badge { color: var(--app-muted); font-size: 7px; }
+@media (max-width: 650px) {
+  .classic-header-tabs[role="tablist"] .menu-control { font-size: 10px; }
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  .classic-header-tabs[role="tablist"] .menu-control { padding: 2px 4px; font-size: 9px; }
+}
+
+/* The angled layout brings the same tabs alongside the title. */
 .menu-frame-header.angled-tab-header {
   --angled-tab-cut: clamp(16px, 1.45vw, 22px);
   --angled-title-cut: var(--angled-tab-cut);
   --angled-header-height: clamp(46px, 4vw, 54px);
   --angled-tabs-height: clamp(38px, 3.5vw, 46px);
+  --angled-tab-surface: color-mix(in srgb, var(--app-background) 62%, var(--app-panel));
   position: relative;
   top: 0;
   margin-block-start: 0;
   display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
+  grid-template-columns: max-content minmax(0, 1fr) auto;
   align-items: start;
   gap: 0;
   min-height: var(--angled-header-height);
@@ -40,7 +78,7 @@
   z-index: -1;
   inset: 1px;
   pointer-events: none;
-  background: color-mix(in srgb, var(--app-panel) 94%, transparent);
+  background: color-mix(in srgb, var(--app-panel) 92%, var(--app-raised));
   clip-path: polygon(0 0, 100% 0, calc(100% - var(--angled-title-cut)) 100%, 0 100%);
 }
 .menu-frame-header.angled-tab-header > div:first-child > :is(small,h1,.menu-header-title-meta) {
@@ -50,7 +88,7 @@
 .menu-frame-header.angled-tab-header > div:first-child > small {
   flex: 0 0 auto;
   padding-right: clamp(9px, 1vw, 15px);
-  border-right: 1px solid color-mix(in srgb, var(--app-text) 68%, transparent);
+  border-right: 1px solid var(--app-line);
   color: var(--app-text);
   font-size: clamp(15px, 1.55vw, 23px);
   font-weight: 850;
@@ -63,7 +101,7 @@
   align-self: center;
   flex: 0 0 auto;
   padding: 3px 6px;
-  border-left: 1px solid color-mix(in srgb, var(--app-text) 46%, transparent);
+  border-left: 1px solid var(--app-line);
   color: var(--app-muted);
   font-size: clamp(8px, .72vw, 11px);
   font-weight: 850;
@@ -78,7 +116,7 @@
   align-self: center;
   flex: 0 0 auto;
   padding: 3px 6px;
-  border-left: 1px solid color-mix(in srgb, var(--app-text) 46%, transparent);
+  border-left: 1px solid var(--app-line);
   color: var(--app-muted);
   font-size: clamp(8px, .72vw, 11px);
   font-weight: 850;
@@ -90,10 +128,13 @@
 .menu-frame-header.angled-tab-header .angled-header-team[data-team="blue"] { color: var(--team-blue, #69bbff); }
 .menu-frame-header.angled-tab-header > div:first-child > h1 {
   min-width: 0;
-  color: var(--app-accent);
+  overflow: hidden;
+  color: var(--app-text);
   font-size: clamp(20px, 2.35vw, 31px);
   font-style: italic;
   letter-spacing: .08em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .angled-header-tabs {
   position: relative;
@@ -109,7 +150,6 @@
   overflow: visible;
   filter: drop-shadow(0 0 1px var(--app-accent));
 }
-  .angled-header-tail { display: none; }
 .angled-header-tab {
   position: relative;
   isolation: isolate;
@@ -128,7 +168,7 @@
   border: 0;
   border-radius: 0;
   color: var(--app-text);
-  background: color-mix(in srgb, #020609 92%, var(--app-background));
+  background: var(--angled-tab-surface);
   box-shadow: inset 0 -1px var(--app-accent);
   clip-path: polygon(var(--angled-tab-cut) 0, 100% 0, calc(100% - var(--angled-tab-cut)) 100%, 0 100%);
   font: inherit;
@@ -141,9 +181,11 @@
   cursor: pointer;
   transition: color 120ms ease, background-color 120ms ease;
 }
-.angled-header-tab--overview { margin-left: 0; }
+.angled-header-tab:first-child { margin-left: 0; }
 .angled-header-tab--performance { max-width: clamp(148px, 11vw, 176px); }
- .angled-header-tab--paint { max-width: clamp(150px, 11.5vw, 180px); }
+.angled-header-tab--paint { max-width: clamp(150px, 11.5vw, 180px); }
+.angled-header-tab[data-has-badge] { flex-direction: column; gap: 2px; max-width: clamp(132px, 13vw, 164px); }
+.angled-header-tab .scene-header-tab-badge { color: currentColor; opacity: .85; }
 .angled-header-tab:last-child::after {
   content: "";
   position: absolute;
@@ -160,22 +202,22 @@
   color: var(--app-background);
   background: var(--app-accent);
 }
-.angled-header-tab:is(:hover,:focus-visible):not([aria-selected="true"]) {
+.angled-header-tab:is(:hover,:focus-visible):not([aria-selected="true"]):not(:disabled) {
   z-index: 1;
-  color: var(--app-accent);
-  background: color-mix(in srgb, var(--app-panel) 65%, var(--app-accent));
+  background: var(--app-raised);
 }
+.angled-header-tab:disabled { cursor: default; opacity: .65; }
 .angled-header-tab:focus-visible {
   outline: 2px solid var(--app-text);
   outline-offset: -4px;
 }
-.angled-header-icon {
+.scene-header-tab-icon {
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
 }
-.angled-header-icon svg {
+.scene-header-tab-icon svg {
   display: block;
   width: clamp(14px, 1.15vw, 18px);
   height: clamp(14px, 1.15vw, 18px);
@@ -185,8 +227,8 @@
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.angled-header-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
- .angled-header-edge {
+.angled-header-tab .scene-header-tab-label { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.angled-header-edge {
   position: absolute;
   z-index: 2;
   top: 0;
@@ -198,21 +240,26 @@
 }
 .angled-header-edge path {
   fill: none;
-  stroke: color-mix(in srgb, var(--app-text) 42%, transparent);
+  stroke: var(--app-line);
   stroke-width: 1.2;
   vector-effect: non-scaling-stroke;
 }
 .angled-header-edge[data-separator] path {
-  stroke: color-mix(in srgb, var(--app-text) 62%, transparent);
+  stroke: var(--app-muted);
 }
 .angled-header-tab[aria-selected="true"] .angled-header-edge path {
-  stroke: color-mix(in srgb, #06131a 42%, transparent);
+  stroke: color-mix(in srgb, currentColor 42%, transparent);
 }
 .menu-frame-header.angled-tab-header .menu-header-actions {
-  align-self: center;
+  align-self: start;
+  min-height: var(--angled-tabs-height);
   gap: clamp(5px, .75vw, 12px);
-  padding-left: clamp(6px, .8vw, 12px);
-  border-left: 1px solid color-mix(in srgb, var(--app-line) 80%, var(--app-text));
+  padding-inline: clamp(4px, .8vw, 12px);
+}
+.menu-frame-header.angled-tab-header .menu-back {
+  --controller-action-border: 1px solid var(--app-line);
+  --controller-action-background: var(--angled-tab-surface);
+  border-radius: 0;
 }
 @media (max-width: 760px) {
   .menu-frame-header.angled-tab-header {
@@ -220,27 +267,40 @@
     --angled-header-height: 40px;
     --angled-tabs-height: 36px;
     --angled-title-cut: var(--angled-tab-cut);
-    grid-template-columns: minmax(112px, 21vw) minmax(0, 1fr);
+    grid-template-columns: minmax(112px, 22vw) minmax(0, 1fr) auto;
     gap: 0;
     padding: 0;
   }
   .menu-frame-header.angled-tab-header > div:first-child {
-    gap: 6px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-content: center;
+    gap: 1px 5px;
     padding-left: 7px;
     padding-right: calc(var(--angled-title-cut) + 5px);
   }
   .menu-frame-header.angled-tab-header > div:first-child > small {
-    padding-right: 6px;
-    font-size: clamp(10px, 1.8vw, 15px);
+    grid-row: 1;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+    font-size: 9px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .menu-frame-header.angled-tab-header > div:first-child > .menu-header-title-meta {
+    grid-area: 1 / 2;
+    padding: 0 0 0 4px;
+    font-size: 7px;
   }
   .menu-frame-header.angled-tab-header > div:first-child > h1 {
-    font-size: clamp(15px, 2.8vw, 21px);
+    grid-area: 2 / 1 / 3 / -1;
+    font-size: clamp(12px, 2.1vw, 17px);
     letter-spacing: .04em;
   }
-   .angled-header-tab { gap: 3px; padding-inline: 4px; }
-  .angled-header-icon svg { width: 14px; height: 14px; }
-  .angled-header-tab { font-size: clamp(7px, 1.12vw, 9px); }
-  .menu-frame-header.angled-tab-header .menu-header-actions { gap: 3px; padding-left: 4px; }
+  .angled-header-tab { gap: 3px; padding-inline: 4px; font-size: clamp(7px, 1.12vw, 9px); }
+  .scene-header-tab-icon svg { width: 14px; height: 14px; }
+  .menu-frame-header.angled-tab-header .menu-header-actions { gap: 3px; }
 }
 @media (max-width: 520px) {
   .menu-frame-header.angled-tab-header {
@@ -248,18 +308,16 @@
     --angled-header-height: 37px;
     --angled-tabs-height: 33px;
     --angled-title-cut: var(--angled-tab-cut);
-    grid-template-columns: minmax(78px, 20vw) minmax(0, 1fr);
+    grid-template-columns: minmax(78px, 20vw) minmax(0, 1fr) auto;
     gap: 0;
     padding: 0;
   }
   .menu-frame-header.angled-tab-header > div:first-child { gap: 4px; padding-left: 4px; }
-  .menu-frame-header.angled-tab-header > div:first-child > small { font-size: 9px; padding-right: 4px; }
-  .menu-frame-header.angled-tab-header > div:first-child > .angled-header-level { padding-inline: 2px; font-size: 7px; }
   .angled-header-tab { flex-basis: clamp(58px, 10.2vw, 76px); max-width: 88px; }
-  .menu-frame-header.angled-tab-header > div:first-child > h1 { font-size: 15px; letter-spacing: .015em; }
-   .angled-header-tab { gap: 2px; padding-inline: 2px; font-size: 6px; letter-spacing: 0; }
-  .angled-header-icon svg { width: 11px; height: 11px; }
-  .menu-frame-header.angled-tab-header .menu-header-actions { padding-left: 2px; }
+  .menu-frame-header.angled-tab-header > div:first-child > h1 { letter-spacing: .015em; }
+  .angled-header-tab { gap: 2px; padding-inline: 2px; font-size: 6px; letter-spacing: 0; }
+  .scene-header-tab-icon svg { width: 11px; height: 11px; }
+  .menu-frame-header.angled-tab-header .menu-header-actions { padding-inline: 2px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .angled-header-tab { transition: none; }

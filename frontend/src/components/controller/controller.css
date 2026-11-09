@@ -107,9 +107,9 @@
   gap: 6px;
   min-height: 28px;
   padding: 3px 6px;
-  border: 0 !important;
+  border: var(--controller-action-border, 0) !important;
   outline: none !important;
-  background: transparent !important;
+  background: var(--controller-action-background, transparent) !important;
   box-shadow: none !important;
   color: var(--app-text, #d7e8f1);
   text-decoration: none !important;

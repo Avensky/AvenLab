@@ -25,7 +25,7 @@ function GarageStatCell({ row }: { row: GarageStat }) {
   return <div className="vehicle-studio-stat" data-stat={row.key} title={row.title}>
     <VehicleGarageIcon name={row.key} />
     <div className="vehicle-studio-stat-main">
-      <div className="vehicle-studio-stat-line"><span>{row.label.replace(" EST.", "")}</span><strong>{row.valueText}</strong></div>
+      <div className="vehicle-studio-stat-line"><span>{row.label}</span><strong>{row.valueText}</strong></div>
       <meter min={0} max={1.25} value={row.ratio} optimum={1} aria-label={`${row.label} ${row.valueText}`} />
     </div>
   </div>;

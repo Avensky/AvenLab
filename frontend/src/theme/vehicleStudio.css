@@ -1,18 +1,18 @@
 /* Single editable theme for the Heroes garage. Theme colors inherit from catalog.ts. */
 :root {
-  --vehicle-studio-bg: color-mix(in srgb, #05090f 88%, var(--app-background));
-  --vehicle-studio-panel: color-mix(in srgb, #071019 92%, var(--app-panel));
-  --vehicle-studio-raised: color-mix(in srgb, #111a24 88%, var(--app-raised));
-  --vehicle-studio-line: color-mix(in srgb, var(--app-line) 78%, #91a3b2);
+  --vehicle-studio-bg: var(--app-background);
+  --vehicle-studio-panel: color-mix(in srgb, var(--app-panel) 76%, var(--app-background));
+  --vehicle-studio-raised: var(--app-raised);
+  --vehicle-studio-line: var(--app-line);
   --vehicle-studio-ink: var(--app-text);
-  --vehicle-studio-muted: color-mix(in srgb, var(--app-muted) 82%, #dbe8f2);
-  --vehicle-studio-accent: color-mix(in srgb, var(--app-accent) 76%, #24d9ec);
+  --vehicle-studio-muted: var(--app-muted);
+  --vehicle-studio-accent: var(--app-accent);
   --vehicle-studio-warm: #ffb347;
   --vehicle-studio-radius: 8px;
   --vehicle-studio-gap: 5px;
 
   --vehicle-studio-glow: color-mix(in srgb, var(--vehicle-studio-accent) 42%, transparent);
-  --vehicle-studio-selected-ink: #06131a;
+  --vehicle-studio-selected-ink: var(--app-background);
 }
 
 .vehicle-studio {

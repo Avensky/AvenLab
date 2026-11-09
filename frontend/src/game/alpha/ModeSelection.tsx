@@ -1,5 +1,5 @@
 import { useConnectionView } from "../../store/session/networkViews";
-import {MenuTabButton} from "../../components/menus/MenuTabButton";
+import { SceneTabHeader } from "../../components/menus/SceneTabHeader";
 import {MatchModePortraits} from "./ModePortraitCard";
 import {useSelectionStore as useWorldSelection} from '../../store/selection/selectionStore';
 import {WorldPortraitCard} from '../preview/WorldPortraitCard';
@@ -16,6 +16,7 @@ import {
   isMatchMode,
   canonicalGameMode,
   type MatchTeamSize,
+  type PlayMode,
 } from "../../store/alpha/alphaStore";
 import { useUIStore } from "../../store/menus/uiStore";
 
@@ -31,7 +32,7 @@ import { useSelectionNavigation } from "./useSelectionNavigation";
 import { useSelectionStore } from "../../store/selection/selectionStore";
 import type { MenuAction } from "../../controls/inputRouting";
 import { joinSelectedMode } from "./sessionActions";
-import { SelectionHeader, SelectionFooter } from "./SelectionChrome";
+import { SelectionFooter } from "./SelectionChrome";
 import { LobbyChat } from "./LobbyChat";
 import "./heroSelection.css";
 
@@ -55,7 +56,8 @@ export function ModeSelection() {
   const [canField, setCanField] = useState(0);
   const research = mode === "signal_recon",
     planned = mode === "swarm";
-  const destinations=GAME_MODES.filter(entry=>isMatchMode(entry.id)===isMatchMode(mode));
+  const match = isMatchMode(mode);
+  const destinations=GAME_MODES.filter(entry=>isMatchMode(entry.id)===match);
   const item = GAME_MODES.find((m) => m.id === canonicalGameMode(mode))!;
   const back = useCallback(() => {
     if (!pending.current) useUIStore.getState().setScreen("main");
@@ -177,42 +179,31 @@ export function ModeSelection() {
     <section
       ref={root}
       className="game-ui menu-surface alpha-selection hero-selection mode-selection"
-      data-play-category={isMatchMode(mode)?'match':'tools'}
+      data-play-category={match?'match':'tools'}
       data-controller-form
       data-controller-rows
       tabIndex={-1}
       aria-label="Game mode selection"
     >
-      <SelectionHeader title={isMatchMode(mode)?'PLAY':'EXPLORE & BUILD'} onBack={back} busy={busy}/>
-      <nav
-        className="alpha-mode-tabs"
-        role="tablist"
-        aria-label="Game mode"
-        data-controller-tab-only
-      >
-        {destinations.map((entry) => (
-          <MenuTabButton
-            key={entry.id}
-            selected={mode === entry.id}
-            tabIndex={mode === entry.id ? 0 : -1}
-            disabled={busy}
-            onFocus={() => {
-              useAlphaStore.getState().chooseMode(entry.id);
-              setStatus("");
-            }}
-            onClick={() => {
-              useAlphaStore.getState().chooseMode(entry.id);
-              setStatus("");
-            }}
-          >
-            {entry.label}
-            {entry.id === "swarm" && (
-              <small className="alpha-mode-planned">PLANNED</small>
-            )}
-          </MenuTabButton>
-        ))}
-      </nav>
-      <div className="hero-selection-stage">
+      <SceneTabHeader
+        title={match ? "PLAY" : "EXPLORE & BUILD"}
+        layout={match ? "classic" : undefined}
+        onBack={back}
+        busy={busy}
+        tablistLabel="Game mode"
+        tablistClassName="alpha-mode-tabs"
+        idPrefix="mode-selection"
+        panelId="mode-selection-panel"
+        activeTab={item.id}
+        tabs={destinations.map(entry => ({ id: entry.id, label: entry.label, badge: entry.id === "swarm" ? "PLANNED" : undefined }))}
+        onTabChange={id => {
+          if (pending.current) return;
+          useAlphaStore.getState().chooseMode(id as PlayMode);
+          setStatus("");
+        }}
+        selectOnFocus
+      />
+      <div className="hero-selection-stage" id="mode-selection-panel" role="tabpanel" aria-labelledby={"mode-selection-tab-" + item.id}>
         {(mode==='sandbox'||mode==='editor')&&<WorldPortraitCard map={selectedWorld}/>}
         {isMatchMode(mode)&&<MatchModePortraits selected={teamSize} disabled={busy} onSelect={size=>void next(size)}/>}
         <section className="hero-summary" aria-label="Selected game mode">

@@ -17,7 +17,11 @@ export function SelectorArrow({
   onPress: () => void;
   variant: "neutral" | "selector" | "secondary";
 }) {
-  const glyph = direction === "previous" ? "◀" : "▶";
+  const glyph = (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true">
+      <path d={direction === "previous" ? "M9 1 2 6l7 5z" : "M3 1l7 5-7 5z"} />
+    </svg>
+  );
   return formNavigation ? (
     <button
       type="button"

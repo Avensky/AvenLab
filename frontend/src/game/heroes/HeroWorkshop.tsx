@@ -1,6 +1,6 @@
 import {useCallback,useEffect,useMemo,useRef,useState,type CSSProperties,type ReactNode} from "react";
 import {VehicleMods} from "./VehicleMods";
-import {AngledTabHeader} from "../../components/menus/AngledTabHeader";
+import {SceneTabHeader} from "../../components/menus/SceneTabHeader";
 import {APP_BRANDING} from "../../theme/branding";
 import {openHeroGuide} from "../../store/hud/heroGuideStore";
 import {HEROES,useAlphaStore,type HeroFilter} from "../../store/alpha/alphaStore";
@@ -168,7 +168,7 @@ export function HeroWorkshop(){
  const currentFooter=studioTab==="overview"?<span>Vehicle overview · stock baseline and class profile</span>:studioTab==="performance"?studioFooter:studioTab==="paint"?paintFooter:studioTab==="body"?bodyFooter:studioTab==="lighting"?lightingFooter:portraitFooter;
  return <section ref={root} className="game-ui menu-surface alpha-selection hero-selection hero-workshop" data-editing={editing} data-has-selection={hero!==null} inert={guideOpen} tabIndex={-1} aria-label="Heroes garage" data-controller-form data-controller-rows>
   {editing&&definition
-    ? <AngledTabHeader
+    ? <SceneTabHeader
         title="HEROES"
         eyebrow={APP_BRANDING.productName}
         level={characterLevel??undefined}
@@ -183,7 +183,7 @@ export function HeroWorkshop(){
           separatorBefore:item.id==="studio",
         }))}
       />
-    : <AngledTabHeader title="HEROES" eyebrow={APP_BRANDING.productName} level={characterLevel??undefined} tabs={heroRoleHeaderTabs(true)} activeTab={role} onTabChange={next=>{setRole(next as HeroFilter);setEditing(false);}} idPrefix="hero-workshop-role" panelId="hero-workshop-role-panel"/>}
+    : <SceneTabHeader title="HEROES" eyebrow={APP_BRANDING.productName} level={characterLevel??undefined} tabs={heroRoleHeaderTabs(true)} activeTab={role} onTabChange={next=>{setRole(next as HeroFilter);setEditing(false);}} idPrefix="hero-workshop-role" panelId="hero-workshop-role-panel"/>}
   <div className="hero-selection-stage hero-workshop-body" id={!editing?"hero-workshop-role-panel":undefined} role={!editing?"tabpanel":undefined} aria-labelledby={!editing?"hero-workshop-role-tab-"+role:undefined}>
    {!editing&&<div className="hero-workshop-collection"><HeroRoster showFilters={false} allowBoats selected={hero} main={main} filter={role} busy={!owner} onChoose={openHero} onFilter={filter=>{setRole(filter);setEditing(false);}}/>
     <p className="hero-workshop-hint">Select a portrait to customize. Hold X to choose your main.</p>
