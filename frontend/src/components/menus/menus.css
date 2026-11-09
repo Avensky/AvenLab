@@ -669,29 +669,61 @@ html[data-high-contrast="true"] .main-menu-actions .menu-action-list {
   outline-offset: -1px;
 }
 .main-menu-actions .menu-action:first-child {
-  clip-path: polygon(var(--menu-action-cut) 0, 100% 0, 100% 100%, 0 100%, 0 var(--menu-action-cut));
+  clip-path: polygon(
+    var(--menu-action-cut) 0,
+    calc(100% - var(--menu-action-cut)) 0,
+    100% var(--menu-action-cut),
+    100% 100%,
+    0 100%,
+    0 var(--menu-action-cut)
+  );
 }
 .main-menu-actions .menu-action:last-child {
-  clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--menu-action-cut)), calc(100% - var(--menu-action-cut)) 100%, 0 100%);
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% calc(100% - var(--menu-action-cut)),
+    calc(100% - var(--menu-action-cut)) 100%,
+    var(--menu-action-cut) 100%,
+    0 calc(100% - var(--menu-action-cut))
+  );
 }
 /* Continue the button border along each diagonal using its current state color. */
+.main-menu-actions .menu-action:is(:first-child, :last-child)::before,
 .main-menu-actions .menu-action:is(:first-child, :last-child)::after {
   content: "";
   position: absolute;
   width: calc(var(--menu-action-cut) * sqrt(2));
-  transform: rotate(-45deg);
   pointer-events: none;
 }
+.main-menu-actions .menu-action:first-child::before,
 .main-menu-actions .menu-action:first-child::after {
   top: calc(var(--menu-action-cut) + var(--menu-action-border-offset));
-  left: var(--menu-action-border-offset);
   border-top: inherit;
+}
+.main-menu-actions .menu-action:last-child::before,
+.main-menu-actions .menu-action:last-child::after {
+  bottom: calc(var(--menu-action-cut) + var(--menu-action-border-offset));
+  border-bottom: inherit;
+}
+.main-menu-actions .menu-action:first-child::before {
+  left: var(--menu-action-border-offset);
+  transform: rotate(-45deg);
   transform-origin: top left;
+}
+.main-menu-actions .menu-action:first-child::after {
+  right: var(--menu-action-border-offset);
+  transform: rotate(45deg);
+  transform-origin: top right;
+}
+.main-menu-actions .menu-action:last-child::before {
+  left: var(--menu-action-border-offset);
+  transform: rotate(45deg);
+  transform-origin: bottom left;
 }
 .main-menu-actions .menu-action:last-child::after {
   right: var(--menu-action-border-offset);
-  bottom: calc(var(--menu-action-cut) + var(--menu-action-border-offset));
-  border-bottom: inherit;
+  transform: rotate(-45deg);
   transform-origin: bottom right;
 }
 .main-menu .menu-home-shortcuts {
