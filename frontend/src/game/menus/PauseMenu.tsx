@@ -73,7 +73,6 @@ export function PauseMenu() {
       >
         <header className="pause-menu-heading pause-menu-glass menu-panel-frame">
           <h2 id={headingId}>Game menu</h2>
-          <span className="pause-menu-live">Live session</span>
         </header>
         <div className="pause-menu-rails">
           {PAUSE_MENU_RAILS.map(({ label, indices, controller, keyboard }) => (
