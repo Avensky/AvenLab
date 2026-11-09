@@ -5,6 +5,7 @@ import {
   type HeroFilter,
 } from "../../store/alpha/alphaStore";
 import { ControlGlyph } from "../../components/controller";
+import { useMenuInputDevice } from "../../components/controller/useMenuInputDevice";
 import { HeroPortrait } from "./HeroPortrait";
 import { heroMatchesFilter } from "./heroRoleFilters";
 
@@ -29,9 +30,10 @@ export function HeroRoster({
   allowBoats?: boolean;
   showFilters?: boolean;
 }) {
+  const inputDevice = useMenuInputDevice();
   const visibleHeroes = HEROES.filter((hero) => heroMatchesFilter(hero, filter, allowBoats));
   return (
-    <aside className="hero-roster" aria-label="Vehicle selection">
+    <aside className="hero-roster" data-input-device={inputDevice} aria-label="Vehicle selection">
       {showFilters&&<HeroRoleTabs filter={filter} onFilter={onFilter} allowBoats={allowBoats}/>}
       <div
         className="hero-roster-grid"

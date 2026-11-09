@@ -248,8 +248,8 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
               <LobbyChat />
             </div>
           </div>
-          {match && inMode && !overlay && <PreMatchTeamPreview key={`${active.world_id}:${mode}`} view={view} selectedHero={heroId}/>}
         </div>
+        {match && inMode && !overlay && <PreMatchTeamPreview key={`${active.world_id}:${mode}`} view={view} selectedHero={heroId}/>}
       </div>
       <SelectionFooter chat hasPrimaryAction backAction={{ onClick: back, disabled: busy }}>
         <ControllerAction button="A"

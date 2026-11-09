@@ -31,11 +31,10 @@ export function MissionsMenu() {
   const inGame = useUIStore((s) => s.overlay !== null);
   return (
     <TabbedMenu
-      title={inGame?"Mission log":"Mission board"}
-      subtitle="Win the objective. Bring enough to get home."
+      title={inGame?"Mission Log":"Mission board"}
       onBack={back}
       tabs={[
-        ...(inGame ? [{id:"log",label:"Log",rows:target?[{id:"track",label:"Track objective",adjustable:false,action:()=>useNavigationStore.getState().setDestination(target)}]:[],content:<LiveMissionLog/>}] : []),
+        ...(inGame ? [{id:"log",label:"Mission Log",rows:target?[{id:"track",label:"Track objective",adjustable:false,action:()=>useNavigationStore.getState().setDestination(target)}]:[],content:<LiveMissionLog/>}] : []),
         {
           id: "overview",
           label: "Overview",

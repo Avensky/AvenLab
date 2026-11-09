@@ -1,19 +1,18 @@
 .prematch-team-preview {
-  --team-badge-width: clamp(38px, 10dvh, 66px);
+  --team-badge-width: min(18dvh, 16vw, 116px);
   display: flex;
-  flex: none;
   justify-content: center;
   gap: clamp(7px, 1.5vw, 18px);
   margin: 0;
-  padding: 0 0 4px;
+  padding: 2px 8px 7px;
   list-style: none;
 }
 .prematch-team-preview > li {
   display: grid;
   align-content: start;
   justify-items: center;
-  gap: 1px;
-  width: calc(var(--team-badge-width) + 12px);
+  gap: 3px;
+  width: var(--team-badge-width);
   min-width: 0;
   text-align: center;
 }
@@ -21,7 +20,7 @@
   max-width: 100%;
   overflow: hidden;
   color: #f4f6ff;
-  font: 800 clamp(8px, 1.9dvh, 11px)/1.2 system-ui, sans-serif;
+  font: 800 clamp(9px, 2.3dvh, 13px)/1.2 system-ui, sans-serif;
   text-overflow: ellipsis;
   text-shadow: 0 1px 4px #000, 0 0 6px #000;
   white-space: nowrap;

@@ -52,6 +52,10 @@
   flex-direction: column;
   min-width: 0;
 }
+.hero-picker-stage > :is(.prematch-team-preview, .scoreboard-team-empty) {
+  grid-area: 2 / 1 / auto / -1;
+  text-align: center;
+}
 .hero-picker-preview {
   position: relative;
   flex: 1;
@@ -132,7 +136,7 @@
   --hero-card-edge: var(--app-line);
   display: block;
   min-width: 0;
-  padding: 1px;
+  padding: 3px;
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -140,12 +144,7 @@
   cursor: pointer;
 }
 .hero-portrait-card.menu-panel-frame::before { background: var(--hero-card-edge); }
-.hero-portrait-card:focus-visible {
-  --hero-card-edge: var(--app-accent);
-  outline: 0;
-  filter: drop-shadow(0 0 3px var(--app-accent));
-  z-index: 2;
-}
+.hero-portrait-card.menu-panel-frame::after { inset: var(--hero-card-edge-width, 1px); }
 .hero-portrait-card .hero-portrait-art img {
   transition:
     transform 120ms ease-out,
@@ -158,6 +157,17 @@
 .hero-portrait-card[aria-pressed="true"]:not([data-unavailable="true"]) {
   --menu-panel-fill: color-mix(in srgb, var(--app-raised) 85%, var(--app-accent));
   --hero-card-edge: var(--app-accent);
+}
+@media (hover: hover) {
+  .hero-portrait-card.menu-panel-frame:not(:disabled):hover {
+    --hero-card-edge: var(--app-text);
+    --hero-card-edge-width: 2px;
+  }
+}
+.hero-portrait-card.menu-panel-frame:not(:disabled):is(:focus-visible, [data-input-device="controller"] :focus) {
+  --hero-card-edge: var(--app-text);
+  --hero-card-edge-width: 3px;
+  outline: 0;
 }
 .hero-portrait-card:disabled {
   cursor: wait;
