@@ -598,10 +598,6 @@ html[data-reduce-motion="true"] .menu-surface * {
     scroll-behavior: auto !important;
   }
 }
-.menu-home-shortcuts {
-  max-width: min(90vw, 400px);
-}
-
 /* Brand/level on the left, primary actions on the right in wide screens. */
 .main-menu .menu-home-content {
   max-width: none;

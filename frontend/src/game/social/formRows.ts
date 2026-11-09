@@ -23,6 +23,7 @@ export function navigateFormRows(
         (node) =>
           !node.matches(":disabled") &&
           !node.closest("[hidden],[inert]") &&
+          node.checkVisibility?.() !== false &&
           node.tabIndex >= 0,
       ),
     }))

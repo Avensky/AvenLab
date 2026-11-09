@@ -490,7 +490,7 @@ export function SettingsMenu() {
             ],
             content: (
               <p className="mt-1 text-xs leading-tight text-slate-400">
-                Tab Hold scoreboard · F1 Hero abilities · F2 Debugger · F3 Latency overlay · F8 Start/stop capture · H
+                Tab Hold scoreboard · F2 Debugger · F3 Latency overlay · F8 Start/stop capture · H
                 Change vehicle · Shift+H Hazards · E Engine · L Lights · Z/X
                 Indicators · Q ABS · T TCS · Shift Tank Ram / car boost · weapon keys listed above · N Horn · R
                 Reset · ` Terminal

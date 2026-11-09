@@ -30,8 +30,6 @@ export function SceneTabHeader({
   idPrefix,
   showProgress,
   busy = false,
-  level,
-  titleMeta,
   titleTeam,
 }: {
   title: string;
@@ -47,8 +45,6 @@ export function SceneTabHeader({
   idPrefix: string;
   showProgress?: boolean;
   busy?: boolean;
-  level?: number | string;
-  titleMeta?: ReactNode;
   titleTeam?: MatchTeam;
 }) {
   const angled = useAngledMenuHeader();
@@ -88,7 +84,6 @@ export function SceneTabHeader({
         compact={compact}
         showProgress={showProgress}
         titleTeam={titleTeam}
-        titleMeta={titleMeta ?? (level == null ? undefined : <span className="menu-header-title-meta angled-header-level">LEVEL {level}</span>)}
         variant="scene"
         className={angled ? "angled-tab-header" : undefined}
       >

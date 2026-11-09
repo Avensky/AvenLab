@@ -86,7 +86,7 @@
   content: "";
   position: absolute;
   z-index: -1;
-  inset: 1px;
+  inset: 0 1px 1px;
   pointer-events: none;
   background: color-mix(in srgb, var(--app-panel) 92%, var(--app-raised));
   clip-path: var(--angled-title-shape);
@@ -94,7 +94,7 @@
 .angled-tab-header.angled-tab-header--chamfered {
   --angled-title-chamfer: 7px;
 }
-.menu-frame-header.angled-tab-header > div:first-child > :is(small,h1,.menu-header-title-meta) {
+.menu-frame-header.angled-tab-header > div:first-child > :is(small,h1) {
   position: relative;
   z-index: 1;
 }
@@ -107,21 +107,6 @@
   font-weight: 850;
   font-style: italic;
   letter-spacing: -.035em;
-}
-.menu-frame-header.angled-tab-header > div:first-child > .angled-header-level {
-  display: inline-flex;
-  align-items: center;
-  align-self: center;
-  flex: 0 0 auto;
-  padding: 3px 6px;
-  border-left: 1px solid var(--app-line);
-  color: var(--app-muted);
-  font-size: clamp(8px, .72vw, 11px);
-  font-weight: 850;
-  font-style: italic;
-  letter-spacing: .08em;
-  line-height: 1;
-  white-space: nowrap;
 }
 .menu-frame-header.angled-tab-header > div:first-child > h1 {
   min-width: 0;
@@ -296,11 +281,6 @@
     font-size: 9px;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-  .menu-frame-header.angled-tab-header > div:first-child > .menu-header-title-meta {
-    grid-area: 1 / 2;
-    padding: 0 0 0 4px;
-    font-size: 7px;
   }
   .menu-frame-header.angled-tab-header > div:first-child > h1 {
     grid-area: 2 / 1 / 3 / -1;

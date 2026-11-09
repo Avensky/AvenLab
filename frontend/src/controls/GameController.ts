@@ -211,11 +211,6 @@ export function GameController() {
         document.querySelector<HTMLButtonElement>('[data-social-refresh]:not(:disabled)')?.click();
         return;
       }
-      if(edges[3]&&ui.screen==='heroes'&&(ui.overlay===null||ui.overlay==='hero_abilities')&&
-        !keyboardOpen&&!ui.isModeLoading&&menuArmed&&canNavigateMenu()&&
-        !(isTypingTarget(document.activeElement)&&!document.activeElement?.closest('[data-controller-form]'))){
-        releasePanelPress();release();window.dispatchEvent(new Event('avenlab:hero-abilities'));return;
-      }
 
       const heroHoldAllowed=ui.screen==="heroes"&&ui.overlay===null&&!ui.isModeLoading&&!keyboardOpen&&menuArmed&&canNavigateMenu();
       if(!heroHoldAllowed||!pressed(2))releaseHeroMain(!heroHoldAllowed);

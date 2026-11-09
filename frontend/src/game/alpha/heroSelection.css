@@ -1,6 +1,6 @@
 /* The scene owns the vehicle. This edge-to-edge overlay uses static portraits
    and translucent selector strips; only actual controls capture pointer input. */
-.hero-selection > .menu-frame-header { padding-block: clamp(4px, .65dvh, 8px); }
+.hero-selection > .menu-frame-header:not(.angled-tab-header) { padding-block: clamp(4px, .65dvh, 8px); }
 .hero-selection {
   --hero-panel-width: clamp(240px, 30vw, 360px);
   box-sizing: border-box;

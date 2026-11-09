@@ -11,7 +11,7 @@ export type MatchCategory = "quickplay" | "competitive";
 export type PlayMode = GameMode | "solo" | "signal_recon" | "swarm";
 export type HeroRole = "tank" | "dps" | "support";
 export type HeroFilter = HeroRole | "all" | "air" | "sea";
-export const HERO_FILTERS: HeroFilter[] = ["all", "tank", "dps", "support", "air", "sea"];
+export const HERO_FILTERS: HeroFilter[] = ["all", "tank", "dps", "support", "sea", "air"];
 export const GAME_MODES: {
   id: PlayMode;
   label: string;

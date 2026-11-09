@@ -16,6 +16,7 @@
 }
 
 .vehicle-studio {
+  --vehicle-studio-column: clamp(215px, 23vw, 310px);
   position: absolute;
   inset: 0;
   z-index: 2;
@@ -32,7 +33,7 @@
   min-height: 0;
   display: grid;
   position: relative;
-  grid-template-columns: clamp(230px, 23vw, 310px);
+  grid-template-columns: var(--vehicle-studio-column);
   justify-content: start;
   gap: clamp(8px, 1.4vw, 22px);
   align-items: stretch;
@@ -72,7 +73,6 @@
 .vehicle-studio-details header.vehicle-studio-identity p { margin:0; color:var(--vehicle-studio-muted); font-size:8px; line-height:1.2; }
 .vehicle-studio-details header.vehicle-studio-identity p strong { color:var(--vehicle-studio-accent); font-size:7px; letter-spacing:.06em; }
 .vehicle-studio-details p { margin: 0; color: var(--vehicle-studio-muted); font-size: 9px; line-height: 1.4; }
-.vehicle-studio[data-has-dock="true"] { grid-template-rows: minmax(0, 1fr) auto; }
 .vehicle-studio-power { margin-top: 7px; padding-top: 4px; border-top: 1px solid var(--vehicle-studio-line); }
 .vehicle-studio-stat-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-bottom: 1px solid color-mix(in srgb,var(--vehicle-studio-line) 45%,transparent); }
 .vehicle-studio-stat-pair[data-count="1"] { grid-template-columns: minmax(0,1fr); }
@@ -108,7 +108,7 @@
   color: var(--vehicle-studio-muted);
 }
 .vehicle-studio-class-stats strong { color: var(--vehicle-studio-ink); }
- .vehicle-studio-panel[hidden] { display: none; }
+.vehicle-studio-panel-content[hidden] { display: none; }
  .vehicle-studio-panel {
   position: absolute;
   z-index: 10;
@@ -117,16 +117,16 @@
   display: flex;
   flex-direction: column;
   max-height: 100%;
-  width: min(340px, 36vw);
-  min-width: 264px;
+  width: var(--vehicle-studio-column);
   box-sizing: border-box;
-  padding: 7px;
+  padding: 5px 7px;
 }
- .vehicle-studio-panel-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; padding-bottom:7px; border-bottom:1px solid var(--vehicle-studio-line); }
- .vehicle-studio-panel-heading h2 { margin: 3px 0 0; font-size: 14px; }
-.vehicle-studio-panel-close { flex:none; width:28px; height:28px; padding:0!important; border:1px solid var(--vehicle-studio-line); border-radius:4px; background:var(--vehicle-studio-raised); font-size:19px!important; line-height:1; cursor:pointer; }
-.vehicle-studio-dock .vehicle-studio-panel-toggle { border-color:var(--vehicle-studio-accent); color:var(--vehicle-studio-accent); }
-.vehicle-studio-panel-toggle[aria-expanded="true"] { background:var(--vehicle-studio-accent)!important; color:var(--vehicle-studio-selected-ink)!important; }
+.vehicle-studio-panel-heading { display:flex; flex-shrink:0; align-items:center; gap:8px; padding-bottom:4px; border-bottom:1px solid var(--vehicle-studio-line); }
+.vehicle-studio-panel-heading h2 { flex:1; margin:0; font-size:clamp(12px,1.15vw,17px); text-transform:uppercase; }
+.vehicle-studio-panel[data-collapsed="true"] .vehicle-studio-panel-heading { padding-bottom:0; border-bottom:0; }
+.vehicle-studio-panel-toggle { display:grid; place-items:center; flex:none; width:30px; height:28px; padding:0; border:1px solid var(--vehicle-studio-line); border-radius:4px; background:var(--vehicle-studio-raised); cursor:pointer; }
+.vehicle-studio-panel-toggle svg { width:16px; height:16px; }
+.vehicle-studio-panel-toggle:is(:hover,:focus-visible) { border-color:var(--vehicle-studio-accent); }
 .vehicle-studio-panel-content { display: flex; flex-direction: column; gap: 7px; padding-top: 7px; overflow: auto; }
 .vehicle-studio-card {
   display: flex;
@@ -168,7 +168,7 @@
   background: var(--vehicle-studio-raised);
 }
 .vehicle-studio-card output { float: right; color: var(--vehicle-studio-ink); font-variant-numeric: tabular-nums; }
-.vehicle-studio-card button,.vehicle-studio-dock button {
+.vehicle-studio-card button {
   min-height: 30px;
   padding: 5px 8px;
   border: 1px solid var(--vehicle-studio-line);
@@ -180,27 +180,12 @@
   letter-spacing: .035em;
   cursor: pointer;
 }
-.vehicle-studio-card button:is(:hover,:focus-visible,[aria-pressed="true"]),.vehicle-studio-dock button:is(:hover,:focus-visible,[aria-pressed="true"]) {
+.vehicle-studio-card button:is(:hover,:focus-visible,[aria-pressed="true"]) {
   border-color: var(--vehicle-studio-accent);
   box-shadow: 0 0 10px var(--vehicle-studio-glow);
   outline: none;
 }
 .vehicle-studio-card button:disabled { opacity: .42; cursor: not-allowed; box-shadow: none; }
-.vehicle-studio-dock {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 36px;
-  padding: 3px 7px;
-  border: 1px solid var(--vehicle-studio-line);
-  border-radius: var(--vehicle-studio-radius);
-  background: var(--vehicle-studio-panel);
-  backdrop-filter: blur(10px);
-  pointer-events: auto;
-}
-.vehicle-studio-dock>small { flex: none; color: var(--vehicle-studio-accent); font-size: 8px; font-weight: 900; letter-spacing: .1em; }
-.vehicle-studio-dock-actions { display: flex; align-items: center; gap: 6px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
-.vehicle-studio-dock-actions>span { color: var(--vehicle-studio-muted); font-size: 8px; }
 .vehicle-studio-rotate-hint {
   position: absolute;
   right: clamp(16px, 4vw, 64px);
@@ -268,19 +253,26 @@
 .vehicle-upgrade-limit { font-size: 9px; color: var(--vehicle-studio-muted); padding-bottom: 5px; }
 .vehicle-upgrade-filter { display: none; gap: 5px; margin-bottom: 4px; }
 .vehicle-upgrade-filter button { flex: 1; }
-.vehicle-upgrade-row { display: grid; grid-template-columns: 18px minmax(0,1fr) auto; align-items: center; gap: 2px 6px; min-height: 37px; padding: 3px 0; border-bottom: 1px solid color-mix(in srgb,var(--vehicle-studio-line) 45%,transparent); }
-.vehicle-upgrade-name { font-size: 10px; font-weight: 800; white-space: nowrap; }
+.vehicle-upgrade-row { display: grid; grid-template-columns: 18px minmax(0,1fr) auto; align-items: center; gap: 4px; min-height: 32px; padding: 1px 0; border-bottom: 1px solid color-mix(in srgb,var(--vehicle-studio-line) 45%,transparent); }
+.vehicle-upgrade-name { font-size: 9px; font-weight: 800; overflow-wrap: anywhere; }
 .vehicle-upgrade-stepper { display: flex; align-items: center; gap: 4px; }
-.vehicle-upgrade-stepper output { min-width: 43px; text-align: center; font-size: 9px; font-weight: 750; }
 .vehicle-studio .vehicle-performance-page .vehicle-upgrade-stepper button { width: 28px; height: 28px; min-height: 28px; padding: 0; font-size: 17px; }
-.vehicle-upgrade-segments { display: flex; gap: 2px; grid-column: 3; width: 43px; justify-self: center; }
-.vehicle-upgrade-segments i { flex: 1; height: 3px; border-radius: 2px; background: var(--vehicle-studio-line); }
-.vehicle-upgrade-segments i[data-active="true"] { background: var(--vehicle-studio-accent); }
-.vehicle-upgrade-segments i[data-available="false"] { opacity: .25; }
-.vehicle-studio .vehicle-performance-page button,.vehicle-studio-panel-actions button,.vehicle-studio-panel-launch {
+.vehicle-upgrade-segments { display: inline-flex; flex: none; align-items: flex-end; gap: 2px; }
+.vehicle-upgrade-segments i {
+  box-sizing: border-box;
+  width: 5px;
+  height: 6px;
+  border: 1px solid var(--vehicle-studio-line);
+  background: linear-gradient(to top, var(--vehicle-studio-accent) var(--bar-fill), transparent var(--bar-fill));
+}
+.vehicle-upgrade-segments i:nth-child(2) { height: 8px; }
+.vehicle-upgrade-segments i:nth-child(3) { height: 10px; }
+.vehicle-upgrade-segments i:nth-child(4) { height: 12px; }
+.vehicle-upgrade-segments i:nth-child(5) { height: 14px; }
+.vehicle-studio .vehicle-performance-page button,.vehicle-studio-panel-actions button {
   min-height: 30px; padding: 4px 7px; border: 1px solid var(--vehicle-studio-line); border-radius: 3px; background: var(--vehicle-studio-raised); color: var(--vehicle-studio-ink); font-size: 9px; font-weight: 800; cursor: pointer;
 }
-.vehicle-studio .vehicle-performance-page button:is(:hover,:focus-visible,[aria-pressed="true"]),.vehicle-studio-panel-actions button:is(:hover,:focus-visible),.vehicle-studio-panel-launch:is(:hover,:focus-visible) { border-color: var(--vehicle-studio-accent); outline: 1px solid var(--vehicle-studio-accent); outline-offset: 1px; }
+.vehicle-studio .vehicle-performance-page button:is(:hover,:focus-visible,[aria-pressed="true"]),.vehicle-studio-panel-actions button:is(:hover,:focus-visible) { border-color: var(--vehicle-studio-accent); outline: 1px solid var(--vehicle-studio-accent); outline-offset: 1px; }
 .vehicle-studio .vehicle-performance-page button[aria-pressed="true"] { background: var(--vehicle-studio-accent); color: var(--vehicle-studio-selected-ink); }
 .vehicle-studio .vehicle-performance-page button:disabled { opacity: .35; cursor: default; outline: none; }
 .vehicle-gearbox-controls { margin-top: 7px; }
@@ -289,8 +281,6 @@
 .vehicle-drivetrain-modes button { flex: 1; }
 .vehicle-studio-panel-actions { display: flex; flex-wrap: wrap; flex-shrink: 0; gap: 5px; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--vehicle-studio-line); }
 .vehicle-studio-panel-actions>button { flex: 1 1 auto; }
-.vehicle-studio-panel-launch { position: absolute; right: 0; top: 0; pointer-events: auto; border-color: var(--vehicle-studio-accent); }
-.vehicle-studio[data-has-dock="true"] .vehicle-studio-rotate-hint { bottom: 48px; }
 .vehicle-build-options { position: relative; flex: none; }
 .vehicle-build-options>summary {
   min-height: 30px;
@@ -321,10 +311,7 @@
 }
 
 @media(max-width:760px) {
-  .vehicle-studio-panel { width:min(390px, 54vw); }
-}
-@media(max-width:520px) {
-  .vehicle-studio-panel { width:min(94vw, 420px); }
+  .vehicle-studio { --vehicle-studio-column: clamp(145px, 38vw, 245px); }
 }
 
 /* Short landscape viewports paginate the upgrade controls instead of shrinking touch targets. */
@@ -332,13 +319,11 @@
   .vehicle-upgrade-filter { display: flex; }
   .vehicle-performance-page[data-upgrade-group="power"] .vehicle-upgrade-row[data-upgrade-group="chassis"],
   .vehicle-performance-page[data-upgrade-group="chassis"] .vehicle-upgrade-row[data-upgrade-group="power"] { display: none; }
-  .vehicle-studio-panel { width: clamp(264px, 34vw, 310px); }
   .vehicle-studio-panel-content { scrollbar-width: none; }
   .vehicle-studio-panel .vehicle-studio-card>p:not([role="status"]) { display: none; }
   .vehicle-studio-panel .vehicle-studio-card>header small { display: none; }
   .vehicle-studio .vehicle-performance-page .vehicle-upgrade-stepper button { width: 32px; height: 32px; min-height: 32px; }
   .vehicle-upgrade-row { min-height: 34px; padding: 2px 0; }
-  .vehicle-upgrade-segments { display: none; }
   .vehicle-studio-save-status { font-size: 8px; }
 }
 @media(max-height:500px) {
@@ -358,8 +343,4 @@
   .vehicle-upgrade-limit { font-size: 8px; padding-bottom: 3px; }
   .vehicle-gearbox-controls { margin-top: 4px; }
   .vehicle-studio-panel-actions { margin-top: 4px; padding-top: 4px; }
-}
-@media(max-width:600px) {
-  .vehicle-studio-main { grid-template-columns: minmax(200px, 65vw); }
-  .vehicle-studio-panel { width: min(94vw, 340px); min-width: 0; }
 }

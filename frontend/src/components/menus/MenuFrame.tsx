@@ -14,13 +14,13 @@ export const MenuFrame=forwardRef<HTMLElement,ComponentPropsWithoutRef<'section'
 });
 export function MenuFrameHeader({
  title,showProgress=false,titleId,compact=false,eyebrow=compact?'':APP_ALPHA_EYEBROW,logo,
- className='',variant='panel',team,children,titleMeta,titleTeam,actions,
+ className='',variant='panel',team,children,titleTeam,actions,
 }:{
  title:string;showProgress?:boolean;titleId?:string;compact?:boolean;eyebrow?:string;logo?:ReactNode;
- className?:string;variant?:'panel'|'scene';team?:MatchTeam;children?:ReactNode;titleMeta?:ReactNode;titleTeam?:MatchTeam;actions?:ReactNode;
+ className?:string;variant?:'panel'|'scene';team?:MatchTeam;children?:ReactNode;titleTeam?:MatchTeam;actions?:ReactNode;
 }){
  return <header className={`menu-frame-header alpha-header ${compact?'menu-frame-header--compact':''} ${className}`} data-menu-chrome={variant} data-team-heading={team?true:undefined}>
-  <div data-title-team={titleTeam}>{logo??(eyebrow&&<small>{eyebrow}</small>)}<h1 id={titleId}>{title}</h1>{titleMeta}</div>
+  <div data-title-team={titleTeam}>{logo??(eyebrow&&<small>{eyebrow}</small>)}<h1 id={titleId}>{title}</h1></div>
   {children}
   {team&&<div className="menu-header-team" data-team={team}><strong>{team.toUpperCase()}</strong><span>TEAM</span></div>}
   {(showProgress||actions)&&<div className="menu-header-actions">

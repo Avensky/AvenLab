@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import catalog from "../../../../avenlab-server/src/assets/vehicle-mods.json";
-import type { VehiclePerformanceSummary } from "./VehicleStudio";
+import type { VehiclePerformanceSummary } from "./vehiclePerformance";
 import { useVehicleStudioStore } from "./vehicleStudioStore";
 import { drivetrainProfileFor } from "./vehicleDrivetrainOptions";
 import { getVehicleStockPerformance, getVehicleTuningLimits } from "./vehiclePerformance";
@@ -9,6 +9,29 @@ import { VehicleGarageIcon } from "./VehicleGarageIcon";
 
 const POWER_PARTS = new Set(["turbo", "nitrous", "exhaust", "intercooler"]);
 const PART_LABELS: Record<string, string> = { tires: "TIRES", turbo: "TURBO", nitrous: "NITROUS", exhaust: "EXHAUST", suspension: "SUSPENSION", brakes: "BRAKES", gearing: "GEARING", weight: "WEIGHT", intercooler: "INTERCOOLER" };
+const PARTS = Object.entries(catalog);
+
+function upgradeStage(stages: Record<string, number>, id: string, maxStage: number) {
+  return Math.max(0, Math.min(maxStage, stages[id] ?? 0));
+}
+
+function UpgradeBars({ value, max, label, bars = max }: { value: number; max: number; label: string; bars?: number }) {
+  return (
+    <span className="vehicle-upgrade-segments" role="meter" aria-label={label}
+      aria-valuemin={0} aria-valuemax={max} aria-valuenow={value} title={`${value} / ${max} stages`}>
+      {Array.from({ length: bars }, (_, index) => (
+        <i key={index} aria-hidden="true" style={{
+          "--bar-fill": `${Math.max(0, Math.min(1, value * bars / max - index)) * 100}%`,
+        } as CSSProperties} />
+      ))}
+    </span>
+  );
+}
+
+export function VehicleUpgradeProgress({ stages, maxStage }: { stages: Record<string, number>; maxStage: number }) {
+  const installed = PARTS.reduce((total, [id]) => total + upgradeStage(stages, id, maxStage), 0);
+  return <UpgradeBars value={installed} max={PARTS.length * maxStage} bars={5} label="Installed upgrade stages" />;
+}
 
 export function VehicleMods({
   vehicle,
@@ -28,9 +51,9 @@ export function VehicleMods({
   const limits = useMemo(() => getVehicleTuningLimits(vehicle), [vehicle]);
   const effects = useMemo(() => {
     const next: Record<string, number> = {};
-    for (const [id, part] of Object.entries(catalog))
+    for (const [id, part] of PARTS)
       for (const [stat, amount] of Object.entries(part.effects))
-        next[stat] = (next[stat] ?? 1) + amount * Math.min(limits.maxStage, stages[id] ?? 0);
+        next[stat] = (next[stat] ?? 1) + amount * upgradeStage(stages, id, limits.maxStage);
     return next;
   }, [limits.maxStage, stages]);
 
@@ -95,17 +118,16 @@ export function VehicleMods({
       <div className="vehicle-upgrade-filter" role="group" aria-label="Upgrade categories">
         {["power", "chassis"].map(group => <button type="button" key={group} aria-pressed={upgradeGroup === group} onClick={() => setUpgradeGroup(group)}>{group.toUpperCase()}</button>)}
       </div>
-      {Object.entries(catalog).map(([id, part]) => {
-        const stage = Math.max(0, Math.min(limits.maxStage, stages[id] ?? 0));
+      {PARTS.map(([id, part]) => {
+        const stage = upgradeStage(stages, id, limits.maxStage);
         return <div className="vehicle-upgrade-row" key={id} data-upgrade-group={POWER_PARTS.has(id) ? "power" : "chassis"} role="group" aria-labelledby={`upgrade-label-${id}`}>
           <VehicleGarageIcon name={id} />
           <span className="vehicle-upgrade-name" id={`upgrade-label-${id}`}>{PART_LABELS[id] ?? part.label}</span>
           <div className="vehicle-upgrade-stepper">
             <button type="button" aria-label={`Downgrade ${part.label}`} disabled={stage === 0} onClick={() => onStagesChange({ ...stages, [id]: stage - 1 })}>−</button>
-            <output aria-live="polite" aria-label={`${part.label} stage`}>{stage ? `STAGE ${stage}` : "STOCK"}</output>
+            <UpgradeBars value={stage} max={limits.maxStage} label={`${part.label} stage`} />
             <button type="button" aria-label={`Upgrade ${part.label}`} disabled={stage >= limits.maxStage} onClick={() => onStagesChange({ ...stages, [id]: stage + 1 })}>+</button>
           </div>
-          <span className="vehicle-upgrade-segments" aria-hidden="true">{[0, 1, 2].map(index => <i key={index} data-active={index < stage} data-available={index < limits.maxStage} />)}</span>
         </div>;
       })}
       {profile.transmissions.length > 0 && <div className="vehicle-gearbox-controls" role="group" aria-label="Gearbox configuration">

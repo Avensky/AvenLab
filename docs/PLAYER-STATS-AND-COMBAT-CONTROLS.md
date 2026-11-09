@@ -14,7 +14,7 @@ The Sierra’s test bank reads Scope, Anchor, Tow Line, Winch, Brace and Fire. B
 | --- | --- | --- |
 | Cycle health bars | J by default; rebind in Settings → Keyboard | Settings → HUD → Health bars |
 | Player statistics | Hold Tab; release to close | Cockpit → Missions → Match Stats; B closes |
-| Hero abilities | F1; Escape or F1 closes | Garage Abilities button; Cockpit → Missions → Hero Abilities |
+| Hero abilities | Choose the Abilities tab in Customize | Customize → Abilities or Match Stats → Hero Abilities |
 | Cannon primary | Hold F by default | Hold RB; bottom-left fire button |
 | Selected secondary | Hold I by default | Hold D-pad Right; bottom-right fire button |
 | Cycle secondary | V / G by default | Y; Swap Secondary button |
@@ -63,10 +63,10 @@ Damage excludes overkill, protected and friendly hits. An assist requires accept
 
 ## Hero ability guide
 
-Open Abilities from either garage hero-selection or styling, use F1, or open it from statistics/Cockpit Missions. Choose a hero to review its saved-style portrait, weapons, three ability slots, ultimate, buffs and debuffs. Tank descriptions explain Ram's charge/tail, resource costs, scope research and turret tools. The guide reuses live effect descriptions and secondary-loadout metadata.
+Choose a vehicle in Heroes and open the Abilities tab in Customize to see its portrait, weapons, three ability slots, ultimate, buffs and debuffs. Hero Abilities in Match Stats opens the reference for the deployed vehicle. Tank descriptions cover Ram's charge and tail, resource costs, scope research and turret tools. The guide reuses live effect descriptions and secondary-loadout metadata.
 
-A useful tank ultimate and other heroes' unique abilities remain clearly marked planned. Viewing another hero equips nothing, changes no main hero, and preserves the styling view and existing garage/world on return.
+Planned abilities are labeled in the reference. Return to Performance to pick up the current build preview.
 
 ## Feedback requested
 
-Test the forward muzzle through yaw/elevation and compare the two MG ranges in a real fight. Verify physical controller bindings, mobile readability and Tab/F1 return behavior. HP, weapon balance, assist timing, fuel costs, long reconnect sessions and ten-player performance remain playtest gates.
+Test the forward muzzle through yaw/elevation and compare the two MG ranges in a real fight. Verify physical controller bindings, mobile readability and scoreboard return behavior. HP, weapon balance, assist timing, fuel costs, long reconnect sessions and ten-player performance remain playtest gates.
