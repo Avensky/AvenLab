@@ -19,6 +19,7 @@ export type SceneHeaderTab = {
 export function SceneTabHeader({
   title,
   eyebrow,
+  logo,
   tabs,
   activeTab,
   onTabChange,
@@ -28,12 +29,14 @@ export function SceneTabHeader({
   panelId,
   idPrefix,
   onBack,
+  showProgress,
   busy = false,
   level,
   titleMeta,
 }: {
   title: string;
   eyebrow?: string;
+  logo?: ReactNode;
   tabs: readonly SceneHeaderTab[];
   activeTab: string;
   onTabChange: (tab: string) => void;
@@ -43,6 +46,7 @@ export function SceneTabHeader({
   panelId: string;
   idPrefix: string;
   onBack?: () => void;
+  showProgress?: boolean;
   busy?: boolean;
   level?: number | string;
   titleMeta?: ReactNode;
@@ -81,8 +85,10 @@ export function SceneTabHeader({
       <MenuFrameHeader
         title={title}
         eyebrow={eyebrow ?? (angled ? APP_BRANDING.productName : undefined)}
+        logo={logo}
         onBack={onBack}
         showBack={Boolean(onBack)}
+        showProgress={showProgress}
         busy={busy}
         titleMeta={titleMeta ?? (level == null ? undefined : <span className="menu-header-title-meta angled-header-level">LEVEL {level}</span>)}
         variant="scene"

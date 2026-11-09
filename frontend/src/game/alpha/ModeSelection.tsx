@@ -1,4 +1,5 @@
 import { useConnectionView } from "../../store/session/networkViews";
+import { MenuLogo } from "../../components/menus/MenuLogo";
 import { SceneTabHeader } from "../../components/menus/SceneTabHeader";
 import {MatchModePortraits} from "./ModePortraitCard";
 import {useSelectionStore as useWorldSelection} from '../../store/selection/selectionStore';
@@ -187,7 +188,9 @@ export function ModeSelection() {
     >
       <SceneTabHeader
         title={match ? "PLAY" : "EXPLORE & BUILD"}
-        onBack={back}
+        logo={match ? <MenuLogo /> : undefined}
+        onBack={match ? undefined : back}
+        showProgress
         busy={busy}
         tablistLabel="Game mode"
         tablistClassName="alpha-mode-tabs"
@@ -252,7 +255,12 @@ export function ModeSelection() {
           )}
         </div>
       )}
-      <SelectionFooter chat secondaryTabs={research} hasPrimaryAction>
+      <SelectionFooter
+        chat
+        secondaryTabs={research}
+        hasPrimaryAction
+        backAction={match ? { onClick: back, disabled: busy } : undefined}
+      >
         <ControllerAction button="A"
           type="button"
           className="menu-control  alpha-deploy"
