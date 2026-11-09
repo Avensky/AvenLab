@@ -43,16 +43,20 @@
   overflow: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--vehicle-studio-line) transparent;
+  pointer-events: auto;
+}
+.vehicle-studio-baseline,.vehicle-studio-drivetrain,.vehicle-studio-panel {
   background: var(--vehicle-studio-panel);
   border: 1px solid var(--vehicle-studio-line);
   border-radius: var(--vehicle-studio-radius);
   backdrop-filter: blur(10px);
-  pointer-events: auto;
 }
 .vehicle-studio-details {
-  padding: 8px 9px;
   align-self: start;
   max-height: 100%;
+}
+.vehicle-studio-baseline,.vehicle-studio-drivetrain {
+  padding: 8px 9px;
   box-shadow: inset 0 1px color-mix(in srgb, var(--vehicle-studio-accent) 35%, transparent);
 }
 .vehicle-studio-details header small,.vehicle-studio-panel-heading small {
@@ -87,7 +91,7 @@
 .vehicle-studio-stat meter::-webkit-meter-bar { background: var(--vehicle-studio-raised); border: 0; border-radius: 3px; }
 .vehicle-studio-stat meter::-webkit-meter-optimum-value { background: var(--vehicle-studio-accent); }
 .vehicle-studio-stat meter::-moz-meter-bar { background: var(--vehicle-studio-accent); }
-.vehicle-studio-drivetrain { margin-top: 6px; }
+.vehicle-studio-drivetrain { margin-top: 8px; }
 .vehicle-studio-drivetrain>header { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 9px; font-weight: 800; }
 .vehicle-studio-drivetrain>header strong { color: var(--vehicle-studio-accent); }
 .vehicle-chassis-content { display: flex; align-items: center; gap: 9px; }
@@ -322,7 +326,7 @@
 }
 
 @media(max-width:900px),(max-height:500px) {
-  .vehicle-studio-details,.vehicle-studio-panel { backdrop-filter: blur(7px); }
+  .vehicle-studio-baseline,.vehicle-studio-drivetrain,.vehicle-studio-panel { backdrop-filter: blur(7px); }
 }
 
 @media(max-width:760px) {
@@ -348,7 +352,7 @@
 }
 @media(max-height:500px) {
   .vehicle-studio { padding-block: 3px; }
-  .vehicle-studio-details { padding: 6px 7px; }
+  .vehicle-studio-baseline,.vehicle-studio-drivetrain { padding: 3px 7px; }
   .vehicle-studio-details h2 { font-size: 13px; }
   .vehicle-studio-identity p { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .vehicle-studio-stat { min-height: 33px; padding: 3px 4px; gap: 4px; }

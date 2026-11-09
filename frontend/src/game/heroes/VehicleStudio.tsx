@@ -93,15 +93,17 @@ export function VehicleStudio({
     <div className="vehicle-studio" data-has-dock={showDock}>
       <div className="vehicle-studio-main">
         <aside className="vehicle-studio-details" aria-label="Vehicle details and performance">
-          <header className="vehicle-studio-identity">
-            <h2>{name}</h2>
-            <p><strong>{role.toUpperCase()}</strong> · {note}</p>
-          </header>
-          <section className="vehicle-studio-power" aria-label="Vehicle performance statistics">
-            {pairs.map(pair => <div className="vehicle-studio-stat-pair" key={pair[0].key} data-count={pair.length}>
-              {pair.map(row => <GarageStatCell key={row.key} row={row} />)}
-            </div>)}
-          </section>
+          <div className="vehicle-studio-baseline">
+            <header className="vehicle-studio-identity">
+              <h2>{name}</h2>
+              <p><strong>{role.toUpperCase()}</strong> · {note}</p>
+            </header>
+            <section className="vehicle-studio-power" aria-label="Vehicle performance statistics">
+              {pairs.map(pair => <div className="vehicle-studio-stat-pair" key={pair[0].key} data-count={pair.length}>
+                {pair.map(row => <GarageStatCell key={row.key} row={row} />)}
+              </div>)}
+            </section>
+          </div>
           <VehicleDrivetrainSummary vehicle={vehicleId} weight={rows.find(row => row.key === "mass")?.valueText ?? "—"} economy={rows.find(row => row.key === "fuel_economy")?.valueText} suspension={stage("suspension")} damping={summary.suspension_damping_ratio} />
         </aside>
 

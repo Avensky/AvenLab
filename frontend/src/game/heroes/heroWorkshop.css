@@ -34,7 +34,6 @@
 .vehicle-performance-page>label{display:flex;flex-direction:column;gap:5px;padding:6px 0;border-bottom:1px solid color-mix(in srgb,var(--vehicle-studio-line) 65%,transparent);font-size:9px;color:var(--vehicle-studio-muted);}
 .vehicle-performance-page select{box-sizing:border-box;width:100%;min-height:32px;padding:5px 7px;border:1px solid var(--vehicle-studio-line);border-radius:5px;background:var(--vehicle-studio-raised);color:var(--vehicle-studio-ink);}
 .vehicle-performance-page p{font-size:9px;line-height:1.5;}
-@media(max-width:900px),(max-height:500px){.vehicle-studio-details,.vehicle-studio-panel{backdrop-filter:blur(7px);}}
 @media(max-width:760px){
  .hero-workshop .menu-frame-footer .controller-shortcuts{display:none;}
  .hero-workshop-actions{width:100%;justify-content:space-between;gap:5px;}

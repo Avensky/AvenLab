@@ -27,7 +27,7 @@ export function AngledTabNavigation({
 }) {
   return (
     <nav className="angled-header-tabs" role="tablist" aria-label={title + " sections"}>
-      {tabs.map((tab, index) => (
+      {tabs.map((tab) => (
         <button
           key={tab.id}
           type="button"
@@ -42,14 +42,11 @@ export function AngledTabNavigation({
           style={{ "--angled-tab-grow": tab.grow ?? 1 } as CSSProperties}
           onClick={() => onTabChange(tab.id)}
         >
-          {tab.separatorBefore && <span className="angled-header-divider" aria-hidden="true" />}
           <span className="angled-header-icon">{tab.icon}</span>
           <span className="angled-header-label">{tab.label}</span>
-          {index !== tabs.length - 1 && (
-            <svg className="angled-header-edge" viewBox="0 0 18 72" preserveAspectRatio="none" aria-hidden="true">
-              <path d="M17 0 1 72" />
-            </svg>
-          )}
+          <svg className="angled-header-edge" data-separator={tab.separatorBefore || undefined} viewBox="0 0 18 72" preserveAspectRatio="none" aria-hidden="true">
+            <path d="M18 0 0 72" />
+          </svg>
         </button>
       ))}
     </nav>

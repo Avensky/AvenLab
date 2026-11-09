@@ -107,8 +107,6 @@
   min-width: 0;
   margin-left: calc(-1 * var(--angled-tab-cut));
   overflow: visible;
-  background: color-mix(in srgb, #020609 92%, var(--app-background));
-  border-bottom: 1px solid var(--app-accent);
   filter: drop-shadow(0 0 1px var(--app-accent));
 }
   .angled-header-tail { display: none; }
@@ -131,6 +129,7 @@
   border-radius: 0;
   color: var(--app-text);
   background: color-mix(in srgb, #020609 92%, var(--app-background));
+  box-shadow: inset 0 -1px var(--app-accent);
   clip-path: polygon(var(--angled-tab-cut) 0, 100% 0, calc(100% - var(--angled-tab-cut)) 100%, 0 100%);
   font: inherit;
   font-size: clamp(9px, .78vw, 12px);
@@ -145,18 +144,15 @@
 .angled-header-tab--overview { margin-left: 0; }
 .angled-header-tab--performance { max-width: clamp(148px, 11vw, 176px); }
  .angled-header-tab--paint { max-width: clamp(150px, 11.5vw, 180px); }
-.angled-header-tab:last-child {
-  clip-path: polygon(var(--angled-tab-cut) 0, 100% 0, 100% 100%, 0 100%);
-  box-shadow: inset -1px 0 var(--app-accent);
-}
 .angled-header-tab:last-child::after {
   content: "";
   position: absolute;
   top: 0;
   right: 0;
   bottom: 0;
-  width: 1px;
+  width: calc(var(--angled-tab-cut) + 1px);
   background: var(--app-accent);
+  clip-path: polygon(calc(100% - 1px) 0, 100% 0, 1px 100%, 0 100%);
   pointer-events: none;
 }
 .angled-header-tab[aria-selected="true"] {
@@ -194,7 +190,7 @@
   position: absolute;
   z-index: 2;
   top: 0;
-  left: 0;
+  left: 1px;
   width: var(--angled-tab-cut);
   height: 100%;
   overflow: visible;
@@ -206,19 +202,11 @@
   stroke-width: 1.2;
   vector-effect: non-scaling-stroke;
 }
+.angled-header-edge[data-separator] path {
+  stroke: color-mix(in srgb, var(--app-text) 62%, transparent);
+}
 .angled-header-tab[aria-selected="true"] .angled-header-edge path {
   stroke: color-mix(in srgb, #06131a 42%, transparent);
-}
-.angled-header-divider {
-  position: absolute;
-  z-index: 3;
-  top: 19%;
-  bottom: 19%;
-  left: calc(var(--angled-tab-cut) + 1px);
-  width: 1px;
-  background: color-mix(in srgb, var(--app-text) 62%, transparent);
-  box-shadow: 0 0 6px color-mix(in srgb, var(--app-accent) 38%, transparent);
-  pointer-events: none;
 }
 .menu-frame-header.angled-tab-header .menu-header-actions {
   align-self: center;
@@ -252,7 +240,6 @@
    .angled-header-tab { gap: 3px; padding-inline: 4px; }
   .angled-header-icon svg { width: 14px; height: 14px; }
   .angled-header-tab { font-size: clamp(7px, 1.12vw, 9px); }
-  .angled-header-divider { left: calc(var(--angled-tab-cut) + 1px); }
   .menu-frame-header.angled-tab-header .menu-header-actions { gap: 3px; padding-left: 4px; }
 }
 @media (max-width: 520px) {
