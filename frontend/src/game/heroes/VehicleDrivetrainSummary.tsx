@@ -12,7 +12,7 @@ const AXLES: Record<string, readonly [number, number]> = {
   charger70: [1.6319, -1.2921], skyline34: [1.3365, -1.3011], timecar: [1.2727, -1.1613],
 };
 
-export function estimatedFrontWeightPercent(vehicle: string): number | null {
+function estimatedFrontWeightPercent(vehicle: string): number | null {
   const axles = AXLES[vehicle];
   return axles ? Math.round(-axles[1] / (axles[0] - axles[1]) * 100) : null;
 }
