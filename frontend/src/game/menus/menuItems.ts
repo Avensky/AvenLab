@@ -90,7 +90,16 @@ function pauseRail(label: string, ...ids: PauseRailItem[]) {
 }
 
 export const PAUSE_RESUME_INDEX = PAUSE_MENU_ITEMS.findIndex((item) => item.id === "resume");
+export const PAUSE_CHANGE_VEHICLE_INDEX = PAUSE_MENU_ITEMS.findIndex((item) => item.id === "vehicle_select");
 export const PAUSE_MENU_RAILS = [
   { ...pauseRail("Drive", "vehicle_select", "cockpit", "settings", "debug_menu"), controller: "LB", keyboard: "Q" },
   { ...pauseRail("Session", "missions", "career", "social", "leave_game"), controller: "RB", keyboard: "E" },
 ] as const;
+
+const pauseRailsWithoutVehicleSelection = PAUSE_MENU_RAILS.map(rail => ({
+  ...rail, indices: rail.indices.filter(index => index !== PAUSE_CHANGE_VEHICLE_INDEX),
+}));
+
+export function pauseMenuRails(vehicleSelectionAvailable: boolean) {
+  return vehicleSelectionAvailable ? PAUSE_MENU_RAILS : pauseRailsWithoutVehicleSelection;
+}

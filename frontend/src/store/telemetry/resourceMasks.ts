@@ -8,4 +8,5 @@ export const ResourceFlags = {
   HEAT_LOCK: 32,
   THERMAL_RECOVERY:64,
   BLINK_STRESS:128,
+  CAN_CHANGE_HERO: 1 << 8,
 } as const;

@@ -861,12 +861,47 @@ async fn interrupted_archive_commit_rolls_back_then_recovers_exactly_once() {
 }
 
 #[tokio::test]
+async fn running_match_hero_changes_require_own_spawn_and_valid_role() {
+    let (s, world, roster) = deployed_ctf(true).await;
+    let (player, _) = &roster[2];
+    let runtime = s.runtimes.lock().await[&world].clone();
+    let home = {
+        let mut room = runtime.lock().await;
+        let position = *room.physics.bodies[room.physics.vehicles[player].body].translation();
+        assert!(room.physics.can_change_hero_at_spawn(player));
+        let enemy = if room.game.entities[player].team == Team::Red { 1 } else { 0 };
+        let enemy_base = room.physics.ctf_bases().unwrap()[enemy];
+        place_ctf_body(&mut room, player, enemy_base);
+        assert!(!room.physics.can_change_hero_at_spawn(player));
+        place_ctf_body(&mut room, player, [position.x, position.y + 6.0, position.z]);
+        [position.x, position.y, position.z]
+    };
+    let rejected = s.handle(player, json!({"action":"hero_select","hero":"brz"})).await.unwrap_err();
+    assert!(rejected.contains("spawn area"));
+    assert_eq!(s.alpha.lock().await.members[player].hero, "ae86");
+    {
+        let mut room = runtime.lock().await;
+        place_ctf_body(&mut room, player, home);
+        room.physics.ctf_carriers.insert(player.clone());
+        assert!(!room.physics.can_change_hero_at_spawn(player));
+        room.physics.ctf_carriers.remove(player);
+    }
+    let rejected = s.handle(player, json!({"action":"hero_select","hero":"tank"})).await.unwrap_err();
+    assert!(rejected.contains("invalid 5-player team"));
+    let changed = s.handle(player, json!({"action":"hero_select","hero":"brz"})).await.unwrap();
+    assert_eq!(changed["hero"], "brz");
+    assert_eq!(s.alpha.lock().await.members[player].hero, "brz");
+    assert_eq!(runtime.lock().await.game.entities[player].vehicle_id.as_deref(), Some("brz"));
+    cleanup(s).await;
+}
+
+#[tokio::test]
 async fn running_ctf_reconnect_aggregates_new_body_and_records_explicit_leaver_without_rewards() {
     let (s, world, roster)=deployed_ctf(false).await;
     let (old, identity)=&roster[0];
     let runtime=s.runtimes.lock().await[&world].clone();
     runtime.lock().await.physics.vehicle_health.get_mut(old).unwrap().note_damage_dealt(100.0);
-    assert!(s.handle(old,json!({"action":"hero_select","hero":"tank"})).await.unwrap_err().contains("locked for this CTF round"));
+    assert_eq!(s.handle(old,json!({"action":"hero_select","hero":"brz"})).await.unwrap()["hero"], "brz");
     s.disconnect(old).await;
     let (new,_,_)=client(&s,"Reconnect guest").await;
     s.handle(&new,json!({"action":"identify","name":"Career driver 0","token":identity["token"]})).await.unwrap();

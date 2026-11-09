@@ -1,6 +1,7 @@
 import { reconSetupParent, useAlphaStore } from "../alpha/alphaStore";
 import type { StateCreator } from "zustand";
-import { MAIN_MENU_ITEMS, PAUSE_MENU_ITEMS, PAUSE_MENU_RAILS, PAUSE_RESUME_INDEX } from "../../game/menus/menuItems";
+import { MAIN_MENU_ITEMS, PAUSE_MENU_ITEMS, PAUSE_RESUME_INDEX, pauseMenuRails } from "../../game/menus/menuItems";
+import { canOpenVehicleSelection } from "../alpha/matchHeroChange";
 import { cycleCanInterface, cycleCaptureMode } from "../recon/captureSetup";
 import { useSelectionStore } from "../selection/selectionStore";
 import { useNetworkStore } from "../session/networkStore";
@@ -30,17 +31,18 @@ function getActiveMenu(screen: MenuScreen, overlay: UIOverlay): MenuId | null {
 }
 
 function nextPauseIndex(index: number, step: 1 | -1, axis: "horizontal" | "vertical") {
+  const rails = pauseMenuRails(canOpenVehicleSelection());
   if (index === PAUSE_RESUME_INDEX) {
-    if (axis === "horizontal") return PAUSE_MENU_RAILS[step === -1 ? 0 : 1].indices[0];
-    return step === -1 ? PAUSE_MENU_RAILS[0].indices[0] : index;
+    if (axis === "horizontal") return rails[step === -1 ? 0 : 1].indices[0];
+    return step === -1 ? rails[0].indices[0] : index;
   }
 
-  const column = PAUSE_MENU_RAILS.findIndex(({ indices }) => indices.includes(index));
-  const rail = PAUSE_MENU_RAILS[column];
+  const column = rails.findIndex(({ indices }) => indices.includes(index));
+  const rail = rails[column];
   if (!rail) return PAUSE_RESUME_INDEX;
 
   const row = rail.indices.indexOf(index);
-  if (axis === "horizontal") return PAUSE_MENU_RAILS[column + step]?.indices[row] ?? index;
+  if (axis === "horizontal") return rails[column + step]?.indices[row] ?? index;
 
   const nextRow = row + step;
   return nextRow === rail.indices.length ? PAUSE_RESUME_INDEX : (rail.indices[nextRow] ?? index);

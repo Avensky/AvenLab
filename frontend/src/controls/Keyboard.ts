@@ -273,7 +273,7 @@ export function Keyboard() {
         }
         if (
           !event.shiftKey &&
-          (ui.overlay === null || ui.overlay === "pause")
+          (ui.overlay === null || ui.overlay === "pause" || ui.overlay === "team_lineup")
         ) {
           event.preventDefault();
           release();

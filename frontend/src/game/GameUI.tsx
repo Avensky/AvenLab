@@ -4,6 +4,7 @@ import {CtfMissionLifecycle} from "./stats/CtfMissionLifecycle";
 import {MatchResultsScreen} from "./results/MatchResultsScreen";
 import {CtfMatchHUD} from "./stats/CtfMatchHUD";
 import {MatchScoreboard} from "./stats/MatchScoreboard";
+import {TeamLineup} from "./stats/TeamLineup";
 import {HeroAbilities} from "./heroes/HeroAbilities";
 import {openHeroGuide} from "../store/hud/heroGuideStore";
 import { CombatHUD } from "../combat/CombatHUD";
@@ -185,6 +186,7 @@ export function GameUI() {
         )}
       </Suspense>
       <MatchScoreboard onAbilities={() => openHeroGuide()} />
+      {screen === "sandbox" && <TeamLineup />}
       {overlay === "hero_abilities" && <HeroAbilities />}
       {overlay === "match_results" && <MatchResultsScreen />}
       {/* Menus */}

@@ -97,6 +97,23 @@ export function preMatchPlayers(view:SocialView|null,revealEnemies=false):Scoreb
  });
 }
 
+/** Confirmed picks on this side only. Showcase art is never a lineup pick. */
+export function selectedTeamPlayers(view: SocialView | null, selectedHero?: string | null): ScoreboardPlayer[] {
+  const alpha = view?.alpha, active = alpha?.active;
+  if (!alpha || !active) return [];
+  return preMatchPlayers(view).flatMap(row => {
+    if (row.team !== active.team || row.heroHidden) return [];
+    const member = alpha.roster.find(card => card.id === row.profileId && card.mode === active.mode &&
+      card.team === active.team && (card.world_id === active.world_id || (card.world_id === undefined && row.self)));
+    const hero = HEROES.find(item => item.id === (row.self
+      ? selectedHero === undefined ? active.hero : selectedHero
+      : member?.hero));
+    if (!hero || !member) return [];
+    return [{ ...row, hero: hero.id, status: member.reconnecting ? 'reconnecting' : 'ready',
+      appearance: row.self ? view?.profile.progression?.hero_loadouts?.[hero.vehicle] ?? null : member.appearance ?? null }];
+  });
+}
+
 /** Keep row and list identities when only world poses have changed. Appearance
  * and totals arrive as fresh objects on each decoded network snapshot. */
 export function retainScoreboardPlayers(previous:ScoreboardPlayer[],next:ScoreboardPlayer[]) {

@@ -1,6 +1,7 @@
 import { useMotionView } from "../../store/session/networkViews";
 import { lazy, Suspense } from "react";
 import { useSocialStore } from "../../store/social/socialStore";
+import { useVehicleSelectionAvailable } from "../../store/alpha/matchHeroChange";
 import { ControllerAction } from "../../components/controller";
 import { useEffect, useId, useRef, useState } from "react";
 import { trapMenuFocus } from "../../components/menus/menuFocus";
@@ -20,6 +21,10 @@ const AlphaHeroPicker = lazy(() =>
 );
 export function VehicleMenu() {
   const active = useSocialStore((state) => state.view?.alpha?.active);
+  const available = useVehicleSelectionAvailable();
+  const back = useUIStore(s => s.backToParentMenu);
+  useEffect(() => { if (!available) back(); }, [available, back]);
+  if (!available) return null;
   return active ? (
     <Suspense fallback={<div role="status">Opening hero selection…</div>}>
       <AlphaHeroPicker overlay />

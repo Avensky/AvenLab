@@ -37,27 +37,6 @@
 }
 
 
-/* One bounded prematch dock owns its toolbar and both view heights. Team and
-   Stats scroll within this same viewport; their content never grows the dock. */
-.prematch-team-preview{--prematch-content-height:68px;--prematch-control-height:26px;flex:none;min-width:0;display:flex;flex-direction:column;gap:2px;padding:3px 7px;box-sizing:border-box;overflow:hidden;pointer-events:auto;background:color-mix(in srgb,var(--app-panel,#0b1628) 92%,transparent);color:var(--app-text,#e8effa);border-top:1px solid var(--app-line,#54749a)}
-.prematch-preview-content{height:var(--prematch-content-height);min-height:var(--prematch-content-height);max-height:var(--prematch-content-height);flex:none;min-width:0;overflow:auto;scrollbar-width:none;overscroll-behavior:contain}
-.prematch-preview-content[hidden]{display:none}.prematch-preview-content::-webkit-scrollbar{display:none}
-.prematch-team-preview .match-team-composition,.prematch-team-preview .match-stats-table{display:block}
-.prematch-team-preview .scoreboard-team>h3{display:none}
-.prematch-team-preview .match-composition-row{gap:4px;padding:2px 0}
-.prematch-team-preview .match-composition-seat{--team-color:var(--app-accent)}
-.prematch-team-preview .match-composition-seat:not(.match-composition-empty){display:grid;grid-template-columns:58px minmax(0,1fr);gap:4px;min-height:0;height:calc(var(--prematch-content-height) - 4px);padding:2px}
-.prematch-team-preview .match-composition-art .hero-portrait-art{height:calc(var(--prematch-content-height) - 10px);aspect-ratio:auto}
-.prematch-team-preview .match-composition-info{gap:1px;padding-right:2px}
-.prematch-team-preview .match-composition-info>strong{font-size:9px}.prematch-team-preview .match-composition-info>small{font-size:8px}
-.prematch-team-preview .match-composition-role,.prematch-team-preview .match-composition-info .match-player-status{font-size:5px;margin-top:1px;line-height:1.15}
-.prematch-team-preview .match-composition-empty{min-height:0;height:calc(var(--prematch-content-height) - 4px);padding:2px}
-.prematch-team-preview .match-composition-empty>span{font-size:17px}.prematch-team-preview .match-composition-empty>strong{font-size:6px}
-.prematch-team-preview .match-player-level,.prematch-team-preview .match-player-you{font-size:5px;padding:0 2px}
-.prematch-team-preview [data-status=mystery] .hero-portrait-fallback{color:var(--app-muted);font-size:22px}
-@media(max-width:700px){.prematch-team-preview{--prematch-content-height:60px;padding-inline:6px}.prematch-team-preview .match-composition-seat:not(.match-composition-empty){grid-template-columns:53px minmax(0,1fr)}}
-@media(orientation:landscape) and (max-height:450px){.prematch-team-preview{--prematch-content-height:48px;--prematch-control-height:24px}.prematch-team-preview .match-composition-seat:not(.match-composition-empty){grid-template-columns:49px minmax(0,1fr)}.prematch-team-preview .match-composition-info>strong{font-size:8px}.prematch-team-preview .match-composition-info>small{font-size:7px}}
-
 /* The in-match board owns the viewport. Results and pre-match embeds keep
    their own presentation. Keep the two team lists in view while inspecting. */
 section.match-scoreboard {
@@ -127,11 +106,4 @@ section.match-scoreboard {
  .match-scoreboard .scoreboard-table-player {
    min-height:clamp(28px,calc((100dvh - 216px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) / (2 * var(--team-size,5))),72px);
  }
-}
-
-.prematch-team-preview .match-composition-row{width:100%;box-sizing:border-box;}
-.prematch-team-preview .match-composition-seat{min-width:0;}
-@media(max-width:600px){
- .prematch-team-preview .match-composition-art{min-width:0;}
- .prematch-team-preview .match-composition-empty strong{font-size:9px;}
 }

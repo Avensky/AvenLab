@@ -293,6 +293,7 @@ pub async fn start_websocket_server(server: Arc<Server>) {
                                 let mut room = runtime.lock().await;
                                 let allowed = server.validate_alpha_vehicle(&player, vehicle).await;
                                 match allowed.and_then(|_| {
+                                    room.validate_hero_change_location(&player)?;
                                     room.physics.change_vehicle_for_player(&player, vehicle)
                                 }) {
                                     Ok(()) => {

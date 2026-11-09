@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { PAUSE_RESUME_INDEX } from "../../game/menus/menuItems";
 import { useInputStore } from "../input/inputStore";
+import { canOpenVehicleSelection } from "../alpha/matchHeroChange";
 
 import { createMenuActions } from "./menuActions";
 import { isDrivingScreen, type SignalMission, type UIState } from "./types";
@@ -50,7 +51,8 @@ export const useUIStore = create<UIState>()((set, get, api) => ({
     if (
       !isDrivingScreen(state.screen) ||
       state.isModeLoading ||
-      (state.overlay !== null && state.overlay !== "pause")
+      (state.overlay !== null && state.overlay !== "pause" && state.overlay !== "team_lineup") ||
+      !canOpenVehicleSelection()
     )
       return;
     set({ overlay: "vehicle_select", vehicleSelectionParent: state.overlay });
@@ -82,6 +84,7 @@ export const useUIStore = create<UIState>()((set, get, api) => ({
         "debug_menu",
         "vehicle_select",
         "leave_game",
+        "team_lineup",
         "cockpit",
         "world_builder",
       ].includes(overlay) &&

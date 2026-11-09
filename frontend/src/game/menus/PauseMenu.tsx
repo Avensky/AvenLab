@@ -3,8 +3,11 @@ import { useMenuInputDevice } from "../../components/controller/useMenuInputDevi
 import { trapMenuFocus } from "../../components/menus/menuFocus";
 import { useEffect, useId, useRef } from "react";
 import { useUIStore } from "../../store/menus/uiStore";
+import { useVehicleSelectionAvailable } from "../../store/alpha/matchHeroChange";
+import { isMatchMode } from "../../store/alpha/alphaStore";
+import { useSocialStore } from "../../store/social/socialStore";
 import { GameButton } from "../../components/GameButton";
-import { PAUSE_MENU_ITEMS, PAUSE_MENU_RAILS, PAUSE_RESUME_INDEX } from "./menuItems";
+import { PAUSE_CHANGE_VEHICLE_INDEX, PAUSE_MENU_ITEMS, PAUSE_RESUME_INDEX, pauseMenuRails } from "./menuItems";
 import { MenuIcon } from "../../components/menus/MenuIcon";
 import "./pauseMenu.css";
 
@@ -12,18 +15,25 @@ export function PauseMenu() {
   const selectedIndex = useUIStore((s) => s.selectedMenuIndexById.pause);
   const setIndex = useUIStore((s) => s.setActiveMenuIndex);
   const activate = useUIStore((s) => s.activateActiveMenuSelection);
+  const vehicleSelectionAvailable = useVehicleSelectionAvailable();
+  const match = useSocialStore(s => isMatchMode(s.view?.alpha?.active?.mode ?? ""));
   const inputDevice = useMenuInputDevice();
   const resumeSelected = selectedIndex === PAUSE_RESUME_INDEX;
   const headingId = useId();
   const buttons = useRef<Array<HTMLDivElement | null>>([]);
   useEffect(() => {
+    if (selectedIndex === PAUSE_CHANGE_VEHICLE_INDEX && !vehicleSelectionAvailable) {
+      setIndex(PAUSE_RESUME_INDEX);
+      return;
+    }
     const element = buttons.current[selectedIndex];
     element?.focus({ preventScroll: true });
     element?.scrollIntoView({ block: "nearest" });
-  }, [selectedIndex]);
+  }, [selectedIndex, setIndex, vehicleSelectionAvailable]);
 
   const renderAction = (index: number) => {
     const item = PAUSE_MENU_ITEMS[index];
+    const label = item.id === "vehicle_select" && match ? "Change hero" : item.label;
     const resume = index === PAUSE_RESUME_INDEX;
     return (
       <GameButton
@@ -38,7 +48,7 @@ export function PauseMenu() {
           setIndex(index);
           activate();
         }}
-        aria-label={item.label}
+        aria-label={label}
         data-pause-action={item.id}
         className={resume ? "pause-menu-resume menu-panel-frame" : "menu-row menu-action"}
       >
@@ -54,7 +64,7 @@ export function PauseMenu() {
         ) : (
           <>
             <MenuIcon name={item.id} />
-            {item.label}
+            {label}
           </>
         )}
       </GameButton>
@@ -75,7 +85,7 @@ export function PauseMenu() {
           <h2 id={headingId}>Game menu</h2>
         </header>
         <div className="pause-menu-rails">
-          {PAUSE_MENU_RAILS.map(({ label, indices, controller, keyboard }) => (
+          {pauseMenuRails(vehicleSelectionAvailable).map(({ label, indices, controller, keyboard }) => (
             <section key={label} className="pause-menu-rail pause-menu-glass menu-panel-frame" aria-label={label}>
               <h3>{label}<ControlGlyph controller={controller} keyboard={keyboard} /></h3>
               <div className="menu-row-list">{indices.map(renderAction)}</div>

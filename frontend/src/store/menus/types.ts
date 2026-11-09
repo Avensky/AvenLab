@@ -21,6 +21,7 @@ export type MenuScreen =
 export type UIOverlay =
   | "survey_map"
   | "match_results"
+  | "team_lineup"
   | "hero_abilities"
   | null
   | "pause"
@@ -79,7 +80,7 @@ export type UIState = {
 
   overlay: UIOverlay;
   setOverlay: (overlay: UIOverlay) => void;
-  vehicleSelectionParent: "pause" | null;
+  vehicleSelectionParent: "pause" | "team_lineup" | null;
   openVehicleSelection: () => void;
   debugMenuParent: "pause" | null;
   toggleDebugMenu: () => void;
