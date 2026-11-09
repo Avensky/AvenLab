@@ -1,7 +1,7 @@
 import { socket } from "../../net/rustSocket";
 import { requestSocial } from "../../net/socialClient";
 import { useSocialStore } from "../../store/social/socialStore";
-import { useAlphaStore, HEROES, canonicalGameMode, isMatchMode, modeTeamSize } from "../../store/alpha/alphaStore";
+import { useAlphaStore, HEROES, canonicalGameMode, isMatchMode, isPlannedMode, modeTeamSize } from "../../store/alpha/alphaStore";
 import { useSelectionStore } from "../../store/selection/selectionStore";
 import { refreshInstalledWorlds, useWorldCatalog } from "../../store/selection/worldCatalog";
 import { useNetworkStore } from "../../store/session/networkStore";
@@ -11,7 +11,7 @@ import { useRenderSettingsStore } from "../../store/presentation/renderSettingsS
 
 export async function joinSelectedMode() {
   const state = useAlphaStore.getState();
-  if (state.mode === "signal_recon" || state.mode === "swarm")
+  if (state.mode === "signal_recon" || isPlannedMode(state.mode))
     throw Error("Select a driving mode before joining the alpha queue.");
   if (!useSocialStore.getState().view?.profile.id)
     throw Error("Restore your player profile or choose New Tab Profile before joining.");

@@ -33,7 +33,7 @@ export function MenuShortcuts({
   const backLabel = backAction?.label ?? "Back";
   const backHint = <><ControlGlyph controller="B" /> {backLabel}</>;
   return (
-    <div className="controller-shortcuts" aria-label="Menu shortcuts">
+    <div className="controller-shortcuts" data-input-device={device} aria-label="Menu shortcuts">
       {!touch && <>
         {menuToggle && device === "controller" && <span><ControlGlyph controller="MENU" /> Menu</span>}
         {navigate && <span data-shortcut="navigate">

@@ -8,7 +8,7 @@ export type GameMode = "quickplay" | "competitive" | "skirmish" | "sandbox" | "e
 export type MatchTeamSize = 3 | 5;
 export type MatchCategory = "quickplay" | "competitive";
 /** Research/planned modes are garage destinations, never server mode_join IDs. */
-export type PlayMode = GameMode | "signal_recon" | "swarm";
+export type PlayMode = GameMode | "solo" | "signal_recon" | "swarm";
 export type HeroRole = "tank" | "dps" | "support";
 export type HeroFilter = HeroRole | "all" | "air" | "sea";
 export const HERO_FILTERS: HeroFilter[] = ["all", "tank", "dps", "support", "air", "sea"];
@@ -26,6 +26,11 @@ export const GAME_MODES: {
     id: "competitive",
     label: "COMPETITIVE",
     description: "CTF alpha · ranked MMR pending",
+  },
+  {
+    id: "solo",
+    label: "SOLO",
+    description: "Race through the city and discover random encounters along the way.",
   },
   {
     id: "sandbox",
@@ -261,6 +266,12 @@ export function reconSetupParent(): "hero_select" | "main" {
 /** Modes share the CTF loop; the server owns admission, capacities and rewards. */
 export function isMatchMode(mode: string): mode is "quickplay" | "competitive" | "skirmish" {
   return mode === "quickplay" || mode === "competitive" || mode === "skirmish";
+}
+export function isPlayMenuMode(mode: PlayMode) {
+  return mode === "solo" || isMatchMode(mode);
+}
+export function isPlannedMode(mode: PlayMode) {
+  return mode === "solo" || mode === "swarm";
 }
 export function modeTeamSize(mode: string, confirmedSize?: number): 3 | 5 {
   return confirmedSize === 3 || confirmedSize === 5 ? confirmedSize : mode === "skirmish" ? 3 : 5;

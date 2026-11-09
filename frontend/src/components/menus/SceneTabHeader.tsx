@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import { APP_BRANDING } from "../../theme/branding";
+import type { MatchTeam } from "../../theme/matchTeamTheme";
 import { MenuFrameHeader } from "./MenuFrame";
 import { MenuTabButton } from "./MenuTabButton";
 import { useAngledMenuHeader } from "./useAngledMenuHeader";
@@ -23,7 +24,6 @@ export function SceneTabHeader({
   tabs,
   activeTab,
   onTabChange,
-  selectOnFocus = false,
   tablistLabel = title + " sections",
   tablistClassName = "",
   panelId,
@@ -33,6 +33,7 @@ export function SceneTabHeader({
   busy = false,
   level,
   titleMeta,
+  titleTeam,
 }: {
   title: string;
   eyebrow?: string;
@@ -40,7 +41,6 @@ export function SceneTabHeader({
   tabs: readonly SceneHeaderTab[];
   activeTab: string;
   onTabChange: (tab: string) => void;
-  selectOnFocus?: boolean;
   tablistLabel?: string;
   tablistClassName?: string;
   panelId: string;
@@ -50,6 +50,7 @@ export function SceneTabHeader({
   busy?: boolean;
   level?: number | string;
   titleMeta?: ReactNode;
+  titleTeam?: MatchTeam;
 }) {
   const angled = useAngledMenuHeader();
   const navigation = (
@@ -69,7 +70,6 @@ export function SceneTabHeader({
           className={angled ? "angled-header-tab--" + tab.id : undefined}
           data-has-badge={tab.badge ? true : undefined}
           style={angled && tab.grow !== undefined ? { "--angled-tab-grow": tab.grow } as CSSProperties : undefined}
-          onFocus={selectOnFocus ? () => onTabChange(tab.id) : undefined}
           onClick={() => onTabChange(tab.id)}
         >
           {tab.icon && <span className="scene-header-tab-icon">{tab.icon}</span>}
@@ -89,10 +89,11 @@ export function SceneTabHeader({
         onBack={onBack}
         showBack={Boolean(onBack)}
         showProgress={showProgress}
+        titleTeam={titleTeam}
         busy={busy}
         titleMeta={titleMeta ?? (level == null ? undefined : <span className="menu-header-title-meta angled-header-level">LEVEL {level}</span>)}
         variant="scene"
-        className={angled ? "angled-tab-header" : ""}
+        className={[angled && "angled-tab-header", logo && "scene-tab-header--compact"].filter(Boolean).join(" ")}
       >
         {angled && navigation}
       </MenuFrameHeader>

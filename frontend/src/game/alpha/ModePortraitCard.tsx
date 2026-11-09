@@ -16,7 +16,7 @@ export const ModePortraitCard = memo(function ModePortraitCard({mode, selected, 
   onSelect:(size: MatchTeamSize)=>void;
 }) {
   const gradient = useId().replaceAll(":", "");
-  return <button type="button" className="mode-portrait-card" data-match-size={mode.id} aria-label={mode.title} aria-pressed={selected} disabled={disabled} onClick={()=>onSelect(mode.id)}>
+  return <button type="button" className="mode-portrait-card menu-panel-frame" data-match-size={mode.id} aria-label={mode.title} aria-pressed={selected} disabled={disabled} onClick={()=>onSelect(mode.id)}>
     <span className="mode-portrait-scene" aria-hidden="true">
       <svg viewBox="0 0 180 220" preserveAspectRatio="xMidYMid slice">
         <defs><linearGradient id={gradient} x2="0" y2="1"><stop stopColor="var(--app-accent)" stopOpacity=".34"/><stop offset="1" stopColor="#081320"/></linearGradient></defs>
@@ -32,7 +32,7 @@ export const ModePortraitCard = memo(function ModePortraitCard({mode, selected, 
 });
 
 export function MatchModePortraits({selected, disabled, onSelect}: {selected:MatchTeamSize;disabled:boolean;onSelect:(size:MatchTeamSize)=>void}) {
-  return <aside className="match-mode-portraits menu-panel-frame" aria-label="Match size" data-controller-row data-controller-columns="2">
+  return <aside className="match-mode-portraits" aria-label="Match size" data-controller-row data-controller-columns="2">
     {MATCH_MODE_PORTRAITS.map(mode=><ModePortraitCard key={mode.id} mode={mode} selected={selected===mode.id} disabled={disabled} onSelect={onSelect}/>)}
   </aside>;
 }

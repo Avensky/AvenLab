@@ -4,6 +4,7 @@ import { MenuIcon, type MenuIconName } from "./MenuIcon";
 import { useAngledMenuHeader } from "./useAngledMenuHeader";
 import { ControlGlyph, type ControlGlyphProps } from "../controller";
 import { trapMenuFocus } from "./menuFocus";
+import { useMenuPressOwner } from "./useMenuPressOwner";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import type { MenuAction } from "../../controls/inputRouting";
 import "./sceneTabHeader.css";
@@ -67,8 +68,7 @@ export function TabbedMenu({
   const content = useRef<HTMLDivElement>(null);
   const buttons = useRef(new Map<string, HTMLButtonElement>());
   const panelId = useId();
-  const pointerOwner = useRef<Element | null>(null);
-  const keyboardOwner = useRef<EventTarget | null>(null);
+  const pressOwner = useMenuPressOwner();
   const tabId = `${panelId}-${tab.id}`;
 
   const selectTab = (index: number, focus = "row") =>
@@ -177,44 +177,8 @@ export function TabbedMenu({
   return (
     <div className="game-ui menu-surface tabbed-menu fixed inset-0 z-50 bg-slate-950 text-slate-100">
       <MenuFrame
+        {...pressOwner}
         onKeyDown={trapMenuFocus}
-        onPointerDownCapture={(event) => {
-          pointerOwner.current =
-            event.button === 0
-              ? (event.target as Element).closest("button")
-              : null;
-        }}
-        onPointerCancelCapture={() => {
-          pointerOwner.current = null;
-        }}
-        onClickCapture={(event) => {
-          if (event.detail > 0) {
-            if (
-              pointerOwner.current !==
-              (event.target as Element).closest("button")
-            ) {
-              event.preventDefault();
-              event.stopPropagation();
-            }
-            pointerOwner.current = null;
-          }
-        }}
-        onKeyDownCapture={(event) => {
-          if (event.key !== "Enter" && event.key !== " ") return;
-          if (event.repeat) {
-            event.preventDefault();
-            event.stopPropagation();
-          } else keyboardOwner.current = event.target;
-        }}
-        onKeyUpCapture={(event) => {
-          if (event.key !== "Enter" && event.key !== " ") return;
-          // Space released after opening a menu must not click its newly focused row.
-          if (keyboardOwner.current !== event.target) {
-            event.preventDefault();
-            event.stopPropagation();
-          }
-          keyboardOwner.current = null;
-        }}
         role="dialog"
         aria-modal="true"
         aria-labelledby={`${panelId}-title`}

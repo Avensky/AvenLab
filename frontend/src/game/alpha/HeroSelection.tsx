@@ -4,11 +4,14 @@ import { unavailableHeroes } from "./heroAvailability";
 import { prepareReconSelection } from "../../store/recon/captureSetup";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ControllerAction } from "../../components/controller";
+import { MenuLogo } from "../../components/menus/MenuLogo";
+import { useMenuPressOwner } from "../../components/menus/useMenuPressOwner";
 import {
   useAlphaStore,
   HEROES,
   HERO_FILTERS,
   isMatchMode,
+  isPlannedMode,
   matchModeLabel,
   canonicalGameMode,
   modeTeamSize,
@@ -47,8 +50,10 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
     root = useRef<HTMLElement>(null);
   const inMode = !!active&&canonicalGameMode(active.mode)===canonicalGameMode(mode)&&(!isMatchMode(mode)||modeTeamSize(active.mode,active.team_size)===selectedTeamSize||overlay);
   const research = mode === "signal_recon";
-  const planned = mode === "swarm";
+  const planned = isPlannedMode(mode);
   const match = isMatchMode(mode);
+  const matchHeader = match && !overlay;
+  const pressOwner = useMenuPressOwner();
   const allowBoats=!match && !research && !planned;
   useEffect(() => { if (!allowBoats && (role === "air" || role === "sea")) setRole("all"); }, [allowBoats, role]);
   const confirmedTeam = match && inMode && (active?.team === "red" || active?.team === "blue")
@@ -194,6 +199,7 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
   const selected = HEROES.find((h) => h.id === previewId);
   return (
     <section
+      {...pressOwner}
       ref={root}
       inert={inspecting}
       className="game-ui menu-surface alpha-selection hero-selection"
@@ -203,7 +209,20 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
       aria-label={overlay ? "Change hero" : "Hero selection"}
       style={overlay ? { zIndex: 50, background:"transparent", backdropFilter:"none" } : undefined}
     >
-      <SceneTabHeader title={overlay?"CHANGE HERO":"CHOOSE HERO"} eyebrow={matchModeLabel(mode,active&&inMode?active.team_size:selectedTeamSize)} titleMeta={confirmedTeam?<span className="menu-header-title-meta angled-header-team" data-team={confirmedTeam}>{confirmedTeam.toUpperCase()} TEAM</span>:undefined} tabs={heroRoleHeaderTabs(allowBoats)} activeTab={role} onTabChange={next=>filter(next as HeroFilter)} idPrefix="hero-selection-role" panelId="hero-role-panel" busy={busy}/>
+      <SceneTabHeader
+        title={matchHeader ? "HEROES" : overlay ? "CHANGE HERO" : "CHOOSE HERO"}
+        logo={matchHeader ? <MenuLogo /> : undefined}
+        eyebrow={matchModeLabel(mode, active && inMode ? active.team_size : selectedTeamSize)}
+        titleTeam={matchHeader ? confirmedTeam : undefined}
+        titleMeta={!matchHeader && confirmedTeam ? <span className="menu-header-title-meta angled-header-team" data-team={confirmedTeam}>{confirmedTeam.toUpperCase()} TEAM</span> : undefined}
+        showProgress={matchHeader}
+        tabs={heroRoleHeaderTabs(allowBoats)}
+        activeTab={role}
+        onTabChange={next => filter(next as HeroFilter)}
+        idPrefix="hero-selection-role"
+        panelId="hero-role-panel"
+        busy={busy}
+      />
       <div className="hero-selection-stage" id="hero-role-panel" role="tabpanel" aria-labelledby={"hero-selection-role-tab-"+role}>
         {(!match || inMode || overlay) && (
           <HeroRoster

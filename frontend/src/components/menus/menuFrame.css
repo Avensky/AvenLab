@@ -99,3 +99,22 @@ html[data-ui-theme] .menu-frame .menu-row-description{color:var(--app-muted);fon
 .menu-frame-header .menu-control,.menu-frame-footer>.controller-action{min-height:var(--menu-action-height);padding:var(--menu-action-y) 13px;font:700 11px/1.3 system-ui;white-space:nowrap}
 .menu-frame-header :is(button,button:hover),.menu-frame-footer :is(button,button:hover){text-decoration:none!important}
 @media(max-width:760px){.menu-frame-header .menu-control,.menu-frame-footer>.controller-action{padding-inline:9px;font-size:10px}}
+
+.menu-frame-footer[data-menu-chrome="scene"]:has(> .controller-shortcuts[data-input-device="touch"]) :is(.controller-shortcut-back, .alpha-deploy) {
+  --controller-action-border: 1px solid var(--app-line);
+  --controller-action-background: var(--app-raised);
+  justify-content: center;
+  min-height: 44px;
+  min-width: 72px;
+  padding-inline: 12px;
+  border: var(--controller-action-border);
+  border-radius: 0;
+  background: var(--controller-action-background);
+  color: var(--app-text);
+  font-size: 11px;
+  font-weight: 750;
+}
+.menu-frame-footer[data-menu-chrome="scene"]:has(> .controller-shortcuts[data-input-device="touch"]) .alpha-deploy {
+  --controller-action-border: 1px solid var(--app-accent);
+  --controller-action-background: color-mix(in srgb, var(--app-raised) 88%, var(--app-accent));
+}
