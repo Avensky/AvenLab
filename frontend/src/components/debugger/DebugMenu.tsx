@@ -125,6 +125,7 @@ export function DebugMenu() {
   return (
     <TabbedMenu
       title="Debugger"
+      chamferTitle
       eyebrow="REDLINE VECTOR / ENGINE TOOLS"
       onBack={back}
       status={serviceStatus}
@@ -133,6 +134,7 @@ export function DebugMenu() {
         {
           id: "visualizers",
           label: "Visualizers",
+          icon: "visualizers",
           description:
             "Diagnostic streams are separate from model rendering. Disable streams you do not need to reduce debug traffic.",
           rows: [
@@ -167,6 +169,7 @@ export function DebugMenu() {
         {
           id: "vehicles",
           label: "Vehicles & GLBs",
+          icon: "vehicles",
           description:
             "Choose each vehicle's representation independently. These options change the rendering, while collision and simulation stay authoritative on the server.",
           rows: [
@@ -221,6 +224,7 @@ export function DebugMenu() {
         {
           id: "environment",
           label: "Environment",
+          icon: "environment",
           description:
             "Set a world default, override a chunk, or switch individual GLB assets. The list is populated from the server's selected map.",
           rows: [
@@ -272,6 +276,7 @@ export function DebugMenu() {
         {
           id: "rendering",
           label: "Rendering",
+          icon: "rendering",
           description: "Display owns graphics profiles, resolution, distance and effects. Captures and collision visualizers stay in Debugger.",
           rows: [
             {id:"display-settings",label:"Open display settings",adjustable:false,action:()=>useUIStore.getState().openSettings("display")},
@@ -280,6 +285,7 @@ export function DebugMenu() {
         {
           id: "captures",
           label: "Captures",
+          icon: "captures",
           description:
             "Start with a collider baseline. Captures resume gameplay, warm up for 3 seconds and record frame / network metrics. Repeat the same camera and route for useful comparisons.",
           rows: [

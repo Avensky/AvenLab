@@ -35,7 +35,7 @@
 .hero-selection [data-role="support"] {
   --hero-color: #8dd9c2;
 }
-/* Keep the previous image footprint, remove the card-name band and outer box. */
+/* The portrait grid scrolls inside the shared panel frame. */
 .hero-roster {
   position: absolute;
   top: 5px;
@@ -44,7 +44,7 @@
   max-height: calc(100% - 10px);
   display: flex;
   flex-direction: column;
-  padding: 0;
+  padding: 6px;
   pointer-events: auto;
   background: none;
   border: 0;

@@ -31,7 +31,7 @@ export function HeroRoster({
 }) {
   const visibleHeroes = HEROES.filter((hero) => heroMatchesFilter(hero, filter, allowBoats));
   return (
-    <aside className="hero-roster" aria-label="Vehicle selection">
+    <aside className="hero-roster menu-panel-frame" aria-label="Vehicle selection">
       {showFilters&&<HeroRoleTabs filter={filter} onFilter={onFilter} allowBoats={allowBoats}/>}
       <div
         className="hero-roster-grid"

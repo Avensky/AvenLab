@@ -1,6 +1,7 @@
 .match-mode-portraits{position:absolute;top:8px;right:6px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;width:calc(var(--hero-panel-width) - 10px);max-height:calc(100% - 16px);overflow:auto;scrollbar-width:none;pointer-events:auto;padding:2px}
 .match-mode-portraits::-webkit-scrollbar{display:none}
 .mode-portrait-card{display:flex;flex-direction:column;min-width:0;margin:0;padding:0;border:1px solid var(--app-line);border-radius:0;background:var(--app-panel);color:var(--app-text);text-align:center;cursor:pointer;text-decoration:none!important}
+.match-mode-portraits.menu-panel-frame{padding:6px}
 .mode-portrait-scene{position:relative;display:block;width:100%;aspect-ratio:180/220;overflow:hidden}
 .mode-portrait-scene>svg{position:absolute;inset:0;width:100%;height:100%}
 .mode-portrait-scene>img{position:absolute;left:-9%;bottom:4%;width:118%;height:65%;object-fit:contain;filter:drop-shadow(0 8px 5px #0009);pointer-events:none}

@@ -5,6 +5,7 @@ import { useUIStore } from "../../store/menus/uiStore";
 import { GameButton } from "../../components/GameButton";
 import { PAUSE_MENU_ITEMS } from "./menuItems";
 import { MenuLogo } from "../../components/menus/MenuLogo";
+import { MenuIcon } from "../../components/menus/MenuIcon";
 
 export function PauseMenu() {
   const selectedIndex = useUIStore((s) => s.selectedMenuIndexById.pause);
@@ -28,7 +29,7 @@ export function PauseMenu() {
         <div className="menu-brand">
           <MenuLogo />
         </div>
-        <div className="menu-action-list">
+        <div className="menu-action-list menu-panel-frame">
           {PAUSE_MENU_ITEMS.map((item, index) => (
             <GameButton
               key={item.id}
@@ -44,6 +45,7 @@ export function PauseMenu() {
               }}
               className="menu-row menu-action"
             >
+              <MenuIcon name={item.id} />
               {item.label}
             </GameButton>
           ))}

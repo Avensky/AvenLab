@@ -1,0 +1,38 @@
+:where(.menu-panel-frame) {
+  position: relative;
+  isolation: isolate;
+}
+.menu-panel-frame {
+  --menu-panel-cut: 10px;
+  --menu-panel-shape: polygon(var(--menu-panel-cut) 0, 100% 0, 100% calc(100% - var(--menu-panel-cut)), calc(100% - var(--menu-panel-cut)) 100%, 0 100%, 0 var(--menu-panel-cut));
+}
+/* The outline and fill cut the corners without clipping controls or focus rings. */
+.menu-panel-frame::before,
+.menu-panel-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  clip-path: var(--menu-panel-shape);
+}
+.menu-panel-frame::before {
+  background: linear-gradient(135deg, var(--app-accent), var(--app-line) 42%, var(--app-line) 70%, var(--app-accent));
+}
+.menu-panel-frame::after {
+  inset: 1px;
+  background: var(--menu-panel-fill, var(--app-panel));
+}
+.menu-icon {
+  width: 1.25em;
+  height: 1.25em;
+  flex: none;
+}
+.menu-action-list.menu-panel-frame { padding: 7px; }
+.menu-action-list .menu-action,
+.tabbed-menu-tabs .menu-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}

@@ -44,7 +44,7 @@ export function VehicleDrivetrainSummary({ vehicle, weight, economy, suspension,
   const front = estimatedFrontWeightPercent(vehicle);
   // The server powertrain uses six forward ratios for wheeled/tracked vehicles.
   const gearbox = profile.driveLayout === "TWIN SCREW" ? "DIRECT" : `${transmission === "manual" ? "MANUAL" : "AUTO"} · 6`;
-  return <section className="vehicle-studio-drivetrain" aria-label="Drivetrain and chassis">
+  return <section className="vehicle-studio-drivetrain menu-panel-frame" aria-label="Drivetrain and chassis">
     <header><span>DRIVETRAIN</span><strong>{profile.driveLayout}</strong></header>
     <div className="vehicle-chassis-content">
       <VehicleDrivetrainDiagram layout={profile.driveLayout} />

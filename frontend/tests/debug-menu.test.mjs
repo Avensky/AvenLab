@@ -22,6 +22,8 @@ test("debug menu separates visualizers, vehicles, environment, rendering and cap
       "/src/components/debugger/DebugMenu.tsx",
     );
     const html = renderToString(createElement(DebugMenu));
+    assert.ok(html.includes("angled-tab-header--chamfered"), "the corner treatment belongs to the title");
+    assert.ok(!html.includes("menu-panel-frame"), "debugger content stays square");
     for (const label of [
       "Visualizers",
       "Vehicles &amp; GLBs",

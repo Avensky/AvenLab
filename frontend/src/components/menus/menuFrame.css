@@ -44,6 +44,18 @@ html[data-ui-theme] .menu-frame[role=dialog]{background:var(--app-panel);color:v
 .menu-frame .menu-frame-tabs .menu-control{border:0;border-bottom:3px solid transparent;border-radius:0;flex:0 0 auto;min-height:var(--menu-tab-height);padding:var(--menu-tab-y) 16px;background:transparent;color:var(--app-muted);font-weight:750;text-transform:uppercase;font-size:11px;letter-spacing:.04em}
 .menu-frame .menu-frame-tabs .menu-control[aria-selected=true]{color:var(--app-accent);border-bottom-color:var(--app-accent);background:color-mix(in srgb,var(--app-accent) 8%,transparent);outline:0;box-shadow:none}
 .menu-frame .menu-frame-content{flex:1;min-width:0;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:none;padding:14px var(--menu-gutter) 22px;outline:none}
+.tabbed-menu-with-preview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(170px, 34%);
+  align-items: start;
+  gap: clamp(8px, 2vw, 24px);
+}
+.tabbed-menu-controls, .tabbed-menu-preview { min-width: 0; }
+.tabbed-menu-preview { position: sticky; top: 0; }
+@media (max-width: 520px) and (orientation: portrait) {
+  .tabbed-menu-with-preview { grid-template-columns: minmax(0, 1fr); }
+  .tabbed-menu-preview { position: static; grid-row: 1; }
+}
 .menu-frame ::-webkit-scrollbar{display:none}
 .menu-frame-footer{box-sizing:border-box;pointer-events:auto;color:var(--app-text);font:calc(12px * var(--menu-text-scale,1))/1.45 ui-sans-serif,system-ui,sans-serif;display:flex;align-items:center;flex-shrink:0;gap:16px;border-top:1px solid var(--app-line);padding:var(--menu-footer-y) var(--menu-gutter);background:var(--menu-chrome-surface);min-height:var(--menu-footer-min-height)}
 .menu-frame-footer .controller-shortcuts{margin-right:auto;color:var(--app-muted)}

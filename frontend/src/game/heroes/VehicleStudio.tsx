@@ -93,7 +93,7 @@ export function VehicleStudio({
     <div className="vehicle-studio" data-has-dock={showDock}>
       <div className="vehicle-studio-main">
         <aside className="vehicle-studio-details" aria-label="Vehicle details and performance">
-          <div className="vehicle-studio-baseline">
+          <div className="vehicle-studio-baseline menu-panel-frame">
             <header className="vehicle-studio-identity">
               <h2>{name}</h2>
               <p><strong>{role.toUpperCase()}</strong> · {note}</p>
@@ -109,7 +109,7 @@ export function VehicleStudio({
 
         <section
           hidden={!optionsOpen}
-          className="vehicle-studio-panel"
+          className="vehicle-studio-panel menu-panel-frame"
           role="tabpanel"
           id="vehicle-studio-tab-panel"
           aria-labelledby={"vehicle-studio-tab-" + tab}

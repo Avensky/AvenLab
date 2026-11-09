@@ -77,5 +77,31 @@ test('Career, Settings and Worlds/Social share themed controller chrome without 
    await act(async()=>footer.querySelector('button[aria-label=Back]').click());
    assert.equal(ui.getState().screen,'main');
   });
+  await t.test('calibration tabs keep a square POV preview that follows the saved controls', async () => {
+   await act(async () => prefs.getState().update({ menuHeaderStyle: 'angled', fov: 75, controllerDeadzone: 0.3 }));
+   await render(SettingsMenu, 'settings');
+   const selectTab = async (label) => {
+    const tab = [...document.querySelectorAll('[role="tab"]')].find(node => node.textContent === label);
+    assert(tab.querySelector('svg[aria-hidden="true"]'));
+    await act(async () => tab.click());
+    return document.querySelector('.tabbed-menu-preview .calibration-preview');
+   };
+   assert(document.querySelector('.angled-tab-header--chamfered'));
+   assert.equal(document.querySelector('.menu-frame-content .menu-panel-frame'), null);
+   const display = await selectTab('Display');
+   const projection = display.querySelector('.calibration-world');
+   const initialTransform = projection.getAttribute('transform');
+   await act(async () => document.querySelector('[data-menu-row="fov"]').click());
+   assert.match(display.textContent, /85°/);
+   assert.notEqual(projection.getAttribute('transform'), initialTransform);
+   assert.equal((await selectTab('HUD')).dataset.calibrationPreview, 'hud');
+   assert.equal((await selectTab('Keyboard')).dataset.calibrationPreview, 'keyboard');
+   const controller = await selectTab('Controller');
+   const reticle = controller.querySelector('.calibration-reticle');
+   const initialAim = reticle.getAttribute('transform');
+   await act(async () => document.querySelector('[data-menu-row="deadzone"]').click());
+   assert.match(controller.textContent, /Steering output0%/);
+   assert.notEqual(reticle.getAttribute('transform'), initialAim);
+  });
  }finally{if(root)await act(async()=>root.unmount());await vite?.close();dom.window.close();for(const[key,value]of saved)if(value)Object.defineProperty(globalThis,key,value);else delete globalThis[key];}
 });

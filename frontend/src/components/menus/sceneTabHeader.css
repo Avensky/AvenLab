@@ -43,6 +43,7 @@
   --angled-title-chamfer: 0px;
   --angled-header-height: var(--menu-footer-min-height, 41px);
   --angled-tabs-height: calc(var(--angled-header-height) / var(--angled-title-scale));
+  --angled-title-shape: polygon(0 0, 100% 0, calc(100% - var(--angled-tab-cut)) var(--angled-tabs-height), calc(100% - var(--angled-title-cut) - var(--angled-title-chamfer)) 100%, 0 100%);
   --angled-tab-surface: color-mix(in srgb, var(--app-background) 62%, var(--app-panel));
   position: relative;
   top: 0;
@@ -72,7 +73,7 @@
   padding: 1px calc(var(--angled-title-cut) + 9px) 1px 12px;
   color: var(--app-text);
   background: var(--app-accent);
-  clip-path: polygon(var(--angled-title-chamfer) 0, 100% 0, calc(100% - var(--angled-title-cut)) 100%, 0 100%, 0 var(--angled-title-chamfer));
+  clip-path: var(--angled-title-shape);
   filter: drop-shadow(0 0 1px var(--app-accent));
 }
 .menu-frame-header.angled-tab-header > div:first-child::before {
@@ -82,10 +83,10 @@
   inset: 1px;
   pointer-events: none;
   background: color-mix(in srgb, var(--app-panel) 92%, var(--app-raised));
-  clip-path: polygon(var(--angled-title-chamfer) 0, 100% 0, calc(100% - var(--angled-title-cut)) 100%, 0 100%, 0 var(--angled-title-chamfer));
+  clip-path: var(--angled-title-shape);
 }
-html[data-ui-theme="pit-wall"] .angled-tab-header {
-  --angled-title-chamfer: 8px;
+.angled-tab-header.angled-tab-header--chamfered {
+  --angled-title-chamfer: 7px;
 }
 .menu-frame-header.angled-tab-header > div:first-child > :is(small,h1,.menu-header-title-meta) {
   position: relative;

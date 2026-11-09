@@ -4,6 +4,7 @@ import { useUIStore } from "../../store";
 import { GameButton } from "../../components/GameButton";
 import { useEffect, useRef } from "react";
 import { MenuLogo } from "../../components/menus/MenuLogo";
+import { MenuIcon } from "../../components/menus/MenuIcon";
 import { MenuVideoBackground } from "../../components/menus/MenuVideoBackground";
 
 import { MAIN_MENU_ITEMS } from "./menuItems";
@@ -48,7 +49,7 @@ export function MainMenu() {
           <ProgressBadge />
         </section>
         <section className="main-menu-actions" aria-label="Main menu">
-          <div className="menu-action-list">
+          <div className="menu-action-list menu-panel-frame">
             {MAIN_MENU_ITEMS.map((item, index) => (
               <GameButton
                 key={item.id}
@@ -65,6 +66,7 @@ export function MainMenu() {
                 onFocus={() => setActiveMenuIndex(index)}
                 className="menu-row menu-action"
               >
+                <MenuIcon name={item.id} />
                 {item.label}
                 {!item.available && (
                   <span className="menu-control-note">Planned</span>

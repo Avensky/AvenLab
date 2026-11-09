@@ -8,6 +8,7 @@ import { MENU_INPUT_LABELS, type MenuInputPreference } from "../../controls/inpu
 import { appearanceSettingsRows } from "./appearanceSettingsRows";
 import { useEffect, useState } from "react";
 import { TabbedMenu, type MenuRow } from "../../components/menus/TabbedMenu";
+import { CalibrationPreview } from "./CalibrationPreview";
 import { useRenderSettingsStore } from "../../store/presentation/renderSettingsStore";
 import { useDebugViewStore } from "../../store/presentation/debugViewStore";
 import {
@@ -187,12 +188,15 @@ export function SettingsMenu() {
       <TabbedMenu
         initialTab={initialTab}
         title="Settings"
+        chamferTitle
         onBack={back}
         status={notice}
         tabs={[
           {
             id: "display",
             label: "Display",
+            icon: "display",
+            preview: <CalibrationPreview tab="display" preferences={prefs} />,
             description:
               "Graphics preferences are saved on this device. Higher resolution, reflections and shadows can increase frame time.",
             rows: [
@@ -272,6 +276,8 @@ export function SettingsMenu() {
           {
             id: "hud",
             label: "HUD",
+            icon: "hud",
+            preview: <CalibrationPreview tab="hud" preferences={prefs} />,
             description:
               "Mix any HUD components individually. Presets are shortcuts; each switch below controls its own component. Keyboard and controller inputs remain available.",
             rows: [
@@ -384,6 +390,7 @@ export function SettingsMenu() {
           {
             id: "drivetrain",
             label: "Drivetrain",
+            icon: "drivetrain",
             description:
               "Choose the shifter layout. Forward driving stays automatic; gear taps briefly override it. Neutral and reverse remain explicit selections. No clutch is required.",
             rows: [
@@ -407,6 +414,7 @@ export function SettingsMenu() {
           {
             id: "audio",
             label: "Audio",
+            icon: "audio",
             description:
               "Procedural vehicle audio includes tire squeal, engines, tracks, turbo and nitrous. Nearby sounds use distance and stereo position; tunnel echo uses authored volumes. Radio keeps its own mixer.",
             rows: [
@@ -435,6 +443,8 @@ export function SettingsMenu() {
           {
             id: "keyboard",
             label: "Keyboard",
+            icon: "keyboard",
+            preview: <CalibrationPreview tab="keyboard" preferences={prefs} />,
             description:
               "Select a driving or combat action, then press a key. Hold the primary or secondary fire binding to shoot while driving. Fixed shortcuts remain reserved. Menu navigation always uses arrows / WASD, Enter and Escape.",
             rows: [
@@ -489,6 +499,8 @@ export function SettingsMenu() {
           {
             id: "controller",
             label: "Controller",
+            icon: "controller",
+            preview: <CalibrationPreview tab="controller" preferences={prefs} />,
             description:
               "Standard gamepad layout: RT accelerate · LT brake · Left stick steer · B handbrake · Start pause. Armed tank: Right stick aim · RB fire · LB charge · Y weapon cycle · R3 angle lock. In menus: A select, B back, LB/RB tabs. Release driving controls after closing a menu before driving again.",
             rows: [
@@ -544,6 +556,7 @@ export function SettingsMenu() {
           {
             id: "social",
             label: "Social",
+            icon: "social",
             description:
               "Manage teammates, social groups, private worlds and invitations. Team chat and matchmaking are planned.",
             rows: [
@@ -572,6 +585,7 @@ export function SettingsMenu() {
           {
             id: "other",
             label: "Other",
+            icon: "other",
             description:
               "Sandbox is available now. Competitive matches, loot and currency will be added with their supporting game systems.",
             rows: [
@@ -604,6 +618,7 @@ export function SettingsMenu() {
           {
             id: "accessibility",
             label: "Accessibility",
+            icon: "accessibility",
             description:
               "Menus use text labels as well as color. These preferences are saved on this device.",
             rows: [
@@ -661,13 +676,14 @@ export function SettingsMenu() {
             ],
           },
           {
-            id: "appearance", label: "Appearance",
+            id: "appearance", label: "Appearance", icon: "appearance",
             description: "Global interface theme and cockpit matching. Paint and equipped hero loadouts are in Main menu → Heroes.",
             rows: appearanceSettingsRows(prefs, prefs.update),
           },
           {
             id: "garage",
             label: "Garage",
+            icon: "garage",
             description:
               "Lighting, glow and reflections for the selection garage. Colors follow your interface theme.",
             rows: garageSettingsRows(

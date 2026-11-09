@@ -1,4 +1,6 @@
 /* Shared browser menu theme. Change density and interaction states here. */
+@import "./menuPanels.css";
+
 .garage-selection-controls {
   background: transparent;
   text-shadow:

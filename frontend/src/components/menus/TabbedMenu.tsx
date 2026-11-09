@@ -1,5 +1,6 @@
 import {MenuTabButton} from "./MenuTabButton";
 import {MenuFrame,MenuFrameHeader,MenuFrameFooter} from "./MenuFrame";
+import { MenuIcon, type MenuIconName } from "./MenuIcon";
 import { useAngledMenuHeader } from "./useAngledMenuHeader";
 import { ControlGlyph, type ControlGlyphProps } from "../controller";
 import { trapMenuFocus } from "./menuFocus";
@@ -21,9 +22,11 @@ export type MenuRow = {
 export type MenuTab = {
   id: string;
   label: string;
+  icon?: MenuIconName;
   description?: string;
   rows: MenuRow[];
   content?: ReactNode;
+  preview?: ReactNode;
 };
 
 export function TabbedMenu({
@@ -35,6 +38,7 @@ export function TabbedMenu({
   backLabel = "Back",
   status,
   initialTab,
+  chamferTitle = false,
 }: {
   initialTab?: string;
   title: string;
@@ -44,6 +48,7 @@ export function TabbedMenu({
   onBack: () => void;
   backLabel?: string;
   status?: string;
+  chamferTitle?: boolean;
 }) {
   const angled = useAngledMenuHeader();
   const [selection, setSelection] = useState({
@@ -162,6 +167,7 @@ export function TabbedMenu({
           }}
           className={angled ? undefined : "menu-tab"}
         >
+          {item.icon && <MenuIcon name={item.icon} />}
           {item.label}
         </MenuTabButton>
       ))}
@@ -217,7 +223,7 @@ export function TabbedMenu({
       >
         <MenuFrameHeader title={title} titleId={`${panelId}-title`} eyebrow={eyebrow}
           onBack={onBack} backLabel={backLabel} showBack={!angled}
-          className={angled ? "angled-tab-header" : "tabbed-menu-header"}>
+          className={angled ? `angled-tab-header${chamferTitle ? " angled-tab-header--chamfered" : ""}` : "tabbed-menu-header"}>
           {angled && <div className="tabbed-angled-scroll">{navigation}</div>}
         </MenuFrameHeader>
         {subtitle&&<p id={`${panelId}-description`} className="sr-only">{subtitle}</p>}
@@ -227,58 +233,61 @@ export function TabbedMenu({
           role="tabpanel"
           id={`${tabId}-panel`}
           aria-labelledby={`${tabId}-tab`}
-          className="tabbed-menu-content menu-frame-content min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain"
+          className={`tabbed-menu-content menu-frame-content min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain${tab.preview ? " tabbed-menu-with-preview" : ""}`}
         >
-          {tab.description && (
-            <p className="menu-description">{tab.description}</p>
-          )}
-          <div className="menu-row-list">
-            {tab.rows.map((row) => (
-              <button
-                type="button"
-                key={row.id}
-                ref={(element) => {
-                  if (element) buttons.current.set(row.id, element);
-                  else buttons.current.delete(row.id);
-                }}
-                disabled={row.disabled || !row.action}
-                data-menu-row={row.id}
-                data-selected={selectedRow?.id === row.id}
-                data-danger={row.danger || undefined}
-                onFocus={() => {
-                  if (selection.row !== row.id)
-                    setSelection({ tab: tab.id, row: row.id, focus: "row" });
-                }}
-                onPointerEnter={() => {
-                  if (!row.disabled && row.action && selection.row !== row.id)
-                    setSelection({ tab: tab.id, row: row.id, focus: "row" });
-                }}
-                onClick={() => row.action?.(1)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ")
-                    event.stopPropagation();
-                }}
-                className="menu-control menu-row"
-              >
-                <span className="menu-row-copy">
-                  <span className="menu-row-label">{row.label}</span>
-                  {row.description && (
-                    <span className="menu-row-description">
-                      {row.description}
-                    </span>
+          <div className="tabbed-menu-controls">
+            {tab.description && (
+              <p className="menu-description">{tab.description}</p>
+            )}
+            <div className="menu-row-list">
+              {tab.rows.map((row) => (
+                <button
+                  type="button"
+                  key={row.id}
+                  ref={(element) => {
+                    if (element) buttons.current.set(row.id, element);
+                    else buttons.current.delete(row.id);
+                  }}
+                  disabled={row.disabled || !row.action}
+                  data-menu-row={row.id}
+                  data-selected={selectedRow?.id === row.id}
+                  data-danger={row.danger || undefined}
+                  onFocus={() => {
+                    if (selection.row !== row.id)
+                      setSelection({ tab: tab.id, row: row.id, focus: "row" });
+                  }}
+                  onPointerEnter={() => {
+                    if (!row.disabled && row.action && selection.row !== row.id)
+                      setSelection({ tab: tab.id, row: row.id, focus: "row" });
+                  }}
+                  onClick={() => row.action?.(1)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ")
+                      event.stopPropagation();
+                  }}
+                  className="menu-control menu-row"
+                >
+                  <span className="menu-row-copy">
+                    <span className="menu-row-label">{row.label}</span>
+                    {row.description && (
+                      <span className="menu-row-description">
+                        {row.description}
+                      </span>
+                    )}
+                  </span>
+                  {row.value && (
+                    <span className="menu-row-value" data-toggle={
+                      /^(on|show|enabled)$/i.test(row.value) ? "on" :
+                      /^(off|hide|disabled)$/i.test(row.value) ? "off" : undefined
+                    }>{row.value}</span>
                   )}
-                </span>
-                {row.value && (
-                  <span className="menu-row-value" data-toggle={
-                    /^(on|show|enabled)$/i.test(row.value) ? "on" :
-                    /^(off|hide|disabled)$/i.test(row.value) ? "off" : undefined
-                  }>{row.value}</span>
-                )}
-                {row.shortcut && <ControlGlyph {...row.shortcut} />}
-              </button>
-            ))}
+                  {row.shortcut && <ControlGlyph {...row.shortcut} />}
+                </button>
+              ))}
+            </div>
+            {tab.content && <div className="menu-extras">{tab.content}</div>}
           </div>
-          {tab.content && <div className="menu-extras">{tab.content}</div>}
+          {tab.preview && <div className="tabbed-menu-preview">{tab.preview}</div>}
         </div>
         <MenuFrameFooter className="tabbed-menu-footer" status={status}
           backAction={angled ? { onClick: onBack, label: backLabel } : undefined} />
