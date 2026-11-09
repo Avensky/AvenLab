@@ -101,6 +101,9 @@
   object-fit: cover;
   opacity: 0.7;
 }
+.main-menu .menu-video-background video {
+  opacity: 1;
+}
 .menu-video-background::after {
   content: "";
   position: absolute;
@@ -299,6 +302,54 @@
   .menu-action-list {
     width: 100%;
   }
+}
+
+.menu-home.pause-menu {
+  align-items: flex-end;
+  padding-inline-end: max(clamp(0.5rem, 3vw, 2.75rem), env(safe-area-inset-right));
+  background-color: rgb(6 10 20 / 0.34);
+}
+.pause-menu .menu-home-content {
+  display: flex;
+  max-width: clamp(14rem, 38vw, 20rem);
+}
+.pause-menu .menu-action-list {
+  width: 100%;
+}
+.pause-menu-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem 0.5rem;
+  padding: 0.25rem 0.375rem;
+  text-transform: uppercase;
+}
+.pause-menu-heading h2 {
+  margin: 0;
+  font-size: calc(0.9375rem * var(--menu-text-scale, 1));
+  font-style: italic;
+  font-weight: 800;
+}
+.pause-menu-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: var(--app-muted);
+  font-size: calc(0.625rem * var(--menu-text-scale, 1));
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+.pause-menu-live::before {
+  content: "";
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: var(--app-physical);
+}
+.pause-menu .controller-shortcuts {
+  color: #f4f6ff;
+  text-shadow: 0 1px 4px #000;
 }
 
 /* The tabbed shell stays full-screen; only its content scrolls. */

@@ -29,6 +29,23 @@
   flex: none;
 }
 .menu-action-list.menu-panel-frame { padding: 7px; }
+.main-menu .menu-panel-frame {
+  --menu-panel-fill: rgb(6 10 20 / 0.12);
+}
+/* Cut out the center of the outline so the home video shows through. */
+.main-menu .menu-panel-frame::before {
+  clip-path: polygon(evenodd,
+    var(--menu-panel-cut) 0, 100% 0,
+    100% calc(100% - var(--menu-panel-cut)),
+    calc(100% - var(--menu-panel-cut)) 100%, 0 100%, 0 var(--menu-panel-cut),
+    var(--menu-panel-cut) 0,
+    calc(var(--menu-panel-cut) + 1px) 1px, calc(100% - 1px) 1px,
+    calc(100% - 1px) calc(100% - var(--menu-panel-cut) - 1px),
+    calc(100% - var(--menu-panel-cut) - 1px) calc(100% - 1px),
+    1px calc(100% - 1px), 1px calc(var(--menu-panel-cut) + 1px),
+    calc(var(--menu-panel-cut) + 1px) 1px
+  );
+}
 .menu-action-list .menu-action,
 .tabbed-menu-tabs .menu-tab {
   display: flex;

@@ -1,15 +1,15 @@
 import { MenuShortcuts } from "../../components/controller";
 import { trapMenuFocus } from "../../components/menus/menuFocus";
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 import { useUIStore } from "../../store/menus/uiStore";
 import { GameButton } from "../../components/GameButton";
 import { PAUSE_MENU_ITEMS } from "./menuItems";
-import { MenuLogo } from "../../components/menus/MenuLogo";
 import { MenuIcon } from "../../components/menus/MenuIcon";
 
 export function PauseMenu() {
   const selectedIndex = useUIStore((s) => s.selectedMenuIndexById.pause);
   const setIndex = useUIStore((s) => s.setActiveMenuIndex);
+  const headingId = useId();
   const buttons = useRef<Array<HTMLDivElement | null>>([]);
   useEffect(() => {
     const element = buttons.current[selectedIndex];
@@ -23,13 +23,14 @@ export function PauseMenu() {
         onKeyDown={trapMenuFocus}
         role="dialog"
         aria-modal="true"
-        aria-label="Pause menu"
+        aria-labelledby={headingId}
         className="menu-home-content"
       >
-        <div className="menu-brand">
-          <MenuLogo />
-        </div>
         <div className="menu-action-list menu-panel-frame">
+          <header className="pause-menu-heading">
+            <h2 id={headingId}>Game menu</h2>
+            <span className="pause-menu-live">Live session</span>
+          </header>
           {PAUSE_MENU_ITEMS.map((item, index) => (
             <GameButton
               key={item.id}

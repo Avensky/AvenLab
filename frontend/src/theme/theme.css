@@ -26,7 +26,6 @@ html[data-ui-theme]
     .menu-shell,
     .cockpit-overlay,
     .cockpit-panel,
-    .pause-menu,
     .menu-bind-card
   ) {
   background: var(--app-background);
@@ -142,16 +141,6 @@ html[data-ui-theme] .cockpit-panel .cockpit-shortcuts {
   align-items: center;
   flex-wrap: wrap;
 }
-html[data-ui-theme] .main-menu {
-  background: var(--app-background);
-}
-html[data-ui-theme] .main-menu .menu-home-content {
-  color: var(--app-text);
-}
-html[data-ui-theme] .menu-home .menu-action {
-  text-shadow: none;
-}
-
 html[data-high-contrast="true"]
   :is(.menu-surface, .cockpit-panel, .cockpit-overlay) {
   --app-text: #fff;
@@ -213,17 +202,33 @@ html[data-ui-theme] .menu-video-background::after {
   background: linear-gradient(90deg,#060a14b8,#060a144d,#060a14b8),
     color-mix(in srgb,var(--app-scene-tint) 18%,transparent);
 }
+html[data-ui-theme] .main-menu .menu-video-background::after {
+  background: linear-gradient(90deg, #060a1499, #060a140a 49%, #060a1455);
+}
+html[data-ui-theme] .main-menu .menu-home-content { text-shadow: 0 1px 4px #000; }
 html[data-ui-theme] .main-menu :is(.menu-home-content,.menu-brand-title,.menu-action) { color: var(--scene-ink); }
 html[data-ui-theme] .main-menu :is(.menu-brand-tagline,.controller-shortcuts,.alpha-progress,.alpha-progress small) { color: var(--scene-muted); }
-html[data-ui-theme] .main-menu .menu-action {
-  background: #060a1470;
+html[data-ui-theme]:not([data-high-contrast="true"]) .main-menu .menu-action {
+  background: #060a147d;
   border-color: #d7e5ff30;
-  border-radius: var(--app-radius-sm);
 }
-html[data-ui-theme] .main-menu .menu-action:is(:hover,:focus-visible,[data-selected="true"]) {
+html[data-ui-theme]:not([data-high-contrast="true"]) .main-menu .menu-action:is(:hover,:focus-visible,[data-selected="true"]) {
   color: var(--scene-ink);
   background: color-mix(in srgb,var(--app-scene-tint) 25%,#060a14c9);
   border-color: color-mix(in srgb,var(--app-scene-tint) 65%,#fff);
+}
+html[data-ui-theme]:not([data-high-contrast="true"]) [data-live-world] .tabbed-menu {
+  background: color-mix(in srgb, var(--app-background) 78%, transparent);
+  backdrop-filter: blur(4px);
+}
+html[data-ui-theme]:not([data-high-contrast="true"]) [data-live-world] .tabbed-menu-shell {
+  background: transparent;
+}
+html[data-ui-theme]:not([data-high-contrast="true"]) [data-live-world] .tabbed-menu .menu-row {
+  background: var(--app-panel);
+}
+html[data-ui-theme]:not([data-high-contrast="true"]) [data-live-world] .tabbed-menu .menu-row:is(:hover,:focus-visible,[data-selected="true"]):not(:disabled) {
+  background: var(--app-raised);
 }
 html[data-ui-theme] .hero-selection {
   background: color-mix(in srgb,var(--app-scene-tint) 6%,transparent);

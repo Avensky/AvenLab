@@ -98,7 +98,7 @@ export function GameUI() {
   const [reconSidebarHidden, setReconSidebarHidden] = useState(false);
 
   return (
-    <div className="relative game-wrapper">
+    <div className="relative game-wrapper" data-live-world={screen === "sandbox" || undefined}>
       <HeroLoadoutSync />
       <MinimapSessionLifecycle />
       <CtfMissionLifecycle />
