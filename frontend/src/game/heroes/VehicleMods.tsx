@@ -4,12 +4,16 @@ import type { VehiclePerformanceSummary } from "./vehiclePerformance";
 import { useVehicleStudioStore } from "./vehicleStudioStore";
 import { drivetrainProfileFor } from "./vehicleDrivetrainOptions";
 import { getVehicleStockPerformance, getVehicleTuningLimits } from "./vehiclePerformance";
+import { vehicleSystems } from "../../vehicles/vehicleSystems";
 
 import { VehicleGarageIcon } from "./VehicleGarageIcon";
 
-const POWER_PARTS = new Set(["turbo", "nitrous", "exhaust", "intercooler"]);
-const PART_LABELS: Record<string, string> = { tires: "TIRES", turbo: "TURBO", nitrous: "NITROUS", exhaust: "EXHAUST", suspension: "SUSPENSION", brakes: "BRAKES", gearing: "GEARING", weight: "WEIGHT", intercooler: "INTERCOOLER" };
 const PARTS = Object.entries(catalog);
+const PARTS_BY_SYSTEM = {
+  road: PARTS.filter(([,part]) => part.systems.includes("road")),
+  tracked: PARTS.filter(([,part]) => part.systems.includes("tracked")),
+  marine: PARTS.filter(([,part]) => part.systems.includes("marine")),
+};
 
 function upgradeStage(stages: Record<string, number>, id: string, maxStage: number) {
   return Math.max(0, Math.min(maxStage, stages[id] ?? 0));
@@ -28,9 +32,10 @@ function UpgradeBars({ value, max, label, bars = max }: { value: number; max: nu
   );
 }
 
-export function VehicleUpgradeProgress({ stages, maxStage }: { stages: Record<string, number>; maxStage: number }) {
-  const installed = PARTS.reduce((total, [id]) => total + upgradeStage(stages, id, maxStage), 0);
-  return <UpgradeBars value={installed} max={PARTS.length * maxStage} bars={5} label="Installed upgrade stages" />;
+export function VehicleUpgradeProgress({ vehicle, stages, maxStage }: { vehicle: string; stages: Record<string, number>; maxStage: number }) {
+  const parts = PARTS_BY_SYSTEM[vehicleSystems(vehicle)];
+  const installed = parts.reduce((total, [id]) => total + upgradeStage(stages, id, maxStage), 0);
+  return <UpgradeBars value={installed} max={parts.length * maxStage} bars={5} label="Installed upgrade stages" />;
 }
 
 export function VehicleMods({
@@ -47,15 +52,17 @@ export function VehicleMods({
   onFooterChange?: (footer: ReactNode | null) => void;
 }) {
   const [upgradeGroup, setUpgradeGroup] = useState("power");
+  const systems = vehicleSystems(vehicle);
+  const parts = PARTS_BY_SYSTEM[systems];
   const stock = useMemo(() => getVehicleStockPerformance(vehicle), [vehicle]);
   const limits = useMemo(() => getVehicleTuningLimits(vehicle), [vehicle]);
   const effects = useMemo(() => {
     const next: Record<string, number> = {};
-    for (const [id, part] of PARTS)
+    for (const [id, part] of parts)
       for (const [stat, amount] of Object.entries(part.effects))
         next[stat] = (next[stat] ?? 1) + amount * upgradeStage(stages, id, limits.maxStage);
     return next;
-  }, [limits.maxStage, stages]);
+  }, [limits.maxStage, parts, stages]);
 
   const summary = useMemo(() => {
     const capped = {
@@ -74,6 +81,7 @@ export function VehicleMods({
       suspension_damping_ratio: stock.suspension_damping_ratio * capped.suspension_damping_ratio,
       mass: stock.mass * capped.mass,
       cooling_multiplier: (stock.cooling_multiplier ?? 1) * Math.min(1 + limits.maxStage * 0.1, effects.cooling_multiplier ?? 1),
+      angular_damping: stock.angular_damping === undefined ? undefined : stock.angular_damping * (effects.angular_damping ?? 1),
     };
   }, [effects, limits, stock]);
 
@@ -116,13 +124,13 @@ export function VehicleMods({
     <section className="vehicle-performance-page" aria-label="Performance modifications" data-upgrade-group={upgradeGroup}>
       <div className="vehicle-upgrade-limit">{limits.className} · MAX STAGE {limits.maxStage}</div>
       <div className="vehicle-upgrade-filter" role="group" aria-label="Upgrade categories">
-        {["power", "chassis"].map(group => <button type="button" key={group} aria-pressed={upgradeGroup === group} onClick={() => setUpgradeGroup(group)}>{group.toUpperCase()}</button>)}
+        {["power", "chassis"].map((group,index) => <button type="button" key={group} aria-pressed={upgradeGroup === group} onClick={() => setUpgradeGroup(group)}>{(systems === "marine" ? ["propulsion", "hull"][index] : group).toUpperCase()}</button>)}
       </div>
-      {PARTS.map(([id, part]) => {
+      {parts.map(([id, part]) => {
         const stage = upgradeStage(stages, id, limits.maxStage);
-        return <div className="vehicle-upgrade-row" key={id} data-upgrade-group={POWER_PARTS.has(id) ? "power" : "chassis"} role="group" aria-labelledby={`upgrade-label-${id}`}>
+        return <div className="vehicle-upgrade-row" key={id} data-upgrade-group={part.group} role="group" aria-labelledby={`upgrade-label-${id}`}>
           <VehicleGarageIcon name={id} />
-          <span className="vehicle-upgrade-name" id={`upgrade-label-${id}`}>{PART_LABELS[id] ?? part.label}</span>
+          <span className="vehicle-upgrade-name" id={`upgrade-label-${id}`}>{part.short}</span>
           <div className="vehicle-upgrade-stepper">
             <button type="button" aria-label={`Downgrade ${part.label}`} disabled={stage === 0} onClick={() => onStagesChange({ ...stages, [id]: stage - 1 })}>−</button>
             <UpgradeBars value={stage} max={limits.maxStage} label={`${part.label} stage`} />

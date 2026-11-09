@@ -19,7 +19,10 @@ import {ControllerAction} from "../../components/controller";
 import {useMenuInputDevice} from "../../components/controller/useMenuInputDevice";
 import {HeroSaveQueue,type HeroSaveStatus} from "./HeroSaveQueue";
 import {VehicleStudio,VEHICLE_STUDIO_TABS,VehicleStudioTabIcon,STOCK_VEHICLE_SUMMARY,type VehiclePerformanceSummary,type VehicleStudioTab} from "./VehicleStudio";
-import {VEHICLE_PAINT_PRESETS} from "./vehiclePaintPresets";
+import {HULL_PAINT_PRESETS,VEHICLE_PAINT_PRESETS} from "./vehiclePaintPresets";
+import {PAINT_FINISHES} from "../../vehicles/cosmetics/paintFinishes";
+import {vehicleSystems} from "../../vehicles/vehicleSystems";
+import {DEFAULT_WINDOW_TONE,WINDOW_TONES,type WindowTone} from "../preview/windowTones";
 import {getVehicleStockPerformance} from "./vehiclePerformance";
 import {useVehicleStudioStore,type VehicleStudioPart} from "./vehicleStudioStore";
 import {VehicleFlags,hasFlag} from "../../store/input/protocol/inputMasks";
@@ -39,6 +42,10 @@ const NO_VEHICLE_MOD_STAGES:Record<string,number>={};
 type WorkshopFilter=HeroFilter|"concepts";
 type WorkshopPage="heroes"|"garage"|"character";
 const WORKSHOP_TABS=[...heroRoleHeaderTabs(true),{id:"concepts",label:"CONCEPTS"}];
+const MARINE_LAMPS = [
+ {id:"navigation", label:"Running lights"},
+ {id:"searchlights", label:"Searchlights"},
+] as const;
 
 export function HeroLoadoutSync(){
  const profile=useSocialStore(s=>s.view?.profile);
@@ -63,6 +70,10 @@ export function HeroWorkshop({onCharacterViewChange}:{onCharacterViewChange?:(op
  const [role,setRole]=useState<WorkshopFilter>("all");
  const definition=HEROES.find(item=>item.id===hero)??null;
  const vehicle=definition?.vehicle;
+ const systems=vehicleSystems(vehicle??"");
+ const marine=systems==="marine";
+ const paintable=systems!=="tracked";
+ const shipLightPreview=vehicle==="louisiana";
  const saved=useHeroLoadouts(s=>definition?s.loadouts[definition.vehicle]:undefined);
  const [editedAppearance,setAppearance]=useState<HeroAppearance>({...FACTORY_APPEARANCE});
  const appearance=chosen?editedAppearance:saved??FACTORY_APPEARANCE;
@@ -78,11 +89,12 @@ export function HeroWorkshop({onCharacterViewChange}:{onCharacterViewChange?:(op
  const [studioSummary,setStudioSummary]=useState<VehiclePerformanceSummary>(STOCK_VEHICLE_SUMMARY);
  const [studioFooter,setStudioFooter]=useState<ReactNode|null>(null);
  const [vehicleModStages,setVehicleModStages]=useState<Record<string,Record<string,number>>>({});
- const [portraitCapture,setPortraitCapture]=useState<string|null>(null),[portraitMessage,setPortraitMessage]=useState("");
  const availableParts=useVehicleStudioStore(s=>s.availableVehicle===definition?.vehicle?s.availableParts:NO_VEHICLE_PARTS);
  const openedParts=useVehicleStudioStore(s=>s.parts);
  const glassStyle=useVehicleStudioStore(s=>s.glassStyle);
  const setGlassStyle=useVehicleStudioStore(s=>s.setGlassStyle);
+ const marineLights=useVehicleStudioStore(s=>s.marineLights);
+ const toggleMarineLamp=useVehicleStudioStore(s=>s.toggleMarineLamp);
  const vehicleFlags=useInputStore(s=>s.input.vehicleMask);
  const setStudioFooterContent=useCallback((content:ReactNode|null)=>setStudioFooter(content),[]);
  const setPerformanceSummary=useCallback((summary:VehiclePerformanceSummary)=>setStudioSummary(summary),[]);
@@ -107,7 +119,7 @@ export function HeroWorkshop({onCharacterViewChange}:{onCharacterViewChange?:(op
   target?.focus({preventScroll:true});
  },[characterOpen,editing,role,studioTab,viewingReference]);
  useEffect(()=>{if(hero)useAlphaStore.getState().preview(hero);},[hero]);
- useEffect(()=>{setStudioTab("performance");setStudioSummary(vehicle?getVehicleStockPerformance(vehicle):STOCK_VEHICLE_SUMMARY);setStudioFooter(null);setPortraitCapture(null);setPortraitMessage("");},[vehicle]);
+ useEffect(()=>{setStudioTab("performance");setStudioSummary(vehicle?getVehicleStockPerformance(vehicle):STOCK_VEHICLE_SUMMARY);setStudioFooter(null);},[vehicle]);
  useEffect(()=>{
   if(!editing)return;
   const savedFlags=useInputStore.getState().input.vehicleMask&lightingBits;
@@ -132,11 +144,6 @@ export function HeroWorkshop({onCharacterViewChange}:{onCharacterViewChange?:(op
   if(!hero||!definition)return;
   const next={...appearance,...patch};drafts.current[definition.vehicle]=next;setAppearance(next);
   queue.enqueue({hero,vehicle:definition.vehicle,appearance:next,makeDefault:false});
- };
- const capturePortrait=async()=>{
-  if(!definition)return;setPortraitMessage("CAPTURING CURRENT STYLE…");
-  try{const {bakeHeroPortrait}=await import("../preview/bakeHeroPortrait");const image=await bakeHeroPortrait(definition.vehicle,appearance);setPortraitCapture(image);setPortraitMessage("PORTRAIT READY · SESSION PREVIEW");}
-  catch(error){setPortraitMessage(error instanceof Error?`CAPTURE FAILED · ${error.message}`:"CAPTURE FAILED");}
  };
  const back=async()=>{
   if(page!=="heroes"){setPage("heroes");return;}
@@ -167,23 +174,24 @@ export function HeroWorkshop({onCharacterViewChange}:{onCharacterViewChange?:(op
   setRole(WORKSHOP_TABS[(index+direction+WORKSHOP_TABS.length)%WORKSHOP_TABS.length].id as WorkshopFilter);
  }});
  const unlocked=(skins??[]).filter(skin=>owned.includes(skin.id));
- const paintPresets=[...VEHICLE_PAINT_PRESETS,{label:`${UI_THEMES[theme].label} accent`,color:UI_THEMES[theme]["scene-tint"]}];
+ const paintPresets=marine?HULL_PAINT_PRESETS:[...VEHICLE_PAINT_PRESETS,{label:`${UI_THEMES[theme].label} accent`,color:UI_THEMES[theme]["scene-tint"]}];
  const partLabels:Record<VehicleStudioPart,string>={"door-left":"LEFT DOOR","door-right":"RIGHT DOOR",hood:"HOOD",trunk:"TRUNK",headlights:"POP-UP HEADLIGHTS"};
  const partOptions:VehicleStudioPart[]=["door-left","door-right","hood","trunk","headlights"];
  const renderPartButton=(part:VehicleStudioPart)=>{
   const supported=availableParts.includes(part),open=openedParts[part];
   return <button key={part} type="button" className="vehicle-studio-feature" data-supported={supported} disabled={!supported} aria-pressed={supported?open:undefined} title={supported?`${open?"Close":"Open"} ${partLabels[part].toLowerCase()}`:`No separate movable ${partLabels[part].toLowerCase()} mesh in this vehicle model`} onClick={()=>useVehicleStudioStore.getState().setPart(part,!open)}>{partLabels[part]} · {supported?(open?"OPEN":"CLOSED"):"NOT RIGGED"}</button>;
  };
- const bodyFooter=<>{partOptions.map(renderPartButton)}</>;
- const lightingFooter=<>
+ const bodyFooter=marine?null:<>{partOptions.map(renderPartButton)}</>;
+ const lightingFooter=marine
+  ? shipLightPreview?MARINE_LAMPS.map(lamp=><button key={lamp.id} type="button" aria-pressed={marineLights[lamp.id]} onClick={()=>toggleMarineLamp(lamp.id)}>{lamp.label}</button>):null
+  : <>
   <button type="button" aria-pressed={hasFlag(vehicleFlags,VehicleFlags.HEADLIGHTS)} onClick={()=>useInputStore.getState().toggleVehicleFlag(VehicleFlags.HEADLIGHTS)}>HEADLIGHTS · {hasFlag(vehicleFlags,VehicleFlags.HEADLIGHTS)?"ON":"OFF"}</button>
   <button type="button" aria-pressed={hasFlag(vehicleFlags,VehicleFlags.BLINKER_LEFT)} onClick={()=>toggleTurnSignal(-1)}>LEFT STALK</button>
   <button type="button" aria-pressed={hasFlag(vehicleFlags,VehicleFlags.BLINKER_RIGHT)} onClick={()=>toggleTurnSignal(1)}>RIGHT STALK</button>
   <button type="button" aria-pressed={hasFlag(vehicleFlags,VehicleFlags.HAZARDS)} onClick={()=>useInputStore.getState().toggleVehicleFlag(VehicleFlags.HAZARDS)}>HAZARDS</button>
  </>;
- const portraitFooter=<button type="button" onClick={()=>void capturePortrait()} disabled={!definition}>CAPTURE CURRENT PORTRAIT</button>;
- const currentFooter=studioTab==="performance"?studioFooter:studioTab==="body"?bodyFooter:studioTab==="lighting"?lightingFooter:studioTab==="studio"?portraitFooter:null;
- return <section ref={root} className={`game-ui menu-surface alpha-selection hero-selection hero-workshop${viewingReference?" hero-ability-guide":""}`} data-character-page={characterOpen||undefined} data-has-selection={hero!==null} inert={overlay!==null} tabIndex={-1} aria-label={characterOpen?"Character":"Heroes garage"} data-controller-form data-controller-rows>
+ const currentFooter=studioTab==="performance"?studioFooter:studioTab==="body"?bodyFooter:studioTab==="lighting"?lightingFooter:null;
+ return <section ref={root} className={`game-ui menu-surface alpha-selection hero-selection hero-workshop${viewingReference?" hero-ability-guide":""}`} data-character-page={characterOpen||undefined} inert={overlay!==null} tabIndex={-1} aria-label={characterOpen?"Character":"Heroes garage"} data-controller-form data-controller-rows>
   {characterOpen?<SelectionHeader title="CHARACTER" compact/>:editing&&definition
     ? <SceneTabHeader
         title="GARAGE"
@@ -194,6 +202,7 @@ export function HeroWorkshop({onCharacterViewChange}:{onCharacterViewChange?:(op
         panelId="vehicle-studio-tab-panel"
         tabs={VEHICLE_STUDIO_TABS.map((item,index)=>({
           ...item,
+          description:marine&&item.id==="lighting"?"Running lights and searchlights":marine&&item.id==="body"?"Hull and deck":item.description,
           icon:<VehicleStudioTabIcon tab={item.id}/>,
           grow:[.92,1.12,1.05,.78,.9,.8][index],
           separatorBefore:item.id==="studio",
@@ -207,15 +216,14 @@ export function HeroWorkshop({onCharacterViewChange}:{onCharacterViewChange?:(op
    {viewingConcepts&&<div className="hero-guide-scroll" id="hero-workshop-role-panel" role="tabpanel" aria-labelledby="hero-workshop-role-tab-concepts" tabIndex={0}><HeroConceptGallery/></div>}
    {page==="heroes"&&role!=="concepts"&&<div className="hero-picker-stage hero-workshop-picker" data-hero-filter={role} id="hero-workshop-role-panel" role="tabpanel" aria-labelledby={"hero-workshop-role-tab-"+role}>
     <div className="hero-picker-scene hero-picker-preview">
-      <div className="hero-workshop-intro">
-        <section className="hero-summary" aria-label="Selected hero">
-         <small>HERO</small>
-         <h2>{definition?.name??"CHOOSE YOUR HERO"}</h2>
+      <section className="hero-workshop-intro" aria-label="Selected vehicle">
+        <h2 className="hero-workshop-vehicle-name">{definition?.name??"CHOOSE YOUR HERO"}</h2>
+        <div className="hero-workshop-instructions">
          <p>Choose a vehicle portrait to open its garage.</p>
          <p>Hold {inputDevice==="touch"?"Set Main":"X"} to set your favorite.</p>
-        </section>
+        </div>
         <CharacterEntry onOpen={()=>setPage("character")}/>
-      </div>
+      </section>
         {status!=="idle"&&<div className="hero-collection-save-status" role="status">{status==="error"?`NOT SAVED · ${message}`:status==="saved"?"SAVED TO YOUR PLAYER":"SAVING YOUR STYLE…"}{status==="error"&&<button className="menu-control" onClick={()=>void queue.flush()}>RETRY SAVE</button>}</div>}
     </div>
     <HeroRoster showFilters={false} allowBoats selected={hero} main={main} filter={role} busy={!owner} onChoose={openHero} onFilter={setRole}/>
@@ -223,26 +231,82 @@ export function HeroWorkshop({onCharacterViewChange}:{onCharacterViewChange?:(op
    {editing&&definition&&<VehicleStudio name={definition.name} role={definition.role} note={definition.note} vehicleId={definition.vehicle} speedUnit={speedUnit} stages={vehicleModStages[definition.vehicle]??NO_VEHICLE_MOD_STAGES} summary={studioSummary} tab={studioTab} footer={currentFooter}>
     {studioTab==="abilities"&&<HeroAbilityDetails heroId={definition.id}/>}
     {studioTab==="performance"&&<VehicleMods key={`${owner}:${definition.vehicle}`} vehicle={definition.vehicle} stages={vehicleModStages[definition.vehicle]??NO_VEHICLE_MOD_STAGES} onStagesChange={updateVehicleModStages} onSummaryChange={setPerformanceSummary} onFooterChange={setStudioFooterContent}/>}
-    {studioTab==="paint"&&<>
-     <section className="vehicle-studio-card"><header><small>EXTERIOR COLOR</small><h3>Body paint</h3></header><div className="vehicle-studio-swatches" aria-label="Paint presets">{paintPresets.map(preset=><button key={preset.label} type="button" className="vehicle-studio-swatch" style={{"--paint-swatch":preset.color==="factory"?"#aeb7c0":preset.color} as CSSProperties} aria-label={`Paint: ${preset.label}`} title={preset.label} aria-pressed={appearance.body===preset.color} disabled={!owner||definition.vehicle==="tank"} onClick={()=>edit({body:preset.color})}/>)}</div>
-      <label>Custom paint<input type="color" aria-label="Custom hero body color" disabled={!owner||definition.vehicle==="tank"} value={appearance.body==="factory"?"#f1f3f4":appearance.body} onChange={event=>edit({body:event.target.value})}/></label>
+    {studioTab==="paint"&&(paintable?<>
+     <section className="vehicle-studio-card">
+      <header><small>EXTERIOR COLOR</small><h3>{marine?"Hull paint":"Body paint"}</h3></header>
+      <div className="vehicle-studio-swatches" aria-label="Paint presets">
+       {paintPresets.map(preset=><button key={preset.label} type="button" className="vehicle-studio-swatch"
+        style={{"--paint-swatch":preset.color==="factory"?"#aeb7c0":preset.color} as CSSProperties}
+        aria-label={`Paint: ${preset.label}`} title={preset.label} aria-pressed={appearance.body===preset.color}
+        disabled={!owner} onClick={()=>edit({body:preset.color})}/>)}
+      </div>
+      <label>Custom paint<input type="color" aria-label="Custom hero body color" disabled={!owner}
+       value={appearance.body==="factory"?"#f1f3f4":appearance.body} onChange={event=>edit({body:event.target.value})}/></label>
      </section>
-     <section className="vehicle-studio-card"><header><small>SHARED BODY MATERIAL</small><h3>Finish & metallic</h3></header>
-      <label>PAINT FINISH<select aria-label="Hero highlight finish" disabled={!owner} value={appearance.finish} onChange={event=>edit({finish:event.target.value as HeroAppearance["finish"]})}><option value="factory">Factory texture · controlled highlights</option><option value="frs">FR-S glass and gloss profile</option><option value="soft">Soft metallic finish</option></select></label>
-      <label>METALLIC / REFLECTION <output>{Math.round(appearance.metallic*100)}%</output><input type="range" min="0" max="1" step="0.01" aria-label="Metallic reflection strength" disabled={!owner||definition.vehicle==="tank"} value={appearance.metallic} onChange={event=>edit({metallic:Number(event.target.value)})}/></label>
+     <section className="vehicle-studio-card">
+      <header><small>{marine?"HULL COATING":"PAINT MATERIAL"}</small><h3>Finish & metallic</h3></header>
+      <label>PAINT FINISH<select aria-label="Hero highlight finish" disabled={!owner} value={appearance.finish}
+       onChange={event=>edit({finish:event.target.value as HeroAppearance["finish"]})}>
+       {Object.entries(PAINT_FINISHES).map(([id,label])=><option key={id} value={id}>{label}</option>)}
+      </select></label>
+      <label>METALLIC / REFLECTION <output>{Math.round(appearance.metallic*100)}%</output>
+       <input type="range" min="0" max="1" step="0.01" aria-label="Metallic reflection strength" disabled={!owner}
+        value={appearance.metallic} onChange={event=>edit({metallic:Number(event.target.value)})}/>
+      </label>
      </section>
-     <section className="vehicle-studio-card"><header><small>COSMETICS</small><h3>Interior & collection</h3></header>
-      <label>UNLOCKED SKIN<select aria-label="Unlocked hero skin" disabled={!owner} value={appearance.skin} onChange={event=>{const skin=unlocked.find(item=>item.id===event.target.value);edit({skin:event.target.value,body:skin&&skin.id!=="factory"?skin.color:"factory"});}}><option value="factory">Factory</option>{unlocked.filter(item=>item.id!=="factory").map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
-      <label>SEAT COLOR<select aria-label="Hero seat color request" disabled={!owner||definition.vehicle!=="brz"} value={appearance.seats} onChange={event=>edit({seats:event.target.value as HeroAppearance["seats"]})}><option value="factory">Factory</option><option value="black">Black · mapping pending</option><option value="red">Red · mapping pending</option></select></label>
-      <p>Seat colors save as requests; the GLB seat material mapping still needs a verified asset pass.</p>
-     </section>
-    </>}
-    {studioTab==="body"&&<>
-     <section className="vehicle-studio-card"><header><small>MODEL-SUPPORTED PANELS</small><h3>Open and inspect</h3></header><p>Controls move only separate panel meshes present in this vehicle model. Unsupported parts stay disabled until its GLB has a movable panel.</p><div className="vehicle-studio-feature-list">{partOptions.map(part=><div key={part} data-supported={availableParts.includes(part)}><span>{partLabels[part]}</span><strong>{availableParts.includes(part)?(openedParts[part]?"OPEN":"CLOSED"):"NO MOVING MESH"}</strong></div>)}</div></section>
-     <section className="vehicle-studio-card"><header><small>WINDSHIELD / GLASS</small><h3>Choose the glass tone</h3></header><p>Preview a neutral clear or smoked finish. Glass stays transparent and does not recolor body panels or light lenses.</p><div className="vehicle-studio-glass-options">{([["clear","CLEAR"],["light-smoke","LIGHT SMOKE"],["dark-smoke","DARK SMOKE"]] as const).map(([style,label])=><button key={style} type="button" data-glass={style} aria-pressed={glassStyle===style} onClick={()=>setGlassStyle(style)}><i className="vehicle-studio-glass-preview"/><span>{label}</span></button>)}</div></section>
-    </>}
-    {studioTab==="lighting"&&<section className="vehicle-studio-card"><header><small>LOCAL GARAGE TEST</small><h3>Steering stalks & hazards</h3></header><p>The garage buttons use the same turn-signal commands as the cockpit stalks. The preview flashes the model's named headlight and amber lens materials. Test flags are restored when you leave the garage.</p><div className="vehicle-studio-feature-list"><div><span>HEADLIGHT CIRCUIT</span><strong>{hasFlag(vehicleFlags,VehicleFlags.HEADLIGHTS)?"ON":"OFF"}</strong></div><div><span>LEFT STALK</span><strong>{hasFlag(vehicleFlags,VehicleFlags.BLINKER_LEFT)?"ACTIVE":"CENTER"}</strong></div><div><span>RIGHT STALK</span><strong>{hasFlag(vehicleFlags,VehicleFlags.BLINKER_RIGHT)?"ACTIVE":"CENTER"}</strong></div><div><span>HAZARDS</span><strong>{hasFlag(vehicleFlags,VehicleFlags.HAZARDS)?"ACTIVE":"OFF"}</strong></div></div></section>}
-    {studioTab==="studio"&&<section className="vehicle-studio-card"><header><small>PORTRAIT PREVIEW</small><h3>{definition.name}</h3></header>{portraitCapture?<img className="vehicle-studio-portrait" src={portraitCapture} alt={`${definition.name} portrait using current finish settings`}/>:<HeroPortrait hero={definition.id} appearance={appearance} cacheOnly showStyleStatus={false}/>}<p>Capture uses the current paint, shared window profile, and metallic setting. The preview stays in this session.</p><p role="status" aria-live="polite">{portraitMessage||"PORTRAIT READY TO CAPTURE"}</p></section>}
+     {!marine&&<>
+      <section className="vehicle-studio-card">
+       <header><small>GARAGE PREVIEW</small><h3>Window tint</h3></header>
+       <div className="vehicle-studio-glass-options">
+        {Object.entries(WINDOW_TONES).map(([id,tone])=><button key={id} type="button" data-glass={id}
+         aria-pressed={glassStyle===id} onClick={()=>setGlassStyle(id as WindowTone)}>
+         <i className="vehicle-studio-glass-preview" style={{"--glass-tint":tone.color} as CSSProperties}/><span>{tone.label}</span>
+        </button>)}
+       </div>
+      </section>
+      <section className="vehicle-studio-card">
+       <header><small>COSMETICS</small><h3>Interior & collection</h3></header>
+       <label>UNLOCKED SKIN<select aria-label="Unlocked hero skin" disabled={!owner} value={appearance.skin}
+        onChange={event=>{const skin=unlocked.find(item=>item.id===event.target.value);edit({skin:event.target.value,body:skin&&skin.id!=="factory"?skin.color:"factory"});}}>
+        <option value="factory">Factory</option>
+        {unlocked.filter(item=>item.id!=="factory").map(item=><option key={item.id} value={item.id}>{item.name}</option>)}
+       </select></label>
+       <label>SEAT COLOR<select aria-label="Hero seat color request" disabled={!owner||definition.vehicle!=="brz"}
+        value={appearance.seats} onChange={event=>edit({seats:event.target.value as HeroAppearance["seats"]})}>
+        <option value="factory">Factory</option><option value="black">Black · mapping pending</option><option value="red">Red · mapping pending</option>
+       </select></label>
+       <p>Seat colors save as requests while the model's seat materials are being mapped.</p>
+      </section>
+     </>}
+    </>:<section className="vehicle-studio-card"><h3>Factory armor finish</h3><p>This model uses the authored armor materials.</p></section>)}
+    {studioTab==="body"&&(marine
+     ? <section className="vehicle-studio-card"><header><small>MARINE BODY</small><h3>Hull and deck</h3></header>
+        <p>Rotate the model to inspect the hull and deck fittings.</p>
+       </section>
+     : <section className="vehicle-studio-card"><header><small>MODEL-SUPPORTED PANELS</small><h3>Open and inspect</h3></header>
+        <p>Controls move the separate panels available on this model.</p>
+        <div className="vehicle-studio-feature-list">{partOptions.map(part=><div key={part} data-supported={availableParts.includes(part)}><span>{partLabels[part]}</span><strong>{availableParts.includes(part)?(openedParts[part]?"OPEN":"CLOSED"):"NO MOVING MESH"}</strong></div>)}</div>
+       </section>)}
+    {studioTab==="lighting"&&(marine
+     ? <section className="vehicle-studio-card"><header><small>LOCAL GARAGE TEST</small><h3>Marine lighting</h3></header>
+        {shipLightPreview
+         ? <div className="vehicle-studio-feature-list">{MARINE_LAMPS.map(lamp=><div key={lamp.id}><span>{lamp.label}</span><strong>{marineLights[lamp.id]?"ON":"OFF"}</strong></div>)}</div>
+         : <p role="status">Deck and navigation lights use the ship's authored materials.</p>}
+       </section>
+     : <section className="vehicle-studio-card"><header><small>LOCAL GARAGE TEST</small><h3>Steering stalks & hazards</h3></header>
+        <p>Test the model's headlight and signal lens materials.</p>
+        <div className="vehicle-studio-feature-list">
+         <div><span>HEADLIGHT CIRCUIT</span><strong>{hasFlag(vehicleFlags,VehicleFlags.HEADLIGHTS)?"ON":"OFF"}</strong></div>
+         <div><span>LEFT STALK</span><strong>{hasFlag(vehicleFlags,VehicleFlags.BLINKER_LEFT)?"ACTIVE":"CENTER"}</strong></div>
+         <div><span>RIGHT STALK</span><strong>{hasFlag(vehicleFlags,VehicleFlags.BLINKER_RIGHT)?"ACTIVE":"CENTER"}</strong></div>
+         <div><span>HAZARDS</span><strong>{hasFlag(vehicleFlags,VehicleFlags.HAZARDS)?"ON":"OFF"}</strong></div>
+        </div>
+       </section>)}
+    {studioTab==="studio"&&<section className="vehicle-studio-card">
+     <header><small>PORTRAIT PREVIEW</small><h3>{definition.name}</h3></header>
+     <HeroPortrait hero={definition.id} appearance={appearance} className="vehicle-studio-portrait" windowTone={marine?DEFAULT_WINDOW_TONE:glassStyle}/>
+     <p>The portrait refreshes with your current appearance.</p>
+    </section>}
     {(!owner||status!=="idle")&&<p className="vehicle-studio-save-status" role="status" aria-live="polite">{!owner?"CONNECT YOUR PLAYER PROFILE":status==="pending"||status==="saving"?"SAVING YOUR STYLE…":status==="error"?`NOT SAVED · ${message}`:status==="saved"?"SAVED TO YOUR PLAYER · SHARED IN GAME":"Appearance changes save automatically for this vehicle."}</p>}
     {status==="error"&&<button className="menu-control" onClick={()=>void queue.flush()}>RETRY SAVE</button>}
    </VehicleStudio>}

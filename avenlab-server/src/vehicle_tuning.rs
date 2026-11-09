@@ -16,12 +16,15 @@ pub fn validated_config(mut c: VehicleConfig, patch: &Map<String, Value>) -> Res
         }
         let mut resolved=Map::new();
         for (stat,factor) in factors {
-            let stock=match stat.as_str(){"engine_force"=>c.engine_force,"max_speed"=>c.max_speed,"mu_base"=>c.mu_base,"brake_force"=>c.brake_force,"mass"=>c.mass,"suspension_damping_ratio"=>c.suspension_damping_ratio,"cooling_multiplier"=>c.resources.cooling_multiplier,_=>return Err("Unsupported mod stat".into())};
+            let stock=match stat.as_str(){"engine_force"=>c.engine_force,"max_speed"=>c.max_speed,"mu_base"=>c.mu_base,"brake_force"=>c.brake_force,"mass"=>c.mass,"suspension_damping_ratio"=>c.suspension_damping_ratio,"cooling_multiplier"=>c.resources.cooling_multiplier,"angular_damping"=>c.angular_damping,_=>return Err("Unsupported mod stat".into())};
             resolved.insert(stat,serde_json::json!(stock as f64*factor));
         }
         return validated_config(c,&resolved);
     }
     let tracked=c.tracked;
+    let marine=c.wheels==0;
+    let mass_bounds=if marine {(c.mass*0.85,c.mass*1.15)}else{(300.0,60000.0)};
+    let thrust_limit=if marine {c.engine_force*1.4}else if tracked {300000.0}else{200000.0};
     for (key, value) in patch {
         if key == "abs_enabled" || key == "tcs_enabled" {
             let enabled = value.as_bool().ok_or("Assist values must be boolean.")?;
@@ -29,8 +32,8 @@ pub fn validated_config(mut c: VehicleConfig, patch: &Map<String, Value>) -> Res
             continue;
         }
         let (target, min, max): (&mut f32, f32, f32) = match key.as_str() {
-            "mass" => (&mut c.mass, 300.0, 60000.0),
-            "engine_force" => (&mut c.engine_force, 0.0, 200000.0),
+            "mass" => (&mut c.mass, mass_bounds.0, mass_bounds.1),
+            "engine_force" => (&mut c.engine_force, 0.0, thrust_limit),
             "cooling_multiplier" => (&mut c.resources.cooling_multiplier, 0.25, 32.0),
             "brake_force" => (&mut c.brake_force, 100.0, 300000.0),
             "max_speed" => (&mut c.max_speed, 2.0, 150.0),
@@ -56,6 +59,7 @@ pub fn validated_config(mut c: VehicleConfig, patch: &Map<String, Value>) -> Res
         }
         *target = n as f32;
     }
+    if marine {return Ok(c);}
     if tracked {c.max_steer_angle=0.0;c.ackermann=0.0;}
     if c.suspension_sag >= c.suspension_max_length {
         return Err("Suspension sag must be smaller than suspension travel.".into());
@@ -89,6 +93,22 @@ mod tests {
         let restored = validated_config(AE86, serde_json::json!({"mod_stages":{"intercooler":0}}).as_object().unwrap()).unwrap();
         assert_eq!(restored.resources.cooling_multiplier, AE86.resources.cooling_multiplier);
         assert!(validated_config(AE86, serde_json::json!({"cooling_multiplier":33}).as_object().unwrap()).is_err());
+    }
+    #[test]
+    fn marine_stages_accept_full_hull_mass_and_thrust() {
+        let stock = crate::vehicle_setup::LOUISIANA;
+        let patch = serde_json::json!({"mod_stages": {
+            "propellers": 1, "reduction_gear": 1, "seawater_cooling": 1, "hull_fairing": 1,
+            "stabilizers": 1, "weight": 1
+        }});
+        let tuned = validated_config(stock, patch.as_object().unwrap()).unwrap();
+        assert_eq!(tuned.wheels, 0);
+        assert!(tuned.engine_force > stock.engine_force);
+        assert!(tuned.max_speed > stock.max_speed);
+        assert!(tuned.angular_damping > stock.angular_damping);
+        assert!(tuned.resources.cooling_multiplier > stock.resources.cooling_multiplier);
+        assert!((tuned.mass / stock.mass - 0.975).abs() < 0.00001);
+        assert_eq!(tuned.mu_base, stock.mu_base);
     }
     #[test]
     fn rejects_bad_fields_ranges_and_sag() {

@@ -1,10 +1,11 @@
 import { create } from "zustand";
-export type HeroAppearance = {body:string;finish:"factory"|"frs"|"soft";metallic:number;seats:"factory"|"black"|"red";skin:string};
-export const FACTORY_APPEARANCE: HeroAppearance = {body:"factory",finish:"frs",metallic:.42,seats:"factory",skin:"factory"};
+import { normalizePaintFinish, type PaintFinish } from "./paintFinishes";
+export type HeroAppearance = {body:string;finish:PaintFinish;metallic:number;seats:"factory"|"black"|"red";skin:string};
+export const FACTORY_APPEARANCE: HeroAppearance = {body:"factory",finish:"gloss",metallic:.42,seats:"factory",skin:"factory"};
 export function normalizeHeroAppearance(value?:Partial<HeroAppearance>|null):HeroAppearance {
  const metallic=typeof value?.metallic==="number"&&Number.isFinite(value.metallic)?Math.max(0,Math.min(1,value.metallic)):FACTORY_APPEARANCE.metallic;
  return {body:typeof value?.body==="string"?value.body:FACTORY_APPEARANCE.body,
-  finish:value?.finish==="factory"||value?.finish==="soft"?value.finish:"frs",metallic,
+  finish:normalizePaintFinish(value?.finish),metallic,
   seats:value?.seats==="black"||value?.seats==="red"?value.seats:"factory",
   skin:typeof value?.skin==="string"?value.skin:FACTORY_APPEARANCE.skin};
 }

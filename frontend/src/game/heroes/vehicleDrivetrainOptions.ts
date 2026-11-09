@@ -31,8 +31,8 @@ export const VEHICLE_DRIVETRAIN_PROFILES: Record<string, VehicleDrivetrainProfil
   charger70: { driveLayout: "RWD", transmissions: ["manual", "automatic"], defaultTransmission: "automatic", paddleShifters: false },
   skyline34: { driveLayout: "AWD", transmissions: ["manual", "automatic"], defaultTransmission: "manual", paddleShifters: true },
   timecar: { driveLayout: "AWD", transmissions: ["automatic"], defaultTransmission: "automatic", paddleShifters: true },
-  "hawaii-rescue": { driveLayout: "TWIN SCREW", transmissions: [], defaultTransmission: null, paddleShifters: false },
-  louisiana: { driveLayout: "TWIN SCREW", transmissions: [], defaultTransmission: null, paddleShifters: false },
+  "hawaii-rescue": { driveLayout: "PROP & RUDDER", transmissions: [], defaultTransmission: null, paddleShifters: false },
+  louisiana: { driveLayout: "PROP & RUDDER", transmissions: [], defaultTransmission: null, paddleShifters: false },
 };
 
 export function drivetrainProfileFor(vehicle: string): VehicleDrivetrainProfile {

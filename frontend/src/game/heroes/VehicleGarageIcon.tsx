@@ -13,12 +13,17 @@ const PATHS: Record<string, string> = {
   intercooler: "M4 5h16v14H4zM1 9h3m16 6h3M7 8h10M7 11h10M7 14h10M7 17h10",
   gearing: "M6 3v18m6-18v18m6-18v9H6M4 3h4m2 0h4m2 0h4M4 21h4m2 0h4",
   exhaust: "M3 10h7l4-4h7v9h-7l-4 4H3zM17 6v9",
+  propellers: "M12 12c2-6 4-9 7-8 3 2-1 6-7 8Zm0 0c6 2 9 4 8 7-2 3-6-1-8-7Zm0 0c-2 6-4 9-7 8-3-2 1-6 7-8Zm0 0c-6-2-9-4-8-7 2-3 6 1 8 7Z",
+  hull_hp: "M12 3l8 4v6c0 3-3 6-8 8-5-2-8-5-8-8V7l8-4Z",
+  length: "M3 7v10M21 7v10M3 12h18m-14-4-4 4 4 4m10-8 4 4-4 4",
   tune: "M4 7h16M4 12h16M4 17h16M8 5v4M16 10v4M10 15v4",
 };
 const ALIASES: Record<string, string> = {
   turbo: "engine_force", engine: "engine_force", tires: "mu_base",
   suspension: "suspension_damping_ratio", brakes: "brake_force",
   weight: "mass", transmission: "gearing", fuel: "fuel_economy",
+  intake: "engine_force", radiator: "intercooler", seawater_cooling: "intercooler",
+  track_pads: "mu_base", final_drive: "gearing", reduction_gear: "gearing", beam: "length",
 };
 export function VehicleGarageIcon({ name }: { name: string }) {
   return <svg className="vehicle-garage-icon" viewBox="0 0 24 24" aria-hidden="true"><path d={PATHS[ALIASES[name] ?? name] ?? PATHS.tune} /></svg>;

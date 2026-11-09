@@ -27,6 +27,15 @@ test('shared portrait selection opens settings; only a complete X hold sets main
   const toggle=panel.querySelector('.vehicle-studio-panel-toggle');
   const progress=panel.querySelector('[aria-label="Installed upgrade stages"]');
   assert.equal(document.querySelector('.menu-frame-header h1').textContent,'GARAGE');
+  for(const label of ['stats','drivetrain']){
+   const button=document.querySelector(`[aria-label="Minimize ${label}"]`);
+   const body=document.getElementById(button.getAttribute('aria-controls'));
+   await act(async()=>button.click());
+   assert.equal(body.hidden,true);
+   assert.equal(content.hidden,false,'side panels collapse independently of Upgrades');
+   await act(async()=>button.click());
+   assert.equal(body.hidden,false);
+  }
   assert.equal(content.hidden,false,'the upgrade controls open with Garage');
   assert.equal(progress.getAttribute('aria-valuenow'),'0');
   await act(async()=>panel.querySelector('[aria-label="Upgrade Turbo kit"]').click());

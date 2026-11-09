@@ -4,19 +4,7 @@
   height: auto;
 }
 
-.hero-workshop-intro {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: clamp(5px, 1.25vw, 18px);
-  padding: 5px 6px;
-}
-.hero-workshop-intro .hero-summary {
-  position: static;
-  width: auto;
-  min-width: 0;
-}
-.hero-character-entry { flex: 0 0 clamp(106px, 12vw, 160px); }
+.hero-character-entry { width: clamp(106px, 12vw, 160px); }
 .hero-character-link.menu-panel-frame {
   --menu-panel-fill: var(--app-panel);
   display: grid;
@@ -114,7 +102,7 @@
 .character-equip .menu-control { white-space: nowrap; }
 
 @media (max-width: 850px), (max-height: 475px) {
-  .hero-character-entry { flex-basis: clamp(86px, 17vw, 128px); }
+  .hero-character-entry { width: clamp(86px, 17vw, 128px); }
   .hero-character-link.menu-panel-frame { grid-template-columns: clamp(28px, 5vw, 40px) minmax(0, 1fr); align-items: center; }
   .hero-character-link > span { padding: 2px 3px; line-height: 1.15; }
   .hero-character-link small { font-size: 8px; }

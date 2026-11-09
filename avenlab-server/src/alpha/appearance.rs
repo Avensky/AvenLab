@@ -11,12 +11,14 @@ pub struct HeroAppearance {
     pub skin: String,
 }
 impl Default for HeroAppearance {
-    fn default() -> Self { Self { body:"factory".into(), finish:"frs".into(), metallic:0.42, seats:"factory".into(), skin:"factory".into() } }
+    fn default() -> Self { Self { body:"factory".into(), finish:"gloss".into(), metallic:0.42, seats:"factory".into(), skin:"factory".into() } }
 }
 impl HeroAppearance {
     pub fn validate(&self, owned: &std::collections::BTreeSet<String>) -> Result<(),String> {
         if self.body != "factory" && !(self.body.len()==7 && self.body.starts_with('#') && self.body[1..].bytes().all(|b|b.is_ascii_hexdigit())) { return Err("Choose a valid body color.".into()); }
-        if !["factory","frs","soft"].contains(&self.finish.as_str()) || !["factory","black","red"].contains(&self.seats.as_str()) { return Err("Unknown appearance option.".into()); }
+        // Accept the legacy keys in saves and clients that predate named finishes.
+        if !matches!(self.finish.as_str(), "factory" | "gloss" | "satin" | "matte" | "high-gloss" | "metallic" | "frs" | "soft")
+            || !matches!(self.seats.as_str(), "factory" | "black" | "red") { return Err("Unknown appearance option.".into()); }
         if !self.metallic.is_finite() || !(0.0..=1.0).contains(&self.metallic) { return Err("Metallic finish must be between 0 and 1.".into()); }
         if !owned.contains(&self.skin) { return Err("This skin is locked.".into()); }
         Ok(())
@@ -31,5 +33,9 @@ mod tests {
   a.skin="secret-rare".into();assert!(a.validate(&owned).is_err());a.skin="factory".into();
   a.body="not-a-color".into();assert!(a.validate(&owned).is_err());
   a.body="factory".into();a.finish="broken".into();assert!(a.validate(&owned).is_err());
+  for finish in ["gloss","satin","matte","high-gloss","metallic","frs","soft"] {
+      a.finish=finish.into();
+      assert!(a.validate(&owned).is_ok());
+  }
  }
 }

@@ -63,7 +63,7 @@ test('hero guide explains shipped actions and returns without equipping or repla
    await click('#hero-workshop-role-tab-tank');assert.equal(alpha.getState().previewHero,'brz','a filter does not choose a vehicle');
    assert.equal(document.querySelectorAll('.hero-roster-grid [data-role]:not([data-role=tank])').length,0);
    await click('[data-hero="tank"]');
-   await click('.vehicle-studio-panel-toggle');
+   await click('.vehicle-studio-panel .vehicle-studio-panel-toggle');
    await click('#vehicle-studio-tab-abilities');
    assert.equal(document.querySelectorAll('.menu-frame-header').length,1);
    assert.equal(document.querySelector('.menu-frame-header h1').textContent,'GARAGE');
@@ -73,7 +73,7 @@ test('hero guide explains shipped actions and returns without equipping or repla
    assert.equal(document.querySelectorAll('.hero-ability-grid article').length,4);
    assert(document.querySelector('.hero-main-hold').disabled);
    await click('#vehicle-studio-tab-performance');
-   assert.equal(document.querySelector('.vehicle-studio-panel-toggle').getAttribute('aria-expanded'),'false');
+   assert.equal(document.querySelector('.vehicle-studio-panel .vehicle-studio-panel-toggle').getAttribute('aria-expanded'),'false');
    await act(async()=>route('back'));
    assert.equal(document.querySelector('[data-hero="tank"]').getAttribute('aria-pressed'),'true');
    assert.equal(alpha.getState().previewHero,'tank');

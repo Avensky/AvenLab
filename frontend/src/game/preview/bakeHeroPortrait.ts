@@ -25,6 +25,8 @@ import { FACTORY_APPEARANCE, type HeroAppearance } from "../../vehicles/cosmetic
 import {isDrivingScreen, useUIStore} from "../../store/menus/uiStore";
 import { prepareGarageVehiclePaint, applyShowroomPaint, applyShowroomHighlights } from "./garageVehiclePaint";
 import { prepareVehicleVisual } from "../../vehicles/tools/vehicleMaterials";
+import { vehicleSystems } from "../../vehicles/vehicleSystems";
+import { applyWindowTone, DEFAULT_WINDOW_TONE, type WindowTone } from "./windowTones";
 import {
   VEHICLE_MODEL_PATHS,
   type VehicleModelId,
@@ -52,7 +54,7 @@ function disposeLoadedPortrait(scene: Object3D) {
   for (const texture of textures) texture.dispose();
 }
 
-export async function bakeHeroPortrait(model: VehicleModelId, appearance: HeroAppearance = FACTORY_APPEARANCE): Promise<string> {
+export async function bakeHeroPortrait(model: VehicleModelId, appearance: HeroAppearance = FACTORY_APPEARANCE, tone: WindowTone = DEFAULT_WINDOW_TONE): Promise<string> {
   requireMenu();
   const decoder = new DRACOLoader().setDecoderPath("/draco/");
   const loader = new GLTFLoader().setDRACOLoader(decoder);
@@ -78,6 +80,8 @@ export async function bakeHeroPortrait(model: VehicleModelId, appearance: HeroAp
     prepareGarageVehiclePaint(prepared.root, model);
     applyShowroomPaint(prepared.root, model, "factory", appearance.body === "factory" ? undefined : appearance.body);
     applyShowroomHighlights(prepared.root, .45, appearance.finish, appearance.metallic, model);
+    const marine = vehicleSystems(model) === "marine";
+    if (!marine) applyWindowTone(prepared.glassMaterials, tone);
     const scene = new Scene();
     pmrem = new PMREMGenerator(renderer);
     room = new RoomEnvironment();
@@ -93,7 +97,7 @@ export async function bakeHeroPortrait(model: VehicleModelId, appearance: HeroAp
     const pivot = new Group();
     pivot.add(prepared.root);
     scene.add(pivot);
-    const bounds = new Box3().setFromObject(prepared.root, true);
+    const bounds = new Box3().setFromObject(prepared.root, !marine);
     const center = bounds.getCenter(new Vector3()), size = bounds.getSize(new Vector3());
     prepared.root.position.sub(center);
     pivot.scale.setScalar(4.8 / Math.max(size.x, size.y, size.z));

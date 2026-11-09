@@ -49,10 +49,10 @@ test('live portraits stay cache-only after delayed timers and cancel menu jobs o
           export const waitForCall=()=>new Promise(resolve=>{next=resolve;});
           export function hold(){held=true;}
           export function finish(){held=false;release?.();release=null;}
-          export async function bakeHeroPortrait(model,appearance){
-            const call={model,appearance};calls.push(call);next?.(call);next=null;
+          export async function bakeHeroPortrait(model,appearance,tone){
+            const call={model,appearance,tone};calls.push(call);next?.(call);next=null;
             if(held)await new Promise(resolve=>{release=resolve;});
-            return 'data:image/webp;base64,'+btoa(model+appearance.body);
+            return 'data:image/webp;base64,'+btoa(model+appearance.body+appearance.finish+tone);
           }
         `;
         if(id==='\0'+loaderHook)return `
@@ -141,6 +141,18 @@ test('live portraits stay cache-only after delayed timers and cancel menu jobs o
     assert.equal(disposed,3,'cancelled loaded geometry/material/texture is released');
     assert.equal(loader.disposals,1,'the decode worker is released on cancellation');
     assert.equal(document.querySelectorAll('canvas').length,0);
+
+    await setScreen('heroes');
+    const fresh={...factory,body:'#05a780',finish:'matte'};
+    await render({appearance:fresh,windowTone:'bronze'});
+    assert.equal(portrait().dataset.style,'loading');
+    assert.equal(portrait().getAttribute('aria-busy'),'true');
+    const changed=probe.waitForCall();
+    await act(async()=>{advance(120);await changed;});
+    assert.deepEqual(probe.calls.at(-1),{model:'brz',appearance:fresh,tone:'bronze'});
+    assert.equal(portrait().dataset.style,'ready');
+    assert.equal(portrait().querySelector('img').getAttribute('src'),cache.peekStyledPortrait('brz',fresh,'bronze'));
+    assert.equal(cache.peekStyledPortrait('brz',fresh),null,'garage glass previews have their own cache entry');
   } finally {
     if(root)await act(async()=>root.unmount());
     await vite.close();dom.window.close();

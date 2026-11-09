@@ -1,5 +1,6 @@
 import { drivetrainProfileFor } from "./vehicleDrivetrainOptions";
 import { useVehicleStudioStore } from "./vehicleStudioStore";
+import { vehicleSystems } from "../../vehicles/vehicleSystems";
 
 // Axle positions mirror vehicle_setup.rs. This is a static estimate with the
 // longitudinal center of mass at the chassis origin, not measured axle telemetry.
@@ -18,13 +19,13 @@ function estimatedFrontWeightPercent(vehicle: string): number | null {
 }
 
 export function VehicleDrivetrainDiagram({ layout }: { layout: string }) {
-  const marine = layout === "TWIN SCREW";
+  const marine = layout === "PROP & RUDDER";
   const tracked = layout === "TRACK DRIVE";
   const front = layout === "AWD" || layout === "4WD" || layout === "FWD" || tracked;
   const rear = layout === "AWD" || layout === "4WD" || layout === "RWD" || tracked;
   return <svg className="vehicle-drivetrain-diagram" viewBox="0 0 90 116" role="img" aria-label={`${layout} drivetrain diagram`}>
-    <path className="chassis-outline" d="M24 8Q45 1 66 8L73 30v62l-7 17H24l-7-17V30Z" />
-    {marine ? <g className="chassis-driven"><path d="M35 28v61m20-61v61" />{[35, 55].map(x => <g key={x}><circle cx={x} cy="92" r="7" /><path d={`M${x-5} 87l10 10m0-10-10 10`} /></g>)}</g> : <>
+    <path className="chassis-outline" d={marine ? "M45 4Q62 24 63 57l-5 44H32l-5-44Q28 24 45 4Z" : "M24 8Q45 1 66 8L73 30v62l-7 17H24l-7-17V30Z"} />
+    {marine ? <g className="chassis-driven"><path d="M45 27v52m0 17v12m-5-4h10" /><circle cx="45" cy="87" r="8" /><path d="m40 82 10 10m0-10-10 10" /></g> : <>
       <path className={front ? "chassis-driven" : "chassis-idle"} d="M20 30h50M45 30v22" />
       <path className={rear ? "chassis-driven" : "chassis-idle"} d="M20 86h50M45 62v24" />
       <rect className="chassis-engine" x="35" y="15" width="20" height="13" rx="3" />
@@ -35,26 +36,28 @@ export function VehicleDrivetrainDiagram({ layout }: { layout: string }) {
   </svg>;
 }
 
-export function VehicleDrivetrainSummary({ vehicle, weight, economy, suspension, damping }: {
-  vehicle: string; weight: string; economy?: string; suspension: number; damping: number;
+export function VehicleDrivetrainSummary({ vehicle, weight, economy, suspension, damping, yawDamping }: {
+  vehicle: string; weight: string; economy?: string; suspension: number; damping: number; yawDamping?: number;
 }) {
   const profile = drivetrainProfileFor(vehicle);
   const savedTransmission = useVehicleStudioStore(state => state.transmissions[vehicle]);
   const transmission = savedTransmission ?? profile.defaultTransmission;
   const front = estimatedFrontWeightPercent(vehicle);
-  // The server powertrain uses six forward ratios for wheeled/tracked vehicles.
-  const gearbox = profile.driveLayout === "TWIN SCREW" ? "DIRECT" : `${transmission === "manual" ? "MANUAL" : "AUTO"} · 6`;
-  return <section className="vehicle-studio-drivetrain menu-panel-frame" aria-label="Drivetrain and chassis">
-    <header><span>DRIVETRAIN</span><strong>{profile.driveLayout}</strong></header>
-    <div className="vehicle-chassis-content">
+  const marine = vehicleSystems(vehicle) === "marine";
+  const gearbox = `${transmission === "manual" ? "MANUAL" : "AUTO"} · 6`;
+  return <div className="vehicle-chassis-content">
       <VehicleDrivetrainDiagram layout={profile.driveLayout} />
-      <dl>
+      {marine ? <dl>
+        <div><dt>THRUST</dt><dd>AHEAD / ASTERN</dd></div>
+        <div><dt>STEERING</dt><dd>RUDDER</dd></div>
+        <div><dt>STOPPING</dt><dd>WATER DRAG</dd></div>
+        {yawDamping !== undefined && <div><dt>ANGULAR DAMPING</dt><dd>{yawDamping.toFixed(2)}</dd></div>}
+      </dl> : <dl>
         <div><dt>WEIGHT</dt><dd>{weight}</dd></div>
-        <div title="Estimated front/rear static weight split from the configured axle positions"><dt>F/R SPLIT</dt><dd>{front === null ? "—" : `${front}:${100-front}`}</dd></div>
+        {front !== null && <div title="Estimated front/rear static weight split from the configured axle positions"><dt>F/R SPLIT</dt><dd>{front}:{100-front}</dd></div>}
         <div><dt>GEARBOX</dt><dd>{gearbox}</dd></div>
         <div title={`Suspension damping ratio: ${damping.toFixed(2)}`}><dt>SUSPENSION</dt><dd>{["STOCK", "STREET", "SPORT", "RACE"][suspension] ?? "STOCK"}</dd></div>
         {economy && <div><dt>ECONOMY</dt><dd>{economy}</dd></div>}
-      </dl>
-    </div>
-  </section>;
+      </dl>}
+    </div>;
 }

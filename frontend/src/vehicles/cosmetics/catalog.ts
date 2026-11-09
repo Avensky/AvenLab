@@ -1,3 +1,5 @@
+import { normalizePaintFinish, type PaintFinish } from "./paintFinishes";
+
 /** Presentation catalog only. Future live ownership must be verified by the
  * server; these local previews never grant entitlements or charge money. */
 export const COSMETIC_BUNDLES = {
@@ -6,8 +8,8 @@ export const COSMETIC_BUNDLES = {
   "white-red": { label: "White / red concept", body: "#f4f5f7", accent: "#be2545", items: ["body-white", "camaro-red-stripes", "frs-black-seats", "frs-red-stitch", "wheel-red-stitch"] },
 } as const;
 export type CosmeticBundle = keyof typeof COSMETIC_BUNDLES;
-export type VehicleCosmetics = { bundle: CosmeticBundle; finish: "factory" | "frs" | "soft"; matchCockpit: boolean };
-export const DEFAULT_VEHICLE_COSMETICS: VehicleCosmetics = { bundle: "factory", finish: "frs", matchCockpit: true };
+export type VehicleCosmetics = { bundle: CosmeticBundle; finish: PaintFinish; matchCockpit: boolean };
+export const DEFAULT_VEHICLE_COSMETICS: VehicleCosmetics = { bundle: "factory", finish: "gloss", matchCockpit: true };
 export const COSMETIC_SLOTS = {
   body: { status: "ready", models: ["ae86", "brz", "camaro", "supra", "cx30", "mini", "fortuner", "landcruiser", "sierra"] },
   stripes: { status: "needs-mask", models: ["camaro"] },
@@ -18,7 +20,7 @@ export const COSMETIC_SLOTS = {
 export function sanitizeVehicleCosmetics(value: unknown): VehicleCosmetics {
   const v = (value && typeof value === "object" ? value : {}) as Partial<VehicleCosmetics>;
   return { bundle: v.bundle && Object.hasOwn(COSMETIC_BUNDLES, v.bundle) ? v.bundle : "factory",
-    finish: v.finish === "factory" || v.finish === "soft" ? v.finish : "frs",
+    finish: normalizePaintFinish(v.finish),
     matchCockpit: typeof v.matchCockpit === "boolean" ? v.matchCockpit : true };
 }
 
