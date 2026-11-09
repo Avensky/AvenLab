@@ -1,13 +1,17 @@
 import {MenuTabButton} from "./MenuTabButton";
 import {MenuFrame,MenuFrameHeader,MenuFrameFooter} from "./MenuFrame";
+import { useAngledMenuHeader } from "./useAngledMenuHeader";
+import { ControlGlyph, type ControlGlyphProps } from "../controller";
 import { trapMenuFocus } from "./menuFocus";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import type { MenuAction } from "../../controls/inputRouting";
+import "./sceneTabHeader.css";
 
 export type MenuRow = {
   id: string;
   label: string;
   value?: string;
+  shortcut?: ControlGlyphProps;
   description?: string;
   action?: (direction: 1 | -1) => void;
   adjustable?: boolean;
@@ -41,6 +45,7 @@ export function TabbedMenu({
   backLabel?: string;
   status?: string;
 }) {
+  const angled = useAngledMenuHeader();
   const [selection, setSelection] = useState({
     tab: tabs.find((tab) => tab.id === initialTab)?.id ?? tabs[0].id,
     row: "",
@@ -73,7 +78,7 @@ export function TabbedMenu({
       .getElementById(`${panelId}-${tab.id}-tab`)
       ?.scrollIntoView({ block: "nearest", inline: "nearest" });
     if (content.current) content.current.scrollTop = 0;
-  }, [tab.id, panelId]);
+  }, [tab.id, panelId, angled]);
   useEffect(() => {
     const element =
       selection.focus === "tab"
@@ -83,7 +88,7 @@ export function TabbedMenu({
           : document.getElementById(`${panelId}-${tab.id}-tab`);
     element?.focus({ preventScroll: true });
     element?.scrollIntoView({ block: "nearest", inline: "nearest" });
-  }, [tab.id, selectedId, selection.focus, panelId]);
+  }, [tab.id, selectedId, selection.focus, panelId, angled]);
   useEffect(() => {
     const handle = (event: Event) => {
       const action = (event as CustomEvent<MenuAction>).detail;
@@ -118,6 +123,50 @@ export function TabbedMenu({
     window.addEventListener("avenlab:panel-action", handle);
     return () => window.removeEventListener("avenlab:panel-action", handle);
   }, [onBack, rows, selectedRow, tab.id, tabIndex, tabs]);
+
+  const navigation = (
+    <div
+      role="tablist"
+      aria-label={`${title} categories`}
+      className={angled ? "angled-header-tabs" : "tabbed-menu-tabs menu-frame-tabs"}
+    >
+      {tabs.map((item, index) => (
+        <MenuTabButton
+          key={item.id}
+          id={`${panelId}-${item.id}-tab`}
+          selected={tab.id === item.id}
+          angled={angled}
+          data-selected={tab.id === item.id}
+          aria-controls={`${panelId}-${item.id}-panel`}
+          tabIndex={tab.id === item.id ? 0 : -1}
+          onClick={() => selectTab(index)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ")
+              event.stopPropagation();
+            if (
+              ["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)
+            ) {
+              event.preventDefault();
+              event.stopPropagation();
+              const next =
+                event.key === "Home"
+                  ? 0
+                  : event.key === "End"
+                    ? tabs.length - 1
+                    : (index +
+                        (event.key === "ArrowLeft" ? -1 : 1) +
+                        tabs.length) %
+                      tabs.length;
+              selectTab(next, "tab");
+            }
+          }}
+          className={angled ? undefined : "menu-tab"}
+        >
+          {item.label}
+        </MenuTabButton>
+      ))}
+    </div>
+  );
 
   return (
     <div className="game-ui menu-surface tabbed-menu fixed inset-0 z-50 bg-slate-950 text-slate-100">
@@ -166,48 +215,13 @@ export function TabbedMenu({
         aria-describedby={subtitle ? `${panelId}-description` : undefined}
         className="menu-shell tabbed-menu-shell flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden bg-slate-950"
       >
-        <MenuFrameHeader title={title} titleId={`${panelId}-title`} eyebrow={eyebrow} onBack={onBack} backLabel={backLabel} className="tabbed-menu-header"/>
+        <MenuFrameHeader title={title} titleId={`${panelId}-title`} eyebrow={eyebrow}
+          onBack={onBack} backLabel={backLabel} showBack={!angled}
+          className={angled ? "angled-tab-header" : "tabbed-menu-header"}>
+          {angled && <div className="tabbed-angled-scroll">{navigation}</div>}
+        </MenuFrameHeader>
         {subtitle&&<p id={`${panelId}-description`} className="sr-only">{subtitle}</p>}
-        <div
-          role="tablist"
-          aria-label={`${title} categories`}
-          className="tabbed-menu-tabs menu-frame-tabs"
-        >
-          {tabs.map((item, index) => (
-            <MenuTabButton
-              key={item.id}
-              id={`${panelId}-${item.id}-tab`}
-              selected={tab.id === item.id}
-              data-selected={tab.id === item.id}
-              aria-controls={`${panelId}-${item.id}-panel`}
-              tabIndex={tab.id === item.id ? 0 : -1}
-              onClick={() => selectTab(index)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ")
-                  event.stopPropagation();
-                if (
-                  ["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)
-                ) {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  const next =
-                    event.key === "Home"
-                      ? 0
-                      : event.key === "End"
-                        ? tabs.length - 1
-                        : (index +
-                            (event.key === "ArrowLeft" ? -1 : 1) +
-                            tabs.length) %
-                          tabs.length;
-                  selectTab(next, "tab");
-                }
-              }}
-              className="menu-tab"
-            >
-              {item.label}
-            </MenuTabButton>
-          ))}
-        </div>
+        {!angled && navigation}
         <div
           ref={content}
           role="tabpanel"
@@ -260,12 +274,14 @@ export function TabbedMenu({
                     /^(off|hide|disabled)$/i.test(row.value) ? "off" : undefined
                   }>{row.value}</span>
                 )}
+                {row.shortcut && <ControlGlyph {...row.shortcut} />}
               </button>
             ))}
           </div>
           {tab.content && <div className="menu-extras">{tab.content}</div>}
         </div>
-        <MenuFrameFooter className="tabbed-menu-footer" status={status}/>
+        <MenuFrameFooter className="tabbed-menu-footer" status={status}
+          backAction={angled ? { onClick: onBack, label: backLabel } : undefined} />
       </MenuFrame>
     </div>
   );

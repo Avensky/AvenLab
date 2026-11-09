@@ -40,6 +40,7 @@
   --angled-title-scale: 1.2;
   --angled-tab-cut: clamp(16px, 1.45vw, 22px);
   --angled-title-cut: calc(var(--angled-tab-cut) * var(--angled-title-scale));
+  --angled-title-chamfer: 0px;
   --angled-header-height: var(--menu-footer-min-height, 41px);
   --angled-tabs-height: calc(var(--angled-header-height) / var(--angled-title-scale));
   --angled-tab-surface: color-mix(in srgb, var(--app-background) 62%, var(--app-panel));
@@ -71,7 +72,7 @@
   padding: 1px calc(var(--angled-title-cut) + 9px) 1px 12px;
   color: var(--app-text);
   background: var(--app-accent);
-  clip-path: polygon(0 0, 100% 0, calc(100% - var(--angled-title-cut)) 100%, 0 100%);
+  clip-path: polygon(var(--angled-title-chamfer) 0, 100% 0, calc(100% - var(--angled-title-cut)) 100%, 0 100%, 0 var(--angled-title-chamfer));
   filter: drop-shadow(0 0 1px var(--app-accent));
 }
 .menu-frame-header.angled-tab-header > div:first-child::before {
@@ -81,7 +82,10 @@
   inset: 1px;
   pointer-events: none;
   background: color-mix(in srgb, var(--app-panel) 92%, var(--app-raised));
-  clip-path: polygon(0 0, 100% 0, calc(100% - var(--angled-title-cut)) 100%, 0 100%);
+  clip-path: polygon(var(--angled-title-chamfer) 0, 100% 0, calc(100% - var(--angled-title-cut)) 100%, 0 100%, 0 var(--angled-title-chamfer));
+}
+html[data-ui-theme="pit-wall"] .angled-tab-header {
+  --angled-title-chamfer: 8px;
 }
 .menu-frame-header.angled-tab-header > div:first-child > :is(small,h1,.menu-header-title-meta) {
   position: relative;
@@ -263,6 +267,24 @@
   --controller-action-background: var(--angled-tab-surface);
   border-radius: 0;
   font-style: italic;
+}
+.tabbed-angled-scroll {
+  min-width: 0;
+  align-self: start;
+  margin-left: calc(-1 * var(--angled-tab-cut));
+  overflow: auto hidden;
+  touch-action: pan-x;
+  overscroll-behavior-x: contain;
+}
+.tabbed-angled-scroll .angled-header-tabs {
+  width: max-content;
+  margin-left: 0;
+}
+.tabbed-angled-scroll .angled-header-tab {
+  flex: 0 0 auto;
+  max-width: none;
+  padding-inline: calc(var(--angled-tab-cut) / 2 + 9px);
+  font-size: calc(clamp(9px, 1.05vw, 12px) * var(--menu-text-scale, 1));
 }
 @media (max-width: 760px) {
   .menu-frame-header.angled-tab-header {

@@ -16,6 +16,7 @@ test('hero guide explains shipped actions and returns without equipping or repla
  try{
   const {HEROES,useAlphaStore:alpha}=await load('store/alpha/alphaStore.ts'),{getHeroAbilityGuide:guide,HERO_EFFECT_GUIDE:effects}=await load('game/heroes/heroAbilityCatalog.ts');
   const {useUIStore:ui}=await load('store/menus/uiStore.ts'),{useSocialStore:social}=await load('store/social/socialStore.ts'),{useNetworkStore:network}=await load('store/session/networkStore.ts');
+  const {usePreferencesStore:prefs}=await load('store/preferences/preferencesStore.ts');
   const {useHeroLoadouts:loadouts,FACTORY_APPEARANCE:factory}=await load('vehicles/cosmetics/heroLoadouts.ts'),{openHeroGuide:open,closeHeroGuide:close,useHeroGuideStore:state}=await load('store/hud/heroGuideStore.ts');
   const client=await load('net/socialClient.ts'),sent=[];client.setSocialConnection({readyState:WebSocket.OPEN,send:body=>sent.push(JSON.parse(body))});
   const {HeroWorkshop}=await load('game/heroes/HeroWorkshop.tsx'),{HeroAbilities}=await load('game/heroes/HeroAbilities.tsx'),{routeMenuAction:route}=await load('controls/inputRouting.ts');
@@ -31,6 +32,7 @@ test('hero guide explains shipped actions and returns without equipping or repla
    const map=new Map(effects.map(effect=>[effect.id,effect]));assert.equal(map.size,effects.length);assert.equal(map.get('spawn-protection').duration,2);assert.equal(map.get('stun').duration,1);assert.equal(map.get('ram-charge').duration,3);assert.equal(map.get('ram-boost').duration,4);assert.equal(map.get('thermal-recovery').duration,null);assert.match(map.get('thermal-recovery').description,/drive to repairs/);assert.equal(map.get('engine-wear').kind,'debuff');assert.equal(map.get('tank-barrier').duration,null);assert.equal(map.get('dive-shield').duration,2);assert.equal(map.get('tank-barrier').nature,'defense');
   });
   await t.test('Heroes opens on the saved favorite and Y toggles help without changing the main',async()=>{
+   prefs.getState().update({inputDevice:'controller'});
    social.setState({view:{profile:{id:'me',name:'Player',progression:{default_hero:'brz',hero_loadouts:{brz:factory},owned:['factory'],tier:'BRONZE',color:'#aabbcc',prestige:0,level:1,xp:0,required_xp:100,credits:0}},alpha:{skins:[]}}});
    loadouts.getState().adopt('me','brz',{brz:{...factory}});alpha.getState().preview('tank');ui.setState({screen:'heroes',overlay:null,isModeLoading:false});
    await act(async()=>root.render(h(Host)));

@@ -1,7 +1,8 @@
 import type { CSSProperties, ReactNode } from "react";
-import { usePreferencesStore } from "../../store/preferences/preferencesStore";
 import { APP_BRANDING } from "../../theme/branding";
 import { MenuFrameHeader } from "./MenuFrame";
+import { MenuTabButton } from "./MenuTabButton";
+import { useAngledMenuHeader } from "./useAngledMenuHeader";
 import "./sceneTabHeader.css";
 
 export type SceneHeaderTab = {
@@ -46,22 +47,22 @@ export function SceneTabHeader({
   level?: number | string;
   titleMeta?: ReactNode;
 }) {
-  const angled = usePreferencesStore(state => state.menuHeaderStyle === "angled");
+  const angled = useAngledMenuHeader();
   const navigation = (
     <nav className={`${angled ? "angled-header-tabs" : "classic-header-tabs"} ${tablistClassName}`} role="tablist" aria-label={tablistLabel} data-controller-tab-only>
       {tabs.map(tab => (
-        <button
+        <MenuTabButton
           key={tab.id}
-          type="button"
-          role="tab"
           id={idPrefix + "-tab-" + tab.id}
-          aria-selected={activeTab === tab.id}
+          selected={activeTab === tab.id}
+          angled={angled}
+          separatorBefore={tab.separatorBefore}
           aria-controls={panelId}
           aria-label={tab.description ? `${tab.label}: ${tab.description}` : undefined}
           title={tab.description}
           tabIndex={activeTab === tab.id ? 0 : -1}
           disabled={busy}
-          className={angled ? "angled-header-tab angled-header-tab--" + tab.id : "menu-control"}
+          className={angled ? "angled-header-tab--" + tab.id : undefined}
           data-has-badge={tab.badge ? true : undefined}
           style={angled && tab.grow !== undefined ? { "--angled-tab-grow": tab.grow } as CSSProperties : undefined}
           onFocus={selectOnFocus ? () => onTabChange(tab.id) : undefined}
@@ -70,12 +71,7 @@ export function SceneTabHeader({
           {tab.icon && <span className="scene-header-tab-icon">{tab.icon}</span>}
           <span className="scene-header-tab-label">{tab.label}</span>
           {tab.badge && <span className="scene-header-tab-badge">{tab.badge}</span>}
-          {angled && (
-            <svg className="angled-header-edge" data-separator={tab.separatorBefore || undefined} viewBox="0 0 18 72" preserveAspectRatio="none" aria-hidden="true">
-              <path d="M18 0 0 72" />
-            </svg>
-          )}
-        </button>
+        </MenuTabButton>
       ))}
     </nav>
   );

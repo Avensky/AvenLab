@@ -77,11 +77,9 @@ html[data-ui-theme] .menu-frame .menu-row-description{color:var(--app-muted);fon
  .menu-frame .menu-frame-tabs .menu-control{padding-inline:10px}
 }
 .menu-frame-footer .controller-shortcuts{flex:1 1 auto;min-width:0}
-@media(max-width:760px){.menu-frame-footer .controller-shortcuts>:is(span,.controller-shortcut-back)>kbd:not(.controller-key){display:none}}
 /* Keep the mobile footer on one row and preserve its clickable actions. */
 @media(max-width:650px){
- .menu-frame-footer .controller-shortcuts>span:first-child,.menu-frame-footer .controller-shortcuts>span:last-child{display:none}
- .menu-frame-footer:has(>.controller-action>[data-controller-key=A]) .controller-shortcuts>span:nth-child(2){display:none}
+ .menu-frame-footer .controller-shortcuts>[data-shortcut=navigate]{display:none}
 }
 
 /* Scene variants keep the existing palette and the open garage between bars. */

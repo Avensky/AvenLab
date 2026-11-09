@@ -3,7 +3,8 @@ import {HEALTH_BAR_LABELS,cycleHealthBarMode} from "../../store/preferences/heal
 import {NOTICE_CHANNELS,NOTICE_LABELS,DEFAULT_NOTICE_CHANNELS} from '../../combat/noticeModel';
 import { HUD_GROUP_LABELS } from "../../store/preferences/index";
 import { CLIMATE_HUD_LABELS, CLIMATE_HUD_SIZES } from "../../store/preferences/hudVisibility";
-import { ControllerGuide } from "../../components/controller";
+import { ControlGlyph, ControllerGuide } from "../../components/controller";
+import { MENU_INPUT_LABELS, type MenuInputPreference } from "../../controls/inputDevice";
 import { appearanceSettingsRows } from "./appearanceSettingsRows";
 import { useEffect, useState } from "react";
 import { TabbedMenu, type MenuRow } from "../../components/menus/TabbedMenu";
@@ -38,6 +39,7 @@ const step = <T,>(values: readonly T[], value: T, dir: 1 | -1 = 1): T =>
   ];
 const keyLabel = (code: string) =>
   code === "Space" ? "Space" : code.replace(/^Key|^Digit/, "");
+const MENU_INPUT_CHOICES = Object.keys(MENU_INPUT_LABELS) as MenuInputPreference[];
 const BINDING_LABELS: Record<BindingAction, string> = {
   forward: "Accelerate",
   reverse: "Reverse",
@@ -490,6 +492,13 @@ export function SettingsMenu() {
             description:
               "Standard gamepad layout: RT accelerate · LT brake · Left stick steer · B handbrake · Start pause. Armed tank: Right stick aim · RB fire · LB charge · Y weapon cycle · R3 angle lock. In menus: A select, B back, LB/RB tabs. Release driving controls after closing a menu before driving again.",
             rows: [
+              {
+                id: "input-device",
+                label: "Input device",
+                description: "Choose menu prompts. Browser / Mobile shows keyboard keys on desktop and touch actions on mobile.",
+                value: MENU_INPUT_LABELS[prefs.inputDevice],
+                action: (dir) => prefs.update({ inputDevice: step(MENU_INPUT_CHOICES, prefs.inputDevice, dir) }),
+              },
               ...turretRows,
               {
                 id: "deadzone",
@@ -685,7 +694,7 @@ export function SettingsMenu() {
               className="menu-control menu-action"
               onClick={() => setPendingBinding(null)}
             >
-              Cancel · Esc / B
+              <ControlGlyph controller="B" /> Cancel
             </button>
           </div>
         </div>

@@ -23,6 +23,8 @@ test('Worlds and Social X refresh is one contextual controller action',async t=>
   const load=path=>vite.ssrLoadModule('/src/'+path);
   const {SocialPanel}=await load('game/social/SocialPanel.tsx'),{GameController}=await load('controls/GameController.ts'),client=await load('net/socialClient.ts');
   const {useUIStore:ui}=await load('store/menus/uiStore.ts'),{useSocialStore:social}=await load('store/social/socialStore.ts'),{useTextKeyboardStore:keyboard}=await load('store/text/keyboardStore.ts');
+  const {usePreferencesStore:prefs}=await load('store/preferences/preferencesStore.ts');
+  prefs.getState().update({inputDevice:'controller'});
   client.setSocialConnection({readyState:WebSocket.OPEN,send:body=>sent.push(JSON.parse(body))});
   ui.setState({screen:'social',overlay:null,isModeLoading:false});social.setState({available:true,view:null});
   root=createRoot(document.getElementById('root'));await act(async()=>root.render(h(Fragment,null,h(GameController),h(SocialPanel))));await poll();

@@ -13,17 +13,19 @@ test('Career, Settings and Worlds/Social share themed controller chrome without 
  dom.window.HTMLElement.prototype.scrollIntoView=()=>{};document.hasFocus=()=>true;
  try{
   vite=await createServer({server:{middlewareMode:true,hmr:false,ws:false},appType:'custom',logLevel:'error'});const load=path=>vite.ssrLoadModule('/src/'+path);
-  const {ThemeController}=await load('theme/ThemeController.tsx'),{usePreferencesStore:prefs}=await load('store/preferences/preferencesStore.ts'),{useSocialStore:social}=await load('store/social/socialStore.ts'),{useUIStore:ui}=await load('store/menus/uiStore.ts');
+  const {ThemeController}=await load('theme/ThemeController.tsx'),{usePreferencesStore:prefs,sanitizePreferences}=await load('store/preferences/preferencesStore.ts'),{useSocialStore:social}=await load('store/social/socialStore.ts'),{useUIStore:ui}=await load('store/menus/uiStore.ts');
   const {CareerMenu}=await load('game/menus/CareerMenu.tsx'),{SettingsMenu}=await load('game/menus/SettingsMenu.tsx'),{SocialPanel}=await load('game/social/SocialPanel.tsx');
   const {SelectionHeader,SelectionFooter}=await load('game/alpha/SelectionChrome.tsx');
   social.setState({available:true,message:'CONNECTED',view:{profile:{id:'player',name:'FRAME DRIVER'},players:[],teammates:[],requests:[],groups:[],world_invites:[],current_world_id:null,worlds:[],maps:['road_precision'],limits:{active_worlds:0,max_active_worlds:3,active_players:1,max_players:10}}});
   root=createRoot(document.getElementById('root'));
   const render=async(component,screen)=>{await act(async()=>{ui.setState({screen,overlay:null});root.render(h('div',null,h(ThemeController),h(component)));});};
+  prefs.getState().update({inputDevice:'controller'});
   for(const [Component,screen,title]of [[CareerMenu,'career','CAREER'],[SettingsMenu,'settings','SETTINGS'],[SocialPanel,'social','WORLDS & SOCIAL']])await t.test(`${title} uses the same frame and a native B action`,async()=>{
    await render(Component,screen);assert(document.querySelector('.menu-frame[role="dialog"]'));assert.equal(document.querySelector('.menu-frame-header h1').textContent.toUpperCase(),title);
-   assert(document.querySelector('.menu-frame-header [data-controller-key="B"]'));assert(document.querySelector('.menu-frame-footer [aria-label="Menu shortcuts"]'));
-   assert(document.querySelector('.menu-frame-tabs [role="tab"][aria-selected="true"]'));
-   for(const theme of ['white','strawberry','deep-purple','navy']){await act(async()=>prefs.getState().update({theme}));assert.equal(document.documentElement.dataset.uiTheme,theme);assert(document.documentElement.style.getPropertyValue('--app-panel'));}
+   const backLocation=screen==='settings'?'.menu-frame-footer':'.menu-frame-header';
+   assert(document.querySelector(`${backLocation} [data-controller-key="B"]`));assert(document.querySelector('.menu-frame-footer [aria-label="Menu shortcuts"]'));
+   assert(document.querySelector('.menu-frame [role="tab"][aria-selected="true"]'));
+   for(const theme of ['white','strawberry','deep-purple','pit-wall','navy']){await act(async()=>prefs.getState().update({theme}));assert.equal(document.documentElement.dataset.uiTheme,theme);assert(document.documentElement.style.getPropertyValue('--app-panel'));}
    assert.equal(social.getState().view.profile.id,'player','styling never changes the authenticated player');
   });
   await t.test('Settings still updates preferences and Social keeps world creation behind its request owner',async()=>{
@@ -43,13 +45,37 @@ test('Career, Settings and Worlds/Social share themed controller chrome without 
     assert.equal(document.querySelector('.menu-frame-header small').textContent,`${title} LABEL`);
     assert.equal(document.querySelector('.menu-frame-header').dataset.menuChrome,'scene');
     assert.equal(document.querySelector('.menu-frame-footer').dataset.menuChrome,'scene');
-    assert(document.querySelector('.menu-frame-footer[data-controller-row]'));
     const shortcuts=document.querySelector('[aria-label="Menu shortcuts"]');
     assert.match(shortcuts.textContent,/Choose hero/);assert.match(shortcuts.textContent,/Chat/);assert.match(shortcuts.textContent,/Field/);
     assert(document.querySelector('.menu-frame-header [data-controller-key="B"]'));
     await act(async()=>document.querySelector('.menu-frame-header button').click());
    }
    assert.equal(backs,2);assert.equal(social.getState().view.profile.id,'player');
+  });
+  await t.test('input choice persists and renders one prompt family with an accessible touch Back',async()=>{
+   assert.equal(sanitizePreferences({}).inputDevice,'browser');
+   assert.equal(sanitizePreferences({inputDevice:'invalid'}).inputDevice,'browser');
+   await act(async()=>prefs.getState().update({inputDevice:'browser',menuHeaderStyle:'angled'}));
+   await render(SettingsMenu,'settings');
+   const footer=document.querySelector('.menu-frame-footer');
+   assert(footer.querySelector('[data-keyboard-key=Enter]'));
+   assert.equal(footer.querySelector('[data-controller-key]'),null);
+   const controllerTab=[...document.querySelectorAll('[role=tab]')].find(node=>node.textContent==='Controller');
+   await act(async()=>controllerTab.click());
+   const inputDevice=document.querySelector('[data-menu-row=input-device]');
+   assert.match(inputDevice.textContent,/Browser \/ Mobile/);
+   await act(async()=>inputDevice.click());
+   assert.equal(prefs.getState().inputDevice,'keyboard');
+   await act(async()=>inputDevice.click());
+   assert.equal(prefs.getState().inputDevice,'controller');
+   assert.equal(JSON.parse(localStorage.getItem('avenlab-preferences-v1')).state.inputDevice,'controller');
+   assert(footer.querySelector('[data-controller-key=A]'));
+   assert.equal(footer.querySelector('[data-keyboard-key]'),null);
+   await act(async()=>inputDevice.click());
+   assert.equal(prefs.getState().inputDevice,'touch');
+   assert.equal(footer.querySelector('kbd'),null);
+   await act(async()=>footer.querySelector('button[aria-label=Back]').click());
+   assert.equal(ui.getState().screen,'main');
   });
  }finally{if(root)await act(async()=>root.unmount());await vite?.close();dom.window.close();for(const[key,value]of saved)if(value)Object.defineProperty(globalThis,key,value);else delete globalThis[key];}
 });

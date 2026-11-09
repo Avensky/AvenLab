@@ -4,7 +4,7 @@ import {
   HERO_FILTERS,
   type HeroFilter,
 } from "../../store/alpha/alphaStore";
-import { ControllerButton } from "../../components/controller";
+import { ControlGlyph } from "../../components/controller";
 import { HeroPortrait } from "./HeroPortrait";
 import { heroMatchesFilter } from "./heroRoleFilters";
 
@@ -62,7 +62,7 @@ export function HeroRoster({
             >
               <HeroPortrait hero={hero.id} />
               {unavailable[hero.id] && <span className="hero-role-full">ROLE FULL</span>}
-              {main===hero.id&&<span className="hero-main-portrait-badge"><ControllerButton button="X"/> MAIN</span>}
+              {main===hero.id&&<span className="hero-main-portrait-badge"><ControlGlyph controller="X" keyboard="X"/> MAIN</span>}
             </button>
           ),
         )}

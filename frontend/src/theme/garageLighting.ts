@@ -10,6 +10,7 @@ export const GARAGE_LIGHT_COLORS: Record<UITheme, string> = {
   forest: "#82b887",
   hacker: "#5bff35",
   black: "#e5cb70",
+  "pit-wall": "#ffdc42",
   "deep-purple": "#7185ff",
   "pastel-purple": "#b49ade",
   scarlet: "#ef122c",

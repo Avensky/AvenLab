@@ -90,7 +90,7 @@ export function DebugMenu() {
     label: settings.overlay
       ? "Close performance overlay"
       : "Open performance overlay",
-    value: "F3",
+    shortcut: { keyboard: "F3" },
     adjustable: false,
     action: () => {
       settings.update({ overlay: !settings.overlay });
@@ -227,7 +227,7 @@ export function DebugMenu() {
             {
               id: "world-builder",
               label: "World builder",
-              value: "F9",
+              shortcut: { keyboard: "F9" },
               adjustable: false,
               disabled: !map,
               action: () => {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { ControllerAction } from "../../components/controller";
+import { ControllerAction, ControlGlyph } from "../../components/controller";
 import type { MenuAction } from "../../controls/inputRouting";
 import { isTypingTarget } from "../../controls/inputRouting";
 import { useUIStore } from "../../store/menus/uiStore";
@@ -462,7 +462,7 @@ export function CollisionBuilderPanel({
                 <button onClick={state.remove}>DELETE SELECTED</button>
               </>
             ) : (
-              <small>Select a footprint or use LB / RB.</small>
+              <small>Select a footprint <ControlGlyph controller={["LB", "RB"]} keyboard="Q / E" /></small>
             )}
             <div className="wb-add">
               <button

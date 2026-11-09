@@ -1371,7 +1371,7 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
       },
     );
     await t.test(
-      "Leave shows Xbox A/Enter and B/Escape actions; cancel shortcuts and pointer cancel never leave",
+      "Leave shows keys or Xbox glyphs and preserves every cancel shortcut",
       async () => {
         await reset("sandbox", "leave_game");
         assert.ok(document.querySelector('[role="alertdialog"]'));
@@ -1382,10 +1382,14 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
           /Are you sure you want to leave game\?/,
         );
         assert.equal(document.activeElement.getAttribute("role"), "alertdialog");
-        assert.equal(row("confirm").querySelector("[data-controller-key]").dataset.controllerKey, "A");
-        assert.equal(row("cancel").querySelector("[data-controller-key]").dataset.controllerKey, "B");
-        assert.match(row("confirm").textContent, /CONFIRMEnter/);
-        assert.match(row("cancel").textContent, /CANCELEsc/);
+        await act(async () => preferences.getState().update({inputDevice:"keyboard"}));
+        assert(row("confirm").querySelector('[data-keyboard-key="Enter"]'));
+        assert(row("cancel").querySelector('[data-keyboard-key="Esc"]'));
+        assert.equal(document.querySelector(".menu-confirm-actions [data-controller-key]"),null);
+        await act(async () => preferences.getState().update({inputDevice:"controller"}));
+        assert(row("confirm").querySelector('[data-controller-key="A"]'));
+        assert(row("cancel").querySelector('[data-controller-key="B"]'));
+        assert.equal(document.querySelector(".menu-confirm-actions [data-keyboard-key]"),null);
         const dialog = document.activeElement;
         await key("Tab", "Tab");
         assert.equal(document.activeElement, dialog);
@@ -1401,6 +1405,7 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
         await reset("sandbox", "leave_game");
         await click(row("cancel"));
         assert.equal(ui.getState().overlay, "pause");
+        await act(async () => preferences.getState().update({inputDevice:"browser"}));
       },
     );
     await t.test(

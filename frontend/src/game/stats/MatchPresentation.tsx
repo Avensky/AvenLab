@@ -1,7 +1,7 @@
 import {memo} from 'react';
 import {HEROES} from '../../store/alpha/alphaStore';
 import {MATCH_TEAM_FILTERS,type MatchView,type MatchTeamFilter} from '../../store/hud/scoreboardStore';
-import {ControllerButton} from '../../components/controller';
+import {ControlGlyph} from '../../components/controller';
 import {HeroPortrait} from '../alpha/HeroPortrait';
 import {formatStat,killDeathRatio,type ScoreboardPlayer} from './scoreboardData';
 import './matchScoreboard.css';
@@ -25,11 +25,11 @@ export function MatchViewTabs({view,onChange,integrated=false,panelId}:{view:Mat
 /** LT/RT is the secondary tab row; TEAM/STATS retains LB/RB ownership. */
 export function MatchTeamFilterTabs({filter,onChange}:{filter:MatchTeamFilter;onChange:(filter:MatchTeamFilter)=>void}){
  return <nav className="match-team-filter-tabs" role="tablist" aria-label="Team composition filter" data-controller-row>
-  <span aria-hidden="true"><ControllerButton button="LT"/></span>
+  <span aria-hidden="true"><ControlGlyph controller="LT" keyboard="1"/></span>
   {MATCH_TEAM_FILTERS.map((team,index)=><button key={team} type="button" role="tab" className="menu-control" aria-selected={filter===team} data-team-filter={team} onClick={()=>onChange(team)} onKeyDown={event=>{
    if(event.key==='ArrowLeft'||event.key==='ArrowRight'){event.preventDefault();event.stopPropagation();const next=MATCH_TEAM_FILTERS[(index+(event.key==='ArrowLeft'?-1:1)+MATCH_TEAM_FILTERS.length)%MATCH_TEAM_FILTERS.length];onChange(next);event.currentTarget.parentElement?.querySelector<HTMLButtonElement>(`[data-team-filter="${next}"]`)?.focus();}
   }}>{team==='all'?'VIEW ALL':`${team.toUpperCase()} TEAM`}</button>)}
-  <span aria-hidden="true"><ControllerButton button="RT"/></span>
+  <span aria-hidden="true"><ControlGlyph controller="RT" keyboard="3"/></span>
  </nav>;
 }
 

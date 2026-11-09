@@ -78,6 +78,6 @@ export function HeroAbilities(){
     </main>
    </div>}
   </div>
-  <SelectionFooter selectLabel="View" >{screen==='heroes'&&<ControllerAction button="Y" className="menu-control" data-close-hero-abilities onClick={closeHeroGuide}>CLOSE ABILITIES</ControllerAction>}<ControllerAction button="B" className="menu-control" onClick={closeHeroGuide}>BACK TO {screen==='heroes'?'HERO':'GAME'}</ControllerAction></SelectionFooter>
+  <SelectionFooter selectLabel="View" >{screen==='heroes'&&<ControllerAction button="Y" keyboard="F1" className="menu-control" data-close-hero-abilities onClick={closeHeroGuide}>CLOSE ABILITIES</ControllerAction>}<ControllerAction button="B" className="menu-control" onClick={closeHeroGuide}>BACK TO {screen==='heroes'?'HERO':'GAME'}</ControllerAction></SelectionFooter>
  </section>;
 }

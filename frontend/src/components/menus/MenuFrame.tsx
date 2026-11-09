@@ -1,6 +1,5 @@
 import {forwardRef,type ComponentPropsWithoutRef,type ReactNode} from 'react';
-import {ControllerAction,MenuShortcuts} from '../controller';
-import type {BackShortcutAction} from '../controller/ControllerButton';
+import {ControllerAction,MenuShortcuts,type BackShortcutAction} from '../controller';
 import {ProgressBadge} from '../../game/alpha/ProgressBadge';
 import type {MatchTeam} from '../../theme/matchTeamTheme';
 import {APP_ALPHA_EYEBROW} from '../../theme/branding';

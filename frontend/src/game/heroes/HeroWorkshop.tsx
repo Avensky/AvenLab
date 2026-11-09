@@ -187,10 +187,10 @@ export function HeroWorkshop(){
     : <SceneTabHeader title="HEROES" eyebrow={APP_BRANDING.productName} level={characterLevel??undefined} tabs={heroRoleHeaderTabs(true)} activeTab={role} onTabChange={next=>{setRole(next as HeroFilter);setEditing(false);}} idPrefix="hero-workshop-role" panelId="hero-workshop-role-panel"/>}
   <div className="hero-selection-stage hero-workshop-body" id={!editing?"hero-workshop-role-panel":undefined} role={!editing?"tabpanel":undefined} aria-labelledby={!editing?"hero-workshop-role-tab-"+role:undefined}>
    {!editing&&<div className="hero-workshop-collection"><HeroRoster showFilters={false} allowBoats selected={hero} main={main} filter={role} busy={!owner} onChoose={openHero} onFilter={filter=>{setRole(filter);setEditing(false);}}/>
-    <p className="hero-workshop-hint">Select a portrait to customize. Hold X to choose your main.</p>
+    <p className="hero-workshop-hint">Select a portrait to customize. Hold Set Main to save your favorite.</p>
     {status!=="idle"&&<div className="hero-collection-save-status" role="status">{status==="error"?`NOT SAVED · ${message}`:status==="saved"?"SAVED TO YOUR PLAYER":"SAVING YOUR STYLE…"}{status==="error"&&<button className="menu-control" onClick={()=>void queue.flush()}>RETRY SAVE</button>}</div>}
    </div>}
-   {!editing&&<section className="hero-summary" aria-label="Selected hero"><small>HERO</small><h2>{definition?.name??"CHOOSE YOUR HERO"}</h2><p>{definition?"Select a vehicle or press A to open the performance garage.":"Choose a vehicle portrait to preview and customize. Your main stays saved."}</p></section>}
+   {!editing&&<section className="hero-summary" aria-label="Selected hero"><small>HERO</small><h2>{definition?.name??"CHOOSE YOUR HERO"}</h2><p>{definition?"Choose a vehicle to open the performance garage.":"Choose a vehicle portrait to preview and customize. Your main stays saved."}</p></section>}
    {editing&&definition&&<VehicleStudio name={definition.name} role={definition.role} note={definition.note} vehicleId={definition.vehicle} speedUnit={speedUnit} stages={vehicleModStages[definition.vehicle]??NO_VEHICLE_MOD_STAGES} summary={studioSummary} tab={studioTab} footer={currentFooter}>
     {studioTab==="overview"&&<section className="vehicle-studio-card vehicle-overview-card"><header><small>HERO VEHICLE</small><h3>{definition.name}</h3></header><p>{definition.note}</p><div className="vehicle-studio-feature-list"><div><span>ROLE</span><strong>{definition.role.toUpperCase()}</strong></div><div><span>CLASS PROFILE</span><strong>ARMOR {stats.armor} · SPEED {stats.speed} · HANDLING {stats.handling}</strong></div><div><span>STOCK BUILD</span><strong>BASELINE READY</strong></div></div></section>}
     {studioTab==="performance"&&<VehicleMods key={`${owner}:${definition.vehicle}`} vehicle={definition.vehicle} stages={vehicleModStages[definition.vehicle]??NO_VEHICLE_MOD_STAGES} onStagesChange={updateVehicleModStages} onSummaryChange={setPerformanceSummary} onFooterChange={setStudioFooterContent}/>}
@@ -219,7 +219,7 @@ export function HeroWorkshop(){
    </VehicleStudio>}
   </div>
   <SelectionFooter selectLabel={editing?"Apply":"Choose hero"} hasPrimaryAction><div className="hero-workshop-actions">
-   <ControllerAction button="Y" type="button" tabIndex={-1} className="menu-control" data-open-hero-abilities onClick={showAbilities}>ABILITIES</ControllerAction>
+   <ControllerAction button="Y" keyboard="F1" type="button" tabIndex={-1} className="menu-control" data-open-hero-abilities onClick={showAbilities}>ABILITIES</ControllerAction>
    <ControllerAction button="A" type="button" className="menu-control" disabled={!owner} tabIndex={-1} onClick={()=>editing?setEditing(false):openHero()}>{editing?"APPLY":"CHOOSE HERO"}</ControllerAction>
    <HoldMainButton key={`${owner}:${hero}:${editing}:${main===hero}:${status==="error"}`} disabled={guideOpen||!owner||!hero||main===hero||status==="error"} selected={main===hero} onComplete={()=>mainChoice()}/>
   </div></SelectionFooter>

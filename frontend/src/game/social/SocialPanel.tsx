@@ -289,6 +289,7 @@ export function SocialPanel() {
         <MenuFrameFooter className="social-footer" status={status || connectionMessage}>
           <ControllerAction
             button="X"
+            keyboard="X"
             className="menu-control"
             data-social-refresh
             aria-label="Refresh worlds and social"
