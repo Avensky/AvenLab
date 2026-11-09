@@ -10,7 +10,7 @@ export function appearanceSettingsRows(prefs: Preferences, update: (patch: Prefe
       description:"One palette for every menu, HUD, world editor and garage. Always available.",
       action:dir=>update({theme:cycle(Object.keys(UI_THEMES) as UITheme[],prefs.theme,dir)})},
     {id:"menu-header-style",label:"Menu header style",value:prefs.menuHeaderStyle === "classic" ? "Classic" : "Angled",
-      description:"Switch the header layout in Heroes, vehicle selection and Explore & Build.",
+      description:"Switch the header layout in Play, Explore & Build, Heroes and vehicle selection.",
       action:()=>update({menuHeaderStyle:prefs.menuHeaderStyle === "classic" ? "angled" : "classic"})},
     {id:"cosmetic-cockpit",label:"Match cockpit panel to vehicle",value:cosmetics.matchCockpit ? "On" : "Off",
       description:"Use the selected vehicle appearance for cockpit panel accents. Wheel, shift knob and parking-brake thread follow the app theme.",

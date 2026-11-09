@@ -187,7 +187,6 @@ export function ModeSelection() {
     >
       <SceneTabHeader
         title={match ? "PLAY" : "EXPLORE & BUILD"}
-        layout={match ? "classic" : undefined}
         onBack={back}
         busy={busy}
         tablistLabel="Game mode"

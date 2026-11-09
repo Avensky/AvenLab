@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
-import { usePreferencesStore, type MenuHeaderStyle } from "../../store/preferences/preferencesStore";
+import { usePreferencesStore } from "../../store/preferences/preferencesStore";
 import { APP_BRANDING } from "../../theme/branding";
 import { MenuFrameHeader } from "./MenuFrame";
 import "./sceneTabHeader.css";
@@ -26,7 +26,6 @@ export function SceneTabHeader({
   tablistClassName = "",
   panelId,
   idPrefix,
-  layout,
   onBack,
   busy = false,
   level,
@@ -42,13 +41,12 @@ export function SceneTabHeader({
   tablistClassName?: string;
   panelId: string;
   idPrefix: string;
-  layout?: MenuHeaderStyle;
   onBack?: () => void;
   busy?: boolean;
   level?: number | string;
   titleMeta?: ReactNode;
 }) {
-  const angled = usePreferencesStore(state => (layout ?? state.menuHeaderStyle) === "angled");
+  const angled = usePreferencesStore(state => state.menuHeaderStyle === "angled");
   const navigation = (
     <nav className={`${angled ? "angled-header-tabs" : "classic-header-tabs"} ${tablistClassName}`} role="tablist" aria-label={tablistLabel} data-controller-tab-only>
       {tabs.map(tab => (
