@@ -83,10 +83,10 @@ test('compact prematch views share a frame and keep opposing picks mysterious un
    const {routeMenuAction}=await load('controls/inputRouting.ts');
    const {ResourceFlags}=await load('store/telemetry/resourceMasks.ts');
    const view=makeView();
-   view.profile.progression={level:12};
+   view.profile.progression={level:12,character:{id:'mara-vega',outfit:'dockwear'}};
    view.alpha.active.hero='brz';
    view.alpha.roster.push(
-    {id:'ally',name:'Atlas',team:'red',hero:'tank',mode:'quickplay',world_id:7,reconnecting:false},
+    {id:'ally',name:'Atlas',team:'red',hero:'tank',mode:'quickplay',world_id:7,reconnecting:false,character:{id:'niko-park',outfit:'field-kit'}},
     {id:'third',name:'Nova',team:'red',hero:'',showcase_hero:'cx30',mode:'quickplay',world_id:7,reconnecting:false});
    view.worlds[0].members.push({player_id:'ally',profile_id:'ally',name:'Atlas',team:'red',level:8});
    const snapshot=(atSpawn,matchId='round-seven')=>({tick:1,match_state:{match_id:matchId,phase:'waiting'},
@@ -106,6 +106,7 @@ test('compact prematch views share a frame and keep opposing picks mysterious un
    assert.equal(document.querySelectorAll('.team-lineup-card').length,3);
    assert.match(document.querySelector('.team-lineup-card[data-self=true]').textContent,/dpsLevel 12BRZLocal Driver/);
    assert.match(document.querySelector('.team-lineup-cards').textContent,/Level 8VANGUARDAtlas/);
+   assert.deepEqual([...document.querySelectorAll('.team-lineup-identity [role=img]')].map(node=>node.getAttribute('aria-label')),['Mara Vega','Niko Park']);
    assert.doesNotMatch(document.querySelector('.team-lineup-cards').textContent,/Opponent/);
    const changeHero = '.team-lineup-actions button:first-child';
    assert.equal(document.querySelector(changeHero).disabled,false);

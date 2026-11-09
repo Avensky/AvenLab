@@ -34,9 +34,9 @@ export function MenuFooter({className = '', ...props}: ComponentPropsWithoutRef<
  return <footer {...props} className={`menu-footer ${className}`} data-input-device={inputDevice} />;
 }
 
-export function MenuFrameFooter({children,status,secondaryTabs=false,selectLabel='Select',className='',chat=false,variant='panel',hasPrimaryAction=false,backAction}:{children?:ReactNode;status?:ReactNode;secondaryTabs?:boolean;selectLabel?:string;className?:string;chat?:boolean;variant?:'panel'|'scene';hasPrimaryAction?:boolean;backAction?:BackShortcutAction}){
+export function MenuFrameFooter({children,status,tabs=true,secondaryTabs=false,selectLabel='Select',className='',chat=false,variant='panel',hasPrimaryAction=false,backAction}:{children?:ReactNode;status?:ReactNode;tabs?:boolean;secondaryTabs?:boolean;selectLabel?:string;className?:string;chat?:boolean;variant?:'panel'|'scene';hasPrimaryAction?:boolean;backAction?:BackShortcutAction}){
  return <MenuFooter className={`menu-frame-footer alpha-selection-footer ${className}`} data-menu-chrome={variant}>
-  <MenuShortcuts chat={chat} directions="both" secondaryTabs={secondaryTabs} selectLabel={selectLabel} selectAction={!hasPrimaryAction} backAction={backAction}/>
+  <MenuShortcuts chat={chat} directions="both" tabs={tabs} secondaryTabs={secondaryTabs} selectLabel={selectLabel} selectAction={!hasPrimaryAction} backAction={backAction}/>
   {status&&<p className="menu-frame-status" role="status">{status}</p>}
   {children}
  </MenuFooter>;

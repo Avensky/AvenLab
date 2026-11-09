@@ -3,6 +3,7 @@ import {HEROES,heroForVehicle} from '../../store/alpha/alphaStore';
 import type {PhysicsEntitySnapshot,PhysicsSnapshot,VehicleSessionStats} from '../../store/session/networkStore';
 import type {SocialView} from '../../store/social/socialStore';
 import type {HeroAppearance} from '../../vehicles/cosmetics/heroLoadouts';
+import type {CharacterChoice} from '../characters/characterCatalog';
 
 export type SessionCombatStats=VehicleSessionStats;
 export type ScoreboardPlayer={
@@ -98,7 +99,7 @@ export function preMatchPlayers(view:SocialView|null,revealEnemies=false):Scoreb
 }
 
 /** Confirmed picks on this side only. Showcase art is never a lineup pick. */
-export function selectedTeamPlayers(view: SocialView | null, selectedHero?: string | null): ScoreboardPlayer[] {
+export function selectedTeamPlayers(view: SocialView | null, selectedHero?: string | null): (ScoreboardPlayer & {character: CharacterChoice | null})[] {
   const alpha = view?.alpha, active = alpha?.active;
   if (!alpha || !active) return [];
   return preMatchPlayers(view).flatMap(row => {
@@ -110,7 +111,8 @@ export function selectedTeamPlayers(view: SocialView | null, selectedHero?: stri
       : member?.hero));
     if (!hero || !member) return [];
     return [{ ...row, hero: hero.id, status: member.reconnecting ? 'reconnecting' : 'ready',
-      appearance: row.self ? view?.profile.progression?.hero_loadouts?.[hero.vehicle] ?? null : member.appearance ?? null }];
+      appearance: row.self ? view?.profile.progression?.hero_loadouts?.[hero.vehicle] ?? null : member.appearance ?? null,
+      character: (row.self ? view?.profile.progression?.character : member.character) ?? null }];
   });
 }
 

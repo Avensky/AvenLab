@@ -1,0 +1,32 @@
+[
+  {
+    "id": "mara-vega",
+    "name": "Mara Vega",
+    "title": "Harbor mechanic",
+    "bio": "Mara runs a late-shift repair bay on the waterfront. On quiet nights, she takes the long way home through the hill roads to test what she fixed.",
+    "outfits": [
+      { "id": "dockwear", "name": "Dockwear", "jacket": "#46584b", "trim": "#e7ab62" },
+      { "id": "shop-crew", "name": "Shop crew", "jacket": "#32566a", "trim": "#9de0d6" }
+    ]
+  },
+  {
+    "id": "jules-okafor",
+    "name": "Jules Okafor",
+    "title": "Night racer",
+    "bio": "Jules learned the city running deliveries after dark. Now he organizes hill climbs and judges a run by how much speed you carry out of the last corner.",
+    "outfits": [
+      { "id": "night-run", "name": "Night run", "jacket": "#493851", "trim": "#dfa9ea" },
+      { "id": "race-crew", "name": "Race crew", "jacket": "#664139", "trim": "#f2c56d" }
+    ]
+  },
+  {
+    "id": "niko-park",
+    "name": "Niko Park",
+    "title": "Former test pilot",
+    "bio": "Niko used to fly test routes out over the bay. These days, she maps the back roads and keeps a notebook of the places worth coming back to.",
+    "outfits": [
+      { "id": "flight-line", "name": "Flight line", "jacket": "#43546b", "trim": "#b1d8f3" },
+      { "id": "field-kit", "name": "Field kit", "jacket": "#665244", "trim": "#f1b58e" }
+    ]
+  }
+]

@@ -2,6 +2,7 @@
 //! mutate this state. Inputs and physics never acquire it. No client can grant XP.
 pub mod appearance;
 pub mod career;
+pub mod character;
 pub mod policy;
 pub mod progression;
 use crate::spawn::Team;

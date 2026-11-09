@@ -4,6 +4,7 @@ import { create } from "zustand";
 import { useSelectionStore, vehicleCatalog } from "../selection/selectionStore";
 import { useWorldCatalog } from "../selection/worldCatalog";
 import { usePreferencesStore } from "../preferences/preferencesStore";
+import type { CharacterChoice } from "../../game/characters/characterCatalog";
 export type GameMode = "quickplay" | "competitive" | "skirmish" | "sandbox" | "editor";
 export type MatchTeamSize = 3 | 5;
 export type MatchCategory = "quickplay" | "competitive";
@@ -137,6 +138,7 @@ export type Progression = {
   career?: import("../../game/career/careerTypes").CareerSummary;
   default_hero?: string;
   hero_loadouts?: Record<string,HeroAppearance>;
+  character?: CharacterChoice | null;
   level: number;
   prestige: number;
   xp: number;
@@ -185,6 +187,7 @@ export type AlphaView = {
     reconnecting: boolean;
     world_id?: number;
     appearance?: HeroAppearance | null;
+    character?: CharacterChoice | null;
     showcase_hero?:string;
     hero_hidden?:boolean;
   }[];

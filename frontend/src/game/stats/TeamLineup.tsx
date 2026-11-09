@@ -12,6 +12,8 @@ import { useScoreboardStore } from "../../store/hud/scoreboardStore";
 import { useUIStore } from "../../store/menus/uiStore";
 import { useMotionView } from "../../store/session/networkViews";
 import { useSocialStore } from "../../store/social/socialStore";
+import { CharacterPortrait } from "../characters/CharacterPortrait";
+import { characterLook } from "../characters/characterCatalog";
 import { TeamPortraitBadge } from "./TeamPortraitBadge";
 import { formatStat, selectedTeamPlayers } from "./scoreboardData";
 
@@ -83,6 +85,7 @@ export function TeamLineup() {
               <TeamPortraitBadge />
             </article>
           );
+          const character = characterLook(player.character)?.character;
           return (
             <article className="team-lineup-card menu-panel-frame" key={player.id} data-self={player.self}>
               <header>
@@ -91,7 +94,10 @@ export function TeamLineup() {
               </header>
               <TeamPortraitBadge player={player} />
               <small className="team-lineup-vehicle" title={hero.name}>{hero.name}</small>
-              <strong title={player.name}>{player.name}</strong>
+              <div className="team-lineup-identity">
+                {character && <CharacterPortrait choice={player.character} compact label={character.name} />}
+                <strong title={player.name}>{player.name}</strong>
+              </div>
             </article>
           );
         })}

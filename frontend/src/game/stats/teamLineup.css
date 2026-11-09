@@ -148,6 +148,19 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.team-lineup-identity {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  width: 100%;
+}
+.team-lineup-identity .character-portrait {
+  flex: none;
+  width: clamp(16px, 4.2dvh, 26px);
+  border: 1px solid var(--app-line);
+}
 .team-lineup-card strong {
   font-size: calc(clamp(11px, 3.1dvh, 20px) * var(--menu-text-scale, 1));
   font-style: italic;

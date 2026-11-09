@@ -563,6 +563,31 @@ async fn editor_tuning_is_isolated_validated_and_survives_environment_apply() {
 }
 
 #[tokio::test]
+async fn character_equip_validates_the_choice_and_persists_it_on_the_profile() {
+    let s = server(1, 10);
+    let (player, identity, _) = client(&s, "Driver").await;
+    let profile = identity["profile_id"].as_str().unwrap();
+    let legacy: crate::alpha::progression::Progression = serde_json::from_value(json!({"level": 7})).unwrap();
+    assert!(legacy.view()["character"].is_null());
+    assert_eq!(legacy.level, 7);
+
+    let choice = json!({"id": "mara-vega", "outfit": "shop-crew"});
+    let equip = json!({"action": "character_equip", "character": choice});
+    assert!(s.handle("unknown", equip.clone()).await.is_err());
+    assert_eq!(s.handle(&player, equip.clone()).await.unwrap()["character"], choice);
+    assert_eq!(s.handle(&player, equip).await.unwrap()["character"], choice);
+    let invalid = json!({"action": "character_equip", "character": {"id": "mara-vega", "outfit": "flight-line"}});
+    assert!(s.handle(&player, invalid).await.is_err());
+
+    let reloaded: SocialData = serde_json::from_slice(&tokio::fs::read(&s.path).await.unwrap()).unwrap();
+    let progression = &reloaded.profiles[profile].progression;
+    assert_eq!(progression.view()["character"], choice);
+    assert_eq!(progression.showcase_hero(), "brz");
+    assert!(progression.hero_loadouts.is_empty());
+    cleanup(s).await;
+}
+
+#[tokio::test]
 async fn roster_portraits_publish_only_equipped_styles_for_live_and_reserved_players() {
     use crate::alpha::{AlphaState, Member, Mode, Reservation};
     let server = server(1, 10);
@@ -574,6 +599,7 @@ async fn roster_portraits_publish_only_equipped_styles_for_live_and_reserved_pla
     appearance.body = "#ed258d".into();
     appearance.finish = "soft".into();
     profile.progression.hero_loadouts.insert("cx30".into(), appearance.clone());
+    profile.progression.character = Some(crate::alpha::character::CharacterChoice { id: "niko-park".into(), outfit: "field-kit".into() });
     let mut alpha = AlphaState::default();
     alpha.members.insert(player.clone(), Member { mode: Mode::Quickplay, team_size:5, world: 7, hero: "cx30".into(), team: Team::Red });
     let clients = server.connections.lock().await;
@@ -581,6 +607,7 @@ async fn roster_portraits_publish_only_equipped_styles_for_live_and_reserved_pla
     let card = &view["roster"][0];
     assert_eq!(card["appearance"]["body"], "#ed258d");
     assert_eq!(card["appearance"]["finish"], "soft");
+    assert_eq!(card["character"], json!({"id": "niko-park", "outfit": "field-kit"}));
     assert_eq!(card["world_id"], 7);
     assert!(card.get("token_hash").is_none());
     assert!(card.get("hero_loadouts").is_none());
@@ -588,6 +615,7 @@ async fn roster_portraits_publish_only_equipped_styles_for_live_and_reserved_pla
     alpha.reservations.insert(profile_id.clone(), Reservation { retained_player:None, member, expires: timestamp() + 30 });
     let reserved = Server::alpha_view(&alpha, &profile_id, &player, &clients, &data, server.max_active_worlds);
     assert_eq!(reserved["roster"][0]["appearance"], card["appearance"]);
+    assert_eq!(reserved["roster"][0]["character"], card["character"]);
     assert_eq!(reserved["roster"][0]["reconnecting"], true);
     assert_eq!(reserved["roster"][0]["world_id"], 7);
     alpha.reservations.get_mut(&profile_id).unwrap().member.hero = "tank".into();
@@ -616,6 +644,7 @@ async fn enemy_lobby_picks_are_hidden_until_their_exact_world_has_started() {
     let mut data=s.data.lock().await;
     let mut paint=crate::alpha::appearance::HeroAppearance::default();paint.body="#ed258d".into();
     data.profiles.get_mut(enemy_profile).unwrap().progression.hero_loadouts.insert("cx30".into(),paint);
+    data.profiles.get_mut(enemy_profile).unwrap().progression.character = Some(crate::alpha::character::CharacterChoice { id: "jules-okafor".into(), outfit: "race-crew".into() });
     let clients=s.connections.lock().await;
     let mut phases=HashMap::from([(7,("round-seven".into(),CtfPhase::Waiting)),(8,("other-round".into(),CtfPhase::Running))]);
     let view=Server::alpha_view_for_phases(&a,profile,&me,&clients,&data,3,&phases);
@@ -623,6 +652,7 @@ async fn enemy_lobby_picks_are_hidden_until_their_exact_world_has_started() {
     let card=|view:&Value,id:&str|view["roster"].as_array().unwrap().iter().find(|card|card["id"]==id).unwrap().clone();
     let hidden=card(&view,enemy_profile);
     assert_eq!(hidden["hero_hidden"],true);assert_eq!(hidden["hero"],"");assert_eq!(hidden["showcase_hero"],"");assert!(hidden["appearance"].is_null());
+    assert!(hidden["character"].is_null());
     assert_eq!(card(&view,ally_profile)["hero"],"brz");assert_eq!(card(&view,profile)["hero"],"tank");
     let member=a.members.remove(&enemy).unwrap();a.reservations.insert(enemy_profile.into(),Reservation{member,expires:timestamp()+30,retained_player:None});
     let reserved=Server::alpha_view_for_phases(&a,profile,&me,&clients,&data,3,&phases);
@@ -631,6 +661,7 @@ async fn enemy_lobby_picks_are_hidden_until_their_exact_world_has_started() {
         phases.insert(7,("round-seven".into(),phase));
         let started=Server::alpha_view_for_phases(&a,profile,&me,&clients,&data,3,&phases);
         let revealed=card(&started,enemy_profile);assert_eq!(revealed["hero_hidden"],false);assert_eq!(revealed["hero"],"cx30");assert_eq!(revealed["appearance"]["body"],"#ed258d");
+        assert_eq!(revealed["character"]["outfit"], "race-crew");
     }
     drop(clients);drop(data);cleanup(s).await;
 }

@@ -31,7 +31,7 @@ test('hero guide explains shipped actions and returns without equipping or repla
   await t.test('status reference reuses live buff/debuff descriptions with unique timed and untimed states',()=>{
    const map=new Map(effects.map(effect=>[effect.id,effect]));assert.equal(map.size,effects.length);assert.equal(map.get('spawn-protection').duration,2);assert.equal(map.get('stun').duration,1);assert.equal(map.get('ram-charge').duration,3);assert.equal(map.get('ram-boost').duration,4);assert.equal(map.get('thermal-recovery').duration,null);assert.match(map.get('thermal-recovery').description,/drive to repairs/);assert.equal(map.get('engine-wear').kind,'debuff');assert.equal(map.get('tank-barrier').duration,null);assert.equal(map.get('dive-shield').duration,2);assert.equal(map.get('tank-barrier').nature,'defense');
   });
-  await t.test('Heroes opens on the saved favorite and controller tabs reach Abilities in Customize',async()=>{
+  await t.test('Heroes opens on the saved favorite and controller tabs reach Abilities in Garage',async()=>{
    prefs.getState().update({inputDevice:'controller'});
    social.setState({view:{profile:{id:'me',name:'Player',progression:{default_hero:'brz',hero_loadouts:{brz:factory},owned:['factory'],tier:'BRONZE',color:'#aabbcc',prestige:0,level:1,xp:0,required_xp:100,credits:0}},alpha:{skins:[]}}});
    loadouts.getState().adopt('me','brz',{brz:{...factory}});alpha.getState().preview('tank');ui.setState({screen:'heroes',overlay:null,isModeLoading:false});
@@ -66,7 +66,7 @@ test('hero guide explains shipped actions and returns without equipping or repla
    await click('.vehicle-studio-panel-toggle');
    await click('#vehicle-studio-tab-abilities');
    assert.equal(document.querySelectorAll('.menu-frame-header').length,1);
-   assert.equal(document.querySelector('.menu-frame-header h1').textContent,'CUSTOMIZE');
+   assert.equal(document.querySelector('.menu-frame-header h1').textContent,'GARAGE');
    assert.equal(document.querySelector('.vehicle-studio'),null);
    assert.equal(document.querySelector('.hero-roster'),null);
    assert.equal(document.querySelector('.hero-guide-showcase h2').textContent,'VANGUARD');

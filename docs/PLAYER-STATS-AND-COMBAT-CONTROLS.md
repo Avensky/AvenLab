@@ -14,7 +14,7 @@ The Sierra’s test bank reads Scope, Anchor, Tow Line, Winch, Brace and Fire. B
 | --- | --- | --- |
 | Cycle health bars | J by default; rebind in Settings → Keyboard | Settings → HUD → Health bars |
 | Player statistics | Hold Tab; release to close | Cockpit → Missions → Match Stats; B closes |
-| Hero abilities | Choose the Abilities tab in Customize | Customize → Abilities or Match Stats → Hero Abilities |
+| Hero abilities | Choose the Abilities tab in Garage | Garage → Abilities or Match Stats → Hero Abilities |
 | Cannon primary | Hold F by default | Hold RB; bottom-left fire button |
 | Selected secondary | Hold I by default | Hold D-pad Right; bottom-right fire button |
 | Cycle secondary | V / G by default | Y; Swap Secondary button |
@@ -63,7 +63,7 @@ Damage excludes overkill, protected and friendly hits. An assist requires accept
 
 ## Hero ability guide
 
-Choose a vehicle in Heroes and open the Abilities tab in Customize to see its portrait, weapons, three ability slots, ultimate, buffs and debuffs. Hero Abilities in Match Stats opens the reference for the deployed vehicle. Tank descriptions cover Ram's charge and tail, resource costs, scope research and turret tools. The guide reuses live effect descriptions and secondary-loadout metadata.
+Choose a vehicle in Heroes and open the Abilities tab in Garage to see its portrait, weapons, three ability slots, ultimate, buffs and debuffs. Hero Abilities in Match Stats opens the reference for the deployed vehicle. Tank descriptions cover Ram's charge and tail, resource costs, scope research and turret tools. The guide reuses live effect descriptions and secondary-loadout metadata.
 
 Planned abilities are labeled in the reference. Return to Performance to pick up the current build preview.
 

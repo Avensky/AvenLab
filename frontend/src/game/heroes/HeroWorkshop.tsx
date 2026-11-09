@@ -13,7 +13,8 @@ import {usePreferencesStore} from "../../store/preferences/preferencesStore";
 import {HeroRoster} from "../alpha/HeroRoster";
 import {heroRoleHeaderTabs} from "../alpha/heroRoleFilters";
 import {HoldMainButton} from "./HoldMainButton";
-import {SelectionFooter} from "../alpha/SelectionChrome";
+import {SelectionFooter,SelectionHeader} from "../alpha/SelectionChrome";
+import {CharacterEntry,CharacterPage} from "../characters/CharacterPage";
 import {ControllerAction} from "../../components/controller";
 import {useMenuInputDevice} from "../../components/controller/useMenuInputDevice";
 import {HeroSaveQueue,type HeroSaveStatus} from "./HeroSaveQueue";
@@ -36,6 +37,7 @@ const NO_OWNED_SKINS:string[]=[];
 const NO_VEHICLE_PARTS:VehicleStudioPart[]=[];
 const NO_VEHICLE_MOD_STAGES:Record<string,number>={};
 type WorkshopFilter=HeroFilter|"concepts";
+type WorkshopPage="heroes"|"garage"|"character";
 const WORKSHOP_TABS=[...heroRoleHeaderTabs(true),{id:"concepts",label:"CONCEPTS"}];
 
 export function HeroLoadoutSync(){
@@ -46,7 +48,7 @@ export function HeroLoadoutSync(){
 
 /** Vehicle styling and the stock-relative performance page share one studio
  * chrome. Appearance edits save to the authenticated player's vehicle loadout. */
-export function HeroWorkshop(){
+export function HeroWorkshop({onCharacterViewChange}:{onCharacterViewChange?:(open:boolean)=>void}={}){
  const inputDevice=useMenuInputDevice();
  const overlay=useUIStore(s=>s.overlay);
  const owner=useSocialStore(s=>s.view?.profile.id??null);
@@ -55,7 +57,9 @@ export function HeroWorkshop(){
  const owned=useSocialStore(s=>s.view?.profile.progression?.owned??NO_OWNED_SKINS);
  const [chosen,setHero]=useState<string|null>(null);
  const hero=chosen??(HEROES.some(item=>item.id===main)?main:null);
- const [editing,setEditing]=useState(false);
+ const [page,setPage]=useState<WorkshopPage>("heroes");
+ const editing=page==="garage";
+ const characterOpen=page==="character";
  const [role,setRole]=useState<WorkshopFilter>("all");
  const definition=HEROES.find(item=>item.id===hero)??null;
  const vehicle=definition?.vehicle;
@@ -69,7 +73,7 @@ export function HeroWorkshop(){
  const theme=usePreferencesStore(s=>s.theme);
  const speedUnit=usePreferencesStore(s=>s.speedUnit);
  const [studioTab,setStudioTab]=useState<VehicleStudioTab>("performance");
- const viewingConcepts=!editing&&role==="concepts";
+ const viewingConcepts=page==="heroes"&&role==="concepts";
  const viewingReference=viewingConcepts||(editing&&studioTab==="abilities");
  const [studioSummary,setStudioSummary]=useState<VehiclePerformanceSummary>(STOCK_VEHICLE_SUMMARY);
  const [studioFooter,setStudioFooter]=useState<ReactNode|null>(null);
@@ -92,10 +96,16 @@ export function HeroWorkshop(){
  useEffect(()=>{useAlphaStore.setState({previewHero:null});root.current?.focus();},[]);
  useEffect(()=>{if(!editing)useVehicleStudioStore.getState().closeParts();},[editing]);
  useEffect(()=>{
-  const target=viewingReference?root.current?.querySelector<HTMLElement>(".hero-guide-scroll")
+  if(!characterOpen)return;
+  onCharacterViewChange?.(true);
+  return ()=>onCharacterViewChange?.(false);
+ },[characterOpen,onCharacterViewChange]);
+ useEffect(()=>{
+  const target=characterOpen?root.current?.querySelector<HTMLElement>('[data-character-option][aria-pressed="true"]')
+   : viewingReference?root.current?.querySelector<HTMLElement>(".hero-guide-scroll")
    : editing?root.current?.querySelector<HTMLElement>("[role=tab][aria-selected=true]"):root.current;
   target?.focus({preventScroll:true});
- },[editing,role,studioTab,viewingReference]);
+ },[characterOpen,editing,role,studioTab,viewingReference]);
  useEffect(()=>{if(hero)useAlphaStore.getState().preview(hero);},[hero]);
  useEffect(()=>{setStudioTab("performance");setStudioSummary(vehicle?getVehicleStockPerformance(vehicle):STOCK_VEHICLE_SUMMARY);setStudioFooter(null);setPortraitCapture(null);setPortraitMessage("");},[vehicle]);
  useEffect(()=>{
@@ -110,10 +120,10 @@ export function HeroWorkshop(){
  };
  const openHero=(id=hero)=>{
   if(!id){root.current?.querySelector<HTMLElement>("[data-hero]:not(:disabled)")?.focus({preventScroll:true});return;}
-  preview(id);setStudioTab("performance");setEditing(true);
+  preview(id);setStudioTab("performance");setPage("garage");
  };
  const mainChoice=(id=hero)=>{
-  if(viewingReference||!id)return;
+  if(viewingReference||characterOpen||!id)return;
   const item=HEROES.find(value=>value.id===id)!;
   const style=id===hero?appearance:drafts.current[item.vehicle]??useHeroLoadouts.getState().loadouts[item.vehicle]??{...FACTORY_APPEARANCE};
   queue.enqueue({hero:id,vehicle:item.vehicle,appearance:style,makeDefault:true});
@@ -129,13 +139,13 @@ export function HeroWorkshop(){
   catch(error){setPortraitMessage(error instanceof Error?`CAPTURE FAILED · ${error.message}`:"CAPTURE FAILED");}
  };
  const back=async()=>{
-  if(editing){setEditing(false);return;}
+  if(page!=="heroes"){setPage("heroes");return;}
   if(leaving.current)return;leaving.current=true;
   try{if(await queue.flush())useUIStore.getState().setScreen("main");}finally{leaving.current=false;}
  };
  useSelectionNavigation(root,{confirm:()=>{
   const active=document.activeElement as HTMLElement;
-  if(active===root.current&&!viewingReference)openHero();else if(root.current?.contains(active))active.click();
+  if(active===root.current&&page==="heroes"&&!viewingReference)openHero();else if(root.current?.contains(active))active.click();
  },back:()=>void back(),direction:action=>{
   const active=document.activeElement;
   if(viewingReference&&(action==="up"||action==="down")){
@@ -147,6 +157,7 @@ export function HeroWorkshop(){
    active.dispatchEvent(new Event("change",{bubbles:true}));
   }else if(root.current)navigateFormRows(root.current,active as HTMLElement,action,remembered.current);
  },tab:direction=>{
+  if(characterOpen)return;
   if(editing){
    const index=VEHICLE_STUDIO_TABS.findIndex(item=>item.id===studioTab);
    setStudioTab(VEHICLE_STUDIO_TABS[(index+direction+VEHICLE_STUDIO_TABS.length)%VEHICLE_STUDIO_TABS.length].id);
@@ -172,10 +183,10 @@ export function HeroWorkshop(){
  </>;
  const portraitFooter=<button type="button" onClick={()=>void capturePortrait()} disabled={!definition}>CAPTURE CURRENT PORTRAIT</button>;
  const currentFooter=studioTab==="performance"?studioFooter:studioTab==="body"?bodyFooter:studioTab==="lighting"?lightingFooter:studioTab==="studio"?portraitFooter:null;
- return <section ref={root} className={`game-ui menu-surface alpha-selection hero-selection hero-workshop${viewingReference?" hero-ability-guide":""}`} data-has-selection={hero!==null} inert={overlay!==null} tabIndex={-1} aria-label="Heroes garage" data-controller-form data-controller-rows>
-  {editing&&definition
+ return <section ref={root} className={`game-ui menu-surface alpha-selection hero-selection hero-workshop${viewingReference?" hero-ability-guide":""}`} data-character-page={characterOpen||undefined} data-has-selection={hero!==null} inert={overlay!==null} tabIndex={-1} aria-label={characterOpen?"Character":"Heroes garage"} data-controller-form data-controller-rows>
+  {characterOpen?<SelectionHeader title="CHARACTER" compact/>:editing&&definition
     ? <SceneTabHeader
-        title="CUSTOMIZE"
+        title="GARAGE"
         compact
         activeTab={studioTab}
         onTabChange={next=>setStudioTab(next as VehicleStudioTab)}
@@ -192,18 +203,22 @@ export function HeroWorkshop(){
         tablistClassName="hero-pick-tabs" onTabChange={next=>setRole(next as WorkshopFilter)}
         idPrefix="hero-workshop-role" panelId="hero-workshop-role-panel"/>}
   <div className="hero-selection-stage hero-workshop-body">
+   {characterOpen&&<CharacterPage/>}
    {viewingConcepts&&<div className="hero-guide-scroll" id="hero-workshop-role-panel" role="tabpanel" aria-labelledby="hero-workshop-role-tab-concepts" tabIndex={0}><HeroConceptGallery/></div>}
-   {!editing&&role!=="concepts"&&<div className="hero-picker-stage hero-workshop-picker" data-hero-filter={role} id="hero-workshop-role-panel" role="tabpanel" aria-labelledby={"hero-workshop-role-tab-"+role}>
-    <HeroRoster showFilters={false} allowBoats selected={hero} main={main} filter={role} busy={!owner} onChoose={openHero} onFilter={setRole}/>
+   {page==="heroes"&&role!=="concepts"&&<div className="hero-picker-stage hero-workshop-picker" data-hero-filter={role} id="hero-workshop-role-panel" role="tabpanel" aria-labelledby={"hero-workshop-role-tab-"+role}>
     <div className="hero-picker-scene hero-picker-preview">
+      <div className="hero-workshop-intro">
         <section className="hero-summary" aria-label="Selected hero">
          <small>HERO</small>
          <h2>{definition?.name??"CHOOSE YOUR HERO"}</h2>
-         <p>Choose a vehicle portrait to open the performance garage.</p>
+         <p>Choose a vehicle portrait to open its garage.</p>
          <p>Hold {inputDevice==="touch"?"Set Main":"X"} to set your favorite.</p>
         </section>
+        <CharacterEntry onOpen={()=>setPage("character")}/>
+      </div>
         {status!=="idle"&&<div className="hero-collection-save-status" role="status">{status==="error"?`NOT SAVED · ${message}`:status==="saved"?"SAVED TO YOUR PLAYER":"SAVING YOUR STYLE…"}{status==="error"&&<button className="menu-control" onClick={()=>void queue.flush()}>RETRY SAVE</button>}</div>}
     </div>
+    <HeroRoster showFilters={false} allowBoats selected={hero} main={main} filter={role} busy={!owner} onChoose={openHero} onFilter={setRole}/>
    </div>}
    {editing&&definition&&<VehicleStudio name={definition.name} role={definition.role} note={definition.note} vehicleId={definition.vehicle} speedUnit={speedUnit} stages={vehicleModStages[definition.vehicle]??NO_VEHICLE_MOD_STAGES} summary={studioSummary} tab={studioTab} footer={currentFooter}>
     {studioTab==="abilities"&&<HeroAbilityDetails heroId={definition.id}/>}
@@ -232,9 +247,9 @@ export function HeroWorkshop(){
     {status==="error"&&<button className="menu-control" onClick={()=>void queue.flush()}>RETRY SAVE</button>}
    </VehicleStudio>}
   </div>
-  <SelectionFooter selectLabel={editing?"Apply":"Choose hero"} hasPrimaryAction backAction={{onClick:()=>void back(),label:"Back"}}><div className="hero-workshop-actions">
-   {!viewingReference&&<ControllerAction button="A" type="button" className="menu-control" disabled={!owner} tabIndex={-1} onClick={()=>editing?setEditing(false):openHero()}>{editing?"APPLY":"CHOOSE HERO"}</ControllerAction>}
+  <SelectionFooter tabs={!characterOpen} hasPrimaryAction backAction={{onClick:()=>void back(),label:"Back"}}>{!characterOpen&&<div className="hero-workshop-actions">
+   {!viewingReference&&<ControllerAction button="A" type="button" className="menu-control" disabled={!owner} tabIndex={-1} onClick={()=>editing?setPage("heroes"):openHero()}>{editing?"APPLY":"OPEN GARAGE"}</ControllerAction>}
    <HoldMainButton key={`${owner}:${hero}:${editing}:${viewingReference}:${main===hero}:${status==="error"}`} disabled={overlay!==null||viewingReference||!owner||!hero||main===hero||status==="error"} selected={hero!==null&&main===hero} onComplete={()=>mainChoice()}/>
-  </div></SelectionFooter>
+  </div>}</SelectionFooter>
  </section>;
 }

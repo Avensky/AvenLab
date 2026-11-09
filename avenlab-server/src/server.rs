@@ -508,7 +508,7 @@ impl Server {
         };
         let result = match action {
             "mode_join" | "mode_cancel" | "mode_leave" | "hero_select" | "skin_redeem" | "skin_equip"
-            | "hero_loadout_save" | "editor_apply" => self.handle_alpha(player, &value).await?,
+            | "hero_loadout_save" | "character_equip" | "editor_apply" => self.handle_alpha(player, &value).await?,
 
             // These handlers reply directly or publish their own config/gameplay packet.
             "editor_vehicle_get" | "editor_vehicle_apply" => return self.handle_alpha(player, &value).await,

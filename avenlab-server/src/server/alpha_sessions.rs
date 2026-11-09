@@ -362,6 +362,22 @@ impl Server {
                 }
                 Ok(json!({}))
             }
+            "character_equip" => {
+                let actor = self.actor(player).await?;
+                let choice: crate::alpha::character::CharacterChoice = serde_json::from_value(value["character"].clone())
+                    .map_err(|_| "Choose a character and outfit.")?;
+                if !choice.is_available() { return Err("Choose an available character outfit.".into()); }
+                let mut data = self.data.lock().await;
+                let profile = data.profiles.get(&actor).ok_or("Profile unavailable.")?;
+                if profile.progression.character.as_ref() == Some(&choice) {
+                    return Ok(json!({"character":choice}));
+                }
+                let previous = data.clone();
+                data.profiles.get_mut(&actor).ok_or("Profile unavailable.")?.progression.character = Some(choice.clone());
+                drop(data);
+                self.commit(previous).await?;
+                Ok(json!({"character":choice}))
+            }
             "skin_redeem" | "skin_equip" => {
                 let actor = self.actor(player).await?;
                 let previous = self.data.lock().await.clone();
@@ -807,8 +823,7 @@ impl Server {
             value["match_phase"]=phase.map(|(_,phase)|json!(phase)).unwrap_or(Value::Null);
         }
         let viewer=a.members.get(player).or_else(||a.reservations.get(actor).filter(|r|r.expires>timestamp()).map(|r|&r.member));
-        // Public cards expose only the equipped vehicle appearance, never the
-        // profile's credentials, inventory or other vehicle loadouts.
+        // Public cards carry the equipped vehicle and character cosmetics.
         let card = |profile: &Profile, member: &Member, reconnecting: bool| {
             let teammate=viewer.is_some_and(|viewer|viewer.world==member.world&&viewer.team==member.team);
             let started=phases.get(&member.world).is_some_and(|(_,phase)|*phase!=crate::ctf::CtfPhase::Waiting);
@@ -819,7 +834,8 @@ impl Server {
                 .cloned().unwrap_or_default();
             json!({"id":profile.id,"name":profile.name,"team":member.team.as_str(),
                 "hero":if hidden{""}else{&member.hero},"showcase_hero":if hidden{""}else{showcase},"hero_hidden":hidden,"mode":member.mode,"team_size":member.team_size,"world_id":member.world,
-                "reconnecting":reconnecting,"appearance":if hidden{Value::Null}else{json!(appearance)}})
+                "reconnecting":reconnecting,"appearance":if hidden{Value::Null}else{json!(appearance)},
+                "character":if hidden{None}else{profile.progression.equipped_character()}})
         };
         let roster: Vec<_> = a.members.iter().filter(|(_, m)| m.mode.bucket() == 0)
             .filter_map(|(id, member)| clients.get(id)

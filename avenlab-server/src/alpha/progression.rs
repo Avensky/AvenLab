@@ -2,6 +2,7 @@
 //! adapter. There is deliberately no WebSocket action for awarding XP or wins.
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
+use super::character::CharacterChoice;
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Progression {
@@ -17,6 +18,8 @@ pub struct Progression {
     pub equipped: String,
     pub default_hero: String,
     pub hero_loadouts: std::collections::BTreeMap<String, super::appearance::HeroAppearance>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub character: Option<CharacterChoice>,
 }
 impl Default for Progression {
     fn default() -> Self {
@@ -32,6 +35,7 @@ impl Default for Progression {
             owned: BTreeSet::from(["factory".into()]),
             equipped: "factory".into(),
             default_hero: "brz".into(), hero_loadouts: Default::default(),
+            character: None,
         }
     }
 }
@@ -111,8 +115,11 @@ impl Progression {
     pub fn showcase_hero(&self) -> &str {
         super::policy::hero(&self.default_hero).map(|h| h.id).unwrap_or("brz")
     }
+    pub fn equipped_character(&self) -> Option<&CharacterChoice> {
+        self.character.as_ref().filter(|choice| choice.is_available())
+    }
     pub fn view(&self) -> serde_json::Value {
-        serde_json::json!({"career":self.career,"default_hero":self.showcase_hero(),"hero_loadouts":self.hero_loadouts,"level":self.level,"prestige":self.prestige,"xp":self.xp,"required_xp":self.required_xp(),"tier":self.tier(),"competitive_wins":self.competitive_wins,"quickplay_wins":self.quickplay_wins,"matches":self.matches,"credits":self.credits,"owned":self.owned,"equipped":self.equipped,"color":self.color(),"next_milestone":if self.level<100{((self.level/10)+1)*10}else{100}})
+        serde_json::json!({"career":self.career,"default_hero":self.showcase_hero(),"hero_loadouts":self.hero_loadouts,"character":self.equipped_character(),"level":self.level,"prestige":self.prestige,"xp":self.xp,"required_xp":self.required_xp(),"tier":self.tier(),"competitive_wins":self.competitive_wins,"quickplay_wins":self.quickplay_wins,"matches":self.matches,"credits":self.credits,"owned":self.owned,"equipped":self.equipped,"color":self.color(),"next_milestone":if self.level<100{((self.level/10)+1)*10}else{100}})
     }
 }
 #[cfg(test)]

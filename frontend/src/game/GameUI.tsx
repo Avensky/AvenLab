@@ -97,6 +97,7 @@ export function GameUI() {
     screen === "signal_recon_setup" ||
     screen === "world_builder";
   const heroOwner = useSocialStore(s=>s.view?.profile.id??"guest");
+  const [characterOpen, setCharacterOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [reconSidebarHidden, setReconSidebarHidden] = useState(false);
 
@@ -105,11 +106,11 @@ export function GameUI() {
       <HeroLoadoutSync />
       <MinimapSessionLifecycle />
       <CtfMissionLifecycle />
-      {screen === "heroes" && <HeroWorkshop key={heroOwner} />}
+      {screen === "heroes" && <HeroWorkshop key={heroOwner} onCharacterViewChange={setCharacterOpen} />}
       {/* Requires Canvas */}
       {needsCanvas && (
         <FullCanvas
-          paused={screen === "queue" || (screen === "heroes" && garageAbilities)}
+          paused={screen === "queue" || (screen === "heroes" && (garageAbilities || characterOpen))}
           preview={
             screen === "sandbox_setup" ||
             screen === "heroes" ||
