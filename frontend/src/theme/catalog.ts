@@ -156,6 +156,7 @@ export function applyUITheme(theme: UITheme) {
   const palette = UI_THEMES[theme],
     root = document.documentElement;
   root.dataset.uiTheme = theme;
+  root.dataset.uiScheme = palette.scheme;
   root.style.colorScheme = palette.scheme;
   for (const [name, value] of Object.entries(palette))
     if (name !== "label" && name !== "scheme")

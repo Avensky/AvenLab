@@ -42,6 +42,12 @@
   color: #f4d45d !important;
   border-color: #f4d45d !important;
 }
+.controller-menu-icon {
+  width: 0.95em;
+  height: 1px;
+  background: currentColor;
+  box-shadow: 0 -0.3em currentColor, 0 0.3em currentColor;
+}
 .controller-shortcuts {
   display: flex;
   gap: 6px 14px;

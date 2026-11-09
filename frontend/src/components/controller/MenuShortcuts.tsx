@@ -13,6 +13,8 @@ export function MenuShortcuts({
   secondaryTabs = false,
   selectLabel,
   selectAction = true,
+  navigate = true,
+  menuToggle = false,
 }: {
   back?: boolean;
   backAction?: BackShortcutAction;
@@ -23,16 +25,20 @@ export function MenuShortcuts({
   secondaryTabs?: boolean;
   selectLabel?: string;
   selectAction?: boolean;
+  navigate?: boolean;
+  menuToggle?: boolean;
 } = {}) {
-  const touch = useMenuInputDevice() === "touch";
+  const device = useMenuInputDevice();
+  const touch = device === "touch";
   const backLabel = backAction?.label ?? "Back";
   const backHint = <><ControlGlyph controller="B" /> {backLabel}</>;
   return (
     <div className="controller-shortcuts" aria-label="Menu shortcuts">
       {!touch && <>
-        <span data-shortcut="navigate">
+        {menuToggle && device === "controller" && <span><ControlGlyph controller="MENU" /> Menu</span>}
+        {navigate && <span data-shortcut="navigate">
           <ControlGlyph controller="D-PAD" keyboard={directions === "both" ? "↑↓ ←→" : "↑↓"} /> Navigate
-        </span>
+        </span>}
         {selectAction && <span><ControlGlyph controller="A" /> {selectLabel ?? (hold ? "Select / hold" : "Select")}</span>}
         {tabs && <span><ControlGlyph controller={["LB", "RB"]} keyboard="Q / E" /> Tabs</span>}
         {secondaryTabs && <span><ControlGlyph controller={["LT", "RT"]} keyboard="1 / 3" /> Field</span>}

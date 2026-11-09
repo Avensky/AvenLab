@@ -12,6 +12,7 @@ export type ControllerKey =
   | "RS"
   | "VIEW"
   | "START"
+  | "MENU"
   | "D-PAD";
 /** Xbox glyphs keep a black fill and semantic face-button color in every theme. */
 export function ControllerButton({ button }: { button: ControllerKey }) {
@@ -19,9 +20,9 @@ export function ControllerButton({ button }: { button: ControllerKey }) {
     <kbd
       className="controller-key"
       data-controller-key={button}
-      aria-label={`Xbox ${button}`}
+      aria-label={button === "MENU" ? "Xbox Menu" : `Xbox ${button}`}
     >
-      {button}
+      {button === "MENU" ? <span className="controller-menu-icon" aria-hidden="true" /> : button}
     </kbd>
   );
 }
