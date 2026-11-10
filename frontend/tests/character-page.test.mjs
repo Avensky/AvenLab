@@ -60,6 +60,8 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(find('.hero-roster'), null);
     assert.equal(find('[role=tab]'), null);
     assert.equal(find('[data-character-preview]').dataset.characterPreview, 'mara-vega');
+    const vesperPortrait = find('[data-character-option="mara-vega"] .character-portrait');
+    assert(vesperPortrait?.matches('span.character-portrait--unavailable'), 'Vesper keeps a neutral portrait when WebGL is unavailable');
     await click('[data-character-option="jules-okafor"]');
     assert.equal(find('[data-character-preview]').dataset.characterPreview, 'jules-okafor');
     assert.equal(requests.length, 0);

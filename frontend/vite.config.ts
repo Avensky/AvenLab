@@ -14,19 +14,21 @@ const bagModelUrl = [
   `${bagFolder}/bag-black-gold-garage.glb`,
   "/models/characters/shop-bag.glb",
 ].find(url => hasCharacterModel(new URL(`./public${url}`, import.meta.url)));
-function villagerLod(gender: "female" | "male", kind: "garage" | "portrait") {
-  const asset = findVillagerModel(gender);
+function rookLod(kind: "garage" | "portrait") {
+  const asset = findVillagerModel("male");
   if (!asset) return null;
   return asset.bundledLod(kind) ?? (hasCharacterModel(asset.output(kind)) ? asset.url(kind) : asset.sourceUrl);
 }
 
+const vesper = findVillagerModel("female");
+const vesperModelUrl = vesper?.sourceUrl ?? (vesper && hasCharacterModel(vesper.output("full")) ? vesper.url("full") : null);
+
 export default defineConfig({
   define: {
     __CHARACTER_BAG_URL__: JSON.stringify(bagModelUrl ?? null),
-    __VILLAGER_MODEL_URL__: JSON.stringify(villagerLod("female", "garage")),
-    __VILLAGER_PORTRAIT_URL__: JSON.stringify(villagerLod("female", "portrait")),
-    __ROOK_MODEL_URL__: JSON.stringify(villagerLod("male", "garage")),
-    __ROOK_PORTRAIT_URL__: JSON.stringify(villagerLod("male", "portrait")),
+    __VILLAGER_MODEL_URL__: JSON.stringify(vesperModelUrl),
+    __ROOK_MODEL_URL__: JSON.stringify(rookLod("garage")),
+    __ROOK_PORTRAIT_URL__: JSON.stringify(rookLod("portrait")),
   },
   // The road workbench has its own virtual bundle / preview build. Scanning all
   // preview HTML at app startup wasted work and attempted to resolve that bundle.

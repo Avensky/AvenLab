@@ -9,7 +9,7 @@ import { addVillagerFaceShapes } from "./villagerFace";
 export function villagerModelUrl(look: CharacterLook, kind: "garage" | "portrait" = "garage") {
   if (look.character.id === ROOK_ID) return kind === "portrait" ? __ROOK_PORTRAIT_URL__ : __ROOK_MODEL_URL__;
   if (look.character.id !== VILLAGER_ID) return null;
-  return kind === "portrait" ? __VILLAGER_PORTRAIT_URL__ : __VILLAGER_MODEL_URL__;
+  return __VILLAGER_MODEL_URL__;
 }
 
 export function prepareVillager(scene: Object3D, { female = true, animateFace = false } = {}) {

@@ -1,4 +1,4 @@
-import { mkdir, rename, stat } from "node:fs/promises";
+import { copyFile, mkdir, rename, stat } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { findVillagerModel } from "./character-model-paths.mts";
 
@@ -47,4 +47,14 @@ async function buildCharacterLods(gender) {
   }
 }
 
-for (const gender of ["female", "male"]) await buildCharacterLods(gender);
+// Vesper shares the original GLB between the garage and the portrait. Sources
+// under src/public need to be copied into Vite's public directory verbatim.
+const vesper = findVillagerModel("female");
+if (vesper && !vesper.sourceUrl) {
+  const output = vesper.output("full");
+  const temporary = fileURLToPath(output) + `.${process.pid}.tmp`;
+  await mkdir(new URL(".", output), { recursive: true });
+  await copyFile(vesper.source, temporary);
+  await rename(temporary, output);
+}
+await buildCharacterLods("male");

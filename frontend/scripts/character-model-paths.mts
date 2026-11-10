@@ -4,6 +4,7 @@ const publicRoot = new URL("../public/", import.meta.url);
 const sourceRoot = new URL("../src/public/", import.meta.url);
 const characterPath = "models/characters/";
 const villagerPath = characterPath + "villager/";
+type CharacterModelKind = "garage" | "portrait" | "full";
 
 export function hasCharacterModel(path: URL) {
   // A Git LFS pointer is a short text file. It cannot be parsed as a GLB.
@@ -26,8 +27,8 @@ export function findVillagerModel(gender: "female" | "male") {
     const outputBase = base === bundledBase ? `${villagerPath}villager-${gender}` : base;
     return {
       source,
-      output: (kind: "garage" | "portrait") => new URL(`${outputBase}.${kind}.glb`, publicRoot),
-      url: (kind: "garage" | "portrait") => `/${outputBase}.${kind}.glb`,
+      output: (kind: CharacterModelKind) => new URL(`${outputBase}.${kind}.glb`, publicRoot),
+      url: (kind: CharacterModelKind) => `/${outputBase}.${kind}.glb`,
       sourceUrl: root === publicRoot ? `/${base}.glb` : null,
       bundledLod: (kind: "garage" | "portrait") => {
         const path = `${base}.${kind}.glb`;

@@ -2,7 +2,7 @@ import { Suspense, useEffect, useLayoutEffect, useMemo } from "react";
 import { useGLTF } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
 import { AssetBoundary } from "../../components/debugger/AssetBoundary";
-import { characterLook, type CharacterChoice, type CharacterLook } from "./characterCatalog";
+import { VILLAGER_ID, characterLook, type CharacterChoice, type CharacterLook } from "./characterCatalog";
 import { StylizedDriver } from "./StylizedDriver";
 import { GarageEmotePlayer } from "./GarageEmotePlayer";
 import { CharacterLoadingEffect } from "./CharacterLoadingEffect";
@@ -25,12 +25,12 @@ export function GarageDriver({ choice }: { choice: CharacterChoice }) {
   const look = useMemo(() => characterLook(choice), [choice]);
   if (!look) return null;
   const bag = choice.prop === "shop-bag";
-  const fallback = <StylizedDriver look={look} bag={bag} />;
+  const fallback = choice.id === VILLAGER_ID ? null : <StylizedDriver look={look} bag={bag} />;
   const url = villagerModelUrl(look);
   return (
     <group name="garage-driver" rotation={[-.095, -.16, -.045]}>
       {url
-        ? <AssetBoundary fallback={fallback}>
+        ? <AssetBoundary key={url} fallback={fallback}>
             <Suspense fallback={<CharacterLoadingEffect />}><VillagerDriver url={url} look={look} bag={bag} /></Suspense>
           </AssetBoundary>
         : fallback}

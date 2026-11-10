@@ -4,25 +4,10 @@ import type { Object3D } from "three";
 import { AssetBoundary } from "../../components/debugger/AssetBoundary";
 import { bakeCharacterPortrait } from "./bakeCharacterPortrait";
 import { villagerModelUrl } from "./villagerModel";
-import { characterLook, type CharacterChoice, type CharacterLook } from "./characterCatalog";
+import { VILLAGER_ID, characterLook, type CharacterChoice, type CharacterLook } from "./characterCatalog";
 import "./characters.css";
 
 const faces: Record<string, { neck: string; shadow: string; art: ReactNode }> = {
-  "mara-vega": {
-    neck: "#bd7955", shadow: "#8e4b3e",
-    art: <>
-      <path fill="var(--portrait-hair, #251b25)" d="M80 117C67 110 62 97 65 78 58 67 65 51 76 47c-5-14 4-27 16-29 10-2 20 3 24 11 36-4 60 17 62 47 1 24-6 40-25 60l-66-7Z" />
-      <path fill="#49303a" d="M76 47c7-10 23-12 40-18 29-1 51 12 58 34-14-16-30-19-46-20-19 0-39 6-52 20Z" />
-      <path fill="var(--portrait-skin, #bd7955)" d="M84 89c-10-9-16-2-13 9 1 9 8 13 14 12l9 20 32 18 29-19c7-8 13-27 10-48-6-7-10-15-11-24-14 16-37 25-67 24Z" />
-      <path fill="var(--portrait-skin-lit, #dc996d)" d="M87 81c26-3 47-11 64-21l6 25-8 34-20 25-16-4-20-20Z" />
-      <path fill="#ab5e4c" d="m125 94-6 19 11 2 2-6Zm-31 15 11 4-6 7-6-7Z" />
-      <path d="M94 92q10-7 20-2m18-3q10-6 18-1" fill="none" stroke="#3a2529" strokeWidth="3" strokeLinecap="round" />
-      <path d="M97 98q8-5 15-1m22-3q8-4 14-1m-34 33q11 4 20-3" fill="none" stroke="#39232a" strokeWidth="2.2" strokeLinecap="round" />
-      <path fill="var(--portrait-hair, #35232d)" d="M73 69c10-14 35-23 67-25l16 10c-13 14-36 22-66 28l-2 18-8-8Z" />
-      <path d="M79 111c-5 0-7 8-2 11s9-4 7-9" fill="none" stroke="#f7cc8d" strokeWidth="2.4" />
-      <path fill="#98604d" d="M103 108h2v2h-2zm4-2h2v2h-2zm4 1h2v2h-2z" />
-    </>,
-  },
   "jules-okafor": {
     neck: "#95553d", shadow: "#65372f",
     art: <>
@@ -78,7 +63,6 @@ function ModelPortrait({ source, look, fallback, pending = fallback, label }: Po
 }
 
 function VillagerPortrait({ url, ...props }: PortraitProps & { url: string }) {
-  // The portrait has its own cropped LOD and shares it across profile cards.
   const { scene } = useGLTF(url);
   return <ModelPortrait {...props} source={scene} />;
 }
@@ -91,6 +75,7 @@ export function CharacterPortrait({ choice, compact = false, label }: {
 }) {
   const { id, outfit, appearance } = choice ?? {};
   const look = useMemo(() => characterLook(id && outfit ? { id, outfit, appearance } : null), [id, outfit, appearance]);
+  const originalOnly = id === VILLAGER_ID;
   const face = look && faces[look.character.id];
   const alternate = look?.outfit.id === look?.character.outfits[1]?.id;
   const palette = look && {
@@ -99,8 +84,10 @@ export function CharacterPortrait({ choice, compact = false, label }: {
     }),
     ...(look.appearance.hair_color !== "original" && { "--portrait-hair": look.hair }),
   } as CSSProperties;
-  const fallback = (
-    <svg className="character-portrait" style={palette ?? undefined} viewBox={compact ? "56 16 128 128" : "0 0 240 260"}
+  const fallback = originalOnly
+    ? <span className="character-portrait character-portrait--unavailable" role={label ? "img" : undefined}
+        aria-label={label} aria-hidden={label ? undefined : true} />
+    : <svg className="character-portrait" style={palette ?? undefined} viewBox={compact ? "56 16 128 128" : "0 0 240 260"}
       role={label ? "img" : undefined} aria-label={label} aria-hidden={label ? undefined : true}>
       <path fill="var(--app-background, #161c26)" d="M0 0h240v260H0z" />
       <path fill="var(--app-raised, #283748)" d="M240 0v260H27L149 0Z" />
@@ -121,15 +108,14 @@ export function CharacterPortrait({ choice, compact = false, label }: {
           <path d={look.female ? "M58 59q52-18 124-3l-16 12-89 6Z" : "M111 67q42-13 73-1l-19 12-51-2Z"} />
         </g>}
       </> : <path fill="var(--app-muted, #889aa9)" opacity=".64" d="M120 42a28 28 0 1 0 0 56 28 28 0 0 0 0-56Zm-54 83c10-16 32-22 54-22s44 6 54 22l14 57H52Z" />}
-    </svg>
-  );
+    </svg>;
   if (!look || typeof WebGL2RenderingContext === "undefined") return fallback;
   const url = villagerModelUrl(look, "portrait");
-  const builtIn = <ModelPortrait look={look} fallback={fallback} label={label} />;
+  const unavailable = originalOnly ? fallback : <ModelPortrait look={look} fallback={fallback} label={label} />;
   const loading = <span className="character-portrait character-portrait--loading" role={label ? "img" : undefined} aria-label={label} aria-hidden={label ? undefined : true} />;
   return url ? (
-    <AssetBoundary fallback={builtIn}>
+    <AssetBoundary key={url} fallback={unavailable}>
       <Suspense fallback={loading}><VillagerPortrait url={url} look={look} fallback={fallback} pending={loading} label={label} /></Suspense>
     </AssetBoundary>
-  ) : builtIn;
+  ) : unavailable;
 }

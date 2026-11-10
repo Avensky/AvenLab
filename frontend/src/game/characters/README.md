@@ -6,18 +6,20 @@ confirm their character gender before editing. The server preserves that choice
 and saves appearance and prop edits automatically. Earlier profiles with a
 character keep their saved gender and use default appearance values as needed.
 
-The two starter drivers have built-in fallback meshes. Put the source models
-`village-female.glb` and `village-male.glb` in
-`frontend/src/public/models/characters/villager/`. `npm run dev` and
-`npm run build` generate separate garage and portrait GLBs under
-`frontend/public/models/characters/villager/` for Vite to serve. The packaged
-models under `frontend/public/models/characters/villagers/villager-*/` use
-their supplied LODs when available. The `villager-` spelling and older flat
-paths are also accepted. Download the Git LFS objects when a source file is a pointer.
-The generated LODs are ignored by Git. Vesper's bonnet is part of her rig, so it
-stays equipped for both hairstyles. The portrait is rendered from the same
-look as the garage model. Rook's imported model uses its short hair and coat
-meshes with the editor's hair, skin, and clothing color choices.
+Vesper's garage and portrait share the full-detail `villager-female.glb` from
+`frontend/public/models/characters/villagers/villager-female/`. While it loads,
+the garage plays the rain effect and the portrait shows a loading tile. If the
+file is missing or unreadable, the garage leaves the turntable clear and the
+portrait shows a neutral tile. Download the Git LFS object and restart Vite
+after restoring the file.
+
+Source files under `frontend/src/public/models/characters/villager/` may use
+either the `village-` or `villager-` prefix. `npm run dev` and `npm run build`
+copy Vesper's original into Vite's public directory and prepare Rook's garage
+and portrait LODs. Older flat paths under `frontend/public` are also accepted.
+Vesper's bonnet is part of her rig and stays equipped for both hairstyles.
+Rook's imported model uses its short hair and coat meshes with the editor's
+hair, skin, and clothing color choices.
 
 Garage and the Sandbox hero picker play Garage Life (001–010), the first
 batch from the emote catalog. The driver breathes between gestures and a tap

@@ -10,7 +10,6 @@ interface ImportMeta {
 }
 
 declare const __VILLAGER_MODEL_URL__: string | null;
-declare const __VILLAGER_PORTRAIT_URL__: string | null;
 declare const __CHARACTER_BAG_URL__: string | null;
 declare const __ROOK_MODEL_URL__: string | null;
 declare const __ROOK_PORTRAIT_URL__: string | null;

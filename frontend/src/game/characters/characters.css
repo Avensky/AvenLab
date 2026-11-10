@@ -3,7 +3,8 @@
   width: 100%;
   height: auto;
 }
-.character-portrait--loading {
+.character-portrait--loading,
+.character-portrait--unavailable {
   position: relative;
   overflow: hidden;
   aspect-ratio: 1;
