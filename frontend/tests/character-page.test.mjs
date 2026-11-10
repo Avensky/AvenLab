@@ -74,10 +74,14 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(document.querySelectorAll('.character-emotes button').length, 10);
     await click('.character-emotes button:first-child');
     assert.equal(preview.getState().emote.id, '021');
-    await click('[aria-label="Emote collection"] button:last-child');
+    await click('[aria-label="Emote collection"] button:nth-child(4)');
     assert.equal(document.querySelectorAll('.character-emotes button').length, 10);
     await click('.character-emotes button:last-child');
     assert.equal(preview.getState().emote.id, '040');
+    await click('[aria-label="Emote collection"] button:last-child');
+    assert.equal(document.querySelectorAll('.character-emotes button').length, 10);
+    await click('.character-emotes button:last-child');
+    assert.equal(preview.getState().emote.id, '050');
     await click('[aria-label="Emote collection"] button:first-child');
     await click('[data-character-option="jules-okafor"]');
     assert.equal(find('[data-character-preview]').dataset.characterPreview, 'jules-okafor');
@@ -118,9 +122,12 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     await click('[aria-label="Emote collection"] button:nth-child(3)');
     assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent),
       ['Air doodle', 'Finger count mistake', 'Imaginary butterfly', 'Almost a sneeze']);
-    await click('[aria-label="Emote collection"] button:last-child');
+    await click('[aria-label="Emote collection"] button:nth-child(4)');
     assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent),
       ['Shoetip shuffle', 'Compliment recoil', 'Timid invitation', 'Suppressed giggle', 'Gentle reassurance']);
+    await click('[aria-label="Emote collection"] button:last-child');
+    assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent),
+      ['Sideways check', 'Caught smiling', 'Dismissive hand flick', 'Private fist pump']);
     await click('[aria-label="Preview gender"] [data-character-option="mara-vega"]');
     assert.equal(drafts.at(-1).id, 'mara-vega');
     assert.equal(drafts.at(-1).prop, 'shop-bag');
@@ -174,7 +181,7 @@ test('all emote batches return to rest and keep planted and lifted feet distinct
     const clips = buildGarageEmotes(model.root, false, true);
     const mixer = new AnimationMixer(model.root);
     const ids = clips.map(clip => clip.name.split(' ')[0]);
-    assert.deepEqual(ids.filter(id => /^\d+$/.test(id)), Array.from({length: 40}, (_, i) => String(i + 1).padStart(3, '0')));
+    assert.deepEqual(ids.filter(id => /^\d+$/.test(id)), Array.from({length: 50}, (_, i) => String(i + 1).padStart(3, '0')));
     assert.deepEqual(ids.filter(id => id.startsWith('walk-')), ['walk-casual', 'walk-glance']);
     assert.equal(buildGarageEmotes(model.root).length, 10, 'the live idle set stays separate from previews');
     const leanFit = { offset: .15, distance: .06 };
@@ -214,6 +221,12 @@ test('all emote batches return to rest and keep planted and lifted feet distinct
     assert(foot('l').distanceTo(plantedLeft) < .002 && foot('r').y - rightRest.y > .04);
     assert(model.root.position.z > .12);
     stroll.stop();
+    const retreat = mixer.clipAction(clips[ids.indexOf('044')]).reset().play();
+    mixer.update(retreat.getClip().duration * .27);
+    assert(foot('l').y - leftRest.y > .035 && foot('r').distanceTo(rightRest) < .002);
+    mixer.update(retreat.getClip().duration * .12);
+    assert(model.root.position.z < -.06 && foot('l').z - leftRest.z < -.06);
+    retreat.stop();
     const leanAction = mixer.clipAction(lean).reset().play();
     mixer.update(lean.duration * .32);
     assert(model.root.position.z < -.205 && Math.abs(foot('r').z - rightRest.z + .15) < .02);

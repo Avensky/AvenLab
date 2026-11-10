@@ -37,6 +37,8 @@ Shy and Sweet (031–040) is available under Emotes → Shy. Casual walk and Sid
 step and glance are in the Garage preview group. They take short steps and
 return to the turntable mark. Victory also has Rap hands, three heart
 silhouettes, and a Finger guns gesture.
+Tsundere (041–050) is available under Emotes → Tsundere. Four of its gestures
+can be previewed while holding the bag.
 
 Rook's coat outfits occasionally fold their arms and lean by the driver
 door. The pose requires a fitted road-car side panel, closed doors, and

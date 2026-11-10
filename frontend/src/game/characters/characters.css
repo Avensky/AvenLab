@@ -153,6 +153,8 @@ button.character-header-profile { cursor: pointer; }
 }
 .character-cast .menu-control { display: grid; gap: 3px; justify-items: center; }
 .character-cast .character-portrait { width: clamp(32px, 12dvh, 74px); max-width: 100%; }
+.character-emote-packs { flex-wrap: wrap; }
+.character-emote-packs .menu-control { flex: 1 1 auto; }
 .character-controls button[aria-pressed="true"] { border-color: var(--app-accent); }
 .character-outfits i {
   flex: none;
