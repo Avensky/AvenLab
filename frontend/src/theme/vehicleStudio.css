@@ -119,12 +119,6 @@
   box-sizing: border-box;
   padding: 5px 7px;
 }
-.vehicle-studio-panel-heading { display:flex; flex-shrink:0; align-items:center; gap:8px; padding-bottom:4px; border-bottom:1px solid var(--vehicle-studio-line); }
-.vehicle-studio-panel-heading h2 { flex:1; margin:0; font-size:clamp(12px,1.15vw,17px); text-transform:uppercase; }
-.vehicle-studio [data-collapsed="true"] > .vehicle-studio-panel-heading { padding-bottom:0; border-bottom:0; }
-.vehicle-studio-panel-toggle { display:grid; place-items:center; flex:none; width:30px; height:28px; padding:0; border:1px solid var(--vehicle-studio-line); border-radius:4px; background:var(--vehicle-studio-raised); cursor:pointer; }
-.vehicle-studio-panel-toggle svg { width:16px; height:16px; }
-.vehicle-studio-panel-toggle:is(:hover,:focus-visible) { border-color:var(--vehicle-studio-accent); }
 .vehicle-studio-panel-content { display: flex; flex-direction: column; gap: 7px; padding-top: 7px; overflow: auto; }
 .vehicle-studio-card {
   display: flex;

@@ -3,7 +3,14 @@ import appearanceOptions from "../../../../avenlab-server/src/assets/character-a
 
 export const CHARACTERS = catalog.filter(item => item.id !== "niko-park");
 export const CHARACTER_APPEARANCE_OPTIONS = appearanceOptions;
-export type CharacterAppearance = { [Field in keyof typeof appearanceOptions]: string };
+export type CharacterStyleField = keyof typeof appearanceOptions;
+export type CharacterAppearance = Record<CharacterStyleField, string> & { accent?: string };
+
+export const OUTFIT_THEMES = [
+  { name: "Gothic Pink", color: "#101015", accent: "#ff2d95" },
+  { name: "Midnight Circuit", color: "#171d36", accent: "#56e9ff" },
+  { name: "Harbor Crew", color: "#263a35", accent: "#efaf6a" },
+] as const;
 export type CharacterChoice = { id: string; outfit: string; appearance?: CharacterAppearance };
 
 export const VILLAGER_ID = "mara-vega";
@@ -22,7 +29,7 @@ export function characterAppearance(choice: CharacterChoice | null | undefined):
 export function sameCharacterChoice(first: CharacterChoice | null | undefined, second: CharacterChoice) {
   if (first?.id !== second.id || first.outfit !== second.outfit) return false;
   const a = characterAppearance(first), b = characterAppearance(second);
-  return (Object.keys(a) as (keyof CharacterAppearance)[]).every(key => a[key] === b[key]);
+  return a.accent === b.accent && (Object.keys(DEFAULT_APPEARANCE) as CharacterStyleField[]).every(key => a[key] === b[key]);
 }
 
 export function characterLook(choice: CharacterChoice | null | undefined) {
@@ -36,7 +43,8 @@ export function characterLook(choice: CharacterChoice | null | undefined) {
   const female = character.id !== "jules-okafor";
   return {
     character, outfit, appearance, female,
-    fabric: color("color", outfit.jacket),
+    fabric: /^#[\da-f]{6}$/i.test(appearance.color) ? appearance.color : color("color", outfit.jacket),
+    trim: appearance.accent ?? outfit.trim,
     hair: color("hair_color", female ? "#7c573c" : "#2b2127"),
     skin: color("skin", female ? "#d49673" : "#95553d"),
   };

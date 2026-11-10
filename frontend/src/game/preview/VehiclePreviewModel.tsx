@@ -10,11 +10,11 @@ import { fitPreviewToPlatform, measurePreviewBounds } from "./previewPlacement";
 import { PreviewContactShadow } from "./PreviewContactShadow";
 import { applyShowroomHighlights, applyShowroomPaint } from "./garageVehiclePaint";
 import { prepareGarageVehiclePaint } from "./garageVehiclePaint";
-import {createVehiclePartRig,advanceVehiclePartRig,availableVehicleParts} from "./vehiclePartRig";
+import {createVehiclePartRig,advanceVehiclePartRig,availableVehicleParts,measureDriverDoor} from "./vehiclePartRig";
 import {useVehicleStudioStore} from "../heroes/vehicleStudioStore";
 import {useInputStore} from "../../store/input/inputStore";
 import {VehicleFlags,hasFlag} from "../../store/input/protocol/inputMasks";
-import {Mesh,MeshStandardMaterial} from "three";
+import {Mesh,MeshStandardMaterial,Vector3} from "three";
 import { GarageDriver } from "../characters/GarageDriver";
 import type { CharacterChoice } from "../characters/characterCatalog";
 import {useFrame} from "@react-three/fiber";
@@ -40,6 +40,7 @@ export function VehiclePreviewModel({platform,model,driver}:{
     },
     [scene, model],
   );
+  const driverDoor = useMemo(() => vehicleSystems(model) === "road" ? measureDriverDoor(prepared.root) : null, [prepared, model]);
   const partRig=useMemo(()=>createVehiclePartRig(prepared.root,model),[prepared,model]);
   const marine=vehicleSystems(model)==="marine";
   const glassStyle=useVehicleStudioStore(s=>s.glassStyle);
@@ -130,11 +131,18 @@ export function VehiclePreviewModel({platform,model,driver}:{
     [measurements, platform],
   );
   const driverScale = marine ? 1.35 : display.scale;
-  const driverAcross = Math.min(platform[1] * .42, display.footprint[0] / 2 + .25 * driverScale);
-  const driverAlong = Math.min(1.2, display.footprint[1] * .24);
+  const vehicleCenter = measurements.centering.getCenter(new Vector3());
+  const doorCenter = driverDoor?.getCenter(new Vector3());
+  const doorSide = doorCenter && doorCenter.x > vehicleCenter.x ? 1 : -1;
+  const doorEdge = doorSide < 0
+    ? Math.min(driverDoor?.min.x ?? Infinity, measurements.bounds.min.x)
+    : Math.max(driverDoor?.max.x ?? -Infinity, measurements.bounds.max.x);
+  const driverAcross = doorEdge * display.scale + display.position[0] + doorSide * .27 * driverScale;
+  // Vehicles without an authored front door still stage beside the front seat.
+  const driverAlong = doorCenter ? doorCenter.z * display.scale + display.position[2] : display.footprint[1] * .12;
   return (
     <>
-      {driver && <group position={[-driverAcross, .023, -driverAlong]} scale={driverScale} rotation={[0, -Math.PI / 2, 0]}>
+      {driver && <group position={[driverAcross, .023, driverAlong]} scale={driverScale} rotation={[0, doorSide * Math.PI / 2, 0]}>
         <PreviewContactShadow footprint={[.55, .46]} offset={[0, 0]} />
         <GarageDriver choice={driver} />
       </group>}

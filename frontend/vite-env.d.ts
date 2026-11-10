@@ -10,3 +10,4 @@ interface ImportMeta {
 }
 
 declare const __VILLAGER_MODEL_URL__: string | null;
+declare const __VILLAGER_PORTRAIT_URL__: string | null;

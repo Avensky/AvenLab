@@ -15,7 +15,7 @@ export function bakeCharacterPortrait(look: CharacterLook, key: string, source?:
   const cached = portraits.get(key);
   if (cached) return cached;
   if (!renderer) {
-    renderer = new WebGLRenderer({ alpha: true, antialias: true });
+    renderer = new WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
     renderer.setSize(192, 192);
     renderer.toneMapping = ACESFilmicToneMapping;
     renderer.setClearColor(0, 0);
@@ -30,17 +30,24 @@ export function bakeCharacterPortrait(look: CharacterLook, key: string, source?:
   const villager = source && prepareVillager(source);
   const model = villager ?? prepareStylizedDriver(look);
   try {
-    if (villager) applyVillagerLook(villager, look);
-    const face = "face" in model ? model.face : model.root.getObjectByName("HEAD_FACE4");
-    if (!face) throw Error("The character portrait needs a face mesh.");
+    if (villager) {
+      applyVillagerLook(villager, look);
+      for (const name of ["CLOTH_BOTTOM_SKIRT", "CLOTH_FEET_SHOES", "CLOTH_UNDER_UNDERSKIRT"]) {
+        const part = model.root.getObjectByName(name);
+        if (part) part.visible = false;
+      }
+    }
+    const head = "face" in model ? model.face : model.root.getObjectByName("head");
+    if (!head) throw Error("The character portrait needs a head anchor.");
     const scene = new Scene();
     const keyLight = new DirectionalLight(0xffefe1, 2);
     keyLight.position.set(3, 4, 5);
     scene.add(model.root, keyLight, new HemisphereLight(0xe5eeff, 0x73685e, 1.25));
 
     model.root.updateMatrixWorld(true);
-    const center = new Box3().setFromObject(face, true).getCenter(new Vector3());
-    center.y -= .012;
+    const center = villager
+      ? head.getWorldPosition(new Vector3()).add(new Vector3(0, .075, .018))
+      : new Box3().setFromObject(head).getCenter(new Vector3());
     const camera = new OrthographicCamera(-.20, .20, .20, -.20, .1, 10);
     camera.position.copy(center).add(new Vector3(.4, .08, 2));
     camera.lookAt(center);

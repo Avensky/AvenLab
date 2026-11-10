@@ -4,8 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "predev": "node ../scripts/sync-vehicle-asset-catalog.mjs && node ../scripts/sync-world-builder-map.mjs && node ../scripts/sync-road-kit-catalog.mjs && node ../scripts/build-road-colliders.mjs --check && node ../scripts/build-placement-colliders.mjs --check && node ../scripts/build-map-kit-colliders.mjs --check && node scripts/build-harbor-facades.mjs",
-    "prebuild": "node ../scripts/sync-vehicle-asset-catalog.mjs && node ../scripts/sync-world-builder-map.mjs && node ../scripts/sync-road-kit-catalog.mjs && node ../scripts/build-road-colliders.mjs --check && node ../scripts/build-placement-colliders.mjs --check && node ../scripts/build-map-kit-colliders.mjs --check && node scripts/build-harbor-facades.mjs",
+    "predev": "node ../scripts/sync-vehicle-asset-catalog.mjs && node ../scripts/sync-world-builder-map.mjs && node ../scripts/sync-road-kit-catalog.mjs && node ../scripts/build-road-colliders.mjs --check && node ../scripts/build-placement-colliders.mjs --check && node ../scripts/build-map-kit-colliders.mjs --check && node scripts/build-harbor-facades.mjs && node scripts/build-character-lods.mjs",
+    "prebuild": "node ../scripts/sync-vehicle-asset-catalog.mjs && node ../scripts/sync-world-builder-map.mjs && node ../scripts/sync-road-kit-catalog.mjs && node ../scripts/build-road-colliders.mjs --check && node ../scripts/build-placement-colliders.mjs --check && node ../scripts/build-map-kit-colliders.mjs --check && node scripts/build-harbor-facades.mjs && node scripts/build-character-lods.mjs",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
@@ -46,6 +46,7 @@
     "globals": "^16.5.0",
     "jsdom": "^30.1.3",
     "meshoptimizer": "0.25.0",
+    "sharp": "0.35.5",
     "tailwindcss": "^4.3.0",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",

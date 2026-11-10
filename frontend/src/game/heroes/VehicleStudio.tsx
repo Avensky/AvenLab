@@ -1,4 +1,5 @@
 import { useEffect, useId, useState, type ReactNode } from "react";
+import { MenuPanelHeading } from "../../components/menus/CollapsibleMenuPanel";
 import { useVehicleStudioStore, type VehicleStudioTab } from "./vehicleStudioStore";
 import { getPerformanceReadouts, getVehicleStockPerformance, getVehicleTuningLimits, type VehiclePerformanceSummary } from "./vehiclePerformance";
 
@@ -32,22 +33,6 @@ function GarageStatCell({ row }: { row: GarageStat }) {
       <meter min={0} max={1.25} value={row.ratio} optimum={1} aria-label={`${row.label} ${row.valueText}`} />
     </div>
   </div>;
-}
-
-function StudioPanelHeading({ title, contentId, collapsed, toggle, children }: {
-  title: string; contentId: string; collapsed: boolean; toggle: () => void; children?: ReactNode;
-}) {
-  return <header className="vehicle-studio-panel-heading" data-controller-row>
-    <h2>{title}</h2>
-    {children}
-    <button type="button" className="vehicle-studio-panel-toggle"
-      aria-label={`${collapsed ? "Expand" : "Minimize"} ${title.toLowerCase()}`}
-      aria-expanded={!collapsed} aria-controls={contentId} onClick={toggle}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
-        <path d={collapsed ? "M12 5v14M5 12h14" : "M5 12h14"} />
-      </svg>
-    </button>
-  </header>;
 }
 
 export function VehicleStudioTabIcon({tab}:{tab:VehicleStudioTab}) {
@@ -127,7 +112,7 @@ export function VehicleStudio({
         <aside className="vehicle-studio-details" aria-label="Vehicle details and performance"
           onFocus={event => (event.target as HTMLElement).scrollIntoView?.({ block: "nearest", inline: "nearest" })}>
           <section className="vehicle-studio-baseline menu-panel-frame" data-collapsed={Boolean(collapsedPanels.stats)} aria-label="Stats">
-            <StudioPanelHeading title="Stats" contentId={contentId + "-stats"} collapsed={Boolean(collapsedPanels.stats)} toggle={() => toggle("stats")} />
+            <MenuPanelHeading title="Stats" contentId={contentId + "-stats"} collapsed={Boolean(collapsedPanels.stats)} toggle={() => toggle("stats")} />
             <div id={contentId + "-stats"} className="vehicle-studio-panel-content" hidden={collapsedPanels.stats}>
               <header className="vehicle-studio-identity">
                 <h2>{name}</h2>
@@ -141,10 +126,10 @@ export function VehicleStudio({
             </div>
           </section>
           <section className="vehicle-studio-drivetrain menu-panel-frame" data-collapsed={Boolean(collapsedPanels.drivetrain)} aria-label={drivetrainTitle}>
-            <StudioPanelHeading title={drivetrainTitle} contentId={contentId + "-drivetrain"}
+            <MenuPanelHeading title={drivetrainTitle} contentId={contentId + "-drivetrain"}
               collapsed={Boolean(collapsedPanels.drivetrain)} toggle={() => toggle("drivetrain")}>
               <small>{drivetrainProfileFor(vehicleId).driveLayout}</small>
-            </StudioPanelHeading>
+            </MenuPanelHeading>
             <div id={contentId + "-drivetrain"} className="vehicle-studio-panel-content" hidden={collapsedPanels.drivetrain}>
               <VehicleDrivetrainSummary vehicle={vehicleId} weight={rows.find(row => row.key === "mass")?.valueText ?? "—"} economy={rows.find(row => row.key === "fuel_economy")?.valueText}
                 suspension={stage("suspension")} damping={summary.suspension_damping_ratio} yawDamping={summary.angular_damping} />
@@ -159,9 +144,9 @@ export function VehicleStudio({
           id="vehicle-studio-tab-panel"
           aria-labelledby={"vehicle-studio-tab-" + tab}
         >
-          <StudioPanelHeading title={panelTitle} contentId={contentId} collapsed={collapsed} toggle={() => toggle(tab)}>
+          <MenuPanelHeading title={panelTitle} contentId={contentId} collapsed={collapsed} toggle={() => toggle(tab)}>
             {tab === "performance" && <VehicleUpgradeProgress vehicle={vehicleId} stages={stages} maxStage={limits.maxStage} />}
-          </StudioPanelHeading>
+          </MenuPanelHeading>
           <div id={contentId} hidden={collapsed} className="vehicle-studio-panel-content" data-controller-row data-controller-columns="1"
             onFocus={event => (event.target as HTMLElement).scrollIntoView?.({ block: "nearest", inline: "nearest" })}>
             {children}

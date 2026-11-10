@@ -192,8 +192,7 @@ export function ModeSelection() {
         title={play ? "PLAY" : "EXPLORE"}
         compact
         logo={play ? <MenuLogo /> : undefined}
-        showProgress={play}
-        actions={play ? undefined : <CharacterHeaderProfile showProgress />}
+        actions={<CharacterHeaderProfile showProgress />}
         busy={busy}
         tablistLabel="Game mode"
         tablistClassName="alpha-mode-tabs"

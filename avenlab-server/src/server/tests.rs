@@ -582,7 +582,7 @@ async fn character_equip_validates_the_choice_and_persists_it_on_the_profile() {
     let mut styled = choice;
     styled["appearance"] = json!({
         "hair": "cropped", "hair_color": "copper", "skin": "warm",
-        "headwear": "hat", "color": "forest",
+        "headwear": "hat", "color": "#101015", "accent": "#ff2d95",
     });
     let mut invalid_style = styled.clone();
     invalid_style["appearance"]["hair"] = json!("missing");

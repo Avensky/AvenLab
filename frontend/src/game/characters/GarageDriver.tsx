@@ -61,7 +61,7 @@ export function GarageDriver({ choice }: { choice: CharacterChoice }) {
     <group name="garage-driver" rotation={[-.095, -.16, -.045]}>
       {url
         ? <AssetBoundary fallback={fallback}>
-            <Suspense fallback={fallback}><VillagerDriver url={url} look={look} /></Suspense>
+            <Suspense fallback={null}><VillagerDriver url={url} look={look} /></Suspense>
           </AssetBoundary>
         : fallback}
     </group>

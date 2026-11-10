@@ -1,0 +1,42 @@
+.vehicle-studio-panel-heading {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--vehicle-studio-line, var(--app-line));
+}
+.vehicle-studio-panel-heading h2 {
+  flex: 1;
+  margin: 0;
+  font-size: clamp(12px, 1.15vw, 17px);
+  text-transform: uppercase;
+}
+[data-collapsed="true"] > .vehicle-studio-panel-heading { padding-bottom: 0; border-bottom: 0; }
+.vehicle-studio-panel-toggle {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--vehicle-studio-line, var(--app-line));
+  border-radius: 4px;
+  background: var(--vehicle-studio-raised, var(--app-raised));
+  color: inherit;
+  cursor: pointer;
+}
+.vehicle-studio-panel-toggle svg { width: 16px; height: 16px; }
+.vehicle-studio-panel-toggle:is(:hover,:focus-visible) { border-color: var(--vehicle-studio-accent, var(--app-accent)); }
+.collapsible-menu-panel {
+  min-width: 0;
+  padding: clamp(6px, 1vw, 12px);
+  --menu-panel-fill: var(--app-background);
+}
+.collapsible-menu-panel .vehicle-studio-panel-heading small {
+  color: var(--app-muted);
+  font-size: 9px;
+  white-space: nowrap;
+}
+.collapsible-menu-panel-content:not([hidden]) { margin-block-start: 8px; }
+.collapsible-menu-panel-content[hidden] { display: none !important; }

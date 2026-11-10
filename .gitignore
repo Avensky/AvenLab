@@ -428,5 +428,5 @@ avenlab-server/runtime/
 /frontend/public/models/harbor-generated/
 
 # Locally licensed character art, including older checkouts.
-/frontend/public/models/characters/villager-female.glb
+/frontend/public/models/characters/villager-female*.glb
 /frontend/src/game/characters/local-assets/

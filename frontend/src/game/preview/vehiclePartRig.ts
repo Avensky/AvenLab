@@ -19,6 +19,29 @@ function meshCandidates(root:Object3D,part:VehicleStudioPart){
  root.traverse(object=>{if((object as Mesh).isMesh&&pattern.test(object.name)&&!/(?:sticker|decal|latch|arm|frame)$/i.test(object.name))found.push(object as Mesh);});
  return found;
 }
+export function measureDriverDoor(root: Object3D) {
+ const frontLeft = /(?:driver.*door|door.*driver|(?:front|f)[_ .-]*(?:left|l).*door|(?:left|l)[_ .-]*(?:front|f).*door|door[_ .-]*(?:fl|front[_ .-]*left|left[_ .-]*front))/i;
+ const explicit: Mesh[] = [], left: Mesh[] = [];
+ root.traverse(object => {
+  if (!(object instanceof Mesh) || /rear|sticker|decal|latch|arm|frame/i.test(object.name)) return;
+  if (frontLeft.test(object.name)) explicit.push(object);
+  else if (rules["door-left"]!.test(object.name)) left.push(object);
+ });
+ const parts = explicit.length ? explicit : left;
+ if (parts.length) return boundsInRoot(root, parts);
+ // Some imports (including Sierra) pack the cab and doors into the body.
+ // Use the cab glass and front lamp marker to locate its front seat.
+ const glass = root.getObjectByName("GLASS_GEO");
+ if (!glass) return null;
+ const cab = boundsInRoot(root, [glass]);
+ if (cab.isEmpty()) return null;
+ const center = cab.getCenter(new Vector3());
+ const lamp = root.getObjectByName("HEADLIGHT_L");
+ const front = lamp ? root.worldToLocal(lamp.getWorldPosition(new Vector3())).z : cab.max.z;
+ const point = new Vector3(cab.min.x, center.y, center.z + Math.sign(front - center.z) * .16 * (cab.max.z - cab.min.z));
+ return new Box3(point, point.clone());
+}
+
 function moveUnderPivot(root:Object3D,objects:Mesh[],hinge:Vector3,part:VehicleStudioPart,axis:"x"|"y"|"z",open:number):VehiclePartHinge|null{
  if(!objects.length)return null;
  root.updateWorldMatrix(true,true);const world=new Map(objects.map(object=>[object,object.matrixWorld.clone()]));

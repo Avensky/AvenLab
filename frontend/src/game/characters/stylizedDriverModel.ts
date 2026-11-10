@@ -4,8 +4,7 @@ import type { CharacterLook } from "./characterCatalog";
 type Point = [number, number, number];
 
 export function prepareStylizedDriver(look: CharacterLook) {
-  const { female, fabric, skin, hair, appearance, outfit } = look;
-  const trim = outfit.trim;
+  const { female, fabric, trim, skin, hair, appearance, outfit } = look;
   const shoulders = female ? .155 : .205;
   const crop = appearance.hair === "cropped";
   const hat = appearance.headwear === "hat";
@@ -60,7 +59,7 @@ export function prepareStylizedDriver(look: CharacterLook) {
   form([0, 1.14, 0], [shoulders + .018, .29, .122], fabric);
   form([0, 1.13, .114], [.032, .235, .013], female ? trim : "#17212b");
   form([0, .938, .006], [female ? .154 : .19, .044, .119], "#282635");
-  if (outfit.id !== "dockwear" && outfit.id !== "night-run") form([-.09, 1.28, .108], [.049, .026, .012], trim);
+  if (appearance.accent || (outfit.id !== "dockwear" && outfit.id !== "night-run")) form([-.09, 1.28, .108], [.049, .026, .012], trim);
   limb([-shoulders, 1.31, 0], [-shoulders - .065, 1.05, -.02], .067, fabric);
   limb([-shoulders - .065, 1.05, -.02], [-.125, .956, .112], .057, fabric);
   form([-.108, .947, .129], [.048, .045, .047], skin);

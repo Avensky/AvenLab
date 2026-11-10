@@ -7,10 +7,12 @@ profiles with only a character and outfit still load with their default look.
 
 The two starter drivers have built-in stylized meshes. To use the modular
 Village Lady export for Vesper, place your licensed `villager-female.glb` in
-`frontend/public/models/characters/` and restart Vite or rebuild.
-Vite serves it at `/models/characters/villager-female.glb`. The GLB is ignored
-by Git. Builds without it use the built-in look. The model uses the exported rig
-and mesh slots for the hair, bonnet, outfit, and skin. Rook has original
+`frontend/public/models/characters/` and restart the frontend with
+`npm run dev` or build it with `npm run build`. These commands generate a
+lower-detail garage GLB and a separate portrait GLB beside the source. The
+source and both LODs are ignored by Git. Builds without the source use the
+built-in look. The model uses the exported rig and mesh slots for the hair,
+bonnet, outfit, and skin. Rook has original
 built-in geometry. Vesper's bonnet is part of the rig's finished head, so it
 stays equipped for both hairstyles. The portrait is rendered from the same
 look as the garage model. In the garage, tap Vesper to wave.

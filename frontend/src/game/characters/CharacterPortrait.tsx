@@ -56,28 +56,29 @@ const faces: Record<string, { neck: string; shadow: string; art: ReactNode }> = 
   },
 };
 
-type PortraitProps = { look: CharacterLook; fallback: ReactNode; label?: string };
+type PortraitProps = { look: CharacterLook; fallback: ReactNode; pending?: ReactNode; label?: string };
 
-function ModelPortrait({ source, look, fallback, label }: PortraitProps & { source?: Object3D }) {
+function ModelPortrait({ source, look, fallback, pending = fallback, label }: PortraitProps & { source?: Object3D }) {
   const key = JSON.stringify([Boolean(source), look.character.id, look.outfit.id, look.appearance]);
-  const [portrait, setPortrait] = useState<{ key: string; image: string }>();
+  const [portrait, setPortrait] = useState<{ key: string; image: string | null }>();
   useEffect(() => {
     const timer = window.setTimeout(() => {
       try {
         setPortrait({ key, image: bakeCharacterPortrait(look, key, source) });
       } catch {
-        // Keep the illustrated portrait if a secondary WebGL context is unavailable.
+        setPortrait({ key, image: null });
       }
     }, 100);
     return () => window.clearTimeout(timer);
   }, [key, look, source]);
-  return portrait?.key === key
+  if (portrait?.key !== key) return pending;
+  return portrait.image
     ? <img className="character-portrait character-portrait--model" src={portrait.image} alt={label ?? ""} />
     : fallback;
 }
 
 function VillagerPortrait({ url, ...props }: PortraitProps & { url: string }) {
-  // useGLTF shares the parsed asset with the garage scene.
+  // The portrait has its own cropped LOD and shares it across profile cards.
   const { scene } = useGLTF(url);
   return <ModelPortrait {...props} source={scene} />;
 }
@@ -110,12 +111,12 @@ export function CharacterPortrait({ choice, compact = false, label }: {
         <path fill={face.shadow} d="m99 127 43 4 1 20-27 17-18-12Z" />
         <path fill={look.fabric} d="M18 260c4-33 8-63 22-76 10-9 30-13 51-22l30 29 30-29c22 8 42 12 52 23 13 13 18 45 20 75h-72l-26-53-25 53Z" />
         <path fill="#161b29" opacity=".56" d="m89 157 32 34-30 7-13-27Zm63 0 14 12-12 30-33-8Z" />
-        <path fill="none" stroke={look.outfit.trim} strokeWidth="2" d="m88 164 33 29 30-29m-29 29 1 67M44 193l-7 67m162-67 7 67" />
+        <path fill="none" stroke={look.trim} strokeWidth="2" d="m88 164 33 29 30-29m-29 29 1 67M44 193l-7 67m162-67 7 67" />
         {alternate
-          ? <path fill={look.outfit.trim} d="m33 208 39-16 5 7-46 18Zm174 0-39-16-5 7 46 18Z" />
-          : <path fill={look.outfit.trim} d="M53 216h24v6H53zM169 216h14v8h-14z" />}
+          ? <path fill={look.trim} d="m33 208 39-16 5 7-46 18Zm174 0-39-16-5 7 46 18Z" />
+          : <path fill={look.trim} d="M53 216h24v6H53zM169 216h14v8h-14z" />}
         {face.art}
-        {look.appearance.headwear === "hat" && <g fill={look.fabric} stroke={look.outfit.trim} strokeWidth="2">
+        {look.appearance.headwear === "hat" && <g fill={look.fabric} stroke={look.trim} strokeWidth="2">
           <path d={look.female ? "M78 51Q81 26 117 25q32 0 42 27l-8 11H84Z" : "M72 69q1-40 48-39 38 1 47 35l-36 9Z"} />
           <path d={look.female ? "M58 59q52-18 124-3l-16 12-89 6Z" : "M111 67q42-13 73-1l-19 12-51-2Z"} />
         </g>}
@@ -123,11 +124,12 @@ export function CharacterPortrait({ choice, compact = false, label }: {
     </svg>
   );
   if (!look || typeof WebGL2RenderingContext === "undefined") return fallback;
-  const url = villagerModelUrl(look);
+  const url = villagerModelUrl(look, "portrait");
   const builtIn = <ModelPortrait look={look} fallback={fallback} label={label} />;
+  const loading = <span className="character-portrait character-portrait--loading" role={label ? "img" : undefined} aria-label={label} aria-hidden={label ? undefined : true} />;
   return url ? (
     <AssetBoundary fallback={builtIn}>
-      <Suspense fallback={fallback}><VillagerPortrait url={url} look={look} fallback={fallback} label={label} /></Suspense>
+      <Suspense fallback={loading}><VillagerPortrait url={url} look={look} fallback={fallback} pending={loading} label={label} /></Suspense>
     </AssetBoundary>
   ) : builtIn;
 }

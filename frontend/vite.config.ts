@@ -8,11 +8,17 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
 const villagerModelUrl = "/models/characters/villager-female.glb";
-const hasVillagerModel = existsSync(new URL(`./public${villagerModelUrl}`, import.meta.url));
+const existsInPublic = (url: string) => existsSync(new URL(`./public${url}`, import.meta.url));
+function villagerLod(kind: "garage" | "portrait") {
+  if (!existsInPublic(villagerModelUrl)) return null;
+  const lod = villagerModelUrl.replace(".glb", `.${kind}.glb`);
+  return existsInPublic(lod) ? lod : villagerModelUrl;
+}
 
 export default defineConfig({
   define: {
-    __VILLAGER_MODEL_URL__: JSON.stringify(hasVillagerModel ? villagerModelUrl : null),
+    __VILLAGER_MODEL_URL__: JSON.stringify(villagerLod("garage")),
+    __VILLAGER_PORTRAIT_URL__: JSON.stringify(villagerLod("portrait")),
   },
   // The road workbench has its own virtual bundle / preview build. Scanning all
   // preview HTML at app startup wasted work and attempted to resolve that bundle.

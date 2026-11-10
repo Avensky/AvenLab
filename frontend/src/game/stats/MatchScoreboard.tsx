@@ -5,16 +5,24 @@ import {useCallback,useEffect,useRef,useState,type CSSProperties} from 'react';
 import {isTypingTarget} from '../../controls/inputRouting';
 import {ControllerAction,ControlGlyph} from '../../components/controller';
 import {MenuFooter} from '../../components/menus/MenuFrame';
+import {SceneTabHeader} from '../../components/menus/SceneTabHeader';
+import {CollapsibleMenuPanel} from '../../components/menus/CollapsibleMenuPanel';
+import {MenuIcon} from '../../components/menus/MenuIcon';
+import type {MatchView} from '../../store/hud/scoreboardStore';
 import {useScoreboardStore} from '../../store/hud/scoreboardStore';
 import {useUIStore} from '../../store/menus/uiStore';
 import {snapshotEntity,useNetworkStore} from '../../store/session/networkStore';
 import {useSocialStore} from '../../store/social/socialStore';
 import {preMatchPlayers,preMatchEnemiesRevealed,scoreboardPlayers,retainScoreboardPlayers,type ScoreboardPlayer} from './scoreboardData';
-import {MatchTeamComposition,MatchStatsTable,MatchPlayerDetails,MatchViewTabs,MatchTeamFilterTabs} from './MatchPresentation';
+import {MatchTeamComposition,MatchStatsTable,MatchPlayerDetails,MatchTeamFilterTabs} from './MatchPresentation';
 import {useScoreboardVisible} from './useScoreboardVisible';
 import {shallow} from 'zustand/vanilla/shallow';
 import './matchScoreboard.css';
 
+const SCOREBOARD_TABS = [
+ {id:"composition",label:"TEAM",icon:<MenuIcon name="social"/>},
+ {id:"table",label:"STATS",icon:<MenuIcon name="career"/>},
+];
 type BoardData={session:string;players:ScoreboardPlayer[];stale:boolean;mode:string;teamSize:3|5};
 function boardSession(state: MotionState) {
   const room = snapshotEntity(state.snapshot, state.playerId)?.room_id ?? state.room_id ?? '';
@@ -74,7 +82,12 @@ export function MatchScoreboard({onAbilities}:{onAbilities?:()=>void}){
   const escape=(event:KeyboardEvent)=>{if(event.key==='Escape'){event.preventDefault();event.stopImmediatePropagation();if(back.current?.offsetWidth)backToList();else close();}};
   const changeView=(event:KeyboardEvent)=>{
    if(isTypingTarget(event.target)||event.ctrlKey||event.altKey||event.metaKey)return;
-   if(event.code==='PageUp'||event.code==='PageDown'){event.preventDefault();event.stopImmediatePropagation();setView(event.code==='PageUp'?'composition':'table');}
+   if ((event.code==="ArrowLeft" || event.code==="ArrowRight") && event.target instanceof HTMLElement && event.target.closest(".match-scoreboard [role=tablist] [id^=live-scoreboard-tab]")) {
+    event.preventDefault(); event.stopImmediatePropagation();
+    const next = useScoreboardStore.getState().view === "table" ? "composition" : "table";
+    setView(next);
+    requestAnimationFrame(()=>panel.current?.querySelector<HTMLElement>("#live-scoreboard-tab-"+next)?.focus());
+   } else if(event.code==='PageUp'||event.code==='PageDown'){event.preventDefault();event.stopImmediatePropagation();setView(event.code==='PageUp'?'composition':'table');}
    else if(useScoreboardStore.getState().view==='composition'&&['Digit1','Digit3','Numpad1','Numpad3'].includes(event.code)){event.preventDefault();event.stopImmediatePropagation();cycleTeamFilter(event.code.endsWith('1')?-1:1);}
   };
   window.addEventListener('keydown',escape,true);window.addEventListener('keydown',changeView,true);
@@ -85,17 +98,17 @@ export function MatchScoreboard({onAbilities}:{onAbilities?:()=>void}){
  const shownRows=view==='composition'&&teamFilter!=='all'?rows.filter(player=>player.team===teamFilter):rows;
  const selected=shownRows.find(player=>player.id===selectedId)??shownRows.find(player=>player.self)??shownRows[0]??null;
  return <section ref={panel} className="match-scoreboard" data-inspecting={inspect} style={{"--team-size":data?.teamSize??5} as CSSProperties} role="dialog" aria-modal="false" aria-label="Player statistics" onPointerDown={event=>event.stopPropagation()}>
-  <header className="match-scoreboard-header"><div><small>{data?.mode??'SESSION'}</small><h2>{view==='composition'?'TEAM COMPOSITION':'PLAYER STATISTICS'}</h2></div>
-   {onAbilities&&!staging&&<div className="match-scoreboard-tools"><button type="button" className="menu-control" onClick={()=>{close();onAbilities();}}>HERO ABILITIES</button></div>}
-  </header>
-  <div className="scoreboard-toolbar"><div className="match-scoreboard-status" role="status">{staging?'PRE-MATCH ROSTER':data?.stale?'SNAPSHOT STALE · LAST CONFIRMED TOTALS':'LIVE SESSION TOTALS'}<span>LEVEL IS PROFILE PROGRESSION · MMR PENDING</span></div>
-  <MatchViewTabs view={view} onChange={setView}/></div>
+  <SceneTabHeader title={view==='composition'?'TEAM COMPOSITION':'PLAYER STATISTICS'} compact
+    tabs={SCOREBOARD_TABS} activeTab={view} onTabChange={id=>setView(id as MatchView)}
+    idPrefix="live-scoreboard" panelId="live-scoreboard-panel" tablistLabel="Match view"
+    actions={onAbilities&&!staging&&<div className="match-scoreboard-tools"><button type="button" className="menu-control" onClick={()=>{close();onAbilities();}}>HERO ABILITIES</button></div>}/>
+  <div className="match-scoreboard-status scoreboard-live-status" role="status"><small>{data?.mode??'SESSION'}</small>{staging?'PRE-MATCH ROSTER':data?.stale?'SNAPSHOT STALE · LAST CONFIRMED TOTALS':'LIVE SESSION TOTALS'}</div>
   {view==='composition'&&<MatchTeamFilterTabs filter={teamFilter} onChange={setTeamFilter}/>}
-  <div className="match-scoreboard-body" data-view={view}>
-   <div className="match-scoreboard-main">{view==='composition'?<MatchTeamComposition teamSize={data?.teamSize} players={rows} teamFilter={teamFilter} selectedId={selected?.id} onSelect={selectPlayer}/>:<MatchStatsTable teamSize={data?.teamSize} players={rows} selectedId={selected?.id} onSelect={selectPlayer}/>}</div>
-   <div className="scoreboard-inspector"><button ref={back} className="scoreboard-back" aria-label="Back to player list" onClick={backToList}>← PLAYER LIST</button><MatchPlayerDetails player={selected}/></div>
+  <div className="match-scoreboard-body" data-view={view} id="live-scoreboard-panel" role="tabpanel" aria-labelledby={"live-scoreboard-tab-"+view}>
+   <div className="match-scoreboard-main">{view==='composition'?<MatchTeamComposition collapsible teamSize={data?.teamSize} players={rows} teamFilter={teamFilter} selectedId={selected?.id} onSelect={selectPlayer}/>:<MatchStatsTable collapsible teamSize={data?.teamSize} players={rows} selectedId={selected?.id} onSelect={selectPlayer}/>}</div>
+   <div className="scoreboard-inspector"><button ref={back} className="scoreboard-back" aria-label="Back to player list" onClick={backToList}>← PLAYER LIST</button><CollapsibleMenuPanel title="Player details"><MatchPlayerDetails player={selected}/></CollapsibleMenuPanel></div>
   </div>
-  <MenuFooter className="match-scoreboard-footer">
+  <MenuFooter className="match-scoreboard-footer menu-frame-footer alpha-selection-footer" data-menu-chrome="scene">
    <span><ControlGlyph controller={["LB","RB"]} keyboard="PgUp / PgDn"/> TEAM / STATS</span>
    <span>HEALING INCLUDES SELF · — MEANS UNAVAILABLE</span>
    <ControllerAction button="B" className="menu-control" aria-label="Close player statistics" onClick={close}>CLOSE</ControllerAction>

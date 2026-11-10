@@ -3,6 +3,10 @@
   width: 100%;
   height: auto;
 }
+.character-portrait--loading {
+  aspect-ratio: 1;
+  background: linear-gradient(140deg, var(--app-raised), var(--app-panel));
+}
 .character-portrait--model {
   aspect-ratio: 1;
   object-fit: cover;
@@ -157,3 +161,14 @@ button.character-header-profile { cursor: pointer; }
   .character-header-info { padding-right: 5px; }
   .character-page { grid-template-columns: minmax(112px, 1fr) minmax(0, 1fr); }
 }
+
+.character-color-pickers input[type="color"] {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  border: 1px solid var(--app-line);
+  border-radius: 4px;
+  background: var(--app-raised);
+}
+.character-color-pickers > button { grid-column: 1 / -1; }

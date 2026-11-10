@@ -18,6 +18,8 @@ pub struct CharacterAppearance {
     skin: String,
     headwear: String,
     color: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    accent: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -42,6 +44,12 @@ static CAST: LazyLock<Vec<Character>> = LazyLock::new(|| {
         .expect("the built-in character catalog is valid")
 });
 
+fn hex_color(value: &str) -> bool {
+    value
+        .strip_prefix('#')
+        .is_some_and(|hex| hex.len() == 6 && hex.bytes().all(|byte| byte.is_ascii_hexdigit()))
+}
+
 impl CharacterChoice {
     pub fn is_available(&self) -> bool {
         CAST.iter().any(|character| {
@@ -51,6 +59,9 @@ impl CharacterChoice {
                     .iter()
                     .any(|outfit| outfit.id == self.outfit)
         }) && self.appearance.as_ref().is_none_or(|appearance| {
+            if !appearance.accent.as_deref().is_none_or(hex_color) {
+                return false;
+            }
             [
                 ("hair", &appearance.hair),
                 ("hair_color", &appearance.hair_color),
@@ -60,9 +71,10 @@ impl CharacterChoice {
             ]
             .into_iter()
             .all(|(field, value)| {
-                APPEARANCES
-                    .get(field)
-                    .is_some_and(|options| options.iter().any(|option| &option.id == value))
+                (field == "color" && hex_color(value))
+                    || APPEARANCES
+                        .get(field)
+                        .is_some_and(|options| options.iter().any(|option| &option.id == value))
             })
         })
     }

@@ -4,8 +4,9 @@ import {
 import { clone } from "three/addons/utils/SkeletonUtils.js";
 import { VILLAGER_ID, type CharacterLook } from "./characterCatalog";
 
-export function villagerModelUrl(look: CharacterLook) {
-  return look.character.id === VILLAGER_ID ? __VILLAGER_MODEL_URL__ : null;
+export function villagerModelUrl(look: CharacterLook, kind: "garage" | "portrait" = "garage") {
+  if (look.character.id !== VILLAGER_ID) return null;
+  return kind === "portrait" ? __VILLAGER_PORTRAIT_URL__ : __VILLAGER_MODEL_URL__;
 }
 
 function aim(bone: Bone, next: Bone, direction: Vector3) {
@@ -29,15 +30,17 @@ export function prepareVillager(scene: Object3D) {
   const root = clone(scene);
   root.name = "garage-villager-female";
   const materials = new Map<MeshStandardMaterial, MeshStandardMaterial>();
+  const accentMaterials = new Map<MeshStandardMaterial, MeshStandardMaterial>();
   const skeletons = new Set<Skeleton>();
   root.traverse(object => {
     if (!(object instanceof Mesh)) return;
     if (object instanceof SkinnedMesh) skeletons.add(object.skeleton);
+    const palette = /^(ACC_BOW|ACC_BELT)/.test(object.name) ? accentMaterials : materials;
     const owned = (material: MeshStandardMaterial) => {
-      const existing = materials.get(material);
+      const existing = palette.get(material);
       if (existing) return existing;
       const copy = material.clone();
-      materials.set(material, copy);
+      palette.set(material, copy);
       return copy;
     };
     object.material = Array.isArray(object.material) ? object.material.map(owned) : owned(object.material);
@@ -68,12 +71,13 @@ export function prepareVillager(scene: Object3D) {
   const shoes = root.getObjectByName("CLOTH_FEET_SHOES");
   if (shoes) root.position.y = -new Box3().setFromObject(shoes, true).min.y;
   return {
-    root, materials, crop,
+    root, materials, accentMaterials, crop,
     hat: root.getObjectByName("ACC_HAT"),
     longHair: root.getObjectByName("HAIR_HAIR20"),
     bow: root.getObjectByName("ACC_BOW"),
     dispose() {
       materials.forEach(material => material.dispose());
+      accentMaterials.forEach(material => material.dispose());
       skeletons.forEach(skeleton => skeleton.dispose());
       crop.geometry.dispose();
       crop.material.dispose();
@@ -82,13 +86,13 @@ export function prepareVillager(scene: Object3D) {
 }
 
 export function applyVillagerLook(model: ReturnType<typeof prepareVillager>, look: CharacterLook) {
-  for (const [source, material] of model.materials) {
+  for (const [source, material] of [...model.materials, ...model.accentMaterials]) {
     material.color.copy(source.color);
     switch (material.name) {
       case "MAT_ClothUpper":
       case "MAT_ClothLower":
         if (look.appearance.color !== "original" || look.outfit.id === "shop-crew") {
-          material.color.set(look.fabric).lerp(source.color, .45);
+          material.color.set(look.fabric).lerp(source.color, look.appearance.color.startsWith("#") ? 0 : .45);
         }
         break;
       case "MAT_Hair":
@@ -101,10 +105,18 @@ export function applyVillagerLook(model: ReturnType<typeof prepareVillager>, loo
         break;
     }
   }
+  for (const [source, material] of model.accentMaterials) {
+    const map = look.appearance.accent ? null : source.map;
+    if (material.map !== map) {
+      material.map = map;
+      material.needsUpdate = true;
+    }
+    if (look.appearance.accent) material.color.set(look.trim);
+  }
   const cropped = look.appearance.hair === "cropped";
   if (model.hat) model.hat.visible = true;
   if (model.longHair) model.longHair.visible = !cropped;
-  if (model.bow) model.bow.visible = look.outfit.id === "shop-crew";
+  if (model.bow) model.bow.visible = Boolean(look.appearance.accent) || look.outfit.id === "shop-crew";
   model.crop.visible = cropped;
   model.crop.material.color.set(look.hair);
 }

@@ -166,8 +166,13 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
   if(active===root.current&&page==="heroes"&&!viewingReference)openHero();else if(root.current?.contains(active))active.click();
  },back:()=>void back(),direction:action=>{
   const active=document.activeElement;
-  if(viewingReference&&(action==="up"||action==="down")){
+  if(viewingConcepts&&(action==="up"||action==="down")){
    root.current?.querySelector(".hero-guide-scroll")?.scrollBy({top:action==="up"?-180:180,behavior:"smooth"});
+   return;
+  }
+  if(editing&&studioTab==="abilities"&&root.current){
+   navigateFormRows(root.current,active as HTMLElement,action,remembered.current);
+   (document.activeElement as HTMLElement|null)?.scrollIntoView?.({block:"nearest"});
    return;
   }
   if(active instanceof HTMLSelectElement&&(action==="left"||action==="right")){
@@ -253,6 +258,7 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
       </div>
       <label>Custom paint<input type="color" aria-label="Custom hero body color" disabled={!owner}
        value={appearance.body==="factory"?"#f1f3f4":appearance.body} onChange={event=>edit({body:event.target.value})}/></label>
+      <button type="button" className="menu-control" disabled={!owner} onClick={()=>edit({body:"factory",skin:"factory"})}>Reset paint color</button>
      </section>
      <section className="vehicle-studio-card">
       <header><small>{marine?"HULL COATING":"PAINT MATERIAL"}</small><h3>Finish & metallic</h3></header>
@@ -264,6 +270,8 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
        <input type="range" min="0" max="1" step="0.01" aria-label="Metallic reflection strength" disabled={!owner}
         value={appearance.metallic} onChange={event=>edit({metallic:Number(event.target.value)})}/>
       </label>
+      <button type="button" className="menu-control" disabled={!owner} onClick={()=>edit({finish:FACTORY_APPEARANCE.finish,metallic:FACTORY_APPEARANCE.metallic})}>Reset finish</button>
+      <button type="button" className="menu-control" disabled={!owner} onClick={()=>{edit(FACTORY_APPEARANCE);setGlassStyle(DEFAULT_WINDOW_TONE);}}>Restore factory appearance</button>
      </section>
      {!marine&&<>
       <section className="vehicle-studio-card">
@@ -322,7 +330,7 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
     {status==="error"&&<button className="menu-control" onClick={()=>void queue.flush()}>RETRY SAVE</button>}
    </VehicleStudio>}
   </div>
-  <SelectionFooter tabs={!characterOpen} hasPrimaryAction backAction={{onClick:()=>void back(),label:"Back"}}>{!characterOpen&&<div className="hero-workshop-actions">
+  <SelectionFooter tabs={!characterOpen} selectLabel={editing&&studioTab==="abilities"?"Toggle":undefined} hasPrimaryAction={!editing||studioTab!=="abilities"} backAction={{onClick:()=>void back(),label:"Back"}}>{!characterOpen&&<div className="hero-workshop-actions">
    {!viewingReference&&<ControllerAction button="A" type="button" className="menu-control" disabled={!owner} tabIndex={-1} onClick={()=>editing?setPage("heroes"):openHero()}>{editing?"APPLY":"OPEN GARAGE"}</ControllerAction>}
    <HoldMainButton key={`${owner}:${hero}:${editing}:${viewingReference}:${main===hero}:${status==="error"}`} disabled={overlay!==null||viewingReference||!owner||!hero||main===hero||status==="error"} selected={hero!==null&&main===hero} onComplete={()=>mainChoice()}/>
   </div>}</SelectionFooter>

@@ -105,6 +105,11 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     await move('back');
     await click('[data-open-character]');
     assert.equal(find('[data-outfit-preview]').dataset.outfitPreview, 'race-crew');
+    const gothic = [...document.querySelectorAll('button')].find(button => button.textContent === 'Gothic Pink');
+    await act(async () => gothic.click());
+    assert.equal(drafts.at(-1).appearance.color, '#101015');
+    assert.equal(drafts.at(-1).appearance.accent, '#ff2d95');
+    assert.equal(find('input[aria-label="Clothing accent color"]').value, '#ff2d95');
     assert.equal(requests.length, 2);
   } finally {
     if (root) await act(async () => root.unmount());
