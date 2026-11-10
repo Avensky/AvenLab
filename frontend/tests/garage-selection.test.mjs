@@ -16,7 +16,8 @@ test('the garage mounts only an explicitly selected hero and removes it on clear
       resolveId(id){if(id==='virtual:garage-surface')return '\0garage-test-surface';},
       load(id){if(id==='\0garage-test-surface')return `
         import {createElement as h} from 'react';
-        export const useThree=fn=>fn({size:{width:1000,height:500}});
+        export const useFrame=()=>{};
+        export const useThree=fn=>fn({size:{width:1000,height:500},invalidate:()=>{}});
         export const Html=()=>null,OrbitControls=()=>null,PerspectiveCamera=()=>null;
         export const GarageEnvironment=()=>h('div',{'data-garage':true});
         export const PreviewTurntable=({children})=>h('div',null,children);

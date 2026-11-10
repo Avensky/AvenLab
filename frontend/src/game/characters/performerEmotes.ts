@@ -15,7 +15,42 @@ const rightBeat = { leftHand: [1.35, -.38, .64], rightHand: [-1.95, -.41, .51], 
 const sideLeft = [.155, 0, .024, .12] as const;
 const sideRight = [.13, 0, .016, .02] as const;
 const turnArms = { leftHand: [.63, -.25, .58], rightHand: [-.58, -.27, .57], fingers: ["cup", "cup"] } as const;
-const quarterTurn = Math.PI / 2;
+function spinSteps(): Emote["keys"] {
+  const plants = { l: 0, r: 0 };
+  const keys: Emote["keys"][number][] = [
+    [.13, { ...turnArms, sway: -.028, torso: [.014, -.14, .037], head: [.012, .13, -.023] }],
+  ];
+  const angle = Math.PI / 3;
+  for (let step = 0; step < 6; step++) {
+    const swing = step % 2 === 0 ? "l" : "r";
+    const support = swing === "l" ? "r" : "l";
+    const start = step * angle;
+    const end = start + angle;
+    for (const phase of [.27, .56, 1]) {
+      const lift = phase === 1 ? 0 : Math.sin(Math.PI * phase);
+      const turn = start + angle * phase;
+      const weight = (support === "l" ? .043 : -.043) * lift;
+      keys.push([.15 + (step + phase) * .103, {
+        ...turnArms,
+        turn, sway: Math.cos(plants[support]) * weight, travel: -Math.sin(plants[support]) * weight,
+        rise: -.011 - .01 * (1 - lift),
+        feet: {
+          [swing]: [0, .043 * lift, 0, plants[swing] + (end - plants[swing]) * phase, -.08 * lift],
+          [support]: [0, 0, 0, plants[support]],
+        },
+        torso: [-.021, .095 * lift, .02 * lift], head: [-.026, step < 2 ? -.24 : .21, -.031],
+        face: [.68 + step * .045, .43],
+      }]);
+    }
+    plants[swing] = end;
+  }
+  keys.push(
+    [.81, { turn: Math.PI * 2, sway: -.024, rise: -.013, feet: { l: [0, .027, 0, Math.PI * 1.86] },
+      leftHand: [1.35, -.38, .51], rightHand: [-1.39, -.42, .49], torso: [.069, -.08, .04], face: [.92, .46] }],
+    [.86, { torso: [.05, .034, -.025], head: [.076, .022, -.026], face: [.87, .36] }],
+  );
+  return keys;
+}
 const heart = {
   left: [[.89, 1.4, .4], [-1.14, 1.27, .6]], right: [[-.89, 1.4, .4], [1.14, 1.27, .6]],
   leftPalm: [[-.9, -.43, .13], [0, 0, 1]], rightPalm: [[.9, -.43, .13], [0, 0, 1]],
@@ -27,12 +62,13 @@ const listening = {
   fingers: ["cup", "open"],
 } as const;
 const cue = {
-  rightHand: [-1.34, .56, .52], rightPalm: [[-.19, .96, .19], [.1, -.18, .97]], fingers: [null, "point"],
+  rightHand: [-1.43, .31, .62], rightPalm: [[0, .55, .835], [1, 0, 0]], fingers: [null, "point"],
 } as const;
-const looseHands = {
-  leftHand: [1.79, -.58, .47], rightHand: [-1.79, -.58, .47],
-  leftPalm: [[.25, -.79, .56], [-.78, .23, .35]], rightPalm: [[-.25, -.79, .56], [.78, .23, .35]],
-  fingers: ["open", "open"],
+const looseLeft = { leftHand: [1.54, -.63, .46], leftPalm: [[.17, -.52, .84], [-.9, -.36, -.04]] } as const;
+const looseRight = { rightHand: [-1.52, -.61, .45], rightPalm: [[-.15, -.51, .85], [.93, -.29, -.02]] } as const;
+const handsUp = {
+  leftHand: [1.95, .92, .24], rightHand: [-1.92, .95, .23], fingers: ["open", "open"],
+  leftPalm: [[.15, .96, .24], [-.1, -.23, .97]], rightPalm: [[-.17, .96, .21], [.08, -.19, .98]],
 } as const;
 
 const PERFORMER_EMOTES = [
@@ -59,46 +95,28 @@ const PERFORMER_EMOTES = [
   ] },
   { id: "123", name: "Side step rhythm", duration: 4.25, keys: [
     [.10, { ...rightBeat, sway: -.027, rise: -.03, feet: { l: [.063, .027, .011, .04] }, head: [.045, .13, -.053] }],
-    [.19, { ...leftBeat, sway: .075, rise: -.046, feet: { l: sideLeft }, head: [.092, .155, -.044], face: [.53, .37] }],
-    [.28, { ...leftBeat, sway: .13, rise: -.025, feet: { l: sideLeft, r: [.057, .037, .009, .02] },
+    [.19, { turn: .11, ...leftBeat, sway: .075, rise: -.046, feet: { l: sideLeft }, head: [.092, .155, -.044], face: [.53, .37] }],
+    [.28, { turn: -.09, ...leftBeat, sway: .13, rise: -.025, feet: { l: sideLeft, r: [.057, .037, .009, .02] },
       head: [-.05, .073, .042], face: [.82, .54] }],
-    [.37, { ...rightBeat, sway: .136, rise: -.041, feet: { l: sideLeft, r: sideRight }, head: [.083, -.08, .061], face: [.84, .38] }],
-    [.47, { ...leftBeat, sway: .092, rise: -.027, feet: { l: sideLeft, r: [.056, .034, .009, -.025] },
+    [.37, { turn: .13, ...rightBeat, sway: .136, rise: -.041, feet: { l: sideLeft, r: sideRight }, head: [.083, -.08, .061], face: [.84, .38] }],
+    [.47, { turn: .17, ...leftBeat, sway: .092, rise: -.027, feet: { l: sideLeft, r: [.056, .034, .009, -.025] },
       head: [-.049, -.118, -.034], face: [.96, .54] }],
-    [.56, { ...rightBeat, sway: .033, rise: -.047, feet: { l: sideLeft }, head: [.072, -.157, .055], face: [.91, .4] }],
-    [.65, { ...rightBeat, sway: -.025, rise: -.023, feet: { l: [.065, .036, .012, .04] }, head: [-.052, -.069, .024], face: [.92, .48] }],
-    [.74, { ...leftBeat, sway: -.012, rise: -.042, head: [.093, .058, -.051], face: [.9, .4] }],
+    [.56, { turn: -.12, ...rightBeat, sway: .033, rise: -.047, feet: { l: sideLeft }, head: [.072, -.157, .055], face: [.91, .4] }],
+    [.65, { turn: -.08, ...rightBeat, sway: -.025, rise: -.023, feet: { l: [.065, .036, .012, .04] }, head: [-.052, -.069, .024], face: [.92, .48] }],
+    [.74, { turn: .07, ...leftBeat, sway: -.012, rise: -.042, head: [.093, .058, -.051], face: [.9, .4] }],
     [.86, { sway: .018, rise: -.017, head: [-.04, .046, .025], face: [.75, .29] }],
   ] },
-  { id: "124", name: "Shoulder groove", duration: 3.4, keys: [
-    [.17, { ...leftBeat, sway: -.042, rise: -.047, head: [.065, .13, .045], face: [.54, .31] }],
-    [.29, { ...rightBeat, sway: .041, rise: -.023, head: [-.052, -.065, -.067], face: [.78, .51] }],
-    [.42, { ...leftBeat, sway: -.045, rise: -.05, head: [.082, .15, .06], face: [.87, .45] }],
-    [.54, { ...rightBeat, sway: .048, rise: -.022, head: [-.069, -.1, -.074], face: [.92, .47] }],
-    [.66, { ...leftBeat, sway: -.042, rise: -.04, head: [.077, .12, .059], face: [.92, .38] }],
-    [.81, { sway: .021, rise: -.015, torso: [.027, .03, -.025], head: [-.03, .041, .014], face: [.72, .27] }],
+  { id: "124", name: "Shoulder groove", duration: 3.85, keys: [
+    [.15, { ...leftBeat, sway: -.037, travel: -.022, turn: .15, rise: -.03, head: [.065, .13, .045], face: [.54, .31] }],
+    [.23, { ...leftBeat, sway: -.005, travel: .039, turn: .04, rise: -.018, torso: [.02, -.095, -.041], face: [.73, .45] }],
+    [.33, { ...rightBeat, sway: .049, travel: .009, turn: -.195, rise: -.034, head: [-.052, -.065, -.067], face: [.78, .51] }],
+    [.42, { ...rightBeat, sway: .013, travel: -.035, turn: -.06, rise: -.026, torso: [.032, .078, .047], face: [.84, .45] }],
+    [.52, { ...leftBeat, sway: -.046, travel: -.016, turn: .2, rise: -.032, head: [.082, .15, .06], face: [.88, .45] }],
+    [.61, { ...leftBeat, sway: -.009, travel: .043, turn: .062, rise: -.015, torso: [.017, -.115, -.025], face: [.93, .49] }],
+    [.7, { ...rightBeat, sway: .039, travel: .01, turn: -.17, rise: -.031, head: [-.069, -.1, -.074], face: [.92, .47] }],
+    [.84, { sway: .018, travel: -.015, turn: -.042, rise: -.014, torso: [.027, .03, -.025], head: [-.03, .041, .014], face: [.72, .27] }],
   ] },
-  { id: "125", name: "Spin and stop", duration: 3.95, keys: [
-    [.14, { ...turnArms, turn: -.16, sway: -.018, rise: -.035, torso: [.072, -.15, .041], head: [.033, .13, .035] }],
-    // A low swing step alternates with the shoe pivoting on the floor.
-    [.23, { ...turnArms, turn: .49, sway: -.012, rise: -.035, feet: { l: [0, .045, 0, .62], r: [0, 0, 0, .35] },
-      head: [-.035, -.38, .023], face: [.57, .45] }],
-    [.31, { ...turnArms, turn: quarterTurn, rise: -.032, feet: { l: [0, 0, 0, quarterTurn], r: [0, .04, 0, 1.4] },
-      head: [-.055, -.51, -.025], face: [.69, .47] }],
-    [.39, { ...turnArms, turn: quarterTurn * 1.55, rise: -.037, feet: { l: [0, 0, 0, 2.1], r: [0, .03, 0, 2.65] },
-      torso: [.03, .07, -.039], head: [-.012, .42, .049], face: [.74, .5] }],
-    [.47, { ...turnArms, turn: quarterTurn * 2, rise: -.028, feet: { l: [0, .036, 0, 3.17], r: [0, 0, 0, 3.12] },
-      head: [.022, .48, .043], face: [.78, .53] }],
-    [.55, { ...turnArms, turn: quarterTurn * 2.54, rise: -.033, feet: { l: [0, .03, 0, 4.16], r: [0, 0, 0, 3.64] },
-      torso: [.033, .056, .036], head: [-.047, .43, .035], face: [.85, .5] }],
-    [.63, { ...turnArms, turn: quarterTurn * 3, rise: -.025, feet: { l: [0, 0, 0, 4.71], r: [0, .038, 0, 4.86] },
-      head: [-.045, .35, .033], face: [.87, .48] }],
-    [.71, { ...turnArms, turn: quarterTurn * 3.56, rise: -.034, feet: { l: [0, 0, 0, 5.14], r: [0, .029, 0, 5.73] },
-      torso: [.028, .05, -.044], head: [-.047, .32, .042], face: [.91, .51] }],
-    [.78, { turn: quarterTurn * 4, rise: -.045, leftHand: [1.79, -.47, .55], rightHand: [-1.83, -.41, .62],
-      head: [.069, -.05, -.032], torso: [.104, -.062, .05], face: [.98, .54] }],
-    [.88, { turn: quarterTurn * 4, rise: -.019, head: [-.024, .034, -.02], torso: [-.022, -.016, .016], face: [.79, .32] }],
-  ] },
+  { id: "125", name: "Spin and stop", duration: 3.95, keys: spinSteps() },
   { id: "126", name: "Heart to the crowd", duration: 3.9, keys: [
     [.19, { ...rallyDown, leftHand: [1.55, -.1, .68], rightHand: [-1.55, -.1, .68],
       head: [.062, .08, -.046], torso: [.055, .034, -.026], rise: -.027, face: [.62, .38] }],
@@ -118,25 +136,27 @@ const PERFORMER_EMOTES = [
       head: [-.067, .14, -.063], torso: [.044, .062, -.027], face: [1, .51] }],
     [.85, { head: [.088, .06, -.021], face: [.8, .29] }],
   ] },
-  { id: "128", name: "Encore request", duration: 3.5, keys: [
-    [.19, { ...cue, rightHand: [-1.39, .15, .57], head: [.054, -.08, .052], face: [.52, .39] }],
-    [.32, { ...cue, head: [-.12, -.16, .036], torso: [-.038, -.06, .021], sway: -.021, face: [.83, .55] }],
-    [.43, { ...cue, rightHand: [-1.75, .48, .48], wrist: .28, head: [-.08, -.19, .061], face: [.9, .53] }],
-    [.53, { ...cue, rightHand: [-1.51, .32, .68], wrist: -.18, head: [.039, -.13, .047], face: [.96, .51] }],
-    [.64, { rightHand: [-1.38, .03, .81], rightPalm: [[-.21, .61, .76], [0, .77, -.61]],
-      fingers: [null, "open"], torso: [.09, -.055, .028], head: [.112, .02, -.036], face: [1, .56] }],
-    [.77, { rightHand: [-1.03, -.12, .66], rightPalm: [[.08, .92, -.37], [0, .34, .9]],
-      fingers: [null, "cup"], head: [-.047, .063, -.027], face: [.89, .4] }],
+  { id: "128", name: "Encore request", duration: 3.55, keys: [
+    [.18, { ...cue, rightHand: [-1.38, -.09, .54], head: [.054, -.08, .052], face: [.52, .39] }],
+    [.32, { ...cue, head: [-.08, -.14, .036], torso: [-.038, -.06, .021], sway: -.021, face: [.83, .55] }],
+    [.44, { ...cue, rightHand: [-1.56, .29, .67], rightPalm: [[0, .55, .835], [0, .835, -.55]],
+      head: [-.03, -.13, .061], face: [.9, .53] }],
+    [.55, { ...cue, rightHand: [-1.29, .19, .72], rightPalm: [[0, .55, .835], [-1, 0, 0]],
+      fingers: [null, "cup"], torso: [.053, -.041, .028], head: [.094, -.07, .035], face: [.98, .54] }],
+    [.69, { rightHand: [-.89, -.18, .55], head: [-.029, .057, -.027], face: [.89, .4] }],
+    [.84, { rightHand: [-1.42, -.55, .42], head: [.027, .029, -.015], face: [.69, .27] }],
   ] },
-  { id: "129", name: "Stage nerves shakeout", duration: 3.45, keys: [
-    [.17, { ...looseHands, head: [.12, -.14, -.06], torso: [.073, -.06, .04], face: [-.13, .57] }],
-    [.29, { ...looseHands, wristLeft: -.32, wrist: .35, sway: -.023, rise: -.033,
-      torso: [.116, .04, .034], head: [.146, .08, .015], face: [-.04, .51] }],
-    [.38, { ...looseHands, wristLeft: .28, wrist: -.31, sway: .021, rise: -.022, torso: [.061, -.047, -.027], head: [.113, .08, .032] }],
-    [.47, { ...looseHands, wristLeft: -.27, wrist: .3, sway: -.018, rise: -.025, torso: [.086, .031, .021], head: [.087, .034, .032] }],
-    [.57, { ...looseHands, wristLeft: .18, wrist: -.15, sway: .013, rise: -.014, torso: [.044, -.01, -.016], head: [.065, .012, -.025] }],
-    [.72, { torso: [-.086, .012, .016], head: [-.047, .009, -.023], rise: .008, face: [.36, .3] }],
-    [.87, { torso: [.035, .008, .012], head: [.066, .011, -.009], rise: -.014, face: [.68, .42] }],
+  { id: "129", name: "Stage nerves shakeout", duration: 4.05, keys: [
+    [.16, { ...looseRight, sway: .018, head: [.13, -.14, -.05], torso: [.076, -.045, -.018], face: [-.08, .5] }],
+    [.28, { ...looseRight, rightHand: [-1.57, -.48, .54], sway: -.018, rise: -.019,
+      torso: [.106, -.031, .034], head: [.15, -.07, .025], fingers: [null, "open"] }],
+    [.35, { ...looseRight, rightHand: [-1.4, -.65, .43], wrist: .19, sway: -.014, rise: -.023, head: [.115, .027, .019] }],
+    [.46, { ...looseLeft, leftHand: [1.54, -.51, .56], sway: .026, rise: -.016, torso: [.058, .046, -.032],
+      head: [.088, .098, -.029], fingers: ["open", null], face: [.19, .32] }],
+    [.54, { ...looseLeft, leftHand: [1.46, -.68, .48], wristLeft: -.18, sway: .019, rise: -.023,
+      torso: [.071, .032, -.024], head: [.077, .046, -.025], face: [.28, .35] }],
+    [.68, { torso: [-.075, .012, .016], head: [-.055, .009, -.023], face: [.38, .3] }],
+    [.83, { torso: [.034, .008, .012], head: [.08, .015, -.009], rise: -.014, face: [.71, .42] }],
   ] },
   { id: "130", name: "Finale flourish", duration: 3.9, keys: [
     [.18, { ...greet, rightHand: [-1.55, .03, .64], head: [-.047, -.16, .047], torso: [-.034, -.075, .028], face: [.85, .44] }],
@@ -147,6 +167,17 @@ const PERFORMER_EMOTES = [
     [.64, { leftHand: [1.79, -.47, .53], rightHand: [-.69, -.32, .64], sway: -.021, rise: -.047,
       torso: [.224, .039, .033], head: [.092, .035, .03], face: [.91, .39] }],
     [.81, { ...greet, rightHand: [-1.38, -.28, .53], head: [-.045, .047, -.023], torso: [-.039, -.014, .009], face: [.92, .36] }],
+  ] },
+  { id: "hands-up-crowd", name: "Hands up", duration: 4.5, keys: [
+    [.15, { ...rallyDown, sway: -.026, rise: -.037, turn: -.14, torso: [.13, -.13, .046], head: [.075, -.11, .042], face: [.46, .56] }],
+    [.27, { ...handsUp, sway: -.046, rise: -.008, turn: .13, torso: [-.04, -.06, .073], head: [-.12, .09, -.02], face: [.9, .61] }],
+    [.4, { ...handsUp, leftHand: [1.86, .6, .35], sway: .025, rise: -.043, turn: -.16,
+      torso: [.106, .14, -.05], head: [.096, -.08, -.057], face: [.81, .54] }],
+    [.52, { ...handsUp, sway: .048, rise: -.013, turn: -.04, torso: [-.066, .06, -.08], head: [-.075, .12, .013], face: [1, .65] }],
+    [.64, { ...handsUp, rightHand: [-1.84, .63, .39], sway: -.029, rise: -.039, turn: .17,
+      torso: [.09, -.12, .051], head: [.093, .026, .059], face: [.94, .54] }],
+    [.76, { ...handsUp, sway: -.014, rise: -.01, turn: .07, torso: [-.055, -.07, .027], head: [-.104, -.03, .037], face: [1, .57] }],
+    [.88, { ...rallyDown, turn: -.046, torso: [.075, .028, -.018], head: [.081, .051, -.021], face: [.77, .38] }],
   ] },
 ] as const satisfies readonly Emote[];
 

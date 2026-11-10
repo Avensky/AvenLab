@@ -191,11 +191,13 @@ export function prepareGarageCockpit(car: Object3D, motionGroup: () => Group | n
           foot.quaternion.copy(knee.getWorldQuaternion(new Quaternion()).invert().multiply(carRotation).multiply(feet[index]));
         }
         for (const { shoulder, elbow, hand, rig, side, palmReach } of arms) {
-          const radial = new Vector3(side * .86, 0, 0).addScaledVector(rim.up, .51).normalize().applyQuaternion(rimTurn);
-          const grip = radial.clone().multiplyScalar(rim.radius).add(center);
+          const radial = new Vector3(side * .73, 0, 0).addScaledVector(rim.up, .68).normalize().applyQuaternion(rimTurn);
+          // Aim the knuckles beyond the outer rim. The palm faces inward and
+          // the fingers wrap down over the far side of the rim.
+          const grip = radial.clone().multiplyScalar(rim.radius + .027).add(center);
           const release = side < 0 ? pose.gesture : 0;
           const wave = id === "101" ? Math.sin((phase - .44) * Math.PI * 25) : 0;
-          const gripDirection = new Vector3(-side * .15, .13, .98).normalize().applyQuaternion(rimTurn);
+          const gripDirection = new Vector3(-side * .11, -.04, .99).applyQuaternion(rimTurn).projectOnPlane(radial).normalize();
           const wrist = grip.clone().addScaledVector(gripDirection, -palmReach);
           if (release) wrist.lerp(new Vector3(-.198 + wave * .021, .235, -.195).add(center), release);
           car.localToWorld(wrist);

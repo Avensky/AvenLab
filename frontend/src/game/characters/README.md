@@ -2,8 +2,9 @@
 
 Heroes and Garage use the portrait at the right of the header to open Character.
 The editor previews changes on the same turntable as the vehicle. New profiles
-confirm their character gender before editing. The server preserves that choice
-and saves appearance and prop edits automatically. Earlier profiles with a
+confirm a character model before editing. Identity saves Male, Female, or
+Nonbinary independently of that model. The server saves identity, appearance,
+and prop edits automatically. Earlier profiles with a
 character keep their saved gender and use default appearance values as needed.
 You can preview emotes before confirming a gender. After setup, the Emotes
 tab can compare both rigs without changing the equipped driver.
@@ -24,7 +25,8 @@ Rook's imported model uses its short hair and coat meshes with the editor's
 hair, skin, and clothing color choices.
 
 Garage and the Sandbox hero picker play Garage Life (001–010), the first
-batch from the emote catalog. Gestures blend back into relaxed breathing and a tap
+batch from the emote catalog. Gestures blend back into relaxed breathing with
+alternating hand placements, and a tap
 queues the friendly wave. The same clips are retargeted to Vesper's imported
 rig and the built-in drivers. Reduced Motion pauses character animation.
 Vesper also has procedural blink, smile, and brow shapes in the live preview.
@@ -52,12 +54,15 @@ Showroom (103–112) adds a car reveal, a mimed key toss, and eight other
 gestures. Six are available with the shop bag.
 Elegant (113–120) includes a curtsy, gentle applause, and a formal farewell.
 Performer (121–130) includes a four-count side step, a full turn, an overhead
-heart, and a finale bow. Take the stage and Singalong invitation are
+heart, a finale bow, and the bonus Hands up crowd emote. Take the stage and Singalong invitation are
 choreographed as empty-handed audience gestures. Stoic (131–140) includes a
 deliberate nod, a salute, and an exhale with a brief eye closure.
 Explorer (141–150) adds a folding map, binoculars, compass, and a collectible.
 Jacket reset adapts the backpack gesture to the current outfits.
-Tech starts with two gamepad gestures (151–152). The props are loaded on demand
+Tech (151–160) includes gamepad, phone, headset, tablet, and handheld keyboard
+gestures. Workshop (161–170) rehearses inspections and maintenance from the
+standing mark, with a cloth and tire gauge. Starter (171–172) begins with a
+short walk to the mark and a readiness signal. The props are loaded on demand
 in the Character preview and the bag filters out gestures that require both
 hands. These packs play on selection in Character → Emotes and return to the
 breathing idle.

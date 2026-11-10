@@ -18,6 +18,8 @@ import { availablePerformerEmotes } from "./performerEmotes";
 import { availableStoicEmotes } from "./stoicEmotes";
 import { availableExplorerEmotes } from "./explorerEmotes";
 import { TECH_EMOTES } from "./techEmotes";
+import { availableWorkshopEmotes } from "./workshopEmotes";
+import { availableStarterEmotes } from "./starterEmotes";
 import { EMOTE_PROP_GRIPS, type EmoteProp, type EmotePropModel } from "./emoteProps";
 import { WALK_EMOTES } from "./walkingEmotes";
 
@@ -69,18 +71,33 @@ const wave: Arm = [[-1, -.55, .28], [-.24, 1, .28]];
 
 export const EMOTE_GROUPS = [
   "Garage", "Victory", "Playful", "Shy", "Tsundere", "Expressions", "Roadside", "Rivalry", "Pit Crew",
-  "After Hours", "Showroom", "Elegant", "Performer", "Stoic", "Explorer", "Tech",
+  "After Hours", "Showroom", "Elegant", "Performer", "Stoic", "Explorer", "Tech", "Workshop", "Starter",
 ] as const;
 export type EmoteGroup = typeof EMOTE_GROUPS[number];
 export const AUTOMATIC_GARAGE_EMOTE_IDS = ["035", "002", "005", "009", "010"];
 const BEST_EMOTE_IDS = ["035", "090", "072", "051", "018", "094", "095", "100"];
 const GARAGE_PICK_IDS = ["005", "010", "002", "003", "009", "035", "090", "092", "093"];
 
+export function garageBreathing(bag = false): Emote {
+  return { id: "001", name: "Relaxed breathing", duration: 9.8, keys: [
+    [0, {}],
+    [.14, { torso: [-.025, -.016, .015], head: [-.019, -.074, .027],
+      rightHand: [-1.38, -.79, .31], fingers: [null, "cup"], face: [.16, .1] }],
+    [.31, { torso: [.014, -.033, .025], head: [.052, -.15, .045],
+      rightHand: [-1.23, -.7, .45], fingers: [null, "cup"], face: [.27, .15] }],
+    [.48, { torso: [-.018, .011, -.012], head: [-.012, .024, .011],
+      rightHand: [-1.41, -.82, .28], face: [.21, .12] }],
+    [.66, { torso: [.027, .039, -.022], head: [.056, .135, -.036],
+      ...(bag ? { rightHand: [-1.29, -.74, .37], fingers: [null, "cup"] }
+        : { leftHand: [1.26, -.72, .43], fingers: ["cup", null] }), face: [.18, .11] }],
+    [.84, { torso: [-.014, .023, -.013], head: [-.025, .06, -.018],
+      ...(bag ? { rightHand: [-1.42, -.83, .3] } : { leftHand: [1.4, -.83, .28] }), face: [.23, .08] }],
+    [1, {}],
+  ] };
+}
+
 export const GARAGE_EMOTES = [
-  { id: "001", name: "Relaxed breathing", duration: 3.6, keys: [
-    [0, {}], [.25, { torso: [-.018, 0, .012], head: [0, -.027, 0], face: [.12, .08] }],
-    [.5, {}], [.77, { torso: [.014, 0, -.012], head: [.012, .027, 0] }], [1, {}],
-  ] },
+  garageBreathing(),
   { id: "002", name: "Comfortable weight shift", duration: 2.7, keys: [
     [.23, { sway: -.043, rise: -.023, feet: { l: [.025, .035, .032] }, torso: [.018, -.07, .08] }],
     [.39, { sway: .068, rise: -.038, feet: { l: [.065, 0, .065, .16] }, torso: [.018, -.07, .115], head: [0, .06, -.072] }],
@@ -300,10 +317,20 @@ export function buildEmoteClips(root: Object3D, emotes: readonly Emote[], props?
         .applyQuaternion(limb.shoulder.getWorldQuaternion(new Quaternion()).invert());
     aimLimb(limb.shoulder, limb.elbow, limb.hand, goal, pole, hinge);
   };
-  const orientPalm = (rig: ReturnType<typeof driverHand> | undefined, target: Palm | undefined, rotation = modelRotation) => {
+  const orientPalm = (rig: ReturnType<typeof driverHand> | undefined, target: Palm | undefined,
+    rotation = modelRotation, elbow?: Object3D) => {
     if (!rig || !target) return;
     const [fingers, normal] = target;
     const direction = new Vector3(...fingers).applyQuaternion(rotation).normalize();
+    if (elbow) {
+      const forearm = rig.hand.getWorldPosition(new Vector3()).sub(elbow.getWorldPosition(new Vector3())).normalize();
+      const angle = forearm.angleTo(direction);
+      const limit = Math.PI * .4;
+      if (angle > limit) {
+        const bend = new Quaternion().setFromUnitVectors(forearm, direction);
+        direction.copy(forearm).applyQuaternion(new Quaternion().slerp(bend, limit / angle));
+      }
+    }
     aimDriverJoint(rig.hand, rig.middle, direction.clone());
     alignJointNormal(rig.hand, direction, rig.palm, new Vector3(...normal).applyQuaternion(rotation));
   };
@@ -361,7 +388,7 @@ export function buildEmoteClips(root: Object3D, emotes: readonly Emote[], props?
           const wrist = new Vector3(...grip.wrist).applyQuaternion(hinge).applyQuaternion(orientation).add(origin);
           const [arm, other, sign] = side === 0 ? [left, right, 1] : [right, left, -1];
           hands(arm, other, undefined, sign, false, true, root.localToWorld(wrist));
-          orientPalm(handRigs[side], grip.palm, palmRotation.clone().multiply(hinge));
+          orientPalm(handRigs[side], grip.palm, palmRotation.clone().multiply(hinge), arm.elbow);
         });
       }
       tilt(left?.hand, pose.wristLeft === undefined ? undefined : [0, 0, pose.wristLeft]);
@@ -503,7 +530,9 @@ export function emoteCollection(group: EmoteGroup, bag: boolean, includeWalks = 
   if (group === "Stoic") return availableStoicEmotes(bag);
   if (group === "Explorer") return availableExplorerEmotes(bag);
   if (group === "Tech") return bag ? [] : TECH_EMOTES;
-  if (bag) return [...GARAGE_EMOTES.filter(item => compatibleGarageEmotes(item.id)), ...BAG_EMOTES];
+  if (group === "Workshop") return availableWorkshopEmotes(bag);
+  if (group === "Starter") return availableStarterEmotes(bag);
+  if (bag) return [garageBreathing(true), ...GARAGE_EMOTES.slice(1).filter(item => compatibleGarageEmotes(item.id)), ...BAG_EMOTES];
   return includeWalks ? [...GARAGE_EMOTES, ...WALK_EMOTES] : GARAGE_EMOTES;
 }
 

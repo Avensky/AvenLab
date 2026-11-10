@@ -3,7 +3,7 @@ import { ControllerAction } from "../../components/controller";
 import { requestSocial } from "../../net/socialClient";
 import { useSocialStore } from "../../store/social/socialStore";
 import { usePreferencesStore } from "../../store/preferences/preferencesStore";
-import { CHARACTERS, CHARACTER_APPEARANCE_OPTIONS, DEFAULT_CHARACTER, OUTFIT_THEMES, ROOK_ID, VILLAGER_ID, characterLook, type CharacterStyleField, type CharacterChoice } from "./characterCatalog";
+import { CHARACTERS, CHARACTER_APPEARANCE_OPTIONS, CHARACTER_IDENTITIES, DEFAULT_CHARACTER, OUTFIT_THEMES, ROOK_ID, VILLAGER_ID, characterLook, type CharacterStyleField, type CharacterChoice } from "./characterCatalog";
 import { CharacterPortrait } from "./CharacterPortrait";
 import { CHARACTER_CAMERAS, CHARACTER_ZOOM_MIN, CHARACTER_ZOOM_MAX, useCharacterPreviewStore } from "./characterPreviewStore";
 import { EMOTE_GROUPS, garagePreviewCollection, type EmoteGroup } from "./garageEmotes";
@@ -11,7 +11,8 @@ import { COCKPIT_TAKES } from "./cockpitEmotes";
 import { GARAGE_LEAN_ID, GARAGE_LEAN_NAME } from "./garageLean";
 
 export const CHARACTER_TABS = [
-  { id: "appearance", label: "Appearance" }, { id: "face", label: "Face" }, { id: "clothes", label: "Clothes" },
+  { id: "identity", label: "Identity" }, { id: "appearance", label: "Appearance" },
+  { id: "face", label: "Face" }, { id: "clothes", label: "Clothes" },
   { id: "props", label: "Props" }, { id: "emotes", label: "Emotes" },
 ] as const;
 export type CharacterTab = typeof CHARACTER_TABS[number]["id"];
@@ -61,10 +62,11 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
         queued.current = null;
         try {
           if (!owner || useSocialStore.getState().view?.profile.id !== owner) throw Error("Connect your player profile to save.");
-          await requestSocial("character_equip", { character: next });
+          const result = await requestSocial("character_equip", { character: next });
+          const confirmed = (result.character as CharacterChoice | undefined) ?? next;
           // The reliable reply can arrive before the replaceable social view.
-          useSocialStore.getState().acknowledgeProgression(owner, progression => ({ ...progression, character: next }));
-          acknowledged.current = next;
+          useSocialStore.getState().acknowledgeProgression(owner, progression => ({ ...progression, character: confirmed }));
+          acknowledged.current = confirmed;
           setLocked(true);
         } catch (error) {
           queued.current ??= next;
@@ -216,6 +218,14 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
       <div className="character-stage" data-character-preview={previewChoice.id} data-outfit-preview={previewChoice.outfit}
         aria-label={`Preview of ${characterLook(previewChoice)!.character.name}`} />
       <section className="character-controls menu-panel-frame character-controls--left" aria-label={tab}>
+        {tab === "identity" && <>
+          <header className="character-description"><h2>Identity</h2><p>Choose how your character identifies. Their model and outfit are separate.</p></header>
+          <div className="character-outfits" role="group" aria-label="Character identity" data-controller-row>
+            {CHARACTER_IDENTITIES.map(item => <button key={item.id} type="button" className="menu-control"
+              aria-pressed={(choice.identity ?? character.gender) === item.id}
+              onClick={() => update({ ...choice, identity: item.id })}>{item.label}</button>)}
+          </div>
+        </>}
         {tab === "appearance" && <header className="character-description"><small>{character.title}</small><h2>{character.name}</h2><p>{character.bio}</p></header>}
         {tab === "face" && <header className="character-description"><h2>Face</h2><p>{character.name}</p></header>}
         {tab === "clothes" && <>

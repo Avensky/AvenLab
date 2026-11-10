@@ -7,9 +7,19 @@ pub struct CharacterChoice {
     pub id: String,
     pub outfit: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub identity: Option<CharacterIdentity>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub appearance: Option<CharacterAppearance>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub prop: Option<CharacterProp>,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum CharacterIdentity {
+    Male,
+    Female,
+    Nonbinary,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]

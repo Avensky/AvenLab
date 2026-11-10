@@ -90,12 +90,12 @@ export const VICTORY_EMOTES = [
   ] },
   { id: "019", name: "Little victory dance", duration: 3.55, keys: [
     [.14, { ...danceLeft, sway: -.017, rise: -.025, feet: { l: [.064, .04, .026, .12] }, torso: [.025, -.095, -.044], head: [.018, .07, .064], face: [.68, .32] }],
-    [.26, { ...danceRight, sway: .074, rise: -.042, feet: { l: danceLead }, torso: [.058, .07, -.075], head: [.08, -.05, .07], face: [.98, .44] }],
-    [.37, { ...danceLeft, sway: .105, rise: -.019, feet: { l: danceLead, r: [.07, .039, .02, .08, .11] }, torso: [-.058, -.11, -.06], head: [-.077, .06, .05], face: [1, .51] }],
-    [.47, { ...danceRight, sway: .093, rise: -.039, feet: { l: danceLead, r: [.089, 0, .021, .08] }, torso: [.06, .09, -.033], head: [.065, -.065, .025], face: [.9, .36] }],
-    [.58, { ...danceRight, sway: .045, rise: -.021, feet: { l: danceLead, r: [.025, .045, .024, -.045, .13] }, torso: [-.058, .11, .063], head: [-.075, -.08, -.06], face: [.97, .51] }],
-    [.69, { ...danceLeft, sway: -.046, rise: -.041, feet: { l: danceLead, r: danceReturn }, torso: [.063, -.095, .07], head: [.077, .063, -.055], face: [1, .52] }],
-    [.8, { ...danceRight, sway: -.031, rise: -.02, feet: { l: [.048, .043, .022, .06, -.12], r: danceReturn }, torso: [-.043, .07, .033], head: [-.06, -.04, -.04], face: [.88, .45] }],
+    [.26, { turn: -.10, ...danceRight, sway: .074, rise: -.042, feet: { l: danceLead }, torso: [.058, .07, -.075], head: [.08, -.05, .07], face: [.98, .44] }],
+    [.37, { turn: .16, ...danceLeft, sway: .105, rise: -.019, feet: { l: danceLead, r: [.07, .039, .02, .08, .11] }, torso: [-.058, -.11, -.06], head: [-.077, .06, .05], face: [1, .51] }],
+    [.47, { turn: -.13, ...danceRight, sway: .093, rise: -.039, feet: { l: danceLead, r: [.089, 0, .021, .08] }, torso: [.06, .09, -.033], head: [.065, -.065, .025], face: [.9, .36] }],
+    [.58, { turn: -.11, ...danceRight, sway: .045, rise: -.021, feet: { l: danceLead, r: [.025, .045, .024, -.045, .13] }, torso: [-.058, .11, .063], head: [-.075, -.08, -.06], face: [.97, .51] }],
+    [.69, { turn: .13, ...danceLeft, sway: -.046, rise: -.041, feet: { l: danceLead, r: danceReturn }, torso: [.063, -.095, .07], head: [.077, .063, -.055], face: [1, .52] }],
+    [.8, { turn: -.08, ...danceRight, sway: -.031, rise: -.02, feet: { l: [.048, .043, .022, .06, -.12], r: danceReturn }, torso: [-.043, .07, .033], head: [-.06, -.04, -.04], face: [.88, .45] }],
     [.91, { ...danceHands, leftHand: [1.62, -.57, .55], rightHand: [-1.62, -.57, .55], sway: .008, rise: -.026, feet: { r: [-.021, .025, .012, -.05] }, torso: [.041, -.025, -.012], head: [.041, .023, .029], face: [.63, .31] }],
   ] },
   { id: "020", name: "Champion stance", duration: 3.15, keys: [
@@ -126,11 +126,11 @@ const rapPalms = {
 const VICTORY_VARIATIONS = [
   { id: "rap-hands", name: "Rap hands", duration: 3.1, keys: [
     [.14, { ...rapPalms, leftHand: [1.12, -.29, .59], rightHand: [-.92, -.08, .62], face: [.55, .24] }],
-    [.25, { ...rapPalms, leftHand: [.68, -.32, .64], rightHand: [-.61, -.065, .67], torso: [.08, .06, -.055], head: [.12, -.04, .075], sway: .029, rise: -.026, face: [.83, .34] }],
-    [.36, { ...rapPalms, leftHand: [.92, -.25, .59], rightHand: [-.97, -.16, .63], torso: [-.032, .07, -.04], head: [-.08, .03, .05], sway: .027, rise: -.016, face: [.91, .42] }],
-    [.47, { ...rapPalms, leftHand: [.59, -.06, .68], rightHand: [-.68, -.32, .64], torso: [.07, -.06, .05], head: [.1, .02, -.05], sway: -.027, rise: -.027, face: [.88, .37] }],
-    [.57, { ...rapPalms, leftHand: [.95, -.11, .63], rightHand: [-.91, -.27, .59], torso: [-.035, -.055, .035], head: [-.075, 0, -.03], sway: -.032, rise: -.016, face: [.93, .43] }],
-    [.69, { ...rapPalms, leftHand: [.68, -.31, .67], rightHand: [-.56, -.035, .65], torso: [.075, .05, -.035], head: [.08, -.04, .065], sway: .024, rise: -.025, face: [1, .5] }],
+    [.25, { turn: -.08, ...rapPalms, leftHand: [.68, -.32, .64], rightHand: [-.61, -.065, .67], torso: [.08, .06, -.055], head: [.12, -.04, .075], sway: .029, rise: -.026, face: [.83, .34] }],
+    [.36, { turn: -.06, ...rapPalms, leftHand: [.92, -.25, .59], rightHand: [-.97, -.16, .63], torso: [-.032, .07, -.04], head: [-.08, .03, .05], sway: .027, rise: -.016, face: [.91, .42] }],
+    [.47, { turn: .09, ...rapPalms, leftHand: [.59, -.06, .68], rightHand: [-.68, -.32, .64], torso: [.07, -.06, .05], head: [.1, .02, -.05], sway: -.027, rise: -.027, face: [.88, .37] }],
+    [.57, { turn: .055, ...rapPalms, leftHand: [.95, -.11, .63], rightHand: [-.91, -.27, .59], torso: [-.035, -.055, .035], head: [-.075, 0, -.03], sway: -.032, rise: -.016, face: [.93, .43] }],
+    [.69, { turn: -.09, ...rapPalms, leftHand: [.68, -.31, .67], rightHand: [-.56, -.035, .65], torso: [.075, .05, -.035], head: [.08, -.04, .065], sway: .024, rise: -.025, face: [1, .5] }],
     [.83, { ...rapPalms, leftHand: [1.05, -.31, .57], rightHand: [-1.11, -.19, .56], head: [-.025, .07, .05], face: [.72, .27] }],
   ] },
   { id: "heart-overhead", name: "Overhead heart", duration: 3.45, keys: [

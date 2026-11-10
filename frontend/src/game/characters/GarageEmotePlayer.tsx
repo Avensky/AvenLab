@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { AnimationMixer, LoopOnce, MathUtils, type AnimationAction, type Object3D } from "three";
 import { usePreferencesStore } from "../../store/preferences/preferencesStore";
-import { AUTOMATIC_GARAGE_EMOTE_IDS, buildEmoteClips, buildGarageEmotes, findGaragePreviewEmote, GARAGE_EMOTES } from "./garageEmotes";
+import { AUTOMATIC_GARAGE_EMOTE_IDS, buildEmoteClips, buildGarageEmotes, findGaragePreviewEmote, garageBreathing } from "./garageEmotes";
 import { driverFaceTargets } from "./villagerFace";
 import { useCharacterPreviewStore } from "./characterPreviewStore";
 import { DriverBag } from "./DriverBag";
@@ -54,7 +54,7 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
     const mixer = new AnimationMixer(root);
     const celebration = victory && availableVictoryEmotes(bag).find(emote => emote.id === victory.id);
     const [breathing, ...clips] = victory
-      ? buildEmoteClips(root, celebration ? [GARAGE_EMOTES[0], celebration] : [GARAGE_EMOTES[0]])
+      ? buildEmoteClips(root, celebration ? [garageBreathing(bag), celebration] : [garageBreathing(bag)])
       : buildGarageEmotes(root, bag);
     const idle = mixer.clipAction(breathing).play();
     const actions = new Map(clips.map(clip => [clip.name.split(" ")[0], mixer.clipAction(clip).setLoop(LoopOnce, 1)]));

@@ -15,7 +15,11 @@ export const OUTFIT_THEMES = [
   { name: "Black Cherry", color: "#2d1d28", accent: "#a84a70" },
   { name: "Night Harbor", color: "#1c2c39", accent: "#56868c" },
 ] as const;
-export type CharacterChoice = { id: string; outfit: string; appearance?: CharacterAppearance; prop?: "shop-bag" };
+export const CHARACTER_IDENTITIES = [
+  { id: "male", label: "Male" }, { id: "female", label: "Female" }, { id: "nonbinary", label: "Nonbinary" },
+] as const;
+export type CharacterIdentity = typeof CHARACTER_IDENTITIES[number]["id"];
+export type CharacterChoice = { id: string; outfit: string; identity?: CharacterIdentity; appearance?: CharacterAppearance; prop?: "shop-bag" };
 
 export const VILLAGER_ID = "mara-vega";
 export const ROOK_ID = "jules-okafor";

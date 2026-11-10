@@ -2,6 +2,15 @@ import type { Emote } from "./garageEmotes";
 
 const ready = { offset: [0, -.335, .388], angles: [.14, 0, .015] } as const;
 
+const phone = { offset: [.066, -.23, .34], angles: [-.52, -.13, -.07] } as const;
+const tablet = { offset: [.055, -.235, .331], angles: [-.68, .06, -.12] } as const;
+const keyboard = { offset: [.053, -.267, .344], angles: [.15, -.1, -.08] } as const;
+const tap = {
+  rightHand: [-.46, -.21, .52], rightPalm: [[.26, -.3, .92], [.06, -.95, -.33]],
+  fingers: ["cup", "point"],
+} as const;
+const headband = { offset: [0, -.011, .07], angles: [.02, -.03, .04], atHead: true } as const;
+
 export const TECH_EMOTES = [
   { id: "151", name: "Controller warmup", duration: 3.95, prop: "controller", keys: [
     [.16, { prop: { ...ready, show: 0 }, head: [.13, -.06, .033], torso: [.05, -.031, .018], face: [.19, .33] }],
@@ -28,5 +37,90 @@ export const TECH_EMOTES = [
       head: [.083, .043, -.03], travel: .022, face: [.47, .27] }],
     [.82, { prop: { offset: [0, -.367, .351], angles: [.21, -.024, .029] }, head: [-.054, -.016, .01], face: [.75, .38] }],
     [.91, { prop: { ...ready, show: 0 }, head: [.035, -.006, .005], face: [.54, .23] }],
+  ] },
+  { id: "153", name: "Button mash panic", duration: 4.25, prop: "controller", keys: [
+    [.16, { prop: { ...ready, show: 0 }, head: [.085, -.044, .038], face: [.11, .4] }],
+    [.29, { prop: ready, thumbs: [.16, .12], torso: [.076, .029, -.03], head: [.096, -.03, -.037], face: [.28, .54] }],
+    [.35, { prop: { ...ready, angles: [.23, -.085, .085] }, thumbs: [.25, -.32], torso: [.125, -.07, .035], head: [-.071, -.12, .067], rise: -.029 }],
+    [.4, { prop: ready, thumbs: [-.13, .41], torso: [.106, -.026, .022], head: [-.054, -.08, .04], face: [.04, -.21] }],
+    [.45, { prop: { ...ready, angles: [.09, .08, -.064] }, thumbs: [.13, -.36], torso: [.142, .065, -.044], head: [-.078, .067, -.053] }],
+    [.5, { prop: ready, thumbs: [-.17, .42], torso: [.106, .034, -.03], head: [-.064, .08, -.038], face: [-.03, -.42] }],
+    [.55, { prop: { ...ready, angles: [.21, -.062, .06] }, thumbs: [.17, -.31], torso: [.139, -.067, .034], rise: -.037, face: [-.06, -.38] }],
+    [.64, { prop: ready, thumbs: [.14, .35], torso: [.095, -.012, .021], head: [-.107, -.026, .042], face: [.06, .59] }],
+    [.75, { prop: { ...ready, offset: [.012, -.36, .371] }, head: [.13, .064, -.058], torso: [-.018, .03, -.012], face: [.45, .57] }],
+    [.89, { prop: { ...ready, show: 0 }, head: [.037, .01, .014], face: [.59, .26] }],
+  ] },
+  { id: "154", name: "Connection lost", duration: 4.4, prop: "controller", keys: [
+    [.15, { prop: { ...ready, show: 0 }, head: [.096, .064, -.043], torso: [.063, .018, -.019], face: [.1, .34] }],
+    [.29, { prop: ready, thumbs: [.18, .26], torso: [.094, .02, -.024], head: [-.056, -.051, -.026], face: [.24, .39] }],
+    [.44, { prop: { offset: [-.035, -.268, .382], angles: [.46, -.21, .22] }, head: [.217, -.1, .139],
+      torso: [.106, -.056, .041], face: [-.22, .62] }],
+    [.59, { prop: { offset: [.019, -.258, .36], angles: [.38, .14, -.18] }, head: [-.122, .039, -.054],
+      torso: [-.054, .06, -.027], face: [-.17, -.46] }],
+    [.74, { prop: { ...ready, angles: [.29, -.03, .02] }, head: [.164, -.026, .016], torso: [.05, -.013, .01], face: [.12, .26] }],
+    [.88, { prop: { ...ready, show: 0 }, head: [.038, .027, -.019], face: [.26, .21] }],
+  ] },
+  { id: "155", name: "Headphone adjustment", duration: 4.45, prop: "headphones", keys: [
+    [.14, { prop: { offset: [0, -.14, .295], show: 0 }, head: [.081, -.04, .027], face: [.21, .32] }],
+    [.25, { prop: { offset: [0, -.09, .29], angles: [-.16, .045, .02] }, head: [.11, .026, .02], torso: [.047, .011, -.02], face: [.32, .45] }],
+    [.31, { prop: { offset: [0, .018, .25], angles: [-.12, .03, .02] }, head: [.019, .021, -.011], torso: [.012, .023, -.016], face: [.37, .43] }],
+    [.36, { prop: { offset: [0, .14, .16], angles: [-.09, .015, .02] }, head: [-.068, .022, -.033], torso: [-.05, .028, -.012], face: [.43, .42] }],
+    [.47, { prop: headband, head: [.089, -.07, .041], torso: [.024, -.026, .021], face: [.63, .35] }],
+    [.57, { prop: { ...headband, angles: [.037, .04, -.062] }, sway: .022, head: [-.054, .086, -.063], torso: [-.037, .035, -.039], face: [.78, .46] }],
+    [.68, { prop: headband, sway: -.017, head: [.115, -.074, .044], face: [.87, .42] }],
+    [.78, { prop: { offset: [0, .15, .178], angles: [.12, -.07, .017] }, head: [-.016, -.055, .023], face: [.8, .37] }],
+    [.84, { prop: { offset: [0, .023, .24], angles: [.09, -.036, .024] }, head: [.009, -.015, .01], face: [.7, .33] }],
+    [.91, { prop: { offset: [0, -.11, .27], show: 0 }, head: [.035, .037, -.015], face: [.57, .24] }],
+  ] },
+  { id: "156", name: "Quick message", duration: 4.2, prop: "phone", keys: [
+    [.15, { prop: { ...phone, show: 0 }, head: [.122, .12, -.059], torso: [.073, .06, -.029], face: [.23, .43] }],
+    [.27, { ...tap, prop: phone, head: [.239, .107, -.068], torso: [.112, .048, -.026], face: [.37, .47] }],
+    [.37, { ...tap, prop: phone, rightHand: [-.28, -.29, .595], head: [.212, .086, -.051], face: [.5, .44] }],
+    [.44, { ...tap, prop: phone, rightHand: [-.44, -.236, .53], head: [.22, .099, -.062], face: [.56, .48] }],
+    [.51, { ...tap, prop: phone, rightHand: [-.25, -.286, .59], head: [.214, .077, -.042], face: [.61, .39] }],
+    [.63, { prop: { ...phone, offset: [.095, -.232, .344] }, head: [.071, .118, -.06], torso: [.04, .042, -.019], face: [.71, .42] }],
+    [.79, { prop: { ...phone, offset: [.208, -.327, .226], angles: [-.27, .11, -.29] }, head: [.159, .173, -.071], face: [.66, .29] }],
+    [.89, { prop: { ...phone, offset: [.213, -.363, .197], show: 0 }, head: [.054, .049, -.024], face: [.51, .22] }],
+  ] },
+  { id: "157", name: "Debugging thought", duration: 4.65, prop: "tablet", keys: [
+    [.16, { prop: { ...tablet, show: 0 }, head: [.118, .09, -.046], torso: [.067, .041, -.028], face: [.16, .35] }],
+    [.3, { ...tap, prop: tablet, rightHand: [-.33, -.235, .59], head: [.265, .124, -.064], torso: [.126, .054, -.021], face: [.09, -.32] }],
+    [.44, { prop: tablet, rightHand: [-.68, .075, .49], rightPalm: [[.5, .79, -.27], [.67, -.42, -.58]],
+      fingers: ["cup", "pinch"], head: [.189, .042, .073], torso: [.061, .018, .021], face: [-.12, .59] }],
+    [.58, { prop: tablet, rightHand: [-1.39, .33, .55], rightPalm: [[-.025, .9, .43], [.89, -.16, .37]],
+      fingers: ["cup", "point"], head: [-.091, -.098, .034], torso: [-.07, -.046, .027], face: [.72, .64] }],
+    [.72, { ...tap, prop: { ...tablet, angles: [-.54, .09, -.08] }, head: [.143, .077, -.057], torso: [.071, .045, -.024], face: [.75, .46] }],
+    [.87, { prop: { ...tablet, show: 0 }, head: [.051, .018, -.028], face: [.56, .26] }],
+  ] },
+  { id: "158", name: "Keyboard flourish", duration: 4.45, prop: "keyboard", keys: [
+    [.16, { prop: { ...keyboard, show: 0 }, head: [.098, .064, -.027], face: [.18, .34] }],
+    [.29, { ...tap, prop: keyboard, rightHand: [-.54, -.24, .57], head: [.24, .083, -.047], torso: [.12, .04, -.025], face: [.41, .51] }],
+    [.38, { ...tap, prop: keyboard, rightHand: [-.32, -.33, .58], head: [.215, .059, -.049], face: [.51, .49] }],
+    [.44, { ...tap, prop: keyboard, rightHand: [-.1, -.23, .55], head: [.215, .11, -.053], face: [.58, .49] }],
+    [.51, { ...tap, prop: keyboard, rightHand: [-.08, -.325, .58], head: [.205, .08, -.049], face: [.62, .49] }],
+    [.58, { ...tap, prop: keyboard, rightHand: [-.6, -.17, .55], head: [.152, -.07, .021], face: [.75, .46] }],
+    [.7, { prop: keyboard, rightHand: [-1.42, .12, .58], rightPalm: [[-.15, .88, .45], [.08, -.45, .88]],
+      fingers: ["cup", "open"], head: [-.057, -.064, .041], torso: [-.045, -.036, .027], face: [.91, .5] }],
+    [.88, { prop: { ...keyboard, show: 0 }, head: [.041, .023, -.015], face: [.61, .26] }],
+  ] },
+  { id: "159", name: "Screenshot pose", duration: 4.25, prop: "phone", keys: [
+    [.15, { prop: { ...phone, show: 0 }, head: [.086, .09, -.046], face: [.17, .38] }],
+    [.29, { prop: { offset: [.201, .072, .365], angles: [-.14, .32, -.11] }, sway: .022, torso: [-.036, .095, -.043],
+      head: [-.091, .245, -.096], face: [.76, .49] }],
+    [.44, { prop: { offset: [.236, .102, .379], angles: [-.19, .39, -.14] },
+      rightHand: [-1.38, .09, .57], fingers: ["cup", "peace"], sway: .033, torso: [-.044, .128, -.04], head: [-.13, .28, -.1], face: [1, .57] }],
+    [.57, { prop: { offset: [.234, .09, .37], angles: [-.15, .39, -.13] },
+      rightHand: [-1.38, .071, .56], fingers: ["cup", "peace"], blink: .83, head: [-.091, .255, -.09], face: [1, .52] }],
+    [.7, { prop: { ...phone, offset: [.112, -.167, .357] }, head: [.212, .164, -.069], torso: [.056, .066, -.027], face: [.89, .49] }],
+    [.87, { prop: { ...phone, show: 0 }, head: [.074, .065, -.039], face: [.69, .28] }],
+  ] },
+  { id: "160", name: "Upload complete", duration: 4.25, prop: "phone", keys: [
+    [.16, { prop: { ...phone, show: 0 }, head: [.108, .087, -.033], face: [.24, .42] }],
+    [.3, { prop: phone, head: [.217, .108, -.061], torso: [.096, .058, -.03], face: [.42, .55] }],
+    [.43, { prop: { ...phone, angles: [-.49, -.076, -.067] }, head: [.144, .095, -.047], torso: [.065, .036, -.016], face: [.63, .51] }],
+    [.56, { prop: phone, rightHand: [-1.54, .29, .61], rightPalm: [[-.05, .41, .91], [.93, -.34, .22]],
+      fingers: ["cup", "thumb-up"], head: [-.084, -.09, .049], torso: [-.06, -.026, .023], sway: -.024, face: [1, .59] }],
+    [.72, { prop: { ...phone, offset: [.132, -.296, .287] }, rightHand: [-1.42, -.07, .61], head: [.11, -.026, .046], face: [.91, .43] }],
+    [.88, { prop: { ...phone, offset: [.187, -.34, .23], show: 0 }, head: [.036, .024, -.009], face: [.62, .27] }],
   ] },
 ] as const satisfies readonly Emote[];

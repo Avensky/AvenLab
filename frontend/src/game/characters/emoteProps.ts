@@ -3,7 +3,7 @@ import {
 } from "three";
 import type { Palm, XYZ } from "./garageEmotes";
 
-export type EmoteProp = "map" | "binoculars" | "compass" | "collectible" | "controller";
+export type EmoteProp = "map" | "binoculars" | "compass" | "collectible" | "controller" | "headphones" | "phone" | "tablet" | "keyboard" | "gauge" | "cloth";
 
 type Grip = { wrist: XYZ; palm: Palm };
 export const EMOTE_PROP_GRIPS: Record<EmoteProp, readonly [Grip | null, Grip | null]> = {
@@ -21,6 +21,15 @@ export const EMOTE_PROP_GRIPS: Record<EmoteProp, readonly [Grip | null, Grip | n
     { wrist: [.107, -.037, -.064], palm: [[-.26, .32, .91], [-.86, .37, -.38]] },
     { wrist: [-.107, -.037, -.064], palm: [[.26, .32, .91], [.86, .37, -.38]] },
   ],
+  headphones: [
+    { wrist: [.125, -.048, -.029], palm: [[-.12, .78, .61], [-1, 0, 0]] },
+    { wrist: [-.125, -.048, -.029], palm: [[.12, .78, .61], [1, 0, 0]] },
+  ],
+  phone: [{ wrist: [.042, -.062, -.026], palm: [[-.25, .72, .65], [-.82, -.51, .23]] }, null],
+  tablet: [{ wrist: [.114, -.055, -.036], palm: [[-.46, .49, .74], [-.88, -.29, -.36]] }, null],
+  keyboard: [{ wrist: [.122, -.033, -.041], palm: [[-.37, .44, .82], [-.87, .45, -.16]] }, null],
+  gauge: [null, { wrist: [-.016, -.034, -.078], palm: [[-.045, .24, .97], [0, .97, -.24]] }],
+  cloth: [null, { wrist: [-.004, -.026, -.052], palm: [[.08, .19, .98], [.11, -.98, .18]] }],
 };
 
 export type EmotePropModel = ReturnType<typeof createEmoteProp>;
@@ -95,6 +104,41 @@ export function createEmoteProp(kind: EmoteProp) {
       for (const [x, z] of [[-.065, .018], [-.079, .029], [-.051, .029], [-.065, .04]]) {
         disk(.006, .005, "#da6582", [x, .021, z]);
       }
+      break;
+    case "headphones": {
+      box(root, [.185, .018, .039], "#454758", [0, .102, 0]);
+      for (const side of [-1, 1]) {
+        box(root, [.022, .086, .03], "#454758", [side * .091, .066, 0]).rotation.z = -side * .23;
+        disk(.041, .039, "#4b5165", [side * .102, -.004, .003]).rotation.z = Math.PI / 2;
+        disk(.032, .014, "#262630", [side * .081, -.004, .003]).rotation.z = Math.PI / 2;
+      }
+      break;
+    }
+    case "phone":
+    case "tablet": {
+      const tablet = kind === "tablet";
+      const width = tablet ? .218 : .073, height = tablet ? .154 : .131;
+      box(root, [width, height, .013], "#424b5c", [0, 0, 0]);
+      box(root, [width - .011, height - .014, .002], "#64a6bf", [0, 0, -.007]);
+      box(root, [.02, .013, .002], "#222834", [.014, .044, .007]);
+      break;
+    }
+    case "keyboard":
+      box(root, [.227, .016, .084], "#485064", [0, 0, 0]);
+      for (const z of [-.026, -.008, .01, .028]) {
+        box(root, [.125, .004, .012], "#9ca9bc", [-.034, .01, z]);
+        box(root, [.058, .004, .012], "#9ca9bc", [.074, .01, z]);
+      }
+      break;
+    case "gauge":
+      disk(.038, .024, "#434f57", [0, 0, 0]);
+      disk(.032, .003, "#d0dce0", [0, .013, 0]);
+      box(root, [.004, .003, .045], "#ce6346", [0, .015, 0]).rotation.y = .58;
+      box(root, [.021, .023, .053], "#434f57", [0, 0, .05]);
+      break;
+    case "cloth":
+      box(root, [.128, .008, .107], "#80a5a6", [0, 0, 0]).rotation.y = -.24;
+      box(root, [.095, .008, .071], "#abc5bb", [.009, .006, .005]).rotation.y = .19;
       break;
   }
   return {

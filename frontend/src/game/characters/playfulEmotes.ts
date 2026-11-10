@@ -43,18 +43,21 @@ const robotReady = {
   fingers: ["open", "open"], rise: -.026,
 } as const;
 const robotLeft = {
+  turn: .08,
   ...robotReady, leftHand: [1.9, .18, .41], rightHand: [-.85, -.31, .67],
   leftPalm: [[-.025, 1, .02], [0, 0, 1]], rightPalm: [[.99, 0, .11], [0, -1, 0]],
   torso: [.01, .14, -.09], head: [-.045, -.32, .08], sway: .05, rise: -.044,
   feet: { l: [.08, 0, .026, .16] }, face: [.12, .32],
 } as const;
 const robotRight = {
+  turn: -.085,
   ...robotReady, leftHand: [.91, -.27, .67], rightHand: [-1.9, .16, .43],
   leftPalm: [[-.99, 0, .11], [0, -1, 0]], rightPalm: [[.02, 1, .02], [0, 0, 1]],
   torso: [.01, -.15, .095], head: [-.045, .33, -.08], sway: -.052, rise: -.043,
   feet: { l: robotLeft.feet.l, r: [-.073, 0, .02, -.16] }, face: [.17, .43],
 } as const;
 const robotPop = {
+  turn: -.022,
   ...robotReady, leftHand: [1.72, -.09, .58], rightHand: [-1.72, -.09, .58],
   leftPalm: [[.03, -.54, .84], [0, -1, -.54]], rightPalm: [[-.03, -.54, .84], [0, -1, -.54]],
   torso: [-.16, 0, 0], head: [.13, 0, 0], rise: -.023, feet: robotRight.feet, face: [.26, .56],

@@ -132,8 +132,8 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     await click('.character-emotes button:last-child');
     assert.equal(preview.getState().emote.id, '112');
     for (const [index, name, first, last] of [
-      [12, 'Elegant', 113, 120], [13, 'Performer', 121, 130], [14, 'Stoic', 131, 140],
-      [15, 'Explorer', 141, 150], [16, 'Tech', 151, 152],
+      [12, 'Elegant', 113, 120], [14, 'Stoic', 131, 140], [15, 'Explorer', 141, 150],
+      [16, 'Tech', 151, 160], [17, 'Workshop', 161, 170], [18, 'Starter', 171, 172],
     ]) {
       const selector = `[aria-label="Emote collection"] button:nth-child(${index})`;
       assert.equal(find(selector).textContent, name);
@@ -144,6 +144,11 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
       await click('.character-emotes button:last-child');
       assert.equal(preview.getState().emote.id, String(last));
     }
+    await click('[aria-label="Emote collection"] button:nth-child(13)');
+    assert.equal(document.querySelectorAll('.character-emotes button').length, 11);
+    assert.equal(find('.character-emotes button:last-child').textContent, 'Hands up');
+    await click('.character-emotes button:last-child');
+    assert.equal(preview.getState().emote.id, 'hands-up-crowd');
     await click('[aria-label="Emote collection"] button:first-child');
     await click('[data-character-option="jules-okafor"]');
     assert.equal(find('[data-character-preview]').dataset.characterPreview, 'jules-okafor');
@@ -160,7 +165,7 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     };
     await acknowledge(requests[0], choice);
     assert.equal(find('[data-character-option]'), null);
-    assert.deepEqual([...document.querySelectorAll('[role=tab]')].map(node => node.textContent), ['Appearance', 'Face', 'Clothes', 'Props', 'Emotes']);
+    assert.deepEqual([...document.querySelectorAll('[role=tab]')].map(node => node.textContent), ['Identity', 'Appearance', 'Face', 'Clothes', 'Props', 'Emotes']);
     await click('#character-editor-tab-emotes');
     const cockpitToggle = '[data-cockpit-toggle]';
     assert.equal(find(cockpitToggle).disabled, true);
@@ -279,6 +284,19 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(find('[data-character-option]'), null, 'gender stays locked after reopening');
     await click('#character-editor-tab-face');
     assert.equal(find('select[aria-label="Eye color"]').value, 'obsidian');
+    await click('#character-editor-tab-identity');
+    const identities = '[aria-label="Character identity"] button';
+    assert.deepEqual([...document.querySelectorAll(identities)].map(node => node.textContent), ['Male', 'Female', 'Nonbinary']);
+    assert.equal(find(identities + ':first-child').getAttribute('aria-pressed'), 'true');
+    await click(identities + ':last-child');
+    assert.equal(drafts.at(-1).id, 'jules-okafor', 'identity is independent of the selected model');
+    await act(async () => t.mock.timers.tick(350));
+    assert.equal(requests[3].character.identity, 'nonbinary');
+    await acknowledge(requests[3], requests[3].character, false);
+    await move('back');
+    await click('[data-open-character]');
+    await click('#character-editor-tab-identity');
+    assert.equal(find(identities + ':last-child').getAttribute('aria-pressed'), 'true');
 
   } finally {
     t.mock.timers.reset();
@@ -316,7 +334,7 @@ test('all emote batches return to rest and keep planted and lifted feet distinct
     const mixer = new AnimationMixer(model.root);
     const ids = clips.map(clip => clip.name.split(' ')[0]);
     const numbered = [...ids.filter(id => /^\d+$/.test(id)), ...COCKPIT_TAKES.map(take => take.id)].sort();
-    assert.deepEqual(numbered, Array.from({length: 152}, (_, i) => String(i + 1).padStart(3, '0')));
+    assert.deepEqual(numbered, Array.from({length: 172}, (_, i) => String(i + 1).padStart(3, '0')));
     assert.deepEqual(AUTOMATIC_GARAGE_EMOTE_IDS, ['035', '002', '005', '009', '010']);
     assert(COCKPIT_TAKES.every(({ id }) => !ids.includes(id)));
     assert.equal(findGaragePreviewEmote('151', true), undefined);

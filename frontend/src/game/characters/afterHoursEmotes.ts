@@ -13,8 +13,8 @@ const shaka = {
 } as const;
 const shuffleLeft = [.135, 0, .022, .08] as const;
 const shuffleRight = [.103, 0, .01, -.01] as const;
-const leftBeat = { leftHand: [1.66, -.48, .57], rightHand: [-1.89, -.68, .4], fingers: ["cup", "cup"] } as const;
-const rightBeat = { leftHand: [1.9, -.65, .45], rightHand: [-1.53, -.49, .57], fingers: ["cup", "cup"] } as const;
+const leftBeat = { leftHand: [1.43, -.49, .57], rightHand: [-1.62, -.66, .42], fingers: ["cup", "cup"] } as const;
+const rightBeat = { leftHand: [1.64, -.64, .46], rightHand: [-1.34, -.5, .57], fingers: ["cup", "cup"] } as const;
 const shade = {
   rightHand: [-1.21, .56, .48], rightPalm: [[.97, .16, -.11], [.04, -1, .09]], fingers: [null, "open"],
 } as const;
@@ -74,15 +74,15 @@ const AFTER_HOURS_EMOTES = [
   { id: "095", name: "Night shuffle", duration: 3.65, keys: [
     [.11, { ...rightBeat, sway: -.038, rise: -.021, feet: { l: [.055, .024, .01, .04] },
       torso: [.026, .07, .085], head: [.026, .11, -.045], face: [.43, .29] }],
-    [.23, { ...leftBeat, sway: .059, rise: -.045, feet: { l: shuffleLeft },
+    [.23, { turn: .052, ...leftBeat, sway: .059, rise: -.045, feet: { l: shuffleLeft },
       torso: [.064, -.09, -.102], head: [.079, .08, .054], face: [.74, .43] }],
     [.33, { ...leftBeat, sway: .122, rise: -.028, feet: { l: shuffleLeft, r: [.06, .032, .018, -.015] },
       torso: [-.025, -.12, -.082], head: [-.042, -.025, .057], face: [.89, .45] }],
-    [.43, { ...rightBeat, sway: .132, rise: -.042, feet: { l: shuffleLeft, r: shuffleRight },
+    [.43, { turn: -.065, ...rightBeat, sway: .132, rise: -.042, feet: { l: shuffleLeft, r: shuffleRight },
       torso: [.049, .085, .032], head: [.073, -.061, -.027], face: [.95, .45] }],
-    [.54, { ...leftBeat, sway: .128, rise: -.026, feet: { l: shuffleLeft, r: [.057, .029, .014, -.035] },
+    [.54, { turn: .054, ...leftBeat, sway: .128, rise: -.026, feet: { l: shuffleLeft, r: [.057, .029, .014, -.035] },
       torso: [-.024, -.07, -.071], head: [-.029, -.09, .045], face: [.86, .4] }],
-    [.66, { ...rightBeat, sway: .06, rise: -.045, feet: { l: shuffleLeft },
+    [.66, { turn: -.056, ...rightBeat, sway: .06, rise: -.045, feet: { l: shuffleLeft },
       torso: [.055, .092, .09], head: [.082, -.023, -.061], face: [.92, .46] }],
     [.77, { ...rightBeat, sway: .014, rise: -.026, feet: { l: [.06, .032, .012, .04] },
       torso: [-.02, .11, .083], head: [-.021, .077, -.041], face: [.83, .36] }],
