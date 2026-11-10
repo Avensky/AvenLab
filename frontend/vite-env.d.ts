@@ -8,3 +8,5 @@ interface ImportMetaEnv {
 interface ImportMeta {
     readonly env: ImportMetaEnv;
 }
+
+declare const __VILLAGER_MODEL_URL__: string | null;

@@ -7,10 +7,11 @@ profiles with only a character and outfit still load with their default look.
 
 The two starter drivers have built-in stylized meshes. To use the modular
 Village Lady export for Mara, place your licensed `villager-female.glb` in
-`frontend/src/game/characters/local-assets/` and restart Vite or rebuild.
-That directory is ignored by Git. Build from a checkout without the file to
-use the built-in look. The local model uses the exported rig and mesh slots
-for the hair, bonnet, outfit, and skin. Jules has original built-in geometry.
+`frontend/public/models/characters/` and restart Vite or rebuild.
+Vite serves it at `/models/characters/villager-female.glb`. The GLB is ignored
+by Git. Builds without it use the built-in look. The model uses the exported rig
+and mesh slots for the hair, bonnet, outfit, and skin. Jules has original
+built-in geometry.
 
 Character choices and palettes shared by the game client and server are in
 `avenlab-server/src/assets/characters.json` and `character-appearance.json`.

@@ -6,10 +6,7 @@ import { AssetBoundary } from "../../components/debugger/AssetBoundary";
 import { characterLook, type CharacterChoice } from "./characterCatalog";
 import { StylizedDriver } from "./StylizedDriver";
 
-const localModels = import.meta.glob<string>("./local-assets/villager-female.glb", {
-  eager: true, query: "?url", import: "default",
-});
-const villagerUrl = localModels["./local-assets/villager-female.glb"];
+const villagerUrl = __VILLAGER_MODEL_URL__;
 export type GarageDriverLook = NonNullable<ReturnType<typeof characterLook>>;
 
 function VillagerDriver({ url, look }: { url: string; look: GarageDriverLook }) {

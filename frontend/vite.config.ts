@@ -1,12 +1,19 @@
 // vite.config.ts
 import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
 import { resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig, type ViteDevServer } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
+const villagerModelUrl = "/models/characters/villager-female.glb";
+const hasVillagerModel = existsSync(new URL(`./public${villagerModelUrl}`, import.meta.url));
+
 export default defineConfig({
+  define: {
+    __VILLAGER_MODEL_URL__: JSON.stringify(hasVillagerModel ? villagerModelUrl : null),
+  },
   // The road workbench has its own virtual bundle / preview build. Scanning all
   // preview HTML at app startup wasted work and attempted to resolve that bundle.
   optimizeDeps: { entries: ["index.html"] },
