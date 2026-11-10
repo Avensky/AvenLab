@@ -20,6 +20,8 @@ import { availableExplorerEmotes } from "./explorerEmotes";
 import { TECH_EMOTES } from "./techEmotes";
 import { availableWorkshopEmotes } from "./workshopEmotes";
 import { availableStarterEmotes } from "./starterEmotes";
+import { STARTER_COMEDY_EMOTES } from "./starterComedyEmotes";
+import { availableRaceReactions } from "./raceReactionEmotes";
 import { EMOTE_PROP_GRIPS, type EmoteProp, type EmotePropModel } from "./emoteProps";
 import { WALK_EMOTES } from "./walkingEmotes";
 
@@ -53,7 +55,7 @@ type Pose = {
   blink?: number;
   wetEyes?: number;
   // Prop coordinates are meters from the shoulder midpoint or the head.
-  prop?: { offset: XYZ; angles?: XYZ; fold?: number; show?: number; atHead?: boolean };
+  prop?: { offset: XYZ; angles?: XYZ; fold?: number; show?: number; atHead?: boolean; grip?: boolean; ripple?: number };
   thumbs?: readonly [left: number, right: number];
 };
 export type Emote = { id: string; name: string; duration: number; prop?: EmoteProp; keys: readonly (readonly [time: number, pose: Pose])[] };
@@ -71,7 +73,7 @@ const wave: Arm = [[-1, -.55, .28], [-.24, 1, .28]];
 
 export const EMOTE_GROUPS = [
   "Garage", "Victory", "Playful", "Shy", "Tsundere", "Expressions", "Roadside", "Rivalry", "Pit Crew",
-  "After Hours", "Showroom", "Elegant", "Performer", "Stoic", "Explorer", "Tech", "Workshop", "Starter",
+  "After Hours", "Showroom", "Elegant", "Performer", "Stoic", "Explorer", "Tech", "Workshop", "Starter", "Starter Comedy", "Race Reactions",
 ] as const;
 export type EmoteGroup = typeof EMOTE_GROUPS[number];
 export const AUTOMATIC_GARAGE_EMOTE_IDS = ["035", "002", "005", "009", "010"];
@@ -382,19 +384,22 @@ export function buildEmoteClips(root: Object3D, emotes: readonly Emote[], props?
           propScales.push(scale, scale, scale);
         }
         grips.forEach((grip, side) => {
-          const hinge = new Quaternion().setFromAxisAngle(up, side === 0 ? fold : -fold);
+          // Hold the left map panel still while the opposite leaf opens outward.
+          const angle = emote.prop === "map" && side === 0 ? 0 : fold;
+          const hinge = new Quaternion().setFromAxisAngle(up, angle);
           if (prop?.panels.length) panelRotations[side].push(...hinge.toArray());
-          if (!grip || !pose.prop) return;
-          const wrist = new Vector3(...grip.wrist).applyQuaternion(hinge).applyQuaternion(orientation).add(origin);
+          if (!grip || !pose.prop || pose.prop.grip === false) return;
+          const gripHinge = emote.prop === "map" ? hinge : new Quaternion();
+          const wrist = new Vector3(...grip.wrist).applyQuaternion(gripHinge).applyQuaternion(orientation).add(origin);
           const [arm, other, sign] = side === 0 ? [left, right, 1] : [right, left, -1];
           hands(arm, other, undefined, sign, false, true, root.localToWorld(wrist));
-          orientPalm(handRigs[side], grip.palm, palmRotation.clone().multiply(hinge), arm.elbow);
+          orientPalm(handRigs[side], grip.palm, palmRotation.clone().multiply(gripHinge), arm.elbow);
         });
       }
       tilt(left?.hand, pose.wristLeft === undefined ? undefined : [0, 0, pose.wristLeft]);
       tilt(right?.hand, pose.wrist === undefined ? undefined : [0, 0, pose.wrist]);
-      const propFingers: Pose["fingers"] = pose.prop && grips
-        ? [grips[0] ? "cup" : null, grips[1] ? (emote.prop === "collectible" ? "pinch" : "cup") : null] : undefined;
+      const propFingers: Pose["fingers"] = pose.prop && pose.prop.grip !== false && grips
+        ? [grips[0] ? "cup" : null, grips[1] ? (emote.prop === "flag" ? "fist" : "cup") : null] : undefined;
       (pose.fingers ?? propFingers)?.forEach((shape, side) => {
         if (!shape) return;
         const rig = handRigs[side];
@@ -503,6 +508,10 @@ export function buildEmoteClips(root: Object3D, emotes: readonly Emote[], props?
         new VectorKeyframeTrack(prop.root.uuid + ".scale", times, propScales),
         new BooleanKeyframeTrack(prop.root.uuid + ".visible", times, keys.map(([, pose]) => Boolean(pose.prop))),
         ...prop.panels.map((panel, side) => new QuaternionKeyframeTrack(panel.uuid + ".quaternion", times, panelRotations[side])),
+        ...(prop.flagCloth ? [new NumberKeyframeTrack(prop.flagCloth.uuid + ".morphTargetInfluences[0]", times,
+          keys.map(([, pose]) => pose.prop?.ripple ?? 0))] : []),
+        ...(prop.flagGrip ? [new NumberKeyframeTrack(prop.flagGrip.uuid + ".position[x]", times,
+          keys.map(([, pose]) => pose.prop && pose.prop.grip !== false ? 1 : 0))] : []),
       ] : []),
       ...(tears && keys.some(([, pose]) => pose.wetEyes) ? [new NumberKeyframeTrack(tears.uuid + ".material.opacity", times,
         keys.map(([, pose]) => pose.wetEyes ?? 0))] : []),
@@ -532,6 +541,8 @@ export function emoteCollection(group: EmoteGroup, bag: boolean, includeWalks = 
   if (group === "Tech") return bag ? [] : TECH_EMOTES;
   if (group === "Workshop") return availableWorkshopEmotes(bag);
   if (group === "Starter") return availableStarterEmotes(bag);
+  if (group === "Starter Comedy") return STARTER_COMEDY_EMOTES;
+  if (group === "Race Reactions") return availableRaceReactions(bag);
   if (bag) return [garageBreathing(true), ...GARAGE_EMOTES.slice(1).filter(item => compatibleGarageEmotes(item.id)), ...BAG_EMOTES];
   return includeWalks ? [...GARAGE_EMOTES, ...WALK_EMOTES] : GARAGE_EMOTES;
 }

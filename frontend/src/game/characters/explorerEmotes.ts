@@ -17,7 +17,7 @@ const jacketGrip = {
   leftPalm: [[-.23, .93, .28], [-.73, -.34, .56]], rightPalm: [[.24, .93, .28], [.75, -.35, .55]],
   fingers: ["fist", "fist"],
 } as const;
-const mapInHand = { offset: [0, -.27, .335], angles: [-.62, 0, .03], fold: 1.08 } as const;
+const mapInHand = { offset: [0, -.235, .25], angles: [-.57, 0, .035], fold: 1.08 } as const;
 const binocularsLowered = { offset: [0, -.185, .238], angles: [.23, 0, 0] } as const;
 const compassLow = { offset: [-.154, -.36, .37], angles: [.06, -.12, .08] } as const;
 const beckonStep = [-.024, 0, .157, -.15] as const;
@@ -26,7 +26,7 @@ const EXPLORER_EMOTES = [
   { id: "141", name: "Unfold the map", duration: 4.75, prop: "map", keys: [
     [.16, { prop: { ...mapInHand, show: 0 }, head: [.085, -.06, .018], torso: [.056, -.025, .015], face: [.08, .38] }],
     [.27, { prop: mapInHand, head: [.192, -.045, .028], torso: [.069, -.018, .01], rise: -.025, face: [.13, .46] }],
-    [.42, { prop: { offset: [0, -.224, .343], angles: [-.69, .11, -.06], fold: .14 },
+    [.42, { prop: { offset: [0, -.224, .308], angles: [-.65, .07, -.03], fold: .36 },
       head: [.247, .132, -.049], torso: [.101, .055, -.027], sway: .024, face: [.24, .57] }],
     [.55, { prop: { offset: [.013, -.215, .36], angles: [-.67, -.11, .04] },
       head: [.237, -.13, .043], torso: [.095, -.055, .026], sway: -.019, face: [.32, .46] }],
@@ -36,18 +36,19 @@ const EXPLORER_EMOTES = [
     [.89, { prop: { ...mapInHand, show: 0 }, head: [.031, .026, .012], face: [.4, .2] }],
   ] },
   { id: "142", name: "Wrong way map", duration: 4.65, prop: "map", keys: [
-    [.15, { prop: { offset: [0, -.257, .321], angles: [2.48, -.06, .11], show: 0 },
-      head: [.153, -.09, .057], face: [.08, .42] }],
-    [.29, { prop: { offset: [-.016, -.224, .337], angles: [2.48, -.08, .19] }, head: [.243, -.139, .123],
-      torso: [.075, -.073, .034], sway: -.023, face: [-.23, .52] }],
-    [.42, { prop: { offset: [0, -.203, .349], angles: [1.45, .08, .52], fold: .42 },
-      head: [.187, .105, -.21], torso: [.064, .051, -.023], sway: .014, face: [-.09, .61] }],
-    [.55, { prop: { offset: [0, -.199, .354], angles: [.2, .14, .27], fold: .44 },
-      head: [.178, -.062, -.091], torso: [.087, .04, .014], face: [.15, .57] }],
-    [.66, { prop: { offset: [.013, -.23, .345], angles: [-.71, .03, -.08] }, head: [.241, .04, -.049],
-      torso: [.113, .018, -.02], rise: -.025, face: [.7, .37] }],
-    [.76, { prop: { ...mapInHand }, head: [.097, .06, -.035], face: [.78, .31] }],
-    [.88, { prop: { ...mapInHand, show: 0 }, head: [-.014, .051, -.02], face: [.58, .21] }],
+    [.15, { prop: { offset: [0, -.166, .267], angles: [-.46, -.045, 1.43], show: 0 },
+      head: [.13, -.036, -.095], face: [.12, .38] }],
+    [.29, { prop: { offset: [.006, -.16, .275], angles: [-.47, -.02, 1.43] },
+      head: [.21, -.118, -.2], torso: [.083, -.038, -.037], sway: -.014, face: [-.24, .61] }],
+    [.42, { prop: { offset: [.018, -.18, .3], angles: [-.48, .015, .96] },
+      head: [.148, -.075, -.149], torso: [.067, .028, -.026], sway: .014, face: [-.06, .62] }],
+    [.54, { prop: { offset: [.012, -.214, .335], angles: [-.56, .037, .43] },
+      head: [.16, .064, -.062], torso: [.08, .043, -.013], face: [.29, .52] }],
+    [.66, { prop: { offset: [0, -.23, .345], angles: [-.63, .04, -.032] },
+      head: [.24, .063, -.018], torso: [.104, .015, -.015], rise: -.024, face: [.76, .45] }],
+    [.78, { prop: { offset: [0, -.267, .315], angles: [-.59, .027, -.021], fold: .17 },
+      head: [-.038, .09, -.038], face: [.83, .38] }],
+    [.89, { prop: { ...mapInHand, show: 0 }, head: [.012, .056, -.021], face: [.61, .23] }],
   ] },
   { id: "143", name: "Binocular sweep", duration: 4.45, prop: "binoculars", keys: [
     [.14, { prop: { ...binocularsLowered, show: 0 }, head: [.101, .06, -.035], face: [.11, .38] }],
@@ -86,16 +87,16 @@ const EXPLORER_EMOTES = [
     [.73, { ...point, rightHand: [-1.55, .038, .78], travel: .032, head: [.027, .069, -.014], torso: [.065, -.049, .014], face: [.89, .49] }],
     [.86, { rightHand: [-1.36, -.34, .57], head: [.049, .065, -.013], face: [.64, .27] }],
   ] },
-  { id: "146", name: "Collectible inspection", duration: 4.45, prop: "collectible", keys: [
-    [.16, { prop: { offset: [-.156, -.33, .29], show: 0 }, head: [.116, -.19, .065], torso: [.092, -.11, .027], face: [.21, .42] }],
-    [.31, { prop: { offset: [-.117, -.046, .37], angles: [0, .22, .12] }, head: [.122, -.18, .09],
-      torso: [.043, -.071, .022], sway: -.024, face: [.34, .51] }],
-    [.45, { prop: { offset: [-.139, -.035, .365], angles: [.067, -.21, -.17] }, head: [.089, -.24, .1],
-      torso: [.032, -.085, .029], sway: -.029, face: [.47, .59] }],
-    [.59, { prop: { offset: [-.13, -.07, .36], angles: [.08, .16, .17] }, head: [-.057, -.064, .043],
-      torso: [-.025, -.026, .026], face: [.77, .49] }],
-    [.74, { prop: { offset: [-.193, -.30, .253], angles: [.09, -.12, .09] }, head: [.191, -.169, .077], torso: [.083, -.04, .045], face: [.69, .32] }],
-    [.85, { prop: { offset: [-.21, -.345, .21], angles: [.08, -.07, .06], show: 0 }, head: [.037, .045, .018], face: [.52, .24] }],
+  { id: "146", name: "Collectible inspection", duration: 4.5, prop: "collectible", keys: [
+    [.16, { prop: { offset: [-.167, -.33, .296], show: 0 }, head: [.135, -.184, .06], torso: [.089, -.107, .033], face: [.21, .42] }],
+    [.29, { prop: { offset: [-.184, -.094, .324], angles: [.04, -.087, -.055] },
+      head: [.17, -.247, .08], torso: [.065, -.097, .041], sway: -.023, face: [.38, .56] }],
+    [.43, { prop: { offset: [-.198, .085, .318], angles: [.1, -.217, -.24] },
+      head: [.057, -.28, .142], torso: [.028, -.105, .046], sway: -.031, face: [.49, .63] }],
+    [.59, { prop: { offset: [-.17, .07, .338], angles: [-.059, .165, .19] },
+      head: [-.019, -.213, .039], torso: [.013, -.07, .029], sway: -.024, face: [.8, .53] }],
+    [.72, { prop: { offset: [-.192, -.182, .306], angles: [.049, -.061, .086] }, head: [.097, -.12, .055], torso: [.057, -.038, .039], face: [.79, .39] }],
+    [.86, { prop: { offset: [-.211, -.34, .231], angles: [.1, -.08, .1], show: 0 }, head: [.047, .056, .018], face: [.6, .27] }],
   ] },
   { id: "147", name: "Listen closely", duration: 3.55, keys: [
     [.17, { head: [-.07, -.25, .064], torso: [-.029, -.105, .024], sway: -.022, face: [.02, .54] }],
@@ -133,7 +134,7 @@ const EXPLORER_EMOTES = [
       torso: [.076, .062, -.04], head: [.058, -.13, .044], face: [.35, .49] }],
     [.32, { ...reach, sway: -.021, rise: -.038, travel: .093, feet: { r: beckonStep },
       head: [-.056, -.075, .064], torso: [.056, -.041, .03], face: [.8, .55] }],
-    [.45, { ...reach, rightHand: [-.91, -.1, .68], rightPalm: [[.14, .93, -.35], [.08, .36, .93]],
+    [.45, { ...reach, rightHand: [-.91, -.1, .68], rightPalm: [[-.08, .57, .82], [.1, .82, -.56]],
       fingers: [null, "cup"], sway: -.025, rise: -.028, travel: .112, feet: { r: beckonStep }, head: [.077, .078, .051], face: [.94, .47] }],
     [.58, { ...reach, rightHand: [-1.3, -.2, .79], sway: -.023, rise: -.034, travel: .088, feet: { r: beckonStep },
       head: [-.039, .145, -.054], torso: [.039, .054, -.028], face: [.92, .47] }],

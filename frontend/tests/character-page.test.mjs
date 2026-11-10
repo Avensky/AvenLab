@@ -133,7 +133,8 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(preview.getState().emote.id, '112');
     for (const [index, name, first, last] of [
       [12, 'Elegant', 113, 120], [14, 'Stoic', 131, 140], [15, 'Explorer', 141, 150],
-      [16, 'Tech', 151, 160], [17, 'Workshop', 161, 170], [18, 'Starter', 171, 172],
+      [16, 'Tech', 151, 160], [17, 'Workshop', 161, 170], [18, 'Starter', 171, 180],
+      [19, 'Starter Comedy', 181, 190], [20, 'Race Reactions', 191, 192],
     ]) {
       const selector = `[aria-label="Emote collection"] button:nth-child(${index})`;
       assert.equal(find(selector).textContent, name);
@@ -315,6 +316,7 @@ test('all emote batches return to rest and keep planted and lifted feet distinct
   try {
     const { buildGarageEmotes, buildEmoteClips, findGaragePreviewEmote, AUTOMATIC_GARAGE_EMOTE_IDS } = await vite.ssrLoadModule('/src/game/characters/garageEmotes.ts');
     const { createEmoteProp } = await vite.ssrLoadModule('/src/game/characters/emoteProps.ts');
+    const { FLAG_DROP_PHASE } = await vite.ssrLoadModule('/src/game/characters/starterEmotes.ts');
     const { garageLeanPose } = await vite.ssrLoadModule('/src/game/characters/garageLean.ts');
     const { COCKPIT_TAKES } = await vite.ssrLoadModule('/src/game/characters/cockpitEmotes.ts');
     const { sampleCockpitMotion } = await vite.ssrLoadModule('/src/game/preview/garageCockpit.ts');
@@ -334,7 +336,7 @@ test('all emote batches return to rest and keep planted and lifted feet distinct
     const mixer = new AnimationMixer(model.root);
     const ids = clips.map(clip => clip.name.split(' ')[0]);
     const numbered = [...ids.filter(id => /^\d+$/.test(id)), ...COCKPIT_TAKES.map(take => take.id)].sort();
-    assert.deepEqual(numbered, Array.from({length: 172}, (_, i) => String(i + 1).padStart(3, '0')));
+    assert.deepEqual(numbered, Array.from({length: 192}, (_, i) => String(i + 1).padStart(3, '0')));
     assert.deepEqual(AUTOMATIC_GARAGE_EMOTE_IDS, ['035', '002', '005', '009', '010']);
     assert(COCKPIT_TAKES.every(({ id }) => !ids.includes(id)));
     assert.equal(findGaragePreviewEmote('151', true), undefined);
@@ -381,15 +383,31 @@ test('all emote batches return to rest and keep planted and lifted feet distinct
     const unfolding = mixer.clipAction(unfold).setLoop(LoopOnce, 1).play();
     mixer.update(unfold.duration * .27);
     assert(map.root.visible && map.root.scale.x > .99);
-    assert(Math.abs(map.panels[0].rotation.y) > 1);
-    mixer.update(unfold.duration * .28);
     assert(Math.abs(map.panels[0].rotation.y) < .01);
+    assert(map.panels[1].rotation.y > 1);
+    mixer.update(unfold.duration * .28);
+    assert(Math.abs(map.panels[1].rotation.y) < .01);
     unfolding.stop();
     assert.equal(map.root.visible, false, 'interrupting an emote hides its prop');
     assert.equal(map.root.scale.x, 0);
     mixer.uncacheClip(unfold);
     map.dispose();
     assert.equal(model.root.getObjectByName('emote-prop-map'), undefined);
+    const flag = createEmoteProp('flag');
+    model.root.add(flag.root);
+    const drop = findGaragePreviewEmote('178', false);
+    const [flagDrop] = buildEmoteClips(model.root, [drop], new Map([['flag', flag]]));
+    const flagAction = mixer.clipAction(flagDrop).setLoop(LoopOnce, 1).play();
+    mixer.update(flagDrop.duration * .37);
+    const raised = flag.root.position.y;
+    assert(flag.root.visible && flag.root.scale.x > .99);
+    mixer.update(flagDrop.duration * (FLAG_DROP_PHASE - .37));
+    assert(flag.root.position.y < raised - .35);
+    assert(flag.flagCloth.morphTargetInfluences[0] > .8);
+    flagAction.stop();
+    assert.equal(flag.root.visible, false);
+    mixer.uncacheClip(flagDrop);
+    flag.dispose();
     const foot = side => turntable.worldToLocal(model.root.getObjectByName('foot_' + side).getWorldPosition(new Vector3()));
     const leftRest = foot('l'), rightRest = foot('r');
     const shift = mixer.clipAction(clips[1]).reset().play();

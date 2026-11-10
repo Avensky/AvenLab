@@ -16,7 +16,7 @@ export function configureGarageFloor(
   material.uniforms.reflectionBlur.value = settings.reflectionBlur;
 }
 
-export function gateGarageFloorCapture(floor: Reflector, elapsedSeconds?: () => number | undefined) {
+export function gateGarageFloorCapture(floor: Reflector, elapsedSeconds?: () => number | undefined, interval = 1 / 30) {
   const capture = floor.onBeforeRender;
   let capturedAt = -Infinity;
   floor.onBeforeRender = function (...args) {
@@ -26,7 +26,7 @@ export function gateGarageFloorCapture(floor: Reflector, elapsedSeconds?: () => 
     }
     const now = elapsedSeconds?.();
     // The cached texture and its matching projection stay valid between captures.
-    if (now !== undefined && now >= capturedAt && now - capturedAt < 1 / 30 - .001) return;
+    if (now !== undefined && now >= capturedAt && now - capturedAt < interval - .001) return;
     capture.apply(this, args);
     if (now !== undefined) capturedAt = now;
   };

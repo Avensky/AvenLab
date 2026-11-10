@@ -72,8 +72,7 @@ function measureSteeringRim(car: Object3D, wheel: Object3D) {
 }
 
 /** The AE86 export has a separate steering wheel and four road-wheel pivots. */
-export function prepareGarageCockpit(car: Object3D, motionGroup: () => Group | null,
-  glassMaterials: Iterable<MeshPhysicalMaterial>): GarageCockpit | undefined {
+export function prepareGarageCockpit(car: Object3D, glassMaterials: Iterable<MeshPhysicalMaterial>) {
   const wheel = car.getObjectByName("SteeringWheel");
   if (!wheel?.parent) return;
   const rim = measureSteeringRim(car, wheel);
@@ -90,8 +89,7 @@ export function prepareGarageCockpit(car: Object3D, motionGroup: () => Group | n
   });
   if (roadWheels.length !== 4) return;
 
-  return driver => {
-    const motion = motionGroup();
+  return (driver: Object3D, motion: Group): CockpitPlayback | null => {
     const parent = driver.parent;
     const head = driver.getObjectByName("head");
     const scale = car.getWorldScale(new Vector3()).y;
@@ -107,7 +105,7 @@ export function prepareGarageCockpit(car: Object3D, motionGroup: () => Group | n
       const foot = driver.getObjectByName(`foot_${side}`);
       return hip && knee && foot ? [{ hip, knee, foot, side: side === "l" ? 1 : -1 }] : [];
     });
-    if (!motion || !parent || !head || arms.length !== 2 || legs.length !== 2) return null;
+    if (!parent || !head || arms.length !== 2 || legs.length !== 2) return null;
     const driverRest = localRest(driver);
     const motionRest = localRest(motion);
     const driverShadow = motion.getObjectByName("garage-driver-shadow");

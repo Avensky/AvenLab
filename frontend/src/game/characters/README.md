@@ -9,17 +9,24 @@ character keep their saved gender and use default appearance values as needed.
 You can preview emotes before confirming a gender. After setup, the Emotes
 tab can compare both rigs without changing the equipped driver.
 
-Vesper's garage and portrait share the full-detail `villager-female.glb` from
-`frontend/public/models/characters/villagers/villager-female/`. While it loads,
-the garage plays the rain effect and the portrait shows a loading tile. If the
-file is missing or unreadable, the garage leaves the turntable clear and the
-portrait shows a neutral tile. Download the Git LFS object and restart Vite
+Vesper's desktop garage uses the full `villager-female.glb`. The compact
+garage and portrait share the same geometry with smaller textures. The
+selected car loads over a simple stage first. Once the car is on screen, the
+garage shell and driver can load. A sigil marks pending assets and becomes
+still with Reduced Motion. If the character file is missing or unreadable,
+the portrait uses a neutral tile. Download the Git LFS object and restart Vite
 after restoring the file.
+
+At widths up to 960 CSS pixels the preview targets 30 fps, draws native
+emissive lighting, and updates a 256 px floor mirror at up to 15 Hz. Desktop
+previews retain bloom and a larger mirror. Hero cards use factory art or a
+ready personalized image, and the Garage Portrait tab prepares custom art.
 
 Source files under `frontend/src/public/models/characters/villager/` may use
 either the `village-` or `villager-` prefix. `npm run dev` and `npm run build`
-copy Vesper's original into Vite's public directory and prepare Rook's garage
-and portrait LODs. Older flat paths under `frontend/public` are also accepted.
+copy Vesper's original into Vite's public directory as needed and prepare the
+smaller portrait textures and Rook's garage LOD. Older flat paths under
+`frontend/public` are also accepted.
 Vesper's bonnet is part of her rig and stays equipped for both hairstyles.
 Rook's imported model uses its short hair and coat meshes with the editor's
 hair, skin, and clothing color choices.
@@ -61,8 +68,11 @@ Explorer (141–150) adds a folding map, binoculars, compass, and a collectible.
 Jacket reset adapts the backpack gesture to the current outfits.
 Tech (151–160) includes gamepad, phone, headset, tablet, and handheld keyboard
 gestures. Workshop (161–170) rehearses inspections and maintenance from the
-standing mark, with a cloth and tire gauge. Starter (171–172) begins with a
-short walk to the mark and a readiness signal. The props are loaded on demand
+standing mark, with a cloth and tire gauge. Starter (171–180) includes the walk
+to the mark, lane checks, countdown, flag drop and flag wave. Starter Comedy
+(181–190) includes recoveries for flag mishaps. Race Reactions (191–192) starts
+with a respectful nod and a close-finish reaction. The flag drop's release is
+authored at 48% of the preview clip. The props are loaded on demand
 in the Character preview and the bag filters out gestures that require both
 hands. These packs play on selection in Character → Emotes and return to the
 breathing idle.
@@ -75,7 +85,8 @@ Use the Whole car camera for a wide shot throughout a take. The driver stays
 seated between clips. Exit car returns to the standing preview.
 
 Character → Face opens a close-up for iris color, eyebrow tint, and glasses.
-The iris palette includes Obsidian black and five other deep shades.
+The iris palette includes Obsidian black and five other deep shades, with
+reduced iris and cornea reflections for the darkest colors.
 Both villagers use these settings in the live model and their rendered portrait.
 
 Rook's coat outfits can preview Folded arms by the door under Garage emotes.

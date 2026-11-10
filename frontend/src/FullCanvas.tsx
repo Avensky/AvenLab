@@ -1,10 +1,29 @@
 import { useUIStore } from "./store/menus";
-import { Canvas, useFrame } from "@react-three/fiber";
-import { useRef, type ReactNode } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { useEffect, useRef, useSyncExternalStore, type ReactNode } from "react";
 import { useRenderSettingsStore } from "./store/presentation/renderSettingsStore";
 import { PerformanceProbe } from "./performance/PerformanceProbe";
 
 import { ScoreboardSceneCover } from "./game/stats/ScoreboardSceneCover";
+import { usePreferencesStore } from "./store/preferences/preferencesStore";
+import { isCompactPreview, PREVIEW_FRAME_MS } from "./game/preview/previewBudget";
+
+const compactViewport = () => isCompactPreview(window.innerWidth);
+function subscribeViewport(listener: () => void) {
+  window.addEventListener("resize", listener);
+  return () => window.removeEventListener("resize", listener);
+}
+
+function PreviewFrameClock() {
+  const invalidate = useThree(s => s.invalidate);
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (!document.hidden) invalidate();
+    }, PREVIEW_FRAME_MS);
+    return () => window.clearInterval(timer);
+  }, [invalidate]);
+  return null;
+}
 
 function RevealPreview() {
   const shown = useRef(false);
@@ -33,6 +52,9 @@ export function FullCanvas({
   );
   const dpr = useRenderSettingsStore((s) => s.dpr);
   const shadows = useRenderSettingsStore((s) => s.shadows);
+  const reducedMotion = usePreferencesStore(s => s.reducedMotion);
+  const compact = useSyncExternalStore(subscribeViewport, compactViewport, () => false) && preview;
+  const demand = authoring || paused || (preview && (compact || reducedMotion));
   return (
     <div
       style={{
@@ -48,10 +70,10 @@ export function FullCanvas({
     >
       <Canvas
         className={preview ? "garage-canvas" : undefined}
-        frameloop={authoring || paused ? "demand" : "always"}
+        frameloop={demand ? "demand" : "always"}
         camera={{ position: [0, 10, 20], fov: 50, far: 2000 }}
-        dpr={dpr}
-        shadows={shadows}
+        dpr={compact ? Math.min(dpr, 1) : dpr}
+        shadows={shadows && !compact}
         gl={{
           antialias: false,
           alpha: true,
@@ -60,6 +82,7 @@ export function FullCanvas({
         }}
       >
         {preview && <RevealPreview />}
+        {compact && !paused && !authoring && !reducedMotion && <PreviewFrameClock />}
         <ScoreboardSceneCover />
         <PerformanceProbe />
         {children}

@@ -43,18 +43,29 @@ const faces: Record<string, { neck: string; shadow: string; art: ReactNode }> = 
 
 type PortraitProps = { look: CharacterLook; fallback: ReactNode; pending?: ReactNode; label?: string };
 
+function schedulePortraitWork(work: () => void, delay: number) {
+  let idle: number | undefined;
+  const timer = window.setTimeout(() => {
+    if (window.requestIdleCallback) idle = window.requestIdleCallback(work, { timeout: 1200 });
+    else work();
+  }, delay);
+  return () => {
+    window.clearTimeout(timer);
+    if (idle !== undefined) window.cancelIdleCallback(idle);
+  };
+}
+
 function ModelPortrait({ source, look, fallback, pending = fallback, label }: PortraitProps & { source?: Object3D }) {
   const key = JSON.stringify([Boolean(source), look.character.id, look.outfit.id, look.appearance]);
   const [portrait, setPortrait] = useState<{ key: string; image: string | null; characterId: string }>();
   useEffect(() => {
-    const timer = window.setTimeout(() => {
+    return schedulePortraitWork(() => {
       try {
         setPortrait({ key, image: bakeCharacterPortrait(look, key, source), characterId: look.character.id });
       } catch {
         setPortrait({ key, image: null, characterId: look.character.id });
       }
-    }, 100);
-    return () => window.clearTimeout(timer);
+    }, 160);
   }, [key, look, source]);
   if (portrait?.key !== key && (!portrait?.image || portrait.characterId !== look.character.id)) return pending;
   return portrait?.image
@@ -80,13 +91,12 @@ export function CharacterPortrait({ choice, compact = false, label }: {
   const [requestedUrl, setRequestedUrl] = useState<string | null>(null);
   useEffect(() => {
     if (!url) return;
-    const request = window.setTimeout(() => {
+    return schedulePortraitWork(() => {
       // Start the shared GLTF request after commit. Its loading manager
       // notifies the mode loading screen as soon as a request starts.
       useGLTF.preload(url);
       setRequestedUrl(url);
-    }, 0);
-    return () => window.clearTimeout(request);
+    }, 320);
   }, [url]);
   const originalOnly = id === VILLAGER_ID;
   const face = look && faces[look.character.id];

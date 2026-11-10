@@ -29,7 +29,7 @@ const softPhases = [.15, .3, .46, .64, .82, .93, 1];
 const fullTurn = Math.PI * 2;
 const mix = (from: number, to: number, amount: number) => from + (to - from) * amount;
 
-function garageWalk(heading: number, stride: number, glance: number, soft = false): Emote["keys"] {
+function garageWalk(heading: number, stride: number, glance: number, soft = false, markPause = 0): Emote["keys"] {
   // Successive foot contacts and pelvis positions in the floor frame.
   const stops = [
     [[-.012, .19, heading], [0, .084, heading * .68]],
@@ -60,7 +60,7 @@ function garageWalk(heading: number, stride: number, glance: number, soft = fals
     const next = onFloor(nextPelvis);
     const planted = plants[stance];
     for (const phase of soft ? softPhases : phases) {
-      const progress = (index + phase) / stops.length;
+      const progress = (index + phase) / stops.length * (1 - markPause) + (index >= 2 ? markPause : 0);
       const roll = phase * phase * (3 - 2 * phase);
       const lift = Math.sin(phase * Math.PI);
       const activity = Math.min(index + phase, stops.length - index - phase, 1);
@@ -90,6 +90,15 @@ function garageWalk(heading: number, stride: number, glance: number, soft = fals
     }
     plants[stepping] = to;
     pelvis = next;
+    if (index === 1 && markPause) {
+      const [time, stancePose] = keys[keys.length - 1];
+      keys.push(
+        [time + markPause * .46, { ...stancePose, left: undefined, right: undefined,
+          torso: [.029, -.039, .018], head: [.097, -.181, .027], face: [.37, .43] }],
+        [time + markPause, { ...stancePose, left: undefined, right: undefined,
+          torso: [-.032, .034, -.013], head: [-.067, .088, -.025], face: [.66, .51] }],
+      );
+    }
   }
   // Leave the final shoe contacts in place until the idle stance takes over.
   keys[keys.length - 1] = [1, {}];
@@ -98,6 +107,10 @@ function garageWalk(heading: number, stride: number, glance: number, soft = fals
 
 export const SIDEWAYS_CHECK: Emote = {
   id: "042", name: "Sideways check", duration: 4.9, keys: garageWalk(.57, .86, -.86),
+};
+
+export const WALK_TO_MARK: Emote = {
+  id: "171", name: "Walk to the mark", duration: 6.35, keys: garageWalk(0, 1, .08, true, .15),
 };
 
 export const WALK_EMOTES = [

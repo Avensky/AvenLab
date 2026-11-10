@@ -17,16 +17,28 @@ import { DEFAULT_CHARACTER, type CharacterChoice } from "../characters/character
 import { CHARACTER_ZOOM_MAX, CHARACTER_ZOOM_MIN, useCharacterPreviewStore } from "../characters/characterPreviewStore";
 import { HEROES, useAlphaStore } from "../../store/alpha/alphaStore";
 import { PREVIEW_ZOOM_LEVELS, usePreviewZoom } from "./previewZoomStore";
+import { PreviewLoadingSeal } from "./PreviewLoadingSeal";
+import { isCompactPreview } from "./previewBudget";
 
 const DRIVER_STAGE_CAMERA: [number, number, number] = [2.8, 2.5, 5.8];
 const STANDARD_STAGE_CAMERA: [number, number, number] = [0, 3.2, 7.25];
+
+function MissingVehicle({ model, onSettled }: { model: string; onSettled: (model: string) => void }) {
+  useLayoutEffect(() => onSettled(model), [model, onSettled]);
+  return <Html center>
+    <p className="rounded bg-slate-950 p-3 text-sm text-amber-200">
+      Vehicle model unavailable. Check Git LFS assets or select another vehicle.
+    </p>
+  </Html>;
+}
 
 export function VehiclePreview({
   heroLayout = false,
   awaitingHero = false,
   characterDraft = null,
   wardrobeOpen = false,
-}: { heroLayout?: boolean; awaitingHero?: boolean; characterDraft?: CharacterChoice | null; wardrobeOpen?: boolean } = {}) {
+  stationary = false,
+}: { heroLayout?: boolean; awaitingHero?: boolean; characterDraft?: CharacterChoice | null; wardrobeOpen?: boolean; stationary?: boolean } = {}) {
   const screen=useUIStore(s=>s.screen);
   const theme=usePreferencesStore(s=>s.theme);
   const reducedMotion=usePreferencesStore(s=>s.reducedMotion);
@@ -46,7 +58,9 @@ export function VehiclePreview({
   const driver = driverStage ? characterDraft ?? equipped ?? DEFAULT_CHARACTER : null;
   const selected = HEROES.find(hero => hero.id === (picked ?? savedHero))?.vehicle;
   const vehicleId = awaitingHero ? selected ?? (driverStage ? favorite : undefined) : favorite;
+  const [settledVehicle, setSettledVehicle] = useState<string>();
   const { width, height } = useThree(s => s.size);
+  const compact = isCompactPreview(width);
   const requestFrame = useThree(s => s.invalidate);
   const cameraRef = useRef<ThreePerspectiveCamera>(null);
   const initializedCamera = useRef<ThreePerspectiveCamera>(null);
@@ -129,11 +143,13 @@ export function VehiclePreview({
       camera.zoom = MathUtils.lerp(camera.zoom, lensZoom, blend);
       camera.setViewOffset(width, height, MathUtils.lerp(currentX, offsetX, blend), MathUtils.lerp(currentY, offsetY, blend), width, height);
     }
-    if (frameloop === "demand" && (reframing || camera.position.distanceToSquared(position) > .000001 || pivot.distanceToSquared(target) > .000001)) invalidate();
+    if (frameloop === "demand" && (!compact || stationary || reducedMotion) &&
+      (reframing || camera.position.distanceToSquared(position) > .000001 || pivot.distanceToSquared(target) > .000001)) invalidate();
   }, -.25);
   return (
     <>
-      <GarageEnvironment turntable={turntable} onPlatformReady={setPlatform} accentOverride={selectionAccent} />
+      <GarageEnvironment turntable={turntable} onPlatformReady={setPlatform} accentOverride={selectionAccent}
+        allowLoad={!vehicleId || vehicleId === settledVehicle} showLoading={!vehicleId} />
       <PerspectiveCamera
         ref={cameraRef}
         makeDefault
@@ -141,21 +157,15 @@ export function VehiclePreview({
         near={0.1}
       />
 
-      <PreviewTurntable onReady={setTurntable} spin={!wardrobeOpen}>
+      <PreviewTurntable onReady={setTurntable} spin={!wardrobeOpen && !stationary}>
         {vehicleId && <AssetBoundary
           key={vehicleId}
-          fallback={
-            <Html center>
-              <p className="rounded bg-slate-950 p-3 text-sm text-amber-200">
-                Vehicle model unavailable. Check Git LFS assets or select
-                another vehicle.
-              </p>
-            </Html>
-          }
+          fallback={<MissingVehicle model={vehicleId} onSettled={setSettledVehicle} />}
         >
-          <Suspense fallback={null}>
+          <Suspense fallback={<PreviewLoadingSeal label="Summoning vehicle" />}>
             <group rotation={[0, Math.PI / 2, 0]}>
-              <VehiclePreviewModel platform={platform} model={vehicleId} driver={driver} previewPacks={wardrobeOpen} />
+              <VehiclePreviewModel platform={platform} model={vehicleId} driver={driver} previewPacks={wardrobeOpen}
+                onSettled={setSettledVehicle} />
             </group>
           </Suspense>
         </AssetBoundary>}

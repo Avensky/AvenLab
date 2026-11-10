@@ -102,6 +102,7 @@ export function GameUI() {
   const [characterDraft, setCharacterDraft] = useState<CharacterChoice | null>(null);
   const [collapsed, setCollapsed] = useState(false);
   const [reconSidebarHidden, setReconSidebarHidden] = useState(false);
+  const previewPaused = screen === "queue" || (screen === "heroes" && garageAbilities && !characterOpen);
 
   return (
     <div className="relative game-wrapper" data-live-world={screen === "sandbox" || undefined}>
@@ -112,7 +113,7 @@ export function GameUI() {
       {/* Requires Canvas */}
       {needsCanvas && (
         <FullCanvas
-          paused={screen === "queue" || (screen === "heroes" && garageAbilities && !characterOpen)}
+          paused={previewPaused}
           preview={
             screen === "sandbox_setup" ||
             screen === "heroes" ||
@@ -132,6 +133,7 @@ export function GameUI() {
               awaitingHero={screen === "hero_select" || screen === "heroes"}
               characterDraft={screen === "heroes" ? characterDraft : null}
               wardrobeOpen={screen === "heroes" && characterOpen}
+              stationary={previewPaused}
             />
           )}
           {screen === "world_builder" && (

@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useLayoutEffect, useMemo } from "react";
 import { Environment, Html, Lightformer, useGLTF } from "@react-three/drei";
-import { createPortal } from "@react-three/fiber";
+import { createPortal, useThree } from "@react-three/fiber";
 import { Box3, BoxGeometry, Color, CylinderGeometry, Group, InstancedMesh, Mesh, MeshStandardMaterial, Object3D, TorusGeometry, Vector3, type BufferGeometry } from "three";
 import { AssetBoundary } from "../../components/debugger/AssetBoundary";
 import { Showroom, ShowroomFloor } from "./Showroom";
@@ -12,6 +12,9 @@ import { completeGarageStructure } from "./completeGarageStructure";
 import { usePreferencesStore } from "../../store/preferences/preferencesStore";
 import { applyGarageLighting, tagGarageAccent } from "../../theme/garageLighting";
 import { createGarageReflectionSnapshot } from "./garageReflectionSnapshot";
+import { usePreviewPaint } from "./usePreviewPaint";
+import { PreviewLoadingSeal } from "./PreviewLoadingSeal";
+import { isCompactPreview } from "./previewBudget";
 
 // Vite serves files in public/ at the URL root. Presentation fixes below are
 // specific to Garage Special; keep the ship out of the car selection roster.
@@ -24,7 +27,11 @@ type GarageProps = {
   onPlatformReady?: (footprint: [number, number]) => void;
 };
 
-export function GarageEnvironment({ turntable, onPlatformReady, accentOverride = null }: GarageProps) {
+export function GarageEnvironment({ turntable, onPlatformReady, accentOverride = null, allowLoad = true, showLoading = false }: GarageProps & {
+  allowLoad?: boolean; showLoading?: boolean;
+}) {
+  const loadRoom = usePreviewPaint(allowLoad);
+  const floor = <><ShowroomFloor />{showLoading && <PreviewLoadingSeal label="Preparing garage" />}</>;
   return (
     <>
       <Showroom floor={false} />
@@ -41,12 +48,12 @@ export function GarageEnvironment({ turntable, onPlatformReady, accentOverride =
           </>
         }
       >
-        <Suspense fallback={<ShowroomFloor />}>
-          <GarageModel
+        <Suspense fallback={floor}>
+          {loadRoom ? <GarageModel
             turntable={turntable}
             onPlatformReady={onPlatformReady}
             accentOverride={accentOverride}
-          />
+          /> : floor}
         </Suspense>
       </AssetBoundary>
     </>
@@ -54,6 +61,7 @@ export function GarageEnvironment({ turntable, onPlatformReady, accentOverride =
 }
 
 function GarageModel({ turntable, onPlatformReady, accentOverride = null }: GarageProps) {
+  const compact = useThree(s => isCompactPreview(s.size.width));
   const theme = usePreferencesStore((s) => s.theme),
     contrast = usePreferencesStore((s) => s.highContrast);
   const brightness = usePreferencesStore(
@@ -212,7 +220,7 @@ function GarageModel({ turntable, onPlatformReady, accentOverride = null }: Gara
   const reflectionEnvironment = useMemo(
     () =>
       probe && (
-      <Environment resolution={128} frames={1}>
+      <Environment resolution={compact ? 64 : 128} frames={1}>
           <group position={[0, -2.2, 0]}>
             <primitive object={probe.root} dispose={null} />
             <hemisphereLight args={["#e2e6ed", "#242936", 0.65]} />
@@ -246,7 +254,7 @@ function GarageModel({ turntable, onPlatformReady, accentOverride = null }: Gara
           />
         </Environment>
       ),
-    [probe],
+    [probe, compact],
   );
   const footprint = prepared.footprint;
   useEffect(() => {

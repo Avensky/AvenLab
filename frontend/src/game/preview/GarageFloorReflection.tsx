@@ -11,6 +11,7 @@ import {
 } from "three";
 import { Reflector } from "three/addons/objects/Reflector.js";
 import { usePreferencesStore } from "../../store/preferences/preferencesStore";
+import { isCompactPreview } from "./previewBudget";
 import {
   configureGarageFloor,
   gateGarageFloorCapture,
@@ -114,6 +115,7 @@ export function GarageFloorReflection({
 }) {
   const settings = usePreferencesStore((s) => s.garageEffects);
   const getScene = useThree(s => s.get);
+  const compact = useThree(s => isCompactPreview(s.size.width));
   const floorRef = useRef<Reflector>(null);
   const floor = useMemo(() => {
     // Continue the floor past the model's cropped edge so it fills the screen.
@@ -122,16 +124,13 @@ export function GarageFloorReflection({
       // capture, hiding the vehicle/ceiling behind its underside. The mirror is
       // already raised 3mm; clip exactly there to keep that underlay excluded.
       shader: floorShader,
-      textureWidth: 512,
-      textureHeight: 512,
+      textureWidth: compact ? 256 : 512,
+      textureHeight: compact ? 256 : 512,
       multisample: 0,
       clipBias: 0,
     });
     object.name = "garage-floor-reflection";
-    gateGarageFloorCapture(object, () => {
-      const { clock, frameloop } = getScene();
-      return frameloop === "demand" ? undefined : clock.elapsedTime;
-    });
+    gateGarageFloorCapture(object, () => getScene().clock.elapsedTime, compact ? 1 / 15 : 1 / 24);
     object.rotation.x = -Math.PI / 2;
     object.position.y = 0.003;
     const material = object.material as ShaderMaterial;
@@ -156,7 +155,7 @@ export function GarageFloorReflection({
       material.uniforms.showPerimeter.value = 1;
     }
     return object;
-  }, [width, depth, perimeter, getScene]);
+  }, [width, depth, perimeter, getScene, compact]);
   useLayoutEffect(() => {
     configureGarageFloor(floor, settings);
   }, [floor, settings]);

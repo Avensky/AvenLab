@@ -63,7 +63,7 @@ export function HeroRoster({
               onFocus={(event) => event.currentTarget.scrollIntoView?.({ block: "nearest", inline: "nearest" })}
               onClick={() => onChoose(hero.id)}
             >
-              <HeroPortrait hero={hero.id} />
+              <HeroPortrait hero={hero.id} cacheOnly />
               {unavailable[hero.id] && <span className="hero-role-full">ROLE FULL</span>}
               {main===hero.id&&<span className="hero-main-portrait-badge"><ControlGlyph controller="X" keyboard="X"/> MAIN</span>}
             </button>

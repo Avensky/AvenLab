@@ -29,12 +29,12 @@ export function PreviewTurntable({
   useFrame(({ frameloop }, delta) => {
     if (!group.current) return;
     const step = Math.min(delta, 0.1);
-    if (spin && !reducedMotion && !drag.current && frameloop === "always") angle.current += step * 0.035;
+    if (spin && !reducedMotion && !drag.current && frameloop !== "never") angle.current += step * 0.035;
     const rotation = group.current.rotation;
     if (reducedMotion || Math.abs(rotation.y - angle.current) < .0005) rotation.y = angle.current;
     else {
       rotation.y = MathUtils.damp(rotation.y, angle.current, 22, step);
-      if (frameloop === "demand") invalidate();
+      if (frameloop === "demand" && Math.abs(rotation.y - angle.current) > .004) invalidate();
     }
   }, -1);
 

@@ -15,9 +15,14 @@ const faceMesh = (root: Object3D) => root.getObjectByName("HEAD_FACE4") ?? root.
 export function prepareVillagerFaceColors(materials: Iterable<MeshStandardMaterial>, female: boolean) {
   const fit = VILLAGER_EYES[female ? "female" : "male"];
   const irisColor = { value: new Color() };
+  const irisDarkness = { value: 0 };
   const browColor = { value: new Color() };
   const browStrength = { value: 0 };
+  const corneas: { material: MeshStandardMaterial; opacity: number; env: number }[] = [];
   for (const material of materials) {
+    if (material.name === "MAT_Cornea") {
+      corneas.push({ material, opacity: material.opacity, env: material.envMapIntensity });
+    }
     const iris = material.name === (female ? "MAT_Details" : "MAT_Eyes");
     if (!iris && material.name !== "MAT_LashBrow") continue;
     material.customProgramCacheKey = () => iris ? "villager-iris" : "villager-brow";
@@ -25,6 +30,7 @@ export function prepareVillagerFaceColors(materials: Iterable<MeshStandardMateri
       shader.uniforms.faceTint = iris ? irisColor : browColor;
       shader.uniforms.eyeCenter = { value: new Vector2(fit.x, fit.y) };
       shader.uniforms.irisRadius = { value: fit.radius };
+      shader.uniforms.irisDarkness = irisDarkness;
       shader.uniforms.browStrength = browStrength;
       shader.vertexShader = "varying vec3 vFaceBind;\n" + shader.vertexShader.replace(
         "#include <begin_vertex>", "#include <begin_vertex>\nvFaceBind = position;",
@@ -33,6 +39,7 @@ export function prepareVillagerFaceColors(materials: Iterable<MeshStandardMateri
         uniform vec3 faceTint;
         uniform vec2 eyeCenter;
         uniform float irisRadius;
+        uniform float irisDarkness;
         uniform float browStrength;
         ` + shader.fragmentShader.replace("#include <map_fragment>", iris ? `
           #include <map_fragment>
@@ -42,17 +49,30 @@ export function prepareVillagerFaceColors(materials: Iterable<MeshStandardMateri
           vec3 pigment = faceTint * (0.78 + 0.14 * streak);
           pigment *= 1.0 - 0.73 * smoothstep(0.78, 1.0, radial);
           pigment = mix(vec3(0.0015), pigment, smoothstep(0.36, 0.44, radial));
-          diffuseColor.rgb = mix(diffuseColor.rgb, pigment, 1.0 - smoothstep(0.95, 1.06, radial));
+          float irisMask = 1.0 - smoothstep(0.95, 1.06, radial);
+          diffuseColor.rgb = mix(diffuseColor.rgb, pigment, irisMask);
         ` : `
           #include <map_fragment>
           float brow = smoothstep(eyeCenter.y + 0.009, eyeCenter.y + 0.014, vFaceBind.y) * browStrength;
           float detail = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
           diffuseColor.rgb = mix(diffuseColor.rgb, faceTint * (0.64 + 0.54 * detail), brow);
         `);
+      if (iris) shader.fragmentShader = shader.fragmentShader.replace("#include <opaque_fragment>", `
+        // Cap highlights inside dark irises while preserving the whites and lids.
+        vec3 darkIris = min(outgoingLight, faceTint * 1.8 + vec3(0.003));
+        outgoingLight = mix(outgoingLight, darkIris, irisMask * irisDarkness);
+        #include <opaque_fragment>
+      `);
     };
   }
   return (look: CharacterLook) => {
     irisColor.value.set(look.iris);
+    const { r, g, b } = irisColor.value;
+    irisDarkness.value = 1 - MathUtils.smoothstep(.2126 * r + .7152 * g + .0722 * b, .045, .145);
+    for (const { material, opacity, env } of corneas) {
+      material.opacity = opacity * MathUtils.lerp(1, .13, irisDarkness.value);
+      material.envMapIntensity = env * MathUtils.lerp(1, .15, irisDarkness.value);
+    }
     browStrength.value = look.brow ? 1 : 0;
     if (look.brow) browColor.value.set(look.brow);
   };

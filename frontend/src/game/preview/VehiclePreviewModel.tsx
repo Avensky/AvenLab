@@ -1,5 +1,5 @@
 import { FACTORY_APPEARANCE, useHeroLoadouts } from "../../vehicles/cosmetics/heroLoadouts";
-import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { useGLTF } from "@react-three/drei";
 import { prepareVehicleVisual } from "../../vehicles/tools/vehicleMaterials";
 import {
@@ -14,27 +14,46 @@ import {createVehiclePartRig,advanceVehiclePartRig,availableVehicleParts,measure
 import {useVehicleStudioStore} from "../heroes/vehicleStudioStore";
 import {useInputStore} from "../../store/input/inputStore";
 import {VehicleFlags,hasFlag} from "../../store/input/protocol/inputMasks";
-import {Mesh,MeshStandardMaterial,Vector3,type Group} from "three";
+import {Mesh,MeshStandardMaterial,Vector3,type Color,type Group,type Object3D} from "three";
 import { GarageDriver } from "../characters/GarageDriver";
 import { ROOK_ID, type CharacterChoice } from "../characters/characterCatalog";
 import {useFrame} from "@react-three/fiber";
 import {applyWindowTone} from "./windowTones";
 import {vehicleSystems} from "../../vehicles/vehicleSystems";
-import { prepareGarageCockpit } from "./garageCockpit";
+import { prepareGarageCockpit, type GarageCockpit } from "./garageCockpit";
 import { useCharacterPreviewStore } from "../characters/characterPreviewStore";
+import { usePreviewPaint } from "./usePreviewPaint";
+import { PreviewLoadingSeal } from "./PreviewLoadingSeal";
+
+type VehicleLayout = {
+  model: VehicleModelId;
+  measurements: ReturnType<typeof measurePreviewBounds>;
+  door: ReturnType<typeof measureDriverDoor>;
+};
+// Exact bounds and ray tests depend on the imported geometry, not the paint or
+// the current platform scale. Let the GLTF cache own their lifetime.
+const layouts = new WeakMap<Object3D, VehicleLayout>();
+const leanFits = new WeakMap<VehicleLayout, { fit: ReturnType<typeof measureDriverLean> }>();
+
+function setLampEmission(material: MeshStandardMaterial, color: number | Color, intensity: number) {
+  material.emissive.set(color);
+  material.emissiveIntensity = intensity;
+}
 
 // Selection is always the complete GLB, independent of in-game debug modes.
 // Shared material preparation retains the TSX fixes without runtime network poses.
-export function VehiclePreviewModel({platform,model,driver,previewPacks}:{
+export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettled}:{
   platform: readonly [number, number];
   model: VehicleModelId;
   driver?: CharacterChoice | null;
   previewPacks?: boolean;
+  onSettled?: (model: VehicleModelId) => void;
 }) {
   const path=VEHICLE_MODEL_PATHS[model];
   const motion = useRef<Group>(null);
   const savedAppearance = useHeroLoadouts(s => s.draft?.vehicle === model ? s.draft.appearance : s.loadouts[model]);
   const { scene } = useGLTF(path, "/draco/");
+  const driverReady = usePreviewPaint(Boolean(driver));
   const prepared = useMemo(
     () => {
       const visual = prepareVehicleVisual(scene, model);
@@ -43,15 +62,19 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks}:{
     },
     [scene, model],
   );
-  const cockpit = useMemo(() => previewPacks && model === "ae86"
-    ? prepareGarageCockpit(prepared.root, () => motion.current, prepared.glassMaterials) : undefined, [prepared, model, previewPacks]);
-  const cockpitAvailable = Boolean(driver && cockpit);
+  useLayoutEffect(() => onSettled?.(model), [model, onSettled]);
+  const prepareCockpitPlayback = useMemo(() => previewPacks && model === "ae86"
+    ? prepareGarageCockpit(prepared.root, prepared.glassMaterials) : undefined, [prepared, model, previewPacks]);
+  const playCockpit = useCallback<GarageCockpit>(driverRoot => {
+    const motionGroup = motion.current;
+    return motionGroup && prepareCockpitPlayback ? prepareCockpitPlayback(driverRoot, motionGroup) : null;
+  }, [prepareCockpitPlayback]);
+  const cockpitAvailable = Boolean(driver && prepareCockpitPlayback);
   useLayoutEffect(() => {
     if (!cockpitAvailable) return;
     useCharacterPreviewStore.setState({ cockpitAvailable: true });
     return () => useCharacterPreviewStore.setState({ cockpitAvailable: false });
   }, [cockpitAvailable]);
-  const driverDoor = useMemo(() => vehicleSystems(model) === "road" ? measureDriverDoor(prepared.root, model) : null, [prepared, model]);
   const partRig=useMemo(()=>createVehiclePartRig(prepared.root,model),[prepared,model]);
   const marine=vehicleSystems(model)==="marine";
   const inspectBody=useVehicleStudioStore(s=>s.activeTab==="body"||s.parts["door-left"]||s.parts["door-right"]);
@@ -109,8 +132,7 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks}:{
       for(const material of lamps.all){
         const active = lamps.navigation.has(material) ? navigation : searchlights;
         const original = lamps.originals.get(material)!;
-        if (active) { material.emissive.set(0xffecd4); material.emissiveIntensity=.9; }
-        else { material.emissive.copy(original.emissive); material.emissiveIntensity=original.intensity; }
+        setLampEmission(material, active ? 0xffecd4 : original.emissive, active ? .9 : original.intensity);
       }
       return;
     }
@@ -127,17 +149,25 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks}:{
       const isSignal=lamps.signals.has(material)&&(signalTargets===null||signalTargets.has(material));
       const activeSignal=isSignal&&blinkOn;
       const activeHeadlight=lamps.headlights.has(material)&&headlight&&!isSignal;
-      if(activeSignal){material.emissive.set(0xff8a16);material.emissiveIntensity=1.75;}
-      else if(activeHeadlight){material.emissive.set(0xffedbc);material.emissiveIntensity=1.35;}
-      else {material.emissive.copy(original.emissive);material.emissiveIntensity=original.intensity;}
+      if(activeSignal) setLampEmission(material, 0xff8a16, 1.75);
+      else if(activeHeadlight) setLampEmission(material, 0xffedbc, 1.35);
+      else setLampEmission(material, original.emissive, original.intensity);
     }
   });
   // Keep the original measurements when the garage finishes loading; re-reading
   // a mounted model would measure its already-scaled parent a second time.
-  const measurements = useMemo(
-    () => measurePreviewBounds(prepared.root, model),
-    [prepared, model],
-  );
+  const layout = useMemo(() => {
+    const cached = layouts.get(scene);
+    if (cached?.model === model) return cached;
+    const result: VehicleLayout = {
+      model,
+      measurements: measurePreviewBounds(prepared.root, model),
+      door: vehicleSystems(model) === "road" ? measureDriverDoor(prepared.root, model) : null,
+    };
+    layouts.set(scene, result);
+    return result;
+  }, [scene, prepared, model]);
+  const { measurements, door: driverDoor } = layout;
   const display = useMemo(
     () => fitPreviewToPlatform(measurements, platform),
     [measurements, platform],
@@ -152,11 +182,13 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks}:{
     const edge = side < 0
       ? Math.min(driverDoor?.min.x ?? Infinity, measurements.bounds.min.x)
       : Math.max(driverDoor?.max.x ?? -Infinity, measurements.bounds.max.x);
-    const fit = hasDriver && doorCenter && Number.isFinite(edge)
-      ? measureDriverLean(prepared.root, edge + side * .27, measurements.support.min.y, doorCenter.z, side)
-      : undefined;
+    if (hasDriver && driverReady && doorCenter && Number.isFinite(edge) && !leanFits.has(layout)) {
+      const fit = measureDriverLean(prepared.root, edge + side * .27, measurements.support.min.y, doorCenter.z, side);
+      leanFits.set(layout, { fit });
+    }
+    const fit = driverReady ? leanFits.get(layout)?.fit : undefined;
     return { side, edge, along: doorCenter?.z, fit };
-  }, [driverDoor, measurements, prepared, hasDriver]);
+  }, [driverDoor, measurements, prepared, hasDriver, driverReady, layout]);
   const inset = inspectBody ? 0 : Math.min(staging.fit?.offset ?? 0, rook ? .14 : .06);
   const lean = useMemo(() => {
     const fit = staging.fit;
@@ -168,8 +200,10 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks}:{
   return (
     <group ref={motion}>
       {driver && <group position={[driverAcross, .023, driverAlong]} scale={driverScale} rotation={[0, staging.side * Math.PI / 2, 0]}>
-        <group name="garage-driver-shadow"><PreviewContactShadow footprint={[.55, .46]} offset={[0, 0]} /></group>
-        <GarageDriver choice={driver} previewPacks={previewPacks} leanFit={lean} cockpit={cockpit} />
+        {driverReady ? <>
+          <group name="garage-driver-shadow"><PreviewContactShadow footprint={[.55, .46]} offset={[0, 0]} /></group>
+          <GarageDriver choice={driver} previewPacks={previewPacks} leanFit={lean} cockpit={cockpitAvailable ? playCockpit : undefined} />
+        </> : <PreviewLoadingSeal label="Summoning driver" />}
       </group>}
       <PreviewContactShadow
         footprint={display.footprint}

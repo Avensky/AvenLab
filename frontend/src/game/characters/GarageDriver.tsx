@@ -9,6 +9,8 @@ import { CharacterLoadingEffect } from "./CharacterLoadingEffect";
 import { applyVillagerLook, prepareVillager, villagerModelUrl } from "./villagerModel";
 import type { GarageLeanFit } from "./garageLean";
 import type { GarageCockpit } from "../preview/garageCockpit";
+import { PreviewLoadingSeal } from "../preview/PreviewLoadingSeal";
+import { isCompactPreview } from "../preview/previewBudget";
 
 function VillagerDriver({ url, look, bag, previewPacks, leanFit, victory, cockpit }: {
   url: string; look: CharacterLook; bag: boolean; previewPacks?: boolean; leanFit?: GarageLeanFit; victory?: VictoryPlayback; cockpit?: GarageCockpit;
@@ -32,16 +34,17 @@ export function GarageDriver({ choice, previewPacks, leanFit, victory, cockpit }
   choice: CharacterChoice; previewPacks?: boolean; leanFit?: GarageLeanFit; victory?: VictoryPlayback; cockpit?: GarageCockpit;
 }) {
   const look = useMemo(() => characterLook(choice), [choice]);
+  const compact = useThree(s => isCompactPreview(s.size.width));
   if (!look) return null;
   const bag = choice.prop === "shop-bag";
   const coatFitsLean = choice.id === ROOK_ID && (choice.outfit === "night-run" || choice.outfit === "race-crew");
   const fallback = choice.id === VILLAGER_ID ? null : <StylizedDriver look={look} bag={bag} previewPacks={previewPacks} victory={victory} cockpit={cockpit} />;
-  const url = villagerModelUrl(look);
+  const url = villagerModelUrl(look, compact && choice.id === VILLAGER_ID && !victory ? "portrait" : "garage");
   return (
     <group name="garage-driver" rotation={[-.095, -.16, -.045]}>
       {url
         ? <AssetBoundary key={url} fallback={fallback}>
-            <Suspense fallback={<CharacterLoadingEffect />}><VillagerDriver url={url} look={look} bag={bag} previewPacks={previewPacks}
+            <Suspense fallback={<><PreviewLoadingSeal label="Summoning driver" />{!compact && <CharacterLoadingEffect />}</>}><VillagerDriver url={url} look={look} bag={bag} previewPacks={previewPacks}
               leanFit={coatFitsLean ? leanFit : undefined} victory={victory} cockpit={cockpit} /></Suspense>
           </AssetBoundary>
         : fallback}
