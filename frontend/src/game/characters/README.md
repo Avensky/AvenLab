@@ -15,7 +15,12 @@ built-in look. The model uses the exported rig and mesh slots for the hair,
 bonnet, outfit, and skin. Rook has original
 built-in geometry. Vesper's bonnet is part of the rig's finished head, so it
 stays equipped for both hairstyles. The portrait is rendered from the same
-look as the garage model. In the garage, tap Vesper to wave.
+look as the garage model.
+
+Garage and the Sandbox hero picker play Garage Life (001–010), the first
+batch from the emote catalog. The driver breathes between gestures and a tap
+queues the friendly wave. The same clips are retargeted to Vesper's imported
+rig and the built-in drivers. Reduced Motion pauses character animation.
 
 Character choices and palettes shared by the game client and server are in
 `avenlab-server/src/assets/characters.json` and `character-appearance.json`.

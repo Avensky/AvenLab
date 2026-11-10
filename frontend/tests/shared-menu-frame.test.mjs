@@ -24,6 +24,7 @@ test('Career, Settings and Worlds/Social share themed controller chrome without 
    await render(Component,screen);assert(document.querySelector('.menu-frame[role="dialog"]'));assert.equal(document.querySelector('.menu-frame-header h1').textContent.toUpperCase(),title);
    const header=document.querySelector('.menu-frame-header.angled-tab-header');
    assert(header.querySelector('[role="tab"][aria-selected="true"]'));
+   assert.equal(header.querySelector('.menu-frame-title').firstElementChild.getAttribute('src'),'/images/logo.png');
    assert.equal(header.querySelector(':scope > div:first-child > small'),null);
    for(const style of ['angled','classic']){
     await act(async()=>prefs.getState().update({menuHeaderStyle:style}));

@@ -3,9 +3,12 @@ import {HEROES} from '../../store/alpha/alphaStore';
 import {useUIStore} from '../../store/menus/uiStore';
 import {closeHeroGuide,useHeroGuideStore} from '../../store/hud/heroGuideStore';
 import {usePreferencesStore} from '../../store/preferences/preferencesStore';
+import {useSocialStore} from '../../store/social/socialStore';
 import {CollapsibleMenuPanel} from '../../components/menus/CollapsibleMenuPanel';
 import {SceneTabHeader} from '../../components/menus/SceneTabHeader';
 import {HeroPortrait} from '../alpha/HeroPortrait';
+import {CharacterPortrait} from '../characters/CharacterPortrait';
+import {CHARACTERS,DEFAULT_CHARACTER} from '../characters/characterCatalog';
 import {HERO_CONCEPT_TAB} from '../alpha/heroRoleFilters';
 import {SelectionFooter} from '../alpha/SelectionChrome';
 import {AttackIcon} from '../../combat/AttackIcon';
@@ -30,17 +33,25 @@ export function HeroAbilityDetails({heroId}:{heroId:string}){
  const hero=HEROES.find(item=>item.id===heroId);
  const fireKey=usePreferencesStore(s=>s.bindings.fire);
  const secondaryKey=usePreferencesStore(s=>s.bindings.secondaryFire);
+ const driver=useSocialStore(s=>s.view?.profile.progression?.character)??DEFAULT_CHARACTER;
+ const driverName=CHARACTERS.find(character=>character.id===driver.id)?.name??'Driver';
  const keyLabel=(key:string)=>key.replace(/^Key|^Digit/,'');
  if(!hero)return null;
  const guide=getHeroAbilityGuide(hero.id);
  return <div className="hero-guide-body">
     <aside className="hero-guide-overview">
-      <CollapsibleMenuPanel title={hero.name} summary={`${guide.role} · ${guide.hp.toLocaleString()} HP`} defaultCollapsed>
-        <div className="hero-guide-showcase" aria-label={`${hero.name} overview`}><HeroPortrait hero={hero.id}/><div><h2>{hero.name}</h2><p>{guide.description}</p></div></div>
+      <CollapsibleMenuPanel title={hero.name} summary={`${guide.role} · ${guide.hp.toLocaleString()} HP`}>
+        <div className="hero-guide-showcase" aria-label={`${hero.name} overview`}>
+          <div className="hero-guide-portraits">
+            <HeroPortrait hero={hero.id} cacheOnly showStyleStatus={false}/>
+            <CharacterPortrait choice={driver} compact label={driverName}/>
+          </div>
+          <p>{guide.description}</p>
+        </div>
       </CollapsibleMenuPanel>
     </aside>
     <div className="hero-guide-details">
-     <CollapsibleMenuPanel title="Weapons" summary={guide.weapons.length}>
+     <CollapsibleMenuPanel title="Weapons" summary={guide.weapons.length} defaultCollapsed>
        <p className="hero-guide-section-note">Primary fire: {keyLabel(fireKey)} or Xbox RB. {guide.weapons.length>1&&<>Secondary fire: {keyLabel(secondaryKey)} or Xbox D-pad Right. </>}Customize controls in Settings.</p>
        <div className="hero-weapon-grid">{guide.weapons.map(weapon=><AbilityCard key={weapon.id} ability={weapon}/>)}{guide.trialAccessory&&<AbilityCard ability={guide.trialAccessory} slot="HUD TEST"/>}</div>
      </CollapsibleMenuPanel>

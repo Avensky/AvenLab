@@ -1,3 +1,4 @@
+import { MenuLogo } from "../../components/menus/MenuLogo";
 import { useEffect, useId, useMemo, useRef, type CSSProperties } from "react";
 import { AttackIcon } from "../../combat/AttackIcon";
 import { ControllerAction } from "../../components/controller";
@@ -74,7 +75,7 @@ export function TeamLineup() {
       <MenuVideoBackground />
       <header className="team-lineup-heading">
         <p>{matchModeLabel(active.mode, active.team_size)} <span data-team={active.team}>{active.team} team</span></p>
-        <h1 id={title}>Team assembled</h1>
+        <div className="menu-title-with-logo"><MenuLogo compact/><h1 id={title}>Team assembled</h1></div>
       </header>
       <div className="team-lineup-cards" style={{ "--lineup-size": size } as CSSProperties}>
         {Array.from({ length: size }, (_, index) => {

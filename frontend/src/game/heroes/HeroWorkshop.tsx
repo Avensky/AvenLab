@@ -215,6 +215,7 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
         actions={<CharacterHeaderProfile onOpen={openCharacter}/>}
         activeTab={studioTab}
         onTabChange={next=>setStudioTab(next as VehicleStudioTab)}
+        tablistClassName="garage-studio-tabs"
         idPrefix="vehicle-studio"
         panelId="vehicle-studio-tab-panel"
         tabs={VEHICLE_STUDIO_TABS.map((item,index)=>({

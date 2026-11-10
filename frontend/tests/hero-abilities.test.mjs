@@ -42,7 +42,10 @@ test('hero guide explains shipped actions and returns without equipping or repla
    await act(async()=>route('activate'));assert(document.querySelector('.vehicle-studio'),'A opens customization for the shown favorite');
    await act(async()=>route('previous_tab'));
    assert.equal(document.getElementById('vehicle-studio-tab-abilities').getAttribute('aria-selected'),'true');
-   assert.equal(document.querySelector('.hero-guide-showcase h2').textContent,'BRZ');
+   assert.equal(document.querySelector('.hero-guide-overview h2').textContent,'BRZ');
+   assert(document.querySelector('.hero-guide-showcase p').textContent.trim());
+   assert(document.querySelector('.hero-guide-portraits [aria-label="Vesper Vega"]'));
+   assert.deepEqual([...document.querySelectorAll('.hero-guide-details [aria-expanded]')].map(button=>button.getAttribute('aria-expanded')),['false','false','false','false']);
    assert.equal(ui.getState().overlay,null);
    await act(async()=>route('next_tab'));
    assert(document.querySelector('.vehicle-studio'));
@@ -70,7 +73,7 @@ test('hero guide explains shipped actions and returns without equipping or repla
    assert.equal(document.querySelector('.menu-frame-header h1').textContent,'GARAGE');
    assert.equal(document.querySelector('.vehicle-studio'),null);
    assert.equal(document.querySelector('.hero-roster'),null);
-   assert.equal(document.querySelector('.hero-guide-showcase h2').textContent,'VANGUARD');
+   assert.equal(document.querySelector('.hero-guide-overview h2').textContent,'VANGUARD');
    assert.equal(document.querySelectorAll('.hero-ability-grid article').length,4);
    assert(document.querySelector('.hero-main-hold').disabled);
    await click('#vehicle-studio-tab-performance');

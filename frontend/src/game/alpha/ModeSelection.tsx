@@ -1,6 +1,5 @@
 import { useConnectionView } from "../../store/session/networkViews";
 import { CharacterHeaderProfile } from "../characters/CharacterHeaderProfile";
-import { MenuLogo } from "../../components/menus/MenuLogo";
 import { SceneTabHeader } from "../../components/menus/SceneTabHeader";
 import { useMenuPressOwner } from "../../components/menus/useMenuPressOwner";
 import {MatchModePortraits} from "./ModePortraitCard";
@@ -191,7 +190,6 @@ export function ModeSelection() {
       <SceneTabHeader
         title={play ? "PLAY" : "EXPLORE"}
         compact
-        logo={play ? <MenuLogo /> : undefined}
         actions={<CharacterHeaderProfile showProgress />}
         busy={busy}
         tablistLabel="Game mode"

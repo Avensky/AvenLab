@@ -4,7 +4,6 @@ import { unavailableHeroes } from "./heroAvailability";
 import { prepareReconSelection } from "../../store/recon/captureSetup";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ControllerAction } from "../../components/controller";
-import { MenuLogo } from "../../components/menus/MenuLogo";
 import { useMenuPressOwner } from "../../components/menus/useMenuPressOwner";
 import {
   useAlphaStore,
@@ -12,7 +11,6 @@ import {
   HERO_FILTERS,
   isMatchMode,
   isPlannedMode,
-  matchModeLabel,
   canonicalGameMode,
   modeTeamSize,
   type HeroFilter,
@@ -31,6 +29,7 @@ import { HeroRoster } from "./HeroRoster";
 import { heroRoleHeaderTabs, heroMatchesFilter } from "./heroRoleFilters";
 import { PreMatchTeamPreview } from "../stats/PreMatchTeamPreview";
 import { LobbyChat } from "./LobbyChat";
+import { CharacterHeaderProfile } from "../characters/CharacterHeaderProfile";
 import "./heroSelection.css";
 export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
   const inspecting=useScoreboardStore(s=>s.held||s.pinned);
@@ -210,11 +209,10 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
       style={overlay ? { zIndex: 50, background:"transparent", backdropFilter:"none" } : undefined}
     >
       <SceneTabHeader
-        title={matchHeader || overlay ? "HEROES" : "CHOOSE HERO"}
-        logo={matchHeader ? <MenuLogo /> : undefined}
-        compact={matchHeader || overlay}
-        eyebrow={overlay ? "" : matchModeLabel(mode, active && inMode ? active.team_size : selectedTeamSize)}
+        title="HEROES"
+        compact
         titleTeam={confirmedTeam}
+        actions={matchHeader ? undefined : <CharacterHeaderProfile />}
         showProgress={matchHeader}
         tabs={heroRoleHeaderTabs(allowBoats)}
         tablistClassName="hero-pick-tabs"

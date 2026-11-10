@@ -1,3 +1,4 @@
+import { MenuLogo } from "../../components/menus/MenuLogo";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import bundle from "virtual:road-kit-bundle";
 import "./roadKit.css";
@@ -352,7 +353,7 @@ export default function RoadKitWorkbench() {
     <div className="road-kit">
       <header className="rk-header">
         <div className="rk-brand">
-          <span className="rk-brand-icon">◈</span>
+          <span className="rk-brand-icon"><MenuLogo compact/></span>
           <div>
             <small>AVENLAB / ASSET WORKBENCH</small>
             <strong>

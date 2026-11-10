@@ -29,11 +29,15 @@ export function VehiclePreview({
   // the saved theme, including its softer crimson selection lighting.
   const selectionAccent=staging && theme==="scarlet" ? SELECTION_CRIMSON : null;
   const picked = useAlphaStore(s => screen === "heroes" ? s.previewHero : s.hero);
+  const mode = useAlphaStore(s => s.mode);
   const favorite = useSelectionStore(s => s.getSelectedVehicle().id);
-  const equipped = useSocialStore(s => screen === "heroes" ? s.view?.profile.progression?.character : null);
-  const driver = screen === "heroes" ? characterDraft ?? equipped ?? DEFAULT_CHARACTER : null;
+  const workshop = screen === "heroes";
+  const sandboxPicker = screen === "hero_select" && mode === "sandbox";
+  const driverStage = workshop || sandboxPicker;
+  const equipped = useSocialStore(s => driverStage ? s.view?.profile.progression?.character : null);
+  const driver = driverStage ? characterDraft ?? equipped ?? DEFAULT_CHARACTER : null;
   const selected = HEROES.find(hero => hero.id === picked)?.vehicle;
-  const vehicleId = awaitingHero ? selected ?? (screen === "heroes" && driver ? favorite : undefined) : favorite;
+  const vehicleId = awaitingHero ? selected ?? (driverStage ? favorite : undefined) : favorite;
   const { width, height } = useThree(s => s.size);
   const cameraRef = useRef<ThreePerspectiveCamera>(null);
   const [turntable, setTurntable] = useState<Group | null>(null);
@@ -41,20 +45,19 @@ export function VehiclePreview({
     DEFAULT_PREVIEW_PLATFORM,
   );
   const aspect = width / Math.max(1, height);
-  const workshop = screen === "heroes";
   const verticalFov = (horizontal: number) => (2 * Math.atan(Math.tan((horizontal * Math.PI) / 360) / aspect) * 180) / Math.PI;
   // Look into the authored corner from inside the room. The tighter horizontal
   // frame keeps the two connected walls across a landscape viewport.
-  const fov = workshop && aspect >= 1 ? Math.max(33, verticalFov(75)) : Math.max(60, verticalFov(75));
-  const cameraPosition: [number, number, number] = workshop ? [2.8, 2.5, 5.8] : [0, 3.2, 7.25];
+  const fov = driverStage && aspect >= 1 ? Math.max(33, verticalFov(75)) : Math.max(60, verticalFov(75));
+  const cameraPosition: [number, number, number] = driverStage ? [2.8, 2.5, 5.8] : [0, 3.2, 7.25];
   useLayoutEffect(() => {
     const camera = cameraRef.current;
     if (!camera || !width || !height) return;
-    const offsetX = width * (workshop ? (wardrobeOpen ? .15 : .07) : 0);
+    const offsetX = width * (sandboxPicker ? .15 : workshop ? (wardrobeOpen ? .15 : .07) : 0);
     const offsetY = heroLayout && aspect < 1 ? -height * .04 : 0;
     camera.setViewOffset(width, height, offsetX, offsetY, width, height);
-    camera.lookAt(0, workshop ? 1.17 : 1.35, 0);
-  }, [aspect, height, heroLayout, wardrobeOpen, width, workshop]);
+    camera.lookAt(0, driverStage ? 1.17 : 1.35, 0);
+  }, [aspect, driverStage, height, heroLayout, sandboxPicker, wardrobeOpen, width, workshop]);
   return (
     <>
       <GarageEnvironment turntable={turntable} onPlatformReady={setPlatform} accentOverride={selectionAccent} />

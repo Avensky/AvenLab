@@ -1,3 +1,4 @@
+import { MenuLogo } from "../../components/menus/MenuLogo";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { ControllerAction, ControlGlyph } from "../../components/controller";
 import type { MenuAction } from "../../controls/inputRouting";
@@ -228,6 +229,7 @@ export function CollisionBuilderPanel({
       }}
     >
       <header className="wb-header">
+        <MenuLogo compact/>
         <strong>
           WORLD BUILDER <small>COLLISION TEMPLATE</small>
         </strong>

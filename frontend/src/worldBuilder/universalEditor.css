@@ -684,7 +684,7 @@
  .layout-editor .le-header {height:44px;min-height:44px;grid-template-columns:minmax(0,1fr) auto;gap:4px;}
  .layout-editor .le-header .le-project {display:none;}
  .layout-editor .le-brand strong {font-size:10px;}
- .layout-editor .le-brand-mark {display:none;}
+ .layout-editor .le-brand-mark {width:22px;height:22px;}
  .layout-editor .le-header-actions>button {padding:4px 6px;font-size:9px;min-height:34px;}
  .layout-editor .le-tool-drawer {top:48px;}
 }

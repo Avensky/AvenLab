@@ -39,15 +39,29 @@ export function prepareStylizedDriver(look: CharacterLook) {
     const part = mesh(new CapsuleGeometry(radius, height, 4, 10), color);
     part.position.copy(start.addScaledVector(direction, .5));
     part.quaternion.setFromUnitVectors(up, direction.normalize());
+    return part;
+  }
+  function joint(name: string, at: Point, parent = root) {
+    const pivot = new Group();
+    pivot.name = name;
+    pivot.position.set(...at);
+    root.add(pivot);
+    if (parent !== root) parent.attach(pivot);
+    return pivot;
   }
   for (const side of [-1, 1]) {
+    const suffix = side < 0 ? "r" : "l";
     const x = side * .115;
+    const hip: Point = [x * .76, .90, 0];
     const knee: Point = [x + side * .017, .49, side * .025];
     const ankle: Point = [x + side * .04, .13, side * .065];
-    limb([x * .76, .90, 0], knee, .082, "#222c38");
-    limb(knee, ankle, .064, "#273443");
-    form([ankle[0], .087, ankle[2] + .052], [.073, .08, .141], "#17212b", [0, side * .11, 0]);
-    form([ankle[0], .038, ankle[2] + .065], [.074, .033, .137], "#384450");
+    const thigh = joint("thigh_" + suffix, hip);
+    const calf = joint("calf_" + suffix, knee, thigh);
+    const foot = joint("foot_" + suffix, ankle, calf);
+    thigh.attach(limb(hip, knee, .082, "#222c38"));
+    calf.attach(limb(knee, ankle, .064, "#273443"));
+    foot.attach(form([ankle[0], .087, ankle[2] + .052], [.073, .08, .141], "#17212b", [0, side * .11, 0]));
+    foot.attach(form([ankle[0], .038, ankle[2] + .065], [.074, .033, .137], "#384450"));
   }
   if (female) {
     const skirt = mesh(new CylinderGeometry(.14, .262, .54, 18), fabric);
@@ -56,17 +70,28 @@ export function prepareStylizedDriver(look: CharacterLook) {
   } else {
     form([0, .87, 0], [.185, .132, .112], "#222c38");
   }
-  form([0, 1.14, 0], [shoulders + .018, .29, .122], fabric);
-  form([0, 1.13, .114], [.032, .235, .013], female ? trim : "#17212b");
-  form([0, .938, .006], [female ? .154 : .19, .044, .119], "#282635");
-  if (appearance.accent || (outfit.id !== "dockwear" && outfit.id !== "night-run")) form([-.09, 1.28, .108], [.049, .026, .012], trim);
-  limb([-shoulders, 1.31, 0], [-shoulders - .065, 1.05, -.02], .067, fabric);
-  limb([-shoulders - .065, 1.05, -.02], [-.125, .956, .112], .057, fabric);
-  form([-.108, .947, .129], [.048, .045, .047], skin);
-  limb([shoulders, 1.31, 0], [shoulders + .066, 1.09, .047], .069, fabric);
-  limb([shoulders + .066, 1.09, .047], [.112, 1.22, .188], .056, fabric);
-  form([.079, 1.238, .197], [.048, .046, .04], skin);
-  form([0, 1.428, 0], [.062, .085, .059], skin);
+  const torso = joint("spine_02", [0, .94, 0]);
+  torso.attach(form([0, 1.14, 0], [shoulders + .018, .29, .122], fabric));
+  torso.attach(form([0, 1.13, .114], [.032, .235, .013], female ? trim : "#17212b"));
+  torso.attach(form([0, .938, .006], [female ? .154 : .19, .044, .119], "#282635"));
+  if (appearance.accent || (outfit.id !== "dockwear" && outfit.id !== "night-run")) {
+    torso.attach(form([-.09, 1.28, .108], [.049, .026, .012], trim));
+  }
+  for (const side of [-1, 1]) {
+    const suffix = side < 0 ? "r" : "l";
+    const shoulder: Point = [side * shoulders, 1.31, 0];
+    const elbow: Point = [side * (shoulders + .064), 1.075, -.017];
+    const hand: Point = [side * (shoulders + .045), .895, .04];
+    const upper = joint("upperarm_" + suffix, shoulder, torso);
+    const lower = joint("lowerarm_" + suffix, elbow, upper);
+    const wrist = joint("hand_" + suffix, hand, lower);
+    upper.attach(limb(shoulder, elbow, .067, fabric));
+    lower.attach(limb(elbow, hand, .056, fabric));
+    wrist.attach(form([hand[0], hand[1] - .018, hand[2]], [.046, .055, .043], skin));
+  }
+  torso.attach(form([0, 1.428, 0], [.062, .085, .059], skin));
+  const head = joint("head", [0, 1.45, 0], torso);
+  const headStart = root.children.length;
   const face = form([0, 1.57, 0], [.104, .143, .1], skin);
   form([0, 1.54, .102], [.022, .036, .033], skin);
   for (const side of [-1, 1]) {
@@ -82,6 +107,7 @@ export function prepareStylizedDriver(look: CharacterLook) {
     form([0, 1.677, 0], [.115, .087, .108], fabric);
     form([0, 1.64, female ? .017 : .101], [female ? .151 : .108, .014, female ? .147 : .122], trim);
   }
+  for (const part of root.children.slice(headStart)) head.attach(part);
   return {
     root, face,
     dispose() {

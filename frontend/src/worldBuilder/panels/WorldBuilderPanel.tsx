@@ -1,3 +1,4 @@
+import { MenuLogo } from "../../components/menus/MenuLogo";
 import { kitAsset } from "../mapKit/catalog";
 import { ExcavationTools } from './ExcavationTools';
 import {
@@ -390,7 +391,7 @@ function LayoutPanel({
       <header className="le-header" inert={Boolean(confirm || preview)}>
         <div className="le-brand">
           <span className="le-brand-mark">
-            <Icon name="layers" />
+            <MenuLogo compact/>
           </span>
           <strong>World editor</strong>
         </div>

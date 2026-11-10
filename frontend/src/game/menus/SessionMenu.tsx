@@ -1,3 +1,4 @@
+import { MenuLogo } from "../../components/menus/MenuLogo";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { ControllerAction } from "../../components/controller";
 import { connectRustServer, disconnectRustServer } from "../../net/rustSocket";
@@ -75,7 +76,8 @@ export function SessionMenu() {
         }}
         className="menu-confirm-card"
       >
-        <header>
+        <header className="menu-title-with-logo">
+          <MenuLogo compact/>
           <h1 id={`${id}-title`}>LEAVE GAME?</h1>
         </header>
         <div className="menu-confirm-body">

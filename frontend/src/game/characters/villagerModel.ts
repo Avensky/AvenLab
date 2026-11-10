@@ -1,29 +1,13 @@
 import {
-  Bone, Box3, Mesh, MeshStandardMaterial, Quaternion, SkinnedMesh, SphereGeometry, Vector3, type Object3D, type Skeleton,
+  Box3, Mesh, MeshStandardMaterial, SkinnedMesh, SphereGeometry, Vector3, type Object3D, type Skeleton,
 } from "three";
 import { clone } from "three/addons/utils/SkeletonUtils.js";
+import { aimDriverJoint, driverArm } from "./garageEmotes";
 import { VILLAGER_ID, type CharacterLook } from "./characterCatalog";
 
 export function villagerModelUrl(look: CharacterLook, kind: "garage" | "portrait" = "garage") {
   if (look.character.id !== VILLAGER_ID) return null;
   return kind === "portrait" ? __VILLAGER_PORTRAIT_URL__ : __VILLAGER_MODEL_URL__;
-}
-
-function aim(bone: Bone, next: Bone, direction: Vector3) {
-  const rest = next.getWorldPosition(new Vector3()).sub(bone.getWorldPosition(new Vector3())).normalize();
-  const world = bone.getWorldQuaternion(new Quaternion());
-  const parent = bone.parent!.getWorldQuaternion(new Quaternion()).invert();
-  bone.quaternion.copy(parent.multiply(new Quaternion().setFromUnitVectors(rest, direction.normalize())).multiply(world));
-  bone.updateWorldMatrix(false, true);
-}
-
-function arm(root: Object3D, side: "l" | "r") {
-  const shoulder = root.getObjectByName("upperarm_" + side);
-  const elbow = root.getObjectByName("lowerarm_" + side);
-  const hand = root.getObjectByName("hand_" + side);
-  if (!(shoulder instanceof Bone && elbow instanceof Bone && hand instanceof Bone)) return null;
-  const sideSign = Math.sign(elbow.getWorldPosition(new Vector3()).x - shoulder.getWorldPosition(new Vector3()).x);
-  return { shoulder, elbow, hand, sideSign };
 }
 
 export function prepareVillager(scene: Object3D) {
@@ -48,11 +32,12 @@ export function prepareVillager(scene: Object3D) {
     object.frustumCulled = false;
   });
   for (const side of ["l", "r"] as const) {
-    const joints = arm(root, side);
+    const joints = driverArm(root, side);
     if (!joints) continue;
-    const { shoulder, elbow, hand, sideSign } = joints;
-    aim(shoulder, elbow, new Vector3(sideSign * .27, -1, -.12));
-    aim(elbow, hand, side === "r" ? new Vector3(-sideSign * .7, .28, .5) : new Vector3(-sideSign * .13, -1, .3));
+    const { shoulder, elbow, hand } = joints;
+    const sideSign = Math.sign(elbow.getWorldPosition(new Vector3()).x - shoulder.getWorldPosition(new Vector3()).x);
+    aimDriverJoint(shoulder, elbow, new Vector3(sideSign * .27, -1, -.12));
+    aimDriverJoint(elbow, hand, side === "r" ? new Vector3(-sideSign * .7, .28, .5) : new Vector3(-sideSign * .13, -1, .3));
   }
 
   // The face mesh stops at the hairline. This opaque short-hair cap follows the
@@ -119,25 +104,4 @@ export function applyVillagerLook(model: ReturnType<typeof prepareVillager>, loo
   if (model.bow) model.bow.visible = Boolean(look.appearance.accent) || look.outfit.id === "shop-crew";
   model.crop.visible = cropped;
   model.crop.material.color.set(look.hair);
-}
-
-export function villagerIdlePose(root: Object3D) {
-  const idle = ["lowerarm_l", "hand_l", "lowerarm_r", "hand_r", "head"].flatMap((name, index) => {
-    const bone = root.getObjectByName(name);
-    return bone instanceof Bone ? [{ bone, rest: bone.quaternion.clone(), phase: index * .8 }] : [];
-  });
-  const right = arm(root, "r");
-  if (!right) return { idle, wave: [] };
-  const { shoulder, elbow, hand, sideSign } = right;
-  const shoulderRest = shoulder.quaternion.clone();
-  const elbowRest = elbow.quaternion.clone();
-  aim(shoulder, elbow, new Vector3(sideSign * .88, -.55, .28));
-  aim(elbow, hand, new Vector3(sideSign * .24, 1, .28));
-  const wave = [
-    { bone: shoulder, rest: shoulderRest, target: shoulder.quaternion.clone() },
-    { bone: elbow, rest: elbowRest, target: elbow.quaternion.clone() },
-  ];
-  for (const { bone, rest } of wave) bone.quaternion.copy(rest);
-  root.updateMatrixWorld(true);
-  return { idle, wave };
 }

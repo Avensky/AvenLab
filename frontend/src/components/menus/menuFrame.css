@@ -20,7 +20,17 @@ html[data-ui-theme] .menu-frame[role=dialog]{background:var(--app-panel);color:v
 .menu-frame button{cursor:pointer}.menu-frame button:disabled{cursor:default;opacity:.5}
 .menu-frame :is(button,select):hover{text-decoration:none!important}
 .menu-frame-header{box-sizing:border-box;pointer-events:auto;color:var(--app-text);font:calc(12px * var(--menu-text-scale,1))/1.45 ui-sans-serif,system-ui,sans-serif;display:flex;align-items:center;gap:18px;padding:var(--menu-header-y,4px) var(--menu-gutter,10px);flex-shrink:0;border-bottom:1px solid var(--app-line);background:var(--menu-chrome-surface,var(--app-panel))}
-.menu-frame-header>div:first-child{flex:1;min-width:0}
+.menu-frame-header > .menu-frame-title {
+ display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:0 7px;flex:1;min-width:0;
+}
+.menu-title-with-logo { display:flex;align-items:center;gap:7px; }
+img.menu-logo--header {
+ display:block;width:clamp(17px,2.4vw,26px);height:clamp(17px,2.4vw,26px);
+ flex:none;object-fit:contain;filter:none;
+}
+:is(.alpha-queue-card,.team-lineup-heading) .menu-title-with-logo { justify-content:center; }
+.menu-frame-title > .menu-logo { grid-area:1 / 1 / span 2; }
+.menu-frame-title > :is(small,h1) { grid-column:2; }
 .menu-frame-header small{margin:0;color:var(--app-accent);font-size:10px;font-weight:750;letter-spacing:.16em}
 .menu-frame-header>div:first-child>small{display:block;line-height:1.1}
 .menu-frame-header h1{margin:0;font-size:clamp(20px,2.6vw,32px);font-style:italic;font-weight:850;line-height:1.1;letter-spacing:.04em;text-transform:uppercase}

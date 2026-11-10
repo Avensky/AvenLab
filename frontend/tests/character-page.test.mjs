@@ -4,6 +4,7 @@ import { JSDOM } from 'jsdom';
 import { createServer } from 'vite';
 import { act, createElement as h } from 'react';
 import { createRoot } from 'react-dom/client';
+import { AnimationMixer, LoopOnce, Object3D } from 'three';
 
 test('Heroes opens the character picker, saves one profile choice, and opens Garage from a vehicle', async () => {
   const dom = new JSDOM('<div id="root"></div>', { url: 'http://localhost/', pretendToBeVisual: true });
@@ -119,5 +120,40 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
       if (descriptor) Object.defineProperty(globalThis, key, descriptor);
       else delete globalThis[key];
     }
+  }
+});
+
+test('the garage emote batch has ten distinct clips that return the driver to rest', async () => {
+  const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
+  try {
+    const { buildGarageEmotes } = await vite.ssrLoadModule('/src/game/characters/garageEmotes.ts');
+    const { characterLook } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
+    const { prepareStylizedDriver } = await vite.ssrLoadModule('/src/game/characters/stylizedDriverModel.ts');
+    const model = prepareStylizedDriver(characterLook({ id: 'jules-okafor', outfit: 'night-run' }));
+    const turntable = new Object3D();
+    turntable.rotation.y = 1;
+    turntable.add(model.root);
+    const capture = () => {
+      const values = [];
+      model.root.traverse(node => { if (node.isGroup) values.push(...node.position, ...node.quaternion); });
+      return values;
+    };
+    const rest = capture();
+    const clips = buildGarageEmotes(model.root);
+    const mixer = new AnimationMixer(model.root);
+    assert.deepEqual(clips.map(clip => clip.name.slice(0, 3)), Array.from({length: 10}, (_, i) => String(i + 1).padStart(3, '0')));
+    for (const clip of clips) {
+      const action = mixer.clipAction(clip).setLoop(LoopOnce, 1);
+      action.reset().play();
+      mixer.update(clip.duration * .36);
+      assert(capture().some((value, i) => Math.abs(value - rest[i]) > .005), clip.name);
+      mixer.update(clip.duration);
+      action.stop();
+      assert(capture().every((value, i) => Math.abs(value - rest[i]) < 1e-6), clip.name);
+    }
+    mixer.uncacheRoot(model.root);
+    model.dispose();
+  } finally {
+    await vite.close();
   }
 });
