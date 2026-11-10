@@ -48,11 +48,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 
 [[package]]
+name = "avenlab-physics"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8ae7e50a2af755c87c624b8864bd1f7bf2d91dc2f9166039059402e4015d9fd1"
+dependencies = [
+ "rapier3d",
+]
+
+[[package]]
 name = "avenlab-server"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "argon2",
+ "avenlab-physics",
  "bitflags",
  "futures",
  "nalgebra 0.32.6",
