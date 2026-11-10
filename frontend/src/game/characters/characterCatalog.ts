@@ -12,6 +12,8 @@ export const OUTFIT_THEMES = [
   { name: "Gothic Pink", color: "#101015", accent: "#ff2d95" },
   { name: "Midnight Circuit", color: "#171d36", accent: "#56e9ff" },
   { name: "Harbor Crew", color: "#263a35", accent: "#efaf6a" },
+  { name: "Black Cherry", color: "#2d1d28", accent: "#a84a70" },
+  { name: "Night Harbor", color: "#1c2c39", accent: "#56868c" },
 ] as const;
 export type CharacterChoice = { id: string; outfit: string; appearance?: CharacterAppearance; prop?: "shop-bag" };
 

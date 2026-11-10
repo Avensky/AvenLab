@@ -11,11 +11,25 @@ import { GARAGE_LEAN_ID, type GarageLeanFit } from "./garageLean";
 import { QUIET_THANK_YOU } from "./shyEmotes";
 import { COCKPIT_TAKES } from "./roadsideEmotes";
 import type { CockpitPlayback, GarageCockpit } from "../preview/garageCockpit";
+import { garageHoldEmotes } from "./garageHolds";
 
 const REST_SECONDS = 4.5;
 const FADE_SECONDS = .24;
 
 export type VictoryPlayback = { id: VictoryEmoteId; onFinish: () => void };
+
+type IdleRotation = { idle: AnimationAction; holds: AnimationAction[]; holdIndex: number };
+
+function selectHold(rotation: IdleRotation, index: number) {
+  if (rotation.holdIndex === index) return;
+  rotation.idle.stop();
+  rotation.holdIndex = index;
+  rotation.idle = rotation.holds[index].reset().play();
+}
+
+function nextHold(rotation: IdleRotation) {
+  selectHold(rotation, (rotation.holdIndex + 1) % rotation.holds.length);
+}
 
 function setBlinkWeight(targets: ReturnType<typeof driverFaceTargets>, weight: number) {
   for (const { mesh, index } of targets) mesh.morphTargetInfluences![index] = weight;
@@ -25,9 +39,8 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
   root: Object3D; bag?: boolean; previewPacks?: boolean; leanFit?: GarageLeanFit; victory?: VictoryPlayback; cockpit?: GarageCockpit;
 }) {
   const reducedMotion = usePreferencesStore(state => state.reducedMotion);
-  const player = useRef<{
+  const player = useRef<IdleRotation & {
     mixer: AnimationMixer;
-    idle: AnimationAction;
     actions: Map<string, AnimationAction>;
     automatic: AnimationAction[];
     active: AnimationAction | null;
@@ -48,6 +61,7 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
       ? buildEmoteClips(root, celebration ? [GARAGE_EMOTES[0], celebration] : [GARAGE_EMOTES[0]])
       : buildGarageEmotes(root, bag, previewPacks, leanFit);
     const idle = mixer.clipAction(breathing).play();
+    const holds = victory ? [idle] : [idle, ...buildEmoteClips(root, garageHoldEmotes(bag)).map(clip => mixer.clipAction(clip))];
     const actions = new Map(clips.map(clip => [clip.name.split(" ")[0], mixer.clipAction(clip).setLoop(LoopOnce, 1)]));
     actions.set("001", mixer.clipAction(breathing.clone()).setLoop(LoopOnce, 1));
     const automatic = [...actions].filter(([id]) => bag ? id.startsWith("bag-")
@@ -58,7 +72,7 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
     if (lean) automatic.splice(2, 0, lean);
     const blink = driverFaceTargets(root, "blink");
     const active = celebration ? actions.get(celebration.id)!.reset().setEffectiveWeight(0).play() : null;
-    player.current = { mixer, idle, actions, automatic, active, take: null, rest: REST_SECONDS, next: 0, wave: false, blink, elapsed: 0, preview: null };
+    player.current = { mixer, idle, holds, holdIndex: 0, actions, automatic, active, take: null, rest: REST_SECONDS, next: 0, wave: false, blink, elapsed: 0, preview: null };
     return () => {
       player.current?.take?.playback.stop();
       player.current = null;
@@ -75,10 +89,11 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
     const view = useCharacterPreviewStore.getState();
     const preview = view.emote;
     const inspectingFace = previewPacks && view.camera === "Face" && !preview;
-    if (inspectingFace && current.active) {
-      current.active.stop();
+    if (inspectingFace) {
+      current.active?.stop();
       current.active = null;
       current.rest = REST_SECONDS;
+      selectHold(current, 0);
       current.idle.setEffectiveWeight(1);
     }
     if (!victory && preview !== current.preview) {
@@ -115,13 +130,16 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
       }
       playback.stop();
       current.take = null;
-      current.idle.reset().setEffectiveWeight(1).play();
+      nextHold(current);
+      current.idle.setEffectiveWeight(1).play();
       current.rest = REST_SECONDS;
     }
     if (current.active) {
       const active = current.active;
       const duration = active.getClip().duration;
       const time = active.time + step;
+      // Swap the held stance while the gesture owns the full pose, before fading out.
+      if (!victory && active.time < duration - FADE_SECONDS && time >= duration - FADE_SECONDS) nextHold(current);
       if (time >= duration) {
         active.stop();
         current.active = null;

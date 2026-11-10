@@ -1,5 +1,7 @@
 import type { Emote } from "./garageEmotes";
 
+export const RACE_FACE = [-.21, -.28] as const;
+
 const count = {
   rightHand: [-1.46, .28, .59], rightPalm: [[.04, 1, .14], [0, 0, 1]],
   sway: -.027, rise: -.02,
@@ -104,7 +106,7 @@ const RIVALRY_EMOTES = [
     [.3, { feet: { l: gridStance.l, r: [-.016, .029, -.034, -.08] }, sway: .043, rise: -.039,
       leftHand: [1.49, -.61, .44], rightHand: [-1.49, -.57, .47], torso: [.1, -.05, -.045], head: [.02, -.04, -.035], face: [.08, .29] }],
     [.46, { feet: gridStance, sway: .024, rise: -.058, travel: .03,
-      leftHand: [1.56, -.59, .52], rightHand: [-1.56, -.57, .51], torso: [.173, -.018, -.018], head: [-.035, 0, .02], face: [-.21, -.28] }],
+      leftHand: [1.56, -.59, .52], rightHand: [-1.56, -.57, .51], torso: [.173, -.018, -.018], head: [-.035, 0, .02], face: RACE_FACE }],
     [.68, { feet: gridStance, sway: .022, rise: -.052, travel: .035,
       leftHand: [1.53, -.62, .48], rightHand: [-1.54, -.59, .48], torso: [.153, 0, -.015], head: [-.023, .035, .01], face: [-.05, -.24] }],
     [.81, { feet: { l: gridStance.l, r: [-.013, .029, -.035, -.07] }, sway: .037, rise: -.031, head: [.03, .14, -.016], face: [.41, .27] }],

@@ -25,12 +25,15 @@ export const walkReturn = [
 
 type Plant = readonly [across: number, forward: number, yaw: number];
 const phases = [.15, .3, .46, .64, .82, 1];
+const softPhases = [.15, .3, .46, .64, .82, .93, 1];
 const fullTurn = Math.PI * 2;
 const mix = (from: number, to: number, amount: number) => from + (to - from) * amount;
 
-function garageWalk(pathHeading: number, stride: number, glance: number): Emote["keys"] {
+function garageWalk(pathHeading: number, stride: number, glance: number, style?: "soft" | "dress-clearance"): Emote["keys"] {
   const heading = Math.abs(pathHeading);
   const direction = Math.sign(pathHeading) || 1;
+  const soft = style === "soft";
+  const clearDress = style === "dress-clearance";
   // Successive foot contacts and pelvis positions in the floor frame.
   const stops = [
     [[-.012, .19, heading], [0, .084, heading * .68]],
@@ -60,7 +63,7 @@ function garageWalk(pathHeading: number, stride: number, glance: number): Emote[
     const to = onFloor(nextContact);
     const next = onFloor(nextPelvis);
     const planted = plants[stance];
-    for (const phase of phases) {
+    for (const phase of soft ? softPhases : phases) {
       const progress = (index + phase) / stops.length;
       const roll = phase * phase * (3 - 2 * phase);
       const lift = Math.sin(phase * Math.PI);
@@ -69,19 +72,20 @@ function garageWalk(pathHeading: number, stride: number, glance: number): Emote[
       const weight = -side * .026 * lift * activity;
       const counter = -side * Math.cos(phase * Math.PI) * activity;
       const arm = (sign: number): readonly [XYZ, XYZ] => [
-        [.25 * sign, -1, counter * sign * .25 + .04],
-        [.12 * sign, -1, .25 + counter * sign * .19],
+        [.25 * sign, -1, counter * sign * .25 + .04], [.12 * sign, -1, .25 + counter * sign * .19],
       ];
+      const hands = (sign: number): XYZ => [sign * 2.03, -.62, .66 + counter * sign * .09];
       const look = Math.max(0, 1 - Math.abs(progress - .25) / .19);
+      const shoeLift = soft ? .034 * lift * lift : .054 * lift;
+      const toeRoll = (soft ? .095 * lift : .14) * Math.sin(2 * Math.PI * phase);
       keys.push([progress, {
-        left: activity ? arm(1) : undefined, right: activity ? arm(-1) : undefined,
+        ...(clearDress ? { leftHand: hands(1), rightHand: hands(-1) } : { left: arm(1), right: arm(-1) }),
         sway: mix(pelvis[0], next[0], phase) + weight * Math.cos(yaw),
         travel: mix(pelvis[1], next[1], phase) - weight * Math.sin(yaw),
-        rise: (-.043 + .026 * lift) * activity,
+        rise: (soft ? -.033 + .015 * lift : -.043 + .026 * lift) * activity,
         turn: yaw,
         feet: {
-          [stepping]: [mix(from[0], to[0], roll), .054 * lift, mix(from[1], to[1], roll), mix(from[2], to[2], roll),
-            .14 * Math.sin(2 * Math.PI * phase)],
+          [stepping]: [mix(from[0], to[0], roll), shoeLift, mix(from[1], to[1], roll), mix(from[2], to[2], roll), toeRoll],
           [stance]: [planted[0], 0, planted[1], planted[2]],
         },
         torso: [.039 * activity, counter * .095, weight * 2.35],
@@ -102,6 +106,6 @@ export const SIDEWAYS_CHECK: Emote = {
 };
 
 export const WALK_EMOTES = [
-  { id: "walk-casual", name: "Casual walk", duration: 5, keys: garageWalk(0, 1, .12) },
-  { id: "walk-glance", name: "Side step and glance", duration: 4.85, keys: garageWalk(-.69, .88, -.57) },
+  { id: "walk-casual", name: "Casual walk", duration: 5.3, keys: garageWalk(0, 1, .12, "soft") },
+  { id: "walk-glance", name: "Side step and glance", duration: 4.85, keys: garageWalk(-.69, .88, -.57, "dress-clearance") },
 ] as const satisfies readonly Emote[];

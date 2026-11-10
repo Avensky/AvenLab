@@ -10,6 +10,7 @@ import { availableTsundereEmotes } from "./tsundereEmotes";
 import { availableExpressionEmotes } from "./expressionEmotes";
 import { availableRoadsideEmotes } from "./roadsideEmotes";
 import { availableRivalryEmotes } from "./rivalryEmotes";
+import { availablePitCrewEmotes } from "./pitCrewEmotes";
 import { WALK_EMOTES } from "./walkingEmotes";
 import { garageLeanPose, type GarageLeanFit } from "./garageLean";
 
@@ -55,7 +56,7 @@ const claspLeft: Arm = [[1, -4, 1.2], [-2.4, 1.3, 3.5]];
 const claspRight: Arm = [[-1, -4, 1.2], [2.4, 1.3, 3.5]];
 const wave: Arm = [[-1, -.55, .28], [-.24, 1, .28]];
 
-export const EMOTE_GROUPS = ["Garage", "Victory", "Playful", "Shy", "Tsundere", "Expressions", "Roadside", "Rivalry"] as const;
+export const EMOTE_GROUPS = ["Garage", "Victory", "Playful", "Shy", "Tsundere", "Expressions", "Roadside", "Rivalry", "Pit Crew"] as const;
 export type EmoteGroup = typeof EMOTE_GROUPS[number];
 
 export const GARAGE_EMOTES = [
@@ -429,6 +430,7 @@ export function emoteCollection(group: EmoteGroup, bag: boolean, includeWalks = 
   if (group === "Expressions") return availableExpressionEmotes(bag);
   if (group === "Roadside") return availableRoadsideEmotes(bag);
   if (group === "Rivalry") return availableRivalryEmotes(bag);
+  if (group === "Pit Crew") return availablePitCrewEmotes(bag);
   if (bag) return [...GARAGE_EMOTES.filter(item => compatibleGarageEmotes(item.id)), ...BAG_EMOTES];
   return includeWalks ? [...GARAGE_EMOTES, ...WALK_EMOTES] : GARAGE_EMOTES;
 }

@@ -598,6 +598,10 @@ async fn character_equip_validates_the_choice_and_persists_it_on_the_profile() {
         styled["appearance"][field] = json!(value);
     }
     assert_eq!(s.handle(&player, json!({"action": "character_equip", "character": styled})).await.unwrap()["character"], styled);
+    for (field, value) in [("color", "deep-navy"), ("hair_color", "dark-auburn"), ("eye_color", "dark-walnut")] {
+        styled["appearance"][field] = json!(value);
+    }
+    assert_eq!(s.handle(&player, json!({"action": "character_equip", "character": styled})).await.unwrap()["character"], styled);
     let reloaded: SocialData = serde_json::from_slice(&tokio::fs::read(&s.path).await.unwrap()).unwrap();
     let progression = &reloaded.profiles[profile].progression;
     assert_eq!(progression.view()["character"], styled);

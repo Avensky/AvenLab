@@ -7,7 +7,9 @@
     { "id": "original", "label": "Original", "color": "#ffffff" },
     { "id": "espresso", "label": "Espresso", "color": "#34262b" },
     { "id": "copper", "label": "Copper", "color": "#ae5837" },
-    { "id": "ash", "label": "Ash", "color": "#c0b3aa" }
+    { "id": "ash", "label": "Ash", "color": "#c0b3aa" },
+    { "id": "soft-black", "label": "Soft black", "color": "#211d23" },
+    { "id": "dark-auburn", "label": "Dark auburn", "color": "#582f26" }
   ],
   "skin": [
     { "id": "original", "label": "Original", "color": "#ffffff" },
@@ -25,7 +27,9 @@
     { "id": "hazel", "label": "Hazel", "color": "#9b783e" },
     { "id": "green", "label": "Green", "color": "#658847" },
     { "id": "blue", "label": "Blue", "color": "#4c8db8" },
-    { "id": "gray", "label": "Gray", "color": "#8798a3" }
+    { "id": "gray", "label": "Gray", "color": "#8798a3" },
+    { "id": "dark-walnut", "label": "Dark walnut", "color": "#503321" },
+    { "id": "storm-blue", "label": "Storm blue", "color": "#35596a" }
   ],
   "brow_color": [
     { "id": "original", "label": "Match hair" },
@@ -43,6 +47,11 @@
     { "id": "original", "label": "Outfit colors", "color": "#ffffff" },
     { "id": "navy", "label": "Navy", "color": "#4b79a4" },
     { "id": "forest", "label": "Forest", "color": "#5f8962" },
-    { "id": "crimson", "label": "Crimson", "color": "#ad444d" }
+    { "id": "crimson", "label": "Crimson", "color": "#ad444d" },
+    { "id": "ink", "label": "Ink", "color": "#262630" },
+    { "id": "deep-navy", "label": "Deep navy", "color": "#293953" },
+    { "id": "pine-shadow", "label": "Pine shadow", "color": "#2b453b" },
+    { "id": "oxblood", "label": "Oxblood", "color": "#552c36" },
+    { "id": "aubergine", "label": "Aubergine", "color": "#453049" }
   ]
 }

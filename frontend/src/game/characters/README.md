@@ -24,7 +24,7 @@ Rook's imported model uses its short hair and coat meshes with the editor's
 hair, skin, and clothing color choices.
 
 Garage and the Sandbox hero picker play Garage Life (001–010), the first
-batch from the emote catalog. The driver breathes between gestures and a tap
+batch from the emote catalog. The driver cycles through held stances between gestures and a tap
 queues the friendly wave. The same clips are retargeted to Vesper's imported
 rig and the built-in drivers. Reduced Motion pauses character animation.
 Vesper also has procedural blink, smile, and brow shapes in the live preview.
@@ -46,9 +46,12 @@ Expressions (051–060) includes Fingertip plea, a two-handed gesture with
 watery eyes. Select the Hands camera to see the touch or Face for the expression.
 Roadside (061–070) adds driver and spotter gestures plus three scripted cockpit
 scenes. Choose the AE86 in Heroes and preview with empty hands. The last two
-scenes roll the car on the garage pad and return it to the mark.
+scenes open with a close view of the driver's side check and focused nod before
+the car rolls on the garage pad and returns to the mark.
 Rivalry (071–080) adds a starting countdown, racing gestures, a photo pose,
 and a post-race nod. Five are available while carrying the shop bag.
+Pit Crew (081–090) includes radio checks, pit signals, mirror checks, and a crew
+fist bump. Five are available with the shop bag.
 
 Character → Face opens a close-up for iris color, eyebrow tint, and glasses.
 Both villagers use these settings in the live model and their rendered portrait.

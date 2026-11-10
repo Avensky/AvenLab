@@ -93,12 +93,22 @@ export function applyVillagerLook(model: ReturnType<typeof prepareVillager>, loo
       case "MAT_ClothUpper":
       case "MAT_ClothLower":
         if (look.appearance.color !== "original" || look.outfit.id === "shop-crew" || look.outfit.id === "race-crew") {
-          material.color.set(look.fabric).lerp(source.color, look.appearance.color.startsWith("#") ? 0 : .45);
+          const tint = material.color.set(look.fabric);
+          if (!look.appearance.color.startsWith("#")) {
+            // Keep a trace of the source on lighter dyes without washing out deep shades.
+            tint.lerp(source.color, .32 * Math.max(tint.r, tint.g, tint.b));
+          }
         }
+        material.color.multiplyScalar(.74);
+        material.roughness = Math.max(source.roughness, .82);
+        material.metalness = Math.min(source.metalness, .2);
         break;
       case "MAT_Hair":
       case "MAT_LashBrow":
-        if (look.appearance.hair_color !== "original") material.color.set(look.hair).lerp(source.color, .18);
+        if (look.appearance.hair_color !== "original") {
+          const tint = material.color.set(look.hair);
+          tint.lerp(source.color, .22 * Math.max(tint.r, tint.g, tint.b));
+        }
         break;
       case "MAT_SkinBody":
       case "MAT_SkinFace":
