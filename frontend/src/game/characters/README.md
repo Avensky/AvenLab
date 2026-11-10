@@ -50,6 +50,12 @@ After Hours (091–100) adds small reactions, a shaka, and a lateral step-togeth
 Six are available with the shop bag.
 Showroom (103–112) adds a car reveal, a mimed key toss, and eight other
 gestures. Six are available with the shop bag.
+Elegant (113–120) includes a curtsy, gentle applause, and a formal farewell.
+Performer (121–130) includes a four-count side step, a full turn, an overhead
+heart, and a finale bow. Take the stage and Singalong invitation are
+choreographed as empty-handed audience gestures. Stoic starts with a deliberate
+nod and a perimeter scan (131–132). These packs play on selection in Character
+→ Emotes and return to the breathing idle.
 
 Garage puts the recommended standing emotes first. Best collects the strongest
 gestures from across the packs. Choose the AE86 in Heroes, equip Empty hands,

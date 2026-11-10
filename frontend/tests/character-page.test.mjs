@@ -124,13 +124,25 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(preview.getState().emote.id, '095');
     await click('.character-emotes button:last-child');
     assert.equal(preview.getState().emote.id, '100');
-    await click('[aria-label="Emote collection"] button:last-child');
-    assert.equal(find('[aria-label="Emote collection"] button:last-child').textContent, 'Showroom');
+    await click('[aria-label="Emote collection"] button:nth-child(11)');
+    assert.equal(find('[aria-label="Emote collection"] button:nth-child(11)').textContent, 'Showroom');
     assert.equal(document.querySelectorAll('.character-emotes button').length, 10);
     await click('.character-emotes button:first-child');
     assert.equal(preview.getState().emote.id, '103');
     await click('.character-emotes button:last-child');
     assert.equal(preview.getState().emote.id, '112');
+    for (const [index, name, first, last] of [
+      [12, 'Elegant', 113, 120], [13, 'Performer', 121, 130], [14, 'Stoic', 131, 132],
+    ]) {
+      const selector = `[aria-label="Emote collection"] button:nth-child(${index})`;
+      assert.equal(find(selector).textContent, name);
+      await click(selector);
+      assert.equal(document.querySelectorAll('.character-emotes button').length, last - first + 1);
+      await click('.character-emotes button:first-child');
+      assert.equal(preview.getState().emote.id, String(first));
+      await click('.character-emotes button:last-child');
+      assert.equal(preview.getState().emote.id, String(last));
+    }
     await click('[aria-label="Emote collection"] button:first-child');
     await click('[data-character-option="jules-okafor"]');
     assert.equal(find('[data-character-preview]').dataset.characterPreview, 'jules-okafor');
@@ -226,9 +238,15 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     await click('[aria-label="Emote collection"] button:nth-child(10)');
     assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent),
       ['Neck reset', 'Fix the fringe', 'Hang loose', 'Shade the lights', 'Rain check', 'Keys check']);
-    await click('[aria-label="Emote collection"] button:last-child');
+    await click('[aria-label="Emote collection"] button:nth-child(11)');
     assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent),
       ['Key toss', 'Spot a scratch', 'Finger snap', 'Window knock', 'Camera shy', 'Perfect fit']);
+    await click('[aria-label="Emote collection"] button:nth-child(12)');
+    assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent),
+      ['Gracious presentation', 'Pardon me', 'Offer the floor', 'Accept the praise', 'Formal farewell']);
+    await click('[aria-label="Emote collection"] button:nth-child(13)');
+    assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent),
+      ['Take the stage', 'Encore request']);
     await click('[aria-label="Preview gender"] [data-character-option="mara-vega"]');
     assert.equal(drafts.at(-1).id, 'mara-vega');
     assert.equal(drafts.at(-1).prop, 'shop-bag');
@@ -290,7 +308,7 @@ test('all emote batches return to rest and keep planted and lifted feet distinct
     const mixer = new AnimationMixer(model.root);
     const ids = clips.map(clip => clip.name.split(' ')[0]);
     const numbered = [...ids.filter(id => /^\d+$/.test(id)), ...COCKPIT_TAKES.map(take => take.id)].sort();
-    assert.deepEqual(numbered, Array.from({length: 112}, (_, i) => String(i + 1).padStart(3, '0')));
+    assert.deepEqual(numbered, Array.from({length: 132}, (_, i) => String(i + 1).padStart(3, '0')));
     assert.deepEqual(AUTOMATIC_GARAGE_EMOTE_IDS, ['035', '002', '005', '009', '010']);
     assert(COCKPIT_TAKES.every(({ id }) => !ids.includes(id)));
     assert.deepEqual(ids.filter(id => id.startsWith('walk-')), ['walk-casual']);

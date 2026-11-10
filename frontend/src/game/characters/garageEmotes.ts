@@ -13,6 +13,9 @@ import { availableRivalryEmotes } from "./rivalryEmotes";
 import { availablePitCrewEmotes } from "./pitCrewEmotes";
 import { availableAfterHoursEmotes } from "./afterHoursEmotes";
 import { availableShowroomEmotes } from "./showroomEmotes";
+import { availableElegantEmotes } from "./elegantEmotes";
+import { availablePerformerEmotes } from "./performerEmotes";
+import { STOIC_EMOTES } from "./stoicEmotes";
 import { WALK_EMOTES } from "./walkingEmotes";
 
 export type XYZ = readonly [number, number, number];
@@ -57,7 +60,10 @@ const claspLeft: Arm = [[1, -4, 1.2], [-2.4, 1.3, 3.5]];
 const claspRight: Arm = [[-1, -4, 1.2], [2.4, 1.3, 3.5]];
 const wave: Arm = [[-1, -.55, .28], [-.24, 1, .28]];
 
-export const EMOTE_GROUPS = ["Garage", "Victory", "Playful", "Shy", "Tsundere", "Expressions", "Roadside", "Rivalry", "Pit Crew", "After Hours", "Showroom"] as const;
+export const EMOTE_GROUPS = [
+  "Garage", "Victory", "Playful", "Shy", "Tsundere", "Expressions", "Roadside", "Rivalry", "Pit Crew",
+  "After Hours", "Showroom", "Elegant", "Performer", "Stoic",
+] as const;
 export type EmoteGroup = typeof EMOTE_GROUPS[number];
 export const AUTOMATIC_GARAGE_EMOTE_IDS = ["035", "002", "005", "009", "010"];
 const BEST_EMOTE_IDS = ["035", "090", "072", "051", "018", "094", "095", "100"];
@@ -438,6 +444,9 @@ export function emoteCollection(group: EmoteGroup, bag: boolean, includeWalks = 
   if (group === "Pit Crew") return availablePitCrewEmotes(bag);
   if (group === "After Hours") return availableAfterHoursEmotes(bag);
   if (group === "Showroom") return availableShowroomEmotes(bag);
+  if (group === "Elegant") return availableElegantEmotes(bag);
+  if (group === "Performer") return availablePerformerEmotes(bag);
+  if (group === "Stoic") return STOIC_EMOTES;
   if (bag) return [...GARAGE_EMOTES.filter(item => compatibleGarageEmotes(item.id)), ...BAG_EMOTES];
   return includeWalks ? [...GARAGE_EMOTES, ...WALK_EMOTES] : GARAGE_EMOTES;
 }
