@@ -1,6 +1,7 @@
 import type { Emote } from "./garageEmotes";
 
 export const GARAGE_LEAN_ID = "pose-lean";
+export const GARAGE_LEAN_NAME = "Folded arms by the door";
 export type GarageLeanFit = { offset: number; distance: number };
 
 export const FOLDED_ARMS = {
@@ -14,7 +15,7 @@ export function garageLeanPose({ offset, distance }: GarageLeanFit): Emote {
   const r = [-.012, 0, -offset, -.06] as const;
   const armsAside = { leftHand: [1.22, -.39, .62], rightHand: [-1.16, -.41, .61] } as const;
   const stance = { ...FOLDED_ARMS, travel: -offset - distance, sway: -.031, rise: -.037, feet: { l, r } } as const;
-  return { id: GARAGE_LEAN_ID, name: "Folded arms by the door", duration: 9.2, keys: [
+  return { id: GARAGE_LEAN_ID, name: GARAGE_LEAN_NAME, duration: 9.2, keys: [
     [.05, { ...armsAside, travel: -offset * .23, sway: -.026, rise: -.026, feet: { l: [.016, .022, -offset * .52, .07] } }],
     [.09, { ...armsAside, travel: -offset * .59, sway: -.018, rise: -.03, feet: { l } }],
     [.13, { ...FOLDED_ARMS, travel: -offset * .85, sway: .019, rise: -.029, feet: { l, r: [-.006, .024, -offset * .63, -.04] } }],

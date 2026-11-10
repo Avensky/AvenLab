@@ -154,8 +154,11 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(preview.getState().insideCar, true);
     assert.equal(find('[aria-label="Emote collection"]'), null);
     assert.equal(find('[aria-label="Driving emotes"] button:last-child').textContent, 'Driver thumbs-up');
+    await select('Preview camera', 'Whole car');
     await click('[aria-label="Driving emotes"] button:last-child');
     assert.equal(preview.getState().emote.id, '102');
+    assert.equal(preview.getState().camera, 'Whole car');
+    await select('Preview camera', 'Full body');
     await click(cockpitToggle);
     assert.equal(preview.getState().insideCar, false);
     assert.equal(preview.getState().emote, null);
@@ -165,10 +168,10 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(preview.getState().insideCar, false);
     assert.equal(preview.getState().emote, null);
     assert.equal(find('select[aria-label="Eye color"]').value, 'original');
-    await select('Eye color', 'blue');
+    await select('Eye color', 'obsidian');
     await select('Eyebrow tint', 'copper');
     await select('Glasses', 'aviator');
-    assert.equal(drafts.at(-1).appearance.eye_color, 'blue');
+    assert.equal(drafts.at(-1).appearance.eye_color, 'obsidian');
     assert.equal(drafts.at(-1).appearance.brow_color, 'copper');
     assert.equal(drafts.at(-1).appearance.glasses, 'aviator');
     await click('#character-editor-tab-clothes');
@@ -184,7 +187,7 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(requests.length, 1);
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 350)); });
     assert.equal(requests.length, 2, 'rapid changes coalesce');
-    assert.equal(requests[1].character.appearance.eye_color, 'blue');
+    assert.equal(requests[1].character.appearance.eye_color, 'obsidian');
     assert.equal(requests[1].character.appearance.brow_color, 'copper');
     assert.equal(requests[1].character.appearance.glasses, 'aviator');
     await click('#character-editor-tab-props');
@@ -245,7 +248,7 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(find('[data-outfit-preview]').dataset.outfitPreview, 'race-crew');
     assert.equal(find('[data-character-option]'), null, 'gender stays locked after reopening');
     await click('#character-editor-tab-face');
-    assert.equal(find('select[aria-label="Eye color"]').value, 'blue');
+    assert.equal(find('select[aria-label="Eye color"]').value, 'obsidian');
 
   } finally {
     if (root) await act(async () => root.unmount());
@@ -261,7 +264,8 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
 test('all emote batches return to rest and keep planted and lifted feet distinct', async () => {
   const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
   try {
-    const { buildGarageEmotes, AUTOMATIC_GARAGE_EMOTE_IDS } = await vite.ssrLoadModule('/src/game/characters/garageEmotes.ts');
+    const { buildGarageEmotes, buildEmoteClips, AUTOMATIC_GARAGE_EMOTE_IDS } = await vite.ssrLoadModule('/src/game/characters/garageEmotes.ts');
+    const { garageLeanPose } = await vite.ssrLoadModule('/src/game/characters/garageLean.ts');
     const { COCKPIT_TAKES } = await vite.ssrLoadModule('/src/game/characters/cockpitEmotes.ts');
     const { sampleCockpitMotion } = await vite.ssrLoadModule('/src/game/preview/garageCockpit.ts');
     const { characterLook } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
@@ -281,15 +285,15 @@ test('all emote batches return to rest and keep planted and lifted feet distinct
     const ids = clips.map(clip => clip.name.split(' ')[0]);
     const numbered = [...ids.filter(id => /^\d+$/.test(id)), ...COCKPIT_TAKES.map(take => take.id)].sort();
     assert.deepEqual(numbered, Array.from({length: 112}, (_, i) => String(i + 1).padStart(3, '0')));
-    assert(!AUTOMATIC_GARAGE_EMOTE_IDS.includes('006'));
+    assert.deepEqual(AUTOMATIC_GARAGE_EMOTE_IDS, ['035', '002', '005', '009', '010']);
     assert(COCKPIT_TAKES.every(({ id }) => !ids.includes(id)));
     assert.deepEqual(ids.filter(id => id.startsWith('walk-')), ['walk-casual', 'walk-glance']);
-    assert.deepEqual(buildGarageEmotes(model.root).map(clip => clip.name.split(' ')[0]), ['001', '002', '003', '005', '009', '010', '035']);
+    assert.deepEqual(buildGarageEmotes(model.root).map(clip => clip.name.split(' ')[0]), ['001', '002', '005', '009', '010', '035']);
     assert(!buildGarageEmotes(model.root, true).some(clip => clip.name.startsWith('035 ')));
     const leanFit = { offset: .15, distance: .06 };
-    const lean = buildGarageEmotes(model.root, false, false, leanFit).at(-1);
+    const [lean] = buildEmoteClips(model.root, [garageLeanPose(leanFit)]);
     assert(lean.name.startsWith('pose-lean '));
-    assert(!buildGarageEmotes(model.root, true, false, leanFit).some(clip => clip.name.startsWith('pose-lean ')));
+    assert(!buildGarageEmotes(model.root, true).some(clip => clip.name.startsWith('pose-lean ')));
     assert.equal(sampleCockpitMotion('068', .4).travel, 0);
     assert(sampleCockpitMotion('068', .4).steering > .2);
     assert(sampleCockpitMotion('069', .49).travel > .85);

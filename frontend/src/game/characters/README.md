@@ -56,14 +56,16 @@ Garage puts the recommended standing emotes first. Best collects the strongest
 gestures from across the packs. Choose the AE86 in Heroes, equip Empty hands,
 then open Character → Emotes → Inside car for the driving set. Window wave and
 Driver thumbs-up keep the left hand on the steering wheel while the car rolls.
-The driver stays seated between clips. Exit car returns to the standing preview.
+Use the Whole car camera for a wide shot throughout a take. The driver stays
+seated between clips. Exit car returns to the standing preview.
 
 Character → Face opens a close-up for iris color, eyebrow tint, and glasses.
+The iris palette includes Obsidian black and five other deep shades.
 Both villagers use these settings in the live model and their rendered portrait.
 
-Rook's coat outfits occasionally fold their arms and lean by the driver
-door. The pose requires a fitted road-car side panel, closed doors, and
-empty hands. It stays out of the wardrobe and body-panel inspection views.
+Rook's coat outfits can preview Folded arms by the door under Garage emotes.
+The pose requires a fitted road-car side panel, closed doors, and empty hands.
+Heroes cycles shorter gestures with a breathing idle between them.
 
 The Props tab loads the black-and-gold bag from
 `frontend/public/models/characters/props/bag-black-gold/`. The mobile GLB is

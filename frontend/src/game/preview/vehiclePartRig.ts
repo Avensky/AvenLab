@@ -19,7 +19,7 @@ function meshCandidates(root:Object3D,part:VehicleStudioPart){
  root.traverse(object=>{if((object as Mesh).isMesh&&pattern.test(object.name)&&!/(?:sticker|decal|latch|arm|frame)$/i.test(object.name))found.push(object as Mesh);});
  return found;
 }
-export function measureDriverDoor(root: Object3D) {
+export function measureDriverDoor(root: Object3D, model?: string) {
  const frontLeft = /(?:driver.*door|door.*driver|(?:front|f)[_ .-]*(?:left|l).*door|(?:left|l)[_ .-]*(?:front|f).*door|door[_ .-]*(?:fl|front[_ .-]*left|left[_ .-]*front))/i;
  const explicit: Mesh[] = [], left: Mesh[] = [];
  root.traverse(object => {
@@ -31,6 +31,13 @@ export function measureDriverDoor(root: Object3D) {
  if (parts.length) return boundsInRoot(root, parts);
  const driverWindow = root.getObjectByName("WINDOW_FRONT_LEFT") ?? root.getObjectByName("WINDOW_LEFT");
  if (driverWindow instanceof Mesh) return boundsInRoot(root, [driverWindow]);
+ const wheel = model === "ae86" ? root.getObjectByName("SteeringWheel") : null;
+ if (wheel) {
+  // The AE86 has no named door panel. Stand beside the seat behind its wheel.
+  const seat = boundsInRoot(root, [wheel]).getCenter(new Vector3());
+  seat.z -= .43;
+  return new Box3(seat, seat.clone());
+ }
  // Some imports (including Sierra) pack the cab and doors into the body.
  // Use the cab glass and front lamp marker to locate its front seat.
  const glass = root.getObjectByName("GLASS_GEO");

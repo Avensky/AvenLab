@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { AnimationMixer, LoopOnce, MathUtils, type AnimationAction, type Object3D } from "three";
 import { usePreferencesStore } from "../../store/preferences/preferencesStore";
@@ -7,13 +7,12 @@ import { driverFaceTargets } from "./villagerFace";
 import { useCharacterPreviewStore } from "./characterPreviewStore";
 import { DriverBag } from "./DriverBag";
 import { availableVictoryEmotes, type VictoryEmoteId } from "./victoryEmotes";
-import { GARAGE_LEAN_ID, type GarageLeanFit } from "./garageLean";
+import { GARAGE_LEAN_ID, garageLeanPose, type GarageLeanFit } from "./garageLean";
 import { COCKPIT_TAKES, type CockpitTake } from "./cockpitEmotes";
 import type { CockpitPlayback, GarageCockpit } from "../preview/garageCockpit";
 import { garageHoldEmotes } from "./garageHolds";
 
-const REST_SECONDS = 4.5;
-const FADE_SECONDS = .24;
+const FADE_SECONDS = .52;
 
 export type VictoryPlayback = { id: VictoryEmoteId; onFinish: () => void };
 
@@ -38,11 +37,13 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
   root: Object3D; bag?: boolean; previewPacks?: boolean; leanFit?: GarageLeanFit; victory?: VictoryPlayback; cockpit?: GarageCockpit;
 }) {
   const reducedMotion = usePreferencesStore(state => state.reducedMotion);
+  const restSeconds = previewPacks ? 4.5 : 2.35;
   const player = useRef<IdleRotation & {
     mixer: AnimationMixer;
     actions: Map<string, AnimationAction>;
     automatic: AnimationAction[];
     active: AnimationAction | null;
+    release: { elapsed: number; weight: number } | null;
     cabin: CockpitPlayback | null;
     take: { clip: CockpitTake; seconds: number } | null;
     rest: number;
@@ -53,24 +54,28 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
     preview: ReturnType<typeof useCharacterPreviewStore.getState>["emote"];
   }>(null);
 
+  useLayoutEffect(() => {
+    if (!previewPacks || !leanFit || reducedMotion) return;
+    useCharacterPreviewStore.setState({ leanAvailable: true });
+    return () => useCharacterPreviewStore.setState({ leanAvailable: false });
+  }, [previewPacks, leanFit, reducedMotion]);
+
   useEffect(() => {
     if (reducedMotion) return;
     const mixer = new AnimationMixer(root);
     const celebration = victory && availableVictoryEmotes(bag).find(emote => emote.id === victory.id);
     const [breathing, ...clips] = victory
       ? buildEmoteClips(root, celebration ? [GARAGE_EMOTES[0], celebration] : [GARAGE_EMOTES[0]])
-      : buildGarageEmotes(root, bag, false, leanFit);
+      : buildGarageEmotes(root, bag);
     const idle = mixer.clipAction(breathing).play();
-    const holds = victory ? [idle] : [idle, ...buildEmoteClips(root, garageHoldEmotes(bag)).map(clip => mixer.clipAction(clip))];
+    const holds = victory || !previewPacks ? [idle] : [idle, ...buildEmoteClips(root, garageHoldEmotes(bag)).map(clip => mixer.clipAction(clip))];
     const actions = new Map(clips.map(clip => [clip.name.split(" ")[0], mixer.clipAction(clip).setLoop(LoopOnce, 1)]));
     actions.set("001", mixer.clipAction(breathing.clone()).setLoop(LoopOnce, 1));
     const automatic = bag ? [...actions].filter(([id]) => id.startsWith("bag-")).map(([, action]) => action)
       : AUTOMATIC_GARAGE_EMOTE_IDS.flatMap(id => actions.get(id) ?? []);
-    const lean = actions.get(GARAGE_LEAN_ID);
-    if (lean) automatic.splice(2, 0, lean);
     const blink = driverFaceTargets(root, "blink");
     const active = celebration ? actions.get(celebration.id)!.reset().setEffectiveWeight(0).play() : null;
-    player.current = { mixer, idle, holds, holdIndex: 0, actions, automatic, active, cabin: null, take: null, rest: REST_SECONDS, next: 0, wave: false, blink, elapsed: 0, preview: null };
+    player.current = { mixer, idle, holds, holdIndex: 0, actions, automatic, active, release: null, cabin: null, take: null, rest: restSeconds, next: 0, wave: false, blink, elapsed: 0, preview: null };
     return () => {
       player.current?.cabin?.stop();
       player.current = null;
@@ -78,7 +83,7 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
       mixer.uncacheRoot(root);
       setBlinkWeight(blink, 0);
     };
-  }, [reducedMotion, root, bag, leanFit, victory, cockpit]);
+  }, [reducedMotion, root, bag, previewPacks, leanFit, victory, cockpit, restSeconds]);
 
   useFrame((_, delta) => {
     const current = player.current;
@@ -97,6 +102,7 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
       if (!current.cabin) {
         current.active?.stop();
         current.active = null;
+        current.release = null;
         current.idle.stop();
         current.wave = false;
         current.preview = null;
@@ -126,25 +132,28 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
       current.take = null;
       current.preview = null;
       current.idle.reset().setEffectiveWeight(1).play();
-      current.rest = REST_SECONDS;
+      current.rest = restSeconds;
     }
     const inspectingFace = previewPacks && view.camera === "Face" && !preview;
     if (inspectingFace) {
       current.active?.stop();
       current.active = null;
-      current.rest = REST_SECONDS;
+      current.release = null;
+      current.rest = restSeconds;
       selectHold(current, 0);
       current.idle.setEffectiveWeight(1);
     }
-    if (!victory && preview !== current.preview) {
+    if (!victory && preview !== current.preview && current.active) {
+      current.release ??= { elapsed: 0, weight: current.active.getEffectiveWeight() };
+    }
+    if (!victory && preview !== current.preview && !current.active) {
       current.preview = preview;
       let action = preview ? current.actions.get(preview.id) : undefined;
       if (!action && preview) {
-        const emote = findGaragePreviewEmote(preview.id, bag);
+        const emote = preview.id === GARAGE_LEAN_ID && leanFit ? garageLeanPose(leanFit) : findGaragePreviewEmote(preview.id, bag);
         if (emote) {
           // The solver needs the rest skeleton. Release mixer bindings before
           // compiling one clip, then keep it for the rest of this preview.
-          current.active?.stop();
           current.idle.stop();
           action = current.mixer.clipAction(buildEmoteClips(root, [emote])[0]).setLoop(LoopOnce, 1);
           current.actions.set(preview.id, action);
@@ -152,25 +161,27 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
         }
       }
       if (action) {
-        current.active?.stop();
         current.active = action.reset().setEffectiveWeight(0).play();
         current.idle.setEffectiveWeight(1);
       }
     }
     if (current.active) {
-      const active = current.active;
+      const { active, release } = current;
       const duration = active.getClip().duration;
       const time = active.time + step;
+      if (release) release.elapsed += step;
       // Swap the held stance while the gesture owns the full pose, before fading out.
-      if (!victory && active.time < duration - FADE_SECONDS && time >= duration - FADE_SECONDS) nextHold(current);
-      if (time >= duration) {
+      if (!victory && !release && active.time < duration - FADE_SECONDS && time >= duration - FADE_SECONDS) nextHold(current);
+      if (time >= duration || (release && release.elapsed >= FADE_SECONDS)) {
         active.stop();
         current.active = null;
-        current.rest = REST_SECONDS;
+        current.release = null;
+        current.rest = restSeconds;
         current.idle.setEffectiveWeight(1);
         victory?.onFinish();
       } else {
-        const weight = MathUtils.smoothstep(Math.min(time, duration - time), 0, FADE_SECONDS);
+        const clipWeight = MathUtils.smoothstep(Math.min(time, duration - time), 0, FADE_SECONDS);
+        const weight = release ? Math.min(clipWeight, release.weight * (1 - MathUtils.smoothstep(release.elapsed, 0, FADE_SECONDS))) : clipWeight;
         active.setEffectiveWeight(weight);
         current.idle.setEffectiveWeight(1 - weight);
       }

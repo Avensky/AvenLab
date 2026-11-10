@@ -51,7 +51,7 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks}:{
     useCharacterPreviewStore.setState({ cockpitAvailable: true });
     return () => useCharacterPreviewStore.setState({ cockpitAvailable: false });
   }, [cockpitAvailable]);
-  const driverDoor = useMemo(() => vehicleSystems(model) === "road" ? measureDriverDoor(prepared.root) : null, [prepared, model]);
+  const driverDoor = useMemo(() => vehicleSystems(model) === "road" ? measureDriverDoor(prepared.root, model) : null, [prepared, model]);
   const partRig=useMemo(()=>createVehiclePartRig(prepared.root,model),[prepared,model]);
   const marine=vehicleSystems(model)==="marine";
   const inspectBody=useVehicleStudioStore(s=>s.activeTab==="body"||s.parts["door-left"]||s.parts["door-right"]);
@@ -143,6 +143,7 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks}:{
     [measurements, platform],
   );
   const driverScale = marine ? 1.35 : display.scale;
+  const hasDriver = Boolean(driver);
   const rook = driver?.id === ROOK_ID;
   const staging = useMemo(() => {
     const vehicleCenter = measurements.centering.getCenter(new Vector3());
@@ -151,13 +152,17 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks}:{
     const edge = side < 0
       ? Math.min(driverDoor?.min.x ?? Infinity, measurements.bounds.min.x)
       : Math.max(driverDoor?.max.x ?? -Infinity, measurements.bounds.max.x);
-    const lean = rook && doorCenter && Number.isFinite(edge)
+    const fit = hasDriver && doorCenter && Number.isFinite(edge)
       ? measureDriverLean(prepared.root, edge + side * .27, measurements.support.min.y, doorCenter.z, side)
       : undefined;
-    return { side, edge, along: doorCenter?.z, lean };
-  }, [driverDoor, measurements, prepared, rook]);
-  const lean = inspectBody || previewPacks || driver?.prop ? undefined : staging.lean;
-  const driverAcross = staging.edge * display.scale + display.position[0] + staging.side * .27 * driverScale;
+    return { side, edge, along: doorCenter?.z, fit };
+  }, [driverDoor, measurements, prepared, hasDriver]);
+  const inset = inspectBody ? 0 : Math.min(staging.fit?.offset ?? 0, rook ? .14 : .06);
+  const lean = useMemo(() => {
+    const fit = staging.fit;
+    return !rook || inspectBody || !previewPacks || driver?.prop || !fit ? undefined : { ...fit, offset: fit.offset - inset };
+  }, [staging.fit, rook, inspectBody, previewPacks, driver?.prop, inset]);
+  const driverAcross = staging.edge * display.scale + display.position[0] + staging.side * (.27 - inset) * driverScale;
   // Vehicles without an authored front door still stage beside the front seat.
   const driverAlong = staging.along === undefined ? display.footprint[1] * .12 : staging.along * display.scale + display.position[2];
   return (

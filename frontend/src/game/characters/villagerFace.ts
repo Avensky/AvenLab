@@ -39,9 +39,9 @@ export function prepareVillagerFaceColors(materials: Iterable<MeshStandardMateri
           vec2 eye = (vec2(abs(vFaceBind.x), vFaceBind.y) - eyeCenter) / irisRadius;
           float radial = length(eye);
           float streak = sin(atan(eye.y, eye.x + 0.00001) * 31.0 + radial * 14.0);
-          vec3 pigment = faceTint * (0.94 + 0.18 * streak);
+          vec3 pigment = faceTint * (0.78 + 0.14 * streak);
           pigment *= 1.0 - 0.73 * smoothstep(0.78, 1.0, radial);
-          pigment = mix(vec3(0.004), pigment, smoothstep(0.36, 0.44, radial));
+          pigment = mix(vec3(0.0015), pigment, smoothstep(0.36, 0.44, radial));
           diffuseColor.rgb = mix(diffuseColor.rgb, pigment, 1.0 - smoothstep(0.95, 1.06, radial));
         ` : `
           #include <map_fragment>

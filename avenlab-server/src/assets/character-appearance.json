@@ -29,7 +29,13 @@
     { "id": "blue", "label": "Blue", "color": "#4c8db8" },
     { "id": "gray", "label": "Gray", "color": "#8798a3" },
     { "id": "dark-walnut", "label": "Dark walnut", "color": "#503321" },
-    { "id": "storm-blue", "label": "Storm blue", "color": "#35596a" }
+    { "id": "storm-blue", "label": "Storm blue", "color": "#35596a" },
+    { "id": "obsidian", "label": "Obsidian black", "color": "#101014" },
+    { "id": "espresso", "label": "Espresso brown", "color": "#332017" },
+    { "id": "charcoal", "label": "Charcoal gray", "color": "#36383e" },
+    { "id": "pine", "label": "Deep pine", "color": "#293d2b" },
+    { "id": "midnight", "label": "Midnight blue", "color": "#243550" },
+    { "id": "plum", "label": "Black plum", "color": "#403040" }
   ],
   "brow_color": [
     { "id": "original", "label": "Match hair" },

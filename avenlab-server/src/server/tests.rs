@@ -598,7 +598,7 @@ async fn character_equip_validates_the_choice_and_persists_it_on_the_profile() {
         styled["appearance"][field] = json!(value);
     }
     assert_eq!(s.handle(&player, json!({"action": "character_equip", "character": styled})).await.unwrap()["character"], styled);
-    for (field, value) in [("color", "deep-navy"), ("hair_color", "dark-auburn"), ("eye_color", "dark-walnut")] {
+    for (field, value) in [("color", "deep-navy"), ("hair_color", "dark-auburn"), ("eye_color", "obsidian")] {
         styled["appearance"][field] = json!(value);
     }
     assert_eq!(s.handle(&player, json!({"action": "character_equip", "character": styled})).await.unwrap()["character"], styled);

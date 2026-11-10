@@ -71,10 +71,13 @@ export function VehiclePreview({
     const { position, target, offset, anchorRotation, pivot, eye, nextEye, orbit, swing, lookAt } = aim;
     position.set(...cameraPosition);
     target.set(0, driverStage ? 1.17 : 1.35, 0);
+    let lensZoom = zoom;
     if (wardrobeOpen) {
       const view = useCharacterPreviewStore.getState();
-      const cockpit = view.insideCar ? turntable?.getObjectByName("garage-cockpit-camera") : undefined;
-      const anchor = cockpit ? undefined : turntable?.getObjectByName("garage-driver");
+      const wide = view.camera === "Whole car";
+      const cockpit = view.insideCar ? turntable?.getObjectByName(wide ? "garage-cockpit-overview" : "garage-cockpit-camera") : undefined;
+      const anchor = cockpit || wide ? undefined : turntable?.getObjectByName("garage-driver");
+      if (wide && !cockpit) lensZoom = view.zoom;
       if (cockpit) {
         cockpit.children[0].getWorldPosition(position);
         cockpit.getWorldPosition(target);
@@ -120,9 +123,9 @@ export function VehiclePreview({
     camera.quaternion.setFromRotationMatrix(lookAt.lookAt(camera.position, pivot, camera.up));
     const currentX = camera.view?.offsetX ?? offsetX;
     const currentY = camera.view?.offsetY ?? offsetY;
-    const reframing = Math.abs(currentX - offsetX) > .01 || Math.abs(currentY - offsetY) > .01 || Math.abs(camera.zoom - zoom) > .0001;
+    const reframing = Math.abs(currentX - offsetX) > .01 || Math.abs(currentY - offsetY) > .01 || Math.abs(camera.zoom - lensZoom) > .0001;
     if (reframing || camera.view?.fullWidth !== width || camera.view?.fullHeight !== height) {
-      camera.zoom = MathUtils.lerp(camera.zoom, zoom, blend);
+      camera.zoom = MathUtils.lerp(camera.zoom, lensZoom, blend);
       camera.setViewOffset(width, height, MathUtils.lerp(currentX, offsetX, blend), MathUtils.lerp(currentY, offsetY, blend), width, height);
     }
     if (frameloop === "demand" && (reframing || camera.position.distanceToSquared(position) > .000001 || pivot.distanceToSquared(target) > .000001)) invalidate();

@@ -83,9 +83,10 @@ export function measureDriverLean(root: Object3D, across: number, floor: number,
     if (object instanceof Mesh && !/mirror|window|glass|tire|tyre|wheel|decal/i.test(object.name)) panels.push(object);
   });
   const ray = new Raycaster();
-  const gapAt = (height: number) => {
-    const from = root.localToWorld(new Vector3(across, floor + height, along));
-    const direction = root.localToWorld(new Vector3(across - side * .72, floor + height, along)).sub(from);
+  const gapAt = (height: number, alongOffset = 0) => {
+    const z = along + alongOffset;
+    const from = root.localToWorld(new Vector3(across, floor + height, z));
+    const direction = root.localToWorld(new Vector3(across - side * .72, floor + height, z)).sub(from);
     ray.far = direction.length();
     ray.set(from, direction.normalize());
     const hit = ray.intersectObjects(panels, false).find(({ object, face }) => {
@@ -95,14 +96,15 @@ export function measureDriverLean(root: Object3D, across: number, floor: number,
     });
     return hit ? side * (across - root.worldToLocal(hit.point).x) : Infinity;
   };
-  const hip = Math.min(gapAt(.78), gapAt(.93));
+  // Fit the width of the coat against the panel, including front-door bulges.
+  const hip = Math.min(gapAt(.78), gapAt(.93), gapAt(.93, -.16), gapAt(.93, .16));
   const lower = Math.min(gapAt(.3), gapAt(.56));
   const upper = gapAt(1.16);
   if (!Number.isFinite(hip) || !Number.isFinite(lower)) return undefined;
   // The lineup's outer bounds can come from mirrors. Stage inside that
   // envelope only as far as the boots and upper body have room.
   const offset = Math.min(.21, hip - .29, lower - .21, upper - .29);
-  const distance = Math.min(hip, upper) - offset - .22;
+  const distance = Math.min(hip, upper) - offset - .18;
   if (offset < 0 || distance < .02 || distance > .13) return undefined;
   return { offset, distance };
 }
