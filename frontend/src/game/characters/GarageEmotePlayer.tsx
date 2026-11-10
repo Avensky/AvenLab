@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { AnimationMixer, LoopOnce, MathUtils, type AnimationAction, type Object3D } from "three";
 import { usePreferencesStore } from "../../store/preferences/preferencesStore";
-import { AUTOMATIC_GARAGE_EMOTE_IDS, buildEmoteClips, buildGarageEmotes, GARAGE_EMOTES } from "./garageEmotes";
+import { AUTOMATIC_GARAGE_EMOTE_IDS, buildEmoteClips, buildGarageEmotes, findGaragePreviewEmote, GARAGE_EMOTES } from "./garageEmotes";
 import { driverFaceTargets } from "./villagerFace";
 import { useCharacterPreviewStore } from "./characterPreviewStore";
 import { DriverBag } from "./DriverBag";
@@ -59,7 +59,7 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
     const celebration = victory && availableVictoryEmotes(bag).find(emote => emote.id === victory.id);
     const [breathing, ...clips] = victory
       ? buildEmoteClips(root, celebration ? [GARAGE_EMOTES[0], celebration] : [GARAGE_EMOTES[0]])
-      : buildGarageEmotes(root, bag, previewPacks, leanFit);
+      : buildGarageEmotes(root, bag, false, leanFit);
     const idle = mixer.clipAction(breathing).play();
     const holds = victory ? [idle] : [idle, ...buildEmoteClips(root, garageHoldEmotes(bag)).map(clip => mixer.clipAction(clip))];
     const actions = new Map(clips.map(clip => [clip.name.split(" ")[0], mixer.clipAction(clip).setLoop(LoopOnce, 1)]));
@@ -78,7 +78,7 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
       mixer.uncacheRoot(root);
       setBlinkWeight(blink, 0);
     };
-  }, [reducedMotion, root, bag, previewPacks, leanFit, victory, cockpit]);
+  }, [reducedMotion, root, bag, leanFit, victory, cockpit]);
 
   useFrame((_, delta) => {
     const current = player.current;
@@ -138,7 +138,19 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
     }
     if (!victory && preview !== current.preview) {
       current.preview = preview;
-      const action = preview && current.actions.get(preview.id);
+      let action = preview ? current.actions.get(preview.id) : undefined;
+      if (!action && preview) {
+        const emote = findGaragePreviewEmote(preview.id, bag);
+        if (emote) {
+          // The solver needs the rest skeleton. Release mixer bindings before
+          // compiling one clip, then keep it for the rest of this preview.
+          current.active?.stop();
+          current.idle.stop();
+          action = current.mixer.clipAction(buildEmoteClips(root, [emote])[0]).setLoop(LoopOnce, 1);
+          current.actions.set(preview.id, action);
+          current.idle.reset().play();
+        }
+      }
       if (action) {
         current.active?.stop();
         current.active = action.reset().setEffectiveWeight(0).play();
@@ -174,12 +186,17 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
     current.mixer.update(step);
   }, cockpit ? -.5 : 0);
 
-  return <group onClick={event => {
-    if (victory || !player.current || player.current.cabin || event.delta > 5) return;
-    event.stopPropagation();
-    player.current.wave = true;
-  }}>
-    <primitive object={root} dispose={null} />
+  return <group>
+    <primitive object={root} dispose={null}>
+      {!victory && !reducedMotion && <mesh name="garage-driver-hit-area" position={[0, .84, 0]} onClick={event => {
+        if (!player.current || player.current.cabin || event.delta > 5) return;
+        event.stopPropagation();
+        player.current.wave = true;
+      }}>
+        <capsuleGeometry args={[.28, 1.1, 2, 6]} />
+        <meshBasicMaterial visible={false} />
+      </mesh>}
+    </primitive>
     {bag && <DriverBag driver={root} />}
   </group>;
 }

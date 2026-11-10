@@ -46,7 +46,8 @@ export function GarageGlow() {
     const exposure = gl.toneMappingExposure;
     try {
       gl.toneMappingExposure = exposure * settings.exposure;
-      effects.composer.render(delta);
+      if (effects.bloom.enabled) effects.composer.render(delta);
+      else gl.render(scene, camera);
     } finally {
       gl.toneMappingExposure = exposure;
     }

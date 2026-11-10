@@ -1,11 +1,10 @@
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import {
   LinearMipmapLinearFilter,
   PlaneGeometry,
   ShaderMaterial,
   UniformsLib,
-  Vector2,
   Vector4,
   type Box3,
   type Group,
@@ -28,7 +27,6 @@ const floorShader = {
     textureMatrix: { value: null },
     platformRadius: { value: 0 },
     platformAngle: { value: 0 },
-    reflectionTexel: { value: new Vector2(1 / 768, 1 / 768) },
     reflectionStrength: { value: 1 },
     reflectionBlur: { value: 0.25 },
     perimeterBounds: { value: new Vector4() },
@@ -52,7 +50,6 @@ const floorShader = {
     uniform sampler2D tDiffuse;
     uniform float platformRadius;
     uniform float platformAngle;
-    uniform vec2 reflectionTexel;
     uniform float reflectionStrength;
     uniform float reflectionBlur;
     uniform vec4 perimeterBounds;
@@ -61,9 +58,6 @@ const floorShader = {
     varying vec2 vFloor;
     #include <common>
     #include <fog_pars_fragment>
-    float blurWeight(int offset) {
-      return offset == 0 ? 0.375 : (abs(offset) == 1 ? 0.25 : 0.0625);
-    }
     void main() {
       vec2 uv = vReflection.xy / vReflection.w;
       float c = cos(platformAngle), s = sin(platformAngle);
@@ -71,20 +65,9 @@ const floorShader = {
       float edgeValue = length(local) - platformRadius;
       float edgeAA = max(fwidth(edgeValue), 0.015);
       float platform = 1.0 - smoothstep(-edgeAA, edgeAA, edgeValue);
-      vec3 reflection = reflectionStrength > 0.001 ? texture2D(tDiffuse, uv).rgb : vec3(0.0);
-      if (platform > 0.001 && reflectionStrength > 0.001 && reflectionBlur > 0.001) {
-        // Adjacent texels give one continuous blur instead of widely spaced
-        // copies of bright fixtures that sparkle as the platform turns.
-        vec2 d = reflectionTexel;
-        vec3 soft = vec3(0.0);
-        for (int x = -2; x <= 2; x++) {
-          for (int y = -2; y <= 2; y++) {
-            soft += texture2D(tDiffuse, uv + vec2(float(x), float(y)) * d).rgb * blurWeight(x) * blurWeight(y);
-          }
-        }
-        // Keep the pad mainly reflective, with just a little softened detail.
-        reflection = mix(reflection, soft, platform * reflectionBlur);
-      }
+      // Trilinear mip sampling softens the pad with one texture lookup.
+      vec3 reflection = reflectionStrength > 0.001
+        ? texture2D(tDiffuse, uv, platform * reflectionBlur * 2.0).rgb : vec3(0.0);
       reflection *= reflectionStrength;
       // Equal world units on X/Z produce square tiles at every aspect ratio.
       vec2 tile = vFloor / 0.4;
@@ -130,6 +113,7 @@ export function GarageFloorReflection({
   perimeter: Box3 | null;
 }) {
   const settings = usePreferencesStore((s) => s.garageEffects);
+  const getScene = useThree(s => s.get);
   const floorRef = useRef<Reflector>(null);
   const floor = useMemo(() => {
     // Continue the floor past the model's cropped edge so it fills the screen.
@@ -138,13 +122,16 @@ export function GarageFloorReflection({
       // capture, hiding the vehicle/ceiling behind its underside. The mirror is
       // already raised 3mm; clip exactly there to keep that underlay excluded.
       shader: floorShader,
-      textureWidth: 768,
-      textureHeight: 768,
+      textureWidth: 512,
+      textureHeight: 512,
       multisample: 0,
       clipBias: 0,
     });
     object.name = "garage-floor-reflection";
-    gateGarageFloorCapture(object);
+    gateGarageFloorCapture(object, () => {
+      const { clock, frameloop } = getScene();
+      return frameloop === "demand" ? undefined : clock.elapsedTime;
+    });
     object.rotation.x = -Math.PI / 2;
     object.position.y = 0.003;
     const material = object.material as ShaderMaterial;
@@ -169,7 +156,7 @@ export function GarageFloorReflection({
       material.uniforms.showPerimeter.value = 1;
     }
     return object;
-  }, [width, depth, perimeter]);
+  }, [width, depth, perimeter, getScene]);
   useLayoutEffect(() => {
     configureGarageFloor(floor, settings);
   }, [floor, settings]);

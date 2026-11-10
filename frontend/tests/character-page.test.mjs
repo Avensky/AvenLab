@@ -114,13 +114,20 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(document.querySelectorAll('.character-emotes button').length, 9);
     await click('.character-emotes button:last-child');
     assert.equal(preview.getState().emote.id, '090');
-    await click('[aria-label="Emote collection"] button:last-child');
-    assert.equal(find('[aria-label="Emote collection"] button:last-child').textContent, 'After Hours');
+    await click('[aria-label="Emote collection"] button:nth-child(10)');
+    assert.equal(find('[aria-label="Emote collection"] button:nth-child(10)').textContent, 'After Hours');
     assert.equal(document.querySelectorAll('.character-emotes button').length, 10);
     await click('.character-emotes button:first-child');
     assert.equal(preview.getState().emote.id, '091');
     await click('.character-emotes button:last-child');
     assert.equal(preview.getState().emote.id, '100');
+    await click('[aria-label="Emote collection"] button:last-child');
+    assert.equal(find('[aria-label="Emote collection"] button:last-child').textContent, 'Showroom');
+    assert.equal(document.querySelectorAll('.character-emotes button').length, 10);
+    await click('.character-emotes button:first-child');
+    assert.equal(preview.getState().emote.id, '103');
+    await click('.character-emotes button:last-child');
+    assert.equal(preview.getState().emote.id, '112');
     await click('[aria-label="Emote collection"] button:first-child');
     await click('[data-character-option="jules-okafor"]');
     assert.equal(find('[data-character-preview]').dataset.characterPreview, 'jules-okafor');
@@ -209,9 +216,12 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     await click('[aria-label="Emote collection"] button:nth-child(9)');
     assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent),
       ['Radio check', 'Last lap', 'Box this lap', 'Crew fist bump']);
-    await click('[aria-label="Emote collection"] button:last-child');
+    await click('[aria-label="Emote collection"] button:nth-child(10)');
     assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent),
       ['Neck reset', 'Fix the fringe', 'Hang loose', 'Shade the lights', 'Rain check', 'Keys check']);
+    await click('[aria-label="Emote collection"] button:last-child');
+    assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent),
+      ['Key toss', 'Spot a scratch', 'Finger snap', 'Window knock', 'Camera shy', 'Perfect fit']);
     await click('[aria-label="Preview gender"] [data-character-option="mara-vega"]');
     assert.equal(drafts.at(-1).id, 'mara-vega');
     assert.equal(drafts.at(-1).prop, 'shop-bag');
@@ -270,11 +280,11 @@ test('all emote batches return to rest and keep planted and lifted feet distinct
     const mixer = new AnimationMixer(model.root);
     const ids = clips.map(clip => clip.name.split(' ')[0]);
     const numbered = [...ids.filter(id => /^\d+$/.test(id)), ...COCKPIT_TAKES.map(take => take.id)].sort();
-    assert.deepEqual(numbered, Array.from({length: 102}, (_, i) => String(i + 1).padStart(3, '0')));
+    assert.deepEqual(numbered, Array.from({length: 112}, (_, i) => String(i + 1).padStart(3, '0')));
     assert(!AUTOMATIC_GARAGE_EMOTE_IDS.includes('006'));
     assert(COCKPIT_TAKES.every(({ id }) => !ids.includes(id)));
     assert.deepEqual(ids.filter(id => id.startsWith('walk-')), ['walk-casual', 'walk-glance']);
-    assert.deepEqual(buildGarageEmotes(model.root).map(clip => clip.name.split(' ')[0]), [...ids.slice(0, 10), '035']);
+    assert.deepEqual(buildGarageEmotes(model.root).map(clip => clip.name.split(' ')[0]), ['001', '002', '003', '005', '009', '010', '035']);
     assert(!buildGarageEmotes(model.root, true).some(clip => clip.name.startsWith('035 ')));
     const leanFit = { offset: .15, distance: .06 };
     const lean = buildGarageEmotes(model.root, false, false, leanFit).at(-1);

@@ -1,7 +1,7 @@
 import {useUIStore} from "../../store/menus/uiStore";
 import {SELECTION_CRIMSON} from "../../theme/garageLighting";
 import { Suspense, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { MathUtils, Quaternion, Vector3, type Group, type PerspectiveCamera as ThreePerspectiveCamera } from "three";
+import { MathUtils, Matrix4, Quaternion, Vector3, type Group, type PerspectiveCamera as ThreePerspectiveCamera } from "three";
 import { useFrame, useThree } from "@react-three/fiber";
 import { AssetBoundary } from "../../components/debugger/AssetBoundary";
 import { Html, PerspectiveCamera } from "@react-three/drei";
@@ -29,6 +29,7 @@ export function VehiclePreview({
 }: { heroLayout?: boolean; awaitingHero?: boolean; characterDraft?: CharacterChoice | null; wardrobeOpen?: boolean } = {}) {
   const screen=useUIStore(s=>s.screen);
   const theme=usePreferencesStore(s=>s.theme);
+  const reducedMotion=usePreferencesStore(s=>s.reducedMotion);
   const staging=screen==="hero_select"||screen==="heroes"||screen==="queue";
   // Team identity belongs in the selection UI; fixtures and reflections keep
   // the saved theme, including its softer crimson selection lighting.
@@ -45,8 +46,14 @@ export function VehiclePreview({
   const selected = HEROES.find(hero => hero.id === picked)?.vehicle;
   const vehicleId = awaitingHero ? selected ?? (driverStage ? favorite : undefined) : favorite;
   const { width, height } = useThree(s => s.size);
+  const requestFrame = useThree(s => s.invalidate);
   const cameraRef = useRef<ThreePerspectiveCamera>(null);
-  const aim = useMemo(() => ({ target: new Vector3(), scale: new Vector3(), offset: new Vector3(), rotation: new Quaternion() }), []);
+  const initializedCamera = useRef<ThreePerspectiveCamera>(null);
+  const aim = useMemo(() => ({
+    position: new Vector3(), target: new Vector3(), offset: new Vector3(), scale: new Vector3(),
+    pivot: new Vector3(), eye: new Vector3(), nextEye: new Vector3(),
+    anchorRotation: new Quaternion(), orbit: new Quaternion(), swing: new Quaternion(), lookAt: new Matrix4(),
+  }), []);
   const [turntable, setTurntable] = useState<Group | null>(null);
   const [platform, setPlatform] = useState<[number, number]>(
     DEFAULT_PREVIEW_PLATFORM,
@@ -57,48 +64,69 @@ export function VehiclePreview({
   // frame keeps the two connected walls across a landscape viewport.
   const fov = driverStage && aspect >= 1 ? Math.max(33, verticalFov(75)) : Math.max(60, verticalFov(75));
   const cameraPosition = driverStage ? DRIVER_STAGE_CAMERA : STANDARD_STAGE_CAMERA;
-  useLayoutEffect(() => {
+  useLayoutEffect(() => { requestFrame(); }, [width, height, driverStage, heroLayout, sandboxPicker, wardrobeOpen, workshop, zoom, reducedMotion, requestFrame]);
+  useFrame(({ frameloop, invalidate }, delta) => {
     const camera = cameraRef.current;
     if (!camera || !width || !height) return;
+    const { position, target, offset, anchorRotation, pivot, eye, nextEye, orbit, swing, lookAt } = aim;
+    position.set(...cameraPosition);
+    target.set(0, driverStage ? 1.17 : 1.35, 0);
+    if (wardrobeOpen) {
+      const view = useCharacterPreviewStore.getState();
+      const cockpit = view.insideCar ? turntable?.getObjectByName("garage-cockpit-camera") : undefined;
+      const anchor = cockpit ? undefined : turntable?.getObjectByName("garage-driver");
+      if (cockpit) {
+        cockpit.children[0].getWorldPosition(position);
+        cockpit.getWorldPosition(target);
+      } else if (anchor) {
+        const eyeHeight = view.camera === "Face" ? 1.56 : view.camera === "Hands" ? 1.12 : .9;
+        const distance = view.camera === "Face" ? .52 : view.camera === "Hands" ? 1.95 : 4.25;
+        const scale = anchor.getWorldScale(aim.scale).y;
+        const radius = distance * scale / MathUtils.clamp(view.zoom, CHARACTER_ZOOM_MIN, CHARACTER_ZOOM_MAX);
+        anchor.getWorldPosition(target);
+        target.setY(target.y + eyeHeight * scale);
+        if (view.camera === "Face") {
+          const focus = anchor.getObjectByName("villager-face-focus");
+          const head = focus ?? anchor.getObjectByName("head");
+          if (head) {
+            head.getWorldPosition(target);
+            if (!focus) target.setY(target.y + .035 * scale);
+          }
+          anchor.getWorldQuaternion(anchorRotation);
+          offset.set(0, radius * .13, radius).applyQuaternion(anchorRotation);
+        } else {
+          offset.set(radius * .14, radius * .08, radius);
+        }
+        position.copy(target).add(offset);
+      }
+    }
     const offsetX = width * (sandboxPicker ? .15 : workshop && !wardrobeOpen ? .07 : 0);
     const offsetY = wardrobeOpen ? height * .055 : heroLayout && aspect < 1 ? -height * .04 : 0;
-    camera.zoom = zoom;
-    camera.setViewOffset(width, height, offsetX, offsetY, width, height);
-    camera.position.set(...cameraPosition);
-    camera.lookAt(0, driverStage ? 1.17 : 1.35, 0);
-  }, [aspect, cameraPosition, driverStage, height, heroLayout, sandboxPicker, wardrobeOpen, width, workshop, zoom]);
-  useFrame(() => {
-    if (!wardrobeOpen || !cameraRef.current) return;
-    const cockpit = turntable?.getObjectByName("garage-cockpit-camera");
-    if (cockpit) {
-      cockpit.children[0].getWorldPosition(cameraRef.current.position);
-      cameraRef.current.lookAt(cockpit.getWorldPosition(aim.target));
-      return;
-    }
-    const anchor = turntable?.getObjectByName("garage-driver");
-    if (!anchor) return;
-    const view = useCharacterPreviewStore.getState();
-    const height = view.camera === "Face" ? 1.56 : view.camera === "Hands" ? 1.12 : .9;
-    const distance = view.camera === "Face" ? .52 : view.camera === "Hands" ? 1.95 : 4.25;
-    const scale = anchor.getWorldScale(aim.scale).y;
-    const radius = distance * scale / MathUtils.clamp(view.zoom, CHARACTER_ZOOM_MIN, CHARACTER_ZOOM_MAX);
-    const target = anchor.getWorldPosition(aim.target);
-    target.y += height * scale;
-    if (view.camera === "Face") {
-      const focus = anchor.getObjectByName("villager-face-focus");
-      const head = focus ?? anchor.getObjectByName("head");
-      if (head) {
-        head.getWorldPosition(target);
-        if (!focus) target.y += .035 * scale;
-      }
-      anchor.getWorldQuaternion(aim.rotation);
-      aim.offset.set(0, radius * .13, radius).applyQuaternion(aim.rotation);
-      cameraRef.current.position.copy(target).add(aim.offset);
+    const firstFrame = initializedCamera.current !== camera;
+    initializedCamera.current = camera;
+    const blend = firstFrame || reducedMotion ? 1 : 1 - Math.exp(-10 * Math.min(delta, .1));
+    if (blend === 1) {
+      pivot.copy(target);
+      camera.position.copy(position);
     } else {
-      cameraRef.current.position.set(target.x + radius * .14, target.y + radius * .08, target.z + radius);
+      // Arc around the subject when angles differ, even after a large turntable drag.
+      eye.subVectors(camera.position, pivot);
+      nextEye.subVectors(position, target);
+      const radius = MathUtils.lerp(eye.length(), nextEye.length(), blend);
+      swing.setFromUnitVectors(eye.normalize(), nextEye.normalize());
+      eye.applyQuaternion(orbit.identity().slerp(swing, blend)).multiplyScalar(radius);
+      camera.position.copy(pivot.lerp(target, blend)).add(eye);
     }
-    cameraRef.current.lookAt(target);
-  });
+    camera.quaternion.setFromRotationMatrix(lookAt.lookAt(camera.position, pivot, camera.up));
+    const currentX = camera.view?.offsetX ?? offsetX;
+    const currentY = camera.view?.offsetY ?? offsetY;
+    const reframing = Math.abs(currentX - offsetX) > .01 || Math.abs(currentY - offsetY) > .01 || Math.abs(camera.zoom - zoom) > .0001;
+    if (reframing || camera.view?.fullWidth !== width || camera.view?.fullHeight !== height) {
+      camera.zoom = MathUtils.lerp(camera.zoom, zoom, blend);
+      camera.setViewOffset(width, height, MathUtils.lerp(currentX, offsetX, blend), MathUtils.lerp(currentY, offsetY, blend), width, height);
+    }
+    if (frameloop === "demand" && (reframing || camera.position.distanceToSquared(position) > .000001 || pivot.distanceToSquared(target) > .000001)) invalidate();
+  }, -.25);
   return (
     <>
       <GarageEnvironment turntable={turntable} onPlatformReady={setPlatform} accentOverride={selectionAccent} />
@@ -106,7 +134,6 @@ export function VehiclePreview({
         ref={cameraRef}
         makeDefault
         fov={fov}
-        position={cameraPosition}
         near={0.1}
       />
 

@@ -108,9 +108,12 @@ export function prepareGarageCockpit(car: Object3D, motionGroup: () => Group | n
     const scale = car.getWorldScale(new Vector3()).y;
     const carRotation = new Quaternion(), roll = new Quaternion(), steer = new Quaternion(), rimTurn = new Quaternion();
     const headAxes = new Quaternion(), localAxis = new Vector3();
+    let parked = false;
 
     return {
       sample(id, phase) {
+        if (id === null && parked) return;
+        parked = id === null;
         const pose = sampleCockpitMotion(id, phase);
         if (pose.closeShot) {
           camera.position.set(center.x - .065, .96, center.z - .205);

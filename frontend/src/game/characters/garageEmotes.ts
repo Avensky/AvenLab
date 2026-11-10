@@ -12,6 +12,7 @@ import { availableRoadsideEmotes } from "./roadsideEmotes";
 import { availableRivalryEmotes } from "./rivalryEmotes";
 import { availablePitCrewEmotes } from "./pitCrewEmotes";
 import { availableAfterHoursEmotes } from "./afterHoursEmotes";
+import { availableShowroomEmotes } from "./showroomEmotes";
 import { WALK_EMOTES } from "./walkingEmotes";
 import { garageLeanPose, type GarageLeanFit } from "./garageLean";
 
@@ -57,7 +58,7 @@ const claspLeft: Arm = [[1, -4, 1.2], [-2.4, 1.3, 3.5]];
 const claspRight: Arm = [[-1, -4, 1.2], [2.4, 1.3, 3.5]];
 const wave: Arm = [[-1, -.55, .28], [-.24, 1, .28]];
 
-export const EMOTE_GROUPS = ["Garage", "Victory", "Playful", "Shy", "Tsundere", "Expressions", "Roadside", "Rivalry", "Pit Crew", "After Hours"] as const;
+export const EMOTE_GROUPS = ["Garage", "Victory", "Playful", "Shy", "Tsundere", "Expressions", "Roadside", "Rivalry", "Pit Crew", "After Hours", "Showroom"] as const;
 export type EmoteGroup = typeof EMOTE_GROUPS[number];
 export const AUTOMATIC_GARAGE_EMOTE_IDS = ["035", "002", "003", "005", "009"];
 const BEST_EMOTE_IDS = ["035", "090", "072", "051", "018", "094", "095", "100"];
@@ -437,6 +438,7 @@ export function emoteCollection(group: EmoteGroup, bag: boolean, includeWalks = 
   if (group === "Rivalry") return availableRivalryEmotes(bag);
   if (group === "Pit Crew") return availablePitCrewEmotes(bag);
   if (group === "After Hours") return availableAfterHoursEmotes(bag);
+  if (group === "Showroom") return availableShowroomEmotes(bag);
   if (bag) return [...GARAGE_EMOTES.filter(item => compatibleGarageEmotes(item.id)), ...BAG_EMOTES];
   return includeWalks ? [...GARAGE_EMOTES, ...WALK_EMOTES] : GARAGE_EMOTES;
 }
@@ -448,8 +450,17 @@ export function garagePreviewCollection(group: EmoteGroup | "Best", bag: boolean
   return group === "Best" ? picks : [...picks, ...emoteCollection("Garage", bag).filter(emote => !GARAGE_PICK_IDS.includes(emote.id))];
 }
 
+export function findGaragePreviewEmote(id: string, bag: boolean) {
+  for (const group of EMOTE_GROUPS) {
+    const emote = emoteCollection(group, bag).find(item => item.id === id);
+    if (emote) return emote;
+  }
+}
+
 export function buildGarageEmotes(root: Object3D, bag = false, previewPacks = false, leanFit?: GarageLeanFit) {
-  const emotes = previewPacks ? EMOTE_GROUPS.flatMap(group => emoteCollection(group, bag)) : emoteCollection("Garage", bag, false);
-  if (bag || previewPacks) return buildEmoteClips(root, emotes);
-  return buildEmoteClips(root, [...emotes, QUIET_THANK_YOU, ...(leanFit ? [garageLeanPose(leanFit)] : [])]);
+  if (previewPacks) return buildEmoteClips(root, EMOTE_GROUPS.flatMap(group => emoteCollection(group, bag)));
+  const idle = emoteCollection("Garage", bag, false).filter(({ id }) => id === "001" || id === "010" ||
+    AUTOMATIC_GARAGE_EMOTE_IDS.includes(id) || id.startsWith("bag-"));
+  if (bag) return buildEmoteClips(root, idle);
+  return buildEmoteClips(root, [...idle, QUIET_THANK_YOU, ...(leanFit ? [garageLeanPose(leanFit)] : [])]);
 }

@@ -16,10 +16,18 @@ export function configureGarageFloor(
   material.uniforms.reflectionBlur.value = settings.reflectionBlur;
 }
 
-export function gateGarageFloorCapture(floor: Reflector) {
+export function gateGarageFloorCapture(floor: Reflector, elapsedSeconds?: () => number | undefined) {
   const capture = floor.onBeforeRender;
+  let capturedAt = -Infinity;
   floor.onBeforeRender = function (...args) {
-    if (floor.userData.garageReflectionCapture !== false)
-      capture.apply(this, args);
+    if (floor.userData.garageReflectionCapture === false) {
+      capturedAt = -Infinity;
+      return;
+    }
+    const now = elapsedSeconds?.();
+    // The cached texture and its matching projection stay valid between captures.
+    if (now !== undefined && now >= capturedAt && now - capturedAt < 1 / 30 - .001) return;
+    capture.apply(this, args);
+    if (now !== undefined) capturedAt = now;
   };
 }

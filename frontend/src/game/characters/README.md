@@ -49,6 +49,8 @@ starting countdown, a photo pose, and a post-race nod. Pit Crew has radio
 checks, pit signals, and a crew fist bump.
 After Hours (091–100) adds small reactions, a shaka, and a two-step shuffle.
 Six are available with the shop bag.
+Showroom (103–112) adds a car reveal, a mimed key toss, and eight other
+gestures. Six are available with the shop bag.
 
 Garage puts the recommended standing emotes first. Best collects the strongest
 gestures from across the packs. Choose the AE86 in Heroes, equip Empty hands,
