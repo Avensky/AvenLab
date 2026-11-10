@@ -12,6 +12,8 @@ import { COCKPIT_TAKES, type CockpitTake } from "./cockpitEmotes";
 import { createEmoteProp, type EmoteProp, type EmotePropModel } from "./emoteProps";
 import { bindFlagPoleGrip } from "./flagPoleGrip";
 import type { CockpitPlayback, GarageCockpit } from "../preview/garageCockpit";
+import { DRIVE_OUT_DURATION, sampleDriveOut } from "../preview/garageDriveMotion";
+import { useGarageDrive } from "../preview/garageDriveStore";
 
 const FADE_SECONDS = .52;
 
@@ -36,6 +38,7 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
     active: AnimationAction | null;
     release: { elapsed: number; weight: number } | null;
     cabin: CockpitPlayback | null;
+    driveSeconds: number;
     take: { clip: CockpitTake; seconds: number } | null;
     rest: number;
     next: number;
@@ -47,9 +50,13 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
 
   useLayoutEffect(() => {
     if (!cockpit || bag || reducedMotion) return;
-    useCharacterPreviewStore.setState({ cockpitAvailable: true });
-    return () => useCharacterPreviewStore.setState({ cockpitAvailable: false });
-  }, [cockpit, bag, reducedMotion]);
+    if (previewPacks) {
+      useCharacterPreviewStore.setState({ cockpitAvailable: true });
+      return () => useCharacterPreviewStore.setState({ cockpitAvailable: false });
+    }
+    useGarageDrive.setState({ ready: true });
+    return () => useGarageDrive.setState({ ready: false, stage: "idle", steering: null });
+  }, [cockpit, bag, reducedMotion, previewPacks]);
 
   useLayoutEffect(() => {
     if (!previewPacks || !leanFit || reducedMotion) return;
@@ -73,7 +80,7 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
     const active = celebration ? actions.get(celebration.id)!.reset().setEffectiveWeight(0).play() : null;
     const props = new Map<EmoteProp, EmotePropModel>();
     player.current = { mixer, idle, actions, props,
-      automatic, active, release: null, cabin: null, take: null, rest: restSeconds, next: 0, wave: false, blink, elapsed: 0, preview: null };
+      automatic, active, release: null, cabin: null, driveSeconds: 0, take: null, rest: restSeconds, next: 0, wave: false, blink, elapsed: 0, preview: null };
     return () => {
       player.current?.cabin?.stop();
       player.current = null;
@@ -96,8 +103,10 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
       setBlinkWeight(current.blink, blink);
     }
     const view = useCharacterPreviewStore.getState();
-    const preview = previewPacks ? view.emote : null;
-    if (cockpit && previewPacks && view.cockpitAvailable && view.insideCar && !bag && !victory) {
+    const drive = useGarageDrive.getState();
+    const driveOut = !previewPacks && drive.stage !== "idle";
+    const preview = previewPacks ? view.emote : driveOut ? drive.steering : null;
+    if (cockpit && (driveOut || (previewPacks && view.cockpitAvailable && view.insideCar)) && !bag && !victory) {
       if (!current.cabin) {
         current.active?.stop();
         current.active = null;
@@ -108,7 +117,9 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
         current.cabin = cockpit(root);
         if (!current.cabin) {
           current.idle.reset().setEffectiveWeight(1).play();
-          failCockpitPreview("This driver could not be fitted to the AE86 cockpit.");
+          const error = "This driver could not be fitted to the AE86 cockpit.";
+          if (driveOut) useGarageDrive.setState({ stage: "idle", error });
+          else failCockpitPreview(error);
           return;
         }
       }
@@ -122,12 +133,17 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
         take.seconds += step;
         if (take.seconds >= take.clip.duration) current.take = null;
       }
-      current.cabin.sample(current.take?.clip.id ?? null, current.take ? current.take.seconds / current.take.clip.duration : 0);
+      const alreadyParked = current.driveSeconds >= DRIVE_OUT_DURATION && !take;
+      if (driveOut && alreadyParked) return;
+      const drivePose = driveOut ? sampleDriveOut(current.driveSeconds = Math.min(current.driveSeconds + step, DRIVE_OUT_DURATION)) : undefined;
+      if (drivePose && drivePose.stage !== drive.stage) useGarageDrive.setState({ stage: drivePose.stage });
+      current.cabin.sample(current.take?.clip.id ?? null, current.take ? current.take.seconds / current.take.clip.duration : 0, drivePose);
       return;
     }
     if (current.cabin) {
       current.cabin.stop();
       current.cabin = null;
+      current.driveSeconds = 0;
       current.take = null;
       current.preview = null;
       current.idle.reset().setEffectiveWeight(1).play();

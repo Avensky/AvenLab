@@ -88,9 +88,9 @@ export function createVehiclePartRig(root:Group,model:string):VehiclePartHinge[]
  return hinges;
 }
 
-export function advanceVehiclePartRig(hinges:VehiclePartHinge[],parts:Record<VehicleStudioPart,boolean>,delta:number){
+export function advanceVehiclePartRig(hinges:VehiclePartHinge[],parts:Record<VehicleStudioPart,boolean>,delta:number,controlled?:VehicleStudioPart){
  const blend=1-Math.exp(-Math.max(0,delta)*8);
- for(const hinge of hinges){const target=parts[hinge.part]?hinge.open:hinge.closed;hinge.angle+= (target-hinge.angle)*blend;hinge.pivot.rotation[hinge.axis]=hinge.angle;}
+ for(const hinge of hinges){if(hinge.part===controlled)continue;const target=parts[hinge.part]?hinge.open:hinge.closed;hinge.angle+= (target-hinge.angle)*blend;hinge.pivot.rotation[hinge.axis]=hinge.angle;}
 }
 
 export function availableVehicleParts(hinges:VehiclePartHinge[]){return new Set(hinges.map(hinge=>hinge.part));}

@@ -7,10 +7,12 @@ export function PreviewTurntable({
   children,
   onReady,
   spin = true,
+  locked = false,
 }: {
   children: ReactNode;
   onReady: (group: Group | null) => void;
   spin?: boolean;
+  locked?: boolean;
 }) {
   const group = useRef<Group>(null);
   const angle = useRef(0);
@@ -29,6 +31,7 @@ export function PreviewTurntable({
   useFrame(({ frameloop }, delta) => {
     if (!group.current) return;
     const step = Math.min(delta, 0.1);
+    if (locked) return;
     if (spin && !reducedMotion && !drag.current && frameloop !== "never") angle.current += step * 0.035;
     const rotation = group.current.rotation;
     if (reducedMotion || Math.abs(rotation.y - angle.current) < .0005) rotation.y = angle.current;
@@ -39,12 +42,13 @@ export function PreviewTurntable({
   }, -1);
 
   const beginDrag = (event: ThreeEvent<PointerEvent>) => {
+    if (locked) return;
     event.stopPropagation();
     drag.current = { pointerId: event.pointerId, clientX: event.clientX };
     (event.target as EventTarget & { setPointerCapture(pointerId: number): void }).setPointerCapture(event.pointerId);
   };
   const continueDrag = (event: ThreeEvent<PointerEvent>) => {
-    if (!drag.current || drag.current.pointerId !== event.pointerId) return;
+    if (locked || !drag.current || drag.current.pointerId !== event.pointerId) return;
     const deltaX = event.clientX - drag.current.clientX;
     drag.current.clientX = event.clientX;
     angle.current += deltaX * cameraSensitivity * 0.006;

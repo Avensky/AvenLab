@@ -24,6 +24,8 @@ import { prepareGarageCockpit, type GarageCockpit } from "./garageCockpit";
 import { COCKPIT_TEST_VEHICLE } from "../characters/cockpitEmotes";
 import { usePreviewPaint } from "./usePreviewPaint";
 import { PreviewLoadingSeal } from "./PreviewLoadingSeal";
+import { splitAe86DriverDoor } from "./ae86DriverDoor";
+import { useGarageDrive } from "./garageDriveStore";
 
 type VehicleLayout = {
   model: VehicleModelId;
@@ -42,13 +44,14 @@ function setLampEmission(material: MeshStandardMaterial, color: number | Color, 
 
 // Selection is always the complete GLB, independent of in-game debug modes.
 // Shared material preparation retains the TSX fixes without runtime network poses.
-export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettled,allowDriver = true}:{
+export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettled,allowDriver = true,garageOpen = false}:{
   platform: readonly [number, number];
   model: VehicleModelId;
   driver?: CharacterChoice | null;
   previewPacks?: boolean;
   onSettled?: (model: VehicleModelId) => void;
   allowDriver?: boolean;
+  garageOpen?: boolean;
 }) {
   const path=VEHICLE_MODEL_PATHS[model];
   const motion = useRef<Group>(null);
@@ -58,23 +61,25 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettle
   const prepared = useMemo(
     () => {
       const visual = prepareVehicleVisual(scene, model);
+      const releaseDoor = model === COCKPIT_TEST_VEHICLE ? splitAe86DriverDoor(visual.root) : undefined;
       prepareGarageVehiclePaint(visual.root, model);
-      return visual;
+      return { ...visual, dispose: () => { releaseDoor?.(); visual.dispose(); } };
     },
     [scene, model],
   );
   useLayoutEffect(() => onSettled?.(model), [model, onSettled]);
+  const partRig=useMemo(()=>createVehiclePartRig(prepared.root,model),[prepared,model]);
+  const ae86Door = model === COCKPIT_TEST_VEHICLE ? partRig.find(part => part.part === "door-right") : undefined;
   const cockpitSetup = useRef<{ source: Object3D; prepare: ReturnType<typeof prepareGarageCockpit> }>(null);
   const playCockpit = useCallback<GarageCockpit>(driverRoot => {
     const motionGroup = motion.current;
     if (!motionGroup) return null;
     if (cockpitSetup.current?.source !== prepared.root) {
-      cockpitSetup.current = { source: prepared.root, prepare: prepareGarageCockpit(prepared.root, prepared.glassMaterials) };
+      cockpitSetup.current = { source: prepared.root, prepare: prepareGarageCockpit(prepared.root, prepared.glassMaterials, ae86Door) };
     }
     return cockpitSetup.current.prepare?.(driverRoot, motionGroup) ?? null;
-  }, [prepared]);
-  const cockpit = previewPacks && model === COCKPIT_TEST_VEHICLE ? playCockpit : undefined;
-  const partRig=useMemo(()=>createVehiclePartRig(prepared.root,model),[prepared,model]);
+  }, [prepared, ae86Door]);
+  const cockpit = model === COCKPIT_TEST_VEHICLE && (previewPacks || (garageOpen && ae86Door)) ? playCockpit : undefined;
   const marine=vehicleSystems(model)==="marine";
   const inspectBody=useVehicleStudioStore(s=>s.activeTab==="body"||s.parts["door-left"]||s.parts["door-right"]);
   const glassStyle=useVehicleStudioStore(s=>s.glassStyle);
@@ -122,7 +127,8 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettle
   }, [prepared, model, savedAppearance]);
   useFrame((state,delta)=>{
     const studio=useVehicleStudioStore.getState();
-    advanceVehiclePartRig(partRig,studio.parts,delta);
+    const drivenDoor = garageOpen && ae86Door && useGarageDrive.getState().stage !== "idle" ? ae86Door.part : undefined;
+    advanceVehiclePartRig(partRig,studio.parts,delta,drivenDoor);
     if (marine) {
       const {navigation,searchlights}=studio.marineLights;
       const key=`${navigation}:${searchlights}`;
@@ -196,6 +202,24 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettle
   const driverAcross = staging.edge * display.scale + display.position[0] + staging.side * (.27 - inset) * driverScale;
   // Vehicles without an authored front door still stage beside the front seat.
   const driverAlong = staging.along === undefined ? display.footprint[1] * .12 : staging.along * display.scale + display.position[2];
+  const cameraRig = useMemo(() => {
+    const size = measurements.bounds.getSize(new Vector3());
+    const center = measurements.bounds.getCenter(new Vector3());
+    const door = driverDoor?.getCenter(new Vector3()) ?? center;
+    const side = door.x < center.x ? -1 : 1;
+    const height = Math.max(1.3, size.y);
+    const width = Math.max(1.65, size.x);
+    const length = Math.max(3.2, size.z);
+    const shots = [
+      { name: "High Angle", at: [center.x, center.y, center.z], eye: [width * .8, length * .93, length * .52] },
+      { name: "Driver Door", at: [door.x, Math.max(door.y, height * .62), door.z], eye: [side * width * 1.42, height * .51, -length * .47] },
+      { name: "Chase", at: [center.x, center.y, center.z + length * .15], eye: [-width * .57, height * 1.28, -length * 1.14] },
+    ];
+    if (model === COCKPIT_TEST_VEHICLE) {
+      shots.push({ name: "Cockpit", at: [-.397, .745, .365], eye: [.32, .40, -.53] });
+    }
+    return shots;
+  }, [driverDoor, measurements, model]);
   return (
     <group ref={motion}>
       {driver && <group position={[driverAcross, .023, driverAlong]} scale={driverScale} rotation={[0, staging.side * Math.PI / 2, 0]}>
@@ -214,6 +238,10 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettle
         name="selection-vehicle-glb"
       >
         <primitive object={prepared.root} dispose={null} />
+        {garageOpen && cameraRig.map(shot => <group key={shot.name} name={`garage-view-${shot.name}`}
+          position={shot.at as [number, number, number]}>
+          <object3D position={shot.eye as [number, number, number]} />
+        </group>)}
       </group>
     </group>
   );

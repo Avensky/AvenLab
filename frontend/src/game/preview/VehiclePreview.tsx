@@ -20,6 +20,8 @@ import { HEROES, useAlphaStore } from "../../store/alpha/alphaStore";
 import { PREVIEW_ZOOM_LEVELS, usePreviewZoom } from "./previewZoomStore";
 import { PreviewLoadingSeal } from "./PreviewLoadingSeal";
 import { isCompactPreview } from "./previewBudget";
+import { garageCamera, useGarageDrive } from "./garageDriveStore";
+import { useVehicleStudioStore } from "../heroes/vehicleStudioStore";
 
 const DRIVER_STAGE_CAMERA: [number, number, number] = [2.8, 2.5, 5.8];
 const STANDARD_STAGE_CAMERA: [number, number, number] = [0, 3.2, 7.25];
@@ -65,6 +67,9 @@ export function VehiclePreview({
   const mode = useAlphaStore(s => s.mode);
   const favorite = useSelectionStore(s => s.getSelectedVehicle().id);
   const workshop = screen === "heroes";
+  const garageOpen = useVehicleStudioStore(s => workshop && !wardrobeOpen && s.activeTab !== null && s.activeTab !== "abilities");
+  const garageView = useGarageDrive(s => garageOpen ? garageCamera(s) : "Showroom");
+  const driveOut = useGarageDrive(s => garageOpen && s.stage !== "idle");
   const zoom = usePreviewZoom(s => !wardrobeOpen && (workshop || screen === "hero_select") ? PREVIEW_ZOOM_LEVELS[s.level] : 1);
   const sandboxPicker = screen === "hero_select" && mode === "sandbox";
   const driverStage = workshop || sandboxPicker;
@@ -100,7 +105,7 @@ export function VehiclePreview({
   // frame keeps the two connected walls across a landscape viewport.
   const fov = driverStage && aspect >= 1 ? Math.max(33, verticalFov(75)) : Math.max(60, verticalFov(75));
   const cameraPosition = driverStage ? DRIVER_STAGE_CAMERA : STANDARD_STAGE_CAMERA;
-  useLayoutEffect(() => { requestFrame(); }, [width, height, driverStage, heroLayout, sandboxPicker, wardrobeOpen, workshop, zoom, reducedMotion, requestFrame]);
+  useLayoutEffect(() => { requestFrame(); }, [width, height, driverStage, heroLayout, sandboxPicker, wardrobeOpen, workshop, zoom, reducedMotion, requestFrame, garageView]);
   useFrame(({ frameloop, invalidate }, delta) => {
     const camera = cameraRef.current;
     if (!camera || !width || !height) return;
@@ -108,6 +113,14 @@ export function VehiclePreview({
     position.set(...cameraPosition);
     target.set(0, driverStage ? 1.17 : 1.35, 0);
     let lensZoom = zoom;
+    if (garageView !== "Showroom") {
+      const shot = findPreviewAnchor(aim.anchors, turntable, `garage-view-${garageView}`);
+      if (shot) {
+        shot.getWorldPosition(target);
+        shot.children[0].getWorldPosition(position);
+        if (garageView === "Cockpit") lensZoom = Math.min(1.2, zoom);
+      }
+    }
     if (wardrobeOpen) {
       const view = useCharacterPreviewStore.getState();
       const wide = view.camera === "Whole car";
@@ -179,7 +192,7 @@ export function VehiclePreview({
         near={0.1}
       />
 
-      <PreviewTurntable onReady={setTurntable} spin={!wardrobeOpen && !stationary}>
+      <PreviewTurntable onReady={setTurntable} spin={!wardrobeOpen && !stationary && garageView === "Showroom"} locked={driveOut}>
         {vehicleId && <AssetBoundary
           key={vehicleId}
           fallback={<MissingVehicle model={vehicleId} onSettled={setSettledVehicle} cockpit={insideCar} />}
@@ -187,7 +200,7 @@ export function VehiclePreview({
           <Suspense fallback={null}>
             <group rotation={[0, Math.PI / 2, 0]}>
               <VehiclePreviewModel platform={platform} model={vehicleId} driver={driver} previewPacks={wardrobeOpen}
-                onSettled={setSettledVehicle} allowDriver={roomReady} />
+                onSettled={setSettledVehicle} allowDriver={roomReady} garageOpen={garageOpen} />
             </group>
           </Suspense>
         </AssetBoundary>}

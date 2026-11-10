@@ -281,6 +281,28 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(title(), 'GARAGE');
     assert.equal(alpha.getState().previewHero, 'camaro');
     assert.equal(loadouts.getState().defaultHero, 'brz');
+    const garageCamera = () => find('button[aria-label^="Switch garage camera"]');
+    assert.match(garageCamera().textContent, /Showroom/);
+    await click('button[aria-label^="Switch garage camera"]');
+    assert.match(garageCamera().textContent, /High Angle/);
+    await click('button[aria-label^="Switch garage camera"]');
+    assert.match(garageCamera().textContent, /Driver Door/);
+    await click('button[aria-label^="Switch garage camera"]');
+    assert.match(garageCamera().textContent, /Chase/, 'the Camaro skips the fitted AE86 cockpit view');
+    await move('back');
+    await click('[data-hero=ae86]');
+    assert.match(garageCamera().textContent, /Showroom/, 'new garage preview starts from the showroom camera');
+    const { useGarageDrive } = await vite.ssrLoadModule('/src/game/preview/garageDriveStore.ts');
+    const driveButton = () => [...document.querySelectorAll('button')].find(node => node.textContent === 'Drive Out');
+    assert(driveButton().disabled);
+    await act(async () => useGarageDrive.setState({ ready: true }));
+    await act(async () => driveButton().click());
+    assert.equal(useGarageDrive.getState().stage, 'opening');
+    assert.match(garageCamera().textContent, /Driver Door/);
+    await act(async () => [...document.querySelectorAll('button')].find(node => node.textContent === 'Reset').click());
+    assert.equal(useGarageDrive.getState().stage, 'idle');
+    assert.match(garageCamera().textContent, /Showroom/);
+    await act(async () => useGarageDrive.setState({ ready: false }));
     await move('back');
     await click('[data-open-character]');
     assert.equal(find('[data-outfit-preview]').dataset.outfitPreview, 'race-crew');
@@ -323,6 +345,7 @@ test('all emote batches return to rest and keep planted and lifted feet distinct
     const { garageLeanPose } = await vite.ssrLoadModule('/src/game/characters/garageLean.ts');
     const { COCKPIT_TAKES } = await vite.ssrLoadModule('/src/game/characters/cockpitEmotes.ts');
     const { sampleCockpitMotion } = await vite.ssrLoadModule('/src/game/preview/garageCockpit.ts');
+    const { sampleDriveOut, DRIVE_OUT_DURATION } = await vite.ssrLoadModule('/src/game/preview/garageDriveMotion.ts');
     const { characterLook } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
     const { prepareStylizedDriver } = await vite.ssrLoadModule('/src/game/characters/stylizedDriverModel.ts');
     const model = prepareStylizedDriver(characterLook({ id: 'jules-okafor', outfit: 'night-run' }));
@@ -371,6 +394,14 @@ test('all emote batches return to rest and keep planted and lifted feet distinct
       assert.equal(sampleCockpitMotion(take, .9).gesture, 0);
     }
     assert.equal(sampleCockpitMotion(null, 0).travel, 0);
+    const stages = [0, 1.6, 3.3, 4.6, DRIVE_OUT_DURATION].map(sampleDriveOut);
+    assert.deepEqual(stages.map(pose => pose.stage), ['opening', 'entering', 'closing', 'driving', 'finished']);
+    assert.equal(stages[1].door, 1);
+    assert.equal(stages[2].enter, 1);
+    assert.equal(stages[2].travel, 0);
+    assert.equal(stages[3].door, 0);
+    assert(stages[4].travel > stages[3].travel);
+    assert.deepEqual(sampleDriveOut(DRIVE_OUT_DURATION + 2), stages[4], 'the car stays parked at the rollout endpoint');
     for (const [id, direction] of [['199', 1], ['200', -1]]) {
       assert(sampleCockpitMotion(id, .5).steering * direction > .3);
       assert.equal(sampleCockpitMotion(id, .5).travel, 0);

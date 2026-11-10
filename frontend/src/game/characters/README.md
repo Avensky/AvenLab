@@ -86,6 +86,14 @@ while turning the wheel in place. The library now contains 200 numbered emotes.
 Use the Whole car camera for a wide shot throughout a take. The driver stays
 seated between clips. Exit car returns to the selected vehicle's standing preview.
 
+Garage has a Camera button beside the zoom controls. High Angle, Driver Door,
+and Chase frame the active vehicle. The AE86 also has a Cockpit view. Its
+right-hand driver door uses the panel, interior card, window, seals, and mirror
+from the bundled model. Body → Right Door opens the same hinge manually.
+Drive Out opens the door, seats the driver, closes the door, and moves into a
+short forward roll with a chase camera. The driver remains seated at the
+endpoint. Use Steer left or right there, or Reset to return to the turntable.
+
 Character → Face opens a close-up for iris color, eyebrow tint, and glasses.
 The iris palette includes Obsidian black and five other deep shades, with
 reduced iris and cornea reflections for the darkest colors.
@@ -97,13 +105,10 @@ Heroes cycles shorter gestures with a breathing idle between them.
 
 ## Planned vehicle interactions
 
-- Reach for the driver and passenger handles, then open or close each door using
-  the vehicle's authored hinge.
-- Open the driver door, step into the cabin, settle into the seat, and pull the
-  door closed from inside. Reverse the sequence to exit and close the door.
+- Fit driver and passenger handles and doors on additional cars. Reverse the
+  AE86 entry sequence to step out and close the door.
 - Lift and lower the hood and trunk from their handles. Fit each interaction to
   the vehicle's part, hinge, and handle anchors.
-- Turn the steering wheel left and right with both hands tracking the rim.
 - Pull and release the e-brake with the left or right hand to match the cabin,
   with the other hand steering.
 - Rest or extend an arm through the left or right open window, using the window

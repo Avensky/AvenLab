@@ -16,6 +16,8 @@ import {HoldMainButton} from "./HoldMainButton";
 import {SelectionFooter,SelectionHeader} from "../alpha/SelectionChrome";
 import {CHARACTER_TABS,CharacterPage,type CharacterTab} from "../characters/CharacterPage";
 import {PreviewZoom} from "../preview/PreviewZoom";
+import {GaragePreviewControls} from "../preview/GaragePreviewControls";
+import {useGarageDrive} from "../preview/garageDriveStore";
 import {CharacterHeaderProfile} from "../characters/CharacterHeaderProfile";
 import type {CharacterChoice} from "../characters/characterCatalog";
 import {ControllerAction} from "../../components/controller";
@@ -108,6 +110,7 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
  const [vehicleModStages,setVehicleModStages]=useState<Record<string,Record<string,number>>>({});
  const availableParts=useVehicleStudioStore(s=>s.availableVehicle===definition?.vehicle?s.availableParts:NO_VEHICLE_PARTS);
  const openedParts=useVehicleStudioStore(s=>s.parts);
+ const drivingOut=useGarageDrive(s=>s.stage!=="idle");
  const glassStyle=useVehicleStudioStore(s=>s.glassStyle);
  const setGlassStyle=useVehicleStudioStore(s=>s.setGlassStyle);
  const marineLights=useVehicleStudioStore(s=>s.marineLights);
@@ -220,7 +223,7 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
  const partOptions:VehicleStudioPart[]=["door-left","door-right","hood","trunk","headlights"];
  const renderPartButton=(part:VehicleStudioPart)=>{
   const supported=availableParts.includes(part),open=openedParts[part];
-  return <button key={part} type="button" className="vehicle-studio-feature" data-supported={supported} disabled={!supported} aria-pressed={supported?open:undefined} title={supported?`${open?"Close":"Open"} ${partLabels[part].toLowerCase()}`:`No separate movable ${partLabels[part].toLowerCase()} mesh in this vehicle model`} onClick={()=>useVehicleStudioStore.getState().setPart(part,!open)}>{partLabels[part]} · {supported?(open?"OPEN":"CLOSED"):"NOT RIGGED"}</button>;
+  return <button key={part} type="button" className="vehicle-studio-feature" data-supported={supported} disabled={!supported||drivingOut} aria-pressed={supported?open:undefined} title={supported?`${open?"Close":"Open"} ${partLabels[part].toLowerCase()}`:`No separate movable ${partLabels[part].toLowerCase()} mesh in this vehicle model`} onClick={()=>useVehicleStudioStore.getState().setPart(part,!open)}>{partLabels[part]} · {supported?(open?"OPEN":"CLOSED"):"NOT RIGGED"}</button>;
  };
  const bodyFooter=marine?null:<>{partOptions.map(renderPartButton)}</>;
  const lightingFooter=marine
@@ -358,7 +361,7 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
     {(!owner||status!=="idle")&&<p className="vehicle-studio-save-status" role="status" aria-live="polite">{!owner?"CONNECT YOUR PLAYER PROFILE":status==="pending"||status==="saving"?"SAVING YOUR STYLE…":status==="error"?`NOT SAVED · ${message}`:status==="saved"?"SAVED TO YOUR PLAYER · SHARED IN GAME":"Appearance changes save automatically for this vehicle."}</p>}
     {status==="error"&&<button className="menu-control" onClick={()=>void queue.flush()}>RETRY SAVE</button>}
    </VehicleStudio>}
-   {editing&&definition&&studioTab!=="abilities"&&<div className="hero-garage-zoom"><PreviewZoom/></div>}
+   {editing&&definition&&studioTab!=="abilities"&&<GaragePreviewControls vehicle={definition.vehicle}/>}
   </div>
   <SelectionFooter tabs={!characterOpen||characterReady} selectLabel={editing&&studioTab==="abilities"?"Toggle":undefined} hasPrimaryAction={!characterOpen&&(!editing||studioTab!=="abilities")} backAction={{onClick:()=>void back(),label:"Back"}}>{!characterOpen&&<div className="hero-workshop-actions">
    {!viewingReference&&<ControllerAction button="A" type="button" className="menu-control" disabled={!owner} tabIndex={-1} onClick={()=>editing?setPage("heroes"):openHero()}>{editing?"APPLY":"OPEN GARAGE"}</ControllerAction>}
