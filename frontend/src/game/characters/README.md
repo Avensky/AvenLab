@@ -6,10 +6,13 @@ confirm their character gender before editing. The server preserves that choice
 and saves appearance and prop edits automatically. Earlier profiles with a
 character keep their saved gender and use default appearance values as needed.
 
-The two starter drivers have built-in fallback meshes. Install the Git LFS
-objects for `villager-female.glb` and `villager-male.glb` under
-`frontend/public/models/characters/`. `npm run dev` and `npm run build`
-generate a smaller garage GLB and a separate portrait GLB beside each source.
+The two starter drivers have built-in fallback meshes. Put the source models
+`village-female.glb` and `village-male.glb` in
+`frontend/src/public/models/characters/villager/`. `npm run dev` and
+`npm run build` generate separate garage and portrait GLBs under
+`frontend/public/models/characters/villager/` for Vite to serve. The
+`villager-` spelling and older flat paths under `frontend/public` are also
+accepted. Download the Git LFS objects when a source file is a pointer.
 The generated LODs are ignored by Git. Vesper's bonnet is part of her rig, so it
 stays equipped for both hairstyles. The portrait is rendered from the same
 look as the garage model. Rook's imported model uses its short hair and coat

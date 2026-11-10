@@ -1,29 +1,28 @@
 // vite.config.ts
 import { execFile } from "node:child_process";
-import { statSync } from "node:fs";
 import { resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig, type ViteDevServer } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
+import { findVillagerModel, hasCharacterModel } from "./scripts/character-model-paths.mts";
+
 const bagModelUrl = "/models/characters/shop-bag.glb";
-const publicFile = (url: string) => new URL(`./public${url}`, import.meta.url);
-const hasModel = (url: string) => (statSync(publicFile(url), { throwIfNoEntry: false })?.size ?? 0) >= 256;
-function villagerLod(character: string, kind: "garage" | "portrait") {
-  const source = `/models/characters/${character}.glb`;
-  if (!hasModel(source)) return null;
-  const lod = source.replace(".glb", `.${kind}.glb`);
-  return hasModel(lod) ? lod : source;
+const bagFile = new URL(`./public${bagModelUrl}`, import.meta.url);
+function villagerLod(gender: "female" | "male", kind: "garage" | "portrait") {
+  const asset = findVillagerModel(gender);
+  if (!asset) return null;
+  return hasCharacterModel(asset.output(kind)) ? asset.url(kind) : asset.sourceUrl;
 }
 
 export default defineConfig({
   define: {
-    __CHARACTER_BAG_URL__: JSON.stringify(hasModel(bagModelUrl) ? bagModelUrl : null),
-    __VILLAGER_MODEL_URL__: JSON.stringify(villagerLod("villager-female", "garage")),
-    __VILLAGER_PORTRAIT_URL__: JSON.stringify(villagerLod("villager-female", "portrait")),
-    __ROOK_MODEL_URL__: JSON.stringify(villagerLod("villager-male", "garage")),
-    __ROOK_PORTRAIT_URL__: JSON.stringify(villagerLod("villager-male", "portrait")),
+    __CHARACTER_BAG_URL__: JSON.stringify(hasCharacterModel(bagFile) ? bagModelUrl : null),
+    __VILLAGER_MODEL_URL__: JSON.stringify(villagerLod("female", "garage")),
+    __VILLAGER_PORTRAIT_URL__: JSON.stringify(villagerLod("female", "portrait")),
+    __ROOK_MODEL_URL__: JSON.stringify(villagerLod("male", "garage")),
+    __ROOK_PORTRAIT_URL__: JSON.stringify(villagerLod("male", "portrait")),
   },
   // The road workbench has its own virtual bundle / preview build. Scanning all
   // preview HTML at app startup wasted work and attempted to resolve that bundle.
