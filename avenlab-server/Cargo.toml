@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+avenlab-physics = "0.1.0"
 anyhow = "1"
 rand = "0.8"
 nalgebra = "0.32"
