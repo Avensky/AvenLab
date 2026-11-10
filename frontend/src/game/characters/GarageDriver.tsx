@@ -9,7 +9,7 @@ import { CharacterLoadingEffect } from "./CharacterLoadingEffect";
 import { applyVillagerLook, prepareVillager, villagerModelUrl } from "./villagerModel";
 import type { GarageLeanFit } from "./garageLean";
 import type { GarageCockpit } from "../preview/garageCockpit";
-import { PreviewLoadingSeal } from "../preview/PreviewLoadingSeal";
+import { PreviewLoadingStatus } from "../preview/PreviewLoadingSeal";
 import { isCompactPreview } from "../preview/previewBudget";
 import { failCockpitPreview, useCharacterPreviewStore } from "./characterPreviewStore";
 
@@ -56,7 +56,7 @@ export function GarageDriver({ choice, previewPacks, leanFit, victory, cockpit }
     <>
       {url
         ? <AssetBoundary key={url} fallback={fallback}>
-            <Suspense fallback={victory ? <CharacterLoadingEffect /> : <PreviewLoadingSeal label="Summoning driver" radius={.84} />}>
+            <Suspense fallback={victory ? <CharacterLoadingEffect /> : <PreviewLoadingStatus label="Loading driver" />}>
               <group name="garage-driver" rotation={DRIVER_TILT}>
                 <VillagerDriver url={url} look={look} bag={bag} previewPacks={previewPacks}
                   leanFit={coatFitsLean ? leanFit : undefined} victory={victory} cockpit={cockpit} />

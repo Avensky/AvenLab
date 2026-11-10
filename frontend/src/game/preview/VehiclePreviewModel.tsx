@@ -23,7 +23,6 @@ import {vehicleSystems} from "../../vehicles/vehicleSystems";
 import { prepareGarageCockpit, type GarageCockpit } from "./garageCockpit";
 import { COCKPIT_TEST_VEHICLE } from "../characters/cockpitEmotes";
 import { usePreviewPaint } from "./usePreviewPaint";
-import { PreviewLoadingSeal } from "./PreviewLoadingSeal";
 import { splitAe86DriverDoor } from "./ae86DriverDoor";
 import { useGarageDrive } from "./garageDriveStore";
 
@@ -226,7 +225,7 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettle
         {driverReady ? <>
           <group name="garage-driver-shadow"><PreviewContactShadow footprint={[.55, .46]} offset={[0, 0]} /></group>
           <GarageDriver choice={driver} previewPacks={previewPacks} leanFit={lean} cockpit={cockpit} />
-        </> : allowDriver && <PreviewLoadingSeal label="Summoning driver" radius={.84} />}
+        </> : null}
       </group>}
       <PreviewContactShadow
         footprint={display.footprint}

@@ -161,7 +161,9 @@ test("garage settings sanitize old/corrupt values and bloom off skips its blur p
   const pass = {};
   configureGarageBloom(pass, DEFAULT_GARAGE_EFFECTS, false);
   assert.equal(pass.enabled, true);
-  assert.equal(pass.strength, 0.5);
+  assert.equal(pass.strength, 0.225);
+  assert.equal(pass.radius, 0.15);
+  assert.equal(pass.threshold, 1.22);
   configureGarageBloom(
     pass,
     { ...DEFAULT_GARAGE_EFFECTS, bloom: false },
@@ -197,6 +199,7 @@ test("turning off garage mirrors skips their capture and keeps the tile shader a
   };
   gateGarageFloorCapture(floor, () => time);
   configureGarageFloor(floor, DEFAULT_GARAGE_EFFECTS);
+  assert.equal(floor.material.uniforms.reflectionStrength.value, 0.76);
   floor.onBeforeRender();
   assert.equal(captures, 1);
   time += 1 / 60;

@@ -11,7 +11,7 @@ export function configureGarageFloor(
   floor.userData.garageReflectionCapture =
     settings.floorReflections && settings.reflectionStrength > 0;
   material.uniforms.reflectionStrength.value = settings.floorReflections
-    ? settings.reflectionStrength
+    ? settings.reflectionStrength * .76
     : 0;
   material.uniforms.reflectionBlur.value = settings.reflectionBlur;
 }

@@ -3,12 +3,12 @@ export function Showroom({ floor = true }: { floor?: boolean }) {
   return <>
     <color attach="background" args={["#080c16"]} />
     <fog attach="fog" args={["#080c16", 20, 55]} />
-    <hemisphereLight args={["#b2c3e7", "#151d30", 0.38]} />
-    <directionalLight position={[-6, 8, -4]} color="#afc7ff" intensity={0.48} />
-    <directionalLight position={[6, 5, 4]} color="#d9e2f0" intensity={0.23} />
-    {/* A local warm key and a cooler rim preserve the paint and silhouette at night. */}
-    <spotLight name="vehicle-key-spot" position={[3, 6.5, 4]} color="#fff1db" intensity={73} angle={0.52} penumbra={0.85} distance={18} decay={2} />
-    <spotLight name="vehicle-rim-spot" position={[-4, 5.5, -3]} color="#b2cbff" intensity={42} angle={0.58} penumbra={0.85} distance={17} decay={2} />
+    <hemisphereLight args={["#bac9e1", "#151d30", 0.44]} />
+    <directionalLight position={[-6, 8, -4]} color="#bacfff" intensity={0.37} />
+    <directionalLight position={[6, 5, 4]} color="#e1e6ef" intensity={0.29} />
+    {/* Broad light reads on paint and faces without hot reflections on the hood. */}
+    <spotLight name="vehicle-key-spot" position={[3, 6.5, 4]} color="#fff1db" intensity={64} angle={0.59} penumbra={0.92} distance={18} decay={2} />
+    <spotLight name="vehicle-rim-spot" position={[-4, 5.5, -3]} color="#b2cbff" intensity={30} angle={0.64} penumbra={0.92} distance={17} decay={2} />
     {floor && <ShowroomFloor />}
   </>;
 }

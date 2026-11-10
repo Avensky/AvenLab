@@ -65,7 +65,7 @@ function GarageModel({ turntable, onPlatformReady, onSettled, accentOverride = n
   const theme = usePreferencesStore((s) => s.theme),
     contrast = usePreferencesStore((s) => s.highContrast);
   const brightness = usePreferencesStore(
-    (s) => s.garageEffects.accentBrightness * .66,
+    (s) => s.garageEffects.accentBrightness * .49,
   );
   const environmentReflections = usePreferencesStore(
     (s) => s.garageEffects.environmentReflections,

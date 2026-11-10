@@ -32,13 +32,19 @@ const fragment = /* glsl */ `
     float ink = ring(radius, 0.87, 0.009) + ring(radius, 0.79, 0.01) * sectors;
     ink += ring(radius, 0.64, 0.005) * 0.52 + ring(radius, wave, 0.009) * 0.26;
     ink += (1.0 - smoothstep(0.045, 0.065, abs(point.x) + abs(point.y))) * 0.74;
-    float glow = 0.18 * exp(-18.0 * abs(radius - 0.84)) + 0.09 * (1.0 - smoothstep(0.0, 0.87, radius));
-    gl_FragColor = vec4(accent, min(0.83, ink * 0.73 + glow));
+    float glow = 0.10 * exp(-18.0 * abs(radius - 0.84)) + 0.055 * (1.0 - smoothstep(0.0, 0.87, radius));
+    gl_FragColor = vec4(accent, min(0.74, ink * 0.65 + glow));
     #include <colorspace_fragment>
   }
 `;
 
-export function PreviewLoadingSeal({ label, radius = 2 }: { label: string; radius?: number }) {
+export function PreviewLoadingStatus({ label }: { label: string }) {
+  return <Html center position={[0, .56, 0]} zIndexRange={[10, 0]} style={{ pointerEvents: "none" }}>
+    <div className="preview-loading-seal" role="status">{label}</div>
+  </Html>;
+}
+
+export function PreviewLoadingSeal({ label }: { label: string }) {
   const accent = usePreferencesStore(s => UI_THEMES[s.theme].accent);
   const reducedMotion = usePreferencesStore(s => s.reducedMotion);
   const systemReducedMotion = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -49,11 +55,9 @@ export function PreviewLoadingSeal({ label, radius = 2 }: { label: string; radiu
   });
   return <>
     <mesh name="garage-floor-summon-circle" position={[0, .014, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      <planeGeometry args={[radius * 2, radius * 2]} />
+      <planeGeometry args={[4, 4]} />
       <shaderMaterial ref={material} vertexShader={vertex} fragmentShader={fragment} uniforms={uniforms} transparent depthWrite={false} toneMapped={false} />
     </mesh>
-    <Html center position={[0, .56, 0]} zIndexRange={[10, 0]} style={{ pointerEvents: "none" }}>
-      <div className="preview-loading-seal" role="status">{label}</div>
-    </Html>
+    <PreviewLoadingStatus label={label} />
   </>;
 }

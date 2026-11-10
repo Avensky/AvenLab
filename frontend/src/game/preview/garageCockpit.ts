@@ -14,6 +14,14 @@ const UP = new Vector3(0, 1, 0);
 const ELBOW_HINGE = new Vector3(0, 0, -1);
 const ROLL_START = .285;
 const RACE_FACE = [-.21, -.28] as const;
+// The short outer finger follows the outside edge of the rim with a shallower curl.
+const RIM_FINGER_CURL = {
+  index: [.28, .46, .65],
+  middle: [.28, 1.1, .65],
+  ring: [.2, .94, .86],
+  pinky: [.2, .3, .42],
+  thumb: [.3, .3, .3],
+} as const;
 
 export function sampleCockpitMotion(id: TakeId | null, phase: number) {
   const ease = (from: number, to: number) => MathUtils.smoothstep(phase, from, to);
@@ -240,7 +248,7 @@ export function prepareGarageCockpit(car: Object3D, glassMaterials: Iterable<Mes
           const radial = new Vector3(side * .73, 0, 0).addScaledVector(rim.up, .68).normalize().applyQuaternion(rimTurn);
           // Aim the knuckles beyond the outer rim. The palm faces inward and
           // the fingers wrap down over the far side of the rim.
-          const grip = radial.clone().multiplyScalar(rim.radius + .027).add(center);
+          const grip = radial.clone().multiplyScalar(rim.radius + .036).add(center);
           const release = side < 0 ? pose.gesture : 0;
           const wave = id === "101" ? Math.sin((phase - .44) * Math.PI * 25) : 0;
           const gripDirection = new Vector3(-side * .11, -.04, .99).applyQuaternion(rimTurn).projectOnPlane(radial).normalize();
@@ -272,7 +280,7 @@ export function prepareGarageCockpit(car: Object3D, glassMaterials: Iterable<Mes
           aimDriverJoint(hand, rig.middle, direction.clone());
           alignJointNormal(hand, direction, rig.palm, palmNormal);
           for (const { joint, axis, name, segment } of rig.fingers) {
-            const gripCurl = name === "thumb" ? .3 : [.55, .96, .65][segment];
+            const gripCurl = RIM_FINGER_CURL[name][segment];
             const gestureCurl = id === "101" ? .05 : name === "thumb" ? .04 : [1.04, 1.27, .64][segment];
             joint.rotateOnAxis(axis, MathUtils.lerp(gripCurl, gestureCurl, release));
           }

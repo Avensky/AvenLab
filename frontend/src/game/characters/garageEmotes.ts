@@ -231,7 +231,7 @@ export function driverHand(root: Object3D, side: "l" | "r") {
   const across = index.getWorldPosition(new Vector3()).sub(pinky.getWorldPosition(new Vector3()));
   const palm = middle.getWorldPosition(new Vector3()).sub(hand.getWorldPosition(new Vector3()))
     .cross(across).normalize().multiplyScalar(side === "l" ? 1 : -1);
-  const fingers = ["index", "middle", "ring", "pinky", "thumb"].flatMap(name => {
+  const fingers = (["index", "middle", "ring", "pinky", "thumb"] as const).flatMap(name => {
     const chain = [1, 2, 3].map(segment => bone(`${name}_0${segment}`));
     return chain.flatMap((joint, segment) => {
       const adjacent = chain[segment + 1] ?? chain[segment - 1];

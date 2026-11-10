@@ -53,7 +53,7 @@ export function prepareGarageDisplay(scene: Object3D) {
         break;
       case "Material.006":
         material.emissive.setRGB(1, 1, 1);
-        material.emissiveIntensity = 3;
+        material.emissiveIntensity = 1.55;
         break;
       case "Sol cubique":
         material.color.setRGB(0.005, 0.005, 0.006);
