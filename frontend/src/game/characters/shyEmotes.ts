@@ -16,13 +16,26 @@ const coverMouth = {
   rightHand: [-.64, .18, .55], rightPalm: [[.82, .32, .31], [0, 0, -1]],
   fingers: [null, "open"],
 } as const;
+const handOverLips = {
+  ...coverMouth, rightAtLips: true,
+  leftPalm: [[.05, .96, .22], [0, 0, 1]], fingers: ["point", "open"],
+} as const;
 const offerPalm: Palm = [[.25, .13, .9], [0, 1, -.14]];
 const halfWave = {
   leftHand: [-.23, -.05, .65], rightHand: [-1.24, .25, .48],
   leftPalm: [[-.8, .44, .32], [0, 0, 1]], rightPalm: wavePalm, fingers: ["open", "open"],
 } as const;
 
+export const QUIET_THANK_YOU = { id: "035", name: "Quiet thank you", duration: 3.3, keys: [
+  [.17, { ...grateful, leftHand: [.91, -.32, .58], rightHand: [-.91, -.32, .58], rise: -.016, head: [-.04, .02, 0], face: [.51, .29] }],
+  [.35, { ...grateful, rise: -.024, torso: [.06, 0, .008], head: [.13, .02, 0], face: [.71, .25] }],
+  [.51, { ...grateful, rise: -.044, torso: [.16, 0, .013], head: [.23, .025, .016], face: [.59, .21] }],
+  [.69, { ...grateful, rise: -.026, torso: [.035, .025, -.02], head: [-.02, .04, .06], face: [.76, .32] }],
+  [.84, { ...grateful, leftHand: [1.27, -.42, .54], rightHand: [-1.27, -.43, .54], head: [.06, .06, .035], face: [.56, .22] }],
+] } as const satisfies Emote;
+
 export const SHY_EMOTES = [
+  QUIET_THANK_YOU,
   { id: "031", name: "Fingertip fidget", duration: 3.55, keys: [
     [.18, { ...quietHands, leftHand: [1.25, -.57, .59], rightHand: [-1.25, -.57, .59], head: [.16, -.06, .045], sway: -.022, face: [.21, .25] }],
     [.33, { ...quietHands, head: [.21, -.11, .065], sway: -.017, face: [.34, .27] }],
@@ -53,13 +66,6 @@ export const SHY_EMOTES = [
     [.55, { rightHand: [-.24, -.29, .4], rightPalm: [[.64, .57, .22], [0, 0, -1]], fingers: [null, "open"], head: [.22, -.07, .1], sway: -.037, rise: -.023, face: [.81, .33] }],
     [.7, { rightHand: [-.56, -.42, .54], head: [-.038, .04, .035], sway: -.02, rise: -.019, face: [.74, .26] }],
     [.85, { head: [.075, .07, -.04], face: [.56, .21] }],
-  ] },
-  { id: "035", name: "Quiet thank you", duration: 3.3, keys: [
-    [.17, { ...grateful, leftHand: [.91, -.32, .58], rightHand: [-.91, -.32, .58], rise: -.016, head: [-.04, .02, 0], face: [.51, .29] }],
-    [.35, { ...grateful, rise: -.024, torso: [.06, 0, .008], head: [.13, .02, 0], face: [.71, .25] }],
-    [.51, { ...grateful, rise: -.044, torso: [.16, 0, .013], head: [.23, .025, .016], face: [.59, .21] }],
-    [.69, { ...grateful, rise: -.026, torso: [.035, .025, -.02], head: [-.02, .04, .06], face: [.76, .32] }],
-    [.84, { ...grateful, leftHand: [1.27, -.42, .54], rightHand: [-1.27, -.43, .54], head: [.06, .06, .035], face: [.56, .22] }],
   ] },
   { id: "036", name: "Timid invitation", duration: 3.5, keys: [
     [.19, { rightHand: [-1.08, -.42, .58], rightPalm: offerPalm, fingers: [null, "open"], head: [.07, .14, -.08], sway: .023, rise: -.021, face: [.35, .37] }],
@@ -97,6 +103,15 @@ export const SHY_EMOTES = [
     [.59, { ...walkPause, torso: [-.035, -.15, -.038], head: [.008, -.27, .08], rightHand: [-1.31, .16, .49], rightPalm: wavePalm, fingers: [null, "open"], wrist: .16, face: [.77, .46] }],
     [.64, { ...walkPause, torso: [-.025, -.12, -.03], head: [.07, -.21, .065], rightHand: [-1.3, .12, .49], rightPalm: wavePalm, fingers: [null, "open"], wrist: -.13, face: [.61, .34] }],
     ...walkReturn,
+  ] },
+  { id: "oh-no", name: "Oh, no", duration: 3.2, keys: [
+    [.15, { rightHand: [-1.12, -.16, .59], leftHand: [1.42, -.32, .53], sway: -.014, rise: -.02, head: [-.065, .06, -.025], face: [.26, .65] }],
+    [.31, { ...handOverLips, leftHand: [1.34, -.03, .59], sway: -.023, rise: -.021, head: [.065, .05, .04], wristLeft: -.19, face: [.59, .55] }],
+    [.4, { ...handOverLips, leftHand: [1.43, -.03, .59], sway: -.025, rise: -.022, head: [.09, -.08, .04], wristLeft: .27, face: [.74, .53] }],
+    [.49, { ...handOverLips, leftHand: [1.32, -.03, .59], sway: -.021, rise: -.022, head: [.1, .09, .03], wristLeft: -.25, face: [.87, .52] }],
+    [.58, { ...handOverLips, leftHand: [1.44, -.04, .59], sway: -.017, rise: -.023, head: [.105, -.07, .05], wristLeft: .25, face: [.9, .49] }],
+    [.69, { ...handOverLips, leftHand: [1.35, -.08, .57], sway: -.021, rise: -.023, head: [.12, .035, .06], wristLeft: -.12, face: [.77, .39] }],
+    [.83, { rightHand: [-1.2, -.22, .61], leftHand: [1.48, -.31, .59], sway: -.012, rise: -.015, head: [.07, .08, -.04], face: [.57, .3] }],
   ] },
 ] as const satisfies readonly Emote[];
 

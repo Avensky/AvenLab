@@ -37,6 +37,8 @@ Shy and Sweet (031–040) is available under Emotes → Shy. Casual walk and Sid
 step and glance are in the Garage preview group. They take short steps and
 return to the turntable mark. Victory also has Rap hands, three heart
 silhouettes, and a Finger guns gesture.
+Quiet thank you leads the Shy list and the empty-handed garage idle rotation.
+The Shy preview group also includes Oh, no.
 Tsundere (041–050) is available under Emotes → Tsundere. Four of its gestures
 can be previewed while holding the bag.
 

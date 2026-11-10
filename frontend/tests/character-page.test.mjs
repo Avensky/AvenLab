@@ -75,9 +75,11 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     await click('.character-emotes button:first-child');
     assert.equal(preview.getState().emote.id, '021');
     await click('[aria-label="Emote collection"] button:nth-child(4)');
-    assert.equal(document.querySelectorAll('.character-emotes button').length, 10);
+    assert.equal(document.querySelectorAll('.character-emotes button').length, 11);
+    await click('.character-emotes button:first-child');
+    assert.equal(preview.getState().emote.id, '035');
     await click('.character-emotes button:last-child');
-    assert.equal(preview.getState().emote.id, '040');
+    assert.equal(preview.getState().emote.id, 'oh-no');
     await click('[aria-label="Emote collection"] button:last-child');
     assert.equal(document.querySelectorAll('.character-emotes button').length, 10);
     await click('.character-emotes button:last-child');
@@ -118,7 +120,7 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(find('input[aria-label="Preview zoom"]').max, '1.25');
     await click('[aria-label="Emote collection"] button:nth-child(2)');
     assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent),
-      ['Small fist pump', 'Blown kiss', 'Finger heart', 'Finger guns']);
+      ['Small fist pump', 'Blown kiss', 'Finger heart']);
     await click('[aria-label="Emote collection"] button:nth-child(3)');
     assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent),
       ['Air doodle', 'Finger count mistake', 'Imaginary butterfly', 'Almost a sneeze']);
@@ -181,9 +183,10 @@ test('all emote batches return to rest and keep planted and lifted feet distinct
     const clips = buildGarageEmotes(model.root, false, true);
     const mixer = new AnimationMixer(model.root);
     const ids = clips.map(clip => clip.name.split(' ')[0]);
-    assert.deepEqual(ids.filter(id => /^\d+$/.test(id)), Array.from({length: 50}, (_, i) => String(i + 1).padStart(3, '0')));
+    assert.deepEqual(ids.filter(id => /^\d+$/.test(id)).sort(), Array.from({length: 50}, (_, i) => String(i + 1).padStart(3, '0')));
     assert.deepEqual(ids.filter(id => id.startsWith('walk-')), ['walk-casual', 'walk-glance']);
-    assert.equal(buildGarageEmotes(model.root).length, 10, 'the live idle set stays separate from previews');
+    assert.deepEqual(buildGarageEmotes(model.root).map(clip => clip.name.split(' ')[0]), [...ids.slice(0, 10), '035']);
+    assert(!buildGarageEmotes(model.root, true).some(clip => clip.name.startsWith('035 ')));
     const leanFit = { offset: .15, distance: .06 };
     const lean = buildGarageEmotes(model.root, false, false, leanFit).at(-1);
     assert(lean.name.startsWith('pose-lean '));

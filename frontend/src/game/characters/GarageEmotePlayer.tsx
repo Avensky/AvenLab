@@ -8,6 +8,7 @@ import { useCharacterPreviewStore } from "./characterPreviewStore";
 import { DriverBag } from "./DriverBag";
 import { availableVictoryEmotes, type VictoryEmoteId } from "./victoryEmotes";
 import { GARAGE_LEAN_ID, type GarageLeanFit } from "./garageLean";
+import { QUIET_THANK_YOU } from "./shyEmotes";
 
 const REST_SECONDS = 4.5;
 const FADE_SECONDS = .24;
@@ -48,6 +49,8 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
     actions.set("001", mixer.clipAction(breathing.clone()).setLoop(LoopOnce, 1));
     const automatic = [...actions].filter(([id]) => bag ? id.startsWith("bag-")
       : GARAGE_EMOTES.some(emote => emote.id === id && id !== "001" && id !== "010")).map(([, action]) => action);
+    const thanks = actions.get(QUIET_THANK_YOU.id);
+    if (thanks) automatic.unshift(thanks);
     const lean = actions.get(GARAGE_LEAN_ID);
     if (lean) automatic.splice(2, 0, lean);
     const blink = driverFaceTargets(root, "blink");
