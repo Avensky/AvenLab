@@ -7,6 +7,7 @@ import { driverFaceTargets } from "./villagerFace";
 import { useCharacterPreviewStore } from "./characterPreviewStore";
 import { DriverBag } from "./DriverBag";
 import { availableVictoryEmotes, type VictoryEmoteId } from "./victoryEmotes";
+import { GARAGE_LEAN_ID, type GarageLeanFit } from "./garageLean";
 
 const REST_SECONDS = 4.5;
 const FADE_SECONDS = .24;
@@ -17,8 +18,8 @@ function setBlinkWeight(targets: ReturnType<typeof driverFaceTargets>, weight: n
   for (const { mesh, index } of targets) mesh.morphTargetInfluences![index] = weight;
 }
 
-export function GarageEmotePlayer({ root, bag = false, previewPacks = false, victory }: {
-  root: Object3D; bag?: boolean; previewPacks?: boolean; victory?: VictoryPlayback;
+export function GarageEmotePlayer({ root, bag = false, previewPacks = false, leanFit, victory }: {
+  root: Object3D; bag?: boolean; previewPacks?: boolean; leanFit?: GarageLeanFit; victory?: VictoryPlayback;
 }) {
   const reducedMotion = usePreferencesStore(state => state.reducedMotion);
   const player = useRef<{
@@ -41,12 +42,14 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, vic
     const celebration = victory && availableVictoryEmotes(bag).find(emote => emote.id === victory.id);
     const [breathing, ...clips] = victory
       ? buildEmoteClips(root, celebration ? [GARAGE_EMOTES[0], celebration] : [GARAGE_EMOTES[0]])
-      : buildGarageEmotes(root, bag, previewPacks);
+      : buildGarageEmotes(root, bag, previewPacks, leanFit);
     const idle = mixer.clipAction(breathing).play();
     const actions = new Map(clips.map(clip => [clip.name.split(" ")[0], mixer.clipAction(clip).setLoop(LoopOnce, 1)]));
     actions.set("001", mixer.clipAction(breathing.clone()).setLoop(LoopOnce, 1));
     const automatic = [...actions].filter(([id]) => bag ? id.startsWith("bag-")
       : GARAGE_EMOTES.some(emote => emote.id === id && id !== "001" && id !== "010")).map(([, action]) => action);
+    const lean = actions.get(GARAGE_LEAN_ID);
+    if (lean) automatic.splice(2, 0, lean);
     const blink = driverFaceTargets(root, "blink");
     const active = celebration ? actions.get(celebration.id)!.reset().setEffectiveWeight(0).play() : null;
     player.current = { mixer, idle, actions, automatic, active, rest: REST_SECONDS, next: 0, wave: false, blink, elapsed: 0, preview: null };
@@ -56,7 +59,7 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, vic
       mixer.uncacheRoot(root);
       setBlinkWeight(blink, 0);
     };
-  }, [reducedMotion, root, bag, previewPacks, victory]);
+  }, [reducedMotion, root, bag, previewPacks, leanFit, victory]);
 
   useFrame((_, delta) => {
     const current = player.current;

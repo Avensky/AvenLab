@@ -29,6 +29,8 @@ export function measureDriverDoor(root: Object3D) {
  });
  const parts = explicit.length ? explicit : left;
  if (parts.length) return boundsInRoot(root, parts);
+ const driverWindow = root.getObjectByName("WINDOW_FRONT_LEFT") ?? root.getObjectByName("WINDOW_LEFT");
+ if (driverWindow instanceof Mesh) return boundsInRoot(root, [driverWindow]);
  // Some imports (including Sierra) pack the cab and doors into the body.
  // Use the cab glass and front lamp marker to locate its front seat.
  const glass = root.getObjectByName("GLASS_GEO");

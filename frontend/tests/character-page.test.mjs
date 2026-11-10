@@ -70,10 +70,14 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert(vesperPortrait?.matches('span.character-portrait--unavailable'), 'Vesper keeps a neutral portrait when WebGL is unavailable');
     await click('.character-emotes button:nth-child(4)');
     assert.equal(preview.getState().emote.id, '004');
-    await click('[aria-label="Emote collection"] button:last-child');
+    await click('[aria-label="Emote collection"] button:nth-child(3)');
     assert.equal(document.querySelectorAll('.character-emotes button').length, 10);
     await click('.character-emotes button:first-child');
     assert.equal(preview.getState().emote.id, '021');
+    await click('[aria-label="Emote collection"] button:last-child');
+    assert.equal(document.querySelectorAll('.character-emotes button').length, 10);
+    await click('.character-emotes button:last-child');
+    assert.equal(preview.getState().emote.id, '040');
     await click('[aria-label="Emote collection"] button:first-child');
     await click('[data-character-option="jules-okafor"]');
     assert.equal(find('[data-character-preview]').dataset.characterPreview, 'jules-okafor');
@@ -109,10 +113,14 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert(![...document.querySelectorAll('.character-emotes button')].some(button => button.textContent === 'Hands behind back'));
     assert.equal(find('input[aria-label="Preview zoom"]').max, '1.25');
     await click('[aria-label="Emote collection"] button:nth-child(2)');
-    assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent), ['Small fist pump', 'Blown kiss']);
-    await click('[aria-label="Emote collection"] button:last-child');
+    assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent),
+      ['Small fist pump', 'Blown kiss', 'Finger heart', 'Finger guns']);
+    await click('[aria-label="Emote collection"] button:nth-child(3)');
     assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent),
       ['Air doodle', 'Finger count mistake', 'Imaginary butterfly', 'Almost a sneeze']);
+    await click('[aria-label="Emote collection"] button:last-child');
+    assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent),
+      ['Shoetip shuffle', 'Compliment recoil', 'Timid invitation', 'Suppressed giggle', 'Gentle reassurance']);
     await click('[aria-label="Preview gender"] [data-character-option="mara-vega"]');
     assert.equal(drafts.at(-1).id, 'mara-vega');
     assert.equal(drafts.at(-1).prop, 'shop-bag');
@@ -165,8 +173,14 @@ test('all emote batches return to rest and keep planted and lifted feet distinct
     const rest = capture();
     const clips = buildGarageEmotes(model.root, false, true);
     const mixer = new AnimationMixer(model.root);
-    assert.deepEqual(clips.map(clip => clip.name.slice(0, 3)), Array.from({length: 30}, (_, i) => String(i + 1).padStart(3, '0')));
+    const ids = clips.map(clip => clip.name.split(' ')[0]);
+    assert.deepEqual(ids.filter(id => /^\d+$/.test(id)), Array.from({length: 40}, (_, i) => String(i + 1).padStart(3, '0')));
+    assert.deepEqual(ids.filter(id => id.startsWith('walk-')), ['walk-casual', 'walk-glance']);
     assert.equal(buildGarageEmotes(model.root).length, 10, 'the live idle set stays separate from previews');
+    const leanFit = { offset: .15, distance: .06 };
+    const lean = buildGarageEmotes(model.root, false, false, leanFit).at(-1);
+    assert(lean.name.startsWith('pose-lean '));
+    assert(!buildGarageEmotes(model.root, true, false, leanFit).some(clip => clip.name.startsWith('pose-lean ')));
     for (const clip of clips) {
       const action = mixer.clipAction(clip).setLoop(LoopOnce, 1);
       action.reset().play();
@@ -183,16 +197,30 @@ test('all emote batches return to rest and keep planted and lifted feet distinct
     assert(foot('l').y - leftRest.y > .03);
     assert(foot('r').distanceTo(rightRest) < .002);
     shift.stop();
-    const hop = mixer.clipAction(clips[13]).reset().play();
-    mixer.update(clips[13].duration * .39);
+    const hop = mixer.clipAction(clips[ids.indexOf('014')]).reset().play();
+    mixer.update(hop.getClip().duration * .39);
     assert(foot('l').y - leftRest.y > .12 && foot('r').y - rightRest.y > .12);
     hop.stop();
-    const march = mixer.clipAction(clips[25]).reset().play();
-    mixer.update(clips[25].duration * .23);
-    assert(foot('l').y - leftRest.y > .1 && foot('r').distanceTo(rightRest) < .002);
-    mixer.update(clips[25].duration * .2);
-    assert(foot('r').y - rightRest.y > .1 && Math.abs(foot('l').y - leftRest.y) < .002);
+    const march = mixer.clipAction(clips[ids.indexOf('026')]).reset().play();
+    mixer.update(march.getClip().duration * .23);
+    assert(foot('l').y - leftRest.y > .04 && foot('l').y - leftRest.y < .065 && foot('r').distanceTo(rightRest) < .002);
+    mixer.update(march.getClip().duration * .2);
+    assert(foot('r').y - rightRest.y > .04 && foot('r').y - rightRest.y < .065 && Math.abs(foot('l').y - leftRest.y) < .002);
     march.stop();
+    const stroll = mixer.clipAction(clips[ids.indexOf('walk-casual')]).reset().play();
+    mixer.update(stroll.getClip().duration * .22);
+    const plantedLeft = foot('l');
+    mixer.update(stroll.getClip().duration * .11);
+    assert(foot('l').distanceTo(plantedLeft) < .002 && foot('r').y - rightRest.y > .04);
+    assert(model.root.position.z > .12);
+    stroll.stop();
+    const leanAction = mixer.clipAction(lean).reset().play();
+    mixer.update(lean.duration * .32);
+    assert(model.root.position.z < -.205 && Math.abs(foot('r').z - rightRest.z + .15) < .02);
+    const parked = foot('r');
+    mixer.update(lean.duration * .2);
+    assert(foot('r').distanceTo(parked) < .002);
+    leanAction.stop();
     mixer.uncacheRoot(model.root);
     model.dispose();
   } finally {

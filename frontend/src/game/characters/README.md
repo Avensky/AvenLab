@@ -33,6 +33,14 @@ Victory Essentials (011–020) is available under Emotes → Victory. On a live
 win, the Awards tab can play Small fist pump with the equipped driver.
 Cute and Playful (021–030) is available under Emotes → Playful. The imported
 rigs articulate individual fingers for the heart trace and the counting gag.
+Shy and Sweet (031–040) is available under Emotes → Shy. Casual walk and Side
+step and glance are in the Garage preview group. They take short steps and
+return to the turntable mark. Victory also has Rap hands, three heart
+silhouettes, and a Finger guns gesture.
+
+Rook's coat outfits occasionally fold their arms and lean by the driver
+door. The pose requires a fitted road-car side panel, closed doors, and
+empty hands. It stays out of the wardrobe and body-panel inspection views.
 
 The Props tab loads the black-and-gold bag from
 `frontend/public/models/characters/props/bag-black-gold/`. The mobile GLB is

@@ -75,6 +75,19 @@ export function CharacterPortrait({ choice, compact = false, label }: {
 }) {
   const { id, outfit, appearance } = choice ?? {};
   const look = useMemo(() => characterLook(id && outfit ? { id, outfit, appearance } : null), [id, outfit, appearance]);
+  const canBake = typeof WebGL2RenderingContext !== "undefined";
+  const url = canBake && look ? villagerModelUrl(look, "portrait") : null;
+  const [requestedUrl, setRequestedUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!url) return;
+    const request = window.setTimeout(() => {
+      // Start the shared GLTF request after commit. Its loading manager
+      // notifies the mode loading screen as soon as a request starts.
+      useGLTF.preload(url);
+      setRequestedUrl(url);
+    }, 0);
+    return () => window.clearTimeout(request);
+  }, [url]);
   const originalOnly = id === VILLAGER_ID;
   const face = look && faces[look.character.id];
   const alternate = look?.outfit.id === look?.character.outfits[1]?.id;
@@ -109,11 +122,10 @@ export function CharacterPortrait({ choice, compact = false, label }: {
         </g>}
       </> : <path fill="var(--app-muted, #889aa9)" opacity=".64" d="M120 42a28 28 0 1 0 0 56 28 28 0 0 0 0-56Zm-54 83c10-16 32-22 54-22s44 6 54 22l14 57H52Z" />}
     </svg>;
-  if (!look || typeof WebGL2RenderingContext === "undefined") return fallback;
-  const url = villagerModelUrl(look, "portrait");
+  if (!look || !canBake) return fallback;
   const unavailable = originalOnly ? fallback : <ModelPortrait look={look} fallback={fallback} label={label} />;
   const loading = <span className="character-portrait character-portrait--loading" role={label ? "img" : undefined} aria-label={label} aria-hidden={label ? undefined : true} />;
-  return url ? (
+  return url && requestedUrl !== url ? loading : url ? (
     <AssetBoundary key={url} fallback={unavailable}>
       <Suspense fallback={loading}><VillagerPortrait url={url} look={look} fallback={fallback} pending={loading} label={label} /></Suspense>
     </AssetBoundary>

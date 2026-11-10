@@ -73,9 +73,9 @@ export const PLAYFUL_EMOTES = [
   ] },
   { id: "024", name: "Balancing act", duration: 3.45, keys: [
     [.19, { leftHand: [2.41, -.29, .39], rightHand: [-2.41, -.29, .39], sway: -.065, rise: -.036, head: [.08, -.05, -.05], face: [.2, .35] }],
-    [.37, { leftHand: [3.35, .03, .28], rightHand: [-3.32, .01, .28], sway: -.142, rise: -.036, feet: { l: [.082, .143, -.109, .15] }, torso: [.04, .01, .11], head: [0, .04, -.08], face: [.61, .4] }],
-    [.53, { leftHand: [3.14, -.15, .31], rightHand: [-3.16, .15, .36], sway: -.136, rise: -.049, feet: { l: [.096, .131, -.119, .18] }, torso: [.06, 0, .19], head: [.04, -.05, -.12], face: [.4, .65] }],
-    [.67, { leftHand: [3.19, .1, .34], rightHand: [-3.17, -.18, .32], sway: -.145, rise: -.032, feet: { l: [.071, .111, -.077, .11] }, torso: [.035, .025, .065], head: [0, 0, -.055], face: [.88, .27] }],
+    [.37, { leftHand: [3.35, .03, .28], rightHand: [-3.32, .01, .28], sway: -.142, rise: -.036, feet: { l: [.069, .086, -.076, .15] }, torso: [.04, .01, .11], head: [0, .04, -.08], face: [.61, .4] }],
+    [.53, { leftHand: [3.14, -.15, .31], rightHand: [-3.16, .15, .36], sway: -.136, rise: -.049, feet: { l: [.079, .078, -.083, .18] }, torso: [.06, 0, .19], head: [.04, -.05, -.12], face: [.4, .65] }],
+    [.67, { leftHand: [3.19, .1, .34], rightHand: [-3.17, -.18, .32], sway: -.145, rise: -.032, feet: { l: [.061, .069, -.058, .11] }, torso: [.035, .025, .065], head: [0, 0, -.055], face: [.88, .27] }],
     [.83, { leftHand: [1.9, -.39, .42], rightHand: [-1.9, -.39, .42], sway: -.053, rise: -.047, feet: { l: [.024, 0, -.023] }, torso: [.08, 0, .025], face: [.69, .22] }],
   ] },
   { id: "025", name: "Finger count mistake", duration: 4.2, keys: [
@@ -89,13 +89,13 @@ export const PLAYFUL_EMOTES = [
   ] },
   { id: "026", name: "Tiny marching feet", duration: 3.2, keys: [
     [.12, { ...handsAtSides, sway: -.057, rise: -.039, torso: [.05, -.065, .025], face: [.5, .33] }],
-    [.23, { ...marchLeftBack, sway: -.078, rise: -.018, feet: { l: [.012, .117, .098, .06] }, torso: [-.03, -.13, .08], face: [.79, .38] }],
+    [.23, { ...marchLeftBack, sway: -.078, rise: -.018, feet: { l: [.009, .046, .06, .06] }, torso: [-.03, -.13, .08], face: [.79, .38] }],
     [.32, { ...marchNeutral, sway: -.019, rise: -.046, feet: { l: [.008, 0, .035] }, torso: [.07, -.04, .045], face: [.86, .3] }],
-    [.43, { ...marchRightBack, sway: .074, rise: -.017, feet: { l: [.008, 0, .035], r: [-.014, .126, .101, -.08] }, torso: [-.025, .13, -.07], face: [.87, .42] }],
+    [.43, { ...marchRightBack, sway: .074, rise: -.017, feet: { l: [.008, 0, .035], r: [-.012, .051, .065, -.08] }, torso: [-.025, .13, -.07], face: [.87, .42] }],
     [.52, { ...marchNeutral, sway: .034, rise: -.049, feet: { l: [.008, 0, .035] }, torso: [.07, .055, -.035], face: [.82, .34] }],
-    [.63, { ...marchLeftBack, sway: -.073, rise: -.017, feet: { l: [.012, .122, .091, .055] }, torso: [-.03, -.13, .068], face: [.93, .4] }],
+    [.63, { ...marchLeftBack, sway: -.073, rise: -.017, feet: { l: [.009, .047, .056, .055] }, torso: [-.03, -.13, .068], face: [.93, .4] }],
     [.72, { ...marchNeutral, sway: -.028, rise: -.047, torso: [.07, -.055, .041], face: [.89, .32] }],
-    [.83, { ...marchRightBack, sway: .064, rise: -.021, feet: { r: [-.013, .101, .079, -.06] }, torso: [-.03, .11, -.067], face: [.94, .42] }],
+    [.83, { ...marchRightBack, sway: .064, rise: -.021, feet: { r: [-.01, .044, .052, -.06] }, torso: [-.03, .11, -.067], face: [.94, .42] }],
     [.91, { ...handsAtSides, sway: .025, rise: -.039, torso: [.065, .025, -.018], face: [.76, .24] }],
   ] },
   { id: "027", name: "Ta da reveal", duration: 3.55, keys: [

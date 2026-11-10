@@ -1,4 +1,4 @@
-import { Box3, Mesh, Vector3, type Object3D } from "three";
+import { Box3, Mesh, Raycaster, Vector3, type Object3D } from "three";
 import { vehicleSystems } from "../../vehicles/vehicleSystems.ts";
 
 // Native fallback stage while the authored garage pad is loading (long X, short Z).
@@ -75,6 +75,37 @@ export function measurePreviewGrounding(root: Object3D): { position: [number, nu
 }
 
 export function previewPlacement(root: Object3D): [number, number, number] { return measurePreviewGrounding(root).position; }
+
+// Probe the closed side panel in model meters so the result survives turntable scale and rotation.
+export function measureDriverLean(root: Object3D, across: number, floor: number, along: number, side: number) {
+  const panels: Mesh[] = [];
+  root.traverseVisible(object => {
+    if (object instanceof Mesh && !/mirror|window|glass|tire|tyre|wheel|decal/i.test(object.name)) panels.push(object);
+  });
+  const ray = new Raycaster();
+  const gapAt = (height: number) => {
+    const from = root.localToWorld(new Vector3(across, floor + height, along));
+    const direction = root.localToWorld(new Vector3(across - side * .72, floor + height, along)).sub(from);
+    ray.far = direction.length();
+    ray.set(from, direction.normalize());
+    const hit = ray.intersectObjects(panels, false).find(({ object, face }) => {
+      if (!(object instanceof Mesh)) return false;
+      const material = Array.isArray(object.material) ? object.material[face?.materialIndex ?? 0] : object.material;
+      return material?.visible && !material.transparent && !/glass|window|mirror/i.test(material.name);
+    });
+    return hit ? side * (across - root.worldToLocal(hit.point).x) : Infinity;
+  };
+  const hip = Math.min(gapAt(.78), gapAt(.93));
+  const lower = Math.min(gapAt(.3), gapAt(.56));
+  const upper = gapAt(1.16);
+  if (!Number.isFinite(hip) || !Number.isFinite(lower)) return undefined;
+  // The lineup's outer bounds can come from mirrors. Stage inside that
+  // envelope only as far as the boots and upper body have room.
+  const offset = Math.min(.21, hip - .29, lower - .21, upper - .29);
+  const distance = Math.min(hip, upper) - offset - .22;
+  if (offset < 0 || distance < .02 || distance > .13) return undefined;
+  return { offset, distance };
+}
 
 // Fit the whole lineup using the Tank's chassis as the reference,
 // accounting for the preview's 90-degree vehicle heading. All models use the
