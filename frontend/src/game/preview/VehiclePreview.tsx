@@ -84,8 +84,8 @@ export function VehiclePreview({
     useCharacterPreviewStore.setState({ cockpitVehicle: vehicleId ?? null });
     return () => useCharacterPreviewStore.setState({ cockpitVehicle: null });
   }, [wardrobeOpen, vehicleId]);
-  const closeShot = insideCar || garageView === "Cockpit";
-  const near = closeShot ? (vehicleId && GARAGE_STATIONS[vehicleId].kind === "bridge" ? .003 : .04) : .1;
+  const closeShot = insideCar || garageView === "Cockpit" || garageView === "Dashboard";
+  const near = garageView === "Dashboard" ? .01 : closeShot ? (vehicleId && GARAGE_STATIONS[vehicleId].kind === "bridge" ? .003 : .04) : .1;
   const [settledVehicle, setSettledVehicle] = useState<string>();
   const [roomReady, setRoomReady] = useState(false);
   const roomSettled = useCallback(() => setRoomReady(true), []);
@@ -100,7 +100,7 @@ export function VehiclePreview({
     position: new Vector3(), target: new Vector3(), offset: new Vector3(), scale: new Vector3(),
     pivot: new Vector3(), eye: new Vector3(), nextEye: new Vector3(),
     anchorRotation: new Quaternion(), orbit: new Quaternion(), swing: new Quaternion(), lookAt: new Matrix4(),
-    anchors: new Map<string, Object3D>(),
+    anchors: new Map<string, Object3D>(), cameraMin: new Vector3(), cameraMax: new Vector3(),
   }), []);
   const [turntable, setTurntable] = useState<Group | null>(null);
   const [platform, setPlatform] = useState<[number, number]>(
@@ -110,10 +110,13 @@ export function VehiclePreview({
   const verticalFov = (horizontal: number) => (2 * Math.atan(Math.tan((horizontal * Math.PI) / 360) / aspect) * 180) / Math.PI;
   // Look into the authored corner from inside the room. The tighter horizontal
   // frame keeps the two connected walls across a landscape viewport.
-  const fov = driverStage && aspect >= 1 ? Math.max(33, verticalFov(75)) : Math.max(60, verticalFov(75));
+  const fov = garageView === "Dashboard" ? vehicleId === "timecar" ? Math.max(60, verticalFov(100)) : Math.max(38, verticalFov(76))
+    : garageView === "Driver Door" ? Math.max(44, verticalFov(85)) : closeShot && vehicleId && GARAGE_STATIONS[vehicleId].kind === "wheel"
+    ? Math.max(52, verticalFov(95))
+    : driverStage && aspect >= 1 ? Math.max(33, verticalFov(75)) : Math.max(60, verticalFov(75));
   const cameraPosition = driverStage ? DRIVER_STAGE_CAMERA : STANDARD_STAGE_CAMERA;
   useLayoutEffect(() => { requestFrame(); }, [width, height, driverStage, heroLayout, sandboxPicker, wardrobeOpen, workshop, zoom, reducedMotion, requestFrame, garageView]);
-  useFrame(({ frameloop, invalidate }, delta) => {
+  useFrame(({ frameloop, invalidate, scene }, delta) => {
     const camera = cameraRef.current;
     if (!camera || !width || !height) return;
     const { position, target, offset, anchorRotation, pivot, eye, nextEye, orbit, swing, lookAt } = aim;
@@ -161,11 +164,22 @@ export function VehiclePreview({
         position.copy(target).add(offset);
       }
     }
-    const offsetX = width * (sandboxPicker ? .15 : workshop && !wardrobeOpen && garageView !== "Cockpit" ? .07 : 0);
+    let boundedCamera = false;
+    if (garageView !== "Showroom" || insideCar) {
+      const bounds = findPreviewAnchor(aim.anchors, scene, "garage-camera-envelope")?.userData.bounds;
+      if (bounds && !bounds.isEmpty()) {
+        aim.cameraMin.copy(bounds.min).addScalar(.30);
+        aim.cameraMax.copy(bounds.max).addScalar(-.35);
+        aim.cameraMin.y = Math.max(.30, aim.cameraMin.y);
+        position.clamp(aim.cameraMin, aim.cameraMax);
+        boundedCamera = true;
+      }
+    }
+    const offsetX = width * (sandboxPicker ? .15 : workshop && !wardrobeOpen && !closeShot ? .07 : 0);
     const offsetY = wardrobeOpen ? height * .055 : heroLayout && aspect < 1 ? -height * .04 : 0;
     const firstFrame = initializedCamera.current !== camera;
     initializedCamera.current = camera;
-    const blend = firstFrame || reducedMotion ? 1 : 1 - Math.exp(-10 * Math.min(delta, .1));
+    const blend = firstFrame || reducedMotion ? 1 : 1 - Math.exp(-(closeShot ? 2.8 : 4.5) * Math.min(delta, .1));
     if (blend === 1) {
       pivot.copy(target);
       camera.position.copy(position);
@@ -178,6 +192,7 @@ export function VehiclePreview({
       eye.applyQuaternion(orbit.identity().slerp(swing, blend)).multiplyScalar(radius);
       camera.position.copy(pivot.lerp(target, blend)).add(eye);
     }
+    if (boundedCamera) camera.position.clamp(aim.cameraMin, aim.cameraMax);
     camera.quaternion.setFromRotationMatrix(lookAt.lookAt(camera.position, pivot, camera.up));
     const currentX = camera.view?.offsetX ?? offsetX;
     const currentY = camera.view?.offsetY ?? offsetY;
@@ -201,7 +216,7 @@ export function VehiclePreview({
         near={near}
       />
 
-      <PreviewTurntable onReady={setTurntable} spin={!wardrobeOpen && !stationary && garageView === "Showroom"} locked={stationActive}>
+      <PreviewTurntable onReady={setTurntable} spin={!wardrobeOpen && !stationary && garageView === "Showroom"} locked={stationActive && garageView !== "Showroom"}>
         {vehicleId && <AssetBoundary
           key={vehicleId}
           fallback={<MissingVehicle model={vehicleId} onSettled={setSettledVehicle} cockpit={insideCar} />}

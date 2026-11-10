@@ -220,49 +220,21 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     await click('.character-outfits[aria-label="Props"] button:last-child');
     assert.equal(drafts.at(-1).prop, 'shop-bag');
     await click('#character-editor-tab-emotes');
-    assert.equal(find(cockpitToggle).disabled, true, 'empty hands are required for the cockpit');
+    assert.equal(find(cockpitToggle).disabled, false, 'a prop never prevents driving previews');
     assert([...document.querySelectorAll('.character-emotes button')].some(button => button.textContent === 'Lift the bag'));
-    assert(![...document.querySelectorAll('.character-emotes button')].some(button => button.textContent === 'Hands behind back'));
+    assert([...document.querySelectorAll('.character-emotes button')].some(button => button.textContent === 'Hands behind back'));
     assert.equal(find('input[aria-label="Preview zoom"]').max, '1.25');
+    await click(cockpitToggle);
+    assert.equal(preview.getState().insideCar, true);
+    assert.match(document.body.textContent, /Handheld props are stowed while driving/);
+    assert.equal(drafts.at(-1).prop, 'shop-bag', 'preview stowing keeps the equipped prop');
+    assert([...document.querySelectorAll('[aria-label="Driving emotes"] button')].some(button => button.textContent === 'Honk'));
+    await click(cockpitToggle);
     await click('[aria-label="Emote collection"] button:nth-child(2)');
-    assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent),
-      ['Small fist pump', 'Blown kiss', 'Finger heart']);
-    await click('[aria-label="Emote collection"] button:nth-child(3)');
-    assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent),
-      ['Air doodle', 'Finger count mistake', 'Imaginary butterfly', 'Almost a sneeze']);
-    await click('[aria-label="Emote collection"] button:nth-child(4)');
-    assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent),
-      ['Shoetip shuffle', 'Compliment recoil', 'Timid invitation', 'Suppressed giggle', 'Gentle reassurance']);
-    await click('[aria-label="Emote collection"] button:nth-child(5)');
-    assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent),
-      ['Sideways check', 'Caught smiling', 'Dismissive hand flick', 'Private fist pump']);
-    await click('[aria-label="Emote collection"] button:nth-child(6)');
-    assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent),
-      ['Little double take', 'Peek past the palm', 'Bashful heel twist']);
-    await click('[aria-label="Emote collection"] button:nth-child(8)');
-    assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent),
-      ['Grid countdown', 'Two-finger salute', 'Photo finish', 'Call the line', 'Good race']);
-    await click('[aria-label="Emote collection"] button:nth-child(9)');
-    assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent),
-      ['Radio check', 'Last lap', 'Box this lap', 'Crew fist bump']);
-    await click('[aria-label="Emote collection"] button:nth-child(10)');
-    assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent),
-      ['Neck reset', 'Fix the fringe', 'Hang loose', 'Shade the lights', 'Rain check', 'Keys check']);
-    await click('[aria-label="Emote collection"] button:nth-child(11)');
-    assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent),
-      ['Key toss', 'Spot a scratch', 'Finger snap', 'Window knock', 'Camera shy', 'Perfect fit']);
-    await click('[aria-label="Emote collection"] button:nth-child(12)');
-    assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent),
-      ['Gracious presentation', 'Pardon me', 'Offer the floor', 'Accept the praise', 'Formal farewell']);
-    await click('[aria-label="Emote collection"] button:nth-child(13)');
-    assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent),
-      ['Take the stage', 'Encore request']);
-    await click('[aria-label="Emote collection"] button:nth-child(15)');
-    assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent),
-      ['Compass check', 'Distant discovery', 'Collectible inspection', 'Listen closely', 'Route proposal', 'Adventure beckon']);
+    assert([...document.querySelectorAll('.character-emotes button')].some(button => button.textContent === 'Happy applause'),
+      'two-handed gestures remain available with a bag equipped');
     await click('[aria-label="Emote collection"] button:nth-child(16)');
-    assert.equal(document.querySelectorAll('.character-emotes button').length, 0);
-    assert.match(find('[aria-label="Tech emotes"]').parentElement.textContent, /Equip Empty hands to use these emotes/);
+    assert(document.querySelectorAll('.character-emotes button').length > 0, 'gesture-owned props remain available');
     await click('[aria-label="Preview gender"] [data-character-option="mara-vega"]');
     assert.equal(drafts.at(-1).id, 'mara-vega');
     assert.equal(drafts.at(-1).prop, 'shop-bag');
@@ -284,6 +256,10 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(loadouts.getState().defaultHero, 'brz');
     const garageCamera = () => find('button[aria-label^="Switch garage camera"]');
     assert.match(garageCamera().textContent, /Showroom/);
+    await click('button[aria-label="Hide interface"]');
+    assert(find('.hero-workshop').classList.contains('hero-workshop--hidden'));
+    await click('button[aria-label="Show interface"]');
+    assert(!find('.hero-workshop').classList.contains('hero-workshop--hidden'));
     await click('button[aria-label^="Switch garage camera"]');
     assert.match(garageCamera().textContent, /High Angle/);
     await click('button[aria-label^="Switch garage camera"]');
@@ -300,7 +276,12 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert(find('button[aria-label="Steer left"]'));
     await act(async () => [...document.querySelectorAll('button')].find(node => node.textContent === 'Reset').click());
     assert.equal(useGarageDrive.getState().stage, 'idle');
-    await act(async () => useGarageDrive.setState({ ready: false }));
+    await act(async () => useGarageDrive.setState({ ready: true, hasDoor: true }));
+    await act(async () => stationButton().click());
+    assert.equal(useGarageDrive.getState().stage, 'opening', 'a rigged door plays entry before sitting');
+    assert.equal(useGarageDrive.getState().sequence, 'entry', 'entry stops before driving out');
+    await act(async () => useGarageDrive.getState().reset());
+    await act(async () => useGarageDrive.setState({ ready: false, hasDoor: false }));
     await move('back');
     await click('[data-hero=ae86]');
     assert.match(garageCamera().textContent, /Showroom/, 'new garage preview starts from the showroom camera');
@@ -372,14 +353,18 @@ test('all emote batches return to rest and keep planted and lifted feet distinct
     const clips = buildGarageEmotes(model.root, false, true);
     const mixer = new AnimationMixer(model.root);
     const ids = clips.map(clip => clip.name.split(' ')[0]);
-    const numbered = [...ids.filter(id => /^\d+$/.test(id)), ...COCKPIT_TAKES.map(take => take.id)].sort();
+    const numbered = [...ids.filter(id => /^\d+$/.test(id)), ...COCKPIT_TAKES.filter(take => /^\d+$/.test(take.id)).map(take => take.id)].sort();
     assert.deepEqual(numbered, Array.from({length: 200}, (_, i) => String(i + 1).padStart(3, '0')));
     assert.deepEqual(AUTOMATIC_GARAGE_EMOTE_IDS, ['035', '002', '005', '009', '010']);
     assert(COCKPIT_TAKES.every(({ id }) => !ids.includes(id)));
-    assert.equal(findGaragePreviewEmote('151', true), undefined);
+    assert.equal(findGaragePreviewEmote('151', true).id, '151');
+    const { keepHeldProp } = await vite.ssrLoadModule('/src/game/characters/emotePropNotes.ts');
+    assert.equal(keepHeldProp('010'), true, 'friendly wave keeps the prop');
+    assert.equal(keepHeldProp('013'), false, 'applause stows the prop');
+    assert.equal(keepHeldProp('bag-lift', true), false, 'driving always stows handheld props');
     assert.deepEqual(ids.filter(id => id.startsWith('walk-')), ['walk-casual']);
     assert.deepEqual(buildGarageEmotes(model.root).map(clip => clip.name.split(' ')[0]), ['001', '002', '005', '009', '010', '035']);
-    assert(!buildGarageEmotes(model.root, true).some(clip => clip.name.startsWith('035 ')));
+    assert(buildGarageEmotes(model.root, true).some(clip => clip.name.startsWith('035 ')), 'bag idle rotation includes both-handed gestures with temporary stowing');
     const leanFit = { offset: .15, distance: .06 };
     const [lean] = buildEmoteClips(model.root, [garageLeanPose(leanFit)]);
     assert(lean.name.startsWith('pose-lean '));

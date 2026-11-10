@@ -12,8 +12,8 @@ tab can compare both rigs without changing the equipped driver.
 Vesper's desktop garage uses the full `villager-female.glb`. The compact
 garage and portrait share the same geometry with smaller textures. The
 selected car loads over a simple stage first. Once the car is on screen, the
-garage shell and driver can load. A sigil marks pending assets and becomes
-still with Reduced Motion. If the character file is missing or unreadable,
+garage shell and driver can load. A stationary metallic platform marks pending assets, with complementary theme accents.
+Only its light sweep animates, and Reduced Motion freezes that sweep. If the character file is missing or unreadable,
 the portrait uses a neutral tile. Download the Git LFS object and restart Vite
 after restoring the file.
 
@@ -73,21 +73,38 @@ to the mark, lane checks, countdown, flag drop and flag wave. Starter Comedy
 (181–190) includes recoveries for flag mishaps. Race Reactions (191–198) adds
 photo finishes, track signals, and finish-line reactions. The pole follows the
 closed grip and separates from it during Slipped flag. Props load on demand
-in the Character preview and the bag filters out gestures that require both
-hands. These packs play on selection in Character → Emotes and return to the
+in the Character preview. Handheld props are temporarily stowed when a gesture
+requires free hands or the pairing has not been reviewed. Pairing notes and
+future filter guidance are in `docs/EMOTE_PROP_NOTES.md`. These packs play on selection in Character → Emotes and return to the
 breathing idle.
 
 Garage puts the recommended standing emotes first. Best collects the strongest
-gestures from across the packs. Equip Empty hands and open Character → Emotes →
-Inside car · AE86 to load the cockpit test from any selected vehicle. Window
-wave and Driver thumbs-up keep the left hand on the steering wheel while the
-car rolls. Steering test · Left and Right (199–200) keep both hands on the rim
-while turning the wheel in place. The library now contains 200 numbered emotes.
-Use the Whole car camera for a wide shot throughout a take. The driver stays
-seated between clips. Exit car returns to the selected vehicle's standing preview.
+gestures from across the packs. Enter cockpit uses the selected vehicle, stows
+handheld props and fits either driver to its controls. Wheel grips follow the
+separately modeled or extracted steering wheel. Window wave and Driver thumbs-up
+release the outboard hand. Shift up, Shift down, Clutch and shift, Parking brake,
+Honk, Turn ignition key and Signal before pulling out are stationary control previews.
+Honk uses the shared vehicle sound bus and respects its volume and mute settings.
+The legacy numbered library contains 200 emotes, with seven additional named
+cockpit actions. Whole vehicle keeps a wide shot during a take. Exit cockpit
+restores the outside pose and equipped prop.
+
+Vesper's skirt uses a seated drape after skinning to settle the fabric below the
+wheel. Seated sleeve cuffs taper around the forearms to expose the hands. The shader is prepared with the character and stays compiled when entering
+or leaving the cockpit. The runtime split preserves source meshes, materials and
+triangle counts and rejects asset revisions that fail their fingerprints.
 
 Garage has a Camera button beside the zoom controls. High Angle, Driver Door,
-and Chase frame the active vehicle. The AE86 also has a Cockpit view. Its
+and Chase stay inside the room envelope. Cockpit uses the driver's eye position,
+and Dashboard frames the authored gauges with a localized light and instrument
+emission. Camera returns ease over a longer interval. Showroom stays draggable
+while seated. The eye icon hides the interface and Back restores it.
+
+The Time Machine fits the full head and hat under the gullwing roof. Its
+driver-side gullwing is split along the original mesh seams. Enter cockpit opens
+a supported door, seats the driver and closes the door without moving the car.
+The Character preview plays the same entry for models with a rigged door.
+Vehicle models without an articulated door retain direct seated previews. The AE86's
 right-hand driver door uses the panel, interior card, window, seals, and mirror
 from the bundled model. Body → Right Door opens the same hinge manually.
 Drive Out opens the door, seats the driver, closes the door, and moves into a
@@ -119,7 +136,7 @@ The Props tab loads the black-and-gold bag from
 preferred, with the garage GLB and the legacy `shop-bag.glb` as fallbacks.
 The supplied `Grip_Handle` locates the bag in the driver's hand. The app uses
 a built-in bag when no textured GLB is installed. The Emotes tab previews
-the compatible gestures for the equipped prop. Full body, Face, and Hands
+the full gesture library, retaining reviewed prop pairings and stowing the bag for other takes. Full body, Face, and Hands
 camera presets support zoom from 80% to 125%. Heroes, Garage and the
 pre-match hero picker share vehicle zoom from 100% to 160%.
 

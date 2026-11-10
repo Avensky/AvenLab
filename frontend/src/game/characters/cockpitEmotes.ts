@@ -7,6 +7,13 @@ export const COCKPIT_TAKES = [
   { id: "086", name: "Check the mirrors", duration: 3.8 },
   { id: "101", name: "Window wave", duration: 5.7 },
   { id: "102", name: "Driver thumbs-up", duration: 5.6 },
+  { id: "drive-handbrake", name: "Parking brake", duration: 4.4 },
+  { id: "drive-shift-up", name: "Shift up", duration: 4.0 },
+  { id: "drive-shift-down", name: "Shift down", duration: 4.0 },
+  { id: "drive-clutch", name: "Clutch and shift", duration: 4.6 },
+  { id: "drive-honk", name: "Honk", duration: 3.8 },
+  { id: "drive-ignition", name: "Turn ignition key", duration: 4.2 },
+  { id: "drive-signals", name: "Signal before pulling out", duration: 4.2 },
   { id: "199", name: "Steering test · Left", duration: 3.65 },
   { id: "200", name: "Steering test · Right", duration: 3.65 },
 ] as const;
