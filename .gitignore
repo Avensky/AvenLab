@@ -430,5 +430,7 @@ avenlab-server/runtime/
 # Locally licensed character art, including older checkouts.
 /frontend/public/models/characters/villager-female*.glb
 /frontend/public/models/characters/villager-male.*.glb
+/frontend/public/models/characters/villager/*.garage.glb
+/frontend/public/models/characters/villager/*.portrait.glb
 /frontend/public/models/characters/shop-bag.glb
 /frontend/src/game/characters/local-assets/
