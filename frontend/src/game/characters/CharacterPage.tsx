@@ -1,121 +1,222 @@
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type CSSProperties, type Ref } from "react";
 import { ControllerAction } from "../../components/controller";
 import { requestSocial } from "../../net/socialClient";
 import { useSocialStore } from "../../store/social/socialStore";
-import { CHARACTERS, CHARACTER_APPEARANCE_OPTIONS, DEFAULT_CHARACTER, OUTFIT_THEMES, VILLAGER_ID, characterAppearance, characterLook, sameCharacterChoice, type CharacterStyleField, type CharacterChoice } from "./characterCatalog";
+import { usePreferencesStore } from "../../store/preferences/preferencesStore";
+import { CHARACTERS, CHARACTER_APPEARANCE_OPTIONS, DEFAULT_CHARACTER, OUTFIT_THEMES, ROOK_ID, VILLAGER_ID, characterLook, type CharacterStyleField, type CharacterChoice } from "./characterCatalog";
 import { CharacterPortrait } from "./CharacterPortrait";
+import { CHARACTER_CAMERAS, CHARACTER_ZOOM_MIN, CHARACTER_ZOOM_MAX, useCharacterPreviewStore } from "./characterPreviewStore";
+import { GARAGE_EMOTES, BAG_EMOTES, compatibleGarageEmotes } from "./garageEmotes";
+
+export const CHARACTER_TABS = [
+  { id: "appearance", label: "Appearance" }, { id: "clothes", label: "Clothes" },
+  { id: "props", label: "Props" }, { id: "emotes", label: "Emotes" },
+] as const;
+export type CharacterTab = typeof CHARACTER_TABS[number]["id"];
 
 const LOOK_FIELDS: Record<CharacterStyleField, string> = {
   hair: "Hair", hair_color: "Hair color", skin: "Skin tone", headwear: "Headwear", color: "Outfit color",
 };
 
-const firstChoice = (character: (typeof CHARACTERS)[number]): CharacterChoice => ({
-  id: character.id,
-  outfit: character.outfits[0].id,
-});
-
-export function CharacterPage({ onPreview }: { onPreview?: (choice: CharacterChoice | null) => void }) {
+export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
+  onPreview?: (choice: CharacterChoice | null) => void;
+  onReady: (ready: boolean) => void;
+  tab: CharacterTab;
+  beforeClose: Ref<() => Promise<boolean>>;
+}) {
   const owner = useSocialStore(state => state.view?.profile.id);
   const saved = useSocialStore(state => state.view?.profile.progression?.character);
-  const [choice, setChoice] = useState(() => saved && CHARACTERS.some(character => character.id === saved.id) && characterLook(saved) ? saved : DEFAULT_CHARACTER);
-  const [saving, setSaving] = useState(false);
+  const reducedMotion = usePreferencesStore(state => state.reducedMotion);
+  const [choice, setChoice] = useState(() => characterLook(saved) ? saved! : DEFAULT_CHARACTER);
+  const [locked, setLocked] = useState(() => Boolean(characterLook(saved)));
+  const [status, setStatus] = useState<"idle" | "pending" | "saving" | "saved" | "error">("idle");
   const [message, setMessage] = useState("");
-  const pending = useRef(false);
+  const acknowledged = useRef(locked ? choice : null);
+  const queued = useRef<CharacterChoice | null>(null);
+  const running = useRef<Promise<boolean> | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const { character, outfit, appearance, fabric, trim } = characterLook(choice)!;
-  const setClothes = (color: string, accent: string | undefined) =>
-    preview({ ...choice, appearance: { ...appearance, color, accent } });
-  const equipped = sameCharacterChoice(saved, choice);
-  useEffect(() => { onPreview?.(choice); }, [choice, onPreview]);
-  useEffect(() => () => onPreview?.(null), [onPreview]);
+  const { camera, zoom, emote } = useCharacterPreviewStore();
 
-  function preview(next: CharacterChoice) {
+  const flush = useCallback((): Promise<boolean> => {
+    clearTimeout(timer.current);
+    if (running.current) return running.current;
+    if (!queued.current) return Promise.resolve(true);
+    const drain = async () => {
+      setStatus("saving");
+      while (queued.current) {
+        const next = queued.current;
+        queued.current = null;
+        try {
+          if (!owner || useSocialStore.getState().view?.profile.id !== owner) throw Error("Connect your player profile to save.");
+          await requestSocial("character_equip", { character: next });
+          acknowledged.current = next;
+          setLocked(true);
+        } catch (error) {
+          queued.current ??= next;
+          setStatus("error");
+          setMessage(error instanceof Error ? error.message : "Could not save your character.");
+          return false;
+        }
+      }
+      setStatus("saved");
+      return true;
+    };
+    running.current = drain().finally(() => { running.current = null; });
+    return running.current;
+  }, [owner]);
+
+  useImperativeHandle(beforeClose, () => () => locked ? flush() : Promise.resolve(true), [flush, locked]);
+  useLayoutEffect(() => { onPreview?.(choice); }, [choice, onPreview]);
+  useLayoutEffect(() => { onReady(locked); }, [locked, onReady]);
+  useEffect(() => () => {
+    clearTimeout(timer.current);
+    onPreview?.(null);
+    onReady(false);
+    useCharacterPreviewStore.setState({ camera: "Full body", zoom: 1, emote: null });
+  }, [onPreview, onReady]);
+
+  function update(next: CharacterChoice) {
     setChoice(next);
     setMessage("");
+    if (!locked) return;
+    queued.current = next;
+    setStatus("pending");
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => void flush(), 300);
   }
 
-  async function equip() {
-    if (!owner || saved === undefined || equipped || pending.current || useSocialStore.getState().view?.profile.id !== owner) return;
-    pending.current = true;
-    setSaving(true);
-    setMessage("");
-    try {
-      await requestSocial("character_equip", { character: choice });
-      setMessage("Character saved to your profile.");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not save your character.");
-    } finally {
-      pending.current = false;
-      setSaving(false);
-    }
+  function edit(field: CharacterStyleField, value: string) {
+    update({ ...choice, appearance: { ...appearance, [field]: value } });
   }
 
-  return (
-    <div className="character-page" aria-label="Character selection">
-      <div className="character-stage" data-character-preview={character.id} data-outfit-preview={outfit.id} aria-label={`Garage preview of ${character.name}`} />
-      <section className="character-controls menu-panel-frame" aria-label="Character details"
-        onFocus={event => (event.target as HTMLElement).scrollIntoView?.({ block: "nearest", inline: "nearest" })}>
-        <header className="character-description">
-          <small>{character.title}</small>
-          <h2>{character.name}</h2>
-          <p>{character.bio}</p>
-        </header>
-        <div className="character-cast" role="group" aria-label="Characters" data-controller-row>
+  function setClothes(color: string, accent: string | undefined) {
+    update({ ...choice, appearance: { ...appearance, color, accent } });
+  }
+
+  function field(field: CharacterStyleField) {
+    return <label key={field}>
+      {LOOK_FIELDS[field]}
+      <select className="menu-control" aria-label={LOOK_FIELDS[field]} disabled={field === "headwear" && choice.id === VILLAGER_ID}
+        value={field === "color" && appearance.color.startsWith("#") ? "custom" : appearance[field]}
+        onChange={event => edit(field, event.target.value)}>
+        {field === "color" && appearance.color.startsWith("#") && <option value="custom" disabled>Custom color</option>}
+        {CHARACTER_APPEARANCE_OPTIONS[field]
+          .filter(item => field !== "headwear" || choice.id !== VILLAGER_ID || item.id === "hat")
+          .map(item => <option key={item.id} value={item.id}>{item.label}</option>)}
+      </select>
+    </label>;
+  }
+
+  const palette = <div className="character-appearance character-color-pickers" data-controller-row>
+    <label>Fabric<input type="color" aria-label="Clothing fabric color" value={fabric}
+      onChange={event => setClothes(event.target.value, appearance.accent)} /></label>
+    <label>Accent<input type="color" aria-label="Clothing accent color" value={trim}
+      onChange={event => setClothes(appearance.color, event.target.value)} /></label>
+    <button type="button" className="menu-control" disabled={appearance.color === "original" && !appearance.accent}
+      onClick={() => setClothes("original", undefined)}>Reset colors</button>
+  </div>;
+
+  if (!locked) return (
+    <div className="character-page character-page--setup" aria-label="Choose character gender">
+      <div className="character-stage" data-character-preview={character.id} data-outfit-preview={outfit.id} />
+      <section className="character-controls menu-panel-frame">
+        <header className="character-description"><h2>Choose gender</h2><p>This choice is permanent for your profile.</p></header>
+        <div className="character-cast" role="group" aria-label="Gender" data-controller-row>
           {CHARACTERS.map(item => {
-            const look = saved?.id === item.id && characterLook(saved) ? saved : firstChoice(item);
-            return <button key={item.id} type="button" className="menu-control" disabled={saving}
-              data-character-option={item.id} aria-pressed={item.id === choice.id} onClick={() => preview(look)}>
-              <CharacterPortrait choice={item.id === choice.id ? choice : look} compact />
-              <span>{item.name}</span>
+            const next = { id: item.id, outfit: item.outfits[0].id };
+            return <button key={item.id} type="button" className="menu-control" disabled={status === "saving"}
+              data-character-option={item.id} aria-pressed={item.id === choice.id} onClick={() => update(next)}>
+              <CharacterPortrait choice={next} compact />
+              <span>{item.gender === "female" ? "Female" : "Male"}</span>
             </button>;
           })}
         </div>
-        <div className="character-outfits" role="group" aria-label="Outfits" data-controller-row>
-          {character.outfits.map(item => (
-            <button key={item.id} type="button" className="menu-control" disabled={saving}
-              aria-pressed={item.id === outfit.id} onClick={() => preview({ ...choice, outfit: item.id })}>
-              <i aria-hidden="true" style={{ "--outfit-jacket": item.jacket, "--outfit-trim": item.trim } as CSSProperties} />
-              {item.name}
-            </button>
-          ))}
+        <div className="character-equip" data-controller-row>
+          <ControllerAction button="A" className="menu-control" disabled={!owner || saved === undefined || status === "saving"}
+            onClick={() => { queued.current = choice; void flush(); }}>
+            {status === "saving" ? "Saving…" : `Confirm ${character.gender}`}
+          </ControllerAction>
+          <p role="status">{message || (!owner ? "Connect your player profile to confirm." : saved === undefined ? "Update the game server to choose a character." : "")}</p>
         </div>
-        <div className="character-appearance" data-controller-row data-controller-columns="2">
-          {(Object.keys(LOOK_FIELDS) as CharacterStyleField[]).map(field => (
-            <label key={field}>
-              {LOOK_FIELDS[field]}
-              <select className="menu-control" aria-label={LOOK_FIELDS[field]} disabled={saving || (field === "headwear" && choice.id === VILLAGER_ID)} value={field === "color" && appearance.color.startsWith("#") ? "custom" : appearance[field]}
-                onChange={event => preview({ ...choice, appearance: { ...characterAppearance(choice), [field]: event.target.value } })}>
-                {field === "color" && appearance.color.startsWith("#") && <option value="custom" disabled>Custom color</option>}
-                {CHARACTER_APPEARANCE_OPTIONS[field]
-                  .filter(item => field !== "headwear" || choice.id !== VILLAGER_ID || item.id === "hat")
-                  .map(item => <option key={item.id} value={item.id}>{item.label}</option>)}
-              </select>
-            </label>
-          ))}
-        </div>
-        <div className="character-outfits" role="group" aria-label="Clothing themes" data-controller-row>
-          {OUTFIT_THEMES.map(theme => <button key={theme.name} type="button" className="menu-control" disabled={saving}
-            aria-pressed={appearance.color === theme.color && appearance.accent === theme.accent}
-            onClick={() => setClothes(theme.color, theme.accent)}>
-            <i aria-hidden="true" style={{ "--outfit-jacket": theme.color, "--outfit-trim": theme.accent } as CSSProperties} />
-            {theme.name}
-          </button>)}
-        </div>
-        <div className="character-appearance character-color-pickers" data-controller-row data-controller-columns="2">
-          <label>Fabric<input type="color" aria-label="Clothing fabric color" disabled={saving}
-            value={fabric} onChange={event => setClothes(event.target.value, appearance.accent)} /></label>
-          <label>Accent<input type="color" aria-label="Clothing accent color" disabled={saving}
-            value={trim} onChange={event => setClothes(appearance.color, event.target.value)} /></label>
-          <button type="button" className="menu-control" disabled={saving || (appearance.color === "original" && !appearance.accent)}
-            onClick={() => setClothes("original", undefined)}>Reset clothing colors</button>
+      </section>
+    </div>
+  );
+
+  const pickedEmotes = choice.prop ? [...GARAGE_EMOTES.filter(item => compatibleGarageEmotes(item.id)), ...BAG_EMOTES] : GARAGE_EMOTES;
+  return (
+    <div className="character-page character-page--editor" role="tabpanel" id="character-editor-panel" aria-labelledby={"character-editor-tab-" + tab}
+      onFocus={event => (event.target as HTMLElement).scrollIntoView?.({ block: "nearest", inline: "nearest" })}>
+      <div className="character-stage" data-character-preview={character.id} data-outfit-preview={outfit.id} aria-label={`Preview of ${character.name}`} />
+      <section className="character-controls menu-panel-frame character-controls--left" aria-label={tab}>
+        {tab === "appearance" && <header className="character-description"><small>{character.title}</small><h2>{character.name}</h2><p>{character.bio}</p></header>}
+        {tab === "clothes" && <>
+          <h2>Clothes</h2>
+          <div className="character-outfits" role="group" aria-label="Outfits" data-controller-row>
+            {character.outfits.map(item => <button key={item.id} type="button" className="menu-control" aria-pressed={item.id === outfit.id}
+              onClick={() => update({ ...choice, outfit: item.id })}>{item.name}</button>)}
+          </div>
+          <div className="character-outfits" role="group" aria-label="Clothing themes" data-controller-row>
+            {OUTFIT_THEMES.map(theme => <button key={theme.name} type="button" className="menu-control"
+              aria-pressed={appearance.color === theme.color && appearance.accent === theme.accent}
+              onClick={() => setClothes(theme.color, theme.accent)}>
+              <i aria-hidden="true" style={{ "--outfit-jacket": theme.color, "--outfit-trim": theme.accent } as CSSProperties} />{theme.name}
+            </button>)}
+          </div>
+        </>}
+        {tab === "props" && <>
+          <h2>Props</h2>
+          <div className="character-outfits" role="group" aria-label="Props" data-controller-row>
+            {([undefined, "shop-bag"] as const).map(prop => <button key={prop ?? "none"} type="button" className="menu-control"
+              aria-pressed={choice.prop === prop} onClick={() => { update({ ...choice, prop }); useCharacterPreviewStore.setState({ emote: null }); }}>
+              {prop ? "Shop bag" : "Empty hands"}
+            </button>)}
+          </div>
+          <p>Equipping the shop bag unlocks bag emotes in this preview.</p>
+        </>}
+        {tab === "emotes" && <>
+          <h2>Preview emotes</h2>
+          {reducedMotion && <p>Emote playback is paused by Reduced Motion.</p>}
+          <div className="character-emotes">
+            {pickedEmotes.map(item => <button key={item.id} type="button" className="menu-control" data-controller-row disabled={reducedMotion}
+              aria-pressed={emote?.id === item.id} onClick={() => useCharacterPreviewStore.setState({ emote: { id: item.id } })}>{item.name}</button>)}
+          </div>
+        </>}
+      </section>
+      {(tab === "appearance" || tab === "clothes") && <section className="character-controls menu-panel-frame character-controls--right" aria-label="Appearance controls">
+        {tab === "appearance"
+          ? <div className="character-appearance" data-controller-row>
+              {(choice.id !== ROOK_ID || !__ROOK_MODEL_URL__) && field("hair")}{field("hair_color")}{field("skin")}
+              {(choice.id !== ROOK_ID || !__ROOK_MODEL_URL__) && field("headwear")}
+            </div>
+          : <div className="character-appearance" data-controller-row>{field("color")}</div>}
+      </section>}
+      <section className="character-controls menu-panel-frame character-controls--bottom" aria-label="Color palette, camera and save status">
+        {(tab === "appearance" || tab === "clothes") && palette}
+        <div className="character-camera" data-controller-row>
+          <label>Camera<select className="menu-control" aria-label="Preview camera" value={camera}
+            onChange={event => useCharacterPreviewStore.setState({ camera: event.target.value as typeof camera, zoom: 1 })}>
+            {CHARACTER_CAMERAS.map(view => <option key={view}>{view}</option>)}
+          </select></label>
+          <div className="character-zoom">
+            <label>Zoom<input type="range" aria-label="Preview zoom" min={CHARACTER_ZOOM_MIN} max={CHARACTER_ZOOM_MAX} step=".05" value={zoom}
+              onChange={event => useCharacterPreviewStore.setState({ zoom: Number(event.target.value) })} /></label>
+            <button type="button" className="menu-control" aria-label="Zoom out" disabled={zoom <= CHARACTER_ZOOM_MIN}
+              onClick={() => useCharacterPreviewStore.setState({ zoom: Math.max(CHARACTER_ZOOM_MIN, +(zoom - .05).toFixed(2)) })}>−</button>
+            <button type="button" className="menu-control" aria-label="Zoom in" disabled={zoom >= CHARACTER_ZOOM_MAX}
+              onClick={() => useCharacterPreviewStore.setState({ zoom: Math.min(CHARACTER_ZOOM_MAX, +(zoom + .05).toFixed(2)) })}>+</button>
+          </div>
         </div>
         <div className="character-equip" data-controller-row>
-          <ControllerAction button="A" className="menu-control" onClick={() => void equip()}
-            disabled={!owner || saved === undefined || saving || equipped}>
-            {saving ? "Saving…" : equipped ? "Equipped" : "Equip character"}
-          </ControllerAction>
-          <p role="status">{message || (!owner ? "Connect your player profile to equip a character."
-            : saved === undefined ? "Update the game server to equip a character."
-            : "Your character follows you across vehicles.")}</p>
+          <p role="status">{status === "error" ? message : status === "saving" || status === "pending" ? "Saving…" : "Changes save automatically."}</p>
+          {status === "error" && <>
+            <button type="button" className="menu-control" onClick={() => void flush()}>Retry</button>
+            <button type="button" className="menu-control" onClick={() => {
+              queued.current = null;
+              if (acknowledged.current) setChoice(acknowledged.current);
+              setStatus("idle");
+            }}>Revert unsaved</button>
+          </>}
         </div>
       </section>
     </div>

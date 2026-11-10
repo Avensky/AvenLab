@@ -27,12 +27,12 @@ export function bakeCharacterPortrait(look: CharacterLook, key: string, source?:
     renderer = undefined;
   }, 3000);
 
-  const villager = source && prepareVillager(source);
+  const villager = source && prepareVillager(source, { female: look.female });
   const model = villager ?? prepareStylizedDriver(look);
   try {
     if (villager) {
       applyVillagerLook(villager, look);
-      for (const name of ["CLOTH_BOTTOM_SKIRT", "CLOTH_FEET_SHOES", "CLOTH_UNDER_UNDERSKIRT"]) {
+      for (const name of ["CLOTH_BOTTOM_SKIRT", "CLOTH_FEET_SHOES", "CLOTH_UNDER_UNDERSKIRT", "CLOTH_BOTTOM_TROUSERS", "CLOTH_FEET_BOOTS"]) {
         const part = model.root.getObjectByName(name);
         if (part) part.visible = false;
       }

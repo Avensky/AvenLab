@@ -60,19 +60,19 @@ type PortraitProps = { look: CharacterLook; fallback: ReactNode; pending?: React
 
 function ModelPortrait({ source, look, fallback, pending = fallback, label }: PortraitProps & { source?: Object3D }) {
   const key = JSON.stringify([Boolean(source), look.character.id, look.outfit.id, look.appearance]);
-  const [portrait, setPortrait] = useState<{ key: string; image: string | null }>();
+  const [portrait, setPortrait] = useState<{ key: string; image: string | null; characterId: string }>();
   useEffect(() => {
     const timer = window.setTimeout(() => {
       try {
-        setPortrait({ key, image: bakeCharacterPortrait(look, key, source) });
+        setPortrait({ key, image: bakeCharacterPortrait(look, key, source), characterId: look.character.id });
       } catch {
-        setPortrait({ key, image: null });
+        setPortrait({ key, image: null, characterId: look.character.id });
       }
     }, 100);
     return () => window.clearTimeout(timer);
   }, [key, look, source]);
-  if (portrait?.key !== key) return pending;
-  return portrait.image
+  if (portrait?.key !== key && (!portrait?.image || portrait.characterId !== look.character.id)) return pending;
+  return portrait?.image
     ? <img className="character-portrait character-portrait--model" src={portrait.image} alt={label ?? ""} />
     : fallback;
 }

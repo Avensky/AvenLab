@@ -8,7 +8,13 @@ pub struct CharacterChoice {
     pub outfit: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub appearance: Option<CharacterAppearance>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub prop: Option<CharacterProp>,
 }
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum CharacterProp { ShopBag }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -25,6 +31,7 @@ pub struct CharacterAppearance {
 #[derive(Deserialize)]
 struct Character {
     id: String,
+    gender: String,
     outfits: Vec<Outfit>,
 }
 
@@ -51,6 +58,10 @@ fn hex_color(value: &str) -> bool {
 }
 
 impl CharacterChoice {
+    pub fn gender(&self) -> Option<&'static str> {
+        CAST.iter().find(|character| character.id == self.id).map(|character| character.gender.as_str())
+    }
+
     pub fn is_available(&self) -> bool {
         CAST.iter().any(|character| {
             character.id == self.id
