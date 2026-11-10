@@ -9,6 +9,7 @@ import { DriverBag } from "./DriverBag";
 import { availableVictoryEmotes, type VictoryEmoteId } from "./victoryEmotes";
 import { GARAGE_LEAN_ID, garageLeanPose, type GarageLeanFit } from "./garageLean";
 import { COCKPIT_TAKES, type CockpitTake } from "./cockpitEmotes";
+import { createEmoteProp, type EmoteProp, type EmotePropModel } from "./emoteProps";
 import type { CockpitPlayback, GarageCockpit } from "../preview/garageCockpit";
 
 const FADE_SECONDS = .52;
@@ -28,6 +29,7 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
     mixer: AnimationMixer;
     idle: AnimationAction;
     actions: Map<string, AnimationAction>;
+    props: Map<EmoteProp, EmotePropModel>;
     automatic: AnimationAction[];
     active: AnimationAction | null;
     release: { elapsed: number; weight: number } | null;
@@ -61,12 +63,14 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
       : AUTOMATIC_GARAGE_EMOTE_IDS.flatMap(id => actions.get(id) ?? []);
     const blink = driverFaceTargets(root, "blink");
     const active = celebration ? actions.get(celebration.id)!.reset().setEffectiveWeight(0).play() : null;
-    player.current = { mixer, idle, actions, automatic, active, release: null, cabin: null, take: null, rest: restSeconds, next: 0, wave: false, blink, elapsed: 0, preview: null };
+    const props = new Map<EmoteProp, EmotePropModel>();
+    player.current = { mixer, idle, actions, props, automatic, active, release: null, cabin: null, take: null, rest: restSeconds, next: 0, wave: false, blink, elapsed: 0, preview: null };
     return () => {
       player.current?.cabin?.stop();
       player.current = null;
       mixer.stopAllAction();
       mixer.uncacheRoot(root);
+      props.forEach(prop => prop.dispose());
       setBlinkWeight(blink, 0);
     };
   }, [reducedMotion, root, bag, leanFit, victory, cockpit, restSeconds]);
@@ -140,7 +144,12 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
           // The solver needs the rest skeleton. Release mixer bindings before
           // compiling one clip, then keep it for the rest of this preview.
           current.idle.stop();
-          action = current.mixer.clipAction(buildEmoteClips(root, [emote])[0]).setLoop(LoopOnce, 1);
+          if (emote.prop && !current.props.has(emote.prop)) {
+            const prop = createEmoteProp(emote.prop);
+            current.props.set(emote.prop, prop);
+            root.add(prop.root);
+          }
+          action = current.mixer.clipAction(buildEmoteClips(root, [emote], current.props)[0]).setLoop(LoopOnce, 1);
           current.actions.set(preview.id, action);
           current.idle.reset().play();
         }

@@ -132,7 +132,8 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     await click('.character-emotes button:last-child');
     assert.equal(preview.getState().emote.id, '112');
     for (const [index, name, first, last] of [
-      [12, 'Elegant', 113, 120], [13, 'Performer', 121, 130], [14, 'Stoic', 131, 132],
+      [12, 'Elegant', 113, 120], [13, 'Performer', 121, 130], [14, 'Stoic', 131, 140],
+      [15, 'Explorer', 141, 150], [16, 'Tech', 151, 152],
     ]) {
       const selector = `[aria-label="Emote collection"] button:nth-child(${index})`;
       assert.equal(find(selector).textContent, name);
@@ -247,6 +248,12 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     await click('[aria-label="Emote collection"] button:nth-child(13)');
     assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent),
       ['Take the stage', 'Encore request']);
+    await click('[aria-label="Emote collection"] button:nth-child(15)');
+    assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent),
+      ['Compass check', 'Distant discovery', 'Collectible inspection', 'Listen closely', 'Route proposal', 'Adventure beckon']);
+    await click('[aria-label="Emote collection"] button:nth-child(16)');
+    assert.equal(document.querySelectorAll('.character-emotes button').length, 0);
+    assert.match(find('[aria-label="Tech emotes"]').parentElement.textContent, /Equip Empty hands to use these emotes/);
     await click('[aria-label="Preview gender"] [data-character-option="mara-vega"]');
     assert.equal(drafts.at(-1).id, 'mara-vega');
     assert.equal(drafts.at(-1).prop, 'shop-bag');
@@ -288,7 +295,8 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
 test('all emote batches return to rest and keep planted and lifted feet distinct', async () => {
   const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
   try {
-    const { buildGarageEmotes, buildEmoteClips, AUTOMATIC_GARAGE_EMOTE_IDS } = await vite.ssrLoadModule('/src/game/characters/garageEmotes.ts');
+    const { buildGarageEmotes, buildEmoteClips, findGaragePreviewEmote, AUTOMATIC_GARAGE_EMOTE_IDS } = await vite.ssrLoadModule('/src/game/characters/garageEmotes.ts');
+    const { createEmoteProp } = await vite.ssrLoadModule('/src/game/characters/emoteProps.ts');
     const { garageLeanPose } = await vite.ssrLoadModule('/src/game/characters/garageLean.ts');
     const { COCKPIT_TAKES } = await vite.ssrLoadModule('/src/game/characters/cockpitEmotes.ts');
     const { sampleCockpitMotion } = await vite.ssrLoadModule('/src/game/preview/garageCockpit.ts');
@@ -308,9 +316,10 @@ test('all emote batches return to rest and keep planted and lifted feet distinct
     const mixer = new AnimationMixer(model.root);
     const ids = clips.map(clip => clip.name.split(' ')[0]);
     const numbered = [...ids.filter(id => /^\d+$/.test(id)), ...COCKPIT_TAKES.map(take => take.id)].sort();
-    assert.deepEqual(numbered, Array.from({length: 132}, (_, i) => String(i + 1).padStart(3, '0')));
+    assert.deepEqual(numbered, Array.from({length: 152}, (_, i) => String(i + 1).padStart(3, '0')));
     assert.deepEqual(AUTOMATIC_GARAGE_EMOTE_IDS, ['035', '002', '005', '009', '010']);
     assert(COCKPIT_TAKES.every(({ id }) => !ids.includes(id)));
+    assert.equal(findGaragePreviewEmote('151', true), undefined);
     assert.deepEqual(ids.filter(id => id.startsWith('walk-')), ['walk-casual']);
     assert.deepEqual(buildGarageEmotes(model.root).map(clip => clip.name.split(' ')[0]), ['001', '002', '005', '009', '010', '035']);
     assert(!buildGarageEmotes(model.root, true).some(clip => clip.name.startsWith('035 ')));
@@ -348,6 +357,21 @@ test('all emote batches return to rest and keep planted and lifted feet distinct
       action.stop();
       assert(capture().every((value, i) => Math.abs(value - rest[i]) < 1e-6), clip.name);
     }
+    const map = createEmoteProp('map');
+    model.root.add(map.root);
+    const [unfold] = buildEmoteClips(model.root, [findGaragePreviewEmote('141', false)], new Map([['map', map]]));
+    const unfolding = mixer.clipAction(unfold).setLoop(LoopOnce, 1).play();
+    mixer.update(unfold.duration * .27);
+    assert(map.root.visible && map.root.scale.x > .99);
+    assert(Math.abs(map.panels[0].rotation.y) > 1);
+    mixer.update(unfold.duration * .28);
+    assert(Math.abs(map.panels[0].rotation.y) < .01);
+    unfolding.stop();
+    assert.equal(map.root.visible, false, 'interrupting an emote hides its prop');
+    assert.equal(map.root.scale.x, 0);
+    mixer.uncacheClip(unfold);
+    map.dispose();
+    assert.equal(model.root.getObjectByName('emote-prop-map'), undefined);
     const foot = side => turntable.worldToLocal(model.root.getObjectByName('foot_' + side).getWorldPosition(new Vector3()));
     const leftRest = foot('l'), rightRest = foot('r');
     const shift = mixer.clipAction(clips[1]).reset().play();

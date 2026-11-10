@@ -180,6 +180,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
     </div>}
     {reducedMotion && <p>Emote playback is paused by Reduced Motion.</p>}
     {!seated && bag && cockpitAvailable && <p>Equip Empty hands to preview inside the car.</p>}
+    {bag && pickedEmotes.length === 0 && <p>Equip Empty hands to use these emotes.</p>}
     <div className="character-emotes" aria-label={seated ? "Driving emotes" : `${emoteGroup} emotes`}>
       {!seated && emoteGroup === "Garage" && leanAvailable && <button type="button" className="menu-control" data-controller-row
         disabled={reducedMotion} aria-pressed={emote?.id === GARAGE_LEAN_ID}
