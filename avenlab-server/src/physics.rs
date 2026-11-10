@@ -2502,7 +2502,7 @@ mod tests {
             let config = config_for_vehicle(id).unwrap();
             for wheel in &world.wheels[&handle] {
                 let hit = cast_wheel_ground(wheel, &world.bodies[handle], &world.query_pipeline,
-                    &world.bodies, &world.colliders, handle).unwrap();
+                    &world.bodies, &world.colliders, handle, vehicle_collision_groups(false)).unwrap();
                 assert!((hit.hit_point.y - 0.32).abs() < 1.0e-5);
                 assert!((hit.compression - config.suspension_sag).abs() < 1.0e-5);
             }

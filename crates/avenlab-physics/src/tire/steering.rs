@@ -4,25 +4,19 @@
 // vehicle_forces owns the ONLY active 0.10 s steering smoother, once per substep.
 // solve_steering has no time integration or speed-sensitive limiting. Calling it
 // again after physics is safe: final poses need the updated chassis orientation.
-// The torque-rack and input-clamp helpers below are legacy APIs with no active
-// PhysicsWorld callers, not additional stages of the current steering strategy.
+// The torque-rack helper below is an inactive experiment.
 
-// use rapier3d::prelude::*;
-use rapier3d::prelude::{Real};
-use rapier3d::prelude::Vector;
+use crate::tire::types::Vec3;
 use rapier3d::na::UnitQuaternion;
-use crate::aven_tire::types::{Vec3};
-use crate::vehicle_state::Vehicle;
-use std::collections::hash_map::{ ValuesMut};
-
+use rapier3d::prelude::Vector;
 
 /// Steering configuration (per vehicle)
 #[derive(Clone, Copy)]
 pub struct SteeringConfig {
-    pub wheelbase: f32,        // meters
-    pub track_width: f32,      // meters
-    pub max_steer_angle: f32,  // radians
-    pub ackermann: f32,        // 0 = parallel, 1 = full Ackermann
+    pub wheelbase: f32,       // meters
+    pub track_width: f32,     // meters
+    pub max_steer_angle: f32, // radians
+    pub ackermann: f32,       // 0 = parallel, 1 = full Ackermann
 }
 
 pub struct SteeringState {
@@ -39,7 +33,6 @@ impl Default for SteeringState {
     }
 }
 
-
 /// Output per wheel
 #[derive(Clone, Copy)]
 pub struct WheelSteering {
@@ -48,12 +41,12 @@ pub struct WheelSteering {
 }
 
 impl Default for WheelSteering {
-fn default() -> Self {
-    Self {
-        forward: [0.0, 0.0, 1.0], // world forward
-        side:    [1.0, 0.0, 0.0], // world right
+    fn default() -> Self {
+        Self {
+            forward: [0.0, 0.0, 1.0], // world forward
+            side: [1.0, 0.0, 0.0],    // world right
+        }
     }
-}
 }
 
 // ================================================================================
@@ -62,7 +55,7 @@ fn default() -> Self {
 // Do not call this alongside the active exponential steering response.
 // It would integrate a second, incompatible strategy into the same steer_angle.
 pub fn update_steering_rack(
-    steer_input: f32,     // -1..1
+    steer_input: f32, // -1..1
     // rack_torque: f32,     // Nm from tires (SAT)
     steer_angle: &mut f32,
     steer_rate: &mut f32,
@@ -70,17 +63,16 @@ pub fn update_steering_rack(
     dt: f32,
 ) {
     // --- physical parameters ---
-    let inertia = 1.2;    // kg·m²
-    let damping = 4.0;    // N·m·s/rad
+    let inertia = 1.2; // kg·m²
+    let damping = 4.0; // N·m·s/rad
     let stiffness = 18.0;
-    let assist  = 8.0;    // driver strength
+    let assist = 8.0; // driver strength
     // let assist  = lerp(10.0, 4.0, speed / 30.0);    // driver strength
-
 
     // Driver input torque
     let driver_torque = assist * steer_input;
 
-    let coulomb = 1.2;           // N*m "dry friction" around center (tune 0.5–3.0)
+    let coulomb = 1.2; // N*m "dry friction" around center (tune 0.5–3.0)
     // let viscous = 0.0;           // optional extra
 
     // let friction = coulomb * steer_rate.signum() + viscous * (*steer_rate);
@@ -92,8 +84,7 @@ pub fn update_steering_rack(
     };
 
     // If almost stopped, allow friction to fully cancel tiny torques
-    let mut net_torque =
-    driver_torque
+    let mut net_torque = driver_torque
     // - rack_torque
     - damping * (*steer_rate)
     - stiffness * (*steer_angle)
@@ -105,24 +96,24 @@ pub fn update_steering_rack(
     }
 
     // Integrate (semi-implicit)
-    let max_rate = 8.0;          // rad/s rack angular speed clamp
+    let max_rate = 8.0; // rad/s rack angular speed clamp
     let steer_accel = net_torque / inertia;
     *steer_rate += steer_accel * dt;
     *steer_rate = steer_rate.clamp(-max_rate, max_rate);
     *steer_angle += *steer_rate * dt;
 
     // Hard mechanical stops
-    if *steer_angle > max_angle { *steer_angle = max_angle; *steer_rate = 0.0; }
-    else if *steer_angle < -max_angle { *steer_angle = -max_angle; *steer_rate = 0.0; }
-
+    if *steer_angle > max_angle {
+        *steer_angle = max_angle;
+        *steer_rate = 0.0;
+    } else if *steer_angle < -max_angle {
+        *steer_angle = -max_angle;
+        *steer_rate = 0.0;
+    }
 }
 
 /// Compute Ackermann inner/outer wheel angles
-fn ackermann_angles(
-    base: f32,
-    wheelbase: f32,
-    track: f32,
-) -> (f32, f32) {
+fn ackermann_angles(base: f32, wheelbase: f32, track: f32) -> (f32, f32) {
     let eps = 1e-4;
     if base.abs() < eps {
         return (0.0, 0.0);
@@ -134,7 +125,7 @@ fn ackermann_angles(
     // Bicycle-model turning radius
     let r = wheelbase / a.tan();
 
-    let r_in  = (r - track * 0.5).max(0.01);
+    let r_in = (r - track * 0.5).max(0.01);
     let r_out = (r + track * 0.5).max(0.01);
 
     let inner = (wheelbase / r_in).atan() * sign;
@@ -153,17 +144,13 @@ pub fn solve_steering(
     chassis_rot: &UnitQuaternion<f32>,
     steer_angle: f32,
 ) -> (WheelSteering, WheelSteering) {
-
     // ------------------------------------------------------------
     // - Ackermann geometry
     // ------------------------------------------------------------
-    let (ack_l, ack_r) =
-        ackermann_angles(steer_angle, config.wheelbase, config.track_width);
+    let (ack_l, ack_r) = ackermann_angles(steer_angle, config.wheelbase, config.track_width);
 
-    let fl_angle =
-        (1.0 - config.ackermann) * steer_angle + config.ackermann * ack_l;
-    let fr_angle =
-        (1.0 - config.ackermann) * steer_angle + config.ackermann * ack_r;
+    let fl_angle = (1.0 - config.ackermann) * steer_angle + config.ackermann * ack_l;
+    let fr_angle = (1.0 - config.ackermann) * steer_angle + config.ackermann * ack_r;
 
     // ------------------------------------------------------------
     // World-space chassis basis (MUST match wheel_basis_world)
@@ -171,17 +158,15 @@ pub fn solve_steering(
     let up = chassis_rot * Vector::new(0.0, 1.0, 0.0);
 
     // +Z forward, +X right; positive input turns left (-X).
-    let chassis_fwd   = chassis_rot * Vector::new(0.0, 0.0, 1.0);
+    let chassis_fwd = chassis_rot * Vector::new(0.0, 0.0, 1.0);
     let chassis_right = chassis_rot * Vector::new(1.0, 0.0, 0.0);
 
     // ------------------------------------------------------------
     // Rotate forward direction by steering angles (PLANAR)
     // ------------------------------------------------------------
-    let fl_forward =
-        (chassis_fwd * fl_angle.cos() - chassis_right * fl_angle.sin()).normalize();
+    let fl_forward = (chassis_fwd * fl_angle.cos() - chassis_right * fl_angle.sin()).normalize();
 
-    let fr_forward =
-        (chassis_fwd * fr_angle.cos() - chassis_right * fr_angle.sin()).normalize();
+    let fr_forward = (chassis_fwd * fr_angle.cos() - chassis_right * fr_angle.sin()).normalize();
 
     // ------------------------------------------------------------
     // Side vectors (right-handed: side = up × forward)
@@ -196,29 +181,13 @@ pub fn solve_steering(
     (
         WheelSteering {
             forward: [fl_forward.x, fl_forward.y, fl_forward.z],
-            side:    [fl_side.x,    fl_side.y,    fl_side.z],
+            side: [fl_side.x, fl_side.y, fl_side.z],
         },
         WheelSteering {
             forward: [fr_forward.x, fr_forward.y, fr_forward.z],
-            side:    [fr_side.x,    fr_side.y,    fr_side.z],
+            side: [fr_side.x, fr_side.y, fr_side.z],
         },
     )
-}
-
-
-// =========================================================================
-// - Apply vehicle controls (throttle + steering) to each vehicle.
-// =========================================================================
-// Legacy input clamp helper; PhysicsWorld now clamps when attaching input and
-// does not call this again in substeps. Kept as an API, with no active caller.
-pub fn apply_vehicle_controls<'a>(
-    vehicles: ValuesMut<'a, String, Vehicle>,
-    _dt: Real,
-) {
-    for v in vehicles {
-        v.throttle = v.throttle.clamp(-1.0, 1.0);
-        v.brake    = v.brake.clamp(0.0, 1.0);
-    }
 }
 
 #[cfg(test)]
@@ -226,7 +195,12 @@ mod tests {
     use super::*;
 
     fn config() -> SteeringConfig {
-        SteeringConfig { wheelbase: 2.6, track_width: 1.68, max_steer_angle: 0.6, ackermann: 0.8 }
+        SteeringConfig {
+            wheelbase: 2.6,
+            track_width: 1.68,
+            max_steer_angle: 0.6,
+            ackermann: 0.8,
+        }
     }
 
     #[test]
@@ -254,4 +228,10 @@ mod tests {
             }
         }
     }
+}
+
+/// Advance the calibrated first-order rack response once per substep.
+pub fn approach_steer_angle(current: f32, target: f32, dt: f32) -> f32 {
+    let response = 1.0 - (-dt / 0.10).exp();
+    current + (target - current) * response
 }

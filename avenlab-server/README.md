@@ -10,17 +10,16 @@ and each feature mod.rs are the Rust equivalent of index.ts.
 | physics.rs | Fixed-tick world integration, authoritative spawn and update order |
 | vehicle_setup.rs | Approved vehicles, dimensions, suspension and gauge calibration |
 | vehicle_state.rs | Per-vehicle runtime state |
-| vehicle_forces.rs | Vehicle force application |
-| suspension_contact.rs | Contact probing/support continuity |
-| aven_tire/ | Tire, steering and anti-roll solver |
-| powertrain.rs | Engine, shifting, heat, fuel, condition, NOS and charge |
+| vehicle_forces.rs | Apply solver results and resolve gameplay modifiers |
+| [avenlab-physics](../crates/avenlab-physics/README.md) | Chassis, contact probing, suspension, tires, ABS, traction control, drivetrain and hull forces |
+| powertrain.rs | Vehicle presets, resource masks, boost reserves and gameplay charge |
 | cockpit.rs | Packed cabin/cockpit requests and confirmed electronic state |
 | vehicle_debug.rs | Requested physics diagnostics |
 | spawn.rs | Room/team spawn allocation; map points resolve in physics.rs |
 | world/ | Map loading, static colliders, authored shapes and setup snapshots |
 
-Change physics here, not in frontend gauges or editor theme state. Position is
-runtime metres, Y-up; legacy Blender boxes convert at world/block_colliders.rs.
+Shared model equations live in the crate. Position is runtime metres, Y-up.
+Legacy Blender boxes convert in world/block_colliders.rs.
 Input is merged client intent; Rust owns simulation and confirmed masks. A menu
 brake arrives through the existing input packet, so the online world keeps ticking.
 

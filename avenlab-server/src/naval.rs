@@ -2,6 +2,7 @@
 //! authored volume, not a hidden collision floor. Cars still sink; ships do
 //! not inherit the four tire rays, ABS, grip, or tank pivot-turn solver.
 use rapier3d::prelude::*;
+use avenlab_physics::watercraft::{HullConfig, apply_hull_forces};
 use crate::physics::PhysicsWorld;
 use crate::powertrain::Demand;
 use crate::vehicle_state::VehicleStateFlags;
@@ -18,13 +19,7 @@ impl PhysicsWorld {
             let Some(body)=self.bodies.get_mut(vehicle.body) else {continue};
             let surface=self.coast.as_ref().and_then(|coast|
                 coast.water_surface_at(body.translation().x,body.translation().z));
-            let rotation=*body.rotation();
-            let forward=rotation*Vector::z();
-            let side=rotation*Vector::x();
-            let up=rotation*Vector::y();
-            let velocity=*body.linvel();
-            let longitudinal=velocity.dot(&forward);
-            let lateral=velocity.dot(&side);
+            let longitudinal = body.linvel().dot(&(body.rotation() * Vector::z()));
             let disabled=self.vehicle_health.get(id).is_some_and(|health|health.defeated);
             let (throttle,brake)=if disabled {(0.0,1.0)}else{
                 vehicle.cockpit.advance(dt,longitudinal,vehicle.throttle,vehicle.brake,
@@ -42,29 +37,15 @@ impl PhysicsWorld {
             vehicle.vehicle_flags.remove(VehicleStateFlags::BOOST);
             let Some(water_y)=surface else {continue};
 
-            // Critically damped restoring force about the surface. Height is
-            // measured at the rigid-body origin; the lower hull remains submerged.
-            let mass=cfg.mass;
-            let equilibrium_y=water_y+2.0;
-            let spring=(equilibrium_y-body.translation().y)*mass*3.3;
-            let damper=-velocity.y*mass*3.6;
-            let lift=(mass*9.81+spring+damper).clamp(0.0,mass*9.81*3.0);
-
-            let running=vehicle.powertrain.running && !vehicle.powertrain.thermal_recovery && !disabled;
-            let requested=if running {throttle.clamp(-1.0,1.0)} else {0.0};
-            let speed_limited=longitudinal.abs()>=cfg.max_speed && longitudinal.signum()==requested.signum();
-            let thrust=if speed_limited {0.0} else {requested*cfg.engine_force};
-            let drag=-longitudinal*mass*(0.10+brake.clamp(0.0,1.0)*1.5);
-            let side_drag=-lateral*mass*1.8;
-            body.add_force(Vector::y()*lift + forward*(thrust+drag) + side*side_drag,true);
-
-            // Rudder reverses with sternway. No instantaneous turn-in-place;
-            // angular drag and hull inertia make heading changes deliberate.
-            let rudder=if running {-vehicle.steer.clamp(-1.0,1.0)*
-                (longitudinal.abs()/5.0).clamp(0.08,1.0)*longitudinal.signum()}else {0.0};
-            let yaw=mass*(rudder*90.0-body.angvel().y*700.0);
-            let restore=up.cross(&Vector::y())*mass*1450.0;
-            body.add_torque(Vector::y()*yaw + restore,true);
+            let running = vehicle.powertrain.running && !vehicle.powertrain.thermal_recovery && !disabled;
+            apply_hull_forces(
+                body,
+                HullConfig { mass_kg: cfg.mass, thrust_n: cfg.engine_force, top_speed_m_s: cfg.max_speed },
+                water_y,
+                if running { throttle } else { 0.0 },
+                brake,
+                if running { vehicle.steer } else { 0.0 },
+            );
         }
     }
 

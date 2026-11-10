@@ -29,24 +29,16 @@
 // One source of truth for J_cap — don’t use 0.8 in one file and mu_long in another.
 // ===============================================================================
 
-
 // use rapier3d::prelude::Real;
 // use crate::physics::Wheel;
-use crate::aven_tire::types::{
-    Vec3,
-    SolveContext,
-    ControlInput,
-    ContactPatch,
-    v_scale,
-    v_add,
-};
+use crate::tire::types::{ContactPatch, ControlInput, SolveContext, Vec3, v_add, v_scale};
 
 // ====================================================================
 // Result of longitudinal solve
 // ====================================================================
 
 pub struct LongitudinalResult {
-    pub impulse: Vec3
+    pub impulse: Vec3,
 }
 // ====================================================================
 // Longitudinal tire model step
@@ -59,7 +51,6 @@ pub fn solve_longitudinal(
     patch: &ContactPatch,
     brake_share: f32,
 ) -> LongitudinalResult {
-
     if !patch.grounded || patch.normal_force <= 0.0 || ctx.dt <= 0.0 {
         return LongitudinalResult { impulse: [0.0; 3] };
     }
@@ -88,9 +79,7 @@ pub fn solve_longitudinal(
     // usable traction through j_cap; multiplying by a load fraction again
     // halved the requested force for a normally loaded rear-drive car.
     let engine_force = if patch.drive {
-        (ctx.engine_force / ctx.driven_wheels.max(1.0))
-        * ctrl.throttle.clamp(-1.0, 1.0)
-
+        (ctx.engine_force / ctx.driven_wheels.max(1.0)) * ctrl.throttle.clamp(-1.0, 1.0)
     } else {
         0.0
     };
@@ -103,18 +92,23 @@ pub fn solve_longitudinal(
     // BRAKE = longitudinal friction constraint
     // =========================================================
     let cable_brake = !patch.wheel.is_front() && ctrl.handbrake > 0.001;
-    let brake_input = ctrl.brake.max(if cable_brake { ctrl.handbrake } else { 0.0 }).clamp(0.0, 1.0);
-    let brake_share = if cable_brake { brake_share.max(0.5) } else { brake_share };
+    let brake_input = ctrl
+        .brake
+        .max(if cable_brake { ctrl.handbrake } else { 0.0 })
+        .clamp(0.0, 1.0);
+    let brake_share = if cable_brake {
+        brake_share.max(0.5)
+    } else {
+        brake_share
+    };
     let mut brake_impulse = [0.0, 0.0, 0.0];
 
     if brake_input > 0.001 {
-
         // Contact-point velocity already includes angular motion.
         let v_long_eff = patch.v_long;
 
         // Deadband prevents jitter at rest
         if v_long_eff.abs() > 0.15 {
-
             // Desired impulse to cancel longitudinal slip
             // This solver approximates each wheel's effective mass as mass / 4.
             let j_desired = -v_long_eff * ctx.mass * 0.25;
@@ -134,7 +128,9 @@ pub fn solve_longitudinal(
             // post-TCS engine demand so this cannot push a stopped car backward.
             let engine_after_tcs = if ctx.tcs_enabled {
                 engine_j.clamp(-j_cap * ctx.tcs_limit, j_cap * ctx.tcs_limit)
-            } else { engine_j };
+            } else {
+                engine_j
+            };
             let hold = (ctx.brake_force * brake_share * brake_input * dt).min(j_cap);
             brake_impulse = v_scale(patch.forward, -engine_after_tcs.clamp(-hold, hold));
         }
@@ -144,8 +140,8 @@ pub fn solve_longitudinal(
     // Compute longitudinal usage (projection onto forward)
     // This is what ABS/TCS + solve.rs ellipse should measure.
     // =========================================================
-    let engine_jx = (engine_impulse[0]*fwd_xz[0] + engine_impulse[2]*fwd_xz[2]).abs();
-    let brake_jx  = (brake_impulse[0]*fwd_xz[0]  + brake_impulse[2]*fwd_xz[2]).abs();
+    let engine_jx = (engine_impulse[0] * fwd_xz[0] + engine_impulse[2] * fwd_xz[2]).abs();
+    let brake_jx = (brake_impulse[0] * fwd_xz[0] + brake_impulse[2] * fwd_xz[2]).abs();
 
     // =========================================================
     // TCS (traction control based on longitudinal usage)
@@ -161,10 +157,7 @@ pub fn solve_longitudinal(
     // =========================================================
     // ABS (based on longitudinal usage)
     // =========================================================
-    if ctx.abs_enabled && !cable_brake
-        && brake_input > 0.01
-        && patch.speed_planar > 1.0
-    {
+    if ctx.abs_enabled && !cable_brake && brake_input > 0.01 && patch.speed_planar > 1.0 {
         let nx = brake_jx / j_cap;
         let s = (ctx.abs_limit / nx).clamp(0.2, 1.0);
         brake_impulse = v_scale(brake_impulse, s);
@@ -180,26 +173,50 @@ pub fn solve_longitudinal(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::aven_tire::state::TireState;
-    use crate::aven_tire::types::WheelId;
+    use crate::tire::state::TireState;
+    use crate::tire::types::WheelId;
 
     fn context() -> SolveContext {
         SolveContext {
-            dt: 1.0 / 120.0, mass: 1280.0, engine_force: 0.0, brake_force: 7600.0,
-            abs_enabled: false, tcs_enabled: false, abs_limit: 0.9, tcs_limit: 0.85,
-            driven_wheels: 2.0, base_front_bias: 0.66, bias_gain: 0.25,
-            wheelbase: 2.6, mu_base: 0.9,
+            dt: 1.0 / 120.0,
+            mass: 1280.0,
+            engine_force: 0.0,
+            brake_force: 7600.0,
+            abs_enabled: false,
+            tcs_enabled: false,
+            abs_limit: 0.9,
+            tcs_limit: 0.85,
+            driven_wheels: 2.0,
+            base_front_bias: 0.66,
+            bias_gain: 0.25,
+            wheelbase: 2.6,
+            mu_base: 0.9,
         }
     }
 
     fn patch(v_long: f32) -> ContactPatch {
         ContactPatch {
-            wheel: WheelId::FL, grounded: true, hit_point: [0.0; 3], apply_point: [0.0; 3],
-            forward: [0.0, 0.0, 1.0], side: [1.0, 0.0, 0.0], v_long, v_lat: 0.0,
-            normal_force: 3139.2, mu_lat: 0.9, mu_long: 0.9, roll_factor: 0.3,
-            drive: false, brake: 1.0, steer_angle: 0.0, compression_ratio: 0.5,
-            vel_world: [0.0, 0.0, v_long], brake_dir: [0.0, 0.0, -1.0],
-            speed_planar: v_long.abs(), yaw_rate: 0.4, relative_com: [0.0, 0.0, 1.38],
+            wheel: WheelId::FL,
+            grounded: true,
+            hit_point: [0.0; 3],
+            apply_point: [0.0; 3],
+            forward: [0.0, 0.0, 1.0],
+            side: [1.0, 0.0, 0.0],
+            v_long,
+            v_lat: 0.0,
+            normal_force: 3139.2,
+            mu_lat: 0.9,
+            mu_long: 0.9,
+            roll_factor: 0.3,
+            drive: false,
+            brake: 1.0,
+            steer_angle: 0.0,
+            compression_ratio: 0.5,
+            vel_world: [0.0, 0.0, v_long],
+            brake_dir: [0.0, 0.0, -1.0],
+            speed_planar: v_long.abs(),
+            yaw_rate: 0.4,
+            relative_com: [0.0, 0.0, 1.38],
             tire_state: TireState::Grip,
         }
     }
@@ -207,36 +224,64 @@ mod tests {
     #[test]
     fn braking_opposes_measured_motion_and_respects_actuator_strength() {
         let ctx = context();
-        let ctrl = ControlInput { brake: 1.0, ..ControlInput::default() };
+        let ctrl = ControlInput {
+            brake: 1.0,
+            ..ControlInput::default()
+        };
         for speed in [-0.2, 0.2] {
             let result = solve_longitudinal(&ctx, &ctrl, &patch(speed), 0.3);
             assert!(result.impulse[2] * speed < 0.0);
             assert!(result.impulse[2].abs() <= ctx.brake_force * 0.3 * ctx.dt + 1.0e-5);
         }
-        let disabled = SolveContext { brake_force: 0.0, ..ctx };
-        assert_eq!(solve_longitudinal(&disabled, &ctrl, &patch(0.2), 0.3).impulse, [0.0; 3]);
+        let disabled = SolveContext {
+            brake_force: 0.0,
+            ..ctx
+        };
+        assert_eq!(
+            solve_longitudinal(&disabled, &ctrl, &patch(0.2), 0.3).impulse,
+            [0.0; 3]
+        );
     }
 
     #[test]
     fn normally_loaded_driven_wheels_receive_the_configured_total_drive_force() {
-        let ctx = SolveContext { engine_force: 8500.0, ..context() };
-        let ctrl = ControlInput { throttle: 0.25, ..ControlInput::default() };
+        let ctx = SolveContext {
+            engine_force: 8500.0,
+            ..context()
+        };
+        let ctrl = ControlInput {
+            throttle: 0.25,
+            ..ControlInput::default()
+        };
         let mut contact = patch(0.0);
         contact.drive = true;
         let result = solve_longitudinal(&ctx, &ctrl, &contact, 0.17);
         let total_force = result.impulse[2] * ctx.driven_wheels / ctx.dt;
         assert!((total_force - ctx.engine_force * ctrl.throttle).abs() < 0.01);
         contact.grounded = false;
-        assert_eq!(solve_longitudinal(&ctx, &ctrl, &contact, 0.17).impulse, [0.0; 3]);
+        assert_eq!(
+            solve_longitudinal(&ctx, &ctrl, &contact, 0.17).impulse,
+            [0.0; 3]
+        );
     }
 
     #[test]
     fn tcs_switch_changes_forward_and_reverse_drive_limits_without_changing_sign() {
-        let mut contact = patch(5.0); contact.drive = true;
-        let off = SolveContext { engine_force: 24_000.0, ..context() };
-        let on = SolveContext { tcs_enabled: true, ..off };
+        let mut contact = patch(5.0);
+        contact.drive = true;
+        let off = SolveContext {
+            engine_force: 24_000.0,
+            ..context()
+        };
+        let on = SolveContext {
+            tcs_enabled: true,
+            ..off
+        };
         for throttle in [-1.0, 1.0] {
-            let input = ControlInput { throttle, ..ControlInput::default() };
+            let input = ControlInput {
+                throttle,
+                ..ControlInput::default()
+            };
             let raw = solve_longitudinal(&off, &input, &contact, 0.17).impulse[2];
             let limited = solve_longitudinal(&on, &input, &contact, 0.17).impulse[2];
             assert!(raw * throttle > 0.0 && limited * throttle > 0.0);
@@ -247,34 +292,77 @@ mod tests {
 
     #[test]
     fn cable_brake_only_slows_rear_wheels_and_bypasses_rear_abs() {
-        let ctx = SolveContext { abs_enabled:true, brake_force:100_000.0, ..context() };
-        let input = ControlInput { handbrake:1.0, ..ControlInput::default() };
+        let ctx = SolveContext {
+            abs_enabled: true,
+            brake_force: 100_000.0,
+            ..context()
+        };
+        let input = ControlInput {
+            handbrake: 1.0,
+            ..ControlInput::default()
+        };
         let front = patch(10.0);
-        assert_eq!(solve_longitudinal(&ctx,&input,&front,0.33).impulse,[0.0;3]);
-        let rear = ContactPatch { wheel:WheelId::RL, ..front };
-        let raw=solve_longitudinal(&ctx,&input,&rear,0.17).impulse[2];
-        let no_abs=SolveContext { abs_enabled:false, ..ctx };
-        assert!(raw<0.0);assert_eq!(raw,solve_longitudinal(&no_abs,&input,&rear,0.17).impulse[2]);
+        assert_eq!(
+            solve_longitudinal(&ctx, &input, &front, 0.33).impulse,
+            [0.0; 3]
+        );
+        let rear = ContactPatch {
+            wheel: WheelId::RL,
+            ..front
+        };
+        let raw = solve_longitudinal(&ctx, &input, &rear, 0.17).impulse[2];
+        let no_abs = SolveContext {
+            abs_enabled: false,
+            ..ctx
+        };
+        assert!(raw < 0.0);
+        assert_eq!(
+            raw,
+            solve_longitudinal(&no_abs, &input, &rear, 0.17).impulse[2]
+        );
     }
 
     #[test]
     fn cable_brake_holds_engine_demand_at_rest_without_pushing_backward() {
-        for tcs_enabled in [false,true] {
-            let ctx=SolveContext {engine_force:8000.0,brake_force:20_000.0,tcs_enabled,..context()};
-            let input=ControlInput {throttle:1.0,handbrake:1.0,..ControlInput::default()};
-            let rear=ContactPatch {wheel:WheelId::RL,drive:true,..patch(0.0)};
-            assert!(solve_longitudinal(&ctx,&input,&rear,0.17).impulse[2].abs()<1e-5);
+        for tcs_enabled in [false, true] {
+            let ctx = SolveContext {
+                engine_force: 8000.0,
+                brake_force: 20_000.0,
+                tcs_enabled,
+                ..context()
+            };
+            let input = ControlInput {
+                throttle: 1.0,
+                handbrake: 1.0,
+                ..ControlInput::default()
+            };
+            let rear = ContactPatch {
+                wheel: WheelId::RL,
+                drive: true,
+                ..patch(0.0)
+            };
+            assert!(solve_longitudinal(&ctx, &input, &rear, 0.17).impulse[2].abs() < 1e-5);
         }
     }
 
     #[test]
     fn abs_switch_limits_brake_usage_but_braking_always_opposes_motion() {
         let contact = patch(10.0);
-        let off = SolveContext { brake_force: 100_000.0, ..context() };
-        let on = SolveContext { abs_enabled: true, ..off };
-        let input = ControlInput { brake: 1.0, ..ControlInput::default() };
+        let off = SolveContext {
+            brake_force: 100_000.0,
+            ..context()
+        };
+        let on = SolveContext {
+            abs_enabled: true,
+            ..off
+        };
+        let input = ControlInput {
+            brake: 1.0,
+            ..ControlInput::default()
+        };
         let raw = solve_longitudinal(&off, &input, &contact, 0.33).impulse[2];
         let limited = solve_longitudinal(&on, &input, &contact, 0.33).impulse[2];
-        assert!(raw < 0.0 && limited < 0.0); assert!(limited.abs() < raw.abs());
+        assert!(raw < 0.0 && limited < 0.0);
+        assert!(limited.abs() < raw.abs());
     }
 }

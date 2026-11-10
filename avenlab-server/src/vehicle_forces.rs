@@ -6,8 +6,9 @@ use crate::suspension_contact::{
     build_suspension_contact, cast_wheel_ground, planar_wheel_basis,
     SuspensionContact, CONTACT_EPSILON,
 };
-use crate::aven_tire::{solve_step, ContactPatch, ControlInput, SolveContext, WheelId};
-use crate::aven_tire::steering::{solve_steering, SteeringConfig};
+use crate::aven_tire::{solve_step, ControlInput, SolveContext, WheelId};
+use crate::aven_tire::solve::assess_drive;
+use crate::aven_tire::steering::{approach_steer_angle, solve_steering, SteeringConfig};
 use crate::aven_tire::kinematics;
 use crate::aven_tire::anti_roll::apply_arb_load_transfer;
 use crate::vehicle_debug::{DebugChassis, DebugFlags, DebugRay, DebugSlipRay, DebugWheel};
@@ -181,8 +182,7 @@ impl PhysicsWorld {
             // One active steering strategy: a 0.10 s exponential response.
             // The legacy torque rack is not called. Ackermann below is geometry,
             // not another smoothing pass; positive input turns toward local -X.
-            let response = 1.0 - (-dt as f32 / 0.10).exp();
-            vehicle.steer_angle += (target - vehicle.steer_angle) * response;
+            vehicle.steer_angle = approach_steer_angle(vehicle.steer_angle, target, dt);
             let (fl, fr) = solve_steering(&cfg, body_ro.rotation(), vehicle.steer_angle);
             vehicle.steering.fl = fl;
             vehicle.steering.fr = fr;
@@ -193,6 +193,7 @@ impl PhysicsWorld {
                 let Some(contact) = build_suspension_contact(
                     wheel, &vehicle.steering, body_ro, &self.query_pipeline,
                     &self.bodies, &self.colliders, handle, fz_ref,
+                    crate::physics::vehicle_collision_groups(false),
                 ) else {
                     if thermal && thermal_dt>0.0 {wheel.thermal.step(thermal_dt,vehicle.config.resources.ambient_c,longitudinal_speed,0.0,0.0,0.0);}
                     wheel.grounded = false;
@@ -233,36 +234,8 @@ impl PhysicsWorld {
                 wheel.compression = contact.compression;
                 wheel.compression_ratio = contact.compression_ratio;
 
-                let local_forward = body_ro.rotation().inverse() * contact.forward;
-                let steer_angle = if wheel.steer {
-                    local_forward.x.atan2(local_forward.z)
-                } else { 0.0 };
-                let tangent_velocity = contact.point_vel
-                    - contact.ground_normal * contact.point_vel.dot(&contact.ground_normal);
-                let speed = tangent_velocity.norm();
-                let brake_dir = if speed > 1.0e-4 {
-                    -tangent_velocity / speed
-                } else {
-                    contact.forward * if contact.v_long >= 0.0 { -1.0 } else { 1.0 }
-                };
-                contacts.push(ContactPatch {
-                    wheel: id, grounded: true,
-                    hit_point: p3(contact.hit_point), apply_point: p3(contact.apply_point),
-                    forward: v3(contact.forward), side: v3(contact.side),
-                    v_long: contact.v_long, v_lat: contact.v_lat,
-                    normal_force: contact.normal_force,
-                    // mu_lat is finalized once below AFTER anti-roll changes Fz.
-                    mu_lat: vehicle.config.mu_base, mu_long: vehicle.config.mu_base*grip*if road_nos {1.14} else {1.0},
-                    // Legacy field retained for tire API compatibility. solve_step
-                    // applies full lateral impulse at contact and ignores this.
-                    roll_factor: 1.0,
-                    drive: wheel.drive, brake: vehicle.brake, steer_angle,
-                    compression_ratio: contact.compression_ratio,
-                    vel_world: v3(contact.point_vel), brake_dir: v3(brake_dir),
-                    speed_planar: speed, yaw_rate: body_ro.angvel().y,
-                    relative_com: v3(contact.apply_point - *body_ro.center_of_mass()),
-                    tire_state: wheel.tire_state,
-                });
+                let friction = vehicle.config.mu_base * grip * if road_nos { 1.14 } else { 1.0 };
+                contacts.push(contact.tire_patch(wheel, body_ro, friction, vehicle.brake));
                 suspension_contacts.push((id, contact));
             }
 
@@ -292,11 +265,9 @@ impl PhysicsWorld {
             for contact in &mut contacts {
                 // Load sensitivity has one owner, after load redistribution.
                 // Previously the contact builder computed this and we overwrote it.
-                contact.normal_force = loads[contact.wheel.index()];
-                let ratio = (contact.normal_force / fz_ref.max(1.0e-6)).max(0.2);
-                let mu = contact.mu_long;
-                contact.mu_lat = (mu * ratio.powf(-vehicle.config.load_sensitivity))
-                    .clamp(mu * 0.6, mu * 1.1);
+                contact.set_resolved_load(
+                    loads[contact.wheel.index()], fz_ref, vehicle.config.load_sensitivity,
+                );
                 if guarding && handbrake>0.2 && longitudinal_speed.abs()>8.0
                     && matches!(contact.wheel,WheelId::RL|WheelId::RR) {contact.mu_lat*=0.75;}
             }
@@ -316,22 +287,14 @@ impl PhysicsWorld {
                 throttle: if pivot_demand {0.0}else{vehicle.powertrain.drive_throttle},
                 brake: brake.max(vehicle.powertrain.direction_brake), handbrake, steer: steer_input,
             };
-            let driven = ctx.driven_wheels.max(1.0);
-            // The longitudinal solver caps impulse at grip before its combined
-            // Slide/Grip classification. Preserve pre-clamp drive saturation
-            // as a launch-slip signal, using the same final contact loads.
-            let drive_demand = ctx.engine_force * control.throttle.abs() / driven;
-            let drive_saturated = contacts.iter().any(|patch| patch.drive && patch.grounded
-                && patch.normal_force >= 50.0 && drive_demand > patch.normal_force * patch.mu_long);
-            vehicle.cockpit.traction_active = ctx.tcs_enabled && contacts.iter().any(|patch| patch.drive && patch.grounded
-                && drive_demand > patch.normal_force * patch.mu_long * ctx.tcs_limit);
+            let traction = assess_drive(&ctx, &control, &contacts);
+            vehicle.cockpit.traction_active = traction.control_active;
             let tire_impulses = if vehicle.config.tracked {
                 crate::tracked_drive::solve(&ctx,control.throttle,steer_input,control.brake.max(control.handbrake),drive_top_speed,&contacts)
             } else {solve_step(&ctx, &control, &mut contacts).impulses};
-            let grounded_drive = contacts.iter().any(|patch| patch.drive && patch.grounded);
-            let slipping_drive = drive_saturated || contacts.iter().any(|patch| patch.drive && patch.grounded
+            let slipping_drive = traction.saturated || contacts.iter().any(|patch| patch.drive && patch.grounded
                 && patch.tire_state == crate::aven_tire::state::TireState::Slide);
-            vehicle.cockpit.observe_traction(dt, grounded_drive, slipping_drive, vehicle.powertrain.running);
+            vehicle.cockpit.observe_traction(dt, traction.grounded, slipping_drive, vehicle.powertrain.running);
             vehicle.vehicle_flags.set(VehicleStateFlags::TCS, vehicle.cockpit.tcs_enabled(ctx.tcs_enabled));
             // Normal cars turn through tire contact forces. Active Guard Boost
             // adds bounded ground-only stability/drift assistance; tracked
@@ -342,7 +305,7 @@ impl PhysicsWorld {
                     wheel.tire_state = patch.tire_state;
                     if !disabled && !vehicle.config.tracked {
                         wheel.skid_intensity=modeled_skid(patch.grounded,patch.normal_force,patch.v_long,patch.v_lat,
-                            patch.drive,drive_demand,patch.mu_long,ctx.tcs_enabled,ctx.abs_enabled,
+                            patch.drive,traction.demand_n,patch.mu_long,ctx.tcs_enabled,ctx.abs_enabled,
                             patch.tire_state==crate::aven_tire::state::TireState::Lock,
                             control.handbrake>0.2&&!patch.wheel.is_front());
                     }
@@ -358,14 +321,10 @@ impl PhysicsWorld {
             let body = self.bodies.get_mut(handle).unwrap();
             if vehicle.config.tracked && vehicle.config.engine_force>0.0 && vehicle.powertrain.running && vehicle.powertrain.gear != 0
                 && contacts.iter().filter(|p|p.grounded && p.normal_force>0.0).count()>=2 {
-                let brake=control.brake.max(control.handbrake).clamp(0.0,1.0);
-                let up=body.rotation()*Vector::y();
-                let speed=(body.rotation().inverse()*body.linvel()).z.abs();
-                let desired=-steer_input*(1.85/(1.0+speed/22.0))*(1.0-brake);
-                let current=body.angvel().dot(&up);
-                let inertia=body_mass*(vehicle.config.chassis_half_extents[0].powi(2)+vehicle.config.chassis_half_extents[2].powi(2))/3.0;
-                let torque=((desired-current)*inertia/0.20).clamp(-inertia*7.0,inertia*7.0);
-                body.apply_torque_impulse(up*torque*dt,true);
+                crate::tracked_drive::apply_pivot(
+                    body, body_mass, vehicle.config.chassis_half_extents,
+                    steer_input, control.brake.max(control.handbrake), dt,
+                );
             }
             if road_nos && contacts.iter().filter(|p| p.grounded && p.normal_force > 0.0).count() >= 2 {
                 let axis = body.rotation() * Vector::z();
@@ -448,6 +407,7 @@ impl PhysicsWorld {
                 let reach = wheel.full_droop_length() + wheel.radius + CONTACT_EPSILON;
                 let ground = cast_wheel_ground(
                     wheel, body, &self.query_pipeline, &self.bodies, &self.colliders, handle,
+                    crate::physics::vehicle_collision_groups(false),
                 );
                 let hit_point = ground.as_ref().map(|hit| hit.hit_point);
                 let strut = pos.rotation * -Vector::y();
@@ -521,7 +481,7 @@ impl PhysicsWorld {
                     support += wheel.normal_force;
                     if load_debug {
                         let origin = center + normal * 0.03;
-                        let length = (wheel.normal_force / 12000.0).clamp(0.0, 1.0).sqrt() * 1.25;
+                        let length = wheel.load().bar_fraction(12000.0) * 1.25;
                         self.debug_overlay.load_bars.push(DebugRay {
                             player_id: player_id.clone(), origin: p3(origin), direction: v3(normal), length,
                             hit: Some(p3(origin + normal * length)),

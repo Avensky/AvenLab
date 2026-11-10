@@ -17,9 +17,8 @@
 //   (b) tire limits (mu*Fz) inside the tire solver
 // ==============================================================================
 
-
+use crate::tire::WheelId;
 use rapier3d::prelude::*;
-use crate::aven_tire::WheelId;
 
 /// One anti-roll bar axle pair (FL/FR or RL/RR)
 #[derive(Clone)]
@@ -39,15 +38,17 @@ pub struct AntiRollPair {
 pub fn apply_arb_load_transfer(
     left: WheelId,
     right: WheelId,
-    axle_normal_force: &mut [f32;4],
-    axle_compression: &[Option<f32>;4],
+    axle_normal_force: &mut [f32; 4],
+    axle_compression: &[Option<f32>; 4],
     arb_stiffness: f32,
     fz_ref: f32,
 ) {
     let (Some(cl), Some(cr)) = (
         axle_compression[left.index()],
         axle_compression[right.index()],
-    ) else { return };
+    ) else {
+        return;
+    };
 
     let delta = cl - cr;
 
@@ -58,16 +59,13 @@ pub fn apply_arb_load_transfer(
     // Raw Force transfer proportional to compression difference
     let transfer = arb_stiffness * delta;
 
-    
     // left / right normals
     let nl = axle_normal_force[left.index()].max(0.0);
     let nr = axle_normal_force[right.index()].max(0.0);
-    
 
     // scale by load to avoid jacking
     let load_scale = (nl + nr) / (2.0 * fz_ref.max(1.0e-6));
     let transfer = transfer * load_scale.clamp(0.3, 1.2);
-
 
     // Saturation: cannot exceed available load
     // let max_transfer = 0.6 * (nl + nr);
@@ -89,10 +87,15 @@ mod tests {
     fn redistribution_conserves_axle_load_when_a_wheel_unloads() {
         for (nl, nr) in [(100.0, 100.0), (0.0, 1000.0), (1000.0, 0.0)] {
             for (cl, cr) in [(0.06, 0.02), (0.02, 0.06), (0.12, 0.0)] {
-                let mut loads = [nl,nr,0.0,0.0];
-                let compression = [Some(cl),Some(cr),None,None];
+                let mut loads = [nl, nr, 0.0, 0.0];
+                let compression = [Some(cl), Some(cr), None, None];
                 apply_arb_load_transfer(
-                    WheelId::FL, WheelId::FR, &mut loads, &compression, 14000.0, 3139.2,
+                    WheelId::FL,
+                    WheelId::FR,
+                    &mut loads,
+                    &compression,
+                    14000.0,
+                    3139.2,
                 );
                 let left = loads[WheelId::FL.index()];
                 let right = loads[WheelId::FR.index()];
@@ -104,10 +107,15 @@ mod tests {
 
     #[test]
     fn more_compressed_side_receives_restoring_support() {
-        let mut loads = [3000.0,3000.0,0.0,0.0];
-        let compression = [Some(0.08),Some(0.05),None,None];
+        let mut loads = [3000.0, 3000.0, 0.0, 0.0];
+        let compression = [Some(0.08), Some(0.05), None, None];
         apply_arb_load_transfer(
-            WheelId::FL, WheelId::FR, &mut loads, &compression, 14000.0, 3139.2,
+            WheelId::FL,
+            WheelId::FR,
+            &mut loads,
+            &compression,
+            14000.0,
+            3139.2,
         );
         assert!(loads[WheelId::FL.index()] > 3000.0);
         assert!(loads[WheelId::FR.index()] < 3000.0);
@@ -116,10 +124,20 @@ mod tests {
     #[test]
     fn a_loaded_outside_tire_can_support_more_than_one_and_a_half_resting_loads() {
         let reference = 3000.0;
-        let mut loads = [1.8*reference,0.2*reference,0.0,0.0];
-        let compression = [Some(0.1),Some(0.01),None,None];
-        apply_arb_load_transfer(WheelId::FL, WheelId::FR, &mut loads, &compression, 14000.0, reference);
+        let mut loads = [1.8 * reference, 0.2 * reference, 0.0, 0.0];
+        let compression = [Some(0.1), Some(0.01), None, None];
+        apply_arb_load_transfer(
+            WheelId::FL,
+            WheelId::FR,
+            &mut loads,
+            &compression,
+            14000.0,
+            reference,
+        );
         assert!(loads[WheelId::FL.index()] > 1.5 * reference);
-        assert!((loads[WheelId::FL.index()] + loads[WheelId::FR.index()] - 2.0 * reference).abs() < 0.001);
+        assert!(
+            (loads[WheelId::FL.index()] + loads[WheelId::FR.index()] - 2.0 * reference).abs()
+                < 0.001
+        );
     }
 }

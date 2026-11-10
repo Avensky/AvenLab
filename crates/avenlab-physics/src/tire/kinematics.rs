@@ -22,12 +22,17 @@
 use rapier3d::na::UnitQuaternion;
 use rapier3d::prelude::{Point, Real, Vector};
 
-use crate::aven_tire::steering::WheelSteering;
+use crate::tire::steering::WheelSteering;
 
 /// World-space velocity of an arbitrary point rigidly attached to the body:
 /// v(p) = v_com + ω × (p - com)
 #[inline]
-pub fn point_velocity(linvel: Vector<Real>, angvel: Vector<Real>, com: Point<Real>, p: Point<Real>) -> Vector<Real> {
+pub fn point_velocity(
+    linvel: Vector<Real>,
+    angvel: Vector<Real>,
+    com: Point<Real>,
+    p: Point<Real>,
+) -> Vector<Real> {
     let r = p.coords - com.coords;
     linvel + angvel.cross(&r)
 }
@@ -42,7 +47,6 @@ pub fn wheel_basis_world(
     fl: &WheelSteering,
     fr: &WheelSteering,
 ) -> (Vector<Real>, Vector<Real>) {
-
     // World up (authoritative)
     // let up = Vector::new(0.0, 1.0, 0.0);
 
@@ -55,15 +59,11 @@ pub fn wheel_basis_world(
         // -------------------------
         "FL" => (
             Vector::new(
-                fl.forward[0] as Real, 
-                fl.forward[1] as Real, 
-                fl.forward[2] as Real
+                fl.forward[0] as Real,
+                fl.forward[1] as Real,
+                fl.forward[2] as Real,
             ),
-            Vector::new(
-                fl.side[0] as Real, 
-                fl.side[1] as Real, 
-                fl.side[2] as Real
-            )
+            Vector::new(fl.side[0] as Real, fl.side[1] as Real, fl.side[2] as Real),
         ),
         "FR" => (
             Vector::new(
@@ -71,48 +71,38 @@ pub fn wheel_basis_world(
                 fr.forward[1] as Real,
                 fr.forward[2] as Real,
             ),
-            Vector::new(
-                fr.side[0] as Real,
-                fr.side[1] as Real,
-                fr.side[2] as Real,
-            )
+            Vector::new(fr.side[0] as Real, fr.side[1] as Real, fr.side[2] as Real),
         ),
         // -------------------------
         // REAR WHEELS (STRAIGHT)
         // -------------------------
         "RL" | "RR" => {
             // Rear wheels: chassis forward
-            let forward = *rot * Vector::new(0.0, 0.0, 1.0);   // +Z is forward
-            let side    = *rot * Vector::new(1.0, 0.0, 0.0);   // +X is right
+            let forward = *rot * Vector::new(0.0, 0.0, 1.0); // +Z is forward
+            let side = *rot * Vector::new(1.0, 0.0, 0.0); // +X is right
 
             (forward, side)
-
-        },
+        }
         // -------------------------
         // FALLBACK (SAFE)
         // -------------------------
         _ => {
-            let forward = *rot * Vector::new(0.0, 0.0, 1.0);   // +Z is forward
-            let side    = *rot * Vector::new(1.0, 0.0, 0.0);   // +X is right
+            let forward = *rot * Vector::new(0.0, 0.0, 1.0); // +Z is forward
+            let side = *rot * Vector::new(1.0, 0.0, 0.0); // +X is right
 
             (forward, side)
         }
-
     }
-
 }
-
 
 /// Compute (v_long, v_lat) given point velocity and wheel basis.
 #[inline]
-pub fn slip_components(point_vel: Vector<Real>, wheel_forward: Vector<Real>, wheel_side: Vector<Real>) -> (Real, Real) {
+pub fn slip_components(
+    point_vel: Vector<Real>,
+    wheel_forward: Vector<Real>,
+    wheel_side: Vector<Real>,
+) -> (Real, Real) {
     (point_vel.dot(&wheel_forward), point_vel.dot(&wheel_side))
-}
-
-#[inline]
-fn safe_normalize(v: Vector<Real>, fallback: Vector<Real>) -> Vector<Real> {
-    let n = v.norm();
-    if n > 1e-6 { v / n } else { fallback }
 }
 
 #[cfg(test)]
@@ -124,9 +114,7 @@ mod tests {
         for shift in [0.0, 400.0, 1200.0] {
             let com = Point::new(shift, 0.565, shift);
             let point = com + Vector::new(-0.84, -0.565, 1.38);
-            let velocity = point_velocity(
-                Vector::zeros(), Vector::new(0.02, 0.0, 0.0), com, point,
-            );
+            let velocity = point_velocity(Vector::zeros(), Vector::new(0.02, 0.0, 0.0), com, point);
             assert!((velocity.y + 0.0276).abs() < 1.0e-4);
         }
     }

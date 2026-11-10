@@ -1,0 +1,11 @@
+[package]
+name = "avenlab-physics"
+version = "0.1.0"
+edition = "2024"
+description = "Vehicle dynamics and wheel-load telemetry for Rapier simulations"
+readme = "README.md"
+include = ["/src", "/examples", "/README.md", "/LICENSE*"]
+publish = false
+
+[dependencies]
+rapier3d = { version = "0.22", features = ["dim3"] }

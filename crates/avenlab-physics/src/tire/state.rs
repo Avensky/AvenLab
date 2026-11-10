@@ -5,14 +5,7 @@ pub enum TireState {
     Lock,
 }
 
-pub fn update_tire_state(
-    prev: TireState,
-    nx: f32,
-    ny: f32,
-    brake: f32,
-    speed: f32,
-) -> TireState {
-
+pub fn update_tire_state(prev: TireState, nx: f32, ny: f32, brake: f32, speed: f32) -> TireState {
     // Hard lock condition (brake dominates)
     if brake > 0.85 && speed > 1.0 && nx > 0.9 {
         return TireState::Lock;

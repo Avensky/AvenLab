@@ -1,7 +1,8 @@
 use bitflags::bitflags;
 use rapier3d::prelude::*;
 use serde::Serialize;
-use crate::aven_tire::state::TireState;
+use avenlab_physics::chassis::ChassisGeometry;
+pub use avenlab_physics::suspension::Wheel;
 use crate::aven_tire::steering::SteeringState;
 use crate::powertrain::{Powertrain, ResourceConfig};
 
@@ -129,86 +130,41 @@ pub struct PhysicsWheelSnapshot {
     pub tire_contact: Option<[f32; 7]>,
 }
 
-#[derive(Clone, Debug)]
-pub struct Wheel {
-    pub debug_id: String,        // "FL", "FR", "RL", "RR"
-    pub offset: Point<Real>,     // suspension mount in body-local meters
-    pub rest_length: Real,       // minimum represented suspension length (m)
-    pub max_length: Real,        // available compression from full droop (m)
-    pub radius: Real,            // wheel radius
-
-    pub grounded: bool,             // is the wheel currently touching the ground?
-    pub normal_force: f32,          // final load actually applied in the last substep (N)
-    pub world_center: [f32; 3],     // world position of wheel center (for debug visualization)
-    pub world_rotation: [f32; 4],   // world rotation of wheel (for debug visualization)
-    pub wheel_speed: f32,           // rad/s; rolling kinematics for visual spin, not a tire inertia state
-    pub steer_angle: f32,           // current steer angle (for debug visualization)
-
-    pub stiffness: Real,         // spring constant
-    pub damping: Real,           // damper constant
-
-    pub drive: bool,             // is this a driven wheel?
-    pub steer: bool,             // is this a steering wheel?
-
-    pub compression: f32,          // current suspension compression (for debug visualization)
-    pub compression_ratio: f32,    // current suspension compression ratio (for debug visualization)
-
-    pub skid_intensity: f32,
-    pub tire_contact: Option<[f32; 7]>,
-    pub tire_state: TireState,
-    pub thermal: crate::tire_thermals::TireThermal,
-}
-
 impl VehicleConfig {
+    fn geometry(&self) -> ChassisGeometry {
+        ChassisGeometry {
+            mass: self.mass,
+            chassis_half_extents: self.chassis_half_extents,
+            chassis_com_offset: self.chassis_com_offset,
+            center_of_mass_height: self.center_of_mass_height,
+            wheel_y: self.wheel_y,
+            wheel_radius: self.wheel_radius,
+            suspension_rest_length: self.suspension_rest_length,
+            suspension_max_length: self.suspension_max_length,
+            suspension_sag: self.suspension_sag,
+            front_axle_z: self.front_axle_z,
+            rear_axle_z: self.rear_axle_z,
+        }
+    }
+
     pub fn spawn_height(&self, road_y: Real) -> Real {
-        self.nominal_chassis_y(road_y)
-            .max(road_y + self.chassis_half_extents[1] - self.chassis_com_offset[1] + 0.05)
+        self.geometry().spawn_height(road_y)
     }
 
-    /// Handling mass is independent of collision/visual origins. The cuboid
-    /// inertia is a finite approximation about this COM, not a rotation lock.
     pub fn mass_properties(&self) -> MassProperties {
-        let [hx, hy, hz] = self.chassis_half_extents;
-        let local_com = point![
-            self.chassis_com_offset[0],
-            self.center_of_mass_height - self.nominal_chassis_y(0.0),
-            self.chassis_com_offset[2],
-        ];
-        MassProperties::new(local_com, self.mass, self.mass / 3.0 * vector![
-            hy * hy + hz * hz, hx * hx + hz * hz, hx * hx + hy * hy,
-        ])
+        self.geometry().mass_properties()
     }
 
-    /// Static body-local wheel-center Y for aligning imported visual assets.
-    /// The existing body pose and runtime suspension remain authoritative.
     pub fn nominal_wheel_center_y(&self) -> f32 {
-        self.wheel_y - self.suspension_rest_length - self.suspension_max_length
-            + self.suspension_sag
+        self.geometry().nominal_wheel_center_y()
     }
 
-    /// Nominal body-origin height that gives each upright wheel its target sag.
-    /// mount_y = body_y + wheel_y; center_y = road_y + radius;
-    /// mount_y - center_y = full_droop - sag. Solve once for body_y.
-    /// This is a spawn estimate; Rapier still resolves axle load/pitch at runtime.
     pub fn nominal_chassis_y(&self, road_y: f32) -> f32 {
-        road_y + self.wheel_radius
-            + self.suspension_rest_length + self.suspension_max_length
-            - self.suspension_sag - self.wheel_y
+        self.geometry().nominal_chassis_y(road_y)
     }
 
-    /// Front-to-rear axle distance used by Ackermann and tire physics.
-    #[inline]
     pub fn wheelbase(&self) -> f32 {
-        (self.front_axle_z - self.rear_axle_z).abs()
-    }
-}
-
-impl Wheel {
-    /// Shared by contact sensing and final visual placement. Adding a second
-    /// rest length in either path would give forces and meshes different travel.
-    #[inline]
-    pub fn full_droop_length(&self) -> Real {
-        self.rest_length + self.max_length
+        self.geometry().wheelbase()
     }
 }
 
