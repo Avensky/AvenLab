@@ -1,15 +1,16 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import { AnimationMixer, LoopOnce, MathUtils, Vector3, type AnimationAction, type Object3D } from "three";
+import { AnimationMixer, LoopOnce, MathUtils, type AnimationAction, type Object3D } from "three";
 import { usePreferencesStore } from "../../store/preferences/preferencesStore";
 import { AUTOMATIC_GARAGE_EMOTE_IDS, buildEmoteClips, buildGarageEmotes, findGaragePreviewEmote, garageBreathing } from "./garageEmotes";
 import { driverFaceTargets } from "./villagerFace";
-import { useCharacterPreviewStore } from "./characterPreviewStore";
+import { failCockpitPreview, useCharacterPreviewStore } from "./characterPreviewStore";
 import { DriverBag } from "./DriverBag";
 import { availableVictoryEmotes, type VictoryEmoteId } from "./victoryEmotes";
 import { GARAGE_LEAN_ID, garageLeanPose, type GarageLeanFit } from "./garageLean";
 import { COCKPIT_TAKES, type CockpitTake } from "./cockpitEmotes";
-import { createEmoteProp, EMOTE_PROP_GRIPS, type EmoteProp, type EmotePropModel } from "./emoteProps";
+import { createEmoteProp, type EmoteProp, type EmotePropModel } from "./emoteProps";
+import { bindFlagPoleGrip } from "./flagPoleGrip";
 import type { CockpitPlayback, GarageCockpit } from "../preview/garageCockpit";
 
 const FADE_SECONDS = .52;
@@ -30,9 +31,7 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
     idle: AnimationAction;
     actions: Map<string, AnimationAction>;
     props: Map<EmoteProp, EmotePropModel>;
-    flagWrist: Object3D | undefined;
-    flagTarget: Vector3;
-    flagOffset: Vector3;
+    fitFlag?: () => void;
     automatic: AnimationAction[];
     active: AnimationAction | null;
     release: { elapsed: number; weight: number } | null;
@@ -45,6 +44,12 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
     elapsed: number;
     preview: ReturnType<typeof useCharacterPreviewStore.getState>["emote"];
   }>(null);
+
+  useLayoutEffect(() => {
+    if (!cockpit || bag || reducedMotion) return;
+    useCharacterPreviewStore.setState({ cockpitAvailable: true });
+    return () => useCharacterPreviewStore.setState({ cockpitAvailable: false });
+  }, [cockpit, bag, reducedMotion]);
 
   useLayoutEffect(() => {
     if (!previewPacks || !leanFit || reducedMotion) return;
@@ -67,7 +72,7 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
     const blink = driverFaceTargets(root, "blink");
     const active = celebration ? actions.get(celebration.id)!.reset().setEffectiveWeight(0).play() : null;
     const props = new Map<EmoteProp, EmotePropModel>();
-    player.current = { mixer, idle, actions, props, flagWrist: root.getObjectByName("hand_r"), flagTarget: new Vector3(), flagOffset: new Vector3(),
+    player.current = { mixer, idle, actions, props,
       automatic, active, release: null, cabin: null, take: null, rest: restSeconds, next: 0, wave: false, blink, elapsed: 0, preview: null };
     return () => {
       player.current?.cabin?.stop();
@@ -77,7 +82,7 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
       props.forEach(prop => prop.dispose());
       setBlinkWeight(blink, 0);
     };
-  }, [reducedMotion, root, bag, leanFit, victory, cockpit, restSeconds]);
+  }, [reducedMotion, root, bag, victory, restSeconds]);
 
   useFrame((_, delta) => {
     const current = player.current;
@@ -103,7 +108,7 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
         current.cabin = cockpit(root);
         if (!current.cabin) {
           current.idle.reset().setEffectiveWeight(1).play();
-          useCharacterPreviewStore.setState({ insideCar: false, emote: null });
+          failCockpitPreview("This driver could not be fitted to the AE86 cockpit.");
           return;
         }
       }
@@ -152,6 +157,7 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
             const prop = createEmoteProp(emote.prop);
             current.props.set(emote.prop, prop);
             root.add(prop.root);
+            if (emote.prop === "flag") current.fitFlag = bindFlagPoleGrip(root, prop);
           }
           action = current.mixer.clipAction(buildEmoteClips(root, [emote], current.props)[0]).setLoop(LoopOnce, 1);
           current.actions.set(preview.id, action);
@@ -191,16 +197,7 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
       }
     }
     current.mixer.update(step);
-    const flag = current.props.get("flag");
-    const grip = flag?.flagGrip?.position.x ?? 0;
-    const wrist = EMOTE_PROP_GRIPS.flag[1]?.wrist;
-    if (flag?.root.visible && grip > 0 && current.flagWrist && wrist) {
-      // Follow the interpolated wrist between authored contacts. The release
-      // track blends back to the independent path when the flag slips.
-      current.flagOffset.set(...wrist).multiply(flag.root.scale).applyQuaternion(flag.root.quaternion);
-      root.worldToLocal(current.flagWrist.getWorldPosition(current.flagTarget));
-      flag.root.position.lerp(current.flagTarget.sub(current.flagOffset), grip);
-    }
+    current.fitFlag?.();
   }, cockpit ? -.5 : 0);
 
   return <group>

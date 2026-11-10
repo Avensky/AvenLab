@@ -70,19 +70,21 @@ Tech (151–160) includes gamepad, phone, headset, tablet, and handheld keyboard
 gestures. Workshop (161–170) rehearses inspections and maintenance from the
 standing mark, with a cloth and tire gauge. Starter (171–180) includes the walk
 to the mark, lane checks, countdown, flag drop and flag wave. Starter Comedy
-(181–190) includes recoveries for flag mishaps. Race Reactions (191–192) starts
-with a respectful nod and a close-finish reaction. The flag drop's release is
-authored at 48% of the preview clip. The props are loaded on demand
+(181–190) includes recoveries for flag mishaps. Race Reactions (191–198) adds
+photo finishes, track signals, and finish-line reactions. The pole follows the
+closed grip and separates from it during Slipped flag. Props load on demand
 in the Character preview and the bag filters out gestures that require both
 hands. These packs play on selection in Character → Emotes and return to the
 breathing idle.
 
 Garage puts the recommended standing emotes first. Best collects the strongest
-gestures from across the packs. Choose the AE86 in Heroes, equip Empty hands,
-then open Character → Emotes → Inside car for the driving set. Window wave and
-Driver thumbs-up keep the left hand on the steering wheel while the car rolls.
+gestures from across the packs. Equip Empty hands and open Character → Emotes →
+Inside car · AE86 to load the cockpit test from any selected vehicle. Window
+wave and Driver thumbs-up keep the left hand on the steering wheel while the
+car rolls. Steering test · Left and Right (199–200) keep both hands on the rim
+while turning the wheel in place. The library now contains 200 numbered emotes.
 Use the Whole car camera for a wide shot throughout a take. The driver stays
-seated between clips. Exit car returns to the standing preview.
+seated between clips. Exit car returns to the selected vehicle's standing preview.
 
 Character → Face opens a close-up for iris color, eyebrow tint, and glasses.
 The iris palette includes Obsidian black and five other deep shades, with

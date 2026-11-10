@@ -11,6 +11,17 @@ import type { GarageLeanFit } from "./garageLean";
 import type { GarageCockpit } from "../preview/garageCockpit";
 import { PreviewLoadingSeal } from "../preview/PreviewLoadingSeal";
 import { isCompactPreview } from "../preview/previewBudget";
+import { failCockpitPreview, useCharacterPreviewStore } from "./characterPreviewStore";
+
+const DRIVER_TILT: [number, number, number] = [-.095, -.16, -.045];
+
+function MissingVillager({ cockpit }: { cockpit?: GarageCockpit }) {
+  const waiting = useCharacterPreviewStore(s => Boolean(cockpit && s.insideCar));
+  useEffect(() => {
+    if (waiting) failCockpitPreview("The character model is unavailable.");
+  }, [waiting]);
+  return null;
+}
 
 function VillagerDriver({ url, look, bag, previewPacks, leanFit, victory, cockpit }: {
   url: string; look: CharacterLook; bag: boolean; previewPacks?: boolean; leanFit?: GarageLeanFit; victory?: VictoryPlayback; cockpit?: GarageCockpit;
@@ -38,16 +49,21 @@ export function GarageDriver({ choice, previewPacks, leanFit, victory, cockpit }
   if (!look) return null;
   const bag = choice.prop === "shop-bag";
   const coatFitsLean = choice.id === ROOK_ID && (choice.outfit === "night-run" || choice.outfit === "race-crew");
-  const fallback = choice.id === VILLAGER_ID ? null : <StylizedDriver look={look} bag={bag} previewPacks={previewPacks} victory={victory} cockpit={cockpit} />;
+  const fallback = choice.id === VILLAGER_ID ? <MissingVillager cockpit={cockpit} /> :
+    <group name="garage-driver" rotation={DRIVER_TILT}><StylizedDriver look={look} bag={bag} previewPacks={previewPacks} victory={victory} cockpit={cockpit} /></group>;
   const url = villagerModelUrl(look, compact && choice.id === VILLAGER_ID && !victory ? "portrait" : "garage");
   return (
-    <group name="garage-driver" rotation={[-.095, -.16, -.045]}>
+    <>
       {url
         ? <AssetBoundary key={url} fallback={fallback}>
-            <Suspense fallback={<><PreviewLoadingSeal label="Summoning driver" />{!compact && <CharacterLoadingEffect />}</>}><VillagerDriver url={url} look={look} bag={bag} previewPacks={previewPacks}
-              leanFit={coatFitsLean ? leanFit : undefined} victory={victory} cockpit={cockpit} /></Suspense>
+            <Suspense fallback={victory ? <CharacterLoadingEffect /> : <PreviewLoadingSeal label="Summoning driver" radius={.84} />}>
+              <group name="garage-driver" rotation={DRIVER_TILT}>
+                <VillagerDriver url={url} look={look} bag={bag} previewPacks={previewPacks}
+                  leanFit={coatFitsLean ? leanFit : undefined} victory={victory} cockpit={cockpit} />
+              </group>
+            </Suspense>
           </AssetBoundary>
         : fallback}
-    </group>
+    </>
   );
 }

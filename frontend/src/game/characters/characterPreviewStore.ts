@@ -10,6 +10,13 @@ export const useCharacterPreviewStore = create<{
   zoom: number;
   emote: { id: string } | null;
   cockpitAvailable: boolean;
+  cockpitError: string | null;
   insideCar: boolean;
   leanAvailable: boolean;
-}>(() => ({ camera: "Full body", zoom: 1, emote: null, cockpitAvailable: false, insideCar: false, leanAvailable: false }));
+}>(() => ({ camera: "Full body", zoom: 1, emote: null, cockpitAvailable: false, cockpitError: null, insideCar: false, leanAvailable: false }));
+
+export function failCockpitPreview(message: string) {
+  if (useCharacterPreviewStore.getState().insideCar) {
+    useCharacterPreviewStore.setState({ insideCar: false, emote: null, cockpitError: message });
+  }
+}

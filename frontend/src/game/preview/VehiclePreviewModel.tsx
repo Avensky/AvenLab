@@ -21,7 +21,7 @@ import {useFrame} from "@react-three/fiber";
 import {applyWindowTone} from "./windowTones";
 import {vehicleSystems} from "../../vehicles/vehicleSystems";
 import { prepareGarageCockpit, type GarageCockpit } from "./garageCockpit";
-import { useCharacterPreviewStore } from "../characters/characterPreviewStore";
+import { COCKPIT_TEST_VEHICLE } from "../characters/cockpitEmotes";
 import { usePreviewPaint } from "./usePreviewPaint";
 import { PreviewLoadingSeal } from "./PreviewLoadingSeal";
 
@@ -42,18 +42,19 @@ function setLampEmission(material: MeshStandardMaterial, color: number | Color, 
 
 // Selection is always the complete GLB, independent of in-game debug modes.
 // Shared material preparation retains the TSX fixes without runtime network poses.
-export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettled}:{
+export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettled,allowDriver = true}:{
   platform: readonly [number, number];
   model: VehicleModelId;
   driver?: CharacterChoice | null;
   previewPacks?: boolean;
   onSettled?: (model: VehicleModelId) => void;
+  allowDriver?: boolean;
 }) {
   const path=VEHICLE_MODEL_PATHS[model];
   const motion = useRef<Group>(null);
   const savedAppearance = useHeroLoadouts(s => s.draft?.vehicle === model ? s.draft.appearance : s.loadouts[model]);
   const { scene } = useGLTF(path, "/draco/");
-  const driverReady = usePreviewPaint(Boolean(driver));
+  const driverReady = usePreviewPaint(Boolean(driver && allowDriver));
   const prepared = useMemo(
     () => {
       const visual = prepareVehicleVisual(scene, model);
@@ -63,18 +64,16 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettle
     [scene, model],
   );
   useLayoutEffect(() => onSettled?.(model), [model, onSettled]);
-  const prepareCockpitPlayback = useMemo(() => previewPacks && model === "ae86"
-    ? prepareGarageCockpit(prepared.root, prepared.glassMaterials) : undefined, [prepared, model, previewPacks]);
+  const cockpitSetup = useRef<{ source: Object3D; prepare: ReturnType<typeof prepareGarageCockpit> }>(null);
   const playCockpit = useCallback<GarageCockpit>(driverRoot => {
     const motionGroup = motion.current;
-    return motionGroup && prepareCockpitPlayback ? prepareCockpitPlayback(driverRoot, motionGroup) : null;
-  }, [prepareCockpitPlayback]);
-  const cockpitAvailable = Boolean(driver && prepareCockpitPlayback);
-  useLayoutEffect(() => {
-    if (!cockpitAvailable) return;
-    useCharacterPreviewStore.setState({ cockpitAvailable: true });
-    return () => useCharacterPreviewStore.setState({ cockpitAvailable: false });
-  }, [cockpitAvailable]);
+    if (!motionGroup) return null;
+    if (cockpitSetup.current?.source !== prepared.root) {
+      cockpitSetup.current = { source: prepared.root, prepare: prepareGarageCockpit(prepared.root, prepared.glassMaterials) };
+    }
+    return cockpitSetup.current.prepare?.(driverRoot, motionGroup) ?? null;
+  }, [prepared]);
+  const cockpit = previewPacks && model === COCKPIT_TEST_VEHICLE ? playCockpit : undefined;
   const partRig=useMemo(()=>createVehiclePartRig(prepared.root,model),[prepared,model]);
   const marine=vehicleSystems(model)==="marine";
   const inspectBody=useVehicleStudioStore(s=>s.activeTab==="body"||s.parts["door-left"]||s.parts["door-right"]);
@@ -202,8 +201,8 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettle
       {driver && <group position={[driverAcross, .023, driverAlong]} scale={driverScale} rotation={[0, staging.side * Math.PI / 2, 0]}>
         {driverReady ? <>
           <group name="garage-driver-shadow"><PreviewContactShadow footprint={[.55, .46]} offset={[0, 0]} /></group>
-          <GarageDriver choice={driver} previewPacks={previewPacks} leanFit={lean} cockpit={cockpitAvailable ? playCockpit : undefined} />
-        </> : <PreviewLoadingSeal label="Summoning driver" />}
+          <GarageDriver choice={driver} previewPacks={previewPacks} leanFit={lean} cockpit={cockpit} />
+        </> : allowDriver && <PreviewLoadingSeal label="Summoning driver" radius={.84} />}
       </group>}
       <PreviewContactShadow
         footprint={display.footprint}

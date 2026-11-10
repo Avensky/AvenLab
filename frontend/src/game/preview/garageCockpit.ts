@@ -16,7 +16,8 @@ const RACE_FACE = [-.21, -.28] as const;
 export function sampleCockpitMotion(id: TakeId | null, phase: number) {
   const ease = (from: number, to: number) => MathUtils.smoothstep(phase, from, to);
   const mirrors = id === "086";
-  const parked = id === null || id === "068" || mirrors;
+  const steeringTest = id === "199" ? 1 : id === "200" ? -1 : 0;
+  const parked = id === null || id === "068" || mirrors || steeringTest !== 0;
   const reversing = id === "070";
   const overtake = id === "076";
   const gesture = id === "101" || id === "102" ? ease(.33, .44) - ease(.58, .73) : 0;
@@ -24,7 +25,8 @@ export function sampleCockpitMotion(id: TakeId | null, phase: number) {
   const travel = parked ? 0 : distance * (ease(ROLL_START, .49) - ease(.63, .95));
   const curve = reversing ? -.13 : overtake ? .23 : .12;
   const heading = travel * curve;
-  const steering = id === "068" ? .23 * (ease(.16, .36) - 2 * ease(.41, .65) + ease(.7, .92))
+  const steering = steeringTest ? steeringTest * .32 * (ease(.14, .41) - ease(.62, .89))
+    : id === "068" ? .23 * (ease(.16, .36) - 2 * ease(.41, .65) + ease(.7, .92))
     : parked ? 0 : Math.atan(2.4 * curve) * (ease(.06, .22) - ease(.78, .98));
   const brake = parked ? 0 : ease(.39, .49) - ease(.55, .63) + ease(.87, .95) - ease(.96, 1);
   const sideCheck = reversing ? -.82 * (ease(.045, .14) - ease(.49, .67)) : -.57 * (ease(.035, .115) - ease(.145, .205));
@@ -32,7 +34,8 @@ export function sampleCockpitMotion(id: TakeId | null, phase: number) {
   const nod = .18 * (ease(.165, .218) - ease(.225, ROLL_START));
   const focus = ease(.19, .29) - ease(.85, 1);
   return { travel, heading, across: (1 - Math.cos(heading)) / curve, along: Math.sin(heading) / curve, steering, brake,
-    lookYaw: sideCheck + farMirror + steering * .24 - gesture * .12, lookPitch: nod, focus: focus * (1 - gesture * .65),
+    lookYaw: steeringTest ? steering * .66 : sideCheck + farMirror + steering * .24 - gesture * .12,
+    lookPitch: steeringTest ? 0 : nod, focus: focus * (1 - gesture * .65),
     gesture, closeShot: parked || id === "077" || id === "101" || id === "102" || phase < ROLL_START };
 }
 

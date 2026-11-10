@@ -1,7 +1,7 @@
 import {useUIStore} from "../../store/menus/uiStore";
 import {SELECTION_CRIMSON} from "../../theme/garageLighting";
-import { Suspense, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { MathUtils, Matrix4, Quaternion, Vector3, type Group, type PerspectiveCamera as ThreePerspectiveCamera } from "three";
+import { Suspense, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { MathUtils, Matrix4, Quaternion, Vector3, type Group, type Object3D, type PerspectiveCamera as ThreePerspectiveCamera } from "three";
 import { useFrame, useThree } from "@react-three/fiber";
 import { AssetBoundary } from "../../components/debugger/AssetBoundary";
 import { Html, PerspectiveCamera } from "@react-three/drei";
@@ -14,7 +14,8 @@ import { PreviewTurntable } from "./PreviewTurntable";
 import { DEFAULT_PREVIEW_PLATFORM } from "./previewPlacement";
 import { useSocialStore } from "../../store/social/socialStore";
 import { DEFAULT_CHARACTER, type CharacterChoice } from "../characters/characterCatalog";
-import { CHARACTER_ZOOM_MAX, CHARACTER_ZOOM_MIN, useCharacterPreviewStore } from "../characters/characterPreviewStore";
+import { CHARACTER_ZOOM_MAX, CHARACTER_ZOOM_MIN, failCockpitPreview, useCharacterPreviewStore } from "../characters/characterPreviewStore";
+import { COCKPIT_TEST_VEHICLE } from "../characters/cockpitEmotes";
 import { HEROES, useAlphaStore } from "../../store/alpha/alphaStore";
 import { PREVIEW_ZOOM_LEVELS, usePreviewZoom } from "./previewZoomStore";
 import { PreviewLoadingSeal } from "./PreviewLoadingSeal";
@@ -23,13 +24,27 @@ import { isCompactPreview } from "./previewBudget";
 const DRIVER_STAGE_CAMERA: [number, number, number] = [2.8, 2.5, 5.8];
 const STANDARD_STAGE_CAMERA: [number, number, number] = [0, 3.2, 7.25];
 
-function MissingVehicle({ model, onSettled }: { model: string; onSettled: (model: string) => void }) {
+function MissingVehicle({ model, onSettled, cockpit }: { model: string; onSettled: (model: string) => void; cockpit: boolean }) {
   useLayoutEffect(() => onSettled(model), [model, onSettled]);
+  useLayoutEffect(() => {
+    if (cockpit) failCockpitPreview("The AE86 model is unavailable.");
+  }, [cockpit]);
   return <Html center>
     <p className="rounded bg-slate-950 p-3 text-sm text-amber-200">
       Vehicle model unavailable. Check Git LFS assets or select another vehicle.
     </p>
   </Html>;
+}
+
+function findPreviewAnchor(cache: Map<string, Object3D>, root: Object3D | null, name: string) {
+  if (!root) return;
+  const saved = cache.get(name);
+  for (let node: Object3D | null | undefined = saved; node; node = node.parent) {
+    if (node === root) return saved;
+  }
+  const anchor = root.getObjectByName(name);
+  if (anchor) cache.set(name, anchor);
+  return anchor;
 }
 
 export function VehiclePreview({
@@ -57,8 +72,13 @@ export function VehiclePreview({
   const savedHero = useSocialStore(s => workshop ? s.view?.profile.progression?.default_hero : undefined);
   const driver = driverStage ? characterDraft ?? equipped ?? DEFAULT_CHARACTER : null;
   const selected = HEROES.find(hero => hero.id === (picked ?? savedHero))?.vehicle;
-  const vehicleId = awaitingHero ? selected ?? (driverStage ? favorite : undefined) : favorite;
+  const insideCar = useCharacterPreviewStore(s => wardrobeOpen && s.insideCar);
+  const vehicleId = insideCar ? COCKPIT_TEST_VEHICLE : awaitingHero ? selected ?? (driverStage ? favorite : undefined) : favorite;
   const [settledVehicle, setSettledVehicle] = useState<string>();
+  const [roomReady, setRoomReady] = useState(false);
+  const roomSettled = useCallback(() => setRoomReady(true), []);
+  const waitingForCar = Boolean(vehicleId && vehicleId !== settledVehicle);
+  const loadLabel = waitingForCar ? "Summoning vehicle" : !roomReady ? "Preparing garage" : null;
   const { width, height } = useThree(s => s.size);
   const compact = isCompactPreview(width);
   const requestFrame = useThree(s => s.invalidate);
@@ -68,6 +88,7 @@ export function VehiclePreview({
     position: new Vector3(), target: new Vector3(), offset: new Vector3(), scale: new Vector3(),
     pivot: new Vector3(), eye: new Vector3(), nextEye: new Vector3(),
     anchorRotation: new Quaternion(), orbit: new Quaternion(), swing: new Quaternion(), lookAt: new Matrix4(),
+    anchors: new Map<string, Object3D>(),
   }), []);
   const [turntable, setTurntable] = useState<Group | null>(null);
   const [platform, setPlatform] = useState<[number, number]>(
@@ -90,8 +111,8 @@ export function VehiclePreview({
     if (wardrobeOpen) {
       const view = useCharacterPreviewStore.getState();
       const wide = view.camera === "Whole car";
-      const cockpit = view.insideCar ? turntable?.getObjectByName(wide ? "garage-cockpit-overview" : "garage-cockpit-camera") : undefined;
-      const anchor = cockpit || wide ? undefined : turntable?.getObjectByName("garage-driver");
+      const cockpit = insideCar ? findPreviewAnchor(aim.anchors, turntable, wide ? "garage-cockpit-overview" : "garage-cockpit-camera") : undefined;
+      const anchor = cockpit || wide || insideCar ? undefined : findPreviewAnchor(aim.anchors, turntable, "garage-driver");
       if (wide && !cockpit) lensZoom = view.zoom;
       if (cockpit) {
         cockpit.children[0].getWorldPosition(position);
@@ -104,8 +125,8 @@ export function VehiclePreview({
         anchor.getWorldPosition(target);
         target.setY(target.y + eyeHeight * scale);
         if (view.camera === "Face") {
-          const focus = anchor.getObjectByName("villager-face-focus");
-          const head = focus ?? anchor.getObjectByName("head");
+          const focus = findPreviewAnchor(aim.anchors, anchor, "villager-face-focus");
+          const head = focus ?? findPreviewAnchor(aim.anchors, anchor, "head");
           if (head) {
             head.getWorldPosition(target);
             if (!focus) target.setY(target.y + .035 * scale);
@@ -149,7 +170,8 @@ export function VehiclePreview({
   return (
     <>
       <GarageEnvironment turntable={turntable} onPlatformReady={setPlatform} accentOverride={selectionAccent}
-        allowLoad={!vehicleId || vehicleId === settledVehicle} showLoading={!vehicleId} />
+        allowLoad={!waitingForCar} onSettled={roomSettled} />
+      {loadLabel && <PreviewLoadingSeal label={loadLabel} />}
       <PerspectiveCamera
         ref={cameraRef}
         makeDefault
@@ -160,12 +182,12 @@ export function VehiclePreview({
       <PreviewTurntable onReady={setTurntable} spin={!wardrobeOpen && !stationary}>
         {vehicleId && <AssetBoundary
           key={vehicleId}
-          fallback={<MissingVehicle model={vehicleId} onSettled={setSettledVehicle} />}
+          fallback={<MissingVehicle model={vehicleId} onSettled={setSettledVehicle} cockpit={insideCar} />}
         >
-          <Suspense fallback={<PreviewLoadingSeal label="Summoning vehicle" />}>
+          <Suspense fallback={null}>
             <group rotation={[0, Math.PI / 2, 0]}>
               <VehiclePreviewModel platform={platform} model={vehicleId} driver={driver} previewPacks={wardrobeOpen}
-                onSettled={setSettledVehicle} />
+                onSettled={setSettledVehicle} allowDriver={roomReady} />
             </group>
           </Suspense>
         </AssetBoundary>}

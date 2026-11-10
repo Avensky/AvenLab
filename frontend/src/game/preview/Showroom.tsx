@@ -1,14 +1,14 @@
 // No models, textures, HDRIs or network requests. This stage is ready with UI.
 export function Showroom({ floor = true }: { floor?: boolean }) {
   return <>
-    <color attach="background" args={["#0d1119"]} />
-    <fog attach="fog" args={["#0d1119", 25, 65]} />
-    <hemisphereLight args={["#e2e6ed", "#242936", 0.65]} />
-    <directionalLight position={[-6, 8, -4]} color="#f0f4ff" intensity={1} />
-    <directionalLight position={[6, 5, 4]} color="#d9e2f0" intensity={0.45} />
-    {/* Soft neutral spots illuminate the vehicle without washing the room green. */}
-    <spotLight name="vehicle-key-spot" position={[3, 6.5, 4]} color="#fff7ec" intensity={95} angle={0.6} penumbra={0.85} distance={18} decay={2} />
-    <spotLight name="vehicle-rim-spot" position={[-4, 5.5, -3]} color="#dfebff" intensity={65} angle={0.65} penumbra={0.85} distance={17} decay={2} />
+    <color attach="background" args={["#080c16"]} />
+    <fog attach="fog" args={["#080c16", 20, 55]} />
+    <hemisphereLight args={["#b2c3e7", "#151d30", 0.38]} />
+    <directionalLight position={[-6, 8, -4]} color="#afc7ff" intensity={0.48} />
+    <directionalLight position={[6, 5, 4]} color="#d9e2f0" intensity={0.23} />
+    {/* A local warm key and a cooler rim preserve the paint and silhouette at night. */}
+    <spotLight name="vehicle-key-spot" position={[3, 6.5, 4]} color="#fff1db" intensity={73} angle={0.52} penumbra={0.85} distance={18} decay={2} />
+    <spotLight name="vehicle-rim-spot" position={[-4, 5.5, -3]} color="#b2cbff" intensity={42} angle={0.58} penumbra={0.85} distance={17} decay={2} />
     {floor && <ShowroomFloor />}
   </>;
 }

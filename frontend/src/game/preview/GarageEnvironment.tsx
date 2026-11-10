@@ -13,7 +13,6 @@ import { usePreferencesStore } from "../../store/preferences/preferencesStore";
 import { applyGarageLighting, tagGarageAccent } from "../../theme/garageLighting";
 import { createGarageReflectionSnapshot } from "./garageReflectionSnapshot";
 import { usePreviewPaint } from "./usePreviewPaint";
-import { PreviewLoadingSeal } from "./PreviewLoadingSeal";
 import { isCompactPreview } from "./previewBudget";
 
 // Vite serves files in public/ at the URL root. Presentation fixes below are
@@ -25,33 +24,34 @@ type GarageProps = {
   turntable: Group | null;
   accentOverride?: string | null;
   onPlatformReady?: (footprint: [number, number]) => void;
+  onSettled?: () => void;
 };
 
-export function GarageEnvironment({ turntable, onPlatformReady, accentOverride = null, allowLoad = true, showLoading = false }: GarageProps & {
-  allowLoad?: boolean; showLoading?: boolean;
+function GarageUnavailable({ onSettled }: Pick<GarageProps, "onSettled">) {
+  useLayoutEffect(() => { onSettled?.(); }, [onSettled]);
+  return <>
+    <ShowroomFloor />
+    <Html fullscreen style={{ pointerEvents: "none" }}>
+      <p className="absolute left-2 top-14 text-[10px] text-amber-200">GARAGE UNAVAILABLE — USING SHOWROOM</p>
+    </Html>
+  </>;
+}
+
+export function GarageEnvironment({ turntable, onPlatformReady, onSettled, accentOverride = null, allowLoad = true }: GarageProps & {
+  allowLoad?: boolean;
 }) {
   const loadRoom = usePreviewPaint(allowLoad);
-  const floor = <><ShowroomFloor />{showLoading && <PreviewLoadingSeal label="Preparing garage" />}</>;
+  const floor = <ShowroomFloor />;
   return (
     <>
       <Showroom floor={false} />
       <GarageGlow />
-      <AssetBoundary
-        fallback={
-          <>
-            <ShowroomFloor />
-            <Html fullscreen style={{ pointerEvents: "none" }}>
-              <p className="absolute left-2 top-14 text-[10px] text-amber-200">
-                GARAGE UNAVAILABLE — USING SHOWROOM
-              </p>
-            </Html>
-          </>
-        }
-      >
+      <AssetBoundary fallback={<GarageUnavailable onSettled={onSettled} />}>
         <Suspense fallback={floor}>
           {loadRoom ? <GarageModel
             turntable={turntable}
             onPlatformReady={onPlatformReady}
+            onSettled={onSettled}
             accentOverride={accentOverride}
           /> : floor}
         </Suspense>
@@ -60,12 +60,12 @@ export function GarageEnvironment({ turntable, onPlatformReady, accentOverride =
   );
 }
 
-function GarageModel({ turntable, onPlatformReady, accentOverride = null }: GarageProps) {
+function GarageModel({ turntable, onPlatformReady, onSettled, accentOverride = null }: GarageProps) {
   const compact = useThree(s => isCompactPreview(s.size.width));
   const theme = usePreferencesStore((s) => s.theme),
     contrast = usePreferencesStore((s) => s.highContrast);
   const brightness = usePreferencesStore(
-    (s) => s.garageEffects.accentBrightness,
+    (s) => s.garageEffects.accentBrightness * .66,
   );
   const environmentReflections = usePreferencesStore(
     (s) => s.garageEffects.environmentReflections,
@@ -201,9 +201,10 @@ function GarageModel({ turntable, onPlatformReady, accentOverride = null }: Gara
     for (const root of [prepared.root, prepared.platform, prepared.structure])
       applyGarageLighting(root, theme, contrast, brightness, accentOverride);
   }, [prepared, theme, contrast, brightness, accentOverride]);
+  const probeReady = usePreviewPaint();
   const probe = useMemo(
     () =>
-      environmentReflections
+      environmentReflections && probeReady && !compact
         ? createGarageReflectionSnapshot(
             [prepared.root, prepared.platform, prepared.structure],
             theme,
@@ -212,16 +213,16 @@ function GarageModel({ turntable, onPlatformReady, accentOverride = null }: Gara
             accentOverride,
           )
         : null,
-    [prepared, theme, contrast, brightness, environmentReflections, accentOverride],
+    [prepared, theme, contrast, brightness, environmentReflections, accentOverride, probeReady, compact],
   );
   useEffect(() => () => probe?.dispose(), [probe]);
   // Stable JSX prevents a hero hover or unrelated menu render from triggering
   // another six-face capture in Environment's children-dependent layout effect.
   const reflectionEnvironment = useMemo(
     () =>
-      probe && (
+      environmentReflections && probeReady && (
       <Environment resolution={compact ? 64 : 128} frames={1}>
-          <group position={[0, -2.2, 0]}>
+          {probe && <group position={[0, -2.2, 0]}>
             <primitive object={probe.root} dispose={null} />
             <hemisphereLight args={["#e2e6ed", "#242936", 0.65]} />
             <directionalLight
@@ -229,10 +230,10 @@ function GarageModel({ turntable, onPlatformReady, accentOverride = null }: Gara
               color="#f0f4ff"
               intensity={1}
             />
-          </group>
+          </group>}
           <Lightformer
             form="rect"
-            intensity={1}
+            intensity={0.66}
             position={[0, 6, 0]}
             rotation={[Math.PI / 2, 0, 0]}
             scale={[3, 8, 1]}
@@ -254,12 +255,13 @@ function GarageModel({ turntable, onPlatformReady, accentOverride = null }: Gara
           />
         </Environment>
       ),
-    [probe, compact],
+    [probe, compact, environmentReflections, probeReady],
   );
   const footprint = prepared.footprint;
   useEffect(() => {
     if (prepared.platformDiameter) onPlatformReady?.([prepared.platformDiameter, prepared.platformDiameter]);
-  }, [prepared.platformDiameter, onPlatformReady]);
+    onSettled?.();
+  }, [prepared.platformDiameter, onPlatformReady, onSettled]);
   return (
     <>
       <group name="garage-special-environment">

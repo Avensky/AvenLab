@@ -27,7 +27,7 @@ import { WALK_EMOTES } from "./walkingEmotes";
 
 export type XYZ = readonly [number, number, number];
 type Arm = readonly [upper: XYZ, lower: XYZ];
-type HandShape = "fist" | "peace" | "heart" | "open" | "paw" | "cup" | "point" | "three" | "finger-heart" | "finger-gun" | "thumb-up" | "pinch" | "frame" | "shaka";
+type HandShape = "fist" | "peace" | "heart" | "open" | "paw" | "cup" | "point" | "three" | "finger-heart" | "finger-gun" | "thumb-up" | "pinch" | "frame" | "shaka" | "pole-grip";
 export type Palm = readonly [fingerDirection: XYZ, normal: XYZ];
 // Offsets from the resting ankle in stage meters, with optional toe yaw.
 type Foot = readonly [across: number, lift: number, forward: number, pivot?: number, pitch?: number];
@@ -399,7 +399,7 @@ export function buildEmoteClips(root: Object3D, emotes: readonly Emote[], props?
       tilt(left?.hand, pose.wristLeft === undefined ? undefined : [0, 0, pose.wristLeft]);
       tilt(right?.hand, pose.wrist === undefined ? undefined : [0, 0, pose.wrist]);
       const propFingers: Pose["fingers"] = pose.prop && pose.prop.grip !== false && grips
-        ? [grips[0] ? "cup" : null, grips[1] ? (emote.prop === "flag" ? "fist" : "cup") : null] : undefined;
+        ? [grips[0] ? "cup" : null, grips[1] ? (emote.prop === "flag" ? "pole-grip" : "cup") : null] : undefined;
       (pose.fingers ?? propFingers)?.forEach((shape, side) => {
         if (!shape) return;
         const rig = handRigs[side];
@@ -413,9 +413,10 @@ export function buildEmoteClips(root: Object3D, emotes: readonly Emote[], props?
             || ((shape === "finger-heart" || shape === "pinch") && name === "index");
           const bend = extended ? -.16 : curved ? .39 : shape === "paw" ? .66 : .96;
           const curl = shape === "thumb-up" && name !== "thumb" ? [1.04, 1.34, .67][segment]
+            : shape === "pole-grip" ? [.83, 1.29, .84][segment]
             : shape === "cup" ? [.49, .85, .51][segment]
             : bend * [1, .95, .57][segment];
-          joint.rotateOnAxis(axis, name === "thumb" ? curl * .36 + (pose.thumbs?.[side] ?? 0) : curl);
+          joint.rotateOnAxis(axis, name === "thumb" ? curl * .36 + (pose.thumbs?.[side] ?? (shape === "pole-grip" ? .22 : 0)) : curl);
         }
         if ((shape === "finger-heart" || shape === "pinch") && rig.thumb && rig.index) {
           const { thumb, index: [indexBase, middleIndex, endIndex] } = rig;

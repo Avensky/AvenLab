@@ -31,7 +31,7 @@ export const EMOTE_PROP_GRIPS: Record<EmoteProp, readonly [Grip | null, Grip | n
   keyboard: [{ wrist: [.122, -.033, -.041], palm: [[-.37, .44, .82], [-.87, .45, -.16]] }, null],
   gauge: [null, { wrist: [-.016, -.034, -.078], palm: [[-.045, .24, .97], [0, .97, -.24]] }],
   cloth: [null, { wrist: [-.004, -.026, -.052], palm: [[.08, .19, .98], [.11, -.98, .18]] }],
-  flag: [null, { wrist: [-.013, -.037, -.064], palm: [[.16, .25, .955], [.13, .96, -.28]] }],
+  flag: [null, { wrist: [-.022, -.018, -.072], palm: [[0, 0, 1], [1, 0, 0]] }],
 };
 
 export type EmotePropModel = ReturnType<typeof createEmoteProp>;
@@ -44,6 +44,7 @@ export function createEmoteProp(kind: EmoteProp) {
   const panels: Group[] = [];
   let flagCloth: Mesh | undefined;
   let flagGrip: Object3D | undefined;
+  let flagHeld: Group | undefined;
   const materials = new Map<string, MeshStandardMaterial>();
   const geometries: BufferGeometry[] = [];
   function mesh(parent: Group, geometry: BufferGeometry, color: string, at: XYZ) {
@@ -154,12 +155,14 @@ export function createEmoteProp(kind: EmoteProp) {
       break;
     case "flag": {
       flagGrip = new Object3D();
-      root.add(flagGrip);
-      mesh(root, new CylinderGeometry(.008, .01, .77, 8), "#607988", [0, .14, 0]);
-      disk(.016, .026, "#d2b475", [0, .532, 0]);
+      flagHeld = new Group();
+      flagHeld.name = "emote-flag-pole";
+      root.add(flagGrip, flagHeld);
+      mesh(flagHeld, new CylinderGeometry(.008, .01, .77, 8), "#607988", [0, .14, 0]);
+      mesh(flagHeld, new CylinderGeometry(.016, .016, .026, 12), "#d2b475", [0, .532, 0]);
       const panel = new Group();
       panel.position.y = .346;
-      root.add(panel);
+      flagHeld.add(panel);
       panels.push(panel);
       const grid = new PlaneGeometry(.46, .29, 8, 6);
       const cloth = grid.toNonIndexed();
@@ -192,7 +195,7 @@ export function createEmoteProp(kind: EmoteProp) {
     }
   }
   return {
-    root, panels, flagCloth, flagGrip,
+    root, panels, flagCloth, flagGrip, flagHeld,
     dispose() {
       root.removeFromParent();
       geometries.forEach(geometry => geometry.dispose());

@@ -17,10 +17,18 @@ function subscribeViewport(listener: () => void) {
 function PreviewFrameClock() {
   const invalidate = useThree(s => s.invalidate);
   useEffect(() => {
-    const timer = window.setInterval(() => {
-      if (!document.hidden) invalidate();
-    }, PREVIEW_FRAME_MS);
-    return () => window.clearInterval(timer);
+    let frame = 0;
+    let previous = -Infinity;
+    const tick = (now: number) => {
+      // Match display paints so the compact preview takes even steps.
+      if (now - previous >= PREVIEW_FRAME_MS - 2) {
+        previous = now;
+        invalidate();
+      }
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
   }, [invalidate]);
   return null;
 }
