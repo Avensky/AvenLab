@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { ControllerAction } from "../../components/controller";
 import { requestSocial } from "../../net/socialClient";
 import { useSocialStore } from "../../store/social/socialStore";
-import { CHARACTERS, CHARACTER_APPEARANCE_OPTIONS, characterAppearance, characterLook, sameCharacterChoice, type CharacterAppearance, type CharacterChoice } from "./characterCatalog";
+import { CHARACTERS, CHARACTER_APPEARANCE_OPTIONS, DEFAULT_CHARACTER, VILLAGER_ID, characterAppearance, characterLook, sameCharacterChoice, type CharacterAppearance, type CharacterChoice } from "./characterCatalog";
 import { CharacterPortrait } from "./CharacterPortrait";
 
 const LOOK_FIELDS: Record<keyof CharacterAppearance, string> = {
@@ -17,7 +17,7 @@ const firstChoice = (character: (typeof CHARACTERS)[number]): CharacterChoice =>
 export function CharacterPage({ onPreview }: { onPreview?: (choice: CharacterChoice | null) => void }) {
   const owner = useSocialStore(state => state.view?.profile.id);
   const saved = useSocialStore(state => state.view?.profile.progression?.character);
-  const [choice, setChoice] = useState(() => saved && CHARACTERS.some(character => character.id === saved.id) && characterLook(saved) ? saved : firstChoice(CHARACTERS[0]));
+  const [choice, setChoice] = useState(() => saved && CHARACTERS.some(character => character.id === saved.id) && characterLook(saved) ? saved : DEFAULT_CHARACTER);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const pending = useRef(false);
@@ -80,9 +80,11 @@ export function CharacterPage({ onPreview }: { onPreview?: (choice: CharacterCho
           {(Object.keys(LOOK_FIELDS) as (keyof CharacterAppearance)[]).map(field => (
             <label key={field}>
               {LOOK_FIELDS[field]}
-              <select className="menu-control" aria-label={LOOK_FIELDS[field]} disabled={saving} value={characterAppearance(choice)[field]}
+              <select className="menu-control" aria-label={LOOK_FIELDS[field]} disabled={saving || (field === "headwear" && choice.id === VILLAGER_ID)} value={characterAppearance(choice)[field]}
                 onChange={event => preview({ ...choice, appearance: { ...characterAppearance(choice), [field]: event.target.value } })}>
-                {CHARACTER_APPEARANCE_OPTIONS[field].map(item => <option key={item.id} value={item.id}>{item.label}</option>)}
+                {CHARACTER_APPEARANCE_OPTIONS[field]
+                  .filter(item => field !== "headwear" || choice.id !== VILLAGER_ID || item.id === "hat")
+                  .map(item => <option key={item.id} value={item.id}>{item.label}</option>)}
               </select>
             </label>
           ))}

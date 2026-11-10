@@ -1,5 +1,10 @@
-import type { CSSProperties, ReactNode } from "react";
-import { characterLook, type CharacterChoice } from "./characterCatalog";
+import { Suspense, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { useGLTF } from "@react-three/drei";
+import type { Object3D } from "three";
+import { AssetBoundary } from "../../components/debugger/AssetBoundary";
+import { bakeCharacterPortrait } from "./bakeCharacterPortrait";
+import { villagerModelUrl } from "./villagerModel";
+import { characterLook, type CharacterChoice, type CharacterLook } from "./characterCatalog";
 import "./characters.css";
 
 const faces: Record<string, { neck: string; shadow: string; art: ReactNode }> = {
@@ -51,13 +56,40 @@ const faces: Record<string, { neck: string; shadow: string; art: ReactNode }> = 
   },
 };
 
-/** Static illustrated portraits share one crop for the roster and player cards. */
+type PortraitProps = { look: CharacterLook; fallback: ReactNode; label?: string };
+
+function ModelPortrait({ source, look, fallback, label }: PortraitProps & { source?: Object3D }) {
+  const key = JSON.stringify([Boolean(source), look.character.id, look.outfit.id, look.appearance]);
+  const [portrait, setPortrait] = useState<{ key: string; image: string }>();
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      try {
+        setPortrait({ key, image: bakeCharacterPortrait(look, key, source) });
+      } catch {
+        // Keep the illustrated portrait if a secondary WebGL context is unavailable.
+      }
+    }, 100);
+    return () => window.clearTimeout(timer);
+  }, [key, look, source]);
+  return portrait?.key === key
+    ? <img className="character-portrait character-portrait--model" src={portrait.image} alt={label ?? ""} />
+    : fallback;
+}
+
+function VillagerPortrait({ url, ...props }: PortraitProps & { url: string }) {
+  // useGLTF shares the parsed asset with the garage scene.
+  const { scene } = useGLTF(url);
+  return <ModelPortrait {...props} source={scene} />;
+}
+
+/** Garage portraits use the selected GLB appearance, with art for unavailable models. */
 export function CharacterPortrait({ choice, compact = false, label }: {
   choice: CharacterChoice | null | undefined;
   compact?: boolean;
   label?: string;
 }) {
-  const look = characterLook(choice);
+  const { id, outfit, appearance } = choice ?? {};
+  const look = useMemo(() => characterLook(id && outfit ? { id, outfit, appearance } : null), [id, outfit, appearance]);
   const face = look && faces[look.character.id];
   const alternate = look?.outfit.id === look?.character.outfits[1]?.id;
   const palette = look && {
@@ -66,7 +98,7 @@ export function CharacterPortrait({ choice, compact = false, label }: {
     }),
     ...(look.appearance.hair_color !== "original" && { "--portrait-hair": look.hair }),
   } as CSSProperties;
-  return (
+  const fallback = (
     <svg className="character-portrait" style={palette ?? undefined} viewBox={compact ? "56 16 128 128" : "0 0 240 260"}
       role={label ? "img" : undefined} aria-label={label} aria-hidden={label ? undefined : true}>
       <path fill="var(--app-background, #161c26)" d="M0 0h240v260H0z" />
@@ -90,4 +122,12 @@ export function CharacterPortrait({ choice, compact = false, label }: {
       </> : <path fill="var(--app-muted, #889aa9)" opacity=".64" d="M120 42a28 28 0 1 0 0 56 28 28 0 0 0 0-56Zm-54 83c10-16 32-22 54-22s44 6 54 22l14 57H52Z" />}
     </svg>
   );
+  if (!look || typeof WebGL2RenderingContext === "undefined") return fallback;
+  const url = villagerModelUrl(look);
+  const builtIn = <ModelPortrait look={look} fallback={fallback} label={label} />;
+  return url ? (
+    <AssetBoundary fallback={builtIn}>
+      <Suspense fallback={fallback}><VillagerPortrait url={url} look={look} fallback={fallback} label={label} /></Suspense>
+    </AssetBoundary>
+  ) : builtIn;
 }

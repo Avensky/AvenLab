@@ -5,6 +5,7 @@ import {closeHeroGuide,useHeroGuideStore} from '../../store/hud/heroGuideStore';
 import {usePreferencesStore} from '../../store/preferences/preferencesStore';
 import {SceneTabHeader} from '../../components/menus/SceneTabHeader';
 import {HeroPortrait} from '../alpha/HeroPortrait';
+import {HERO_CONCEPT_TAB} from '../alpha/heroRoleFilters';
 import {SelectionFooter} from '../alpha/SelectionChrome';
 import {AttackIcon} from '../../combat/AttackIcon';
 import {trapMenuFocus} from '../../components/menus/menuFocus';
@@ -41,7 +42,7 @@ export function HeroAbilityDetails({heroId}:{heroId:string}){
    </div>;
 }
 
-const GUIDE_TABS=[{id:'vehicle',label:'VEHICLE'},{id:'concepts',label:'CONCEPTS'}] as const;
+const GUIDE_TABS=[{id:'vehicle',label:'VEHICLE'},HERO_CONCEPT_TAB] as const;
 
 /** In play the guide reads the active vehicle. The garage owns its own roster. */
 export function HeroAbilities(){

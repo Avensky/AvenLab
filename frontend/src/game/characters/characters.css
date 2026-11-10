@@ -3,6 +3,11 @@
   width: 100%;
   height: auto;
 }
+.character-portrait--model {
+  aspect-ratio: 1;
+  object-fit: cover;
+  background: var(--app-raised);
+}
 
 .character-description small {
   display: block;
@@ -81,6 +86,8 @@ button.character-header-profile { cursor: pointer; }
 .character-stage { min-height: 0; pointer-events: none; }
 .character-controls.menu-panel-frame {
   --menu-panel-fill: var(--app-panel);
+  background: var(--menu-panel-fill);
+  clip-path: var(--menu-panel-shape);
   display: flex;
   flex-direction: column;
   justify-content: safe center;

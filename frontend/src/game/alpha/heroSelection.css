@@ -27,6 +27,13 @@
   max-width: none;
   padding-inline: calc(var(--angled-tab-cut) / 2 + 9px);
 }
+@media (max-width: 760px) {
+  .hero-pick-tabs .angled-header-tab {
+    gap: 2px;
+    padding-inline: calc(var(--angled-tab-cut) / 2 + 3px);
+  }
+  .hero-pick-tabs .scene-header-tab-icon svg { width: 10px; height: 10px; }
+}
 .hero-pick-tabs.classic-header-tabs {
   display: flex;
   align-self: flex-start;

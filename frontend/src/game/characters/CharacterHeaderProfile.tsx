@@ -1,13 +1,13 @@
 import { ProgressBadge } from "../alpha/ProgressBadge";
 import { useSocialStore } from "../../store/social/socialStore";
-import { characterLook } from "./characterCatalog";
+import { characterLook, DEFAULT_CHARACTER } from "./characterCatalog";
 import { CharacterPortrait } from "./CharacterPortrait";
 
 export function CharacterHeaderProfile({ onOpen, showProgress = false }: {
   onOpen?: () => void;
   showProgress?: boolean;
 }) {
-  const choice = useSocialStore(state => state.view?.profile.progression?.character);
+  const choice = useSocialStore(state => state.view?.profile.progression?.character) ?? DEFAULT_CHARACTER;
   const name = characterLook(choice)?.character.name ?? "Choose character";
   const portrait = <span className="character-header-portrait"><CharacterPortrait choice={choice} compact /></span>;
   if (onOpen) return (

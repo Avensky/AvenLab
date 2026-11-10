@@ -6,12 +6,17 @@ export const CHARACTER_APPEARANCE_OPTIONS = appearanceOptions;
 export type CharacterAppearance = { [Field in keyof typeof appearanceOptions]: string };
 export type CharacterChoice = { id: string; outfit: string; appearance?: CharacterAppearance };
 
+export const VILLAGER_ID = "mara-vega";
+export const DEFAULT_CHARACTER: CharacterChoice = { id: VILLAGER_ID, outfit: CHARACTERS[0].outfits[0].id };
+
 const DEFAULT_APPEARANCE: CharacterAppearance = {
   hair: "natural", hair_color: "original", skin: "original", headwear: "none", color: "original",
 };
 
 export function characterAppearance(choice: CharacterChoice | null | undefined): CharacterAppearance {
-  return choice?.appearance ?? DEFAULT_APPEARANCE;
+  const appearance = choice?.appearance ?? DEFAULT_APPEARANCE;
+  return choice?.id === VILLAGER_ID && appearance.headwear !== "hat"
+    ? { ...appearance, headwear: "hat" } : appearance;
 }
 
 export function sameCharacterChoice(first: CharacterChoice | null | undefined, second: CharacterChoice) {
@@ -36,3 +41,5 @@ export function characterLook(choice: CharacterChoice | null | undefined) {
     skin: color("skin", female ? "#d49673" : "#95553d"),
   };
 }
+
+export type CharacterLook = NonNullable<ReturnType<typeof characterLook>>;

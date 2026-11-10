@@ -59,6 +59,7 @@ test('hero guide explains shipped actions and returns without equipping or repla
    await act(async()=>root.render(h(Host)));
    const before=JSON.stringify(loadouts.getState().loadouts);
    assert.deepEqual([...document.querySelectorAll('[role=tab]')].map(tab=>tab.textContent),['ALL','TANK','DPS','SUPPORT','SEA','AIR','CONCEPTS']);
+   assert.deepEqual([...document.querySelectorAll('[role=tab]:has(.menu-icon)')].map(tab=>tab.textContent),['TANK','DPS','SUPPORT','SEA','AIR','CONCEPTS']);
    await click('#hero-workshop-role-tab-concepts');assert(document.querySelector('.hero-concept-gallery'));assert.equal(document.querySelector('.hero-roster'),null);
    await click('#hero-workshop-role-tab-tank');assert.equal(alpha.getState().previewHero,'brz','a filter does not choose a vehicle');
    assert.equal(document.querySelectorAll('.hero-roster-grid [data-role]:not([data-role=tank])').length,0);

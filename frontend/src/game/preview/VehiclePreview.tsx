@@ -13,7 +13,7 @@ import { GarageEnvironment } from "./GarageEnvironment";
 import { PreviewTurntable } from "./PreviewTurntable";
 import { DEFAULT_PREVIEW_PLATFORM } from "./previewPlacement";
 import { useSocialStore } from "../../store/social/socialStore";
-import type { CharacterChoice } from "../characters/characterCatalog";
+import { DEFAULT_CHARACTER, type CharacterChoice } from "../characters/characterCatalog";
 import { HEROES, useAlphaStore } from "../../store/alpha/alphaStore";
 
 export function VehiclePreview({
@@ -31,7 +31,7 @@ export function VehiclePreview({
   const picked = useAlphaStore(s => screen === "heroes" ? s.previewHero : s.hero);
   const favorite = useSelectionStore(s => s.getSelectedVehicle().id);
   const equipped = useSocialStore(s => screen === "heroes" ? s.view?.profile.progression?.character : null);
-  const driver = characterDraft ?? equipped;
+  const driver = screen === "heroes" ? characterDraft ?? equipped ?? DEFAULT_CHARACTER : null;
   const selected = HEROES.find(hero => hero.id === picked)?.vehicle;
   const vehicleId = awaitingHero ? selected ?? (screen === "heroes" && driver ? favorite : undefined) : favorite;
   const { width, height } = useThree(s => s.size);

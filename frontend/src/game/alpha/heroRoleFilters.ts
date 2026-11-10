@@ -1,3 +1,5 @@
+import { createElement } from "react";
+import { MenuIcon } from "../../components/menus/MenuIcon";
 import type { SceneHeaderTab } from "../../components/menus/SceneTabHeader";
 import { HERO_FILTERS, type HEROES, type HeroFilter } from "../../store/alpha/alphaStore";
 
@@ -12,10 +14,15 @@ export function heroMatchesFilter(hero: (typeof HEROES)[number], filter: HeroFil
   return hero.role === filter;
 }
 
+export const HERO_CONCEPT_TAB: SceneHeaderTab = {
+  id: "concepts", label: "CONCEPTS", icon: createElement(MenuIcon, { name: "concepts" }),
+};
+
 export function heroRoleHeaderTabs(allowBoats = false): SceneHeaderTab[] {
   return HERO_FILTERS.filter(role => allowBoats || !["air", "sea"].includes(role)).map(role => ({
     id: role,
     label: role.toUpperCase(),
+    icon: role === "all" ? undefined : createElement(MenuIcon, { name: role }),
     description: role === "all" ? "Show all vehicles" : `Show ${role} vehicles`,
   }));
 }

@@ -64,6 +64,8 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(characterViews.at(-1), true);
     assert.equal(document.querySelectorAll('[data-character-option]').length, 2);
     assert.equal(drafts.at(-1).id, 'mara-vega');
+    assert.equal(find('select[aria-label="Headwear"]').value, 'hat');
+    assert.equal(find('select[aria-label="Headwear"]').disabled, true);
 
     await move('right');
     await move('activate');
@@ -94,7 +96,7 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(title(), 'HEROES');
     assert.equal(characterViews.at(-1), false);
     assert.equal(drafts.at(-1), null);
-    assert.match(find('[data-open-character]').textContent, /Jules Okafor/);
+    assert.match(find('[data-open-character]').textContent, /Rook Okafor/);
     await click('[data-hero=camaro]');
     assert.equal(title(), 'GARAGE');
     assert.equal(alpha.getState().previewHero, 'camaro');

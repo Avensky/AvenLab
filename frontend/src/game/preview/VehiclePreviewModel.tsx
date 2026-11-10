@@ -129,11 +129,12 @@ export function VehiclePreviewModel({platform,model,driver}:{
     () => fitPreviewToPlatform(measurements, platform),
     [measurements, platform],
   );
-  const driverAcross = Math.min(platform[1] * .42, display.footprint[0] / 2 + .24);
+  const driverScale = marine ? 1.35 : display.scale;
+  const driverAcross = Math.min(platform[1] * .42, display.footprint[0] / 2 + .25 * driverScale);
   const driverAlong = Math.min(1.2, display.footprint[1] * .24);
   return (
     <>
-      {driver && <group position={[-driverAcross, .023, -driverAlong]} rotation={[0, -Math.PI / 2, 0]}>
+      {driver && <group position={[-driverAcross, .023, -driverAlong]} scale={driverScale} rotation={[0, -Math.PI / 2, 0]}>
         <PreviewContactShadow footprint={[.55, .46]} offset={[0, 0]} />
         <GarageDriver choice={driver} />
       </group>}

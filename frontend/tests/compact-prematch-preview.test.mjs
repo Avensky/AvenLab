@@ -106,7 +106,7 @@ test('compact prematch views share a frame and keep opposing picks mysterious un
    assert.equal(document.querySelectorAll('.team-lineup-card').length,3);
    assert.match(document.querySelector('.team-lineup-card[data-self=true]').textContent,/dpsLevel 12BRZLocal Driver/);
    assert.match(document.querySelector('.team-lineup-cards').textContent,/Level 8VANGUARDAtlas/);
-   assert.deepEqual([...document.querySelectorAll('.team-lineup-identity [role=img]')].map(node=>node.getAttribute('aria-label')),['Mara Vega','Niko Park']);
+   assert.deepEqual([...document.querySelectorAll('.team-lineup-identity [role=img]')].map(node=>node.getAttribute('aria-label')),['Vesper Vega','Niko Park']);
    assert.doesNotMatch(document.querySelector('.team-lineup-cards').textContent,/Opponent/);
    const changeHero = '.team-lineup-actions button:first-child';
    assert.equal(document.querySelector(changeHero).disabled,false);

@@ -11,7 +11,7 @@ import {navigateFormRows} from "../social/formRows";
 import {UI_THEMES} from "../../theme/catalog";
 import {usePreferencesStore} from "../../store/preferences/preferencesStore";
 import {HeroRoster} from "../alpha/HeroRoster";
-import {heroRoleHeaderTabs} from "../alpha/heroRoleFilters";
+import {heroRoleHeaderTabs,HERO_CONCEPT_TAB} from "../alpha/heroRoleFilters";
 import {HoldMainButton} from "./HoldMainButton";
 import {SelectionFooter,SelectionHeader} from "../alpha/SelectionChrome";
 import {CharacterPage} from "../characters/CharacterPage";
@@ -43,7 +43,7 @@ const NO_VEHICLE_PARTS:VehicleStudioPart[]=[];
 const NO_VEHICLE_MOD_STAGES:Record<string,number>={};
 type WorkshopFilter=HeroFilter|"concepts";
 type WorkshopPage="heroes"|"garage"|"character";
-const WORKSHOP_TABS=[...heroRoleHeaderTabs(true),{id:"concepts",label:"CONCEPTS"}];
+const WORKSHOP_TABS=[...heroRoleHeaderTabs(true),HERO_CONCEPT_TAB];
 const MARINE_LAMPS = [
  {id:"navigation", label:"Running lights"},
  {id:"searchlights", label:"Searchlights"},
