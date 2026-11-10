@@ -326,7 +326,7 @@
   margin-inline-end: auto;
 }
 .menu-frame-header.angled-tab-header.menu-frame-header--compact > div:first-child {
-  padding: 0 calc(var(--angled-title-cut) + 5px) 0 6px;
+  padding: 0 calc(var(--angled-title-cut) + 5px) 0 clamp(10px, 1.2vw, 18px);
 }
 .menu-frame-header--compact [data-title-team="red"] > h1 {
   --app-text: var(--team-red, #ff6570);

@@ -15,6 +15,8 @@ import {useVehicleStudioStore} from "../heroes/vehicleStudioStore";
 import {useInputStore} from "../../store/input/inputStore";
 import {VehicleFlags,hasFlag} from "../../store/input/protocol/inputMasks";
 import {Mesh,MeshStandardMaterial} from "three";
+import { GarageDriver } from "../characters/GarageDriver";
+import type { CharacterChoice } from "../characters/characterCatalog";
 import {useFrame} from "@react-three/fiber";
 import {useRef} from "react";
 import {applyWindowTone} from "./windowTones";
@@ -22,9 +24,10 @@ import {vehicleSystems} from "../../vehicles/vehicleSystems";
 
 // Selection is always the complete GLB, independent of in-game debug modes.
 // Shared material preparation retains the TSX fixes without runtime network poses.
-export function VehiclePreviewModel({platform,model}:{
+export function VehiclePreviewModel({platform,model,driver}:{
   platform: readonly [number, number];
   model: VehicleModelId;
+  driver?: CharacterChoice | null;
 }) {
   const path=VEHICLE_MODEL_PATHS[model];
   const savedAppearance = useHeroLoadouts(s => s.draft?.vehicle === model ? s.draft.appearance : s.loadouts[model]);
@@ -126,8 +129,14 @@ export function VehiclePreviewModel({platform,model}:{
     () => fitPreviewToPlatform(measurements, platform),
     [measurements, platform],
   );
+  const driverAcross = Math.min(platform[1] * .42, display.footprint[0] / 2 + .24);
+  const driverAlong = Math.min(1.2, display.footprint[1] * .24);
   return (
     <>
+      {driver && <group position={[-driverAcross, .023, -driverAlong]} rotation={[0, -Math.PI / 2, 0]}>
+        <PreviewContactShadow footprint={[.55, .46]} offset={[0, 0]} />
+        <GarageDriver choice={driver} />
+      </group>}
       <PreviewContactShadow
         footprint={display.footprint}
         offset={display.shadowOffset}

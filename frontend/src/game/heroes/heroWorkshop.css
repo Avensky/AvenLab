@@ -1,6 +1,6 @@
 /* The full-screen world remains visible around the studio controls. */
 .hero-selection.hero-workshop{z-index:35;backdrop-filter:none;}
-.hero-selection.hero-workshop:not(.hero-ability-guide,[data-character-page]){background:transparent!important;}
+.hero-selection.hero-workshop:not(.hero-ability-guide){background:transparent!important;}
 .hero-workshop-body{position:relative;display:flex;flex:1;flex-direction:column;min-height:0;padding:0;pointer-events:none;}
 .hero-workshop-picker{flex:1;min-height:0;}
 .hero-workshop .hero-guide-scroll{pointer-events:auto;}
@@ -9,7 +9,7 @@
 .hero-workshop .hero-portrait-art{background:var(--app-raised);}
 .hero-workshop-intro {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
   gap: 5px clamp(5px, 1.25vw, 18px);
   padding: 6px 8px;

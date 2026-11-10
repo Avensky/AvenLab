@@ -14,7 +14,9 @@ import {HeroRoster} from "../alpha/HeroRoster";
 import {heroRoleHeaderTabs} from "../alpha/heroRoleFilters";
 import {HoldMainButton} from "./HoldMainButton";
 import {SelectionFooter,SelectionHeader} from "../alpha/SelectionChrome";
-import {CharacterEntry,CharacterPage} from "../characters/CharacterPage";
+import {CharacterPage} from "../characters/CharacterPage";
+import {CharacterHeaderProfile} from "../characters/CharacterHeaderProfile";
+import type {CharacterChoice} from "../characters/characterCatalog";
 import {ControllerAction} from "../../components/controller";
 import {useMenuInputDevice} from "../../components/controller/useMenuInputDevice";
 import {HeroSaveQueue,type HeroSaveStatus} from "./HeroSaveQueue";
@@ -55,7 +57,10 @@ export function HeroLoadoutSync(){
 
 /** Vehicle styling and the stock-relative performance page share one studio
  * chrome. Appearance edits save to the authenticated player's vehicle loadout. */
-export function HeroWorkshop({onCharacterViewChange}:{onCharacterViewChange?:(open:boolean)=>void}={}){
+export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
+ onCharacterViewChange?:(open:boolean)=>void;
+ onCharacterPreviewChange?:(choice:CharacterChoice|null)=>void;
+}={}){
  const inputDevice=useMenuInputDevice();
  const overlay=useUIStore(s=>s.overlay);
  const owner=useSocialStore(s=>s.view?.profile.id??null);
@@ -65,6 +70,11 @@ export function HeroWorkshop({onCharacterViewChange}:{onCharacterViewChange?:(op
  const [chosen,setHero]=useState<string|null>(null);
  const hero=chosen??(HEROES.some(item=>item.id===main)?main:null);
  const [page,setPage]=useState<WorkshopPage>("heroes");
+ const previousCharacterPage=useRef<WorkshopPage>("heroes");
+ const openCharacter=()=>{
+  previousCharacterPage.current=page;
+  setPage("character");
+ };
  const editing=page==="garage";
  const characterOpen=page==="character";
  const [role,setRole]=useState<WorkshopFilter>("all");
@@ -146,6 +156,7 @@ export function HeroWorkshop({onCharacterViewChange}:{onCharacterViewChange?:(op
   queue.enqueue({hero,vehicle:definition.vehicle,appearance:next,makeDefault:false});
  };
  const back=async()=>{
+  if(page==="character"){setPage(previousCharacterPage.current);return;}
   if(page!=="heroes"){setPage("heroes");return;}
   if(leaving.current)return;leaving.current=true;
   try{if(await queue.flush())useUIStore.getState().setScreen("main");}finally{leaving.current=false;}
@@ -196,6 +207,7 @@ export function HeroWorkshop({onCharacterViewChange}:{onCharacterViewChange?:(op
     ? <SceneTabHeader
         title="GARAGE"
         compact
+        actions={<CharacterHeaderProfile onOpen={openCharacter}/>}
         activeTab={studioTab}
         onTabChange={next=>setStudioTab(next as VehicleStudioTab)}
         idPrefix="vehicle-studio"
@@ -208,11 +220,11 @@ export function HeroWorkshop({onCharacterViewChange}:{onCharacterViewChange?:(op
           separatorBefore:item.id==="studio",
         }))}
       />
-    : <SceneTabHeader title="HEROES" compact tabs={WORKSHOP_TABS} activeTab={role}
+    : <SceneTabHeader title="HEROES" compact actions={<CharacterHeaderProfile onOpen={openCharacter}/>} tabs={WORKSHOP_TABS} activeTab={role}
         tablistClassName="hero-pick-tabs" onTabChange={next=>setRole(next as WorkshopFilter)}
         idPrefix="hero-workshop-role" panelId="hero-workshop-role-panel"/>}
   <div className="hero-selection-stage hero-workshop-body">
-   {characterOpen&&<CharacterPage/>}
+   {characterOpen&&<CharacterPage onPreview={onCharacterPreviewChange}/>}
    {viewingConcepts&&<div className="hero-guide-scroll" id="hero-workshop-role-panel" role="tabpanel" aria-labelledby="hero-workshop-role-tab-concepts" tabIndex={0}><HeroConceptGallery/></div>}
    {page==="heroes"&&role!=="concepts"&&<div className="hero-picker-stage hero-workshop-picker" data-hero-filter={role} id="hero-workshop-role-panel" role="tabpanel" aria-labelledby={"hero-workshop-role-tab-"+role}>
     <div className="hero-picker-scene hero-picker-preview">
@@ -222,7 +234,6 @@ export function HeroWorkshop({onCharacterViewChange}:{onCharacterViewChange?:(op
          <p>Choose a vehicle portrait to open its garage.</p>
          <p>Hold {inputDevice==="touch"?"Set Main":"X"} to set your favorite.</p>
         </div>
-        <CharacterEntry onOpen={()=>setPage("character")}/>
       </section>
         {status!=="idle"&&<div className="hero-collection-save-status" role="status">{status==="error"?`NOT SAVED · ${message}`:status==="saved"?"SAVED TO YOUR PLAYER":"SAVING YOUR STYLE…"}{status==="error"&&<button className="menu-control" onClick={()=>void queue.flush()}>RETRY SAVE</button>}</div>}
     </div>

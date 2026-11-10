@@ -7,8 +7,8 @@ export const MAIN_MENU_ITEMS = [
     screen: "mode_select",
     available: true,
   },
-  {id:"explore",label:"Explore & build",description:"Sandbox, World Editor and research tools.",screen:"mode_select",available:true},
-  {id:"heroes",label:"Heroes",description:"Choose and customize heroes, vehicles and future drivers.",screen:"heroes",available:true},
+  {id:"explore",label:"Explore",description:"Sandbox, World Editor and research tools.",screen:"mode_select",available:true},
+  {id:"heroes",label:"Heroes",description:"Choose and customize heroes, vehicles and drivers.",screen:"heroes",available:true},
   {
     id: "career",
     label: "Career",

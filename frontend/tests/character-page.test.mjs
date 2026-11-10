@@ -43,14 +43,18 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     loadouts.getState().adopt('driver', 'brz');
     ui.setState({ screen: 'heroes', overlay: null, isModeLoading: false });
     root = createRoot(document.getElementById('root'));
-    const characterViews = [];
-    await act(async () => root.render(h(HeroWorkshop, { onCharacterViewChange: open => characterViews.push(open) })));
+    const characterViews = [], drafts = [];
+    await act(async () => root.render(h(HeroWorkshop, {
+      onCharacterViewChange: open => characterViews.push(open),
+      onCharacterPreviewChange: choice => drafts.push(choice),
+    })));
     const find = selector => document.querySelector(selector);
     const click = selector => act(async () => find(selector).click());
     const move = action => act(async () => route(action));
     const title = () => find('.menu-frame-header h1').textContent;
 
     assert.equal(title(), 'HEROES');
+    assert.ok(find('.menu-frame-header [data-open-character]'));
     await move('down');
     assert.equal(document.activeElement, find('[data-open-character]'));
     await move('activate');
@@ -58,12 +62,18 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(find('.hero-roster'), null);
     assert.equal(find('[data-character-preview]').dataset.characterPreview, 'mara-vega');
     assert.equal(characterViews.at(-1), true);
+    assert.equal(document.querySelectorAll('[data-character-option]').length, 2);
+    assert.equal(drafts.at(-1).id, 'mara-vega');
 
     await move('right');
     await move('activate');
     assert.equal(find('[data-character-preview]').dataset.characterPreview, 'jules-okafor');
     await click('.character-outfits button:last-child');
     assert.equal(find('[data-outfit-preview]').dataset.outfitPreview, 'race-crew');
+    const skinTone = [...document.querySelectorAll('.character-appearance select')].find(select => select.closest('label').textContent.startsWith('Skin tone'));
+    await act(async () => { skinTone.value = 'warm'; skinTone.dispatchEvent(new Event('change', { bubbles: true })); });
+    const appearance = { hair: 'natural', hair_color: 'original', skin: 'warm', headwear: 'none', color: 'original' };
+    assert.deepEqual(drafts.at(-1), { id: 'jules-okafor', outfit: 'race-crew', appearance });
     assert.equal(requests.length, 0);
     await click('.character-equip button');
     assert.equal(find('.character-equip button').disabled, true);
@@ -72,7 +82,7 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(social.getState().view.profile.progression.character, null);
 
     await click('.character-equip button');
-    const choice = { id: 'jules-okafor', outfit: 'race-crew' };
+    const choice = { id: 'jules-okafor', outfit: 'race-crew', appearance };
     assert.equal(requests[1].action, 'character_equip');
     assert.deepEqual(requests[1].character, choice);
     await act(async () => {
@@ -83,6 +93,7 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     await move('back');
     assert.equal(title(), 'HEROES');
     assert.equal(characterViews.at(-1), false);
+    assert.equal(drafts.at(-1), null);
     assert.match(find('[data-open-character]').textContent, /Jules Okafor/);
     await click('[data-hero=camaro]');
     assert.equal(title(), 'GARAGE');

@@ -1,0 +1,28 @@
+{
+  "hair": [
+    { "id": "natural", "label": "Natural" },
+    { "id": "cropped", "label": "Close crop" }
+  ],
+  "hair_color": [
+    { "id": "original", "label": "Original", "color": "#ffffff" },
+    { "id": "espresso", "label": "Espresso", "color": "#34262b" },
+    { "id": "copper", "label": "Copper", "color": "#ae5837" },
+    { "id": "ash", "label": "Ash", "color": "#c0b3aa" }
+  ],
+  "skin": [
+    { "id": "original", "label": "Original", "color": "#ffffff" },
+    { "id": "fair", "label": "Fair", "color": "#efb495" },
+    { "id": "warm", "label": "Warm", "color": "#bb7953" },
+    { "id": "deep", "label": "Deep", "color": "#85513c" }
+  ],
+  "headwear": [
+    { "id": "none", "label": "None" },
+    { "id": "hat", "label": "Hat" }
+  ],
+  "color": [
+    { "id": "original", "label": "Outfit colors", "color": "#ffffff" },
+    { "id": "navy", "label": "Navy", "color": "#4b79a4" },
+    { "id": "forest", "label": "Forest", "color": "#5f8962" },
+    { "id": "crimson", "label": "Crimson", "color": "#ad444d" }
+  ]
+}

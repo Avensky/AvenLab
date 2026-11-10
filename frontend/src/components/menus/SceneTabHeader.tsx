@@ -29,6 +29,7 @@ export function SceneTabHeader({
   panelId,
   idPrefix,
   showProgress,
+  actions,
   busy = false,
   titleTeam,
 }: {
@@ -44,6 +45,7 @@ export function SceneTabHeader({
   panelId: string;
   idPrefix: string;
   showProgress?: boolean;
+  actions?: ReactNode;
   busy?: boolean;
   titleTeam?: MatchTeam;
 }) {
@@ -83,6 +85,7 @@ export function SceneTabHeader({
         logo={logo}
         compact={compact}
         showProgress={showProgress}
+        actions={actions}
         titleTeam={titleTeam}
         variant="scene"
         className={angled ? "angled-tab-header" : undefined}

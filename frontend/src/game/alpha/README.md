@@ -21,7 +21,7 @@ queue views restore it after reconnect/promotion. Role limits, teammate slots,
 results and Play Again use the server's confirmed size. Legacy `skirmish` records
 remain readable and requeue as Quickplay 3v3 rather than adding a duplicate tab.
 
-The compact main menu's Explore & Build entry opens the other four destinations:
+The compact main menu's Explore entry opens the other four destinations:
 Sandbox, World Editor, Signal Recon and the planned Swarm Command. They share the
 garage/configuration component but cannot become extra Play match tabs. Returning
 to Play restores the last Quickplay/Competitive category and selected size.

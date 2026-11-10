@@ -64,10 +64,10 @@ test('match category and size select independently through real admission and au
    await act(async()=>document.querySelector('[data-match-size="5"]').click());assert.equal(sent.length,before);assert.equal(ui.getState().screen,'mode_select');assert.match(document.body.textContent,/Connect to the game server first/);
    await act(async()=>{client.setSocialConnection({readyState:WebSocket.OPEN,send:body=>sent.push(JSON.parse(body))});social.setState({view,profileStatus:'ready'});network.setState({connected:true});});
   });
-  await t.test('Explore & Build keeps tools accessible and Play restores the match category and size',async()=>{
+  await t.test('Explore keeps tools accessible and Play restores the match category and size',async()=>{
    const {MAIN_MENU_ITEMS}=await load('game/menus/menuItems.ts'),{ModeSelection}=await load('game/alpha/ModeSelection.tsx');
    await act(async()=>{alpha.getState().chooseMode('competitive');alpha.getState().chooseTeamSize(3);ui.setState({screen:'main',overlay:null});ui.getState().setActiveMenuIndex(MAIN_MENU_ITEMS.findIndex(item=>item.id==='explore'));ui.getState().activateActiveMenuSelection();});await render(ModeSelection);
-   assert.equal(alpha.getState().mode,'sandbox');assert.equal(document.querySelector('h1').textContent,'EXPLORE & BUILD');assert.equal(document.querySelector('[data-play-category]').dataset.playCategory,'tools');assert.equal(document.querySelectorAll('[data-match-size]').length,0);assert.deepEqual([...document.querySelectorAll('.alpha-mode-tabs [role=tab]')].map(tab=>tab.textContent),['SANDBOX','WORLD EDITOR','SIGNAL RECON','SWARM COMMANDPLANNED']);
+   assert.equal(alpha.getState().mode,'sandbox');assert.equal(document.querySelector('h1').textContent,'EXPLORE');assert.equal(document.querySelector('[data-play-category]').dataset.playCategory,'tools');assert.equal(document.querySelectorAll('[data-match-size]').length,0);assert.deepEqual([...document.querySelectorAll('.alpha-mode-tabs [role=tab]')].map(tab=>tab.textContent),['SANDBOX','WORLD EDITOR','SIGNAL RECON','SWARM COMMANDPLANNED']);
    await act(async()=>alpha.getState().restoreMode('sandbox',1));assert.equal(alpha.getState().teamSize,3,'a one-player practice admission preserves the match format preference');
    await act(async()=>route('next_tab'));assert.equal(alpha.getState().mode,'editor');assert(document.querySelector('[data-mode-config]'));
    await act(async()=>route('next_tab'));assert.equal(alpha.getState().mode,'signal_recon');assert(document.querySelector('[data-can-field]'));

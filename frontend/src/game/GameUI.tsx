@@ -9,6 +9,7 @@ import {HeroAbilities} from "./heroes/HeroAbilities";
 import {openHeroGuide} from "../store/hud/heroGuideStore";
 import { CombatHUD } from "../combat/CombatHUD";
 import { HeroWorkshop, HeroLoadoutSync } from "./heroes/HeroWorkshop";
+import type { CharacterChoice } from "./characters/characterCatalog";
 import { useVehicleStudioStore } from "./heroes/vehicleStudioStore";
 import { useAlphaFlow } from "./alpha/useAlphaFlow";
 import { useAppTheme } from "../theme";
@@ -98,6 +99,7 @@ export function GameUI() {
     screen === "world_builder";
   const heroOwner = useSocialStore(s=>s.view?.profile.id??"guest");
   const [characterOpen, setCharacterOpen] = useState(false);
+  const [characterDraft, setCharacterDraft] = useState<CharacterChoice | null>(null);
   const [collapsed, setCollapsed] = useState(false);
   const [reconSidebarHidden, setReconSidebarHidden] = useState(false);
 
@@ -106,11 +108,11 @@ export function GameUI() {
       <HeroLoadoutSync />
       <MinimapSessionLifecycle />
       <CtfMissionLifecycle />
-      {screen === "heroes" && <HeroWorkshop key={heroOwner} onCharacterViewChange={setCharacterOpen} />}
+      {screen === "heroes" && <HeroWorkshop key={heroOwner} onCharacterViewChange={setCharacterOpen} onCharacterPreviewChange={setCharacterDraft} />}
       {/* Requires Canvas */}
       {needsCanvas && (
         <FullCanvas
-          paused={screen === "queue" || (screen === "heroes" && (garageAbilities || characterOpen))}
+          paused={screen === "queue" || (screen === "heroes" && garageAbilities && !characterOpen)}
           preview={
             screen === "sandbox_setup" ||
             screen === "heroes" ||
@@ -128,6 +130,8 @@ export function GameUI() {
             <VehiclePreview
               heroLayout={screen !== "sandbox_setup"}
               awaitingHero={screen === "hero_select" || screen === "heroes"}
+              characterDraft={screen === "heroes" ? characterDraft : null}
+              wardrobeOpen={screen === "heroes" && characterOpen}
             />
           )}
           {screen === "world_builder" && (

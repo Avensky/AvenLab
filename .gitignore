@@ -426,3 +426,6 @@ avenlab-server/runtime/
 
 # Derived locally from the stored city GLB by predev/prebuild.
 /frontend/public/models/harbor-generated/
+
+# Locally licensed character art. Public builds use the built-in garage cast.
+/frontend/src/game/characters/local-assets/
