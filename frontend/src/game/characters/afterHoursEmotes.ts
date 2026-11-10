@@ -11,10 +11,10 @@ const fringe = {
 const shaka = {
   rightHand: [-1.58, .1, .59], rightPalm: [[-.61, .73, .29], [.03, -.16, 1]], fingers: [null, "shaka"],
 } as const;
-const shuffleArms = {
-  leftHand: [1.95, -.55, .59], rightHand: [-1.96, -.58, .61],
-  fingers: ["cup", "cup"],
-} as const;
+const shuffleLeft = [.135, 0, .022, .08] as const;
+const shuffleRight = [.103, 0, .01, -.01] as const;
+const leftBeat = { leftHand: [1.66, -.48, .57], rightHand: [-1.89, -.68, .4], fingers: ["cup", "cup"] } as const;
+const rightBeat = { leftHand: [1.9, -.65, .45], rightHand: [-1.53, -.49, .57], fingers: ["cup", "cup"] } as const;
 const shade = {
   rightHand: [-1.21, .56, .48], rightPalm: [[.97, .16, -.11], [.04, -1, .09]], fingers: [null, "open"],
 } as const;
@@ -71,21 +71,24 @@ const AFTER_HOURS_EMOTES = [
       rise: -.019, head: [-.031, .06, .061], face: [.94, .5] }],
     [.8, { rightHand: [-1.46, -.32, .56], head: [.031, .08, .033], face: [.67, .31] }],
   ] },
-  { id: "095", name: "Night shuffle", duration: 3.95, keys: [
-    [.14, { ...shuffleArms, sway: -.036, rise: -.023, feet: { l: [.031, .024, .033, .14] },
-      torso: [.028, -.072, .031], head: [.069, -.04, -.018], face: [.46, .3] }],
-    [.26, { ...shuffleArms, sway: -.021, rise: -.028, feet: { l: [.059, 0, .063, .24] },
-      torso: [.045, .02, -.028], head: [.098, .031, .043], face: [.67, .4] }],
-    [.39, { ...shuffleArms, sway: -.034, rise: -.019, feet: { l: [.028, .026, .034, .1] },
-      torso: [-.029, -.053, .039], head: [-.034, -.05, -.027], face: [.81, .44] }],
-    [.49, { ...shuffleArms, sway: .001, rise: -.026, torso: [.03, .055, .009], head: [.072, .058, .036], face: [.85, .43] }],
-    [.61, { ...shuffleArms, sway: .035, rise: -.018, feet: { r: [-.034, .028, .023, -.13] },
-      torso: [-.03, .064, -.044], head: [-.02, .045, .053], face: [.88, .48] }],
-    [.72, { ...shuffleArms, sway: .022, rise: -.029, feet: { r: [-.061, 0, .055, -.23] },
-      torso: [.052, -.05, .03], head: [.12, -.051, -.041], face: [.79, .41] }],
-    [.82, { ...shuffleArms, sway: .029, rise: -.018, feet: { r: [-.027, .027, .03, -.1] },
-      torso: [-.031, .062, -.034], head: [-.034, .08, .021], face: [.81, .37] }],
-    [.91, { ...shuffleArms, sway: .005, rise: -.022, head: [.059, .04, .015], face: [.66, .29] }],
+  { id: "095", name: "Night shuffle", duration: 3.65, keys: [
+    [.11, { ...rightBeat, sway: -.038, rise: -.021, feet: { l: [.055, .024, .01, .04] },
+      torso: [.026, .07, .085], head: [.026, .11, -.045], face: [.43, .29] }],
+    [.23, { ...leftBeat, sway: .059, rise: -.045, feet: { l: shuffleLeft },
+      torso: [.064, -.09, -.102], head: [.079, .08, .054], face: [.74, .43] }],
+    [.33, { ...leftBeat, sway: .122, rise: -.028, feet: { l: shuffleLeft, r: [.06, .032, .018, -.015] },
+      torso: [-.025, -.12, -.082], head: [-.042, -.025, .057], face: [.89, .45] }],
+    [.43, { ...rightBeat, sway: .132, rise: -.042, feet: { l: shuffleLeft, r: shuffleRight },
+      torso: [.049, .085, .032], head: [.073, -.061, -.027], face: [.95, .45] }],
+    [.54, { ...leftBeat, sway: .128, rise: -.026, feet: { l: shuffleLeft, r: [.057, .029, .014, -.035] },
+      torso: [-.024, -.07, -.071], head: [-.029, -.09, .045], face: [.86, .4] }],
+    [.66, { ...rightBeat, sway: .06, rise: -.045, feet: { l: shuffleLeft },
+      torso: [.055, .092, .09], head: [.082, -.023, -.061], face: [.92, .46] }],
+    [.77, { ...rightBeat, sway: .014, rise: -.026, feet: { l: [.06, .032, .012, .04] },
+      torso: [-.02, .11, .083], head: [-.021, .077, -.041], face: [.83, .36] }],
+    [.87, { ...leftBeat, sway: .008, rise: -.031, torso: [.039, -.057, -.04],
+      head: [.052, .052, .035], face: [.8, .37] }],
+    [.95, { head: [.009, .027, .014], face: [.55, .24] }],
   ] },
   { id: "096", name: "Shade the lights", duration: 3.6, keys: [
     [.16, { ...shade, rightHand: [-1.54, -.06, .6], head: [-.061, -.09, .034], face: [.14, .36] }],

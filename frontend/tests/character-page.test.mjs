@@ -73,6 +73,7 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(find('[data-character-preview]').dataset.characterPreview, 'mara-vega');
     const vesperPortrait = find('[data-character-option="mara-vega"] .character-portrait');
     assert(vesperPortrait?.matches('span.character-portrait--unavailable'), 'Vesper keeps a neutral portrait when WebGL is unavailable');
+    assert(![...document.querySelectorAll('.character-emotes button')].some(button => button.textContent === 'Side step and glance'));
     await click('.character-emotes button:first-child');
     assert.equal(preview.getState().emote.id, '005');
     await click('[aria-label="Emote preview"] button:first-child');
@@ -119,6 +120,8 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(document.querySelectorAll('.character-emotes button').length, 10);
     await click('.character-emotes button:first-child');
     assert.equal(preview.getState().emote.id, '091');
+    await click('.character-emotes button:nth-child(5)');
+    assert.equal(preview.getState().emote.id, '095');
     await click('.character-emotes button:last-child');
     assert.equal(preview.getState().emote.id, '100');
     await click('[aria-label="Emote collection"] button:last-child');
@@ -290,7 +293,7 @@ test('all emote batches return to rest and keep planted and lifted feet distinct
     assert.deepEqual(numbered, Array.from({length: 112}, (_, i) => String(i + 1).padStart(3, '0')));
     assert.deepEqual(AUTOMATIC_GARAGE_EMOTE_IDS, ['035', '002', '005', '009', '010']);
     assert(COCKPIT_TAKES.every(({ id }) => !ids.includes(id)));
-    assert.deepEqual(ids.filter(id => id.startsWith('walk-')), ['walk-casual', 'walk-glance']);
+    assert.deepEqual(ids.filter(id => id.startsWith('walk-')), ['walk-casual']);
     assert.deepEqual(buildGarageEmotes(model.root).map(clip => clip.name.split(' ')[0]), ['001', '002', '005', '009', '010', '035']);
     assert(!buildGarageEmotes(model.root, true).some(clip => clip.name.startsWith('035 ')));
     const leanFit = { offset: .15, distance: .06 };
@@ -351,17 +354,24 @@ test('all emote batches return to rest and keep planted and lifted feet distinct
     assert(model.root.position.z > .04 && foot('r').z - rightRest.z > .055);
     assert(Math.abs(foot('r').y - rightRest.y) < .002 && foot('l').distanceTo(leftRest) < .002);
     bump.stop();
-    for (const id of ['walk-casual', 'walk-glance', '042']) {
+    const shuffle = mixer.clipAction(clips[ids.indexOf('095')]).reset().play();
+    const shuffleDuration = shuffle.getClip().duration;
+    mixer.update(shuffleDuration * .23);
+    const leftPlant = foot('l');
+    assert(leftPlant.x - leftRest.x > .12 && foot('r').distanceTo(rightRest) < .002);
+    mixer.update(shuffleDuration * .10);
+    assert(foot('l').distanceTo(leftPlant) < .002 && foot('r').y - rightRest.y > .025);
+    mixer.update(shuffleDuration * .10);
+    assert(model.root.position.x > .12 && foot('r').x - rightRest.x > .09);
+    shuffle.stop();
+    for (const id of ['walk-casual', '042']) {
       const clip = clips[ids.indexOf(id)];
       const walk = mixer.clipAction(clip).reset().play();
-      const startsRight = id === 'walk-glance';
-      const plant = startsRight ? 'r' : 'l';
-      const swing = startsRight ? 'l' : 'r';
       mixer.update(clip.duration / 9);
-      const planted = foot(plant);
+      const planted = foot('l');
       mixer.update(clip.duration / 18);
-      assert(foot(plant).distanceTo(planted) < .006, id);
-      const lift = foot(swing).y - (startsRight ? leftRest : rightRest).y;
+      assert(foot('l').distanceTo(planted) < .006, id);
+      const lift = foot('r').y - rightRest.y;
       if (id === 'walk-casual') assert(lift > .025 && lift < .037, id);
       else assert(lift > .04, id);
       assert(model.root.position.z > .1, id);

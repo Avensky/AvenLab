@@ -24,7 +24,7 @@ Rook's imported model uses its short hair and coat meshes with the editor's
 hair, skin, and clothing color choices.
 
 Garage and the Sandbox hero picker play Garage Life (001–010), the first
-batch from the emote catalog. The driver cycles through held stances between gestures and a tap
+batch from the emote catalog. Gestures blend back into relaxed breathing and a tap
 queues the friendly wave. The same clips are retargeted to Vesper's imported
 rig and the built-in drivers. Reduced Motion pauses character animation.
 Vesper also has procedural blink, smile, and brow shapes in the live preview.
@@ -34,9 +34,8 @@ win, the Awards tab can play Small fist pump with the equipped driver.
 Cute and Playful (021–030) is available under Emotes → Playful. The imported
 rigs articulate individual fingers for the heart trace and the counting gag.
 The Playful group also has Robot dance, with deliberate freezes and chest pops.
-Shy and Sweet (031–040) is available under Emotes → Shy. Casual walk and Side
-step and glance are in the Garage preview group. They take short steps and
-turn on planted feet to walk back to the turntable mark. Victory also has Rap hands, three heart
+Shy and Sweet (031–040) is available under Emotes → Shy. Casual walk takes short
+steps and turns on planted feet to return to the turntable mark. Victory also has Rap hands, three heart
 silhouettes, and a Finger guns gesture.
 Quiet thank you leads the Shy list and the empty-handed garage idle rotation.
 The Shy preview group also includes Oh, no.
@@ -47,7 +46,7 @@ watery eyes. Select the Hands camera to see the touch or Face for the expression
 Roadside has spotter gestures and an upright tire check. Rivalry includes a
 starting countdown, a photo pose, and a post-race nod. Pit Crew has radio
 checks, pit signals, and a crew fist bump.
-After Hours (091–100) adds small reactions, a shaka, and a two-step shuffle.
+After Hours (091–100) adds small reactions, a shaka, and a lateral step-together shuffle.
 Six are available with the shop bag.
 Showroom (103–112) adds a car reveal, a mimed key toss, and eight other
 gestures. Six are available with the shop bag.

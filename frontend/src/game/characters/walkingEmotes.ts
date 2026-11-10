@@ -29,11 +29,7 @@ const softPhases = [.15, .3, .46, .64, .82, .93, 1];
 const fullTurn = Math.PI * 2;
 const mix = (from: number, to: number, amount: number) => from + (to - from) * amount;
 
-function garageWalk(pathHeading: number, stride: number, glance: number, style?: "soft" | "dress-clearance"): Emote["keys"] {
-  const heading = Math.abs(pathHeading);
-  const direction = Math.sign(pathHeading) || 1;
-  const soft = style === "soft";
-  const clearDress = style === "dress-clearance";
+function garageWalk(heading: number, stride: number, glance: number, soft = false): Emote["keys"] {
   // Successive foot contacts and pelvis positions in the floor frame.
   const stops = [
     [[-.012, .19, heading], [0, .084, heading * .68]],
@@ -48,7 +44,7 @@ function garageWalk(pathHeading: number, stride: number, glance: number, style?:
   ] as const satisfies readonly (readonly [Plant, Plant])[];
   const cos = Math.cos(heading), sin = Math.sin(heading);
   const onFloor = ([across, forward, yaw]: Plant): Plant => [
-    (cos * across + sin * forward) * stride * direction, (cos * forward - sin * across) * stride, yaw * direction,
+    (cos * across + sin * forward) * stride, (cos * forward - sin * across) * stride, yaw,
   ];
   const origin = [0, 0, 0] as const;
   const plants = { l: origin as Plant, r: origin as Plant };
@@ -56,7 +52,7 @@ function garageWalk(pathHeading: number, stride: number, glance: number, style?:
   const keys: Emote["keys"][number][] = [];
 
   for (const [index, [nextContact, nextPelvis]] of stops.entries()) {
-    const stepping = index % 2 === (direction < 0 ? 1 : 0) ? "l" : "r";
+    const stepping = index % 2 === 0 ? "l" : "r";
     const stance = stepping === "l" ? "r" : "l";
     const side = stepping === "l" ? 1 : -1;
     const from = plants[stepping];
@@ -74,12 +70,11 @@ function garageWalk(pathHeading: number, stride: number, glance: number, style?:
       const arm = (sign: number): readonly [XYZ, XYZ] => [
         [.25 * sign, -1, counter * sign * .25 + .04], [.12 * sign, -1, .25 + counter * sign * .19],
       ];
-      const hands = (sign: number): XYZ => [sign * 2.03, -.62, .66 + counter * sign * .09];
       const look = Math.max(0, 1 - Math.abs(progress - .25) / .19);
       const shoeLift = soft ? .034 * lift * lift : .054 * lift;
       const toeRoll = (soft ? .095 * lift : .14) * Math.sin(2 * Math.PI * phase);
       keys.push([progress, {
-        ...(clearDress ? { leftHand: hands(1), rightHand: hands(-1) } : { left: arm(1), right: arm(-1) }),
+        left: arm(1), right: arm(-1),
         sway: mix(pelvis[0], next[0], phase) + weight * Math.cos(yaw),
         travel: mix(pelvis[1], next[1], phase) - weight * Math.sin(yaw),
         rise: (soft ? -.033 + .015 * lift : -.043 + .026 * lift) * activity,
@@ -106,6 +101,5 @@ export const SIDEWAYS_CHECK: Emote = {
 };
 
 export const WALK_EMOTES = [
-  { id: "walk-casual", name: "Casual walk", duration: 5.3, keys: garageWalk(0, 1, .12, "soft") },
-  { id: "walk-glance", name: "Side step and glance", duration: 4.85, keys: garageWalk(-.69, .88, -.57, "dress-clearance") },
+  { id: "walk-casual", name: "Casual walk", duration: 5.3, keys: garageWalk(0, 1, .12, true) },
 ] as const satisfies readonly Emote[];
