@@ -2,6 +2,7 @@
   {
     "id": "mara-vega",
     "name": "Vesper Vega",
+    "gender": "female",
     "title": "Harbor mechanic",
     "bio": "Vesper runs a late-shift repair bay on the waterfront. On quiet nights, she takes the long way home through the hill roads to test what she fixed.",
     "outfits": [
@@ -12,6 +13,7 @@
   {
     "id": "jules-okafor",
     "name": "Rook Okafor",
+    "gender": "male",
     "title": "Night racer",
     "bio": "Rook learned the city running deliveries after dark. Now he organizes hill climbs and judges a run by how much speed you carry out of the last corner.",
     "outfits": [
@@ -22,6 +24,7 @@
   {
     "id": "niko-park",
     "name": "Niko Park",
+    "gender": "female",
     "title": "Former test pilot",
     "bio": "Niko used to fly test routes out over the bay. These days, she maps the back roads and keeps a notebook of the places worth coming back to.",
     "outfits": [

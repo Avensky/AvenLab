@@ -2,13 +2,15 @@ import { rename, stat } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
 const directory = new URL("../public/models/characters/", import.meta.url);
-const file = name => fileURLToPath(new URL("villager-female" + name + ".glb", directory));
-const source = file("");
-const info = await stat(source).catch(error => {
-  if (error.code !== "ENOENT") throw error;
-  return null;
-});
-if (info) {
+async function buildCharacterLods(character) {
+  const file = name => fileURLToPath(new URL(character + name + ".glb", directory));
+  const source = file("");
+  const info = await stat(source).catch(error => {
+    if (error.code !== "ENOENT") throw error;
+    return null;
+  });
+  // Clean checkouts without downloaded Git LFS objects contain small text pointers.
+  if (!info || info.size < 256) return;
   const script = await stat(fileURLToPath(import.meta.url));
   const modified = Math.max(info.mtimeMs, script.mtimeMs);
   const targets = [
@@ -42,7 +44,9 @@ if (info) {
       const output = file(target.name), temporary = output + ".tmp.glb";
       await io.write(temporary, doc);
       await rename(temporary, output);
-      console.log(`Villager ${target.name.slice(1)} LOD: ${((await stat(output)).size / 1048576).toFixed(1)} MiB`);
+      console.log(`${character} ${target.name.slice(1)} LOD: ${((await stat(output)).size / 1048576).toFixed(1)} MiB`);
     }
   }
 }
+
+for (const character of ["villager-female", "villager-male"]) await buildCharacterLods(character);

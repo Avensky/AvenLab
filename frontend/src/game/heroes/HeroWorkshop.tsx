@@ -14,7 +14,7 @@ import {HeroRoster} from "../alpha/HeroRoster";
 import {heroRoleHeaderTabs,HERO_CONCEPT_TAB} from "../alpha/heroRoleFilters";
 import {HoldMainButton} from "./HoldMainButton";
 import {SelectionFooter,SelectionHeader} from "../alpha/SelectionChrome";
-import {CharacterPage} from "../characters/CharacterPage";
+import {CHARACTER_TABS,CharacterPage,type CharacterTab} from "../characters/CharacterPage";
 import {CharacterHeaderProfile} from "../characters/CharacterHeaderProfile";
 import type {CharacterChoice} from "../characters/characterCatalog";
 import {ControllerAction} from "../../components/controller";
@@ -70,9 +70,13 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
  const [chosen,setHero]=useState<string|null>(null);
  const hero=chosen??(HEROES.some(item=>item.id===main)?main:null);
  const [page,setPage]=useState<WorkshopPage>("heroes");
+ const [characterTab,setCharacterTab]=useState<CharacterTab>("appearance");
+ const [characterReady,setCharacterReady]=useState(false);
+ const beforeCharacterClose=useRef<()=>Promise<boolean>>(null);
  const previousCharacterPage=useRef<WorkshopPage>("heroes");
  const openCharacter=()=>{
   previousCharacterPage.current=page;
+  setCharacterTab("appearance");
   setPage("character");
  };
  const editing=page==="garage";
@@ -123,11 +127,11 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
   return ()=>onCharacterViewChange?.(false);
  },[characterOpen,onCharacterViewChange]);
  useEffect(()=>{
-  const target=characterOpen?root.current?.querySelector<HTMLElement>('[data-character-option][aria-pressed="true"]')
+  const target=characterOpen?root.current?.querySelector<HTMLElement>(characterReady?'[role=tab][aria-selected="true"]':'[data-character-option][aria-pressed="true"]')
    : viewingReference?root.current?.querySelector<HTMLElement>(".hero-guide-scroll")
    : editing?root.current?.querySelector<HTMLElement>("[role=tab][aria-selected=true]"):root.current;
   target?.focus({preventScroll:true});
- },[characterOpen,editing,role,studioTab,viewingReference]);
+ },[characterOpen,characterReady,editing,role,studioTab,viewingReference]);
  useEffect(()=>{if(hero)useAlphaStore.getState().preview(hero);},[hero]);
  useEffect(()=>{setStudioTab("performance");setStudioSummary(vehicle?getVehicleStockPerformance(vehicle):STOCK_VEHICLE_SUMMARY);setStudioFooter(null);},[vehicle]);
  useEffect(()=>{
@@ -156,7 +160,10 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
   queue.enqueue({hero,vehicle:definition.vehicle,appearance:next,makeDefault:false});
  };
  const back=async()=>{
-  if(page==="character"){setPage(previousCharacterPage.current);return;}
+  if(page==="character"){
+   if(await beforeCharacterClose.current?.()!==false)setPage(previousCharacterPage.current);
+   return;
+  }
   if(page!=="heroes"){setPage("heroes");return;}
   if(leaving.current)return;leaving.current=true;
   try{if(await queue.flush())useUIStore.getState().setScreen("main");}finally{leaving.current=false;}
@@ -180,7 +187,13 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
    active.dispatchEvent(new Event("change",{bubbles:true}));
   }else if(root.current)navigateFormRows(root.current,active as HTMLElement,action,remembered.current);
  },tab:direction=>{
-  if(characterOpen)return;
+  if(characterOpen){
+   if(characterReady){
+    const index=CHARACTER_TABS.findIndex(item=>item.id===characterTab);
+    setCharacterTab(CHARACTER_TABS[(index+direction+CHARACTER_TABS.length)%CHARACTER_TABS.length].id);
+   }
+   return;
+  }
   if(editing){
    const index=VEHICLE_STUDIO_TABS.findIndex(item=>item.id===studioTab);
    setStudioTab(VEHICLE_STUDIO_TABS[(index+direction+VEHICLE_STUDIO_TABS.length)%VEHICLE_STUDIO_TABS.length].id);
@@ -208,7 +221,9 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
  </>;
  const currentFooter=studioTab==="performance"?studioFooter:studioTab==="body"?bodyFooter:studioTab==="lighting"?lightingFooter:null;
  return <section ref={root} className={`game-ui menu-surface alpha-selection hero-selection hero-workshop${viewingReference?" hero-ability-guide":""}`} data-character-page={characterOpen||undefined} inert={overlay!==null} tabIndex={-1} aria-label={characterOpen?"Character":"Heroes garage"} data-controller-form data-controller-rows>
-  {characterOpen?<SelectionHeader title="CHARACTER" compact/>:editing&&definition
+  {characterOpen?characterReady?<SceneTabHeader title="CHARACTER" compact tabs={CHARACTER_TABS} activeTab={characterTab}
+    onTabChange={id=>setCharacterTab(id as CharacterTab)} idPrefix="character-editor" panelId="character-editor-panel"/>
+    :<SelectionHeader title="CHARACTER" compact/>:editing&&definition
     ? <SceneTabHeader
         title="GARAGE"
         compact
@@ -230,7 +245,7 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
         tablistClassName="hero-pick-tabs" onTabChange={next=>setRole(next as WorkshopFilter)}
         idPrefix="hero-workshop-role" panelId="hero-workshop-role-panel"/>}
   <div className="hero-selection-stage hero-workshop-body">
-   {characterOpen&&<CharacterPage onPreview={onCharacterPreviewChange}/>}
+   {characterOpen&&<CharacterPage onPreview={onCharacterPreviewChange} onReady={setCharacterReady} tab={characterTab} beforeClose={beforeCharacterClose}/>}
    {viewingConcepts&&<div className="hero-guide-scroll" id="hero-workshop-role-panel" role="tabpanel" aria-labelledby="hero-workshop-role-tab-concepts" tabIndex={0}><HeroConceptGallery/></div>}
    {page==="heroes"&&role!=="concepts"&&<div className="hero-picker-stage hero-workshop-picker" data-hero-filter={role} id="hero-workshop-role-panel" role="tabpanel" aria-labelledby={"hero-workshop-role-tab-"+role}>
     <div className="hero-picker-scene hero-picker-preview">
@@ -331,7 +346,7 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
     {status==="error"&&<button className="menu-control" onClick={()=>void queue.flush()}>RETRY SAVE</button>}
    </VehicleStudio>}
   </div>
-  <SelectionFooter tabs={!characterOpen} selectLabel={editing&&studioTab==="abilities"?"Toggle":undefined} hasPrimaryAction={!editing||studioTab!=="abilities"} backAction={{onClick:()=>void back(),label:"Back"}}>{!characterOpen&&<div className="hero-workshop-actions">
+  <SelectionFooter tabs={!characterOpen||characterReady} selectLabel={editing&&studioTab==="abilities"?"Toggle":undefined} hasPrimaryAction={!characterOpen&&(!editing||studioTab!=="abilities")} backAction={{onClick:()=>void back(),label:"Back"}}>{!characterOpen&&<div className="hero-workshop-actions">
    {!viewingReference&&<ControllerAction button="A" type="button" className="menu-control" disabled={!owner} tabIndex={-1} onClick={()=>editing?setPage("heroes"):openHero()}>{editing?"APPLY":"OPEN GARAGE"}</ControllerAction>}
    <HoldMainButton key={`${owner}:${hero}:${editing}:${viewingReference}:${main===hero}:${status==="error"}`} disabled={overlay!==null||viewingReference||!owner||!hero||main===hero||status==="error"} selected={hero!==null&&main===hero} onComplete={()=>mainChoice()}/>
   </div>}</SelectionFooter>

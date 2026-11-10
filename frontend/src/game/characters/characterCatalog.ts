@@ -11,9 +11,10 @@ export const OUTFIT_THEMES = [
   { name: "Midnight Circuit", color: "#171d36", accent: "#56e9ff" },
   { name: "Harbor Crew", color: "#263a35", accent: "#efaf6a" },
 ] as const;
-export type CharacterChoice = { id: string; outfit: string; appearance?: CharacterAppearance };
+export type CharacterChoice = { id: string; outfit: string; appearance?: CharacterAppearance; prop?: "shop-bag" };
 
 export const VILLAGER_ID = "mara-vega";
+export const ROOK_ID = "jules-okafor";
 export const DEFAULT_CHARACTER: CharacterChoice = { id: VILLAGER_ID, outfit: CHARACTERS[0].outfits[0].id };
 
 const DEFAULT_APPEARANCE: CharacterAppearance = {
@@ -26,12 +27,6 @@ export function characterAppearance(choice: CharacterChoice | null | undefined):
     ? { ...appearance, headwear: "hat" } : appearance;
 }
 
-export function sameCharacterChoice(first: CharacterChoice | null | undefined, second: CharacterChoice) {
-  if (first?.id !== second.id || first.outfit !== second.outfit) return false;
-  const a = characterAppearance(first), b = characterAppearance(second);
-  return a.accent === b.accent && (Object.keys(DEFAULT_APPEARANCE) as CharacterStyleField[]).every(key => a[key] === b[key]);
-}
-
 export function characterLook(choice: CharacterChoice | null | undefined) {
   const character = catalog.find(item => item.id === choice?.id);
   const outfit = character?.outfits.find(item => item.id === choice?.outfit);
@@ -40,7 +35,7 @@ export function characterLook(choice: CharacterChoice | null | undefined) {
   const color = (field: "color" | "hair_color" | "skin", fallback: string) =>
     appearance[field] === "original" ? fallback
       : appearanceOptions[field].find(option => option.id === appearance[field])?.color ?? fallback;
-  const female = character.id !== "jules-okafor";
+  const female = character.id !== ROOK_ID;
   return {
     character, outfit, appearance, female,
     fabric: /^#[\da-f]{6}$/i.test(appearance.color) ? appearance.color : color("color", outfit.jacket),

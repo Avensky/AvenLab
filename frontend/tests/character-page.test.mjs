@@ -55,44 +55,48 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     const title = () => find('.menu-frame-header h1').textContent;
 
     assert.equal(title(), 'HEROES');
-    assert.ok(find('.menu-frame-header [data-open-character]'));
-    await move('down');
-    assert.equal(document.activeElement, find('[data-open-character]'));
-    await move('activate');
+    await click('[data-open-character]');
     assert.equal(title(), 'CHARACTER');
     assert.equal(find('.hero-roster'), null);
+    assert.equal(find('[role=tab]'), null);
     assert.equal(find('[data-character-preview]').dataset.characterPreview, 'mara-vega');
-    assert.equal(characterViews.at(-1), true);
-    assert.equal(document.querySelectorAll('[data-character-option]').length, 2);
-    assert.equal(drafts.at(-1).id, 'mara-vega');
-    assert.equal(find('select[aria-label="Headwear"]').value, 'hat');
-    assert.equal(find('select[aria-label="Headwear"]').disabled, true);
-
-    await move('right');
-    await move('activate');
+    await click('[data-character-option="jules-okafor"]');
     assert.equal(find('[data-character-preview]').dataset.characterPreview, 'jules-okafor');
-    await click('.character-outfits button:last-child');
-    assert.equal(find('[data-outfit-preview]').dataset.outfitPreview, 'race-crew');
-    const skinTone = [...document.querySelectorAll('.character-appearance select')].find(select => select.closest('label').textContent.startsWith('Skin tone'));
-    await act(async () => { skinTone.value = 'warm'; skinTone.dispatchEvent(new Event('change', { bubbles: true })); });
-    const appearance = { hair: 'natural', hair_color: 'original', skin: 'warm', headwear: 'none', color: 'original' };
-    assert.deepEqual(drafts.at(-1), { id: 'jules-okafor', outfit: 'race-crew', appearance });
     assert.equal(requests.length, 0);
     await click('.character-equip button');
-    assert.equal(find('.character-equip button').disabled, true);
-    await act(async () => client.receiveSocialResult({ request_id: requests[0].request_id, ok: false, message: 'Try again.' }));
-    assert.equal(find('.character-equip [role=status]').textContent, 'Try again.');
-    assert.equal(social.getState().view.profile.progression.character, null);
-
-    await click('.character-equip button');
-    const choice = { id: 'jules-okafor', outfit: 'race-crew', appearance };
-    assert.equal(requests[1].action, 'character_equip');
-    assert.deepEqual(requests[1].character, choice);
-    await act(async () => {
-      social.getState().receive({ ...view, profile: { ...view.profile, progression: { ...view.profile.progression, character: choice } } });
-      client.receiveSocialResult({ request_id: requests[1].request_id, ok: true, data: { character: choice } });
-    });
-    assert.equal(find('.character-equip button').disabled, true);
+    assert.equal(requests[0].action, 'character_equip');
+    const choice = { id: 'jules-okafor', outfit: 'night-run' };
+    assert.deepEqual(requests[0].character, choice);
+    const acknowledge = async (request, character) => {
+      await act(async () => {
+        social.getState().receive({ ...view, profile: { ...view.profile, progression: { ...view.profile.progression, character } } });
+        client.receiveSocialResult({ request_id: request.request_id, ok: true, data: { character } });
+      });
+    };
+    await acknowledge(requests[0], choice);
+    assert.equal(find('[data-character-option]'), null);
+    assert.deepEqual([...document.querySelectorAll('[role=tab]')].map(node => node.textContent), ['Appearance', 'Clothes', 'Props', 'Emotes']);
+    await click('#character-editor-tab-clothes');
+    await click('.character-outfits[aria-label="Outfits"] button:last-child');
+    const gothic = [...document.querySelectorAll('button')].find(button => button.textContent === 'Gothic Pink');
+    await act(async () => gothic.click());
+    assert.equal(find('[data-outfit-preview]').dataset.outfitPreview, 'race-crew');
+    assert.equal(drafts.at(-1).appearance.color, '#101015');
+    assert.equal(find('input[aria-label="Clothing accent color"]').value, '#ff2d95');
+    assert.equal(requests.length, 1);
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 350)); });
+    assert.equal(requests.length, 2, 'rapid changes coalesce');
+    await click('#character-editor-tab-props');
+    await click('.character-outfits[aria-label="Props"] button:last-child');
+    assert.equal(drafts.at(-1).prop, 'shop-bag');
+    await click('#character-editor-tab-emotes');
+    assert([...document.querySelectorAll('.character-emotes button')].some(button => button.textContent === 'Lift the bag'));
+    assert(![...document.querySelectorAll('.character-emotes button')].some(button => button.textContent === 'Hands behind back'));
+    assert.equal(find('input[aria-label="Preview zoom"]').max, '1.25');
+    await acknowledge(requests[1], requests[1].character);
+    assert.equal(requests.length, 3, 'queued prop waits for the previous save');
+    assert.equal(requests[2].character.prop, 'shop-bag');
+    await acknowledge(requests[2], requests[2].character);
     await move('back');
     assert.equal(title(), 'HEROES');
     assert.equal(characterViews.at(-1), false);
@@ -102,16 +106,11 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(title(), 'GARAGE');
     assert.equal(alpha.getState().previewHero, 'camaro');
     assert.equal(loadouts.getState().defaultHero, 'brz');
-    assert.deepEqual(social.getState().view.profile.progression.character, choice);
     await move('back');
     await click('[data-open-character]');
     assert.equal(find('[data-outfit-preview]').dataset.outfitPreview, 'race-crew');
-    const gothic = [...document.querySelectorAll('button')].find(button => button.textContent === 'Gothic Pink');
-    await act(async () => gothic.click());
-    assert.equal(drafts.at(-1).appearance.color, '#101015');
-    assert.equal(drafts.at(-1).appearance.accent, '#ff2d95');
-    assert.equal(find('input[aria-label="Clothing accent color"]').value, '#ff2d95');
-    assert.equal(requests.length, 2);
+    assert.equal(find('[data-character-option]'), null, 'gender stays locked after reopening');
+
   } finally {
     if (root) await act(async () => root.unmount());
     await vite?.close();
