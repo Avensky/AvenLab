@@ -119,12 +119,6 @@
   box-sizing: border-box;
   padding: 5px 7px;
 }
-.vehicle-studio-panel-heading { display:flex; flex-shrink:0; align-items:center; gap:8px; padding-bottom:4px; border-bottom:1px solid var(--vehicle-studio-line); }
-.vehicle-studio-panel-heading h2 { flex:1; margin:0; font-size:clamp(12px,1.15vw,17px); text-transform:uppercase; }
-.vehicle-studio [data-collapsed="true"] > .vehicle-studio-panel-heading { padding-bottom:0; border-bottom:0; }
-.vehicle-studio-panel-toggle { display:grid; place-items:center; flex:none; width:30px; height:28px; padding:0; border:1px solid var(--vehicle-studio-line); border-radius:4px; background:var(--vehicle-studio-raised); cursor:pointer; }
-.vehicle-studio-panel-toggle svg { width:16px; height:16px; }
-.vehicle-studio-panel-toggle:is(:hover,:focus-visible) { border-color:var(--vehicle-studio-accent); }
 .vehicle-studio-panel-content { display: flex; flex-direction: column; gap: 7px; padding-top: 7px; overflow: auto; }
 .vehicle-studio-card {
   display: flex;
@@ -170,7 +164,7 @@
   min-height: 30px;
   padding: 5px 8px;
   border: 1px solid var(--vehicle-studio-line);
-  border-radius: 5px;
+  border-radius: 0;
   background: var(--vehicle-studio-raised);
   color: var(--vehicle-studio-ink);
   font-size: 8px;
@@ -284,7 +278,7 @@
 .vehicle-upgrade-segments i:nth-child(4) { height: 12px; }
 .vehicle-upgrade-segments i:nth-child(5) { height: 14px; }
 .vehicle-studio .vehicle-performance-page button,.vehicle-studio-panel-actions button {
-  min-height: 30px; padding: 4px 7px; border: 1px solid var(--vehicle-studio-line); border-radius: 3px; background: var(--vehicle-studio-raised); color: var(--vehicle-studio-ink); font-size: 9px; font-weight: 800; cursor: pointer;
+  min-height: 30px; padding: 4px 7px; border: 1px solid var(--vehicle-studio-line); border-radius: 0; background: var(--vehicle-studio-raised); color: var(--vehicle-studio-ink); font-size: 9px; font-weight: 800; cursor: pointer;
 }
 .vehicle-studio .vehicle-performance-page button:is(:hover,:focus-visible,[aria-pressed="true"]),.vehicle-studio-panel-actions button:is(:hover,:focus-visible) { border-color: var(--vehicle-studio-accent); outline: 1px solid var(--vehicle-studio-accent); outline-offset: 1px; }
 .vehicle-studio .vehicle-performance-page button[aria-pressed="true"] { background: var(--vehicle-studio-accent); color: var(--vehicle-studio-selected-ink); }
@@ -302,7 +296,7 @@
   align-items: center;
   padding: 0 9px;
   border: 1px solid var(--vehicle-studio-line);
-  border-radius: 5px;
+  border-radius: 0;
   background: var(--vehicle-studio-raised);
   font-size: 8px;
   font-weight: 900;

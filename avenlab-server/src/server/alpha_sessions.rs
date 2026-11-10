@@ -369,6 +369,10 @@ impl Server {
                 if !choice.is_available() { return Err("Choose an available character outfit.".into()); }
                 let mut data = self.data.lock().await;
                 let profile = data.profiles.get(&actor).ok_or("Profile unavailable.")?;
+                if profile.progression.character.as_ref().and_then(|current| current.gender())
+                    .is_some_and(|gender| Some(gender) != choice.gender()) {
+                    return Err("Your character gender is already set for this profile.".into());
+                }
                 if profile.progression.character.as_ref() == Some(&choice) {
                     return Ok(json!({"character":choice}));
                 }

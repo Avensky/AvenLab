@@ -20,10 +20,16 @@ test('scoreboard opens passively, marks pending systems and clears lifecycle sta
   ui.setState({screen:'sandbox',overlay:null,isModeLoading:false});network.setState({connected:true,playerId:'connection-me',room_id:7,worldName:'Coast'});network.getState().setSnapshot({tick:1,entities:[entity('connection-me','red'),entity('connection-peer','blue')]},performance.now());social.setState({view:view()});root=createRoot(document.getElementById('root'));await act(async()=>root.render(h(MatchScoreboard,{onAbilities:()=>ui.setState({overlay:'missions'})})));
   await t.test('hold and pin have independent owners; cards include self and color both teams',async()=>{assert.equal(document.querySelector('[aria-label="Player statistics"]'),null);await act(async()=>setScoreboardHeld(true));assert(document.querySelector('[aria-label="Player statistics"]'));assert.equal(document.querySelectorAll('.match-stats-table tbody tr[data-player-id]').length,2);assert(document.querySelector('.scoreboard-player-card[data-self=true]'));assert(document.querySelector('.scoreboard-team[data-team=red]'));assert(document.querySelector('.scoreboard-team[data-team=blue]'));assert.match(document.body.textContent,/LIVE SESSION TOTALS/);assert.match(document.body.textContent,/MMR.*PENDING/);assert.match(document.body.textContent,/RESURRECTIONS0/);assert.equal(ui.getState().overlay,null,'the scoreboard never pauses or replaces the world');await act(async()=>board.getState().toggle());await act(async()=>setScoreboardHeld(false));assert(document.querySelector('[aria-label="Player statistics"]'),'mobile pin survives Tab release');});
   await t.test('both views share click-only player inspection and pose updates do not repaint the table',async context=>{
-   await act(async()=>document.querySelector('[data-match-view=composition]').click());assert.equal(document.querySelectorAll('.match-composition-seat').length,10);
+   const fold = document.querySelector('button[aria-label="Minimize red team"]');
+   assert(fold);
+   await act(async()=>fold.click());
+   assert.equal(fold.getAttribute('aria-expanded'),'false');
+   assert(document.getElementById(fold.getAttribute('aria-controls')).hidden);
+   await act(async()=>fold.click());
+   await act(async()=>document.querySelector('#live-scoreboard-tab-composition').click());assert.equal(document.querySelectorAll('.match-composition-seat').length,10);
    await act(async()=>document.querySelector('[data-player-id=connection-peer]').click());assert.match(document.querySelector('.scoreboard-player-details').textContent,/Peer Driver/);
    await act(async()=>document.querySelector('[data-player-id=connection-me]').dispatchEvent(new window.MouseEvent('pointerover',{bubbles:true})));assert.match(document.querySelector('.scoreboard-player-details').textContent,/Peer Driver/);
-   await act(async()=>document.querySelector('[data-match-view=table]').click());assert.match(document.querySelector('.scoreboard-player-details').textContent,/Peer Driver/);
+   await act(async()=>document.querySelector('#live-scoreboard-tab-table').click());assert.match(document.querySelector('.scoreboard-player-details').textContent,/Peer Driver/);
    // Observe pose-only updates without letting concurrent build/test CPU load
    // cross the independent one-second freshness threshold. The stale-state
    // test below runs against the restored real clock.

@@ -1,3 +1,4 @@
+import { MenuLogo } from "../../../components/menus/MenuLogo";
 import { useMemo, type ReactNode } from "react";
 import { GameButton } from "../../../components/GameButton";
 
@@ -125,6 +126,7 @@ export function ReconWorkspaceHeader({
       className={`relative z-30 shrink-0 border-b bg-slate-950/95 font-mono shadow-lg ${tone.border}  ${tone.glow} ${className}`}
     >
       <div className="px-2 py-1 flex min-w-0 items-center gap-2">
+        <MenuLogo compact/>
         <div className="min-w-0 flex-1">
           <p className="truncate text-[9px] uppercase tracking-[0.22em] text-yellow-300 sm:text-[px]">
             {eyebrow}

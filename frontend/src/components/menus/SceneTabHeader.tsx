@@ -19,8 +19,7 @@ export type SceneHeaderTab = {
 export function SceneTabHeader({
   title,
   eyebrow,
-  logo,
-  compact = Boolean(logo),
+  compact = false,
   tabs,
   activeTab,
   onTabChange,
@@ -29,12 +28,12 @@ export function SceneTabHeader({
   panelId,
   idPrefix,
   showProgress,
+  actions,
   busy = false,
   titleTeam,
 }: {
   title: string;
   eyebrow?: string;
-  logo?: ReactNode;
   compact?: boolean;
   tabs: readonly SceneHeaderTab[];
   activeTab: string;
@@ -44,6 +43,7 @@ export function SceneTabHeader({
   panelId: string;
   idPrefix: string;
   showProgress?: boolean;
+  actions?: ReactNode;
   busy?: boolean;
   titleTeam?: MatchTeam;
 }) {
@@ -80,9 +80,9 @@ export function SceneTabHeader({
       <MenuFrameHeader
         title={title}
         eyebrow={eyebrow ?? (angled && !compact ? APP_BRANDING.productName : undefined)}
-        logo={logo}
         compact={compact}
         showProgress={showProgress}
+        actions={actions}
         titleTeam={titleTeam}
         variant="scene"
         className={angled ? "angled-tab-header" : undefined}

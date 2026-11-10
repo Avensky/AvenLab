@@ -1,6 +1,6 @@
 import { useSocialStore } from "../../store/social/socialStore";
 import "./alpha.css";
-export function ProgressBadge() {
+export function ProgressBadge({ compact = false }: { compact?: boolean } = {}) {
   const p = useSocialStore((state) => state.view?.profile.progression);
   if (!p)
     return <span className="alpha-progress">ALPHA PROFILE · CONNECTING</span>;
@@ -15,7 +15,7 @@ export function ProgressBadge() {
       <span>
         PRESTIGE {p.prestige} · LV {p.level}/100
       </span>
-      <progress aria-label="Level progress" value={p.xp} max={p.required_xp} />
+      {!compact && <progress aria-label="Level progress" value={p.xp} max={p.required_xp} />}
       <span>{p.credits} CREDITS</span>
     </div>
   );

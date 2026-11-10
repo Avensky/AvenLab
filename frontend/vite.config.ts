@@ -6,7 +6,30 @@ import { defineConfig, type ViteDevServer } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
+import { findVillagerModel, hasCharacterModel } from "./scripts/character-model-paths.mts";
+
+const bagFolder = "/models/characters/props/bag-black-gold";
+const bagModelUrl = [
+  `${bagFolder}/bag-black-gold-mobile.glb`,
+  `${bagFolder}/bag-black-gold-garage.glb`,
+  "/models/characters/shop-bag.glb",
+].find(url => hasCharacterModel(new URL(`./public${url}`, import.meta.url)));
+function rookLod(kind: "garage" | "portrait") {
+  const asset = findVillagerModel("male");
+  if (!asset) return null;
+  return asset.bundledLod(kind) ?? (hasCharacterModel(asset.output(kind)) ? asset.url(kind) : asset.sourceUrl);
+}
+
+const vesper = findVillagerModel("female");
+const vesperModelUrl = vesper?.sourceUrl ?? (vesper && hasCharacterModel(vesper.output("full")) ? vesper.url("full") : null);
+
 export default defineConfig({
+  define: {
+    __CHARACTER_BAG_URL__: JSON.stringify(bagModelUrl ?? null),
+    __VILLAGER_MODEL_URL__: JSON.stringify(vesperModelUrl),
+    __ROOK_MODEL_URL__: JSON.stringify(rookLod("garage")),
+    __ROOK_PORTRAIT_URL__: JSON.stringify(rookLod("portrait")),
+  },
   // The road workbench has its own virtual bundle / preview build. Scanning all
   // preview HTML at app startup wasted work and attempted to resolve that bundle.
   optimizeDeps: { entries: ["index.html"] },

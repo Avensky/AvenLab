@@ -30,6 +30,12 @@ const paths = {
   garage: "m3 9 9-5 9 5v11H3zm4 11v-8h10v8",
   visualizers: "M4 8V4h4m8 0h4v4m0 8v4h-4m-8 0H4v-4m0-4h16",
   environment: globe,
+  tank: "m12 3 8 3v5c0 5-4 8-8 10-4-2-8-5-8-10V6zM8 11h8m-4-3v6",
+  dps: "M6 19 18 5m-3 0h3v3M5 12l5-5m4 10 5-5",
+  support: "M9 4h6v5h5v6h-5v5H9v-5H4V9h5z",
+  sea: "M3 15l3 4h12l3-4-9-3zm9-3V4m0 1h5l-1 3h-4M2 22q2-2 5 0 2 1 5-1 2 2 5 0 3 2 5 0",
+  air: "M12 3c-1 0-2 2-2 4v4l-7 5v2l7-2v3l-2 2 4-1 4 1-2-2v-3l7 2v-2l-7-5V7c0-2-1-4-2-4z",
+  concepts: "m12 3 8 5v8l-8 5-8-5V8zm0 5v4m-4-2 4 2 4-2m-4 2v5",
   captures: "M3 12h4l3-6 4 12 3-6h4",
 };
 

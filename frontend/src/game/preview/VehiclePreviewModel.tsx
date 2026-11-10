@@ -6,15 +6,17 @@ import {
   VEHICLE_MODEL_PATHS,
   type VehicleModelId,
 } from "../../vehicles/tools/vehicleModelPaths";
-import { fitPreviewToPlatform, measurePreviewBounds } from "./previewPlacement";
+import { fitPreviewToPlatform, measureDriverLean, measurePreviewBounds } from "./previewPlacement";
 import { PreviewContactShadow } from "./PreviewContactShadow";
 import { applyShowroomHighlights, applyShowroomPaint } from "./garageVehiclePaint";
 import { prepareGarageVehiclePaint } from "./garageVehiclePaint";
-import {createVehiclePartRig,advanceVehiclePartRig,availableVehicleParts} from "./vehiclePartRig";
+import {createVehiclePartRig,advanceVehiclePartRig,availableVehicleParts,measureDriverDoor} from "./vehiclePartRig";
 import {useVehicleStudioStore} from "../heroes/vehicleStudioStore";
 import {useInputStore} from "../../store/input/inputStore";
 import {VehicleFlags,hasFlag} from "../../store/input/protocol/inputMasks";
-import {Mesh,MeshStandardMaterial} from "three";
+import {Mesh,MeshStandardMaterial,Vector3} from "three";
+import { GarageDriver } from "../characters/GarageDriver";
+import { ROOK_ID, type CharacterChoice } from "../characters/characterCatalog";
 import {useFrame} from "@react-three/fiber";
 import {useRef} from "react";
 import {applyWindowTone} from "./windowTones";
@@ -22,9 +24,11 @@ import {vehicleSystems} from "../../vehicles/vehicleSystems";
 
 // Selection is always the complete GLB, independent of in-game debug modes.
 // Shared material preparation retains the TSX fixes without runtime network poses.
-export function VehiclePreviewModel({platform,model}:{
+export function VehiclePreviewModel({platform,model,driver,previewPacks}:{
   platform: readonly [number, number];
   model: VehicleModelId;
+  driver?: CharacterChoice | null;
+  previewPacks?: boolean;
 }) {
   const path=VEHICLE_MODEL_PATHS[model];
   const savedAppearance = useHeroLoadouts(s => s.draft?.vehicle === model ? s.draft.appearance : s.loadouts[model]);
@@ -37,8 +41,10 @@ export function VehiclePreviewModel({platform,model}:{
     },
     [scene, model],
   );
+  const driverDoor = useMemo(() => vehicleSystems(model) === "road" ? measureDriverDoor(prepared.root) : null, [prepared, model]);
   const partRig=useMemo(()=>createVehiclePartRig(prepared.root,model),[prepared,model]);
   const marine=vehicleSystems(model)==="marine";
+  const inspectBody=useVehicleStudioStore(s=>s.activeTab==="body"||s.parts["door-left"]||s.parts["door-right"]);
   const glassStyle=useVehicleStudioStore(s=>s.glassStyle);
   const lamps=useMemo(()=>{
     const headlights=new Set<MeshStandardMaterial>(),signals=new Set<MeshStandardMaterial>(),leftSignals=new Set<MeshStandardMaterial>(),rightSignals=new Set<MeshStandardMaterial>();
@@ -126,8 +132,30 @@ export function VehiclePreviewModel({platform,model}:{
     () => fitPreviewToPlatform(measurements, platform),
     [measurements, platform],
   );
+  const driverScale = marine ? 1.35 : display.scale;
+  const rook = driver?.id === ROOK_ID;
+  const staging = useMemo(() => {
+    const vehicleCenter = measurements.centering.getCenter(new Vector3());
+    const doorCenter = driverDoor?.getCenter(new Vector3());
+    const side = doorCenter && doorCenter.x > vehicleCenter.x ? 1 : -1;
+    const edge = side < 0
+      ? Math.min(driverDoor?.min.x ?? Infinity, measurements.bounds.min.x)
+      : Math.max(driverDoor?.max.x ?? -Infinity, measurements.bounds.max.x);
+    const lean = rook && doorCenter && Number.isFinite(edge)
+      ? measureDriverLean(prepared.root, edge + side * .27, measurements.support.min.y, doorCenter.z, side)
+      : undefined;
+    return { side, edge, along: doorCenter?.z, lean };
+  }, [driverDoor, measurements, prepared, rook]);
+  const lean = inspectBody || previewPacks || driver?.prop ? undefined : staging.lean;
+  const driverAcross = staging.edge * display.scale + display.position[0] + staging.side * .27 * driverScale;
+  // Vehicles without an authored front door still stage beside the front seat.
+  const driverAlong = staging.along === undefined ? display.footprint[1] * .12 : staging.along * display.scale + display.position[2];
   return (
     <>
+      {driver && <group position={[driverAcross, .023, driverAlong]} scale={driverScale} rotation={[0, staging.side * Math.PI / 2, 0]}>
+        <PreviewContactShadow footprint={[.55, .46]} offset={[0, 0]} />
+        <GarageDriver choice={driver} previewPacks={previewPacks} leanFit={lean} />
+      </group>}
       <PreviewContactShadow
         footprint={display.footprint}
         offset={display.shadowOffset}

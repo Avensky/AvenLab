@@ -6,9 +6,11 @@ import { usePreferencesStore } from "../../store/preferences/preferencesStore";
 export function PreviewTurntable({
   children,
   onReady,
+  spin = true,
 }: {
   children: ReactNode;
   onReady: (group: Group | null) => void;
+  spin?: boolean;
 }) {
   const group = useRef<Group>(null);
   const drag = useRef<{ pointerId: number; clientX: number } | null>(null);
@@ -23,7 +25,7 @@ export function PreviewTurntable({
   const cameraSensitivity = usePreferencesStore((s) => s.cameraSensitivity);
 
   useFrame((_, delta) => {
-    if (group.current && !reducedMotion && !drag.current)
+    if (group.current && spin && !reducedMotion && !drag.current)
       group.current.rotation.y += Math.min(delta, 0.1) * 0.035;
   }, -1);
 

@@ -1,5 +1,5 @@
 import { useConnectionView } from "../../store/session/networkViews";
-import { MenuLogo } from "../../components/menus/MenuLogo";
+import { CharacterHeaderProfile } from "../characters/CharacterHeaderProfile";
 import { SceneTabHeader } from "../../components/menus/SceneTabHeader";
 import { useMenuPressOwner } from "../../components/menus/useMenuPressOwner";
 import {MatchModePortraits} from "./ModePortraitCard";
@@ -188,9 +188,9 @@ export function ModeSelection() {
       aria-label="Game mode selection"
     >
       <SceneTabHeader
-        title={play ? "PLAY" : "EXPLORE & BUILD"}
-        logo={play ? <MenuLogo /> : undefined}
-        showProgress
+        title={play ? "PLAY" : "EXPLORE"}
+        compact
+        actions={<CharacterHeaderProfile showProgress />}
         busy={busy}
         tablistLabel="Game mode"
         tablistClassName="alpha-mode-tabs"

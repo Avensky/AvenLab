@@ -1,0 +1,34 @@
+{
+  "asset_id": "bag_black_gold",
+  "source_mesh": "SM_Bag.fbx",
+  "source_textures": "Textures(2).zip",
+  "geometry_source_used": "FBX; Maya binary not opened",
+  "width_m": 0.3,
+  "dimensions_m_blender_xyz": [
+    0.3,
+    0.12199958995065327,
+    0.23346039544150635
+  ],
+  "source_dimensions_m_blender_xyz": [
+    0.11112748086452484,
+    0.045191690325737,
+    0.086479552090168
+  ],
+  "scale_applied": 2.6996022735881957,
+  "triangles": 10932,
+  "materials": 1,
+  "rigged": false,
+  "animations": 0,
+  "normal_map_convention": "Source channel orientation preserved; no Y inversion applied. Confirm microdetail orientation in target renderer.",
+  "texture_variants": {
+    "mobile": 1024,
+    "garage": 2048
+  },
+  "grip_anchor_blender_xyz": [
+    0.0,
+    -0.010861859656870365,
+    0.23046039044857025
+  ],
+  "grip_fit": "Approximate; must be fitted against character hand and outfit",
+  "external_dependencies": []
+}

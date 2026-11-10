@@ -57,7 +57,7 @@ test("every pause row routes correctly and navigation follows the split menu", (
   assert.equal(ui.getState().getActiveMenuIndex(), 4);
 });
 
-test("Play and Explore & Build share the garage while all six main destinations retain their actions", () => {
+test("Play and Explore share the garage while all six main destinations retain their actions", () => {
   const destinations=[['play','mode_select'],['explore','mode_select'],['heroes','heroes'],['career','career'],['social','social'],['settings','settings']];
   assert.deepEqual(mainItems.map(item=>item.id),destinations.map(([id])=>id));
   alpha.getState().chooseMode('competitive');

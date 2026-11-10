@@ -41,7 +41,7 @@ html[data-ui-theme]
   background: var(--app-panel);
   color: var(--app-text);
   border-color: var(--app-line);
-  border-radius: var(--app-radius-sm);
+  border-radius: 0;
   box-shadow: none;
 }
 html[data-ui-theme]

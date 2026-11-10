@@ -118,3 +118,23 @@ section.match-scoreboard {
    min-height:clamp(28px,calc((100dvh - 216px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) / (2 * var(--team-size,5))),72px);
  }
 }
+
+.match-scoreboard {
+  --menu-angled-header-height: 41px;
+}
+.match-scoreboard .scoreboard-live-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  font-size: 9px;
+}
+.scoreboard-live-status small { color: var(--app-text); font-size: inherit; }
+.match-scoreboard .scoreboard-team .vehicle-studio-panel-heading h2 { color: var(--team-color); }
+.match-scoreboard .scoreboard-team .collapsible-menu-panel { --menu-panel-fill: var(--app-background); }
+.match-scoreboard .scoreboard-inspector .scoreboard-player-details { border: 0; padding: 2px; }
+@media (max-width: 760px) {
+  .match-scoreboard .menu-frame-header--compact > div:first-child > h1 { font-size: clamp(10px, 2.1vw, 16px); }
+  .match-scoreboard .menu-frame-header .match-scoreboard-tools .menu-control { padding-inline: 4px; font-size: 7px; }
+  .match-scoreboard .match-stats-table thead th { font-size: clamp(6px, 1.35vw, 9px); }
+}
