@@ -1,9 +1,10 @@
-import { Bone, MathUtils, Mesh, Object3D, Quaternion, Vector3, type Group, type MeshPhysicalMaterial } from "three";
+import { Bone, Box3, Group, MathUtils, Mesh, Object3D, Quaternion, Vector3, type MeshPhysicalMaterial } from "three";
 import { aimDriverJoint, aimLimb, alignJointNormal, driverArm, driverHand } from "../characters/garageEmotes";
 import type { CockpitTake } from "../characters/cockpitEmotes";
 import { driverFaceTargets } from "../characters/villagerFace";
 import type { DriveOutPose } from "./garageDriveMotion";
 import type { VehiclePartHinge } from "./vehiclePartRig";
+import { GARAGE_STATIONS, garageStationCamera, type GarageStation } from "./garageStations";
 
 type TakeId = CockpitTake["id"];
 export type CockpitPlayback = { sample: (id: TakeId | null, phase: number, drive?: DriveOutPose) => void; stop: () => void };
@@ -84,33 +85,66 @@ function measureSteeringRim(car: Object3D, wheel: Object3D) {
   return { center, up, axis: up.clone().cross(AXLE), radius: (right.x - left.x) * .5 - .014 };
 }
 
-/** The AE86 export has a separate steering wheel and four road-wheel pivots. */
-export function prepareGarageCockpit(car: Object3D, glassMaterials: Iterable<MeshPhysicalMaterial>, door?: VehiclePartHinge) {
-  const wheel = car.getObjectByName("SteeringWheel");
-  if (!wheel?.parent) return;
-  const rim = measureSteeringRim(car, wheel);
-  if (!rim) return;
-  const wheelParent = wheel.parent;
-  const { center } = rim;
-  const pivot = wheelParent.worldToLocal(car.localToWorld(center.clone()));
-  const parentAxis = wheelParent.worldToLocal(car.localToWorld(center.clone().add(rim.axis))).sub(pivot).normalize();
-  const steeringWheel = localRest(wheel);
-  const roadWheels = ["FL", "FR", "RL", "RR"].flatMap(corner => {
-    const object = car.getObjectByName(`Wheel_${corner}`);
-    if (!object) return [];
-    const caliper = car.getObjectByName(`Caliper_${corner}`);
-    return [{ ...localRest(object), front: corner.startsWith("F"), caliper: caliper && localRest(caliper) }];
+function directionIn(source: Object3D, target: Object3D, direction: Vector3) {
+  const origin = target.worldToLocal(source.getWorldPosition(new Vector3()));
+  return target.worldToLocal(source.localToWorld(direction.clone())).sub(origin).normalize();
+}
+
+export function prepareGarageCockpit(
+  car: Object3D, glassMaterials: Iterable<MeshPhysicalMaterial>, door?: VehiclePartHinge, station: GarageStation = GARAGE_STATIONS.ae86,
+) {
+  const road = station.kind === "wheel" ? station : undefined;
+  const bridge = station.kind === "bridge" ? station : undefined;
+  const levers = station.kind === "levers" ? station : undefined;
+  const classic = station === GARAGE_STATIONS.ae86;
+  const objects = new Map<string, Object3D>();
+  car.traverse(object => objects.set(object.name.toUpperCase(), object));
+  const steeringParts = road?.steeringParts?.flatMap(name => {
+    const part = objects.get(name.toUpperCase());
+    return part ? [part] : [];
+  }) ?? [];
+  // BRZ and Camaro export the wheel as separate meshes. Keep their bind
+  // transforms and turn them around the same measured rim plane as the hands.
+  const wheel = steeringParts.length === 1 ? steeringParts[0] : undefined;
+  const measured = classic && wheel ? measureSteeringRim(car, wheel) : undefined;
+  const center = measured?.center ?? new Vector3(...(road?.rim ?? (station.kind === "bridge" ? station.deck : station.seat)));
+  const up = measured?.up ?? new Vector3(0, 1, road?.tilt ?? 0).normalize();
+  const axis = measured?.axis ?? up.clone().cross(AXLE);
+  const radius = measured?.radius ?? road?.radius ?? 0;
+  const steering = steeringParts.flatMap(object => {
+    if (!object.parent) return [];
+    return [{
+      ...localRest(object),
+      pivot: object.parent.worldToLocal(car.localToWorld(center.clone())),
+      axis: directionIn(car, object.parent, axis),
+    }];
   });
-  if (roadWheels.length !== 4) return;
+  const preparedScale = car.getWorldScale(new Vector3()).y;
+  const roadWheels = road ? ["FL", "FR", "RL", "RR"].flatMap(corner => {
+    const object = objects.get(`WHEEL_${corner}`) ?? objects.get(`${corner}_WHEEL`);
+    if (!object?.parent) return [];
+    const spin = object.getObjectByName(`SPIN_${corner}`) ?? object.getObjectByName(`${corner}_WHEEL_SPIN`);
+    const caliper = classic ? objects.get(`CALIPER_${corner}`) : undefined;
+    return [{ ...localRest(object), front: corner.startsWith("F"), spin: spin && localRest(spin),
+      axle: directionIn(car, spin ?? object, AXLE), steerAxis: directionIn(car, object.parent, UP),
+      radius: classic ? .311 : Math.max(.1, new Box3().setFromObject(object).getSize(new Vector3()).y / (2 * preparedScale)),
+      caliper: caliper && localRest(caliper) }];
+  }) : [];
+  const shot = garageStationCamera(station);
 
   return (driver: Object3D, motion: Group): CockpitPlayback | null => {
     const parent = driver.parent;
     const head = driver.getObjectByName("head");
     const scale = car.getWorldScale(new Vector3()).y;
+    const driverScale = driver.getWorldScale(new Vector3()).y;
+    const localScale = bridge?.units ?? levers?.units ?? 1;
+    const modelScale = localScale * scale / driverScale;
+    const driverRest = localRest(driver);
+    const restScale = driver.scale.clone();
     const arms = (["l", "r"] as const).flatMap(side => {
       const arm = driverArm(driver, side), hand = driverHand(driver, side);
       if (!arm) return [];
-      const palmReach = hand ? hand.middle.getWorldPosition(new Vector3()).distanceTo(arm.hand.getWorldPosition(new Vector3())) / scale : .085;
+      const palmReach = hand ? hand.middle.getWorldPosition(new Vector3()).distanceTo(arm.hand.getWorldPosition(new Vector3())) / scale * modelScale : .085 * localScale;
       return [{ ...arm, rig: hand, side: side === "l" ? 1 : -1, palmReach }];
     });
     const legs = (["l", "r"] as const).flatMap(side => {
@@ -120,7 +154,6 @@ export function prepareGarageCockpit(car: Object3D, glassMaterials: Iterable<Mes
       return hip && knee && foot ? [{ hip, knee, foot, side: side === "l" ? 1 : -1 }] : [];
     });
     if (!parent || !head || arms.length !== 2 || legs.length !== 2) return null;
-    const driverRest = localRest(driver);
     const motionRest = localRest(motion);
     const driverShadow = motion.getObjectByName("garage-driver-shadow");
     const standingHip = legs[0].hip.getWorldPosition(new Vector3()).lerp(legs[1].hip.getWorldPosition(new Vector3()), .5);
@@ -130,8 +163,12 @@ export function prepareGarageCockpit(car: Object3D, glassMaterials: Iterable<Mes
     const openDoorAtStart = door?.angle ?? 0;
     const exteriorHandle = new Vector3(-.831, .765, -.433).sub(door?.pivot.position ?? new Vector3());
     const interiorHandle = new Vector3(-.652, .688, .102).sub(door?.pivot.position ?? new Vector3());
-    const headHeight = driver.worldToLocal(head.getWorldPosition(new Vector3())).y - hip.y;
-    const seat = new Vector3(center.x, Math.min(.42, 1.04 - headHeight), center.z - .435);
+    const headHeight = (driver.worldToLocal(head.getWorldPosition(new Vector3())).y - hip.y) * localScale;
+    const seat = station.kind === "bridge"
+      ? new Vector3(...station.deck).setY(station.deck[1] + hip.y * localScale)
+      : new Vector3(...station.seat).setY(Math.min(station.seat[1], station.roof - headHeight - .15 * localScale));
+    if (classic) seat.set(center.x, Math.min(.42, 1.04 - headHeight), center.z - .435);
+    const pedals = station.kind === "bridge" ? null : new Vector3(...station.pedals);
     const rest = [head, ...arms.flatMap(({ shoulder, elbow, hand, rig }) =>
       [shoulder, elbow, hand, ...(rig?.fingers.map(({ joint }) => joint) ?? [])]), ...legs.flatMap(({ hip, knee, foot }) => [hip, knee, foot])].map(localRest);
     const expression = (["smile", "brow"] as const).flatMap((shape, channel) => driverFaceTargets(driver, shape)
@@ -145,9 +182,12 @@ export function prepareGarageCockpit(car: Object3D, glassMaterials: Iterable<Mes
     camera.add(lens);
     const overview = new Object3D();
     overview.name = "garage-cockpit-overview";
-    overview.position.set(0, .60, .08);
+    const bounds = road ? null : new Box3().setFromObject(car);
+    const span = bounds?.getSize(new Vector3()).length() ?? 4.2;
+    if (bounds) car.worldToLocal(bounds.getCenter(overview.position));
+    else overview.position.set(0, .60, .08);
     const overviewLens = new Object3D();
-    overviewLens.position.set(-4.8, 2.48, 4.15);
+    overviewLens.position.set(-4.8, 2.48, 4.15).multiplyScalar(road ? 1 : span / (4.2 * scale));
     overview.add(overviewLens);
     car.add(camera, overview);
     const shadowWasVisible = driverShadow?.visible;
@@ -161,6 +201,9 @@ export function prepareGarageCockpit(car: Object3D, glassMaterials: Iterable<Mes
     const wheelTurn = new Quaternion(), seatRotation = new Quaternion(), entryRotation = new Quaternion(), parentRotation = new Quaternion();
     const entryHip = new Vector3(), reach = new Vector3();
     const headAxes = new Quaternion(), localAxis = new Vector3();
+    const shotTarget = new Vector3(...shot.at), shotEye = new Vector3(...shot.eye);
+    const steeringSide = Math.sign(center.x);
+    const compactEye = new Vector3(-steeringSide * .32, .39, -.49);
     let parked = false;
 
     return {
@@ -168,32 +211,47 @@ export function prepareGarageCockpit(car: Object3D, glassMaterials: Iterable<Mes
         if (!drive && id === null && parked) return;
         parked = !drive && id === null;
         const pose = sampleCockpitMotion(id, phase);
-        if (id === "199" || id === "200") {
+        if (!road) {
+          camera.position.copy(shotTarget);
+          lens.position.copy(shotEye);
+        } else if (id === "199" || id === "200") {
           camera.position.copy(center).add(new Vector3(0, -.015, .035));
-          lens.position.copy(center).add(new Vector3(.32, .39, -.49)).sub(camera.position);
+          lens.position.copy(center).add(compactEye).sub(camera.position);
         } else if (pose.closeShot) {
-          camera.position.set(center.x - .065, .96, center.z - .205);
-          lens.position.set(.31, .22, 1.17);
+          if (classic) {
+            camera.position.set(center.x - .065, .96, center.z - .205);
+            lens.position.set(.31, .22, 1.17);
+          } else {
+            camera.position.set(seat.x - steeringSide * .045, seat.y + headHeight - .08, seat.z + .19);
+            lens.position.set(-steeringSide * .26, .08, .69);
+          }
         } else {
           camera.position.copy(overview.position);
           lens.position.copy(overviewLens.position);
         }
-        motion.position.set(pose.across * scale, 0, (drive?.travel ?? pose.along) * scale).add(motionRest.position);
-        motion.quaternion.copy(motionRest.rotation).multiply(steer.setFromAxisAngle(UP, pose.heading));
+        if (road) {
+          motion.position.set(pose.across * scale, 0, (drive?.travel ?? pose.along) * scale).add(motionRest.position);
+          motion.quaternion.copy(motionRest.rotation).multiply(steer.setFromAxisAngle(UP, pose.heading));
+        }
         car.getWorldQuaternion(carRotation);
 
         // The rim axis points toward the seat. Positive angle turns left
         // counterclockwise from the driver's side of the wheel.
         const wheelAngle = pose.steering * 2.25;
-        rimTurn.setFromAxisAngle(rim.axis, wheelAngle);
-        wheelTurn.setFromAxisAngle(parentAxis, wheelAngle);
-        wheel.position.copy(steeringWheel.position).sub(pivot).applyQuaternion(wheelTurn).add(pivot);
-        wheel.quaternion.copy(wheelTurn).multiply(steeringWheel.rotation);
-        roll.setFromAxisAngle(AXLE, (drive?.travel ?? pose.travel) / .311);
-        steer.setFromAxisAngle(UP, pose.steering);
-        for (const { object, rotation, position, front, caliper } of roadWheels) {
-          object.quaternion.copy(rotation).multiply(roll);
+        rimTurn.setFromAxisAngle(axis, steering.length ? wheelAngle : 0);
+        for (const part of steering) {
+          wheelTurn.setFromAxisAngle(part.axis, wheelAngle);
+          part.object.position.copy(part.position).sub(part.pivot).applyQuaternion(wheelTurn).add(part.pivot);
+          part.object.quaternion.copy(wheelTurn).multiply(part.rotation);
+        }
+        for (const part of roadWheels) {
+          const { object, rotation, position, front, caliper, spin } = part;
+          roll.setFromAxisAngle(part.axle, (drive?.travel ?? pose.travel) / part.radius);
+          const rolling = spin ?? part;
+          rolling.object.quaternion.copy(rolling.rotation).multiply(roll);
           if (!front) continue;
+          steer.setFromAxisAngle(part.steerAxis, pose.steering);
+          if (spin) object.quaternion.copy(rotation);
           object.quaternion.premultiply(steer);
           if (caliper) {
             caliper.object.quaternion.copy(steer).multiply(caliper.rotation);
@@ -204,6 +262,8 @@ export function prepareGarageCockpit(car: Object3D, glassMaterials: Iterable<Mes
         rest.forEach(restore);
         parent.getWorldQuaternion(parentRotation).invert();
         seatRotation.copy(parentRotation).multiply(carRotation);
+        if (bridge?.heading === -1) seatRotation.multiply(entryRotation.setFromAxisAngle(UP, Math.PI));
+        driver.scale.copy(restScale).multiplyScalar(modelScale);
         const enter = drive?.enter ?? 1;
         const sit = MathUtils.smoothstep(enter, .12, .93);
         driver.quaternion.copy(seatRotation);
@@ -232,9 +292,10 @@ export function prepareGarageCockpit(car: Object3D, glassMaterials: Iterable<Mes
         for (const { weights, index, rest, focus, greeting } of expression) {
           weights[index] = MathUtils.lerp(MathUtils.lerp(rest, focus, pose.focus), greeting, pose.gesture);
         }
-        for (const [index, { hip, knee, foot, side }] of legs.entries()) {
-          const brake = drive?.brake ?? pose.brake;
-          const ankle = new Vector3(seat.x + side * .102, .24 + (side < 0 ? brake * .042 : 0), center.z + .20);
+        if (pedals) for (const [index, { hip, knee, foot, side }] of legs.entries()) {
+          const brake = road ? drive?.brake ?? pose.brake : 0;
+          const ankle = pedals.clone().add(new Vector3(side * .102 * localScale, side < 0 ? brake * .042 : 0, 0));
+          if (classic) ankle.set(seat.x + side * .102, .24 + (side < 0 ? brake * .042 : 0), center.z + .20);
           if (enter < 1) {
             const step = index === 0 ? MathUtils.smoothstep(enter, .03, .65) : MathUtils.smoothstep(enter, .3, .98);
             ankle.lerp(standingAnkles[index], 1 - step);
@@ -245,15 +306,17 @@ export function prepareGarageCockpit(car: Object3D, glassMaterials: Iterable<Mes
           if (sit > 0) foot.quaternion.slerp(knee.getWorldQuaternion(new Quaternion()).invert().multiply(carRotation).multiply(feet[index]), sit);
         }
         for (const { shoulder, elbow, hand, rig, side, palmReach } of arms) {
-          const radial = new Vector3(side * .73, 0, 0).addScaledVector(rim.up, .68).normalize().applyQuaternion(rimTurn);
+          if (bridge) continue;
+          const radial = new Vector3(side * .73, 0, 0).addScaledVector(up, .68).normalize().applyQuaternion(rimTurn);
           // Aim the knuckles beyond the outer rim. The palm faces inward and
           // the fingers wrap down over the far side of the rim.
-          const grip = radial.clone().multiplyScalar(rim.radius + .036).add(center);
-          const release = side < 0 ? pose.gesture : 0;
+          const grip = levers ? new Vector3(...levers.grips[side > 0 ? 0 : 1]) : radial.clone().multiplyScalar(radius + .036).add(center);
+          const release = road && side === steeringSide ? pose.gesture : 0;
           const wave = id === "101" ? Math.sin((phase - .44) * Math.PI * 25) : 0;
-          const gripDirection = new Vector3(-side * .11, -.04, .99).applyQuaternion(rimTurn).projectOnPlane(radial).normalize();
+          const gripDirection = levers ? new Vector3(0, -.15, 1).normalize()
+            : new Vector3(-side * .11, -.04, .99).applyQuaternion(rimTurn).projectOnPlane(radial).normalize();
           const wrist = grip.clone().addScaledVector(gripDirection, -palmReach);
-          if (release) wrist.lerp(new Vector3(-.198 + wave * .021, .235, -.195).add(center), release);
+          if (release) wrist.lerp(new Vector3(side * (.198 - wave * .021), .235, -.195).add(center), release);
           car.localToWorld(wrist);
           if (drive && enter < 1) wrist.lerp(hand.getWorldPosition(reach), 1 - sit);
           const handleWeight = side < 0 && drive ? Math.max(drive.reachHandle, drive.closeHandle) : 0;
@@ -265,15 +328,15 @@ export function prepareGarageCockpit(car: Object3D, glassMaterials: Iterable<Mes
           aimLimb(shoulder, elbow, hand, wrist, pole, shoulder instanceof Bone ? ELBOW_HINGE : undefined);
           if (!rig || (sit < .28 && handleWeight < .25)) continue;
           const direction = car.localToWorld(grip).sub(hand.getWorldPosition(new Vector3())).normalize();
-          const palmNormal = radial.negate().applyQuaternion(carRotation);
+          const palmNormal = (levers ? new Vector3(-side * .24, -1, 0) : radial.negate()).applyQuaternion(carRotation);
           if (handleWeight > 0) {
             direction.lerp(reach.copy(UP).applyQuaternion(carRotation), handleWeight).normalize();
             palmNormal.lerp(reach.set(1, 0, 0).applyQuaternion(carRotation), handleWeight);
           }
           if (release) {
             const thumbsUp = id === "102";
-            const raisedFingers = thumbsUp ? new Vector3(.23, .15, .96) : new Vector3(-.06 + wave * .28, .95, .25);
-            const raisedPalm = thumbsUp ? new Vector3(1, -.08, -.04) : new Vector3(.17, -.12, 1);
+            const raisedFingers = thumbsUp ? new Vector3(-side * .23, .15, .96) : new Vector3(side * (.06 - wave * .28), .95, .25);
+            const raisedPalm = thumbsUp ? new Vector3(-side, -.08, -.04) : new Vector3(-side * .17, -.12, 1);
             direction.lerp(raisedFingers.applyQuaternion(carRotation).normalize(), release).normalize();
             palmNormal.lerp(raisedPalm.applyQuaternion(carRotation), release);
           }
@@ -286,7 +349,7 @@ export function prepareGarageCockpit(car: Object3D, glassMaterials: Iterable<Mes
           }
           if (release && id === "102" && rig.thumb) {
             const [base, middle, tip] = rig.thumb;
-            const thumbDirection = new Vector3(.05, 1, .08).applyQuaternion(carRotation);
+            const thumbDirection = new Vector3(-side * .05, 1, .08).applyQuaternion(carRotation);
             for (const [joint, child] of [[base, middle], [middle, tip]]) {
               const gripRotation = joint.quaternion.clone();
               aimDriverJoint(joint, child, thumbDirection.clone());
@@ -298,14 +361,16 @@ export function prepareGarageCockpit(car: Object3D, glassMaterials: Iterable<Mes
       stop() {
         rest.forEach(restore);
         restore(driverRest);
+        driver.scale.copy(restScale);
         restore(motionRest);
-        restore(steeringWheel);
+        steering.forEach(restore);
         if (door) {
           door.angle = openDoorAtStart;
           door.pivot.rotation[door.axis] = openDoorAtStart;
         }
         for (const part of roadWheels) {
           restore(part);
+          if (part.spin) restore(part.spin);
           if (part.caliper) restore(part.caliper);
         }
         for (const { material, opacity, reflection } of glass) {

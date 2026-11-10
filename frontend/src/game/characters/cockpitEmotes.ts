@@ -1,5 +1,3 @@
-export const COCKPIT_TEST_VEHICLE = "ae86";
-
 export const COCKPIT_TAKES = [
   { id: "068", name: "Take the wheel", duration: 4.25 },
   { id: "069", name: "Roll out and brake", duration: 6.5 },

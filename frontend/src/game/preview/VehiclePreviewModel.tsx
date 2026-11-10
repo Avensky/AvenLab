@@ -21,7 +21,7 @@ import {useFrame} from "@react-three/fiber";
 import {applyWindowTone} from "./windowTones";
 import {vehicleSystems} from "../../vehicles/vehicleSystems";
 import { prepareGarageCockpit, type GarageCockpit } from "./garageCockpit";
-import { COCKPIT_TEST_VEHICLE } from "../characters/cockpitEmotes";
+import { GARAGE_STATIONS, garageStationCamera } from "./garageStations";
 import { usePreviewPaint } from "./usePreviewPaint";
 import { splitAe86DriverDoor } from "./ae86DriverDoor";
 import { useGarageDrive } from "./garageDriveStore";
@@ -53,6 +53,7 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettle
   garageOpen?: boolean;
 }) {
   const path=VEHICLE_MODEL_PATHS[model];
+  const station = GARAGE_STATIONS[model];
   const motion = useRef<Group>(null);
   const savedAppearance = useHeroLoadouts(s => s.draft?.vehicle === model ? s.draft.appearance : s.loadouts[model]);
   const { scene } = useGLTF(path, "/draco/");
@@ -60,7 +61,7 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettle
   const prepared = useMemo(
     () => {
       const visual = prepareVehicleVisual(scene, model);
-      const releaseDoor = model === COCKPIT_TEST_VEHICLE ? splitAe86DriverDoor(visual.root) : undefined;
+      const releaseDoor = model === "ae86" ? splitAe86DriverDoor(visual.root) : undefined;
       prepareGarageVehiclePaint(visual.root, model);
       return { ...visual, dispose: () => { releaseDoor?.(); visual.dispose(); } };
     },
@@ -68,17 +69,17 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettle
   );
   useLayoutEffect(() => onSettled?.(model), [model, onSettled]);
   const partRig=useMemo(()=>createVehiclePartRig(prepared.root,model),[prepared,model]);
-  const ae86Door = model === COCKPIT_TEST_VEHICLE ? partRig.find(part => part.part === "door-right") : undefined;
+  const ae86Door = model === "ae86" ? partRig.find(part => part.part === "door-right") : undefined;
   const cockpitSetup = useRef<{ source: Object3D; prepare: ReturnType<typeof prepareGarageCockpit> }>(null);
   const playCockpit = useCallback<GarageCockpit>(driverRoot => {
     const motionGroup = motion.current;
     if (!motionGroup) return null;
     if (cockpitSetup.current?.source !== prepared.root) {
-      cockpitSetup.current = { source: prepared.root, prepare: prepareGarageCockpit(prepared.root, prepared.glassMaterials, ae86Door) };
+      cockpitSetup.current = { source: prepared.root, prepare: prepareGarageCockpit(prepared.root, prepared.glassMaterials, ae86Door, station) };
     }
     return cockpitSetup.current.prepare?.(driverRoot, motionGroup) ?? null;
-  }, [prepared, ae86Door]);
-  const cockpit = model === COCKPIT_TEST_VEHICLE && (previewPacks || (garageOpen && ae86Door)) ? playCockpit : undefined;
+  }, [prepared, ae86Door, station]);
+  const cockpit = previewPacks || garageOpen ? playCockpit : undefined;
   const marine=vehicleSystems(model)==="marine";
   const inspectBody=useVehicleStudioStore(s=>s.activeTab==="body"||s.parts["door-left"]||s.parts["door-right"]);
   const glassStyle=useVehicleStudioStore(s=>s.glassStyle);
@@ -126,7 +127,8 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettle
   }, [prepared, model, savedAppearance]);
   useFrame((state,delta)=>{
     const studio=useVehicleStudioStore.getState();
-    const drivenDoor = garageOpen && ae86Door && useGarageDrive.getState().stage !== "idle" ? ae86Door.part : undefined;
+    const stage = useGarageDrive.getState().stage;
+    const drivenDoor = garageOpen && ae86Door && stage !== "idle" && stage !== "station" ? ae86Door.part : undefined;
     advanceVehiclePartRig(partRig,studio.parts,delta,drivenDoor);
     if (marine) {
       const {navigation,searchlights}=studio.marineLights;
@@ -182,17 +184,18 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettle
   const staging = useMemo(() => {
     const vehicleCenter = measurements.centering.getCenter(new Vector3());
     const doorCenter = driverDoor?.getCenter(new Vector3());
-    const side = doorCenter && doorCenter.x > vehicleCenter.x ? 1 : -1;
+    const side = station.kind === "wheel" ? Math.sign(station.rim[0]) : doorCenter && doorCenter.x > vehicleCenter.x ? 1 : -1;
     const edge = side < 0
       ? Math.min(driverDoor?.min.x ?? Infinity, measurements.bounds.min.x)
       : Math.max(driverDoor?.max.x ?? -Infinity, measurements.bounds.max.x);
-    if (hasDriver && driverReady && doorCenter && Number.isFinite(edge) && !leanFits.has(layout)) {
-      const fit = measureDriverLean(prepared.root, edge + side * .27, measurements.support.min.y, doorCenter.z, side);
+    const along = station.kind === "wheel" ? station.seat[2] : doorCenter?.z;
+    if (hasDriver && driverReady && along !== undefined && Number.isFinite(edge) && !leanFits.has(layout)) {
+      const fit = measureDriverLean(prepared.root, edge + side * .27, measurements.support.min.y, along, side);
       leanFits.set(layout, { fit });
     }
     const fit = driverReady ? leanFits.get(layout)?.fit : undefined;
-    return { side, edge, along: doorCenter?.z, fit };
-  }, [driverDoor, measurements, prepared, hasDriver, driverReady, layout]);
+    return { side, edge, along, fit };
+  }, [driverDoor, measurements, prepared, hasDriver, driverReady, layout, station]);
   const inset = inspectBody ? 0 : Math.min(staging.fit?.offset ?? 0, rook ? .14 : .06);
   const lean = useMemo(() => {
     const fit = staging.fit;
@@ -205,20 +208,20 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettle
     const size = measurements.bounds.getSize(new Vector3());
     const center = measurements.bounds.getCenter(new Vector3());
     const door = driverDoor?.getCenter(new Vector3()) ?? center;
-    const side = door.x < center.x ? -1 : 1;
+    const side = staging.side;
+    const doorZ = staging.along ?? door.z;
     const height = Math.max(1.3, size.y);
     const width = Math.max(1.65, size.x);
     const length = Math.max(3.2, size.z);
     const shots = [
       { name: "High Angle", at: [center.x, center.y, center.z], eye: [width * .8, length * .93, length * .52] },
-      { name: "Driver Door", at: [door.x, Math.max(door.y, height * .62), door.z], eye: [side * width * 1.42, height * .51, -length * .47] },
+      { name: "Driver Door", at: [door.x, Math.max(door.y, height * .62), doorZ], eye: [side * width * 1.42, height * .51, -length * .47] },
       { name: "Chase", at: [center.x, center.y, center.z + length * .15], eye: [-width * .57, height * 1.28, -length * 1.14] },
     ];
-    if (model === COCKPIT_TEST_VEHICLE) {
-      shots.push({ name: "Cockpit", at: [-.397, .745, .365], eye: [.32, .40, -.53] });
-    }
+    const cockpitShot = garageStationCamera(station);
+    shots.push({ name: "Cockpit", at: [...cockpitShot.at], eye: [...cockpitShot.eye] });
     return shots;
-  }, [driverDoor, measurements, model]);
+  }, [driverDoor, measurements, staging.side, staging.along, station]);
   return (
     <group ref={motion}>
       {driver && <group position={[driverAcross, .023, driverAlong]} scale={driverScale} rotation={[0, staging.side * Math.PI / 2, 0]}>

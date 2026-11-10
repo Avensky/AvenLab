@@ -45,7 +45,7 @@ test('the garage mounts only an explicitly selected hero and removes it on clear
       const preview=useCharacterPreviewStore.getInitialState();
       try {
         preview.insideCar=true;
-        assert.match(renderToString(createElement(VehiclePreview,{awaitingHero:true,wardrobeOpen:true})),/data-model="ae86"/);
+        assert.match(renderToString(createElement(VehiclePreview,{awaitingHero:true,wardrobeOpen:true})),/data-model="mini"/);
         assert.match(render(),/data-model="mini"/);
       } finally { preview.insideCar=false; }
     }finally{Object.assign(current,saved);screen.screen=original;}

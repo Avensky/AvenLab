@@ -15,12 +15,12 @@ import { DEFAULT_PREVIEW_PLATFORM } from "./previewPlacement";
 import { useSocialStore } from "../../store/social/socialStore";
 import { DEFAULT_CHARACTER, type CharacterChoice } from "../characters/characterCatalog";
 import { CHARACTER_ZOOM_MAX, CHARACTER_ZOOM_MIN, failCockpitPreview, useCharacterPreviewStore } from "../characters/characterPreviewStore";
-import { COCKPIT_TEST_VEHICLE } from "../characters/cockpitEmotes";
 import { HEROES, useAlphaStore } from "../../store/alpha/alphaStore";
 import { PREVIEW_ZOOM_LEVELS, usePreviewZoom } from "./previewZoomStore";
 import { PreviewLoadingSeal } from "./PreviewLoadingSeal";
 import { isCompactPreview } from "./previewBudget";
 import { garageCamera, useGarageDrive } from "./garageDriveStore";
+import { GARAGE_STATIONS } from "./garageStations";
 import { useVehicleStudioStore } from "../heroes/vehicleStudioStore";
 
 const DRIVER_STAGE_CAMERA: [number, number, number] = [2.8, 2.5, 5.8];
@@ -29,7 +29,7 @@ const STANDARD_STAGE_CAMERA: [number, number, number] = [0, 3.2, 7.25];
 function MissingVehicle({ model, onSettled, cockpit }: { model: string; onSettled: (model: string) => void; cockpit: boolean }) {
   useLayoutEffect(() => onSettled(model), [model, onSettled]);
   useLayoutEffect(() => {
-    if (cockpit) failCockpitPreview("The AE86 model is unavailable.");
+    if (cockpit) failCockpitPreview("The selected vehicle model is unavailable.");
   }, [cockpit]);
   return <Html center>
     <p className="rounded bg-slate-950 p-3 text-sm text-amber-200">
@@ -69,7 +69,7 @@ export function VehiclePreview({
   const workshop = screen === "heroes";
   const garageOpen = useVehicleStudioStore(s => workshop && !wardrobeOpen && s.activeTab !== null && s.activeTab !== "abilities");
   const garageView = useGarageDrive(s => garageOpen ? garageCamera(s) : "Showroom");
-  const driveOut = useGarageDrive(s => garageOpen && s.stage !== "idle");
+  const stationActive = useGarageDrive(s => garageOpen && s.stage !== "idle");
   const zoom = usePreviewZoom(s => !wardrobeOpen && (workshop || screen === "hero_select") ? PREVIEW_ZOOM_LEVELS[s.level] : 1);
   const sandboxPicker = screen === "hero_select" && mode === "sandbox";
   const driverStage = workshop || sandboxPicker;
@@ -78,7 +78,14 @@ export function VehiclePreview({
   const driver = driverStage ? characterDraft ?? equipped ?? DEFAULT_CHARACTER : null;
   const selected = HEROES.find(hero => hero.id === (picked ?? savedHero))?.vehicle;
   const insideCar = useCharacterPreviewStore(s => wardrobeOpen && s.insideCar);
-  const vehicleId = insideCar ? COCKPIT_TEST_VEHICLE : awaitingHero ? selected ?? (driverStage ? favorite : undefined) : favorite;
+  const vehicleId = awaitingHero ? selected ?? (driverStage ? favorite : undefined) : favorite;
+  useLayoutEffect(() => {
+    if (!wardrobeOpen) return;
+    useCharacterPreviewStore.setState({ cockpitVehicle: vehicleId ?? null });
+    return () => useCharacterPreviewStore.setState({ cockpitVehicle: null });
+  }, [wardrobeOpen, vehicleId]);
+  const closeShot = insideCar || garageView === "Cockpit";
+  const near = closeShot ? (vehicleId && GARAGE_STATIONS[vehicleId].kind === "bridge" ? .003 : .04) : .1;
   const [settledVehicle, setSettledVehicle] = useState<string>();
   const [roomReady, setRoomReady] = useState(false);
   const roomSettled = useCallback(() => setRoomReady(true), []);
@@ -114,7 +121,9 @@ export function VehiclePreview({
     target.set(0, driverStage ? 1.17 : 1.35, 0);
     let lensZoom = zoom;
     if (garageView !== "Showroom") {
-      const shot = findPreviewAnchor(aim.anchors, turntable, `garage-view-${garageView}`);
+      const occupiedShot = garageView === "Cockpit" && stationActive
+        ? findPreviewAnchor(aim.anchors, turntable, "garage-cockpit-camera") : undefined;
+      const shot = occupiedShot ?? findPreviewAnchor(aim.anchors, turntable, `garage-view-${garageView}`);
       if (shot) {
         shot.getWorldPosition(target);
         shot.children[0].getWorldPosition(position);
@@ -152,7 +161,7 @@ export function VehiclePreview({
         position.copy(target).add(offset);
       }
     }
-    const offsetX = width * (sandboxPicker ? .15 : workshop && !wardrobeOpen ? .07 : 0);
+    const offsetX = width * (sandboxPicker ? .15 : workshop && !wardrobeOpen && garageView !== "Cockpit" ? .07 : 0);
     const offsetY = wardrobeOpen ? height * .055 : heroLayout && aspect < 1 ? -height * .04 : 0;
     const firstFrame = initializedCamera.current !== camera;
     initializedCamera.current = camera;
@@ -189,10 +198,10 @@ export function VehiclePreview({
         ref={cameraRef}
         makeDefault
         fov={fov}
-        near={0.1}
+        near={near}
       />
 
-      <PreviewTurntable onReady={setTurntable} spin={!wardrobeOpen && !stationary && garageView === "Showroom"} locked={driveOut}>
+      <PreviewTurntable onReady={setTurntable} spin={!wardrobeOpen && !stationary && garageView === "Showroom"} locked={stationActive}>
         {vehicleId && <AssetBoundary
           key={vehicleId}
           fallback={<MissingVehicle model={vehicleId} onSettled={setSettledVehicle} cockpit={insideCar} />}

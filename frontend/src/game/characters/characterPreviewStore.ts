@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { VehicleModelId } from "../../vehicles/tools/vehicleModelPaths";
 
 export const CHARACTER_CAMERAS = ["Full body", "Face", "Hands", "Whole car"] as const;
 export const CHARACTER_ZOOM_MIN = .8;
@@ -9,11 +10,12 @@ export const useCharacterPreviewStore = create<{
   camera: Camera;
   zoom: number;
   emote: { id: string } | null;
+  cockpitVehicle: VehicleModelId | null;
   cockpitAvailable: boolean;
   cockpitError: string | null;
   insideCar: boolean;
   leanAvailable: boolean;
-}>(() => ({ camera: "Full body", zoom: 1, emote: null, cockpitAvailable: false, cockpitError: null, insideCar: false, leanAvailable: false }));
+}>(() => ({ camera: "Full body", zoom: 1, emote: null, cockpitVehicle: null, cockpitAvailable: false, cockpitError: null, insideCar: false, leanAvailable: false }));
 
 export function failCockpitPreview(message: string) {
   if (useCharacterPreviewStore.getState().insideCar) {

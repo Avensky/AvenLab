@@ -104,9 +104,10 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
     }
     const view = useCharacterPreviewStore.getState();
     const drive = useGarageDrive.getState();
-    const driveOut = !previewPacks && drive.stage !== "idle";
-    const preview = previewPacks ? view.emote : driveOut ? drive.steering : null;
-    if (cockpit && (driveOut || (previewPacks && view.cockpitAvailable && view.insideCar)) && !bag && !victory) {
+    const garageStation = !previewPacks && drive.stage !== "idle";
+    const driveOut = garageStation && drive.stage !== "station";
+    const preview = previewPacks ? view.emote : garageStation ? drive.steering : null;
+    if (cockpit && (garageStation || (previewPacks && view.cockpitAvailable && view.insideCar)) && !bag && !victory) {
       if (!current.cabin) {
         current.active?.stop();
         current.active = null;
@@ -117,8 +118,8 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
         current.cabin = cockpit(root);
         if (!current.cabin) {
           current.idle.reset().setEffectiveWeight(1).play();
-          const error = "This driver could not be fitted to the AE86 cockpit.";
-          if (driveOut) useGarageDrive.setState({ stage: "idle", error });
+          const error = "This driver could not be fitted to the selected vehicle.";
+          if (garageStation) useGarageDrive.setState({ stage: "idle", error });
           else failCockpitPreview(error);
           return;
         }
