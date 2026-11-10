@@ -86,6 +86,7 @@ export const useSocialStore = create<{
   entryCode: string;
   reset: () => void;
   receive: (value: unknown) => void;
+  acknowledgeProgression: (owner: string, update: (progression: Progression) => Progression) => void;
 }>((set) => ({
   available: false,
   profileStatus: "idle",
@@ -100,6 +101,12 @@ export const useSocialStore = create<{
       view: null,
       message: "Connecting to the game server…",
     }),
+  acknowledgeProgression: (owner, update) => set(state => {
+    const view = state.view;
+    const profile = view?.profile;
+    if (!view || profile?.id !== owner || !profile.progression) return state;
+    return { view: { ...view, profile: { ...profile, progression: update(profile.progression) } } };
+  }),
   receive: (value) => {
     if (!value || typeof value !== "object") return;
     const view = value as SocialView;

@@ -62,6 +62,8 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
         try {
           if (!owner || useSocialStore.getState().view?.profile.id !== owner) throw Error("Connect your player profile to save.");
           await requestSocial("character_equip", { character: next });
+          // The reliable reply can arrive before the replaceable social view.
+          useSocialStore.getState().acknowledgeProgression(owner, progression => ({ ...progression, character: next }));
           acknowledged.current = next;
           setLocked(true);
         } catch (error) {

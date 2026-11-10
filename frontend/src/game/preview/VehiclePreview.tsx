@@ -42,8 +42,9 @@ export function VehiclePreview({
   const sandboxPicker = screen === "hero_select" && mode === "sandbox";
   const driverStage = workshop || sandboxPicker;
   const equipped = useSocialStore(s => driverStage ? s.view?.profile.progression?.character : null);
+  const savedHero = useSocialStore(s => workshop ? s.view?.profile.progression?.default_hero : undefined);
   const driver = driverStage ? characterDraft ?? equipped ?? DEFAULT_CHARACTER : null;
-  const selected = HEROES.find(hero => hero.id === picked)?.vehicle;
+  const selected = HEROES.find(hero => hero.id === (picked ?? savedHero))?.vehicle;
   const vehicleId = awaitingHero ? selected ?? (driverStage ? favorite : undefined) : favorite;
   const { width, height } = useThree(s => s.size);
   const requestFrame = useThree(s => s.invalidate);

@@ -6,7 +6,7 @@ import { act, createElement as h } from 'react';
 import { createRoot } from 'react-dom/client';
 import { AnimationMixer, LoopOnce, Object3D, Vector3 } from 'three';
 
-test('Heroes opens the character picker, saves one profile choice, and opens Garage from a vehicle', async () => {
+test('Heroes opens the character picker, saves one profile choice, and opens Garage from a vehicle', async t => {
   const dom = new JSDOM('<div id="root"></div>', { url: 'http://localhost/', pretendToBeVisual: true });
   const original = new Map();
   let vite, root;
@@ -136,9 +136,9 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(requests[0].action, 'character_equip');
     const choice = { id: 'jules-okafor', outfit: 'night-run' };
     assert.deepEqual(requests[0].character, choice);
-    const acknowledge = async (request, character) => {
+    const acknowledge = async (request, character, publish = true) => {
       await act(async () => {
-        social.getState().receive({ ...view, profile: { ...view.profile, progression: { ...view.profile.progression, character } } });
+        if (publish) social.getState().receive({ ...view, profile: { ...view.profile, progression: { ...view.profile.progression, character } } });
         client.receiveSocialResult({ request_id: request.request_id, ok: true, data: { character } });
       });
     };
@@ -168,6 +168,7 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(preview.getState().insideCar, false);
     assert.equal(preview.getState().emote, null);
     assert.equal(find('select[aria-label="Eye color"]').value, 'original');
+    t.mock.timers.enable({ apis: ['setTimeout'] });
     await select('Eye color', 'obsidian');
     await select('Eyebrow tint', 'copper');
     await select('Glasses', 'aviator');
@@ -185,7 +186,7 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(drafts.at(-1).appearance.color, '#101015');
     assert.equal(find('input[aria-label="Clothing accent color"]').value, '#ff2d95');
     assert.equal(requests.length, 1);
-    await act(async () => { await new Promise(resolve => setTimeout(resolve, 350)); });
+    await act(async () => t.mock.timers.tick(350));
     assert.equal(requests.length, 2, 'rapid changes coalesce');
     assert.equal(requests[1].character.appearance.eye_color, 'obsidian');
     assert.equal(requests[1].character.appearance.brow_color, 'copper');
@@ -233,7 +234,8 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     await acknowledge(requests[1], requests[1].character);
     assert.equal(requests.length, 3, 'queued prop waits for the previous save');
     assert.equal(requests[2].character.prop, 'shop-bag');
-    await acknowledge(requests[2], requests[2].character);
+    await acknowledge(requests[2], requests[2].character, false);
+    assert.equal(social.getState().view.profile.progression.character.prop, 'shop-bag', 'the acknowledgement bridges a delayed profile snapshot');
     await move('back');
     assert.equal(title(), 'HEROES');
     assert.equal(characterViews.at(-1), false);
@@ -251,6 +253,7 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(find('select[aria-label="Eye color"]').value, 'obsidian');
 
   } finally {
+    t.mock.timers.reset();
     if (root) await act(async () => root.unmount());
     await vite?.close();
     dom.window.close();

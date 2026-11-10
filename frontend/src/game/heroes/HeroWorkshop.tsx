@@ -1,4 +1,4 @@
-import {useCallback,useEffect,useMemo,useRef,useState,type CSSProperties,type ReactNode} from "react";
+import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState,type CSSProperties,type ReactNode} from "react";
 import {VehicleMods} from "./VehicleMods";
 import {SceneTabHeader} from "../../components/menus/SceneTabHeader";
 import {HEROES,useAlphaStore,type HeroFilter} from "../../store/alpha/alphaStore";
@@ -51,8 +51,10 @@ const MARINE_LAMPS = [
 ] as const;
 
 export function HeroLoadoutSync(){
- const profile=useSocialStore(s=>s.view?.profile);
- useEffect(()=>{useHeroLoadouts.getState().adopt(profile?.id??null,profile?.progression?.default_hero,profile?.progression?.hero_loadouts);},[profile]);
+ const owner=useSocialStore(s=>s.view?.profile.id??null);
+ const main=useSocialStore(s=>s.view?.profile.progression?.default_hero);
+ const loadouts=useSocialStore(s=>s.view?.profile.progression?.hero_loadouts);
+ useEffect(()=>{useHeroLoadouts.getState().adopt(owner,main,loadouts);},[owner,main,loadouts]);
  return null;
 }
 
@@ -118,9 +120,17 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
  const queue=useMemo(()=>new HeroSaveQueue(async job=>{
   if(!owner||useSocialStore.getState().view?.profile.id!==owner)throw Error("Connect with your player profile to save.");
   await requestSocial("hero_loadout_save",{hero:job.hero,appearance:job.appearance,make_default:job.makeDefault});
- },job=>{if(useHeroLoadouts.getState().ownerId===owner)useHeroLoadouts.getState().save(job.hero,job.vehicle,job.appearance,job.makeDefault);},(next,error)=>{setStatus(next);setMessage(error??"");}),[owner]);
+ },job=>{
+  if(!owner||useHeroLoadouts.getState().ownerId!==owner)return;
+  useSocialStore.getState().acknowledgeProgression(owner,progression=>({
+   ...progression,
+   default_hero:job.makeDefault?job.hero:progression.default_hero,
+   hero_loadouts:{...progression.hero_loadouts,[job.vehicle]:job.appearance},
+  }));
+  useHeroLoadouts.getState().save(job.hero,job.vehicle,job.appearance,job.makeDefault);
+ },(next,error)=>{setStatus(next);setMessage(error??"");}),[owner]);
  useEffect(()=>()=>queue.dispose(),[queue]);
- useEffect(()=>{useAlphaStore.setState({previewHero:null});root.current?.focus();},[]);
+ useEffect(()=>{root.current?.focus();},[]);
  useEffect(()=>{if(!editing)useVehicleStudioStore.getState().closeParts();},[editing]);
  useEffect(()=>{
   if(!characterOpen)return;
@@ -133,14 +143,15 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
    : editing?root.current?.querySelector<HTMLElement>("[role=tab][aria-selected=true]"):root.current;
   target?.focus({preventScroll:true});
  },[characterOpen,characterReady,editing,role,studioTab,viewingReference]);
- useEffect(()=>{if(hero)useAlphaStore.getState().preview(hero);},[hero]);
+ useLayoutEffect(()=>{if(hero)useAlphaStore.getState().preview(hero);else useAlphaStore.setState({previewHero:null});},[hero]);
  useEffect(()=>{setStudioTab("performance");setStudioSummary(vehicle?getVehicleStockPerformance(vehicle):STOCK_VEHICLE_SUMMARY);setStudioFooter(null);},[vehicle]);
  useEffect(()=>{
   if(!editing)return;
   const savedFlags=useInputStore.getState().input.vehicleMask&lightingBits;
   return()=>{const current=useInputStore.getState().input.vehicleMask;useInputStore.getState().setInput({vehicleMask:(current&~lightingBits)|savedFlags});};
  },[editing,lightingBits]);
- useEffect(()=>{useHeroLoadouts.setState({draft:vehicle?{vehicle,appearance}:null});return()=>{useHeroLoadouts.setState({draft:null});};},[vehicle,appearance]);
+ useLayoutEffect(()=>{useHeroLoadouts.setState({draft:vehicle?{vehicle,appearance}:null});},[vehicle,appearance]);
+ useLayoutEffect(()=>()=>{useHeroLoadouts.setState({draft:null});},[]);
  const preview=(id:string)=>{
   const item=HEROES.find(value=>value.id===id)!;setHero(id);
   setAppearance(drafts.current[item.vehicle]??useHeroLoadouts.getState().loadouts[item.vehicle]??{...FACTORY_APPEARANCE});

@@ -67,6 +67,20 @@ Rook's coat outfits can preview Folded arms by the door under Garage emotes.
 The pose requires a fitted road-car side panel, closed doors, and empty hands.
 Heroes cycles shorter gestures with a breathing idle between them.
 
+## Planned vehicle interactions
+
+- Reach for the driver and passenger handles, then open or close each door using
+  the vehicle's authored hinge.
+- Open the driver door, step into the cabin, settle into the seat, and pull the
+  door closed from inside. Reverse the sequence to exit and close the door.
+- Lift and lower the hood and trunk from their handles. Fit each interaction to
+  the vehicle's part, hinge, and handle anchors.
+- Turn the steering wheel left and right with both hands tracking the rim.
+- Pull and release the e-brake with the left or right hand to match the cabin,
+  with the other hand steering.
+- Rest or extend an arm through the left or right open window, using the window
+  ledge and seat position as anchors.
+
 The Props tab loads the black-and-gold bag from
 `frontend/public/models/characters/props/bag-black-gold/`. The mobile GLB is
 preferred, with the garage GLB and the legacy `shop-bag.glb` as fallbacks.
