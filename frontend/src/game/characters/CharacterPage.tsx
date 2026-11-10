@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type Ref } from "react";
+import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type FocusEvent, type Ref } from "react";
 import { ControllerAction } from "../../components/controller";
 import { requestSocial } from "../../net/socialClient";
 import { useSocialStore } from "../../store/social/socialStore";
@@ -19,6 +19,10 @@ const LOOK_FIELDS: Record<CharacterStyleField, string> = {
   hair: "Hair", hair_color: "Hair color", skin: "Skin tone", headwear: "Headwear", color: "Outfit color",
 };
 const PREVIEW_CAST = CHARACTERS.map(item => ({ gender: item.gender, choice: { id: item.id, outfit: item.outfits[0].id } }));
+
+function revealCharacterControl(event: FocusEvent<HTMLElement>) {
+  event.target.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+}
 
 export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
   onPreview?: (choice: CharacterChoice | null) => void;
@@ -148,7 +152,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
   </>;
 
   if (!locked) return (
-    <div className="character-page character-page--setup" aria-label="Choose character gender">
+    <div className="character-page character-page--setup" aria-label="Choose character gender" onFocus={revealCharacterControl}>
       <div className="character-stage" data-character-preview={character.id} data-outfit-preview={outfit.id} />
       <section className="character-controls menu-panel-frame">
         <header className="character-description"><h2>Choose gender</h2><p>This choice is permanent for your profile.</p></header>
@@ -168,7 +172,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
 
   return (
     <div className="character-page character-page--editor" role="tabpanel" id="character-editor-panel" aria-labelledby={"character-editor-tab-" + tab}
-      onFocus={event => (event.target as HTMLElement).scrollIntoView?.({ block: "nearest", inline: "nearest" })}>
+      onFocus={revealCharacterControl}>
       <div className="character-stage" data-character-preview={previewChoice.id} data-outfit-preview={previewChoice.outfit}
         aria-label={`Preview of ${characterLook(previewChoice)!.character.name}`} />
       <section className="character-controls menu-panel-frame character-controls--left" aria-label={tab}>

@@ -12,7 +12,7 @@ export function villagerModelUrl(look: CharacterLook, kind: "garage" | "portrait
   return __VILLAGER_MODEL_URL__;
 }
 
-export function prepareVillager(scene: Object3D, { female = true, animateFace = false } = {}) {
+export function prepareVillager(scene: Object3D, { female = true, animateFace = false, bag = false } = {}) {
   const root = clone(scene);
   root.name = female ? "garage-villager-female" : "garage-villager-male";
   const materials = new Map<MeshStandardMaterial, MeshStandardMaterial>();
@@ -40,7 +40,11 @@ export function prepareVillager(scene: Object3D, { female = true, animateFace = 
     const { shoulder, elbow, hand } = joints;
     const sideSign = Math.sign(elbow.getWorldPosition(new Vector3()).x - shoulder.getWorldPosition(new Vector3()).x);
     aimDriverJoint(shoulder, elbow, new Vector3(sideSign * .43, -1, -.06));
-    aimDriverJoint(elbow, hand, side === "r" ? new Vector3(-sideSign * .62, .36, .72) : new Vector3(sideSign * .32, -.73, .64));
+    // The empty left hand rests closer to Vesper's skirt and lets the cuff brush the fabric.
+    const forearm = side === "r" ? new Vector3(-sideSign * .62, .36, .72)
+      : female && !bag ? new Vector3(sideSign * .12, -.83, .56)
+        : new Vector3(sideSign * .32, -.73, .64);
+    aimDriverJoint(elbow, hand, forearm);
   }
 
   // The face mesh stops at the hairline. This opaque short-hair cap follows the

@@ -12,7 +12,9 @@ function VillagerDriver({ url, look, bag, previewVictory, victory }: {
   url: string; look: CharacterLook; bag: boolean; previewVictory?: boolean; victory?: VictoryPlayback;
 }) {
   const { scene } = useGLTF(url);
-  const model = useMemo(() => prepareVillager(scene, { female: look.female, animateFace: true }), [scene, look.female]);
+  const femaleWithBag = look.female && bag;
+  const model = useMemo(() => prepareVillager(scene, { female: look.female, animateFace: true, bag: femaleWithBag }),
+    [scene, look.female, femaleWithBag]);
   const invalidate = useThree(s => s.invalidate);
   useEffect(() => model.dispose, [model]);
   useLayoutEffect(() => {
