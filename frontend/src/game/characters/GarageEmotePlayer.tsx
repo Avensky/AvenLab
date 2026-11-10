@@ -68,7 +68,15 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
     const current = player.current;
     if (!current) return;
     const step = Math.min(delta, .1);
-    const preview = useCharacterPreviewStore.getState().emote;
+    const view = useCharacterPreviewStore.getState();
+    const preview = view.emote;
+    const inspectingFace = previewPacks && view.camera === "Face" && !preview;
+    if (inspectingFace && current.active) {
+      current.active.stop();
+      current.active = null;
+      current.rest = REST_SECONDS;
+      current.idle.setEffectiveWeight(1);
+    }
     if (!victory && preview !== current.preview) {
       current.preview = preview;
       const action = preview && current.actions.get(preview.id);
@@ -93,7 +101,7 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
         active.setEffectiveWeight(weight);
         current.idle.setEffectiveWeight(1 - weight);
       }
-    } else if (!victory) {
+    } else if (!victory && !inspectingFace) {
       current.rest -= step;
       if (current.wave || current.rest <= 0) {
         const action = current.wave ? current.actions.get("010")! : current.automatic[current.next];

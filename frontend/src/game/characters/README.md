@@ -41,6 +41,11 @@ Quiet thank you leads the Shy list and the empty-handed garage idle rotation.
 The Shy preview group also includes Oh, no.
 Tsundere (041–050) is available under Emotes → Tsundere. Four of its gestures
 can be previewed while holding the bag.
+Expressions (051–060) includes Fingertip plea, a two-handed gesture with
+watery eyes. Select the Hands camera to see the touch or Face for the expression.
+
+Character → Face opens a close-up for iris color, eyebrow tint, and glasses.
+Both villagers use these settings in the live model and their rendered portrait.
 
 Rook's coat outfits occasionally fold their arms and lean by the driver
 door. The pose requires a fitted road-car side panel, closed doors, and

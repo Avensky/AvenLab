@@ -26,6 +26,12 @@ pub struct CharacterAppearance {
     color: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     accent: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    eye_color: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    brow_color: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    glasses: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -74,19 +80,22 @@ impl CharacterChoice {
                 return false;
             }
             [
-                ("hair", &appearance.hair),
-                ("hair_color", &appearance.hair_color),
-                ("skin", &appearance.skin),
-                ("headwear", &appearance.headwear),
-                ("color", &appearance.color),
+                ("hair", Some(appearance.hair.as_str())),
+                ("hair_color", Some(appearance.hair_color.as_str())),
+                ("skin", Some(appearance.skin.as_str())),
+                ("headwear", Some(appearance.headwear.as_str())),
+                ("color", Some(appearance.color.as_str())),
+                ("eye_color", appearance.eye_color.as_deref()),
+                ("brow_color", appearance.brow_color.as_deref()),
+                ("glasses", appearance.glasses.as_deref()),
             ]
             .into_iter()
-            .all(|(field, value)| {
+            .all(|(field, value)| value.is_none_or(|value| {
                 (field == "color" && hex_color(value))
                     || APPEARANCES
                         .get(field)
-                        .is_some_and(|options| options.iter().any(|option| &option.id == value))
-            })
+                        .is_some_and(|options| options.iter().any(|option| option.id == value))
+            }))
         })
     }
 }

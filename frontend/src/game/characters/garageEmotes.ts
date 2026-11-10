@@ -7,6 +7,7 @@ import { availableVictoryEmotes } from "./victoryEmotes";
 import { availablePlayfulEmotes } from "./playfulEmotes";
 import { availableShyEmotes, QUIET_THANK_YOU } from "./shyEmotes";
 import { availableTsundereEmotes } from "./tsundereEmotes";
+import { availableExpressionEmotes } from "./expressionEmotes";
 import { WALK_EMOTES } from "./walkingEmotes";
 import { garageLeanPose, type GarageLeanFit } from "./garageLean";
 
@@ -26,7 +27,7 @@ type Pose = {
   leftPalm?: Palm;
   rightPalm?: Palm;
   rightAtLips?: boolean;
-  overheadHeart?: boolean;
+  joinIndexTips?: boolean;
   fingers?: readonly [HandShape | null, HandShape | null];
   wristLeft?: number;
   wrist?: number;
@@ -37,6 +38,7 @@ type Pose = {
   feet?: { l?: Foot; r?: Foot };
   elbowsBack?: boolean;
   face?: readonly [smile: number, brow: number];
+  wetEyes?: number;
 };
 export type Emote = { id: string; name: string; duration: number; keys: readonly (readonly [time: number, pose: Pose])[] };
 
@@ -51,7 +53,7 @@ const claspLeft: Arm = [[1, -4, 1.2], [-2.4, 1.3, 3.5]];
 const claspRight: Arm = [[-1, -4, 1.2], [2.4, 1.3, 3.5]];
 const wave: Arm = [[-1, -.55, .28], [-.24, 1, .28]];
 
-export const EMOTE_GROUPS = ["Garage", "Victory", "Playful", "Shy", "Tsundere"] as const;
+export const EMOTE_GROUPS = ["Garage", "Victory", "Playful", "Shy", "Tsundere", "Expressions"] as const;
 export type EmoteGroup = typeof EMOTE_GROUPS[number];
 
 export const GARAGE_EMOTES = [
@@ -245,6 +247,7 @@ export function buildEmoteClips(root: Object3D, emotes: readonly Emote[]) {
   const up = new Vector3(0, 1, 0);
   const across = new Vector3(1, 0, 0);
   const faceTargets = (["smile", "brow"] as const).map(shape => driverFaceTargets(root, shape));
+  const tears = root.getObjectByName("villager-tearline");
   const tilt = (joint: Object3D | undefined, angles: XYZ | undefined) => {
     if (!joint || !angles) return;
     // Imported bones and the procedural rig have different local axes.
@@ -352,11 +355,11 @@ export function buildEmoteClips(root: Object3D, emotes: readonly Emote[]) {
           }
         }
       }
-      if (pose.overheadHeart && left && right && leftRig?.index && rightRig?.index) {
+      if (pose.joinIndexTips && left && right && leftRig?.index && rightRig?.index) {
         const leftTip = leftRig.index[2].getWorldPosition(new Vector3());
         const rightTip = rightRig.index[2].getWorldPosition(new Vector3());
         const meeting = leftTip.clone().lerp(rightTip, .5);
-        // Bring the fingertips together while keeping the raised elbow arc.
+        // Bring the fingertips together while keeping the authored elbow arc.
         for (const [arm, rig, palm, tip] of [[left, leftRig, pose.leftPalm, leftTip], [right, rightRig, pose.rightPalm, rightTip]] as const) {
           const goal = arm.hand.getWorldPosition(new Vector3()).add(meeting).sub(tip);
           const pole = arm.elbow.getWorldPosition(new Vector3()).sub(arm.shoulder.getWorldPosition(new Vector3()));
@@ -394,6 +397,8 @@ export function buildEmoteClips(root: Object3D, emotes: readonly Emote[]) {
       ...faceTargets.flatMap((targets, channel) => targets.map(({ mesh, index }) =>
         new NumberKeyframeTrack(mesh.uuid + ".morphTargetInfluences[" + index + "]", times,
           keys.map(([, pose]) => pose.face?.[channel] ?? 0)))),
+      ...(tears && keys.some(([, pose]) => pose.wetEyes) ? [new NumberKeyframeTrack(tears.uuid + ".material.opacity", times,
+        keys.map(([, pose]) => pose.wetEyes ?? 0))] : []),
     ]);
   });
   joints.forEach((joint, index) => joint.quaternion.copy(rest[index]));
@@ -407,6 +412,7 @@ export function emoteCollection(group: EmoteGroup, bag: boolean, includeWalks = 
   if (group === "Playful") return availablePlayfulEmotes(bag);
   if (group === "Shy") return availableShyEmotes(bag);
   if (group === "Tsundere") return availableTsundereEmotes(bag);
+  if (group === "Expressions") return availableExpressionEmotes(bag);
   if (bag) return [...GARAGE_EMOTES.filter(item => compatibleGarageEmotes(item.id)), ...BAG_EMOTES];
   return includeWalks ? [...GARAGE_EMOTES, ...WALK_EMOTES] : GARAGE_EMOTES;
 }

@@ -9,13 +9,14 @@ import { CHARACTER_CAMERAS, CHARACTER_ZOOM_MIN, CHARACTER_ZOOM_MAX, useCharacter
 import { EMOTE_GROUPS, emoteCollection, type EmoteGroup } from "./garageEmotes";
 
 export const CHARACTER_TABS = [
-  { id: "appearance", label: "Appearance" }, { id: "clothes", label: "Clothes" },
+  { id: "appearance", label: "Appearance" }, { id: "face", label: "Face" }, { id: "clothes", label: "Clothes" },
   { id: "props", label: "Props" }, { id: "emotes", label: "Emotes" },
 ] as const;
 export type CharacterTab = typeof CHARACTER_TABS[number]["id"];
 
 const LOOK_FIELDS: Record<CharacterStyleField, string> = {
   hair: "Hair", hair_color: "Hair color", skin: "Skin tone", headwear: "Headwear", color: "Outfit color",
+  eye_color: "Eye color", brow_color: "Eyebrow tint", glasses: "Glasses",
 };
 const PREVIEW_CAST = CHARACTERS.map(item => ({ gender: item.gender, choice: { id: item.id, outfit: item.outfits[0].id } }));
 
@@ -78,6 +79,12 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
   useImperativeHandle(beforeClose, () => () => locked ? flush() : Promise.resolve(true), [flush, locked]);
   useLayoutEffect(() => { onPreview?.(previewChoice); }, [previewChoice, onPreview]);
   useLayoutEffect(() => { onReady(locked); }, [locked, onReady]);
+  useLayoutEffect(() => {
+    if (!locked || tab !== "face") return;
+    const { camera, zoom } = useCharacterPreviewStore.getState();
+    useCharacterPreviewStore.setState({ camera: "Face", zoom: 1, emote: null });
+    return () => useCharacterPreviewStore.setState({ camera, zoom });
+  }, [locked, tab]);
   useEffect(() => () => {
     clearTimeout(timer.current);
     onPreview?.(null);
@@ -107,7 +114,8 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
     return <label key={field}>
       {LOOK_FIELDS[field]}
       <select className="menu-control" aria-label={LOOK_FIELDS[field]} disabled={field === "headwear" && choice.id === VILLAGER_ID}
-        value={field === "color" && appearance.color.startsWith("#") ? "custom" : appearance[field]}
+        value={field === "color" && appearance.color.startsWith("#") ? "custom"
+          : appearance[field] ?? (field === "glasses" ? "none" : "original")}
         onChange={event => edit(field, event.target.value)}>
         {field === "color" && appearance.color.startsWith("#") && <option value="custom" disabled>Custom color</option>}
         {CHARACTER_APPEARANCE_OPTIONS[field]
@@ -175,6 +183,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
         aria-label={`Preview of ${characterLook(previewChoice)!.character.name}`} />
       <section className="character-controls menu-panel-frame character-controls--left" aria-label={tab}>
         {tab === "appearance" && <header className="character-description"><small>{character.title}</small><h2>{character.name}</h2><p>{character.bio}</p></header>}
+        {tab === "face" && <header className="character-description"><h2>Face</h2><p>{character.name}</p></header>}
         {tab === "clothes" && <>
           <h2>Clothes</h2>
           <div className="character-outfits" role="group" aria-label="Outfits" data-controller-row>
@@ -205,13 +214,15 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
           {emotePicker}
         </>}
       </section>
-      {(tab === "appearance" || tab === "clothes") && <section className="character-controls menu-panel-frame character-controls--right" aria-label="Appearance controls">
+      {(tab === "appearance" || tab === "face" || tab === "clothes") && <section className="character-controls menu-panel-frame character-controls--right" aria-label="Appearance controls">
         {tab === "appearance"
           ? <div className="character-appearance" data-controller-row>
               {(choice.id !== ROOK_ID || !__ROOK_MODEL_URL__) && field("hair")}{field("hair_color")}{field("skin")}
               {(choice.id !== ROOK_ID || !__ROOK_MODEL_URL__) && field("headwear")}
             </div>
-          : <div className="character-appearance" data-controller-row>{field("color")}</div>}
+          : <div className="character-appearance" data-controller-row>
+              {tab === "face" ? [field("eye_color"), field("brow_color"), field("glasses")] : field("color")}
+            </div>}
       </section>}
       <section className="character-controls menu-panel-frame character-controls--bottom" aria-label="Color palette, camera and save status">
         {(tab === "appearance" || tab === "clothes") && palette}

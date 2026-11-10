@@ -19,6 +19,26 @@
     { "id": "none", "label": "None" },
     { "id": "hat", "label": "Hat" }
   ],
+  "eye_color": [
+    { "id": "original", "label": "Character default" },
+    { "id": "brown", "label": "Brown", "color": "#855031" },
+    { "id": "hazel", "label": "Hazel", "color": "#9b783e" },
+    { "id": "green", "label": "Green", "color": "#658847" },
+    { "id": "blue", "label": "Blue", "color": "#4c8db8" },
+    { "id": "gray", "label": "Gray", "color": "#8798a3" }
+  ],
+  "brow_color": [
+    { "id": "original", "label": "Match hair" },
+    { "id": "espresso", "label": "Espresso", "color": "#34231e" },
+    { "id": "copper", "label": "Copper", "color": "#965032" },
+    { "id": "ash", "label": "Ash", "color": "#82736d" },
+    { "id": "blond", "label": "Blond", "color": "#ad8b60" }
+  ],
+  "glasses": [
+    { "id": "none", "label": "None" },
+    { "id": "round", "label": "Graphite round" },
+    { "id": "aviator", "label": "Gold aviator" }
+  ],
   "color": [
     { "id": "original", "label": "Outfit colors", "color": "#ffffff" },
     { "id": "navy", "label": "Navy", "color": "#4b79a4" },

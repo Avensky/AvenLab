@@ -109,7 +109,7 @@ export const VICTORY_EMOTES = [
 const overhead = {
   left: [[.83, 1.25, .42], [-1.06, 1.3, .57]], right: [[-.83, 1.25, .42], [1.06, 1.3, .57]],
   leftPalm: [[-.89, -.41, .16], [0, 0, 1]], rightPalm: [[.89, -.41, .16], [0, 0, 1]],
-  fingers: ["open", "open"], overheadHeart: true,
+  fingers: ["open", "open"], joinIndexTips: true,
 } as const;
 const tinyHeart = {
   rightHand: [-1.19, .26, .66], rightPalm: [[-.05, .99, .14], [0, 0, 1]], fingers: [null, "finger-heart"],

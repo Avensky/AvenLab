@@ -1,7 +1,7 @@
 import {useUIStore} from "../../store/menus/uiStore";
 import {SELECTION_CRIMSON} from "../../theme/garageLighting";
 import { Suspense, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { MathUtils, Vector3, type Group, type PerspectiveCamera as ThreePerspectiveCamera } from "three";
+import { MathUtils, Quaternion, Vector3, type Group, type PerspectiveCamera as ThreePerspectiveCamera } from "three";
 import { useFrame, useThree } from "@react-three/fiber";
 import { AssetBoundary } from "../../components/debugger/AssetBoundary";
 import { Html, PerspectiveCamera } from "@react-three/drei";
@@ -46,7 +46,7 @@ export function VehiclePreview({
   const vehicleId = awaitingHero ? selected ?? (driverStage ? favorite : undefined) : favorite;
   const { width, height } = useThree(s => s.size);
   const cameraRef = useRef<ThreePerspectiveCamera>(null);
-  const aim = useMemo(() => ({ target: new Vector3(), scale: new Vector3() }), []);
+  const aim = useMemo(() => ({ target: new Vector3(), scale: new Vector3(), offset: new Vector3(), rotation: new Quaternion() }), []);
   const [turntable, setTurntable] = useState<Group | null>(null);
   const [platform, setPlatform] = useState<[number, number]>(
     DEFAULT_PREVIEW_PLATFORM,
@@ -73,17 +73,24 @@ export function VehiclePreview({
     if (!anchor) return;
     const view = useCharacterPreviewStore.getState();
     const height = view.camera === "Face" ? 1.56 : view.camera === "Hands" ? 1.12 : .9;
-    const distance = view.camera === "Face" ? 1.25 : view.camera === "Hands" ? 1.95 : 4.25;
+    const distance = view.camera === "Face" ? .52 : view.camera === "Hands" ? 1.95 : 4.25;
     const scale = anchor.getWorldScale(aim.scale).y;
     const radius = distance * scale / MathUtils.clamp(view.zoom, CHARACTER_ZOOM_MIN, CHARACTER_ZOOM_MAX);
     const target = anchor.getWorldPosition(aim.target);
     target.y += height * scale;
-    const head = view.camera === "Face" && anchor.getObjectByName("head");
-    if (head) {
-      head.getWorldPosition(target);
-      target.y += .075 * scale;
+    if (view.camera === "Face") {
+      const focus = anchor.getObjectByName("villager-face-focus");
+      const head = focus ?? anchor.getObjectByName("head");
+      if (head) {
+        head.getWorldPosition(target);
+        if (!focus) target.y += .035 * scale;
+      }
+      anchor.getWorldQuaternion(aim.rotation);
+      aim.offset.set(0, radius * .13, radius).applyQuaternion(aim.rotation);
+      cameraRef.current.position.copy(target).add(aim.offset);
+    } else {
+      cameraRef.current.position.set(target.x + radius * .14, target.y + radius * .08, target.z + radius);
     }
-    cameraRef.current.position.set(target.x + radius * .14, target.y + radius * .08, target.z + radius);
     cameraRef.current.lookAt(target);
   });
   return (

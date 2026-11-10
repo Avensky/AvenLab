@@ -4,7 +4,8 @@ import {
 import { clone } from "three/addons/utils/SkeletonUtils.js";
 import { aimDriverJoint, driverArm } from "./garageEmotes";
 import { ROOK_ID, VILLAGER_ID, type CharacterLook } from "./characterCatalog";
-import { addVillagerFaceShapes } from "./villagerFace";
+import { addVillagerFaceShapes, prepareVillagerFaceColors } from "./villagerFace";
+import { prepareVillagerFaceAccessories } from "./villagerFaceAccessories";
 
 export function villagerModelUrl(look: CharacterLook, kind: "garage" | "portrait" = "garage") {
   if (look.character.id === ROOK_ID) return kind === "portrait" ? __ROOK_PORTRAIT_URL__ : __ROOK_MODEL_URL__;
@@ -12,7 +13,7 @@ export function villagerModelUrl(look: CharacterLook, kind: "garage" | "portrait
   return __VILLAGER_MODEL_URL__;
 }
 
-export function prepareVillager(scene: Object3D, { female = true, animateFace = false, bag = false } = {}) {
+export function prepareVillager(scene: Object3D, { female = true, animateFace = false, bag = false, wetEyes = false } = {}) {
   const root = clone(scene);
   root.name = female ? "garage-villager-female" : "garage-villager-male";
   const materials = new Map<MeshStandardMaterial, MeshStandardMaterial>();
@@ -33,7 +34,9 @@ export function prepareVillager(scene: Object3D, { female = true, animateFace = 
     // The authored culling bounds describe the original rest pose.
     object.frustumCulled = false;
   });
-  const faceGeometry = animateFace && female ? addVillagerFaceShapes(root) : [];
+  const faceGeometry = animateFace ? addVillagerFaceShapes(root, female) : [];
+  const applyFaceColors = prepareVillagerFaceColors(materials.values(), female);
+  const faceAccessories = prepareVillagerFaceAccessories(root, female, wetEyes);
   for (const side of ["l", "r"] as const) {
     const joints = driverArm(root, side);
     if (!joints) continue;
@@ -65,12 +68,13 @@ export function prepareVillager(scene: Object3D, { female = true, animateFace = 
   const shoes = root.getObjectByName(female ? "CLOTH_FEET_SHOES" : "CLOTH_FEET_BOOTS");
   if (shoes) root.position.y = -new Box3().setFromObject(shoes, true).min.y;
   return {
-    root, materials, accentMaterials, crop,
+    root, materials, accentMaterials, crop, applyFaceColors, faceAccessories,
     hat: root.getObjectByName("ACC_HAT"),
     longHair: root.getObjectByName("HAIR_HAIR20"),
     bow: root.getObjectByName("ACC_BOW"),
     dispose() {
       faceGeometry.forEach(geometry => geometry.dispose());
+      faceAccessories.dispose();
       materials.forEach(material => material.dispose());
       accentMaterials.forEach(material => material.dispose());
       skeletons.forEach(skeleton => skeleton.dispose());
@@ -81,6 +85,8 @@ export function prepareVillager(scene: Object3D, { female = true, animateFace = 
 }
 
 export function applyVillagerLook(model: ReturnType<typeof prepareVillager>, look: CharacterLook) {
+  model.applyFaceColors(look);
+  model.faceAccessories.setGlasses(look.appearance.glasses);
   for (const [source, material] of [...model.materials, ...model.accentMaterials]) {
     material.color.copy(source.color);
     switch (material.name) {

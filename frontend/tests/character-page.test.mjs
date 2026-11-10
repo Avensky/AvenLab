@@ -53,6 +53,11 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     })));
     const find = selector => document.querySelector(selector);
     const click = selector => act(async () => find(selector).click());
+    const select = (label, value) => act(async () => {
+      const input = find(`select[aria-label="${label}"]`);
+      input.value = value;
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
     const move = action => act(async () => route(action));
     const title = () => find('.menu-frame-header h1').textContent;
 
@@ -80,10 +85,14 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(preview.getState().emote.id, '035');
     await click('.character-emotes button:last-child');
     assert.equal(preview.getState().emote.id, 'oh-no');
-    await click('[aria-label="Emote collection"] button:last-child');
+    await click('[aria-label="Emote collection"] button:nth-child(5)');
     assert.equal(document.querySelectorAll('.character-emotes button').length, 10);
     await click('.character-emotes button:last-child');
     assert.equal(preview.getState().emote.id, '050');
+    await click('[aria-label="Emote collection"] button:last-child');
+    assert.equal(document.querySelectorAll('.character-emotes button').length, 10);
+    await click('.character-emotes button:first-child');
+    assert.equal(preview.getState().emote.id, '051');
     await click('[aria-label="Emote collection"] button:first-child');
     await click('[data-character-option="jules-okafor"]');
     assert.equal(find('[data-character-preview]').dataset.characterPreview, 'jules-okafor');
@@ -100,8 +109,19 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     };
     await acknowledge(requests[0], choice);
     assert.equal(find('[data-character-option]'), null);
-    assert.deepEqual([...document.querySelectorAll('[role=tab]')].map(node => node.textContent), ['Appearance', 'Clothes', 'Props', 'Emotes']);
+    assert.deepEqual([...document.querySelectorAll('[role=tab]')].map(node => node.textContent), ['Appearance', 'Face', 'Clothes', 'Props', 'Emotes']);
+    await click('#character-editor-tab-face');
+    assert.equal(preview.getState().camera, 'Face');
+    assert.equal(preview.getState().emote, null);
+    assert.equal(find('select[aria-label="Eye color"]').value, 'original');
+    await select('Eye color', 'blue');
+    await select('Eyebrow tint', 'copper');
+    await select('Glasses', 'aviator');
+    assert.equal(drafts.at(-1).appearance.eye_color, 'blue');
+    assert.equal(drafts.at(-1).appearance.brow_color, 'copper');
+    assert.equal(drafts.at(-1).appearance.glasses, 'aviator');
     await click('#character-editor-tab-clothes');
+    assert.equal(preview.getState().camera, 'Full body');
     await click('.character-outfits[aria-label="Outfits"] button:last-child');
     const gothic = [...document.querySelectorAll('button')].find(button => button.textContent === 'Gothic Pink');
     await act(async () => gothic.click());
@@ -111,6 +131,9 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(requests.length, 1);
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 350)); });
     assert.equal(requests.length, 2, 'rapid changes coalesce');
+    assert.equal(requests[1].character.appearance.eye_color, 'blue');
+    assert.equal(requests[1].character.appearance.brow_color, 'copper');
+    assert.equal(requests[1].character.appearance.glasses, 'aviator');
     await click('#character-editor-tab-props');
     await click('.character-outfits[aria-label="Props"] button:last-child');
     assert.equal(drafts.at(-1).prop, 'shop-bag');
@@ -127,9 +150,12 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     await click('[aria-label="Emote collection"] button:nth-child(4)');
     assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent),
       ['Shoetip shuffle', 'Compliment recoil', 'Timid invitation', 'Suppressed giggle', 'Gentle reassurance']);
-    await click('[aria-label="Emote collection"] button:last-child');
+    await click('[aria-label="Emote collection"] button:nth-child(5)');
     assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent),
       ['Sideways check', 'Caught smiling', 'Dismissive hand flick', 'Private fist pump']);
+    await click('[aria-label="Emote collection"] button:last-child');
+    assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent),
+      ['Little double take', 'Peek past the palm', 'Bashful heel twist']);
     await click('[aria-label="Preview gender"] [data-character-option="mara-vega"]');
     assert.equal(drafts.at(-1).id, 'mara-vega');
     assert.equal(drafts.at(-1).prop, 'shop-bag');
@@ -152,6 +178,8 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     await click('[data-open-character]');
     assert.equal(find('[data-outfit-preview]').dataset.outfitPreview, 'race-crew');
     assert.equal(find('[data-character-option]'), null, 'gender stays locked after reopening');
+    await click('#character-editor-tab-face');
+    assert.equal(find('select[aria-label="Eye color"]').value, 'blue');
 
   } finally {
     if (root) await act(async () => root.unmount());
@@ -183,7 +211,7 @@ test('all emote batches return to rest and keep planted and lifted feet distinct
     const clips = buildGarageEmotes(model.root, false, true);
     const mixer = new AnimationMixer(model.root);
     const ids = clips.map(clip => clip.name.split(' ')[0]);
-    assert.deepEqual(ids.filter(id => /^\d+$/.test(id)).sort(), Array.from({length: 50}, (_, i) => String(i + 1).padStart(3, '0')));
+    assert.deepEqual(ids.filter(id => /^\d+$/.test(id)).sort(), Array.from({length: 60}, (_, i) => String(i + 1).padStart(3, '0')));
     assert.deepEqual(ids.filter(id => id.startsWith('walk-')), ['walk-casual', 'walk-glance']);
     assert.deepEqual(buildGarageEmotes(model.root).map(clip => clip.name.split(' ')[0]), [...ids.slice(0, 10), '035']);
     assert(!buildGarageEmotes(model.root, true).some(clip => clip.name.startsWith('035 ')));

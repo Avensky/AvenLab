@@ -591,6 +591,13 @@ async fn character_equip_validates_the_choice_and_persists_it_on_the_profile() {
     invalid_style["appearance"]["hair"] = json!("missing");
     assert!(s.handle(&player, json!({"action": "character_equip", "character": invalid_style})).await.is_err());
     assert_eq!(s.handle(&player, json!({"action": "character_equip", "character": styled})).await.unwrap()["character"], styled);
+    for (field, value) in [("eye_color", "blue"), ("brow_color", "copper"), ("glasses", "aviator")] {
+        let mut invalid_face = styled.clone();
+        invalid_face["appearance"][field] = json!("missing");
+        assert!(s.handle(&player, json!({"action": "character_equip", "character": invalid_face})).await.is_err());
+        styled["appearance"][field] = json!(value);
+    }
+    assert_eq!(s.handle(&player, json!({"action": "character_equip", "character": styled})).await.unwrap()["character"], styled);
     let reloaded: SocialData = serde_json::from_slice(&tokio::fs::read(&s.path).await.unwrap()).unwrap();
     let progression = &reloaded.profiles[profile].progression;
     assert_eq!(progression.view()["character"], styled);
