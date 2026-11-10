@@ -164,7 +164,7 @@
   min-height: 30px;
   padding: 5px 8px;
   border: 1px solid var(--vehicle-studio-line);
-  border-radius: 5px;
+  border-radius: 0;
   background: var(--vehicle-studio-raised);
   color: var(--vehicle-studio-ink);
   font-size: 8px;
@@ -278,7 +278,7 @@
 .vehicle-upgrade-segments i:nth-child(4) { height: 12px; }
 .vehicle-upgrade-segments i:nth-child(5) { height: 14px; }
 .vehicle-studio .vehicle-performance-page button,.vehicle-studio-panel-actions button {
-  min-height: 30px; padding: 4px 7px; border: 1px solid var(--vehicle-studio-line); border-radius: 3px; background: var(--vehicle-studio-raised); color: var(--vehicle-studio-ink); font-size: 9px; font-weight: 800; cursor: pointer;
+  min-height: 30px; padding: 4px 7px; border: 1px solid var(--vehicle-studio-line); border-radius: 0; background: var(--vehicle-studio-raised); color: var(--vehicle-studio-ink); font-size: 9px; font-weight: 800; cursor: pointer;
 }
 .vehicle-studio .vehicle-performance-page button:is(:hover,:focus-visible,[aria-pressed="true"]),.vehicle-studio-panel-actions button:is(:hover,:focus-visible) { border-color: var(--vehicle-studio-accent); outline: 1px solid var(--vehicle-studio-accent); outline-offset: 1px; }
 .vehicle-studio .vehicle-performance-page button[aria-pressed="true"] { background: var(--vehicle-studio-accent); color: var(--vehicle-studio-selected-ink); }
@@ -296,7 +296,7 @@
   align-items: center;
   padding: 0 9px;
   border: 1px solid var(--vehicle-studio-line);
-  border-radius: 5px;
+  border-radius: 0;
   background: var(--vehicle-studio-raised);
   font-size: 8px;
   font-weight: 900;

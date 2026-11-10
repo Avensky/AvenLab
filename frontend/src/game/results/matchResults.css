@@ -25,3 +25,12 @@
 .rescue-emote{position:relative;width:100%;height:clamp(180px,38dvh,370px);overflow:hidden;background:#303c49}
 .rescue-emote>button{position:absolute;bottom:8px;right:8px}
 .result-highlight button,.rescue-emote button{padding:.5rem .8rem;color:#eef2f5;background:#202731;border:1px solid #78828d}
+
+.result-victory-preview {
+  max-width: 1200px;
+  margin: 10px auto 18px;
+  background: var(--app-panel);
+  border: 1px solid var(--app-line);
+}
+.result-victory-stage { height: clamp(152px, 38dvh, 345px); }
+.result-victory-caption { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 10px; }

@@ -3,6 +3,8 @@
 .hero-selection.hero-workshop:not(.hero-ability-guide){background:transparent!important;}
 .hero-workshop-body{position:relative;display:flex;flex:1;flex-direction:column;min-height:0;padding:0;pointer-events:none;}
 .hero-workshop-picker{flex:1;min-height:0;}
+.hero-garage-zoom{position:absolute;bottom:0;left:50%;z-index:11;}
+.hero-garage-zoom .hero-preview-zoom{right:auto;transform:translateX(-50%);}
 .hero-workshop .hero-guide-scroll{pointer-events:auto;}
 .hero-workshop .hero-main-portrait-badge{position:absolute;right:3px;bottom:3px;display:flex;align-items:center;gap:3px;padding:0;background:transparent;color:white;font-size:7px;text-shadow:0 1px 3px #000,0 0 4px #000;pointer-events:none;}
 .hero-workshop .hero-main-portrait-badge :is(.controller-key,.keyboard-key){width:13px;min-width:13px;height:13px;min-height:13px;padding:0;font-size:9px;}

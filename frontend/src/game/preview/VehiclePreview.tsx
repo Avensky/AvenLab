@@ -16,6 +16,7 @@ import { useSocialStore } from "../../store/social/socialStore";
 import { DEFAULT_CHARACTER, type CharacterChoice } from "../characters/characterCatalog";
 import { CHARACTER_ZOOM_MAX, CHARACTER_ZOOM_MIN, useCharacterPreviewStore } from "../characters/characterPreviewStore";
 import { HEROES, useAlphaStore } from "../../store/alpha/alphaStore";
+import { PREVIEW_ZOOM_LEVELS, usePreviewZoom } from "./previewZoomStore";
 
 const DRIVER_STAGE_CAMERA: [number, number, number] = [2.8, 2.5, 5.8];
 const STANDARD_STAGE_CAMERA: [number, number, number] = [0, 3.2, 7.25];
@@ -36,6 +37,7 @@ export function VehiclePreview({
   const mode = useAlphaStore(s => s.mode);
   const favorite = useSelectionStore(s => s.getSelectedVehicle().id);
   const workshop = screen === "heroes";
+  const zoom = usePreviewZoom(s => !wardrobeOpen && (workshop || screen === "hero_select") ? PREVIEW_ZOOM_LEVELS[s.level] : 1);
   const sandboxPicker = screen === "hero_select" && mode === "sandbox";
   const driverStage = workshop || sandboxPicker;
   const equipped = useSocialStore(s => driverStage ? s.view?.profile.progression?.character : null);
@@ -60,10 +62,11 @@ export function VehiclePreview({
     if (!camera || !width || !height) return;
     const offsetX = width * (sandboxPicker ? .15 : workshop && !wardrobeOpen ? .07 : 0);
     const offsetY = wardrobeOpen ? height * .055 : heroLayout && aspect < 1 ? -height * .04 : 0;
+    camera.zoom = zoom;
     camera.setViewOffset(width, height, offsetX, offsetY, width, height);
     camera.position.set(...cameraPosition);
     camera.lookAt(0, driverStage ? 1.17 : 1.35, 0);
-  }, [aspect, cameraPosition, driverStage, height, heroLayout, sandboxPicker, wardrobeOpen, width, workshop]);
+  }, [aspect, cameraPosition, driverStage, height, heroLayout, sandboxPicker, wardrobeOpen, width, workshop, zoom]);
   useFrame(() => {
     if (!wardrobeOpen || !cameraRef.current) return;
     const anchor = turntable?.getObjectByName("garage-driver");
@@ -108,7 +111,7 @@ export function VehiclePreview({
         >
           <Suspense fallback={null}>
             <group rotation={[0, Math.PI / 2, 0]}>
-              <VehiclePreviewModel platform={platform} model={vehicleId} driver={driver} />
+              <VehiclePreviewModel platform={platform} model={vehicleId} driver={driver} previewVictory={wardrobeOpen} />
             </group>
           </Suspense>
         </AssetBoundary>}

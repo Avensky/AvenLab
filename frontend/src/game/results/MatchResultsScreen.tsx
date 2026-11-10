@@ -5,8 +5,10 @@ import {MenuFooter} from '../../components/menus/MenuFrame';
 import {trapMenuFocus} from '../../components/menus/menuFocus';
 import {HEROES,matchModeLabel,modeTeamSize} from '../../store/alpha/alphaStore';
 import {useUIStore} from '../../store/menus/uiStore';
+import {useSocialStore} from '../../store/social/socialStore';
 import {closeMatchResults,useMatchResultsStore} from '../../store/session/matchResultsStore';
 import {HeroPortrait} from '../alpha/HeroPortrait';
+import {DEFAULT_CHARACTER,type CharacterChoice} from '../characters/characterCatalog';
 import type {CareerAward,CareerMatch,CareerParticipant,CareerStats} from '../career/careerTypes';
 import {MatchPlayerDetails,MatchStatsTable,MatchTeamComposition,MatchTeamFilterTabs} from '../stats/MatchPresentation';
 import {formatStat,killDeathRatio} from '../stats/scoreboardData';
@@ -15,6 +17,7 @@ import {RESULT_TABS,resultDuration,resultOutcome,resultPlayers} from './resultDa
 import './matchResults.css';
 
 const RescueEmote=lazy(()=>import('./RescueEmote'));
+const VictoryPreview=lazy(()=>import('./VictoryPreview'));
 const AWARD_LABELS:Record<CareerAward,string>={mvp:'MVP',svp:'SVP',top_support:'TOP SUPPORT',play_of_the_game:'PLAY OF THE GAME'};
 function AwardCard({award,player,record}:{award:CareerAward;player:CareerParticipant|undefined;record:CareerMatch}){
  const hero=HEROES.find(hero=>hero.id===player?.hero),play=record.play_of_game;
@@ -24,16 +27,26 @@ function AwardCard({award,player,record}:{award:CareerAward;player:CareerPartici
   {player?<><HeroPortrait hero={player.hero} appearance={player.appearance} className="result-award-portrait"/><div className="result-award-identity"><h3>{player.name}</h3><p>{hero?.name??player.hero} · {hero?.role.toUpperCase()??'VEHICLE'}{player.level!==undefined?` · LV ${player.level}`:''}</p></div><strong>{metric}</strong><small>{award==='mvp'?'WINNING TEAM':award==='svp'?'LOSING TEAM':award==='top_support'?'EFFECTIVE TEAM SUPPORT':'SERVER CONFIRMED HIGHLIGHT'}</small></>:<div className="result-award-empty"><strong>—</strong><p>{award==='svp'&&record.winner===null?'NO LOSING TEAM':record.training?'NO COMPETITIVE AWARD':'NO AWARD RECORDED'}</p></div>}
  </article>;
 }
-function Awards({record}:{record:CareerMatch}){
+function Awards({record,victoryChoice}:{record:CareerMatch;victoryChoice?:CharacterChoice}){
  const award=(kind:CareerAward)=>record.participants.find(player=>player.awards.includes(kind)&&(kind!=='mvp'||record.winner!==null&&player.team===record.winner)&&(kind!=='svp'||record.winner!==null&&player.team!==record.winner));
  const play=record.play_of_game,performer=play?record.participants.find(player=>player.profile_id===play.profile_id):undefined;
  const [show,setShow]=useState(false);
+ const [showVictory,setShowVictory]=useState(false);
  const trigger=useRef<HTMLButtonElement>(null);
  const model=HEROES.find(h=>h.id===performer?.hero)?.vehicle;
  const close=()=>{setShow(false);requestAnimationFrame(()=>trigger.current?.focus());};
  return <><div className="result-awards-grid">{(['mvp','svp','top_support','play_of_the_game'] as const).map(kind=><AwardCard key={kind} award={kind} player={kind==='play_of_the_game'?performer:award(kind)} record={record}/>)}</div>
-  <section className="result-highlight" aria-label="Play of the game summary"><div><small>MATCH HIGHLIGHT</small><h2>{performer?`${performer.name} · PLAY OF THE GAME`:'PLAY OF THE GAME'}</h2><p>{play?`${play.kills} killing blow${play.kills===1?'':'s'} · ${play.captures} capture${play.captures===1?'':'s'} · ${formatStat(play.damage)} damage during ${resultDuration(play.start_s)} – ${resultDuration(play.end_s)}.`:'No highlight was recorded for this session.'}</p></div>{model && !show && <button ref={trigger} type="button" onClick={()=>setShow(true)}>Play extraction emote</button>}</section>
+  <section className="result-highlight" aria-label="Play of the game summary"><div><small>MATCH HIGHLIGHT</small><h2>{performer?`${performer.name} · PLAY OF THE GAME`:'PLAY OF THE GAME'}</h2><p>{play?`${play.kills} killing blow${play.kills===1?'':'s'} · ${play.captures} capture${play.captures===1?'':'s'} · ${formatStat(play.damage)} damage during ${resultDuration(play.start_s)} – ${resultDuration(play.end_s)}.`:'No highlight was recorded for this session.'}</p></div>{model && !show && <button ref={trigger} type="button" onClick={()=>{setShowVictory(false);setShow(true);}}>Play extraction emote</button>}</section>
   {model && show && <Suspense fallback={<p role="status">Loading extraction…</p>}><RescueEmote model={model} onClose={close}/></Suspense>}
+  {victoryChoice && <>
+   <section className="result-highlight" aria-label="Victory celebration">
+    <div><small>VICTORY ESSENTIALS</small><h2>Your driver celebrates</h2></div>
+    <button type="button" aria-expanded={showVictory} onClick={()=>{setShow(false);setShowVictory(value=>!value);}}>
+     {showVictory?'Hide celebration':'Play victory emote'}
+    </button>
+   </section>
+   {showVictory && <Suspense fallback={<p role="status">Loading victory preview…</p>}><VictoryPreview choice={victoryChoice}/></Suspense>}
+  </>}
  </>;
 }
 const DETAIL_STATS:readonly {key:keyof CareerStats;label:string;decimals?:number;unit?:string}[]=[
@@ -53,6 +66,7 @@ function PersonalStats({player,self}:{player:CareerParticipant|undefined;self:bo
 export function MatchResultsScreen(){
  const state=useMatchResultsStore(),root=useRef<HTMLElement>(null),scroll=useRef<HTMLDivElement>(null);
  const {record,source,profileId,tab,teamFilter,selectedPlayer,busy,error}=state;
+ const equipped=useSocialStore(s=>s.view?.profile.id===profileId?s.view?.profile.progression?.character:undefined);
  const history=source==='history',rows=record?resultPlayers(record,profileId):[],selected=record?.participants.find(player=>player.profile_id===selectedPlayer),outcome=record?resultOutcome(record,profileId):'completed';
  const close=()=>{if(history)closeMatchResults();else void leaveMatchResults();};
  useEffect(()=>{
@@ -97,7 +111,7 @@ export function MatchResultsScreen(){
   <header className="match-results-header"><div className="result-outcome menu-title-with-logo"><MenuLogo compact/><div><small>{history?'CAREER · MATCH HISTORY':record.training?'TRAINING SESSION':'MATCH COMPLETE'}</small><h1>{outcome==='completed'?'SESSION COMPLETE':outcome.toUpperCase()}</h1></div></div><div className="result-world"><strong>{record.map.replaceAll('_',' ').toUpperCase()}</strong><span>{matchModeLabel(record.mode,record.team_size??undefined)} · {resultDuration(record.duration_s)}{record.training?' · TRAINING':''}</span></div><div className="result-final-score" aria-label={`Final score Red ${record.score[0]}, Blue ${record.score[1]}`}><span data-team="red">{record.score[0]}</span><small>FINAL</small><span data-team="blue">{record.score[1]}</span></div></header>
   <nav className="result-tabs" aria-label="Result sections" role="tablist"><span className="result-tab-hint"><ControlGlyph controller="LB" keyboard="Q"/></span>{RESULT_TABS.map(value=><button type="button" key={value} role="tab" id={`result-tab-${value}`} aria-controls={`result-panel-${value}`} aria-selected={tab===value} onClick={()=>state.selectTab(value)}>{value.toUpperCase()}</button>)}<span className="result-tab-hint"><ControlGlyph controller="RB" keyboard="E"/></span><p>{history?'ARCHIVED SERVER RESULT':'SERVER CONFIRMED RESULT'}</p></nav>
   <div ref={scroll} className="result-scroll" role="tabpanel" id={`result-panel-${tab}`} aria-labelledby={`result-tab-${tab}`} tabIndex={0}>
-   {tab==='awards'&&<><Awards record={record}/><PersonalStats player={own} self/></>}
+   {tab==='awards'&&<><Awards key={record.match_id} record={record} victoryChoice={!history&&outcome==='victory'?(equipped??DEFAULT_CHARACTER):undefined}/><PersonalStats player={own} self/></>}
    {tab==='team'&&<><MatchTeamFilterTabs filter={teamFilter} onChange={state.setTeamFilter}/><div className="result-team-layout"><MatchTeamComposition teamSize={modeTeamSize(record.mode,record.team_size??undefined)} players={rows} teamFilter={teamFilter} selectedId={activeRow?.id} onSelect={state.selectPlayer}/><MatchPlayerDetails player={activeRow??null}/></div></>}
    {tab==='stats'&&<div className="result-stats-layout"><MatchStatsTable teamSize={modeTeamSize(record.mode,record.team_size??undefined)} players={rows} selectedId={selectedPlayer} onSelect={state.selectPlayer}/><PersonalStats player={selected??own} self={(selected??own)?.profile_id===profileId}/></div>}
   </div>

@@ -21,7 +21,7 @@
   height: 28px;
   padding: 0;
   border: 1px solid var(--vehicle-studio-line, var(--app-line));
-  border-radius: 4px;
+  border-radius: 0;
   background: var(--vehicle-studio-raised, var(--app-raised));
   color: inherit;
   cursor: pointer;

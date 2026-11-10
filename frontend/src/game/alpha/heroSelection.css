@@ -70,6 +70,23 @@
 }
 .hero-picker-preview .hero-summary { width: calc(100% - 10px); }
 .hero-picker-preview .hero-chat-panel { max-width: calc(100% - 10px); }
+.hero-preview-zoom {
+  position: absolute;
+  inset: auto 6px 6px auto;
+  z-index: 1;
+  display: flex;
+  gap: 2px;
+}
+.hero-preview-zoom button.menu-control {
+  justify-content: center;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0 4px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.hero-preview-zoom button:disabled { opacity: .8; }
+.hero-picker-preview:has(.hero-preview-zoom) .hero-chat-panel { max-width: calc(100% - 112px); }
 .hero-picker-stage > .hero-roster {
   grid-area: 1 / 2;
   position: static;

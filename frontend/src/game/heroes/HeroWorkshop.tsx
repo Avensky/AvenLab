@@ -15,6 +15,7 @@ import {heroRoleHeaderTabs,HERO_CONCEPT_TAB} from "../alpha/heroRoleFilters";
 import {HoldMainButton} from "./HoldMainButton";
 import {SelectionFooter,SelectionHeader} from "../alpha/SelectionChrome";
 import {CHARACTER_TABS,CharacterPage,type CharacterTab} from "../characters/CharacterPage";
+import {PreviewZoom} from "../preview/PreviewZoom";
 import {CharacterHeaderProfile} from "../characters/CharacterHeaderProfile";
 import type {CharacterChoice} from "../characters/characterCatalog";
 import {ControllerAction} from "../../components/controller";
@@ -257,6 +258,7 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
         </div>
       </section>
         {status!=="idle"&&<div className="hero-collection-save-status" role="status">{status==="error"?`NOT SAVED · ${message}`:status==="saved"?"SAVED TO YOUR PLAYER":"SAVING YOUR STYLE…"}{status==="error"&&<button className="menu-control" onClick={()=>void queue.flush()}>RETRY SAVE</button>}</div>}
+        {definition&&<PreviewZoom/>}
     </div>
     <HeroRoster showFilters={false} allowBoats selected={hero} main={main} filter={role} busy={!owner} onChoose={openHero} onFilter={setRole}/>
    </div>}
@@ -345,6 +347,7 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
     {(!owner||status!=="idle")&&<p className="vehicle-studio-save-status" role="status" aria-live="polite">{!owner?"CONNECT YOUR PLAYER PROFILE":status==="pending"||status==="saving"?"SAVING YOUR STYLE…":status==="error"?`NOT SAVED · ${message}`:status==="saved"?"SAVED TO YOUR PLAYER · SHARED IN GAME":"Appearance changes save automatically for this vehicle."}</p>}
     {status==="error"&&<button className="menu-control" onClick={()=>void queue.flush()}>RETRY SAVE</button>}
    </VehicleStudio>}
+   {editing&&definition&&studioTab!=="abilities"&&<div className="hero-garage-zoom"><PreviewZoom/></div>}
   </div>
   <SelectionFooter tabs={!characterOpen||characterReady} selectLabel={editing&&studioTab==="abilities"?"Toggle":undefined} hasPrimaryAction={!characterOpen&&(!editing||studioTab!=="abilities")} backAction={{onClick:()=>void back(),label:"Back"}}>{!characterOpen&&<div className="hero-workshop-actions">
    {!viewingReference&&<ControllerAction button="A" type="button" className="menu-control" disabled={!owner} tabIndex={-1} onClick={()=>editing?setPage("heroes"):openHero()}>{editing?"APPLY":"OPEN GARAGE"}</ControllerAction>}

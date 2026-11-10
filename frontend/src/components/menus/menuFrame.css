@@ -48,7 +48,7 @@ img.menu-logo--header {
  .menu-frame-header[data-team-heading]>div:first-child>small{font-size:6px;letter-spacing:.04em}
  .menu-header-team{font-size:26px;letter-spacing:.02em;gap:.18em}
 }
-.menu-frame .menu-control{min-height:34px;padding:7px 13px;border-radius:4px;background:var(--app-raised);border:1px solid var(--app-line);color:var(--app-text);box-shadow:none}
+.menu-frame .menu-control{min-height:34px;padding:7px 13px;border-radius:0;background:var(--app-raised);border:1px solid var(--app-line);color:var(--app-text);box-shadow:none}
 .menu-frame .menu-control:hover{border-color:var(--app-accent);box-shadow:0 0 12px color-mix(in srgb,var(--app-accent) 18%,transparent)}
 .menu-frame .menu-frame-tabs{display:flex;flex-shrink:0;overflow-x:auto;min-height:0;border-bottom:1px solid var(--app-line);padding:0 var(--menu-gutter);gap:0;scrollbar-width:none;background:transparent}
 .menu-frame .menu-frame-tabs .menu-control{border:0;border-bottom:3px solid transparent;border-radius:0;flex:0 0 auto;min-height:var(--menu-tab-height);padding:var(--menu-tab-y) 16px;background:transparent;color:var(--app-muted);font-weight:750;text-transform:uppercase;font-size:11px;letter-spacing:.04em}

@@ -1,30 +1,41 @@
 import {
-  AnimationClip, Euler, NumberKeyframeTrack, Quaternion, QuaternionKeyframeTrack, Vector3, VectorKeyframeTrack,
+  AnimationClip, Bone, Euler, NumberKeyframeTrack, Quaternion, QuaternionKeyframeTrack, Vector3, VectorKeyframeTrack,
   type Object3D,
 } from "three";
 import { driverFaceTargets } from "./villagerFace";
+import { availableVictoryEmotes } from "./victoryEmotes";
 
-type XYZ = readonly [number, number, number];
+export type XYZ = readonly [number, number, number];
 type Arm = readonly [upper: XYZ, lower: XYZ];
+type HandShape = "fist" | "peace" | "heart";
+// Offsets from the resting ankle in stage meters, with optional toe yaw.
+type Foot = readonly [across: number, lift: number, forward: number, pivot?: number];
 type Pose = {
   torso?: XYZ;
   head?: XYZ;
   left?: Arm;
   right?: Arm;
+  leftHand?: XYZ;
+  rightHand?: XYZ;
+  fingers?: readonly [HandShape | null, HandShape | null];
+  wristLeft?: number;
   wrist?: number;
   turn?: number;
   rise?: number;
-  knees?: number;
+  sway?: number;
+  feet?: { l?: Foot; r?: Foot };
+  elbowsBack?: boolean;
   face?: readonly [smile: number, brow: number];
 };
-type Emote = { id: string; name: string; duration: number; keys: readonly (readonly [time: number, pose: Pose])[] };
+export type Emote = { id: string; name: string; duration: number; keys: readonly (readonly [time: number, pose: Pose])[] };
 
 // Arm targets are model-space directions. Positive Z is forward. The same
 // poses are retargeted to the imported skeleton and the built-in driver rigs.
-const behindLeft: Arm = [[1.5, -3.5, -2.2], [-3, .45, -1.9]];
-const behindRight: Arm = [[-1.5, -3.5, -2.2], [3, .45, -1.9]];
-const liftLeft: Arm = [[1.5, -4, 0], [1, 1, 2]];
-const liftRight: Arm = [[-1.5, -4, 0], [-1, 1, 2]];
+const behind = { leftHand: [.31, -.75, -.51], rightHand: [-.31, -.73, -.55], elbowsBack: true } as const;
+const releaseBehind = { leftHand: [1.25, -.87, -.34], rightHand: [-1.25, -.87, -.34], elbowsBack: true } as const;
+const faceCar = { turn: 1.77, rise: -.027, feet: { l: [.025, 0, .015, 1.66], r: [-.018, 0, -.028, 1.82] } } as const;
+const startPivot = { turn: .62, rise: -.018, feet: { l: [.015, .038, .024, .96] } } as const;
+const finishPivot = { turn: 1.31, rise: -.025, feet: { l: faceCar.feet.l, r: [-.01, .045, -.022, 1.18] } } as const;
 const claspLeft: Arm = [[1, -4, 1.2], [-2.4, 1.3, 3.5]];
 const claspRight: Arm = [[-1, -4, 1.2], [2.4, 1.3, 3.5]];
 const wave: Arm = [[-1, -.55, .28], [-.24, 1, .28]];
@@ -35,70 +46,75 @@ export const GARAGE_EMOTES = [
     [.5, {}], [.77, { torso: [.014, 0, -.012], head: [.012, .027, 0] }], [1, {}],
   ] },
   { id: "002", name: "Comfortable weight shift", duration: 2.7, keys: [
-    [.29, { torso: [.018, -.07, .115], head: [0, .06, -.072] }],
-    [.62, { torso: [.02, -.04, .09], head: [-.02, .04, -.055] }],
-    [.8, { torso: [0, .03, -.035] }],
+    [.23, { sway: -.043, rise: -.023, feet: { l: [.025, .035, .032] }, torso: [.018, -.07, .08] }],
+    [.39, { sway: .068, rise: -.038, feet: { l: [.065, 0, .065, .16] }, torso: [.018, -.07, .115], head: [0, .06, -.072] }],
+    [.64, { sway: .081, rise: -.037, feet: { l: [.065, 0, .065, .16] }, torso: [.02, -.04, .09], head: [-.02, .04, -.055] }],
+    [.83, { sway: -.027, rise: -.018, feet: { l: [.027, .031, .025, .08] }, torso: [0, .03, -.035] }],
   ] },
   { id: "003", name: "Curious head tilt", duration: 2.6, keys: [
-    [.26, { torso: [.045, -.08, .025], head: [-.08, .1, -.2], face: [.24, .9] }],
-    [.55, { torso: [.045, -.05, .025], head: [-.06, .13, -.17], face: [.28, .65] }],
+    [.26, { sway: .034, rise: -.021, torso: [.045, -.08, .025], head: [-.08, .1, -.2], face: [.24, .9] }],
+    [.55, { sway: .044, rise: -.024, torso: [.045, -.05, .025], head: [-.06, .13, -.17], face: [.28, .65] }],
     [.79, { head: [.02, -.25, -.04] }],
   ] },
   { id: "004", name: "Hands behind back", duration: 3.2, keys: [
-    [.15, { left: liftLeft, right: liftRight }],
-    [.3, { left: behindLeft, right: behindRight, torso: [-.035, 0, .04], head: [.04, -.12, 0] }],
-    [.62, { left: behindLeft, right: behindRight, torso: [-.025, .065, -.045], head: [.025, .1, .03], face: [.45, .2] }],
-    [.78, { left: behindLeft, right: behindRight, torso: [0, .04, 0] }],
-    [.9, { left: liftLeft, right: liftRight }],
+    [.16, { ...releaseBehind, sway: -.025, rise: -.019, feet: { l: [.015, .032, -.035] } }],
+    [.32, { ...behind, sway: -.041, rise: -.025, feet: { l: [.021, 0, -.064] }, torso: [-.035, 0, .04], head: [.04, -.12, 0] }],
+    [.62, { ...behind, sway: .021, rise: -.033, feet: { l: [.021, 0, -.064] }, torso: [-.025, .065, -.045], head: [.025, .1, .03], face: [.45, .2] }],
+    [.77, { ...behind, sway: -.029, rise: -.021, feet: { l: [.021, 0, -.064] }, torso: [0, .04, 0] }],
+    [.9, { ...releaseBehind, sway: -.02, rise: -.018, feet: { l: [.01, .026, -.031] } }],
   ] },
   { id: "005", name: "Admire the car", duration: 3.1, keys: [
-    [.25, { turn: 1.72, torso: [.02, .09, 0], head: [.09, .34, 0] }],
-    [.52, { turn: 1.88, torso: [.045, 0, 0], head: [-.08, .03, -.03], face: [.55, .4] }],
-    [.65, { turn: 1.88, head: [.16, -.06, 0], face: [.6, .2] }],
-    [.77, { turn: 1.72, head: [-.035, -.1, 0] }],
+    [.13, { ...startPivot, head: [.04, .31, 0] }],
+    [.22, { ...finishPivot, torso: [.02, .09, 0], head: [.09, .34, 0] }],
+    [.35, { ...faceCar, torso: [.045, 0, 0], head: [-.08, .03, -.03], face: [.55, .4] }],
+    [.66, { ...faceCar, sway: .021, head: [.16, -.06, 0], face: [.6, .2] }],
+    [.79, { ...finishPivot, head: [-.035, -.1, 0] }],
+    [.9, startPivot],
   ] },
   { id: "006", name: "Inspect the wheel", duration: 3.2, keys: [
-    [.25, { turn: 1.92, head: [.15, .1, 0] }],
-    [.47, { turn: 2.15, torso: [.32, .07, 0], head: [.26, .13, -.045], left: claspLeft, right: claspRight, face: [0, -.55] }],
-    [.67, { turn: 2.15, torso: [.28, .03, 0], head: [.2, -.03, .03], left: claspLeft, right: claspRight, face: [.15, -.4] }],
-    [.81, { turn: 1.8, torso: [.07, 0, 0], head: [.08, 0, 0] }],
+    [.13, { ...startPivot, head: [.1, .15, 0] }],
+    [.25, { ...finishPivot, head: [.15, .1, 0] }],
+    [.47, { ...faceCar, rise: -.092, sway: .052, torso: [.32, .19, 0], head: [.26, .13, -.045], left: claspLeft, right: claspRight, face: [0, -.55] }],
+    [.67, { ...faceCar, rise: -.079, sway: .043, torso: [.28, .14, 0], head: [.2, -.03, .03], left: claspLeft, right: claspRight, face: [.15, -.4] }],
+    [.8, { ...finishPivot, torso: [.07, 0, 0], head: [.08, 0, 0] }],
+    [.91, startPivot],
   ] },
   { id: "007", name: "Tiny happy bounce", duration: 2.35, keys: [
-    [.23, { torso: [.09, 0, 0], left: claspLeft, right: claspRight, rise: -.014, knees: .18 }],
-    [.35, { torso: [-.08, 0, -.04], left: claspLeft, right: claspRight, rise: .025, knees: .04, face: [.95, .7] }],
-    [.47, { torso: [.075, 0, .035], left: claspLeft, right: claspRight, rise: -.014, knees: .18 }],
-    [.59, { torso: [-.06, 0, .035], left: claspLeft, right: claspRight, rise: .018, knees: .035, face: [.95, .5] }],
+    [.23, { torso: [.09, 0, 0], left: claspLeft, right: claspRight, rise: -.034 }],
+    [.35, { torso: [-.08, 0, -.04], left: claspLeft, right: claspRight, rise: .031, feet: { l: [0, .037, 0], r: [0, .035, 0] }, face: [.95, .7] }],
+    [.47, { torso: [.075, 0, .035], left: claspLeft, right: claspRight, rise: -.04 }],
+    [.59, { torso: [-.06, 0, .035], left: claspLeft, right: claspRight, rise: .023, feet: { l: [0, .026, 0], r: [0, .024, 0] }, face: [.95, .5] }],
     [.74, { head: [.065, -.08, .04], left: claspLeft, right: claspRight, face: [.6, .25] }],
   ] },
   { id: "008", name: "Shoulder stretch", duration: 3.1, keys: [
     [.22, { torso: [-.065, .1, .035], head: [.04, -.06, 0], right: [[-1, -3, 2], [2, 1.5, 1.8]] }],
-    [.46, { torso: [-.08, .16, -.075], head: [.05, -.18, .04], right: [[1, -.5, 2], [3, 0, 1]], left: [[1, -2, 1], [-3, 2, 1]] }],
-    [.72, { torso: [-.05, .13, -.05], head: [.025, -.12, 0], right: [[1, -.6, 2], [3, -.2, 1]], left: [[1, -2, 1], [-3, 2, 1]] }],
+    [.46, { sway: .043, rise: -.031, torso: [-.08, .16, -.075], head: [.05, -.18, .04], right: [[1, -.5, 2], [3, 0, 1]], left: [[1, -2, 1], [-3, 2, 1]] }],
+    [.72, { sway: .052, rise: -.026, torso: [-.05, .13, -.05], head: [.025, -.12, 0], right: [[1, -.6, 2], [3, -.2, 1]], left: [[1, -2, 1], [-3, 2, 1]] }],
   ] },
   { id: "009", name: "Straighten the outfit", duration: 2.8, keys: [
     [.24, { torso: [.055, 0, 0], head: [.19, 0, 0], left: claspLeft, right: claspRight }],
-    [.43, { head: [.22, -.12, 0], left: [[1, -4, 1.2], [-2, .65, 3.5]], right: claspRight, face: [.12, -.3] }],
-    [.62, { head: [.2, .12, 0], left: [[1, -4, 1.2], [-2, -.25, 3.5]], right: [[-1, -4, 1.2], [2, .65, 3.5]], face: [.22, -.3] }],
+    [.43, { sway: -.036, rise: -.025, head: [.22, -.12, 0], left: [[1, -4, 1.2], [-2, .65, 3.5]], right: claspRight, face: [.12, -.3] }],
+    [.62, { sway: .038, rise: -.024, head: [.2, .12, 0], left: [[1, -4, 1.2], [-2, -.25, 3.5]], right: [[-1, -4, 1.2], [2, .65, 3.5]], face: [.22, -.3] }],
     [.78, { head: [.12, 0, 0], right: [[-1, -4, 1.2], [2, -.25, 3.5]], face: [.38, .12] }],
   ] },
   { id: "010", name: "Friendly wave", duration: 2, keys: [
-    [.22, { right: wave, head: [-.045, .1, .09], wrist: -.23, face: [.9, .55] }],
-    [.35, { right: wave, head: [-.045, .1, .09], wrist: .28, face: [1, .45] }],
-    [.46, { right: wave, head: [-.025, .08, .065], wrist: -.27, face: [1, .42] }],
-    [.58, { right: wave, head: [-.025, .08, .065], wrist: .25, face: [.88, .32] }],
-    [.7, { right: wave, head: [.025, .06, .04], wrist: -.15, face: [.7, .25] }],
+    [.22, { sway: -.027, rise: -.023, right: wave, head: [-.045, .1, .09], wrist: -.23, face: [.9, .55] }],
+    [.35, { sway: -.042, rise: -.019, right: wave, head: [-.045, .1, .09], wrist: .28, face: [1, .45] }],
+    [.46, { sway: -.045, rise: -.018, right: wave, head: [-.025, .08, .065], wrist: -.27, face: [1, .42] }],
+    [.58, { sway: -.038, rise: -.022, right: wave, head: [-.025, .08, .065], wrist: .25, face: [.88, .32] }],
+    [.7, { sway: -.027, rise: -.015, right: wave, head: [.025, .06, .04], wrist: -.15, face: [.7, .25] }],
   ] },
 ] satisfies readonly Emote[];
 
 export const BAG_EMOTES = [
   { id: "bag-lift", name: "Lift the bag", duration: 2.7, keys: [
-    [.25, { left: [[1.8, -3.2, .7], [1.1, .4, 1.7]], head: [.1, .18, -.03] }],
-    [.53, { left: [[2, -3, .6], [.7, .9, 1.9]], head: [.12, .17, -.04], face: [.44, .26] }],
+    [.25, { sway: -.026, rise: -.021, left: [[1.8, -3.2, .7], [1.1, .4, 1.7]], head: [.1, .18, -.03] }],
+    [.53, { sway: -.041, rise: -.023, left: [[2, -3, .6], [.7, .9, 1.9]], head: [.12, .17, -.04], face: [.44, .26] }],
     [.73, { left: [[1.8, -3.2, .7], [.8, -.1, 1.7]], face: [.35, .12] }],
   ] },
   { id: "bag-check", name: "Check the bag", duration: 2.9, keys: [
-    [.28, { left: [[1.6, -3, .9], [.7, .15, 1.8]], torso: [.09, .14, -.03], head: [.18, .22, 0] }],
-    [.62, { left: [[1.6, -3, .9], [.7, .3, 1.8]], head: [.24, .17, -.08], face: [.05, -.35] }],
+    [.28, { sway: .025, rise: -.025, left: [[1.6, -3, .9], [.7, .15, 1.8]], torso: [.09, .14, -.03], head: [.18, .22, 0] }],
+    [.62, { sway: .042, rise: -.026, left: [[1.6, -3, .9], [.7, .3, 1.8]], head: [.24, .17, -.08], face: [.05, -.35] }],
     [.78, { head: [.07, .1, .02], face: [.31, .2] }],
   ] },
 ] satisfies readonly Emote[];
@@ -123,18 +139,76 @@ export function aimDriverJoint(joint: Object3D, child: Object3D, direction: Vect
   joint.quaternion.copy(parent.multiply(new Quaternion().setFromUnitVectors(from, direction.normalize())).multiply(world));
 }
 
-export function buildGarageEmotes(root: Object3D, bag = false) {
+function aimLimb(first: Object3D, second: Object3D, end: Object3D, goal: Vector3, pole: Vector3, hinge?: Vector3) {
+  const start = first.getWorldPosition(new Vector3());
+  const middle = second.getWorldPosition(new Vector3());
+  const upper = start.distanceTo(middle);
+  const lower = middle.distanceTo(end.getWorldPosition(new Vector3()));
+  const direction = goal.sub(start);
+  const distance = Math.max(Math.abs(upper - lower) + .0001, Math.min(upper + lower - .0001, direction.length()));
+  direction.normalize();
+  const along = (upper * upper - lower * lower + distance * distance) / (2 * distance);
+  pole.addScaledVector(direction, -pole.dot(direction)).normalize();
+  const upperDirection = direction.clone().multiplyScalar(along).addScaledVector(pole, Math.sqrt(Math.max(0, upper * upper - along * along)));
+  const lowerDirection = direction.multiplyScalar(distance).sub(upperDirection);
+  aimDriverJoint(first, second, upperDirection.clone());
+  if (hinge) {
+    // Roll the upper arm so the forearm closes around its anatomical hinge.
+    const axis = upperDirection.clone().normalize();
+    const current = hinge.clone().applyQuaternion(first.getWorldQuaternion(new Quaternion()));
+    current.addScaledVector(axis, -current.dot(axis)).normalize();
+    const normal = axis.clone().cross(lowerDirection).normalize();
+    const twist = Math.atan2(axis.dot(current.clone().cross(normal)), current.dot(normal));
+    first.rotateOnAxis(axis.applyQuaternion(first.getWorldQuaternion(new Quaternion()).invert()), twist);
+  }
+  aimDriverJoint(second, end, lowerDirection);
+}
+
+function driverFingers(root: Object3D, side: "l" | "r") {
+  const bone = (name: string) => root.getObjectByName(`${name}_${side}`);
+  const hand = bone("hand"), index = bone("index_01"), middle = bone("middle_01"), pinky = bone("pinky_01");
+  if (!hand || !index || !middle || !pinky) return [];
+  const across = index.getWorldPosition(new Vector3()).sub(pinky.getWorldPosition(new Vector3()));
+  const palm = middle.getWorldPosition(new Vector3()).sub(hand.getWorldPosition(new Vector3()))
+    .cross(across).normalize().multiplyScalar(side === "l" ? 1 : -1);
+  return ["index", "middle", "ring", "pinky", "thumb"].flatMap(name => {
+    const chain = [1, 2, 3].map(segment => bone(`${name}_0${segment}`));
+    return chain.flatMap((joint, segment) => {
+      const adjacent = chain[segment + 1] ?? chain[segment - 1];
+      if (!joint || !adjacent) return [];
+      const axis = adjacent.getWorldPosition(new Vector3()).sub(joint.getWorldPosition(new Vector3()))
+        .multiplyScalar(chain[segment + 1] ? 1 : -1).cross(palm).normalize()
+        .applyQuaternion(joint.getWorldQuaternion(new Quaternion()).invert());
+      return [{ joint, axis, name, segment }];
+    });
+  });
+}
+
+export function buildEmoteClips(root: Object3D, emotes: readonly Emote[]) {
   const torso = root.getObjectByName("spine_02");
   const head = root.getObjectByName("head");
   const left = driverArm(root, "l");
   const right = driverArm(root, "r");
-  const legs = ["l", "r"].map(side => ["thigh", "calf", "foot"].map(name => root.getObjectByName(name + "_" + side)));
-  const joints = [root, torso, head, left?.shoulder, left?.elbow, left?.hand,
-    right?.shoulder, right?.elbow, right?.hand, ...legs.flat()].filter((joint): joint is Object3D => !!joint);
+  const legs = (["l", "r"] as const).flatMap(side => {
+    const thigh = root.getObjectByName("thigh_" + side);
+    const calf = root.getObjectByName("calf_" + side);
+    const foot = root.getObjectByName("foot_" + side);
+    if (!thigh || !calf || !foot) return [];
+    return [{ side, thigh, calf, foot, anchor: root.worldToLocal(foot.getWorldPosition(new Vector3())),
+      orientation: foot.getWorldQuaternion(new Quaternion()) }];
+  });
+  const body = [root, torso, head, left?.shoulder, left?.elbow, left?.hand,
+    right?.shoulder, right?.elbow, right?.hand, ...legs.flatMap(({ thigh, calf, foot }) => [thigh, calf, foot])]
+    .filter((joint): joint is Object3D => !!joint);
+  const fingers = emotes.some(emote => emote.keys.some(([, pose]) => pose.fingers))
+    ? [driverFingers(root, "l"), driverFingers(root, "r")] : [];
+  const joints = [...body, ...fingers.flatMap(hand => hand.map(finger => finger.joint))];
   const rest = joints.map(joint => joint.quaternion.clone());
   const basePosition = root.position.clone();
   const modelRotation = root.getWorldQuaternion(new Quaternion());
+  const modelMatrix = root.matrixWorld.clone();
   const inverseModelRotation = modelRotation.clone().invert();
+  const up = new Vector3(0, 1, 0);
   const faceTargets = (["smile", "brow"] as const).map(shape => driverFaceTargets(root, shape));
   const tilt = (joint: Object3D | undefined, angles: XYZ | undefined) => {
     if (!joint || !angles) return;
@@ -148,31 +222,71 @@ export function buildGarageEmotes(root: Object3D, bag = false) {
     aimDriverJoint(limb.shoulder, limb.elbow, new Vector3(...target[0]).applyQuaternion(modelRotation));
     aimDriverJoint(limb.elbow, limb.hand, new Vector3(...target[1]).applyQuaternion(modelRotation));
   };
+  const hands = (limb: ReturnType<typeof driverArm>, opposite: ReturnType<typeof driverArm>, target: XYZ | undefined, side: number, behindBack?: boolean) => {
+    if (!limb || !opposite || !target) return;
+    const shoulder = limb.shoulder.getWorldPosition(new Vector3());
+    const other = opposite.shoulder.getWorldPosition(new Vector3());
+    const elbow = limb.elbow.getWorldPosition(new Vector3());
+    const wrist = limb.hand.getWorldPosition(new Vector3());
+    const reach = shoulder.distanceTo(elbow) + elbow.distanceTo(wrist);
+    // Resolve the wrists against a shared shoulder frame so contact poses fit
+    // the different arm lengths on the imported rigs and the built-in rig.
+    const goal = new Vector3(target[0] * shoulder.distanceTo(other) * .5, target[1] * reach, target[2] * reach)
+      .applyQuaternion(modelRotation).add(shoulder.clone().lerp(other, .5));
+    const pole = new Vector3(side, -.8, behindBack ? -.57 : -.14).applyQuaternion(modelRotation);
+    // The imported Villager elbows flex around local -Z on both mirrored bones.
+    const hinge = !behindBack ? undefined : limb.shoulder instanceof Bone ? new Vector3(0, 0, -1)
+      : elbow.clone().sub(shoulder).cross(wrist.sub(elbow)).normalize()
+        .applyQuaternion(limb.shoulder.getWorldQuaternion(new Quaternion()).invert());
+    aimLimb(limb.shoulder, limb.elbow, limb.hand, goal, pole, hinge);
+  };
 
-  const emotes = bag ? [...GARAGE_EMOTES.filter(item => compatibleGarageEmotes(item.id)), ...BAG_EMOTES] : GARAGE_EMOTES;
-  const clips = emotes.map((emote, index) => {
-    const keys: Emote["keys"] = index === 0 ? emote.keys : [[0, {}], ...emote.keys, [1, {}]];
+  const clips = emotes.map(emote => {
+    const keys: Emote["keys"] = [
+      ...(emote.keys[0]?.[0] === 0 ? [] : [[0, {}] as const]),
+      ...emote.keys,
+      ...(emote.keys.at(-1)?.[0] === 1 ? [] : [[1, {}] as const]),
+    ];
+    const animated = keys.some(([, pose]) => pose.fingers) ? joints : body;
     const times = keys.map(([time]) => time * emote.duration);
-    const rotations = joints.map((): number[] => []);
+    const rotations = animated.map((): number[] => []);
     const positions: number[] = [];
     for (const [, pose] of keys) {
       joints.forEach((joint, index) => joint.quaternion.copy(rest[index]));
+      root.position.copy(basePosition);
       tilt(torso, pose.torso);
       tilt(head, pose.head);
       arms(left, pose.left);
       arms(right, pose.right);
+      hands(left, right, pose.leftHand, 1, pose.elbowsBack);
+      hands(right, left, pose.rightHand, -1, pose.elbowsBack);
+      tilt(left?.hand, pose.wristLeft === undefined ? undefined : [0, 0, pose.wristLeft]);
       tilt(right?.hand, pose.wrist === undefined ? undefined : [0, 0, pose.wrist]);
-      if (pose.knees) for (const [thigh, calf, foot] of legs) {
-        tilt(thigh, [-pose.knees, 0, 0]);
-        tilt(calf, [2 * pose.knees, 0, 0]);
-        tilt(foot, [-pose.knees, 0, 0]);
-      }
+      pose.fingers?.forEach((shape, side) => {
+        if (!shape) return;
+        for (const { joint, axis, name, segment } of fingers[side]) {
+          const extended = shape === "peace" && (name === "index" || name === "middle");
+          const bend = extended ? -.16 : shape === "heart" ? .39 : .96;
+          joint.rotateOnAxis(axis, bend * [1, .95, .57][segment] * (name === "thumb" ? .36 : 1));
+        }
+      });
+      root.position.add(new Vector3(pose.sway ?? 0, pose.rise ?? 0, 0).applyQuaternion(rest[0]));
       if (pose.turn) root.rotateY(pose.turn);
-      joints.forEach((joint, index) => rotations[index].push(...joint.quaternion.toArray()));
-      positions.push(basePosition.x, basePosition.y + (pose.rise ?? 0), basePosition.z);
+      if (pose.rise || pose.sway || pose.turn || pose.feet) for (const leg of legs) {
+        const [across, lift, forward, pivot = 0] = pose.feet?.[leg.side] ?? [0, 0, 0];
+        const yaw = new Quaternion().setFromAxisAngle(up, pivot);
+        const goal = leg.anchor.clone().applyQuaternion(yaw).add(new Vector3(across, lift, forward)).applyMatrix4(modelMatrix);
+        const knee = new Vector3(leg.side === "l" ? .16 : -.16, 0, 1).applyQuaternion(yaw).applyQuaternion(modelRotation);
+        aimLimb(leg.thigh, leg.calf, leg.foot, goal, knee);
+        // Counter the shin's rotation to keep the sole flat on planted beats.
+        leg.foot.quaternion.copy(leg.calf.getWorldQuaternion(new Quaternion()).invert()
+          .multiply(modelRotation).multiply(yaw).multiply(inverseModelRotation).multiply(leg.orientation));
+      }
+      animated.forEach((joint, index) => rotations[index].push(...joint.quaternion.toArray()));
+      positions.push(...root.position.toArray());
     }
     return new AnimationClip(emote.id + " " + emote.name, emote.duration, [
-      ...joints.map((joint, index) => new QuaternionKeyframeTrack(joint.uuid + ".quaternion", times, rotations[index])),
+      ...animated.map((joint, index) => new QuaternionKeyframeTrack(joint.uuid + ".quaternion", times, rotations[index])),
       new VectorKeyframeTrack(root.uuid + ".position", times, positions),
       ...faceTargets.flatMap((targets, channel) => targets.map(({ mesh, index }) =>
         new NumberKeyframeTrack(mesh.uuid + ".morphTargetInfluences[" + index + "]", times,
@@ -180,6 +294,12 @@ export function buildGarageEmotes(root: Object3D, bag = false) {
     ]);
   });
   joints.forEach((joint, index) => joint.quaternion.copy(rest[index]));
+  root.position.copy(basePosition);
   root.updateMatrixWorld(true);
   return clips;
+}
+
+export function buildGarageEmotes(root: Object3D, bag = false, previewVictory = false) {
+  const garage = bag ? [...GARAGE_EMOTES.filter(item => compatibleGarageEmotes(item.id)), ...BAG_EMOTES] : GARAGE_EMOTES;
+  return buildEmoteClips(root, previewVictory ? [...garage, ...availableVictoryEmotes(bag)] : garage);
 }

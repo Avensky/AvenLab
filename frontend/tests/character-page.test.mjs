@@ -4,7 +4,7 @@ import { JSDOM } from 'jsdom';
 import { createServer } from 'vite';
 import { act, createElement as h } from 'react';
 import { createRoot } from 'react-dom/client';
-import { AnimationMixer, LoopOnce, Object3D } from 'three';
+import { AnimationMixer, LoopOnce, Object3D, Vector3 } from 'three';
 
 test('Heroes opens the character picker, saves one profile choice, and opens Garage from a vehicle', async () => {
   const dom = new JSDOM('<div id="root"></div>', { url: 'http://localhost/', pretendToBeVisual: true });
@@ -31,6 +31,8 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     const { useSocialStore: social } = await load('store/social/socialStore.ts');
     const { useHeroLoadouts: loadouts } = await load('vehicles/cosmetics/heroLoadouts.ts');
     const { useAlphaStore: alpha } = await load('store/alpha/alphaStore.ts');
+    const { usePreviewZoom: zoom } = await load('game/preview/previewZoomStore.ts');
+    const { useCharacterPreviewStore: preview } = await load('game/characters/characterPreviewStore.ts');
     const { routeMenuAction: route } = await load('controls/inputRouting.ts');
     const client = await load('net/socialClient.ts');
     const requests = [];
@@ -55,6 +57,10 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     const title = () => find('.menu-frame-header h1').textContent;
 
     assert.equal(title(), 'HEROES');
+    await click('[aria-label="Zoom vehicle in"]');
+    assert.equal(zoom.getState().level, 1);
+    await click('[aria-label="Reset vehicle zoom"]');
+    assert.equal(zoom.getState().level, 0);
     await click('[data-open-character]');
     assert.equal(title(), 'CHARACTER');
     assert.equal(find('.hero-roster'), null);
@@ -62,6 +68,8 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(find('[data-character-preview]').dataset.characterPreview, 'mara-vega');
     const vesperPortrait = find('[data-character-option="mara-vega"] .character-portrait');
     assert(vesperPortrait?.matches('span.character-portrait--unavailable'), 'Vesper keeps a neutral portrait when WebGL is unavailable');
+    await click('.character-emotes button:nth-child(4)');
+    assert.equal(preview.getState().emote.id, '004');
     await click('[data-character-option="jules-okafor"]');
     assert.equal(find('[data-character-preview]').dataset.characterPreview, 'jules-okafor');
     assert.equal(requests.length, 0);
@@ -95,6 +103,13 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert([...document.querySelectorAll('.character-emotes button')].some(button => button.textContent === 'Lift the bag'));
     assert(![...document.querySelectorAll('.character-emotes button')].some(button => button.textContent === 'Hands behind back'));
     assert.equal(find('input[aria-label="Preview zoom"]').max, '1.25');
+    await click('[aria-label="Emote collection"] button:last-child');
+    assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent), ['Small fist pump', 'Blown kiss']);
+    await click('[aria-label="Preview gender"] [data-character-option="mara-vega"]');
+    assert.equal(drafts.at(-1).id, 'mara-vega');
+    assert.equal(drafts.at(-1).prop, 'shop-bag');
+    await click('#character-editor-tab-appearance');
+    assert.equal(drafts.at(-1).id, 'jules-okafor', 'comparison only changes the Emotes preview');
     await acknowledge(requests[1], requests[1].character);
     assert.equal(requests.length, 3, 'queued prop waits for the previous save');
     assert.equal(requests[2].character.prop, 'shop-bag');
@@ -124,7 +139,7 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
   }
 });
 
-test('the garage emote batch has ten distinct clips that return the driver to rest', async () => {
+test('both emote batches return to rest and keep planted and lifted feet distinct', async () => {
   const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
   try {
     const { buildGarageEmotes } = await vite.ssrLoadModule('/src/game/characters/garageEmotes.ts');
@@ -140,9 +155,9 @@ test('the garage emote batch has ten distinct clips that return the driver to re
       return values;
     };
     const rest = capture();
-    const clips = buildGarageEmotes(model.root);
+    const clips = buildGarageEmotes(model.root, false, true);
     const mixer = new AnimationMixer(model.root);
-    assert.deepEqual(clips.map(clip => clip.name.slice(0, 3)), Array.from({length: 10}, (_, i) => String(i + 1).padStart(3, '0')));
+    assert.deepEqual(clips.map(clip => clip.name.slice(0, 3)), Array.from({length: 20}, (_, i) => String(i + 1).padStart(3, '0')));
     for (const clip of clips) {
       const action = mixer.clipAction(clip).setLoop(LoopOnce, 1);
       action.reset().play();
@@ -152,6 +167,17 @@ test('the garage emote batch has ten distinct clips that return the driver to re
       action.stop();
       assert(capture().every((value, i) => Math.abs(value - rest[i]) < 1e-6), clip.name);
     }
+    const foot = side => turntable.worldToLocal(model.root.getObjectByName('foot_' + side).getWorldPosition(new Vector3()));
+    const leftRest = foot('l'), rightRest = foot('r');
+    const shift = mixer.clipAction(clips[1]).reset().play();
+    mixer.update(clips[1].duration * .23);
+    assert(foot('l').y - leftRest.y > .03);
+    assert(foot('r').distanceTo(rightRest) < .002);
+    shift.stop();
+    const hop = mixer.clipAction(clips[13]).reset().play();
+    mixer.update(clips[13].duration * .39);
+    assert(foot('l').y - leftRest.y > .12 && foot('r').y - rightRest.y > .12);
+    hop.stop();
     mixer.uncacheRoot(model.root);
     model.dispose();
   } finally {
